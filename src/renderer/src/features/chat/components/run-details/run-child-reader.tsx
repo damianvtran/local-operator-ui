@@ -833,10 +833,16 @@ export const RunChildReader = ({
 				 * WHERE IT BELONGS. The parent mounts this in the composer band, another
 				 * column under the transcript; the reader has no composer, so the band it has
 				 * is the one its own layout draws at the foot of the conversation — the strip
-				 * reserved by the `h-12` spacer at the end of this body, which is why
-				 * `bottomDistance` is 8px rather than the parent's 160px (that value exists to
-				 * clear a composer this pane does not have) and rather than the 16px the first
-				 * cut used (which put the chip on the rows' own text — QA Q1, UX U1).
+				 * reserved by the `h-12` spacer at the end of this body. THE SHARED CONTROL
+				 * NO LONGER TAKES A DISTANCE: the composer redesign (its D15) anchors the
+				 * disc `bottom-full` + 12px to its container's TOP edge, so a pane with no
+				 * composer states its own floor in classes — `bottom-2` puts the disc 8px
+				 * above the band's floor and `mb-0` drops the composer's 12px step, the same
+				 * geometry the old `bottomDistance={8}` measured, and `left-0 right-0
+				 * justify-center` keeps the chip centred on the reading column the design
+				 * round signed, rather than the parent's `right-3`. It is 8px rather than
+				 * the 16px the first cut used (which put the chip on the rows' own text —
+				 * QA Q1, UX U1).
 				 *
 				 * FIRST IN THE DOM, LAST ON SCREEN, on purpose (UX U4). `absolute` takes it
 				 * out of flow, so its DOM position costs nothing visually, and putting it here
@@ -853,7 +859,7 @@ export const RunChildReader = ({
 					<ScrollToBottomButton
 						visible={isFarFromBottom}
 						onClick={scrollToBottom}
-						bottomDistance={8}
+						className="bottom-2 left-0 right-0 mb-0 justify-center"
 					/>
 				)}
 				{!row.childSessionId ? (
