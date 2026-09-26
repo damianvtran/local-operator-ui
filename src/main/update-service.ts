@@ -98,6 +98,10 @@ import {
 	ensureVenvBytecodeGuard,
 	withPythonBytecodeCache,
 } from "./python-bytecode-cache";
+import {
+	type ServerReleaseNotes,
+	fetchServerReleaseNotes,
+} from "./server-release-notes";
 import { serverUpdateFailureSentence } from "./server-update-copy";
 import {
 	type UpdateChannelStatus,
@@ -1156,6 +1160,20 @@ export type BackendUpdateInfo = {
 	 * whether "nothing newer" is sent at all (review U12, round 3).
 	 */
 	manual?: boolean;
+	/**
+	 * What changed in the version this offer names, when it could be read.
+	 *
+	 * The app's own card has carried its release notes from the start - they ride
+	 * in the update feed electron-updater reads - so the server card named two
+	 * numbers and a benefit sentence and nothing about the change itself, which is
+	 * the asymmetry a reader meets on the one panel where they are being asked to
+	 * move. Absent or null is "no notes were readable", NOT "nothing changed": the
+	 * lookup needs the network, and a machine that cannot reach GitHub still gets
+	 * its offer, with the panel simply not claiming what it could not read. Where
+	 * they come from, and why they are one request per version, is
+	 * `server-release-notes.ts`.
+	 */
+	releaseNotes?: ServerReleaseNotes | null;
 };
 
 /**
@@ -5595,6 +5613,56 @@ export class UpdateService {
 	}
 
 	/**
+	 * What changed in the server version this offer names, or null.
+	 *
+	 * The read is off the CRITICAL PATH in the sense that matters: it cannot fail
+	 * the offer. Every way it can come back empty - no release for the tag, an
+	 * unreachable host, an answer that is not JSON, a body with no prose in it -
+	 * is a `null` here and a line in this log, and the panel renders without the
+	 * paragraph rather than not at all. That is the shape the app's own channel
+	 * has always had (`updateInfo.releaseNotes` is optional and the card is drawn
+	 * either way), and it is the one a panel asking a reader to move has to keep:
+	 * the notes are the reason to move, never the condition for being told.
+	 *
+	 * AWAITED RATHER THAN SENT LATER, deliberately. The alternative is a second
+	 * renderer event carrying the notes after the offer is already on screen,
+	 * which buys a panel that grows under the reader's eyes and a state machine to
+	 * review in exchange for saving the one bounded round trip this makes per
+	 * version (every later check reads the cache). The bound is
+	 * `RELEASE_NOTES_TIMEOUT_MS`, and it is smaller than the wait the version read
+	 * above it can already impose with no bound at all.
+	 */
+	private async readServerReleaseNotes(
+		version: string,
+	): Promise<ServerReleaseNotes | null> {
+		try {
+			const lookup = await fetchServerReleaseNotes(version, {
+				userDataDir: app.getPath("userData"),
+			});
+			if (lookup.status === "found") {
+				logger.info(
+					`Release notes for ${version} read from ${lookup.cached ? "the cache" : "GitHub"} (${lookup.notes.summary.length} chars)`,
+					LogFileType.UPDATE_SERVICE,
+				);
+				return lookup.notes;
+			}
+			logger.info(
+				`No release notes for ${version}: ${lookup.reason}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return null;
+		} catch (error) {
+			// `fetchServerReleaseNotes` is written not to throw; this is the backstop
+			// that keeps a future edit to it from taking the offer down with it.
+			logger.warn(
+				`Could not read release notes for ${version}: ${error}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return null;
+		}
+	}
+
+	/**
 	 * Check for backend updates using health API and PyPI
 	 * @param silent - Whether to suppress notifications on no update
 	 * @returns Promise resolving to update info or null if no update is available
@@ -6493,9 +6561,20 @@ export class UpdateService {
 					LogFileType.UPDATE_SERVICE,
 				);
 
+				/*
+				 * WHAT CHANGED, read before the offer is composed rather than after it
+				 * is sent, so the one card a reader decides on carries the whole
+				 * question at once - see `readServerReleaseNotes` for why a second
+				 * event was refused. Null on every failure, including a machine that
+				 * cannot reach GitHub, and the panel then says nothing about the
+				 * change instead of saying nothing changed.
+				 */
+				const releaseNotes = await this.readServerReleaseNotes(latestVersion);
+
 				const updateInfo: BackendUpdateInfo = {
 					currentVersion: installedVersion,
 					latestVersion,
+					releaseNotes,
 					/*
 					 * THE PROCESS'S OWN READING, not `/health`'s (review round 2, T1): the
 					 * panel's sentence is "the server you are using is running X until it

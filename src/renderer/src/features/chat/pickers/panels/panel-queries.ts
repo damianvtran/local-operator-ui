@@ -7,6 +7,7 @@ import { SNAPSHOT_READ_OPTIONS } from "@shared/api/query-client";
 import { keepPreviousData } from "@tanstack/react-query";
 import type {
 	DesktopAnalyticsData,
+	DesktopAnalyticsModelsData,
 	DesktopInfoData,
 	DesktopSessionReport,
 } from "../../../../../../shared/desktop-contract";
@@ -146,6 +147,62 @@ export const analyticsQueryOptions = ({
 	queryFn: () =>
 		desktopResult<{ data: DesktopAnalyticsData }>({
 			op: "analytics.get",
+			days,
+			sinceMs,
+			untilMs,
+			sessionId,
+		}),
+	staleTime: PANEL_STALE_MS,
+	placeholderData: keepPreviousData,
+	...PANEL_READ_POLICY,
+});
+
+/**
+ * `analytics.models` — the per-model rate table, read from the raw ledger.
+ *
+ * A SECOND READ OF THE SAME WINDOW, and it is deliberately not folded into
+ * `analyticsQueryOptions`. The two are different in the one way that decides a
+ * query's shape here: this one is a grouped scan of the ledger rather than a
+ * read of the rollup, so it costs seconds on a large ledger while the headline
+ * answers in the same order of magnitude less. Riding the panel's own query
+ * would put that scan in front of the stat cards, the chart and both tables —
+ * everything the user opened the panel for — so it is its own query, fetched
+ * beside them, and its wait is shown on its own section.
+ *
+ * Everything else mirrors `analyticsQueryOptions`, and the mirroring is the
+ * point rather than an accident:
+ *
+ * - **The key carries the whole request**, including `sessionId` as `""` for
+ *   the unscoped case. Two windows are two answers; a scoped table is not the
+ *   unscoped one; and a key missing any of the four would serve one read's rows
+ *   under another read's title. It is a DIFFERENT key prefix from
+ *   `analytics.get`'s, because the same four arguments produce two different
+ *   payloads and a shared key would show one as the other.
+ * - **`staleTime: PANEL_STALE_MS`**, so the two reads of one open agree about
+ *   how long ago they ran rather than disagreeing by a refetch.
+ * - **`placeholderData: keepPreviousData`**, so toggling Today / 7 days /
+ *   30 days does not blank a table that is about to be replaced — which matters
+ *   more here than there, because the blank would last seconds.
+ * - **`PANEL_READ_POLICY`**, so a read that ran out of its own (long) deadline
+ *   is not retried on top of the scan the daemon is still running.
+ */
+export const analyticsModelsQueryOptions = ({
+	days,
+	sessionId,
+	sinceMs,
+	untilMs,
+}: AnalyticsWindowArgs) => ({
+	queryKey: [
+		"desktop",
+		"analytics-models",
+		days,
+		sessionId ?? "",
+		sinceMs,
+		untilMs,
+	] as const,
+	queryFn: () =>
+		desktopResult<{ data: DesktopAnalyticsModelsData }>({
+			op: "analytics.models",
 			days,
 			sinceMs,
 			untilMs,

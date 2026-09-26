@@ -1,0 +1,14 @@
+		/*|		 * THE PROVIDER LISTS AND THE EMPTY-CHAT CONNECT CARD (design audit|		 * section 2 and section 6): a `bg-surface rounded-[14px]` container with NO|		 * border, on the page's `canvas` (Settings, the empty chat). Here rather|		 * than in `CONTROLS` because it is not a control: elevation is a lightness|		 * step (`branding.md`), so the container owes being SEEN as one object,|		 * not a 3:1 edge. The controls inside it are the ordinary button rows|		 * `CONTROLS` already asserts on `surface`.|		 */
+		name: "provider list / connect card container",|		role: "surface",|		on: ["canvas"],|		minDeltaE: 2.0,
+	},
+	{
+		/*|		 * The same list inside a DIALOG (onboarding step 1, the connect dialog):|		 * `bg-surface` on the dialog's `elevated`, a step DOWN rather than up. Its|		 * own row because the pair differs and a list that vanished into the dialog|		 * would pass the row above.|		 */
+		name: "provider list inside a dialog",|		role: "surface",|		on: ["elevated"],|		minDeltaE: 2.0,
+	},
+	{
+		/*|		 * The row's monogram tile: `bg-elevated` two letters on the list's|		 * `surface`. A fill step behind `ink` text, which the `INKS` loop already|		 * asserts on `elevated`; this row asserts only that the tile reads as a tile.|		 */
+		name: "provider monogram tile",|		role: "elevated",|		on: ["surface"],|		minDeltaE: 2.0,
+	},
+	{
+		/*|		 * The device-code well: the code in mono on `bg-sunken` inside the|		 * `surface` panel. The code's ink is `ink`, asserted on `sunken` by the|		 * `INKS` loop; this row asserts the well is visible as one.|		 */
+		name: "device code well",|		role: "sunken",|		on: ["surface"],|		minDeltaE: 2.0,

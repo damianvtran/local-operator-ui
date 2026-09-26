@@ -201,8 +201,8 @@ export const clearSubmittedText = (
 /*
  * THE BOX'S ONE SENTENCE PER STATE (chat redesign §G1/§G3).
  *
- * Two of these are new copy and one is deleted, and the deletion is the point:
- * `Waiting for the agent` was the running-turn sentence, and it was the app
+ * Two of these are new copy (the `noProvider` line is main's, folded in
+ * unchanged) and one is deleted, and the deletion is the point: `Waiting for the agent` was the running-turn sentence, and it was the app
  * narrating a fact the transcript's own working line states three inches above -
  * while saying nothing about the two things a reader actually needs there, that
  * typing steers the running turn and that Esc stops it. §G3 replaces it with the
@@ -221,6 +221,11 @@ export const COMPOSER_PLACEHOLDER = {
 	aside: "Ask off the record — Esc closes the aside",
 	sending: "Sending your message",
 	waiting: "Steer the agent. Enter sends now · Esc stops",
+	/**
+	 * Nothing connected: the invitation would be a lie, and this is the one
+	 * sentence that names the action instead (design audit section 6).
+	 */
+	noProvider: "Connect a provider to start chatting",
 	idle: "Ask anything. @ adds files, / runs commands",
 } as const;
 
@@ -262,6 +267,14 @@ export const composerPlaceholder = (state: {
 	sendingUnsettled: boolean;
 	/** A send has been issued and the agent has not painted anything yet. */
 	awaitingReply: boolean;
+	/**
+	 * No model provider is connected. LAST of the readings, because it is the
+	 * only one that is not about this turn: a send in flight, a pending question
+	 * or a refused box are all things the user is doing right now, and telling
+	 * them to connect a provider while the agent is answering above the box
+	 * would be the composer arguing with the transcript.
+	 */
+	noProvider?: boolean;
 }): string => {
 	if (state.unavailable) return COMPOSER_PLACEHOLDER.unavailable;
 	if (state.inputDisabled) return COMPOSER_PLACEHOLDER.busy;
@@ -269,6 +282,7 @@ export const composerPlaceholder = (state: {
 	if (state.asideAttached) return COMPOSER_PLACEHOLDER.aside;
 	if (state.sendingUnsettled) return COMPOSER_PLACEHOLDER.sending;
 	if (state.awaitingReply) return COMPOSER_PLACEHOLDER.waiting;
+	if (state.noProvider) return COMPOSER_PLACEHOLDER.noProvider;
 	return COMPOSER_PLACEHOLDER.idle;
 };
 
