@@ -8302,11 +8302,24 @@ async function sceneQuestionDock(cdp) {
 	);
 
 	/*
-	 * Escape, from INSIDE the card: focus is put on the card's first focusable by
-	 * a trusted pointer press on its question text, then Escape goes through CDP's
-	 * key pipeline.
+	 * Escape, from INSIDE the card: focus is put on the card's focus scope by a
+	 * trusted pointer press on its non-interactive text, then Escape goes through
+	 * CDP's key pipeline.
+	 *
+	 * THE PRESS LANDS ON THE EYEBROW (`section p`), NOT THE CARD'S CENTRE (QA
+	 * round 4, Q6). The centre stopped being neutral ground: this branch's fold
+	 * moved the approval pair into this card, and the element at the card's
+	 * painted centre is now a span inside option row 0 ("Run the action and
+	 * continue the turn."), so a centre press ANSWERS the gate - the dock clears,
+	 * the approved call runs, and every later step of this scene fails by
+	 * construction. The eyebrow is the card's first paragraph and carries no
+	 * control, so the press focuses the section's own `tabindex="-1"` scope (the
+	 * dock's focus-by-pointer contract, `question-dock.tsx`) without activating
+	 * anything; Escape then reaches the section's handler and collapses the card,
+	 * which is the claim this step exists to drive. The instrument's gesture, not
+	 * a product change: the claim is unchanged.
 	 */
-	await clickAt(cdp, '[data-lo-question-dock="expanded"] section');
+	await clickAt(cdp, '[data-lo-question-dock="expanded"] section p');
 	await pressChord(cdp, { key: "Escape", code: "Escape", virtualKeyCode: 27 });
 	const collapsed = await waitForCondition(
 		cdp,

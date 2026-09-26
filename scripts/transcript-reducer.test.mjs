@@ -1263,6 +1263,46 @@ test("a row announced but never started, killed by the stop, reads stopped (the 
 	assert.equal(row.isError, false, "and the danger ink is cleared with it");
 });
 
+test("the accepted mirror: an own-fault no-clock failure inside the standing window also reads stopped (R21)", () => {
+	/*
+	 * THE COST Q5 TOOK, PINNED WHERE IT WAS TAKEN - as a cost, not as approval.
+	 * The inputs are identical to the two pins above, and they have to be: the
+	 * reducer cannot tell the reading the widened arm is FOR (a call the press
+	 * killed before it started, or one born settled by the killing end event)
+	 * from the reading it ACCEPTS (a call whose failure was its own, settled
+	 * before the press, whose end event reached a lagging viewer inside the
+	 * standing window). One story has to win for both, and the standing stop
+	 * fact is the story taken. This test is a deliberate companion to U15's pin
+	 * rather than a duplicate: a future edit that re-tightens the arm must
+	 * consciously move THIS assertion, whose name says what it is.
+	 *
+	 * WHAT WOULD MAKE THE MIRROR REAL (agent review round 5, R21): a
+	 * daemon-produced end frame for an announced-but-unstarted call carrying a
+	 * fault other than the abort, inside the standing window. None was
+	 * constructed - a parked call does not execute, so its endings inside the
+	 * window are the stop's kill or a gate resolution that would have started
+	 * it - and the window is bounded (`chat-page.tsx`: the press's receipt
+	 * clears the fact on any answer that is not `interrupted`, and the next turn
+	 * clears it again), with the durable page correcting a genuine failure back
+	 * to danger when its fault is not `aborted`.
+	 */
+	const state = applyEvent(EMPTY_TRANSCRIPT, endFrame("c-own-fault"), ARRIVAL, {
+		userStoppedAt: STOP_PRESSED_AT,
+	});
+	const row = ranRow(state, "c-own-fault");
+	assert.equal(
+		row.startedAt,
+		null,
+		"no clock: nothing this viewer ever watched start",
+	);
+	assert.equal(row.stopped, true, "the standing stop fact is the reading taken");
+	assert.equal(
+		row.isError,
+		false,
+		"and the danger ink yields to it - the accepted cost, asserted rather than assumed",
+	);
+});
+
 test("the same birth with no standing stop fact keeps its danger row", () => {
 	// The classification is the FACT's work, not the shape's: without a
 	// standing stop there is no better story than the event's own - so the
