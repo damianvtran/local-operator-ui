@@ -1088,6 +1088,18 @@ const STAMP_BINDING_NOTES = [
 	 * the rule the paragraph above states.
 	 */
 	"foldOntoFd19adc9d9Note",
+	/*
+	 * ROUND 1 OF THIS FIX'S OWN (#534's shell-regressions remediation), and it
+	 * belongs here for the list's own reason: the round moves BOTH trees this file
+	 * binds - `src/` for the merged sidebar's own `scroller` marker and `chats`
+	 * moved onto the list region it names, plus the measure and stop-control
+	 * call-site corrections, and `scripts/` for the two retired scenes, the walk's
+	 * recast from the unreachable `chats-only` mode and the rewritten suites - and
+	 * re-shoots no frame (six stories and their twelve frames leave instead), so a
+	 * reader is owed the two values it binds and the reason the stills did not
+	 * move.
+	 */
+	"shellRegressionsRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
