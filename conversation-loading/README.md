@@ -110,3 +110,15 @@ The committed evidence set re-shoots with:
 node_modules/.bin/vite --config scripts/session-switch.vite.mjs   # one shell
 node scripts/session-switch-latency.mjs --frames=docs/evidence/session-switch
 ```
+
+## Fold note
+
+The branch folded `origin/main` (9d3e68ddf6, #467) after this evidence was
+taken, and because the fold moved files the frames render through (the goals'
+props in chat-content / composer-status-row, all gated on a `goal_status` this
+fixture does not carry), the committed `session-switch` set was re-shot at the
+folded tip and **compared rather than overwritten**: every difference is the
+harness's own nondeterminism - the pulse phase in `hydrating`/`slow`, the
+composer's caret in `held-press`, sub-pixel sidebar text for `mark` (10% of the
+sidebar's pixels under 2% amplitude) - so the committed bytes stand. The
+manifest's note records the same check.
