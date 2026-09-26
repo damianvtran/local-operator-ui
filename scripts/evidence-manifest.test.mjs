@@ -1103,6 +1103,14 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"subviewInsetRestampNote",
 	/*
+	 * And `goalDesignRoundTwoNote`, this branch's own record: it carries the pair the
+	 * judged-goals design-round-2 pass re-derived, so it is the entry later re-stamps
+	 * have to re-point. It joins this list under the union rule rather than replacing
+	 * it: the eight main-side notes it superseded in this branch's narrow spellings
+	 * keep their membership and are held to the shipped pair by the same sweep.
+	 */
+	"goalDesignRoundTwoNote",
+	/*
 	 * AND THIS PASS'S OWN, for the held-first-paint work on the conversation-loading
 	 * report ("everything should load in one solid paint instead of incrementally"):
 	 * it states the pair THIS FILE SHIPS as its opening claim, holds both tokens,
@@ -1536,6 +1544,18 @@ const BRANCH_RECORDS = [
 	 * entry a later fold that started from main's copy would drop first.
 	 */
 	"foldOntoFd19adc9d9Note",
+	/*
+	 * Grown by the judged-goals (`feat/goal-done-history`) pass, which wrote four
+	 * top-level records - `goalDoneRestampNote` and `goalDoneFoldRestampNote` from
+	 * its rebases and folds, `goalDoneFramePassNote` from the frame pass, and
+	 * `goalDesignRoundTwoNote` from the batched design-round-2 remediation. A fold
+	 * that starts from main's manifest drops them without a word, which is this
+	 * list's whole subject.
+	 */
+	"goalDoneRestampNote",
+	"goalDoneFoldRestampNote",
+	"goalDoneFramePassNote",
+	"goalDesignRoundTwoNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

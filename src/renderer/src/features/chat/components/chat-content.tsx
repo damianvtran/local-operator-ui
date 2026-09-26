@@ -38,9 +38,11 @@ import React, {
 	useRef,
 	useState,
 } from "react";
-import type {
-	CanonicalFrontendState,
-	CanonicalModel,
+import {
+	type CanonicalFrontendState,
+	type CanonicalModel,
+	goalCapability,
+	goalPresent,
 } from "../../../../../shared/desktop-session-contract";
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
 import type { UndeliveredTurn } from "../canonical/canonical-transcript";
@@ -1840,6 +1842,31 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								currentWorkingDirectory={cwd}
 								fileCount={mentionedFileCount}
 								scan={filesScan}
+								/*
+								 * The pane's goals come off the SAME canonical frontend the composer
+								 * row reads, so the chip and the pane cannot describe one session's
+								 * history differently.
+								 *
+								 * AND THE SAME PRESENCE CHECK, READ ONCE, HERE (UX round 1, U4):
+								 * `goalCapability` is the chip's own gate — `typeof goal_status ===
+								 * "string"` — called on the same snapshot and handed down as one
+								 * boolean, so the pane's fourth segment cannot exist on a backend whose
+								 * goal controls the chip refuses to render. An older backend publishes
+								 * neither field, and the defaults below are then what a view this build
+								 * does not offer would have read.
+								 */
+								goalCapable={goalCapability(canonical?.view.frontend)}
+								/*
+								 * The empty state's description is gated on whether a goal EXISTS at all,
+								 * not on whether one has settled (design review round 2, D2): read off the
+								 * same snapshot as the capability above, so the pane cannot tell a user to
+								 * set a goal the chip two panes over is already showing.
+								 */
+								goalPresent={goalPresent(canonical?.view.frontend)}
+								goalHistory={canonical?.view.frontend?.goal_history}
+								goalHistoryTruncated={
+									canonical?.view.frontend?.goal_history_truncated === true
+								}
 								onChangeActiveDocument={handleChangeActiveDocument}
 								onClose={handleCloseCanvas}
 								onCloseDocument={handleCloseDocument}
