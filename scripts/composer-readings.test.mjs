@@ -1064,13 +1064,26 @@ test("duration is the only reading that may be shed, and only between the two th
 	);
 	assert.doesNotMatch(strip, /@max-\[860px\]\/chatcol:sr-only/);
 
-	// And it is the ONLY one: the other four are protected by R8/R14, so a
-	// `hidden` anywhere else in this file is a reading being dropped that the
-	// design says must never drop.
-	assert.equal(
-		strip.match(/chatcol:hidden/g)?.length,
-		1,
-		"only the duration reading may be shed",
+	/*
+	 * And it is the only READING that may be shed: the other four are protected by
+	 * R8/R14, so a `hidden` on a reading is a reading being dropped that the
+	 * design says must never drop.
+	 *
+	 * ONE other `hidden` is allowed in this file and it is NOT a reading: the held
+	 * cluster's visible mark is hidden below the wrap threshold, where the design
+	 * round measured ~23px free and the word would push the mic and send onto a
+	 * third line - the defect design round 1.5's D9 fixed. It is named by its own
+	 * class rather than counted, so a THIRD `hidden` still fails here, and the
+	 * statement is not lost at that width: the group name reaches assistive
+	 * technology and the tooltips reach a pointer.
+	 */
+	assert.deepEqual(
+		(strip.match(/[^\s"]*chatcol:hidden/g) ?? []).sort(),
+		[
+			"@max-[750px]/chatcol:hidden",
+			"@min-[750px]/chatcol:@max-[860px]/chatcol:hidden",
+		].sort(),
+		"only the duration reading and the held mark may be hidden, and the mark is not a reading",
 	);
 });
 
@@ -1113,9 +1126,17 @@ test("the value readings hold their width; only the model name yields", () => {
  * it said.
  */
 
-/** Every accessible name in the markup, in render order. */
+/**
+ * Every READING's accessible name, in render order.
+ *
+ * The held cluster's own `aria-label` is excluded by name: it is the strip's
+ * group statement (design D4), not a reading, and including it would make every
+ * comparison below about a sentence no reading carries.
+ */
 const readingLabels = (html) =>
-	[...html.matchAll(/aria-label="([^"]*)"/g)].map((match) => match[1]);
+	[...html.matchAll(/aria-label="([^"]*)"/g)]
+		.map((match) => match[1])
+		.filter((label) => !label.startsWith("Session readings."));
 
 /** A session's snapshot with every reading the strip draws: model, effort, context, spend, time. */
 const SESSION = {
@@ -1128,9 +1149,16 @@ const SESSION = {
 	active_duration_s: 92,
 };
 
-test("a held reading keeps its value and says it is the last one; a live one says nothing of the kind", () => {
-	const live = renderStrip({ frontend: SESSION });
-	const held = renderStrip({ frontend: SESSION, held: true });
+test("a held reading keeps its value, and the strip says once that it is the last one", () => {
+	/*
+	 * A DISPATCHER, so the context reading is OPENABLE and its closing line is the
+	 * measured/estimated one rather than `COMMANDS_OFF`: that first branch returns
+	 * before the status is read, so a fixture without one could not see D3's
+	 * difference at all.
+	 */
+	const openable = { frontend: SESSION, onCommand: () => undefined };
+	const live = renderStrip(openable);
+	const held = renderStrip({ ...openable, held: true });
 
 	/*
 	 * THE VALUES ARE THE SAME, and that is the assertion the held state exists
@@ -1138,12 +1166,6 @@ test("a held reading keeps its value and says it is the last one; a live one say
 	 * spend they were last told rather than watching four blanks come and go at
 	 * the stream's cadence. A mark that replaced a value would be the app
 	 * answering a question the owner has not answered.
-	 *
-	 * The comparison is over EVERY accessible name in the markup rather than a
-	 * hand-listed four: the strip's readings are the only thing `held` reaches, so
-	 * a reading this change forgot to mark fails here as a missing suffix, and a
-	 * label that is not a reading (a spinner's, say) is asserted to be identical
-	 * in both - which is also the pin that the mark is not a blanket one.
 	 */
 	const liveLabels = readingLabels(live);
 	const heldLabels = readingLabels(held);
@@ -1151,22 +1173,83 @@ test("a held reading keeps its value and says it is the last one; a live one say
 		liveLabels.length >= 4,
 		`the fixture must render the whole cluster (got ${liveLabels.length}: ${liveLabels.join(" | ")})`,
 	);
-	assert.deepEqual(
-		heldLabels.map((label) => label.replace(` ${LAST_READING_NOTE}`, "")),
-		liveLabels,
-		"every reading renders the same value it renders live, and only its provenance is added",
-	);
+
+	/*
+	 * THE PROVENANCE CLAUSE IS NOT ON THE READINGS ANY MORE (design round 1, D4).
+	 * It used to be appended to all four accessible names, which is the same
+	 * sentence four times over and, after a pick, two qualifications in one
+	 * utterance (UX round 1, U2). The cluster states it once; the tooltips keep
+	 * it per reading. So no reading's name carries it now.
+	 */
 	for (const label of heldLabels)
 		assert.ok(
-			label.endsWith(LAST_READING_NOTE),
-			`each held reading says which reading it is: ${label}`,
+			!label.includes(LAST_READING_NOTE),
+			`the clause must not be repeated on every reading: ${label}`,
 		);
+
+	/*
+	 * THE ONE READING WHOSE NAME LEGITIMATELY DIFFERS WHILE HELD is the context
+	 * chip, and for a different reason: its closing line may not say "Measured
+	 * now" while the strip is saying the reading is from before the reconnect
+	 * (design round 1, D3). Every other reading is asserted IDENTICAL to its live
+	 * name, character for character.
+	 */
+	const contextOf = (labels) => labels.filter((l) => l.startsWith("Context: "));
+	assert.equal(contextOf(heldLabels).length, 1, "one context reading");
+	assert.match(
+		contextOf(liveLabels)[0],
+		/Measured now;/,
+		"the live context reading says it was measured now",
+	);
+	assert.doesNotMatch(
+		contextOf(heldLabels)[0],
+		/Measured now|Estimated now/,
+		"and the held one may not, or the panel asserts current and stale at once",
+	);
+	assert.deepEqual(
+		heldLabels.filter((l) => !l.startsWith("Context: ")),
+		liveLabels.filter((l) => !l.startsWith("Context: ")),
+		"every other reading renders the value AND the name it renders live",
+	);
+
+	/*
+	 * D1: A VISIBLE MARK, which the first cut of this change did not have.
+	 * Measured, the transcript's "Reconnecting" line sat thousands of pixels above
+	 * the readings and hit-tested none of 713 held samples, so a held band and a
+	 * live one were the same glyphs in the same inks.
+	 */
+	assert.match(held, />\s*Last reading\s*</, "the cluster carries the word");
+	assert.doesNotMatch(
+		live,
+		/>\s*Last reading\s*</,
+		"and a live cluster does not",
+	);
+	/*
+	 * D4: the SAME statement reaches assistive technology, once, as the group's
+	 * own name -- announced on entering the group rather than four times over.
+	 */
+	assert.match(
+		held,
+		/role="group" aria-label="Session readings\. Last reading from before the reconnect\."/,
+		"the strip states it once as a group name",
+	);
+	/*
+	 * Asserted on the STATEMENT rather than on `role="group"`: the strip's own
+	 * markup contains a group role elsewhere (the context wheel's), so a bare role
+	 * check would be about somebody else's element. What must not exist on a live
+	 * strip is the held sentence.
+	 */
+	assert.doesNotMatch(
+		live,
+		/Session readings\./,
+		"and a live strip states none of it",
+	);
 
 	/*
 	 * AND THE LIVE STRIP SAYS NONE OF IT. Without this half the mark could be
 	 * unconditional and every reading in the app would claim to be stale.
 	 */
-	assert.doesNotMatch(live, /Last reading from before the reconnect/);
+	assert.doesNotMatch(live, /Last reading/);
 	assert.doesNotMatch(live, /data-lo-session-strip-held/);
 	assert.match(
 		held,
@@ -1176,9 +1259,8 @@ test("a held reading keeps its value and says it is the last one; a live one say
 
 	/*
 	 * THE MARK IS NOT THE PANE'S SENTENCE. The transcript paints "Reconnecting"
-	 * for this whole state four lines above the composer, and a second copy of it
-	 * here would be the same claim twice - the strip's half is saying WHICH
-	 * readings these are.
+	 * for this whole state, and a second copy of it here would be the same claim
+	 * twice - the strip's half is saying WHICH readings these are.
 	 */
 	assert.doesNotMatch(
 		held,

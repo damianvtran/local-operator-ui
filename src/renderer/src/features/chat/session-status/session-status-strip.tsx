@@ -395,7 +395,16 @@ const Reading: FC<{
 	 * qualification behind a hover for everyone else, and a tooltip alone would
 	 * leave a screen reader hearing a value with no provenance.
 	 */
-	const spoken = held ? `${label} ${LAST_READING_NOTE}` : label;
+	/*
+	 * THE ACCESSIBLE NAME IS THE READING'S OWN, held or not (design round 1, D4).
+	 * The provenance clause used to be appended here, which put the same sentence
+	 * in four accessible names and made a picked-but-unconfirmed reading announce
+	 * two qualifications in one breath (UX round 1, U2). The CLUSTER states it
+	 * once now -- see the group name in the strip below -- and the tooltip keeps
+	 * the clause per reading, so a pointer reader and a screen reader are both
+	 * told, each once.
+	 */
+	const spoken = label;
 	const body = held ? (
 		// Nested rather than flattened into `TooltipLines`: the call sites own
 		// their own lines (some set `mono`, some build theirs from a model), and a
@@ -517,10 +526,28 @@ const TooltipLines: FC<{ lines: string[]; mono?: boolean }> = ({
 function contextBreakdownLine(
 	status: ContextReading["status"],
 	openable: boolean,
+	held = false,
 ): string {
 	// Nothing to open says so FIRST: the three lines below all name a control, and
 	// naming one that cannot open is the D3 defect in the context reading.
 	if (!openable) return COMMANDS_OFF;
+	/*
+	 * WHILE HELD THE LINE MAY NOT SAY "NOW" (design round 1, D3). The strip's own
+	 * mark already says these are the readings from before the reconnect, and
+	 * "Measured now" in the same utterance contradicts it - the panel would be
+	 * asserting the value is current and stale at once. Only the clause that
+	 * would be FALSE is dropped; the rest of the sentence, and every live
+	 * string, are byte-identical.
+	 *
+	 * Both held forms carry a terminal stop, which the live forms do not: new
+	 * copy gets the stop, and the live copy stays untouched rather than being
+	 * re-punctuated under cover of this change.
+	 */
+	if (held) {
+		if (status === "measured" || status === "estimate")
+			return "Click for the full breakdown, which estimates your next request.";
+		return "Click for the full breakdown.";
+	}
 	if (status === "measured")
 		return "Measured now; click for the full breakdown, which estimates your next request";
 	if (status === "estimate")
@@ -841,9 +868,51 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			// same treatment for the same reason: a frame that has to grep
 			// `LAST_READING_NOTE` out of a tooltip is a frame asserting on copy that
 			// the designer is free to reword.
+			//
+			// CLUSTER SCOPE, matching the word below and the group name beside it
+			// (design round 1, D5). `held` is a property of the whole cluster -- every
+			// reading in a held strip comes off the same snapshot -- so the DOM fact
+			// is stated once, here. The per-reading `held` prop scopes only that
+			// reading's TOOLTIP clause, and the two are deliberately different
+			// questions rather than one stated twice.
 			data-lo-session-strip-draft={draft ? true : undefined}
 			data-lo-session-strip-held={held ? true : undefined}
+			/*
+			 * THE GROUP NAME IS WHERE THE STRIP SAYS IT IN WORDS (design round 1,
+			 * D1+D4). A visible mark is not optional: measured, the transcript's
+			 * "Reconnecting" line sits thousands of pixels above the readings and
+			 * hit-tested none of 713 held samples, so held and live bands were the
+			 * same glyphs in the same inks. The word is the mark; this label is the
+			 * same statement for a screen reader, announced once on entering the
+			 * group rather than four times over.
+			 */
+			/* biome-ignore lint/a11y/useSemanticElements: a `<fieldset>` is the semantic element for `group`, and it is the wrong one here - it would add form-section semantics and its own default box and margin to a row that is deliberately borderless and measured to the pixel (see the wrap rule above). What this role buys is a LABELLING SCOPE for the held statement, not a form boundary, and there is no form. */
+			role="group"
+			aria-label={held ? `Session readings. ${LAST_READING_NOTE}` : undefined}
 		>
+			{/*
+			 * THE VISIBLE MARK, FIRST IN THE CLUSTER (design round 1, D1). A word
+			 * rather than a tint: the readings already sit on `ink-muted`/`ink-dim`,
+			 * so a further shade would spend a contrast floor to say something the
+			 * reader still has to decode. It is the cluster's first item so the eye
+			 * meets the qualification before the values it qualifies.
+			 *
+			 * `text-meta` and `ink-dim` are the strip's own register -- this is
+			 * metadata about the readings, not a reading.
+			 *
+			 * BELOW 750px OF COLUMN IT IS HIDDEN, AND THAT IS STATED RATHER THAN
+			 * DISCOVERED: measured, the narrow row has ~23px free and the cluster
+			 * already wraps to its own line there, so a word would push the
+			 * controls onto a third line -- the exact defect design round 1.5's D9
+			 * fixed. The statement is not lost at that width: the group name above
+			 * carries it to assistive technology, the tooltips carry it to a
+			 * pointer, and the pane's own "Reconnecting" line is on screen.
+			 */}
+			{held && (
+				<span className="shrink-0 text-meta text-ink-dim @max-[750px]/chatcol:hidden">
+					Last reading
+				</span>
+			)}
 			{identity && (
 				<Reading
 					// Pending is a state of a chip that CAN open; `modelReason` answers
@@ -1063,10 +1132,10 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					draft
 						? DRAFT_CONTEXT_LABEL
 						: reading.status === "no-reading"
-							? `Context: no reading yet. ${contextBreakdownLine("no-reading", Boolean(sessionDispatch))}`
+							? `Context: no reading yet. ${contextBreakdownLine("no-reading", Boolean(sessionDispatch), held)}`
 							: `Context: ${reading.spelling}${
 									reading.status === "estimate" ? ", estimated" : ""
-								}. ${contextBreakdownLine(reading.status, Boolean(sessionDispatch))}`
+								}. ${contextBreakdownLine(reading.status, Boolean(sessionDispatch), held)}`
 				}
 				tooltip={
 					<TooltipLines
@@ -1089,6 +1158,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 										contextBreakdownLine(
 											reading.status,
 											Boolean(sessionDispatch),
+											held,
 										),
 									]
 						}
