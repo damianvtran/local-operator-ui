@@ -884,11 +884,20 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"mentionsRemedyRestampNote",
 	/*
+	/*
 	 * This branch's own: it re-stamps the change that added the approval card's
 	 * options, so the reader is owed the pair the file ships - and the two moved
 	 * trees are each that change's own files plus this note's registration here.
 	 */
 	"approvalOptionsRestampNote",
+	/*
+	 * This branch's own, and the first one that adds a declared set in the same
+	 * commit it re-stamps: it re-stamps `fix(chat): spend history reveals at rest,
+	 * one fetch per gesture`, which moves both trees AND adds
+	 * `[redacted]`, so the reader is owed the pair, the frame
+	 * arithmetic, and the reason the swept count does not move.
+	 */
+	"transcriptRevealAtRestRestampNote",
 	/*
 	 * The draft-warm pass's own: it re-stamps a change that moves BOTH trees -
 	 * the contract, store, hooks and panel on one side, the two suites that pin
@@ -1257,6 +1266,23 @@ const BRANCH_RECORDS = [
 	 * re-derived tokens in it reading as main's.
 	 */
 	"mentionsRemedyRestampNote",
+	/*
+	 * And by the reveal-at-rest pass - the pass this fold carries. It is the case
+	 * the entry above names, one fold over: the manifest resolution kept this
+	 * branch's set, note and counts by hand against a moved main, and this record
+	 * is the only statement of which two trees the scroll-reveal change moved and
+	 * that the 16 frames it added came from this tree with the `before` arm's two
+	 * modules swapped for `origin/main`'s.
+	 */
+	"transcriptRevealAtRestRestampNote",
+	/*
+	 * And by the draft-warm pass, whose note this fold re-stamps: it is the only
+	 * statement of which two trees the new-chat pre-engage moved and of why no
+	 * still was owed, and this fold's manifest resolution keeps it by hand
+	 * against main's copy - so it joins the list for the same reason every entry
+	 * above it did.
+	 */
+	"newchatDraftWarmRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
