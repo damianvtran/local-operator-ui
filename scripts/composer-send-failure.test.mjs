@@ -51,8 +51,7 @@ globalThis.__canonicalRequest = async (request) => {
 	// The catalogue read the create's answer now issues (S5): answered here rather
 	// than queued, because it is not a send and every queue in this file is
 	// written for the send path alone.
-	if (request.op === "sessions.list")
-		return { sessions: [], truncated: false };
+	if (request.op === "sessions.list") return { sessions: [], truncated: false };
 	const queued = responses.shift();
 	if (queued instanceof Error) throw queued;
 	return queued ?? {};
