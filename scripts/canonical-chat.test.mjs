@@ -5039,9 +5039,11 @@ test("the composer clears no payload half of its own, so the echo is the only tr
  * exactly what a panel mounting mid-send does.
  *
  * The composer now derives the fact from that row (`sendUnsettledForSession` over
- * `draftRowForSession`, the same predicate the pane's `starting` latch reads for
- * the transcript's line), and this drives the REAL store through a New-chat send:
- * create -> the flip -> the seam -> the echo -> the held POST -> the receipt.
+ * `draftRowForSession`, found by whichever name the conversation's send has),
+ * while the pane's wait line reads the same send as a PAINTED row
+ * (`pendingSendForView`); this drives the REAL store through a New-chat send:
+ * the press -> the create hop -> the flip -> the seam -> the held POST -> the
+ * receipt.
  *
  * WHAT THIS TEST CANNOT SEE, stated so it is not read as wider than it is: it
  * asserts the ROW, not the composer's drawing of it. The drawing is asserted in
@@ -5052,14 +5054,17 @@ test("the composer clears no payload half of its own, so the echo is the only tr
  * seeded - measured while writing this, not assumed. The guard below keeps a
  * regression from walking back in through the prop door.
  */
-test("R2-1: the unsettled-send fact is the STORE's row, live across the New-chat flip and gone at the receipt", async () => {
+test("R2-1: the unsettled-send fact is the STORE's row, live from the press through the flip and gone at the receipt", async () => {
 	reset();
 	const sessionId = "222222222222";
 	let release = null;
+	let releaseCreate = null;
 	globalThis.__canonicalRequest = async (request) => {
 		calls.push(request);
 		if (request.op === "sessions.create")
-			return { session_id: sessionId, binding: null };
+			return new Promise((resolve) => {
+				releaseCreate = () => resolve({ session_id: sessionId, binding: null });
+			});
 		if (request.op === "sessions.message")
 			return new Promise((resolve) => {
 				release = () => resolve({ status: "admitted" });
@@ -5075,6 +5080,32 @@ test("R2-1: the unsettled-send fact is the STORE's row, live across the New-chat
 		"nothing is in flight at the press, so the box must not claim a send",
 	);
 	const send = admitChatDraft(key, { ...input, text: "Review this" });
+	for (let i = 0; i < 200 && releaseCreate === null; i += 1)
+		await new Promise((resolve) => setTimeout(resolve, 5));
+	assert.notEqual(releaseCreate, null, "the create never left the store");
+	/*
+	 * THE CREATE HOP ITSELF, which is the window this change added a claim for.
+	 * No session id exists yet, so the row is findable only under the DRAFT key -
+	 * the pane's own identity for the whole hop - and `submittedAt` is already
+	 * written, because the claim and its clock are one store update. This is
+	 * what a composer remounting mid-create reads: without the draft-key
+	 * spelling it found no row and said nothing at all.
+	 */
+	assert.equal(
+		sendUnsettledForSession(store.getState().drafts, key),
+		true,
+		"within the create hop the draft key answers: the box says the message is going out",
+	);
+	assert.equal(
+		fact(),
+		false,
+		"and the session it will become has no row yet - which is why the lookup is by identity, not by session id alone",
+	);
+	assert.ok(
+		store.getState().drafts[key]?.submittedAt,
+		"the hop is the clock's anchor too: `submittedAt` is written with the claim",
+	);
+	releaseCreate();
 	for (let i = 0; i < 200 && release === null; i += 1)
 		await new Promise((resolve) => setTimeout(resolve, 5));
 	assert.notEqual(release, null, "the message POST never left the store");
@@ -5099,6 +5130,34 @@ test("R2-1: the unsettled-send fact is the STORE's row, live across the New-chat
 		fact(),
 		false,
 		"the receipt deletes the row (`finishDraft`), so the box has nothing left to claim but the owner's answer",
+	);
+});
+
+test("S3: the pane's wait-line latch reads the PAINTED send, not a pane-local state", () => {
+	/*
+	 * The latch's SOURCE, pinned where this file's other source guards live (and
+	 * with the same honest limit: a regex over comment-stripped source notices the
+	 * door being reopened, it does not cover the fact). `starting` is read by the
+	 * band, the pane's collapse and the working line, so "where does it come from"
+	 * is again a question about a fact that must outlive the panel: the draft
+	 * pane paints at the press and the identity flip remounts the panel that
+	 * pressed, so a `useState`/`useRef` fed from this component's own lifetime is
+	 * silent on exactly the New-chat path (MAJOR-1's class). It reads the
+	 * registry - `pendingSendForView` - addressed by the pane's own identity,
+	 * which is the value the paint and the re-key used.
+	 */
+	const page = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	assert.match(
+		page,
+		/pendingSendForView\(identity\)/,
+		"the latch must read the pending-send registry by the pane's identity: anything addressed by this panel's own lifetime is false on the replacement panel",
+	);
+	assert.ok(
+		!/admittedSendFor\(/.test(page),
+		"and must not fall back to the row-shape helper this change removed: `admissionAttempted` is written after the create hop, and requiring it withholds the claim for the whole window this change added",
 	);
 });
 
