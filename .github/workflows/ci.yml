@@ -398,7 +398,7 @@ jobs:
     # inside 20 minutes on the two consecutive heads either side of the round
     # (the pre-remediation head and the folded one) - the cap was the bound
     # being hit, not a hang, so the ceiling was clipping the suite this job
-    # exists to run. Nothing else changes: the job still runs the suite once,
+    # exists to run, and it is raised so the suite can finish and be read. Nothing else changes: the job still runs the suite once,
     # fails on any red, and the whole-tree count assertions stand.
     name: Desktop Tests
     needs: [changes]
