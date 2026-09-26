@@ -1,0 +1,460 @@
+{
+  "arm": "prev",
+  "armModule": "src/renderer/src/features/chat/components/run-details/run-child-reader.tsx",
+  "expectDigest": "a08da51c23492e08370455d33cb09cf5",
+  "head": "aefa9c91847a74d90d24a8a85aed829b1d2adaad",
+  "modules": [
+    {
+      "path": "src/renderer/src/features/chat/components/run-details/run-child-reader.tsx",
+      "md5": "a08da51c23492e08370455d33cb09cf5"
+    },
+    {
+      "path": "src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+      "md5": "8a590b414a9cc17db2167b0c231551d2"
+    },
+    {
+      "path": "src/renderer/src/features/chat/canonical/use-scroll-paging.ts",
+      "md5": "042ae70a3c228ed696bbb89984d92975"
+    },
+    {
+      "path": "src/renderer/src/features/chat/canonical/scroll-paging.ts",
+      "md5": "4e32a82e085c2027e2d3f63a0d0060fd"
+    }
+  ],
+  "themes": [
+    "localOperatorDark",
+    "localOperatorLight"
+  ],
+  "viewport": {
+    "width": 900,
+    "height": 900
+  },
+  "steps": [
+    {
+      "step": "0 seeded",
+      "theme": "localOperatorDark",
+      "expected": "the pane is scrollable and opened at the tail",
+      "scrollTop": 0,
+      "fromBottom": 0,
+      "extent": 5328,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-18-reply",
+      "anchorOffset": -12.734375,
+      "newestId": "entry-assistant-20-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 7,
+      "bottomId": "entry-assistant-20-reply",
+      "button": {
+        "visible": false,
+        "hitTestable": false,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "opacity": 0,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
+      },
+      "band": {
+        "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 755.609375,
+        "contained": true
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 29
+    },
+    {
+      "step": "P0 at the tail (foot group)",
+      "theme": "localOperatorDark",
+      "expected": "the foot's own composition with the control hidden",
+      "scrollTop": 0,
+      "fromBottom": 0,
+      "extent": 5328,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-18-reply",
+      "anchorOffset": -12.734375,
+      "newestId": "entry-assistant-20-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 7,
+      "bottomId": "entry-assistant-20-reply",
+      "button": {
+        "visible": false,
+        "hitTestable": false,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "opacity": 0,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
+      },
+      "band": {
+        "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 755.609375,
+        "contained": true
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 29
+    },
+    {
+      "step": "P1 scrolled up (foot group)",
+      "theme": "localOperatorDark",
+      "expected": "the foot's own composition with the control shown",
+      "scrollTop": -600,
+      "fromBottom": 600,
+      "extent": 5328,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-16",
+      "anchorOffset": -74.109375,
+      "newestId": "entry-assistant-20-reply",
+      "newestCutPx": 558.609375,
+      "newestVisible": false,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-18-reply",
+      "button": {
+        "visible": true,
+        "hitTestable": true,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "opacity": 1,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "button"
+      },
+      "band": {
+        "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 756.609375,
+        "contained": true
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 29
+    },
+    {
+      "step": "0 seeded",
+      "theme": "localOperatorLight",
+      "expected": "the pane is scrollable and opened at the tail",
+      "scrollTop": 0,
+      "fromBottom": 0,
+      "extent": 5328,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-18-reply",
+      "anchorOffset": -12.734375,
+      "newestId": "entry-assistant-20-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 7,
+      "bottomId": "entry-assistant-20-reply",
+      "button": {
+        "visible": false,
+        "hitTestable": false,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "opacity": 0,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
+      },
+      "band": {
+        "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 755.609375,
+        "contained": true
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 29
+    },
+    {
+      "step": "P0 at the tail (foot group)",
+      "theme": "localOperatorLight",
+      "expected": "the foot's own composition with the control hidden",
+      "scrollTop": 0,
+      "fromBottom": 0,
+      "extent": 5328,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-18-reply",
+      "anchorOffset": -12.734375,
+      "newestId": "entry-assistant-20-reply",
+      "newestCutPx": 0,
+      "newestVisible": true,
+      "visibleRows": 7,
+      "bottomId": "entry-assistant-20-reply",
+      "button": {
+        "visible": false,
+        "hitTestable": false,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "opacity": 0,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "div"
+      },
+      "band": {
+        "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 755.609375,
+        "contained": true
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 29
+    },
+    {
+      "step": "P1 scrolled up (foot group)",
+      "theme": "localOperatorLight",
+      "expected": "the foot's own composition with the control shown",
+      "scrollTop": -600,
+      "fromBottom": 600,
+      "extent": 5328,
+      "client": 680,
+      "canScroll": true,
+      "paintedRows": 60,
+      "anchorId": "entry-assistant-16",
+      "anchorOffset": -74.109375,
+      "newestId": "entry-assistant-20-reply",
+      "newestCutPx": 558.609375,
+      "newestVisible": false,
+      "visibleRows": 9,
+      "bottomId": "entry-assistant-18-reply",
+      "button": {
+        "visible": true,
+        "hitTestable": true,
+        "label": "Scroll to bottom",
+        "rect": {
+          "top": 760.609375,
+          "left": 434,
+          "right": 466,
+          "bottom": 792.609375,
+          "width": 32,
+          "height": 32
+        },
+        "focused": false,
+        "hovered": false,
+        "opacity": 1,
+        "overlapPx": 0,
+        "overRows": 0,
+        "underCentre": "button"
+      },
+      "band": {
+        "height": 48
+      },
+      "activeElement": {
+        "tag": "div",
+        "ariaLabel": "Conversation transcript",
+        "dataRecordId": null,
+        "isScroller": true
+      },
+      "ringClip": {
+        "scrollerBottom": 752.609375,
+        "clipBottom": 800.609375,
+        "ringBottom": 756.609375,
+        "contained": true
+      },
+      "stack": {
+        "scroller": {
+          "top": 72.890625,
+          "bottom": 752.609375
+        },
+        "chip": {
+          "top": 760.609375,
+          "bottom": 792.609375
+        },
+        "band": {
+          "top": 752.609375,
+          "bottom": 800.609375
+        },
+        "statement": {
+          "top": 800.609375,
+          "bottom": 835
+        }
+      },
+      "reads": 29
+    }
+  ]
+}
