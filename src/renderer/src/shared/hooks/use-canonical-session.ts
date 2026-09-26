@@ -1323,6 +1323,21 @@ export type PendingSend = {
 	text: string;
 	images: TranscriptImage[];
 	/**
+	 * THE CLAIM'S OUTCOME IS KNOWN, and the entry is kept only to keep painting the
+	 * row (design review round 1's D1/D2, extended by what the re-shoot measured).
+	 * The server's complete read answered the claim NO (`resolveHeldFromServer`),
+	 * so nothing is "still going out" - but the row is the message's home and a
+	 * later mount re-paints it from `undelivered`, so the entry has to survive.
+	 * Every "is a send pending" reader skips settled entries
+	 * (`pendingSendForView`); the row readers do not (`seedPendingSends`, the
+	 * drain). Without the distinction, a settled entry answered for the NEXT
+	 * message sent on the same conversation - it is the oldest entry, so the wait
+	 * line anchored to a claim already answered and the rung was withheld from the
+	 * whole new flight (measured on the away step: a second message's row on
+	 * screen with no line over it).
+	 */
+	settled?: boolean;
+	/**
 	 * Whoever asked to be told the row reached a transcript. Fires ONCE, at the
 	 * first paint - synchronously when a target is mounted, from the drain when
 	 * one is not - because that is the moment taking the text out of the box
@@ -1439,6 +1454,8 @@ export function paintPendingSend(
 		text: string;
 		images: TranscriptImage[];
 		onPainted?: () => void;
+		/** Only `resynthesisePendingSend`'s resolved arm passes this; see `settled`. */
+		settled?: boolean;
 	},
 ): void {
 	let entries = pendingSends.get(identity);
@@ -1463,6 +1480,7 @@ export function paintPendingSend(
 		text: send.text,
 		images: send.images,
 		onPainted: send.onPainted,
+		settled: send.settled,
 	};
 	entries.set(entry.id, entry);
 	while (entries.size > MAX_PENDING_SENDS_PER_IDENTITY) {
@@ -1480,7 +1498,9 @@ export function paintPendingSend(
  * THE ONE PREDICATE for "a send this pane made is still going out": the pane's
  * collapse, the band's emptiness and the page's wait-line latch all read it, and
  * the registry drops an entry exactly when the claim stops being true (the
- * owner's row observed, or the user resolving a failure).
+ * owner's row observed, or the user resolving a failure). A SETTLED entry is not
+ * dropped - the row it painted is still the message's home - but it is not a
+ * send still going out, so it does not answer here (`settled`).
  *
  * Oldest first, so when a retry has painted a second entry the row a reader has
  * been waiting on longest is the one named.
@@ -1491,8 +1511,10 @@ export function pendingSendForView(
 	if (!identity) return null;
 	const entries = pendingSends.get(identity);
 	if (!entries) return null;
-	const first = entries.values().next();
-	return first.done ? null : first.value;
+	for (const entry of entries.values()) {
+		if (!entry.settled) return entry;
+	}
+	return null;
 }
 
 /**
@@ -1504,6 +1526,38 @@ export function resolvePendingSend(identity: string, id: string): void {
 	if (!entries) return;
 	entries.delete(id);
 	if (entries.size === 0) pendingSends.delete(identity);
+}
+
+/**
+ * Mark a retained entry's claim as ANSWERED, keeping the entry for its row.
+ *
+ * The resolution path's counterpart to `resolvePendingSend`: the server's
+ * complete read said the message never landed, so no owner row will ever arrive
+ * to resolve the entry - but the row it painted is the message's own statement
+ * and must keep painting (the design's D1/D2). A later mount re-paints the same
+ * entry settled (`resynthesisePendingSend`); this call covers the tab that never
+ * reloaded, so the very frame the resolution lands on stops answering "still
+ * going out" to every reader of `pendingSendForView`.
+ */
+export function settlePendingSend(identity: string, id: string): void {
+	const entry = pendingSends.get(identity)?.get(id);
+	if (entry) entry.settled = true;
+}
+
+/**
+ * Whether the identifier already has an entry - settled or not.
+ *
+ * The re-synthesis pass's guard, and it has to see settled entries: a resolved
+ * row is re-painted on a later mount precisely because the entry is RETAINED,
+ * so "an entry exists" is what stops a second one being painted over it. This is
+ * the membership question, where `pendingSendForView` is the liveness one.
+ */
+export function hasPendingSend(
+	identity: string | null | undefined,
+	id: string,
+): boolean {
+	if (!identity) return false;
+	return pendingSends.get(identity)?.has(id) === true;
 }
 
 /**

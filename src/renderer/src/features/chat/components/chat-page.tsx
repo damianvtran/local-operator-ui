@@ -669,7 +669,18 @@ function SessionPanel({
 		(answered ||
 			stopped ||
 			Boolean(draft?.error) ||
-			Boolean(draft?.undelivered))
+			/*
+			 * SCOPED TO THIS CLAIM'S OWN ID, and the scoping is load-bearing rather than
+			 * tidy: `undelivered` is a single slot on the row, and a NEW send on a
+			 * conversation whose earlier message resolved leaves that record in place
+			 * while it replaces the row's claim fields. Matched by id, the term ends the
+			 * rung for the message the record names and for no other; matched by
+			 * presence alone it withheld the rung from the NEXT message's whole flight -
+			 * measured on the away step, where the second message's row sat on screen
+			 * with no line over it (found while re-shooting the round-1 pair).
+			 */
+			(draft?.undelivered !== undefined &&
+				draft.undelivered.recordId === admitted.current.requestId))
 	)
 		admitted.current = null;
 	const starting = admitted.current !== null;

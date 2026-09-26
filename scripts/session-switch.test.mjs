@@ -98,6 +98,8 @@ export const movePendingSendIdentity = () => undefined;
 export const replacePendingSendText = () => undefined;
 export const discardPendingSends = () => undefined;
 export const pendingSendForView = () => null;
+export const settlePendingSend = () => undefined;
+export const hasPendingSend = () => false;
 export const discardPendingEchoes = () => {};`,
 					loader: "js",
 					resolveDir: process.cwd(),
