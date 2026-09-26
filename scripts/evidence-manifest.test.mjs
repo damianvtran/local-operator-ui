@@ -1327,6 +1327,14 @@ const STAMP_BINDING_NOTES = [
 	 * list for.
 	 */
 	"foldOnto2e12a54d56Note",
+	/*
+	 * AND THIS LANE'S OWN: the Windows stager's digest fix. Its subject IS this
+	 * file's binding - the change moves `scripts/` only, the CI job that caught
+	 * the failure is outside both trees this file binds, and a build script
+	 * paints no pixel - so a reader is owed the pair and the reason no still is
+	 * owed, the case `streamRedeliveryRestampNote` states one entry over.
+	 */
+	"windowsUvStagerRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1848,6 +1856,12 @@ const BRANCH_RECORDS = [
 	 * list exists.
 	 */
 	"foldOnto2e12a54d56Note",
+	/*
+	 * And by this lane, whose note is this branch's newest: it states the pair
+	 * the stager fix ships and the runs that pin the failure it removes, so a
+	 * later fold that started from main's copy would drop it first.
+	 */
+	"windowsUvStagerRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
