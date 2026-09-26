@@ -271,8 +271,14 @@ function runBounded(
  * 4, Q-21). The tail is where the cause is; kept to a few lines and marked when
  * it was cut, so a noisy interpreter cannot paste a whole traceback into a
  * dialog. */
-/* Hoisted to module scope: `useTopLevelRegex` is an error in this repo's biome
- * config, and a literal inside a function is rebuilt on every call. */
+/*
+ * Hoisted to module scope, and the SEVERITY IS STATED CORRECTLY HERE because the first
+ * version of this comment was not: `useTopLevelRegex` is `"warn"` in `biome.json` and
+ * `pnpm lint` runs `biome check` with NO `--error-on-warnings`, so this literal fails no
+ * gate - the rule's diagnostic is printed as a warning and the command still exits 0.
+ * The hoist is kept on its own merits rather than on a gate that does not exist: a
+ * literal inside a function body compiles a new `RegExp` on every call, and this one is
+ * rebuilt per failed launch. */
 const NEWLINES = /\r?\n/;
 const errorTail = (text: string, lines = 3): string => {
 	const kept = text

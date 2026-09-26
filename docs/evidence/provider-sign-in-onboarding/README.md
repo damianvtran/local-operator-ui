@@ -1,6 +1,6 @@
 # The provider sign-in, the Providers page, first run and the empty chat
 
-Thirty states, each captured in BOTH brand themes (`localOperatorDark.webp` and
+Thirty-four states, each captured in BOTH brand themes (`localOperatorDark.webp` and
 `localOperatorLight.webp`), for the change that makes a provider reachable from the
 app: the
 Providers settings page (a first run, connected, and a row's overflow menu open),
@@ -27,6 +27,17 @@ alias must not change a pixel, and `scripts/evidence-sign-in-states.test.mjs` ho
 that equality. The first-run set carries the blocked step-2 path as well
 (`onboarding-step-2-choose` with a catalogue, `-2-choose-blocked` without a model
 chosen).
+
+Three more are the VERDICT REGISTER, which the design rounds added after finding the
+settled view could be photographed as a success: `refused-verdict` (the subject of
+this frame is the verdict itself, which is why `scripts/capture-evidence.mjs` waits
+for `data-verdict="attention"` rather than for the clock, U19), and design round 6's
+D2 pair - `succeeded-unconfirmed`, the state a first run actually reaches after a
+sign-in the backend will not confirm (`data-verdict="neutral"`), and
+`key-refused-verdict`, the API-key route under a refused verdict, which is the route
+that contradiction survived on. The count above is measured from this directory
+(`ls -d */`), which is the only claim in this file a reader can re-run in one
+command.
 
 These frames come from `scripts/capture-evidence.mjs` driving Storybook, which is
 the committed and re-derivable route. The exact command that wrote them:

@@ -211,7 +211,7 @@ test("every control the refusal disables keeps the caret on a press, and only wh
 	for (const [control, pattern] of [
 		[
 			"the Send control",
-			/type="submit"[\s\S]{0,240}?onPointerDown=\{holdCaretOnRefusedPress\}/,
+			/type="submit"[\s\S]{0,240}?onPointerDown=\{holdCaretOnSendPress\}/,
 		],
 		[
 			"the dictation control",
@@ -278,6 +278,37 @@ test("every control the refusal disables keeps the caret on a press, and only wh
 		(handler.match(/preventDefault/g) ?? []).length,
 		1,
 		"one `preventDefault`, and it is the gated one: a second, ungated call is the blanket trap",
+	);
+	/*
+	 * AND THE SEND CONTROL HAS A HANDLER OF ITS OWN, because its disabling terms
+	 * include two the shared gate does not cover (UX round 7, U27). Pinned as ONE
+	 * gated `preventDefault` plus the same sentence the key raises: blanket, and the
+	 * empty box's own press is swallowed with it; silent, and it is the U27 defect
+	 * again (a press refused with no feedback that also took the caret).
+	 */
+	const sendFrom = source.indexOf("const holdCaretOnSendPress = useCallback(");
+	assert.ok(sendFrom > -1, "the Send control's own press handler has to exist");
+	const sendHandler = source.slice(
+		sendFrom,
+		source.indexOf(
+			"[isInputDisabled, sendRefused, explainRefusedSend],",
+			sendFrom,
+		),
+	);
+	assert.match(
+		sendHandler,
+		/if \(!isInputDisabled && !sendRefused\) return;/,
+		"its gate is exactly the terms the control is disabled by, and nothing else",
+	);
+	assert.equal(
+		(sendHandler.match(/preventDefault/g) ?? []).length,
+		1,
+		"one `preventDefault`: a second, ungated call is the blanket trap one control over",
+	);
+	assert.match(
+		sendHandler,
+		/if \(sendRefused\) explainRefusedSend\(\);/,
+		"and the refusal that used to be silent says why, through the same call the key makes",
 	);
 });
 
