@@ -850,6 +850,24 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  * `827f45f4fd`, and had coined the same SHA-named keys for their own fold
  * narratives, so the union keeps main's copies under the plain names and this
  * branch's under the `ActionGroup` suffix. No key from either side was dropped.
+ *
+ * THE UNION THIS FOLD TOOK (`origin/main` `eddfae750b`, #537 the condensed action
+ * groups and the running call, over this branch's `c8e231859d`), stated here
+ * because the rule above asks for it: this branch's side named
+ * `streamRedeliveryRestampNote`; main's side named seventeen entries - the
+ * action-fold set (`actionFoldEvidenceNote` and its six `ActionGroup` fold
+ * records), `overlayDragZonesRestampNote`, `subviewInsetRestampNote`,
+ * `messageSurfaceRestampNote`, `goalDesignRoundTwoNote`,
+ * `headerIdentityRestampNote`, `headerIdentityRoundOneRestampNote`,
+ * `childReaderScrollControlRestampNote`, and its own `foldOnto093a329a4dNote`,
+ * `foldOnto9d3e68ddf6Note` and `foldOnto22c0fcd4fdNote`. THE UNION IS 54 + 1 =
+ * 55 ENTRIES, no duplicates, both sides' arrays evaluated and set-diffed
+ * against the merged array rather than read off the conflict; no key from
+ * either side was dropped, and this fold's own `foldOntoEddfae750bNote` is
+ * registered beside them. The same union was applied to
+ * `docs/evidence/manifest.json`, which took main's 198 top-level records whole
+ * and appended this branch's one - and the fold's re-stamp commit re-points
+ * every backticked claim in this list to the pair the merged tree produces.
  */
 const STAMP_BINDING_NOTES = [
 	/*
@@ -1258,6 +1276,13 @@ const STAMP_BINDING_NOTES = [
 	 * is owed the pair AND the reason no still was owed.
 	 */
 	"streamRedeliveryRestampNote",
+	/*
+	 * AND THIS FOLD'S OWN: its subject IS this file's binding (the pair the
+	 * merged, remediated tree produces - re-derived in the re-stamp commit that
+	 * follows the round-1 fixes), so a reader is owed the check rather than the
+	 * prose - the same case `foldOntoFd19adc9d9Note` is in the list for.
+	 */
+	"foldOntoEddfae750bNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1765,6 +1790,13 @@ const BRANCH_RECORDS = [
 	 * later fold that started from main's copy would drop it first.
 	 */
 	"streamRedeliveryRestampNote",
+	/*
+	 * And this FOLD's own, beside the lane's re-stamp record: it states the
+	 * union the merge resolved against `origin/main` = `eddfae750b` and the
+	 * pair the re-stamp after the round-1 fixes re-derives, for the reason
+	 * this list exists - a fold resolved from main's copy would drop it.
+	 */
+	"foldOntoEddfae750bNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
