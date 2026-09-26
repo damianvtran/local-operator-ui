@@ -11,9 +11,11 @@ import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
 // registry of mounted transcripts, so the store never touches React state and
 // the dependency stays one-way (the hook does not import this store).
 import {
-	discardPendingEchoes,
-	echoPendingUser,
+	discardPendingSends,
+	movePendingSendIdentity,
+	paintPendingSend,
 	peekLocalEcho,
+	replacePendingSendText,
 	retractPendingUser,
 } from "@shared/hooks/use-canonical-session";
 /*
@@ -395,6 +397,20 @@ export type ChatDraft = {
 	submittedAttachments?: string[];
 	submittedImages?: ChatImage[];
 	submittedMode?: "prompt" | "steer";
+	/**
+	 * When the CURRENT attempt was issued, from the press's own clock - the
+	 * anchor the wait line's clock counts from.
+	 *
+	 * WHY THE ROW CARRIES IT RATHER THAN THE PANE. The wait this number describes
+	 * starts at Enter and outlives the pane that pressed it (the identity flip
+	 * remounts, a switch away and back remounts again), and the working line's
+	 * own contract is that the number never restarts under the reader. A pane's
+	 * own mount time cannot count from before the pane existed, and re-deriving
+	 * from `pending` alone would restart the clock at every remount - so the
+	 * anchor is a persisted field of the CLAIM, written in the same update that
+	 * writes `pending` and `submittedText`, and read by whoever paints the line.
+	 */
+	submittedAt?: number;
 	/**
 	 * The text this request actually put on the wire, pinned at the first attempt.
 	 *
@@ -1832,10 +1848,11 @@ export async function admitChatDraft(
 	},
 	sessionId?: string,
 	/**
-	 * Called when the optimistic echo is applied to a mounted transcript, i.e.
-	 * when the message is actually on screen. Passed straight to
-	 * `echoPendingUser`; the composer is the only caller that has anything to do
-	 * with the answer (see `PendingEcho` in `use-canonical-session`).
+	 * Called when the optimistic row is PAINTED - i.e. when the message is
+	 * actually on screen. It fires at the press now (the paint happens before
+	 * `sessions.create`), passed straight to `paintPendingSend`; the composer is
+	 * the only caller that has anything to do with the answer (see `PendingSend`
+	 * in `use-canonical-session`).
 	 */
 	onEchoPainted?: () => void,
 	/**
@@ -1990,7 +2007,53 @@ export async function admitChatDraft(
 		 */
 		error: undefined,
 		errorCode: undefined,
+		// The press's own anchor for the wait line's clock, written with the
+		// claim it belongs to: see `submittedAt` for why the row carries it.
+		submittedAt: Date.now(),
 	});
+	/*
+	 * THE PAINT MOVES TO THE PRESS, AND THAT IS THE HALF OF THE FELT-LATENCY FIX
+	 * THAT WAS STILL MISSING.
+	 *
+	 * The echo used to be fired after the create and the credential seam, so on a
+	 * New chat the user watched an emptied composer and an empty transcript for
+	 * the whole create hop (~1.15 s on a cold runtime), and the row could only
+	 * reach the replacement panel through a buffered drain. Painting here instead
+	 * removes both: the draft pane has registered under its own identity since
+	 * its first keystroke, so the row lands SYNCHRONOUSLY with the press and
+	 * `onEchoPainted` releases the composer's text in the same commit (AC2).
+	 *
+	 * The identity is the PANE's, not the session's, and that distinction is
+	 * load-bearing: `panelIdentityFor` answers the draft key while no session
+	 * exists, which is exactly the identity the draft pane is registered under,
+	 * while a `send:<id>` row addresses the session itself. The re-key to the
+	 * created session happens at the id's own patch point below, in the same
+	 * synchronous block, so no frame between the two ever addresses an identity
+	 * nobody holds.
+	 *
+	 * Keyed by `admissionRequestId` - the id the owner gives the durable row - so
+	 * this coalesces with `message_start` instead of duplicating it. See
+	 * `appendPendingUser`.
+	 */
+	const paintIdentity =
+		panelIdentityFor(
+			key.startsWith("draft:") ? key : null,
+			sessionId ?? draft.sessionId,
+		) ?? null;
+	if (paintIdentity)
+		paintPendingSend(paintIdentity, {
+			id: admissionRequestId,
+			text,
+			// Same id shape `extractImages` gives the owner's row, so the coalesced
+			// record keeps its image keys across the swap.
+			images: images.map((image, index) => ({
+				id: `${admissionRequestId}:${index}`,
+				data: image.data_b64,
+				attachment: null,
+				mimeType: image.mime_type,
+			})),
+			onPainted: onEchoPainted,
+		});
 	/*
 	 * Whether the message request was ISSUED - the store's own latch, read at the
 	 * catch to decide whether an owner row could possibly exist. Local rather than
@@ -1999,9 +2062,9 @@ export async function admitChatDraft(
 	 * with itself.
 	 */
 	let attempted = replay;
-	// Declared outside the try because the catch needs it to address the echo:
+	// Declared outside the try because the catch needs it to address the row:
 	// `draft` is the pre-send snapshot, so reading `draft.sessionId` there would
-	// miss a session this very call created and leave its echo unretractable.
+	// miss a session this very call created and leave its row unretractable.
 	let id = sessionId ?? draft.sessionId;
 	/*
 	 * WHICH REQUEST THE FAILURE CAME FROM, and the reason this is recorded rather
@@ -2048,6 +2111,18 @@ export async function admitChatDraft(
 					useCanonicalSessionsStore.getState().error ?? "Chat could not start.",
 				);
 			store.updateDraft(key, { sessionId: id });
+			/*
+			 * THE RE-KEY RIDES THE SAME SYNCHRONOUS BLOCK as the id's own patch,
+			 * and that is a requirement rather than tidiness: the panel keyed on the
+			 * new id mounts on the commit that follows this block, and its first
+			 * frame is seeded from the registry (`seedPendingSends`). Re-keyed after
+			 * an await - or in an effect - the replacement panel would paint an
+			 * empty transcript for a frame and then receive the row through the
+			 * drain, which is the flash the design's J1/J2 forbid. `movePendingSendIdentity`
+			 * is therefore called only from here, between the patch and anything
+			 * that can await.
+			 */
+			if (paintIdentity) movePendingSendIdentity(paintIdentity, id);
 		}
 		// From here the outcome is unknowable on failure: the owner may have
 		// admitted the command before the response was lost.
@@ -2105,44 +2180,19 @@ export async function admitChatDraft(
 			submittedRendered: rendered,
 		});
 		/*
-		 * Paint the message BEFORE the await, not after it.
+		 * THE ROW IS ALREADY ON SCREEN: it was painted at the press, and the seam's
+		 * answer only ever REPLACES its text - `rendered` is the same message with
+		 * its credential markers substituted, so the row's identity (the request id)
+		 * and its position are unchanged (one splice, same row; risk R4). A seam
+		 * that answered with the unchanged text is a no-op by construction.
 		 *
-		 * This is the whole felt-latency fix: the message request spends ~1.15 s
-		 * engaging a cold runtime on a session nobody warmed, and until now the
-		 * user's text sat in the composer for all of it with nothing on screen.
-		 * The echo is synchronous, so the text moves from box to transcript in
-		 * one frame regardless of what the backend costs.
-		 *
-		 * "Synchronous" is exact only when a transcript for this session is already
-		 * mounted. On the New-chat path there is none - the panel keyed on the id
-		 * this block is about to mint does not exist yet - so the echo buffers and
-		 * lands when that panel mounts, one create hop later. `onEchoPainted` is
-		 * what keeps the composer honest there: the box holds the text until the
-		 * echo is actually painted rather than until this line runs. What that means
-		 * mechanically is worth spelling out, because the callback does NOT clear the
-		 * box the user is looking at: the drain delivers it into the composer this
-		 * `updateDraft` has already unmounted, and the interval ends because the panel
-		 * that replaces it never held the text and seeds its first state from the
-		 * buffer (U3, `seedPendingEchoes`).
-		 *
-		 * Keyed by `admissionRequestId` — the id the owner gives the durable row
-		 * — so this coalesces with `message_start` instead of duplicating it.
-		 * See `appendPendingUser`.
+		 * The old order fired the echo HERE - after the create, after the seam -
+		 * which is what put the row behind the whole engage and forced the drain's
+		 * buffering. Nothing about the felt-latency fix is deferred to this line
+		 * any more: by the time it runs the user has been looking at their message
+		 * for the create hop, and this only settles its final text.
 		 */
-		echoPendingUser(
-			id,
-			admissionRequestId,
-			rendered,
-			images.map((image, index) => ({
-				// Same id shape `extractImages` gives the owner's row, so the
-				// coalesced record keeps its image keys across the swap.
-				id: `${admissionRequestId}:${index}`,
-				data: image.data_b64,
-				attachment: null,
-				mimeType: image.mime_type,
-			})),
-			onEchoPainted,
-		);
+		if (id) replacePendingSendText(id, admissionRequestId, rendered);
 		inFlight = "sessions.message";
 		await messageWithBusyResend({
 			op: "sessions.message",
@@ -2225,11 +2275,21 @@ export async function admitChatDraft(
 		 * pane's reconciliation re-reads the verdict when a panel mounts.
 		 */
 		let delivered = false;
-		if (id && attempted) {
+		/*
+		 * THE ROW LIVES UNDER THE IDENTITY THE PAINT USED, and at the catch that is
+		 * whichever identity the send has reached: the session id once the create
+		 * answered (the move above put it there), the pane's own key while it has
+		 * not. Reading `id` alone lost the create-stage row - the one this change
+		 * newly paints - so the retraction below addresses `rowIdentity`.
+		 */
+		const rowIdentity = id ?? paintIdentity ?? undefined;
+		if (rowIdentity) {
 			if (klass === "unknown") {
-				delivered = peekLocalEcho(id, admissionRequestId) === "owner";
+				delivered =
+					attempted &&
+					peekLocalEcho(rowIdentity, admissionRequestId) === "owner";
 			} else {
-				retractPendingUser(id, admissionRequestId);
+				retractPendingUser(rowIdentity, admissionRequestId);
 			}
 		}
 		/*
@@ -5793,7 +5853,16 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					const abandoned =
 						drafts[key]?.sessionId ??
 						(key.startsWith("send:") ? key.slice("send:".length) : undefined);
-					if (abandoned) discardPendingEchoes(abandoned);
+					/*
+					 * BOTH HOMES GO, because the entry's identity moves with the send:
+					 * before the create answers it lives under the draft key, after it
+					 * under the session id (`movePendingSendIdentity`), and a discard can
+					 * land on either side of that hop. The raw key is named
+					 * unconditionally - for a `send:<id>` row there is nothing under it -
+					 * and the session id when the row carries one.
+					 */
+					discardPendingSends(key);
+					if (abandoned && abandoned !== key) discardPendingSends(abandoned);
 					delete drafts[key];
 					/*
 					 * Clear the pointer as well as the draft, the way

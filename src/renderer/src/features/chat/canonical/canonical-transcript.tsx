@@ -196,6 +196,28 @@ export type CanonicalTranscriptProps = {
 	 */
 	startingAfterId?: string | null;
 	/**
+	 * Whether the admitted send is still in its CREATE hop - no session id yet -
+	 * which is what moves the wait line's label from `waiting for the agent` to
+	 * `starting the session`.
+	 *
+	 * Passed from the page that owns the latch rather than re-derived here: the
+	 * fact is the draft row's `sessionId`, and the page stitched it with the
+	 * latch in the same expression that decided `starting`, so the two cannot
+	 * disagree about which half of the wait is on screen.
+	 */
+	startingSession?: boolean;
+	/**
+	 * When the admitted send was issued (epoch ms), or null when nothing is
+	 * admitted - the anchor the line's clock counts from.
+	 *
+	 * WHY IT IS NOT THIS COMPONENT'S MOUNT. The wait outlives every pane that
+	 * renders it (the flip, a switch away and back), and the clock's contract is
+	 * that the number never restarts under the reader; the anchor is the press's
+	 * own instant, persisted on the draft row. See
+	 * `WorkingLineInput.startingSince`.
+	 */
+	startingSince?: number | null;
+	/**
 	 * The working line to paint, for a surface whose line does NOT come from this
 	 * pane's own live session — today the run panel's child reader.
 	 *
@@ -1652,6 +1674,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	waiting,
 	starting,
 	startingAfterId,
+	startingSession,
+	startingSince,
 	workingLine,
 	loadingOlder,
 	onLoadOlder,
@@ -2036,6 +2060,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					foldedPhaseStartedAt: frontend?.activity_phase_started_at,
 					starting,
 					startingAfterId,
+					startingSession,
+					startingSince,
 					gate,
 					// One definition of "this pane is speaking for itself", shared with the
 					// band's own greeting decision rather than a second copy of "the
@@ -2070,6 +2096,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			frontend?.activity_phase_started_at,
 			starting,
 			startingAfterId,
+			startingSession,
+			startingSince,
 			gate,
 			status,
 			failure,

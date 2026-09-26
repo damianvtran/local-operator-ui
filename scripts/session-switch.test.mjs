@@ -93,6 +93,11 @@ export const desktopResult = request => globalThis.__switchRequest(request);`,
 export const retractPendingUser = () => {};
 export const retractLocalEcho = () => "retracted";
 export const peekLocalEcho = () => "unseen";
+export const paintPendingSend = () => undefined;
+export const movePendingSendIdentity = () => undefined;
+export const replacePendingSendText = () => undefined;
+export const discardPendingSends = () => undefined;
+export const pendingSendForView = () => null;
 export const discardPendingEchoes = () => {};`,
 					loader: "js",
 					resolveDir: process.cwd(),
