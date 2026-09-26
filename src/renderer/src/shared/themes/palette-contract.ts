@@ -40,7 +40,7 @@
 /*
  * The role set, and the one place it has two of something.
  *
- * 33 roles today, and exactly one of them is a second hue: `accentAlt` /
+ * 36 roles today, and exactly one of them is a second hue: `accentAlt` /
  * `accentAltWash` sit beside `accent` / `accentWash` as the theme's decorative
  * pair, while every STATE role — hover, selection, checked, focus, in-flight —
  * stays on the primary accent. The split is deliberate and is what `docs/
@@ -209,6 +209,49 @@ export type ThemePalette = {
 	 * see its own doc below for the floor it carries instead.
 	 */
 	sunken: string;
+	/**
+	 * The user message block's own surface: `surface` stepped toward `elevated`
+	 * until the fill clears a ΔE00 4.0 floor off the canvas.
+	 *
+	 * ## Why its own role, rather than `surface`
+	 *
+	 * The block's fill IS its boundary (D10): the border the design first gave it
+	 * was retired as "the third and loudest mark on the quietest object in the
+	 * transcript", which leaves the ground step as the whole of what makes the
+	 * block findable. But `surface` is the app-wide panel role - every card,
+	 * panel and input moves with a change to it - and its ladder step is bounded
+	 * (2.5-5.0 L* above the canvas). On the palettes where that step lands low
+	 * (sage 2.05, `catppuccinMacchiato` 2.08, `oneLight` 2.10 ΔE00) the block's
+	 * only boundary was a fill a reader cannot see, which is the operator's
+	 * report: "the contrast between the user message background and the chat
+	 * background is quite poor on some themes". Splitting the fill off the
+	 * shared role is what lets it move without repainting every other surface in
+	 * the app.
+	 *
+	 * ## The floor, and why 4.0
+	 *
+	 * 4.0 is `LINE_SEPARATION_FLOOR`, the file's own findability floor for the
+	 * smallest mark the eye must find - and the fill is now this block's ONLY
+	 * boundary. It also sits at or below the step the same column's composer
+	 * carries (`elevated` over `canvas`, 4.17 at its fleet weakest) on 58 of the
+	 * 59 palettes - `catppuccinFrappe` is the one exception, the block's 4.26
+	 * stepping 0.03 over its composer's 4.23, below any perceptual step - so the
+	 * block reads as the quietest object on the screen, with that single stated
+	 * exception.
+	 *
+	 * ## How a value is authored
+	 *
+	 * The first clearing step along `surface` toward `elevated` - the palette's
+	 * own ramp, so the block keeps the theme's cast - whose ΔE00 off `canvas`
+	 * clears the floor; where `surface` itself already clears it, the value IS
+	 * `surface`. Authored as the first clearing step on that line, not a global
+	 * minimisation: other points clear the floor too (two lines clear again a
+	 * step later at a slightly lower ΔE00), and the line is kept so the block
+	 * wears the palette's own ramp rather than a value bent toward the floor. The lightness half is asserted too (>= 2.5 L*, the ladder's own
+	 * `canvas` -> `surface` minimum): ΔE00 is a budget a chroma-only step can
+	 * spend while the fill vanishes in a greyscale render.
+	 */
+	messageSurface: string;
 	/**
 	 * The row the POINTER is on. A STATE of a list row, not a ground.
 	 *

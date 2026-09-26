@@ -116,12 +116,14 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 						className={cn(
 							// D10: a FILL, not an outline, and the same 544px width as the
 							// canonical surface (85% of the 640 column, §D2). This legacy twin
-							// has to agree with `canonical-transcript.tsx` on both, the way its
-							// own measure comment already requires them to agree: whichever
-							// surface renders, the turn must not change shape. It keeps its
-							// `paintsSomething`-era padding of 12px inline / 10px block for the
-							// same reason.
-							"relative rounded-frame bg-surface text-ink break-words",
+							// has to agree with `canonical-transcript.tsx` on all three - the
+							// fill (`messageSurface`, the role the canonical bubble takes; its
+							// floor is ΔE00 4.0 off the canvas, see the palette contract), the
+							// width, and the shape - the way its own measure comment already
+							// requires them to agree: whichever surface renders, the turn must
+							// not change shape. It keeps its `paintsSomething`-era padding of
+							// 12px inline / 10px block for the same reason.
+							"relative rounded-frame bg-message-surface text-ink break-words",
 							isSmallView
 								? "max-w-[92%] px-3 py-2.5"
 								: "max-w-[85%] px-3 py-2.5",

@@ -70,6 +70,11 @@ export const rosePineMoon: ThemeDefinition = {
 		elevated: "#2F2B47",
 		sunken: "#1b192a",
 
+		// The user block's fill: ΔE00 4.18 off the canvas, where `surface` alone
+		// measures 2.36 - a step toward `elevated` to clear the role's 4.0 floor,
+		// which the block carries because the fill IS its boundary.
+		messageSurface: "#2e2a46",
+
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
 		 * step of THIS palette's own panel at the panel's own hue; they used to be

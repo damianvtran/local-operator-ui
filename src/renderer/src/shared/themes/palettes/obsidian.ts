@@ -76,6 +76,11 @@ export const obsidian: ThemeDefinition = {
 		// a C0 value is the absence of the ramp rather than its bottom rung.
 		sunken: "#1B1B1E",
 
+		// The user block's fill: ΔE00 4.01 off the canvas, where `surface` alone
+		// measures 3.48 - a step toward `elevated` to clear the role's 4.0 floor,
+		// which the block carries because the fill IS its boundary.
+		messageSurface: "#2b2a2e",
+
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
 		 * step of THIS palette's own panel at the panel's own hue; they used to be
