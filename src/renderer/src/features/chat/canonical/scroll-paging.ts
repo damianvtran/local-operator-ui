@@ -33,7 +33,11 @@
  *    page is in flight a further gesture retains exactly one follow-up demand,
  *    and a downward gesture cancels it — the reader turned around, so the debt
  *    is void. An ACT spends at most one round trip, however many walls the
- *    reader's momentum crosses: the operator's report is what an unbounded
+ *    reader's momentum crosses — in EITHER direction: a reversal inside one
+ *    act (a downward notch, then up again, both inside `GESTURE_GAP_MS`) voids
+ *    the retained demand and the latch, but it does NOT refill the budget, so
+ *    a jiggle is still one act and one round trip (round-3 review F1/Q2). The
+ *    operator's report is what an unbounded
  *    chain looks like ("it keeps loading in chunks and goes into a loop until
  *    it loads all the way back to the start"), and the terminal UI's contract
  *    is the same one — `_check_resume_page` spends one page, and the next
@@ -48,13 +52,14 @@
  *    after `SETTLE_MS` of input silence, or at the hard top where the content
  *    has stopped moving because it cannot move further. There is deliberately
  *    no third trigger: a reveal dispatched while the viewport TRAVELS lands
- *    under a moving reader, and on the real scroller that is a visible lurch —
- *    measured frame-to-frame, a mount mid-motion displaced the reader's
- *    distance-from-top by up to 6834px in a single frame in this change's
- *    committed samples (`maxDistanceFrameDeltaPx`) before the anchor hold
- *    restored it, and the chained mid-motion spends that followed are what the
- *    operator reported as "it keeps me at the same percentage of scroll which
- *    then keeps me at the top". The terminal UI behaves the same way and it is
+ *    under a moving reader, and every freshly mounted wall in front of that
+ *    reader bought the next spend — the chain the operator reported as "it
+ *    keeps me at the same percentage of scroll which then keeps me at the
+ *    top". The discriminating readings are the committed frames: reveals
+ *    dispatched on approach fall to 3→1, 3→1, 7→0, 6→1, and the anchor hold's
+ *    own frame delta (`maxAnchorFrameDeltaPx`) is 0 on both arms. (The
+ *    distance-from-top figure is NOT quoted for this — it spans the reader's
+ *    own wheel motion and the fixed arm reproduces it; round-3 review F3.) The terminal UI behaves the same way and it is
  *    the feel this surface is asked to match: its `_check_resume_page` defers
  *    while the scroller is animating and spends at a stop or against the edge.
  * 4. THE LATCH DOES NOT RE-ARM UNDER A CLAMPED GESTURE. A held scrollbar or a
@@ -339,13 +344,17 @@ export const noteInput = (
 	if (input.direction === "down") {
 		// Rule 2: the reader turned around. Everything pending is void — including
 		// the clamp latch, because leaving the top is precisely the act that makes
-		// the next arrival at the top a new arrival.
+		// the next arrival at the top a new arrival. `actFetchSpent` is NOT among
+		// the voided fields: one act spends one round trip in either direction,
+		// so a reversal only voids the retained demand. The budget refills when a
+		// new act opens (`GESTURE_GAP_MS` of quiet and a fresh push) or on a
+		// deliberate ask. Clearing it here let a down/up jiggle inside one act
+		// spend twice (round-3 review F1 / QA Q2).
 		return {
 			...state,
 			armed: false,
 			deliberate: false,
 			retained: false,
-			actFetchSpent: false,
 			continuation: false,
 			clampLatched: false,
 			// The travel the release below is earned by belongs to the latch, and
@@ -611,13 +620,14 @@ export const decide = (
 	 * what the removal rests on: a reveal dispatched mid-motion mounts rows
 	 * under a moving viewport, the anchor hold is deliberately invalidated by
 	 * every reader notch (#461), and the corrected frame arrives after the one
-	 * the eye saw. Measured on the real scroller during this round, a mid-motion
-	 * mount displaced the reader's distance-from-top by up to 6834px in a single
-	 * frame in this change's committed samples (`maxDistanceFrameDeltaPx`) before
-	 * the hold restored it, and every freshly mounted wall in
+	 * the eye saw — while every freshly mounted wall in
 	 * front of the reader bought the next spend, which is the operator's loop
 	 * ("it keeps me at the same percentage of scroll which then keeps me at the
-	 * top which then keeps loading in chunks").
+	 * top which then keeps loading in chunks"). The committed readings that
+	 * discriminate are the on-approach dispatch counts (3→1, 3→1, 7→0, 6→1)
+	 * and the anchor hold's own 0px frame delta on both arms;
+	 * `maxDistanceFrameDeltaPx` is NOT quoted for this — it spans the reader's
+	 * own wheel motion and the fixed arm reproduces it (round-3 review F3).
 	 *
 	 * So the two terms below are the whole trigger set, and both are stops rather
 	 * than predictions: the settle debounce, and the hard top, where the content
