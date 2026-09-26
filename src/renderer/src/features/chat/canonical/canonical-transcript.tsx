@@ -2254,7 +2254,29 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				)}
 				<div
 					data-lo-transcript-content
-					className={cn("flex flex-col", CHAT_MEASURE)}
+					/*
+					 * `mb-auto` IS THE TOP ANCHOR, and it is a mechanism rather than a nudge.
+					 *
+					 * The scroller above is `flex-col-reverse` (its paging hook, its
+					 * `overflow-anchor` pinning and its top-fade mask are all written against
+					 * that origin), so this column is packed to the main-axis start, which is
+					 * the BOTTOM: short content hugs the composer, and always has. In a
+					 * reversed column the column's physical bottom is the main-start side, so
+					 * an auto margin there absorbs positive free space and pushes the column
+					 * to the top of the scroller - while a column that overflows has no
+					 * positive free space at all, the auto margin resolves to zero, and the
+					 * layout is byte-identical to the bottom-packed one. That "only while it
+					 * fits" behaviour is why this is the design rather than a
+					 * `scrollable`-conditioned `justify-end`, which would need a threshold to
+					 * tune and could oscillate around the fill point.
+					 *
+					 * The empty state is untouched by it: a collapsed pane is `h-0` (see
+					 * `collapsed` above), so there is no free space for a margin to absorb
+					 * and the centred splash is unaffected. And a transcript shorter than the
+					 * pane never scrolls, so the mask stays inert (the ramp note in
+					 * `styles/index.css`).
+					 */
+					className={cn("mb-auto flex flex-col", CHAT_MEASURE)}
 				>
 					{/* The state this element exists for: no rows yet, and the stream is
 				    still bringing them. Rendered inside the content column so it lands
