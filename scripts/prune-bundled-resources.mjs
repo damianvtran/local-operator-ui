@@ -11,16 +11,22 @@
  * bundled interpreter - about 47 MB - was dead weight in every image, and in
  * the universal build both halves were carried for every user.
  *
- * WHY IT NOW PRUNES TWO TREES AND NOT ONE. The bundled `uv` (see
- * `src/main/backend/uv-tool.ts`) is staged per architecture for exactly the same
- * reason the interpreter is - the tool that installs the backend has to run on
- * the machine the artifact was built for - and it is copied in by the same
- * architecture-blind `extraResources` list. Adding a second, near-identical
- * prune step beside this one would have been the obvious move and the wrong
- * one: two steps that walk the same bundle and delete the other architecture's
- * tree will drift, and the drift shows up as a larger download nobody measures.
- * So the groups are parameterised here instead, and `bundledUvToolCheck` in
- * `python-artifact-layout.mjs` asserts what survived on the artifact.
+ * WHY IT PRUNES THE uv GROUP ON EVERY PLATFORM NOW. The bundled `uv` (see
+ * `src/main/backend/uv-tool.ts`) is staged per architecture for the same reason
+ * the interpreter is - the tool that installs the backend has to run on the
+ * machine the artifact was built for - and every platform's copy lists carry it,
+ * because Windows and Linux ship one too (they used to run pip unconditionally:
+ * nothing staged a uv for them). So each packed app keeps its own architecture's
+ * uv tree and deletes the other's, on all three platforms. Adding a second,
+ * near-identical prune step beside this one would have been the obvious move and
+ * the wrong one: two steps that walk the same bundle and delete the other
+ * architecture's tree will drift, and the drift shows up as a larger download
+ * nobody measures. So the groups are parameterised here instead, and
+ * `bundledUvToolCheck` in `python-artifact-layout.mjs` asserts what survived on
+ * the macOS artifact.
+ *
+ * The INTERPRETER group stays macOS's alone: `python-runtime-seed/<arch>` is a
+ * tree only the macOS job stages (see `prunedGroupsFor`).
  *
  * `afterPack` is the right seam rather than a trimmed `extraResources` filter:
  * the filter is evaluated per target and would have to spell the architecture
@@ -33,19 +39,6 @@
  * The "no .pyc/.pyo ships" invariant is unaffected: this only deletes whole
  * trees, never writes into the one it keeps, and `verify-macos-artifacts.mjs`
  * still walks what survived.
- *
- * Scope: macOS only. The trees this prunes are mac standalone builds -
- * `setup-python-resource.sh` downloads the `*-apple-darwin-install_only`
- * interpreters and the `*-apple-darwin` uv release, and neither `publish.yml`
- * nor `setup-python` stages them for a Windows or Linux build. Leaving
- * `--win`/`--linux` output byte-identical to what those platforms produce today
- * is the point, and that is why `build.win`/`build.linux` name no uv at all
- * (review R1-3): the copy lists are not architecture-aware, so a checkout that
- * had staged the mac uv would have shipped ~74 MB of Mach-O into a Linux or
- * Windows artifact, whose only effect there is an `exec format error` inside the
- * script's probe and a pip fallback. The interpreter names those lists DO carry
- * are the same conditional - a dev's locally staged trees - and that is
- * unchanged here.
  *
  * Usage: configured as `build.afterPack`; not meant to be run by hand. The
  * exported function is what the unit test drives.
@@ -83,6 +76,29 @@ export const PRUNED_RESOURCE_GROUPS = {
 	python: PYTHON_RESOURCE_DIRS,
 	uv: UV_RESOURCE_DIRS,
 };
+
+/**
+ * The groups a packed app of a given platform carries a keep-or-delete decision
+ * for.
+ *
+ * `uv`: every platform. Each of the three build jobs stages its own release now
+ * (`setup-python-resource.sh` for darwin and linux, `setup-python-resource.ps1`
+ * for win32), `extraResources` copies both architectures' trees into every
+ * packed app, and the app resolves the one its own machine runs.
+ *
+ * `python`: macOS alone, and deliberately. The tree it names is the interpreter
+ * SEED (`python-runtime-seed/<arch>`), which only the macOS job stages; a
+ * Windows or Linux artifact's copy list names `python`/`python_aarch64`, whose
+ * trees - when a dev checkout has staged any - are not this repository's to
+ * delete, and on those platforms those names are the live ones rather than the
+ * retired spellings macOS refuses (review R1-3). Nothing there is pruned, which
+ * is also why nothing there regressed.
+ */
+export function prunedGroupsFor(platform) {
+	return Object.entries(PRUNED_RESOURCE_GROUPS).filter(
+		([group]) => group !== "python" || platform === "darwin",
+	);
+}
 
 /**
  * `builder-util`'s `Arch` enum, as `afterPack` receives it.
@@ -131,10 +147,12 @@ export function packagedResourcesDir({
  * cannot be pruned at all.
  *
  * Returns `{ pruned, kept, resourcesDir }`: the paths removed, the paths left in
- * place (one per group - review N1: this was `kept: string | null` while the
- * module pruned a single tree, and the per-group form is what a caller asking
- * "what survived" wants), and the resources directory, or `resourcesDir: null`
- * when the platform is not macOS.
+ * place (one per group this platform prunes - review N1: this was
+ * `kept: string | null` while the module pruned a single tree, and the per-group
+ * form is what a caller asking "what survived" wants), and the packaged
+ * resources directory. The directory is returned on every platform now, because
+ * the hook prunes something on every platform; `kept` is one entry shorter on
+ * Windows and Linux, where the interpreter group is not this hook's to touch.
  */
 export function pruneUnshippedBundledResources({
 	appOutDir,
@@ -143,10 +161,6 @@ export function pruneUnshippedBundledResources({
 	platform = process.platform,
 	log = console.log,
 }) {
-	if (platform !== "darwin") {
-		log(`Skipping bundled runtime resource pruning: not macOS (${platform})`);
-		return { pruned: [], kept: [], resourcesDir: null };
-	}
 	const name = archName(arch);
 	if (!Object.hasOwn(PYTHON_RESOURCE_DIRS, name)) {
 		throw new Error(
@@ -158,9 +172,14 @@ export function pruneUnshippedBundledResources({
 		productFilename,
 		platform,
 	});
+	if (platform !== "darwin") {
+		log(
+			`Skipping the bundled interpreter seed: not macOS (${platform}), where nothing stages one`,
+		);
+	}
 	const pruned = [];
 	const kept = [];
-	for (const [group, dirs] of Object.entries(PRUNED_RESOURCE_GROUPS)) {
+	for (const [group, dirs] of prunedGroupsFor(platform)) {
 		const keep = dirs[name];
 		kept.push(keep);
 		for (const [otherArch, relative] of Object.entries(dirs)) {
