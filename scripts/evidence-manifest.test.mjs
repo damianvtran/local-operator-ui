@@ -869,7 +869,16 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"mentionsRemedyRestampNote",
 	"meshDesktopRound11FoldRestampNote",
-	"meshDesktopRound11FoldRestampNote",
+	/*
+	 * And by this fold's own re-stamp, which wrote this branch's newest top-level
+	 * record. It is listed for the reason the list exists, and this fold is the
+	 * case the list is most expensive to lose: the fold resolves this file against
+	 * a main thirty commits and 303 paths ahead, so a resolver who took main's
+	 * copy would drop the record that says which two trees the fold moved, that the
+	 * frames were re-shot because eight of the 29-story set's closure members moved
+	 * with them, and which three plays the manager surface still owes a verdict on.
+	 */
+	"meshDesktopRound12FoldRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1232,7 +1241,15 @@ const BRANCH_RECORDS = [
 	 * the frames behind it were re-shot from a build at its own head rather than
 	 * re-stamped, so nothing in it outruns what can be cited.
 	 */
-	"meshDesktopRound11FoldRestampNote",
+	/*
+	 * And by this fold, which wrote this branch's newest top-level record. It is
+	 * listed for the reason the list exists: the fold is the only commit in this
+	 * lineage that resolves `docs/evidence/manifest.json` against a main that has
+	 * moved thirty commits, and a resolver who took main's copy would drop the only
+	 * statement of which two trees the fold moved and why the frame set was
+	 * re-shot rather than re-stamped.
+	 */
+	"meshDesktopRound12FoldRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
