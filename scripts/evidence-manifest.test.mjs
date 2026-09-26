@@ -1089,6 +1089,20 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"foldOntoFd19adc9d9Note",
 	/*
+	 * AND THIS LANE'S OWN, for the sub-view top inset (the operator's report of
+	 * 2026-09-26, "for sub-views like the settings page, the sidebar and view
+	 * doesn't go all the way to the top"): it states the pair THIS FILE SHIPS as
+	 * its opening claim - the re-stamp of a change that moves BOTH trees this
+	 * file binds (the shell's `app.tsx` and the route band's rules under `src/`,
+	 * the new `route-tops` scene and three pins under `scripts/`) while
+	 * re-shooting no committed frame, so a reader is owed the pair and the reason
+	 * no still was owed. The list's own criterion is met the same way
+	 * `focusHoldOperationRestampNote`'s was: the note states this file's binding
+	 * as a backticked claim, so leaving it out would be one more check silently
+	 * not run.
+	 */
+	"subviewInsetRestampNote",
+	/*
 	 * THIS CHANGE'S OWN: it re-stamps the pass that made the chat header's
 	 * identity slot the controls it describes (the team and the agent menus,
 	 * the rename pencil) and re-captured its own eleven states - so ITS
@@ -1096,6 +1110,12 @@ const STAMP_BINDING_NOTES = [
 	 * is owed the check rather than the prose.
 	 */
 	"headerIdentityRestampNote",
+	/*
+	 * AND THIS FOLD'S OWN: its subject IS this file's binding (the pair the
+	 * folded tree produces), so a reader is owed the check rather than the
+	 * prose - the same case foldOntoFd19adc9d9Note is in the list for.
+	 */
+	"foldOnto093a329a4dNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1519,6 +1539,13 @@ const BRANCH_RECORDS = [
 	 * entry a later fold that started from main's copy would drop first.
 	 */
 	"foldOntoFd19adc9d9Note",
+	/*
+	 * And this fold's own, beside the lane's sub-view record: the union the
+	 * merge resolved, so a later fold that resolved this file from either side
+	 * alone would drop the statement of what was carried from the other.
+	 */
+	"subviewInsetRestampNote",
+	"foldOnto093a329a4dNote",
 	/*
 	 * And THIS CHANGE'S: the record of the pass that made the chat header's
 	 * identity slot its own controls and captured their eleven states. It is
