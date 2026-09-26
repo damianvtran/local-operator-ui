@@ -7340,7 +7340,7 @@
         "They carry the operator's own arrangement as pixels: `team-bound` is the dim `manager · lopdev` string under the title (the header the operator's screenshot shows), `no-team-no-agent` is the same slot silent where the after frames put the assign affordances, and `wide` holds the operator's 49-character title at the full 1380px width. The press and hover states have no before half by construction: there is no control to press and no pencil to hover on that tree."
       ],
       "capturedAt": "2026-09-26T15:35:30.748Z",
-      "capturedAtHead": "ddb9c7ad5f4180fe9f25c3df1844d68a48b1cb22",
+      "capturedAtHead": "ddb9c7ad5f2b3903c27c80a2d4f00401f02a7c46",
       "capturedAtHeadNote": "The commit this branch LANDS the frames in, not the tree they were painted from: they are `origin/main`'s `chat-header.tsx` rendered with this branch's story file, a combination no commit contains on its own. Recorded in the docs commit that follows the one that lands them, because no commit can name itself."
     }
   ],
