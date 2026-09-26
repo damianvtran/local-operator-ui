@@ -1251,6 +1251,17 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"headerIdentityRoundOneRestampNote",
 	/*
+	 * AND THIS PASS'S OWN, for the held-first-paint work on the conversation-loading
+	 * report ("everything should load in one solid paint instead of incrementally"):
+	 * it states the pair THIS FILE SHIPS as its opening claim, holds both tokens,
+	 * and - uniquely among the notes here - it also records the one supplementary
+	 * set whose FRAMES were re-derived rather than re-counted (all twelve
+	 * click-state frames of `session-switch`, one pair deleted with the state it
+	 * photographed, one pair added), so leaving it out would be one more check
+	 * silently not run.
+	 */
+	"heldFirstPaintRestampNote",
+	/*
 	 * THIS REMOVAL'S OWN: it re-stamps the change that deletes the legacy History
 	 * settings section - `src/` for the settings page and the tour copy, `scripts/`
 	 * for this note's registration - and re-shoots no frame, so a reader is owed
