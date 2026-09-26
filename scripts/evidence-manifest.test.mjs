@@ -1088,6 +1088,15 @@ const STAMP_BINDING_NOTES = [
 	 * the rule the paragraph above states.
 	 */
 	"foldOntoFd19adc9d9Note",
+	/*
+	 * AND THIS CHANGE'S OWN, the streaming-smoothness fix: it moves BOTH trees
+	 * this file binds (the row's in-flight render under `src/`, the parity suite,
+	 * the measurement rig and this registration under `scripts/`), so the pair is
+	 * re-derived and every note above it is re-stamped to the shipped values.
+	 * Its subject IS this file's binding, which is why it is held to the pair the
+	 * file ships rather than read as history.
+	 */
+	"streamSmoothRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1511,6 +1520,13 @@ const BRANCH_RECORDS = [
 	 * entry a later fold that started from main's copy would drop first.
 	 */
 	"foldOntoFd19adc9d9Note",
+	/*
+	 * And by the streaming-smoothness change, this branch's newest top-level
+	 * record: the note that states which two trees the change moved and why no
+	 * still was owed. It is listed for the reason the list exists - a fold that
+	 * started from main's manifest would drop it without a word.
+	 */
+	"streamSmoothRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
