@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|connection-drop|sidebar-sections|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|none>
+ *   --scene <states|new-chat|first-send|connection-drop|sidebar-sections|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|conversation-start|none>
  *                          which built-in scene to run (default: states)
  *   --gate-state <label>   (with --scene settings-gate) what this run's backend
  *                          state is called in the frames and the log, so two
@@ -406,6 +406,26 @@ const TUI_CONFIG = argValue("--tui-config", null);
  * question it does not ask.
  */
 const AUTHORING_EXPECT = argValue("--authoring-expect", "refresh");
+/**
+ * WHICH HALF OF A BEFORE/AFTER PAIR THIS RUN IS (with --scene conversation-start).
+ *
+ * `after` (the default) asserts the change's own claims; `before` runs the same
+ * steps against a tree without it and RECORDS the same moments, because those
+ * claims are the change and failing on them there would only restate that the
+ * old build is the old build. One scene, both halves, the same taps.
+ */
+const START_EXPECT = argValue("--expect", "after");
+/**
+ * THE CREATE TAP'S CONTROL DOOR (with --scene conversation-start).
+ *
+ * The tap (`docs/evidence/conversation-start/harness/create-tap.mjs`) is what
+ * makes the press frame reachable, and its second job is the failure arm: the
+ * scene tells it to fail the NEXT message POST with the owner's captured
+ * `runtime_unreachable` body, so the post-paint failure is raised by the wire
+ * rather than staged in the DOM. The scene skips that step when this is absent
+ * and says so.
+ */
+const TAP_CONTROL = argValue("--tap-control", null);
 
 /**
  * (with `--scene settings-integrations`) the stdio MCP server that scene adds
@@ -7465,14 +7485,26 @@ async function sceneFirstSend(cdp) {
 		`row ${JSON.stringify(anchored?.row)} in region ${JSON.stringify(anchored?.region)}`,
 		`row ${JSON.stringify(anchored?.row)} in region ${JSON.stringify(anchored?.region)}`,
 	);
+	/*
+	 * THE THIRD TERM WAS A FLUSH PAIR WHEN THIS CHECK WAS FIRST WRITTEN (<=2px
+	 * between the row's top and the slot's bottom), and the layout has never
+	 * PRODUCED one on any run whose numbers survive: the column is `flex flex-col`
+	 * with no gap class, and the FIRST ROW carries the transcript's own top gap
+	 * (16px in every conversation-start frame this scene has taken). The claim the
+	 * check exists for - the row is top-anchored just under the slot rather than
+	 * parked at the foot - is "at or below the slot, within one row-gap of it, and
+	 * inside the region's top band", so it is written that way and the numbers stay
+	 * in the log.
+	 */
 	check(
 		"the row sits just under the region's top inset, below the start-of-conversation slot",
 		anchored !== null &&
 			anchored.row !== null &&
 			anchored.row.top - anchored.region.top >= 16 &&
-			anchored.row.top - anchored.region.top <= 120 &&
+			anchored.row.top - anchored.region.top <= 160 &&
 			(anchored.slot === null ||
-				Math.abs(anchored.row.top - anchored.slot.bottom) <= 2),
+				(anchored.row.top >= anchored.slot.bottom &&
+					anchored.row.top - anchored.slot.bottom <= 24)),
 		`row.top ${anchored?.row?.top} region.top ${anchored?.region?.top} slot ${JSON.stringify(anchored?.slot)}`,
 		`row.top ${anchored?.row?.top} region.top ${anchored?.region?.top} slot ${JSON.stringify(anchored?.slot)}`,
 	);
@@ -15119,6 +15151,468 @@ async function sceneBtwAside(cdp) {
 			.join(" | "),
 	);
 	return { tree: TREE, frames };
+}
+
+/**
+ * THE CONVERSATION'S FIRST FRAMES (conversation-start): the press, the flip, a
+ * post-paint failure, a reload mid-failure, and a switch away and back.
+ *
+ * WHY A SCENE AND NOT A STORY. The behaviour this change is for lives in time:
+ * a create that takes a second, a composer whose box must be empty while the row
+ * is on screen, a failure the owner raises after the row was painted, a pane that
+ * unmounts and comes back. None of those is a still; `capturePage` on the built
+ * app is the instrument that sees the sequence, and the readings it takes are the
+ * J1-J6 claims in numbers rather than a vibe.
+ *
+ * THE TAP. `POST /v1/desktop/sessions` is delayed in front of the app
+ * (`docs/evidence/conversation-start/harness/create-tap.mjs`), so the press frame
+ * is taken while the create is genuinely in flight and the flip frame is the same
+ * run's later moment - the design's frames 2 and 3 from one press, not two staged
+ * stills.
+ *
+ * BOTH HALVES, ONE SCENE. `--expect=before` runs these same steps against a tree
+ * without the change and RECORDS the same moments - the after-only claims are
+ * notes there, because they are the change and failing on them would only say the
+ * old build is the old build. The before half is what makes each after reading a
+ * difference rather than a coincidence.
+ */
+async function sceneConversationStart(cdp) {
+	const expectAfter = START_EXPECT !== "before";
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	const composerSelector = '[data-tour-tag="chat-input-textarea"]';
+	const theme = THEME ?? "localOperatorDark";
+	await verb(cdp, "setTheme", theme);
+	const size = `${WINDOW_WIDTH}x${WINDOW_HEIGHT}`;
+
+	/*
+	 * The measurement every frame is read through, taken as ONE evaluate so a
+	 * frame's numbers cannot straddle two renders: the painted rows (count and
+	 * ids), the scroller's scrollTop and overflow, the composer's box, whatever
+	 * alert is speaking, and the row's own controls.
+	 */
+	/*
+	 * TYPE AND SEND, with the focus question answered rather than assumed.
+	 *
+	 * `Input.insertText` delivers to whatever holds focus and `Input.dispatchKeyEvent`
+	 * to whatever holds it an instant later; between a session's answer streaming
+	 * and a press, a commit can move the caret out from under a chord, and a chord
+	 * that reaches the body is a press the app never sees (measured on this scene's
+	 * first runs: the text went in, the Enter did not, and no request followed).
+	 * So the helper checks `document.activeElement` BEFORE the chord, logs it, and
+	 * the caller may retry once - clearing the box first, because a retry that
+	 * appends is a different message.
+	 */
+	const typeIntoComposer = async (text, clear = false) => {
+		await clickAt(cdp, `${composerSelector} textarea`);
+		if (clear) {
+			await pressChord(cdp, {
+				key: "a",
+				code: "KeyA",
+				virtualKeyCode: 65,
+				modifiers: MODIFIER.meta,
+				commands: ["selectAll"],
+			});
+			await pressChord(cdp, {
+				key: "Backspace",
+				code: "Backspace",
+				virtualKeyCode: 8,
+			});
+		}
+		await cdp.send("Input.insertText", { text });
+		const focus = await cdp.evaluate(`(() => {
+			const el = document.activeElement;
+			return el ? { tag: el.tagName, editable: el.closest('[data-tour-tag="chat-input-textarea"]') !== null } : null;
+		})()`);
+		note("focus at the press", JSON.stringify(focus));
+		await pressChord(cdp, {
+			key: "Enter",
+			code: "Enter",
+			virtualKeyCode: 13,
+		});
+	};
+	const reads = () =>
+		cdp.evaluate(`(() => {
+			const log = document.querySelector('[role="log"]');
+			const rows = log ? [...log.querySelectorAll('[data-record-id]')] : [];
+			const composer = document.querySelector('${composerSelector} textarea');
+			return {
+				rows: rows.length,
+				rowIds: rows.map((row) => row.getAttribute('data-record-id')),
+				rowTops: rows.map((row) => Math.round(row.getBoundingClientRect().top)),
+				scrollTop: log ? log.scrollTop : null,
+				overflow: log ? log.scrollHeight - log.clientHeight : null,
+				composer: composer ? composer.value : null,
+				alert: [...document.querySelectorAll('[role="alert"]')]
+					.map((el) => el.textContent.trim())
+					.join(' | '),
+				controls: log ? [...log.querySelectorAll('button')].map((b) => b.textContent.trim()) : [],
+			};
+		})()`);
+	const waitLine = () =>
+		cdp.evaluate(`(() => {
+			const match = document.body.innerText.match(/(starting the session|waiting for the agent)(?:\\s+(\\d+)s)?/);
+			return match ? { phase: match[1], seconds: match[2] ? Number(match[2]) : null } : null;
+		})()`);
+
+	/*
+	 * A SECOND CONVERSATION exists before the first frame so the switch step has
+	 * somewhere to go, and so the app's catalogue read at mount already lists it.
+	 */
+	const second = await createBackendSession();
+	const secondId = second?.id ?? second?.session_id ?? null;
+	note("second conversation", JSON.stringify(second));
+
+	await verb(cdp, "navigate", "/chat");
+	const mounted = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${composerSelector}') && document.querySelector('[data-lo-empty-mark]'))`,
+		30_000,
+	);
+	check(
+		"the chat route shows the empty state with a composer",
+		mounted.ok,
+		`composer + empty mark present: ${JSON.stringify(mounted.last)}`,
+	);
+
+	/* ---------------------------------------------------------------- PRESS */
+
+	await typeIntoComposer("Summarise yesterday's QA run.");
+	// Inside the tap's hold: the create is in flight, and this is the frame the
+	// whole change is for.
+	await wait(350);
+	const pressFrame = await captureSettled(
+		cdp,
+		`conversation-start-${size}-press`,
+	);
+	note("frame", JSON.stringify(pressFrame));
+	const press = { read: await reads(), line: await waitLine() };
+	note("press", JSON.stringify(press));
+	if (expectAfter) {
+		check(
+			"J1: the row is painted BEFORE the session exists - one row, and it is the press",
+			press.read.rows === 1,
+			`rows=${press.read.rows} ids=${JSON.stringify(press.read.rowIds)}`,
+		);
+		check(
+			"the composer is empty at the press: the row is the message's home",
+			press.read.composer === "",
+			`composer=${JSON.stringify(press.read.composer)}`,
+		);
+		check(
+			"the wait line reads 'starting the session' with the clock running",
+			press.line?.phase === "starting the session",
+			`line=${JSON.stringify(press.line)}`,
+		);
+		check(
+			"and no alert speaks over the row for a send that has not failed",
+			press.read.alert === "",
+			`alert=${JSON.stringify(press.read.alert)}`,
+		);
+	} else {
+		note(
+			"before-arm",
+			"the press frame on the pre-change tree: the text is still the composer's and there is no row (the state the change removes)",
+		);
+	}
+
+	/* ----------------------------------------------------------------- FLIP */
+
+	const flipped = await waitForCondition(
+		cdp,
+		`document.body.innerText.includes("waiting for the agent")`,
+		25_000,
+	);
+	/*
+	 * THE READINGS COME FIRST, AT THE INSTANT THE FLIP IS OBSERVED. `captureSettled`
+	 * waits for the frame to hold still, and the owner's answer may land inside
+	 * that window - measured on this scene's fourth run, where the flip's frames
+	 * were fine but the READ a second later had already lost the wait line and
+	 * gained the answer's row.
+	 */
+	const flipRead = await reads();
+	const flipLine = await waitLine();
+	const flipFrame = await captureSettled(cdp, `conversation-start-${size}-flip`);
+	note("frame", JSON.stringify(flipFrame));
+	await wait(1000);
+	const plusOneFrame = await captureSettled(
+		cdp,
+		`conversation-start-${size}-flip-plus-1s`,
+	);
+	note("frame", JSON.stringify(plusOneFrame));
+	const flip = { read: flipRead, line: flipLine, flipped: flipped.ok };
+	note("flip", JSON.stringify(flip));
+	if (expectAfter) {
+		/*
+		 * J1/J2 ARE READ ON THE ROW THE PRESS PAINTED, by id. The transcript is
+		 * allowed to gain the owner's rows beside it (it usually does, because the
+		 * mock answers quickly); what may not happen is a SECOND copy of the pressed
+		 * row, a different id wearing it, or the row's own top moving.
+		 */
+		const pressedId = press.read.rowIds[0];
+		const flipAt = flip.read.rowIds.indexOf(pressedId);
+		check(
+			"J1: one row across the flip - the SAME id the press painted, once",
+			flipAt !== -1 &&
+				flip.read.rowIds.filter((id) => id === pressedId).length === 1,
+			`press=${JSON.stringify(press.read.rowIds)} flip=${JSON.stringify(flip.read.rowIds)}`,
+		);
+		check(
+			"J2: no position jump across the flip - the row's top is within 1px",
+			flipAt !== -1 &&
+				Math.abs(flip.read.rowTops[flipAt] - press.read.rowTops[0]) <= 1,
+			`press=${JSON.stringify(press.read.rowTops)} flip=${JSON.stringify(flip.read.rowTops)}`,
+		);
+		check(
+			"J3: no scroll jump across the flip - the scroller stays at its origin",
+			flip.read.scrollTop === 0,
+			`scrollTop=${flip.read.scrollTop} overflow=${flip.read.overflow}`,
+		);
+		check(
+			"J5: the clock does not restart - the flip's seconds are >= the press's",
+			flip.line?.phase === "waiting for the agent" &&
+				press.line?.seconds !== null &&
+				flip.line?.seconds !== null &&
+				flip.line.seconds >= press.line.seconds,
+			`press=${JSON.stringify(press.line)} flip=${JSON.stringify(flip.line)}`,
+		);
+		check(
+			"the composer's box stays empty after the flip - one home for the message",
+			flip.read.composer === "",
+			`composer=${JSON.stringify(flip.read.composer)}`,
+		);
+	} else {
+		note(
+			"before-arm",
+			"the flip frame on the pre-change tree: any row here arrived only with the create's answer, and the composer's own copy of the text went with it",
+		);
+	}
+
+	/* -------------------------------------------------------------- FAILURE */
+
+	/*
+	 * A REAL post-paint failure, raised at the wire: the tap is told to fail the
+	 * NEXT message POST with the owner's captured `runtime_unreachable` body (the
+	 * unknown class), so the row keeps the message and states the refusal under the
+	 * boundary rule. The scene waits for the row to carry its controls rather than
+	 * for a sentence, because the sentence is the classification table's and the
+	 * table is not this run's subject.
+	 */
+	if (TAP_CONTROL === null) {
+		note(
+			"failure arm",
+			"skipped: no --tap-control was given, and the refusal this step raises is the tap's",
+		);
+	} else {
+		const armed = await fetch(`${TAP_CONTROL}/__tap/fail-messages`, {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify({ count: 1 }),
+		});
+		note("tap control", `${armed.status} ${await armed.text()}`);
+	}
+	const refusalWait = `(() => {
+			const log = document.querySelector('[role="log"]');
+			return Boolean(log && [...log.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Send again'));
+		})()`;
+	await typeIntoComposer("A refusal the owner raises after the paint.");
+	let refused = await waitForCondition(cdp, refusalWait, 8_000);
+	if (!refused.ok) {
+		/*
+		 * ONE RETRY, and the wire says whether it was needed: a press that never
+		 * left is the only thing this retries (the failure row would already be up
+		 * otherwise), and the box is cleared first so the retry is the same message
+		 * rather than a second copy of it. The frame before the retry is kept: it
+		 * is what says whether the first press was on screen at all.
+		 */
+		const beforeRetryFrame = await captureSettled(
+			cdp,
+			`conversation-start-${size}-failure-before-retry`,
+		);
+		note("frame", JSON.stringify(beforeRetryFrame));
+		note(
+			"failure retry",
+			"no refusal after 8s; clearing the box and pressing once more",
+		);
+		await typeIntoComposer(
+			"A refusal the owner raises after the paint.",
+			true,
+		);
+		refused = await waitForCondition(cdp, refusalWait, 12_000);
+	}
+	const failureFrame = await captureSettled(
+		cdp,
+		`conversation-start-${size}-failure`,
+	);
+	note("frame", JSON.stringify(failureFrame));
+	const failure = { read: await reads(), refused: refused.ok };
+	const failedId = failure.read.rowIds.at(-1) ?? null;
+	note("failure", JSON.stringify(failure));
+	if (expectAfter) {
+		check(
+			"a post-paint refusal keeps its row, with the class's two controls",
+			failure.read.refused !== false &&
+				failure.read.controls.includes("Send again") &&
+				failure.read.controls.includes("Edit"),
+			`controls=${JSON.stringify(failure.read.controls)}`,
+		);
+		check(
+			"and the payload does NOT come back to the composer (one home, the row)",
+			failure.read.composer === "",
+			`composer=${JSON.stringify(failure.read.composer)}`,
+		);
+		check(
+			"no composer alert speaks over a failure the row states",
+			failure.read.alert === "",
+			`alert=${JSON.stringify(failure.read.alert)}`,
+		);
+	} else {
+		note(
+			"before-arm",
+			"the failure frame on the pre-change tree: the payload comes back to the composer (the #495 decision this change supersedes for post-paint failures)",
+		);
+	}
+
+	/* --------------------------------------------------------------- RELOAD */
+
+	await cdp.send("Page.reload", { ignoreCache: false });
+	const reloaded = await waitForCondition(
+		cdp,
+		`(() => {
+			const composer = document.querySelector('${composerSelector} textarea');
+			const log = document.querySelector('[role="log"]');
+			return Boolean(composer && log && log.textContent.includes("Send again"));
+		})()`,
+		30_000,
+	);
+	const reloadFrame = await captureSettled(
+		cdp,
+		`conversation-start-${size}-reload`,
+	);
+	note("frame", JSON.stringify(reloadFrame));
+	const reload = { read: await reads(), back: reloaded.ok };
+	note("reload", JSON.stringify(reload));
+	if (expectAfter) {
+		check(
+			"T6: the failed row is back after a reload, under the id the durable row would carry",
+			reload.back === true &&
+				failedId !== null &&
+				reload.read.rowIds.includes(failedId) &&
+				reload.read.controls.includes("Send again"),
+			`failedId=${failedId} rows=${JSON.stringify(reload.read.rowIds)} controls=${JSON.stringify(reload.read.controls)}`,
+		);
+	} else {
+		note(
+			"before-arm",
+			"the reload frame on the pre-change tree: the message is not in the transcript at all",
+		);
+	}
+
+	/* -------------------------------------------------------------- SWITCH */
+
+	if (secondId) {
+		/*
+		 * THE AWAY CASE, on a live conversation: the message POST is held by the tap
+		 * so the send is genuinely in flight, the row is on screen, and the run
+		 * LEAVES the pane and comes back - the switch-out continuity S5 is about.
+		 * The conversation pressed in is read from the backend's own answer: the id
+		 * that is not the one this run seeded.
+		 */
+		/*
+		 * THE CONVERSATION THE RUN IS ON, read from the app's own location: the pane
+		 * renders the session it is showing, and a handle parsed from the route is
+		 * the app's answer rather than the script's guess.
+		 */
+		const firstId = await cdp.evaluate(
+			`(() => {
+				const parts = (window.location.hash + window.location.pathname).split("/");
+				const at = parts.indexOf("chat");
+				return at === -1 ? null : (parts[at + 1] || null);
+			})()`,
+		);
+		note("first conversation", JSON.stringify(firstId));
+		if (TAP_CONTROL) {
+			const armed = await fetch(`${TAP_CONTROL}/__tap/hold-messages`, {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ count: 1, ms: 12000 }),
+			});
+			note("tap hold", `${armed.status} ${await armed.text()}`);
+		}
+		await typeIntoComposer("A second message, in flight while the run leaves.");
+		await wait(400);
+		const awayPressFrame = await captureSettled(
+			cdp,
+			`conversation-start-${size}-away-press`,
+		);
+		note("frame", JSON.stringify(awayPressFrame));
+		const awayPress = await reads();
+		note("away press", JSON.stringify(awayPress));
+		// LEAVE: the other conversation's own pane replaces this one, pressed the
+		// way a user leaves - the sidebar row, not a route change.
+		await clickAt(
+			cdp,
+			`[data-sidebar-region="chats"] [data-session-row="${secondId}"]`,
+		);
+		await wait(2000);
+		const sidebar = await cdp.evaluate(`(() => {
+			const region = document.querySelector('[data-sidebar-region="chats"]');
+			if (!region) return null;
+			const rows = [...region.querySelectorAll('[data-session-row], button[data-chat-row]')];
+			return { rows: rows.length, text: region.innerText.slice(0, 400) };
+		})()`);
+		note("sidebar (away)", JSON.stringify(sidebar));
+		const awayFrame = await captureSettled(
+			cdp,
+			`conversation-start-${size}-away`,
+		);
+		note("frame", JSON.stringify(awayFrame));
+		// COME BACK, pressed from the sidebar the way a user returns.
+		if (firstId) {
+			await clickAt(
+				cdp,
+				`[data-sidebar-region="chats"] [data-session-row="${firstId}"]`,
+			);
+		}
+		await wait(600);
+		const backFrame = await captureSettled(
+			cdp,
+			`conversation-start-${size}-return`,
+		);
+		note("frame", JSON.stringify(backFrame));
+		const returned = { read: await reads(), line: await waitLine() };
+		note("return", JSON.stringify(returned));
+		if (expectAfter) {
+			check(
+				"T5: on return the row and its wait line are present, and the composer is empty",
+				returned.read.rows >= 1 &&
+					returned.read.composer === "" &&
+					returned.line !== null,
+				`rows=${returned.read.rows} line=${JSON.stringify(returned.line)} composer=${JSON.stringify(returned.read.composer)}`,
+			);
+			check(
+				"T5: the elapsed number is the true one - it does not restart at the return",
+				returned.line?.seconds !== null &&
+					returned.line?.seconds !== undefined &&
+					returned.line.seconds >= 3,
+				`line=${JSON.stringify(returned.line)}`,
+			);
+		} else {
+			note(
+				"before-arm",
+				"the return frame on the pre-change tree: recorded as-is (no pre-session row existed to return to)",
+			);
+		}
+	} else {
+		note("switch", "no second conversation id: the switch step is skipped");
+	}
 }
 
 async function sceneNewChat(cdp) {
@@ -24731,6 +25225,11 @@ async function main() {
 			"--scene first-send needs --backend: with no backend the chat route draws its refusal surface and no composer mounts, so there is nothing to send from",
 		);
 	}
+	if (SCENE === "conversation-start" && BACKEND === null) {
+		throw new Error(
+			"--scene conversation-start needs --backend: every frame is a real send against a live owner (and the switch needs a second conversation), so a run with no backend has nothing to photograph",
+		);
+	}
 	if (SCENE === "radient-issue" && BACKEND === null) {
 		throw new Error(
 			"--scene radient-issue needs --backend: the callout is gated on a capability the backend advertises and speaks a verdict only it can give, so a run with none photographs the absence of the feature",
@@ -24906,6 +25405,7 @@ async function main() {
 			 * widths it is written about.
 			 */ else if (SCENE === "floors") await sceneFloors(cdp);
 			else if (SCENE === "first-send") await sceneFirstSend(cdp);
+			else if (SCENE === "conversation-start") await sceneConversationStart(cdp);
 			else if (SCENE === "question-dock") await sceneQuestionDock(cdp);
 			else if (SCENE === "radient-issue") await sceneRadientIssue(cdp);
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);
