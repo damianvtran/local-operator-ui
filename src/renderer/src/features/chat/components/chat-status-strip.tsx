@@ -1,4 +1,5 @@
-import { Button } from "@shared/components/ui";
+import { NOTICE_BAND } from "@shared/components/common/notice-band";
+import { Alert, Button } from "@shared/components/ui";
 import { useConnectivityStatus } from "@shared/hooks/use-connectivity-status";
 import { cn } from "@shared/lib/utils";
 import {
@@ -6,7 +7,7 @@ import {
 	noOfflineConfirmation,
 	observeConnectivityReading,
 } from "@shared/utils/offline-confirmation";
-import { AlertTriangle, Loader2, WifiOff, X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChatStatusDisplay } from "../chat-status";
 import { chatStatusDisplay, chatStatusKey } from "../chat-status";
@@ -32,6 +33,15 @@ import { setChatStatusStripPresent } from "../chat-status-presence";
  *   dismissed so a new root cause is never muted by an old press;
  * - ONE live region: `role=alert` for the two states that interrupt a send,
  *   `role=status` for the two that leave a working app.
+ *
+ * ONE BAND GRAMMAR, SHARED WITH THE COMPATIBILITY BANNER (design note § 3). Both
+ * surfaces draw `Alert` wearing `NOTICE_BAND`, so a stack of the two reads as one
+ * family rather than two systems: same inset rounded band, same 24px gutter, same
+ * 14px mark, and at most one `primary` remedy per band. Severity is then carried
+ * by hue, glyph and copy ONLY - never by a different shape - and each severity
+ * has exactly one glyph, the `Alert` system's own (danger `CircleAlert`, warning
+ * `TriangleAlert`; the old `AlertTriangle`-for-danger / `WifiOff`-for-everything
+ * vocabulary drew the operator's red band and amber band with the same triangle).
  *
  * PRESENTATION IS SPLIT FROM THE READINGS, for one reason and it is the same
  * reason the two bands this replaces were stories: four of the states this
@@ -124,65 +134,66 @@ export const ChatStatusStripView = ({
 		 * starts 24px in. `py-1` is the 4px tier - the strip is a line of text with an
 		 * action, not a card, and the two-line case (message plus Retry's outcome) is
 		 * what the second line is for.
+		 *
+		 * THE BAND IS `Alert` WEARING `NOTICE_BAND` (design note § 3): the same
+		 * primitive, gutter, radius, padding and 14px mark the compatibility banner
+		 * draws, so the two bands of one incident differ by hue and glyph only. The
+		 * variant is the display's own wash (the model field keeps its name - the
+		 * data pins on `.wash` stay), and the strip's ONE live region role rides the
+		 * same root rather than a child.
 		 */
 		<div
 			className={cn("shrink-0 px-6 py-1")}
 			data-lo-status-strip=""
 			onKeyDown={onKeyDown}
 		>
-			<div
+			<Alert
+				variant={display.wash === "danger-wash" ? "danger" : "warning"}
+				className={NOTICE_BAND}
 				role={display.role}
-				className={cn(
-					"flex items-center gap-2 rounded-md px-3 py-2",
-					display.wash === "danger-wash" ? "bg-danger-wash" : "bg-warning-wash",
-				)}
 			>
-				{display.dot === "danger" ? (
-					<AlertTriangle aria-hidden="true" className="size-3.5 text-danger" />
-				) : (
-					<WifiOff aria-hidden="true" className="size-3.5 text-warning" />
-				)}
-				<span className="min-w-0 text-body-sm text-ink">
-					{display.title}
-					{display.detail ? (
-						<span className="block text-meta text-ink-muted">
-							{display.detail}
-						</span>
-					) : null}
-					{outcome && !retrying ? (
-						<span className="block text-meta text-ink-muted">{outcome}</span>
-					) : null}
-				</span>
-				{display.action === "retry" && (
-					<span className="ml-auto flex shrink-0 items-center gap-2">
-						<Button
-							variant="secondary"
-							size="sm"
-							type="button"
-							onClick={onRetry}
-							disabled={retrying}
-							className="border-control font-medium"
-						>
-							{retrying ? (
-								<Loader2 aria-hidden="true" className="animate-spin" />
-							) : null}
-							{retrying ? "Retrying…" : (display.actionLabel ?? "Retry")}
-						</Button>
-						<button
-							type="button"
-							onClick={() => key && onDismiss(key)}
-							className={cn(
-								"flex size-6 items-center justify-center rounded-sm",
-								"text-ink-muted hover:text-ink",
-								"focus-visible:outline-2 focus-visible:outline-accent",
-							)}
-							aria-label="Dismiss"
-						>
-							<X aria-hidden="true" className="size-3.5" />
-						</button>
+				<div className="flex w-full min-w-0 items-center gap-2">
+					<span className="min-w-0 flex-1 text-body-sm text-ink">
+						{display.title}
+						{display.detail ? (
+							<span className="block text-meta text-ink-muted">
+								{display.detail}
+							</span>
+						) : null}
+						{outcome && !retrying ? (
+							<span className="block text-meta text-ink-muted">{outcome}</span>
+						) : null}
 					</span>
-				)}
-			</div>
+					{display.action === "retry" && (
+						<span className="flex shrink-0 items-center gap-2">
+							<Button
+								variant="primary"
+								size="sm"
+								type="button"
+								onClick={onRetry}
+								disabled={retrying}
+							>
+								{retrying ? (
+									<Loader2 aria-hidden="true" className="animate-spin" />
+								) : null}
+								{retrying ? "Retrying…" : (display.actionLabel ?? "Retry")}
+							</Button>
+							<button
+								type="button"
+								onClick={() => key && onDismiss(key)}
+								className={cn(
+									"flex size-6 items-center justify-center rounded-sm",
+									"text-ink-muted hover:text-ink",
+									"focus-visible:outline-2 focus-visible:outline-accent",
+								)}
+								aria-label="Dismiss"
+							>
+								<X aria-hidden="true" className="size-3.5" />
+							</button>
+						</span>
+					)}
+				</div>
+			</Alert>
 		</div>
 	);
 };

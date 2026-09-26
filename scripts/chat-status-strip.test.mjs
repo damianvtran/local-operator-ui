@@ -223,7 +223,7 @@ test("a refused credential outranks every row below it, and never states two cau
 		server: {
 			state: "detached",
 			detail: "Pairing was refused by a server that is running.",
-			pairing: { available: false, cause: "key-refused" },
+			pairing: { available: false, cause: "credential-refused" },
 		},
 		internetOffline: false,
 	});
@@ -252,6 +252,74 @@ test("a refused credential outranks every row below it, and never states two cau
 	 * provably cannot work" this repository refuses to ship.
 	 */
 	assert.equal(both?.actionLabel, "Retry");
+});
+
+/*
+ * § 0.1's other half: the four causes the COMPATIBILITY BANNER owns leave this
+ * surface silent, and so does a record that states no cause at all.
+ *
+ * WHY THIS IS A TEST AND NOT AN IMPLICATION. The row-1 gate moving from
+ * `available === false` to the cause is only half the fix; the other half is
+ * that the connection rows must not take over the incident the banner is
+ * already stating - measured on the governed scene the repo committed
+ * (`docs/evidence/any-daemon-attach/after-frames-other-principal.json`): state
+ * `detached` beside cause `governed-elsewhere`, where the unreachable row
+ * painted "Can't reach the Local Operator server" as a second band under the
+ * banner's own sentence. The states each cause really occurs in are asserted
+ * rather than one, since a successor is reachable while attached and the other
+ * three are not.
+ */
+test("the causes the banner owns leave the strip silent, in the states they occur in", () => {
+	const at = (cause, state = "attached") =>
+		chatStatusDisplay({
+			connectivityIssue: null,
+			server: { state, detail: null, pairing: { available: false, cause } },
+			internetOffline: false,
+		});
+
+	for (const cause of [
+		"successor",
+		"governed-elsewhere",
+		"pre-handshake",
+		"unpaired",
+		null,
+	]) {
+		for (const state of ["attached", "detached", "wedged"]) {
+			assert.equal(
+				at(cause, state),
+				null,
+				`${cause} + ${state}: the strip must not state a cause the banner owns`,
+			);
+		}
+	}
+
+	/*
+	 * AND IT CANNOT PASS VACUOUSLY: the SAME state, without a pairing record,
+	 * still paints the connection row - which is what makes the silence above a
+	 * property of the cause rather than of a fixture that never drew anything.
+	 * The last case is the server-gone scene as the live rig recorded it (no
+	 * pairing record, `connectivityIssue: server_offline`), where the strip is
+	 * the voice § 2.3's `!answered` yield leaves the pane.
+	 */
+	const bare = (state) =>
+		chatStatusDisplay({
+			connectivityIssue: null,
+			server: { state, detail: null, pairing: null },
+			internetOffline: false,
+		});
+	assert.equal(bare("detached")?.kind, "unreachable");
+	assert.equal(
+		chatStatusDisplay({
+			connectivityIssue: "server_offline",
+			server: {
+				state: "detached",
+				detail: "The daemon's process is gone.",
+				pairing: null,
+			},
+			internetOffline: false,
+		})?.kind,
+		"unreachable",
+	);
 });
 
 test("dismissal is keyed on the state, so a new cause is never muted", () => {

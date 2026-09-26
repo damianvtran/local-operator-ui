@@ -542,12 +542,96 @@ const CONTROLS = [
 		 * 5.26-19.06), and THIS row is what keeps that true: moving it back to a
 		 * variant whose face collapses into the wash fails here rather than in a
 		 * theme nobody runs.
+		 *
+		 * THE NOTICE BANDS ARE NEW CONSUMERS OF THIS SAME PAIRING (the chat pane's
+		 * status strip and the backend compatibility banner, this branch's fix):
+		 * both draw their remedy as `primary sm` on the band's wash, and both are
+		 * pinned at the call site below. The warning-wash counterpart gets its own
+		 * row right after this one rather than a `warningWash` entry here: the
+		 * wash role differs, so the measured pair differs, and one row cannot state
+		 * both.
 		 */
 		name: "primary button on the danger wash",
 		on: ["dangerWash"],
 		fill: "accent",
 		border: "accent",
 		ink: "onAccent",
+	},
+	{
+		/*
+		 * The remedy on the WARNING half of the same family: the status strip and
+		 * the compatibility banner paint `warning-wash` for every state that is a
+		 * transition, a feature limit or an environment fact, and their one filled
+		 * control sits on that wash. `accent` against `warningWash` measures 3.46:1
+		 * at worst (the `on-accent` ink 5.31-20.27 behind it), so the pairing is
+		 * legal everywhere - and this row is what says so, rather than the absence
+		 * of a complaint about it.
+		 */
+		name: "primary remedy on the warning wash",
+		on: ["warningWash"],
+		fill: "accent",
+		border: "accent",
+		ink: "onAccent",
+	},
+	{
+		/*
+		 * THE STATUS BAND ITSELF, in both severities - the chat pane's strip and
+		 * the backend compatibility banner, one row per wash because a wash is the
+		 * case § 9.7's own rule says must not ship unasserted: the component has a
+		 * fill AND an edge, and both must be measured against the ground it really
+		 * sits on.
+		 *
+		 * WHY THE EDGE IS THE LOAD-BEARING HALF. The wash alone cannot carry a 3:1
+		 * boundary against `canvas` by construction, and on four palettes it is
+		 * very close to invisible: ΔE00(warningWash, canvas) = 1.01 worst (`paper`;
+		 * 3.59 on `localOperatorLight`), against the 25-percentile step a ground
+		 * change owes elsewhere in this file. The `-border` role is what draws the
+		 * boundary (warningBorder on canvas 3.24:1 worst, dangerBorder 3.23:1
+		 * worst) and it is why the band is a bordered fill rather than a tinted
+		 * background - the old strip shipped the wash with no border at all and no
+		 * row anywhere said so.
+		 *
+		 * The body ink is `ink` (5.73:1 worst on warningWash, 7.03:1 on
+		 * dangerWash), and the washes are deliberately NOT in `GROUNDS6`: that
+		 * loop would then demand every ink role clear its floor on them, and the
+		 * detail line's `inkMuted` (5.31 / 5.49 worst) is the one pairing the
+		 * band actually paints - asserted by the two rows below rather than
+		 * implied by a loop that would also pass on pairings nothing renders.
+		 */
+		name: "status band (warning)",
+		on: ["canvas"],
+		fill: "warningWash",
+		border: "warningBorder",
+		ink: "ink",
+	},
+	{
+		name: "status band (danger)",
+		on: ["canvas"],
+		fill: "dangerWash",
+		border: "dangerBorder",
+		ink: "ink",
+	},
+	{
+		/*
+		 * The band's second line: the strip's `detail` (and its Retry outcome) and
+		 * the banner's update-error suffix paint `inkMuted` on the wash, at
+		 * `text-meta`. Worst across the palettes: 5.31:1 on warningWash, 5.49:1 on
+		 * dangerWash (`kanagawaLotus` - the same figure the browser transfer row's
+		 * comment carries for the same wash), both clear of the 4.5:1 floor this
+		 * loop applies while staying the quietest line in the band.
+		 */
+		name: "status band detail line (warning)",
+		on: ["canvas"],
+		fill: "warningWash",
+		border: "warningBorder",
+		ink: "inkMuted",
+	},
+	{
+		name: "status band detail line (danger)",
+		on: ["canvas"],
+		fill: "dangerWash",
+		border: "dangerBorder",
+		ink: "inkMuted",
 	},
 	{
 		/*
@@ -2500,6 +2584,36 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/features/chat/components/aside-panel.tsx",
 		must: "flex flex-col border border-hairline bg-sunken",
 		why: "the panel is a surface above the composer box and reads as one only while its fill steps away from that box's `surface` and its decorative edge is drawn; `CONTROLS` cannot hold this row (it demands a 3:1 edge on a boundary that is deliberately not one), so the class list is the only place the relationship can be undone unseen",
+	},
+	{
+		/*
+		 * THE STATUS BAND'S REMEDY, the same class of pin as the failure alert's
+		 * above and mirrored from it deliberately: the palette rows
+		 * ("primary button on the danger wash", "primary remedy on the warning
+		 * wash") prove a filled control is legal on each wash the band paints,
+		 * and only this pin can see the edit that moves the strip's Retry back to
+		 * `secondary` - whose sole boundary is `border-control` against those
+		 * washes, 2.09:1 worst on `warningWash` and 2.98:1 worst on `dangerWash`,
+		 * both under the 3:1 floor (measured over all fifty-nine palettes by the
+		 * design pass; the twelve-name sweep carries the same figures).
+		 */
+		what: "the status strip's remedy is a filled control on its wash",
+		file: "src/renderer/src/features/chat/components/chat-status-strip.tsx",
+		must: 'variant="primary"',
+		why: "a secondary control's only boundary is its own edge against the band's wash, which is below the 3:1 floor on both severities in the worst palettes; no palette assertion can see which variant a component renders, so green output about the pair would outlive the fix",
+	},
+	{
+		/*
+		 * The compatibility banner's remedy, for the same reason: the band is one
+		 * grammar on both surfaces now, and a divergence in the CONTROL is what a
+		 * reader would see first - the banner's `Update backend` must stay a filled
+		 * control where it is offered, with `Retry` demoted to `ghost` beside it
+		 * rather than given a second edge.
+		 */
+		what: "the compatibility banner's remedy is a filled control on its wash",
+		file: "src/renderer/src/shared/components/common/backend-compatibility-banner.tsx",
+		must: 'variant="primary"',
+		why: "the banner's band draws the same washes as the strip's; an outlined or secondary primary control collapses into them below the 3:1 floor, and the palette rows cannot see which variant the component renders",
 	},
 ];
 
