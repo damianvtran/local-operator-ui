@@ -829,6 +829,15 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  * the conflict. The same union was applied to `docs/evidence/manifest.json`,
  * which took main's four goal notes and kept every key this branch already
  * carried (178 + 2 + 1 = 181 keys, the records test's own check).
+ *
+ * THE UNION THIS FOLD TOOK (`origin/main` `827f45f4fd`, #540 the message block's
+ * own surface, over this branch's `2d5c01ca03`), stated here because the rule
+ * above asks for it: this branch's side named `actionFoldEvidenceNote` and
+ * `foldOnto093a329a4dNote`, plus - registered by this fold, having quoted the
+ * pair while outside the list - `foldOnto9d3e68ddf6Note`, `foldOnto4ae3dbff0dNote`
+ * and `foldOnto22c0fcd4fdNote`; main's side named `messageSurfaceRestampNote`.
+ * FORTY-FOUR entries, diffed as key sets on both sides rather than read off the
+ * conflict. No key from either side was dropped.
  */
 const STAMP_BINDING_NOTES = [
 	/*
@@ -1149,6 +1158,37 @@ const STAMP_BINDING_NOTES = [
 	 * the paragraphs above state.
 	 */
 	"foldOnto093a329a4dNote",
+	/*
+	 * THE THREE FOLDS BETWEEN THAT ONE AND THIS (`9d3e68ddf6` #467, `4ae3dbff0d`
+	 * #504, `22c0fcd4fd` #539), registered by the fold onto `827f45f4fd` for the
+	 * first time: each states the pair its fold re-derived as this file's binding -
+	 * the same claim the list's criterion asks about - and each had been sitting
+	 * outside the list while quoting it, which is a check silently not run (the
+	 * defect the round-8 paragraph above names). Their texts are unchanged by the
+	 * registration.
+	 */
+	"foldOnto9d3e68ddf6Note",
+	"foldOnto4ae3dbff0dNote",
+	"foldOnto22c0fcd4fdNote",
+	/*
+	 * And this fold's own: the fold onto `origin/main` = `827f45f4fd` (#540), whose
+	 * pair this file now ships, registered on the same criterion as its
+	 * predecessors.
+	 */
+	"foldOnto827f45f4fdNote",
+	/*
+	 * AND THIS LANE'S OWN, for the user message block's surface (the operator's
+	 * report of 2026-09-26, "the contrast between the user message background and
+	 * the chat background is quite poor on some themes"): it states the pair THIS
+	 * FILE SHIPS as its opening claim - the re-stamp of a change that moves BOTH
+	 * trees this file binds while committing its own evidence set, so a reader is
+	 * owed the pair, the reason the frames exist, and the arithmetic they move.
+	 * The list's own criterion is met the same way `subviewInsetRestampNote`'s
+	 * was: the note states this file's binding as a backticked claim, so leaving
+	 * it out would be one more check silently not run. It joins this list under
+	 * the union rule rather than replacing it.
+	 */
+	"messageSurfaceRestampNote",
 	/*
 	 * And `goalDesignRoundTwoNote`, this branch's own record: it carries the pair the
 	 * judged-goals design-round-2 pass re-derived, so it is the entry later re-stamps
