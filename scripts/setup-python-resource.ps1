@@ -147,6 +147,15 @@ function Set-UpUvArch {
 		Write-Output "Verified uv $Arch sha256: $actual"
 
 		$extractDir = Join-Path $scratch 'extract'
+		# `Expand-Archive` STAYS - a measured decision made beside `Get-Sha256`
+		# above, not an oversight: in the release chain's child it resolves and
+		# extracts (the CI probes print `Expand-Archive found: True` for the cmd
+		# and pnpm hops where `Get-FileHash` prints False, run 36278672247, and
+		# the fix run stages both architectures through this call, run
+		# 36279454391). If a runner image ever moves it into the same broken
+		# class, the stager step of `windows-uv-stager-check` goes red here, and
+		# `Get-Sha256` above is the shape of the replacement: a .NET API rather
+		# than a module-provided cmdlet.
 		Expand-Archive -Path $archivePath -DestinationPath $extractDir
 		$memberPath = Join-Path $extractDir $member
 		if (-not (Test-Path $memberPath -PathType Leaf)) {
