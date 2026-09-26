@@ -309,6 +309,22 @@ export type CanonicalTranscriptProps = {
 	 */
 	labelPending?: ReadonlySet<string>;
 	/**
+	 * Whether a held row's column should show the LATE-HOLD mark
+	 * (`CanonicalSessionView.labelHoldLate`): the hold has outlived
+	 * `LABEL_HOLD_MARK_MS`, so the cell states that a value belongs there instead of
+	 * staying silent about it. Static and textless; see the cell in `tool-row.tsx`.
+	 */
+	labelHoldLate?: boolean;
+	/**
+	 * Tool call ids whose HOLD a refusal ended and whose MARK stands in its place
+	 * (`CanonicalSessionView.labelMarked`). Such a row paints the mark rather than the
+	 * output stand-in while a later read may still name it - the two routes that reach
+	 * a refused stand-down look identical at the moment of the decision, and only one of
+	 * them may never show the call's output. The command or the backstop's stand-in
+	 * replaces it.
+	 */
+	labelMarked?: ReadonlySet<string>;
+	/**
 	 * Re-arm the session's stream and history read.
 	 *
 	 * Required rather than optional: every caller of this component has a
@@ -717,6 +733,8 @@ const ToolRow = memo(function ToolRow({
 	nameColumn,
 	scope,
 	labelPending = false,
+	labelHoldLate = false,
+	labelMarked = false,
 }: {
 	record: Extract<TranscriptRecord, { kind: "tool" }>;
 	isSmallView: boolean;
@@ -725,6 +743,10 @@ const ToolRow = memo(function ToolRow({
 	scope: AttachmentScope | null;
 	/** The row's first label read is in flight: hold the stand-in back. */
 	labelPending?: boolean;
+	/** The held column has outlived `LABEL_HOLD_MARK_MS`. */
+	labelHoldLate?: boolean;
+	/** A refusal ended this row's hold: the mark stands in the hold's place. */
+	labelMarked?: boolean;
 }) {
 	const running = record.phase !== "done";
 	const composing = record.phase === "composing";
@@ -937,6 +959,17 @@ const ToolRow = memo(function ToolRow({
 				toolName={record.toolName}
 				summary={summary}
 				summaryFallback={derived}
+				summaryHold={
+					/*
+					 * TWO WAYS THE MARK STANDS (round 4). The hold has outlived
+					 * `LABEL_HOLD_MARK_MS` with no answer (design round 2, D6), OR a refusal
+					 * ended the row's hold and left the question open - no read in flight, but a
+					 * round ending may still name the call, so the output must not be stated in
+					 * the meantime. Both render the same glyph, and both give way to the command.
+					 */
+					labelMarked === true ||
+					(labelPending === true && labelHoldLate === true)
+				}
 				outcome={
 					notRun
 						? "not-run"
@@ -1294,6 +1327,8 @@ const TranscriptRow = memo(function TranscriptRow({
 	scope,
 	conversationId,
 	labelPending = false,
+	labelHoldLate = false,
+	labelMarked = false,
 }: {
 	row: Row;
 	isSmallView: boolean;
@@ -1305,6 +1340,10 @@ const TranscriptRow = memo(function TranscriptRow({
 	 * every row the set would re-render all of them each time one id settles.
 	 */
 	labelPending?: boolean;
+	/** The held column has outlived `LABEL_HOLD_MARK_MS`. */
+	labelHoldLate?: boolean;
+	/** A refusal ended this row's hold: the mark stands in the hold's place. */
+	labelMarked?: boolean;
 }) {
 	rowRenderCount.current += 1;
 	const { record } = row;
@@ -1340,6 +1379,8 @@ const TranscriptRow = memo(function TranscriptRow({
 					nameColumn={nameColumn}
 					scope={scope}
 					labelPending={labelPending}
+					labelHoldLate={labelHoldLate}
+					labelMarked={labelMarked}
 				/>
 			);
 			break;
@@ -1427,6 +1468,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	attachmentScope,
 	conversationId,
 	labelPending,
+	labelHoldLate,
+	labelMarked,
 	onReconnect,
 	onAnswer,
 	answering = false,
@@ -2143,6 +2186,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 									labelPending={
 										row.record.kind === "tool" &&
 										labelPending?.has(row.record.toolCallId) === true
+									}
+									labelHoldLate={labelHoldLate === true}
+									labelMarked={
+										row.record.kind === "tool" &&
+										labelMarked?.has(row.record.toolCallId) === true
 									}
 								/>
 							))}
