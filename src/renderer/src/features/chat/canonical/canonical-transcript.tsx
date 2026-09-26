@@ -4,7 +4,9 @@
  * Paints `TranscriptRecord`s from the canonical session stream by the
  * docs/branding.md § 7 hierarchy, most prominent first:
  *
- *   1. the pending gate (a question for the user) — `AgentQuestion`, last;
+ *   1. the pending gate (a question for the user) — DOCKED above the composer
+ *      by `QuestionDock` (§F1), not drawn here; the gate is read only by the
+ *      working line;
  *   2. assistant prose at reading weight, no paper;
  *   3. one dense ledger row per tool action (`ToolRow`), running state on the
  *      row itself, never a spinner beside it — the one animated indicator is
@@ -41,6 +43,10 @@
  * following the tail neither loads a page nor has their offset corrected.
  */
 
+import {
+	NO_PROVIDER_NOTICE,
+	useConnectProviderStore,
+} from "@features/providers/connect-provider-store";
 import { Button } from "@shared/components/ui";
 import { useCompletionView } from "@shared/hooks/use-completion-view";
 import { cn } from "@shared/lib/utils";
@@ -68,19 +74,12 @@ import type {
 } from "../../../../../shared/desktop-session-contract";
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
 import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
+import { CHAT_REGION_LABEL } from "../chat-regions";
 import { MarkdownRenderer } from "../components/markdown-renderer";
-import {
-	AGENT_GUTTER,
-	MessageContainer,
-} from "../components/message-item/message-container";
+import { MessageContainer } from "../components/message-item/message-container";
 import { TurnTimestamp } from "../components/message-item/turn-timestamp";
 import { ReplyPreview } from "../components/reply-preview";
-import {
-	AgentQuestion,
-	AskOptions,
-	DiffBlock,
-	TraceLine,
-} from "../components/trace";
+import { DiffBlock, TraceLine } from "../components/trace";
 import {
 	peerHasDetail,
 	peerIdentityLine,
@@ -96,12 +95,13 @@ import { hasDetail } from "../components/trace/tool-detail-model";
 import { ToolRow as ToolLedgerRow } from "../components/trace/tool-row";
 import {
 	formatBytes,
+	formatDuration,
 	isBareToolName,
 	isDiffBodyRow,
 	outputFallbackLine,
 	summaryFromArgs,
-	toolNameColumn,
 } from "../components/trace/tool-row-model";
+import { TraceFold } from "../components/trace/trace-fold";
 import { WorkingLine } from "../components/trace/working-line";
 import { MISSING_SESSION_NOTICE_ID } from "../missing-session-notice";
 import { CanvasPaneProvider } from "../utils/canvas-pane";
@@ -111,6 +111,7 @@ import { LinkToolkit } from "./link-toolkit";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
 import { isQuotable } from "./quote-model";
 import { QuoteToolkit } from "./quote-toolkit";
+import { type TurnFoot, foldRuns, turnFeet } from "./trace-fold-model";
 import {
 	type CanonicalTranscriptStatus,
 	canonicalTranscriptSpeaks,
@@ -150,6 +151,20 @@ import {
  * `markdown.css`'s measure comment carries the report and the numbers, and the
  * rule that also keeps a cap off the agent's answer.
  */
+
+/**
+ * Whether the user has asked the OS for less motion.
+ *
+ * The failure jump (§E3) scrolls, and it is the app's only scroll animation in
+ * this surface: §B7's 240ms is a CEILING rather than a target, and a preference
+ * set at the OS level is the one signal that outranks it. Read per call rather
+ * than cached, because the preference can change while the app is open and this
+ * is one `matchMedia` on a press.
+ */
+const prefersReducedMotion = (): boolean =>
+	typeof window !== "undefined" &&
+	typeof window.matchMedia === "function" &&
+	window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const WINDOW = 60;
 const WINDOW_STEP = 60;
@@ -294,6 +309,44 @@ export type CanonicalTranscriptProps = {
 	 */
 	conversationId?: string;
 	/**
+	 * Tool call ids whose first label read is still in flight
+	 * (`CanonicalSessionView.labelPending`). Such a row paints its object column
+	 * EMPTY rather than the output stand-in, so the first frame of an open never
+	 * shows a call's result where its command belongs. The hold ends with the
+	 * first request's answer, or after `LABEL_HOLD_MAX_MS` when none comes.
+	 * Optional: surfaces with no live stream (stories, the run panel's child
+	 * reader) have nothing pending.
+	 */
+	labelPending?: ReadonlySet<string>;
+	/**
+	 * §F3's PER-MESSAGE FAILURE STATE, addressed to the one row it describes.
+	 *
+	 * WHY IT TRAVELS AS A RECORD ID (§F3, UX round 1's U4). The failure used to be
+	 * stated by a paragraph above the composer - one register for a whole screen's
+	 * worth of failures - and §F3 moves it onto the message: `Not delivered` with
+	 * the two remedies that resolve it. The address is the transcript's own id
+	 * (`record.id`, the id the durable row will carry if it ever lands), so the
+	 * line cannot attach to a neighbouring turn, and the row that wears it is the
+	 * only one that re-renders when it changes.
+	 */
+	undelivered?: UndeliveredTurn | null;
+	/**
+	 * Whether a held row's column should show the LATE-HOLD mark
+	 * (`CanonicalSessionView.labelHoldLate`): the hold has outlived
+	 * `LABEL_HOLD_MARK_MS`, so the cell states that a value belongs there instead of
+	 * staying silent about it. Static and textless; see the cell in `tool-row.tsx`.
+	 */
+	labelHoldLate?: boolean;
+	/**
+	 * Tool call ids whose HOLD a refusal ended and whose MARK stands in its place
+	 * (`CanonicalSessionView.labelMarked`). Such a row paints the mark rather than the
+	 * output stand-in while a later read may still name it - the two routes that reach
+	 * a refused stand-down look identical at the moment of the decision, and only one of
+	 * them may never show the call's output. The command or the backstop's stand-in
+	 * replaces it.
+	 */
+	labelMarked?: ReadonlySet<string>;
+	/**
 	 * Re-arm the session's stream and history read.
 	 *
 	 * Required rather than optional: every caller of this component has a
@@ -301,50 +354,38 @@ export type CanonicalTranscriptProps = {
 	 * this surface is being fixed to stop showing.
 	 */
 	onReconnect: () => void;
-	/**
-	 * Submit `label` as the answer to the pending `ask` gate.
-	 *
-	 * Optional because the transcript renders in surfaces that have no answer
-	 * path at all (stories, and any caller without a live session). Absent, the
-	 * options still render but do nothing — so the callers that CAN answer are
-	 * the only ones that offer it, and the component never fakes a send.
-	 */
-	onAnswer?: (label: string) => void;
-	/**
-	 * An answer is already in flight, from a click or from the composer.
-	 *
-	 * Shared with the composer's own in-flight flag rather than tracked locally:
-	 * a second source of truth here is how a click and a typed send end up both
-	 * believing they are the only answer.
-	 */
-	answering?: boolean;
-	/**
-	 * This panel's own record of the gate it is showing, from the press onwards.
-	 *
-	 * `null` means nothing has been pressed here and the card is live. Once an
-	 * answer has been attempted the card holds itself disabled until the gate
-	 * itself changes (`request_id` or `question_index`), because the renderer's
-	 * `pending_gate` is only cleared by the next stream frame — so between the
-	 * owner accepting the answer and that frame arriving, a live card would let a
-	 * second press post a second answer to a one-shot question (code review round
-	 * 1, R-MINOR). `sending` also drives the callout's eyebrow, and `refused`
-	 * carries the sentence when the owner would not take the answer.
-	 */
-	answer?: { sending: boolean; refused: string | null } | null;
 };
 
 // ---------------------------------------------------------------- rows
+
+/**
+ * The two controls §F3's line offers, bound to the message they resolve.
+ *
+ * `Send again` re-issues the SAME payload through the composer's own send door
+ * (so the store's unchanged-payload guard is satisfied by construction, not by a
+ * second code path), and `Edit` puts the payload back in the box - idempotent
+ * with the return path the failure already performed - reached from the message
+ * the restore is about.
+ */
+export type UndeliveredTurn = {
+	recordId: string;
+	onSendAgain: () => void;
+	onEdit: () => void;
+};
 
 const UserRow = memo(function UserRow({
 	record,
 	isSmallView,
 	scope,
 	conversationId,
+	undelivered = null,
 }: {
 	record: Extract<TranscriptRecord, { kind: "user" }>;
 	isSmallView: boolean;
 	scope: AttachmentScope | null;
 	conversationId?: string;
+	/** §F3's per-message failure state, when this row is the one it names. */
+	undelivered?: UndeliveredTurn | null;
 }) {
 	/*
 	 * The element a highlight has to BEGIN inside to count as a quote of THIS
@@ -384,6 +425,34 @@ const UserRow = memo(function UserRow({
 		() => parseReplies(record.text),
 		[record.text],
 	);
+	/*
+	 * Whether this turn is long enough to need D2's eight-line clamp, MEASURED
+	 * rather than guessed from a character count: the box is clamped first and
+	 * then asked whether it is hiding anything, so a `Show more` can never appear
+	 * on a turn that is already fully visible. Skipped while expanded, where the
+	 * clamp is off and the box would always report itself as fitting.
+	 */
+	const [expanded, setExpanded] = useState(false);
+	const [clamped, setClamped] = useState(false);
+	const bodyRef = useRef<HTMLDivElement>(null);
+	/*
+	 * The suppression below is one line rather than a block because biome attaches
+	 * an ignore to the NEXT line: a multi-line one leaves the rule unreported and
+	 * active, which is how this arrived as a red lint run with the reason already
+	 * written above it.
+	 *
+	 * `remainingContent` is a re-measure TRIGGER, not a value this body reads. A
+	 * turn whose text changes under the same row id - a streamed answer, a re-render
+	 * with new prose - has to be asked again whether it now overflows, and dropping
+	 * the dependency would strand the affordance on the first measurement of the
+	 * row's life.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `remainingContent` re-measures the clamp; see above
+	useLayoutEffect(() => {
+		if (expanded) return;
+		const el = bodyRef.current;
+		if (el) setClamped(el.scrollHeight > el.clientHeight + 1);
+	}, [expanded, remainingContent]);
 	return (
 		<MessageContainer isUser isSmallView={isSmallView}>
 			{/*
@@ -409,18 +478,39 @@ const UserRow = memo(function UserRow({
 				<div ref={turnRef} className="group relative flex w-full justify-end">
 					<div
 						className={cn(
-							// `border-control`, not `hairline`. The bubble keeps its own
-							// ground (`surface`) on a column that is `canvas` for the working
-							// surface's sake (see chat-content.tsx), so the fill is a
-							// lightness step as well as this edge - but a step is not an
-							// edge, and this border is still the boundary the design contract
-							// asks for. Because the agent side has no bubble at all, the edge
-							// is also the whole visual distinction between the two speakers.
-							// Removing it would lose information, which is the contract's own
-							// test for a structural boundary, so it takes the role with the
-							// 3:1 floor rather than the decorative one with no floor.
-							"relative rounded-frame border border-control bg-surface text-ink break-words",
-							isSmallView ? "max-w-[92%] px-3 py-2" : "max-w-[75%] px-4 py-3",
+							// THE FILL IS THE BOUNDARY, NOT AN OUTLINE (D10).
+							//
+							// This carried `border-control`, chosen because a border was the
+							// only edge the design contract would let this block take - it is
+							// the role with the 3:1 floor, and removing the edge looked like
+							// losing the one thing that said which speaker was which. Frames
+							// say otherwise. The bubble sits on a `canvas` column and takes
+							// the `surface` ground, a +2.53 to +5.0 L* step across the
+							// palettes (median 3.54, §B3), and the block is ALSO an aside by
+							// its own width (§D2), narrower than the prose beside it: a fill
+							// plus a narrower width is a boundary twice over. The rule on top
+							// of them was the third and loudest mark on the quietest object
+							// in the transcript, and where `control` is dark it read as an
+							// outline drawing rather than as a message. Branding §5's own
+							// rule is to remove a border before tightening spacing.
+							//
+							// `max-w-[85%]` of the 640 column is 544px (§D2), so the block
+							// reads as an aside by width and never needs a cap on its TEXT
+							// (branding §7 - the block's own width is what caps it). Padding
+							// is 12px inline and 10px block; `rounded-frame` is the ramp's
+							// 10px step, unchanged.
+							"relative rounded-frame bg-surface text-ink break-words",
+							/*
+							 * The ONE border a bubble takes, and only while it is the message §F3's
+							 * line is about: `a danger 1px leading edge` on the block. D10 removed the
+							 * resting border because the fill is the boundary; this is not a resting
+							 * state, it is the failure state, and the edge is the second signal that
+							 * belongs to the message rather than to a paragraph about it.
+							 */
+							undelivered !== null && "border-l border-danger",
+							isSmallView
+								? "max-w-[92%] px-3 py-2.5"
+								: "max-w-[85%] px-3 py-2.5",
 						)}
 					>
 						{/*
@@ -431,7 +521,22 @@ const UserRow = memo(function UserRow({
 						 * `markdown.css`'s measure comment carries the report and the numbers, and
 						 * the rule that also keeps a cap off the agent's answer.
 						 */}
-						<div className={cn("relative")}>
+						<div
+							ref={bodyRef}
+							className={cn(
+								"relative",
+								/*
+								 * Eight lines of `text-body` at 1.55 is 8 x 21.7 = 174px (D2).
+								 *
+								 * The clamp is on the BLOCK, because a pasted stack trace is
+								 * still one user turn and would otherwise own the pane - and
+								 * the affordance below is rendered only when the clamp is
+								 * actually hiding something, so a turn that fits never grows a
+								 * control that reveals nothing.
+								 */
+								!expanded && clamped ? "max-h-[174px] overflow-hidden" : "",
+							)}
+						>
 							{/* The quote a quoted turn was sent with, rendered as the same
 							    recessed block the composer stages it in - the reader sees one
 							    idiom for "this is quoted" whether it is pending or sent. */}
@@ -449,6 +554,25 @@ const UserRow = memo(function UserRow({
 								content={remainingContent}
 								credentialCitations
 							/>
+							{clamped && (
+								/*
+								 * A 30px full-width row INSIDE the block, with no divider
+								 * (D2, the Raycast idiom): the clamp and its release are one
+								 * object, so the release sits on the block's own ground
+								 * rather than behind a rule between them.
+								 */
+								<button
+									type="button"
+									onClick={() => setExpanded((value) => !value)}
+									aria-expanded={expanded}
+									className={cn(
+										"mt-1 h-[30px] w-full text-center text-ink-muted text-meta",
+										"hover:text-ink",
+									)}
+								>
+									{expanded ? "Show less" : "Show more"}
+								</button>
+							)}
 							{record.images.length > 0 && (
 								<div className={cn("mt-2 flex flex-col gap-2")}>
 									{record.images.map((image, index) => (
@@ -490,13 +614,63 @@ const UserRow = memo(function UserRow({
 					)}
 				</div>
 				{/*
-				 * One stamp per turn, always visible (the operator's request). The
-				 * record's own `ts` is the moment the message was sent, which the
-				 * reducer sets from the owner's frame rather than from paint time -
-				 * § 7's "rows are placed by the time they carry, never by the moment
-				 * the reader happened to see them".
+				 * §F3's LINE, ONE ROW UNDER THE BLOCK IT IS ABOUT.
+				 *
+				 * The sentence is fixed rather than backend-authored: what the app KNOWS
+				 * is that the owner's transcript does not hold this message (or that the
+				 * claim is still open), and both cases are the same instruction to the
+				 * reader - send it again, or take it back to edit. Nothing on the wire
+				 * separates "refused" from "the response was lost" from "the daemon was
+				 * gone", so the line states the one fact every one of them shares.
+				 *
+				 * NO LIVE REGION: the strip owns the connection's one live region and the
+				 * composer states the Send gate; a third announcement of one press is the
+				 * duplication this round removes, and the two controls are ordinary
+				 * buttons the reader reaches by reading the line.
+				 *
+				 * `data-undelivered` is the rig's address for the line
+				 * (`scripts/renderer-driver.mjs`'s `connection-drop` scene reads it), the
+				 * same structural-marker rule the archive lane follows.
 				 */}
-				<TurnTimestamp timestamp={record.ts} scope="turn" />
+				{undelivered !== null && (
+					<div
+						data-undelivered
+						className={cn(
+							"flex w-full items-center justify-end gap-3 text-danger text-meta",
+						)}
+					>
+						<span className={cn("flex items-center gap-1")}>
+							<CircleAlert
+								aria-hidden="true"
+								className={cn("size-3.5 shrink-0")}
+							/>
+							Not delivered
+						</span>
+						<button
+							type="button"
+							className={cn("cursor-pointer underline")}
+							onClick={undelivered.onSendAgain}
+						>
+							Send again
+						</button>
+						<button
+							type="button"
+							className={cn("cursor-pointer underline")}
+							onClick={undelivered.onEdit}
+						>
+							Edit
+						</button>
+					</div>
+				)}
+				{/*
+				 * NO STAMP UNDER THE USER'S BLOCK (§D1; design round 1, D7). The turn's
+				 * one stamp is on its foot line (§E3), at the end of the agent's answer,
+				 * where it dates the exchange rather than one side of it: six stamp lines
+				 * in one 1380 viewport - one under every user block and one under every
+				 * answer - were a third of the rhythm problem the round measured. The
+				 * moment the message was sent is still in the record (`record.ts`), and
+				 * the foot's stamp is read from the reducer's frame time the same way.
+				 */}
 			</div>
 		</MessageContainer>
 	);
@@ -505,14 +679,15 @@ const UserRow = memo(function UserRow({
 const AssistantRow = memo(function AssistantRow({
 	record,
 	isSmallView,
-	showAvatar,
 	closesTurn,
+	foot = null,
 	conversationId,
 }: {
 	record: Extract<TranscriptRecord, { kind: "assistant" }>;
 	isSmallView: boolean;
-	showAvatar: boolean;
 	closesTurn: boolean;
+	/** §E3's foot line data, on the row that closes the turn. */
+	foot?: TurnFoot | null;
 	conversationId?: string;
 }) {
 	const turnRef = useRef<HTMLDivElement>(null);
@@ -546,11 +721,7 @@ const AssistantRow = memo(function AssistantRow({
 	if (!paintsSomething(record)) return null;
 	const refused = record.stopReason === "refusal" || record.error;
 	return (
-		<MessageContainer
-			isUser={false}
-			isSmallView={isSmallView}
-			showAvatar={showAvatar}
-		>
+		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			{/*
 			 * No measure class here. The answer takes the full row content box, which
 			 * is the box `ToolRow` resolves against, so prose and ledger in one turn
@@ -668,8 +839,104 @@ const AssistantRow = memo(function AssistantRow({
 			 * is where that is checked; see `docs/evidence/chat-tool-rows/README.md`).
 			 */}
 			{closesTurn && (
-				<div className={cn("mt-1")}>
-					<TurnTimestamp timestamp={record.ts} scope="answer" />
+				/*
+				 * THE TURN-FOOT LINE (§E3), and the one line D9 leaves behind.
+				 *
+				 * `Worked for 1m 12s · 8 actions · 1 failed`, at the turn's own left edge,
+				 * with the stamp at the far end. It REPLACES the per-message and
+				 * per-tool-group stamps the transcript used to carry: D9 found those were
+				 * about a third of a long thread's vertical run, and they said nothing the
+				 * foot does not say once.
+				 *
+				 * THE FAILURE COUNT IS A CONTROL (U14, Cursor 3's `3 Files Edited -
+				 * Review`): it opens the first failed row and scrolls to it, which is the
+				 * only route from "something failed" to the thing that failed without
+				 * reading the run. It resolves its row INSIDE the transcript it is drawn in
+				 * (`closest`, not a document-wide query) so a canvas pane rendering the
+				 * same record cannot be the one that opens, and it opens that row's
+				 * disclosure BEFORE scrolling - the detail is what the reader came for, and
+				 * landing on a closed row would make the jump a second click.
+				 */
+				<div className={cn("mt-1 flex items-center gap-2 text-meta")}>
+					{foot && foot.actions > 0 && (
+						<>
+							<span className={cn("text-ink-dim")}>
+								{foot.durationS !== null
+									? `Worked for ${formatDuration(foot.durationS)}`
+									: "Worked"}
+							</span>
+							<span aria-hidden={true} className={cn("text-ink-dim")}>
+								·
+							</span>
+							<span className={cn("text-ink-dim")}>
+								{foot.actions === 1 ? "1 action" : `${foot.actions} actions`}
+							</span>
+							{foot.failed > 0 && (
+								<>
+									<span aria-hidden={true} className={cn("text-ink-dim")}>
+										·
+									</span>
+									<button
+										type="button"
+										onClick={(event) => {
+											const failedId = foot.firstFailedId;
+											if (!failedId) return;
+											const root =
+												event.currentTarget.closest(
+													"[data-lo-transcript-content]",
+												) ?? document;
+											/*
+											 * Open the fold that holds the failed row first: a
+											 * collapsed fold has unmounted its rows, so the row is not
+											 * in the DOM to be found until its fold is open (U14's
+											 * jump, into the §E2 fold). The fold's own trigger is the
+											 * first `aria-expanded` button inside its wrapper.
+											 */
+											const fold = [
+												...root.querySelectorAll<HTMLElement>(
+													"[data-fold-ids]",
+												),
+											].find((node) =>
+												(node.dataset.foldIds ?? "")
+													.split(" ")
+													.includes(failedId),
+											);
+											const foldTrigger = fold?.querySelector(
+												'button[aria-expanded="false"]',
+											);
+											if (foldTrigger instanceof HTMLElement)
+												foldTrigger.click();
+											/*
+											 * One frame later, once React has committed the opened
+											 * fold's rows: then the failed row exists, its own detail
+											 * opens, and it is scrolled to the centre.
+											 */
+											window.requestAnimationFrame(() => {
+												const target = root.querySelector(
+													`[data-record-id="${failedId}"]`,
+												);
+												if (!(target instanceof HTMLElement)) return;
+												const trigger = target.querySelector(
+													'button[aria-expanded="false"]',
+												);
+												if (trigger instanceof HTMLElement) trigger.click();
+												target.scrollIntoView({
+													block: "center",
+													behavior: prefersReducedMotion() ? "auto" : "smooth",
+												});
+											});
+										}}
+										className={cn("font-medium text-danger hover:underline")}
+									>
+										{foot.failed === 1 ? "1 failed" : `${foot.failed} failed`}
+									</button>
+								</>
+							)}
+						</>
+					)}
+					<span className={cn("ml-auto")}>
+						<TurnTimestamp timestamp={record.ts} scope="answer" />
+					</span>
 				</div>
 			)}
 		</MessageContainer>
@@ -698,15 +965,20 @@ const AssistantRow = memo(function AssistantRow({
 const ToolRow = memo(function ToolRow({
 	record,
 	isSmallView,
-	showAvatar,
-	nameColumn,
 	scope,
+	labelPending = false,
+	labelHoldLate = false,
+	labelMarked = false,
 }: {
 	record: Extract<TranscriptRecord, { kind: "tool" }>;
 	isSmallView: boolean;
-	showAvatar: boolean;
-	nameColumn: number;
 	scope: AttachmentScope | null;
+	/** The row's first label read is in flight: hold the stand-in back. */
+	labelPending?: boolean;
+	/** The held column has outlived `LABEL_HOLD_MARK_MS`. */
+	labelHoldLate?: boolean;
+	/** A refusal ended this row's hold: the mark stands in the hold's place. */
+	labelMarked?: boolean;
 }) {
 	const running = record.phase !== "done";
 	const composing = record.phase === "composing";
@@ -762,9 +1034,18 @@ const ToolRow = memo(function ToolRow({
 	// exists to create, lost — so the OUTPUT's first line stands in. It is a
 	// weaker fact than the arguments (it says what came back rather than what
 	// was asked) and it is deliberately second choice, but it beats a void.
+	//
+	// EXCEPT while the read that will find the arguments is still in flight
+	// (`labelPending`): a joiner's seeded rows all start argument-less, and on
+	// the first frame the stand-in is not a weaker fact but a wrong-looking one
+	// — `bash  … {"text": 200, …` reads as the command that ran. An empty column
+	// is the honest frame while that read is genuinely outstanding — it ends with
+	// the first request's answer or after `LABEL_HOLD_MAX_MS`, whichever comes
+	// first — and then the row either has its arguments or falls back to the
+	// stand-in as before.
 	const derived =
 		!composing && isBareToolName(summary, record.toolName)
-			? outputFallbackLine(record.output)
+			? outputFallbackLine(record.output, labelPending)
 			: null;
 	/*
 	 * The TUI's body-selection case 2 (`_build_content`, tool_card.py:1928-1939):
@@ -804,7 +1085,9 @@ const ToolRow = memo(function ToolRow({
 		 */
 		<div
 			className={cn(
-				"w-full rounded-sm border border-hairline bg-sunken p-3 font-mono text-mono-sm",
+				// The detail block's own treatment (§E5, D9): `sunken`, radius 10,
+				// no border.
+				"w-full rounded-md bg-sunken p-3 font-mono text-mono-sm",
 			)}
 			data-detail-section="not-run"
 		>
@@ -825,61 +1108,17 @@ const ToolRow = memo(function ToolRow({
 		/>
 	) : undefined;
 	/*
-	 * The stamp at the foot of the EXPANDED section, and the reason it is a
-	 * sibling of the body rather than a line inside `ToolDetail`.
+	 * The disclosure's body, and nothing else.
 	 *
-	 * The operator asked for the time "at the bottom right of the expanded
-	 * section", and the expanded section is this composition — the arguments or
-	 * the diff, then the result — not the pane component alone. Both body shapes
-	 * get the stamp from here: a settled `write`/`edit` whose expansion is the
-	 * DIFF (`isDiffBodyRow`) never mounts `ToolDetail` at all, so a stamp handled
-	 * inside the pane would be missing from exactly the rows whose payload is
-	 * longest and whose time is most worth knowing.
-	 *
-	 * It is also the only placement that survives the pane's own scrolling.
-	 * `ToolDetail`'s two sections are each their own `overflow-auto` box with a
-	 * `detailOverflowLabel` report under them, and that report is deliberately
-	 * OUTSIDE its scroller so it stays true at rest; anything INSIDE the pane is
-	 * scrolled away at rest on a long payload, which is a stamp that is not "at
-	 * the bottom of the expanded section" for the rows that most need one. Below
-	 * the pane there is nothing to scroll: the stamp is on screen the moment the
-	 * row opens, with the last line that is true of the payload immediately above
-	 * it.
-	 *
-	 * The air above it is the disclosure content's own `gap-2`
-	 * (`shared/components/ui/disclosure.tsx`), which is the one spacing the shared
-	 * idiom owns; the stamp takes the rhythm of the section it sits in rather than
-	 * adding a margin of its own. Its right edge is the pane's, because both are
-	 * in the same indented column.
-	 *
-	 * A COLLAPSED row has no body at all — `hasDetail`/`isDiffBodyRow` return
-	 * false and the ledger row renders its disabled branch, which structurally
-	 * cannot render children — so a run of twenty calls stays twenty quiet lines
-	 * with no stamps. That quiet is what the hover-only model was protecting, and
-	 * it is why the stamp lives inside the disclosure instead of under every row.
+	 * A stamp used to sit at the foot of this section, placed as a sibling of the
+	 * body so that it survived the pane's own scrolling. D9 deletes it: the stamp
+	 * belongs to the TURN (one line, at the turn's foot), never to a tool group, and
+	 * a run of twenty calls therefore stays twenty quiet lines with no clocks. The
+	 * rows that expanded by default were the ones carrying the loudest, longest
+	 * payloads, so the stamp was appearing on exactly the rows where the ledger's
+	 * quiet mattered most.
 	 */
-	const details = body ? (
-		<>
-			{body}
-			{/*
-			 * `pr-4` is the row's own meta column, and it is what keeps a ledger row to
-			 * ONE right edge. The disclosure's trigger is `w-full` inside a box that also
-			 * carries `-mx-2 px-2` (`trace/tool-row.tsx`), and that negative margin bleeds
-			 * on the LEFT only, so the trigger's box ends 8px short of the row and its own
-			 * `px-2` puts the duration 8px further in again - 16px in total, measured at
-			 * 1074 against the row's 1090 at 1280 and 364 against 380 at 420, in both
-			 * palettes. The pane and the disclosure content column both reach the row's
-			 * true edge, so without this the stamp sat 16px right of the duration one line
-			 * above it: two right edges inside one card (design round 1, D2). The stamp
-			 * moves onto the meta column rather than the trigger growing, because the
-			 * trigger's bleed is what the row's hover ground is drawn from and restyling
-			 * that ground is a different change from this one.
-			 */}
-			<div className={cn("flex justify-end pr-4")}>
-				<TurnTimestamp timestamp={record.ts} scope="tool" />
-			</div>
-		</>
-	) : undefined;
+	const details = body ? <>{body}</> : undefined;
 	// Screenshots sit under the row and OUTSIDE the disclosure, which is where
 	// the TUI mounts them. Hiding a picture behind a toggle is the complaint
 	// being fixed, not a smaller version of it.
@@ -901,15 +1140,22 @@ const ToolRow = memo(function ToolRow({
 			</div>
 		) : undefined;
 	return (
-		<MessageContainer
-			isUser={false}
-			isSmallView={isSmallView}
-			showAvatar={showAvatar}
-		>
+		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<ToolLedgerRow
 				toolName={record.toolName}
 				summary={summary}
 				summaryFallback={derived}
+				summaryHold={
+					/*
+					 * TWO WAYS THE MARK STANDS (round 4). The hold has outlived
+					 * `LABEL_HOLD_MARK_MS` with no answer (design round 2, D6), OR a refusal
+					 * ended the row's hold and left the question open - no read in flight, but a
+					 * round ending may still name the call, so the output must not be stated in
+					 * the meantime. Both render the same glyph, and both give way to the command.
+					 */
+					labelMarked === true ||
+					(labelPending === true && labelHoldLate === true)
+				}
 				outcome={
 					notRun
 						? "not-run"
@@ -925,7 +1171,6 @@ const ToolRow = memo(function ToolRow({
 				startedAt={record.startedAt}
 				added={record.added}
 				removed={record.removed}
-				nameColumn={nameColumn}
 				details={details}
 				media={media}
 			/>
@@ -1058,6 +1303,23 @@ const NoticeRow = memo(function NoticeRow({
 					) : undefined
 				}
 			/>
+			{/*
+			 * The backend's "No model provider is configured yet" notice names a
+			 * Settings path to type out (design D7). The sentence is kept -- it is
+			 * the backend's -- and gains the action it describes, which opens the
+			 * connect dialog over this conversation instead of navigating away.
+			 */}
+			{NO_PROVIDER_NOTICE.test(record.text) ? (
+				<div className="mt-1 pl-6">
+					<Button
+						variant="secondary"
+						size="sm"
+						onClick={() => useConnectProviderStore.getState().openConnect()}
+					>
+						Connect a provider
+					</Button>
+				</div>
+			) : null}
 		</MessageContainer>
 	);
 });
@@ -1097,44 +1359,30 @@ const NoticeRow = memo(function NoticeRow({
 const PeerRow = memo(function PeerRow({
 	record,
 	isSmallView,
-	showAvatar,
-	nameColumn,
 }: {
 	record: Extract<TranscriptRecord, { kind: "peer" }>;
 	isSmallView: boolean;
-	showAvatar: boolean;
-	nameColumn: number;
 }) {
 	const detail = peerHasDetail(record.sender, record.body);
 	if (!detail) {
 		return (
-			<MessageContainer
-				isUser={false}
-				isSmallView={isSmallView}
-				showAvatar={showAvatar}
-			>
+			<MessageContainer isUser={false} isSmallView={isSmallView}>
 				<ToolLedgerRow
 					toolName="peer"
 					summary={peerSummary(record.sender, record.body)}
 					outcome="receipt"
 					durationS={null}
-					nameColumn={nameColumn}
 				/>
 			</MessageContainer>
 		);
 	}
 	return (
-		<MessageContainer
-			isUser={false}
-			isSmallView={isSmallView}
-			showAvatar={showAvatar}
-		>
+		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<ToolLedgerRow
 				toolName="peer"
 				summary={peerSummary(record.sender, record.body)}
 				outcome="receipt"
 				durationS={null}
-				nameColumn={nameColumn}
 				details={
 					// `px-3` puts this body on the SAME text rail as the pane above it:
 					// a tool expansion's border sits on the glyph rail and its text is
@@ -1200,27 +1448,18 @@ const PeerRow = memo(function PeerRow({
 const WakeRow = memo(function WakeRow({
 	record,
 	isSmallView,
-	showAvatar,
-	nameColumn,
 }: {
 	record: Extract<TranscriptRecord, { kind: "wake" }>;
 	isSmallView: boolean;
-	showAvatar: boolean;
-	nameColumn: number;
 }) {
 	const prompt = wakePromptBody(record.text);
 	return (
-		<MessageContainer
-			isUser={false}
-			isSmallView={isSmallView}
-			showAvatar={showAvatar}
-		>
+		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<ToolLedgerRow
 				toolName="wake"
 				summary={wakeReceiptHeadline(record.text)}
 				outcome="receipt"
 				durationS={null}
-				nameColumn={nameColumn}
 				details={
 					prompt ? (
 						// `px-3`: the same content rail as every other expanded body in the
@@ -1243,18 +1482,72 @@ const WakeRow = memo(function WakeRow({
 /** Development row-render counter; read by the perf readout below. */
 const rowRenderCount = { current: 0 };
 
+/**
+ * A fold's first row, redrawn at the trace tier: the fold wrapper carries the
+ * gap the row arrived with (D8), so the row inside must not carry it twice.
+ *
+ * CACHED PER ROW OBJECT, because `TranscriptRow` is memoised on its `row` prop
+ * and `buildRows` hands back the SAME row object for an untouched record - a
+ * fresh `{...row}` on every render would re-render every fold's first row on
+ * every streamed token, which is the per-delta cost `buildRows`' reuse exists
+ * to remove. A `WeakMap` lets the copy die with the row it was made from.
+ */
+const traceTierRows = new WeakMap<Row, Row>();
+const atTraceTier = (row: Row): Row => {
+	if (row.gap === "trace") return row;
+	let copy = traceTierRows.get(row);
+	if (!copy) {
+		copy = { ...row, gap: "trace" };
+		traceTierRows.set(row, copy);
+	}
+	return copy;
+};
+
 const TranscriptRow = memo(function TranscriptRow({
 	row,
 	isSmallView,
-	nameColumn,
 	scope,
 	conversationId,
+	/*
+	 * The fold onto `origin/main` that carried #490 (`fix(chat): label every
+	 * seeded tool row on open, and keep edit counts a stripped seed drops`) under
+	 * this redesign is why this component takes BOTH of these: `foot` is the
+	 * redesign's (§E3's per-turn foot line on the row that closes the turn) and
+	 * `labelPending` is #490's, which suppresses the output stand-in while the
+	 * read that will find a seeded call's arguments is still in flight. They are
+	 * independent facts about a row, so the fold is the union rather than a
+	 * choice - the same reason the inner `ToolRow` below still reads
+	 * `outputFallbackLine`, and why dropping this prop would silently restore the
+	 * bug #490 fixed (`bash  … {"text": 200…` drawn as if it were the command).
+	 */
+	foot = null,
+	labelPending = false,
+	undelivered = null,
+	labelHoldLate = false,
+	labelMarked = false,
 }: {
 	row: Row;
 	isSmallView: boolean;
-	nameColumn: number;
 	scope: AttachmentScope | null;
 	conversationId?: string;
+	/** The turn's own foot line, on the row that closes it (§E3). */
+	foot?: TurnFoot | null;
+	/**
+	 * §F3's per-message failure state, or null. ONE OBJECT FOR THE WHOLE LIST,
+	 * and every row but the one it names keeps the null it already had: the rows
+	 * are memoised, so a fresh object per row would re-render the transcript on
+	 * every paint (the same rule `labelPending` documents one line down).
+	 */
+	undelivered?: UndeliveredTurn | null;
+	/**
+	 * A BOOLEAN per row rather than the set: the rows are memoised, and handing
+	 * every row the set would re-render all of them each time one id settles.
+	 */
+	labelPending?: boolean;
+	/** The held column has outlived `LABEL_HOLD_MARK_MS`. */
+	labelHoldLate?: boolean;
+	/** A refusal ended this row's hold: the mark stands in the hold's place. */
+	labelMarked?: boolean;
 }) {
 	rowRenderCount.current += 1;
 	const { record } = row;
@@ -1267,6 +1560,7 @@ const TranscriptRow = memo(function TranscriptRow({
 					isSmallView={isSmallView}
 					scope={scope}
 					conversationId={conversationId}
+					undelivered={undelivered?.recordId === record.id ? undelivered : null}
 				/>
 			);
 			break;
@@ -1275,42 +1569,37 @@ const TranscriptRow = memo(function TranscriptRow({
 				<AssistantRow
 					record={record}
 					isSmallView={isSmallView}
-					showAvatar={row.showAvatar}
 					closesTurn={row.closesTurn}
+					foot={foot}
 					conversationId={conversationId}
 				/>
 			);
 			break;
 		case "tool":
 			body = (
+				/*
+				 * The redesign's `ToolRow` takes `record`, the two layout flags and
+				 * `labelPending`; main's `showAvatar`/`nameColumn` are NOT threaded
+				 * because the redesign replaced that row's anatomy (its verb/object
+				 * columns and the bubble's own app mark) and main's `nameColumn`
+				 * definition was already gone from this file's merge. `labelPending`
+				 * is the one prop #490 added that the new anatomy still needs.
+				 */
 				<ToolRow
 					record={record}
 					isSmallView={isSmallView}
-					showAvatar={row.showAvatar}
-					nameColumn={nameColumn}
 					scope={scope}
+					labelPending={labelPending}
+					labelHoldLate={labelHoldLate}
+					labelMarked={labelMarked}
 				/>
 			);
 			break;
 		case "peer":
-			body = (
-				<PeerRow
-					record={record}
-					isSmallView={isSmallView}
-					showAvatar={row.showAvatar}
-					nameColumn={nameColumn}
-				/>
-			);
+			body = <PeerRow record={record} isSmallView={isSmallView} />;
 			break;
 		case "wake":
-			body = (
-				<WakeRow
-					record={record}
-					isSmallView={isSmallView}
-					showAvatar={row.showAvatar}
-					nameColumn={nameColumn}
-				/>
-			);
+			body = <WakeRow record={record} isSmallView={isSmallView} />;
 			break;
 		default:
 			body = <NoticeRow record={record} isSmallView={isSmallView} />;
@@ -1375,10 +1664,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	missing = false,
 	attachmentScope,
 	conversationId,
+	labelPending,
+	undelivered = null,
+	labelHoldLate,
+	labelMarked,
 	onReconnect,
-	onAnswer,
-	answering = false,
-	answer = null,
 }) => {
 	// A crash-recovered outcome has no durable row of its own, so it is
 	// synthesized here rather than in the stream reducer: this is the layer that
@@ -1453,6 +1743,55 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		[rows, total, windowSize],
 	);
 	const hidden = total - visible.length;
+	/*
+	 * §E2's aggregation tier, and §E3's foot lines, computed over the SAME visible
+	 * rows the list renders. Both are pure (`trace-fold-model.ts`) because both are
+	 * arithmetic over the row list that a test can ask about without rendering a
+	 * transcript: which runs fold, what a fold says, and what a turn's foot reports.
+	 *
+	 * `isFoldable` is the tool ledger alone: `peer` and `wake` rows are RECEIPTS, not
+	 * actions (§E2 folds "actions"), and a receipt hidden inside a summary of work
+	 * would be a message the reader never saw.
+	 */
+	const rowGroups = useMemo(() => {
+		/*
+		 * The newest turn is the one after the last user row: a run in an OLDER turn
+		 * must not open itself because a LATER turn happens to be running.
+		 */
+		let lastUserIndex = -1;
+		for (let index = 0; index < visible.length; index += 1) {
+			if (visible[index].record.kind === "user") lastUserIndex = index;
+		}
+		const groups = foldRuns(visible, {
+			nameOf: (row) => ledgerName(row.record),
+			failedOf: (row) =>
+				row.record.kind === "tool" && row.record.isError === true,
+			durationOf: (row) =>
+				row.record.kind === "tool" ? row.record.durationS : null,
+			isFoldable: (row) => row.record.kind === "tool",
+		});
+		const firstIndexOf = new Map<string, number>();
+		visible.forEach((row, index) => firstIndexOf.set(row.record.id, index));
+		return groups.map((group) =>
+			group.kind === "run"
+				? {
+						...group,
+						isNewestTurn: (firstIndexOf.get(group.id) ?? 0) > lastUserIndex,
+					}
+				: group,
+		);
+	}, [visible]);
+	const feet = useMemo(
+		() =>
+			turnFeet(visible, {
+				failedOf: (row) =>
+					row.record.kind === "tool" && row.record.isError === true,
+				durationOf: (row) =>
+					row.record.kind === "tool" ? row.record.durationS : null,
+				isAction: (row) => row.record.kind === "tool",
+			}),
+		[visible],
+	);
 
 	/*
 	 * An empty transcript must not claim the column's free space - UNLESS the
@@ -1666,24 +2005,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		return () => window.clearInterval(timer);
 	}, [visible.length]);
 
-	// The shared name column: sized to the longest ledger name ON SCREEN, between
-	// the TUI's 8ch floor and 24ch ceiling. Derived from the visible window
-	// rather than the whole transcript, so scrolling to a run of `bash` rows
-	// does not keep paying for an `mcp__…` name a thousand rows back.
-	//
-	// A receipt row (`peer`, `wake`) is part of that measurement, not exempt from
-	// it: it sits on the same spine as the calls around it, and a name left out
-	// of the set would shift every other row's summary rail when it scrolled into
-	// view. `ledgerName` is the one place that decides which records have a name
-	// column at all.
-	const nameColumn = useMemo(
-		() =>
-			toolNameColumn(
-				visible.map((row) => ledgerName(row.record)).filter(Boolean),
-			),
-		[visible],
-	);
-
 	// What the working line says, and which phase it is timing. The derivation
 	// (and its copy contract, including the one branch this app drives from its
 	// own admitted send rather than from a frame) lives in
@@ -1860,9 +2181,31 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				 * interaction rather than a fix to this one, and nothing here needs it:
 				 * the walk it was proposed to remove is gone.
 				 */
+				data-chat-region="transcript"
+				data-region-entry
+				/*
+				 * §C4's third region, and the stop that was already here. The spec's landmark
+				 * name for it is `Conversation` (the three it lists are `Chats`,
+				 * `Conversation`, `Message composer`), shortened from `Conversation
+				 * transcript` because the region IS the transcript - the word was doing the
+				 * role's work twice.
+				 *
+				 * WHY NOT THE `<main>` AROUND IT: a region marker claims its element for the
+				 * `F6` walk on every route it renders on, and `<main>` is the shell's, drawn
+				 * for Settings and Agents too. The scroller exists only where there is a
+				 * conversation, which is exactly where this region exists.
+				 *
+				 * §C4 also asks for "arrow keys between turns" and that is deliberately NOT
+				 * built: the bare arrows are this scroller's own paging keys
+				 * (`use-scroll-paging.ts`'s `Home`/`ArrowUp`/`PageUp`/`ArrowDown` case), and
+				 * a keyboard-operable scroll region is a WCAG 2.1.1 requirement rather than a
+				 * preference - taking the arrows for a turn walk would trade one accessible
+				 * gesture for another. The transcript's own stop, which is the half the
+				 * finding is about, is here.
+				 */
 				tabIndex={transcript.records.length === 0 ? -1 : 0}
 				role="log"
-				aria-label="Conversation transcript"
+				aria-label={CHAT_REGION_LABEL.transcript}
 				// Only the `windowed` branch renders that id, so the description has to
 				// track the branch rather than the looser "history exists" condition it
 				// was derived from: `hasMore` with no hidden rows yields `idle`, whose
@@ -1889,6 +2232,15 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					// Reserving the gutter on both edges restores a symmetric content
 					// box: measured in the running app, the centre delta goes 4px -> 0.
 					// `stable` alone would reserve only the right edge and keep it.
+					//
+					// The mask that dissolves the top edge under the chat header is NOT a
+					// class here: it is a scroll-driven animation with a `@supports`
+					// fallback, which no utility can express, so it lives in
+					// `styles/index.css` keyed on `data-lo-canonical-transcript` - the
+					// attribute the transcript's own container already carries. A mask
+					// changes neither the box's size nor its layout, so the scroll
+					// region, the reserved gutter and the bottom anchor autoscroll reads
+					// are all as they were.
 					"relative flex w-full flex-col-reverse [scrollbar-gutter:stable_both-edges] will-change-[scroll-position] [overflow-anchor:auto] [transform:translateZ(0)]",
 					collapsed
 						? "h-0 grow-0 overflow-hidden p-0"
@@ -1977,12 +2329,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						 * about a conversation that no longer exists. It is NOT a retry:
 						 * retrying asks a question whose answer is about the session.
 						 */
-						<div
-							className={cn(
-								"mb-4 flex flex-col gap-2",
-								!isSmallView && AGENT_GUTTER,
-							)}
-						>
+						<div className="mb-4 flex flex-col gap-2">
 							{/*
 							 * `id` is what the refused composer points its `aria-describedby` at
 							 * (UX round 1, U3): this sentence is the pane's statement of WHY the box
@@ -2080,16 +2427,89 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						 * they had and nothing about their tree changes shape.
 						 */
 						<CanvasPaneProvider conversationId={conversationId}>
-							{visible.map((row) => (
-								<TranscriptRow
-									key={row.record.id}
-									row={row}
-									isSmallView={isSmallView}
-									nameColumn={nameColumn}
-									scope={mediaScope}
-									conversationId={conversationId}
-								/>
-							))}
+							{/*
+							 * THE ROWS, WITH §E2's AGGREGATION TIER APPLIED.
+							 *
+							 * `foldRuns` decides which consecutive actions become one summary
+							 * line, and it never reorders them: the fold is keyed by its FIRST
+							 * row, so it cannot claim a place ahead of the action that opens it,
+							 * and the rows inside it are the same `TranscriptRow`s with the same
+							 * ids in the same DOM - which is what keeps every `data-record-id`
+							 * lookup (the failure jump among them) working the same whether a
+							 * run happens to be folded or not.
+							 *
+							 * ONE THING THE FOLD NEEDS FROM MAIN THAT THE ROWS DO NOT CARRY THEMSELVES:
+							 * `labelPending` is a Set on this component and a BOOLEAN on the row,
+							 * resolved here for #490's reason (see `TranscriptRow`'s props). The
+							 * fold onto `origin/main` that brought #490 under this redesign removed
+							 * the `visible.map` this replaced, so the resolution is re-expressed at
+							 * the two call sites rather than kept as main's single one - and the
+							 * SAME treatment applies to #520's `labelHoldLate`/`labelMarked` pair:
+							 * the Set resolves against the row's own `toolCallId` at each call site,
+							 * so a held or mark-ended row states its column inside a fold exactly
+							 * as it would standing alone.
+							 */}
+							{rowGroups.map((group) =>
+								group.kind === "run" ? (
+									<TraceFold
+										key={group.id}
+										/*
+										 * The fold carries its first row's gap (a turn's 32px when
+										 * the run opens the turn), and every row inside it sits at
+										 * the trace tier - the fold holds the WHOLE run, D8.
+										 */
+										className={GAP[group.gap][isSmallView ? 1 : 0]}
+										recordIds={group.rows.map((row) => row.record.id)}
+										summary={group.summary}
+										actionCount={group.rows.length}
+										failedCount={group.failedCount}
+										durationS={group.durationS}
+										/* Expanded while the newest turn is IN FLIGHT, collapsed to
+										   the summary once it settles (§E2). */
+										openByDefault={working !== null && group.isNewestTurn}
+									>
+										{group.rows.map((row, index) => (
+											<TranscriptRow
+												key={row.record.id}
+												row={index === 0 ? atTraceTier(row) : row}
+												isSmallView={isSmallView}
+												scope={mediaScope}
+												conversationId={conversationId}
+												labelPending={
+													row.record.kind === "tool" &&
+													labelPending?.has(row.record.toolCallId) === true
+												}
+												labelHoldLate={labelHoldLate === true}
+												labelMarked={
+													row.record.kind === "tool" &&
+													labelMarked?.has(row.record.toolCallId) === true
+												}
+												foot={feet.get(row.record.id) ?? null}
+												undelivered={undelivered}
+											/>
+										))}
+									</TraceFold>
+								) : (
+									<TranscriptRow
+										key={group.row.record.id}
+										row={group.row}
+										isSmallView={isSmallView}
+										scope={mediaScope}
+										conversationId={conversationId}
+										labelPending={
+											group.row.record.kind === "tool" &&
+											labelPending?.has(group.row.record.toolCallId) === true
+										}
+										labelHoldLate={labelHoldLate === true}
+										labelMarked={
+											group.row.record.kind === "tool" &&
+											labelMarked?.has(group.row.record.toolCallId) === true
+										}
+										foot={feet.get(group.row.record.id) ?? null}
+										undelivered={undelivered}
+									/>
+								),
+							)}
 						</CanvasPaneProvider>
 					)}
 
@@ -2099,12 +2519,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						// takes slightly more than `trace` because it is the one row that
 						// is not a completed action, and slightly less than a turn
 						// boundary because the turn has not ended.
-						<div
-							className={cn(
-								GAP.item[isSmallView ? 1 : 0],
-								!isSmallView && AGENT_GUTTER,
-							)}
-						>
+						<div className={GAP.item[isSmallView ? 1 : 0]}>
 							<WorkingLine
 								activity={working.activity}
 								phase={working.phase}
@@ -2114,111 +2529,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						</div>
 					)}
 
-					{/* Tier 1: the pending gate is always last while it is actionable. */}
-					{gate && (
-						<div className={cn("mt-6", !isSmallView && AGENT_GUTTER)}>
-							<AgentQuestion
-								/*
-								 * The eyebrow says what is happening, and the options are disabled
-								 * for both halves of that: an answer on its way, and an answer this
-								 * gate already took (the hold). Binding the eyebrow to only the
-								 * second half of the options' own condition left the committed
-								 * in-flight story frame reading "Waiting for your answer" over a
-								 * card whose every option was disabled — two bindings, two
-								 * claims, one frame (design round 2, D7). The product switches
-								 * correctly on the live surface (UX round 2, U2, six samples over
-								 * a held window); the story drove `answering` and disagreed with
-								 * itself.
-								 */
-								busy={answering || Boolean(answer?.sending)}
-								content={
-									gate.detail
-										? `**${gate.title}**\n\n${gate.detail}`
-										: gate.title
-								}
-							/>
-							{gate.kind === "ask" && (
-								<AskOptions
-									options={gate.options}
-									recommended={gate.recommended}
-									requestId={gate.request_id}
-									// One answer in flight at a time, and the card holds itself
-									// disabled after a press until the gate itself moves: `admitting`
-									// is the composer's shared flag, and `answer` is this panel's own
-									// record that it already answered this gate.
-									busy={answering || answer !== null}
-									onAnswer={(label) => onAnswer?.(label)}
-								/>
-							)}
-							<p className="mt-2 text-ink-dim text-meta">
-								{gate.kind === "approval"
-									? /*
-										 * BOTH exits, because a parked card has two and used to
-										 * name one (UX round 1, U2). Escape aborts the WHOLE
-										 * turn - measured: the card clears, the turn ends
-										 * `aborted`, the transcript keeps no denial - so the
-										 * sentence promises the turn's stop exactly as the
-										 * composer's Stop control does. On a paired backend that
-										 * predates the control Escape does nothing, and the
-										 * composer says so while the turn runs; the card stays
-										 * unconditional rather than reading the capability a
-										 * second time, which is a copy decision the UX round can
-										 * revisit if the skew window ever outlives the fix.
-										 */
-										"Reply yes or no in the composer, or press Escape to stop the turn."
-									: /*
-										 * The hint names the new affordance first and keeps the
-										 * free-text path honest, because both are real: the
-										 * options are never guaranteed exhaustive (the terminal
-										 * card carries an explicit free-text row for exactly this
-										 * reason), and a `secret` ask renders no options at all,
-										 * where the composer is the only answer path.
-										 *
-										 * The digits are named because they work and nothing said
-										 * so: the card draws `1.` `2.` `3.` and typing one resolves
-										 * to that label, which is a shortcut a reader of the card
-										 * cannot otherwise discover. The TUI teaches its own
-										 * digits in a footer legend; this is the same sentence in
-										 * the one line this card has (UX round 1, U6).
-										 */
-										[
-											gate.question_total > 1
-												? `Question ${gate.question_index + 1} of ${gate.question_total}.`
-												: null,
-											/*
-											 * "type 1-9 and send", not "press 1-9": a digit on its own does
-											 * nothing. It is typed into the composer and only sending resolves
-											 * it, so the hint describes the two presses the shortcut actually
-											 * takes (UX round 2, U10).
-											 */
-											gate.options.length > 0
-												? "Choose an option, type 1-9 and send, or type your own answer below."
-												: "Type your answer below.",
-										]
-											.filter(Boolean)
-											.join(" ")}
-							</p>
-							{/*
-							 * A refused answer, on the card the press was made on.
-							 *
-							 * The round-1 finding was that a rejected press reported itself in
-							 * the composer's alert, in backend vocabulary ("this question is no
-							 * longer pending"), after the card it referred to had gone; and that
-							 * a second press repeated it because the card was still enabled
-							 * (QA round 1, Q3; UX round 1, U4). The sentence is outcome-first
-							 * and the card stays held, so there is nothing to press twice.
-							 *
-							 * `output`, not a `p` with `role="status"`: the element carries that
-							 * role implicitly, so the announcement survives without an ARIA
-							 * attribute restating what the tag already says.
-							 */}
-							{answer?.refused && (
-								<output className="mt-2 block text-body-sm text-danger">
-									{answer.refused}
-								</output>
-							)}
-						</div>
-					)}
+					{/*
+					 * NO GATE HERE. The pending question used to render as this list's
+					 * last item; it is DOCKED above the composer now (chat redesign §F1,
+					 * `trace/question-dock.tsx`), because an inline card is off-screen on a
+					 * long turn and the question is the one thing the agent is blocked on.
+					 * `gate` is still read above, by the working line: a pending question
+					 * outranks the wait line, and that decision is the pane's.
+					 */}
 
 					{/* No empty state here. The composer already owns it: it renders
 				    "What can I help you with today?" with the suggestion grid on

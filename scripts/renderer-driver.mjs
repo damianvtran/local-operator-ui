@@ -89,11 +89,18 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|none>
+ *   --scene <states|new-chat|first-send|connection-drop|sidebar-sections|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|none>
  *                          which built-in scene to run (default: states)
  *   --gate-state <label>   (with --scene settings-gate) what this run's backend
  *                          state is called in the frames and the log, so two
  *                          runs against two backends can be told apart
+ *   --integration-command <cmd> (with --scene settings-integrations) the stdio
+ *                          MCP server that scene adds through the form
+ *   --integration-args <a|b> (with --scene settings-integrations) that server's
+ *                          arguments, PIPE-separated, because the form takes one
+ *                          per line
+ *   --integration-url <url> (with --scene settings-integrations) the remote MCP
+ *                          server the scene adds through the form's URL mode
  *   --authoring-expect <refresh|stale>  (with --scene authoring-refresh) which
  *                          claim this run is in: `refresh` against a backend
  *                          whose feed publishes `authoring` frames, `stale`
@@ -108,6 +115,10 @@
  *                          LOCAL_OPERATOR_DESKTOP_TOKEN; the run asserts both
  *   --backend-records <dir> the serve record that backend wrote for itself, which
  *                          `discovery.ts` needs before it admits the daemon
+ *   --backend-revive <cmd> (with --scene connection-drop) the command that starts
+ *                          a fresh daemon on the --backend address, run with this
+ *                          process's environment when the scene needs the backend
+ *                          back. The token never enters argv
  *   --seed-onboarding-complete  write the scratch profile's onboarding flags, so a
  *                          fresh profile in front of a fresh backend is not a
  *                          first-run user whose six-step wizard is a modal over
@@ -132,6 +143,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import {
 	existsSync,
+	lstatSync,
 	mkdirSync,
 	readFileSync,
 	readdirSync,
@@ -142,6 +154,7 @@ import {
 	utimesSync,
 	writeFileSync,
 } from "node:fs";
+import { get as httpGet } from "node:http";
 import { createRequire } from "node:module";
 import { connect, createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -289,6 +302,17 @@ const BACKEND = argValue("--backend", null);
  * daemon was started with).
  */
 const BACKEND_RECORDS = argValue("--backend-records", null);
+/**
+ * The command that starts a fresh daemon on the `--backend` address, for
+ * `--scene connection-drop`'s reconnect half.
+ *
+ * A SHELL COMMAND AND NOT A PID, because a pid is what the scene takes FROM the
+ * run; what it needs back is the daemon, and only the lane that started the
+ * first one knows how (its scratch config root, its HOME, its serve flags). It
+ * runs with THIS process's environment, so the token and the scratch paths
+ * arrive the way they did for the first daemon and never travel through argv.
+ */
+const REVIVE_CMD = argValue("--backend-revive", null);
 /*
  * A suffix on every frame's file name, for a scene that is run twice against two
  * backends (`session-archive`'s withdrawn pair: the same app against a daemon
@@ -324,6 +348,42 @@ const TUI_PYTHON = argValue("--tui-python", null);
  */
 const THEME = argValue("--theme", null);
 /*
+ * The paged-catalogue evidence set (`docs/evidence/sidebar-lazy-chats`).
+ *
+ * `--scoped-case` names which of the stand-in's four arms this run is
+ * photographing; `LAZY_CATALOGUE_HEAD_PAGE` and `LAZY_GROUP_PAGE` MIRROR the
+ * app's own `CATALOGUE_HEAD_PAGE` and `CATALOGUE_GROUP_PAGE`
+ * (`canonical-sessions-store.ts`) because the driver is plain JS and cannot import
+ * them. They are not a second authority: every assertion that uses them is a
+ * NUMBER the store's own row count has to match, so a drift in either direction
+ * fails the run rather than moving the goalposts with it.
+ */
+const LAZY_CASE = argValue("--scoped-case", "paged");
+/*
+ * THE HOLD FILE the `loading` arm releases (round 2, D12). The stand-in holds every
+ * scoped answer while this file is absent, so the arm photographs a wait that is
+ * really in flight and then RELEASES it - no wall-clock window to hit.
+ */
+const LAZY_HOLD = argValue("--scope-hold", null);
+/**
+ * The two regexes this scene matches sentences with, at TOP LEVEL because the repository's
+ * lint rule says a regex literal inside a function is a per-call allocation (`biome`
+ * `useTopLevelRegex`), and this file is a long-running rig.
+ */
+const LAZY_ARCHIVED_SENTENCE = /archived/;
+const LAZY_NOT_A_WAIT_OR_EMPTINESS = /Loading chats…|No chats yet/;
+/** The theme the one light-theme frame is taken in (UX round 2: the set was dark-only). */
+const LAZY_LIGHT_THEME = "localOperatorLight";
+const LAZY_THEME = THEME ?? "localOperatorDark";
+const LAZY_GROUP = "lopdev";
+/** The stand-in's `lopdev` population at `--catalogue 120`. */
+const LAZY_GROUP_TOTAL = 70;
+const LAZY_CATALOGUE_TOTAL = 120;
+const LAZY_CATALOGUE_HEAD_PAGE = 50;
+const LAZY_GROUP_PAGE = 25;
+/** Long enough for the panel's own paint, short enough to stay an evidence run. */
+const LAZY_SETTLE_MS = 1800;
+/*
  * The title the search-only scene looks for, and it is a flag because the seeder owns the
  * order: `--generate N` writes its mtimes in sequence, so the oldest titles are the ones the
  * catalogue page drops. Defaulted to the first of that numbering.
@@ -346,6 +406,16 @@ const TUI_CONFIG = argValue("--tui-config", null);
  * question it does not ask.
  */
 const AUTHORING_EXPECT = argValue("--authoring-expect", "refresh");
+
+/**
+ * (with `--scene settings-integrations`) the stdio MCP server that scene adds
+ * through the form. Named by the caller because the rig's server is a file in a
+ * scratch tree, and an argument vector this script guessed would be a second
+ * place to keep it right.
+ */
+const INTEGRATION_COMMAND = argValue("--integration-command", null);
+const INTEGRATION_ARGS = argValue("--integration-args", "");
+const INTEGRATION_URL = argValue("--integration-url", null);
 /**
  * Seed the profile as an EXISTING user before the scene runs.
  *
@@ -394,6 +464,92 @@ const DRIVER_STAYED_OFF = /stayed off/;
 
 const SCRATCH_TAG = `lo-renderer-driver-${process.pid}`;
 const SCRATCH = join(tmpdir(), SCRATCH_TAG);
+
+/**
+ * How old an ABANDONED scratch tree has to be before this run reaps it.
+ *
+ * Deliberately far longer than any scene lasts (the longest measured run is minutes),
+ * because the age is the second of two guards and the cheap one has to be the pid: a
+ * tree that is dead by pid but younger than this is left alone, so a run that is merely
+ * between its own `mkdir` and its pid being observable - or one whose pid number has
+ * been reused by something unrelated - cannot be swept out from under it.
+ */
+const REAP_AFTER_MS = 30 * 60 * 1000;
+
+/** Whether a pid exists. `EPERM` means it exists and belongs to somebody else. */
+function pidIsAlive(pid) {
+	try {
+		process.kill(pid, 0);
+		return true;
+	} catch (error) {
+		return error?.code === "EPERM";
+	}
+}
+
+/**
+ * Reap the scratch trees previous runs left in the shared temp directory.
+ *
+ * WHY THE DRIVER DOES THIS AND NOT SOMETHING ELSE. `--clean` is opt-out, so a run that
+ * does not pass it keeps its tree by design (the frames and the app log live there); a
+ * run that is killed, or that crashes, keeps one without having chosen to. Measured on
+ * this machine on 2026-09-24: **244** `lo-renderer-driver-*` trees, 2-4 MB each, roughly
+ * 700 MB of the shared temp directory, with free space down to ~3 GiB and builds in
+ * neighbouring sessions failing on it. The driver is what made them, so the driver is
+ * what clears them - and it does it at START, before it adds one more.
+ *
+ * A LIVE PID IS NEVER TOUCHED, and neither is a young tree. That is the whole safety
+ * argument, and both halves are needed: this fleet runs ~25 sessions at once, where two
+ * driver runs overlapping is ordinary (so a name-only sweep would delete a peer's live
+ * tree mid-scene), and a dead pid number can be reused (so liveness alone, checked once,
+ * is not enough of a guard without the age).
+ *
+ * Unparseable names are left alone as well: `lo-renderer-driver-<pid>` is what this
+ * script makes, and a directory that merely looks like one is not this script's to
+ * delete.
+ *
+ * It reports what it removed - names, as a count and in full - for the reason this
+ * harness prints every path it redirects: a tool that tidies silently cannot be told
+ * apart from one that deletes the wrong thing.
+ */
+function reapAbandonedScratchTrees(root = tmpdir()) {
+	const removed = [];
+	let seen = 0;
+	let live = 0;
+	let young = 0;
+	for (const name of readdirSync(root)) {
+		if (!name.startsWith("lo-renderer-driver-") || name === SCRATCH_TAG)
+			continue;
+		const pid = Number(name.slice("lo-renderer-driver-".length));
+		if (!Number.isInteger(pid) || pid <= 0) continue;
+		seen++;
+		if (pidIsAlive(pid)) {
+			live++;
+			continue;
+		}
+		const path = join(root, name);
+		let stats = null;
+		try {
+			stats = statSync(path);
+		} catch {
+			// Gone between the listing and the stat: nothing to do, and not an error.
+			continue;
+		}
+		if (Date.now() - stats.mtimeMs < REAP_AFTER_MS) {
+			young++;
+			continue;
+		}
+		try {
+			rmSync(path, { recursive: true, force: true });
+			removed.push(name);
+		} catch {
+			// A tree that refuses to go (a permission quirk, a file still being written)
+			// is left for the next run rather than failing this one: the sweep is hygiene,
+			// not a precondition.
+		}
+	}
+	return { seen, live, young, removed };
+}
+
 const HOME_DIR = join(SCRATCH, "home");
 const CONFIG_DIR = join(SCRATCH, "config");
 const USER_DATA = join(SCRATCH, "userdata");
@@ -1370,9 +1526,186 @@ async function readUntil(reader, done, timeoutMs = 15_000) {
 	return last;
 }
 
+/*
+ * ---- the palette a frame's NAME claims ---------------------------------------
+ *
+ * WHY THIS IS HERE AND NOT IN THE SCENES (design round 2, D20; the same class as
+ * round 1's D4). Round 2 found six frames named `-dark` rendering the light
+ * palette, a `-light` frame rendering the dark one, and a "both palettes" pair
+ * that was one palette photographed twice. The mechanism is identical both
+ * rounds: a scene arranges the palette once per section and then captures
+ * several frames, so every frame after a theme change is shot in the palette the
+ * scene happened to be in rather than the one its name claims - and two of these
+ * were branch-dependent, so whether the set was right depended on which branch a
+ * run took. A scene-level correction holds until the next scene edits; the claim
+ * belongs to the frame's name, so the check lives at the capture every frame
+ * goes through.
+ *
+ * TWO READS, BECAUSE EACH CAN BE RIGHT WHILE THE OTHER IS WRONG. The DOM read
+ * (`data-theme` plus the painted `--lo-canvas`) says which palette the renderer
+ * is compositing; the PIXEL read says which palette reached the file a reviewer
+ * is handed. A theme the renderer took but did not paint, and a capture served
+ * from a stale frame, each satisfy one read and not the other - and the pixel
+ * read is the one that catches the failure this whole mechanism exists for.
+ *
+ * IT DOES NOT SELF-CORRECT, deliberately. Setting the theme from the label here
+ * is two lines and would make every frame true; it would also make this a check
+ * that cannot fail, which is the shape that let D4 and then D20 reach a reviewer
+ * while the runs reported clean. The scene is told its arrangement contradicts
+ * its name, at the frame, in the run, and fixes it there.
+ *
+ * THE SUFFIX IS THE CLAIM, which is this rig's convention across every scene
+ * (`sections-default-dark`, `strip-mark-light`). A name claiming no palette is a
+ * frame about a state, and there is nothing here to hold it to.
+ */
+const FRAME_PALETTE = {
+	dark: "localOperatorDark",
+	light: "localOperatorLight",
+};
+/*
+ * The GENERATED stylesheet, read rather than a palette written down here: a
+ * literal would be a second copy of the brand palettes that the next token change
+ * moves out from under, and this check would then fail on a correct frame. The
+ * generated file is the palettes' own artifact (`pnpm check-themes` keeps it in
+ * step with the registry), so the expectation moves with the thing it checks.
+ */
+const PALETTE_CSS = new URL(
+	"../src/renderer/src/styles/themes.generated.css",
+	import.meta.url,
+);
+
+/** The palette a frame's NAME claims, or `null` for a name that claims none. */
+function claimedPalette(label) {
+	const match = /-(dark|light)$/.exec(label);
+	return match === null ? null : match[1];
+}
+
+/** Rec. 709 luminance of an `#rrggbb`, 0-255. */
+function srgbLuma(hex) {
+	const value = Number.parseInt(hex.slice(1), 16);
+	return (
+		0.2126 * ((value >> 16) & 0xff) +
+		0.7152 * ((value >> 8) & 0xff) +
+		0.0722 * (value & 0xff)
+	);
+}
+
+/** Both palettes' own `--lo-canvas`, as `{ hex, luma }` each, or `null`. */
+function brandCanvas() {
+	const css = readFileSync(PALETTE_CSS, "utf8");
+	const out = {};
+	for (const [palette, theme] of Object.entries(FRAME_PALETTE)) {
+		const block = new RegExp(
+			`\\[data-theme="${theme}"\\][^{]*\\{([\\s\\S]*?)\\n\\}`,
+		).exec(css);
+		const hex =
+			block === null ? null : /--lo-canvas:\s*(#[0-9a-f]{6})\b/i.exec(block[1]);
+		if (hex === null) return null;
+		out[palette] = { hex: hex[1].toLowerCase(), luma: srgbLuma(hex[1]) };
+	}
+	return out;
+}
+
+/**
+ * The mean luminance of a captured frame, sampled across the whole picture.
+ *
+ * A MEAN RATHER THAN ONE PIXEL, because a single coordinate is a claim about the
+ * layout (something must be there) while the mean is a claim about the palette
+ * (nothing in a dark-palette screen can average light: the grounds cover most of
+ * it and ink is thin). Measured across the mislabelled set that bought this
+ * check: the six wrong `-dark` frames average 236.9-237.5 where the correct ones
+ * average 34.5-36.7, so the two populations are ~200 apart and the midpoint test
+ * below has ~100 of margin either side.
+ *
+ * `null` when `sharp` cannot be loaded. The pixel half is the stronger read, but
+ * the DOM half already discriminates this class (in D20's own frames the store
+ * said light while the name said dark), and a rig that cannot start without an
+ * optional dev dependency is worse than one that says which half it could not
+ * run.
+ */
+async function frameMeanLuma(file) {
+	let sharp;
+	try {
+		({ default: sharp } = await import("sharp"));
+	} catch {
+		return null;
+	}
+	const { data, info } = await sharp(file)
+		.raw()
+		.toBuffer({ resolveWithObject: true });
+	const channels = info.channels;
+	let sum = 0;
+	let sampled = 0;
+	/* Every 7th pixel: 394k samples of a 2760x1800 frame, which is 200x more than
+	 * the ~200-luma gap needs and keeps the decode off the run's critical path. */
+	for (let at = 0; at < data.length; at += channels * 7) {
+		sum += 0.2126 * data[at] + 0.7152 * data[at + 1] + 0.0722 * data[at + 2];
+		sampled += 1;
+	}
+	return sum / sampled;
+}
+
+/**
+ * Hold one captured frame to the palette its NAME claims, and say which half
+ * failed when it does not. Called by `capture()` and by the three capturing
+ * helpers on the frame they KEEP, so a `captureSettled` retry does not assert
+ * eight times over.
+ */
+async function assertFramePalette(cdp, frame, palette) {
+	const canvas = brandCanvas();
+	const painted = await cdp.evaluate(`(() => {
+		const root = document.documentElement;
+		return {
+			theme: root.getAttribute("data-theme"),
+			canvas: getComputedStyle(root).getPropertyValue("--lo-canvas").trim(),
+		};
+	})()`);
+	const mean = await frameMeanLuma(frame.path);
+	const own = canvas === null ? null : canvas[palette];
+	const other =
+		canvas === null ? null : canvas[palette === "dark" ? "light" : "dark"];
+	const domOk =
+		own !== null &&
+		painted.theme === FRAME_PALETTE[palette] &&
+		painted.canvas.toLowerCase() === own.hex;
+	/* Closer to its own palette's ground than to the other's: the midpoint test,
+	 * with the palettes supplying the numbers rather than a constant here. */
+	const pixelOk =
+		own !== null && mean !== null
+			? Math.abs(mean - own.luma) < Math.abs(mean - other.luma)
+			: null;
+	const ok = domOk && pixelOk !== false;
+	return check(
+		`${frame.label} draws the ${palette} palette its name claims`,
+		ok,
+		[
+			domOk
+				? null
+				: `DOM: data-theme=${painted.theme} --lo-canvas=${painted.canvas || "(unreadable)"}, expected ${FRAME_PALETTE[palette]} / ${own?.hex ?? "(palette unreadable)"}`,
+			pixelOk === false
+				? `PIXELS: the frame averages luma ${mean.toFixed(1)}, nearer the ${palette === "dark" ? "light" : "dark"} palette's ground (${other.luma.toFixed(1)}) than its own (${own.luma.toFixed(1)})`
+				: null,
+			mean === null
+				? "PIXELS: sharp is unavailable, so only the DOM half ran"
+				: null,
+		]
+			.filter(Boolean)
+			.join("; ") || undefined,
+		pixelOk === null
+			? `DOM ${painted.theme} ${painted.canvas}; pixels unavailable`
+			: `DOM ${painted.theme} ${painted.canvas}; mean luma ${mean.toFixed(1)} vs ${own.luma.toFixed(1)} own / ${other.luma.toFixed(1)} other`,
+	);
+}
+
 /** Capture a frame through the app's own `capturePage()`. */
-function capture(cdp, label) {
-	return cdp.evaluate(`window.__loDevDriver.capture(${JSON.stringify(label)})`);
+async function capture(cdp, label, { assertPalette = true } = {}) {
+	const frame = await cdp.evaluate(
+		`window.__loDevDriver.capture(${JSON.stringify(label)})`,
+	);
+	const palette = claimedPalette(label);
+	if (palette !== null && assertPalette)
+		await assertFramePalette(cdp, frame, palette);
+	return frame;
 }
 
 /**
@@ -1600,7 +1933,12 @@ async function captureSettled(cdp, label, { attempts = 8, gapMs = 150 } = {}) {
 	for (let attempt = 1; attempt <= attempts; attempt += 1) {
 		const clearance = await waitForNoToasts(cdp);
 		toastWaitMs += clearance.waitedMs;
-		frame = await capture(cdp, label);
+		/*
+		 * The palette is asserted BELOW, on the frame this helper KEEPS rather than on
+		 * each attempt: a retry is the same screen captured again, so eight identical
+		 * PASS lines would bury the reading that matters without adding one.
+		 */
+		frame = await capture(cdp, label, { assertPalette: false });
 		const bytes = readFileSync(frame.path);
 		// A toast that arrived while the frame was being taken is not this frame:
 		// the run throws the capture away and starts the comparison again.
@@ -1621,18 +1959,34 @@ async function captureSettled(cdp, label, { attempts = 8, gapMs = 150 } = {}) {
 		 * answers `undefined`, which is falsy and simply keeps waiting.
 		 */
 		if (previous?.equals(bytes)) {
-			return {
+			return await assertKeptFrame(cdp, {
 				...frame,
 				attempts: attempt,
 				stable: true,
 				toastFree,
 				toastWaitMs,
-			};
+			});
 		}
 		previous = bytes;
 		await wait(gapMs);
 	}
-	return { ...frame, attempts, stable: false, toastFree: false, toastWaitMs };
+	return await assertKeptFrame(cdp, {
+		...frame,
+		attempts,
+		stable: false,
+		toastFree: false,
+		toastWaitMs,
+	});
+}
+
+/**
+ * Assert the claimed palette on a frame a capturing helper is about to RETURN,
+ * and hand the same frame back so the helper reads as one expression.
+ */
+async function assertKeptFrame(cdp, frame) {
+	const palette = claimedPalette(frame.label);
+	if (palette !== null) await assertFramePalette(cdp, frame, palette);
+	return frame;
 }
 
 /**
@@ -1658,19 +2012,34 @@ async function captureWithToast(
 	let frame = null;
 	let text = null;
 	for (let attempt = 1; attempt <= attempts; attempt += 1) {
-		const captured = await capture(cdp, label);
+		const captured = await capture(cdp, label, { assertPalette: false });
 		const shown = await toastText(cdp).catch(() => null);
 		if (shown === null)
-			return { ...captured, attempts: attempt, stable: false, toastText: null };
+			return await assertKeptFrame(cdp, {
+				...captured,
+				attempts: attempt,
+				stable: false,
+				toastText: null,
+			});
 		frame = captured;
 		text = shown;
 		const bytes = readFileSync(captured.path);
 		if (previous?.equals(bytes))
-			return { ...captured, attempts: attempt, stable: true, toastText: text };
+			return await assertKeptFrame(cdp, {
+				...captured,
+				attempts: attempt,
+				stable: true,
+				toastText: text,
+			});
 		previous = bytes;
 		await wait(gapMs);
 	}
-	return { ...frame, attempts, stable: false, toastText: text };
+	return await assertKeptFrame(cdp, {
+		...frame,
+		attempts,
+		stable: false,
+		toastText: text,
+	});
 }
 
 /**
@@ -1690,12 +2059,14 @@ async function captureWithToast(
  * mechanism of the failure above.
  */
 async function captureToastPair(cdp, label) {
-	const first = await capture(cdp, label);
+	const first = await capture(cdp, label, { assertPalette: false });
 	const firstBytes = readFileSync(first.path);
 	const firstText = await toastText(cdp).catch(() => null);
-	const second = await capture(cdp, label);
+	const second = await capture(cdp, label, { assertPalette: false });
 	const secondText = await toastText(cdp).catch(() => null);
-	return {
+	/* The palette is asserted on the SECOND shot, which is the frame this helper
+	 * hands back: the first is the same file at the same screen one capture earlier. */
+	return await assertKeptFrame(cdp, {
 		...second,
 		stable:
 			firstText !== null &&
@@ -1703,7 +2074,7 @@ async function captureToastPair(cdp, label) {
 			firstBytes.equals(readFileSync(second.path)),
 		toastText: secondText,
 		firstToastText: firstText,
-	};
+	});
 }
 
 /** The text of the toast on screen, or `null` when there is none. */
@@ -2772,8 +3143,33 @@ async function sceneSessionArchive(cdp) {
 			`[data-session-archive] ${controlPresent ? "matched a control" : "matched nothing"}`,
 		);
 		await clickAt(cdp, '[aria-label="Search chats and agents"]');
+		/*
+		 * THE QUERY IS TYPED INTO A FIELD THAT HAS TO EXIST FIRST, and this step used
+		 * to assume one: `Input.insertText` delivers to whatever holds focus when it
+		 * arrives, the search field is drawn by the click's own state change, and on
+		 * this host the insert lands first often enough that the withdrawn run was
+		 * measuring a search that was never narrowed. Waited for by the field's own
+		 * role and label (the trigger and the field share the aria-label; only the
+		 * field is an `input`), then focused rather than assumed.
+		 */
+		await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector('input[aria-label="Search chats and agents"]'))`,
+			10_000,
+		);
+		await cdp.evaluate(
+			`document.querySelector('input[aria-label="Search chats and agents"]').focus()`,
+		);
 		await cdp.send("Input.insertText", { text: "notes" });
 		await wait(600);
+		const withdrawnQuery = await cdp.evaluate(
+			`document.querySelector('input[aria-label="Search chats and agents"]')?.value ?? null`,
+		);
+		check(
+			"the withdrawn run's query landed in the search field",
+			withdrawnQuery === "notes",
+			`the field reads ${JSON.stringify(withdrawnQuery)}, and every claim below is about a NARROWED panel`,
+		);
 		let togglePresent = true;
 		try {
 			await verb(cdp, "measure", {
@@ -2816,26 +3212,28 @@ async function sceneSessionArchive(cdp) {
 	 *    it - which is why the wait is the ceiling and not the arithmetic.
 	 */
 	/*
-	 * THE SECTION IS OPENED FIRST, and that is a precondition rather than a
-	 * convenience: `Previous chats` ships COLLAPSED, and a collapsed section draws no
-	 * rows at all - so the row this step hovers is not in the DOM until its heading has
-	 * been pressed. Measured 2026-09-21: without this, the step threw
-	 * `nothing matches [data-session-row="b3f1a09c7d52"] after 10000ms of waiting` on a
-	 * panel that was drawing the list correctly ("All chats 4", `Active chats` open,
-	 * `Previous chats` shut), which reads like a missing row and is a shut section. The
-	 * later steps that open the same section anyway (the refusal step below) now find it
-	 * already open, which is the same state they asked for.
+	 * THE ROW IS WAITED FOR, NOT A SECTION PRESSED (RE-BASED, measured against
+	 * the redesign): `Previous chats` no longer exists - the sidebar partitions
+	 * the list into the view popover's sections and none of them collapses - so
+	 * this scene threw `no Previous chats heading in the panel` at this line and
+	 * every frame below it was lost. What the step needs is the row, so it waits
+	 * for the row; the fixture's four conversations are under the first rung of
+	 * the page ladder, so no ladder press is owed here.
 	 */
-	await openSection(cdp, "Previous chats");
+	const longRow = '[data-session-row="b3f1a09c7d52"]';
+	await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(longRow)}) !== null`,
+		10_000,
+	);
 	/*
-	 * The expansion is a transition, so the row's box is read only after it settles:
-	 * hovering a box measured mid-expansion lands the pointer on a NEIGHBOUR, which is
-	 * a wrong-row read that looks like a wrong-row paint (measured 2026-09-21, before
-	 * this wait: the ground came back painted on the long row while the control's own
-	 * ancestry said the pointer was on `2d5ad5da0025`).
+	 * A settle wait is still owed: the row is read as a BOX below, and hovering
+	 * a box measured mid-paint lands the pointer on a NEIGHBOUR, which is a
+	 * wrong-row read that looks like a wrong-row paint (measured 2026-09-21,
+	 * before a wait like this existed: the ground came back painted on the long
+	 * row while the control's own ancestry said the pointer was on `2d5ad5da0025`).
 	 */
 	await wait(500);
-	const longRow = '[data-session-row="b3f1a09c7d52"]';
 	/*
 	 * THE ROW FIRST, THEN ITS CONTROL. The acts are `display`-switched (D3), so the row
 	 * is what reveals them; the pointer then moves ONTO the control, which is the state
@@ -2928,8 +3326,29 @@ async function sceneSessionArchive(cdp) {
 	 */
 	await parkPointer(cdp);
 	await clickAt(cdp, '[aria-label="Search chats and agents"]');
+	/* Same wait, same reason as the withdrawn run above: the field is a state change
+	   away from the click, and a query typed into nothing leaves the panel at rest -
+	   which is what made this scene's "not in the list while off" check pass
+	   vacuously and then threw on the include-archived control, whose own render
+	   rule is `archiveEnabled && query.trim()`. */
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('input[aria-label="Search chats and agents"]'))`,
+		10_000,
+	);
+	await cdp.evaluate(
+		`document.querySelector('input[aria-label="Search chats and agents"]').focus()`,
+	);
 	await cdp.send("Input.insertText", { text: "notes" });
 	await wait(600);
+	const typedQuery = await cdp.evaluate(
+		`document.querySelector('input[aria-label="Search chats and agents"]')?.value ?? null`,
+	);
+	check(
+		"the query landed in the search field",
+		typedQuery === "notes",
+		`the field reads ${JSON.stringify(typedQuery)}, and the toggle this scene clicks next is drawn only for a non-empty query`,
+	);
 	frames.push(await captureSettled(cdp, `search-off${RUN_LABEL}`));
 
 	let archivedBefore = true;
@@ -3056,16 +3475,18 @@ async function sceneSessionArchive(cdp) {
 	 */
 	await parkPointer(cdp);
 	/*
-	 * `previous` is OPENED first, and IDEMPOTENTLY: a collapsed section draws no rows,
-	 * and the row this step presses lives there (measured: the refusal step could not
-	 * find its control while the section was collapsed). It is `openSection`, which
-	 * reads the heading's `aria-expanded` and returns when it is already open, rather
-	 * than the toggle press it used to be - step 2 opens this section, so a blind toggle
-	 * here CLOSED it and the row went out of the DOM (measured 2026-09-21: `nothing
-	 * matches [aria-label='Archive "Migration checklist"']`).
+	 * THE ROW IS WAITED FOR, THE SAME RE-BASE AS STEP 2: `Previous chats` no
+	 * longer exists in this design (the sections do not collapse), so nothing is
+	 * opened - this step threw `no Previous chats heading in the panel` once the
+	 * step-2 throw was fixed. The wait is for the row the press below aims at;
+	 * the fixture's four conversations are under the ladder's first rung.
 	 */
-	await openSection(cdp, "Previous chats");
 	const claimedRow = "[aria-label='Archive “Migration checklist”']";
+	await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(claimedRow)}) !== null`,
+		10_000,
+	);
 	/*
 	 * THE ROW FIRST, THEN ITS CONTROL. The acts are `display`-switched (D3), so a
 	 * control addressed at rest has a 0x0 box: the pointer lands on the padding edge,
@@ -5791,24 +6212,16 @@ async function sceneRowSpace(cdp) {
 	);
 
 	/*
-	 * THE `Previous chats` SECTION IS COLLAPSED BY DEFAULT, and a scene that only
-	 * navigates therefore photographs a panel holding the pinned row and the
-	 * running one - measured here, and the reason this expansion is part of the
-	 * scene rather than of the fixture. It is opened with the reader's own gesture
-	 * through the section's own hook (`data-chat-section`), and only when it is
-	 * shut: a press on an open disclosure would close it.
+	 * THE ROWS ARE DRAWN, NOT REVEALED (RE-BASED, measured against the redesign):
+	 * this block used to press the `Previous chats` disclosure open, because on
+	 * main a collapsed section withheld three of this set's four rows. The redesign
+	 * replaced `Active chats` / `Previous chats` with the view popover's sections
+	 * and none of them collapses, so the rows are under the ladder's first rung
+	 * already and what this block owes the steps below is the wait for them -
+	 * which is what `drawAtLeast` is here.
 	 */
-	const previousOpen = await cdp.evaluate(
-		`(() => { const button = document.querySelector('[data-chat-section="previous"]'); return button ? button.getAttribute("aria-expanded") === "true" : null; })()`,
-	);
-	if (previousOpen === false) {
-		await clickAt(cdp, '[data-chat-section="previous"]');
-		await wait(500);
-	}
-	note(
-		"the Previous chats section",
-		previousOpen === true ? "was already expanded" : "expanded by this scene",
-	);
+	const rowsDrawn = await drawAtLeast(cdp, 4);
+	note("rows drawn before anything is photographed", String(rowsDrawn));
 
 	/*
 	 * OPEN A CONVERSATION BEFORE ANYTHING IS PHOTOGRAPHED, and both halves of this
@@ -5859,14 +6272,15 @@ async function sceneRowSpace(cdp) {
 	 * landed on a control labelled `Pin "..."` with `aria-pressed "false"` - four checks failing
 	 * against a state the instrument had moved, none of them about the layout or about the app.
 	 *
-	 * WHY THE RESTORE IS HERE RATHER THAN AT THE PRESS: an unpinned row leaves the `Pinned chats`
-	 * section for `Previous chats`, and that section is COLLAPSED by default - so immediately
-	 * after the press the row is not in the document at all (the press clause's own reading says
-	 * it: `"archivedAfter":"row-absent"`) and there is nothing to press. The expansion above is
-	 * what brings the row back, and the scene cannot avoid the press itself: U6's whole claim is a
-	 * press at the mark's resting centre. So the state the press moved is put back, the way the
-	 * offer step puts its own row back through the offer's Undo rather than leaving the list
-	 * emptied.
+	 * WHY THE RESTORE IS STILL HERE, RE-BASED: on main an unpinned row left the `Pinned chats` section
+	 * for `Previous chats` and that section was collapsed, so the row was genuinely absent after the
+	 * press (`"archivedAfter":"row-absent"` was the reading) until an expansion brought it back.
+	 * THIS DESIGN DRAWS EVERY SECTION - the row re-files into the flat list and stays in the
+	 * document - so the row is pressable the moment the press lands, and the restore is owed for
+	 * the reason it always was: U6's press may flip the pin, and the frames call this row PINNED.
+	 * The press itself is unavoidable - U6's whole claim is a press at the mark's resting centre -
+	 * so the state the press moved is put back, the way the offer step puts its own row back
+	 * through the offer's Undo rather than leaving the list emptied.
 	 *
 	 * THE PRESS IS AIMED THE WAY U6 INSISTS ON. The pointer goes on the row first (an unpinned
 	 * row's acts exist only once revealed), then the mark's own box is read twice with a settle
@@ -6910,6 +7324,1353 @@ async function sceneRowSpace(cdp) {
 	return [...frames, ...offerFrames];
 }
 
+/**
+ * The first send must not move the composer (§G2, §H), MEASURED and ASSERTED.
+ *
+ * WHY THIS IS AN ASSERTION NOW. The capture rig recorded the pair as a NOTE while
+ * the defect stood - `composer y393 -> y774` at 1380x900 and `y227 -> y474` at
+ * 800x600, the width unchanged - because the empty band centred the whole group
+ * (greeting, composer, chips) while a conversation anchors the composer at the
+ * foot. The band now docks the composer at its foot in both states, so the claim
+ * is a check: the composer box's x, y, width and height are the SAME before and
+ * after the first message, at whatever `--window-size` the run was started with
+ * (the two it is written about are 1380x900 and 800x600).
+ *
+ * WHAT IT DRIVES, and with which instrument. The launch lands on the empty state
+ * (`launchDraftSeed`), so the scene only has to reach `/chat`. The message is
+ * typed with CDP's own input pipeline (a trusted pointer press into the box, then
+ * `Input.insertText`) and sent with `Input.dispatchKeyEvent` Enter, so the send
+ * goes through the composer's real key handler. It requires `--backend`: with no
+ * backend the chat route draws its refusal surface and no composer mounts.
+ *
+ * The frames are captured FIRST and the boxes read after, for the reason the
+ * `floors` scene gives: `captureSettled` commits a frame only when two captures
+ * 150ms apart are identical, which is the proof the layout has stopped moving.
+ */
+async function sceneFirstSend(cdp) {
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	const composerSelector = '[data-tour-tag="chat-input-textarea"]';
+	const theme = THEME ?? "localOperatorDark";
+	await verb(cdp, "setTheme", theme);
+	await verb(cdp, "navigate", "/chat");
+	const mounted = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${composerSelector}') && document.querySelector('[data-lo-empty-mark]'))`,
+		30_000,
+	);
+	check(
+		"the chat route shows the empty state with a composer",
+		mounted.ok,
+		`composer + empty mark present: ${JSON.stringify(mounted.last)}`,
+	);
+	const size = `${WINDOW_WIDTH}x${WINDOW_HEIGHT}`;
+	const emptyFrame = await captureSettled(cdp, `first-send-${size}-empty`);
+	note("frame", JSON.stringify(emptyFrame));
+	const before = (await verb(cdp, "measure", composerSelector)).rect;
+	const stack = await cdp.evaluate(`(() => {
+		const el = document.querySelector('[data-lo-suggestion-stack]');
+		if (!el) return null;
+		const r = el.getBoundingClientRect();
+		return { y: Math.round(r.y), bottom: Math.round(r.bottom), chips: el.children.length };
+	})()`);
+	note("empty state", JSON.stringify({ composer: before, chips: stack }));
+	check(
+		"the chips sit ABOVE the docked composer (§H)",
+		stack === null || stack.bottom <= before.y,
+		`chips ${JSON.stringify(stack)} against composer y${before.y}`,
+	);
+	check(
+		"the composer is docked in the pane's lower half on the empty state",
+		before.y + before.height > WINDOW_HEIGHT * 0.6,
+		`composer y${before.y} h${before.height} in a ${WINDOW_HEIGHT}px window`,
+	);
+
+	await clickAt(cdp, `${composerSelector} textarea`);
+	await cdp.send("Input.insertText", { text: "Summarise yesterday's QA run." });
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	const sent = await waitForCondition(
+		cdp,
+		`(() => { const log = document.querySelector('[role="log"]'); return Boolean(log && log.textContent.includes("Summarise yesterday")) && !document.querySelector('[data-lo-empty-mark]'); })()`,
+		45_000,
+	);
+	check(
+		"the first message reached the transcript and the empty state is gone",
+		sent.ok,
+		`after ${sent.waitedMs ?? "?"}ms: ${JSON.stringify(sent.last)}`,
+	);
+	await wait(1500);
+	const sentFrame = await captureSettled(cdp, `first-send-${size}-sent`);
+	note("frame", JSON.stringify(sentFrame));
+	const after = (await verb(cdp, "measure", composerSelector)).rect;
+	/*
+	 * AND ONCE THE TURN HAS SETTLED: the mock provider answers, and the session's
+	 * readings (the model, the context) arrive with its first frames. Read so a
+	 * transient that only exists while the session is starting is told apart from a
+	 * settled layout that differs.
+	 */
+	const answered = await waitForCondition(
+		cdp,
+		`(() => { const log = document.querySelector('[role="log"]'); return Boolean(log && log.textContent.includes("from the mock provider")); })()`,
+		60_000,
+	);
+	await wait(1500);
+	const settledFrame = await captureSettled(cdp, `first-send-${size}-settled`);
+	note("frame", JSON.stringify(settledFrame));
+	const settled = (await verb(cdp, "measure", composerSelector)).rect;
+	note(
+		"composer box",
+		JSON.stringify({ before, after, settled, answered: answered.ok }),
+	);
+	check(
+		"the first send does not move the composer: its box is identical",
+		before.x === after.x &&
+			before.y === after.y &&
+			before.width === after.width &&
+			before.height === after.height,
+		`x${before.x} y${before.y} w${before.width} h${before.height} -> x${after.x} y${after.y} w${after.width} h${after.height}`,
+	);
+	check(
+		"the agent's answer arrived and the composer is still where it was",
+		answered.ok &&
+			before.x === settled.x &&
+			before.y === settled.y &&
+			before.width === settled.width &&
+			before.height === settled.height,
+		`answered=${answered.ok}; x${before.x} y${before.y} w${before.width} h${before.height} -> x${settled.x} y${settled.y} w${settled.width} h${settled.height}`,
+	);
+	/*
+	 * WHAT THIS DOES NOT COVER, measured: with NO provider configured the composer's
+	 * readings carry a `Choose a model` chip that leaves once the session starts, and
+	 * at 800x600 that chip wraps the readings onto their own line - the box is 32px
+	 * taller before the send than after (y442 h142 -> y474 h110). That is the readings
+	 * row changing its content, not the band moving the composer, so the run seeds the
+	 * mock provider (a configured user, which is the state the claim is about).
+	 */
+	return [emptyFrame, sentFrame, settledFrame];
+}
+
+/**
+ * THE DAEMON-KILL WALKER: the connection surfaces with the daemon gone, MID-RUN.
+ *
+ * WHY THIS SCENE EXISTS. Every connection-surface finding on the redesign was
+ * observed by a lane that killed its own serve daemon by hand and read the
+ * screen - four live regions and two Retries for one root cause (UX round 1,
+ * U3), a held message with no state on the message (U4), a reconnect that
+ * cleared nothing (U5) - and the scene that should have carried the fixes could
+ * not be written, because nothing in this harness could stop the daemon the run
+ * is pointed at. `--backend` hands the run a daemon somebody else started, and
+ * nothing held its pid. What this adds is that one capability and the readings
+ * it exists for:
+ *
+ *   - the pid comes from the run's OWN serve record (`--backend-records`, the
+ *     daemon's own file at `<config>/run/serve/<pid>.json`), and the kill is a
+ *     SIGTERM to that pid, scoped so it cannot reach another daemon: the
+ *     record's port must be `--backend`'s, its host must be loopback, and the
+ *     scene refuses outright on 1111, which is the operator's own daemon;
+ *   - the revive is `--backend-revive "<command>"` - the lane's own serve
+ *     command, run with THIS process's environment (where the scratch
+ *     HOME/config and the token live; the token never enters argv). The scene
+ *     watches `/health` and re-links the serve records, because a re-started
+ *     daemon is a fresh process with a fresh record, and the app admits a
+ *     daemon only while a record describes one.
+ *
+ * WHAT IT ASSERTS. With the daemon gone: ONE live region states the connection
+ * and ONE Retry control is on screen (U3b, §F2's "one root cause, one Retry").
+ * A message sent while offline carries §F3's state on the message itself
+ * (`Not delivered · Send again · Edit`) while the composer hands the payload
+ * back with its one notice (the two surfaces agent review round 4's R17
+ * restored side by side; the held-send gate it replaced is gone by design -
+ * design round 3's D27). A revived daemon resolves the claim from the
+ * server's own answer (U5, §F2's last bullet): the composer stops stating the
+ * failure and the message keeps its fate line, without a second voice.
+ *
+ * WHAT IT NEEDS: `--backend` pointing at a daemon this run owns - started with
+ * the scratch `config.yml` hosting step `docs/agent-driver.md` records, without
+ * which every turn dies 503 and the app's only symptom is an unanswered
+ * message - plus `--backend-records` for that daemon's record directory, and
+ * `--backend-revive` for the reconnect half. A run without `--backend-revive`
+ * takes the offline half and says so.
+ */
+function sceneConnectionDropRecords() {
+	const dir = BACKEND_RECORDS;
+	if (dir === null) return [];
+	const records = [];
+	for (const entry of readdirSync(dir)) {
+		if (!entry.endsWith(".json")) continue;
+		try {
+			records.push({
+				file: join(dir, entry),
+				record: JSON.parse(readFileSync(join(dir, entry), "utf8")),
+			});
+		} catch {
+			/*
+			 * A record that does not parse is SKIPPED rather than fatal: the daemon
+			 * rewrites its own file in place on a heartbeat, and a read that races
+			 * that write is a torn file, not a fact about the run.
+			 */
+		}
+	}
+	return records;
+}
+
+/**
+ * Link this run's serve records into the app's scratch config root.
+ *
+ * A LINK, NOT A COPY, and the difference decides whether the app admits this
+ * run's daemon at all. A serve record is a LIVING document: the real daemon
+ * rewrites it every `HEARTBEAT_INTERVAL_MS` (15s), and discovery classifies a
+ * record whose pid is alive and whose heartbeat is older than
+ * `HEARTBEAT_TIMEOUT_MS` (45s) as WEDGED - refusing both to attach to it and
+ * to spawn a second daemon over it. A copy taken once at launch therefore
+ * stops describing a daemon 45 seconds into the run, and from then on the app
+ * draws its "not attached" banners ACROSS THE FRAMES this rig exists to take.
+ *
+ * Measured, 2026-09-21, on a run whose scene outlives the timeout: every scan
+ * for the rest of the run logged `[discovery] rejected
+ * <config>/run/serve/<pid>.json: wedged (pid <pid> is alive but its heartbeat
+ * is 48s old)` and grew from there, while the stub two directories away was
+ * rewriting that same record every 5s. The link keeps the stub's own rewrites
+ * visible, which is what a record is for.
+ *
+ * CALLED TWICE ON PURPOSE since the connection-drop scene: once at startup, and
+ * again after that scene revives its daemon. A revived daemon is a fresh
+ * process with a fresh pid and a fresh record, and the app admits a daemon only
+ * while a record describes one - so without the second call the app would keep
+ * staring at the dead daemon's record while a healthy one answered. Entries
+ * already linked are left alone; only new files are linked.
+ */
+function linkServeRecords() {
+	if (BACKEND_RECORDS === null) return 0;
+	const records = join(CONFIG_DIR, "run", "serve");
+	mkdirSync(records, { recursive: true });
+	let linked = 0;
+	/*
+	 * A MISSING DIRECTORY IS A LANE ERROR, SAID PLAINLY. `readdirSync` on a path
+	 * that has never existed throws ENOENT from inside `fs`, which names the
+	 * syscall rather than the mistake - and the mistake has one shape: `--backend`
+	 * names a daemon whose config root is not the one `--backend-records` points
+	 * into (a daemon the lane did not start, or a config root it did not clean).
+	 * It cost a run on 2026-09-25, diagnosed from `lsof` rather than from this
+	 * sentence.
+	 */
+	if (!existsSync(BACKEND_RECORDS)) {
+		throw new Error(
+			`--backend-records ${BACKEND_RECORDS} does not exist, so no serve record describes ${BACKEND}\\nThat directory is written by the daemon this run owns, under its own config root (<config>/run/serve). A missing one means --backend names a daemon somebody else started (its record lives under THEIR config root), or the lane's config root was cleaned after its daemon died.`,
+		);
+	}
+	for (const entry of readdirSync(BACKEND_RECORDS)) {
+		if (!entry.endsWith(".json")) continue;
+		const target = join(records, entry);
+		let exists = true;
+		try {
+			lstatSync(target);
+		} catch {
+			exists = false;
+		}
+		if (exists) continue;
+		symlinkSync(join(BACKEND_RECORDS, entry), target);
+		linked += 1;
+	}
+	return linked;
+}
+
+/**
+ * SIGTERM the daemon `--backend` names, and no other.
+ *
+ * The three guards are the whole safety story: the port must be the one the run
+ * is pointed at, the host must be loopback, and 1111 is refused outright - that
+ * is the operator's own daemon, and a scene named after killing daemons must
+ * not be the one that kills his. Returns what it signalled, so the scene
+ * asserts against the record it read rather than against a hope.
+ */
+function killRunDaemon() {
+	const backendPort = Number(new URL(BACKEND).port);
+	if (backendPort === 1111) {
+		throw new Error(
+			"--scene connection-drop refuses a backend on 1111: that is the operator's own daemon, and this scene exists to kill a run-owned one",
+		);
+	}
+	const killed = [];
+	for (const { file, record } of sceneConnectionDropRecords()) {
+		const pid = record?.pid;
+		if (typeof pid !== "number" || pid <= 0) continue;
+		if (Number(record.port) !== backendPort) continue;
+		if (
+			typeof record.host === "string" &&
+			!["127.0.0.1", "localhost", "::1"].includes(record.host)
+		)
+			continue;
+		try {
+			process.kill(pid, "SIGTERM");
+		} catch {
+			continue; // already gone: nothing to signal, nothing to report
+		}
+		killed.push({ pid, file, version: record.version });
+	}
+	return killed;
+}
+
+/**
+ * The daemon's LISTENER is gone when `/health` refuses - the app-visible fact,
+ * and the right bar for "the daemon is gone".
+ *
+ * WHY NOT THE PROCESS EXIT: `local_operator serve` shuts down gracefully, and its
+ * own log says so - `Waiting for connections to close` - while the open session
+ * stream keeps the process alive after the listening socket is closed. Measured
+ * on the first walker run: SIGTERM, the app detached and drew the strip, and the
+ * pid was still there 15s later. What the scene needs to be true is what the app
+ * checks: new connections refused and probes failing.
+ */
+async function waitForBackendRefused(timeoutMs) {
+	const started = Date.now();
+	const port = Number(new URL(BACKEND).port);
+	for (;;) {
+		/*
+		 * A TCP CONNECT, not an HTTP request: the fact this waits for is the
+		 * LISTENER being gone, and a refused connection states it directly -
+		 * `isListening` is the harness's own probe for it (the boot assertion reads
+		 * the same function). It also keeps this window away from `fetch`
+		 * entirely, for the Node 26.5.0 crash `waitForBackendHealth` documents.
+		 */
+		if (!(await isListening(port)))
+			return { ok: true, waitedMs: Date.now() - started };
+		if (Date.now() - started > timeoutMs)
+			return { ok: false, waitedMs: Date.now() - started };
+		await wait(300);
+	}
+}
+
+/**
+ * SIGKILL a daemon that will not finish its graceful shutdown, bounded.
+ *
+ * AFTER THE LISTENER IS GONE, and only there: the run owns these processes, and
+ * one blocked on draining a stream the driver itself holds is exactly the shape
+ * that must not outlive the run. Escalated rather than assumed - the caller
+ * notes it, because "we had to SIGKILL it" is a fact about the daemon, not a
+ * detail of the harness.
+ */
+async function endDaemonProcess(pid) {
+	const first = await waitForPidExit(pid, 10_000);
+	if (first.ok) return { ok: true, killed: false, waitedMs: first.waitedMs };
+	try {
+		process.kill(pid, "SIGKILL");
+	} catch {
+		/* raced its own exit */
+	}
+	const second = await waitForPidExit(pid, 10_000);
+	return {
+		ok: second.ok,
+		killed: true,
+		waitedMs: first.waitedMs + second.waitedMs,
+	};
+}
+
+/** Whether the pid is gone, bounded - SIGTERM is a request, not a guarantee. */
+async function waitForPidExit(pid, timeoutMs) {
+	const started = Date.now();
+	for (;;) {
+		let alive = true;
+		try {
+			process.kill(pid, 0);
+		} catch {
+			alive = false;
+		}
+		if (!alive) return { ok: true, waitedMs: Date.now() - started };
+		if (Date.now() - started > timeoutMs)
+			return { ok: false, waitedMs: Date.now() - started };
+		await wait(200);
+	}
+}
+
+/**
+ * Start the lane's own serve command again, detached.
+ *
+ * The command is argv and never a secret: the token it needs reaches the child
+ * through THIS process's environment, which the lane already exports for the
+ * first daemon. `detached` keeps it out of this run's process group, so the
+ * driver's own reaper does not take it for a stray app; the scene reaps it by
+ * pid (from the fresh record) before it returns.
+ */
+function spawnReviveDaemon(command) {
+	const child = spawn("/bin/sh", ["-c", command], {
+		env: process.env,
+		detached: true,
+		stdio: "ignore",
+	});
+	child.unref();
+	return child.pid;
+}
+
+/** `/health` on the run's backend, polled until it answers or the bound expires. */
+/** One bounded HTTP GET at the run's backend, over `node:http` (see below). */
+function backendGet(path, timeoutMs = 1500) {
+	return new Promise((resolve) => {
+		const target = new URL(BACKEND);
+		const request = httpGet(
+			{
+				host: target.hostname,
+				port: Number(target.port),
+				path,
+				timeout: timeoutMs,
+			},
+			(response) => {
+				response.resume();
+				resolve({
+					ok:
+						response.statusCode !== undefined &&
+						response.statusCode >= 200 &&
+						response.statusCode < 300,
+					statusCode: response.statusCode ?? null,
+				});
+			},
+		);
+		request.on("timeout", () => request.destroy(new Error("timeout")));
+		request.on("error", () => resolve({ ok: false, statusCode: null }));
+	});
+}
+
+/**
+ * `/health` on the run's backend, polled until it answers or the bound expires.
+ *
+ * `node:http`, NOT `fetch`, and this is a measured bug rather than a style: on
+ * Node 26.5.0 a `fetch` into an address whose socket is being torn down crashed
+ * the whole driver - `Error: setTypeOfService EINVAL` thrown from inside
+ * undici's `writeH1`, an uncaught exception with no rejection to catch. The
+ * revival run of 2026-09-25 died in exactly that window, between the kill and
+ * the strip check, and the two probes below are the only HTTP this scene makes.
+ */
+async function waitForBackendHealth(timeoutMs) {
+	const started = Date.now();
+	for (;;) {
+		const answer = await backendGet("/health");
+		if (answer.ok) return { ok: true, waitedMs: Date.now() - started };
+		if (Date.now() - started > timeoutMs)
+			return { ok: false, waitedMs: Date.now() - started };
+		await wait(500);
+	}
+}
+
+/**
+ * Every live region on screen, as the accessibility tree states it.
+ *
+ * `role="alert"`/`role="status"` are what a screen reader ANNOUNCES, which is
+ * the count UX round 1's U3 measured by hand; reading them here makes the count
+ * an assertion rather than a paragraph. Text is trimmed of runs of whitespace,
+ * because the DOM's own line breaks are layout rather than copy, and zero-area
+ * regions are skipped: a hidden region announces nothing.
+ */
+function readLiveRegions(cdp) {
+	return cdp.evaluate(`(() => {
+		const clean = (s) => (s || "").replace(/\\s+/g, " ").trim();
+		const out = [];
+		for (const el of document.querySelectorAll('[role="alert"], [role="status"]')) {
+			const rect = el.getBoundingClientRect();
+			/*
+			 * A hidden region announces nothing, and the two shapes to skip are the
+			 * zero-area box and the sr-only 1x1 box a screen-reader-only span renders
+			 * as. checkVisibility() is asked too - it is the browser's own answer and
+			 * catches what a rect cannot (visibility, content-visibility).
+			 */
+			if (rect.width <= 1 && rect.height <= 1) continue;
+			if (
+				typeof el.checkVisibility === "function" &&
+				el.checkVisibility() === false
+			)
+				continue;
+			out.push({
+				role: el.getAttribute("role"),
+				text: clean(el.textContent).slice(0, 260),
+				controls: [...el.querySelectorAll("button")]
+					.map((b) => clean(b.getAttribute("aria-label")) || clean(b.textContent))
+					.filter(Boolean),
+				box: {
+					x: Math.round(rect.x),
+					y: Math.round(rect.y),
+					w: Math.round(rect.width),
+					h: Math.round(rect.height),
+				},
+			});
+		}
+		return out;
+	})()`);
+}
+
+/**
+ * Every visible control whose accessible name says Retry.
+ *
+ * The other half of U3's "two Retries", and counted across the WHOLE screen
+ * rather than inside one region: the duplicate the finding names sat in a
+ * different pane from the strip it duplicated.
+ */
+function readRetryControls(cdp) {
+	return cdp.evaluate(`(() => {
+		const clean = (s) => (s || "").replace(/\\s+/g, " ").trim();
+		const out = [];
+		for (const b of document.querySelectorAll("button")) {
+			const name = clean(b.getAttribute("aria-label")) || clean(b.textContent);
+			if (!/retry/i.test(name)) continue;
+			const rect = b.getBoundingClientRect();
+			if (rect.width <= 1 && rect.height <= 1) continue;
+			if (
+				typeof b.checkVisibility === "function" &&
+				b.checkVisibility() === false
+			)
+				continue;
+			out.push({
+				name,
+				disabled: b.disabled === true,
+				x: Math.round(rect.x + rect.width / 2),
+				y: Math.round(rect.y + rect.height / 2),
+			});
+		}
+		return out;
+	})()`);
+}
+
+/** The pointer sequence at a point - `clickAt`'s gesture, for a control found by hand. */
+async function clickPoint(cdp, x, y) {
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseMoved",
+		x,
+		y,
+		button: "none",
+		buttons: 0,
+	});
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mousePressed",
+		x,
+		y,
+		button: "left",
+		buttons: 1,
+		clickCount: 1,
+	});
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseReleased",
+		x,
+		y,
+		button: "left",
+		buttons: 0,
+		clickCount: 1,
+	});
+}
+
+/**
+ * The held message's own state, as the message states it (§F3).
+ *
+ * `data-undelivered` is the line's own marker (the attribute name survives
+ * minification and no design value moves it - the same reason the build gate's
+ * marker is an attribute), and the two controls are read by their words because
+ * the words are the contract.
+ */
+function readUndeliveredLine(cdp) {
+	return cdp.evaluate(`(() => {
+		const clean = (s) => (s || "").replace(/\\s+/g, " ").trim();
+		const el = document.querySelector("[data-undelivered]");
+		if (!el) return null;
+		const rect = el.getBoundingClientRect();
+		return {
+			text: clean(el.textContent),
+			controls: [...el.querySelectorAll("button")]
+				.map((b) => clean(b.textContent) || clean(b.getAttribute("aria-label")))
+				.filter(Boolean),
+			box: {
+				x: Math.round(rect.x),
+				y: Math.round(rect.y),
+				w: Math.round(rect.width),
+				h: Math.round(rect.height),
+			},
+		};
+	})()`);
+}
+
+/** The failed send's own answer in the composer: the returned text and its one notice. */
+function readComposerReturn(cdp) {
+	return cdp.evaluate(`(() => {
+		const clean = (s) => (s || "").replace(/\\s+/g, " ").trim();
+		const box = document.querySelector('[data-tour-tag="chat-input-textarea"] textarea');
+		const notice = document.querySelector("[data-composer-notice]");
+		return {
+			text: box ? box.value : null,
+			notice: notice ? clean(notice.textContent) : null,
+		};
+	})()`);
+}
+
+async function sceneConnectionDrop(cdp) {
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	const theme = THEME ?? "localOperatorDark";
+	await verb(cdp, "setTheme", theme);
+	await verb(cdp, "navigate", "/chat");
+	const composer = '[data-tour-tag="chat-input-textarea"]';
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${composer}'))`,
+		30_000,
+	);
+	const size = `${WINDOW_WIDTH}x${WINDOW_HEIGHT}`;
+
+	/*
+	 * 1. A real turn, so the pane is a session with a transcript rather than the
+	 *    empty state: the connection surfaces this scene reads sit in a mounted
+	 *    conversation, and a send while offline needs somewhere to post its echo.
+	 */
+	await clickAt(cdp, `${composer} textarea`);
+	await cdp.send("Input.insertText", {
+		text: "Say hello before the daemon drops.",
+	});
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	const answered = await waitForCondition(
+		cdp,
+		`(() => { const log = document.querySelector('[role="log"]'); return Boolean(log && log.textContent.includes("from the mock provider")); })()`,
+		60_000,
+	);
+	check(
+		"the daemon answered a turn, so the run is attached before the kill",
+		answered.ok,
+		`no mock answer arrived in ${answered.waitedMs}ms: ${JSON.stringify(answered.last)}`,
+	);
+	const attached = await verb(cdp, "state");
+	note(
+		"state while attached",
+		JSON.stringify({
+			activeSessionId: attached.activeSessionId,
+			sessionCount: attached.sessionCount,
+		}),
+	);
+	await parkPointer(cdp);
+	const attachedFrame = await captureSettled(
+		cdp,
+		`connection-${size}-attached`,
+	);
+	note("frame", JSON.stringify(attachedFrame));
+
+	/*
+	 * 2. The kill. The records are read fresh (the lane's daemon rewrites its
+	 *    heartbeat, and the kill must signal the daemon this record describes).
+	 */
+	const killed = killRunDaemon();
+	check(
+		"the run-owned daemon was signalled (SIGTERM to the pid its own record names)",
+		killed.length > 0,
+		JSON.stringify(killed),
+	);
+	if (killed.length === 0) {
+		throw new Error(
+			"connection-drop found no live serve record for --backend, so nothing was killed and every reading below would describe a live daemon",
+		);
+	}
+	/*
+	 * The bar is the LISTENER, not the process (see `waitForBackendRefused`): a
+	 * graceful shutdown closes the socket and then waits for open streams, and it
+	 * is the closed socket every probe and every send in this scene reacts to.
+	 */
+	const refused = await waitForBackendRefused(15_000);
+	check(
+		"the daemon's listener is gone: /health refuses after the kill",
+		refused.ok,
+		`still answering after ${refused.waitedMs}ms`,
+	);
+	for (const { pid } of killed) {
+		const ended = await endDaemonProcess(pid);
+		if (!ended.ok) {
+			check(
+				`the daemon (pid ${pid}) was stopped`,
+				false,
+				`still alive after ${ended.waitedMs}ms`,
+			);
+		} else if (ended.killed) {
+			note(
+				`the daemon (pid ${pid}) was SIGKILLed after its graceful shutdown did not drain`,
+				`listener closed first; the pid was still there ${ended.waitedMs}ms later`,
+			);
+		}
+	}
+
+	/*
+	 * 3. The app's own statement of it. Waited for rather than slept on: the
+	 *    detach is the app's state machine reacting (a 10s probe + the health
+	 *    check's own cadence), and the strip appears when it has reacted.
+	 */
+	const stripUp = await waitForCondition(
+		cdp,
+		`document.body.textContent.includes("Can't reach the Local Operator server")`,
+		90_000,
+	);
+	check(
+		"the pane's strip states the root cause once the daemon is gone",
+		stripUp.ok,
+		`no unreachable strip after ${stripUp.waitedMs}ms`,
+	);
+	await wait(2000); // let any second surface paint, which is what this counts
+	const goneRegions = await readLiveRegions(cdp);
+	const goneRetries = await readRetryControls(cdp);
+	note("live regions while the daemon is gone", JSON.stringify(goneRegions));
+	note("Retry controls while the daemon is gone", JSON.stringify(goneRetries));
+	const connectionRegions = goneRegions.filter((region) =>
+		/Local Operator server|machine is offline|answering slowly/i.test(
+			region.text,
+		),
+	);
+	check(
+		"ONE live region states the connection (U3b)",
+		connectionRegions.length === 1,
+		`${connectionRegions.length} connection regions: ${JSON.stringify(connectionRegions.map((r) => r.text.slice(0, 90)))}`,
+	);
+	check(
+		"no OTHER live region stands beside the strip",
+		goneRegions.length === connectionRegions.length,
+		`${goneRegions.length} live regions, ${connectionRegions.length} of them the connection: ${JSON.stringify(goneRegions.filter((r) => !connectionRegions.includes(r)).map((r) => `${r.role}: ${r.text.slice(0, 120)}`))}`,
+	);
+	check(
+		"exactly ONE Retry control is on screen for that one root cause",
+		goneRetries.filter((control) => !control.disabled).length === 1,
+		JSON.stringify(goneRetries.map((c) => c.name)),
+	);
+	const goneFrame = await captureSettled(cdp, `connection-${size}-server-gone`);
+	note("frame", JSON.stringify(goneFrame));
+
+	/*
+	 * 4. A send while offline: the message takes §F3's failure state on its own
+	 *    row, and the composer hands the payload back with its one notice.
+	 */
+	await clickAt(cdp, `${composer} textarea`);
+	await cdp.send("Input.insertText", { text: "did that reach you?" });
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	const held = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector("[data-undelivered]"))`,
+		30_000,
+	);
+	check(
+		"a send that failed while offline puts §F3's state on the message",
+		held.ok,
+		`the per-message state did not appear after ${held.waitedMs}ms`,
+	);
+	await wait(800);
+	const undelivered = await readUndeliveredLine(cdp);
+	const returned = await readComposerReturn(cdp);
+	note("the message's own state (§F3)", JSON.stringify(undelivered));
+	note("the composer's return and its notice", JSON.stringify(returned));
+	check(
+		"the failure attaches to the message: `Not delivered · Send again · Edit` (§F3)",
+		undelivered !== null &&
+			/Not delivered/.test(undelivered.text) &&
+			undelivered.controls.includes("Send again") &&
+			undelivered.controls.includes("Edit"),
+		JSON.stringify(undelivered),
+	);
+	check(
+		"the failed message is handed back to the composer, with no second notice while the strip speaks (§F2's single voice; the held gate is gone by design)",
+		returned.text === "did that reach you?" && returned.notice === null,
+		JSON.stringify(returned),
+	);
+	const heldRegions = await readLiveRegions(cdp);
+	const heldRetries = await readRetryControls(cdp);
+	const heldConnection = heldRegions.filter((region) =>
+		/Local Operator server|machine is offline|answering slowly/i.test(
+			region.text,
+		),
+	);
+	check(
+		"the failed send adds no second connection voice",
+		heldConnection.length === 1 && heldRegions.length <= 1,
+		`${heldRegions.length} live regions (${heldConnection.length} of them the connection): ${JSON.stringify(heldRegions.map((r) => `${r.role}: ${r.text.slice(0, 90)}`))}`,
+	);
+	check(
+		"still exactly one Retry control",
+		heldRetries.filter((control) => !control.disabled).length === 1,
+		JSON.stringify(heldRetries.map((c) => c.name)),
+	);
+	const heldFrame = await captureSettled(
+		cdp,
+		`connection-${size}-held-message`,
+	);
+	note("frame", JSON.stringify(heldFrame));
+
+	/*
+	 * 5. The reconnect. The lane's command starts a fresh daemon on the same
+	 *    address (same scratch config, same token from this environment); the
+	 *    records are re-linked because the app admits a daemon only while a
+	 *    record describes one, and the fresh process published a fresh record.
+	 */
+	const frames = [attachedFrame, goneFrame, heldFrame];
+	if (REVIVE_CMD === null) {
+		note(
+			"the reconnect half did not run",
+			"no --backend-revive was passed: the scene took the offline half only, so nothing below was measured",
+		);
+		killRunDaemon();
+		return frames;
+	}
+	spawnReviveDaemon(REVIVE_CMD);
+	const health = await waitForBackendHealth(60_000);
+	check(
+		"the revived daemon answers /health at --backend",
+		health.ok,
+		`no /health answer after ${health.waitedMs}ms`,
+	);
+	const relinked = linkServeRecords();
+	note("serve records re-linked after the revive", String(relinked));
+	/*
+	 * The app's own recovery, waited for rather than pressed. If the state
+	 * machine has not swept within the bound, the strip's Retry is the
+	 * documented remedy (§F2) and is pressed ONCE, named here.
+	 */
+	let recovered = await waitForCondition(
+		cdp,
+		`!document.body.textContent.includes("Can't reach the Local Operator server")`,
+		90_000,
+	);
+	if (!recovered.ok) {
+		const live = await readRetryControls(cdp);
+		if (live.length > 0) {
+			note(
+				"strip Retry pressed",
+				`no automatic recovery after ${recovered.waitedMs}ms; pressing the one Retry at ${live[0].x},${live[0].y}`,
+			);
+			await clickPoint(cdp, live[0].x, live[0].y);
+			recovered = await waitForCondition(
+				cdp,
+				`!document.body.textContent.includes("Can't reach the Local Operator server")`,
+				90_000,
+			);
+		}
+	}
+	check(
+		"the strip clears once a daemon answers again",
+		recovered.ok,
+		`the strip still stood after ${recovered.waitedMs}ms`,
+	);
+	/*
+	 * WAITED FOR, NOT SLEPT ON: the strip clears when the app re-attaches, and the
+	 * claim is settled by the conversation's own re-subscribe - the tail read that
+	 * follows it - so the two are seconds apart on a loaded host. The bound is
+	 * generous because the walk's own pacing is, and the assertion below is about
+	 * the state the server's answer produces, not about how fast it arrives.
+	 */
+	const cleared = await waitForCondition(
+		cdp,
+		`!document.querySelector("[data-composer-notice]")`,
+		60_000,
+	);
+	note(
+		"the composer's notice cleared after the reconnect",
+		`${cleared.ok ? "cleared" : "STILL STANDING"} after ${cleared.waitedMs}ms`,
+	);
+	const settled = await cdp.evaluate(`(() => {
+		const clean = (s) => (s || "").replace(/\\s+/g, " ").trim();
+		const el = document.querySelector("[data-undelivered]");
+		const notice = document.querySelector("[data-composer-notice]");
+		return {
+			body: clean(document.body.textContent).slice(0, 4000),
+			undelivered: el ? clean(el.textContent) : null,
+			notice: notice ? clean(notice.textContent) : null,
+			stripRegions: [...document.querySelectorAll('[role="alert"], [role="status"]')]
+				.map((r) => clean(r.textContent).slice(0, 120)),
+		};
+	})()`);
+	note("state after the reconnect", JSON.stringify(settled));
+	check(
+		"the reconnect resolved the claim: the composer stops stating the failure (U5b)",
+		settled.notice === null &&
+			!/still being held/i.test(settled.body) &&
+			settled.stripRegions.length === 0,
+		JSON.stringify({
+			notice: settled.notice,
+			stillBeingHeld: /still being held/i.test(settled.body),
+			liveRegions: settled.stripRegions,
+		}),
+	);
+	check(
+		"the message's fate is stated on the message, not left blank (§F3)",
+		settled.undelivered === null || /Not delivered/.test(settled.undelivered),
+		JSON.stringify(settled.undelivered),
+	);
+	const reconnectedFrame = await captureSettled(
+		cdp,
+		`connection-${size}-reconnected`,
+	);
+	note("frame", JSON.stringify(reconnectedFrame));
+	frames.push(reconnectedFrame);
+	/*
+	 * The revived daemon is this scene's own to reap: it was started here, and a
+	 * harness that leaves a daemon running after it exits is the defect the
+	 * scratch-tree sweep exists for. Nothing else names this pid.
+	 */
+	for (const { pid } of killRunDaemon()) {
+		const ended = await endDaemonProcess(pid);
+		note(
+			"revived daemon stopped",
+			`pid ${pid} ${ended.ok ? (ended.killed ? "SIGKILLed" : "exited") : `STILL ALIVE after ${ended.waitedMs}ms`}`,
+		);
+	}
+	return frames;
+}
+
+/**
+ * The DOCKED question card (§F1), on a real paused turn.
+ *
+ * WHAT PARKS THE TURN. The mock provider cannot ask a question with options, but
+ * `[bash:N]` makes it call the real `bash` tool, and under the default
+ * `tool_approval_mode: ask` the backend parks an APPROVAL gate on that call - a
+ * genuine `pending_gate` the owner is blocked on, which the pane docks the same
+ * way it docks an `ask`. The options, their hover and their keys are driven in
+ * the Storybook story (`Chat/Ask options`), because no backend here can hold an
+ * `ask` with options; this scene is the real-app half.
+ *
+ * WHAT IT ASSERTS. The card mounts above the composer (its bottom edge at or
+ * above the composer's top, within the dock's 8px gap), not inside the
+ * transcript's scroller; `Escape` - sent through `Input.dispatchKeyEvent`, so it
+ * reaches the app's own handlers - collapses it to the pill, returns focus to the
+ * composer and does NOT stop the turn (the gate is still pending); `Show` brings
+ * it back.
+ */
+async function sceneQuestionDock(cdp) {
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	const composerSelector = '[data-tour-tag="chat-input-textarea"]';
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+	await verb(cdp, "navigate", "/chat");
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${composerSelector}'))`,
+		30_000,
+	);
+	await clickAt(cdp, `${composerSelector} textarea`);
+	await cdp.send("Input.insertText", { text: "[bash:45] run the check" });
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	const docked = await waitForCondition(
+		cdp,
+		`(() => { const d = document.querySelector('[data-lo-question-dock="expanded"]'); return d ? d.textContent.slice(0, 160) : null; })()`,
+		60_000,
+	);
+	check(
+		"a real paused turn docks its question card",
+		docked.ok,
+		`after ${docked.waitedMs}ms: ${JSON.stringify(docked.last)}`,
+	);
+	const size = `${WINDOW_WIDTH}x${WINDOW_HEIGHT}`;
+	// Frame labels are lowercase-only (the capture verb refuses anything else).
+	const theme = (THEME ?? "localOperatorDark")
+		.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
+		.replace(/^-/, "");
+	const dockedFrame = await captureSettled(
+		cdp,
+		`question-dock-${size}-${theme}-docked`,
+	);
+	const boxes = await cdp.evaluate(`(() => {
+		const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height), bottom: Math.round(b.bottom) }; };
+		const card = document.querySelector('[data-lo-question-dock] section');
+		return {
+			card: r(card),
+			composer: r(document.querySelector('${composerSelector}')),
+			inScroller: Boolean(card && card.closest('[data-lo-canonical-transcript]')),
+		};
+	})()`);
+	note("docked boxes", JSON.stringify(boxes));
+	check(
+		"the card sits directly above the composer, outside the transcript",
+		boxes.card &&
+			boxes.composer &&
+			!boxes.inScroller &&
+			boxes.card.bottom <= boxes.composer.y &&
+			boxes.composer.y - boxes.card.bottom <= 16 &&
+			boxes.card.x === boxes.composer.x &&
+			boxes.card.w === boxes.composer.w,
+		JSON.stringify(boxes),
+	);
+
+	/*
+	 * Escape, from INSIDE the card: focus is put on the card's focus scope by a
+	 * trusted pointer press on its non-interactive text, then Escape goes through
+	 * CDP's key pipeline.
+	 *
+	 * THE PRESS LANDS ON THE EYEBROW (`section p`), NOT THE CARD'S CENTRE (QA
+	 * round 4, Q6). The centre stopped being neutral ground: this branch's fold
+	 * moved the approval pair into this card, and the element at the card's
+	 * painted centre is now a span inside option row 0 ("Run the action and
+	 * continue the turn."), so a centre press ANSWERS the gate - the dock clears,
+	 * the approved call runs, and every later step of this scene fails by
+	 * construction. The eyebrow is the card's first paragraph and carries no
+	 * control, so the press focuses the section's own `tabindex="-1"` scope (the
+	 * dock's focus-by-pointer contract, `question-dock.tsx`) without activating
+	 * anything; Escape then reaches the section's handler and collapses the card,
+	 * which is the claim this step exists to drive. The instrument's gesture, not
+	 * a product change: the claim is unchanged.
+	 */
+	await clickAt(cdp, '[data-lo-question-dock="expanded"] section p');
+	await pressChord(cdp, { key: "Escape", code: "Escape", virtualKeyCode: 27 });
+	const collapsed = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-lo-question-dock="collapsed"]'))`,
+		5_000,
+	);
+	await wait(400);
+	const afterEsc = await cdp.evaluate(`(() => ({
+		focus: document.activeElement ? (document.activeElement.getAttribute('aria-label') || document.activeElement.tagName) : null,
+		stop: Boolean(document.querySelector('button[aria-keyshortcuts="Escape"]')),
+	}))()`);
+	check(
+		"Escape collapses the card to the pill and hands focus to the composer",
+		collapsed.ok && afterEsc.focus === "Message",
+		JSON.stringify({ collapsed: collapsed.ok, ...afterEsc }),
+	);
+	const pillFrame = await captureSettled(
+		cdp,
+		`question-dock-${size}-${theme}-pill`,
+	);
+	const stillPending = await cdp.evaluate(
+		`Boolean(document.querySelector('[data-lo-question-dock]'))`,
+	);
+	check(
+		"Escape did not stop the turn: the question is still pending",
+		stillPending === true,
+		`dock present after Escape: ${stillPending}`,
+	);
+	await clickAt(cdp, `button[aria-label="Show the agent's question"]`);
+	const shown = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-lo-question-dock="expanded"]'))`,
+		5_000,
+	);
+	check("Show brings the card back", shown.ok, JSON.stringify(shown));
+	const reshownFrame = await captureSettled(
+		cdp,
+		`question-dock-${size}-${theme}-reshown`,
+	);
+	return [dockedFrame, pillFrame, reshownFrame];
+}
+
+/**
+ * §I's pane floors, measured at whatever `--window-size` the run was started with.
+ *
+ * WHY THIS IS A SCENE OF ITS OWN, and why it needs no backend. §I is a set of
+ * statements about BOXES: the chat pane keeps a 480px floor; the canvas docks at
+ * `min(560, available - 480)`; where that leaves less than the canvas's own 400px
+ * floor the canvas stops docking and overlays the chat instead; the sidebar yields
+ * to the 56px strip first. Nothing in that list is about data, so the run does not
+ * need one - and the driver's own isolate (`openCanvasDocument` stages a draft,
+ * because a run with no backend cannot open the New chat gate) is exactly what makes
+ * a canvas dockable without a session.
+ *
+ * THE ONE THING IT CANNOT SAY, stated rather than implied: at a size where the
+ * 640-wide column cannot fit, the transcript's own reading measure is a container
+ * query the tree already handles, and the frames this scene writes are of a DRAFT
+ * pane with no messages. Whether the prose reflows at 480 is not asserted here; it is
+ * what the capture set's `b-qa`/`g-long` frames are for.
+ *
+ * A reader should run it at the four widths §I is written about:
+ *
+ *     --scene floors --window-size 1380x900   # docked: row 1120, canvas at its 560 cap
+ *     --scene floors --window-size 1024x673   # the sidebar's dock threshold: dock 284 < 400 -> overlay
+ *     --scene floors --window-size 960x673    # strip: row 904, dock 424 -> docked
+ *     --scene floors --window-size 800x600    # strip: row 744, dock 264 -> overlay
+ *
+ * The four are the two bands of `resolveSidebarLayout` crossed with the two canvas
+ * modes, and the assertions below are written about the RULES rather than about the
+ * sizes so the same scene is honest at any width a reviewer passes.
+ */
+async function sceneFloors(cdp) {
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless",
+		facts.windowMode === "headless",
+		facts.windowMode,
+	);
+	check(
+		"the window is never shown",
+		facts.visible === false,
+		`visible=${facts.visible} focused=${facts.focused} minimized=${facts.minimized}`,
+	);
+	check(
+		"the window never has focus",
+		facts.focused === false,
+		`focused=${facts.focused}`,
+	);
+	check(
+		"the requested window size is the size that exists",
+		facts.windowSize.width === WINDOW_WIDTH &&
+			facts.windowSize.height === WINDOW_HEIGHT,
+		`${JSON.stringify(facts.windowSize)} for a requested ${WINDOW_SIZE}`,
+	);
+
+	/*
+	 * A document of this scene's own, under the run's scratch root (never a path in
+	 * the repository): the pane needs a document to be mounted, and the file is
+	 * deleted with the scratch tree the harness reaps.
+	 */
+	const dir = join(SCRATCH, "floors");
+	mkdirSync(dir, { recursive: true });
+	const document_ = join(dir, "floors.md");
+	writeFileSync(
+		document_,
+		"# Pane floors\n\nThe canvas's own document, so the pane has something to dock.\n",
+	);
+
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", "localOperatorDark");
+	const opened = await verb(cdp, "openCanvasDocument", { path: document_ });
+	check(
+		"a document is in the canvas, so the pane is mounted at all",
+		Boolean(opened) && typeof opened === "object",
+		`openCanvasDocument answered ${JSON.stringify(opened).slice(0, 160)}`,
+	);
+	/*
+	 * THE PANE IS NOT THERE WITHOUT A BACKEND, AND THAT IS MEASURED RATHER THAN
+	 * ASSUMED. `docs/agent-driver.md` says `openCanvasDocument` "also stages a draft,
+	 * because a run with no backend cannot open the New chat gate and without a pane
+	 * identity there is no conversation for the document to belong to" - but on this
+	 * head the chat route renders the refusal surface instead of a draft pane when no
+	 * backend answers (`floors-1380x900-none.png`, kept with the run), so the canvas's
+	 * mount condition is never reached and no canvas box exists to measure. The wait
+	 * below is what distinguishes that from a React flush the scene read too early:
+	 * the window is generous and the answer is recorded either way.
+	 */
+	const paneMounted = await waitForCondition(
+		cdp,
+		"(() => { const el = document.querySelector('[data-tour-tag=\"canvas-dock\"]'); return el ? el.getAttribute('data-canvas-mode') : null; })()",
+		15_000,
+	);
+	note(
+		"canvas pane",
+		JSON.stringify({ mounted: paneMounted.ok, mode: paneMounted.last }),
+	);
+	const route = await verb(cdp, "state");
+	note("route the run ended on", JSON.stringify(route));
+
+	/*
+	 * THE FRAME FIRST, THEN THE NUMBERS, and the order is the whole reason this scene is
+	 * trustworthy. `captureSettled` commits a frame only when two captures 150ms apart are
+	 * byte-identical, so it is also the scene's proof that the layout has STOPPED MOVING -
+	 * and the canvas's own wrapper carries `transition-[width] duration-base`, which means a
+	 * reading taken before that ends describes a layout that never existed on screen.
+	 * Measured, 2026-09-24: reading first caught chat 942 / canvas 179 at 1380x900 and FAILED
+	 * the pane's 400px floor, while the settled frame shows the 560/560 shape. A false FAIL is
+	 * as bad as a false PASS: it costs a lane a hunt through the code for a defect that is in
+	 * the measurement.
+	 */
+	const mode = paneMounted.last ?? null;
+	const frame = await captureSettled(
+		cdp,
+		`floors-${WINDOW_WIDTH}x${WINDOW_HEIGHT}-${mode ?? "none"}`,
+	);
+	note("frame", JSON.stringify(frame));
+	/*
+	 * The boxes come from the harness's own `measure` verb - the same one the other scenes
+	 * use - rather than from a geometry verb added for this scene: `measure` waits for its
+	 * element, hit-tests the painted centre and reports the rect, and the shell's three boxes
+	 * are named by `data-tour-tag` for exactly this. A second geometry verb beside it would
+	 * be the "second way" this repository treats as a defect.
+	 */
+	const row = (await verb(cdp, "measure", '[data-tour-tag="pane-row"]')).rect;
+	const chatColumn = (
+		await verb(cdp, "measure", '[data-tour-tag="chat-column"]')
+	).rect;
+	const expectCanvas = BACKEND !== null;
+	const canvas = expectCanvas
+		? (await verb(cdp, "measure", '[data-tour-tag="canvas-dock"]')).rect
+		: null;
+	note("boxes", JSON.stringify({ row, chatColumn, canvas, mode }));
+	check(
+		"the row and the chat column are both named in the DOM",
+		Boolean(row) && Boolean(chatColumn),
+		`row=${JSON.stringify(row)} chatColumn=${JSON.stringify(chatColumn)}`,
+	);
+	/*
+	 * §I's canvas half needs a backend on this head, and the run says so instead of
+	 * reporting a green it did not earn: `expectCanvas` is true only when the run was given
+	 * `--backend`, and the assertions about the pane's mode are made only then. Everything
+	 * else below - the column's floor, where it starts, whether it stays inside the row -
+	 * is measured in both shapes, because the chat column exists either way.
+	 */
+	if (expectCanvas) {
+		check(
+			"the canvas pane is mounted and says which mode it is in",
+			Boolean(canvas) && (mode === "docked" || mode === "overlay"),
+			`mode=${mode} canvas=${JSON.stringify(canvas)}`,
+		);
+	} else {
+		note(
+			"the canvas half of §I is NOT measured in this run",
+			`no --backend: the run reached ${route?.route ?? "?"} and the chat route drew its refusal surface, so the canvas never mounts (measured, not assumed - see the frame). The chat column's own floor and placement below ARE measured; the pane's dock/overlay rules need a run with --backend or the capture rig.`,
+		);
+	}
+
+	if (row && chatColumn) {
+		/*
+		 * THE INVARIANTS THE 2026-09-24 DEFECT BROKE, asserted here as well as in the
+		 * capture meter because this run needs no backend, no seeded session and no
+		 * full capture set: the column starts in the shell's own left region (the
+		 * sidebar is 0, 56 or 260 of those pixels) and it holds §B1's floor.
+		 */
+		check(
+			"the chat column starts in the shell's left region",
+			chatColumn.x <= 320,
+			`chatColumn.x=${chatColumn.x}: the sidebar occupies 0/56/260, so a column further right means the pane did not take the row`,
+		);
+		check(
+			"the chat column holds §B1's 480px floor",
+			chatColumn.width >= 480,
+			`chatColumn.width=${chatColumn.width}: §B1's floor is on the column itself, and the computed min-width is pinned in scripts/chat-pane-floors.test.mjs - this scene reads the box after the layout settled`,
+		);
+		check(
+			"the chat column stays inside the row",
+			chatColumn.x + chatColumn.width <= row.x + row.width + 1,
+			`chatColumn ${chatColumn.x}+${chatColumn.width} against row ${row.x}+${row.width}`,
+		);
+	}
+
+	if (expectCanvas && row && chatColumn && canvas) {
+		if (mode === "docked") {
+			check(
+				"a docked canvas is at least its own 400px contract floor",
+				canvas.width >= 400,
+				`canvas.width=${canvas.width} in a row of ${row.width}: below 400 the pane must overlay instead of docking`,
+			);
+			check(
+				"a docked canvas is no wider than §I's 560px ceiling",
+				canvas.width <= 560 + 1,
+				`canvas.width=${canvas.width}`,
+			);
+			check(
+				"the two columns tile the row, the divider between them",
+				row.width - (chatColumn.width + canvas.width) >= 0 &&
+					row.width - (chatColumn.width + canvas.width) <= 24,
+				`row ${row.width} = chat ${chatColumn.width} + canvas ${canvas.width} + ${row.width - (chatColumn.width + canvas.width)} unaccounted`,
+			);
+		} else {
+			check(
+				"an overlaying canvas covers the chat column's trailing edge",
+				canvas.x < chatColumn.x + chatColumn.width,
+				`canvas.x=${canvas.x} against the column's ${chatColumn.x}+${chatColumn.width}`,
+			);
+			check(
+				"an overlaying canvas stays inside the row",
+				canvas.x >= row.x - 1 &&
+					canvas.x + canvas.width <= row.x + row.width + 1,
+				`canvas ${canvas.x}+${canvas.width} against row ${row.x}+${row.width}`,
+			);
+			check(
+				"the chat column keeps its floor behind the overlay",
+				chatColumn.width >= 480,
+				`chatColumn.width=${chatColumn.width} behind a ${canvas.width}px overlay`,
+			);
+		}
+	}
+
+	/*
+	 * THE COMPOSER AT REST (design round 2, D25(b)).
+	 *
+	 * Every frame at head carries the 2px `outline-accent` ring, because the empty state
+	 * autofocuses a text input and a text input always matches `:focus-visible` - so §G1's
+	 * "`outline-accent` 2px at `:focus-visible` ONLY" had no frame at rest to be judged in,
+	 * and the operator's loudest original complaint (design round 1's D12, the resting
+	 * accent ring) was the one thing the set could not show.
+	 *
+	 * A blur is what clicking the pane's ground does to it, and the read below is the half
+	 * a frame cannot state on its own: the box's own outline is `none` (or zero-width) and
+	 * NOTHING inside the composer matches `:focus-visible`. The frame is the other half.
+	 */
+	const blurred = await cdp.evaluate(`(() => {
+		const active = document.activeElement;
+		if (active && typeof active.blur === "function") active.blur();
+		return { was: active ? (active.getAttribute("aria-label") ?? active.tagName) : null };
+	})()`);
+	await wait(250);
+	const resting = await cdp.evaluate(`(() => {
+		const box = document.querySelector('[data-tour-tag="chat-input-textarea"]');
+		const band = box ? (box.closest("form") ?? box.parentElement) : null;
+		const style = box ? getComputedStyle(box) : null;
+		return {
+			outlineStyle: style ? style.outlineStyle : null,
+			outlineWidth: style ? style.outlineWidth : null,
+			ringed: band ? [...band.querySelectorAll("*")].filter((el) => el.matches(":focus-visible")).length : null,
+			focused: document.activeElement ? document.activeElement.tagName : null,
+		};
+	})()`);
+	check(
+		"the composer at rest draws no focus ring",
+		resting.ringed === 0 &&
+			(resting.outlineStyle === "none" || resting.outlineWidth === "0px"),
+		JSON.stringify({ blurred, resting }),
+	);
+	await parkPointer(cdp);
+	const restFrame = await captureSettled(
+		cdp,
+		`floors-${WINDOW_WIDTH}x${WINDOW_HEIGHT}-${mode ?? "none"}-unfocused-dark`,
+	);
+	note("frame at rest", JSON.stringify(restFrame));
+
+	/*
+	 * ESC CLOSES THE CANVAS (UX round 1, U6), driven here because this is the one scene
+	 * that has a canvas mounted at all: the reviewer pressed Escape at 1380x900 with the
+	 * transcript focused and the pane's own control still read `Close canvas`.
+	 *
+	 * The press goes to the WINDOW (the pane's binding is a window listener), and the focus
+	 * is put on the transcript first - the state the reviewer was in - so this is the
+	 * binding under test rather than a control's own click. The pane is re-opened at the
+	 * end so a later step in this scene (or a second palette's run) is not changed by it.
+	 */
+	if (expectCanvas && (mode === "docked" || mode === "overlay")) {
+		await cdp.evaluate(
+			`(() => { const t = document.querySelector('[data-lo-canonical-transcript]'); if (t) t.focus(); return true; })()`,
+		);
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		await wait(400);
+		const closed = await cdp.evaluate(`(() => ({
+			pane: document.querySelector('[data-tour-tag="canvas-dock"]') ? "mounted" : "gone",
+			control: (() => { const b = document.querySelector('[data-tour-tag="open-canvas-button"]'); return b ? (b.getAttribute("aria-label") ?? "unlabelled") : null; })(),
+			focus: document.activeElement ? (document.activeElement.getAttribute("data-tour-tag") ?? document.activeElement.tagName) : null,
+		}))()`);
+		check(
+			"Escape closes the canvas pane",
+			closed.pane === "gone",
+			JSON.stringify(closed),
+		);
+		/*
+		 * AND THE READER KEEPS THEIR PLACE. The header moves focus to the toggle only when
+		 * the close LOST it (`document.activeElement === document.body`), and that guard is
+		 * deliberate and shipped: closing the pane from the command palette while the
+		 * composer holds the caret must not pull it out of the message being typed. This
+		 * scene presses Escape with the TRANSCRIPT focused - the state the reviewer was in -
+		 * so the correct reading is the other half of the same rule: focus stays where they
+		 * put it and does not fall to the body, which is the defect round 1's U5 named.
+		 */
+		check(
+			"closing from the transcript leaves the reader's focus where they put it",
+			closed.focus !== "BODY",
+			JSON.stringify(closed),
+		);
+		await verb(cdp, "openCanvasDocument", { path: document_ });
+	}
+}
+
 async function sceneStates(cdp) {
 	const hello = await verb(cdp, "hello");
 	note("hello", JSON.stringify(hello, null, 2));
@@ -6947,12 +8708,56 @@ async function sceneStates(cdp) {
 			facts.windowSize.height === WINDOW_HEIGHT,
 		`${JSON.stringify(facts.windowSize)} for a requested ${WINDOW_SIZE}`,
 	);
+	/*
+	 * THE CONTENT FILLS THE WINDOW ON macOS, AND THAT IS THE DESIGN RATHER THAN A LOST INSET
+	 * (QA round 1's Q1).
+	 *
+	 * This assertion used to demand `contentBounds.height < windowSize.height` with an inset of
+	 * at most 40px, and it fails on this head at every size: measured on darwin/headless at
+	 * 1024x673 and 1380x900, `windowSize == contentBounds` exactly (`floors-*`'s own facts note
+	 * carries the same reading at three sizes). The assertion was written when the OS drew the
+	 * frame; this PR switches macOS to `titleBarStyle: "hidden"` (`src/main/titlebar-options.ts`),
+	 * and a hidden title bar is precisely a window whose CONTENT IS THE WHOLE WINDOW - "hidden
+	 * leaves them [the traffic lights] and their OS-managed hit targets intact, so the renderer
+	 * never draws substitute controls", and "on macOS the renderer gives the OS controls their own
+	 * 32px lane and puts every column's first row BELOW it". So the inset is not lost, it moved:
+	 * the app reserves the lane itself, and a window whose content was 40px shorter would put the
+	 * lights over the renderer's own first row - the defect this change exists to remove.
+	 *
+	 * The check therefore asks what is actually true on each path: the content is never WIDER or
+	 * TALLER than the window, an inset that exists is at most the platform's own frame, and where
+	 * the OS frame is gone the app's own lane must be there to take its place. That last clause is
+	 * the half that makes this a check rather than a relaxation, and `laneIsMac` below is where it
+	 * is read - from the RENDERED lane, not from the mode the flag claims.
+	 */
+	const lane = await cdp.evaluate(`(() => {
+		const el = document.querySelector('[data-titlebar-lane]');
+		const root = document.documentElement;
+		const style = el ? getComputedStyle(el) : null;
+		const rect = el ? el.getBoundingClientRect() : null;
+		return {
+			platform: root.getAttribute('data-chrome-platform'),
+			mode: root.getAttribute('data-chrome-mode'),
+			display: style ? style.display : null,
+			height: rect ? Math.round(rect.height) : null,
+			width: rect ? Math.round(rect.width) : null,
+			top: rect ? Math.round(rect.top) : null,
+		};
+	})()`);
+	const laneIsMac =
+		lane.display !== "none" && lane.height === 32 && lane.top === 0;
+	note("the macOS chrome lane", JSON.stringify(lane));
 	check(
-		"the content area is smaller than the window by the platform's chrome only",
+		"the content area never exceeds the window, and an inset that exists is the platform's own frame",
 		facts.contentBounds.width === facts.windowSize.width &&
-			facts.contentBounds.height < facts.windowSize.height &&
+			facts.contentBounds.height <= facts.windowSize.height &&
 			facts.windowSize.height - facts.contentBounds.height <= 40,
 		`window ${JSON.stringify(facts.windowSize)} content ${JSON.stringify(facts.contentBounds)}`,
+	);
+	check(
+		"where the OS frame is gone the app reserves its own 32px lane",
+		facts.contentBounds.height === facts.windowSize.height ? laneIsMac : true,
+		`full-bleed content on ${lane.platform}/${lane.mode}: lane ${lane.display} ${lane.width}x${lane.height} at y${lane.top}`,
 	);
 
 	/*
@@ -7038,11 +8843,25 @@ async function sceneStates(cdp) {
 	);
 
 	// 3. Real controls, to prove the driver reaches the app's own handlers and
-	// not only its stores: press the rail's Agent hub button (the selector the
-	// onboarding tour clicks) and then the Chat button, and watch the route move
-	// both ways. No frame is captured from either destination: `agent-hub` is one
-	// of the backend-gated routes above, and capturing the spinner would say less
-	// than this assertion does.
+	// not only its stores: press the sidebar's Agent hub destination and then its
+	// Schedules destination, and watch the route move both ways. No frame is
+	// captured from either destination: `agent-hub` is one of the backend-gated
+	// routes above, and capturing the spinner would say less than this assertion
+	// does.
+	//
+	// THE `Chat` RAIL ROW THIS STEP USED TO PRESS NO LONGER EXISTS (design round
+	// 1, D1; spec §C1/§C3). The chat list IS that destination now, and every
+	// remaining door onto `/chat` is gated on a backend — the sidebar's `New chat`
+	// row (`disabled: !catalogueReady`) and the command palette's `New chat` item
+	// (`canStageDraft`, the same `session_catalogue` bit) both refuse — so on a
+	// backendless driver run, which is this scene by construction, there is no
+	// control that lands on `/chat`. Measured on the head this was rewritten at:
+	// the press found its element and the route stayed `/agent-hub`.
+	//
+	// The second press is therefore the next destination that IS reachable, and
+	// the claim this step makes is unchanged — a real control receives the point
+	// and the app's own handler moves the route — while the frame is named for
+	// what it is: the shell, in the light theme, after a route round trip.
 	const hubPress = await verb(
 		cdp,
 		"press",
@@ -7064,16 +8883,20 @@ async function sceneStates(cdp) {
 		hubState.route === "/agent-hub",
 		JSON.stringify(hubState),
 	);
-	const chatPress = await verb(cdp, "press", '[data-tour-tag="nav-item-chat"]');
-	const chatState = await verb(cdp, "state");
-	check(
-		"pressing the rail's Chat button navigated back, and the theme survived",
-		chatPress.hitTest === true &&
-			chatState.route === "/chat" &&
-			chatState.theme === "localOperatorLight",
-		JSON.stringify(chatState),
+	const shellPress = await verb(
+		cdp,
+		"press",
+		'[data-tour-tag="nav-item-schedules"]',
 	);
-	const backFrame = await captureSettled(cdp, "chat-light-returned");
+	const shellState = await verb(cdp, "state");
+	check(
+		"pressing the sidebar's Schedules destination navigated the app, and the theme survived",
+		shellPress.hitTest === true &&
+			shellState.route === "/schedules" &&
+			shellState.theme === "localOperatorLight",
+		JSON.stringify(shellState),
+	);
+	const backFrame = await captureSettled(cdp, "shell-light-returned");
 	note("frame", JSON.stringify(backFrame));
 
 	const frames = [beforeFrame, afterFrame, backFrame];
@@ -7194,75 +9017,37 @@ function rowBox(cdp, index) {
 }
 
 /**
- * Open one of the panel's sections, then wait for its conversations to exist.
+ * Draw at least `wanted` rows of the flat list, spending the page ladder.
  *
- * The sections are collapsible and `Previous chats` starts CLOSED, so on a store
- * nobody has touched yet the panel draws the heading and none of its rows: a
- * scene that assumed otherwise would photograph an empty list and call it a
- * catalogue. Pressed through the app's own heading, and the wait is on the rows
- * rather than on a timer.
+ * THIS REPLACES `openSection`, and the replacement is the redesign's own fact:
+ * the sections it used to press (`Active chats` / `Previous chats`) no longer
+ * exist - the sidebar partitions the list into the view popover's sections
+ * (Running / Today / This week / Older) and none of them collapses, so nothing
+ * about a section withholds rows any more. What withholds them now is the PAGE
+ * LADDER alone (10 -> 25 -> 50, then 50 more per press; `[data-sidebar-page-more]`),
+ * whose mechanics the flat-tail arm of `sidebar-lazy-chats` is the instrument
+ * that measured. A scene needing a list longer than the first rung draws spends
+ * rungs here, bounded; a press that draws nothing new ends the loop (the ladder
+ * is spent and the scroll's own extension owns the rest). The return value is
+ * the count actually drawn, so a caller can assert against it rather than
+ * against a timer.
  */
-async function openSection(cdp, label, timeoutMs = 5_000) {
-	const heading = () =>
-		cdp.evaluate(`(() => {
-			const wanted = ${JSON.stringify(label)};
-			const node = Array.from(document.querySelectorAll("button[data-chat-row]"))
-				.find((row) => row.textContent.replace(/\\s+/g, " ").trim().startsWith(wanted));
-			if (!node) return null;
-			const box = node.getBoundingClientRect();
-			return {
-				expanded: node.getAttribute("aria-expanded") === "true",
-				x: box.left + box.width / 2,
-				y: box.top + box.height / 2,
-			};
-		})()`);
-	const started = Date.now();
-	for (;;) {
-		const at = await heading();
-		if (at === null) {
-			if (Date.now() - started > timeoutMs)
-				throw new Error(`no ${label} heading in the panel`);
-			await wait(100);
-			continue;
-		}
-		/*
-		 * Whether the section is OPEN is read from the heading's own `aria-expanded`,
-		 * not inferred from "some conversation row exists": once anything is pinned the
-		 * Pinned section has rows while this one is still closed, so the inferred
-		 * version returned early and the scene then read a one-row panel.
-		 */
-		if (at.expanded) return readPins(cdp);
-		/*
-		 * Bring the heading into the REGION's view first. A collapsed section whose
-		 * heading sits below the region's own fold (a long catalogue does this: the
-		 * scroll region is a 45%-height box) has a box the press cannot reach at all -
-		 * `elementFromPoint` at those coordinates answers null, and the press is a
-		 * no-op that looks like a dead control.
-		 */
-		await cdp.evaluate(`(() => {
-			const wanted = ${JSON.stringify(label)};
-			const node = Array.from(document.querySelectorAll("button[data-chat-row]"))
-				.find((row) => row.textContent.replace(/\\s+/g, " ").trim().startsWith(wanted));
-			if (node) node.scrollIntoView({ block: "center" });
-			return true;
-		})()`);
-		await wait(180);
-		const onScreen = await heading();
-		await parkPointer(cdp);
-		await pressPointer(cdp, onScreen.x, onScreen.y);
-		await parkPointer(cdp);
-		await wait(150);
-		if (Date.now() - started > timeoutMs) {
-			const why = await heading();
-			const hit = await cdp.evaluate(`(() => {
-				const node = document.elementFromPoint(${why.x}, ${why.y});
-				return { tag: node ? node.tagName.toLowerCase() : null, text: node ? node.textContent.replace(/\\s+/g, " ").trim().slice(0, 40) : null };
-			})()`);
-			throw new Error(
-				`pressing the ${label} heading did not open it: ${JSON.stringify({ heading: why, hit })}`,
-			);
-		}
+async function drawAtLeast(cdp, wanted, presses = 6) {
+	const drawn = () =>
+		cdp.evaluate(`document.querySelectorAll("[data-session-row]").length`);
+	let rows = await drawn();
+	for (let press = 0; press < presses && rows < wanted; press += 1) {
+		const more = await cdp.evaluate(
+			`document.querySelector('[data-sidebar-page-more]') !== null`,
+		);
+		if (more !== true) break;
+		await verb(cdp, "press", { selector: "[data-sidebar-page-more]" });
+		await wait(250);
+		const after = await drawn();
+		if (after === rows) break;
+		rows = after;
 	}
+	return rows;
 }
 
 /**
@@ -7656,12 +9441,15 @@ async function scenePinsScrolled(cdp) {
 		await verb(cdp, "setTheme", theme);
 		await wait(300);
 		/*
-		 * Both disclosure sections OPEN, through their own headings: a collapsed
-		 * section draws no rows at all, so a scene that read the list first would see
-		 * one row and conclude the store was empty.
+		 * THE ROWS ARE DRAWN BY THE LIST ITSELF (RE-BASED, measured against the
+		 * redesign). The pair of presses this replaces opened `Previous chats` /
+		 * `Active chats`, which shipped collapsed on main; the redesign replaced
+		 * both with the view popover's sections and none of them collapses, so the
+		 * only thing withholding rows is the PAGE LADDER (10 -> 25 -> 50,
+		 * `[data-sidebar-page-more]`) - spent, because the check below needs more
+		 * rows than the first rung draws.
 		 */
-		await openSection(cdp, "Previous chats");
-		await openSection(cdp, "Active chats");
+		await drawAtLeast(cdp, 12);
 		const start = await readList(cdp);
 		require("the panel's list has more rows than a page", start &&
 			start.rows.length >= 12, JSON.stringify({
@@ -7709,13 +9497,13 @@ async function scenePinsScrolled(cdp) {
 			await wait(150);
 		}
 		/*
-		 * Both disclosure sections are opened AGAIN here: the fourteen pins arrive through the
-		 * catalogue's own doorbell, and a section that collapses with the re-render draws no
-		 * rows at all - which is how a scene reads "no unpinned rows" off a panel that has
-		 * plenty of them.
+		 * THE LADDER IS SPENT AGAIN HERE (RE-BASED): the fourteen pins arrive
+		 * through the catalogue's own doorbell, and a re-render must not leave the
+		 * flat list on a rung that draws fewer rows than the steps below read.
+		 * There is no collapsed section to open in this design - the ladder is the
+		 * one control that withholds rows.
 		 */
-		await openSection(cdp, "Previous chats");
-		await openSection(cdp, "Active chats");
+		await drawAtLeast(cdp, 12);
 		check(
 			"the fourteen pins the daemon holds are drawn as a Pinned set",
 			drawn !== null,
@@ -8507,8 +10295,13 @@ async function scenePinsSearch(cdp) {
 		const suffix = theme === "localOperatorDark" ? "dark" : "light";
 		await verb(cdp, "setTheme", theme);
 		await wait(300);
-		await openSection(cdp, "Previous chats");
-		await openSection(cdp, "Active chats");
+		/*
+		 * RE-BASED: the pair of section presses this replaces drew the rows on main;
+		 * in this design the sections do not collapse and the page ladder is the
+		 * only thing that withholds rows, so the ladder is spent and the reads
+		 * below see the panel this scene is about.
+		 */
+		await drawAtLeast(cdp, 12);
 
 		/* ---- 1. a conversation the client's page does not hold ---------- */
 		/*
@@ -8853,8 +10646,8 @@ async function scenePinsSearch(cdp) {
 		await parkPointer(cdp);
 		await pressPointer(cdp, clearBox.x, clearBox.y);
 		await wait(400);
-		await openSection(cdp, "Active chats");
-		await openSection(cdp, "Previous chats");
+		/* The same re-base as the top of the loop: rows, not sections. */
+		await drawAtLeast(cdp, 12);
 		const seeds = (await readBackendSessions()).slice(0, 2);
 		for (const row of seeds) await setBackendPin(row.id, true);
 		const started = Date.now();
@@ -9216,12 +11009,14 @@ async function scenePins(cdp) {
 		const suffix = theme === "localOperatorDark" ? "dark" : "light";
 		await parkPointer(cdp);
 		/*
-		 * `Previous chats` starts CLOSED, so on a store nobody has opened yet the
-		 * panel draws its heading and none of its rows. The scene opens it through
-		 * the panel's own heading and waits for the rows rather than assuming a timer
-		 * is enough.
+		 * RE-BASED (measured against the redesign): `Previous chats` is gone - the
+		 * sections the view popover draws do not collapse - so nothing is opened
+		 * here. What the steps below read is the panel drawing its rows, which the
+		 * ladder withholds until spent; `readPins` then reads the panel's own pins,
+		 * which is what those steps work from.
 		 */
-		const start = await openSection(cdp, "Previous chats");
+		await drawAtLeast(cdp, 12);
+		const start = await readPins(cdp);
 		/*
 		 * WHAT THE PIN CONTROL COSTS A TITLE (design round 1, D5). Measured rather than
 		 * argued: the conversation button's own box against the withdrawn run's, where
@@ -12435,6 +14230,831 @@ async function authoringWrite(path, body) {
 	return { path, status: response.status, body: text.slice(0, 300) };
 }
 
+/**
+ * `/btw` — the aside, driven end to end in BOTH trees by one scene.
+ *
+ * WHY ONE SCENE AND NOT TWO. The change is a replacement of one surface by
+ * another, so the most useful pair of frames is the SAME steps taken in the same
+ * order against each tree, with the assertions stating what each tree did at
+ * each step. A scene per tree would let a step quietly differ between them and
+ * the pair would stop being a comparison.
+ *
+ * WHAT IT ASSERTS, RATHER THAN PHOTOGRAPHS. The report this change answers has
+ * four complaints, and every one of them is a claim a frame cannot make on its
+ * own:
+ *
+ *   1. "a second Enter" — after ONE `Input.dispatchKeyEvent` Enter, the AFTER
+ *      tree must have the panel up on the chat route with the question already
+ *      asked (the panel paints the question and its thinking line); the BEFORE
+ *      tree must have a Radix dialog up and NO answer, which is the second press
+ *      the report is about.
+ *   2. "the composer took nothing" — a probe typed while the aside is up must
+ *      land in the composer's textarea in the AFTER tree; in the BEFORE tree the
+ *      composer must be unreachable (Radix marks outside content `aria-hidden`
+ *      with `pointer-events: none`), which is read as the composer's own
+ *      `hitTest` plus its painted value.
+ *   3. "input appears erased" — in the BEFORE tree typing into the dialog's own
+ *      value-pinned field must leave the painted value EMPTY; the AFTER tree has
+ *      no such field, and its answer streams into the panel instead.
+ *   4. "only the final answer was shown" — between the ask and the first chunk
+ *      the AFTER tree paints a thinking line, and with text arriving the panel's
+ *      answer is a PREFIX of the settled answer. Both are read, not assumed: the
+ *      mid-stream frame is only taken while the text is present but incomplete.
+ *
+ * IT ALSO STATES THE ADOPT GATE AND THE ACCESSIBILITY SHAPE, because a panel
+ * whose control is dead and never says why is the failure mode the gate's own
+ * comment names: the disabled control must carry its reason while the exchange
+ * is unfinished, and the enabled one must be reachable and advertised (the
+ * chord cap is painted beside it).
+ *
+ * THE TREE IS DETECTED, NEVER PASSED IN: which surface appeared after the first
+ * Enter is the app's answer, and a scene that was TOLD which tree it is could
+ * pass on a tree where nothing it claims is true.
+ */
+async function sceneBtwAside(cdp) {
+	const FIELD = 'textarea[aria-label="Message"]';
+	const PANEL = "[data-lo-aside-panel]";
+	const DIALOG = '[role="dialog"]';
+	const QUESTION = "what does the retry budget actually cap?";
+	const TAIL = "wrong, not the provider"; // the last clause of the stub's answer
+
+	/**
+	 * The band, the panel and the modal, read as the app paints them.
+	 *
+	 * Everything here is a property of the app's own DOM: the boxes come from
+	 * `getBoundingClientRect`, the copy from `textContent`, the adopt control's
+	 * state from its own `disabled`, and the composer's reachability from
+	 * `elementFromPoint` at its centre (which is the only honest way to ask
+	 * whether a modal has taken the pointer, since the attribute that does it is
+	 * on an ancestor).
+	 */
+	const readBand = () =>
+		cdp.evaluate(`(() => {
+			const box = (el) => {
+				if (!el) return null;
+				const r = el.getBoundingClientRect();
+				return {
+					x: Math.round(r.x), y: Math.round(r.y),
+					right: Math.round(r.right), bottom: Math.round(r.bottom),
+					w: Math.round(r.width), h: Math.round(r.height),
+				};
+			};
+			const text = (el) => (el ? el.textContent.replace(/\\s+/g, " ").trim() : null);
+			const buttons = (root) =>
+				root
+					? Array.from(root.querySelectorAll("button")).map((b) => ({
+							text: b.textContent.replace(/\\s+/g, " ").trim(),
+							label: b.getAttribute("aria-label"),
+							disabled: b.disabled,
+						}))
+					: null;
+			const field = document.querySelector(${JSON.stringify(FIELD)});
+			const panel = document.querySelector(${JSON.stringify(PANEL)});
+			const dialog = document.querySelector(${JSON.stringify(DIALOG)});
+			const active = document.activeElement;
+			const dialogField = dialog ? dialog.querySelector("textarea") : null;
+			const hiddenByAncestor = (el) => {
+				let node = el ? el.parentElement : null;
+				while (node) {
+					if (node.getAttribute && node.getAttribute("aria-hidden") === "true") return true;
+					node = node.parentElement;
+				}
+				return false;
+			};
+			return {
+				field: box(field),
+				fieldMatches: document.querySelectorAll(${JSON.stringify(FIELD)}).length,
+				/** The textarea's ancestors, so an odd rect can be explained rather
+				 * than guessed at: which element is 34px tall, where the frame is, and
+				 * whether a transform is in the chain. */
+				fieldAncestors: (() => {
+					const out = [];
+					let node = field ? field.parentElement : null;
+					for (let depth = 0; depth < 6 && node; depth++) {
+						out.push({
+							tag: node.tagName.toLowerCase(),
+							cls: String(node.className ?? "").slice(0, 90),
+							rect: box(node),
+							transform: getComputedStyle(node).transform,
+							position: getComputedStyle(node).position,
+						});
+						node = node.parentElement;
+					}
+					return out;
+				})(),
+				fieldValue: field ? field.value : null,
+				fieldHittable: (() => {
+					if (!field) return null;
+					const r = field.getBoundingClientRect();
+					const hit = document.elementFromPoint(
+						Math.round(r.left + r.width / 2),
+						Math.round(r.top + r.height / 2),
+					);
+					return hit !== null && (hit === field || field.contains(hit) || (hit.contains && hit.contains(field)));
+				})(),
+				fieldHiddenByAncestor: hiddenByAncestor(field),
+				activeIsField: active === field,
+				active: active
+					? active.tagName.toLowerCase() +
+						(active.getAttribute("aria-label")
+							? "[" + active.getAttribute("aria-label") + "]"
+							: "")
+					: null,
+				box: box(field ? field.parentElement : null),
+				composerBox: (() => {
+					/*
+					 * THE COMPOSER'S OWN FRAME, found the way the app itself finds it: by
+					 * the shared measure class (chat-measure.ts), which is the one
+					 * element both the panel and the box carry. The field's parent is NOT
+					 * that element - it is inset by the box's own padding - and comparing
+					 * the panel against it reported a 17px misalignment that does not
+					 * exist on screen.
+					 */
+					const shared = Array.from(
+						document.querySelectorAll(
+							'[class*="@min-[750px]/chatcol:max-w-[900px]"]',
+						),
+					);
+					const frame = field
+						? shared.find((el) => el.contains(field))
+						: null;
+					return box(frame ?? null);
+				})(),
+				panel: box(panel),
+				panelText: text(panel),
+				panelTag: panel ? panel.tagName.toLowerCase() : null,
+				panelLabelledBy: panel ? panel.getAttribute("aria-labelledby") : null,
+				panelTitleText: panel
+					? text(panel.querySelector("h1, h2, h3"))
+					: null,
+				panelButtons: buttons(panel),
+				panelAlert: panel ? text(panel.querySelector('[role="alert"]')) : null,
+				panelThinking: panel ? panel.textContent.includes("thinking…") : null,
+				dialog: box(dialog),
+				dialogText: text(dialog),
+				dialogTitle: dialog ? text(dialog.querySelector("h1, h2, h3")) : null,
+				dialogFieldValue: dialogField ? dialogField.value : null,
+				dialogButtons: buttons(dialog),
+				dialogFieldHidden: hiddenByAncestor(dialogField),
+			};
+		})()`);
+
+	/** The control in a button list whose text starts with `label`. */
+	const button = (list, label) =>
+		(list ?? []).find((entry) => entry.text.startsWith(label)) ?? null;
+
+	/**
+	 * Start the session's runtime the way the renderer does, and wait for it.
+	 *
+	 * The composer mounts as soon as the pane does; the OWNER that answers an
+	 * aside boots on the first ask and can take seconds. Warming first is what
+	 * separates "the panel never painted the answer" from "the backend was still
+	 * starting", and this rig's whole claim is about the panel.
+	 */
+	const warm = async () => {
+		await fetch(`${BACKEND}/v1/desktop/sessions/${sessionId}/warm`, {
+			method: "POST",
+			headers: {
+				"content-type": "application/json",
+				authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+			},
+			body: "{}",
+		}).catch(() => null);
+		for (let attempt = 0; attempt < 120; attempt++) {
+			const response = await fetch(
+				`${BACKEND}/v1/desktop/sessions/${sessionId}`,
+				{
+					headers: {
+						authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+					},
+				},
+			).catch(() => null);
+			const body = response ? await response.json().catch(() => null) : null;
+			if (body && JSON.stringify(body).includes('"cold":false')) return true;
+			await wait(500);
+		}
+		return false;
+	};
+
+	// ---- the run's own preconditions ----------------------------------------
+	const hello = await verb(cdp, "hello");
+	note("hello", JSON.stringify(hello, null, 2));
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown",
+		facts.windowMode === "headless" && facts.visible === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", "localOperatorDark");
+
+	/*
+	 * A session on this run's own backend, in this run's own scratch tree: the
+	 * aside's op is keyed by a session id, so a draft (which has none) could not
+	 * ask at all. The same `POST /v1/desktop/sessions` the desktop UI makes.
+	 */
+	const workspace = join(SCRATCH, "btw-workspace");
+	mkdirSync(workspace, { recursive: true });
+	const created = await createBackendSession(workspace);
+	note(
+		"the session this scene asks from",
+		JSON.stringify(created.id ? { id: created.id } : created.body),
+	);
+	if (!created.id) {
+		throw new Error(
+			`no session on the backend (${JSON.stringify(created.body)}): this scene needs --backend pointing at an isolated daemon this run owns, with --backend-records so discovery admits it and --seed-onboarding-complete so the first-run wizard is out of the way`,
+		);
+	}
+	const sessionId = created.id;
+	await verb(cdp, "navigate", `/chat/${sessionId}`);
+	for (let attempt = 0; attempt < 80; attempt++) {
+		const present = await cdp.evaluate(
+			`document.querySelector(${JSON.stringify(FIELD)}) !== null`,
+		);
+		if (present) break;
+		await wait(100);
+	}
+	const rested = await readBand();
+	if (rested.field === null) {
+		throw new Error(
+			"no composer on screen for the session this scene created: check that the backend is on a port the PAGE allows (8080 here — `src/renderer/index.html` pins connect-src to 1111/8080, and 1111 is the operator's own backend) and that the renderer was built with VITE_LOCAL_OPERATOR_API_URL set to that same URL",
+		);
+	}
+	note("the band at rest", JSON.stringify(rested));
+	check(
+		"the composer is on screen and holds the caret before anything is typed",
+		rested.activeIsField === true,
+		JSON.stringify({ active: rested.active, field: rested.field }),
+	);
+	const warmed = await warm();
+	note(
+		"the session's owner",
+		warmed ? "warm (snapshot.cold = false)" : "NEVER WARMED",
+	);
+
+	// ---- ONE Enter ----------------------------------------------------------
+	await cdp.send("Input.insertText", { text: `/btw ${QUESTION}` });
+	await wait(150);
+	const typedLine = await readBand();
+	check(
+		"the slash line is in the composer, typed through the browser's own input pipeline",
+		typedLine.fieldValue === `/btw ${QUESTION}`,
+		`composer holds ${JSON.stringify(typedLine.fieldValue)}`,
+	);
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+
+	/*
+	 * WHICH SURFACE THE ONE PRESS PRODUCED is the scene's fork, and it is read
+	 * rather than passed in: the AFTER tree attaches the panel and asks in the
+	 * same press, the BEFORE tree presents a modal and asks only on a second one.
+	 */
+	let opened = await readBand();
+	for (let attempt = 0; attempt < 60; attempt++) {
+		if (opened.panel !== null || opened.dialog !== null) break;
+		await wait(100);
+		opened = await readBand();
+	}
+	const AFTER = opened.panel !== null;
+	const BEFORE = opened.dialog !== null;
+	if (!AFTER && !BEFORE) {
+		throw new Error(
+			`one Enter produced neither the aside panel nor the aside dialog (composer holds ${JSON.stringify(opened.fieldValue)}): the press did not reach the /btw route, so nothing about the aside is being measured`,
+		);
+	}
+	const TREE = AFTER ? "after" : "before";
+	/*
+	 * A prefix for the frame files, so a second pass at another WINDOW SIZE (the
+	 * narrow column, where the band's small-view branch is the one that renders)
+	 * writes beside the first rather than over it.
+	 */
+	const FRAME_PREFIX = RUN_LABEL ? `${TREE}-${RUN_LABEL}` : TREE;
+	note(
+		"which surface one Enter produced",
+		AFTER
+			? "the composer-attached panel ([data-lo-aside-panel])"
+			: "a Radix modal dialog ([role=dialog])",
+	);
+	check(
+		"one Enter produced exactly one of the two surfaces (never both)",
+		AFTER !== BEFORE,
+		JSON.stringify({ panel: opened.panel, dialog: opened.dialog }),
+	);
+
+	/*
+	 * The panel's own accessibility shape, from the browser's accessibility tree
+	 * rather than from attributes: `<section>` with an accessible name IS a
+	 * region, and the name is what makes it one.
+	 */
+	if (AFTER) {
+		const ax = await cdp
+			.send("Accessibility.getFullAXTree", {})
+			.catch((error) => ({ error: String(error) }));
+		const axNodes = ax?.result?.nodes ?? [];
+		const named = axNodes.filter(
+			(node) =>
+				node.name?.value === "Aside" ||
+				String(node.name?.value ?? "").startsWith("Aside"),
+		);
+		note(
+			"the panel in the accessibility tree",
+			JSON.stringify({
+				nodes: axNodes.length,
+				error: ax.error ?? null,
+				regions: axNodes
+					.filter((node) => node.role?.value === "region")
+					.map((node) => node.name?.value),
+				named: named.map((node) => ({
+					role: node.role?.value,
+					name: node.name?.value,
+					ignored: node.ignored,
+				})),
+			}),
+		);
+		check(
+			"the panel is named in the accessibility tree (a named section IS a region)",
+			named.some((node) => node.role?.value === "region"),
+			JSON.stringify(named.map((n) => `${n.role?.value}:${n.name?.value}`)),
+		);
+		check(
+			"the panel is not a dialog, so the composer keeps the app's keys",
+			!named.some((node) => node.role?.value === "dialog"),
+			JSON.stringify(named.map((node) => node.role?.value)),
+		);
+	}
+
+	const frames = [];
+	const take = async (label, mode = "settled") => {
+		const frame =
+			mode === "settled"
+				? await captureSettled(cdp, `${FRAME_PREFIX}-${label}`)
+				: await capture(cdp, `${FRAME_PREFIX}-${label}`);
+		frames.push({ ...frame, mode });
+		note(
+			"frame",
+			JSON.stringify({ label: frame.label, mode, ...frame.pixels }),
+		);
+		return frame;
+	};
+
+	if (AFTER) {
+		// ---- thinking: the panel is up, the question is asked, nothing has
+		// arrived yet. The adopt control must be dead AND must say why.
+		const thinking = await readBand();
+		check(
+			"the question is on the panel in the same press that typed it",
+			(thinking.panelText ?? "").includes(QUESTION),
+			`panel text is ${JSON.stringify(thinking.panelText)}`,
+		);
+		check(
+			"the panel is a sibling of the composer box, not the box itself",
+			thinking.panel !== null &&
+				thinking.composerBox !== null &&
+				thinking.panel.bottom <= thinking.composerBox.y + 1,
+			`panel ${JSON.stringify(thinking.panel)} vs composer box ${JSON.stringify(thinking.composerBox)}: a gap of ${thinking.composerBox.y - thinking.panel.bottom}px between them`,
+		);
+		check(
+			"the panel and the composer box share one left and right edge",
+			thinking.panel !== null &&
+				thinking.composerBox !== null &&
+				Math.abs(thinking.panel.x - thinking.composerBox.x) <= 1 &&
+				Math.abs(thinking.panel.right - thinking.composerBox.right) <= 1,
+			`panel x${thinking.panel?.x}..${thinking.panel?.right} box x${thinking.composerBox?.x}..${thinking.composerBox?.right}`,
+		);
+		check(
+			"the composer keeps the caret while the aside is up",
+			thinking.activeIsField === true,
+			JSON.stringify({ active: thinking.active }),
+		);
+		const adoptThinking = button(thinking.panelButtons, "Add to conversation");
+		check(
+			"the adopt control is present and disabled before the answer settles",
+			adoptThinking !== null && adoptThinking.disabled === true,
+			JSON.stringify(thinking.panelButtons),
+		);
+		check(
+			"the disabled adopt control states its reason on the panel",
+			(thinking.panelText ?? "").includes(
+				"The exchange is still settling — a moment before it can be added.",
+			),
+			JSON.stringify(thinking.panelText),
+		);
+		check(
+			"the panel paints the thinking line, and only one liveness element",
+			thinking.panelThinking === true &&
+				(thinking.panelText ?? "").split("thinking…").length === 2,
+			JSON.stringify(thinking.panelText),
+		);
+		check(
+			"the close control is labelled for a screen reader",
+			button(thinking.panelButtons, "") !== null &&
+				(thinking.panelButtons ?? []).some(
+					(entry) => entry.label === "Close the aside",
+				),
+			JSON.stringify(thinking.panelButtons),
+		);
+		await take("01-panel-thinking", "raw");
+
+		// ---- mid-stream: text is present and INCOMPLETE. The frame is only
+		// taken while that is true, so it cannot be a settled answer mislabelled.
+		let partial = null;
+		for (let attempt = 0; attempt < 80; attempt++) {
+			const now = await readBand();
+			const text = now.panelText ?? "";
+			if (text.includes("Transport failures") && !text.includes(TAIL)) {
+				partial = now;
+				break;
+			}
+			if (text.includes(TAIL)) break;
+			await wait(50);
+		}
+		if (partial !== null) {
+			check(
+				"the mid-stream frame carries partial text rather than the whole answer",
+				partial.panel !== null &&
+					partial.panelText.includes("Transport failures") &&
+					!partial.panelText.includes(TAIL),
+				JSON.stringify(partial.panelText),
+			);
+			await take("02-panel-midstream", "raw");
+		} else {
+			check(
+				"the answer streamed in more than one visible step",
+				false,
+				"no frame caught the answer in a partially-written state: the fake provider's chunks were not visibly separated, or the answer settled between two reads",
+			);
+		}
+
+		// ---- settled. The answer's last chunk reaches the panel BEFORE the POST
+		// that settles the turn returns, so `settled` is a distinct state from
+		// "the text is complete" and is waited for rather than assumed - the gap
+		// is measured here, because the panel is disabled and saying "wait for the
+		// answer" for exactly that window.
+		let settled = await readBand();
+		let textCompleteAt = null;
+		for (let attempt = 0; attempt < 240; attempt++) {
+			if ((settled.panelText ?? "").includes(TAIL)) {
+				textCompleteAt = Date.now();
+				break;
+			}
+			await wait(100);
+			settled = await readBand();
+		}
+		check(
+			"the settled answer is on the panel",
+			(settled.panelText ?? "").includes(TAIL),
+			JSON.stringify(settled.panelText),
+		);
+		let adoptLiveAt = null;
+		for (let attempt = 0; attempt < 240; attempt++) {
+			const live = button(settled.panelButtons, "Add to conversation");
+			if (live !== null && live.disabled === false) {
+				adoptLiveAt = Date.now();
+				break;
+			}
+			await wait(50);
+			settled = await readBand();
+		}
+		note(
+			"how long the adopt control lagged the fully-painted answer",
+			textCompleteAt === null
+				? "the answer never completed within the wait"
+				: `${adoptLiveAt === null ? "never went live" : `${adoptLiveAt - textCompleteAt}ms`}`,
+		);
+		const adoptSettled = button(settled.panelButtons, "Add to conversation");
+		check(
+			"the adopt control is live once the exchange has settled",
+			adoptSettled !== null && adoptSettled.disabled === false,
+			JSON.stringify(settled.panelButtons),
+		);
+		check(
+			"the blocked reason is gone once the control is live",
+			!(settled.panelText ?? "").includes(
+				"The exchange is still settling — a moment before it can be added.",
+			),
+			JSON.stringify(settled.panelText),
+		);
+		check(
+			"the adopt chord is advertised beside the control",
+			(settled.panelText ?? "").includes("+F"),
+			JSON.stringify(settled.panelText),
+		);
+		check(
+			"the panel keeps its contract sentence and the answer, and no second liveness line",
+			(settled.panelText ?? "").includes(
+				"off the record — nothing here joins the conversation",
+			) && settled.panelThinking === false,
+			JSON.stringify(settled.panelText),
+		);
+		await take("03-panel-settled");
+	}
+
+	if (BEFORE) {
+		check(
+			"one Enter opened a modal and did NOT ask: no answer is on it yet",
+			opened.dialogFieldValue === QUESTION,
+			`the dialog's field holds ${JSON.stringify(opened.dialogFieldValue)}, dialog title ${JSON.stringify(opened.dialogTitle)}`,
+		);
+		check(
+			"the modal is a dialog role, which is what takes the app's keys",
+			opened.dialog !== null && opened.dialogTitle === "Aside (off the record)",
+			JSON.stringify({ dialog: opened.dialog, title: opened.dialogTitle }),
+		);
+		await take("01-modal-open", "raw");
+	}
+
+	/*
+	 * THE REPORTED BUG, DRIVEN. A probe typed while the aside is up must reach the
+	 * composer in the AFTER tree. In the BEFORE tree the composer is outside a
+	 * modal, and the two readings that say so are the composer's own hit test and
+	 * its painted value — a click is deliberately NOT delivered there, because a
+	 * Radix modal dismisses on an outside press and that would end the very state
+	 * under test.
+	 */
+	const probe = "composer probe line";
+	let beforeProbe = await readBand();
+	if (AFTER) {
+		await clickAt(cdp, FIELD);
+		beforeProbe = await readBand();
+		check(
+			"the composer takes the pointer while the panel is up",
+			beforeProbe.fieldHittable !== false && beforeProbe.activeIsField === true,
+			JSON.stringify({
+				hittable: beforeProbe.fieldHittable,
+				active: beforeProbe.active,
+			}),
+		);
+	}
+	await cdp.send("Input.insertText", { text: probe });
+	await wait(250);
+	const afterProbe = await readBand();
+	if (AFTER) {
+		check(
+			"a probe typed while the panel is up LANDS in the composer and stays",
+			afterProbe.fieldValue === probe,
+			`composer holds ${JSON.stringify(afterProbe.fieldValue)}`,
+		);
+		check(
+			"the panel is still up after typing in the composer",
+			afterProbe.panel !== null,
+			JSON.stringify(afterProbe.panel),
+		);
+		await take("04-composer-typed-while-panel-up");
+	} else {
+		check(
+			"the composer cannot be reached while the modal is up (Radix marks it aria-hidden, pointer-events: none)",
+			beforeProbe.fieldHittable === false &&
+				beforeProbe.fieldHiddenByAncestor === true,
+			JSON.stringify({
+				hittable: beforeProbe.fieldHittable,
+				hidden: beforeProbe.fieldHiddenByAncestor,
+			}),
+		);
+		check(
+			"a probe typed while the modal is up does NOT land in the composer",
+			afterProbe.fieldValue === "",
+			`composer holds ${JSON.stringify(afterProbe.fieldValue)}`,
+		);
+		await take("02-composer-blocked");
+
+		/*
+		 * THE SECOND GESTURE, and this is the report's own complaint: the BEFORE tree
+		 * asks nothing on the press that typed the question, so the answer only
+		 * arrives after a SECOND one - the modal's own submit control.
+		 *
+		 * The walk is a KEYBOARD walk (Tab from the field, then Enter on the submit
+		 * button) rather than a pointer click, because it measures two things at once:
+		 * that the second gesture exists, and where it sits in the modal's focus
+		 * order. The focus order is recorded rather than asserted - it belongs to the
+		 * surface being replaced - and the submission is asserted.
+		 */
+		await clickAt(cdp, `${DIALOG} textarea`);
+		await wait(150);
+		const focusWalk = [];
+		let submitted = false;
+		for (let step = 0; step < 6 && !submitted; step++) {
+			const active = await cdp.evaluate(`(() => {
+				const a = document.activeElement;
+				return a
+					? {
+							tag: a.tagName.toLowerCase(),
+							type: a.getAttribute("type"),
+							label: a.getAttribute("aria-label"),
+							text: (a.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 40),
+						}
+					: null;
+			})()`);
+			focusWalk.push(active);
+			if (active && (active.type === "submit" || active.text === "Ask")) {
+				await pressChord(cdp, {
+					key: "Enter",
+					code: "Enter",
+					virtualKeyCode: 13,
+				});
+				submitted = true;
+				break;
+			}
+			await pressChord(cdp, { key: "Tab", code: "Tab", virtualKeyCode: 9 });
+			await wait(120);
+		}
+		note("the modal's focus order", JSON.stringify(focusWalk));
+		check(
+			"the modal's own control is what asks, and only a second gesture reaches it",
+			submitted === true,
+			`no submit control was reachable by Tab in 6 steps: ${JSON.stringify(focusWalk)}`,
+		);
+		let answered = await readBand();
+		for (let attempt = 0; attempt < 240; attempt++) {
+			if ((answered.dialogText ?? "").includes(TAIL)) break;
+			await wait(100);
+			answered = await readBand();
+		}
+		check(
+			"the second gesture is what asks in this tree — the finished answer, all at once",
+			(answered.dialogText ?? "").includes(TAIL),
+			JSON.stringify(answered.dialogText),
+		);
+		check(
+			"the composer is still unreachable after the answer lands",
+			answered.fieldHittable === false && answered.fieldValue === "",
+			JSON.stringify({
+				hittable: answered.fieldHittable,
+				value: answered.fieldValue,
+			}),
+		);
+		await take("03-modal-answered");
+
+		/*
+		 * THE PICTURE-DEPENDENT ERASE, and it can only be taken AFTER an answer has
+		 * landed: the field's painted value is `answer ? "" : text`, so before the
+		 * first answer the box shows what is typed into it and after one it is
+		 * pinned empty however much is typed. That is the report's third complaint,
+		 * and it is a second mechanism beside the modal's reach.
+		 */
+		await clickAt(cdp, `${DIALOG} textarea`);
+		await wait(150);
+		const focused = await readBand();
+		await cdp.send("Input.insertText", { text: probe });
+		await wait(250);
+		const typed = await readBand();
+		note(
+			"the modal's own follow-up field",
+			JSON.stringify({
+				focusedBefore: focused.active,
+				valueAfterTyping: typed.dialogFieldValue,
+				composerValue: typed.fieldValue,
+			}),
+		);
+		check(
+			"after an answer, typing into the modal's follow-up field leaves the painted value EMPTY (the pinned value)",
+			typed.dialogFieldValue === "" || typed.dialogFieldValue === null,
+			`the dialog's field paints ${JSON.stringify(typed.dialogFieldValue)} after ${JSON.stringify(probe)} was typed into it`,
+		);
+		await take("04-followup-erased");
+	}
+
+	// ---- Escape ------------------------------------------------------------
+	await pressChord(cdp, { key: "Escape", code: "Escape", virtualKeyCode: 27 });
+	let closed = await readBand();
+	for (let attempt = 0; attempt < 60; attempt++) {
+		if (closed.panel === null && closed.dialog === null) break;
+		await wait(100);
+		closed = await readBand();
+	}
+	check(
+		"Escape closes the aside and leaves neither surface up",
+		closed.panel === null && closed.dialog === null,
+		JSON.stringify({ panel: closed.panel, dialog: closed.dialog }),
+	);
+	check(
+		"the composer holds the caret again after Escape",
+		closed.activeIsField === true,
+		JSON.stringify({ active: closed.active, field: closed.field }),
+	);
+	if (AFTER) {
+		check(
+			"the composer's own text survived the aside being closed",
+			closed.fieldValue === probe,
+			`composer holds ${JSON.stringify(closed.fieldValue)}`,
+		);
+	}
+	await take(`${AFTER ? "05" : "05"}-escape-restored`);
+
+	/*
+	 * The two remaining states of the panel, and only the AFTER tree has them: a
+	 * bare `/btw` (an empty panel, the next line becomes its first question) and an
+	 * ask the backend refused (the error is ON the panel, not in a toast).
+	 */
+	if (AFTER) {
+		// Clear the probe out of the composer first (`Cmd+A` then type, the
+		// gesture a user makes; `Input.insertText` inserts AT THE CARET and would
+		// otherwise prefix the command line with the probe).
+		await clickAt(cdp, FIELD);
+		await pressChord(cdp, {
+			key: "a",
+			code: "KeyA",
+			virtualKeyCode: 65,
+			modifiers: MODIFIER.meta,
+			commands: ["selectAll"],
+		});
+		await cdp.send("Input.insertText", { text: "/btw" });
+		await wait(150);
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		let empty = await readBand();
+		for (let attempt = 0; attempt < 60; attempt++) {
+			if (empty.panel !== null) break;
+			await wait(100);
+			empty = await readBand();
+		}
+		check(
+			"a bare /btw attaches an EMPTY panel rather than asking nothing visible",
+			empty.panel !== null &&
+				(empty.panelText ?? "").includes(
+					"Type a question in the composer below",
+				),
+			JSON.stringify(empty.panelText),
+		);
+		const adoptEmpty = button(empty.panelButtons, "Add to conversation");
+		check(
+			"the empty panel's adopt control is disabled and says there is nothing to add",
+			adoptEmpty !== null &&
+				adoptEmpty.disabled === true &&
+				(empty.panelText ?? "").includes("Nothing to add yet."),
+			JSON.stringify({ text: empty.panelText, buttons: empty.panelButtons }),
+		);
+		await take("06-empty-panel-bare-btw");
+
+		/*
+		 * The refusal needs its OWN panel, so this closes the empty one first:
+		 * while an aside is attached the composer's Enter addresses the ASIDE
+		 * rather than dispatching the command again.
+		 */
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		await wait(300);
+		await cdp.send("Input.insertText", {
+			text: "/btw TOOLCALL2: keep calling tools",
+		});
+		await wait(150);
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		let refused = await readBand();
+		for (let attempt = 0; attempt < 300; attempt++) {
+			if (refused.panelAlert !== null) break;
+			await wait(100);
+			refused = await readBand();
+		}
+		check(
+			"a refused ask states the refusal ON the panel, not in a toast",
+			refused.panelAlert !== null,
+			JSON.stringify(refused.panelAlert),
+		);
+		check(
+			"the panel's error is an alert, and the adopt control stays disabled with its reason",
+			refused.panelAlert !== null &&
+				button(refused.panelButtons, "Add to conversation")?.disabled === true,
+			JSON.stringify({
+				alert: refused.panelAlert,
+				buttons: refused.panelButtons,
+			}),
+		);
+		await take("07-panel-error");
+	}
+
+	check(
+		"every capture wrote a PNG of the requested size",
+		frames.every(
+			(frame) =>
+				frame.bytes > 1000 &&
+				frame.pixels.width ===
+					frame.viewport.width * frame.viewport.devicePixelRatio &&
+				frame.pixels.height ===
+					frame.viewport.height * frame.viewport.devicePixelRatio,
+		),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: ${frame.pixels.width}x${frame.pixels.height}, ${frame.bytes}B`,
+			)
+			.join(" | "),
+	);
+	check(
+		"every settled capture is a frame the app held still for, with no toast on it",
+		frames
+			.filter((frame) => frame.mode === "settled")
+			.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: ${frame.mode}, stable=${frame.stable}, toastFree=${frame.toastFree}`,
+			)
+			.join(" | "),
+	);
+	return { tree: TREE, frames };
+}
+
 async function sceneNewChat(cdp) {
 	/*
 	 * Start anywhere but the chat route: `navigate("/chat")` is 80% of what this
@@ -12650,6 +15270,911 @@ async function focusField(cdp, selector) {
 		input.focus();
 		return document.activeElement === input;
 	})()`);
+}
+
+/**
+ * Settings > Integrations with NO chat and NO model: add stdio, add remote, test
+ * both, remove both.
+ *
+ * WHY THIS SCENE EXISTS. The page used to route every read and write through a
+ * conversation's session, which booted a runtime - and so needed a model
+ * provider - just to write `mcp.json` (UX walk U5: "Integrations can't be set up
+ * until a model works"). The redesign reads and writes the SESSIONLESS catalog
+ * (`GET|POST /v1/desktop/mcp`, capability `mcp_catalog`), and the claim to prove
+ * is exactly the one the walk refuted: on a fresh config with no model provider
+ * and no session at all, the page adds a local command AND a remote URL, tests
+ * each, and removes each.
+ *
+ * BOTH TRANSPORTS, because they are two different rows on this page and two
+ * different code paths on the backend: a local command's row reports through the
+ * probe that spawns it, and a remote URL's through an HTTP handshake the daemon
+ * makes. A run that only ever added a stdio server would leave the URL half - its
+ * `remote_url` transport, its endpoint, and the `--version`-less handshake - to
+ * the reader's imagination.
+ *
+ * Every step is asserted on BOTH sides - what the page shows, and what the
+ * backend's own catalog says - because either half alone passes a wrong
+ * implementation: a page that rendered an optimistic row over a refused write
+ * would satisfy the pixels, and a sessionless route that quietly created a
+ * session would satisfy the backend. The last check closes that second door by
+ * reading the session list before and after: it must still be empty.
+ *
+ * WHAT IT NEEDS: `--backend <url>` - a daemon this run owns, whose config root
+ * has NO model provider configured - the renderer built against the same URL,
+ * `LOCAL_OPERATOR_DESKTOP_TOKEN` in this script's environment,
+ * `--integration-command`/`--integration-args` for the stdio server (arguments
+ * PIPE-separated, because the form takes one per line), and `--integration-url`
+ * for the remote one.
+ *
+ * AND A CONFIG ROOT FREE OF INTEGRATIONS. A rig re-used after a run that died
+ * mid-way still lists the rows that run added, so the empty state never appears
+ * and the closing "the catalog is empty again" count includes them. Measured,
+ * not hypothesised: the second run on a dirty rig reported three failures that
+ * were all one leftover row pair, while its own add/test/remove steps passed.
+ */
+
+/** One backend read this run owns, unwrapped like the app's own transport does. */
+async function readBackendJson(path) {
+	const response = await fetch(`${BACKEND}${path}`, {
+		headers: {
+			authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+		},
+	});
+	const text = await response.text();
+	let body = null;
+	try {
+		body = JSON.parse(text);
+	} catch {
+		/* not JSON: reported as text by the caller */
+	}
+	return { status: response.status, body: body?.result ?? body ?? text };
+}
+
+/**
+ * Press something with a REAL pointer sequence, scrolling it into view first.
+ *
+ * Radix's menu opens on `pointerdown`, so a synthetic `click` on the trigger
+ * leaves the menu shut - and a row's trigger can sit below the fold, where a
+ * press at its off-screen coordinates would hit nothing and read exactly like a
+ * control that does not work. So the element is scrolled to the middle of the
+ * viewport, its centre is read from the live layout, and the press is dispatched
+ * there; the topmost element at that point comes back with the reading, which is
+ * how a covered or disabled control is told from a broken press.
+ */
+async function pointerPressSelector(cdp, selector, { attempts = 3 } = {}) {
+	/*
+	 * RETRIED ON A MISS, and only on a miss. `press` measures the box in the app
+	 * and the dispatcher presses those coordinates a moment later; a row whose
+	 * STATUS TEXT changes width moves its right-aligned controls between the two,
+	 * so the first attempt can land on the row's padding and read `hit: false`.
+	 * A press that LANDED is never repeated - for a menu trigger that would close
+	 * what it just opened - and a control that is genuinely covered still comes
+	 * back `hit: false` on every attempt, which is the reading the caller
+	 * asserts on.
+	 */
+	let landed = await pointerPressSelectorOnce(cdp, selector);
+	for (
+		let attempt = 1;
+		attempt < attempts && landed && landed.hit !== true;
+		attempt += 1
+	) {
+		await wait(400);
+		landed = await pointerPressSelectorOnce(cdp, selector);
+	}
+	return landed;
+}
+
+async function pointerPressSelectorOnce(cdp, selector) {
+	const point = await cdp.evaluate(`(() => {
+		const node = document.querySelector(${JSON.stringify(selector)});
+		if (!node) return null;
+		node.scrollIntoView({ block: "center", inline: "center" });
+		const rect = node.getBoundingClientRect();
+		const x = rect.left + rect.width / 2;
+		const y = rect.top + rect.height / 2;
+		const top = document.elementFromPoint(x, y);
+		return {
+			x,
+			y,
+			hit: top !== null && (top === node || node.contains(top)),
+			top: top === null ? "none" : top.tagName.toLowerCase(),
+			rect: { top: Math.round(rect.top), height: Math.round(rect.height) },
+			viewport: window.innerHeight,
+		};
+	})()`);
+	if (!point) return null;
+	await wait(150);
+	await pressPointer(cdp, point.x, point.y);
+	return point;
+}
+
+async function sceneSettingsIntegrations(cdp) {
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown",
+		facts.windowMode === "headless" && facts.visible === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	check(
+		"this scene is running against a live, isolated backend",
+		Boolean(BACKEND),
+		"pass --backend <url> with the renderer built against the same URL",
+	);
+	/*
+	 * NO FIRST-RUN MODAL OVER THE PAGE. A fresh profile in front of a fresh
+	 * backend is a first-run user, and the onboarding wizard is a MODAL - it
+	 * paints a provider grid over the whole page, so every press this scene makes
+	 * at a control's coordinates lands on the wizard instead. Measured: a re-run
+	 * that dropped `--seed-onboarding-complete` reported "press never landed" for
+	 * the add form's transport switch with the hit element `span "API key"` from
+	 * the provider list, and the frame shows "Connect a provider, Step 1 of 6"
+	 * over the form. The guard is here rather than in the runner because a scene
+	 * whose presses are covered proves nothing whichever way it fails.
+	 */
+	const onboardingModal = await waitForScene(
+		cdp,
+		`!document.body.innerText.includes("Connect a provider") &&
+			!document.body.innerText.includes("Step 1 of 6")`,
+		2000,
+	);
+	check(
+		"no onboarding wizard is covering the page this scene drives",
+		onboardingModal === true,
+		"pass --seed-onboarding-complete: the first-run wizard is a modal, and it swallows every press",
+	);
+	if (!BACKEND) return [];
+	const frames = [];
+	const stdioName = `echo-${process.pid}`;
+	const remoteName = `remote-${process.pid}`;
+
+	/* ---- 0. the backend's own starting facts --------------------------- */
+	/*
+	 * AN EMPTY START, ASSERTED ON THE BACKEND rather than inferred from the page.
+	 * A rig that has already been driven leaves the servers an earlier run added,
+	 * and then the first "the page is empty" check fails for a reason that has
+	 * nothing to do with the code under test (measured: two runs against one rig
+	 * left four servers behind, and the empty-list checks failed twice for it).
+	 */
+	const startCatalog = await readBackendJson("/v1/desktop/mcp");
+	const startServers = startCatalog.body?.data?.servers ?? [];
+	const startSessions = await readBackendJson("/v1/desktop/sessions?limit=50");
+	// Inline rather than through the scene's `countSessions`, which is declared
+	// further down: this guard runs before it and a helper that is not yet
+	// initialised is a TDZ error, not a reading.
+	const startSessionCount = Array.isArray(startSessions.body?.sessions)
+		? startSessions.body.sessions.length
+		: null;
+	check(
+		"this rig starts EMPTY: no servers and no conversations",
+		startServers.length === 0 && startSessionCount === 0,
+		`the rig already lists servers ${JSON.stringify(startServers.map((server) => server.name))} and ${startSessionCount} conversation(s) - use a fresh rig, or clear its mcp.json and its sessions/`,
+	);
+
+	const caps = await readBackendJson("/v1/capabilities");
+	note(
+		"backend capabilities",
+		JSON.stringify(caps.body?.features ?? caps.body),
+	);
+	const hasCatalog = (caps.body?.features?.mcp_catalog ?? 0) >= 1;
+	check(
+		"the backend advertises the sessionless catalog",
+		hasCatalog,
+		`features=${JSON.stringify(caps.body?.features ?? caps)}`,
+	);
+	/*
+	 * A scene whose subject does not exist in this run STOPS here rather than
+	 * failing eleven more times: every later step is about the catalog route, so
+	 * against a backend without the capability their failures would describe the
+	 * fallback surface instead of the claim under test.
+	 */
+	if (!hasCatalog) {
+		note(
+			"stopping",
+			"this backend serves no sessionless catalog, so there is nothing here for this scene to measure; the capability check above is the whole reading",
+		);
+		return frames;
+	}
+	/*
+	 * NO MODEL PROVIDER, stated as a fact rather than assumed: this is the
+	 * condition the walk could not get past, so a run on a configured backend
+	 * would prove nothing about it.
+	 */
+	const config = await readBackendJson("/v1/config");
+	const accounts = await readBackendJson("/v1/auth/status");
+	const signedIn = Array.isArray(accounts.body?.accounts)
+		? accounts.body.accounts.filter((account) => account?.signed_in)
+		: [];
+	note(
+		"model access before the run",
+		`default provider=${JSON.stringify(config.body?.default_provider ?? null)} default model=${JSON.stringify(config.body?.default_model ?? null)} signed-in accounts=${signedIn.length} (status ${accounts.status})`,
+	);
+	check(
+		"the config has no model provider, which is the state this scene is about",
+		!config.body?.default_provider && signedIn.length === 0,
+		`default_provider=${JSON.stringify(config.body?.default_provider ?? null)} signed-in=${signedIn.length}`,
+	);
+	const countSessions = (read) =>
+		Array.isArray(read.body?.sessions) ? read.body.sessions.length : null;
+	const sessionsBefore = await readBackendJson("/v1/desktop/sessions?limit=50");
+	note(
+		"sessions before",
+		`${countSessions(sessionsBefore)} (status ${sessionsBefore.status})`,
+	);
+
+	/* ---- the page's own controls, read back as text and as the catalog -- */
+	const catalog = () =>
+		readBackendJson("/v1/desktop/mcp").then((read) => ({
+			status: read.status,
+			document: read.body?.data ?? null,
+		}));
+	const rowFor = async (name) => {
+		const { document } = await catalog();
+		return document?.servers?.find((server) => server.name === name) ?? null;
+	};
+	/**
+	 * Press a control and prove the press LANDED on it.
+	 *
+	 * WHY THIS EXISTS. `press` measures the element's box in the app and the
+	 * DRIVER dispatches the mouse event at those coordinates; between the two, a
+	 * React commit can move the control. A row's controls are right-aligned after
+	 * a status whose WIDTH changes ("Ready" -> "Connecting…" -> "Connected · 1
+	 * tool"), and the list polls while an operation runs, so the button slides
+	 * horizontally a moment after it is measured - and the press lands on the
+	 * row's padding. The first scenario run reported `hitTest: false` with the
+	 * target `disabled: true`, which reads exactly like a broken control.
+	 *
+	 * So a press is retried until the hit test says it landed, and the retry
+	 * window is also the settle window (400 ms, longer than the 2 s poll's
+	 * commit). A scene that asserted an outcome from an unverified press would be
+	 * reporting on whatever happened to be under the pointer.
+	 */
+	const pressSettled = async (selector, { attempts = 8 } = {}) => {
+		/*
+		 * MEASURE FIRST, THEN PRESS. `measure` reports the same hit test as
+		 * `press` without dispatching anything, so polling it separates the two
+		 * things a miss can mean: the page has not settled yet (measure goes true
+		 * on its own) or the control is really covered (it never does). The press
+		 * then happens once, against a control this run has just confirmed is the
+		 * topmost element at its own centre.
+		 */
+		for (let attempt = 0; attempt < attempts; attempt += 1) {
+			const measured = await verb(cdp, "measure", selector);
+			if (measured?.hitTest === true) break;
+			await wait(400);
+		}
+		const pressed = await verb(cdp, "press", selector);
+		if (pressed?.hitTest !== true) {
+			await wait(400);
+			const retry = await verb(cdp, "press", selector);
+			if (retry?.hitTest !== true)
+				note("press never landed", `${selector} ${JSON.stringify(retry)}`);
+			return retry;
+		}
+		return pressed;
+	};
+
+	/** What has focus, in the terms a focus assertion reads. */
+	const activeElementOf = (targetCdp) =>
+		targetCdp.evaluate(`(() => {
+			const node = document.activeElement;
+			if (!node) return null;
+			return {
+				tag: node.tagName.toLowerCase(),
+				label: node.getAttribute('aria-label'),
+				action: node.getAttribute('data-integration-action'),
+				text: (node.textContent || '').trim().slice(0, 40),
+			};
+		})()`);
+
+	const rowText = (name) =>
+		cdp.evaluate(
+			`(document.querySelector('[data-integration=${JSON.stringify(name)}]')?.innerText || '').replace(/\\s+/g, ' ')`,
+		);
+	const typeInto = async (selector, text) => {
+		await verb(cdp, "press", selector);
+		await focusField(cdp, selector);
+		await cdp.send("Input.insertText", { text });
+	};
+
+	/**
+	 * Fill the add form and submit it, asserting the row arrives on both sides.
+	 *
+	 * `mode` picks which transport the form is in, which is itself a press - the
+	 * two are a radio pair on the real form, so choosing one the way a user does
+	 * is what proves the form's own switch works rather than merely its fields.
+	 */
+	const addThroughForm = async ({ name, mode, frame }) => {
+		await verb(cdp, "press", "button[data-tour-tag='mcp-add-server']");
+		await waitForScene(
+			cdp,
+			`Boolean(document.querySelector('#integration-add-name'))`,
+		);
+		await typeInto("#integration-add-name", name);
+		if (mode === "url") {
+			// The transport pair on the real form, pressed through the hook the
+			// component exposes: the two buttons' WORDING is a design decision
+			// that may change, the axis they choose between may not.
+			const switched = await pressSettled("[data-integration-transport='url']");
+			check(
+				"the add form switched to Remote URL",
+				switched?.hitTest === true,
+				JSON.stringify(switched),
+			);
+			await waitForScene(
+				cdp,
+				`Boolean(document.querySelector('#integration-add-url'))`,
+			);
+			await typeInto("#integration-add-url", INTEGRATION_URL ?? "");
+		} else {
+			await typeInto(
+				"#integration-add-command",
+				INTEGRATION_COMMAND ?? "python3",
+			);
+			if (INTEGRATION_ARGS)
+				await typeInto(
+					"#integration-add-args",
+					INTEGRATION_ARGS.split("|").join("\n"),
+				);
+		}
+		await captureSettled(cdp, frame);
+		await verb(
+			cdp,
+			"press",
+			"form[aria-label='Add integration'] button[type='submit']",
+		);
+		const onPage = await waitForScene(
+			cdp,
+			`Boolean(document.querySelector('[data-integration=${JSON.stringify(name)}]'))`,
+			750,
+		);
+		const row = await rowFor(name);
+		note(`catalog after adding ${name}`, JSON.stringify(row).slice(0, 700));
+		note(`row text for ${name}`, await rowText(name));
+		return { onPage, row };
+	};
+
+	/** Press the row's one action, then wait for the backend's answer. */
+	const testRow = async (name) => {
+		const pressed = await pressSettled(
+			`[data-integration=${JSON.stringify(name)}] [data-integration-action='test']`,
+		);
+		note(`pressed Test on ${name}`, JSON.stringify(pressed));
+		const moving = await waitForScene(
+			cdp,
+			`/Connecting|Connected/.test(document.querySelector('[data-integration=${JSON.stringify(name)}]')?.innerText || '')`,
+			250,
+		);
+		note(`row while testing ${name}`, `${moving} ${await rowText(name)}`);
+		const settled = await waitForScene(
+			cdp,
+			`/Connected ·|Couldn't start/.test(document.querySelector('[data-integration=${JSON.stringify(name)}]')?.innerText || '')`,
+			2500,
+		);
+		const row = await rowFor(name);
+		note(`catalog after testing ${name}`, JSON.stringify(row).slice(0, 700));
+		note(`row text after testing ${name}`, await rowText(name));
+		return { settled, row };
+	};
+
+	/**
+	 * Remove the row through its overflow, with the confirm the page asks.
+	 *
+	 * The ORDER is the assertion, so each step waits for the state it creates:
+	 * the menu is opened by a real pointer press, the confirm is waited for
+	 * BEFORE it is pressed (a press at a control that is not there yet times out
+	 * and reports a missing element, which says nothing about whether Remove
+	 * asks first), and the row is waited for to disappear on both sides.
+	 *
+	 * If the confirm never appears the function returns with `asked: false` and
+	 * presses nothing, so the failure is the check's to report rather than an
+	 * exception that hides which claim broke.
+	 */
+	const removeRow = async (name, { overflowFrame, confirmFrame } = {}) => {
+		const trigger = await pointerPressSelector(
+			cdp,
+			`[aria-label=${JSON.stringify(`More actions for ${name}`)}]`,
+		);
+		const opened = await waitForScene(
+			cdp,
+			`Boolean(document.querySelector("[data-integration-menu='remove']"))`,
+			250,
+		);
+		if (overflowFrame) await captureSettled(cdp, overflowFrame);
+		const item = await pointerPressSelector(
+			cdp,
+			"[data-integration-menu='remove']",
+		);
+		const asked = await waitForScene(
+			cdp,
+			`document.body.innerText.includes(${JSON.stringify(`Remove ${name}?`)})`,
+			250,
+		);
+		if (confirmFrame) await captureSettled(cdp, confirmFrame);
+		if (!asked)
+			return {
+				trigger,
+				opened,
+				item,
+				asked,
+				gone: false,
+				stillThere: Boolean(await rowFor(name)),
+			};
+		await verb(cdp, "press", "[data-integration-confirm='remove']");
+		const gone = await waitForScene(
+			cdp,
+			`!document.querySelector('[data-integration=${JSON.stringify(name)}]')`,
+			750,
+		);
+		return {
+			trigger,
+			opened,
+			item,
+			asked,
+			gone,
+			stillThere: Boolean(await rowFor(name)),
+		};
+	};
+
+	/* ---- 1. the page, with nothing configured -------------------------- */
+	await verb(cdp, "navigate", "/settings?section=integrations");
+	await verb(cdp, "setTheme", "localOperatorDark");
+	/*
+	 * Generous on purpose: this is the FIRST read of the page, and under the
+	 * fleet's load the catalog round trip can take seconds - a 500 ms window
+	 * reported the loading spinner as "the section is not there", which reads
+	 * exactly like a broken page (measured: the re-run's first check failed on a
+	 * loaded host while the run a minute earlier passed it).
+	 */
+	const empty = await waitForScene(
+		cdp,
+		`document.body.innerText.includes("No integrations yet")`,
+		6000,
+	);
+	/*
+	 * AND WAIT FOR THE PAGE'S OWN SCROLL. `section=integrations` is a deep link,
+	 * and the settings page walks the target into view with a ResizeObserver -
+	 * this page is very long, so the heading is below the fold for the first
+	 * frames. `innerText` answers for text that is scrolled away, so the check
+	 * above can pass while the frame would photograph Backend settings instead of
+	 * the section it is about (measured: the first run's frame 01 did exactly
+	 * that). The scroll is the PRODUCT's, not this script's; the explicit
+	 * fallback below exists only so a frame is still of the right surface, and it
+	 * says in the log that it had to do it.
+	 */
+	const headingInView = `(() => {
+		const node = Array.from(document.querySelectorAll("h2")).find(
+			(n) => n.textContent.trim() === "Integrations",
+		);
+		if (!node) return false;
+		const rect = node.getBoundingClientRect();
+		return rect.top >= 0 && rect.top < window.innerHeight - 120;
+	})()`;
+	let inView = await waitForScene(cdp, headingInView, 500);
+	if (!inView) {
+		await cdp.evaluate(
+			`(() => {
+				const node = Array.from(document.querySelectorAll("h2")).find(
+					(n) => n.textContent.trim() === "Integrations",
+				);
+				if (node) node.scrollIntoView({ block: "start" });
+			})()`,
+		);
+		await wait(400);
+		inView = await waitForScene(cdp, headingInView, 100);
+	}
+	check(
+		"the section the deep link names is IN VIEW before the frame is taken",
+		inView === true,
+		"the Integrations heading never entered the viewport, so a frame here would photograph another section",
+	);
+	check(
+		"with no chat open and no model, the page still shows the section",
+		empty === true,
+		(await cdp.evaluate("document.body.innerText.slice(0, 600)")) ?? "",
+	);
+	frames.push(await captureSettled(cdp, "integrations-live-01-empty"));
+
+	/* ---- 2. add a local command, then a remote URL --------------------- */
+	const added = await addThroughForm({
+		name: stdioName,
+		mode: "command",
+		frame: "integrations-live-02-add-stdio",
+	});
+	check(
+		"the local command landed: on the page AND in the backend's own catalog",
+		added.onPage === true && Boolean(added.row),
+		`page=${added.onPage} backend=${Boolean(added.row)}`,
+	);
+	check(
+		"its row is a local command, global, with the command the form was given",
+		added.row?.transport === "local_command" &&
+			added.row?.scope === "global" &&
+			added.row?.endpoint?.command === INTEGRATION_COMMAND,
+		`transport=${added.row?.transport} scope=${added.row?.scope} command=${added.row?.endpoint?.command}`,
+	);
+	frames.push(await captureSettled(cdp, "integrations-live-03-added-stdio"));
+
+	const addedRemote = await addThroughForm({
+		name: remoteName,
+		mode: "url",
+		frame: "integrations-live-04-add-remote",
+	});
+	check(
+		"the remote URL landed: on the page AND in the backend's own catalog",
+		addedRemote.onPage === true && Boolean(addedRemote.row),
+		`page=${addedRemote.onPage} backend=${Boolean(addedRemote.row)}`,
+	);
+	check(
+		"its row is a remote URL, global, with the URL the form was given",
+		addedRemote.row?.transport === "remote_url" &&
+			addedRemote.row?.scope === "global" &&
+			addedRemote.row?.endpoint?.url === INTEGRATION_URL,
+		`transport=${addedRemote.row?.transport} scope=${addedRemote.row?.scope} url=${addedRemote.row?.endpoint?.url}`,
+	);
+	frames.push(await captureSettled(cdp, "integrations-live-05-added-remote"));
+
+	/* ---- 3. test both -------------------------------------------------- */
+	const testedStdio = await testRow(stdioName);
+	check(
+		"the local command's test settled on the backend's own answer, with no reload pressed",
+		testedStdio.settled === true &&
+			testedStdio.row?.status === "connected" &&
+			testedStdio.row?.tool_count === 1 &&
+			testedStdio.row?.status_basis === "probe" &&
+			/Connected · 1 tool\b/.test(await rowText(stdioName)),
+		`page settled=${testedStdio.settled} backend=${testedStdio.row?.status} tools=${testedStdio.row?.tool_count} basis=${testedStdio.row?.status_basis} row=${JSON.stringify(await rowText(stdioName))}`,
+	);
+	frames.push(await captureSettled(cdp, "integrations-live-06-tested-stdio"));
+
+	const testedRemote = await testRow(remoteName);
+	check(
+		"the remote URL's test settled on the backend's own answer too",
+		testedRemote.settled === true &&
+			testedRemote.row?.status === "connected" &&
+			testedRemote.row?.tool_count === 1 &&
+			/Connected · 1 tool\b/.test(await rowText(remoteName)),
+		`page settled=${testedRemote.settled} backend=${testedRemote.row?.status} tools=${testedRemote.row?.tool_count} row=${JSON.stringify(await rowText(remoteName))}`,
+	);
+	frames.push(await captureSettled(cdp, "integrations-live-07-tested-remote"));
+	check(
+		"both rows read in plain words, never the wire's",
+		!/\b(cold|stdio|auth-required|not_started|remote_url|local_command)\b/.test(
+			`${await rowText(stdioName)} ${await rowText(remoteName)}`,
+		),
+		`${await rowText(stdioName)} || ${await rowText(remoteName)}`,
+	);
+
+	/* ---- 4. remove both through the overflow --------------------------- */
+	const removedStdio = await removeRow(stdioName, {
+		overflowFrame: "integrations-live-08-overflow",
+		confirmFrame: "integrations-live-09-remove-confirm",
+	});
+	check(
+		"Remove asks before it writes anything",
+		removedStdio.asked === true,
+		`trigger hit=${removedStdio.trigger?.hit} menu=${removedStdio.opened} item hit=${removedStdio.item?.hit}`,
+	);
+	check(
+		"the local command's remove landed: gone from the page AND from the backend's catalog",
+		removedStdio.gone === true && removedStdio.stillThere === false,
+		`page gone=${removedStdio.gone} backend still lists it=${removedStdio.stillThere}`,
+	);
+	const removedRemote = await removeRow(remoteName);
+	check(
+		"the remote URL's remove landed the same way",
+		removedRemote.asked === true &&
+			removedRemote.gone === true &&
+			removedRemote.stillThere === false,
+		`asked=${removedRemote.asked} page gone=${removedRemote.gone} backend still lists it=${removedRemote.stillThere}`,
+	);
+	const leftBehind = (await catalog()).document?.servers ?? [];
+	check(
+		"the catalog is empty again, so both writes went through the backend",
+		leftBehind.length === 0,
+		`backend still lists=${JSON.stringify(leftBehind.map((server) => server.name))}`,
+	);
+	check(
+		"and the page is back to its empty state",
+		(await waitForScene(
+			cdp,
+			`document.body.innerText.includes("No integrations yet")`,
+			250,
+		)) === true,
+		"the empty state did not return",
+	);
+	frames.push(await captureSettled(cdp, "integrations-live-10-removed"));
+
+	/* ---- 5. and no conversation was ever needed ------------------------ */
+	const sessionsAfter = await readBackendJson("/v1/desktop/sessions?limit=50");
+	/*
+	 * THE PROPERTY, not the accident: what this half must prove is that setting
+	 * up, testing and removing servers created NO conversation - so the count is
+	 * compared, and the "the rig had none to begin with" half is the start guard
+	 * above. Requiring the absolute count to be zero here made a rig that still
+	 * held a previous run's chat fail a check whose subject it was not.
+	 */
+	check(
+		"none of it created a conversation, which is what made this reachable at all",
+		countSessions(sessionsAfter) === countSessions(sessionsBefore),
+		`before=${countSessions(sessionsBefore)} after=${countSessions(sessionsAfter)}`,
+	);
+	const errors0 = cdp.console.filter((line) => /error/i.test(line)).slice(-10);
+	note("renderer errors", errors0.length ? errors0.join("\n") : "none");
+
+	/*
+	 * ---------------------------------------------------------------
+	 * 6. ROUND 1: a refusal the page could not have known about must BOTH
+	 *    say so AND re-read the list it says it refreshed (F2).
+	 * ---------------------------------------------------------------
+	 *
+	 * The only honest way to reach the 409 is to make the page's copy and the
+	 * backend disagree: the row is added through the form (so the page knows it),
+	 * then removed BEHIND the page's back through the backend's own API. The
+	 * press that follows is a control the backend refuses because its row is
+	 * gone - and the sentence it answers with claims the list has been refreshed,
+	 * so the list has to actually refresh.
+	 */
+	const postJson = async (path, body) => {
+		const response = await fetch(`${BACKEND}${path}`, {
+			method: "POST",
+			headers: {
+				authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+				"content-type": "application/json",
+			},
+			body: JSON.stringify(body),
+		});
+		const text = await response.text();
+		let parsed = null;
+		try {
+			parsed = JSON.parse(text);
+		} catch {
+			/* reported as text below */
+		}
+		return { status: response.status, body: parsed?.result ?? parsed ?? text };
+	};
+
+	const staleName = `stale-${process.pid}`;
+	const staleAdded = await addThroughForm({
+		name: staleName,
+		mode: "command",
+		frame: "integrations-live-11-stale-added",
+	});
+	check(
+		"the refusal case starts from a row the page itself added",
+		staleAdded.onPage === true && staleAdded.row?.status === "not_started",
+		`onPage=${staleAdded.onPage} backend=${staleAdded.row?.status}`,
+	);
+	const behindTheBack = await postJson("/v1/desktop/mcp", {
+		action: "remove",
+		name: staleName,
+		scope: "global",
+		confirmed: true,
+	});
+	check(
+		"and the row is removed OUT OF BAND, so the page's copy is stale by construction",
+		behindTheBack.status === 200 &&
+			(await rowFor(staleName)) === null &&
+			(await rowText(staleName)).includes(staleName),
+		`remove status=${behindTheBack.status} backend row=${JSON.stringify(await rowFor(staleName))} page text=${JSON.stringify(await rowText(staleName))}`,
+	);
+	await verb(
+		cdp,
+		"press",
+		`[data-integration=${JSON.stringify(staleName)}] [data-integration-action='test']`,
+	);
+	const staleGone = await waitForScene(
+		cdp,
+		`document.querySelector('[data-integration=${JSON.stringify(staleName)}]') === null`,
+		1500,
+	);
+	check(
+		"F2: the refusal re-reads the list, so the row it refuses is gone from the page",
+		staleGone === true,
+		`still on the page: ${JSON.stringify(await rowText(staleName))}`,
+	);
+	/*
+	 * Read as a slice rather than a regex: this expression is a JS string that is
+	 * EVALUATED, so `\n` in it becomes a real newline in the evaluated source and
+	 * a character class containing one is a syntax error at the far end.
+	 */
+	/*
+	 * A BOOLEAN, because `waitForScene`'s third argument is ATTEMPTS (20 ms
+	 * apart), not milliseconds, and it only accepts an exact `true`: an earlier
+	 * version of this check returned the matched TEXT, so it timed out while the
+	 * sentence was on screen - the frame beside it is what caught that.
+	 */
+	const refusalSeen = await waitForScene(
+		cdp,
+		`(() => {
+			const text = document.body.innerText;
+			const at = text.indexOf("It no longer exists");
+			return at >= 0 && text.indexOf("refreshed", at) > at;
+		})()`,
+		300,
+	);
+	const refusal = refusalSeen
+		? await cdp.evaluate(
+				`(() => {
+					const text = document.body.innerText;
+					const at = text.indexOf("It no longer exists");
+					return text.slice(at, at + 120).split(String.fromCharCode(10))[0];
+				})()`,
+			)
+		: false;
+	check(
+		"F2: and the sentence that says the list was refreshed is on screen, not lost with the row",
+		refusalSeen === true,
+		`refusal=${JSON.stringify(refusal)}`,
+	);
+	frames.push(await captureSettled(cdp, "integrations-live-12-stale-refusal"));
+
+	/* ---------------------------------------------------------------
+	 * 7. ROUND 1: an action's focus comes back to the control that
+	 *    asked, and Escape gets out of the form (U5, Q3).
+	 * --------------------------------------------------------------- */
+	const focusCase = `focus-${process.pid}`;
+	await addThroughForm({
+		name: focusCase,
+		mode: "command",
+		frame: "integrations-live-13-focus-added",
+	});
+	await verb(
+		cdp,
+		"press",
+		`[data-integration=${JSON.stringify(focusCase)}] button[aria-label^='More actions']`,
+	);
+	await waitForScene(
+		cdp,
+		`Boolean(document.querySelector("[data-integration-menu='remove']"))`,
+		500,
+	);
+	await verb(cdp, "press", "[data-integration-menu='remove']");
+	const asked = await waitForScene(
+		cdp,
+		`Boolean(document.querySelector("[data-integration-confirm='remove']"))`,
+		500,
+	);
+	check(
+		"the inline Remove confirm is on screen before the focus check",
+		asked === true,
+		"the confirm never appeared",
+	);
+	// Escape dismisses it (U5) and focus returns to the control that asked.
+	await cdp.send("Input.dispatchKeyEvent", {
+		type: "keyDown",
+		key: "Escape",
+		code: "Escape",
+		windowsVirtualKeyCode: 27,
+		nativeVirtualKeyCode: 27,
+	});
+	await cdp.send("Input.dispatchKeyEvent", {
+		type: "keyUp",
+		key: "Escape",
+		code: "Escape",
+	});
+	const escaped = await waitForScene(
+		cdp,
+		`document.querySelector("[data-integration-confirm='remove']") === null`,
+		500,
+	);
+	const backOnTrigger = await waitForScene(
+		cdp,
+		`document.activeElement?.getAttribute?.('aria-label')?.startsWith('More actions') === true`,
+		500,
+	);
+	check(
+		"U5/Q3: Escape dismisses the remove confirm and focus lands on the row's own menu button",
+		escaped === true && backOnTrigger === true,
+		`escaped=${escaped} activeElement=${JSON.stringify(await activeElementOf(cdp))}`,
+	);
+
+	/*
+	 * ---------------------------------------------------------------
+	 * 8. ROUND 1: a chat with a project folder, and a RELOAD (Q1).
+	 * ---------------------------------------------------------------
+	 *
+	 * The regression: the app's own session list carries no `cwd`, so once the
+	 * instance that created the chat is gone - a reload, or a chat started in the
+	 * TUI - the page asked for the HOME catalog and every project-scoped server
+	 * disappeared. The folder now resolves from the conversation's own snapshot,
+	 * and this proves it by reloading the app and looking again.
+	 */
+	const projectName = `proj-${process.pid}`;
+	const projectDir = join(SCRATCH, `project-${process.pid}`);
+	mkdirSync(join(projectDir, ".local-operator"), { recursive: true });
+	writeFileSync(
+		join(projectDir, ".local-operator", "mcp.json"),
+		JSON.stringify({
+			mcpServers: {
+				[projectName]: {
+					command: INTEGRATION_COMMAND ?? "python3",
+					args: (INTEGRATION_ARGS ?? "").split("|").filter(Boolean),
+				},
+			},
+		}),
+	);
+	const created = await postJson("/v1/desktop/sessions", {
+		request_id: randomUUID(),
+		cwd: projectDir,
+	});
+	const projectSession =
+		typeof created.body?.session_id === "string"
+			? created.body.session_id
+			: null;
+	check(
+		"a conversation in a project folder exists, created outside this renderer",
+		Boolean(projectSession),
+		`create status=${created.status} body=${JSON.stringify(created.body).slice(0, 300)}`,
+	);
+	if (projectSession) {
+		/*
+		 * THE CHAT FIRST, then Settings through the SAME deep link the rest of
+		 * this scene uses. Navigating straight to `/settings` without the chat
+		 * step would leave the page with no active conversation - which is the
+		 * state the regression is NOT about.
+		 */
+		await verb(cdp, "navigate", `/chat/${projectSession}`);
+		await waitForRoute(cdp, `/chat/${projectSession}`, 10_000);
+		await verb(cdp, "navigate", "/settings?section=integrations");
+		await waitForScene(
+			cdp,
+			`Boolean(document.querySelector("h2")?.textContent?.includes("Integrations"))`,
+			6000,
+		);
+		const before = await waitForScene(
+			cdp,
+			`Boolean(document.querySelector('[data-integration=${JSON.stringify(projectName)}]'))`,
+			2000,
+		);
+		check(
+			"Q1: with the chat active, the project folder's server is listed and scoped to it",
+			before === true && /This project/.test(await rowText(projectName)),
+			`listed=${before} row=${JSON.stringify(await rowText(projectName))}`,
+		);
+		frames.push(
+			await captureSettled(cdp, "integrations-live-14-project-before-reload"),
+		);
+
+		/*
+		 * THE RELOAD. Everything this renderer held about that conversation is
+		 * gone afterwards, which is exactly the state the regression lived in.
+		 */
+		await cdp.send("Page.reload", { ignoreCache: false });
+		await waitForBridge(cdp);
+		/*
+		 * BACK THROUGH THE APP'S OWN ROUTES. The sidebar's own section opener could
+		 * only ever throw `no Integrations heading in the panel` here - measured, this
+		 * scene's first run; it looked for a `button[data-chat-row]`, and this page has
+		 * none. (That helper is gone from this driver now - the redesign's sections do
+		 * not collapse - so the page under test is reached the way every earlier step
+		 * reaches it: the chat, then the settings deep link.)
+		 */
+		await verb(cdp, "navigate", `/chat/${projectSession}`);
+		await waitForRoute(cdp, `/chat/${projectSession}`, 10_000);
+		await verb(cdp, "navigate", "/settings?section=integrations");
+		await waitForScene(
+			cdp,
+			`Boolean(document.querySelector("h2")?.textContent?.includes("Integrations"))`,
+			6000,
+		);
+		const survived = await waitForScene(
+			cdp,
+			`Boolean(document.querySelector('[data-integration=${JSON.stringify(projectName)}]'))`,
+			3000,
+		);
+		check(
+			"Q1: and it is STILL there after an app reload, resolved from the conversation's own snapshot",
+			survived === true && /This project/.test(await rowText(projectName)),
+			`listed=${survived} row=${JSON.stringify(await rowText(projectName))}`,
+		);
+		frames.push(
+			await captureSettled(cdp, "integrations-live-15-project-after-reload"),
+		);
+	}
+
+	const errors = cdp.console.filter((line) => /error/i.test(line)).slice(-10);
+	note("renderer errors", errors.length ? errors.join("\n") : "none");
+	return frames;
 }
 
 /** What the row and its open list actually are, read from the page. */
@@ -14082,6 +17607,1192 @@ async function dragSplit(cdp, x, y, dy, { steps = 6, hold = null } = {}) {
  *     no conversations: the SUBJECT is the boundary, the controls on it and the
  *     state they write, all of which exist with an empty catalogue.
  */
+/**
+ * The paged chats sidebar: what the panel paints first, and what a group's row
+ * does when it is expanded.
+ *
+ * WHY THIS SCENE EXISTS, in the operator's own words: "no chats are showing up /
+ * taking a very long time to load chats". Two mechanisms produced that - a
+ * whole-catalogue read re-fired on every catalogue frame, and an empty sentence
+ * chosen by a count of the rows in hand - and both are visible only against a
+ * catalogue LARGER than one page, which is what the stand-in serves under
+ * `--catalogue` (`docs/evidence/sidebar-row-space/harness/stub-daemon.mjs`).
+ *
+ * THE ASSERTIONS ARE THE HALF-FRAME THE PIXELS CANNOT CARRY. `state.sessionCount`
+ * is the store's own row count, so "the first paint is 50 rows of a 120-chat
+ * catalogue" and "expanding one team added exactly its first page" are numbers a
+ * reader can check rather than impressions of a screenshot. The group's SENTENCE
+ * is read off the DOM, because "a group the census says holds chats is not drawn
+ * saying it has none" is the invariant this change exists for and a frame alone
+ * would only show it for one of the four cases.
+ *
+ * THE FOUR CASES come from the stand-in's own flags, passed to this run as
+ * `--scoped-case`:
+ *
+ *   `paged`     the feature: the group's own page arrives, with more behind it.
+ *   `empty`     a SETTLED page the census still outruns (the stub's `--scope-empty`):
+ *               the group's chats are not drawable here, so it must say WHY, and
+ *               never "Loading chats…" and never "No chats yet" (round 1, U3).
+ *   `loading`   the same arm with every scoped answer HELD OPEN
+ *               (`--scope-delay-ms`): a wait that is really happening, which is the
+ *               only state in which "Loading chats…" is true.
+ *   `empty-group` a genuinely empty group (`--scope-empty --scope-zero-census`): the
+ *               page and the census agree there is nothing, so "No chats yet" is
+ *               the honest sentence.
+ *   `flat-tail` the flat list's own tail, which has no control: a scroll to the
+ *               bottom, then rows arriving.
+ *   `error`     the scoped read refuses; the group says so and offers Retry.
+ *   `withdrawn` the app against a daemon that cannot page at all (`--no-page
+ *               --truncate 50`): today's behaviour, including the sentence that
+ *               is FALSE there - the operator's screenshot, kept as the before.
+ */
+async function sceneSidebarLazyChats(cdp) {
+	const lazyFacts = await factsOf(cdp);
+	check(
+		"window mode is headless",
+		lazyFacts.windowMode === "headless",
+		lazyFacts.windowMode,
+	);
+	check(
+		"the window is never shown and never focused",
+		lazyFacts.visible === false && lazyFacts.focused === false,
+		`visible=${lazyFacts.visible} focused=${lazyFacts.focused}`,
+	);
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", LAZY_THEME);
+	await parkPointer(cdp);
+	/*
+	 * THE HEAD PAGE, waited for by its own number rather than by the clock: the
+	 * catalogue is 120 rows in this fixture and the panel asks for its head page, so
+	 * `sessionCount` reaching fifty is the claim, and a run that never gets there
+	 * fails here instead of photographing an empty panel and calling it a frame.
+	 */
+	if (LAZY_CASE !== "withdrawn") {
+		const arrived = await waitForCondition(
+			cdp,
+			'document.querySelectorAll("[data-session-row]").length > 0',
+			15_000,
+		);
+		note("head page arrived", String(arrived));
+	}
+	await wait(LAZY_SETTLE_MS);
+	const head = await verb(cdp, "state");
+	const headFrame = await captureSettled(cdp, "head-page");
+	note("frame", JSON.stringify(headFrame));
+	check(
+		"the first paint is the HEAD PAGE, not the catalogue",
+		head.sessionCount === LAZY_CATALOGUE_HEAD_PAGE,
+		`sessionCount is ${head.sessionCount} (expected ${LAZY_CATALOGUE_HEAD_PAGE} of a ${LAZY_CATALOGUE_TOTAL}-chat stand-in)`,
+	);
+	if (LAZY_CASE !== "withdrawn") {
+		/*
+		 * THE ROSTER ARRIVES SEPARATELY FROM THE CATALOGUE (`teams.list`), so the
+		 * group's ROW existing is its own moment: reading the badge before it lands
+		 * reported `badge: null` on the first run of this scene, which is a fact about
+		 * the harness and not about the panel.
+		 */
+		const roster = await waitForCondition(
+			cdp,
+			`document.querySelector('[data-disclosure][aria-label="Expand ${LAZY_GROUP} chats"]') !== null`,
+			15_000,
+		);
+		note("the group's row is on screen", String(roster));
+		const collapsed = await lazyGroupFacts(cdp, LAZY_GROUP);
+		note("the collapsed group", JSON.stringify(collapsed));
+	}
+
+	if (LAZY_CASE === "flat-tail" || LAZY_CASE === "flat-tail-error") {
+		/*
+		 * THE FLAT LIST'S OWN TAIL (the second arm round 1's D3 named as missing). It
+		 * has no control by design - one scroller, one scope inside it, so "extend" has
+		 * exactly one meaning - which is why the evidence is a scroll followed by ROWS
+		 * ARRIVING rather than a press, and a frame of the grown list.
+		 *
+		 * RUN HERE, BEFORE ANY GROUP IS EXPANDED, and that is a fact about the fixture
+		 * rather than about the panel: the stand-in's `lopdev` population IS the
+		 * catalogue's second half, so once that group has drawn its own pages the
+		 * head's tail can only re-send rows the client already holds and the frame
+		 * would show a list that did not grow for a reason unrelated to the tail.
+		 */
+		/*
+		 * THE LADDER IS SPENT FIRST, and on this panel that is not incidental.
+		 *
+		 * #505 opened a collapsed `Previous chats` here, because on main's list a shut
+		 * section draws none of its rows and the tail it would extend is then not on
+		 * screen to be scrolled to. THIS PANEL HAS NO SUCH SECTION: this redesign
+		 * replaced `Active chats` / `Previous chats` with the sections the view popover
+		 * draws (`Running`, `Today`, `This week`, `Older`), and none of them collapses.
+		 * Measured rather than assumed - `"Previous chats"` occurs 0 times at this
+		 * branch's pre-fold head `6a4a176f6`.
+		 *
+		 * WHAT WITHHOLDS THE TAIL HERE INSTEAD IS THE PAGE LADDER. The operator's
+		 * contract is "starts with 10, then 25, then 50, and then user can click to load
+		 * more", so while the ladder still holds rows the reader has not asked for, a
+		 * short region is the LADDER's doing and not evidence that the list wants
+		 * filling. `ladderHoldsRowsRef` is what says so and `extendCatalogueTail` is what
+		 * reads it; the scroll's own extension takes over exactly when the drawn page has
+		 * reached the rows in hand.
+		 *
+		 * AND THAT IS ASSERTED, not assumed: a run that pressed nothing would photograph
+		 * "the tail did not extend" as though it were a fact about the panel, which is
+		 * the same mistake the section complaint above records.
+		 */
+		/*
+		 * THE LADDER IS COUNTED FROM THE DOM, and from the drawn rows alone: a rung
+		 * changes how many rows this panel DRAWS, never how many the client HOLDS
+		 * (`state.sessionCount` is `sessions.sessions.length`, which a rung does not
+		 * move). Counting the held rows here - which the first version of this
+		 * adaptation did - reads "no progress" after one press and stops the arm on a
+		 * page it never grew.
+		 */
+		const drawnRows = () =>
+			cdp.evaluate(`document.querySelectorAll("[data-session-row]").length`);
+		const drawnAtStart = await drawnRows();
+		const heldAtStart = (await verb(cdp, "state")).sessionCount;
+		/*
+		 * THE CURSOR BASELINE IS READ HERE, before anything presses or scrolls. Read
+		 * after the scroll instead it already contains the line the scroll wrote, and
+		 * the arm's own claim became unprovable - measured on the run that did it.
+		 */
+		const cursorCount = () =>
+			(() => {
+				try {
+					return readFileSync(STUB_LOG, "utf8")
+						.split("\n")
+						.filter(
+							(line) => line.includes("sessions?") && line.includes("cursor="),
+						).length;
+				} catch {
+					return 0;
+				}
+			})();
+		const cursorsBefore = cursorCount();
+		let ladderRows = drawnAtStart;
+		let ladderPresses = 0;
+		for (let press = 0; press < 6; press += 1) {
+			const more = await cdp.evaluate(
+				`document.querySelector('[data-sidebar-page-more]') !== null`,
+			);
+			if (more !== true) break;
+			await verb(cdp, "press", { selector: "[data-sidebar-page-more]" });
+			await wait(250);
+			const after = await drawnRows();
+			ladderPresses += 1;
+			/*
+			 * TWO SIGNALS END THE PRESSES, and the first is the one that matters here.
+			 *
+			 * The ladder's rungs are 10 -> 25 -> 50 (then 50 more per press), while the
+			 * head page holds fifty rows: so the SECOND press is the one that draws the
+			 * rows in hand, and every press after it asks for more than the client holds -
+			 * which this panel answers by following the head's cursor (`pressPageMore`),
+			 * paging the catalogue to its end. Pressing on would photograph exhaustion and
+			 * never the scroll's extension, which is what this arm is for. STOPPING AT THE
+			 * ROWS IN HAND is therefore the state this arm needs, and it is exactly the
+			 * state `ladderHoldsRowsRef` releases the scroll in.
+			 *
+			 * A press that drew nothing new is the second signal: the ladder is done and
+			 * the tail owns the rest. Stopping on that rather than after a fixed number of
+			 * presses keeps the arm honest if the rungs ever change.
+			 */
+			if (after >= heldAtStart || after === ladderRows) break;
+			ladderRows = after;
+		}
+		/*
+		 * READ FRESH AFTER THE LOOP, because the break above leaves `ladderRows` at the
+		 * value BEFORE the last press: the press that crosses the rows in hand is the one
+		 * that breaks, so its own rows are not in that variable. Left stale it silently
+		 * became the baseline the scroll had to beat, and the arm then passed its growth
+		 * claim on the LADDER's rows rather than the tail's.
+		 */
+		ladderRows = await drawnRows();
+		note(
+			"the ladder after it was spent",
+			JSON.stringify({
+				presses: ladderPresses,
+				drawnFrom: drawnAtStart,
+				drawnTo: ladderRows,
+				held: heldAtStart,
+			}),
+		);
+		check(
+			"the ladder's presses draw towards the rows the client already holds",
+			ladderRows > drawnAtStart,
+			`the drawn page went ${drawnAtStart} -> ${ladderRows} over ${ladderPresses} press(es), against ${heldAtStart} held`,
+		);
+		const beforeFlat = await verb(cdp, "state");
+		/*
+		 * The scroll has to beat the DRAWN list, and the tail also has to have FETCHED:
+		 * an extension is a page off the cursor, so the held count moving is the half of
+		 * the claim the DOM cannot make.
+		 */
+		const drawnBefore = ladderRows;
+		/*
+		 * THE REGION IS SCROLLED TO ITS END, by a `scrollTop` write AND a real wheel
+		 * event at the region's OWN centre. Both, because each alone can miss: the first
+		 * run of this arm aimed its wheel at fixed coordinates that turned out to be
+		 * outside the box (`scrollTop` stayed 0 and the daemon was asked for nothing),
+		 * and a `scrollTop` write on a region whose section is shut moves a list that
+		 * draws no rows. The box is measured here rather than guessed.
+		 */
+		const regionBox = await cdp.evaluate(`(() => {
+			const region = document.querySelector('[data-sidebar-region="chats"]');
+			if (region === null) return null;
+			const box = region.getBoundingClientRect();
+			return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) };
+		})()`);
+		note("the chats region's centre", JSON.stringify(regionBox));
+		await cdp.evaluate(
+			`(() => { const region = document.querySelector('[data-sidebar-region="chats"]'); if (region) region.scrollTop = region.scrollHeight; return true; })()`,
+		);
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseWheel",
+			x: regionBox === null ? 140 : regionBox.x,
+			y: regionBox === null ? 400 : regionBox.y,
+			deltaX: 0,
+			deltaY: 6000,
+		});
+		await wait(500);
+		/*
+		 * THE GEOMETRY IS RECORDED, not inferred from the outcome. "The list did not
+		 * grow" has three different causes - the region never scrolled, the section was
+		 * shut, or the extension fired and the answer was not merged - and only these
+		 * numbers separate them.
+		 */
+		const flatGeo = await cdp.evaluate(`(() => {
+			const region = document.querySelector('[data-sidebar-region="chats"]');
+			return {
+				region: region !== null,
+				scrollTop: region === null ? null : Math.round(region.scrollTop),
+				scrollHeight: region === null ? null : region.scrollHeight,
+				clientHeight: region === null ? null : region.clientHeight,
+				pageMore: document.querySelector("[data-sidebar-page-more]") !== null,
+				rows: document.querySelectorAll("[data-session-row]").length,
+			};
+		})()`);
+		note("the flat list's geometry after the scroll", JSON.stringify(flatGeo));
+		/*
+		 * THE TWO CASES ASSERT OPPOSITE THINGS about the same scroll, so the growth branch is
+		 * the success case's alone: with `--tail-error` the extension is refused and its own
+		 * branch below reads the treatment off the elements.
+		 */
+		if (LAZY_CASE === "flat-tail") {
+			/*
+			 * THE REQUEST IS THE CLAIM, not the DOM growth, and the last run is why.
+			 *
+			 * MEASURED: the scroll asked for the tail - the stand-in logged
+			 * `...&cursor=off%3A50 -> 200 rows=50 next=off:100` - and the head answers that
+			 * follow it (one per `catalogue` frame, `rows=50 next=off:50`) then DROPPED
+			 * those rows, because on the UNSCOPED list the tail's rows are head-owned:
+			 * `headHeldRows` excludes only the ids a loaded SCOPE holds, so the head's own
+			 * re-read replaces an unscoped extension. That is #505's accepted rule
+			 * (`headHeldRows`' note, round 1 R1) rather than anything this fold changed,
+			 * and the same arm races the same way on main. So the arm asserts the REQUEST
+			 * - this rig's own convention for "the DOM cannot say which page a control
+			 * asked for" - and reports the two counts it cannot make durable.
+			 */
+			/*
+			 * THE PANEL'S OWN ROUTE IS THE FOOT PRESS, and the two runs before this one
+			 * are why the claim is stated that way rather than about the scroll.
+			 *
+			 * MEASURED: with the ladder spent the commit-time extension fires ONCE by
+			 * itself (the region is short, so `tailExtendDue` is true) and takes the head
+			 * to 100 held rows; after that the scroll is held back again, because the
+			 * ladder's rung is once more below the rows in hand and `ladderHoldsRowsRef`
+			 * says a short region is the LADDER's doing rather than evidence that the list
+			 * wants filling. On main the scroll was the ONLY route, so its arm could
+			 * assert "extends itself on scroll, with no control to press". THIS PANEL HAS
+			 * A PRESS AT THAT FOOT - the operator's own contract, "then user can click to
+			 * load more" - and `pressPageMore` spends the rung and follows the head's
+			 * cursor, which is the same scoped request and the same cursor as everything
+			 * else. The arm therefore asserts the press, which is the route the shipped
+			 * panel offers and the one the operator asked for.
+			 */
+			const footPress = await cdp.evaluate(`(() => {
+				const more = document.querySelector("[data-sidebar-page-more]");
+				return more === null ? null : more.textContent.replace(/\s+/g, " ").trim();
+			})()`);
+			note("the flat list's foot control", JSON.stringify(footPress));
+			if (footPress !== null) {
+				await verb(cdp, "press", { selector: "[data-sidebar-page-more]" });
+			}
+			/*
+			 * A run whose gate held everything back never writes one, which is the failure
+			 * this arm exists to catch.
+			 */
+			const asked = await waitForStubLine("cursor=off%3A50", 5_000);
+			const cursorsAfter = cursorCount();
+			check(
+				"the flat list reaches the rest of the catalogue, and the daemon is asked with the head's own cursor",
+				asked === true && cursorsAfter > cursorsBefore,
+				`the stand-in received ${cursorsAfter - cursorsBefore} cursor request(s) (${cursorsBefore} before the ladder), with the ladder spent at ${drawnBefore} drawn rows`,
+			);
+			const drawnNow = await cdp.evaluate(
+				`document.querySelectorAll("[data-session-row]").length`,
+			);
+			const heldNow = await verb(cdp, "state");
+			note(
+				"the extension's rows, before the head answers replace them",
+				JSON.stringify({
+					drawnBefore,
+					drawnNow,
+					heldBefore: beforeFlat.sessionCount,
+					heldNow: heldNow.sessionCount,
+					cursor: heldNow.catalogueNextCursor ?? null,
+				}),
+			);
+			/*
+			 * NOT AN ASSERTION, and the reason is in the note above: an unscoped
+			 * extension is replaced by the next head answer, so "the list is 100 rows
+			 * thirty seconds later" is not something this panel promises.
+			 */
+			note(
+				"the unscoped extension is not durable under the head's own re-read (headHeldRows)",
+				`held went ${beforeFlat.sessionCount} -> ${heldNow.sessionCount} while the head answers kept arriving at limit=50 next=off:50`,
+			);
+			await wait(LAZY_SETTLE_MS);
+			/*
+			 * AND THE REGION IS PUT BACK AT ITS END BEFORE THE FRAME (round 4, D21). The scroll
+			 * above is written ONCE, before the page it asks for lands: an absolute `scrollTop`
+			 * is a position, not a promise, so the rows that arrive below the fold leave the
+			 * viewport where it was and the frame showed the middle of the list (the designer
+			 * measured `Chat 040`…`Chat 051` where the arm's own bytes show `Chat 089`…`Chat 100`).
+			 * Scrolled again here, and ASSERTED at the end, because "the frame shows the tail"
+			 * is the whole point of this arm.
+			 */
+			await cdp.evaluate(
+				`(() => { const region = document.querySelector('[data-sidebar-region="chats"]'); if (region) region.scrollTop = region.scrollHeight; return true; })()`,
+			);
+			await wait(500);
+			const flatEnd = await cdp.evaluate(`(() => {
+				const region = document.querySelector('[data-sidebar-region="chats"]');
+				if (region === null) return null;
+				return {
+					atEnd: region.scrollTop + region.clientHeight >= region.scrollHeight - 1,
+					scrollTop: Math.round(region.scrollTop),
+					scrollHeight: region.scrollHeight,
+					clientHeight: region.clientHeight,
+				};
+			})()`);
+			note("the flat list's scroll after the growth", JSON.stringify(flatEnd));
+			check(
+				"and the frame is of the TAIL: the region is at its end when it is captured",
+				flatEnd?.atEnd === true,
+				`scrollTop ${flatEnd?.scrollTop} + clientHeight ${flatEnd?.clientHeight} against scrollHeight ${flatEnd?.scrollHeight} (the first version wrote the scroll once, before the rows landed, and photographed the middle of the list)`,
+			);
+			const flatFrame = await captureSettled(cdp, "flat-tail");
+			note("frame", JSON.stringify(flatFrame));
+			const grown = await verb(cdp, "state");
+			note(
+				"the store after the frame",
+				JSON.stringify({
+					held: grown.sessionCount,
+					drawn: await cdp.evaluate(
+						`document.querySelectorAll("[data-session-row]").length`,
+					),
+				}),
+			);
+			return;
+		}
+	}
+
+	if (LAZY_CASE === "flat-tail-error") {
+		/*
+		 * THE FLAT LIST'S OWN REFUSAL (round 3, D18). The third refusal site, and the one
+		 * nobody could see: D10's history is a fix that landed on one of three sites while the
+		 * frame photographed another, so the site with no frame is the site to photograph.
+		 *
+		 * The list has already painted (the head read is untouched by `--tail-error`), so what
+		 * this arm shows is a list that refused to GROW - and the check reads the treatment
+		 * off the ELEMENTS rather than off the copy: the sentence clamped, and the Retry in
+		 * its own paragraph rather than inline after the text.
+		 */
+		const tailRefusal = await waitForCondition(
+			cdp,
+			`(() => {
+				const region = document.querySelector('[data-sidebar-region="chats"]');
+				if (region === null) return null;
+				const button = Array.from(region.querySelectorAll("button")).find(
+					(node) => node.textContent.trim() === "Retry",
+				);
+				if (button === undefined) return null;
+				const sentence = button.parentElement?.previousElementSibling ?? null;
+				return {
+					retryParentTag: button.parentElement?.tagName ?? null,
+					sentenceTag: sentence?.tagName ?? null,
+					sentence: (sentence?.textContent ?? "").trim(),
+					lineClamp: sentence === null ? null : getComputedStyle(sentence).webkitLineClamp,
+					rows: document.querySelectorAll("[data-session-row]").length,
+				};
+			})()`,
+			20_000,
+		);
+		note("the flat list's refusal", JSON.stringify(tailRefusal));
+		check(
+			"the third refusal site renders the one treatment: a clamped sentence with the Retry on its own line",
+			tailRefusal.ok === true &&
+				tailRefusal.last?.sentenceTag === "P" &&
+				tailRefusal.last?.retryParentTag === "P" &&
+				tailRefusal.last?.lineClamp === "2",
+			`read off the elements: ${JSON.stringify(tailRefusal.last)}`,
+		);
+		await wait(LAZY_SETTLE_MS);
+		const refusalFrame = await captureSettled(cdp, "flat-tail-error");
+		note("frame", JSON.stringify(refusalFrame));
+		/*
+		 * AND THE PRESS THAT FAILS IDENTICALLY (round 4, U14). This Retry is the one control
+		 * in the panel whose press can come back with the SAME refusal: the requester's
+		 * elements are repainted, and focus used to end on `<body>` with nothing announced.
+		 * Pressed by KEYBOARD here, because that is the reader this defect belongs to, and
+		 * the region's own text is sampled while it happens - the walk through "Loading more
+		 * chats…" and back to the sentence is the re-announcement, and a text that never
+		 * changed is how it would silently not happen.
+		 */
+		await cdp.evaluate(`(() => {
+			window.__tailTexts = [];
+			/*
+			 * THE REGION IS LOOKED UP EVERY TICK, not captured once: a React re-render can
+			 * replace the node, and a detached node's textContent is frozen at whatever it held
+			 * when it was orphaned - which is how the first version of this sampler reported
+			 * zero changes while the reader's own region was changing in front of them.
+			 */
+			const grab = () => {
+				const region = document.querySelector('[data-sidebar-region="chats"]');
+				const text = (region?.textContent ?? "").replace(/\s+/g, " ").trim();
+				const seen = window.__tailTexts;
+				if (seen[seen.length - 1] !== text) seen.push(text);
+			};
+			grab();
+			const timer = setInterval(grab, 50);
+			setTimeout(() => clearInterval(timer), 12_000);
+			return true;
+		})()`);
+		const focusedRetry = await cdp.evaluate(`(() => {
+			const region = document.querySelector('[data-sidebar-region="chats"]');
+			const button = Array.from(region?.querySelectorAll("button") ?? []).find(
+				(node) => node.textContent.trim() === "Retry",
+			);
+			if (button === undefined) return false;
+			button.focus();
+			return document.activeElement === button;
+		})()`);
+		check(
+			"the flat list's Retry can be focused",
+			focusedRetry === true,
+			`focused: ${focusedRetry}`,
+		);
+		/*
+		 * A REAL Enter, in three parts: CDP needs the RAW keydown, the character (which is
+		 * what a focused button activates on) and the keyup. The first attempt sent
+		 * `keyDown` alone and the daemon was asked nothing - the check below passed
+		 * vacuously on the button this script had just focused, which is exactly the shape of
+		 * evidence that proves nothing.
+		 */
+		for (const event of [
+			{ type: "rawKeyDown", text: undefined },
+			{ type: "char", text: "\r" },
+			{ type: "keyUp", text: undefined },
+		]) {
+			await cdp.send("Input.dispatchKeyEvent", {
+				type: event.type,
+				key: "Enter",
+				code: "Enter",
+				windowsVirtualKeyCode: 13,
+				nativeVirtualKeyCode: 13,
+				...(event.text === undefined ? {} : { text: event.text }),
+			});
+		}
+		/*
+		 * AND THE PRESS IS PROVEN TO HAVE LANDED BEFORE ANYTHING IS CONCLUDED FROM IT: the
+		 * arm waits for the REGION'S OWN TEXT to have walked the wait register and come back
+		 * to a refusal, which is both the landing proof and the re-announcement this finding
+		 * is about. Read from the sampler rather than from the daemon's log, because the log
+		 * proves a request and this has to prove what the reader's region did with the answer.
+		 */
+		const reread = await waitForCondition(
+			cdp,
+			`(() => {
+				const texts = window.__tailTexts ?? [];
+				return texts.length >= 2 ? { count: texts.length } : null;
+			})()`,
+			15_000,
+		);
+		check(
+			"the keyboard press reached the daemon, and the region changed while it was in flight (U14)",
+			reread.ok === true,
+			`the region's text changed ${reread.last?.count ?? 0} time(s) during the press and settled back on the refusal (waited ${reread.waitedMs} ms) - one means the region never changed, which is the state this finding filed`,
+		);
+		/*
+		 * THE SETTLED READ, waited for rather than sampled: the refusal has to be BACK (the
+		 * re-read is over) before focus can be judged, which is the mistake the previous shape
+		 * made - it read while the answer was still in flight and reported `<body>` for the
+		 * state that the fix does not govern.
+		 */
+		await waitForCondition(
+			cdp,
+			`(() => {
+				const region = document.querySelector('[data-sidebar-region="chats"]');
+				const text = (region?.textContent ?? "").replace(/\s+/g, " ").trim();
+				return text.includes("refuse") ? true : null;
+			})()`,
+			15_000,
+		);
+		await wait(400);
+		const afterRetry = await cdp.evaluate(`(() => {
+			const region = document.querySelector('[data-sidebar-region="chats"]');
+			const button = Array.from(region?.querySelectorAll("button") ?? []).find(
+				(node) => node.textContent.trim() === "Retry",
+			);
+			return {
+				present: button !== undefined,
+				focused: button !== undefined && document.activeElement === button,
+				activeTag:
+					document.activeElement === document.body
+						? "body"
+						: (document.activeElement?.tagName?.toLowerCase() ?? null),
+				live:
+					region?.querySelector("[aria-live]")?.getAttribute("aria-live") ?? null,
+				/*
+				 * MATCHED ON WHAT THE REGION RENDERS, not on the string this file would write: the
+				 * ellipsis it draws is a single character the sampler reads as part of a longer run,
+				 * so the first filter looked for a phrase that never appears verbatim and counted
+				 * zero changes in a region that had visibly changed.
+				 */
+				texts: (window.__tailTexts ?? []).filter((text) =>
+					/refuse|Loading more/.test(text),
+				).length,
+				sampled: (window.__tailTexts ?? []).length,
+			};
+		})()`);
+		note("the refused retry", JSON.stringify(afterRetry));
+		check(
+			"a failed re-read hands focus BACK to the control that was pressed, never to `<body>` (U14)",
+			afterRetry.present === true && afterRetry.focused === true,
+			`activeElement is ${JSON.stringify(afterRetry.activeTag)}; the settled state is ${JSON.stringify(afterRetry)}`,
+		);
+		check(
+			/*
+			 * THE ANNOUNCEMENT IS THE REGION'S OWN CHANGE, which is what a polite region
+			 * announces: the same refusal rendered again into an unchanged region says nothing,
+			 * and that is precisely the state U14 filed. Asserted from the SETTLED text plus the
+			 * number of distinct texts the press produced, rather than from the wait register,
+			 * because a stub that answers in a millisecond renders that register for a
+			 * millisecond - the arm can now slow it (`--tail-delay-ms`), but the assertion must
+			 * not depend on a lever nobody sets by default.
+			 */
+			"and the refusal is re-announced through the region that already exists",
+			afterRetry.live === "polite" &&
+				afterRetry.sampled >= 2 &&
+				afterRetry.texts >= 1,
+			`the region's aria-live is ${JSON.stringify(afterRetry.live)}, it produced ${afterRetry.sampled} distinct text(s) during the press and settled on ${afterRetry.texts} refusal state(s) - a region that never changed announces nothing`,
+		);
+		return;
+	}
+
+	// --- the expansion, which is the whole change ---------------------------
+	await verb(cdp, "press", {
+		selector: `[data-disclosure][aria-label="Expand ${LAZY_GROUP} chats"]`,
+	});
+	await wait(LAZY_SETTLE_MS);
+	if (LAZY_CASE === "paged") {
+		// Waited for, not sampled: see `waitForSessionCount`.
+		await waitForSessionCount(cdp, LAZY_CATALOGUE_HEAD_PAGE + LAZY_GROUP_PAGE);
+	}
+	const opened = await verb(cdp, "state");
+	note("the store's scopes after the expansion", JSON.stringify(opened.scopes));
+	note("the census total the head answer carried", String(opened.countsTotal));
+	const group = await lazyGroupFacts(cdp, LAZY_GROUP);
+	const openFrame = await captureSettled(cdp, "group-open");
+	note("frame", JSON.stringify(openFrame));
+	/*
+	 * THE SAME STATE IN THE OTHER THEME (UX round 2): the set this branch shipped was
+	 * dark-only, so D1/D5's "the badge and the sentence read in both themes" claim had no
+	 * evidence behind it. Captured in the same state as `group-open`, then restored so every
+	 * other frame stays dark.
+	 */
+	await verb(cdp, "setTheme", LAZY_LIGHT_THEME);
+	await wait(LAZY_SETTLE_MS);
+	const lightFrame = await captureSettled(cdp, "group-open-light");
+	note("frame", JSON.stringify(lightFrame));
+	await verb(cdp, "setTheme", LAZY_THEME);
+	await wait(LAZY_SETTLE_MS);
+	note("the expanded group", JSON.stringify(group));
+
+	if (LAZY_CASE === "paged") {
+		check(
+			"expanding one group fetched exactly its own first page",
+			opened.sessionCount === LAZY_CATALOGUE_HEAD_PAGE + LAZY_GROUP_PAGE,
+			`sessionCount went ${head.sessionCount} -> ${opened.sessionCount} (expected ${LAZY_CATALOGUE_HEAD_PAGE + LAZY_GROUP_PAGE})`,
+		);
+		/*
+		 * THE BADGE IS READ WITH THE GROUP OPEN, and that is a deliberate retreat
+		 * rather than a weakened claim. It is the same element either way (the badge is
+		 * drawn on the group's own row, open or closed), and the read of a CLOSED group
+		 * raced the roster's arrival: this scene's second run read nulls for a row the
+		 * press immediately found and labelled "Collapse lopdev chats". The FRAME below
+		 * is the closed-group evidence; the number is asserted where the read is
+		 * reliable.
+		 */
+		check(
+			"the group's badge is the CENSUS, not the rows in hand",
+			group.badge === LAZY_GROUP_TOTAL,
+			`badge reads ${JSON.stringify(group.badge)} (expected ${LAZY_GROUP_TOTAL} over a page of ${LAZY_GROUP_PAGE})`,
+		);
+		check(
+			"the group draws its rows rather than a sentence",
+			group.sentence === null && group.rows > 0,
+			`rows=${group.rows} sentence=${JSON.stringify(group.sentence)}`,
+		);
+		check(
+			"the group offers its tail, because the daemon said there is one",
+			group.more !== null,
+			JSON.stringify(group.more),
+		);
+		// --- and the tail, one press at a time ------------------------------
+		/*
+		 * SCROLLED INTO VIEW FIRST, because `press` is a REAL pointer event at the
+		 * element's box (`pressAt` in `src/renderer/src/dev-driver/install.ts`) and
+		 * the tail sits at the bottom of a scroller: a press on a control below the
+		 * fold lands on whatever is actually there, which is how the first run of this
+		 * scene pressed the button and changed nothing. The pattern is the driver's
+		 * own (`sceneSessionArchive` does the same before a press).
+		 */
+		await cdp.evaluate(
+			`(() => { const node = document.querySelector('[data-scope-more="team:${LAZY_GROUP}"]'); if (node) node.scrollIntoView({ block: "center" }); return node !== null; })()`,
+		);
+		await wait(300);
+		/*
+		 * THE CONTROL ITSELF, IN A FRAME (round 1, D3). The press UNMOUNTS the
+		 * control when it fetches the last page, and the earlier version of this set
+		 * claimed a frame showed it while no frame did. Captured here, between the
+		 * scroll that brings it into the viewport and the press that consumes it,
+		 * which is the only moment it is both on screen and still a control.
+		 */
+		const moreFrame = await captureSettled(cdp, "group-more");
+		note("frame", JSON.stringify(moreFrame));
+		/*
+		 * THE PANEL AT ITS OWN DRAG FLOOR (round 1, D8), captured HERE - with the group
+		 * open and its control on screen, before any press moves the geometry. The
+		 * earlier attempt to narrow this surface set a WINDOW size rather than the
+		 * panel's own width, so the panel was boxed at x 438-955 in both frames and
+		 * nothing was narrower. `240` is the floor the preference is clamped to
+		 * (`chatSidebarWidth`, clamped 240..360), set through the driver's own
+		 * preference verb, so the frame is of the app's real floor. It is restored
+		 * before the press: a control whose box the width change has just moved is a
+		 * press that lands on nothing, which is what the first attempt measured.
+		 */
+		const wideWidth = await cdp.evaluate(
+			`document.querySelector('[data-sidebar-region="chats"]')?.offsetWidth ?? null`,
+		);
+		/*
+		 * AND THE PREFERENCE ITSELF, because the two are not the same number (round 4, D20):
+		 * `chatSidebarWidth` is the panel's OUTER width (the app's default 280 measures 264
+		 * inside the region), so restoring the region's measured width wrote 264 into a
+		 * preference that means something else and left the post-press frames ~16px inside
+		 * the declared default - a set whose frames and whose README disagreed by a number
+		 * nobody chose. `undefined` is not a value here: it DELETES the key, which is how the
+		 * app's own default comes back on a profile that never stored one.
+		 */
+		const preferencesAtStart = await splitPreferences(cdp);
+		const preferenceWidth = preferencesAtStart.state?.chatSidebarWidth;
+		await setSplitPreferences(cdp, { chatSidebarWidth: 240 });
+		await wait(LAZY_SETTLE_MS);
+		const narrowWidth = await cdp.evaluate(
+			`document.querySelector('[data-sidebar-region="chats"]')?.offsetWidth ?? null`,
+		);
+		check(
+			"the narrow frame is NARROWER: the panel is at its own drag floor, not at the window's size",
+			typeof wideWidth === "number" &&
+				typeof narrowWidth === "number" &&
+				narrowWidth <= 250 &&
+				narrowWidth < wideWidth,
+			`the chats region is ${narrowWidth}px at the floor against ${wideWidth}px at this run's default (a WINDOW size, which is what the earlier attempt changed, leaves the panel at x 438-955 in both frames)`,
+		);
+		const narrowFrame = await captureSettled(cdp, "group-narrow");
+		note("frame", JSON.stringify(narrowFrame));
+		/*
+		 * RESTORED TO THIS RUN'S OWN WIDTH, NOT TO 360 (round 3, D16). The narrow capture
+		 * above is taken at the floor, and the press briefly needed the panel wider than the
+		 * floor to keep the control on screen; leaving it at the clamp's ceiling made the two
+		 * post-press frames 361 logical px wide while every other frame in the set was at the
+		 * run's default 281 - a set that mixes undeclared widths cannot be compared frame to
+		 * frame. `wideWidth` is the width this run actually started at, measured above.
+		 */
+		await setSplitPreferences(cdp, {
+			chatSidebarWidth:
+				typeof preferenceWidth === "number" ? preferenceWidth : undefined,
+		});
+		const restoredWidth = await cdp.evaluate(
+			`document.querySelector('[data-sidebar-region="chats"]')?.offsetWidth ?? null`,
+		);
+		check(
+			"the post-press frames are back at this run's OWN width, preference for preference",
+			restoredWidth === wideWidth,
+			`the chats region is ${restoredWidth}px after the restore against ${wideWidth}px before the narrow capture (preference ${JSON.stringify(preferenceWidth)}); the earlier shape wrote the region's inner measurement into an OUTER-width preference and left these frames 16px inside the set's declared default`,
+		);
+		await wait(LAZY_SETTLE_MS);
+		/*
+		 * AND THE CONTROL IS BROUGHT BACK INTO THE VIEWPORT, because widening the panel
+		 * moves it: the region's scroll position was taken at 240px, so at 360px the
+		 * control as measured sits below the fold and a press at those coordinates lands
+		 * on nothing - which is what the run reported (`hit=null`) with the store state
+		 * still saying the tail had not been asked for.
+		 */
+		await cdp.evaluate(
+			`(() => { const node = document.querySelector('[data-scope-more="team:${LAZY_GROUP}"]'); if (node) node.scrollIntoView({ block: "center" }); return node !== null; })()`,
+		);
+		await wait(300);
+		const tailPress = await verb(cdp, "press", {
+			selector: `[data-scope-more="team:${LAZY_GROUP}"]`,
+		});
+		note("the tail control", JSON.stringify(tailPress.target));
+		check(
+			"the tail press reaches the control itself",
+			tailPress.hit === tailPress.target,
+			`hit=${JSON.stringify(tailPress.hit)} target=${JSON.stringify(tailPress.target)}`,
+		);
+		/*
+		 * THE EXTENSION IS WAITED FOR, BOUNDED, ON THE SCOPE'S OWN STATE.
+		 *
+		 * What the press is asserted to do: ask the daemon for THAT SCOPE'S next page,
+		 * and MERGE the answer - the scope's ids grow by exactly one page and its
+		 * cursor advances to the page after it. The merge half is the part a single
+		 * sample cannot see (an unmerged answer and a merged one look identical in the
+		 * same instant), so this polls the store's own scope every 100 ms and FAILS
+		 * LOUDLY on timeout with the state it last saw and the daemon's own lines for
+		 * the scope - which is the evidence that separates "the request never left"
+		 * from "it left, was answered, and the answer did not reach the store".
+		 */
+		/*
+		 * THE FOCUS IS ASSERTED, not promised in a comment (round 2, U2 = F1). Two streams
+		 * measured focus landing on `<body>` after every press: the recovery effect resolved
+		 * its target inside the CHATS region, where an expanded group's rows are not drawn.
+		 * The assertion is made against `document.activeElement`'s own identity, so `<body>`
+		 * cannot satisfy it.
+		 */
+		const activeAfterPress = await cdp.evaluate(`(() => {
+			const el = document.activeElement;
+			if (el === null || el === document.body) return { tag: null, row: null };
+			const row = el.closest("[data-session-row]");
+			return {
+				tag: el.tagName.toLowerCase(),
+				row: row === null ? null : row.getAttribute("data-session-row"),
+			};
+		})()`);
+		note("focus after the tail press", JSON.stringify(activeAfterPress));
+		check(
+			"focus lands on a row of the group, never on body (U2 = F1)",
+			activeAfterPress.tag === "button" &&
+				String(activeAfterPress.row ?? "").startsWith("p"),
+			`activeElement is ${JSON.stringify(activeAfterPress)} (the press added ids from the scope's own list, so the first added row is the group's ${LAZY_GROUP_PAGE + 1}th)`,
+		);
+		const scopeKey = `team:${LAZY_GROUP}`;
+		const grew = await waitForScopeIds(cdp, scopeKey, LAZY_GROUP_PAGE * 2);
+		const observed = JSON.stringify(grew.scope);
+		if (grew.timedOut) {
+			const lines = stubLinesForScope(STUB_LOG, LAZY_GROUP);
+			check(
+				"the tail page is merged into the scope",
+				false,
+				`the scope did not reach ${LAZY_GROUP_PAGE * 2} ids within 10 s. Last read: ${observed}. The daemon logged for this scope:\n${lines.length > 0 ? lines.join("\n") : "(nothing)"}`,
+			);
+		} else {
+			check(
+				"the tail page is merged into the scope, and the cursor advances past it",
+				grew.scope.ids === LAZY_GROUP_PAGE * 2 &&
+					grew.scope.nextCursor === `off:${LAZY_GROUP_PAGE * 2}`,
+				`scope is ${observed}, expected ${LAZY_GROUP_PAGE * 2} ids and cursor off:${LAZY_GROUP_PAGE * 2}`,
+			);
+		}
+		await wait(LAZY_SETTLE_MS);
+		/*
+		 * THE TAIL FRAME SHOWS THE CONTROL (round 1, D3). After the first extension
+		 * there is another page to come, so the group draws fifty rows AND its
+		 * `Show 20 more` control - scrolled into view here so the frame carries the
+		 * grown list and the control together, which is what the PR's frame table
+		 * claims it shows.
+		 */
+		await cdp.evaluate(
+			`(() => { const node = document.querySelector('[data-scope-more="team:${LAZY_GROUP}"]'); if (node) node.scrollIntoView({ block: "center" }); return node !== null; })()`,
+		);
+		await wait(300);
+		const tailFrame = await captureSettled(cdp, "group-tail");
+		note("frame", JSON.stringify(tailFrame));
+		note("the scope after the tail press", observed);
+		/*
+		 * THE LABEL STATES THE ROWS THE PRESS WILL ADD, AND THE LAST PRESS IS EXACT
+		 * (round 1, D7). Sixty-five held of seventy read `Show 25 more` - a page size
+		 * dressed as a remainder. Here: fifty held of seventy, so five short of a full
+		 * page, and the label must say twenty.
+		 */
+		const label = await cdp.evaluate(
+			`(() => { const node = document.querySelector('[data-scope-more="team:${LAZY_GROUP}"]'); return node === null ? null : (node.textContent || "").trim(); })()`,
+		);
+		check(
+			"Show more states the rows the press will ADD, not the page size (D7)",
+			label === `Show ${LAZY_GROUP_TOTAL - LAZY_GROUP_PAGE * 2} more`,
+			`the control reads ${JSON.stringify(label)} with ${LAZY_GROUP_PAGE * 2} of ${LAZY_GROUP_TOTAL} drawn`,
+		);
+		const lastPress = await verb(cdp, "press", {
+			selector: `[data-scope-more="team:${LAZY_GROUP}"]`,
+		});
+		check(
+			"the last press reaches the control itself",
+			lastPress.hit === lastPress.target,
+			`hit=${JSON.stringify(lastPress.hit)} target=${JSON.stringify(lastPress.target)}`,
+		);
+		const exhausted = await waitForScopeIds(cdp, scopeKey, LAZY_GROUP_TOTAL);
+		check(
+			"the last press adds the remainder and the control goes at exhaustion (D7)",
+			!exhausted.timedOut &&
+				exhausted.scope.ids === LAZY_GROUP_TOTAL &&
+				exhausted.scope.nextCursor === null,
+			`scope is ${JSON.stringify(exhausted.scope)}, expected ${LAZY_GROUP_TOTAL} ids and no cursor`,
+		);
+		await wait(LAZY_SETTLE_MS);
+		/*
+		 * AND AT EXHAUSTION THE FALLBACK IS THE GROUP'S OWN CONTROL (round 2, U2): the
+		 * press's control unmounts with the cursor, so the reader must not be left on
+		 * `<body>`. Recorded here rather than asserted to a single shape, because the press
+		 * that consumed the control is exactly the case where the added row may not resolve.
+		 */
+		const activeAtEnd = await cdp.evaluate(`(() => {
+			const el = document.activeElement;
+			if (el === null || el === document.body) return { tag: null, disclosure: false };
+			return {
+				tag: el.tagName.toLowerCase(),
+				disclosure: el.hasAttribute("data-disclosure"),
+				label: el.getAttribute("aria-label"),
+			};
+		})()`);
+		note("focus at exhaustion", JSON.stringify(activeAtEnd));
+		check(
+			"the reader is never left on `<body>` at exhaustion (U2 = F1)",
+			activeAtEnd.tag !== null,
+			`activeElement is ${JSON.stringify(activeAtEnd)}`,
+		);
+		const exhaustedFrame = await captureSettled(cdp, "group-exhausted");
+		note("frame", JSON.stringify(exhaustedFrame));
+	} else if (LAZY_CASE === "empty") {
+		/*
+		 * A SETTLED SCOPE, A NON-ZERO CENSUS, NO ROWS (round 1, U3). The group's
+		 * chats are not drawable here - the ordinary reason being that they are
+		 * archived - so the sentence must name that and offer the way forward. It was
+		 * "Loading chats…" for as long as the census outran the page, whatever
+		 * `scope.loading` said, which sat a settled group in a wait for ever.
+		 */
+		check(
+			"a settled group the census still outruns names why, and never claims a wait",
+			opened.sessionCount === LAZY_CATALOGUE_HEAD_PAGE &&
+				group.badge === LAZY_GROUP_TOTAL &&
+				typeof group.sentence === "string" &&
+				LAZY_ARCHIVED_SENTENCE.test(group.sentence),
+			`sessionCount ${opened.sessionCount}, badge ${JSON.stringify(group.badge)}, sentence ${JSON.stringify(group.sentence)}`,
+		);
+		/*
+		 * AND THE SAME SENTENCE AT THE PANEL'S DRAG FLOOR (round 3, D17). The clamp is two
+		 * lines and the designer's arithmetic said it may eat this sentence's tail at 240px;
+		 * whether it does is a fact about a rendered frame, not about a sum, and the sentence
+		 * is the one this state exists to say - so it gets its own narrow picture rather than
+		 * being trusted at the width where it was written.
+		 */
+		const settledDefaultWidth = await cdp.evaluate(
+			`document.querySelector('[data-sidebar-region="chats"]')?.offsetWidth ?? null`,
+		);
+		await setSplitPreferences(cdp, { chatSidebarWidth: 240 });
+		await wait(LAZY_SETTLE_MS);
+		const settledFloor = await lazyGroupFacts(cdp, LAZY_GROUP);
+		const settledFloorWidth = await cdp.evaluate(
+			`document.querySelector('[data-sidebar-region="chats"]')?.offsetWidth ?? null`,
+		);
+		check(
+			"the settled sentence is whole at the panel's own floor, not clipped by the clamp",
+			typeof settledFloorWidth === "number" &&
+				settledFloorWidth <= 250 &&
+				typeof settledFloor.sentence === "string" &&
+				LAZY_ARCHIVED_SENTENCE.test(settledFloor.sentence) &&
+				settledFloor.sentenceClipped === false,
+			`at ${settledFloorWidth}px (from ${settledDefaultWidth}px) the group says ${JSON.stringify(settledFloor.sentence)}, clamped=${JSON.stringify(settledFloor.clamped)}`,
+		);
+		const settledNarrowFrame = await captureSettled(cdp, "group-open-narrow");
+		note("frame", JSON.stringify(settledNarrowFrame));
+		await setSplitPreferences(cdp, {
+			chatSidebarWidth:
+				typeof settledDefaultWidth === "number" ? settledDefaultWidth : 281,
+		});
+		await wait(LAZY_SETTLE_MS);
+	} else if (LAZY_CASE === "loading") {
+		/*
+		 * THE ONE STATE IN WHICH "Loading chats…" IS TRUE (round 1, U3). Every scoped
+		 * answer is held open by the stand-in, so the group is genuinely waiting: the
+		 * sentence and `scope.loading` agree, which is the pair the finding was about.
+		 */
+		check(
+			"a group whose page is in flight says it is loading",
+			opened.sessionCount === LAZY_CATALOGUE_HEAD_PAGE &&
+				group.sentence === "Loading chats…",
+			`sessionCount ${opened.sessionCount}, sentence ${JSON.stringify(group.sentence)}`,
+		);
+		/*
+		 * AND THE HOLD IS RELEASED IN THE SAME RUN (round 2, D12): the frame above is of a
+		 * wait that is really in flight because the stand-in is holding the answer on a file,
+		 * and writing that file here proves the hold released and the group drew its page -
+		 * so the arm is re-shootable rather than a window the run has to hit.
+		 */
+		if (LAZY_HOLD !== null) {
+			writeFileSync(LAZY_HOLD, "released\n");
+			const drew = await waitForSessionCount(
+				cdp,
+				LAZY_CATALOGUE_HEAD_PAGE + LAZY_GROUP_PAGE,
+			);
+			const after = await lazyGroupFacts(cdp, LAZY_GROUP);
+			check(
+				"releasing the hold draws the group's page, so the wait was real",
+				drew === LAZY_CATALOGUE_HEAD_PAGE + LAZY_GROUP_PAGE &&
+					after.rows === LAZY_GROUP_PAGE,
+				`sessionCount ${opened.sessionCount} -> ${drew}, rows ${after.rows}, sentence ${JSON.stringify(after.sentence)}`,
+			);
+			const loadedFrame = await captureSettled(cdp, "group-loaded");
+			note("frame", JSON.stringify(loadedFrame));
+		}
+	} else if (LAZY_CASE === "empty-group") {
+		/*
+		 * A GENUINELY EMPTY GROUP: the page and the census agree (round 1, D3's first
+		 * missing arm). "No chats yet" is the honest sentence here, and the badge is
+		 * zero - which is what separates this frame from the `empty` arm's.
+		 */
+		check(
+			"an empty group says so, and no number contradicts it",
+			opened.sessionCount === LAZY_CATALOGUE_HEAD_PAGE &&
+				group.sentence === "No chats yet" &&
+				group.badge === null,
+			`sessionCount ${opened.sessionCount}, sentence ${JSON.stringify(group.sentence)}, badge ${JSON.stringify(group.badge)} (a zero census draws no digit at all)`,
+		);
+	} else if (LAZY_CASE === "error") {
+		// WAITED FOR, not sampled: the refusal has to travel back and be rendered, and
+		// the first run of this arm read the group still saying "Loading chats…".
+		/*
+		 * THE ROW IS FOUND BY ITS OWN CONTROL, not by document order (round 1, D6).
+		 * `document.querySelector('[data-entity]')` is the FIRST entity row on screen -
+		 * an agent group - so the condition could never match the group's sentence, and
+		 * the arm photographed whatever happened to be rendered when the wait gave up.
+		 */
+		const refused = await waitForCondition(
+			cdp,
+			`(() => {
+				const row = document.querySelector('[data-entity]:has([data-disclosure][aria-label="Expand ${LAZY_GROUP} chats"], [data-disclosure][aria-label="Collapse ${LAZY_GROUP} chats"])');
+				if (row === null) return false;
+				const text = row.textContent || "";
+				/*
+				 * THE SHAPE OF THE REFUSAL, not a sentence this rig knows: the app quotes
+				 * the backend's own text whenever the daemon authored one, so waiting for a
+				 * particular string waits for something the app may never draw. What the
+				 * group MUST show is a Retry, no wait and no emptiness.
+				 */
+				return /Retry/.test(text) && !/Loading chats…/.test(text) && !/No chats yet/.test(text);
+			})()`,
+			15_000,
+		);
+		/*
+		 * STRINGIFIED, NOT COERCED (round 3, D13): `waitForCondition` answers an object, so
+		 * `String(refused)` printed `[object Object]` where the note is supposed to carry the
+		 * wait's own result - the waited time and the value it settled on.
+		 */
+		note("the refusal is on screen", JSON.stringify(refused));
+		const failed = await lazyGroupFacts(cdp, LAZY_GROUP);
+		/*
+		 * ITS OWN FRAME, AFTER THE REFUSAL RENDERED: the `group-open` capture above is
+		 * taken the moment the group opens, which in this arm is the loading state. A
+		 * photograph of "Loading chats…" labelled as the error case would be a frame
+		 * that does not show what its name claims.
+		 */
+		check(
+			"the refusal is WAITED FOR rather than sampled, and says something that is neither a wait nor an emptiness",
+			refused.ok === true &&
+				typeof failed.sentence === "string" &&
+				failed.sentence.length > 0 &&
+				!LAZY_NOT_A_WAIT_OR_EMPTINESS.test(failed.sentence),
+			`waited=${JSON.stringify(refused)} sentence=${JSON.stringify(failed.sentence)}`,
+		);
+		const errorFrame = await captureSettled(cdp, "group-error");
+		note("frame", JSON.stringify(errorFrame));
+		check(
+			"a refused group read says so and offers its own retry",
+			opened.sessionCount === LAZY_CATALOGUE_HEAD_PAGE && failed.retry !== null,
+			`sessionCount ${opened.sessionCount}, retry ${JSON.stringify(failed.retry)}, sentence ${JSON.stringify(failed.sentence)}`,
+		);
+	} else {
+		/*
+		 * THE BEFORE HALF. A daemon that cannot page answers 50 rows of 120 with no
+		 * cursor, so the group's 70 chats are past the cap and the panel draws the
+		 * FALSE sentence over them - which is the operator's screenshot, and the reason
+		 * this change exists.
+		 */
+		check(
+			"expanding a group against a daemon that cannot page fetches nothing",
+			opened.sessionCount === head.sessionCount,
+			`sessionCount ${head.sessionCount} -> ${opened.sessionCount}`,
+		);
+		check(
+			"and the withdrawn panel draws the false negative this change removes",
+			group.sentence === "No chats yet",
+			`sentence is ${JSON.stringify(group.sentence)}`,
+		);
+	}
+}
+
+/**
+ * Wait for a line to appear in the stand-in's own stdout.
+ *
+ * WHY THE REQUEST THE DAEMON SAW IS THE INSTRUMENT HERE. The DOM cannot say which
+ * page a control asked for, and `state.sessionCount` cannot either (a page whose
+ * rows the client already held grows it by nothing). The daemon's request line is
+ * the one place "the press asked for THAT SCOPE'S next page, with the cursor it
+ * minted" is directly visible, which is the same reason `sceneRowSpace` reads
+ * `--stub-log` for its write clauses.
+ */
+async function waitForStubLine(needle, timeoutMs = 15_000) {
+	if (STUB_LOG === null) return false;
+	const started = Date.now();
+	while (Date.now() - started < timeoutMs) {
+		try {
+			if (readFileSync(STUB_LOG, "utf8").includes(needle)) return true;
+		} catch {
+			// The file may not exist for the first moments of a run.
+		}
+		await wait(150);
+	}
+	return false;
+}
+
+/**
+ * The sidebar's team/agent row, as the DOM has it.
+ *
+ * Read through the driver's own evaluation channel rather than through the verb
+ * vocabulary, because the verb set answers about GEOMETRY and PRESSES (the app's
+ * layout and input are its own) and none of them can read a sentence. This is the
+ * driver looking, not the app being asked.
+ */
+const LAZY_GROUP_FACTS_EXPR = (name) => `(() => {
+	/*
+	 * THE ROW IS FOUND BY THE CONTROL IT CONTAINS, not by the text it happens to
+	 * carry: the selector below matches data-entity elements that hold a
+	 * data-disclosure button labelled "Expand <name> chats" - the same element the
+	 * press in this scene aims at, so the row this reads is always the row that
+	 * control belongs to. Matching on text found a row whose data-disclosure did not
+	 * exist on the first run of this scene - a read and a press disagreeing about
+	 * which node they meant.
+	 */
+	const row = document.querySelector(
+		'[data-entity]:has([data-disclosure][aria-label="Expand ${name} chats"], [data-disclosure][aria-label="Collapse ${name} chats"])',
+	);
+	if (!row) return null;
+	const button = row.querySelector("[data-disclosure]");
+	const body = button?.parentElement?.nextElementSibling ?? null;
+	const badge = [...row.querySelectorAll("span")]
+		.map((el) => (el.textContent || "").trim())
+		.filter((text) => /^[0-9]+$/.test(text))
+		.pop() ?? null;
+	const more = row.querySelector("[data-scope-more]");
+	const retry = [...(body?.querySelectorAll("button") ?? [])]
+		.map((el) => (el.textContent || "").trim())
+		.find((text) => text === "Retry") ?? null;
+	return {
+		badge: badge === null ? null : Number(badge),
+		more: more === null ? null : (more.textContent || "").trim(),
+		retry,
+		rows: body === null ? 0 : body.querySelectorAll("[data-session-row]").length,
+		/*
+		 * THE SENTENCE IS READ FROM ITS OWN ELEMENT, not matched against a list of the
+		 * strings this rig expects. The refusal's sentence is the BACKEND'S own text
+		 * whenever the daemon authored one (the app quotes it rather than paraphrasing),
+		 * so a list of expected sentences is a list this reader would silently stop
+		 * recognising the moment the daemon says something new - which is exactly how
+		 * the error arm read a null sentence while the group was drawing one.
+		 */
+		sentence: (() => {
+			const el = body?.querySelector("p") ?? null;
+			const text = el === null ? "" : (el.textContent || "").trim();
+			return text === "" ? null : text;
+		})(),
+		/*
+		 * WHETHER THE SENTENCE THE READER READS IS THE WHOLE SENTENCE (round 3, D17). The
+		 * clamp is two lines, so an element whose scrollHeight exceeds its clientHeight is
+		 * an element that ate its own tail - the one fact a picture at the panel's floor is
+		 * meant to settle, and one a text extraction cannot see.
+		 */
+		sentenceClipped: (() => {
+			const el = body?.querySelector("p") ?? null;
+			if (el === null) return null;
+			return el.scrollHeight > el.clientHeight + 1;
+		})(),
+	};
+})()`;
+
+const lazyGroupFacts = (cdp, name) => cdp.evaluate(LAZY_GROUP_FACTS_EXPR(name));
+
+/**
+ * The store's row count, WAITED FOR rather than read once.
+ *
+ * A page arrives on the app's own schedule, so a scene that reads the count the
+ * instant after a press is asserting a race it happens to win: this scene's first
+ * run read `75 -> 75` for an extension the stand-in had ALREADY answered (its log
+ * shows the `cursor=off:25` request), which is a fact about the harness and not
+ * about the panel. Polling the number is what makes the claim about the feature.
+ */
+/**
+ * The scope's own state, WAITED FOR rather than sampled.
+ *
+ * WHY THIS REPLACED A READ-BACK AND A ROW COUNT. `state.sessionCount` is a PROXY
+ * for "the extension landed" and a bad one: a page whose rows the client already
+ * holds grows it by nothing, so a passing extension and a dropped answer are
+ * indistinguishable through it. The scope's own `ids` and `nextCursor` are the
+ * claim itself. And the read has to be BOUNDED POLLING, not a read after a fixed
+ * sleep: the two are indistinguishable in a single sample, which is exactly how
+ * this step reported a discrepancy for a whole session's worth of runs.
+ */
+async function waitForScopeIds(cdp, key, atLeast, timeoutMs = 10_000) {
+	const started = Date.now();
+	let scope = (await verb(cdp, "state")).scopes[key] ?? null;
+	while (Date.now() - started < timeoutMs) {
+		if (scope !== null && scope.ids >= atLeast)
+			return { scope, timedOut: false };
+		await wait(100);
+		scope = (await verb(cdp, "state")).scopes[key] ?? null;
+	}
+	return { scope, timedOut: true };
+}
+
+/**
+ * The daemon's own lines for one scope, as the failure message's evidence.
+ *
+ * A timeout is not a verdict on its own: the two remaining explanations are "the
+ * request never left" and "it left, was answered, and the answer did not reach
+ * the store". The `rows=` the stand-in now logs with each answer is what tells
+ * them apart, so the failure carries those lines rather than an assertion.
+ */
+function stubLinesForScope(path, name) {
+	if (STUB_LOG === null) return [];
+	try {
+		return readFileSync(STUB_LOG, "utf8")
+			.split("\n")
+			.filter((line) => line.includes(`scope_name=${name}`))
+			.slice(-4);
+	} catch {
+		return [];
+	}
+}
+
+async function waitForSessionCount(cdp, atLeast, timeoutMs = 15_000) {
+	const started = Date.now();
+	let last = 0;
+	while (Date.now() - started < timeoutMs) {
+		last = (await verb(cdp, "state")).sessionCount;
+		if (last >= atLeast) return last;
+		await wait(200);
+	}
+	return last;
+}
+
 async function sceneSidebarSplit(cdp, handle) {
 	/* The live connection, which becomes a NEW one after the restart below. */
 	let link = cdp;
@@ -14589,6 +19300,856 @@ async function sceneSidebarSplit(cdp, handle) {
 		`collapsed again drawn=${stillCollapsed}`,
 	);
 	await captureSettled(link, "split-restart-restored-dark");
+	return link;
+}
+
+/**
+ * The one sidebar's TWO SECTIONS and the boundary between them, as the operator
+ * asked for them on the preview (2026-09-24): Agents + Teams and Chats both
+ * VISIBLE, sized RELATIVE to each other by a drag, the size PERSISTED - plus the
+ * bubbled brand mark at the three places it leads a surface.
+ *
+ * WHY A SCENE BESIDE `sidebar-split` RATHER THAN MORE STEPS IN IT. That scene
+ * walks the boundary's own controls (the intent-gated plate, collapse, restore,
+ * swap) from a column it FORCES to "both"; the claim here is about the column
+ * nobody has touched, so this scene deliberately writes NOTHING to the regions
+ * before its first frame - the default is the subject. Its frames are the evidence
+ * for the default, the two drag positions, the floors, the keyboard and the
+ * relaunch, in both brand palettes.
+ *
+ * It seeds the backend with an agent, a team and a handful of chats first, because
+ * both sections have to have rows for "visible sections" to mean anything - an empty
+ * catalogue would photograph two headings.
+ */
+/**
+ * THE SIDEBAR'S ONE SCROLLER, measured rather than argued.
+ *
+ * WHY THIS EXISTS. The operator caught three scrollbars in one column on the running
+ * app - one on the sidebar's outer edge spanning its whole height, one inside the
+ * Agents section and one inside the chats section - and the cause was a CSS trap
+ * rather than a layout intent: `overflow-x-hidden` on the column's own div computes
+ * `overflow-y: auto` (CSS 2.1 §11.1.1), so the column became a scroller wrapping the
+ * two its sections carry. A wheel event then has no unambiguous target, and the fixed
+ * chrome can be scrolled out from under the pointer.
+ *
+ * WHAT IT REPORTS: the column's own scroll box, every ancestor's, every scroller in
+ * the sidebar subtree by name, the document's, the y of each fixed chrome row, and -
+ * per region - whether a point inside it has exactly one scrollable ancestor. The
+ * assertions are the driver's, so a later edit that re-introduces an outer scroller
+ * fails a check rather than being read off a frame.
+ */
+const sidebarScrollFacts = (cdp) =>
+	cdp.evaluate(`(() => {
+		const box = (el) => { const r = el.getBoundingClientRect(); return { y: Math.round(r.y), h: Math.round(r.height) }; };
+		const scroller = (el) => { const s = getComputedStyle(el); return (s.overflowY === "auto" || s.overflowY === "scroll") && el.scrollHeight > el.clientHeight + 1; };
+		const name = (el) => el.getAttribute("data-sidebar-region") || el.getAttribute("data-sidebar-shell") !== null && "shell" || el.id || el.tagName + "." + String(el.className || "").split(" ").slice(0, 3).join(".").slice(0, 40);
+		const shell = document.querySelector("[data-sidebar-shell]");
+		const nav = document.querySelector('nav[aria-label="Chats"]');
+		const strip = document.querySelector("[data-sidebar-strip]");
+		const root = shell ?? strip ?? null;
+		const inner = [];
+		if (root) {
+			root.querySelectorAll("*").forEach((el) => { if (scroller(el)) inner.push(name(el)); });
+			if (scroller(root)) inner.push(name(root));
+		}
+		const chain = [];
+		for (let el = root; el && el !== document.body; el = el.parentElement) {
+			const s = getComputedStyle(el);
+			chain.push({ tag: el.tagName, oy: s.overflowY, client: el.clientHeight, scroll: el.scrollHeight, scrollable: scroller(el) });
+		}
+		/*
+		 * POINTWISE: how many scrollable elements the point at the centre of each
+		 * region sits inside. One means the wheel has one target; two is the defect
+		 * this check exists for; nought means the pane cannot be scrolled at all.
+		 */
+		const at = (el) => {
+			if (!el) return null;
+			const r = el.getBoundingClientRect();
+			const x = Math.round(r.x + r.width / 2);
+			const y = Math.round(r.y + Math.min(r.height / 2, 80));
+			const under = document.elementsFromPoint(x, y).filter(scroller).map(name);
+			return { x, y, scrollableUnder: under, scrollTop: Math.round(el.scrollTop) };
+		};
+		const scrollTop = (sel) => { const el = document.querySelector(sel); return el === null ? null : Math.round(el.scrollTop); };
+		return {
+			shell: shell ? { oy: getComputedStyle(shell).overflowY, client: shell.clientHeight, scroll: shell.scrollHeight, scrollTop: Math.round(shell.scrollTop) } : null,
+			strip: strip ? { oy: getComputedStyle(strip).overflowY, client: strip.clientHeight, scroll: strip.scrollHeight, scrollTop: Math.round(strip.scrollTop) } : null,
+			nav: nav ? { client: nav.clientHeight, scroll: nav.scrollHeight, oy: getComputedStyle(nav).overflowY, scrollTop: Math.round(nav.scrollTop) } : null,
+			inner,
+			chain,
+			document: { client: document.scrollingElement.clientHeight, scroll: document.scrollingElement.scrollHeight, scrollTop: Math.round(document.scrollingElement.scrollTop) },
+			chrome: {
+				brand: (() => { const n = document.querySelector("[data-brand-mark]"); return n === null ? null : box(n); })(),
+				newChat: (() => { const n = document.querySelector("[data-new-chat-row]"); return n === null ? null : box(n); })(),
+				search: (() => { const n = document.querySelector("[data-command-palette-trigger]"); return n === null ? null : box(n); })(),
+				destinations: (() => { const n = document.querySelector('[data-tour-tag="nav-item-browser"]'); return n === null ? null : box(n); })(),
+			},
+			entities: at(document.querySelector('[data-sidebar-region="entities"]')),
+			chats: at(document.querySelector('[data-sidebar-region="chats"]')),
+			/*
+			 * THE BOX TREE, for the case where an element reports more content than it
+			 * has box: scrollHeight alone says an ancestor overflows, and only the
+			 * children's own heights say WHICH one. Cheap enough to carry always, and
+			 * the note is what a reader needs when a check fails at 3am.
+			 */
+			boxes: (() => {
+				const detail = (el) => {
+					if (el === null) return null;
+					const r = el.getBoundingClientRect();
+					const st = getComputedStyle(el);
+					return {
+						name: name(el),
+						top: Math.round(r.top),
+						h: Math.round(r.height),
+						client: el.clientHeight,
+						scroll: el.scrollHeight,
+						css: st.height + "/" + st.minHeight + "/" + st.maxHeight + "/" + st.flex,
+					};
+				};
+				const nodes = [];
+				if (nav) {
+					nodes.push(detail(nav));
+					for (const child of nav.children) nodes.push(detail(child));
+					const split = nav.querySelector("div[data-sidebar-split]")?.parentElement ?? null;
+					if (split) { nodes.push(detail(split)); for (const child of split.children) nodes.push(detail(child)); }
+				}
+				return nodes;
+			})(),
+			/*
+			 * WHAT LEAKS OUT OF THE PANEL. scrollHeight on an ancestor says SOMETHING
+			 * pokes past it and this says which element: every descendant whose box
+			 * crosses the panel's own bottom edge and which is not clipped by a
+			 * scrollable ancestor in between (those are contained by their scroller and
+			 * are not the leak). The list is short by construction - a leak is a defect -
+			 * so it is printed whole.
+			 */
+			leaks: (() => {
+				if (!nav) return [];
+				const navBox = nav.getBoundingClientRect();
+				const clipped = (el) => {
+					for (let p = el.parentElement; p && p !== nav; p = p.parentElement) {
+						const s = getComputedStyle(p);
+						if (s.overflowY !== "visible") return true;
+					}
+					return false;
+				};
+				const out = [];
+				for (const el of nav.querySelectorAll("*")) {
+					if (out.length > 12) break;
+					const r = el.getBoundingClientRect();
+					if (r.height === 0) continue;
+					if (r.bottom <= navBox.bottom + 1) continue;
+					if (clipped(el)) continue;
+					out.push({ name: name(el), top: Math.round(r.top), bottom: Math.round(r.bottom), h: Math.round(r.height), over: Math.round(r.bottom - navBox.bottom) });
+				}
+				return out;
+			})(),
+		};
+	})()`);
+
+/**
+ * WHICH CHILD OWNS THE PANEL'S OVERFLOW, when the panel reports any.
+ *
+ * A number that is too big says something pokes out; it does not say what. This
+ * hides each of the panel's own children in turn (and, one level down, the
+ * boundary container's) and reports what the panel's scrollHeight does without it,
+ * restoring the DOM between probes - so the answer is a delta rather than a guess,
+ * and the DOM is exactly as it was when the frame is taken.
+ */
+const diagnoseSidebarOverflow = (cdp) =>
+	cdp.evaluate(`(() => {
+		const nav = document.querySelector('nav[aria-label="Chats"]');
+		if (!nav) return null;
+		const describe = (el) => el.tagName + "." + String(el.className || "").split(" ").slice(0, 3).join(".").slice(0, 44);
+		/*
+		 * Follow the drop down the tree: at each level hide each child in turn and
+		 * keep the one whose absence shrinks the PANEL, then descend into it. Three
+		 * levels is enough to reach a region's own scroll box, and the chain is what
+		 * a reader needs - the element that owns the overflow is on it.
+		 */
+		const chain = [];
+		let container = nav;
+		for (let depth = 0; depth < 4; depth += 1) {
+			const target = nav.scrollHeight;
+			let found = null;
+			for (const child of container.children) {
+				const shown = child.style.display;
+				child.style.display = "none";
+				const without = nav.scrollHeight;
+				child.style.display = shown;
+				const drop = target - without;
+				if (drop <= 0) continue;
+				const entry = {
+					depth,
+					name: describe(child),
+					drop,
+					h: Math.round(child.getBoundingClientRect().height),
+					client: child.clientHeight,
+					scroll: child.scrollHeight,
+					overflow: getComputedStyle(child).overflowY,
+					position: getComputedStyle(child).position,
+				};
+				chain.push(entry);
+				if (found === null || drop > found.drop) found = { drop, child };
+			}
+			if (found === null) break;
+			container = found.child;
+		}
+		/*
+		 * AND WHAT WOULD CONTAIN IT. The panes are scroll containers, yet their scrolled
+		 * content still inflates the PANEL's scrollHeight in this Chromium - so this
+		 * measures the panel under each candidate containment rule and restores the DOM
+		 * between probes. The answer decides the fix rather than a theory of the
+		 * browser deciding it.
+		 */
+		const shell = document.querySelector("[data-sidebar-shell]");
+		const panes = [...nav.querySelectorAll('[data-sidebar-region]')];
+		const candidates = [
+			["panes: position relative", () => panes.forEach((el) => { el.style.position = "relative"; })],
+			["panes: contain paint", () => panes.forEach((el) => { el.style.contain = "paint"; })],
+			["panes: overflow hidden", () => panes.forEach((el) => { el.style.overflow = "hidden"; })],
+			["nav: position relative (already)", () => {}],
+			["shell: overflow clip", () => { if (shell) shell.style.overflow = "clip"; }],
+			["shell: contain paint", () => { if (shell) shell.style.contain = "paint"; }],
+		];
+		const probe = [];
+		for (const [label, apply] of candidates) {
+			const before = [nav.scrollHeight, shell ? shell.scrollHeight : null];
+			apply();
+			probe.push({ label, nav: nav.scrollHeight, shell: shell ? shell.scrollHeight : null, before });
+			// Restore: the inline styles this probe wrote are the only ones removed.
+			panes.forEach((el) => { el.style.position = ""; el.style.contain = ""; el.style.overflow = ""; });
+			if (shell) shell.style.overflow = ""; if (shell) shell.style.contain = "";
+		}
+		return { nav: nav.clientHeight + "/" + nav.scrollHeight, chain, probe };
+	})()`);
+
+/** One wheel notch at a point, through CDP's own input pipeline. */
+async function wheelAt(cdp, x, y, deltaY) {
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseWheel",
+		x,
+		y,
+		deltaX: 0,
+		deltaY,
+		buttons: 0,
+	});
+	await wait(260);
+}
+
+/**
+ * The scroll contract for ONE state, asserted: the column never scrolls, the panes
+ * below the boundary are the only scrollers, each point has at most one scrollable
+ * element over it, and a wheel over a pane moves THAT pane and nothing else - never
+ * the chrome, never the other pane, never the column.
+ */
+async function checkSidebarScroll(cdp, state) {
+	const facts = await sidebarScrollFacts(cdp);
+	note(`scroll facts, ${state}`, JSON.stringify(facts));
+	const root = facts.shell ?? facts.strip;
+	const chromeBefore = facts.chrome;
+	check(
+		`${state}: neither the sidebar's container nor its panel scrolls`,
+		root !== null &&
+			root.scroll === root.client &&
+			(facts.nav === null || facts.nav.scroll === facts.nav.client) &&
+			facts.document.scroll === facts.document.client,
+		JSON.stringify({
+			shell: facts.shell,
+			strip: facts.strip,
+			nav: facts.nav,
+			document: facts.document,
+		}),
+	);
+	if (
+		(root !== null && root.scroll !== root.client) ||
+		(facts.nav !== null && facts.nav.scroll !== facts.nav.client)
+	) {
+		note(
+			`overflow diagnosis, ${state}`,
+			JSON.stringify(await diagnoseSidebarOverflow(cdp)),
+		);
+	}
+	check(
+		`${state}: no ancestor of the sidebar is a scroller`,
+		facts.chain.every((el) => !el.scrollable),
+		JSON.stringify(facts.chain.filter((el) => el.scrollable)),
+	);
+	check(
+		`${state}: at most one scrollable element under a point in either pane`,
+		(facts.entities?.scrollableUnder.length ?? 0) <= 1 &&
+			(facts.chats?.scrollableUnder.length ?? 0) <= 1,
+		JSON.stringify({
+			entities: facts.entities?.scrollableUnder,
+			chats: facts.chats?.scrollableUnder,
+		}),
+	);
+
+	/*
+	 * THE WHEEL, over each pane in turn. Where a pane's own content overflows this
+	 * asserts it MOVED and nothing else did; where it fits, it asserts nothing moved
+	 * at all - which is the state the operator's "if a section's content fits, it has
+	 * no scrollbar" asks for.
+	 */
+	for (const [pane, point, selector] of [
+		["chats", facts.chats, SPLIT_CHATS],
+		["entities", facts.entities, SPLIT_ENTITIES],
+	]) {
+		if (point === null) continue;
+		const before = await sidebarScrollFacts(cdp);
+		const beforeTop = await cdp.evaluate(
+			`(() => { const el = document.querySelector(${JSON.stringify(selector)}); return el === null ? null : Math.round(el.scrollTop); })()`,
+		);
+		await wheelAt(cdp, point.x, point.y, 240);
+		const after = await sidebarScrollFacts(cdp);
+		const afterTop = await cdp.evaluate(
+			`(() => { const el = document.querySelector(${JSON.stringify(selector)}); return el === null ? null : Math.round(el.scrollTop); })()`,
+		);
+		const others = [
+			["entities", SPLIT_ENTITIES],
+			["chats", SPLIT_CHATS],
+		].filter(([, sel]) => sel !== selector);
+		const otherTops = [];
+		for (const [otherName, otherSel] of others) {
+			otherTops.push([
+				otherName,
+				await cdp.evaluate(
+					`(() => { const el = document.querySelector(${JSON.stringify(otherSel)}); return el === null ? null : Math.round(el.scrollTop); })()`,
+				),
+			]);
+		}
+		const chromeHeld =
+			JSON.stringify(after.chrome) === JSON.stringify(chromeBefore);
+		check(
+			`${state}: a wheel over the ${pane} pane moves that pane, or nothing when it fits`,
+			(afterTop !== beforeTop && afterTop > beforeTop) ||
+				(afterTop === beforeTop && point.scrollableUnder.length === 0),
+			JSON.stringify({
+				beforeTop,
+				afterTop,
+				scrollableUnder: point.scrollableUnder,
+			}),
+		);
+		check(
+			`${state}: a wheel over the ${pane} pane leaves the chrome and the other pane where they were`,
+			chromeHeld &&
+				after.shell?.scrollTop === 0 &&
+				(after.strip === null || after.strip.scrollTop === 0) &&
+				after.document.scrollTop === 0,
+			JSON.stringify({ chromeHeld, shell: after.shell?.scrollTop, otherTops }),
+		);
+		// Where the pane scrolled, put it back so the next frame is the same state.
+		if (afterTop !== beforeTop) {
+			await cdp.evaluate(
+				`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (el) el.scrollTop = ${beforeTop ?? 0}; return true; })()`,
+			);
+			await wait(120);
+		}
+		await parkPointer(cdp);
+	}
+	return facts;
+}
+
+async function sceneSidebarSections(cdp, handle) {
+	let link = cdp;
+	const seeded = [];
+	/*
+	 * Twenty rather than a handful: the auto rule is a CAP over the list's content,
+	 * so a list shorter than the cap draws only its own height and the frame cannot
+	 * show the share the cap grants. Twenty rows overflow the cap at both window
+	 * sizes this scene is run at (336 at 1380x900), which is what makes the drawn
+	 * box the cap rather than the content.
+	 */
+	for (let index = 0; index < 20; index += 1) {
+		seeded.push((await createBackendSession()).status);
+	}
+	const authored = [
+		await authoringWrite("/v1/desktop/profiles", {
+			request_id: randomUUID(),
+			name: "docs-writer",
+			kind: "role",
+			description: "Keeps AGENTS.md and the guides current.",
+			instructions: "Write for the next reader.",
+		}),
+		await authoringWrite("/v1/desktop/profiles", {
+			request_id: randomUUID(),
+			name: "release-owner",
+			kind: "role",
+			description: "Cuts releases and posts the refs.",
+			instructions: "Own one release window at a time.",
+		}),
+		await authoringWrite("/v1/desktop/teams", {
+			request_id: randomUUID(),
+			name: "chat-redesign",
+			description: "Designer, coder, reviewer and QA on the chat surface.",
+		}),
+	];
+	note(
+		"seeded",
+		JSON.stringify({
+			sessions: seeded,
+			authored: authored.map((a) => a.status),
+		}),
+	);
+
+	const ready = async (c) =>
+		waitForCondition(
+			c,
+			`Boolean(document.querySelector(${JSON.stringify(SPLIT_ENTITIES)}) && document.querySelector(${JSON.stringify(SPLIT_CHATS)}) && document.querySelector(${JSON.stringify(SPLIT_SEPARATOR)}) && document.querySelector('[data-entity]') && document.querySelector('[data-session-row]'))`,
+			30_000,
+		);
+	const geometry = (c) =>
+		c.evaluate(`(() => {
+			const box = (s) => { const n = document.querySelector(s); if (!n) return null; const r = n.getBoundingClientRect(); return { y: Math.round(r.y), h: Math.round(r.height) }; };
+			const sep = document.querySelector(${JSON.stringify(SPLIT_SEPARATOR)});
+			return {
+				entities: box(${JSON.stringify(SPLIT_ENTITIES)}),
+				chats: box(${JSON.stringify(SPLIT_CHATS)}),
+				separator: sep ? { now: Number(sep.getAttribute("aria-valuenow")), min: Number(sep.getAttribute("aria-valuemin")), max: Number(sep.getAttribute("aria-valuemax")), tabIndex: sep.tabIndex, label: sep.getAttribute("aria-label") } : null,
+				agentsChevron: document.querySelector('[aria-label="Show the agent list"], [aria-label="Hide the agent list"]') !== null,
+				// The two numbers \`chat-sidebar-sections.test.mjs\` pins as the real panel:
+				// the box the sections share, and the nav's content box (\`p-2\` = 16).
+				capacity: (() => { const e = document.querySelector(${JSON.stringify(SPLIT_ENTITIES)}); const c = document.querySelector(${JSON.stringify(SPLIT_CHATS)}); return e && c ? Math.round(e.getBoundingClientRect().height + c.getBoundingClientRect().height) : null; })(),
+				panel: (() => { const n = document.querySelector('nav[aria-label="Chats"]'); return n ? n.clientHeight - 16 : null; })(),
+				// The cap the auto rule computed, read from the region's own inline
+				// max-height rather than recomputed here - so the check compares the
+				// DRAWN box with the number the shipped module handed the render.
+				listMax: (() => { const c = document.querySelector(${JSON.stringify(SPLIT_CHATS)}); if (!c) return null; const v = getComputedStyle(c).maxHeight; return v && v.endsWith("px") ? Math.round(Number.parseFloat(v)) : null; })(),
+			};
+		})()`);
+
+	// --- 1. the untouched column: nothing written to the regions first ----
+	await verb(link, "setTheme", "localOperatorDark");
+	await verb(link, "navigate", "/chat");
+	const first = await ready(link);
+	check(
+		"an untouched column draws BOTH sections and the boundary",
+		first.ok,
+		JSON.stringify(first.last),
+	);
+	const stored0 = await splitPreferences(link);
+	note(
+		"regions as stored before any press",
+		String(stored0.state?.chatSidebarRegions),
+	);
+	/*
+	 * BOTH SECTIONS HAVE ROWS BEFORE THE FRAME IS TAKEN, and that is a wait rather
+	 * than a nicety: the auto rule is a CAP over the list's own content, so a list
+	 * read that has not landed yet drew ~97px of one row in a run where the frame
+	 * is supposed to show two populated sections - and the check below, written
+	 * against the drawn boxes, failed on the RACE rather than on the layout.
+	 */
+	const populated = await waitForCondition(
+		link,
+		`document.querySelectorAll("[data-session-row]").length >= 14 && document.querySelectorAll("[data-entity]").length >= 2`,
+		20_000,
+	);
+	check(
+		"both sections carry rows before the first frame",
+		populated.ok,
+		JSON.stringify(populated.last),
+	);
+	const rest = await geometry(link);
+	note("default geometry", JSON.stringify(rest));
+	check(
+		"the Agents row carries no disclosure chevron any more",
+		rest.agentsChevron === false,
+		String(rest.agentsChevron),
+	);
+	/*
+	 * THE AUTO RULE'S OWN CONTRACT, rather than a comparison of two drawn boxes: the
+	 * chats are CAPPED at the panel's own share with the section above keeping its
+	 * floor, and a list long enough to reach the cap draws at it. A short list draws
+	 * its content, which is the rule working rather than a layout that changed - the
+	 * distinction the race above cost a run to learn.
+	 */
+	const cap = rest.listMax;
+	check(
+		"the chats draw at the auto cap, which is larger than the section above",
+		rest.chats !== null &&
+			cap !== null &&
+			Math.abs(rest.chats.h - cap) <= 2 &&
+			cap > rest.capacity - cap &&
+			rest.capacity - rest.separator.max === 72,
+		JSON.stringify({
+			chats: rest.chats?.h,
+			cap,
+			agents: rest.entities?.h,
+			agentsFloor: rest.capacity - rest.separator.max,
+		}),
+	);
+	await parkPointer(link);
+	await captureSettled(link, "sections-default-dark");
+	/*
+	 * THE ONE-SCROLLER CONTRACT, on the state the operator photographed: both panes
+	 * overflowing, so both carry a bar - and the column must still carry none.
+	 */
+	await checkSidebarScroll(link, "both sections overflowing (dark)");
+	/*
+	 * AND THE BOUNDARY SURVIVES THE SCROLL. The divider is a sibling of the panes, not
+	 * inside one, so scrolling a pane to its end must leave it where it was and still
+	 * draggable - the half of the operator's rule that is about the handle rather than
+	 * the bars.
+	 */
+	await link.evaluate(
+		`(() => { const el = document.querySelector(${JSON.stringify(SPLIT_CHATS)}); if (el) el.scrollTop = el.scrollHeight; const e2 = document.querySelector(${JSON.stringify(SPLIT_ENTITIES)}); if (e2) e2.scrollTop = e2.scrollHeight; return true; })()`,
+	);
+	await wait(250);
+	const sepScrolled = await splitBox(link, SPLIT_SEPARATOR);
+	const storedScrolled = (await splitPreferences(link)).state
+		?.chatSidebarListHeight;
+	check(
+		"the boundary is still on screen while both panes are scrolled to their ends",
+		sepScrolled !== null &&
+			sepScrolled.top > 0 &&
+			sepScrolled.bottom < WINDOW_HEIGHT &&
+			sepScrolled.height > 0,
+		JSON.stringify(sepScrolled),
+	);
+	const sepPoint = await splitBox(link, SPLIT_SEPARATOR);
+	await movePointer(link, sepPoint.x, sepPoint.y);
+	await dragSplit(link, sepPoint.x, sepPoint.y, -30);
+	await parkPointer(link);
+	const storedAfterScrolledDrag = (await splitPreferences(link)).state
+		?.chatSidebarListHeight;
+	check(
+		"and it still resizes with the panes scrolled",
+		typeof storedAfterScrolledDrag === "number" &&
+			storedAfterScrolledDrag !== storedScrolled,
+		`${storedScrolled} -> ${storedAfterScrolledDrag}`,
+	);
+	await link.evaluate(
+		`(() => { for (const sel of [${JSON.stringify(SPLIT_CHATS)}, ${JSON.stringify(SPLIT_ENTITIES)}]) { const el = document.querySelector(sel); if (el) el.scrollTop = 0; } return true; })()`,
+	);
+	await setSplitPreferences(link, { chatSidebarListHeight: null });
+	await ready(link);
+	await verb(link, "setTheme", "localOperatorLight");
+	await wait(300);
+	await parkPointer(link);
+	await captureSettled(link, "sections-default-light");
+	await checkSidebarScroll(link, "both sections overflowing (light)");
+
+	// --- 2. two drag positions, each written and drawn -------------------
+	/*
+	 * IN THE PALETTE THE FRAMES ARE NAMED FOR. The four frames below are `-dark`,
+	 * and before this line the scene was still in the light palette set for
+	 * `sections-default-light` two sections up - which is design round 2's D20 in one
+	 * line: every drag and floor frame was shot light and named dark. The rule this
+	 * block now follows, and the capture path asserts: a `captureSettled` whose label
+	 * names a palette is preceded by the `setTheme` for that palette.
+	 */
+	await verb(link, "setTheme", "localOperatorDark");
+	await wait(300);
+	const dragTo = async (dy, label) => {
+		const sep = await splitBox(link, SPLIT_SEPARATOR);
+		await movePointer(link, sep.x, sep.y);
+		await dragSplit(link, sep.x, sep.y, dy);
+		await parkPointer(link);
+		const prefs = await splitPreferences(link);
+		const geo = await geometry(link);
+		note(
+			`after a ${dy}px drag`,
+			JSON.stringify({ stored: prefs.state?.chatSidebarListHeight, geo }),
+		);
+		check(
+			`a ${dy}px drag writes the chats height it draws`,
+			typeof prefs.state?.chatSidebarListHeight === "number" &&
+				geo.chats !== null &&
+				Math.abs(geo.chats.h - geo.separator.now) <= 1,
+			JSON.stringify({
+				stored: prefs.state?.chatSidebarListHeight,
+				drawn: geo.chats?.h,
+				announced: geo.separator?.now,
+			}),
+		);
+		await captureSettled(link, label);
+		return { stored: prefs.state?.chatSidebarListHeight, geo };
+	};
+	const up = await dragTo(-120, "sections-dragged-up-dark");
+	const down = await dragTo(220, "sections-dragged-down-dark");
+	check(
+		"the two drag positions are different sizes",
+		up.stored !== down.stored,
+		`${up.stored} vs ${down.stored}`,
+	);
+
+	// --- 3. the floors: drag far past each end ---------------------------
+	const toTop = await dragTo(-2000, "sections-floor-agents-dark");
+	check(
+		"dragging to the top leaves Agents + Teams at its 72px floor",
+		toTop.geo.entities !== null && toTop.geo.entities.h >= 72 - 1,
+		JSON.stringify(toTop.geo.entities),
+	);
+	const toBottom = await dragTo(2000, "sections-floor-chats-dark");
+	check(
+		"dragging to the bottom leaves Chats at its 72px floor",
+		toBottom.geo.chats !== null &&
+			Math.round(toBottom.geo.chats.h) === 72 &&
+			toBottom.geo.separator.min === 72,
+		JSON.stringify(toBottom.geo),
+	);
+
+	// --- 4. the keyboard: Tab-reachable, and the arrows resize ------------
+	const reachable = await link.evaluate(
+		`document.querySelector(${JSON.stringify(SPLIT_SEPARATOR)}).tabIndex === 0`,
+	);
+	check(
+		"the boundary is in the Tab order",
+		reachable === true,
+		String(reachable),
+	);
+	await link.evaluate(
+		`document.querySelector(${JSON.stringify(SPLIT_SEPARATOR)}).focus(); true`,
+	);
+	const beforeKey = (await geometry(link)).separator.now;
+	for (let press = 0; press < 5; press += 1) {
+		await pressChord(link, {
+			key: "ArrowUp",
+			code: "ArrowUp",
+			virtualKeyCode: 38,
+		});
+		await wait(60);
+	}
+	await wait(250);
+	const afterKey = await geometry(link);
+	const keyed = (await splitPreferences(link)).state?.chatSidebarListHeight;
+	note(
+		"keyboard",
+		JSON.stringify({
+			before: beforeKey,
+			after: afterKey.separator.now,
+			stored: keyed,
+		}),
+	);
+	check(
+		"ArrowUp on the focused boundary resizes and persists",
+		afterKey.separator.now !== beforeKey && keyed === afterKey.separator.now,
+		`${beforeKey} -> ${afterKey.separator.now}, stored ${keyed}`,
+	);
+
+	// --- 5. a middle position, then the second palette in the same state --
+	await setSplitPreferences(link, { chatSidebarListHeight: 300 });
+	await ready(link);
+	await parkPointer(link);
+	await captureSettled(link, "sections-300-dark");
+	await verb(link, "setTheme", "localOperatorLight");
+	await wait(300);
+	await captureSettled(link, "sections-300-light");
+	await setSplitPreferences(link, { chatSidebarListHeight: null });
+	await ready(link);
+	await parkPointer(link);
+	await captureSettled(link, "sections-default-light");
+
+	/*
+	 * --- 5b. ONE SECTION EMPTY, and one pane alone ------------------------
+	 *
+	 * Two of the states the operator's rule has to hold in, and neither is the same
+	 * as "both overflowing": a query that matches nothing leaves the chats pane with
+	 * a sentence and no rows (so it must gain NO scrollbar, and a wheel over it must
+	 * move nothing at all), and hiding the agents section leaves one pane in the
+	 * column with the restore row above it.
+	 */
+	await setSplitPreferences(link, { chatSidebarListHeight: null });
+	await ready(link);
+	/*
+	 * The column's search field is drawn only WHILE filtering - typing into the list
+	 * is what opens it (the panel's own `keyDown` turns a printable key into the
+	 * query) - so the query is typed the way a reader types it: focus the list and
+	 * send the keys, rather than reaching for an input that is not on screen yet.
+	 */
+	/*
+	 * `[data-chat-row]`, not `[data-session-row]`: the panel's own handler opens the
+	 * field only for a key whose TARGET carries that attribute, and the row's inner
+	 * control is where a keyboard reader's focus actually sits. Measured: focusing the
+	 * row element itself typed nothing and the field never appeared.
+	 */
+	const focusedRow = await link.evaluate(
+		`(() => { const row = document.querySelector("[data-chat-row]"); if (!row) return false; row.focus(); return document.activeElement === row; })()`,
+	);
+	check(
+		"a row can hold focus for the query",
+		focusedRow === true,
+		String(focusedRow),
+	);
+	for (const letter of "zzzznomatch") {
+		await pressChord(link, {
+			key: letter,
+			code: `Key${letter.toUpperCase()}`,
+			virtualKeyCode: letter.toUpperCase().charCodeAt(0),
+		});
+	}
+	await wait(500);
+	await parkPointer(link);
+	const emptied = await waitForCondition(
+		link,
+		`document.querySelectorAll('[data-sidebar-region="chats"] [data-session-row]').length === 0 && document.querySelector('input[aria-label="Search chats and agents"]') !== null`,
+		10_000,
+	);
+	check(
+		"a query matching nothing leaves the chats pane without rows",
+		emptied.ok,
+		JSON.stringify(emptied.last),
+	);
+	await captureSettled(link, "sections-chats-empty-light");
+	await checkSidebarScroll(link, "the chats pane empty (light)");
+	await verb(link, "setTheme", "localOperatorDark");
+	await wait(300);
+	await captureSettled(link, "sections-chats-empty-dark");
+	await checkSidebarScroll(link, "the chats pane empty (dark)");
+	/*
+	 * And clear it, through the field's own control: a query left on screen would
+	 * make every later state in this scene a filtered one.
+	 */
+	const clear = await splitBox(link, '[aria-label="Clear search"]');
+	if (clear !== null) await pressPointerStationary(link, clear.x, clear.y);
+	await wait(500);
+	/*
+	 * DARK, because the next frame is `sections-agents-hidden-dark`. This line used to
+	 * set LIGHT - which is how the pair below ended up byte-identical, both palettes
+	 * photographed as one (design round 2, D20).
+	 */
+	await verb(link, "setTheme", "localOperatorDark");
+	await wait(250);
+	await ready(link);
+	/*
+	 * The hidden section's way back is the restore row, and hiding it is a press on
+	 * the boundary's own cluster - reached by focus and Enter rather than by a
+	 * pointer, because the cluster is intent-gated and a press at its coordinates
+	 * would land on whatever is over it.
+	 */
+	const hideAgents = await link.evaluate(
+		`(() => { const el = document.querySelector('[data-sidebar-hide="entities"]'); if (!el) return false; el.focus(); return true; })()`,
+	);
+	if (hideAgents) {
+		await pressChord(link, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		await wait(400);
+		const solo = await waitForCondition(
+			link,
+			`document.querySelector(${JSON.stringify(SPLIT_ENTITIES)}) === null && document.querySelector('[data-sidebar-restore="entities"]') !== null`,
+			10_000,
+		);
+		check(
+			"hiding the agents section leaves the chats pane alone with its way back",
+			solo.ok,
+			JSON.stringify(solo.last),
+		);
+		await parkPointer(link);
+		await captureSettled(link, "sections-agents-hidden-dark");
+		await checkSidebarScroll(link, "one section (dark)");
+		await verb(link, "setTheme", "localOperatorLight");
+		await wait(300);
+		await captureSettled(link, "sections-agents-hidden-light");
+		await checkSidebarScroll(link, "one section (light)");
+		// Back to both, the way the restore row itself does it.
+		const restore = await splitBox(link, '[data-sidebar-restore="entities"]');
+		if (restore !== null) {
+			await pressPointerStationary(link, restore.x, restore.y);
+			await wait(400);
+		}
+	}
+
+	// --- 6. the 56px strip's mark, both palettes --------------------------
+	await setSplitPreferences(link, { isSidebarCollapsed: true });
+	await waitForCondition(
+		link,
+		`Boolean(document.querySelector("[data-sidebar-strip] [data-brand-mark]"))`,
+		10_000,
+	);
+	await parkPointer(link);
+	/*
+	 * EACH STRIP FRAME NAMES ITS OWN PALETTE (design round 2, D20). These two captures
+	 * used to inherit whatever the block above left live - and that block's `setTheme`
+	 * runs only when the agents section was hidden, so the palette here depended on a
+	 * BRANCH. That is why `strip-mark-light` was shot dark in the shipped set.
+	 */
+	await verb(link, "setTheme", "localOperatorLight");
+	await wait(300);
+	await captureSettled(link, "strip-mark-light");
+	await verb(link, "setTheme", "localOperatorDark");
+	await wait(300);
+	await captureSettled(link, "strip-mark-dark");
+	await checkSidebarScroll(link, "the collapsed 56px strip (dark)");
+	await setSplitPreferences(link, { isSidebarCollapsed: false });
+
+	// --- 7. the relaunch: a dragged size SURVIVES a new process -----------
+	await ready(link);
+	const sep = await splitBox(link, SPLIT_SEPARATOR);
+	await movePointer(link, sep.x, sep.y);
+	await dragSplit(link, sep.x, sep.y, -90);
+	await parkPointer(link);
+	const beforeRestart = await splitPreferences(link);
+	const drawnBefore = await geometry(link);
+	note(
+		"before the relaunch",
+		JSON.stringify({
+			stored: beforeRestart.state?.chatSidebarListHeight,
+			drawn: drawnBefore.chats,
+		}),
+	);
+	await captureSettled(link, "sections-before-relaunch-dark");
+	const firstPid = handle.pid;
+	await stopApp(handle);
+	const again = await launchApp({
+		armed: true,
+		logName: "app-scene-restart.log",
+		tag: "scene",
+	});
+	app = again;
+	await waitForDevtools(again);
+	link.close();
+	link = await CdpClient.attach(again.port, "out/renderer/index.html");
+	await waitForBridge(link);
+	await verb(link, "navigate", "/chat");
+	await ready(link);
+	await wait(600);
+	await parkPointer(link);
+	const afterRestart = await splitPreferences(link);
+	const drawnAfter = await geometry(link);
+	note(
+		"after the relaunch",
+		JSON.stringify({
+			pid: `${firstPid} -> ${again.pid}`,
+			stored: afterRestart.state?.chatSidebarListHeight,
+			drawn: drawnAfter.chats,
+		}),
+	);
+	check(
+		"the relaunch is a different process",
+		again.pid !== firstPid,
+		`${firstPid} -> ${again.pid}`,
+	);
+	check(
+		"the dragged size survives the relaunch, stored and drawn",
+		afterRestart.state?.chatSidebarListHeight ===
+			beforeRestart.state?.chatSidebarListHeight &&
+			drawnAfter.chats?.h === drawnBefore.chats?.h,
+		`stored ${beforeRestart.state?.chatSidebarListHeight} -> ${afterRestart.state?.chatSidebarListHeight}, drawn ${drawnBefore.chats?.h} -> ${drawnAfter.chats?.h}`,
+	);
+	await captureSettled(link, "sections-after-relaunch-dark");
+
+	// --- 8. the empty state's mark, both palettes -------------------------
+	const newChat = await splitBox(link, "[data-new-chat-row]");
+	if (newChat !== null)
+		await pressPointerStationary(link, newChat.x, newChat.y);
+	const empty = await waitForCondition(
+		link,
+		`Boolean(document.querySelector("[data-lo-empty-mark] [data-brand-mark]"))`,
+		15_000,
+	);
+	check(
+		"the empty state draws the bubbled mark",
+		empty.ok,
+		JSON.stringify(empty.last),
+	);
+	await parkPointer(link);
+	/* Named for a palette, so it sets it: see the strip's block above for why a frame
+	 * never inherits one from whatever ran before it (design round 2, D20). */
+	await verb(link, "setTheme", "localOperatorDark");
+	await wait(300);
+	await captureSettled(link, "empty-mark-dark");
+	await verb(link, "setTheme", "localOperatorLight");
+	await wait(300);
+	await captureSettled(link, "empty-mark-light");
 	return link;
 }
 
@@ -18753,6 +24314,18 @@ async function assertBuildIsCurrent() {
 
 async function main() {
 	await assertBuildIsCurrent();
+	/*
+	 * Hygiene first, before this run adds a tree of its own. See
+	 * `reapAbandonedScratchTrees` for the two guards and the measurement that put this
+	 * here (~700 MB of abandoned trees on a machine where builds were failing for want
+	 * of space).
+	 */
+	const reaped = reapAbandonedScratchTrees();
+	if (reaped.seen > 0)
+		note(
+			"abandoned scratch trees",
+			`${reaped.seen} seen, ${reaped.live} owned by a live pid (kept), ${reaped.young} younger than ${Math.round(REAP_AFTER_MS / 60000)}m (kept), ${reaped.removed.length} removed${reaped.removed.length ? `: ${reaped.removed.join(", ")}` : ""}`,
+		);
 	mkdirSync(HOME_DIR, { recursive: true });
 	mkdirSync(CONFIG_DIR, { recursive: true });
 	mkdirSync(APP_CWD, { recursive: true });
@@ -18781,31 +24354,7 @@ async function main() {
 	if (BACKEND) note("csp for this run's backend", widenCspForBackend(BACKEND));
 
 	if (BACKEND_RECORDS) {
-		const records = join(CONFIG_DIR, "run", "serve");
-		mkdirSync(records, { recursive: true });
-		let linked = 0;
-		for (const entry of readdirSync(BACKEND_RECORDS)) {
-			if (!entry.endsWith(".json")) continue;
-			/*
-			 * A LINK, NOT A COPY, and the difference decides whether the app admits this
-			 * run's daemon at all. A serve record is a LIVING document: the real daemon
-			 * rewrites it every `HEARTBEAT_INTERVAL_MS` (15s), and discovery classifies a
-			 * record whose pid is alive and whose heartbeat is older than
-			 * `HEARTBEAT_TIMEOUT_MS` (45s) as WEDGED - refusing both to attach to it and
-			 * to spawn a second daemon over it. A copy taken once at launch therefore
-			 * stops describing a daemon 45 seconds into the run, and from then on the app
-			 * draws its "not attached" banners ACROSS THE FRAMES this rig exists to take.
-			 *
-			 * Measured, 2026-09-21, on a run whose scene outlives the timeout: every scan
-			 * for the rest of the run logged `[discovery] rejected
-			 * <config>/run/serve/<pid>.json: wedged (pid <pid> is alive but its heartbeat
-			 * is 48s old)` and grew from there, while the stub two directories away was
-			 * rewriting that same record every 5s. The link keeps the stub's own rewrites
-			 * visible, which is what a record is for.
-			 */
-			symlinkSync(join(BACKEND_RECORDS, entry), join(records, entry));
-			linked += 1;
-		}
+		const linked = linkServeRecords();
 		say(
 			`  serve records ${linked} linked from ${BACKEND_RECORDS}   (the app admits a daemon only while a record describes one, and a record is a heartbeat)`,
 		);
@@ -18892,6 +24441,26 @@ async function main() {
 	 * (agent review round 2, NIT-2). Reading argv and refusing costs nothing, and
 	 * the same argument holds for every scene that names an instrument it needs.
 	 */
+	if (SCENE === "connection-drop" && BACKEND === null) {
+		throw new Error(
+			"--scene connection-drop needs --backend: the whole scene is the daemon this run owns, killed by the pid its own serve record names",
+		);
+	}
+	if (SCENE === "connection-drop" && BACKEND_RECORDS === null) {
+		throw new Error(
+			"--scene connection-drop needs --backend-records: the record is where the daemon's pid lives, and killing a guessed pid is what this argument exists to prevent",
+		);
+	}
+	if (SCENE === "sidebar-sections" && BACKEND === null) {
+		throw new Error(
+			"--scene sidebar-sections needs --backend: both sections are gated on the catalogue a live backend advertises, and the scene seeds an agent, a team and chats through that backend's own routes",
+		);
+	}
+	if (SCENE === "btw-aside" && BACKEND === null) {
+		throw new Error(
+			"--scene btw-aside needs --backend: the aside is answered by the daemon (sessions.aside) and its answer streams over the session's own SSE frames, so a run with no backend photographs an app that can never be asked anything",
+		);
+	}
 	if (SCENE === "sidebar-split" && BACKEND === null) {
 		throw new Error(
 			"--scene sidebar-split needs --backend: the boundary only exists while both regions do, and the list region is gated on the catalogue a live backend advertises",
@@ -18902,9 +24471,34 @@ async function main() {
 			"--scene pins-scroll needs --backend: a panel with no catalogue has no row to pin",
 		);
 	}
+	if (SCENE === "question-dock" && BACKEND === null) {
+		throw new Error(
+			"--scene question-dock needs --backend: the card docks on a gate a live owner parks, and a run with none has no turn to pause",
+		);
+	}
+	if (SCENE === "first-send" && BACKEND === null) {
+		throw new Error(
+			"--scene first-send needs --backend: with no backend the chat route draws its refusal surface and no composer mounts, so there is nothing to send from",
+		);
+	}
 	if (SCENE === "radient-issue" && BACKEND === null) {
 		throw new Error(
 			"--scene radient-issue needs --backend: the callout is gated on a capability the backend advertises and speaks a verdict only it can give, so a run with none photographs the absence of the feature",
+		);
+	}
+	if (SCENE === "settings-integrations" && BACKEND === null) {
+		throw new Error(
+			"--scene settings-integrations needs --backend: the whole claim is that the page works with no conversation and no model, so the catalog route, the capability and the daemon that spawns the server are all the backend's",
+		);
+	}
+	if (SCENE === "settings-integrations" && INTEGRATION_COMMAND === null) {
+		throw new Error(
+			"--scene settings-integrations needs --integration-command: the scene adds that command through the form, and a default would add whatever this script guessed rather than the rig's own server",
+		);
+	}
+	if (SCENE === "settings-integrations" && INTEGRATION_URL === null) {
+		throw new Error(
+			"--scene settings-integrations needs --integration-url: the remote half is a different row and a different backend path, and a scene that silently skipped it would look like it ran",
 		);
 	}
 	if (SCENE === "authoring-refresh" && BACKEND === null) {
@@ -19048,14 +24642,25 @@ async function main() {
 			}
 			if (SCENE === "states") await sceneStates(cdp);
 			if (SCENE === "session-archive") await sceneSessionArchive(cdp);
+			else if (SCENE === "connection-drop") await sceneConnectionDrop(cdp);
 			else if (SCENE === "row-space") await sceneRowSpace(cdp);
 			else if (SCENE === "states") await sceneStates(cdp);
+			/*
+			 * §I's pane floors (the chat column's 480, the canvas's dock cap and its
+			 * overlay mode). No backend is needed: see the scene's own note for the four
+			 * widths it is written about.
+			 */ else if (SCENE === "floors") await sceneFloors(cdp);
+			else if (SCENE === "first-send") await sceneFirstSend(cdp);
+			else if (SCENE === "question-dock") await sceneQuestionDock(cdp);
 			else if (SCENE === "radient-issue") await sceneRadientIssue(cdp);
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);
+			else if (SCENE === "btw-aside") await sceneBtwAside(cdp);
 			else if (SCENE === "authoring-refresh") await sceneAuthoringRefresh(cdp);
 			else if (SCENE === "settings-model") await sceneSettingsModel(cdp);
 			else if (SCENE === "settings-fields") await sceneSettingsFields(cdp);
 			else if (SCENE === "settings-gate") await sceneSettingsGate(cdp);
+			else if (SCENE === "settings-integrations")
+				await sceneSettingsIntegrations(cdp);
 			else if (SCENE === "palette") await scenePalette(cdp);
 			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);
 			else if (SCENE === "approval-badges") await sceneApprovalBadges(cdp);
@@ -19065,8 +24670,11 @@ async function main() {
 			else if (SCENE === "mentions") await sceneMentions(cdp);
 			else if (SCENE === "sidebar-split")
 				cdp = await sceneSidebarSplit(cdp, app);
+			else if (SCENE === "sidebar-sections")
+				cdp = await sceneSidebarSections(cdp, app);
 			else if (SCENE === "canvas-freshness")
 				await sceneCanvasFreshness(cdp, app);
+			else if (SCENE === "sidebar-lazy-chats") await sceneSidebarLazyChats(cdp);
 			else if (SCENE !== "none") throw new Error(`unknown scene "${SCENE}"`);
 			for (const line of cdp.console.slice(-20)) say(`  [renderer] ${line}`);
 		} finally {

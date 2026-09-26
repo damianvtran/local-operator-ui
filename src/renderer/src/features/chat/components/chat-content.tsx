@@ -2,15 +2,24 @@ import { BrowserPane } from "@features/browser/components/browser-pane";
 import { useConversationApprovals } from "@features/browser/hooks/use-conversation-approvals";
 import { ConsolePane } from "@features/console/components/console-pane";
 import { useConsoleBlipPulse } from "@features/console/hooks/use-console-attention";
+import { useProviderStatus } from "@features/providers/use-provider-status";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import type { AgentDetails } from "@shared/api/local-operator/types";
+import { BackendCompatibilityBanner } from "@shared/components/common/backend-compatibility-banner";
 import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { TabPanel } from "@shared/components/ui";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
 import type { SendOutcome } from "@shared/hooks/use-message-input";
+/*
+ * The mode-dependent classes on the canvas's wrapper below are the first
+ * conditional class list in this file: every other one is a literal. `cn` rather
+ * than a duplicated literal prefix, because the two modes share seven of their
+ * eight classes and a copy is what drifts when one of them changes.
+ */
+import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import {
@@ -34,12 +43,23 @@ import type {
 	CanonicalModel,
 } from "../../../../../shared/desktop-session-contract";
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
+import type { UndeliveredTurn } from "../canonical/canonical-transcript";
 import { canonicalTranscriptSpeaks } from "../canonical/transcript-pane";
 import { useMentionedFiles } from "../canonical/use-mentioned-files";
 import {
 	workingLineClaimed,
 	workingLineInputFor,
 } from "../canonical/working-line-model";
+import {
+	CHAT_COLUMN_CONTAINER,
+	CHAT_COLUMN_INSET,
+	CHAT_MEASURE,
+} from "../chat-measure";
+import {
+	CHAT_PANE_MIN_PX,
+	canvasDockWidth,
+	canvasPaneMode,
+} from "../chat-sidebar-layout";
 import type {
 	DraftPickerDestination,
 	DraftResolution,
@@ -50,6 +70,7 @@ import { documentsForCanvas } from "./canvas/document-buffers";
 import { tabFollowingClose } from "./canvas/tab-selection";
 import { ChatHeader } from "./chat-header";
 import { ChatOptionsSidebar } from "./chat-options-sidebar";
+import { ChatStatusStrip } from "./chat-status-strip";
 import {
 	CHAT_TAB_IDS,
 	CHAT_TAB_PANEL_IDS,
@@ -69,6 +90,7 @@ import { type McpServerRow, type RunDetails, RunPanel } from "./run-details";
 import type { McpRemedyControls } from "./run-details/use-mcp-remedy";
 import type { SlashDispatchOutcome } from "./slash-dispatch";
 import type { SlashCommandInvocation } from "./slash-submit";
+import { QuestionDock } from "./trace/question-dock";
 
 /**
  * Props for the ChatContent component
@@ -175,6 +197,14 @@ type ChatContentProps = {
 		/** A draft pane's readings, which have no session behind them. */
 		draft?: boolean;
 		/**
+		 * Whether this DRAFT pane's model is resolved (UX round 1, U1).
+		 *
+		 * `true` exactly when the pane is a draft and its `sessions.preview` answer
+		 * has arrived; `false` while that answer is pending or failed; absent for a
+		 * pane with a session behind it, where there is nothing to resolve.
+		 */
+		draftResolved?: boolean;
+		/**
 		 * Open a model or effort picker for this DRAFT pane's own selection.
 		 *
 		 * Forwards to `SessionStatusStripProps["onOpenDraftPicker"]`, and is absent
@@ -187,6 +217,12 @@ type ChatContentProps = {
 		 * `SessionStatusStripProps["draftResolution"]`.
 		 */
 		draftResolution?: DraftResolution;
+		/**
+		 * The readings are the last ones the session reported, held across a
+		 * transient stream gap. Forwarded verbatim to the composer; see
+		 * `SessionStatusStripProps["held"]`.
+		 */
+		held?: boolean;
 	};
 	/**
 	 * The command dispatcher the composer splices an inline command into, with
@@ -207,6 +243,18 @@ type ChatContentProps = {
 	 * verbatim; see `MessageInputProps.onSlashNote`.
 	 */
 	onSlashNote?: (text: string) => void;
+	/**
+	 * §F3's per-message failure state, computed by the page that owns the draft
+	 * (it is the page that also owns the `send` door and the composer handle the
+	 * two controls use).
+	 *
+	 * THIS PANE, NOT THE PAGE, decides whether the line is drawn: the address is
+	 * a transcript record id, and only this component holds the transcript. The
+	 * rule is the record's presence - a line addressed to a row that is not on
+	 * screen is a claim about a message the reader cannot see, which is exactly
+	 * the register §F3 exists to end.
+	 */
+	undelivered?: UndeliveredTurn | null;
 	/**
 	 * The canonical session this pane paints from. Required, not optional: the
 	 * legacy job/message list went with the socket transport, so there is no
@@ -425,14 +473,21 @@ const RUN_PANEL_MAX_PX = 640;
 /**
  * The chat column's own floor, in pixels, as a fallback for the measured one.
  *
- * The column declares it as `min-w-[220px]` on the element beside the pane, and
- * the measurement below reads it back from that element's computed style rather
- * than trusting this number — the floor is what tells the pane's own divider how
- * much room the ROW can give it, and a constant here that drifted from the class
- * would silently re-open the divergence the divider fix closes. This is the
- * fallback for a computed style that cannot be parsed, not a second source.
+ * The column declares it as `min-w-[480px]` on the element beside the pane (§B1's
+ * chat-pane minimum, and the first of §I's three yielding steps), and the
+ * measurement below reads it back from that element's computed style rather than
+ * trusting this number — the floor is what tells the pane's own divider how much
+ * room the ROW can give it, and a constant here that drifted from the class would
+ * silently re-open the divergence the divider fix closes. This is the fallback for a
+ * computed style that cannot be parsed, not a second source.
+ *
+ * IT WAS 220 UNTIL §I, and the difference is visible: at 220 the canvas could dock
+ * in a row that left the transcript 320px wide, which is the window width the
+ * redesign's audit measured the pane at. `chat-sidebar-layout.ts`'s own 880 comment
+ * has done the arithmetic with 480 since the spec was written; this is the commit
+ * that makes the class agree with it.
  */
-const CHAT_COLUMN_MIN_PX = 220;
+const CHAT_COLUMN_MIN_PX = CHAT_PANE_MIN_PX;
 
 export const ChatContent: FC<ChatContentProps> = React.memo(
 	({
@@ -472,6 +527,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		onSlashNote,
 		paneHasSession,
 		canonical,
+		undelivered = null,
 		runDetails,
 		mcpServers = [],
 		mcpGrantRunning = false,
@@ -491,6 +547,21 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const chatContainerRef = useRef<HTMLDivElement>(null);
 		const canvasContainerRef = useRef<HTMLDivElement>(null);
 		/*
+		 * WHETHER §F3's LINE IS ON SCREEN, which is one decision with two readers:
+		 * the transcript (which draws it on the row it names) and the composer (which
+		 * stands its own held paragraph down while the line speaks for the same
+		 * failure). Computed once, here, because "the row exists" is a fact about
+		 * this transcript and computing it twice is how the two surfaces drift.
+		 */
+		const undeliveredOnScreen =
+			undelivered !== null &&
+			canonical.view.transcript.records.some(
+				(record) =>
+					record.kind === "user" && record.id === undelivered.recordId,
+			)
+				? undelivered
+				: null;
+		/*
 		 * The conversation's own archive state, and the two capabilities that decide
 		 * whether any of it is offered at all.
 		 *
@@ -502,6 +573,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * conversation to archive or delete, so every one of these is inert there.
 		 */
 		const capabilities = useDesktopCapabilities();
+		// Whether to tell the user to connect a provider before they type; see
+		// `useProviderStatus` for why this is false whenever it is not KNOWN.
+		/*
+		 * Both states, from the one rule: nothing connected at all, and a provider
+		 * connected that this app cannot name a model for (UX round 5, U21).
+		 */
+		const { needsProvider, needsModel } = useProviderStatus();
 		const archiveEnabled = desktopFeatureEnabled(
 			capabilities.data,
 			"session_archive",
@@ -623,6 +701,45 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 
 		// Get canvas state for the current conversation
 		const conversationId = agentId; // assuming agentId is the conversation ID
+
+		/*
+		 * THE TURN THE USER STOPPED (UX round 2, U7; spec §G3).
+		 *
+		 * `Esc` leaves one line where the turn ended — `Stopped`, at `text-meta`/`ink-dim`,
+		 * with a retry — and never a failure-red row. The row-level half of that is the
+		 * reducer's (`transcript-reducer.ts` reclassifies the call the interrupt killed, so
+		 * the ledger's own row reads `interrupted` rather than `failed`); this is the
+		 * sentence at the turn's end, which is what tells the reader the turn is over and
+		 * gives them the one control that acts on it.
+		 *
+		 * THE FACT IS THE STORE'S and not this component's, because the press happens in
+		 * `chat-page`'s interrupt handler and the receipt that confirms it is that
+		 * handler's answer — see `stoppedTurns` for why the client has to record it at all
+		 * and how long it lives.
+		 */
+		const stoppedTurnAt = useCanonicalSessionsStore((state) =>
+			conversationId ? (state.stoppedTurns[conversationId] ?? null) : null,
+		);
+		/*
+		 * WHAT A RETRY WOULD RE-SEND: the newest user turn on screen, or null when there
+		 * is none.
+		 *
+		 * Read from the transcript rather than remembered at the press, because the press
+		 * knows nothing the transcript does not: the turn being stopped is defined by the
+		 * message that started it, and that message is a row. A turn stopped before any
+		 * user row exists (an approval, a resume) therefore offers no retry rather than a
+		 * retry that could send nothing — the honest half of §G3's control, and the same
+		 * rule the rest of this pane applies to controls that would have no effect.
+		 */
+		const stoppedRetryText = useMemo(() => {
+			if (stoppedTurnAt === null || !canonical) return null;
+			const records = canonical.view.transcript.records;
+			for (let at = records.length - 1; at >= 0; at -= 1) {
+				const record = records[at];
+				if (record.kind === "user") return record.text;
+			}
+			return null;
+		}, [stoppedTurnAt, canonical]);
 
 		/*
 		 * The Files panel's producer, called exactly once and here because this is
@@ -766,6 +883,21 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * whichever sibling's number happens to be first.
 		 */
 		const isConsolePaneOpen = useUiPreferencesStore((s) => s.isConsolePaneOpen);
+		/*
+		 * Whether a right-slot pane occupies the window's right edge, which is what
+		 * decides whether the CHAT HEADER has to reserve the OS controls' corner (chat
+		 * redesign §J4). The four panes are exclusive through `claimRightSlot`, so this is
+		 * a disjunction of flags the store already keeps rather than a fifth piece of
+		 * state - and it is read HERE, after all four, because a `const` computed above
+		 * one of the store reads it names is in that read's temporal dead zone. A fifth
+		 * pane is one more term in one place.
+		 *
+		 * The header is the only candidate this component renders for that corner: a
+		 * pane's own toolbar reserves it in its own row, which is why the truth of this
+		 * expression is passed as the NEGATION above.
+		 */
+		const rightSlotOccupied =
+			isCanvasOpen || isRunPanelOpen || isBrowserPaneOpen || isConsolePaneOpen;
 		const setConsolePaneOpen = useUiPreferencesStore(
 			(s) => s.setConsolePaneOpen,
 		);
@@ -901,6 +1033,64 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			return () => observer.disconnect();
 		}, [isRunPanelOpen]);
 		/*
+		 * THE ROW'S OWN WIDTH, which the canvas's mode is decided from (§I).
+		 *
+		 * Measured rather than computed from `window.innerWidth`: the row is the work area
+		 * AFTER the sidebar has taken its width, and the sidebar is 0, 56 or 260 of those
+		 * pixels depending on the band (`resolveSidebarLayout`) - so a window-width
+		 * calculation here would re-derive a decision another module already owns, and
+		 * would be wrong in exactly the two bands §I's order of yielding is about. The
+		 * same idiom as the run panel's capacity above, for the same reason.
+		 *
+		 * It is measured whether or not the canvas is open: a resize while the pane is
+		 * closed has to be accounted for by the time it opens, and the observer is one
+		 * element.
+		 */
+		const [paneRowWidth, setPaneRowWidth] = useState(0);
+		useLayoutEffect(() => {
+			const row = runPanelRowRef.current;
+			if (!row) return;
+			const measure = () => setPaneRowWidth(row.getBoundingClientRect().width);
+			measure();
+			const observer = new ResizeObserver(measure);
+			observer.observe(row);
+			return () => observer.disconnect();
+		}, []);
+		/*
+		 * §I's two canvas rules, from that one measured number and the user's own
+		 * preference: the pane DOCKED is `min(560, available - 480)`, and where that
+		 * leaves less than the pane's own 400px floor it stops docking and overlays the
+		 * chat instead. `paneRowWidth` is 0 for one frame before the first layout effect
+		 * runs, and the docked branch is the honest reading of "not measured yet": it
+		 * draws the pane at the width it already had rather than flashing a full-pane
+		 * overlay for a frame.
+		 */
+		const canvasDocked =
+			canvasPaneMode(paneRowWidth || Number.MAX_SAFE_INTEGER) === "docked";
+		const canvasWidth = canvasDocked
+			? /*
+				 * UNMEASURED IS NOT ZERO. `paneRowWidth` is 0 for the frame before the layout effect
+				 * runs, and `canvasDockWidth(0)` is 0 - which, with the wrapper's
+				 * `transition-[width] duration-base`, drew a zero-width pane and then ANIMATED it to
+				 * its real width. Anyone measuring inside that window reads a layout that is on its
+				 * way somewhere else (the pane's own scene did, and reported 179px against a settled
+				 * 560). The preference is the honest fallback: the pane starts where the user asked
+				 * for it and is corrected by the row's real width in the same commit.
+				 */
+				paneRowWidth > 0
+				? Math.min(effectiveCanvasPanelWidth, canvasDockWidth(paneRowWidth))
+				: effectiveCanvasPanelWidth
+			: /*
+				 * THE OVERLAY'S WIDTH IS THE PANE'S OWN (§I: "full pane width, scrim
+				 * absent"), capped by the row so a preference stored in a wider window cannot
+				 * push it past the pane it covers. Not the row's leftover: the point of the
+				 * mode is that the chat column's floor stops deciding the canvas's width.
+				 */
+				Math.min(
+					effectiveCanvasPanelWidth,
+					paneRowWidth || effectiveCanvasPanelWidth,
+				);
+		/*
 		 * THE DIVIDER'S CONTRACT, in one place: what the separator announces and
 		 * accepts is what the pane renders.
 		 *
@@ -1030,11 +1220,23 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			 */
 			<div
 				ref={runPanelRowRef}
+				/*
+				 * THE THREE BOXES §I IS WRITTEN ABOUT, addressable by name rather than by a
+				 * scan: this row, the chat column inside it, and whichever pane occupies the
+				 * slot beside it. The capture meter found the chat column by walking every
+				 * element and matching its classes, which is how it missed the commit that
+				 * HALVED the column and moved it to the right-hand third of the window (`x 900
+				 * w 480`) while all of its other assertions passed; a named element is what the
+				 * driver's `metrics` verb and that meter both read, and what a later rename
+				 * cannot silently invalidate.
+				 */
+				data-tour-tag="pane-row"
 				className="relative flex h-full w-full flex-row overflow-hidden"
 			>
 				<div
 					ref={chatColumnRef}
-					className="relative h-full w-0 min-w-[220px] flex-1"
+					data-tour-tag="chat-column"
+					className="relative h-full w-0 min-w-[480px] flex-1"
 				>
 					{/*
 					 * The working surface takes the PAGE ground, `canvas`, not the panel
@@ -1104,6 +1306,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							mcpServers={mcpServers}
 							listOnScreen={listOnScreen}
 							readerChildId={readerChildId}
+							/*
+							 * EXACTLY ONE OWNER, DERIVED FROM THE STORE RATHER THAN MEASURED (chat
+							 * redesign §J4). The right slot is exclusive - `claimRightSlot` clears the
+							 * other panes when one opens - so either this header or an open pane's
+							 * toolbar reaches the window's right edge, and the two are never both true.
+							 * That is the whole reason the reservation needs no measurement and no
+							 * `ResizeObserver`: this component is the only one that renders both
+							 * candidates, and the store already holds the fact. A pane's own toolbar
+							 * reserves the corner in its own row (see the toolbars' note).
+							 */
+							reserveTrailingChrome={!rightSlotOccupied}
 							/* THE ONE PLACE A USER'S BROWSER TOGGLE IS DECLARED, the same shape as the
 							   console's below: the header owns the badge and the button, the pane's slot
 							   is the window's, and this is the one field both answer from. */
@@ -1159,6 +1372,32 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							consoleUnseenPulsing={consoleUnseenPulsing}
 						/>
 						{/*
+						 * THE STATUS STRIP AND THE COMPATIBILITY BAND, IN THE PANE (§F2, D3).
+						 *
+						 * Both used to mount in the SHELL ROOT, above the window: the bands sat
+						 * over the sidebar rail and under the traffic lights, spanning chrome
+						 * that belongs to the app rather than to this conversation, and the
+						 * same screen could state one connection fact twice. §F2's contract is
+						 * that the strip lives INSIDE the conversation pane, under the top
+						 * row, at most two lines, never spanning the sidebar.
+						 *
+						 * THE UPDATE FLOW KEEPS ITS OWN SURFACE, and this is the decision §F2
+						 * leaves open rather than a quiet drop. `BackendCompatibilityBanner`
+						 * owns a different fact - this backend's version, a pairing this app
+						 * cannot make, and the UPDATE action that fixes it - and none of the
+						 * four connection states in the strip has an update remedy. Folding it
+						 * into the strip would either give the strip two root causes at once
+						 * (the thing D3 is about) or lose the update control entirely. It is
+						 * moved here instead: same component, same copy, same actions, now
+						 * inside the pane beside the strip, so the pane owns every message
+						 * about this conversation's backend and the window chrome owns none.
+						 *
+						 * The strip renders first, so a connection fault (which can stop a send)
+						 * is above a setup fact (which cannot).
+						 */}
+						<ChatStatusStrip />
+						<BackendCompatibilityBanner />
+						{/*
 						 * The one delete confirmation, rendered here because this component owns
 						 * the conversation it asks about (`title`) and the run details whose
 						 * children the copy has to mention. It renders nothing at all while no
@@ -1193,6 +1432,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 									<CanonicalTranscript
 										frontend={canonical.view.frontend}
 										transcript={canonical.view.transcript}
+										undelivered={undeliveredOnScreen}
 										gate={canonical.view.frontend?.pending_gate ?? null}
 										waiting={canonical.busy}
 										starting={canonical.starting === true}
@@ -1229,15 +1469,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										 * is that they cannot drift apart.
 										 */
 										conversationId={conversationId}
+										labelPending={canonical.view.labelPending}
+										labelHoldLate={canonical.view.labelHoldLate}
+										labelMarked={canonical.view.labelMarked}
 										onReconnect={canonical.view.retry}
-										onAnswer={canonical.onAnswer}
-										// The composer's own in-flight flag, reused: one
-										// answer per question, whichever surface starts it.
-										answering={Boolean(canonical.admitting)}
-										// This panel's own record of the gate it pressed, so the
-										// card holds itself disabled after an answer instead of
-										// coming back live against a gate the owner already took.
-										answer={canonical.answer ?? null}
 										// The two states a notification click paints before the
 										// owner answers: the rows may be this window's memory of
 										// the conversation rather than the owner's, or the
@@ -1251,6 +1486,73 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 									/* Raw information tab - only accessible in development mode */
 									<RawInfoView content={rawInfoContent} />,
 								)}
+						{/*
+						 * THE AGENT'S QUESTION, DOCKED at the composer's top edge (§F1).
+						 * Outside the transcript's scroller on purpose: a card at the end of
+						 * a long turn is off-screen, and the question is the one thing the
+						 * agent is blocked on. It sits on the composer band's own inset and
+						 * measure, so its edges are the composer's edges.
+						 */}
+						{canonical?.view.frontend?.pending_gate && (
+							<div
+								className={cn(
+									CHAT_COLUMN_CONTAINER,
+									CHAT_COLUMN_INSET,
+									"w-full shrink-0 pt-2",
+								)}
+							>
+								<QuestionDock
+									key={canonical.view.frontend.pending_gate.request_id}
+									className={CHAT_MEASURE}
+									gate={canonical.view.frontend.pending_gate}
+									onAnswer={canonical.onAnswer}
+									// The composer's own in-flight flag, reused: one answer per
+									// question, whichever surface starts it.
+									answering={Boolean(canonical.admitting)}
+									// This panel's own record of the gate it pressed, so the card
+									// holds itself disabled after an answer instead of coming back
+									// live against a gate the owner already took.
+									answer={canonical.answer ?? null}
+								/>
+							</div>
+						)}
+						{/*
+						 * THE STOPPED TURN'S OWN LINE (§G3). Above the composer and below the transcript's
+						 * own dock, which is where a turn that has ENDED can say so without being part of
+						 * the conversation it ended: the transcript is the record of what was said, and
+						 * this is the pane's statement about the run.
+						 *
+						 * The retry RE-SENDS THE TURN through the same door the composer uses
+						 * (`onSendMessage` is the page's own `send`), so it carries the same admission,
+						 * the same echo and the same failure handling as a press on Enter — a second send
+						 * path would be the defect, not the fix.
+						 */}
+						{stoppedTurnAt !== null && (
+							<div className={cn(CHAT_COLUMN_INSET, "w-full shrink-0 pt-2")}>
+								<p
+									data-stopped-turn
+									className={cn(
+										"flex items-center gap-2 text-ink-dim text-meta",
+										CHAT_MEASURE,
+									)}
+								>
+									<span>Stopped</span>
+									{stoppedRetryText !== null && (
+										<>
+											<span aria-hidden="true">·</span>
+											<button
+												type="button"
+												data-stopped-retry
+												onClick={() => void onSendMessage(stoppedRetryText, [])}
+												className="rounded-sm text-ink-muted underline-offset-2 transition-colors duration-fast ease-out-quart hover:text-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+											>
+												Retry
+											</button>
+										</>
+									)}
+								</p>
+							</div>
+						)}
 						{/* Message input */}
 						{(canonical || !(isLoadingMessages && messages.length === 0)) && (
 							<MessageInput
@@ -1258,6 +1560,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								onSendMessage={onSendMessage}
 								onComposerInput={onComposerInput}
 								initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
+								noProvider={needsProvider}
+								noModel={needsModel}
 								isLoading={
 									canonical
 										? Boolean(canonical.admitting || canonical.starting)
@@ -1372,25 +1676,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * on the user (UX round 2, U8).
 								 */
 								awaitingAnswer={Boolean(canonical?.view.frontend?.pending_gate)}
-								/*
-								 * U3: the held-claim sentence offers the transcript as proof
-								 * that the message exists somewhere ("its copy is in the
-								 * transcript above"), which is only true when a copy is
-								 * actually painted. On the draft path the pane held no rows at
-								 * all, so the sentence pointed at a greeting (UX round 2, U3).
-								 * Answered from the records this pane renders rather than
-								 * assumed; `undefined` (no canonical stream, nothing held)
-								 * leaves the clause out.
-								 */
-								heldCopyOnScreen={
-									canonical && sendError?.heldText
-										? canonical.view.transcript.records.some(
-												(record) =>
-													record.kind === "user" &&
-													record.text === sendError.heldText,
-											)
-										: undefined
-								}
 								// A conversation the backend says is gone is a KNOWN
 								// answer, so the composer refuses input rather than
 								// accepting a message that can only 404. The pane above
@@ -1404,6 +1689,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										? { active: canonical.busy, onStop: canonical.onStop }
 										: undefined
 								}
+								/*
+								 * The aside panel's two reads, handed down as the two facts they are rather
+								 * than as a handle to re-derive them from: the SESSION the panel is keyed by
+								 * (`sessionId` is the identity a backend route resolves, which is what
+								 * `sessions.aside` addresses) and whether that session is mid-turn — the
+								 * second term of the adopt gate, read from the same `canonical.busy` the Stop
+								 * control beside it uses so the two cannot disagree. Undefined on a pane with
+								 * no session, where no aside can be attached at all.
+								 */
+								asideSessionId={sessionId}
+								asideStreaming={canonical.busy}
 								/*
 								 * The capability itself, not just its busy half: the composer
 								 * holds the control's SLOT while a turn runs and for a grace
@@ -1454,36 +1750,73 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 
 				{isCanvasOpen && (
 					<>
-						<ResizableDivider
-							sidebarWidth={effectiveCanvasPanelWidth}
-							onSidebarWidthChange={setCanvasPanelWidth}
-							minWidth={400}
-							maxWidth={1200}
-							side="left"
-							onDoubleClick={restoreDefaultCanvasPanelWidth}
-							label="Resize canvas"
-						/>
+						{/*
+						 * THE DIVIDER EXISTS ONLY WHILE THE CANVAS DOCKS (§I). In the overlay mode
+						 * there is nothing drawing a flow boundary to drag: the pane is over the chat
+						 * at a width its own preference decides, so a separator here would be a control
+						 * for a layout that is not on screen.
+						 */}
+						{canvasDocked && (
+							<ResizableDivider
+								sidebarWidth={canvasWidth}
+								onSidebarWidthChange={setCanvasPanelWidth}
+								minWidth={400}
+								maxWidth={1200}
+								side="left"
+								onDoubleClick={restoreDefaultCanvasPanelWidth}
+								label="Resize canvas"
+							/>
+						)}
 						<div
 							ref={canvasContainerRef}
 							/* Named for the geometry probe: the dock's measured width at
 							 * the default 1380x900 window is the U1 regression check. */
 							data-tour-tag="canvas-dock"
+							/*
+							 * THE MODE AS A FACT ON THE ELEMENT, rather than something a reader has to
+							 * infer from a width. §I's two shapes - docked beside the chat, or over it
+							 * once the row cannot give it 400 - are what the driver scene and the capture
+							 * meter assert against, and a mode reverse-engineered from a number is a mode
+							 * a test gets subtly wrong.
+							 */
+							data-canvas-mode={canvasDocked ? "docked" : "overlay"}
 							style={{
-								width: effectiveCanvasPanelWidth,
+								/*
+								 * §I's width for the mode: docked it is `min(560, available - 480)`,
+								 * capped by the user's own preference; overlaying it is that preference,
+								 * capped by the pane it covers.
+								 */
+								width: canvasWidth,
 							}}
 							/*
 							 * No `minWidth`. A floor pinned at the dock's preferred width is what
 							 * made the grid's fourth column unreachable at the app's own default
-							 * window: the chat column has a 220px floor of its own, so
-							 * 220 + 800 could not fit in an 880px row, the row's `overflow-hidden`
-							 * clipped the rest, and no scroll container in between could reach it
-							 * (measured at 1380x900: the dock ran to x=1520 in a 1380 window and 8 of
-							 * 32 tiles had their right edge past it). With the floor gone, flex
-							 * shrinks the dock into the space that is actually available and the
-							 * grid reflows to the width it really has — which is the same rule the
+							 * window: the chat column has a floor of its own (§B1's 480 since §I; 220
+							 * before it), so 220 + 800 could not fit in an 880px row, the row's
+							 * `overflow-hidden` clipped the rest, and no scroll container in between
+							 * could reach it (measured at 1380x900: the dock ran to x=1520 in a 1380
+							 * window and 8 of 32 tiles had their right edge past it). With the floor
+							 * gone, flex shrinks the dock into the space that is actually available and
+							 * the grid reflows to the width it really has — which is the same rule the
 							 * grid's own `auto-fill` tracks already follow.
+							 *
+							 * THE FLOOR THAT REPLACED IT IS ON THE OTHER COLUMN, deliberately: the
+							 * chat column carries `min-w-[480px]` and the pane's width is derived from
+							 * it (`canvasDockWidth`), so the promise is kept on the pane the reader is
+							 * promised rather than by capping one of the things that may join the row.
 							 */
-							className="relative h-full shrink overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart"
+							className={cn(
+								"relative h-full overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart",
+								/*
+								 * Docked: a flex item that shrinks. Overlay: lifted out of the flow at
+								 * the row's trailing edge, ABOVE the chat column (`z-20`), with the chat
+								 * still painted behind it and no scrim - §I's "full pane width, scrim
+								 * absent". The row is the positioning context (`relative` above), which
+								 * is also what keeps the pane aligned with the chat column's trailing
+								 * edge rather than the window's.
+								 */
+								canvasDocked ? "shrink" : "absolute inset-y-0 right-0 z-20",
+							)}
 						>
 							<Canvas
 								activeDocumentId={selectedTabId}
@@ -1550,6 +1883,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						/>
 						<div
 							ref={runPanelRef}
+							data-tour-tag="run-panel-dock"
 							style={{
 								/*
 								 * The preference is the `width`, and there is NO floor: `minWidth: 0`

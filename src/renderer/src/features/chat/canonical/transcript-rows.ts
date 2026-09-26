@@ -42,9 +42,8 @@ export const splitFirstLine = (
 
 export type Row = {
 	record: TranscriptRecord;
-	showAvatar: boolean;
 	/** Vertical tier before this row. */
-	gap: "turn" | "item" | "trace" | "mark" | "first";
+	gap: "turn" | "item" | "trace" | "first";
 	/**
 	 * Is this row the answer its turn was working towards? See
 	 * `closingAnswerIds` for what qualifies and why the caption is gated on it
@@ -307,36 +306,33 @@ export function buildRows(
 		if (!paintsSomething(record)) continue;
 		const traceLike = isTraceLike(record);
 		const previousTrace = previous !== null && isTraceLike(previous);
-		const agentSide = record.kind !== "user";
-		const previousAgent = previous !== null && previous.kind !== "user";
-		const showAvatar = agentSide && !previousAgent;
 		let gap: Row["gap"] = "item";
 		if (!previous) gap = "first";
 		else if (record.kind === "user" || previous.kind === "user") gap = "turn";
 		else if (traceLike && previousTrace) gap = "trace";
 		/*
-		 * A row whose caption says its own text is not the whole answer takes a
-		 * between-components gap above it (design round 1, D1). The caption renders
-		 * INSIDE the row it describes, and at `item`/`trace` the space between the
-		 * row above and the caption is what the eye measures first: 8px (or 2px, after
-		 * a tool row) against the caption's own 4px to its chunk, which leaves the
-		 * line reading as a note on the paragraph above — a complete answer under it.
-		 * `turn` already clears the floor (24px, 16px small) and `first` has no row
-		 * above it at all, so neither is touched: the tier is raised, never lowered.
+		 * A caption INSIDE a row makes the gap above that row the thing the eye
+		 * measures first, and design round 1 raised it to a `mark` tier for exactly
+		 * that reason: 8px above the row against the caption's own 4px to its chunk
+		 * left the line reading as a note on the paragraph above it, so the marked
+		 * row took the ramp's 12px between-components step instead.
+		 *
+		 * THAT TIER IS GONE, because it no longer differs from anything. §D1 sets
+		 * every gap inside a turn to 12px, so `item` IS 12px now - the same value,
+		 * for the same reason, decided once. A distinct tier whose two entries are
+		 * the same class string is a second name for one decision, and it is the kind
+		 * of second name that later drifts: the assertion that used to police the
+		 * raise ("mark >= item * 1.5") is unreachable at these values.
 		 */
-		const marked =
-			record.kind === "assistant" && record.truncated !== undefined;
-		if (marked && (gap === "item" || gap === "trace")) gap = "mark";
 		const closesTurn = closingAnswers.has(record.id);
 		const prior = reusable.get(record.id);
 		rows.push(
 			prior &&
 				prior.record === record &&
-				prior.showAvatar === showAvatar &&
 				prior.gap === gap &&
 				prior.closesTurn === closesTurn
 				? prior
-				: { record, showAvatar, gap, closesTurn },
+				: { record, gap, closesTurn },
 		);
 		previous = record;
 	}
@@ -398,10 +394,13 @@ export function buildRows(
  */
 export const GAP: Record<Row["gap"], [string, string]> = {
 	first: ["", ""],
-	turn: ["mt-6", "mt-4"],
-	item: ["mt-2", "mt-1.5"],
+	// 32px - §B1's largest tier, and §D1's stated turn boundary. It no longer
+	// shrinks in the small view: this tier is what carries the hierarchy, and the
+	// 1024 view is not the narrow column the old 16px was compensating for.
+	turn: ["mt-8", "mt-8"],
+	// 12px - §D1's "inside a turn everything sits on 12px", which is both the step
+	// between the two registers (prose and ledger) and between a turn's own blocks.
+	item: ["mt-3", "mt-3"],
 	// 2px on the 4px ramp, the same step `TraceGroup` composes its lines with.
 	trace: ["mt-0.5", "mt-0.5"],
-	// 12px, the ramp's between-components step, in both views: see `mark` above.
-	mark: ["mt-3", "mt-3"],
 };

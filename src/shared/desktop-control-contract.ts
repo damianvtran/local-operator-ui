@@ -135,6 +135,157 @@ export type DesktopMcpState = {
 	operations: DesktopMcpOperation[];
 	cold?: boolean;
 };
+/**
+ * One grant/probe operation on the SESSIONLESS catalog route.
+ *
+ * The session route's shape plus three optional fields the sign-in dialog reads
+ * to stay truthful. They are optional because the backend PR that introduces
+ * the catalog may ship without them, and the dialog's copy has a branch for
+ * each absence rather than a guess: without `browser_opened` it never claims a
+ * browser opened (UX walk N2), and without a failure `message` it says the
+ * server gave no reason rather than printing a bare "Sign-in failed." (N4).
+ */
+export type McpCatalogOperation = Omit<
+	DesktopMcpOperation,
+	"action" | "message"
+> & {
+	action: "login" | "logout" | "reauth" | "test";
+	/** `true` once the backend's browser launcher reported success. */
+	browser_opened?: boolean | null;
+	/** The URL the user can open by hand when the launcher could not. */
+	authorization_url?: string | null;
+	/** Sanitized failure reason, present only on a `failed` operation. */
+	message?: string | null;
+};
+
+/**
+ * One row of the sessionless MCP catalog (`GET /v1/desktop/mcp`).
+ *
+ * Hand-written from the backend decision doc's contract (architect, § 5) and
+ * pinned by the backend's JSON fixture once that lands. Every derivation - the
+ * status precedence, which actions are allowed, which scope a row applies in -
+ * is the BACKEND's, so this renderer decides nothing a row does not already say:
+ * a control is drawn only when `actions` names it, which is what removes the
+ * dead-end "Sign in" on a local command with no secret references (U6).
+ */
+export type McpCatalogRow = {
+	id: string;
+	name: string;
+	scope: "global" | "project";
+	/**
+	 * The project DIRECTORY when `scope === "project"`, else null.
+	 *
+	 * A DIRECTORY, not the file: the catalog's own `project_path` is the file,
+	 * and one word for two things is how a renderer ends up showing a path the
+	 * user cannot act on. Renamed from `project_path` when the backend split them
+	 * (local-operator#1511 `a1ebde44d`).
+	 */
+	project_cwd: string | null;
+	source: {
+		kind:
+			| "local-operator"
+			| "project-mcp-json"
+			| "claude-code"
+			| "cursor"
+			| "vscode"
+			| "codex";
+		path: string;
+		editable: boolean;
+		owned_scope: "global" | "project" | null;
+	};
+	transport: "local_command" | "remote_url";
+	endpoint: {
+		command: string | null;
+		url: string | null;
+		endpoint_redacted: boolean;
+	};
+	status:
+		| "connected"
+		| "needs_sign_in"
+		| "not_started"
+		| "connecting"
+		| "error";
+	/** Sanitized, one line; set for `error` and for `needs_sign_in` when known. */
+	status_reason: string | null;
+	status_observed_at: number | null;
+	/**
+	 * How this row's status is known.
+	 *
+	 * `live` is a runtime's own view, `probe` a Test that answered, `stored` the
+	 * config and the durable stores, and `operation` an operation that is RUNNING
+	 * - a basis of its own because no probe result exists yet, and reusing
+	 * `probe` for it made one word mean both "a Test answered this" and "a Test
+	 * is running" (local-operator#1511 `a1ebde44d`).
+	 */
+	status_basis: "live" | "probe" | "stored" | "operation";
+	auth: {
+		kind: "none" | "oauth" | "api_key" | "unknown";
+		signed_in: boolean | null;
+		secret_refs: {
+			id: string;
+			state: "encrypted" | "missing" | "unavailable";
+		}[];
+	};
+	tool_count: number | null;
+	tool_count_basis: "live" | "probe" | "last_seen" | null;
+	/**
+	 * When the `last_seen` count was taken, or null.
+	 *
+	 * EPOCH SECONDS, and set iff `tool_count_basis === "last_seen"` -
+	 * local-operator#1536's contract, which says so in the backend's own words
+	 * precisely because this page's clocks are milliseconds: read as
+	 * milliseconds it renders a date in 1970, which is the same unit trap that
+	 * made an expired check read "Worked 20700 d ago" (M-1). It is what lets a
+	 * row say WHEN it last worked instead of only that it did.
+	 */
+	last_seen_at: number | null;
+	actions: (
+		| "test"
+		| "sign_in"
+		/**
+		 * Collect a key for this row.
+		 *
+		 * `add_key` is accepted as a SYNONYM: the backend has not settled whether
+		 * the verb that adds a credential for a server with no OAuth discovery is
+		 * `set_key` (the name it ships today, offered when the config declares
+		 * secret references) or a new `add_key`, so this renderer handles both and
+		 * treats them as one control. A row that offers only one of them gets the
+		 * same button either way.
+		 */
+		| "set_key"
+		| "add_key"
+		| "reauth"
+		| "sign_out"
+		| "remove"
+		| "connect"
+		| "disconnect"
+	)[];
+};
+
+/** The whole catalog document, as both the GET and a mutating POST answer it. */
+export type McpCatalog = {
+	cwd: string;
+	/** False when the cwd's project file IS the global file (cwd = `~`). */
+	project_scope_available: boolean;
+	global_path: string;
+	/** The project mcp.json FILE, null when there is no separate project file. */
+	project_path: string | null;
+	status_source: "config" | "live";
+	session_id: string | null;
+	servers: McpCatalogRow[];
+	operations: McpCatalogOperation[];
+	/** On a POST answer only: the operation that request started or named. */
+	operation?: McpCatalogOperation | null;
+};
+
+/** `POST /v1/desktop/mcp/credentials`: what was saved, and the doc after it. */
+export type McpCatalogCredentialsResult = {
+	name: string;
+	saved_ids: string[];
+	failed_ids: string[];
+	code: string | null;
+	catalog: McpCatalog;
+};
 export type DesktopControlResult<T = Record<string, unknown>> = {
 	data: T;
 	replayed?: boolean;

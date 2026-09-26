@@ -1,5 +1,6 @@
 import { backendPaneSentence } from "@shared/api/local-operator/backend-error";
 import {
+	UserFacingError,
 	desktopResult,
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
@@ -9,31 +10,36 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
-import { ChatLayout } from "@shared/components/common/chat-layout";
 import { useCanonicalSessionStream } from "@shared/hooks/use-canonical-session";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
-import { SEND_HELD, type SendOutcome } from "@shared/hooks/use-message-input";
+import type { SendOutcome } from "@shared/hooks/use-message-input";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
-import { useWarmSession } from "@shared/hooks/use-warm-session";
-import { cn } from "@shared/lib/utils";
 import {
-	SEND_UNCONFIRMED_MESSAGE,
+	useDraftWarmSession,
+	useWarmSession,
+} from "@shared/hooks/use-warm-session";
+import { cn } from "@shared/lib/utils";
+import { useAsideStore } from "@shared/store/aside-store";
+import {
+	ANSWER_NOT_SENT_CODE,
+	ASIDE_NOT_ANSWERED_CODE,
+	ASIDE_STILL_ANSWERING_CODE,
 	SESSION_UNVALIDATED_CODE,
 	SESSION_UNVALIDATED_MESSAGE,
-	UNCONFIRMED_SEND_CODE,
 	UNREADABLE_ATTACHMENT_CODE,
 	admitChatDraft,
 	draftIdentityFor,
-	isRefusedBeforeAdmission,
 	isSessionUnvalidated,
+	migrateHeldClaim,
 	panelIdentityFor,
 	panelSessionIdOfView,
-	refusedBeforeAdmissionAttachments,
-	refusedBeforeAdmissionText,
+	pressLockCopy,
+	sendFailureCopy,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
+import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	useCallback,
@@ -45,15 +51,23 @@ import {
 } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { pairingHasRemedy } from "../../../../../shared/backend-status";
-import { DESKTOP_MESSAGE_BUDGET_BYTES } from "../../../../../shared/desktop-contract";
+import {
+	DESKTOP_MESSAGE_BUDGET_BYTES,
+	DESKTOP_REFUSAL_CODE,
+} from "../../../../../shared/desktop-contract";
+import {
+	asideAskBlockedReason,
+	askAside,
+	reportUncarriedAsideRefusal,
+} from "../aside";
 import {
 	type AnswerOutcome,
 	type SendLock,
 	answerGateOption,
 	answerReport,
 	answerValue,
+	approvalAnswerValue,
 	createSendLock,
-	errorCodeOf,
 } from "../ask-answer";
 import {
 	type AdmittedSend,
@@ -62,7 +76,13 @@ import {
 	stoppedAfterAdmission,
 	turnStopped,
 } from "../canonical/working-line-model";
+import { useStripSpeaksConnection } from "../chat-status-presence";
 import { catalogueTitleUpdate, resolveChatTitle } from "../chat-title";
+import {
+	caughtFailureNotice,
+	composerNoticeFor,
+	lockAnswerOutlived,
+} from "../composer-notice";
 import {
 	type DraftResolution,
 	type DraftSelectionTarget,
@@ -92,7 +112,6 @@ import {
 	messageBudgetRefusal,
 } from "../utils/message-budget";
 import { ChatContent } from "./chat-content";
-import { ChatSidebar } from "./chat-sidebar";
 import type { DirectoryWritePath } from "./directory-indicator";
 import {
 	type MessageInputHandle,
@@ -243,22 +262,135 @@ function SessionPanel({
 	draftKey: string | null;
 	sessionId?: string;
 }) {
-	const canonical = useCanonicalSessionStream(sessionId, Boolean(sessionId));
-	useDesktopWatchLease(sessionId, canonical.subscriptionId);
+	const draftIdentity = draftIdentityFor(draftKey, sessionId);
+	const draft = useCanonicalSessionsStore((state) =>
+		draftIdentity ? state.drafts[draftIdentity] : undefined,
+	);
+	/*
+	 * The id this pane's STREAM addresses: the session once it exists, the
+	 * minted draft before that (`sessions.draft`'s id — a real bridge on the
+	 * backend through the draft allow-list), and nothing at all for a fresh
+	 * pane nobody has typed into. What the id is FOR is the same either way:
+	 * the subscription is the bridge user that keeps a speculative warm alive
+	 * across the wait, and it is the precondition the draft's warm checks before
+	 * it fires (`useDraftWarmSession`). The identity that KEYS the panel stays
+	 * `draftKey` until the create hop (`panelIdentityFor`): this changes which
+	 * id the stream carries, never when the panel remounts.
+	 */
+	const streamId = sessionId ?? draft?.warmId;
+	/*
+	 * The third answer is the one only this pane can give: whether `streamId`
+	 * names a session a page can be owed for, or a DRAFT's bridge subscription
+	 * (`useCanonicalSessionStream`'s own note carries why the hook cannot tell
+	 * them apart). A draft's stream is a bridge, not a page (UX round 1, U1).
+	 */
+	const canonical = useCanonicalSessionStream(
+		streamId,
+		Boolean(streamId),
+		Boolean(sessionId),
+	);
+	useDesktopWatchLease(streamId, canonical.subscriptionId);
 	// Read here rather than threaded from the page: the query is cached with a
 	// 60 s staleTime, so this is a store read and not a second request.
 	const panelCapabilities = useDesktopCapabilities();
 	// Fired from the composer's first keystroke, never from this mount - see
 	// `useWarmSession` for why browsing must not spawn runtimes.
 	const warm = useWarmSession(sessionId, panelCapabilities.data);
+	/*
+	 * Publish the draft-warm capability the way the sidebar publishes
+	 * `cataloguePageable`: the store refuses to mint on its own (it must not
+	 * import this module's capability hook, see `setDraftWarmable`), so the
+	 * mounted pane — which already resolves the capability — states the answer
+	 * before the first keystroke can need it. Fail-closed by construction: an
+	 * unanswered query leaves the flag false, which is exactly today's wiring
+	 * against every daemon that predates the key.
+	 */
+	useEffect(() => {
+		useCanonicalSessionsStore
+			.getState()
+			.setDraftWarmable(
+				desktopFeatureEnabled(panelCapabilities.data, "session_draft_warm"),
+			);
+	}, [panelCapabilities.data]);
+	/*
+	 * The draft's warm, once its own subscription holds the bridge: the same
+	 * policy `warm` applies to a session, addressed at the minted draft id.
+	 * Nothing fires before the mint landed (there is no id), and nothing fires
+	 * before the stream opened (`subscriptionId`) — see the hook for why an
+	 * earlier warm would be cancelled without engaging anything.
+	 */
+	useDraftWarmSession(
+		draft?.warmId,
+		canonical.subscriptionId,
+		panelCapabilities.data,
+	);
+	/*
+	 * The composer's empty-to-non-empty edge, which is the app's one statement
+	 * of intent to send: a session warms itself (`warm`), a draft MINTS the id
+	 * its runtime will be warmed on (`ensureDraftWarm` — the warm itself fires
+	 * from the hook above once the subscription is open). Both are
+	 * fire-and-forget, both no-op where they cannot act, and nothing on the
+	 * send path awaits either: this edge costs the keystroke nothing.
+	 */
+	const onComposerInput = useCallback(() => {
+		if (sessionId) {
+			warm();
+			return;
+		}
+		if (draftKey)
+			useCanonicalSessionsStore.getState().ensureDraftWarm(draftKey);
+	}, [sessionId, warm, draftKey]);
 	const input = useRef<MessageInputHandle>(null);
 	const container = useRef<HTMLDivElement>(null);
-	const draftIdentity = draftIdentityFor(draftKey, sessionId);
-	const draft = useCanonicalSessionsStore((state) =>
-		draftIdentity ? state.drafts[draftIdentity] : undefined,
-	);
 	const cwd = useCanonicalSessionsStore((state) => state.cwd);
+	// Read here rather than threaded from the page, for the same reason as
+	// `panelCapabilities` above: the query is cached (`useServerHealth`'s staleTime),
+	// so this is a store read and not a second request.
+	const { data: serverHealth } = useServerHealth();
+	/*
+	 * WHETHER THE STRIP OWNS THE CONNECTION VOICE, read for the composer's notice
+	 * below - the same predicate the sidebar's paragraphs and the pane's catalogue
+	 * error yield to (R11), so the four surfaces cannot drift about which of them
+	 * is speaking.
+	 */
+	const stripSpeaksConnection = useStripSpeaksConnection(
+		serverHealth?.online === false,
+	);
+	/*
+	 * A RECOVERED SERVER RE-SUBSCRIBES THE OPEN CONVERSATION (UX round 2, U19;
+	 * QA round 2's Q3).
+	 *
+	 * The app can cross its own "the daemon is stopped" decision - main reports that
+	 * after its 90 s line - and the later auto-attach clears the strip WITHOUT
+	 * reopening this conversation's stream: the transcript keeps its LOST_CONNECTION
+	 * notice and manual Reconnect, and everything behind them stays frozen. Measured
+	 * by the UX round as a notice that "outlives the recovery", and by QA as a
+	 * conversation that never re-subscribed: the walker waited 60 s past the revive
+	 * and the pane was still waiting.
+	 *
+	 * EDGE-TRIGGERED on the server coming BACK, not level: a view that is
+	 * `unavailable` while the server is already online is one whose own retry has
+	 * just failed, or whose refusal is per-conversation, and re-pressing it on every
+	 * render would be a reconnect loop with the reader's health as its budget. The
+	 * press is the SAME door the notice's Reconnect uses (`canonical.view.retry`), so
+	 * the automatic and manual routes cannot drift.
+	 */
+	const serverOnline = serverHealth?.online === true;
+	const wasOnline = useRef(serverOnline);
+	useEffect(() => {
+		const recovered = serverOnline && !wasOnline.current;
+		wasOnline.current = serverOnline;
+		if (!recovered) return;
+		if (canonical.status !== "unavailable") return;
+		canonical.retry();
+	}, [serverOnline, canonical]);
 	const setCwd = useCanonicalSessionsStore((state) => state.setCwd);
+	const markTurnStopped = useCanonicalSessionsStore(
+		(state) => state.markTurnStopped,
+	);
+	const clearTurnStopped = useCanonicalSessionsStore(
+		(state) => state.clearTurnStopped,
+	);
 	const [admitting, setAdmitting] = useState(false);
 	/*
 	 * The lock is created lazily and held in a ref, not in state: it has to be
@@ -362,6 +494,19 @@ function SessionPanel({
 	const lastCatalogueState = useRef("");
 	const [sendError, setSendError] = useState<string | null>(null);
 	const [sendErrorCode, setSendErrorCode] = useState<string | undefined>();
+	/*
+	 * THE NOTICE'S TWO DECISIONS, kept beside the sentence they belong to.
+	 *
+	 * `retry` is whether a Retry control renders at all: a refusal whose remedy is
+	 * something else, or one the far side will refuse again the instant it is
+	 * pressed, is better served by Clear alone than by a button that fails
+	 * (`withholdsRetryHint`, applied where the failure is classified). `muted` is the
+	 * register: a failure is `danger` ink, and the two statements that are not
+	 * failures - the send lock, and a message that turned out to have been
+	 * delivered after all - are ink-muted.
+	 */
+	const [sendErrorRetry, setSendErrorRetry] = useState(false);
+	const [sendErrorMuted, setSendErrorMuted] = useState(false);
 	/**
 	 * What the last interrupt left running, for the composer's own notice.
 	 *
@@ -467,6 +612,12 @@ function SessionPanel({
 			canonical.frontend?.attention,
 			outcomeAtAdmission.current?.anchor ?? null,
 		);
+	/*
+	 * The enders, from this panel's own state: the turn answered, the turn stopped,
+	 * or the row carrying a failure. The failure term is what ends the wait for a
+	 * send the store has already handed back to the composer - the transcript has
+	 * nothing to say about it yet, and the rung must not outlive the flight.
+	 */
 	if (admitted.current && (answered || stopped || Boolean(draft?.error)))
 		admitted.current = null;
 	const starting = admitted.current !== null;
@@ -487,10 +638,17 @@ function SessionPanel({
 	 * With no canonical frontend there is no model, which is what leaves the
 	 * legacy path - `ChatContent`'s header without a canonical session - with no
 	 * trigger at all rather than one that opens an empty panel.
+	 *
+	 * A DRAFT PANE GETS THAT SAME ANSWER (design review round 1, D2). The draft's
+	 * own subscription makes a canonical frontend exist while the pane has no
+	 * conversation, and the header grew the Run-details control over a run that
+	 * cannot exist yet - a panel that could only open on nothing. A draft has no
+	 * run to report, so the model stays null until the session exists; the trigger
+	 * then arrives with the conversation, which is exactly when main draws it.
 	 */
 	const runDetails = useMemo(
 		() =>
-			canonical.frontend
+			sessionId && canonical.frontend
 				? deriveRunDetails({
 						jobs: canonical.frontend.jobs,
 						todos: canonical.frontend.todos,
@@ -504,7 +662,7 @@ function SessionPanel({
 						wakes: canonical.frontend.wakes,
 					})
 				: null,
-		[canonical.frontend],
+		[sessionId, canonical.frontend],
 	);
 	/*
 	 * The run panel's MCP half, read here for the reason the model is derived here:
@@ -565,12 +723,14 @@ function SessionPanel({
 	 * decide it and computed HERE because this is where each of them already is:
 	 *
 	 *   1. the connected harness advertises that it expands a mention
-	 *      (`desktop-hooks.ts`'s `references` key). No released harness does — the
-	 *      expansion is `local_operator/references.py`, which is not in any tag
-	 *      through v0.56.8, and the half that adds it is PR #1220. So the composer
-	 *      offers the picker and paints the chips only on a backend that says it can
-	 *      carry them, and on today's installs the `@` is plain text, which is what
-	 *      the harness does with it.
+	 *      (`desktop-hooks.ts`'s `references` key). The composer therefore offers
+	 *      the picker and paints the chips only on a backend that says it can carry
+	 *      them, and withholds all of it otherwise, where the `@` is plain text —
+	 *      which is what such a harness does with it. The key is CONDITIONAL on the
+	 *      harness side rather than a build fact: a backend whose
+	 *      `LOCAL_OPERATOR_AT_REFERENCES` kill switch is off advertises nothing, so
+	 *      the absent key covers both an older backend and a current one that will
+	 *      not expand, and this gate answers both the same way.
 	 *   2. the send this draft would make is a PROMPT rather than a mid-turn STEER.
 	 *      `busy` is the same expression the send path reads one screen down
 	 *      (`mode: busy ? "steer" : "prompt"`), and a steer bypasses
@@ -597,8 +757,21 @@ function SessionPanel({
 	 * nothing would otherwise be reported to the user as "this backend cannot carry
 	 * file references" — a statement about the backend made on the strength of an
 	 * answer the app never received. An answer that arrived and says the harness is
-	 * available without the key is the only evidence the sentence may rest on, and it
-	 * is exactly the state every released install is in today.
+	 * available without the key is the only evidence the sentence may rest on, and
+	 * that answer has two causes: a backend older than the key, and a current one
+	 * whose `LOCAL_OPERATOR_AT_REFERENCES` kill switch is off.
+	 *
+	 * THE SENTENCE'S FIRST CLAUSE IS TRUE OF BOTH AND ITS REMEDY CLAUSE IS TRUE OF
+	 * ONE, which is a deliberate asymmetry rather than an oversight. "This backend
+	 * cannot carry file references" is the state in either case, and this page
+	 * cannot tell them apart. "Update the backend and try again" is the way out of
+	 * the OLDER-BACKEND case and does nothing for the kill switch — but the second
+	 * cause is one the operator set themselves, it is not something the app can
+	 * offer a remedy for, and a notice that stated both causes would be a sentence
+	 * about an environment variable in the composer's own voice. The update is the
+	 * cause a user can act on, so it is the one named. The two are not
+	 * distinguishable from here, which is why the sentence names the state rather
+	 * than a version.
 	 */
 	const mentionsUnsupported =
 		capabilities.isSuccess &&
@@ -852,6 +1025,77 @@ function SessionPanel({
 	 *     from, and a picker that opens onto an empty list is a dead control wearing
 	 *     a live one's clothes.
 	 */
+	/*
+	 * Retire whatever the composer's error line is holding.
+	 *
+	 * ONE IMPLEMENTATION FOR BOTH ITS CALLERS, because both are the same act: the
+	 * page's own controls (the alert's dismiss, the held-claim controls) and the
+	 * aside door below, which retires the line when it starts a new aside (design
+	 * round 2, D7 - the line outlived the aside it described). It is a
+	 * `useCallback` because the aside door hands it to `useSlashDispatch`, whose
+	 * `dispatch` lists it as a dependency: a fresh identity per render would
+	 * rebuild that callback on every render of this page, and the values it writes
+	 * through are the two setters, which never change.
+	 */
+	const clearError = useCallback(() => {
+		setSendError(null);
+		setSendErrorCode(undefined);
+	}, []);
+
+	/*
+	 * Whether the box is refusing an aside follow-up RIGHT NOW, as the one predicate
+	 * both doors apply reads it.
+	 *
+	 * A BOOLEAN SUBSCRIPTION RATHER THAN THE STORE OBJECT, because both things this
+	 * page does with it are edge-shaped: the line is raised with the refusal's own
+	 * code, and it is retired the moment this flips false - which is the same moment
+	 * the adopt control goes live beside the panel (UX round 2, U12; agent review
+	 * round 5, R5-5; design round 3, D13). Every other error line on this surface is
+	 * retired by the user's own next act; this one describes a state the app can see
+	 * end, so it ends with it.
+	 *
+	 * The comparison rather than the value keeps the subscription's result a
+	 * primitive, so a store write that does not move the gate cannot re-render this
+	 * page: `asideAskBlockedReason` returns a SENTENCE, and a fresh one per call.
+	 */
+	const asideBusy = useAsideStore((state) =>
+		sessionId ? asideAskBlockedReason(state, sessionId) !== null : false,
+	);
+
+	/*
+	 * Raise the busy sentence, minted here so the `/btw` door can reach the same line.
+	 *
+	 * The sentence is the APP's refusal rather than the owner's, and it is stated on
+	 * ONE line for both doors: this page owns the composer's error line, and the
+	 * dispatcher owns none of it - the door used to write a permanent red TRANSCRIPT
+	 * receipt for a state that lasts exactly as long as one answer, which is a record
+	 * of something that is about to stop being true (UX round 2, U13).
+	 */
+	const noteAsideRefusal = useCallback((sentence: string) => {
+		setSendError(sentence);
+		setSendErrorCode(ASIDE_STILL_ANSWERING_CODE);
+	}, []);
+
+	/*
+	 * THE BUSY LINE IS RETIRED WITH THE MOMENT IT DESCRIBES.
+	 *
+	 * It used to stay for the rest of the read dwell - measured: still reading "still
+	 * answering" 9.4s after the answer had settled, with the now-live adopt control
+	 * beside it, and cleared only by the next keystroke (UX round 2, U12; design round
+	 * 3, D13). The condition is the predicate itself, so the line cannot outlive the
+	 * state it names on either exit: the answer settles, or the panel closes and takes
+	 * the turn with it.
+	 *
+	 * GATED ON THE CODE, because this surface carries every one of the composer's
+	 * refusals and only this one is tied to a state the app can watch end. A store
+	 * refusal beside it is the user's to clear, and `clearError` is not scoped.
+	 */
+	useEffect(() => {
+		if (sendErrorCode !== ASIDE_STILL_ANSWERING_CODE) return;
+		if (asideBusy) return;
+		clearError();
+	}, [asideBusy, clearError, sendErrorCode]);
+
 	const {
 		dispatch,
 		dispatchFromControl,
@@ -888,6 +1132,21 @@ function SessionPanel({
 		 * surfaces.
 		 */
 		moveReady: !draftKey,
+		/*
+		 * The composer's line is retired by the door that starts an aside, whichever
+		 * door that is (design round 2, D7). The `send` branch above retires it itself
+		 * when the composer asks; this is the `/btw` door's half of the same rule, and
+		 * the dispatcher cannot reach the setter on its own. A new attempt makes every
+		 * line on that surface stale, which is the whole scope of the clear.
+		 */
+		clearAsideRefusal: clearError,
+
+		/*
+		 * The `/btw` door's half of the same line (UX round 2, U13). It has no composer
+		 * error line of its own, so the page mints the sentence: one state, one surface,
+		 * whatever door refused the press.
+		 */
+		noteAsideRefusal,
 
 		/*
 		 * The pane's own selection, handed to the dispatcher only where a pick can
@@ -956,6 +1215,14 @@ function SessionPanel({
 		]);
 		if (!sessionId || marker === lastCatalogueState.current) return;
 		lastCatalogueState.current = marker;
+		/*
+		 * UNNAMED, AND THAT NOW MEANS THE HEAD PAGE (round 3, Q-1). This refresh used to
+		 * take the store's default of `LEGACY_CATALOGUE_PAGE`, so every ordinary
+		 * conversation open fired an unscoped `limit=500&include_archived=true` read - the
+		 * multi-second answer this change exists to remove, and it also replaced the scoped
+		 * membership with 500 rows. The default follows the capability now
+		 * (`cataloguePageDefault`), and nothing else here changes.
+		 */
 		void useCanonicalSessionsStore.getState().fetchSessions();
 	}, [
 		sessionId,
@@ -975,9 +1242,52 @@ function SessionPanel({
 	 * could never see a failure that came from pressing an option (code review
 	 * round 1, R-MINOR).
 	 */
-	const reportFailure = (error: unknown, fallback: string) => {
-		setSendError(userFacingMessage(error, fallback));
-		setSendErrorCode(errorCodeOf(error));
+	/*
+	 * ONE CLASSIFIER AND ONE TABLE, for every failure a send can have.
+	 *
+	 * `sendFailureCopy` owns the sentence, whether Retry can help, and the code -
+	 * so the composer renders the same words whichever door the failure came
+	 * through, instead of the four hand-written copies that used to live between
+	 * this page and the composer (the transport's, the guard's, the held
+	 * paragraph's and the generic tail's).
+	 */
+	/*
+	 * The FALLBACK for a failure the store wrote no row for - a throw before a draft
+	 * existed. It classifies fact-less on purpose: the only fact the pane has at that
+	 * point is the pre-send snapshot, which is the off-by-one review round 4 named
+	 * (`caughtFailureNotice` carries the argument). Every failure the store DID
+	 * classify is rendered from the row it wrote.
+	 */
+	const caughtFailureCopy = (error: unknown) =>
+		sendFailureCopy(error, undefined, false);
+	/*
+	 * THE ROW IS THE CLASSIFICATION, SO THE PANE RENDERS IT RATHER THAN REPEATING IT
+	 * (review round 4, M1). The store classifies every failure once, with the fact it
+	 * actually used - `replay && previous?.admissionAttempted`, i.e. about the id the
+	 * attempt carried - and writes the sentence, the code and the press onto the row.
+	 * Classifying again here cannot be as right: `previous` at this point is the
+	 * PRE-SEND row, so an edited payload (which rotates the request id in the same
+	 * call) got the unknown-outcome sentence and a Retry over a body the daemon had
+	 * just refused, while the row it was standing in for said the opposite - one
+	 * failure rendering two ways, and only on screen.
+	 *
+	 * `composerNoticeFor` prefers this local copy over the row's, so reading the row
+	 * here is what makes the two agree. `false` when the store wrote nothing (a
+	 * failure before a draft existed), which leaves `reportFailure` below as the
+	 * fallback rather than the rule.
+	 */
+	const reportCaughtFailure = (draftKey: string, error: unknown) => {
+		const row = useCanonicalSessionsStore.getState().drafts[draftKey];
+		const notice = caughtFailureNotice({
+			rowError: row?.error,
+			rowCode: row?.errorCode,
+			rowRetry: row?.errorRetry,
+			fallback: () => caughtFailureCopy(error),
+		});
+		setSendError(notice?.message ?? null);
+		setSendErrorCode(notice?.code);
+		setSendErrorRetry(notice?.retry === true);
+		setSendErrorMuted(notice?.muted === true);
 	};
 	const send = async (
 		content: string,
@@ -1014,6 +1324,20 @@ function SessionPanel({
 		if (!key) return false;
 		const previous = store.drafts[key];
 		/*
+		 * THE ANSWER TO A PRESS THIS SCREEN CANNOT TAKE YET, in the app's own words and
+		 * register, chosen by the one rule (`pressLockCopy`). Both refusals below use
+		 * it - this conversation's own send still out, and a lock held by another send
+		 * - so the sentence cannot drift between them, and the composer's own answer to
+		 * a press on a flight it can see reads the same helper.
+		 */
+		const answerLockedSend = (): false => {
+			setSendError(pressLockCopy(canonical.frontend?.pending_gate));
+			setSendErrorCode(undefined);
+			setSendErrorRetry(false);
+			setSendErrorMuted(true);
+			return false;
+		};
+		/*
 		 * The read window's refusal is the STORE's, not this function's: a send
 		 * addressed to a session whose guard read has not answered is refused at
 		 * admission (`admitChatDraft`), so the rule holds for every caller rather
@@ -1030,7 +1354,17 @@ function SessionPanel({
 		 * the panel has already told the user they are in the target, and the two
 		 * can only disagree for a round trip.
 		 */
-		if (previous?.pending) return false;
+		/*
+		 * THE PRESS IS ANSWERED, NOT SWALLOWED (review round 3, U6).
+		 *
+		 * This returned `false` in silence: on a conversation whose own send was still
+		 * out, the user's second press produced no line at all, which is
+		 * indistinguishable from a broken key - and looking broken is what makes a user
+		 * press again over a box that by then holds both messages. The design's own
+		 * sentence for it exists ("Your last message is still sending."), so the
+		 * refusal says it.
+		 */
+		if (previous?.pending) return answerLockedSend();
 		if (!sendLock.tryAcquire()) {
 			/*
 			 * A send attempted while an answer (or another send) is in flight used to
@@ -1045,16 +1379,20 @@ function SessionPanel({
 			 * that is the case the user can see a reason for: the question above is
 			 * visibly mid-answer.
 			 */
-			setSendError(
-				canonical.frontend?.pending_gate
-					? "Waiting for the answer to the question above. Your message was not sent — send it again in a moment."
-					: "Still sending your last message. Your message was not sent — send it again in a moment.",
-			);
-			return false;
+			/*
+			 * MUTED, AND WITH NO CONTROLS. Nothing failed here: the press never became
+			 * a send, the payload is still in the box exactly as the user left it, and
+			 * the only useful thing to say is when the box will take a press again.
+			 * Offering Retry over a lock would be a control that cannot work, which is
+			 * the shape this whole change removes.
+			 */
+			return answerLockedSend();
 		}
 		setAdmitting(true);
 		setSendError(null);
 		setSendErrorCode(undefined);
+		setSendErrorRetry(false);
+		setSendErrorMuted(false);
 		try {
 			/*
 			 * No command check here, deliberately. The composer's planner already
@@ -1071,16 +1409,36 @@ function SessionPanel({
 			const gate = canonical.frontend?.pending_gate;
 			if (gate && canonical.ownerEpoch && sessionId) {
 				if (gate.kind === "approval") {
-					const value = content.trim().toLowerCase();
-					const yes = ["y", "yes", "approve", "ok", "allow"].includes(value);
-					if (!yes && !["n", "no", "deny", "reject", "cancel"].includes(value))
-						throw new Error("Reply yes or no to answer the approval request.");
+					/*
+					 * THE WORDS AND THE ORDINALS, resolved against the TYPED text for the
+					 * same reason the ask branch below resolves there: with a staged reply
+					 * `content` is wrapped in `<reply-to>…</reply-to>`, and a rule that had
+					 * to parse that wrapper would be one payload change away from failing
+					 * silently. `approvalAnswerValue` returns the strict boolean or `null`,
+					 * and `null` renders the shipped sentence — the press sent nothing, so
+					 * the box still holds the text.
+					 *
+					 * THE CLASS IS THE WHOLE OF THAT PROMISE (agent review round 1, MAJOR-1;
+					 * UX round 1, U1). A plain `Error` carries no code, so `sendFailureCopy`
+					 * classified the throw as an UNKNOWN outcome and the composer rendered
+					 * "Couldn't confirm your message was sent." with a Retry that re-ran this
+					 * same refusal — over a press that provably sent nothing.
+					 * `UserFacingError` with `ANSWER_NOT_SENT_CODE` is the one shape the
+					 * table renders as the authored sentence with `retry: false`: the user
+					 * is told which answers work, and offered no press that cannot.
+					 */
+					const approved = approvalAnswerValue(typed ?? content);
+					if (approved === null)
+						throw new UserFacingError(
+							"Reply yes or no to answer the approval request.",
+							ANSWER_NOT_SENT_CODE,
+						);
 					await desktopResult({
 						op: "sessions.answer",
 						sessionId,
 						epoch: canonical.ownerEpoch,
 						requestId: gate.request_id,
-						approved: yes,
+						approved,
 					});
 				} else
 					await desktopResult({
@@ -1123,6 +1481,8 @@ function SessionPanel({
 			if (unreadableRefusal) {
 				setSendError(unreadableRefusal);
 				setSendErrorCode(UNREADABLE_ATTACHMENT_CODE);
+				setSendErrorRetry(false);
+				setSendErrorMuted(false);
 				return false;
 			}
 			// Refuse BEFORE admission, where the sizes are still known and the
@@ -1131,8 +1491,167 @@ function SessionPanel({
 			// the unchanged-payload guard and the user cannot drop an image to fit.
 			const refusal = messageBudgetRefusal(content, images);
 			if (refusal) {
+				/*
+				 * Clear alone: the remedy is to change the payload (remove an image,
+				 * split the text), so a Retry that re-sent the same bytes would be
+				 * refused for the same reason.
+				 */
 				setSendError(refusal);
+				setSendErrorCode(undefined);
+				setSendErrorRetry(false);
+				setSendErrorMuted(false);
 				return false;
+			}
+			/*
+			 * WHILE AN ASIDE IS ATTACHED THE COMPOSER ADDRESSES THE ASIDE.
+			 *
+			 * WHY HERE, BETWEEN THE REFUSALS ABOVE AND EVERYTHING BELOW. Above, because
+			 * the two refusals this path already owns are about the PAYLOAD rather than
+			 * about the surface it is addressed to — a message too large, or a file the
+			 * app could not read, is refused the same way whoever it was meant for, and
+			 * an aside path that skipped them would be the one route that does not (the
+			 * interface note: an aside is an off-record ANSWER, not an exemption).
+			 * Below, because every step after this point turns text into a TURN of the
+			 * conversation — the stream wait, `admitChatDraft` — and an aside is
+			 * precisely the exchange that must not become one.
+			 *
+			 * THE PENDING-GATE BRANCH ABOVE OUTRANKS IT, and the composer's placeholder
+			 * is what names the winner (`message-input.tsx` puts `awaitingAnswer` ahead
+			 * of the aside term for exactly this reason). A parked gate is the one thing
+			 * the box must be able to answer — its card's buttons are the pointer path,
+			 * and typing yes/no (or the 1/2 the card prints) into the box is the
+			 * keyboard path a focused composer already has — so the aside can be left
+			 * standing for as long as the user likes while the agent is parked on that
+			 * gate; making the aside win would route the very keystrokes the gate needs
+			 * to a different exchange, and a user with no pointer would have to close
+			 * the panel to answer.
+			 *
+			 * THE QUESTION IS PAINTED BEFORE IT IS SENT, AND THE BOX IS HANDED BACK AT
+			 * THE PRESS. `askAside` registers the turn in the store the panel renders
+			 * from BEFORE it posts, so the panel shows the question and its thinking
+			 * state in the same commit that clears the box — and this branch does NOT
+			 * AWAIT the ask, which is what makes that commit the press rather than the
+			 * answer. Awaiting it held the composer's own clear and its `admitting`
+			 * state for the whole POST, so a question visibly being answered above sat
+			 * in the box as well, and a follow-up typed meanwhile made the eventual
+			 * clear a no-op — the next Enter then asked "q1q2" as a NEW turn. The
+			 * `/btw` dispatcher's own branch states the same rule for its own door.
+			 *
+			 * A FAILED ASK DOES NOT PUT THE TEXT BACK, deliberately. The failure is
+			 * unknowable in the way `SEND_HELD` describes — the ask was REGISTERED, so
+			 * "nothing reached the owner" is false and the retry is not the box's to
+			 * offer — and the only text a restore could write into is a box the user
+			 * has since left alone, so whether it came back would depend on a race they
+			 * cannot see.
+			 *
+			 * NOT AWAITING THE POST IS NOT THE SAME AS NOT HEARING IT, and the two
+			 * things that depend on the ask's own answer ride its promise back to the
+			 * composer rather than waiting here: the composer's PAYLOAD is retired only
+			 * if the ask is answered and kept if it is refused (review round 2, F6,
+			 * where a refusal must keep the staged reply and the credential map exactly
+			 * as a refused send does), and a refusal the panel can no longer state is
+			 * stated on the composer instead (F7, below).
+			 */
+			const aside = sessionId
+				? useAsideStore.getState().attached[sessionId]
+				: undefined;
+			if (sessionId && aside) {
+				if (attachments.length > 0) {
+					/*
+					 * An aside carries TEXT ONLY on the wire (the op's body is `text` and the
+					 * exchange's own id), so a send with files would answer a question that
+					 * silently omitted them — the one outcome worse than a refusal, because it
+					 * looks like it worked. Stated through the composer's own error surface,
+					 * where the chips that have to be removed are. `false` keeps both halves
+					 * with the user.
+					 */
+					setSendError(
+						"An aside answers text only. Remove the attached files to ask it.",
+					);
+					return false;
+				}
+				/*
+				 * A FOLLOW-UP WHILE THE EXCHANGE IS STILL ANSWERING IS REFUSED HERE, WHILE THE
+				 * QUESTION IS STILL IN THE BOX (UX round 1, U2). The composer is deliberately
+				 * typable while an answer streams, and the box's placeholder invites the next
+				 * question — so this press used to empty the box, paint the question and then
+				 * fail 800ms later with "This aside is no longer available", because the owner
+				 * refuses a continuation of an entry it is still running. `false` is the
+				 * composer's own refusal-before-admission answer: the text stays where it is,
+				 * and the sentence above says what to wait for. The gate is the same one the
+				 * `/btw` door applies, from one predicate, so the two doors cannot disagree
+				 * about when a question may leave.
+				 */
+				const busy = asideAskBlockedReason(useAsideStore.getState(), sessionId);
+				if (busy) {
+					/*
+					 * THE CODE GOES WITH THE SENTENCE, and it is what keeps the composer's
+					 * generic retry suffix off a line whose whole subject is that the retry is
+					 * not available yet (UX round 2, U12; agent review round 5, R5-5). The box
+					 * still holds the question, so the suffix was otherwise TRUE of the box
+					 * and false of the situation, and it arrived directly under "wait".
+					 */
+					noteAsideRefusal(busy);
+					return false;
+				}
+				/*
+				 * THE SUBSCRIPTION TRAVELS WITH THE ASK. The stream is read by every
+				 * attached viewer of this session, so an owner that routes `aside_delta`
+				 * to the subscription that asked — rather than broadcasting it — needs to
+				 * be told which one that is, and without it the panel degrades to the
+				 * settled answer with no thinking state and no streaming. The id is the
+				 * `open` frame's own (`use-canonical-session` keeps it on the view, which
+				 * is also what the watch lease above leases it with), and it is absent
+				 * only before the stream's first `open`.
+				 *
+				 * A WELL-FORMED ID THIS OWNER DOES NOT HOLD IS A DOCUMENTED LIMITATION, not
+				 * a case with an answer here: the owner streams nothing for it and reports
+				 * nothing back, so the panel paints its thinking state and then the settled
+				 * answer in one piece, which reads as a slow model (QA round 1, Q3). The
+				 * whole statement, and why no client-side change closes it, is on
+				 * `askAside`'s own `subscriptionId` parameter — this branch is one of the
+				 * two places the id is chosen, and it chooses the only value there is.
+				 */
+				/*
+				 * A NEW ASK RETIRES THE LINE THAT DESCRIBED THE LAST ONE (design round 2,
+				 * D7). The composer's aside refusal sat above a panel that had moved on — a
+				 * fresh `/btw` still thinking, a new question in flight — and read as the
+				 * verdict on THEM. Every line on this surface is about the last attempt, so a
+				 * new attempt retires it; the alternative (matching the sentence to the ask it
+				 * came from) is a bookkeeping the line does not need.
+				 */
+				setSendError(null);
+				setSendErrorCode(undefined);
+				const ask = askAside(
+					sessionId,
+					content,
+					canonical.subscriptionId ?? undefined,
+				);
+				/*
+				 * A PANEL THE USER CLOSED HAS NO TURN LEFT TO STATE A REFUSAL ON, and the
+				 * question left the screen with it (review round 2, F7). The composer's
+				 * error line is then the only surface that still knows the ask happened,
+				 * so it says what became of it. Called in the same tick `askAside` returned
+				 * in, which is what lets the helper name this ask's own turn and its
+				 * question; the rule, and why the `/btw` command door shares it, is on the
+				 * helper.
+				 *
+				 * THE CODE GOES WITH THE SENTENCE, and it is what keeps the false half of the
+				 * error contract off this refusal: the box is empty by now (the press handed
+				 * it back) and whatever the user types next is not the question that failed,
+				 * so `ASIDE_NOT_ANSWERED_CODE` withholds the generic "Your message is still in
+				 * the composer. Send it again." (UX round 1, U4).
+				 */
+				reportUncarriedAsideRefusal(ask, sessionId, (sentence) => {
+					setSendError(sentence);
+					setSendErrorCode(ASIDE_NOT_ANSWERED_CODE);
+				});
+				/*
+				 * NOT AWAITED, so the box is handed back in the press's own commit (F1);
+				 * the promise is nested rather than returned for the same reason (see
+				 * `OffRecordAsk`).
+				 */
+				return { offRecord: ask };
 			}
 			/*
 			 * A SEND PRESSED BEFORE THE STREAM HAS ANSWERED WAITS FOR IT, and then
@@ -1201,6 +1720,13 @@ function SessionPanel({
 								SESSION_UNVALIDATED_MESSAGE,
 						);
 						setSendErrorCode(SESSION_UNVALIDATED_CODE);
+						/*
+						 * NO `setSendErrorRetry(true)` HERE (design round 11, D2): the read window
+						 * is withheld by the classifier now - a window that answers "failed" the
+						 * moment it is asked re-refuses the press - so a flag written true here is
+						 * a verdict the notice no longer renders and state that would outlive it.
+						 */
+						setSendErrorMuted(false);
 					}
 					return false;
 				}
@@ -1257,39 +1783,31 @@ function SessionPanel({
 			// runtime exception is a stack-trace fragment - with the backend
 			// stopped this line rendered "TypeError: fetch failed" inside the
 			// alert's own prose. See `userFacingMessage`.
-			reportFailure(error, SEND_UNCONFIRMED_MESSAGE);
+			reportCaughtFailure(key, error);
 			/*
-			 * TWO failures, and the composer acts differently on each.
+			 * ONE ANSWER, because the STORE has already done the work: every failure
+			 * class hands the payload back to this conversation's composer through one
+			 * path (`returnPayloadToComposer` - text, chips and staged quotes, whether
+			 * the outcome was a provable refusal or an unknown one), and the class
+			 * that turns out to have been DELIVERED after all does not reach here at
+			 * all - it resolves as a success, so the box stays empty and the message
+			 * stays in the transcript.
 			 *
-			 * Refused before admission - 413/422, the read window, and the owner's
-			 * own `runtime_busy`/`runtime_retiring` refusals, plus every
-			 * pre-transport refusal above: nothing reached the owner, so the text
-			 * belongs back in the box (`false`). The owner's two are the ones the
-			 * incident turned into a held draft: a 503 carrying `runtime_busy` and a
-			 * 409 carrying `runtime_retiring` were both read as UNKNOWABLE, so the
-			 * composer claimed it could not tell whether the message landed, over a
-			 * message the backend had already said it never accepted. It is keyed on
-			 * the CODES and not on those statuses because a bare 409 is also the
-			 * receipt-conflict refusal, whose replay may have been admitted the first
-			 * time - the same predicate's note carries the boundary.
-			 *
-			 * Anything else is UNKNOWABLE: the owner may have admitted the command
-			 * before the response was lost, which is why the echo is deliberately
-			 * left painted in the transcript. Putting the same text back in the box
-			 * would then show one message twice, under copy that names only the box
-			 * (design round 1's D1) - so the answer is `SEND_HELD`, the box stays
-			 * empty, and the retry travels through the store's claim and its own
-			 * "Restore message" control. One predicate, exported from the
-			 * store, so this cannot drift from the echo's retraction rule.
+			 * So `false` is "do not retire the draft": the hook must not clear the
+			 * text the store has just put back, and must not record this as a sent
+			 * message. There is no second case to distinguish here any more - the
+			 * distinction that used to matter (unknown vs refused) is what the store
+			 * acts on, and it acted before this line ran.
 			 */
-			return isRefusedBeforeAdmission(error) ? false : SEND_HELD;
+			return false;
 		} finally {
 			sendLock.release();
 			setAdmitting(false);
 		}
 	};
 	/**
-	 * Answer the pending `ask` gate by pressing one of its options.
+	 * Answer the pending gate by pressing one of its options: an `ask` option's
+	 * label, or an approval's Approve/Deny.
 	 *
 	 * This is `send`'s gate branch reached from a click instead of from the
 	 * composer, and it deliberately reuses that path's machinery rather than
@@ -1300,6 +1818,12 @@ function SessionPanel({
 	 * reported with the same authored copy and the same error code as a failed
 	 * send, instead of inventing a second error affordance on the card).
 	 *
+	 * AN APPROVAL IS NOT A SECOND PATH EITHER: its labels are the client's pair
+	 * (`APPROVAL_OPTIONS`), `answerGateOption` turns one into the boolean the
+	 * route takes, and a label outside the pair is refused THERE — nothing sent,
+	 * nothing claimed — which is why the guard below admits both gate kinds and
+	 * refuses neither here.
+	 *
 	 * The transport call itself lives in `answerGateOption`, which is where the
 	 * one-answer-in-flight property and the request body are asserted - neither
 	 * could be reached by a test while they lived inside this component (code
@@ -1308,8 +1832,7 @@ function SessionPanel({
 	 */
 	const answerWithOption = async (label: string) => {
 		const gate = canonical.frontend?.pending_gate;
-		if (!gate || gate.kind !== "ask" || !canonical.ownerEpoch || !sessionId)
-			return;
+		if (!gate || !canonical.ownerEpoch || !sessionId) return;
 		// The lock is checked here only to keep the busy flag honest; the claim
 		// itself is `answerGateOption`'s, and between this read and that claim
 		// there is no `await` for a handler to interleave in.
@@ -1424,6 +1947,19 @@ function SessionPanel({
 				 * second press from repeating an answer that already landed.
 				 */
 				setAnswerState({ key, sending: false, refused: null });
+				/*
+				 * AND THE BOX GOES WITH THE ANSWER (UX round 1, U4). A keyboard user
+				 * answers `1` by typing it and then pressing an option; the press consumed
+				 * the answer, but the keystrokes stayed in the composer — where focus
+				 * already is — so the next Enter sent `1` as an ordinary message (measured:
+				 * a real turn started with it). The press consumes the draft exactly as
+				 * the typed path does, through a method that clears ONLY text which IS an
+				 * approval answer (`1`, `yes.`), so a message somebody was writing is
+				 * never wiped. Ask presses keep their inherited behaviour; this round did
+				 * not change them.
+				 */
+				if (gate.kind === "approval")
+					input.current?.consumeApprovalAnswerDraft();
 				return;
 			case "card":
 				// The sentence belongs on the surface the press was made on, where it
@@ -1511,8 +2047,49 @@ function SessionPanel({
 		 * press's own outcome is the only current one.
 		 */
 		setStopNotice(null);
+		/*
+		 * THE PRESS'S OWN INSTANT, taken before the request leaves.
+		 *
+		 * It is what the reducer compares a killed call's `startedAt` against (`U7`),
+		 * and the receipt's own arrival time would be the wrong clock: the round trip
+		 * is tens of milliseconds on a healthy owner and seconds behind a busy one,
+		 * while the interrupt acts on the press. A call that started inside that gap
+		 * was killed by the press and would be missed by a receipt-stamped fact.
+		 */
+		const pressedAt = Date.now();
+		/*
+		 * WRITTEN AT THE PRESS, AND THE RECEIPT CAN ONLY TAKE IT BACK (UX round 2,
+		 * U15).
+		 *
+		 * This fact is what the reducer reads when the killed call's END event lands
+		 * (`killedByUserStop`), and that event is pushed by the daemon the moment the
+		 * interrupt acts - while the receipt is the HTTP response to this request, which
+		 * returns after the turn has wound down. Writing the fact from the receipt
+		 * therefore loses a race the fact exists to survive: measured in the interrupt
+		 * rig's Esc half, the ledger row read `Ran sleep 45 failed 0.1s` with
+		 * `[data-stopped-turn]` already drawn beside it - the line proves the receipt
+		 * did arrive `interrupted`, but the row's own classification had already been
+		 * made, and the reducer never revisits a settled row.
+		 *
+		 * THE HONESTY CLAUSE IS THE RECEIPT'S OTHER ANSWER: a press the owner ran on a
+		 * session that had nothing to interrupt must not reclassify the next genuine
+		 * failure as the user's own doing, so an answer that is NOT `interrupted`
+		 * clears the fact again. Between the press and that answer the fact stands - a
+		 * window of one round trip, and the only window in which a call already running
+		 * at the press can be told apart from one that failed on its own. A press that
+		 * never gets an answer (`catch` below) leaves the fact until the next turn
+		 * starts, which is the same door `clearTurnStopped` reads on `busy`.
+		 *
+		 * One visible consequence, stated rather than discovered: the Stop line and its
+		 * Retry read this same fact, so they appear at the press rather than a round
+		 * trip later, and vanish with the clear when the owner answers `idle`.
+		 */
+		markTurnStopped(sessionId, pressedAt);
 		void interruptTurn(sessionId, crypto.randomUUID())
-			.then((receipt) => setStopNotice(interruptNotice(receipt)))
+			.then((receipt) => {
+				if (receipt.status !== "interrupted") clearTurnStopped(sessionId);
+				setStopNotice(interruptNotice(receipt));
+			})
 			.catch((error) =>
 				// Renders in the same composer alert as a failed send, so it takes the
 				// same authored-copy rule. A receipt that never arrives is the one case
@@ -1520,7 +2097,7 @@ function SessionPanel({
 				// still on screen and `busy` is still true, which is the honest state.
 				setSendError(userFacingMessage(error, "Stop could not be confirmed.")),
 			);
-	}, [sessionId, interruptAvailable]);
+	}, [sessionId, interruptAvailable, markTurnStopped, clearTurnStopped]);
 	/*
 	 * The notice describes the LAST interrupt, so a turn that starts afterwards
 	 * retires it: the sentence says a turn was stopped, and the next turn is not
@@ -1529,8 +2106,17 @@ function SessionPanel({
 	 * still settling `busy` is still true and this correctly does nothing.
 	 */
 	useEffect(() => {
-		if (busy) setStopNotice(null);
-	}, [busy]);
+		if (busy) {
+			setStopNotice(null);
+			/*
+			 * AND THE STOPPED-TURN FACT GOES WITH IT (U7): the fact says "the turn you
+			 * stopped ended this way", and the next turn is not that turn. Leaving it
+			 * standing would classify the NEXT turn's killed-by-anything calls as the
+			 * user's own stop.
+			 */
+			if (sessionId) clearTurnStopped(sessionId);
+		}
+	}, [busy, sessionId, clearTurnStopped]);
 	/*
 	 * Escape is the control's accelerator, attached HERE because this component
 	 * owns both halves the predicate reads - `busy` and `stop` - and the ladder it
@@ -1619,17 +2205,26 @@ function SessionPanel({
 	 * `draft.error` is the last one the store recorded, which survives a remount
 	 * and so is what a user returning to the chat sees.
 	 *
-	 * `onDiscard` is offered only when the store is actually holding a claim
-	 * (`submittedText`). Without one there is nothing for `discardDraft` to
-	 * clear, and an always-present Discard would imply the app is retaining
-	 * something it is not.
+	 * THE DISCARD CONTROL AND THE CLAIM ARE BOTH GONE (review round 2, NIT). This
+	 * comment described an `onDiscard` that was offered only while the store held a
+	 * claim in `submittedText` - the released app's model, where a failed message was
+	 * kept outside the composer and had to be restored or discarded. Nothing is kept
+	 * outside the composer any more (the payload is returned to the box, see
+	 * `returnPayloadToComposer`), so the control has no subject and the sentence above
+	 * it was the last place in the pane still describing it. `submittedText` survives
+	 * as the retry rule's comparison basis, not as something anybody has to release.
 	 */
-	const activeError = sendError || draft?.error;
-	const activeErrorCode = sendErrorCode ?? draft?.errorCode;
-	const clearError = () => {
-		setSendError(null);
-		setSendErrorCode(undefined);
-	};
+	/*
+	 * THE PANE'S OWN `clearError` IS THE ONE ABOVE (main's `useCallback`, which the
+	 * aside door hands to `useSlashDispatch`), and the copy that stood here was this
+	 * branch's - the same two setters, a second identity. Removed by the fold: one
+	 * page, one clearer, or the dispatch callback is rebuilt on every render.
+	 *
+	 * AND `activeError`/`activeErrorCode` ARE GONE WITH IT. They were main's (the
+	 * composer alert read `sendErrorCode ?? draft.errorCode` through them), and in
+	 * the merged flow nothing reads them: this branch classifies the failure once,
+	 * in the store, and the pane renders the row's own copy.
+	 */
 	/*
 	 * A remedy that worked retires the message that asked for it.
 	 *
@@ -1654,8 +2249,14 @@ function SessionPanel({
 	// agent or team actually bound to the session is.
 	const boundTarget =
 		canonical.frontend?.active_team || canonical.frontend?.active_agent;
+	/*
+	 * The code the composer's notice classifies by - the LOCAL failure's when this
+	 * pane raised one, the row's otherwise - stated once because two readers need it:
+	 * the notice (`composerNoticeFor`) and the unresolved-attachment remedy below.
+	 */
+	const noticeCode = sendErrorCode ?? draft?.errorCode;
 	const attachmentResolved =
-		activeErrorCode === "unresolved_attachment" && Boolean(boundTarget);
+		noticeCode === "unresolved_attachment" && Boolean(boundTarget);
 	useEffect(() => {
 		if (!attachmentResolved) return;
 		setSendError(null);
@@ -1774,219 +2375,276 @@ function SessionPanel({
 		setSendErrorCode(undefined);
 	}, [windowOpen, sendErrorCode]);
 	/*
-	 * The claim, and whether the user can currently see what it holds.
+	 * A MESSAGE THE PREVIOUS RELEASE HELD OUTSIDE THE COMPOSER COMES HOME.
 	 *
-	 * `admissionAttempted` with a `submittedText` means the store will refuse
-	 * any send whose payload differs, and it survives clearing the textarea -
-	 * deliberately, because a keystroke is not evidence about a request that may
-	 * be executing on the owner. What it must not do is survive INVISIBLY: a
-	 * user who selected-all-deleted saw nothing retained, typed something else,
-	 * and was refused by a healthy backend with no link back to what they did.
-	 *
-	 * So the claim travels to the composer whenever it is held, error or no
-	 * error. Whether it needs SAYING is the composer's call, not this one's: the
-	 * answer depends on the live textarea value, which lives there. When the box
-	 * already holds the exact payload the message is on screen, an unchanged
-	 * retry is one keypress, and a notice would be noise.
+	 * Run from the pane rather than from hydration, and once per row: the released
+	 * app kept an unconfirmed message in a claim on the draft row with an explicit
+	 * "Restore message" link, and an app that has removed that link must not strand
+	 * one. Gated on the pane existing at all, which is what keeps a row for a
+	 * DELETED conversation from resurrecting its draft into a live composer (risk
+	 * R6) - a migration during hydration has no such fact available to it.
 	 */
-	//
-	// `!draft.pending` is load-bearing, not defensive. `admissionAttempted` is set
-	// BEFORE the awaited request, so it is true for the whole in-flight window (up
-	// to the op's derived request deadline). Without this the notice and its abandon control
-	// were live over a send whose outcome was still unknown, and abandoning there
-	// deleted the row that the settling request then patched - reintroducing the
-	// invisible-claim dead end one layer down. A request that may be executing is
-	// not something to offer an escape from; the escapes appear once it settles.
-	const heldText =
+	useEffect(() => {
+		if (!draftIdentity) return;
+		migrateHeldClaim(draftIdentity, draft);
+	}, [draftIdentity, draft]);
+
+	/*
+	 * THE AUTOMATIC RECONCILIATION: a message that was handed back turned out to
+	 * have been delivered.
+	 *
+	 * The row the owner publishes is keyed by the request id (`appendPendingUser`
+	 * says why), so a user record for that id that is NOT this app's own echo is
+	 * the owner's - proof the message landed, whatever the app was told at the
+	 * time. It arrives from any of the three routes the transcript has: the live
+	 * stream, a reconnect replay, or the history page on the next open, which is
+	 * what makes this work across a restart.
+	 *
+	 * Two answers, one comparison: a composer still holding exactly what was sent
+	 * is emptied in silence (the user asked for it to go, and it went), and a
+	 * composer edited since keeps every word of the edit and is told in one muted
+	 * line that the earlier message arrived (see `reconcileDelivered`).
+	 */
+	const unresolvedRequestId =
 		draft?.admissionAttempted && !draft.pending
-			? draft.submittedText
+			? draft.admissionRequestId
 			: undefined;
+	const settledByOwner = useCanonicalSessionsStore(() =>
+		unresolvedRequestId
+			? canonical.transcript.index.get(unresolvedRequestId)
+			: undefined,
+	);
+	const ownerHasIt = useCanonicalSessionsStore(() => {
+		if (!unresolvedRequestId) return false;
+		const record = canonical.transcript.records[settledByOwner ?? -1];
+		return record?.kind === "user" && !record.local;
+	});
+	useEffect(() => {
+		if (!unresolvedRequestId || !ownerHasIt || !draftIdentity) return;
+		useConversationInputStore.getState().reconcileDelivered(identity);
+		/*
+		 * AND THE PANE'S OWN NOTICE GOES WITH IT. Reconciliation is the app saying
+		 * "that message arrived", so a "Couldn't confirm your message was sent."
+		 * sentence still hanging over the composer is the app contradicting itself
+		 * one line above the truth - measured in review round 1 (B4) as the notice
+		 * that stayed up after the message was delivered, next to the Retry control
+		 * whose press would then duplicate it.
+		 */
+		setSendError(null);
+		setSendErrorCode(undefined);
+		setSendErrorRetry(false);
+		setSendErrorMuted(false);
+		useCanonicalSessionsStore
+			.getState()
+			.finishDraft(draftIdentity, draft?.sessionId ?? sessionId ?? "");
+	}, [
+		unresolvedRequestId,
+		ownerHasIt,
+		draftIdentity,
+		draft?.sessionId,
+		sessionId,
+		identity,
+	]);
+
 	/*
-	 * The text a PRE-ADMISSION refusal owes the box.
+	 * The muted statement that a handed-back message was delivered after all. Read
+	 * from the composer's OWN row rather than carried in local state, because the
+	 * reconciliation that raises it can run while this pane is unmounted (a switch
+	 * away and back, a restart): the row is the only place the fact survives, and
+	 * without a reader here the sentence never rendered at all - which is how the
+	 * live duplicate in review round 1 stayed invisible (B4).
+	 */
+	const lateDelivered = useConversationInputStore(
+		(state) => state.inputByConversation[identity]?.lateDelivered,
+	);
+	/*
+	 * §F3's PER-MESSAGE FAILURE STATE, addressed here because this page owns both
+	 * halves of it: the row it is about (the draft's open claim, or the
+	 * `undelivered` record a reconnect left behind) and the two doors its controls
+	 * use - this component's `send`, and the composer handle.
 	 *
-	 * Its own field rather than `heldText`, because the two are opposite answers
-	 * to opposite facts: `heldText` means the message may already be on the owner
-	 * and the box must stay empty, this one means it provably never left the
-	 * renderer and belongs back in the box. The composer puts this one back
-	 * (`refusedBeforeAdmissionText` carries the why); what matters here is that the
-	 * page cannot supply it from local state, because the refusal outlives the
-	 * composer that sent it - on the created-session arm the panel is remounted
-	 * under the id that very send minted, and the row is the only surviving copy
-	 * (UX round 3 U14, QA round 3 Q7).
+	 * `recordId` is the address: the echo's own id, which is the id the durable
+	 * row carries if the message ever lands, so the line can only attach to the
+	 * row it is about. Whether that row is ON SCREEN is the pane's question
+	 * (`chat-content.tsx` resolves it against the transcript), and a claim whose
+	 * echo is not painted - the panel that will paint it has not mounted - is
+	 * exactly the case where the composer still speaks.
 	 */
-	const refusedText = refusedBeforeAdmissionText(draft);
-	/*
-	 * The other half of the same payload, carried the same way and for the same
-	 * reason: the composer's chips live under the identity the send was made from,
-	 * so the composer that mounts after the flip cannot reconstruct the file list
-	 * the refused send was carrying. Restoring the text without it is a send that
-	 * silently drops the user's file, and the row that recorded it is retired by
-	 * the very resend that lost it (round 7, R17).
-	 */
-	const refusedAttachments = refusedBeforeAdmissionAttachments(draft);
-	const releaseHeld = () => {
-		if (draftIdentity)
-			useCanonicalSessionsStore.getState().releaseClaim(draftIdentity);
-		clearError();
-	};
-	const composerSendError =
-		activeError || heldText !== undefined || refusedText !== undefined
+	const deliveryTurn = !draft
+		? null
+		: unresolvedRequestId !== undefined && draft.submittedText !== undefined
 			? {
-					message: activeError ?? undefined,
-					// The "what to do" half of the error contract travels with the
-					// message. An unresolved attachment needs a profile chosen; an
-					// unreachable registry needs the agents page. Any other code has no
-					// specific remedy, so it offers none rather than a generic button.
+					recordId: unresolvedRequestId,
+					text: draft.submittedText,
+					attachments: draft.submittedAttachments ?? [],
+				}
+			: (draft.undelivered ?? null);
+	const undeliveredTurn = deliveryTurn
+		? {
+				recordId: deliveryTurn.recordId,
+				onSendAgain: () => {
+					void send(deliveryTurn.text, [...deliveryTurn.attachments]);
+				},
+				onEdit: () => {
 					/*
-					 * The CODE, not a pre-computed answer drawn from it.
-					 *
-					 * Two questions on this screen are answered by the store's own
-					 * predicates and must not be answered twice: whether the composer's
-					 * generic retry hint is true (`withholdsRetryHint` - the read window
-					 * refuses the retry for exactly as long as its notice is on screen,
-					 * UX round 3, U9; the leading-slash policy refuses this text forever,
-					 * UX round 2, U13), and whether the held line may say the outcome is
-					 * unknowable (`isStoreWriteRefusal` - a store that could not write
-					 * KNOWS nothing was saved, and telling the operator to wait for a
-					 * reply that cannot come contradicts the sentence above it, UX round
-					 * 1, U4). Passing the code lets the composer ask both, in the one
-					 * place that renders them; passing a boolean would put the second
-					 * question's answer here as well, which is how two readers of one
-					 * fact come to disagree about it.
+					 * The failure's own return path already put the payload in the box; this
+					 * is the same act reached from the message. `returnPayload` merges under
+					 * the user's typing and refuses while an attempt is in flight, so
+					 * pressing Edit after the text came home cannot double the message.
 					 */
-					code: activeErrorCode,
-					actions:
-						// The unconfirmed-send guard's remedies are Restore and the abandon
-						// control, both rendered by the composer from `heldText`. It must
-						// not also offer a code-specific action, or the row carries two
-						// answers to the same question.
-						activeErrorCode === UNCONFIRMED_SEND_CODE
-							? undefined
-							: activeErrorCode === "unresolved_attachment"
-								? [
-										{
-											label: "Choose agent",
-											onClick: () => void dispatch({ name: "agent", args: "" }),
-										},
-										{
-											label: "Choose team",
-											onClick: () => void dispatch({ name: "team", args: "" }),
-										},
-									]
-								: activeErrorCode === "profile_registry_unavailable"
-									? [
-											{
-												label: "Manage agents",
-												onClick: () => navigate("/agents"),
-											},
-										]
-									: undefined,
+					useConversationInputStore.getState().returnPayload(identity, {
+						text: deliveryTurn.text,
+						attachments: [...deliveryTurn.attachments],
+						replies: [],
+					});
+					input.current?.focusInput();
+				},
+			}
+		: null;
+	/*
+	 * THE CLAIM ENDED, SO THE COMPOSER'S SENTENCE ABOUT IT ENDS (§F2's last
+	 * bullet, UX round 1's U5b; restored with §F3's surface).
+	 *
+	 * Two things end a claim: the user's own press, and the SERVER's answer
+	 * arriving through a reconnect. The first clears this component's state in
+	 * its own handler; the second cannot - the re-subscribe writes the STORE,
+	 * and this page only learns about it on the next render. Without this the
+	 * notice kept stating a failure over a claim the server had already
+	 * answered.
+	 */
+	const heldClaimLive =
+		draft?.admissionAttempted === true && draft.pending !== true;
+	const heldClaimWasLive = useRef(heldClaimLive);
+	useEffect(() => {
+		if (heldClaimWasLive.current && !heldClaimLive) {
+			setSendError(null);
+			setSendErrorCode(undefined);
+			setSendErrorRetry(false);
+			setSendErrorMuted(false);
+		}
+		heldClaimWasLive.current = heldClaimLive;
+	}, [heldClaimLive]);
+	/*
+	 * AND THE LOCK'S OWN ANSWER GOES WHEN THE FLIGHT DOES (review round 4, M2 - also
+	 * QA's Q4-1, the designer's D11 and UX's U16).
+	 *
+	 * The sentence a refused mid-flight press gets is a claim about a send that is
+	 * still out, so it must not outlive the send. It used to be latched with nothing
+	 * to retire it: the SUCCESS path deletes the draft row, so the reconciliation
+	 * effect never runs, and the line stayed up under a transcript that already held
+	 * the message - a screen telling the user their delivered message was still on
+	 * its way. On a slow ordinary send (no failure, no hold long enough to trip the
+	 * deadline) that stale claim is the common case, and it is what UX measured
+	 * turning a follow-up into one glued row: with nothing saying the send finished,
+	 * the next message was appended to the refused one and went out as a single row.
+	 *
+	 * Derived from the ROW's own `pending` rather than cleared per outcome, because
+	 * the store already clears that on EVERY ending - a success (`finishDraft`
+	 * removes the row), a failure, a delivery reconciled after the fact - so one
+	 * condition covers them and a future ending cannot forget to retire the line.
+	 */
+	useEffect(() => {
+		/*
+		 * THE PREDICATE IS A FUNCTION, so it has a behavioural pin rather than a reading
+		 * of this effect's source (review round 5, n5-2). The three terms are the three
+		 * things that can hold a flight open: the row's `pending`, this pane's own
+		 * `admitting` - which covers the window BEFORE an admission exists, where a press
+		 * answered during image decode used to have its sentence retired in the same
+		 * commit (m5-1) - and the approval gate, whose lock belongs to the question on
+		 * screen rather than to any flight.
+		 */
+		if (
+			!lockAnswerOutlived({
+				rowPending: draft?.pending === true,
+				admitting,
+				gatePending: canonical.frontend?.pending_gate != null,
+				muted: sendErrorMuted,
+			})
+		)
+			return;
+		setSendError(null);
+		setSendErrorCode(undefined);
+		setSendErrorRetry(false);
+		setSendErrorMuted(false);
+	}, [
+		draft?.pending,
+		admitting,
+		canonical.frontend?.pending_gate,
+		sendErrorMuted,
+	]);
+	const notice = composerNoticeFor({
+		error: sendError,
+		code: sendErrorCode,
+		retry: sendErrorRetry,
+		muted: sendErrorMuted,
+		rowError: draft?.error,
+		rowCode: draft?.errorCode,
+		rowRetry: draft?.errorRetry,
+		lateDelivered,
+	});
+	/*
+	 * THE COMPOSER STANDS DOWN WHILE THE STRIP SPEAKS, for the one failure the
+	 * strip's own sentence already covers (§F2's "one root cause, one Retry"; the
+	 * same rule the sidebar's caption follows, D30). RESTORED WITH §F3
+	 * (agent review round 4's R17, reconciling the connection-drop rig's
+	 * single-voice checks with the composer rework): the failed message states its
+	 * own fate ON ITS ROW (`Not delivered · Send again · Edit`) and its payload is
+	 * in the box, so a "Couldn't reach Local Operator" sentence here was a second
+	 * telling of the strip's own fact, with a second Retry repeating the row's
+	 * `Send again`. Withheld for the TRANSPORT failure only - the arm whose
+	 * sentence restates the connection. A refusal the daemon itself answered (the
+	 * credential strip's state, D29's scene) keeps the composer's notice, because
+	 * that sentence is about the app's attempt rather than the connection's
+	 * absence, and its `Retry` is that state's own remedy.
+	 */
+	const composerSendError =
+		notice &&
+		!(
+			stripSpeaksConnection &&
+			notice.code === DESKTOP_REFUSAL_CODE.transportFailed
+		)
+			? {
+					...notice,
+					actions: undefined,
 					/*
-					 * The held payload itself, so the composer can put it back.
+					 * The composer's Send, which is the whole of Retry: pressing it replays
+					 * an unchanged payload under its own request id, and sends an edited one
+					 * as a new message. See `admitChatDraft`'s replay rule.
 					 *
-					 * The guard demands a byte-identical retry of a message the user can
-					 * no longer see - asking them to retype it is asking for the one
-					 * thing they cannot do. Handing over the text turns "retry it
-					 * unchanged" from an instruction into a control.
+					 * FOCUS COMES BACK TO THE BOX, because the control that was pressed is
+					 * about to unmount: with the press accepted, the notice goes and the
+					 * button that owned the focus goes with it, and the browser hands the
+					 * caret to the document - measured in review round 1 (U5) as the next
+					 * Enter collapsing a sidebar section, because the caret had landed on the
+					 * sidebar's own toggle. Clear did this and Retry did not.
 					 */
-					heldText,
+					onRetry: () => {
+						input.current?.submitNow();
+						input.current?.focusInput();
+					},
+					onClear: () => {
+						if (identity)
+							useConversationInputStore.getState().clearComposer(identity);
+						clearError();
+						if (draftIdentity)
+							useCanonicalSessionsStore.getState().discardDraft(draftIdentity);
+						input.current?.focusInput();
+					},
 					/*
-					 * The payload a PRE-ADMISSION refusal owes the box, on the same grounds as
-					 * `heldText` above: the composer cannot reconstruct text it never kept, and
-					 * on the created-session arm it is not even the same composer any more.
-					 * The box rule that consumes it (`restoreSubmittedText`) only writes an
-					 * EMPTY box, so the user's own typing still wins.
+					 * Editing dismisses the notice, and must clear the STORE's copy too -
+					 * `draft.error` outlives local state, so clearing only `sendError` would
+					 * leave the message hanging over text the user has since fixed, which is
+					 * the exact defect being replaced.
 					 *
-					 * Carried independently of `message`, which is why the payload also exists
-					 * when `refusedText` is the only term: dismissing the alert clears the copy
-					 * and the code, and a dismissal must not be what makes a two-line message
-					 * unreachable again - the record ends when the draft does.
-					 */
-					refusedText,
-					/*
-					 * The files that go back with it. Same terms as `refusedText` above - the
-					 * composer's own chip row is per-identity and was staged under the identity
-					 * the flip replaced - and on the same refusal row, so the two arrive and are
-					 * dropped together.
-					 */
-					refusedAttachments,
-					/*
-					 * The held payload's other half, on the same terms as `heldText` above and
-					 * from the same row: the unchanged-payload guard compares text AND files
-					 * AND images, so the composer's "the held message is back in the box" test
-					 * needs the files as well as the text. Without them it said a box holding
-					 * the text but one chip fewer was the held payload, and rendered
-					 * "Send it again" over the guard that then refused every press (UX round
-					 * 1, U2). The store records both in one update at admission, so the two
-					 * travel together here too rather than one being inferable from the other.
-					 */
-					heldAttachments:
-						heldText !== undefined ? draft?.submittedAttachments : undefined,
-					/*
-					 * The CLAIM's own verdict, from the row, and the reason the held line no
-					 * longer reads `code` above.
-					 *
-					 * `code` is about the last ATTEMPT. The flow this PR exists for is
-					 * refusal -> `Restore message` -> drop the file -> Enter, and the last
-					 * attempt there is refused by the unchanged-payload GUARD, whose code is
-					 * `unconfirmed_send`. A held line selected by that code reverted to
-					 * "whether it reached the agent is not knowable ... send again only if no
-					 * reply arrives" one screen after this app said "Nothing was saved",
-					 * with the disk off the screen (UX round 2, U10). The guard throws before
-					 * the row is written, so the store's verdict is still on the row - it was
-					 * simply never recorded against the CLAIM, and `errorCode` is not it:
-					 * `onDismiss` clears that one the moment the operator acknowledges the
-					 * sentence, while the payload it describes is still held. `heldClaimCode`
-					 * travels with the payload for exactly that reason.
-					 *
-					 * Gated on `heldText` like the fields above it: without a claim there is no
-					 * verdict to state, and a stale one would describe a payload the composer
-					 * is not holding.
-					 */
-					heldClaimCode:
-						heldText !== undefined ? draft?.heldClaimCode : undefined,
-					onRestoreHeld:
-						heldText !== undefined ? () => clearError() : undefined,
-					/*
-					 * Two different abandonments, because they lose different things.
-					 *
-					 * `onDiscard` drops the whole draft and is what the user wants when
-					 * the message is finished with. `onReleaseHeld` drops only the claim
-					 * and keeps the row - the composer picks it when the box holds text
-					 * that is NOT the held payload, i.e. the user has already moved on and
-					 * discarding would silently destroy what they just typed.
-					 */
-					// Same settled-send condition as `heldText`: discarding a draft whose
-					// admission is still in flight is what manufactured the ghost row.
-					onDiscard:
-						draft?.submittedText && !draft.pending
-							? () => {
-									if (draftIdentity)
-										useCanonicalSessionsStore
-											.getState()
-											.discardDraft(draftIdentity);
-									clearError();
-								}
-							: undefined,
-					onReleaseHeld: heldText !== undefined ? releaseHeld : undefined,
-					/*
-					 * Editing dismisses the alert, and must clear the STORE's copy too -
-					 * `draft.error` outlives local state, so clearing only `sendError`
-					 * would leave the message hanging over text the user has since
-					 * fixed, which is the exact defect being replaced.
-					 *
-					 * It clears the error and nothing else. `submittedText` and
-					 * `admissionAttempted` are a claim about a request that may already
-					 * be executing on the owner, and a keystroke is not evidence about
-					 * that - so the unchanged-send guard survives, and a genuinely
-					 * different message still gets refused with its own message until
-					 * the user discards. Discard is the only control that drops a claim.
+					 * It clears the SENTENCE and nothing else. The claim
+					 * (`admissionAttempted`, the request id, the pinned payload) is a fact
+					 * about a request that may already be executing on the owner, and a
+					 * keystroke is not evidence about that: an edit followed by Send is a
+					 * NEW message under a new id (the replay rule), and if the first one
+					 * landed after all, the reconciliation says so.
 					 */
 					onDismiss: () => {
 						clearError();
-						// Unconditional: `errorCode` used to be cleared only when a
-						// `draft.error` existed to clear alongside it, so a code recorded
-						// by local state alone outlived the message that explained it.
 						if (draftIdentity && draft)
 							useCanonicalSessionsStore.getState().updateDraft(draftIdentity, {
 								error: undefined,
@@ -1995,6 +2653,7 @@ function SessionPanel({
 					},
 				}
 			: undefined;
+
 	return (
 		<div className="flex h-full min-h-0 flex-col">
 			{/*
@@ -2092,7 +2751,22 @@ function SessionPanel({
 								? (loadedTarget ?? "Starting the session")
 								: draft?.sessionId
 									? canonical.frontend?.cwd || cwd || "Canonical chat"
-									: "The session starts when you send your first message."
+									: /*
+										 * A DRAFT WITH NO SESSION STATES WHERE IT WILL RUN, NOT WHAT IT
+										 * WILL DO (§H, U23). This slot held "The session starts when you
+										 * send your first message." - the same promise the deleted
+										 * "Nothing starts until you send" made, on a screen that now has
+										 * somewhere to type - and at 1380 it did not even survive: the
+										 * header clipped it mid-word ("...tarts when you send your first
+										 * message.", the launch frame of the empty-state set). The path is
+										 * what the slot exists for: the pane's second surface answering
+										 * "where am I" (the comment below says so for the live arm), and
+										 * the composer's chip shows the same directory one line under it.
+										 * With no directory known yet the slot says nothing - an empty string,
+										 * which is what the header's `description` prop takes; `undefined`
+										 * would fall back to the component's own default sentence.
+										 */
+										canonical.frontend?.cwd || cwd || ""
 							: /*
 								 * LIVE: the value the chip paints, not `canonical.frontend?.cwd`.
 								 *
@@ -2191,6 +2865,7 @@ function SessionPanel({
 					 */
 					paneHasSession={paneHasSession}
 					sendError={composerSendError}
+					undelivered={undeliveredTurn}
 					/*
 					 * The session's readings, straight off the canonical stream, and
 					 * the SAME dispatcher the composer submits through. Routing the
@@ -2211,7 +2886,38 @@ function SessionPanel({
 					sessionStatus={
 						sessionId
 							? {
-									frontend: canonical.frontend,
+									/*
+									 * The live snapshot when there is one, and otherwise the readings
+									 * this pane was last told.
+									 *
+									 * A reconnect is answered with `open{gap}`, which drops the
+									 * authoritative frontend by design, so `canonical.frontend` was
+									 * null for the whole 1.5-4 s the replacement snapshot took to land
+									 * - and a null frontend is exactly what makes the strip render
+									 * nothing at all (its own first line). So all four readings
+									 * blanked and came back at the stream's cadence, which reads as
+									 * the conversation reloading from scratch.
+									 *
+									 * The fallback is honest rather than convenient: `heldFrontend`
+									 * is dropped by every terminal state and by a real session change,
+									 * so it can only be non-null here while a reconnect is genuinely
+									 * in flight - and the pane already says so in its own words,
+									 * because the same state publishes `status: "reconnecting"` and
+									 * the transcript paints its Reconnecting line.
+									 */
+									frontend: canonical.frontend ?? canonical.heldFrontend,
+									/*
+									 * Whether those readings are the HELD ones, which is a
+									 * different question from whether a frontend is present:
+									 * a pane that has never had a snapshot and a pane drawing
+									 * the one it was last told both arrive here with a null
+									 * `canonical.frontend`, and only the second is a state the
+									 * reader needs told about. So it is the fallback actually
+									 * being the source, not the null.
+									 */
+									held:
+										canonical.frontend === null &&
+										canonical.heldFrontend !== null,
 									/*
 									 * The chosen-but-unconfirmed model, so the strip can paint the pick
 									 * the moment it is made instead of waiting out a cold runtime bind
@@ -2252,6 +2958,19 @@ function SessionPanel({
 										 */
 										frontend: preview.data.snapshot,
 										draft: true,
+										/*
+										 * A MODEL IS RESOLVED FOR THIS DRAFT, and that is the fact the
+										 * composer's send is gated on (UX round 1, U1): this branch is taken
+										 * exactly when the preview's answer has arrived, and the branch below
+										 * is the one that runs while it has not. One value, read by the strip
+										 * as its readings and by the composer as its send gate, rather than
+										 * two derivations of "has this draft a model" that can disagree.
+										 * (The payload is deliberately not spelled out in a comment here:
+										 * the composer suite proves it reaches the strip and nowhere else
+										 * by reading every occurrence of its accessor, and a comment naming
+										 * it would fail a guard that is doing its job.)
+										 */
+										draftResolved: true,
 										onOpenDraftPicker: draftPickable
 											? openDraftPicker
 											: undefined,
@@ -2267,6 +2986,8 @@ function SessionPanel({
 											 */
 											frontend: null,
 											draft: true,
+											/* No snapshot and no reading: the draft's model is NOT resolved. */
+											draftResolved: false,
 											draftResolution,
 										}
 									: undefined
@@ -2281,7 +3002,7 @@ function SessionPanel({
 					 * than taken inside the content component, so the branch's new props
 					 * sit BESIDE it rather than in its place.
 					 */
-					onComposerInput={warm}
+					onComposerInput={onComposerInput}
 					mcpServers={mcpServers}
 					mcpGrantRunning={mcpGrantRunning}
 					mcpRemedy={mcpRemedy}
@@ -2342,6 +3063,21 @@ export function ChatPage() {
 	);
 	const enabled = catalogueState === "enabled";
 	const { data: serverHealth } = useServerHealth();
+	/*
+	 * WHETHER THE STRIP OWNS THE CONNECTION VOICE, read here for the CATALOGUE
+	 * error only (agent review round 2, R11).
+	 *
+	 * The pane states a lost server as the store's catalogue failure - the
+	 * transport's own sentence, which is what the walker's before-run photographed
+	 * as the bare alert at the top of the pane - and the strip, one element down in
+	 * this very tree, states the same fact with the right copy and the one Retry.
+	 * The shared predicate carries the strip's presence beside the copy condition
+	 * (`chat-status-presence.ts`), so this stands down exactly where the strip has
+	 * taken the voice.
+	 */
+	const stripSpeaksConnection = useStripSpeaksConnection(
+		serverHealth?.online === false,
+	);
 	const pairingCause =
 		serverHealth?.snapshot && !serverHealth.snapshot.pairing.available
 			? (serverHealth.snapshot.pairing.cause ?? "unpaired")
@@ -2428,16 +3164,16 @@ export function ChatPage() {
 		setRouteError(null);
 		navigate("/chat");
 	};
-	const select = (id: string) => {
-		/*
-		 * The sidebar's finger on the switch. The rule - why the URL is written with
-		 * the commit rather than behind the guard read, and why all three entrances
-		 * share it - is in `openConversation`; all this one owns is its own screen
-		 * state (the navigation sentence belongs to the route the user is leaving).
-		 */
-		setRouteError(null);
-		void openConversation(navigate, id);
-	};
+	/*
+	 * THERE IS NO `select` HERE ANY MORE, and its absence is the change rather than
+	 * an omission: the sidebar's rows used to call back into this route so that the
+	 * route could clear its own sentence before switching. The one sidebar is
+	 * mounted above the routes now (`app.tsx` -> `chat-layout.tsx` ->
+	 * `sidebar-navigation.tsx`), so a row calls `openConversation` itself - the same
+	 * function the command palette and the `/chat` rebind use - and the clearing it
+	 * used to do is the route's own effect: it fires on the draft key and on the
+	 * route identity, and a switch moves both.
+	 */
 	// Keyed on the SESSION once one exists, so admitting a draft does not unmount
 	// the panel mid-send. The rule and its reasoning live in `panelIdentityFor`;
 	// `panelSessionIdOfView` is the id this pane reads, extracted so a surface
@@ -2447,102 +3183,107 @@ export function ChatPage() {
 	const id = panelSessionIdOfView(draftKey, draft?.sessionId, active);
 	const identity = panelIdentityFor(draftKey, id);
 	return (
-		<ChatLayout
-			sidebar={
-				<ChatSidebar
-					selectedConversation={active ?? undefined}
-					onSelectConversation={select}
-					onStageDraft={stage}
-				/>
-			}
-			content={
-				<div className={cn("flex h-full min-h-0 flex-col")}>
-					{/*
-					 * ONE sentence above the panel: a legacy route that names no
-					 * conversation, or a store failure the composer does not own. A
-					 * switch no longer has a failure of its own to state here - the
-					 * target pane speaks for its own stream (see `openSession`).
-					 */}
-					{(routeError || error) && (
-						<p
-							role="alert"
-							className={cn("px-4 py-2 text-body-sm text-danger")}
-						>
-							{routeError || error}
-						</p>
+		<div className={cn("flex h-full min-h-0 flex-col")}>
+			{/*
+			 * ONE sentence above the panel: a legacy route that names no
+			 * conversation, or a store failure the composer does not own. A
+			 * switch no longer has a failure of its own to state here - the
+			 * target pane speaks for its own stream (see `openSession`).
+			 *
+			 * TWO FAILURES, ONE REGION, AND ONLY ONE OF THEM YIELDS (§F2, R11).
+			 *
+			 * `routeError` is a NAV fact - this conversation is not on this machine,
+			 * the route did not resolve - and the strip does not state it, so it always
+			 * renders. `error` is the store's catalogue failure, which for a dead
+			 * backend IS the connection fact the strip owns; while the strip speaks,
+			 * this half stands down so one press of Retry is not offered twice for one
+			 * root cause.
+			 */}
+			{(routeError || (error && !stripSpeaksConnection)) && (
+				<p role="alert" className={cn("px-4 py-2 text-body-sm text-danger")}>
+					{routeError || error}
+				</p>
+			)}
+			{!enabled ? (
+				/*
+				 * A PANE-level state, presented as one: centred in the column, the shape the
+				 * route's own Suspense fallback already uses, and - the reason it is not a
+				 * bare `p-6` against the top edge - clear of the full-bleed bands.
+				 *
+				 * Both bands are `fixed` at the top of the window, so while one shows it
+				 * covers the first ~30px of EVERY surface. Measured on the withdrawn frame
+				 * (`docs/evidence/daemon-attach-live-app/after-gate-withdrawn.png`), this
+				 * sentence's line box was laid out at y=24 with the pane empty below it, so
+				 * the pane read as a single flat colour beside a sidebar that kept its
+				 * rows: the node existed, was 880x70 and `checkVisibility()` was true, and
+				 * the reader could not see it. Centring it in the pane also stops the
+				 * sentence from being the pane's first 30 pixels, whatever the band does
+				 * (design round 1, D2).
+				 */
+				<div
+					className={cn(
+						"flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-2 p-6",
+						"text-body text-ink-muted",
 					)}
-					{!enabled ? (
-						/*
-						 * A PANE-level state, presented as one: centred in the column, the shape the
-						 * route's own Suspense fallback already uses, and - the reason it is not a
-						 * bare `p-6` against the top edge - clear of the full-bleed bands.
-						 *
-						 * Both bands are `fixed` at the top of the window, so while one shows it
-						 * covers the first ~30px of EVERY surface. Measured on the withdrawn frame
-						 * (`docs/evidence/daemon-attach-live-app/after-gate-withdrawn.png`), this
-						 * sentence's line box was laid out at y=24 with the pane empty below it, so
-						 * the pane read as a single flat colour beside a sidebar that kept its
-						 * rows: the node existed, was 880x70 and `checkVisibility()` was true, and
-						 * the reader could not see it. Centring it in the pane also stops the
-						 * sentence from being the pane's first 30 pixels, whatever the band does
-						 * (design round 1, D2).
-						 */
-						<div
-							className={cn(
-								"flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-2 p-6",
-								"text-body text-ink-muted",
-							)}
+				>
+					<p className={cn("text-center")}>
+						{capabilities.isLoading
+							? "Connecting to the backend…"
+							: capabilities.error
+								? userFacingMessage(
+										capabilities.error,
+										"The Local Operator server did not answer as expected.",
+									)
+								: (pairingSentence ??
+									"Update the backend to use canonical chats. Your existing histories are unchanged.")}
+					</p>
+					{offerRetry && (
+						<button
+							type="button"
+							className={cn("underline")}
+							onClick={() => void paneRetry()}
 						>
-							<p className={cn("text-center")}>
-								{capabilities.isLoading
-									? "Connecting to the backend…"
-									: capabilities.error
-										? userFacingMessage(
-												capabilities.error,
-												"The Local Operator server did not answer as expected.",
-											)
-										: (pairingSentence ??
-											"Update the backend to use canonical chats. Your existing histories are unchanged.")}
-							</p>
-							{offerRetry && (
-								<button
-									type="button"
-									className={cn("underline")}
-									onClick={() => void paneRetry()}
-								>
-									Retry
-								</button>
-							)}
-						</div>
-					) : identity ? (
-						<div className={cn("min-h-0 flex-1")}>
-							<SessionPanel
-								key={identity}
-								identity={identity}
-								draftKey={draftKey}
-								sessionId={id}
-							/>
-						</div>
-					) : (
-						<div className={cn("p-6")}>
-							<h1 className={cn("text-title")}>Start a chat</h1>
-							<p className={cn("mt-2 text-body text-ink-muted")}>
-								Choose an agent or team, or start a new chat. Nothing starts
-								until you send.
-							</p>
-							<button
-								type="button"
-								className={cn(
-									"mt-4 rounded-md border border-control px-3 py-2",
-								)}
-								onClick={() => stage(undefined, true)}
-							>
-								New chat
-							</button>
-						</div>
+							Retry
+						</button>
 					)}
 				</div>
-			}
-		/>
+			) : identity ? (
+				<div className={cn("min-h-0 flex-1")}>
+					<SessionPanel
+						key={identity}
+						identity={identity}
+						draftKey={draftKey}
+						sessionId={id}
+					/>
+				</div>
+			) : (
+				/*
+				 * THE "Start a chat" SCREEN IS DELETED (§H, U1 and U23), and what is left
+				 * here is the residue rather than the screen: launch lands on the empty
+				 * state with the composer docked and focused, because the store's own
+				 * hydration seeds a draft when there is nothing to restore
+				 * (`launchDraftSeed`), so a cold start has an identity before the first
+				 * paint and never reaches this arm.
+				 *
+				 * The one state that still can is a LEGACY LINK (`/chat/:agentId`) whose
+				 * conversation this machine does not have: the state effect above sets
+				 * `routeError` and the sentence for it renders at the top of this pane, so
+				 * the pane is not empty and re-staging a draft unasked would be the app
+				 * answering a question the user did not ask while also clearing that
+				 * sentence (the draft-key effect owns its lifetime). A bare `New chat`
+				 * control remains, without the deleted heading or its promise - the
+				 * affordance that state actually needs, and nothing else.
+				 */
+				<div className={cn("p-6")}>
+					<button
+						type="button"
+						className={cn("rounded-md border border-control px-3 py-2")}
+						onClick={() => stage(undefined, true)}
+					>
+						New chat
+					</button>
+				</div>
+			)}
+		</div>
 	);
 }

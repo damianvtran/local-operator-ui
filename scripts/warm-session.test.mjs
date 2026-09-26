@@ -27,7 +27,7 @@ const bundle = await build({
 		contents: `
 			import { createElement, useState } from "react";
 			import { renderToStaticMarkup } from "react-dom/server";
-			import { useWarmSession, WARM_SESSION_CATALOGUE_VERSION } from "./src/renderer/src/shared/hooks/use-warm-session";
+			import { useDraftWarmSession, useWarmSession, WARM_SESSION_CATALOGUE_VERSION } from "./src/renderer/src/shared/hooks/use-warm-session";
 			export { WARM_SESSION_CATALOGUE_VERSION };
 
 			/*
@@ -50,6 +50,16 @@ const bundle = await build({
 
 			export const drive = (props) =>
 				renderToStaticMarkup(createElement(Harness, props));
+
+				/*
+				* The draft twin's probe: the same shipped hook, mounted through a real
+				* renderer because ITS contract is an effect (fire once the minted id's
+				* own subscription is open) and renderToStaticMarkup runs no effects.
+				*/
+				export function DraftWarmProbe({ draftId, subscriptionId, capabilities }) {
+				useDraftWarmSession(draftId, subscriptionId, capabilities);
+				return null;
+				}
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -95,7 +105,9 @@ export const desktopResult = (request) => globalThis.__warmRequest(request);`,
 // external here and a data: URL has no base path from which to resolve it.
 const bundlePath = new URL("./_warm-session.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { drive, WARM_SESSION_CATALOGUE_VERSION } = await import(bundlePath.href);
+const { drive, WARM_SESSION_CATALOGUE_VERSION, DraftWarmProbe } = await import(
+	bundlePath.href
+);
 await unlink(bundlePath);
 
 const requests = [];
@@ -182,7 +194,9 @@ test("the warm is gated on the capability that publishes the route", () => {
 test("a draft with no session yet warms nothing, because there is nothing to warm", () => {
 	reset();
 	// A staged draft mints no session id - the create round trip is what
-	// produces one - so the draft path's win comes from the echo, not the warm.
+	// produces one - so THIS hook has nothing to address before the send. The
+	// draft's own warm is the twin hook below, and it can only fire once the
+	// first keystroke's mint has handed the pane an id to warm.
 	drive({
 		sessionId: undefined,
 		capabilities: capable(),
@@ -287,16 +301,67 @@ test("the warm is wired to the composer inside the subscribed panel, not above i
 			panel.indexOf("useWarmSession("),
 		"the panel must subscribe before it warms",
 	);
+	// The draft twin obeys the same rule, and adds its own: it fires only once
+	// the MINted id's own subscription is open (`canonical.subscriptionId`), which
+	// is why it must also live in this component.
 	assert.ok(
-		panel.includes("onComposerInput={warm}"),
+		panel.includes("useDraftWarmSession("),
+		"the draft warm hook must be called inside SessionPanel too",
+	);
+	assert.ok(
+		panel.indexOf("useCanonicalSessionStream(") <
+			panel.indexOf("useDraftWarmSession("),
+		"the panel must subscribe before the draft can warm anything",
+	);
+	assert.ok(
+		panel.includes("canonical.subscriptionId"),
+		"the draft warm is gated on the panel's open subscription",
+	);
+	// The draft's STREAM is addressed at the minted id until the session exists,
+	// so the subscription that holds the bridge is the draft's own.
+	assert.ok(
+		panel.includes("sessionId ?? draft?.warmId"),
+		"the stream must address the minted draft id until the create hop",
+	);
+	// The pane also answers whether that stream is a SESSION's (UX round 1, U1):
+	// the two ids have the same shape, and without the third input the composed
+	// `awaitingHydration` holds `Loading conversation…` over the empty state until
+	// the draft's first frame lands.
+	assert.match(
+		panel,
+		/useCanonicalSessionStream\(\s*streamId,\s*Boolean\(streamId\),\s*Boolean\(sessionId\),\s*\)/,
+		"the panel must answer whether the stream is a session's, not a draft's",
+	);
+	// And the Run-details model stays null for a draft (design review round 1,
+	// D2): a draft has no run, so the header must not grow the ⓘ control while
+	// the user is merely typing.
+	assert.ok(
+		panel.includes("sessionId && canonical.frontend"),
+		"run details must be gated on the pane having a session",
+	);
+	assert.ok(
+		panel.includes("onComposerInput={onComposerInput}"),
 		"the trigger must reach the composer, where the keystroke is observable",
 	);
+	// And the composer's edge branches: a session warms itself, a draft MINTS
+	// the id its runtime will be warmed on. Both halves pinned, because losing
+	// either one silently returns the pane to the pre-warm behaviour.
+	assert.ok(panel.includes("ensureDraftWarm(draftKey)"));
+	assert.ok(panel.includes("warm();"));
+	// The capability is published by this panel (the surface that resolved it),
+	// which is what lets the keystroke's mint give a store flag its answer.
+	assert.ok(panel.includes("setDraftWarmable("));
+	assert.ok(panel.includes('"session_draft_warm"'));
 	// And NOT from the page above it, which renders whether or not a panel is
 	// mounted and holds no subscription of its own.
 	const above = page.slice(0, page.indexOf("function SessionPanel"));
 	assert.ok(
 		!above.includes("useWarmSession("),
 		"nothing above SessionPanel may warm: it holds no bridge reference",
+	);
+	assert.ok(
+		!above.includes("useDraftWarmSession("),
+		"and nothing above it may warm a draft for the same reason",
 	);
 });
 
@@ -343,4 +408,215 @@ test("the send path is unchanged when the warm never lands", async () => {
 		requests.push(request);
 		return {};
 	};
+});
+
+/* ---- the draft twin: one warm, once the minted id's subscription opens ---- */
+
+/*
+ * WHY jsdom AND A REAL ROOT, WHEN THE REST OF THIS FILE IS EFFECTS-FREE.
+ * `useWarmSession` returns a callback and is driven during render; the draft
+ * twin's contract IS an effect - fire exactly once, and only once the minted
+ * draft id's own stream subscription is open, because a warm whose only bridge
+ * user is its own request is cancelled the moment it returns (measured: 1634 ms
+ * with no subscription against 225 ms with one). A static-markup render runs
+ * no effects, so it would pass just as happily against a hook that never
+ * fired; this half needs a live renderer - the setup `browser-queue-expiry.test.mjs`
+ * established for exactly this class of hook.
+ */
+let draftRender = null;
+
+async function draftRenderer() {
+	if (draftRender) return draftRender;
+	const { JSDOM } = await import("jsdom");
+	const dom = new JSDOM("<!doctype html>");
+	globalThis.window = dom.window;
+	globalThis.document = dom.window.document;
+	globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+	// Imported AFTER the document exists: React DOM feature-detects its host at
+	// import time.
+	const [reactDom, react] = await Promise.all([
+		import("react-dom/client"),
+		import("react"),
+	]);
+	draftRender = {
+		dom,
+		createRoot: reactDom.createRoot,
+		act: react.act,
+		createElement: react.createElement,
+	};
+	return draftRender;
+}
+
+/** Mount the probe; `move` re-renders it the way the pane's props move. */
+async function mountDraft(props) {
+	const { dom, createRoot, act, createElement } = await draftRenderer();
+	const host = dom.window.document.createElement("div");
+	dom.window.document.body.appendChild(host);
+	const root = createRoot(host);
+	const move = async (next) => {
+		await act(async () => {
+			root.render(createElement(DraftWarmProbe, next));
+		});
+	};
+	await move(props);
+	return {
+		move,
+		unmount: async () => {
+			await act(async () => root.unmount());
+		},
+	};
+}
+
+/** The capability that publishes the draft routes, and nothing else. */
+const draftCapable = () => ({
+	desktop_available: true,
+	features: { session_draft_warm: 1 },
+});
+const SUB_A = "0123456789abcdef0123456789abcdef";
+const SUB_B = "fedcba9876543210fedcba9876543210";
+
+test("nothing warms until the minted id's own subscription is open", async () => {
+	reset();
+	const view = await mountDraft({
+		draftId: "aaaaaaaaaaaa",
+		subscriptionId: null,
+		capabilities: draftCapable(),
+	});
+	assert.equal(
+		requests.length,
+		0,
+		"a warm with no other bridge user is cancelled the moment its own response returns",
+	);
+	// The stream opens - the panel mounted it for the draft id as soon as the
+	// mint landed.
+	await view.move({
+		draftId: "aaaaaaaaaaaa",
+		subscriptionId: SUB_A,
+		capabilities: draftCapable(),
+	});
+	assert.deepEqual(
+		requests,
+		[{ op: "sessions.warm", sessionId: "aaaaaaaaaaaa" }],
+		"and once it is open, the MINTED id - not a session id - is what warms",
+	);
+	await view.unmount();
+});
+
+test("a pane with no minted id warms nothing; the warm follows the mint", async () => {
+	reset();
+	const view = await mountDraft({
+		draftId: undefined,
+		subscriptionId: null,
+		capabilities: draftCapable(),
+	});
+	assert.equal(requests.length, 0, "the subscription alone warms nothing");
+	// The first keystroke's mint answers: the id lands while the stream is up.
+	await view.move({
+		draftId: "bbbbbbbbbbbb",
+		subscriptionId: SUB_A,
+		capabilities: draftCapable(),
+	});
+	assert.deepEqual(requests, [
+		{ op: "sessions.warm", sessionId: "bbbbbbbbbbbb" },
+	]);
+	await view.unmount();
+});
+
+test("the latch is per minted id: a stream restart is no second warm, a re-mint is", async () => {
+	reset();
+	const view = await mountDraft({
+		draftId: "aaaaaaaaaaaa",
+		subscriptionId: SUB_A,
+		capabilities: draftCapable(),
+	});
+	assert.equal(requests.length, 1);
+	// A stream restart replaces the subscription id for the SAME draft. The
+	// backend's lease loop is the retry net under a live lease, so the renderer
+	// must not spend a second round trip per reconnect.
+	await view.move({
+		draftId: "aaaaaaaaaaaa",
+		subscriptionId: SUB_B,
+		capabilities: draftCapable(),
+	});
+	assert.equal(requests.length, 1, "a restart is not a new draft");
+	// The drop rule replaced the id (the selection changed): the new runtime is
+	// the one that needs warming.
+	await view.move({
+		draftId: "cccccccccccc",
+		subscriptionId: SUB_B,
+		capabilities: draftCapable(),
+	});
+	assert.deepEqual(requests.at(-1), {
+		op: "sessions.warm",
+		sessionId: "cccccccccccc",
+	});
+	await view.unmount();
+});
+
+test("no capability means no warm, byte-for-byte today's pane", async () => {
+	reset();
+	// A backend that predates the draft routes: the session catalogue only.
+	const view = await mountDraft({
+		draftId: "aaaaaaaaaaaa",
+		subscriptionId: SUB_A,
+		capabilities: capable(),
+	});
+	assert.equal(
+		requests.length,
+		0,
+		"session_catalogue alone must not warm a draft",
+	);
+	await view.unmount();
+	// Unpaired is not a licence either.
+	const second = await mountDraft({
+		draftId: "aaaaaaaaaaaa",
+		subscriptionId: SUB_A,
+		capabilities: {
+			desktop_available: false,
+			features: { session_draft_warm: 1 },
+		},
+	});
+	assert.equal(requests.length, 0);
+	await second.unmount();
+});
+
+test("a failed warm is swallowed, and a new visit re-arms the latch", async () => {
+	reset();
+	const rejections = [];
+	const record = (error) => rejections.push(error);
+	process.on("unhandledRejection", record);
+	globalThis.__warmRequest = async (request) => {
+		requests.push(request);
+		throw new Error("warm cancelled");
+	};
+	try {
+		const view = await mountDraft({
+			draftId: "dddddddddddd",
+			subscriptionId: SUB_A,
+			capabilities: draftCapable(),
+		});
+		assert.equal(requests.length, 1, "the attempt is made");
+		await view.unmount();
+		await new Promise((resolve) => setImmediate(resolve));
+		assert.deepEqual(rejections, [], "its failure is the hook's to swallow");
+		// An unused runtime is reaped after the pane leaves, so coming back is a
+		// new visit that genuinely needs a new warm: the latch re-arms.
+		const again = await mountDraft({
+			draftId: "dddddddddddd",
+			subscriptionId: SUB_A,
+			capabilities: draftCapable(),
+		});
+		assert.equal(
+			requests.length,
+			2,
+			"remount re-arms, exactly like the session hook",
+		);
+		await again.unmount();
+	} finally {
+		process.off("unhandledRejection", record);
+		globalThis.__warmRequest = async (request) => {
+			requests.push(request);
+			return {};
+		};
+	}
 });

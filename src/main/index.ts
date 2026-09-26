@@ -37,6 +37,10 @@ import {
 	readLaunchTarget,
 } from "../shared/open-session";
 import {
+	type WindowChromeMode,
+	windowChromeArgumentFor,
+} from "../shared/window-chrome";
+import {
 	BackendInstaller,
 	BackendServiceManager,
 	INTERPRETER_RESOLUTION_WORST_MS,
@@ -84,9 +88,11 @@ import {
 	resolveTelemetryLaunch,
 	telemetryArgument,
 } from "./telemetry-launch";
+import { titlebarOptions } from "./titlebar-options";
 import { UpdateService, holdLaunchForLiveInstall } from "./update-service";
 import { ViewerEndpoint } from "./viewer-endpoint";
 import { ViewerRecordPublisher } from "./viewer-record";
+import { attachWindowChrome, resolveLaunchWindowChrome } from "./window-chrome";
 import {
 	LAUNCHER_EXIT_DEADLINE_MS,
 	LAUNCHER_POLL_INTERVAL_MS,
@@ -615,6 +621,37 @@ function createWindow(
 	request: RaiseRequest = ownLaunchRequest(),
 ): BrowserWindow {
 	/*
+	 * THE WINDOW'S CHROME, resolved before the window exists because two of its
+	 * halves are constructor-only: `titleBarStyle` has no setter, and
+	 * `backgroundColor` is what the OS paints before the renderer's first frame - a
+	 * dark palette that gets Electron's default `#FFF` there flashes white on every
+	 * launch. The colours come from the PERSISTED file rather than from the renderer
+	 * for the obvious reason: the renderer does not exist yet, and the theme it would
+	 * report lives in its `localStorage`.
+	 *
+	 * `launchEnv`, not `process.env`, for the reason the window mode is read that way:
+	 * `./backend/config` has already folded a `.env` from the working directory over
+	 * `process.env`, and a file in the checkout must not be able to decide how the
+	 * window is framed.
+	 *
+	 * A problem here is a warning and never a refusal. The mode is recoverable from
+	 * inside the app (Settings > Appearance), and the launch that reached for
+	 * `--window-chrome=native` because the integrated frame had made its window
+	 * impossible to move is exactly the case the switch exists for - refusing to
+	 * start would be the worst answer available to the one launch that needs help.
+	 */
+	const chrome = resolveLaunchWindowChrome({
+		argv: process.argv,
+		env: launchEnv,
+		userDataDir: app.getPath("userData"),
+		platform: process.platform,
+	});
+	for (const problem of chrome.problems) {
+		logger.warn(`[window-chrome] ${problem}`, LogFileType.BACKEND);
+		console.log(`[window-chrome] ${problem}`);
+	}
+
+	/*
 	 * Resolved once, before any window exists, so an agent-driven run can say
 	 * how it wants the window to behave: `headless` (created, never shown) and
 	 * `inactive` (shown without activating the app) are how a QA rig or a
@@ -624,6 +661,25 @@ function createWindow(
 	 */
 	// Create the browser window.
 	const mainWindow = new BrowserWindow({
+		/*
+		 * The frame, per platform, from a pure function so the matrix is exercised on
+		 * any host (`scripts/titlebar-options.test.mjs`). macOS hides its title bar
+		 * and keeps the native traffic lights, which is why the renderer reserves their
+		 * 32px lane at the top of the shell (`chat-layout.tsx`) - the lane exists
+		 * because this line does, and shipping one without the other is either 32px of
+		 * blank space under a native title bar or lights drawn over the app's own row.
+		 */
+		...titlebarOptions(process.platform, {
+			mode: chrome.mode,
+			colors: chrome.colors,
+		}),
+		/*
+		 * The ground the OS paints before the renderer's first frame. Without it
+		 * Electron's default is `#FFF`, so every launch on a dark palette opened with a
+		 * white flash - the same defect `INSTALL_WINDOW_CANVAS` fixed for the installer
+		 * window, and a hard-coded palette value that a test keeps honest.
+		 */
+		backgroundColor: chrome.colors.ground,
 		width: windowLaunch.width,
 		height: windowLaunch.height,
 		// The layout is verified down to 800x600 and not below: the app rail,
@@ -694,9 +750,33 @@ function createWindow(
 			 * silent. `rendererArgumentFlags` below concatenates them, and is `{}` when
 			 * neither applies, so "adds no option at all" stays literally true.
 			 */
-			...rendererArgumentFlags(initialSession, openCatalogue),
+			...rendererArgumentFlags(initialSession, openCatalogue, chrome.mode),
 		},
 	});
+
+	/*
+	 * The live half of the chrome: the palette's colours on every theme change, the
+	 * reported corner ground, the three state pushes and the app-menu popup. Attached
+	 * AFTER construction because it needs the window, and disposed on `closed` so a
+	 * second window (the auth popup is one) does not inherit the handlers and a
+	 * closed one leaves no `ipcMain` handler pointing at a destroyed object.
+	 *
+	 * It contains no `show`, `showInactive`, `focus`, `maximize` or `setFullScreen`
+	 * call, which is what keeps this window's chrome work compatible with the
+	 * `headless` mode an agent run uses - `maximize()` on a hidden window SHOWS it,
+	 * so a style change that reached for one would put a window on the operator's
+	 * screen. `scripts/window-mode.test.mjs` scans for that family and names this
+	 * module among the ones that must not contain one.
+	 */
+	const chromeController = attachWindowChrome({
+		window: mainWindow,
+		mode: chrome.mode,
+		colors: chrome.colors,
+		userDataDir: app.getPath("userData"),
+		headless: windowLaunch.mode === "headless",
+		log: (line) => logger.info(line, LogFileType.BACKEND),
+	});
+	mainWindow.on("closed", () => chromeController.dispose());
 
 	/*
 	 * A window created to show a specific conversation HOLDS its first present.
@@ -1178,8 +1258,17 @@ function launchArgumentFlags(
 function rendererArgumentFlags(
 	initialSession: string | null,
 	openCatalogue: boolean,
+	chromeMode: WindowChromeMode,
 ): { additionalArguments?: string[] } {
 	const flags = [
+		/*
+		 * The chrome facts, and they are ALWAYS written - unlike the conversation or
+		 * the dev driver's arming entry, which appear only when they apply. The
+		 * renderer chooses between two incompatible layouts on this value, so a reader
+		 * that had to infer it from an absent entry would be guessing; see
+		 * `readWindowChromeArgument` for why the guess fails towards `native`.
+		 */
+		windowChromeArgumentFor(process.platform, chromeMode),
 		...(launchArgumentFlags(initialSession, openCatalogue)
 			.additionalArguments ?? []),
 		...(devDriverWebPreferences.additionalArguments ?? []),
@@ -2630,16 +2719,42 @@ app
 				}
 
 				if (!backendStarted) {
-					logger.error(
-						"Failed to start backend after installation, quitting app",
-						LogFileType.INSTALLER,
-					);
-					reportBackendFailure(
-						"Failed to start the Local Operator backend service after installation. Please restart the application.",
-						LogFileType.INSTALLER,
-					);
-					app.quit();
-					return;
+					/*
+					 * THE SAME DISPOSITION AS THE EXISTING-INSTALLATION ARM BELOW, and for
+					 * the same reason (review round 1, R1-1). This site used to quit
+					 * unconditionally, and it is REACHABLE in exactly the state the incident
+					 * was measured in: `checkLocalOperatorExists()` false and
+					 * `backendInstaller.isInstalled()` false is a first launch, or an app whose
+					 * managed venv was invalidated, and with both spawn addresses held
+					 * `startOwned` refuses each address (`backend-service.ts`, the record arm
+					 * and `resolveSpawnTarget`), returns false three times, and this arm took
+					 * the window down with the modal - the twelve-minute incident one arm
+					 * down from where it was fixed. The previous round judged this site
+					 * unreachable on the machine it was measured on; the reachability argument
+					 * above is the answer to that, and it is the reason this is fixed rather
+					 * than ticketed.
+					 *
+					 * Falling THROUGH rather than returning is the point, as below: the early
+					 * `return` on the other arms exists to skip window creation, and skipping
+					 * it here would leave the operator with the same nothing, only quieter.
+					 */
+					if (backendService.isStartBlockedByOccupiedAddress()) {
+						logger.error(
+							"Failed to start backend after installation: every address this app may serve on is held by something it does not own. Continuing without quitting; the status surface names the holder and the app keeps probing.",
+							LogFileType.INSTALLER,
+						);
+					} else {
+						logger.error(
+							"Failed to start backend after installation, quitting app",
+							LogFileType.INSTALLER,
+						);
+						reportBackendFailure(
+							"Failed to start the Local Operator backend service after installation. Please restart the application.",
+							LogFileType.INSTALLER,
+						);
+						app.quit();
+						return;
+					}
 				}
 			} else {
 				// Start our backend service (for existing installations).
@@ -2651,16 +2766,41 @@ app
 					reuseDiscovery: true,
 				});
 				if (!backendStarted) {
-					logger.error(
-						"Failed to start backend with existing installation, quitting app",
-						LogFileType.BACKEND,
-					);
-					reportBackendFailure(
-						"Failed to start the Local Operator backend service. Please restart the application.",
-						LogFileType.BACKEND,
-					);
-					app.quit();
-					return;
+					/*
+					 * AN ADDRESS THIS APP DOES NOT OWN IS NOT A REASON TO TAKE THE APP DOWN.
+					 *
+					 * Measured 2026-09-23: the configured address was held by a different
+					 * local-operator install's stray `lop serve`. The app refused it by identity
+					 * (correct) and refused to spawn its own over it (also correct - the token is
+					 * minted before the spawn, so minting over an occupied address overwrites
+					 * that daemon's credential). Then it quit, and the operator had no app for
+					 * twelve minutes while a backend they did not own held their port.
+					 *
+					 * Nothing about that state justifies losing the window. The backend manager
+					 * has already published which holder refused it, the probe loop is armed, and
+					 * a fallback daemon may be running on the other address the renderer trusts
+					 * - so the app opens, says what is on the address, and keeps trying. Falling
+					 * THROUGH rather than returning is the point: the early `return` on the other
+					 * arms exists to skip window creation, and skipping it here would leave the
+					 * operator with the same nothing, only quieter.
+					 */
+					if (backendService.isStartBlockedByOccupiedAddress()) {
+						logger.error(
+							"Failed to start backend with existing installation: every address this app may serve on is held by something it does not own. Continuing without quitting; the status surface names the holder and the app keeps probing.",
+							LogFileType.BACKEND,
+						);
+					} else {
+						logger.error(
+							"Failed to start backend with existing installation, quitting app",
+							LogFileType.BACKEND,
+						);
+						reportBackendFailure(
+							"Failed to start the Local Operator backend service. Please restart the application.",
+							LogFileType.BACKEND,
+						);
+						app.quit();
+						return;
+					}
 				}
 			}
 		}

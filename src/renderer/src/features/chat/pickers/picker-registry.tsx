@@ -30,7 +30,6 @@ import type { MoveRunContext } from "../move-session";
 import {
 	AnalyticsView,
 	ApprovalsPicker,
-	AsidePicker,
 	ContextView,
 	CopyPicker,
 	CredentialPicker,
@@ -93,6 +92,19 @@ export type MachinePanelContext = {
 };
 
 export type DestinationEntry =
+	/**
+	 * The aside panel: attached to the composer, never mounted as a dialog.
+	 *
+	 * A kind of its own rather than a `picker`, because the difference is the one
+	 * that mattered here: a picker is presented by `PickerHost`, which is a Radix
+	 * MODAL — a focus trap around a dialog, exactly what made the composer
+	 * unusable while `/btw` was open. The panel this kind stands for is an in-flow
+	 * sibling of the composer box, so the renderer has to route it somewhere else
+	 * than the presentation slot, and saying so in this table is what keeps "what
+	 * does this destination mean" one answer (`slash-dispatch.ts` is the only
+	 * reader).
+	 */
+	| ({ kind: "aside" } & ArgsBehavior)
 	| ({
 			kind: "picker";
 			component: FC<PickerContext>;
@@ -262,7 +274,7 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 	"session.fast": { kind: "picker", component: FastPicker },
 	"session.goal": { kind: "picker", component: GoalPicker },
 	"session.loop": { kind: "picker", component: LoopPicker },
-	"session.aside": { kind: "picker", component: AsidePicker },
+	"session.aside": { kind: "aside" },
 	/*
 	 * `/compact`: a DIRECT destination, the way `/clear` is, because there is no
 	 * decision to present. It used to be a picker whose only job was to run the

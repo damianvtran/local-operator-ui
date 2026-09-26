@@ -511,7 +511,17 @@ if uv_is_usable; then
     echo "WARNING: the bundled uv is present but its install failed (exit ${UV_STATUS}); retrying with pip, which is what this script used before uv was bundled."
   fi
 else
-  echo "Bundled uv not available (LOCAL_OPERATOR_UV_BIN=${UV_BIN:-unset}); installing with pip."
+  if [ -n "${UV_BIN}" ]; then
+    # Present but not runnable - the wrong architecture for this machine, a
+    # truncated copy, a mount that lost the execute bit. Named apart from the
+    # absent case below because the two are different facts about the install
+    # (the Windows script has the same split, and this line's absence is how a
+    # staged-for-the-wrong-arch uv reads as "nothing was staged"): both fall
+    # back to pip, and only this one is a defect in what was delivered.
+    echo "Bundled uv at ${UV_BIN} could not be run on this machine; installing with pip."
+  else
+    echo "Bundled uv not available (LOCAL_OPERATOR_UV_BIN=${UV_BIN:-unset}); installing with pip."
+  fi
 fi
 
 if [ "${UV_INSTALLED}" != true ]; then

@@ -68,10 +68,39 @@ export function useRef(initial) { return __runtime.hooks.useRef(initial); }
 export function useEffect(fn, deps) { return __runtime.hooks.useEffect(fn, deps); }
 export function useCallback(fn, deps) { return __runtime.hooks.useCallback(fn, deps); }
 export function useMemo(fn, deps) { return __runtime.hooks.useMemo(fn, deps); }
+/*
+ * The DEFAULT export, which this stand-in did without until the hook's graph
+ * gained a store: \`zustand\`'s React entry is written \`import React from
+ * "react"\`, so a stand-in carrying only named exports fails the BUNDLE with "No
+ * matching export in \"fixture:react\" for import \"default\"". The two sibling
+ * harnesses that already bundle a zustand store (\`frontend-replace.test.mjs\`,
+ * \`reconnect-page-gap.test.mjs\`) carry the same line for the same reason; this
+ * one never needed it, because nothing in its graph reached a store until the
+ * aside's deltas were routed out of \`use-canonical-session\`.
+ *
+ * The object deliberately holds the five hooks above and not a
+ * \`useSyncExternalStore\`: nothing in this file SUBSCRIBES to a store (the aside
+ * path is read with \`getState()\` from the flush), and inventing a hook the test
+ * never exercises would be a claim rather than a stand-in.
+ */
+export default { useState, useRef, useEffect, useCallback, useMemo };
 `;
 
+/*
+ * ONLY THE NETWORK IS FAKED. The store imports `UserFacingError` and
+ * `userFacingMessage` from the desktop transport as well as
+ * `DesktopControlError`, and its error-copy rules consult those classes'
+ * actual behaviour (`userFacingMessage` is what decides whether a caught value
+ * is copy or a stack-trace fragment), so the three come from the REAL module
+ * and only `desktopResult`/`subscribeDesktopStream` - the two calls that would
+ * reach a server - are stand-ins. The same split, for the same reason, is what
+ * `attention-seen.test.mjs`'s transport fixture does. The specifier has to be
+ * an ABSOLUTE path: this module IS the substitute that every
+ * `@shared/api/local-operator/*` import resolves to in this harness, so a
+ * relative or aliased specifier would resolve straight back into it.
+ */
 const TRANSPORT_SOURCE = `
-export const DesktopControlError = class DesktopControlError extends Error {};
+export { DesktopControlError, UserFacingError, userFacingMessage } from ${JSON.stringify(`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`)};
 export function desktopResult(request) {
 	return globalThis.__hookTest.network(request);
 }
@@ -126,6 +155,13 @@ const bundle = await build({
 				builder.onLoad({ filter: RE, namespace: "fixture" }, (args) => ({
 					contents: args.path === "react" ? HARNESS_SOURCE : TRANSPORT_SOURCE,
 					loader: "js",
+					// The transport fixture re-exports the REAL error classes from an
+					// absolute path (see TRANSPORT_SOURCE), and a module in the
+					// `fixture` namespace has no directory of its own for esbuild to
+					// resolve that path from. The harness directory is the honest
+					// one: the path is absolute, so this only gives the resolver a
+					// cwd to hand to its own machinery.
+					resolveDir: process.cwd(),
 				}));
 			},
 		},
@@ -432,6 +468,17 @@ const openFrame = () => ({
 	payload: { subscription_id: SUBSCRIPTION, gap: false },
 });
 
+/**
+ * The same frame with `gap: true` — what EVERY reopen carries from a bridge
+ * whose epoch rotated, i.e. the frame this harness's other cases never needed
+ * because they are about one connection. See the round-1 MAJOR case below.
+ */
+const openFrameWithGap = () => {
+	const frame = openFrame();
+	frame.payload.gap = true;
+	return frame;
+};
+
 /** A snapshot whose durable page was APPLIED (`cursor_missing: false`). */
 const snapshotFrame = (entries = []) => ({
 	type: "snapshot",
@@ -645,6 +692,98 @@ test("an applied snapshot page is what proves history, and a missing one stays u
 	assert.equal(mounted.view().transcript.records.length, 1);
 });
 
+/*
+ * A GAPPED OPEN MUST NOT MASK A TERMINAL FAILURE (agent review round 1, MAJOR 1).
+ *
+ * The held-readings hold repaints the composer across a reconnect, and the
+ * `open{gap}` arm says `reconnecting` so the held values are not presented as
+ * live. But `unavailable` is TERMINAL, and `canonical-transcript.tsx` gates the
+ * failure notice AND its Reconnect control on `status === "unavailable" &&
+ * failure` — so a status write that overwrote `unavailable` while `failure`
+ * stayed set would hide the diagnosis and the only control that can act behind
+ * a line claiming progress.
+ *
+ * THE DOOR THAT REACHED IT, and it needs no exotic setup: the `/history` arm
+ * below gives up with `unavailable` while leaving `frontend` painted, so the
+ * hold's mirror refilled from it; a wake write from another surface then calls
+ * `resync()`, which cancels the retry, closes the stream and connects without
+ * touching `status` or `failure`; the new subscription answers `open{gap}`.
+ * Measured base-vs-head by the reviewer: base stayed `unavailable`, the
+ * pre-remediation head said `reconnecting` with the failure still set.
+ *
+ * ASSERTED ON THE OUTCOME THE PANE RENDERS FROM, which is the pair `status` and
+ * `failure` — a test on `status` alone would pass a fix that cleared the failure
+ * instead of keeping the status.
+ */
+test("a gapped open does not turn a terminal failure into a reconnect", async () => {
+	test_state.streams.length = 0;
+	test_state.historyRequests.length = 0;
+	test_state.network = async () => {
+		throw new Error("history unavailable");
+	};
+	const mounted = mountHook(await loadHook("gap-must-not-mask"), SESSION);
+	await settle();
+	send(openFrame());
+	await settle();
+	send(cursorMissingSnapshotFrame());
+	await settle();
+	/*
+	 * THE HOLD IS LIVE WHEN THE ARM FIRES, and that is what makes the clear
+	 * asserted below falsifiable rather than vacuous: the snapshot painted a
+	 * frontend and the mirror refilled the hold from it, so a `/history` arm
+	 * that kept the hold would leave those readings standing past the point the
+	 * app had given up on the conversation.
+	 */
+	assert.ok(
+		mounted.view().frontend,
+		"the snapshot painted the pane's readings",
+	);
+	assert.equal(
+		mounted.view().heldFrontend,
+		mounted.view().frontend,
+		"and the hold mirrored them, so this case can see the arm drop it",
+	);
+	await runTimers();
+	await settle();
+
+	const failure = mounted.view().failure;
+	assert.equal(
+		mounted.view().status,
+		"unavailable",
+		"the history read gave up",
+	);
+	assert.ok(failure?.statement, "with a sentence the reader can act on");
+	assert.equal(
+		mounted.view().heldFrontend,
+		null,
+		"the /history arm is a terminal state, so it takes the held readings with it (round 1, MINOR 3)",
+	);
+	assert.ok(
+		mounted.view().frontend,
+		"while the painted frontend stays - this arm leaves it deliberately, which is why the assertion above is about the hold and not about a blanked pane",
+	);
+
+	// The reopen a resync makes, carrying the gap every reopen carries.
+	send(openFrameWithGap());
+	await settle();
+
+	assert.equal(
+		mounted.view().status,
+		"unavailable",
+		"a gapped open must not overwrite a terminal state the app has given up on",
+	);
+	assert.equal(
+		mounted.view().failure,
+		failure,
+		"and the notice it gates on is still there",
+	);
+	assert.equal(
+		mounted.view().failure?.action,
+		"reconnect",
+		"so the only control that can act is still offered",
+	);
+});
+
 test("a failed history read on an empty transcript is retried, then surfaced instead of swallowed", async () => {
 	test_state.streams.length = 0;
 	test_state.historyRequests.length = 0;
@@ -737,6 +876,86 @@ for (const arm of ["says nothing", "opens but never snapshots"]) {
 		);
 	});
 }
+
+/*
+ * THE BOUND IS A TERMINAL ARM, SO IT DROPS THE HELD READINGS TOO (agent review
+ * round 1, MAJOR 2). `heldFrontend` is the last authoritative frontend a pane
+ * painted, kept across a transient reconnect for the composer's readings; the
+ * field's contract is that every terminal state clears it, and this is the arm
+ * that ends a connection which accepted and then said nothing for the whole
+ * bound. Without the clear, a hold survived the state the app had given up on -
+ * which is exactly the "presented as current" dishonesty the hold is fenced
+ * with.
+ *
+ * ASSERTED ON THE FIELD, not through `frontend ?? heldFrontend`: this arm
+ * deliberately LEAVES `frontend` painted (the pane keeps the rows it has and
+ * states the failure over them), so the pair `heldFrontend === null && frontend
+ * !== null` is what proves the assertion is about the hold rather than about a
+ * pane that lost everything. A test on the fallback alone would pass either way.
+ */
+test("the snapshot deadline drops the held readings while the painted frontend stays", async () => {
+	test_state.streams.length = 0;
+	timerQueue.length = 0;
+	const mounted = mountHook(await loadHook("deadline-drops-hold"), SESSION);
+	await settle();
+	send(openFrame());
+	send(snapshotFrame([userEntry("m1", "hello")]));
+	await settle();
+
+	const painted = mounted.view().frontend;
+	assert.ok(painted, "the snapshot is what gives the pane its readings");
+	assert.equal(
+		mounted.view().heldFrontend,
+		painted,
+		"and the hold is the mirror of it, so this case can see it dropped",
+	);
+
+	/*
+	 * THE BOUND ONLY EVER APPLIES TO A CONNECTION THAT HAS NOT SNAPSHOTTED, so a
+	 * pane cannot reach this arm with its FIRST connection: the snapshot disarms
+	 * it. The route here is the one that happens in production - the stream ends,
+	 * the retry connects, and the REPLACEMENT connection is the one that goes
+	 * quiet. That is also why the painted frontend is still there to be held: the
+	 * retry arm deliberately preserves what the pane was told.
+	 */
+	test_state.streams[0].onEvent({ kind: "end", streamId: "s" });
+	await settle();
+	assert.equal(
+		mounted.view().status,
+		"reconnecting",
+		"the break is a reconnect",
+	);
+	assert.equal(
+		mounted.view().heldFrontend,
+		painted,
+		"and the readings are held across it - the case this whole change is for",
+	);
+	await runTimers();
+	assert.equal(
+		test_state.streams.length,
+		2,
+		"the retry opens a new connection",
+	);
+
+	await runTimers({ deadline: true });
+
+	assert.equal(mounted.view().status, "unavailable");
+	assert.equal(
+		mounted.view().heldFrontend,
+		null,
+		"a terminal arm takes the held readings with it",
+	);
+	assert.equal(
+		mounted.view().frontend,
+		painted,
+		"while the painted frontend stays, so the clear is the hold's and not the pane's",
+	);
+	assert.equal(
+		mounted.view().frontend ?? mounted.view().heldFrontend,
+		painted,
+		"and the composer still has readings to draw, from the live snapshot alone",
+	);
+});
 
 /*
  * A STALL THAT OUTLIVES THE BOUND, THEN ANSWERS (design round 2, D5). The bound

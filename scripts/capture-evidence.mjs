@@ -388,6 +388,34 @@ export const THEMES = [
 export const SESSION_SECTION =
 	"[data-panel-body] section:has(input[aria-label='Search sessions'])";
 
+/**
+ * The by-model section, for `scrollTo` (see the note in the list below).
+ *
+ * Same reason as `SESSION_SECTION`, one section along: the By-model table sits
+ * below the stat grid, the chart and the two aggregate tables, and the panel
+ * body is capped at `min(76vh, 760px)`, so it is in no at-rest frame at any
+ * viewport - a taller one only adds margin. Design round 2 (D9) found four of
+ * the tokens-per-second stories byte-identical for exactly that reason: the
+ * loading skeleton, the empty answer and the failure sentence all live inside
+ * this section, so with the section out of frame the four names were one image.
+ *
+ * The hook is NOT the table's own accessible name, and that is a measured
+ * correction rather than a preference: the three `model-rows-*` states render a
+ * skeleton or a notice INSTEAD of the table (`ModelTable` returns early for
+ * `loading`/`null` and for `error`), so a selector keyed on
+ * `aria-label='Generation rate by model…'` matches nothing in exactly the three
+ * states this parking exists for — it failed with "matched nothing" on the
+ * first attempt. The By-model section is instead named by the section that
+ * FOLLOWS it, through the same by-session hook `SESSION_SECTION` already
+ * trusts, which every one of these stories renders and which no early return
+ * removes. The sibling combinator has to be spelled as ONE flat relative
+ * selector, not as a `:has()` inside a `:has()`: nested `:has()` is invalid CSS,
+ * the expression threw, and the run reported it as a bare "failed" rather than
+ * as a selector that matched nothing.
+ */
+export const MODEL_SECTION =
+	"[data-panel-body] section:has(+ section input[aria-label='Search sessions'])";
+
 export const STORIES = [
 	/*
 	 * These three DECLARE their content height rather than the 900 the harness
@@ -400,6 +428,158 @@ export const STORIES = [
 	 * surfaces were committed with (1308 / 1409 / 3327), so the frames keep the
 	 * full transcript and a re-capture is a fair comparison again.
 	 */
+	/*
+	 * THE PROVIDER SIGN-IN, PROVIDERS PAGE, ONBOARDING AND DISCOVERABILITY SET.
+	 *
+	 * Every row below is a story id, a viewport and -- where the state arrives a
+	 * beat after the click -- the selector that must be PRESENT before the shutter
+	 * opens. That third field is not decoration: four terminal rows used to be
+	 * photographed 900 ms in, while the stories reach their terminal state about
+	 * 1.5 s after the click, so `succeeded`, `expired`, `gone-404` and `failed`
+	 * were committed as four copies of the WAITING panel and the PR claimed
+	 * evidence it did not have (code round 1 M3, design round 1 D1, QA round 1
+	 * Q8). `scripts/evidence-sign-in-states.test.mjs` holds those four hashes
+	 * apart, so the same mistake fails a test rather than a review.
+	 *
+	 * The two waiting rows are the released backend's sequence (the sign-in url
+	 * arrives on the first POLL rather than on the start reply) and the newer one
+	 * (url on the reply): the defect this set exists for was backend-shape
+	 * dependent, and a frame of only one shape cannot show that both work.
+	 *
+	 * The story's bridge is scripted and its `openAuthorization` RECORDS instead
+	 * of opening a browser, so these frames are publishable by construction.
+	 */
+	["provider-sign-in-onboarding--providers-first-run", 1280, 1100],
+	["provider-sign-in-onboarding--providers-connected", 1280, 1100],
+	["provider-sign-in-onboarding--providers-connected-menu", 1280, 1100],
+	["provider-sign-in-onboarding--panel-idle", 1280, 620],
+	[
+		"provider-sign-in-onboarding--panel-waiting-legacy-backend",
+		1280,
+		620,
+		{ dir: "panel-waiting-first-click-released-backend" },
+	],
+	[
+		"provider-sign-in-onboarding--panel-waiting-current-backend",
+		1280,
+		620,
+		{ dir: "panel-waiting-url-on-start-reply" },
+	],
+	["provider-sign-in-onboarding--panel-device-code", 1280, 620],
+	["provider-sign-in-onboarding--panel-optional-paste", 1280, 620],
+	["provider-sign-in-onboarding--panel-optional-paste-open", 1280, 780],
+	["provider-sign-in-onboarding--panel-paste-required", 1280, 620],
+	/*
+	 * The same paste body reached with NO url at all, which is the case a released
+	 * backend's Token Plan sign-in hits (QA round 1 Q2).
+	 */
+	[
+		"provider-sign-in-onboarding--panel-paste-required-no-url",
+		1280,
+		620,
+		/*
+		 * The spinner this row exists to catch is a DIFFERENT image from the paste
+		 * body, so a hash comparison alone cannot tell them apart from the other
+		 * states: the attribute is the claim (review round 2 R2-m2).
+		 */
+		{ expectPresent: '[data-sign-in-state="paste-required"]' },
+	],
+	/*
+	 * `launch_url` set beside the provider's own `auth_url`: the sentence must name
+	 * the provider, not the backend's loopback alias (code round 1 M1, UX N2).
+	 */
+	["provider-sign-in-onboarding--panel-waiting-launch-url", 1280, 620],
+	/*
+	 * The refused verdict in the ROW, with its panel open -- the state three rounds
+	 * judged without a frame (design D13/D14/D15, review R4-M2, UX U15/U16). The
+	 * shutter waits for the claim's tone rather than for the clock, because the claim
+	 * arrives with the verdict's first answer: a beat earlier this frame is the same
+	 * row photographed as a healthy sign-in (the paste-required row's own guard).
+	 */
+	[
+		"provider-sign-in-onboarding--panel-refused-verdict",
+		1280,
+		900,
+		/*
+		 * The VERDICT on the settled view is what this frame exists for (U19): the shutter
+		 * waits for it rather than for the clock, and the same attribute carries the tone
+		 * so the refusal cannot be photographed as a success.
+		 */
+		{ expectPresent: '[data-verdict="attention"]' },
+	],
+	/*
+	 * Superseded by another sign-in: cancelled, in the backend's own sentence, and
+	 * never rendered before this round (design round 1 D1).
+	 */
+	[
+		"provider-sign-in-onboarding--panel-cancelled-superseded",
+		1280,
+		620,
+		{ expectPresent: '[data-sign-in-state="unfinished"]' },
+	],
+	[
+		/*
+		 * D2's pair (design round 6): the unconfirmed register and the API-key route
+		 * under a refused verdict. Both shipped with jsdom-only assertions, so neither
+		 * had a frame; the first is the state a first run actually reaches after a
+		 * sign-in the backend will not confirm, and the second is the route U19's
+		 * contradiction survived on.
+		 */
+		"provider-sign-in-onboarding--panel-succeeded-unconfirmed",
+		1280,
+		900,
+		{ expectPresent: '[data-verdict="neutral"]' },
+	],
+	[
+		"provider-sign-in-onboarding--panel-key-refused-verdict",
+		1280,
+		900,
+		{ expectPresent: '[data-verdict="attention"]' },
+	],
+	[
+		"provider-sign-in-onboarding--panel-succeeded-with-default",
+		1280,
+		620,
+		{ expectPresent: '[data-sign-in-state="succeeded"]' },
+	],
+	[
+		"provider-sign-in-onboarding--panel-expired",
+		1280,
+		620,
+		{ expectPresent: '[data-sign-in-state="unfinished"]' },
+	],
+	[
+		"provider-sign-in-onboarding--panel-gone-404",
+		1280,
+		620,
+		{ expectPresent: '[data-sign-in-state="unfinished"]' },
+	],
+	[
+		"provider-sign-in-onboarding--panel-failed",
+		1280,
+		620,
+		{ expectPresent: '[data-sign-in-state="unfinished"]' },
+	],
+	["provider-sign-in-onboarding--panel-api-key", 1280, 620],
+	["provider-sign-in-onboarding--panel-invalid-key", 1280, 660],
+	["provider-sign-in-onboarding--panel-key-saved", 1280, 620],
+	["provider-sign-in-onboarding--panel-key-saved-unchecked", 1280, 660],
+	["provider-sign-in-onboarding--panel-local", 1280, 620],
+	["provider-sign-in-onboarding--onboarding-step-1", 1280, 900],
+	["provider-sign-in-onboarding--onboarding-step-1-connected", 1280, 900],
+	["provider-sign-in-onboarding--onboarding-step-2-applied", 1280, 900],
+	["provider-sign-in-onboarding--onboarding-step-2-proposed", 1280, 900],
+	/*
+	 * The path current users take: a released backend applies no default and
+	 * suggests none, so step 2 has to ask -- and has to write what it shows
+	 * (code round 1 M2, QA round 1 Q3, UX round 1 U1).
+	 */
+	["provider-sign-in-onboarding--onboarding-step-2-choose", 1280, 900],
+	["provider-sign-in-onboarding--onboarding-step-2-no-catalogue", 1280, 900],
+	["provider-sign-in-onboarding--onboarding-step-3", 1280, 900],
+	["provider-sign-in-onboarding--empty-chat-card", 1280, 620],
+	["provider-sign-in-onboarding--connect-dialog", 1280, 900],
+
 	["chat-trace--conversation", 1280, 1308],
 	["chat-trace--conversation-with-reasoning", 1280, 1409],
 	["chat-trace--conversation-reasoning-open", 1280, 3327],
@@ -698,6 +878,18 @@ export const STORIES = [
 	 */
 	["chat-canonical-credential-citation--citation-unconfirmed-narrow", 440, 620],
 	["chat-canonical-credential-citation--citation-in-code-fence", 1024, 620],
+	/*
+	 * THE SECOND REPORT'S THREE SHAPES (operator report, 2026-09-25): the
+	 * reader's message with each field on its own line, WITH citations (the
+	 * reported state), WITHOUT them (the scope question), and an agent-side
+	 * answer as the control that must not move. All three at the same 1024x620
+	 * pane as their siblings above, so the frames read as one set: the first two
+	 * keep their lines after the fix, and the third's before/after pair is
+	 * byte-identical because an agent's answer is a markdown document.
+	 */
+	["chat-canonical-credential-citation--citation-multiline", 1024, 620],
+	["chat-canonical-credential-citation--plain-multiline", 1024, 620],
+	["chat-canonical-credential-citation--agent-multiline", 1024, 620],
 	/*
 	 * THE TWO SUBMIT-TIME NOTICES, at 440 — the measure a toast actually lands in on
 	 * a narrow window, and the size design round 1's D3 asked for. The unresolved
@@ -2484,6 +2676,48 @@ export const STORIES = [
 	["chat-message-input--pending-send-chip-row-small-view", 440, 400],
 	["chat-message-input--pending-send-payload-small-view", 440, 400],
 	["chat-message-input--pending-send-small-view", 440, 300],
+	/* THE NOTICE A FAILED SEND LEAVES - the six states the operator's own screen
+	   was one of. Their frames answer the report directly: the message and its
+	   file are IN the composer, and the sentence beside them is one line with at
+	   most Retry and Clear, rather than the transport's twenty-second paragraph
+	   over an empty box with two links under it.
+
+	   THE SIX FAILED-SEND ROWS THAT USED TO SIT HERE ARE GONE (review round 2, D6,
+	   and this paragraph was the prose that still pointed at them - review round 3,
+	   n1). Their frames showed copy the app no longer produces, and a set that
+	   cannot be re-swept on a machine whose Storybook index refuses those ids is a
+	   set of frames that disagree with the app in the one place a reader looks to
+	   see what the app says. The states are rendered instead by the notice-arms rig,
+	   `scripts/composer-alert-geometry.mjs` -> `docs/evidence/composer-notice-arms/`,
+	   which mounts the shipped notice row for each of them and asserts what the
+	   frame is for. The deletion and its reason are recorded on the set's own page:
+	   `docs/evidence/chat-message-input/README.md`.
+
+	   420 tall for the chip-carrying arms (a 100px tile, the field, and the notice
+	   row above them) and 480 for `failed-merged`, whose field holds two
+	   paragraphs. Cropping any of these at 300 would cut the very row the frame
+	   exists to show. */
+	/*
+	 * AND THE SIX FAILED-SEND ROWS ARE GONE, the same way the copy row above left
+	 * (review round 2, D6). Their committed frames showed copy the app no longer
+	 * produces - a 413 about half the app's length, and the unknown-outcome sentence
+	 * without its "Sending it again is safe." clause - and their SET could not be
+	 * re-swept here (a backend answers on the default port all session, and this
+	 * machine's Storybook index refuses these ids even for a `--allow-backend`
+	 * partial run). Rather than keep frames that disagree with the app about the same
+	 * state, the states are covered where they are rendered from the SHIPPED composer
+	 * with the app's own copy imported: `docs/evidence/composer-notice-arms/`. The
+	 * stories themselves stay, as tests.
+	 */
+	/*
+	 * AND THE COPY RULE ITSELF IS A TEST, NOT A FRAME (review round 1, D5). This
+	 * row photographed an IDLE composer with no notice at all - the story's render
+	 * passes no `sendError`, and its `play` is what reads the table - so twelve
+	 * frames existed whose subject was the empty state the operator's report is
+	 * about, which reads as a failed capture. The story keeps its `play` (it is the
+	 * assertion that the composer's copy comes from `sendFailureCopy`) and stops
+	 * being swept.
+	 */
 	/* The interrupt's own states, on the same 1024 measure as the rows above.
 	   The third is the only one that SPEAKS: a stopped turn with nothing left
 	   under it renders nothing at all, so the control's presence and its absence
@@ -2653,10 +2887,13 @@ export const STORIES = [
 	   no reviewer is meant to read (design review round 2, D9). */
 	["chat-tool-rows--mixed-prose-code-and-tables", 1440, 800],
 	/* The `ask` gate's options, which became real controls rather than an inert
-	   numbered list. Swept because these states are slow and awkward to hold
+	   numbered list, plus the approval card that later joined the same band. Swept
+	   because these states are slow and awkward to hold
 	   open live — a gate ends the moment anyone answers, and eight options, a
 	   wrapping label, a multi-question ask and a secret ask (no options at all)
-	   are not states a live session offers on demand.
+	   are not states a live session offers on demand. The two approval frames
+	   replaced `chat-ask-options--approval-unchanged`, which retired with its
+	   story when that card grew the options band.
 
 	   Each height MATCHES its story's own `Frame height`: the capture floors at
 	   the declared viewport, so declaring more than the story renders pads the
@@ -2685,7 +2922,8 @@ export const STORIES = [
 	["chat-ask-options--multi-question", 1024, 450],
 	["chat-ask-options--answer-in-flight", 1024, 470],
 	["chat-ask-options--secret-ask", 1024, 360],
-	["chat-ask-options--approval-unchanged", 1024, 360],
+	["chat-ask-options--approval", 1024, 360],
+	["chat-ask-options--approval-answer-in-flight", 1024, 360],
 	["design-system-primitives--all-primitives", 1280, 1600],
 
 	/* `/model`: the desktop model picker's FEEDBACK states, which is the
@@ -3255,6 +3493,107 @@ export const STORIES = [
 	/* The collapse held while a query renders both regions over it. */
 	["chat-sidebar-sections--query-while-collapsed", 741, 460],
 
+	/* ------------------------------------------------------------------ *
+	 * D28: the view popover, the page ladder, the section caps, an expanded
+	 * group and the off-route voice - the surfaces design round 3 found with
+	 * no rendered frame at all, each named in that finding.
+	 *
+	 * The POPOVER frames are DRIVEN: the story's play presses the band's
+	 * `View options` button with a real pointer event - and, for the hidden
+	 * and reordered states, presses the control inside the panel the state is
+	 * about - so the frame is the panel the app draws after a gesture rather
+	 * than a prop summary. The LADDER and CAP frames are story states with the
+	 * region scrolled by this rig (`scrollToEnd`), because a scroller's
+	 * position is browser state no story can set; the readout beside each
+	 * panel prints the stored `loads`, the drawn row count and the foot's own
+	 * copy, read back from the DOM, so a frame cannot claim a rung the panel
+	 * is not on. The band's three tooltips are real pointer state - one entry
+	 * per control, hovering it - and `hoverSettleMs` is the tooltip's own open
+	 * delay, as the composer-band entries state for theirs.
+	 * ------------------------------------------------------------------ */
+	["chat-sidebar-view-menu--popover-open", 741, 760],
+	["chat-sidebar-view-menu--popover-hidden-section", 741, 760],
+	["chat-sidebar-view-menu--popover-reordered-pair", 741, 760],
+	[
+		/*
+		 * The first rung needs no scroll: the rig proved it by refusing - at ten
+		 * drawn rows the chats region does not overflow, so the foot this frame
+		 * is read for already stands in the resting view and `scrollToEnd`
+		 * failed the run by landing nothing (the guard's own message, which is
+		 * how the region's size at this rung was measured rather than guessed).
+		 */
+		"chat-sidebar-view-menu--page-ladder-ten",
+		741,
+		820,
+	],
+	[
+		"chat-sidebar-view-menu--page-ladder-twenty-five",
+		741,
+		820,
+		{ scrollToEnd: '[data-sidebar-region="chats"]' },
+	],
+	[
+		"chat-sidebar-view-menu--page-ladder-fifty",
+		741,
+		820,
+		{ scrollToEnd: '[data-sidebar-region="chats"]' },
+	],
+	[
+		/*
+		 * No scroll, same as the first ladder rung and for the same measured
+		 * reason: the entities region does not overflow at this size (the rig's
+		 * `scrollToEnd` guard refused the run by landing nothing), so the foot
+		 * this frame is read for is already in the resting view. The frame is
+		 * the region's own end by construction rather than by scroll position.
+		 */
+		"chat-sidebar-view-menu--section-cap-agents",
+		741,
+		820,
+	],
+	["chat-sidebar-view-menu--section-cap-teams", 741, 820],
+	[
+		/*
+		 * Taller than the group needs by itself so the entity region's own fold
+		 * lands clear of the Teams section: at 640 the split cut a team row in
+		 * half under the boundary (the region is a fraction of the column, so
+		 * the fix is the frame's height, not a scroll - see the ladder notes).
+		 */
+		"chat-sidebar-view-menu--expanded-agent-group",
+		741,
+		760,
+	],
+	[
+		"chat-sidebar-view-menu--band-resting",
+		741,
+		360,
+		{
+			hover: "[data-sidebar-search]",
+			hoverSettleMs: 900,
+			dir: "band-search-hover",
+		},
+	],
+	[
+		"chat-sidebar-view-menu--band-resting",
+		741,
+		360,
+		{
+			hover: "[data-sidebar-view-options]",
+			hoverSettleMs: 900,
+			dir: "band-view-hover",
+		},
+	],
+	[
+		"chat-sidebar-view-menu--band-resting",
+		741,
+		360,
+		{
+			hover: "[data-sidebar-create]",
+			hoverSettleMs: 900,
+			dir: "band-create-hover",
+		},
+	],
+	["chat-sidebar-view-menu--off-route-voice", 741, 760],
+
 	/*
 	 * The publish dialog, in every state its rewrite introduced (agent-hub
 	 * contract §6.2/§6.3): the consent copy that now says what is published, the
@@ -3424,6 +3763,45 @@ export const STORIES = [
 		900,
 	],
 	["common-updatenotification--backend-update-non-managed", 1280, 900],
+	/*
+	 * WHAT CHANGED, on the card that asks the reader to move. The offer panel named
+	 * two versions and a benefit sentence and nothing about the change itself, while
+	 * the app's own update card had carried its notes since it was written; this is
+	 * the reported state (0.62.33 serving, 0.62.34 published) with the note the
+	 * lookup read. Its own entry rather than notes added to the fixtures above,
+	 * because those are machines that could NOT read the release - GitHub
+	 * unreachable, or a tag with no release - which is a state that still exists and
+	 * still renders without the paragraph.
+	 */
+	["common-updatenotification--backend-update-with-release-notes", 1280, 900],
+	/*
+	 * THE CUT ITSELF, ON THE CARD AT ITS SMALLEST WINDOW. The frame above carries
+	 * the one-sentence lead the operator's report produced, so neither the
+	 * producer's 400-character truncation nor the height it costs was photographed
+	 * anywhere - and the height is only a question at the 572px floor the app
+	 * permits, where the card's own cap is 540px. Design review round 1 measured
+	 * the paragraph at up to 180px against ~40px of slack on the taller arms and
+	 * asked for this frame; the summary is the producer's own output for the
+	 * published v0.62.33 body, cut at the budget, so the "…" on the card is the
+	 * real one.
+	 *
+	 * THE HEIGHT IS 556, NOT 572, AND THAT IS THE FLOOR. This story file's own
+	 * content asks for sixteen pixels more than it is declared at - the rig paints
+	 * `max(documentElement.scrollHeight, body.scrollHeight, declared)`, and both
+	 * of this file's stories come out declared+16 at every size - so a row that
+	 * declares 572 paints a 588px viewport and a card capped at 556, i.e. a frame
+	 * one mono line more generous than the state it claims to show. Declaring 556
+	 * lands the painted viewport on the app's own 572 and exercises the real cap.
+	 * Design review round 2 measured that from the bytes; the
+	 * `settings-app-updates-section` rows at the same declared 572 come out at
+	 * exactly 572, which is what makes the +16 this file's own content rather than
+	 * the rig's convention.
+	 */
+	[
+		"common-updatenotification--backend-update-with-long-release-notes",
+		900,
+		556,
+	],
 	/*
 	 * The two states the operator's own report produced (2026-09-15), and neither
 	 * had a frame anywhere in this set: the panel he was STUCK ON ("Updating
@@ -3855,8 +4233,10 @@ export const STORIES = [
 	["chat-mention-chips--wrapped-mention", 1380, 872],
 	/*
 	 * The four surfaces this remediation added, each a state a finding named:
-	 * `harness-cannot-expand` is the state every release carries today (no
-	 * `references` capability, so no list and no chip), `small-view-520` is the
+	 * `harness-cannot-expand` is the SKEW state — a backend that does not advertise
+	 * the `references` capability, so no list and no chip, which is an install whose
+	 * backend predates the key or one whose `LOCAL_OPERATOR_AT_REFERENCES` kill switch
+	 * is off — `small-view-520` is the
 	 * field's 6px inset that decided the overhang, `scrolled-draft` is the fill
 	 * layer travelling with the field's own scroll, and `atomic-delete` is the one
 	 * chip promise that is not a drawing.
@@ -4022,6 +4402,64 @@ export const STORIES = [
 	["panels-analytics--partial-cost", 1140, 980],
 	["panels-analytics--no-daily-rows", 1140, 980],
 	["panels-analytics--unnamed-sessions", 1140, 980],
+	/*
+	 * The tokens-per-second states. `pre-metric-ledger` is the one that matters
+	 * most on the day this ships: it is the operator's OWN history — every decode
+	 * cell `—` while the wall column carries real numbers — and the whole point of
+	 * the pair is that those are different measurements rather than one rendered
+	 * twice. `model-rows-*` are the slow read's own three states.
+	 *
+	 * TWO ENTRIES PER STORY, because the body cap makes one frame impossible:
+	 * the panel body is `min(76vh, 760px)` (`picker-host.tsx`) and the By-model
+	 * table is the SECOND-TO-LAST section, below the stat grid, the chart and the
+	 * two aggregate tables, so a taller viewport adds margin rather than content
+	 * — the same property the by-session note below records. The at-rest entry is
+	 * where the pane's top, the new rate column and the coverage line are; the
+	 * `-model` entry parks the body on the section itself through `MODEL_SECTION`,
+	 * which is the only frame that holds a model row.
+	 *
+	 * Design round 2 (D9) is what the second half is for: without it,
+	 * `partial-rate-coverage` and the three `model-rows-*` states captured
+	 * BYTE-IDENTICAL frames in all twelve themes, because everything that tells
+	 * them apart lives inside the section and the section was out of frame. Four
+	 * story names rested on one image, and the pane's new surface was
+	 * unfalsifiable in its own evidence.
+	 */
+	["panels-analytics--pre-metric-ledger", 1140, 1240],
+	[
+		"panels-analytics--pre-metric-ledger",
+		1140,
+		560,
+		{ dir: "pre-metric-ledger-model", scrollTo: MODEL_SECTION },
+	],
+	["panels-analytics--partial-rate-coverage", 1140, 1240],
+	[
+		"panels-analytics--partial-rate-coverage",
+		1140,
+		560,
+		{ dir: "partial-rate-coverage-model", scrollTo: MODEL_SECTION },
+	],
+	["panels-analytics--model-rows-loading", 1140, 1240],
+	[
+		"panels-analytics--model-rows-loading",
+		1140,
+		560,
+		{ dir: "model-rows-loading-model", scrollTo: MODEL_SECTION },
+	],
+	["panels-analytics--model-rows-empty", 1140, 1240],
+	[
+		"panels-analytics--model-rows-empty",
+		1140,
+		560,
+		{ dir: "model-rows-empty-model", scrollTo: MODEL_SECTION },
+	],
+	["panels-analytics--model-rows-unavailable", 1140, 1240],
+	[
+		"panels-analytics--model-rows-unavailable",
+		1140,
+		560,
+		{ dir: "model-rows-unavailable-model", scrollTo: MODEL_SECTION },
+	],
 	/*
 	 * The same state with the panel body parked at its END, which is the only way
 	 * the By-session table's rows are in the picture at all: review round 1 (D6)
@@ -4370,6 +4808,27 @@ export const STORIES = [
 	["common-connectivity-banner--stopped", 1024, 300],
 	["common-connectivity-banner--wedged", 1024, 300],
 	["common-connectivity-banner--unattachable", 1024, 300],
+	/*
+	 * The three states this round ADDED, and each is a finding rather than a state the
+	 * tree happened to lack:
+	 *  - `both-addresses-held` is the two-holder form, which had no frame anywhere in
+	 *    the tree and is the case the class-stated-once sentence exists for (design
+	 *    round 1, D2/D6).
+	 *  - `serving-on-fallback` is the state the design round measured as INVISIBLE: its
+	 *    frame used to be byte-identical to `attached` (design round 1, D1).
+	 *  - `returned-to-configured` is the transition back, which nothing rendered at all.
+	 */
+	["common-connectivity-banner--both-addresses-held", 1024, 300],
+	["common-connectivity-banner--serving-on-fallback", 1024, 300],
+	["common-connectivity-banner--returned-to-configured", 1024, 300],
+	/*
+	 * And the fourth state this round adds, for the same reason: `serving-on-fallback`
+	 * above is the FALLBACK TAKEN, and this is the same address one launch later, when the
+	 * app ADOPTS the daemon that launch left running. No spawn gate runs then, so the
+	 * state carried no substitution at all and the app was silently on another address
+	 * (agent review round 2, R2-1a).
+	 */
+	["common-connectivity-banner--attached-elsewhere", 1024, 300],
 	/* The machine-offline claim itself, and the one state the internet banner may
 	   paint: a negative reading that has held across the grace and been confirmed
 	   by a second one. Its companion - the same reading BEFORE the grace, which

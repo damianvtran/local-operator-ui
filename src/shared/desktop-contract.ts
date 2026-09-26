@@ -15,6 +15,20 @@ const settingKey = z
 	.regex(/^[a-zA-Z0-9_][a-zA-Z0-9_.-]*$/);
 const secret = z.string().min(1).max(32768);
 const sessionId = z.string().regex(/^[a-f0-9]{12}$/);
+/*
+ * The MCP field shapes, named once because the session route and the
+ * sessionless catalog route accept the same server names, secret references and
+ * operation ids - two inline copies of a regex are two places to drift.
+ */
+const mcpServerName = z.string().regex(/^[A-Za-z0-9_.:-]{1,100}$/);
+const mcpSecretReference = z.string().regex(/^\$\{[A-Za-z_][A-Za-z0-9_]*\}$/);
+const mcpOperationId = z.string().regex(/^[a-f0-9]{32}$/);
+/** An absolute POSIX or Windows directory path; the backend checks it exists. */
+const mcpCatalogCwd = z
+	.string()
+	.min(1)
+	.max(4096)
+	.regex(/^(\/|[A-Za-z]:[\\/])/);
 /**
  * The wire shape of a canonical stream subscription id.
  *
@@ -675,6 +689,43 @@ const publicationDocument = z
 
 // This vocabulary is the security boundary, not a generic authenticated fetch.
 // The renderer selects an operation; it never supplies a URL, method or headers.
+
+/**
+ * The two axes a catalogue request may be scoped to.
+ *
+ * A CLOSED VOCABULARY, and `team`/`agent` are the renderer's own two group kinds
+ * rather than the daemon's binding field names: the group predicate is
+ * `binding.team === name` for a team and `!binding.team && binding.agent === name`
+ * for an agent, and the `!team` half is load-bearing (a team-attached session
+ * that also carries an agent name belongs to the team's group, never the agent's).
+ * Spelling the kinds here is what keeps a client from asking for a third axis
+ * the daemon would have to refuse by hand.
+ */
+const catalogueScopeKind = z.enum(["team", "agent"]);
+/**
+ * A scope's display name, as `attachment.json` recorded it.
+ *
+ * BOUNDED AT 64, the bound the profile and team registries already use for a
+ * name, so an over-long value is refused HERE by name rather than arriving as the
+ * backend's generic "invalid fields" 422. It is deliberately NOT validated
+ * against a registry: an operator renames and deletes teams, and their sessions
+ * keep the old name (`read_session_attachment`'s docstring in the daemon is
+ * explicit that the stored name is a historical fact), so a scope naming a team
+ * that no longer exists is a legitimate empty page rather than a refusal.
+ */
+const catalogueScopeName = z.string().min(1).max(64);
+/**
+ * An opaque position, echoed back from a previous answer's `next_cursor`.
+ *
+ * Opaque to this client on purpose: it encodes the rank tuple the daemon sorts
+ * by, and a client that parsed it would be a second implementation of the
+ * ordering. The bound is what stops a malformed token from being a transport
+ * problem; the daemon answers an unusable one with the scope's first page and
+ * `cursor_missing: true`, so a token this schema admits but the daemon does not
+ * recognise is a RE-READ rather than an error.
+ */
+const catalogueCursor = z.string().min(1).max(256);
+
 export const desktopRequestSchema = z.discriminatedUnion("op", [
 	z.object({ op: z.literal("capabilities") }).strict(),
 	z.object({ op: z.literal("profiles.list") }).strict(),
@@ -736,6 +787,30 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			 * archived state, and an unarchive control on a row found by search.
 			 */
 			include_archived: z.boolean().optional(),
+			/*
+			 * The four parameters that make the catalogue PAGEABLE, and the switch that
+			 * makes the daemon count it.
+			 *
+			 * ALL FOUR ARE OPTIONAL AND DEFAULTED, which is the whole compatibility
+			 * promise: a request that sends none of them is byte-identical to the one
+			 * this app sent before they existed, and an older daemon is therefore fully
+			 * supported. They are gated on the `session_catalogue_page` capability rather
+			 * than on a `session_catalogue` version bump, for the reason that map's own
+			 * register states (an EXISTING surface must keep working against a backend
+			 * that lacks the new one): FastAPI silently ignores unknown query parameters,
+			 * so an un-gated client asking for `scope_kind=team&scope_name=lopdev` would
+			 * receive the UNSCOPED page and draw other teams' rows under that team, and an
+			 * un-gated `cursor` would receive page one again and duplicate it. The client
+			 * has to be able to ask whether the daemon understands these, and the
+			 * capability map is how this codebase asks.
+			 *
+			 * They travel as ONE contract revision rather than three: counts without the
+			 * scope could not be rendered consistently with that scope's paged rows.
+			 */
+			scope_kind: catalogueScopeKind.optional(),
+			scope_name: catalogueScopeName.optional(),
+			cursor: catalogueCursor.optional(),
+			with_counts: z.boolean().optional(),
 		})
 		.strict(),
 	z
@@ -827,6 +902,17 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			 * different request for every caller that never asked.
 			 */
 			model: modelSelection.optional(),
+			/*
+			 * The id a `sessions.draft` mint handed the pane, when it has one: the
+			 * create then adopts that id (and the runtime already engaged for it)
+			 * instead of minting a fresh session id. OMITTED when the pane never
+			 * minted — an older backend, a draft the user sent before the first
+			 * keystroke's mint answered, or a set of fields that changed since the
+			 * mint (see the store's drop rule) — so the body is byte-for-byte the
+			 * request this op sent before the draft could be warmed, and a backend
+			 * that cannot resolve the id mints fresh rather than failing the send.
+			 */
+			draftId: sessionId.optional(),
 		})
 		.strict(),
 	/*
@@ -860,6 +946,51 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			/* Present only when the pane's chips were used: the preview then answers
 			   the reading the CHOSEN model gives, which is the ladder and window the
 			   first turn will actually get. */
+			model: modelSelection.optional(),
+		})
+		.strict(),
+	/*
+	 * Mint the id a NEW chat's runtime is warmed and then born on, from the
+	 * pane's first keystroke.
+	 *
+	 * WHY THE OP EXISTS. A draft pane has no session to address, so there is
+	 * nothing to warm: `sessions.warm` needs an id, and the multi-second engage
+	 * the first send pays is exactly what the draft cannot pre-empt without one.
+	 * The mint allocates that id and registers it with the daemon (fast, no
+	 * engage), and the id then unlocks the same three doors a session pane uses
+	 * — `events`, `watch` (the lease) and `warm` — through a deliberately narrow
+	 * allow-list on the backend. `sessions.create` adopts the id on send, so the
+	 * conversation the user lands in IS the one that was warmed; a daemon that
+	 * has never seen the id (restart, expiry, eviction) mints fresh and the send
+	 * works exactly as it did before this op existed.
+	 *
+	 * THE MINT ENGAGES NOTHING, and that is the lifetime design rather than an
+	 * omission: the pane's own subscription and watch lease hold the bridge that
+	 * keeps a warm alive, exactly as they do for a session, so abandoning the
+	 * pane cancels an in-flight warm through the same `_detach` and a runtime
+	 * nobody holds is reaped by the residency drain. There is no second, warmer-
+	 * owned lifetime to get wrong.
+	 *
+	 * `requestId` IS A RECEIPT KEY, unlike `sessions.preview`'s token: a mint is
+	 * fired once per pane, and a retry — a fast second keystroke, a lost
+	 * response — must replay the SAME id, because two ids for one pane would
+	 * warm two runtimes and leave a registry entry nobody can ever consume.
+	 *
+	 * The body is `sessions.create`'s first half, deliberately: same `cwd` bounds,
+	 * same optional `target`, same optional `model` and the same 422 for an
+	 * unresolvable profile. The pane is asking the question it will ask for real
+	 * on the first send, so both derive from one selection and cannot disagree.
+	 *
+	 * Deliberately NOT a `MESSAGE_OPS` member (see `desktopRequestByteBudget`):
+	 * a path and two optional short ids are not prose, so the mint costs the
+	 * control budget — which is what lets a KEYSTROKE issue it.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.draft"),
+			requestId,
+			cwd: z.string().min(1).max(4096),
+			target: target.optional(),
 			model: modelSelection.optional(),
 		})
 		.strict(),
@@ -1399,6 +1530,31 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	/*
+	 * The per-model rate table's own read, and a SEPARATE op on purpose.
+	 *
+	 * Its rows come from a grouped scan of the RAW LEDGER rather than from the
+	 * rollup `analytics.get` reads, which is what makes it cover the operator's
+	 * whole existing history rather than only the days since the rollup shipped
+	 * — and is also what makes it cost seconds on a large ledger. Riding
+	 * `analytics.get` would add that scan to every analytics panel load,
+	 * including the ones that never scroll to the table, so it is fetched on its
+	 * own and its wait is bounded and stated on its own section.
+	 *
+	 * Same arguments as `analytics.get`, same `.strict()` door, same window
+	 * bounds: the two ops are windowed by the same `since_ms`/`until_ms`, which
+	 * is the one property that lets a reader hold a row here against the
+	 * headline Total above it.
+	 */
+	z
+		.object({
+			op: z.literal("analytics.models"),
+			sessionId: sessionId.optional(),
+			sinceMs: z.number().int().nonnegative().optional(),
+			untilMs: z.number().int().nonnegative().optional(),
+			days: z.number().int().min(1).max(366).optional(),
+		})
+		.strict(),
+	/*
 	 * The two diagnostics reads. They ride their own capability key
 	 * (`diagnostics`) rather than the catalogue one, because `/analytics` and
 	 * `/failovers` must keep working against a backend that lacks these routes.
@@ -1456,6 +1612,24 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			requestId,
 			text: z.string().min(1).max(32768),
 			asideId: requestId.optional(),
+			/*
+			 * THE SUBSCRIPTION THAT WANTS THE ANSWER'S CHUNKS, named by the viewer
+			 * that is asking.
+			 *
+			 * `aside_delta` is published on the session's stream, and the stream is
+			 * read by every attached viewer of a session - so the owner has to be
+			 * told WHICH of them asked, or an off-record answer is broadcast to
+			 * windows that never asked the question. The same id the `open` frame
+			 * hands the renderer (`payload.subscription_id`), which is also what
+			 * `sessions.watch` leases it with, so the two cannot disagree about
+			 * which subscription a viewer is.
+			 *
+			 * OPTIONAL, and that is the backward-compatibility half: an owner that
+			 * predates the routing sends no `aside_delta` at all, and a viewer that
+			 * has no subscription yet (the stream has not opened) still gets the
+			 * settled answer from the POST's response.
+			 */
+			subscriptionId: z.string().regex(SUBSCRIPTION_ID_PATTERN).optional(),
 		})
 		.strict(),
 	z
@@ -1624,28 +1798,101 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 						"status",
 						"cancel",
 					]),
-					name: z
-						.string()
-						.regex(/^[A-Za-z0-9_.:-]{1,100}$/)
-						.optional(),
+					name: mcpServerName.optional(),
 					scope: z.enum(["global", "project"]).optional(),
 					command: z.string().min(1).max(4096).optional(),
 					args: z.array(z.string().max(8192)).max(128).optional(),
-					env: z
-						.record(z.string().regex(/^\$\{[A-Za-z_][A-Za-z0-9_]*\}$/))
-						.optional(),
+					env: z.record(mcpSecretReference).optional(),
 					url: z.string().max(4096).optional(),
-					headers: z
-						.record(z.string().regex(/^\$\{[A-Za-z_][A-Za-z0-9_]*\}$/))
-						.optional(),
+					headers: z.record(mcpSecretReference).optional(),
 					oauth: z.boolean().optional(),
 					confirmed: z.boolean().optional(),
-					operation_id: z
-						.string()
-						.regex(/^[a-f0-9]{32}$/)
-						.optional(),
+					operation_id: mcpOperationId.optional(),
 				})
 				.strict(),
+		})
+		.strict(),
+	/*
+	 * The SESSIONLESS MCP catalog (`GET|POST /v1/desktop/mcp`), gated on the
+	 * `mcp_catalog` capability. Settings > Integrations reads and writes MCP
+	 * CONFIGURATION through these, so it no longer needs a running conversation -
+	 * the session route above booted a whole runtime (and so needed a model
+	 * provider) just to write a JSON file (UX walk U5). The session ops stay: the
+	 * run panel is a live per-runtime view, and `connect`/`disconnect`/`reload`
+	 * are about a runtime's live connection, so they are not accepted here.
+	 *
+	 * `cwd` is optional (the backend defaults it to the user's home, the desktop's
+	 * own default) and must be absolute: the backend 422s anything else, and the
+	 * schema refuses it first so a relative path never reaches the wire.
+	 */
+	z
+		.object({
+			op: z.literal("mcp.catalog"),
+			cwd: mcpCatalogCwd.optional(),
+			sessionId: sessionId.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("mcp.catalog.control"),
+			cwd: mcpCatalogCwd.optional(),
+			control: z
+				.object({
+					action: z.enum([
+						"add",
+						"remove",
+						"test",
+						"login",
+						"reauth",
+						"logout",
+						"status",
+						"cancel",
+					]),
+					name: mcpServerName.optional(),
+					scope: z.enum(["global", "project"]).optional(),
+					command: z.string().min(1).max(4096).optional(),
+					args: z.array(z.string().max(8192)).max(128).optional(),
+					env: z.record(mcpSecretReference).optional(),
+					url: z.string().max(4096).optional(),
+					headers: z.record(mcpSecretReference).optional(),
+					confirmed: z.boolean().optional(),
+					operation_id: mcpOperationId.optional(),
+				})
+				.strict(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("mcp.catalog.credentials"),
+			/*
+			 * WHICH HEADER OR ENV NAME THE KEY BELONGS TO (backend #1511
+			 * `aa927158a`). A server with no `${ID}` reference has nothing for the
+			 * catalog's own `set_key` to fill, so the credential write names the
+			 * header itself and the backend adds `headers[header] = "${ID}"` to the
+			 * defining file. Refused (`invalid_target`) for a header the transport
+			 * owns, one already set, a malformed name, or an invalid id - and
+			 * refused with NOTHING written.
+			 */
+			header: z.string().min(1).max(128).optional(),
+			cwd: mcpCatalogCwd.optional(),
+			name: mcpServerName,
+			values: z
+				.record(z.string().min(1).max(128), z.string().min(1).max(32768))
+				// The same owner bound as `mcp.credentials.store`, field-level for the
+				// same discriminated-union reason given there.
+				.refine(
+					(secrets) =>
+						Object.keys(secrets).length <= 32 &&
+						Object.values(secrets).reduce(
+							(total, value) => total + value.length,
+							0,
+						) <= 65536,
+					{
+						message:
+							"Too many secret values, or too much secret text, for one MCP credential write.",
+					},
+				),
+			confirmedReplace: z.array(z.string().min(1).max(128)).max(32),
 		})
 		.strict(),
 	z
@@ -2261,6 +2508,15 @@ const DESKTOP_LONG_READ_DEADLINE_MS = 90_000;
  */
 const LEDGER_READ_OPS: ReadonlySet<string> = new Set([
 	"analytics.get",
+	/*
+	 * The worst case of the same shape, and the reason the set is spelled by
+	 * shape rather than by measured cost: `/analytics/models` is a grouped scan
+	 * of the raw ledger with no covering index, measured in SECONDS on a 1.95 M
+	 * row ledger where `analytics.get` measures 12-40 s cold. On the control
+	 * budget it would be abandoned mid-read on nearly every open, so it is here
+	 * beside the op it is a slower sibling of.
+	 */
+	"analytics.models",
 	"sessions.report",
 ]);
 
@@ -2296,6 +2552,35 @@ export function desktopRequestDeadlineMs(op: DesktopRequest["op"]): number {
 	return LONG_READ_OPS.has(op)
 		? DESKTOP_LONG_READ_DEADLINE_MS
 		: DESKTOP_CONTROL_DEADLINE_MS;
+}
+
+/**
+ * How long the RENDERER waits for a desktop control before calling it dead.
+ *
+ * Deliberately longer than the main process's own `fetch` deadline for the same
+ * op - `desktopRequestDeadlineMs` plus this margin, rather than the 30 s literal
+ * that used to sit in the renderer's wrapper against main's flat 20 s. The
+ * invariant is the thing worth keeping: the renderer's bound only covers the case
+ * main can never report (the IPC round trip itself never settling), so a backend
+ * that answers slowly is still reported by the layer that actually knows the HTTP
+ * status. Splitting it per op is what keeps that true now that main's deadline is
+ * not one number: a flat 30 s against a 90 s ledger-read budget would have made
+ * the renderer the layer that gives up first, and its copy cannot name the reason.
+ *
+ * It does NOT cover `desktopMedia`, whose transport allows 120 s for speech and
+ * agent-ZIP transfers; that path is bounded separately and is not routed here.
+ *
+ * IT LIVES HERE, beside the deadline it derives from, because more than one
+ * renderer module needs the renderer's bound and only this module is resolved as
+ * a real module by every harness that bundles them (the desktop-api wrapper is
+ * stubbed in several of them). A reader asking "how long does this request
+ * really have" gets one answer with one definition.
+ */
+export const DESKTOP_DEADLINE_MARGIN_MS = 5000;
+
+/** The renderer's own deadline for one op, derived from the transport's. */
+export function desktopRequestTimeoutMs(op: DesktopRequest["op"]): number {
+	return desktopRequestDeadlineMs(op) + DESKTOP_DEADLINE_MARGIN_MS;
 }
 
 /**
@@ -2366,6 +2651,7 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"capabilities",
 	"accounts.list",
 	"analytics.get",
+	"analytics.models",
 	"commands.entities",
 	"commands.list",
 	"config.get",
@@ -2382,6 +2668,7 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"legacy.models.providers",
 	"legacy.schedule.get",
 	"legacy.schedules.list",
+	"mcp.catalog",
 	"mcp.list",
 	"models.catalogue",
 	"profiles.get",
@@ -2413,6 +2700,7 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
  */
 const PANEL_READ_OPS: ReadonlySet<string> = new Set([
 	"analytics.get",
+	"analytics.models",
 	"usage.get",
 	"sessions.report",
 	"info.get",
@@ -2800,6 +3088,52 @@ export type ProviderMethod = {
 	kind: "api_key" | "browser" | "device";
 	requires_secret_input: boolean;
 	paste_fallback: boolean;
+	/**
+	 * The model this method would make the default on a machine with none, as
+	 * the backend's one suggestion map states it. Optional because backends
+	 * before the suggested-defaults change do not send it; absent and `null`
+	 * both mean "no suggestion to show", and nothing is derived in its place.
+	 */
+	suggested_model?: SuggestedModel | null;
+};
+
+/** A backend-owned model suggestion: the id to write and the name to show. */
+export type SuggestedModel = { id: string; name: string };
+
+/**
+ * What a successful sign-in or key save did to the default model.
+ *
+ * The backend decides and writes it (`plan_login_defaults`, the same planner
+ * the terminal uses), and the renderer only renders the `receipt` sentence and
+ * offers "Change": re-deriving the decision here would be a second planner that
+ * can disagree with the one that actually wrote the config.
+ *
+ * - `hosting`/`model` set: this is what was written.
+ * - `hosting` null with a `receipt`: nothing was written, only explained.
+ * - the whole field `null`: an existing working default was left alone.
+ */
+export type DefaultsApplied = {
+	hosting: string | null;
+	/** The model ID. */
+	model: string | null;
+	/** The model's display name, e.g. "Claude Opus 5.5". */
+	model_name: string | null;
+	/** One user-facing sentence describing what happened. */
+	receipt: string;
+};
+
+/**
+ * The result of `auth.key` (PUT /v1/auth/providers/{id}/key).
+ *
+ * Every field is optional: a backend before key validation answers `{}`. A
+ * REJECTED key never arrives here -- it is a 422 whose `detail` names the
+ * reason, and nothing is stored. `valid: null` is "saved, but not checked",
+ * with `reason` saying why.
+ */
+export type SaveKeyResult = {
+	valid?: boolean | null;
+	reason?: string | null;
+	defaults_applied?: DefaultsApplied | null;
 };
 export type DesktopProvider = {
 	id: string;
@@ -2816,6 +3150,8 @@ export type DesktopProvider = {
 	has_credential: boolean;
 	stored_credentials: number;
 	base_url: string | null;
+	/** See `ProviderMethod.suggested_model`; optional for older backends. */
+	suggested_model?: SuggestedModel | null;
 };
 export type AuthOperation = {
 	id: string;
@@ -2834,6 +3170,31 @@ export type AuthOperation = {
 	input_required: boolean;
 	prompt_id: string | null;
 	expires_in: number;
+	/*
+	 * The fields below are additive (backend suggested-defaults change) and are
+	 * optional because an older backend omits them. Every reader falls back to
+	 * what the older snapshot already carried: `instructions` for the device
+	 * code, `auth_url` for the page, and "paste only when asked" for the input.
+	 */
+	/** What the sign-in changed about the default model; only on `succeeded`. */
+	defaults_applied?: DefaultsApplied | null;
+	/** A device flow's one-time code, as its own field. */
+	user_code?: string | null;
+	/**
+	 * A loopback alias for the SAME page as `auth_url`, reported by every
+	 * callback flow on the newer backend (`http://localhost:<port>/launch`), and
+	 * never by a device flow. It is not a second page and not a device page: a
+	 * reader that names a provider to the user takes `auth_url`'s host, which is
+	 * what the panel does (code round 1 M1).
+	 */
+	launch_url?: string | null;
+	/**
+	 * True when the paste box is only a FALLBACK: the flow completes on its own
+	 * when the browser redirects back, and the box exists for the case where it
+	 * cannot (Anthropic). False/absent with `input_required` means the paste is
+	 * the flow itself.
+	 */
+	input_optional?: boolean;
 };
 export type BackendSetting = {
 	key: string;
@@ -3009,16 +3370,47 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "PATCH",
 				body: { request_id: request.requestId, ...request.fields },
 			};
-		case "sessions.list":
+		case "sessions.list": {
+			/*
+			 * Built as a query string rather than by interpolation, because four of the
+			 * parameters are store data: a team name is whatever the operator called it,
+			 * and a `&` or a `#` in one would otherwise change the request's meaning
+			 * instead of scoping it.
+			 *
+			 * THE ORDER IS PART OF THE COMPATIBILITY PROMISE. `limit` then
+			 * `include_archived` are the two parameters this request has always carried,
+			 * and they come first so a request that names none of the paging parameters
+			 * serialises to the exact bytes it sent before those existed - which is what
+			 * an older daemon is promised.
+			 */
+			const params = new URLSearchParams();
+			params.set("limit", String(request.limit ?? 100));
+			// Omitted when false, for the reason `sessions.search`'s own query states:
+			// the pre-flag request is what an older backend must keep seeing, and
+			// `false` is the route's default anyway.
+			if (request.include_archived) params.set("include_archived", "true");
+			/*
+			 * The paging four, appended only when asked for. `with_counts` follows
+			 * `include_archived`'s rule rather than `cursor`'s: it is a boolean whose
+			 * route default is false, so omitting it is the pre-change request, while
+			 * `scope_kind`/`scope_name`/`cursor` are absent-or-present values.
+			 *
+			 * A HALF SCOPE IS SENT AS SENT. This schema admits `scope_kind` without
+			 * `scope_name` (they are two optional fields, not a discriminated pair), and
+			 * that is deliberate: the daemon refuses the half by name, which is the
+			 * behaviour a client bug should meet rather than a client-side guess at
+			 * which half it meant. Dropping the pair here would turn a bug into an
+			 * unscoped answer drawn under one team.
+			 */
+			if (request.scope_kind) params.set("scope_kind", request.scope_kind);
+			if (request.scope_name) params.set("scope_name", request.scope_name);
+			if (request.cursor) params.set("cursor", request.cursor);
+			if (request.with_counts) params.set("with_counts", "true");
 			return {
-				// Omitted when false, for the reason `sessions.search`'s own query
-				// states: the pre-flag request is what an older backend must keep
-				// seeing, and `false` is the route's default anyway.
-				path: `/v1/desktop/sessions?limit=${request.limit ?? 100}${
-					request.include_archived ? "&include_archived=true" : ""
-				}`,
+				path: `/v1/desktop/sessions?${params}`,
 				method: "GET",
 			};
+		}
 		case "sessions.search": {
 			// `encodeURIComponent` rather than interpolation: a query is whatever
 			// the user typed, and `&`, `#` or a space in it would otherwise change
@@ -3064,11 +3456,25 @@ export function desktopEndpoint(request: DesktopRequest): {
 					cwd: request.cwd,
 					...(request.target ? { target: request.target } : {}),
 					...(request.model ? { model: request.model } : {}),
+					// Omitted, not nulled, when the pane has no minted id: see the field's
+					// own note for the byte-identity promise this keeps.
+					...(request.draftId ? { draft_id: request.draftId } : {}),
 				},
 			};
 		case "sessions.preview":
 			return {
 				path: "/v1/desktop/sessions/preview",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					cwd: request.cwd,
+					...(request.target ? { target: request.target } : {}),
+					...(request.model ? { model: request.model } : {}),
+				},
+			};
+		case "sessions.draft":
+			return {
+				path: "/v1/desktop/sessions/draft",
 				method: "POST",
 				body: {
 					request_id: request.requestId,
@@ -3481,6 +3887,25 @@ export function desktopEndpoint(request: DesktopRequest): {
 				query.set("until_ms", String(request.untilMs));
 			return { path: `/v1/desktop/analytics?${query}`, method: "GET" };
 		}
+		/*
+		 * `/analytics/models`, NOT `/analytics?models=1`.
+		 *
+		 * The path segment is what keeps the two reads separable at the
+		 * transport: `desktopRequestDeadlineMs` sizes a wait from the op, and an
+		 * op that sometimes means "the cheap rollup" and sometimes "a 1.95 M-row
+		 * ledger scan" cannot have one honest budget. The two spellings of the
+		 * query string below are deliberately identical to `analytics.get`'s, so
+		 * the server resolves one window from either.
+		 */
+		case "analytics.models": {
+			const query = new URLSearchParams({ days: String(request.days ?? 30) });
+			if (request.sessionId) query.set("session_id", request.sessionId);
+			if (request.sinceMs !== undefined)
+				query.set("since_ms", String(request.sinceMs));
+			if (request.untilMs !== undefined)
+				query.set("until_ms", String(request.untilMs));
+			return { path: `/v1/desktop/analytics/models?${query}`, method: "GET" };
+		}
 		case "info.get":
 			/* No parameters: `/info` has exactly one answer per host. */
 			return { path: "/v1/desktop/info", method: "GET" };
@@ -3542,6 +3967,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 					request_id: request.requestId,
 					text: request.text,
 					aside_id: request.asideId,
+					// The viewer the chunks belong to; see the op's own note for why it
+					// is optional and why it is the stream's own id.
+					subscription_id: request.subscriptionId,
 				},
 			};
 		case "sessions.adopt":
@@ -3576,6 +4004,43 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/sessions/${request.sessionId}/mcp`,
 				method: "POST",
 				body: request.control,
+			};
+		case "mcp.catalog": {
+			// Absent fields are OMITTED rather than sent empty: the backend's own
+			// default (home, no overlay) is the answer for "no conversation open".
+			const query = new URLSearchParams();
+			if (request.cwd) query.set("cwd", request.cwd);
+			if (request.sessionId) query.set("session_id", request.sessionId);
+			const suffix = query.toString();
+			return {
+				path: suffix ? `/v1/desktop/mcp?${suffix}` : "/v1/desktop/mcp",
+				method: "GET",
+			};
+		}
+		case "mcp.catalog.control":
+			return {
+				path: "/v1/desktop/mcp",
+				method: "POST",
+				body: {
+					...request.control,
+					...(request.cwd ? { cwd: request.cwd } : {}),
+				},
+			};
+		case "mcp.catalog.credentials":
+			return {
+				path: "/v1/desktop/mcp/credentials",
+				method: "POST",
+				body: {
+					name: request.name,
+					values: request.values,
+					// `add_key`'s one extra field: which HTTP header the key
+					// travels in, for a server that declares no `${ID}` yet. The
+					// backend binds `headers[header] = "${ID}"` for the single id in
+					// `values` and stores the value beside it.
+					...(request.header ? { header: request.header } : {}),
+					confirmed_replace: request.confirmedReplace,
+					...(request.cwd ? { cwd: request.cwd } : {}),
+				},
 			};
 		case "radient.request":
 			return {
@@ -3856,9 +4321,93 @@ export type DesktopUsageAggregate = {
 	context_tokens: number;
 	cost_micro: number;
 	cost_known_calls: number;
+	/**
+	 * The measured GENERATION window, in integer microseconds, summed over the
+	 * calls that have one — and its two companions.
+	 *
+	 * ADDITIVE and OPTIONAL, which is the whole reason they are declared that
+	 * way rather than as required fields: they are ordinary new fields on
+	 * `dataclasses.asdict(UsageAggregate)`, so a backend that predates the
+	 * feature omits them, and the panel's existing By-provider and By-session
+	 * tables gain a rate column with no new request and no added latency. An
+	 * absent triple means "no call in scope was measured", which is the same
+	 * fact a present `{0, 0, 0}` states; both render the unknown spelling.
+	 *
+	 * `decode_us` starts at the FIRST output delta and ends at the last, so it
+	 * excludes time-to-first-token, provider queueing and consumer backpressure.
+	 * That is what makes it a generation rate rather than a wall rate, and it is
+	 * also why it is forward-fill: there is nothing to backfill it from. The
+	 * rate is `decode_tokens / (decode_us / 1e6)`, and it is UNKNOWN — `—`,
+	 * never `0 tok/s` — whenever `decode_calls === 0`. See the wall half on
+	 * {@link DesktopModelRate}, which is a DIFFERENT quantity and deliberately
+	 * not on this type.
+	 */
+	decode_us?: number;
+	/** Output tokens over exactly the calls counted by `decode_calls`. */
+	decode_tokens?: number;
+	/** How many calls contributed a measured window. `0` means unknown, not zero. */
+	decode_calls?: number;
 	components: Record<string, number>;
 	by_provider: Record<string, DesktopUsageAggregate>;
 	by_session: Record<string, DesktopUsageAggregate>;
+};
+
+/**
+ * One `analytics.models` row: a `(provider, model_id)` group of the RAW LEDGER.
+ *
+ * Two rates live on this type and they are different quantities, so the field
+ * names differ rather than sharing a `tokens`/`us` pair with a label:
+ *
+ * - **`decode_*`** is the measured generation window, the same triple
+ *   {@link DesktopUsageAggregate} carries. Forward-fill: calls recorded before
+ *   the feature contribute `0/0`, so `decode_calls === 0` means the rate is
+ *   unknown and renders `—`.
+ * - **`wall_*`** is the whole call: `wall_tokens / (wall_us / 1e6)` over calls
+ *   that have a duration and reported output tokens. It is built from two
+ *   already-stored columns, so it covers the operator's ENTIRE existing history
+ *   with no migration. It is a WALL rate — it includes time-to-first-token,
+ *   provider queueing and any consumer backpressure — and it must never be
+ *   labelled or read as decode speed. Where the two differ, that gap is the
+ *   diagnosis rather than a defect.
+ *
+ * Both rates come from ONE grouped scan, which is why this is its own op: it
+ * costs seconds on a large ledger and must not ride the panel's headline read.
+ * Every field is an integer.
+ */
+export type DesktopModelRate = {
+	provider: string;
+	model_id: string;
+	/** Every call in the group, twice over: the decode and wall counts are subsets. */
+	calls: number;
+	output_tokens: number;
+	decode_us: number;
+	decode_tokens: number;
+	decode_calls: number;
+	/** Microseconds summed over calls with `duration_ms > 0`. */
+	wall_us: number;
+	wall_tokens: number;
+	/** How many calls contributed a wall window. */
+	wall_calls: number;
+};
+
+/**
+ * `analytics.models`'s `data`.
+ *
+ * `scope` is the store's own word for where the rows came from — `"ledger"`,
+ * never the rollup the headline reads — and it is carried rather than assumed
+ * so a section that renders these rows can say which source it is quoting.
+ *
+ * `since_ms`/`until_ms` are the bounds the scan actually ran with, echoed back,
+ * and are `null` when the request gave none. They are NOT the panel's own
+ * window: the panel derives its window once and passes it, and this echo is
+ * what lets the section's meta line state the window the rows were read over
+ * rather than the one the toolbar currently shows.
+ */
+export type DesktopAnalyticsModelsData = {
+	rows: DesktopModelRate[];
+	scope: string;
+	since_ms: number | null;
+	until_ms: number | null;
 };
 
 /** One `usage_daily` rollup bucket, oldest-first across the series. */

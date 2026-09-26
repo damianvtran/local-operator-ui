@@ -1,0 +1,9 @@
+# The round-3 strict-reading sequences through both policy builds, in one
+# process (scratch probe; the committed cases that pin the same behaviour
+# are the three named in unit-tests-round3-prefix.txt). Every gap inside an
+# act is 150ms (or 100ms for the push after the opening notch), well under
+# GESTURE_GAP_MS = 400:
+
+0ed7c7efb (origin/main): A: up-at-wall -> fetch; down/up inside the act -> fetch | B: down notch opens the act -> refilled=false; push -> fetch
+head (this branch): A: up-at-wall -> fetch; down/up inside the act -> none | B: down notch opens the act -> refilled=false; push -> fetch
+DISCRIMINATES: A fetch->none (fetch on 0ed7c7efb / none here); B the down notch that opens an act refills, and the push is answered

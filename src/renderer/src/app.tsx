@@ -1,6 +1,12 @@
 import type { FC } from "react";
 import { Suspense, lazy, useEffect } from "react";
-import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import {
+	Navigate,
+	Route,
+	Routes,
+	useLocation,
+	useNavigate,
+} from "react-router-dom";
 
 import { useConsentAttentionLifetime } from "@features/browser/hooks/use-consent-attention-lifetime";
 // ChatPage is the boot route (/ redirects to /chat), so it stays statically
@@ -13,6 +19,7 @@ import { useCommandPaletteShortcut } from "@features/command-palette/use-command
 import { useConsoleAttention } from "@features/console/hooks/use-console-attention";
 import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
+import { ConnectProviderDialog } from "@features/providers/connect-provider-dialog";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
@@ -23,8 +30,7 @@ import {
 } from "@shared/browser-consent-attention";
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
 
-import { BackendCompatibilityBanner } from "@shared/components/common/backend-compatibility-banner";
-import { ConnectivityBanner } from "@shared/components/common/connectivity-banner";
+import { ChatLayout } from "@shared/components/common/chat-layout";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
 import { LowCreditsDialog } from "@shared/components/common/low-credits-dialog";
 import { ModelsInitializer } from "@shared/components/common/models-initializer";
@@ -33,6 +39,7 @@ import { UpdateNotification } from "@shared/components/common/update-notificatio
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { useCheckFirstTimeUser } from "@shared/hooks/use-check-first-time-user";
 import { useLowCreditsDialog } from "@shared/hooks/use-low-credits-dialog";
+import { useWindowChrome } from "@shared/hooks/use-window-chrome";
 import {
 	panelSessionIdOfView,
 	useCanonicalSessionsStore,
@@ -91,6 +98,22 @@ const BrowserWebauthnPrompt = lazy(() =>
  * Handles routing and layout for the entire application
  */
 const App: FC = () => {
+	/*
+	 * The window chrome's live half: which sides the OS put its controls on, and the
+	 * full-screen fact. Mounted once, here, because it writes attributes on the
+	 * document element and two mounts would be two subscribers for one fact. It
+	 * renders nothing.
+	 */
+	useWindowChrome();
+	const { pathname } = useLocation();
+	/*
+	 * The routes that already own a 40px row at the window's top: the chat surface
+	 * draws the lane above both its columns, and the browser pane brings its own
+	 * toolbar. Every other route gets the drag band instead (see the band's note).
+	 */
+	const routeHasOwnChromeRow =
+		pathname.startsWith("/chat") || pathname.startsWith("/browser");
+
 	// Check if this is a first-time user
 	const { isOnboardingActive } = useCheckFirstTimeUser();
 	const {
@@ -101,6 +124,7 @@ const App: FC = () => {
 	const {
 		isCommandPaletteOpen,
 		isCreateAgentDialogOpen,
+		isSidebarCollapsed,
 		closeCreateAgentDialog,
 	} = useUiPreferencesStore();
 
@@ -456,7 +480,22 @@ const App: FC = () => {
 			 * labels stay 1x1 and rendered afterwards, so screen readers still
 			 * announce them; nothing is hidden, it is merely contained.
 			 */}
-			<div className="relative flex h-screen flex-col overflow-hidden">
+			<div
+				className="relative flex h-screen flex-col overflow-hidden"
+				/*
+				 * THE CHROME GATES MOVED TO `<html>` (this PR), and this element keeps only
+				 * the fact the CSS cannot get anywhere else. They used to live here as
+				 * `data-titlebar-platform`, computed from `navigator.platform` - which could
+				 * not express the native-frame fallback (it knows the OS, not the mode),
+				 * could not know where a Linux WM put its buttons, and did not exist until
+				 * React mounted. `main.tsx` writes `data-chrome-platform|mode|fullscreen` on
+				 * the document element before the first render, from main's own fact
+				 * (`--lo-window-chrome`), and `useWindowChrome` keeps the live ones current.
+				 * Root-level also lets the attribute rules reach PORTALED elements, which the
+				 * sidebar's overlay sheet is.
+				 */
+				data-titlebar-sidebar-collapsed={isSidebarCollapsed ? "true" : "false"}
+			>
 				{/*
 				 * THE TWO FULL-BLEED BANDS ARE THE SHELL'S FIRST CHILDREN, and this
 				 * container is a COLUMN for exactly that reason (D9).
@@ -490,10 +529,23 @@ const App: FC = () => {
 				 * `docs/evidence/band-occlusion/`; the rig that takes them is
 				 * `scripts/band-occlusion-evidence.mjs`.
 				 */}
-				<ConnectivityBanner />
-
-				<BackendCompatibilityBanner />
-
+				{/*
+				 * THE SHELL ROOT HAS NO STATUS SURFACE ANY MORE (§F2, D3).
+				 *
+				 * A connectivity band and a compatibility band used to mount here, above
+				 * the window's own region: they took their height out of the shell at the
+				 * top of the screen, over the sidebar rail and under the traffic lights,
+				 * and each carried its own Retry for the same fact. §F2 moves both into
+				 * the conversation pane - `chat-content.tsx` mounts the strip and the
+				 * compatibility band under its top row - so the chrome above the app
+				 * belongs to the window and nothing else, and one live region states the
+				 * connection instead of two.
+				 *
+				 * The region below keeps `flex-1 min-h-0 overflow-hidden`, which was
+				 * written for the case where a band above it took height; with no band it
+				 * is simply the shell's body, and the rule still holds for any surface a
+				 * pane adds inside it.
+				 */}
 				{/*
 				 * The app itself, in the space the bands leave. `flex-1 min-h-0` rather
 				 * than `h-screen`: this element's height is the window MINUS whatever the
@@ -526,6 +578,11 @@ const App: FC = () => {
 
 					<OnboardingModal open={isOnboardingActive} />
 
+					{/* The one "connect a model provider" dialog every surface opens
+					    through `useConnectProviderStore` (empty chat, composer line,
+					    the no-provider notice, the palette). Mounted once, here. */}
+					<ConnectProviderDialog />
+
 					<UpdateNotification />
 
 					{/*
@@ -553,34 +610,57 @@ const App: FC = () => {
 						onAgentCreated={handleAgentCreated}
 					/>
 
-					<SidebarNavigation />
-
-					<main className="flex grow flex-col overflow-hidden">
-						<Suspense
-							fallback={
-								<div className="flex grow items-center justify-center">
-									<Spinner size="lg" label="Loading page" />
-								</div>
-							}
-						>
-							<Routes>
-								<Route path="/" element={<Navigate to="/chat" replace />} />
-								<Route path="/chat" element={<ChatPage />} />
-								<Route path="/chat/:agentId" element={<ChatPage />} />
-								<Route path="/agents" element={<AgentsPage />} />
-								<Route path="/agents/:agentId" element={<AgentsPage />} />
-								<Route path="/settings" element={<SettingsPage />} />
-								<Route path="/agent-hub" element={<AgentHubPage />} />
-								<Route
-									path="/agent-hub/:agentId"
-									element={<AgentDetailsPage />}
-								/>
-								<Route path="/schedules" element={<SchedulesPage />} />
-								<Route path="/browser" element={<BrowserPage />} />
-								<Route path="*" element={<Navigate to="/chat" replace />} />
-							</Routes>
-						</Suspense>
-					</main>
+					<ChatLayout
+						sidebar={<SidebarNavigation />}
+						content={
+							<main className="flex grow flex-col overflow-hidden">
+								{/*
+								 * THE NON-CHAT ROUTES' DRAG BAND, and it is `--chrome-strip-h` tall on
+								 * macOS (32) and the caption height on Windows and Linux (40).
+								 *
+								 * Those routes have no 40px toolbar row of their own, so on a platform
+								 * where the app hides the OS frame they would have no drag surface above
+								 * the page's own top padding at all - and a frameless window with no drag
+								 * surface cannot be moved. On Windows and Linux it is also where the
+								 * caption buttons sit, which is why the band is the caption's height there
+								 * rather than the strip's (which is 0): the page's own heading then starts
+								 * BELOW the buttons rather than under them.
+								 *
+								 * `/chat` is excluded because `ChatLayout` already draws the lane above
+								 * both of its columns, and the band would double it. `/browser` is
+								 * excluded because the browser pane brings its own 40px toolbar, which is
+								 * the row the controls sit over on that route.
+								 */}
+								{routeHasOwnChromeRow ? null : (
+									<div data-chrome-route-band="" />
+								)}
+								<Suspense
+									fallback={
+										<div className="flex grow items-center justify-center">
+											<Spinner size="lg" label="Loading page" />
+										</div>
+									}
+								>
+									<Routes>
+										<Route path="/" element={<Navigate to="/chat" replace />} />
+										<Route path="/chat" element={<ChatPage />} />
+										<Route path="/chat/:agentId" element={<ChatPage />} />
+										<Route path="/agents" element={<AgentsPage />} />
+										<Route path="/agents/:agentId" element={<AgentsPage />} />
+										<Route path="/settings" element={<SettingsPage />} />
+										<Route path="/agent-hub" element={<AgentHubPage />} />
+										<Route
+											path="/agent-hub/:agentId"
+											element={<AgentDetailsPage />}
+										/>
+										<Route path="/schedules" element={<SchedulesPage />} />
+										<Route path="/browser" element={<BrowserPage />} />
+										<Route path="*" element={<Navigate to="/chat" replace />} />
+									</Routes>
+								</Suspense>
+							</main>
+						}
+					/>
 				</div>
 			</div>
 		</OnboardingProvider>

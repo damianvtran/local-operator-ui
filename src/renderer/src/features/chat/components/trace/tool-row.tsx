@@ -16,21 +16,21 @@
  *
  * Layout, left to right:
  *
- *   [glyph] [name, shared column] [summary, flexes] [+N] [-M] [outcome] [dur]
+ *   [glyph] [verb] [object, flexes] [+N] [-M] [outcome] [dur]
  *
- * - The NAME column is shared across every visible row and sized by the longest
- *   name on screen between an 8ch floor and a 24ch ceiling (`toolNameColumn`),
- *   so names stack into one edge and every summary starts on one rail. It is
- *   `ch` rather than `px` because the column holds monospace identifiers and
- *   `ch` is that font's own unit — the width then tracks the type scale instead
- *   of drifting away from it at another zoom.
+ * - The VERB is §E1's (`Ran`, `Read`, `Searched the web`), in sans at its own
+ *   width, and the object follows it 8px later, so the row reads as a sentence.
+ *   It replaced a SHARED NAME COLUMN holding the tool's wire name (the TUI's
+ *   8-24ch `TOOL_NAME_COL`), which put snake_case identifiers in the sans face
+ *   and left a hole after every short name (chat redesign, design round 1, D5).
+ *   The rail the eye scans down is the glyph column, which is still aligned.
  * - The DURATION slot is fixed at 5ch, right-aligned, so the outcome glyph
  *   lands on the same x whether a call took `0.4s` or `12.3s`. That single
  *   column of ticks down the left of the durations is most of what makes the
  *   ledger scannable, and it is why the slot is reserved even when a replayed
  *   row has no duration to put in it.
  * - The SHED order under pressure is the TUI's: diff counters go first, then
- *   the summary truncates, and the name column shrinks last. "How a write went
+ *   the object truncates, and the verb never does. "How a write went
  *   is core, how much it wrote is meta" — so the outcome column always
  *   survives. Here the first two rungs are `min-w-0` plus `truncate` on the
  *   summary and a container query that drops the counters on a narrow row,
@@ -53,20 +53,15 @@
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import { type ReactNode, useEffect, useState } from "react";
+import { InterruptedGlyph, toolIcon } from "./tool-glyphs";
 import {
-	ErrorGlyph,
-	InterruptedGlyph,
-	SuccessGlyph,
-	toolIcon,
-} from "./tool-glyphs";
-import {
-	TOOL_NAME_COL_MIN,
 	type ToolCategory,
 	displayName,
 	formatDuration,
 	formatSettledDuration,
 	isBareToolName,
 	toolCategory,
+	toolVerb,
 } from "./tool-row-model";
 
 export type ToolRowOutcome =
@@ -194,6 +189,15 @@ export type ToolRowProps = {
 	 * than this reaching for one: today the output's first line.
 	 */
 	summaryFallback?: string | null;
+	/**
+	 * Whether the object column is HELD PAST THE MARK THRESHOLD.
+	 *
+	 * The caller holds the column empty while a label read can still answer it
+	 * (`labelPending`), and after `LABEL_HOLD_MARK_MS` of that hold the empty cell
+	 * stops being honest about what the reader is waiting for. This is the LATE
+	 * state of the same hold: static, textless, dim - see the cell below.
+	 */
+	summaryHold?: boolean;
 	outcome: ToolRowOutcome;
 	/**
 	 * Seconds. A settled row shows the tenth-of-a-second format under ten
@@ -218,11 +222,6 @@ export type ToolRowProps = {
 	added?: number;
 	/** Lines removed, when the call reported a diff. Zero renders nothing. */
 	removed?: number;
-	/**
-	 * The shared name-column width in characters, owned by the LIST because it
-	 * is a property of what is on screen rather than of one row.
-	 */
-	nameColumn?: number;
 	/** Detail behind the row's disclosure. Absent makes the row static. */
 	details?: ReactNode;
 	/** Open the disclosure initially (stories and measurement surfaces). */
@@ -353,6 +352,39 @@ const rowInk = (outcome: ToolRowOutcome, toolName: string): string => {
 };
 
 /**
+ * The ink the VERB takes, which is the row's state and nothing else (§E1, D8).
+ *
+ * The row has two spans and they used to share one expression, on the rule that
+ * identity and state must not be painted differently inside one row. That rule
+ * survives where it matters - the glyph still takes `rowInk`, so shape and ink
+ * agree about what happened - but it was the wrong rule for the NAME, and D8 is
+ * its consequence: a settled `read` row drew its verb in `info` and its glyph in
+ * `info`, so the loudest ink on a settled ledger was the tool's name, and the
+ * name is the one part of the row that says the least. What a reader wants from
+ * a settled row is the RESULT, and the result is the summary beside it.
+ *
+ * So the verb is quiet: `ink-muted`, the same ink the object takes, with state
+ * as its only colour - the accent while the call is live (§B7's liveness
+ * exemption; it is the row that is animating), and `danger` when the call failed
+ * or never ran, where the row also prints the state WORD. Identity moves
+ * entirely into the glyph's SHAPE, which is the channel that survives with no
+ * colour at all (`tool-glyphs.ts`), and its ink is left as `rowInk` decided.
+ *
+ * WHAT THIS DOES NOT DO, and why: §E1 also asks for the GLYPH at `ink-dim`. That
+ * is a change to the palette gate, not to this row - `IDENTITY_PAIR_FLOOR` (15)
+ * exists precisely because `read`'s `info` and `meta`'s `accentAlt` sit one line
+ * apart in one column, five palettes are PINNED to it with their refusing
+ * constraint named, and the binding is asserted in `check-themes`. Moving the
+ * glyph off identity ink is a branding amendment with a gate to re-derive, so it
+ * belongs with §L's amendments rather than in the transcript's own commit.
+ */
+const nameInk = (outcome: ToolRowOutcome): string => {
+	if (outcome === "running") return "text-accent";
+	if (outcome === "error" || outcome === "not-run") return "text-danger";
+	return "text-ink-muted";
+};
+
+/**
  * The diff counters.
  *
  * Never `+0` or `-0`: a zero states that nothing was added, which is a
@@ -379,8 +411,16 @@ const DiffCounters = ({
 				"hidden shrink-0 gap-1 font-mono text-mono-sm tabular-nums @[34rem]/toolrow:flex",
 			)}
 		>
-			{added > 0 && <span className={cn("text-success")}>+{added}</span>}
-			{removed > 0 && <span className={cn("text-danger")}>-{removed}</span>}
+			{/*
+			 * QUIET, both of them (D8). `+5` in `success` and `-2` in `danger` made
+			 * every edit row a two-colour badge and put the ledger's danger ink on a
+			 * count that is not a failure - the only loud status in a trace is a
+			 * FAILED call's. The counts still differ by sign, which is the channel
+			 * that carries their meaning, and they keep `tabular-nums` so a column of
+			 * them stays a column.
+			 */}
+			{added > 0 && <span className={cn("text-ink-dim")}>+{added}</span>}
+			{removed > 0 && <span className={cn("text-ink-dim")}>-{removed}</span>}
 		</span>
 	);
 };
@@ -466,30 +506,27 @@ const StatusCluster = ({
 }) => {
 	const running = outcome === "running";
 	const elapsed = useRunningElapsed(running ? (startedAt ?? null) : null);
-	const Glyph =
-		outcome === "success"
-			? SuccessGlyph
-			: outcome === "error" || outcome === "not-run"
-				? // The cross is the TUI's mark for this settlement (`mark_not_run`
-					// puts the card in the error class). Shape is the primary channel, so
-					// the DISTINCTION from a tool failure rides the summary and the
-					// accessible label rather than a second invented glyph — the three
-					// outcome glyphs are a contract, and a fourth would weaken it.
-					ErrorGlyph
-				: outcome === "interrupted"
-					? InterruptedGlyph
-					: null;
-	const glyphInk =
-		outcome === "success"
-			? "text-success"
-			: outcome === "error" || outcome === "not-run"
-				? "text-danger"
-				: // `interrupted`'s OUTCOME MARK is deliberately hueless (`ink-dim`): a stop is
-					// not a failure, and giving it danger ink would report the user's own
-					// interrupt as something that went wrong. The MARK only — the row's tool
-					// glyph and name take their category ink like any other settled row, which
-					// is what `rowInk` decides in one expression for the pair of them.
-					"text-ink-dim";
+	/*
+	 * SUCCESS IS SILENT (§E1/D8). A settled successful row draws no outcome mark
+	 * at all: the per-row tick said the same thing forty times down the ledger and
+	 * was the second loudest column in it. What the tick carried is not lost — the
+	 * accessible name still states the outcome — but the screen stops repeating it.
+	 *
+	 * FAILURE takes the WORD instead of a mark, rendered below. `not-run` shares
+	 * the treatment and keeps its own words (`never ran`): shape was the primary
+	 * channel only while both drew a glyph, and a word is unambiguous.
+	 */
+	const failedLike = outcome === "error" || outcome === "not-run";
+	const Glyph = outcome === "interrupted" ? InterruptedGlyph : null;
+	/*
+	 * The outcome MARK is hueless (`ink-dim`), and it is now rendered for
+	 * `interrupted` only: a settled success draws nothing and a settled failure
+	 * draws the WORD in `danger` beside this slot. The three-arm expression that
+	 * used to live here mapped success to `text-success` and failure to
+	 * `text-danger` - two more places the ledger repeated a state it now states
+	 * once, in the word, at the edge the reader is already looking at.
+	 */
+	const glyphInk = "text-ink-dim";
 	/*
 	 * The status column of a RUNNING row, which is either its own clock or
 	 * NOTHING AT ALL.
@@ -511,6 +548,16 @@ const StatusCluster = ({
 		: formatSettledDuration(durationS);
 	return (
 		<span className={cn("flex shrink-0 items-center gap-1.5")}>
+			{/*
+			 * THE STATE WORD, at `text-meta`/500 in `danger`, on the trailing edge
+			 * where the eye already is for the duration (§E1). This is the row's only
+			 * loud ink, and it is only ever printed for a settled FAILURE.
+			 */}
+			{failedLike ? (
+				<span className={cn("font-medium text-danger text-meta")}>
+					{OUTCOME_LABEL[outcome]}
+				</span>
+			) : null}
 			<span className={cn("flex size-3.5 shrink-0 [&_svg]:size-3.5", glyphInk)}>
 				{Glyph ? <Glyph aria-hidden={true} /> : null}
 				{/*
@@ -524,7 +571,9 @@ const StatusCluster = ({
 				 * announces the phase in its own live region, and repeating it per
 				 * row would read the whole ledger out on every tick.
 				 */}
-				{OUTCOME_LABEL[outcome] ? (
+				{/* Announced, never drawn twice: the failure word above is already
+				    text, so repeating it here would read the row's outcome out twice. */}
+				{!failedLike && OUTCOME_LABEL[outcome] ? (
 					<span className={cn("sr-only")}>{OUTCOME_LABEL[outcome]}</span>
 				) : null}
 			</span>
@@ -543,12 +592,12 @@ export const ToolRow = ({
 	toolName,
 	summary,
 	summaryFallback = null,
+	summaryHold = false,
 	outcome,
 	durationS,
 	startedAt = null,
 	added = 0,
 	removed = 0,
-	nameColumn = TOOL_NAME_COL_MIN,
 	details,
 	defaultOpen = false,
 	className,
@@ -562,12 +611,23 @@ export const ToolRow = ({
 	const failed = outcome === "error";
 	const Icon = toolIcon(toolName);
 	const name = displayName(toolName);
+	/*
+	 * §E1's verb (design round 1, D5): `Ran`, `Read`, `Searched the web` - the
+	 * wire name is the GLYPH's job now. A tool the verb table does not know keeps
+	 * its display name at the head of the object, so an MCP call still says
+	 * which call it was.
+	 */
+	const verb = toolVerb(toolName);
+	const verbText = running ? verb.running : verb.settled;
 	// The one expression the summary cell both prints and titles, so the tooltip
 	// cannot drift from the text it stands for — including the dropped-stutter
 	// fallback below.
-	const summaryText = isBareToolName(summary, toolName)
+	const bareSummary = isBareToolName(summary, toolName)
 		? (summaryFallback ?? "")
 		: summary;
+	const summaryText = toolVerb(toolName).named
+		? bareSummary
+		: [displayName(toolName), bareSummary].filter(Boolean).join(" ");
 
 	const row = (
 		<span className={cn("flex min-w-0 flex-1 items-center gap-2")}>
@@ -588,44 +648,50 @@ export const ToolRow = ({
 			>
 				<Icon />
 			</span>
+			{/*
+			 * THE VERB, AT ITS OWN WIDTH, AND THE OBJECT RIGHT AFTER IT (design round
+			 * 1, D5). This was a fixed column shared by every visible row
+			 * (`calc(${nameColumn}ch + 0.25rem)`, the TUI's 8-24ch name column) holding
+			 * the tool's wire name, so `read` left a hole before its path and the row
+			 * never read as a sentence. The rail the eye scans is the GLYPH column,
+			 * which stays aligned; the verb and the object are one phrase, 8px apart
+			 * (`gap-2`, the row's own step), which is how Cursor 3 and Codex set it.
+			 *
+			 * `shrink-0` so the object is the half that truncates: a verb is at most
+			 * three short words, and it is the half that says what happened.
+			 */}
 			<span
+				data-trace-verb=""
 				className={cn(
-					"shrink-0 truncate font-mono text-mono-sm",
-					// A 4px minimum gutter before the summary rail, so a name that
-					// fills its column does not come within the row's own gap of the
-					// summary. The column grows to the longest visible name, so at the
-					// ceiling the two would otherwise sit 8px apart.
-					//
-					// It is ADDED to the measured width below rather than taken out of
-					// it: as padding inside `${nameColumn}ch` it stole 4px from the
-					// text box and truncated the very name the column was sized for
-					// (`web_fetch` rendered as `web_fet…`).
-					"pr-1",
-					rowInk(outcome, toolName),
+					// §E1: the verb is a word, so it takes the sans ramp at
+					// `text-body-sm`/13; the monospace belongs to the OBJECT.
+					"shrink-0 whitespace-nowrap text-body-sm",
+					nameInk(outcome),
 				)}
-				// The shared column is a per-list measurement, so it cannot be a
-				// static class: Tailwind compiles the utilities it can see in the
-				// source, and `w-[${n}ch]` is not one of them.
-				//
-				// `calc` so the gutter above is added to the column rather than
-				// carved out of it: `nameColumn` is the width the NAME needs, and
-				// the 4px is separation from the summary beside it.
-				style={{ width: `calc(${nameColumn}ch + 0.25rem)` }}
 				title={name}
 			>
-				{name}
+				{verbText}
 			</span>
 			<span
 				className={cn(
-					"min-w-0 flex-1 truncate font-mono text-mono-sm",
-					running ? "text-ink-muted" : "text-ink-dim",
+					// §E1: the object is `text-mono-sm`/12 `ink-muted` in EVERY state. It
+					// used to drop to `ink-dim` once settled, which made the one column a
+					// reader scans for the result the quietest thing on a finished turn.
+					// The live/settled difference is the working line and the missing
+					// duration (§E7), not a dimmer summary.
+					"min-w-0 flex-1 truncate font-mono text-ink-muted text-mono-sm",
 				)}
 				// The name beside it has carried a `title` since it became truncatable;
 				// this cell truncates too, and at 390px the summary is the half that
 				// loses: measured 126.4px of box against 461px of text, so a peer row's
 				// preview read as `"review-agent" · ca…` with no way to see the rest
 				// short of opening the row (UX round 1, U4).
-				title={summaryText}
+				/*
+				 * NO TITLE WHILE HELD: the cell's title is the summary it prints, and a
+				 * held cell prints none - a tooltip stating a fact the cell refuses to
+				 * state would be the same wrong answer one hover later.
+				 */
+				title={summaryHold ? undefined : summaryText}
 			>
 				{/*
 				 * A summary identical to the name beside it is dropped.
@@ -647,7 +713,52 @@ export const ToolRow = ({
 				 * copies of this rule could disagree and leave a row blank with a
 				 * usable fact in hand.
 				 */}
-				{summaryText}
+				{summaryHold ? (
+					/*
+					 * THE LATE-HOLD MARK (design round 2, D6). The held column has waited past
+					 * `LABEL_HOLD_MARK_MS` with no answer, so an empty cell no longer says
+					 * "an answer is coming" - this does, without stating a fact: ONE glyph,
+					 * static, no motion, no count, no output text, in the dimmest ink the
+					 * contract has. It is deliberately not the stand-in: the stand-in is
+					 * ellipsis-PLUS-CONTENT and means "the output is the answer"; this is the
+					 * ellipsis alone and means "a value belongs here and is not known yet".
+					 * It resolves to the command, or to the stand-in at the terminal release
+					 * (`labelOwed`), exactly as the blank did.
+					 */
+					/*
+					 * The glyph is `aria-hidden` and the SPELLED-OUT STATE rides beside it, which is
+					 * this row's own idiom for a mark that says something (`OUTCOME_LABEL`'s
+					 * `sr-only` word): a glyph is not pronounceable, but the pending state is a fact
+					 * the row is the only carrier of, and a reader who cannot see it otherwise hears
+					 * an empty cell for the whole hold - 49.9 s on a wedged owner, 25.0 s on the
+					 * refusing route (UX round 4, U7).
+					 *
+					 * WHY IT IS INSIDE THIS BRANCH AND NOT A LIVE REGION. The word exists only while
+					 * the mark stands, so nothing announces on the rows that are merely blank before
+					 * the threshold, and the release takes the word away with the mark - no stale
+					 * claim survives either transition. Deliberately NOT `aria-live`: the mark's
+					 * arrival is one event for a whole hold batch (26 rows in the reported
+					 * conversation, all in the same frame), so a live region here would announce 26
+					 * times at the instant of the threshold - the "not repeatedly" failure rather
+					 * than its fix. A batch-level announcement ("N labels pending", once per hold)
+					 * belongs at the transcript, not at the row; it is not added here.
+					 * Real reading, stated rather than implied: the row is not a live region today,
+					 * so a reader hears the state when they reach the row - the same way they hear
+					 * "succeeded" - not pushed at them when it begins.
+					 */
+					<>
+						<span
+							className="text-ink-dim"
+							data-label-hold="true"
+							aria-hidden={true}
+						>
+							…
+						</span>
+						<span className={cn("sr-only")}>pending</span>
+					</>
+				) : (
+					summaryText
+				)}
 			</span>
 			<DiffCounters added={added} removed={removed} />
 			<StatusCluster
@@ -665,7 +776,10 @@ export const ToolRow = ({
 		? "bg-elevated"
 		: failed
 			? "bg-danger-wash"
-			: "hover:bg-elevated";
+			: // `row-hover`, the hover role branding §5 defines for a list row, rather
+				// than the `elevated` GROUND: `elevated` is the app's lightest in-flow
+				// plane (the composer's), and a hover state is a response, not a rung.
+				"hover:bg-row-hover";
 
 	// `Disclosure`'s disabled branch deliberately refuses `triggerClassName` — a
 	// hover response on something that does not answer a click is a lie — so a

@@ -25,6 +25,26 @@ import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
 import { Textarea } from "@shared/components/ui/textarea";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+
+/**
+ * The model this session is RUNNING, for a dialog whose job is not to offer the
+ * model it already runs.
+ *
+ * `frontend ?? heldFrontend`, THE SAME VALUE THE READINGS STRIP PAINTS. During a
+ * reconnect the authoritative `frontend` is NULL by design -- the hook drops it
+ * so the replacement stream's frames are treated as replay -- and the readings
+ * the pane keeps are the held copy. Reading `canonical.frontend` alone here made
+ * a HELD pick open with no current row marked and its cursor on catalogue row 0,
+ * so Enter POSTed whichever model sorted first: a model this session had never
+ * run, painted as pending by the strip (UX round 1, U1, a blocker). The same
+ * press in the live phase marks the running row and re-picks the model already
+ * in use, so the two phases disagreed about what a press means.
+ *
+ * Stated once rather than at each call site: two dialogs ask this question and a
+ * second copy is how they would come to disagree about what "current" is.
+ */
+const runningFrontend = (canonical: CanonicalSessionHandle) =>
+	canonical.frontend ?? canonical.heldFrontend;
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -812,7 +832,8 @@ export const ModelPicker: FC<PickerContext> = ({
 	const persist = useOperation();
 	const [persistDefault, setPersistDefault] = useState(false);
 	const selected =
-		canonical.frontend?.effective_model ?? canonical.frontend?.selected_model;
+		runningFrontend(canonical)?.effective_model ??
+		runningFrontend(canonical)?.selected_model;
 	/*
 	 * Both halves must be non-empty to name a model, and the guard is the shared
 	 * selector rather than a local expression: a session frame can carry a spec
@@ -1345,8 +1366,8 @@ export const EffortPicker: FC<PickerContext> = ({
 		: null;
 	const model = draft
 		? draftModel
-		: (canonical.frontend?.effective_model ??
-			canonical.frontend?.selected_model);
+		: (runningFrontend(canonical)?.effective_model ??
+			runningFrontend(canonical)?.selected_model);
 	const rungs = draft
 		? effortLadder(draftModel)
 		: (entities.data?.entities ?? []).map((row) => row.value);
@@ -2625,122 +2646,6 @@ export const LoopPicker: FC<PickerContext> = ({
 			}
 			busy={command.busy || cancel.busy}
 			result={cancel.result ?? command.result}
-		/>
-	);
-};
-
-export const AsidePicker: FC<PickerContext> = ({
-	sessionId,
-	onClose,
-	action,
-}) => {
-	const [text, setText] = useState(action.args || "");
-	const [asideId, setAsideId] = useState<string | null>(null);
-	const [answer, setAnswer] = useState<string | null>(null);
-	const [adopted, setAdopted] = useState(false);
-	const ask = useOperation();
-	const adopt = useOperation();
-	const submit = useCallback(async () => {
-		if (!text.trim()) return;
-		const value = await ask.perform(
-			() =>
-				desktopResult<{
-					data: { aside_id: string; text: string; off_record: boolean };
-				}>({
-					op: "sessions.aside",
-					sessionId,
-					requestId: uuidv4(),
-					text: text.trim(),
-					asideId: asideId ?? undefined,
-				}),
-			() => ({
-				tone: "info",
-				text: "Answered off the record. Nothing entered the conversation.",
-			}),
-			"The aside was not answered",
-		);
-		if (value) {
-			setAsideId(value.data.aside_id);
-			setAnswer(value.data.text);
-		}
-	}, [ask, sessionId, text, asideId]);
-	const doAdopt = useCallback(async () => {
-		if (!asideId) return;
-		const value = await adopt.perform(
-			() =>
-				desktopResult<{ data: Record<string, unknown> }>({
-					op: "sessions.adopt",
-					sessionId,
-					requestId: uuidv4(),
-					asideId,
-					confirmed: true,
-				}),
-			() => ({
-				tone: "success",
-				text: "Adopted into the conversation as a real turn.",
-			}),
-			"The aside was not adopted",
-		);
-		if (value) setAdopted(true);
-	}, [adopt, sessionId, asideId]);
-	const close = useCallback(() => {
-		// A settled, unadopted panel is closed on the backend so it does not
-		// count against the bounded aside pool; the exchange is discarded.
-		if (asideId && !adopted) {
-			void desktopResult({
-				op: "sessions.aside.close",
-				sessionId,
-				asideId,
-			}).catch(() => {});
-		}
-		onClose();
-	}, [asideId, adopted, sessionId, onClose]);
-	return (
-		<PickerHost
-			open
-			onClose={close}
-			title="Aside (off the record)"
-			description="A side question the model answers without it entering the conversation. Adopt it to make it a real turn."
-			body={
-				answer ? (
-					<div className="rounded-md border border-hairline bg-sunken px-3 py-2">
-						<p className="text-ink-dim text-meta">Q: {text}</p>
-						<p className="mt-1 whitespace-pre-wrap text-body-sm text-ink">
-							{answer}
-						</p>
-					</div>
-				) : undefined
-			}
-			form={
-				adopted ? undefined : (
-					<PickerField label={answer ? "Follow up" : "Question"}>
-						<Textarea
-							value={answer ? "" : text}
-							onChange={(event) => setText(event.target.value)}
-							rows={3}
-							placeholder="Quick question that should not become part of the history"
-						/>
-					</PickerField>
-				)
-			}
-			onSubmit={adopted ? undefined : submit}
-			submitLabel={answer ? "Ask again" : "Ask"}
-			submitDisabled={!text.trim()}
-			actions={
-				answer && !adopted ? (
-					<Button
-						variant="secondary"
-						size="sm"
-						type="button"
-						onClick={doAdopt}
-						disabled={adopt.busy}
-					>
-						Adopt into conversation
-					</Button>
-				) : undefined
-			}
-			busy={ask.busy || adopt.busy}
-			result={adopt.result ?? ask.result}
 		/>
 	);
 };

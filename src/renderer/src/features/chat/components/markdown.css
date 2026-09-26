@@ -45,6 +45,38 @@
 }
 
 /*
+ * A CAPPED REGION THAT CUTS ON A ROW BOUNDARY NEEDS THE ROWS ON A GRID.
+ *
+ * The aside panel derives its exchange's `max-height` as a whole number of the
+ * answer's line boxes (design round 1, D1), so the boundary falls between two rows
+ * - and that arithmetic is only true while every block boundary inside the answer is
+ * a whole number of those boxes too. The `0.5rem` above is not, so an answer with a
+ * paragraph break had its second paragraph's first row cut 11.9px into a 16.5px
+ * glyph box: a row of letter tops under a complete line, read as a rendering
+ * accident rather than as "there is more" (design round 3, D12, which measured the
+ * regression against the same answer resting at 0 cut rows one round earlier).
+ *
+ * ONE LINE BOX OF GAP, expressed against the SAME custom property the renderer
+ * paints the leading with, so moving the leading moves the gap with it and the two
+ * type steps this panel uses each get their own exact box. The carve-outs repeat the
+ * base file's rules so the first paragraph still starts flush with the region's top
+ * - which is what keeps the cap's own term for the question's line count correct -
+ * and they are restated here rather than relied on from above because these three
+ * rules are one device and a later reader should not have to reconstruct the pair.
+ */
+.lo-markdown--row-grid p {
+	margin: calc(1em * var(--md-line-height, 1.6)) 0;
+}
+
+.lo-markdown--row-grid p:first-child {
+	margin-top: 0;
+}
+
+.lo-markdown--row-grid p:last-child {
+	margin-bottom: 0;
+}
+
+/*
  * Inline code carries no fill, no padding and no radius - the monospace face
  * is the whole signal.
  *
@@ -70,7 +102,7 @@
  * The accepted cost: multi-word inline code loses its extent delimiter. Here
  * inline code is overwhelmingly single tokens, so the trade is worth it.
  *
- * `pre` keeps its ground and border - a code block has left the flow.
+ * `pre` keeps its ground - a code block has left the flow.
  */
 .lo-markdown code {
 	font-family: var(--font-mono);
@@ -80,10 +112,13 @@
 	word-break: break-word;
 }
 
+/* §E5: fenced code is the detail block's treatment - `sunken`, radius 10, and
+   NO border (chat redesign, design round 1, D9: the hairline measured as a
+   2px-wide ring on both palettes, and §B3's complete border list does not name
+   it; the `sunken` step alone separates the block). */
 .lo-markdown pre {
 	background-color: var(--lo-sunken);
-	border: 1px solid var(--lo-hairline);
-	border-radius: var(--radius-sm);
+	border-radius: var(--radius-md);
 	padding: 0.75rem;
 	margin: 0.75rem 0;
 	max-width: 100%;
@@ -92,8 +127,8 @@
 	font-size: var(--text-mono);
 }
 
-/* The <pre> already carries the ground and the boundary; a second one on the
-   nested <code> paints a box inside a box.
+/* The <pre> already carries the ground; a second one on the nested <code>
+   paints a box inside a box.
 
    Both font sizes used to be `0.875em`, and they multiplied: react-markdown
    emits `<pre><code>` for a fenced block, so the most-read machine text in
@@ -337,7 +372,8 @@
  * breaks, the same column carries 131 characters on an 832.6px line (measured at
  * 1024 on `chat-older-history-slot--in-transcript-idle`). That the figure is a
  * CEILING rather than a slope is what makes the trade acceptable: the content
- * measure is capped at 900px by `CHAT_MEASURE` (`chat-measure.ts`) - the
+ * measure is capped by `CHAT_MEASURE` (`chat-measure.ts`) - 640px today, 900px
+ * when the frames below were taken - the
  * measure, not the column, which is why the `p-4` above sits outside the number
  * rather than inside it - so the line length stops growing with the window and
  * 1920 reads exactly as 1024 does. The failure a
@@ -375,8 +411,8 @@
  *
  * What that leaves, in numbers, every one of them read from the live DOM at the
  * 1024x620 pane in localOperatorDark on
- * `chat-canonical-user-card-measure--reported-shape`. The measure is 900px
- * (62..962) and it IS the row content box: `CHAT_MEASURE` caps the content div
+ * `chat-canonical-user-card-measure--reported-shape`. The measure was 900px
+ * (62..962) when that frame was taken and it IS the row content box: `CHAT_MEASURE` caps the content div
  * and the scroller's `p-4` sits outside it, so the 900 is not a number the
  * padding comes off. `max-w-[75%]` puts the card at 675px, whose content box is
  * 641px inside the card's `px-4` and its 1px border — the box the prose now

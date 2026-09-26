@@ -13,8 +13,11 @@
  *
  * Three files have to agree for that to hold, and each pair has drifted at least
  * once in this PR's life: the driver's list (`KNOWN_EXPECTS`), the driver's
- * sentence map (`declaredSentence`), and `run-rig.sh`'s usage line - which round
- * 2's D8 rewrite pointed a reader at as "the driver's own list". So the assertions
+ * sentence map (`declaredSentence`), and each rig runner's usage line - which round
+ * 2's D8 rewrite pointed a reader at as "the driver's own list". BOTH runners are
+ * compared (the ask set's and the approval set's, the second added with the
+ * approval card's options): an unchecked second copy is the same drift one file
+ * over. So the assertions
  * below are the agreement rather than a copy of it: the list is parsed out of the
  * shipped sources and compared, and the refusal itself is exercised by running the
  * driver with a typo.
@@ -25,7 +28,15 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const DRIVER = "scripts/click-proof.mjs";
-const RUNNER = "docs/evidence/ask-options-live/harness/run-rig.sh";
+/*
+ * Both runners: the usage line is the copy a reader follows, and the approval
+ * set's runner lists the same vocabulary in the same shape, so the two cannot
+ * drift from the driver - or from each other - without this test saying so.
+ */
+const RUNNERS = [
+	"docs/evidence/ask-options-live/harness/run-rig.sh",
+	"docs/evidence/approval-options-live/harness/run-rig.sh",
+];
 
 const LIST_RE = /const KNOWN_EXPECTS = \[([\s\S]*?)\];/;
 const MAP_RE = /const declaredSentence = \{([\s\S]*?)\}\[EXPECT\];/;
@@ -38,7 +49,7 @@ const MEANT_RE = /card-refusal/;
 const CARD_ARM_RE = /EXPECT === "card-unknown"/;
 
 const driver = readFileSync(DRIVER, "utf8");
-const runner = readFileSync(RUNNER, "utf8");
+const runners = RUNNERS.map((path) => [path, readFileSync(path, "utf8")]);
 
 /** The driver's list, read from the shipped source. */
 const known = [...driver.match(LIST_RE)[1].matchAll(/"([a-z-]*)"/g)].map(
@@ -98,20 +109,22 @@ test("the list, the sentence map and the runner's usage line are one vocabulary"
 		);
 
 	/*
-	 * `run-rig.sh`'s usage line is the copy a reader follows, and round 2's D8
+	 * Each runner's usage line is the copy a reader follows, and round 2's D8
 	 * made it the citation for "the driver's own list" - so it is compared rather
 	 * than trusted. Its two lines wrap, which is why this reads the block and not
 	 * one line.
 	 */
-	const usage = runner.match(USAGE_RE)[1];
-	const listed = [...usage.matchAll(WORD_RE)]
-		.map(([, value]) => value)
-		.filter((value) => value !== "or");
-	assert.deepEqual(
-		listed.sort(),
-		known.filter((v) => v !== "").sort(),
-		"the runner's usage line must list exactly the driver's vocabulary",
-	);
+	for (const [path, runner] of runners) {
+		const usage = runner.match(USAGE_RE)?.[1] ?? "";
+		const listed = [...usage.matchAll(WORD_RE)]
+			.map(([, value]) => value)
+			.filter((value) => value !== "or");
+		assert.deepEqual(
+			listed.sort(),
+			known.filter((v) => v !== "").sort(),
+			`${path}'s usage line must list exactly the driver's vocabulary`,
+		);
+	}
 });
 
 test("unset and `-` are legitimate declarations, and both mean record without asserting", () => {

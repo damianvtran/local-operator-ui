@@ -1,0 +1,14 @@
+# The two paging test files against origin/main's two modules (53ce0d4876).
+# The branch's NEW cases discriminate here exactly as the previous round's did;
+# the round-1 F2 case passes on origin/main by design (the act budget it guards
+# is this branch's), and its own two arms are in unit-tests-remediation-prefix.txt.
+
+== scripts/transcript-paging.test.mjs ==
+ℹ tests 39
+ℹ pass 30
+ℹ fail 9
+
+== scripts/transcript-paging-hook.test.mjs ==
+ℹ tests 2
+ℹ pass 1
+ℹ fail 1

@@ -1294,7 +1294,12 @@ test("the trigger's dot is ONE mark in two inks, and the ink is the whole distin
 test("the row mounts inside the form, ABOVE the alert and therefore above the box", () => {
 	const source = code(COMPOSER);
 	const row = source.indexOf("<ComposerStatusRow");
-	const alert = source.indexOf('role="alert"');
+	// The region's role is a two-arm expression now (a failure asserts, the late
+	// delivery announces politely - review round 2, NIT), so the boundary is the
+	// expression rather than the literal.
+	const alert = source.indexOf(
+		'role={composerAlert.polite ? "status" : "alert"}',
+	);
 	const box = source.indexOf("COMPOSER_BOX,");
 	assert.ok(row > -1, "the composer mounts the row");
 	assert.ok(
@@ -1615,10 +1620,21 @@ test("the composer's two capped blocks share one whole-line cap", () => {
 	 * than inherited so the boundary cannot drift back through a line. */
 	assert.match(measure, /max-h-\[7\.5rem\]/);
 	assert.match(measure, /leading-5/);
+	const row = code(ROW);
+	/*
+	 * The composer's OTHER capped block consumes the same constant, and the
+	 * send-error notice no longer caps at all - which is this change's answer to
+	 * D12 rather than a regression of it. The cap existed to keep a PARAGRAPH from
+	 * pushing the remedy out of the window: the notice is one sentence now, and the
+	 * thing under it is the box the user is typing in, so a cap could only hide the
+	 * sentence or the control it names. Measured rather than argued -
+	 * `scripts/composer-alert-geometry.mjs` puts the notice at 27.5px muted and
+	 * 51.5-110px for the failure across 892/472/172 columns, with the send control
+	 * on screen at every width.
+	 */
+	assert.match(row, /CAPPED_BLOCK/);
 	const input = code(MESSAGE_INPUT);
-	// The send-error alert, which had the identical `max-h-32` and the identical
-	// defect, now consumes the same constant.
-	assert.match(input, /CAPPED_BLOCK/);
+	assert.doesNotMatch(input, /CAPPED_BLOCK/);
 	assert.doesNotMatch(input, /max-h-32/);
 });
 
@@ -1665,7 +1681,182 @@ test("the empty-chat band keeps one wrapper, so a narrowing column cannot remoun
 		source,
 		/messages\.length === 0 && !isHydrating && !isSmallView \?/,
 	);
-	assert.match(source, /\{showEmptyChatPrompt \? \(/);
+	/*
+	 * The wrapper is unconditional; only what it HOLDS depends on the band. With a
+	 * provider connected the headline renders (design round 1 D5 added the
+	 * `!noProvider` half - the next test pins the other branch). The fold's
+	 * resolution spells the gate as the null arm - `{noProvider ? null : (<h2
+	 * ...>)}` - so this pin tracks the shipped spelling rather than the branch's
+	 * earlier `showEmptyChatPrompt && !noProvider ? (` form (agent review round
+	 * 4, R15).
+	 */
+	assert.match(
+		source,
+		/\{noProvider \? null : \(\s*<h2[^>]*>\s*What can I help you with today\?/,
+	);
+});
+
+test("with nothing connected the empty-chat band drops the headline and shows the connect card", () => {
+	const source = code(MESSAGE_INPUT);
+	/*
+	 * D5: a headline inviting a prompt the app cannot run pointed the screen's two
+	 * strongest signals in opposite directions, so with no provider the headline
+	 * is withheld and the connect card takes the chips' slot. Both halves are
+	 * pinned: the headline carries the `!noProvider` guard (above), and the card
+	 * is mounted under the opposite guard, in the same wrapper - the fold's
+	 * shipped spelling, `{noProvider ? (<div ...><ConnectProviderCard />`
+	 * (agent review round 4, R15).
+	 */
+	assert.doesNotMatch(
+		source,
+		/\{showEmptyChatPrompt \? \(\s*<h2/,
+		"the headline renders on the empty band whether or not a provider is connected",
+	);
+	assert.match(
+		source,
+		/\{noProvider \? \(\s*<div[^>]*>\s*<ConnectProviderCard \/>/,
+	);
+});
+
+test("with nothing connected neither the button nor Enter sends", () => {
+	const source = code(MESSAGE_INPUT);
+	/*
+	 * The button was disabled and the KEY was not: measured live, typing with no
+	 * provider connected and pressing Enter created a session and sent the message,
+	 * which the transcript then held waiting for an agent that could never run (QA
+	 * round 2 R2-Q2). All three refusals are pinned here -- the keydown, the hint it
+	 * raises, and the form's own submit -- because removing them wholesale left every
+	 * neighbouring suite green (review round 3 R3-m2).
+	 */
+	assert.match(
+		source,
+		/sendRefused &&\s*event\.key === "Enter" &&\s*!event\.shiftKey &&\s*!event\.nativeEvent\.isComposing\s*\) \{\s*event\.preventDefault\(\);/,
+		"Enter is not refused when nothing can answer",
+	);
+	assert.match(
+		source,
+		/explainRefusedSend\(\);/,
+		"the refusal says why: the placeholder that explained it is gone once the user types (U13)",
+	);
+	assert.match(
+		source,
+		/if \(isInputDisabled\) return;\s*if \(noProvider\) return;/,
+		"the form's submit path still sends when nothing can answer",
+	);
+	/*
+	 * AND THE STATE ONE STEP PAST IT (UX round 5, U21). A provider connected with no
+	 * model this app can name is not answered by the `noProvider` guard, and it was the
+	 * live case where the band said "Choose a model", Enter sent anyway, and the turn
+	 * sat at "waiting for the agent" with no completion request reaching the daemon.
+	 * All three ways in are pinned: the key, the form's own submit, and the button.
+	 */
+	assert.match(
+		source,
+		/if \(noModel\) \{\s*explainRefusedSend\(\);\s*return;\s*\}/,
+		"the submit path still sends with no model to run on",
+	);
+	/*
+	 * THE FOLD DROPPED THE `isLoading` TERM THIS PIN USED TO REQUIRE, and that is
+	 * main's change rather than a convenience: main's own composer series removed
+	 * `isLoading` from this control deliberately (U6), because a press while a send
+	 * is in flight has to REACH the store's refusal and the pane's send-lock line
+	 * ("Your last message is still sending.") instead of being swallowed by a
+	 * disabled button. The pin's subject is that the button reports the same state
+	 * the key does, which it still does for every term that remains; asserting a
+	 * term main deleted would have made this fold carry main's change and its
+	 * opposite at once.
+	 */
+	assert.match(
+		source,
+		/isInputDisabled \|\|\s*sendRefused \|\|/,
+		"the Send control must report the same state the key does",
+	);
+	assert.match(
+		source,
+		/noModel\s*\?\s*"Choose a model for this conversation before sending\."/,
+		"and the refusal must say which state it is refusing in",
+	);
+});
+
+test("the disabled Send press answers the way Enter does, and keeps the caret (U27)", () => {
+	const source = code(MESSAGE_INPUT);
+	/*
+	 * UX round 7, U27, measured on the built app: with nothing connected, a press on
+	 * the DISABLED Send kept the value, raised nothing, and took the caret out of the
+	 * box (`composer.focused true -> false`) - while Enter, in the same state, raised
+	 * "Connect a provider to send." and kept the caret. The cause is the gate rather
+	 * than the term: `holdCaretOnRefusedPress` suppresses the caret-clearing default
+	 * for `isInputDisabled`, and this branch disabled Send with `noProvider ||
+	 * noModel`, which that predicate does not cover.
+	 *
+	 * The fix is ONE term read by every door - declared once, read by the control's
+	 * `disabled`, by both refusal doors and by the press handler - so a fourth door
+	 * cannot quietly fall behind the other three. That is what these four assertions
+	 * hold down between them.
+	 */
+	assert.match(
+		source,
+		/const sendRefused = noProvider \|\| noModel;/,
+		"the two terms that refuse a send are declared once, not spelled out per door",
+	);
+	assert.match(
+		source,
+		/type="submit"[\s\S]{0,240}?onPointerDown=\{holdCaretOnSendPress\}/,
+		"the Send control carries its own press handler, because its disabling terms are wider than the shared gate's",
+	);
+	assert.match(
+		source,
+		/if \(!isInputDisabled && !sendRefused\) return;/,
+		"and that handler's gate is exactly the terms the control is disabled by",
+	);
+	assert.ok(
+		source.includes(
+			"if (sendRefused && !isInputDisabled) explainRefusedSend();",
+		),
+		"and the refusal that used to be silent raises the same sentence the key raises, and is silent exactly where the key is",
+	);
+	assert.match(
+		source,
+		/isInputDisabled \|\|\s*sendRefused \|\|\s*\(!newMessage\.trim\(\) && attachments\.length === 0\)/,
+		"the empty box keeps its own disabling term OUTSIDE the refusal's pair: it is disabled for its own reason, so it keeps the browser's press behaviour",
+	);
+});
+
+test("the composer notice carries the connect action the fold re-laid into it (F2)", () => {
+	const source = code(MESSAGE_INPUT);
+	/*
+	 * #494's review round 9, F2, measured by deletion on that branch: the fold onto
+	 * main's composer rewrite re-laid this branch's `providerConnectActions` action into
+	 * main's notice memo, and removing the spread left 13 suites / 226 tests green - so
+	 * the fold's only semantic re-lay had no pin at all. The behaviour is "with nothing
+	 * connected the notice carries a Connect a provider action, and its press opens the
+	 * dialog"; the seam it lives on is the memo's `actions` and the term those actions
+	 * are built from, which is where it is pinned.
+	 */
+	assert.match(
+		source,
+		/actions: \[\.\.\.\(sendError\?\.actions \?\? \[\]\), \.\.\.providerConnectActions\]/,
+		"the notice's action list still carries the re-laid provider action rather than main's list alone",
+	);
+	assert.match(
+		source,
+		/const providerConnectActions =\s*noProvider \|\|/,
+		"and it is built from `noProvider` FIRST, not only from the failure text: with nothing connected the failure a user actually gets is the app's own 20-second timeout, so the backend's sentence never matched (UX round 2 N3)",
+	);
+	assert.match(
+		source,
+		/label: "Connect a provider"/,
+		"the action names what the no-connection line offers",
+	);
+	assert.match(
+		source,
+		/useConnectProviderStore\.getState\(\)\.openConnect\(\)/,
+		"and opens the same dialog every other connect surface opens",
+	);
+	assert.ok(
+		source.includes("NO_PROVIDER_NOTICE.test(sendError.message)"),
+		"the backend's own refusal still reaches the same action, which is the arm the fold had to keep",
+	);
 });
 
 test("the pane consumes the request: leave a reader, scroll the plan in, retire it", () => {

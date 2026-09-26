@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+/** The regexes this file's fixture resolvers use, hoisted (see the same note in the paged suite). */
+const DESKTOP_API_IMPORT_RE = /@shared\/api\/local-operator\/desktop-api/;
+const DESKTOP_HOOKS_IMPORT_RE = /@shared\/api\/local-operator\/desktop-hooks/;
+const QUERY_CLIENT_IMPORT_RE = /@shared\/api\/query-client/;
+const REACT_MODULE_RE = /^react$/;
+const USE_DESKTOP_FEED_IMPORT_RE = /shared\/hooks\/use-desktop-feed\.ts$/;
+const ANY_MODULE_RE = /.*/;
+
 import { build } from "esbuild";
+const ECHO_HOOK_IMPORT_RE = /@shared\/hooks\/use-canonical-session/;
 
 /*
  * The `session_status` frame's arrival path, and the guard that stops the two
@@ -100,10 +109,10 @@ const storeBundle = await build({
 		{
 			name: "session-status-fixture",
 			setup(builder) {
-				builder.onResolve(
-					{ filter: /@shared\/api\/local-operator\/desktop-api/ },
-					() => ({ path: "transport", namespace: "session-status-fixture" }),
-				);
+				builder.onResolve({ filter: DESKTOP_API_IMPORT_RE }, () => ({
+					path: "transport",
+					namespace: "session-status-fixture",
+				}));
 				/*
 				 * The hook's other two dependencies, and ONLY where the hook asks for
 				 * them: the filter keys off the importer, because `react` is also what
@@ -113,28 +122,41 @@ const storeBundle = await build({
 				 * `useEffect` records its effect instead of running it, so the test owns
 				 * the commit - the same seam `completion-view-ack.test.mjs` uses.
 				 */
-				builder.onResolve({ filter: /^react$/ }, (args) =>
-					/shared\/hooks\/use-desktop-feed\.ts$/.test(args.importer)
+				builder.onResolve({ filter: REACT_MODULE_RE }, (args) =>
+					USE_DESKTOP_FEED_IMPORT_RE.test(args.importer)
 						? { path: "react-hooks", namespace: "session-status-fixture" }
 						: undefined,
 				);
-				builder.onResolve(
-					{ filter: /@shared\/api\/local-operator\/desktop-hooks/ },
-					() => ({ path: "capabilities", namespace: "session-status-fixture" }),
-				);
+				builder.onResolve({ filter: DESKTOP_HOOKS_IMPORT_RE }, () => ({
+					path: "capabilities",
+					namespace: "session-status-fixture",
+				}));
+				builder.onResolve({ filter: QUERY_CLIENT_IMPORT_RE }, () => ({
+					path: "query-client",
+					namespace: "session-status-fixture",
+				}));
 				// Only `desktopResult` is faked - it is the network. The error
 				// classes are re-exported from the real module, because the store's
 				// error-copy rules depend on their actual behaviour.
 				builder.onLoad(
-					{ filter: /.*/, namespace: "session-status-fixture" },
+					{ filter: ANY_MODULE_RE, namespace: "session-status-fixture" },
 					(args) => ({
 						contents: {
 							transport: `export {DesktopControlError, UserFacingError, userFacingMessage} from ${JSON.stringify(
 								`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
 							)}
 export const desktopResult = request => globalThis.__statusRequest(request);`,
+							/*
+							 * `desktopKeys` and the query cache join this stub because the store now
+							 * reads the CATALOGUE capability out of that cache to size an unnamed
+							 * read (QA's Q-1). `null` is the fail-closed answer, so this suite keeps
+							 * the request it has always made and its assertions stay about the feed.
+							 */
 							capabilities: `export const desktopFeatureEnabled = () => true;
+export const desktopKeys = { capabilities: ["desktop", "capabilities"] };
 export const useDesktopCapabilities = () => ({data: {features: {desktop_feed: true}}});`,
+							"query-client":
+								"export const queryClient = { getQueryData: () => null };",
 							"react-hooks": `export function useEffect(effect) { globalThis.__effects.push(effect); return () => {}; }
 export function useRef(initial) { return { current: initial }; }
 export function useState(initial) { let current = typeof initial === "function" ? initial() : initial; return [current, (value) => { current = typeof value === "function" ? value(current) : value; globalThis.__stateSets.push(current); }]; }`,
@@ -146,17 +168,22 @@ export function useState(initial) { let current = typeof initial === "function" 
 				// The store's contract with the transcript hook is three no-op calls,
 				// and this file is not testing the echo. Same stub the neighbouring
 				// store tests use.
-				builder.onResolve(
-					{ filter: /@shared\/hooks\/use-canonical-session/ },
-					() => ({ path: "echo", namespace: "echo-fixture" }),
-				);
-				builder.onLoad({ filter: /.*/, namespace: "echo-fixture" }, () => ({
-					contents: `export const echoPendingUser = () => undefined;
-export const retractPendingUser = () => undefined;
-export const discardPendingEchoes = () => undefined;`,
-					loader: "js",
-					resolveDir: process.cwd(),
+				builder.onResolve({ filter: ECHO_HOOK_IMPORT_RE }, () => ({
+					path: "echo",
+					namespace: "echo-fixture",
 				}));
+				builder.onLoad(
+					{ filter: ANY_MODULE_RE, namespace: "echo-fixture" },
+					() => ({
+						contents: `export const echoPendingUser = () => undefined;
+export const retractPendingUser = () => undefined;
+export const retractLocalEcho = () => "retracted";
+export const peekLocalEcho = () => "unseen";
+export const discardPendingEchoes = () => undefined;`,
+						loader: "js",
+						resolveDir: process.cwd(),
+					}),
+				);
 			},
 		},
 	],
@@ -714,7 +741,13 @@ test("only a previously connected feed reconnect advances authoring recovery", (
 	for (const effect of globalThis.__effects) effect();
 
 	globalThis.__feedState({ connected: true });
-	assert.deepEqual(globalThis.__stateSets, [true]);
+	/*
+	 * TWO values, not one, and the second is round 1's Q3 fix: `setReported(true)`
+	 * publishes the fact that the transport has spoken at all, which is what keeps
+	 * the sidebar's "Not connected to the backend" line off the first paint. The
+	 * `connected` value is the one that was already here.
+	 */
+	assert.deepEqual(globalThis.__stateSets, [true, true]);
 	globalThis.__stateSets.length = 0;
 
 	// The transport was live, dropped, then came back. A repeated connected
@@ -722,7 +755,15 @@ test("only a previously connected feed reconnect advances authoring recovery", (
 	globalThis.__feedState({ connected: false });
 	globalThis.__feedState({ connected: true });
 	globalThis.__feedState({ connected: true });
-	assert.deepEqual(globalThis.__stateSets, [false, 1, true, true]);
+	assert.deepEqual(globalThis.__stateSets, [
+		true,
+		false,
+		1,
+		true,
+		true,
+		true,
+		true,
+	]);
 	// The initial connection did not publish an authoring recovery generation;
 	// one false-to-true transition after that connection published exactly one,
 	// while the repeated connected state only republishes the live transport state.
@@ -776,4 +817,67 @@ test("the catalogue frame publishes the revision the sidebar refetches on", () =
 		payload: {},
 	});
 	assert.deepEqual(globalThis.__stateSets, [7]);
+});
+
+/*
+ * A FRAME FOR A ROW THE CLIENT DOES NOT HOLD (paged catalogue, design §4.4).
+ *
+ * `applySessionStatus` drops a frame whose id the store does not carry, and under
+ * paged membership that is the TAIL: a conversation past the head page is not held
+ * until its group is expanded or the flat list is extended. The row that arrives
+ * later therefore shows the status the PAGE computed, which can be older than a
+ * frame this client already received and discarded.
+ *
+ * THAT IS AN ACCEPTED FAILURE MODE, and this test exists to pin it as one rather
+ * than to celebrate it: the bound is one row, one poll cycle, and only for rows
+ * that are not loaded - and the alternative (a `pendingStatus` map consulted by
+ * `heldStatusOver`) is state for a value nothing is drawing yet. A future change
+ * that adds it will fail here, which is exactly when somebody should have to
+ * decide whether the row is visible before it is loaded.
+ */
+test("a frame for a row that is not loaded is dropped, and the page's own value stands", async () => {
+	seeded({
+		status: { code: "busy", label: "Working" },
+		status_revision: 4,
+		status_epoch: EPOCH,
+	});
+	// A frame for a conversation this client does not list: the tail, before its
+	// page has arrived.
+	await store
+		.getState()
+		.applySessionStatus(
+			OTHER,
+			{ code: "complete", label: "Complete" },
+			9,
+			EPOCH,
+		);
+	assert.equal(
+		store.getState().sessions.some((row) => row.session_id === OTHER),
+		false,
+		"a frame never inserts a row: membership is the list's, never the feed's",
+	);
+
+	// The page arrives later and carries the status IT computed at its own moment.
+	await list([
+		wire(),
+		wire({
+			id: OTHER,
+			name: "A tail chat",
+			mtime: 1_760_000_100,
+			status: { code: "approval", label: "Approval needed" },
+			status_revision: 3,
+			status_epoch: EPOCH,
+		}),
+	]);
+	assert.deepEqual(
+		store.getState().sessions.find((row) => row.session_id === OTHER)?.status,
+		{ code: "approval", label: "Approval needed" },
+		"the page's own reading is what the row draws, even though a newer frame was thrown away",
+	);
+	assert.equal(
+		store.getState().sessions.find((row) => row.session_id === OTHER)
+			?.status_revision,
+		3,
+		"and its stamp is the page's, which is how the next frame supersedes it",
+	);
 });

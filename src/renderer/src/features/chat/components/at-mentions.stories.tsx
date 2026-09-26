@@ -135,11 +135,13 @@ const asListingKey = (dir: string): string =>
  * photograph a decision nobody made, and the whole point of the gate is that the
  * DECISION is what has to be right.
  *
- * `WITHOUT_MENTIONS` is not a hypothetical. It is every install that exists: the
- * expansion is `local_operator/references.py`, which no release tag through
- * v0.56.8 carries, and the harness half that adds it (PR #1220) publishes no
- * capability key at all yet — so the key is what the composer reads, and its
- * ABSENCE is the case a user on today's release would meet.
+ * `WITHOUT_MENTIONS` is the SKEW case, not a hypothetical: a backend older than
+ * the capability that lights the affordance up. The harness advertises
+ * `references` from `local_operator/server/routes/capabilities.py` whenever
+ * `at_references_enabled()` is true, so a current backend is the `withMentions`
+ * answer below; an install that has not taken that backend yet — or one whose
+ * `LOCAL_OPERATOR_AT_REFERENCES` kill switch is off, which omits the key rather
+ * than advertising `0` — is this one, and its ABSENCE is what the composer reads.
  */
 const HARNESS: Record<string, DesktopCapabilities> = {
 	// A backend that expands a mention, and says so.
@@ -149,7 +151,7 @@ const HARNESS: Record<string, DesktopCapabilities> = {
 		desktop_auth: "bearer",
 		features: { references: 1, commands: 1, session_catalogue: 1 },
 	},
-	// Every backend that exists today: no `references` key, so no affordance.
+	// A backend that cannot carry one: no `references` key, so no affordance.
 	withoutMentions: {
 		desktop_contract: 1,
 		desktop_available: true,
@@ -447,8 +449,9 @@ const stateStory = (state: DraftStory): Story => ({
 				 * THE GATE, evaluated by the SHIPPED function rather than handed in as a
 				 * boolean: the story feeds it the fixture's capability answer, so the frame
 				 * is evidence about the decision the app makes and not about a prop a story
-				 * chose. `desktop-hooks.ts`'s `references` is the key, and the
-				 * `withoutMentions` harness below is what every release carries today.
+				 * chose. `desktop-hooks.ts`'s `references` is the key; `withMentions` is a
+				 * current backend, and `withoutMentions` is the skew state — a backend older
+				 * than the key, or one whose expansion kill switch is off.
 				 */
 				mentionsEnabled={desktopFeatureEnabled(
 					HARNESS[state.harness ?? "withMentions"],
@@ -791,27 +794,31 @@ export const PickerManyRows: Story = stateStory({
 /**
  * A HARNESS THAT DOES NOT EXPAND A MENTION: no list, no chip, plain text.
  *
- * THE STATE EVERY RELEASE CARRIES TODAY. The expansion is
- * `local_operator/references.py`, which no tag through v0.56.8 has, and the
- * harness half that adds it is PR #1220 — in review, and publishing no capability
- * key at all yet. So the composer reads `desktop-hooks.ts`'s `references` key and
- * withholds the whole affordance when it is absent, because the alternative is a
- * picker whose pick writes a chip claiming a reference the model never receives.
+ * THE SKEW STATE: a backend older than the capability that lights the affordance
+ * up, or a current one whose `LOCAL_OPERATOR_AT_REFERENCES` kill switch is off.
+ * The harness advertises `references` from
+ * `local_operator/server/routes/capabilities.py` whenever expansion is on, so a
+ * current backend is the other fixture; this is what a user meets until their
+ * backend is updated. The composer reads that key and withholds the whole
+ * affordance when it is absent, because the alternative is a picker whose pick
+ * writes a chip claiming a reference the model never receives.
  *
  * The draft carries BOTH facts in one frame on purpose: a token that would be a
  * chip if the harness could expand it, and a bare `@` at the caret that would open
  * the list. Read off the frame: neither happens, the text is exactly what will be
- * sent, and the ONE SENTENCE the caret's `@` brings on says why (UX round 2,
- * U12). That sentence is the whole of this state's answer to "I typed `@` and
- * nothing happened": it names the backend as the reason, promises no update, and
- * costs the composer no geometry because it stands in the list's own
- * `absolute bottom-full` slot.
+ * sent, and the sentence the caret's `@` brings on says why and names the way out
+ * (UX round 2, U12). That sentence is the whole of this state's answer to "I typed
+ * `@` and nothing happened": it names the backend as the reason and offers the
+ * update, which is the cause a user can act on — the state's other cause is the
+ * `LOCAL_OPERATOR_AT_REFERENCES` kill switch, which no update clears and no
+ * composer sentence should try to describe. It costs the composer no geometry,
+ * because it stands in the list's own `absolute bottom-full` slot.
  */
 export const HarnessCannotExpand: Story = stateStory({
 	story: "no-references",
 	harness: "withoutMentions",
 	label:
-		"a harness that cannot expand a mention: no list, no chip, one sentence saying why, the path sent as written",
+		"a harness that cannot expand a mention: no list, no chip, one notice saying why and naming the update, the path sent as written",
 	draft: "look at @src/app.py then fix @",
 	settled: () =>
 		chipCount() === 0 &&
