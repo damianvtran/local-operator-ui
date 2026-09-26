@@ -1791,6 +1791,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				row.record.kind === "tool" ? toolRecordSummary(row.record) : "",
 			runningOf: (row) =>
 				row.record.kind === "tool" && row.record.phase !== "done",
+			/*
+			 * The live clause's predicate is NARROWER than the condense guard's: a
+			 * composing or queued call has no name to paint yet, so the header waits
+			 * for `phase === "running"` rather than announcing a phase it cannot
+			 * back (see `foldLive`).
+			 */
+			executingOf: (row) =>
+				row.record.kind === "tool" && row.record.phase === "running",
 			startedAtOf: (row) =>
 				row.record.kind === "tool" ? row.record.startedAt : null,
 			endedAtOf: (row) =>

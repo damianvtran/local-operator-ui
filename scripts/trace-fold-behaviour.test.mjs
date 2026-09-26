@@ -30,7 +30,7 @@ import React, { act } from "react";
  * layout engine, so "the rows are visible" is asserted as the component's own
  * contract - the rows are in the DOM, and the collapsed state unmounts them
  * (`Disclosure` renders `isOpen && children`) - never as geometry. Pixels live
- * in `docs/evidence/action-fold/`.
+ * in `docs/evidence/chat-trace-fold/`.
  *
  * The harness is this repository's committed one for a rendered surface: esbuild
  * bundles the shipped component against the renderer's own aliases and React
@@ -63,6 +63,10 @@ for (const key of Object.getOwnPropertyNames(bootstrapDOM.window)) {
 }
 globalThis.window = bootstrapDOM.window;
 globalThis.document = bootstrapDOM.window.document;
+// React 18's `act` refuses to work, and warns per call, unless the environment
+// says it is a test one (`scripts/browser-file-transfer-row.test.mjs:48`'s
+// rule); without it every act() below floods stderr (agent review R5).
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const { createRoot } = await import("react-dom/client");
 after(() => {
 	bootstrapDOM.window.close();
@@ -211,6 +215,34 @@ test("the reader's press opens it, and a live section leaves it open", async (t)
 		"a live section never closes the reader's fold",
 	);
 	assert.match(mounted.container.textContent, SUMMARY_UPDATED);
+	/*
+	 * THE LIVE-AND-IDLE WINDOW (agent review R1): the run's calls have all
+	 * settled but the TURN is still finishing, so the section is live with no
+	 * call to name. This is where a simplification - "close once the run's calls
+	 * have settled" - would fold the reader's group out from under them, and no
+	 * committed case covered it: `sectionLive: true` only ever appeared beside a
+	 * running call. The reader's fold stays open here too; the close still comes
+	 * from the section's end and only from there.
+	 */
+	await mounted.render({
+		summary: "4 shell · 1 python",
+		span: { startedAtMs: 1_000, endedAtMs: 23_000, running: false },
+		live: null,
+		sectionLive: true,
+	});
+	assert.equal(
+		rows(mounted),
+		1,
+		"a live section with nothing in flight does not close the reader's fold",
+	);
+	// And the latch is still armed: the section's own end is what closes it.
+	await mounted.render({
+		summary: "4 shell · 1 python",
+		span: { startedAtMs: 1_000, endedAtMs: 23_000, running: false },
+		live: null,
+		sectionLive: false,
+	});
+	assert.equal(rows(mounted), 0, "the section's end finds the latch armed");
 });
 
 test("the section's end condenses it once, and not a moment early", async (t) => {

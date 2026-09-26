@@ -604,6 +604,12 @@ export const STORIES = [
 	 * (measured: 99.63% on the first attempt at this very row).
 	 */
 	["chat-trace-fold--live", 1280, 130],
+	/*
+	 * The fall design round 1's D1 was found in, pinned as a state: a realistic
+	 * long command in flight, where the name is the only element that truncates
+	 * and the counts survive it. Its row is also D3(b)'s missing state.
+	 */
+	["chat-trace-fold--long-name", 1280, 130],
 	["chat-trace-fold--mid-run", 1280, 130],
 	["chat-trace-fold--finished", 1280, 130],
 	["chat-trace-fold--restored", 1280, 130],

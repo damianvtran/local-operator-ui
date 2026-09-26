@@ -1,12 +1,24 @@
 /**
- * The action group's five visible states, on the component that ships them.
+ * The action group's states, on the component that ships them, with every
+ * number in the header DERIVED from the rows underneath it.
  *
  * §E2's fold, after the operator's 2026-09-26 report: a collapsed run has to
  * answer "what has it done, and what is it doing NOW" on its own line. These
- * stories are that line in each state a reader meets it in - live, mid-run with
- * a failure among the counts, finished, hand-opened, and restored from history
- * with no stamps to date a span from - so the design round judges the header
- * the way it renders rather than from a description of it.
+ * stories are that line in the states a reader meets it in - live, mid-run with
+ * a failure among the counts, finished, a settled run whose summary is
+ * kinds-only, restored from history with no stamps to date a span from, a
+ * long-name in-flight fall, and one opened by the reader's own press - so the
+ * design round judges the header the way it renders rather than from a
+ * description of it.
+ *
+ * THE FIXTURES ARE DERIVED, NOT TYPED (`foldProps` below), because typed ones
+ * drifted: a story once showed `Running wait 3600000` while the shipped
+ * composition for that call is `Calling wait 3600000` (`wait` is not in the
+ * verb table), and headers whose counts did not match their own children - the
+ * frame and the PR body then quoted strings the app cannot produce (agent
+ * review R2, design D2). `foldSummary` and `toolRowLabel` are the same pure
+ * functions the transcript calls, so a story cannot state what the app would
+ * not.
  *
  * WHAT A STILL CANNOT SAY, and where that lives instead: the auto-condense rule
  * ("finished sections condense; the live section and anything the reader opened
@@ -20,14 +32,16 @@
  * THE STAMPS ARE FIXED, not `Date.now()`-relative: a live span computes against
  * the clock, but a frame that changes its own number on every re-capture is a
  * frame no two rounds can compare. A still is an instant, and each of these is
- * the honest instant it names - "12s" is what the header read twelve seconds
- * into a call that is still running.
+ * the honest instant it names - "10s" is what the header read ten seconds into
+ * a run that is still going.
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ReactNode } from "react";
 import "../../../../styles/index.css";
+import { foldSummary } from "../../canonical/trace-fold-model";
 import { ToolRow } from "./tool-row";
+import { toolRowLabel } from "./tool-row-model";
 import { TraceFold } from "./trace-fold";
 
 /**
@@ -36,7 +50,7 @@ import { TraceFold } from "./trace-fold";
  * it the column width and the neighbouring type and nothing else.
  *
  * The sentence above the fold is CONTEXT, not the subject: the fold renders one
- * line, and a frame of one line inside an empty 1280x110 sheet is refused by the
+ * line, and a frame of one line inside an empty 1280x130 sheet is refused by the
  * harness's own paint guard (`assertFramePaints`: 98.67% one colour, measured on
  * the `restored` state before this line existed). It is also the truer frame -
  * a condensed group is read under a message, not floating on a sheet.
@@ -51,27 +65,58 @@ const Sheet = ({ children }: { children: ReactNode }) => (
 );
 
 /**
- * One row, in the words the ledger paints - `ToolRow`, the same component the
- * transcript mounts inside the fold, so a story cannot drift from the shipped
- * row.
+ * One row's facts, as the transcript would hold them.
+ *
+ * `executing` is the row's own `phase === "running"`: the call is in flight and
+ * its name is known, which is what the header's live clause paints.
  */
-const Row = ({
-	name = "bash",
-	summary,
-	durationS,
-	outcome = "success",
-}: {
-	name?: string;
-	summary: string;
-	durationS: number;
-	outcome?: "success" | "error" | "running";
-}) => (
-	<ToolRow
-		toolName={name}
-		summary={summary}
-		outcome={outcome}
-		durationS={durationS}
-	/>
+type RowSpec = {
+	name: string;
+	object: string;
+	durationS: number | null;
+	failed?: boolean;
+	executing?: boolean;
+};
+
+/**
+ * The fold's props, derived exactly as `canonical-transcript.tsx` derives them:
+ * the summary from the actions' own names (`foldSummary`), the counts from the
+ * rows, and the live clause from the executing row's own label composition
+ * (`toolRowLabel`). Nothing here is typed twice.
+ */
+const foldProps = (specs: RowSpec[]) => {
+	const actions = specs.map((spec) => ({
+		name: spec.name,
+		failed: spec.failed === true,
+	}));
+	const executing = specs.find((spec) => spec.executing === true);
+	const label = executing
+		? toolRowLabel(executing.name, executing.object, null, true)
+		: null;
+	return {
+		summary: foldSummary(actions),
+		actionCount: specs.length,
+		failedCount: actions.filter((action) => action.failed).length,
+		live: label ? { verb: label.verb, object: label.object } : null,
+	};
+};
+
+/** The rows the fold's children render, from the same specs. */
+const FoldRows = ({ specs }: { specs: RowSpec[] }) => (
+	<>
+		{specs.map((spec) => (
+			<ToolRow
+				key={`${spec.name}:${spec.object}`}
+				toolName={spec.name}
+				summary={spec.object}
+				outcome={spec.executing ? "running" : spec.failed ? "error" : "success"}
+				durationS={spec.durationS}
+				// A running row's clock is cleared rather than stamped: a still
+				// taken at a fixed instant cannot carry a ticking number.
+				startedAt={null}
+			/>
+		))}
+	</>
 );
 
 const meta = {
@@ -88,117 +133,133 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+const LIVE_ROWS: RowSpec[] = [
+	{ name: "bash", object: "pnpm vitest run", durationS: 2.4 },
+	{ name: "bash", object: "git status --short", durationS: 0.1 },
+	{ name: "eval", object: "aggregate.py --since main", durationS: 1.1 },
+	{
+		name: "bash",
+		object: "pnpm vitest run --coverage",
+		durationS: null,
+		executing: true,
+	},
+];
+
 /** The section is live and its last call has not settled. */
 export const Live: Story = {
 	args: {
-		summary: "3 shell · 1 python",
-		actionCount: 4,
-		failedCount: 0,
+		...foldProps(LIVE_ROWS),
 		span: { startedAtMs: 1_000, endedAtMs: 11_000, running: false },
-		live: { verb: "Running", object: "pnpm vitest run" },
 		sectionLive: true,
 		recordIds: ["s1", "s2", "s3", "s4"],
-		children: (
-			<>
-				<Row summary="pnpm vitest run" durationS={2.4} />
-				<Row
-					summary="src/features/chat/canonical/transcript-reducer.ts"
-					durationS={0.08}
-				/>
-				<Row name="eval" summary="aggregate.py --since main" durationS={1.1} />
-				<Row summary="pnpm vitest run" durationS={0.4} outcome="running" />
-			</>
-		),
-	},
-};
-
-/** Mid-run: the counts have moved and one call in the group failed. */
-export const MidRun: Story = {
-	args: {
-		summary: "3 shell · 1 python",
-		actionCount: 4,
-		failedCount: 1,
-		span: { startedAtMs: 1_000, endedAtMs: 34_000, running: false },
-		live: { verb: "Running", object: "wait 3600000" },
-		sectionLive: true,
-		recordIds: ["s1", "s2", "s3", "s4"],
-		children: (
-			<>
-				<Row summary="pnpm vitest run" durationS={2.4} />
-				<Row summary="git push origin fix" durationS={9.1} outcome="error" />
-				<Row name="eval" summary="aggregate.py --since main" durationS={1.1} />
-				<Row name="wait" summary="3600000" durationS={0.2} outcome="running" />
-			</>
-		),
-	},
-};
-
-/** The section has ended: condensed, and the header names what ran. */
-export const Finished: Story = {
-	args: {
-		summary: "Ran 5 commands",
-		actionCount: 5,
-		failedCount: 1,
-		span: { startedAtMs: 1_000, endedAtMs: 73_000, running: false },
-		live: null,
-		sectionLive: false,
-		recordIds: ["s1", "s2", "s3", "s4", "s5"],
-		children: (
-			<>
-				<Row summary="pnpm vitest run" durationS={2.4} />
-				<Row summary="git push origin fix" durationS={9.1} outcome="error" />
-				<Row name="eval" summary="aggregate.py --since main" durationS={1.1} />
-				<Row summary="pnpm storybook" durationS={4.2} />
-				<Row summary="node scripts/capture-evidence.mjs" durationS={3.3} />
-			</>
-		),
-	},
-};
-
-/** A group restored from history: durations, but no stamps to date a span. */
-export const Restored: Story = {
-	args: {
-		summary: "8 shell · 2 python",
-		actionCount: 10,
-		failedCount: 0,
-		span: null,
-		live: null,
-		sectionLive: false,
-		recordIds: ["h1"],
-		children: (
-			<>
-				<Row summary="pnpm install" durationS={12.5} />
-				<Row
-					name="eval"
-					summary="backfill.py --day 2026-09-24"
-					durationS={40.2}
-				/>
-			</>
-		),
+		children: <FoldRows specs={LIVE_ROWS} />,
 	},
 };
 
 /**
- * Opened by the reader's own press. The press is the HARNESS's (`press:` on this
- * story's sweep row), not a `play` that sets state: the question the frame
- * answers is whether the fold's own control is what opens it, so the state has
- * to arrive the way it arrives for a reader. A visitor to Storybook can click
- * the trigger themselves and see the same thing.
+ * The fall D1 named: a realistic long command in flight. The name is the only
+ * element that truncates and the counts survive it - the frame exists so that
+ * claim is judged from a render, not from the flex arithmetic.
  */
-export const Expanded: Story = {
+export const LongName: Story = {
 	args: {
-		summary: "Ran 5 commands",
-		actionCount: 5,
-		failedCount: 0,
+		...(() => {
+			const specs = LIVE_ROWS.map((spec, index) =>
+				index === LIVE_ROWS.length - 1
+					? {
+							...spec,
+							object:
+								"node scripts/capture-evidence.mjs --only=chat-trace-fold-- --themes=localOperatorDark,localOperatorLight",
+						}
+					: spec,
+			);
+			return { ...foldProps(specs), children: <FoldRows specs={specs} /> };
+		})(),
+		span: { startedAtMs: 1_000, endedAtMs: 13_000, running: false },
+		sectionLive: true,
+		recordIds: ["s1", "s2", "s3", "s4"],
+	},
+};
+
+const MID_RUN_ROWS: RowSpec[] = [
+	{ name: "bash", object: "pnpm vitest run", durationS: 2.4 },
+	{ name: "bash", object: "git push origin fix", durationS: 9.1, failed: true },
+	{ name: "eval", object: "aggregate.py --since main", durationS: 1.1 },
+	{ name: "wait", object: "3600000", durationS: null, executing: true },
+];
+
+/** Mid-run: the counts have moved and one call in the group failed. */
+export const MidRun: Story = {
+	args: {
+		...foldProps(MID_RUN_ROWS),
+		span: { startedAtMs: 1_000, endedAtMs: 34_000, running: false },
+		sectionLive: true,
+		recordIds: ["s1", "s2", "s3", "s4"],
+		children: <FoldRows specs={MID_RUN_ROWS} />,
+	},
+};
+
+const FINISHED_ROWS: RowSpec[] = [
+	{ name: "bash", object: "pnpm vitest run", durationS: 2.4 },
+	{ name: "bash", object: "git push origin fix", durationS: 9.1, failed: true },
+	{ name: "bash", object: "pnpm storybook", durationS: 4.2 },
+	{ name: "bash", object: "node scripts/capture-evidence.mjs", durationS: 3.3 },
+	{ name: "bash", object: "git status --short", durationS: 0.1 },
+];
+
+/** The section has ended: condensed, and the header names what ran. */
+export const Finished: Story = {
+	args: {
+		...foldProps(FINISHED_ROWS),
 		span: { startedAtMs: 1_000, endedAtMs: 73_000, running: false },
 		live: null,
 		sectionLive: false,
-		recordIds: ["s1"],
-		children: (
-			<>
-				<Row summary="pnpm vitest run" durationS={2.4} />
-				<Row name="eval" summary="aggregate.py --since main" durationS={1.1} />
-			</>
-		),
+		recordIds: ["s1", "s2", "s3", "s4", "s5"],
+		children: <FoldRows specs={FINISHED_ROWS} />,
+	},
+};
+
+const KINDS_ROWS: RowSpec[] = [
+	{ name: "bash", object: "pnpm vitest run", durationS: 2.4 },
+	{ name: "bash", object: "node scripts/capture-evidence.mjs", durationS: 3.3 },
+	{ name: "eval", object: "aggregate.py --since main", durationS: 1.1 },
+	{ name: "bash", object: "pnpm storybook", durationS: 4.2 },
+];
+
+/**
+ * A settled run whose summary is kinds-only (`3 shell · 1 python`, no lead
+ * verb) - the finished form of any run containing an `eval`, which design round
+ * 1's D3 asked the sweep to carry. Opened by the reader's own press: the press
+ * is the HARNESS's (`press:` on this story's sweep row), not a `play` that sets
+ * state, because the question the frame answers is whether the fold's own
+ * control is what opens it. A visitor to Storybook can click the trigger
+ * themselves and see the same thing.
+ */
+export const Expanded: Story = {
+	args: {
+		...foldProps(KINDS_ROWS),
+		span: { startedAtMs: 1_000, endedAtMs: 73_000, running: false },
+		live: null,
+		sectionLive: false,
+		recordIds: ["s1", "s2", "s3", "s4"],
+		children: <FoldRows specs={KINDS_ROWS} />,
+	},
+};
+
+const RESTORED_ROWS: RowSpec[] = [
+	{ name: "bash", object: "pnpm install", durationS: 12.5 },
+	{ name: "bash", object: "pnpm vitest run", durationS: 2.4 },
+	{ name: "eval", object: "backfill.py --day 2026-09-24", durationS: 40.2 },
+];
+
+/** A group restored from history: durations, but no stamps to date a span. */
+export const Restored: Story = {
+	args: {
+		...foldProps(RESTORED_ROWS),
+		span: null,
+		live: null,
+		sectionLive: false,
+		recordIds: ["h1"],
+		children: <FoldRows specs={RESTORED_ROWS} />,
 	},
 };

@@ -230,10 +230,19 @@ export const TraceFold = ({
 						 * FOUR FLEX ITEMS AND THE GAP THAT SPACES THEM, not one truncating
 						 * sentence: the header's `·` separators take their breathing room from
 						 * this row's `gap-2`, exactly as the summary/failure/clock did before the
-						 * live clause existed (§E2). Truncation priority is flex's: the live
-						 * clause and the summary can both shrink (`min-w-0 truncate`), the
-						 * failure count and the clock are `shrink-0`, so a tight column loses
-						 * words from the clause's tail before it loses a fact.
+						 * live clause existed (§E2).
+						 *
+						 * TRUNCATION PRIORITY, WHILE A CALL IS IN FLIGHT: the NAME is the only
+						 * element that truncates. The first cut left the clause and the summary
+						 * both on `min-w-0 truncate`, and flex shrank them in proportion - so a
+						 * realistic long command took the counts down with it (`3 shell ·…`,
+						 * `1 python` lost) while the failure chip and clock survived on
+						 * `shrink-0` (design round 1, D1, measured on a long-name probe). The
+						 * counts and the clock are the facts a condensed group exists to carry,
+						 * so the summary takes `shrink-0` while the clause is present: the clause
+						 * is the one element with slack (`min-w-0 truncate`, and it can shrink to
+						 * nothing), so every overflow goes to the name first. With no clause -
+						 * a settled header - the summary truncates as it always has.
 						 */}
 						{live !== null && !open && (
 							<>
@@ -246,7 +255,16 @@ export const TraceFold = ({
 								 * not need two elements. `data-fold-live` is the handle the
 								 * behaviour suite drives (`scripts/trace-fold-behaviour.test.mjs`).
 								 */}
-								<span data-fold-live="" className={cn("min-w-0 truncate")}>
+								<span
+									data-fold-live=""
+									className={cn("min-w-0 truncate")}
+									/*
+									 * The name is the only element here that truncates, so the full text
+									 * would otherwise be reachable only by expanding the fold; the tooltip
+									 * keeps it one hover away (design round 1, D1).
+									 */
+									title={`${live.verb} ${live.object}`}
+								>
 									<span className={cn("text-accent")}>{live.verb}</span>{" "}
 									<span className={cn("font-mono text-mono-sm text-ink-muted")}>
 										{live.object}
@@ -269,7 +287,10 @@ export const TraceFold = ({
 							</>
 						)}
 						<span
-							className={cn("min-w-0 truncate text-body-sm text-ink-muted")}
+							className={cn(
+								"min-w-0 truncate text-body-sm text-ink-muted",
+								live !== null && !open && "shrink-0",
+							)}
 							title={`${actionCount} actions`}
 						>
 							{/*

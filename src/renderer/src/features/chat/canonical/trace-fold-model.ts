@@ -37,8 +37,10 @@
  *
  * `Ran pnpm vitest run` and `Ran pnpm vitest run --coverage` are one activity to
  * a reader, and so are four different `read` calls. The classes below are the
- * ones §E2 names, and anything the app does not classify falls into the count
- * that makes no claim: "N actions".
+ * ones §E2 names; anything the app does not classify never joins a class - the
+ * summary falls to the counts by KIND, where the unknown counts under its own
+ * display name (`2 files · 1 create_issue`). A bare total appears only for an
+ * empty run (0 actions), where there is nothing else true to say.
  */
 
 import { displayName, toolRowLabel } from "../components/trace/tool-row-model";
@@ -69,6 +71,13 @@ export type FoldableAction = {
 	 * and it is what makes the span's end "now".
 	 */
 	running?: boolean;
+	/**
+	 * The row's own EXECUTING predicate: `phase === "running"`. Narrower than
+	 * `running`, which also covers `composing` (the model is still dictating the
+	 * arguments) and `queued` (dictation over, execution not begun). It is the
+	 * live clause's predicate rather than the condense guard's: see `foldLive`.
+	 */
+	executing?: boolean;
 	/**
 	 * Ms epoch when the call began EXECUTING (`startedAt`), which the live layer
 	 * clears once the call settles.
@@ -147,8 +156,9 @@ export type FoldLive = {
  *
  * `null` is a REAL answer: a name this table does not know must not be filed
  * into a class, because the summary is a claim about what the turn did and a
- * wrong class is a wrong claim. Unknown names still fold - they just count
- * toward "N actions" instead of toward "Explored 4 files".
+ * wrong class is a wrong claim. Unknown names still fold - they just count by
+ * KIND instead of toward a class sentence (`2 files · 1 create_issue`), so the
+ * summary never files them into somebody else's activity.
  */
 export const actionClass = (
 	name: string,
@@ -403,9 +413,26 @@ export function foldSpan(actions: FoldableAction[]): FoldSpan | null {
  * condense waits on.
  */
 export function foldLive(actions: FoldableAction[]): FoldLive | null {
+	/*
+	 * NAMED ONLY WHEN IT IS EXECUTING, and the last such call wins.
+	 *
+	 * `running` is deliberately wider than this predicate, and the first cut of
+	 * this function used it: a composing row (the model still dictating arguments)
+	 * or a queued one (dictation over, execution not begun) then put its own
+	 * status text in the header - `Running composing`, `Running queued · 22 B` -
+	 * for the sub-second windows before its name resolves. That reads as a claim
+	 * the app cannot back (nothing is running yet) about the wire's byte count,
+	 * in the exact window the operator looks at the header for (UX round 1, U2).
+	 * The row still states those phases in its own column; the header names a call
+	 * when there is a call to name.
+	 *
+	 * The LAST executing call, not the first: a settled batch can leave one call
+	 * executing while a later sibling composes, and the reader's question is
+	 * "what is it doing now", which the newest executing call answers.
+	 */
 	for (let index = actions.length - 1; index >= 0; index -= 1) {
 		const action = actions[index];
-		if (action.running !== true) continue;
+		if (action.executing !== true) continue;
 		return toolRowLabel(action.name, action.summary ?? "", null, true);
 	}
 	return null;
@@ -432,6 +459,12 @@ export function foldRuns(
 		summaryOf?: (row: Row) => string;
 		/** The row's own running predicate: `phase !== "done"`. */
 		runningOf?: (row: Row) => boolean;
+		/**
+		 * The row's EXECUTING predicate (`phase === "running"`), which feeds the
+		 * live clause and nothing else: a composing or queued call has no name to
+		 * paint yet, and the clause waits for one (see `foldLive`).
+		 */
+		executingOf?: (row: Row) => boolean;
 		/** Ms epoch the call began executing, when the row carries one. */
 		startedAtOf?: (row: Row) => number | null;
 		/** Ms epoch the call completed, when the row carries one. */
@@ -453,6 +486,7 @@ export function foldRuns(
 			};
 			if (options.summaryOf) action.summary = options.summaryOf(row);
 			if (options.runningOf) action.running = options.runningOf(row);
+			if (options.executingOf) action.executing = options.executingOf(row);
 			return action;
 		});
 		if (run.length >= FOLD_MIN_ACTIONS) {

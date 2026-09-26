@@ -366,32 +366,79 @@ test("the live clause names the call being watched, in the row's words", () => {
 				name: "bash",
 				failed: false,
 				running: true,
+				executing: true,
 				summary: "pnpm vitest run",
 			},
 		]),
 		{ verb: "Running", object: "pnpm vitest run" },
 	);
-	// The LAST unsettled call is the one being watched.
+	/*
+	 * COMPOSING AND QUEUED NAME NOTHING (UX round 1, U2): they are `running`
+	 * (unsettled - the condense guard still honours them) but not `executing`,
+	 * and the first cut painted `Running composing` then `Running queued · 22 B`
+	 * in the sub-second windows before a call's name resolves - a claim nothing
+	 * is running yet, about the wire's byte count, in the window the operator
+	 * reads the header for.
+	 */
+	assert.equal(
+		foldLive([
+			{ name: "bash", failed: false, running: true, summary: "composing" },
+		]),
+		null,
+		"a call still being dictated is not named",
+	);
+	assert.equal(
+		foldLive([
+			{
+				name: "bash",
+				failed: false,
+				running: true,
+				summary: "queued · 22 B",
+			},
+		]),
+		null,
+		"nor is one waiting to start, whose object is a byte count",
+	);
+	// A sibling still composing does not displace the call being watched: the
+	// LAST EXECUTING call is the one named.
 	assert.deepEqual(
 		foldLive([
-			{ name: "bash", failed: false, running: true, summary: "a" },
-			{ name: "bash", failed: false, running: true, summary: "b" },
+			{
+				name: "bash",
+				failed: false,
+				running: true,
+				executing: true,
+				summary: "pnpm vitest run",
+			},
+			{ name: "bash", failed: false, running: true, summary: "composing" },
 		]),
-		{ verb: "Running", object: "b" },
+		{ verb: "Running", object: "pnpm vitest run" },
 	);
 	// `wait` is not in the verb table, so its display name stays in the object -
 	// exactly what its row paints (`Calling wait 3600000`), which is the point
 	// of lifting the row's own composition instead of approximating it.
 	assert.deepEqual(
 		foldLive([
-			{ name: "wait", failed: false, running: true, summary: "3600000" },
+			{
+				name: "wait",
+				failed: false,
+				running: true,
+				executing: true,
+				summary: "3600000",
+			},
 		]),
 		{ verb: "Calling", object: "wait 3600000" },
 	);
 	// `eval` carries its own noun: `Ran Python` settled, `Running Python` live.
 	assert.deepEqual(
 		foldLive([
-			{ name: "eval", failed: false, running: true, summary: "build.py" },
+			{
+				name: "eval",
+				failed: false,
+				running: true,
+				executing: true,
+				summary: "build.py",
+			},
 		]),
 		{ verb: "Running Python", object: "build.py" },
 	);
