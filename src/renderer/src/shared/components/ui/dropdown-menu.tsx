@@ -80,6 +80,13 @@ export const DropdownMenuSubContent = forwardRef<
 >(({ className, ...props }, ref) => (
 	<DropdownMenuPrimitive.SubContent
 		ref={ref}
+		/*
+		 * Not a drag surface; see the marker's note in `dialog.tsx` and the rule it is
+		 * read by in `styles/index.css`. A menu that opens near the top of the window
+		 * can overlap the chrome strip, and a row inside the window's draggable
+		 * region is a row that cannot be clicked.
+		 */
+		data-titlebar-no-drag=""
 		className={cn(panelClasses, className)}
 		{...props}
 	/>
@@ -93,6 +100,7 @@ export const DropdownMenuContent = forwardRef<
 	<DropdownMenuPrimitive.Portal>
 		<DropdownMenuPrimitive.Content
 			ref={ref}
+			data-titlebar-no-drag=""
 			sideOffset={sideOffset}
 			className={cn(panelClasses, className)}
 			{...props}

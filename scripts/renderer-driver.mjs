@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|connection-drop|sidebar-sections|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|none>
+ *   --scene <states|new-chat|first-send|connection-drop|sidebar-sections|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|none>
  *                          which built-in scene to run (default: states)
  *   --gate-state <label>   (with --scene settings-gate) what this run's backend
  *                          state is called in the frames and the log, so two
@@ -17575,6 +17575,758 @@ async function dragSplit(cdp, x, y, dy, { steps = 6, hold = null } = {}) {
 	await wait(200);
 }
 
+/* ------------------------------- hit-zones ------------------------------- */
+
+/**
+ * The control set the drag vocabulary is about.
+ *
+ * The same vocabulary `styles/index.css` gives `no-drag` to inside a drag row,
+ * plus the explicit opt-out - read as the page's own instead of a per-surface
+ * selector list, because a list written here would go stale the first time a
+ * panel gains a control, and the failure it would hide is exactly the one this
+ * scene exists for.
+ */
+const HIT_ZONE_CONTROLS = [
+	"button",
+	"a",
+	"input",
+	"textarea",
+	"select",
+	"label",
+	'[role="button"]',
+	'[role="menuitem"]',
+	'[contenteditable="true"]',
+	"[data-titlebar-no-drag]",
+].join(", ");
+
+/**
+ * The window drag region, and what every control of one overlay meets of it.
+ *
+ * WHY THIS IS A REGION READ AND NOT A CLICK. The failure it measures is silent
+ * by construction: a pointer event swallowed by the window's drag region is
+ * indistinguishable, from the user's seat, from a dead handler. Electron's own
+ * hit test is `region->contains(point)` (`WebContentsView::NonClientHitTest`),
+ * so the predicate to read is the region - "did anything happen when I clicked"
+ * cannot separate a swallowed event from a handler that ran and did nothing, and
+ * `elementFromPoint` alone cannot either: it answers what is PAINTED on top,
+ * which stays the button even when the region is eating its clicks.
+ *
+ * HOW THE REGION IS REPRODUCED, and why a page can do it faithfully. Chromium
+ * builds it in `LocalFrameView::CollectDraggableRegions`: a pre-order walk where
+ * a box whose computed `app-region` is `drag` unions its border box into the
+ * region, and one whose value is `no-drag` subtracts its own
+ * (`LayoutObject::AddDraggableRegions`). The value is INHERITED - which is why
+ * one marker on a dialog subtracts everything inside it - and the walk never
+ * sees paint order or the top layer. That is the whole defect class: a modal
+ * painted over the top strip does not stop being inside it by painting.
+ *
+ * So the same three facts are read here: `getComputedStyle` is the computed
+ * value Blink sees, `getBoundingClientRect` is the same border box (its own
+ * transform included), document order is the walk's order, and applying the
+ * entries in order makes `inRegion` the predicate the OS-level hit test runs.
+ * The read also returns the drag entries' count and bounds, which is what
+ * Electron's own debugger prints (`ELECTRON_DEBUG_DRAGGABLE_REGIONS` build) - a
+ * cross-check from the other side of the same computation.
+ *
+ * Every control is sampled at five points rather than one: a button whose top
+ * half is inside the region and whose bottom half is not is exactly the shape
+ * the operator's report has ("only worked on its left half", in the sibling
+ * report this read was written from), and a centre-only sample would call it
+ * healthy.
+ */
+function readHitZones(cdp, spec) {
+	return cdp.evaluate(`(() => {
+		const appRegion = (el) => {
+			const style = getComputedStyle(el);
+			return (
+				style.getPropertyValue("-webkit-app-region") ||
+				style.getPropertyValue("app-region") ||
+				""
+			).trim();
+		};
+		const describe = (el) => {
+			if (!el) return null;
+			const label = el.getAttribute("aria-label") ?? el.textContent ?? "";
+			const role = el.getAttribute("role");
+			return el.tagName.toLowerCase() + (role ? "[role=" + role + "]" : "") +
+				' "' + label.trim().replace(/\\s+/g, " ").slice(0, 48) + '"';
+		};
+		/*
+		 * Whether the element can receive a pointer: both properties are computed
+		 * values, which is the truth for THIS box - a modal library sets
+		 * pointer-events none on the body and auto on its content, so an ancestor
+		 * walk would call every dialog control unclickable, while the inherited
+		 * value on a control inside a hidden cluster is none without an ancestor
+		 * walk needed. The sidebar's hover-revealed cluster is the case this exists
+		 * for: unrevealed, its buttons compute pointer-events none with opacity 0,
+		 * and sampling them reported the separator underneath as an occlusion the
+		 * app does not have.
+		 */
+		const canTakePointer = (el) => {
+			const style = getComputedStyle(el);
+			if (style.pointerEvents === "none") return false;
+			if (style.visibility === "hidden" || style.visibility === "collapse") return false;
+			return true;
+		};
+		const entries = [];
+		for (const el of document.querySelectorAll("*")) {
+			const mode = appRegion(el);
+			if (mode !== "drag" && mode !== "no-drag") continue;
+			const style = getComputedStyle(el);
+			if (style.visibility !== "visible") continue;
+			if (style.display === "inline" || style.display === "contents") continue;
+			const rect = el.getBoundingClientRect();
+			if (rect.width <= 0 || rect.height <= 0) continue;
+			entries.push({
+				mode,
+				l: rect.left,
+				t: rect.top,
+				r: rect.right,
+				b: rect.bottom,
+				el: describe(el),
+				node: el,
+			});
+		}
+		const inRegionOver = (x, y, consider) => {
+			let inside = false;
+			let cover = null;
+			for (const entry of entries) {
+				if (!consider(entry)) continue;
+				if (x >= entry.l && x < entry.r && y >= entry.t && y < entry.b) {
+					inside = entry.mode === "drag";
+					cover = entry;
+				}
+			}
+			return { inside, cover: cover === null ? null : cover.mode + " " + cover.el };
+		};
+		const root = document.querySelector(${JSON.stringify(spec.root)});
+		if (root === null) {
+			return {
+				surface: ${JSON.stringify(spec.surface)},
+				missing: true,
+				region: { entries: entries.length },
+			};
+		}
+		const inRegion = (x, y) => inRegionOver(x, y, () => true);
+		/*
+		 * THE SAME POINT WITHOUT THIS SURFACE'S OWN OPT-OUT, which is the before
+		 * reading every run gets for free. The fix adds only no-drag entries, so
+		 * removing the ones this surface contributes (its own subtree) is exactly
+		 * the region the point met before the marker existed - verified against the
+		 * pre-fix run once, and printed for every sample so a reader does not have
+		 * to take it on faith: the close button that failed with 5/5 samples
+		 * swallowed reads swallowed false / swallowedBefore true on the fixed tree.
+		 */
+		const inRegionBefore = (x, y) =>
+			inRegionOver(x, y, (entry) => !root.contains(entry.node));
+		const rootRect = root.getBoundingClientRect();
+		const inViewport = (rect) =>
+			rect.left >= -1 && rect.top >= -1 &&
+			rect.right <= window.innerWidth + 1 &&
+			rect.bottom <= window.innerHeight + 1;
+		const insideRoot = (rect) =>
+			rect.left >= rootRect.left - 1 && rect.right <= rootRect.right + 1 &&
+			rect.top >= rootRect.top - 1 && rect.bottom <= rootRect.bottom + 1;
+		const controls = [];
+		const skipped = { disabled: [], clipped: [], unpaintable: [] };
+		for (const el of root.querySelectorAll(${JSON.stringify(spec.controls)})) {
+			const rect = el.getBoundingClientRect();
+			if (rect.width <= 0 || rect.height <= 0) continue;
+			/*
+			 * A control a user cannot aim at is not a click target, and sampling one
+			 * produces a false finding: the picker host's segments pair a 1x1
+			 * "sr-only" radio with the label that paints in its place, and
+			 * elementFromPoint at the input's centre answers the label - which is
+			 * the element the click is really for. The label is in the sampled set
+			 * for exactly this reason.
+			 */
+			if (rect.width < 2 || rect.height < 2) {
+				skipped.unpaintable.push(describe(el));
+				continue;
+			}
+			if (!canTakePointer(el)) {
+				skipped.unpaintable.push(describe(el));
+				continue;
+			}
+			/*
+			 * A disabled control is not a click target; a control outside the
+			 * visible box is not one either (a scrolled-away table row's buttons
+			 * would otherwise be sampled against whatever paints where they are
+			 * laid out). Both are reported, not silently dropped.
+			 */
+			const disabled =
+				(el instanceof HTMLButtonElement && el.disabled) ||
+				el.getAttribute("aria-disabled") === "true";
+			if (disabled) {
+				skipped.disabled.push(describe(el));
+				continue;
+			}
+			if (!insideRoot(rect) || !inViewport(rect)) {
+				skipped.clipped.push(describe(el));
+				continue;
+			}
+			const samples = [];
+			for (const point of [
+				["centre", rect.left + rect.width / 2, rect.top + rect.height / 2],
+				["top-left", rect.left + rect.width * 0.25, rect.top + rect.height * 0.25],
+				["top-right", rect.right - rect.width * 0.25, rect.top + rect.height * 0.25],
+				["bottom-left", rect.left + rect.width * 0.25, rect.bottom - rect.height * 0.25],
+				["bottom-right", rect.right - rect.width * 0.25, rect.bottom - rect.height * 0.25],
+			]) {
+				const region = inRegion(point[1], point[2]);
+				const before = inRegionBefore(point[1], point[2]);
+				const top = document.elementFromPoint(point[1], point[2]);
+				samples.push({
+					name: point[0],
+					x: Math.round(point[1] * 10) / 10,
+					y: Math.round(point[2] * 10) / 10,
+					swallowed: region.inside,
+					cover: region.cover,
+					swallowedBefore: before.inside,
+					beforeCover: before.cover,
+					top: describe(top),
+					topIsControl: top !== null && (top === el || el.contains(top)),
+				});
+			}
+			controls.push({
+				name: describe(el),
+				rect: {
+					x: Math.round(rect.x),
+					y: Math.round(rect.y),
+					w: Math.round(rect.width),
+					h: Math.round(rect.height),
+				},
+				region: appRegion(el),
+				samples,
+			});
+		}
+		/*
+		 * THE PRESERVATION POINTS: the lane to either side of the overlay's own box.
+		 * They must stay in the region after a fix - the window is still moved by
+		 * the strip around a modal - which is what a fix that marked a full-screen
+		 * scrim would silently break.
+		 */
+		const preserved = [];
+		for (const point of [
+			["lane left of the overlay", Math.max(4, rootRect.left - 40), 16],
+			["lane right of the overlay", Math.min(window.innerWidth - 4, rootRect.right + 40), 16],
+		]) {
+			const region = inRegion(point[1], point[2]);
+			preserved.push({
+				name: point[0],
+				x: Math.round(point[1]),
+				y: Math.round(point[2]),
+				insideOverlay:
+					point[1] >= rootRect.left && point[1] < rootRect.right &&
+					point[2] >= rootRect.top && point[2] < rootRect.bottom,
+				inside: region.inside,
+				cover: region.cover,
+			});
+		}
+		const dragEntries = entries.filter((entry) => entry.mode === "drag");
+		const bounds = dragEntries.reduce(
+			(acc, entry) => ({
+				l: Math.min(acc.l, entry.l),
+				t: Math.min(acc.t, entry.t),
+				r: Math.max(acc.r, entry.r),
+				b: Math.max(acc.b, entry.b),
+			}),
+			{ l: Infinity, t: Infinity, r: -Infinity, b: -Infinity },
+		);
+		return {
+			surface: ${JSON.stringify(spec.surface)},
+			missing: false,
+			region: {
+				entries: entries.length,
+				dragEntries: dragEntries.length,
+				bounds: dragEntries.length === 0 ? null : {
+					x: Math.round(bounds.l),
+					y: Math.round(bounds.t),
+					w: Math.round(bounds.r - bounds.l),
+					h: Math.round(bounds.b - bounds.t),
+				},
+			},
+			root: {
+				x: Math.round(rootRect.x),
+				y: Math.round(rootRect.y),
+				w: Math.round(rootRect.width),
+				h: Math.round(rootRect.height),
+			},
+			controls,
+			skipped,
+			preserved,
+		};
+	})()`);
+}
+
+/** One surface's read, checked: no swallowed sample, no occlusion, strip intact. */
+function checkHitZones(surface, report) {
+	check(
+		`[${surface}] the overlay is in the document`,
+		report.missing === false,
+		"the surface root was not found",
+		`${report.controls.length} control(s) sampled, region ${report.region.entries} entr(ies)`,
+	);
+	if (report.missing) return report;
+	const swallowed = [];
+	const occluded = [];
+	for (const control of report.controls) {
+		for (const sample of control.samples) {
+			if (sample.swallowed) {
+				swallowed.push(
+					`${control.name} at ${sample.name} (${sample.x}, ${sample.y}) - held by ${sample.cover}`,
+				);
+			}
+			if (!sample.topIsControl) {
+				occluded.push(
+					`${control.name} at ${sample.name} (${sample.x}, ${sample.y}) - top element is ${sample.top}`,
+				);
+			}
+		}
+	}
+	const before = report.controls.reduce(
+		(total, control) =>
+			total + control.samples.filter((sample) => sample.swallowedBefore).length,
+		0,
+	);
+	check(
+		`[${surface}] every sampled point of every control is OUTSIDE the window drag region`,
+		swallowed.length === 0,
+		`${swallowed.join("\n        ")}\n        (region: ${report.region.dragEntries} drag rect(s), bounds ${JSON.stringify(report.region.bounds)}; overlay box ${JSON.stringify(report.root)})`,
+		`${report.controls.length} control(s) x 5 samples in region ${report.region.entries} entr(ies); ${swallowed.length} swallowed now, ${before} would be without this surface's own opt-out; ${report.skipped.disabled.length} disabled, ${report.skipped.unpaintable.length} unpaintable and ${report.skipped.clipped.length} outside the visible box were not sampled`,
+	);
+	check(
+		`[${surface}] every sampled point's top element is the control it belongs to`,
+		occluded.length === 0,
+		occluded.join("\n        "),
+		`${report.controls.length} control(s) x 5 samples`,
+	);
+	const notDragging = report.preserved.filter(
+		(point) => !point.insideOverlay && point.inside !== true,
+	);
+	check(
+		`[${surface}] the lane outside the overlay still drags`,
+		notDragging.length === 0,
+		notDragging
+			.map(
+				(point) =>
+					`${point.name} (${point.x}, ${point.y}) is outside the region; last cover: ${point.cover}`,
+			)
+			.join("\n        "),
+		report.preserved
+			.map(
+				(point) =>
+					`${point.name} (${point.x}, ${point.y}): ${point.insideOverlay ? "the overlay covers it" : `inside=${point.inside}`}`,
+			)
+			.join(" | "),
+	);
+	return report;
+}
+
+/** Put a composer on screen, through the app's own New chat staging. */
+async function ensureComposer(cdp) {
+	const composer = '[data-tour-tag="chat-input-textarea"]';
+	const present = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${composer}'))`,
+		2_000,
+	);
+	if (present.ok) return true;
+	/*
+	 * `⌘N` is the app's own staging (`stageDraft` + navigate to `/chat`), and the
+	 * one path that works at every window width: the docked sidebar's New chat row
+	 * has no counterpart in the strip a narrow window draws.
+	 */
+	await pressChord(cdp, {
+		key: "n",
+		code: "KeyN",
+		virtualKeyCode: 78,
+		modifiers: MODIFIER.meta,
+	});
+	const staged = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${composer}'))`,
+		20_000,
+	);
+	return staged.ok;
+}
+
+/** Type a slash command into the composer and dispatch it, the way a user does. */
+async function runSlashCommand(cdp, command) {
+	check(
+		`[${command}] the composer mounted`,
+		await ensureComposer(cdp),
+		"no composer appeared, so nothing could be typed",
+	);
+	await clickAt(cdp, '[data-tour-tag="chat-input-textarea"] textarea');
+	await cdp.send("Input.insertText", { text: command });
+	await wait(300);
+	/*
+	 * TWO Enters, each through CDP's own key pipeline (`pressChord` carries each
+	 * key's character - see `keyText`): the first accepts the row the slash popup
+	 * offers, the second dispatches the command. A DOM `KeyboardEvent` built inside
+	 * the page would skip the half of the claim this presses to reach, which is why
+	 * the composer is driven this way everywhere in this file.
+	 */
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	await wait(700);
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+}
+
+/**
+ * `hit-zones`: the window drag region against the overlays painted over it.
+ *
+ * WHY THIS SCENE EXISTS. The operator's report - the Analytics panel's corner
+ * `×` seeming unclickable, "roughly level with where the seamless window chrome's
+ * draggable strip now sits" - is one instance of a class, and the class is silent.
+ * Chromium builds the window's draggable region from element RECTS
+ * (`readHitZones` reproduces the walk); a region is not a paint order, so an
+ * overlay drawn over the top strip does not carve itself out of it by painting,
+ * and Electron's hit test then hands the click to the window manager instead of
+ * the page. The fix is not a moved button: it is the overlay declaring `no-drag`,
+ * which subtracts its own rect - and the point of this scene is that the
+ * subtraction is measured, not assumed.
+ *
+ * WHAT IT ASSERTS, per surface: every sample point of every control is outside
+ * the region; the top element at each point is the control (so a literal
+ * occlusion would fail here rather than hide inside the region's answer); and the
+ * lane to either side of the overlay still drags. A FAILING run is the before
+ * frame of the pair: on the tree this scene was written against, the Analytics
+ * panel's `×` is inside the chat header row's drag band and its top sample is
+ * held by that row.
+ *
+ * WHAT IT NEEDS: `--backend` (the machine panels are opened by a slash command
+ * whose catalogue is the backend's) and, for every surface but the wizard,
+ * `--seed-onboarding-complete` - a first-run profile is a modal over the window,
+ * and the scene probes the wizard instead and says so.
+ *
+ * SURFACES IT CANNOT REACH, named rather than implied: a parked approval gate,
+ * the browser approvals dock, the update notification (an update must be
+ * available) and the app-wide toast lane. None of them is opened by a gesture
+ * this harness can make; the audit that accompanies the fix lists them as
+ * exercised by hand or not exercised, and this note is so a reader does not read
+ * the list of probed surfaces as the list of all surfaces.
+ */
+async function sceneHitZones(cdp) {
+	const hello = await verb(cdp, "hello");
+	note("hello", JSON.stringify(hello, null, 2));
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	if (BACKEND === null) {
+		throw new Error(
+			"--scene hit-zones needs --backend <url> with the renderer built against the same URL: the machine panels are opened by a slash command, and the catalogue that resolves it is the backend's",
+		);
+	}
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", "localOperatorDark");
+
+	/*
+	 * The chrome state, asserted rather than assumed: on anything but the mac
+	 * integrated chrome there is no 32px lane, and every number below would be
+	 * about a different window than the one this scene describes.
+	 */
+	const chrome = await cdp.evaluate(`(() => {
+		const lane = document.querySelector('[data-titlebar-lane]');
+		const rect = lane ? lane.getBoundingClientRect() : null;
+		const valueOf = (selector) => {
+			const el = document.querySelector(selector);
+			if (!el) return null;
+			const style = getComputedStyle(el);
+			return (
+				style.getPropertyValue("-webkit-app-region") ||
+				style.getPropertyValue("app-region") ||
+				""
+			).trim();
+		};
+		const bodyStyle = getComputedStyle(document.body);
+		return {
+			mode: document.documentElement.dataset.chromeMode,
+			platform: document.documentElement.dataset.chromePlatform,
+			viewport: { width: window.innerWidth, height: window.innerHeight },
+			lane: rect === null ? null : {
+				x: Math.round(rect.x),
+				y: Math.round(rect.y),
+				w: Math.round(rect.width),
+				h: Math.round(rect.height),
+				display: getComputedStyle(lane).display,
+			},
+			vocabulary: {
+				drag: valueOf("[data-titlebar-drag]"),
+				noDrag: valueOf("[data-titlebar-drag] button"),
+				plain:
+					bodyStyle.getPropertyValue("-webkit-app-region").trim() ||
+					bodyStyle.getPropertyValue("app-region").trim(),
+			},
+		};
+	})()`);
+	note("window chrome", JSON.stringify(chrome));
+	check(
+		"the window is the integrated chrome with the mac lane drawn",
+		chrome.mode === "integrated" &&
+			chrome.platform === "mac" &&
+			chrome.lane !== null &&
+			chrome.lane.h === 32 &&
+			chrome.lane.display === "block",
+		`mode=${chrome.mode} platform=${chrome.platform} lane=${JSON.stringify(chrome.lane)}`,
+	);
+	check(
+		"the computed app-region vocabulary is the one this read filters on",
+		chrome.vocabulary.drag === "drag" && chrome.vocabulary.noDrag === "no-drag",
+		JSON.stringify(chrome.vocabulary),
+	);
+
+	/*
+	 * A first-run profile is the wizard and nothing else. Probe it where it is up,
+	 * and say plainly that the rest of the surfaces need the seed flag - a run that
+	 * silently probed nothing must not read as a run that found nothing.
+	 */
+	if (
+		!SEED_ONBOARDING_COMPLETE &&
+		(await drawnSelector(cdp, '[role="dialog"]'))
+	) {
+		const wizardFrame = await captureSettled(cdp, "hit-zones-onboarding-dark");
+		note("frame onboarding-wizard", JSON.stringify(wizardFrame));
+		checkHitZones(
+			"onboarding-wizard",
+			await readHitZones(cdp, {
+				surface: "onboarding-wizard",
+				root: '[role="dialog"]',
+				controls: HIT_ZONE_CONTROLS,
+			}),
+		);
+		note(
+			"surfaces not exercised",
+			"a first-run profile shows the wizard and nothing else; the panels, the palette and the sheet need --seed-onboarding-complete",
+		);
+		return;
+	}
+
+	const surfaces = [];
+
+	/*
+	 * The three machine panels. `/analytics` is the operator's own case; `/usage`
+	 * and `/info` are the same shell and different bodies, which is what makes the
+	 * shell's fix measurable on more than one screen.
+	 */
+	for (const panel of [
+		{
+			command: "/analytics",
+			surface: "analytics-panel",
+			frame: "hit-zones-analytics-dark",
+		},
+		{
+			command: "/usage",
+			surface: "usage-panel",
+			frame: "hit-zones-usage-dark",
+		},
+		{ command: "/info", surface: "info-panel", frame: "hit-zones-info-dark" },
+	]) {
+		await runSlashCommand(cdp, panel.command);
+		const up = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector('[role="dialog"][data-state="open"]'))`,
+			20_000,
+		);
+		check(
+			`[${panel.surface}] the panel opened`,
+			up.ok,
+			`after ${up.waitedMs}ms the dialog was still absent (composer holds ${JSON.stringify(up.last)})`,
+		);
+		if (!up.ok) continue;
+		await wait(700);
+		const frame = await captureSettled(cdp, panel.frame);
+		note(`frame ${panel.surface}`, JSON.stringify(frame));
+		surfaces.push(
+			checkHitZones(
+				panel.surface,
+				await readHitZones(cdp, {
+					surface: panel.surface,
+					root: '[role="dialog"][data-state="open"]',
+					controls: HIT_ZONE_CONTROLS,
+				}),
+			),
+		);
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		await waitForCondition(
+			cdp,
+			`!document.querySelector('[role="dialog"][data-state="open"]')`,
+			10_000,
+		);
+	}
+
+	/* The command palette: the other modal shell the app draws. */
+	await verb(cdp, "press", "[data-command-palette-trigger]");
+	const paletteUp = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-tour-tag="command-palette-dialog"]'))`,
+		15_000,
+	);
+	check(
+		"[command-palette] the palette opened",
+		paletteUp.ok,
+		`after ${paletteUp.waitedMs}ms`,
+	);
+	if (paletteUp.ok) {
+		const frame = await captureSettled(cdp, "hit-zones-palette-dark");
+		note("frame command-palette", JSON.stringify(frame));
+		surfaces.push(
+			checkHitZones(
+				"command-palette",
+				await readHitZones(cdp, {
+					surface: "command-palette",
+					root: '[data-tour-tag="command-palette-dialog"]',
+					controls: HIT_ZONE_CONTROLS,
+				}),
+			),
+		);
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		await waitForCondition(
+			cdp,
+			`!document.querySelector('[data-tour-tag="command-palette-dialog"]')`,
+			10_000,
+		);
+	}
+
+	/*
+	 * The sidebar sheet, where the window is narrow enough for the sidebar to BE
+	 * the sheet (`SIDEBAR_DOCK_MIN_PX`). `⌘B` opens it through the app's own
+	 * handler - the same control the strip's expand button calls - so no selector
+	 * here guesses at a button whose label changes with state.
+	 */
+	if (await cdp.evaluate("window.innerWidth < 1024")) {
+		await pressChord(cdp, {
+			key: "b",
+			code: "KeyB",
+			virtualKeyCode: 66,
+			modifiers: MODIFIER.meta,
+		});
+		const sheetUp = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector('[data-sidebar-sheet]'))`,
+			10_000,
+		);
+		check(
+			"[sidebar-sheet] the sidebar toggle opened the sheet",
+			sheetUp.ok,
+			`after ${sheetUp.waitedMs}ms`,
+		);
+		if (sheetUp.ok) {
+			const frame = await captureSettled(cdp, "hit-zones-sidebar-sheet-dark");
+			note("frame sidebar-sheet", JSON.stringify(frame));
+			surfaces.push(
+				checkHitZones(
+					"sidebar-sheet",
+					await readHitZones(cdp, {
+						surface: "sidebar-sheet",
+						root: "[data-sidebar-sheet]",
+						controls: HIT_ZONE_CONTROLS,
+					}),
+				),
+			);
+			await pressChord(cdp, {
+				key: "Escape",
+				code: "Escape",
+				virtualKeyCode: 27,
+			});
+			await waitForCondition(
+				cdp,
+				`!document.querySelector('[data-sidebar-sheet]')`,
+				10_000,
+			);
+		}
+	} else {
+		note(
+			"sidebar-sheet not exercised",
+			`the sidebar is docked above SIDEBAR_DOCK_MIN_PX (1024) at this width (${chrome.viewport.width}), so there is no sheet here to probe - run this scene at a narrower --window-size for it`,
+		);
+	}
+
+	/*
+	 * The non-chat routes' drag band, on /settings: the other half of the drag
+	 * vocabulary, where the point is that NOTHING the page draws reaches into the
+	 * band - the band is the route's only drag surface, and a control overlapping
+	 * it would be swallowed the same way the `×` was.
+	 */
+	await verb(cdp, "navigate", "/settings");
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-chrome-route-band]'))`,
+		10_000,
+	);
+	await wait(800);
+	const band = await cdp.evaluate(`(() => {
+		const band = document.querySelector('[data-chrome-route-band]');
+		if (band === null) return null;
+		const rect = band.getBoundingClientRect();
+		const overlapping = [];
+		for (const el of document.querySelectorAll(
+			"main button, main a, main input, main select, main textarea, main [role=button], main [data-titlebar-no-drag]",
+		)) {
+			const box = el.getBoundingClientRect();
+			if (box.width <= 0 || box.height <= 0) continue;
+			if (
+				box.left < rect.right && box.right > rect.left &&
+				box.top < rect.bottom && box.bottom > rect.top
+			) {
+				const label = el.getAttribute("aria-label") ?? el.textContent ?? "";
+				overlapping.push(label.trim().replace(/\\s+/g, " ").slice(0, 48));
+			}
+		}
+		return {
+			rect: {
+				x: Math.round(rect.x),
+				y: Math.round(rect.y),
+				w: Math.round(rect.width),
+				h: Math.round(rect.height),
+			},
+			overlapping,
+		};
+	})()`);
+	check(
+		"[settings-route-band] the band is drawn over the page's own content",
+		band !== null && band.rect.h >= 30 && band.rect.h <= 32,
+		JSON.stringify(band),
+		`band ${JSON.stringify(band?.rect)} while /settings is up`,
+	);
+	check(
+		"[settings-route-band] no control of the route overlaps the band",
+		band !== null && band.overlapping.length === 0,
+		JSON.stringify(band?.overlapping),
+		`${band?.rect.w}px band, ${band?.overlapping.length ?? "?"} overlapping control(s)`,
+	);
+
+	note(
+		"surfaces probed",
+		surfaces
+			.map((report) => {
+				const count = (pick) =>
+					report.controls.reduce(
+						(total, control) => total + control.samples.filter(pick).length,
+						0,
+					);
+				const swallowed = count((sample) => sample.swallowed);
+				const swallowedBefore = count((sample) => sample.swallowedBefore);
+				return `${report.surface}: ${report.controls.length} control(s), ${swallowed} swallowed sample(s) now, ${swallowedBefore} without this surface's own opt-out, overlay ${JSON.stringify(report.root)}, region ${report.region.dragEntries} drag rect(s)`;
+			})
+			.join("\n        "),
+	);
+}
+
 /**
  * The sidebar's split, DRIVEN: the reveal and its timing, the drag, the
  * collapse and restore, the order swap and the restart.
@@ -24662,6 +25414,7 @@ async function main() {
 			else if (SCENE === "settings-integrations")
 				await sceneSettingsIntegrations(cdp);
 			else if (SCENE === "palette") await scenePalette(cdp);
+			else if (SCENE === "hit-zones") await sceneHitZones(cdp);
 			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);
 			else if (SCENE === "approval-badges") await sceneApprovalBadges(cdp);
 			else if (SCENE === "pins") await scenePins(cdp);
