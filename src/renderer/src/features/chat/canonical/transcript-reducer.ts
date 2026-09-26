@@ -171,6 +171,20 @@ export type TranscriptRecord =
 			 * twice in the text (and a short trailing fragment re-applied per
 			 * re-delivery grows a run that was never in the message at all).
 			 *
+			 * THE PREMISE IS THE PRODUCER'S, CONFIRMED THERE BEFORE IT WAS RELIED ON
+			 * HERE: `DesktopSessionBridge.publish` stamps `epoch`/`seq` once at
+			 * publish and `events()` replays stored frames verbatim from its ring
+			 * buffer (filtered by `after_seq`), so a re-delivery carries the ORIGINAL
+			 * cursor; the epoch rotates only with a facade rebuild
+			 * (`server/utils/desktop_sessions.py`, the local-operator repo).
+			 *
+			 * A STREAMING-ROW FACT, not a universal one: this field is stamped by a
+			 * live turn's frames only - `message_end` and `applyHistoryPage` build
+			 * their records without it - which is safe today because a settled row
+			 * refuses later deltas (see `message_update`'s settled-row gate). Any
+			 * path that ever re-arms a settled row must restamp or re-earn this
+			 * cursor, or it silently loses the protection.
+			 *
 			 * Per-EPOCH, because a replaced owner restarts the numbering: the
 			 * comparison is only meaningful within one epoch, and a frame from a
 			 * new epoch is always accepted.
@@ -863,6 +877,24 @@ function shallowEqual(a: TranscriptRecord, b: TranscriptRecord) {
 				Array.isArray(before) &&
 				Array.isArray(after) &&
 				sameImages(before, after)
+			)
+				continue;
+		}
+		// `frame` is a VALUE - the pair `(epoch, seq)` - and every fold builds a
+		// fresh object for it, so reference equality would report an unchanged row
+		// as changed on every seed re-apply and replace the record (and re-render
+		// it), the exact cost the equality gate exists to prevent (agent review
+		// round 1, finding 2: an identical seed re-applied was a `s2 !== s1`
+		// replacement). Two cursors are equal exactly when the stream would treat
+		// them as the same position.
+		if (key === "frame") {
+			const before = left[key] as DeltaFrame | undefined;
+			const after = right[key] as DeltaFrame | undefined;
+			if (
+				before !== undefined &&
+				after !== undefined &&
+				before.epoch === after.epoch &&
+				before.seq === after.seq
 			)
 				continue;
 		}
@@ -2358,15 +2390,22 @@ export const streamDiagnostics = {
 	seededDeltaWithheld: 0,
 	/**
 	 * A `message_update` frame was refused because the row already held a frame
-	 * at or past its cursor.
+	 * at or past its cursor - SAME EPOCH ONLY (the gate's own condition; a
+	 * cross-epoch frame is applied by design and is deliberately not counted
+	 * here).
 	 *
-	 * THE MEASUREMENT for the re-delivery class: a receipt replay after a
-	 * reconnect re-sends frames a healthy cursor excludes, and an interleaved
-	 * flush from a dead stream can land a frame again after its successor
-	 * already applied it. Both used to append their fragment a second time;
-	 * this counts every refusal, so "is the stream actually re-delivering
-	 * frames to this viewer" is answered by data rather than by the absence of
-	 * a symptom.
+	 * WHAT THIS COUNTS, exactly, because a counter whose doc claims more than
+	 * its increment is an instrument that lies about the thing it was added to
+	 * measure (the same care `seededDeltaWithheld` states, and agent review
+	 * round 1, finding 4 asked for it here): every refusal the cursor gate
+	 * performs. A receipt replay after a reconnect re-sends frames a healthy
+	 * cursor excludes, and an interleaved flush from a dead stream can land a
+	 * frame again after its successor already applied it - both used to append
+	 * their fragment a second time, so this number answers "is the stream
+	 * actually re-delivering frames to this viewer" by data rather than by the
+	 * absence of a symptom, FOR THE HALF A CURSOR CAN DECIDE. The cross-epoch
+	 * pass-through (see the gate's epoch paragraph) is not counted, so the
+	 * number never claims more than the refusals it saw.
 	 */
 	staleUpdateFrameDropped: 0,
 };
@@ -2400,7 +2439,7 @@ export function applyEvent(
 		 */
 		frame?: DeltaFrame;
 	} = {},
-	): TranscriptState {
+): TranscriptState {
 	const message = event.message as Record<string, unknown> | undefined;
 	const incoming = options.frame;
 	switch (event.type) {
@@ -2608,9 +2647,16 @@ export function applyEvent(
 			 *
 			 * The comparison is per-EPOCH because a replaced owner restarts the
 			 * numbering; a frame whose epoch differs is a different stream and is
-			 * applied. When no frame is in hand (tests call `applyEvent` directly)
-			 * there is nothing to compare and the rules below decide alone, exactly as
-			 * before.
+			 * applied. THAT ARM IS DELIBERATE and deliberately uncounted: no
+			 * ordering exists between two epochs, so a stale cross-epoch frame
+			 * cannot be told from a legitimate restart replay by any fact this
+			 * layer holds, and the wire has no path that constructs a stale one
+			 * (a reconnect replays under the current receipt epoch, and the
+			 * producer refuses a replaced epoch). Ordering across epochs, if
+			 * delivery ever changes, belongs at the producer rather than in a
+			 * second mechanism here. When no frame is in hand (tests call
+			 * `applyEvent` directly) there is nothing to compare and the rules
+			 * below decide alone, exactly as before.
 			 *
 			 * SEED FOLDS ARE EXEMPT (`options.seed`). Every event in one seed shares
 			 * the snapshot's single cursor, so gating them against each other would

@@ -4435,6 +4435,46 @@ test("a row the seed painted carries the snapshot's cursor; an older replay is r
 	assert.equal(row.text, "chunk two and three");
 });
 
+test("re-applying an identical seed at a settled claim keeps the row and the state", () => {
+	const frontend = {
+		streaming: true,
+		generation: "1",
+		live_events: [
+			{ type: "message_start", message: assistant("a1", "") },
+			{
+				type: "message_update",
+				delta: "chunk two",
+				message: assistant("a1", ""),
+			},
+		],
+	};
+	// The first seed mints the row; the second re-applies it, settling the claim
+	// at "interrupted" (a text-bearing seed delta may have a chunk withheld -
+	// pre-existing behavior, identical on origin/main). THAT state is the steady
+	// one a degraded reconnect re-delivers roughly every 0.5 s, and it must
+	// re-apply as a no-op: the frame stamp had made each re-apply replace the
+	// record and the state, because every fold builds a fresh cursor object
+	// (agent review round 1, finding 2).
+	let state = applyLiveSeed(EMPTY_TRANSCRIPT, frontend, 10, {
+		epoch: "e1",
+		seq: 7,
+	});
+	state = applyLiveSeed(state, frontend, 11, { epoch: "e1", seq: 7 });
+	const settled = state;
+	const settledRow = state.records[0];
+	state = applyLiveSeed(state, frontend, 12, { epoch: "e1", seq: 7 });
+	assert.equal(
+		state,
+		settled,
+		"an identical seed re-applied is a no-op, not a state replacement",
+	);
+	assert.equal(
+		state.records[0],
+		settledRow,
+		"and the row's identity survives it",
+	);
+});
+
 test("a frame from a new epoch is applied even though its numbering restarts", () => {
 	let state = applyEvent(
 		EMPTY_TRANSCRIPT,

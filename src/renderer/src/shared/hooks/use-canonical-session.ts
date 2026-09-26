@@ -10,8 +10,10 @@
  *   with the OWNER epoch/sequence checked independently of the HTTP receipt
  *   cursor — the two cursors are different clocks.
  * - `event` frames carry typed canonical AgentEvents; a terminal event is what
- *   resolves the "Waiting to start" latch. The receipt cursor is only for
- *   dedupe/reconnect, never for deciding what is newer paint state.
+ *   resolves the "Waiting to start" latch. The receipt cursor is for
+ *   dedupe/reconnect — at the receipt and, per row, at the reducer's cursor
+ *   gate (a re-delivered `message_update` is refused rather than appended) —
+ *   and never for deciding what is newer paint state.
  * - A `gap` frame (or any replay-with-gap open) says the receipt lost continuity:
  *   painted FRONTEND state is dropped, and the transcript's in-flight rows are
  *   KEPT and marked uncertain (`markLiveRecordsTruncated`) rather than erased,
