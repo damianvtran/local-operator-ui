@@ -137,11 +137,17 @@ const FRAMES = flag("frames", null);
  *   whose animation takes it under the contract's floor.
  * - `held-press`: a send pressed inside the read window. The state the arm used
  *   to photograph was `refusal` - the composer painting "Sending works once it
- *   is ready" - and that state no longer exists on this head: since #464 a
- *   press made before anything has confirmed the target is HELD and then
- *   admitted (`chat-page.tsx`'s `awaitWindow`), so the sentence never paints and
- *   the arm died waiting for it (measured on this head: typing and pressing
- *   Enter leaves the words in the box, no alert, no request). What replaced it is
+ *   is ready" - and the press no longer takes that route on this head: since
+ *   #464 a press made before anything has confirmed the target is HELD and then
+ *   admitted (`chat-page.tsx`'s `awaitWindow`), so the arm died waiting for a
+ *   sentence its own gesture cannot paint (measured on this head: typing and
+ *   pressing Enter leaves the words in the box, no alert, no request). The
+ *   sentence is not gone from the app - the failed-window fallback still states
+ *   it (`chat-page.tsx`, `streamRef.current.failure?.statement ?? ...`) and the
+ *   store's admit backstop still refuses a naming send with it
+ *   (`canonical-sessions-store.ts`) - but neither route is reachable by this
+ *   arm's gesture, and a frame under the old claim would photograph a state the
+ *   arm cannot reach. What replaced it is
  *   what a reader sees instead: the words still in the box, no error row, and
  *   NOTHING on the transport - `sentMessages === 0` is the half a still cannot
  *   show, and it is the half that matters (the press was answered, not

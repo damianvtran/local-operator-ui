@@ -64,9 +64,15 @@ import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-
  * lands in ONE commit, and what the reader sees first is the finished frame. The
  * cache's own rows still paint on every path where the page is not coming
  * (a refusal, a failed stream, a tombstoned id), which is where the caption that
- * describes them belongs; and rows that are NOT the cache's (a live event, an
- * optimistic echo) still paint while a page is owed, unchanged, because they are
- * the conversation's own content rather than this window's memory of it.
+ * describes them belongs. And a row that is NOT this window's memory (a live
+ * event, an optimistic echo) still paints while a page is owed, unchanged,
+ * because it is the conversation's own content - but only on a pane that is not
+ * STALE: `stale` is a pane-level flag, so on a cached pane the hold withholds
+ * every row, the live ones included, and they arrive in the page's commit. The
+ * CACHED table in `scripts/session-switch.test.mjs` pins that mixed cell
+ * (`live|cached|owed` holds) beside the rule itself, which is why the scoped
+ * wording at `transcriptPaneHoldsPlaceholder` says `stale` ends the hold only
+ * when false.
  *
  * WHY THE READER'S QUESTION AND NOT THE TRANSPORT'S. `awaitingHydration` asks
  * whether this session is still owed a page; `status` says where the stream is.
