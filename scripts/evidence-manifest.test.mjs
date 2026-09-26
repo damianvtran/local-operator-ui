@@ -902,6 +902,15 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"modelCatalogueFocusRestampNote",
 	/*
+	 * And `childReaderScrollControlRestampNote`, on the same terms as the two
+	 * above: it states this file's own pair for the child reader's
+	 * scroll-to-bottom control. The change it records re-stamped both trees and
+	 * re-pointed every note in this list, because a re-stamp moves the pair they
+	 * all bind, and it rewrote no frame of the sweep - so a reader is owed the
+	 * two values it does bind and the reason no still was owed.
+	 */
+	"childReaderScrollControlRestampNote",
+	/*
 	 * This branch's own: it states the pair an earlier fold re-derived, and is held
 	 * to the pair this file ships rather than read as history.
 	 */
@@ -1089,6 +1098,16 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"foldOntoFd19adc9d9Note",
 	/*
+	 * The overlay hit-zones fix's own: it states this file's pair for the change
+	 * that gives every portalled surface the no-drag opt-out, so it is held to
+	 * that pair rather than read as history. The change moves BOTH trees (the
+	 * rule and the five primitives under `src/`, the `hit-zones` scene and its
+	 * source-contract test under `scripts/`) and takes NO swept frame - its
+	 * evidence is a new set of PNGs and run logs that no supplementary set
+	 * declares - so the reader is owed the pair AND the reason no still was.
+	 */
+	"overlayDragZonesRestampNote",
+	/*
 	 * AND THIS LANE'S OWN, for the sub-view top inset (the operator's report of
 	 * 2026-09-26, "for sub-views like the settings page, the sidebar and view
 	 * doesn't go all the way to the top"): it states the pair THIS FILE SHIPS as
@@ -1102,6 +1121,14 @@ const STAMP_BINDING_NOTES = [
 	 * not run.
 	 */
 	"subviewInsetRestampNote",
+	/*
+	 * And `goalDesignRoundTwoNote`, this branch's own record: it carries the pair the
+	 * judged-goals design-round-2 pass re-derived, so it is the entry later re-stamps
+	 * have to re-point. It joins this list under the union rule rather than replacing
+	 * it: the eight main-side notes it superseded in this branch's narrow spellings
+	 * keep their membership and are held to the shipped pair by the same sweep.
+	 */
+	"goalDesignRoundTwoNote",
 	/*
 	 * ROUND 1 OF THIS FIX'S OWN (#534's shell-regressions remediation), and it
 	 * belongs here for the list's own reason: the round moves BOTH trees this file
@@ -1128,6 +1155,8 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"walkFirstRunRestampNote",
 	"scratchDriverRemovalRestampNote",
+
+	"foldOnto22c0fcd4fdNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1551,6 +1580,32 @@ const BRANCH_RECORDS = [
 	 * entry a later fold that started from main's copy would drop first.
 	 */
 	"foldOntoFd19adc9d9Note",
+	/*
+	/*
+	 * Grown by the judged-goals (`feat/goal-done-history`) pass, which wrote four
+	 * top-level records - `goalDoneRestampNote` and `goalDoneFoldRestampNote` from
+	 * its rebases and folds, `goalDoneFramePassNote` from the frame pass, and
+	 * `goalDesignRoundTwoNote` from the batched design-round-2 remediation. A fold
+	 * that starts from main's manifest drops them without a word, which is this
+	 * list's whole subject.
+	 */
+	"goalDoneRestampNote",
+	"goalDoneFoldRestampNote",
+	"goalDoneFramePassNote",
+	"goalDesignRoundTwoNote",
+	/*
+	 * And the child-reader scroll-control pass's four records, this branch's own:
+	 * `childReaderScrollControlFoldNote` and `childReaderScrollControlRestampNote`
+	 * from its fold and its re-stamps, `childReaderScrollControlRoundOneNote` and
+	 * `childReaderScrollControlRoundTwoNote` from its review rounds. A fold that
+	 * starts from main's copy drops them without a word, which is this list's
+	 * whole subject - and the records test is what fails first (agent review
+	 * round 5, R5-1: the list had not been extended for this pass).
+	 */
+	"childReaderScrollControlFoldNote",
+	"childReaderScrollControlRestampNote",
+	"childReaderScrollControlRoundOneNote",
+	"childReaderScrollControlRoundTwoNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

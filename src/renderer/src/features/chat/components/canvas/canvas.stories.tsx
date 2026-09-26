@@ -30,6 +30,7 @@ import "../../../../styles/index.css";
 import type { EditDiff } from "@shared/api/local-operator/types";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { resetToastDedup } from "@shared/utils/toast-manager";
+import type { CanonicalGoalHistoryEntry } from "../../../../../../shared/desktop-session-contract";
 import type { MentionScanHandle } from "../../canonical/use-mentioned-files";
 import type { CanvasDocument } from "../../types/canvas";
 import { Canvas } from "./index";
@@ -44,8 +45,28 @@ import {
  * width to be judged at. Layout only — the ground and the type come from the
  * preview frame.
  */
-const SplitFrame = ({ children }: { children: ReactNode }) => (
-	<div className="flex h-screen">{children}</div>
+const SplitFrame = ({
+	children,
+	height,
+}: {
+	children: ReactNode;
+	/**
+	 * A FIXED band height, for the stories that stack two frames. `h-screen` is one
+	 * viewport, and the evidence rig resizes the viewport to the content before its
+	 * shutter - so two stacked `h-screen` bands measure two screens, the viewport
+	 * grows to that, `100vh` grows with it, and the frame shows the FIRST band
+	 * alone. That is how the goal stories' second bands (the capped list, the 400px
+	 * floor) were missing from their first capture. Omitted, the band is one
+	 * screen, as before.
+	 */
+	height?: number;
+}) => (
+	<div
+		className={height === undefined ? "flex h-screen" : "flex"}
+		style={height === undefined ? undefined : { height }}
+	>
+		{children}
+	</div>
 );
 
 /* ------------------------------------------------------------------ */
@@ -788,8 +809,28 @@ const CanvasFrame = ({
 	documents = DOCUMENTS,
 	variables,
 	sessionId = STORY_SESSION_ID,
+	goalHistory = [],
+	goalHistoryTruncated = false,
+	bandHeight,
+	/*
+	 * DEFAULTS TO TRUE: this is the backend the frame stands for — the app as it ships,
+	 * with the fourth segment present. The `false` state is the one a frame seeds
+	 * explicitly (`CanvasWithoutTheGoalLifecycle`), because a frame that inferred the
+	 * capability from `goalHistory.length` could not show the state it exists for: a
+	 * backend that HAS settled goals and carried none of them.
+	 */
+	goalCapable = true,
+	/*
+	 * WHETHER A GOAL EXISTS AT ALL, which is what the pane's EMPTY state's description is
+	 * gated on (design review round 2, D2). Defaults to `true` because a story here is a
+	 * session with a goal unless it says otherwise — stated as this prop, not read from a
+	 * fixture (there is no `goal` field in this file's fixtures; the default only matters
+	 * for the story whose bands set it explicitly), and the one story that needs the
+	 * no-goal reading passes `false`.
+	 */
+	goalPresent = true,
 }: {
-	view: "documents" | "files" | "variables";
+	view: "documents" | "files" | "variables" | "goals";
 	/**
 	 * The document the panel has open, or `null` for the documents view with
 	 * nothing open - which is the state the empty canvas is.
@@ -813,6 +854,32 @@ const CanvasFrame = ({
 	 * and no session, and the panel must not confuse the two.
 	 */
 	sessionId?: string | null;
+	/**
+	 * The session's settled goals, as the frame carries them.
+	 *
+	 * A FRAME PROP RATHER THAN A FETCH is the design's own decision: the pane reads
+	 * `frontend.goal_history` off the snapshot, so a story that seeded a backend
+	 * answer would be photographing a path the product does not have.
+	 */
+	goalHistory?: CanonicalGoalHistoryEntry[];
+	/**
+	 * Whether the wire dropped entries to stay inside its bound. Separate from
+	 * `goalHistory` because the LIST cannot express it, and a story that could only
+	 * seed one of the two could not photograph the state the flag exists for: a
+	 * capped list that must not read as a complete one.
+	 */
+	goalHistoryTruncated?: boolean;
+	/**
+	 * Whether this frame's backend publishes the goal lifecycle (`goal_status` and
+	 * friends), which is what decides if the pane offers its fourth view at all.
+	 *
+	 * A CAPABILITY, NOT A LIST SIZE — see the note on the default below.
+	 */
+	goalCapable?: boolean;
+	/** See the destructured default above (design review round 2, D2). */
+	goalPresent?: boolean;
+	/** `SplitFrame`'s fixed band height, for a story that stacks two frames. */
+	bandHeight?: number;
 	/**
 	 * The completeness state of the Files scan, for the stories that exist to show
 	 * what the panel head says while it is paging, when it stops short, and when it
@@ -859,7 +926,7 @@ const CanvasFrame = ({
 	}, [view, activeId, mentionedFiles, documents]);
 
 	return (
-		<SplitFrame>
+		<SplitFrame height={bandHeight}>
 			<ChatColumnMock />
 			<div
 				style={{ width, minWidth: width }}
@@ -873,6 +940,10 @@ const CanvasFrame = ({
 					sessionId={sessionId ?? undefined}
 					fileCount={mentionedFiles.length}
 					scan={scan}
+					goalHistory={goalHistory}
+					goalHistoryTruncated={goalHistoryTruncated}
+					goalCapable={goalCapable}
+					goalPresent={goalPresent}
 					onChangeActiveDocument={() => {}}
 					onClose={() => {}}
 					onCloseDocument={() => {}}
@@ -1875,6 +1946,10 @@ const ViewerFrame = ({ document }: { document: CanvasDocument }) => {
 					initialDocuments={[document]}
 					conversationId={VIEWER_CONVERSATION_ID}
 					agentId="story-agent"
+					/* The app this frame stands for has the goal lifecycle: the frames show the app as
+					   it ships, so the switcher is the four-segment one (`CanvasFrame`'s default, and
+					   `CanvasWithoutTheGoalLifecycle` is the frame that shoots the other state). */
+					goalCapable={true}
 					onChangeActiveDocument={() => {}}
 					onClose={() => {}}
 					onCloseDocument={() => {}}
@@ -2309,5 +2384,168 @@ export const NothingOpenEmpty: Story = {
 export const NothingOpenNarrow: Story = {
 	render: () => (
 		<CanvasFrame view="documents" activeId={null} documents={[]} width={400} />
+	),
+};
+
+/* ---------------------------------------------------------------- */
+/* The Goals view (design §8.3, story 7)                             */
+/* ---------------------------------------------------------------- */
+
+/** Two settled goals: one the judge called done, one the user replaced. */
+const GOAL_HISTORY: CanonicalGoalHistoryEntry[] = [
+	{
+		id: "g1",
+		text: "Reconcile the March ledger against the bank feed",
+		status: "done",
+		created_at: "2026-09-20T09:00:00Z",
+		settled_at: "2026-09-22T14:03:00Z",
+		reason:
+			"Every invoice on the March statement was matched against a ledger entry, and the three unmatched lines were reconciled by hand.",
+	},
+	{
+		id: "g2",
+		text: "Draft the migration RFC",
+		status: "superseded",
+		created_at: "2026-09-19T11:20:00Z",
+		settled_at: "2026-09-20T09:41:00Z",
+		reason: "",
+	},
+	{
+		id: "g3",
+		/* A goal at the entry clip's own limit, so the row's truncation is the
+		 * browser's and the frame shows it rather than claiming it. */
+		text: "Ship the release with green gates, the migration applied to prod-2, the notes on both hosts and every follow-up recorded as a ticket rather than a sentence in a summary that nobody will read again",
+		status: "done",
+		created_at: "2026-09-18T08:00:00Z",
+		settled_at: "2026-09-18T16:20:00Z",
+		reason: "The tag, the migrations and the notes all landed.",
+	},
+];
+
+/**
+ * The goal stories' band height. Each of them stacks TWO frames (the dock default
+ * beside its 400px floor, or the empty list beside the capped one), and a band of
+ * one screen lets the second fall out of the captured frame (see `SplitFrame`'s
+ * `height`). Fixed at the rig's own 900 row height, so each band is the frame a
+ * single-band canvas story shoots.
+ */
+const GOAL_BAND_HEIGHT = 900;
+
+/**
+ * The Goals view as the pane draws it, at the dock's default width and at its
+ * 400px floor.
+ *
+ * The two bands are the view's own contract: the rows are the same settled-row
+ * grammar as a to-do (a mark, the text, a `state · time` tag that is NOT struck),
+ * and the section header's count is the ROWS' — the only number the pane can see.
+ * The floor band is where the pane's own behaviour is decided, so it is shot
+ * rather than argued.
+ */
+export const GoalHistory: Story = {
+	render: () => (
+		<div className="flex flex-col gap-4">
+			<CanvasFrame
+				view="goals"
+				activeId={null}
+				goalHistory={GOAL_HISTORY}
+				bandHeight={GOAL_BAND_HEIGHT}
+			/>
+			<CanvasFrame
+				bandHeight={GOAL_BAND_HEIGHT}
+				view="goals"
+				activeId={null}
+				width={400}
+				goalHistory={GOAL_HISTORY}
+			/>
+		</div>
+	),
+};
+
+/**
+ * An empty history, a history with a goal in flight, and — separately — a CAPPED one.
+ *
+ * THE THREE MUST NOT BE PHOTOGRAPHED AS ONE, and the middle band is design review round
+ * 2's D2 as a frame. `goalHistory` empty means NOTHING HAS SETTLED, which is two
+ * different states: no goal was ever set, and a goal is set and still running. The pane
+ * used to render the first state's copy for both — *"No goal set — /goal <text> to set
+ * one."* — for a user whose goal was displayed by the composer's own chip in the same
+ * viewport, so the pair states something contradictory in one screen. The two bands
+ * differ by `goalPresent` alone, which is the whole of the fix: same entries, same
+ * chrome, two descriptions. Capped says that older settled goals are not carried here —
+ * the state that is not the risk, because a capped list that renders as a complete one
+ * is the silent under-reporting the truncation flag exists to prevent.
+ */
+export const GoalHistoryEmptyAndCapped: Story = {
+	render: () => (
+		<div className="flex flex-col gap-4">
+			<CanvasFrame
+				view="goals"
+				activeId={null}
+				goalHistory={[]}
+				goalPresent={false}
+				bandHeight={GOAL_BAND_HEIGHT}
+			/>
+			<CanvasFrame
+				view="goals"
+				activeId={null}
+				goalHistory={[]}
+				goalPresent={true}
+				bandHeight={GOAL_BAND_HEIGHT}
+			/>
+			<CanvasFrame
+				bandHeight={GOAL_BAND_HEIGHT}
+				view="goals"
+				activeId={null}
+				goalHistory={GOAL_HISTORY.slice(0, 2)}
+				goalHistoryTruncated={true}
+			/>
+		</div>
+	),
+};
+
+/* ---------------------------------------------------------------- */
+/* The capability gate (UX round 1, U4)                              */
+/* ---------------------------------------------------------------- */
+
+/**
+ * The pane on a backend that predates the goal lifecycle: THREE segments, and no
+ * `Goals` view to open.
+ *
+ * THIS IS THE FRAME THE GATE EXISTS FOR, and it is the one nobody would ever see by
+ * accident. The chip's `Done`/`Dismiss` controls have been gated on the wire's fields
+ * since they were written (§ 7 of the design record — an old backend stores the literal
+ * `done` as the user's goal); the pane was not, so the same backend got a fourth
+ * segment over a view that could never fill, whose empty state promises *"Finished
+ * goals are kept here"* about a backend that keeps nothing. Absent is the honest
+ * answer, and the pair of frames here is what makes the two states distinguishable at a
+ * glance: the shipped three-segment chrome beside the four-segment one every other
+ * canvas story shoots.
+ */
+export const CanvasWithoutTheGoalLifecycle: Story = {
+	/*
+	 * `documents={[]}` is `NothingOpen`'s frame, and it is load-bearing (QA round 2,
+	 * Q-1): without it the default `DOCUMENTS` open as tabs and the editor mounts, whose
+	 * selection controls read `config.get` — an op this file's fetch stub answers with
+	 * an empty envelope, so the story crashed on `values.hosting` and the gate had no
+	 * frame. The subject here is the switcher's segment count, not an open document.
+	 */
+	render: () => (
+		<div className="flex flex-col gap-4">
+			<CanvasFrame
+				bandHeight={GOAL_BAND_HEIGHT}
+				view="documents"
+				activeId={null}
+				documents={[]}
+				goalCapable={false}
+			/>
+			<CanvasFrame
+				bandHeight={GOAL_BAND_HEIGHT}
+				view="documents"
+				activeId={null}
+				documents={[]}
+				width={400}
+				goalCapable={false}
+			/>
+		</div>
 	),
 };
