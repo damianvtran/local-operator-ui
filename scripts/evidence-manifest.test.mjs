@@ -1047,6 +1047,14 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"markSpokenRestampNote",
 	/*
+	/*
+	 * The draft-warm pass's own: it re-stamps a change that moves BOTH trees -
+	 * the contract, store, hooks and panel on one side, the two suites that pin
+	 * them on the other - without touching a frame, so the reader is owed the
+	 * pair AND the reason no still was owed.
+	 */
+	"newchatDraftWarmRestampNote",
+	/*
 	 * THE ROUND-4 REMEDIATION'S EVIDENCE PASS. It re-stamps the change that
 	 * answers rounds 4 (the fold debris, the restored §F3 fate, the widened
 	 * stop classification, the popover width) and re-shoots the three popover
@@ -1060,6 +1068,15 @@ const STAMP_BINDING_NOTES = [
 	 * the paragraph above states.
 	 */
 	"foldOnto601a9d5032Note",
+	/*
+	 * AND THIS FOLD'S OWN - the fold onto `origin/main` = `fd19adc9d9` (#531,
+	 * the draft pre-engage). ITS SUBJECT IS THIS FILE'S BINDING (the re-derived
+	 * pair), so it is held to the pair the file ships rather than read as
+	 * history - and it is the note that records the union of this list itself:
+	 * main's `newchatDraftWarmRestampNote` joined beside this branch's entries,
+	 * the rule the paragraph above states.
+	 */
+	"foldOntoFd19adc9d9Note",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1468,6 +1485,21 @@ const BRANCH_RECORDS = [
 	 * started from main's copy would drop first.
 	 */
 	"foldOntoA6a04f2fNote",
+	/*
+	 * And by the draft-warm pass, whose note this fold carries in: it is the only
+	 * statement of which two trees the new-chat pre-engage moved and of why no
+	 * still was owed, and this fold's manifest resolution keeps it by hand
+	 * against main's copy - so it joins the list for the same reason every entry
+	 * above it did.
+	 */
+	"newchatDraftWarmRestampNote",
+	/*
+	 * And the fold onto `fd19adc9d9` (#531), this branch's newest: it is the
+	 * commit that resolves this file against a main that had moved AND the one
+	 * that records main's draft-warm record being carried in - the manifest
+	 * entry a later fold that started from main's copy would drop first.
+	 */
+	"foldOntoFd19adc9d9Note",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
