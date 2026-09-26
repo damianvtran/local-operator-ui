@@ -256,9 +256,10 @@ export const BackendSettingRow: FC<BackendSettingRowProps> = ({
 					    a control that could only fail and a `Retry` that re-issued the same
 					    doomed request (review round 1, M2). It is reachable: `is_default`
 					    is a value comparison, and the desktop app's own General sliders
-					    write `conversation_length`, `detail_length` and
-					    `max_learnings_history`. The DOT stays — the row genuinely is off
-					    its default. */}
+					    wrote `conversation_length`, `detail_length` and
+					    `max_learnings_history` — the sliders are gone, but the values
+					    they wrote persist in existing configs. The DOT stays — the row
+					    genuinely is off its default. */}
 					{(!setting.is_default || dirty) && <ChangedDot />}
 					{!setting.is_default && setting.kind !== "readonly" && (
 						<Button
