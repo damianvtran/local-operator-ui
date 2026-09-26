@@ -317,14 +317,20 @@ test("an existing-session send still paints immediately, with nothing retained",
 	transcript.unregister();
 });
 
-test("a pre-admission refusal retracts the echo even when it was queued", async () => {
+test("a refusal the daemon states keeps the message on its row (S4: no return)", async () => {
 	reset();
 	/*
-	 * The retraction has the same delivery problem as the paint it undoes: a 413
-	 * or 422 resolves before the panel mounts, so an unqueued retraction would
-	 * be dropped while the queued paint survived - leaving the transcript
-	 * showing a message the backend provably never admitted, with the composer
-	 * already restored. The user would see it in both places.
+	 * THE BOUNDARY RULE, ON THE CLASS THAT MOST NEEDED IT. A 413 is a refusal the
+	 * daemon STATES - the message was not admitted - and the old contract handed
+	 * the whole payload back to the composer: one message in two homes, and the
+	 * box's copy was the one that could be sent twice. S4 keeps it where the user
+	 * can see it, on the row, with the class's sentence and remedies (the README
+	 * for `docs/evidence/conversation-start/` carries the frame).
+	 *
+	 * So the half this case used to assert the OPPOSITE of is the row's survival:
+	 * a retraction here would empty the transcript of a message the user still has
+	 * to act on. The refusal is the row's statement to make, and the payload basis
+	 * (`submittedText`) stays with it for `Send again`/`Edit`.
 	 */
 	let mounted = null;
 	globalThis.__echoRequest = async (request) => {
@@ -340,23 +346,47 @@ test("a pre-admission refusal retracts the echo even when it was queued", async 
 	const transcript = await mounted;
 	assert.deepEqual(
 		transcript.rows(),
-		[],
-		"paint and retraction must be delivered in order, so a refused message does not survive in the transcript",
+		["Review this"],
+		"the message stays on its row: the refusal is the row's statement to make, and the payload basis rides with it",
 	);
 	transcript.unregister();
+	/*
+	 * AND NOTHING CAME HOME. The store no longer owns a path that could write the
+	 * payload into a composer row (`returnPayloadToComposer` is gone with it), so
+	 * no spelling of "where the text could be" holds it: not the box's own input,
+	 * not the handed-back text.
+	 */
+	const composerRow =
+		useConversationInputStore.getState().inputByConversation[SESSION_ID];
+	assert.equal(
+		composerRow?.pendingText ?? "",
+		"",
+		"no returned text for this failure - there is no return path any more",
+	);
+	assert.equal(
+		composerRow?.currentInput ?? "",
+		"",
+		"and nothing typed into the box either",
+	);
+	const draft = store.getState().drafts[key];
+	assert.equal(
+		draft.submittedText,
+		"Review this",
+		"while the payload basis stays on the draft, where Send again and Edit read it",
+	);
 });
 
 test("INV-C1: an ambiguous failure keeps its own echo, and the owner's row takes its place", async () => {
 	reset();
 	/*
 	 * WHAT CHANGED, AND WHAT INV-C1 BECOMES (§F3's restore, agent review round 4's
-	 * R17). The rule this case pins is the RESTORED one: an unconfirmed send keeps
-	 * the message on screen - the row wears `Not delivered · Send again · Edit`
-	 * until the server's own answer resolves the claim - while the failure ALSO
-	 * hands the whole payload back to the composer, which is the copy the user acts
-	 * on (Retry replays it under the same request id; see
-	 * `composer-send-failure.test.mjs`). The two are not mutually exclusive: the
-	 * row is the MESSAGE's record of its fate, the box is the user's editable copy.
+	 * R17; S4). The rule this case pins is the RESTORED one: an unconfirmed send
+	 * keeps the message on screen - the row wears the class's sentence and its
+	 * remedies until the server's own answer resolves the claim. Since S4 the row
+	 * is the message's ONLY home: the failure no longer hands the payload back to
+	 * the composer, because one message in two homes is one message too many, and
+	 * the box's copy was the one that could be sent twice (see the 413 case
+	 * above).
 	 *
 	 * The second half is the coalescing the old case was protecting, and it is
 	 * pinned here rather than assumed: the row is keyed by the admission request

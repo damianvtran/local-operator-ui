@@ -12,6 +12,7 @@ import {
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
 import {
 	pendingSendForView,
+	retractLocalEcho,
 	useCanonicalSessionStream,
 } from "@shared/hooks/use-canonical-session";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
@@ -83,6 +84,7 @@ import {
 	caughtFailureNotice,
 	composerNoticeFor,
 	lockAnswerOutlived,
+	retryOfferedForFailureCode,
 } from "../composer-notice";
 import {
 	type DraftResolution,
@@ -1795,25 +1797,57 @@ function SessionPanel({
 			void store.fetchSessions();
 			return true;
 		} catch (error) {
-			// Only authored sentences reach the composer. `error.message` on a
-			// runtime exception is a stack-trace fragment - with the backend
-			// stopped this line rendered "TypeError: fetch failed" inside the
-			// alert's own prose. See `userFacingMessage`.
-			reportCaughtFailure(key, error);
 			/*
-			 * ONE ANSWER, because the STORE has already done the work: every failure
-			 * class hands the payload back to this conversation's composer through one
-			 * path (`returnPayloadToComposer` - text, chips and staged quotes, whether
-			 * the outcome was a provable refusal or an unknown one), and the class
-			 * that turns out to have been DELIVERED after all does not reach here at
-			 * all - it resolves as a success, so the box stays empty and the message
-			 * stays in the transcript.
+			 * THE BOUNDARY RULE, ON THE SURFACE THAT HAS TO OBEY IT: "a failure raised
+			 * after the optimistic row was painted belongs to the row; before it, the
+			 * composer."
 			 *
-			 * So `false` is "do not retire the draft": the hook must not clear the
-			 * text the store has just put back, and must not record this as a sent
-			 * message. There is no second case to distinguish here any more - the
-			 * distinction that used to matter (unknown vs refused) is what the store
-			 * acts on, and it acted before this line ran.
+			 * Everything the STORE rethrows came after the paint - the paint is the
+			 * first thing `admitChatDraft` does - so the composer shows NO sentence for
+			 * it: the row's own line carries the class's sentence and remedies
+			 * (`undeliveredTurn` below reads the row the store wrote). That
+			 * deliberately replaces #495's "keep a failed message in the composer" for
+			 * post-paint failures - that arm left the message in two homes, and the
+			 * box's copy was the one that could be sent twice.
+			 *
+			 * The failures THIS pane raises itself before admission - the gate answer,
+			 * an unreadable attachment, the budget, the send lock - never painted
+			 * anything, keep their composer copy unchanged, and are exactly what the
+			 * `!painted` branch is for.
+			 *
+			 * The predicate is the registry, not a guess: an entry exists for the
+			 * identity exactly when the press's paint ran, and the failure arm keeps
+			 * it for every class until the row is resolved. The row's own `sessionId`
+			 * is the identity's second half - the create's answer re-keys the entry to
+			 * it, so a message failure after the flip is found there.
+			 */
+			const row = useCanonicalSessionsStore.getState().drafts[key];
+			const painted = pendingSendForView(
+				panelIdentityFor(draftKey, row?.sessionId ?? sessionId),
+			);
+			if (painted) {
+				/*
+				 * ONE FAILURE, ONE SENTENCE (J4): clear any composer copy an earlier
+				 * attempt left, so only the row speaks. `reportCaughtFailure` is
+				 * deliberately not called - its notice would be the second statement
+				 * of this one.
+				 */
+				setSendError(null);
+				setSendErrorCode(undefined);
+				setSendErrorRetry(false);
+				setSendErrorMuted(false);
+			} else {
+				// Only authored sentences reach the composer. `error.message` on a
+				// runtime exception is a stack-trace fragment - with the backend
+				// stopped this line rendered "TypeError: fetch failed" inside the
+				// alert's own prose. See `userFacingMessage`.
+				reportCaughtFailure(key, error);
+			}
+			/*
+			 * `false` is "do not retire the draft": the hook must not clear the box
+			 * (the row is the message's home now) and must not record this as a sent
+			 * message. There is no second case to distinguish - the store acted on it
+			 * before this line ran.
 			 */
 			return false;
 		} finally {
@@ -2224,11 +2258,12 @@ function SessionPanel({
 	 * THE DISCARD CONTROL AND THE CLAIM ARE BOTH GONE (review round 2, NIT). This
 	 * comment described an `onDiscard` that was offered only while the store held a
 	 * claim in `submittedText` - the released app's model, where a failed message was
-	 * kept outside the composer and had to be restored or discarded. Nothing is kept
-	 * outside the composer any more (the payload is returned to the box, see
-	 * `returnPayloadToComposer`), so the control has no subject and the sentence above
-	 * it was the last place in the pane still describing it. `submittedText` survives
-	 * as the retry rule's comparison basis, not as something anybody has to release.
+	 * kept outside the composer and had to be restored or discarded. The proper
+	 * version of that model is back (S4): a post-paint failure IS kept outside the
+	 * composer - on the row the user can see, with its own sentence and remedies -
+	 * so the control still has no subject (nothing to discard: `Edit` returns the
+	 * payload, `Send again` replays it), and `submittedText` survives as the
+	 * payload the row-line replays, not as something anybody has to release.
 	 */
 	/*
 	 * THE PANE'S OWN `clearError` IS THE ONE ABOVE (main's `useCallback`, which the
@@ -2482,37 +2517,69 @@ function SessionPanel({
 	 * `recordId` is the address: the echo's own id, which is the id the durable
 	 * row carries if the message ever lands, so the line can only attach to the
 	 * row it is about. Whether that row is ON SCREEN is the pane's question
-	 * (`chat-content.tsx` resolves it against the transcript), and a claim whose
-	 * echo is not painted - the panel that will paint it has not mounted - is
-	 * exactly the case where the composer still speaks.
+	 * (`chat-content.tsx` resolves it against the transcript).
+	 *
+	 * EVERY POST-PAINT FAILURE IS ONE OF THESE NOW (S4). The unknown class used to
+	 * be the only one that kept its row (`unresolvedRequestId`); every class keeps
+	 * it, and its `error` is the sentence the store classified while its
+	 * `errorRetry` is the classifier's own verdict on whether a press can work -
+	 * carried straight through, so the line and the table cannot drift.
 	 */
-	const deliveryTurn = !draft
+	const deliveryTurn: {
+		recordId: string;
+		text: string;
+		attachments: readonly string[];
+		message?: string;
+		retry?: boolean;
+	} | null = !draft
 		? null
-		: unresolvedRequestId !== undefined && draft.submittedText !== undefined
+		: draft.submittedText !== undefined &&
+				(draft.error !== undefined || unresolvedRequestId !== undefined)
 			? {
-					recordId: unresolvedRequestId,
+					recordId: unresolvedRequestId ?? draft.admissionRequestId,
 					text: draft.submittedText,
 					attachments: draft.submittedAttachments ?? [],
+					message: draft.error,
+					retry:
+						draft.errorRetry ?? retryOfferedForFailureCode(draft.errorCode),
 				}
 			: (draft.undelivered ?? null);
 	const undeliveredTurn = deliveryTurn
 		? {
 				recordId: deliveryTurn.recordId,
+				message: deliveryTurn.message,
+				retry: deliveryTurn.retry,
 				onSendAgain: () => {
 					void send(deliveryTurn.text, [...deliveryTurn.attachments]);
 				},
 				onEdit: () => {
 					/*
-					 * The failure's own return path already put the payload in the box; this
-					 * is the same act reached from the message. `returnPayload` merges under
-					 * the user's typing and refuses while an attempt is in flight, so
-					 * pressing Edit after the text came home cannot double the message.
+					 * The payload comes home, merged under the user's typing and refused while
+					 * an attempt is in flight (`returnPayload`), so pressing Edit twice cannot
+					 * double the message.
 					 */
 					useConversationInputStore.getState().returnPayload(identity, {
 						text: deliveryTurn.text,
 						attachments: [...deliveryTurn.attachments],
 						replies: [],
 					});
+					/*
+					 * AND A PROVABLY-NOT-DELIVERED ROW RETIRES WITH THE PAYLOAD. The user
+					 * asked to edit the message, which means its row must go - otherwise the
+					 * transcript shows it while the box shows the text to change. "Provable"
+					 * is the store's own fact: `admissionAttempted` means "an admission was
+					 * issued and its outcome is not known", so its absence is not_sent, or the
+					 * ID itself being gone - classes the app knows never reached the session.
+					 * An UNKNOWN outcome keeps its row deliberately: that message may have
+					 * landed, and the row is its fate statement until the server resolves it.
+					 *
+					 * The retraction is LOCAL-ONLY (`retractLocalEcho`): if the owner's own
+					 * row for this id arrived in between, it reports "owner" and removes
+					 * nothing - the delivered-after-all race, lost gently.
+					 */
+					if (draft?.admissionAttempted !== true) {
+						retractLocalEcho(identity, deliveryTurn.recordId);
+					}
 					input.current?.focusInput();
 				},
 			}

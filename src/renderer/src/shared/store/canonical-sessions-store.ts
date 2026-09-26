@@ -16,7 +16,6 @@ import {
 	paintPendingSend,
 	peekLocalEcho,
 	replacePendingSendText,
-	retractPendingUser,
 } from "@shared/hooks/use-canonical-session";
 /*
  * The composer's own store, imported for the ONE return path (`returnPayload`)
@@ -1534,34 +1533,6 @@ export function isRefusedBeforeAdmission(error: unknown): boolean {
 }
 
 /**
- * Put an unconfirmed message back in the composer that sent it.
- *
- * THE ONE PATH A FAILED SEND TAKES BACK. Every failure class ends here - a
- * provable refusal, an unknown outcome, a conversation that is gone - so there is
- * one written record of what "hand the payload back" means rather than a restore
- * in the composer hook (which only works while the component that sent it stays
- * mounted), a prop threaded down from the pane, and the pane's own adoption
- * effect. That trio is what the operator's screen showed: an empty box, a
- * paragraph explaining that a message was being kept somewhere else, and two
- * links to get it back.
- *
- * `from` is the identity the composer had when it pressed Enter and `to` the one
- * the conversation lives under NOW. They differ on the New-chat path, where the
- * session is created inside the send and the pane's identity flips from the draft
- * key to the session id: the composer that pressed is unmounted by the time the
- * failure lands, so anything it still held moves across with the payload (see
- * `returnInFlight`). Nothing is left behind an identity no pane will show again.
- *
- * A STORE WRITE, not a returned value, deliberately: in the third case the user
- * has navigated to another conversation and the message is simply waiting in that
- * conversation's composer when they come back, which is one of the things the
- * operator asked for.
- */
-export function returnPayloadToComposer(from: string, to: string): void {
-	useConversationInputStore.getState().returnInFlight(from, to);
-}
-
-/**
  * The composer identity a send for `key` was made under.
  *
  * The pane's own key (`panelIdentityFor`) and the composer's conversation id are
@@ -2279,18 +2250,20 @@ export async function admitChatDraft(
 		 * THE ROW LIVES UNDER THE IDENTITY THE PAINT USED, and at the catch that is
 		 * whichever identity the send has reached: the session id once the create
 		 * answered (the move above put it there), the pane's own key while it has
-		 * not. Reading `id` alone lost the create-stage row - the one this change
-		 * newly paints - so the retraction below addresses `rowIdentity`.
+		 * not. Reading `id` alone missed the create-stage row - the one this change
+		 * newly paints - which is what `rowIdentity` is for.
 		 */
 		const rowIdentity = id ?? paintIdentity ?? undefined;
-		if (rowIdentity) {
-			if (klass === "unknown") {
-				delivered =
-					attempted &&
-					peekLocalEcho(rowIdentity, admissionRequestId) === "owner";
-			} else {
-				retractPendingUser(rowIdentity, admissionRequestId);
-			}
+		if (rowIdentity && klass === "unknown") {
+			/*
+			 * The one question the store still asks its transcript: did the owner's own
+			 * row for this id arrive anyway (the response was lost, the message landed)?
+			 * `peekLocalEcho` because for an unknown outcome the row must NOT be
+			 * retracted before the answer is read - the verdict and the retraction would
+			 * race, and the losing order deletes a durable message.
+			 */
+			delivered =
+				attempted && peekLocalEcho(rowIdentity, admissionRequestId) === "owner";
 		}
 		/*
 		 * WHAT A FAILURE LEAVES ON THE ROW: the LATCH only for an unknown outcome, and
@@ -2329,53 +2302,90 @@ export async function admitChatDraft(
 			errorRetry: copy.retry,
 		});
 		/*
-		 * THE ONE RETURN PATH, for all three classes, and it is the point of this
-		 * change: whatever happened to the request, the user's message is back in
-		 * the composer of the conversation that sent it - text, chips and staged
-		 * replies - with one sentence and at most Retry and Clear beside it. There
-		 * is no second copy of it anywhere and nothing to restore.
-		 *
-		 * `from` is the identity the composer pressed under and `to` the one the
-		 * conversation has now; on the New-chat path they differ, and the payload
-		 * that was staged under the draft key moves across with it.
+		 * DELIVERED AFTER ALL: the send is a success, so the composer stays empty,
+		 * nothing is handed back, and the draft row retires exactly as it does on the
+		 * acknowledged path. The pane's reconciliation would reach the same answer a
+		 * moment later from the transcript; resolving here is what saves the user a
+		 * frame in which their message appeared to have failed when it had not.
 		 */
-		if (!delivered) {
-			const to = id ?? draft.sessionId;
-			const composerKey = composerIdentityFor(key, to);
-			returnPayloadToComposer(
-				panelIdentityFor(
-					key.startsWith("draft:") ? key : null,
-					draft.sessionId,
-				) ?? composerKey,
-				composerKey,
-			);
-			throw leadingSlash
-				? new DesktopControlError(
-						422,
-						LEADING_SLASH_MESSAGE,
-						error,
-						LEADING_SLASH_CODE,
-					)
-				: error;
+		if (delivered) {
+			// `delivered` is only ever set with an id in hand (the branch above), so
+			// this is the compiler's need and not a second decision.
+			if (id) {
+				store.finishDraft(key, id);
+				useConversationInputStore
+					.getState()
+					.settleInFlight([composerIdentityFor(key, id)]);
+				return id;
+			}
+			return null;
 		}
 		/*
-		 * Delivered after all: the send is a success, so the composer stays empty,
-		 * nothing is handed back, and the draft row retires exactly as it does on
-		 * the acknowledged path. The pane's reconciliation would reach the same
-		 * answer a moment later from the transcript; resolving here is what saves
-		 * the user a frame in which their message appeared to have failed when it
-		 * had not.
+		 * NO RETURN PATH FOR THE ROW CASE (S4), AND THAT IS THE BOUNDARY RULE.
+		 *
+		 * "A failure raised after the optimistic row was painted belongs to the row;
+		 * before it, the composer." Everything that reaches this catch was raised
+		 * after the paint - the paint is the first thing `admitChatDraft` does, and
+		 * the failures that predate it (the send lock, the read window, planner
+		 * refusals) never entered this function - so the payload does NOT come home,
+		 * and the row the user is looking at carries the class's sentence and its
+		 * remedies instead (`chat-page.tsx` renders them from this row; the
+		 * transcript line is the existing §F3 surface, generalised from the unknown
+		 * class to every one).
+		 *
+		 * THIS DELIBERATELY REPLACES THE PREVIOUS COMPANY LINE, #495's "a failed
+		 * message comes back to the composer": for a POST-PAINT failure that was
+		 * one event with two homes - the message on screen AND the same text back in
+		 * the box - and the box's copy was the one that could be sent twice. The fix
+		 * keeps the message where the user can see it and edits it there (`Edit`
+		 * returns the payload; `Send again` replays under the same rules), and leaves
+		 * the composer for the failures that were never painted - its copy for those
+		 * is unchanged.
+		 *
+		 * What stays on the row is the payload BASIS (`submittedText` and friends,
+		 * written above): a fingerprint for the unchanged-retry rule, not a claim
+		 * anybody has to release.
 		 */
-		// `delivered` is only ever set with an id in hand (the branch above), so
-		// this is the compiler's need and not a second decision.
-		if (id) {
-			store.finishDraft(key, id);
+		/*
+		 * AND THE COMPOSER'S OWN RECORDS END WITH THE ATTEMPT (S4).
+		 *
+		 * `settleInFlight` is this store's "nothing is in flight or waiting" write, and
+		 * leaving the record standing would undo the boundary rule three ways: the
+		 * row-line's `Edit` calls `returnPayload`, whose guard refuses while `inFlight`
+		 * is set (a control that cannot work); `rehydrateInputRows` folds a persisted
+		 * `inFlight` back into the box on the next reload, which is exactly the second
+		 * home this change moved the message out of; and the record would keep
+		 * claiming an attempt the row is already carrying.
+		 *
+		 * THE MOVE ACROSS THE FLIP IS STILL OWED (U14/Q7), AND IT IS STILL MADE. On
+		 * the arm that creates its session mid-send, anything the PRESSED row holds
+		 * (text typed during the create hop, a chip attached there) belongs to the
+		 * conversation that now exists, and dropping it stranding the user's own
+		 * words under an identity no pane shows is the defect U14 measured. So the
+		 * records are settled FIRST and `returnInFlight` then performs its move -
+		 * with nothing left in flight, its payload fold has nothing to fold, which is
+		 * what keeps the message out of the box while the user's own content still
+		 * crosses (the design's "`returnInFlight` is not called" is exactly this:
+		 * the payload does not come home).
+		 */
+		const composerTo = composerIdentityFor(key, id ?? draft.sessionId);
+		const settleIds =
+			paintIdentity && paintIdentity !== composerTo
+				? [paintIdentity, composerTo]
+				: [composerTo];
+		useConversationInputStore.getState().settleInFlight(settleIds);
+		if (paintIdentity && paintIdentity !== composerTo)
 			useConversationInputStore
 				.getState()
-				.settleInFlight([composerIdentityFor(key, id)]);
-			return id;
-		}
-		return null;
+				.returnInFlight(paintIdentity, composerTo);
+		throw leadingSlash
+			? new DesktopControlError(
+					422,
+					LEADING_SLASH_MESSAGE,
+					error,
+					LEADING_SLASH_CODE,
+				)
+			: error;
 	}
 }
 

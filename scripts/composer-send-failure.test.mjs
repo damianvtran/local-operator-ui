@@ -461,17 +461,17 @@ test("the replay sends the pinned RENDERED text, not a re-render of the box", as
 	assert.equal(sent[0].text, "rendered-1");
 });
 
-/* --------------------------------------------------------------- return path */
+/* --------------------------------------------------- the boundary rule (S4) */
 
-test("a failure puts the text, the chips and the quotes back in the composer", async () => {
+test("a failure hands NOTHING back to the composer: the row is the message's home", async () => {
 	reset();
 	stageComposer(SESSION, {
 		text: "Review this",
 		paths: ["/tmp/a.png"],
 		replies: [{ id: "r1", text: "quoted" }],
 	});
-	// The echo empties the composer and takes the whole payload with it, which is
-	// the state the failure has to undo.
+	// The paint empties the composer and takes the whole payload with it, which
+	// is the state this case starts from.
 	useConversationInputStore.getState().beginInFlight(
 		SESSION,
 		{
@@ -484,25 +484,36 @@ test("a failure puts the text, the chips and the quotes back in the composer", a
 	assert.equal(composerRow(SESSION).currentInput, "");
 
 	responses.push(new DesktopControlError(504, "deadline_exceeded"));
-	await assert.rejects(admitChatDraft(key, input, SESSION));
+	await assert.rejects(
+		admitChatDraft(key, { ...input, attachments: ["/tmp/a.png"] }, SESSION),
+	);
 
+	/*
+	 * THE BOUNDARY RULE, ON THE BOX (S4): everything the store rethrows was raised
+	 * after the paint, so the payload does NOT come home. The message is on its
+	 * row in the conversation, with the class's sentence and the two controls that
+	 * resolve it; the composer is not a second home for it. The old contract
+	 * returned text, chips and quotes to this row - that is the #495 behaviour
+	 * this change supersedes, and the reason it had to go is that the box's copy
+	 * was the one that could be sent a second time.
+	 */
 	const row = composerRow(SESSION);
-	assert.equal(row.pendingText, "Review this", "the text comes back");
-	assert.deepEqual(
-		row.attachments.map((chip) => chip.path),
-		["/tmp/a.png"],
-		"so do the chips",
-	);
-	assert.deepEqual(
-		row.replies.map((reply) => reply.id),
-		["r1"],
-		"and the staged quotes",
-	);
+	assert.equal(row.pendingText, undefined, "no text comes back");
+	assert.deepEqual(row.attachments, [], "and no chips");
+	assert.deepEqual(row.replies, [], "and no quotes");
 	assert.equal(
 		row.inFlight,
 		undefined,
-		"the in-flight record is consumed by the return",
+		"the attempt is settled, not returned: nothing comes home, and nothing keeps claiming to be in flight",
 	);
+	/*
+	 * AND THE PAYLOAD BASIS IS ON THE DRAFT ROW, which is where the row-line's
+	 * `Send again` replays from and its `Edit` restores from - the one copy the
+	 * two surfaces read instead of a second copy in the box.
+	 */
+	const draft = draftRow();
+	assert.equal(draft.submittedText, "Review this");
+	assert.deepEqual(draft.submittedAttachments, ["/tmp/a.png"]);
 });
 
 test("a delivered-after-all failure hands nothing back and resolves as a success", async () => {
@@ -530,7 +541,7 @@ test("a delivered-after-all failure hands nothing back and resolves as a success
 	assert.equal(draftRow(), undefined, "and the claim retires");
 });
 
-test("the New-chat flip returns the payload under the session id, not the draft key", async () => {
+test("the New-chat flip leaves the payload on the draft row, under the identity the send minted", async () => {
 	reset();
 	const draftKey = "draft:22222222-2222-2222-2222-222222222222";
 	stageComposer(draftKey, {
@@ -538,24 +549,47 @@ test("the New-chat flip returns the payload under the session id, not the draft 
 		paths: ["/tmp/b.png"],
 		replies: [{ id: "r2", text: "quoted" }],
 	});
+	// The press: the draft pane's composer hands the payload over and empties - the
+	// state the failure used to hand everything back to.
+	useConversationInputStore.getState().beginInFlight(
+		draftKey,
+		{
+			text: "Review this",
+			attachments: [{ id: "chip-/tmp/b.png", path: "/tmp/b.png" }],
+			replies: [{ id: "r2", text: "quoted" }],
+		},
+		true,
+	);
 	responses.push({ session_id: SESSION }); // sessions.create
 	responses.push(new DesktopControlError(504, "deadline_exceeded"));
-	await assert.rejects(admitChatDraft(draftKey, input, undefined));
-	const row = composerRow(SESSION);
-	assert.equal(row?.pendingText, "Review this");
-	assert.deepEqual(
-		row?.attachments.map((chip) => chip.path),
-		["/tmp/b.png"],
+	await assert.rejects(
+		admitChatDraft(
+			draftKey,
+			{ ...input, attachments: ["/tmp/b.png"] },
+			undefined,
+		),
 	);
-	assert.deepEqual(
-		row?.replies.map((reply) => reply.id),
-		["r2"],
-	);
+	/*
+	 * S4's boundary rule on the draft path: the failure belongs to the row, so
+	 * neither identity's composer gets the payload. The DRAFT-KEY row is the one
+	 * that used to collect it in the released app (the R1 finding this case was
+	 * built for), and the SESSION-ID row used to collect it after the flip - this
+	 * asserts both stay empty, and that the identity the send minted is still the
+	 * one the pane and the registry agree on (`composerIdentityFor`).
+	 */
 	assert.equal(
 		composerRow(draftKey),
 		undefined,
-		"the identity the pane replaced is not left holding a copy",
+		"the pressed identity's row is gone: its leftovers moved with the flip (U14/Q7), and nothing is stranded under an identity no pane will show again",
 	);
+	assert.equal(
+		composerRow(SESSION)?.pendingText,
+		undefined,
+		"and the minted row holds no returned text: the transcript row is the message's home",
+	);
+	const draft = useCanonicalSessionsStore.getState().drafts[draftKey];
+	assert.equal(draft.submittedText, "Review this");
+	assert.deepEqual(draft.submittedAttachments, ["/tmp/b.png"]);
 	assert.equal(composerIdentityFor(draftKey, SESSION), SESSION);
 });
 
@@ -1293,7 +1327,8 @@ test("a codeless 409 on a fresh attempt is a refusal: the daemon's sentence, no 
 	/*
 	 * The composer's own echo write, which is what puts the payload in flight: a real
 	 * send is pressed from a mounted composer and this is the one write that paints
-	 * it (`beginInFlight`), so the return path has something to hand back.
+	 * it (`beginInFlight`), so the record of the attempt is the composer's own - the
+	 * store's failure arm no longer touches this row either way (S4).
 	 */
 	const store = useConversationInputStore.getState();
 	store.setCurrentInput(SESSION, input.text);
@@ -1327,9 +1362,10 @@ test("a codeless 409 on a fresh attempt is a refusal: the daemon's sentence, no 
 	);
 	assert.equal(row.admissionAttempted, false);
 	const box = useConversationInputStore.getState().inputByConversation[SESSION];
-	assert.ok(
-		box?.pendingText === input.text || box?.currentInput === input.text,
-		"the refused message is not back in the composer",
+	assert.equal(
+		box?.pendingText,
+		undefined,
+		"nothing came home (S4): the row states the refusal and its Edit is the way back to the bytes",
 	);
 });
 
