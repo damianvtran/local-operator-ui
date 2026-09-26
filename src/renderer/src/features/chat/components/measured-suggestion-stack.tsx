@@ -6,6 +6,14 @@ import { suggestionStackCapFor } from "./suggestion-stack";
 type Props = {
 	band: HTMLDivElement | null;
 	splash: HTMLDivElement | null;
+	/**
+	 * The composer's docked foot: the band's other occupant. The chips sit ABOVE
+	 * the composer in the same band (§G2/§H), so the room they may use is the
+	 * band's minus the foot's - and the foot grows on its own (a status row, a
+	 * sentence, attachments), which is why it is observed as well as measured.
+	 * Optional so a caller with no foot (a harness, a story) budgets as before.
+	 */
+	foot?: HTMLDivElement | null;
 	suggestions: readonly string[];
 	/**
 	 * Whether the chips are inert. Covers the composer being unavailable (a
@@ -49,6 +57,7 @@ type Props = {
 export const MeasuredSuggestionStack = ({
 	band,
 	splash,
+	foot = null,
 	suggestions,
 	disabled,
 	onRefusedPress,
@@ -78,10 +87,14 @@ export const MeasuredSuggestionStack = ({
 				Number.parseFloat(style.paddingTop) -
 				Number.parseFloat(style.paddingBottom);
 			// Subtracting the current stack box cancels its current cap. The budget
-			// depends on fixed composer content, not on the answer being measured.
+			// depends on fixed content, not on the answer being measured: the rest of
+			// the splash group (mark, greeting, tip) plus the docked composer foot the
+			// group shares the band with. Without the foot term the chips were allowed
+			// the composer's whole height again and ran under it at the window floor.
 			const fixed =
 				splash.getBoundingClientRect().height -
-				stack.getBoundingClientRect().height;
+				stack.getBoundingClientRect().height +
+				(foot?.getBoundingClientRect().height ?? 0);
 			const top = stack.getBoundingClientRect().top;
 			const buttons = Array.from(stack.children) as HTMLButtonElement[];
 			const boxes = buttons.map((button) => button.getBoundingClientRect());
@@ -112,13 +125,14 @@ export const MeasuredSuggestionStack = ({
 		window.addEventListener("resize", measure);
 		const observer = new ResizeObserver(measure);
 		observer.observe(splash);
+		if (foot) observer.observe(foot);
 		void document.fonts?.ready.then(measure).catch(() => undefined);
 		return () => {
 			disposed = true;
 			window.removeEventListener("resize", measure);
 			observer.disconnect();
 		};
-	}, [band, splash, suggestions]);
+	}, [band, splash, foot, suggestions]);
 
 	return (
 		<div

@@ -589,6 +589,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # The uv release the Windows install script prefers, staged into
+      # `resources/uv` / `resources/uv_aarch64` so `build.win.extraResources`
+      # copies it into the app as `resources/uv/<arch>/uv.exe` - the path the app
+      # hands the installer (`src/main/backend/uv-tool.ts`). Before the build,
+      # because packaging is what reads the tree, and the sha256 check in the
+      # stager is what makes the pin the bytes rather than the URL. Windows has
+      # its own stager: the release there is a `.zip` whose layout differs from
+      # the tar releases (scripts/setup-python-resource.ps1).
+      - name: Stage the bundled uv (Windows)
+        run: pnpm setup-python:win
+
       - name: Setup code signing (Windows)
         shell: bash
         run: |
@@ -624,6 +635,16 @@ jobs:
         # wrapped on the same argument as the macOS step of this name.
         shell: bash
         run: bash scripts/require-report.sh "Packaged closure check" node scripts/check-packaged-closure.mjs --dist dist
+
+      # The artifact-side half of the staging step above: the unpacked app itself
+      # must carry exactly the architecture's uv, or every Windows install
+      # silently reverts to the slower pip path with a green build (see
+      # scripts/verify-bundled-uv.mjs). Wrapped like the closure check, because a
+      # gate that exits 0 having printed nothing is the failure require-report
+      # exists to refuse.
+      - name: Verify the packaged app carries its bundled uv
+        shell: bash
+        run: bash scripts/require-report.sh "Bundled uv check" node scripts/verify-bundled-uv.mjs --dist dist --platform win32
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
@@ -663,6 +684,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # The uv release the Linux install script prefers, staged into
+      # `resources/uv` / `resources/uv_aarch64` so `build.linux.extraResources`
+      # copies it into the app as `resources/uv/<arch>/uv`. The Unix stager
+      # detects the platform it runs on and stages the `*-unknown-linux-gnu`
+      # releases here, skipping the interpreter seeds Linux does not ship
+      # (scripts/setup-python-resource.sh).
+      - name: Stage the bundled uv (Linux)
+        run: pnpm setup-python
+
       - name: Build Linux app
         run: pnpm dist:linux
         env:
@@ -675,6 +705,15 @@ jobs:
       - name: Assert the packaged app carries its whole runtime closure
         # Wrapped on the same argument as the macOS step of this name.
         run: bash scripts/require-report.sh "Packaged closure check" node scripts/check-packaged-closure.mjs --dist dist
+
+      # The artifact-side half of the staging step above: the unpacked app itself
+      # must carry exactly the architecture's uv, or every Linux install silently
+      # reverts to the slower pip path with a green build (see
+      # scripts/verify-bundled-uv.mjs). Wrapped like the closure check, because a
+      # gate that exits 0 having printed nothing is the failure require-report
+      # exists to refuse.
+      - name: Verify the packaged app carries its bundled uv
+        run: bash scripts/require-report.sh "Bundled uv check" node scripts/verify-bundled-uv.mjs --dist dist --platform linux
 
       # The `*.blockmap` glob is kept here for symmetry and forward
       # compatibility, and currently matches nothing: none of the Linux targets

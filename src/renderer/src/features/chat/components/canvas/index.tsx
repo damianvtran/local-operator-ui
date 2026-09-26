@@ -467,15 +467,28 @@ const CanvasComponent: FC<CanvasProps> = ({
 				setCreateFileDialogOpen(true);
 			}
 			/*
-			 * Escape leaves the document and returns to the list. A viewer was a room
-			 * with no door: the canvas answered only the two ⌘ shortcuts, so a user
-			 * who opened a file had to find the segment control to go back. The tab
-			 * stays open - this closes the VIEWER, not the document.
+			 * ESCAPE CLOSES THE CANVAS, AND THAT IS THE WHOLE OF ITS MEANING HERE (UX round 1, U6).
 			 *
-			 * Skipped when the event came from inside an open dialog, menu or listbox:
-			 * Escape there closes that surface, and a `role="dialog"` that dismissed
-			 * itself while the canvas also switched views would be two things
-			 * happening on one key.
+			 * §I: "Esc closes the canvas (and the run panel, which already works) and returns focus
+			 * to the toggle in the top row". §G1 spends the same rung in the app's ONE Esc ladder:
+			 * "`Esc` is consumed by, in order: an open composer popover, the question card
+			 * (collapse), the canvas (close), and otherwise the running turn (stop)". Neither
+			 * clause has an exception, and the reviewer's walk is the measurement: with a chat
+			 * open at 1380x900 and focus on the transcript, Escape left the pane exactly as it
+			 * was - no close, no view change - because this branch required an OPEN DOCUMENT and
+			 * then only switched the pane back to its file list.
+			 *
+			 * THE VIEWER'S DOOR IS GIVEN UP WITH IT, deliberately and on the record. The
+			 * previous shape was itself a fix (round 1: "a viewer was a room with no door"), and
+			 * it is unspecified - neither §I nor §G1's ladder names a document-to-list rung - so
+			 * it is the side that yields to the two clauses that are the contract. Nothing is
+			 * trapped by that: the segment control that switches documents/files is in the pane's
+			 * toolbar and on screen the whole time a document is open, and the toggle now closes
+			 * the pane from any view.
+			 *
+			 * Skipped when the event came from inside an open dialog, menu or listbox: Escape
+			 * there closes that surface, and a `role="dialog"` that dismissed itself while the
+			 * canvas also closed would be two things happening on one key.
 			 */
 			if (event.key === "Escape" && conversationId) {
 				/*
@@ -483,21 +496,15 @@ const CanvasComponent: FC<CanvasProps> = ({
 				 * second hand-written copy of the four roles is a fifth one waiting to drift.
 				 */
 				if (pressLandsOnOverlay(event.target)) return;
-				const current = useCanvasStore.getState().conversations[conversationId];
-				if (
-					(current?.viewMode ?? "documents") === "documents" &&
-					current?.selectedTabId
-				) {
-					event.preventDefault();
-					setViewMode(conversationId, "files");
-				}
+				event.preventDefault();
+				onClose();
 			}
 		};
 		window.addEventListener("keydown", handleKeyDown);
 		return () => {
 			window.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [handleOpenFile, conversationId, setViewMode]);
+	}, [handleOpenFile, conversationId, onClose]);
 
 	const handleCreateFile = async (
 		details: {
@@ -664,6 +671,22 @@ const CanvasComponent: FC<CanvasProps> = ({
 			<div
 				className={cn(
 					"flex h-10 shrink-0 items-center justify-between gap-2 bg-sunken px-2",
+					/*
+					 * THE CONTROLS' CORNER, RESERVED (chat redesign §J4). On Windows and Linux
+					 * Electron draws the caption buttons into the client area's top-right 40px,
+					 * and a pane's toolbar is the row that reaches the window's right edge while
+					 * that pane is open - so its trailing control has to end before them.
+					 *
+					 * PADDING here where the chat header uses a spacer, and the difference is the
+					 * row rather than the rule: this row is a single `justify-between` line whose
+					 * last child IS the control that must clear the buttons, so reserving the
+					 * width at the end is the same thing as moving it left. The header cannot use
+					 * padding because its action cluster is `ml-auto` inside a row that can wrap,
+					 * and padding there would spend the buttons' width on the wrapped line too.
+					 * `max(0.5rem, ...)` keeps the row's own 8px at rest, which is where
+					 * `--chrome-inset-end` is 0 (macOS, and every native-frame launch).
+					 */
+					"[padding-inline-end:max(0.5rem,var(--chrome-inset-end))]",
 				)}
 			>
 				<ViewSwitcher

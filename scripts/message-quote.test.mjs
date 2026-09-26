@@ -66,6 +66,15 @@ const bundle = await build({
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
+	/*
+	 * The renderer's aliases are tsconfig paths, not node resolutions. The send
+	 * store now imports the composer's own store at runtime (the one return path
+	 * for a failed payload), so a fixture that bundles it has to resolve this.
+	 */
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@features": "./src/renderer/src/features",
+	},
 	bundle: true,
 	format: "esm",
 	platform: "node",
@@ -85,6 +94,8 @@ const bundle = await build({
 				builder.onLoad({ filter: /.*/, namespace: "echo-fixture" }, () => ({
 					contents: `export const echoPendingUser = () => undefined;
 export const retractPendingUser = () => undefined;
+export const retractLocalEcho = () => "retracted";
+export const peekLocalEcho = () => "unseen";
 export const discardPendingEchoes = () => undefined;`,
 					loader: "js",
 					resolveDir: process.cwd(),

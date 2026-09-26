@@ -279,13 +279,19 @@ test("the list the panel draws is the page minus the archived rows, and the sear
 		/useChatSearch\(query, ready && searchSupported, widened\)/,
 	);
 	assert.match(source, /forgotten: new Set\(Object\.keys\(forgottenFacts\)\)/);
+	/*
+	 * `bindingOfHit` is the sixth argument: the client's own knowledge of what a
+	 * search hit the store does not hold is bound to (round 1, Q2). The pin is
+	 * widened rather than loosened - the five arguments it already named are still
+	 * named in order, so a call that dropped one still fails here.
+	 */
 	assert.match(
 		source,
-		/searchChats\(\s*\[\.\.\.listed, \.\.\.heldRows\],\s*query,\s*hits,\s*pinFactValues,\s*archiveView,?\s*\)/,
+		/searchChats\(\s*\[\.\.\.listed, \.\.\.heldRows\],\s*query,\s*hits,\s*pinFactValues,\s*archiveView,\s*bindingOfHit,?\s*\)/,
 	);
 	assert.match(
 		source,
-		/searchChats\(\s*\[\.\.\.listed, \.\.\.heldRows\],\s*search\.data\.query,\s*search\.data\.sessions,\s*pinFactValues,\s*archiveView,?\s*\)/,
+		/searchChats\(\s*\[\.\.\.listed, \.\.\.heldRows\],\s*search\.data\.query,\s*search\.data\.sessions,\s*pinFactValues,\s*archiveView,\s*bindingOfHit,?\s*\)/,
 	);
 });
 
@@ -596,9 +602,18 @@ test("the archived state is a pill badge with its own restore control beside it"
 });
 
 test("the header's menu is the session's actions, and its delete only ASKS", () => {
+	/*
+	 * THE SLICE STARTS AT THE TRIGGER rather than at the condition that gates it.
+	 * It used to read `between(HEADER, "(archiveEnabled || deleteEnabled) && (", …)`,
+	 * and the condition is now a multi-line expression (the menu also carries the
+	 * right-slot actions, so five hosts can open it), which no single-line anchor
+	 * matches. Starting at the trigger is also the tighter read: the thing this test
+	 * is about is the menu, and an anchor on the trigger cannot be satisfied by
+	 * prose about the gate.
+	 */
 	const menu = between(
 		HEADER,
-		"(archiveEnabled || deleteEnabled) && (",
+		"<DropdownMenuTrigger asChild>",
 		"<RunDetailsTrigger",
 	);
 	// Fail-closed and whole: with neither capability there is no trigger at all,

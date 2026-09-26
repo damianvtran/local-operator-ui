@@ -579,6 +579,64 @@ const INTERRUPT_SLOT_GRACE_MS = (() => {
 })();
 const composer = 'textarea[aria-label="Message"]';
 
+/*
+ * The app's own toast lane, and the control that dismisses it
+ * (`themed-toast-container.tsx` renders `closeButton: true`).
+ */
+const TOAST_SELECTOR = "[data-sonner-toast]";
+const TOAST_CLOSE_SELECTOR = "[data-sonner-toast] [data-close-button]";
+
+/** How many toasts are on screen right now, asked of the app's own DOM. */
+const toastsOnScreen = () =>
+	cdp
+		.evaluate(
+			`document.querySelectorAll(${JSON.stringify(TOAST_SELECTOR)}).length`,
+		)
+		.catch(() => 0);
+
+/**
+ * Write a toast out of the way with the app's OWN dismiss control.
+ *
+ * WHY THIS RIG HAS TO DO IT (QA round 2, Q4). The app's read-ack toast ("The
+ * unread mark was not cleared. Click the chat to try again.") is drawn over the
+ * right-hand end of the composer row, and every press this rig makes is a
+ * HIT-TESTED press at the element's painted centre: with a toast on top, the
+ * slot-grace section measures the toast - QA measured four `slot.*` claims false
+ * and then `no painted pixel of button[aria-label="Start recording"] hit-tests
+ * to it`, the 30px grid's probes all landing on the toast's own div. The toast
+ * lives ten seconds (`ARCHIVE_FAILURE_TOAST_MS`) and this section measures a
+ * 500ms window, so waiting it out is not available; the close button the app
+ * renders is. Waiting is the fallback for a toast without one, and a toast that
+ * outlives the bound is REPORTED rather than pressed through.
+ */
+const clearToasts = async (timeoutMs = 15_000) => {
+	const startedAt = Date.now();
+	for (;;) {
+		const count = await toastsOnScreen();
+		if (count === 0) return { cleared: true, waitedMs: Date.now() - startedAt };
+		await cdp.evaluate(`(() => {
+			document.querySelector(${JSON.stringify(TOAST_CLOSE_SELECTOR)})?.click();
+			return true;
+		})()`);
+		if (Date.now() - startedAt > timeoutMs)
+			return {
+				cleared: false,
+				waitedMs: Date.now() - startedAt,
+				onScreen: count,
+			};
+		await sleep(150);
+	}
+};
+
+/** The visible toasts' own words, for the record. */
+const toastTexts = () =>
+	cdp
+		.evaluate(
+			`JSON.stringify([...document.querySelectorAll(${JSON.stringify(TOAST_SELECTOR)})].map((n) => (n.textContent ?? "").trim().slice(0, 160)))`,
+		)
+		.then((value) => JSON.parse(value))
+		.catch(() => []);
+
 const controlPresent = () =>
 	cdp.evaluate(`!!document.querySelector(${JSON.stringify(STOP)})`);
 const draftValue = () =>
@@ -599,6 +657,11 @@ const draftValue = () =>
  * unreachable by a pointer, and the run fails with what was found there.
  */
 const pressElement = async (selector, what) => {
+	/*
+	 * Q4: a toast on top of the target turns a hit-test into a measurement of the
+	 * toast itself; the app's own close control is what clears the way.
+	 */
+	await clearToasts();
 	const aim = await cdp.evaluate(`(() => {
 		const el = document.querySelector(${JSON.stringify(selector)});
 		if (!el) return null;
@@ -609,6 +672,16 @@ const pressElement = async (selector, what) => {
 		};
 		const r = el.getBoundingClientRect();
 		const rect = { w: Math.round(r.width), h: Math.round(r.height), top: Math.round(r.top), left: Math.round(r.left) };
+		/*
+		 * THE CONTROL'S OWN SLOT, beside the control (UX round 2's slot claims, kept
+		 * honest by the labelled Stop). The Stop is a labelled button with an Esc cap
+		 * beside it, wrapped in one span; the reservation the grace window holds renders
+		 * THE SAME MARKUP, so the pair that must agree is span-to-span. The press still
+		 * aims at the button (that is the thing a reader hits), and this is the box the
+		 * reservation is compared against.
+		 */
+		const pr = el.parentElement ? el.parentElement.getBoundingClientRect() : null;
+		const slotRect = pr ? { w: Math.round(pr.width), h: Math.round(pr.height), top: Math.round(pr.top), left: Math.round(pr.left) } : null;
 		const target = describe(el);
 		const inset = 2;
 		const fractions = [0.5, 0.25, 0.75, 0.1, 0.9];
@@ -620,10 +693,10 @@ const pressElement = async (selector, what) => {
 				const owner = document.elementFromPoint(x, y);
 				const hit = owner === el || owner?.closest("button") === el;
 				attempts.push({ x: Math.round(x), y: Math.round(y), owner: describe(owner), hit });
-				if (hit) return { x, y, rect, target, attempts };
+				if (hit) return { x, y, rect, slotRect, target, attempts };
 			}
 		}
-		return { rect, target, attempts };
+		return { rect, slotRect, target, attempts };
 	})()`);
 	if (!aim) throw new Error(`${what} is not on screen`);
 	if (aim.x === undefined)
@@ -708,6 +781,7 @@ const stamp = async () => {
  * the point, and whether pressing it starts anything.
  */
 const probeSlot = async (point) => {
+	await clearToasts();
 	const owner = await cdp.evaluate(`(() => {
 		const el = document.elementFromPoint(${point.x}, ${point.y});
 		if (!el) return "none";
@@ -791,6 +865,7 @@ const recordingState = async () =>
  * control is live where it now sits".
  */
 const controlAt = async (selector) => {
+	await clearToasts();
 	const info = await cdp.evaluate(`(() => {
 		const el = document.querySelector(${JSON.stringify(selector)});
 		if (!el) return null;
@@ -823,14 +898,22 @@ const clusterBoxesAndStamp = async () => {
 	const value = JSON.parse(
 		await cdp.evaluate(`JSON.stringify({
 			boxes: [...document.querySelectorAll('[aria-label="Start recording"], [aria-label="Confirm recording"], [aria-label="Cancel recording"], [aria-label="Stop"], [aria-label="Send message"], [data-interrupt-slot]')]
-				.map((el) => {
+				.flatMap((el) => {
 					const r = el.getBoundingClientRect();
-					return {
-						label: el.getAttribute("aria-label") ?? "reserved-slot",
-						x: Math.round(r.left),
-						w: Math.round(r.width),
-						centre: Math.round(r.left + r.width / 2),
-					};
+					const label = el.getAttribute("aria-label") ?? "reserved-slot";
+					const own = [{ label, x: Math.round(r.left), w: Math.round(r.width), centre: Math.round(r.left + r.width / 2) }];
+					/*
+					 * THE RUNNING STOP'S SLOT, beside the button itself - the box the grace
+					 * window's reservation reproduces, and so the one the two must be compared
+					 * as (the button is what a press aims at; the span is what the row lays
+					 * out). Read from the parent element rather than a second selector, so the
+					 * pair cannot drift into two different nodes.
+					 */
+					if (label === "Stop" && el.parentElement) {
+						const p = el.parentElement.getBoundingClientRect();
+						own.push({ label: "stop-slot", x: Math.round(p.left), w: Math.round(p.width), centre: Math.round(p.left + p.width / 2) });
+					}
+					return own;
 				})
 				.sort((a, b) => a.x - b.x),
 			now: performance.now(),
@@ -851,14 +934,16 @@ const clusterBoxes = async () =>
 	JSON.parse(
 		await cdp.evaluate(`JSON.stringify(
 			[...document.querySelectorAll('[aria-label="Start recording"], [aria-label="Confirm recording"], [aria-label="Cancel recording"], [aria-label="Stop"], [aria-label="Send message"], [data-interrupt-slot]')]
-				.map((el) => {
+				.flatMap((el) => {
 					const r = el.getBoundingClientRect();
-					return {
-						label: el.getAttribute("aria-label") ?? "reserved-slot",
-						x: Math.round(r.left),
-						w: Math.round(r.width),
-						centre: Math.round(r.left + r.width / 2),
-					};
+					const label = el.getAttribute("aria-label") ?? "reserved-slot";
+					const own = [{ label, x: Math.round(r.left), w: Math.round(r.width), centre: Math.round(r.left + r.width / 2) }];
+					/* The running Stop's slot; see clusterBoxesAndStamp. */
+					if (label === "Stop" && el.parentElement) {
+						const p = el.parentElement.getBoundingClientRect();
+						own.push({ label: "stop-slot", x: Math.round(p.left), w: Math.round(p.width), centre: Math.round(p.left + p.width / 2) });
+					}
+					return own;
 				})
 				.sort((a, b) => a.x - b.x),
 		)`),
@@ -1082,6 +1167,7 @@ try {
 		[];
 	const runningMic = boxOf(runningBoxes, "Start recording");
 	const runningStop = boxOf(runningBoxes, "Stop");
+	const runningStopSlot = boxOf(runningBoxes, "stop-slot");
 	const runningSend = boxOf(runningBoxes, "Send message");
 	const graceMic = boxOf(graceBoxes, "Start recording");
 	const graceBox = boxOf(graceBoxes, "reserved-slot");
@@ -1095,6 +1181,7 @@ try {
 		Boolean(
 			runningMic &&
 				runningStop &&
+				runningStopSlot &&
 				runningSend &&
 				graceMic &&
 				graceBox &&
@@ -1107,20 +1194,28 @@ try {
 					running && grace && running.x === grace.x && running.w === grace.w
 				);
 			}) &&
-			// The Stop's own box IS the held box: same edges, same centre, so the row
-			// does not move when the control leaves and the box takes its place. Read
-			// from the press's own rect rather than by label, because the child that
-			// stands there inside the window is the box.
-			graceBox.x === box.rect.left &&
-			graceBox.w === box.rect.w &&
-			graceBox.centre === runningStop.centre &&
-			gapBetween(runningMic, runningStop) === gapBetween(graceMic, graceBox) &&
-			gapBetween(runningStop, runningSend) === gapBetween(graceBox, graceSend),
+			// The box is the STOP'S OWN SLOT (the labelled control plus its cap -
+			// the span the reservation re-renders), not the bare button a press aims
+			// at: the control grew a label and the reservation renders the same
+			// markup, so the pair that must agree is span-to-span.
+			graceBox.x === runningStopSlot.x &&
+			graceBox.w === runningStopSlot.w &&
+			graceBox.centre === runningStopSlot.centre &&
+			// AND THE PRESS LANDS INSIDE IT: the button the reader hits sits inside
+			// the held slot, so the point a reflex second press reaches is still
+			// under the reservation rather than beside it.
+			box.rect.left >= graceBox.x &&
+			box.rect.left + box.rect.w <= graceBox.x + graceBox.w &&
+			gapBetween(runningMic, runningStopSlot) ===
+				gapBetween(graceMic, graceBox) &&
+			gapBetween(runningStopSlot, runningSend) ===
+				gapBetween(graceBox, graceSend),
 		{
 			what: "the row inside the grace window is not the row the turn ran with",
 			running: runningBoxes,
 			grace: graceBoxes,
 			stop: box.rect,
+			stopSlot: runningStopSlot,
 		},
 	);
 	// The press has to have landed INSIDE the window for this to be a measurement
@@ -1143,6 +1238,10 @@ try {
 	 * cannot leave this measurement taken while the box is still up, which would
 	 * read as a regression that is not there - plus the settle a frame needs.
 	 */
+	// A toast arriving between the press and here is written out with the app's own
+	// close control (Q4) BEFORE the wait, so the dismissal costs the wait rather
+	// than the measurements below it.
+	await clearToasts();
 	await sleep(INTERRUPT_SLOT_GRACE_MS + 400);
 	const settledBoxes = await clusterBoxes();
 	const settledAt = await stamp();
@@ -1162,7 +1261,13 @@ try {
 			settledAt.sinceFlipMs !== null &&
 			settledAt.sinceFlipMs > INTERRUPT_SLOT_GRACE_MS &&
 			gapBetween(settledMic, settledSend) === rowGap &&
-			settledMic.x === graceBox.x,
+			// The dictation control lands INSIDE the box that was held, so a press
+			// aimed at the held box still reaches it (the released cluster is
+			// right-justified against Send, so the control sits in the box's right
+			// part rather than at its left edge - the labelled Stop made the slot
+			// wider than the control).
+			settledMic.x >= graceBox.x &&
+			settledMic.x + settledMic.w <= graceBox.x + graceBox.w,
 		{
 			what: "the settled row is not [dictation][Send] with the box gone and the dictation control where the box was held",
 			graceMs: INTERRUPT_SLOT_GRACE_MS,
@@ -1270,8 +1375,8 @@ try {
 					(box, index) =>
 						box.x === lateBoxes[index].x && box.w === lateBoxes[index].w,
 				) &&
-				heldBoxes.at(-1).x === inFlightPressed.rect.left &&
-				heldBoxes.at(-1).w === inFlightPressed.rect.w,
+				heldBoxes.at(-1).x === inFlightPressed.slotRect?.left &&
+				heldBoxes.at(-1).w === inFlightPressed.slotRect?.w,
 			{
 				what: "the box is not held while a dictation is in flight, so the release moves the recording's own controls 36px under a press",
 				held: heldBoxes,
@@ -1316,9 +1421,58 @@ try {
 	record("turn2.admit", await startTurn(sessionId));
 	record("turn2.streaming", await waitForStreaming(sessionId, true));
 	record("turn2.control", { present: await controlPresent() });
+	/*
+	 * WHAT THE ROW SAID BEFORE THE PRESS (U15's own discriminator). The reducer's
+	 * guard needs the killed call's `startedAt`, which only exists if this viewer
+	 * saw the call START; a row this pane met only as it settled has no clock and is
+	 * deliberately refused (`killedByUserStop`'s note). Reading the tail here, while
+	 * the turn still runs, is what tells the two cases apart in the record instead of
+	 * leaving them to be guessed from the settled text.
+	 */
+	record(
+		"turn2.running",
+		JSON.parse(
+			await cdp.evaluate(`(() => {
+		const text = (el) => (el?.textContent ?? "").replace(/\\s+/g, " ").trim();
+		const rows = [...document.querySelectorAll('[data-record-kind="tool"], [data-record-kind="assistant"]')];
+		return JSON.stringify({ tail: rows.slice(-3).map(text) });
+	})()`),
+		),
+	);
 	await pressEscape();
 	record("turn2.settled", await waitForStreaming(sessionId, false));
 	record("turn2.controlAfter", { present: await controlPresent() });
+	/*
+	 * §G3'S OWN READING (UX round 2, U15 - "trace one stopped turn end to end in the
+	 * built app; the scene this needs does not exist yet"). Two claims the press
+	 * above is supposed to make on the transcript: the turn's own `Stopped` line is
+	 * DRAWN, and the killed call's ledger row does not blame the agent with
+	 * `failed`. The row's text is read from the transcript's own record markers
+	 * rather than from a layout class, so a re-skin cannot move the claim.
+	 */
+	const escapedTurn = JSON.parse(
+		await cdp.evaluate(`(() => {
+			const text = (el) => (el?.textContent ?? "").replace(/\\s+/g, " ").trim();
+			const line = document.querySelector("[data-stopped-turn]");
+			const retry = document.querySelector("[data-stopped-retry]");
+			const rows = [...document.querySelectorAll('[data-record-kind="tool"], [data-record-kind="assistant"]')];
+			return JSON.stringify({
+				stoppedLine: line ? text(line) : null,
+				stoppedRetry: retry ? text(retry) : null,
+				tail: rows.slice(-3).map(text),
+			});
+		})()`),
+	);
+	record("turn2.transcript", escapedTurn);
+	verify(
+		"turn2.readsAsStopped",
+		Boolean(escapedTurn.stoppedLine) &&
+			!/failed/i.test(escapedTurn.tail.join(" ")),
+		{
+			what: "an Esc-stopped turn did not read as Stopped: §G3's line is absent from the transcript, or the killed call's ledger row still says failed (UX round 2, U15)",
+			transcript: escapedTurn,
+		},
+	);
 	await cdp.shot("after-escape.png");
 
 	/* ------------------------------- 3. the session survived both presses */

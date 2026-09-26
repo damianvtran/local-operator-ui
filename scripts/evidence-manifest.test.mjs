@@ -780,29 +780,323 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  * than being read as history - the distinction the paragraph above draws.
  */
 /*
- * The notes whose prose claims THIS FILE'S OWN pair, checked below against the
- * values the manifest actually ships.
+ * THE FOLD RULE FOR THIS LIST: the union of both sides, taken by KEY.
  *
- * IT HELD EIGHT OF MAIN'S RE-STAMP NOTES UNTIL THE PR #467 DESIGN-ROUND-2 PASS,
- * which re-derived both stamps and therefore had to decide, per note, which of the
- * two sanctioned answers its prose had earned. A note that speaks for this file's
- * CURRENT binding is RE-POINTED - `settingsGateRestampNote` states the convention
- * the backticked form follows, and `readReceiptRestampNote` states it for its own
- * pair - and a note whose prose describes what ITS OWN fold or pass moved is
- * written as history with the value BARE, which is what takes it out of this list.
- * The second answer is what `usageAutoCheckRestampNote` and
- * `usageInFlightRemediationNote` already recorded, and it is the one
- * `shellPathRestampNote`, `settingsGateRestampNote`, `candidateMacArchRestampNote`,
- * `notarizeGateRestampNote`, `usageInFlightConvergenceNote`,
- * `macNativeComponentsRestampNote`, `telemetrySwitchRestampNote` and
- * `readReceiptRestampNote` each take: every one of them describes a delta of its own
- * branch, and re-pointing their tokens would have made a sentence about that delta
- * read as a statement about this one's.
+ * MEMBERSHIP IS CURATION, NOT A PREDICATE, and the paragraph above states the
+ * criterion: a note belongs here when THIS FILE'S BINDING is its subject, not when
+ * it records the fold, pass or review it came from. It cannot be re-derived by
+ * testing the text - the re-stamp below rewrites every note's backticked claims to
+ * the shipped pair, so after any fold many more notes quote both stamps at that pair
+ * than this list curates, and the extras are history by subject. (Run the predicate
+ * this test applies over `docs/evidence/manifest.json` rather than trusting a count
+ * written here: it matches dozens, and the number moves with every fold.)
+ * `headNote`, `installerNetworkRestampNote`, the console notes and
+ * `reloadReanchorRestampNote` are the ones the paragraph above names as not here for
+ * exactly that reason. Widening the list to everything the predicate matches would
+ * add notes that CANNOT fail, which is the wrong kind of guard and not what this
+ * list is for.
  *
- * This branch's own record carries the pair now, and it is the entry a later
- * re-stamp pass has to re-point (or replace with its own).
+ * WHAT A FOLD MUST DO, and what makes this rule falsifiable against the list: union
+ * the two sides' keys, KEEP EVERY KEY THAT WAS THERE BEFORE, and state the result.
+ * AN OMITTED KEY IS A CHECK SILENTLY NOT RUN - this test iterates the list, so a key
+ * dropped by a hand-resolved merge stops being verified while the suite still goes
+ * green (round 8, M1: four live keys, every one of them still quoting both stamps,
+ * were lost by a resolution that compared added LINES rather than keys). A fold whose
+ * base moved this file therefore diffs the KEY SETS of both sides and of the merged
+ * result, and says in the commit what the union is.
+ *
+ * THE UNION THIS FOLD TOOK (`origin/main` `a7df70995`, over this branch's `b3a2cabe0`),
+ * stated here because the rule above asks for it: this branch's side named
+ * `usageInFlightConvergenceNote`, `macNativeComponentsRestampNote`,
+ * `telemetrySwitchRestampNote`, `readReceiptRestampNote`,
+ * `chatSidebarSectionsRestampNote` and `windowChromeRestampNote`; main's side named
+ * `occupiedAddressRestampNote`, `shellPathRestampNote`, `settingsGateRestampNote`,
+ * `candidateMacArchRestampNote`, `notarizeGateRestampNote`,
+ * `modelCatalogueFocusRestampNote` and `round1LabelGapRestampNote`. THIRTEEN entries,
+ * deduplicated by name - the four notes both sides held are listed once, at this
+ * branch's position. No key was dropped. The same union was applied to
+ * `docs/evidence/manifest.json`, which took main's eight fold and label-gap notes and
+ * kept every key this branch already carried; that file's own key count is
+ * unchanged by the resolution except for those additions, and its union is checked by
+ * the records test below rather than by prose.
  */
-const STAMP_BINDING_NOTES = ["goalDesignRoundTwoNote"];
+const STAMP_BINDING_NOTES = [
+	/*
+	 * EIGHT NOTES LEFT THIS LIST when `fix(backend): never lose the app to an
+	 * address it does not own` re-derived both stamps: `shellPathRestampNote`,
+	 * `settingsGateRestampNote`, `candidateMacArchRestampNote`,
+	 * `notarizeGateRestampNote`, `usageInFlightConvergenceNote`,
+	 * `macNativeComponentsRestampNote`, `telemetrySwitchRestampNote` and
+	 * `readReceiptRestampNote` all quoted the pair that change supersedes, and a
+	 * pair that is history must not be held to this file as if it were its own -
+	 * the defect this list exists for. Their quoted pairs are written as bare
+	 * SHAs in the notes themselves, the same rewrite
+	 * `usageAutoCheckRestampNote` and `usageInFlightRemediationNote` got when
+	 * earlier rounds re-derived the stamps under them.
+	 */
+	/*
+	 * NINE NOTES LEFT THIS LIST when this branch folded onto the `origin/main` that
+	 * moved under it and re-derived both stamps: `shellPathRestampNote`,
+	 * `settingsGateRestampNote`, `candidateMacArchRestampNote`,
+	 * `notarizeGateRestampNote`, `usageInFlightConvergenceNote`,
+	 * `macNativeComponentsRestampNote`, `telemetrySwitchRestampNote`,
+	 * `readReceiptRestampNote` and - arriving in the same fold, written by the
+	 * picker's catalogue-focus change - `modelCatalogueFocusRestampNote`. Every one
+	 * of them quoted the pair the fold supersedes, and a pair that is history must
+	 * not be held to this file as if it were its own: that is the defect this list
+	 * exists for. Each note's pair is written as bare SHAs in the note itself, the
+	 * same rewrite `usageAutoCheckRestampNote` and `usageInFlightRemediationNote`
+	 * got when earlier rounds re-derived the stamps under them.
+	 */
+	/*
+	 * ALL TEN ENTRIES BELOW CARRY THIS FILE'S BINDING AT THE FOLD, and the
+	 * paragraphs above are the history of how the list grew. A fold that re-derives
+	 * both stamps re-stamps every note that quotes the pair as a pointer to this
+	 * file's own values - that is what "re-stamp" means, and the ninth entry's own
+	 * wording says as much ("states this file's own pair ... held to that pair
+	 * rather than read as history").
+	 *
+	 * THE STATE THIS FOLD FOUND: at the head it was cut from, nine of the ten names
+	 * below quoted be8bbbd9 and 2b89b922 - the pair the seamless-chrome pass
+	 * superseded when it re-derived both stamps and wrote the tenth entry - so this
+	 * list was failing its own test on the pre-fold head. Substituting the
+	 * superseded pair in the notes is the fix, not widening the list: the test's
+	 * message for that state is the one it already prints, and a name removed from
+	 * the list to silence it would be the defect the list exists to catch.
+	 *
+	 * `occupiedAddressRestampNote` arrives with the fold: main wrote it for the
+	 * change that re-derived the pair on main's side, and the same re-stamp applies
+	 * to it here, so it is held to this file's pair like the rest.
+	 */
+	"usageInFlightConvergenceNote",
+	"macNativeComponentsRestampNote",
+	"telemetrySwitchRestampNote",
+	// The seventh: `readReceiptRestampNote` states this file's own pair for the
+	// read-receipt branch, so it is held to that pair rather than read as history -
+	// the distinction `candidateMacArchRestampNote` above is in the list for.
+	"readReceiptRestampNote",
+	/*
+	 * The eighth: `chatSidebarSectionsRestampNote` states this file's own pair for
+	 * the operator-feedback round on the sidebar's sections and the brand mark, so
+	 * it is held to them rather than read as history.
+	 */
+	"chatSidebarSectionsRestampNote",
+	/*
+	 * The ninth: `windowChromeRestampNote` states this file's own pair for the
+	 * seamless-chrome pass, so it is held to that pair rather than read as history -
+	 * the same distinction `candidateMacArchRestampNote` is in the list for. The
+	 * pass is the first on this branch to move `src/` AND `scripts/` without taking a
+	 * frame (its evidence is a unit suite and a headless launch), which is exactly the
+	 * case a re-stamp note exists to record.
+	 */
+	"windowChromeRestampNote",
+	"occupiedAddressRestampNote",
+	"shellPathRestampNote",
+	"settingsGateRestampNote",
+	"candidateMacArchRestampNote",
+	"notarizeGateRestampNote",
+	/*
+	 * This one exists BECAUSE the list is not optional reading: the change it
+	 * re-stamps for rewrote no frame, so a reader is owed the two values it binds
+	 * and the reason no still was owed.
+	 */
+	"modelCatalogueFocusRestampNote",
+	/*
+	 * This branch's own: it states the pair an earlier fold re-derived, and is held
+	 * to the pair this file ships rather than read as history.
+	 */
+	"round1LabelGapRestampNote",
+	/*
+	 * The chip cap's own: it re-derives `srcTree` for a change that moves `src/`
+	 * without touching a frame, so a reader is owed the pair AND the reason no
+	 * still was owed - and a new frame is the wrong answer to a question nobody
+	 * asked.
+	 */
+	"cwdChipCapRestampNote",
+	/*
+	 * The fourteenth, and this branch's own: it states the pair the fold onto
+	 * `origin/main` `c44d29c34` re-derived, so it is held to the pair this file
+	 * ships rather than read as history - the same distinction
+	 * `candidateMacArchRestampNote` is in this list for. The fold moved no frame
+	 * (no `.webp` on either side of it), which is the case a re-stamp note exists
+	 * to record.
+	 */
+	"chatRedesignChipFoldRestampNote",
+	/*
+	 * And this branch's own, carried through every fold: it states the pair THIS
+	 * commit ships for UI PR B's Integrations redesign, so it is held to that pair
+	 * rather than read as history.
+	 */
+	"integrationsRedesignRestampNote",
+	/*
+	 * This pass's own, laid back on top of the fold: it re-stamps a
+	 * change that moves `src/` without touching a frame, so the reader is
+	 * owed the pair and the reason no still was owed.
+	 */
+	"liveSettleLabelRestampNote",
+	/*
+	 * This remediation round's own: it re-stamps the change that rounds 1's two MAJORs moved inside, so
+	 * the reader is owed the pair and the reason no still was owed.
+	 */
+	"liveSettleLabelRemediationNote",
+	/*
+	 * This pass's own: it re-stamps a change that moves BOTH trees - the session
+	 * hook's held-frontend field and the readings strip that marks what it holds,
+	 * plus the two harnesses that pin both - without touching a frame, so the
+	 * reader is owed the pair AND the reason no still was owed.
+	 *
+	 * UNIONED WITH MAIN'S OWN, which is the rule this list states for itself: a
+	 * fold keeps every key that was there before. Main's records are carried
+	 * whole above and below this entry.
+	 */
+	"streamGapHeldReadingsRestampNote",
+	/*
+	 * This branch's own: it re-stamps a change that moves both trees this file
+	 * binds — the rule/slot/story under `src/`, the trailing-statement pins under
+	 * `scripts/` — without touching a swept frame, so the reader is owed the pair
+	 * and the reason no still was owed.
+	 */
+	"rowTeamTrailingRestampNote",
+	/*
+	 * The offer card's own: the server-release-notes pass re-derived both
+	 * trees for a change that moves `src/` and `scripts/` and adds twenty-four
+	 * frames in two stories, so the reader is owed the pair AND the reason no
+	 * other still was owed.
+	 */
+	"serverReleaseNotesPassNote",
+	/*
+	 * And the mention-remedy re-stamp's: THIS FILE'S BINDING IS ITS SUBJECT, which
+	 * is the criterion above - it exists to say which two trees the copy change
+	 * moved and which single frame set was re-captured with them - so it is held
+	 * to the pair the file ships rather than read as history. Its replaced pair is
+	 * written as bare SHAs for exactly that reason.
+	 */
+
+	"mentionsRemedyRestampNote",
+	/*
+	 * THIS BRANCH'S OWN, and it belongs here for the list's own reason: the
+	 * first-paint hold's round-1 remediation moves BOTH trees (the hook and the
+	 * paint cache under `src/`, this file and the recorder under `scripts/`) and
+	 * re-shoots no frame, so a reader is owed the two values it binds and the reason
+	 * the stills did not move. It was briefly present without being listed, which is
+	 * the check silently not run - the guard iterates this list (review round 1,
+	 * m3).
+	 */
+	"firstPaintHoldRestampNote",
+	"firstPaintHoldFoldRestampNote",
+	/*
+	 * THIS BRANCH'S OWN, for round 4, and it belongs here for the list's own reason:
+	 * the late-hold mark's arming, the turn-liveness read, the in-flight set's lifetime
+	 * and the backstop's deferral move BOTH trees this file binds and re-shoot no frame,
+	 * so a reader is owed the two values it binds and the reason the stills did not move.
+	 */
+	"firstPaintHoldRound4RestampNote",
+	/*
+	 * AND THIS BRANCH'S OWN, for round 4's refusal-release mark, and it belongs here
+	 * for the list's own reason: the refused stand-down hands the hold to the mark,
+	 * which moves the hook, the paint cache and the row's own condition under `src/`
+	 * and the cases that pin it under `scripts/` - both trees this file binds - while
+	 * re-shooting no frame, so a reader is owed the two values it binds and the reason
+	 * the stills did not move.
+	 */
+	"refusalMarkRestampNote",
+	/*
+	 * This pass's own: it re-stamps the U15 fix (both trees move - the reducer and
+	 * its suite, the corrected menu docblock, the new story file and the sweep
+	 * rows) AND records the frames that moved with them: 156 new up the view-menu
+	 * set, the interrupt set re-taken whole. A reader is owed the pair and the
+	 * reason it was re-derived in a commit rather than by the capture run (that
+	 * run was dirty; its own head and flag stay as its records).
+	 */
+	"u15D28RestampNote",
+	/*
+	 * The fold's own: ITS SUBJECT IS THIS FILE'S BINDING (the re-derived pair),
+	 * so it is held to the pair the file ships rather than read as history - and
+	 * it is the note that records the union of this list itself, which is the
+	 * rule the paragraph above states.
+	 */
+	"foldOntoDfd93f7e9Note",
+	/*
+	 * This branch's own: it re-stamps the change that added the approval card's
+	 * options, so the reader is owed the pair the file ships - and the two moved
+	 * trees are each that change's own files plus this note's registration here.
+	 */
+	"approvalOptionsRestampNote",
+	/*
+	 * This branch's own, and the first one that adds a declared set in the same
+	 * commit it re-stamps: it re-stamps `fix(chat): spend history reveals at rest,
+	 * one fetch per gesture`, which moves both trees AND adds
+	 * `[redacted]`, so the reader is owed the pair, the frame
+	 * arithmetic, and the reason the swept count does not move.
+	 */
+	"transcriptRevealAtRestRestampNote",
+	/*
+	 * AND THIS BRANCH'S OWN, for round 4's gap-liveness repair, and it belongs here for
+	 * the list's own reason: reading the turn's liveness across a stream gap moves the
+	 * hook under `src/` and the harness case that pins the route under `scripts/` - both
+	 * trees this file binds - while re-shooting no frame, so a reader is owed the two
+	 * values it binds and the reason the stills did not move.
+	 */
+	"gapLivenessRestampNote",
+	/*
+	 * AND THIS BRANCH'S OWN, for the word the marked cell now spells out (UX round 4,
+	 * U7), and it belongs here for the list's own reason: the word lives under `src/`,
+	 * the two cases that pin it live under `scripts/`, and neither re-shoots a frame,
+	 * so a reader is owed the two values it binds and the reason the stills did not
+	 * move.
+	 */
+	"markSpokenRestampNote",
+	/*
+	 * THIS BRANCH'S OWN, and the ONE entry the seventh fold adds: it states the pair
+	 * THIS FILE SHIPS as its opening claim - the fold onto `fac2e11ec7` (#493), whose
+	 * pair it re-derives in the fold commit itself - so a reader is owed the check
+	 * rather than the prose. WHY IT WAS NOT HERE BEFORE AND IS NOW: the six folds
+	 * before it wrote their binding as prose with no backticked stamp token and said
+	 * so in as many words, which the earlier version of that note still records. The
+	 * moment the note states the pair as the claim it is, the list's own criterion
+	 * ("THIS FILE'S BINDING is its subject") is met, and leaving it out would be a
+	 * check silently not run for the one note a fold's reader reaches for first.
+	 */
+	"focusHoldOperationRestampNote",
+	/*
+	 * The draft-warm pass's own: it re-stamps a change that moves BOTH trees -
+	 * the contract, store, hooks and panel on one side, the two suites that pin
+	 * them on the other - without touching a frame, so the reader is owed the
+	 * pair AND the reason no still was owed.
+	 */
+	"newchatDraftWarmRestampNote",
+	/*
+	 * THE ROUND-4 REMEDIATION'S EVIDENCE PASS. It re-stamps the change that
+	 * answers rounds 4 (the fold debris, the restored §F3 fate, the widened
+	 * stop classification, the popover width) and re-shoots the three popover
+	 * states after D31, so the reader is owed the pair the file ships.
+	 */
+	"remediationRound4EvidenceNote",
+	/*
+	 * The fold's own: ITS SUBJECT IS THIS FILE'S BINDING (the re-derived pair),
+	 * and it is the note that records the union of this list itself - main's
+	 * approval-options and reveal-at-rest records beside this branch's, the rule
+	 * the paragraph above states.
+	 */
+	"foldOnto601a9d5032Note",
+	/*
+	 * AND THIS FOLD'S OWN - the fold onto `origin/main` = `fd19adc9d9` (#531,
+	 * the draft pre-engage). ITS SUBJECT IS THIS FILE'S BINDING (the re-derived
+	 * pair), so it is held to the pair the file ships rather than read as
+	 * history - and it is the note that records the union of this list itself:
+	 * main's `newchatDraftWarmRestampNote` joined beside this branch's entries,
+	 * the rule the paragraph above states.
+	 */
+	"foldOntoFd19adc9d9Note",
+	/*
+	 * And `goalDesignRoundTwoNote`, this branch's own record: it carries the pair the
+	 * judged-goals design-round-2 pass re-derived, so it is the entry later re-stamps
+	 * have to re-point. It joins this list under the union rule rather than replacing
+	 * it: the eight main-side notes it superseded in this branch's narrow spellings
+	 * keep their membership and are held to the shipped pair by the same sweep.
+	 */
+	"goalDesignRoundTwoNote",
+];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
 	const manifest = JSON.parse(
@@ -1134,28 +1428,108 @@ const BRANCH_RECORDS = [
 	 */
 	"modelPickerRemediationRestampNote",
 	/*
-	 * Grown by the judged-goals (`feat/goal-done-history`) pass, which wrote this
-	 * branch's two newest top-level records: `goalDoneRestampNote` from its rebase,
-	 * `goalDoneFoldRestampNote` from its folds. A fold that starts from main's
-	 * manifest would drop both without a word, which is this list's whole subject.
+	 * Grown by the `/btw` aside panel pass, whose re-stamp is this branch's newest
+	 * top-level record. It is listed for the reason the list exists, and this
+	 * branch is a second instance of the case the entry above names: the fold onto
+	 * `origin/main` = `1020b48a9` resolved `docs/evidence/manifest.json` by taking
+	 * main's copy as the base and re-laying this branch's own records on top, and
+	 * THIS record survived only because the resolver put it back by hand - a
+	 * resolver who had not would have dropped the only statement of which two trees
+	 * the remediation moved and that no frame moved, with the gate staying green.
+	 * It is also the branch's record that names where its rendered frames live: the
+	 * evidence-only branch `evidence/btw-aside-frames`, since the sweep's frame
+	 * predicate does not admit driver-taken PNGs.
+	 */
+	"asidePanelRestampNote",
+	"streamGapHeldReadingsRestampNote",
+	"mentionsRemedyRestampNote",
+	/*
+	 * Grown by the U15 + D28 pass, which wrote this branch's newest top-level
+	 * record. It is listed for the reason the list exists: the pass moved BOTH
+	 * trees and added a frame set, and the record is the only statement of what
+	 * moved, why the pair was re-derived in a commit rather than by the capture
+	 * run, and the one flake it did not fix.
+	 */
+	"u15D28RestampNote",
+	/*
+	 * And the fold onto `dfd93f7e9`, this branch's newest top-level record. It is
+	 * listed for the reason the list exists: the fold is the commit that resolves
+	 * this file against a main that had moved (five conflicted paths), and the
+	 * record is the only statement of what the two trees carry now, what frames
+	 * were NOT re-taken, and how each conflict was resolved.
+	 */
+	"foldOntoDfd93f7e9Note",
+	/*
+	 * And by the reveal-at-rest pass - the pass this fold carries. It is the case
+	 * the entry above names, one fold over: the manifest resolution kept this
+	 * branch's set, note and counts by hand against a moved main, and this record
+	 * is the only statement of which two trees the scroll-reveal change moved and
+	 * that the 16 frames it added came from this tree with the `before` arm's two
+	 * modules swapped for `origin/main`'s.
+	 */
+	"transcriptRevealAtRestRestampNote",
+	/*
+	 * And the round-4 remediation's record, this branch's newest. Listed for the
+	 * reason the list exists: a fold that started from main's manifest would drop
+	 * it, and with it the only statement of what this pass re-shot, what it
+	 * carried into the tree, and the two readings the Q5 falsification produced.
+	 */
+	"remediationRound4EvidenceNote",
+	/*
+	 * The records MAIN's #520 carried in, added here by this fold for the reason the
+	 * list exists: the fold that brought them to this lineage had to splice them into
+	 * the manifest by hand, and main's own copy of this list never grew them - so a
+	 * later fold that started from main's manifest would drop them silently and with
+	 * them the statements of which two trees the hold's rounds moved and why no still
+	 * moved.
+	 */
+	"firstPaintHoldRestampNote",
+	"firstPaintHoldFoldRestampNote",
+	"firstPaintHoldRound4RestampNote",
+	"refusalMarkRestampNote",
+	"gapLivenessRestampNote",
+	"markSpokenRestampNote",
+	/*
+	 * And the round-5 evidence pass, this branch's newest: the re-shot approval
+	 * stories on the dock, the three carried connection logs, and the re-stamps the
+	 * two instrument fixes moved. Listed for the reason the list exists - a fold that
+	 * started from main's manifest would drop it and with it the only statement of
+	 * which frames moved and why.
+	 */
+	"chatRedesignRound5EvidenceNote",
+	/*
+	 * And the fold onto `a6a04f2f` (#520), this branch's newest: it is the commit
+	 * that resolves this file against a main that had moved AND the one that records
+	 * main's six records being spliced in - the manifest entry a later fold that
+	 * started from main's copy would drop first.
+	 */
+	"foldOntoA6a04f2fNote",
+	/*
+	 * And by the draft-warm pass, whose note this fold carries in: it is the only
+	 * statement of which two trees the new-chat pre-engage moved and of why no
+	 * still was owed, and this fold's manifest resolution keeps it by hand
+	 * against main's copy - so it joins the list for the same reason every entry
+	 * above it did.
+	 */
+	"newchatDraftWarmRestampNote",
+	/*
+	 * And the fold onto `fd19adc9d9` (#531), this branch's newest: it is the
+	 * commit that resolves this file against a main that had moved AND the one
+	 * that records main's draft-warm record being carried in - the manifest
+	 * entry a later fold that started from main's copy would drop first.
+	 */
+	"foldOntoFd19adc9d9Note",
+	/*
+	 * Grown by the judged-goals (`feat/goal-done-history`) pass, which wrote four
+	 * top-level records - `goalDoneRestampNote` and `goalDoneFoldRestampNote` from
+	 * its rebases and folds, `goalDoneFramePassNote` from the frame pass, and
+	 * `goalDesignRoundTwoNote` from the batched design-round-2 remediation. A fold
+	 * that starts from main's manifest drops them without a word, which is this
+	 * list's whole subject.
 	 */
 	"goalDoneRestampNote",
 	"goalDoneFoldRestampNote",
-	/*
-	 * And its frame pass (remediation round 2), which is the only statement of how the
-	 * goal frames were taken, on which tree, and what D1 measured before and after.
-	 */
 	"goalDoneFramePassNote",
-	/*
-	 * And its design-round-2 pass (both round-2 streams in one batch, plus the
-	 * non-gating rows agent-review round 3 and QA round 3 raised on the same head),
-	 * which is the only statement of what that batch changed in `src/`, why the tag's
-	 * step is one pixel wider than the row's, which five directories the new frames
-	 * are, and which surfaces were deliberately NOT photographed. Listed for the
-	 * reason every entry above is: a fold that starts from main's manifest drops it
-	 * without a word, and with it the count the `countsMean` paragraph beside it
-	 * explains.
-	 */
 	"goalDesignRoundTwoNote",
 ];
 

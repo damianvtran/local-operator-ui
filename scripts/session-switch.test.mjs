@@ -46,6 +46,15 @@ const bundle = await build({
 export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";`,
 		resolveDir: process.cwd(),
 	},
+	/*
+	 * The renderer's aliases are tsconfig paths, not node resolutions. The send
+	 * store now imports the composer's own store at runtime (the one return path
+	 * for a failed payload), so a fixture that bundles it has to resolve this.
+	 */
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@features": "./src/renderer/src/features",
+	},
 	bundle: true,
 	format: "esm",
 	platform: "node",
@@ -82,6 +91,8 @@ export const desktopResult = request => globalThis.__switchRequest(request);`,
 				builder.onLoad({ filter: /.*/, namespace: "echo-fixture" }, () => ({
 					contents: `export const echoPendingUser = () => {};
 export const retractPendingUser = () => {};
+export const retractLocalEcho = () => "retracted";
+export const peekLocalEcho = () => "unseen";
 export const discardPendingEchoes = () => {};`,
 					loader: "js",
 					resolveDir: process.cwd(),
@@ -360,7 +371,20 @@ test("the busy resend is bounded, and hands the refusal to the composer with the
 	const draft = store.getState().drafts[SEND_KEY];
 	assert.equal(draft.pending, false);
 	assert.equal(draft.errorCode, "runtime_busy");
-	assert.equal(draft.submittedText, SEND.text);
+	/*
+	 * NOTHING IS LATCHED FOR A REFUSAL LIKE THIS, AND THE PAYLOAD IS STILL THE
+	 * ROW'S - and the difference between those two facts is the change. A busy
+	 * owner says in its own code that it did not take the message, so the latch is
+	 * off: the pane shows no send in flight, and the app makes no claim about a
+	 * fate. The TEXT stays on the row as the retry rule's comparison basis
+	 * (`payloadMatchesClaim`), because that is what makes an unchanged re-send an
+	 * idempotent replay under the id the owner already answered, rather than a
+	 * second message from an owner that had in fact queued the first. The copy the
+	 * user acts on is in the composer (the store's one return path; its side of
+	 * that is pinned in `composer-send-failure.test.mjs`).
+	 */
+	assert.equal(draft.submittedText, "Review this");
+	assert.equal(draft.admissionAttempted, false);
 });
 
 test("the busy resend waits the backend's retry_after_ms, capped", async () => {
@@ -803,10 +827,16 @@ const CHAT_URL_BUILDERS = {
 		count: 1,
 		why: "the palette's chat-panel entry (a URL-first `path` target, navigated by the palette's own `path` case)",
 	},
-	"src/renderer/src/features/onboarding/components/onboarding-modal.tsx": {
-		count: 1,
-		why: "the onboarding flow's landing URL",
-	},
+	/*
+	 * `onboarding/components/onboarding-modal.tsx` left this table with the
+	 * create-agent step it landed on: its `/chat/${createdAgentId}` was the ONLY
+	 * interpolated chat URL in the file, and setup no longer creates an agent to
+	 * name one. What remains there is a literal `navigate("/chat")` - the same
+	 * landing Finish, Skip and Escape share - which builds no URL and so is not
+	 * this scan's subject. An interpolated chat URL returning to that file fails
+	 * here as an APPEARANCE, which is the point of keeping the entry out rather
+	 * than relaxing the count.
+	 */
 	"src/renderer/src/features/schedules/components/schedules-page.tsx": {
 		count: 1,
 		why: "the Schedules row's own `Open conversation`, which is also the cancel toast's path back to the conversation the confirm just promised stays",
@@ -875,6 +905,16 @@ const expectListed = (found, listed, what) => {
 
 const ENTRANCE_FILES = {
 	"chat-page.tsx": "src/renderer/src/features/chat/components/chat-page.tsx",
+	/*
+	 * THE SIDEBAR'S ENTRANCE MOVED WITH THE SIDEBAR. The rail and the chat list are
+	 * one column now, and it is mounted above the routes (`app.tsx`), so the rows
+	 * that switch conversations are the sidebar's own and no longer call back
+	 * through `chat-page.tsx`. The table follows the call site, which is the point
+	 * of it: an entrance that moved is still an entrance this file has to be able
+	 * to see.
+	 */
+	"sidebar-navigation.tsx":
+		"src/renderer/src/shared/components/navigation/sidebar-navigation.tsx",
 	"command-palette.tsx":
 		"src/renderer/src/features/command-palette/components/command-palette.tsx",
 };
@@ -937,11 +977,22 @@ test("every entrance writes the switch's URL with the commit, through one rule",
 			`${name} chains its URL write on the guard read`,
 		);
 	}
-	/* Two entrances live in `chat-page` (the sidebar's row and the `/chat` rebind); the palette's is the third. */
+	/*
+	 * One entrance lives in each of the three files now: the sidebar's rows, the
+	 * `/chat` rebind (which is still `chat-page.tsx`'s) and the palette's. The pair
+	 * that used to be counted in `chat-page` was the sidebar's row plus that rebind,
+	 * and the sidebar's row left with the sidebar.
+	 */
 	assert.equal(
 		readSource(ENTRANCE_FILES["chat-page.tsx"]).split("openConversation(")
 			.length - 1,
-		2,
+		1,
+	);
+	assert.equal(
+		readSource(ENTRANCE_FILES["sidebar-navigation.tsx"]).split(
+			"openConversation(",
+		).length - 1,
+		1,
 	);
 	assert.equal(
 		readSource(ENTRANCE_FILES["command-palette.tsx"]).split("openConversation(")

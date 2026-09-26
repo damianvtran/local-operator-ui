@@ -181,6 +181,33 @@ export type DesktopFeature =
 	| "profile_catalogue"
 	| "team_catalogue"
 	| "session_catalogue"
+	/**
+	 * `sessions.list` can be SCOPED, PAGED and COUNTED: `scope_kind`/`scope_name`,
+	 * `cursor`, `with_counts`, answered with `next_cursor`/`cursor_missing`/`scope`/
+	 * `counts`.
+	 *
+	 * ITS OWN KEY RATHER THAN A BUMP OF `session_catalogue` TO 4, on the rule this
+	 * union states in several places: an EXISTING surface must keep working against
+	 * a backend that lacks the new one. The existing surface here is the whole chats
+	 * list, and it keeps working only if the client can ASK whether the daemon
+	 * understands the new parameters - which matters because FastAPI silently
+	 * ignores unknown query parameters, so an un-gated `scope_kind=team&
+	 * scope_name=lopdev` would receive the UNSCOPED page and draw other teams' rows
+	 * under that team, and an un-gated `cursor` would receive page one again and
+	 * duplicate it. A bump to 4 would also overload "the catalogue's shape changed"
+	 * with "the catalogue can be paged", and would have to be bumped again by the
+	 * next shape change.
+	 *
+	 * It gates THREE promises together - the scope, the cursor and the census -
+	 * because they are one contract revision: a client that had the counts without
+	 * the scope could not render a group's count consistently with that group's
+	 * paged rows.
+	 *
+	 * ABSENT MEANS TODAY'S BEHAVIOUR EXACTLY: one unscoped `limit=500` request, the
+	 * badge from the rows the client holds, and every group expanded client-side
+	 * over that one page.
+	 */
+	| "session_catalogue_page"
 	/*
 	 * A session's code memory (the `sessions.variables.*` ops). A backend that
 	 * predates the surface simply does not advertise the key, so
@@ -214,9 +241,31 @@ export type DesktopFeature =
 	 * first send creates is the dead affordance R20 forbids.
 	 */
 	| "draft_selection"
+	/**
+	 * `sessions.draft` plus the draft allow-list on `events`/`watch`/`warm`, and
+	 * `sessions.create` accepting `draft_id`: a NEW chat's runtime can be engaged
+	 * from the first keystroke instead of on the send.
+	 *
+	 * Its own key rather than a bump of `draft_preview`/`draft_selection`, for
+	 * the rule this union states in several places: the draft pane is fully
+	 * useful without this — it simply pays the engage on the first send, exactly
+	 * as it always has — so a backend that cannot warm drafts must leave today's
+	 * wiring rather than lose the preview or the chips with it. Absent also
+	 * means NO mint call at all: the mint would spend a round trip learning 404
+	 * against every older daemon, from a keystroke, for nothing.
+	 */
+	| "session_draft_warm"
 	| "lifecycle"
 	| "mcp"
 	| "mcp_auth"
+	/**
+	 * The sessionless MCP catalog (`GET|POST /v1/desktop/mcp`,
+	 * `mcp.catalog*` ops). Its own key rather than a bump of `mcp`: the session
+	 * route is a working surface on every backend that has it, and Settings >
+	 * Integrations falls back to it when this key is absent rather than telling
+	 * the user to update for a page that still works.
+	 */
+	| "mcp_catalog"
 	/**
 	 * The run panel's child reader (`docs/run-sidebar.md` § 10.3).
 	 *
@@ -310,26 +359,30 @@ export type DesktopFeature =
 	 * `references`: the harness expands a draft's `@path` tokens into file content
 	 * before the message reaches the model.
 	 *
-	 * THE COMPOSER'S `@` AFFORDANCE IS GATED ON THIS, and it is the one gate in
-	 * this file whose key no backend advertises yet. That is the point of it rather
-	 * than an oversight: the expansion is a HARNESS behaviour, it is not released
-	 * (no tag through `v0.56.8` carries `local_operator/references.py`, and the half
-	 * that adds it is PR #1220, in review), and the harness publishes no route for
-	 * it — the whole feature is two Python modules, with no server surface at all.
-	 * So a composer that offered a picker and painted chips on today's install would
-	 * be promising an expansion nothing on the machine performs: the user picks a
-	 * file, gets a chip that says "this is a reference", and the model receives the
-	 * literal characters. `desktopFeatureEnabled` fails closed, so absent (or
-	 * absent `desktop_available`) means the picker never opens and no chip is ever
-	 * painted — the honest state, and the reason this key is here before its writer.
+	 * THE COMPOSER'S `@` AFFORDANCE IS GATED ON THIS, and this key's writer now
+	 * exists: `local_operator/server/routes/capabilities.py` publishes
+	 * `"references": 1` whenever `at_references_enabled()` is true, so a backend
+	 * built from that tree lights the picker, the chips and the composer tip up by
+	 * itself. Nothing else about this app changed to enable them, which is what the
+	 * key was for: the app shipped the affordance DARK, withheld until a backend
+	 * said it could carry a reference, because a composer that offered a picker and
+	 * painted chips on a backend that does not expand would promise an expansion
+	 * nothing on the machine performs — the user picks a file, gets a chip that says
+	 * "this is a reference", and the model receives the literal characters.
 	 *
-	 * WHAT HAS TO HAPPEN FOR THE AFFORDANCE TO APPEAR: the harness half adds
-	 * `"references": 1` to `features` in
-	 * `local_operator/server/routes/capabilities.py`. That is a one-line change on
-	 * the other side of this contract and it is NOT part of this repository. Named
-	 * where a reader will meet it (the PR body, the review finding) because it is
-	 * load-bearing for the release: until it lands, this feature ships dark by
-	 * design.
+	 * THE KEY IS THE ONE CAPABILITY HERE THAT A CURRENT BACKEND MAY OMIT, because
+	 * the harness's expansion has a per-call kill switch
+	 * (`LOCAL_OPERATOR_AT_REFERENCES`). A process told not to expand advertises
+	 * nothing rather than advertising `0`, so ABSENT covers two cases a client
+	 * cannot tell apart and must answer identically: a backend older than the key,
+	 * and a current one whose operator turned the expansion off. Both mean the same
+	 * thing to this composer — send the draft as typed, offer no affordance, and say
+	 * why when the user's own `@` brings the notice up.
+	 *
+	 * `desktopFeatureEnabled` fails closed, so absent (or an absent
+	 * `desktop_available`, which means no credential for the routes) means the picker
+	 * never opens and no chip is ever painted. A caller that has not read this far
+	 * gets the honest state by default.
 	 */
 	| "references"
 	/**

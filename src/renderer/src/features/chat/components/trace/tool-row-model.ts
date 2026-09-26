@@ -254,9 +254,21 @@ const STAND_IN_MARK = "… ";
  * `null` means the result had nothing to offer and the row should stay empty:
  * "no stand-in exists" is a different claim from "the stand-in is a blank",
  * and the caller renders the two differently (an empty slot against a mark).
+ *
+ * `labelPending` is the row's first label read still being in flight (see
+ * `CanonicalSessionView.labelPending`): the arguments are a `/history` read
+ * away, so the result is held back and the column stays empty while that first
+ * request is outstanding — never longer than `LABEL_HOLD_MAX_MS`. On the first
+ * frame of a mid-turn join nearly every seeded row is in this state, and a
+ * column of result lines (`… {"text": 200, "solo_cpu": 0.08…`) reads as the
+ * commands that ran. Once the read settles the caller passes `false` and the
+ * stand-in returns for the calls that really have no arguments to find.
  */
-export function outputFallbackLine(output: string | null): string | null {
-	if (!output) return null;
+export function outputFallbackLine(
+	output: string | null,
+	labelPending = false,
+): string | null {
+	if (!output || labelPending) return null;
 	for (const line of output.split("\n")) {
 		const trimmed = line.trim();
 		if (!trimmed) continue;
@@ -439,22 +451,62 @@ export function toolCategory(toolName: string): ToolCategory {
 }
 
 /**
- * The shared name column's floor and ceiling, in characters.
+ * The VERB a ledger row opens with, in the user's terms (chat redesign §E1;
+ * design round 1, D5).
  *
- * `TOOL_NAME_COL = 8` and `TOOL_NAME_COL_MAX = 24` (transcript.py:242-243).
- * The column is shared across every visible row so names stack into one edge
- * and the summaries beside them start on one rail; it GROWS to the longest
- * visible name rather than being fixed, because a transcript of `read`/`edit`
- * calls should not pay 24 characters of gutter for a tool it never called.
+ * The row used to print the tool's WIRE NAME in its first column - `read`,
+ * `web_search`, `bash` - in a fixed-width column shared by every row, so a
+ * snake_case identifier sat in the sans face looking like code in the wrong
+ * font, and a short name left a hole before the object. §E1's row is a
+ * sentence: `Ran pnpm vitest run`, `Read src/chat.tsx`, `Searched the web
+ * sidebar sections` - the verb in sans, the object in mono right after it.
+ *
+ * `settled` is the past tense a finished row prints (failed rows too: "Ran",
+ * with `failed` on the trailing edge, reads as what happened); `running` is the
+ * present participle a live row prints. The glyph beside the verb still carries
+ * the tool's identity (`tool-glyphs.ts`), so the verb can be plain English.
+ *
+ * `named` is false for a tool this table does not know - an MCP call, or a
+ * builtin added after this table - where a generic verb (`Called`) says
+ * nothing about WHICH call it was, so the row keeps the tool's display name as
+ * the head of its object (`Called create_issue title=...`) rather than losing
+ * the identity the old column carried.
  */
-export const TOOL_NAME_COL_MIN = 8;
-export const TOOL_NAME_COL_MAX = 24;
+export type ToolVerb = { settled: string; running: string; named: boolean };
 
-/** The shared column width for a set of visible tool names. */
-export function toolNameColumn(names: readonly string[]): number {
-	let longest = 0;
-	for (const name of names) longest = Math.max(longest, name.length);
-	return Math.min(TOOL_NAME_COL_MAX, Math.max(TOOL_NAME_COL_MIN, longest));
+const TOOL_VERBS: Record<string, Omit<ToolVerb, "named">> = {
+	bash: { settled: "Ran", running: "Running" },
+	eval: { settled: "Ran Python", running: "Running Python" },
+	read: { settled: "Read", running: "Reading" },
+	write: { settled: "Wrote", running: "Writing" },
+	edit: { settled: "Edited", running: "Editing" },
+	glob: { settled: "Listed", running: "Listing" },
+	grep: { settled: "Searched", running: "Searching" },
+	web_search: { settled: "Searched the web", running: "Searching the web" },
+	web_fetch: { settled: "Fetched", running: "Fetching" },
+	browser: { settled: "Browsed", running: "Browsing" },
+	todo: { settled: "Updated todos", running: "Updating todos" },
+	wake: { settled: "Scheduled", running: "Scheduling" },
+	list_variables: { settled: "Listed variables", running: "Listing variables" },
+	read_variable: { settled: "Read variable", running: "Reading variable" },
+	task: { settled: "Delegated", running: "Delegating" },
+	agent: { settled: "Delegated", running: "Delegating" },
+	team: { settled: "Delegated", running: "Delegating" },
+	ask: { settled: "Asked", running: "Asking" },
+	send: { settled: "Sent", running: "Sending" },
+	hub: { settled: "Messaged", running: "Messaging" },
+	peer: { settled: "Received", running: "Receiving" },
+};
+
+/**
+ * The verb for a tool name. Case-insensitive for the reason `toolIcon` is: the
+ * name is model-controlled, and a provider that echoes `Bash` must not fall to
+ * the generic verb.
+ */
+export function toolVerb(toolName: string): ToolVerb {
+	const known = TOOL_VERBS[toolName.trim().toLowerCase()];
+	if (known) return { ...known, named: true };
+	return { settled: "Called", running: "Calling", named: false };
 }
 
 /* ----------------------------------------------------------- diff body */
@@ -590,6 +642,47 @@ export function preferDiff(
 	if (next === null) return previous;
 	if (sameDiff(next, previous)) return previous;
 	return next;
+}
+
+/**
+ * The `+N` / `-M` counters a result reports, under `preferDiff`'s rule.
+ *
+ * The counters and the diff body come from one `details` object, and a frame the
+ * live-event budget stripped carries NEITHER. Only the body used to be guarded,
+ * so a conversation opened mid-turn showed an `edit` row with no counts whose
+ * expansion still held the diff: the snapshot applies its durable page first
+ * (the row gets `details = {added: 91, removed: 19, diff}`), then `applyLiveSeed`
+ * re-applies the seed's `tool_execution_end` for the same call with
+ * `details: null` — `_bound_live_result_in_place` (session/frontend_state.py)
+ * drops `details` once it costs more than a quarter of the row's share, and with
+ * 100 retained ends the share is 560 characters, so the limit is 140 and nearly
+ * every edit in a busy turn loses it. Reading counts out of `null` wrote 0/0 over
+ * the durable counts while `preferDiff` kept the body beside them.
+ *
+ * So: a frame with NO `details` object says nothing about the counts and keeps
+ * `previous`; a frame WITH one is the producer's statement and wins, including a
+ * statement of zero (the same "absent vs stated" split `preferDiff` makes). Kept
+ * here beside `preferDiff` so the two guards on one `details` object are one
+ * rule in one file and cannot drift apart again.
+ *
+ * Counts follow `diffCount` (the TUI's `_diff_counts`): only a positive integer
+ * counts, anything else is zero.
+ */
+export function preferDiffCounts(
+	details: unknown,
+	previous: { added: number; removed: number } | null,
+): { added: number; removed: number } {
+	if (!details || typeof details !== "object") {
+		return {
+			added: previous?.added ?? 0,
+			removed: previous?.removed ?? 0,
+		};
+	}
+	const source = details as Record<string, unknown>;
+	return {
+		added: diffCount(source.added),
+		removed: diffCount(source.removed),
+	};
 }
 
 /**

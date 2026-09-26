@@ -31,6 +31,7 @@
 
 import {
 	EMPTY_TRANSCRIPT,
+	RECONCILE_TAIL_ENTRIES,
 	RECONCILE_TAIL_MAX_ENTRIES,
 	type TranscriptImage,
 	type TranscriptState,
@@ -41,10 +42,22 @@ import {
 	applyLiveSeed,
 	clearTranscript,
 	labelGapCandidates,
+	labelTargetsBehind,
+	labelTargetsBehindIds,
 	markLiveRecordsTruncated,
+	pageLabels,
+	pageOpensTurn,
+	pageOrphanResultInstants,
+	pageOrphanResults,
+	pagePassedOldestStart,
 	reconcileLimit,
+	reconcileWalkDone,
+	removeLocalRecord,
 	removeRecord,
+	seedCallStarts,
 	seedCallsMissingLabels,
+	seedSettledCalls,
+	seedWaitingComposes,
 } from "@features/chat/canonical/transcript-reducer";
 import { tailCarriesOutcome } from "@features/chat/components/compact-receipt";
 import { modelSelector } from "@features/chat/session-status/session-model";
@@ -52,8 +65,18 @@ import {
 	desktopResult,
 	subscribeDesktopStream,
 } from "@shared/api/local-operator/desktop-api";
+import { useAsideStore } from "@shared/store/aside-store";
+/*
+ * Read at APPLY TIME rather than subscribed to (U7): the stopped-turn fact is
+ * consulted inside the stream's own callback, where a selector has no meaning - the
+ * value is needed at the instant a frame lands, not at the instant a component
+ * renders. `chat-page`'s `send` reaches for the same `getState()` for the same
+ * reason.
+ */
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { dropPaint, readPaint, writePaint } from "@shared/store/paint-cache";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { desktopRequestTimeoutMs } from "../../../../shared/desktop-contract";
 import {
 	acceptFrontendReplace,
 	mergeCompletionAttention,
@@ -74,6 +97,69 @@ import {
 /* The child-pulse rule (§ 5.3): the event set, the id rule and the bump. */
 import { applySubagentPulse, seedSubagentPulses } from "./subagent-pulse";
 
+/**
+ * Route the aside chunks in one frame batch to their own store.
+ *
+ * WHY THIS IS HERE RATHER THAN IN THE TRANSCRIPT REDUCER, and why it is not a
+ * branch of the loop below either. An `aside_delta` is a live-only chunk of an
+ * OFF-RECORD exchange (see the frame's own comment): it is deliberately not an
+ * `event`, precisely so it can never reach `applyEvent`/`applyLiveSeed` and be
+ * painted into the conversation the aside promised not to join. So it is taken
+ * out of the batch before the reducer sees it, keyed by `aside_id`, and landed in
+ * `aside-store` where the panel reads it.
+ *
+ * IT RUNS OUTSIDE THE React UPDATER below, which is load-bearing rather than
+ * tidy: an updater is required to be pure and React invokes it twice under
+ * StrictMode, so appending a chunk from inside it would double that chunk's text
+ * on screen — a defect that would look like the model stuttering, and one the
+ * authoritative settle would then hide at the end of the answer.
+ */
+function applyAsideDeltas(frames: DesktopSessionFrame[]): void {
+	for (const frame of frames) {
+		if (frame.type !== "aside_delta") continue;
+		useAsideStore
+			.getState()
+			.applyAsideDelta(frame.payload.aside_id, frame.payload.delta);
+	}
+}
+
+/**
+ * Whether a frame batch can move the session VIEW at all.
+ *
+ * ONLY TWO TYPES CANNOT, and they are exactly the two the fold in the flush
+ * treats as invisible: `heartbeat` (skipped on the first line of the loop, and
+ * never touching a view field) and `aside_delta` (routed to `aside-store` by
+ * `applyAsideDeltas` above, and deliberately not a transcript event). Everything
+ * else - `open`, `gap`, `snapshot`, `event`, `attention`, `frontend.update`,
+ * `frontend.replace` - writes something the pane paints.
+ *
+ * WHY THE DISTINCTION IS WORTH A FUNCTION (review round 1, F5). The flush's
+ * `setView` builds and returns a FRESH view object every time it runs, so a
+ * batch of nothing but aside chunks re-rendered the whole pane - the composer
+ * subtree included - once per chunk, at chunk cadence, for the whole answer. The
+ * pane-wide re-render per batch is pre-existing; what the aside adds is a new
+ * source of batches at that cadence.
+ *
+ * EXISTS OUTSIDE THE UPDATER, taking the batch as an argument, because the two
+ * rules it would otherwise restate (a frame's type, and whether a chunk belongs
+ * to the view) live one function above and must not be spelled a second time.
+ *
+ * EXPORTED so the classification itself is assertable, not merely its spelling
+ * (review round 2, F8): the bail-out that depends on it is one line inside an
+ * effect no node test can mount, so a source-text assertion would pass with the
+ * condition flipped, with an `||` for the `&&`, or with a third inert type added
+ * — each of which is a transcript that stops updating while the suite stays
+ * green. `scripts/btw-aside.test.mjs` drives it by value instead, including the
+ * fail-safe: `some()` defaults to "moves the view" for every type that is not
+ * one of the two inert ones, so a frame type this function has never heard of
+ * repaints rather than going silent.
+ */
+export function batchMovesView(frames: DesktopSessionFrame[]): boolean {
+	return frames.some(
+		(frame) => frame.type !== "aside_delta" && frame.type !== "heartbeat",
+	);
+}
+
 export type CanonicalSessionStatus =
 	| "connecting"
 	| "live"
@@ -83,6 +169,39 @@ export type CanonicalSessionStatus =
 export type CanonicalSessionView = {
 	status: CanonicalSessionStatus;
 	frontend: CanonicalFrontendState | null;
+	/**
+	 * The last AUTHORITATIVE `frontend` this pane painted, held across a
+	 * transient stream gap.
+	 *
+	 * WHY THIS IS A SECOND FIELD RATHER THAN SIMPLY NOT CLEARING `frontend`.
+	 * `frontend` is not "the readings we have", it is a statement about THIS
+	 * epoch: the flush computes `snapshotted = next.frontend !== null` at the top
+	 * of every batch, and that boolean is what routes a replayed `event` into the
+	 * scratch transcript instead of letting it apply over newer snapshot text
+	 * (see the replay/snapshot ordering contract on the loop). A gap clears
+	 * `frontend` precisely so the frames of the replacement stream are treated as
+	 * replay again; leaving the old object there would make the next batch treat
+	 * a replayed delta as post-snapshot state, which is the older-text-regresses-
+	 * newer-text bug that ordering exists to prevent.
+	 *
+	 * So the hook keeps BOTH facts. `frontend` keeps meaning "a snapshot for the
+	 * current epoch has landed"; this holds the readings the pane was last told,
+	 * for the surfaces that must not blank while a reconnect is in flight — the
+	 * composer's readouts. It is REPLACED WHOLESALE by the next authoritative
+	 * frontend (never merged field-by-field: a half-old reading is a state the
+	 * owner never published), and it is dropped on every state that is terminal
+	 * or that belongs to another conversation: the FOUR terminal `unavailable`
+	 * writers in the stream effect (the snapshot deadline, the 404, the spent
+	 * retry budget, and the `HISTORY_UNREADABLE` arm that gives up on
+	 * `/history`), a genuine session change, and `/clear`. Each of those writes
+	 * sits beside the reason it exists.
+	 *
+	 * IT IS NOT A LIVE CLAIM, and the surfaces that read it must not present it
+	 * as one: `status` is `reconnecting` for exactly as long as this is the only
+	 * frontend there is, and the status strip marks the readings it draws from it
+	 * (`SessionStatusStripProps["held"]`).
+	 */
+	heldFrontend: CanonicalFrontendState | null;
 	/**
 	 * A model the user just chose, painted before the owner confirms it.
 	 *
@@ -180,7 +299,114 @@ export type CanonicalSessionView = {
 	 * would make the first refetch look like the first change.
 	 */
 	subagentPulses: Readonly<Record<string, number>>;
+	/**
+	 * Call ids whose FIRST label read is still in flight.
+	 *
+	 * A viewer that joins a turn in flight is handed settled rows with no
+	 * arguments (the seed keeps only each call's `tool_execution_end`), and the
+	 * row's object column then falls back to the first line of the call's OUTPUT
+	 * (`outputFallbackLine`). That stand-in is right for a call that truly has no
+	 * arguments to find, but on the first frame of an open it is wrong for almost
+	 * every row: the arguments are one `/history` read away, so the operator saw a
+	 * run of `bash … {"text": 200, …` rows that corrected themselves only later.
+	 * While a row's id is in here the row renders the column EMPTY instead. The
+	 * id leaves when the walk's FIRST request settles - answered or failed, which
+	 * is the moment "a read is in flight" stops being true - or after
+	 * `LABEL_HOLD_MAX_MS` if that request never answers at all, whichever comes
+	 * first. After that the stand-in comes back exactly as before, while the
+	 * retries that are still running fill the row's label in when they land.
+	 *
+	 * First attempts for the CONVERSATION only, not per mount: a retry must not
+	 * blank a stand-in the reader has already seen, and neither must a switch back
+	 * to a conversation whose rows were painted before (round 1, QA Q1).
+	 */
+	labelPending: ReadonlySet<string>;
+	/**
+	 * The ids whose HOLD a refusal ended, and whose MARK therefore stands in its place.
+	 *
+	 * WHY IT IS NOT A HOLD (round 4). A walk that spends `LABEL_GAP_ATTEMPTS` attempts
+	 * on failures stands down having named nothing, and at that instant the rule has
+	 * no hold to justify: no read is in flight for these calls any more (term (a)),
+	 * and asking term (b) - "a durable round ending can still name it" - holds them to
+	 * the backstop, which measured 25 182 ms of blank-then-mark on the app (review
+	 * round 3's Q-2 route) where main settles in ~188-324 ms.
+	 *
+	 * WHY IT IS NOT A RELEASE EITHER. The two routes that reach that stand-down are
+	 * indistinguishable at the moment of the decision. A permanently refusing owner
+	 * means no read can ever name these calls, so their stand-in - the first line of
+	 * the call's OUTPUT - is the truth, and main is right to paint it. An owner that
+	 * refuses now and answers at the next round ending means a read IS coming, and a
+	 * row that stated the output in the meantime is the operator's reported symptom,
+	 * exactly: `26 stand-in frames -> command`, output text on screen from 125 ms to
+	 * 4 790 ms, measured on this branch's own rig when the release was taken at the
+	 * stand-down.
+	 *
+	 * SO THE REFUSAL CHANGES WHAT THE ROW SHOWS WHILE THE QUESTION IS OPEN, not which
+	 * of the two answers it guesses. The hold ends - the row is no longer owed a
+	 * blank - and the MARK takes its place: one glyph meaning "a value belongs here
+	 * and is not known yet", which states no fact and therefore cannot be the wrong
+	 * one. It has THREE exits, and the third is the one easiest to reason wrongly about:
+	 * (1) a later read that names the call gives the command; (2) a RELEASE EVENT at
+	 * which the rule no longer owes the row - `releaseLabelPending` prunes the mark by
+	 * the same `labelOwed` predicate that releases the hold - gives the stand-in; and
+	 * (3) the backstop's own deadline gives the stand-in too, for a conversation whose
+	 * reads never settle. The turn's own ending is NOT a fourth exit: nothing is keyed
+	 * to it, and it clears a mark only through (2), at the next release event - which is
+	 * what the refused-plus-round-ending arm measures, the stand-in at ~4 s rather than
+	 * at the bound. Nor is it a licence to release early: a round ending is exactly
+	 * where the retry that names these calls is issued from, and while that retry is out
+	 * the row is owed a read again (term (a)), so the retry's own answer - command or
+	 * stand-in - is what the reader gets.
+	 *
+	 * THE MARK ARRIVES AT THE RELEASE rather than after `LABEL_HOLD_MARK_MS`: the hold
+	 * it replaced is already over, so there is no blank left for a clock to age, and
+	 * the reader gets the cue in the frame the refusal was learned (measured 123 ms
+	 * against the 25 182 ms the hold cost). That timing is a DESIGN decision this
+	 * branch's coder took on the manager's instruction and handed to the designer
+	 * (design round 4): the mark's own design - one static textless glyph, `--lo-ink-dim`,
+	 * no motion, no count, no output text, `title` suppressed - is unchanged.
+	 */
+	labelMarked: ReadonlySet<string>;
+	/**
+	 * Whether a held column should show the LATE-HOLD mark instead of nothing.
+	 *
+	 * A blank cell cannot tell the reader that an answer is coming, and on this bound
+	 * the blank can last as long as a read does (design round 2, D6). Two seconds
+	 * into a hold - long enough that a merely slow read has answered
+	 * (`LABEL_HOLD_MARK_MS`) - the held cells paint a static, textless, DIM mark: no
+	 * motion, no count, no output text, and it resolves to the command or to the
+	 * stand-in exactly as the blank did. One flag for the batch rather than a clock
+	 * per row: the hold is armed per batch, and per-row ink on the first frame is
+	 * what D3 declined.
+	 */
+	labelHoldLate: boolean;
 };
+
+/** The shared empty `labelPending`, so an unchanged view keeps its identity. */
+const NO_LABELS_PENDING: ReadonlySet<string> = new Set();
+
+/** The shared empty `labelMarked`, for the same reason. */
+const NO_LABELS_MARKED: ReadonlySet<string> = new Set();
+
+/**
+ * `set` without `drop`, keeping its IDENTITY when nothing was removed.
+ *
+ * The view is committed on every page, and a set that is rebuilt unconditionally
+ * re-renders the pane for a release that released nothing. Returning the same
+ * reference is what tells React the answer did not change.
+ */
+function withoutLabels(
+	set: ReadonlySet<string>,
+	drop: Iterable<string>,
+): ReadonlySet<string> {
+	let left: Set<string> | null = null;
+	for (const id of drop) {
+		if (!set.has(id)) continue;
+		left = left ?? new Set(set);
+		left.delete(id);
+	}
+	return left ?? set;
+}
 
 export type CanonicalSessionHandle = CanonicalSessionView & {
 	/**
@@ -277,8 +503,10 @@ export type CanonicalSessionHandle = CanonicalSessionView & {
 	 * `Loading conversation…` and its shimmer above the splash the band had
 	 * restored - two contradictory claims on one screen.
 	 *
-	 * Both terms are this hook's own inputs, which is why the rule is here and
-	 * said once:
+	 * Both readers are claims this hook composes once: `enabled`/`sessionId` are
+	 * "there is a stream that owes us a page", `isSession` is the caller's answer
+	 * to whether that id is a SESSION's, and `hydrated` is "a page has been
+	 * applied". The rule lives here, and it is said once:
 	 *
 	 *   - `enabled`/`sessionId` are "there is a stream that owes us a page". A
 	 *     draft has neither, and a caller that holds the stream off on purpose
@@ -290,6 +518,16 @@ export type CanonicalSessionHandle = CanonicalSessionView & {
 	 *     over rows that had simply not arrived. Both call sites pass
 	 *     `Boolean(sessionId)` today, so no caller is in that state - the
 	 *     sentence is here for the one that would be.
+	 *   - `isSession` is the caller's answer to "is that id a SESSION's?", the one
+	 *     fact this hook cannot derive - a NEW chat's draft now has a stream of
+	 *     its own (`sessions.draft`'s minted id, the bridge that holds the warm)
+	 *     and the two ids have the same shape. A draft's subscription is not a
+	 *     page anyone is waiting for: no conversation exists yet, so the pane
+	 *     keeps its empty state until the send creates one (UX round 1, U1: the
+	 *     pane held `Loading conversation…` over that state for the ~200 ms the
+	 *     draft's first frame took). Until drafts could warm, `enabled` was false
+	 *     for them, and this term is what keeps that answer once the pane holds a
+	 *     draft stream.
 	 *   - `hydrated` stays false for a session whose stream failed, so a real
 	 *     conversation whose cold history is in flight (or whose read failed)
 	 *     keeps waiting instead of asserting it is empty over rows that had
@@ -450,6 +688,26 @@ const DURABLE_ROUND_ENDINGS = new Set(["turn_end", "agent_end"]);
 const LABEL_GAP_ATTEMPTS = 2;
 
 /**
+ * How many durable rows the SETTLE path may read back per conversation.
+ *
+ * A settle's read is SPECULATIVE, and it is the only read in this file that is:
+ * the runtime appends a round's assistant row and its tool results together, so
+ * a call that has just settled may belong to a step that is still open, and the
+ * row the read is looking for does not exist yet. The read is still worth
+ * taking - for a single-call step it is the row behind the paint, and it is what
+ * makes the ordinary case right in the first frame - but it must not cost the
+ * call its retry budget, which is spent at a durable round ending where a read
+ * can always succeed (see `settled` and the retry path in the flush). What is
+ * left to bound is the waste, and `LABEL_GAP_ATTEMPTS` cannot bound it because a
+ * settle is not charged there: this is the whole of the speculative path's
+ * allowance - one `RECONCILE_WALK_MAX_ROWS` walk per conversation, spent a tail
+ * page at a time when the frame states its call's start (see the floor the
+ * settle's own `started_at_epoch` feeds), and never spent again inside one
+ * renderer. Review round 1, R2.
+ */
+export const LABEL_SETTLE_ROWS_MAX = 500;
+
+/**
  * How many durable rows one reconcile is allowed to read back in total.
  *
  * The read walks BACKWARDS in pages until a fetched page overlaps the row the
@@ -460,14 +718,175 @@ const LABEL_GAP_ATTEMPTS = 2;
  * absence cannot be closed from this side at all and is the owner's to fix in
  * the snapshot it publishes.
  */
-const RECONCILE_WALK_MAX_ROWS = RECONCILE_TAIL_MAX_ENTRIES;
+export const RECONCILE_WALK_MAX_ROWS = RECONCILE_TAIL_MAX_ENTRIES;
+
+/**
+ * How many `sessions.history` REQUESTS one reconcile walk may make.
+ *
+ * A second bound on the same walk, because the row bound only bounds a route
+ * that fills its pages. `rows` grows by what a page actually returns, so an
+ * owner that answers a request for 100 rows with 1 row and `has_more: true`
+ * costs five hundred sequential requests before the row bound is reached — the
+ * walk's cost would be the server's to choose rather than ours. Six is above
+ * every shape the row bound can produce when pages are full (500 rows in
+ * `RECONCILE_TAIL_ENTRIES`-sized pages is five), so it never bites the honest
+ * case and always stops the dishonest one. Round 1, R4.
+ */
+export const RECONCILE_WALK_MAX_REQUESTS = 6;
+
+/**
+ * The longest a first-paint label hold may last, in milliseconds.
+ *
+ * SET FROM THE TRANSPORT'S OWN BOUND FOR THIS OP, NOT FROM A COMFORT NUMBER.
+ * The hold leaves a row's object column EMPTY so the first frame cannot show a
+ * call's output where its command belongs (see `labelPending`), and the only
+ * question this constant answers is "when is a read that has not answered no
+ * longer in flight?" - which nothing in this file can know, and the transport
+ * can: `desktopRequestTimeoutMs("sessions.history")` is the deadline the
+ * renderer itself aborts that request at (`desktopRequestDeadlineMs`'s 20 s
+ * control bound plus `DESKTOP_DEADLINE_MARGIN_MS`). A cap at or below it fires
+ * while a legitimately slow read is still running and paints the stand-in
+ * anyway - the operator's own flash, reintroduced by the backstop that exists to
+ * prevent it.
+ *
+ * MEASURED, both ways: a 3 s cap painted the stand-in for 66 ms before a 3.07 s
+ * page landed (design round 1), and both the base and the previous head showed
+ * stand-ins ahead of a 6 s page (360 frames each: reviewer and QA). A 2 s cap
+ * would be worse. So the number here is the transport's, and the hold itself is
+ * normally ended by the ANSWER rather than by the clock.
+ *
+ * IT BOUNDS ONE ATTEMPT, AND IT IS RE-ARMED PER ATTEMPT (round 2, U4; round 3,
+ * Q-4). The transport's deadline is what turns a wedged invoke into a rejection -
+ * the sentence that used to stand here claimed the opposite of what `withDeadline`
+ * does (round 2, n3). Round 3 measured that this paragraph described code which
+ * did not exist: the effect was a single shot armed once per batch, so it painted
+ * the stand-in WHILE A READ WAS IN FLIGHT - 26 rows showing the call's OUTPUT from
+ * 25 124 ms with the read issued at 20 005 ms still running, a 4.97 s window of the
+ * wrong text - and the wedge ended at 25 159 ms, 5.2 s into attempt two's own
+ * window. The effect now defers to the read it is waiting for: while anything held
+ * is in flight it re-arms, and it fires only when nothing is.
+ *
+ * WHAT THAT COSTS, MEASURED ON THE BUILT APP rather than reasoned from the
+ * constants (round 3's own rig, re-pointed at this head; `--history-mode never`,
+ * 80 s, stride 2). The owner accepts `/history` and never answers, so the wire is
+ * read #1 at 0 ms and read #2 at 20 004 ms (attempt one ended by the transport's
+ * own 20 s bound) and nothing after: attempt two ends at 40.0 s, which is this
+ * band's two attempts spent, and the walk stands down. The column is blank
+ * 123 -> 2 126 ms, carries the mark from 2 126 ms, and releases the stand-in at
+ * **50 126 ms** - two of these windows, the second fire finding nothing in flight.
+ * The previous head measured **25.0 s** here and `main` **3.2 s** (round 3, Q-4).
+ *
+ * SO ~50 s IS THE WORST CASE, and it is the number this paragraph used to assert
+ * as a claim: round 3 refuted it against the old effect, where it would have needed
+ * two arming events and the arm produced one. It is the same arithmetic the fix
+ * makes true - one window for the re-armed fire, plus the last attempt's own
+ * deadline inside it - and it buys the window in the sentence above: the app never
+ * states a call's OUTPUT as the row's identity while a read is out for that call.
+ * The mark stands through the whole of it, so a reader is not left looking at an
+ * unexplained blank column; what is long is not unstated, which is the point of
+ * `LABEL_HOLD_MARK_MS`.
+ *
+ * WHAT IT TRADES, stated rather than implied: against an owner that accepts
+ * `/history` and never answers, rows stay objectless until the transport gives
+ * up at this same bound, instead of for 3 s (round 1's design D1 / QA Q3 read
+ * the opposite trade as the honest one for a wedged owner; the operator's
+ * 2026-09-25 decision reverses it, because a hold cut short by a clock is the
+ * exact screen the report is about, while a hold bounded by the transport is a
+ * read that is still genuinely in flight).
+ *
+ * `LABEL_HOLD_MARK_MS` below is the other half of the same problem for a read that
+ * IS still in flight, and round 4 makes one case of its own: a hold that ends in a
+ * REFUSAL becomes a mark immediately rather than after that window.
+ */
+export const LABEL_HOLD_MAX_MS = desktopRequestTimeoutMs("sessions.history");
+
+/**
+ * How long a held column stays BLANK before it shows the late-hold mark, in
+ * milliseconds.
+ *
+ * Design round 2's D6, and its number: a blank cell cannot tell the reader an
+ * answer is coming, while the stand-in is a wrong fact and a spinner is motion the
+ * round declined. Two seconds is late enough that a merely slow read - the repo's
+ * own read figure is 0.5-1.5 s - has answered and painted its command, so the mark
+ * appears on the reads that are actually worth a cue and not on the ones that were
+ * about to land. The cost, stated: a read answering in 2.0-2.5 s paints the mark
+ * and then the command 100-500 ms later, one extra state on a row that was
+ * going to change at that instant anyway.
+ *
+ * MEASURED ON THE ARMED TREE, not inferred from the constant (design round 3,
+ * § 2): arrival at 2 004 / 2 006 / 2 007 / 2 022 / 2 026 ms from the hold batch
+ * across five panes, and 0 marks on a 1 500 ms read whose hold ended at
+ * 1 566 ms. The threshold was re-decided at that point and kept: raising it to
+ * 3 000 ms would leave the reported case - a 3.0 s page - unmarked for the whole
+ * hold, which is the case D6 was raised against.
+ *
+ * THE NUMBER WAS DEAD UNTIL ROUND 3 (D7): the flag it feeds had no writer, so the
+ * constant was read by nothing at all. `labelMarkEffect` below is what reads it.
+ *
+ * ROUND 4 GIVES IT A SECOND, EARLIER READER, AND THAT TIMING IS THE DESIGNER'S
+ * SURFACE RATHER THAN THIS FILE'S. When a walk stands down on a REFUSAL - the read
+ * path refused and named nothing - the hold does not survive to be aged by this
+ * clock: it ends, and the MARK takes its place in the same frame (measured 123 ms,
+ * against 25 182 ms for holding to the backstop). The reader gets a cue promptly
+ * instead of a blank column for 25 s, and no call's OUTPUT can be painted while a
+ * later read may still name it. The mark itself is unchanged - same glyph, same ink,
+ * same absence of motion, count and title - so what moved is only WHEN it appears on
+ * that route, which design round 4 is asked to judge; see `labelMarked`.
+ */
+export const LABEL_HOLD_MARK_MS = 2_000;
+
+/**
+ * What one reconcile walk is trying to label, when it is a label read at all.
+ *
+ * - `targets`: the calls this read is FOR (the seed's unlabelled calls plus a
+ *   round end's retries);
+ * - `order`: every call the seed settled, oldest first, INCLUDING the ones a
+ *   page already labelled — the positions `labelTargetsBehind` needs to tell a
+ *   target older than what was read from one the running round has not
+ *   written yet;
+ * - `every`: `order` and `targets` as one set, the ids a fetched page is
+ *   scanned for;
+ * - `found`: calls the snapshot's own tail page already named, so the walk
+ *   starts knowing how far back that page reached;
+ * - `pending`: the ids this walk put in `labelPending`, released when it ends.
+ */
+type LabelWalk = {
+	targets: ReadonlySet<string>;
+	order: readonly string[];
+	every: ReadonlySet<string>;
+	found: ReadonlySet<string>;
+	pending: readonly string[];
+	/**
+	 * Call id -> the epoch MILLISECONDS each call started, from the seed's own
+	 * frames (`seedCallStarts`). The walk stops once a page's oldest row predates
+	 * the oldest unlabelled target's instant (`pagePassedOldestStart`) — the one
+	 * floor that does not depend on finding a turn's opening row.
+	 */
+	starts: ReadonlyMap<string, number>;
+	/**
+	 * The targets still waiting at a gate (`seedWaitingComposes`): the only startless
+	 * calls whose missing instant does NOT refuse the floor (round 6, R16).
+	 */
+	waiting: ReadonlySet<string>;
+};
+
+/** A reconcile that is not a label read: connect to the painted rows, nothing more. */
+const NO_LABEL_WALK: LabelWalk = {
+	targets: new Set(),
+	order: [],
+	every: new Set(),
+	found: new Set(),
+	pending: [],
+	starts: new Map(),
+	waiting: new Set(),
+};
 
 /**
  * Mounted transcripts, by session, that an optimistic echo can reach.
  *
  * The seam exists because the STORE paints the echo (it is the only place that
  * knows the session id and the admission request id at the same moment, and it
- * must do so before its first `await`), while this hook owns `setView`. A
+ * must do so before its first `await`), while this hook owns `commitView`. A
  * direct import the other way would make the store depend on React state.
  */
 const echoTargets = new Map<
@@ -499,6 +918,327 @@ const echoTargets = new Map<
  * back) re-registers over the previous entry, whose cleanup is identity-checked.
  */
 const resyncTargets = new Map<string, () => void>();
+
+/**
+ * What each conversation's label read-back has learned and already paid for.
+ *
+ * PER CONVERSATION, NOT PER MOUNT, and that is the whole point of it being a
+ * module-level map rather than the refs it replaces. A session switch unmounts
+ * the pane, so anything held in a ref dies with it and the conversation is met
+ * as a stranger on the way back — which is what round 1 measured (QA Q1):
+ * switching away from a turn in progress and back re-blanked rows whose
+ * stand-in the reader had ALREADY seen, for the length of the re-open read.
+ * A row that has been painted once has been painted; only a first paint may be
+ * held empty.
+ *
+ * What it holds, per conversation:
+ *
+ * - `attempts`: call id -> how many read-backs have been spent on it. The same
+ *   bookkeeping the ref held before, now surviving the switch;
+ * - `depth`: the deepest a label read has had to go, in rows, so a later retry
+ *   starts where the last walk ended instead of re-paying its way down (see
+ *   `labelDepth` in the walk below);
+ * - `order`: the last snapshot seed's settled calls, oldest first, which the
+ *   round-end retry needs to tell "older than what was read" from "the running
+ *   round has not written it yet".
+ *
+ * BOUNDED BY CONVERSATIONS, the same way `paintCache` is bounded by bytes: at
+ * most `LABEL_GAP_SESSIONS_MAX` of them are kept, oldest-inserted evicted first,
+ * and each conversation's `attempts` is itself capped at
+ * `LABEL_GAP_MAX_TRACKED` (evicted oldest-first as it fills). The entry is
+ * touched on every use so the conversations in play are the ones retained.
+ */
+type LabelGapState = {
+	attempts: Map<string, number>;
+	/**
+	 * The ids whose first paint this conversation has ALREADY held empty.
+	 *
+	 * Its own record rather than a reading of `attempts`, and only ever added to:
+	 * `attempts` is the retry BUDGET and an id leaves it the moment the transcript
+	 * learns its arguments, which is exactly when the hold has done its job. Keyed
+	 * off that map the hold was re-armed for calls whose labels an earlier read had
+	 * already FOUND — the same blanking Q1 measured, on a more common path (round
+	 * 2, N1; the reviewer reproduced it 3 of 3 targets with one benign live frame
+	 * between two mounts, and QA's shipped-app run could not reach it at all).
+	 */
+	painted: Set<string>;
+	/**
+	 * The ids a read was IN FLIGHT for when this paint was cached or handed on.
+	 *
+	 * The paint cache carries the rows and the ids whose object column must stay
+	 * empty, and what makes that hold honest is that a read could still answer for
+	 * them. At a cache write there is no view to ask, and "held" alone is not the
+	 * answer: an id can be held with its budget spent (nothing will ever name it -
+	 * the stand-in is the truth) or with a retry already abandoned. So the walk
+	 * records here the ids it actually asked for, and only those are carried across
+	 * a remount - which is what stops a cached id from sitting blank on a
+	 * justification that is no longer true (review round 1, m1).
+	 *
+	 * ITS LIFETIME IS THE READ'S, NOT THE MOUNT'S (agent review round 3, M2's second
+	 * half). A walk drops exactly the ids IT added when it ends - not `clear()`, which
+	 * let the settle path's read and a retry for the same conversation wipe each
+	 * other's pending ids - and the pane's own tear-down drops the rest of what it
+	 * added, because a read abandoned at unmount is not a read the successor mount can
+	 * name. The state itself outlives the mount (the map is keyed by conversation), so
+	 * nothing else would clear those.
+	 */
+	inFlight: Set<string>;
+	/**
+	 * Whether this conversation's LAST read attempt on the history route FAILED.
+	 *
+	 * WHAT SETS IT: the stand-down after `LABEL_GAP_ATTEMPTS` attempts, which is the
+	 * one place a walk concludes that the route is refusing rather than slow. A single
+	 * failed attempt does not set it - that walk still has its own retry to spend.
+	 * WHAT CLEARS IT: any page that arrives, because that is the same event that makes
+	 * it untrue, the route answering again.
+	 *
+	 * WHAT READS IT: the walk's exit, which hands this walk's still-held targets to
+	 * `markRefusedTargets` instead of releasing them to their stand-ins. See
+	 * `labelMarked` on the view for why the refusal is not allowed to decide between
+	 * the two answers, only what the row shows while neither is known.
+	 */
+	refused: boolean;
+	depth: number;
+	order: readonly string[];
+	/**
+	 * Call id -> the epoch MILLISECONDS the call started, from the seed's own
+	 * frames (`seedCallStarts`). The walk's floor: see `pagePassedOldestStart`.
+	 */
+	starts: Map<string, number>;
+	/**
+	 * The startless calls that are still WAITING at a gate (`seedWaitingComposes`):
+	 * the one kind whose missing instant may NOT refuse the floor, and so held per
+	 * conversation like the instants themselves.
+	 */
+	waiting: Set<string>;
+	/**
+	 * The calls a LIVE settle named, still unlabelled (bounded).
+	 *
+	 * Their own record rather than a reading of `attempts`, because a settle is
+	 * not charged there: it is charged when a durable round ending makes it a
+	 * retry candidate, which is the moment a read for it can succeed. Keeping the
+	 * ids here is what lets that retry find them at all - a call that settled live
+	 * and has fallen out of the seed window is named by nothing else, which is the
+	 * gap this path exists to close (review round 1, R1).
+	 */
+	settled: Set<string>;
+	/**
+	 * Rows the speculative settle reads have spent, against
+	 * `LABEL_SETTLE_ROWS_MAX`.
+	 *
+	 * Per conversation, like the map above it. A walk the seed or a retry also
+	 * needed is FREE - it was happening anyway, which is what makes N settles in
+	 * one flush cost one walk - so only a walk a settle ALONE caused is charged
+	 * here (review round 1, R2).
+	 */
+	settleRows: number;
+};
+
+const LABEL_GAP_SESSIONS_MAX = 8;
+
+/**
+ * How many ids the hold's painted-once record keeps per conversation.
+ *
+ * Four times the attempt budget, because this one is never pruned by progress:
+ * it grows with the conversation's settled calls and is only there to stop a
+ * SECOND hold for a row this window has already left empty once. Evicted
+ * oldest-first, so what it can still re-hold after 2048 calls is the oldest tail
+ * of a very long conversation.
+ */
+const LABEL_GAP_MAX_PAINTED = 2_048;
+
+/**
+ * How many calls' start instants one conversation remembers.
+ *
+ * The owner caps its own seed at `LIVE_EVENT_END_ROWS_MAX` (100) ends, so this is
+ * several seeds' worth of history for the retry path, which needs an instant for
+ * calls whose own frames have left the seed. Evicted oldest-first.
+ */
+const LABEL_GAP_MAX_STARTS = 1_024;
+
+/**
+ * How many waiting calls one conversation remembers.
+ *
+ * Same order of magnitude as the instants it accompanies, and bounded like them
+ * because a long turn keeps announcing calls it has dispatched and not started.
+ */
+const LABEL_GAP_MAX_WAITING = 1_024;
+
+/**
+ * The key an absent session id gets.
+ *
+ * The hook is called with `sessionId | undefined` before a conversation is
+ * picked, and that state has no rows to hold: the key is one no owner can mint
+ * (session ids are hex), so an absent session shares a single throwaway entry
+ * rather than growing one per render.
+ */
+const NO_SESSION_KEY = "";
+
+const labelGaps = new Map<string, LabelGapState>();
+
+/**
+ * The gap state for a conversation, re-inserting it so it is the newest entry.
+ *
+ * The re-insert is what makes the four-line eviction below an LRU rather than a
+ * "first ever seen": a session the reader is moving between stays, and a
+ * conversation opened once an hour ago is the one that goes.
+ */
+function labelGapFor(sessionId: string | undefined): LabelGapState {
+	const key = sessionId ?? NO_SESSION_KEY;
+	const existing = labelGaps.get(key);
+	if (existing) {
+		labelGaps.delete(key);
+		labelGaps.set(key, existing);
+		return existing;
+	}
+	const fresh: LabelGapState = {
+		attempts: new Map(),
+		painted: new Set(),
+		inFlight: new Set(),
+		refused: false,
+		depth: 0,
+		order: [],
+		starts: new Map(),
+		waiting: new Set(),
+		settled: new Set(),
+		settleRows: 0,
+	};
+	labelGaps.set(key, fresh);
+	while (labelGaps.size > LABEL_GAP_SESSIONS_MAX) {
+		const oldest = labelGaps.keys().next().value;
+		if (oldest === undefined || oldest === key) break;
+		labelGaps.delete(oldest);
+	}
+	return fresh;
+}
+
+/**
+ * Whether the OWNER'S TURN is still running, which is what makes a spent read
+ * budget NON-terminal (the rule's second term).
+ *
+ * IT ASKS THE SESSION'S OWN LIVE STATE, NOT THE NEWEST ROW (agent review round
+ * 3, M3). The version this replaces walked the transcript backwards to the
+ * newest assistant-or-tool record and asked whether THAT was unsettled. On the
+ * conversation this branch exists for, every newest row is a settled tool call -
+ * the tail is `tool(done) | assistant(settled) | tool(done) | ... | tool(done)` -
+ * so it returned false on a live owner mid-turn, and term (b) could never hold
+ * on exactly the route the standing-down walk released: 68 stand-in -> command
+ * flips, unmoved across two heads and two independent lanes.
+ *
+ * `frontend.streaming` IS the fact that question is about, and taking it from
+ * here is a second READING rather than a second DEFINITION: the working line's
+ * visibility and the pane's `busy` both derive from this one flag
+ * (`chat-page.tsx` reads `canonical.frontend?.streaming` into `busy`, which
+ * arrives at the transcript as `waiting`), which is why the working line was on
+ * screen through the holds this predicate was calling over. It is live for the
+ * whole provider call whatever the record list currently holds, and the owner's
+ * terminal event settles the flag and the rows together - so term (b) ends when
+ * the last thing that could name a call ends.
+ *
+ * A terminal event for the turn, or a stream that failed, ends it - nothing more
+ * can name a call after that, so the release below is prompt.
+ *
+ * ACROSS A STREAM GAP THE LAST READING IS THE ONE TO USE, NOT THE ABSENCE OF ONE
+ * (round 4, M4). `frontend` is nulled on both gap arms - the `gap` frame and
+ * `open{gap}` - with the reading the pane was painting kept in `heldFrontend` for
+ * exactly that reason, so reading `frontend` alone answered "the turn is over" for
+ * the whole ~1.5-4 s of a routine reconnect. Both terms of the rule then failed on
+ * one instant: the stand-down ends term (a) by design, and term (b) read false, so
+ * `markRefusedTargets` marked the rows and `releaseLabelPending` pruned that very
+ * mark by this same predicate in the SAME tick - the refusal's cue added and
+ * removed at once, the row settling on the call's OUTPUT, and the reconnect's own
+ * snapshot repainting the command afterwards. That is the flip this branch exists
+ * to remove, on the app's most ordinary route: the reviewer measured
+ * `rowsShowingOutput` 68 with one stand-in frame.
+ *
+ * WHY THE HELD READING IS THE HONEST ONE HERE RATHER THAN THE CONVENIENT ONE. A
+ * gap is not a statement that the turn ended; it is the announcement that receipt
+ * continuity broke and an authoritative snapshot is on its way - and a snapshot's
+ * own seed is one of the things that can name a call, which is why `firstAttempts`
+ * exists. So on the one question this predicate answers ("can something still name
+ * this call?") the gap is when the answer is most clearly yes, and the reading the
+ * app still holds is the one that says so. The narrower alternative - suppress the
+ * release while `status === "reconnecting"` - was rejected because it would state
+ * the same fact in a second place and leave this predicate answering a question
+ * nobody asked; `heldFrontend` is the pane's own value for the session's state (the
+ * readings strip and the destination pickers paint `frontend ?? heldFrontend`), so
+ * taking the liveness from the same pair keeps ONE definition of "the turn is
+ * running". It is a no-op wherever `frontend` is non-null, because `heldFrontend`
+ * mirrors it on every commit that sets one.
+ *
+ * WHAT IT CANNOT DO: keep a row held past the session's own bounds. A gap that
+ * never resolves still ends the hold at `LABEL_HOLD_MAX_MS`, and a terminal event
+ * or a stream failure still ends it immediately - the two arms above.
+ *
+ * WHY IT EXISTS AT ALL (round 2, M3): with only the budget term, a SPENT budget
+ * released the row, and a durable round ending that named those calls then
+ * repainted them - 24 stand-in -> command flips on a route no shipped case
+ * covered. "Spent" is not the same fact as "no round ending can still come".
+ */
+function turnRunning(state: {
+	terminal: string | null;
+	failure: unknown;
+	frontend: { streaming: boolean } | null;
+	heldFrontend: { streaming: boolean } | null;
+}): boolean {
+	if (state.terminal) return false;
+	if (state.failure) return false;
+	return (state.frontend ?? state.heldFrontend)?.streaming === true;
+}
+
+/**
+ * Whether a call's label is still OWED, which is the question the hold asks.
+ *
+ * TWO TERMS, and the second is round 2's M3: (a) a call no page has named whose
+ * per-call read budget (\`LABEL_GAP_ATTEMPTS\`) is not spent still has a read
+ * coming - the page of a walk that stopped short, a retry at a durable round
+ * ending, or the next snapshot's seed; (b) a call whose budget IS spent is still
+ * owed while the owner's turn is running, because a durable round ending can
+ * still name it. Only when the budget is spent AND the turn is over (nothing
+ * pending and no round ending still expected) is nothing able to name the call
+ * any more - and THAT is the terminal case the stand-in is the truth for.
+ *
+ * \`labelled\` is the caller's view of what has been named (\`argsByCall\` at the
+ * moment of the decision, or the walk's own found set); the budget is read off
+ * the shared per-conversation bookkeeping, which is what makes this stable across
+ * a remount.
+ */
+function labelOwed(
+	gap: LabelGapState,
+	labelled: ReadonlySet<string> | ReadonlyMap<string, unknown>,
+	callId: string,
+	turnIsRunning: boolean,
+): boolean {
+	if (labelled.has(callId)) return false;
+	/*
+	 * TERM (a): A READ IS PENDING FOR THIS CALL - which is the WALK being in flight
+	 * for it, not "its budget is unspent". The two differ exactly where round 2
+	 * found the hold both too strong (Q-2: the refusing-owner route spent its retry
+	 * and stood down with the budget still reading 1 of 2, so nothing but the wall
+	 * clock could release it - 25.0 s of blank where the previous code settled in
+	 * 198 ms) and too weak (M2: a walk that ENDED left the cache carrying nothing).
+	 * A read the walk has stopped making is not pending, whatever the budget says.
+	 */
+	if (gap.inFlight.has(callId)) return true;
+	/*
+	 * TERM (b): spent or not, a durable round ending can still name it (M3). The
+	 * caller reads it off the session's own live state (`turnRunning`, which asks
+	 * `frontend.streaming`) rather than off the newest record, because on the
+	 * conversation this rule exists for every newest record is a settled tool call.
+	 */
+	return turnIsRunning;
+}
+
+/**
+ * Forget every conversation's label bookkeeping.
+ *
+ * Exported with the `__` marker for the reason `__resetPaintCache` is: a test
+ * that opens the same conversation twice is testing two JOINS, not one join
+ * followed by a switch back, and only a test can say which of the two it means.
+ */
+export function __resetLabelGapBookkeeping(): void {
+	labelGaps.clear();
+}
 
 /**
  * Register a pane as the place a re-read of this session's snapshot lands, and
@@ -760,8 +1500,87 @@ export function seedPendingEchoes(
  * paint it cancels was queued would leave the echo painted for a message that
  * was provably never admitted.
  */
+/**
+ * What became of an attempt to retract an unconfirmed echo.
+ *
+ * `retracted` - the row was this app's own echo and is gone, so the message is
+ * not on the owner's transcript and the content belongs back with the user.
+ * `owner` - the row is the owner's, which means the message WAS delivered and the
+ * failure was the response to it; nothing may be retracted.
+ * `queued` - no transcript is mounted for this session, so the retraction is
+ * parked exactly as the echo was and the pane's own reconciliation decides it
+ * when a panel mounts.
+ */
+export type EchoRetraction = "retracted" | "owner" | "queued";
+
+/**
+ * Retract an echo whose send failed, but ONLY while it is still our own echo.
+ *
+ * The counterpart of `retractPendingUser` for the case where the app cannot say
+ * whether the message reached the session. Both rows would carry the same id, so
+ * the id cannot answer the question - `appendPendingUser`'s `local` flag does, and
+ * an owner row (its `message_start`, or a durable history row) never has it. See
+ * `removeLocalRecord` for why that distinction is worth a field on the record.
+ */
+export function retractLocalEcho(
+	sessionId: string,
+	id: string,
+): EchoRetraction {
+	const target = echoTargets.get(sessionId);
+	if (!target) {
+		/*
+		 * Nothing is mounted, so the echo this retracts has not been painted yet
+		 * either - it is sitting in the buffer with it. Queued in the same order it
+		 * was painted, and conditional on the same flag when it lands.
+		 */
+		deliverEcho(sessionId, (state) => removeLocalRecord(state, id));
+		return "queued";
+	}
+	let outcome: EchoRetraction = "queued";
+	target((state) => {
+		const record = state.records[state.index.get(id) ?? -1];
+		if (!record || record.kind !== "user") return state;
+		if (!record.local) {
+			outcome = "owner";
+			return state;
+		}
+		outcome = "retracted";
+		return removeRecord(state, id);
+	});
+	return outcome;
+}
+
 export function retractPendingUser(sessionId: string, id: string): void {
 	deliverEcho(sessionId, (state) => removeRecord(state, id));
+}
+
+/**
+ * Whether the row an admission request id names is STILL ours - the verdict
+ * `retractLocalEcho` reads, without its act.
+ *
+ * §F3's arm (agent review round 4, R17): an UNKNOWN outcome KEEPS the message
+ * on screen - the row wears `Not delivered · Send again · Edit` until the
+ * server's own answer resolves the claim - so the send path may not have the
+ * removal `retractLocalEcho` performs. `owner` still means the message was
+ * delivered, and nothing may be reported as failed. `local` and `unseen` (the
+ * row is our own echo, or no transcript is mounted to hold it - in which case
+ * the pane's own reconciliation reads it again when one mounts), both leave the
+ * row alone and let the payload come home to the composer as well.
+ */
+export function peekLocalEcho(
+	sessionId: string,
+	id: string,
+): "owner" | "local" | "unseen" {
+	const target = echoTargets.get(sessionId);
+	if (!target) return "unseen";
+	let outcome: "owner" | "local" | "unseen" = "unseen";
+	target((state) => {
+		const record = state.records[state.index.get(id) ?? -1];
+		if (!record || record.kind !== "user") return state;
+		outcome = record.local ? "local" : "owner";
+		return state;
+	});
+	return outcome;
 }
 
 /**
@@ -775,17 +1594,30 @@ export function retractPendingUser(sessionId: string, id: string): void {
 function paintSeed(sessionId: string): {
 	transcript: TranscriptState;
 	stale: boolean;
+	owedLabels: ReadonlySet<string>;
+	markLabels: ReadonlySet<string>;
 } {
 	const cached = readPaint(sessionId);
 	if (!cached) {
 		return {
 			transcript: seedPendingEchoes(sessionId, EMPTY_TRANSCRIPT),
 			stale: false,
+			owedLabels: NO_LABELS_PENDING,
+			markLabels: NO_LABELS_MARKED,
 		};
 	}
 	return {
 		transcript: seedPendingEchoes(sessionId, cached.transcript),
 		stale: true,
+		// The rows this paint was still waiting on, so the FIRST frame already knows
+		// which object columns must stay empty. See `owedLabels` in `paint-cache.ts`
+		// for why the store carries them beside the rows rather than leaving each
+		// mount to guess.
+		owedLabels: cached.owedLabels,
+		// And the ones whose hold a refusal ended, whose mark was standing instead.
+		// Same argument one state over: rows cannot say whether a column owes the
+		// mark or may fall back to the call's OUTPUT.
+		markLabels: cached.markLabels,
 	};
 }
 
@@ -836,12 +1668,28 @@ function pageIsJournalTail(snapshot: DesktopSnapshot): boolean {
 export function useCanonicalSessionStream(
 	sessionId: string | undefined,
 	enabled: boolean,
+	/**
+	 * Whether `sessionId` is a SESSION this pane can be OWED a page for, or a
+	 * DRAFT's bridge subscription (`sessions.draft`'s minted id).
+	 *
+	 * The two ids have the same shape and only the caller knows which one it
+	 * holds: `SessionPanel` passes `sessionId ?? draft?.warmId`, so the pane's own
+	 * `sessionId` is the answer. A draft's stream exists to hold the engage open,
+	 * not to deliver a page - nothing here is "still loading" until the user's
+	 * first send creates a conversation (see `awaitingHydration`). Every
+	 * pre-draft caller passes a session id and keeps the `true` default.
+	 */
+	isSession = true,
 ): CanonicalSessionHandle {
 	const [view, setView] = useState<CanonicalSessionView>(() => {
 		const seed = enabled && sessionId ? paintSeed(sessionId) : null;
 		return {
 			status: "connecting",
 			frontend: null,
+			// Nothing has been painted yet, so there is no reading to hold: a pane
+			// that has never had a snapshot is genuinely without readings, and a
+			// held copy here would be a claim this mount never received.
+			heldFrontend: null,
 			pendingModel: null,
 			history: null,
 			cold: false,
@@ -880,6 +1728,19 @@ export function useCanonicalSessionStream(
 			// counter from its own `live_events`.
 			subagentPulses: {},
 			/*
+			 * The rows a cached paint was still waiting on, in the SAME frame as the
+			 * rows themselves. A cache that paints result text into the object column
+			 * and corrects it one read later is the jitter this hold exists to prevent,
+			 * and the only place the distinction can be made is here: the rows cannot
+			 * say whether their arguments are absent or merely not read yet.
+			 *
+			 * EMPTY for a mount with no cache: there is nothing painted to hold, and the
+			 * snapshot's own flush registers its targets (`firstAttempts`).
+			 */
+			labelPending: seed?.owedLabels ?? NO_LABELS_PENDING,
+			labelMarked: seed?.markLabels ?? NO_LABELS_MARKED,
+			labelHoldLate: false,
+			/*
 			 * NOT hydrated, even when the initial transcript above was seeded from a
 			 * pending echo. The two are different claims: an echo is this renderer's own
 			 * optimistic paint of a message it just sent, while `hydrated` means an
@@ -894,6 +1755,44 @@ export function useCanonicalSessionStream(
 			hydrated: false,
 		};
 	});
+
+	/*
+	 * THE ONE WRITER OF THE VIEW, and it lands the new value on a ref BEFORE React
+	 * sees anything.
+	 *
+	 * WHY THIS EXISTS AT ALL (review round 1, M3): the echo registry ANSWERS A
+	 * QUESTION about the transcript - `peekLocalEcho` reports whether the row
+	 * under an admission request id is still this app's own echo or the owner's -
+	 * and that answer decides whether a failed payload is treated as delivered or
+	 * handed back to the composer beside the kept row. The answer was read from
+	 * inside the update,
+	 * so REACT'S SCHEDULING decided it: an update already queued in the same batch
+	 * (which is exactly the case that matters, the owner's row arriving as the
+	 * failure resolves) meant the updater had not run when the registry asked, the
+	 * answer fell back to "queued", and a delivered message was handed back to the
+	 * composer as a draft - the duplicate QA measured. Computing against the ref and
+	 * then committing the VALUE makes every read of the view synchronous and every
+	 * mutation exactly-once, without making React render any differently.
+	 *
+	 * Every mutation in this hook goes through here, and that is checkable rather than
+	 * aspirational: `setView` appears in this file exactly ONCE, on the line below, and
+	 * `scripts/canonical-chat.test.mjs` pins the count. A bare `setView(` beside it is a
+	 * write the ref cannot see, and the next commit from here spreads the stale ref over
+	 * it - which is not theoretical: it is what left released labels held in round 8.
+	 */
+	const viewRef = useRef(view);
+	const commitView = useCallback(
+		(
+			update: (current: CanonicalSessionView) => CanonicalSessionView,
+		): CanonicalSessionView => {
+			const next = update(viewRef.current);
+			if (next === viewRef.current) return next;
+			viewRef.current = next;
+			setView(next);
+			return next;
+		},
+		[],
+	);
 	/*
 	 * Which session the transcript IN `view` belongs to, so the reset effect
 	 * below can tell another session's rows from this one's own seeded echo.
@@ -924,11 +1823,12 @@ export function useCanonicalSessionStream(
 	// is tracked here rather than through the view state itself.
 	const paintedIds = useRef<TranscriptState["index"]>(EMPTY_TRANSCRIPT.index);
 	/*
-	 * Call ids a mid-turn snapshot's seed could not label, and how many times we
-	 * have read back for each. See `seedCallsMissingLabels`: the seed keeps only
-	 * the settling frame, so a viewer that joins a turn in flight is handed rows
-	 * with no arguments, and the arguments live in the durable transcript —
-	 * which does not hold the round that is still running yet.
+	 * Call ids a mid-turn snapshot's seed could not label, how many times we have
+	 * read back for each, how deep that read had to go, and the seed order a
+	 * round-end retry measures itself against. See `seedCallsMissingLabels`: the
+	 * seed keeps only the settling frame, so a viewer that joins a turn in flight
+	 * is handed rows with no arguments, and the arguments live in the durable
+	 * transcript - which does not hold the round that is still running yet.
 	 *
 	 * THAT is why this outlives its flush. A single read-back at the snapshot can
 	 * only label the calls whose rows became durable BEFORE the join; the round
@@ -938,8 +1838,48 @@ export function useCanonicalSessionStream(
 	 * a call that can never be labelled must not buy a history page per turn for
 	 * the rest of the conversation: a rejected plan never emitted a start and has
 	 * no assistant row either, so nothing will ever name it.
+	 *
+	 * IT ALSO OUTLIVES THE MOUNT, unlike the three refs it replaces: the state
+	 * lives in `labelGaps` keyed by conversation, so a switch away and back does
+	 * not make a conversation that has already painted its rows a stranger whose
+	 * first paint may be held empty again (round 1, QA Q1).
 	 */
-	const labelGapRef = useRef<Map<string, number>>(new Map());
+	const labelGapRef = useRef<LabelGapState>(labelGapFor(sessionId));
+	/**
+	 * The ids THIS MOUNT has a label read out for, so teardown drops its own.
+	 *
+	 * `labelGapRef.current.inFlight` outlives the mount - it lives in `labelGaps`
+	 * keyed by conversation - but the READS do not: this pane's walks are abandoned
+	 * the moment it goes away. Without this set, the tear-down can only clear the
+	 * whole in-flight set (which takes a successor's ids with it) or nothing (which
+	 * leaves this pane's ids justifying a hold on a read nobody can still name).
+	 * `labelGapRef.current` is re-pointed at another conversation on a session
+	 * change, so the tear-down reads this set BEFORE the pointer moves - the stream
+	 * effect's cleanup runs first, on the deps that moved.
+	 */
+	const inFlightOwned = useRef<Set<string>>(new Set());
+	/*
+	 * `labelGapRef.current.attempts` is the per-call count the comment above is
+	 * about.
+	 *
+	 * `labelGapRef.current.depth` is the deepest a label read has had to go in
+	 * this conversation, in rows, so a later label read never starts shallower
+	 * than one that already needed that depth. The calls a round-end retry is for
+	 * are the OLDEST of the gap - the newer ones were labelled by the first read
+	 * - so the retry used to be sized `reconcileLimit(remaining)`, a read that got
+	 * SMALLER exactly as the calls it was for got further away, and on the
+	 * reported session it labelled none of them. It is floored only by a walk that
+	 * actually LABELLED a call at that depth (round 1, R1): a walk that read deep
+	 * and found nothing has learned nothing about where the next read should
+	 * start, and flooring on it is how one unpresent call made every later retry
+	 * in the session a 500-row read.
+	 *
+	 * `labelGapRef.current.order` is the newest snapshot seed's settled calls,
+	 * oldest first: the positions a round-end retry (which arrives with no
+	 * snapshot) measures its walk against, so a retry for calls of the round still
+	 * running stops where the durable rows end instead of paging to the walk's
+	 * bound.
+	 */
 	const receiptRef = useRef<{ epoch: string; seq: number } | null>(null);
 	const reconnectRef = useRef<{ epoch?: string; afterSeq?: number }>({});
 	/**
@@ -1024,21 +1964,169 @@ export function useCanonicalSessionStream(
 		 *    reaches the tail costs exactly one page, which is what this path paid
 		 *    before the guard existed.
 		 *  - NOTHING was painted (a cold or cursor-less snapshot, an attention
-		 *    frame naming an unpainted anchor with no snapshot in the batch, a
-		 *    label-gap retry): no fetched page can ever satisfy the connection test,
-		 *    so a walk would run to its bound for nothing — five sequential reads,
-		 *    and five full file passes on the owner side, where one page is the
-		 *    whole coverage. One page, then out.
+		 *    frame naming an unpainted anchor with no snapshot in the batch): no
+		 *    fetched page can ever satisfy the connection test, so a walk would run
+		 *    to its bound for nothing — five sequential reads, and five full file
+		 *    passes on the owner side, where one page is the whole coverage. One
+		 *    page, then out.
+		 *
+		 *    A LABEL walk is the exception, and it is why this bound is stated as
+		 *    "one page unless the read has a goal": a round-end retry paints no
+		 *    snapshot and the calls it is for are the OLDEST of the gap, so it pages
+		 *    with `before_id` until every target is named, until a page holds the row
+		 *    that opened the turn (`pageOpensTurn`), or until the row or request
+		 *    bound stops it — see `walkTail`. Continuing in
+		 *    `RECONCILE_TAIL_ENTRIES`-sized pages was also wrong for it: a further
+		 *    page is sized `reconcileLimit(stillBehind)`, and never below the depth a
+		 *    walk has already had to reach.
 		 *
 		 * `painted` is built from the FRAMES, not from the painted view: an
 		 * updater runs lazily, so at this point the view may not hold what this
 		 * very flush painted, and a connection test against a stale view would
 		 * walk back on every open.
 		 */
+		/**
+		 * Charge one read's worth of the per-call budget, and record that a read is IN
+		 * FLIGHT for those calls.
+		 *
+		 * ONE PLACE, because both facts are inseparable: an id's budget is spent by a
+		 * read that asked about it, and while that read is out the backstop may not fire
+		 * (round 2, U4). The failure arm charges too - a read that FAILED is an attempt
+		 * spent even though it named nothing, which is what keeps the refusing-owner
+		 * route settling promptly instead of at the backstop (round 2, Q-2: 25.0 s
+		 * against the 0.2 s it used to take).
+		 */
+		const chargeLabelAttempts = (ids: Iterable<string>) => {
+			for (const id of ids)
+				labelGapRef.current.attempts.set(
+					id,
+					(labelGapRef.current.attempts.get(id) ?? 0) + 1,
+				);
+		};
+
+		/**
+		 * Let the stand-in speak for the rows whose label can no longer be found.
+		 *
+		 * RELEASED WHEN THE LABEL IS SETTLED, NOT WHEN A READ ENDS. A read ending is
+		 * not the same fact as "this call cannot be labelled": a walk that stopped
+		 * short, a page that did not reach a call's assistant row, a failed attempt
+		 * with a retry left, a snapshot whose seed will nominate the call again - in
+		 * every one of those a read is still coming, and painting the stand-in in the
+		 * meantime is the repaint the hold exists to prevent (review round 1, M1 and
+		 * U1: the release was per-WALK, so a row could flip on the very next page of
+		 * the same walk). So an id leaves the hold when - and only when - the view has
+		 * the command (`argsByCall`, whatever read produced it) or the call's per-call
+		 * read budget is spent with nothing found anywhere (`labelOwed`), which is the
+		 * terminal case the stand-in is the truth for.
+		 *
+		 * NO IDS NAMED MEANS EVERY HELD ID: a RETRY walk's targets are already in
+		 * `painted`, so its `pending` set is empty and a release keyed to that set
+		 * could never settle the ids the retry just spent the budget of.
+		 *
+		 * THROUGH THE ONE WRITER, and the wall-clock backstop is deliberately NOT
+		 * cancelled here: it follows the SET (see the effect below), so a partial
+		 * release leaves the remaining rows their own deadline rather than a row held
+		 * with no bound at all.
+		 */
+		const releaseLabelPending = (ids?: readonly string[]) => {
+			commitView((state) => {
+				const releasing = new Set<string>();
+				for (const id of ids ?? state.labelPending) {
+					if (!state.labelPending.has(id)) continue;
+					if (
+						labelOwed(
+							labelGapRef.current,
+							state.transcript.argsByCall,
+							id,
+							turnRunning(state),
+						)
+					)
+						continue;
+					releasing.add(id);
+				}
+				/*
+				 * AND THE MARKED SET IS PRUNED BY THE SAME PREDICATE (round 4). A marked id is
+				 * one whose hold a refusal ended while it was still owed, so "still owed" is the
+				 * whole of its claim - and the moment that stops being true the stand-in is the
+				 * truth, exactly as it is for a held id. Without this the mark would outlive its
+				 * own justification and hold a row to the backstop after a round ending whose
+				 * retry refused too: measured on the app's refused-plus-round-ending arm, whose
+				 * stand-in belongs at ~4.1 s rather than at the 25 s bound.
+				 *
+				 * READ OFF THE WHOLE SET rather than the caller's `ids`: a walk names the calls it
+				 * was for, and a marked id whose walk has ended is decided by the rule like any
+				 * other. `argsByCall` is the `labelled` view here, so an id a page has since named
+				 * is pruned in the same pass.
+				 */
+				let marked: Set<string> | null = null;
+				for (const id of state.labelMarked) {
+					if (
+						labelOwed(
+							labelGapRef.current,
+							state.transcript.argsByCall,
+							id,
+							turnRunning(state),
+						)
+					)
+						continue;
+					marked = marked ?? new Set(state.labelMarked);
+					marked.delete(id);
+				}
+				if (releasing.size === 0 && !marked) return state;
+				const left = new Set(state.labelPending);
+				for (const id of releasing) left.delete(id);
+				return {
+					...state,
+					labelPending: left.size ? left : NO_LABELS_PENDING,
+					labelMarked:
+						marked && marked.size === 0
+							? NO_LABELS_MARKED
+							: (marked ?? state.labelMarked),
+				};
+			});
+		};
+
+		/**
+		 * End the hold on the rows this REFUSAL released, and keep their mark standing.
+		 *
+		 * THE OTHER EXIT OF A WALK THAT NAMED NOTHING. `releaseLabelPending` answers "is
+		 * this call owed to a read?" and, on the refusing route, answering it alone paints
+		 * the call's OUTPUT - right for an owner that will refuse forever, wrong for one
+		 * whose round ending is about to name the call, and the two are the same walk up
+		 * to the instant the answer would arrive (see `labelMarked` on the view). So a
+		 * refused stand-down does not decide between them: it ends the hold, because no
+		 * read is in flight for these ids any more, and hands the ids to the mark, which
+		 * states no fact and therefore cannot state the wrong one.
+		 *
+		 * ONLY THE IDS THE REFUSAL ACTUALLY RELEASED. An id absent from `labelPending`
+		 * was not held by this walk - a page named it, or its hold had already ended - and
+		 * marking it would put the cue on a row whose exit this refusal did not decide.
+		 * Marking is also idempotent, so the retries of one refusal cost nothing here.
+		 */
+		const markRefusedTargets = (ids: Iterable<string>) => {
+			commitView((state) => {
+				let left: Set<string> | null = null;
+				let marked: Set<string> | null = null;
+				for (const id of ids) {
+					if (!state.labelPending.has(id)) continue;
+					left = left ?? new Set(state.labelPending);
+					left.delete(id);
+					marked = marked ?? new Set(state.labelMarked);
+					marked.add(id);
+				}
+				if (!left || !marked) return state;
+				return {
+					...state,
+					labelPending: left.size ? left : NO_LABELS_PENDING,
+					labelMarked: marked,
+				};
+			});
+		};
+
 		const reconcileTail = async (
 			generation: number,
 			painted: ReadonlySet<string>,
-			missingCalls: number,
+			labels: LabelWalk = NO_LABEL_WALK,
 			/**
 			 * Which attempt this is on the NOTHING-PAINTED failure path below, 1-based so
 			 * it names a delay in `STREAM_RETRY_DELAYS_MS` directly. A parameter rather
@@ -1047,24 +2135,194 @@ export function useCanonicalSessionStream(
 			 * never backs off. Callers that are not retrying (`flush`, `reopen`) omit it.
 			 */
 			historyAttempt = 1,
+			/**
+			 * Reports what each page of this walk COST, in rows, so the caller can
+			 * charge a bounded budget to the read it caused. Only the settle path
+			 * passes one: its read is speculative, and `LABEL_SETTLE_ROWS_MAX` is
+			 * what bounds the waste where the per-call attempt budget cannot
+			 * (review round 1, R2).
+			 */
+			onSpend?: (rows: number) => void,
 		) => {
+			/*
+			 * `labelPending` is released on EVERY exit of this walk except the one that
+			 * hands the same walk to a timer (the nothing-painted backoff below), which
+			 * carries the ids with it. A walk that ends by label, by bound, by failure
+			 * or by a newer generation all mean the same thing to a row: its first read
+			 * is over, so the stand-in may speak again.
+			 */
+			/*
+			 * THIS WALK IS A PENDING READ FOR ITS TARGETS, which is what term (a) of the
+			 * rule reads: while the walk is out - including between its own pages - the rows
+			 * it is for are held. Dropped when the walk ends, or kept when a retry timer
+			 * takes it over, because that read is still pending.
+			 *
+			 * `inFlightOwned` records what this MOUNT put there so a tear-down can drop
+			 * its own and nothing else (see its declaration).
+			 */
+			for (const id of labels.targets) {
+				labelGapRef.current.inFlight.add(id);
+				inFlightOwned.current.add(id);
+			}
+			let handedOff = false;
+			try {
+				handedOff = await walkTail(
+					generation,
+					painted,
+					labels,
+					historyAttempt,
+					onSpend,
+				);
+			} finally {
+				/*
+				 * The walk is over unless a timer owns it: drop the pending read and let the
+				 * release answer the rule.
+				 *
+				 * WHAT THAT ANSWER IS DEPENDS ON THE TURN, and the refusing-owner route changed
+				 * with `turnRunning` (agent review round 3, M3). Term (a) is now false - the read
+				 * the walk stopped making is not pending - but the call is still owed while the
+				 * owner's turn runs, because a durable round ending can still name it. Measured
+				 * on the built app: 26 rows mark from 2 196 ms and the stand-in lands at
+				 * 25 197 ms (the backstop's first fire, nothing in flight), where round 3's head
+				 * settled at 413 ms because term (b) was inert and a walk that fell short
+				 * released everything it could not name - which is exactly the release that the
+				 * round's own `turn_end` then repainted, 68 stand-in -> command flips. The turn
+				 * ending is what releases them promptly, and the round's own cases assert both
+				 * directions. No ids are named to the release, because a RETRY walk is already
+				 * painted (its own `pending` is empty) and the RULE, not the walk, decides what
+				 * is owed.
+				 *
+				 * DROPPED BY TARGET, NOT `clear()` (agent review round 3, M2's second half):
+				 * the settle path's read and this walk's retry can both be out for one
+				 * conversation, and a wholesale clear let whichever finished first wipe the
+				 * other's pending ids - a release on a read that was still running.
+				 */
+				if (!handedOff) {
+					for (const id of labels.targets)
+						labelGapRef.current.inFlight.delete(id);
+					/*
+					 * AND WHEN THE ROUTE REFUSED, THE HOLD BECOMES THE MARK (round 4). The read this
+					 * walk was for is over and it named nothing; what the row shows next depends on
+					 * whether that was a refusal or a walk that stopped short, and only the first of
+					 * the two may not state the call's output. Read off the flag the stand-down set,
+					 * which is cleared by any page, so a walk that got an answer anywhere in it takes
+					 * the ordinary release below.
+					 *
+					 * BEFORE the release, deliberately: the hand-off removes these ids from
+					 * `labelPending`, so the release that follows cannot paint the very stand-in the
+					 * mark exists to keep off the row.
+					 */
+					if (labelGapRef.current.refused) markRefusedTargets(labels.targets);
+					releaseLabelPending();
+				}
+			}
+		};
+
+		/** The body of `reconcileTail`; answers whether a timer now owns the walk. */
+		const walkTail = async (
+			generation: number,
+			painted: ReadonlySet<string>,
+			labels: LabelWalk,
+			historyAttempt: number,
+			onSpend?: (rows: number) => void,
+		): Promise<boolean> => {
 			const fetchedIds = new Set<string>();
 			let beforeId: string | undefined;
 			let rows = 0;
+			let requests = 0;
+			/** Whether some page has overlapped the painted rows yet; latched. */
+			let joined = false;
+			/** Whether a fetched page has reached the row this turn opened with. */
+			let reachedTurnStart = false;
+			/*
+			 * THE LABEL GOAL, the half the walk used to lack. It stopped as soon as a
+			 * page CONNECTED to a painted row, but the label gap needs a page that
+			 * reaches back to the OLDEST missing call's assistant row, which on a turn
+			 * of more than a page of calls is many rows past the connection. So the walk
+			 * now also keeps paging until no target is still behind what it has read
+			 * (`labelTargetsBehind`), and connecting is one required condition rather
+			 * than a sufficient one (`reconcileWalkDone`). Measured on the reported
+			 * session (`<session>`, 134 calls in one turn): the old rule left 23 calls
+			 * labelled only by their output after the first read, and the round-end
+			 * retry labelled none of them.
+			 */
+			const found = new Set(labels.found);
+			const behind = () =>
+				labelTargetsBehind(labels.order, labels.targets, found);
+			/**
+			 * The target calls still BEHIND what has been read, by the walk's own rule
+			 * (`labelTargetsBehindIds`): evicted-and-unfound targets, then targets older
+			 * than the oldest call a page has named. Round 4's R11 is why the floor is
+			 * given this set rather than every unfound target — a call of the round still
+			 * running is newer than everything found and no page can label it yet, so
+			 * letting it refuse the floor bought pages that could not end the walk.
+			 */
+			const behindIds = (): string[] =>
+				labelTargetsBehindIds(labels.order, labels.targets, found);
+			/**
+			 * The orphans still unfound, with the instant their own result row was
+			 * journaled: the floor's second input (R6a). An orphan whose instant the
+			 * page did not state contributes nothing, which leaves the floor to the
+			 * seed's targets.
+			 */
+			const behindOrphanInstants = (): Map<string, number> => {
+				const behind = new Map<string, number>();
+				for (const id of orphans) {
+					if (found.has(id)) continue;
+					const at = orphanStarts.get(id);
+					if (at !== undefined) behind.set(id, at);
+				}
+				return behind;
+			};
+			/*
+			 * Calls a page showed the RESULT of without ever showing the row that
+			 * named them, and which no other page has named since (`pageOrphanResults`,
+			 * round 1's QA Q4). They are targets too: their arguments are one row
+			 * older than the page that produced them, which is a page this walk can
+			 * reach. `orphans` is what is still unfound, `known` is every call id the
+			 * walk can account for, and `orphanGrace` bounds the cost of one that has
+			 * no start to find anywhere — one page of courtesy, then the walk stops
+			 * treating it as behind rather than paging to the bound for it. Without
+			 * the grace a repeatedly-pruned transcript would buy a page per open for
+			 * rows that cannot be labelled at all.
+			 */
+			const known = new Set(labels.every);
+			for (const id of found) known.add(id);
+			const orphans = new Set<string>();
+			/** Call id -> the epoch ms its own result row was journaled (R6a). */
+			const orphanStarts = new Map<string, number>();
+			let orphanGrace = 1;
+			// The first read is sized to FINISH the job in one request where it can
+			// (`reconcileLimit`), and never smaller than the deepest first read this
+			// session has already needed: the calls a retry is for are the OLDEST
+			// ones, so a retry that reads less than the read that missed them cannot
+			// reach them either.
+			const labelling = labels.targets.size > 0;
+			let limit = Math.max(
+				reconcileLimit(behind()),
+				labelling ? labelGapRef.current.depth : 0,
+			);
 			/**
 			 * The painted path's own budget: one immediate retry, then a quiet stand-down
 			 * (see the failure arm). Counted here rather than passed because this path
 			 * never re-enters the function.
 			 */
 			let failures = 0;
-			while (rows < RECONCILE_WALK_MAX_ROWS) {
+			while (
+				rows < RECONCILE_WALK_MAX_ROWS &&
+				requests < RECONCILE_WALK_MAX_REQUESTS
+			) {
+				requests += 1;
 				let page: DesktopHistoryPage;
 				try {
 					page = await desktopResult<DesktopHistoryPage>({
 						op: "sessions.history",
 						sessionId,
 						...(beforeId ? { beforeId } : {}),
-						limit: reconcileLimit(missingCalls),
+						// Never past the walk's own bound: the route clamps at 500 anyway,
+						// and asking for more than the bound leaves is a page the loop
+						// would refuse to continue from.
+						limit: Math.min(limit, RECONCILE_WALK_MAX_ROWS - rows),
 					});
 				} catch {
 					/*
@@ -1086,66 +2344,298 @@ export function useCanonicalSessionStream(
 					 *    composer cannot offer the greeting while this is being tried.
 					 */
 					if (viewRef.current.transcript.records.length > 0) {
-						if (failures++ > 0) return;
+						if (failures++ > 0) {
+							/*
+							 * ROUND 4: the route refused for the whole walk. Recorded HERE, where the
+							 * conclusion is actually drawn, rather than inferred from "the walk found
+							 * nothing" at the exit - a walk that stops short has found nothing too, and
+							 * its rows are owed to the next page, not to a refusal. Cleared by any page
+							 * that arrives (`walkTail`'s own page path), which is the event that makes it
+							 * untrue.
+							 */
+							labelGapRef.current.refused = true;
+							return false;
+						}
 						continue;
 					}
 					if (historyAttempt < HISTORY_RECONCILE_ATTEMPTS) {
 						reconcileTimer = window.setTimeout(() => {
 							reconcileTimer = 0;
-							if (generationRef.current !== generation) return;
+							if (generationRef.current !== generation) {
+								releaseLabelPending();
+								return;
+							}
 							void reconcileTail(
 								generation,
 								painted,
-								missingCalls,
+								labels,
 								historyAttempt + 1,
+								onSpend,
 							);
 						}, streamRetryDelayMs(historyAttempt));
-						return;
+						return true;
 					}
 					// Nothing is painted and nothing could be read: this conversation is
 					// unreachable, and saying so with a way back is the only honest state
 					// left. `hydrated` stays false, so the composer may not claim the
 					// conversation is empty either.
-					setView((state) => ({
+					//
+					// AND IT TAKES THE HELD READINGS WITH IT (agent review round 1,
+					// MINOR 3). This is a FOURTH terminal `unavailable` writer, and the
+					// hold's contract says every terminal state drops it: a reading kept
+					// past the point where the app has given up on the conversation is the
+					// one thing R2 forbids. It was the state MAJOR 1 turned into a mask,
+					// because `frontend` is deliberately left painted here and the mirror
+					// had therefore refilled the hold from it.
+					//
+					// `commitView` rather than `setView` is MAIN's shape, kept: the fold
+					// that brought #495 renamed this arm's writer, and the held-readings
+					// change is re-applied on top of it rather than the other way round.
+					commitView((state) => ({
 						...state,
 						status: "unavailable",
 						failure: HISTORY_UNREADABLE,
+						heldFrontend: null,
 					}));
-					return;
+					return false;
+				} finally {
+					/*
+					 * No read is in flight for this walk's targets any more, which is the
+					 * fact the paint cache needs (see `inFlight`) and the release below
+					 * does not: the release asks whether the LABEL is settled, not whether
+					 * a read is running.
+					 */
+					/*
+					 * A read has ENDED, which is not the same fact as "this call is settled":
+					 * `releaseLabelPending` releases the ids the view can now answer for (the
+					 * call is labelled, or its read budget is spent with nothing found) and
+					 * leaves the rest held, because a read for them is still coming - the next
+					 * page of this walk, a retry at a durable round ending, or the next
+					 * snapshot's seed. `finally` so it covers every arm of the catch,
+					 * including the ones that return, and so the generation-discard path below
+					 * is covered by the same statement that covers the answered one (review
+					 * round 1, n2: the earlier wording described only the answered arm).
+					 */
+					/*
+					 * Every held id, not the walk's own `pending` set: a RETRY walk's
+					 * targets are already in `painted`, so its `pending` is empty and a
+					 * release keyed to it could never settle the ids the retry just spent
+					 * the budget of. Re-evaluating what is held is also what makes this
+					 * call idempotent and safe from every arm.
+					 */
+					releaseLabelPending();
 				}
-				if (generationRef.current !== generation) return;
+				if (generationRef.current !== generation) return false;
+				/*
+				 * A PAGE ARRIVED, so the refusal is over: the route that refused is answering
+				 * again, and the rows it was refusing for are owed to a read once more. This
+				 * is the ONLY clear, and it is the event that makes the flag untrue - not a
+				 * clock and not a mount, so a switch back to a conversation whose route was
+				 * refusing still knows that it was.
+				 */
+				labelGapRef.current.refused = false;
 				const oldest = page.entries[0];
 				rows += page.entries.length;
+				onSpend?.(page.entries.length);
 				// Merged even when it is the page we already have: durable rows win
 				// by id, so a repeat is free and a partial one is completed.
-				setView((state) => ({
-					...state,
-					// A page that RESOLVED is the proof hydration was waiting for,
-					// applied-or-empty alike: the backend answered with this session's
-					// durable tail, so the view may now speak about the conversation at
-					// all - which is what lets the composer offer the greeting.
-					hydrated: true,
-					transcript: applyHistoryPage(state.transcript, page),
-				}));
-				// Nothing on screen means nothing to connect TO: every further page
-				// would be merged by the same test that cannot fire. One page is the
-				// coverage, and the walk past it is dead work on both sides of the
-				// wire — see the two bound cases above.
-				if (painted.size === 0) return;
-				const connected = page.entries.some(
-					(entry) => painted.has(entry.id) || fetchedIds.has(entry.id),
-				);
+				commitView((state) => {
+					const transcript = applyHistoryPage(state.transcript, page);
+					/*
+					 * THE IDS **THIS COMMIT** LABELLED ARE RELEASED IN THE SAME COMMIT, and
+					 * this is the half of the hold a separate update could not get right.
+					 *
+					 * WHY HERE, AND WHY ONLY THESE. The page that carries a call's arguments
+					 * is applied here, one statement after the fetch that answered - so a
+					 * release written on the fetch's side of the await is a separate update,
+					 * and wherever a renderer commits those two apart the reader sees the
+					 * reported jitter exactly: the row drops its empty column for the output
+					 * stand-in, then paints its command on the next frame. Folded in, the
+					 * commit that gives a row its arguments is the commit that lets it go.
+					 *
+					 * AND THE SET IS THIS PAGE'S, NOT THE WALK'S (review round 1, M1). The
+					 * first version deleted `labels.pending` - every target the walk holds -
+					 * so a target this page did not reach was let go and repainted when the
+					 * NEXT page of the same walk named it: measured at 24 stand-in-to-command
+					 * repaints on the suite's own fall-short route, 68 on the failure arm.
+					 * The ids named by this page's own rows are the only ones this commit can
+					 * answer for; the rest stay held, and the walk's own exit or the backstop
+					 * releases them once their read budget is spent.
+					 */
+					const named = pageLabels(page.entries, known);
+					const left = new Set(state.labelPending);
+					for (const id of named) left.delete(id);
+					return {
+						...state,
+						// A page that RESOLVED is the proof hydration was waiting for,
+						// applied-or-empty alike: the backend answered with this session's
+						// durable tail, so the view may now speak about the conversation at
+						// all - which is what lets the composer offer the greeting.
+						hydrated: true,
+						labelPending: left.size ? left : NO_LABELS_PENDING,
+						/*
+						 * A MARKED ID THIS PAGE NAMED STOPS BEING MARKED (round 4). The mark is a
+						 * row's WHOLE object column while it stands, so an id left in this set after a
+						 * read named it would hide the command that just arrived - the row would keep
+						 * the cue and never show the answer it was waiting for.
+						 */
+						labelMarked: withoutLabels(state.labelMarked, named),
+						transcript,
+					};
+				});
+				/*
+				 * Nothing to latch: the release is per id and idempotent ("the ids the view
+				 * can answer for, if they are still held"), so the `finally` owns the whole
+				 * question and a second call from here would only be a second no-op.
+				 */
+				/*
+				 * §F2's LAST BULLET, ON THE READ THE CONTRACT NAMES (UX round 1's U5b): a
+				 * held send is resolved by the server's OWN answer, and on a reconnect that
+				 * answer is this one - the authoritative tail, fetched once per reconcile
+				 * (the snapshot's own page is the other, and both are offered; whichever
+				 * arrives first settles the claim). Only the TAIL page can conclude
+				 * anything (`beforeId === undefined` is the first, tail-most page of the
+				 * walk) and only a page that is not `cursor_missing` counts as complete: a
+				 * walked-back window is not the tail, so its silence about a recent
+				 * message proves nothing.
+				 */
+				if (sessionId && beforeId === undefined) {
+					useCanonicalSessionsStore.getState().resolveHeldFromServer(
+						sessionId,
+						page.entries.map((entry) => entry.id),
+						!page.cursor_missing,
+					);
+				}
+				/*
+				 * How many target calls were still behind what had been read when this
+				 * page arrived; a page that names one LOWERS it, which is the only
+				 * thing that makes this read worth remembering (see the depth floor
+				 * below). Counting `found` instead was wrong: `found` also holds the
+				 * calls the snapshot's own page already labelled, so every page that
+				 * merely repeated them grew it and every walk looked like one that had
+				 * earned its depth (round 1, R1 - it floored a session's retries at 217
+				 * rows for a walk that had labelled nothing).
+				 */
+				const behindBefore = behind();
+				for (const id of pageLabels(page.entries, known)) {
+					found.add(id);
+					known.add(id);
+				}
+				/*
+				 * The turn's opening row, once a page has reached it, is the end of the
+				 * road (`pageOpensTurn`): every call the seed names was journaled at or
+				 * after it, so nothing further back can label anything. Latched, and
+				 * tested below with the other exits.
+				 */
+				if (pageOpensTurn(page.entries)) reachedTurnStart = true;
+				if (labelling) {
+					const pageOrphans = pageOrphanResults(page.entries, known);
+					for (const id of pageOrphans) {
+						orphans.add(id);
+						known.add(id);
+					}
+					/*
+					 * The orphan's assistant row is the row just above its result, so the
+					 * result's own `ts` is the instant that stands in for its start — see
+					 * `pageOrphanResultInstants` for why that is the floor that lets the
+					 * walk take the ONE extra page finding it (round 3, R6a).
+					 */
+					for (const [id, at] of pageOrphanResultInstants(
+						page.entries,
+						pageOrphans,
+					))
+						orphanStarts.set(id, at);
+					for (const id of [...orphans]) if (found.has(id)) orphans.delete(id);
+					// One page of courtesy for a result whose start is a row or two
+					// older; past it the call has no start to find here.
+					if (orphans.size > 0 && orphanGrace-- <= 0) orphans.clear();
+				}
+				/*
+				 * Nothing on screen means nothing to connect TO, so the connection half
+				 * is satisfied by definition and only the label goal can keep the walk
+				 * going — which is exactly the round-end retry's case: it paints no
+				 * snapshot, and it used to stop after one page by this very test while
+				 * the calls it was for sat further back.
+				 */
+				// Latched: once a page connected, the pages behind it are older still
+				// and cannot un-connect the walk.
+				joined =
+					joined ||
+					painted.size === 0 ||
+					page.entries.some(
+						(entry) => painted.has(entry.id) || fetchedIds.has(entry.id),
+					);
 				for (const entry of page.entries) fetchedIds.add(entry.id);
-				// No overlap, or nothing further back: the walk is over either way.
-				//
+				// The orphan results count as missing until their own rows are read.
+				const stillBehind = behind() + orphans.size;
+				/*
+				 * The floor for the next label read, and only when this page EARNED it:
+				 * a page that read `rows` rows and labelled nothing has said nothing
+				 * about where a later read should start, and recording it is how one
+				 * call with no rows anywhere turned every later retry in the session
+				 * into a bound-sized read (round 1, R1).
+				 */
+				if (labelling && behind() < behindBefore)
+					labelGapRef.current.depth = Math.min(
+						RECONCILE_TAIL_MAX_ENTRIES,
+						Math.max(labelGapRef.current.depth, rows),
+					);
 				// No `beforeId`-progress clause belongs here. The reader's `before_id`
 				// is EXCLUSIVE (it breaks before appending the boundary row), so a page
 				// can never hand back its own boundary row as its oldest; and a
 				// transcript replaced under the walk is caught by the `fetchedIds`
 				// overlap test above, which sees the tail it hands back.
-				if (connected || !oldest || !page.has_more) return;
+				/*
+				 * The turn's opening row is a floor for a LABEL walk only. A walk that
+				 * is merely connecting (an ordinary reconcile with no targets) is
+				 * merging durable rows on the way down to the row the snapshot painted;
+				 * it may legitimately have to pass a turn's opening row to get there, and
+				 * stopping it early would leave older rows unfetched on screen. The
+				 * argument for the floor is about the SEED's calls, which is the label
+				 * walk's subject and nobody else's.
+				 */
+				/*
+				 * The two floors, and why both are here rather than one of them. The
+				 * turn boundary answers "no call of this turn can be older than this
+				 * row" and needs a turn row to exist behind the page; a journal that is
+				 * ONE long turn has none, which is the shape round 2's Q1 measured (4
+				 * requests and 409 rows where `origin/main` reads one page). The start
+				 * instants answer the same question per CALL — this call's own assistant
+				 * row is written at or AFTER this call's start, never before it
+				 * (`seedCallStarts` states the measurement and why that direction is the
+				 * safe one) — which holds on any journal shape. Whichever is reached
+				 * first ends the walk,
+				 * and `labelling` gates both: a connecting walk may legitimately have to
+				 * pass either to reach the row the snapshot painted.
+				 */
+				if (labelling) {
+					const behindTargets = behindIds();
+					const floored = pagePassedOldestStart(
+						page.entries,
+						behindTargets,
+						labels.starts,
+						behindOrphanInstants(),
+						// Every startless call may refuse the floor but one still waiting at a
+						// gate: it cannot have a durable row yet, so no page can label it and
+						// the floor has nothing to protect (round 6, R16). These are the
+						// EXEMPT ones, which is why the filter keeps the waiting set.
+						new Set(
+							behindTargets.filter((callId) => labels.waiting.has(callId)),
+						),
+					);
+					if (floored || reachedTurnStart) return false;
+				}
+				if (reconcileWalkDone(joined, stillBehind)) return false;
+				if (!oldest || !page.has_more) return false;
 				beforeId = oldest.id;
+				// A further page is sized for what is still missing behind it; a walk
+				// that only needs to connect keeps the ordinary page.
+				limit =
+					stillBehind > 0
+						? reconcileLimit(stillBehind)
+						: RECONCILE_TAIL_ENTRIES;
 			}
+			return false;
 		};
 
 		const flush = () => {
@@ -1157,6 +2647,12 @@ export function useCanonicalSessionStream(
 			const frames = pending.current;
 			pending.current = [];
 			if (frames.length === 0) return;
+			/*
+			 * The off-record chunks first, and outside the state update: see
+			 * `applyAsideDeltas` for why they can be neither a reducer branch nor a write
+			 * from inside the updater.
+			 */
+			applyAsideDeltas(frames);
 			// Decided here, from the frames, not inside the React updater: an
 			// updater runs lazily (and twice under StrictMode), so a side effect
 			// keyed off it would either never fire or fire on the discarded pass.
@@ -1263,20 +2759,162 @@ export function useCanonicalSessionStream(
 			 * per-call bound `labelGapCandidates` promises.
 			 */
 			const seedMissing = labelGapCandidates(
-				labelGapRef.current,
+				labelGapRef.current.attempts,
 				seedCallsMissingLabels(seedEvents, labelled),
 				labelled,
 				LABEL_GAP_ATTEMPTS,
 			);
+			/*
+			 * The retry's candidates are the ids the budget already tracks PLUS the calls
+			 * a live settle named - because a settle is not charged in `attempts`, a call
+			 * that settled while its step was still open would otherwise be named by no
+			 * candidate set at all when the durable moment arrives, and the row would keep
+			 * its stand-in for good (review round 1, R1).
+			 */
 			const retryLabels = roundEnded
 				? labelGapCandidates(
-						labelGapRef.current,
-						labelGapRef.current.keys(),
+						labelGapRef.current.attempts,
+						[
+							...labelGapRef.current.attempts.keys(),
+							...labelGapRef.current.settled,
+						],
 						labelled,
 						LABEL_GAP_ATTEMPTS,
 					)
 				: [];
-			const missingLabels = [...new Set([...seedMissing, ...retryLabels])];
+			/*
+			 * THE LIVE SETTLE, the seed's sibling and the third carrier of an
+			 * argument-less row. A `tool_execution_end` states no arguments in either
+			 * carrier, so the row it paints asks the durable assistant row for its
+			 * command - and the seed path above is the one that used to ask. A settle
+			 * that arrives LIVE, during the turn instead of inside a snapshot, asked for
+			 * nothing, while the two moments that could have covered for it are neither
+			 * of them guaranteed:
+			 *
+			 *  - the seed keeps only the turn's newest `LIVE_EVENT_END_ROWS_MAX` (100)
+			 *    ends, so a call that has fallen out of that window is named by no later
+			 *    snapshot at all;
+			 *  - the round-end retry (`retryLabels` above) draws its candidates from a
+			 *    budget only the seed path filled, so a settle it never tracked was not
+			 *    retried either.
+			 *
+			 * Measured on the reported conversation (`b747a2c8d3bb`): a 24.2-hour turn
+			 * with 170 calls in it, whose whole app-log history carries three
+			 * `sessions.history` reads - `limit=100` at 2026-09-24 00:00:05, and
+			 * `limit=100` plus one `limit=100&before_id=…` at 2026-09-25 09:17:25-26 -
+			 * every one of them a plain tail or a reader's own page, and NOT ONE with a
+			 * computed limit, i.e. no label read was ever asked for. (What that log
+			 * cannot say is why: the reads it shows are consistent with a settle naming
+			 * nothing, which is what the code did; the code-verifiable half is the case
+			 * in `seed-label-gap.test.mjs` that fails on the head which had no settle
+			 * path at all - review round 1, R3.) The row then kept its output stand-in -
+			 * the call's result painted where its command belongs - until the reader
+			 * scrolled its assistant row into a page.
+			 *
+			 * WHAT ASKS, AND WHAT IS CHARGED, are deliberately two different things. The
+			 * read a settle asks for is speculative (the call's row is written when its
+			 * STEP commits, so a settle from an open step is asking for a row that does
+			 * not exist yet) and it is not charged to `LABEL_GAP_ATTEMPTS`; that budget
+			 * is spent at the durable round ending, where the same call is a retry
+			 * candidate and a read can always succeed. A call whose arguments the
+			 * transcript already holds is in `labelled` and asks for nothing: every
+			 * producer that teaches them (a live start, a durable page) writes
+			 * `argsByCall` in the same step.
+			 */
+			const settledEvents: Record<string, unknown>[] = [];
+			for (const frame of frames) {
+				if (frame.type !== "event") continue;
+				const event = frame.payload as Record<string, unknown>;
+				if (String(event.type ?? "") !== "tool_execution_end") continue;
+				if (!String(event.tool_call_id ?? "")) continue;
+				settledEvents.push(event);
+			}
+			const settleCandidates: string[] = [];
+			for (const event of settledEvents) {
+				const callId = String(event.tool_call_id ?? "");
+				if (labelled.has(callId)) continue;
+				if (labelGapRef.current.settled.has(callId)) continue;
+				settleCandidates.push(callId);
+			}
+			for (const callId of settleCandidates) {
+				labelGapRef.current.settled.add(callId);
+			}
+			while (labelGapRef.current.settled.size > LABEL_GAP_MAX_TRACKED) {
+				const oldest = labelGapRef.current.settled.values().next().value;
+				if (oldest === undefined) break;
+				labelGapRef.current.settled.delete(oldest);
+			}
+			/*
+			 * The settle's OWN clock, when the frame states one: the runtime carries the
+			 * call's start onto the retained end (`started_at_epoch`), and that instant
+			 * is the walk's floor. Without it a settle target is startless,
+			 * `pagePassedOldestStart` refuses to stop for it, and the speculative read
+			 * pays the whole `RECONCILE_WALK_MAX_ROWS` for a row that is either in the
+			 * next page or nowhere (review round 1, R2 measured 5 requests / 500 rows per
+			 * pre-commit settle). With it the tail page is already older than a call that
+			 * started moments ago, so the walk stops there - one page, one request.
+			 */
+			for (const [callId, at] of seedCallStarts(settledEvents))
+				labelGapRef.current.starts.set(callId, at);
+			while (labelGapRef.current.starts.size > LABEL_GAP_MAX_STARTS) {
+				const oldest = labelGapRef.current.starts.keys().next().value;
+				if (oldest === undefined) break;
+				labelGapRef.current.starts.delete(oldest);
+			}
+			const settleAsk =
+				labelGapRef.current.settleRows < LABEL_SETTLE_ROWS_MAX
+					? settleCandidates
+					: [];
+			const missingLabels = [
+				...new Set([...seedMissing, ...retryLabels, ...settleAsk]),
+			];
+			/*
+			 * The rows whose FIRST label read this is. Their object column is held
+			 * empty until the walk below ends (`labelPending`), because the stand-in it
+			 * would otherwise show is the call's OUTPUT, painted where the command
+			 * belongs, on rows whose command is one read away. A retry is left alone:
+			 * that row has already shown its stand-in, and blanking it now would be
+			 * the row flickering rather than the first frame being right.
+			 */
+			const firstAttempts = missingLabels.filter(
+				(id) => !labelGapRef.current.painted.has(id),
+			);
+			if (seedEvents.length > 0) {
+				labelGapRef.current.order = seedCallsMissingLabels(
+					seedEvents,
+					new Set(),
+				);
+				/*
+				 * The seed's own start instants, kept past this flush because a
+				 * round-end retry arrives with no seed at all and still needs the
+				 * floor (`pagePassedOldestStart`).
+				 */
+				for (const [callId, at] of seedCallStarts(seedEvents))
+					labelGapRef.current.starts.set(callId, at);
+				while (labelGapRef.current.starts.size > LABEL_GAP_MAX_STARTS) {
+					const oldest = labelGapRef.current.starts.keys().next().value;
+					if (oldest === undefined) break;
+					labelGapRef.current.starts.delete(oldest);
+				}
+				for (const callId of seedWaitingComposes(seedEvents))
+					labelGapRef.current.waiting.add(callId);
+				/*
+				 * A seed that names the same call as started, settled or a stated
+				 * verdict RETRACTS the earlier announcement that it was waiting — the
+				 * set outlives the seed that filled it, so a later statement has to be
+				 * able to take an exemption back, or a call that has since run stays
+				 * exempt from the floor and loses the label a page would have given it
+				 * (round 7, R18). The delete comes after the add on purpose: one seed
+				 * naming a call both ways must end up NOT exempt.
+				 */
+				for (const callId of seedSettledCalls(seedEvents))
+					labelGapRef.current.waiting.delete(callId);
+				while (labelGapRef.current.waiting.size > LABEL_GAP_MAX_WAITING) {
+					const oldest = labelGapRef.current.waiting.values().next().value;
+					if (oldest === undefined) break;
+					labelGapRef.current.waiting.delete(oldest);
+				}
+			}
 			/*
 			 * Bookkeeping BEFORE the request, because this counts ATTEMPTS: a read that
 			 * fails or arrives too early must still not be retried forever. An id the
@@ -1285,20 +2923,29 @@ export function useCanonicalSessionStream(
 			 * budget. The map's oldest entries are evicted past a plausible bound so
 			 * the bookkeeping cannot outgrow any seed the owner can send.
 			 */
-			for (const id of [...labelGapRef.current.keys()]) {
-				if (labelled.has(id)) labelGapRef.current.delete(id);
+			for (const id of [...labelGapRef.current.attempts.keys()]) {
+				if (labelled.has(id)) labelGapRef.current.attempts.delete(id);
 			}
-			for (const id of missingLabels) {
-				labelGapRef.current.set(id, (labelGapRef.current.get(id) ?? 0) + 1);
-			}
-			while (labelGapRef.current.size > LABEL_GAP_MAX_TRACKED) {
-				const oldest = labelGapRef.current.keys().next().value;
+			/*
+			 * WHAT IS CHARGED, and why a settle is not among them: this loop is the
+			 * per-call budget, spent per READ THAT COULD HAVE ANSWERED. A settle's
+			 * speculative read (`settleAsk`) is not one of those - the row it wants is
+			 * written when the call's step commits, so the read may be asking for a row
+			 * that does not exist yet - and charging it here is how the first head of
+			 * this change spent both of a call's attempts before the durable round
+			 * ending that could have labelled it (review round 1, R1). Its ids are kept
+			 * in `settled` instead, and charged in the retry path the moment a durable
+			 * ending makes them candidates again.
+			 */
+			chargeLabelAttempts([...seedMissing, ...retryLabels]);
+			while (labelGapRef.current.attempts.size > LABEL_GAP_MAX_TRACKED) {
+				const oldest = labelGapRef.current.attempts.keys().next().value;
 				if (oldest === undefined) break;
-				labelGapRef.current.delete(oldest);
+				labelGapRef.current.attempts.delete(oldest);
 			}
 			performance.mark("lop:transcript:flush:start");
 
-			setView((current) => {
+			commitView((current) => {
 				let next = { ...current };
 				// Replay collects until the snapshot lands; applying an old delta
 				// over newer snapshot text is exactly the bug this ordering exists
@@ -1324,9 +2971,18 @@ export function useCanonicalSessionStream(
 						// being erased and rewritten from its last chunk. See
 						// `markLiveRecordsTruncated` for what is marked and why exactly
 						// those rows.
+						//
+						// THE READINGS ARE KEPT TOO, in `heldFrontend`, and that is the
+						// difference between a gap and a lie: the pane still knows the
+						// model, the effort, the context window and the spend it was last
+						// told, and blanking them made a ~1.5-4 s reconnect look like a
+						// conversation being reloaded from scratch. `next.frontend` is read
+						// here because this is the LAST batch in which it is still the
+						// value the pane painted - one line later it is null.
 						next = {
 							...next,
 							frontend: null,
+							heldFrontend: next.frontend ?? next.heldFrontend,
 							history: null,
 							terminal: null,
 							status: "reconnecting",
@@ -1353,12 +3009,58 @@ export function useCanonicalSessionStream(
 							subscriptionId: frame.payload.subscription_id,
 						};
 						if (frame.payload.gap) {
+							// The same hold as the `gap` arm above, for the same reason:
+							// an `open{gap}` is the reopen AFTER a broken receipt, and the
+							// readings it must not blank are the ones on screen right now.
+							const held = next.frontend ?? next.heldFrontend;
 							next = {
 								...next,
 								frontend: null,
+								heldFrontend: held,
 								history: null,
 								transcript: markLiveRecordsTruncated(next.transcript),
 							};
+							/*
+							 * AND THE PAINT SAYS IT IS NOT LIVE, WHICH IS THE HALF THAT
+							 * MAKES THE HOLD HONEST.
+							 *
+							 * A `gap` FRAME does this itself (the arm above), because the
+							 * server sends one before it closes. This arm had no such write,
+							 * and with the hold in place that becomes a lie rather than a
+							 * blank: a reconnect the renderer asks for ITSELF (the resync
+							 * after another surface changed something, `reopen`) reaches an
+							 * `open{gap}` with `status` still `live`, so four held readings
+							 * would be painted as current over a stream that has not
+							 * replayed anything yet.
+							 *
+							 * FROM `live` ONLY, AND THAT IS A CORRECTION RATHER THAN A
+							 * TIDY-UP (agent review round 1, MAJOR 1). The write is about the
+							 * resync from a live pane. `unavailable` is a TERMINAL state the
+							 * app has already given up on, and the pane gates BOTH the
+							 * failure notice and its Reconnect control on
+							 * `status === "unavailable" && failure`
+							 * (`canonical-transcript.tsx`). Overwriting it here left
+							 * `failure` standing while the status said `reconnecting`, so the
+							 * diagnosis and the only control that can act disappeared behind
+							 * a line claiming progress. Two doors reach that state with a
+							 * non-null hold: the `HISTORY_UNREADABLE` arm below, and the
+							 * retry arm, which deliberately PRESERVES `unavailable` +
+							 * `failure` across its own `connect()`.
+							 *
+							 * The road not taken, recorded: clearing `failure` in this same
+							 * write. The failure is a true statement the app has already
+							 * made, and the retry arm keeps it ON PURPOSE; a status write is
+							 * not the place to retract a diagnosis.
+							 *
+							 * Keyed on there being something TO hold, which is also what
+							 * makes the FIRST open of a fresh mount correct: it answers
+							 * `gap: true` too (there is no earlier epoch for the bridge to
+							 * match against), and calling that pane "reconnecting" would
+							 * replace its honest "connecting" - a pane that has never
+							 * connected - with a claim that it once was.
+							 */
+							if (held && next.status === "live")
+								next = { ...next, status: "reconnecting" };
 							snapshotted = false;
 						}
 						continue;
@@ -1379,6 +3081,24 @@ export function useCanonicalSessionStream(
 							let transcript = replayTranscript ?? next.transcript;
 							if (!snapshot.history.cursor_missing) {
 								transcript = applyHistoryPage(transcript, snapshot.history);
+							}
+							/*
+							 * AND A SNAPSHOT RESOLVES A HELD SEND (§F2's last bullet, UX round 1's
+							 * U5b). This frame is "the frame that follows a reconnect or a fresh
+							 * subscription" (the note below says the same of the pulse seed), and
+							 * its page is the server's own statement of what this conversation
+							 * holds — the acknowledgement §F2 says a held state clears from, never
+							 * from the local send. The store decides: an answer that NAMES the held
+							 * request landed; one that does not, on a COMPLETE page (no
+							 * `cursor_missing`), proves it did not. Passed unconditionally because
+							 * both arms are cheap and the claim's existence is the store's test.
+							 */
+							if (sessionId) {
+								useCanonicalSessionsStore.getState().resolveHeldFromServer(
+									sessionId,
+									snapshot.history.entries.map((entry) => entry.id),
+									!snapshot.history.cursor_missing,
+								);
 							}
 							// A cold session (no live owner) snapshots with no history
 							// cursor and therefore an empty page, and a replaced cursor
@@ -1558,7 +3278,22 @@ export function useCanonicalSessionStream(
 							// not a round whose namespace consumers need to re-read.
 							next = { ...next, turnsCompleted: next.turnsCompleted + 1 };
 						}
-						const transcript = applyEvent(next.transcript, frame.payload, now);
+						const transcript = applyEvent(next.transcript, frame.payload, now, {
+							/*
+							 * READ AT APPLY TIME, not captured: the store is written by the
+							 * interrupt's receipt, which lands BEFORE the killed call's end event
+							 * comes back through this stream — the same ordering the strip's own
+							 * `stoppedTurns` docstring states. `getState()` rather than a selector
+							 * because this value is needed inside a socket callback rather than
+							 * during a render, which is the shape `chat-page`'s `send` already uses
+							 * for the same reason.
+							 */
+							userStoppedAt: sessionId
+								? (useCanonicalSessionsStore.getState().stoppedTurns[
+										sessionId
+									] ?? null)
+								: null,
+						});
 						if (transcript !== next.transcript) {
 							next = { ...next, transcript };
 						}
@@ -1615,10 +3350,134 @@ export function useCanonicalSessionStream(
 					"lop:transcript:flush:end",
 				);
 				paintedIds.current = next.transcript.index;
+				/*
+				 * AN OFF-RECORD BATCH PAINTS NOTHING, so it must not repaint the pane
+				 * either (review round 1, F5). The loop above has still RUN for these
+				 * frames, which is what keeps `receiptRef` current — the receipt cursor is
+				 * advanced by the same arm for every frame carrying an epoch and a seq, and
+				 * THE REF is what bounds a reconnect's replay. The only field such a batch
+				 * writes into `next` is the view's mirror of that cursor, and every other
+				 * field of `next` is the reference `current` already holds: returning
+				 * `current` therefore hands React the identical object and the pane does not
+				 * re-render at all, while an aside answer streams into the panel and the
+				 * conversation, the composer and the transcript are left alone.
+				 *
+				 * AND IT CANNOT SKIP THE HOLD BELOW. An off-record batch is one whose
+				 * frames are all `aside_delta`/`heartbeat` (see `batchMovesView`), and
+				 * `firstAttempts` is built from snapshot seeds and round-ending event
+				 * frames only - a batch of those two types carries neither, so
+				 * `firstAttempts` is empty here and the hold has nothing to apply. The
+				 * guard sits above the hold rather than below it so that the early return
+				 * can never be the reason a held row went unheld.
+				 */
+				if (!batchMovesView(frames)) return current;
+				if (firstAttempts.length > 0) {
+					// In the same commit as the rows they describe, so no frame paints
+					// a seeded row's stand-in before the hold is in place.
+					const held = new Set(next.labelPending);
+					for (const id of firstAttempts) held.add(id);
+					next = { ...next, labelPending: held };
+					/*
+					 * The hold's backstop is NOT armed here, deliberately: a hold can
+					 * also arrive with a cached paint (`paintSeed`, in the very first
+					 * frame), and a cap that only the flush could arm would leave those
+					 * rows objectless forever. The backstop effect (above the stream
+					 * effect) owns the deadline for every hold, whatever put the row in
+					 * the set.
+					 */
+				}
+				/*
+				 * The hold's SOURCE: whatever authoritative frontend this batch left
+				 * painted becomes the copy a later gap falls back to.
+				 *
+				 * WRITTEN ONCE, HERE, rather than at each of the four arms that can
+				 * publish a frontend (`snapshot`, `frontend.update`, `frontend.replace`,
+				 * and the attention merge that rides `frontend.update`). Four call sites
+				 * would be four chances for a new arm to forget, and the failure of a
+				 * forgotten one is invisible: the readings would simply be one frame
+				 * stale in a state nobody screenshots. A rule over the batch's OUTCOME
+				 * covers every arm that exists and every arm added later, because it asks
+				 * the only question that matters - is there an authoritative frontend
+				 * painted now?
+				 *
+				 * IDENTITY, NOT A DEEP COMPARE: every arm above builds a NEW object (a
+				 * spread of the old one, or the snapshot's own), so reference equality
+				 * is the exact test for "this batch published a frontend". It is a
+				 * cheap test, not a promise about WHICH batches reassign the hold - an
+				 * attention-only batch builds a new frontend object too, so it does
+				 * reassign. What the identity test buys is that a batch which published
+				 * nothing (the early return above) cannot blank or churn the hold.
+				 *
+				 * WHOLESALE, and that is a requirement rather than an implementation
+				 * detail: the held copy is a whole published state, so a fresh snapshot
+				 * REPLACES it. Merging old and new fields would be a state the owner
+				 * never published and could not be asked about.
+				 */
+				if (next.frontend !== null && next.frontend !== next.heldFrontend)
+					next = { ...next, heldFrontend: next.frontend };
 				return next;
 			});
+			if (firstAttempts.length > 0) {
+				/*
+				 * Painted once is forever FOR THIS CONVERSATION: recorded here, in the
+				 * same breath as the hold, so a later mount cannot hold the same row
+				 * again however the attempt map has moved on (round 2, N1).
+				 */
+				for (const id of firstAttempts) labelGapRef.current.painted.add(id);
+				while (labelGapRef.current.painted.size > LABEL_GAP_MAX_PAINTED) {
+					const oldest = labelGapRef.current.painted.values().next().value;
+					if (oldest === undefined) break;
+					labelGapRef.current.painted.delete(oldest);
+				}
+			}
+			/*
+			 * A walk a settle ALONE asked for is paid out of the settle budget; one the
+			 * seed, a retry or the reconcile also needed is FREE, because it was
+			 * happening anyway. That is the coalescing: N settles in one flush are one
+			 * walk, and a settle whose call a page already names costs nothing further.
+			 */
+			const settleOnly =
+				settleAsk.length > 0 &&
+				seedMissing.length === 0 &&
+				retryLabels.length === 0 &&
+				!needsReconcile;
 			if (needsReconcile || missingLabels.length > 0) {
-				void reconcileTail(generation, paintedEntryIds, missingLabels.length);
+				const targets = new Set(missingLabels);
+				const order = labelGapRef.current.order;
+				void reconcileTail(
+					generation,
+					paintedEntryIds,
+					missingLabels.length > 0
+						? {
+								targets,
+								order,
+								starts: labelGapRef.current.starts,
+								waiting: labelGapRef.current.waiting,
+								every: new Set([...order, ...targets]),
+								found: new Set(
+									pageLabels(
+										frames.flatMap((frame) =>
+											frame.type === "snapshot"
+												? frame.payload.history.entries
+												: [],
+										),
+										new Set(order),
+									),
+								),
+								pending: firstAttempts,
+							}
+						: NO_LABEL_WALK,
+					/*
+					 * The first attempt, stated rather than defaulted: the settle
+					 * budget's callback rides behind it (see `onSpend`).
+					 */
+					1,
+					settleOnly
+						? (spent: number) => {
+								labelGapRef.current.settleRows += spent;
+							}
+						: undefined,
+				);
 			}
 		};
 
@@ -1652,11 +3511,18 @@ export function useCanonicalSessionStream(
 				// again six more times would turn one 20 s wait into minutes. The
 				// user's Reconnect (`reopen`) re-arms everything.
 				closeStream();
-				setView((current) => ({
+				commitView((current) => ({
 					...current,
 					subscriptionId: null,
 					status: "unavailable",
 					failure: streamFailureNotice(DESKTOP_STREAM_DETAIL.ended),
+					// A connection that accepted and then said nothing is the frozen-owner
+					// case, and it is TERMINAL for this attempt: the pane states the
+					// failure and offers Reconnect rather than holding readings over a
+					// stream that is not coming back on its own. Held here would be the
+					// one thing R2 forbids - a reading kept past the point where anything
+					// says it is still being refreshed.
+					heldFrontend: null,
 				}));
 				if (rechecked) return;
 				rechecked = true;
@@ -1704,12 +3570,20 @@ export function useCanonicalSessionStream(
 							// otherwise paint rows for a transcript that no longer exists,
 							// with nothing to tell the reader they are fiction.
 							if (sessionId) dropPaint(sessionId);
-							setView((current) => ({
+							commitView((current) => ({
 								...current,
 								subscriptionId: null,
 								status: "unavailable",
 								missing: true,
 								failure: null,
+								// 404 is about the SESSION, so it is the one terminal state
+								// that must take the readings with it: the conversation this
+								// machine does not have has no model, no context window and no
+								// spend to report, and holding them would describe a session
+								// that, as far as this host can answer, does not exist. The
+								// same reasoning that drops the paint above (see its comment)
+								// applies to every other reading of the same session.
+								heldFrontend: null,
 							}));
 							return;
 						}
@@ -1721,15 +3595,21 @@ export function useCanonicalSessionStream(
 						// it makes the lease keep posting a subscription id the backend no
 						// longer holds (the 422 the operator's log shows), so it is dropped
 						// here and re-established by the next `open` frame.
-						setView((current) => ({ ...current, subscriptionId: null }));
+						commitView((current) => ({ ...current, subscriptionId: null }));
 						if (attempt >= STREAM_MAX_ATTEMPTS) {
-							setView((current) => ({
+							commitView((current) => ({
 								...current,
 								status: "unavailable",
 								// The transport's detail is machine register and differs per
 								// transport; the reader gets the product sentence for that
 								// condition instead (D1).
 								failure: streamFailureNotice(detail),
+								// The retry budget is spent, and that is the state R3 keeps
+								// terminal: what says the connection is not live is the
+								// failure notice and its Reconnect, so a reading held past it
+								// would be the only thing on the pane still claiming to
+								// describe a stream. Cleared with the budget.
+								heldFrontend: null,
 							}));
 							return;
 						}
@@ -1761,7 +3641,7 @@ export function useCanonicalSessionStream(
 								afterSeq: receipt.seq,
 							};
 						}
-						setView((current) =>
+						commitView((current) =>
 							current.status === "unavailable" && attempt > 1
 								? current
 								: { ...current, status: "reconnecting", failure: null },
@@ -1878,7 +3758,7 @@ export function useCanonicalSessionStream(
 				window.clearTimeout(reconcileTimer);
 				reconcileTimer = 0;
 			}
-			setView((current) => ({
+			commitView((current) => ({
 				...current,
 				failure: null,
 				status:
@@ -1891,7 +3771,6 @@ export function useCanonicalSessionStream(
 				void reconcileTail(
 					generation,
 					new Set(viewRef.current.transcript.index.keys()),
-					reconcileLimit(0),
 				);
 			}
 			if (dispose) return;
@@ -1915,11 +3794,19 @@ export function useCanonicalSessionStream(
 			if (fallback) clearTimeout(fallback);
 			if (retryTimer) clearTimeout(retryTimer);
 			if (reconcileTimer) clearTimeout(reconcileTimer);
+			if (labelHoldTimerRef.current) {
+				window.clearTimeout(labelHoldTimerRef.current);
+				labelHoldTimerRef.current = 0;
+			}
+			if (labelMarkTimerRef.current) {
+				window.clearTimeout(labelMarkTimerRef.current);
+				labelMarkTimerRef.current = 0;
+			}
 			if (recheckTimer) window.clearTimeout(recheckTimer);
 			clearSnapshotTimer();
 			pending.current = [];
 		};
-	}, [sessionId, enabled]);
+	}, [commitView, sessionId, enabled]);
 
 	// A different session is a different transcript; the reconnect cursor is
 	// per-session too, so both reset together.
@@ -1946,9 +3833,20 @@ export function useCanonicalSessionStream(
 		// this hook, and the cleanup effect below is the only moment that always
 		// happens.
 		const seed = sessionId ? readPaint(sessionId) : null;
-		setView((current) => ({
+		commitView((current) => ({
 			...current,
 			frontend: null,
+			/*
+			 * The held readings follow the TRANSCRIPT's rule, not `frontend`'s, and
+			 * the two differ here on purpose. `frontend` is always dropped - a new
+			 * subscription owes its own snapshot whatever the id - but a held
+			 * reading is only ever the previous state of THIS conversation, so it
+			 * survives a remount that keeps the conversation (the New-chat identity
+			 * flip, which mounts this hook with the id it keeps) and goes with a
+			 * genuine session change, where the readings on screen describe a
+			 * conversation nobody is looking at any more.
+			 */
+			heldFrontend: sameSession ? current.heldFrontend : null,
 			// A different session's unconfirmed paint describes the model of a
 			// conversation that is no longer on screen.
 			pendingModel: null,
@@ -1976,6 +3874,16 @@ export function useCanonicalSessionStream(
 			// A different session's children are different children, and a pulse
 			// carried across is a counter no reader can match to a job.
 			subagentPulses: {},
+			// The previous session's pending label reads name its own calls.
+			/*
+			 * The rows the cached paint was still waiting on, for the same reason the
+			 * initial state above seeds them: this mount paints rows in its FIRST frame,
+			 * and a row whose arguments are one read away must not paint its result line
+			 * in the meantime.
+			 */
+			labelPending: seed?.owedLabels ?? NO_LABELS_PENDING,
+			labelMarked: seed?.markLabels ?? NO_LABELS_MARKED,
+			labelHoldLate: false,
 			// And this session's history is unknown again: the previous session's
 			// page proves nothing about this one, so the composer must not state
 			// that this conversation is empty until its own page lands.
@@ -1988,7 +3896,13 @@ export function useCanonicalSessionStream(
 		// ids would each buy a history page for the new one, sized by the old gap,
 		// that can only be a no-op. `reconnectRef`, `receiptRef` and `paintedIds` are
 		// cleared here for the same reason.
-		labelGapRef.current = new Map();
+		/*
+		 * The conversation's own bookkeeping, NOT a fresh one: `labelGapFor` returns
+		 * what an earlier visit to this conversation already learned and paid for.
+		 * Resetting here is what made a switch back re-hold rows the reader had
+		 * already seen (round 1, QA Q1).
+		 */
+		labelGapRef.current = labelGapFor(sessionId);
 	}, [sessionId]);
 
 	/*
@@ -2010,13 +3924,237 @@ export function useCanonicalSessionStream(
 			// Nothing to cache for a conversation this window never painted: an
 			// empty transcript would be a cache hit that correctly paints nothing.
 			if (painted.records.length > 0)
-				writePaint(sessionId, { transcript: painted });
+				writePaint(sessionId, {
+					transcript: painted,
+					/*
+					 * What this paint was still waiting on, carried beside the rows: the
+					 * next mount paints them in its first frame, and the rows alone cannot
+					 * tell an outstanding read from a spent one.
+					 *
+					 * INTERSECTED WITH THE WALK'S OWN REQUEST, not just "held" (review
+					 * round 1, m1). A held id whose budget is spent is one NO read will
+					 * name - the stand-in is the true answer for it - and carrying it would
+					 * make the next mount hold a row on a justification that is false.
+					 */
+					owedLabels: new Set(
+						[...viewRef.current.labelPending].filter((id) =>
+							labelOwed(
+								labelGapRef.current,
+								viewRef.current.transcript.argsByCall,
+								id,
+								turnRunning(viewRef.current),
+							),
+						),
+					),
+					/*
+					 * AND THE MARKED SET TRAVELS WHOLE (round 4). These ids are not held - a refusal
+					 * ended their hold - so `owedLabels` above cannot carry them, and the next mount
+					 * would paint the call's OUTPUT on its first frame for a conversation whose read
+					 * path was refusing. No intersection with `labelOwed` here, deliberately: what
+					 * the mark needs is not "is a read owed" but "has no read named this yet", and
+					 * an id whose read answered would have left the set in the commit that named it.
+					 */
+					markLabels: new Set(viewRef.current.labelMarked),
+				});
+			/*
+			 * AND THIS PANE'S OUTSTANDING READS GO WITH IT (agent review round 3, M2's
+			 * second half). `inFlight` is term (a) of the rule, so an id left in it
+			 * outlives the pane that put it there: the walk that owned it is abandoned
+			 * at this instant, and a switch back would then hold that row on a read
+			 * nobody can still name - to the backstop, rather than to any read.
+			 *
+			 * AFTER THE WRITE, deliberately. The cache's question is what THIS paint was
+			 * waiting on, and a read that was genuinely out when the reader left is
+			 * exactly what `owedLabels` is for: measured on the hanging-read control,
+			 * the real tear-down writes owed 68 and the cached mount paints 0
+			 * stand-ins. Dropping first would erase the very fact the field carries and
+			 * put the 68 stand-ins back on the first frame - which is why this runs
+			 * here rather than in the stream effect's cleanup, where React would reach
+			 * it first.
+			 *
+			 * DROPPING THIS MOUNT'S OWN IDS rather than `clear()`: a retry the walk
+			 * handed to its own timer can be out for the same conversation, and wiping
+			 * the whole set would take that read's justification with it. The successor
+			 * mount makes its own entries after this runs.
+			 */
+			for (const id of inFlightOwned.current)
+				labelGapRef.current.inFlight.delete(id);
+			inFlightOwned.current.clear();
 		};
 	}, [sessionId]);
 
-	// Latest view for callbacks that must not re-create per render.
-	const viewRef = useRef(view);
-	viewRef.current = view;
+	/*
+	 * The first-paint hold's wall-clock backstop, and the ONE place its deadline is
+	 * armed.
+	 *
+	 * WHY ONE PLACE. The hold does not arrive from a single source: the seed's
+	 * flush registers its targets in the commit that paints their rows, and a
+	 * cached paint arrives holding its own rows in the very FIRST frame
+	 * (`paintSeed`), before any flush has run. A cap armed only by the flush would
+	 * leave a cache-held row objectless for as long as the owner stayed quiet. So
+	 * the deadline follows the SET rather than its writers: armed when the set
+	 * becomes non-empty, cleared when it empties, and fired unconditionally, because
+	 * a request that never answers is exactly the case a stricter test cannot
+	 * recognise.
+	 *
+	 * WHAT IT IS SET FROM is the transport's own bound for this op rather than a
+	 * comfort number - see `LABEL_HOLD_MAX_MS`, which is where design round 1's 2 s,
+	 * QA's 3 s and the 6 s page it still painted through are accounted for.
+	 *
+	 * A deadline already running is NOT restarted when a row is added to the set.
+	 * Restarting on every change would let a busy stream - a turn settling calls
+	 * every second, for hours - hold the earliest rows blank far past any bound a
+	 * reader could be shown as one. A row added late therefore shares the batch's
+	 * own deadline, which is the oldest arming still in the set's lifetime.
+	 */
+	const labelHoldTimerRef = useRef(0);
+	useEffect(() => {
+		/*
+		 * BOTH SETS ARE ON THIS DEADLINE (round 4). A marked id has no hold left to end,
+		 * so `fire` below is the only thing that can ever resolve it to the stand-in, and
+		 * the marked set is therefore armed by the same rule the held one follows: the
+		 * deadline follows the sets, armed when either becomes non-empty, cleared when
+		 * both are empty, and a batch already running is not restarted by an arrival.
+		 */
+		if (view.labelPending.size === 0 && view.labelMarked.size === 0) {
+			if (labelHoldTimerRef.current) {
+				window.clearTimeout(labelHoldTimerRef.current);
+				labelHoldTimerRef.current = 0;
+			}
+			return;
+		}
+		if (labelHoldTimerRef.current) return;
+		/*
+		 * The fire, and its ONE REFUSAL (agent review round 3, U4/Q-4).
+		 *
+		 * A read that is still out for a held id is not a read that has stopped
+		 * answering, and the batch deadline cannot tell the two apart - it was armed
+		 * once, when the set became non-empty. Firing on the clock alone therefore
+		 * painted the stand-in WHILE A READ WAS IN FLIGHT: measured on the abort-then-
+		 * retry arm, 26 rows showed the call's OUTPUT in the command column for 4.97 s
+		 * from 25 124 ms while the read issued at 20 005 ms was still running, and on
+		 * the wedge the hold ended at 25 159 ms, 5.2 s into attempt two's own 20 s
+		 * window. So the deadline defers to the read: while anything held is in flight
+		 * it RE-ARMS rather than fires, and the bound is per ATTEMPT rather than per
+		 * batch.
+		 *
+		 * WHAT THAT COSTS, measured rather than claimed (see the constant's own
+		 * comment for the number and the route): a wedged owner holds longer than one
+		 * window, because the timer now waits for the attempts to run out instead of
+		 * cutting in front of them. That is the trade this rule makes everywhere else -
+		 * blank over a wrong fact - and it is bounded, because the transport's deadline
+		 * ends each attempt and `LABEL_GAP_ATTEMPTS` bounds how many there are.
+		 *
+		 * IT CANNOT LOOP FOREVER: `inFlight` only ever holds ids whose walk is out, and
+		 * a walk is out for at most `LABEL_GAP_ATTEMPTS` transport windows. The moment
+		 * the last one ends, the next fire finds nothing in flight and releases.
+		 */
+		const fire = () => {
+			labelHoldTimerRef.current = 0;
+			const held = viewRef.current.labelPending;
+			const marked = viewRef.current.labelMarked;
+			if (held.size === 0 && marked.size === 0) return;
+			const gap = labelGapRef.current;
+			/*
+			 * THE DEFERRAL COVERS BOTH SETS. A marked id whose retry is out is a read that
+			 * can still name the call - the same fact this refusal exists for on a held one
+			 * (U4) - and a marked row that fired early would put the call's OUTPUT in the
+			 * command column while that read was still running, which is the 4.97 s the
+			 * round measured.
+			 */
+			for (const id of held) {
+				if (gap.inFlight.has(id)) {
+					labelHoldTimerRef.current = window.setTimeout(
+						fire,
+						LABEL_HOLD_MAX_MS,
+					);
+					return;
+				}
+			}
+			for (const id of marked) {
+				if (gap.inFlight.has(id)) {
+					labelHoldTimerRef.current = window.setTimeout(
+						fire,
+						LABEL_HOLD_MAX_MS,
+					);
+					return;
+				}
+			}
+			commitView((state) =>
+				state.labelPending.size === 0 && state.labelMarked.size === 0
+					? state
+					: {
+							...state,
+							labelPending: NO_LABELS_PENDING,
+							labelMarked: NO_LABELS_MARKED,
+						},
+			);
+		};
+		labelHoldTimerRef.current = window.setTimeout(fire, LABEL_HOLD_MAX_MS);
+	}, [commitView, view.labelPending, view.labelMarked]);
+
+	/**
+	 * The late-hold mark's arm, and the ONLY writer of `labelHoldLate`.
+	 *
+	 * WHY IT EXISTS (design round 3, D7 - BLOCKER). The round-2 commit threaded the
+	 * flag view -> pane -> row and had `ToolLedgerRow` render the mark off it, but
+	 * nothing ever set it true: `git grep labelHoldLate` found the type declaration,
+	 * two `false` initialisers and the consumers, and `LABEL_HOLD_MARK_MS` was named
+	 * only in comments. So `summaryHold` was a constant false, the mark's
+	 * `data-label-hold` and its `title` suppression were unreachable, and the app
+	 * shipped a described cue no reader could see - 5 395 head pane frames and 0
+	 * marks, and the built chunk writing `labelHoldLate:!1` twice and `:!0` never.
+	 *
+	 * ARMED PER HOLD BATCH, exactly as the view type's own doc says a batch is
+	 * defined: the window starts when the held set becomes non-empty and is NOT
+	 * restarted when another row joins it - the same rule the backstop follows, and
+	 * for the same reason. A row added late joins the batch that is already late and
+	 * is marked with it rather than given a fresh two seconds of blank, so a busy
+	 * stream cannot hold a reader on blank cells indefinitely by adding to the set.
+	 *
+	 * CLEARED when the held set empties, which covers both exits the mark has: the
+	 * rows resolve (the command arrives, or the terminal release paints the
+	 * stand-in) and the release empties the set. A PARTIAL release leaves it
+	 * standing, and that is the intent rather than an oversight: the one flag is
+	 * read per row through `labelPending === true && labelHoldLate === true`, so the
+	 * rows that are still owed keep their mark and the rows that resolved drop it in
+	 * the same commit.
+	 *
+	 * A FRESH MOUNT STARTS BLANK. The flag is seeded `false` on both seeds and this
+	 * effect arms its own window from that mount's own set, so a cached switch-back
+	 * is not marked on its first frame: the design round's decision that the first
+	 * paint is untouched and the mark is a late state only holds across the mount.
+	 *
+	 * WHAT IT IS NOT: a bound. It cannot release anything - it writes one boolean and
+	 * never touches `labelPending` - so arming it cannot make a hold shorter, and a
+	 * mark that stands past the point a read answers is resolved by the same release
+	 * the blank was.
+	 */
+	const labelMarkTimerRef = useRef(0);
+	useEffect(() => {
+		if (view.labelPending.size === 0) {
+			if (labelMarkTimerRef.current) {
+				window.clearTimeout(labelMarkTimerRef.current);
+				labelMarkTimerRef.current = 0;
+			}
+			// The clear is conditional so an already-clean view keeps its identity,
+			// which is the same reason `NO_LABELS_PENDING` is shared.
+			commitView((state) =>
+				state.labelHoldLate ? { ...state, labelHoldLate: false } : state,
+			);
+			return;
+		}
+		if (view.labelHoldLate) return;
+		if (labelMarkTimerRef.current) return;
+		labelMarkTimerRef.current = window.setTimeout(() => {
+			labelMarkTimerRef.current = 0;
+			commitView((state) =>
+				state.labelPending.size === 0 || state.labelHoldLate
+					? state
+					: { ...state, labelHoldLate: true },
+			);
+		}, LABEL_HOLD_MARK_MS);
+	}, [commitView, view.labelPending, view.labelHoldLate]);
 	// The conversation currently on screen, read at resolution time rather than
 	// closed over, so an in-flight page can tell whether it is still wanted.
 	const sessionRef = useRef(sessionId);
@@ -2035,7 +4173,7 @@ export function useCanonicalSessionStream(
 		// to precede a click in the sidebar.
 		const requested = sessionId;
 		loadingOlderRef.current = true;
-		setView((current) => ({ ...current, loadingOlder: true }));
+		commitView((current) => ({ ...current, loadingOlder: true }));
 		try {
 			const page = await desktopResult<DesktopHistoryPage>({
 				op: "sessions.history",
@@ -2053,10 +4191,10 @@ export function useCanonicalSessionStream(
 				// spinner with no request in flight and no way to clear it short of
 				// a reload — and because the affordance renders disabled in that
 				// state, the reader could not even retry.
-				setView((current) => ({ ...current, loadingOlder: false }));
+				commitView((current) => ({ ...current, loadingOlder: false }));
 				return false;
 			}
-			setView((current) => ({
+			commitView((current) => ({
 				...current,
 				loadingOlder: false,
 				transcript: applyHistoryPage(current.transcript, page),
@@ -2065,12 +4203,12 @@ export function useCanonicalSessionStream(
 		} catch {
 			// The rows already painted are still correct; the affordance simply
 			// stays available for another try.
-			setView((current) => ({ ...current, loadingOlder: false }));
+			commitView((current) => ({ ...current, loadingOlder: false }));
 			return false;
 		} finally {
 			loadingOlderRef.current = false;
 		}
-	}, [sessionId]);
+	}, [commitView, sessionId]);
 
 	const refreshingTailRef = useRef(false);
 	/*
@@ -2102,7 +4240,7 @@ export function useCanonicalSessionStream(
 				 * is the durable tail, i.e. exactly the rows `/clear` removed.
 				 */
 				if (viewRef.current.transcript.viewEpoch !== epoch) return false;
-				setView((current) => ({
+				commitView((current) => ({
 					...current,
 					/*
 					 * `keepPaging`: this is a TAIL read, so its `has_more` describes the
@@ -2129,7 +4267,7 @@ export function useCanonicalSessionStream(
 				refreshingTailRef.current = false;
 			}
 		},
-		[sessionId],
+		[commitView, sessionId],
 	);
 
 	// Registered for as long as this session is on screen, so the store's echo
@@ -2139,7 +4277,7 @@ export function useCanonicalSessionStream(
 	useEffect(() => {
 		if (!sessionId) return;
 		const apply = (mutate: (state: TranscriptState) => TranscriptState) => {
-			setView((current) => {
+			commitView((current) => {
 				const transcript = mutate(current.transcript);
 				return transcript === current.transcript
 					? current
@@ -2154,14 +4292,24 @@ export function useCanonicalSessionStream(
 		 * lands and this is the first moment a transcript can receive it.
 		 */
 		return __registerEchoTarget(sessionId, apply);
-	}, [sessionId]);
+	}, [commitView, sessionId]);
 
 	const clearView = useCallback(() => {
-		setView((current) => ({
+		commitView((current) => ({
 			...current,
 			transcript: clearTranscript(current.transcript),
+			/*
+			 * The held copy goes with it, and costs nothing visible: `/clear` is
+			 * VIEW-only, so `frontend` is still painted and the readings still come
+			 * from it. What this buys is the invariant - `heldFrontend` is only ever
+			 * the fallback for a pane that was painting an authoritative frontend a
+			 * moment ago, and a cleared view is the one state that deliberately has
+			 * nothing behind it. If a gap follows, the hold is re-taken from the
+			 * still-live `frontend` by the gap arm itself.
+			 */
+			heldFrontend: null,
 		}));
-	}, []);
+	}, [commitView]);
 
 	const retry = useCallback(() => {
 		retryRef.current?.();
@@ -2169,25 +4317,28 @@ export function useCanonicalSessionStream(
 
 	const addNote = useCallback(
 		(text: string, level: "info" | "warning" | "error" = "info") => {
-			setView((current) => ({
+			commitView((current) => ({
 				...current,
 				transcript: appendLocalNote(current.transcript, text, level),
 			}));
 		},
-		[],
+		[commitView],
 	);
 
-	const paintPendingModel = useCallback((model: CanonicalModel) => {
-		setView((current) => ({ ...current, pendingModel: model }));
-	}, []);
+	const paintPendingModel = useCallback(
+		(model: CanonicalModel) => {
+			commitView((current) => ({ ...current, pendingModel: model }));
+		},
+		[commitView],
+	);
 
 	const clearPendingModel = useCallback(() => {
-		setView((current) =>
+		commitView((current) =>
 			current.pendingModel === null
 				? current
 				: { ...current, pendingModel: null },
 		);
-	}, []);
+	}, [commitView]);
 
 	/*
 	 * Reconcile the paint against the authoritative frames.
@@ -2219,19 +4370,19 @@ export function useCanonicalSessionStream(
 			modelSelector(frontend?.selected_model) === painted ||
 			modelSelector(frontend?.effective_model) === painted
 		) {
-			setView((current) => ({ ...current, pendingModel: null }));
+			commitView((current) => ({ ...current, pendingModel: null }));
 		}
-	}, [view.frontend, view.pendingModel]);
+	}, [commitView, view.frontend, view.pendingModel]);
 
 	// The bounded backstop for a confirmation that never arrives; see the constant.
 	useEffect(() => {
 		if (!view.pendingModel) return;
 		const timer = window.setTimeout(
-			() => setView((current) => ({ ...current, pendingModel: null })),
+			() => commitView((current) => ({ ...current, pendingModel: null })),
 			PENDING_MODEL_TIMEOUT_MS,
 		);
 		return () => window.clearTimeout(timer);
-	}, [view.pendingModel]);
+	}, [commitView, view.pendingModel]);
 
 	return useMemo(
 		() => ({
@@ -2243,7 +4394,8 @@ export function useCanonicalSessionStream(
 			 * changed session. See `CanonicalSessionHandle.awaitingHydration` for why
 			 * the composer needs it and why `hydrated` is left alone.
 			 */
-			awaitingHydration: enabled && Boolean(sessionId) && !view.hydrated,
+			awaitingHydration:
+				enabled && Boolean(sessionId) && isSession && !view.hydrated,
 			loadOlder,
 			refreshTail,
 			clearView,
@@ -2256,6 +4408,7 @@ export function useCanonicalSessionStream(
 			view,
 			enabled,
 			sessionId,
+			isSession,
 			loadOlder,
 			refreshTail,
 			clearView,

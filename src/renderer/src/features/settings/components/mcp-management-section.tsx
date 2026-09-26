@@ -1,148 +1,88 @@
 /**
- * MCP server management, replacing the legacy Gmail/Calendar/Drive cards.
+ * Settings > Integrations: the MCP servers agents can use, and what each one
+ * needs from the user right now.
  *
- * The old section ran an Electron Google OIDC flow that wrote GOOGLE_* keys
- * nothing reads. This surface instead drives the backend's MCP controls for
- * the selected session: the effective server list with its config scope,
- * add/remove (remove asks first), connect/disconnect/reload, and grant
- * login/status/cancel for HTTP servers whose transport can do OAuth. A stdio
- * server gets its server-supported setup action — offered as a prompt the
- * user may submit through the composer with ordinary gates — never a fake
- * browser login.
+ * ## What this page is for
  *
- * "Transport connected" and "upstream account authorized" are different rows
- * of state: a healthy MCP connection does not prove the Google Workspace
- * account behind a server is authorized, and this panel never claims it does.
- * The wire carries no per-row authorization state to render — the backend
- * hard-codes `downstream_authorization: "unknown"` — so the fact is stated
- * once, in this section's description, rather than reprinted on every row.
+ * Seeing which integrations work, fixing the ones that do not, and adding or
+ * removing them - on a fresh install as much as on a machine with fifty chats.
+ * The rendering decisions live in `integrations/integration-model.ts` (pure,
+ * unit-tested), the data in `integrations/use-integrations.ts`, and this file
+ * only composes them. What changed from the version it replaces (design audit
+ * § 4, UX walk U5/U6/U8):
  *
- * The row is read with the field names the backend actually sends
- * (`owned_scope`, `setup.text`, `status`); see `MCPServerRow`.
+ * - It reads the SESSIONLESS catalog when the backend has one (`mcp_catalog`),
+ *   so adding, testing and signing in need no chat, no runtime and no model.
+ *   The session route stays as the fallback for older backends, rendered
+ *   through the same rows.
+ * - Rows are grouped (Needs attention, Connected, Ready), say their status in
+ *   plain words with a dot beside them, and lead with ONE action the backend
+ *   says this row can take. Everything else is in the overflow.
+ * - No wire vocabulary in primary text: no `cold`, `auth-required`, `stdio`,
+ *   `http` or "transport".
+ * - The list re-reads only while something on it is moving, and a control's
+ *   answer is written straight into the cache.
  *
- * Three things about how the operator ARRIVES here, all added together because
- * they are one flow — find the server, see which is broken, fix it:
+ * Three things about how the operator ARRIVES here survive unchanged, because
+ * they are one flow - find the server, see which is broken, fix it:
  *
- * - `?mcp=<argument>` is RESOLVED against the loaded list rather than parsed as
- *   a grammar (`resolveMcpServerTarget`), so `/mcp reauth hubspot` lands on
- *   `hubspot`, and an argument that names nothing renders a line saying so. It
- *   used to be compared whole and silently dropped on a miss.
- * - The section has its own search box. It is not part of the settings search
- *   index, deliberately: that index is a typed-editor registry over backend
- *   settings keys, and these rows are a session-scoped live read.
- * - With no active conversation the section borrows the newest roster row and
- *   says which one, rather than dead-ending on a page whose whole job is to
- *   show the configured servers.
+ * - `?mcp=<argument>` is RESOLVED against the loaded list
+ *   (`resolveMcpServerTarget`), so `/mcp reauth hubspot` lands on `hubspot`,
+ *   and an argument that names nothing says so.
+ * - The section has its own search box (from six rows up, where a list stops
+ *   fitting on one glance).
+ * - On the session-route fallback with no active conversation, the section
+ *   still borrows the newest roster row and says which.
  */
 
-import { compactPath } from "@features/chat/components/trace/tool-row-model";
-import { desktopResult } from "@shared/api/local-operator/desktop-api";
-import {
-	desktopFeatureEnabled,
-	useDesktopCapabilities,
-} from "@shared/api/local-operator/desktop-hooks";
-import {
-	fetchMcpList,
-	mcpKeys,
-	mcpListServers,
-} from "@shared/api/local-operator/mcp-list";
+import { openLocalTarget, openUrlTarget } from "@features/chat/utils/link-open";
+import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import { Spinner } from "@shared/components/common/spinner";
-import { Alert, Badge, Button, Input, Label } from "@shared/components/ui";
-import { cn } from "@shared/lib/utils";
-import {
-	type CanonicalSessionRow,
-	useCanonicalSessionsStore,
-} from "@shared/store/canonical-sessions-store";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plug, PlugZap, RotateCw, Search, Trash2 } from "lucide-react";
+import { Alert, Button, Input } from "@shared/components/ui";
+import { showInfoToast } from "@shared/utils/toast-manager";
+import { Plug, Plus, Search } from "lucide-react";
 import type { FC, RefObject } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { DesktopMcpState } from "../../../../../shared/desktop-control-contract";
-import { foreignMcpConfigOrigin } from "../../../../../shared/mcp-foreign-config-origin";
-import { McpAuthDialog } from "../../chat/components/run-details/mcp-auth-dialog";
-import {
-	type McpFailure,
-	type McpFailurePhase,
-	mcpFailure,
-} from "../../chat/components/run-details/mcp-failure";
-import {
-	type McpServerRow,
-	deriveMcpServers,
-	mcpGrantInFlight,
-} from "../../chat/components/run-details/run-detail-model";
-import { useMcpRemedy } from "../../chat/components/run-details/use-mcp-remedy";
+import { useNavigate } from "react-router-dom";
+import type { McpFailurePhase } from "../../chat/components/run-details/mcp-failure";
 import { parseMcpIntent } from "../../chat/pickers/mcp-command";
+import {
+	AddIntegrationForm,
+	type AddIntegrationValues,
+} from "./integrations/add-integration-form";
+import {
+	FOCUS_WATCH_MS,
+	type FocusHoldVerdict,
+	focusHoldCandidate,
+	focusHoldPointerEnds,
+	focusHoldRead,
+	focusHoldWatchDelay,
+} from "./integrations/integration-focus";
+import { IntegrationKeyDialog } from "./integrations/integration-key-dialog";
+import {
+	type IntegrationRow as IntegrationRowData,
+	type OverflowItem,
+	type PrimaryAction,
+	groupIntegrations,
+	integrationCountLabel,
+	integrationFailureMessage,
+	isSignInAction,
+	offersKey,
+	primaryAction,
+	runningOperationFor,
+} from "./integrations/integration-model";
+import {
+	IntegrationRow,
+	type RowConfirm,
+} from "./integrations/integration-row";
+import {
+	IntegrationSignInDialog,
+	type SignInPhase,
+} from "./integrations/integration-sign-in-dialog";
+import { useIntegrations } from "./integrations/use-integrations";
 import { SettingsSection } from "./settings-section";
 
-/**
- * One MCP server row, taken from the backend control DTO rather than restated
- * here.
- *
- * This file used to declare the row itself, with `scope`, `setup_prompt` and
- * `error`. None of the three has ever been on this wire, and nothing caught it:
- * every access was optional, so the scope badge never rendered, the "Copy setup
- * prompt" control was unreachable, an error line rendered a field that is never
- * sent, and removal asked for `scope: "global"` for every server — which is how
- * a project-owned server became unremovable, since the backend compares the
- * requested scope against the source file's real one.
- *
- * Deriving the row from `DesktopMcpState` makes divergence between THIS file and
- * the contract a compile error instead of a silent no-op — which is the half of
- * the problem a type can close. It does not close the other half, and the
- * contract does not pretend otherwise: `desktop-control-contract.ts` is
- * hand-written and already omits fields the live snapshot sends (`removable`) and
- * that `public_server_config` sends (`command`, `argument_count`, `url`,
- * `endpoint_redacted`, `environment_keys`, `header_keys`), and
- * `desktopResult<T>` is an unchecked cast,
- * so a backend rename would still arrive silently. Catching that needs a parity
- * assertion against a pinned payload from the backend, which this repository
- * cannot make on its own — see the note in `mcp-foreign-config-origin.ts`.
- *
- * The real names are worth knowing at the point of use: `owned_scope` is the
- * writable scope owning the server's SOURCE FILE (`owned_scope_for_source` in
- * `mcp/config.py`) and is `null` for the six foreign configs this app must not
- * write, `setup` is `{kind: "session_prompt", text}` and is absent from the
- * route's cold facade, and `status` is the vocabulary `connected | connecting |
- * auth-required | disconnected` (plus `cold` on that facade).
- */
-type MCPServerRow = DesktopMcpState["servers"][number];
-
-type MCPAction =
-	| "list"
-	| "add"
-	| "remove"
-	| "reload"
-	| "connect"
-	| "probe"
-	| "disconnect"
-	| "login"
-	| "logout"
-	| "reauth"
-	| "status"
-	| "cancel";
-
-/**
- * The phase each control on this surface sends, for the failure copy.
- *
- * One row per verb, so a refusal cannot be described with another verb's sentence:
- * "the server could not be removed" and "the server could not be reconnected" are
- * different facts about a row, and the wire says neither.
- */
-const MCP_ACTION_PHASE: Record<MCPAction, McpFailurePhase> = {
-	// A read: its own failures are already reported as the list's, not as an action.
-	list: "status",
-	add: "add",
-	remove: "remove",
-	reload: "reload",
-	connect: "reconnect",
-	probe: "probe",
-	disconnect: "disconnect",
-	login: "grant",
-	logout: "disconnect",
-	reauth: "grant",
-	status: "status",
-	cancel: "cancel",
-};
+export { newestRosterRow } from "./integrations/use-integrations";
 
 /**
  * The server a `/mcp <argument>` deep link names, or why nothing matched.
@@ -189,210 +129,62 @@ export const resolveMcpServerTarget = (
 		: { kind: "miss", asked };
 };
 
+/** The dialog open over the list, if any. */
+type Dialog =
+	| { kind: "sign_in"; name: string; action: "login" | "reauth" }
+	| { kind: "key"; name: string; keyNames: string[] }
+	| null;
+
+/** From this many rows up the list gets a search box. */
+const SEARCH_THRESHOLD = 6;
+
+const SECTION_TITLE = "Integrations";
+const SECTION_DESCRIPTION =
+	"Let agents use your tools and accounts, like Notion, Linear or GitHub.";
+
+/** The phase a control is worded as when it fails. */
+const PHASE: Record<string, McpFailurePhase> = {
+	test: "test",
+	connect: "reconnect",
+	disconnect: "disconnect",
+	reload: "reload",
+	remove: "remove",
+	sign_out: "disconnect",
+	cancel: "cancel",
+	login: "grant",
+	reauth: "grant",
+};
+
 /**
- * The conversation the section borrows when none is active (`docs/run-sidebar.md`
- * § 7 via this change's D5).
- *
- * Both MCP ops are session-scoped and there is no sessionless read, so a visit
- * to Settings with no conversation open used to dead-end on "Open a conversation
- * to manage its MCP servers." on the one page whose job is to show them. The
- * newest roster row is the right conversation to borrow because the USER config
- * is part of every cwd-derived config set: the list a recent conversation sees is
- * the list, for the question "which of my servers exist".
- *
- * Ordered by `updated_at` descending, with the roster's own order as the
- * fallback (the backend lists newest first, and a row the catalogue gave no
- * timestamp is not a reason to borrow an older one).
+ * One armed deferred focus move (U12, U18, U21): the row it follows, and how far it
+ * may keep following it.
  */
-export const newestRosterRow = (
-	rows: readonly CanonicalSessionRow[],
-): CanonicalSessionRow | null =>
-	rows.reduce<CanonicalSessionRow | null>((best, row) => {
-		if (!best) return row;
-		return (row.updated_at ?? 0) > (best.updated_at ?? 0) ? row : best;
-	}, null);
-
-const AddServerForm: FC<{
-	sessionId: string;
-	onAdded: () => void;
-}> = ({ sessionId, onAdded }) => {
-	const [name, setName] = useState("");
-	const [mode, setMode] = useState<"command" | "url">("command");
-	const [command, setCommand] = useState("");
-	const [args, setArgs] = useState("");
-	const [url, setUrl] = useState("");
-	const [scope, setScope] = useState<"global" | "project">("global");
+type FocusMove = {
+	name: string;
 	/**
-	 * The failed add, already classified.
-	 *
-	 * An add is a control on this surface like any other, so its refusal is the
-	 * same shape of fact: `mcp.control` answers every one of them with the same
-	 * 409, and a form that printed it verbatim told the user about "server
-	 * ownership" instead of about the file it could not write.
+	 * A COMPLETED sign-in is the one close whose opener is guaranteed to be gone
+	 * (`closeSignIn`), so this move waits for the row to stop offering Sign in before
+	 * it lands anywhere (U12).
 	 */
-	const [error, setError] = useState<McpFailure | null>(null);
-	const [saving, setSaving] = useState(false);
-
-	const submit = async () => {
-		setSaving(true);
-		setError(null);
-		try {
-			await desktopResult({
-				op: "mcp.control",
-				sessionId,
-				control: {
-					action: "add",
-					name,
-					scope,
-					...(mode === "command"
-						? {
-								command,
-								// Arguments are a real array on the wire: one per line here,
-								// never a shell string the backend would have to split.
-								args: args
-									.split("\n")
-									.map((arg) => arg.trim())
-									.filter(Boolean),
-							}
-						: { url }),
-				},
-			});
-			setName("");
-			setCommand("");
-			setArgs("");
-			setUrl("");
-			onAdded();
-		} catch (cause) {
-			// No running-grant read here: an add is refused by the config's own
-			// ownership rules rather than by the one-grant lock, and claiming the lock
-			// would be a cause this surface did not establish.
-			setError(mcpFailure("add", cause, false));
-		} finally {
-			setSaving(false);
-		}
-	};
-
-	return (
-		<form
-			className="flex flex-col gap-3 rounded-md border border-control bg-surface p-4"
-			onSubmit={(event) => {
-				event.preventDefault();
-				void submit();
-			}}
-		>
-			<div className="flex flex-col gap-1">
-				<Label htmlFor="mcp-add-name">Name</Label>
-				<Input
-					id="mcp-add-name"
-					value={name}
-					onChange={(event) => setName(event.target.value)}
-					required
-				/>
-			</div>
-			<fieldset className="flex gap-2">
-				<legend className="sr-only">Server transport</legend>
-				<Button
-					type="button"
-					variant={mode === "command" ? "secondary" : "ghost"}
-					size="sm"
-					onClick={() => setMode("command")}
-				>
-					Local command
-				</Button>
-				<Button
-					type="button"
-					variant={mode === "url" ? "secondary" : "ghost"}
-					size="sm"
-					onClick={() => setMode("url")}
-				>
-					Remote URL
-				</Button>
-			</fieldset>
-			{mode === "command" ? (
-				<>
-					<div className="flex flex-col gap-1">
-						<Label htmlFor="mcp-add-command">Command</Label>
-						<Input
-							id="mcp-add-command"
-							value={command}
-							onChange={(event) => setCommand(event.target.value)}
-							className="font-mono"
-							required
-						/>
-					</div>
-					<div className="flex flex-col gap-1">
-						<Label htmlFor="mcp-add-args">Arguments, one per line</Label>
-						<textarea
-							id="mcp-add-args"
-							value={args}
-							onChange={(event) => setArgs(event.target.value)}
-							rows={2}
-							className="rounded-sm border border-control bg-surface p-2 font-mono text-body-sm text-ink"
-						/>
-					</div>
-				</>
-			) : (
-				<div className="flex flex-col gap-1">
-					<Label htmlFor="mcp-add-url">URL</Label>
-					<Input
-						id="mcp-add-url"
-						type="url"
-						value={url}
-						onChange={(event) => setUrl(event.target.value)}
-						className="font-mono"
-						required
-					/>
-					<p className="text-meta text-ink-dim">
-						No inline credentials or query parameters; secrets are referenced
-						from the credential manager.
-					</p>
-				</div>
-			)}
-			<fieldset className="flex gap-2">
-				<legend className="sr-only">Configuration scope</legend>
-				<Button
-					type="button"
-					variant={scope === "global" ? "secondary" : "ghost"}
-					size="sm"
-					onClick={() => setScope("global")}
-				>
-					Global
-				</Button>
-				<Button
-					type="button"
-					variant={scope === "project" ? "secondary" : "ghost"}
-					size="sm"
-					onClick={() => setScope("project")}
-				>
-					This project
-				</Button>
-			</fieldset>
-			{error && (
-				<Alert variant="danger">
-					<p>{error.message}</p>
-					{error.detail ? (
-						<p
-							className="font-mono text-ink-dim text-mono-sm"
-							title={error.detail}
-						>
-							{error.detail}
-						</p>
-					) : null}
-				</Alert>
-			)}
-			<div>
-				<Button
-					type="submit"
-					variant="primary"
-					size="sm"
-					disabled={saving || !name || !(mode === "command" ? command : url)}
-				>
-					{saving ? <Spinner size="sm" /> : null}
-					Add server
-				</Button>
-			</div>
-		</form>
-	);
+	waitForSignIn: boolean;
+	until: number;
+	/**
+	 * The control this move has already landed on, once it has (U21). Its presence is
+	 * what tells a later read that this is a payload arriving AFTER the move rather
+	 * than the move itself - and the row it targets can have been mounted again under
+	 * it in between, which is the whole of U21.
+	 */
+	landedOn?: HTMLElement | null;
+	/**
+	 * How many re-MOUNTS this move has followed (QA round 2, Q1; UX U31). Counted in
+	 * state rather than derived because it is the ONLY bound on how far the move's
+	 * window can be extended: the deadline itself is re-anchored while the row moves,
+	 * so a row that is mounted again under the move over and over is given up on by
+	 * `FOCUS_REANCHOR_CAP` rather than by a clock that expires mid-operation. It
+	 * counts re-mounts and not candidate changes, which is what `focusHoldRead`
+	 * spends it on (agent review round 3, MINOR 5).
+	 */
+	reanchors: number;
 };
 
 export const McpManagementSection: FC<{
@@ -403,73 +195,159 @@ export const McpManagementSection: FC<{
 	 *
 	 * An ARGUMENT rather than a server name: `/mcp reauth hubspot` passes
 	 * `"reauth hubspot"`, and resolving that is this section's job (see
-	 * `resolveMcpServerTarget`). Named `highlightServer` for its first caller's
-	 * sake; the prop's contract is the raw string.
+	 * `resolveMcpServerTarget`).
 	 */
 	highlightServer?: string;
 }> = ({ sessionId, sectionRef, highlightServer }) => {
-	const capabilities = useDesktopCapabilities();
-	const enabled = desktopFeatureEnabled(capabilities.data, "mcp");
-	const queryClient = useQueryClient();
-	/*
-	 * The roster, for the borrow below: the chat sidebar's own read (`chat-sidebar`
-	 * calls `fetchSessions` on mount), used here only when no session is active, so
-	 * the common case costs nothing and adds no read.
-	 */
-	const roster = useCanonicalSessionsStore((state) => state.sessions);
-	const fetchSessions = useCanonicalSessionsStore(
-		(state) => state.fetchSessions,
-	);
-	const rosterLoading = useCanonicalSessionsStore((state) => state.loading);
-	const borrowed = useMemo(
-		() => (sessionId ? null : newestRosterRow(roster)),
-		[sessionId, roster],
-	);
-	const readSessionId = sessionId ?? borrowed?.session_id;
-	const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
-	/**
-	 * The last failed control on this surface, already CLASSIFIED.
-	 *
-	 * A string would be the backend's own sentence, which is the thing this
-	 * section's reader cannot act on: `mcp.control` collapses every refusal into
-	 * one 409 and answers an unbound session with one 503 (UX review round 2, U1).
-	 * `mcp-failure.ts` turns either into a sentence in the user's terms, and the
-	 * row it is about is on this same screen, under this alert.
-	 */
-	const [actionError, setActionError] = useState<McpFailure | null>(null);
+	const integrations = useIntegrations({ sessionId });
+	const { document, control, readDocument } = integrations;
+	const navigate = useNavigate();
+	const servers = document?.servers ?? [];
+	const operations = document?.operations ?? [];
+	const projectScopeAvailable = document?.project_scope_available ?? false;
+
 	const [showAdd, setShowAdd] = useState(false);
-	const [authTarget, setAuthTarget] = useState<{
-		row: McpServerRow;
-		sessionId: string;
-	} | null>(null);
-	const remedy = useMcpRemedy({ sessionId: readSessionId });
 	const [filter, setFilter] = useState("");
+	const [pending, setPending] = useState<string | null>(null);
+	const [failures, setFailures] = useState<Record<string, string>>({});
+	const [confirm, setConfirm] = useState<{
+		name: string;
+		kind: "remove" | "sign_out";
+	} | null>(null);
+	const [dialog, setDialog] = useState<Dialog>(null);
+	const [signIn, setSignIn] = useState<SignInPhase>({ kind: "ready" });
+	const [signInOperation, setSignInOperation] = useState<string | null>(null);
+	const [keyFailure, setKeyFailure] = useState<string | null>(null);
+	const [keySaving, setKeySaving] = useState(false);
 
-	// Only when the roster has nothing to borrow: an empty roster on a page opened
-	// straight from `/mcp` is the case D5 exists for, and a second read beside the
-	// sidebar's own would be the duplicate this section avoids elsewhere.
-	useEffect(() => {
-		if (sessionId || !enabled || roster.length > 0) return;
-		void fetchSessions();
-	}, [sessionId, enabled, roster.length, fetchSessions]);
+	/*
+	 * FOCUS PLUMBING (U5, Q3). Round 1 found the page returning focus to
+	 * `<body>` after almost every action, so a keyboard user restarted from the
+	 * top of a very long settings page. Each map below holds the control that
+	 * should get focus back, by the row it belongs to:
+	 *
+	 * - `rowPrimaryRefs` / `rowOverflowRefs`: the row's two focusable controls;
+	 * - `addSlotRef`: the header's Add integration, the fallback when a list
+	 *   becomes empty;
+	 * - `dialogReturn`: whatever had focus when a dialog opened. A control that
+	 *   still exists when the dialog closes gets focus back; one that does not
+	 *   (a menu item, which Radix unmounts) is skipped, and Radix's own
+	 *   close-auto-focus stands.
+	 */
+	const rowPrimaryRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+	const rowOverflowRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+	/*
+	 * The row's own `<li>`, by row name: what says whether a pointer press landed
+	 * INSIDE the row whose move is armed (UX round 4, U33; QA round 4, Q-1). The two
+	 * maps above hold the row's controls, and a control is not the row: the reader
+	 * can press the row's own prose, its confirm, or the list between its controls,
+	 * and none of those may end the move. This is the same ref-map idiom the two
+	 * above already use, because a row that has no control yet - the frame a
+	 * `connecting` row has no primary in - still has its element and still has to be
+	 * distinguishable from the page around it.
+	 */
+	const rowRefs = useRef<Record<string, HTMLLIElement | null>>({});
+	/*
+	 * When a read last found the ROW OF AN ARMED MOVE moving (QA round 2, Q1; UX round
+	 * 2, U31). The move's window is anchored on the row rather than on the press, and
+	 * the row's last movement is a fact no render needs - a poll that extends the
+	 * window changes nothing on screen, so writing it into state would re-render the
+	 * page every `INTEGRATIONS_POLL_MS` for the length of an operation. It lives here,
+	 * and both readers of the window (the effect that lands the move and the tick that
+	 * disarms it) read it.
+	 *
+	 * A STALE VALUE CANNOT EXTEND A FRESH MOVE: an arm writes `now + FOCUS_ARM_MS`
+	 * while this only ever records a moment already past, so the arm's own deadline is
+	 * the later of the two and nothing has to be reset here when one move replaces
+	 * another.
+	 */
+	const rowMovingAtRef = useRef(0);
+	const addSlotRef = useRef<HTMLButtonElement>(null);
+	/**
+	 * The search field, so "Clear search" (and Escape) can hand focus back to the
+	 * control the user was typing in rather than to `<body>` (n1, n2).
+	 */
+	const searchRef = useRef<HTMLInputElement>(null);
+	const dialogReturn = useRef<HTMLElement | null>(null);
+	const [focusAfterAdd, setFocusAfterAdd] = useState<string | null>(null);
+	/*
+	 * The row a dialog's work belonged to, and how far to wait for its control
+	 * (U12, U18, m-4).
+	 *
+	 * ONE mechanism for four flows rather than one per dialog, because the rule is
+	 * the same in all of them: the control to return to is the row's OWN - its
+	 * primary, or its menu when it has none - and it does not exist until the list
+	 * has been re-read, so focusing at close time lands on `<body>` a frame later.
+	 * That is the whole of U18, and U12 was the same defect with the wait spelled
+	 * out.
+	 *
+	 * `waitForSignIn` is the one thing the flows do not share: after a COMPLETED
+	 * sign-in the row still leads with the Sign in button until the catalog reads
+	 * the new credential back, and focusing a button that is about to unmount is
+	 * how focus reaches `<body>` again. After a cancellation, a key save or a
+	 * sign-out there is nothing to wait for.
+	 */
+	const [focusRow, setFocusRow] = useState<FocusMove | null>(null);
+	const [focusAfterRemove, setFocusAfterRemove] = useState<{
+		index: number;
+	} | null>(null);
 
-	const listQuery = useQuery<DesktopMcpState, Error>({
-		queryKey: mcpKeys.list(readSessionId ?? ""),
-		queryFn: () => {
-			if (!readSessionId) throw new Error("No conversation selected.");
-			return fetchMcpList(readSessionId);
+	/*
+	 * A dialog's focus comes back to whatever opened it, once the dialog has
+	 * actually unmounted - a macrotask later, because Radix restores focus
+	 * itself during the close and would overwrite an earlier attempt.
+	 */
+	const closeDialog = useCallback(() => {
+		const target = dialogReturn.current;
+		dialogReturn.current = null;
+		setDialog(null);
+		setSignInOperation(null);
+		window.setTimeout(() => {
+			if (target?.isConnected) target.focus();
+		}, 0);
+	}, []);
+
+	const openDialog = useCallback((next: Dialog) => {
+		// `window.document`, because this component destructures the CATALOG
+		// document from `useIntegrations` under the same name.
+		const active = window.document.activeElement;
+		dialogReturn.current = active instanceof HTMLElement ? active : null;
+		setDialog(next);
+	}, []);
+
+	/**
+	 * Close the sign-in dialog, arming the row's own control when it SUCCEEDED.
+	 *
+	 * A completed sign-in is the one close whose opener is guaranteed to be gone:
+	 * the row has its credential, so it stops offering Sign in - and the control
+	 * that opened this dialog unmounts with it, leaving Radix's close-auto-focus
+	 * with nothing to restore to and focus on `<body>` (U12, round 2). The row's
+	 * own control is where the same rule already sends an add and a removal.
+	 *
+	 * The outcome is the dialog's own report rather than a re-derivation here:
+	 * the dialog holds the phase, and a second copy of the success rule is how the
+	 * two would come to disagree.
+	 */
+	const closeSignIn = useCallback(
+		(name: string, outcome: "signed-in" | "dismissed") => {
+			/*
+			 * BOTH outcomes arm the move (U18): dismissing a sign-in the user
+			 * STARTED leaves a row whose next step is still the row's own control -
+			 * and for a first sign-in the row's Sign in is the button that opened
+			 * the dialog, which unmounts as the row's own state settles, so leaving
+			 * it to the opener reference is how focus reached `<body>`.
+			 */
+			setFocusRow({
+				name,
+				waitForSignIn: outcome === "signed-in",
+				until: Date.now() + FOCUS_ARM_MS,
+				reanchors: 0,
+			});
+			closeDialog();
 		},
-		enabled: enabled && Boolean(readSessionId),
-		staleTime: 10_000,
-	});
+		[closeDialog],
+	);
 
-	const servers: MCPServerRow[] = mcpListServers(listQuery.data);
-
-	// `/mcp <argument>` emits `&mcp=<argument>` and the surface used to compare
-	// the whole string against a server name, so the operator's own remedy line
-	// (`/mcp reauth hubspot`) matched nothing and the effect returned in silence.
-	// Resolution is against the loaded list (see `resolveMcpServerTarget`), and a
-	// miss is a STATE rather than a no-op.
 	const target = useMemo(
 		() =>
 			resolveMcpServerTarget(
@@ -479,9 +357,7 @@ export const McpManagementSection: FC<{
 		[highlightServer, servers],
 	);
 	const named = target?.kind === "matched" ? target.name : null;
-
-	/** The revealed row, and the one reveal already performed for it. */
-	const highlightRef = useRef<HTMLLIElement>(null);
+	const highlightRef = useRef<HTMLLIElement | null>(null);
 	const revealed = useRef<string | null>(null);
 
 	const search = filter.trim().toLowerCase();
@@ -492,12 +368,20 @@ export const McpManagementSection: FC<{
 				: servers,
 		[servers, search],
 	);
+	const groups = useMemo(
+		() => groupIntegrations(visible, operations, integrations.memories),
+		[visible, operations, integrations.memories],
+	);
+
+	/* The row the sign-in dialog belongs to, or none while it is closed. */
+	const signInRow =
+		dialog?.kind === "sign_in"
+			? (servers.find((server) => server.name === dialog.name) ?? null)
+			: null;
 
 	/*
 	 * A filter typed BEFORE the command ran must not hide the row the command
-	 * exists to reveal, so the first arrival clears it — and only the first: after
-	 * the reveal, a filter the user types is theirs to keep, which is why the
-	 * guard is the reveal ref rather than the presence of an argument.
+	 * exists to reveal, so the first arrival clears it - and only the first.
 	 */
 	useEffect(() => {
 		if (!named || revealed.current === named || !filter) return;
@@ -505,12 +389,7 @@ export const McpManagementSection: FC<{
 	}, [named, filter]);
 
 	useEffect(() => {
-		if (!named) return;
-		// Once per named server: re-scrolling on every list refetch would fight
-		// the user for the scroll position.
-		if (revealed.current === named) return;
-		// Nothing to scroll to yet: the read has not returned, or the row is still
-		// filtered out and the effect above is about to clear the filter.
+		if (!named || revealed.current === named) return;
 		if (!visible.some((server) => server.name === named)) return;
 		revealed.current = named;
 		highlightRef.current?.scrollIntoView({
@@ -519,519 +398,1101 @@ export const McpManagementSection: FC<{
 		});
 	}, [named, visible]);
 
-	const refresh = useCallback(() => {
-		if (readSessionId) {
-			void queryClient.invalidateQueries({
-				queryKey: mcpKeys.list(readSessionId),
+	/*
+	 * The sign-in dialog follows its operation through the document the list
+	 * already polls (it polls BECAUSE the operation is running), so the dialog
+	 * needs no timer of its own.
+	 */
+	useEffect(() => {
+		if (!signInOperation) return;
+		const operation =
+			operations.find((op) => op.id === signInOperation) ?? null;
+		setSignIn({ kind: "running", operation });
+	}, [operations, signInOperation]);
+
+	const grantRunning = operations.some((op) => op.status === "running");
+
+	/**
+	 * Arm the deferred row move when the row's OWN operation lands (QA round 1, Q1;
+	 * UX round 1, U1).
+	 *
+	 * WHY THIS DOOR NEEDED ARMING AT ALL. Every control a row operates through is
+	 * `disabled={pending}` for the whole of that operation, and a control that becomes
+	 * `disabled` is blurred by the engine - so the caret is on `<body>` from the first
+	 * frame of a Test to its last, and the row's landing in a NEW group (each group is
+	 * its own `<ul>`, so the row is mounted again rather than moved) had no move
+	 * ARMED for the re-stand to be read against: measured on the built app with a real
+	 * stdio MCP server, `document.activeElement` was `<body>` on 25 of 25 samples over
+	 * 6 s (`samplesInsideTheRow: 0`) while the row moved `Available 3 -> Connected 1`,
+	 * with the same signature on a FAILING test as the row moves to `Needs attention`
+	 * (QA round 1, Q1; UX round 1, U1). The rule above is inert with
+	 * nothing armed - `focusHoldStep` is only consulted when a hold exists - so the
+	 * fix is this arm rather than a second rule.
+	 *
+	 * WHY THE ARM IS THE SAME SHAPE AS A DIALOG CLOSE'S. The move is armed with no
+	 * `landedOn`, so the shared effect lands the row's own control (its primary, or its
+	 * menu when it has none) and the hold it leaves behind is what follows the row if
+	 * it re-stands again inside the window. That means the landing happens AFTER the
+	 * operation, which is the whole difference from a dialog close: the control cannot
+	 * hold focus while it is disabled, so "the caret survives its own operation" can
+	 * only mean "the caret is on the row again when the operation lands".
+	 *
+	 * ONLY WHILE NOBODY ELSE HOLDS THE CARET, which is `focusHoldStep`'s own refusal
+	 * stated one level up ("nobody else's focus is taken"), and it is required HERE
+	 * rather than redundant: an operation is seconds long - the app's own failure path
+	 * is 20 s - so unlike a dialog close this arm fires long after the press that
+	 * started it, and a reader who has tabbed into the search field meanwhile must keep
+	 * the caret they moved. A focus move that does not happen is a small thing; one
+	 * that happens over the reader's caret is not (m-4).
+	 */
+	const armRowFocusAfterOperation = (name: string) => {
+		const active = window.document.activeElement;
+		/*
+		 * A DETACHED NODE THE ENGINE STILL REPORTS AS ACTIVE IS NOBODY (agent review
+		 * round 2, MINOR 2), and it is the carve-out `focusHoldStep` makes one level below
+		 * WITHOUT BEING THE SAME SET (agent review round 3, NIT 2). The rule's nobody set is
+		 * `{body, null, the move's OWN landed control}` - identity, so ANY OTHER detached
+		 * node reads as a real holder and drops the move. This arm's set is
+		 * `{body, null, ANY detached node}` - connectedness, which it has to be: the arm
+		 * asks before the move has a landed control, so it has nothing to compare against.
+		 * The two are deliberately close, and the difference is reachable only in the narrow
+		 * state where the reader's caret sits on a node unmounted out of an open dialog
+		 * mid-operation - where this arm proceeds and the rule, one read later, would
+		 * refuse. It cannot mask a real reader: the only input it accepts beyond `<body>`
+		 * is a node no longer in the document, and a reader's caret lives in the document.
+		 */
+		if (active && active !== window.document.body && active.isConnected) return;
+		setFocusRow({
+			name,
+			waitForSignIn: false,
+			until: Date.now() + FOCUS_ARM_MS,
+			reanchors: 0,
+		});
+	};
+
+	const run = async (
+		name: string,
+		key: string,
+		start: () => Promise<string | null>,
+	): Promise<{ operationId: string | null; failed: boolean }> => {
+		setPending(name);
+		setFailures(({ [name]: _cleared, ...rest }) => rest);
+		/*
+		 * THE OUTCOME IS CARRIED OUT OF HERE rather than inferred by the caller from
+		 * state (agent review round 2, MINOR 3): `failures` is read by closures created
+		 * during the press's render, so it cannot say what THIS operation did - the
+		 * state update a failed one makes is not visible to the `.then` that runs one
+		 * microtask later. The `finally` alone could not say either - the arm decision sat
+		 * inside it, where the outcome is not in scope - which is how a failed REMOVAL came
+		 * to be exempt from the arm that a failed Test gets.
+		 */
+		let operationId: string | null = null;
+		let failed = false;
+		try {
+			operationId = await start();
+		} catch (cause) {
+			failed = true;
+			setFailures((previous) => ({
+				...previous,
+				[name]: integrationFailureMessage(
+					PHASE[key] ?? "status",
+					cause,
+					grantRunning,
+				),
+			}));
+		} finally {
+			/*
+			 * `setPending` STAYS IN THE `finally` even though the outcome is now known
+			 * here: the clearing is what re-enables the row's controls, and it has to
+			 * happen whether the operation resolved, refused or failed to be reported at
+			 * all. The arm below shares it rather than sitting after the statement, so
+			 * one exception cannot leave a row disabled while the move is dropped as
+			 * well.
+			 */
+			setPending(null);
+			/*
+			 * THE OPERATION ARMS THE ROW'S OWN MOVE (QA round 1, Q1 / UX round 1, U1), for
+			 * every action EXCEPT a sign-out, which arms the same deferred row move from its
+			 * confirm, and except a removal that LANDED - its caret goes to the NEIGHBOURING
+			 * row that takes the removed one's place (`setFocusAfterRemove`, and the row this
+			 * arm would name is gone by the time the hold is read). Arming here as well would
+			 * be a second move for one operation.
+			 *
+			 * A REMOVAL THAT FAILED IS NOT EXEMPT (agent review round 2, MINOR 3). The reason
+			 * for the exemption is that the row is gone, which is true only of a removal that
+			 * landed: on a failed one there is no neighbour to take the caret, the confirm's
+			 * menu item has been unmounted by Radix's own restore, and the row the reader
+			 * removed is still on the page with its control where the next Tab should start
+			 * from - the row's `Retry`, the control UX round 2's Cell 7 measured the caret on
+			 * at +3 000 ms and +12 000 ms for a failed operation. WHAT THE TWO ARMS SHARE IS
+			 * THE ENDING, NOT THE SHAPE, and the difference is the one this rule is about: UX's
+			 * arm is a failing Test whose row CHANGES GROUP, so its landing comes from the
+			 * re-stand path, while a failed removal leaves the row in the group it was already
+			 * in - the non-re-standing shape (U30), where the only thing that moves the caret
+			 * is the row's own primary reappearing. Both end with the row's primary as the
+			 * control to land on, which is why one arm serves them, and neither is a reading
+			 * QA took.
+			 *
+			 * It arms on FAILURE too, which is one of the two signatures Q1 measured: a test
+			 * that fails moves the row to `Needs attention` - a group change like any other -
+			 * and the caret has to come back with it.
+			 */
+			if (key !== "sign_out" && (key !== "remove" || failed))
+				armRowFocusAfterOperation(name);
+		}
+		return { operationId, failed };
+	};
+
+	const rowByName = (name: string) =>
+		servers.find((server) => server.name === name);
+
+	const openConfig = (row: IntegrationRowData) => {
+		if (row.source.path) void openLocalTarget(row.source.path);
+	};
+
+	const startSignIn = async (name: string, action: "login" | "reauth") => {
+		setSignIn({ kind: "starting" });
+		setSignInOperation(null);
+		try {
+			const id = await control({ action, name });
+			if (id) setSignInOperation(id);
+			else setSignIn({ kind: "running", operation: null });
+		} catch (cause) {
+			/*
+			 * `oauth_unsupported` is the backend saying, up front, that this
+			 * server has no browser sign-in: the row must offer the key instead
+			 * (U3). A refusal carries no operation, so this is the only place the
+			 * fact can be learned.
+			 */
+			if (
+				cause instanceof DesktopControlError &&
+				cause.code === "oauth_unsupported"
+			)
+				integrations.markNeedsKey(name);
+			setSignIn({
+				kind: "refused",
+				message: integrationFailureMessage("grant", cause, grantRunning),
 			});
 		}
-	}, [queryClient, readSessionId]);
+	};
 
-	const control = useCallback(
-		async (
-			action: MCPAction,
-			name: string,
-			extra: { confirmed?: boolean; scope?: "global" | "project" } = {},
-		) => {
-			if (!readSessionId) return;
-			setActionError(null);
-			try {
-				await desktopResult({
-					op: "mcp.control",
-					sessionId: readSessionId,
-					control: { action, name, ...extra },
-				});
-				refresh();
-			} catch (cause) {
-				// The phase is the VERB this section sent, because a refusal names
-				// nothing and the sentence has to say what the user was trying to do.
-				// `grantRunning` comes from the same shared document the hook reads, so
-				// the one known cause of a refusal is available here too.
-				const cached = queryClient.getQueryData<DesktopMcpState>(
-					mcpKeys.list(readSessionId),
+	const onPrimary = (row: IntegrationRowData, action: PrimaryAction) => {
+		switch (action.kind) {
+			case "sign_in":
+			case "reauth": {
+				/*
+				 * "Continue sign-in" (U4) reopens the dialog ON the grant that is
+				 * already running, rather than starting a second one: dismissing
+				 * the dialog mid-grant used to leave a "Signing in…" row whose
+				 * authorization link was unreachable.
+				 */
+				const running = operations.find(
+					(op) => op.name === row.name && op.status === "running",
 				);
-				setActionError(
-					mcpFailure(
-						MCP_ACTION_PHASE[action],
-						cause,
-						mcpGrantInFlight(cached?.operations),
-					),
+				if (running && isSignInAction(running)) {
+					setSignIn({ kind: "running", operation: running });
+					setSignInOperation(running.id);
+				} else {
+					setSignIn({ kind: "ready" });
+					setSignInOperation(null);
+				}
+				openDialog({
+					kind: "sign_in",
+					name: row.name,
+					action: action.kind === "reauth" ? "reauth" : "login",
+				});
+				return;
+			}
+			case "set_key":
+				setKeyFailure(null);
+				openDialog({
+					kind: "key",
+					name: row.name,
+					keyNames: row.auth.secret_refs.map((ref) => ref.id),
+				});
+				return;
+			case "fix":
+				openConfig(row);
+				return;
+			case "sign_out":
+				/*
+				 * A sign-out that FAILED leads with the retry (m-2), and it opens
+				 * the same confirm the overflow item does: the action carries the
+				 * user's intent, so no second path may diverge from it.
+				 */
+				setConfirm({ name: row.name, kind: "sign_out" });
+				return;
+			default: {
+				// `test` or `connect`: the two primaries that are one request.
+				const kind = action.kind;
+				void run(row.name, kind, () =>
+					control({ action: kind, name: row.name }),
 				);
 			}
-		},
-		[queryClient, readSessionId, refresh],
+		}
+	};
+
+	const onOverflow = (row: IntegrationRowData, item: OverflowItem) => {
+		switch (item.kind) {
+			case "remove":
+			case "sign_out":
+				setConfirm({ name: row.name, kind: item.kind });
+				return;
+			case "sign_in":
+			case "reauth":
+			case "set_key":
+				onPrimary(row, { kind: item.kind, label: item.label });
+				return;
+			case "open_config":
+				openConfig(row);
+				return;
+			case "copy_setup":
+				void navigator.clipboard
+					.writeText(row.setup_prompt ?? "")
+					.then(() =>
+						showInfoToast("Setup steps copied. Paste them into a chat."),
+					)
+					.catch(() => undefined);
+				return;
+			case "cancel": {
+				const running = operations.find(
+					(op) => op.name === row.name && op.status === "running",
+				);
+				if (running)
+					void run(row.name, "cancel", () =>
+						control({ action: "cancel", operationId: running.id }),
+					);
+				return;
+			}
+			case "test":
+			case "connect":
+			case "disconnect":
+			case "reload": {
+				// Bound first: the closure below would lose the switch's narrowing.
+				const action = item.kind;
+				void run(row.name, action, () => control({ action, name: row.name }));
+				return;
+			}
+			default:
+				return;
+		}
+	};
+
+	const onConfirmed = (
+		row: IntegrationRowData,
+		kind: "remove" | "sign_out",
+	) => {
+		setConfirm(null);
+		if (kind === "remove") {
+			const scope = row.source.owned_scope;
+			if (!scope) return;
+			// Where the row was, so focus can land on whatever takes its place.
+			const index = visible.findIndex((server) => server.name === row.name);
+			void run(row.name, "remove", () =>
+				control({ action: "remove", name: row.name, scope }),
+			).then(({ operationId, failed }) => {
+				/*
+				 * The toast says what happened (U6). There is deliberately no
+				 * Undo: the row this page holds carries a local command's
+				 * `command` but NOT its arguments or environment, so an Undo
+				 * would restore a server that runs something else - see the PR's
+				 * "not addressed" note.
+				 *
+				 * A FAILED REMOVAL TAKES NEITHER OF THESE, AND SPECIFICALLY NOT THE
+				 * NEIGHBOUR MOVE (agent review round 2, MINOR 3): `focusAfterRemove`
+				 * names the row's own INDEX, so on a removal that did not land it would
+				 * focus the row still standing at that index - the row the reader just
+				 * failed to remove, under another name. `run`'s settle arms that row's
+				 * own move instead, which is where the caret can actually act.
+				 */
+				if (failed || operationId !== null) return;
+				showInfoToast(`Removed ${row.name}.`);
+				if (index >= 0) setFocusAfterRemove({ index });
+			});
+			return;
+		}
+		void run(row.name, "sign_out", () =>
+			control({ action: "logout", name: row.name }),
+		).then(() => {
+			// The confirm's menu item is unmounted by Radix, so the row's own
+			// control is where the next Tab should start (U18).
+			setFocusRow({
+				name: row.name,
+				waitForSignIn: false,
+				until: Date.now() + FOCUS_ARM_MS,
+				reanchors: 0,
+			});
+		});
+	};
+
+	const onAdd = async (
+		values: AddIntegrationValues,
+	): Promise<string | null> => {
+		try {
+			await control({
+				action: "add",
+				name: values.name,
+				scope: values.scope,
+				...(values.mode === "command"
+					? { command: values.command, args: values.args }
+					: { url: values.url }),
+			});
+			setShowAdd(false);
+			// The row that just appeared is where the user's attention is going.
+			setFocusAfterAdd(values.name);
+			return null;
+		} catch (cause) {
+			return integrationFailureMessage("add", cause, false);
+		}
+	};
+
+	const header = (
+		<div className="flex items-start justify-between gap-4">
+			<div className="min-w-0">
+				<h2 className="text-heading text-ink">{SECTION_TITLE}</h2>
+				<p className="mt-1 max-w-2xl text-body-sm text-ink-muted">
+					{SECTION_DESCRIPTION}
+				</p>
+			</div>
+			{integrations.enabled && servers.length > 0 && !showAdd ? (
+				<Button
+					ref={addSlotRef}
+					variant="secondary"
+					size="sm"
+					onClick={() => setShowAdd(true)}
+					data-tour-tag="mcp-add-server"
+				>
+					<Plus aria-hidden="true" />
+					Add integration
+				</Button>
+			) : null}
+		</div>
 	);
 
-	if (!enabled) {
+	if (!integrations.enabled && !integrations.isLoading) {
 		return (
 			<SettingsSection
-				title="Integrations"
-				description="MCP servers connect agents to your tools and accounts."
+				title={SECTION_TITLE}
+				titleComponent={header}
 				sectionRef={sectionRef}
 			>
 				<Alert variant="warning">
-					Integration management needs a newer Local Operator backend. Update
-					the backend and restart the app to manage MCP servers here.
+					Integrations need a newer Local Operator backend. Update it and
+					restart the app to manage them here.
 				</Alert>
 			</SettingsSection>
 		);
 	}
 
+	const addForm = (
+		<AddIntegrationForm
+			existingNames={servers.map((server) => server.name)}
+			projectScopeAvailable={projectScopeAvailable}
+			projectLabel={document?.cwd ? compactHome(document.cwd) : null}
+			onSubmit={onAdd}
+			onCancel={() => {
+				setShowAdd(false);
+				/*
+				 * Cancel and Escape both come through here, and both left focus on
+				 * `<body>` - the form is inline, so the button that opened it is
+				 * still on the page and is where the reader was (U18). Deferred by
+				 * a macrotask because the form is unmounted by this same state
+				 * change, and a focus call inside it competes with that.
+				 */
+				window.setTimeout(() => addSlotRef.current?.focus(), 0);
+			}}
+		/>
+	);
+
+	const dialogRow = dialog ? rowByName(dialog.name) : undefined;
+	/** Failures whose row is gone: the list moved on, the sentence should not. */
+	const orphanFailures = Object.entries(failures).filter(
+		([name]) => !servers.some((server) => server.name === name),
+	);
+	const dismissFailure = (name: string) =>
+		setFailures(({ [name]: _removed, ...rest }) => rest);
+
 	/*
-	 * No conversation AT ALL: the roster answered and it is empty, so there is
-	 * nothing to borrow and no session for either op. This is the only case the
-	 * old dead-end line survives in — and it is now a statement about the machine
-	 * rather than about the page's willingness to help.
+	 * The two deferred focus moves. Both wait for the row list to change first,
+	 * because the control they aim at does not exist until it does.
 	 */
-	if (!readSessionId) {
-		return (
-			<SettingsSection
-				title="Integrations"
-				description="MCP servers connect agents to your tools and accounts."
-				sectionRef={sectionRef}
-			>
-				{rosterLoading ? (
-					<div className="flex h-24 items-center justify-center">
-						<Spinner size="lg" label="Loading MCP servers" />
-					</div>
-				) : (
-					<p className="text-body-sm text-ink-muted">
-						Open a conversation to manage its MCP servers.
-					</p>
-				)}
-			</SettingsSection>
-		);
-	}
+	useEffect(() => {
+		if (!focusAfterAdd) return;
+		const element = rowPrimaryRefs.current[focusAfterAdd];
+		if (!element) {
+			// A row with no primary action of its own (a Ready row) still has a
+			// menu, and that is the control the reader would reach for.
+			if (servers.some((server) => server.name === focusAfterAdd)) {
+				rowOverflowRefs.current[focusAfterAdd]?.focus();
+				setFocusAfterAdd(null);
+			}
+			return;
+		}
+		element.focus();
+		setFocusAfterAdd(null);
+	}, [focusAfterAdd, servers]);
+
+	useEffect(() => {
+		if (!focusAfterRemove) return;
+		const focus = focusAfterRemove;
+		// The row that took the removed one's place, else the last row, else the
+		// control that starts a new one.
+		const next =
+			visible[Math.min(focus.index, visible.length - 1)] ?? visible.at(-1);
+		if (next) {
+			const element =
+				rowPrimaryRefs.current[next.name] ?? rowOverflowRefs.current[next.name];
+			if (!element) return;
+			element.focus();
+		} else {
+			addSlotRef.current?.focus();
+		}
+		setFocusAfterRemove(null);
+	}, [focusAfterRemove, visible]);
+
+	/*
+	 * Where a dialog's work leaves focus (U12, U18). It cannot move at close time:
+	 * the catalog has not read the change back yet, so the row still leads with
+	 * the control that is about to unmount - focusing it is how focus ends up on
+	 * `<body>` again a frame later.
+	 *
+	 * THE DEADLINE IS THE POINT (m-4). The move used to stay armed until the row
+	 * stopped asking for a sign-in, so a success-closed dialog followed by a
+	 * catalog read that still asked for one could fire much later, and take focus
+	 * from wherever the user had moved on to. Past the deadline the move is
+	 * DROPPED rather than performed: a focus move that does not happen is a small
+	 * thing, one that happens at the wrong moment is not.
+	 *
+	 * THAT DEADLINE IS ANCHORED ON THE ROW, NOT ON THE PRESS (QA round 2, Q1; UX
+	 * round 2, U31). A clock started at the press expires while the operation it is
+	 * following is still running - the app's own failure path is 20 s - and every
+	 * re-stand after that leaves the caret on `<body>`. `focusHoldWindow` states the
+	 * rule both readers of it share: while the row is moving the deadline is a
+	 * window from NOW, and once it stops it is a window from the last read that
+	 * found it moving.
+	 */
+
+	/**
+	 * One read of the armed move, whoever asks for it.
+	 *
+	 * WHY THE ROW IS READ FROM THE PAGE'S OWN DOCUMENT AND NOT FROM THIS RENDER (QA
+	 * round 3, Q-1; UX round 3, U31). This is the round-3 defect, and this read is
+	 * the whole of it: `rowMoving` used to be computed inside the effect below off
+	 * `servers`/`operations`, whose identity React Query's structural sharing keeps
+	 * for a payload deeply equal to the cached one - so a poll that found the row
+	 * still `connecting`, which is every poll for the length of an operation,
+	 * changed nothing, re-rendered nothing and ran nothing. The deadline therefore
+	 * never advanced past the arm's own `dispatch + FOCUS_ARM_MS`, the disarm timer
+	 * cleared the hold at ~4 250 ms, and the row's re-stand seconds later found
+	 * nothing armed. Measured on the built app at the round-3 head: the caret was on
+	 * `<body>` for 100% of the samples after the row's group change for a 5 s, 8 s
+	 * and 20 s answer (28/28, 24/24, 24/24) and for a server that sleeps 8 s and
+	 * exits 7 (63/63) - with NO `focus()` call made at the group change at all,
+	 * which is the reading that says the app never tried, as against a move that was
+	 * applied and then lost.
+	 *
+	 * `readDocument()` is the same document the poll writes, asked on demand rather
+	 * than carried by a render, so the row's own operation is fresh within one poll
+	 * whether or not a render happened and no identity that stayed still can freeze
+	 * the answer. The render's own `document` is the fallback for the frame before
+	 * the cache has anything to say.
+	 */
+	const readFocusMove = useCallback(
+		(move: FocusMove, now: number): FocusHoldVerdict => {
+			const live = readDocument() ?? document;
+			const row = live?.servers.find((server) => server.name === move.name);
+			const operations = live?.operations ?? [];
+			/*
+			 * THE ROW'S OWN MOVEMENT, read with the list's own poll terms - the same two
+			 * `integrationsPollInterval` asks - so a row that keeps this true is a row the
+			 * page is re-reading every `INTEGRATIONS_POLL_MS`, and a read that finds it
+			 * true is a read that pushes the deadline out.
+			 */
+			const rowMoving = row
+				? row.status === "connecting" ||
+					runningOperationFor(row.name, operations) !== null
+				: false;
+			if (rowMoving && row) rowMovingAtRef.current = now;
+			const primary = row
+				? primaryAction(row, operations, integrations.memories)
+				: null;
+			/*
+			 * A COMPLETED SIGN-IN WAITS FOR THE ROW (U12): after one, the row still leads
+			 * with the Sign in button until the catalog reads the new credential back, and
+			 * focusing a button that is about to unmount is how focus reaches `<body>` a
+			 * frame later. This read stays armed and lands nothing until the row stops
+			 * offering one.
+			 */
+			if (
+				row &&
+				move.waitForSignIn &&
+				(primary?.kind === "sign_in" || primary?.kind === "reauth")
+			)
+				return "kept";
+			/*
+			 * WHERE THE MOVE LANDS, RE-RESOLVED ON EVERY READ (UX round 2, U30). The
+			 * target is the row's own primary control, or its overflow when the row has
+			 * none - and a row that is mid-operation has no primary BY DESIGN
+			 * (`primaryAction` answers null for `connecting`), so the landing the arm
+			 * triggers at dispatch time is the `⋯` and nothing else. That is the right
+			 * place for it to be while the row cannot act, and it is the wrong place for
+			 * it to be afterwards: the row settles with a control of its own, and a move
+			 * that stayed on the `⋯` would leave the reader's next Tab starting from the
+			 * menu rather than from the control the row is offering - or from the one
+			 * they pressed, when that is the control the row has again. So the target is
+			 * resolved on every read rather than decided once at the landing, and
+			 * `focusHoldStep` re-applies the move when the row's control is no longer the
+			 * one it landed on.
+			 *
+			 * A ROW WITH NOTHING TO LAND ON YET - and a read that lands in the frame
+			 * between a re-stand's unmount and its mount - leaves the move armed rather
+			 * than dropping it, which `focusHoldRead` states: the window above still
+			 * bounds the wait.
+			 */
+			const read = focusHoldRead({
+				hold: move,
+				now,
+				windowMs: FOCUS_ARM_MS,
+				rowMoving,
+				lastMovingAt: rowMovingAtRef.current,
+				/*
+				 * A ROW THAT HAS LEFT THE PAGE OFFERS NO CANDIDATE, and the read still runs
+				 * rather than returning early: the deadline is what ends a move whose row was
+				 * removed under it, and skipping the read would leave the watcher ticking for
+				 * a row that is not coming back. WHICH OF THE TWO CONTROLS IS OFFERED IS THE
+				 * RULE'S ANSWER, not this expression's: a row in flight offers a `Retry` that
+				 * cannot take focus, and a landing handed that control is a `focus()` call
+				 * that does nothing (UX round 4, U34).
+				 */
+				candidate: row
+					? focusHoldCandidate({
+							primary: primary ? rowPrimaryRefs.current[row.name] : null,
+							overflow: rowOverflowRefs.current[row.name],
+						})
+					: undefined,
+				active: window.document.activeElement,
+				body: window.document.body,
+			});
+			if (!read.hold) {
+				setFocusRow(null);
+				return "finished";
+			}
+			/*
+			 * NOTHING OBSERVABLE HAPPENED, SO NOTHING IS WRITTEN. A read that only
+			 * extends the window must not re-render the page: the extension lives in
+			 * `rowMovingAtRef`, which both readers consult, and a `setFocusRow` per read
+			 * would cost a render every watcher period for the length of an operation.
+			 * State is written by a LANDING and by the end of the move - and a stale
+			 * `until` in state is harmless, because `focusHoldWindow` answers
+			 * `max(hold.until, lastMovingAt + windowMs)` and the ref is the fresh term.
+			 */
+			if (!read.land) return "kept";
+			setFocusRow({
+				name: move.name,
+				waitForSignIn: false,
+				until: read.hold.until,
+				landedOn: read.land,
+				reanchors: read.hold.reanchors,
+			});
+			/*
+			 * ONE MACROTASK LATER, and that is the whole of Q2/U20: a dialog or a row
+			 * menu closing runs Radix's close-auto-focus AFTER this read, its target is
+			 * the control that opened it - a menu item the close has already unmounted -
+			 * and its restore to `<body>` silently undoes a focus performed here.
+			 * Measured on the two arms whose row never re-renders again, so nothing
+			 * re-armed the move: the confirm on a FAILED sign-out (the row settles on
+			 * `Sign-out didn't finish | Sign out again`) and a key `Save and test` whose
+			 * row is left with no primary (QA Q2, UX U20) - both left
+			 * `document.activeElement` on `BODY`. Deferring makes the row's own control
+			 * the last writer whatever order the close runs in.
+			 *
+			 * WHY A MACROTASK IS ENOUGH, stated as the assumption it is (R5-5): the
+			 * ordering holds because the installed Radix focus scope restores focus from
+			 * ONE `setTimeout(..., 0)` registered by the unmounting subtree's effect
+			 * cleanup, and React runs that cleanup no later than the parent effect that
+			 * arms this move - so this timer is registered second and fires second. That
+			 * is a third-party dist's internals rather than a property this repository can
+			 * assert: a future Radix that defers twice, or to a `requestAnimationFrame`,
+			 * would make the restore the last writer again, and the pin here can only
+			 * assert that this deferral exists (it does, and it fails when removed). The
+			 * guard below is deliberately conservative in the same spirit: a target that
+			 * has left the document by the time the timer fires drops the move rather
+			 * than throwing - and the watcher below is what picks that dropped move back
+			 * up when its node was REPLACED rather than withdrawn.
+			 */
+			const landed = read.land;
+			window.setTimeout(() => {
+				if (landed.isConnected) landed.focus();
+			}, 0);
+			return "landed";
+		},
+		[readDocument, document, integrations.memories],
+	);
+
+	/*
+	 * THE WATCHER: the half a render cannot switch off (QA round 3, Q-1; UX round 3,
+	 * U31). It is also the FAST PATH - a payload that carries a change re-runs the read
+	 * at once, so a dialog's own landing arrives on the first read after it rather than
+	 * up to a cadence later.
+	 *
+	 * WHY A MOVE NEEDS A CADENCE OF ITS OWN AT ALL. The read above runs when React
+	 * re-runs it, and for the length of a slow operation React has nothing to say: the
+	 * poll answers with a payload deeply equal to the cached one, structural sharing
+	 * keeps the reference, no tracked prop changes, and nothing else in this component
+	 * runs either. A hold waiting on a render is therefore a hold waiting on a poll that
+	 * may never produce one - which is exactly how a 20 s answer ended with the caret on
+	 * `<body>`.
+	 *
+	 * WHAT IT DOES. The same read as the one at the top of this effect, on its own
+	 * cadence: the row's own operation is what keeps the window open while it is in
+	 * flight (QA round 2, Q1 measured 21 750 ms for a 20 s server), and the row's RE-STAND is noticed where it
+	 * happens - the row is replaced while its operation runs, no payload needs to change
+	 * for that, and the read that follows lands the move on the row's new control. That
+	 * is why the app now makes a `focus()` call AT the group change rather than only at
+	 * dispatch, which is the reading the round-3 failure was missing.
+	 *
+	 * WHY A TIMER AND NOT A `requestAnimationFrame`: the window is not always painted -
+	 * every rig that measures this runs the app headless - and a frame-driven watcher
+	 * would stop watching in exactly the environment the defect was found in.
+	 * `FOCUS_WATCH_MS` is short against the window it is watching (about sixteen reads
+	 * inside one `FOCUS_ARM_MS`), and while no move is armed there is no timer at all.
+	 *
+	 * THE PROMISE THIS HALF CARRIES, stated rather than implied (R4-5): the read's own
+	 * deadline check is what makes a LATE move impossible; this watcher is what makes a
+	 * DROPPED one recoverable. Removing it leaves the deadline honest and the re-stand
+	 * unfollowed, which is the defect this round exists to remove.
+	 */
+	useEffect(() => {
+		if (!focusRow) return;
+		readFocusMove(focusRow, Date.now());
+		let timer = 0;
+		let stopped = false;
+		const tick = () => {
+			if (stopped) return;
+			/*
+			 * A `finished` read has already cleared `focusRow`, which tears this effect
+			 * down; `focusHoldWatchDelay` answers `null` for it, which is what keeps a
+			 * tick that ran in the same macrotask from re-arming the timer the cleanup
+			 * is about to clear. THE CADENCE'S RECURRENCE IS THE RULE'S ANSWER, not a
+			 * line here: a timer armed once and never re-armed keeps a move armed and
+			 * never sees the re-stand it exists to follow (agent review round 4, MINOR
+			 * 2 - by mutation, deleting the re-arm left every pin green).
+			 */
+			const delay = focusHoldWatchDelay({
+				verdict: readFocusMove(focusRow, Date.now()),
+				watchMs: FOCUS_WATCH_MS,
+			});
+			if (delay === null) return;
+			timer = window.setTimeout(tick, delay);
+		};
+		timer = window.setTimeout(tick, FOCUS_WATCH_MS);
+		return () => {
+			stopped = true;
+			window.clearTimeout(timer);
+		};
+	}, [focusRow, readFocusMove]);
+
+	/*
+	 * A REAL POINTER PRESS OUTSIDE THE ROW ENDS THE MOVE (UX round 4, U33; QA round 4,
+	 * Q-1). The move's own refusals read `document.activeElement`, and a press on
+	 * non-focusable chrome leaves it on `<body>` - the same value a replaced control
+	 * leaves - so nothing below this line can tell a reader who deliberately clicked
+	 * away from a row whose control was unmounted. The press is the one signal that
+	 * can: this listener names the node it landed on, and `focusHoldPointerEnds` asks
+	 * whether that node is inside the row the move belongs to. Measured without it on
+	 * the built app: a press on the `Integrations` heading during a 20 s test left the
+	 * caret on `<body>` for 72 samples over 18 s, and the group change then dragged it
+	 * back onto the row's `⋯`.
+	 *
+	 * WHY A LISTENER RATHER THAN A SECOND TERM IN THE READ: the answer has to outlive
+	 * the press. `activeElement` is the same for both readers afterwards, so the fact
+	 * that the reader moved has to be turned into "there is no move" AT THE PRESS, and
+	 * that is what clearing `focusRow` here does - the watcher's own effect tears down
+	 * with it, so the tick that would have re-applied the move is gone.
+	 *
+	 * WHY THE CAPTURE PHASE: a press a nested control stops from propagating is still
+	 * a press, and the row's own controls are the ones that would swallow it.
+	 *
+	 * WHAT IS DELIBERATELY NOT HERE: a press INSIDE the row (its controls, its inline
+	 * confirm, its prose) leaves the move alone, and so does a press in the frame where
+	 * the page has no element for the row - `focusHoldPointerEnds` states why a missing
+	 * row is a wait rather than a leave. A press on a focusable control of the reader's
+	 * already ended the move through `focusHoldStep`'s own refusal, and the reader-wins
+	 * cells (the search field, a typed draft, the command palette, another settings row)
+	 * keep the caret either way.
+	 */
+	useEffect(() => {
+		if (!focusRow) return;
+		const onPointerDown = (event: PointerEvent) => {
+			if (
+				!focusHoldPointerEnds({
+					target: event.target,
+					row: rowRefs.current[focusRow.name],
+				})
+			)
+				return;
+			setFocusRow(null);
+		};
+		window.document.addEventListener("pointerdown", onPointerDown, true);
+		return () => {
+			window.document.removeEventListener("pointerdown", onPointerDown, true);
+		};
+	}, [focusRow]);
 
 	return (
 		<SettingsSection
-			title="Integrations"
-			description="MCP servers connect agents to your tools and accounts. A connected server is a working transport; the account behind it may still need its own sign-in."
+			title={SECTION_TITLE}
+			titleComponent={header}
 			sectionRef={sectionRef}
 		>
 			<div className="flex flex-col gap-4">
-				{actionError && (
-					<Alert variant="danger">
-						<p>{actionError.message}</p>
-						{actionError.detail ? (
-							<p
-								className="font-mono text-ink-dim text-mono-sm"
-								title={actionError.detail}
-							>
-								{actionError.detail}
-							</p>
-						) : null}
-					</Alert>
-				)}
-				{/*
-				 * Which conversation this list is. The sentence NAMES it, and that is a
-				 * requirement rather than a nicety: the statuses below are that
-				 * conversation's RUNTIME's, and `disconnect` is per-session — but the
-				 * CREDENTIAL is not, `~/.local-operator/auth.db` is shared and a grant from
-				 * any conversation revalidates the block in every other one
-				 * (`mcp/manager.py:3050-3075`). So naming the conversation must not be read
-				 * as claiming the sign-in belongs to it.
-				 */}
-				{borrowed && (
+				{integrations.route === "session" && integrations.borrowed ? (
 					<p className="text-body-sm text-ink-muted">
-						Showing MCP servers for{" "}
-						{borrowed.title?.trim() || borrowed.session_id.slice(0, 6)}, your
-						most recent conversation. Open a conversation to see its own list.
+						Showing the integrations for{" "}
+						{integrations.borrowed.title?.trim() ||
+							integrations.borrowed.session_id.slice(0, 6)}
+						, your most recent chat.
 					</p>
-				)}
-				{listQuery.isLoading && (
-					<div className="flex h-24 items-center justify-center">
-						<Spinner size="lg" label="Loading MCP servers" />
+				) : null}
+				{integrations.noConversation ? (
+					<div className="flex flex-col items-start gap-2">
+						{/* "The backend" is jargon for this audience, and the page
+						    told them to do something it gave no control for (D5). */}
+						<p className="text-body-sm text-ink-muted">
+							Integrations can be managed here once a chat has started.
+						</p>
+						<Button
+							variant="primary"
+							size="sm"
+							onClick={() => navigate("/chat")}
+						>
+							Start a chat
+						</Button>
+						<p className="text-ink-dim text-meta">
+							Updating Local Operator removes this step.
+						</p>
 					</div>
-				)}
-				{listQuery.isError && (
+				) : null}
+				{integrations.isLoading ? (
+					<div className="flex h-24 items-center justify-center">
+						<Spinner size="lg" label="Loading integrations" />
+					</div>
+				) : null}
+				{/*
+				 * A folder the backend refused with `invalid_cwd`: the page keeps
+				 * working on the global catalog rather than dead-ending, and says
+				 * so - a user whose chat folder was deleted must be told why the
+				 * project rows are missing instead of concluding the page is
+				 * broken (R2-4).
+				 */}
+				{integrations.folderUnavailable ? (
+					<Alert variant="warning">
+						<span>
+							This chat's folder no longer exists, so only global integrations
+							are shown.
+						</span>
+					</Alert>
+				) : null}
+				{integrations.isError ? (
 					<Alert variant="warning">
 						<div className="flex items-center justify-between gap-3">
-							<span>MCP servers could not be loaded.</span>
+							<span>Integrations couldn't be loaded.</span>
 							<Button
 								variant="secondary"
 								size="sm"
-								onClick={() => void listQuery.refetch()}
+								onClick={integrations.refetch}
 							>
 								Retry
 							</Button>
 						</div>
 					</Alert>
-				)}
+				) : null}
 				{/*
-				 * The list's own search (D4). Client-side, over the rows the read already
-				 * returned, and present whenever there IS a list: "search for the name I
-				 * know" is the gesture that failed, and it needs no threshold to be worth
-				 * having. It is deliberately NOT wired into the settings search index —
-				 * that index is a typed-editor registry over backend settings keys, and
-				 * MCP rows are a session-scoped live read with a runtime status column,
-				 * which is the second-answer problem this section was built to avoid.
+				 * A refusal that belonged to a row which no longer exists. The
+				 * list IS re-read after a 409 (F2), so the sentence explaining
+				 * why - "It no longer exists. The list has been refreshed." -
+				 * would otherwise vanish along with the row that carried it, and
+				 * the user would watch a row disappear with no account of it.
 				 */}
-				{servers.length > 0 && (
+				{orphanFailures.map(([name, message]) => (
+					<Alert key={name} variant="warning">
+						<div className="flex items-center justify-between gap-3">
+							<span>{message}</span>
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => dismissFailure(name)}
+							>
+								Dismiss
+							</Button>
+						</div>
+					</Alert>
+				))}
+				{showAdd && servers.length > 0 ? addForm : null}
+				{servers.length >= SEARCH_THRESHOLD ? (
 					<div className="relative">
 						<Search
 							aria-hidden="true"
 							className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-dim"
 						/>
 						<Input
+							ref={searchRef}
 							value={filter}
 							onChange={(event) => setFilter(event.target.value)}
-							placeholder="Search MCP servers"
-							aria-label="Search MCP servers"
+							/*
+							 * Escape clears the field, matching the search control's own
+							 * affordance: with a filter that matches nothing the only way
+							 * back used to be select-all-and-delete (n1, round 2). The event
+							 * is left alone when there is nothing to clear, so Escape keeps
+							 * whatever meaning the surface around it has.
+							 */
+							onKeyDown={(event) => {
+								if (event.key !== "Escape" || !filter) return;
+								event.preventDefault();
+								setFilter("");
+							}}
+							placeholder={`Search ${integrationCountLabel(servers.length)}`}
+							aria-label="Search integrations"
 							className="pl-9"
 						/>
 					</div>
-				)}
-				{/*
-				 * Exactly one of these two lines, by construction: the miss line needs a
-				 * list to have been searched, and the configured line needs it to be empty
-				 * — so an argument that named nothing on a machine with no servers gets the
-				 * statement about the machine, which is the more complete answer.
-				 *
-				 * The miss line quotes the RAW argument, because that is what the reader
-				 * typed and what a resolution rule has to be re-read against.
-				 */}
-				{target?.kind === "miss" && servers.length > 0 && (
+				) : null}
+				{target?.kind === "miss" && servers.length > 0 ? (
 					<p className="text-body-sm text-ink-muted">
-						{`No MCP server matches "${target.asked}".`}
+						{`No integration matches "${target.asked}".`}
 					</p>
-				)}
-				{/*
-				 * The other half of the same rule, and the reason it is stated rather than
-				 * hidden: a server can be NAMED like a verb, so `/mcp login hubspo` resolves
-				 * to the server called `login` and reveals an unrelated row unless the
-				 * resolution says so (code review round 1, finding 4). Only a match the last
-				 * token does not explain carries an `unresolved` tail, so the operator's own
-				 * `reauth hubspot` never sees this line.
-				 */}
-				{target?.kind === "matched" && target.unresolved && (
+				) : null}
+				{target?.kind === "matched" && target.unresolved ? (
 					<p className="text-body-sm text-ink-muted">
-						{`Showing "${target.name}" — "${target.unresolved}" is not one of your servers.`}
+						{`Showing "${target.name}" — "${target.unresolved}" is not one of your integrations.`}
 					</p>
-				)}
-				{listQuery.isSuccess && servers.length === 0 && (
-					<p className="text-body-sm text-ink-muted">
-						No MCP servers configured yet. Add one below.
-					</p>
-				)}
-				{/*
-				 * The filter's own empty state, in the provider grid's shape (the same
-				 * `No providers match this search.` + `Clear search` pair) because it is
-				 * the same question about a different list — and it is a different line
-				 * from the deep-link miss above, which is a statement about a NAME rather
-				 * than about a filter.
-				 */}
-				{servers.length > 0 && visible.length === 0 && (
+				) : null}
+				{document && servers.length === 0 && !integrations.isLoading ? (
+					showAdd ? (
+						addForm
+					) : (
+						<div className="flex flex-col items-start gap-3 rounded-lg bg-surface p-6">
+							<Plug aria-hidden="true" className="size-5 text-ink-muted" />
+							<div className="flex flex-col gap-1">
+								<h3 className="text-heading text-ink">No integrations yet</h3>
+								<p className="max-w-xl text-body-sm text-ink-muted">
+									Integrations let agents read and act in your other tools, like
+									Notion or Linear. Add one with a command that runs on this
+									computer, or a server's URL.
+								</p>
+							</div>
+							<Button
+								variant="primary"
+								size="md"
+								onClick={() => setShowAdd(true)}
+								data-tour-tag="mcp-add-server"
+							>
+								<Plus aria-hidden="true" />
+								Add integration
+							</Button>
+						</div>
+					)
+				) : null}
+				{servers.length > 0 && visible.length === 0 ? (
 					<div className="flex flex-col items-start gap-2">
 						<p className="text-body-sm text-ink-muted">
-							No MCP servers match this search.
+							No integrations match this search.
 						</p>
-						<Button variant="secondary" size="sm" onClick={() => setFilter("")}>
-							Clear search
-						</Button>
-					</div>
-				)}
-				{visible.length > 0 && (
-					<ul className="flex flex-col gap-2">
-						{visible.map((server) => {
-							const connected = server.status === "connected";
-							const highlighted = server.name === named;
-							// Aliased so the removal handler below keeps the non-null
-							// narrowing: the scope of the write and the reason the Remove
-							// control exists are the same question.
-							const ownedScope = server.owned_scope;
-							// Whether this row offers the sign-in control that fixes a
-							// `auth-required` server; where it does not, the row has to say so
-							// in words (see the hint below).
-							const canGrantAccountAccess =
-								server.transport === "http" &&
-								server.transport_oauth_supported !== false;
-							// The tool that owns a config this app must not write, or null when
-							// the table does not know the file.
-							const foreignOrigin = foreignMcpConfigOrigin(server.source);
-							return (
-								<li
-									key={server.name}
-									ref={highlighted ? highlightRef : undefined}
-									className={cn(
-										"flex flex-col gap-2 rounded-md border border-control bg-surface p-3",
-										// A colour step, not a ring: this marks which row the
-										// command was about, it does not take focus.
-										highlighted && "border-accent bg-elevated",
-									)}
-								>
-									<div className="flex items-center justify-between gap-3">
-										<div className="flex min-w-0 items-center gap-2">
-											<span className="truncate font-medium text-body text-ink">
-												{server.name}
-											</span>
-											{/* The scope chip is the row's only left-rail pill, and that is
-											    the point: it carries the fact that decides whether this row
-											    has a Remove control, so it keeps the emphasised variant
-											    (D1-4). Its words are the add form's own (`Global` /
-											    `This project`), so the two places that name this axis
-											    agree. */}
-											{ownedScope && (
-												<Badge variant="outline">
-													{ownedScope === "project" ? "This project" : "Global"}
-												</Badge>
-											)}
-											{/* Plain meta text, not a second pill: the transport token is a
-											    machine word the row's other copy already implies, and as a
-											    pill it wore the same three roles as the neutral status badge
-											    at the far end of the row (D2-3). */}
-											{server.transport && (
-												<span className="text-meta text-ink-dim">
-													{server.transport}
-												</span>
-											)}
-										</div>
-										<Badge
-											variant={
-												connected
-													? "success"
-													: server.status === "connecting"
-														? "info"
-														: server.status === "auth-required"
-															? "warning"
-															: "neutral"
-											}
-										>
-											{server.status ?? "unknown"}
-										</Badge>
-									</div>
-									{typeof server.tool_count === "number" && (
-										<p className="text-meta text-ink-dim">
-											{server.tool_count} tools available
-										</p>
-									)}
-									{/* No error line: the wire never sends `error`, so `status` IS the
-									    row's health story, and `auth-required` takes the warning variant
-									    above because it is recoverable — unlike a dead process.
-
-									    Where the row cannot offer a sign-in, the copy must not name one.
-									    `!canGrantAccountAccess` means `server_rejects_oauth`
-									    (`mcp/auth.py`), which is true for TWO shapes and never for a
-									    server that could use a grant: a stdio server (no URL to carry
-									    a bearer), and — the http row this branch is mostly about — a
-									    config declaring some OTHER `auth` type, where starting an
-									    OAuth flow would answer a question the user already answered,
-									    so the login is a HARD REFUSAL. The backend's own display
-									    authority for both, `McpManager.auth_recovery_hint`
-									    (`mcp/manager.py`), says the config is the only place to fix
-									    it ("check {name}'s credentials in its MCP config"), and
-									    `_auth_challenge_text` for a 401 with no discoverable OAuth
-									    endpoint says "set its API key or headers". So the sentence
-									    names the credential need, and names the control that is
-									    actually on the row when the backend sent one: the setup
-									    prompt, which is how the user gets walked to that config. */}
-									{server.status === "auth-required" &&
-										!canGrantAccountAccess && (
-											<p className="text-meta text-ink-dim">
-												{server.setup?.text
-													? "This server needs credentials local-operator cannot collect. Copy the setup prompt to have an agent walk you through it."
-													: "This server needs credentials local-operator cannot collect."}
-											</p>
-										)}
-									{/* The row that has no Remove control says WHY in words: the tool
-									    that owns the file when this table knows it, then the file.
-									    The TUI's `/mcp remove` refusal names both for the same reason
-									    (`mcp/verbs.py`'s `_foreign_config_origin`). The path is
-									    machine voice, so it is monospace and `~`-relative
-									    (`compactPath`); and the sentence sits on its own line at
-									    every width, because trailing the controls it broke to one
-									    below ~1000px anyway and a caveat that changes role with the
-									    column reads as two things (review D1-6).
-
-									    A source this table does not know is NOT given a guessed
-									    owner. The case that reaches it most is the project's own bare
-									    `.mcp.json`, which the backend calls "a project .mcp.json
-									    local-operator does not write" (`mcp/verbs.py`) — the
-									    user's own file, not another tool's — so the unnamed branch
-									    claims only what is true and keeps the path, which is the
-									    actionable half (review D2-2/R2-2). */}
-									{!ownedScope && (
-										<p className="text-meta text-ink-dim">
-											{foreignOrigin
-												? `Imported from ${foreignOrigin}.`
-												: "Imported from a configuration local-operator does not write."}{" "}
-											{server.source ? (
-												<>
-													Remove it in{" "}
-													<span className="font-mono text-mono-sm text-ink-dim">
-														{compactPath(server.source)}
-													</span>
-													.
-												</>
-											) : (
-												<>Remove it wherever it is defined.</>
-											)}
-										</p>
-									)}
-									<div className="flex flex-wrap items-center gap-2">
-										{connected ? (
-											<Button
-												variant="secondary"
-												size="sm"
-												onClick={() => {
-													setConfirmRemove(null);
-													void control("disconnect", server.name, {
-														confirmed: true,
-													});
-												}}
-											>
-												<Plug aria-hidden="true" />
-												Disconnect
-											</Button>
-										) : (
-											<Button
-												variant="secondary"
-												size="sm"
-												onClick={() => void control("connect", server.name)}
-											>
-												<PlugZap aria-hidden="true" />
-												Connect
-											</Button>
-										)}
-										<Button
-											variant="ghost"
-											size="sm"
-											onClick={() => void control("reload", server.name)}
-										>
-											<RotateCw aria-hidden="true" />
-											Reload
-										</Button>
-										{/*
-										 * One transition owner, reached from here, from the run panel and from
-										 * `/mcp login|reauth <name>`: the shared flow re-probes the named
-										 * server and starts whichever of grant/key the backend reports. That
-										 * is why this control is not conditioned on
-										 * `canGrantAccountAccess` any more — the row's own derived remedy
-										 * cannot answer "does this transport do OAuth, and which references
-										 * does it declare", and assuming it could is what started a browser
-										 * grant for a server whose answer was a key (R2-6).
-										 */}
-										<Button
-											variant="ghost"
-											size="sm"
-											onClick={() => {
-												const row = deriveMcpServers(
-													listQuery.data?.servers ?? [],
-												).find((row) => row.name === server.name);
-												if (row)
-													setAuthTarget({ row, sessionId: readSessionId });
-											}}
-										>
-											Sign in
-										</Button>
-										{/*
-										 * The server-supported setup action, wherever the backend sent
-										 * one. `docs/desktop-controls.md` obliges this surface to offer it,
-										 * the paragraph above the row names this control by name, and it is
-										 * not redundant with `Sign in`: the dialog's own answer for a
-										 * non-OAuth server can be "add explicit ${NAME} references", and
-										 * without this there is no way from this row to the setup an agent
-										 * walks the user through. A prompt the user REVIEWS and submits,
-										 * never an auto-send.
-										 */}
-										{server.setup?.text ? (
-											<Button
-												variant="ghost"
-												size="sm"
-												onClick={() => {
-													void navigator.clipboard
-														.writeText(server.setup?.text ?? "")
-														.catch(() => undefined);
-												}}
-											>
-												Copy setup prompt
-											</Button>
-										) : null}
-										{/* Removal is a scoped write into the file that owns the server,
-										    and only two of the eight config sources are this app's to
-										    write. A server imported from another tool's config has a
-										    null `owned_scope`, so a Remove button there could only
-										    ever produce the backend's refusal; the source file is
-										    shown instead, which is the call the TUI's `/mcp remove`
-										    rows already make with their detail column. */}
-										{ownedScope ? (
-											confirmRemove === server.name ? (
-												<>
-													<span className="text-body-sm text-ink">
-														Remove {server.name}?
-													</span>
-													<Button
-														variant="danger"
-														size="sm"
-														onClick={() => {
-															setConfirmRemove(null);
-															void control("remove", server.name, {
-																confirmed: true,
-																// The scope of the write, not a guess: the backend
-																// compares it against the server's source file and
-																// refuses a mismatch, so a hard-coded "global"
-																// made every project-owned server unremovable.
-																scope: ownedScope,
-															});
-														}}
-													>
-														Confirm removal
-													</Button>
-													<Button
-														variant="ghost"
-														size="sm"
-														onClick={() => setConfirmRemove(null)}
-													>
-														Keep
-													</Button>
-												</>
-											) : (
-												<Button
-													variant="ghost"
-													size="sm"
-													className="text-danger"
-													onClick={() => setConfirmRemove(server.name)}
-												>
-													<Trash2 aria-hidden="true" />
-													Remove
-												</Button>
-											)
-										) : null}
-									</div>
-								</li>
-							);
-						})}
-					</ul>
-				)}
-				{authTarget?.sessionId === readSessionId ? (
-					<McpAuthDialog
-						key={readSessionId}
-						row={authTarget.row}
-						remedy={remedy}
-						onClose={() => setAuthTarget(null)}
-					/>
-				) : null}
-				{showAdd ? (
-					<AddServerForm
-						sessionId={readSessionId}
-						onAdded={() => {
-							setShowAdd(false);
-							refresh();
-						}}
-					/>
-				) : (
-					<div>
 						<Button
 							variant="secondary"
 							size="sm"
-							onClick={() => setShowAdd(true)}
-							data-tour-tag="mcp-add-server"
+							onClick={() => {
+								setFilter("");
+								/*
+								 * The button unmounts with the empty state it belongs to, so
+								 * focus has to be moved after that render - and the field it
+								 * just emptied is where the user was typing (n2, round 2;
+								`<body>` is where it used to land). The Add control is the
+								fallback for the case where the box itself is gone.
+								 */
+								window.setTimeout(() => {
+									(searchRef.current ?? addSlotRef.current)?.focus();
+								}, 0);
+							}}
 						>
-							Add server
+							Clear search
 						</Button>
 					</div>
-				)}
+				) : null}
+				{groups.map((group) => (
+					<section
+						key={group.id}
+						aria-labelledby={`integrations-group-${group.id}`}
+						className="flex flex-col gap-1.5"
+					>
+						<h3
+							id={`integrations-group-${group.id}`}
+							className="px-1 text-ink-dim text-meta"
+						>
+							{group.title} · {group.rows.length}
+						</h3>
+						<ul className="flex flex-col divide-y divide-hairline overflow-hidden rounded-lg bg-surface">
+							{group.rows.map((row) => (
+								<IntegrationRow
+									key={row.id}
+									row={row}
+									operations={operations}
+									memories={integrations.memories}
+									projectScopeAvailable={projectScopeAvailable}
+									highlighted={row.name === named}
+									rowRef={(element) => {
+										// The row's own element, for the pointer rule, and the deep
+										// link's scroll target when this is the named row.
+										rowRefs.current[row.name] = element;
+										if (row.name === named) highlightRef.current = element;
+									}}
+									primaryRef={(element) => {
+										rowPrimaryRefs.current[row.name] = element;
+									}}
+									overflowRef={(element) => {
+										rowOverflowRefs.current[row.name] = element;
+									}}
+									pending={pending === row.name}
+									failure={failures[row.name] ?? null}
+									confirm={
+										confirm?.name === row.name
+											? ({ kind: confirm.kind } satisfies RowConfirm)
+											: null
+									}
+									onPrimary={(action) => onPrimary(row, action)}
+									onOverflow={(item) => onOverflow(row, item)}
+									onConfirm={() => confirm && onConfirmed(row, confirm.kind)}
+									onCancelConfirm={() => {
+										// Keep puts focus back on the control that asked,
+										// so the next Tab continues from where the reader was.
+										setConfirm(null);
+										window.setTimeout(() => {
+											rowOverflowRefs.current[row.name]?.focus();
+										}, 0);
+									}}
+								/>
+							))}
+						</ul>
+					</section>
+				))}
 			</div>
+			{dialog?.kind === "sign_in" ? (
+				<IntegrationSignInDialog
+					name={dialog.name}
+					action={dialog.action}
+					/*
+					 * The row's own key route, from the SAME list the row's buttons come
+					 * from (D15): the failed-sign-in copy may only name a control this
+					 * surface can actually draw, and `linear` - whose actions carry no
+					 * `add_key` and no secret reference - has none, so its overflow is
+					 * Test / Open config file / Remove.
+					 */
+					keyRoute={signInRow ? offersKey(signInRow) : false}
+					phase={signIn}
+					onStart={() => void startSignIn(dialog.name, dialog.action)}
+					onCancel={(operationId) =>
+						void control({ action: "cancel", operationId }).catch(
+							() => undefined,
+						)
+					}
+					onOpenLink={(url) => void openUrlTarget(url)}
+					onClose={(outcome) => closeSignIn(dialog.name, outcome)}
+				/>
+			) : null}
+			{dialog?.kind === "key" ? (
+				<IntegrationKeyDialog
+					name={dialog.name}
+					keyNames={
+						dialog.keyNames.length
+							? dialog.keyNames
+							: (dialogRow?.auth.secret_refs.map((ref) => ref.id) ?? [])
+					}
+					/*
+					 * No declared reference means the dialog must also ask for the
+					 * key's NAME (U3): the backend offers no `set_key` for a
+					 * server whose config names none, and the row's own copy
+					 * promised a key it had nowhere to put.
+					 */
+					keyless={dialog.keyNames.length === 0}
+					savedKeys={dialogRow?.auth.secret_refs
+						.filter((ref) => ref.state === "encrypted")
+						.map((ref) => ref.id)}
+					saving={keySaving}
+					failure={keyFailure}
+					onClose={closeDialog}
+					onSave={(values, confirmedReplace, header) => {
+						setKeySaving(true);
+						setKeyFailure(null);
+						void integrations
+							.storeKeys(dialog.name, values, confirmedReplace, header)
+							.then((result) => {
+								if (!result.saved) {
+									setKeyFailure(result.message);
+									return;
+								}
+								/*
+								 * A saved key changes the row, so focus follows the row
+								 * (U18): the dialog closes, and the row it belongs to may
+								 * have no primary of its own afterwards - then its menu is
+								 * the control to land on, which is the rule U12 applies.
+								 */
+								setDialog(null);
+								setFocusRow({
+									name: dialog.name,
+									waitForSignIn: false,
+									until: Date.now() + FOCUS_ARM_MS,
+									reanchors: 0,
+								});
+							})
+							.catch((cause) =>
+								setKeyFailure(integrationFailureMessage("key", cause, false)),
+							)
+							.finally(() => setKeySaving(false));
+					}}
+				/>
+			) : null}
 		</SettingsSection>
 	);
 };
+
+/**
+ * How long a deferred focus move stays armed BETWEEN the row's own reads of its own
+ * operation (m-4).
+ *
+ * THIS IS NOT HOW LONG THE MOVE LIVES, which is what the round-3 review caught this
+ * doc claiming (NIT 1). A row doing its own work pushes the deadline out on every
+ * read, so an armed move lasts as long as the operation it is following - measured
+ * at 21 750 ms for a 20 s server - and the only clockless bound on that is
+ * `FOCUS_REANCHOR_CAP` re-mounts. What this number is instead is the FLOOR and the
+ * TAIL: long enough for the read that follows an action to land (the list polls every
+ * 2 s while something is moving, and a catalog read answers in well under that), and
+ * long enough AFTER a row stops moving for the read that carries its new group to
+ * arrive. What stops a move firing after the reader has moved on is not this number:
+ * it is the refusal in `focusHoldStep`, which drops the move the moment a control of
+ * the reader's holds the caret.
+ */
+const FOCUS_ARM_MS = 4_000;
+
+/**
+ * How often an armed move is re-read while the row's own operation is in flight (QA
+ * round 3, Q-1; UX round 3, U31).
+ *
+ * THE PAGE'S OWN POLL CANNOT BE THE CADENCE. It answers every 2 s with a payload
+ * deeply equal to the cached one for the whole of an operation, and structural sharing
+ * makes that a no-op for every reader gated on a reference - which is how a hold
+ * expired 4.25 s into a 20 s operation, and why the app made no `focus()` call at all
+ * at the row's group change. This is the read that does not depend on one, so it has
+ * to be frequent enough that a re-stand is caught well inside the window it is judged
+ * against: about sixteen reads to one `FOCUS_ARM_MS`, and against a window that is
+ * itself renewed from the last read that found the row moving. It exists only while a
+ * move is armed, and nothing else in this file polls.
+ *
+ * THE VALUE AND THE RULE THAT RECURS IT ARE THE MODULE'S (`FOCUS_WATCH_MS` and
+ * `focusHoldWatchDelay` in `integration-focus.ts`, agent review round 4, MINOR 2):
+ * the tick has nothing of its own to decide, because "the cadence recurs" is only
+ * true while the answer to "read again?" comes from a rule a cell can drive.
+ */
+
+/** `/Users/x/proj` as `~/proj`, for a label. Machine paths stay machine voice elsewhere. */
+const HOME_PREFIX = /^\/(?:Users|home)\/[^/]+(?=\/|$)/;
+const compactHome = (path: string): string => path.replace(HOME_PREFIX, "~");

@@ -34,8 +34,9 @@
  *
  * ## The rules, and why each is narrow
  *
- * - **`ask` gates with options only.** An approval carries no options and is
- *   answered yes/no; a `secret` ask carries empty options, so nothing matches.
+ * - **`ask` gates with options only.** A `secret` ask carries empty options, so
+ *   nothing matches, and an approval — which carries no wire options at all —
+ *   is resolved by its own rule (`approvalAnswerValue`), never by this one.
  * - **The ordinal, optionally as the card prints it.** `"1"` resolves, and so
  *   does `"1."` — because `1.` is exactly what the card draws, so the most
  *   literal transcription of the option's own mark was the one spelling that
@@ -80,10 +81,7 @@ import {
  * code it cannot see is a code that does not withhold the hint (design round 1,
  * D2 — see `answerReport`'s note).
  */
-import {
-	ANSWER_NOT_SENT_CODE,
-	UNCONFIRMED_SEND_CODE,
-} from "@shared/store/canonical-sessions-store";
+import { ANSWER_NOT_SENT_CODE } from "@shared/store/canonical-sessions-store";
 import {
 	DESKTOP_DEADLINE_EXCEEDED_CODE,
 	DESKTOP_LOST_SIGHT_CODE,
@@ -142,6 +140,99 @@ export const answerValue = (
 	typed: string | undefined,
 	payload: string,
 ): string => resolveNumericAnswer(gate, typed ?? payload);
+
+/**
+ * The two options an approval card offers.
+ *
+ * ## Why the client owns these labels
+ *
+ * The wire carries NO options for an approval: `PendingRequest` for
+ * `kind="approval"` is a title (the tool name) and a detail (the action), and
+ * the answer route takes a strict boolean. Unlike an ask — whose labels are the
+ * model's and must travel back on the wire verbatim — there is no label the
+ * daemon is waiting to hear. So the pair is the app's own vocabulary, and it
+ * lives here, once, because three call sites need the same two strings in the
+ * same order: the card's buttons (`canonical-transcript.tsx`), the ordinals the
+ * card prints and a composer answer resolves through `approvalAnswerValue`
+ * below, and the request `answerGateOption` builds.
+ *
+ * ## Why an ORDERED array, and why resolution is positional
+ *
+ * `1.`/`2.` on the card are positions, and the ordinal path resolves through
+ * this array, so the buttons, the numerals and the typed shortcut cannot drift
+ * apart. `approvalVerdict` maps labels positionally, and it is the ONLY place a
+ * label becomes the boolean: a third option added here resolves to `null`
+ * everywhere at once — refused by `answerGateOption` rather than silently
+ * posting a verdict nothing defined. An approval has exactly this many answers,
+ * which is why the pair is not derived from any option list.
+ *
+ * ## The descriptions
+ *
+ * Short and factual, in the app's voice: they are the consequence line the
+ * reader decides between, the register an `ask`'s model-authored options carry.
+ * No "always allow" — the answer is the boolean alone, nothing is remembered,
+ * so a control that implied a scope it cannot grant would be the app's own
+ * lie. (Initial copy; the design round owns the final wording.)
+ */
+export const APPROVAL_OPTIONS: PendingDesktopGate["options"] = [
+	{ label: "Approve", description: "Run the action and continue the turn." },
+	{ label: "Deny", description: "Refuse the action; the turn continues." },
+];
+
+/**
+ * The verdict an approval option's label carries, or `null` for any other
+ * string.
+ *
+ * The buttons submit `option.label`, so this is what turns a press into the
+ * boolean the route takes — and `answerGateOption` refuses a label this
+ * returns `null` for rather than posting anything. See `APPROVAL_OPTIONS` for
+ * why a third option fails closed through here.
+ */
+export const approvalVerdict = (label: string): boolean | null => {
+	if (label === APPROVAL_OPTIONS[0]?.label) return true;
+	if (label === APPROVAL_OPTIONS[1]?.label) return false;
+	return null;
+};
+
+/**
+ * The verdict a composer answer to an approval gate carries, or `null` when
+ * the text is no answer to that gate at all.
+ *
+ * ## Why the words stay
+ *
+ * "Reply yes or no in the composer" shipped before the buttons did, the card's
+ * hint and the TUI both teach it, and a yes/no the user already knows must not
+ * stop working when the buttons arrive. The lists are the shipped ones,
+ * unchanged, including their tolerance for `ok`/`allow` and `reject`/`cancel`.
+ *
+ * ## Why the ordinals are here
+ *
+ * The card draws `1.` `2.`, so a numeral the user can read and type must
+ * resolve — the same rule `resolveNumericAnswer` states for the ask card, and
+ * the same trap it records: a numeral the card draws but the app does not
+ * accept is a lie. Resolution goes through `APPROVAL_OPTIONS`, so the
+ * numerals, the buttons and the wire body share one ordering.
+ *
+ * Out of range falls through to `null` (`3` against two options is not a pick,
+ * and this cannot invent a third answer), and a `null` renders the composer's
+ * "reply yes or no" sentence — THROWN as a `UserFacingError` carrying
+ * `ANSWER_NOT_SENT_CODE`, because nothing was sent and the unknown-outcome
+ * sentence ("Couldn't confirm…", with a Retry) would be a claim this path
+ * cannot make (agent review round 1, MAJOR-1) — never a value the route would
+ * refuse later. Callers hand it the TYPED text beside the payload,
+ * the discipline `answerValue` states above: with a staged reply the payload
+ * is `"<reply-to>…</reply-to>\n2"`, and a resolution rule that had to parse
+ * that format is one payload change away from failing silently.
+ */
+export const approvalAnswerValue = (text: string): boolean | null => {
+	const value = text.trim().toLowerCase();
+	if (["y", "yes", "approve", "ok", "allow"].includes(value)) return true;
+	if (["n", "no", "deny", "reject", "cancel"].includes(value)) return false;
+	const match = BARE_OPTION_ORDINAL.exec(text.trim());
+	if (!match) return null;
+	const option = APPROVAL_OPTIONS[Number.parseInt(match[1], 10) - 1];
+	return option ? approvalVerdict(option.label) : null;
+};
 
 /**
  * Whether a forward `Tab` in the composer should be diverted onto the pending
@@ -539,7 +630,7 @@ export const unsentAnswerMessage = (error: unknown): string =>
  * the inheritance defect already recorded for the attachment refusal, and this
  * path had it too. So a composer report always names a code: the transport's own
  * when the failure carried one, `ANSWER_NOT_SENT_CODE` when it did not, and
- * `UNCONFIRMED_SEND_CODE` for the arm whose outcome is genuinely unknown — all
+ * `ANSWER_UNCONFIRMED_CODE` for the arm whose outcome is genuinely unknown — all
  * three listed by `withholdsRetryHint`, because "Send it again" is not the remedy
  * for a press whose question is gone and not a promise this app can make for one
  * it never heard back about.
@@ -703,6 +794,18 @@ export const answerReport = (
  *    `pairing.plane-closed`, a coded `409` from the relay or attachment ladders),
  *    where "your answer was not sent" is what the backend just said.
  */
+/**
+ * The code for a press whose outcome the app cannot establish.
+ *
+ * Its own code rather than the send's (which no longer exists as a category): the
+ * two are statements about different acts, and the composer's decisions are made
+ * from the notice the failure carries, so this is kept only as the code a reader
+ * can branch on. `withholdsRetryHint` does not list it - a Retry on this arm is refused
+ * by the notice's own `retry: false`, which is the answer of the failure that owns
+ * it (an option whose question has moved on cannot be pressed again).
+ */
+export const ANSWER_UNCONFIRMED_CODE = "answer_unconfirmed";
+
 const pressSentenceFor = (error: unknown, frame: PressFrame): string => {
 	if (answerOutcomeIsUnknown(error)) return answerUnconfirmedMessage(error);
 	if (answerRefusedWithoutACode(error)) {
@@ -720,7 +823,7 @@ const pressSentenceFor = (error: unknown, frame: PressFrame): string => {
  *
  * Three arms, one per question the alert asks of a code, and each stated by the
  * failure that owns it: the transport's own code where there is one (so a coded
- * refusal keeps its own remedies), `UNCONFIRMED_SEND_CODE` where the outcome is
+ * refusal keeps its own remedies), `ANSWER_UNCONFIRMED_CODE` where the outcome is
  * unknown (the app's existing code for exactly that, whose own sentence is about
  * a send it could not confirm), and `ANSWER_NOT_SENT_CODE` otherwise (the
  * definite loss: the question is gone and there is nothing to press again).
@@ -731,10 +834,10 @@ const composerCodeFor = (error: unknown): string => {
 	 * (UX round 1, U1). Its carried codes are `deadline_exceeded` and
 	 * `transport.failed`, and neither is in `withholdsRetryHint` — so keeping one
 	 * would put "Send it again" under a sentence whose own reason says "check the
-	 * result before repeating it". `UNCONFIRMED_SEND_CODE` is the app's existing
+	 * result before repeating it". `ANSWER_UNCONFIRMED_CODE` is the app's existing
 	 * code for exactly this state and withholds the hint.
 	 */
-	if (answerOutcomeIsUnknown(error)) return UNCONFIRMED_SEND_CODE;
+	if (answerOutcomeIsUnknown(error)) return ANSWER_UNCONFIRMED_CODE;
 	return errorCodeOf(error) ?? ANSWER_NOT_SENT_CODE;
 };
 
@@ -747,11 +850,12 @@ export type GateAnswerRequest = Extract<
 /**
  * What became of one option press.
  *
- * `refused` means the request was never sent — the gate is not an ask, the
- * session or owner cannot be addressed, or another send/answer already holds the
- * lock. It is distinct from `failed`, which means the request WAS sent and the
- * transport threw; only the second is worth putting in front of the user, since
- * the first is the one-answer-in-flight property working.
+ * `refused` means the request was never sent — the gate is not an `ask` this
+ * can address, the label is not one of an approval's pair, the session or owner
+ * cannot be addressed, or another send/answer already holds the lock. It is
+ * distinct from `failed`, which means the request WAS sent and the transport
+ * threw; only the second is worth putting in front of the user, since the first
+ * is the one-answer-in-flight property working.
  */
 export type AnswerOutcome =
 	| { status: "sent" }
@@ -759,7 +863,8 @@ export type AnswerOutcome =
 	| { status: "failed"; request: GateAnswerRequest; error: unknown };
 
 /**
- * Send one option's label as the answer to the pending `ask` gate.
+ * Send one option's label as the answer to the pending `ask` gate — or one of
+ * the approval pair as the boolean answer to a pending `approval` gate.
  *
  * This is `send`'s gate branch with the transport injected, extracted so it can
  * be exercised without a DOM: the round-1 review's point was that nothing
@@ -771,6 +876,13 @@ export type AnswerOutcome =
  * The lock is taken BEFORE the build and released in a `finally`, and there is
  * no `await` between the test and the claim — that ordering is the whole
  * one-answer-in-flight guarantee, not an implementation detail.
+ *
+ * AN APPROVAL IS THE SAME ACT WITH A DIFFERENT BODY. Approve and Deny are
+ * client-owned labels (`APPROVAL_OPTIONS`), the gate is still one-shot, so the
+ * same lock, preconditions and `AnswerOutcome` apply; what changes is only what
+ * leaves: `approved` as a strict boolean, and neither the label nor a question
+ * index, because the wire for this kind takes a boolean alone and the daemon
+ * route rejects `question_index` on it.
  */
 export const answerGateOption = async (
 	deps: {
@@ -786,20 +898,41 @@ export const answerGateOption = async (
 	// Preconditions first. Taking the lock before these would leave the composer
 	// disabled on a request that was never sent, which is how a gate with no owner
 	// epoch used to brick the composer until a reload.
-	if (gate.kind !== "ask" || !sessionId || !epoch) return { status: "refused" };
+	//
+	// The approval half is decided here too, and by the label: a press may only
+	// carry one of `APPROVAL_OPTIONS`, so a label the pair does not know is the
+	// same kind of refusal as an `ask` press that cannot be addressed — nothing
+	// sent, nothing claimed. That is also what keeps a third, accidentally added
+	// option from silently posting a verdict no rule defines.
+	const verdict = gate.kind === "approval" ? approvalVerdict(label) : null;
+	if ((gate.kind !== "ask" && verdict === null) || !sessionId || !epoch)
+		return { status: "refused" };
 	if (!lock.tryAcquire()) return { status: "refused" };
-	const request: GateAnswerRequest = {
-		op: "sessions.answer",
-		sessionId,
-		epoch,
-		requestId: gate.request_id,
-		// The option's LABEL, never its index: the wire contract is "answer with
-		// the label the model wrote" (`ask_picker.py`: "It answers with TEXT, not
-		// an index"), and the free-text row the terminal card carries can return a
-		// string that was never in `options`, which an index cannot express.
-		value: label,
-		questionIndex: gate.question_index,
-	};
+	const request: GateAnswerRequest =
+		gate.kind === "approval"
+			? {
+					op: "sessions.answer",
+					sessionId,
+					epoch,
+					requestId: gate.request_id,
+					// THE BOOLEAN IS THE WHOLE BODY. The wire carries no options for
+					// an approval, so there is no label to echo back, and the daemon
+					// route rejects `question_index` on this kind — so neither `value`
+					// nor `questionIndex` is set, and `approved` is the entire answer.
+					approved: verdict === true,
+				}
+			: {
+					op: "sessions.answer",
+					sessionId,
+					epoch,
+					requestId: gate.request_id,
+					// The option's LABEL, never its index: the wire contract is "answer with
+					// the label the model wrote" (`ask_picker.py`: "It answers with TEXT, not
+					// an index"), and the free-text row the terminal card carries can return a
+					// string that was never in `options`, which an index cannot express.
+					value: label,
+					questionIndex: gate.question_index,
+				};
 	try {
 		await send(request);
 		return { status: "sent" };

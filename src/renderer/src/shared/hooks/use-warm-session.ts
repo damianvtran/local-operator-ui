@@ -53,7 +53,7 @@
 import type { DesktopCapabilities } from "@shared/api/local-operator/desktop-api";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { desktopFeatureEnabled } from "@shared/api/local-operator/desktop-hooks";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 /**
  * The capability version that publishes `POST /v1/desktop/sessions/{id}/warm`.
@@ -99,4 +99,66 @@ export function useWarmSession(
 			// silent speculative engage.
 		});
 	}, [enabled, sessionId]);
+}
+
+/**
+ * The draft twin of the hook above: engage a NEW chat's runtime before its
+ * session exists, through the id `sessions.draft` minted.
+ *
+ * WHY A SEPARATE HOOK RATHER THAN A BRANCH. The trigger and the ordering are
+ * different facts from a session's warm, and each is a correctness rule:
+ *
+ *  - THE MINT IS THE KEYSTROKE'S, NOT THIS HOOK'S. The id this warms does not
+ *    exist until the pane's first keystroke asks for it (`ensureDraftWarm` in
+ *    the store); this hook's whole job starts once that id lands on the draft
+ *    row. Mount-warming is still forbidden for `useWarmSession`'s reason —
+ *    someone clicking through panes must not spawn runtimes — and a draft pane
+ *    nobody typed into has nothing to warm AND nothing to warm it with.
+ *
+ *  - THE WARM WAITS FOR THE SUBSCRIPTION, WHICH IS A PRECONDITION RATHER THAN
+ *    POLITENESS. A warm whose only bridge user is its own request is cancelled
+ *    the instant the request returns (`_detach`), so firing it before the
+ *    pane's stream has opened buys precisely nothing — measured at 1634 ms
+ *    with no subscription against 225 ms with one. `SessionPanel` opens the
+ *    stream for the draft id as soon as the mint lands, so in practice this
+ *    fires a beat after the first keystroke; on a slow answer it fires the
+ *    moment the stream opens instead, which is still ahead of the send.
+ *
+ *  - THE LATCH IS PER DRAFT ID, AND RE-ARMS ON REMOUNT, both deliberately. A
+ *    drop (the selection changed) replaces the id, so the next id warms; an
+ *    unambiguous remount is a new visit whose runtime the residency drain has
+ *    already reaped, exactly as `useWarmSession` documents. Within one mount,
+ *    a stream restart does not re-warm — the backend's own lease loop is the
+ *    retry net for as long as the pane holds a lease.
+ *
+ * THE DEGRADED CASE IS EXACTLY TODAY'S BEHAVIOUR. No capability, no id, no
+ * subscription, a failed warm — nothing here gates the composer or the send;
+ * the send engages inline as it always has. The backend answers 200 even when
+ * the engage itself fails, and what reaches the catch is transport-level or an
+ * older daemon that slipped the gate: none of it is the user's to act on, from
+ * a hook that fires mid-word.
+ */
+export function useDraftWarmSession(
+	draftId: string | undefined,
+	subscriptionId: string | null,
+	capabilities: DesktopCapabilities | null | undefined,
+): void {
+	const warmed = useRef<string | null>(null);
+	const enabled = desktopFeatureEnabled(capabilities, "session_draft_warm");
+
+	useEffect(() => {
+		if (!enabled || !draftId || !subscriptionId) return;
+		if (warmed.current === draftId) return;
+		// Latched BEFORE the request, for `useWarmSession`'s own reason: this
+		// counts intent, not success — a warm that fails must not re-fire on the
+		// next stream frame, and the lease loop below the renderer owns retries.
+		warmed.current = draftId;
+		void desktopResult({ op: "sessions.warm", sessionId: draftId }).catch(
+			() => {
+				// Swallowed for the same reason the session warm swallows: a
+				// speculative optimisation that surfaced its own failure would put an
+				// error banner over a pane the user is happily typing in.
+			},
+		);
+	}, [enabled, draftId, subscriptionId]);
 }

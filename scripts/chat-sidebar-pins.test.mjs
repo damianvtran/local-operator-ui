@@ -396,7 +396,19 @@ test("the pin slot is mounted inside the capability gate, and nowhere else", () 
 	 * backend without the pin store must not render a heading over rows it cannot
 	 * be asked about.
 	 */
-	assert.match(source, /\{pinned\.length > 0 && \(\s*<section>/);
+	/*
+	 * THE VIEW'S OWN SWITCH JOINS THE GATE (the sidebar view popover, 2026-09-25):
+	 * the section is drawn when the reader has not hidden it AND there is
+	 * something to draw. It is an `&&` chain rather than a nested branch so the
+	 * capability gate is still the branch AROUND THE WHOLE SECTION - which is what
+	 * this assertion exists for, and a `pinnedShown` that swallowed it would leave
+	 * a heading over rows a backend cannot be asked about.
+	 */
+	assert.match(
+		source,
+		/pinnedShown &&[\s\S]{0,80}pinned\.length > 0 && \(\s*<section>/,
+		"the pinned section is no longer gated by the pin capability",
+	);
 });
 
 test("a repeat press is dropped only when it lands on a DIFFERENT conversation", () => {
@@ -631,7 +643,16 @@ test("the pinned mark is drawn at rest at every width, and is not inside a displ
 	 * the wrapper ever becomes a display switch again.
 	 */
 	const at = source.indexOf("data-session-pin\n");
-	const block = source.slice(at, at + 4200);
+	/*
+	 * THE WINDOW IS 5200 RATHER THAN 4200 (UX round 2, U2), and the reason is prose
+	 * rather than structure: the control now carries a block comment explaining why
+	 * it left the Tab ring, which sits between the attribute this search anchors on
+	 * and the `pinned` ternary this reads. A window that no longer REACHES the
+	 * branch fails the `notEqual` below rather than passing quietly, so widening it
+	 * cannot hide a control that stopped being drawn - it only has to reach the
+	 * branch the assertions are about.
+	 */
+	const block = source.slice(at, at + 5200);
 	const branchMatch = /\n\s*pinned\n/.exec(block);
 	assert.notEqual(branchMatch, null, "the pin's pinned branch must exist");
 	const pinnedBranchText = block.slice(
@@ -727,6 +748,8 @@ export const desktopResult = request => globalThis.__pinRequest(request);`,
 				builder.onLoad({ filter: /.*/, namespace: "echo-fixture" }, () => ({
 					contents: `export const echoPendingUser = () => undefined;
 export const retractPendingUser = () => undefined;
+export const retractLocalEcho = () => "retracted";
+export const peekLocalEcho = () => "unseen";
 export const discardPendingEchoes = () => undefined;`,
 					loader: "js",
 					resolveDir: ROOT,
@@ -1064,4 +1087,83 @@ test("the next press retires the previous failure", async () => {
 	globalThis.__pinRequest = async () => ({ session_id: PINNED, pinned: true });
 	await store.getState().setSessionPin(PINNED, true);
 	assert.equal(store.getState().pinFailure, null);
+});
+
+/*
+ * THE PINNED SET IS THE HEAD ANSWER'S TO SETTLE, and a SCOPE answer is not a head
+ * answer (paged catalogue, design §4.2).
+ *
+ * Why this is a test rather than a comment: the settle rule rests on the list
+ * route APPENDING every pinned conversation below the page's newest rows, so
+ * absence from a newer page means "the conversation is unpinned or gone". That
+ * argument holds for the unscoped head - the route applies it there - and it does
+ * NOT hold for a page that was asked about ONE team. A scope answer that settled
+ * the facts wholesale would erase a pin made on any conversation outside that
+ * team: its glyph, its Pinned-section membership and its `heldRows` row would all
+ * vanish at the moment an unrelated group was expanded.
+ */
+test("a scope page neither settles nor hides a pin made outside it", async () => {
+	const LISTED = "1a2b3c4d5e6f";
+	const TEAM_ROW = "9f8e7d6c5b4a";
+	const HEAD_ROW = "aaaaaaaaaaaa";
+	store.setState({
+		sessions: [],
+		scopes: {},
+		counts: null,
+		head: {
+			tailIds: [],
+			nextCursor: null,
+			complete: false,
+			loading: false,
+			error: null,
+			at: 0,
+		},
+		pinFacts: {},
+		pinFailure: null,
+		answerSeq: 0,
+		forgotten: {},
+		archiveFacts: {},
+	});
+	globalThis.__pinRequest = async (request) => {
+		if (request.op !== "sessions.list")
+			return { session_id: LISTED, pinned: true };
+		if (request.scope_kind === "team")
+			return {
+				sessions: [
+					{ id: TEAM_ROW, name: "A team chat", mtime: 1, pinned: false },
+				],
+				truncated: false,
+				next_cursor: null,
+			};
+		return {
+			sessions: [
+				{ id: HEAD_ROW, name: "Only the head", mtime: 2, pinned: false },
+			],
+			truncated: true,
+			next_cursor: "p2",
+		};
+	};
+
+	await store.getState().fetchSessions(50, true);
+	await store.getState().fetchScopePage("team", "lopdev");
+	assert.equal(
+		await store.getState().setSessionPin(LISTED, true, {
+			title: "Outside the page",
+		}),
+		true,
+	);
+	const before = store.getState().pinFacts[LISTED];
+
+	// A re-read of the team, whose rows have nothing to do with that pin.
+	await store.getState().fetchScopePage("team", "lopdev");
+	assert.deepEqual(
+		store.getState().pinFacts[LISTED],
+		before,
+		"a scope answer is silent about the pinned set, and silence is not a claim",
+	);
+	assert.equal(
+		store.getState().sessions.some((row) => row.session_id === LISTED),
+		true,
+		"and the row the press inserted is still in the store",
+	);
 });

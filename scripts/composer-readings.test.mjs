@@ -36,6 +36,7 @@ const bundle = await build({
 			import { createElement } from "react";
 			import { renderToStaticMarkup } from "react-dom/server";
 			import { SessionStatusStrip } from "./src/renderer/src/features/chat/session-status/session-status-strip";
+			export { LAST_READING_NOTE } from "./src/renderer/src/features/chat/session-status/session-status-strip";
 			export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";
 
 			export const renderStrip = (props) =>
@@ -74,9 +75,12 @@ const bundle = await build({
 // has no base path for.
 const bundlePath = new URL("./_composer-readings.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { renderStrip, desktopEndpoint, desktopRequestSchema } = await import(
-	bundlePath.href
-);
+const {
+	renderStrip,
+	LAST_READING_NOTE,
+	desktopEndpoint,
+	desktopRequestSchema,
+} = await import(bundlePath.href);
 await unlink(bundlePath);
 
 /** The rendered text a user reads, with markup and layout whitespace removed. */
@@ -167,27 +171,37 @@ test("a draft mounts the strip inline, with the model as a label and an empty ri
 	assert.match(html, /data-lo-session-strip="true"/);
 	assert.match(html, /data-lo-session-strip-draft="true"/);
 
-	// Inline above 750px of column, where it sits immediately after the
-	// working-directory chip with the row's free space falling before the
-	// controls; first-on-its-own-line below it, by DOM position rather than by
-	// `order-first`, so the wrapped tab order matches the painted order.
+	// INLINE AT EVERY WIDTH, immediately after the working-directory chip with the
+	// row's free space falling before the controls (design round 2, D21: §G1's
+	// single 32px control row). The cluster used to take the row's first line with
+	// `basis-full` below 750px of COLUMN and give it back above, and both halves of
+	// that are gone - so what this pins is the ABSENCE of a width-conditional shape,
+	// because a reintroduced breakpoint is how the second row comes back.
 	const root = stripRootClasses(html);
-	assert.ok(root.includes("flex-wrap"), "the cluster must wrap internally");
 	assert.ok(root.includes("min-w-0"), "the cluster must be allowed to shrink");
-	assert.ok(root.includes("basis-full"));
+	assert.ok(
+		root.includes("flex-nowrap"),
+		"the cluster must never wrap internally; only the name yields",
+	);
+	assert.ok(
+		!root.includes("basis-full"),
+		"the cluster must not claim a line of its own: the control row is one line at every width",
+	);
+	assert.ok(
+		!root.some((c) => c.includes("chatcol:")),
+		"the cluster's shape must not depend on the column's width (§G1)",
+	);
 	assert.ok(
 		!root.some((c) => c.startsWith("order-first")),
-		"the cluster must take the first line by DOM position, not by `order-first`",
+		"the cluster must take its slot by DOM position, not by `order-first`",
 	);
 	assert.ok(
 		!root.some((c) => /(^|:)ml-auto$/.test(c)),
-		"the cluster carries NO auto margin at any width: the controls own the row's single one",
+		"the cluster carries NO auto margin: the controls own the row's single one",
 	);
-	assert.ok(root.includes("@min-[750px]/chatcol:order-2"));
-	assert.ok(root.includes("@min-[750px]/chatcol:basis-auto"));
 	assert.ok(
-		root.includes("@min-[750px]/chatcol:flex-nowrap"),
-		"above the threshold the cluster must not wrap: the name truncates first",
+		root.includes("order-2"),
+		"`order-2` is what puts the cluster between the chip and the controls in the paint",
 	);
 
 	// The model is a LABEL: a real button with `aria-disabled`, focusable so the
@@ -551,9 +565,20 @@ test("the pane's resolution state is wired to the strip, not merely supported by
 		"a failed resolution carries the retry, which is the only route back",
 	);
 	assert.match(composer, /draftResolution={sessionStatus\.draftResolution}/);
+	/*
+	 * The no-snapshot branch: `frontend: null` and `draft: true` (the strip is told
+	 * WHY there is no cluster), the resolution that names the state, and - since UX
+	 * round 1's U1 - `draftResolved: false`, the fact the COMPOSER's send gate reads
+	 * off the same object. Asserted as three facts rather than as one adjacency, so
+	 * a fourth field on this branch is not a test failure.
+	 */
+	assert.match(page, /frontend: null,\s*\n\s*draft: true,/);
+	assert.match(page, /draftResolved: false,/);
+	assert.match(page, /^\s*draftResolution,$/m);
 	assert.match(
 		page,
-		/frontend: null,\s*\n\s*draft: true,\s*\n\s*draftResolution,/,
+		/draftResolved: true,/,
+		"the resolved branch tells the composer the same fact the strip reads",
 	);
 });
 
@@ -679,7 +704,7 @@ test("below 750px the value readings neither truncate nor collapse, and only the
  */
 function rowChildren(composer) {
 	const rowAt = composer.indexOf(
-		'className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2',
+		'className="flex min-w-0 flex-nowrap items-center gap-x-2"',
 	);
 	assert.ok(rowAt > 0, "the row container is not where this test expects it");
 	const row = composer.slice(rowAt);
@@ -690,7 +715,7 @@ function rowChildren(composer) {
 	assert.ok(clusterAt > 0 && leftAt > 0 && controlsAt > 0);
 	assert.ok(
 		clusterAt < leftAt && leftAt < controlsAt,
-		"the cluster's DOM slot must be first, so the wrapped order and the tab order agree",
+		"the cluster's DOM slot must be first; `order-2`/`order-3` then set the painted order, and the single tab stop that leaves is UX round 2's U8 residual",
 	);
 
 	// The error boundary wraps the strip (a crash must not take the composer
@@ -749,21 +774,37 @@ test("the row right-justifies its controls whether or not the readings render", 
 		"the cluster must carry NO auto margin: two live margins share the free space and float it mid-row",
 	);
 
-	// The row itself: wrapping below the threshold is what gives the cluster its
-	// own line, and `flex-nowrap` above it is what stops a long name pushing the
-	// controls down instead of truncating.
-	assert.ok(rowClasses.includes("flex-wrap"));
-	assert.ok(rowClasses.includes("@min-[750px]/chatcol:flex-nowrap"));
+	// THE ROW ITSELF, AND THIS IS D21's PIN (design round 2): no `flex-wrap`, and no
+	// container breakpoint anywhere in its class list. The row wrapped below 750px of
+	// column, which put the readings on a line of their own and made the composer 142px
+	// tall at 800x600 against 109 at 1380 - and §G1 requires one 32px control row "at
+	// every width". `flex-nowrap` is what holds that: the row's items yield
+	// (chip truncates, model name truncates) rather than a control dropping to a second
+	// line, which is the inversion D9's measurement already rejected at one width.
+	assert.ok(rowClasses.includes("flex-nowrap"));
+	assert.ok(
+		!rowClasses.includes("flex-wrap"),
+		"the control row must never wrap: §G1's one row, at every width",
+	);
+	assert.ok(
+		!rowClasses.some((c) => c.includes("chatcol:")),
+		"the row's shape must not depend on the column's width (§G1); the composer's own 640px measure is what decides its contents",
+	);
 
-	// The cluster is the row's first line below the threshold, and the second
-	// child above it (`order-2`, with the controls last at `order-3`) - which is
-	// only coherent because the DOM slot is first.
+	// The painted order comes from the two `order-*` values and nothing else, at
+	// every width: cluster second (`order-2`), controls last (`order-3`), with the
+	// attach/chip group at their left. Both are unconditional now - the same
+	// breakpoint that decided the row's wrap used to decide these too.
 	assert.match(
 		strip,
-		/basis-full @min-\[750px\]\/chatcol:order-2/,
-		"the cluster must take the first line below 750 and follow the chip above it",
+		/"order-2 flex-nowrap"/,
+		"the cluster must be `order-2`/`flex-nowrap` and NOT `basis-full` at any width",
 	);
-	assert.ok(controlsClasses.includes("@min-[750px]/chatcol:order-3"));
+	assert.ok(controlsClasses.includes("order-3"));
+	assert.ok(
+		!controlsClasses.some((c) => c.includes("chatcol:")),
+		"the controls' order must not be conditional on the column's width",
+	);
 });
 
 /**
@@ -783,7 +824,7 @@ test("the row right-justifies its controls whether or not the readings render", 
  * whatever variant carries it.
  */
 function stripHasAutoMargin(strip) {
-	const root = strip.match(/"basis-full[^"]*"/);
+	const root = strip.match(/"order-2 flex-nowrap"/);
 	assert.ok(
 		root,
 		"the strip's root class list is not where this test expects it",
@@ -808,29 +849,40 @@ test("the inline layout is a PAIRING, and neither half works alone", () => {
 		"utf8",
 	);
 
-	const wrapper = composer.match(
-		/<div className="([^"]*@min-\[750px\]\/chatcol:contents[^"]*)">/,
-	);
+	/*
+	 * THE PAIRING IS STILL A PAIRING, and it is the same two halves with the
+	 * condition taken off them (design round 2, D21). It used to be conditional:
+	 * `display: contents` above 750px of column and a real flex item below it, with
+	 * `order-2`/`order-3` restoring the painted sequence in the dissolved case. The
+	 * row never wraps now, so the wrapper only ever dissolves - and deleting either
+	 * half still inverts the painted order while every rendering test stays green,
+	 * because the strip's own markup is unchanged. So the pairing is asserted where
+	 * it lives, and the conditionals are asserted ABSENT, which is the half that
+	 * regressed twice.
+	 */
+	const wrapper = composer.match(/<div className="([^"]*contents[^"]*)">/);
 	assert.ok(wrapper, "the button line's wrapper must exist");
-	// Below the threshold it IS a flex item and must not wrap internally: that
-	// is what makes "the second line" mean one line rather than three.
-	assert.match(wrapper[1], /\bflex\b/);
-	assert.match(wrapper[1], /\bflex-nowrap\b/);
-	assert.match(wrapper[1], /\bw-full\b/);
-	assert.match(wrapper[1], /\bmin-w-0\b/);
+	assert.equal(
+		wrapper[1].trim(),
+		"contents",
+		"the wrapper must be `display: contents` at every width: a real flex item here is the two-line row coming back",
+	);
 
 	// The other half: with the wrapper dissolved, order is what restores the
 	// painted sequence [attach][chip] [readings] [mic][send] out of a DOM whose
 	// first child is the cluster.
-	assert.match(strip, /@min-\[750px\]\/chatcol:order-2/);
-	assert.match(composer, /@min-\[750px\]\/chatcol:order-3/);
+	assert.match(strip, /"order-2 flex-nowrap"/);
+	assert.match(composer, /className="ml-auto flex order-3 items-center gap-1"/);
 
-	// And the left group holds its width above the threshold. Without this the
-	// chip's own `shrink-0` (which makes the NAME truncate first) let the group
-	// close around it, and the path painted across the readings - visible only
-	// in a frame, because `row.overflowX` reads 0 when the group fits and its
-	// child does not (code review round 2).
-	assert.match(composer, /@min-\[750px\]\/chatcol:shrink-0/);
+	// And the left group holds its width. Without this the chip's own `shrink-0`
+	// (which makes the NAME truncate first) let the group close around it, and the
+	// path painted across the readings - visible only in a frame, because
+	// `row.overflowX` reads 0 when the group fits and its child does not (code
+	// review round 2).
+	assert.match(
+		composer,
+		/className="flex min-w-0 items-center gap-1 shrink-0"/,
+	);
 });
 
 // The draft's payload reaches the STRIP and nothing else. Asserted on the
@@ -1060,13 +1112,26 @@ test("duration is the only reading that may be shed, and only between the two th
 	);
 	assert.doesNotMatch(strip, /@max-\[860px\]\/chatcol:sr-only/);
 
-	// And it is the ONLY one: the other four are protected by R8/R14, so a
-	// `hidden` anywhere else in this file is a reading being dropped that the
-	// design says must never drop.
-	assert.equal(
-		strip.match(/chatcol:hidden/g)?.length,
-		1,
-		"only the duration reading may be shed",
+	/*
+	 * And it is the only READING that may be shed: the other four are protected by
+	 * R8/R14, so a `hidden` on a reading is a reading being dropped that the
+	 * design says must never drop.
+	 *
+	 * ONE other `hidden` is allowed in this file and it is NOT a reading: the held
+	 * cluster's visible mark is hidden below the wrap threshold, where the design
+	 * round measured ~23px free and the word would push the mic and send onto a
+	 * third line - the defect design round 1.5's D9 fixed. It is named by its own
+	 * class rather than counted, so a THIRD `hidden` still fails here, and the
+	 * statement is not lost at that width: the group name reaches assistive
+	 * technology and the tooltips reach a pointer.
+	 */
+	assert.deepEqual(
+		(strip.match(/[^\s"]*chatcol:hidden/g) ?? []).sort(),
+		[
+			"@max-[750px]/chatcol:hidden",
+			"@min-[750px]/chatcol:@max-[860px]/chatcol:hidden",
+		].sort(),
+		"only the duration reading and the held mark may be hidden, and the mark is not a reading",
 	);
 });
 
@@ -1093,5 +1158,161 @@ test("the value readings hold their width; only the model name yields", () => {
 		shrinkOverrides.length,
 		1,
 		"exactly one reading may opt back into shrinking, and it is the name",
+	);
+});
+
+/* --------------------------------------- the readings a reconnect holds */
+
+/*
+ * A server-stream gap drops the authoritative `frontend` by design (the flush's
+ * replay/snapshot ordering rests on that field meaning "a snapshot for THIS
+ * epoch has landed"), so the pane hands the strip the readings it was last told
+ * instead — and the strip has to draw them without presenting them as current.
+ *
+ * The words are checked here rather than in a live frame because the CLAIM is
+ * about copy: a frame can see that the strip painted, and only this can see what
+ * it said.
+ */
+
+/**
+ * Every READING's accessible name, in render order.
+ *
+ * The held cluster's own `aria-label` is excluded by name: it is the strip's
+ * group statement (design D4), not a reading, and including it would make every
+ * comparison below about a sentence no reading carries.
+ */
+const readingLabels = (html) =>
+	[...html.matchAll(/aria-label="([^"]*)"/g)]
+		.map((match) => match[1])
+		.filter((label) => !label.startsWith("Session readings."));
+
+/** A session's snapshot with every reading the strip draws: model, effort, context, spend, time. */
+const SESSION = {
+	...DRAFT,
+	context_tokens: 12_977,
+	// 400k window, so the reading is a percentage rather than an estimate.
+	context_is_estimate: false,
+	cumulative_parent_cost: 2.4,
+	cost_knowledge: "exact",
+	active_duration_s: 92,
+};
+
+test("a held reading keeps its value, and the strip says once that it is the last one", () => {
+	/*
+	 * A DISPATCHER, so the context reading is OPENABLE and its closing line is the
+	 * measured/estimated one rather than `COMMANDS_OFF`: that first branch returns
+	 * before the status is read, so a fixture without one could not see D3's
+	 * difference at all.
+	 */
+	const openable = { frontend: SESSION, onCommand: () => undefined };
+	const live = renderStrip(openable);
+	const held = renderStrip({ ...openable, held: true });
+
+	/*
+	 * THE VALUES ARE THE SAME, and that is the assertion the held state exists
+	 * for: the reader keeps the model, the effort, the context window and the
+	 * spend they were last told rather than watching four blanks come and go at
+	 * the stream's cadence. A mark that replaced a value would be the app
+	 * answering a question the owner has not answered.
+	 */
+	const liveLabels = readingLabels(live);
+	const heldLabels = readingLabels(held);
+	assert.ok(
+		liveLabels.length >= 4,
+		`the fixture must render the whole cluster (got ${liveLabels.length}: ${liveLabels.join(" | ")})`,
+	);
+
+	/*
+	 * THE PROVENANCE CLAUSE IS NOT ON THE READINGS ANY MORE (design round 1, D4).
+	 * It used to be appended to all four accessible names, which is the same
+	 * sentence four times over and, after a pick, two qualifications in one
+	 * utterance (UX round 1, U2). The cluster states it once; the tooltips keep
+	 * it per reading. So no reading's name carries it now.
+	 */
+	for (const label of heldLabels)
+		assert.ok(
+			!label.includes(LAST_READING_NOTE),
+			`the clause must not be repeated on every reading: ${label}`,
+		);
+
+	/*
+	 * THE ONE READING WHOSE NAME LEGITIMATELY DIFFERS WHILE HELD is the context
+	 * chip, and for a different reason: its closing line may not say "Measured
+	 * now" while the strip is saying the reading is from before the reconnect
+	 * (design round 1, D3). Every other reading is asserted IDENTICAL to its live
+	 * name, character for character.
+	 */
+	const contextOf = (labels) => labels.filter((l) => l.startsWith("Context: "));
+	assert.equal(contextOf(heldLabels).length, 1, "one context reading");
+	assert.match(
+		contextOf(liveLabels)[0],
+		/Measured now;/,
+		"the live context reading says it was measured now",
+	);
+	assert.doesNotMatch(
+		contextOf(heldLabels)[0],
+		/Measured now|Estimated now/,
+		"and the held one may not, or the panel asserts current and stale at once",
+	);
+	assert.deepEqual(
+		heldLabels.filter((l) => !l.startsWith("Context: ")),
+		liveLabels.filter((l) => !l.startsWith("Context: ")),
+		"every other reading renders the value AND the name it renders live",
+	);
+
+	/*
+	 * D1: A VISIBLE MARK, which the first cut of this change did not have.
+	 * Measured, the transcript's "Reconnecting" line sat thousands of pixels above
+	 * the readings and hit-tested none of 713 held samples, so a held band and a
+	 * live one were the same glyphs in the same inks.
+	 */
+	assert.match(held, />\s*Last reading\s*</, "the cluster carries the word");
+	assert.doesNotMatch(
+		live,
+		/>\s*Last reading\s*</,
+		"and a live cluster does not",
+	);
+	/*
+	 * D4: the SAME statement reaches assistive technology, once, as the group's
+	 * own name -- announced on entering the group rather than four times over.
+	 */
+	assert.match(
+		held,
+		/role="group" aria-label="Session readings\. Last reading from before the reconnect\."/,
+		"the strip states it once as a group name",
+	);
+	/*
+	 * Asserted on the STATEMENT rather than on `role="group"`: the strip's own
+	 * markup contains a group role elsewhere (the context wheel's), so a bare role
+	 * check would be about somebody else's element. What must not exist on a live
+	 * strip is the held sentence.
+	 */
+	assert.doesNotMatch(
+		live,
+		/Session readings\./,
+		"and a live strip states none of it",
+	);
+
+	/*
+	 * AND THE LIVE STRIP SAYS NONE OF IT. Without this half the mark could be
+	 * unconditional and every reading in the app would claim to be stale.
+	 */
+	assert.doesNotMatch(live, /Last reading/);
+	assert.doesNotMatch(live, /data-lo-session-strip-held/);
+	assert.match(
+		held,
+		/data-lo-session-strip-held="true"/,
+		"and the cluster is marked in the DOM, so a frame or a probe can ask without reading the copy",
+	);
+
+	/*
+	 * THE MARK IS NOT THE PANE'S SENTENCE. The transcript paints "Reconnecting"
+	 * for this whole state, and a second copy of it here would be the same claim
+	 * twice - the strip's half is saying WHICH readings these are.
+	 */
+	assert.doesNotMatch(
+		held,
+		/aria-label="[^"]*Reconnecting/,
+		"the strip must not restate the pane's own reconnecting notice",
 	);
 });

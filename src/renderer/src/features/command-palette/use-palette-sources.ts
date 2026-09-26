@@ -48,7 +48,10 @@ import {
 import { useAgents } from "@shared/hooks/use-agents";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	LEGACY_CATALOGUE_PAGE,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef } from "react";
 import type { SessionSearchHit } from "../../../../shared/desktop-session-contract";
@@ -282,7 +285,15 @@ export function usePaletteItems({
 		if (catalogueAsked.current || sessions.length > 0 || sessionsLoading)
 			return;
 		catalogueAsked.current = true;
-		void fetchSessions();
+		/*
+		 * THE SET, EXPLICITLY (round 3, Q-1). This read is the palette's browse rows and
+		 * the only consumer of a row's `preview`, so it asks for the WHOLE catalogue by
+		 * name - the unnamed default is now the head page on a daemon that advertises
+		 * paging, and a palette whose browse silently dropped to 50 rows would be a
+		 * regression this change introduced. The guard above means a normal session already
+		 * holds rows and never fires this at all.
+		 */
+		void fetchSessions(LEGACY_CATALOGUE_PAGE);
 	}, [open, sessions.length, sessionsLoading, fetchSessions]);
 
 	/*
@@ -726,6 +737,32 @@ function buildPaletteActions({
 					},
 				]
 			: []),
+		/*
+		 * Connecting a provider is the first thing a new install needs and the
+		 * palette is where a keyboard user looks for it (design audit section 6).
+		 * It opens the connect dialog over the current page rather than routing
+		 * to Settings, so the chat the user is in survives. The "login" synonyms
+		 * that already route to the Providers section row stay there; this row
+		 * adds the action beside the destination.
+		 */
+		{
+			id: "connect-provider",
+			name: "Connect a model provider",
+			icon: "providers" as const,
+			keywords: [
+				"sign in",
+				"login",
+				"api key",
+				"add provider",
+				"claude",
+				"chatgpt",
+				"radient",
+				"model",
+			],
+			verb: "Connect",
+			command: "connect-provider" as const,
+			featured: true,
+		},
 		{
 			id: "create-agent",
 			name: "Create agent",

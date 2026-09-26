@@ -39,9 +39,9 @@ const bundle = await build({
 		contents: `
 			export { admitChatDraft, useCanonicalSessionsStore, draftIdentityFor, isRefusedBeforeAdmission } from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { echoPendingUser, retractPendingUser, discardPendingEchoes, __registerEchoTarget, seedPendingEchoes } from "./src/renderer/src/shared/hooks/use-canonical-session";
-			export { useMessageInput, SEND_HELD, COMPOSER_PLACEHOLDER, composerPlaceholder, clearSubmittedText, restoreSubmittedText, restoreSubmittedReplies, stagedPayloadOf, clearStagedPayload, restoreStagedPayload } from "./src/renderer/src/shared/hooks/use-message-input";
-			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
-			export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
+			export { useMessageInput, COMPOSER_PLACEHOLDER, composerPlaceholder, clearSubmittedText, stagedPayloadOf } from "./src/renderer/src/shared/hooks/use-message-input";
+			export { useConversationInputStore, mergeReturnedText, mergeReturnedPayload } from "./src/renderer/src/shared/store/conversation-input-store";
+			export { EMPTY_TRANSCRIPT, applyEvent } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 			export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
 		`,
 		resolveDir: process.cwd(),
@@ -124,17 +124,15 @@ const {
 	__registerEchoTarget,
 	seedPendingEchoes,
 	useMessageInput,
-	SEND_HELD,
 	COMPOSER_PLACEHOLDER,
 	composerPlaceholder,
 	clearSubmittedText,
-	restoreSubmittedText,
-	restoreSubmittedReplies,
+	mergeReturnedText,
+	mergeReturnedPayload,
 	stagedPayloadOf,
-	clearStagedPayload,
-	restoreStagedPayload,
 	useConversationInputStore,
 	EMPTY_TRANSCRIPT,
+	applyEvent,
 	DesktopControlError,
 } = module;
 
@@ -162,6 +160,12 @@ function mountTranscript(sessionId) {
 			});
 			resolve({
 				rows: () => painted.current.records.map((record) => record.text),
+				/*
+				 * The transcript itself, for a case that has to apply an OWNER frame
+				 * (the durable row that answers an unconfirmed echo) rather than only
+				 * read what the echo painted.
+				 */
+				state: () => painted.current,
 				unregister,
 			});
 		}, 0);
@@ -265,11 +269,24 @@ test("a pre-admission refusal retracts the echo even when it was queued", async 
 	transcript.unregister();
 });
 
-test("an ambiguous failure keeps the queued echo painted", async () => {
+test("INV-C1: an ambiguous failure keeps its own echo, and the owner's row takes its place", async () => {
 	reset();
-	// INV-C1 through the buffer: a 503 means the owner MAY have admitted the
-	// turn, so the echo stays. Retracting it would make a message the agent is
-	// about to answer vanish while it answers it.
+	/*
+	 * WHAT CHANGED, AND WHAT INV-C1 BECOMES (§F3's restore, agent review round 4's
+	 * R17). The rule this case pins is the RESTORED one: an unconfirmed send keeps
+	 * the message on screen - the row wears `Not delivered · Send again · Edit`
+	 * until the server's own answer resolves the claim - while the failure ALSO
+	 * hands the whole payload back to the composer, which is the copy the user acts
+	 * on (Retry replays it under the same request id; see
+	 * `composer-send-failure.test.mjs`). The two are not mutually exclusive: the
+	 * row is the MESSAGE's record of its fate, the box is the user's editable copy.
+	 *
+	 * The second half is the coalescing the old case was protecting, and it is
+	 * pinned here rather than assumed: the row is keyed by the admission request
+	 * id - the id the owner gives the durable row - so the owner's own
+	 * `message_start` for the same id REPLACES the echo in place rather than
+	 * painting the message a second time.
+	 */
 	let mounted = null;
 	globalThis.__echoRequest = async (request) => {
 		if (request.op === "sessions.create") {
@@ -281,7 +298,41 @@ test("an ambiguous failure keeps the queued echo painted", async () => {
 	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
 	await assert.rejects(admitChatDraft(key, input));
 	const transcript = await mounted;
-	assert.deepEqual(transcript.rows(), ["Review this"]);
+	/*
+	 * The id the echo was keyed by, read off the draft the press left behind: this
+	 * is the id the owner gives the durable row, which is what lets the case below
+	 * be about coalescing rather than about two unrelated rows.
+	 */
+	const requestId = store.getState().drafts[key]?.admissionRequestId ?? "";
+	assert.deepEqual(
+		transcript.rows(),
+		[input.text],
+		"an unconfirmed send keeps its row: the message wears its own fate on screen while the composer holds the payload",
+	);
+
+	/*
+	 * The owner's durable row, applied through the real reducer the live feed uses.
+	 * `applyEvent` is the same entry a `message_start` frame takes, so this is the
+	 * contract's own shape rather than a hand-built record.
+	 */
+	const resumed = applyEvent(
+		transcript.state(),
+		{
+			type: "message_start",
+			message: {
+				id: requestId,
+				role: "user",
+				content: [{ type: "text", text: input.text }],
+				tool_calls: [],
+			},
+		},
+		1,
+	);
+	assert.deepEqual(
+		resumed.records.map((record) => record.text),
+		[input.text],
+		"the owner's row arrives under the request id and takes the echo's place: one row, not two",
+	);
 	transcript.unregister();
 });
 
@@ -601,6 +652,15 @@ async function driveComposer({ onSubmit, initial = input.text, prime }) {
 				useConversationInputStore.getState().inputByConversation[COMPOSER_ID]
 					?.replies ?? []
 			).map((reply) => reply.text),
+		/*
+		 * Whether the durable record of an unconfirmed send is gone. It exists so a
+		 * quit or a crash mid-flight restores the whole message; a failure that put
+		 * the message back in the composer has no reason to keep it, and keeping it
+		 * would hand the same message back a second time after a restart.
+		 */
+		inFlightGone:
+			useConversationInputStore.getState().inputByConversation[COMPOSER_ID]
+				?.inFlight === undefined,
 	};
 }
 
@@ -650,62 +710,102 @@ test("F1: a send whose echo never paints still retires the box (post-settle fall
 	);
 });
 
-test("U2: a refused send restores the text only into an empty composer", async () => {
+test("U2: a failed send hands the message back through the store, under the user's typing", async () => {
+	/*
+	 * WHAT CHANGED, AND WHY THIS CASE IS DRIVEN FROM THE STORE'S ROW. The hook used
+	 * to restore the text itself, into an EMPTY box only - a rule that could not
+	 * survive the New-chat identity flip, because the composer that pressed Enter is
+	 * unmounted by the time the failure lands and the restore was a `setState` on a
+	 * component that no longer exists (UX round 3, U14). The failure now returns the
+	 * payload through the store (`returnPayloadToComposer`, which is exactly this
+	 * `returnInFlight` call), and the composer TAKES it here (`pendingText` -> the
+	 * hook's adoption effect), merging rather than overwriting.
+	 *
+	 * So the hook's own half of the rule is what this case pins: the box adopts a
+	 * return that the STORE wrote, and what the user typed during the flight is kept
+	 * - after the returned message, because theirs came second.
+	 */
 	const quiet = await driveComposer({
 		onSubmit: ({ onEchoPainted }) => {
 			onEchoPainted?.();
+			returnInFlight();
 			return false;
 		},
 	});
 	assert.equal(
 		quiet.after,
 		input.text,
-		"a refusal with an untouched box must hand the message back",
+		"a failure with an untouched box must hand the message back",
+	);
+	assert.equal(
+		quiet.inFlightGone,
+		true,
+		"and the in-flight record is consumed by the return, or a restart would hand the same message back twice",
 	);
 
 	const typed = await driveComposer({
 		onSubmit: ({ onEchoPainted, type }) => {
 			onEchoPainted?.();
 			type("A second message");
+			returnInFlight();
 			return false;
 		},
 	});
 	assert.equal(
 		typed.after,
-		"A second message",
-		"the refusal must not restore over text the user typed while waiting",
+		`${input.text}\n\nA second message`,
+		"the user's own typing is never overwritten, and the returned message goes FIRST because it was sent first",
 	);
 
-	// The rule itself, shipped and pure, so a future edit to either transition
-	// is read against the same rule rather than against the call site.
+	// The merge itself, shipped and pure, so a future edit to either transition is
+	// read against the same rule rather than against the call site.
 	assert.equal(clearSubmittedText(input.text, input.text), "");
 	assert.equal(
 		clearSubmittedText(`${input.text} and more`, input.text),
 		`${input.text} and more`,
 	);
-	assert.equal(restoreSubmittedText("", input.text), input.text);
+	assert.equal(mergeReturnedText("", input.text), input.text);
 	assert.equal(
-		restoreSubmittedText("A second message", input.text),
-		"A second message",
+		mergeReturnedText("A second message", input.text),
+		`${input.text}\n\nA second message`,
 	);
 });
 
-test("D1/U5: an unconfirmed send leaves its text to the claim, not to the box", async () => {
+test("D1/U5: an unconfirmed send hands its text back to the box, and keeps nothing else", async () => {
+	/*
+	 * THE CASE THE OPERATOR REPORTED, ported. The old answer on this arm was to
+	 * retire the box and keep the message in a claim, with the echo deliberately
+	 * left painted as the only copy the user could see - which is what put the
+	 * "still being held" paragraph and the Restore link on their screen, over an
+	 * empty composer, and blocked any different message.
+	 *
+	 * The new answer is that the text comes back. The echo is retracted by the
+	 * send path when the outcome is unknown (retracted only while it is still this
+	 * app's own echo: an owner row for the same id means the message was delivered,
+	 * and that arm is pinned in `composer-send-failure.test.mjs`), so there is one
+	 * copy of the message on screen rather than two.
+	 */
 	const held = await driveComposer({
 		onSubmit: ({ onEchoPainted }) => {
 			onEchoPainted?.();
-			return SEND_HELD;
+			returnInFlight();
+			return false;
 		},
 	});
 	assert.equal(
 		held.after,
-		"",
-		"putting the text back would show the one message twice while its echo stays painted",
+		input.text,
+		"the text belongs back in the box: nothing else holds a copy of it any more",
 	);
 	assert.equal(
 		held.storedDraft,
-		"",
-		"and the persisted draft is retired, or a later mount would adopt it back into the box",
+		input.text,
+		"and it is written to the persisted draft, so a later mount shows the same message rather than an empty box",
+	);
+	assert.equal(
+		held.inFlightGone,
+		true,
+		"an unknown outcome is not a reason to keep a durable record of a message the composer already holds",
 	);
 });
 
@@ -832,6 +932,19 @@ function composerRow(conversationId = COMPOSER_ID) {
 /** The row a press leaves behind: one file, one staged quote. */
 const STAGED = { chip: "/tmp/a.png", reply: "quoted turn" };
 
+/*
+ * What a failed send does to the composer, called from a case the way the store
+ * calls it: `returnInFlight` is the ONE path a failure takes back
+ * (`returnPayloadToComposer` is this call with the store's identity in front of
+ * it), so a case that drives the hook with a custom `onSubmit` reproduces the
+ * real route rather than a stand-in for it.
+ */
+function returnInFlight(conversationId = COMPOSER_ID) {
+	useConversationInputStore
+		.getState()
+		.returnInFlight(conversationId, conversationId);
+}
+
 function stagePayload(conversationId = COMPOSER_ID) {
 	const inputStore = useConversationInputStore.getState();
 	inputStore.clearReplies(conversationId);
@@ -895,7 +1008,15 @@ test("R1: a clear at the paint cannot change what the request carries", async ()
 		SESSION_ID,
 		() => {
 			order.push("cleared");
-			clearStagedPayload(COMPOSER_ID, stagedPayloadOf(COMPOSER_ID));
+			/*
+			 * The composer's clear at the paint, through the store that owns the row:
+			 * one update takes the text, the chips and the quotes, and it is the same
+			 * update that leaves the durable record of an unconfirmed send complete
+			 * (`inFlight`) rather than text-without-its-files.
+			 */
+			useConversationInputStore
+				.getState()
+				.beginInFlight(COMPOSER_ID, stagedPayloadOf(COMPOSER_ID), true);
 		},
 	);
 	const message = sent.find((request) => request.op === "sessions.message");
@@ -941,6 +1062,9 @@ test("R2: a refusal puts BOTH halves back, whichever way it arrived", async () =
 		prime: () => stagePayload(),
 		onSubmit: ({ onEchoPainted }) => {
 			onEchoPainted?.();
+			// The store's return, which is what a refusal does after the echo - the
+			// hook no longer restores the box itself.
+			returnInFlight();
 			return false;
 		},
 	});
@@ -983,7 +1107,7 @@ test("R2: a refusal puts BOTH halves back, whichever way it arrived", async () =
 	);
 });
 
-test("R2: a chip the user attaches while waiting is never overwritten by the restore", async () => {
+test("R2: a chip the user attaches while waiting joins the returned one, and is never overwritten", async () => {
 	const typed = await driveComposer({
 		prime: () => stagePayload(),
 		onSubmit: ({ onEchoPainted }) => {
@@ -991,53 +1115,71 @@ test("R2: a chip the user attaches while waiting is never overwritten by the res
 			useConversationInputStore
 				.getState()
 				.addAttachment(COMPOSER_ID, { id: "chip-new", path: "/tmp/new.png" });
+			returnInFlight();
 			return false;
 		},
 	});
+	/*
+	 * BOTH, and that is the change: the old rule restored into an EMPTY row only,
+	 * which protected the user's own attach by WITHHOLDING the returned file - a
+	 * silent partial payload, the class of defect this whole change exists to
+	 * remove. A union by path loses nothing, puts the returned file first (it was
+	 * sent first) and leaves the user's attach untouched.
+	 */
 	assert.deepEqual(
 		typed.chips(),
-		["/tmp/new.png"],
-		"the restore writes only into an EMPTY row, so a file the user staged while the send was in flight survives it",
+		[STAGED.chip, "/tmp/new.png"],
+		"the returned file and the one attached during the flight are both in the row",
 	);
 	assert.deepEqual(
 		typed.replies(),
 		[STAGED.reply],
-		"and the replies follow the same rule on their own row",
+		"and the replies follow the same union rule on their own row",
 	);
 });
 
-test("R3: a held send keeps BOTH halves, so the guard admits the retry it offers", async () => {
+test("R3: an unknown outcome returns BOTH halves, and the retry is the Send that follows", async () => {
 	/*
-	 * `SEND_HELD` is the ambiguous arm: the message may be on the owner with its
-	 * echo painted, so the TEXT stays out of the box (its copy is on screen) and
-	 * the retry travels through the claim's `Restore message`. The FILES are the
-	 * opposite, and that asymmetry is the point of this case: the
-	 * unchanged-payload guard compares text AND files AND images, so a claim
-	 * whose chip the echo had taken would refuse the very retry Restore exists to
-	 * make possible. A file that cannot come back is a silent partial send.
+	 * THE ASYMMETRY THIS CASE USED TO PIN IS GONE, deliberately. Text and files
+	 * were restored by opposite routes - the text was withheld (its copy was
+	 * painted in the transcript) while the chip came back, because the
+	 * unchanged-payload guard compared both and a claim missing its file would
+	 * refuse the very retry the Restore link offered.
+	 *
+	 * With the guard removed there is no asymmetry to get wrong: an unchanged
+	 * resend replays the same request id, an edited one is a new message, and both
+	 * halves of the payload return together through one store write. What this case
+	 * pins now is that they come back TOGETHER, and that nothing is left behind in
+	 * the durable record for a restart to hand back a second time.
 	 */
 	const held = await driveComposer({
 		prime: () => stagePayload(),
 		onSubmit: ({ onEchoPainted, box }) => {
 			onEchoPainted?.();
-			assert.equal(box(), "", "the text is withheld from the box on this arm");
-			return SEND_HELD;
+			assert.equal(
+				box(),
+				"",
+				"the box empties at the echo, which is the window this arm is about",
+			);
+			returnInFlight();
+			return false;
 		},
 	});
 	assert.equal(
 		held.after,
-		"",
-		"the held text must not come back to the box - its copy is still painted in the transcript",
+		input.text,
+		"the text comes back with the files, so one press of Send carries the whole message again",
 	);
 	assert.deepEqual(
 		held.chips(),
 		[STAGED.chip],
-		"the held claim must keep the file the guard compares, or Restore hands back a payload that is then refused",
+		"and the chip the send was carrying",
 	);
-	assert.deepEqual(
-		held.replies(),
-		[STAGED.reply],
-		"and the staged replies with it",
+	assert.deepEqual(held.replies(), [STAGED.reply], "and the staged quote");
+	assert.equal(
+		held.inFlightGone,
+		true,
+		"with nothing left for a restart to restore",
 	);
 });
 
@@ -1059,25 +1201,59 @@ test("R1: a send that never echoes still takes both halves once it settles", asy
 	assert.deepEqual(settled.replies(), [], "and the staged replies");
 });
 
-test("the staged-payload rules are exactly the store route's two rules", async () => {
-	// Pure, shipped and asserted directly, so an edit to either transition is
-	// read against the same rule rather than against the call site - and so a
-	// second copy of it cannot appear beside this one.
-	assert.deepEqual(restoreSubmittedReplies([], [{ id: "r1", text: "q" }]), [
-		{ id: "r1", text: "q" },
-	]);
+test("the staged-payload rules are the store route's two transitions", async () => {
+	/*
+	 * One function per transition, both on the store that owns the row: the echo
+	 * takes text, chips and quotes in ONE update (`beginInFlight`, which is what
+	 * makes the durable record of an unconfirmed message complete rather than
+	 * text-without-its-files), and a failure puts the payload back through the
+	 * other one (`returnInFlight`). The union rules live in `mergeReturnedPayload`
+	 * and are asserted directly, so a second copy of them cannot appear beside the
+	 * call site.
+	 */
 	assert.deepEqual(
-		restoreSubmittedReplies(
-			[{ id: "r2", text: "mine" }],
-			[{ id: "r1", text: "q" }],
+		mergeReturnedPayload(
+			{ text: "", attachments: [], replies: [] },
+			{
+				text: "",
+				attachments: [STAGED.chip],
+				replies: [{ id: "r1", text: "q" }],
+			},
 		),
-		[],
-		"a row that already holds the user's own staged reply is not overwritten",
+		{
+			text: "",
+			attachments: [STAGED.chip],
+			replies: [{ id: "r1", text: "q" }],
+		},
 	);
-	assert.deepEqual(restoreSubmittedReplies([], undefined), []);
+	const union = mergeReturnedPayload(
+		{
+			text: "typed during the flight",
+			attachments: ["/tmp/mine.png"],
+			replies: [{ id: "r2", text: "mine" }],
+		},
+		{
+			text: "the message that failed",
+			attachments: [STAGED.chip],
+			replies: [{ id: "r1", text: "q" }],
+		},
+	);
+	assert.equal(
+		union.text,
+		"the message that failed\n\ntyped during the flight",
+		"the returned message goes first and the user's own text is kept",
+	);
+	assert.deepEqual(
+		union.attachments,
+		[STAGED.chip, "/tmp/mine.png"],
+		"and both file lists survive, returned first",
+	);
+	assert.deepEqual(
+		union.replies.map((reply) => reply.id),
+		["r1", "r2"],
+	);
 
-	// And the pair is written in ONE call, which is what makes the halves
-	// inseparable: clearing and restoring each go through one exported function.
+	// The two transitions, over the real store and the real row.
 	const inputStore = useConversationInputStore.getState();
 	useConversationInputStore.setState({ inputByConversation: {} });
 	stagePayload();
@@ -1087,19 +1263,29 @@ test("the staged-payload rules are exactly the store route's two rules", async (
 			attachments: [{ id: "chip-a", path: STAGED.chip }],
 			replies: [{ id: "reply-1", text: STAGED.reply }],
 		},
-		"the press's snapshot must be the row itself, so a refusal hands back exactly what the send carried",
+		"the press's snapshot must be the row itself, so a failure hands back exactly what the send carried",
 	);
 	assert.deepEqual(composerRow().chips, [STAGED.chip]);
-	clearStagedPayload(COMPOSER_ID, stagedPayloadOf(COMPOSER_ID));
+	useConversationInputStore.getState().beginInFlight(
+		COMPOSER_ID,
+		{
+			text: input.text,
+			attachments: stagedPayloadOf(COMPOSER_ID).attachments,
+			replies: stagedPayloadOf(COMPOSER_ID).replies,
+		},
+		true,
+	);
 	assert.deepEqual(composerRow(), { chips: [], replies: [] });
-	restoreStagedPayload(COMPOSER_ID, {
-		attachments: [{ id: "chip-a", path: STAGED.chip }],
-		replies: [{ id: "reply-1", text: STAGED.reply }],
-	});
+	returnInFlight();
 	assert.deepEqual(composerRow(), {
 		chips: [STAGED.chip],
 		replies: [STAGED.reply],
 	});
+	assert.equal(
+		useConversationInputStore.getState().inputByConversation[COMPOSER_ID]
+			?.roundTrip,
+		undefined,
+	);
 	assert.equal(typeof inputStore.clearAttachments, "function");
 });
 
@@ -1301,5 +1487,79 @@ test("MINOR-1: the fallback trigger obeys the same rule, on the arm where the bo
 		settled.chips(),
 		[SECOND.chip],
 		"and the file attached during it is theirs too: the settle may not take more than the payload it settled",
+	);
+});
+
+/* ======== the off-record arm: #479's one-clock clear meets the `/btw` aside */
+
+/*
+ * FOLD OF PR #482 ONTO #479, and the one place the two rules meet. #479 moved the
+ * staged halves (chips and quotes) off the composer's settle and onto `clearOnce`,
+ * so they leave with the text. #482's aside returns an OFF-RECORD outcome whose
+ * text leaves at the press (F1) but whose staged halves must wait for the ask's
+ * own answer: an answered ask consumed them, a refused one did not (review round
+ * 2, F6). An ask never echoes, so the post-await `clearOnce()` is the only trigger
+ * it reaches - and without the off-record arm that call took the quote at the
+ * press and a refusal left the user without it.
+ */
+function deferredAsk() {
+	let resolve;
+	let reject;
+	const offRecord = new Promise((res, rej) => {
+		resolve = res;
+		reject = rej;
+	});
+	return { outcome: { offRecord }, resolve, reject };
+}
+
+const flushMicrotasks = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+test("F6 x R1: an off-record ask takes the TEXT at the press and its staged halves only on the answer", async () => {
+	const ask = deferredAsk();
+	const settled = await driveComposer({
+		prime: () => stagePayload(),
+		onSubmit: () => ask.outcome,
+	});
+	assert.equal(settled.after, "", "the box is handed back at the press (F1)");
+	assert.deepEqual(
+		{ chips: settled.chips(), replies: settled.replies() },
+		{ chips: [STAGED.chip], replies: [STAGED.reply] },
+		"the ask has not been answered, so nothing says it consumed what it carried",
+	);
+	// A quote staged while the aside answers is the user's NEXT payload.
+	useConversationInputStore
+		.getState()
+		.addReply(COMPOSER_ID, { id: "reply-late", text: SECOND.reply });
+	ask.resolve("the answer");
+	await flushMicrotasks();
+	assert.deepEqual(
+		{ chips: settled.chips(), replies: settled.replies() },
+		{ chips: [], replies: [SECOND.reply] },
+		"an answered ask retires exactly the entries it carried, by identity (#479's rule)",
+	);
+});
+
+test("F6 x R1: a refused off-record ask keeps the staged halves it carried", async () => {
+	const ask = deferredAsk();
+	const settled = await driveComposer({
+		prime: () => stagePayload(),
+		onSubmit: () => ask.outcome,
+	});
+	ask.reject(new Error("the aside was refused"));
+	await flushMicrotasks();
+	assert.equal(
+		settled.after,
+		"",
+		"a refused ask still does not put the text back",
+	);
+	assert.deepEqual(
+		{ chips: settled.chips(), replies: settled.replies() },
+		{ chips: [STAGED.chip], replies: [STAGED.reply] },
+		"a refused ask put nothing anywhere, so the quote and the file stay for the next send",
+	);
+	assert.equal(
+		settled.storedDraft,
+		"",
+		"and the persisted draft is retired as for any accepted press",
 	);
 });
