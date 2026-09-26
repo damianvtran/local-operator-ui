@@ -52,8 +52,9 @@ branch), captured by the same rig for both arms.
   ~20-30ms cadence) and the step's `atWall` field records what the trigger saw.
   On this revision's after arm, **08's shutter landed pinned at
   `distanceFromTop = 1`** (`after-08-resting-finger-at-clamped-top-at-wall`) —
-  recorded in `atWall` in the measurements. 05's pin lasts too briefly for a CDP
-  round trip in this run: its frame remains the act-end fallback
+  recorded in `atWall` in the measurements. 05's pin+loading was a single sampled frame (~17ms, per the recorder's
+  own timeline) and the watch's ~20-30ms cadence stepped over it: its frame
+  remains the act-end fallback
   (`after-05-…-at-act-end`, act-end `d = 530`), which is what the file name and
   this paragraph say. The before arm never pins at all in either scenario
   (minimum `d` across its samples: 1334px and 614px), so both of its shutters
@@ -93,6 +94,16 @@ digests. Its stdout line is the swap's artefact:
 ```
 paging-evidence-arms: restored=identical {"scroll-paging.ts":"2a5c4056b1111f36","use-scroll-paging.ts":"b375dea0a576d08e"}
 ```
+
+The line above is the capture run's own print, from the tree the arms ran
+against. The committed head's bytes differ by exactly two later text-level
+edits — the rule-3 comments' 6966px figure restated as 6834px, and biome's
+one-line collapse of the F1 gate — so both `arm-record.json` files are
+**re-stamped to the committed head bytes** (`scroll-paging.ts` =
+`d525e500ceb829ff`, `use-scroll-paging.ts` = `4cf55619fef9c915`; re-derive with
+`git show HEAD:<path> | shasum -a 256 | cut -c1-16`), and each record's `note`
+states the capture tree the printed digests belong to. No digest is left
+unreproducible.
 
 `before-arm-record.json` carries the records; the before ref is `origin/main`
 (`53ce0d4876` at capture time — the two modules are byte-identical to the ones
