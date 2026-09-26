@@ -70,6 +70,11 @@ export const iceberg: ThemeDefinition = {
 		// sits 1.07:1 under canvas, which is what caps inkDim below.
 		sunken: "#E0E1E6",
 
+		// The user block's fill: ΔE00 4.01 off the canvas, where `surface` alone
+		// measures 2.11 - a step toward `elevated` to clear the role's 4.0 floor,
+		// which the block carries because the fill IS its boundary.
+		messageSurface: "#fcfcfe",
+
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
 		 * step of THIS palette's own panel at the `accent`'s hue, because this panel

@@ -78,6 +78,11 @@ export const solarizedLight: ThemeDefinition = {
 		// Upstream base2, the scheme's own recessed tone.
 		sunken: "#E5DFCC",
 
+		// The user block's fill: ΔE00 4.22 off the canvas, where `surface` alone
+		// measures 2.94 - a step toward `elevated` to clear the role's 4.0 floor,
+		// which the block carries because the fill IS its boundary.
+		messageSurface: "#faf7ee",
+
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
 		 * step of THIS palette's own panel at the panel's own hue; they used to be
