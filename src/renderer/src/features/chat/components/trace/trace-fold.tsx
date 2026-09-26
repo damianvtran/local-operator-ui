@@ -152,7 +152,20 @@ export const TraceFold = ({
 				</span>
 			}
 		>
-			{children}
+			{/*
+			 * ONE CHILD, SO THE BODY'S OWN `gap-2` NEVER SITS BETWEEN ROWS (operator
+			 * report, 2026-09-26: "the spacing of the actions under the actions
+			 * dropdown ... 2px space between them"). `Disclosure`'s body is
+			 * `mt-1 flex flex-col gap-2 pb-1` - an 8px step meant for a stack of
+			 * mixed disclosed content - and a run of ledger rows is not that stack:
+			 * its rhythm is `transcript-rows.ts`'s `trace` tier, 2px, which each row
+			 * already carries as its own top margin. Passing the rows as ONE child
+			 * keeps the body's padding (4px above the group) and takes its gap out
+			 * of the run, so a folded run measures exactly what the same run measures
+			 * unfolded: `N x 20px + (N-1) x 2px`. Same step as `TraceGroup`'s
+			 * `gap-0.5`, so the two ways of composing a block agree.
+			 */}
+			<div className={cn("flex flex-col")}>{children}</div>
 		</Disclosure>
 	</div>
 );
