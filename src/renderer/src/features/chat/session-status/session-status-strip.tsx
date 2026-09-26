@@ -323,12 +323,21 @@ function useActiveSeconds(banked: number, startedAt: number | null): number {
  * What a reading says when it is drawn from the HELD snapshot rather than from
  * a live stream.
  *
- * WHY IT IS NOT THE WORD "RECONNECTING". The transcript paints that word for
- * this whole state already, four lines above the composer, and a second copy of
- * it here would be the same claim twice — the strip's job is the other half:
- * saying WHICH readings those are, i.e. that this value is the last one the
- * session reported and nothing has refreshed it since. The reconnect itself
- * stays the pane's statement, which is what R2 requires.
+ * WHY IT IS NOT THE WORD "RECONNECTING". The transcript already paints that word
+ * for this whole state, and a second copy of it here would be the same claim
+ * twice — the strip's job is the other half: saying WHICH readings those are,
+ * i.e. that this value is the last one the session reported and nothing has
+ * refreshed it since. The reconnect itself stays the pane's statement, which is
+ * what R2 requires.
+ *
+ * AND WHERE THAT STATEMENT IS, exactly, is why this component needs a mark of
+ * its own rather than leaning on it. The transcript's line sits immediately above
+ * the composer for a conversation SHORTER than its viewport, and is scrolled out
+ * of sight for a longer one: design round 1 measured it 4,808px above the reading
+ * position and hit-tested it in 0 of 713 held samples. The earlier revision of
+ * this comment said "four lines above the composer", which is the short case
+ * stated as the general one — the case the operator is least likely to be
+ * mid-work in.
  *
  * THE SMALLEST MARK THAT READS CORRECTLY, and the reason it is a clause rather
  * than a badge: the cluster is four readings inside the composer's button row,
@@ -905,8 +914,12 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			 * already wraps to its own line there, so a word would push the
 			 * controls onto a third line -- the exact defect design round 1.5's D9
 			 * fixed. The statement is not lost at that width: the group name above
-			 * carries it to assistive technology, the tooltips carry it to a
-			 * pointer, and the pane's own "Reconnecting" line is on screen.
+			 * carries it to assistive technology and the tooltips carry it to a
+			 * pointer. It is NOT carried by the pane's own "Reconnecting" line --
+			 * that line is above the composer for a short transcript and scrolled
+			 * away for a long one, which is the same measurement this mark exists
+			 * for (0 of 713 held samples, 4,808px above the reading position), and
+			 * an earlier revision of this comment claimed otherwise.
 			 */}
 			{held && (
 				<span className="shrink-0 text-meta text-ink-dim @max-[750px]/chatcol:hidden">
