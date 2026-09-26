@@ -17824,7 +17824,18 @@ function readHitZones(cdp, spec) {
 			});
 		}
 		const dragEntries = entries.filter((entry) => entry.mode === "drag");
-		const bounds = dragEntries.reduce(
+		const noDragEntries = entries.filter((entry) => entry.mode === "no-drag");
+		/*
+		 * THE DRAG ENTRIES' UNION, explicitly not "the region": the region the
+		 * window is hit-tested against is what the point reads compute - drag rects
+		 * minus the no-drag rects - and a bounding box over the drag entries alone
+		 * can include area an overlay has subtracted (QA/review round 1, R5).
+		 * Electron's own region line - its sent-entry counts, 'renderer sent N
+		 * region(s) (X drag, Y no-drag)' - is the like-for-like for the counts
+		 * below; its computed rect line is its own reading and is quoted as such
+		 * in the evidence README.
+		 */
+		const dragEntryBounds = dragEntries.reduce(
 			(acc, entry) => ({
 				l: Math.min(acc.l, entry.l),
 				t: Math.min(acc.t, entry.t),
@@ -17839,11 +17850,12 @@ function readHitZones(cdp, spec) {
 			region: {
 				entries: entries.length,
 				dragEntries: dragEntries.length,
-				bounds: dragEntries.length === 0 ? null : {
-					x: Math.round(bounds.l),
-					y: Math.round(bounds.t),
-					w: Math.round(bounds.r - bounds.l),
-					h: Math.round(bounds.b - bounds.t),
+				noDragEntries: noDragEntries.length,
+				dragEntryBounds: dragEntries.length === 0 ? null : {
+					x: Math.round(dragEntryBounds.l),
+					y: Math.round(dragEntryBounds.t),
+					w: Math.round(dragEntryBounds.r - dragEntryBounds.l),
+					h: Math.round(dragEntryBounds.b - dragEntryBounds.t),
 				},
 			},
 			root: {
@@ -17892,7 +17904,7 @@ function checkHitZones(surface, report) {
 	check(
 		`[${surface}] every sampled point of every control is OUTSIDE the window drag region`,
 		swallowed.length === 0,
-		`${swallowed.join("\n        ")}\n        (region: ${report.region.dragEntries} drag rect(s), bounds ${JSON.stringify(report.region.bounds)}; overlay box ${JSON.stringify(report.root)})`,
+		`${swallowed.join("\n        ")}\n        (region: ${report.region.entries} entr(ies) (${report.region.dragEntries} drag, ${report.region.noDragEntries} no-drag), drag-entry union ${JSON.stringify(report.region.dragEntryBounds)}; overlay box ${JSON.stringify(report.root)})`,
 		`${report.controls.length} control(s) x 5 samples in region ${report.region.entries} entr(ies); ${swallowed.length} swallowed now, ${before} would be without this surface's own opt-out; ${report.skipped.disabled.length} disabled, ${report.skipped.unpaintable.length} unpaintable and ${report.skipped.clipped.length} outside the visible box were not sampled`,
 	);
 	check(
@@ -18257,10 +18269,17 @@ async function sceneHitZones(cdp) {
 	}
 
 	/*
-	 * The non-chat routes' drag band, on /settings: the other half of the drag
-	 * vocabulary, where the point is that NOTHING the page draws reaches into the
-	 * band - the band is the route's only drag surface, and a control overlapping
-	 * it would be swallowed the same way the `×` was.
+	 * The non-chat routes' drag band, on /settings — and its two jobs are per
+	 * platform since #535. On Windows and Linux with the captions trailing the
+	 * band IS the route's drag surface (there is no lane above the columns),
+	 * drawn at `env(titlebar-area-height)`; on macOS and leading layouts the band
+	 * stands down (`display: none` — a zero-height drag region would still
+	 * swallow a press along the window's top edge) and the shell's own lane is
+	 * the drag surface, so the check that matters is that the route's controls
+	 * clear it. The branch this window is in is asserted, not assumed, and the
+	 * note under the checks names the branch this host exercised: only the mac
+	 * one runs here, and the win/linux assertions are written for the runners
+	 * that render them.
 	 */
 	await verb(cdp, "navigate", "/settings");
 	await waitForCondition(
@@ -18269,45 +18288,153 @@ async function sceneHitZones(cdp) {
 		10_000,
 	);
 	await wait(800);
-	const band = await cdp.evaluate(`(() => {
-		const band = document.querySelector('[data-chrome-route-band]');
-		if (band === null) return null;
-		const rect = band.getBoundingClientRect();
-		const overlapping = [];
-		for (const el of document.querySelectorAll(
-			"main button, main a, main input, main select, main textarea, main [role=button], main [data-titlebar-no-drag]",
-		)) {
-			const box = el.getBoundingClientRect();
-			if (box.width <= 0 || box.height <= 0) continue;
-			if (
-				box.left < rect.right && box.right > rect.left &&
-				box.top < rect.bottom && box.bottom > rect.top
-			) {
-				const label = el.getAttribute("aria-label") ?? el.textContent ?? "";
-				overlapping.push(label.trim().replace(/\\s+/g, " ").slice(0, 48));
-			}
+	const bandRead = await cdp.evaluate(`(() => {
+		const appRegion = (el) => {
+			const style = getComputedStyle(el);
+			return (
+				style.getPropertyValue("-webkit-app-region") ||
+				style.getPropertyValue("app-region") ||
+				""
+			).trim();
+		};
+		/* The same walk the control samples use: drag unions, no-drag subtracts. */
+		const entries = [];
+		for (const el of document.querySelectorAll("*")) {
+			const mode = appRegion(el);
+			if (mode !== "drag" && mode !== "no-drag") continue;
+			const style = getComputedStyle(el);
+			if (style.visibility !== "visible") continue;
+			if (style.display === "inline" || style.display === "contents") continue;
+			const rect = el.getBoundingClientRect();
+			if (rect.width <= 0 || rect.height <= 0) continue;
+			entries.push({ mode, l: rect.left, t: rect.top, r: rect.right, b: rect.bottom });
 		}
-		return {
-			rect: {
+		const inRegion = (x, y) => {
+			let inside = false;
+			for (const entry of entries) {
+				if (x >= entry.l && x < entry.r && y >= entry.t && y < entry.b) {
+					inside = entry.mode === "drag";
+				}
+			}
+			return inside;
+		};
+		const boxOf = (el) => {
+			const rect = el.getBoundingClientRect();
+			return {
 				x: Math.round(rect.x),
 				y: Math.round(rect.y),
 				w: Math.round(rect.width),
 				h: Math.round(rect.height),
-			},
-			overlapping,
+			};
+		};
+		/*
+		 * env(titlebar-area-height) as the document resolves it: on the trailing
+		 * platforms the band's own height IS this value, so the drawn branch below
+		 * compares against a measurement rather than a constant.
+		 */
+		const probe = document.createElement("div");
+		probe.style.cssText =
+			"position:absolute;top:-100px;left:0;width:0;height:env(titlebar-area-height, -1px)";
+		document.body.appendChild(probe);
+		const captionHeight = Math.round(probe.getBoundingClientRect().height * 10) / 10;
+		probe.remove();
+		const overlapping = (rect) => {
+			const hits = [];
+			for (const el of document.querySelectorAll(
+				"main button, main a, main input, main select, main textarea, main [role=button], main [data-titlebar-no-drag]",
+			)) {
+				const box = el.getBoundingClientRect();
+				if (box.width <= 0 || box.height <= 0) continue;
+				if (
+					box.left < rect.x + rect.w && box.right > rect.x &&
+					box.top < rect.y + rect.h && box.bottom > rect.y
+				) {
+					const label = el.getAttribute("aria-label") ?? el.textContent ?? "";
+					hits.push(label.trim().replace(/\\s+/g, " ").slice(0, 48));
+				}
+			}
+			return hits;
+		};
+		const band = document.querySelector('[data-chrome-route-band]');
+		const lane = document.querySelector('[data-titlebar-lane]');
+		const bandRect = boxOf(band);
+		const laneRect = lane === null ? null : boxOf(lane);
+		return {
+			leading: document.documentElement.dataset.chromeLeading ?? null,
+			band: { display: getComputedStyle(band).display, rect: bandRect },
+			lane: laneRect === null ? null : { display: getComputedStyle(lane).display, rect: laneRect },
+			captionHeight,
+			bandCentreInside: inRegion(bandRect.x + bandRect.w / 2, bandRect.y + bandRect.h / 2),
+			laneCentreInside:
+				laneRect === null ? null : inRegion(laneRect.x + laneRect.w / 2, laneRect.y + laneRect.h / 2),
+			overlappingBand: overlapping(bandRect),
+			overlappingLane: laneRect === null ? [] : overlapping(laneRect),
 		};
 	})()`);
-	check(
-		"[settings-route-band] the band is drawn over the page's own content",
-		band !== null && band.rect.h >= 30 && band.rect.h <= 32,
-		JSON.stringify(band),
-		`band ${JSON.stringify(band?.rect)} while /settings is up`,
-	);
-	check(
-		"[settings-route-band] no control of the route overlaps the band",
-		band !== null && band.overlapping.length === 0,
-		JSON.stringify(band?.overlapping),
-		`${band?.rect.w}px band, ${band?.overlapping.length ?? "?"} overlapping control(s)`,
+	const bandStoodDown = bandRead.band.display === "none";
+	if (bandStoodDown) {
+		/*
+		 * THIS HOST'S BRANCH (macOS is a constant leading layout, and the lane is
+		 * drawn above both columns): the band must be out of the flow entirely,
+		 * the lane must be the drag surface this route's strip still is, and no
+		 * control the route draws may reach into the lane's strip — #535's own
+		 * subject, asserted rather than assumed.
+		 */
+		check(
+			"[settings-route-band] the band stands down where the lane is drawn",
+			bandRead.band.rect.h === 0 && bandRead.band.rect.w === 0,
+			JSON.stringify(bandRead.band),
+			`display=${bandRead.band.display} rect=${JSON.stringify(bandRead.band.rect)} while /settings is up`,
+		);
+		check(
+			"[settings-route-band] the lane is drawn as this route's drag surface",
+			bandRead.lane !== null &&
+				bandRead.lane.display === "block" &&
+				bandRead.lane.rect.y === 0 &&
+				bandRead.lane.rect.h > 0,
+			JSON.stringify(bandRead.lane),
+			`lane ${JSON.stringify(bandRead.lane)}`,
+		);
+		check(
+			"[settings-route-band] the lane's own centre is a drag region",
+			bandRead.laneCentreInside === true,
+			JSON.stringify(bandRead.laneCentreInside),
+			`lane centre inside=${bandRead.laneCentreInside}`,
+		);
+		check(
+			"[settings-route-band] no route control reaches into the lane's strip",
+			bandRead.overlappingLane.length === 0,
+			JSON.stringify(bandRead.overlappingLane),
+			`${bandRead.overlappingLane.length} control(s) in the ${bandRead.lane?.rect.h}px lane strip`,
+		);
+	} else {
+		check(
+			"[settings-route-band] the band is drawn at the caption height",
+			bandRead.band.rect.h >= 30 &&
+				Math.abs(bandRead.band.rect.h - bandRead.captionHeight) <= 1,
+			`band h=${bandRead.band.rect.h} captionHeight=${bandRead.captionHeight}`,
+			`band ${JSON.stringify(bandRead.band.rect)} at captionHeight ${bandRead.captionHeight}`,
+		);
+		check(
+			"[settings-route-band] the band's own centre is a drag region",
+			bandRead.bandCentreInside === true,
+			JSON.stringify(bandRead.bandCentreInside),
+			`band centre inside=${bandRead.bandCentreInside}`,
+		);
+		check(
+			"[settings-route-band] no control of the route overlaps the band",
+			bandRead.overlappingBand.length === 0,
+			JSON.stringify(bandRead.overlappingBand),
+			`${bandRead.band.rect.w}px band, ${bandRead.overlappingBand.length} overlapping control(s)`,
+		);
+	}
+	note(
+		"route-band platform scope",
+		`leading=${bandRead.leading} -> asserted the ${
+			bandStoodDown
+				? "leading branch (the lane is the drag surface)"
+				: "caption-trailing branch (the band is the drag surface)"
+		}; only the host's own branch runs here — the other platform's assertions ride the runners that render it`,
 	);
 
 	note(
@@ -18321,7 +18448,7 @@ async function sceneHitZones(cdp) {
 					);
 				const swallowed = count((sample) => sample.swallowed);
 				const swallowedBefore = count((sample) => sample.swallowedBefore);
-				return `${report.surface}: ${report.controls.length} control(s), ${swallowed} swallowed sample(s) now, ${swallowedBefore} without this surface's own opt-out, overlay ${JSON.stringify(report.root)}, region ${report.region.dragEntries} drag rect(s)`;
+				return `${report.surface}: ${report.controls.length} control(s), ${swallowed} swallowed sample(s) now, ${swallowedBefore} without this surface's own opt-out, overlay ${JSON.stringify(report.root)}, region ${report.region.entries} entr(ies) (${report.region.dragEntries} drag, ${report.region.noDragEntries} no-drag)`;
 			})
 			.join("\n        "),
 	);
