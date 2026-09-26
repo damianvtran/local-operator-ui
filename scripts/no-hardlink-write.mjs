@@ -15,6 +15,13 @@
  * hazard that cannot be reproduced today is one a future test can reintroduce
  * with a single `writeFileSync`. See issue #381.
  *
+ * WHAT IT PROTECTS, STATED NO WIDER THAN THE CODE: a desktop TEST-FILE process
+ * cannot write through a shared inode. The guard is installed with `--import`,
+ * which is per-process, so a node process a test SPAWNS is not covered — those
+ * are the product's own children, they hardlink an interpreter while staging a
+ * runtime, and arming them was measured to buy nothing. That gap is deliberate
+ * and is recorded rather than papered over.
+ *
  * The cheap check is the whole guard: `stat().nlink > 1` on the target. What a
  * write through a link actually costs is every OTHER name of that inode, and no
  * test file can see them — `writeFileSync(join(venv, "bin", "python"), stub)` on
@@ -27,23 +34,40 @@
  *  - a DIRECTORY is not a hard link. Its link count is 2 + its subdirectory
  *    count, so a `chmodSync` of a temp fixture's root (nlink 4) or of a mounted
  *    volume's directory (nlink 5) is ordinary and must not be refused;
- *  - a hardlink INSIDE the process temp ground is the fixture's own business.
- *    The product hardlinks an interpreter while staging a runtime
- *    (`runtime/python`, nlink 3 inside a `lo-managed-python-*` fixture) on
- *    purpose, because that is how it copies cheaply. The hazard is a target that
- *    LEAVES that ground for something shared, so the refusal is scoped to a
- *    target whose realpath is outside `tmpdir()`. Note that the realpath is what
- *    is compared: on macOS `tmpdir()` is `/var/folders/...` while the same
- *    directory resolves to `/private/var/folders/...`, so a comparison against
- *    the raw string matches nothing and the guard silently disarms;
+ *  - a hardlink the FIXTURE ITSELF created inside the process temp ground is its
+ *    own business. The product hardlinks an interpreter while staging a runtime
+ *    — `linkSync(binary, join(root, "Local Operator"))`, nlink 3, every name
+ *    inside one `lo-managed-python-*` fixture, then written through on purpose.
+ *    That is how it copies cheaply, and it must keep working.
+ *
+ *    THE EXEMPTION IS GRANTED PER INODE, ON THE AUTHORITY OF THE `linkSync` THAT
+ *    CREATED THE LINK, NOT ON THE PATH BEING WRITTEN — and that is a fixed hole
+ *    rather than a style choice. The path-keyed form was exploitable in two
+ *    sanctioned calls: `linkSync(<shared file outside the ground>, join(
+ *    mkdtempSync(join(tmpdir(), "x-")), "linked"))` then `writeFileSync(<that
+ *    temp path>, "STUB")`. The write's path is inside the ground, so it was
+ *    exempt, and the shared inode was clobbered.
+ *
+ *    The tempting repair — "ask where the INODE resolves" — does NOT work, and
+ *    is worth recording because it looks right: a hard link has no canonical
+ *    name, so `realpathSync` on any of its names answers with the path it was
+ *    handed, and the test collapses back into the path test it was meant to
+ *    replace. Measured: the evasion still wrote through.
+ *
+ *    So the ground is entered by DECLARATION. `linkSync` is wrapped, and it
+ *    records the `dev:ino` of a link only when BOTH of its arguments are inside
+ *    the ground — a fixture building its own tree, which is the legitimate case.
+ *    A link whose source lives outside the ground is a shared inode being given
+ *    a temp name, and it is refused outright. A name REACHING the ground by
+ *    `rename` is not recorded, because the inode was already somewhere else;
  *  - a READ is not a write. `openSync(path, "r")` on a linked file is what a
  *    test does to inspect a shared runtime, and only `w`/`a`/`+` flags (or a
  *    numeric mode carrying a write bit) can clobber.
  *
- * EVERY nlink > 1 hit is RECORDED, refused or not, and `NLINK_GUARD_HITS`
- * appends them as JSON Lines. A scoped-out write that nobody can see is the
- * false green this repository treats as the cardinal sin, so the exemption is
- * reported rather than silent.
+ * EVERY `nlink > 1` hit is RECORDED, refused or not, and `NLINK_GUARD_HITS`
+ * appends them as JSON Lines when it is set. A scoped-out write that nobody can
+ * see is the false green this repository treats as the cardinal sin, so the
+ * exemption is reported rather than silent.
  */
 
 import { createRequire } from "node:module";
@@ -76,6 +100,31 @@ export class SharedInodeWriteError extends Error {
 	}
 }
 
+/** The native ledger writer, captured before the wrappers below replace it. */
+const nativeAppendFileSync = fs.appendFileSync;
+
+/**
+ * Where the audit ledger goes, when a caller asks for one.
+ *
+ * Read per hit rather than cached, so a test can set it after this module is
+ * loaded. Read through the captured native: the module's own `appendFileSync`
+ * is wrapped below, and a ledger write must not be able to recurse into the
+ * guard or be refused by it.
+ */
+function hitsLedgerPath() {
+	return process.env.NLINK_GUARD_HITS || null;
+}
+
+export function recordHit(hit) {
+	const ledger = hitsLedgerPath();
+	if (!ledger) return;
+	try {
+		nativeAppendFileSync(ledger, `${JSON.stringify(hit)}\n`);
+	} catch {
+		/* a ledger that cannot be written must never mask the refusal */
+	}
+}
+
 /**
  * The process temp ground, REALPATH'D once.
  *
@@ -92,9 +141,70 @@ function tempGround() {
 	}
 }
 
-function inTempGround(realPath) {
+/**
+ * Whether `path` is inside the process temp ground.
+ *
+ * The REALPATH of both sides is what is compared: on macOS `tmpdir()` is
+ * `/var/folders/...` while the same directory resolves to
+ * `/private/var/folders/...`, so a comparison against the raw string matches
+ * nothing and the guard silently disarms.
+ */
+function isInTempGround(path) {
+	let real;
+	try {
+		real = fs.realpathSync(path);
+	} catch {
+		real = resolve(String(path));
+	}
 	const root = tempGround();
-	return realPath === root || realPath.startsWith(root + sep);
+	return real === root || real.startsWith(root + sep);
+}
+
+/**
+ * The `dev:ino` keys this process has DECLARED as a fixture's own temp inode.
+ *
+ * Populated only by the `linkSync` wrapper, and only for a link whose every name
+ * is inside the ground. There is intentionally no path-based fallback: a path
+ * test is what the evasion defeated, and a hard link cannot be located by
+ * resolving one of its names.
+ */
+const declaredTempInodes = new Set();
+
+/**
+ * Depth of the guard's own wrappers, so a call node makes INTERNALLY is not
+ * counted twice.
+ *
+ * `fs.appendFileSync` re-enters `fs.writeFileSync`, so one `appendFileSync`
+ * through a link produced TWO ledger entries and an exemption summary that said
+ * "2 linked write(s)" for a single call. A ledger that double-counts is one
+ * nobody can audit — the count is the whole point of the trail — so a nested
+ * entry records nothing and refuses nothing: the OUTER call has already made
+ * that decision for the same inode.
+ */
+let guardDepth = 0;
+
+/** The key an inode is declared and looked up under. */
+function inodeKey(stats) {
+	return `${stats.dev}:${stats.ino}`;
+}
+
+/**
+ * Record a link the fixture made entirely inside its own temp ground.
+ *
+ * Returns `true` when the link is the fixture's own (both names in the ground),
+ * and `false` when it would give a name inside the ground to an inode that lives
+ * outside it — which is the evasion, and is refused rather than merely recorded.
+ */
+export function declareTempLink(source, destination) {
+	if (!isInTempGround(source) || !isInTempGround(destination)) return false;
+	let stats;
+	try {
+		stats = fs.statSync(source);
+	} catch {
+		return false;
+	}
+	declaredTempInodes.add(inodeKey(stats));
+	return true;
 }
 
 /**
@@ -131,20 +241,13 @@ export function sharedInodeWrite(op, target) {
 	}
 	if (!stats.isFile()) return null;
 	if (stats.nlink <= 1) return null;
-	let real;
-	try {
-		real = fs.realpathSync(target);
-	} catch {
-		real = resolve(String(target));
-	}
 	return {
 		op,
 		target: String(target),
-		real,
 		nlink: stats.nlink,
 		ino: stats.ino,
 		dev: stats.dev,
-		exemptInTempGround: inTempGround(real),
+		exemptInTempGround: declaredTempInodes.has(inodeKey(stats)),
 	};
 }
 
@@ -156,31 +259,30 @@ export function sharedInodeWrite(op, target) {
  * `copyFileSync(src, dest)` truncates the DESTINATION, so a
  * `copyFileSync(stub, venvBinPython)` — which is exactly "a test fakes an
  * interpreter by writing a stub onto the python path" — walks straight through a
- * check on `src`, which is the stub. `renameSync(old, new)` replaces `new` and
- * leaves `old`'s inode intact for its other names, so its content check belongs
- * on the second argument too; its first is still checked, because moving a
- * shared inode into a test tree strands the other names where the test will then
- * delete it.
+ * check on `src`, which is the stub.
  *
  * `clobbers: false` is a SCOPE statement, not an oversight, and the namespace
- * operations are in the table so the reader can see they were considered:
- * `linkSync` INCREMENTS a link count and `unlinkSync` DECREMENTS one — removing
- * one name leaves the content intact for every other name, which is the opposite
- * of the hazard. They are recorded and never refused. Refusing them is how a
- * guard that reds legitimate harnesses gets switched off, and the refusal
- * wording ("a write here changes every one of them") would be factually wrong
- * about them.
+ * operations are in the table so the reader can see they were considered. They
+ * move NAMES and never content: `linkSync` INCREMENTS a link count, `unlinkSync`
+ * DECREMENTS one, and `rename` rewrites which name points where — removing or
+ * relabelling one name leaves the content intact for every other name, which is
+ * the opposite of the hazard. `rename` was refused in an earlier revision and
+ * that was the wrong side of the asymmetry: a refusal whose message says "a
+ * write here changes every one of them" is factually false about a rename, and a
+ * guard that reds legitimate harnesses is one that gets switched off. The route
+ * a rename could have opened is closed by the inode-keyed exemption above.
  */
 const OPERATIONS = {
 	writeFileSync: { victim: 0 },
 	appendFileSync: { victim: 0 },
 	truncateSync: { victim: 0 },
 	copyFileSync: { victim: 1, modeArg: 2 },
-	openSync: { victim: 0, flagArg: 1, defaultFlag: "w" },
+	openSync: { victim: 0, flagArg: 1, defaultFlag: "r" },
 	createWriteStream: {
 		victim: 0,
 		flagArg: 1,
 		flagKey: "flags",
+		objectOnlyFlag: true,
 		defaultFlag: "w",
 	},
 	chmodSync: { victim: 0 },
@@ -189,7 +291,7 @@ const OPERATIONS = {
 	lchownSync: { victim: 0 },
 	utimesSync: { victim: 0 },
 	lutimesSync: { victim: 0 },
-	renameSync: { victim: 1, alsoCheck: 0 },
+	renameSync: { victim: 0, clobbers: false },
 	linkSync: { victim: 1, clobbers: false },
 	symlinkSync: { victim: 1, clobbers: false },
 	unlinkSync: { victim: 0, clobbers: false },
@@ -212,14 +314,43 @@ const PROMISE_OPERATIONS = {
 	appendFile: { victim: 0 },
 	truncate: { victim: 0 },
 	copyFile: { victim: 1, modeArg: 2 },
-	open: { victim: 0, flagArg: 1, defaultFlag: "w" },
+	open: { victim: 0, flagArg: 1, defaultFlag: "r" },
 	chmod: { victim: 0 },
 	lchmod: { victim: 0 },
 	chown: { victim: 0 },
 	lchown: { victim: 0 },
 	utimes: { victim: 0 },
 	lutimes: { victim: 0 },
-	rename: { victim: 1, alsoCheck: 0 },
+	rename: { victim: 0, clobbers: false },
+	link: { victim: 1, clobbers: false },
+	symlink: { victim: 1, clobbers: false },
+	unlink: { victim: 0, clobbers: false },
+	rm: { victim: 0, clobbers: false },
+	rmdir: { victim: 0, clobbers: false },
+	mkdir: { victim: 0, clobbers: false },
+};
+
+/**
+ * The CALLBACK forms, which are a third surface and were unwrapped entirely.
+ *
+ * `fs.writeFile(path, data, cb)` clobbers exactly as the sync form does. The
+ * callback is the LAST argument and must never be read as a path, so the victim
+ * position stays the same as the sync table's and only the argument COUNT
+ * differs — a callback form has one more argument than its sync twin.
+ */
+const CALLBACK_OPERATIONS = {
+	writeFile: { victim: 0 },
+	appendFile: { victim: 0 },
+	truncate: { victim: 0 },
+	copyFile: { victim: 1, modeArg: 2 },
+	open: { victim: 0, flagArg: 1, defaultFlag: "r" },
+	chmod: { victim: 0 },
+	lchmod: { victim: 0 },
+	chown: { victim: 0 },
+	lchown: { victim: 0 },
+	utimes: { victim: 0 },
+	lutimes: { victim: 0 },
+	rename: { victim: 0, clobbers: false },
 	link: { victim: 1, clobbers: false },
 	symlink: { victim: 1, clobbers: false },
 	unlink: { victim: 0, clobbers: false },
@@ -231,41 +362,56 @@ const PROMISE_OPERATIONS = {
 /**
  * The flag a call opens with, read from wherever that call puts it.
  *
- * `createWriteStream(path, { flags: "w" })` passes an OPTIONS OBJECT, and a
- * guard that only accepts a string or a number reads that as "not a write"
- * before it ever stats — so the default form was refused while the explicit form
- * clobbered the inode. The object form is what a caller who thought about the
- * flags writes, which makes it the last one that should slip through.
+ * The shape differs per call and each difference was a hole first:
+ *
+ *  - `createWriteStream(path, { flags: "w" })` passes an OPTIONS OBJECT, and a
+ *    guard that only accepts a string or a number reads that as "not a write"
+ *    before it ever stats;
+ *  - `createWriteStream(path, "utf8")` passes the ENCODING. Only the OBJECT form
+ *    states flags for a stream, so a non-object second argument there means the
+ *    default flags — reading the string as flags is what let "utf8" through;
+ *  - `open(path)` with no flag is a READ in node, so open's default is `"r"`.
  */
 function openFlagFor(spec, args) {
 	const raw = args[spec.flagArg];
 	if (raw === undefined) return spec.defaultFlag;
-	if (typeof raw === "string" || typeof raw === "number") return raw;
 	if (raw !== null && typeof raw === "object" && spec.flagKey in raw) {
 		return raw[spec.flagKey];
 	}
+	if (spec.objectOnlyFlag) return spec.defaultFlag;
+	if (typeof raw === "string" || typeof raw === "number") return raw;
 	return spec.defaultFlag;
 }
 
 /**
  * Decide whether a call must be refused, and which of its paths is at risk.
  *
+ * `form` names which table the operation came from (`sync`, `promise` or
+ * `callback`); the tables are kept separate rather than merged because the same
+ * name can exist in more than one, and a merge would silently pick one.
+ *
  * Returns `{ hit, mayClobber }`: `hit` is the descriptor for the path the call
  * would damage (`null` when there is nothing to damage) and `mayClobber` is the
  * operation's own scope statement from the table above. Exported so the guard
  * instance and its test ask the same question rather than two similar ones.
  */
-export function classifyCall(op, args) {
+export function classifyCall(op, args, form = "sync") {
 	/*
-	 * The Promise wrappers are labelled `promises.<name>` so a refusal says which
-	 * surface was used, and both tables are keyed by the bare name — the prefix is
-	 * stripped here rather than duplicated into every row. Getting this wrong is
-	 * silent in the worst way: an unmatched label falls through to
-	 * `{ hit: null, mayClobber: true }`, so the guard reports nothing while the
-	 * write lands, which is exactly the false green this file exists to prevent.
+	 * The label a wrapper passes is prefixed (`callback.writeFile`) so a refusal
+	 * says which surface was used, while every table is keyed by the bare name.
+	 * The prefix MUST be stripped here rather than assumed absent: an unmatched
+	 * label falls through to `{ hit: null }`, which is not a loud failure but the
+	 * quietest one possible — the guard reports nothing and the write lands. It
+	 * has now caused that twice, once on the Promise surface and once on the
+	 * callback surface, which is why the strip is unconditional.
 	 */
-	const name = op.startsWith("promises.") ? op.slice("promises.".length) : op;
-	const spec = OPERATIONS[name] ?? PROMISE_OPERATIONS[name];
+	const name = op.includes(".") ? op.slice(op.indexOf(".") + 1) : op;
+	const spec =
+		form === "promise"
+			? PROMISE_OPERATIONS[name]
+			: form === "callback"
+				? CALLBACK_OPERATIONS[name]
+				: OPERATIONS[name];
 	if (!spec) return { hit: null, mayClobber: true };
 	if (spec.clobbers === false) return { hit: null, mayClobber: false };
 	if (spec.flagArg !== undefined && !flagsAllowWrite(openFlagFor(spec, args))) {
@@ -282,15 +428,7 @@ export function classifyCall(op, args) {
 			return { hit: null, mayClobber: false };
 		}
 	}
-	const hit = sharedInodeWrite(op, args[spec.victim]);
-	if (hit) return { hit, mayClobber: true };
-	if (spec.alsoCheck !== undefined) {
-		return {
-			hit: sharedInodeWrite(op, args[spec.alsoCheck]),
-			mayClobber: true,
-		};
-	}
-	return { hit: null, mayClobber: true };
+	return { hit: sharedInodeWrite(op, args[spec.victim]), mayClobber: true };
 }
 
 /**
@@ -319,18 +457,25 @@ function refuse(hit) {
  * would arrive as a stack of identically-worded errors. It is also what makes
  * arming it from both the preload and a test harmless.
  */
-export function installHardlinkWriteGuard({ record = () => {} } = {}) {
+export function installHardlinkWriteGuard({ record = recordHit } = {}) {
 	const installed = [];
-	const wrap = (holder, name, label) => {
+	const wrap = (holder, name, label, form, body) => {
 		const original = holder[name];
 		if (typeof original !== "function" || original.__hardlinkGuard) return;
 		const wrapped = function guardedMutation(...args) {
-			const { hit, mayClobber } = classifyCall(label, args);
+			if (guardDepth > 0) return original.apply(holder, args);
+			if (body) return body(args, () => original.apply(holder, args));
+			const { hit, mayClobber } = classifyCall(label, args, form);
 			if (hit) {
-				record({ ...hit, mayClobber });
+				record({ ...hit, mayClobber, form });
 				if (mayClobber && !hit.exemptInTempGround) refuse(hit);
 			}
-			return original.apply(holder, args);
+			guardDepth += 1;
+			try {
+				return original.apply(holder, args);
+			} finally {
+				guardDepth -= 1;
+			}
 		};
 		Object.defineProperty(wrapped, "name", { value: name });
 		wrapped.__hardlinkGuard = true;
@@ -338,9 +483,45 @@ export function installHardlinkWriteGuard({ record = () => {} } = {}) {
 		installed.push(label);
 	};
 
-	for (const name of Object.keys(OPERATIONS)) wrap(fs, name, name);
+	/*
+	 * `linkSync` is the one operation that both moves a name AND decides an
+	 * exemption, so it is wrapped with its own body rather than the generic one:
+	 * the declaration has to run only AFTER the link exists, and a link whose
+	 * source is outside the ground must be refused before it is made — that is
+	 * the evasion this closes.
+	 */
+	wrap(fs, "linkSync", "linkSync", "sync", (args, call) => {
+		if (guardDepth > 0) return call();
+		/*
+		 * ONLY the laundering direction is refused: a name OUTSIDE the ground being
+		 * given a name INSIDE it. Two names outside the ground are an ordinary
+		 * hardlink between a fixture's own files — linking a cache file to another
+		 * cache file harms nothing, and refusing it would be the over-broad class of
+		 * false positive that gets a guard switched off. Linking within the ground is
+		 * the declared, legitimate case.
+		 */
+		const [source, destination] = args;
+		if (!isInTempGround(source) && isInTempGround(destination)) {
+			const hit = sharedInodeWrite("linkSync", source);
+			if (hit) {
+				record({ ...hit, mayClobber: true, form: "sync" });
+				refuse(hit);
+			}
+		}
+		const result = call();
+		declareTempLink(source, destination);
+		return result;
+	});
+
+	for (const name of Object.keys(OPERATIONS)) {
+		if (name === "linkSync") continue;
+		wrap(fs, name, name, "sync");
+	}
 	for (const name of Object.keys(PROMISE_OPERATIONS)) {
-		wrap(fs.promises, name, `promises.${name}`);
+		wrap(fs.promises, name, `promises.${name}`, "promise");
+	}
+	for (const name of Object.keys(CALLBACK_OPERATIONS)) {
+		wrap(fs, name, `callback.${name}`, "callback");
 	}
 
 	return installed;

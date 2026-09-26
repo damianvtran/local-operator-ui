@@ -71,8 +71,18 @@ const LINK_COUNT = /link count (\d+), shared inode (\d+)/;
 const GUARDING = /no-hardlink-write: guarding \d+ fs entry points/;
 const STANDING_DOWN = /STANDING DOWN/;
 const TEST_DESKTOP = /^node scripts\/run-desktop-tests\.mjs (.*)$/;
-const REPORTS_THE_LINK = /allowed inside the temp ground/;
+const REPORTS_THE_LINK = /declared inside the temp ground/;
 const IMPORT_FLAG = /--import=\$\{GUARD_PRELOAD\.href\}/;
+const NAMES_THE_PATH = /refusing writeFileSync on /;
+const CHMOD_OK = /chmod=ok/;
+const READ_BACK = /read=ORIGINAL/;
+const WILL_NOT_REFUSE = /will not be refused/;
+const EVASION = /EVASION=refused/;
+const EVASION_WROTE = /EVASION=wrote/;
+const IN_TEMP_STAGED = /IN_TEMP=STAGED/;
+const SHARED_INTACT = /SHARED=ORIGINAL SHARED CONTENT/;
+const SIBLING_INTACT = /SIBLING=ORIGINAL SHARED CONTENT/;
+const SHARED_STUBBED = /SHARED=STUB VIA TEMP GROUND/;
 const WHITESPACE = /\s+/;
 
 /**
@@ -210,10 +220,120 @@ function caseOnce(mode, { guard, dir }) {
 	};
 }
 
+/**
+ * The callback, stream, open and rename surfaces, driven from one child so each
+ * case is exercised through the import shape a test file uses.
+ *
+ * These exist because every one of them was a measured hole: the CALLBACK api was
+ * unwrapped entirely, `createWriteStream(path, "utf8")` was misread as "not a
+ * write" because a string second argument is the ENCODING there and not flags,
+ * `open(p)` with no flag defaulted to "w" and refused a legitimate read, and
+ * `rename` was refused on the wrong side of the namespace/content asymmetry.
+ */
+const SURFACES_CHILD = `import fs from "node:fs";
+import { promises as fsp } from "node:fs";
+const [dir, mode] = process.argv.slice(2);
+const b = dir + "/b", stub = dir + "/stub", moved = dir + "/moved";
+const cases = {
+	callbackWriteFile: () => new Promise((res, rej) => fs.writeFile(b, "STUB", (e) => (e ? rej(e) : res()))),
+	callbackAppendFile: () => new Promise((res, rej) => fs.appendFile(b, "STUB", (e) => (e ? rej(e) : res()))),
+	callbackTruncate: () => new Promise((res, rej) => fs.truncate(b, 0, (e) => (e ? rej(e) : res()))),
+	callbackChmod: () => new Promise((res, rej) => fs.chmod(b, 0o600, (e) => (e ? rej(e) : res()))),
+	callbackCopyFile: () => {
+		fs.writeFileSync(stub, "STUB");
+		return new Promise((res, rej) => fs.copyFile(stub, b, (e) => (e ? rej(e) : res())));
+	},
+	callbackOpenWrite: () => new Promise((res, rej) => fs.open(b, "w", (e, fd) => (e ? rej(e) : fs.close(fd, () => res())))),
+	streamEncoding: () => new Promise((res, rej) => {
+		const out = fs.createWriteStream(b, "utf8");
+		out.on("error", rej);
+		out.end("STUB", res);
+	}),
+	openNoFlag: () => fs.closeSync(fs.openSync(b)),
+	promisesOpenNoFlag: async () => (await fsp.open(b)).close(),
+	openReadFlag: () => fs.closeSync(fs.openSync(b, "r")),
+	renameOnto: () => { fs.writeFileSync(stub, "STUB"); fs.renameSync(stub, b); },
+	renameAway: () => fs.renameSync(b, moved),
+};
+try { await cases[mode](); console.log(mode + "=allowed"); }
+catch (error) { console.log(mode + "=refused:" + error.name); }
+`;
+
+/** Surfaces that can retruncate the file, reached through the callback form. */
+const CALLBACK_MUST_REFUSE = [
+	"callbackWriteFile",
+	"callbackAppendFile",
+	"callbackTruncate",
+	"callbackChmod",
+	"callbackCopyFile",
+	"callbackOpenWrite",
+	"streamEncoding",
+];
+
+/** Reached the same way, but they must NOT be refused. */
+const CALLBACK_MUST_ALLOW = [
+	"openNoFlag",
+	"promisesOpenNoFlag",
+	"openReadFlag",
+	"renameOnto",
+	"renameAway",
+];
+
+/** The same in-temp body, as a file the runner will collect. */
+const RUNNER_DRIVER = `import { test } from "node:test";
+import fs from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+test("in-temp link write", () => {
+	const ground = fs.mkdtempSync(join(tmpdir(), "lo-runner-exempt-"));
+	fs.writeFileSync(join(ground, "binary"), "BINARY");
+	fs.linkSync(join(ground, "binary"), join(ground, "Local Operator"));
+	fs.writeFileSync(join(ground, "Local Operator"), "STAGED");
+});
+`;
+
+const IN_TEMP_CHILD = `import fs from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+// Both names inside the ground: the fixture declares the inode by building its
+// own tree, which is what grants the exemption.
+const ground = fs.mkdtempSync(join(tmpdir(), "lo-in-temp-"));
+fs.writeFileSync(join(ground, "binary"), "BINARY");
+fs.linkSync(join(ground, "binary"), join(ground, "Local Operator"));
+// Staging writes THROUGH the link, which is the whole point of the cheap copy.
+fs.writeFileSync(join(ground, "Local Operator"), "STAGED");
+console.log("IN_TEMP=" + fs.readFileSync(join(ground, "binary"), "utf8"));
+`;
+
+const EVASION_CHILD = `import fs from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+const [shared, sibling] = process.argv.slice(2);
+const ground = fs.mkdtempSync(join(tmpdir(), "lo-evasion-"));
+try {
+	// Sanctioned call one: give the shared inode a name inside the temp ground.
+	fs.linkSync(shared, join(ground, "linked"));
+	// Sanctioned call two: write to it there.
+	fs.writeFileSync(join(ground, "linked"), "STUB VIA TEMP GROUND");
+	console.log("EVASION=wrote");
+} catch (error) {
+	console.log("EVASION=refused:" + error.name);
+}
+console.log("SHARED=" + fs.readFileSync(shared, "utf8"));
+console.log("SIBLING=" + fs.readFileSync(sibling, "utf8"));
+`;
+
+const SURFACES_PATH = join(SCRATCH, "surfaces.mjs");
+const IN_TEMP_PATH = join(SCRATCH, "in-temp.mjs");
+const EVASION_PATH = join(SCRATCH, "evasion.mjs");
+
 test.before(() => {
 	rmSync(SCRATCH, { recursive: true, force: true });
 	mkdirSync(SCRATCH, { recursive: true });
 	writeFileSync(CHILD_PATH, CHILD);
+	writeFileSync(SURFACES_PATH, SURFACES_CHILD);
+	writeFileSync(EVASION_PATH, EVASION_CHILD);
+	writeFileSync(IN_TEMP_PATH, IN_TEMP_CHILD);
 });
 
 test.after(() => {
@@ -260,7 +380,7 @@ test("the guard reports what it armed, and names the path, count and inode", () 
 		statSync(join(dir, "base")).ino,
 		"the inode in the message must be the one the names share",
 	);
-	assert.match(output, /refusing writeFileSync on /);
+	assert.match(output, NAMES_THE_PATH);
 });
 
 test("the namespace operations are allowed, because they move names not content", () => {
@@ -306,26 +426,28 @@ test("a directory is not a hard link, so chmod is allowed", () => {
 		},
 	);
 	assert.equal(result.status, 0, result.stderr);
-	assert.match(result.stdout, /chmod=ok/);
+	assert.match(result.stdout, CHMOD_OK);
 });
 
-test("an in-temp hard link is the fixture's own ground, reported not refused", () => {
-	const dir = mkdtempSync(join(tmpdir(), "lo-hardlink-guard-"));
-	writeFileSync(join(dir, "a"), ORIGINAL);
-	linkSync(join(dir, "a"), join(dir, "b"));
-	const result = run(dir, "writeFileSync", { guard: true });
-	assert.equal(result.status, 0, result.stderr);
-	assert.equal(
-		result.stdout.trim().split("\n")[0],
-		"writeFileSync=wrote",
-		"the product hardlinks an interpreter inside its own temp ground on purpose",
+test("a link the fixture builds inside the temp ground is exempt, and reported", () => {
+	/*
+	 * The legitimate case the exemption exists for, and it is granted by THIS
+	 * process's own `linkSync`: both names are inside the ground, so the inode is
+	 * declared and the write through the link is allowed. It must also be REPORTED,
+	 * because an exemption nobody can see is the false green this repo rejects.
+	 */
+	const result = spawnSync(
+		process.execPath,
+		[`--import=${PRELOAD}`, IN_TEMP_PATH],
+		{ encoding: "utf8" },
 	);
+	assert.equal(result.status, 0, result.stderr);
+	assert.match(result.stdout, IN_TEMP_STAGED);
 	assert.match(
-		result.stderr,
+		result.stdout + result.stderr,
 		REPORTS_THE_LINK,
 		"the exemption must be REPORTED, never silently excused",
 	);
-	rmSync(dir, { recursive: true, force: true });
 });
 
 test("a read-only open of a linked file is not a write", () => {
@@ -341,7 +463,7 @@ test("a read-only open of a linked file is not a write", () => {
 		{ encoding: "utf8" },
 	);
 	assert.equal(result.status, 0, result.stderr);
-	assert.match(result.stdout, /read=ORIGINAL/);
+	assert.match(result.stdout, READ_BACK);
 	assert.equal(readFileSync(join(dir, "base"), "utf8"), ORIGINAL);
 });
 
@@ -431,6 +553,182 @@ test("the preload reports its own stand-down, so an unguarded run is not silent"
 		},
 	);
 	assert.match(result.stderr, STANDING_DOWN);
-	assert.match(result.stderr, /will not be refused/);
+	assert.match(result.stderr, WILL_NOT_REFUSE);
 	assert.doesNotMatch(result.stderr, GUARDING);
+});
+
+test("a name given to a shared inode inside the temp ground does not launder it", () => {
+	/*
+	 * THE EVASION, and the reason the exemption is keyed on an inode this process
+	 * declared rather than on the path being written. Two sanctioned calls used to
+	 * defeat the guard: link the shared file into the ground, then write to it
+	 * there. The write's path is inside the ground, so the path-keyed form
+	 * exempted it and the shared inode was clobbered.
+	 */
+	const dir = fixture("evasion");
+	const shared = join(dir, "base");
+	const sibling = join(dir, "b");
+	for (const guard of [false, true]) {
+		reset(dir);
+		const args = guard
+			? [`--import=${PRELOAD}`, EVASION_PATH, shared, sibling]
+			: [EVASION_PATH, shared, sibling];
+		const result = spawnSync(process.execPath, args, { encoding: "utf8" });
+		if (guard) {
+			assert.match(
+				result.stdout,
+				EVASION,
+				`the evasion must be refused; got:\n${result.stdout}`,
+			);
+			assert.match(result.stdout, SHARED_INTACT);
+			assert.match(result.stdout, SIBLING_INTACT);
+		} else {
+			assert.match(
+				result.stdout,
+				EVASION_WROTE,
+				"the unguarded control must actually clobber, or this proves nothing",
+			);
+			assert.match(result.stdout, SHARED_STUBBED);
+		}
+	}
+});
+
+test("the callback, stream, open and rename surfaces each behave as declared", () => {
+	const dir = fixture("surfaces");
+	for (const mode of CALLBACK_MUST_REFUSE) {
+		reset(dir);
+		const result = spawnSync(
+			process.execPath,
+			[`--import=${PRELOAD}`, SURFACES_PATH, dir, mode],
+			{ encoding: "utf8" },
+		);
+		assert.ok(
+			result.stdout.startsWith(`${mode}=refused:SharedInodeWriteError`),
+			`${mode} must be refused; got:\n${result.stdout}${result.stderr}`,
+		);
+		assert.equal(
+			readFileSync(join(dir, "base"), "utf8"),
+			ORIGINAL,
+			`${mode} must leave the inode untouched`,
+		);
+	}
+	for (const mode of CALLBACK_MUST_ALLOW) {
+		reset(dir);
+		const result = spawnSync(
+			process.execPath,
+			[`--import=${PRELOAD}`, SURFACES_PATH, dir, mode],
+			{ encoding: "utf8" },
+		);
+		assert.ok(
+			result.stdout.startsWith(`${mode}=allowed`),
+			`${mode} must not be refused; got:\n${result.stdout}${result.stderr}`,
+		);
+		assert.equal(result.status, 0, result.stderr);
+	}
+});
+
+test("the audit ledger is real, and records both refusals and exemptions", () => {
+	/*
+	 * The module's docstring promises this trail. It was once only a promise —
+	 * `grep NLINK_GUARD_HITS` found the sentence and nothing else — which is the
+	 * false green this guard exists to prevent, so the promise is pinned here.
+	 */
+	const dir = fixture("ledger");
+	reset(dir);
+	const ledger = join(SCRATCH, `ledger-${process.pid}.jsonl`);
+	rmSync(ledger, { force: true });
+	const result = spawnSync(
+		process.execPath,
+		[`--import=${PRELOAD}`, CHILD_PATH, dir, "writeFileSync"],
+		{ encoding: "utf8", env: { ...process.env, NLINK_GUARD_HITS: ledger } },
+	);
+	assert.ok(
+		result.stdout.startsWith("writeFileSync=refused:SharedInodeWriteError"),
+		`the refusal must reach the ledger; got:\n${result.stdout}`,
+	);
+	const lines = readFileSync(ledger, "utf8")
+		.trim()
+		.split("\n")
+		.map((l) => JSON.parse(l));
+	assert.equal(lines.length, 1);
+	assert.equal(lines[0].op, "writeFileSync");
+	assert.equal(lines[0].nlink, 4);
+	assert.equal(lines[0].ino, statSync(join(dir, "base")).ino);
+	assert.equal(lines[0].mayClobber, true);
+	assert.equal(lines[0].exemptInTempGround, false);
+
+	// An exemption is the case a reader most needs to see, so it is recorded too.
+	rmSync(ledger, { force: true });
+	const exempt = spawnSync(
+		process.execPath,
+		[`--import=${PRELOAD}`, IN_TEMP_PATH],
+		{ encoding: "utf8", env: { ...process.env, NLINK_GUARD_HITS: ledger } },
+	);
+	assert.equal(exempt.status, 0, exempt.stdout + exempt.stderr);
+	const exemptLines = readFileSync(ledger, "utf8")
+		.trim()
+		.split("\n")
+		.map((l) => JSON.parse(l));
+	assert.equal(exemptLines.length, 1);
+	assert.equal(exemptLines[0].exemptInTempGround, true);
+});
+
+test("the exemption is reported on BOTH invocation paths, not merely granted", () => {
+	/*
+	 * "Reported, never silently excused" is the property that makes the exemption
+	 * auditable, and it is asserted on both paths because they route differently
+	 * and only one of them is how CI runs:
+	 *
+	 *   - directly, the preload's line reaches stderr (stdout 0 / stderr 1);
+	 *   - through the runner, `--test` folds the child's stderr into its TAP report
+	 *     on STDOUT, so the line arrives there (stdout 1 / stderr 0).
+	 *
+	 * Asserting only one path is how a silent exemption hides: a probe run through
+	 * the runner while the driver sits under `node_modules/` prints no line at all,
+	 * because `node --test` refuses to run a file there and says `Could not find` —
+	 * so the driver is written into the repo-visible scratch and run BOTH ways.
+	 */
+	const direct = spawnSync(
+		process.execPath,
+		[`--import=${PRELOAD}`, IN_TEMP_PATH],
+		{ encoding: "utf8" },
+	);
+	assert.equal(direct.status, 0, direct.stdout + direct.stderr);
+	assert.match(
+		direct.stderr,
+		REPORTS_THE_LINK,
+		"direct: the line belongs on stderr",
+	);
+	assert.equal(
+		direct.stdout.includes("declared inside the temp ground"),
+		false,
+		"direct: it must not be on stdout",
+	);
+
+	/*
+	 * A driver the runner will actually run: outside node_modules and named
+	 * `*.test.mjs`, so `node --test` collects it rather than answering
+	 * `Could not find` — which is the whole reason a probe under node_modules
+	 * appears to show "no exemption line".
+	 */
+	const runnerDriver = join(
+		REPO,
+		"scripts",
+		"no-hardlink-write-exemption-fixture.test.mjs",
+	);
+	writeFileSync(runnerDriver, RUNNER_DRIVER);
+	try {
+		const viaRunner = spawnSync(
+			process.execPath,
+			[RUNNER, "--test-concurrency=1", runnerDriver],
+			{ encoding: "utf8" },
+		);
+		assert.match(
+			viaRunner.stdout + viaRunner.stderr,
+			REPORTS_THE_LINK,
+			`runner: the exemption must still be reported; got stdout=${JSON.stringify(viaRunner.stdout.slice(-300))} stderr=${JSON.stringify(viaRunner.stderr.slice(-300))}`,
+		);
+	} finally {
+		rmSync(runnerDriver, { force: true });
+	}
 });
