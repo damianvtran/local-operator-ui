@@ -196,12 +196,23 @@ type Story = StoryObj;
 export const ThisDevice: Story = {
 	render: () => <Frame peersEnabled />,
 	play: async () => {
-		await waitFor(() =>
-			document.querySelector<HTMLElement>("#new-session-device"),
-		);
-		const trigger = document.querySelector<HTMLElement>("#new-session-device");
-		if (trigger?.textContent?.trim() !== "This device")
-			throw new Error(`the trigger reads "${trigger?.textContent?.trim()}"`);
+		/*
+		 * THE PREDICATE MUST THROW (design round 4, D26). `waitFor` from
+		 * `@storybook/test` retries while its callback THROWS and resolves the moment
+		 * it returns - so `() => document.querySelector(...)` resolves on the first
+		 * tick with `null` and this play asserted against an element that had not
+		 * mounted, reporting `the trigger reads "undefined"`. A guard that cannot see
+		 * the node is worse than no guard: it is green when it should be red and red
+		 * when the product is fine. Every predicate in this file now throws on
+		 * absence, which makes the wait real.
+		 */
+		const trigger = await waitFor(() => {
+			const node = document.querySelector<HTMLElement>("#new-session-device");
+			if (!node) throw new Error("no device trigger yet");
+			return node;
+		});
+		if (trigger.textContent?.trim() !== "This device")
+			throw new Error(`the trigger reads "${trigger.textContent?.trim()}"`);
 		await screen.findByText("Must exist on this machine.");
 	},
 };
@@ -279,7 +290,18 @@ export const PeerChosenLongName: Story = {
 			await screen.findByRole("option", { name: RACK_NAME }),
 		);
 		await screen.findByText(`Starts in ${RACK_NAME}'s home folder.`);
-		if (trigger.scrollWidth > trigger.clientWidth + 1)
+		/*
+		 * THE TRIGGER IS RE-READ, NOT REMEMBERED (design round 4, D26). The node captured
+		 * before the click is the PRE-choice trigger; React can replace it when the
+		 * choice lands, and a detached node has `clientWidth` 0 with a non-zero
+		 * `scrollWidth` - so the old form reported "the trigger overflows" on a trigger
+		 * the designer measured at 532/532 with the whole name inside it. Measuring the
+		 * live node is the guard; measuring a stale one is a false alarm.
+		 */
+		const live = document.querySelector<HTMLElement>("#new-session-device");
+		if (!live)
+			throw new Error("the device trigger left the document after the choice");
+		if (live.scrollWidth > live.clientWidth + 1)
 			throw new Error("the trigger overflows with a long device name");
 	},
 };

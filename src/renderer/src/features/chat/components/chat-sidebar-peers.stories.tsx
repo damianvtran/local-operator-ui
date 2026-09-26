@@ -48,7 +48,7 @@ const NOW = 1_789_400_240;
  *
  * THE FIXTURE'S CLOCK MUST AGREE WITH THE WINDOW'S (design round 2, D4). S4 pinned
  * `last_seen_at: NOW - 4 * 60` - "4 minutes ago" in the fixture's own words - while
- * `peerTrailing` read `Date.now()`: the frame showed `unreachable · 9d` the day it
+ * `peerTrailingParts` read `Date.now()`: the frame showed `unreachable · 9d` the day it
  * was captured, one day more the next, and from a 3-character age the 40%-capped
  * cell showed `unreachable · 1…` - a wrong number, which is worse than no age. A
  * frozen `Date.now` was the alternative and is worse: this module shares a page
@@ -143,7 +143,7 @@ const peer = (
 	 * latency truthfully - so a fixture carrying `24`/`61`/`140` was evidence of a UI
 	 * that cannot exist, and the frames taken from it showed a value the product will
 	 * never render. The field stays in the wire type; the sidebar no longer reads it
-	 * (`peerTrailing`), so nothing here can put a latency on a row.
+	 * (`peerTrailingParts`), so nothing here can put a latency on a row.
 	 */
 	rtt_ms: null,
 	session_count: 0,
