@@ -124,6 +124,14 @@ const CONSOLE_PANE_WIDTH = 796;
 const KEY_CODES = {
 	Escape: { code: "Escape", keyCode: 27 },
 	Tab: { code: "Tab", keyCode: 9 },
+	/*
+	 * The menu-walk keys the identity entries use: `ArrowDown` moves Radix's
+	 * roving focus onto the first row (the keyboard-highlight frame) and `Enter`
+	 * commits it (the busy frame's pick). Both had to exist here rather than in
+	 * a selector because a highlight is keyboard STATE, not a clickable target.
+	 */
+	ArrowDown: { code: "ArrowDown", keyCode: 40 },
+	Enter: { code: "Enter", keyCode: 13 },
 };
 
 /*
@@ -1306,6 +1314,197 @@ export const STORIES = [
 	 */
 	["chat-header-cluster--console-blip", 560, 84],
 	["chat-header-cluster--console-blip-resting", 560, 84],
+	/*
+	 * THE CHAT HEADER'S IDENTITY CONTROLS (operator, 2026-09-26): the team and
+	 * the agent as two menus you can switch, plus the rename pencil the title
+	 * reveals on hover.
+	 *
+	 * The band states share the cluster's 560x84 frame so a reviewer holds them
+	 * beside those; the five menu states declare 220px instead, because the
+	 * panel hangs BELOW the 84px row and a frame at the band's own size cuts it
+	 * off - the first swing photographed the open menu's first row and clipped
+	 * the second, a picture of a menu the reader cannot check against the list.
+	 *
+	 * WHY THE PRESS AND HOVER ENTRIES. Several of the claims are about states a
+	 * resting frame cannot show: the menu that opens on a press (with the
+	 * current row marked), the pencil that only exists while the TITLE is
+	 * hovered, the assign affordance's own menu, and the four states design
+	 * round 1's D4 listed as unframed - the trigger's own hover and focus ring,
+	 * a keyboard-highlighted row, and the busy spinner mid-switch.
+	 *
+	 * THE SHUTTERS ASSERT, EXCEPT WHERE THEY WAIT. `expectPresent` is a one-shot
+	 * claim read at shutter time, not a wait: it makes a closed menu (or a lost
+	 * highlight, or a missing refusal row) FAIL the run rather than photograph
+	 * the wrong state - the verb an earlier comment got wrong (bot 7). The one
+	 * WAIT is the refused entry's, and it is the story's own `capturePending`
+	 * latch: it holds until the refusal row is in the DOM, because the retry
+	 * window between the registry's 503 and its settled row is a state the
+	 * shutter once caught (design D1 / agent review round 1's finding 2, fixed
+	 * here rather than re-read from the frame). The hover entries go through the
+	 * rig's real pointer and the focus entries through real Tab presses, so a
+	 * frame filed under `:hover` or `:focus-visible` is one the element
+	 * genuinely matched. `before` is the string this change replaces, rendered
+	 * by the same story on this tree; the declared `before-main` set is the
+	 * origin/main half, re-captured by swapping main's `chat-header.tsx` under
+	 * this story file - see that set's README and the manifest's `source`.
+	 */
+	["chat-header-identity--team-bound", 560, 84],
+	[
+		"chat-header-identity--team-bound",
+		560,
+		220,
+		{
+			press: '[data-header-identity="team"]',
+			expectPresent: '[data-header-identity-menu="team"]',
+			dir: "team-menu-open",
+		},
+	],
+	[
+		"chat-header-identity--team-bound",
+		560,
+		220,
+		{
+			press: '[data-header-identity="agent"]',
+			expectPresent: '[data-header-identity-menu="agent"]',
+			dir: "agent-menu-open",
+		},
+	],
+	/*
+	 * The trigger's own pre-click states (design D4): pointer hover and the
+	 * keyboard's focus ring, each through the input path that makes the state
+	 * real - the hover via `Input.dispatchMouseEvent` (which the rig asserts
+	 * against `:hover` before the shutter), the focus via real Tab presses,
+	 * because Blink matches `:focus-visible` for a Tab walk and not for a
+	 * programmatic `focus()`.
+	 */
+	[
+		"chat-header-identity--team-bound",
+		560,
+		84,
+		{ hover: '[data-header-identity="team"]', dir: "team-trigger-hover" },
+	],
+	[
+		"chat-header-identity--team-bound",
+		560,
+		84,
+		{ tabTo: '[data-header-identity="team"]', dir: "team-trigger-focus" },
+	],
+	/*
+	 * The pencil revealed by FOCUS rather than pointer - the reveal is
+	 * `group-focus-within` on the title block, and the claim is implicit in
+	 * `tabTo`: a selector that never takes focus fails the run.
+	 */
+	[
+		"chat-header-identity--team-bound",
+		560,
+		84,
+		{ tabTo: "[data-header-rename]", dir: "pencil-focus" },
+	],
+	/*
+	 * A keyboard-highlighted menu row: opened by pointer, then ArrowDown puts
+	 * Radix's roving focus on the first row. The claim makes a lost highlight
+	 * fail the run instead of shipping a resting menu under this name.
+	 */
+	[
+		"chat-header-identity--team-bound",
+		560,
+		220,
+		{
+			press: '[data-header-identity="team"]',
+			keys: [{ key: "ArrowDown", settleMs: 300 }],
+			expectPresent: [
+				'[data-header-identity-menu="team"]',
+				'[data-header-identity-menu="team"] [data-highlighted]',
+			],
+			dir: "team-menu-keyboard-highlight",
+		},
+	],
+	[
+		"chat-header-identity--team-bound",
+		560,
+		84,
+		{ hover: "[data-header-title]", dir: "title-hover" },
+	],
+	["chat-header-identity--no-team-no-agent", 560, 84],
+	[
+		"chat-header-identity--no-team-no-agent",
+		560,
+		220,
+		{
+			press: '[data-header-identity="team"]',
+			expectPresent: '[data-header-identity-menu="team"]',
+			dir: "assign-team-menu",
+		},
+	],
+	["chat-header-identity--agent-and-team", 560, 84],
+	["chat-header-identity--before", 560, 84],
+	/* The operator's own width: the same arrangement the screenshot showed. */
+	["chat-header-identity--wide", 1380, 84],
+	/* The menu's two honest states, from the catalogue's own answers: no teams
+	 * registered, and the registry's refusal in its own words. */
+	[
+		"chat-header-identity--team-menu-empty",
+		560,
+		220,
+		{
+			press: '[data-header-identity="team"]',
+			expectPresent: '[data-header-identity-menu="team"]',
+		},
+	],
+	[
+		"chat-header-identity--team-menu-refused",
+		560,
+		220,
+		{
+			press: '[data-header-identity="team"]',
+			/*
+			 * The settle condition, not a longer clock (design D1): the story's
+			 * latch holds `capturePending` until the refusal row is in the DOM,
+			 * and this second claim re-states the row at shutter time so a
+			 * regression fails the run rather than filing a loading row under
+			 * the refusal's name.
+			 */
+			expectPresent: [
+				'[data-header-identity-menu="team"]',
+				"[data-header-identity-error]",
+			],
+		},
+	],
+	/*
+	 * The switch IN FLIGHT (design D4's busy spinner): the story holds the
+	 * receipt for six seconds, two ArrowDowns walk the roving focus off the
+	 * current row, and Enter commits the pick. The claim is the attribute the
+	 * busy state IS - `aria-busy="true"` on the trigger - so a frame that
+	 * arrived after the receipt resolved fails rather than lying, and the
+	 * trigger's box is the docblock's claim (the spinner takes the chevron's
+	 * slot, nothing moves).
+	 */
+	[
+		"chat-header-identity--team-menu-busy",
+		560,
+		84,
+		{
+			press: '[data-header-identity="team"]',
+			keys: [
+				{ key: "ArrowDown", settleMs: 300 },
+				{ key: "ArrowDown", settleMs: 200 },
+				{ key: "Enter", settleMs: 250 },
+			],
+			expectAttribute: {
+				selector: '[data-header-identity="team"]',
+				name: "aria-busy",
+				equals: "true",
+			},
+			dir: "team-busy",
+		},
+	],
+	/*
+	 * The fold the controls accept at the operator's own title length (design
+	 * D3's boundary frame): 49 characters at the 560 band, where the identity
+	 * line sits on the clipped second line. The frame is the decision, not a
+	 * defect - the title outranks the path and the identity by construction.
+	 */
+	["chat-header-identity--narrow-fold", 560, 84],
 	/*
 	 * The strip's own arithmetic at the pane's width, and the route's strip at the
 	 * same tab count (design round 1, D1's remainder; QA round 1, Q2). The pair is
