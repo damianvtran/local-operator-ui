@@ -1,17 +1,17 @@
 {
 	"arm": "before",
 	"ref": "origin/main",
-	"md5Before": {
-		"src/renderer/src/features/chat/canonical/scroll-paging.ts": "7198d678812f05fc",
-		"src/renderer/src/features/chat/canonical/use-scroll-paging.ts": "4e2a89ea0ce49674"
+	"sha256Before": {
+		"src/renderer/src/features/chat/canonical/scroll-paging.ts": "2a5c4056b1111f36",
+		"src/renderer/src/features/chat/canonical/use-scroll-paging.ts": "b375dea0a576d08e"
 	},
-	"md5AfterSwap": {
+	"sha256AfterSwap": {
 		"src/renderer/src/features/chat/canonical/scroll-paging.ts": "c363b3ceb221b24c",
 		"src/renderer/src/features/chat/canonical/use-scroll-paging.ts": "e78cfcd67a34e425"
 	},
-	"md5Restored": {
-		"src/renderer/src/features/chat/canonical/scroll-paging.ts": "7198d678812f05fc",
-		"src/renderer/src/features/chat/canonical/use-scroll-paging.ts": "4e2a89ea0ce49674"
+	"sha256Restored": {
+		"src/renderer/src/features/chat/canonical/scroll-paging.ts": "2a5c4056b1111f36",
+		"src/renderer/src/features/chat/canonical/use-scroll-paging.ts": "b375dea0a576d08e"
 	},
 	"restored": true,
 	"harnessExit": 0

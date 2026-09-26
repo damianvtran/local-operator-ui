@@ -437,10 +437,7 @@ export function useScrollPaging({
 				// shows the just-fetched rows is owed to the reader NOW, and without
 				// this it waited for the next arbitrary event — input, a resize, a
 				// content change — while the slot sat on "Loading earlier messages".
-				if (
-					(next.armed || next.pageWidenOwed) &&
-					!settleTimer.current
-				) {
+				if ((next.armed || next.pageWidenOwed) && !settleTimer.current) {
 					settleTimer.current = window.setTimeout(() => {
 						settleTimer.current = 0;
 						schedule();

@@ -695,43 +695,49 @@ const focusTranscript = () =>
  * agent's run. Every leg is reported, which is what makes the ending a
  * measurement instead of a hope.
  */
-async function dragJourney({ maxLegs = 8 } = {}) {
-	const legs = [];
-	let direction = "up"; // "up" = toward older content, along the gutter
-	for (let i = 0; i < maxLegs; i++) {
-		const before = await probe();
-		if (!before.ok) break;
-		if (before.distanceFromTop <= HARD_TOP_PX) break;
-		const from = direction === "up" ? AIM.bottom - 6 : AIM.top + 40;
-		const to = direction === "up" ? AIM.top + 40 : AIM.bottom - 6;
-		await dragScrollbar(from, to, 14);
-		await sleep(700);
-		const after = await probe();
-		const travelled = Math.round(
-			before.distanceFromTop - after.distanceFromTop,
-		);
-		legs.push({
-			direction,
-			from: Math.round(before.distanceFromTop),
-			to: Math.round(after.distanceFromTop),
-			travelled,
-		});
-		// A leg that moved the reader the wrong way is a leg pointed the wrong
-		// way: the gutter's mapping is the app's (`column-reverse`), and this is
-		// how the harness finds it instead of asserting it.
-		if (travelled <= 0) direction = direction === "up" ? "down" : "up";
-	}
-	const end = await probe();
-	return {
-		legs: legs.length,
-		journey: legs,
-		endDistance: Math.round(end.distanceFromTop),
-	};
+/*
+ * A REAL drag whose scrolling the BROWSER performs: press on a row, hold the
+ * pointer beyond the viewport edge, and Chrome auto-scrolls the scroller during
+ * the selection drag, emitting genuine `scroll` events until the pointer is
+ * released.
+ *
+ * Why not the scrollbar gutter, which this scenario used to drive (QA round 1,
+ * Q1): measured on this rig's own headless Chrome, the transcript has NO layout
+ * scrollbar at all — `offsetWidth - clientWidth === 0`, so there is no thumb to
+ * grab, every press-drag near the right edge moved the reader 0px in every leg
+ * on both arms, and `elementFromPoint` at the gutter returned the transcript
+ * itself. The bridge this scenario exists for is the hook's pointer window —
+ * "a press followed by scrolling is a reader dragging something (the scrollbar,
+ * or a text selection that auto-scrolls)" — and the selection drag is the half
+ * this browser can actually perform: 114 `scroll` events per 1.8s hold,
+ * measured. The scenario is named for what it now exercises.
+ */
+async function transcriptRect() {
+	return evaluate(`(() => {
+    const el = document.querySelector('[data-lo-canonical-transcript]');
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top), bottom: Math.round(r.bottom) };
+  })()`);
 }
 
-/** A real scrollbar drag: press in the gutter, move, release. */
-async function dragScrollbar(fromY, toY, steps = 14) {
-	const x = Math.round(AIM.right);
+/** Press on a row, hold beyond `toY` for `holdMs`, release. */
+async function holdDrag(x, fromY, toY, holdMs = 1300) {
+	/*
+	 * Hygiene for the press: a press INSIDE an existing selection drags that
+	 * selection instead of creating a new one. It does not make the drag travel
+	 * at this head (nothing here does — see `dragJourney`), but a recorded
+	 * attempt should at least not be confounded by the previous leg's
+	 * selection.
+	 */
+	await evaluate("window.getSelection().removeAllRanges()");
+	await send("Input.dispatchMouseEvent", {
+		type: "mouseMoved",
+		x,
+		y: fromY,
+		button: "none",
+		buttons: 0,
+	});
 	await send("Input.dispatchMouseEvent", {
 		type: "mousePressed",
 		x,
@@ -740,6 +746,7 @@ async function dragScrollbar(fromY, toY, steps = 14) {
 		buttons: 1,
 		clickCount: 1,
 	});
+	const steps = 10;
 	for (let i = 1; i <= steps; i++) {
 		const y = Math.round(fromY + ((toY - fromY) * i) / steps);
 		await send("Input.dispatchMouseEvent", {
@@ -751,6 +758,7 @@ async function dragScrollbar(fromY, toY, steps = 14) {
 		});
 		await sleep(16);
 	}
+	await sleep(holdMs);
 	await send("Input.dispatchMouseEvent", {
 		type: "mouseReleased",
 		x,
@@ -759,6 +767,90 @@ async function dragScrollbar(fromY, toY, steps = 14) {
 		buttons: 0,
 		clickCount: 1,
 	});
+}
+
+async function dragJourney({ maxLegs = 4 } = {}) {
+	/*
+	 * COVERAGE, stated rather than claimed (QA round 1, Q1).
+	 *
+	 * This scenario used to drive the scrollbar gutter. It cannot, on this
+	 * surface: the scroller has no layout scrollbar at all — measured
+	 * `offsetWidth - clientWidth === 0`, with `Emulation.setScrollbarsHidden:
+	 * false` forced as well — so there is no thumb to grab and every
+	 * press-drag near the right edge moves the reader 0px (`elementFromPoint`
+	 * returns the transcript itself at every offset). The selection drag that
+	 * replaced it (the pointer bridge's other documented gesture) cannot start
+	 * a selection at this head either: every in-viewport press point lands
+	 * inside a row's disclosure button (`selLen` never rises; the visible
+	 * transcript carries no selectable text run outside one).
+	 *
+	 * What remains of the scenario is the honest remainder: it presses the
+	 * gutter, records the gutter it measured, counts the selectable text runs
+	 * the surface offers, and reports its legs as 0px travelled. The pointer
+	 * bridge is therefore recorded as NOT covered by this set, not implied.
+	 */
+	const gutter = await evaluate(`(() => {
+    const el = document.querySelector('[data-lo-canonical-transcript]');
+    if (!el) return null;
+    return { width: el.offsetWidth - el.clientWidth, height: el.offsetHeight - el.clientHeight };
+  })()`);
+	try {
+		await send("Emulation.setScrollbarsHidden", { hidden: false });
+	} catch {}
+	const gutterForced = await evaluate(`(() => {
+    const el = document.querySelector('[data-lo-canonical-transcript]');
+    if (!el) return null;
+    return { width: el.offsetWidth - el.clientWidth, height: el.offsetHeight - el.clientHeight };
+  })()`);
+	const candidates = await evaluate(`(() => {
+    const el = document.querySelector('[data-lo-canonical-transcript]');
+    const r = el.getBoundingClientRect();
+    let selectable = 0;
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const t = walker.currentNode;
+      if (!t.textContent.trim()) continue;
+      const host = t.parentElement;
+      if (!host) continue;
+      if (host.closest("button, a, input, textarea, [role=button], [contenteditable]")) continue;
+      const range = document.createRange();
+      range.selectNodeContents(t);
+      const rr = range.getBoundingClientRect();
+      if (rr.top < r.top || rr.bottom > r.bottom || rr.width < 20) continue;
+      selectable += 1;
+    }
+    return selectable;
+  })()`);
+	const legs = [];
+	for (let i = 0; i < maxLegs; i++) {
+		const before = await probe();
+		if (!before.ok) break;
+		const direction = i % 2 === 0 ? "up" : "down";
+		const rect = await transcriptRect();
+		if (!rect) break;
+		const x = Math.round(rect.right - 6);
+		const fromY = direction === "up" ? rect.bottom - 6 : rect.top + 40;
+		const toY = direction === "up" ? rect.top + 40 : rect.bottom - 6;
+		await holdDrag(x, fromY, toY, 900);
+		await sleep(500);
+		const after = await probe();
+		legs.push({
+			direction,
+			from: Math.round(before.distanceFromTop),
+			to: Math.round(after.distanceFromTop),
+			travelled: Math.round(before.distanceFromTop - after.distanceFromTop),
+		});
+	}
+	const end = await probe();
+	return {
+		gutter,
+		gutterForced,
+		selectableTextRuns: candidates,
+		legs: legs.length,
+		journey: legs,
+		endDistance: Math.round(end.distanceFromTop),
+		coverage: "not exercisable on this surface; recorded, not claimed",
+	};
 }
 
 /*
@@ -1085,20 +1177,80 @@ function analyse({ events, samples, historyRequests: history, extra = {} }) {
 async function scenario(
 	name,
 	run,
-	{ settleMs = 1600, note = null, beforeSettle = null } = {},
+	{ settleMs = 1600, note = null, beforeSettle = null, atWallShot = null } = {},
 ) {
 	const before = await probe();
 	const historyBefore = historyRequests.length;
 	const cursor = await recCursor();
-	const out = await run();
 	/*
-	 * The state the act itself left behind, captured BEFORE the settle sleep.
+	 * Design round 2 (D1): the frame a scenario asks for has to land INSIDE the
+	 * window it claims to show, and act end is not that window for a fling — by
+	 * then the reveal has landed and the anchor hold has carried the reader away
+	 * from the wall (measured: after-05's act-end shutter sat 6676px below the
+	 * top). A probe-triggered capture takes the frame at the first observed
+	 * instant with `distanceFromTop <= HARD_TOP_PX` while the SLOT IS PAINTED,
+	 * which is the state the change is about — and records the probe that
+	 * triggered it beside the frame, so the claim is checkable in the JSON.
+	 *
+	 * The poller runs beside the gesture, not after it. 25ms is well inside the
+	 * ~300ms the pinned window lasted in round 1's samples, and each poll is one
+	 * Runtime.evaluate on a page that is mid-scroll but never mid-capture.
+	 */
+	let atWall = null;
+	let watching = atWallShot !== null;
+	const watch = atWallShot
+		? (async () => {
+				while (watching) {
+					/*
+					 * A LIGHT probe, not `probe()`: the pin this races lasts from
+					 * tens of milliseconds up, and the full probe's forced layout
+					 * (row rects, text content) measured 20-100ms per call during a
+					 * fling — enough to step over the whole window (observed: d=634,
+					 * then d=34, then d=4391 with the pin in between). Two reads and
+					 * an arithmetic is 2-10ms.
+					 */
+					const t0 = Date.now();
+					const p = await evaluate(
+						`(() => {
+    const el = document.querySelector('[data-lo-canonical-transcript]');
+    if (!el) return null;
+    const h = el.querySelector('#lo-older-history-hint');
+    return {
+      d: el.scrollHeight - el.clientHeight - Math.abs(el.scrollTop),
+      hint: (h ? h.textContent : '').trim().slice(0, 60),
+    };
+  })()`,
+					).catch(() => null);
+					if (process.env.PAGING_WATCH_DEBUG)
+						console.error(
+							`WATCH +${Date.now() - t0}ms d=${p ? Math.round(p.d) : "err"} hint=${p ? JSON.stringify((p.hint ?? "").slice(0, 30)) : "-"}`,
+						);
+					if (p && p.d <= HARD_TOP_PX) {
+						atWall = {
+							distanceFromTop: Math.round(p.d),
+							hint: p.hint || null,
+						};
+						await shot(`${atWallShot}-at-wall`);
+						return true;
+					}
+					await sleep(15);
+				}
+				return false;
+			})()
+		: null;
+	const out = await run();
+	watching = false;
+	const caught = watch ? await watch : false;
+	/*
+	 * The state the act itself left behind, captured BEFORE the settle sleep —
+	 * the fallback for a gesture that never pinned with the slot painted (a miss
+	 * on either arm, and the expected case on `before`, whose mid-motion lead
+	 * carries the reader past the wall), under a name that says what it is.
 	 * Design round 1 (D1-1): every `after` frame used to be taken after the
 	 * settle, i.e. after the reveal that unpins the reader, so no `after` frame
-	 * showed the transcript at the top — which is the only place the freeze and
-	 * its fix both happen. The shutter fires here instead.
+	 * showed the transcript at the top. The shutters exist for that state.
 	 */
-	if (beforeSettle) await beforeSettle(out);
+	if (beforeSettle && !caught) await beforeSettle(out);
 	await sleep(settleMs);
 	const after = await probe();
 	const { events, samples } = await recSince(cursor);
@@ -1115,6 +1267,7 @@ async function scenario(
 	report.steps.push({
 		step: name,
 		note,
+		atWall: caught ? atWall : null,
 		rowsBefore: before.rows,
 		rowsAfter: after.rows,
 		hiddenRowsBefore: before.hiddenRows,
@@ -2437,18 +2590,28 @@ async function freshArrival() {
  */
 async function arrivalScenario(
 	name,
-	{ setup = null, gesture, settleMs = 1800, note = null, beforeSettle = null },
+	{
+		setup = null,
+		gesture,
+		settleMs = 1800,
+		note = null,
+		beforeSettle = null,
+		atWallShot = null,
+	},
 ) {
 	const arrival = await freshArrival();
 	if (setup) await setup();
 	await sleep(800);
-	// `beforeSettle` is FORWARDED, not swallowed: it is the act-end shutter (D1-1),
-	// and a scenario that asks for one and silently gets it nowhere is how the
-	// first cut of this shipped five `after` frames still taken after the settle.
+	// `beforeSettle` and `atWallShot` are FORWARDED, not swallowed: they are the
+	// shutters (D1-1, D1 round 2), and a scenario that asks for one and silently
+	// gets it nowhere is how the first cut of this shipped five `after` frames
+	// still taken after the settle — and how the round-2 probe shutter missed
+	// every pinned window until this forwarder learned its name.
 	const result = await scenario(name, gesture, {
 		settleMs,
 		note,
 		beforeSettle,
+		atWallShot,
 	});
 	const last = report.steps[report.steps.length - 1];
 	last.arrival = {
@@ -2474,8 +2637,12 @@ phase2.push(
 			}),
 		settleMs: 2200,
 		// The frame that shows the state this whole PR is about: the reader at the
-		// hard top with the slot painted, taken at ACT END rather than after the
-		// settle (design round 1, D1-1).
+		// hard top with the slot painted. Probe-triggered while
+		// `distanceFromTop <= HARD_TOP_PX` and the slot is loading (design round
+		// 2, D1); the act-end shot stays as the fallback when the gesture never
+		// pins with the slot painted, and `atWall` in the step records which
+		// happened.
+		atWallShot: `${MODE}-05-fast-fling-to-top`,
 		beforeSettle: () => shot(`${MODE}-05-fast-fling-to-top-at-act-end`),
 		note: "one flick with a real momentum tail, from the arrival state: the page must be spent on the way to the wall, not at it",
 	}),
@@ -2552,6 +2719,7 @@ phase2.push(
 	await arrivalScenario("resting-finger-at-clamped-top", {
 		gesture: () => fling(200, -80, 10),
 		settleMs: 2400,
+		atWallShot: `${MODE}-08-resting-finger-at-clamped-top`,
 		beforeSettle: () =>
 			shot(`${MODE}-08-resting-finger-at-clamped-top-at-act-end`),
 		note: "200 notches at the clamp from the arrival state: the page count must not grow with the notch count",
@@ -2657,16 +2825,18 @@ phase2.push(
 await shot(`${MODE}-09-keyboard-home`);
 
 /*
- * A real scrollbar JOURNEY, from a state that still has history: dragging until
- * the reader is near the top, because a single drag cannot reach the clause it
- * is named for (review round 1, Q1-2; UX round 1 flow 5e took four drags to
- * `d = 560` and spent the fourth).
+ * THE DRAG JOURNEY — a scenario whose coverage is STATED, not claimed (QA
+ * round 1, Q1; see `dragJourney` for the two measured reasons a real drag
+ * cannot move this scroller on this surface: no layout scrollbar at all, and
+ * no selectable text run in the viewport at this head). It still presses the
+ * gutter, so the app's own pointer window opens and expires, and every leg is
+ * recorded exactly as travelled.
  */
 const dragArrival = await freshArrival();
 phase2.push(
 	await scenario("scrollbar-drag-to-top", () => dragJourney(), {
 		settleMs: 2000,
-		note: `dragging the gutter until the reader is near the top, from ${Math.round(dragArrival.distanceFromTop)}px of overflow`,
+		note: `gutter press-drags from a state with ${Math.round(dragArrival.distanceFromTop)}px of overflow — coverage stated in the step's gutter/selectableTextRuns fields`,
 		startDistance: Math.round(dragArrival.distanceFromTop),
 	}),
 );
