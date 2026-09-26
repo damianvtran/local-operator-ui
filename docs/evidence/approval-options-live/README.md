@@ -38,7 +38,7 @@ and after are the diff between that directory and this branch's
 
 Each record's `tree` also names the trees the frames were taken from
 (`srcTree`/`head`, with `srcDirty` there to catch a run on an uncommitted
-tree): this set's are `aabd6719b1` / `1249f8ebc3` — the folded tip this
+tree): this set's are `ea3fad4c40` / `2c3e9b9440` — the folded tip this
 branch ships at (the arms are re-run on the folded tree, because #521's
 sidebar is painted in every one of them).
 
