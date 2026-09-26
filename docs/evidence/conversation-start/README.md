@@ -1,10 +1,10 @@
 # Conversation start: the press, the flip, the failure, the return
 
 Two halves, one rig. `after/` is this branch (`feat/conversation-start`) at its
-current head, folded onto `origin/main` = `eddfae750b` (#537, #540, #541, #542)
-and re-shot AFTER the round-1 remediation; `before/` is unmodified `origin/main`
-at that same `eddfae750b`, in its own detached worktree, with an identical build
-configuration. Same tap, same backend, same message, same window (1380x900,
+current head, folded onto `origin/main` = `fb89e6e374` (#543, #546 over #537,
+#540, #541, #542) and re-shot AFTER the round-1 remediation; `before/` is
+unmodified `origin/main` at that same `fb89e6e374`, in its own detached
+worktree, with an identical build configuration. Same tap, same backend, same message, same window (1380x900,
 plus the 800x600 floor run): the difference between the halves is the change.
 
 **THE RUNTIME, and why this set exists twice over the same code path.** The
@@ -29,8 +29,8 @@ from.
 
 | Frame | What it shows | The claim it is evidence for |
 | --- | --- | --- |
-| `after/press/` | The press frame: the row is on the conversation, the composer is empty, the working line reads `starting the session 1s`, the band has no greeting, the header reads "New chat · Starting the session", and the sidebar lists the chat as `Draft: Summarise yesterday's QA run.` | T1/J1/J5 + D3: the message is a store-level fact from the press, before `sessions/create` answers, and the chat keeps a sidebar presence through the hop. |
-| `after/flip/` + `after/flip-plus-1s/` | The same row, same id, same place; the line reads `waiting for the agent 2s` (no restart: the press's clock was already at 2s). | T2/J1/J2/J5: one row, no position jump, one clock across the identity flip. |
+| `after/press/` | The press frame: the row is on the conversation, the composer is empty, the working line reads `starting the session 2s`, the band has no greeting, the header reads "New chat · Starting the session", and the sidebar lists the chat as `Draft: Summarise yesterday's QA run.` | T1/J1/J5 + D3: the message is a store-level fact from the press, before `sessions/create` answers, and the chat keeps a sidebar presence through the hop. |
+| `after/flip/` + `after/flip-plus-1s/` | The same row, same id, same place; the line reads `waiting for the agent 3s` (no restart: the press's clock was already at 2s). | T2/J1/J2/J5: one row, no position jump, one clock across the identity flip. |
 | `after/failure/` (+ `failure-before-retry/`) | A message the owner refused AFTER the paint: its row carries `Couldn't confirm your message was sent. Sending it again is safe.` with `Send again` · `Edit`; the composer is empty and no alert is up. The `failure-before-retry` frame is the run's retry arm, shipped because the run took that path - the failure frame above is the retry's. | T4/J4: one failure, one sentence, one home. |
 | `after/reload/` | `Page.reload` after the failure and its resolution: the row is back with `Not delivered` · `Send again` · `Edit`, and **no wait line** - the settled claim is not "still going out". | T6 + D1/D2: a painted-but-failed (or resolved-undelivered) row survives a reload, and one message cannot be both `Not delivered` and waited on. |
 | `after/dead-create/`, `after/dead-create-reload/` | The tap KILLED the create's socket inside the press window (`POST /__tap/kill-creates`): the row keeps its place and the failure's statement (`Couldn't reach Local Operator. Your message may not have been sent.` with both controls), the composer stays empty, and the sidebar still lists the chat; the reload brings the row back. | U2: a create that dies in the hop leaves the message with a row, a statement and a sidebar presence - not only a reload. |
@@ -44,7 +44,7 @@ from.
 
 ## The readings (J1-J6), from the logs beside the frames
 
-- **J1 one row.** After: `press` ids `["2498bfbc-3ea2-40ef-8549-4e41a715f2b8"]`
+- **J1 one row.** After: `press` ids `["fa9132db-cde2-4150-868c-7968605abcc0"]`
   (1 row, on the draft pane's own identity, on a warm runtime); `flip`'s ids are
   that same id once, the owner's answer's row beside it. Before: the press has
   `rows 0` and the composer holds the text - the row did not exist yet.
@@ -60,7 +60,7 @@ from.
   the composer with `Couldn't confirm your message was sent. Sending it again is
   safe.RetryClear` as the composer's alert.
 - **J5 one continuous clock.** After: `starting the session 2s` (press) →
-  `waiting for the agent 2s` (flip) → `waiting for the agent 13s` (return, read
+  `waiting for the agent 3s` (flip) → `waiting for the agent 13s` (return, read
   off the away message's own press). Before: the flip's line reads `waiting for
   the agent 0s` - the clock starts at the flip - and the return carries no line
   at all.
@@ -89,7 +89,7 @@ inside this rig, every inherited `CMUX_*`/`LOP_*` variable stripped. The rendere
 is built against `http://127.0.0.1:7391`.
 
 **The tap: `harness/create-tap.mjs`.** One hop in front of that backend that can
-(a) hold `POST /v1/desktop/sessions` for 2500 ms, so the press frame is taken
+(a) hold `POST /v1/desktop/sessions` for 3000 ms, so the press frame is taken
 while the create is genuinely in flight; (b) answer the next message POST with
 the owner's captured `runtime_unreachable` body, which is how the post-paint
 failure is real; (c) hold message POSTs (60 s for the away trip - long enough to
@@ -112,7 +112,7 @@ LOCAL_OPERATOR_CONFIG_DIR=<scratch>/root LOCAL_OPERATOR_DESKTOP_TOKEN=<token> \
   lop serve --host 127.0.0.1 --port 7392 --hosting test --model mock &
 # with <scratch>/root/config.yml carrying `values: {hosting: test, model_name: mock}`
 # 2. the tap in front of it, WITH TAP_LOG so the wire is recorded
-TAP_PORT=7391 TAP_TARGET=http://127.0.0.1:7392 CREATE_DELAY_MS=2500 TAP_LOG=<scratch>/wire.log \
+TAP_PORT=7391 TAP_TARGET=http://127.0.0.1:7392 CREATE_DELAY_MS=3000 TAP_LOG=<scratch>/wire.log \
   node docs/evidence/conversation-start/harness/create-tap.mjs &
 # 3. the renderer built against the tap's port
 VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:7391 … pnpm build
@@ -151,9 +151,12 @@ template ships it EMPTY and `src/main/backend/config.ts` refuses `""` as a URL).
   not cleared. Click the chat to try again."). It is the fold's own unread-mark
   surface reacting to the rig's sidebar clicks, and it is left in rather than
   waited out: the driver's per-capture toast clearance is bounded to 500 ms for
-  these three frames because the default would sit out the toast's lifetime and
-  push the run past the app's own 25 s send deadline, which is exactly what the
-  first re-shoot did (the T5 pair went red on a FINISHED send). No claim above is
+  every timing-sensitive capture in this scene (the press, flip, failure and
+  reload frames as well as the away three) because the default would sit out the
+  toast's lifetime - measured at ~10 s per frame - and push the run past both
+  the app's own 25 s send deadline and the create's validation window, which is
+  exactly what the first re-shoots did (the T5 pair went red on a FINISHED send;
+  a later cut's failure presses were refused locally, with no POST at all). No claim above is
   read from the toast's area.
 - **Not the model gate.** A press that beats the model's resolution can still
   clear the box with the composer's own refusal (QA round 1's note, reproducible
