@@ -727,6 +727,18 @@ export const STORIES = [
 	["chat-canonical-credential-citation--citation-unconfirmed-narrow", 440, 620],
 	["chat-canonical-credential-citation--citation-in-code-fence", 1024, 620],
 	/*
+	 * THE SECOND REPORT'S THREE SHAPES (operator report, 2026-09-25): the
+	 * reader's message with each field on its own line, WITH citations (the
+	 * reported state), WITHOUT them (the scope question), and an agent-side
+	 * answer as the control that must not move. All three at the same 1024x620
+	 * pane as their siblings above, so the frames read as one set: the first two
+	 * keep their lines after the fix, and the third's before/after pair is
+	 * byte-identical because an agent's answer is a markdown document.
+	 */
+	["chat-canonical-credential-citation--citation-multiline", 1024, 620],
+	["chat-canonical-credential-citation--plain-multiline", 1024, 620],
+	["chat-canonical-credential-citation--agent-multiline", 1024, 620],
+	/*
 	 * THE TWO SUBMIT-TIME NOTICES, at 440 — the measure a toast actually lands in on
 	 * a narrow window, and the size design round 1's D3 asked for. The unresolved
 	 * notice carries a key name and two sentences and had no frame at all; the
@@ -2512,6 +2524,48 @@ export const STORIES = [
 	["chat-message-input--pending-send-chip-row-small-view", 440, 400],
 	["chat-message-input--pending-send-payload-small-view", 440, 400],
 	["chat-message-input--pending-send-small-view", 440, 300],
+	/* THE NOTICE A FAILED SEND LEAVES - the six states the operator's own screen
+	   was one of. Their frames answer the report directly: the message and its
+	   file are IN the composer, and the sentence beside them is one line with at
+	   most Retry and Clear, rather than the transport's twenty-second paragraph
+	   over an empty box with two links under it.
+
+	   THE SIX FAILED-SEND ROWS THAT USED TO SIT HERE ARE GONE (review round 2, D6,
+	   and this paragraph was the prose that still pointed at them - review round 3,
+	   n1). Their frames showed copy the app no longer produces, and a set that
+	   cannot be re-swept on a machine whose Storybook index refuses those ids is a
+	   set of frames that disagree with the app in the one place a reader looks to
+	   see what the app says. The states are rendered instead by the notice-arms rig,
+	   `scripts/composer-alert-geometry.mjs` -> `docs/evidence/composer-notice-arms/`,
+	   which mounts the shipped notice row for each of them and asserts what the
+	   frame is for. The deletion and its reason are recorded on the set's own page:
+	   `docs/evidence/chat-message-input/README.md`.
+
+	   420 tall for the chip-carrying arms (a 100px tile, the field, and the notice
+	   row above them) and 480 for `failed-merged`, whose field holds two
+	   paragraphs. Cropping any of these at 300 would cut the very row the frame
+	   exists to show. */
+	/*
+	 * AND THE SIX FAILED-SEND ROWS ARE GONE, the same way the copy row above left
+	 * (review round 2, D6). Their committed frames showed copy the app no longer
+	 * produces - a 413 about half the app's length, and the unknown-outcome sentence
+	 * without its "Sending it again is safe." clause - and their SET could not be
+	 * re-swept here (a backend answers on the default port all session, and this
+	 * machine's Storybook index refuses these ids even for a `--allow-backend`
+	 * partial run). Rather than keep frames that disagree with the app about the same
+	 * state, the states are covered where they are rendered from the SHIPPED composer
+	 * with the app's own copy imported: `docs/evidence/composer-notice-arms/`. The
+	 * stories themselves stay, as tests.
+	 */
+	/*
+	 * AND THE COPY RULE ITSELF IS A TEST, NOT A FRAME (review round 1, D5). This
+	 * row photographed an IDLE composer with no notice at all - the story's render
+	 * passes no `sendError`, and its `play` is what reads the table - so twelve
+	 * frames existed whose subject was the empty state the operator's report is
+	 * about, which reads as a failed capture. The story keeps its `play` (it is the
+	 * assertion that the composer's copy comes from `sendFailureCopy`) and stops
+	 * being swept.
+	 */
 	/* The interrupt's own states, on the same 1024 measure as the rows above.
 	   The third is the only one that SPEAKS: a stopped turn with nothing left
 	   under it renders nothing at all, so the control's presence and its absence
@@ -3883,8 +3937,10 @@ export const STORIES = [
 	["chat-mention-chips--wrapped-mention", 1380, 872],
 	/*
 	 * The four surfaces this remediation added, each a state a finding named:
-	 * `harness-cannot-expand` is the state every release carries today (no
-	 * `references` capability, so no list and no chip), `small-view-520` is the
+	 * `harness-cannot-expand` is the SKEW state — a backend that does not advertise
+	 * the `references` capability, so no list and no chip, which is an install whose
+	 * backend predates the key or one whose `LOCAL_OPERATOR_AT_REFERENCES` kill switch
+	 * is off — `small-view-520` is the
 	 * field's 6px inset that decided the overhang, `scrolled-draft` is the fill
 	 * layer travelling with the field's own scroll, and `atomic-delete` is the one
 	 * chip promise that is not a drawing.
