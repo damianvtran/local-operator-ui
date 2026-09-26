@@ -1121,6 +1121,12 @@ const STAMP_BINDING_NOTES = [
 	 * criterion `foldOntoFd19adc9d9Note` meets.
 	 */
 	"foldOnto093a329a4dNote",
+	/*
+	 * THE WALK'S FIRST FULL RUN'S OWN: the run found one stale pin in the driver (the
+	 * offer-frame count), so `scripts/` moved on its own and this note re-derives the pair
+	 * that fix ships - the same criterion the fold note above meets.
+	 */
+	"walkFirstRunRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
