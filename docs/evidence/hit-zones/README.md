@@ -39,6 +39,14 @@ node scripts/renderer-driver.mjs --scene hit-zones --backend http://127.0.0.1:81
 # after: `git stash pop`, rebuild, same command
 ```
 
+The daemon is the one an isolated `local-operator serve --host 127.0.0.1 --port
+8123 --hosting test --model mock-model` gives, under a scratch `HOME`/config with
+a random bearer in a 0600 file; `seed-analytics.py` beside this file is what puts
+rows in its ledger, because the Analytics panel's HEIGHT is the point of the
+reading (`python3 seed-analytics.py <config dir>` - synthetic data, 473 calls).
+The driver's own boot checks are what prove the isolation: it asserts the app
+holds a connection to this backend and none to the operator's.
+
 ## The readings
 
 `before-1380x900.log` / `after-1380x900.log` are the driver's own records. The
