@@ -1088,6 +1088,20 @@ const STAMP_BINDING_NOTES = [
 	 * the rule the paragraph above states.
 	 */
 	"foldOntoFd19adc9d9Note",
+	/*
+	 * AND THIS LANE'S OWN, for the sub-view top inset (the operator's report of
+	 * 2026-09-26, "for sub-views like the settings page, the sidebar and view
+	 * doesn't go all the way to the top"): it states the pair THIS FILE SHIPS as
+	 * its opening claim - the re-stamp of a change that moves BOTH trees this
+	 * file binds (the shell's `app.tsx` and the route band's rules under `src/`,
+	 * the new `route-tops` scene and three pins under `scripts/`) while
+	 * re-shooting no committed frame, so a reader is owed the pair and the reason
+	 * no still was owed. The list's own criterion is met the same way
+	 * `focusHoldOperationRestampNote`'s was: the note states this file's binding
+	 * as a backticked claim, so leaving it out would be one more check silently
+	 * not run.
+	 */
+	"subviewInsetRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
