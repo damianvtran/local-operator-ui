@@ -316,6 +316,12 @@ function reading() {
 				scrollerBottom: box.bottom,
 				clipBottom,
 				ringBottom,
+				/*
+				 * TRUE means the ring's paint area falls INSIDE the clip box, i.e. a
+				 * segment can show — the design round-2 (D6) defect. The fixed pane
+				 * expects FALSE: the ring beyond the clip bottom, cut exactly as it was
+				 * before the band existed.
+				 */
 				contained: ringBottom <= clipBottom,
 			};
 		})(),

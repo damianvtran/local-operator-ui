@@ -604,13 +604,17 @@ async function main() {
 					"P0 at the tail (foot group)",
 					"the foot's own composition with the control hidden",
 				);
-				if (
-					ARM === "after" &&
-					tailFoot.ringClip &&
-					!tailFoot.ringClip.contained
-				)
+				/*
+				 * THE RULE MUST NOT SHOW (design round 2, D6). The ring's bottom
+				 * segment is paint an ancestor's clip either keeps or cuts; the fix
+				 * keeps the clip at the scroller's own box, so the ring lies BEYOND the
+				 * clip bottom and nothing can paint in the band. `contained` true is
+				 * the defect this step exists to catch: the ring painting inside the
+				 * clip box again, which is the rule this round removed.
+				 */
+				if (ARM === "after" && tailFoot.ringClip?.contained)
 					throw new Error(
-						`${theme}: the scroller's focus ring is not contained by its clip box (ring bottom ${tailFoot.ringClip.ringBottom}, clip ${tailFoot.ringClip.clipBottom})`,
+						`${theme}: the scroller's focus ring paints inside its clip box (ring bottom ${tailFoot.ringClip.ringBottom}, clip ${tailFoot.ringClip.clipBottom}) — the band is showing a segment of the ring again`,
 					);
 				await shoot("at-tail", theme);
 				await wheel(-600);
@@ -619,13 +623,9 @@ async function main() {
 					"P1 scrolled up (foot group)",
 					"the foot's own composition with the control shown",
 				);
-				if (
-					ARM === "after" &&
-					scrolledFoot.ringClip &&
-					!scrolledFoot.ringClip.contained
-				)
+				if (ARM === "after" && scrolledFoot.ringClip?.contained)
 					throw new Error(
-						`${theme}: the scroller's focus ring is not contained by its clip box while scrolled up (ring bottom ${scrolledFoot.ringClip.ringBottom}, clip ${scrolledFoot.ringClip.clipBottom})`,
+						`${theme}: the scroller's focus ring paints inside its clip box while scrolled up (ring bottom ${scrolledFoot.ringClip.ringBottom}, clip ${scrolledFoot.ringClip.clipBottom}) — the band is showing a segment of the ring again`,
 					);
 				await shoot("scrolled-up", theme);
 				continue;
