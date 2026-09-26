@@ -917,6 +917,14 @@ const STAMP_BINDING_NOTES = [
 	 * trees are each that change's own files plus this note's registration here.
 	 */
 	"approvalOptionsRestampNote",
+	/*
+	 * This branch's own, and the first one that adds a declared set in the same
+	 * commit it re-stamps: it re-stamps `fix(chat): spend history reveals at rest,
+	 * one fetch per gesture`, which moves both trees AND adds
+	 * `[redacted]`, so the reader is owed the pair, the frame
+	 * arithmetic, and the reason the swept count does not move.
+	 */
+	"transcriptRevealAtRestRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1264,6 +1272,15 @@ const BRANCH_RECORDS = [
 	"asidePanelRestampNote",
 	"streamGapHeldReadingsRestampNote",
 	"mentionsRemedyRestampNote",
+	/*
+	 * And by the reveal-at-rest pass - the pass this fold carries. It is the case
+	 * the entry above names, one fold over: the manifest resolution kept this
+	 * branch's set, note and counts by hand against a moved main, and this record
+	 * is the only statement of which two trees the scroll-reveal change moved and
+	 * that the 16 frames it added came from this tree with the `before` arm's two
+	 * modules swapped for `origin/main`'s.
+	 */
+	"transcriptRevealAtRestRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
