@@ -10,7 +10,10 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
-import { useCanonicalSessionStream } from "@shared/hooks/use-canonical-session";
+import {
+	pendingSendForView,
+	useCanonicalSessionStream,
+} from "@shared/hooks/use-canonical-session";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
 import type { SendOutcome } from "@shared/hooks/use-message-input";
@@ -70,8 +73,6 @@ import {
 	createSendLock,
 } from "../ask-answer";
 import {
-	type AdmittedSend,
-	admittedSendFor,
 	ownerAnswered,
 	stoppedAfterAdmission,
 	turnStopped,
@@ -288,6 +289,14 @@ function SessionPanel({
 		streamId,
 		Boolean(streamId),
 		Boolean(sessionId),
+		/*
+		 * The identity the pane SHOWS, which is not `streamId`: a fresh draft's
+		 * stream carries the minted warm (or nothing at all), while the row a press
+		 * paints - and the registration the press needs - are addressed by
+		 * `panelIdentityFor(draftKey, id)`. The hook's own parameter doc carries the
+		 * rule; the value is the one this panel already computed for its key.
+		 */
+		identity,
 	);
 	useDesktopWatchLease(streamId, canonical.subscriptionId);
 	// Read here rather than threaded from the page: the query is cached with a
@@ -541,45 +550,42 @@ function SessionPanel({
 	 * (`use-warm-session.ts`), and until the first frame lands the transcript
 	 * used to paint the user's own bubble and then nothing at all.
 	 *
-	 * Read from the STORE's draft row rather than from this component's
-	 * `admitting`, and LATCHED rather than derived per render, for two reasons
-	 * review round 1 measured:
+	 * READ FROM THE REGISTRY, ADDRESSED BY THIS PANE'S OWN IDENTITY. That is
+	 * what makes the claim exist BEFORE the session does: the paint happens at
+	 * the press, under the identity this pane already has (the draft key), and
+	 * `pendingSendForView` returns it until a mounted pane observes the owner's
+	 * durable row - across the identity flip, a switch away and back, and the
+	 * receipt (which deletes the draft ROW but resolves no entry).
 	 *
-	 * 1. On the New-chat path the identity flip remounts this panel while the
-	 *    row is live - the panel that paints the rung is not the one the send
-	 *    started in - so local state does not carry it and the row does.
-	 * 2. `finishDraft` DELETES that row when the receipt arrives, and the receipt
-	 *    can arrive before the owner's first frame (they land 3-6 ms apart when
-	 *    the session is warm). Deriving `starting` from the row alone therefore
-	 *    dropped the rung for a frame in that gap, which restarted its clock at
-	 *    `0s` under the reader - the exact defect `working-line.tsx` documents as
-	 *    impossible. The latch spans the whole wait, from the send until the
-	 *    owner paints something.
-	 *
-	 * A ref, not state, because every transition that matters is already a store
-	 * change that re-renders this panel: the row appearing, the row failing, and
-	 * content arriving are all store updates, so there is nothing for a
-	 * `setState` to schedule. The write is idempotent, which is what makes it
-	 * safe under a repeated render.
+	 * The LATCH remains, and it is a render-timing rule rather than state: the
+	 * resolution pass runs in an effect AFTER the commit that paints the owner's
+	 * row, so for that frame the registry can still answer "pending" while the
+	 * transcript already holds the answer. The enders below clear the rung from
+	 * the records themselves, and the latch is what keeps `starting` stable - a
+	 * value read by the band, the pane's collapse and the working line - across
+	 * every render in between. A ref, not state, because every transition that
+	 * matters is already a store or transcript change that re-renders this panel;
+	 * the write is idempotent, which is what makes it safe under a repeated
+	 * render.
 	 */
-	const admittedNow = admittedSendFor(sessionId, draft);
-	const admitted = useRef<AdmittedSend | null>(null);
+	const pendingNow = pendingSendForView(identity);
+	const admitted = useRef<{ requestId: string } | null>(null);
 	const outcomeAtAdmission = useRef<{
 		requestId: string;
 		anchor: string | null;
 	} | null>(null);
-	if (admittedNow) {
+	if (pendingNow) {
 		// Keep the baseline after retirement too: the receipt may lag the
 		// completion frame, leaving this same draft pending for another render.
 		// Re-snapshotting then would turn the just-finished outcome into "old"
 		// history and resurrect the wait we just cleared.
-		if (outcomeAtAdmission.current?.requestId !== admittedNow.requestId) {
+		if (outcomeAtAdmission.current?.requestId !== pendingNow.id) {
 			outcomeAtAdmission.current = {
-				requestId: admittedNow.requestId,
+				requestId: pendingNow.id,
 				anchor: canonical.frontend?.attention?.anchor_id ?? null,
 			};
 		}
-		admitted.current = admittedNow;
+		admitted.current = { requestId: pendingNow.id };
 	}
 	/*
 	 * What ends the wait, and what deliberately does not.
@@ -621,6 +627,16 @@ function SessionPanel({
 	if (admitted.current && (answered || stopped || Boolean(draft?.error)))
 		admitted.current = null;
 	const starting = admitted.current !== null;
+	/*
+	 * WHICH HALF OF THE WAIT THIS IS, for the line's label (`starting the
+	 * session` vs `waiting for the agent`): the create hop is the half where no
+	 * session exists yet, and the draft row's `sessionId` is the fact that ends
+	 * it - the SAME field the paint addressed the row by and the re-key moved it
+	 * with, so the label cannot disagree with the identity the registry holds.
+	 * The elapsed anchor travels beside it (`submittedAt`), because the number
+	 * must cross this label change without restarting (see `startingSince`).
+	 */
+	const startingSession = starting && !(draft?.sessionId ?? sessionId);
 	/*
 	 * The run-details view model (`docs/run-details.md` § 8), derived once per
 	 * wire frame from the two lists the canonical stream already carries and
@@ -3016,6 +3032,8 @@ function SessionPanel({
 						admitting,
 						starting,
 						startingAfterId: admitted.current?.requestId ?? null,
+						startingSession,
+						startingSince: draft?.submittedAt ?? null,
 						onStop: stop,
 						stopAvailable: interruptAvailable,
 						/*

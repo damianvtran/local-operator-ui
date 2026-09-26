@@ -109,8 +109,14 @@ export const desktopResult = request => globalThis.__canonicalRequest(request);`
 					() => ({ path: "echo", namespace: "echo-fixture" }),
 				);
 				builder.onLoad({ filter: /.*/, namespace: "echo-fixture" }, () => ({
-					contents: `export const echoPendingUser = (sessionId, id, text, images) =>
-	globalThis.__canonicalEcho({ kind: "echo", sessionId, id, text, images });
+					contents: `export const paintPendingSend = (identity, send) =>
+	globalThis.__canonicalEcho({ kind: "echo", sessionId: identity, id: send.id, text: send.text, images: send.images });
+export const movePendingSendIdentity = (from, to) =>
+	globalThis.__canonicalEcho({ kind: "move", from, to });
+export const replacePendingSendText = (identity, id, text) =>
+	globalThis.__canonicalEcho({ kind: "replace", sessionId: identity, id, text });
+export const discardPendingSends = (sessionId) =>
+	globalThis.__canonicalEcho({ kind: "discard", sessionId });
 export const retractPendingUser = (sessionId, id) =>
 	globalThis.__canonicalEcho({ kind: "retract", sessionId, id });
 export const peekLocalEcho = (sessionId, id) =>

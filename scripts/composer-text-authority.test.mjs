@@ -145,6 +145,11 @@ const bundle = await build({
 export const retractPendingUser = () => {};
 export const retractLocalEcho = () => "queued";
 export const peekLocalEcho = () => "unseen";
+export const paintPendingSend = () => undefined;
+export const movePendingSendIdentity = () => undefined;
+export const replacePendingSendText = () => undefined;
+export const discardPendingSends = () => undefined;
+export const pendingSendForView = () => null;
 export const discardPendingEchoes = () => {};
 export const clearRetractedEchoes = () => {};
 export const deliverEcho = () => {};

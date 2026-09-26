@@ -2161,9 +2161,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * New-chat identity flip REPLACES (`panelIdentityFor`, "THE FLIP IS A
 		 * REMOUNT"), so on the arm the operator photographed both were false and the
 		 * box fell through to `Waiting for the agent`. A row is not state of the keyed
-		 * subtree: `sendUnsettledForSession` finds it by session id alone, and it is
-		 * the SAME predicate the pane reads through its `starting` latch for the
-		 * transcript's working line, so the box and the line cannot disagree about
+		 * subtree: `sendUnsettledForSession` finds it by the CONVERSATION's identity -
+		 * the session id, a `send:<id>` key, or the draft key while the create is in
+		 * flight - and it describes the same send the pane's `starting` latch does
+		 * (there from the painted row, `pendingSendForView`; here from the claim's own
+		 * `pending`), so the box and the transcript's line cannot disagree about
 		 * whether a send is going out. A different conversation is a different row,
 		 * which is the boundary that keeps its send from reaching this composer.
 		 *
@@ -6351,7 +6353,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 											 *
 											 * The two facts this call is built from: `sendInFlight` is this composer's own
 											 * unsettled press, and `sendingUnsettled` is the STORE's row for this
-											 * conversation (`sendUnsettledForSession` -> `admittedSendFor`), which is what
+											 * conversation (`sendUnsettledForSession` -> `draftRowForSession`, over the
+											 * row's own `pending`), which is what
 											 * survives the New-chat identity flip - a flag held by the panel being replaced
 											 * cannot, which is what review round 2's R2-1 found in the round-1 wiring. They
 											 * are OR'd because they are the two halves of one fact at two scopes, and the

@@ -104,8 +104,15 @@ const bundle = await build({
 					loader: "js",
 				}));
 				builder.onLoad({ filter: /.*/, namespace: "echo-fixture" }, () => ({
-					contents: `export const echoPendingUser = (sessionId, id, text, images) =>
-	globalThis.__canonicalEcho({ kind: "echo", sessionId, id, text, images });
+					contents: `export const paintPendingSend = (identity, send) =>
+	globalThis.__canonicalEcho({ kind: "echo", identity, sessionId: identity, id: send.id, text: send.text, images: send.images });
+export const movePendingSendIdentity = (from, to) =>
+	globalThis.__canonicalEcho({ kind: "move", from, to });
+export const replacePendingSendText = (identity, id, text) =>
+	globalThis.__canonicalEcho({ kind: "replace", identity, id, text });
+export const discardPendingSends = (identity) =>
+	globalThis.__canonicalEcho({ kind: "discard", sessionId: identity });
+export const pendingSendForView = () => null;
 export const retractPendingUser = (sessionId, id) =>
 	globalThis.__canonicalEcho({ kind: "retract", sessionId, id });
 /*
@@ -126,7 +133,7 @@ export const peekLocalEcho = (sessionId, id) => {
 	return globalThis.__canonicalRowIsLocal?.(id) === false ? "owner" : "local";
 };
 // Recorded like the other two so a store change that stops evicting an
-// abandoned draft's buffered echo is visible here as well; the buffer's own
+// abandoned draft's retained row is visible here as well; the registry's own
 // bounds are asserted against the real registry in echo-delivery.test.mjs.
 export const discardPendingEchoes = (sessionId) =>
 	globalThis.__canonicalEcho({ kind: "discard", sessionId });`,
@@ -4416,8 +4423,23 @@ test("the echo is painted before the message request, under the admission reques
 		requestId,
 		"the echo id MUST be the admission request UUID - the owner gives the durable row that same id, so any other key paints the message twice forever",
 	);
-	assert.equal(sawEchoAtRequest.sessionId, "222222222222");
+	/*
+	 * AND IT IS ADDESSED BY THE PANE'S OWN KEY, because the paint happened at
+	 * the press - before the create that mints the session id. This assertion
+	 * used to pin the session id itself, which was the defect: the row could not
+	 * exist until `sessions.create` returned, so the whole create hop was
+	 * represented by nothing. The re-key to the session is asserted separately,
+	 * as a fact of the patch rather than of the paint.
+	 */
+	assert.equal(sawEchoAtRequest.sessionId, key);
 	assert.equal(sawEchoAtRequest.text, "Review this");
+	// The identity flip's re-key: exactly one move, from the draft key to the
+	// session the create minted, ordered before the message request (the move
+	// rides the same synchronous block as the `sessionId` patch).
+	assert.deepEqual(
+		echoes.filter((e) => e.kind === "move").map((move) => [move.from, move.to]),
+		[[key, "222222222222"]],
+	);
 	// The id that went to the wire is the id that was echoed: one value.
 	const sent = calls.filter((c) => c.op === "sessions.message").at(-1);
 	assert.equal(sent.requestId, requestId);

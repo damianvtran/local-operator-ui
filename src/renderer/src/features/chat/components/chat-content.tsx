@@ -281,6 +281,15 @@ type ChatContentProps = {
 		 * when no send is admitted.
 		 */
 		startingAfterId?: string | null;
+		/**
+		 * Whether the admitted send is still in its CREATE hop (no session yet), and
+		 * when the claim began - the two facts the wait line's label and clock read.
+		 * See `WorkingLineInput.startingSession`/`startingSince`; passed through
+		 * untouched, because both readers below derive their state from one input
+		 * builder and must not be handed different facts.
+		 */
+		startingSession?: boolean;
+		startingSince?: number | null;
 		onStop: () => void;
 		/**
 		 * Whether this backend can interrupt a turn (`session_interrupt`), as
@@ -1437,6 +1446,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										waiting={canonical.busy}
 										starting={canonical.starting === true}
 										startingAfterId={canonical.startingAfterId ?? null}
+										startingSession={canonical.startingSession === true}
+										startingSince={canonical.startingSince ?? null}
 										loadingOlder={canonical.view.loadingOlder}
 										onLoadOlder={canonical.view.loadOlder}
 										containerRef={messagesContainerRef}
@@ -1599,6 +1610,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 													canonical.view.transcript.compactingSince,
 												starting: canonical.starting === true,
 												startingAfterId: canonical.startingAfterId ?? null,
+												startingSession: canonical.startingSession === true,
+												startingSince: canonical.startingSince ?? null,
 												gate: canonical.view.frontend?.pending_gate ?? null,
 												unavailable: canonicalSpeaking(canonical, gone),
 												records: canonical.view.transcript.records,
