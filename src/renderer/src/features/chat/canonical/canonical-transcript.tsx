@@ -1752,15 +1752,28 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	}, [painted.records]);
 	// Windowing: newest rows first. The window widens when the reader nears the
 	// top, and resets when the transcript is replaced (session switch/clear).
+	//
+	// THE RESET IS A RENDER-PHASE ADJUSTMENT, NOT AN EFFECT, and that is a
+	// measurement rather than a preference (operator report, 2026-09-26: "no
+	// jitter where things seem to load at different times"). As an effect it
+	// landed one commit AFTER the new transcript's first paint, so a switch into
+	// a long conversation painted the window inherited from the previous one and
+	// then dropped to the newest sixty - measured on the cached-switch sequence,
+	// the first painted frame held all 106 fetched rows and the next commit
+	// trimmed it (`scr` extent 8,315.6 -> 4,864.2 px, all of it above the fold,
+	// and a second paint all the same). Adjusting the state during render
+	// re-renders before the browser paints (React's "adjusting state when a prop
+	// changes"), so the first frame of a conversation is already the windowed
+	// one. Clause H's reason is unchanged: without a reset, opening a long
+	// conversation and then a short one leaves the short one mounting every row
+	// it has, and the paging state would be reasoning about a window that
+	// belongs to the previous transcript.
+	const [windowSession, setWindowSession] = useState(sessionId);
 	const [windowSize, setWindowSize] = useState(WINDOW);
-	// Clause H: a different conversation starts at the default window. Without
-	// this, opening a long conversation and then a short one leaves the short
-	// one mounting every row it has, and the paging state reset below would be
-	// reasoning about a window that belongs to the previous transcript.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: reset on session change only
-	useEffect(() => {
+	if (windowSession !== sessionId) {
+		setWindowSession(sessionId);
 		setWindowSize(WINDOW);
-	}, [sessionId]);
+	}
 	const total = rows.length;
 	const visible = useMemo(
 		() => (total > windowSize ? rows.slice(total - windowSize) : rows),
@@ -2166,13 +2179,21 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				collapsed ? "h-0 grow-0 overflow-hidden" : "flex min-h-0 grow flex-col",
 			)}
 		>
-			{stale && (
+			{stale && !holdPlaceholder && (
 				/*
 				 * Pinned to the pane's top edge, in the flow rather than over it: it
 				 * takes its own row and no row of the conversation is ever painted
 				 * under it. `shrink-0` so a tall neighbour cannot squeeze it away, and
 				 * the same horizontal inset as the scroller's own padding so the two
 				 * share a centre.
+				 *
+				 * AND IT STANDS DOWN WHILE THE PANE HOLDS. `stale` is still true for
+				 * a cached paint whose page is owed - that is the flag the hold reads
+				 * - and while the hold is up NOTHING of the cached paint is on screen
+				 * (the rows are gated out below), so a caption describing it would be
+				 * the pane talking about a view nobody can see. The two go away
+				 * together, which is the rule this element was introduced under; the
+				 * hold is just the case where "together" means "neither yet".
 				 */
 				<p
 					className={cn(
@@ -2210,7 +2231,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				 * holdPlaceholder` was a proxy for "no rows" - both imply it - and the hold
 				 * no longer covers every row-less pane, because a pane with a statement of
 				 * its own paints that instead of the placeholder. The proxy stopped
-				 * agreeing with the property it stood for, so the property is read directly.
+				 * agreeing with the property it stood for, so the property is read directly
+				 * - and the property now differs from the hold in the OTHER direction too:
+				 * a pane HOLDING a cached paint has records in state and no rows on screen,
+				 * so it is `holdPlaceholder`, not the record count, that keeps the stop off
+				 * that pane.
 				 *
 				 * THE TURN ORDER OF THOSE STOPS USED TO COST ONE PRESS PER ROW, AND IT NO
 				 * LONGER DOES (UX round 1, U4; QA round 1, Q5). While the control was
@@ -2249,7 +2274,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				 * gesture for another. The transcript's own stop, which is the half the
 				 * finding is about, is here.
 				 */
-				tabIndex={transcript.records.length === 0 ? -1 : 0}
+				tabIndex={transcript.records.length === 0 || holdPlaceholder ? -1 : 0}
 				role="log"
 				aria-label={CHAT_REGION_LABEL.transcript}
 				// Only the `windowed` branch renders that id, so the description has to
@@ -2302,10 +2327,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					data-lo-transcript-content
 					className={cn("flex flex-col", CHAT_MEASURE)}
 				>
-					{/* The state this element exists for: no rows yet, and the stream is
-				    still bringing them. Rendered inside the content column so it lands
-				    at the same inset and the same bottom anchor the rows will, rather
-				    than at the pane's centre in the composer band. */}
+					{/* The state this element exists for: the frame BEFORE the conversation's
+				    first page, when there is nothing of it to paint yet - either because
+				    the pane holds no records at all, or because every record it holds is
+				    this window's cached memory of the conversation and the page that would
+				    make them paintable is still owed (see `transcriptPaneHoldsPlaceholder`).
+				    Rendered inside the content column so it lands at the same inset and the
+				    same bottom anchor the rows will, rather than at the pane's centre in
+				    the composer band. */}
 					{holdPlaceholder && (
 						<TranscriptPlaceholder isSmallView={isSmallView} />
 					)}
@@ -2455,8 +2484,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					{/* Rows are suppressed for a conversation that is not there: the pane
 				    must not paint its last memory of a session the backend says is
 				    gone, because nothing on screen could then be trusted and there is
-				    no state to reconcile to. */}
-					{!missing && (
+				    no state to reconcile to - and for one that is still ARRIVING: a
+				    `holdPlaceholder` pane has the cached paint in state and nothing of
+				    it on screen, so the page that ends the hold brings the rows and the
+				    readings in ONE commit instead of correcting a painted guess. */}
+					{!missing && !holdPlaceholder && (
 						/*
 						 * THE PANE THIS CONVERSATION'S LINKS OPEN INTO, provided once for the
 						 * whole row list rather than threaded through the rows: the anchor that
