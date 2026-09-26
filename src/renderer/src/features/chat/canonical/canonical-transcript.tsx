@@ -410,6 +410,19 @@ export type UndeliveredTurn = {
 	message?: string;
 	/** Whether a press can work. Absent means the held claim's rule: it can. */
 	retry?: boolean;
+	/**
+	 * Whether the payload is BACK IN THE COMPOSER unchanged, so this press would
+	 * send the message the box already holds (UX round 1, U4).
+	 *
+	 * The row stays - for an unknowable outcome it IS the message's fate
+	 * statement - but two live affordances for one payload read as two messages.
+	 * Dimmed with `aria-disabled` and a refused click rather than `disabled`,
+	 * for `older-history-slot.tsx`'s own reason: a `disabled` button cannot hold
+	 * focus, and the keyboard reader who just put the payload back in the box is
+	 * the reader most likely to be on this control. Absent means "not disabled",
+	 * so every pre-U4 caller keeps the button as it was.
+	 */
+	retryDisabled?: boolean;
 	onSendAgain: () => void;
 	onEdit: () => void;
 };
@@ -690,8 +703,26 @@ const UserRow = memo(function UserRow({
 						{undelivered.retry !== false && (
 							<button
 								type="button"
-								className={cn("cursor-pointer underline")}
-								onClick={undelivered.onSendAgain}
+								/*
+								 * DIMMED, NOT GONE, while the composer holds this payload (UX round
+								 * 1, U4): the row keeps its statement and both controls, and the
+								 * box's own Send is the live affordance for this message until the
+								 * text changes. `aria-disabled` rather than `disabled` - see the
+								 * `UndeliveredTurn.retryDisabled` note.
+								 */
+								aria-disabled={undelivered.retryDisabled || undefined}
+								className={cn(
+									undelivered.retryDisabled
+										? "text-ink-muted"
+										: "cursor-pointer underline",
+								)}
+								onClick={(event) => {
+									if (undelivered.retryDisabled) {
+										event.preventDefault();
+										return;
+									}
+									undelivered.onSendAgain();
+								}}
 							>
 								Send again
 							</button>

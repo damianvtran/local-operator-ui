@@ -1431,13 +1431,16 @@ export function panelIdentityOfView(
  * Whether a send failed BEFORE the owner could have admitted anything.
  *
  * ONE definition, read by everything that has to act on the answer. Inside this
- * module it drives both the echo's retraction and the `admissionAttempted`
- * un-latch, which must not drift apart - they are two answers to the same
- * question. Outside it, the composer reads it to decide whether a failed send's
- * text belongs BACK in the box (`false` here) or must stay out of it because the
- * message may be on the owner and an echo of it is still painted in the
- * transcript (`true`). A second copy of this predicate is how the two consumers
- * come to disagree about one failure.
+ * module it drives the `not_sent` class (`sendFailureClass` below, whose arm
+ * decides the sentence and whether a press is offered) and the
+ * `admissionAttempted` un-latch, which must not drift apart - they are two
+ * answers to the same question. It is EXPORTED for the suites; no app surface
+ * reads it directly, because since S4 the store's failure arm returns nothing
+ * to the composer for a failure raised after the row was painted: the row is
+ * the message's home (`Send again`, and the user's own `Edit` through
+ * `returnPayload`), and the only payload that travels back to the box is the
+ * user's deliberate one. A second copy of this predicate is how the two
+ * consumers come to disagree about one failure.
  *
  * FOUR FAMILIES, and each is a refusal raised before the prompt can reach the
  * session, so the message provably does not exist on the owner.
@@ -1728,15 +1731,46 @@ export function migrateHeldClaim(
  * entry and returns false. Run from the pane that is showing the conversation,
  * beside `migrateHeldClaim` - the pane is the only place with the fact that the
  * row is still on screen at all (the same R6 argument the migration carries).
+ *
+ * TWO SHAPES CARRY A ROW BACK, and the second one arrived with design review
+ * round 1's D2: an UNRESOLVED failure (`error` + `errorRetry`, S6) and a claim
+ * the server RESOLVED AS UNDELIVERED (`undelivered`, whose row is the message's
+ * fate statement and its remedy). The resolved shape used to be refused here
+ * because `resolveHeldFromServer` clears exactly the fields the failure arm
+ * demands - `submittedText`, `error`, `errorRetry` - so a second reload after
+ * the resolution painted nothing: no row, no line, and a payload that is
+ * deliberately not in the composer either, which is the message surviving
+ * nowhere at all. `undelivered` carries `recordId`/`text`/`attachments`, so the
+ * row is re-painted under the id the durable row would carry, with the §F3 line
+ * (which reads the same field) supplying the sentence and the two controls.
  */
 export function resynthesisePendingSend(
 	key: string,
 	draft: ChatDraft | undefined,
 ): boolean {
-	if (!draft || draft.submittedText === undefined) return false;
-	if (draft.error === undefined || draft.errorRetry === undefined) return false;
+	if (!draft) return false;
+	const resolved = draft.undelivered;
+	const failed =
+		draft.submittedText !== undefined &&
+		draft.error !== undefined &&
+		draft.errorRetry !== undefined;
+	if (!resolved && !failed) return false;
 	const identity = composerIdentityFor(key, draft.sessionId);
 	if (pendingSendForView(identity)) return false;
+	if (resolved) {
+		/*
+		 * The RESOLVED arm: the id and the text are the resolution's own record, and
+		 * there are no images to restore - `undelivered` keeps the attachment PATHS
+		 * (the payload basis), not encoded bytes, and a row that showed none at paint
+		 * time must not invent them. The line's controls act on the same text.
+		 */
+		paintPendingSend(identity, {
+			id: resolved.recordId,
+			text: resolved.text,
+			images: [],
+		});
+		return true;
+	}
 	const id = draft.admissionRequestId;
 	paintPendingSend(identity, {
 		id,
