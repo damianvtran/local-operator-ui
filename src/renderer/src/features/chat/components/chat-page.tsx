@@ -112,6 +112,8 @@ import {
 	messageBudgetRefusal,
 } from "../utils/message-budget";
 import { ChatContent } from "./chat-content";
+import type { HeaderIdentityData } from "./chat-header-identity";
+import { headerIdentityControlsShown } from "./chat-header-identity-model";
 import type { DirectoryWritePath } from "./directory-indicator";
 import {
 	type MessageInputHandle,
@@ -2199,6 +2201,40 @@ function SessionPanel({
 	 */
 	const identityPending = !loaded && !draftKey && view.status === "connecting";
 	/*
+	 * WHETHER THE HEADER'S IDENTITY SLOT OFFERS THE TWO SWITCHERS, computed here
+	 * because this is the component that owns the four facts the gate reads -
+	 * the session identity, the canonical stream, the catalogue binding and the
+	 * capabilities - and `headerIdentityControlsShown` states the rule once so
+	 * the header never re-answers it from a subset.
+	 *
+	 * The live values and the binding ride along as ONE object: the header's
+	 * controls and this pane's own fallback chain (see `loaded` above) must
+	 * read the SAME two sources in the SAME precedence order, or the chip the
+	 * user just left and the menu that replaced it could name different teams.
+	 *
+	 * `undefined` is the degradation path the brief names: a backend without
+	 * `team_catalogue`, a draft, or a stream that never named an identity keeps
+	 * today's plain description string - there is no half-built pair of dead
+	 * controls in any of those states.
+	 */
+	const identityControls =
+		sessionId &&
+		headerIdentityControlsShown({
+			hasSession: Boolean(sessionId),
+			pending: identityPending,
+			teamCatalogue: desktopFeatureEnabled(capabilities.data, "team_catalogue"),
+			identityKnown: Boolean(loaded),
+			streamLive: view.status === "live",
+		})
+			? ({
+					sessionId,
+					activeAgent: canonical.frontend?.active_agent ?? null,
+					activeTeam: canonical.frontend?.active_team ?? null,
+					boundAgent: boundRow?.binding?.agent ?? null,
+					boundTeam: boundRow?.binding?.team ?? null,
+				} satisfies HeaderIdentityData)
+			: undefined;
+	/*
 	 * The failed send, assembled for the composer.
 	 *
 	 * Local state first, store second: `sendError` is this attempt's outcome and
@@ -2790,6 +2826,21 @@ function SessionPanel({
 								live.cwd || HELD_DESCRIPTION_LINE)
 					}
 					descriptionPending={identityPending}
+					identity={identityControls}
+					/*
+					 * THE RENAME PENCIL'S DOOR, and the same one the page's inline options use
+					 * ("rename" above): `/rename` with empty args PRESENTS `RenamePicker`
+					 * (the registry's `PRESENT_DIRECTLY` path is keyed on the empty args), so
+					 * the pencil opens the one existing rename flow rather than a second
+					 * surface for one write path. Omitted on a draft for the same reason the
+					 * archive and delete controls are: a conversation that does not exist yet
+					 * has no name to change.
+					 */
+					onRenameConversation={
+						sessionId
+							? () => void dispatch({ name: "rename", args: "" })
+							: undefined
+					}
 					onOpenOptions={() => setOptions((value) => !value)}
 					isOptionsSidebarOpen={false}
 					onCloseOptions={() => setOptions(false)}
