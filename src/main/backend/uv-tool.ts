@@ -38,12 +38,14 @@ import RUNTIME_LAYOUT from "../../shared/bundled-runtime-layout.json";
 /** The environment variable the install scripts read for the uv path. */
 export const UV_TOOL_ENV = "LOCAL_OPERATOR_UV_BIN";
 
-/** The mode the bundled uv must have to be spawned, on every platform.
+/** The mode the bundled uv must have to be spawned, on every platform with an
+ * execute bit at all.
  *
  * The same value the console's own bundled executable is repaired to
  * (`SPAWN_HELPER_MODE`, `scripts/console-pack.mjs`) - one mode for "a file this
  * app execs out of its own bundle", rather than a second number that means the
- * same thing. */
+ * same thing. Windows has no execute bit to set (see the platform branch in
+ * `ensureUvToolExecutable`), so this is the Unix answer. */
 export const UV_TOOL_MODE = 0o755;
 
 /** The one bit that decides whether `exec` is even attempted. */
@@ -88,10 +90,11 @@ export interface UvToolSelection {
  *
  * `packaged` picks between the two layouts the app itself ships: the packaged
  * app carries `Resources/uv/<arch>/<binary>` (the namespace `package.json`'s
- * `extraResources` maps into, for the platforms that ship one), and a checkout
- * carries `resources/uv` for x64 and `resources/uv_aarch64` for arm64 - the same
- * `<name>` / `<name>_aarch64` convention `setup-python-resource.sh` already
- * stages the interpreter under.
+ * `extraResources` maps into on every platform now - macOS, Windows and Linux
+ * each stage and ship their own release), and a checkout carries `resources/uv`
+ * for x64 and `resources/uv_aarch64` for arm64 - the same `<name>` /
+ * `<name>_aarch64` convention the per-platform staging scripts write the
+ * interpreter under.
  */
 export function uvToolPath(options: {
 	resources: string;
@@ -159,8 +162,15 @@ export function ensureUvToolExecutable(options: {
 			reason:
 				"no bundled uv is staged for this architecture (a dev checkout whose `pnpm setup-python` has not run, or an artifact built before uv was bundled)",
 		};
+	const platform = options.platform ?? process.platform;
 	const mode = statSync(path).mode & 0o777;
-	if ((mode & OWNER_EXECUTE) !== 0)
+	/* Windows has no execute bit, and this is not a cosmetic distinction: every
+	 * file there reports mode bits without OWNER_EXECUTE (0o666 unless the
+	 * read-only attribute is set), so the check below would read "not executable"
+	 * on every Windows bundle and `chmod` would then "repair" a file that was
+	 * never broken - a false `healed` in the log on every install. A `.exe` is
+	 * executable by name, so there is nothing to repair and nothing to check. */
+	if (platform === "win32" || (mode & OWNER_EXECUTE) !== 0)
 		return { path, healed: false, mode, reason: null };
 	try {
 		chmodSync(path, UV_TOOL_MODE);
