@@ -457,6 +457,13 @@ async function mount({
 	 */
 	paneHasSession = false,
 	/*
+	 * Whether a post-paint failure's `Send again` / `Edit` controls are on screen in
+	 * this pane's transcript (UX round 1, U3). The real host computes it once
+	 * (`ChatContent`'s `undeliveredOnScreen`); here it is a prop so the two states
+	 * - a line on screen and an ordinary draft - are both reachable.
+	 */
+	deliveryRemediesReachable = false,
+	/*
 	 * The command catalogue this mount sees, defaulting to the runtime's own. A case
 	 * that passes `[]` is a host whose list query has not arrived: the composer's
 	 * vocabularies are empty and the dispatcher cannot resolve the word even though it
@@ -565,6 +572,7 @@ async function mount({
 					sessionStatus,
 					unavailable,
 					currentJobId,
+					deliveryRemediesReachable,
 					onSendMessage: async (...args) => {
 						sent.push(args);
 						return onSendMessage ? onSendMessage(...args) : true;
@@ -2158,6 +2166,46 @@ test("the notice is tied to the field, sits ABOVE the composer box in the band's
 	assert.ok(
 		!/chip/.test(frame.notice()),
 		"the marker is a pill here; this composer's chip is the directory control",
+	);
+});
+
+/*
+ * THE WAY BACK TO A FAILED MESSAGE'S CONTROLS (UX round 1, U3). The controls
+ * live in the transcript ABOVE the box, which precedes the composer in DOM
+ * order: a keyboard reader in the box reaches them with Shift+Tab and nothing on
+ * screen says so. The hint is attached the way the mention notice is - a
+ * described-by element that exists only while the line it speaks about is on
+ * screen - so an ordinary draft is not described by an empty element and the
+ * sentence cannot outlive the row.
+ */
+test("the composer names the failed row's controls only while the row is on screen", async () => {
+	const idle = await mount({ conversationId: "conv-delivery-hint-idle" });
+	assert.equal(
+		idle.textarea().getAttribute("aria-describedby"),
+		null,
+		"an ordinary draft is not described by the delivery hint",
+	);
+	assert.equal(
+		window.document.getElementById("composer-delivery-remedies-hint"),
+		null,
+		"nor is the element rendered while there is no line to point at",
+	);
+	const frame = await mount({
+		conversationId: "conv-delivery-hint",
+		deliveryRemediesReachable: true,
+	});
+	assert.ok(
+		(frame.textarea().getAttribute("aria-describedby") ?? "").includes(
+			"composer-delivery-remedies-hint",
+		),
+		"while a delivery row exists the box names the hint",
+	);
+	const hint = window.document.getElementById("composer-delivery-remedies-hint");
+	assert.ok(hint, "and the hint element is in the document");
+	assert.match(
+		hint.textContent ?? "",
+		/Shift\+Tab/,
+		"its sentence says the one thing the round measured as missing: how to reach them",
 	);
 });
 

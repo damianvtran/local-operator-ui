@@ -646,6 +646,13 @@ test("the New-chat flip leaves the payload on the draft row, under the identity 
  * process; the draft row's claim fields persist. The row must come back - S4
  * made it the message's home, and a reload that lost it would leave the
  * conversation silently empty with the payload no longer coming home either.
+ *
+ * THE ADAPTER'S SHAPE IS THE FAILED ROW, NOT "STILL-PENDING" (agent review
+ * round 1, NIT). §4d's wording offers a still-pending case and one cannot exist:
+ * `pending` is stripped at persist, so a mid-send reload has no claim to
+ * re-paint and the message is still in the box (the `inFlight` fold); what
+ * re-paints is a failure this build recorded and the user has not resolved, or
+ * - D2 below - a claim the server RESOLVED.
  */
 test("a failed row is re-synthesised after a reload, under the id the durable row would carry", async () => {
 	reset();
@@ -707,12 +714,66 @@ test("a failed row is re-synthesised after a reload, under the id the durable ro
 			errorRetry: undefined,
 		}),
 		false,
-		"nor is a failure the user already resolved (the not-delivered Edit clears the sentence)",
+		"nor is a failure the user already resolved (the not-delivered Edit clears the sentence, and D2's record with it)",
 	);
 	assert.equal(
 		resynthesisePendingSend(draftKey, draft),
 		true,
 		"while the unresolved failure still paints - the guards are about the shape, not the clear",
+	);
+});
+
+/*
+ * D2: A RELOAD AFTER THE CLAIM RESOLVED. The server's complete read has answered
+ * the claim NO: `resolveHeldFromServer` clears `error`/`errorRetry`/`submittedText`
+ * and records `undelivered` - the state whose row is the message's fate statement
+ * and whose remedy is the §F3 line. Re-synthesising only from `error` +
+ * `errorRetry` refused exactly this shape, so a second reload lost the row AND
+ * the line, with the payload deliberately not in the composer: the message
+ * surviving nowhere at all (design review round 1, D2).
+ */
+test("a resolved-undelivered row is re-synthesised after a reload, from the resolution's own record", () => {
+	reset();
+	const draftKey = "draft:44444444-4444-4444-4444-444444444444";
+	const resolvedId = "66666666-6666-4666-8666-666666666666";
+	// The shape `resolveHeldFromServer` writes: the failure's fields are gone
+	// (the not-found arm destructures them away) and the record that replaces
+	// them names the row the message will wear.
+	const draft = {
+		key: draftKey,
+		admissionRequestId: "55555555-5555-4555-8555-555555555555",
+		undelivered: {
+			recordId: resolvedId,
+			text: "Review this",
+			attachments: ["/tmp/b.png"],
+		},
+	};
+	assert.equal(
+		resynthesisePendingSend(draftKey, draft),
+		true,
+		"the resolved row comes back, where the failure-shape guard alone refused it",
+	);
+	const identity = composerIdentityFor(draftKey, draft.sessionId);
+	const restored = globalThis.__pendingSendRegistry
+		.get(identity)
+		?.get(resolvedId);
+	assert.equal(
+		restored?.text,
+		"Review this",
+		"with the resolution's text, under the id the durable row would carry",
+	);
+	assert.equal(
+		resynthesisePendingSend(draftKey, draft),
+		false,
+		"and idempotently - the entry is what `already painted` means",
+	);
+	// The user's Edit retires the row AND the record (chat-page's retirement),
+	// so nothing is left for the adapter to re-paint on the next load.
+	globalThis.__pendingSendRegistry.clear();
+	assert.equal(
+		resynthesisePendingSend(draftKey, { ...draft, undelivered: undefined }),
+		false,
+		"a retired row leaves nothing to re-paint",
 	);
 });
 

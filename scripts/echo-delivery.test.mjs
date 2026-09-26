@@ -36,7 +36,7 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { admitChatDraft, useCanonicalSessionsStore, draftIdentityFor, isRefusedBeforeAdmission } from "./src/renderer/src/shared/store/canonical-sessions-store";
-			export { paintPendingSend, seedPendingSends, movePendingSendIdentity, replacePendingSendText, resolvePendingSend, resolveObservedPendingSends, pendingSendForView, discardPendingSends, retractPendingUser, __registerEchoTarget } from "./src/renderer/src/shared/hooks/use-canonical-session";
+			export { paintPendingSend, seedPendingSends, movePendingSendIdentity, replacePendingSendText, resolvePendingSend, resolveObservedPendingSends, pendingSendForView, discardPendingSends, retractPendingUser, __registerEchoTarget, streamChangeKeepsTranscript } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { useMessageInput, COMPOSER_PLACEHOLDER, composerPlaceholder, clearSubmittedText, stagedPayloadOf } from "./src/renderer/src/shared/hooks/use-message-input";
 			export { useConversationInputStore, mergeReturnedText, mergeReturnedPayload } from "./src/renderer/src/shared/store/conversation-input-store";
 			export { EMPTY_TRANSCRIPT, applyEvent } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
@@ -126,6 +126,7 @@ const {
 	discardPendingSends,
 	retractPendingUser,
 	__registerEchoTarget,
+	streamChangeKeepsTranscript,
 	useMessageInput,
 	COMPOSER_PLACEHOLDER,
 	composerPlaceholder,
@@ -679,6 +680,120 @@ test("discarding echoes for one session leaves another untouched", async () => {
 	transcript.unregister();
 });
 
+test("the mint's bridge id landing on a draft pane keeps the transcript the press painted", () => {
+	reset();
+	/*
+	 * UX ROUND 1, U1, as the RULE that carries it: a draft pane's stream id moves
+	 * `undefined` -> the id `sessions.draft` minted when the mint answers, and
+	 * that swap used to read as "a different session" by
+	 * `useCanonicalSessionStream`'s reset effect - which replaced the transcript
+	 * with the new id's cache (a draft bridge has none) and took the press's row
+	 * with it. Measured on the installed 0.63.2 daemon (`session_draft_warm`
+	 * advertised) as the press reading `rows:0` with the row returning only at the
+	 * flip: Enter beats the mint's answer by ~50-300 ms, which is the ordinary
+	 * type-then-Enter cadence.
+	 *
+	 * The rule is exercised here rather than through a renderer because it is a
+	 * pure function of the two ids and the bridge flag
+	 * (`streamChangeKeepsTranscript`); the driver scene holds the end-to-end half
+	 * on a warm-capable daemon.
+	 */
+	assert.equal(
+		streamChangeKeepsTranscript(undefined, "7f5d0a3e-warm", false),
+		true,
+		"the mint's answer is not a session change: the row must survive it",
+	);
+	assert.equal(
+		streamChangeKeepsTranscript("7f5d0a3e-warm", "7f5d0a3e-warm", false),
+		true,
+		"an unchanged id keeps the transcript trivially",
+	);
+	assert.equal(
+		streamChangeKeepsTranscript(undefined, SESSION_ID, true),
+		false,
+		"a REAL session id still replaces the transcript - the rule's other arm",
+	);
+	assert.equal(
+		streamChangeKeepsTranscript("7f5d0a3e-warm", undefined, false),
+		true,
+		"and a bridge id going away (a drop) keeps it for the same reason",
+	);
+});
+
+test("the re-key runs before anything can await: from inside the seam, the session id already answers", async () => {
+	reset();
+	/*
+	 * DESIGN section 8, R2, pinned where it can fail. The re-key must ride the
+	 * patch's SYNCHRONOUS block: moved after an await - the seam below is the one
+	 * the comment names - the replacement panel's first frame would be seeded from
+	 * an empty registry and receive the row one passive effect later, which is the
+	 * flash J1/J2 forbid. Nothing pinned that ordering before this case: a mutant
+	 * that relocated `movePendingSendIdentity` past the seam kept every other test
+	 * green (agent review round 1, MINOR).
+	 *
+	 * The reading is taken FROM INSIDE `beforeAdmission`, which runs after the
+	 * create and before the wire: if the move slipped past this point the registry
+	 * would still answer under the draft key here and this fails.
+	 */
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	const requestId = store.getState().drafts[key].admissionRequestId;
+	let seenInsideSeam = null;
+	globalThis.__echoRequest = async (request) => {
+		if (request.op === "sessions.create")
+			return { session_id: SESSION_ID, binding: null };
+		return { status: "admitted" };
+	};
+	await admitChatDraft(key, input, undefined, undefined, async (sessionId) => {
+		seenInsideSeam = pendingSendForView(sessionId)?.id ?? null;
+		return undefined;
+	});
+	assert.equal(
+		seenInsideSeam,
+		requestId,
+		"the move rides the sessionId patch's synchronous block: the registry already answers under the session id when the seam runs",
+	);
+});
+
+test("a post-seed splice updates the row's text, and a re-seed replays the spliced text", async () => {
+	reset();
+	/*
+	 * THE SEAM'S SPLICE, EXERCISED AGAINST THE REAL MODULE (agent review round 1,
+	 * MINOR). `replacePendingSendText` is what rewrites the row after the
+	 * credential seam - the same row, same id, corrected text - and
+	 * `replaceLocalRecordText` is its only writer. `canonical-chat.test.mjs`
+	 * records the call; nothing drove the real registry's splice. Both halves are
+	 * pinned here: the mounted transcript updates in place, and a later mount
+	 * re-seeds the SPLICED text rather than the pre-splice paint.
+	 */
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	const pane = await mountTranscript(key);
+	paintPendingSend(key, {
+		id: "req-splice",
+		text: "raw [Credential #1, 19 chars]",
+		images: [],
+	});
+	assert.deepEqual(pane.rows(), ["raw [Credential #1, 19 chars]"]);
+	replacePendingSendText(key, "req-splice", "raw [stored secret]");
+	assert.deepEqual(
+		pane.rows(),
+		["raw [stored secret]"],
+		"the mounted row is spliced in place, not repainted",
+	);
+	assert.equal(
+		pendingSendForView(key)?.text,
+		"raw [stored secret]",
+		"and the entry carries the spliced text, because every later seed reads it",
+	);
+	const remount = await mountTranscript(key);
+	assert.deepEqual(
+		remount.rows(),
+		["raw [stored secret]"],
+		"a re-seed replays the spliced text identically",
+	);
+	pane.unregister();
+	remount.unregister();
+});
+
 /* ===================================================================== composer */
 
 /*
@@ -901,14 +1016,18 @@ test("U2: a failed send hands the message back through the store, under the user
 	 * to restore the text itself, into an EMPTY box only - a rule that could not
 	 * survive the New-chat identity flip, because the composer that pressed Enter is
 	 * unmounted by the time the failure lands and the restore was a `setState` on a
-	 * component that no longer exists (UX round 3, U14). The failure now returns the
-	 * payload through the store (`returnPayloadToComposer`, which is exactly this
-	 * `returnInFlight` call), and the composer TAKES it here (`pendingText` -> the
-	 * hook's adoption effect), merging rather than overwriting.
+	 * component that no longer exists (UX round 3, U14). The write moved through the
+	 * store (`returnInFlight`, which is exactly this call), and the composer TAKES it
+	 * here (`pendingText` -> the hook's adoption effect), merging rather than
+	 * overwriting.
 	 *
-	 * So the hook's own half of the rule is what this case pins: the box adopts a
-	 * return that the STORE wrote, and what the user typed during the flight is kept
-	 * - after the returned message, because theirs came second.
+	 * WHO WRITES IT NOW (S4): nothing in the FAILURE arm. A post-paint failure is
+	 * stated by its row, so no failure hands a payload home - the writers left are
+	 * the user's own `Edit` on such a row (`returnPayload`), the flip's residual move
+	 * for a released app's claim, and this adoption path. The rule pinned here is
+	 * unchanged, and it is the reason the adoption path outlived the return: the box
+	 * adopts a return that the STORE wrote, and what the user typed during the flight
+	 * is kept - after the returned message, because theirs came second.
 	 */
 	const quiet = await driveComposer({
 		onSubmit: ({ onEchoPainted }) => {
@@ -1143,10 +1262,11 @@ const STAGED = { chip: "/tmp/a.png", reply: "quoted turn" };
 
 /*
  * What a failed send does to the composer, called from a case the way the store
- * calls it: `returnInFlight` is the ONE path a failure takes back
- * (`returnPayloadToComposer` is this call with the store's identity in front of
- * it), so a case that drives the hook with a custom `onSubmit` reproduces the
- * real route rather than a stand-in for it.
+ * calls it: `returnInFlight` is the one WRITE a payload coming home has left
+ * (S4's failure arm returns nothing; the live writers are the user's `Edit` on a
+ * failed row and the released app's flip move, and both reach the box through
+ * this call), so a case that drives the hook with a custom `onSubmit` reproduces
+ * the real route rather than a stand-in for it.
  */
 function returnInFlight(conversationId = COMPOSER_ID) {
 	useConversationInputStore

@@ -65,11 +65,13 @@ const bundle = await build({
 				);
 				/*
 				 * The composer's own store is now a REAL dependency of the send path:
-				 * a failure returns the payload there (`returnPayloadToComposer`), and
-				 * that is the one route this suite has to see. Resolved to the same
-				 * absolute file the bundle's own export names, so the instance the
-				 * assertions read is the instance the store wrote to - a stubbed copy
-				 * would be a second store and would prove nothing.
+				 * the payload the USER asks back for (an `Edit` on a failed row, and the
+				 * released app's flip move) is written there - S4's failure arm returns
+				 * nothing, so this is the one route a payload home has left - and that
+				 * is the route this suite has to see. Resolved to the same absolute
+				 * file the bundle's own export names, so the instance the assertions
+				 * read is the instance the store wrote to - a stubbed copy would be a
+				 * second store and would prove nothing.
 				 */
 				builder.onResolve(
 					{ filter: /^@shared\/store\/conversation-input-store$/ },
