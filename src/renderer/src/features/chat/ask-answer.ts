@@ -214,9 +214,12 @@ export const approvalVerdict = (label: string): boolean | null => {
  * numerals, the buttons and the wire body share one ordering.
  *
  * Out of range falls through to `null` (`3` against two options is not a pick,
- * and this cannot invent a third answer), and a `null` is what the composer
- * renders its existing "reply yes or no" sentence for — never a value the
- * route would refuse later. Callers hand it the TYPED text beside the payload,
+ * and this cannot invent a third answer), and a `null` renders the composer's
+ * "reply yes or no" sentence — THROWN as a `UserFacingError` carrying
+ * `ANSWER_NOT_SENT_CODE`, because nothing was sent and the unknown-outcome
+ * sentence ("Couldn't confirm…", with a Retry) would be a claim this path
+ * cannot make (agent review round 1, MAJOR-1) — never a value the route would
+ * refuse later. Callers hand it the TYPED text beside the payload,
  * the discipline `answerValue` states above: with a staged reply the payload
  * is `"<reply-to>…</reply-to>\n2"`, and a resolution rule that had to parse
  * that format is one payload change away from failing silently.

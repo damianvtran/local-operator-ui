@@ -71,7 +71,7 @@ const bundle = await build({
 			'export { AskOptions } from "./src/renderer/src/features/chat/components/trace/ask-options";',
 			'export { resolveNumericAnswer, answerValue, answerReport, answerRefusedWithoutACode, answerOutcomeIsUnknown, answerUnconfirmedMessage, SETTLED_ELSEWHERE_MESSAGE, QUESTION_MOVED_ON_MESSAGE, ANSWER_UNCONFIRMED_LEAD, ANSWER_LOST_TO_RECONNECT_MESSAGE, unsentAnswerMessage, shouldTabIntoAnswerOptions, composerFocusIsOurs, createSendLock, APPROVAL_OPTIONS, approvalVerdict, approvalAnswerValue, answerGateOption, errorCodeOf, ANSWER_UNCONFIRMED_CODE } from "./src/renderer/src/features/chat/ask-answer";',
 			'export { DesktopControlError, UserFacingError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
-			'export { buildSendPayload, ANSWER_NOT_SENT_CODE } from "./src/renderer/src/shared/store/canonical-sessions-store";',
+			'export { buildSendPayload, sendFailureCopy, ANSWER_NOT_SENT_CODE } from "./src/renderer/src/shared/store/canonical-sessions-store";',
 			'export { DESKTOP_LOST_SIGHT_CODE } from "./src/shared/desktop-contract";',
 			'export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";',
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
@@ -134,6 +134,7 @@ const {
 	DesktopControlError,
 	UserFacingError,
 	buildSendPayload,
+	sendFailureCopy,
 	ANSWER_NOT_SENT_CODE,
 	ANSWER_UNCONFIRMED_CODE,
 	DESKTOP_LOST_SIGHT_CODE,
@@ -550,6 +551,67 @@ test("a failed answer reports the transport's own code, like a failed send", asy
 	assert.equal(lock.held, false);
 });
 
+test("an unresolvable typed approval answer renders the sentence, not an unconfirmed send", () => {
+	/*
+	 * THE CLASS IS THE DISCRIMINATOR (agent review round 1, MAJOR-1; UX round 1,
+	 * U1). `chat-page.tsx` throws this sentence from the approval branch, and a
+	 * plain `Error` carries no code — so the composer's table classified the
+	 * outcome as UNKNOWN and rendered "Couldn't confirm your message was sent."
+	 * with a Retry that re-ran the same refusal, over a press that provably sent
+	 * nothing (measured: Retry reproduced the identical alert). These two
+	 * executions run through the SHIPPED classifier and copy table and are the
+	 * whole difference: the bare `Error` first, so the defect is pinned as a
+	 * state the table can produce, then the shipped throw's own shape.
+	 */
+	const SENTENCE = "Reply yes or no to answer the approval request.";
+	const bare = sendFailureCopy(new Error(SENTENCE), undefined, false);
+	assert.equal(
+		bare.retry,
+		true,
+		"a bare Error is the unconfirmed arm, with a Retry",
+	);
+	assert.notEqual(
+		bare.message,
+		SENTENCE,
+		"and not the sentence the code promises",
+	);
+	const fixed = sendFailureCopy(
+		new UserFacingError(SENTENCE, ANSWER_NOT_SENT_CODE),
+		undefined,
+		false,
+	);
+	assert.equal(fixed.message, SENTENCE, "the authored sentence renders");
+	assert.equal(
+		fixed.retry,
+		false,
+		"with no Retry: nothing was sent, so there is nothing to resend",
+	);
+	assert.equal(fixed.code, ANSWER_NOT_SENT_CODE);
+	/*
+	 * And the call site THROWS that class — the table above is only reached with
+	 * the right shape if the source builds it, and `chat-page.tsx` is unreachable
+	 * from this bundle's entry points (the same hole the call-site pins below
+	 * close; comments are stripped first, exactly as there).
+	 */
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	);
+	const code = source
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+	assert.match(
+		code,
+		/throw new UserFacingError\(\s*"Reply yes or no to answer the approval request\.",\s*ANSWER_NOT_SENT_CODE,?\s*\)/,
+		"the approval branch must throw UserFacingError carrying ANSWER_NOT_SENT_CODE - a bare Error beside this sentence renders as an unknown outcome with a Retry that cannot work",
+	);
+	assert.doesNotMatch(
+		code,
+		/throw new Error\(\s*"Reply yes or no to answer the approval request\."/,
+		"the bare-Error throw must not come back",
+	);
+});
+
 test("a bare numeral resolves to that option's label", () => {
 	const g = gate();
 	assert.equal(resolveNumericAnswer(g, "1"), OPTIONS[0].label);
@@ -689,6 +751,111 @@ test("the gate branch resolves the TYPED text at the call site the app ships", (
 	);
 });
 
+test("the approval branch resolves the TYPED text at the call site the app ships", () => {
+	/*
+	 * The `approvalAnswerValue` assertions above are not the whole contract:
+	 * reverting the CALL SITE is the cheaper regression, and it left this file
+	 * green — `chat-page.tsx` is unreachable from this bundle's entry points (see
+	 * the ask pin above; agent review round 1, MINOR-2). The sabotage the review
+	 * ran: `approvalAnswerValue(content)` in place of the typed resolution, and
+	 * nothing here moved. The pin is deliberately on THIS expression and on the
+	 * request body beside it, so a rewrite has to come here and say what replaced
+	 * it instead of quietly dropping the guard.
+	 */
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	);
+	const code = source
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+	const start = code.indexOf(
+		"const approved = approvalAnswerValue(typed ?? content)",
+	);
+	assert.ok(
+		start >= 0,
+		"the approval branch must resolve the TYPED text beside the payload - typed first, never the composed content alone",
+	);
+	const block = code.slice(start, code.indexOf("});", start) + 3);
+	assert.match(
+		block,
+		/requestId:\s*gate\.request_id,\s*approved,?\s*\}/,
+		"the request body beside it carries `approved` - the strict boolean the route reads",
+	);
+	assert.doesNotMatch(
+		block,
+		/\bvalue\s*:/,
+		"and NO `value`: the daemon rejects one on an approval",
+	);
+	assert.doesNotMatch(
+		block,
+		/questionIndex|question_index/,
+		"and no question index either - the daemon rejects it on an approval",
+	);
+});
+
+test("a winning press consumes an answer-shaped draft, and never a message", () => {
+	/*
+	 * UX round 1, U4: a keyboard user types `1`, presses an option, and the
+	 * keystrokes stayed in the box - focus is already there, so the next Enter
+	 * sent `1` as an ordinary message (measured: a real turn started with it).
+	 * The press now consumes the draft exactly as the typed path does, and this
+	 * pins the two halves that make that safe: WHERE it is called (the sent arm,
+	 * for an approval only) and WHAT it refuses to touch (anything that is not an
+	 * approval answer - `approvalAnswerValue` returning `null` leaves the box
+	 * alone, so a message in progress survives). `chat-page.tsx` and
+	 * `message-input.tsx` are unreachable from this bundle, so both are pinned
+	 * by source, as the pins above are.
+	 */
+	const strip = (text) =>
+		text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+	const chatPage = strip(
+		readFileSync(
+			"src/renderer/src/features/chat/components/chat-page.tsx",
+			"utf8",
+		),
+	);
+	const sentArm = chatPage.slice(
+		chatPage.indexOf('case "sent":'),
+		chatPage.indexOf('case "card":'),
+	);
+	assert.ok(sentArm.length > 0, "the sent arm is where the consume belongs");
+	assert.match(
+		sentArm,
+		/gate\.kind === "approval"\)\s*\n?\s*input\.current\?\.consumeApprovalAnswerDraft\(\)/,
+		"the sent arm must consume the draft, and only for an approval",
+	);
+	const inputSource = strip(
+		readFileSync(
+			"src/renderer/src/features/chat/components/message-input.tsx",
+			"utf8",
+		),
+	);
+	assert.match(
+		inputSource,
+		/consumeApprovalAnswerDraft[\s\S]{0,240}?approvalAnswerValue\(newMessage\) === null[\s\S]{0,120}?setNewMessage\(""\)/,
+		"the method must clear ONLY an answer-shaped draft: approvalAnswerValue returning null (prose, a partial token) returns with the box untouched",
+	);
+	assert.match(
+		inputSource,
+		/useImperativeHandle\(ref, \(\) => \(\{[\s\S]{0,400}?consumeApprovalAnswerDraft/,
+		"and the handle must actually expose it",
+	);
+	// The predicate itself, on the discriminating cases: an answer is consumed,
+	// a message in progress is not.
+	for (const text of ["1", "yes", " 2. ", "DENY"]) {
+		assert.notEqual(approvalAnswerValue(text), null, `${text} is consumed`);
+	}
+	for (const text of [
+		"1 small thing",
+		"maybe",
+		"yes please",
+		"please do this",
+	]) {
+		assert.equal(approvalAnswerValue(text), null, `${text} survives`);
+	}
+});
+
 test("the press's report is routed by the LIVE card's identity, at the call site the app ships", () => {
 	/*
 	 * Two things the `answerReport` assertions above cannot see, and both left this
@@ -781,10 +948,13 @@ test("the press's report is routed by the LIVE card's identity, at the call site
 		"the card arm must not compose the definite sentence itself - that is what made an unknowable outcome claim a loss",
 	);
 	// The sent arm says nothing: no sentence is written on the winning path.
+	// (It does consume an answer-shaped draft - UX round 1, U4 - and that call
+	// is pinned by its own test below; the register this assertion protects is
+	// the ABSENCE of a sentence here.)
 	assert.match(
 		code,
-		/case "sent":[\s\S]{0,900}?setAnswerState\(\{ key, sending: false, refused: null \}\);\s*\n\s*return;/,
-		"the sent arm settles the card's hold and returns without a sentence",
+		/case "sent":[\s\S]{0,1600}?setAnswerState\(\{ key, sending: false, refused: null \}\);[\s\S]{0,700}?consumeApprovalAnswerDraft\(\);[\s\S]{0,200}?return;/,
+		"the sent arm settles the card's hold, consumes an answer-shaped draft, and returns without a sentence",
 	);
 	assert.doesNotMatch(
 		code,
@@ -1482,4 +1652,54 @@ test("an answer in flight says so, and the card holds itself after a press", () 
 	);
 	assert.ok(refused.includes("<output"));
 	assert.ok(refused.includes("Your answer was not sent."));
+});
+
+test("a held approval refusal names the composer, not the buttons", () => {
+	// (agent review round 1, finding 7; UX round 1, U2/U3.) While a refused or
+	// unconfirmed answer holds the APPROVAL card, its options are disabled for
+	// the rest of the card's life, so the buttons-first sentence would instruct
+	// the two controls that cannot send and name no control that still can. The
+	// held card swaps to the composer, which still reaches the gate, and keeps
+	// the exit; the idle card keeps the buttons-first sentence. Rendered from the
+	// shipped transcript, through the same approval gate the mount test uses.
+	const base = {
+		transcript: EMPTY_TRANSCRIPT,
+		gate: gate({ kind: "approval", options: [] }),
+		waiting: false,
+		loadingOlder: false,
+		onLoadOlder: async () => true,
+		containerRef: { current: null },
+		isSmallView: false,
+		status: "live",
+		awaitingHydration: false,
+		error: null,
+		onAnswer: () => {},
+	};
+	const refused = renderToStaticMarkup(
+		createElement(CanonicalTranscript, {
+			...base,
+			answer: {
+				sending: false,
+				refused:
+					"Your answer was not sent. The request could not be completed.",
+			},
+		}),
+	);
+	assert.ok(
+		refused.includes(
+			"Answer from the composer instead: type yes, no, 1, or 2 and send, or press Escape to stop the turn.",
+		),
+		"a held refusal names the composer path",
+	);
+	assert.ok(
+		!refused.includes("Choose Approve or Deny above"),
+		"and must not instruct the buttons it disabled",
+	);
+	const idle = renderToStaticMarkup(createElement(CanonicalTranscript, base));
+	assert.ok(
+		idle.includes(
+			"Choose Approve or Deny above, type yes, no, 1, or 2 and send, or press Escape to stop the turn.",
+		),
+		"while the card the buttons can still answer keeps the buttons-first sentence",
+	);
 });

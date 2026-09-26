@@ -1,5 +1,6 @@
 import { backendPaneSentence } from "@shared/api/local-operator/backend-error";
 import {
+	UserFacingError,
 	desktopResult,
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
@@ -19,6 +20,7 @@ import { useWarmSession } from "@shared/hooks/use-warm-session";
 import { cn } from "@shared/lib/utils";
 import { useAsideStore } from "@shared/store/aside-store";
 import {
+	ANSWER_NOT_SENT_CODE,
 	ASIDE_NOT_ANSWERED_CODE,
 	ASIDE_STILL_ANSWERING_CODE,
 	SESSION_UNVALIDATED_CODE,
@@ -1282,12 +1284,24 @@ function SessionPanel({
 					 * `content` is wrapped in `<reply-to>…</reply-to>`, and a rule that had
 					 * to parse that wrapper would be one payload change away from failing
 					 * silently. `approvalAnswerValue` returns the strict boolean or `null`,
-					 * and `null` keeps the shipped sentence — the press sent nothing, so
+					 * and `null` renders the shipped sentence — the press sent nothing, so
 					 * the box still holds the text.
+					 *
+					 * THE CLASS IS THE WHOLE OF THAT PROMISE (agent review round 1, MAJOR-1;
+					 * UX round 1, U1). A plain `Error` carries no code, so `sendFailureCopy`
+					 * classified the throw as an UNKNOWN outcome and the composer rendered
+					 * "Couldn't confirm your message was sent." with a Retry that re-ran this
+					 * same refusal — over a press that provably sent nothing.
+					 * `UserFacingError` with `ANSWER_NOT_SENT_CODE` is the one shape the
+					 * table renders as the authored sentence with `retry: false`: the user
+					 * is told which answers work, and offered no press that cannot.
 					 */
 					const approved = approvalAnswerValue(typed ?? content);
 					if (approved === null)
-						throw new Error("Reply yes or no to answer the approval request.");
+						throw new UserFacingError(
+							"Reply yes or no to answer the approval request.",
+							ANSWER_NOT_SENT_CODE,
+						);
 					await desktopResult({
 						op: "sessions.answer",
 						sessionId,
@@ -1802,6 +1816,19 @@ function SessionPanel({
 				 * second press from repeating an answer that already landed.
 				 */
 				setAnswerState({ key, sending: false, refused: null });
+				/*
+				 * AND THE BOX GOES WITH THE ANSWER (UX round 1, U4). A keyboard user
+				 * answers `1` by typing it and then pressing an option; the press consumed
+				 * the answer, but the keystrokes stayed in the composer — where focus
+				 * already is — so the next Enter sent `1` as an ordinary message (measured:
+				 * a real turn started with it). The press consumes the draft exactly as
+				 * the typed path does, through a method that clears ONLY text which IS an
+				 * approval answer (`1`, `yes.`), so a message somebody was writing is
+				 * never wiped. Ask presses keep their inherited behaviour; this round did
+				 * not change them.
+				 */
+				if (gate.kind === "approval")
+					input.current?.consumeApprovalAnswerDraft();
 				return;
 			case "card":
 				// The sentence belongs on the surface the press was made on, where it

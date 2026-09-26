@@ -2228,8 +2228,18 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 										 * reading the capability a second time, which is a copy
 										 * decision the UX round can revisit if the skew window
 										 * ever outlives the fix.
+										 *
+										 * AND IT IS THE IDLE SENTENCE, not the held one (agent review
+										 * round 1, finding 7; UX round 1, U2/U3): while a refused or
+										 * unconfirmed answer holds the card, its options are disabled
+										 * for the rest of the card's life, so the buttons-first
+										 * sentence would instruct the two controls that cannot send
+										 * and name no control that still can. The held card names the
+										 * composer, which still reaches the gate, and keeps the exit.
 										 */
-										"Choose Approve or Deny above, type yes, no, 1, or 2 and send, or press Escape to stop the turn."
+										answer?.refused
+										? "Answer from the composer instead: type yes, no, 1, or 2 and send, or press Escape to stop the turn."
+										: "Choose Approve or Deny above, type yes, no, 1, or 2 and send, or press Escape to stop the turn."
 									: /*
 										 * The hint names the new affordance first and keeps the
 										 * free-text path honest, because both are real: the
