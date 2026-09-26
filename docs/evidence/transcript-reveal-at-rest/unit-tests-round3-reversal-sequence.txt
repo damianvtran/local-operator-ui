@@ -1,0 +1,8 @@
+# The round-3 strict-reading sequence through both policy builds, in one
+# process (scratch probe; the committed cases that pin the same behaviour
+# are the two named in unit-tests-round3-prefix.txt). Every gap inside the
+# act is 150ms, well under GESTURE_GAP_MS = 400:
+
+0ed7c7efb (origin/main): up-at-wall -> fetch; down/up inside the act -> fetch
+head (this branch): up-at-wall -> fetch; down/up inside the act -> none
+DISCRIMINATES: fetch on 0ed7c7efb / none here

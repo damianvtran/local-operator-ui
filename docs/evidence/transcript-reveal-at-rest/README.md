@@ -14,12 +14,14 @@ the contract this round restores:
 Two changes, both in `scroll-paging.ts` and `use-scroll-paging.ts`:
 
 1. **A spend waits for the motion to settle, or happens at the hard top.** The
-   velocity lead is removed. Measured on this rig's scroller, a mount dispatched
-   mid-motion displaced the reader's distance-from-top by up to **6834px in a
-   single frame** in the committed samples (`maxDistanceFrameDeltaPx`,
-   `page-lands-with-rows-hidden`, both arms) before the anchor hold restored it,
-   and the terminal UI this surface is asked to match defers its checks while
-   the scroller animates.
+   velocity lead is removed: reveals dispatched while input was still arriving
+   fall **3→1, 3→1, 7→0 and 6→1** across the four scenarios that discriminate,
+   and every freshly mounted wall had bought the next spend — the chain the
+   operator reported. The terminal UI this surface is asked to match defers its
+   checks while the scroller animates. (`maxDistanceFrameDeltaPx` is NOT the
+   justification — it spans the reader's own wheel motion and the fixed arm
+   reproduces it at equal magnitude; round-3 review F3. The readings that
+   discriminate are the on-approach counts, below and in the readings section.)
 2. **One round trip per act** (`actFetchSpent`): a fling that crosses two walls
    spends once; the next chunk needs a fresh act (`GESTURE_GAP_MS` of quiet and
    a new push) or the affordance. Local widens are not budgeted — they show the
@@ -71,10 +73,12 @@ branch), captured by the same rig for both arms.
   recorded as not covered by this set, not implied.** The whole-run totals below
   include that scenario's 0 requests on both arms.
 - Two observations from the review are also answered here: the `6966px` figure
-  in the code comments and the PR body is restated as the committed **6834px**
-  above (the old number was from the diagnosis run's scratch, not from this
-  set's JSONs), and `worstMsAfterArrival`'s meaning is stated under the readings
-  table — it is a scenario-timeline wait, not a fetch latency.
+  that used to sit in the code comments and the PR body was **withdrawn entirely
+  in round 3** (F3: the number spans the reader's own motion and the fixed arm
+  reproduces it, so it cannot justify the removal — the comments and the body
+  now quote the on-approach counts), and `worstMsAfterArrival`'s meaning is
+  stated under the readings table — it is a scenario-timeline wait, not a fetch
+  latency.
 
 ## What produced these frames
 
@@ -96,11 +100,13 @@ paging-evidence-arms: restored=identical {"scroll-paging.ts":"2a5c4056b1111f36",
 ```
 
 The line above is the capture run's own print, from the tree the arms ran
-against. The committed head's bytes differ by exactly two later text-level
-edits — the rule-3 comments' 6966px figure restated as 6834px, and biome's
-one-line collapse of the F1 gate — so both `arm-record.json` files are
-**re-stamped to the committed head bytes** (`scroll-paging.ts` =
-`d525e500ceb829ff`, `use-scroll-paging.ts` = `4cf55619fef9c915`; re-derive with
+against. That capture tree predates three later edits — the 6966px figure's
+restatement (later withdrawn, see F3 above), the round-3 strict reading of
+rule 2 (the down branch no longer clears `actFetchSpent`) with F3's
+lurch-sentence removal, and biome's one-line collapse of the F1 gate — so both
+`arm-record.json` files are **re-stamped to the committed head bytes**
+(`scroll-paging.ts` = `352a3d55bbdbf88b`, `use-scroll-paging.ts` =
+`4cf55619fef9c915`; re-derive with
 `git show HEAD:<path> | shasum -a 256 | cut -c1-16`), and each record's `note`
 states the capture tree the printed digests belong to. No digest is left
 unreproducible.
@@ -140,10 +146,16 @@ this set's eight phase-2 scenarios; the whole-run row is the rig's own
 gutter (0), the selectable text runs (0) and its legs.
 
 - **No mid-motion dispatch**: `on-approach` counts reveals dispatched while
-  input was still arriving. It drops 3→1, 3→1, 7→0 and 6→1 in the scenarios
-  that used to mount rows under a travelling viewport. The remaining 1s are the
-  hard-top spend (the finger is still pushing but the content cannot move — the
-  one case the terminal UI's edge spend also covers), not a projected arrival.
+  input was still arriving. It falls 3→1, 3→1, 7→0 and 6→1 in the four scenarios
+  that used to mount rows under a travelling viewport — and it **rises 1→2** in
+  `slow-approach-into-zone`, where the reader deliberately stops INSIDE the
+  zone: the metric counts every approach spend, and a reader who never pins
+  keeps approaching, so the metric is degenerate in that scenario (round-3
+  review F6 — both directions reported, not just the falling ones). The four
+  falling rows are the ones that discriminate the change. The remaining 1s in
+  the table are the hard-top spend (the finger is still pushing but the content
+  cannot move — the one case the terminal UI's edge spend also covers), not a
+  projected arrival.
 - **The reader's place holds**: `maxAnchorFrameDeltaPx` is **0** on both arms —
   the held row never moved a sub-pixel after the last input.
 - **One act, one request at the wall**: `resting-finger-at-clamped-top` — 200
@@ -168,8 +180,8 @@ gutter (0), the selectable text runs (0) and its legs.
 
 ## The test runs, all shown
 
-`scripts/transcript-paging.test.mjs` (39 cases) and
-`scripts/transcript-paging-hook.test.mjs` (2 cases) were run against both
+`scripts/transcript-paging.test.mjs` (39 cases at round 1, **41** from round 3)
+and `scripts/transcript-paging-hook.test.mjs` (2 cases) were run against both
 module sets, and the round-1 remediation carries its own two arms:
 
 - `unit-tests-prefix.txt` — both files against `origin/main`'s two modules:
@@ -183,6 +195,28 @@ module sets, and the round-1 remediation carries its own two arms:
   against `0ed7c7efb`'s modules (the state review round 1 measured), where F2's
   policy case and F1's hook case fail (38/1 and 1/1), and against the fixed
   modules, where both pass.
+- Round 3's strict-reading arms (`unit-tests-round3-*.txt`): against
+  `0ed7c7efb`'s modules **38 pass / 3 fail** — the two new cases ("a reversal
+  inside one act does not refill the act's fetch budget"; "the budget refills
+  when the quiet window opens a new act") plus round 1's F2 case; against this
+  branch's modules **41/41** (hook suite 2/2, unchanged). The same sequence
+  driven through both builds in one process — up at the wall, then down/up
+  inside one act — prints `fetch` on `0ed7c7efb` and `none` here
+  (`unit-tests-round3-reversal-sequence.txt`).
+- The strict fix does not move the readings above: no committed gesture contains
+  a down input inside an act — every scenario's gesture is an upward wheel
+  stream, and the rig's only down-wheel sits in the hold fixture, outside the
+  eight captured scenarios — so the reversal path the fix changes is not
+  exercised by these runs; the new cases pin it instead.
+- `before-measurements-recheck.json` (with `before-arm-record-recheck.json`) — a
+  same-fixture re-run of the before arm on 2026-09-26, to settle the "2 round
+  trips" sentence an earlier draft of the PR body carried: the
+  `fling-crossing-two-walls` scenario reads **1** request / 3 reveals / 3
+  on-approach again, and the run's whole-run total (16 `sessions.history`)
+  differs from the committed set's 19 exactly the way the scenario-travel note
+  above says synthetic momentum varies. No committed artifact ever read 2; the
+  claims ride on the committed set, the on-approach counts, and the re-run's
+  agreement at the scenario.
 
 The lead-sensitive cases pass `travelVelocityPxPerMs` in their notches even
 though this branch's policy no longer reads it; the replaced module does, and
