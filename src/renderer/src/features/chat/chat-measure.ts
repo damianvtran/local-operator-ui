@@ -30,7 +30,7 @@
  * used to live there was removed from the user bubble too (operator report,
  * 2026-09-16: a card widened by a reply quote or an attachment left the prose a
  * centre-constrained column inside it), so a user turn is an aside by the
- * card's own `max-w-[75%]` inside this 640px measure, and agent output takes no
+ * card's own `max-w-[75%]` inside this 900px measure, and agent output takes no
  * cap at all — it shares the left edge and the width of the tool rows in the
  * same turn. `markdown.css`'s measure comment carries both reports and the
  * numbers.

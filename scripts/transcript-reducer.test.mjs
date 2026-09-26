@@ -35,6 +35,7 @@ const {
 	seedCallsMissingLabels,
 	withRecoveredOutcome,
 	appendPendingUser,
+	appendLocalNote,
 	removeRecord,
 } = reducer;
 
@@ -4193,16 +4194,26 @@ test("a locally stamped echo cannot sort above a row already on screen", () => {
 	 * older message - until the owner's durable row (the same id, its own,
 	 * server-stamped ts) replaces it: the visible "corrects after some time".
 	 *
+	 * THE TWO CLOCKS ARE IN THE SAME UNITS, and that is checked rather than
+	 * assumed: the page's `ts` arrive in SECONDS and the reducer converts them
+	 * (`Math.round(entry.ts * 1000)`), while `appendPendingUser` consumes `now`
+	 * in MILLISECONDS - so `clientNow` here is `(serverNow - 1) * 1_000`, a
+	 * client one second behind the owner on a real epoch. The first version of
+	 * this fixture was ms-as-small-numbers, which pinned the echo about three
+	 * orders of magnitude below every row it ordered against, not the one
+	 * second behind the docstring claims (agent review round 1, R6; re-run at
+	 * this scale, the pre-fix code still fails and the fix still passes).
+	 *
 	 * The echo goes through the real entry point and the re-sort is provoked by
 	 * the next merge, which is the sequence the live path runs.
 	 */
-	const serverNow = 2_000_000;
-	const clientNow = serverNow - 1_000;
+	const serverNow = 1_760_000_000; // seconds, the wire's unit - a real epoch
+	const clientNow = serverNow * 1_000 - 1_000; // ms, one second behind
 	let state = applyHistoryPage(EMPTY_TRANSCRIPT, {
 		entries: [
 			{
 				id: "u1",
-				ts: serverNow - 5_000,
+				ts: serverNow - 5,
 				type: "message",
 				payload: { kind: "message", ...user("u1", "older") },
 			},
@@ -4222,11 +4233,21 @@ test("a locally stamped echo cannot sort above a row already on screen", () => {
 		["u1", "a1", "req-1"],
 		"the echo is appended at the tail before any merge runs",
 	);
+	/*
+	 * THE FIX, IN ONE ASSERTION: the echo's stamp is the MAXIMUM already painted
+	 * (a tie with `a1`, kept after it by insertion order), not the raw client
+	 * stamp - so the next merge cannot lift it above a painted row.
+	 */
+	assert.equal(
+		state.records.find((r) => r.id === "req-1").ts,
+		serverNow * 1_000,
+		"the echo takes the newest painted stamp, not the raw client clock",
+	);
 	const merged = applyHistoryPage(state, {
 		entries: [
 			{
 				id: "a2",
-				ts: serverNow + 1_000,
+				ts: serverNow + 1,
 				type: "message",
 				payload: { kind: "message", ...assistant("a2", "next") },
 			},
@@ -4238,5 +4259,95 @@ test("a locally stamped echo cannot sort above a row already on screen", () => {
 		merged.records.map((r) => r.id),
 		["u1", "a1", "req-1", "a2"],
 		"a client clock behind the server's must not sort the echo above the newest painted row",
+	);
+	/*
+	 * AND THE DURABLE ROW STAYS AUTHORITATIVE WHERE IT LANDS: the owner's own
+	 * row for the same id arrives with its real stamp - here STRICTLY between
+	 * the client's clock and the stamp the echo took (`serverNow - 0.5` seconds
+	 * is `serverNow * 1_000 - 500` ms, inside
+	 * (1_759_999_999_000, 1_760_000_000_000), which no whole second can land
+	 * in) - and it replaces the echo AND takes its own canonical place: after
+	 * `u1`, before `a1`, BELOW the position the capped echo was sitting at.
+	 * The cap must never outrank the owner (agent review round 1, R6).
+	 */
+	const replaced = applyHistoryPage(merged, {
+		entries: [
+			{
+				id: "req-1",
+				ts: serverNow - 0.5,
+				type: "message",
+				payload: { kind: "message", ...user("req-1", "sent now") },
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		replaced.records.map((r) => r.id),
+		["u1", "req-1", "a1", "a2"],
+		"the durable row replaces the echo and sorts to its own stamp",
+	);
+});
+
+test("a local notice is stamped monotonic too, and never sorts above a painted row", () => {
+	/*
+	 * `monotonicStamp` is shared with `appendLocalNote`, and the notice path had
+	 * no test when the echo's fix landed (agent review round 1, R6): a
+	 * renderer-local notice - a refused send's sentence, "Interrupted" - is
+	 * minted from the CLIENT's clock too, so on an owner whose clock runs ahead
+	 * it could open a conversation ABOVE every painted row. Same clamp, same
+	 * claim.
+	 */
+	let state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "u1",
+				ts: 1_760_000_000 - 5,
+				type: "message",
+				payload: { kind: "message", ...user("u1", "older") },
+			},
+			{
+				id: "a1",
+				ts: 1_760_000_000,
+				type: "message",
+				payload: { kind: "message", ...assistant("a1", "older answer") },
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	state = appendLocalNote(
+		state,
+		"a local notice",
+		"info",
+		1_760_000_000 * 1_000 - 1_000,
+	);
+	const notice = state.records.find((r) => r.kind === "notice");
+	assert.ok(notice, "the notice is painted");
+	assert.equal(
+		notice.ts,
+		1_760_000_000 * 1_000,
+		"the notice takes the newest painted stamp, not the raw client clock",
+	);
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["u1", "a1", notice.id],
+		"the notice sits at the tail, not above the rows already on screen",
+	);
+	/*
+	 * AND THE CLAMP ONLY EVER RAISES: a caller whose clock is AHEAD keeps its
+	 * own stamp - the function is `max(now, painted)`, not "the newest painted".
+	 */
+	const ahead = appendLocalNote(
+		state,
+		"a notice from a clock ahead",
+		"info",
+		1_760_000_000 * 1_000 + 5_000,
+	);
+	assert.ok(
+		ahead.records.some(
+			(r) => r.kind === "notice" && r.ts === 1_760_000_005_000,
+		),
+		"a clock ahead of the painted rows keeps its own stamp",
 	);
 });

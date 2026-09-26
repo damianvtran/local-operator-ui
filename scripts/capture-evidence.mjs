@@ -3417,80 +3417,35 @@ export const STORIES = [
 	["chat-sidebar-agents--install-summary", 420, 760],
 
 	/*
-	 * The chat sidebar's SPLIT (`docs/design/sidebar-sections.md`) at rest: the
-	 * boundary between the entity lists and the chats list, the two collapse
-	 * controls that live on it, the order control beside them, and the restore
-	 * row a hidden region leaves behind.
+	 * The chat sidebar's sections, MERGED (operator report, 2026-09-26): one
+	 * scroller, the entity sections and the chats list as its flow, with no
+	 * boundary, no collapse cluster and no swap. `resting-default` is the panel
+	 * as it ships, `narrow-240` is that panel at its own width clamp, and
+	 * `query-while-collapsed` is what a query matching both regions draws.
 	 *
-	 * The state a frame is FROM is set through the store by the story, which is
-	 * the honest split of labour for this surface: a drag is the driver's
-	 * business (`--scene sidebar-split`), and these frames are the RESOLVED
-	 * layouts a reviewer judges and a later round diffs. `resting-default` is
-	 * the parity claim's after half - with no stored value it is the panel as it
-	 * ships, which is what the four committed sidebar sets photograph.
+	 * THE SPLIT'S SIX OTHER STATES ARE RETIRED (round 1 of this remediation,
+	 * agent review R2 and QA's Q3): `dragged-split`, `entities-only`,
+	 * `chats-only`, `short-window`, `chats-first` and `chats-first-narrow`
+	 * photographed a boundary, a collapse, a stored height and a swap the
+	 * merged panel cannot reach, and their plays could only spin against it -
+	 * three of them threw outright. The frames were deleted with the stories
+	 * and `docs/evidence/chat-sidebar-sections/README.md` carries each one's
+	 * record and the reason.
 	 *
 	 * WIDTH is the panel plus the 380px readout beside it, and the readout is
-	 * part of the evidence rather than decoration: it prints the separator's own
-	 * `aria-valuenow/min/max`, the regions that are actually mounted, the drawn
-	 * height and the stored preference, read out of the DOM. That is what makes
-	 * `short-window` legible as a claim - `Stored: 900px` beside `now 352` is
-	 * the render clamping without rewriting - and it is what keeps every frame
-	 * here clear of `check-evidence`'s uniformity ceiling, since a frame of a
-	 * mostly-empty panel would otherwise be one ground and nothing else.
-	 *
-	 * HEIGHT is sized to the band each state draws, for the reason the usage
-	 * states are: `entities-only` is a filled column and a 28px row, and a 900px
-	 * frame of it would be a picture of ground.
-	 */
-	/*
-	 * ABOVE each story's natural content height, deliberately: 741x760 for
-	 * `resting-default`, 741x700 for `dragged-split`.
-	 *
-	 * This is a floor rather than a measurement, and that is the fix. The content
-	 * height is SELF-REFERENTIAL here - the entity region is a fraction of the
-	 * column, so a taller viewport draws taller content - which is why chasing the
-	 * drawn height never converged: measured across three passes it went 691 ->
-	 * 708 -> 718 -> 723, each pass's declaration landing just under the next
-	 * pass's content and the harness resizing under the caption again. A
-	 * declaration ABOVE the content inverts that: `max(scrollHeight, declared)` is
-	 * the declaration, the frame IS the declared height, and the readout - which
-	 * this round re-asserts after the layout settles - describes the viewport the
-	 * shutter opens on. So the caption cannot belong to a different viewport, which
-	 * is the whole of M-1/D4.
-	 *
-	 * The declaration is the viewport the harness resizes the content height to
-	 * (`max(scrollHeight, body, declared)`), and that resize lands AFTER the
-	 * readout's last DOM sample. A story whose content is taller than its
-	 * declaration therefore gets a caption written for the pre-resize viewport and
-	 * a frame shot at the post-resize one - which is how the light half of
-	 * `resting-default` printed a 660-tall page's arithmetic (`now 290 / max 484`)
-	 * into a 691-tall frame through two rounds and a re-capture (agent review round
-	 * 2, M-1; design round 2, D4). Both numbers here are re-derived from the
-	 * committed frames rather than carried: `resting-default` grew when the readout
-	 * gained its separator-label line (D10), and `dragged-split` was one pixel over
-	 * its declaration before this round. Declaring the content's own height makes
-	 * the resize a no-op and the caption true by construction.
+	 * part of the evidence rather than decoration: it prints the regions that
+	 * are actually mounted, the scroller's own content and box, the drawn row
+	 * counts and the stored view, read out of the DOM. HEIGHT is declared
+	 * ABOVE each story's natural content height, deliberately - the content
+	 * height is self-referential here, so chasing the drawn height never
+	 * converged - and a declaration above it makes the harness's resize a
+	 * no-op and the caption describe the viewport the shutter opens on
+	 * (agent review round 2, M-1; design round 2, D4).
 	 */
 	["chat-sidebar-sections--resting-default", 741, 760],
-	["chat-sidebar-sections--dragged-split", 741, 700],
-	["chat-sidebar-sections--entities-only", 741, 420],
-	["chat-sidebar-sections--chats-only", 741, 480],
-	/*
-	 * A stored 900px in a window that cannot honour it: the clamp and the kept
-	 * preference in one frame, which is the pair `resting-default` cannot show.
-	 */
-	["chat-sidebar-sections--short-window", 741, 520],
-	/*
-	 * The swap, in both orders' widths: the one layout in this change where the
-	 * regions' roles invert, the rule above the lower region moves to the other
-	 * region, and the boundary changes which edge of the list it sits on (D2).
-	 */
-	["chat-sidebar-sections--chats-first", 741, 660],
-	["chat-sidebar-sections--chats-first-narrow", 621, 760],
-	/* The panel at its own width clamp, where the boundary and the restore row
-	   have the least room they ever get - and the rows wrap hardest. */
+	/* The panel at its own width clamp, where the rows wrap hardest. */
 	["chat-sidebar-sections--narrow-240", 621, 760],
-	/* The collapse held while a query renders both regions over it. */
+	/* A query that finds one agent and one conversation, both regions drawn. */
 	["chat-sidebar-sections--query-while-collapsed", 741, 460],
 
 	/* ------------------------------------------------------------------ *
@@ -3530,13 +3485,13 @@ export const STORIES = [
 		"chat-sidebar-view-menu--page-ladder-twenty-five",
 		741,
 		820,
-		{ scrollToEnd: '[data-sidebar-region="chats"]' },
+		{ scrollToEnd: '[data-sidebar-region="scroller"]' },
 	],
 	[
 		"chat-sidebar-view-menu--page-ladder-fifty",
 		741,
 		820,
-		{ scrollToEnd: '[data-sidebar-region="chats"]' },
+		{ scrollToEnd: '[data-sidebar-region="scroller"]' },
 	],
 	[
 		/*

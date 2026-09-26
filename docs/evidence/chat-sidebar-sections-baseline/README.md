@@ -74,8 +74,9 @@ diff would have to explain.
 
 ## What this pair does NOT prove
 
-- **Not the drag, the reveal or the restart** — those are the driver's claims
-  (`--scene sidebar-split`) and the live-app set's.
+- **Not the drag, the reveal or the restart** — those were the driver's claims
+  (`--scene sidebar-split`, retired with the split's removal in round 1 of the
+  #534 remediation) and the live-app set's record.
 - **Not the collapsed states.** A collapsed column is a different layout by
   definition; its evidence is the `chat-sidebar-sections/` set.
 - **Not the eleven palettes it does not carry.** Two, as the brief requires as a
