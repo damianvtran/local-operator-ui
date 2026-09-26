@@ -944,6 +944,43 @@ const AssistantRow = memo(function AssistantRow({
 });
 
 /**
+ * The row's own summary text — the object column before the row's bare-name drop.
+ *
+ * Shared with the trace fold's live clause (wired as `summaryOf` in the fold's
+ * memo below): a collapsed group names the running call with the row's OWN words
+ * rather than a second guess at them, and the composing/queued/never-sent
+ * branches are exactly where a second guess would drift.
+ *
+ * `never sent` covers BOTH ways a call reaches no tool — the harness's verdict
+ * (`notRunReason`) and a turn that died while the call was still being dictated
+ * or waiting to run. The TUI states the two the same way (`mark_not_run`'s
+ * summary; `mark_interrupted` keeps the compose facts for a card that was
+ * composing or queued), which is why both read `never sent · N composed` rather
+ * than only where a verdict happened to arrive.
+ */
+function toolRecordSummary(
+	record: Extract<TranscriptRecord, { kind: "tool" }>,
+): string {
+	const composing = record.phase === "composing";
+	const queued = record.phase === "queued";
+	const neverSent = record.neverSent === true || Boolean(record.notRunReason);
+	if (neverSent)
+		// `never sent`, not `failed`: the call produced no result to fail, and the
+		// size is the record of how far the model got before nothing would receive
+		// it (`ToolCard.mark_not_run`). An empty payload is named rather than
+		// rendered as `0 B`, which would claim a measurement.
+		return `never sent · ${record.argumentBytes ? `${formatBytes(record.argumentBytes)} composed` : "nothing composed"}`;
+	if (composing)
+		return `composing${record.argumentBytes ? ` · ${formatBytes(record.argumentBytes)}` : ""}`;
+	if (queued)
+		// Dictation is over and the call has not started: the byte count stays
+		// (it is how far the model got), and the status word stops claiming work
+		// the model finished writing.
+		return `queued${record.argumentBytes ? ` · ${formatBytes(record.argumentBytes)}` : ""}`;
+	return summaryFromArgs(record.toolName, record.args);
+}
+
+/**
  * One tool call as a ledger row.
  *
  * The row itself is `ToolRow`; this decides what goes in each of its columns
@@ -996,38 +1033,14 @@ const ToolRow = memo(function ToolRow({
 	 *
 	 * Both are the TUI's own states (`ToolCard.mark_queued` / `mark_not_run`) and
 	 * the phone's (`queued` / `failed`), so the three surfaces agree on what the
-	 * producer said rather than each inventing a reading of it.
+	 * producer said rather than each inventing a reading of it. The copy for both
+	 * lives in `toolRecordSummary` below.
 	 */
-	const queued = record.phase === "queued";
 	// Truthiness rather than `!== null`: a record built by hand (a test fixture, a
 	// story) carries no `notRunReason` key at all, and `undefined !== null` would
 	// paint every one of them as a never-run verdict.
 	const notRun = Boolean(record.notRunReason);
-	/*
-	 * The call reached no tool — the verdict's fact, and also the turn-death one:
-	 * a row still being dictated or waiting to run when the turn ended was never
-	 * sent either, and the harness's verdict is only one of the two ways that
-	 * happens. The TUI states the two the same way, and the record of it is the
-	 * same sentence (`mark_not_run`'s summary; `mark_interrupted` keeps the compose
-	 * facts for a card that was composing or queued), which is why the row below
-	 * reads `never sent · N composed` for both rather than only where a verdict
-	 * happened to arrive.
-	 */
-	const neverSent = record.neverSent === true || notRun;
-	const summary = neverSent
-		? // `never sent`, not `failed`: the call produced no result to fail, and the
-			// size is the record of how far the model got before nothing would receive
-			// it (`ToolCard.mark_not_run`). An empty payload is named rather than
-			// rendered as `0 B`, which would claim a measurement.
-			`never sent · ${record.argumentBytes ? `${formatBytes(record.argumentBytes)} composed` : "nothing composed"}`
-		: composing
-			? `composing${record.argumentBytes ? ` · ${formatBytes(record.argumentBytes)}` : ""}`
-			: queued
-				? // Dictation is over and the call has not started: the byte count stays
-					// (it is how far the model got), and the status word stops claiming work
-					// the model finished writing.
-					`queued${record.argumentBytes ? ` · ${formatBytes(record.argumentBytes)}` : ""}`
-				: summaryFromArgs(record.toolName, record.args);
+	const summary = toolRecordSummary(record);
 	// When the arguments taught us nothing, the summary is the tool's own name,
 	// which the row then drops as a stutter and the object column goes empty.
 	// A row that says nothing about its call is the scannability this port
@@ -1768,6 +1781,20 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				row.record.kind === "tool" && row.record.isError === true,
 			durationOf: (row) =>
 				row.record.kind === "tool" ? row.record.durationS : null,
+			/*
+			 * The fold's condensed header is fed from the records themselves: the
+			 * running call's own words (`toolRecordSummary`), its own running
+			 * predicate, and the two stamps its span is built from. All four live
+			 * behind options so the model stays a pure function over rows.
+			 */
+			summaryOf: (row) =>
+				row.record.kind === "tool" ? toolRecordSummary(row.record) : "",
+			runningOf: (row) =>
+				row.record.kind === "tool" && row.record.phase !== "done",
+			startedAtOf: (row) =>
+				row.record.kind === "tool" ? row.record.startedAt : null,
+			endedAtOf: (row) =>
+				row.record.kind === "tool" ? row.record.endedAt : null,
 			isFoldable: (row) => row.record.kind === "tool",
 		});
 		const firstIndexOf = new Map<string, number>();
@@ -2463,10 +2490,17 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 										summary={group.summary}
 										actionCount={group.rows.length}
 										failedCount={group.failedCount}
-										durationS={group.durationS}
-										/* Expanded while the newest turn is IN FLIGHT, collapsed to
-										   the summary once it settles (§E2). */
-										openByDefault={working !== null && group.isNewestTurn}
+										span={group.span}
+										live={group.live}
+										/*
+										 * THE FOLD'S SECTION: the newest turn while that turn is in
+										 * flight. While it is true nothing condenses the fold; when it
+										 * turns false the fold closes itself once (see `TraceFold`'s
+										 * condense rule). `working` is the same liveness the working
+										 * line reads, so the section ends exactly when the pane says the
+										 * turn did.
+										 */
+										sectionLive={working !== null && group.isNewestTurn}
 									>
 										{group.rows.map((row, index) => (
 											<TranscriptRow

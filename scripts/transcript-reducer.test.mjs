@@ -1016,6 +1016,69 @@ test("a running row with no stated start carries the clock its duration cannot",
 	const done = settled.records.find((r) => r.kind === "tool");
 	assert.equal(done.startedAt, null, "the row stops counting");
 	assert.equal(done.durationS, 60.2, "and reports what the backend measured");
+	assert.equal(
+		done.endedAt,
+		61_200,
+		"and keeps the completion the fold's span is built from",
+	);
+});
+
+test("a settled row dates its completion in the producer's own clock", () => {
+	/*
+	 * The fold's span (first start to last completion) is built from the two
+	 * stamps this asserts, and the completion is `startedAt + duration_s` — the
+	 * producer's own numbers — rather than this viewer's arrival instant: a seed
+	 * replayed to a viewer that was away would otherwise date a completion that
+	 * never happened then, stretching a run's span by however long they were
+	 * gone. The arrival below is deliberately far from the true completion so
+	 * the two cannot be confused.
+	 */
+	const started = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "c-span",
+			tool_name: "bash",
+			args: { command: "true" },
+			started_at_epoch: 5,
+		},
+		5_000,
+	);
+	const running = started.records.find((r) => r.kind === "tool");
+	assert.equal(running.startedAt, 5_000);
+	assert.equal(running.endedAt, null, "nothing completed yet");
+
+	const settled = applyEvent(
+		started,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-span",
+			tool_name: "bash",
+			result: { content: [{ type: "text", text: "ok" }], details: {} },
+			duration_s: 3,
+		},
+		999_999,
+	);
+	const done = settled.records.find((r) => r.kind === "tool");
+	assert.equal(
+		done.endedAt,
+		8_000,
+		"5s + 3s in the producer's clock, not the arriving frame's instant",
+	);
+
+	// An end frame that states no duration leaves NO completion: the fold's span
+	// renders nothing for a run it cannot date rather than a `0s` claim.
+	const quiet = applyEvent(
+		started,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-span",
+			tool_name: "bash",
+			result: { content: [] },
+		},
+		999_999,
+	);
+	assert.equal(quiet.records.find((r) => r.kind === "tool").endedAt, null);
 });
 
 /*

@@ -56,8 +56,26 @@ export type DisclosureProps = {
 	 * it only together with `disabled`.
 	 */
 	children?: ReactNode;
-	/** Initial open state. Default closed, per § 7 — detail is one click away. */
+	/**
+	 * Initial open state. Default closed, per § 7 — detail is one click away.
+	 *
+	 * IGNORED when `open` is supplied: the caller owns the state then.
+	 */
 	defaultOpen?: boolean;
+	/**
+	 * CONTROLLED open state, for the one caller whose state the APP has to change
+	 * as well as the reader: the trace fold condenses its finished sections, and a
+	 * second open-state owner is exactly how a disclosure and its caller end up
+	 * disagreeing about whether it is open.
+	 *
+	 * Uncontrolled by default — a caller that passes nothing keeps the state
+	 * inside this component exactly as before — and when supplied the component
+	 * becomes controlled in the React sense: `open` is the state, and every
+	 * requested change is reported through `onOpenChange` rather than applied
+	 * here. The chevron follows `open` either way, so the two cannot render a
+	 * state the caller did not ask for.
+	 */
+	open?: boolean;
 	/**
 	 * Chevron placement. `leading` (default) is the app idiom; `trailing` is
 	 * for full-width rows whose leading slot already carries an icon.
@@ -191,13 +209,16 @@ export type DisclosureProps = {
 	 */
 	trailing?: ReactNode;
 	/**
-	 * Reports the open state, for copy that has to state its VERB.
+	 * Reports every requested open state, for copy that has to state its VERB and
+	 * for the controlled caller above.
 	 *
 	 * A caller whose `triggerLabel`/`triggerTooltip` names the action needs the
-	 * state this component owns — `Expand the session goal` collapsed,
-	 * `Collapse the session goal` open — and there is no way to derive it from
-	 * outside without duplicating the state. The report is one-way by design: it
-	 * never controls the component, so the two cannot disagree.
+	 * state — `Expand the session goal` collapsed, `Collapse the session goal`
+	 * open — and there is no way to derive it from outside without duplicating
+	 * the state. Uncontrolled, the report is one-way: it never controls the
+	 * component, so the two cannot disagree. Controlled (`open` supplied), the
+	 * caller applies the report itself and the two cannot disagree either — the
+	 * component renders only what `open` says.
 	 */
 	onOpenChange?: (open: boolean) => void;
 };
@@ -257,6 +278,7 @@ export const Disclosure = ({
 	summary,
 	children,
 	defaultOpen = false,
+	open,
 	chevron = "leading",
 	className,
 	triggerClassName,
@@ -269,7 +291,20 @@ export const Disclosure = ({
 	trailing,
 	onOpenChange,
 }: DisclosureProps) => {
-	const [isOpen, setIsOpen] = useState(defaultOpen);
+	const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
+	/*
+	 * One open state, two owners. Uncontrolled, `open` is undefined and the state
+	 * lives here; controlled, the caller's prop is the state and this component
+	 * only ever REPORTS a requested change. Every toggle path routes through
+	 * `requestOpen` so the two modes cannot diverge by one of the branches
+	 * forgetting which one it is in.
+	 */
+	const isControlled = open !== undefined;
+	const isOpen = isControlled ? open : uncontrolledOpen;
+	const requestOpen = (next: boolean) => {
+		if (!isControlled) setUncontrolledOpen(next);
+		onOpenChange?.(next);
+	};
 	const contentId = useId();
 	const buttonRef = useRef<HTMLButtonElement>(null);
 	// The chevron slot, and the mark inside it, take the first line's height when
@@ -373,8 +408,7 @@ export const Disclosure = ({
 			return;
 		}
 		if (pressOnText.current && undo.current !== null) {
-			setIsOpen(undo.current);
-			onOpenChange?.(undo.current);
+			requestOpen(undo.current);
 			undo.current = null;
 		}
 	};
@@ -408,8 +442,7 @@ export const Disclosure = ({
 		undo.current = isOpen;
 		// Preserve the upstream composer's state report after the selection guard
 		// accepts a toggle. Keep callbacks outside React's replayable updater.
-		setIsOpen(!isOpen);
-		onOpenChange?.(!isOpen);
+		requestOpen(!isOpen);
 	};
 
 	/**
