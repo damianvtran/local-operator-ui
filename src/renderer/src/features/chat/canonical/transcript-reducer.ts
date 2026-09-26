@@ -218,6 +218,22 @@ export type TranscriptRecord =
 			 */
 			startedAt: number | null;
 			/**
+			 * Ms epoch when the call COMPLETED, for the fold's wall-clock span.
+			 *
+			 * Stamped from the viewer's own end frame as `startedAt + durationS` —
+			 * the producer's two numbers, added in the producer's clock — rather
+			 * than this viewer's arrival instant: the seed for a call that settled
+			 * while a viewer was away replays later, and dating the completion at
+			 * that arrival would extend a run's span by however long the viewer was
+			 * gone. `null` on a running call, on an end frame that stated no
+			 * duration, and on EVERY row restored from the durable transcript: the
+			 * durable tool payload persists `duration_s` and no stamps at all, so a
+			 * run restored from history carries durations it cannot turn into a
+			 * span — which is why the fold's header renders nothing for such a run
+			 * rather than a sum dressed as a span.
+			 */
+			endedAt: number | null;
+			/**
 			 * Screenshots the call returned. This is what makes a browser-tool
 			 * capture visible: the bytes are already on the wire in
 			 * `tool_execution_end`, and until now the reducer dropped them.
@@ -1920,6 +1936,10 @@ function durableRecord(
 			// A durable row is settled by definition: it reports the duration the
 			// backend measured, never a clock of its own.
 			startedAt: null,
+			// And no completion stamp either: the durable tool payload carries
+			// `duration_s` and no times (harness `types.py`'s tool-entry
+			// provider_payload), so history rows genuinely cannot date a span.
+			endedAt: null,
 			// Durable tool rows carry image blocks in `content` exactly as user rows
 			// do — confirmed against real transcripts: 6398 tool-role blocks with
 			// keys `(attachment, mime_type)`. This is the reload half of a browser
@@ -2668,6 +2688,7 @@ export function applyEvent(
 				// never-run call never gets one: nothing executed, so there is no
 				// interval to report and the blank column is the honest reading.
 				startedAt: null,
+				endedAt: null,
 				images: EMPTY_IMAGES,
 				added: 0,
 				removed: 0,
@@ -2801,6 +2822,8 @@ export function applyEvent(
 					(current?.kind === "tool" && current.startedAt !== null
 						? current.startedAt
 						: now),
+				// The call has just started, so it has no completion to report yet.
+				endedAt: null,
 				// A running row has no outcome to report yet. It keeps whatever the
 				// composing row held so a rebuild here cannot drop an array the gate
 				// is comparing — and the same for a diff, which a replayed `_start`
@@ -2844,6 +2867,7 @@ export function applyEvent(
 							isError: false,
 							durationS: null,
 							startedAt: null,
+							endedAt: null,
 							images: EMPTY_IMAGES,
 							added: 0,
 							removed: 0,
@@ -2967,6 +2991,19 @@ export function applyEvent(
 				isError: killedByUserStop ? false : claimsFailure,
 				durationS:
 					typeof event.duration_s === "number" ? event.duration_s : null,
+				/*
+				 * WHEN the call completed, kept for the fold's wall-clock span: the
+				 * producer's own start plus its own measured duration, so the span is
+				 * built from the producer's clock end to end and a frame replayed to a
+				 * late viewer cannot date a completion that never happened then. Null
+				 * when the frame states no duration or the row never carried a start —
+				 * a stamp nobody measured is exactly the `0s` claim the fold refuses.
+				 */
+				endedAt:
+					typeof event.duration_s === "number" &&
+					typeof base.startedAt === "number"
+						? base.startedAt + event.duration_s * 1000
+						: null,
 				// The call ended, so the row stops counting and reports the measured
 				// duration instead. Clearing this is what makes the ticking stop.
 				startedAt: null,

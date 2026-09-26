@@ -41,9 +41,11 @@ const moduleUrl = `data:text/javascript;base64,${Buffer.from(bundle.outputFiles[
 const {
 	FOLD_MIN_ACTIONS,
 	actionClass,
+	foldCounts,
+	foldLive,
 	foldRuns,
+	foldSpan,
 	foldSummary,
-	runDuration,
 	turnFeet,
 } = await import(moduleUrl);
 
@@ -195,6 +197,8 @@ test("the summary is generated from the counts by class", () => {
 			name: "search_the_web",
 			failed: false,
 		}));
+	const evals = (n) =>
+		Array.from({ length: n }, () => ({ name: "eval", failed: false }));
 
 	assert.equal(foldSummary(files(4)), "Explored 4 files");
 	assert.equal(
@@ -213,11 +217,26 @@ test("the summary is generated from the counts by class", () => {
 		"Explored 4 files, 1 search",
 		"two phraseable classes join into one sentence",
 	);
-	// Three classes have no honest sentence, and neither has an action the table
-	// cannot classify: both report the only true thing left.
+	// Three classes have no honest sentence: the run falls to the per-KIND
+	// counts instead of a bare total (operator report, 2026-09-26: `4 actions`
+	// told a reader nothing - "3 shell · 1 python" is what the run looked like).
 	assert.equal(
 		foldSummary([...files(1), ...commands(1), ...edits(1)]),
-		"3 actions",
+		"1 file · 1 shell · 1 edit",
+	);
+	assert.equal(
+		foldSummary([...commands(3), ...evals(1)]),
+		"3 shell · 1 python",
+		"the command kinds split by runtime - the operator's own example",
+	);
+	assert.equal(
+		foldSummary([...evals(1), ...commands(3)]),
+		"3 shell · 1 python",
+		"the counts do not depend on which call came first",
+	);
+	assert.equal(
+		foldSummary([...files(2), ...commands(3), ...evals(1)]),
+		"2 files · 3 shell · 1 python",
 	);
 	assert.equal(
 		foldSummary([
@@ -225,8 +244,8 @@ test("the summary is generated from the counts by class", () => {
 			{ name: "read", failed: false },
 			{ name: "read", failed: false },
 		]),
-		"3 actions",
-		"an unclassified action is not filed into somebody else's class",
+		"2 files · 1 create_issue",
+		"an unclassified action counts under its own name, never another class's",
 	);
 	// The order of the sentence is the table's, not the calls': the same three
 	// actions in a different arrival order say the same thing.
@@ -235,6 +254,24 @@ test("the summary is generated from the counts by class", () => {
 		"Explored 4 files, 1 search",
 		"the copy does not depend on which call came first",
 	);
+});
+
+test("the count line names the kinds in the app's own vocabulary", () => {
+	// Directly, so the vocabulary is pinned rather than only its callers: shell
+	// for the command runners, python for `eval` (the noun its row verb
+	// already carries), the class nouns otherwise, and display names for what
+	// the table cannot classify.
+	assert.equal(
+		foldCounts([
+			{ name: "bash", failed: false },
+			{ name: "bash", failed: false },
+			{ name: "eval", failed: false },
+			{ name: "web_fetch", failed: false },
+			{ name: "task", failed: false },
+		]),
+		"1 search · 2 shell · 1 python · 1 task",
+	);
+	assert.equal(foldCounts([]), "0 actions", "only reachable for an empty run");
 });
 
 test("the action classes are the ledgers' own names, case-folded", () => {
@@ -251,27 +288,112 @@ test("the action classes are the ledgers' own names, case-folded", () => {
 
 /* ------------------------- the run's own clock -------------------------- */
 
-test("a run reports a duration only when its rows reported one", () => {
-	assert.equal(runDuration([{ name: "read", failed: false, durationS: 1 }]), 1);
-	assert.equal(
-		runDuration([
-			{ name: "read", failed: false, durationS: 1 },
-			{ name: "read", failed: false, durationS: 2.5 },
+test("the span is last completion minus first start, gaps included", () => {
+	/*
+	 * The operator's definition (2026-09-26), and the right one: a SUM of the
+	 * rows' durations ignored the gaps between calls (the model ran `0s` beside
+	 * a run of fast ones while the rows showed real tenths), while the span is
+	 * what "how long was spent in that action group" means.
+	 *
+	 * A settled action's start is reconstructed as `endedAtMs - durationS *
+	 * 1000`, which is the same span the record's own fields document; the test
+	 * states both ends so the arithmetic is readable.
+	 */
+	assert.deepEqual(
+		foldSpan([
+			{ name: "read", failed: false, durationS: 2, endedAtMs: 10_000 },
+			{ name: "read", failed: false, durationS: 3, endedAtMs: 30_000 },
 		]),
-		3.5,
+		{ startedAtMs: 8_000, endedAtMs: 30_000, running: false },
+		"22s across a 19s gap between calls: the gap is spent in the section too",
 	);
+});
+
+test("a live run keeps its span end open for the caller's clock", () => {
+	const settled = [
+		{ name: "read", failed: false, durationS: 2, endedAtMs: 10_000 },
+		{ name: "read", failed: false, durationS: 3, endedAtMs: 30_000 },
+	];
+	const span = foldSpan([
+		...settled,
+		{ name: "bash", failed: false, running: true, startedAtMs: 40_000 },
+	]);
+	assert.deepEqual(
+		span,
+		{ startedAtMs: 8_000, endedAtMs: 30_000, running: true },
+		"running: the caller renders against now; the last completion is kept for the settle",
+	);
+	// The first call alone, still in flight: it dates the run from its own start.
+	assert.deepEqual(
+		foldSpan([
+			{ name: "bash", failed: false, running: true, startedAtMs: 5_000 },
+		]),
+		{ startedAtMs: 5_000, endedAtMs: null, running: true },
+	);
+});
+
+test("a run that cannot date itself reports null, never zero", () => {
+	// A row restored from history: it carries the duration and NO stamps (the
+	// durable tool payload persists `duration_s` and no times), so the run has
+	// no span - and `0s` would be a claim nothing supports.
 	assert.equal(
-		runDuration([{ name: "read", failed: false, durationS: null }]),
+		foldSpan([{ name: "read", failed: false, durationS: 0.4 }]),
 		null,
-		"no clock in, no clock out - never a 0s claim",
 	);
+	// A settled run whose rows carry neither endpoint.
+	assert.equal(foldSpan([{ name: "bash", failed: false }]), null);
+	// A running row with no start stamp cannot date the run either.
 	assert.equal(
-		runDuration([
-			{ name: "read", failed: false, durationS: 2 },
-			{ name: "read", failed: false, durationS: null },
+		foldSpan([{ name: "bash", failed: false, running: true }]),
+		null,
+	);
+});
+
+/* --------------------------- the live clause ---------------------------- */
+
+test("the live clause names the call being watched, in the row's words", () => {
+	assert.equal(
+		foldLive([
+			{ name: "read", failed: false, durationS: 1, endedAtMs: 10_000 },
 		]),
-		2,
-		"a row that did not report one is not counted as zero",
+		null,
+		"nothing in flight, nothing to name",
+	);
+	assert.deepEqual(
+		foldLive([
+			{ name: "read", failed: false, summary: "src/a.ts" },
+			{
+				name: "bash",
+				failed: false,
+				running: true,
+				summary: "pnpm vitest run",
+			},
+		]),
+		{ verb: "Running", object: "pnpm vitest run" },
+	);
+	// The LAST unsettled call is the one being watched.
+	assert.deepEqual(
+		foldLive([
+			{ name: "bash", failed: false, running: true, summary: "a" },
+			{ name: "bash", failed: false, running: true, summary: "b" },
+		]),
+		{ verb: "Running", object: "b" },
+	);
+	// `wait` is not in the verb table, so its display name stays in the object -
+	// exactly what its row paints (`Calling wait 3600000`), which is the point
+	// of lifting the row's own composition instead of approximating it.
+	assert.deepEqual(
+		foldLive([
+			{ name: "wait", failed: false, running: true, summary: "3600000" },
+		]),
+		{ verb: "Calling", object: "wait 3600000" },
+	);
+	// `eval` carries its own noun: `Ran Python` settled, `Running Python` live.
+	assert.deepEqual(
+		foldLive([
+			{ name: "eval", failed: false, running: true, summary: "build.py" },
+		]),
+		{ verb: "Running Python", object: "build.py" },
 	);
 });
 

@@ -586,6 +586,33 @@ export const STORIES = [
 	["chat-trace--question-callout", 1280, 900],
 	["chat-trace--trace-states", 1280, 900],
 	["chat-trace--security-notice-states", 1280, 900],
+	/*
+	 * THE ACTION GROUP'S OWN STATES (`trace-fold.stories.tsx`), added with the
+	 * condensed-header pass (operator report, 2026-09-26: a collapsed group must
+	 * say what ran by kind AND name the call in flight). Five rows because the
+	 * states are five: live, mid-run (counts moved, one failure), finished,
+	 * restored-from-history (no stamps, so no clock), and hand-opened - the last
+	 * one PRESSED through the fold's own trigger rather than pre-opened, because
+	 * the claim is that the reader's press is the one thing that opens it. The
+	 * transitions between the states are not photographable and are pinned by
+	 * `scripts/trace-fold-behaviour.test.mjs` instead.
+	 *
+	 * The heights are TIGHT on purpose (130 for the header-only states, 210 for
+	 * the opened one): the frame is mostly ground otherwise, and the harness's
+	 * paint guard (`assertFramePaints`) refuses a frame whose pixels are 98.5%
+	 * one colour - which is what a one-line header inside the 900 default is
+	 * (measured: 99.63% on the first attempt at this very row).
+	 */
+	["chat-trace-fold--live", 1280, 130],
+	["chat-trace-fold--mid-run", 1280, 130],
+	["chat-trace-fold--finished", 1280, 130],
+	["chat-trace-fold--restored", 1280, 130],
+	[
+		"chat-trace-fold--expanded",
+		1280,
+		210,
+		{ press: '[data-fold-ids] button[aria-expanded="false"]' },
+	],
 
 	/*
 	 * A turn joined MID-STREAM, which is the one transcript surface whose evidence

@@ -798,14 +798,20 @@ equally important**, and the interface must not present them as though they are.
 - A completed action is **one line**. Not a card, not a bordered panel, not a
   header with an icon tile.
 - **Above one line per action there is an aggregation tier.** A run of three or
-  more consecutive actions folds into one summary line in the user's terms
-  (`Explored 4 files, 1 search`, `Ran 8 actions · 1 failed`), expanded while the
-  newest turn is in flight and collapsed when it settles; a finished turn also
-  carries one turn-foot line (`Worked for 1m 12s · 8 actions · 1 failed`). The
-  fold is a VIEW: it hides rows and never reorders them, so the placement rule a
-  few lines down and its `applyLiveSeed`/`withTimeOrder` guard are untouched.
-  Without this tier a 40-step turn is 40 lines, which is the "every internal step
-  at equal weight" failure of § 0.
+  more consecutive actions folds into one summary line in the user's terms —
+  the counts by class, or by kind when no sentence can phrase them (`Explored 4
+  files, 1 search`, `3 shell · 1 python`). It is **condensed by default**: it
+  opens on the reader's own press and on nothing else, so a collapsed run still
+  answers "what is it doing right now?" by naming the call in flight (`Running
+  pnpm vitest run`) beside its counts and its wall-clock span. It condenses
+  itself once and only when its section ends — finished sections condense; the
+  live section and anything the reader opened obey the reader, and nothing
+  condenses while a call in it is still running. A finished turn also carries
+  one turn-foot line (`Worked for 1m 12s · 8 actions · 1 failed`). The fold is a
+  VIEW: it hides rows and never reorders them, so the placement rule a few lines
+  down and its `applyLiveSeed`/`withTimeOrder` guard are untouched. Without this
+  tier a 40-step turn is 40 lines, which is the "every internal step at equal
+  weight" failure of § 0.
 - **A detail block is capped at `min(320px, 40vh)`, not at a flat 320.** One
 text in the transcript — code, stdout and diffs share the treatment — opens
   behind the row's own disclosure, and an open block that fills the scroller
