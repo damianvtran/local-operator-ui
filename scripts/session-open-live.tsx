@@ -342,8 +342,19 @@ const open = (target: string, deadlineMs = 30_000) =>
 			painted: transcriptHasContent(),
 			/*
 			 * What the pane and the header SAY, for the stuck-open repro (design
-			 * round 1, D1/D2): the transcript container's text with rows excluded,
-			 * and the header's second line (empty while it is a skeleton).
+			 * round 1, D1/D2) and for the identity guard the frames path runs: the
+			 * transcript container's text with rows excluded, and the header's
+			 * identity slot.
+			 *
+			 * THE SLOT, NOT THE TITLE'S SIBLING. `h2`'s next element was the identity
+			 * line until #542 moved the header; after that fold the next element is the
+			 * icon-only rename button, whose text is "" in every state - so the guard
+			 * comparing first paint with settle compared "" with "" and could never
+			 * fire (QA round 2, Q1). The slot the header renders now is
+			 * `[data-header-path]` for a conversation without team/agent menus and
+			 * `[data-header-identity-controls]` for one with them; `null` while the
+			 * skeleton holds the slot, which is what makes an unresolved reading
+			 * distinguishable from a resolved-but-empty one.
 			 */
 			paneText: (() => {
 				const content = document.querySelector("[data-lo-transcript-content]");
@@ -353,8 +364,12 @@ const open = (target: string, deadlineMs = 30_000) =>
 					row.remove();
 				return (copy.textContent ?? "").trim().slice(0, 200);
 			})(),
-			headerLine:
-				document.querySelector("h2")?.nextElementSibling?.textContent ?? null,
+			headerLine: (() => {
+				const slot =
+					document.querySelector("[data-header-path]") ??
+					document.querySelector("[data-header-identity-controls]");
+				return slot ? (slot.textContent ?? "").trim() : null;
+			})(),
 			composerAlert:
 				document
 					.querySelector("textarea")
