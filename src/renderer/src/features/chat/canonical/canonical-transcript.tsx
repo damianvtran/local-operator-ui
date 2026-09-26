@@ -2228,9 +2228,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				 * gesture for another. The transcript's own stop, which is the half the
 				 * finding is about, is here.
 				 */
-				tabIndex={
-					transcript.records.length === 0 || holdPlaceholder ? -1 : 0
-				}
+				tabIndex={transcript.records.length === 0 || holdPlaceholder ? -1 : 0}
 				role="log"
 				aria-label={CHAT_REGION_LABEL.transcript}
 				// Only the `windowed` branch renders that id, so the description has to
