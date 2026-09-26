@@ -823,8 +823,10 @@ const CanvasFrame = ({
 	/*
 	 * WHETHER A GOAL EXISTS AT ALL, which is what the pane's EMPTY state's description is
 	 * gated on (design review round 2, D2). Defaults to `true` because a story here is a
-	 * session with a goal unless it says otherwise — the fixture's own `goal` — and the
-	 * one story that needs the no-goal reading passes `false`.
+	 * session with a goal unless it says otherwise — stated as this prop, not read from a
+	 * fixture (there is no `goal` field in this file's fixtures; the default only matters
+	 * for the story whose bands set it explicitly), and the one story that needs the
+	 * no-goal reading passes `false`.
 	 */
 	goalPresent = true,
 }: {
