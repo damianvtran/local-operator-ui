@@ -886,6 +886,15 @@ const STAMP_BINDING_NOTES = [
 	 * with them, and which three plays the manager surface still owes a verdict on.
 	 */
 	"meshDesktopRound12FoldRestampNote",
+	/*
+	 * And by the SECOND fold of the same round, which wrote this branch's newest
+	 * top-level record: `main` moved while the first one was being pushed (#523), so
+	 * the head went DIRTY again and this is the note that states the pair the file
+	 * now ships. It is listed for the reason the list exists - a resolver who took
+	 * main's copy would drop it, and with it the only statement that this fold owed
+	 * no re-shoot and why.
+	 */
+	"meshDesktopRound13FoldRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1257,6 +1266,14 @@ const BRANCH_RECORDS = [
 	 * re-shot rather than re-stamped.
 	 */
 	"meshDesktopRound12FoldRestampNote",
+	/*
+	 * And by the second fold of the same round, which wrote this branch's newest
+	 * top-level record. It is listed for the reason the list exists: the record is
+	 * the only statement of which two trees this fold moved, that #523's source paths
+	 * are outside the 29-story closure, and therefore why no re-shoot was owed while
+	 * a re-stamp was.
+	 */
+	"meshDesktopRound13FoldRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
