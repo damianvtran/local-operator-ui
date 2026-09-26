@@ -30,14 +30,13 @@
  * ## The rule, and what it refuses to do
  *
  * The move is not finished when it lands; it is finished when the control it
- * landed on is still the control the move would land on NOW. Three signals say it
- * is not: the landed control has left the document (the row was mounted again),
- * the row now has a control of its own the move is not on (it gained the primary
- * it had none of while its operation was running, UX round 2, U30), or the row has
- * been re-armed by a later read. Until the move's window closes, a move in any of
- * those states is re-applied onto whatever the row has where it now stands. Three
- * refusals keep that from becoming the focus-stealing this whole mechanism exists
- * to avoid:
+ * landed on is still the control the move would land on NOW. Two signals say it is
+ * not: the landed control has left the document (the row was mounted again), or the
+ * row now has a control of its own that the move is not on - it gained the primary
+ * it had none of while its operation was running (UX round 2, U30). Until the move's
+ * window closes, a move in either state is re-applied onto whatever the row has where
+ * it now stands. Three refusals keep that from becoming the focus-stealing this whole
+ * mechanism exists to avoid:
  *
  * - **Nobody else's focus is taken.** A landing is only re-applied while the
  *   document's active element is nobody: `<body>`, nothing at all, or the move's

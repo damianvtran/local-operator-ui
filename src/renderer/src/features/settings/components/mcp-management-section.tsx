@@ -449,8 +449,9 @@ export const McpManagementSection: FC<{
 		 * state (agent review round 2, MINOR 3): `failures` is read by closures created
 		 * during the press's render, so it cannot say what THIS operation did - the
 		 * state update a failed one makes is not visible to the `.then` that runs one
-		 * microtask later. The `finally` this replaces could not say either, which is
-		 * how a failed REMOVAL came to be exempt from the arm that a failed Test gets.
+		 * microtask later. The `finally` alone could not say either - the arm decision sat
+		 * inside it, where the outcome is not in scope - which is how a failed REMOVAL came
+		 * to be exempt from the arm that a failed Test gets.
 		 */
 		let operationId: string | null = null;
 		let failed = false;
