@@ -509,6 +509,46 @@ export function toolVerb(toolName: string): ToolVerb {
 	return { settled: "Called", running: "Calling", named: false };
 }
 
+export type ToolRowLabel = {
+	/** The verb column: `Ran` settled, `Running` live. */
+	verb: string;
+	/** The object column, with the bare-name stutter dropped. */
+	object: string;
+};
+
+/**
+ * The row's two label columns, from the row's own inputs.
+ *
+ * ONE composition serves two surfaces: `ToolRow` paints it, and the trace
+ * fold's condensed header names the call it is running with it, so a collapsed
+ * group says `Running pnpm vitest run` in exactly the words the expanded row
+ * shows — the fold is not allowed to approximate a label the row already owns
+ * (`trace-fold-model.ts`'s `foldLive`).
+ *
+ * `summary` is the caller's resolved summary text (`summaryFromArgs`, the
+ * composing/queued words); `summaryFallback` is the stand-in the transcript
+ * offers when the summary is only the tool's bare name (the output's first
+ * line). The fold passes NO fallback: it names a call that has not finished, so
+ * the output stand-in cannot exist yet and an empty object is the honest one.
+ */
+export function toolRowLabel(
+	toolName: string,
+	summary: string,
+	summaryFallback: string | null,
+	running: boolean,
+): ToolRowLabel {
+	const verb = toolVerb(toolName);
+	const bare = isBareToolName(summary, toolName)
+		? (summaryFallback ?? "")
+		: summary;
+	return {
+		verb: running ? verb.running : verb.settled,
+		object: verb.named
+			? bare
+			: [displayName(toolName), bare].filter(Boolean).join(" "),
+	};
+}
+
 /* ----------------------------------------------------------- diff body */
 
 /**

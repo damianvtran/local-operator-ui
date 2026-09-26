@@ -819,6 +819,37 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  * kept every key this branch already carried; that file's own key count is
  * unchanged by the resolution except for those additions, and its union is checked by
  * the records test below rather than by prose.
+ *
+ * THE UNION THIS FOLD TOOK (`origin/main` `9d3e68ddf6`, #467 the goal done-state,
+ * over this branch's `78c4e6a529`), stated here because the rule above asks for
+ * it: this branch's side named `actionFoldEvidenceNote` and
+ * `foldOnto093a329a4dNote`; main's side named `goalDesignRoundTwoNote`. FORTY-ONE
+ * entries, deduplicated by name - no key from either side was dropped, checked by
+ * evaluating both sides' arrays and diffing the key sets rather than by reading
+ * the conflict. The same union was applied to `docs/evidence/manifest.json`,
+ * which took main's four goal notes and kept every key this branch already
+ * carried (178 + 2 + 1 = 181 keys, the records test's own check).
+ *
+ * THE UNION THIS FOLD TOOK (`origin/main` `827f45f4fd`, #540 the message block's
+ * own surface, over this branch's `2d5c01ca03`), stated here because the rule
+ * above asks for it: this branch's side named `actionFoldEvidenceNote` and
+ * `foldOnto093a329a4dNote`, plus - registered by this fold, having quoted the
+ * pair while outside the list - `foldOnto9d3e68ddf6Note`, `foldOnto4ae3dbff0dNote`
+ * and `foldOnto22c0fcd4fdNote`; main's side named `messageSurfaceRestampNote`.
+ * FORTY-FOUR entries, diffed as key sets on both sides rather than read off the
+ * conflict. No key from either side was dropped.
+ *
+ * THE UNION THIS FOLD TOOK (`origin/main` `44c7f8fd76`, #541's no-hardlink write
+ * refusal and #542's chat header identity, over this branch's `3886526a3c`),
+ * stated here because the rule above asks for it: this branch's side named
+ * `actionFoldEvidenceNote`, `foldOnto4ae3dbff0dNote` and four `...ActionGroupNote`
+ * renames; main's side named `headerIdentityRestampNote`,
+ * `headerIdentityRoundOneRestampNote` and `foldOntoFdff0d84d6Note`. The four
+ * `foldOnto*` names BOTH sides carried were not the same records: the two lanes
+ * had each folded onto `9d3e68ddf6`, `093a329a4d`, `22c0fcd4fd` and
+ * `827f45f4fd`, and had coined the same SHA-named keys for their own fold
+ * narratives, so the union keeps main's copies under the plain names and this
+ * branch's under the `ActionGroup` suffix. No key from either side was dropped.
  */
 const STAMP_BINDING_NOTES = [
 	/*
@@ -1122,6 +1153,47 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"subviewInsetRestampNote",
 	/*
+	 * THIS LANE'S OWN, and the criterion is the list's own: its subject is the
+	 * condensed action group, and its opening claim IS this file's binding - the
+	 * pair the first fold re-derived, now carried to the folded tip - so leaving
+	 * it out would be one more check silently not run. It states the captured
+	 * head and every count the pass moved, which is why a reader reaches for it
+	 * first.
+	 */
+	"actionFoldEvidenceNote",
+	/*
+	 * AND THIS FOLD'S OWN - the fold onto `origin/main` = `093a329a4d` (#535, the
+	 * sub-view top inset). ITS SUBJECT IS THIS FILE'S BINDING (the re-derived
+	 * pair), so it is held to the pair the file ships rather than read as
+	 * history. Its key carries the `ActionGroup` suffix from the fold onto
+	 * `44c7f8fd76`: the header-identity lane coined the same SHA-named key for its
+	 * own fold onto the same tip, main merged that lane first, and the two records
+	 * had to coexist - main's kept the name, this branch's took the suffix.
+	 */
+	"foldOnto093a329a4dActionGroupNote",
+	/*
+	 * THE THREE FOLDS BETWEEN THAT ONE AND THIS (`9d3e68ddf6` #467, `4ae3dbff0d`
+	 * #504, `22c0fcd4fd` #539), registered by the fold onto `827f45f4fd` and
+	 * renamed by the fold onto `44c7f8fd76` for the same reason as the entry
+	 * above: each states the pair its fold re-derived as this file's binding - the
+	 * same claim the list's criterion asks about - and each had been sitting
+	 * outside the list while quoting it, which is a check silently not run (the
+	 * defect the round-8 paragraph above names).
+	 */
+	"foldOnto9d3e68ddf6ActionGroupNote",
+	"foldOnto4ae3dbff0dActionGroupNote",
+	"foldOnto22c0fcd4fdActionGroupNote",
+	/*
+	 * And this fold's own: the fold onto `origin/main` = `827f45f4fd` (#540),
+	 * whose pair this file then shipped - renamed like its siblings above.
+	 */
+	"foldOnto827f45f4fdActionGroupNote",
+	/*
+	 * And the fold onto `44c7f8fd76` (#541 + #542), the one that resolved the
+	 * name collision and whose pair this file ships.
+	 */
+	"foldOnto44c7f8fd76ActionGroupNote",
+	/*
 	 * AND THIS LANE'S OWN, for the user message block's surface (the operator's
 	 * report of 2026-09-26, "the contrast between the user message background and
 	 * the chat background is quite poor on some themes"): it states the pair THIS
@@ -1130,7 +1202,8 @@ const STAMP_BINDING_NOTES = [
 	 * owed the pair, the reason the frames exist, and the arithmetic they move.
 	 * The list's own criterion is met the same way `subviewInsetRestampNote`'s
 	 * was: the note states this file's binding as a backticked claim, so leaving
-	 * it out would be one more check silently not run.
+	 * it out would be one more check silently not run. It joins this list under
+	 * the union rule rather than replacing it.
 	 */
 	"messageSurfaceRestampNote",
 	/*
@@ -1187,6 +1260,17 @@ const STAMP_BINDING_NOTES = [
 	 * as prose.
 	 */
 	"bannerBandsRestampNote",
+	/*
+	 * AND THIS PASS'S OWN, for the held-first-paint work on the conversation-loading
+	 * report ("everything should load in one solid paint instead of incrementally"):
+	 * it states the pair THIS FILE SHIPS as its opening claim, holds both tokens,
+	 * and - uniquely among the notes here - it also records the one supplementary
+	 * set whose FRAMES were re-derived rather than re-counted (all twelve
+	 * click-state frames of `session-switch`, one pair deleted with the state it
+	 * photographed, one pair added), so leaving it out would be one more check
+	 * silently not run.
+	 */
+	"heldFirstPaintRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1679,6 +1763,24 @@ const BRANCH_RECORDS = [
 	 * copy would drop it, which is this list's whole subject.
 	 */
 	"bannerBandsRestampNote",
+	/*
+	 * And by this branch's folds onto the action-group lane's own tips - the
+	 * records the header-identity lane's arrival forced a rename of. Main's
+	 * `foldOnto9d3e68ddf6Note`, `foldOnto093a329a4dNote`, `foldOnto22c0fcd4fdNote`
+	 * and `foldOnto827f45f4fdNote` were coined by that lane for ITS folds onto the
+	 * same tips, so this branch's records took the `ActionGroup` suffix and are
+	 * listed here for the reason this array exists: a fold resolved from main's
+	 * copy would otherwise drop the only statements of what each of this lane's
+	 * folds moved. The plain-name entries above stay - they are the header lane's
+	 * records, and they were never this branch's to drop.
+	 */
+	"actionFoldEvidenceNote",
+	"foldOnto9d3e68ddf6ActionGroupNote",
+	"foldOnto4ae3dbff0dActionGroupNote",
+	"foldOnto22c0fcd4fdActionGroupNote",
+	"foldOnto093a329a4dActionGroupNote",
+	"foldOnto827f45f4fdActionGroupNote",
+	"foldOnto44c7f8fd76ActionGroupNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
