@@ -1502,9 +1502,20 @@ export function ChatSidebar({
 				 * The list's first row, which is where the control sat in the ring: the
 				 * section labels are not controls any more (§C1, U22), so the row the
 				 * control preceded is the adjacent stop.
+				 *
+				 * SCOPED TO THE CHATS REGION, and the scope is load-bearing: the one-scroll
+				 * change bound BOTH region refs to the merged scroller (`bindPanelRef`), so
+				 * an unscoped query answered with the ENTITY region's first stop - the
+				 * `Agents` disclosure, the first `[data-chat-row]` in the merged flow - and
+				 * focus landed on a group header instead of the row the control preceded
+				 * (`scripts/mark-all-read-control.test.mjs`, "clearing the last mark hands
+				 * focus to the list"). The region marker is the same partition the R3 work
+				 * put on this list for the rigs; the app reads it here for the same reason.
 				 */
 				listPanelRef.current
-					?.querySelector<HTMLElement>("[data-chat-row]")
+					?.querySelector<HTMLElement>(
+						'[data-sidebar-region="chats"] [data-chat-row]',
+					)
 					?.focus();
 			}
 		}
