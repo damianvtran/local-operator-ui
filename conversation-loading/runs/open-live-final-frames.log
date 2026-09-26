@@ -1,0 +1,5 @@
+open latency against a real backend — http://127.0.0.1:5213/session-open-live.html
+load 59.3 64.9 81.6 on 14 cores · budget 300 ms
+c0b9bded50fc  painted p50 110.3 p95 150.6 · sends p50 99.8 p95 140.5 · both p50 110.3 p95 150.6 · over 0/5 · ops sessions.list,sessions.watch,mcp.list,sessions.list
+80fb2b461039  painted p50 117.9 p95 198.1 · sends p50 112.3 p95 191.6 · both p50 117.9 p95 198.1 · over 0/5 · ops sessions.list,sessions.watch,mcp.list,sessions.list
+8846fbdcdb2c  painted p50 134 p95 163.2 · sends p50 126.4 p95 156.7 · both p50 134 p95 163.2 · over 0/5 · ops sessions.list,sessions.watch,mcp.list,sessions.list
