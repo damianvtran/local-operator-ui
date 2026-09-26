@@ -6,6 +6,7 @@ import {
 	UpdateType,
 	useDeferredUpdatesStore,
 } from "@shared/store/deferred-updates-store";
+import { notesForOffer } from "@shared/utils/server-release-notes";
 import {
 	serverUpdateFailureReason,
 	updateMessageFate,
@@ -252,6 +253,24 @@ type BackendUpdateInfo = {
 	 * must not dismiss a panel out from under the reader (review U12).
 	 */
 	manual?: boolean;
+	/**
+	 * What changed in the version this offer names, when the main process could
+	 * read it.
+	 *
+	 * The mirror of the producer's own field, and it is OPTIONAL in both
+	 * directions: a main process that predates the lookup sends none, and one that
+	 * ran the lookup and could not read GitHub sends none either. Neither is
+	 * "nothing changed", so the panel renders the paragraph only when there is
+	 * something to render and says nothing at all otherwise.
+	 */
+	releaseNotes?: {
+		/** The published version these notes describe. */
+		version: string;
+		/** The release's lead, already flattened and bounded by the producer. */
+		summary: string;
+		/** The release page, for the link the paragraph ends with. */
+		url: string;
+	} | null;
 };
 
 /** A remedy the main process can spell out in the user's own terms. */
@@ -2855,6 +2874,16 @@ export const UpdateNotification = ({
 
 	// If a backend update is available
 	if (backendUpdateAvailable && backendUpdateInfo) {
+		/*
+		 * THE NOTES THIS OFFER MAY QUOTE, or null. `notesForOffer` owns the
+		 * question (its own module, so it is exercised by a test rather than by a
+		 * DOM no suite here builds), and computing it once keeps the guard and the
+		 * paragraph reading the same value.
+		 */
+		const offerNotes = notesForOffer(
+			backendUpdateInfo.releaseNotes,
+			backendUpdateInfo.latestVersion,
+		);
 		return withErrorToast(
 			<UpdateContainer>
 				<h2 className="mb-3 text-heading text-ink">Server update available</h2>
@@ -2876,6 +2905,81 @@ export const UpdateNotification = ({
 						runningVersion: backendUpdateInfo.runningVersion,
 					})}
 				</p>
+				{/*
+				 * WHAT CHANGED, on the card that asks the reader to change something.
+				 *
+				 * The app's own offer has carried its notes from the start, so this
+				 * panel was the one update surface in the app that named a new version
+				 * and a benefit sentence and nothing at all about the change - which is
+				 * the whole of what a reader deciding whether to move wants. Same shape
+				 * as the app card's paragraph on purpose: the bounded lead, then the
+				 * link for the rest, in the same weight and ink, so the two cards read
+				 * alike rather than being two designs for one question.
+				 *
+				 * IT RENDERS ON EVERY ARM AND IS ABSENT WHEN NOTHING WAS READ. It is
+				 * above the arm split because both arms ask the same question - the
+				 * managed press and the by-hand command are two ways to perform one
+				 * update - and because a paragraph that appeared on only one of them
+				 * would be the asymmetry this change exists to remove, one level down.
+				 * Absent is the ordinary case on a machine that cannot reach GitHub, and
+				 * the panel says nothing rather than claiming nothing changed: the same
+				 * rule `releaseNotes` carries on the producer's side.
+				 *
+				 * NO `parse` AND NO PROSE UTILITIES, unlike the app card's copy of this
+				 * paragraph. That one injects third-party HTML from the update feed and
+				 * needs `RELEASE_NOTES_PROSE` to put its headings and bullets back;
+				 * this one is a string the main process already flattened to a single
+				 * run of text, so rendering it as text is the whole job - and treating
+				 * it as HTML would be how a release note containing a tag became markup.
+				 */}
+				{/*
+				 * NAMED ONLY WHEN IT IS THE RELEASE THIS OFFER IS ABOUT, which is
+				 * `notesForOffer`'s question - a stale or hand-edited cache entry
+				 * must not put another release's lead under this heading. The label
+				 * states the provenance rather than leaving it to the link's target
+				 * on hover: the lead is a quote, and a quote whose subject is unnamed
+				 * reads as this release's own summary until the reader opens it.
+				 */}
+				{offerNotes && (
+					/*
+					 * `break-words` because the producer will pass a wall of text through
+					 * rather than invent a boundary in it (its own test pins a
+					 * 900-character unbroken run), and this card is a scroll container:
+					 * an unbreakable 400-character line would widen the cross axis, so
+					 * the card would grow a horizontal scrollbar.
+					 *
+					 * THE LINK CARRIES NO `ml-2`, UNLIKE THE APP CARD'S COPY OF THIS
+					 * PARAGRAPH, and the difference is measured rather than stylistic:
+					 * the `{" "}` before it is the separator, and a margin is not a
+					 * space. At this card's 368px content box the label wraps to its own
+					 * line, where `ml-2` became an 8px hanging indent nothing else in the
+					 * paragraph carries (the committed frames put the paragraph at x=880
+					 * and the wrapped label at x=888). `whitespace-nowrap` keeps the
+					 * label whole - without it the first frame taken of this state showed
+					 * "View full release" / "notes", two fragments of prose rather than
+					 * one control.
+					 *
+					 * THE SIBLING CARD KEEPS BOTH DEFECTS, deliberately and on the
+					 * record: its "View full release notes" link is inside the same
+					 * `w-100` `UpdateContainer`, so it breaks mid-phrase exactly the same
+					 * way when its notes pass 400 characters - but the fix belongs on
+					 * that container's shared `[&_a]` rule, which every card in this file
+					 * inherits, and landing it here would repaint frames of states this
+					 * change does not touch. It is recorded as a follow-up on the pull
+					 * request instead of being quietly half-fixed.
+					 */
+					<div className="mt-2 break-words text-body text-ink-muted">
+						Release notes: {offerNotes.summary}{" "}
+						<a
+							href={offerNotes.url}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="whitespace-nowrap"
+						>
+							View full release notes for {offerNotes.version}
+						</a>
+					</div>
+				)}
 				{/*
 				 * NOT ON THE APP-OWNED ARM. "Updating the server will improve AI
 				 * functionality, improve security, and fix bugs" is a benefit claim rather
