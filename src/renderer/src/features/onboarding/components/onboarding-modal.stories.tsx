@@ -61,25 +61,11 @@ type Story = StoryObj<StoryArgs>;
 /** The first screen: the registry-backed provider grid. */
 export const Default: Story = {};
 
-/** Name and optional email. Two fields, one optional. */
-export const UserProfile: Story = {
-	args: { step: OnboardingStep.USER_PROFILE },
-};
-
-/** A skippable step in the flow. */
-export const SearchApi: Story = { args: { step: OnboardingStep.SEARCH_API } };
-
-/** Two dependent selects; renders its loading branch without a backend. */
+/** Step 2 without a backend: its loading branch. See `sign-in-states.stories.tsx`
+ * for the bridge-backed frames of every answer this step can give. */
 export const DefaultModel: Story = {
 	args: { step: OnboardingStep.DEFAULT_MODEL },
 };
 
-/** The last decision. Without a backend this shows the load-failure branch. */
-export const CreateAgent: Story = {
-	args: { step: OnboardingStep.CREATE_AGENT },
-};
-
-/** The end of the flow, and the one place the accent is spent on celebration. */
-export const Congratulations: Story = {
-	args: { step: OnboardingStep.CONGRATULATIONS },
-};
+/** Step 3: name and web search, both optional. */
+export const Extras: Story = { args: { step: OnboardingStep.EXTRAS } };
