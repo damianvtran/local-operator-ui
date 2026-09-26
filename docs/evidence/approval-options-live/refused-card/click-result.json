@@ -1,0 +1,113 @@
+{
+  "origin": "http://localhost:5302",
+  "session": "a1a1a1a1a1a1",
+  "viewport": {
+    "width": 1380,
+    "height": 900
+  },
+  "driver": "scripts/click-proof.mjs",
+  "at": "2026-09-25T23:34:20.217Z",
+  "arm": {
+    "armed": true
+  },
+  "before": {
+    "found": true,
+    "count": 2,
+    "tags": [
+      "BUTTON",
+      "BUTTON"
+    ],
+    "textContent": [
+      "1.ApproveRun the action and continue the turn.",
+      "2.DenyRefuse the action; the turn continues."
+    ],
+    "accessibleName": [
+      "ApproveRun the action and continue the turn.",
+      "DenyRefuse the action; the turn continues."
+    ],
+    "ordinalHidden": true,
+    "disabled": [
+      false,
+      false
+    ],
+    "pointerEvents": "auto",
+    "eyebrow": "Waiting for your answer",
+    "alerts": [],
+    "incidentRow": false
+  },
+  "frames": {
+    "before": "localOperatorDark.webp",
+    "after": "localOperatorDark.webp"
+  },
+  "aim": {
+    "ok": true,
+    "x": 960,
+    "y": 622,
+    "index": 0,
+    "label": "ApproveRun the action and continue the turn.",
+    "hitTested": "SPAN (the option itself)",
+    "rect": {
+      "top": 593,
+      "height": 59
+    }
+  },
+  "resolved": true,
+  "resolution": "refused",
+  "gateCleared": false,
+  "answers": [
+    {
+      "path": "/v1/desktop/sessions/a1a1a1a1a1a1/answers",
+      "requestedAt": 1790379293218.2332,
+      "rejected": "This question or approval is no longer pending",
+      "status": 409,
+      "answeredAt": 1790379293218.2441,
+      "deliveredAt": 1790379293218.6638
+    }
+  ],
+  "answersFrom": "route",
+  "ownerAnswer": null,
+  "tree": {
+    "head": "cae89fd841695e56179bd10055dce81d0832bd79",
+    "srcTree": "75fa3234363a3cc2ec06d37a959a48d90fd59596",
+    "srcDirty": false,
+    "srcStatus": null
+  },
+  "clearedAt": null,
+  "clearedAfterPressMs": null,
+  "ordering": null,
+  "report": {
+    "movedOnSentence": false,
+    "settledSentence": false,
+    "unconfirmedSentence": false,
+    "notSentCopy": [],
+    "cardUp": true,
+    "cardRefusal": true,
+    "cardUnknown": false,
+    "alerts": []
+  },
+  "after": {
+    "found": true,
+    "count": 2,
+    "tags": [
+      "BUTTON",
+      "BUTTON"
+    ],
+    "textContent": [
+      "1.ApproveRun the action and continue the turn.",
+      "2.DenyRefuse the action; the turn continues."
+    ],
+    "accessibleName": [
+      "ApproveRun the action and continue the turn.",
+      "DenyRefuse the action; the turn continues."
+    ],
+    "ordinalHidden": true,
+    "disabled": [
+      true,
+      true
+    ],
+    "pointerEvents": "auto",
+    "eyebrow": "Waiting for your answer",
+    "alerts": [],
+    "incidentRow": false
+  }
+}

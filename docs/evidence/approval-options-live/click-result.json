@@ -1,0 +1,106 @@
+{
+  "origin": "http://localhost:5302",
+  "session": "a1a1a1a1a1a1",
+  "viewport": {
+    "width": 1380,
+    "height": 900
+  },
+  "driver": "scripts/click-proof.mjs",
+  "at": "2026-09-25T23:36:12.114Z",
+  "arm": {
+    "armed": true
+  },
+  "before": {
+    "found": true,
+    "count": 2,
+    "tags": [
+      "BUTTON",
+      "BUTTON"
+    ],
+    "textContent": [
+      "1.ApproveRun the action and continue the turn.",
+      "2.DenyRefuse the action; the turn continues."
+    ],
+    "accessibleName": [
+      "ApproveRun the action and continue the turn.",
+      "DenyRefuse the action; the turn continues."
+    ],
+    "ordinalHidden": true,
+    "disabled": [
+      false,
+      false
+    ],
+    "pointerEvents": "auto",
+    "eyebrow": "Waiting for your answer",
+    "alerts": [],
+    "incidentRow": false
+  },
+  "frames": {
+    "before": "localOperatorDark.webp",
+    "after": "localOperatorDark.webp"
+  },
+  "aim": {
+    "ok": true,
+    "x": 960,
+    "y": 622,
+    "index": 0,
+    "label": "ApproveRun the action and continue the turn.",
+    "hitTested": "SPAN (the option itself)",
+    "rect": {
+      "top": 593,
+      "height": 59
+    }
+  },
+  "resolved": true,
+  "resolution": "cleared",
+  "gateCleared": true,
+  "answers": [
+    {
+      "path": "/v1/desktop/sessions/a1a1a1a1a1a1/answers",
+      "requestedAt": 1790379417812.2603,
+      "status": 200,
+      "answeredAt": 1790379417851.653,
+      "deliveredAt": 1790379417876.547
+    }
+  ],
+  "answersFrom": "route",
+  "ownerAnswer": {
+    "approved": true
+  },
+  "tree": {
+    "head": "cae89fd841695e56179bd10055dce81d0832bd79",
+    "srcTree": "75fa3234363a3cc2ec06d37a959a48d90fd59596",
+    "srcDirty": false,
+    "srcStatus": null
+  },
+  "clearedAt": 1790379418355,
+  "clearedAfterPressMs": 574,
+  "ordering": {
+    "clearedAt": 1790379418355,
+    "deliveredAt": 1790379417876.547,
+    "verdict": "the response was delivered before the card cleared"
+  },
+  "report": {
+    "movedOnSentence": false,
+    "settledSentence": false,
+    "unconfirmedSentence": false,
+    "notSentCopy": [],
+    "cardUp": false,
+    "cardRefusal": false,
+    "cardUnknown": false,
+    "alerts": []
+  },
+  "after": {
+    "found": false,
+    "count": 0,
+    "tags": [],
+    "textContent": [],
+    "accessibleName": [],
+    "ordinalHidden": false,
+    "disabled": [],
+    "pointerEvents": null,
+    "eyebrow": null,
+    "alerts": [],
+    "incidentRow": false
+  }
+}
