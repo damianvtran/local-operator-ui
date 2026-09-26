@@ -1,0 +1,23 @@
+webContents 1: debugging enabled
+webContents 1: update #1: renderer sent 1 region(s) (1 drag, 0 no-drag); hit-test region computed in 0.0 us: 1 rect(s), bounds 0,0 1380x32
+webContents 1: update #2, 107.0 ms since previous update: renderer sent 12 region(s) (5 drag, 7 no-drag); hit-test region computed in 4.0 us: 5 rect(s), bounds 0,0 1380x72
+webContents 1: update #3, 307.9 ms since previous update: renderer sent 1 region(s) (1 drag, 0 no-drag); hit-test region computed in 0.0 us: 1 rect(s), bounds 0,0 1380x32
+webContents 1: update #4, 113.2 ms since previous update: renderer sent 12 region(s) (5 drag, 7 no-drag); hit-test region computed in 5.0 us: 5 rect(s), bounds 0,0 1380x72
+webContents 1: update #5, 1502.5 ms since previous update: renderer sent 13 region(s) (6 drag, 7 no-drag); hit-test region computed in 6.0 us: 5 rect(s), bounds 0,0 1380x72 (identical to previous region)
+webContents 1: update #6, 268.8 ms since previous update: renderer sent 66 region(s) (6 drag, 60 no-drag); hit-test region computed in 14.0 us: 5 rect(s), bounds 0,0 1380x72 (identical to previous region)
+webContents 1: update #7, 59.6 ms since previous update: renderer sent 380 region(s) (6 drag, 374 no-drag); hit-test region computed in 54.0 us: 7 rect(s), bounds 0,0 1380x72
+webContents 1: update #8, 3.4 ms since previous update: renderer sent 379 region(s) (6 drag, 373 no-drag); hit-test region computed in 44.0 us: 7 rect(s), bounds 0,0 1380x72
+webContents 1: update #9, 29.9 ms since previous update: renderer sent 405 region(s) (6 drag, 399 no-drag); hit-test region computed in 53.0 us: 7 rect(s), bounds 0,0 1380x72 (identical to previous region)
+webContents 1: update #10, 2.7 ms since previous update: renderer sent 405 region(s) (6 drag, 399 no-drag); hit-test region computed in 49.0 us: 7 rect(s), bounds 0,0 1380x72 (identical to previous region)
+webContents 1: update #11, 1702.3 ms since previous update: renderer sent 13 region(s) (6 drag, 7 no-drag); hit-test region computed in 6.0 us: 5 rect(s), bounds 0,0 1380x72
+webContents 1: update #12, 326.3 ms since previous update: renderer sent 79 region(s) (6 drag, 73 no-drag); hit-test region computed in 16.0 us: 5 rect(s), bounds 0,0 1380x72 (identical to previous region)
+webContents 1: update #13, 21.3 ms since previous update: renderer sent 33 region(s) (6 drag, 27 no-drag); hit-test region computed in 8.0 us: 5 rect(s), bounds 0,0 1380x72 (identical to previous region)
+webContents 1: update #14, 1912.0 ms since previous update: renderer sent 13 region(s) (6 drag, 7 no-drag); hit-test region computed in 5.0 us: 5 rect(s), bounds 0,0 1380x72 (identical to previous region)
+webContents 1: update #15, 321.0 ms since previous update: renderer sent 98 region(s) (6 drag, 92 no-drag); hit-test region computed in 22.0 us: 7 rect(s), bounds 0,0 1380x72
+webContents 1: update #16, 3.4 ms since previous update: renderer sent 98 region(s) (6 drag, 92 no-drag); hit-test region computed in 18.0 us: 7 rect(s), bounds 0,0 1380x72 (identical to previous region)
+webContents 1: update #17, 76.4 ms since previous update: renderer sent 205 region(s) (6 drag, 199 no-drag); hit-test region computed in 43.0 us: 7 rect(s), bounds 0,0 1380x72 (identical to previous region)
+webContents 1: update #18, 1665.1 ms since previous update: renderer sent 13 region(s) (6 drag, 7 no-drag); hit-test region computed in 7.0 us: 5 rect(s), bounds 0,0 1380x72
+webContents 1: update #19, 14.9 ms since previous update: renderer sent 159 region(s) (6 drag, 153 no-drag); hit-test region computed in 26.0 us: 5 rect(s), bounds 0,0 1380x72 (identical to previous region)
+webContents 1: update #20, 4.6 ms since previous update: renderer sent 161 region(s) (6 drag, 155 no-drag); hit-test region computed in 23.0 us: 5 rect(s), bounds 0,0 1380x72 (identical to previous region)
+webContents 1: update #21, 519.9 ms since previous update: renderer sent 13 region(s) (6 drag, 7 no-drag); hit-test region computed in 6.0 us: 5 rect(s), bounds 0,0 1380x72 (identical to previous region)
+webContents 1: update #22, 15.6 ms since previous update: renderer sent 1 region(s) (1 drag, 0 no-drag); hit-test region computed in 0.0 us: 1 rect(s), bounds 0,0 1380x32

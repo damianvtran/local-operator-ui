@@ -142,21 +142,23 @@ const INKS = [
 	["inkDim", 5.0],
 ];
 
-/* ---- 4a. the legibility pass: the six grounds, the ladder, the inks ---- */
+/* ---- 4a. the legibility pass: the eight grounds, the ladder, the inks ---- */
 
 /**
- * The SEVEN grounds an ink can sit on.
+ * The EIGHT grounds an ink can sit on.
  *
  * `GROUNDS` above is the ELEVATION LADDER - four alternative grounds of one
  * panel, which is what every control's own row is measured against. This one
- * adds the three grounds that carry text as a STATE rather than as a surface:
- * `accentWash` (the selection/hover tint, callouts, chips, find-match), and the
+ * adds the grounds that carry text as a STATE rather than as a surface:
+ * `accentWash` (the selection/hover tint, callouts, chips, find-match), the
  * two list-row states `rowHover` and `rowSelected`, which replaced the retired
- * `highlight`. Neither of the state grounds was in the ink loop before it was
- * added, which is how a keycap on a selected row and a reading button on a hover
- * could fail with every assertion in this file green: measured at the old scope,
- * `inkDim` was under its floor on `accentWash` in 17 dark and 11 light palettes,
- * and on the row role in 36 dark and 14 light.
+ * `highlight`, and `messageSurface` - the user message block's fill, which is
+ * its own surface rather than a fifth rung of the ladder (see its doc in the
+ * palette contract). None of the state grounds was in the ink loop before it
+ * was added, which is how a keycap on a selected row and a reading button on a
+ * hover could fail with every assertion in this file green: measured at the old
+ * scope, `inkDim` was under its floor on `accentWash` in 17 dark and 11 light
+ * palettes, and on the row role in 36 dark and 14 light.
  */
 const GROUNDS6 = [
 	"canvas",
@@ -166,6 +168,7 @@ const GROUNDS6 = [
 	"accentWash",
 	"rowHover",
 	"rowSelected",
+	"messageSurface",
 ];
 
 /**
@@ -271,7 +274,7 @@ const INK_STEP_DELTA_E = 2.0;
  * which is why the relation is asserted rather than assumed. It is a ratio of
  * two ratios, and because both inks sit on the same side of every ground it
  * reduces to a fact about the two inks alone (the ground cancels), so it is
- * measured on all six grounds and moves only when the pair itself collapses.
+ * measured on all eight grounds and moves only when the pair itself collapses.
  * At the old values the factor ran 0.39-0.54, so 0.80 is generous by design: it
  * catches a collapse rather than policing a margin.
  */
@@ -302,6 +305,28 @@ const DISABLED_CEILING = 0.8;
  */
 const SELECTION_DELTA_E = 3.0;
 const SELECTION_LIGHTNESS_STEP = 2.0;
+
+/**
+ * The user message block's fill. Its boundary IS the fill (D10), so it needs a
+ * findability floor of its own, and the shared `surface` step cannot carry one:
+ * on the low palettes it measures 2.05 (`sage`), 2.08 (`catppuccinMacchiato`)
+ * and 2.10 (`oneLight`) ΔE00 off the canvas, which is the operator's report -
+ * "the contrast between the user message background and the chat background is
+ * quite poor on some themes". 4.0 is this file's floor for the smallest mark
+ * the eye must find (`LINE_SEPARATION_FLOOR`, a 1px rule). It also sits at or
+ * below the step the same column's composer carries (`elevated` over `canvas`,
+ * 4.17 at its fleet weakest) on 58 of the 59 palettes - `catppuccinFrappe` is
+ * the one exception, the block's 4.26 stepping 0.03 over its composer's 4.23,
+ * which is below any perceptual step and that fill is within ΔE00 0.51 of
+ * `elevated` anyway - so the block reads as the quietest object on the screen,
+ * with that single exception stated rather than rounded away.
+ *
+ * The lightness half is asserted with it - at least 2.5 `L*`, the ladder's own
+ * `canvas` -> `surface` minimum - because ΔE00 is a budget a chroma-only step
+ * can spend while the fill vanishes in a greyscale render.
+ */
+const MESSAGE_SURFACE_DELTA_E = 4.0;
+const MESSAGE_SURFACE_LIGHTNESS_STEP = 2.5;
 
 /**
  * The hover tint's own floor: half a selection's, because a hover is transient
@@ -1080,40 +1105,7 @@ const CONTROLS = [
 		border: "borderControl",
 		ink: "ink",
 	},
-	{
-		/*
-		 * The user's message bubble in the transcript.
-		 *
-		 * `on` names `canvas` because that is the ground the bubble is drawn on
-		 * and therefore the ground its edge floor is measured against: the
-		 * transcript renders inside the chat column, and that column is the
-		 * working surface, `canvas` (see chat-content.tsx). It used to say
-		 * `surface`, matching a surface-coloured column - a stale `on` would keep
-		 * measuring this component against a ground it is no longer drawn on,
-		 * which is the failure mode a green run cannot report.
-		 *
-		 * The bubble keeps its own `surface` fill, so it now has a lightness step
-		 * against the column as well as its border. The border is still what
-		 * makes the edge structural: the agent side renders no bubble at all, so
-		 * this edge is the whole distinction between the two speakers. A step is
-		 * not an edge, and the fill alone cannot carry it - a ground is not
-		 * supposed to clear 3:1 against the next ground.
-		 *
-		 * NOTE what this row does and does not buy. It asserts the PALETTE
-		 * pairing - that the bubble's edge clears the structural floor on the
-		 * ground behind it in all twelve themes - which here resolves through
-		 * `borderControl`, since `surface` on `canvas` is only a few ΔE00. It
-		 * cannot see which class the component actually renders, because this
-		 * script only reads palettes. The call site is asserted separately by
-		 * `STRUCTURAL_CALL_SITES` below, which is what would fail if someone
-		 * changed the bubble back to `hairline`.
-		 */
-		name: "user message bubble",
-		on: ["canvas"],
-		fill: "surface",
-		border: "borderControl",
-		ink: "ink",
-	},
+
 	/*
 	 * The composer's context wheel, one row per rung it can be drawn in.
 	 *
@@ -2009,22 +2001,40 @@ const STRUCTURAL_CALL_SITES = [
 		 * that the border was the edge distinguishing the two speakers, because the
 		 * agent side has no bubble at all. That argument was right about the NEED and
 		 * wrong about the CHANNEL: the bubble sits on the `canvas` working surface and
-		 * keeps the `surface` fill, so the block is separated by a ground step - and
-		 * `max-w-[85%]` of the 640 column makes it an aside by its own width as well.
-		 * Two channels, and the rule on top of them was the third and loudest mark on
-		 * the quietest object in the transcript: on the palettes where `control` is
-		 * dark, a settled turn read as an outlined drawing rather than as a message.
+		 * takes its own `messageSurface` fill - the role exists because the fill is
+		 * this block's ONLY boundary (D10), and the shared `surface` step it first
+		 * took measures as low as ΔE00 2.05 across the palettes - and `max-w-[85%]` of
+		 * the 640 column makes it an aside by its own width as well. Two channels,
+		 * and the rule on top of them was the third and loudest mark on the quietest
+		 * object in the transcript: on the palettes where `control` is dark, a settled
+		 * turn read as an outlined drawing rather than as a message.
 		 *
 		 * The pin now takes the fill-form this inventory already supports for a chip
 		 * ("the fill IS the chip's boundary"): the two halves of the step are pinned
 		 * from both sides - `chat working surface ground` above holds `bg-canvas`, and
-		 * this row holds `bg-surface` beside it - so repainting either half still
-		 * fails, and dropping the fill entirely fails here.
+		 * this row holds `bg-message-surface` beside it - so repainting either half
+		 * still fails, and dropping the fill entirely fails here. The LEGACY twin is
+		 * pinned by the next entry: both components render the same block, so pinning
+		 * only the canonical half would let `message-paper.tsx` keep the old class.
 		 */
 		what: "user message bubble fill",
 		file: "src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
-		must: "rounded-frame bg-surface text-ink",
-		why: "the bubble's ground step against the canvas working surface IS its boundary (§L's D10 amendment): the edge it used to draw was the third and loudest channel on the quietest object in the transcript, and the other half of this pair is pinned by `chat working surface ground`",
+		must: "rounded-frame bg-message-surface text-ink",
+		why: "the bubble's ground step against the canvas working surface IS its boundary (§L's D10 amendment), and the fill now carries the role's own ΔE00 4.0 floor - the edge it used to draw was the third and loudest channel on the quietest object in the transcript, and the other half of this pair is pinned by `chat working surface ground`",
+	},
+	{
+		/*
+		 * The legacy half of the same block. `message-paper.tsx` renders user turns on
+		 * whatever still mounts the legacy path, and its own comment requires the two
+		 * components to AGREE on the block's shape - "whichever surface renders, the
+		 * turn must not change shape". The fill is part of that agreement now that it
+		 * IS the boundary, so it is pinned here rather than left to two comments to
+		 * stay in step.
+		 */
+		what: "legacy user message bubble fill",
+		file: "src/renderer/src/features/chat/components/message-item/message-paper.tsx",
+		must: "rounded-frame bg-message-surface text-ink break-words",
+		why: "the legacy twin renders the same user block with the same fill-by-boundary rule, so a change that moves only the canonical class would leave the two surfaces painting different shapes; no palette assertion can see a class string",
 	},
 	{
 		what: "chat header bottom rule",
@@ -2523,13 +2533,14 @@ const STRUCTURAL = [
  *
  * `sunken` is in the list because it is the editor's own ground: every syntax
  * colour is painted on it, and the code-mirror theme rejected `inkDisabled` for
- * comments on exactly the grounds it failed 4.5:1 there. `elevated`,
- * `accentWash` and `highlight` are in it because each is a ground a tone role
- * is genuinely drawn on - a dialog's required-mark and a danger button's label
- * (`elevated`), the ask-option card and the find-match tint (`accentWash`), the
- * selected sidebar row (`highlight`) - and the old list stopped at `sunken`,
- * which is how `danger` came to be drawn at 3.76:1 on `elevated` in `monokai`
- * behind a green gate.
+ * comments on exactly the grounds it failed 4.5:1 there. `elevated` and
+ * `accentWash` are in it because each is a ground a tone role is genuinely
+ * drawn on - a dialog's required-mark and a danger button's label (`elevated`),
+ * the ask-option card and the find-match tint (`accentWash`) - and
+ * `messageSurface` is in it because the block renders arbitrary user prose,
+ * links and markdown included, the likeliest carrier of tone text in a
+ * transcript - and the old list stopped at `sunken`, which is how `danger`
+ * came to be drawn at 3.76:1 on `elevated` in `monokai` behind a green gate.
  */
 const AS_TEXT = ["accent", "success", "warning", "danger", "info"];
 
@@ -3126,6 +3137,13 @@ const REQUIRED_ROLES = [
 	   longer obeys its own doc. */
 	"rowHover",
 	"rowSelected",
+	/* The user message block's own fill. Not a fifth ground - one object's
+	   surface, split off `surface` so its boundary can carry its own ΔE00 floor
+	   without moving every panel in the app (see its doc in the palette
+	   contract). Required for the same reason every role here is: a palette that
+	   omitted it would fall silently through to a utility that resolves to
+	   nothing at all. */
+	"messageSurface",
 	"ink",
 	"inkMuted",
 	"inkDim",
@@ -3746,7 +3764,7 @@ for (const { id, palette: p } of palettes) {
 	}
 
 	/*
-	 * Ink on every ground, the SIX of them.
+	 * Ink on every ground, the EIGHT of them.
 	 *
 	 * `accentWash` and `highlight` are grounds a body ink is genuinely read on
 	 * - a keycap on a selected row, a reading button on its own hover fill, the
@@ -4213,17 +4231,20 @@ for (const { id, palette: p } of palettes) {
 	 * recorded pins rather than a floor. Those pins are gone; see `EXCEPTIONS`.
 	 */
 	/*
-	 * The TONE grounds are the five, not the seven, and the two the row states
+	 * The TONE grounds are the six, not the eight, and the two the row states
 	 * add are deliberately excluded HERE while being asserted in the ink loop
 	 * above. The measurement is the reason: a tone role reaches a selected row
 	 * only as a badge or a dot, and on the accent-derived fills the four tones plus
 	 * `accent` measure 4.45-4.50:1 in five palettes - the chroma ceiling is what
 	 * caps them, so the shortfall is a property of the rule rather than of a value.
 	 * What a row DOES carry is its own text, and that is the ink layer, which is
-	 * asserted on both row states. So the tones stay on the five grounds the pass
-	 * that added them measured, and the row states are held to the ink floors.
+	 * asserted on both row states. `messageSurface` is the sixth: the block renders
+	 * user prose - links and markdown included - so a tone role is genuinely drawn
+	 * on it (fleet minimum 4.60:1, measured). So the tones stay on the six grounds
+	 * this file measures them on - the four elevations, `accentWash` and
+	 * `messageSurface` - and the row states are held to the ink floors.
 	 */
-	const TONE_GROUNDS = [...GROUNDS, "accentWash"];
+	const TONE_GROUNDS = [...GROUNDS, "accentWash", "messageSurface"];
 	for (const role of AS_TEXT) {
 		for (const g of TONE_GROUNDS) {
 			assertPair(id, p, role, g, FLOOR.text, "colour as text");
@@ -5025,6 +5046,54 @@ for (const { id, palette: p } of palettes) {
 		if (step < SELECTION_LIGHTNESS_STEP) {
 			fail(
 				`${id}: the palette/picker active row sits ${r2(step)} L* from \`elevated\`, under the ${SELECTION_LIGHTNESS_STEP} L* floor — ΔE00 is a budget a chroma-only step can spend while the mark vanishes in a greyscale render, so the lightness half is asserted too`,
+			);
+		}
+	}
+
+	/*
+	 * 6b. The user message block's fill: its boundary IS the fill (D10), so it
+	 * has to be findable, and on the palettes where the shared `surface` step
+	 * lands low it is not (sage 2.05, `catppuccinMacchiato` 2.08, `oneLight`
+	 * 2.10 - the operator's "the contrast between the user message background and
+	 * the chat background is quite poor on some themes"). The floor is
+	 * `MESSAGE_SURFACE_DELTA_E` (its own comment carries why 4.0), measured off
+	 * `canvas` - the working surface the block is drawn on - with the lightness
+	 * half asserted too so a chroma-only step cannot pass while the fill vanishes
+	 * in a greyscale render. The `CONTROLS` row titled "user message bubble" was
+	 * retired here: post-D10 the component draws no edge of its own, so the row
+	 * measured a `borderControl` border that no longer renders; this block is
+	 * what asserts the pairing the component actually has.
+	 */
+	{
+		/* A palette missing the role already failed the completeness check above;
+		   this block must skip rather than crash on it, the way every other loop
+		   here does. A PRESENT-but-malformed value is the other case, and it must
+		   FAIL rather than skip: measured (agent review round 1, R2), setting
+		   `messageSurface: "notahex"` left this gate exiting 0 with the count
+		   falling 28,111 -> 28,083 - the block's whole floor silently switched off
+		   by a value the palette parser accepts, and a tree that looks green. A
+		   skip guard may answer "absent"; "malformed" has to be loud, because a
+		   malformed value that disarms a floor is worse than no floor. */
+		if (p.messageSurface === undefined) continue;
+		if (!isHex(p.messageSurface)) {
+			fail(
+				`${id}: the user message block's fill \`messageSurface\` ${JSON.stringify(p.messageSurface)} is present but not a flat hex colour, so the role's floor would be silently unmeasured - a malformed value must not switch a floor off`,
+			);
+			continue;
+		}
+		if (!isHex(p.canvas)) continue;
+		const got = deltaE(p.messageSurface, p.canvas);
+		assertions++;
+		if (got < MESSAGE_SURFACE_DELTA_E) {
+			fail(
+				`${id}: the user message block's fill \`messageSurface\` ${p.messageSurface} is ΔE00 ${r2(got)} from \`canvas\` ${p.canvas} (need ${MESSAGE_SURFACE_DELTA_E}) — the fill IS the block's boundary, and below this band it stops being findable`,
+			);
+		}
+		assertions++;
+		const step = Math.abs(toLab(p.messageSurface)[0] - toLab(p.canvas)[0]);
+		if (step < MESSAGE_SURFACE_LIGHTNESS_STEP) {
+			fail(
+				`${id}: the user message block's fill sits ${r2(step)} L* from \`canvas\`, under the ${MESSAGE_SURFACE_LIGHTNESS_STEP} L* floor — ΔE00 is a budget a chroma-only step can spend while the mark vanishes in a greyscale render, so the lightness half is asserted too`,
 			);
 		}
 	}

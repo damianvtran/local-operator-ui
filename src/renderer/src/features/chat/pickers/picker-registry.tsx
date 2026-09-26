@@ -235,10 +235,13 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 		 * run IS the outcome — nothing is left to confirm.
 		 *
 		 * The bare and titled forms are UNTOUCHED by this row. Bare `/rename` still
-		 * presents `RenamePicker` as a form (the dispatcher's `PRESENT_DIRECTLY`
-		 * path is keyed on an EMPTY args), and `/rename some title` still sets that
-		 * title. Only a pick of the flag row changes behaviour, because only there
-		 * is there something to run without a name.
+		 * presents `RenamePicker` as a form - answered by the BACKEND's empty-args
+		 * rule (a `native_action` for the word with no arguments,
+		 * `local_operator/server/routes/desktop_sessions.py`) and mounted by the
+		 * dispatcher's `isNativeAction` branch; `PRESENT_DIRECTLY` holds
+		 * `session.goal`/`session.context` and no rename - and `/rename some title`
+		 * still sets that title. Only a pick of the flag row changes behaviour,
+		 * because only there is there something to run without a name.
 		 */
 		inline: { source: "title-refresh", nameThenMessage: false, runs: true },
 	},

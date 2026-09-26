@@ -412,6 +412,16 @@ const INSTALL_BLOCK_HEADINGS: Record<string, string> = {
  * in-flight install panel is the one state where the pause is the cost, so it
  * asks to be announced assertively without borrowing the failure marker it is
  * deliberately not carrying (review D3).
+ *
+ * AND IT IS NOT A DRAG SURFACE, WHEREVER IT PAINTS. Pinned at `top-4`, its top
+ * row sits inside the window's drag strip wherever one is drawn (the shell's
+ * lane on macOS, the caption band on win/linux), and it reaches the top layer
+ * through no portal - the region walk is built from element rects and never
+ * sees paint order - so without the opt-out a press on that row is eaten as a
+ * window drag. That is why it carries the marker below, and why
+ * `scripts/overlay-drag-zones.test.mjs` names this file in F-4: its portal scan
+ * cannot see a surface that renders no portal, so this one is a named entry
+ * rather than a derived one. Keep the marker and that entry together.
  */
 export const UpdateContainer = ({
 	className,
@@ -448,6 +458,8 @@ export const UpdateContainer = ({
 	useSuppressBrowserView(true, "update-notice");
 	return (
 		<div
+			/* The drag-strip opt-out; see the note above. */
+			data-titlebar-no-drag=""
 			role={role ?? (tone === "failed" ? "alert" : "status")}
 			className={cn(
 				"fixed top-4 right-4 z-50 w-100 max-w-[calc(100vw-2rem)]",
