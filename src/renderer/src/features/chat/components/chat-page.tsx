@@ -2829,16 +2829,28 @@ function SessionPanel({
 					identity={identityControls}
 					/*
 					 * THE RENAME PENCIL'S DOOR, and the same one the page's inline options use
-					 * ("rename" above): `/rename` with empty args PRESENTS `RenamePicker`
-					 * (the registry's `PRESENT_DIRECTLY` path is keyed on the empty args), so
-					 * the pencil opens the one existing rename flow rather than a second
-					 * surface for one write path. Omitted on a draft for the same reason the
-					 * archive and delete controls are: a conversation that does not exist yet
-					 * has no name to change.
+					 * ("rename" above). The citation was corrected in review round 1 (findings
+					 * 4 / bot 4): bare `/rename` is answered by the BACKEND's empty-args rule
+					 * (`local_operator/server/routes/desktop_sessions.py` returns a
+					 * `native_action` for the word with no arguments), and the dispatcher's
+					 * `isNativeAction` branch mounts the registry's picker for that
+					 * destination - `PRESENT_DIRECTLY` holds `session.goal` and
+					 * `session.context` and no rename, which is what the old sentence read it
+					 * as. The pencil opens the one existing rename flow rather than a second
+						* surface for one write path.
+							*
+							* `dispatchFromControl`, not `dispatch`: a control has no composer text
+					 * to report through, so the wrapper is what turns the commands-off
+					 * `"not-a-command"` into the composer's own failure note rather than a
+					 * dead pencil (bot 4; the options row already uses the same wrapper).
+					 * And it is GATED on the command surface being enabled, so with that
+					 * capability off the pencil is omitted instead of rendered dead.
+					 * Omitted on a draft for the same reason the archive and delete controls
+					 * are: a conversation that does not exist yet has no name to change.
 					 */
 					onRenameConversation={
-						sessionId
-							? () => void dispatch({ name: "rename", args: "" })
+						sessionId && desktopFeatureEnabled(capabilities.data, "commands")
+							? () => void dispatchFromControl({ name: "rename", args: "" })
 							: undefined
 					}
 					onOpenOptions={() => setOptions((value) => !value)}

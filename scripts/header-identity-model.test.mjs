@@ -106,6 +106,33 @@ test("the manager comes from the row, never from a constant: two teams, two mana
 	}
 });
 
+test("the manager rung reads the MERGED team value, not just the live one (review round 1, finding 3)", () => {
+	// The bound-only twin: every manager case above drives `activeTeam`, so an
+	// implementation that keyed the rung on the live value alone would pass all
+	// of them while mislabelling the COLD session - the one the durable binding
+	// exists to describe, and the operator's own case ("typically would be
+	// 'manager' in the case that a team is assigned"). These two cases are the
+	// mutation's own kill.
+	assert.equal(
+		resolveHeaderIdentity({ boundTeam: "minerva", teams: TEAMS }).agentValue,
+		"ops-lead",
+	);
+	assert.equal(
+		resolveHeaderIdentity({ boundTeam: "lopdev" }).agentValue,
+		"manager",
+	);
+});
+
+test("the default manager is the runtime's own value, pinned here (review round 1, finding 3)", () => {
+	// A cross-repo fact, pinned the way this repo pins them: the value is the
+	// runtime's `Team.manager` default (`local_operator/teams.py` declares
+	// `manager: str = "manager"`), and the header reaches for it only when the
+	// catalogue has not answered. If the runtime's default moves, this test and
+	// the model's docblock are the two places to move with it - the point of
+	// the pin is that the move cannot be silent.
+	assert.equal(DEFAULT_TEAM_MANAGER, "manager");
+});
+
 test("a catalogue that has not loaded answers with the runtime's own default", () => {
 	// `Team.manager` in the runtime declares `manager: str = "manager"`, so
 	// this is the value the backend would run, not an invented placeholder.
