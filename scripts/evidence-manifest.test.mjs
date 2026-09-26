@@ -941,6 +941,13 @@ const STAMP_BINDING_NOTES = [
 	 * move.
 	 */
 	"markSpokenRestampNote",
+	/*
+	 * The draft-warm pass's own: it re-stamps a change that moves BOTH trees -
+	 * the contract, store, hooks and panel on one side, the two suites that pin
+	 * them on the other - without touching a frame, so the reader is owed the
+	 * pair AND the reason no still was owed.
+	 */
+	"newchatDraftWarmRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1297,6 +1304,14 @@ const BRANCH_RECORDS = [
 	 * modules swapped for `origin/main`'s.
 	 */
 	"transcriptRevealAtRestRestampNote",
+	/*
+	 * And by the draft-warm pass, whose note this fold re-stamps: it is the only
+	 * statement of which two trees the new-chat pre-engage moved and of why no
+	 * still was owed, and this fold's manifest resolution keeps it by hand
+	 * against main's copy - so it joins the list for the same reason every entry
+	 * above it did.
+	 */
+	"newchatDraftWarmRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
