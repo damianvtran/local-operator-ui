@@ -110,16 +110,29 @@ import {
 	showErrorToast,
 	showInfoToast,
 } from "@shared/utils/toast-manager";
-import { AlarmClock, Info, Repeat, X } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { AlarmClock, Check, CircleCheck, Info, Repeat, X } from "lucide-react";
+import {
+	type ReactNode,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import type { DesktopLoopState } from "../../../../../shared/desktop-control-contract";
-import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
+import {
+	type CanonicalFrontendState,
+	goalCapability,
+	goalPresent,
+} from "../../../../../shared/desktop-session-contract";
 import { CAPPED_BLOCK, CHAT_MEASURE } from "../chat-measure";
 import {
 	GOAL_CLEAR_ARGS,
 	GOAL_COMMAND,
+	GOAL_DISMISS_ARGS,
+	GOAL_DONE_ARGS,
 	LOOP_COMMAND,
 	LOOP_STOP_ARGS,
+	goalStateWord,
 	loopIsRunning,
 } from "../pickers/session-commands";
 import { useSessionCommand } from "../pickers/use-picker-backend";
@@ -202,6 +215,161 @@ const GOAL_CLEAR_TEXT = "Clear goal";
 const LOOP_STOP_TEXT = "Stop loop";
 const LOOP_CLEAR_TEXT = "Clear loop";
 
+/*
+ * The goal's MARK-DONE and DISMISS controls, and the rule that separates them from
+ * the one above: a recorded act is one press; an erased act is two.
+ *
+ * `Done` writes a history entry, so nothing is lost and a single press is right —
+ * and it deliberately carries NO undo. An undo here would have to retract the
+ * history entry the press just wrote, and no spelling in the wire's vocabulary
+ * deletes a history row; one that restored the goal and left the `done` entry
+ * behind would file a false project record, which is the one artefact this feature
+ * exists to make trustworthy. `Clear goal` keeps the undo it shipped with, and the
+ * deliberate path for a user who wants friction is the picker's danger dialog.
+ *
+ * `Dismiss` is the done chip's ONLY control: while done, mark-done and delete reach
+ * the same wire state, and one fact with two spellings is the defect the design
+ * record refuses. Its wording is deliberately quiet — `Hide` would be a second
+ * vocabulary for `/goal --dismiss`.
+ */
+const GOAL_DONE_TEXT = "Done";
+const GOAL_DISMISS_TEXT = "Dismiss";
+const GOAL_DONE_FAILURE = "Could not mark the goal done";
+const GOAL_DISMISS_FAILURE = "Could not dismiss the goal";
+const GOAL_DONE_TOAST_TEXT = "Goal done";
+/*
+ * The goal's settled word, printed on the chip's tag and used to build the
+ * accessible names. It is the wire's own `goal_status` value verbatim, on the loop
+ * chip's rule that a status word is printed AS THE WIRE SPELLS IT, so a chip, a
+ * receipt and the pane cannot spell one state three ways.
+ *
+ * THE RECORD'S SURVIVAL IS NOT ON THE PAINT, DELIBERATELY (UX round 1, U7 — recorded
+ * rather than fixed, because a reviewer reading the struck value plus this tag alone
+ * cannot tell a decision from an oversight). A struck value and `— done` say what
+ * HAPPENED; that the record is KEPT is stated in three places a user actually reaches
+ * and in none of them for pixels: the `Dismiss` control's tooltip and accessible name
+ * (`goalDismissLabel`, the one whose press could look like it destroys something), the
+ * toast on the done press itself, and the picker's settled description. A fourth mark
+ * HERE would cost the row's pinned budgets — the tag is already the first thing the
+ * band gives up (`DISMISS_REVEAL`/`NARROW_HIDDEN`) — to repeat a fact at 24px beside
+ * the control that states it, which is the chrome-for-its-own-sake the row's own ink
+ * law refuses.
+ */
+const GOAL_DONE_TAG = "— done";
+
+/**
+ * The ONE-SHOT notes the row writes when the judge ENTERS `stalled` — ONE SENTENCE
+ * PER CAUSE, chosen by the reason the wire carries.
+ *
+ * WHY A SENTENCE AT ALL, when the chip already steps its label to `text-ink`:
+ * `stalled` is the one judge state with an action behind it — the user has to send a
+ * message for the loop to continue — and the ink step is 0px, silent, and readable
+ * only by someone already looking at the chip. The design's § 6 register says a state
+ * the JUDGE reaches by itself is stated once, in words, in the transcript
+ * (design review round 1, D2); the ink step stays as the persistent mark beside it.
+ *
+ * WHY TWO SENTENCES AND NOT ONE (UX round 1, U1): the backend stops a judged goal at
+ * TWO different bounds and publishes which one in `goal_judge.reason` — the breaker
+ * (`STALLED_BREAKER_REASON`, consecutive unreadable verdicts) and the cap
+ * (`STALLED_CAP_REASON`, the auto-continuation budget). Its own constants carry the
+ * warning this note exists to honour: a surface that reported one cause for the other
+ * *"would send the user looking for a provider problem that does not exist"*
+ * (`session/goal_judge.py`). A judgement that no longer answers and a goal that
+ * simply ran out of auto-continuations are two different next moves, so one sentence
+ * for both would be a claim the record does not support.
+ *
+ * The two sentences are BUILDERS of the wire's reason rather than a constant: the
+ * field was added to `CanonicalGoalJudge` for exactly this, so the sentence follows
+ * the cause instead of the cause being rounded to the sentence.
+ *
+ * THE CAP'S SENTENCE IS THE BACKEND'S, BYTE FOR BYTE (QA round 2, Q-2). The backend
+ * writes `STALLED_CAP_NOTICE` = `goal stalled: {STALLED_CAP_REASON} — send a message
+ * to continue` into the transcript itself, and the reason string is the wire contract
+ * both hosts read, so the desktop states the SAME sentence rather than a paraphrase
+ * (`reached the continuation limit`) that made one stall read two ways depending on
+ * which surface said it. The count is taken from the reason, not from a constant
+ * here, so a moved budget moves both hosts' sentences together. The tail is the picker's shipped
+ * `stalled — send a message to continue` clause (`destination-pickers.tsx`), so the
+ * row and the dialog say the same thing in the same words, and it is true of both
+ * bounds: the breaker re-judges at the next turn end and the cap's streak is
+ * per-streak, so a user-authored turn restarts either.
+ *
+ * THE FALLBACK IS NOT SILENCE, and it is not a guess either. A reason this build
+ * cannot name is a cause added after it, and saying nothing would restore the very
+ * bug D2 closed — a stopped goal reads exactly like a waiting one — while naming the
+ * breaker for it would be U1 over again. The third sentence is the backend's own
+ * fallback for the same case (`STALLED_UNKNOWN_NOTICE` in `session/goal_judge.py`),
+ * so the two hosts state an unnamed stall in the same words: it names no bound, and
+ * it says what is true of any stall — the auto-continuation stopped.
+ */
+const GOAL_STALLED_BREAKER_NOTE =
+	"goal stalled: judge could not decide — send a message to continue";
+/*
+ * Only for a reason that has the cap's head and tail but no readable count between
+ * them — a shape the backend does not publish today (QA round 2, Q-3). It still
+ * names the right bound, and it does not echo an unparsed middle into the transcript.
+ */
+const GOAL_STALLED_CAP_FALLBACK_NOTE =
+	"goal stalled: reached the continuation limit — send a message to continue";
+const goalStalledCapNote = (count: string): string =>
+	`goal stalled: stopped after ${count} continuations — send a message to continue`;
+const GOAL_STALLED_UNKNOWN_NOTE =
+	"goal stalled: auto-continuation stopped — send a message to continue";
+
+/**
+ * The wire's own spellings of the two stall causes, as `goal_judge.reason` carries
+ * them (`session/goal_judge.py`).
+ *
+ * A MIRROR, not an import: the two halves of this feature are a Python package and a
+ * TypeScript renderer, so there is no mechanism that would keep one constant from
+ * being read as the other. What holds them together is this comment and the test that
+ * pins both sentences — the same discipline the contract's closed-vocabulary fields
+ * are read under.
+ *
+ * THE CAP IS MATCHED BY SHAPE rather than by literal, and that is the one place this
+ * mirror is looser than the breaker's. The breaker's reason is a fixed phrase; the
+ * cap's is an f-string over the budget (`stopped after 12 continuations`), so a
+ * literal here would silently downgrade the cap's sentence to the fallback the day
+ * the backend moves that number — a copy regression with no test to catch it, since a
+ * pin on `stopped after 12 continuations` would stay green while the product moved.
+ * Head and tail are both required, so a reason that merely mentions continuations is
+ * not claimed to be the cap.
+ */
+const STALLED_BREAKER_REASON = "judge could not decide";
+const STALLED_CAP_REASON_HEAD = "stopped after ";
+const STALLED_CAP_REASON_TAIL = " continuations";
+/*
+ * Digits only: the backend's budget is an int, and anything else is not a count this
+ * build may print as one. Top-level for `lint/performance/useTopLevelRegex`.
+ */
+const STALLED_CAP_COUNT = /^\d+$/;
+
+/**
+ * The sentence a stall owes the user, for the reason the judge published.
+ *
+ * One derived string rather than a ternary at the call site, for the reason every
+ * other label on this row is derived: the sentence a person reads and the sentence a
+ * test can pin are the same function, and a state cannot reach the transcript with a
+ * cause it did not carry.
+ */
+export const goalStalledNote = (reason: string | undefined): string => {
+	const named = (reason ?? "").trim();
+	if (named === STALLED_BREAKER_REASON) return GOAL_STALLED_BREAKER_NOTE;
+	if (
+		named.startsWith(STALLED_CAP_REASON_HEAD) &&
+		named.endsWith(STALLED_CAP_REASON_TAIL)
+	) {
+		const count = named.slice(
+			STALLED_CAP_REASON_HEAD.length,
+			named.length - STALLED_CAP_REASON_TAIL.length,
+		);
+		return STALLED_CAP_COUNT.test(count)
+			? goalStalledCapNote(count)
+			: GOAL_STALLED_CAP_FALLBACK_NOTE;
+	}
+	return GOAL_STALLED_UNKNOWN_NOTE;
+};
+
 /**
  * The two owner commands the dismiss controls run are IMPORTED, name and VALUE
  * together (`pickers/session-commands.ts`), and the first version of this row is
@@ -269,16 +437,66 @@ const GOAL_CLEARED_PREVIEW_CHARS = 28;
  * name of the control that cleared it keeps saying.
  */
 export const goalClearedText = (cleared: string): string => {
-	const flat = cleared.trim().replace(/\s+/g, " ");
+	const leading = goalWordClip(cleared);
+	return `${GOAL_CLEARED_TEXT} · ${leading}`;
+};
+
+/**
+ * The mark-done confirmation: `Goal done · <the goal's leading words>` PLUS the two
+ * facts the press cannot be taken back over.
+ *
+ * THE DESIGN'S OWN TWO HALVES, AND THEY DISAGREED (UX round 1, U2). § 2.3 justifies the
+ * deliberate absence of an undo with *"the toast's own words name the recovery path"*,
+ * and § 6 pins the sentence's shape as `Goal done · <28-char clip>`. Shipped, that was
+ * `Goal done · Reconcile the March…` and nothing else: it named the value and no
+ * recovery, on the one press in this feature with no undo behind it and a history row
+ * behind it that no wire spelling can delete. Both halves hold here — the § 6 shape is
+ * kept, clip and all, and the sentence now carries the recovery the § 2.3 sentence
+ * promised.
+ *
+ * WHY WORDS AND NOT AN `Undo`. The undo is refused by the design (§ 2.3(a)) for a
+ * reason this string must not paper over: an undo would have to retract the history
+ * entry the press just wrote, and no slash spelling can do that, so an `Undo` here
+ * would file a false project record — the one artefact this feature exists to make
+ * trustworthy. What the toast CAN honestly do is say where the goal went and how to
+ * put it back, which is exactly the sentence the design asked for.
+ *
+ * BOTH CLAUSES ARE THE APP'S ALREADY-AUTHORED WORDS, not new copy: `it stays in the
+ * goal history` is the settled state's clause (the `Dismiss` control's name and the
+ * picker's settled description), and `/goal <text>` is the app's own spelling for the
+ * set form (`no goal set — /goal <text> to set one`). It is also the reason the toast
+ * is a sentence rather than an affordance: `/goal <text>` re-arms the same goal in one
+ * command, so the recovery is a fact the user can act on immediately.
+ *
+ * The clip is the same word-cut as the clear's, so the two confirmations on this row
+ * are one shape.
+ */
+export const goalDoneToastText = (goal: string): string =>
+	`${GOAL_DONE_TOAST_TEXT} · ${goalWordClip(goal)} — it stays in the goal history; /goal <text> sets it again`;
+
+/**
+ * One line, leading WORDS, ellipsis — the clip both goal confirmations print.
+ *
+ * Whitespace is collapsed rather than truncated around, because the wire's goal may
+ * be multi-line prose (the harness's own fixture is) and a toast is one line: a
+ * confirmation that painted the goal's own break would be a taller toast whose second
+ * half said nothing. The cut falls on the last SPACE inside the budget rather than
+ * mid-word, so the reader sees words rather than a syllable; a goal that fits the
+ * budget whole is printed whole and carries no ellipsis at all. The full value is
+ * untouched — it is what `Undo` restores, byte for byte, and what the accessible
+ * name of the control that settled it keeps saying.
+ */
+const goalWordClip = (goal: string): string => {
+	const flat = goal.trim().replace(/\s+/g, " ");
 	if (flat.length <= GOAL_CLEARED_PREVIEW_CHARS) {
-		return `${GOAL_CLEARED_TEXT} · ${flat}`;
+		return flat;
 	}
 	const budget = flat.slice(0, GOAL_CLEARED_PREVIEW_CHARS);
 	const lastSpace = budget.lastIndexOf(" ");
 	const leading = (
 		lastSpace > 0 ? budget.slice(0, lastSpace) : budget
 	).trimEnd();
-	return `${GOAL_CLEARED_TEXT} · ${leading}…`;
+	return `${leading}…`;
 };
 
 /**
@@ -461,6 +679,39 @@ const NARROW_HIDDEN = "@max-[240px]/chatcol:hidden";
 const DISMISS_WORD = NARROW_HIDDEN;
 
 /**
+ * The settled chip's TAG, yielded one step WIDER than the row's copy step: at the
+ * stacked band INCLUDING its own edge.
+ *
+ * WHY IT IS NOT `NARROW_HIDDEN`. The step above is `width < 240px`, and the row's
+ * ARRANGEMENT at 240 is already the stacked one — `goal-done-floor`'s own `RowFacts`
+ * print a 54px row there against 32px at 900 — so the one width the design's copy
+ * rule NAMES is the one width the rule has not fired at. That made the value's
+ * readable width NON-MONOTONIC across the step: `text 39/1956` at 240 against
+ * `67/1956` at the 172px floor, the WIDER band identifying the goal by fewer
+ * characters than the narrower one (design review round 2, D11; UX round 2, U1).
+ *
+ * WHY THE TAG YIELDS FIRST, and why this is not the row's step widened for
+ * everything. The dismiss's word and the loop's figure each keep a second home at
+ * every width — their own accessible names (`NARROW_HIDDEN`'s docblock). The tag
+ * does not: the dismiss is `opacity-0` at rest, so the strike and this word are the
+ * whole of what the settled chip says, and a crossed-out value with no word is also
+ * the shape of *cancelled*. Measured on this head with the tag withheld at 240, the
+ * value's box grows by the tag's 47px — `text 39/1956` to `85/1956` — so 240
+ * identifies the goal at least as well as the floor does (`67/1956`), and the floor is
+ * untouched.
+ *
+ * Spelled `@max-[241px]` because Tailwind v4's `@max-*` is EXCLUSIVE: `@max-[240px]`
+ * compiles to `width < 240px`, so the inclusive step the design names is one pixel
+ * past it (`width < 241px`). `NARROW_HIDDEN` keeps its own `< 240px` boundary rather
+ * than being re-spelled as this one: they are two rules with two subjects — an
+ * affordance's word, which has an accessible-name home, against the only state tell
+ * a still paints — and collapsing them would move the dismiss's own measured
+ * boundary (`docs/composer-status-tabs.md` § 12.5, `docs/evidence/composer-status-clear/`)
+ * for a finding that is about the tag.
+ */
+const GOAL_TAG_NARROW = "@max-[241px]/chatcol:hidden";
+
+/**
  * The row's first-chip rule, owned by the ROW.
  *
  * Whichever chip renders first cancels its own 6px padding, so the thing that
@@ -522,8 +773,26 @@ const COLUMN_GOAL =
  * is unbounded); the tooltip is that home before the click, and the body is the
  * home after it.
  */
-export const goalDisclosureLabel = (goal: string, expanded: boolean): string =>
-	`${expanded ? "Collapse" : "Expand"} ${GOAL_NAME}${LABEL_SEAM}${goal}`;
+export const goalDisclosureLabel = (
+	goal: string,
+	expanded: boolean,
+	/**
+	 * The judge's live state in ONE word, or `""` for a goal at rest. It rides the
+	 * accessible name and the tooltip rather than the row (§1.3): `judging` and
+	 * `continuing` rename to the single word `working`, because that is what the user
+	 * sees happening — a turn streaming directly above this chip — and two words for
+	 * one observable state is how a name and a row start disagreeing.
+	 *
+	 * `stalled` is the state with an action behind it and gets a 0px persistent mark
+	 * as well (the label's ink steps to `text-ink`), but the WORD still lives here:
+	 * ink alone cannot be heard, which is this codebase's recorded lesson for the
+	 * unread mark.
+	 */
+	stateWord = "",
+): string =>
+	`${expanded ? "Collapse" : "Expand"} ${GOAL_NAME}${LABEL_SEAM}${
+		stateWord ? `${stateWord}, ` : ""
+	}${goal}`;
 
 /**
  * The plan chip's tooltip and accessible name.
@@ -615,6 +884,29 @@ export const wakeChipLabel = (armed: number): string =>
  */
 export const goalClearLabel = (goal: string): string =>
 	`${GOAL_CLEAR_TEXT}${LABEL_SEAM}${goal}`;
+
+/**
+ * The mark-done control's tooltip and accessible name, on the same one-derived-string
+ * rule as the dismiss above it.
+ *
+ * The name contains the control's own visible word (`Done`), satisfying WCAG 2.5.3
+ * the way the shipped clear does, and it states the ACT rather than a bare `Done`:
+ * `Done` alone beside two other controls would not say what it is done TO.
+ */
+export const goalDoneLabel = (goal: string): string =>
+	`Mark the goal done${LABEL_SEAM}${goal}`;
+
+/**
+ * The done chip's dismiss control: tooltip and accessible name.
+ *
+ * TWO SEAMS, ON PURPOSE. The middle clause — `it stays in the goal history` — is the
+ * one fact that makes this button safe to press without a confirmation, and it is
+ * the reason the design gives this control no undo: dismissal removes the CHIP, not
+ * the record. A name that said only `Dismiss the finished goal` would leave the user
+ * guessing whether the press destroys the goal.
+ */
+export const goalDismissLabel = (goal: string): string =>
+	`Dismiss the finished goal${LABEL_SEAM}it stays in the goal history${LABEL_SEAM}${goal}`;
 
 /**
  * Whether the wire's loop is MOVING, which is the whole of the loop's affordance
@@ -726,6 +1018,61 @@ export const loopAffordance = (
 export const loopActionLabel = (loop: DesktopLoopState): string =>
 	`${loopAffordance(loop).text}${LABEL_SEAM}${loopClause(loop)}`;
 
+/**
+ * One of the goal chip's trailing controls: `Clear goal` (shipped), `Done` (new) and
+ * `Dismiss` (new).
+ *
+ * WRITTEN ONCE BECAUSE THE THREE ARE ONE SPECIES. They share the reveal, the held
+ * box, the disabled step, the accessible name equal to the tooltip and the word that
+ * `NARROW_HIDDEN` drops at the column floor — and three copies of that is how one of
+ * them stops receiving a fix (the same argument the disclosure primitive makes for
+ * building its trigger once).
+ *
+ * THE ATTRIBUTE SELECTOR IS PART OF THE CONTRACT and is kept as shipped for the two
+ * spellings that map to one slot: `data-status-goal-dismiss` names the goal chip's
+ * clear-or-dismiss control — the pair never coexist, because `Clear goal` renders
+ * only while the goal is active and `Dismiss` only while it is done — so an existing
+ * selector for the shipped control keeps matching exactly one button. `Done` gets its
+ * own attribute because it renders BESIDE the clear while the goal is active.
+ */
+function GoalControl({
+	kind,
+	label,
+	word,
+	icon,
+	busy,
+	onPress,
+}: {
+	kind: "done" | "clear" | "dismiss";
+	label: string;
+	word: string;
+	icon: ReactNode;
+	busy: boolean;
+	onPress: () => void;
+}) {
+	return (
+		<Tooltip content={label} side="top" className={cn(TOOLTIP_CLAMP)}>
+			<button
+				type="button"
+				data-status-goal-done={kind === "done" ? "" : undefined}
+				data-status-goal-dismiss={kind === "done" ? undefined : ""}
+				aria-label={label}
+				disabled={busy}
+				onClick={onPress}
+				className={cn(
+					CHIP_CONTROL,
+					DISMISS_REVEAL,
+					busy ? DISMISS_BUSY_REVEAL : undefined,
+					DISMISS_DISABLED,
+				)}
+			>
+				{icon}
+				<span className={cn(DISMISS_WORD)}>{word}</span>
+			</button>
+		</Tooltip>
+	);
+}
+
 export type ComposerStatusRowProps = {
 	/**
 	 * The canonical snapshot the readings strip also reads.
@@ -760,6 +1107,20 @@ export type ComposerStatusRowProps = {
 	 * See the effect that calls it for why this row needs it at all.
 	 */
 	onFocusComposer?: () => void;
+	/**
+	 * Say one sentence in the composer's own note idiom.
+	 *
+	 * THE ROW WRITES ONE NOTE and it is why this prop exists: the judge deciding to
+	 * STOP driving a goal is a transition the user cannot see happen (see
+	 * `goalStalledNote`), and the transcript is where an outcome is read. The channel
+	 * is the composer's, not a second one grown here — `MessageInput` supplies its
+	 * `onSlashNote`, whose own rule is that the dispatcher owns that surface and a
+	 * component reaching for a note of its own would be a second route to it.
+	 *
+	 * Optional, like `onFocusComposer` and for the same reason: a story that renders
+	 * the row on its own must not have to invent a destination for a sentence.
+	 */
+	onNote?: (text: string) => void;
 };
 
 export const ComposerStatusRow = ({
@@ -767,6 +1128,7 @@ export const ComposerStatusRow = ({
 	runDetails,
 	isSmallView = false,
 	onFocusComposer,
+	onNote,
 }: ComposerStatusRowProps) => {
 	const revealPlan = useUiPreferencesStore(
 		(state) => state.revealRunPanelSection,
@@ -791,6 +1153,16 @@ export const ComposerStatusRow = ({
 	 * control now owns the state of its own press.
 	 */
 	const goalCommand = useSessionCommand(frontend?.session_id ?? "");
+	/*
+	 * The two NEW goal controls own their own channels, exactly as the goal and loop
+	 * controls own theirs (agent review round 2, MINOR 2): one shared `busy` meant a
+	 * press on one control disabled the other for the duration of a command it never
+	 * sent. Three controls, three channels — and `DISMISS_BUSY_REVEAL` keeps the pair
+	 * on screen while either is in flight, so a command running on `Done` does not
+	 * un-paint `Clear goal` under the user's pointer.
+	 */
+	const goalDoneCommand = useSessionCommand(frontend?.session_id ?? "");
+	const goalDismissCommand = useSessionCommand(frontend?.session_id ?? "");
 	const loopCommand = useSessionCommand(frontend?.session_id ?? "");
 	/*
 	 * A MIRROR of the disclosure's state, for copy alone.
@@ -810,7 +1182,61 @@ export const ComposerStatusRow = ({
 	 * fresh draft, a cleared goal and a legacy pane alike.
 	 */
 	const goal = frontend?.goal?.trim() ?? "";
-	const showGoal = goal.length > 0;
+	const showGoal = goalPresent(frontend);
+	/*
+	 * THE GOAL'S LIFECYCLE, read once, here, from the three new fields.
+	 *
+	 * `goalCapable` is the capability gate and it is the reason this block exists at
+	 * all: while it is false the chip renders exactly as it shipped — `Goal: <text>`
+	 * and `Clear goal`, no strike, no tag, and NOT ONE new argument on the wire. A
+	 * backend that predates these fields does not know `done`/`dismiss`, so it would
+	 * treat the bare word as goal TEXT and store the literal `done` as the user's
+	 * standing goal: silent data loss from a single press. See `goalCapability`.
+	 *
+	 * `goalDone` is `goal_status === "done"` and nothing else. It is deliberately not
+	 * derived from the judge's state: the wire is the authority on whether a goal is
+	 * settled, and a `goal_judge.state` of `done` on a goal the wire still calls
+	 * active would be a divergence the chip should not paper over.
+	 */
+	const goalStatus = frontend?.goal_status;
+	const goalJudge = frontend?.goal_judge ?? null;
+	const goalDone = goalStatus === "done";
+	const goalCapable = goalCapability(frontend);
+	const goalState = goalStateWord(goalStatus, goalJudge?.state);
+	const goalStalled = goalState === "stalled";
+	/*
+	 * THE STALLED NOTE, and it is deliberately about the TRANSITION rather than about
+	 * the state (design review round 1, D2's desktop half).
+	 *
+	 * One sentence per ENTRY into `stalled`, re-armed the moment the judge leaves it,
+	 * because the thing the note reports is an event — the judge stopped driving this
+	 * goal — and a note driven off the state alone would say it again on every render.
+	 *
+	 * THE REF IS SEEDED FROM THE FIRST RENDER, so a row that MOUNTS onto an
+	 * already-stalled goal says nothing: that case is a user arriving at a stall that
+	 * happened while they were elsewhere, and the durable announcement for it belongs
+	 * to the backend's own note (the other half of D2) rather than to a renderer-local
+	 * line that would be re-written on every conversation switch — this row is keyed on
+	 * `conversationId`, so it remounts on each one. What this half owns is the stall a
+	 * user is THERE for, which is the one they can only otherwise learn from 0px of ink.
+	 *
+	 * THE SENTENCE IS DERIVED FROM THE REASON AT THE ENTRY, not at the render (UX round
+	 * 1, U1): `stalledReason` is read once beside the state it belongs to, so the note a
+	 * transition writes and the cause the wire published at that same transition are one
+	 * reading — and the ref means a later frame that respells the reason cannot rewrite
+	 * what was already said.
+	 */
+	const stalledNoted = useRef(goalStalled);
+	const stalledReason = goalJudge?.reason;
+	useEffect(() => {
+		if (!goalStalled) {
+			stalledNoted.current = false;
+			return;
+		}
+		if (stalledNoted.current) return;
+		stalledNoted.current = true;
+		onNote?.(goalStalledNote(stalledReason));
+	}, [goalStalled, stalledReason, onNote]);
 	/*
 	 * A FINISHED plan still shows, in the model's settled spelling
 	 * (`All to-dos resolved`, or `All to-dos closed` where anything was dropped):
@@ -1177,7 +1603,7 @@ export const ComposerStatusRow = ({
 	if (!showGoal && !showLoop && !showPlan && !showWakes && !children && !jobs)
 		return null;
 
-	const goalLabel = goalDisclosureLabel(goal, goalOpen);
+	const goalLabel = goalDisclosureLabel(goal, goalOpen, goalState);
 	const planLabel = runDetails ? planChipLabel(runDetails) : "";
 	const wakeLabel = showWakes ? wakeChipLabel(wakes.length) : "";
 	const subagentLabel = children ? subagentChipLabel(children) : "";
@@ -1192,6 +1618,13 @@ export const ComposerStatusRow = ({
 	 * cannot disagree about which verb is being offered.
 	 */
 	const goalClear = showGoal ? goalClearLabel(goal) : "";
+	/*
+	 * The two NEW goal controls' names, gated on the capability as well as on the
+	 * chip: a name is never built for a control that is not rendered, and the
+	 * controls are not rendered on a backend that cannot act on them (§7).
+	 */
+	const goalDoneName = showGoal && goalCapable ? goalDoneLabel(goal) : "";
+	const goalDismissName = showGoal && goalCapable ? goalDismissLabel(goal) : "";
 	const loopAction = showLoop && loop ? loopAffordance(loop) : null;
 	const loopLabel = showLoop && loop ? loopActionLabel(loop) : "";
 	/*
@@ -1324,6 +1757,35 @@ export const ComposerStatusRow = ({
 		name: string,
 		args: string,
 		failure: string,
+		/**
+		 * WHICH goal command this press sent, so the success path answers in the right
+		 * register. The three are not interchangeable:
+		 *
+		 * - `cleared` keeps the shipped `Goal cleared · <text>` WITH its `Undo`, because
+		 *   the text is gone from the wire and this row is the only thing that can
+		 *   bring it back.
+		 * - `done` confirms with `Goal done · <text>` and deliberately has NO action.
+		 *   The text is NOT gone — it is the history entry the press just wrote — and an
+		 *   undo would have to retract that entry, which no wire spelling can do. An
+		 *   undo that restored the goal and left the `done` row behind would file a false
+		 *   project record.
+		 * - `dismissed` says NOTHING. The chip shrinking is the feedback, on this row's
+		 *   own rule that a success the wire already narrates needs no announcement.
+		 *
+		 * THE THREE REGISTERS ARE PROPORTIONATE TO WHAT EACH PRESS CAN STRAND, and that is
+		 * the budget rather than an accident of which one was written first (UX round 1,
+		 * U8): the clear is the only one of the three whose text leaves the wire, so it is
+		 * the only one that gets an AFFORDANCE; the record strands nothing visible and can
+		 * be re-armed in one command, so it gets the sentence instead of the control
+		 * (`goalDoneToastText` names where it went and how to put it back) — and the
+		 * dismiss strands nothing at all, because the chip is a window onto a record that
+		 * survives it, so it gets nothing. Sounding louder on the reversible press would
+		 * be the row buying attention it does not need.
+		 *
+		 * A FAILURE is the same in all three cases and always speaks: no wire narrates
+		 * it, and the prefix is the control's own words.
+		 */
+		goalOutcome: "cleared" | "done" | "dismissed" = "cleared",
 	) => {
 		const result = await channel.run(name, args, failure);
 		if (result.result.tone === "error") {
@@ -1331,12 +1793,17 @@ export const ComposerStatusRow = ({
 			return;
 		}
 		if (name !== GOAL_COMMAND) return;
-		const cleared = goal;
+		const settled = goal;
+		if (goalOutcome === "dismissed") return;
+		if (goalOutcome === "done") {
+			showInfoToast(goalDoneToastText(settled));
+			return;
+		}
 		pendingUndo.current.push(
-			showInfoToast(goalClearedText(cleared), {
+			showInfoToast(goalClearedText(settled), {
 				action: {
 					label: GOAL_UNDO_TEXT,
-					onClick: () => void restoreGoal(cleared),
+					onClick: () => void restoreGoal(settled),
 				},
 			}),
 		);
@@ -1496,6 +1963,15 @@ export const ComposerStatusRow = ({
 						)}
 						triggerLabel={goalLabel}
 						triggerTooltip={goalLabel}
+						/*
+						 * THE DISCLOSURE'S OWN TOOLTIP CARRIES THE WHOLE GOAL, so it takes the same
+						 * measure as the dismiss beside it (design review round 2, D4). `goalLabel`
+						 * is `Expand the session goal — <the goal>` — the 1956px fixture in these
+						 * frames — and `TooltipContent`'s own `max-w-64` at `text-meta` renders that
+						 * as ~8 lines drawn over the composer, where the control beside it is capped
+						 * at four. Same constant, so the pair cannot drift.
+						 */
+						tooltipClassName={cn(TOOLTIP_CLAMP)}
 						onOpenChange={setGoalOpen}
 						/*
 						 * THE DISMISS, on the trigger's own LINE and inside the primitive's root
@@ -1527,35 +2003,127 @@ export const ComposerStatusRow = ({
 						 * shares a line. `docs/composer-status-tabs.md` § 12.3 states both halves.
 						 */
 						trailing={
-							<Tooltip
-								content={goalClear}
-								side="top"
-								className={cn(TOOLTIP_CLAMP)}
-							>
-								<button
-									type="button"
-									data-status-goal-dismiss=""
-									aria-label={goalClear}
-									disabled={goalCommand.busy}
-									onClick={() =>
-										void runDismiss(
-											goalCommand,
-											GOAL_COMMAND,
-											GOAL_CLEAR_ARGS,
-											GOAL_CLEAR_FAILURE,
-										)
-									}
-									className={cn(
-										CHIP_CONTROL,
-										DISMISS_REVEAL,
-										goalCommand.busy ? DISMISS_BUSY_REVEAL : undefined,
-										DISMISS_DISABLED,
-									)}
-								>
-									<X aria-hidden={true} className={cn("size-3.5 shrink-0")} />
-									<span className={cn(DISMISS_WORD)}>{GOAL_CLEAR_TEXT}</span>
-								</button>
-							</Tooltip>
+							/*
+							 * ONE CONTROL PER ACTION, REVEALED TOGETHER — the shape the shipped
+							 * clear already had, extended to the second action.
+							 *
+							 * `Done` sits INBOARD of the clear on purpose: the shipped X keeps the
+							 * trailing edge, so no existing muscle memory moves, and the new control
+							 * never lands under a pointer that was heading for the X. The pair reads
+							 * left-to-right as "the recorded act, then the erasing one", which is the
+							 * order the app's own danger rule implies.
+							 *
+							 * `Done` IS GATED ON THE CAPABILITY (§7) AND `Dismiss` IS GATED ON
+							 * `goalDone`, which cannot be true without it. On a backend that predates
+							 * these fields the pair is simply the shipped clear alone — no new
+							 * argument is ever sent, because a backend that does not know `done` would
+							 * store the literal word as the user's goal.
+							 *
+							 * WHILE DONE THERE IS EXACTLY ONE CONTROL. Both `Dismiss` and `Clear goal`
+							 * reach the same wire state once the goal is settled and the history entry
+							 * is written, and one fact with two spellings is the defect the design
+							 * record refuses; `Dismiss` also says, in its own name, that the goal
+							 * survives in the history.
+							 */
+							<>
+								{goalCapable && !goalDone && (
+									<GoalControl
+										kind="done"
+										label={goalDoneName}
+										word={GOAL_DONE_TEXT}
+										icon={
+											<Check
+												aria-hidden={true}
+												className={cn("size-3.5 shrink-0")}
+											/>
+										}
+										busy={goalDoneCommand.busy}
+										/*
+										 * NO UNDO ON THIS PRESS, deliberately: the text is not gone — it is
+										 * the history entry the press writes — and an undo would have to
+										 * retract that entry, which no wire spelling can do. See
+										 * `runDismiss`'s `goalOutcome`.
+										 */
+										onPress={() =>
+											void runDismiss(
+												goalDoneCommand,
+												GOAL_COMMAND,
+												GOAL_DONE_ARGS,
+												GOAL_DONE_FAILURE,
+												"done",
+											)
+										}
+									/>
+								)}
+								{goalDone ? (
+									<GoalControl
+										kind="dismiss"
+										label={goalDismissName}
+										word={GOAL_DISMISS_TEXT}
+										icon={
+											/*
+											 * A DISTINGUISHABLE MARK AT THE COLUMN FLOOR (design review round 1, D6).
+											 *
+											 * `GOAL_DISMISS_TEXT` and `Clear goal` share `DISMISS_WORD`, so below the
+											 * stacked band both controls are one glyph with the word dropped — and the
+											 * two this pair can be are DIFFERENT consequences: the erase removes the
+											 * standing goal, the dismiss only puts the settled chip away, leaving the
+											 * history entry behind. A struck value and a tag are the whole tell at 172px.
+											 *
+											 * The DISMISS yields its mark and not the erase control's, because the shipped
+											 * `X` is the erase: `Clear goal` has carried it since this row existed and
+											 * moving it would move muscle memory onto the new control (§ the trailing
+											 * comment above). `CircleCheck` is the pane's own mark for a settled goal row
+											 * (`canvas-goals-viewer.tsx`), so the settled chip's control wears the mark
+											 * its RECORD wears; it is distinct from the `Done` control's plain `Check`,
+											 * which is the other half of the pair and never on screen with it.
+											 *
+											 * The alternative — keeping a word for the dismiss at the floor — is refused
+											 * on the row's pinned budgets: the stacked band's 156px content box is already
+											 * the band where the value yields (D1), and a word would move the cost from a
+											 * wrap the row absorbs to a paint past its column. A 14px glyph for a 14px
+											 * glyph moves no budget: the control's box, the row's 32 / 54 / 160px steps
+											 * and the 120px body cap are untouched.
+											 */
+											<CircleCheck
+												aria-hidden={true}
+												className={cn("size-3.5 shrink-0")}
+											/>
+										}
+										busy={goalDismissCommand.busy}
+										onPress={() =>
+											void runDismiss(
+												goalDismissCommand,
+												GOAL_COMMAND,
+												GOAL_DISMISS_ARGS,
+												GOAL_DISMISS_FAILURE,
+												"dismissed",
+											)
+										}
+									/>
+								) : (
+									<GoalControl
+										kind="clear"
+										label={goalClear}
+										word={GOAL_CLEAR_TEXT}
+										icon={
+											<X
+												aria-hidden={true}
+												className={cn("size-3.5 shrink-0")}
+											/>
+										}
+										busy={goalCommand.busy}
+										onPress={() =>
+											void runDismiss(
+												goalCommand,
+												GOAL_COMMAND,
+												GOAL_CLEAR_ARGS,
+												GOAL_CLEAR_FAILURE,
+											)
+										}
+									/>
+								)}
+							</>
 						}
 						summary={
 							<span className={cn("flex min-w-0 items-center gap-1")}>
@@ -1579,7 +2147,9 @@ export const ComposerStatusRow = ({
 								 * ~37px and never deforms, the snippet is `min-w-0 truncate` and yields
 								 * first, and the count is `shrink-0` so it is never cut mid-figure.
 								 */}
-								<span className={cn("shrink-0")}>{GOAL_LABEL}</span>
+								<span className={cn("shrink-0", goalStalled && "text-ink")}>
+									{GOAL_LABEL}
+								</span>
 								{/*
 								 * CSS truncation, never a computed cell count: the browser
 								 * measures the real advance at the real font, size, zoom and
@@ -1587,8 +2157,63 @@ export const ComposerStatusRow = ({
 								 * because a terminal cell is a fixed box. The full value's
 								 * second home is the tooltip and the body (see the label
 								 * derivation above).
+								 *
+								 * THE STRIKE AND THE INK HIT THE VALUE ONLY, never the label and
+								 * never the tag. The value steps to `ink-dim`, the app's role for
+								 * settled work (`run-detail-todos.tsx` maps its `done`/`dropped`
+								 * rows there): a settled item is a record, not an instruction. The
+								 * label stays the control's own ink because the chip is still a
+								 * disclosure, and the tag is not struck so it stays readable on a
+								 * row that is crossed out — the same rule, in the same words, as
+								 * the to-do row whose grammar this copies.
 								 */}
-								<span className={cn("min-w-0 truncate")}>{goal}</span>
+								<span
+									className={cn(
+										"min-w-0 truncate",
+										goalDone && "line-through text-ink-dim",
+									)}
+								>
+									{goal}
+								</span>
+								{/*
+								 * `— done`, unstruck, after the value. The tag earns its ~48px by
+								 * running ONE grammar (`text — state`) across the to-do row, the
+								 * to-do panel and this chip; a strike alone also cannot say WHICH
+								 * settled state a row is in, and a struck dim value without a word
+								 * can read as "removed" rather than "finished". It is the one
+								 * element here whose removal would lose no state, only consistency
+								 * — so it is the first thing to cut if a frame measures it as too
+								 * expensive at the column floor.
+								 */}
+								{goalDone && (
+									/*
+									 * `text-meta` IS STATED rather than inherited (design review round 1, D8). The
+									 * chip's box already sets it (`READING_BOX`), so this changes no pixel today —
+									 * what it does is make the tag's step the TAG's, as the pane's row tag and the
+									 * to-do row's are, so a future move of the chip's own size cannot drag the tag
+									 * with the value it sits beside. The value yields its ink
+									 * (`line-through text-ink-dim`); the tag keeps its word upright and readable,
+									 * which is the to-do row's own rule for a crossed-out row.
+									 *
+									 * AND IT YIELDS AT THE STACKED BAND, ITS EDGE INCLUDED (design review round
+									 * 1, D1, then round 2's D11 — `GOAL_TAG_NARROW`), which is the cut this
+									 * comment's parent pre-authorised once a frame measured it. `GoalDoneFloor`
+									 * did: at the 172px floor the value kept 20px of its 1956px beside the tag —
+									 * one letter — so the settled chip showed WHICH goal was settled almost
+									 * nowhere. At every width the tag is withheld the state is still carried
+									 * three ways that cost no width: the strike and `ink-dim` on the value, the
+									 * dismiss's `CircleCheck` (D6), and the accessible name (`goalStateWord` →
+									 * `— done, <goal>`).
+									 */
+									<span
+										className={cn(
+											"shrink-0 text-meta text-ink-dim",
+											GOAL_TAG_NARROW,
+										)}
+									>
+										{GOAL_DONE_TAG}
+									</span>
+								)}
 							</span>
 						}
 					>
