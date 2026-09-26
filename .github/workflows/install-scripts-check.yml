@@ -575,11 +575,19 @@ jobs:
       # explanation sits INSIDE that chain: the direct child resolved
       # `Get-FileHash` while the stager's child (line 91, the same
       # CommandNotFoundException the release died with) did not. So the probes
-      # below walk the chain one hop at a time - direct, through cmd, through
-      # pnpm - and the probe script dumps what the child can see: the module
-      # cmdlets' availability, the exact binary it is
-      # (`[Environment]::CommandLine`), and the module-related environment it
-      # inherited.
+      # below walk the chain one hop at a time - direct, then through cmd,
+      # which is the hop pnpm's script runner uses on Windows - and the probe
+      # script dumps what the child can see: the module cmdlets' availability,
+      # the exact binary it is (`[Environment]::CommandLine`), and the
+      # module-related environment it inherited. There is deliberately no
+      # separate pnpm-hop probe: the probe run that had one (36278672247)
+      # measured it IDENTICAL to the cmd hop in every field, and
+      # `check-build-env.mjs` requires every `pnpm` invocation in these
+      # workflows to resolve to a package.json script or an installed binary -
+      # a scratch probe package is neither, so the pnpm-shaped probe would be
+      # an invocation the repository's own scan rightly refuses (and the stager
+      # step below, which does invoke a real script, is the release command's
+      # own exercise).
       - name: Diagnose the PowerShell the stager runs under
         shell: pwsh
         run: |
@@ -601,7 +609,6 @@ jobs:
           "Module-related environment:"
           Get-ChildItem env: | Where-Object { $_.Name -match '(?i)module|^ps' } | Sort-Object Name | ForEach-Object { "  $($_.Name)=$($_.Value)" }
           '@ | Set-Content -Path (Join-Path $probeDir 'probe.ps1')
-          Set-Content -Path (Join-Path $probeDir 'package.json') -Value '{ "name": "ps-probe", "version": "0.0.0", "private": true, "scripts": { "probe": "powershell -NoProfile -ExecutionPolicy Bypass -File probe.ps1" } }'
 
           Write-Output '=== probe variant: pwsh -> powershell -File (direct) ==='
           powershell -NoProfile -ExecutionPolicy Bypass -File "$probeDir\probe.ps1"
@@ -612,10 +619,6 @@ jobs:
           cmd /d /s /c 'powershell -NoProfile -ExecutionPolicy Bypass -File probe.ps1'
           Write-Output "cmd exit code: $LASTEXITCODE"
           Pop-Location
-
-          Write-Output '=== probe variant: pwsh -> pnpm -> powershell -File (the release chain) ==='
-          pnpm --dir $probeDir run probe
-          Write-Output "pnpm exit code: $LASTEXITCODE"
 
           # Diagnostics must not be what fails the job: the stager step below
           # is the assertion.
