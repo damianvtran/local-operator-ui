@@ -179,35 +179,49 @@ const server = createServer((req, res) => {
 		`${req.method} ${req.url}${isCreate ? ` <- held ${DELAY_MS}ms` : ""}${holdThisMessage ? ` <- held ${holdMessages.ms}ms (message hold)` : ""}`,
 	);
 
-	const proxy = httpRequest(
-		{
-			hostname: TARGET.hostname,
-			port: TARGET.port,
-			path: req.url,
-			method: req.method,
-			headers: req.headers,
-		},
-		(upstream) => {
-			res.writeHead(upstream.statusCode ?? 502, upstream.headers);
-			// Piped, not buffered: the session event streams are SSE and must not
-			// be waited on.
-			upstream.pipe(res);
-		},
-	);
-	proxy.on("error", (error) => {
-		log(`upstream error: ${error.message}`);
-		res.writeHead(502);
-		res.end();
-	});
+	/*
+	 * THE UPSTREAM CONNECTION IS OPENED WHEN THE REQUEST IS FORWARDED, not when it
+	 * arrives (found while re-shooting on the warm runtime). The first version
+	 * connected eagerly and only deferred the PIPE, so a held request's upstream
+	 * socket sat silent until the daemon's idle timeout closed it - measured as
+	 * `upstream error: socket hang up` ~4.5 s into a 12 s message hold on the
+	 * 0.63.2 daemon, with the tap then answering 502 to a request it had never
+	 * forwarded and the away message reading as `Couldn't reach Local Operator` in
+	 * the frames. The hold is supposed to delay the FORWARDING; the connection is
+	 * part of the forwarding.
+	 */
+	const openUpstream = () => {
+		const proxy = httpRequest(
+			{
+				hostname: TARGET.hostname,
+				port: TARGET.port,
+				path: req.url,
+				method: req.method,
+				headers: req.headers,
+			},
+			(upstream) => {
+				res.writeHead(upstream.statusCode ?? 502, upstream.headers);
+				// Piped, not buffered: the session event streams are SSE and must not
+				// be waited on.
+				upstream.pipe(res);
+			},
+		);
+		proxy.on("error", (error) => {
+			log(`upstream error: ${error.message}`);
+			if (!res.headersSent) res.writeHead(502);
+			res.end();
+		});
+		return proxy;
+	};
 	/*
 	 * The hold. It delays the request's FORWARDING, which is what makes the create
 	 * itself slow; nothing is buffered beyond the request body's own few hundred
 	 * bytes, and the response streams back as soon as the backend answers.
 	 */
-	if (isCreate) setTimeout(() => req.pipe(proxy), DELAY_MS);
+	if (isCreate) setTimeout(() => req.pipe(openUpstream()), DELAY_MS);
 	else if (holdThisMessage)
-		setTimeout(() => req.pipe(proxy), holdMessages.ms || 4000);
-	else req.pipe(proxy);
+		setTimeout(() => req.pipe(openUpstream()), holdMessages.ms || 4000);
+	else req.pipe(openUpstream());
 });
 
 server.listen(PORT, "127.0.0.1", () => {
