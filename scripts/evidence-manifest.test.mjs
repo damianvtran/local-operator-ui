@@ -1338,6 +1338,20 @@ const STAMP_BINDING_NOTES = [
 	 * list for.
 	 */
 	"foldOnto2e12a54d56Note",
+	/*
+	 * THIS REMOVAL'S OWN: it re-stamps the change that deletes the legacy History
+	 * settings section - `src/` for the settings page and the tour copy, `scripts/`
+	 * for this note's registration - and re-shoots no frame, so a reader is owed
+	 * the pair and the reason no still was owed.
+	 */
+	"historySettingsRemovalRestampNote",
+	/*
+	 * AND THIS FOLD'S OWN: its subject IS this file's binding (the pair the
+	 * folded tree produces, re-derived in the fold commit itself and read back
+	 * from its staged index), so a reader is owed the check rather than the
+	 * prose - the same case `foldOntoFd19adc9d9Note` is in the list for.
+	 */
+	"historySettingsRemovalSecondFoldNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1859,6 +1873,13 @@ const BRANCH_RECORDS = [
 	 * list exists.
 	 */
 	"foldOnto2e12a54d56Note",
+	/*
+	 * And this FOLD's own, beside the removal's records: it states the union
+	 * the merge resolved against `origin/main` = `fb89e6e374` and the pair its
+	 * re-stamp re-derives, for the reason this list exists - a fold resolved
+	 * from main's copy would drop it.
+	 */
+	"historySettingsRemovalSecondFoldNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
