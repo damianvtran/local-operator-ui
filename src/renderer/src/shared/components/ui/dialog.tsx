@@ -80,6 +80,15 @@ export const DialogContent = forwardRef<
 			<DialogOverlay className={overlayClassName} />
 			<DialogPrimitive.Content
 				ref={ref}
+				/*
+				 * NOT A DRAG SURFACE, WHEREVER IT PAINTS (see the `no-drag` rule in
+				 * `styles/index.css`): the window's draggable region is built from element
+				 * rects and never sees the top layer, so a dialog painted over the chrome
+				 * strip keeps its controls unclickable - the click starts a window drag -
+				 * unless the surface itself subtracts its rect. The value inherits, so this
+				 * one marker covers everything inside the dialog.
+				 */
+				data-titlebar-no-drag=""
 				className={cn(
 					"-translate-x-1/2 -translate-y-1/2 fixed top-1/2 left-1/2 z-50",
 					"flex w-full max-w-lg flex-col gap-4",
