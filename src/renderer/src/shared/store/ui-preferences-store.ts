@@ -5,9 +5,19 @@
  * theme selection, and provides methods to update these preferences.
  */
 
-import type {
-	SidebarOrder,
-	SidebarRegions,
+import {
+	SIDEBAR_DEFAULT_WIDTH,
+	SIDEBAR_MAX_WIDTH,
+	SIDEBAR_MIN_WIDTH,
+} from "@features/chat/chat-sidebar-layout";
+import {
+	DEFAULT_SIDEBAR_VIEW,
+	type SidebarView,
+} from "@features/chat/chat-sidebar-view";
+import {
+	DEFAULT_SIDEBAR_REGIONS,
+	type SidebarOrder,
+	type SidebarRegions,
 } from "@features/chat/sidebar-split";
 import { DEFAULT_THEME } from "@shared/themes";
 import type { ThemeName } from "@shared/themes";
@@ -458,6 +468,23 @@ type UiPreferencesState = {
 	chatSidebarOrder: SidebarOrder;
 
 	/**
+	 * How the sidebar's list is ARRANGED: which sections draw, in what order, and
+	 * how the chats are grouped, ordered and paged (the view popover's state).
+	 *
+	 * The rules are `features/chat/chat-sidebar-view.ts`'s, and the component
+	 * reads this through `parseSidebarView` for the reason `chatSidebarListHeight`
+	 * is passed as it was READ: `localStorage` is not the setter's path out, so
+	 * the module is the one place a tampered value is rejected.
+	 *
+	 * ONE OBJECT rather than five fields, and that is what keeps the popover's
+	 * five controls from each writing a field the others read: the setter takes
+	 * the whole next view, so "hide Today" and "move Older up" both go through
+	 * the module's own `toggleSection`/`moveSection` and cannot disagree about the
+	 * order they leave behind.
+	 */
+	chatSidebarView: SidebarView;
+
+	/**
 	 * Toggle the sidebar collapse state
 	 */
 	toggleSidebar: () => void;
@@ -521,6 +548,13 @@ type UiPreferencesState = {
 	 * @param order - The region to draw above the other
 	 */
 	setChatSidebarOrder: (order: SidebarOrder) => void;
+
+	/**
+	 * Replace the sidebar's view. Takes the whole value rather than a patch: the
+	 * popover's controls are built from `chat-sidebar-view.ts`'s own
+	 * `toggleSection`/`moveSection`, which each return a complete next view.
+	 */
+	setChatSidebarView: (view: SidebarView) => void;
 
 	/**
 	 * Restore the canvas width to its default value
@@ -645,9 +679,17 @@ export type RunPanelReveal = {
  */
 /**
  * Default values for canvas and chat sidebar widths
+ *
+ * The chat sidebar's default is the ONE sidebar's: 260px, user-resizable
+ * 220-320, and those three numbers live in
+ * `features/chat/chat-sidebar-layout.ts` so the component, the store's clamp and
+ * the desktop suite all read one table rather than three copies of it. It was
+ * 280 (clamped 240-360) when this was the chat route's SECOND column, beside a
+ * 220px rail: the pair is now one column, and 260 is what the merged contents
+ * need.
  */
 const DEFAULT_CANVAS_WIDTH = 800;
-const DEFAULT_CHAT_SIDEBAR_WIDTH = 280;
+const DEFAULT_CHAT_SIDEBAR_WIDTH = SIDEBAR_DEFAULT_WIDTH;
 /**
  * Exported because the pane's reset path needs the NUMBER, not the write: a
  * double-click on the divider stores this width directly, and the divider's own
@@ -798,7 +840,8 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			 * — so there is nothing to migrate and nothing is written until the
 			 * user drags or collapses something.
 			 */
-			chatSidebarRegions: "both",
+			chatSidebarRegions: DEFAULT_SIDEBAR_REGIONS,
+			chatSidebarView: DEFAULT_SIDEBAR_VIEW,
 			chatSidebarListHeight: null,
 			chatSidebarOrder: "entities-first",
 			isCanvasOpen: false,
@@ -1010,7 +1053,10 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 
 			setChatSidebarWidth: (width: number) => {
 				set({
-					chatSidebarWidth: Math.min(360, Math.max(240, width)),
+					chatSidebarWidth: Math.min(
+						SIDEBAR_MAX_WIDTH,
+						Math.max(SIDEBAR_MIN_WIDTH, width),
+					),
 				});
 			},
 
@@ -1035,6 +1081,12 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			setChatSidebarOrder: (order: SidebarOrder) => {
 				set({
 					chatSidebarOrder: order,
+				});
+			},
+
+			setChatSidebarView: (view: SidebarView) => {
+				set({
+					chatSidebarView: view,
 				});
 			},
 

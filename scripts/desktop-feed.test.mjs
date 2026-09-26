@@ -111,6 +111,7 @@ export const desktopResult = request => globalThis.__feedRequest(request);`,
 					contents: `export const echoPendingUser = () => undefined;
 export const retractPendingUser = () => undefined;
 export const retractLocalEcho = () => "retracted";
+export const peekLocalEcho = () => "unseen";
 export const discardPendingEchoes = () => undefined;`,
 					loader: "js",
 					resolveDir: process.cwd(),
@@ -740,10 +741,24 @@ test("the sidebar's 5 s poll is gone, and the feed is what replaced it", () => {
 	const intervals = source
 		.split("\n")
 		.filter((line) => line.includes("setInterval"));
+	/*
+	 * THREE, and the third is named rather than counted away: the two catalogue
+	 * branches below, plus the ONE-MINUTE CLOCK the list's relative times are read
+	 * against (`chat-sidebar.tsx`'s `listNow`). That clock is not a data poll — it
+	 * repaints `4m` into `5m` and fetches nothing — and the claim this test exists
+	 * for is that no 5 s transcript-tail poll survives, which is unaffected by it.
+	 * It is asserted as its own line so a fourth interval cannot hide inside the
+	 * count.
+	 */
 	assert.equal(
 		intervals.length,
-		2,
-		`expected the two branches (legacy poll, safety poll) and nothing else:\n${intervals.join("\n")}`,
+		3,
+		`expected the two catalogue branches (legacy poll, safety poll) and the list's minute clock, and nothing else:\n${intervals.join("\n")}`,
+	);
+	assert.match(
+		source,
+		/setInterval\(\(\) => setListNow\(Date\.now\(\)\), 60_000\)/,
+		"the third interval is the list's own minute clock, and it reads no data",
 	);
 	// The legacy branch still exists — an old backend keeps the poll it had — but
 	// the literal it used is named now, and nothing polls `sessions.list` on a 5 s

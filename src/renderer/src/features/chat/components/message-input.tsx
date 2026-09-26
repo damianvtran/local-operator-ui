@@ -94,6 +94,7 @@ import {
 	CHAT_COLUMN_INSET,
 	CHAT_MEASURE,
 } from "../chat-measure";
+import { CHAT_REGION_LABEL } from "../chat-regions";
 import {
 	COMPOSER_TEXTAREA_SELECTOR,
 	registerComposerFocus,
@@ -220,6 +221,8 @@ import { ComposerTipRow } from "./composer-tip";
 import { CredentialChipLayer } from "./credential-chip-layer";
 import { CredentialOverlay, composerTextBox } from "./credential-overlay";
 
+import { BrandMark } from "@shared/components/common/brand-mark";
+import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { useAtResolution } from "../hooks/use-at-resolution";
 import {
 	activeModelForDefault,
@@ -690,6 +693,8 @@ type MessageInputProps = {
 		 * `SessionStatusStripProps["draftResolution"]`.
 		 */
 		draftResolution?: DraftResolution;
+		/** Whether this DRAFT pane's model is resolved; see the strip's own note. */
+		draftResolved?: boolean;
 		/**
 		 * The readings are the last ones the session reported, held across a
 		 * transient stream gap; see `SessionStatusStripProps["held"]`.
@@ -1156,15 +1161,26 @@ export type MessageInputHandle = {
 };
 
 /*
- * The composer boundary, defined once: one `border-control` edge on a
- * `bg-surface` ground. The focus ring is the base-layer `:focus-visible`
- * outline, promoted from the textarea to this box via `:has` so the whole
- * composer — previews and toolbar included — reads as one control; the
- * textarea suppresses its own outline so there is never a second ring inside
- * the box. No decorative shadow.
+ * The composer box, defined once: an `elevated` panel, radius 16, and NO edge at
+ * rest (chat redesign §G1; design round 1's D12).
+ *
+ * It wore `border-control` on `bg-surface`, and on the dark brand palette that
+ * edge is the accent's green: the composer was the loudest thing on the screen at
+ * rest, a ring around an empty box, while the transcript - the surface the reader
+ * came for - sat at `canvas` with nothing pointing at it. §G1 spends the accent
+ * on READY (the send control's fill) and on FOCUS (the ring below), and separates
+ * the panel from its column with the lightness step the system already has:
+ * `elevated` over `canvas` is the same pair every menu, popover and dialog in the
+ * app uses.
+ *
+ * THE FOCUS RING IS UNCHANGED and is now the only boundary: the base-layer
+ * `:focus-visible` outline, promoted from the textarea to this box via `:has` so
+ * the whole composer - previews and toolbar included - reads as one control; the
+ * textarea suppresses its own outline, so there is never a second ring inside the
+ * box. No decorative shadow.
  */
 const COMPOSER_BOX = cn(
-	"mx-auto flex w-full flex-col border border-control bg-surface",
+	"mx-auto flex w-full flex-col bg-elevated",
 	"box-border transition-colors duration-fast ease-out-quart",
 	// Scoped to `textarea`, not a bare `has-[:focus-visible]`.
 	//
@@ -1408,16 +1424,35 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * of the session is pinned to.
 		 */
 		/*
-		 * THE BAND CENTRES THE COMPOSER: one fact with two consumers, so one
-		 * expression. `grow` is what claims the column, and `justify-center` then
-		 * centres the group - which means anything added to that group moves all of
-		 * it by HALF the addition, the sentence above the box included. That is why
-		 * the sentence is mirrored below the group; the mirror's own comment, beside
-		 * the sentence it mirrors, carries the measurement.
+		 * THE EMPTY BAND: one fact with two consumers, so one expression. On an
+		 * empty, settled chat the splash above the composer claims the column's free
+		 * height (`grow`) and centres the greeting and chips inside it; the composer
+		 * itself stays docked at the band's foot in every state (§G2), which is what
+		 * keeps the first send from moving it.
 		 */
 		const bandCentred = messages.length === 0 && !isHydrating;
 
-		const showEmptyChatPrompt = bandCentred && !isSmallView;
+		/*
+		 * THE SPLASH IS NOT GATED ON THE COLUMN'S WIDTH (design round 2, D22).
+		 *
+		 * It was `bandCentred && !isSmallView`, and `isSmallView` is the column's
+		 * `< 550` flag. That gate deleted the mark, the greeting and all four chips
+		 * exactly where §H says they must survive: "Every width keeps them (D13/U12):
+		 * at 800x600 the chips stack onto two rows inside the 640 column, the mark and
+		 * greeting stay, and nothing is dropped. This is the one place the redesign
+		 * must not degrade." The reviewer's frame is 960x673 with the canvas docked,
+		 * where the chat column sits at its 480px floor (§I) - 480x673 of room for a
+		 * 32px mark, a two-line greeting and two rows of chips - and the screen drew
+		 * the composer and nothing else.
+		 *
+		 * `isSmallView` is NOT the wrong flag, it was the wrong QUESTION for this
+		 * decision: it also drives the composer's own narrow variants (paddings, icon
+		 * sizes, chip spacing), which are correct and stay. The column can never be
+		 * narrower than §I's 480px floor, so there is no width at which the splash has
+		 * nowhere to go, and the splash's own parts already have narrow forms - the
+		 * chips wrap because `MeasuredSuggestionStack` measures what fits.
+		 */
+		const showEmptyChatPrompt = bandCentred;
 
 		/*
 		 * The empty chat's sample, drawn once and HELD for this composer's mount.
@@ -1481,6 +1516,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		// suggestion sample does not imply that the measured DOM is still alive.
 		const [band, setBand] = useState<HTMLDivElement | null>(null);
 		const [splash, setSplash] = useState<HTMLDivElement | null>(null);
+		const [foot, setFoot] = useState<HTMLDivElement | null>(null);
 
 		/*
 		 * ---------------------------------------------------------------------
@@ -1881,6 +1917,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		);
 
 		/*
+		 * THE SEND GATE'S OWN VALUE (UX round 1, U1): a DRAFT pane whose model is not
+		 * resolved. `draftResolved` is absent on a pane with a session behind it - there
+		 * is nothing to resolve there - so only a new chat can be gated, which is where
+		 * `baseline-U2` was measured.
+		 */
+		const draftModelUnresolved =
+			sessionStatus?.draft === true && sessionStatus?.draftResolved === false;
+		/*
 		 * WHAT AN ACCEPTED SEND RETIRES, in ONE place because TWO paths now ask for
 		 * it: the submit's own tail, and an off-record ask's answer — which retires
 		 * the payload only once the ask has been ANSWERED (see `OffRecordAsk`, and
@@ -1929,6 +1973,33 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		const onSubmit = useMemo(
 			() => async (message: string, onEchoPainted?: () => void) => {
+				/*
+				 * A BUBBLE THAT CANNOT RUN IS NEVER POSTED (UX round 1, U1).
+				 *
+				 * §K answers `baseline-U2` in one sentence: "with no model resolved the send
+				 * control IS `Choose a model` … Enter does the same; a bubble that cannot run
+				 * is never posted." The chip half shipped; the Enter half did not. Measured on
+				 * the live app: with the draft's model unresolved, Enter posted a user bubble
+				 * into the transcript that no runtime could answer, stamped in the transcript a
+				 * turn that never ran - the exact state `baseline-U2` is about.
+				 *
+				 * GATED HERE, ON `onSubmit`, because this is the ONE function both doors reach:
+				 * the form's `type="submit"` control and the Enter key both end in
+				 * `useMessageInput`'s submit, which calls this. A second gate on the key alone
+				 * is how the button and the key start disagreeing - the defect round 1 found in
+				 * the refusal, one door over.
+				 *
+				 * WHAT HAPPENS INSTEAD. The affordance is the pane's own `Choose a model`
+				 * (it is rendered by the strip, above the box, in exactly this state), and when
+				 * the backend can honour a pick the same affordance is one key away, so the key
+				 * opens it rather than doing nothing. With no picker to open (a backend that
+				 * advertises no `draft_selection`) the press is a no-op and the chip is the
+				 * only route, which is what §K says the screen offers.
+				 */
+				if (draftModelUnresolved) {
+					sessionStatus?.onOpenDraftPicker?.("session.model");
+					return;
+				}
 				// Assembled by the same function the composer compares against, so the
 				// string sent, stored, guarded and reasoned about by the copy is one
 				// string on the reply path too. Building the prefix inline here put it
@@ -2067,6 +2138,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				// The seam's own decision reads it: with a session there is nothing to
 				// defer, so only a new-chat pane hands the host a callback.
 				credentialSessionId,
+				// The send gate above, and the affordance it hands the press to
+				// (UX round 1, U1): a memo that read neither would keep sending after a
+				// pick resolved, or refuse after one arrived.
+				draftModelUnresolved,
+				sessionStatus?.onOpenDraftPicker,
 			],
 		);
 
@@ -5471,15 +5547,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 
 		/*
-		 * THE SENTENCE'S LINE, one class list with two consumers.
-		 *
-		 * The sentence above the composer box and the MIRROR of it below the
-		 * composer's group (rendered on the centring band only; see the mirror's own
-		 * comment in `inputContent`) have to measure the SAME height, because the
-		 * whole device is that the group grows by one line on each side of the box and
-		 * therefore recentres without moving it. Two copies of this list would be two
-		 * definitions of that height, and the first edit to either - a padding step, a
-		 * type step - would quietly rebuild the bounce the mirror removes.
+		 * THE SENTENCE'S LINE: the credential notice above the composer box. It had a
+		 * second consumer - an invisible mirror below the group that cancelled the
+		 * centring shift on an empty chat (UX round 4, U16) - which went when the band
+		 * stopped centring the composer: a bottom-anchored box does not move when a
+		 * line is added above it.
 		 */
 		const credentialNoticeLine = cn(
 			"block text-body-sm",
@@ -5545,11 +5617,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * the ring with room to read the two edges as two, and the callout is the one
 		 * block up here that must not compact it.
 		 *
-		 * Defined once and rendered TWICE: above the box, and - on the centring band
-		 * only - mirrored below the group, so the group grows by the same height on
-		 * both sides and the arrival does not move the box. See the mirror's own
-		 * comment for why that is confined to this band, and for the width at which
-		 * the device runs out of room to work.
+		 * Rendered ONCE, above the box. It used to be mirrored below the group on an
+		 * empty chat so its arrival would not move a centred composer (UX round 1,
+		 * U5); the composer is docked at the band's foot now, so the arrival grows
+		 * the band upward and the splash above yields, as the transcript does in a
+		 * conversation.
 		 */
 		const radientIssueBlock = (
 			<output
@@ -5579,7 +5651,25 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		);
 
 		const inputContent = (
-			<form onSubmit={handleSubmit} className="w-full">
+			<form
+				onSubmit={handleSubmit}
+				/*
+				 * §C4's fourth region, and its second name: `Message composer`. The element is
+				 * already the `form` the spec's order names, so the region is a label on what
+				 * was here rather than a new wrapper - a wrapper would have made `form` a
+				 * fifth landmark and this one its child.
+				 *
+				 * THE DOOR IS THE FIELD, marked below rather than inferred: `enterChatRegion`
+				 * looks for this region's own `data-region-entry`, and the textarea is what a
+				 * reader pressing `F6` into the composer is asking for. The region root is
+				 * `tabIndex` -1 as a fallback for the states where the field is not mounted
+				 * (the refusal notice replaces the box).
+				 */
+				data-chat-region="composer"
+				aria-label={CHAT_REGION_LABEL.composer}
+				tabIndex={-1}
+				className="w-full"
+			>
 				{/*
 				 * The session's status row, ABOVE the alert and therefore above the box:
 				 * `docs/composer-status-tabs.md` § 2.1. The alert is a transient failure
@@ -5676,6 +5766,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						 * (review round 2, NIT).
 						 */
 						role={composerAlert.polite ? "status" : "alert"}
+						/*
+						 * The rig's address for this row (`scripts/renderer-driver.mjs`'s
+						 * `connection-drop` scene reads it, and waits on its clearance after a
+						 * reconnect): the same structural-marker rule as `data-undelivered`.
+						 */
+						data-composer-notice
 						className={cn(
 							CHAT_MEASURE,
 							"flex flex-col gap-1 text-body-sm",
@@ -5866,11 +5962,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * transcript above yields instead. That is what makes "the text the operator is
 				 * typing does not move when the capture arms" hold, and it is why the manager's
 				 * own candidate - the sentence below the box - was measured and rejected: it is
-				 * the one position that costs the typed line the sentence's full height. (On an
-				 * empty chat the band centres the composer rather than pinning it, so a line above
-				 * the box moves the group by half its height; that pane is answered by the
-				 * sentence's own MIRROR below the group - see the mirror's comment at the end of
-				 * the form - which is what makes the experiment's answer 0.00px on both panes.)
+				 * the one position that costs the typed line the sentence's full height. (An
+				 * empty chat is pinned the same way now - the composer is docked at the band's
+				 * foot and the splash above it yields - so the answer is 0.00px on both panes
+				 * without the mirror the centring band used to need.)
 				 *
 				 * The wrapper is also the slash popup's anchor. The list renders `absolute
 				 * bottom-full`, so anchoring it HERE - above the sentence - is what keeps the
@@ -5927,6 +6022,25 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 */}
 					<AtSuggestionsPopup state={at} onPick={handleAtPick} />
 					{/*
+					 * THE SCROLL-TO-BOTTOM DISC, anchored to this wrapper because this wrapper
+					 * IS the composer's top edge (§G5): the disc is `bottom-full`, so it sits
+					 * 12px ABOVE the panel at whatever height the panel has.
+					 *
+					 * HIDDEN WHILE A COMPOSER MENU IS OPEN, which is the other half of D15:
+					 * the slash list and the `@` picker anchor to this same 4px strip, and a
+					 * disc floating over the menu's own last row is the overlap the round
+					 * photographed. It is also not drawn at all when the reader is already at
+					 * the newest row (`isFarFromBottom`), so the two states that own this
+					 * strip are never drawn together.
+					 */}
+					{!slash.open && !at.open && (
+						<ScrollToBottomButton
+							visible={isFarFromBottom}
+							onClick={scrollToBottom}
+							hasNewActivity={hasNewActivity}
+						/>
+					)}
+					{/*
 					 * The capture's own sentence, in the `<output>` register the interrupt notice
 					 * above the composer already uses: the result of a user action, said politely.
 					 *
@@ -5946,23 +6060,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * neighbours whose widths used to decide the sentence's fate - are out of the
 					 * argument entirely.
 					 *
-					 * WHAT IT COSTS ON THE CENTRING BAND, and what does not, because the numbers
-					 * above are a decision and not a claim of perfection. On an EMPTY chat the band
-					 * centres the composer (`grow` + `justify-center`), so a line added above the box
-					 * moves the whole group by half its height: measured on the running app, this
-					 * sentence moved the typed line 13.75px (`textarea.y` 402.25 idle -> 416.00
-					 * masked, and back, twice while one command was typed) where live `origin/main`
-					 * holds 402.25 throughout all eleven keystrokes. The MIRROR below the group is
-					 * that fix (UX round 4, U16): the group grows by the sentence's line on BOTH
-					 * sides of the box, so the centring shift cancels for the box, the status row,
-					 * the tip row and the chips, and the greeting above yields the one line the
-					 * sentence needs. Measured on the band rig at 1380x872, before and after: the
-					 * field's `y` 393.40 idle -> 407.20 with the sentence on the reviewed head, and
-					 * 393.40 -> 393.40 now; the tip row 500.4 -> 514.2 then and 500.4 -> 500.4 now,
-					 * with no collision in either state. It renders on that band alone, because on a
-					 * populated pane the band is bottom-anchored and a mirrored line below the box
-					 * would push the typed line up by its full height - the defect U14/design D1
-					 * removed.
+					 * ON AN EMPTY CHAT the composer is docked at the band's foot like everywhere
+					 * else (§G2), so the sentence arriving above the box grows the band upward and
+					 * the splash yields its line; the typed line does not move. The centring band
+					 * this used to cost 13.75px on, and the mirror that paid it back (UX round 4,
+					 * U16), are both gone.
 					 *
 					 * AN EMPTY SENTENCE RENDERS NO BOX AT ALL, so the idle composer reserves
 					 * nothing and is geometrically the composer that was there before the gesture
@@ -6103,6 +6205,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								>
 									<textarea
 										ref={textareaRef}
+										data-region-entry
 										className={cn(
 											// The box model comes from ONE place, shared with the mirror:
 											// any drift between these two moves the pill off the characters
@@ -6499,14 +6602,27 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						)}
 
 						{/*
-						 * The composer's controls and the session's readings, on ONE row.
+						 * The composer's controls and the session's readings, on ONE row, at EVERY width.
 						 *
-						 * The readings used to have a row of their own above this one. They are
-						 * inside it now, which is why this row wraps: above 750px of COLUMN the
-						 * cluster sits inline, immediately after the working-directory chip, with
-						 * the row's free space falling before the controls; below it the cluster
-						 * takes the FIRST line in full (`basis-full`) and the controls keep the
-						 * second. `justify-between` cannot express either — with three children it
+						 * The readings used to have a row of their own above this one, and when they moved
+						 * inside it the row kept a wrap keyed on the COLUMN's width: above 750px of column
+						 * the cluster sat inline, below it the cluster took the first line in full
+						 * (`basis-full`) and the controls kept the second. Design round 2's D21 is that
+						 * branch: §G1 requires "one control row, 32px, always one line, at every width",
+						 * and at 800x600 - one of §H's own blueprint widths - the composer measured 640x142
+						 * where it measures 640x109 at 1380, a permanent second row.
+						 *
+						 * THE THRESHOLD WAS KEYED ON THE WRONG THING. The composer is capped at the
+						 * 640px reading measure (§B2), so its inner row has the same ~608px of content
+						 * at a 1380px window and at an 800px one - the box is `640x109` in both, measured.
+						 * The column width does not reach the row at all until the column falls below the
+						 * measure (columns < ~688, i.e. a composer narrower than 640), which is the only
+						 * case a breakpoint here could ever have been about. So the row is `flex-nowrap`
+						 * at every width and the yield §G1 names is what makes room: the cwd chip
+						 * truncates, the usage reading drops below a 480px composer, the model selector
+						 * shortens to its glyph.
+						 *
+						 * `justify-between` cannot express this — with three children it
 						 * centres the middle one, which is the opposite of what the row needs — so
 						 * the row uses `ml-auto` instead, on the controls group, which is the one
 						 * child that always renders.
@@ -6518,44 +6634,44 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						 * margin at all — the controls sat flush against the chip, mid-row, in
 						 * this PR's own draft frame (design round 1.5, D7).
 						 *
-						 * `gap-y-2` is the drop between the wrapped line and the controls: 8px,
-						 * the within-component step, tighter than the 12px this composer used
-						 * when the readings were a separate row (§ 5).
+						 * `gap-y-2` is GONE with the wrapped line it existed for: with one row there is
+						 * no second line to keep 8px from the first.
 						 *
-						 * `flex-nowrap` above the threshold is NOT decoration. Wrapping happens
-						 * on the items' CONTENT sizes, before any shrinking: a long model name (an
-						 * aggregator slug is ~48 characters) makes the cluster wider than its
-						 * share, so a still-wrapping row moves the microphone and send to a
-						 * second line instead of truncating the name — the exact inversion of the
-						 * yield order, where the name truncates first and the controls never
-						 * move. Measured on the live composer at a 750px box: with the row free
-						 * to wrap, the controls sat 24px below the readings; with `flex-nowrap`
-						 * they stay on one line and the name gives up the width.
+						 * `flex-nowrap` is NOT decoration either, and it is what holds the single row at
+						 * the narrow end. Wrapping happens on the items' CONTENT sizes, before any
+						 * shrinking: a long model name (an aggregator slug is ~48 characters) makes the
+						 * cluster wider than its share, so a still-wrapping row moves the microphone and
+						 * send to a second line instead of truncating the name — the exact inversion of
+						 * the yield order, where the name truncates first and the controls never move.
+						 * Measured on the live composer at a 750px box: with the row free to wrap, the
+						 * controls sat 24px below the readings; with `flex-nowrap` they stay on one line
+						 * and the name gives up the width. The same rule is what keeps D21's second row
+						 * from coming back: at a 640px box — the composer at its measure, which is the
+						 * case at every window width this app is run at — the row has no width to give.
 						 */}
-						<div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 @min-[750px]/chatcol:flex-nowrap">
+						<div className="flex min-w-0 flex-nowrap items-center gap-x-2">
 							{/*
 							 * The session's readings, inside the row rather than on a row of their
 							 * own above it (R1).
 							 *
-							 * The DOM slot is FIRST, before the left group, so that the wrapped
-							 * state's tab order matches its painted order: below 750 the cluster is
-							 * the row's first line, and `order-first` only ever reordered the paint,
-							 * leaving a keyboard user to walk down to attach and the chip and back
-							 * UP to the readings (UX round 1, U4). Above 750 the strip's own
-							 * `order-2` puts it back between the chip and the controls, and the
-							 * controls' `order-3` keeps mic and send last.
+							 * The DOM slot is FIRST, before the left group. `order-first` only
+							 * ever reordered the paint, leaving a keyboard user to walk down to
+							 * attach and the chip and back UP to the readings (UX round 1, U4),
+							 * so the cluster is first in the DOM and the strip's own `order-2`
+							 * puts it between the chip and the controls, with the controls'
+							 * `order-3` keeping mic and send last.
 							 *
-							 * The two widths want OPPOSITE DOM orders and there is one DOM:
-							 * wrapped, the cluster paints first and must be tabbed first;
-							 * inline, it paints third and UX round 2 (U8) measured it still
-							 * being tabbed first. One node cannot satisfy both, and a second
-							 * render to fix the inline order would be a second layout to keep
-							 * in step - the thing this row is built to avoid, and what the
-							 * composer test pins. The wrapped width keeps the guarantee
-							 * because that is where the mismatch is a visible jump back UP
-							 * the row; inline the readings sit between the chip and the
-							 * controls, so the tab lands one stop early rather than out of
-							 * sequence. Recorded rather than silently chosen.
+							 * THE RESIDUAL THIS LEAVES IS UNCHANGED AND STILL RECORDED (UX round 2,
+							 * U8). `order-2` moves the PAINT, not the tab order, so the keyboard
+							 * still meets the readings one stop before the attach/chip group drawn
+							 * to their left. What the never-wrapping row (design round 2, D21)
+							 * removes is the OTHER half of that trade: there is no longer a width
+							 * at which the same node has to be first for one layout and third for
+							 * the other, so the mismatch is now a single stop on one screen rather
+							 * than two layouts disagreeing. Putting the DOM in paint order would
+							 * close it and is deliberately NOT done here: it is a change to the
+							 * composer's tab sequence (its own finding, U8's, not D21's) and the
+							 * composer suite pins the slot this comment explains.
 							 *
 							 * A crash in the strip must not take the composer down with it — the
 							 * readings are metadata and the ability to type is not — so it renders
@@ -6580,30 +6696,26 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							)}
 
 							{/*
-							 * The BUTTON LINE, as one flex item.
+							 * The BUTTON LINE: attach and the working-directory chip, as one item.
 							 *
-							 * Below 750px of column the readings take the row's first line
-							 * and this is the second - and this wrapper is what makes "the
-							 * second" mean one line rather than however many the items
-							 * need. Without it the row's own `flex-wrap` broke the line on
-							 * the items' CONTENT sizes: the chip's path is 202px at full
-							 * length, so at a 240-336px column the chip did not get the
-							 * chance to shrink and the microphone and send fell to a THIRD
-							 * line (the composer grew 143.5 -> 179.5px at the floor, design
-							 * round 1, D1 and code review round 1, MAJOR 2). A wrapping row
-							 * cannot express "one line, and everything on it yields".
+							 * IT IS `display: contents` AT EVERY WIDTH NOW, so it is a DOM slot rather
+							 * than a box, and saying so is cheaper than leaving the paragraph that used
+							 * to explain the two-line layout here. While the row still wrapped (below
+							 * 750px of column) this was the row's SECOND flex item and `contents` was
+							 * how it dissolved above the threshold; the two-line layout is gone with
+							 * design round 2's D21 (§G1: one 32px row at every width), so the wrapper
+							 * only ever dissolves and the group below is a direct child of the row in
+							 * every rendering. It is kept because the composer suite reads this slot
+							 * and because removing a wrapper is a change to the composer's DOM, which
+							 * belongs to the pass that next touches that tree rather than to a
+							 * geometry fix.
 							 *
-							 * Above the threshold it dissolves: `contents` hands its
-							 * children back to the row, so the cluster's `order-2` puts the
-							 * readings between the chip and the controls and the controls'
-							 * `ml-auto` takes the free space - the same single auto margin
-							 * as below, now between the cluster and mic/send (D7).
-							 *
-							 * `min-w-0` is what lets the chip inside actually shrink rather
-							 * than pushing the group past the row: a flex item's automatic
-							 * floor is its content.
+							 * `min-w-0` on the group is still load-bearing: a flex item's automatic
+							 * floor is its content, so without it the chip cannot shrink and the row
+							 * overflows instead (design round 1, D1 and code review round 1, MAJOR 2
+							 * measured that overflow at 240-336px columns).
 							 */}
-							<div className="flex w-full min-w-0 flex-nowrap items-center gap-x-2 @min-[750px]/chatcol:contents">
+							<div className="contents">
 								{/*
 								 * Left side: attachment button and the working-directory chip.
 								 *
@@ -6625,7 +6737,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								 * `row.overflowX`, which reads 0 because the GROUP fits. The yield
 								 * order needs both halves stated.
 								 */}
-								<div className="flex min-w-0 items-center gap-1 @min-[750px]/chatcol:shrink-0">
+								<div className="flex min-w-0 items-center gap-1 shrink-0">
 									<Tooltip content="Attach file">
 										<span>
 											<Button
@@ -6723,7 +6835,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								 * slot is first (see above); it makes the paint [attach][chip]
 								 * [readings][mic][send] out of a DOM whose first child is the cluster.
 								 */}
-								<div className="ml-auto flex items-center gap-1 @min-[750px]/chatcol:order-3">
+								<div className="ml-auto flex order-3 items-center gap-1">
 									{!isRecording &&
 										!isTranscribing &&
 										!(isLoading && currentJobId) && (
@@ -6930,23 +7042,87 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												aria-hidden="true"
 												data-interrupt-slot=""
 												className={cn(
-													"pointer-events-none",
-													isSmallView ? "size-7" : "size-8",
+													"pointer-events-none invisible flex items-center gap-1",
 												)}
-											/>
+											>
+												{/*
+												 * THE RESERVATION IS THE STOP'S OWN BOX, INVISIBLE, and that is
+												 * what makes "holding the place moves nothing" true rather than
+												 * nearly true (chat redesign §G3, U3).
+												 *
+												 * It was an empty `size-7`/`size-8` square, which is exactly
+												 * the box the OLD icon Stop occupied. The control is labelled now
+												 * - a glyph plus the word `Stop` plus its `Esc` cap - so a square
+												 * reservation would leave the dictation control 60-odd pixels
+												 * short of where the turn's own row puts it, and the mic would
+												 * jump left at the instant the turn starts and back again when it
+												 * ends: the re-layout class this slot exists to bound, in the
+												 * window where the reader is most likely to be aiming at it.
+												 *
+												 * A measured width would be a second expression of the control's
+												 * own layout, and the two would drift the first time the label or
+												 * the cap changed. This renders the SAME markup with a real box
+												 * (`visibility: hidden` keeps layout, unlike `display: none`), so
+												 * the two boxes agree by construction; it carries NO accessible
+												 * accessible name and no labelling attribute, because it must
+												 * stay out of the live probes that select the control by its
+												 * own name and must not be announced.
+												 */}
+												<Button
+													variant="secondary"
+													size={isSmallView ? "sm" : "md"}
+													type="button"
+													tabIndex={-1}
+												>
+													<Square aria-hidden="true" />
+													Stop
+												</Button>
+												<span className={cn("text-ink-dim")}>
+													<KeyboardShortcut shortcut="Esc" />
+												</span>
+											</span>
 										)}
 									{canonicalStop?.active && (
-										<Tooltip content="Stop this session's current work">
-											<span>
+										/*
+										 * THE STOP IS LABELLED, AND IT NAMES ITS OWN KEY (§G3, U3).
+										 *
+										 * It was a bare 24px `danger` square whose tooltip said
+										 * "Stop session" and nothing said that Escape does the same
+										 * thing - so the one control a reader reaches for while a turn
+										 * runs was the least legible control in the composer, and the
+										 * accelerator beside it was invisible. Now it is §G3's own
+										 * shape: a `surface` control with a `border-control` edge, the
+										 * `Square` glyph, the word `Stop`, and the `Esc` cap - and
+										 * `aria-keyshortcuts` carries the accelerator to assistive tech
+										 * rather than only to the eye.
+										 *
+										 * NOT `variant="danger"`: stopping is not a failure and §B8
+										 * reserves the danger role for facts that went wrong. The
+										 * `secondary` variant is `surface` + `border-control` + `ink`,
+										 * which is exactly the spec's description.
+										 */
+										<Tooltip content="Stop this session's current work (Esc)">
+											<span className="flex items-center gap-1">
 												<Button
-													variant="danger"
-													size={isSmallView ? "icon-sm" : "icon"}
+													variant="secondary"
+													size={isSmallView ? "sm" : "md"}
 													type="button"
 													onClick={canonicalStop.onStop}
 													aria-label="Stop"
+													aria-keyshortcuts="Escape"
 												>
 													<Square aria-hidden="true" />
+													Stop
 												</Button>
+												{/*
+												 * The cap is DECORATIVE here: `aria-keyshortcuts` above
+												 * already states the binding, and a `KeyboardShortcut`
+												 * carries its own `kbd` text into the accessible name - two
+												 * statements of one binding inside one control.
+												 */}
+												<span aria-hidden="true" className="text-ink-dim">
+													<KeyboardShortcut shortcut="Esc" />
+												</span>
 											</span>
 										</Tooltip>
 									)}
@@ -7031,6 +7207,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 															noModel ||
 															(!newMessage.trim() && attachments.length === 0)
 														}
+														className="rounded-full disabled:bg-surface"
 														aria-label={
 															aside !== null && !awaitingAnswer
 																? "Ask the aside"
@@ -7049,46 +7226,19 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					</div>
 				</div>
 				{/*
-				 * The ambient tip line: inside the splash, below the box, above
-				 * the chips.
-				 *
-				 * OUTSIDE `[data-lo-suggestion-stack]` deliberately. The stack's cap
-				 * reads its own children as chips and derives rows from the boxes
-				 * that share a top edge (`suggestion-stack.ts`), so a non-chip child
-				 * there would be counted as one and corrupt the row model.
-				 *
-				 * Lying inside the splash is the other half of the same contract, and
-				 * it is what keeps the cap arithmetic honest:
-				 * `MeasuredSuggestionStack` measures
-				 * `fixed = splash.height - stack.height`, so the row's own 32px
-				 * (12px margin + 20px row) lands in the fixed budget automatically
-				 * and the stack's allowance drops by exactly that much.
-				 *
-				 * The margin and the shared measure are the CALLER's, matching the
-				 * suggestion wrapper below: a component does not own its outer
-				 * margin, the container owns the gap (branding.md § 5).
+				 * The two lines main's lane put under the box: the connect line for a
+				 * conversation with no provider, and the model/provider refusal's hint.
+				 * The rest of that lane's block - the tip row, the chips and the connect
+				 * card - lives in the splash above, where this branch's rework moved it
+				 * (the card takes the chips' slot there); the two mirrors main kept for a
+				 * centred band are dropped with the centring they existed for.
 				 */}
-				{/* With nothing connected the tips (slash commands, mentions) describe
-				    a conversation that cannot run yet; the connect card below is the
-				    one thing this screen should say. */}
-				{showEmptyChatPrompt && !noProvider && (
-					<div className={cn("mt-3", CHAT_MEASURE)}>
-						{/*
-						 * The clock is suspended while the box holds a draft, so a text
-						 * change in the peripheral field cannot pull the eye off what
-						 * the user is typing; the row itself keeps painting.
-						 */}
-						<ComposerTipRow
-							suspended={newMessage.trim().length > 0}
-							mentionsEnabled={mentionsEnabled}
-						/>
-					</div>
-				)}
 				{noProvider && !showEmptyChatPrompt ? (
 					<div className={cn("mt-2", CHAT_MEASURE)}>
 						<NoProviderLine />
 					</div>
 				) : null}
+
 				{(noProvider || noModel) && noProviderHint ? (
 					<div className={cn("mt-2", CHAT_MEASURE)}>
 						<output className="block text-body-sm text-ink-muted">
@@ -7096,163 +7246,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								? "Choose a model for this conversation before sending."
 								: "Connect a provider to send."}
 						</output>
-					</div>
-				) : null}
-				{showEmptyChatPrompt && noProvider && (
-					/*
-					 * The connect card takes the chips' slot, not a slot of its own: the
-					 * chips are examples of what to ask, and with nothing connected there
-					 * is nothing to ask yet. Same margin and measure as the chips, so the
-					 * band's centred group keeps its geometry (see the mirror below).
-					 */
-					<div className={cn("mt-6", CHAT_MEASURE)}>
-						<ConnectProviderCard />
-					</div>
-				)}
-				{showEmptyChatPrompt && !noProvider && (
-					<div className={cn("mt-6", CHAT_MEASURE)}>
-						{/* Borderless chips, left-aligned on the measure. Twelve
-						 * accent-washed pills was the accent budget spent four times over on
-						 * the one screen that has no content to compete with them, and the
-						 * neutral outline that replaced them still drew seven 3:1 boundaries
-						 * — a control's edge, on what are examples rather than the primary
-						 * action. As ghost controls they draw no boundary at all and read as
-						 * what they are. Raycast and Linear's command palettes hold
-						 * suggestions at exactly this weight. */}
-						<MeasuredSuggestionStack
-							band={band}
-							splash={splash}
-							suggestions={suggestions}
-							disabled={suggestionsDisabled}
-							onRefusedPress={holdCaretOnRefusedPress}
-							onSelect={handleSuggestionClick}
-							focusComposer={() => textareaRef.current?.focus()}
-						/>
-					</div>
-				)}
-				{/*
-				 * THE SENTENCE'S MIRROR, on the band that CENTRES the composer and nowhere
-				 * else (UX round 4, U16).
-				 *
-				 * THE DEFECT. On an empty chat the band claims the column and centres its
-				 * group, so a line added anywhere in that group moves the whole of it by
-				 * half the line - the composer the operator is typing in included, which is
-				 * the pane the app OPENS on. Measured on the running app at 1380, real
-				 * keystrokes: `textarea.y` 402.25 idle -> 416.00 armed, and it toggles twice
-				 * while one command is typed - `/cred` 416.00, `/crede` 402.25,
-				 * `/credential` 416.00 - where live `origin/main` holds 402.25 through all
-				 * eleven keystrokes. The popup moves with it.
-				 *
-				 * WHY THE TWO OBVIOUS DEVICES DO NOT WORK HERE. Taking the sentence out of
-				 * the flow adds no height, and is what this band wants - but on this band the
-				 * sentence shares its strip with the completion list, which is `absolute
-				 * bottom-full` above it in the same wrapper: with no line in the flow the
-				 * list resolves to the sentence's own strip, and the list (a later sibling,
-				 * `z-20`) wins. That sentence is the only thing that says what Enter will do
-				 * (UX round 2, U10), so it cannot be the half that loses. Reserving the line
-				 * while the sentence is ABSENT is no better: it moves the IDLE empty-chat
-				 * composer, which is `origin/main`'s to the pixel today (402.25 on both trees
-				 * at 1380), and an empty sentence rendering no box at all is a property the
-				 * suites pin.
-				 *
-				 * THE DEVICE. Mirror the line BELOW the group instead, so the group grows by
-				 * the line on both sides of the box: the centring shift cancels for
-				 * everything between the two lines - the box, the status row, the tip row and
-				 * the chips all sit at their idle y, and the sentence paints in the space the
-				 * group's own top vacates. Both halves must measure the same height, which is
-				 * why they share `credentialNoticeLine`. The clearance is structural rather
-				 * than tuned: the greeting above yields exactly one line, so the sentence's
-				 * top is always the idle gap below the greeting's bottom (32px: the splash's
-				 * `gap-6` plus the form's `pt-2`), whatever the sentence's own height or the
-				 * column's width.
-				 *
-				 * CONFINED TO THIS BAND, and that is a requirement rather than tidiness: on a
-				 * populated pane the band is bottom-anchored (`shrink-0`, the box pinned by
-				 * its bottom edge), so a mirrored line under the box would grow the band
-				 * downward and push the typed line UP by the line's full height - the defect
-				 * U14/D1 removed. There, the sentence stays in the flow, where the transcript
-				 * above it yields instead.
-				 *
-				 * WHY IT IS INVISIBLE AND ARIA-HIDDEN rather than a spacer: it is the same
-				 * sentence twice, so it must neither be announced (a screen reader would read
-				 * the notice twice) nor painted (the sentence is already on screen, above the
-				 * box). It carries no `id`, because `CREDENTIAL_NOTICE_ID` names one element
-				 * and `aria-describedby` points at that one. And it renders `hidden` while
-				 * there is no sentence, so the idle band still reserves nothing.
-				 *
-				 * WHAT IT COSTS, disclosed: the greeting yields one line (27.5px at 1380)
-				 * when the sentence arrives, in place of the composer's half-line. Nothing
-				 * else in the pane moves.
-				 */}
-				{bandCentred ? (
-					<output
-						aria-hidden="true"
-						className={cn(
-							CHAT_MEASURE,
-							credentialNotice ? credentialNoticeLine : "hidden",
-							"invisible",
-						)}
-					>
-						{credentialNotice}
-					</output>
-				) : null}
-				{/*
-				 * THE SESSION ISSUE'S OWN MIRROR, for the arrival the operator does not
-				 * ask for (UX round 1's U5, same device as the sentence above).
-				 *
-				 * The credential dies out of band and the 60 s poll finds it, so the
-				 * callout appears while the operator is halfway through a sentence.
-				 * MEASURED on this band: the field's top moved 402 -> 468, 66px, under
-				 * the cursor - the callout's own height, halved, which is exactly what
-				 * an insertion above a CENTRED group does. Mirroring it below the group
-				 * makes the group grow by the same height on both sides, so everything
-				 * between the two copies - the box, the status row, the tip row and the
-				 * chips - stays where it was and the text the operator is typing does
-				 * not move at all.
-				 *
-				 * CONFINED TO THIS BAND, for the reason the sentence above gives: on a
-				 * populated pane the band is bottom-anchored, so a mirrored block under
-				 * the box would grow the band downward and push the typed line UP by the
-				 * block's full height. There the callout takes transcript height
-				 * instead, which is the honest move.
-				 *
-				 * WHERE IT RUNS OUT OF ROOM, AND WHY THAT IS LEFT ALONE (UX round 2's U6,
-				 * QA round 2's Q-1 - both measured at the app's 800x600 floor). The
-				 * device's premise is SLACK: cancelling a centring shift means growing the
-				 * group on both sides, and the copy spends the block's own height to buy
-				 * that. At 1380x868 and 1024x668 the band has the room and nothing moves
-				 * (402.25 in both states, measured in ONE run by the design round - a
-				 * two-run comparison cannot see it, because the empty band is
-				 * bottom-anchored until the snapshot settles). At 800x568 the block is
-				 * 210px, the group needs 560px inside a 512px band, and the band grows
-				 * past the window rather than centring: the field lands 27-33.5px lower
-				 * (both rounds read `285` raised; they differ on the idle reading,
-				 * `258` and `251.5`) and the mirror's own overflow is what falls below the
-				 * fold. Suppressing the mirror when there is no slack would need this band
-				 * to measure itself against the group plus the copy - a feedback loop the
-				 * band does not currently run - and getting it wrong hides the mirror at
-				 * widths where it works, which is the worse failure. So the residue is
-				 * stated rather than removed: at the floor width an arrival moves the box
-				 * by roughly half the block, and everywhere wider it does not move.
-				 *
-				 * It is the SAME element, not a reconstruction, so the two heights match
-				 * by construction at any width and in any state - and it is `invisible`
-				 * (which also takes its two controls out of the tab order) and
-				 * `aria-hidden`, so neither the copy nor the buttons are announced or
-				 * painted twice. The attribute on the visible block is what a driver
-				 * scene reads, and `querySelector` keeps naming the first match in
-				 * document order - the visible one above the box. Nothing extra guards
-				 * the healthy case here: the block itself carries `hidden` when there is
-				 * no issue, so the mirror of a healthy band is a `display: none` copy of
-				 * a `display: none` block and reserves nothing.
-				 */}
-				{bandCentred ? (
-					<div
-						aria-hidden="true"
-						data-lo-radient-issue-mirror=""
-						className={cn("invisible")}
-					>
-						{radientIssueBlock}
 					</div>
 				) : null}
 			</form>
@@ -7288,8 +7281,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					// composer and chips to the bottom of the column under a large dark
 					// void -- the operator's report. So the vertical behaviour is
 					// conditional on the same fact that decides which content renders:
-					// empty means `grow` (claim the column, `justify-center` centres the
-					// group), non-empty means `shrink-0` (natural height at the bottom).
+					// empty means `grow` (claim the column; the splash above the docked
+					// composer centres the greeting and chips in it), non-empty means
+					// `shrink-0` (natural height at the bottom).
 					// The transcript yields its own `grow` on the same condition, so the
 					// two never split the free space between them.
 					//
@@ -7322,7 +7316,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					// any ancestor of the popup clipping. Do not re-add a bound here:
 					// cap whatever new content grows, where it grows.
 					CHAT_COLUMN_CONTAINER,
-					"flex w-full flex-col items-center justify-center",
+					/*
+					 * NO `justify-center`: the band is a column whose LAST child is the
+					 * composer's foot, and it is bottom-anchored in every state. On an empty
+					 * chat the splash above the foot takes the free height (`grow`) and centres
+					 * its own group inside it; the foot does not move. See the splash's comment
+					 * for why that is the whole of §G2's "the first send moves nothing".
+					 */
+					"flex w-full flex-col items-center",
 					/*
 					 * The empty-chat band CLAIMS the column; every other state is natural
 					 * height at the bottom. `isHydrating` is the third case and the reason
@@ -7353,63 +7354,146 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				ref={setBand}
 			>
 				{/*
-				 * ONE wrapper at every state, and only its CLASSES change.
+				 * THE SPLASH: the greeting, the chips and the tip, centred in the height
+				 * the COMPOSER DOES NOT USE - with the composer already docked below it
+				 * (§G2, §H).
 				 *
-				 * This was a ternary between a centred `<div>` holding the greeting and
-				 * `inputContent` bare, and the branch keys on `!isSmallView` - a COLUMN
-				 * measurement (`chat-content.tsx`, <550px). So opening the run pane or the
-				 * canvas narrows the column across that threshold and swaps the element
-				 * TYPE at this position, which React resolves by unmounting the old subtree
-				 * and mounting a new one. The status row lives inside `inputContent`, so a
-				 * press on its plan chip - a control whose whole job is to narrow the column
-				 * - replaced the very node the user had just pressed, and focus went to
-				 * `<body>` (QA round 1, Q4: `focusout` with no following `focusin`, and the
-				 * chip's dataset mark gone). On a populated transcript the node survives and
-				 * nothing is dropped, which is why only the empty-transcript case failed.
+				 * THE DEFECT THIS SHAPE REMOVES. The band used to centre ONE group -
+				 * greeting, composer and chips together - with `grow` + `justify-center`,
+				 * while a conversation anchors the composer at the foot. So the first
+				 * send moved the box the user had just typed in: measured on the running
+				 * app, the composer's top edge went y393 -> y774 at 1380x900 and
+				 * y227 -> y474 at 800x600, the column's width unchanged. Now the composer
+				 * is the band's LAST child in every state and the band is bottom-anchored,
+				 * so its box is the same box before and after the first message; only the
+				 * splash above it goes, and the transcript takes that height instead.
 				 *
-				 * Rendering the wrapper always and moving the difference into its classes is
-				 * the fix at the source: the subtree is never replaced, so no control inside
-				 * it can be torn out from under a press. `w-full` in the non-prompt state is
-				 * what keeps this neutral - the band is a centred flex COLUMN, and a plain
-				 * unwidthed wrapper would shrink to its content instead of filling the column
-				 * the way `inputContent`'s own `w-full` did.
+				 * TWO ELEMENTS, NOT ONE, and the split is arithmetic. The outer one takes
+				 * the free height (`grow`) and centres; the inner one is the GROUP, sized
+				 * by its content, and it is what the suggestion cap measures (`splash`).
+				 * A `grow` element's box is the free height, not its content, so measuring
+				 * the outer one would put the whole void into the cap's fixed budget and
+				 * cap the chips away.
 				 *
-				 * The splash ref the suggestion cap measures sits on THIS element, which
-				 * is why the two halves compose rather than conflict: the prompt classes
-				 * are the splash wrapper's own, so the node the cap measures, its
-				 * geometry and its children are exactly what the ternary used to mount -
-				 * the same node, now surviving a column crossing instead of being
-				 * replaced by it. The cap's guard is unaffected: it also requires the
-				 * stack node, which only exists with the prompt, so a wrapper that is
-				 * non-null in every other state cannot arm the measurement.
+				 * ALWAYS RENDERED, only its classes change, for the reason the old single
+				 * wrapper was (QA round 1, Q4): a column crossing `isSmallView` flips the
+				 * prompt, and swapping the element type at this position would remount
+				 * the siblings' subtree. `grow` rides `bandCentred` rather than the prompt
+				 * so an empty chat in a narrow column still docks the composer at the
+				 * foot with nothing drawn above it.
+				 *
+				 * THE MIRRORS ARE GONE WITH THE CENTRING (UX round 4's U16 device). They
+				 * existed because a line added above the box moved a centred group by
+				 * half the line; a bottom-anchored box does not move when anything above
+				 * it grows - the splash yields instead, exactly as the transcript does in
+				 * a conversation.
+				 *
+				 * Focus order follows the DOM: the chips now precede the composer, so a
+				 * Shift+Tab from the box reaches them, which matches where they are drawn.
 				 */}
 				<div
-					ref={setSplash}
+					data-lo-composer-splash=""
 					className={cn(
-						showEmptyChatPrompt
-							? "flex w-full flex-col items-center justify-center gap-6 py-4"
-							: "w-full",
+						"flex w-full flex-col items-center justify-center",
+						bandCentred ? "grow" : null,
 					)}
 				>
-					{/*
-					 * With nothing connected there is no question to ask yet: the card
-					 * below says what to do, and a headline inviting a prompt the app
-					 * cannot run pointed the two strongest signals on the screen in
-					 * opposite directions (design round 1 D5).
-					 */}
-					{showEmptyChatPrompt && !noProvider ? (
-						<h2 className="text-center text-ink text-title">
-							What can I help you with today?
-						</h2>
-					) : null}
+					<div
+						ref={setSplash}
+						className={cn(
+							showEmptyChatPrompt
+								? "flex w-full flex-col items-center gap-6 py-4"
+								: "hidden",
+						)}
+					>
+						{showEmptyChatPrompt ? (
+							<>
+								{/*
+								 * THE MARK, 32px, at `ink-muted` (§H's composition: "a 32px mark
+								 * (the app's own mark, `ink-muted`, not an illustration), the
+								 * greeting, then the chips"), in its BUBBLE - the operator's call on
+								 * the preview (2026-09-24) - and through the one `BrandMark` the
+								 * sidebar uses, so the empty state and the brand row cannot drift
+								 * into two treatments of one mark.
+								 *
+								 * `ink-muted` rather than `ink`: the mark is decoration on a screen
+								 * whose subject is the greeting, and §H spends the loudest ink there.
+								 * Unnamed (so `aria-hidden`) because the greeting below says
+								 * everything this figure means. `data-lo-empty-mark` is the handle
+								 * the driver's `first-send` scene waits on.
+								 */}
+								<span data-lo-empty-mark="" className="contents">
+									<BrandMark className="size-8" tone="ink-muted" />
+								</span>
+								{/*
+								 * With nothing connected there is no question to ask yet: the card
+								 * below says what to do, and a headline inviting a prompt the app
+								 * cannot run pointed the two strongest signals on the screen in
+								 * opposite directions (main's design round 1 D5; the gate arrived
+								 * with this fold).
+								 */}
+								{noProvider ? null : (
+									<h2 className="text-center text-ink text-title">
+										What can I help you with today?
+									</h2>
+								)}
+								{noProvider ? (
+									/*
+									 * The connect card takes the chips' slot, not a slot of its own
+									 * (main's design audit section 6): the chips are examples of what
+									 * to ask, and with nothing connected there is nothing to ask yet.
+									 */
+									<div className={cn("w-full", CHAT_MEASURE)}>
+										<ConnectProviderCard />
+									</div>
+								) : (
+									/*
+									 * The chips ABOVE the composer (§H), left-aligned on the shared
+									 * measure so they share the box's left edge. Borderless ghost
+									 * controls: twelve accent-washed pills was the accent budget spent
+									 * four times over, and outlined ones still drew seven 3:1
+									 * boundaries on examples rather than the primary action.
+									 */
+									<div className={cn("flex flex-col gap-3", CHAT_MEASURE)}>
+										<MeasuredSuggestionStack
+											band={band}
+											splash={splash}
+											foot={foot}
+											suggestions={suggestions}
+											disabled={suggestionsDisabled}
+											onRefusedPress={holdCaretOnRefusedPress}
+											onSelect={handleSuggestionClick}
+											focusComposer={() => textareaRef.current?.focus()}
+										/>
+										{/*
+										 * The ambient tip line, under the chips. OUTSIDE
+										 * `[data-lo-suggestion-stack]` deliberately: the cap reads that
+										 * node's children as chips and derives rows from shared top edges
+										 * (`suggestion-stack.ts`), so a non-chip child there would corrupt
+										 * the row model. Inside the group, so its row lands in the cap's
+										 * fixed budget automatically. The clock is suspended while the box
+										 * holds a draft, so a changing peripheral line cannot pull the eye
+										 * off what the user is typing.
+										 */}
+										<ComposerTipRow
+											suspended={newMessage.trim().length > 0}
+											mentionsEnabled={mentionsEnabled}
+										/>
+									</div>
+								)}
+							</>
+						) : null}
+					</div>
+				</div>
+				{/*
+				 * THE FOOT: the composer's form, docked. Its node is handed to the
+				 * suggestion cap as the third term of its budget, because the chips now
+				 * share the band's height with the composer below them rather than
+				 * containing it (`measured-suggestion-stack.tsx`).
+				 */}
+				<div ref={setFoot} data-lo-composer-foot="" className="w-full">
 					{inputContent}
 				</div>
-				<ScrollToBottomButton
-					visible={isFarFromBottom}
-					onClick={scrollToBottom}
-					bottomDistance={isSmallView ? 120 : 160}
-					hasNewActivity={hasNewActivity}
-				/>
 			</div>
 		);
 	},

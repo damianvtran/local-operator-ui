@@ -77,6 +77,7 @@ const PROBE = `
 	import { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
 	import { browserBridgeAvailable, clearBrowserProjectionReadError, readBrowserProjection, refreshBrowserProjection, subscribeBrowserProjection } from "./src/renderer/src/features/browser/model/browser-projection-store";
 	import { SidebarNavigation } from "./src/renderer/src/shared/components/navigation/sidebar-navigation";
+	import { ChatLayout } from "./src/renderer/src/shared/components/common/chat-layout";
 	import { MemoryRouter } from "react-router-dom";
 	import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 	import { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
@@ -138,6 +139,7 @@ const PROBE = `
 		useCanonicalSessionsStore,
 		useUiPreferencesStore,
 		SidebarNavigation,
+		ChatLayout,
 		MemoryRouter,
 		QueryClient,
 		QueryClientProvider,
@@ -258,6 +260,7 @@ const {
 	loadFailureSentence,
 	useUiPreferencesStore,
 	SidebarNavigation,
+	ChatLayout,
 	MemoryRouter,
 	QueryClient,
 	QueryClientProvider,
@@ -3338,6 +3341,13 @@ test("the rail's Browser item draws that count, with the number in its accessibl
 		// The rail reads the route from the HASH rather than from the router context
 		// (`path-utils.ts` handles both formats), so the stub has to answer for it.
 		location: { hash: "#/chat", pathname: "/chat" },
+		/*
+		 * `ChatLayout` reads the viewport when it renders (design round 1, D2), so a
+		 * stub with no width would decide the strip/dock breakpoint from `undefined`.
+		 * 1380 is the app's own default window and the width every measurement in
+		 * this suite's frames was taken at.
+		 */
+		innerWidth: 1380,
 		api: {
 			browser: {
 				state: async () => ({
@@ -3363,7 +3373,19 @@ test("the rail's Browser item draws that count, with the number in its accessibl
 			el(
 				QueryClientProvider,
 				{ client: new QueryClient() },
-				el(MemoryRouter, null, el(SidebarNavigation)),
+				el(
+					MemoryRouter,
+					null,
+					/*
+					 * THE SHELL THE RAIL IS DRAWN IN, because the rail now reads its own frame
+					 * from it: `useSidebarFrame` THROWS outside `ChatLayout` by design
+					 * (`chat-layout.tsx`: a silent fallback "would draw a docked column inside
+					 * whatever else mounted it"). This is a harness change rather than a
+					 * relaxation - the rail renders here exactly where `app.tsx` renders it,
+					 * which is the environment the failure was reporting the absence of.
+					 */
+					el(ChatLayout, { sidebar: el(SidebarNavigation), content: null }),
+				),
 			),
 		);
 		assert.ok(

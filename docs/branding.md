@@ -364,6 +364,22 @@ control's only edge, effectively invisible. If you are adding a boundary, ask
 whether removing it entirely would lose information. If yes, it is structural
 and must clear 3:1. If no, delete it rather than reaching for `hairline`.
 
+**The composer is an object that leaves the flow.** Its ground is `elevated` on
+`canvas` (+4.89 L\* at worst, +6.64 at the median across the 59 palettes) and it
+draws **no border at rest**: the step is what separates it, and the accent ring
+is reserved for `:focus-visible`. Where it sits over scrolled content, the
+transcript gets a 24px fade mask to `canvas` at the pane's top edge and a
+matching mask above the composer — not the shared shadow, which this section
+reserves for objects that float (menus, popovers, dialogs).
+
+Why the step rather than an edge, recorded because the two look interchangeable:
+the five reference composers at this size get their separation from a lightness
+step, and this app's own `border-control` is the accent on the brand palette, so
+a bordered composer was the loudest thing on the screen at rest — a ring around
+an empty box, while the transcript sat at `canvas` with nothing pointing at it.
+The accent is spent on what the user acts on (the send control's fill) and on
+focus, not on the frame of an empty field.
+
 ### Accent
 
 One accent is spent about **three times per screen**. Primary action, active
@@ -577,10 +593,22 @@ Those need a human and a screenshot.
 The site's display steps are deliberately absent. A desktop app has no hero, and
 a 60px headline in a tool is a marketing device applied to a working surface.
 
-**Monospace is machine voice.** Paths, code, counts, timestamps, trace labels,
-identifiers. It is what lets a tool trace read as machine output without needing
-a box drawn around it — which is most of how the trace redesign buys its
+**Monospace is machine voice.** Paths, code, counts, timestamps, identifiers — and
+the OBJECT of a trace line, not its verb. A trace line is a sentence about the
+machine, not a machine's own line (Zed `Read file` + mono path; Claude Code bold
+`Read` + mono filename; Cursor `Explored 1 file` in sans; Warp sets the whole
+line in mono and is the one that reads as a terminal, which § 0 names as the
+failure mode). It is what lets a tool trace read as machine output without
+needing a box drawn around it — which is most of how the trace redesign buys its
 quietness. Monospace for emphasis, or for prose, is forbidden.
+
+The split also decides where the trace's identity ink goes: the glyph keeps it,
+the verb does not. The verb is a word in the reader's language and belongs at
+text weight in `ink-muted`; the accent-coloured mono name column was the loudest
+ink on the row, which is the failure this rule exists to stop. Keeping the glyph
+on its identity colour is deliberate — it is 14px, and it is the only thing
+separating a read from a write at a glance — so an edit that moves the glyph to
+`ink-muted` to "quiet the row" has misread which half was loud.
 
 ---
 
@@ -621,8 +649,12 @@ isolation.**
 - **14px, frames.** Cards and dialogs — the containers other things sit inside.
 - **2px** is for bars too small to carry 6: the progress track, the scrollbar
   thumb, the checkbox.
-- **16px (`frame`)** is for the two objects that span their whole column: the
-  composer and the message bubble.
+- **16px (`frame`)** is the **composer's** radius, and the composer's alone: it
+  spans its whole column and is the one object the user acts on.
+- **10px (`panel`)** is the user's message block. A bubble at the composer's
+  radius makes the user's turn read as consumer messaging, and it is the
+  composer's whole column-width shape that the 16 is for. (Cursor 3 ≈ 6, VS
+  Code/Raycast ≈ 8–12 behind their bubbles.)
 - **Nested radii are concentric, not repeated:** an inner radius is the outer
   radius minus the padding between them. The tabs track is 10 with 4px padding,
   so its pills are 6.
@@ -631,6 +663,23 @@ isolation.**
 **Motion** — durations 80 / 120 / 180 / 240ms. Nothing in this app animates for
 longer than 240ms, and only something entering the screen earns that.
 
+- **A disclosure does not animate its fold, and the reason is mechanical rather
+  than aesthetic.** The shared `Disclosure`
+  (`src/renderer/src/shared/components/ui/disclosure.tsx`) renders its children
+  only while it is open (`isOpen && children`), so there is nothing for a height
+  transition to interpolate. Making the fold animate means keeping children
+  mounted for every caller — including every tool row in the transcript — and an
+  unmounted body is exactly what keeps a forty-row turn cheap to scroll. The
+  chevron still swaps (`ChevronRight` ⇄ `ChevronDown`) rather than rotating, and
+  the swap is what tells the reader the fold opened. 180ms is therefore named but
+  unspent here; it stays in the ramp for entrances.
+- **Indeterminate liveness is exempt from the 240ms ceiling** — a shimmer or a
+  spinner that must run until the machine stops cannot be capped at 240ms. One
+  such element per surface, `opacity` or `background-position` only, never a
+  layout property, and under reduced motion the app's existing `0.01ms` cap
+  applies to it like everything else: the contract is that the element is
+  **visible** with the animation never running, which the cap honours because the
+  keyframes carry no `opacity: 0` start.
 - Transition `color`, `background-color`, `border-color`, `opacity`, and
   `transform` only for entrances.
 - **Nothing lifts, scales, or translates on hover.** Hover is a colour step.
@@ -748,6 +797,23 @@ equally important**, and the interface must not present them as though they are.
 
 - A completed action is **one line**. Not a card, not a bordered panel, not a
   header with an icon tile.
+- **Above one line per action there is an aggregation tier.** A run of three or
+  more consecutive actions folds into one summary line in the user's terms
+  (`Explored 4 files, 1 search`, `Ran 8 actions · 1 failed`), expanded while the
+  newest turn is in flight and collapsed when it settles; a finished turn also
+  carries one turn-foot line (`Worked for 1m 12s · 8 actions · 1 failed`). The
+  fold is a VIEW: it hides rows and never reorders them, so the placement rule a
+  few lines down and its `applyLiveSeed`/`withTimeOrder` guard are untouched.
+  Without this tier a 40-step turn is 40 lines, which is the "every internal step
+  at equal weight" failure of § 0.
+- **A detail block is capped at `min(320px, 40vh)`, not at a flat 320.** One
+text in the transcript — code, stdout and diffs share the treatment — opens
+  behind the row's own disclosure, and an open block that fills the scroller
+  pushes its own row off-screen. Measured on the AFTER set: at 1380x900 the
+  transcript is 692 and 320 is 46% of it, which is right; at 800x600 it is
+  **360**, so a flat 320 would take 89% of the reader's window for one detail.
+  The `vh` half is what honours both. The block's own scroll and the `N more
+  lines` footer stay, so nothing is unreachable at the short end.
 - A trace line names the action in the **user's** terms and the object in
   monospace: "Read `invoices/march.csv`", not "Executing Code".
 - Prefer one disclosure idiom app-wide. Two competing expand/collapse patterns
@@ -790,13 +856,18 @@ equally important**, and the interface must not present them as though they are.
   the whole row content box — prose and the ledger together, i.e. the shared
   `CHAT_MEASURE` container — never `max-width` on `.lo-markdown` alone.**
   Narrowing prose by itself re-creates the two rails this rule removes. The
-  cost of not having one is recorded rather than hidden: 98.1 `ch` at the body
-  step — an INHERITED figure, quoted as the arithmetic that argued the original
-  removal rather than re-derived here; the same column carries 131 real
-  characters on an 832.6px line — which is the ceiling and not a slope, because
-  the content measure is capped at 900px and so reads the same at 1920 as at
-  1024. The `ch`/character distinction is not pedantry: it is a 2.6× difference
-  in what the number describes.
+  measure is now **640px**, not 900. Measured at the body step (14px SFNS, a
+  700-character sample): 101 characters per line on average, 104 at worst,
+  against 146/146 at 900. The board's own worst reference is 108 (Cursor 3) and
+  the chat-first products sit at 62–87; 680 lands exactly on the board's worst
+  case and 760 is past it. 640 is also the widest column that fits at 800x600
+  with the collapsed 56px sidebar and 24px gutters. What does NOT change is the
+  rule this number serves: the cap is on the shared row content box — prose, the
+  ledger, the user block and the composer together (`CHAT_MEASURE`) — never
+  `max-width` on `.lo-markdown` alone.
+  Cost, recorded: 101 characters is still wider than Claude.ai (76) and Zed (87),
+  which carry no tables or diffs in the answer. If the AFTER frames show the
+  table wrapping badly, the token moves to 680 and nothing else changes.
 - A security notice is **retrospective** — it records that a risk was reviewed
   and averted. It must not be styled as a prompt, because nothing consumes a
   response to it.

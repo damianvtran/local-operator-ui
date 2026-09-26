@@ -3093,6 +3093,76 @@ export const MixedRun: Story = {
 	),
 };
 
+/**
+ * A FORTY-CALL turn in one fold (§N's `agg-fold`, at the count the rig's live
+ * scene cannot reach): the summary line a reader meets instead of forty rows.
+ *
+ * The 8-call turn is the live scene's fixture, and a fold that is legible at
+ * eight is not evidence about forty: the summary is where the counts and the
+ * verb classes have to stay truthful when "Explored 4 files, 1 search" becomes
+ * "40 actions", and the fold's own row must not grow a second line at that
+ * length. The live scene opens the SAME shape by clicking it; this is the shape.
+ *
+ * The call mix is deliberate rather than uniform: five classes, so the summary
+ * goes through `foldSummary`'s generic branch (`40 actions`) rather than a
+ * two-class phrase, and one failure, so `1 failed` is on the line.
+ */
+export const AggregateFortyCalls: Story = {
+	render: () => (
+		<Frame
+			height={900}
+			records={[
+				/*
+				 * THE TURN IS COMPLETE, and that is what makes the frame evidence for
+				 * D8 rather than only for the fold: the user's block opens it and the
+				 * answer closes it, so the FOOT LINE's `40 actions` is on the same
+				 * frame as the fold's own summary. The two disagreeing (a fold saying 7
+				 * while the foot said 8) was design round 1's D8, and forty calls is
+				 * where a fold that drops its first row hides the most.
+				 */
+				{
+					kind: "user",
+					id: "u1",
+					ts: TS,
+					text: "The row-identity test is flaky on CI. Work out why, and fix it.",
+					images: [],
+				},
+				...Array.from({ length: 40 }, (_, index) =>
+					tool({
+						id: `tool:forty-${index}`,
+						toolName: ["read", "grep", "bash", "edit", "glob", "web_search"][
+							index % 6
+						],
+						args: {
+							command:
+								index % 6 === 2 ? `pnpm vitest run test-${index}` : undefined,
+							path: `src/renderer/src/features/chat/row-${index}.tsx`,
+						},
+						output: `row ${index} settled`,
+						durationS: 0.4 + (index % 7) * 0.3,
+						/*
+						 * The FIRST call fails, so the fold's failure jump (`§E3`'s foot
+						 * control) has a row inside the fold to reach - which is the
+						 * behaviour the same turn in `agg-jump` drives.
+						 */
+						isError: index === 0,
+					}),
+				),
+				{
+					kind: "assistant",
+					id: "a1",
+					ts: TS + 60_000,
+					text: "Fixed: the row ids were minted per frame rather than per record, so a re-render re-keyed every row and the memo never held. The run ids are stable now and the suite has been green for twelve consecutive runs.",
+					streaming: false,
+					complete: true,
+					stopReason: null,
+					error: false,
+				},
+			]}
+		/>
+	),
+};
+
 /** A canonical tool row carrying ONE screenshot — the operator's own report. */
 export const Screenshots: Story = {
 	render: () => (

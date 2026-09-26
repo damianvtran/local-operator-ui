@@ -1174,6 +1174,293 @@ test("a frame stating nothing still refuses to move a running clock", () => {
 });
 
 /* ---------------------------------------------------------------------- *
+ * The user's own stop, in the ledger (UX round 2's U7 and U15).
+ *
+ * `Esc` kills the call in flight, and the process that died reports a REAL
+ * error - so classifying that row is a client decision over a client-held
+ * fact (`stoppedTurns`), consumed when the end event arrives
+ * (`transcript-reducer.ts`'s `killedByUserStop`). Three shapes of row reach
+ * the test, and they need different evidence: one this viewer watched run (a
+ * clock to compare against the press); and two it never watched start - the
+ * row it only ever met as it SETTLED (born from the end event, no clock on
+ * any layer), which is the shape U15 was filed on; and the row it saw
+ * ANNOUNCED but never started, which is what the press actually kills on this
+ * daemon: a `[bash:N]` call PARKS at the approval gate, so no
+ * `tool_execution_start` precedes an `Esc` (agent review round 4's Q5, where
+ * the rig's three failing runs met UX's measurement). Both no-clock shapes
+ * used to paint `failed` in danger beside the turn's own Stopped line; the
+ * stop fact now speaks for both.
+ * ---------------------------------------------------------------------- */
+
+/** The press, one minute into a call that started at `expectedStart`. */
+const STOP_PRESSED_AT = expectedStart + 60_000;
+
+const endFrame = (callId, over = {}) => ({
+	type: "tool_execution_end",
+	tool_call_id: callId,
+	tool_name: "bash",
+	// The killing process dies mid-call, so the end event carries a genuine
+	// failure claim - the wire fact the classification has to overrule.
+	result: { content: [{ type: "text", text: "killed" }], is_error: true },
+	is_error: true,
+	duration_s: 0.8,
+	...over,
+});
+
+test("an end event that seeds the row during a stopped turn reads stopped, not failed (U15)", () => {
+	/*
+	 * THE SHAPE THE FIX EXISTS FOR, reproduced as the reducer sees it: no
+	 * `tool_execution_start` ever reached this viewer for the killed call (the
+	 * interrupt rig measures exactly that lag), so the end event CREATES the
+	 * row, `startedAt` is null, and the clock arm of the guard cannot answer.
+	 * Before the fix this row painted `failed` in danger - the same turn's
+	 * Stopped line standing beside it - blaming the agent for the press.
+	 */
+	const state = applyEvent(EMPTY_TRANSCRIPT, endFrame("c-killed"), ARRIVAL, {
+		userStoppedAt: STOP_PRESSED_AT,
+	});
+	const row = ranRow(state, "c-killed");
+	assert.equal(row.startedAt, null, "the row was born settled, like the rig's");
+	assert.equal(row.stopped, true, "the stop is the row's verdict");
+	assert.equal(
+		row.isError,
+		false,
+		"and the danger ink is cleared, because the outcome ladder reads this first",
+	);
+});
+
+test("a row announced but never started, killed by the stop, reads stopped (the parked call)", () => {
+	/*
+	 * THE THIRD SHAPE (agent review round 4's Q5, reconciling the interrupt rig's
+	 * three failing runs with UX's measurement). On this daemon a `[bash:N]` call
+	 * PARKS at the approval gate: the viewer sees the announced row, no
+	 * `tool_execution_start` (the call has not run), and the press kills it before
+	 * it ever starts. `current` EXISTS with `startedAt === null` and the end event
+	 * does not seed it - the case both of U15's arms refused, which painted
+	 * `failed` in danger beneath the turn's own Stopped line, the same accusation
+	 * U15 exists to remove.
+	 */
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_call_compose",
+			tool_call_id: "c-parked",
+			tool_name: "bash",
+			argument_bytes: 28,
+		},
+		ARRIVAL,
+	);
+	assert.equal(
+		ranRow(state, "c-parked").startedAt,
+		null,
+		"the parked row has no clock: nothing has run yet",
+	);
+	state = applyEvent(state, endFrame("c-parked"), ARRIVAL + 1_000, {
+		userStoppedAt: STOP_PRESSED_AT,
+	});
+	const row = ranRow(state, "c-parked");
+	assert.equal(row.stopped, true, "the stop is the parked row's verdict too");
+	assert.equal(row.isError, false, "and the danger ink is cleared with it");
+});
+
+test("the accepted mirror: an own-fault no-clock failure inside the standing window also reads stopped (R21)", () => {
+	/*
+	 * THE COST Q5 TOOK, PINNED WHERE IT WAS TAKEN - as a cost, not as approval.
+	 * The inputs are identical to the two pins above, and they have to be: the
+	 * reducer cannot tell the reading the widened arm is FOR (a call the press
+	 * killed before it started, or one born settled by the killing end event)
+	 * from the reading it ACCEPTS (a call whose failure was its own, settled
+	 * before the press, whose end event reached a lagging viewer inside the
+	 * standing window). One story has to win for both, and the standing stop
+	 * fact is the story taken. This test is a deliberate companion to U15's pin
+	 * rather than a duplicate: a future edit that re-tightens the arm must
+	 * consciously move THIS assertion, whose name says what it is.
+	 *
+	 * WHAT WOULD MAKE THE MIRROR REAL (agent review round 5, R21): a
+	 * daemon-produced end frame for an announced-but-unstarted call carrying a
+	 * fault other than the abort, inside the standing window. None was
+	 * constructed - a parked call does not execute, so its endings inside the
+	 * window are the stop's kill or a gate resolution that would have started
+	 * it - and the window is bounded (`chat-page.tsx`: the press's receipt
+	 * clears the fact on any answer that is not `interrupted`, and the next turn
+	 * clears it again), with the durable page correcting a genuine failure back
+	 * to danger when its fault is not `aborted`.
+	 */
+	const state = applyEvent(EMPTY_TRANSCRIPT, endFrame("c-own-fault"), ARRIVAL, {
+		userStoppedAt: STOP_PRESSED_AT,
+	});
+	const row = ranRow(state, "c-own-fault");
+	assert.equal(
+		row.startedAt,
+		null,
+		"no clock: nothing this viewer ever watched start",
+	);
+	assert.equal(
+		row.stopped,
+		true,
+		"the standing stop fact is the reading taken",
+	);
+	assert.equal(
+		row.isError,
+		false,
+		"and the danger ink yields to it - the accepted cost, asserted rather than assumed",
+	);
+});
+
+test("the same birth with no standing stop fact keeps its danger row", () => {
+	// The classification is the FACT's work, not the shape's: without a
+	// standing stop there is no better story than the event's own - so the
+	// danger row is what ships, and the fix cannot have softened it.
+	const state = applyEvent(EMPTY_TRANSCRIPT, endFrame("c-honest"), ARRIVAL, {
+		userStoppedAt: null,
+	});
+	const row = ranRow(state, "c-honest");
+	assert.equal(row.stopped, false);
+	assert.equal(
+		row.isError,
+		true,
+		"a failure with no stop to answer it stays danger",
+	);
+});
+
+test("a born row whose event reports success keeps its own outcome", () => {
+	// The second arm's other half: the accusation it answers exists only when
+	// the event would paint danger, so a success is never overwritten by a
+	// stop fact that is standing only because of SOME call in the window.
+	const state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		endFrame("c-finished", {
+			result: { content: [{ type: "text", text: "done" }], is_error: false },
+			is_error: false,
+		}),
+		ARRIVAL,
+		{ userStoppedAt: STOP_PRESSED_AT },
+	);
+	const row = ranRow(state, "c-finished");
+	assert.equal(row.stopped, false, "a reported result is not an interruption");
+	assert.equal(row.isError, false);
+});
+
+test("a row that was running at the press is still classified by its clock", () => {
+	// ARM ONE, preserved: a call this viewer watched start, whose start is not
+	// after the press, is the call the interrupt killed.
+	let state = applyEvent(EMPTY_TRANSCRIPT, startedFrame("c-watched"), ARRIVAL);
+	assert.equal(ranRow(state, "c-watched").startedAt, expectedStart);
+	state = applyEvent(state, endFrame("c-watched"), ARRIVAL + 1_000, {
+		userStoppedAt: STOP_PRESSED_AT,
+	});
+	const row = ranRow(state, "c-watched");
+	assert.equal(row.stopped, true);
+	assert.equal(row.isError, false);
+});
+
+test("a clock AFTER the press is not a stop's doing, and keeps its danger", () => {
+	// ARM ONE'S DIRECTION, pinned so a future edit cannot widen it: a call
+	// that started after the press (it cannot in a real turn, but the guard is
+	// a comparison) is not the killed call, and its failure is its own.
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		startedFrame("c-late", { started_at_epoch: START_EPOCH + 120 }),
+		ARRIVAL,
+	);
+	state = applyEvent(state, endFrame("c-late"), ARRIVAL + 1_000, {
+		userStoppedAt: STOP_PRESSED_AT,
+	});
+	const row = ranRow(state, "c-late");
+	assert.equal(row.stopped, false);
+	assert.equal(row.isError, true);
+});
+
+/* ---------------------------------------------------------------------- *
+ * The durable row's own half of the same decision (UX round 2, U15).
+ *
+ * Durable rows WIN over the live record with the same id, and this app
+ * reconciles a page after a turn ends - so the live classification above is
+ * overwritten within the same second unless the page's projection can read the
+ * same fact. It can: the runtime classifies WHY a call ended badly and stores
+ * `provider_payload.details.__fault` with the result (`harness/types.py`'s
+ * `FAULT_KEY`; `aborted` beside `execution` and the model faults), measured on
+ * the branch's rig session as `{"__fault": "aborted", "__synthetic": true}`
+ * on an Esc-killed call's stored entry. These three cases pin the mapping and
+ * the composed order the app actually takes (live event, then the page).
+ * ---------------------------------------------------------------------- */
+
+/** The durable entry for a killed call, in the shape the route stores it. */
+const durableToolEntry = (over = {}) => ({
+	id: "7944f05143004a23bd5c71d4359c509b",
+	ts: START_EPOCH + 2,
+	type: "message",
+	payload: {
+		kind: "message",
+		role: "tool",
+		content: [{ text: "aborted" }],
+		tool_call_id: "c-killed",
+		tool_name: "bash",
+		is_error: true,
+		provider_payload: {
+			details: { __fault: "aborted", __synthetic: true },
+			duration_s: 0.49940745800267905,
+		},
+		...over,
+	},
+});
+
+test("a durable row the runtime marked aborted reads stopped, not failed", () => {
+	const state = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([durableToolEntry()]),
+	);
+	const row = ranRow(state, "c-killed");
+	assert.equal(
+		row.stopped,
+		true,
+		"the runtime's own `aborted` fault is the durable half of the stop fact",
+	);
+	assert.equal(row.isError, false);
+	assert.equal(
+		row.durationS,
+		0.49940745800267905,
+		"the duration beside the marker is still the backend's own measurement",
+	);
+});
+
+test("a durable failure without the abort marker keeps its danger", () => {
+	// The override is ONE fault class, not "is_error is never trusted": an
+	// execution fault is the tool's own failure and keeps the loud ink.
+	const state = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([
+			durableToolEntry({
+				is_error: true,
+				provider_payload: { details: { __fault: "execution" } },
+			}),
+		]),
+	);
+	const row = ranRow(state, "c-killed");
+	assert.equal(row.stopped, false);
+	assert.equal(row.isError, true);
+});
+
+test("the live classification survives the reconcile that follows it", () => {
+	// THE ORDER THE APP TAKES, composed: the end event lands first (with the
+	// press's fact standing) and the page reconciles right after. Before the
+	// durable half of the fix, the second step flipped the row back to
+	// `failed` - the reading the rig reproduced on the built app.
+	let state = applyEvent(EMPTY_TRANSCRIPT, endFrame("c-killed"), ARRIVAL, {
+		userStoppedAt: STOP_PRESSED_AT,
+	});
+	assert.equal(ranRow(state, "c-killed").stopped, true);
+	state = applyHistoryPage(state, pageOf([durableToolEntry()]));
+	const row = ranRow(state, "c-killed");
+	assert.equal(
+		row.stopped,
+		true,
+		"the page must not re-accuse the stopped call",
+	);
+	assert.equal(row.isError, false);
+});
+
+/* ---------------------------------------------------------------------- *
  * The write/edit diff body.
  *
  * `details = {path, added, removed, diff}` is the producer's own payload

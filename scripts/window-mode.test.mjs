@@ -1746,7 +1746,19 @@ test("no file but window-raise.ts raises or focuses a window", () => {
 	 * allow-list is one line, and anything else that raises a window has to go
 	 * through `window-raise.ts`.
 	 */
-	const RAISE_PATTERN = /\.(show|showInactive|focus)\(\)/;
+	/*
+	 * `maximize` IS IN THE SAME FAMILY, and it is not an obvious member: it reads as a
+	 * geometry call. Electron's own documentation settles it - `win.maximize()` "will
+	 * also show (but not focus) the window if it isn't shown already" - so a
+	 * `headless` run that reached for it would put a window on the operator's screen,
+	 * which is the exact outcome this whole file exists to prevent. The chrome work
+	 * needs to KNOW whether a window is maximized (`isMaximized()`, a read, allowed)
+	 * and must never ask for it, so the pattern is widened here rather than left to a
+	 * reviewer's memory. `restore()` is deliberately NOT in the pattern: it is a
+	 * `window-raise.ts` call for a MINIMIZED window and it is not a way to show a
+	 * hidden one.
+	 */
+	const RAISE_PATTERN = /\.(show|showInactive|focus|maximize)\(\)/;
 	const ALLOWED = /notification\.show\(\)/;
 	const offSite = [];
 	const scanned = [];

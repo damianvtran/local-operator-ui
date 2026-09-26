@@ -3,6 +3,399 @@
 @import "./themes.generated.css";
 
 /*
+ * ============================================================================
+ * WINDOW CHROME
+ * ============================================================================
+ *
+ * There is NO window-wide title bar on any platform. The top 40px of every column
+ * is already a toolbar row - the sidebar's brand row, the conversation title, each
+ * pane's toolbar - and that row IS the chrome. The OS's own controls take a CORNER
+ * of it (macOS: AppKit's traffic lights, which Electron leaves over the renderer)
+ * or the whole trailing end of its first row (Windows and Linux: Electron's WCO
+ * caption buttons, which the overlay enables and which are drawn into the client
+ * area), and the column that owns that corner reserves it.
+ *
+ * EVERY RULE HERE IS GATED ON `data-chrome-mode`, `data-chrome-platform`,
+ * `data-chrome-leading`, `data-chrome-trailing` and `data-chrome-fullscreen`, which
+ * `main.tsx` writes onto the DOCUMENT ELEMENT before the first render from main's
+ * own fact (`--lo-window-chrome`) and which `useWindowChrome` keeps current. Two
+ * reasons the root element rather than the shell div, and both were defects under
+ * the previous `data-titlebar-platform`-on-the-shell spelling: the attribute rules
+ * could not reach a PORTALED element (the sidebar's overlay sheet is portaled to
+ * `body`, and had to re-read `navigator.platform` for itself), and `App` could not
+ * know the chrome MODE at all - it only knew the OS - so the native-frame fallback
+ * had no way to switch the lane and the insets off.
+ *
+ * THE THREE CUSTOM PROPERTIES ARE THE ONLY PLACE `env()` IS READ. Every component
+ * reads these instead, which is what lets a rig simulate any platform's geometry on
+ * a mac host by overriding them on `:root` (a mac host has no WCO rect to measure).
+ * `data-chrome-mode="native"` leaves all three at 0, so the app lays out exactly as
+ * it did before this work.
+ */
+:root {
+	/* The fallback for a document main did not create a renderer for, and for
+	   `data-chrome-mode="native"`. A lane drawn under a native title bar is 32px of
+	   nothing, so the default is the safe direction. */
+	--chrome-strip-h: 0px;
+	--chrome-inset-start: 0px;
+	--chrome-inset-end: 0px;
+}
+
+/*
+ * WINDOWS IS 0 AND LINUX IS ONLY SOMETIMES NOT, which is the part that looks like a
+ * mistake. `env(titlebar-area-height)` is 40 on BOTH platforms - it is the height of
+ * the WCO area, not a band above the content - so applying it as a top inset on
+ * Windows would push every page's first row 40px down, away from the buttons the
+ * user expects to sit level with it. On Windows the controls are always trailing,
+ * so the reservation is `--chrome-inset-end` and the strip stays 0. On Linux the
+ * buttons are the WM's to place: trailing (GNOME, KDE by default) gives the same
+ * answer as Windows, while a LEADING layout overhangs the sidebar's own column and
+ * needs a lane of the buttons' height, which is where the env value belongs.
+ *
+ * `data-chrome-leading`/`-trailing` exist because CSS cannot branch on "is this
+ * length greater than zero". `useWindowChrome` derives both from the live WCO rect.
+ */
+[data-chrome-mode="integrated"][data-chrome-leading="true"] {
+	--chrome-strip-h: env(titlebar-area-height, 0px);
+	--chrome-inset-start: env(titlebar-area-x, 0px);
+}
+
+[data-chrome-mode="integrated"][data-chrome-trailing="true"] {
+	/*
+	 * The buttons' width, from the other side of the WCO rect: the rect's own width
+	 * is the area LEFT of the buttons when they trail. `max(0px, ...)` because a
+	 * leading layout reports a rect that already starts at 0 and the subtraction
+	 * would otherwise go negative.
+	 */
+	--chrome-inset-end: max(
+		0px,
+		calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw))
+	);
+}
+
+/*
+ * macOS: the lane is a CONSTANT rather than an env() value, because macOS
+ * deliberately does not enable WCO (it would add no pixels, and it would hand the
+ * renderer a geometry main already reproduces from its own full-screen events).
+ *
+ * 32 is derived from the OS frame rather than chosen - the lights' hit frames are
+ * 16px tall at y 8, so 8 above + 16 + one 8px step below - and a `screencapture -l`
+ * window capture reads the drawn circles at centre 16.00. The derivation and the
+ * instrument note are on `src/main/titlebar-options.ts`, beside the
+ * `trafficLightPosition` decision they explain.
+ *
+ * The 80px start inset is the BANNER's, not the columns'. #462 derived it as "one
+ * 8px step past the zoom button's hit frame (x 70)" for a rail whose first row sat
+ * BESIDE the lights; this shell puts the lane above every column instead, so no
+ * column's first row is beside them and the inset's only consumer left is a banner,
+ * which is a first child of the shell and therefore paints under the lights.
+ */
+[data-chrome-mode="integrated"][data-chrome-platform="mac"] {
+	--chrome-strip-h: 32px;
+	--chrome-inset-start: 80px;
+	--chrome-inset-end: 0px;
+}
+
+/*
+ * Full screen: the lane collapses to 0 and both insets fall with it. Driven by
+ * main's `enter-full-screen`/`leave-full-screen`, because full screen is not
+ * something the renderer can observe - on macOS the lights come back on the
+ * slide-down title bar, and on Linux the WCO rect goes empty and Blink REMOVES the
+ * four `titlebar-area-*` env vars, so the fallbacks above already resolve to 0.
+ */
+[data-chrome-mode="integrated"][data-chrome-fullscreen="true"] {
+	--chrome-strip-h: 0px;
+	--chrome-inset-start: 0px;
+	--chrome-inset-end: 0px;
+}
+
+/*
+ * THE DRAG VOCABULARY IS #477's, UNCHANGED, AND ITS GATE IS THE ONLY THING THAT
+ * MOVED. `data-titlebar-drag` on an empty surface, with interactive descendants
+ * opting back out so clicks still land; the no-drag list is kept byte-identical
+ * because it was derived rather than guessed (a button inside a drag region is not
+ * clickable, and the list is every control type the app actually renders in a
+ * header). What changed is the gate: `[data-titlebar-platform="mac"]` became
+ * `[data-chrome-mode="integrated"]`, so Windows and Linux get the drag surfaces too
+ * - without which a frameless window has no way to be moved at all except by its
+ * OS-drawn edges.
+ *
+ * NO CUSTOM CONTEXT MENU ON ANY DRAG SURFACE. Right-click on a drag region raises
+ * the system menu on Windows and Linux, which is the behaviour a frameless window
+ * needs (it is where Alt+Space's menu and Move/Size live); preventing it to draw our
+ * own would take that away. The docs say the same thing, and
+ * `scripts/titlebar-options.test.mjs` scans for an `onContextMenu` in any file that
+ * renders a drag region.
+ */
+[data-chrome-mode="integrated"] [data-titlebar-drag] {
+	-webkit-app-region: drag;
+}
+
+[data-chrome-mode="integrated"]
+	[data-titlebar-drag]
+	:is(
+		button,
+		a,
+		input,
+		textarea,
+		select,
+		[role="button"],
+		[role="menuitem"],
+		[contenteditable="true"],
+		[data-titlebar-no-drag]
+	) {
+	-webkit-app-region: no-drag;
+}
+
+/*
+ * THE LANE IS INVISIBLE WHERE THE OS IS NOT DRAWING OVER THE APP, and it has to be
+ * invisible rather than unrendered: `chat-layout.tsx` renders it once for every
+ * platform so the drag vocabulary, the inset and the two first rows' alignment are
+ * all decided in one place. On macOS it is always up; on Linux it exists only when
+ * the WM puts the buttons leading, which is the one case where they overhang the
+ * sidebar's own column.
+ *
+ * It is `display: none` rather than `height: 0` so it is out of the flow entirely: a
+ * zero-height drag region still swallows a press along the window's top edge, which
+ * on Windows is where the OS frame lives.
+ */
+[data-titlebar-lane] {
+	display: none;
+}
+
+[data-chrome-mode="integrated"][data-chrome-platform="mac"]
+	[data-titlebar-lane],
+[data-chrome-mode="integrated"][data-chrome-leading="true"]
+	[data-titlebar-lane] {
+	display: block;
+	height: var(--chrome-strip-h);
+}
+
+/*
+ * THE TRAILING RESERVATION, AS ONE UTILITY.
+ *
+ * It is a SPACER at the end of a 40px row's first line rather than padding on the
+ * row, and that is load-bearing at narrow widths: below 620px the chat header's
+ * action cluster drops to a SECOND line, which sits below the controls and needs no
+ * reservation at all. Padding on the row would waste the buttons' width on line 2.
+ *
+ * Exactly one element wears it at a time - the chat header when no pane is open, the
+ * open pane's toolbar otherwise - because the right slot is exclusive in the store
+ * (`claimRightSlot`), so the two never both need it and neither has to know which
+ * case it is in.
+ */
+@utility chrome-reserve-trailing {
+	width: var(--chrome-inset-end);
+	flex: none;
+}
+
+/*
+ * THE NON-CHAT ROUTES' DRAG BAND. Settings, agents, agent hub and schedules have no
+ * 40px toolbar row of their own, so on a platform where the app hides the frame they
+ * would have no drag surface at all above the page's own top padding. The band is
+ * `--chrome-strip-h` tall, which is 0 on Windows and Linux (their buttons sit IN the
+ * first row, so the band has nothing to clear) and 32 on macOS.
+ */
+[data-chrome-mode="integrated"] [data-chrome-route-band] {
+	display: block;
+	height: var(--chrome-strip-h);
+	-webkit-app-region: drag;
+}
+
+/*
+ * On Windows and Linux the band is the CAPTION HEIGHT rather than the strip, for the
+ * same reason the strip is 0 there: the buttons are drawn INTO the client area's
+ * top 40px, so a route with no 40px row of its own needs a band where they sit - both
+ * to keep the page's own heading clear of them and because a frameless window with
+ * no drag surface cannot be moved at all. `env(titlebar-area-height)` is that 40, and
+ * on Linux a leading layout resolves the same value the strip already has.
+ */
+[data-chrome-mode="integrated"][data-chrome-platform="win"]
+	[data-chrome-route-band],
+[data-chrome-mode="integrated"][data-chrome-platform="linux"]
+	[data-chrome-route-band] {
+	height: env(titlebar-area-height, 0px);
+}
+
+/*
+ * BANNERS, AT BOTH ENDS. A banner is a first child of the shell and is therefore
+ * the surface the controls sit over while one is up - above the lane, and above
+ * every column's first row. #462's mac-only rule generalised: the copy and its
+ * action button are inset past the controls, and the corner keeps painting `canvas`
+ * so the lights (mac) and the Linux overlay sit on the colour they were given, and
+ * Windows' transparent buttons show `canvas` rather than a warning wash.
+ *
+ * The header row BELOW keeps its trailing reservation while a banner is up even
+ * though the controls are no longer over it. That is a deliberate choice of layout
+ * stability over 138px: otherwise the cluster jumps sideways at the moment a banner
+ * appears, on top of the push-down the band's arrival already costs.
+ */
+[data-chrome-mode="integrated"] [data-titlebar-banner] {
+	padding-inline-start: max(
+		var(--chrome-banner-inset, 16px),
+		var(--chrome-inset-start)
+	);
+	padding-inline-end: max(
+		var(--chrome-banner-inset, 16px),
+		var(--chrome-inset-end)
+	);
+	background-image: linear-gradient(
+		to right,
+		var(--color-canvas) 0 var(--chrome-inset-start),
+		transparent var(--chrome-inset-start) calc(100% - var(--chrome-inset-end)),
+		var(--color-canvas) calc(100% - var(--chrome-inset-end))
+	);
+}
+
+/*
+ * THE TRANSCRIPT DISSOLVES AS IT APPROACHES THE CHAT HEADER.
+ *
+ * WHY A MASK RATHER THAN AN OVERLAY. The header's bottom rule is gone, so
+ * nothing draws a line between the bar and the rows: the separation is the
+ * transcript's own top edge fading out. A gradient overlay element would paint
+ * OVER the content - a row scrolled to the top would sit beneath it, dimmed but
+ * present, which is a scrim rather than a dissolve, and one more thing that has
+ * to be kept above the right stacking context. `mask-image` fades the content
+ * itself. The same idiom is already in the tree (`canvas-tabs.tsx`,
+ * `picker-host.tsx`).
+ *
+ * SCROLL-DRIVEN, WITH A STATIC FALLBACK. The fade should exist only while there
+ * is content scrolled under the bar, and clear completely when the oldest row
+ * is at rest against the top edge - a permanent top fade would dim the first row
+ * of every short conversation for no reason. A scroll timeline gives exactly
+ * that, and Chromium is what Electron ships, so the guarded half is the real one
+ * and it is the UNSUPPORTED path that needs naming.
+ *
+ * WHY THE LENGTH IS A REGISTERED PROPERTY AND NOT TWO GRADIENTS. Measured in
+ * the app's own engine (a private headless Chrome, at Electron 44's Blink
+ * version): a keyframe pair interpolating the gradient's first stop from `black`
+ * to `transparent` does NOT interpolate - it flips discretely at 50% of the
+ * range, so the fade would POP in at 12px of scroll instead of ramping.
+ * Animating the middle stop's position between two gradients is discrete for the
+ * same reason (that is `mask-image` to `mask-image`, which the engine does not
+ * blend). Animating a registered `<length>` that the gradient reads measures
+ * linear at every pixel of the range, which is what makes the fade track the
+ * scroll at all, so the length is the animated thing and the gradient is static.
+ *
+ * WHAT THIS DELIBERATELY DOES NOT DO. The bottom edge is untouched: the composer
+ * band is a separate element, and the transcript's own bottom anchor is
+ * load-bearing for autoscroll. The element keeps `role="log"`, its
+ * `scrollbar-gutter` and its `flex-col-reverse`, and a mask changes neither the
+ * box's size nor its layout, so the reserved gutter stays reserved and the
+ * centring that gutter exists to fix is unaffected. The mask does apply to the
+ * element's whole painted output, scrollbar included - at full fade the top 24px
+ * of the scrollbar's own track softens with the content, which is the same
+ * treatment `canvas-tabs.tsx` gives its edge and is not a clipped or shortened
+ * scrollbar - and it applies to the FLOATING CONTROLS too: the quote and link
+ * toolkits are painted inside this container (`use-floating-control.ts` clamps
+ * them to this element's box), so a toolbar the clamp places in the top 24px is
+ * dissolved with the row behind it. That is reachable (a highlight whose first
+ * line sits 40-64px below the pane's top gets its 32px toolbar clamped to the
+ * pane's top edge) and it is recorded here rather than fixed here: the floor
+ * that would prevent it has to move the control in the states where this fade is
+ * 0px - a transcript that does not overflow, and the oldest end - and the fade's
+ * value is a paint-time quantity no layout hook can read. The fix that would be
+ * exact is to place the control outside the masked element, which is a change to
+ * the quote anchor's coordinate space and belongs in its own change.
+ *
+ * REDUCED MOTION: checked, and deliberately unchanged. This is a scroll-LINKED
+ * paint, not a timed animation - the mask's value IS the scroll position - so
+ * the duration cap has nothing to cap, and suppressing it would freeze the fade
+ * at whatever offset the reader happened to be at. It never plays on its own and
+ * never leaves an element on a `from` keyframe, which is the failure the cap
+ * exists to prevent. A masked header that clears on scroll can read as motion to
+ * some readers, which is why the ramp is 24px of a scroll the reader is already
+ * driving rather than anything of its own.
+ */
+@property --lo-transcript-top-fade {
+	syntax: "<length>";
+	inherits: false;
+	initial-value: 0px;
+}
+
+[data-lo-canonical-transcript] {
+	--lo-transcript-top-fade: 0px;
+	/*
+	 * Two stops at one position is a hard edge at 0px, i.e. no fade at all. That is
+	 * the value this element carries whenever the animation does not apply - a
+	 * transcript that does not overflow has an INACTIVE timeline, so no keyframe is
+	 * ever sampled and a conversation shorter than the pane is never dimmed at any
+	 * offset - and it is the value the ramp arrives at at the oldest end.
+	 */
+	mask-image: linear-gradient(
+		to bottom,
+		transparent 0,
+		black var(--lo-transcript-top-fade),
+		black 100%
+	);
+}
+
+@supports (animation-timeline: scroll()) {
+	[data-lo-canonical-transcript] {
+		animation-name: transcript-top-fade;
+		animation-timing-function: linear;
+		animation-fill-mode: both;
+		/*
+		 * `self`: the mask is on the scroll container itself, so the timeline has to
+		 * come from that element's own scrollport. `linear` because the fade should
+		 * be a function of scroll distance and nothing else.
+		 *
+		 * THE RAMP IS ANCHORED AT THE OLDEST END, AND THAT IS THE WHOLE GEOMETRY.
+		 * This container is `flex-col-reverse`, so 0% of the timeline is the NEWEST
+		 * row at rest and 100% is the oldest end - `use-scroll-paging.ts` reads the
+		 * same origin when it computes `distanceFromTopPx`. The content scrolled
+		 * under the bar is therefore MAXIMAL at 0% and zero only at 100%, which is
+		 * why the ramp belongs to the last 24px and not to the first: with the range
+		 * off the tail the backwards fill holds 24px at rest and all the way up, and
+		 * the animation is spent on the only stretch where there is nothing left to
+		 * dissolve. Measured in this app's own engine (Electron 44.3.0, this
+		 * stylesheet's own text, a 1300px-scrollable transcript in a 300px pane):
+		 * 24px at every offset from rest through 480px up - the resting tail is the
+		 * state the operator's report is about and it is fully faded - and
+		 * 24/12/6/0px at 48/12/6/0px above the oldest end, i.e. exactly
+		 * `clamp(distance above the fold, 0, 24)`, with 0px at every offset of a
+		 * transcript that does not overflow. Anchoring the ramp at the TAIL instead
+		 * (`animation-range: 0 24px`) was measured on the same page and is the defect
+		 * this replaces: 0px at rest, so a resting conversation cuts its top row
+		 * under a rule-less bar. Anchoring it at the near end of the travel
+		 * (`0 calc(100% - 24px)`, 24px -> 0px) was measured too and does not hold the
+		 * fade while content remains above the fold - 23.6px at 24px from rest and
+		 * 15px halfway up, so a row cut at the top of a half-scrolled conversation
+		 * would be faded to two thirds.
+		 */
+		animation-timeline: scroll(self);
+		animation-range: calc(100% - 24px) 100%;
+	}
+
+	@keyframes transcript-top-fade {
+		from {
+			--lo-transcript-top-fade: 24px;
+		}
+		to {
+			--lo-transcript-top-fade: 0px;
+		}
+	}
+}
+
+/*
+ * The path for an engine with no scroll timeline: the same 24px fade, always on.
+ * It is a separate branch rather than a second unconditional rule so the choice
+ * is made by what the engine supports rather than by source order, and it is the
+ * safe direction - a fade that is always there rather than a hard cut that is
+ * never softened.
+ */
+@supports not (animation-timeline: scroll()) {
+	[data-lo-canonical-transcript] {
+		mask-image: linear-gradient(
+			to bottom,
+			transparent 0,
+			black 24px,
+			black 100%
+		);
+	}
+}
+
+/*
  * The single token source for everything already ported to Tailwind.
  *
  * Colour comes in as `var(--lo-*)`, defined per theme in themes.generated.css

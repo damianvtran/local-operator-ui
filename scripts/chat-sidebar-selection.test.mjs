@@ -431,26 +431,6 @@ const CURRENT = [
 		ground: true,
 	},
 	{
-		what: "the All chats filter",
-		file: SIDEBAR,
-		expression: () => expressionBefore(SIDEBAR, ">All chats</span>"),
-		stubs: { revealArmed: true, rowStyle, rowCurrent, all: true },
-		ground: true,
-	},
-	{
-		what: "the New chat row",
-		file: SIDEBAR,
-		expression: () => expressionBefore(SIDEBAR, ">New chat</span>"),
-		stubs: {
-			revealArmed: true,
-			rowStyle,
-			rowCurrent,
-			activeDraftKey: "draft-key",
-			draft: undefined,
-		},
-		ground: true,
-	},
-	{
 		what: "the entity row's wrapper",
 		file: SIDEBAR,
 		expression: () => expressionAfter(SIDEBAR, "data-entity>"),
@@ -881,15 +861,35 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// inside one, it is guarded by `!current`, and it therefore can never sit
 				// inside a current row: the guard is what keeps the selected ground from
 				// being repainted as the pointer's, which is this table's subject.
-				"hover:bg-row-hover": 8,
+				// TWELVE (the sidebar band and the view popover, 2026-09-25). Four more
+				// row-state steps arrived with the band's create menu and the two cap
+				// controls: `data-sidebar-create-agent` and `data-sidebar-create-team`
+				// (the two rows of the create popover), `data-sidebar-section-more` (the
+				// Agents and Teams lists' cap foot) and `data-sidebar-page-more` (the
+				// chats page's). None of the four can sit inside a current row, and that
+				// is a structural fact rather than a promise: three are rows of a PORTAL
+				// (the popover renders outside this panel's subtree) and the two feet are
+				// siblings of the sections, never descendants of a row. They take the ROW
+				// state rather than a ground, which is what this expectation exists to
+				// hold - a foot that answered the pointer with `elevated` would be the
+				// menu ground leaking into the list.
+				"hover:bg-row-hover": 12,
 				// `rowCurrent` (1), the ground that beats the step above by merge order.
-				"hover:bg-row-selected": 1,
+				// PLUS ONE: the band's view-options button paints `row-selected` while the
+				// view differs from the default (`viewIsCustom`) - the mode's own
+				// "selected" meaning, and the filled pill the operator's reference draws.
+				// It is a BAND control, so it is outside both regions and cannot be a
+				// current row; the `CURRENT` table could never be asked to resolve it.
+				"hover:bg-row-selected": 2,
 				// The New chat row's disabled reset: it paints NOTHING, which is why no
 				// expression has to resolve it. The bulk read receipt carries no reset of
 				// its own: it is the shared `Button` primitive now, whose disabled styling
 				// lives in that component, and its in-flight state is `aria-disabled`
-				// rather than `disabled` — so it never paints as a disabled control.
-				"hover:bg-transparent": 1,
+				// THE `disabled:hover:bg-transparent` LITERAL IS NOT HERE ANY MORE: the
+				// panel holds no disabled row since `New chat` moved to the rail's own
+				// primary rows (§C1, design round 1, D1), and the only other disabled
+				// control in the list is the mark-all-read receipt, which keeps its ring
+				// stop and refuses the click rather than painting as disabled.
 			},
 		],
 		[
@@ -1283,18 +1283,24 @@ const ROW_STATE_GROUNDS = [
 		 * why this one entry resolves a `cn(...)` rather than a literal: the rail's
 		 * class list is built from `expanded` and the two width constants.
 		 */
-		what: "the app rail (the surface that is not the row's own)",
+		what: "the one sidebar (the surface that is not the row's own)",
 		rowFile: APP_RAIL,
-		expression: () => expressionAfter(APP_RAIL, "data-tour-tag={item.tourTag}"),
-		stubs: { expanded: true, item: { isActive: true }, rowCurrent },
+		/*
+		 * THE ROW MOVED, and the anchor moved with it. It used to be the
+		 * destination's own `<button>`; since the rail and the chat list were merged
+		 * into one column the row is the `<li>` that holds it, because `Agents`
+		 * carries a disclosure button BESIDE the destination's own press - and a
+		 * button inside a button is invalid HTML no browser delivers a press to. The
+		 * state is therefore painted on the box both controls sit in, which is the
+		 * only element that can carry it for the pair.
+		 */
+		expression: () => expressionBefore(APP_RAIL, "rowState,"),
+		stubs: { expanded: true, rowState: rowCurrent },
 		ground: () =>
-			merged(
+			literalClassAt(
 				APP_RAIL,
-				expressionBefore(APP_RAIL, "group flex shrink-0 flex-col"),
-				{
-					expanded: true,
-					RAIL_WIDTH: { expanded: "w-[220px]", collapsed: "w-12" },
-				},
+				"flex h-10 shrink-0 items-center gap-1 pr-2 pl-4",
+				"before",
 			),
 		groundFile: APP_RAIL,
 	},

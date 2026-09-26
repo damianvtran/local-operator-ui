@@ -171,27 +171,37 @@ test("a draft mounts the strip inline, with the model as a label and an empty ri
 	assert.match(html, /data-lo-session-strip="true"/);
 	assert.match(html, /data-lo-session-strip-draft="true"/);
 
-	// Inline above 750px of column, where it sits immediately after the
-	// working-directory chip with the row's free space falling before the
-	// controls; first-on-its-own-line below it, by DOM position rather than by
-	// `order-first`, so the wrapped tab order matches the painted order.
+	// INLINE AT EVERY WIDTH, immediately after the working-directory chip with the
+	// row's free space falling before the controls (design round 2, D21: §G1's
+	// single 32px control row). The cluster used to take the row's first line with
+	// `basis-full` below 750px of COLUMN and give it back above, and both halves of
+	// that are gone - so what this pins is the ABSENCE of a width-conditional shape,
+	// because a reintroduced breakpoint is how the second row comes back.
 	const root = stripRootClasses(html);
-	assert.ok(root.includes("flex-wrap"), "the cluster must wrap internally");
 	assert.ok(root.includes("min-w-0"), "the cluster must be allowed to shrink");
-	assert.ok(root.includes("basis-full"));
+	assert.ok(
+		root.includes("flex-nowrap"),
+		"the cluster must never wrap internally; only the name yields",
+	);
+	assert.ok(
+		!root.includes("basis-full"),
+		"the cluster must not claim a line of its own: the control row is one line at every width",
+	);
+	assert.ok(
+		!root.some((c) => c.includes("chatcol:")),
+		"the cluster's shape must not depend on the column's width (§G1)",
+	);
 	assert.ok(
 		!root.some((c) => c.startsWith("order-first")),
-		"the cluster must take the first line by DOM position, not by `order-first`",
+		"the cluster must take its slot by DOM position, not by `order-first`",
 	);
 	assert.ok(
 		!root.some((c) => /(^|:)ml-auto$/.test(c)),
-		"the cluster carries NO auto margin at any width: the controls own the row's single one",
+		"the cluster carries NO auto margin: the controls own the row's single one",
 	);
-	assert.ok(root.includes("@min-[750px]/chatcol:order-2"));
-	assert.ok(root.includes("@min-[750px]/chatcol:basis-auto"));
 	assert.ok(
-		root.includes("@min-[750px]/chatcol:flex-nowrap"),
-		"above the threshold the cluster must not wrap: the name truncates first",
+		root.includes("order-2"),
+		"`order-2` is what puts the cluster between the chip and the controls in the paint",
 	);
 
 	// The model is a LABEL: a real button with `aria-disabled`, focusable so the
@@ -555,9 +565,20 @@ test("the pane's resolution state is wired to the strip, not merely supported by
 		"a failed resolution carries the retry, which is the only route back",
 	);
 	assert.match(composer, /draftResolution={sessionStatus\.draftResolution}/);
+	/*
+	 * The no-snapshot branch: `frontend: null` and `draft: true` (the strip is told
+	 * WHY there is no cluster), the resolution that names the state, and - since UX
+	 * round 1's U1 - `draftResolved: false`, the fact the COMPOSER's send gate reads
+	 * off the same object. Asserted as three facts rather than as one adjacency, so
+	 * a fourth field on this branch is not a test failure.
+	 */
+	assert.match(page, /frontend: null,\s*\n\s*draft: true,/);
+	assert.match(page, /draftResolved: false,/);
+	assert.match(page, /^\s*draftResolution,$/m);
 	assert.match(
 		page,
-		/frontend: null,\s*\n\s*draft: true,\s*\n\s*draftResolution,/,
+		/draftResolved: true,/,
+		"the resolved branch tells the composer the same fact the strip reads",
 	);
 });
 
@@ -683,7 +704,7 @@ test("below 750px the value readings neither truncate nor collapse, and only the
  */
 function rowChildren(composer) {
 	const rowAt = composer.indexOf(
-		'className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2',
+		'className="flex min-w-0 flex-nowrap items-center gap-x-2"',
 	);
 	assert.ok(rowAt > 0, "the row container is not where this test expects it");
 	const row = composer.slice(rowAt);
@@ -694,7 +715,7 @@ function rowChildren(composer) {
 	assert.ok(clusterAt > 0 && leftAt > 0 && controlsAt > 0);
 	assert.ok(
 		clusterAt < leftAt && leftAt < controlsAt,
-		"the cluster's DOM slot must be first, so the wrapped order and the tab order agree",
+		"the cluster's DOM slot must be first; `order-2`/`order-3` then set the painted order, and the single tab stop that leaves is UX round 2's U8 residual",
 	);
 
 	// The error boundary wraps the strip (a crash must not take the composer
@@ -753,21 +774,37 @@ test("the row right-justifies its controls whether or not the readings render", 
 		"the cluster must carry NO auto margin: two live margins share the free space and float it mid-row",
 	);
 
-	// The row itself: wrapping below the threshold is what gives the cluster its
-	// own line, and `flex-nowrap` above it is what stops a long name pushing the
-	// controls down instead of truncating.
-	assert.ok(rowClasses.includes("flex-wrap"));
-	assert.ok(rowClasses.includes("@min-[750px]/chatcol:flex-nowrap"));
+	// THE ROW ITSELF, AND THIS IS D21's PIN (design round 2): no `flex-wrap`, and no
+	// container breakpoint anywhere in its class list. The row wrapped below 750px of
+	// column, which put the readings on a line of their own and made the composer 142px
+	// tall at 800x600 against 109 at 1380 - and §G1 requires one 32px control row "at
+	// every width". `flex-nowrap` is what holds that: the row's items yield
+	// (chip truncates, model name truncates) rather than a control dropping to a second
+	// line, which is the inversion D9's measurement already rejected at one width.
+	assert.ok(rowClasses.includes("flex-nowrap"));
+	assert.ok(
+		!rowClasses.includes("flex-wrap"),
+		"the control row must never wrap: §G1's one row, at every width",
+	);
+	assert.ok(
+		!rowClasses.some((c) => c.includes("chatcol:")),
+		"the row's shape must not depend on the column's width (§G1); the composer's own 640px measure is what decides its contents",
+	);
 
-	// The cluster is the row's first line below the threshold, and the second
-	// child above it (`order-2`, with the controls last at `order-3`) - which is
-	// only coherent because the DOM slot is first.
+	// The painted order comes from the two `order-*` values and nothing else, at
+	// every width: cluster second (`order-2`), controls last (`order-3`), with the
+	// attach/chip group at their left. Both are unconditional now - the same
+	// breakpoint that decided the row's wrap used to decide these too.
 	assert.match(
 		strip,
-		/basis-full @min-\[750px\]\/chatcol:order-2/,
-		"the cluster must take the first line below 750 and follow the chip above it",
+		/"order-2 flex-nowrap"/,
+		"the cluster must be `order-2`/`flex-nowrap` and NOT `basis-full` at any width",
 	);
-	assert.ok(controlsClasses.includes("@min-[750px]/chatcol:order-3"));
+	assert.ok(controlsClasses.includes("order-3"));
+	assert.ok(
+		!controlsClasses.some((c) => c.includes("chatcol:")),
+		"the controls' order must not be conditional on the column's width",
+	);
 });
 
 /**
@@ -787,7 +824,7 @@ test("the row right-justifies its controls whether or not the readings render", 
  * whatever variant carries it.
  */
 function stripHasAutoMargin(strip) {
-	const root = strip.match(/"basis-full[^"]*"/);
+	const root = strip.match(/"order-2 flex-nowrap"/);
 	assert.ok(
 		root,
 		"the strip's root class list is not where this test expects it",
@@ -812,29 +849,40 @@ test("the inline layout is a PAIRING, and neither half works alone", () => {
 		"utf8",
 	);
 
-	const wrapper = composer.match(
-		/<div className="([^"]*@min-\[750px\]\/chatcol:contents[^"]*)">/,
-	);
+	/*
+	 * THE PAIRING IS STILL A PAIRING, and it is the same two halves with the
+	 * condition taken off them (design round 2, D21). It used to be conditional:
+	 * `display: contents` above 750px of column and a real flex item below it, with
+	 * `order-2`/`order-3` restoring the painted sequence in the dissolved case. The
+	 * row never wraps now, so the wrapper only ever dissolves - and deleting either
+	 * half still inverts the painted order while every rendering test stays green,
+	 * because the strip's own markup is unchanged. So the pairing is asserted where
+	 * it lives, and the conditionals are asserted ABSENT, which is the half that
+	 * regressed twice.
+	 */
+	const wrapper = composer.match(/<div className="([^"]*contents[^"]*)">/);
 	assert.ok(wrapper, "the button line's wrapper must exist");
-	// Below the threshold it IS a flex item and must not wrap internally: that
-	// is what makes "the second line" mean one line rather than three.
-	assert.match(wrapper[1], /\bflex\b/);
-	assert.match(wrapper[1], /\bflex-nowrap\b/);
-	assert.match(wrapper[1], /\bw-full\b/);
-	assert.match(wrapper[1], /\bmin-w-0\b/);
+	assert.equal(
+		wrapper[1].trim(),
+		"contents",
+		"the wrapper must be `display: contents` at every width: a real flex item here is the two-line row coming back",
+	);
 
 	// The other half: with the wrapper dissolved, order is what restores the
 	// painted sequence [attach][chip] [readings] [mic][send] out of a DOM whose
 	// first child is the cluster.
-	assert.match(strip, /@min-\[750px\]\/chatcol:order-2/);
-	assert.match(composer, /@min-\[750px\]\/chatcol:order-3/);
+	assert.match(strip, /"order-2 flex-nowrap"/);
+	assert.match(composer, /className="ml-auto flex order-3 items-center gap-1"/);
 
-	// And the left group holds its width above the threshold. Without this the
-	// chip's own `shrink-0` (which makes the NAME truncate first) let the group
-	// close around it, and the path painted across the readings - visible only
-	// in a frame, because `row.overflowX` reads 0 when the group fits and its
-	// child does not (code review round 2).
-	assert.match(composer, /@min-\[750px\]\/chatcol:shrink-0/);
+	// And the left group holds its width. Without this the chip's own `shrink-0`
+	// (which makes the NAME truncate first) let the group close around it, and the
+	// path painted across the readings - visible only in a frame, because
+	// `row.overflowX` reads 0 when the group fits and its child does not (code
+	// review round 2).
+	assert.match(
+		composer,
+		/className="flex min-w-0 items-center gap-1 shrink-0"/,
+	);
 });
 
 // The draft's payload reaches the STRIP and nothing else. Asserted on the

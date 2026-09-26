@@ -8,8 +8,14 @@
 
 export { AgentQuestion } from "./agent-question";
 export type { AgentQuestionProps } from "./agent-question";
-export { AskOptions } from "./ask-options";
-export type { AskOptionsProps } from "./ask-options";
+export { AskOptions, askOptionKeyIntent } from "./ask-options";
+export type { AskOptionKeyIntent, AskOptionsProps } from "./ask-options";
+export {
+	QuestionDock,
+	questionDockHint,
+	questionKeyOf,
+} from "./question-dock";
+export type { QuestionDockProps } from "./question-dock";
 export { AgentReasoning } from "./agent-reasoning";
 export type { AgentReasoningProps } from "./agent-reasoning";
 export { DiffBlock } from "./diff-block";

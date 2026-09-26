@@ -578,7 +578,7 @@ const main = async () => {
 		 * `max(documentElement.scrollHeight, body.scrollHeight, declared)` before
 		 * it opens the shutter, and this surface's page height is driven by the
 		 * caption column beside the sidebar - so a story declared at 1120 is shot
-		 * at 1573, where the `max-h-[45%]` list panel is a bigger share of a bigger
+		 * at 1573, where the list panel's share of the panel is a bigger share of a bigger
 		 * number and the scroll container has a different amount of room. Measuring
 		 * at the declared height would report numbers about a layout the frame does
 		 * not show, which is the one thing a geometry rig may not do.

@@ -602,9 +602,18 @@ test("the archived state is a pill badge with its own restore control beside it"
 });
 
 test("the header's menu is the session's actions, and its delete only ASKS", () => {
+	/*
+	 * THE SLICE STARTS AT THE TRIGGER rather than at the condition that gates it.
+	 * It used to read `between(HEADER, "(archiveEnabled || deleteEnabled) && (", …)`,
+	 * and the condition is now a multi-line expression (the menu also carries the
+	 * right-slot actions, so five hosts can open it), which no single-line anchor
+	 * matches. Starting at the trigger is also the tighter read: the thing this test
+	 * is about is the menu, and an anchor on the trigger cannot be satisfied by
+	 * prose about the gate.
+	 */
 	const menu = between(
 		HEADER,
-		"(archiveEnabled || deleteEnabled) && (",
+		"<DropdownMenuTrigger asChild>",
 		"<RunDetailsTrigger",
 	);
 	// Fail-closed and whole: with neither capability there is no trigger at all,

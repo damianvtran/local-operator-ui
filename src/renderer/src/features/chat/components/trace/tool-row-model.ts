@@ -451,22 +451,62 @@ export function toolCategory(toolName: string): ToolCategory {
 }
 
 /**
- * The shared name column's floor and ceiling, in characters.
+ * The VERB a ledger row opens with, in the user's terms (chat redesign §E1;
+ * design round 1, D5).
  *
- * `TOOL_NAME_COL = 8` and `TOOL_NAME_COL_MAX = 24` (transcript.py:242-243).
- * The column is shared across every visible row so names stack into one edge
- * and the summaries beside them start on one rail; it GROWS to the longest
- * visible name rather than being fixed, because a transcript of `read`/`edit`
- * calls should not pay 24 characters of gutter for a tool it never called.
+ * The row used to print the tool's WIRE NAME in its first column - `read`,
+ * `web_search`, `bash` - in a fixed-width column shared by every row, so a
+ * snake_case identifier sat in the sans face looking like code in the wrong
+ * font, and a short name left a hole before the object. §E1's row is a
+ * sentence: `Ran pnpm vitest run`, `Read src/chat.tsx`, `Searched the web
+ * sidebar sections` - the verb in sans, the object in mono right after it.
+ *
+ * `settled` is the past tense a finished row prints (failed rows too: "Ran",
+ * with `failed` on the trailing edge, reads as what happened); `running` is the
+ * present participle a live row prints. The glyph beside the verb still carries
+ * the tool's identity (`tool-glyphs.ts`), so the verb can be plain English.
+ *
+ * `named` is false for a tool this table does not know - an MCP call, or a
+ * builtin added after this table - where a generic verb (`Called`) says
+ * nothing about WHICH call it was, so the row keeps the tool's display name as
+ * the head of its object (`Called create_issue title=...`) rather than losing
+ * the identity the old column carried.
  */
-export const TOOL_NAME_COL_MIN = 8;
-export const TOOL_NAME_COL_MAX = 24;
+export type ToolVerb = { settled: string; running: string; named: boolean };
 
-/** The shared column width for a set of visible tool names. */
-export function toolNameColumn(names: readonly string[]): number {
-	let longest = 0;
-	for (const name of names) longest = Math.max(longest, name.length);
-	return Math.min(TOOL_NAME_COL_MAX, Math.max(TOOL_NAME_COL_MIN, longest));
+const TOOL_VERBS: Record<string, Omit<ToolVerb, "named">> = {
+	bash: { settled: "Ran", running: "Running" },
+	eval: { settled: "Ran Python", running: "Running Python" },
+	read: { settled: "Read", running: "Reading" },
+	write: { settled: "Wrote", running: "Writing" },
+	edit: { settled: "Edited", running: "Editing" },
+	glob: { settled: "Listed", running: "Listing" },
+	grep: { settled: "Searched", running: "Searching" },
+	web_search: { settled: "Searched the web", running: "Searching the web" },
+	web_fetch: { settled: "Fetched", running: "Fetching" },
+	browser: { settled: "Browsed", running: "Browsing" },
+	todo: { settled: "Updated todos", running: "Updating todos" },
+	wake: { settled: "Scheduled", running: "Scheduling" },
+	list_variables: { settled: "Listed variables", running: "Listing variables" },
+	read_variable: { settled: "Read variable", running: "Reading variable" },
+	task: { settled: "Delegated", running: "Delegating" },
+	agent: { settled: "Delegated", running: "Delegating" },
+	team: { settled: "Delegated", running: "Delegating" },
+	ask: { settled: "Asked", running: "Asking" },
+	send: { settled: "Sent", running: "Sending" },
+	hub: { settled: "Messaged", running: "Messaging" },
+	peer: { settled: "Received", running: "Receiving" },
+};
+
+/**
+ * The verb for a tool name. Case-insensitive for the reason `toolIcon` is: the
+ * name is model-controlled, and a provider that echoes `Bash` must not fall to
+ * the generic verb.
+ */
+export function toolVerb(toolName: string): ToolVerb {
+	const known = TOOL_VERBS[toolName.trim().toLowerCase()];
+	if (known) return { ...known, named: true };
+	return { settled: "Called", running: "Calling", named: false };
 }
 
 /* ----------------------------------------------------------- diff body */

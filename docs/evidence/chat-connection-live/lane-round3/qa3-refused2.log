@@ -1,0 +1,50 @@
+[build] current: assets 2026-09-26T04:09:30.859Z >= sources 2026-09-26T03:55:25.176Z
+[note] abandoned scratch trees
+        11 seen, 0 owned by a live pid (kept), 11 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:18943
+  serve records 1 linked from /Users/damian/.local-operator/sessions/bc33f0520d46/scratchpad/qa3/daemon1/config/run/serve   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/chat-redesign
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-66827
+  frames        /Users/damian/.local-operator/sessions/bc33f0520d46/scratchpad/qa3/frames/qa3-refused
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-66827/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:18943   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/chat-redesign/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:18943","backend":"http://127.0.0.1:18943"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:18943)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] qa3-refused: the window is headless and is never shown or focused
+[PASS] qa3-refused: the credential-refused state is on screen
+[note] qa3-refused: the state
+        {"bands":[{"x":260,"y":72,"w":1120,"h":61}],"retries":[{"label":"Retry","disabled":false,"box":{"x":1263,"y":88,"w":49,"h":28}},{"label":"Retry","disabled":false,"box":{"x":758,"y":840,"w":42,"h":24}}],"bandRetries":[{"label":"Retry","disabled":false,"box":{"x":1263,"y":88,"w":49,"h":28}}],"regions":[{"role":"alert","text":"The running server refused this app's credential, so sign-in, settings and slash commands are unavailable.A local daemon may still be running, but could not be attached. Waiting without starting a dup"}],"caption":null}
+[PASS] qa3-refused: ONE band states the refusal (D29's fix — the banner yields to the strip)
+[PASS] qa3-refused: exactly ONE enabled Retry control inside the band (D29)
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+[PASS] no process from this run outlived its boot
+
+frames: qa3-refused.png
+frames directory: /Users/damian/.local-operator/sessions/bc33f0520d46/scratchpad/qa3/frames/qa3-refused
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-66827/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-66827 (the frames are also in --out)
+
+ALL CHECKS PASSED
+rc=0

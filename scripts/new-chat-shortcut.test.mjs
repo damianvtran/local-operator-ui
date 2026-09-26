@@ -226,6 +226,19 @@ const sidebar = readFileSync(
 	join(ROOT, "src/renderer/src/features/chat/components/chat-sidebar.tsx"),
 	"utf8",
 );
+/*
+ * The New chat row moved to the sidebar's own column with §C1 (design round 1,
+ * D1): it is one of the two PRIMARY rows now, above the destinations, and the
+ * list beside it is the one it stages a draft into. The chord's binding is still
+ * `app.tsx`'s, so this file reads both files for the same pair of facts.
+ */
+const nav = readFileSync(
+	join(
+		ROOT,
+		"src/renderer/src/shared/components/navigation/sidebar-navigation.tsx",
+	),
+	"utf8",
+);
 const canvas = readFileSync(
 	join(ROOT, "src/renderer/src/features/chat/components/canvas/index.tsx"),
 	"utf8",
@@ -323,18 +336,28 @@ ${listener}`,
 });
 
 test("the New chat row prints the cap from the same module the binding reads", () => {
-	const labelAt = sidebar.indexOf(">New chat</span>");
-	assert.ok(labelAt > 0, "the row's label is what anchors this pin");
-	const buttonAt = sidebar.lastIndexOf("<button", labelAt);
-	const button = sidebar.slice(buttonAt, sidebar.indexOf("</button>", labelAt));
+	const at = nav.indexOf("primaryRow(\n\t\tMessageSquarePlus,");
+	assert.ok(at > 0, "the New chat row's call site is what anchors this pin");
+	const call = nav.slice(at, nav.indexOf("\n\t);", at));
 	assert.ok(
-		button.includes("<KeyboardShortcut") &&
-			button.includes("newChatShortcutCap(isMac)"),
-		`the row must render the cap the chord is, from the one module that spells it:\n${button}`,
+		call.includes("newChatShortcutCap(isMac)"),
+		`the row must render the cap the chord is, from the one module that spells it:\n${call}`,
+	);
+	const helper = nav.slice(
+		nav.indexOf("const primaryRow = ("),
+		nav.indexOf("const newChatRow ="),
 	);
 	assert.ok(
-		button.includes('className="flex-1 text-left"'),
-		"the label's flex-1 is what holds the cap in the trailing column, where the All chats row holds its count",
+		helper.includes("<KeyboardShortcut shortcut={caps} joined />"),
+		"the cap is drawn from the chord string the row passes, in the joined spelling (§C1, N1)",
+	);
+	assert.ok(
+		helper.includes("ml-auto"),
+		"the cap is held in the trailing column by the label's own flex, where the rows beside it hold theirs",
+	);
+	assert.ok(
+		nav.includes('newChatShortcutCap(isMac).replace("+", "")'),
+		"the accessible name spells the chord as one chord too, or the row announces `+` the row does not draw",
 	);
 });
 

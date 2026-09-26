@@ -10,8 +10,10 @@ import {
 	Input,
 	Tooltip,
 } from "@shared/components/ui";
+import { useHomeDirectory } from "@shared/hooks";
 import { cn } from "@shared/lib/utils";
 import { useRecentDirectoriesStore } from "@shared/store/recent-directories-store";
+import { formatDirectory as formatDirectoryWithHome } from "@shared/utils/path-utils";
 import type { LucideIcon } from "lucide-react";
 import {
 	Archive,
@@ -217,8 +219,9 @@ const RECENT_PATH_TRUNCATES_AT = 42;
  *
  * ONE threshold, one meaning. 620px is where the composer can afford the LABEL
  * (`CHIP_LABEL`); 900px is where it can afford this cap's 16 characters. That
- * second number is not a guess: the readings cluster sits inline from 750px and
- * its own comment measures the slack at exactly 750 as 56px for the model
+ * second number is not a guess: the readings cluster sits inline from 750px
+ * (`CHAT_ROW_INLINE_PX`, the composer row's own measurement) and its own comment
+ * measures the slack at exactly 750 as 56px for the model
  * reading, so the wider cap is held back until the row clearly has more room
  * than the label alone needed - where the design round that asked for it was
  * measuring, and where these frames are swept. Below 900px the chip keeps the
@@ -502,7 +505,13 @@ export const DirectoryIndicator = forwardRef<
 	const [isEditing, setIsEditing] = useState(false);
 	const [directory, setDirectory] = useState(currentWorkingDirectory || "");
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
-	const [homeDirectory, setHomeDirectory] = useState<string | null>(null); // State for home directory
+	/*
+	 * The home directory, shared rather than fetched here. The chat header's
+	 * identity row prints the same fact through the same `~` rule, so the value
+	 * comes from the process-wide `useHomeDirectory` instead of this component
+	 * making its own `getHomeDirectory` round trip for it.
+	 */
+	const homeDirectory = useHomeDirectory();
 	/**
 	 * The last committed path that does not name a directory on disk, or null.
 	 *
@@ -537,19 +546,6 @@ export const DirectoryIndicator = forwardRef<
 	/** Ties the read-only chip to the sentence explaining why it is read-only. */
 	const reasonId = useId();
 	const editable = Boolean(writePath);
-
-	// Fetch home directory on mount
-	useEffect(() => {
-		const fetchHomeDir = async () => {
-			try {
-				const homeDir = await window.api.getHomeDirectory();
-				setHomeDirectory(homeDir);
-			} catch (error) {
-				console.error("Failed to fetch home directory:", error);
-			}
-		};
-		fetchHomeDir();
-	}, []);
 
 	useEffect(() => {
 		setDirectory(currentWorkingDirectory || "");
@@ -801,32 +797,14 @@ export const DirectoryIndicator = forwardRef<
 		[handleSelectDirectory, handleCloseMenu],
 	);
 
-	// Updated formatDirectory to use fetched home directory
+	/*
+	 * The `~` rule lives in `path-utils.ts` and is shared with the chat header's
+	 * identity row, which prints the same path a few pixels above this chip: a
+	 * second implementation here is exactly the drift hoisting it exists to
+	 * prevent. This closure only binds the home directory this component holds.
+	 */
 	const formatDirectory = useCallback(
-		(dir: string) => {
-			if (homeDirectory && dir.startsWith(homeDirectory)) {
-				// Ensure consistent path separators (especially for Windows)
-				const relativePath = dir.substring(homeDirectory.length);
-				// Add separator if needed, handle both '/' and '\'
-				if (
-					relativePath.startsWith("/") ||
-					relativePath.startsWith("\\") ||
-					relativePath === ""
-				) {
-					return `~${relativePath.replace(/\\/g, "/")}`;
-				}
-				return `~/${relativePath.replace(/\\/g, "/")}`;
-			}
-			// Handle the case where the path is exactly the home directory
-			if (homeDirectory && dir === homeDirectory) {
-				return "~";
-			}
-			// Handle explicit '~' path from default directories
-			if (dir === "~") {
-				return "~";
-			}
-			return dir.replace(/\\/g, "/"); // Always use forward slashes for display
-		},
+		(dir: string) => formatDirectoryWithHome(dir, homeDirectory),
 		[homeDirectory],
 	);
 

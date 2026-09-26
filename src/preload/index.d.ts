@@ -13,6 +13,11 @@ import type {
 	ProbedFile,
 	ReadFileBytesResponse,
 } from "../shared/desktop-contract";
+import type {
+	WindowChromeColors,
+	WindowChromeFacts,
+	WindowChromeState,
+} from "../shared/window-chrome";
 import type { DevDriverBridge } from "./dev-driver";
 
 // Matching same type in `src/main/index.ts`
@@ -43,6 +48,24 @@ declare global {
 			 * that is not an app window (see `src/main/telemetry-launch.ts`).
 			 */
 			telemetryEnabled: boolean;
+			/**
+			 * The window chrome, the same three calls the preload exposes.
+			 *
+			 * `facts` is a function rather than a value so the renderer reads it once, in
+			 * `main.tsx`, before React renders - the attributes it returns decide whether
+			 * every column's first row starts 32px lower, and a value read after the first
+			 * paint is a visible jump on every launch.
+			 */
+			windowChrome: {
+				facts: () => WindowChromeFacts;
+				report: (report: {
+					themeId?: string;
+					colors?: Partial<WindowChromeColors>;
+					cornerGround?: string;
+				}) => Promise<boolean>;
+				popupAppMenu: () => Promise<boolean>;
+				onState: (callback: (state: WindowChromeState) => void) => () => void;
+			};
 			desktop: DesktopAPI;
 			/**
 			 * The browser feature's chrome controls. Shapes are `unknown` because

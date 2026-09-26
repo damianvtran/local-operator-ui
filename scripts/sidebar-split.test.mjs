@@ -52,6 +52,7 @@ const splitBundle = await build({
 const {
 	autoRegionCap,
 	clampRegion,
+	DEFAULT_SIDEBAR_REGIONS,
 	dragTarget,
 	growSign,
 	hideRegion,
@@ -108,7 +109,10 @@ test("each stored region state resolves to the pair of visibilities it names", (
 
 test("the region union is exhausted by its three values", () => {
 	// The switch that does not exist: every other value is asserted to land on
-	// the one that shows everything, so a fourth state cannot arrive unnoticed.
+	// the SHIPPED default (one column, the list alone), so a fourth state cannot
+	// arrive unnoticed. The fallback moved with the default when the rail and the
+	// list were merged into one sidebar - it is the shipped shape that an
+	// unparseable stored blob resolves to, not the widest one.
 	for (const value of [
 		undefined,
 		null,
@@ -122,7 +126,7 @@ test("the region union is exhausted by its three values", () => {
 	]) {
 		assert.equal(
 			parseSidebarRegions(value),
-			"both",
+			DEFAULT_SIDEBAR_REGIONS,
 			`${JSON.stringify(value)} is not one of the three`,
 		);
 	}

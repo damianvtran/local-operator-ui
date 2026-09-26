@@ -3493,6 +3493,107 @@ export const STORIES = [
 	/* The collapse held while a query renders both regions over it. */
 	["chat-sidebar-sections--query-while-collapsed", 741, 460],
 
+	/* ------------------------------------------------------------------ *
+	 * D28: the view popover, the page ladder, the section caps, an expanded
+	 * group and the off-route voice - the surfaces design round 3 found with
+	 * no rendered frame at all, each named in that finding.
+	 *
+	 * The POPOVER frames are DRIVEN: the story's play presses the band's
+	 * `View options` button with a real pointer event - and, for the hidden
+	 * and reordered states, presses the control inside the panel the state is
+	 * about - so the frame is the panel the app draws after a gesture rather
+	 * than a prop summary. The LADDER and CAP frames are story states with the
+	 * region scrolled by this rig (`scrollToEnd`), because a scroller's
+	 * position is browser state no story can set; the readout beside each
+	 * panel prints the stored `loads`, the drawn row count and the foot's own
+	 * copy, read back from the DOM, so a frame cannot claim a rung the panel
+	 * is not on. The band's three tooltips are real pointer state - one entry
+	 * per control, hovering it - and `hoverSettleMs` is the tooltip's own open
+	 * delay, as the composer-band entries state for theirs.
+	 * ------------------------------------------------------------------ */
+	["chat-sidebar-view-menu--popover-open", 741, 760],
+	["chat-sidebar-view-menu--popover-hidden-section", 741, 760],
+	["chat-sidebar-view-menu--popover-reordered-pair", 741, 760],
+	[
+		/*
+		 * The first rung needs no scroll: the rig proved it by refusing - at ten
+		 * drawn rows the chats region does not overflow, so the foot this frame
+		 * is read for already stands in the resting view and `scrollToEnd`
+		 * failed the run by landing nothing (the guard's own message, which is
+		 * how the region's size at this rung was measured rather than guessed).
+		 */
+		"chat-sidebar-view-menu--page-ladder-ten",
+		741,
+		820,
+	],
+	[
+		"chat-sidebar-view-menu--page-ladder-twenty-five",
+		741,
+		820,
+		{ scrollToEnd: '[data-sidebar-region="chats"]' },
+	],
+	[
+		"chat-sidebar-view-menu--page-ladder-fifty",
+		741,
+		820,
+		{ scrollToEnd: '[data-sidebar-region="chats"]' },
+	],
+	[
+		/*
+		 * No scroll, same as the first ladder rung and for the same measured
+		 * reason: the entities region does not overflow at this size (the rig's
+		 * `scrollToEnd` guard refused the run by landing nothing), so the foot
+		 * this frame is read for is already in the resting view. The frame is
+		 * the region's own end by construction rather than by scroll position.
+		 */
+		"chat-sidebar-view-menu--section-cap-agents",
+		741,
+		820,
+	],
+	["chat-sidebar-view-menu--section-cap-teams", 741, 820],
+	[
+		/*
+		 * Taller than the group needs by itself so the entity region's own fold
+		 * lands clear of the Teams section: at 640 the split cut a team row in
+		 * half under the boundary (the region is a fraction of the column, so
+		 * the fix is the frame's height, not a scroll - see the ladder notes).
+		 */
+		"chat-sidebar-view-menu--expanded-agent-group",
+		741,
+		760,
+	],
+	[
+		"chat-sidebar-view-menu--band-resting",
+		741,
+		360,
+		{
+			hover: "[data-sidebar-search]",
+			hoverSettleMs: 900,
+			dir: "band-search-hover",
+		},
+	],
+	[
+		"chat-sidebar-view-menu--band-resting",
+		741,
+		360,
+		{
+			hover: "[data-sidebar-view-options]",
+			hoverSettleMs: 900,
+			dir: "band-view-hover",
+		},
+	],
+	[
+		"chat-sidebar-view-menu--band-resting",
+		741,
+		360,
+		{
+			hover: "[data-sidebar-create]",
+			hoverSettleMs: 900,
+			dir: "band-create-hover",
+		},
+	],
+	["chat-sidebar-view-menu--off-route-voice", 741, 760],
+
 	/*
 	 * The publish dialog, in every state its rewrite introduced (agent-hub
 	 * contract §6.2/§6.3): the consent copy that now says what is published, the
