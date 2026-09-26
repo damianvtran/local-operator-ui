@@ -569,15 +569,57 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # The mechanism this records, so a future reader does not have to
-      # re-derive it from a release log: which `powershell` the stager's child
-      # process is, whether `Get-FileHash` resolves inside it, and what
-      # PSModulePath that child inherited.
+      # re-derive it from a release log. The release's own chain is a pwsh step
+      # -> pnpm -> `powershell -NoProfile -ExecutionPolicy Bypass -File ...`,
+      # and the first run of this job showed the difference that needs an
+      # explanation sits INSIDE that chain: the direct child resolved
+      # `Get-FileHash` while the stager's child (line 91, the same
+      # CommandNotFoundException the release died with) did not. So the probes
+      # below walk the chain one hop at a time - direct, through cmd, through
+      # pnpm - and the probe script dumps what the child can see: the module
+      # cmdlets' availability, the exact binary it is
+      # (`[Environment]::CommandLine`), and the module-related environment it
+      # inherited.
       - name: Diagnose the PowerShell the stager runs under
         shell: pwsh
         run: |
           where.exe powershell
           Write-Output "Parent pwsh PSModulePath: $env:PSModulePath"
           powershell -NoProfile -Command '$PSVersionTable.PSVersion.ToString(); (Get-Command Get-FileHash -ErrorAction SilentlyContinue) -ne $null; "Child PSModulePath: $env:PSModulePath"'
+
+          $probeDir = Join-Path $env:RUNNER_TEMP 'ps-probe'
+          New-Item -ItemType Directory -Path $probeDir -Force | Out-Null
+          @'
+          "PSVersion: $($PSVersionTable.PSVersion)"
+          $gfh = Get-Command Get-FileHash -ErrorAction SilentlyContinue
+          "Get-FileHash found: $([bool]$gfh) source: $($gfh.Source)"
+          "Expand-Archive found: $([bool](Get-Command Expand-Archive -ErrorAction SilentlyContinue))"
+          "PSHOME: $PSHOME"
+          "CommandLine: $([Environment]::CommandLine)"
+          "LanguageMode: $($ExecutionContext.SessionState.LanguageMode)"
+          "Process PSModulePath: $env:PSModulePath"
+          "Module-related environment:"
+          Get-ChildItem env: | Where-Object { $_.Name -match '(?i)module|^ps' } | Sort-Object Name | ForEach-Object { "  $($_.Name)=$($_.Value)" }
+          '@ | Set-Content -Path (Join-Path $probeDir 'probe.ps1')
+          Set-Content -Path (Join-Path $probeDir 'package.json') -Value '{ "name": "ps-probe", "version": "0.0.0", "private": true, "scripts": { "probe": "powershell -NoProfile -ExecutionPolicy Bypass -File probe.ps1" } }'
+
+          Write-Output '=== probe variant: pwsh -> powershell -File (direct) ==='
+          powershell -NoProfile -ExecutionPolicy Bypass -File "$probeDir\probe.ps1"
+          Write-Output "direct -File exit code: $LASTEXITCODE"
+
+          Write-Output '=== probe variant: pwsh -> cmd -> powershell -File ==='
+          Push-Location $probeDir
+          cmd /d /s /c 'powershell -NoProfile -ExecutionPolicy Bypass -File probe.ps1'
+          Write-Output "cmd exit code: $LASTEXITCODE"
+          Pop-Location
+
+          Write-Output '=== probe variant: pwsh -> pnpm -> powershell -File (the release chain) ==='
+          pnpm --dir $probeDir run probe
+          Write-Output "pnpm exit code: $LASTEXITCODE"
+
+          # Diagnostics must not be what fails the job: the stager step below
+          # is the assertion.
+          exit 0
 
       # THE RELEASE COMMAND ITSELF, exactly as publish.yml runs it: no shell
       # override (the step shell is pwsh, as in the release) and the same
