@@ -115,14 +115,17 @@ test("the withdrawn-gate paragraph takes the same stand-down", () => {
 });
 
 test("the foot line and the two paragraphs read one predicate, not three", () => {
-	// The drift the comment in the component names: three sites agreeing about
-	// when the strip owns the screen. A fourth spelling, or a site that leaves
-	// the shared reading, fails here rather than on a screen.
+	// The drift the comment in the component names: the sites agreeing about
+	// when the strip owns the screen all read ONE predicate. The list caption
+	// joined them in design review round 3 (D30) - its connection half restated
+	// the strip's sentence one row away - so there are FOUR readers now, and a
+	// fifth spelling, or a site that leaves the shared reading, fails here rather
+	// than on a screen.
 	const sites = SOURCE.split(SHARED_GATE).length - 1;
 	assert.equal(
 		sites,
-		3,
-		`found ${sites} site(s) reading the shared predicate - expected the two list-pane paragraphs and the foot line`,
+		4,
+		`found ${sites} site(s) reading the shared predicate - expected the two list-pane paragraphs, the foot line and (D30) the list caption`,
 	);
 	const foot = between(
 		"{(error || profiles.error || teams.error) &&",
@@ -131,6 +134,11 @@ test("the foot line and the two paragraphs read one predicate, not three", () =>
 	assert.ok(
 		foot.includes(SHARED_GATE),
 		"the foot line reads the same predicate as the two paragraphs",
+	);
+	const caption = between("feed.available &&", "Not connected");
+	assert.ok(
+		caption.includes(SHARED_GATE),
+		"the caption reads the same predicate (D30): with the strip up it stands down, and off /chat it speaks again",
 	);
 });
 
