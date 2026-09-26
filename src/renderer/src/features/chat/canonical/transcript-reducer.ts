@@ -254,6 +254,22 @@ export type TranscriptRecord =
 			 */
 			startedAt: number | null;
 			/**
+			 * Ms epoch when the call COMPLETED, for the fold's wall-clock span.
+			 *
+			 * Stamped from the viewer's own end frame as `startedAt + durationS` —
+			 * the producer's two numbers, added in the producer's clock — rather
+			 * than this viewer's arrival instant: the seed for a call that settled
+			 * while a viewer was away replays later, and dating the completion at
+			 * that arrival would extend a run's span by however long the viewer was
+			 * gone. `null` on a running call, on an end frame that stated no
+			 * duration, and on EVERY row restored from the durable transcript: the
+			 * durable tool payload persists `duration_s` and no stamps at all, so a
+			 * run restored from history carries durations it cannot turn into a
+			 * span — which is why the fold's header renders nothing for such a run
+			 * rather than a sum dressed as a span.
+			 */
+			endedAt: number | null;
+			/**
 			 * Screenshots the call returned. This is what makes a browser-tool
 			 * capture visible: the bytes are already on the wire in
 			 * `tool_execution_end`, and until now the reducer dropped them.
@@ -1720,6 +1736,40 @@ function bounded(headline: string): string {
 	return `${(lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
 }
 
+/**
+ * The key the harness stamps on a user row it minted itself.
+ *
+ * IT IS THE PYTHON SIDE'S CONSTANT, SPELLED HERE BECAUSE THE RENDERER CANNOT IMPORT
+ * PYTHON: `RENDERED_INJECTION_KEY` in `local_operator/compaction/cutpoint.py` (the
+ * stamp is written at mint in `harness/render.py`). The marker is STRUCTURAL — a
+ * field on the row's own payload — and that is the whole reason this suppression
+ * lives here: a text list copied into TypeScript would be a second decision that
+ * could disagree with the TUI's, and the harness's continuation prompt embeds the
+ * goal text, so it is a FAMILY of strings rather than one that could be matched.
+ */
+const HARNESS_INJECTION_KEY = "harness_injected";
+
+/**
+ * Whether the harness minted this row, i.e. nobody typed it.
+ *
+ * A user row carrying the stamp is the harness's own chrome — a loop prompt, a goal
+ * continuation — and the marker's own docblock on the Python side says what that
+ * means for a surface: *"a row carrying it was never typed by a person, so no
+ * human-facing surface may paint it as their words."* This reducer is where the
+ * desktop delivers on that, for BOTH of its wire paths, because the alternative is
+ * the loop's internal prompt appearing in the transcript as the user's own message.
+ *
+ * STRICT `=== true`, AND THE ASYMMETRY IS DELIBERATE: the producer writes a JSON
+ * boolean, so anything else — an absent field, a field a newer writer renamed, a
+ * string — is read as NOT injected and the row paints as it always did. Hiding a
+ * row a person really typed is a worse failure than showing one they did not, and
+ * this is the one direction of the test that fails safe.
+ */
+const isHarnessInjected = (payload: unknown): boolean => {
+	if (!payload || typeof payload !== "object") return false;
+	return (payload as Record<string, unknown>)[HARNESS_INJECTION_KEY] === true;
+};
+
 function durableRecord(
 	entry: DesktopHistoryPage["entries"][number],
 	/**
@@ -1861,6 +1911,17 @@ function durableRecord(
 	}
 	const role = String(payload.role ?? "");
 	if (role === "user") {
+		/*
+		 * A row the harness minted is dropped, not restyled.
+		 *
+		 * The durable path needs its own check even though the live path has one:
+		 * they are different branches over different payload shapes, and a session
+		 * opened fresh (or reconciled after a reattach) reads its turns back from
+		 * these rows. Suppressing only the live one would leave the harness's prompt
+		 * in the transcript of every session that was reloaded — the every-reopen
+		 * case the marker exists for.
+		 */
+		if (isHarnessInjected(payload.provider_payload)) return null;
 		const text = messageText(payload);
 		// Harness-authored user rows (recovery notices, wake prompts) are
 		// machine voice: they render as notices rather than as the person.
@@ -1978,6 +2039,10 @@ function durableRecord(
 			// A durable row is settled by definition: it reports the duration the
 			// backend measured, never a clock of its own.
 			startedAt: null,
+			// And no completion stamp either: the durable tool payload carries
+			// `duration_s` and no times (harness `types.py`'s tool-entry
+			// provider_payload), so history rows genuinely cannot date a span.
+			endedAt: null,
 			// Durable tool rows carry image blocks in `content` exactly as user rows
 			// do — confirmed against real transcripts: 6398 tool-role blocks with
 			// keys `(attachment, mime_type)`. This is the reload half of a browser
@@ -2424,6 +2489,14 @@ export function applyEvent(
 			if (!message || typeof message.id !== "string") return state;
 			const current = state.records[state.index.get(message.id) ?? -1];
 			if (message.role === "user") {
+				/*
+				 * The live half of the harness-chrome suppression (the durable half is in
+				 * `durableRecord`, and both are needed — see its note). The message object
+				 * has carried `provider_payload` on this path all along; it was simply
+				 * unread for this role, which is why the desktop painted a loop's internal
+				 * prompt as the user's own words.
+				 */
+				if (isHarnessInjected(message.provider_payload)) return state;
 				return upsert(state, {
 					kind: "user",
 					id: message.id,
@@ -2806,6 +2879,7 @@ export function applyEvent(
 				// never-run call never gets one: nothing executed, so there is no
 				// interval to report and the blank column is the honest reading.
 				startedAt: null,
+				endedAt: null,
 				images: EMPTY_IMAGES,
 				added: 0,
 				removed: 0,
@@ -2939,6 +3013,8 @@ export function applyEvent(
 					(current?.kind === "tool" && current.startedAt !== null
 						? current.startedAt
 						: now),
+				// The call has just started, so it has no completion to report yet.
+				endedAt: null,
 				// A running row has no outcome to report yet. It keeps whatever the
 				// composing row held so a rebuild here cannot drop an array the gate
 				// is comparing — and the same for a diff, which a replayed `_start`
@@ -2982,6 +3058,7 @@ export function applyEvent(
 							isError: false,
 							durationS: null,
 							startedAt: null,
+							endedAt: null,
 							images: EMPTY_IMAGES,
 							added: 0,
 							removed: 0,
@@ -3105,6 +3182,19 @@ export function applyEvent(
 				isError: killedByUserStop ? false : claimsFailure,
 				durationS:
 					typeof event.duration_s === "number" ? event.duration_s : null,
+				/*
+				 * WHEN the call completed, kept for the fold's wall-clock span: the
+				 * producer's own start plus its own measured duration, so the span is
+				 * built from the producer's clock end to end and a frame replayed to a
+				 * late viewer cannot date a completion that never happened then. Null
+				 * when the frame states no duration or the row never carried a start —
+				 * a stamp nobody measured is exactly the `0s` claim the fold refuses.
+				 */
+				endedAt:
+					typeof event.duration_s === "number" &&
+					typeof base.startedAt === "number"
+						? base.startedAt + event.duration_s * 1000
+						: null,
 				// The call ended, so the row stops counting and reports the measured
 				// duration instead. Clearing this is what makes the ticking stop.
 				startedAt: null,

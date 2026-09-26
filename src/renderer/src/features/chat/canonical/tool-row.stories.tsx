@@ -97,6 +97,7 @@ const tool = (over: Partial<ToolRecord> & { id: string }): ToolRecord => ({
 	neverSent: false,
 	durationS: 0.4,
 	startedAt: null,
+	endedAt: null,
 	images: [],
 	added: 0,
 	removed: 0,

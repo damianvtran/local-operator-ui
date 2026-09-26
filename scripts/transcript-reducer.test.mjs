@@ -1016,6 +1016,69 @@ test("a running row with no stated start carries the clock its duration cannot",
 	const done = settled.records.find((r) => r.kind === "tool");
 	assert.equal(done.startedAt, null, "the row stops counting");
 	assert.equal(done.durationS, 60.2, "and reports what the backend measured");
+	assert.equal(
+		done.endedAt,
+		61_200,
+		"and keeps the completion the fold's span is built from",
+	);
+});
+
+test("a settled row dates its completion in the producer's own clock", () => {
+	/*
+	 * The fold's span (first start to last completion) is built from the two
+	 * stamps this asserts, and the completion is `startedAt + duration_s` — the
+	 * producer's own numbers — rather than this viewer's arrival instant: a seed
+	 * replayed to a viewer that was away would otherwise date a completion that
+	 * never happened then, stretching a run's span by however long they were
+	 * gone. The arrival below is deliberately far from the true completion so
+	 * the two cannot be confused.
+	 */
+	const started = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "c-span",
+			tool_name: "bash",
+			args: { command: "true" },
+			started_at_epoch: 5,
+		},
+		5_000,
+	);
+	const running = started.records.find((r) => r.kind === "tool");
+	assert.equal(running.startedAt, 5_000);
+	assert.equal(running.endedAt, null, "nothing completed yet");
+
+	const settled = applyEvent(
+		started,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-span",
+			tool_name: "bash",
+			result: { content: [{ type: "text", text: "ok" }], details: {} },
+			duration_s: 3,
+		},
+		999_999,
+	);
+	const done = settled.records.find((r) => r.kind === "tool");
+	assert.equal(
+		done.endedAt,
+		8_000,
+		"5s + 3s in the producer's clock, not the arriving frame's instant",
+	);
+
+	// An end frame that states no duration leaves NO completion: the fold's span
+	// renders nothing for a run it cannot date rather than a `0s` claim.
+	const quiet = applyEvent(
+		started,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-span",
+			tool_name: "bash",
+			result: { content: [] },
+		},
+		999_999,
+	);
+	assert.equal(quiet.records.find((r) => r.kind === "tool").endedAt, null);
 });
 
 /*
@@ -4391,4 +4454,114 @@ test("a frame from a new epoch is applied even though its numbering restarts", (
 	);
 	const row = state.records.find((record) => record.id === "a1");
 	assert.equal(row.text, "after the owner was replaced");
+});
+
+/* ---------------------------------------------------------------- */
+/* Harness chrome on a user row                                      */
+/* ---------------------------------------------------------------- */
+
+/*
+ * The marker the harness stamps on a row it minted itself, read on BOTH desktop
+ * paths. `provider_payload.harness_injected` is `RENDERED_INJECTION_KEY` on the
+ * Python side (`local_operator/compaction/cutpoint.py`) and its docblock states the
+ * contract: a row carrying it was never typed by a person, so no human-facing
+ * surface may paint it as their words. The desktop was the surface that did.
+ *
+ * Both branches are asserted because they are separate code paths over separate
+ * payload shapes, and a session reopened from history reads its turns through the
+ * durable one: suppressing only the live path would leave the harness's prompt in
+ * the transcript of every reloaded conversation.
+ */
+const injected = (id, text) => ({
+	...user(id, text),
+	provider_payload: { harness_injected: true },
+});
+
+const durablePage = (entry) => ({
+	entries: [entry],
+	has_more: false,
+	cursor_missing: false,
+});
+
+test("a harness-minted row is not painted as the user's words, on the live path", () => {
+	const state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "message_start",
+			message: injected("u9", "Continue toward: ship it"),
+		},
+		1,
+	);
+	assert.deepEqual(
+		state.records,
+		[],
+		"a row the harness minted is chrome, and chrome is not the person's own message",
+	);
+});
+
+test("...and on the durable path, where a reloaded session reads it back", () => {
+	const state = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		durablePage({
+			id: "u9",
+			ts: 10,
+			type: "message",
+			payload: {
+				kind: "message",
+				...injected("u9", "Continue toward: ship it"),
+			},
+		}),
+	);
+	assert.deepEqual(state.records, []);
+});
+
+test("a row a person typed is untouched, marker or no marker", () => {
+	const typed = user("u1", "hi");
+	const live = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: typed },
+		1,
+	);
+	assert.equal(live.records.length, 1);
+	assert.equal(live.records[0].text, "hi");
+	/*
+	 * AND THE MARKER'S OTHER VALUES ARE READ AS ABSENT. The producer writes a JSON
+	 * boolean, so `false`, a string and a missing field all mean "someone typed
+	 * this": the test fails safe in that direction on purpose, because hiding a row
+	 * a person really typed is a worse failure than showing one they did not.
+	 */
+	for (const marker of [false, "true", 0, null, undefined]) {
+		const each = applyEvent(
+			EMPTY_TRANSCRIPT,
+			{
+				type: "message_start",
+				message: {
+					...user("u2", "typed"),
+					provider_payload: { harness_injected: marker },
+				},
+			},
+			1,
+		);
+		assert.equal(
+			each.records.length,
+			1,
+			`harness_injected: ${String(marker)} must be read as not-injected`,
+		);
+	}
+	/*
+	 * A payload with the marker on SOMEBODY ELSE'S key is not a match either: this
+	 * is a field read, not a search of the row for the word.
+	 */
+	const elsewhere = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "message_start",
+			message: {
+				...user("u3", "typed"),
+				provider_payload: { injected_by: "harness" },
+			},
+		},
+		1,
+	);
+	assert.equal(elsewhere.records.length, 1);
 });

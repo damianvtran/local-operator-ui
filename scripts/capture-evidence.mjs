@@ -124,6 +124,14 @@ const CONSOLE_PANE_WIDTH = 796;
 const KEY_CODES = {
 	Escape: { code: "Escape", keyCode: 27 },
 	Tab: { code: "Tab", keyCode: 9 },
+	/*
+	 * The menu-walk keys the identity entries use: `ArrowDown` moves Radix's
+	 * roving focus onto the first row (the keyboard-highlight frame) and `Enter`
+	 * commits it (the busy frame's pick). Both had to exist here rather than in
+	 * a selector because a highlight is keyboard STATE, not a clickable target.
+	 */
+	ArrowDown: { code: "ArrowDown", keyCode: 40 },
+	Enter: { code: "Enter", keyCode: 13 },
 };
 
 /*
@@ -586,6 +594,39 @@ export const STORIES = [
 	["chat-trace--question-callout", 1280, 900],
 	["chat-trace--trace-states", 1280, 900],
 	["chat-trace--security-notice-states", 1280, 900],
+	/*
+	 * THE ACTION GROUP'S OWN STATES (`trace-fold.stories.tsx`), added with the
+	 * condensed-header pass (operator report, 2026-09-26: a collapsed group must
+	 * say what ran by kind AND name the call in flight). Five rows because the
+	 * states are five: live, mid-run (counts moved, one failure), finished,
+	 * restored-from-history (no stamps, so no clock), and hand-opened - the last
+	 * one PRESSED through the fold's own trigger rather than pre-opened, because
+	 * the claim is that the reader's press is the one thing that opens it. The
+	 * transitions between the states are not photographable and are pinned by
+	 * `scripts/trace-fold-behaviour.test.mjs` instead.
+	 *
+	 * The heights are TIGHT on purpose (130 for the header-only states, 210 for
+	 * the opened one): the frame is mostly ground otherwise, and the harness's
+	 * paint guard (`assertFramePaints`) refuses a frame whose pixels are 98.5%
+	 * one colour - which is what a one-line header inside the 900 default is
+	 * (measured: 99.63% on the first attempt at this very row).
+	 */
+	["chat-trace-fold--live", 1280, 130],
+	/*
+	 * The fall design round 1's D1 was found in, pinned as a state: a realistic
+	 * long command in flight, where the name is the only element that truncates
+	 * and the counts survive it. Its row is also D3(b)'s missing state.
+	 */
+	["chat-trace-fold--long-name", 1280, 130],
+	["chat-trace-fold--mid-run", 1280, 130],
+	["chat-trace-fold--finished", 1280, 130],
+	["chat-trace-fold--restored", 1280, 130],
+	[
+		"chat-trace-fold--expanded",
+		1280,
+		210,
+		{ press: '[data-fold-ids] button[aria-expanded="false"]' },
+	],
 
 	/*
 	 * A turn joined MID-STREAM, which is the one transcript surface whose evidence
@@ -852,6 +893,18 @@ export const STORIES = [
 	["chat-canonical-user-card-measure--reported-shape", 1024, 620],
 	["chat-canonical-user-card-measure--wide-attachment", 1024, 620],
 	["chat-canonical-user-card-measure--long-text-only", 1024, 620],
+	/*
+	 * THE USER MESSAGE BLOCK'S OWN SURFACE (operator report, 2026-09-26). The
+	 * block's fill IS its boundary (D10), and this row is the AFTER half of the
+	 * pair its step is judged on; the BEFORE half is the declared supplementary
+	 * set `../chat-canonical-message-surface-before/` - the same story on the
+	 * pre-change tree, its title suffixed `before` for the run so the ids land
+	 * in their own surface directory. Four themes only, chosen from the audit's
+	 * extremes rather than taste (the story's own docblock carries the picks):
+	 * the two worst steps in the fleet, one light theme the change moves at the
+	 * margin, and the widest step of all, which the change does NOT move.
+	 */
+	["chat-canonical-message-surface--user-turn", 1024, 560],
 	/* THE CITATION A SENT MESSAGE CARRIES, as the chip the composer showed before
 	   the send (operator report, 2026-09-17). Three stories at the user-card
 	   measure's own 1024x620 pane, so they read beside the rows above: the reported
@@ -1261,6 +1314,197 @@ export const STORIES = [
 	 */
 	["chat-header-cluster--console-blip", 560, 84],
 	["chat-header-cluster--console-blip-resting", 560, 84],
+	/*
+	 * THE CHAT HEADER'S IDENTITY CONTROLS (operator, 2026-09-26): the team and
+	 * the agent as two menus you can switch, plus the rename pencil the title
+	 * reveals on hover.
+	 *
+	 * The band states share the cluster's 560x84 frame so a reviewer holds them
+	 * beside those; the five menu states declare 220px instead, because the
+	 * panel hangs BELOW the 84px row and a frame at the band's own size cuts it
+	 * off - the first swing photographed the open menu's first row and clipped
+	 * the second, a picture of a menu the reader cannot check against the list.
+	 *
+	 * WHY THE PRESS AND HOVER ENTRIES. Several of the claims are about states a
+	 * resting frame cannot show: the menu that opens on a press (with the
+	 * current row marked), the pencil that only exists while the TITLE is
+	 * hovered, the assign affordance's own menu, and the four states design
+	 * round 1's D4 listed as unframed - the trigger's own hover and focus ring,
+	 * a keyboard-highlighted row, and the busy spinner mid-switch.
+	 *
+	 * THE SHUTTERS ASSERT, EXCEPT WHERE THEY WAIT. `expectPresent` is a one-shot
+	 * claim read at shutter time, not a wait: it makes a closed menu (or a lost
+	 * highlight, or a missing refusal row) FAIL the run rather than photograph
+	 * the wrong state - the verb an earlier comment got wrong (bot 7). The one
+	 * WAIT is the refused entry's, and it is the story's own `capturePending`
+	 * latch: it holds until the refusal row is in the DOM, because the retry
+	 * window between the registry's 503 and its settled row is a state the
+	 * shutter once caught (design D1 / agent review round 1's finding 2, fixed
+	 * here rather than re-read from the frame). The hover entries go through the
+	 * rig's real pointer and the focus entries through real Tab presses, so a
+	 * frame filed under `:hover` or `:focus-visible` is one the element
+	 * genuinely matched. `before` is the string this change replaces, rendered
+	 * by the same story on this tree; the declared `before-main` set is the
+	 * origin/main half, re-captured by swapping main's `chat-header.tsx` under
+	 * this story file - see that set's README and the manifest's `source`.
+	 */
+	["chat-header-identity--team-bound", 560, 84],
+	[
+		"chat-header-identity--team-bound",
+		560,
+		220,
+		{
+			press: '[data-header-identity="team"]',
+			expectPresent: '[data-header-identity-menu="team"]',
+			dir: "team-menu-open",
+		},
+	],
+	[
+		"chat-header-identity--team-bound",
+		560,
+		220,
+		{
+			press: '[data-header-identity="agent"]',
+			expectPresent: '[data-header-identity-menu="agent"]',
+			dir: "agent-menu-open",
+		},
+	],
+	/*
+	 * The trigger's own pre-click states (design D4): pointer hover and the
+	 * keyboard's focus ring, each through the input path that makes the state
+	 * real - the hover via `Input.dispatchMouseEvent` (which the rig asserts
+	 * against `:hover` before the shutter), the focus via real Tab presses,
+	 * because Blink matches `:focus-visible` for a Tab walk and not for a
+	 * programmatic `focus()`.
+	 */
+	[
+		"chat-header-identity--team-bound",
+		560,
+		84,
+		{ hover: '[data-header-identity="team"]', dir: "team-trigger-hover" },
+	],
+	[
+		"chat-header-identity--team-bound",
+		560,
+		84,
+		{ tabTo: '[data-header-identity="team"]', dir: "team-trigger-focus" },
+	],
+	/*
+	 * The pencil revealed by FOCUS rather than pointer - the reveal is
+	 * `group-focus-within` on the title block, and the claim is implicit in
+	 * `tabTo`: a selector that never takes focus fails the run.
+	 */
+	[
+		"chat-header-identity--team-bound",
+		560,
+		84,
+		{ tabTo: "[data-header-rename]", dir: "pencil-focus" },
+	],
+	/*
+	 * A keyboard-highlighted menu row: opened by pointer, then ArrowDown puts
+	 * Radix's roving focus on the first row. The claim makes a lost highlight
+	 * fail the run instead of shipping a resting menu under this name.
+	 */
+	[
+		"chat-header-identity--team-bound",
+		560,
+		220,
+		{
+			press: '[data-header-identity="team"]',
+			keys: [{ key: "ArrowDown", settleMs: 300 }],
+			expectPresent: [
+				'[data-header-identity-menu="team"]',
+				'[data-header-identity-menu="team"] [data-highlighted]',
+			],
+			dir: "team-menu-keyboard-highlight",
+		},
+	],
+	[
+		"chat-header-identity--team-bound",
+		560,
+		84,
+		{ hover: "[data-header-title]", dir: "title-hover" },
+	],
+	["chat-header-identity--no-team-no-agent", 560, 84],
+	[
+		"chat-header-identity--no-team-no-agent",
+		560,
+		220,
+		{
+			press: '[data-header-identity="team"]',
+			expectPresent: '[data-header-identity-menu="team"]',
+			dir: "assign-team-menu",
+		},
+	],
+	["chat-header-identity--agent-and-team", 560, 84],
+	["chat-header-identity--before", 560, 84],
+	/* The operator's own width: the same arrangement the screenshot showed. */
+	["chat-header-identity--wide", 1380, 84],
+	/* The menu's two honest states, from the catalogue's own answers: no teams
+	 * registered, and the registry's refusal in its own words. */
+	[
+		"chat-header-identity--team-menu-empty",
+		560,
+		220,
+		{
+			press: '[data-header-identity="team"]',
+			expectPresent: '[data-header-identity-menu="team"]',
+		},
+	],
+	[
+		"chat-header-identity--team-menu-refused",
+		560,
+		220,
+		{
+			press: '[data-header-identity="team"]',
+			/*
+			 * The settle condition, not a longer clock (design D1): the story's
+			 * latch holds `capturePending` until the refusal row is in the DOM,
+			 * and this second claim re-states the row at shutter time so a
+			 * regression fails the run rather than filing a loading row under
+			 * the refusal's name.
+			 */
+			expectPresent: [
+				'[data-header-identity-menu="team"]',
+				"[data-header-identity-error]",
+			],
+		},
+	],
+	/*
+	 * The switch IN FLIGHT (design D4's busy spinner): the story holds the
+	 * receipt for six seconds, two ArrowDowns walk the roving focus off the
+	 * current row, and Enter commits the pick. The claim is the attribute the
+	 * busy state IS - `aria-busy="true"` on the trigger - so a frame that
+	 * arrived after the receipt resolved fails rather than lying, and the
+	 * trigger's box is the docblock's claim (the spinner takes the chevron's
+	 * slot, nothing moves).
+	 */
+	[
+		"chat-header-identity--team-menu-busy",
+		560,
+		84,
+		{
+			press: '[data-header-identity="team"]',
+			keys: [
+				{ key: "ArrowDown", settleMs: 300 },
+				{ key: "ArrowDown", settleMs: 200 },
+				{ key: "Enter", settleMs: 250 },
+			],
+			expectAttribute: {
+				selector: '[data-header-identity="team"]',
+				name: "aria-busy",
+				equals: "true",
+			},
+			dir: "team-busy",
+		},
+	],
+	/*
+	 * The fold the controls accept at the operator's own title length (design
+	 * D3's boundary frame): 49 characters at the 560 band, where the identity
+	 * line sits on the clipped second line. The frame is the decision, not a
+	 * defect - the title outranks the path and the identity by construction.
+	 */
+	["chat-header-identity--narrow-fold", 560, 84],
 	/*
 	 * The strip's own arithmetic at the pane's width, and the route's strip at the
 	 * same tab count (design round 1, D1's remainder; QA round 1, Q2). The pair is
@@ -2449,6 +2693,81 @@ export const STORIES = [
 	   owes them: they are the same two stories' resting states. */
 	["chat-composer-status-row--goal-clear", 1000, 760],
 	["chat-composer-status-row--loop-chip", 1000, 1000],
+	/* THE GOAL'S LIFECYCLE (this change): the settled state, the control it grows,
+	   and the two judge states that paint nothing.
+
+	   WHY THEY ARE HERE AT ALL. The row's input gained four fields in one backend
+	   change (`goal_status`, `goal_judge`, `goal_history`, `goal_history_truncated`,
+	   typed in `src/shared/desktop-session-contract.ts`), and the state a reviewer
+	   has to judge is the SETTLED chip - the struck value, the unstruck `— done`
+	   tag and the `Dismiss` that replaces nothing. A story nobody captures is a
+	   state the sweep never renders, so the design round that signs this change off
+	   would be reading source rather than pixels; these six rows are what makes
+	   `--only=chat-composer-status-row--goal` an answer rather than an empty run.
+
+	   THE PAIRS ARE THE MEASUREMENT, which is why four of the six carry TWO bands:
+	   the active chip is the control the done one is read against (the value is the
+	   same text in both bands on purpose), `GoalWorking`'s second band is the same
+	   pixels with the word `working` only in the accessible name, and
+	   `GoalActionsRevealed`'s is the goal that fits against the 300-character one
+	   the pair's held width is what the snippet yields to. `GoalStalled`'s two bands
+	   differ by the label's ink STEP (`text-ink-muted` -> `text-ink`), which is the
+	   whole of what that state paints. A single band would be one reading with
+	   nothing to compare it to.
+
+	   THE REVEAL IS FOCUSED, NOT HOVERED, and that is this surface's own limit
+	   rather than a choice: there is no hover verb here (the deleted `goal-clear-*
+	   hovered/focused` tuples above say why), and both the gone control and the
+	   new pair reveal on `group-focus-within` as well as `group-hover`, so a
+	   programmatic focus paints the same held boxes a pointer would. What a still
+	   of it cannot carry is the distance from each control to the words it acts on
+	   (`RowFacts` prints it into the band) and the accessible name `Dismiss the
+	   finished goal — it stays in the goal history`, which no frame shows.
+
+	   THE FLOOR STORY IS 300 WIDE, not 240: `Composer`'s outer box is its band
+	   width plus the 48px of `p-6`, so the 240 band is 288px of content, and a
+	   viewport narrower than that would clip the very step the story exists for.
+	   Its two bands are the `@max-[240px]` step and the app's real 172px floor -
+	   the widths the record's § 2.4 was corrected to (design review round 1, D3) -
+	   and `overflowX === 0` is the assertion the frames carry.
+
+	   THE FRAME PASS ADDED TWO ROWS, FOR THE TWO STATES THE ROUND COULD NOT SETTLE
+	   WITHOUT ONE. `--goal-done-floor` IS design review round 1's D1 as a story: the
+	   finding could name its two remedies - the done band at 240/172, or
+	   `NARROW_HIDDEN` on the tag - but could not choose between them, because neither
+	   `goal-done` nor `goal-done-dismiss-focus` sets a width and `GoalActionsFloor`
+	   measures the ACTIVE pair only. The one state whose whole job is to say WHICH
+	   goal was settled was therefore the one state with no frame at the width where
+	   the value is cheapest to lose. Its two bands are that story's own two widths
+	   and the goal is the 300-character one in both, so the value's `clientWidth`
+	   against its `scrollWidth` is the number the finding asked for.
+	   `--goal-capability-off` is the spec table's `capability-off` row: a frontend
+	   carrying none of the four lifecycle fields renders the shipped chip and NO new
+	   control, and an ABSENCE is only evidence beside the band that has the control
+	   painted - which is why the row is a pair and why the capable band's `Done` is
+	   focused rather than left at rest.
+
+	   BOTH NEW ROWS ARE 300 WIDE WHERE THE FLOOR IS THE CLAIM, for the reason the
+	   paragraph above gives: the band is the width plus the box's 48px of `p-6`, so a
+	   viewport sized to the width itself would clip the step the story exists for. */
+	["chat-composer-status-row--goal-done", 1000, 460],
+	["chat-composer-status-row--goal-done-dismiss-focus", 1000, 300],
+	["chat-composer-status-row--goal-stalled", 1000, 460],
+	["chat-composer-status-row--goal-working", 1000, 460],
+	["chat-composer-status-row--goal-actions-revealed", 1000, 460],
+	["chat-composer-status-row--goal-actions-floor", 300, 620],
+	["chat-composer-status-row--goal-done-floor", 300, 620],
+	/*
+	 * THE DISCLOSURE'S OWN TOOLTIP AT THE FLOOR (design review round 2, D4). Every goal
+	 * row above that paints a tooltip paints the DISMISS's, so the panel that carries the
+	 * whole `goalLabel` had never been measured — while the control beside it has been
+	 * clamped to four lines since `TOOLTIP_CLAMP` was written. Its bands are at rest and
+	 * with the goal trigger focused, which is the state that opens the panel (this rig
+	 * has no hover verb, and a hovered frame carries no tooltip by design). 300 wide for
+	 * the floor band's own reason: the band is the width plus the box's 48px of `p-6`.
+	 */
+	["chat-composer-status-row--goal-tooltip-floor", 300, 620],
+	["chat-composer-status-row--goal-capability-off", 1000, 520],
 	/* The activity mark with motion reduced, which is the OTHER half of the paint
 	   the mark's own animation cannot prove: `styles/index.css` CAPS durations at
 	   0.01ms rather than cancelling anything, so the frame has to show that the
@@ -2942,6 +3261,23 @@ export const STORIES = [
 	   frames can be differenced to answer "can the user tell them apart?".
 	   `narrow` is 560 because that is where the toolbar's persist checkbox and
 	   refresh button stop fitting on one line. */
+	/* `/goal`: the goal dialog's copy and its two gates (design review round 2, the sweep
+	   workstream's D1). The change rewrote the settled sentence, the `Judge` row's gate,
+	   the `stalled` line and the struck settled readout, and none of the four had a frame
+	   anywhere - which is what made that finding MAJOR rather than a nit: the amended
+	   sentence is also LONGER than the one round 1 read, in a panel nobody had measured.
+	   The 300-character goal is this set's own long fixture, so the settled band measures
+	   the wrap the finding is about.
+
+	   FOUR ROWS, ONE PER STATE: settled, stalled, a capable backend with no goal (the
+	   absence the `Judge` row's gate produces), and a legacy backend (no judge row, no
+	   `Mark done`, so `/goal done` can never reach a build that stores the literal word
+	   as the goal). The viewport is the dialog plus scrim at the shipped window scale,
+	   the same shape `/model`'s rows use. */
+	["chat-goalpicker--goal-picker-settled", 900, 900],
+	["chat-goalpicker--goal-picker-stalled", 900, 800],
+	["chat-goalpicker--goal-picker-no-goal", 900, 760],
+	["chat-goalpicker--goal-picker-legacy-backend", 900, 760],
 	["chat-model-picker--populated", 900, 760],
 	["chat-model-picker--hovered", 900, 760],
 	["chat-model-picker--keyboard-highlight", 900, 760],
@@ -3370,6 +3706,30 @@ export const STORIES = [
 	["canvas-workspace--variables-delete-confirm", 1280, 900],
 	["canvas-workspace--diff-review", 1280, 900],
 	["canvas-workspace--edit-prompt", 1280, 900],
+	/* The canvas pane's fourth view (this change): the settled goals, as the pane
+	   draws them at the dock's default width and at its own 400px floor.
+
+	   WHY THESE TWO AND NOT ONE. The view's EMPTY state and its CAPPED state are
+	   different sentences - `No goals completed yet` names the next action, while a
+	   capped list has to say that older settled goals are not carried here - and
+	   `GoalHistoryEmptyAndCapped` is the only story that renders both, because a
+	   frame showing only the empty one would be evidence for the state that is not
+	   the risk: a truncated list must not read as a complete one. `GoalHistory` is
+	   the populated band pair (the default dock width beside the 400px floor, where
+	   the pane's own behaviour is decided rather than argued), and the three fixture
+	   entries it seeds are the view's own grammar - a judge-settled `done` with a
+	   long reason, a `superseded` goal with an empty one, and a goal at the entry
+	   clip's own limit so the row's truncation is the browser's. */
+	["canvas-workspace--goal-history", 1280, 900],
+	["canvas-workspace--goal-history-empty-and-capped", 1280, 900],
+	/* The pane's side of the capability gate (UX round 1, U4): a backend without the
+	   goal lifecycle gets THREE segments and no `Goals` view. An absence is only
+	   evidence beside the four-segment chrome every other canvas frame shoots, and
+	   until QA round 2's Q-1 fixed the story's frame it rendered Storybook's failure
+	   panel, so the row was left out rather than photographing an error. Same size
+	   as `goal-history` because it is the same two-band pair (dock default and the
+	   400px floor). */
+	["canvas-workspace--canvas-without-the-goal-lifecycle", 1280, 900],
 
 	["agent-hub-page--grid", 1280, 900],
 	/*

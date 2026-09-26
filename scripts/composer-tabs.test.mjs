@@ -60,6 +60,10 @@ const bundle = await build({
 				shouldRestoreComposerFocus,
 				goalDisclosureLabel,
 				goalClearLabel,
+				goalDoneLabel,
+				goalDismissLabel,
+				goalDoneToastText,
+				goalStalledNote,
 				goalClearedText,
 				loopActionLabel,
 				loopAffordance,
@@ -82,17 +86,21 @@ const bundle = await build({
 				wakeClause,
 			} from "./src/renderer/src/features/chat/components/run-details";
 			import { RunDetailWakes } from "./src/renderer/src/features/chat/components/run-details/run-detail-wakes";
+			import { GoalPicker } from "./src/renderer/src/features/chat/pickers/destination-pickers";
 			import { ThemedToastContainer } from "./src/renderer/src/shared/components/common/themed-toast-container";
 			import * as toasts from "./src/renderer/src/shared/utils/toast-manager";
 			import { scrollRegionToTop } from "./src/renderer/src/shared/lib/scroll";
 			import { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
+			import { goalStateWord, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS } from "./src/renderer/src/features/chat/pickers/session-commands";
+			import { goalCapability } from "./src/shared/desktop-session-contract";
 
 			export const renderRow = (props) =>
 				renderToStaticMarkup(createElement(ComposerStatusRow, props));
 			export const renderWakes = (props) =>
 				renderToStaticMarkup(createElement(RunDetailWakes, props));
+			export { GoalPicker };
 			export { toasts };
-			export { ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalClearedText, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, scrollRegionToTop, useUiPreferencesStore };
+			export { ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalDoneLabel, goalDismissLabel, goalDoneToastText, goalStalledNote, goalClearedText, goalStateWord, goalCapability, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, scrollRegionToTop, useUiPreferencesStore };
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -151,9 +159,18 @@ const {
 	ComposerStatusRow,
 	shouldRestoreComposerFocus,
 	renderWakes,
+	GoalPicker,
 	goalDisclosureLabel,
 	goalClearLabel,
+	goalDoneLabel,
+	goalDismissLabel,
+	goalDoneToastText,
+	goalStalledNote,
 	goalClearedText,
+	goalStateWord,
+	goalCapability,
+	GOAL_DONE_ARGS,
+	GOAL_DISMISS_ARGS,
 	ThemedToastContainer,
 	toasts,
 	loopActionLabel,
@@ -1399,9 +1416,15 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	 * `sr-only` floor rule is gone, and the label's `shrink-0` is what makes the
 	 * yield order hold where both chips share a line - the snippet yields, the
 	 * count never does.
+	 *
+	 * The label's ink step while `stalled` rides the SAME span (0px, the loudest ink on
+	 * the row, paired with the word in the accessible name) rather than a second
+	 * element, so the pin is on `shrink-0` PLUS the conditional and not on a bare
+	 * `cn("shrink-0")`: a reordering or an added class must not cost a review round,
+	 * but a second label span would.
 	 */
 	assert.doesNotMatch(source, /chatcol:sr-only/);
-	tokens('cn("shrink-0")', "{GOAL_LABEL}");
+	tokens('"shrink-0"', 'goalStalled && "text-ink"', "{GOAL_LABEL}");
 
 	/*
 	 * The row owns the first-chip rule (design review round 1, D5): one constant,
@@ -1513,7 +1536,13 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	 * accessible name already states the action.
 	 */
 	tokens(
-		"import { AlarmClock, Info, Repeat, X } from",
+		/*
+		 * `CircleCheck` is the fifth glyph and it is the settled chip's own mark
+		 * (design review round 1, D6): the erase keeps the shipped `X`, the `Done` control
+		 * keeps `Check`, and the control that only puts a settled chip away wears the mark
+		 * the pane's settled row wears rather than the one that erases.
+		 */
+		"import { AlarmClock, Check, CircleCheck, Info, Repeat, X } from",
 		"<Info aria-hidden={true}",
 		"size-3.5",
 	);
@@ -2053,15 +2082,21 @@ test("the reveal moves ONE region, and its arithmetic is the region's own", () =
 });
 
 /**
- * The shipped row in a DOM, beside the textarea the composer owns.
+ * A shipped component in a DOM, beside the textarea the composer owns.
  *
  * `jsdom` is a devDependency this repo already renders shipped components with
  * (`suggestion-stack-react.test.mjs`), and `react-dom/client` is imported AFTER
  * the globals exist because it feature-detects `document` at import time.
  * `cleanup` restores every global it replaced, so the server-rendering tests in
  * this file are unaffected by the order they run in.
+ *
+ * THE HARNESS IS SHARED, and the name says so (it was `rowInDom` while the row was
+ * its only caller): the `GoalPicker` mounts through it too, for the assertions that
+ * need a control's RENDERED markup from behind a portal — a static render of a dialog
+ * is empty, because Radix's portal has no container on the server. The two extra
+ * globals that costs are recorded where they are defined below.
  */
-async function rowInDom() {
+async function domHarness() {
 	const dom = new JSDOM("<div id='root'></div>", { pretendToBeVisual: true });
 	const { window } = dom;
 	const originals = new Map();
@@ -2126,6 +2161,16 @@ async function rowInDom() {
 		 * re-arms `itemFits` and drives `resize()` in the same step should fix the shim
 		 * first rather than write around it.
 		 */
+		/*
+		 * THREE GLOBALS THE PICKERS NEED AND THE ROW DOES NOT, and the difference is the
+		 * dialog: `GoalPicker` renders through `PickerHost`, whose Radix dialog PORTALS, and
+		 * a portal brings a focus scope (which watches the DOM through a
+		 * `MutationObserver`) and a floating layer that can observe intersection. jsdom
+		 * implements both; a mount that omits them throws inside the portal rather than
+		 * skipping the measurement.
+		 */
+		MutationObserver: window.MutationObserver,
+		IntersectionObserver: window.IntersectionObserver,
 		ResizeObserver: class {
 			constructor(callback) {
 				observers.push({ callback, targets: [] });
@@ -2257,7 +2302,7 @@ test("the shipped row hands focus back on a same-count swap, driven", async () =
 	 * reads the browser's own `activeElement`, so the focus the callback asks for is
 	 * observed and not assumed.
 	 */
-	const { window: dom, root, cleanup } = await rowInDom();
+	const { window: dom, root, cleanup } = await domHarness();
 	/*
 	 * Radix's tooltip provider settles a state update after a render returns, so
 	 * React prints its own "not wrapped in act" notice. It is harness noise rather
@@ -2779,7 +2824,7 @@ test("the shipped dismisses run the owner's own command, and the goal's does not
 	 * which is what `desktop-api.ts` reads first and the same seam
 	 * `scripts/mcp-auth-complete-no-retry.test.mjs` stubs.
 	 */
-	const { window: dom, root, cleanup } = await rowInDom();
+	const { window: dom, root, cleanup } = await domHarness();
 	const quiet = [];
 	const realError = console.error;
 	console.error = (...args) => void quiet.push(String(args[0]));
@@ -3001,13 +3046,18 @@ test("the two outcomes that speak do so in the person's own words", () => {
 	 * carries it, so the confirmation carries the one press that takes it back, and the
 	 * restore runs through the same command channel with the CLEARED text.
 	 */
+	/*
+	 * The local is `settled`, not `cleared`, because the same press path now carries
+	 * the mark-done confirmation as well — and the CAPTURE is still before the wire
+	 * moves, which is the property this pin exists to keep.
+	 */
 	assert.match(
 		row,
-		/showInfoToast\(goalClearedText\(cleared\), \{/,
+		/showInfoToast\(goalClearedText\(settled\), \{/,
 		"the confirmation names what it cleared (UX round 2, U7)",
 	);
 	assert.match(row, /label: GOAL_UNDO_TEXT,/);
-	assert.match(row, /onClick: \(\) => void restoreGoal\(cleared\)/);
+	assert.match(row, /onClick: \(\) => void restoreGoal\(settled\)/);
 	assert.match(
 		row,
 		/goalCommand\.run\(GOAL_COMMAND, text, GOAL_UNDO_FAILURE\)/,
@@ -3026,7 +3076,14 @@ test("the two outcomes that speak do so in the person's own words", () => {
 		/const loopCommand = useSessionCommand\(frontend\?\.session_id \?\? ""\);/,
 	);
 	assert.doesNotMatch(row, /const command = useSessionCommand/);
-	assert.match(row, /disabled=\{goalCommand\.busy\}/);
+	/*
+	 * The busy flag now reaches the button through the shared `GoalControl`'s `busy`
+	 * prop for the goal's three controls, and directly for the loop's. The property
+	 * the pin keeps is unchanged: a control is disabled by ITS OWN channel's flag.
+	 */
+	assert.match(row, /busy=\{goalCommand\.busy\}/);
+	assert.match(row, /busy=\{goalDoneCommand\.busy\}/);
+	assert.match(row, /busy=\{goalDismissCommand\.busy\}/);
 	assert.match(row, /disabled=\{loopCommand\.busy\}/);
 	// The pair the two controls dispatch, and neither of them is a label.
 	assert.match(
@@ -3160,7 +3217,7 @@ test("the loop's figure is painted exactly while the row's own box carries it", 
 	 * (`2 of 100000 turns`, i.e. figures no boundary was sized for) rather than the
 	 * `iterations: 5` fixture that printed `2 of 5 turns`.
 	 */
-	const { window: dom, root, cleanup, resize } = await rowInDom();
+	const { window: dom, root, cleanup, resize } = await domHarness();
 	try {
 		const widths = { row: 0, item: 0 };
 		stubWidths(dom, widths);
@@ -3271,7 +3328,7 @@ test("an idle reading is not a settled identity, so an acknowledged chip comes b
 	 * should return stayed hidden. A detached app or a replaced driver produces exactly
 	 * that order without an observed `running` frame.
 	 */
-	const { window: dom, root, cleanup } = await rowInDom();
+	const { window: dom, root, cleanup } = await domHarness();
 	const requests = [];
 	dom.api = { desktop: { request: async (request) => requests.push(request) } };
 	try {
@@ -3347,7 +3404,7 @@ test("each dismiss owns its own in-flight state, and the busy one stays painted"
 	 * is the whole subject: a promise that never resolves is what a hung owner looks
 	 * like to the renderer.
 	 */
-	const { window: dom, root, cleanup } = await rowInDom();
+	const { window: dom, root, cleanup } = await domHarness();
 	const pending = [];
 	const answer = {
 		status: 200,
@@ -3454,7 +3511,7 @@ test("the goal's undo belongs to its own clearing, and the confirmation names it
 	 * The toast is the app's own container, mounted here because the row speaks through
 	 * that channel and the assertion is about what a person could press.
 	 */
-	const { window: dom, root, cleanup, frame } = await rowInDom();
+	const { window: dom, root, cleanup, frame } = await domHarness();
 	const requests = [];
 	dom.api = {
 		desktop: {
@@ -3666,4 +3723,827 @@ test("the goal's undo belongs to its own clearing, and the confirmation names it
 	} finally {
 		cleanup();
 	}
+});
+
+test("the record's receipt names where the goal went, on screen, and offers nothing back", async () => {
+	/*
+	 * UX round 1's U2, driven through the app's own toast host rather than asserted on
+	 * the builder: the finding is about what a person READS after the press, and the
+	 * sentence is only evidence if it survives the press, the command, and sonner's own
+	 * render. The `Undo` half is asserted too, as an absence — the design refuses an
+	 * undo on this control (§ 2.3(a): an undo would have to retract the `done` row the
+	 * press just wrote, which no slash spelling can do), so what the receipt owes the
+	 * user is the recovery path in words, and a second affordance here would be the row
+	 * promising something it cannot deliver (UX round 1, U8's proportion).
+	 */
+	const { window: dom, root, cleanup, frame } = await domHarness();
+	const requests = [];
+	dom.api = {
+		desktop: {
+			request: async (request) => {
+				requests.push(request);
+				return {
+					status: 200,
+					body: {
+						result: {
+							command: request.command,
+							result: {
+								kind: "notice",
+								text: "ran.",
+								style: "success",
+								data: {},
+							},
+						},
+					},
+				};
+			},
+		},
+	};
+	try {
+		const h = createElement;
+		const element = (goal) =>
+			h(
+				Fragment,
+				null,
+				h(ComposerStatusRow, {
+					frontend: frontendWith({ goal, goal_status: "active" }),
+					runDetails: null,
+				}),
+				h(ThemedToastContainer, { duration: Number.POSITIVE_INFINITY }),
+			);
+		const liveToasts = () =>
+			[...dom.document.querySelectorAll("[data-sonner-toast]")].filter(
+				(node) => node.getAttribute("data-removed") !== "true",
+			);
+		const settle = async () => {
+			for (let round = 0; round < 3; round += 1) {
+				await act(async () => {});
+				await act(async () => frame());
+			}
+		};
+		const waitForLive = async (needle) => {
+			for (let round = 0; round < 12; round += 1) {
+				if (
+					liveToasts().some((node) => (node.textContent ?? "").includes(needle))
+				) {
+					return;
+				}
+				await settle();
+			}
+			assert.fail(
+				`no confirmation carrying ${needle}: ${JSON.stringify(
+					liveToasts().map((node) => node.textContent),
+				)}`,
+			);
+		};
+
+		await act(
+			async () => void root.render(element("Reconcile the March invoices")),
+		);
+		await act(
+			async () =>
+				void dom.document.querySelector("[data-status-goal-done]").click(),
+		);
+		/*
+		 * The whole sentence, on the rendered toast: the value the press settled, that the
+		 * record is KEPT, and the one command that puts the goal back. Nothing in it is
+		 * new vocabulary — `it stays in the goal history` is this row's own dismiss
+		 * clause and `/goal <text>` is the app's spelling for the set form.
+		 */
+		await waitForLive(
+			"Goal done · Reconcile the March invoices — it stays in the goal history; /goal <text> sets it again",
+		);
+		assert.equal(requests.length, 1);
+		assert.equal(requests[0].args, "done");
+		assert.equal(
+			liveToasts().length,
+			1,
+			"the record's confirmation is the only one on screen",
+		);
+		const words = liveToasts()
+			.flatMap((node) => [...node.querySelectorAll("button")])
+			.map((node) => node.textContent);
+		assert.ok(
+			!words.includes("Undo"),
+			"this control has no undo to offer, so its receipt offers none",
+		);
+	} finally {
+		cleanup();
+	}
+});
+
+/* ---------------------------------------------------------------- */
+/* The goal's lifecycle: the done paint, the two controls, the gate  */
+/* ---------------------------------------------------------------- */
+
+/*
+ * THE CAPABILITY GATE IS THE POINT OF THIS SECTION, so it is asserted first and in
+ * both directions: a snapshot carrying the lifecycle fields renders the new
+ * controls, and one lacking them renders the row EXACTLY as it shipped with no new
+ * argument anywhere in the markup. The failure this prevents is measured rather
+ * than imagined — a released backend stored the literal `--clear` as the user's
+ * goal (`docs/composer-status-tabs.md` §12.4) — and `done` is the same class of
+ * word with a second loss channel, because setting a goal also supersedes.
+ */
+const goalFrontend = (fields) => frontendWith({ goal: "Ship it", ...fields });
+
+test("a backend without the lifecycle fields renders no new control at all", () => {
+	const markup = renderRow({
+		frontend: frontendWith({ goal: "Ship it" }),
+		runDetails: null,
+	});
+	// The shipped chip and its shipped dismiss are untouched.
+	assert.match(markup, /Goal:/);
+	assert.match(markup, /data-status-goal-dismiss=""/);
+	assert.match(markup, /Clear goal/);
+	// And nothing new — neither the control nor its word nor its command.
+	assert.doesNotMatch(markup, /data-status-goal-done/);
+	assert.doesNotMatch(markup, />Done</);
+	assert.doesNotMatch(markup, /line-through/);
+	assert.doesNotMatch(markup, /— done/);
+	// The gate itself, stated as the predicate the row reads.
+	assert.equal(goalCapability({ goal: "Ship it" }), false);
+	assert.equal(goalCapability(null), false);
+	assert.equal(
+		goalCapability({ goal: "Ship it", goal_status: "" }),
+		true,
+		"an EMPTY status is a real value of the capability, not an absent field",
+	);
+});
+
+test("an active goal on a capable backend carries both controls, inboard first", () => {
+	const markup = renderRow({
+		frontend: goalFrontend({ goal_status: "active" }),
+		runDetails: null,
+	});
+	const done = markup.indexOf("data-status-goal-done");
+	const clear = markup.indexOf("data-status-goal-dismiss");
+	assert.notEqual(
+		done,
+		-1,
+		"the mark-done control exists on a capable backend",
+	);
+	assert.notEqual(clear, -1, "the shipped clear is still there");
+	assert.ok(
+		done < clear,
+		"Done sits INBOARD of the clear: the shipped X keeps the trailing edge, so no muscle memory moves and the new control never lands under a pointer headed for the X",
+	);
+	assert.match(markup, />Done</);
+	assert.match(markup, />Clear goal</);
+});
+
+test("a done goal swaps to one Dismiss and paints the strike and the tag", () => {
+	const markup = renderRow({
+		frontend: goalFrontend({ goal_status: "done" }),
+		runDetails: null,
+	});
+	// Exactly one control, and it is the dismiss.
+	assert.match(markup, /data-status-goal-dismiss=""/);
+	assert.doesNotMatch(
+		markup,
+		/data-status-goal-done/,
+		"while done, mark-done and delete reach the same wire state, so one fact gets one spelling",
+	);
+	assert.match(markup, />Dismiss</);
+	assert.doesNotMatch(markup, /Clear goal/);
+	/*
+	 * THE STRIKE IS ON THE VALUE AND NOWHERE ELSE. Counted rather than matched
+	 * once, because the assertion that matters is that the label and the tag did
+	 * NOT also acquire it: a struck tag is the readability defect the to-do row
+	 * already records, and a struck `Goal:` would cross out a control's label.
+	 */
+	assert.equal(
+		(markup.match(/line-through/g) ?? []).length,
+		1,
+		"the value is struck, and exactly one element is",
+	);
+	assert.match(
+		markup,
+		/<span class="[^"]*\bline-through\b[^"]*"[^>]*>Ship it<\/span>/,
+	);
+	assert.match(
+		markup,
+		/<span class="[^"]*\bshrink-0\b[^"]*"[^>]*>— done<\/span>/,
+	);
+	assert.doesNotMatch(
+		markup,
+		/<span class="[^"]*line-through[^"]*"[^>]*>— done/,
+	);
+	assert.doesNotMatch(
+		markup,
+		/<span class="[^"]*line-through[^"]*"[^>]*>Goal:</,
+	);
+	// The settled ink is the app's role for settled work.
+	assert.match(
+		markup,
+		/<span class="[^"]*\btext-ink-dim\b[^"]*"[^>]*>Ship it<\/span>/,
+	);
+});
+
+test("the judge's live states cost no pixels and ride the names, stalled aside", () => {
+	/*
+	 * `judging` and `continuing` render IDENTICALLY to active — no glyph, no clause,
+	 * no count — and the state travels in the one derived string. The assertion is on
+	 * the VISIBLE row with the accessible names stripped: the names DIFFER by design
+	 * (§1.3 puts the state there), and an unstripped comparison would either fail for
+	 * the right reason or be weakened into matching nothing. Ids go with them,
+	 * because two independent renders mint their own.
+	 */
+	const visible = (markup) =>
+		markup
+			.replace(/aria-label="[^"]*"/g, "")
+			.replace(/id="[^"]*"/g, "")
+			.replace(/aria-controls="[^"]*"/g, "");
+	const active = renderRow({
+		frontend: goalFrontend({ goal_status: "active" }),
+		runDetails: null,
+	});
+	for (const state of ["judging", "continuing", "idle", "waiting"]) {
+		const markup = renderRow({
+			frontend: goalFrontend({
+				goal_status: "active",
+				goal_judge: { state },
+			}),
+			runDetails: null,
+		});
+		assert.equal(
+			visible(markup),
+			visible(active),
+			`a ${state} judge must paint the active chip's pixels byte for byte`,
+		);
+	}
+	// The word is in the accessible name, where a screen reader finds it.
+	assert.match(active, /aria-label="Expand the session goal — Ship it"/);
+	const judging = renderRow({
+		frontend: goalFrontend({
+			goal_status: "active",
+			goal_judge: { state: "judging" },
+		}),
+		runDetails: null,
+	});
+	assert.match(
+		judging,
+		/aria-label="Expand the session goal — working, Ship it"/,
+	);
+	/*
+	 * `stalled` is the one state that moves, and it costs 0px in WIDTH: the label's
+	 * ink steps to the loudest on the row and the word goes in the name. Nothing
+	 * else in the markup may differ, which is what this pair of assertions pins.
+	 */
+	const stalled = renderRow({
+		frontend: goalFrontend({
+			goal_status: "active",
+			goal_judge: { state: "stalled" },
+		}),
+		runDetails: null,
+	});
+	assert.match(
+		stalled,
+		/aria-label="Expand the session goal — stalled, Ship it"/,
+	);
+	assert.match(
+		stalled,
+		/<span class="[^"]*\btext-ink\b[^"]*"[^>]*>Goal:<\/span>/,
+	);
+	assert.doesNotMatch(
+		active,
+		/<span class="[^"]*\btext-ink\b[^"]*"[^>]*>Goal:<\/span>/,
+	);
+	assert.ok(
+		stalled.length - active.length < 120,
+		"the stalled paint is an ink step on an existing span, not new markup",
+	);
+	// The done chip's name carries `done`, because a strike is invisible to a
+	// screen reader and to a non-styled paint.
+	const done = renderRow({
+		frontend: goalFrontend({ goal_status: "done" }),
+		runDetails: null,
+	});
+	assert.match(done, /aria-label="Expand the session goal — done, Ship it"/);
+});
+
+test("both new control words drop at the column floor while their names survive", () => {
+	const NARROW = "@max-[240px]/chatcol:hidden";
+	const active = renderRow({
+		frontend: goalFrontend({ goal_status: "active" }),
+		runDetails: null,
+	});
+	const done = renderRow({
+		frontend: goalFrontend({ goal_status: "done" }),
+		runDetails: null,
+	});
+	/*
+	 * The word is dropped, the NAME never is: at the floor the control is an icon
+	 * with an accessible name, which is the shipped rule for `Clear goal` and the
+	 * reason a new control must not invent a second one.
+	 */
+	for (const [markup, label] of [
+		[active, "Mark the goal done — Ship it"],
+		[
+			done,
+			"Dismiss the finished goal — it stays in the goal history — Ship it",
+		],
+	]) {
+		assert.match(
+			markup,
+			new RegExp(
+				`<span class="[^"]*${NARROW.replace(/[[\]@/]/g, "\\$&")}[^"]*">`,
+			),
+		);
+		assert.match(markup, new RegExp(`aria-label="${label}"`));
+	}
+	assert.match(
+		active,
+		new RegExp(
+			`class="[^"]*${NARROW.replace(/[[\]@/]/g, "\\$&")}[^"]*">Clear goal<`,
+		),
+	);
+});
+
+test("the lifecycle's derived strings, one per state", () => {
+	assert.equal(
+		goalDisclosureLabel("Ship it", false, ""),
+		"Expand the session goal — Ship it",
+	);
+	assert.equal(
+		goalDisclosureLabel("Ship it", false, "working"),
+		"Expand the session goal — working, Ship it",
+	);
+	assert.equal(
+		goalDisclosureLabel("Ship it", true, "done"),
+		"Collapse the session goal — done, Ship it",
+	);
+	assert.equal(goalDoneLabel("Ship it"), "Mark the goal done — Ship it");
+	assert.equal(
+		goalDismissLabel("Ship it"),
+		"Dismiss the finished goal — it stays in the goal history — Ship it",
+	);
+	/*
+	 * The judge's word, and the open-reader rule: a member this build does not know
+	 * is NOT claimed to be anything. `""` is the resting word, and a surface that
+	 * must print something in it chooses its own (the picker prints `waiting`).
+	 */
+	assert.equal(goalStateWord("done", "judging"), "done");
+	assert.equal(goalStateWord("active", "stalled"), "stalled");
+	assert.equal(goalStateWord("active", "judging"), "working");
+	assert.equal(goalStateWord("active", "continuing"), "working");
+	assert.equal(goalStateWord("active", "waiting"), "");
+	assert.equal(goalStateWord("active", "quiescing"), "");
+	assert.equal(goalStateWord(undefined, undefined), "");
+	// The confirmations: the mark-done names the value AND says where it went and how to
+	// put it back — the recovery path the design's § 2.3 promises in the absence of an
+	// undo (UX round 1, U2).
+	assert.equal(
+		goalDoneToastText("Ship the release"),
+		"Goal done · Ship the release — it stays in the goal history; /goal <text> sets it again",
+	);
+	assert.equal(
+		goalClearedText("Ship the release"),
+		"Goal cleared · Ship the release",
+	);
+	// The verbs the controls send are the whole-argument aliases the backend takes.
+	assert.equal(GOAL_DONE_ARGS, "done");
+	assert.equal(GOAL_DISMISS_ARGS, "dismiss");
+	/*
+	 * ONE STALL SENTENCE PER CAUSE, keyed by the reason the wire carries (UX round 1,
+	 * U1), and the two reasons here are the backend's own constants verbatim. The cap's
+	 * is matched by SHAPE: it is an f-string over the budget, so a literal would go
+	 * silently stale the day that number moves.
+	 */
+	assert.equal(
+		goalStalledNote("judge could not decide"),
+		"goal stalled: judge could not decide — send a message to continue",
+	);
+	/*
+	 * THE CAP'S SENTENCE IS THE BACKEND'S `STALLED_CAP_NOTICE`, byte for byte (QA round 2,
+	 * Q-2): `goal stalled: {STALLED_CAP_REASON} — send a message to continue`. The count
+	 * comes from the reason, so a moved budget moves the sentence with it.
+	 */
+	assert.equal(
+		goalStalledNote("stopped after 12 continuations"),
+		"goal stalled: stopped after 12 continuations — send a message to continue",
+	);
+	assert.equal(
+		goalStalledNote("stopped after 40 continuations"),
+		"goal stalled: stopped after 40 continuations — send a message to continue",
+		"the cap's sentence follows the bound, not the number it was written against",
+	);
+	// The cap's shape with no readable count still names the bound, and never echoes
+	// the unparsed middle into the transcript.
+	for (const uncounted of [
+		"stopped after twelve continuations",
+		"stopped after  continuations",
+	]) {
+		assert.equal(
+			goalStalledNote(uncounted),
+			"goal stalled: reached the continuation limit — send a message to continue",
+		);
+	}
+	/*
+	 * ANY OTHER REASON IS ANNOUNCED AND NOT ATTRIBUTED — including the empty one, which is
+	 * what a stalled frame with no reason at all reads as. The alternative (falling back to
+	 * the breaker) is the confusion U1 is about, and the other alternative (saying
+	 * nothing) is the bug D2 closed.
+	 */
+	for (const unnamed of [
+		undefined,
+		"",
+		"  ",
+		"a bound added after this build",
+	]) {
+		assert.equal(
+			goalStalledNote(unnamed),
+			"goal stalled: auto-continuation stopped — send a message to continue",
+		);
+	}
+	// A reason that merely mentions continuations is not the cap: both halves are required.
+	assert.equal(
+		goalStalledNote("the judge kept asking for continuations"),
+		"goal stalled: auto-continuation stopped — send a message to continue",
+	);
+});
+
+/* ---------------------------------------------------------------- */
+/* The `/goal --history` receipt, and where its lines go             */
+/* ---------------------------------------------------------------- */
+
+/**
+ * The receipt needs NO desktop renderer of its own, and this pin is what says so
+ * rather than assuming it: `kind="block"` with `data.items` is already the shape
+ * the desktop turns into a transcript note (`slash-dispatch.ts`), built for
+ * `team_list` and its siblings, and the wire's `[text, facts]` pair is exactly the
+ * 2-tuple that path reads — the TUI's own block renderer reads the same pair, so
+ * one shape serves two hosts.
+ *
+ * It also settles the one question the design could not answer from source (its
+ * §10.1): whether a multi-line note keeps its newlines in the transcript. The text
+ * is joined with `"\n"` and the row that paints it is `whitespace-pre-wrap`, so
+ * `/goal --history` renders as one row per goal rather than as a paragraph — which
+ * is what §4.2 assumed and could not verify.
+ */
+test("the /goal --history receipt renders through the existing block path", () => {
+	const dispatch = code(
+		"src/renderer/src/features/chat/components/slash-dispatch.ts",
+	);
+	/*
+	 * The gate is on `result.text` FIRST: a block whose result also carries prose
+	 * prints the prose, which is the shipped precedence and not something this
+	 * feature may quietly reverse.
+	 */
+	assert.match(dispatch, /else if \(result\.kind === "block"\)/);
+	assert.match(dispatch, /items\?: \[string, string\]\[\]/);
+	assert.match(
+		dispatch,
+		/data\.items\.map\(\(\[k, v\]\) => `\$\{k\}: \$\{v\}`\)/,
+	);
+	assert.match(dispatch, /\.join\("\\n"\)/);
+	const transcript = code(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+	);
+	assert.match(
+		transcript,
+		/whitespace-pre-wrap break-words text-body-sm text-ink-muted/,
+		"the note's own row is the one that keeps the receipt's newlines",
+	);
+});
+
+/* ---------------------------------------------------------------- */
+/* The delta of the batched remediation round: the picker's gate,    */
+/* the stalled note, and the two marks the done chip carries         */
+/* ---------------------------------------------------------------- */
+
+/**
+ * The `/goal` picker's rendered markup, from a DOM.
+ *
+ * A STATIC RENDER CANNOT SEE THIS COMPONENT AT ALL, and that is the instrument
+ * question the assertion lives or dies on: `GoalPicker` renders through `PickerHost`,
+ * whose Radix dialog PORTALS, and a portal has no container on the server, so
+ * `renderToStaticMarkup` returns the empty string. Mounting it is therefore the only
+ * way to read what the picker actually paints — the same harness the row's driven
+ * tests use, for the same reason (`domHarness`).
+ */
+async function pickerMarkup(frontend) {
+	const { window: dom, root, cleanup } = await domHarness();
+	try {
+		await act(async () =>
+			root.render(
+				createElement(GoalPicker, {
+					sessionId: "s-1",
+					canonical: { frontend },
+					onClose: () => {},
+				}),
+			),
+		);
+		return dom.document.body.innerHTML;
+	} finally {
+		cleanup();
+	}
+}
+
+test("the picker gates Mark done on the lifecycle fields, in both directions", async () => {
+	/*
+	 * Agent review round 1's F4: the CHIP's capability gate is pinned, and the picker's
+	 * — the same predicate at the second of the two paths that converge on `done` — had
+	 * no test at all (`grep -rln "GoalPicker" scripts/*.mjs` found nothing), so a future
+	 * edit could have sent the bare word from here to a backend that would store it as
+	 * the user's goal, and every suite would have stayed green.
+	 */
+	const capable = await pickerMarkup({
+		goal: "Ship it",
+		session_id: "s-1",
+		goal_status: "active",
+		goal_judge: { state: "waiting" },
+	});
+	assert.match(capable, />Mark done</);
+	assert.match(capable, />Clear goal</);
+	// The judge row is readable here because there IS a goal for it to be reading.
+	assert.match(capable, />Judge</);
+	assert.match(capable, />waiting</);
+
+	const legacy = await pickerMarkup({ goal: "Ship it", session_id: "s-1" });
+	assert.doesNotMatch(
+		legacy,
+		/>Mark done</,
+		"a backend without the lifecycle fields is offered no new control",
+	);
+	assert.match(legacy, />Clear goal</);
+	assert.doesNotMatch(
+		legacy,
+		/>Judge</,
+		"and no judge row: the state it would print does not exist on that wire",
+	);
+
+	const done = await pickerMarkup({
+		goal: "Ship it",
+		session_id: "s-1",
+		goal_status: "done",
+		goal_judge: {
+			state: "done",
+			verdict: "achieved",
+			reason: "Every check passed.",
+		},
+	});
+	assert.doesNotMatch(
+		done,
+		/>Mark done</,
+		"a settled goal cannot be marked done twice",
+	);
+	/*
+	 * AND THE SENTENCE NAMES THE RECORD, NOT THE DECIDER (design review round 1,
+	 * D3). `done` is written by the judge's ACHIEVED and by the user's own `Done`
+	 * press alike — the user's path leaves `reason` empty — so a sentence crediting
+	 * the judge was false on that path and contradicted the `Judge` row beneath it.
+	 */
+	assert.match(done, /This goal is settled\. It stays in the goal history/);
+	assert.doesNotMatch(done, /The judge called this done/);
+	/*
+	 * AND IT NOW POINTS AT THE RECORD (UX round 1, U5): the sentence named the history
+	 * without offering a way there, while the only two routes - an icon-only canvas
+	 * segment and a typed `/goal --history` - are not discoverable from any surface the
+	 * question "which goals did I finish?" is asked from. Asserted on the RENDER, not on
+	 * the source, because the clause is only a pointer if it survives into the dialog a
+	 * user reads; it names the segment's own word (`Goals view`, its accessible name).
+	 */
+	assert.match(done, /or find it in the canvas's Goals view\./);
+});
+
+test("the picker prints no judge for a goal that does not exist", async () => {
+	/*
+	 * Design review round 1's D5: `capable` is `typeof goal_status === "string"`, which
+	 * is true on any new backend INCLUDING one whose goal is empty, and `judgeWord`
+	 * falls back to `idle` — so `/goal` on a session with no goal printed `Judge: idle`,
+	 * a readout about a judge with nothing to judge, in the picker whose job at that
+	 * moment is to take the first goal.
+	 */
+	const noGoal = await pickerMarkup({
+		goal: "",
+		session_id: "s-1",
+		goal_status: "active",
+		goal_judge: { state: "idle" },
+	});
+	assert.doesNotMatch(noGoal, />Judge</);
+	/*
+	 * And nothing to act on either: the trailing pair lives inside the chip, which the
+	 * row gates on there being a goal at all — so a session with no goal is offered no
+	 * `Mark done`, and the picker's job here is to take the first goal.
+	 */
+	assert.doesNotMatch(noGoal, />Mark done</);
+	assert.doesNotMatch(noGoal, />Clear goal</);
+	// Whitespace is the same absence, by the row's own rule for the same state.
+	const blank = await pickerMarkup({
+		goal: "   ",
+		session_id: "s-1",
+		goal_status: "active",
+	});
+	assert.doesNotMatch(blank, />Judge</);
+});
+
+test("the judge stalling is said ONCE, through the composer's note channel", async () => {
+	/*
+	 * Design review round 1's D2, the desktop half. `stalled` is the one judge state
+	 * with an action behind it — the user has to send a message for the loop to go on —
+	 * and it was announced by 0px of ink alone (the label's step to `text-ink`), which
+	 * nobody reads off a chip they are not already looking at. The row now writes the
+	 * design's own sentence to the transcript, through the channel the composer already
+	 * owns, on the TRANSITION and never per render.
+	 */
+	/*
+	 * A ROW THAT MOUNTS ONTO AN ALREADY-STALLED GOAL SAYS NOTHING, and that is the split
+	 * between this half and the backend's durable note: this row is keyed on the
+	 * conversation, so announcing on mount would write a fresh duplicate every time a
+	 * user switched back to it. What this half owns is the stall they are THERE for.
+	 */
+	const mounted = await domHarness();
+	try {
+		const silent = [];
+		await act(async () =>
+			mounted.root.render(
+				createElement(ComposerStatusRow, {
+					frontend: {
+						goal: "Ship it",
+						session_id: "s-1",
+						goal_status: "active",
+						goal_judge: { state: "stalled" },
+					},
+					runDetails: null,
+					onNote: (text) => silent.push(text),
+				}),
+			),
+		);
+		assert.deepEqual(silent, []);
+	} finally {
+		mounted.cleanup();
+	}
+
+	const { window: dom, root, cleanup } = await domHarness();
+	try {
+		const notes = [];
+		/*
+		 * THE REASON RIDES THE FIXTURE, because it is what chooses the sentence (UX round
+		 * 1, U1): a judgement that could not decide and a goal that ran out of
+		 * auto-continuations are two different next moves, so the row has to report the
+		 * cause the wire published rather than rounding both to whichever sentence was
+		 * written first. The reasons below are the backend's own constants
+		 * (`STALLED_BREAKER_REASON` / `STALLED_CAP_REASON` in `session/goal_judge.py`).
+		 */
+		const element = (judgeState, reason) =>
+			createElement(ComposerStatusRow, {
+				frontend: {
+					goal: "Ship it",
+					session_id: "s-1",
+					goal_status: "active",
+					goal_judge:
+						reason === undefined
+							? { state: judgeState }
+							: { state: judgeState, reason },
+				},
+				runDetails: null,
+				onNote: (text) => notes.push(text),
+			});
+		await act(async () => root.render(element("judging")));
+		assert.deepEqual(
+			notes,
+			[],
+			"a judge still working says nothing: nothing has happened to the user yet",
+		);
+		await act(async () =>
+			root.render(element("stalled", "judge could not decide")),
+		);
+		assert.deepEqual(notes, [
+			"goal stalled: judge could not decide — send a message to continue",
+		]);
+		// One per ENTRY, not one per render: the state is still stalled on this frame.
+		await act(async () =>
+			root.render(element("stalled", "judge could not decide")),
+		);
+		assert.equal(
+			notes.length,
+			1,
+			"the stall is not re-announced on every frame",
+		);
+		/*
+		 * THE SECOND CAUSE GETS ITS OWN SENTENCE, and this is the assertion the finding is
+		 * about: leaving the state re-arms the note, so a second stall is its own fact — and
+		 * the cap's stall must NOT be announced in the breaker's words, because a user told
+		 * the judge could not decide goes looking for a provider problem that does not exist.
+		 */
+		await act(async () => root.render(element("judging")));
+		await act(async () =>
+			root.render(element("stalled", "stopped after 12 continuations")),
+		);
+		assert.deepEqual(
+			notes.slice(1),
+			[
+				"goal stalled: stopped after 12 continuations — send a message to continue",
+			],
+			"the continuation cap is not reported as a failed judgement",
+		);
+		/*
+		 * A CAUSE THIS BUILD CANNOT NAME IS STILL ANNOUNCED, in a sentence that names no
+		 * bound: silence is the state D2 closed, and naming the breaker for it would be U1
+		 * over again in the other direction.
+		 */
+		await act(async () => root.render(element("judging")));
+		await act(async () =>
+			root.render(element("stalled", "a bound added after this build")),
+		);
+		assert.deepEqual(notes.slice(2), [
+			"goal stalled: auto-continuation stopped — send a message to continue",
+		]);
+		/*
+		 * And the row the note is written for is still the row that shipped: the note is
+		 * an ADDITION, not a replacement for the ink step the design keeps beside it.
+		 */
+		assert.match(dom.document.body.innerHTML, /Goal:/);
+	} finally {
+		cleanup();
+	}
+});
+
+test("the settled chip's control is marked apart from the erase", () => {
+	/*
+	 * Design review round 1's D6. `Dismiss` and `Clear goal` share the slot and share
+	 * `DISMISS_WORD`, so below the stacked band both were one unlabeled X with two
+	 * different consequences: the erase removes the standing goal, the dismiss only puts
+	 * the settled chip away and leaves the history entry behind. The DISMISS yields its
+	 * mark (the shipped X stays on the erase, where muscle memory put it) and wears the
+	 * pane's own mark for a settled goal row.
+	 */
+	const control = (markup, attribute) => {
+		const from = markup.indexOf(attribute);
+		assert.notEqual(from, -1, `${attribute} renders`);
+		return markup.slice(from, markup.indexOf("</button>", from));
+	};
+	const active = renderRow({
+		frontend: goalFrontend({ goal_status: "active" }),
+		runDetails: null,
+	});
+	assert.match(control(active, "data-status-goal-dismiss"), /lucide-x/);
+	assert.match(control(active, "data-status-goal-done"), /lucide-check/);
+	const done = renderRow({
+		frontend: goalFrontend({ goal_status: "done" }),
+		runDetails: null,
+	});
+	const dismiss = control(done, "data-status-goal-dismiss");
+	assert.match(dismiss, /lucide-circle-check/);
+	assert.doesNotMatch(
+		dismiss,
+		/lucide-x/,
+		"the erase's mark is not on the control that does not erase",
+	);
+	assert.doesNotMatch(dismiss, /lucide-check/);
+	/*
+	 * THE WORD IS STILL THERE and still the control's name at every width, so the mark
+	 * is a second tell rather than the only one.
+	 */
+	assert.match(done, />Dismiss</);
+	assert.match(
+		done,
+		/aria-label="Dismiss the finished goal — it stays in the goal history — Ship it"/,
+	);
+});
+
+test("the chip's done tag carries its own size step", () => {
+	/*
+	 * Design review round 1's D8. The tag's step was inherited from the chip's box
+	 * (`READING_BOX` is `text-meta`), so the tag and the value it sits beside shared
+	 * both ink and size and the strike was the only differentiator — where the pane's
+	 * row tag and the to-do row's tag each state their own step.
+	 */
+	const markup = renderRow({
+		frontend: goalFrontend({ goal_status: "done" }),
+		runDetails: null,
+	});
+	assert.match(
+		markup,
+		/<span class="[^"]*\btext-meta\b[^"]*"[^>]*>— done<\/span>/,
+	);
+	// Still not struck: the tag stays readable on the row it settles.
+	assert.doesNotMatch(
+		markup,
+		/<span class="[^"]*line-through[^"]*"[^>]*>— done/,
+	);
+	/*
+	 * Design review round 1's D1 AND ROUND 2's D11, measured by `GoalDoneFloor`: at the
+	 * 172px floor the tag left the value 20px of 1956px, so the tag is the piece that
+	 * yields at the stacked band — AND AT THAT BAND'S OWN EDGE, one pixel wider than the
+	 * shared step, because the row's own frame prints a 54px (stacked) row at exactly 240
+	 * while `@max-[240px]` (`NARROW_HIDDEN`, the dismiss's word and the loop's figure) has
+	 * not fired there: reading 39/1956 at 240 against 67/1956 at the floor made the
+	 * value's readable width NON-MONOTONIC in the column's width, the wider band
+	 * identifying the goal by fewer characters than the narrower one. So the tag carries
+	 * its OWN constant (`GOAL_TAG_NARROW`) rather than sharing the dismiss's, and the
+	 * reason is the tag's: it is the only state tell a still paints at the floor (the
+	 * `Dismiss` is `opacity-0` at rest), while the word beside it keeps an accessible-name
+	 * home at every width.
+	 */
+	assert.match(
+		markup,
+		/<span class="[^"]*@max-\[241px\]\/chatcol:hidden[^"]*"[^>]*>— done<\/span>/,
+	);
+	assert.doesNotMatch(
+		markup,
+		/<span class="[^"]*@max-\[240px\]\/chatcol:hidden[^"]*"[^>]*>— done<\/span>/,
+		"the tag keeps the stacked band's own edge: at exactly 240 the shared step has not fired",
+	);
 });

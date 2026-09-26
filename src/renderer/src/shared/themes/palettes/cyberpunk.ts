@@ -93,6 +93,10 @@ export const cyberpunk: ThemeDefinition = {
 		surface: "#282332",
 		elevated: "#2E273B",
 		sunken: "#1D1C22",
+
+		// The user block's fill: `surface` itself, which already clears the
+		// role's ΔE00 4.0 floor off this canvas (measured 4.06).
+		messageSurface: "#282332",
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
 		 * step of THIS palette's own panel at the panel's own hue; they used to be

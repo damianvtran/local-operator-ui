@@ -61,6 +61,11 @@ export const tokyoNightDay: ThemeDefinition = {
 		// Generated inactive-tab C4C8DA is ΔE00 6.3 under the page — a well rather than a
 		// recess. This is one just-visible step under canvas (ΔE00 2.06).
 		sunken: "#D8DAE1",
+
+		// The user block's fill: ΔE00 4.14 off the canvas, where `surface` alone
+		// measures 2.18 - a step toward `elevated` to clear the role's 4.0 floor,
+		// which the block carries because the fill IS its boundary.
+		messageSurface: "#f2f3f4",
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
 		 * step of THIS palette's own panel at the `accent`'s hue, because this panel
