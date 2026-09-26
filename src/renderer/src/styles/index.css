@@ -422,6 +422,11 @@
 	   contract and § 2 of docs/branding.md. */
 	--color-row-hover: var(--lo-row-hover);
 	--color-row-selected: var(--lo-row-selected);
+	/* The user message block's own surface. Not a fifth ground and not a row
+	   state: one object's fill, and the fill IS its boundary (D10), so it
+	   carries its own ΔE00 floor off `canvas`. See `messageSurface` in the
+	   palette contract and § 2 of docs/branding.md. */
+	--color-message-surface: var(--lo-message-surface);
 
 	--color-ink: var(--lo-ink);
 	--color-ink-muted: var(--lo-ink-muted);

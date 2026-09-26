@@ -132,6 +132,21 @@ own hover are actually read, and neither was measured before the legibility pass
 which is how `ink-dim` came to sit at 3.91:1 on a selected row in `cyberpunk` with
 every gate green.
 
+**The user message block's fill is a role of its own.** `message-surface` is the
+block's own surface — not a fifth ground and not a state: the fill **is** the block's
+boundary (the border D10 retired was "the third and loudest mark on the quietest object
+in the transcript"), so it carries a findability floor of its own — **ΔE00 4.0 off the
+canvas** it is drawn on, with a **≥ 2.5 `L*`** step — authored as the smallest step from
+`surface` toward `elevated`, or `surface` itself where that already clears the floor. It
+is not `surface` because that role is the app's shared panel ground, bounded by the
+ladder (2.5–5.0 `L*`) and moving every card and panel with it: on the palettes where its
+step lands low (sage 2.05, `catppuccinMacchiato` 2.08, `oneLight` 2.10 ΔE00) the block's
+only boundary was a fill a reader cannot see — the operator's report that "the contrast
+between the user message background and the chat background is quite poor on some
+themes". 4.0 sits below the step the same column's composer carries in every palette
+(`elevated`/`canvas`, 4.17 at its worst of the 59), so the block stays the quietest
+object on the screen on every theme.
+
 There are **two state roles, and each is a rung of the panel's own ladder**: `rowHover`,
 the fill of the row under the pointer, and `rowSelected`, the fill of the row the
 reader is currently ON. Both are **steps of the panel's own colour, at the panel's own
@@ -500,6 +515,8 @@ the weakest pair anywhere in the system is sage at 8.4.
 | `border-control`, `accent` and each semantic `-border` on each of the four grounds | 3:1 |
 | Any two grounds, mutually | 1.03:1 |
 | Any adjacent ground pair | ΔE00 2.0 |
+| The user message block's fill (`message-surface`) off the canvas it is drawn on | ΔE00 4.0, and a ≥ 2.5 `L*` step |
+| `ink` / `ink-muted` / `ink-dim` on the user message block's fill | 7:1 / 5.5:1 / 5.0:1 |
 | The palette/picker active row (`sunken`) against the dialog's `elevated` | ΔE00 3.0, and a ≥ 2 `L*` step |
 | `accent-wash` against every ground it is painted on | ΔE00 2.0 |
 | The keycap's ground (`sunken`) against every ground it can be painted on | ΔE00 2.0 (the two row roles are withdrawn from this pair: a backdrop-relative fill IS a rung of the ladder, and the cap carries no fill of its own any more) |

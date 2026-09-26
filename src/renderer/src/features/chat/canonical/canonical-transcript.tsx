@@ -485,21 +485,32 @@ const UserRow = memo(function UserRow({
 							// the role with the 3:1 floor, and removing the edge looked like
 							// losing the one thing that said which speaker was which. Frames
 							// say otherwise. The bubble sits on a `canvas` column and takes
-							// the `surface` ground, a +2.53 to +5.0 L* step across the
-							// palettes (median 3.54, §B3), and the block is ALSO an aside by
-							// its own width (§D2), narrower than the prose beside it: a fill
-							// plus a narrower width is a boundary twice over. The rule on top
-							// of them was the third and loudest mark on the quietest object
-							// in the transcript, and where `control` is dark it read as an
-							// outline drawing rather than as a message. Branding §5's own
-							// rule is to remove a border before tightening spacing.
+							// its own `messageSurface` ground - the role exists because the
+							// fill is this block's ONLY boundary (D10), and the shared
+							// `surface` step it first took measures as low as ΔE00 2.05
+							// (sage) across the palettes, where a fill that close to the
+							// canvas reads as no boundary at all - and the block is ALSO an
+							// aside by its own width (§D2), narrower than the prose beside
+							// it: a fill plus a narrower width is a boundary twice over. The
+							// rule on top of them was the third and loudest mark on the
+							// quietest object in the transcript, and where `control` is dark
+							// it read as an outline drawing rather than as a message.
+							// Branding §5's own rule is to remove a border before tightening
+							// spacing.
+							//
+							// The fill's step off the canvas is floored at ΔE00 4.0 by
+							// `check-themes` now (the block was "+2.53 to +5.0 L*, median
+							// 3.54" when D10 made the fill its boundary, and the low end is
+							// the operator's "quite poor on some themes" report); see
+							// `messageSurface` in the palette contract for the floor and the
+							// arithmetic.
 							//
 							// `max-w-[85%]` of the 640 column is 544px (§D2), so the block
 							// reads as an aside by width and never needs a cap on its TEXT
 							// (branding §7 - the block's own width is what caps it). Padding
 							// is 12px inline and 10px block; `rounded-frame` is the ramp's
 							// 10px step, unchanged.
-							"relative rounded-frame bg-surface text-ink break-words",
+							"relative rounded-frame bg-message-surface text-ink break-words",
 							/*
 							 * The ONE border a bubble takes, and only while it is the message §F3's
 							 * line is about: `a danger 1px leading edge` on the block. D10 removed the

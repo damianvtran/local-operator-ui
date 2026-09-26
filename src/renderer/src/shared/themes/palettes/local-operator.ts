@@ -69,6 +69,11 @@ export const localOperatorDark: ThemeDefinition = {
 		elevated: "#322D22",
 		sunken: "#1d1b19",
 
+		// The user block's fill: ΔE00 4.30 off the canvas, where `surface` alone
+		// measures 2.77 - a step toward `elevated` to clear the role's 4.0 floor,
+		// which the block carries because the fill IS its boundary.
+		messageSurface: "#2e2a21",
+
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
 		 * step of THIS palette's own panel at the panel's own hue; they used to be
@@ -220,6 +225,11 @@ export const localOperatorLight: ThemeDefinition = {
 		surface: "#f7f5ee",
 		elevated: "#fefdfa",
 		sunken: "#ece6d8",
+
+		// The user block's fill: ΔE00 4.07 off the canvas, where `surface` alone
+		// measures 2.32 - a step toward `elevated` to clear the role's 4.0 floor,
+		// which the block carries because the fill IS its boundary.
+		messageSurface: "#fcfbf7",
 
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a

@@ -60,6 +60,11 @@ export const githubLight: ThemeDefinition = {
 		// The scheme's own recessed grey, one step under the page.
 		sunken: "#DDE2E8",
 
+		// The user block's fill: ΔE00 4.03 off the canvas, where `surface` alone
+		// measures 2.41 - a step toward `elevated` to clear the role's 4.0 floor,
+		// which the block carries because the fill IS its boundary.
+		messageSurface: "#fafbfc",
+
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
 		 * step of THIS palette's own panel at the `accent`'s hue, because this panel

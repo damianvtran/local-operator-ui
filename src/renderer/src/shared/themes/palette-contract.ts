@@ -210,6 +210,43 @@ export type ThemePalette = {
 	 */
 	sunken: string;
 	/**
+	 * The user message block's own surface: `surface` stepped toward `elevated`
+	 * until the fill clears a ΔE00 4.0 floor off the canvas.
+	 *
+	 * ## Why its own role, rather than `surface`
+	 *
+	 * The block's fill IS its boundary (D10): the border the design first gave it
+	 * was retired as "the third and loudest mark on the quietest object in the
+	 * transcript", which leaves the ground step as the whole of what makes the
+	 * block findable. But `surface` is the app-wide panel role - every card,
+	 * panel and input moves with a change to it - and its ladder step is bounded
+	 * (2.5-5.0 L* above the canvas). On the palettes where that step lands low
+	 * (sage 2.05, `catppuccinMacchiato` 2.08, `oneLight` 2.10 ΔE00) the block's
+	 * only boundary was a fill a reader cannot see, which is the operator's
+	 * report: "the contrast between the user message background and the chat
+	 * background is quite poor on some themes". Splitting the fill off the
+	 * shared role is what lets it move without repainting every other surface in
+	 * the app.
+	 *
+	 * ## The floor, and why 4.0
+	 *
+	 * 4.0 is `LINE_SEPARATION_FLOOR`, the file's own findability floor for the
+	 * smallest mark the eye must find - and the fill is now this block's ONLY
+	 * boundary. It also sits under the step the same column's composer carries in
+	 * every palette (`elevated` over `canvas`, 4.17 at its weakest of the 59),
+	 * so the block stays the quietest object on the screen.
+	 *
+	 * ## How a value is authored
+	 *
+	 * The smallest 8-bit step from `surface` toward `elevated` - the palette's
+	 * own ramp, so the block keeps the theme's cast - whose ΔE00 off `canvas`
+	 * clears the floor; where `surface` itself already clears it, the value IS
+	 * `surface`. The lightness half is asserted too (>= 2.5 L*, the ladder's own
+	 * `canvas` -> `surface` minimum): ΔE00 is a budget a chroma-only step can
+	 * spend while the fill vanishes in a greyscale render.
+	 */
+	messageSurface: string;
+	/**
 	 * The row the POINTER is on. A STATE of a list row, not a ground.
 	 *
 	 * ## The state/ground boundary, which is why this role exists at all
