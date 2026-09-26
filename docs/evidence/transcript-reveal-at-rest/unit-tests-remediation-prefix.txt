@@ -1,0 +1,22 @@
+# The round-1 remediation's own two arms: the same new cases against 0ed7c7efb's
+# two modules (the state review round 1 measured), where the F1 hook case and the
+# F2 policy case fail, and against this branch's fixed modules, where both pass.
+
+== prefix2: the round-1 remediation's pre-state (0ed7c7efb modules) ==
+ℹ tests 39
+ℹ pass 38
+ℹ fail 1
+== prefix2: hook suite ==
+ℹ tests 2
+ℹ pass 1
+ℹ fail 1
+
+== fixed modules (this branch) ==
+== postfix: this branch's modules (+ round-1 F1/F2 fixes) ==
+ℹ tests 39
+ℹ pass 39
+ℹ fail 0
+== postfix: hook suite ==
+ℹ tests 2
+ℹ pass 2
+ℹ fail 0
