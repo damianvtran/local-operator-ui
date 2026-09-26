@@ -26,6 +26,7 @@ import type { CanonicalTranscriptStatus } from "./transcript-pane";
 import {
 	EMPTY_TRANSCRIPT,
 	type TranscriptState,
+	appendPendingUser,
 	applyEvent,
 } from "./transcript-reducer";
 
@@ -51,14 +52,29 @@ const oneUserRow = (text: string): TranscriptState =>
 		TS,
 	);
 
+/**
+ * The SAME row as an optimistic paint: what the transcript holds while a send
+ * is going out, before the owner has answered (and, on a New chat, before
+ * `sessions.create` has even returned). Appended through the reducer helper the
+ * registry uses, so the record this cell renders is the one the app paints.
+ */
+const onePendingRow = (text: string): TranscriptState =>
+	appendPendingUser(EMPTY_TRANSCRIPT, "req-1", text, [], TS);
+
 const Frame = ({
 	transcript,
 	caption,
 	status = "live",
+	starting = false,
+	startingSession = false,
+	startingSince = null,
 }: {
 	transcript: TranscriptState;
 	caption: string;
 	status?: CanonicalTranscriptStatus;
+	starting?: boolean;
+	startingSession?: boolean;
+	startingSince?: number | null;
 }) => {
 	const containerRef = useRef<HTMLDivElement>(null);
 	return (
@@ -76,7 +92,10 @@ const Frame = ({
 					transcript={transcript}
 					gate={null}
 					waiting={false}
-					starting={false}
+					starting={starting}
+					startingAfterId={starting ? "req-1" : null}
+					startingSession={startingSession}
+					startingSince={startingSince}
 					loadingOlder={false}
 					onLoadOlder={async () => true}
 					containerRef={containerRef}
@@ -109,6 +128,26 @@ export const OneUserRow: Story = {
 		<Frame
 			caption="One user row: a conversation shorter than the pane anchors to the top. The space below the row is free space the column does not claim - no scrollbar, and the row is not parked over the composer."
 			transcript={oneUserRow("Summarise yesterday's QA run.")}
+		/>
+	),
+};
+
+/**
+ * THE PRESS FRAME (conversation-start, T1): a draft whose send is in flight,
+ * painted as the optimistic row - `starting` on, so the wait line stands under
+ * it - with the composer empty and no greeting in sight. One frame of the
+ * journey the change is for; the driver scene `--scene first-send` photographs
+ * the same state in the real app, and this cell is the reference for the
+ * storybook-side states the designer flips between.
+ */
+export const DraftSendInFlight: Story = {
+	render: () => (
+		<Frame
+			caption="A New chat's first send, in flight: the optimistic row is in the conversation, the working line claims the wait, and the band has yielded its greeting - the state that used to be dead air for the whole create hop."
+			transcript={onePendingRow("Summarise yesterday's QA run.")}
+			starting
+			startingSession
+			startingSince={TS}
 		/>
 	),
 };
