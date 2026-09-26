@@ -21,12 +21,12 @@ const bundle = await build({
 		contents:
 			'export * from "./src/renderer/src/features/settings/components/integrations/integration-model";' +
 			'export { catalogControlBody, sessionControlBody, catalogCwdFor, newestRosterRow, sessionCwdFromSnapshot, rememberCatalogCwd, rememberedCatalogCwd, CATALOG_CWD_STORAGE_KEY } from "./src/renderer/src/features/settings/components/integrations/use-integrations";' +
-			'export { readRowMemoryTable, writeRowMemories, credentialsRefusalMessage } from "./src/renderer/src/features/settings/components/integrations/use-integrations";' +
+			'export { readRowMemoryTable, writeRowMemories, credentialsRefusalMessage, documentFromCache } from "./src/renderer/src/features/settings/components/integrations/use-integrations";' +
 			'export { signInProgress } from "./src/renderer/src/features/settings/components/integrations/integration-sign-in-dialog";' +
 			'export { keylessReference, keyDialogSave, KEYLESS_VALUE_KEY, MAX_REFERENCE_LENGTH } from "./src/renderer/src/features/settings/components/integrations/integration-key-dialog";' +
 			'export { forgetCatalogCwd, cwdAfterRefusal, catalogQueryErrorIsInvalidCwd, CATALOG_CWD_STORAGE_KEY as CWD_KEY } from "./src/renderer/src/features/settings/components/integrations/use-integrations";' +
 			'export { isSignedOut, isFailedSignOut } from "./src/renderer/src/features/settings/components/integrations/integration-model";' +
-			'export { focusHoldStep, focusHoldWindow, focusHoldRead, FOCUS_REANCHOR_CAP } from "./src/renderer/src/features/settings/components/integrations/integration-focus";' +
+			'export { focusHoldStep, focusHoldWindow, focusHoldRead, focusHoldCandidate, focusHoldPointerEnds, focusHoldWatchDelay, FOCUS_WATCH_MS, FOCUS_REANCHOR_CAP } from "./src/renderer/src/features/settings/components/integrations/integration-focus";' +
 			'export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";' +
 			'export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
 		resolveDir: process.cwd(),
@@ -3314,10 +3314,18 @@ test("a landed focus move follows the row across its own re-stand (U21)", () => 
 	 * round-3 review's point about these pins (MINOR 4) was that they asserted TOKENS
 	 * the REVERTED behaviour also kept - both reverts that restored the defect left
 	 * `const tick = () => {` and `focusHoldWindow({` in place - so they are re-pointed
-	 * at what cannot survive a revert: the section asks the shared read ONCE, hands it
-	 * this page's DOM and this row's operation, and implements none of `settled`, the
-	 * re-anchor or the deadline for itself. The rule's own cells are the behavioural
-	 * half, and the live cell is QA's.
+	 * at the seam a revert has to disturb to change this page's behaviour: the section
+	 * asks the shared read ONCE, hands it this page's DOM and this row's operation, and
+	 * implements none of `settled`, the re-anchor or the deadline for itself.
+	 *
+	 * WHAT THESE PINS STILL CANNOT SEE, stated because round 4 measured it (MINOR 2) and
+	 * the version of this paragraph before it claimed otherwise: a revert that changes
+	 * the HOOK's body (`readDocument` -> `return undefined`, or -> the render's own
+	 * `document`) or the WATCHER's cadence (a tick that fires once and never re-arms)
+	 * leaves every pin in THIS test green - both were measured at 64/0 on the round-4
+	 * head. The rule's own cells are the behavioural half of the decision, the driver
+	 * cells for `documentFromCache` and `focusHoldWatchDelay` beside this one are what
+	 * those two reverts now meet, and the live cell is QA's.
 	 */
 	const section = readFileSync(
 		"src/renderer/src/features/settings/components/mcp-management-section.tsx",
@@ -3643,9 +3651,18 @@ test("the move's window is anchored on the row rather than on the press (Q1, U31
  * TOKENS, and both shape-preserving reverts - a tick that short-circuits to the state's
  * own deadline, and one that hardcodes the movement term - kept this file green at 63/63
  * (agent review round 3, MINOR 4). The decision is a leaf rule now (`focusHoldRead`), so
- * what a revert has to change is the RULE, and the cells below drive it through a whole
- * operation: a read that answers with the fraction of a window the arm wrote, instead of
- * one anchored on the row, is the defect.
+ * a revert of THE DECISION has to change the RULE, and the cells below drive it through a
+ * whole operation: a read that answers with the fraction of a window the arm wrote,
+ * instead of one anchored on the row, is the defect.
+ *
+ * AND A REVERT CAN ALSO CHANGE WHAT THIS SEQUENCE DOES NOT DRIVE, which round 4 measured
+ * rather than assumed (agent review round 4, MINOR 2): the round-3 fix's LOAD-BEARING HALF
+ * lived in the hook (`readDocument`) and in the watcher's re-arm, and neither was executed
+ * by any cell in this tree - `readDocument` -> `return undefined` and a tick that fires once
+ * and never re-arms both left the file at 64/0. Those two are now driven where they live
+ * (the `documentFromCache` cell and the `focusHoldWatchDelay` cell below), which is the
+ * remedy; the sequencing here is about the read's own terms, and it is not evidence about
+ * either of them.
  *
  * WHAT THIS CANNOT SEE, stated rather than implied: that a React Query poll really does
  * hand back the same object for a deeply equal payload (QA's r3m4/r3m5 pair measured it on
@@ -3960,5 +3977,296 @@ test("a slow operation's landing survives the arm's own clock, and the cap count
 		}).hold,
 		null,
 		"...but a row that never offers a control is not waited on past its window (R5-1c, m-4)",
+	);
+});
+
+/*
+ * =====================================================================================
+ * THE READER'S OWN GESTURE, AND THE RULES ROUND 4 ASKED FOR AS RULES RATHER THAN AS
+ * SOURCE SHAPES (UX round 4, U33; QA round 4, Q-1; agent review round 4, MINOR 2)
+ * =====================================================================================
+ *
+ * WHAT THE LIVE CELLS MEASURED, so the next reader knows what these cells stand in for.
+ * On the built app at the round-4 head: a reader presses a row's Test against a 20 s
+ * server, the app lands the caret on the row's `⋯`, the reader then presses
+ * NON-FOCUSABLE chrome (the `Integrations` heading, asserted non-focusable), the caret
+ * goes to `<body>` and stays there for 72 samples over 18 s - and the row's group
+ * change then makes a SECOND `focus()` call and drags the caret back onto the row for
+ * the rest of the operation. Two independent rigs measured it (QA round 4, Q-1; UX
+ * round 4, U33). THE MOVE'S OWN REFUSALS COULD NOT HAVE CAUGHT IT: they read
+ * `document.activeElement`, and `<body>` is what both a deliberate click-away and a
+ * replaced control leave behind.
+ *
+ * WHY THE REMEDY IS A RULE ABOUT THE PRESS. The press is the only signal that carries
+ * the reader's intent, and it exists while `activeElement` still cannot tell the two
+ * apart - so `focusHoldPointerEnds` answers "is the pressed node inside the move's
+ * row", and the section clears the armed move when it answers no. The rule is here, and
+ * driven; the section's use of it is a WIRING pin, stated as one.
+ */
+test("a press outside the move's row ends the move, and a press inside it does not (U33, Q-1)", () => {
+	/*
+	 * The row's element, faked the way this file fakes every node: identity, plus what it
+	 * holds. A press on the row's own control reports THAT node, and `contains` is the
+	 * row's own answer - the same relationship the browser gives `event.target` and the
+	 * `<li data-integration>` the section hands over as `rowRefs.current[focusRow.name]`.
+	 */
+	const rowElement = { nodeType: 1 };
+	const overflow = { nodeType: 1 };
+	const heading = { nodeType: 1 };
+	const row = { contains: (node) => node === rowElement || node === overflow };
+
+	assert.equal(
+		m.focusHoldPointerEnds({ target: heading, row }),
+		true,
+		"a real press on chrome outside the row ends the offer - the 72-sample cell U33 and Q-1 both measured (U33)",
+	);
+	assert.equal(
+		m.focusHoldPointerEnds({ target: overflow, row }),
+		false,
+		"the row's own control is the reader staying where they are, not leaving",
+	);
+	assert.equal(
+		m.focusHoldPointerEnds({ target: rowElement, row }),
+		false,
+		"and so is the row itself: its prose, its inline confirm, and the ground between its two controls",
+	);
+	assert.equal(
+		m.focusHoldPointerEnds({ target: heading, row: null }),
+		false,
+		"a row the page cannot name at that instant is a WAIT, not a leave - the frame a group change unmounts in, and the removal whose move has to land on the neighbour",
+	);
+	assert.equal(
+		m.focusHoldPointerEnds({ target: null, row }),
+		false,
+		"a press that names no node is not a gesture",
+	);
+	assert.equal(
+		m.focusHoldPointerEnds({ target: { not: "a node" }, row }),
+		false,
+		"and neither is a target that is not a node at all",
+	);
+});
+
+test("the page clears the armed move on that press, and asks the cadence rule rather than deciding for itself (U33, MINOR 2)", () => {
+	const section = readFileSync(
+		"src/renderer/src/features/settings/components/mcp-management-section.tsx",
+		"utf8",
+	);
+	/*
+	 * THE WIRING PIN, AND WHAT IT IS WORTH (agent review round 4, MINOR 2 asks for the
+	 * shape to be stated rather than the strength to be overclaimed). It holds that the
+	 * section keeps the row's own element per row, asks the rule with the pressed node
+	 * and THAT element, and clears the move on a yes. It cannot hold that a real press
+	 * happened on a real page - that is QA's live cell - and it is a source shape, so it
+	 * is a wiring pin rather than a behavioural one. What makes the difference this round
+	 * is that the rule it asks is driven above, and the hook's own read and the cadence
+	 * are driven below.
+	 */
+	assert.match(
+		section,
+		/const rowRefs = useRef<Record<string, HTMLLIElement \| null>>\(\{\}\);/,
+		"the row's own element is kept per row, the way its two controls already are",
+	);
+	assert.match(
+		section,
+		/rowRef=\{\(element\) => \{[\s\S]{0,240}?rowRefs\.current\[row\.name\] = element;/,
+		"and EVERY row writes it, not only the deeply-linked one whose scroll target it also is",
+	);
+	const press = section.slice(
+		section.indexOf("const onPointerDown"),
+		section.indexOf(
+			'window.document.addEventListener("pointerdown", onPointerDown, true)',
+		),
+	);
+	assert.match(
+		press,
+		/focusHoldPointerEnds\(\{[\s\S]{0,140}?target: event\.target,[\s\S]{0,90}?row: rowRefs\.current\[focusRow\.name\],/,
+		"the press is judged against the row the MOVE belongs to, by the node the event names",
+	);
+	assert.match(
+		press,
+		/setFocusRow\(null\);/,
+		"and a press outside the row TAKES THE OFFER AWAY rather than leaving it armed for the group change",
+	);
+	assert.match(
+		section,
+		/window\.document\.addEventListener\("pointerdown", onPointerDown, true\);/,
+		"on the capture phase, so a nested control cannot swallow the reader's press",
+	);
+	assert.match(
+		section,
+		/window\.document\.removeEventListener\("pointerdown", onPointerDown, true\)/,
+		"and removed with the move, so an unarmed page listens to nothing",
+	);
+
+	/*
+	 * THE CADENCE, DRIVEN RATHER THAN READ (agent review round 4, MINOR 2, and the
+	 * mutation that made the point: deleting the re-arm inside the section's tick - a
+	 * timer that fires once and never again - left this file at 64/64, because every pin
+	 * read the OUTER arm). A move is kept by being read again, so the rule answers with
+	 * the cadence for every read that leaves a hold - including a landing, which
+	 * re-anchors and must go on being watched - and with `null` only for the read that
+	 * found none.
+	 */
+	assert.equal(
+		m.focusHoldWatchDelay({ verdict: "kept", watchMs: m.FOCUS_WATCH_MS }),
+		m.FOCUS_WATCH_MS,
+		"a read that leaves the move armed asks for the next one (MINOR 2)",
+	);
+	assert.equal(
+		m.focusHoldWatchDelay({ verdict: "landed", watchMs: m.FOCUS_WATCH_MS }),
+		m.FOCUS_WATCH_MS,
+		"and so does a landing: the row has not re-standed yet, and the move is kept by the read that follows",
+	);
+	assert.equal(
+		m.focusHoldWatchDelay({ verdict: "finished", watchMs: m.FOCUS_WATCH_MS }),
+		null,
+		"only the read that found no hold left stops the timer, which is what keeps a same-macrotask tick from re-arming it",
+	);
+	assert.match(
+		section,
+		/const delay = focusHoldWatchDelay\(\{[\s\S]{0,160}?verdict: readFocusMove\(focusRow, Date\.now\(\)\),[\s\S]{0,60}?watchMs: FOCUS_WATCH_MS,/,
+		"the tick asks the rule for its answer rather than hardcoding the re-arm (MINOR 2)",
+	);
+	assert.match(
+		section,
+		/timer = window\.setTimeout\(tick, delay\);\n\t\t\};/,
+		"and arms the timer with that answer, inside the tick - so the cadence recurs rather than firing once (MINOR 2)",
+	);
+});
+
+test("the on-demand document read is a function of the cache and its keys, per route (MINOR 2)", () => {
+	const catalog = {
+		servers: [],
+		operations: [],
+		project_scope_available: false,
+	};
+	const sessionState = {
+		servers: [
+			{
+				name: "echo",
+				source: "/h/.local-operator/mcp.json",
+				owned_scope: "global",
+				status: "connecting",
+				transport: "stdio",
+				transport_oauth_supported: false,
+			},
+		],
+	};
+	const cached = new Map([
+		[JSON.stringify(["catalog", "x"]), catalog],
+		[JSON.stringify(["desktop", "mcp", "session-1"]), sessionState],
+	]);
+	const client = { getQueryData: (key) => cached.get(JSON.stringify(key)) };
+
+	/*
+	 * THE CELL ROUND 4 ASKED FOR, and what it closes: `readDocument`'s body was
+	 * exercised NOWHERE in this tree - a mutation that neutered it to `return undefined`
+	 * (the load-bearing half of the round-3 fix) and one that made it hand back the
+	 * render's own value both left this file at 64/64, because the only cells that
+	 * touched it read the hook's CALL SITE as text. The read is a function of a cache
+	 * and two keys, which is why it is one.
+	 */
+	assert.equal(
+		m.documentFromCache({
+			queryClient: client,
+			route: "catalog",
+			catalogKey: ["catalog", "x"],
+			sessionId: null,
+		}),
+		catalog,
+		"the catalog route answers with what the cache holds under its own key",
+	);
+	const converted = m.documentFromCache({
+		queryClient: client,
+		route: "session",
+		catalogKey: ["catalog", "x"],
+		sessionId: "session-1",
+	});
+	assert.deepEqual(
+		converted,
+		m.catalogFromSessionState(sessionState, "session-1"),
+		"the session route answers with the SAME document the render builds from that state, through the one rule that builds it",
+	);
+	assert.notEqual(
+		converted,
+		sessionState,
+		"and not with the raw state: the conversion is the read, not a pass-through",
+	);
+	assert.equal(
+		m.documentFromCache({
+			queryClient: client,
+			route: null,
+			catalogKey: ["catalog", "x"],
+			sessionId: "session-1",
+		}),
+		undefined,
+		"no route, nothing to read",
+	);
+	assert.equal(
+		m.documentFromCache({
+			queryClient: client,
+			route: "session",
+			catalogKey: ["catalog", "x"],
+			sessionId: null,
+		}),
+		undefined,
+		"a session route with no conversation to read through answers nothing rather than the catalogue",
+	);
+	assert.equal(
+		m.documentFromCache({
+			queryClient: { getQueryData: () => undefined },
+			route: "catalog",
+			catalogKey: ["catalog", "x"],
+			sessionId: null,
+		}),
+		undefined,
+		"and an empty cache is an answer, not a throw",
+	);
+});
+
+test("a landing is never handed a control nobody can focus (U34)", () => {
+	/*
+	 * THE CELL U34 ASKED FOR, and the defect it is about. The section used to offer the
+	 * row's primary whenever the row HAS one - and a row offers `Retry` for the whole of
+	 * its own operation, disabled until the settle finishes. `focus()` on a disabled
+	 * control is a no-op, so the read at the settle instant spent its landing on a node
+	 * that could not take the caret and the caret read `<body>` with both row controls
+	 * `disabled: true` (measured in every full pass of the round-4 UX walk; QA's rig had
+	 * it back on the enabled `Retry` about a second later, once the poll had replaced the
+	 * node). The rule now answers with the control the row can actually give the caret.
+	 */
+	const retry = { nodeType: 1, disabled: false };
+	const retryDisabled = { nodeType: 1, disabled: true };
+	const overflow = { nodeType: 1, disabled: false };
+	const overflowDisabled = { nodeType: 1, disabled: true };
+
+	assert.equal(
+		m.focusHoldCandidate({ primary: retry, overflow }),
+		retry,
+		"an enabled primary is the row's own action and wins, which is U30's sign-off",
+	);
+	assert.equal(
+		m.focusHoldCandidate({ primary: retryDisabled, overflow }),
+		overflow,
+		"a primary that cannot take focus is not a landing: the row's `⋯` is offered instead (U34)",
+	);
+	assert.equal(
+		m.focusHoldCandidate({ primary: null, overflow }),
+		overflow,
+		"a row that offers no primary - a connected one - is unchanged: the `⋯` is the control the row has",
+	);
+	assert.equal(
+		m.focusHoldCandidate({
+			primary: retryDisabled,
+			overflow: overflowDisabled,
+		}),
+		null,
+		"both disabled is the settle instant itself, and the read waits one tick rather than spending the landing on a dead node (U34)",
+	);
+	assert.equal(
+		m.focusHoldCandidate({ primary: null, overflow: null }),
+		null,
+		"and the frame between commit and mount is the same wait it always was (R5-1c)",
 	);
 });

@@ -50,7 +50,14 @@ import {
 	AddIntegrationForm,
 	type AddIntegrationValues,
 } from "./integrations/add-integration-form";
-import { focusHoldRead } from "./integrations/integration-focus";
+import {
+	FOCUS_WATCH_MS,
+	type FocusHoldVerdict,
+	focusHoldCandidate,
+	focusHoldPointerEnds,
+	focusHoldRead,
+	focusHoldWatchDelay,
+} from "./integrations/integration-focus";
 import { IntegrationKeyDialog } from "./integrations/integration-key-dialog";
 import {
 	type IntegrationRow as IntegrationRowData,
@@ -230,6 +237,17 @@ export const McpManagementSection: FC<{
 	const rowPrimaryRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 	const rowOverflowRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 	/*
+	 * The row's own `<li>`, by row name: what says whether a pointer press landed
+	 * INSIDE the row whose move is armed (UX round 4, U33; QA round 4, Q-1). The two
+	 * maps above hold the row's controls, and a control is not the row: the reader
+	 * can press the row's own prose, its confirm, or the list between its controls,
+	 * and none of those may end the move. This is the same ref-map idiom the two
+	 * above already use, because a row that has no control yet - the frame a
+	 * `connecting` row has no primary in - still has its element and still has to be
+	 * distinguishable from the page around it.
+	 */
+	const rowRefs = useRef<Record<string, HTMLLIElement | null>>({});
+	/*
 	 * When a read last found the ROW OF AN ARMED MOVE moving (QA round 2, Q1; UX round
 	 * 2, U31). The move's window is anchored on the row rather than on the press, and
 	 * the row's last movement is a fact no render needs - a poll that extends the
@@ -339,7 +357,7 @@ export const McpManagementSection: FC<{
 		[highlightServer, servers],
 	);
 	const named = target?.kind === "matched" ? target.name : null;
-	const highlightRef = useRef<HTMLLIElement>(null);
+	const highlightRef = useRef<HTMLLIElement | null>(null);
 	const revealed = useRef<string | null>(null);
 
 	const search = filter.trim().toLowerCase();
@@ -880,7 +898,7 @@ export const McpManagementSection: FC<{
 	 * the cache has anything to say.
 	 */
 	const readFocusMove = useCallback(
-		(move: FocusMove, now: number): "kept" | "landed" | "finished" => {
+		(move: FocusMove, now: number): FocusHoldVerdict => {
 			const live = readDocument() ?? document;
 			const row = live?.servers.find((server) => server.name === move.name);
 			const operations = live?.operations ?? [];
@@ -941,12 +959,16 @@ export const McpManagementSection: FC<{
 				 * A ROW THAT HAS LEFT THE PAGE OFFERS NO CANDIDATE, and the read still runs
 				 * rather than returning early: the deadline is what ends a move whose row was
 				 * removed under it, and skipping the read would leave the watcher ticking for
-				 * a row that is not coming back.
+				 * a row that is not coming back. WHICH OF THE TWO CONTROLS IS OFFERED IS THE
+				 * RULE'S ANSWER, not this expression's: a row in flight offers a `Retry` that
+				 * cannot take focus, and a landing handed that control is a `focus()` call
+				 * that does nothing (UX round 4, U34).
 				 */
 				candidate: row
-					? primary
-						? rowPrimaryRefs.current[row.name]
-						: rowOverflowRefs.current[row.name]
+					? focusHoldCandidate({
+							primary: primary ? rowPrimaryRefs.current[row.name] : null,
+							overflow: rowOverflowRefs.current[row.name],
+						})
 					: undefined,
 				active: window.document.activeElement,
 				body: window.document.body,
@@ -1049,11 +1071,19 @@ export const McpManagementSection: FC<{
 			if (stopped) return;
 			/*
 			 * A `finished` read has already cleared `focusRow`, which tears this effect
-			 * down; the return keeps a tick that ran in the same macrotask from re-arming
-			 * the timer the cleanup is about to clear.
+			 * down; `focusHoldWatchDelay` answers `null` for it, which is what keeps a
+			 * tick that ran in the same macrotask from re-arming the timer the cleanup
+			 * is about to clear. THE CADENCE'S RECURRENCE IS THE RULE'S ANSWER, not a
+			 * line here: a timer armed once and never re-armed keeps a move armed and
+			 * never sees the re-stand it exists to follow (agent review round 4, MINOR
+			 * 2 - by mutation, deleting the re-arm left every pin green).
 			 */
-			if (readFocusMove(focusRow, Date.now()) === "finished") return;
-			timer = window.setTimeout(tick, FOCUS_WATCH_MS);
+			const delay = focusHoldWatchDelay({
+				verdict: readFocusMove(focusRow, Date.now()),
+				watchMs: FOCUS_WATCH_MS,
+			});
+			if (delay === null) return;
+			timer = window.setTimeout(tick, delay);
 		};
 		timer = window.setTimeout(tick, FOCUS_WATCH_MS);
 		return () => {
@@ -1061,6 +1091,53 @@ export const McpManagementSection: FC<{
 			window.clearTimeout(timer);
 		};
 	}, [focusRow, readFocusMove]);
+
+	/*
+	 * A REAL POINTER PRESS OUTSIDE THE ROW ENDS THE MOVE (UX round 4, U33; QA round 4,
+	 * Q-1). The move's own refusals read `document.activeElement`, and a press on
+	 * non-focusable chrome leaves it on `<body>` - the same value a replaced control
+	 * leaves - so nothing below this line can tell a reader who deliberately clicked
+	 * away from a row whose control was unmounted. The press is the one signal that
+	 * can: this listener names the node it landed on, and `focusHoldPointerEnds` asks
+	 * whether that node is inside the row the move belongs to. Measured without it on
+	 * the built app: a press on the `Integrations` heading during a 20 s test left the
+	 * caret on `<body>` for 72 samples over 18 s, and the group change then dragged it
+	 * back onto the row's `⋯`.
+	 *
+	 * WHY A LISTENER RATHER THAN A SECOND TERM IN THE READ: the answer has to outlive
+	 * the press. `activeElement` is the same for both readers afterwards, so the fact
+	 * that the reader moved has to be turned into "there is no move" AT THE PRESS, and
+	 * that is what clearing `focusRow` here does - the watcher's own effect tears down
+	 * with it, so the tick that would have re-applied the move is gone.
+	 *
+	 * WHY THE CAPTURE PHASE: a press a nested control stops from propagating is still
+	 * a press, and the row's own controls are the ones that would swallow it.
+	 *
+	 * WHAT IS DELIBERATELY NOT HERE: a press INSIDE the row (its controls, its inline
+	 * confirm, its prose) leaves the move alone, and so does a press in the frame where
+	 * the page has no element for the row - `focusHoldPointerEnds` states why a missing
+	 * row is a wait rather than a leave. A press on a focusable control of the reader's
+	 * already ended the move through `focusHoldStep`'s own refusal, and the reader-wins
+	 * cells (the search field, a typed draft, the command palette, another settings row)
+	 * keep the caret either way.
+	 */
+	useEffect(() => {
+		if (!focusRow) return;
+		const onPointerDown = (event: PointerEvent) => {
+			if (
+				!focusHoldPointerEnds({
+					target: event.target,
+					row: rowRefs.current[focusRow.name],
+				})
+			)
+				return;
+			setFocusRow(null);
+		};
+		window.document.addEventListener("pointerdown", onPointerDown, true);
+		return () => {
+			window.document.removeEventListener("pointerdown", onPointerDown, true);
+		};
+	}, [focusRow]);
 
 	return (
 		<SettingsSection
@@ -1263,7 +1340,12 @@ export const McpManagementSection: FC<{
 									memories={integrations.memories}
 									projectScopeAvailable={projectScopeAvailable}
 									highlighted={row.name === named}
-									rowRef={row.name === named ? highlightRef : undefined}
+									rowRef={(element) => {
+										// The row's own element, for the pointer rule, and the deep
+										// link's scroll target when this is the named row.
+										rowRefs.current[row.name] = element;
+										if (row.name === named) highlightRef.current = element;
+									}}
 									primaryRef={(element) => {
 										rowPrimaryRefs.current[row.name] = element;
 									}}
@@ -1404,8 +1486,12 @@ const FOCUS_ARM_MS = 4_000;
  * against: about sixteen reads to one `FOCUS_ARM_MS`, and against a window that is
  * itself renewed from the last read that found the row moving. It exists only while a
  * move is armed, and nothing else in this file polls.
+ *
+ * THE VALUE AND THE RULE THAT RECURS IT ARE THE MODULE'S (`FOCUS_WATCH_MS` and
+ * `focusHoldWatchDelay` in `integration-focus.ts`, agent review round 4, MINOR 2):
+ * the tick has nothing of its own to decide, because "the cadence recurs" is only
+ * true while the answer to "read again?" comes from a rule a cell can drive.
  */
-const FOCUS_WATCH_MS = 250;
 
 /** `/Users/x/proj` as `~/proj`, for a label. Machine paths stay machine voice elsewhere. */
 const HOME_PREFIX = /^\/(?:Users|home)\/[^/]+(?=\/|$)/;

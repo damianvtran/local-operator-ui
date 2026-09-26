@@ -49,14 +49,24 @@
  *   who TABS or CLICKS A CONTROL is covered - the caret moves and the move is
  *   dropped - but one who clicks NON-FOCUSABLE chrome leaves
  *   `document.activeElement === body`, which is indistinguishable from the state a
- *   replaced control leaves, so the move can still be re-applied onto the row after
- *   such a click. Before this rule the move was consumed when it landed and no click
- *   could bring it back, so this is new (agent review round 1, MINOR 2). It is the
- *   deliberate side of the trade: the row the reader was on is where their next Tab
- *   should continue from, the window below still bounds how long that offer stands,
- *   and the alternative - treating every `body` as "the reader left" - would drop the
- *   move in the one state the rule exists for (`<body>` is exactly where a control
- *   that becomes `disabled` or unmounts leaves the caret).
+ *   replaced control leaves, so THIS comparison alone cannot tell the two apart.
+ *   Before this rule the move was consumed when it landed and no click could bring
+ *   it back, so the offer is new (agent review round 1, MINOR 2).
+ *
+ *   THE PRESS IS WHAT MAKES THE DISTINCTION, and the bound this paragraph used to
+ *   claim was wrong (UX round 4, U33; QA round 4, Q-1; UX round 4, U35). It said
+ *   the offer stood only while the window below was open, and the window below is
+ *   the ROW's own operation plus `FOCUS_ARM_MS` - so on a 20 s answer it stood for
+ *   22.7 s, measured, and the app re-applied a move onto the row nineteen seconds
+ *   after the reader had deliberately clicked away (the caret on `<body>` for 72
+ *   samples, then dragged back onto the row's `⋯`). A window cannot bound an offer
+ *   that the row's own operation extends: `focusHoldPointerEnds` is what bounds it,
+ *   by reading the gesture the rule cannot (`pointerdown` outside the row ends the
+ *   move), and the re-mount cap below is the other bound. What did NOT change is
+ *   the reason for the trade: the row the reader was on is where their next Tab
+ *   should continue from, and treating every `body` as "the reader left" would drop
+ *   the move in the one state the rule exists for (`<body>` is exactly where a
+ *   control that becomes `disabled` or unmounts leaves the caret).
  * - **The window is anchored on the ROW, not on the press, and its term is read
  *   from the row's own operation rather than from a render.** `until` is not a
  *   clock that starts when the reader presses something. While the row is moving -
@@ -87,11 +97,17 @@
  *   `mcp-management-section.tsx`).
  * - **A row that keeps re-standing is given up on.** A re-stand re-anchors the
  *   deadline, so `reanchors` counts the re-MOUNTS one move has followed - the
- *   landed control leaving the document - and the move is dropped at
- *   `FOCUS_REANCHOR_CAP` of them (`m-4`). That count, not a clock, is what bounds
- *   the extension: a row mounted again that many times under one move is not the
+ *   landed control leaving the document - and the move is dropped once it has
+ *   followed `FOCUS_REANCHOR_CAP` of them (`m-4`), which is the FIFTH re-mount of a
+ *   chain and not the fourth: four are followed, and the read that would carry the
+ *   fifth is the one that gives up. That count, not a clock, is what bounds the
+ *   extension: a row mounted again that many times under one move is not the
  *   single group change this rule was written for, and what m-4 refuses is a move
  *   that fires late rather than one that never happens.
+ * - **A real pointer press outside the row ends the move.** `focusHoldPointerEnds`
+ *   below states it: the reader's own gesture is the one signal that separates "a
+ *   control was replaced" from "the reader put the caret there", and both read as
+ *   `<body>` to the comparison above.
  */
 
 /** A focus move that has already landed: the control it focused, and its window. */
@@ -122,7 +138,11 @@ export type FocusHold = {
  * extension a slow operation needs is not bounded by a clock that can expire
  * before the operation does. A row that re-stands this many times under one move
  * is flapping - one operation produces one group change - so the move is dropped
- * rather than chasing it, which is what m-4 asks for in the first place.
+ * once it has FOLLOWED this many re-stands rather than chasing the next one,
+ * which is what m-4 asks for in the first place: FOUR are followed, and the read
+ * that would carry the fifth is the one given up on (agent review round 4, NIT 1 -
+ * "dropped at the cap" read as "the fourth is dropped", and the shipped rule's own
+ * cells say otherwise: "re-mount 4 of the cap is still followed").
  *
  * WHAT IS COUNTED AGAINST IT IS THE RE-MOUNT AND NOTHING ELSE (agent review round
  * 3, MINOR 5). This bound is the only thing standing between a slow operation and
@@ -372,4 +392,157 @@ export function focusHoldRead(args: {
 		},
 		land: element,
 	};
+}
+
+/**
+ * Whether a real pointer press outside the move's row ENDS the move.
+ *
+ * WHY THIS IS A RULE OF ITS OWN RATHER THAN A SECOND COMPARISON IN `focusHoldStep`
+ * (UX round 4, U33; QA round 4, Q-1; reproduced independently on two rigs). The
+ * step's refusal reads `document.activeElement`, and a reader who presses
+ * NON-FOCUSABLE chrome leaves it on `<body>` - the identical value a replaced
+ * control leaves behind - so the step cannot tell "the reader put the caret there on
+ * purpose" from "the row took it away". A pointer event can: it names the node it
+ * landed on, and the row's own element decides whether that node belongs to the
+ * move's row. Measured on the built app BEFORE this rule existed, on a 20 s server:
+ * a real press on the `Integrations` heading (asserted non-focusable) put the caret
+ * on `<body>` for 72 samples over 18 s, and the row's group change then made a
+ * SECOND `focus()` call and dragged the caret back onto the row's `⋯` for the rest
+ * of the operation - focus stealing over a deliberate gesture, which is the exact
+ * failure this whole mechanism exists to prevent.
+ *
+ * WHY THE OFFER NEEDED A BOUND OF ITS OWN. The header's note used to say the window
+ * still bounded this trade. It does not: while the row's own operation runs,
+ * `focusHoldWindow` answers `now + FOCUS_ARM_MS` on every read, so the offer stands
+ * for the operation PLUS up to one window - 22.7 s measured on a 20 s answer - and
+ * the only other bound is `FOCUS_REANCHOR_CAP` re-mounts. The reader's own gesture
+ * is the bound this rule supplies (UX round 4, U35: the sentence and the code now
+ * say the same thing).
+ *
+ * WHAT IT DELIBERATELY DOES NOT TOUCH, because the neighbouring cases are the ones
+ * that were signed off: a press on a FOCUSABLE control of the reader's already ends
+ * the move through the step's own refusal (the caret moves, so `activeElement` is
+ * somebody), and the search field, a typed form draft, the command palette and
+ * another settings row all hold with or without this rule - it must not disturb
+ * them. A press INSIDE the move's own row - its controls, its confirm, its own `⋯`
+ * while the operation runs - is not the reader leaving, and neither is a row that is
+ * not in the document at that instant.
+ */
+export function focusHoldPointerEnds(args: {
+	/** `event.target` of the pointer press, taken as it stands. */
+	target: EventTarget | null;
+	/**
+	 * The move's row element as it stands now, or `null` when the page has none.
+	 *
+	 * A MISSING ROW IS A WAIT, NOT A DROP, and it is read the same way
+	 * `focusHoldRead` reads a missing candidate: the row is unmounted for a frame
+	 * while it moves between groups, and a press that lands in that frame says
+	 * nothing about the reader's intent. A row that is genuinely gone (a removal)
+	 * is ended by the window instead, and its move lands on the neighbour.
+	 */
+	row: { contains(candidate: unknown): boolean } | null | undefined;
+}): boolean {
+	const { row, target } = args;
+	if (!row) return false;
+	/*
+	 * A TARGET THAT IS NOT A NODE IS NOT A GESTURE. A press reports a node; anything
+	 * else (no target at all, or a synthetic event in a test) leaves the move alone
+	 * rather than ending it on a guess.
+	 */
+	if (!target || typeof (target as Node).nodeType !== "number") return false;
+	return !row.contains(target);
+}
+
+/**
+ * How often an armed move is READ again while it waits: the watcher's cadence.
+ *
+ * WHY THE CADENCE IS A RULE RATHER THAN A NUMBER AT ONE CALL SITE (agent review
+ * round 4, MINOR 2). "The move is watched on a cadence" is only true while the
+ * cadence RECURS: a timer armed once and never re-armed keeps the move armed and
+ * never sees the re-stand it exists to follow, which is the round-3 defect with a
+ * working deadline bolted on. Measured by mutation at the round-4 head, deleting
+ * the re-arm inside the section's tick left the whole suite at 64/64 green, because
+ * every pin read the OUTER arm rather than what a tick does. So the answer is this
+ * function's, and the section's tick has nothing of its own to decide.
+ *
+ * The value is short against the window it watches - about sixteen reads inside one
+ * `FOCUS_ARM_MS` - and while no move is armed there is no timer at all.
+ */
+export const FOCUS_WATCH_MS = 250;
+
+/**
+ * Whether a control can take the caret at all.
+ *
+ * A DISABLED FORM CONTROL CANNOT, which is the whole of this predicate: it is not a
+ * focusable area, so `focus()` on it is a no-op and the caret stays where it was. The
+ * row's own controls are disabled for the frames around its operation's boundaries,
+ * and that is the state U34 is about.
+ */
+function canTakeFocus(control: HTMLElement | null | undefined): boolean {
+	if (!control) return false;
+	return !(control as { disabled?: boolean }).disabled;
+}
+
+/**
+ * Which of a row's two controls a landing may use, out of the ones it has right now.
+ *
+ * WHY THIS IS A RULE AND NOT THE TERNARY IT REPLACES (UX round 4, U34). The section
+ * used to answer "the primary if the row offers one, otherwise the overflow", and the
+ * row offers a primary for the whole of its own operation - the `Retry` that is
+ * DISABLED until the settle finishes. So the read at the settle instant was handed a
+ * control that cannot take focus, `focus()` did nothing, and the caret read `<body>`
+ * while both of its controls were `disabled: true` (UX measured it on every full pass;
+ * QA's own reading had the caret back on the enabled `Retry` about a second later,
+ * once the poll had replaced the node). A landing that is handed a control nobody can
+ * focus is not a landing: this rule prefers the control the row can actually give the
+ * caret, falls back to the other one, and answers `null` when NEITHER can take it -
+ * which `focusHoldRead` already reads as the frame between commit and mount ("nothing
+ * to land on yet is a wait, not a failure"), so the move waits one tick rather than
+ * spending itself on a dead node.
+ *
+ * WHAT IT DOES NOT DECIDE: whether the row offers a primary at all (that is the page's
+ * read of the row), whether a move may land (the step's), or what happens when the
+ * primary comes back - a candidate change is what makes the step re-apply the move, so
+ * a failed test still ends with the caret on its `Retry` (U30).
+ */
+export function focusHoldCandidate(args: {
+	/** The control the row offers as its own action, when it offers one. */
+	primary: HTMLElement | null | undefined;
+	/** The row's overflow, which every row has. */
+	overflow: HTMLElement | null | undefined;
+}): HTMLElement | null {
+	if (canTakeFocus(args.primary)) return args.primary ?? null;
+	if (canTakeFocus(args.overflow)) return args.overflow ?? null;
+	return null;
+}
+
+/**
+ * The three things one read of a move can find, as both of its callers spell them.
+ *
+ * `kept` is a read that leaves the move armed and lands nothing (`waitForSignIn`'s
+ * wait, a row with no control committed yet, and every read that only extends the
+ * window); `landed` is a read that performed the move; `finished` is a read that
+ * found no hold left to keep, and it has already cleared the caller's state.
+ */
+export type FocusHoldVerdict = "kept" | "landed" | "finished";
+
+/**
+ * The delay until the move is read again, or `null` when the move is over.
+ *
+ * A move is KEPT BY BEING READ AGAIN: each read is what pushes the window out while
+ * the row is moving (QA round 2, Q1 measured 21 750 ms for a 20 s server) and what
+ * notices the row's re-stand, so any read that still leaves a hold asks for the next
+ * one - and a read that found none is the one the watcher must stop on, because the
+ * hold it was watching is already cleared. The cadence is passed in rather than read
+ * from a global here, the same way `focusHoldWindow` takes its window, and the
+ * verdict is the caller's own word for what its read found rather than a second
+ * enumeration this module would have to keep in step with the section's.
+ */
+export function focusHoldWatchDelay(args: {
+	/** The verdict of the read that just ran (`FocusHoldVerdict`). */
+	verdict: FocusHoldVerdict;
+	/** The cadence; `FOCUS_WATCH_MS` at the call site. */
+	watchMs: number;
+}): number | null {
+	return args.verdict === "finished" ? null : args.watchMs;
 }
