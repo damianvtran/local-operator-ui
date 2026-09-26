@@ -35,6 +35,30 @@
 		"checkoutNames": {
 			"arm64": "uv_aarch64",
 			"x64": "uv"
+		},
+		"releaseTriples": {
+			"darwin": {
+				"arm64": "aarch64-apple-darwin",
+				"x64": "x86_64-apple-darwin"
+			},
+			"linux": {
+				"arm64": "aarch64-unknown-linux-gnu",
+				"x64": "x86_64-unknown-linux-gnu"
+			},
+			"win32": {
+				"arm64": "aarch64-pc-windows-msvc",
+				"x64": "x86_64-pc-windows-msvc"
+			}
+		},
+		"archiveExtension": {
+			"darwin": "tar.gz",
+			"linux": "tar.gz",
+			"win32": "zip"
+		},
+		"archiveMember": {
+			"darwin": "uv-{triple}/uv",
+			"linux": "uv-{triple}/uv",
+			"win32": "uv.exe"
 		}
 	},
 	"architectures": ["arm64", "x64"],

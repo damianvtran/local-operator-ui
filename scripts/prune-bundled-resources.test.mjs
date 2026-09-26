@@ -190,33 +190,46 @@ test("a build that carries only its own runtime trees is left alone", () => {
 	assert.equal(existsSync(join(resources, uvResourceDir("arm64"), "uv")), true);
 });
 
-test("a non-macOS build is not touched", () => {
-	// The trees are mac standalone builds and only the macOS job assembles them;
-	// leaving the other platforms' output identical is the contract, so this
-	// branch removes nothing even when every tree exists.
-	const dir = tempDir("lo-prune-win-");
-	const appOutDir = join(dir, "win-unpacked");
-	const resources = join(appOutDir, "resources");
-	for (const relative of [
-		...SEED_RESOURCE_DIRS,
-		uvResourceDir("arm64"),
-		uvResourceDir("x64"),
-	])
-		mkdirSync(join(resources, relative), { recursive: true });
+test("a Windows or Linux build prunes only the other architecture's uv", () => {
+	// The uv half is every platform's now: both architecture trees are copied
+	// into each packed app and only one of them can run on the machine the
+	// artifact is for. The interpreter half stays macOS's business on these
+	// platforms - nothing stages one for them, and the trees a dev checkout might
+	// have staged are left exactly as the build found them.
+	for (const [platform, dirName] of [
+		["win32", "win-unpacked"],
+		["linux", "linux-unpacked"],
+	]) {
+		const dir = tempDir(`lo-prune-${platform}-`);
+		const appOutDir = join(dir, dirName);
+		const resources = join(appOutDir, "resources");
+		for (const relative of [
+			...SEED_RESOURCE_DIRS,
+			uvResourceDir("arm64"),
+			uvResourceDir("x64"),
+		])
+			mkdirSync(join(resources, relative), { recursive: true });
 
-	const result = pruneUnshippedBundledResources({
-		appOutDir,
-		arch: "x64",
-		productFilename: "Local Operator",
-		platform: "win32",
-		log: () => {},
-	});
+		const result = pruneUnshippedBundledResources({
+			appOutDir,
+			arch: "x64",
+			productFilename: "Local Operator",
+			platform,
+			log: () => {},
+		});
 
-	assert.deepEqual(result.pruned, []);
-	assert.equal(existsSync(join(resources, "python-runtime-seed/arm64")), true);
-	assert.equal(existsSync(join(resources, "python-runtime-seed/x64")), true);
-	assert.equal(existsSync(join(resources, uvResourceDir("arm64"))), true);
-	assert.equal(existsSync(join(resources, uvResourceDir("x64"))), true);
+		assert.deepEqual(result.pruned, [join(resources, uvResourceDir("arm64"))]);
+		assert.deepEqual(result.kept, [uvResourceDir("x64")]);
+		assert.equal(result.resourcesDir, resources);
+		assert.equal(existsSync(join(resources, uvResourceDir("arm64"))), false);
+		assert.equal(existsSync(join(resources, uvResourceDir("x64"))), true);
+		for (const seed of SEED_RESOURCE_DIRS)
+			assert.equal(
+				existsSync(join(resources, seed)),
+				true,
+				`${platform}: the interpreter tree ${seed} is not this hook's to touch`,
+			);
+	}
 });
 
 test("the numeric Arch enum an afterPack context carries is understood", () => {
@@ -367,31 +380,30 @@ test("the builder config stages both runtime trees the architecture resolves", (
 		"the mac build copies each checkout tree into the resource directory its architecture resolves",
 	);
 	/*
-	 * And the two other platforms, which never run `pnpm setup-python`: their
-	 * entries are what ships if the trees are ever staged for them. The uv half is
-	 * asserted ABSENT, deliberately (review R1-3): the copy lists are not
-	 * architecture-aware, nothing stages a Windows or Linux uv, and an entry there
-	 * would ship ~74 MB of macOS Mach-O from any checkout that HAD staged them -
-	 * whose only effect on those platforms is an `exec format error` inside the
-	 * script's probe and a pip fallback. The interpreter entries stay, because
-	 * those trees are what the platform's own setup installs.
+	 * And the two other platforms, each of which now stages and ships its own uv:
+	 * Linux with `scripts/setup-python-resource.sh` in `build-linux`, Windows with
+	 * `scripts/setup-python-resource.ps1` in `build-windows`, and the `afterPack`
+	 * prune above keeping only the packed app's own architecture's tree. Their uv
+	 * entries are asserted PRESENT (review R1-3's absence assertion is the state
+	 * this change replaces: a copy list with no uv is exactly the pip-only
+	 * artifact the two staging steps exist to stop shipping).
+	 *
+	 * The interpreter entries stay, because those trees are what the platform's
+	 * own setup installs; the legacy names are their live spellings here, not the
+	 * retired ones macOS refuses.
 	 */
 	for (const scope of ["win", "linux"]) {
 		const entries = (config[scope]?.extraResources ?? []).map(
 			(entry) => entry.to,
 		);
-		// Those two platforms keep the interpreter names they have always used
-		// (`python` / `python_aarch64`, the LEGACY names macOS may not carry), so
-		// what is asserted here is the uv half rather than the spelling of trees
-		// this change does not touch.
 		assert.ok(
 			entries.includes("python") && entries.includes("python_aarch64"),
 			`build.${scope}.extraResources must still carry both interpreter trees; got ${entries.join(", ")}`,
 		);
 		assert.deepEqual(
-			entries.filter((to) => String(to).startsWith("uv")),
-			[],
-			`build.${scope}.extraResources must name no uv: nothing stages one for ${scope}, and a macOS Mach-O in that artifact is dead weight with a misleading name`,
+			entries.filter((to) => String(to).startsWith("uv")).sort(),
+			[uvResourceDir("arm64"), uvResourceDir("x64")].sort(),
+			`build.${scope}.extraResources must name both uv directories: ${scope} stages and ships its own release now, and the copy lists are not architecture-aware`,
 		);
 	}
 });

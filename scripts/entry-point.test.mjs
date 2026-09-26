@@ -306,6 +306,19 @@ function cases(root) {
 			stderr: /^$/,
 		},
 		{
+			// `publish.yml` runs this in both non-macOS build jobs over the unpacked
+			// app electron-builder leaves behind. An empty `dist` is the refusal those
+			// steps must see rather than a pass over nothing: the check cannot pass
+			// on a directory tree it found nothing in.
+			script: "verify-bundled-uv.mjs",
+			args: ["--dist", emptyDist, "--platform", "win32"],
+			cwd: plain,
+			env: {},
+			status: 1,
+			stdout: /^$/,
+			stderr: /no win-\*-unpacked directory/,
+		},
+		{
 			// `pnpm notarize-dmg` in both release workflows. On a macOS runner with no
 			// `NOTARIZE=true` and no `.env.build` it skips loudly, which is the line
 			// that keeps `require-report.sh` from reading a skip as a silence; on the
