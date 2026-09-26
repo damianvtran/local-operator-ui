@@ -4177,3 +4177,218 @@ test("a gap marks a row it cannot vouch for, and leaves a joined row's own claim
 		"a settled row is whole, and the gap marks nothing on it",
 	);
 });
+
+/*
+ * The re-delivery class, pinned on the wire's own cursor.
+ *
+ * WHY THE CURSOR IS THE RULE, rather than a content comparison: deltas are
+ * fragments of a token stream, and a legitimate stream repeats short runs
+ * freely ("the the", a doubled word, a quoted prompt), so "does this text
+ * already appear" has no right answer from content alone — the append path
+ * documents that and refuses content dedupe. The frame's `(epoch, seq)` is
+ * assigned once at publish, and a re-delivery (a receipt replay after a
+ * reconnect, a flush from a dead stream interleaved with its successor's)
+ * carries the ORIGINAL cursor — so a row that recorded the last frame it
+ * folded can refuse a frame at or behind it without guessing. Rows painted
+ * without a frame in hand (a seed folded with no snapshot cursor, a direct
+ * caller) keep the old behaviour unchanged.
+ */
+test("a re-delivered frame is refused: the text is the deltas in order, once", () => {
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: assistant("a1", "") },
+		1,
+		{ frame: { epoch: "e1", seq: 1 } },
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_update", delta: "abc", message: assistant("a1", "") },
+		2,
+		{ frame: { epoch: "e1", seq: 2 } },
+	);
+	const dropped = streamDiagnostics?.staleUpdateFrameDropped ?? 0;
+	// The stale frame: the same window re-sent, an earlier offset on the wire.
+	state = applyEvent(
+		state,
+		{ type: "message_update", delta: "b", message: assistant("a1", "") },
+		3,
+		{ frame: { epoch: "e1", seq: 2 } },
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_update", delta: "def", message: assistant("a1", "") },
+		4,
+		{ frame: { epoch: "e1", seq: 3 } },
+	);
+	const row = state.records.find((record) => record.id === "a1");
+	assert.equal(row.text, "abcdef", "each delta lands once, in order");
+	assert.equal(
+		streamDiagnostics?.staleUpdateFrameDropped,
+		dropped + 1,
+		"the refusal is counted",
+	);
+});
+
+test("a replayed window leaves the painted text untouched, and the stream continues after it", () => {
+	const chunks = ["The lane ", "has dia", "gnosed"];
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: assistant("a1", "") },
+		1,
+		{ frame: { epoch: "e1", seq: 1 } },
+	);
+	for (let i = 0; i < chunks.length; i++) {
+		state = applyEvent(
+			state,
+			{
+				type: "message_update",
+				delta: chunks[i],
+				message: assistant("a1", ""),
+			},
+			2 + i,
+			{ frame: { epoch: "e1", seq: 2 + i } },
+		);
+	}
+	// A reconnect replays the same window over the painted row. Old code
+	// appended every re-sent fragment a second time — the operator's "chunks
+	// are not in the proper overlap/order".
+	let replayed = state;
+	for (let i = 0; i < chunks.length; i++) {
+		replayed = applyEvent(
+			replayed,
+			{
+				type: "message_update",
+				delta: chunks[i],
+				message: assistant("a1", ""),
+			},
+			10 + i,
+			{ frame: { epoch: "e1", seq: 2 + i } },
+		);
+	}
+	let row = replayed.records.find((record) => record.id === "a1");
+	assert.equal(
+		row.text,
+		"The lane has diagnosed",
+		"a replayed window does not double the text",
+	);
+	// The live stream continues from the frame after the window.
+	const live = applyEvent(
+		replayed,
+		{
+			type: "message_update",
+			delta: " item ten",
+			message: assistant("a1", ""),
+		},
+		20,
+		{ frame: { epoch: "e1", seq: 5 } },
+	);
+	row = live.records.find((record) => record.id === "a1");
+	assert.equal(row.text, "The lane has diagnosed item ten");
+});
+
+test("a new message identity starts from zero while the previous buffer stays put", () => {
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: assistant("m1", "") },
+		1,
+		{ frame: { epoch: "e1", seq: 1 } },
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_update", delta: "diagn", message: assistant("m1", "") },
+		2,
+		{ frame: { epoch: "e1", seq: 2 } },
+	);
+	// The stream moves on under a new id.
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: assistant("m2", "") },
+		3,
+		{ frame: { epoch: "e1", seq: 3 } },
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "message_update",
+			delta: "The lane has ",
+			message: assistant("m2", ""),
+		},
+		4,
+		{ frame: { epoch: "e1", seq: 4 } },
+	);
+	// A late re-delivery for the FIRST message must be refused rather than
+	// appended to a buffer that never reset.
+	state = applyEvent(
+		state,
+		{ type: "message_update", delta: "gnosed", message: assistant("m1", "") },
+		5,
+		{ frame: { epoch: "e1", seq: 2 } },
+	);
+	const m1 = state.records.find((record) => record.id === "m1");
+	const m2 = state.records.find((record) => record.id === "m2");
+	assert.equal(m1.text, "diagn", "the old buffer did not grow");
+	assert.equal(m2.text, "The lane has ", "the new identity starts from zero");
+});
+
+test("a row the seed painted carries the snapshot's cursor; an older replay is refused", () => {
+	let state = applyLiveSeed(
+		EMPTY_TRANSCRIPT,
+		{
+			streaming: true,
+			generation: "1",
+			live_events: [
+				{ type: "message_start", message: assistant("a1", "") },
+				{
+					type: "message_update",
+					delta: "chunk two",
+					message: assistant("a1", ""),
+				},
+			],
+		},
+		10,
+		{ epoch: "e1", seq: 7 },
+	);
+	// A replay frame the snapshot already covers is refused.
+	state = applyEvent(
+		state,
+		{ type: "message_update", delta: "one ", message: assistant("a1", "") },
+		11,
+		{ frame: { epoch: "e1", seq: 5 } },
+	);
+	let row = state.records.find((record) => record.id === "a1");
+	assert.equal(row.text, "chunk two", "the older replay is not appended");
+	// The live stream after the snapshot still appends.
+	state = applyEvent(
+		state,
+		{
+			type: "message_update",
+			delta: " and three",
+			message: assistant("a1", ""),
+		},
+		12,
+		{ frame: { epoch: "e1", seq: 8 } },
+	);
+	row = state.records.find((record) => record.id === "a1");
+	assert.equal(row.text, "chunk two and three");
+});
+
+test("a frame from a new epoch is applied even though its numbering restarts", () => {
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: assistant("a1", "") },
+		1,
+		{ frame: { epoch: "e1", seq: 40 } },
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "message_update",
+			delta: "after the owner was replaced",
+			message: assistant("a1", ""),
+		},
+		2,
+		{ frame: { epoch: "e2", seq: 1 } },
+	);
+	const row = state.records.find((record) => record.id === "a1");
+	assert.equal(row.text, "after the owner was replaced");
+});
