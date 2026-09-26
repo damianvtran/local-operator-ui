@@ -41,6 +41,25 @@ import { withNotificationsOff } from "./notifications-off.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
 
 /**
+ * The shared-inode write guard, preloaded into every test-file process.
+ *
+ * THIS LINE IS THE WHOLE PROTECTION AND IT BELONGS HERE RATHER THAN IN THE
+ * FILES. On 2026-09-18 a suite in this list replaced the uv-managed interpreter
+ * every 3.12 venv on this host hardlinks (23 names then, 27 now) with a 12-byte
+ * text file, and the offending suite was never reduced — so there is no call
+ * site to fix, only a class of write to refuse. Arming it from the one wrapper
+ * `pnpm test:desktop` goes through means a test file cannot forget it, and the
+ * `--import` form is required rather than stylistic: the guard patches the CJS
+ * exports object, and it has to be in place BEFORE a test module's
+ * `import { writeFileSync } from "node:fs"` snapshots that binding. See
+ * `no-hardlink-write.mjs` and `no-hardlink-write.test.mjs`.
+ */
+const GUARD_PRELOAD = new URL(
+	"./no-hardlink-write-preload.mjs",
+	import.meta.url,
+);
+
+/**
  * Node's test runner exports this into every test-file process. An inherited
  * copy makes a nested `node --test` treat itself as recursive: it warns
  * (`node:test run() is being called recursively within a test file. skipping
@@ -118,6 +137,7 @@ if (explicitFlag === undefined) {
 		`desktop tests: ${fileCount} file${fileCount === 1 ? "" : "s"}, concurrency ${value} (explicit ${explicitFlag} in argv; governor bypassed)`,
 	);
 }
+nodeArgs.push(`--import=${GUARD_PRELOAD.href}`);
 nodeArgs.push(...args);
 
 /*
