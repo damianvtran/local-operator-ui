@@ -1188,13 +1188,16 @@ async function scenario(
 	 * then the reveal has landed and the anchor hold has carried the reader away
 	 * from the wall (measured: after-05's act-end shutter sat 6676px below the
 	 * top). A probe-triggered capture takes the frame at the first observed
-	 * instant with `distanceFromTop <= HARD_TOP_PX` while the SLOT IS PAINTED,
-	 * which is the state the change is about — and records the probe that
-	 * triggered it beside the frame, so the claim is checkable in the JSON.
+	 * instant with `distanceFromTop <= HARD_TOP_PX` — the pinned state itself.
+	 * The slot COPY is not part of the trigger and may read empty at that
+	 * instant (measured: this revision's 08 capture landed with the slot's text
+	 * empty, the landing done and its widen owed), so the frame carries the pin
+	 * rather than a claim about the copy, and `atWall` records exactly what the
+	 * trigger saw — the claim is checkable in the JSON.
 	 *
-	 * The poller runs beside the gesture, not after it. 25ms is well inside the
-	 * ~300ms the pinned window lasted in round 1's samples, and each poll is one
-	 * Runtime.evaluate on a page that is mid-scroll but never mid-capture.
+	 * The poller runs beside the gesture, not after it. Its cadence is ~20-30ms
+	 * on the light probe below, and a pin can be a single sampled frame — which
+	 * is why a miss is reported rather than papered over.
 	 */
 	let atWall = null;
 	let watching = atWallShot !== null;
@@ -1243,9 +1246,10 @@ async function scenario(
 	const caught = watch ? await watch : false;
 	/*
 	 * The state the act itself left behind, captured BEFORE the settle sleep —
-	 * the fallback for a gesture that never pinned with the slot painted (a miss
-	 * on either arm, and the expected case on `before`, whose mid-motion lead
-	 * carries the reader past the wall), under a name that says what it is.
+	 * the fallback when the watch caught no pinned sample (its cadence can step
+	 * over a single-frame pin, as it did over 05's; `before` never pins at all
+	 * in either scenario, whose mid-motion lead carries the reader past the
+	 * wall), under a name that says what it is.
 	 * Design round 1 (D1-1): every `after` frame used to be taken after the
 	 * settle, i.e. after the reveal that unpins the reader, so no `after` frame
 	 * showed the transcript at the top. The shutters exist for that state.
@@ -2637,11 +2641,10 @@ phase2.push(
 			}),
 		settleMs: 2200,
 		// The frame that shows the state this whole PR is about: the reader at the
-		// hard top with the slot painted. Probe-triggered while
-		// `distanceFromTop <= HARD_TOP_PX` and the slot is loading (design round
-		// 2, D1); the act-end shot stays as the fallback when the gesture never
-		// pins with the slot painted, and `atWall` in the step records which
-		// happened.
+		// hard top. Probe-triggered while `distanceFromTop <= HARD_TOP_PX` (design
+		// round 2, D1) — the slot copy may be empty mid-push, so the trigger does
+		// not depend on it; the act-end shot is the fallback when the watch
+		// catches no pin, and `atWall` in the step records which happened.
 		atWallShot: `${MODE}-05-fast-fling-to-top`,
 		beforeSettle: () => shot(`${MODE}-05-fast-fling-to-top-at-act-end`),
 		note: "one flick with a real momentum tail, from the arrival state: the page must be spent on the way to the wall, not at it",
