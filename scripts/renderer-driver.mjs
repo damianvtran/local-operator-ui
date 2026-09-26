@@ -7411,6 +7411,72 @@ async function sceneFirstSend(cdp) {
 	note("frame", JSON.stringify(sentFrame));
 	const after = (await verb(cdp, "measure", composerSelector)).rect;
 	/*
+	 * AND WHERE A SHORT TRANSCRIPT PUTS ITS CONTENT (the layout half of
+	 * conversation-start): the top of the pane, not the foot.
+	 *
+	 * The reading is the user row's own top against (a) the transcript region's
+	 * box, (b) the region's `p-4` inset and (c) the fixed 44px
+	 * "Start of conversation" slot that is the column's first child - the three
+	 * numbers that tell a top anchor from the bottom-packed layout this scene
+	 * existed for, without pinning a class name: the mechanism is `mb-auto` on the
+	 * content column, and a source-text assertion would pass on a build where the
+	 * margin never resolved.
+	 *
+	 * The row is found by its text and climbed to the content column's direct
+	 * child, so the box measured is the ROW's, whatever wrapper the cell gained.
+	 * Both assertions below fail on the pre-change tree (content packed to the
+	 * bottom origin sits at the region's foot).
+	 */
+	const anchored = await cdp.evaluate(`(() => {
+		const log = document.querySelector('[role="log"]');
+		const content = log && log.querySelector('[data-lo-transcript-content]');
+		if (!log || !content) return null;
+		const climb = (el) => {
+			let row = el;
+			while (row.parentElement && row.parentElement !== content) row = row.parentElement;
+			return row.parentElement === content ? row : null;
+		};
+		const tree = [...content.querySelectorAll('*')];
+		const holds = (el) => el.textContent.includes("Summarise yesterday");
+		const leaf = tree.find((el) => holds(el) && ![...el.children].some(holds)) ?? null;
+		const row = leaf ? climb(leaf) : null;
+		const slotLeaf = tree.find((el) => el.children.length === 0 && el.textContent.trim() === "Start of conversation") ?? null;
+		const slot = slotLeaf ? climb(slotLeaf) : null;
+		const rect = (el) => {
+			const r = el.getBoundingClientRect();
+			return { top: Math.round(r.top), bottom: Math.round(r.bottom), height: Math.round(r.height) };
+		};
+		return {
+			region: rect(log),
+			content: rect(content),
+			row: row ? rect(row) : null,
+			slot: slot ? rect(slot) : null,
+			overflow: log.scrollHeight - log.clientHeight,
+			scrollTop: log.scrollTop,
+		};
+	})()`);
+	note("anchor", JSON.stringify(anchored));
+	check(
+		"a short transcript is anchored to the TOP of the pane: the row sits in the region's upper half",
+		anchored !== null &&
+			anchored.row !== null &&
+			anchored.row.top - anchored.region.top <
+				(anchored.region.bottom - anchored.region.top) / 2,
+		`row ${JSON.stringify(anchored?.row)} in region ${JSON.stringify(anchored?.region)}`,
+		`row ${JSON.stringify(anchored?.row)} in region ${JSON.stringify(anchored?.region)}`,
+	);
+	check(
+		"the row sits just under the region's top inset, below the start-of-conversation slot",
+		anchored !== null &&
+			anchored.row !== null &&
+			anchored.row.top - anchored.region.top >= 16 &&
+			anchored.row.top - anchored.region.top <= 120 &&
+			(anchored.slot === null ||
+				Math.abs(anchored.row.top - anchored.slot.bottom) <= 2),
+		`row.top ${anchored?.row?.top} region.top ${anchored?.region?.top} slot ${JSON.stringify(anchored?.slot)}`,
+		`row.top ${anchored?.row?.top} region.top ${anchored?.region?.top} slot ${JSON.stringify(anchored?.slot)}`,
+	);
+	/*
 	 * AND ONCE THE TURN HAS SETTLED: the mock provider answers, and the session's
 	 * readings (the model, the context) arrive with its first frames. Read so a
 	 * transient that only exists while the session is starting is told apart from a
