@@ -466,30 +466,39 @@ export const McpManagementSection: FC<{
 					grantRunning,
 				),
 			}));
+		} finally {
+			/*
+			 * `setPending` STAYS IN THE `finally` even though the outcome is now known
+			 * here: the clearing is what re-enables the row's controls, and it has to
+			 * happen whether the operation resolved, refused or failed to be reported at
+			 * all. The arm below shares it rather than sitting after the statement, so
+			 * one exception cannot leave a row disabled while the move is dropped as
+			 * well.
+			 */
+			setPending(null);
+			/*
+			 * THE OPERATION ARMS THE ROW'S OWN MOVE (QA round 1, Q1 / UX round 1, U1), for
+			 * every action EXCEPT a sign-out, which arms the same deferred row move from its
+			 * confirm, and except a removal that LANDED - its caret goes to the NEIGHBOURING
+			 * row that takes the removed one's place (`setFocusAfterRemove`, and the row this
+			 * arm would name is gone by the time the hold is read). Arming here as well would
+			 * be a second move for one operation.
+			 *
+			 * A REMOVAL THAT FAILED IS NOT EXEMPT (agent review round 2, MINOR 3). The reason
+			 * for the exemption is that the row is gone, which is true only of a removal that
+			 * landed: on a failed one there is no neighbour to take the caret, the confirm's
+			 * menu item has been unmounted by Radix's own restore, and the row the reader
+			 * removed is still on the page with its control where the next Tab should start
+			 * from. QA measured the failure arm of the same shape landing on the row's `Retry`
+			 * where it does land, so the two confirmed flows now behave the same.
+			 *
+			 * It arms on FAILURE too, which is one of the two signatures Q1 measured: a test
+			 * that fails moves the row to `Needs attention` - a group change like any other -
+			 * and the caret has to come back with it.
+			 */
+			if (key !== "sign_out" && (key !== "remove" || failed))
+				armRowFocusAfterOperation(name);
 		}
-		setPending(null);
-		/*
-		 * THE OPERATION ARMS THE ROW'S OWN MOVE (QA round 1, Q1 / UX round 1, U1), for
-		 * every action EXCEPT a sign-out, which arms the same deferred row move from its
-		 * confirm, and except a removal that LANDED - its caret goes to the NEIGHBOURING
-		 * row that takes the removed one's place (`setFocusAfterRemove`, and the row this
-		 * arm would name is gone by the time the hold is read). Arming here as well would
-		 * be a second move for one operation.
-		 *
-		 * A REMOVAL THAT FAILED IS NOT EXEMPT (agent review round 2, MINOR 3). The reason
-		 * for the exemption is that the row is gone, which is true only of a removal that
-		 * landed: on a failed one there is no neighbour to take the caret, the confirm's
-		 * menu item has been unmounted by Radix's own restore, and the row the reader
-		 * removed is still on the page with its control where the next Tab should start
-		 * from. QA measured the failure arm of the same shape landing on the row's `Retry`
-		 * where it does land, so the two confirmed flows now behave the same.
-		 *
-		 * It arms on FAILURE too, which is one of the two signatures Q1 measured: a test
-		 * that fails moves the row to `Needs attention` - a group change like any other -
-		 * and the caret has to come back with it.
-		 */
-		if (key === "sign_out") return { operationId, failed };
-		if (key !== "remove" || failed) armRowFocusAfterOperation(name);
 		return { operationId, failed };
 	};
 

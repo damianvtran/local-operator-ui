@@ -3398,8 +3398,24 @@ test("a landed focus move follows the row across its own re-stand (U21)", () => 
 	);
 	assert.match(
 		section,
-		/if \(key === "sign_out"\) return \{ operationId, failed \};\s*\n\s*if \(key !== "remove" \|\| failed\) armRowFocusAfterOperation\(name\);/,
+		/if \(key !== "sign_out" && \(key !== "remove" \|\| failed\)\)\s*\n\s*armRowFocusAfterOperation\(name\);/,
 		"`run`'s own settle calls it for every operation whose flow has no move of its own, and for a REMOVAL THAT FAILED, whose row is still on the page (agent review round 2, MINOR 3)",
+	);
+	/*
+	 * AND THE ROW IS STILL RE-ENABLED UNCONDITIONALLY. MINOR 3's fix moves the ARM
+	 * decision to where the outcome is known, and the tempting version of that change
+	 * takes `setPending(null)` out of the `finally` with it - which would leave the
+	 * row's controls disabled (`disabled={pending}`) if a failure could not be
+	 * reported at all. The clearing stays where it was; the arm shares the block.
+	 */
+	const runBody = section.slice(
+		section.indexOf("const run = async ("),
+		section.indexOf("const rowByName = ("),
+	);
+	assert.match(
+		runBody,
+		/\} finally \{\s*\n\s*\/\*[\s\S]*?\*\/\s*\n\s*setPending\(null\);/,
+		"the row is re-enabled in a `finally` rather than after the statement, so nothing can leave it disabled (agent review round 2, MINOR 3)",
 	);
 	assert.match(
 		section,
