@@ -955,6 +955,43 @@ const AssistantRow = memo(function AssistantRow({
 });
 
 /**
+ * The row's own summary text — the object column before the row's bare-name drop.
+ *
+ * Shared with the trace fold's live clause (wired as `summaryOf` in the fold's
+ * memo below): a collapsed group names the running call with the row's OWN words
+ * rather than a second guess at them, and the composing/queued/never-sent
+ * branches are exactly where a second guess would drift.
+ *
+ * `never sent` covers BOTH ways a call reaches no tool — the harness's verdict
+ * (`notRunReason`) and a turn that died while the call was still being dictated
+ * or waiting to run. The TUI states the two the same way (`mark_not_run`'s
+ * summary; `mark_interrupted` keeps the compose facts for a card that was
+ * composing or queued), which is why both read `never sent · N composed` rather
+ * than only where a verdict happened to arrive.
+ */
+function toolRecordSummary(
+	record: Extract<TranscriptRecord, { kind: "tool" }>,
+): string {
+	const composing = record.phase === "composing";
+	const queued = record.phase === "queued";
+	const neverSent = record.neverSent === true || Boolean(record.notRunReason);
+	if (neverSent)
+		// `never sent`, not `failed`: the call produced no result to fail, and the
+		// size is the record of how far the model got before nothing would receive
+		// it (`ToolCard.mark_not_run`). An empty payload is named rather than
+		// rendered as `0 B`, which would claim a measurement.
+		return `never sent · ${record.argumentBytes ? `${formatBytes(record.argumentBytes)} composed` : "nothing composed"}`;
+	if (composing)
+		return `composing${record.argumentBytes ? ` · ${formatBytes(record.argumentBytes)}` : ""}`;
+	if (queued)
+		// Dictation is over and the call has not started: the byte count stays
+		// (it is how far the model got), and the status word stops claiming work
+		// the model finished writing.
+		return `queued${record.argumentBytes ? ` · ${formatBytes(record.argumentBytes)}` : ""}`;
+	return summaryFromArgs(record.toolName, record.args);
+}
+
+/**
  * One tool call as a ledger row.
  *
  * The row itself is `ToolRow`; this decides what goes in each of its columns
@@ -1007,38 +1044,14 @@ const ToolRow = memo(function ToolRow({
 	 *
 	 * Both are the TUI's own states (`ToolCard.mark_queued` / `mark_not_run`) and
 	 * the phone's (`queued` / `failed`), so the three surfaces agree on what the
-	 * producer said rather than each inventing a reading of it.
+	 * producer said rather than each inventing a reading of it. The copy for both
+	 * lives in `toolRecordSummary` below.
 	 */
-	const queued = record.phase === "queued";
 	// Truthiness rather than `!== null`: a record built by hand (a test fixture, a
 	// story) carries no `notRunReason` key at all, and `undefined !== null` would
 	// paint every one of them as a never-run verdict.
 	const notRun = Boolean(record.notRunReason);
-	/*
-	 * The call reached no tool — the verdict's fact, and also the turn-death one:
-	 * a row still being dictated or waiting to run when the turn ended was never
-	 * sent either, and the harness's verdict is only one of the two ways that
-	 * happens. The TUI states the two the same way, and the record of it is the
-	 * same sentence (`mark_not_run`'s summary; `mark_interrupted` keeps the compose
-	 * facts for a card that was composing or queued), which is why the row below
-	 * reads `never sent · N composed` for both rather than only where a verdict
-	 * happened to arrive.
-	 */
-	const neverSent = record.neverSent === true || notRun;
-	const summary = neverSent
-		? // `never sent`, not `failed`: the call produced no result to fail, and the
-			// size is the record of how far the model got before nothing would receive
-			// it (`ToolCard.mark_not_run`). An empty payload is named rather than
-			// rendered as `0 B`, which would claim a measurement.
-			`never sent · ${record.argumentBytes ? `${formatBytes(record.argumentBytes)} composed` : "nothing composed"}`
-		: composing
-			? `composing${record.argumentBytes ? ` · ${formatBytes(record.argumentBytes)}` : ""}`
-			: queued
-				? // Dictation is over and the call has not started: the byte count stays
-					// (it is how far the model got), and the status word stops claiming work
-					// the model finished writing.
-					`queued${record.argumentBytes ? ` · ${formatBytes(record.argumentBytes)}` : ""}`
-				: summaryFromArgs(record.toolName, record.args);
+	const summary = toolRecordSummary(record);
 	// When the arguments taught us nothing, the summary is the tool's own name,
 	// which the row then drops as a stutter and the object column goes empty.
 	// A row that says nothing about its call is the scannability this port
@@ -1739,15 +1752,28 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	}, [painted.records]);
 	// Windowing: newest rows first. The window widens when the reader nears the
 	// top, and resets when the transcript is replaced (session switch/clear).
+	//
+	// THE RESET IS A RENDER-PHASE ADJUSTMENT, NOT AN EFFECT, and that is a
+	// measurement rather than a preference (operator report, 2026-09-26: "no
+	// jitter where things seem to load at different times"). As an effect it
+	// landed one commit AFTER the new transcript's first paint, so a switch into
+	// a long conversation painted the window inherited from the previous one and
+	// then dropped to the newest sixty - measured on the cached-switch sequence,
+	// the first painted frame held all 106 fetched rows and the next commit
+	// trimmed it (`scr` extent 8,315.6 -> 4,864.2 px, all of it above the fold,
+	// and a second paint all the same). Adjusting the state during render
+	// re-renders before the browser paints (React's "adjusting state when a prop
+	// changes"), so the first frame of a conversation is already the windowed
+	// one. Clause H's reason is unchanged: without a reset, opening a long
+	// conversation and then a short one leaves the short one mounting every row
+	// it has, and the paging state would be reasoning about a window that
+	// belongs to the previous transcript.
+	const [windowSession, setWindowSession] = useState(sessionId);
 	const [windowSize, setWindowSize] = useState(WINDOW);
-	// Clause H: a different conversation starts at the default window. Without
-	// this, opening a long conversation and then a short one leaves the short
-	// one mounting every row it has, and the paging state reset below would be
-	// reasoning about a window that belongs to the previous transcript.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: reset on session change only
-	useEffect(() => {
+	if (windowSession !== sessionId) {
+		setWindowSession(sessionId);
 		setWindowSize(WINDOW);
-	}, [sessionId]);
+	}
 	const total = rows.length;
 	const visible = useMemo(
 		() => (total > windowSize ? rows.slice(total - windowSize) : rows),
@@ -1779,6 +1805,28 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				row.record.kind === "tool" && row.record.isError === true,
 			durationOf: (row) =>
 				row.record.kind === "tool" ? row.record.durationS : null,
+			/*
+			 * The fold's condensed header is fed from the records themselves: the
+			 * running call's own words (`toolRecordSummary`), its own running
+			 * predicate, and the two stamps its span is built from. All four live
+			 * behind options so the model stays a pure function over rows.
+			 */
+			summaryOf: (row) =>
+				row.record.kind === "tool" ? toolRecordSummary(row.record) : "",
+			runningOf: (row) =>
+				row.record.kind === "tool" && row.record.phase !== "done",
+			/*
+			 * The live clause's predicate is NARROWER than the condense guard's: a
+			 * composing or queued call has no name to paint yet, so the header waits
+			 * for `phase === "running"` rather than announcing a phase it cannot
+			 * back (see `foldLive`).
+			 */
+			executingOf: (row) =>
+				row.record.kind === "tool" && row.record.phase === "running",
+			startedAtOf: (row) =>
+				row.record.kind === "tool" ? row.record.startedAt : null,
+			endedAtOf: (row) =>
+				row.record.kind === "tool" ? row.record.endedAt : null,
 			isFoldable: (row) => row.record.kind === "tool",
 		});
 		const firstIndexOf = new Map<string, number>();
@@ -2010,7 +2058,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			const p50 = flushes[Math.floor(flushes.length / 2)] ?? 0;
 			const max = flushes.at(-1) ?? 0;
 			setPerf(
-				`commits=${commits.current} rowRenders=${rowRenderCount.current} rows=${visible.length} flushes=${flushes.length} flushP50=${p50.toFixed(2)}ms flushMax=${max.toFixed(2)}ms settledUpdates=${streamDiagnostics.settledAssistantUpdate} seedDeltasWithheld=${streamDiagnostics.seededDeltaWithheld}`,
+				`commits=${commits.current} rowRenders=${rowRenderCount.current} rows=${visible.length} flushes=${flushes.length} flushP50=${p50.toFixed(2)}ms flushMax=${max.toFixed(2)}ms settledUpdates=${streamDiagnostics.settledAssistantUpdate} seedDeltasWithheld=${streamDiagnostics.seededDeltaWithheld} staleUpdateFrameDropped=${streamDiagnostics.staleUpdateFrameDropped}`,
 			);
 		}, 1000);
 		return () => window.clearInterval(timer);
@@ -2131,13 +2179,21 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				collapsed ? "h-0 grow-0 overflow-hidden" : "flex min-h-0 grow flex-col",
 			)}
 		>
-			{stale && (
+			{stale && !holdPlaceholder && (
 				/*
 				 * Pinned to the pane's top edge, in the flow rather than over it: it
 				 * takes its own row and no row of the conversation is ever painted
 				 * under it. `shrink-0` so a tall neighbour cannot squeeze it away, and
 				 * the same horizontal inset as the scroller's own padding so the two
 				 * share a centre.
+				 *
+				 * AND IT STANDS DOWN WHILE THE PANE HOLDS. `stale` is still true for
+				 * a cached paint whose page is owed - that is the flag the hold reads
+				 * - and while the hold is up NOTHING of the cached paint is on screen
+				 * (the rows are gated out below), so a caption describing it would be
+				 * the pane talking about a view nobody can see. The two go away
+				 * together, which is the rule this element was introduced under; the
+				 * hold is just the case where "together" means "neither yet".
 				 */
 				<p
 					className={cn(
@@ -2175,7 +2231,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				 * holdPlaceholder` was a proxy for "no rows" - both imply it - and the hold
 				 * no longer covers every row-less pane, because a pane with a statement of
 				 * its own paints that instead of the placeholder. The proxy stopped
-				 * agreeing with the property it stood for, so the property is read directly.
+				 * agreeing with the property it stood for, so the property is read directly
+				 * - and the property now differs from the hold in the OTHER direction too:
+				 * a pane HOLDING a cached paint has records in state and no rows on screen,
+				 * so it is `holdPlaceholder`, not the record count, that keeps the stop off
+				 * that pane.
 				 *
 				 * THE TURN ORDER OF THOSE STOPS USED TO COST ONE PRESS PER ROW, AND IT NO
 				 * LONGER DOES (UX round 1, U4; QA round 1, Q5). While the control was
@@ -2214,7 +2274,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				 * gesture for another. The transcript's own stop, which is the half the
 				 * finding is about, is here.
 				 */
-				tabIndex={transcript.records.length === 0 ? -1 : 0}
+				tabIndex={transcript.records.length === 0 || holdPlaceholder ? -1 : 0}
 				role="log"
 				aria-label={CHAT_REGION_LABEL.transcript}
 				// Only the `windowed` branch renders that id, so the description has to
@@ -2267,10 +2327,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					data-lo-transcript-content
 					className={cn("flex flex-col", CHAT_MEASURE)}
 				>
-					{/* The state this element exists for: no rows yet, and the stream is
-				    still bringing them. Rendered inside the content column so it lands
-				    at the same inset and the same bottom anchor the rows will, rather
-				    than at the pane's centre in the composer band. */}
+					{/* The state this element exists for: the frame BEFORE the conversation's
+				    first page, when there is nothing of it to paint yet - either because
+				    the pane holds no records at all, or because every record it holds is
+				    this window's cached memory of the conversation and the page that would
+				    make them paintable is still owed (see `transcriptPaneHoldsPlaceholder`).
+				    Rendered inside the content column so it lands at the same inset and the
+				    same bottom anchor the rows will, rather than at the pane's centre in
+				    the composer band. */}
 					{holdPlaceholder && (
 						<TranscriptPlaceholder isSmallView={isSmallView} />
 					)}
@@ -2420,8 +2484,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					{/* Rows are suppressed for a conversation that is not there: the pane
 				    must not paint its last memory of a session the backend says is
 				    gone, because nothing on screen could then be trusted and there is
-				    no state to reconcile to. */}
-					{!missing && (
+				    no state to reconcile to - and for one that is still ARRIVING: a
+				    `holdPlaceholder` pane has the cached paint in state and nothing of
+				    it on screen, so the page that ends the hold brings the rows and the
+				    readings in ONE commit instead of correcting a painted guess. */}
+					{!missing && !holdPlaceholder && (
 						/*
 						 * THE PANE THIS CONVERSATION'S LINKS OPEN INTO, provided once for the
 						 * whole row list rather than threaded through the rows: the anchor that
@@ -2474,10 +2541,17 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 										summary={group.summary}
 										actionCount={group.rows.length}
 										failedCount={group.failedCount}
-										durationS={group.durationS}
-										/* Expanded while the newest turn is IN FLIGHT, collapsed to
-										   the summary once it settles (§E2). */
-										openByDefault={working !== null && group.isNewestTurn}
+										span={group.span}
+										live={group.live}
+										/*
+										 * THE FOLD'S SECTION: the newest turn while that turn is in
+										 * flight. While it is true nothing condenses the fold; when it
+										 * turns false the fold closes itself once (see `TraceFold`'s
+										 * condense rule). `working` is the same liveness the working
+										 * line reads, so the section ends exactly when the pane says the
+										 * turn did.
+										 */
+										sectionLive={working !== null && group.isNewestTurn}
 									>
 										{group.rows.map((row, index) => (
 											<TranscriptRow

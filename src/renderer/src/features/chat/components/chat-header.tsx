@@ -21,12 +21,17 @@ import {
 	Globe,
 	Info,
 	MoreHorizontal,
+	Pencil,
 	SquareTerminal,
 	Trash2,
 } from "lucide-react";
 import { type FC, useEffect, useRef } from "react";
 import { canvasToggleCap, isCanvasTogglePress } from "../canvas-shortcut";
 import { archiveControlLabel } from "../chat-archived";
+import {
+	ChatHeaderIdentity,
+	type HeaderIdentityData,
+} from "./chat-header-identity";
 import type { McpServerRow, RunDetails } from "./run-details";
 import { RunDetailsTrigger } from "./run-details";
 
@@ -63,6 +68,30 @@ type ChatHeaderProps = {
 	 * the identity replaces it the moment anybody knows it.
 	 */
 	descriptionPending?: boolean;
+	/**
+	 * The live session's identity, when the identity slot should offer the two
+	 * switchers (a team menu and an agent menu) instead of the plain description
+	 * string.
+	 *
+	 * `chat-page.tsx` computes it through `headerIdentityControlsShown` - the
+	 * model's own gate - so this component never re-answers questions about
+	 * capabilities or stream state it cannot see. Absent (a draft, a pending
+	 * identity, a backend without `team_catalogue`) the slot renders the
+	 * description exactly as it always did: that degradation is the feature's
+	 * absent state, not a dead control.
+	 */
+	identity?: HeaderIdentityData | null;
+	/**
+	 * Opens the EXISTING rename flow for this conversation.
+	 *
+	 * A callback rather than a picker mounted here, because the header must not
+	 * grow a second rename surface: the one it opens is the dispatcher's own
+	 * (`/rename` with empty args presents `RenamePicker`), the same call
+	 * `chat-page.tsx` already routes for its inline options. Absent on a draft -
+	 * there is no conversation yet to rename - which is also what keeps the
+	 * pencil off the draft pane.
+	 */
+	onRenameConversation?: () => void;
 	onOpenOptions?: () => void;
 	runDetails?: RunDetails | null;
 	/**
@@ -212,6 +241,8 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	agentName = "Local Operator",
 	description = "Your on-device AI assistant",
 	descriptionPending = false,
+	identity,
+	onRenameConversation,
 	onOpenOptions,
 	runDetails = null,
 	fileCount = 0,
@@ -528,10 +559,19 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * `PATH_CHIP_CHARS` by `middleTruncatePath` - sits beside it when it fits
 			 * WHOLE and wraps onto the clipped second line when it does not. The path
 			 * is dropped before the title loses a word, and it never renders cut.
+			 *
+			 * AND IT CLIPS WITHOUT SCROLLING (`overflow-clip`, UX round 1's U1). The
+			 * controls this PR adds are the first focusables ever to live INSIDE this
+			 * block, and `overflow-hidden` is a scroll container: focusing either
+			 * control scrolled it (scrollTop 0 -> 3 at rest; 22px at the 560 band,
+			 * where the identity sits on the clipped second line - the title's top
+			 * half scrolled out of the clip) and blur never restored it. `clip`
+			 * clips exactly the same pixels but creates no scrollport, so focus has
+			 * nothing to move; the reserved slot and the geometry are unchanged.
 			 */}
 			<div
 				className={cn(
-					"flex h-5 min-w-0 flex-1 flex-wrap items-baseline gap-x-2 overflow-hidden @[13.5rem]/chathdr:min-w-10",
+					"flex h-5 min-w-0 flex-1 flex-wrap items-baseline gap-x-2 overflow-clip @[13.5rem]/chathdr:min-w-10",
 				)}
 			>
 				{/* `text-body` (14), not `text-heading` (16) and not `text-title` (20):
@@ -540,13 +580,72 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				 * reader is already inside the 16px step made the bar's loudest text the
 				 * thing they were looking at anyway. 14 is one step above the rows the bar
 				 * heads, which is what the reference products use. */}
-				<h2
+				{/*
+				 * THE RENAME PENCIL LANDS WHERE THE ACTION IS: on the conversation's own
+				 * name, not on the identity chip beside it (the operator wrote "on the
+				 * team name" and the manager's clarification, 2026-09-26, pinned that the
+				 * title block is the rename's subject; the design round sees this note).
+				 *
+				 * ONE WRITE PATH: it calls `onRenameConversation`, which the page wires
+				 * to the dispatcher's own `/rename` (empty args) through
+				 * `dispatchFromControl` - the same door, and the same failure note, as
+				 * the page's inline options - so no second rename surface exists to
+				 * drift, and a dead command surface reports instead of swallowing.
+				 *
+				 * The slot is RESERVED rather than inserted: opacity is the only thing
+				 * that changes on hover (/motion), so nothing reflows under the pointer,
+				 * and `group-focus-within/title` is what makes it keyboard-reachable -
+				 * tabbing to the pencil makes it visible. `text-ink-dim` and a 12px glyph
+				 * inside a 20px slot: the ramp's rule for anything smaller than a 28px
+				 * control.
+				 *
+				 * THE 20px SLOT IS A RECORDED TRADE (design round 1, D5), not an
+				 * oversight: the slot sits inside the block above, whose one-line clip
+				 * band is 20px, so nothing in it can present a 24x24 target - a hit area
+				 * cannot extend past the ancestor that clips it, and growing the band
+				 * exposes a sliver of the wrapped second line (measured on the fold
+				 * state; see the PR's Judgement calls). The pencil and the two triggers
+				 * are 20px in a 40px desktop toolbar, kept because the alternative
+				 * re-pins the toolbar step this header's rounds fixed - and the
+				 * measurement is what makes it a decision rather than an accident.
+				 */}
+				<span
 					className={cn(
-						"min-w-0 max-w-full truncate font-medium text-body text-ink",
+						"group/title inline-flex min-w-0 max-w-full items-center gap-1",
 					)}
 				>
-					{agentName}
-				</h2>
+					<h2
+						data-header-title=""
+						className={cn(
+							"min-w-0 max-w-full truncate font-medium text-body text-ink",
+						)}
+					>
+						{agentName}
+					</h2>
+					{onRenameConversation && (
+						<button
+							type="button"
+							data-header-rename=""
+							aria-label="Rename conversation"
+							title="Rename conversation"
+							onClick={onRenameConversation}
+							className={cn(
+								"inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-xs",
+								"text-ink-dim",
+								// The duration governs the transition INTO the current state, so
+								// the resting value is the fade-OUT and the hovered value the
+								// fade-IN: quick to appear, gentler to leave (the reveal pattern
+								// `chat-sidebar.tsx`'s entity rows ship).
+								"transition-opacity duration-base ease-out-quart",
+								"opacity-0 group-hover/title:opacity-100 group-hover/title:duration-fast",
+								"group-focus-within/title:opacity-100 group-focus-within/title:duration-fast",
+								"hover:text-ink-muted",
+							)}
+						>
+							<Pencil className={cn("size-3")} aria-hidden="true" />
+						</button>
+					)}
+				</span>
 				{/*
 				 * THE QUIET PATH, and the `~` form is the point of it.
 				 *
@@ -577,6 +676,17 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 					 * dark brand palette, 1.25 in obsidian). The height matches the `text-mono-sm`
 					 * line it stands in, so holding the slot holds the row's height too. */
 					<Skeleton className={cn("h-3 w-24 shrink-0 bg-elevated")} />
+				) : identity ? (
+					/*
+					 * THE IDENTITY SLOT, WHEN THERE IS SOMETHING TO SWITCH. The two menus
+					 * replace the joined string ("manager · lopdev") in the same slot, so
+					 * the row's wrap-and-clip behaviour is unchanged: at widths the text
+					 * block cannot hold, the control wraps onto the clipped line exactly
+					 * as the chip did. Everything about drawing, gating and the labels
+					 * lives in `chat-header-identity.tsx`; this component only decides
+					 * WHICH content the slot holds.
+					 */
+					<ChatHeaderIdentity {...identity} />
 				) : showDescription ? (
 					<span
 						data-header-path=""
