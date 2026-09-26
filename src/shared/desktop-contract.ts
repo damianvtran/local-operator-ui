@@ -1994,6 +1994,24 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			value: secret,
 		})
 		.strict(),
+	/*
+	 * THE MESH READS (`features.peers`).
+	 *
+	 * Both reach a peer only THROUGH this app's one backend: the renderer never dials
+	 * a peer, never learns an address to dial and holds no mesh credential, because a
+	 * UI that could would have to re-implement the relay's authorisation model in
+	 * JavaScript.
+	 *
+	 * THE MUTATING MESH OPS ARE NOT HERE YET, deliberately: slice 1 of the Mesh tab is
+	 * a read surface, and a request schema entry with no caller is a capability this
+	 * app advertises but cannot exercise. `networks.invite`,
+	 * `networks.member.remove` and `sessions.transfer` land with the surfaces that use
+	 * them (the invite action, the member table, the drag layer).
+	 */
+	z
+		.object({ op: z.literal("peers.list") })
+		.strict(),
+	z.object({ op: z.literal("networks.list") }).strict(),
 ]);
 
 export type DesktopRequest = z.infer<typeof desktopRequestSchema>;
@@ -2541,10 +2559,35 @@ const LEDGER_READ_OPS: ReadonlySet<string> = new Set([
  */
 const PROVIDER_READ_OPS: ReadonlySet<string> = new Set(["usage.get"]);
 
+/**
+ * Ops whose answer requires this device's RELAY to fan out to every peer.
+ *
+ * A THIRD LONG-BUDGET SHAPE, and it is not either of the two above: nothing here
+ * crosses the public network on this app's behalf, and nothing is a provider's
+ * quota read. What makes it long is a loopback listing that dials each member and
+ * waits for its answer, under budgets the BACKEND publishes rather than ones this
+ * file may choose: `LISTING_PROBE_BUDGET_S = 12.0` for the fan-out and
+ * `LISTING_CLIENT_TIMEOUT_S = 20.0` for the client above it
+ * (`local_operator/network/relay.py`).
+ *
+ * THE APP'S DEADLINE MUST SIT ABOVE THE BACKEND'S, which is the whole reason these
+ * are here: on the 20 s control budget this layer would give up FIRST and report a
+ * failure about a read that was still working, and the give-up sentence cannot name
+ * the cause (the same defect `sessions.transfer`'s envelope fixes on the write
+ * side). 90 s is comfortably above the 20 s the daemon itself waits, and a mesh
+ * whose peer answers neither is a state the tab reports rather than one the app
+ * waits out.
+ */
+const MESH_READ_OPS: ReadonlySet<string> = new Set([
+	"networks.list",
+	"peers.list",
+]);
+
 /** Every op on the long budget, whichever of the two shapes put it there. */
 const LONG_READ_OPS: ReadonlySet<string> = new Set([
 	...LEDGER_READ_OPS,
 	...PROVIDER_READ_OPS,
+	...MESH_READ_OPS,
 ]);
 
 /** The deadline one op's request may run for. */
@@ -2671,6 +2714,8 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"mcp.catalog",
 	"mcp.list",
 	"models.catalogue",
+	"networks.list",
+	"peers.list",
 	"profiles.get",
 	"profiles.list",
 	"providers.list",
@@ -2701,6 +2746,8 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 const PANEL_READ_OPS: ReadonlySet<string> = new Set([
 	"analytics.get",
 	"analytics.models",
+	"networks.list",
+	"peers.list",
 	"usage.get",
 	"sessions.report",
 	"info.get",
@@ -3322,6 +3369,16 @@ export function desktopEndpoint(request: DesktopRequest): {
 	switch (request.op) {
 		case "capabilities":
 			return { path: "/v1/capabilities", method: "GET" };
+		/*
+		 * The mesh reads. Both are plain GETs with no parameters at all - the backend
+		 * reads THIS device's own relay, so there is nothing for the client to scope it
+		 * by, and a network NAME would be the wrong thing to send anyway (a device in
+		 * two networks asks once and gets both).
+		 */
+		case "peers.list":
+			return { path: "/v1/desktop/peers", method: "GET" };
+		case "networks.list":
+			return { path: "/v1/desktop/networks", method: "GET" };
 		case "profiles.list":
 			return { path: "/v1/desktop/profiles", method: "GET" };
 		case "profiles.get":

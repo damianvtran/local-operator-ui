@@ -458,7 +458,28 @@ export type DesktopFeature =
 	 * no delete affordance is drawn anywhere, from the header menu or from a typed
 	 * `/delete`.
 	 */
-	| "session_delete";
+	| "session_delete"
+	/**
+	 * The mesh: this backend is one device in one or more networks.
+	 *
+	 * `mesh-session-mobility.md` §9.3's key, unchanged: the peer catalogue
+	 * (`GET /v1/desktop/peers`), the networks read (`GET /v1/desktop/networks`) and
+	 * the locality fields on the session rows behind them.
+	 *
+	 * ABSENT MEANS NOT MOUNTED, never mounted-disabled: no Mesh rail row, no `/mesh`
+	 * route, no peer sections and no device choice on `/new`. A reserved empty
+	 * destination advertises a feature the user does not have - the argument
+	 * `session_pins` makes above - and a user with no network must get today's
+	 * chrome byte for byte, which is the property the frames in
+	 * `docs/evidence/mesh-tab/` measure rather than assert.
+	 *
+	 * SLICE 1 READS ONLY. `session_transfer` is deliberately NOT added here yet: it
+	 * gates the MOVE affordance (a chip's drag target and the table's `Move to…`
+	 * row), and a feature key with no surface behind it is a capability this app
+	 * advertises but cannot exercise. It lands with the drag layer, which is when a
+	 * backend that lacks it must start gating something.
+	 */
+	| "peers";
 
 /**
  * WHY a negotiated feature surface may not be offered.
