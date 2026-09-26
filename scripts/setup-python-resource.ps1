@@ -88,7 +88,35 @@ function Fetch-To {
 
 function Get-Sha256 {
 	param([string] $Path)
-	return (Get-FileHash -Path $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+	# WHY NOT `Get-FileHash`, measured rather than assumed: this script's real
+	# caller is `pnpm setup-python:win`, and pnpm's script runner reaches the
+	# child through cmd, which is the shape that breaks the cmdlet. In the CI
+	# probe (windows-uv-stager-check, run 36278672247) `Get-FileHash found`
+	# printed False through both the cmd and pnpm hops and True on a direct
+	# pwsh -> powershell.exe launch: through cmd the child Windows PowerShell
+	# 5.1 keeps the PSModulePath it inherited - PowerShell 7's module
+	# directories first, ahead of its own - and under that path it cannot
+	# resolve a command the Microsoft.PowerShell.Utility module exports as a
+	# function, so the call throws CommandNotFoundException; the direct launch
+	# is the one shape that gets pwsh's clean-up of those entries. That is how
+	# the v0.31.1 release died here (run 36275983912, line 91 of this file).
+	# The .NET APIs below live in the base class library, need no module
+	# discovery, and return the same lowercase-hex digest the comparisons below
+	# (and the Unix stager's) expect.
+	$sha256 = [System.Security.Cryptography.SHA256]::Create()
+	try {
+		$stream = [System.IO.File]::OpenRead($Path)
+		try {
+			$digest = $sha256.ComputeHash($stream)
+		}
+		finally {
+			$stream.Dispose()
+		}
+	}
+	finally {
+		$sha256.Dispose()
+	}
+	return (($digest | ForEach-Object { $_.ToString('x2') }) -join '')
 }
 
 # Stage one architecture's release the way the Unix stager stages its own:
