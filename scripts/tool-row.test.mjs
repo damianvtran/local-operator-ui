@@ -50,7 +50,6 @@ const {
 	formatSettledDuration,
 	isDiffBodyTool,
 	isDiffBodyRow,
-	TOOL_NAME_COL_MIN,
 	preferDiff,
 	preferDiffCounts,
 	outputFallbackLine,
@@ -58,7 +57,7 @@ const {
 	stripDiffHeader,
 	summaryFromArgs,
 	toolCategory,
-	toolNameColumn,
+	toolVerb,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -179,13 +178,31 @@ test("a diff counter is a positive integer or it is unknown", () => {
 	assert.equal(diffCount(1.5), 0);
 });
 
-test("the name column grows to the longest visible name, within its bounds", () => {
-	// A transcript of short names does not pay for a tool it never called.
-	assert.equal(toolNameColumn(["bash", "read"]), 8);
-	assert.equal(toolNameColumn([]), 8);
-	assert.equal(toolNameColumn(["list_variables"]), 14);
-	// And a pathological name cannot push the summary off the row.
-	assert.equal(toolNameColumn(["a".repeat(60)]), 24);
+test("a row opens with a verb in the user's terms, never the wire name (D5)", () => {
+	/*
+	 * §E1's row is a sentence: `Ran pnpm vitest`, `Read src/chat.tsx`. The first
+	 * column used to print `bash`, `read`, `web_search` - an identifier in the
+	 * sans face - in a fixed-width column that left a hole after a short name.
+	 */
+	assert.deepEqual(toolVerb("bash"), {
+		settled: "Ran",
+		running: "Running",
+		named: true,
+	});
+	assert.equal(toolVerb("read").settled, "Read");
+	assert.equal(toolVerb("edit").settled, "Edited");
+	assert.equal(toolVerb("write").settled, "Wrote");
+	assert.equal(toolVerb("web_search").settled, "Searched the web");
+	assert.equal(toolVerb("web_fetch").settled, "Fetched");
+	// The name is model-controlled; a provider echoing `Bash` keeps the verb.
+	assert.equal(toolVerb("Bash").settled, "Ran");
+	// A tool the table does not know takes a generic verb and says so, so the
+	// row keeps the tool's own name at the head of its object.
+	assert.deepEqual(toolVerb("mcp__linear_create_issue"), {
+		settled: "Called",
+		running: "Calling",
+		named: false,
+	});
 });
 
 /* ------------------------------------------------------- the media relay */
@@ -599,13 +616,21 @@ test("the gap tiers are strictly ordered, trace tightest", () => {
 	for (const view of [0, 1]) {
 		const trace = px(GAP.trace[view]);
 		const item = px(GAP.item[view]);
-		const mark = px(GAP.mark[view]);
 		const turn = px(GAP.turn[view]);
 		assert.equal(trace, 2, "a run's rows sit a hairline apart");
 		assert.ok(
-			trace < item && item < mark && mark <= turn,
-			`tiers must widen: trace ${trace} < item ${item} < mark ${mark} <= turn ${turn}`,
+			trace < item && item <= turn,
+			`tiers must widen: trace ${trace} < item ${item} <= turn ${turn}`,
 		);
+		/*
+		 * There is no third tier between these two any more. The `mark` tier existed
+		 * to raise a row whose caption says its own text is not whole (design round 1,
+		 * D1), and §D1 sets every gap INSIDE a turn to 12px — so `item` is 12px and the
+		 * raise became a second name for the same class string. Its own assertion was
+		 * `mark >= item * 1.5`, which is unreachable at 12 against 12: a tier nobody can
+		 * see and no test can reach is what silently becomes a drift later.
+		 */
+		assert.equal(item, 12, "§D1: inside a turn, 12px");
 		/*
 		 * D1 (design review round 1) is a RATIO requirement, not a preference: the
 		 * caption lives INSIDE the row it describes, 4px from its own chunk, so the gap
@@ -616,8 +641,8 @@ test("the gap tiers are strictly ordered, trace tightest", () => {
 		 * — is invisible in a diff and reads as a note on somebody else's answer.
 		 */
 		assert.ok(
-			mark >= 12 && mark >= item * 1.5,
-			`the marked row's gap must clear the caption's own margin (mark ${mark}, item ${item})`,
+			item >= 12,
+			`the marked row's gap must clear the caption's own margin (item ${item})`,
 		);
 		// The hierarchy the tightening had to preserve: a turn boundary is an
 		// order of magnitude airier than an adjacent pair inside a run, so the
@@ -653,8 +678,8 @@ test("a row whose caption says its text is not whole takes the mark gap", () => 
 	);
 	assert.deepEqual(
 		marked.map((row) => row.gap),
-		["first", "turn", "mark"],
-		"the marked row separates from the answer above it",
+		["first", "turn", "item"],
+		"the marked row separates from the answer above it by the in-turn step",
 	);
 	// The D1 case that was worst before the tier existed: a marked row directly
 	// under a tool row used to inherit the 2px hairline.
@@ -664,7 +689,7 @@ test("a row whose caption says its text is not whole takes the mark gap", () => 
 	);
 	assert.equal(
 		afterTool[1].gap,
-		"mark",
+		"item",
 		"a marked row under a ledger row does not take the hairline",
 	);
 	// And an UNMARKED row is untouched, including the small view's narrower item.
@@ -693,7 +718,32 @@ test("an invisible record does not consume the avatar or a turn boundary", () =>
 		rows.map((row) => row.record.id),
 		["u1", "t1"],
 	);
-	assert.equal(rows[1].showAvatar, true, "the tool row opens the agent turn");
+	/*
+	 * D11 DELETES THE AVATAR AND ITS GUTTER, so there is no longer a flag to consume:
+	 * the assertion is that the row model carries none at all (a re-added flag would
+	 * be the avatar coming back through the model rather than through the markup) and
+	 * that the container which used to draw it renders neither a glyph nor the 40px
+	 * indent that justified it.
+	 */
+	assert.ok(
+		!("showAvatar" in rows[1]),
+		"the row model carries no avatar flag (D11)",
+	);
+	const container = readFileSync(
+		"src/renderer/src/features/chat/components/message-item/message-container.tsx",
+		"utf8",
+	);
+	// Asked of the CODE, not the words: this file's own comment explains what the
+	// `pl-10` indent used to cost, and a token check that read comments would fail
+	// on the explanation of the deletion rather than on a re-introduction.
+	assert.ok(
+		!/from "\.\/message-avatar"/.test(container),
+		"message-container.tsx imports no avatar (D11)",
+	);
+	assert.ok(
+		!/"pl-10"|AGENT_GUTTER/.test(container),
+		"message-container.tsx carries no 40px gutter (D11)",
+	);
 	assert.equal(rows[1].gap, "turn", "a turn boundary still gets its air");
 	// The hierarchy the tightening must preserve: a turn boundary is strictly
 	// airier than an adjacent pair inside a run.
@@ -755,7 +805,10 @@ test("a streaming record cannot swallow the avatar or a gap tier", () => {
 		rows.map((row) => row.record.id),
 		["u1", "t1"],
 	);
-	assert.equal(rows[1].showAvatar, true, "the tool row opens the agent turn");
+	assert.ok(
+		!("showAvatar" in rows[1]),
+		"the row model carries no avatar flag (D11)",
+	);
 	assert.equal(rows[1].gap, "turn", "a turn boundary still gets its air");
 	// And it cannot break trace adjacency between two ledger rows either.
 	const run = buildRows(
@@ -794,7 +847,7 @@ test("no reading measure survives on either surface, by property not by name", (
 	// takes no reading cap, and the user bubble keeps one" — on the reading that
 	// the bubble's narrower box is what makes a turn an aside, and that widening
 	// it was the unrequested half of the earlier change. The report above
-	// reversed that call: the aside is the CARD's own `max-w-[75%]` inside
+	// reversed that call: the aside is the CARD's own `max-w-[85%]` (§D2) inside
 	// `CHAT_MEASURE`, and the prose fills the card. The agent half is unchanged —
 	// no cap there either, so it shares the tool rows' edges.
 	//
@@ -898,7 +951,7 @@ test("no reading measure survives on either surface, by property not by name", (
 		const file = source(path);
 		assert.deepEqual(
 			[...new Set(file.match(/\b(?:max-)?w-\[[^\]]+\]/g) ?? [])].sort(),
-			["max-w-[75%]", "max-w-[92%]"],
+			["max-w-[85%]", "max-w-[92%]"],
 			`${path}: the only arbitrary-value widths are the card's two steps`,
 		);
 		// The BODY wrapper - the div inside the card that holds the quote chip and
@@ -2707,7 +2760,6 @@ const renderRow = (toolName, outcome, over = {}) =>
 			summary: `${toolName} arg`,
 			outcome,
 			durationS: outcome === "running" ? null : 0.4,
-			nameColumn: TOOL_NAME_COL_MIN,
 			...over,
 		}),
 	);
@@ -2830,7 +2882,7 @@ test("a tool's category is the TUI's own map, looked up case-insensitively", () 
 	}
 });
 
-test("the glyph and the name take ONE ink, and it is the category's", () => {
+test("the glyph takes identity ink, the name takes state ink, and they agree on state", () => {
 	// [tool name, outcome, the ink both spans must carry]. The first five are the
 	// categories; the rest are liveness outranking identity, which is the rule
 	// that must not be lost now that identity has colour again.
@@ -2875,6 +2927,24 @@ test("the glyph and the name take ONE ink, and it is the category's", () => {
 		["task", "interrupted", "text-accent-alt"],
 	];
 
+	/*
+	 * THE NAME'S INK IS THE ROW'S STATE AND NOTHING ELSE (§E1, D8).
+	 *
+	 * The pair used to share one expression, on the rule that identity and state
+	 * must not be painted differently inside one row. D8 is the counter-example
+	 * that rule could not survive: a settled `read` row drew its VERB in `info`,
+	 * so the loudest ink on a settled ledger was the tool's name - the part of the
+	 * row that says the least - while the result beside it was grey. The glyph
+	 * keeps identity (its SHAPE is what carries the tool anyway), the verb is
+	 * quiet, and the two still agree wherever the row has something to say about
+	 * what is HAPPENING: a running row is accent in both spans, a failed one
+	 * `danger` in both. That is the part of the old rule that was load-bearing.
+	 */
+	const stateOnly = {
+		running: "text-accent",
+		error: "text-danger",
+		"not-run": "text-danger",
+	};
 	for (const [toolName, outcome, expected] of CASES) {
 		const markup = renderRow(toolName, outcome);
 		const { glyph, name } = glyphAndName(markup);
@@ -2885,12 +2955,27 @@ test("the glyph and the name take ONE ink, and it is the category's", () => {
 			[expected],
 			`${toolName}/${outcome}: the tool glyph's ink — got ${glyphInk.join(" ")} on ${glyph}`,
 		);
+		const expectedName = stateOnly[outcome] ?? "text-ink-muted";
 		assert.deepEqual(
 			nameInk,
-			glyphInk,
-			`${toolName}/${outcome}: the name and the glyph disagree — glyph ${glyphInk.join(" ")} against name ${nameInk.join(" ")}`,
+			[expectedName],
+			`${toolName}/${outcome}: the name reads state only — got ${nameInk.join(" ")} where ${expectedName} was expected`,
 		);
+		if (stateOnly[outcome]) {
+			assert.deepEqual(
+				nameInk,
+				glyphInk,
+				`${toolName}/${outcome}: state must read the same on both spans — glyph ${glyphInk.join(" ")} against name ${nameInk.join(" ")}`,
+			);
+		}
 	}
+	// And the case D8 is about, stated as itself: a settled read row's VERB is not
+	// the category ink its glyph carries.
+	const readRow = glyphAndName(renderRow("read", "success"));
+	assert.ok(
+		!inkOf(readRow.name).includes("text-info"),
+		"a settled read row must not draw its verb in the category ink (D8)",
+	);
 
 	// The command SUMMARY stays uncoloured, which is the operator's own wording
 	// from the report that started all of this ("the tool call preview does not
@@ -2952,12 +3037,36 @@ test("the category-to-ink map is written once, and no second one shadows it", ()
 	// span, both naming the same function, so a future edit cannot colour one and
 	// leave the other. Matched with the call's own trailing comma, because the
 	// doc comments above name the expression too and prose is not a call site.
-	const calls = source.match(/rowInk\(outcome, toolName\),/g) ?? [];
+	// ONE expression per span, and they are different expressions now: the glyph
+	// derives identity-from-state, the name derives state alone. Both are named
+	// functions called at exactly one site, so a future edit cannot colour one span
+	// inline and leave the other behind — which is what this matched before the two
+	// inks separated.
+	const glyphCalls = source.match(/rowInk\(outcome, toolName\),/g) ?? [];
 	assert.equal(
-		calls.length,
-		2,
-		`the glyph and the name read one expression each — got ${calls.length}`,
+		glyphCalls.length,
+		1,
+		`the glyph reads the one identity/state expression — got ${glyphCalls.length}`,
 	);
+	const nameCalls = source.match(/nameInk\(outcome\),/g) ?? [];
+	assert.equal(
+		nameCalls.length,
+		1,
+		`the name reads the one state expression — got ${nameCalls.length}`,
+	);
+	// The state-only function must not reach for the category map: that is the
+	// whole point of it, and a token appearing inside its body would restore D8's
+	// defect through a second call path.
+	const nameInkBody = source.slice(
+		source.indexOf("const nameInk"),
+		source.indexOf("const DiffCounters"),
+	);
+	for (const token of ["CATEGORY_INK", "text-info", "text-accent-alt"]) {
+		assert.ok(
+			!nameInkBody.includes(token),
+			`the state-only ink must not consult ${token}`,
+		);
+	}
 });
 
 test("a row whose first label read is in flight shows no stand-in yet", () => {

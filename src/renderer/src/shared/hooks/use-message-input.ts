@@ -198,23 +198,35 @@ export const clearSubmittedText = (
 	submitted: string,
 ): string => (current === submitted ? "" : current);
 
+/*
+ * THE BOX'S ONE SENTENCE PER STATE (chat redesign §G1/§G3).
+ *
+ * Two of these are new copy (the `noProvider` line is main's, folded in
+ * unchanged) and one is deleted, and the deletion is the point: `Waiting for the agent` was the running-turn sentence, and it was the app
+ * narrating a fact the transcript's own working line states three inches above -
+ * while saying nothing about the two things a reader actually needs there, that
+ * typing steers the running turn and that Esc stops it. §G3 replaces it with the
+ * sentence that teaches both, and the affordance line in `idle` does the same job
+ * for the two grammars the box accepts (`@` and `/`), which nothing on screen
+ * mentioned before.
+ */
 export const COMPOSER_PLACEHOLDER = {
 	unavailable: "This conversation is gone",
 	busy: "Agent is busy",
-	answer: "Answer the question above",
+	answer: "Type your own answer…",
 	/*
 	 * The exit is named beside the verb for the reason the `@` list's own line
 	 * names its ("Nothing to insert · Esc closes").
 	 */
 	aside: "Ask off the record — Esc closes the aside",
 	sending: "Sending your message",
-	waiting: "Waiting for the agent",
+	waiting: "Steer the agent. Enter sends now · Esc stops",
 	/**
 	 * Nothing connected: the invitation would be a lie, and this is the one
 	 * sentence that names the action instead (design audit section 6).
 	 */
 	noProvider: "Connect a provider to start chatting",
-	idle: "Ask me for help",
+	idle: "Ask anything. @ adds files, / runs commands",
 } as const;
 
 /**

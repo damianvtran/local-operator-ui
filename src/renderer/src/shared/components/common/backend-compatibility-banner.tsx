@@ -19,6 +19,7 @@
  * describes stay gated on `desktopFeatureEnabled` individually.
  */
 
+import { useChatStatusStripPresent } from "@features/chat/chat-status-presence";
 import {
 	REQUIRED_BACKEND_FEATURES,
 	backendCompatibilityMessage,
@@ -76,6 +77,20 @@ export const BackendCompatibilityBanner = () => {
 		snapshot && !snapshot.pairing.available
 			? (snapshot.pairing.cause ?? "unpaired")
 			: null;
+	/*
+	 * THE STRIP OWNS `credential-refused` (design round 3, D29).
+	 *
+	 * In that one state the strip and this banner state the same refusal, one row
+	 * apart, with two sentences and two controls labelled `Retry` - round 1's D3
+	 * shape kept alive because the credential cause is reachable while the server
+	 * ANSWERS, so the strip's presence is unrelated to `online` and nothing yielded.
+	 * §F2's rule is one root cause, one voice, and the strip is the voice: it is the
+	 * pane's own live region, its Retry is the same `backend.reconnect` verb this
+	 * banner's is, and the sidebar's three paragraphs already stand down to it. So
+	 * this banner yields for exactly this cause, and only while the strip is on
+	 * screen - wherever the strip is not mounted, the banner keeps speaking.
+	 */
+	const stripPresent = useChatStatusStripPresent();
 	/*
 	 * Whether THIS app holds the install serving it, from main's own answer.
 	 *
@@ -176,6 +191,7 @@ export const BackendCompatibilityBanner = () => {
 		: [...REQUIRED_FEATURES];
 	const unpaired = Boolean(data) && !data?.desktop_available;
 	if (!compatibilityBannerShown(data, cause)) return null;
+	if (cause === "credential-refused" && stripPresent) return null;
 
 	// The probe's HTTP status is what separates "old" from "not running" from
 	// "cannot authenticate", and the providers grid reads the same field to reach

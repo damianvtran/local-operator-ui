@@ -121,6 +121,10 @@ export const retractLocalEcho = (sessionId, id) => {
 	globalThis.__canonicalEcho({ kind: "retract-local", sessionId, id });
 	return globalThis.__canonicalRowIsLocal?.(id) === false ? "owner" : "retracted";
 };
+export const peekLocalEcho = (sessionId, id) => {
+	globalThis.__canonicalEcho({ kind: "peek-local", sessionId, id });
+	return globalThis.__canonicalRowIsLocal?.(id) === false ? "owner" : "local";
+};
 // Recorded like the other two so a store change that stops evicting an
 // abandoned draft's buffered echo is visible here as well; the buffer's own
 // bounds are asserted against the real registry in echo-delivery.test.mjs.
@@ -1967,16 +1971,18 @@ test("the notice is ONE sentence from ONE place, and the composer renders it rat
 	 * read": three occurrences, one per legitimate role, and the guard among them.
 	 */
 	/*
-	 * FIVE NOW, AND ALL FIVE ARE READS INSIDE THE ONE MIGRATION (review round 2,
-	 * R1/R3). The count is the pin:  the field's declaration; the gate that decides a
-	 * row IS a released claim; and the three uses that carry the marker's own code
-	 * into the migrated row - the sentence's code, the press derived from it, and the
-	 * clear that ends the move. What the count forbids is unchanged: nothing writes a
-	 * claim, and nothing outside `migrateHeldClaim` reads the name.
+	 * SIX NOW (agent review round 4's R17 restore): the five reads above, plus the
+	 * ONE cleanup inside `resolveHeldFromServer` - the strip that takes the released
+	 * marker off a row whose claim just resolved, because that row is REUSED by the
+	 * next send and a lingering marker would defeat the gate above (its OR term is
+	 * `heldClaimCode !== undefined`, which migration must never see on a row THIS
+	 * build writes - B1's failure mode, one layer down). What the count still
+	 * forbids is unchanged: nothing else writes or reads the name, and nothing
+	 * outside `migrateHeldClaim` and that cleanup touches it.
 	 */
 	assert.equal(
 		(storeSource.match(/heldClaimCode/g) ?? []).length,
-		5,
+		6,
 		"`heldClaimCode` has grown another use, so something is writing or reading a claim again rather than reading the released app's marker once",
 	);
 	/*
@@ -2992,8 +2998,16 @@ test("the header stops announcing that the session has not started once one exis
 		"src/renderer/src/features/chat/components/chat-page.tsx",
 		"utf8",
 	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	/*
+	 * THE PIN IS THE RUNG'S SHAPE, not the literal main's own head carried: the
+	 * redesign replaces the "The session starts when you send your first message."
+	 * sentence with the directory itself (§H, U23 - the sentence did not survive
+	 * the 1380 header, clipped mid-word), so what U16 needs asserted is that the
+	 * `draft?.sessionId` arm EXISTS and describes the session that now exists by
+	 * the directory the footer names.
+	 */
 	const rung = rendered.match(
-		/starting\s*\?\s*\(loadedTarget \?\? "Starting the session"\)\s*: draft\?\.sessionId\s*\?\s*([\s\S]{0,160}?)\s*:\s*"The session starts when you send your first message\."/,
+		/starting\s*\?\s*\(loadedTarget \?\? "Starting the session"\)\s*:\s*draft\?\.sessionId\s*\?\s*([\s\S]{0,200}?)\s*:/,
 	);
 	assert.ok(
 		rung,
@@ -3584,18 +3598,20 @@ test("a failure that establishes nothing about admission is still unknowable - a
 			`${arm.code ?? `a codeless ${arm.status}`} establishes nothing about admission`,
 		);
 		/*
-		 * The store ASKS whether the row is still its own echo (`retract-local`), and
+		 * The store ASKS whether the row is still its own echo (`peek-local`), and
 		 * that ask is the whole reconciliation: an owner row for the same id answers
-		 * "delivered" and nothing is handed back, while our own row is retracted
-		 * because the message is in the composer instead. The fixture's registry answers
-		 * "retracted" (no owner row exists here), which is the arm asserted below; the
-		 * delivered answer is driven against the real registry in
-		 * `echo-delivery.test.mjs` and in `composer-send-failure.test.mjs`.
+		 * "delivered" and nothing is handed back, while our own row is KEPT on the
+		 * transcript - it wears §F3's `Not delivered · Send again · Edit` until the
+		 * server's own answer resolves the claim - and the message comes home to the
+		 * composer beside it. The fixture's registry answers "local" (no owner row
+		 * exists here), which is the arm asserted below; the delivered answer is
+		 * driven against the real registry in `echo-delivery.test.mjs` and in
+		 * `composer-send-failure.test.mjs`.
 		 */
 		assert.equal(
-			echoes.filter((e) => e.kind === "retract-local").length,
+			echoes.filter((e) => e.kind === "peek-local").length,
 			1,
-			"the store must ask whose row it is before taking it away",
+			"the store must ask whose row it is before treating it as delivered",
 		);
 		// And the copy says what the app knows, rather than the transport's prose about
 		// its own patience or a claim that the message was not sent.

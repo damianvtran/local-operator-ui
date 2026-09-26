@@ -13,7 +13,7 @@ import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
 import {
 	discardPendingEchoes,
 	echoPendingUser,
-	retractLocalEcho,
+	peekLocalEcho,
 	retractPendingUser,
 } from "@shared/hooks/use-canonical-session";
 /*
@@ -441,6 +441,33 @@ export type ChatDraft = {
 	 * property the migration needs and the one the old gate did not have.
 	 */
 	heldClaimCode?: string;
+	/**
+	 * The message a SERVER ANSWER proved did not reach the owner, kept so the
+	 * transcript can state its fate after the claim that named the ambiguity has
+	 * ended (§F3's `Not delivered`, §F2's last bullet).
+	 *
+	 * WHY A FIELD RATHER THAN THE CLAIM ITSELF. A held claim means "the owner may
+	 * have admitted this before the response was lost" — an open question the
+	 * composer states its own notice about while it is open. A re-subscribe
+	 * answers it: the server's snapshot names every message it holds, so a claimed
+	 * payload the snapshot does not name provably did not land (see
+	 * `resolveHeldFromServer`). The claim then has nothing left to hold — the
+	 * composer stops stating it — but the MESSAGE still has a fate to state, and
+	 * the line that states it is on the message. So the claim ends and this record
+	 * begins, carrying its OWN `recordId` because ending the claim mints a fresh
+	 * `admissionRequestId` (the released one may still be executing on the owner,
+	 * and reusing it would make the next send an idempotent replay of the old
+	 * payload — this is the rotation inside `resolveHeldFromServer`).
+	 *
+	 * CLEARED by every path that ends the draft (`finishDraft`, `discardDraft`) —
+	 * a successful send deletes the row outright, so the line's lifetime ends
+	 * with the conversation moving on.
+	 */
+	undelivered?: {
+		recordId: string;
+		text: string;
+		attachments: readonly string[];
+	};
 	/**
 	 * True only once an admission request has actually been ISSUED, i.e. its
 	 * outcome is genuinely unknown to us. This is what the unchanged-payload
@@ -1273,12 +1300,26 @@ export function buildSendPayload(
 }
 
 /**
- * Which draft a chat view owns. A staged draft is keyed by its own key, but once
- * a session exists `draftKey` is null and the send draft lives under
- * `send:<id>` — reading only `draftKey` there left a failed send's retained text
- * unreachable. It lives here, beside the drafts it addresses, so the rule is
- * exercised by the store tests rather than duplicated in an untested component.
+ * Whether a draft row is the one a given conversation's send wrote.
+ *
+ * THREE SPELLINGS, because a conversation's draft is keyed three ways across one
+ * send's life: `draft:<uuid>` before it is admitted, `<sessionId>` after the flip,
+ * and `send:<sessionId>` for a conversation that was never a draft at all
+ * (`draftIdentityFor`'s fallback). The `sessionId` FIELD is written only on the
+ * create path - the existing-session path patches whatever row it was handed - so
+ * a lookup that trusts the field alone misses the very case the held-claim
+ * reconcile exists for. Measured on the driver's first after-run: the claim
+ * stayed held through a live reconnect because the draft the send wrote was keyed
+ * `send:<id>` and carried no `sessionId` at all.
  */
+function draftBelongsToSession(draft: ChatDraft, sessionId: string): boolean {
+	return (
+		draft.sessionId === sessionId ||
+		draft.key === sessionId ||
+		draft.key === `send:${sessionId}`
+	);
+}
+
 export function draftIdentityFor(
 	draftKey: string | null,
 	sessionId: string | null | undefined,
@@ -2165,20 +2206,28 @@ export async function admitChatDraft(
 		 * answered this way, and only when the id the owner would have used is
 		 * already painted as a row that is not ours.
 		 *
-		 * `retractLocalEcho` removes the record only while it is still this app's
+		 * `peekLocalEcho` reports whether the row under that id is still this app's
 		 * own optimistic echo (`local: true`, stamped by `appendPendingUser`). A
 		 * user record without that flag is the OWNER's - its `message_start` or a
 		 * durable history row - which means the message was admitted, the failure
 		 * was the response to it, and nothing should be handed back: the send
-		 * succeeded. The three direct answers matter, because the third one has
-		 * nothing to report: with no transcript mounted the retraction is QUEUED
-		 * exactly as the echo was, and the reconciliation in the pane decides it
-		 * when the panel mounts (see `SessionPanel`'s delivered effect).
+		 * succeeded.
+		 *
+		 * AND AN UNKNOWN OUTCOME KEEPS THE ECHO (§F3, agent review round 4's R17).
+		 * The read is `peekLocalEcho` rather than `retractLocalEcho` for exactly
+		 * this arm, and the difference is the whole restore: `retractLocalEcho`
+		 * REMOVES our row, which is right for a message that lives only in the
+		 * composer - but an unconfirmed send must keep its `Not delivered · Send
+		 * again · Edit` line on the transcript until the server's own answer
+		 * resolves it (`resolveHeldFromServer`), so the row stays and the payload
+		 * comes home beside it. `unseen` (no transcript mounted to hold the row)
+		 * resolves the same way - nothing delivered, nothing removed - and the
+		 * pane's reconciliation re-reads the verdict when a panel mounts.
 		 */
 		let delivered = false;
 		if (id && attempted) {
 			if (klass === "unknown") {
-				delivered = retractLocalEcho(id, admissionRequestId) === "owner";
+				delivered = peekLocalEcho(id, admissionRequestId) === "owner";
 			} else {
 				retractPendingUser(id, admissionRequestId);
 			}
@@ -2497,6 +2546,27 @@ export type CatalogueHeadState = {
 	pageIds: string[];
 	/** The next page's cursor, or null at the end of the catalogue. */
 	nextCursor: string | null;
+	/**
+	 * The EXTENSION frontier: the cursor the next `fetchCatalogueTail` continues
+	 * from, or null once the walk reached the end.
+	 *
+	 * WHY IT IS NOT `nextCursor` (QA round 2, Q2). `nextCursor` is the PAGE-ONE
+	 * answer's own continuation, and page one is re-read by the poll: the question
+	 * "where does the tail continue from" and the question "what did the newest
+	 * page-one answer say" have different answers the moment a poll lands, and
+	 * reading the second for the first rewound the tail's place while the merged
+	 * rows stayed - a press then re-requested a page the client already held,
+	 * added nothing, and at human pace (a press every few seconds, a poll every
+	 * 30 s) the list never grew.
+	 *
+	 * `tailStarted` guards the seeding: until an extension has been REQUESTED,
+	 * page-one answers seed this value (the reader may scroll before the next
+	 * poll); after that only extensions move it, so a page-one answer can neither
+	 * rewind nor advance the place a press continues from.
+	 */
+	tailCursor: string | null;
+	/** Whether an extension has ever been requested; see `tailCursor`. */
+	tailStarted: boolean;
 	/** True once an answer said this is the whole catalogue. */
 	complete: boolean;
 	/** Single flight for the tail extension. */
@@ -3052,11 +3122,13 @@ type CanonicalSessionsState = {
 	requestSessionDelete: (sessionId: string | null) => void;
 	fetchSessions: (limit?: number, withCounts?: boolean) => Promise<void>;
 	/**
-	 * Extend the UNSCOPED list by one page, along `head.nextCursor`.
+	 * Extend the UNSCOPED list by one page, along the extension's own frontier
+	 * (`head.tailCursor`, not `head.nextCursor` - see that field's note for the
+	 * poll-rewind this distinction exists to prevent).
 	 *
 	 * The flat chat list's own tail affordance (§5.4): one container, one scope,
 	 * one sentinel, so "extend" has exactly one meaning. Single flight against
-	 * `head.loading`, and it does nothing when the head is already complete or a
+	 * `head.loading`, and it does nothing when the walk has reached the end or a
 	 * page is in the air.
 	 */
 	fetchCatalogueTail: () => Promise<void>;
@@ -3109,6 +3181,30 @@ type CanonicalSessionsState = {
 		 */
 		draftId?: string,
 	) => Promise<string | null>;
+	/**
+	 * The turns THIS WINDOW stopped, by session id, stamped in wall-clock ms.
+	 *
+	 * A CLIENT-SIDE FACT, and that is the whole of its point (UX round 2, U7). When
+	 * the user presses `Esc` the runtime kills the call in flight, and the tool that
+	 * was running then reports a REAL failure — its process died — which the row
+	 * classifies as `error` and paints in `danger` as `failed`. The backend is
+	 * telling the truth about the process and the wrong thing about the turn: the
+	 * user stopped it, and blaming the agent for the user's own decision is exactly
+	 * what `tool-row.tsx`'s `interrupted` state exists to say. Nothing on the wire
+	 * distinguishes the two, so the fact is recorded where the press happened.
+	 *
+	 * LIFETIME IS EXACTLY ONE TURN: written when an `interrupted` receipt arrives,
+	 * cleared when the next turn begins (the same `busy` edge that retires the stop
+	 * notice). It is NOT persisted — it describes a run that is over by the time the
+	 * window closes, and a restored fact would reclassify a later turn's honest
+	 * failure.
+	 */
+	stoppedTurns: Record<string, number>;
+	/** Record that this window stopped a session's turn, at `at` (default: now). */
+	markTurnStopped: (sessionId: string, at?: number) => void;
+	/** Clear it — the next turn's arrival, or a session being left. */
+	clearTurnStopped: (sessionId: string) => void;
+
 	setActiveSession: (sessionId: string | null) => void;
 	/**
 	 * Close the validation window because the session's own stream proved it
@@ -3322,6 +3418,11 @@ type CanonicalSessionsState = {
 	) => void;
 	openSession: (sessionId: string) => Promise<boolean>;
 	stageDraft: (target?: ChatTarget, fresh?: boolean) => string;
+	/**
+	 * Switch to a draft this store already holds, by key. See the action's own
+	 * comment for why this is not `stageDraft` (UX round 2, U8).
+	 */
+	openDraft: (key: string) => void;
 	updateDraft: (key: string, patch: Partial<ChatDraft>) => void;
 	/**
 	 * The new-chat pane's first keystroke: mint the id its runtime is warmed on
@@ -3361,6 +3462,24 @@ type CanonicalSessionsState = {
 	 * next send must match it, and never touch the session or its transcript.
 	 */
 	discardDraft: (key: string) => void;
+	/**
+	 * Resolve a held send against the server's own answer (§F2's last bullet,
+	 * UX round 1's U5b).
+	 *
+	 * Called with the ids a RE-SUBSCRIBE returned — the snapshot's history page,
+	 * i.e. the server's statement of what this conversation holds. A held payload
+	 * the answer names LANDED (the claim ends; the durable row coalesces with the
+	 * echo by id). A held payload it does not name provably did NOT land on a
+	 * complete read, so the claim ends AND the row records it as `undelivered` so
+	 * the message keeps its `Not delivered` line. Either way the composer stops
+	 * waiting: §F2 says the state clears from the server's acknowledgement, never
+	 * from the local send, and this is the acknowledgement arriving.
+	 */
+	resolveHeldFromServer: (
+		sessionId: string,
+		entryIds: readonly string[],
+		complete: boolean,
+	) => void;
 	bindSession: (legacyAgentId: string, sessionId: string) => void;
 	upsertSession: (row: CanonicalSessionRow) => void;
 };
@@ -3933,6 +4052,49 @@ function launchSession(): string | null {
 	return target.kind === "session" ? target.sessionId : null;
 }
 /**
+ * The draft a launch with nothing to restore lands on (§H, U1/U23).
+ *
+ * WHY THIS EXISTS. The pane used to have an INTERMEDIATE SCREEN between launch and
+ * a conversation: with no session and no draft, `chat-page.tsx` rendered a "Start a
+ * chat" heading with a "New chat" button, and the composer only appeared once the
+ * user pressed it. §H deletes that screen - launch lands on the empty state with
+ * the composer docked and focused - which means the app has to decide, at launch,
+ * that it is holding a NEW conversation rather than none.
+ *
+ * WHY HERE RATHER THAN IN AN EFFECT. `persist` hydrates before the first render, so
+ * this is the one place a decision can be true of the first PAINTED frame; an effect
+ * would paint the intermediate state (or an empty column) and correct itself after,
+ * which is the flash the launch argument's own merge exists to prevent. The row it
+ * builds is the same shape `stageDraft` writes, so nothing downstream can tell a
+ * launched draft from a pressed one.
+ *
+ * IT IS A NO-OP WHEN ANYTHING IS ALREADY ACTIVE: a launch argument for a session, a
+ * restored conversation, a restored draft, or the catalogue launch (which sets
+ * `activeSessionId: null` deliberately) are all left exactly as the arms above and
+ * the persisted state left them. Only "nothing at all" takes a new draft.
+ */
+export function launchDraftSeed(
+	current: Pick<
+		CanonicalSessionsState,
+		"activeSessionId" | "activeDraftKey" | "drafts"
+	>,
+): Pick<CanonicalSessionsState, "activeDraftKey" | "drafts"> | null {
+	if (current.activeSessionId || current.activeDraftKey) return null;
+	const key = `draft:${crypto.randomUUID()}`;
+	return {
+		activeDraftKey: key,
+		drafts: {
+			...current.drafts,
+			[key]: {
+				key,
+				createRequestId: crypto.randomUUID(),
+				admissionRequestId: crypto.randomUUID(),
+			},
+		},
+	};
+}
+
+/**
  * The launch argument OUTRANKS the persisted conversation.
  *
  * Main was asked for this conversation BY NAME, and the window exists to show
@@ -3968,6 +4130,13 @@ export function mergePersistedSession(
 	if (target.kind === "catalogue") {
 		return { ...merged, activeSessionId: null };
 	}
+	/*
+	 * Nothing to restore and no conversation asked for: a launch holds a NEW
+	 * conversation rather than none (§H). See `launchDraftSeed` for why the
+	 * decision belongs in the merge and why it is a no-op in every other case.
+	 */
+	const seed = launchDraftSeed(merged);
+	if (seed) return { ...merged, ...seed };
 	return merged;
 }
 
@@ -4009,6 +4178,8 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				pageIds: [],
 				tailIds: [],
 				nextCursor: null,
+				tailCursor: null,
+				tailStarted: false,
 				complete: false,
 				loading: false,
 				error: null,
@@ -4019,6 +4190,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			statusUnavailable: [],
 			archiveFacts: {},
 			forgotten: {},
+			stoppedTurns: {},
 			archiveFailure: null,
 			archiveUndo: null,
 			deleteCandidate: null,
@@ -4348,6 +4520,20 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								pageIds: answerPageIds,
 								tailIds: headAnswer.tailIds,
 								nextCursor: answerCursor,
+								/*
+								 * THE EXTENSION FRONTIER, SEEDED ONCE AND THEN THE EXTENSIONS' OWN
+								 * (QA round 2, Q2 - see `tailCursor`). A poll landing after an
+								 * extension must not move it, or the press that follows re-requests
+								 * a page the client already holds and the list stalls. An answer that
+								 * says it is the WHOLE catalogue still clears it: nothing below it
+								 * exists to continue to.
+								 */
+								tailCursor: answerComplete
+									? null
+									: state.head.tailStarted
+										? state.head.tailCursor
+										: answerCursor,
+								tailStarted: state.head.tailStarted,
 								complete: answerComplete,
 								loading: false,
 								error: null,
@@ -4410,10 +4596,22 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			 */
 			fetchCatalogueTail: async () => {
 				const head = get().head;
-				if (head.nextCursor === null || head.loading) return;
-				const cursor = head.nextCursor;
+				const cursor = head.tailCursor;
+				if (cursor === null || head.loading) return;
 				set((state) => ({
-					head: { ...state.head, loading: true, error: null },
+					head: {
+						...state.head,
+						loading: true,
+						error: null,
+						/*
+						 * THE ATTEMPT MARKS THE EXTENSION AS STARTED, at REQUEST time and not
+						 * on success: a failed extension keeps its place (the retry continues
+						 * from the same cursor), and once started, a page-one answer can no
+						 * longer rewrite the frontier out from under a press.
+						 */
+						tailStarted: true,
+						tailCursor: cursor,
+					},
 				}));
 				try {
 					const result = await desktopResult<{
@@ -4463,12 +4661,17 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								 * page's ids.
 								 */
 								tailIds: [...state.head.tailIds, ...added],
+								/*
+								 * THE FRONTIER MOVES ONLY HERE. `nextCursor` is deliberately NOT
+								 * written: it is the page-one answer's own continuation, and this
+								 * extension has said nothing about the head page (QA round 2, Q2).
+								 */
+								tailCursor: nextCursor,
 								// The tail reached the end only when it says so. `head.at`
 								// is deliberately NOT advanced: it stamps the answer that
 								// is allowed to settle FACTS, and an extension must never be
 								// mistaken for one (a tail page speaks for a rank window, not
 								// for the pinned or archived set).
-								nextCursor,
 								complete: nextCursor === null,
 								loading: false,
 								error: null,
@@ -5057,6 +5260,53 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				});
 			},
 			/*
+			 * The stopped-turn fact's two writers (UX round 2, U7; `stoppedTurns` carries
+			 * what it is for). `at` is the press's own instant rather than the receipt's,
+			 * and it is what the reducer compares a tool row's `startedAt` against: a call
+			 * that was ALREADY running when the user pressed stop is one the stop killed,
+			 * and a call that started afterwards cannot exist because the turn ended.
+			 */
+			markTurnStopped: (sessionId, at = Date.now()) =>
+				set((state) => ({
+					stoppedTurns: { ...state.stoppedTurns, [sessionId]: at },
+				})),
+			clearTurnStopped: (sessionId) =>
+				set((state) => {
+					if (!(sessionId in state.stoppedTurns)) return state;
+					const { [sessionId]: _dropped, ...rest } = state.stoppedTurns;
+					return { stoppedTurns: rest };
+				}),
+			/**
+			 * Open a draft this store ALREADY holds, by its key.
+			 *
+			 * WHY THIS IS NOT `stageDraft` (UX round 2, U8). `stageDraft(undefined, true)`
+			 * — which is what `⌘N` calls — mints a FRESH `draft:<uuid>` key every time, and a
+			 * draft pane's identity IS that key: the composer's text is persisted under it
+			 * (`conversation-input-store`, `inputByConversation[draft:<uuid>]`), so pressing
+			 * ⌘N with text in the box did not delete the text, it moved the window to a key
+			 * nothing on screen pointed at. The text was unreachable rather than absent, and a
+			 * relaunch restored a draft no route could name.
+			 *
+			 * So the second half of the fix is a way BACK to a key that exists, which is what
+			 * the sidebar's `Draft:` rows call. There is no fresh key here, no new
+			 * `createRequestId` and no re-admission: this is a navigation between two panes
+			 * this store is already holding, and minting anything would be the same discard
+			 * one release later.
+			 *
+			 * A key whose row is gone is a NO-OP rather than a blank pane: the caller can be a
+			 * row rendered from persisted state a moment before a `discardDraft` lands, and
+			 * switching to a key with no draft would leave `activeDraftKey` naming nothing.
+			 */
+			openDraft: (key) => {
+				if (!get().drafts[key]) return;
+				set({
+					activeDraftKey: key,
+					activeSessionId: null,
+					validatingSessionId: null,
+					error: null,
+				});
+			},
+			/*
 			 * A guard rather than an assignment: a live frame belongs to the session
 			 * that streamed it, and the view may already be somewhere else. Clearing
 			 * unconditionally here would let an abandoned target's own snapshot vouch
@@ -5560,6 +5810,121 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					return {
 						drafts,
 						...(state.activeDraftKey === key ? { activeDraftKey: null } : {}),
+					};
+				}),
+			resolveHeldFromServer: (sessionId, entryIds, complete) =>
+				set((state) => {
+					/*
+					 * THE LATE-LANDING CORRECTION, AND IT RUNS FIRST: a draft already resolved
+					 * as `undelivered` whose message a LATER server answer NAMES did land after
+					 * all — the one race this mechanism can lose (a read the server composed
+					 * before the attempt settled could miss a message admitted in that window).
+					 * The answer naming the id is proof of delivery, so the line goes. The id
+					 * here is the one recorded at resolution time, which is the id the durable
+					 * row carries.
+					 */
+					const corrected = Object.entries(state.drafts).filter(
+						([, draft]) =>
+							draftBelongsToSession(draft, sessionId) &&
+							draft.undelivered !== undefined &&
+							entryIds.includes(draft.undelivered.recordId),
+					);
+					let drafts = state.drafts;
+					if (corrected.length > 0) {
+						drafts = { ...drafts };
+						for (const [key, draft] of corrected) {
+							const { undelivered: _gone, ...kept } = draft;
+							drafts[key] = kept;
+						}
+					}
+					/*
+					 * THE ONE HELD CLAIM THIS SESSION OWNS, if any. A session can hold at most
+					 * one at a time by the store's own guard (a second send is refused while
+					 * the first is held), and `pending !== true` keeps an IN-FLIGHT attempt
+					 * out of it: a request whose outcome is still unknown is not something a
+					 * snapshot should adjudicate.
+					 */
+					const found = Object.entries(drafts).find(([, draft]) => {
+						return (
+							draftBelongsToSession(draft, sessionId) &&
+							draft.admissionAttempted === true &&
+							draft.pending !== true &&
+							draft.submittedText !== undefined
+						);
+					});
+					/*
+					 * THE CORRECTION SURVIVES AN ABSENT CLAIM: a draft that was already
+					 * resolved (the late-landing case) usually has no claim left to look
+					 * for, and returning here without `drafts` would silently drop the
+					 * very write this branch exists for.
+					 */
+					if (!found) return corrected.length > 0 ? { drafts } : {};
+					const [key, draft] = found;
+					const recordId = draft.admissionRequestId;
+					const delivered = entryIds.includes(recordId);
+					/*
+					 * NOTHING IS CONCLUDED FROM AN INCOMPLETE READ: `cursor_missing` means the
+					 * page does not describe a continuous tail, so its silence about this id
+					 * proves nothing. Finding the id still resolves the claim — an answer that
+					 * NAMES the message is proof of delivery however partial the page is.
+					 */
+					if (!delivered && !complete)
+						return corrected.length > 0 ? { drafts } : {};
+					/*
+					 * The failure's own copy goes with the claim: `error`/`errorCode` are
+					 * what the composer's notice states the failure FROM, and `errorRetry`
+					 * is main's classifier verdict on it — a resolved claim must not leave
+					 * a sentence about a send the server has now answered standing over
+					 * the composer (the §F3 line is the message's own record and stays).
+					 */
+					const {
+						admissionAttempted: _attempted,
+						submittedText: _text,
+						submittedAttachments: _attachments,
+						submittedImages: _images,
+						submittedMode: _mode,
+						heldClaimCode: _claimCode,
+						error: _error,
+						errorCode: _errorCode,
+						errorRetry: _errorRetry,
+						...kept
+					} = draft;
+					return {
+						drafts: {
+							...drafts,
+							[key]: {
+								...kept,
+								/*
+								 * LANDED: nothing to record. The claim's whole question ("did this
+								 * reach the owner?") is answered YES by the answer naming the
+								 * request id, and the transcript reconciles itself — the durable row
+								 * and the echo key on the same id.
+								 *
+								 * NOT FOUND on a complete read: the claim is answered NO, and the
+								 * MESSAGE keeps that answer. The line lives on the message (§F3),
+								 * which is why the address is kept: the claim's id dies with the
+								 * claim (see the field's note), so the row that will wear the line
+								 * is named here while its id is still the one the echo carries.
+								 */
+								...(delivered
+									? {}
+									: {
+											undelivered: {
+												recordId,
+												text: _text ?? "",
+												attachments: _attachments ?? [],
+											},
+										}),
+								/*
+								 * A fresh admission id with the claim: the resolved one may still be
+								 * executing on the owner, and reusing it would make the next
+								 * (different) message an idempotent REPLAY of the old payload — the
+								 * server keys its receipt on the request id and would answer with the
+								 * first attempt's result.
+								 */
+								admissionRequestId: crypto.randomUUID(),
+							},
+						},
 					};
 				}),
 			bindSession: (_legacyAgentId, sessionId) =>

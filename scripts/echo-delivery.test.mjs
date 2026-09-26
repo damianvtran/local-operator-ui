@@ -269,27 +269,23 @@ test("a pre-admission refusal retracts the echo even when it was queued", async 
 	transcript.unregister();
 });
 
-test("INV-C1: an ambiguous failure retracts its own echo, and the owner's row brings it back", async () => {
+test("INV-C1: an ambiguous failure keeps its own echo, and the owner's row takes its place", async () => {
 	reset();
 	/*
-	 * WHAT CHANGED, AND WHAT INV-C1 BECOMES. The old rule kept the painted echo on a
-	 * 503, on the argument that retracting it would make a message the agent is
-	 * about to answer vanish while it answers it.
+	 * WHAT CHANGED, AND WHAT INV-C1 BECOMES (§F3's restore, agent review round 4's
+	 * R17). The rule this case pins is the RESTORED one: an unconfirmed send keeps
+	 * the message on screen - the row wears `Not delivered · Send again · Edit`
+	 * until the server's own answer resolves the claim - while the failure ALSO
+	 * hands the whole payload back to the composer, which is the copy the user acts
+	 * on (Retry replays it under the same request id; see
+	 * `composer-send-failure.test.mjs`). The two are not mutually exclusive: the
+	 * row is the MESSAGE's record of its fate, the box is the user's editable copy.
 	 *
-	 * That argument was made when the alternative was an EMPTY composer: the echo
-	 * was the only copy of the message the user could see, so it had to stay. Now
-	 * the failure hands the whole payload back to the composer, which is the copy
-	 * the user acts on (Retry replays it under the same request id), so the echo is
-	 * retracted - one copy on screen rather than two, and no row that claims a
-	 * delivery nobody has confirmed.
-	 *
-	 * The second half is the half the old case was protecting, and it is pinned
-	 * here rather than assumed: the row comes BACK the moment the owner's own
-	 * `message_start` for the same id arrives, because the echo was keyed by the
-	 * admission request id - which is the id the owner gives the durable row. So
-	 * the message the agent is answering reappears as the row it actually is, and
-	 * the store's reconciliation clears the composer (see
-	 * `composer-send-failure.test.mjs`, "a delivered-after-all failure ...").
+	 * The second half is the coalescing the old case was protecting, and it is
+	 * pinned here rather than assumed: the row is keyed by the admission request
+	 * id - the id the owner gives the durable row - so the owner's own
+	 * `message_start` for the same id REPLACES the echo in place rather than
+	 * painting the message a second time.
 	 */
 	let mounted = null;
 	globalThis.__echoRequest = async (request) => {
@@ -310,8 +306,8 @@ test("INV-C1: an ambiguous failure retracts its own echo, and the owner's row br
 	const requestId = store.getState().drafts[key]?.admissionRequestId ?? "";
 	assert.deepEqual(
 		transcript.rows(),
-		[],
-		"an unconfirmed send leaves no echo behind: the message is in the composer, and this app has not confirmed anything",
+		[input.text],
+		"an unconfirmed send keeps its row: the message wears its own fate on screen while the composer holds the payload",
 	);
 
 	/*
@@ -335,7 +331,7 @@ test("INV-C1: an ambiguous failure retracts its own echo, and the owner's row br
 	assert.deepEqual(
 		resumed.records.map((record) => record.text),
 		[input.text],
-		"the owner's row arrives under the request id, so the message the agent is answering is back on screen",
+		"the owner's row arrives under the request id and takes the echo's place: one row, not two",
 	);
 	transcript.unregister();
 });

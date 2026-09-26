@@ -396,7 +396,19 @@ test("the pin slot is mounted inside the capability gate, and nowhere else", () 
 	 * backend without the pin store must not render a heading over rows it cannot
 	 * be asked about.
 	 */
-	assert.match(source, /\{pinned\.length > 0 && \(\s*<section>/);
+	/*
+	 * THE VIEW'S OWN SWITCH JOINS THE GATE (the sidebar view popover, 2026-09-25):
+	 * the section is drawn when the reader has not hidden it AND there is
+	 * something to draw. It is an `&&` chain rather than a nested branch so the
+	 * capability gate is still the branch AROUND THE WHOLE SECTION - which is what
+	 * this assertion exists for, and a `pinnedShown` that swallowed it would leave
+	 * a heading over rows a backend cannot be asked about.
+	 */
+	assert.match(
+		source,
+		/pinnedShown &&[\s\S]{0,80}pinned\.length > 0 && \(\s*<section>/,
+		"the pinned section is no longer gated by the pin capability",
+	);
 });
 
 test("a repeat press is dropped only when it lands on a DIFFERENT conversation", () => {
@@ -631,7 +643,16 @@ test("the pinned mark is drawn at rest at every width, and is not inside a displ
 	 * the wrapper ever becomes a display switch again.
 	 */
 	const at = source.indexOf("data-session-pin\n");
-	const block = source.slice(at, at + 4200);
+	/*
+	 * THE WINDOW IS 5200 RATHER THAN 4200 (UX round 2, U2), and the reason is prose
+	 * rather than structure: the control now carries a block comment explaining why
+	 * it left the Tab ring, which sits between the attribute this search anchors on
+	 * and the `pinned` ternary this reads. A window that no longer REACHES the
+	 * branch fails the `notEqual` below rather than passing quietly, so widening it
+	 * cannot hide a control that stopped being drawn - it only has to reach the
+	 * branch the assertions are about.
+	 */
+	const block = source.slice(at, at + 5200);
 	const branchMatch = /\n\s*pinned\n/.exec(block);
 	assert.notEqual(branchMatch, null, "the pin's pinned branch must exist");
 	const pinnedBranchText = block.slice(
@@ -728,6 +749,7 @@ export const desktopResult = request => globalThis.__pinRequest(request);`,
 					contents: `export const echoPendingUser = () => undefined;
 export const retractPendingUser = () => undefined;
 export const retractLocalEcho = () => "retracted";
+export const peekLocalEcho = () => "unseen";
 export const discardPendingEchoes = () => undefined;`,
 					loader: "js",
 					resolveDir: ROOT,

@@ -45,6 +45,26 @@
  * the reader; they are not one element, because the contrast contract says
  * that element cannot exist in any theme.
  *
+ * ## The docked form (chat redesign §F1)
+ *
+ * The card no longer sits in the transcript: `QuestionDock` draws it above the
+ * composer, on the pane's own ground, with the accent spent on the dock's border
+ * alone. So the options drop their own `border-control` edge and become full-width
+ * ROWS - a keycap in `ink-dim`, the label in `ink`, a ground step under the
+ * pointer and on the roving selection - which is the list-row idiom this app
+ * already has, stepped to `sunken` because the card is `elevated` (the browser tab
+ * strip's measured hover step), not a fourth way to draw a control. The row's
+ * boundary is its focus outline and its hover ground; it is inside a bordered
+ * card, so it needs no edge of its own to read as one of a set.
+ *
+ * KEYS, and why they live on the fieldset rather than on each button. `Up`/`Down`
+ * move a ROVING selection (focus moves with it, so the browser's own outline is the
+ * selection mark and a screen reader follows it), `1`-`9` answer directly, and
+ * `Enter` answers the focused row by the button's native activation. The mapping is
+ * `askOptionKeyIntent` - a pure function, so the suite can assert every key without
+ * a DOM - and the component only applies what it returns. `Escape` is NOT handled
+ * here: it belongs to the dock, which collapses the card to a pill.
+ *
  * ## Why this is not the shared `Button`
  *
  * `Button` is `inline-flex`, `whitespace-nowrap` and fixed-height by size. An
@@ -57,6 +77,7 @@
  */
 
 import { cn } from "@shared/lib/utils";
+import type { KeyboardEvent } from "react";
 import type { PendingDesktopGate } from "../../../../../../shared/desktop-session-contract";
 
 export type AskOptionsProps = {
@@ -87,6 +108,44 @@ export type AskOptionsProps = {
 	onAnswer: (label: string) => void;
 	/** Stable prefix for option keys, so two gates never share a key. */
 	requestId: string;
+};
+
+/**
+ * What one key press on the options means, or `null` when it is not the card's.
+ *
+ * Pure so every key is assertable without a DOM (`scripts/ask-options.test.mjs`).
+ * `focused` is the index of the option holding focus, or -1 when focus is on the
+ * fieldset itself. Modified chords are never the card's: `Cmd+1` and friends
+ * belong to the app. Digits past the option count, and every key while an answer
+ * is in flight, fall through so the browser keeps their native meaning.
+ */
+export type AskOptionKeyIntent =
+	| { kind: "move"; index: number }
+	| { kind: "answer"; index: number };
+
+export const askOptionKeyIntent = (
+	event: Pick<
+		KeyboardEvent,
+		"key" | "altKey" | "ctrlKey" | "metaKey" | "shiftKey"
+	>,
+	focused: number,
+	count: number,
+	busy: boolean,
+): AskOptionKeyIntent | null => {
+	if (busy || count === 0) return null;
+	if (event.altKey || event.ctrlKey || event.metaKey) return null;
+	if (event.key === "ArrowDown" && !event.shiftKey)
+		return { kind: "move", index: focused < 0 ? 0 : (focused + 1) % count };
+	if (event.key === "ArrowUp" && !event.shiftKey)
+		return {
+			kind: "move",
+			index: focused <= 0 ? count - 1 : focused - 1,
+		};
+	if (/^[1-9]$/.test(event.key)) {
+		const index = Number(event.key) - 1;
+		return index < count ? { kind: "answer", index } : null;
+	}
+	return null;
 };
 
 export const AskOptions = ({
@@ -150,24 +209,48 @@ export const AskOptions = ({
 		 */
 		<fieldset
 			aria-label="Answer options"
-			className="mt-1 flex min-w-0 max-h-[380px] flex-col gap-2 overflow-y-auto border-0 px-0 py-1"
+			className="flex min-w-0 max-h-[380px] flex-col gap-0.5 overflow-y-auto border-0 p-1"
+			onKeyDown={(event) => {
+				const buttons = Array.from(
+					event.currentTarget.querySelectorAll<HTMLButtonElement>(
+						"button[data-ask-option]",
+					),
+				);
+				const intent = askOptionKeyIntent(
+					event,
+					buttons.indexOf(event.target as HTMLButtonElement),
+					options.length,
+					busy,
+				);
+				if (intent === null) return;
+				event.preventDefault();
+				if (intent.kind === "move") buttons[intent.index]?.focus();
+				else onAnswer(options[intent.index].label);
+			}}
 		>
 			{options.map((option, index) => (
 				<button
 					key={`${requestId}-${String(index)}`}
 					type="button"
+					data-ask-option=""
 					disabled={busy}
 					onClick={() => onAnswer(option.label)}
 					className={cn(
-						"flex w-full items-baseline gap-2 rounded-sm border px-3 py-2 text-left",
+						// A full-width 34px row at radius 6 (§F1). `items-baseline` keeps
+						// the keycap on the label's first line when the label wraps.
+						"flex min-h-[34px] w-full items-baseline gap-3 rounded-sm px-2 py-2 text-left",
 						// Colour-only transition: hover is a colour step, and nothing on
 						// this card lifts, scales or translates.
 						"transition-colors duration-fast ease-out-quart",
-						"border-control bg-surface hover:bg-elevated active:bg-sunken",
-						// Disabled changes colour, never opacity. An opacity fade would
-						// also fade the ground under it, so the same disabled option
-						// lands on a different colour in the wash than on the canvas.
-						"disabled:border-hairline disabled:bg-sunken disabled:text-ink-disabled",
+						// The roving selection IS focus, so the selected row takes the same
+						// ground as the hovered one: the eye reads one "this row" state.
+						// `sunken`, not `row-hover`: on the card's `elevated` ground
+						// `row-hover` is ΔE00 0.00 in some palettes, and `elevated` ->
+						// `sunken` is the measured step (`question dock option row hover
+						// fill` in scripts/contrast-contract.mjs).
+						"hover:bg-sunken focus-visible:bg-sunken",
+						// Disabled changes colour, never opacity.
+						"disabled:bg-transparent disabled:text-ink-disabled",
 					)}
 				>
 					{/*
@@ -188,15 +271,18 @@ export const AskOptions = ({
 					 * pressable, which is the honest drawing of what they are (UX
 					 * round 2, U11).
 					 */}
+					{index >= 9 && <span aria-hidden={true} className="w-4 shrink-0" />}
 					{index < 9 && (
 						<span
 							aria-hidden={true}
 							className={cn(
-								"shrink-0 font-mono text-mono-sm",
+								// The keycap column: a fixed width so every label starts on one
+								// edge, `ink-dim` because it is a hint rather than content.
+								"w-4 shrink-0 text-center font-mono text-mono-sm",
 								busy ? "text-ink-disabled" : "text-ink-dim",
 							)}
 						>
-							{index + 1}.
+							{index + 1}
 						</span>
 					)}
 					<span className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -231,8 +317,11 @@ export const AskOptions = ({
 								 */
 								<span
 									className={cn(
-										"shrink-0 font-medium text-meta",
-										busy ? "text-ink-disabled" : "text-ink",
+										// §F1: the word only, in `ink-dim`, no colour and no weight
+										// - the accent is spent on the dock's border and nowhere
+										// else on the card.
+										"shrink-0 text-meta",
+										busy ? "text-ink-disabled" : "text-ink-dim",
 									)}
 								>
 									Recommended
