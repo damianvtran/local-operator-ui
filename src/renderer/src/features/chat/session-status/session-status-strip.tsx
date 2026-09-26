@@ -85,8 +85,9 @@ import {
  *
  * WHICH LINE they occupy is a container query on `@container/chatcol`, not a
  * viewport breakpoint: above 750px of column (`CHAT_ROW_INLINE_PX`, the
- * composer row's own threshold - NOT the measure's, which is 688 since the
- * reading measure narrowed to 640) the cluster is inline and pushed right by
+ * composer row's own threshold - which the 2026-09-26 restore put back in
+ * step with `CHAT_MEASURE`'s own 750, after the redesign had narrowed that to
+ * 688) the cluster is inline and pushed right by
  * its `ml-auto`; below it the cluster
  * takes the row's first line in full and the controls keep the second, which is
  * the shape these readings had when they had a row of their own. So the narrow
