@@ -62,6 +62,10 @@ export const neon: ThemeDefinition = {
 		elevated: "#272E46",
 		sunken: "#1B1B1F",
 
+		// The user block's fill: `surface` itself, which already clears the
+		// role's ΔE00 4.0 floor off this canvas (measured 4.23).
+		messageSurface: "#212737",
+
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
 		 * step of THIS palette's own panel at the panel's own hue; they used to be

@@ -67,6 +67,10 @@ export const dracula: ThemeDefinition = {
 		elevated: "#383B50",
 		sunken: "#21222C",
 
+		// The user block's fill: `surface` itself, which already clears the
+		// role's ΔE00 4.0 floor off this canvas (measured 4.94).
+		messageSurface: "#2F3146",
+
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
 		 * step of THIS palette's own panel at the panel's own hue; they used to be
