@@ -123,11 +123,14 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 				className={cn(
 					"flex w-full items-center gap-2 rounded-sm transition-colors duration-fast ease-out-quart hover:bg-row-hover",
 					/*
-					 * `px-3` matches a nav row exactly, so the avatar sits on the same
-					 * 20px line as every nav mark above it. Collapsed, the rail is 48px
-					 * and there is only room to centre.
+					 * `px-2` lands the avatar on the column's own 16px line: the
+					 * destination rows above are `px-2` inside this column's `px-2`
+					 * groups, and the brand row's logo starts on that same line. It was
+					 * `px-3` - 20px, the older rail's idiom - and the operator's report
+					 * of 2026-09-26 ("doesn't properly align left with the other
+					 * aspects") is exactly that 4px. Collapsed, the rail centres.
 					 */
-					expanded ? "px-3 py-1.5" : "justify-center py-1.5",
+					expanded ? "px-2 py-1.5" : "justify-center py-1.5",
 				)}
 			>
 				{/*
