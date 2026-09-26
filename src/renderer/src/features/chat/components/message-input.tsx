@@ -222,7 +222,6 @@ import { CredentialChipLayer } from "./credential-chip-layer";
 import { CredentialOverlay, composerTextBox } from "./credential-overlay";
 
 import { BrandMark } from "@shared/components/common/brand-mark";
-import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { useAtResolution } from "../hooks/use-at-resolution";
 import {
 	activeModelForDefault,
@@ -7136,7 +7135,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												aria-hidden="true"
 												data-interrupt-slot=""
 												className={cn(
-													"pointer-events-none invisible flex items-center gap-1",
+													"pointer-events-none invisible flex items-center",
 												)}
 											>
 												{/*
@@ -7144,79 +7143,59 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												 * what makes "holding the place moves nothing" true rather than
 												 * nearly true (chat redesign §G3, U3).
 												 *
-												 * It was an empty `size-7`/`size-8` square, which is exactly
-												 * the box the OLD icon Stop occupied. The control is labelled now
-												 * - a glyph plus the word `Stop` plus its `Esc` cap - so a square
-												 * reservation would leave the dictation control 60-odd pixels
-												 * short of where the turn's own row puts it, and the mic would
-												 * jump left at the instant the turn starts and back again when it
-												 * ends: the re-layout class this slot exists to bound, in the
-												 * window where the reader is most likely to be aiming at it.
-												 *
-												 * A measured width would be a second expression of the control's
-												 * own layout, and the two would drift the first time the label or
-												 * the cap changed. This renders the SAME markup with a real box
-												 * (`visibility: hidden` keeps layout, unlike `display: none`), so
-												 * the two boxes agree by construction; it carries NO accessible
-												 * accessible name and no labelling attribute, because it must
-												 * stay out of the live probes that select the control by its
-												 * own name and must not be announced.
+												 * The control is the icon-only red square again (operator report,
+												 * 2026-09-26 - see the live branch below), so this renders that
+												 * SAME markup invisible: `visibility: hidden` keeps layout,
+												 * unlike `display: none`, so the two boxes agree by construction
+												 * rather than by a measured width that could drift. It carries
+												 * NO accessible name and no labelling attribute, because it must
+												 * stay out of the live probes that select the control by its own
+												 * name and must not be announced.
 												 */}
 												<Button
-													variant="secondary"
-													size={isSmallView ? "sm" : "md"}
+													variant="danger"
+													size={isSmallView ? "icon-sm" : "icon"}
 													type="button"
 													tabIndex={-1}
 												>
 													<Square aria-hidden="true" />
-													Stop
 												</Button>
-												<span className={cn("text-ink-dim")}>
-													<KeyboardShortcut shortcut="Esc" />
-												</span>
 											</span>
 										)}
 									{canonicalStop?.active && (
 										/*
-										 * THE STOP IS LABELLED, AND IT NAMES ITS OWN KEY (§G3, U3).
+										 * THE STOP IS THE ICON-ONLY RED SQUARE IT WAS BEFORE THE
+										 * REDESIGN (operator report, 2026-09-26).
 										 *
-										 * It was a bare 24px `danger` square whose tooltip said
-										 * "Stop session" and nothing said that Escape does the same
-										 * thing - so the one control a reader reaches for while a turn
-										 * runs was the least legible control in the composer, and the
-										 * accelerator beside it was invisible. Now it is §G3's own
-										 * shape: a `surface` control with a `border-control` edge, the
-										 * `Square` glyph, the word `Stop`, and the `Esc` cap - and
-										 * `aria-keyshortcuts` carries the accelerator to assistive tech
-										 * rather than only to the eye.
+										 * The redesign relabelled it - a `surface` control with a
+										 * `border-control` edge, the word `Stop` and a visible `Esc` cap
+										 * (§G3, U3) - and the operator's verdict was that the row it sits
+										 * in is now over-full: the label and cap crowded a row that
+										 * already carries five other items, and at their window width the
+										 * cap read as a fragment clipped under this button. Restored: the
+										 * bare `danger` square, `icon-sm`/`icon` like its `Stop agent`
+										 * sibling above.
 										 *
-										 * NOT `variant="danger"`: stopping is not a failure and §B8
-										 * reserves the danger role for facts that went wrong. The
-										 * `secondary` variant is `surface` + `border-control` + `ink`,
-										 * which is exactly the spec's description.
+										 * WHAT THE LABEL'S REMOVAL KEEPS, deliberately, because an
+										 * icon-only destructive-adjacent control is worse than a
+										 * labelled one when it loses them: `aria-label="Stop"` is the
+										 * button's accessible NAME, `aria-keyshortcuts="Escape"` still
+										 * states the key binding to assistive tech, and the tooltip
+										 * still says both in words. The VISIBLE cap is what went, not
+										 * the binding.
 										 */
 										<Tooltip content="Stop this session's current work (Esc)">
-											<span className="flex items-center gap-1">
+											<span>
 												<Button
-													variant="secondary"
-													size={isSmallView ? "sm" : "md"}
+													variant="danger"
+													size={isSmallView ? "icon-sm" : "icon"}
 													type="button"
 													onClick={canonicalStop.onStop}
 													aria-label="Stop"
 													aria-keyshortcuts="Escape"
 												>
 													<Square aria-hidden="true" />
-													Stop
 												</Button>
-												{/*
-												 * The cap is DECORATIVE here: `aria-keyshortcuts` above
-												 * already states the binding, and a `KeyboardShortcut`
-												 * carries its own `kbd` text into the accessible name - two
-												 * statements of one binding inside one control.
-												 */}
-												<span aria-hidden="true" className="text-ink-dim">
-													<KeyboardShortcut shortcut="Esc" />
-												</span>
 											</span>
 										</Tooltip>
 									)}
