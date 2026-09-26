@@ -945,6 +945,27 @@ const STAMP_BINDING_NOTES = [
 	"usageInFlightConvergenceNote",
 	"macNativeComponentsRestampNote",
 	"telemetrySwitchRestampNote",
+	/*
+	 * ROUND 1 OF THIS FIX'S OWN (#534's shell-regressions remediation), and it
+	 * belongs here for the list's own reason: the round moves BOTH trees this file
+	 * binds - `src/` for the merged sidebar's own `scroller` marker and `chats`
+	 * moved onto the list region it names, plus the measure and stop-control
+	 * call-site corrections, and `scripts/` for the two retired scenes, the walk's
+	 * recast from the unreachable `chats-only` mode and the rewritten suites - and
+	 * re-shoots no frame (six stories and their twelve frames leave instead), so a
+	 * reader is owed the two values it binds and the reason the stills did not
+	 * move.
+	 */
+	"shellRegressionsRestampNote",
+	/*
+	 * THE WALK'S FIRST FULL RUN'S OWN: the run found one stale pin in the driver (the
+	 * offer-frame count), so `scripts/` moved on its own and this note re-derives the pair
+	 * that fix ships - the same criterion the fold note above meets.
+	 */
+	"walkFirstRunRestampNote",
+	"scratchDriverRemovalRestampNote",
+	"foldSpliceLintRestampNote",
+	"foldOntoFdff0d84dNote",
 	// The seventh: `readReceiptRestampNote` states this file's own pair for the
 	// read-receipt branch, so it is held to that pair rather than read as history -
 	// the distinction `candidateMacArchRestampNote` above is in the list for.
@@ -1258,35 +1279,6 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"goalDesignRoundTwoNote",
 	/*
-	 * ROUND 1 OF THIS FIX'S OWN (#534's shell-regressions remediation), and it
-	 * belongs here for the list's own reason: the round moves BOTH trees this file
-	 * binds - `src/` for the merged sidebar's own `scroller` marker and `chats`
-	 * moved onto the list region it names, plus the measure and stop-control
-	 * call-site corrections, and `scripts/` for the two retired scenes, the walk's
-	 * recast from the unreachable `chats-only` mode and the rewritten suites - and
-	 * re-shoots no frame (six stories and their twelve frames leave instead), so a
-	 * reader is owed the two values it binds and the reason the stills did not
-	 * move.
-	 */
-	"shellRegressionsRestampNote",
-	/*
-	 * THE FOLD UNDER ROUND 1'S OWN: `foldOnto093a329a4dNote` re-derives the pair at
-	 * the merged tip after #535 and #533 landed, and it states this file's binding
-	 * as its opening claim, so it belongs here for the list's own reason - the same
-	 * criterion `foldOntoFd19adc9d9Note` meets.
-	 */
-	"foldOnto093a329a4dNote",
-	/*
-	 * THE WALK'S FIRST FULL RUN'S OWN: the run found one stale pin in the driver (the
-	 * offer-frame count), so `scripts/` moved on its own and this note re-derives the pair
-	 * that fix ships - the same criterion the fold note above meets.
-	 */
-	"walkFirstRunRestampNote",
-	"scratchDriverRemovalRestampNote",
-
-	"foldOnto22c0fcd4fdNote",
-	"foldSpliceLintRestampNote",
-	"foldOntoFdff0d84dNote",
 	 * THIS CHANGE'S OWN: it re-stamps the pass that made the chat header's
 	 * identity slot the controls it describes (the team and the agent menus,
 	 * the rename pencil) and re-captured its own eleven states - so ITS
