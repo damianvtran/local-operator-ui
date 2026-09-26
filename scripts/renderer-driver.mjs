@@ -7484,10 +7484,13 @@ async function sceneFirstSend(cdp) {
  *
  * WHAT IT ASSERTS. With the daemon gone: ONE live region states the connection
  * and ONE Retry control is on screen (U3b, §F2's "one root cause, one Retry").
- * A message sent while offline carries its state on the message
- * (`Not delivered · Send again · Edit`, §F3) with the Send control disabled and
- * its reason stated. A revived daemon clears the held state from the server's
- * own answer (U5, §F2's last bullet) without adding a second voice.
+ * A message sent while offline carries §F3's state on the message itself
+ * (`Not delivered · Send again · Edit`) while the composer hands the payload
+ * back with its one notice (the two surfaces agent review round 4's R17
+ * restored side by side; the held-send gate it replaced is gone by design -
+ * design round 3's D27). A revived daemon resolves the claim from the
+ * server's own answer (U5, §F2's last bullet): the composer stops stating the
+ * failure and the message keeps its fate line, without a second voice.
  *
  * WHAT IT NEEDS: `--backend` pointing at a daemon this run owns - started with
  * the scratch `config.yml` hosting step `docs/agent-driver.md` records, without
@@ -7888,16 +7891,15 @@ function readUndeliveredLine(cdp) {
 	})()`);
 }
 
-/** The send control's disabled state and the reason stated beside it, if any. */
-function readSendGate(cdp) {
+/** The failed send's own answer in the composer: the returned text and its one notice. */
+function readComposerReturn(cdp) {
 	return cdp.evaluate(`(() => {
 		const clean = (s) => (s || "").replace(/\\s+/g, " ").trim();
-		const send = document.querySelector('button[aria-label="Send message"]');
-		const reason = document.querySelector("[data-send-waits]");
+		const box = document.querySelector('[data-tour-tag="chat-input-textarea"] textarea');
+		const notice = document.querySelector("[data-composer-notice]");
 		return {
-			present: send !== null,
-			disabled: send ? send.disabled === true : null,
-			reason: reason ? clean(reason.textContent) : null,
+			text: box ? box.value : null,
+			notice: notice ? clean(notice.textContent) : null,
 		};
 	})()`);
 }
@@ -8043,27 +8045,27 @@ async function sceneConnectionDrop(cdp) {
 	note("frame", JSON.stringify(goneFrame));
 
 	/*
-	 * 4. A send while offline: the message takes the failure (§F3), the composer
-	 *    states why it is waiting.
+	 * 4. A send while offline: the message takes §F3's failure state on its own
+	 *    row, and the composer hands the payload back with its one notice.
 	 */
 	await clickAt(cdp, `${composer} textarea`);
 	await cdp.send("Input.insertText", { text: "did that reach you?" });
 	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
 	const held = await waitForCondition(
 		cdp,
-		`Boolean(document.querySelector("[data-undelivered]")) || document.body.textContent.includes("still being held")`,
+		`Boolean(document.querySelector("[data-undelivered]"))`,
 		30_000,
 	);
 	check(
-		"a send that failed while offline leaves a state on screen",
+		"a send that failed while offline puts §F3's state on the message",
 		held.ok,
-		`neither the per-message state nor the old paragraph appeared after ${held.waitedMs}ms`,
+		`the per-message state did not appear after ${held.waitedMs}ms`,
 	);
 	await wait(800);
 	const undelivered = await readUndeliveredLine(cdp);
-	const sendGate = await readSendGate(cdp);
+	const returned = await readComposerReturn(cdp);
 	note("the message's own state (§F3)", JSON.stringify(undelivered));
-	note("the send control and its reason", JSON.stringify(sendGate));
+	note("the composer's return and its notice", JSON.stringify(returned));
 	check(
 		"the failure attaches to the message: `Not delivered · Send again · Edit` (§F3)",
 		undelivered !== null &&
@@ -8073,11 +8075,9 @@ async function sceneConnectionDrop(cdp) {
 		JSON.stringify(undelivered),
 	);
 	check(
-		"the Send control is disabled while the held message exists, with the reason stated (§F3)",
-		sendGate.present === true &&
-			sendGate.disabled === true &&
-			/Send waits for the held message/.test(sendGate.reason ?? ""),
-		JSON.stringify(sendGate),
+		"the failed message is handed back to the composer, with no second notice while the strip speaks (§F2's single voice; the held gate is gone by design)",
+		returned.text === "did that reach you?" && returned.notice === null,
+		JSON.stringify(returned),
 	);
 	const heldRegions = await readLiveRegions(cdp);
 	const heldRetries = await readRetryControls(cdp);
@@ -8165,33 +8165,33 @@ async function sceneConnectionDrop(cdp) {
 	 */
 	const cleared = await waitForCondition(
 		cdp,
-		`!document.querySelector("[data-send-waits]")`,
+		`!document.querySelector("[data-composer-notice]")`,
 		60_000,
 	);
 	note(
-		"the composer's send gate cleared after the reconnect",
-		`${cleared.ok ? "cleared" : "STILL WAITING"} after ${cleared.waitedMs}ms`,
+		"the composer's notice cleared after the reconnect",
+		`${cleared.ok ? "cleared" : "STILL STANDING"} after ${cleared.waitedMs}ms`,
 	);
 	const settled = await cdp.evaluate(`(() => {
 		const clean = (s) => (s || "").replace(/\\s+/g, " ").trim();
 		const el = document.querySelector("[data-undelivered]");
-		const wait = document.querySelector("[data-send-waits]");
+		const notice = document.querySelector("[data-composer-notice]");
 		return {
 			body: clean(document.body.textContent).slice(0, 4000),
 			undelivered: el ? clean(el.textContent) : null,
-			sendWaits: wait ? clean(wait.textContent) : null,
+			notice: notice ? clean(notice.textContent) : null,
 			stripRegions: [...document.querySelectorAll('[role="alert"], [role="status"]')]
 				.map((r) => clean(r.textContent).slice(0, 120)),
 		};
 	})()`);
 	note("state after the reconnect", JSON.stringify(settled));
 	check(
-		"the reconnect cleared the held state: the composer is no longer waiting on it (U5b)",
-		settled.sendWaits === null &&
+		"the reconnect resolved the claim: the composer stops stating the failure (U5b)",
+		settled.notice === null &&
 			!/still being held/i.test(settled.body) &&
 			settled.stripRegions.length === 0,
 		JSON.stringify({
-			sendWaits: settled.sendWaits,
+			notice: settled.notice,
 			stillBeingHeld: /still being held/i.test(settled.body),
 			liveRegions: settled.stripRegions,
 		}),

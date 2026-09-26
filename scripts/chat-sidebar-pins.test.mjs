@@ -749,6 +749,7 @@ export const desktopResult = request => globalThis.__pinRequest(request);`,
 					contents: `export const echoPendingUser = () => undefined;
 export const retractPendingUser = () => undefined;
 export const retractLocalEcho = () => "retracted";
+export const peekLocalEcho = () => "unseen";
 export const discardPendingEchoes = () => undefined;`,
 					loader: "js",
 					resolveDir: ROOT,

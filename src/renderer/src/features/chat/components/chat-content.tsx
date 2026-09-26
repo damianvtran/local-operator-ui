@@ -43,6 +43,7 @@ import type {
 	CanonicalModel,
 } from "../../../../../shared/desktop-session-contract";
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
+import type { UndeliveredTurn } from "../canonical/canonical-transcript";
 import { canonicalTranscriptSpeaks } from "../canonical/transcript-pane";
 import { useMentionedFiles } from "../canonical/use-mentioned-files";
 import {
@@ -242,6 +243,18 @@ type ChatContentProps = {
 	 * verbatim; see `MessageInputProps.onSlashNote`.
 	 */
 	onSlashNote?: (text: string) => void;
+	/**
+	 * §F3's per-message failure state, computed by the page that owns the draft
+	 * (it is the page that also owns the `send` door and the composer handle the
+	 * two controls use).
+	 *
+	 * THIS PANE, NOT THE PAGE, decides whether the line is drawn: the address is
+	 * a transcript record id, and only this component holds the transcript. The
+	 * rule is the record's presence - a line addressed to a row that is not on
+	 * screen is a claim about a message the reader cannot see, which is exactly
+	 * the register §F3 exists to end.
+	 */
+	undelivered?: UndeliveredTurn | null;
 	/**
 	 * The canonical session this pane paints from. Required, not optional: the
 	 * legacy job/message list went with the socket transport, so there is no
@@ -514,6 +527,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		onSlashNote,
 		paneHasSession,
 		canonical,
+		undelivered = null,
 		runDetails,
 		mcpServers = [],
 		mcpGrantRunning = false,
@@ -532,6 +546,21 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const [isSmallView, setIsSmallView] = useState(false);
 		const chatContainerRef = useRef<HTMLDivElement>(null);
 		const canvasContainerRef = useRef<HTMLDivElement>(null);
+		/*
+		 * WHETHER §F3's LINE IS ON SCREEN, which is one decision with two readers:
+		 * the transcript (which draws it on the row it names) and the composer (which
+		 * stands its own held paragraph down while the line speaks for the same
+		 * failure). Computed once, here, because "the row exists" is a fact about
+		 * this transcript and computing it twice is how the two surfaces drift.
+		 */
+		const undeliveredOnScreen =
+			undelivered !== null &&
+			canonical.view.transcript.records.some(
+				(record) =>
+					record.kind === "user" && record.id === undelivered.recordId,
+			)
+				? undelivered
+				: null;
 		/*
 		 * The conversation's own archive state, and the two capabilities that decide
 		 * whether any of it is offered at all.
@@ -1403,6 +1432,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 									<CanonicalTranscript
 										frontend={canonical.view.frontend}
 										transcript={canonical.view.transcript}
+										undelivered={undeliveredOnScreen}
 										gate={canonical.view.frontend?.pending_gate ?? null}
 										waiting={canonical.busy}
 										starting={canonical.starting === true}

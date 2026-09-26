@@ -307,6 +307,7 @@ export const useTeams = () => ({ data: [], error: null, isLoading: false, refetc
 	"@shared/hooks/use-canonical-session": `export const echoPendingUser = () => undefined;
 export const retractPendingUser = () => undefined;
 export const retractLocalEcho = () => "retracted";
+export const peekLocalEcho = () => "unseen";
 export const discardPendingEchoes = () => undefined;`,
 };
 

@@ -97,7 +97,7 @@ const bundle = await build({
 					{ filter: ANY_MODULE_RE, namespace: "echo-fixture" },
 					() => ({
 						contents:
-							"export const echoPendingUser = () => {};\nexport const retractPendingUser = () => {};\nexport const retractLocalEcho = () => 'retracted';\nexport const discardPendingEchoes = () => {};",
+							"export const echoPendingUser = () => {};\nexport const retractPendingUser = () => {};\nexport const retractLocalEcho = () => 'retracted';\nexport const peekLocalEcho = () => 'unseen';\nexport const discardPendingEchoes = () => {};",
 						loader: "js",
 					}),
 				);

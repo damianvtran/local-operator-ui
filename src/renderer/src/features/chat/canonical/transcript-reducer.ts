@@ -2873,26 +2873,21 @@ export function applyEvent(
 					: { ...state, argsByCall: learned };
 			const userStoppedAt = options.userStoppedAt ?? null;
 			/*
-			 * WHETHER THIS END EVENT IS CREATING THE ROW (UX round 2, U15).
-			 *
-			 * `base` above is the fresh default exactly when no tool row for this
-			 * call existed before this event — the row was never seen running by
-			 * this viewer, so no layer holds a clock for it (measured in the
-			 * interrupt rig: the killed call's start never reaches a lagging pane
-			 * before the press, and this event is the row's whole biography).
-			 */
-			const seededByThisEnd = !(current && current.kind === "tool");
-			/*
 			 * The event's own failure claim, ONE expression shared with the paint
 			 * below, so "would this row have painted danger?" is asked in exactly
 			 * one place.
 			 */
 			const claimsFailure = Boolean(event.is_error ?? result.is_error);
+			/*
+			 * WHETHER THE STOP EXPLAINS THIS END - and for every row WITHOUT a clock,
+			 * not only one born by this event (the reason is the `isError` field's own
+			 * comment below).
+			 */
 			const killedByUserStop =
 				userStoppedAt !== null &&
 				(typeof base.startedAt === "number"
 					? base.startedAt <= userStoppedAt
-					: seededByThisEnd && claimsFailure);
+					: claimsFailure);
 			return upsert(seeded, {
 				...base,
 				args,
@@ -2921,7 +2916,8 @@ export function applyEvent(
 				 * where "was this call running when the user pressed stop?" is answerable
 				 * from the record alone.
 				 *
-				 * THE TEST HAS TWO ARMS, BECAUSE TWO SHAPES OF ROW REACH IT.
+				 * THE TEST HAS TWO ARMS, AND THE SECOND SPEAKS FOR EVERY ROW WITHOUT A
+				 * CLOCK - both shapes that reach it, and both measured in the rigs.
 				 *
 				 * ARM ONE, `startedAt <= userStoppedAt`, is precise in the direction that
 				 * matters: only a call ALREADY RUNNING at the press can be the one the
@@ -2930,14 +2926,21 @@ export function applyEvent(
 				 * honest failure earlier in the same turn keeps its `danger` row, and a
 				 * call that started after the press cannot exist because the turn is over.
 				 *
-				 * ARM TWO, `seededByThisEnd`, ANSWERS THE CASE ARM ONE HAD TO REFUSE (U15).
-				 * The row `current` finds nothing for is a call this viewer only ever met
-				 * as it settled, so `startedAt` is null and the clock test cannot answer.
-				 * Refusing it — the "a row with no clock is a guess" rule this comment
-				 * used to state — is precisely the defect: the same turn then painted
-				 * `failed` in danger beside its own Stopped line, blaming the agent for
-				 * the user's press. The stop fact standing for this session is the only
-				 * story that fits a row born inside the stop window, so it is taken:
+				 * ARM TWO ANSWERS THE ROWS ARM ONE HAD TO REFUSE (U15; widened to the
+				 * parked call by agent review round 4's Q5, which reconciled the rig's
+				 * three failing runs with UX's measurement). Two shapes reach it: the row
+				 * this viewer only ever met as it SETTLED — born by the end event itself,
+				 * because the start never reached it before the press — and the row it saw
+				 * ANNOUNCED but never started, which is what the press actually kills on
+				 * this daemon: a `[bash:N]` call PARKS at the approval gate, so no
+				 * `tool_execution_start` precedes an `Esc` and the clock test has nothing
+				 * to compare. Refusing them — the "a row with no clock is a guess" rule
+				 * this comment used to state — is precisely the defect: the same turn then
+				 * painted `failed` in danger beside its own Stopped line, blaming the
+				 * agent for the user's press, and left the live layer disagreeing with the
+				 * durable one, which re-projects `stopped` from the runtime's own
+				 * `aborted` fault. The stop fact standing for this session is the only
+				 * story that fits a row killed inside the stop window, so it is taken:
 				 * between `failed` and `stopped`, "you stopped this" is the reading that
 				 * does not accuse the user's own agent. That is a decision about whose
 				 * in-principle guess wins (the transcript's "no clock is a guess" rule
@@ -2949,9 +2952,9 @@ export function applyEvent(
 				 * it again (`chat-page.tsx`) — and the call's real error text stays one
 				 * expansion away either way.
 				 *
-				 * The second arm also requires the event's own failure claim: the
+				 * The arm also requires the event's own failure claim: the
 				 * accusation it answers exists only when the row would paint danger, so
-				 * a born row whose event reports SUCCESS keeps that outcome — the stop
+				 * a row whose event reports SUCCESS keeps that outcome — the stop
 				 * fact must not overwrite a result the call demonstrably produced.
 				 *
 				 * `isError` is CLEARED as well as `stopped` set, because the row's outcome

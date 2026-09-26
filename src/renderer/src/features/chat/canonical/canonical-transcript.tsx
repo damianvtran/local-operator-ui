@@ -319,6 +319,18 @@ export type CanonicalTranscriptProps = {
 	 */
 	labelPending?: ReadonlySet<string>;
 	/**
+	 * §F3's PER-MESSAGE FAILURE STATE, addressed to the one row it describes.
+	 *
+	 * WHY IT TRAVELS AS A RECORD ID (§F3, UX round 1's U4). The failure used to be
+	 * stated by a paragraph above the composer - one register for a whole screen's
+	 * worth of failures - and §F3 moves it onto the message: `Not delivered` with
+	 * the two remedies that resolve it. The address is the transcript's own id
+	 * (`record.id`, the id the durable row will carry if it ever lands), so the
+	 * line cannot attach to a neighbouring turn, and the row that wears it is the
+	 * only one that re-renders when it changes.
+	 */
+	undelivered?: UndeliveredTurn | null;
+	/**
 	 * Re-arm the session's stream and history read.
 	 *
 	 * Required rather than optional: every caller of this component has a
@@ -330,16 +342,34 @@ export type CanonicalTranscriptProps = {
 
 // ---------------------------------------------------------------- rows
 
+/**
+ * The two controls §F3's line offers, bound to the message they resolve.
+ *
+ * `Send again` re-issues the SAME payload through the composer's own send door
+ * (so the store's unchanged-payload guard is satisfied by construction, not by a
+ * second code path), and `Edit` puts the payload back in the box - idempotent
+ * with the return path the failure already performed - reached from the message
+ * the restore is about.
+ */
+export type UndeliveredTurn = {
+	recordId: string;
+	onSendAgain: () => void;
+	onEdit: () => void;
+};
+
 const UserRow = memo(function UserRow({
 	record,
 	isSmallView,
 	scope,
 	conversationId,
+	undelivered = null,
 }: {
 	record: Extract<TranscriptRecord, { kind: "user" }>;
 	isSmallView: boolean;
 	scope: AttachmentScope | null;
 	conversationId?: string;
+	/** §F3's per-message failure state, when this row is the one it names. */
+	undelivered?: UndeliveredTurn | null;
 }) {
 	/*
 	 * The element a highlight has to BEGIN inside to count as a quote of THIS
@@ -454,6 +484,14 @@ const UserRow = memo(function UserRow({
 							// is 12px inline and 10px block; `rounded-frame` is the ramp's
 							// 10px step, unchanged.
 							"relative rounded-frame bg-surface text-ink break-words",
+							/*
+							 * The ONE border a bubble takes, and only while it is the message §F3's
+							 * line is about: `a danger 1px leading edge` on the block. D10 removed the
+							 * resting border because the fill is the boundary; this is not a resting
+							 * state, it is the failure state, and the edge is the second signal that
+							 * belongs to the message rather than to a paragraph about it.
+							 */
+							undelivered !== null && "border-l border-danger",
 							isSmallView
 								? "max-w-[92%] px-3 py-2.5"
 								: "max-w-[85%] px-3 py-2.5",
@@ -559,6 +597,55 @@ const UserRow = memo(function UserRow({
 						/>
 					)}
 				</div>
+				{/*
+				 * §F3's LINE, ONE ROW UNDER THE BLOCK IT IS ABOUT.
+				 *
+				 * The sentence is fixed rather than backend-authored: what the app KNOWS
+				 * is that the owner's transcript does not hold this message (or that the
+				 * claim is still open), and both cases are the same instruction to the
+				 * reader - send it again, or take it back to edit. Nothing on the wire
+				 * separates "refused" from "the response was lost" from "the daemon was
+				 * gone", so the line states the one fact every one of them shares.
+				 *
+				 * NO LIVE REGION: the strip owns the connection's one live region and the
+				 * composer states the Send gate; a third announcement of one press is the
+				 * duplication this round removes, and the two controls are ordinary
+				 * buttons the reader reaches by reading the line.
+				 *
+				 * `data-undelivered` is the rig's address for the line
+				 * (`scripts/renderer-driver.mjs`'s `connection-drop` scene reads it), the
+				 * same structural-marker rule the archive lane follows.
+				 */}
+				{undelivered !== null && (
+					<div
+						data-undelivered
+						className={cn(
+							"flex w-full items-center justify-end gap-3 text-danger text-meta",
+						)}
+					>
+						<span className={cn("flex items-center gap-1")}>
+							<CircleAlert
+								aria-hidden="true"
+								className={cn("size-3.5 shrink-0")}
+							/>
+							Not delivered
+						</span>
+						<button
+							type="button"
+							className={cn("cursor-pointer underline")}
+							onClick={undelivered.onSendAgain}
+						>
+							Send again
+						</button>
+						<button
+							type="button"
+							className={cn("cursor-pointer underline")}
+							onClick={undelivered.onEdit}
+						>
+							Edit
+						</button>
+					</div>
+				)}
 				{/*
 				 * NO STAMP UNDER THE USER'S BLOCK (§D1; design round 1, D7). The turn's
 				 * one stamp is on its foot line (§E3), at the end of the agent's answer,
@@ -1402,6 +1489,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	 */
 	foot = null,
 	labelPending = false,
+	undelivered = null,
 }: {
 	row: Row;
 	isSmallView: boolean;
@@ -1409,6 +1497,13 @@ const TranscriptRow = memo(function TranscriptRow({
 	conversationId?: string;
 	/** The turn's own foot line, on the row that closes it (§E3). */
 	foot?: TurnFoot | null;
+	/**
+	 * §F3's per-message failure state, or null. ONE OBJECT FOR THE WHOLE LIST,
+	 * and every row but the one it names keeps the null it already had: the rows
+	 * are memoised, so a fresh object per row would re-render the transcript on
+	 * every paint (the same rule `labelPending` documents one line down).
+	 */
+	undelivered?: UndeliveredTurn | null;
 	/**
 	 * A BOOLEAN per row rather than the set: the rows are memoised, and handing
 	 * every row the set would re-render all of them each time one id settles.
@@ -1426,6 +1521,7 @@ const TranscriptRow = memo(function TranscriptRow({
 					isSmallView={isSmallView}
 					scope={scope}
 					conversationId={conversationId}
+					undelivered={undelivered?.recordId === record.id ? undelivered : null}
 				/>
 			);
 			break;
@@ -1528,6 +1624,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	attachmentScope,
 	conversationId,
 	labelPending,
+	undelivered = null,
 	onReconnect,
 }) => {
 	// A crash-recovered outcome has no durable row of its own, so it is
@@ -2336,6 +2433,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 													labelPending?.has(row.record.toolCallId) === true
 												}
 												foot={feet.get(row.record.id) ?? null}
+												undelivered={undelivered}
 											/>
 										))}
 									</TraceFold>
@@ -2351,6 +2449,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 											labelPending?.has(group.row.record.toolCallId) === true
 										}
 										foot={feet.get(group.row.record.id) ?? null}
+										undelivered={undelivered}
 									/>
 								),
 							)}
