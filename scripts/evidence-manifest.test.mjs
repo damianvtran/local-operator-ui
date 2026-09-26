@@ -940,6 +940,13 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"liveSettleLabelRemediationNote",
 	/*
+	 * This branch's own: it re-stamps a change that moves both trees this file
+	 * binds — the rule/slot/story under `src/`, the trailing-statement pins under
+	 * `scripts/` — without touching a swept frame, so the reader is owed the pair
+	 * and the reason no still was owed.
+	 */
+	"rowTeamTrailingRestampNote",
+	/*
 	 * This remediation round's own: it re-stamps the change that rounds 1's two MAJORs moved inside, so
 	 * the reader is owed the pair and the reason no still was owed.
 	 */
