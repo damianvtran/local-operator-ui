@@ -83,7 +83,25 @@ test("every value in the domain prints a string, and none of them is numeric", (
 	// Totality matters because this string is dropped straight into a table cell:
 	// a formatter that could throw or return a number would render `NaN` in the
 	// one column this feature exists to show.
-	for (const value of [null, undefined, 0, 0.0001, 0.05, 9.99, 10, 999, 1e9]) {
+	// `NaN` and `Infinity` are IN the domain deliberately: the guard for them lives
+	// one function away from a textually identical opening line, and an earlier
+	// revision of it landed in the byte formatter, where every assertion in this
+	// file still passed. A value the guard answers for has to be a value the test
+	// asks about.
+	for (const value of [
+		null,
+		undefined,
+		0,
+		0.0001,
+		0.05,
+		9.99,
+		10,
+		999,
+		1e9,
+		Number.NaN,
+		Number.POSITIVE_INFINITY,
+		Number.NEGATIVE_INFINITY,
+	]) {
 		const printed = formatTokensPerSecond(value);
 		assert.equal(typeof printed, "string");
 		assert.ok(printed.endsWith("tok/s") || printed === UNKNOWN, printed);
