@@ -56,6 +56,11 @@ export const solarizedDark: ThemeDefinition = {
 		elevated: "#093A46",
 		sunken: "#00252E",
 
+		// The user block's fill: ΔE00 4.05 off the canvas, where `surface` alone
+		// measures 2.47 - a step toward `elevated` to clear the role's 4.0 floor,
+		// which the block carries because the fill IS its boundary.
+		messageSurface: "#073844",
+
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
 		 * step of THIS palette's own panel at the panel's own hue; they used to be

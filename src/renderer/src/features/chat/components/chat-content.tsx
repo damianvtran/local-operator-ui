@@ -71,6 +71,7 @@ import { Canvas } from "./canvas";
 import { documentsForCanvas } from "./canvas/document-buffers";
 import { tabFollowingClose } from "./canvas/tab-selection";
 import { ChatHeader } from "./chat-header";
+import type { HeaderIdentityData } from "./chat-header-identity";
 import { ChatOptionsSidebar } from "./chat-options-sidebar";
 import { ChatStatusStrip } from "./chat-status-strip";
 import {
@@ -104,6 +105,19 @@ type ChatContentProps = {
 	description: string;
 	/** Held, not filled, until some source names the identity; see `ChatHeaderProps`. */
 	descriptionPending?: boolean;
+	/**
+	 * The live session's identity for the header's two switchers; see
+	 * `ChatHeaderProps.identity`. Passed straight through from the page (which
+	 * owns the gate and the canonical stream), so this component never derives
+	 * an identity question it cannot answer.
+	 */
+	identity?: HeaderIdentityData | null;
+	/**
+	 * Opens the existing rename flow for the conversation; see
+	 * `ChatHeaderProps.onRenameConversation`. The page routes it to the same
+	 * dispatcher `/rename` already runs through.
+	 */
+	onRenameConversation?: () => void;
 	onOpenOptions: () => void;
 	isOptionsSidebarOpen: boolean;
 	onCloseOptions: () => void;
@@ -507,6 +521,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		agentName,
 		description,
 		descriptionPending,
+		identity,
+		onRenameConversation,
 		onOpenOptions,
 		isOptionsSidebarOpen,
 		onCloseOptions,
@@ -1311,6 +1327,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							agentName={agentName}
 							description={description}
 							descriptionPending={descriptionPending}
+							identity={identity}
+							onRenameConversation={onRenameConversation}
 							onOpenOptions={onOpenOptions}
 							runDetails={runDetails}
 							fileCount={mentionedFileCount}

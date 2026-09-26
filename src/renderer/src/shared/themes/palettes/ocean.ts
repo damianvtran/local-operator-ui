@@ -73,6 +73,10 @@ export const ocean: ThemeDefinition = {
 		elevated: "#273B45",
 		sunken: "#1A2228",
 
+		// The user block's fill: `surface` itself, which already clears the
+		// role's ΔE00 4.0 floor off this canvas (measured 4.00).
+		messageSurface: "#223540",
+
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
 		 * step of THIS palette's own panel at the panel's own hue; they used to be
