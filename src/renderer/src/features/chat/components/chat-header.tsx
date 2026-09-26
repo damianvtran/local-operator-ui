@@ -559,10 +559,19 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * `PATH_CHIP_CHARS` by `middleTruncatePath` - sits beside it when it fits
 			 * WHOLE and wraps onto the clipped second line when it does not. The path
 			 * is dropped before the title loses a word, and it never renders cut.
+			 *
+			 * AND IT CLIPS WITHOUT SCROLLING (`overflow-clip`, UX round 1's U1). The
+			 * controls this PR adds are the first focusables ever to live INSIDE this
+			 * block, and `overflow-hidden` is a scroll container: focusing either
+			 * control scrolled it (scrollTop 0 -> 3 at rest; 22px at the 560 band,
+			 * where the identity sits on the clipped second line - the title's top
+			 * half scrolled out of the clip) and blur never restored it. `clip`
+			 * clips exactly the same pixels but creates no scrollport, so focus has
+			 * nothing to move; the reserved slot and the geometry are unchanged.
 			 */}
 			<div
 				className={cn(
-					"flex h-5 min-w-0 flex-1 flex-wrap items-baseline gap-x-2 overflow-hidden @[13.5rem]/chathdr:min-w-10",
+					"flex h-5 min-w-0 flex-1 flex-wrap items-baseline gap-x-2 overflow-clip @[13.5rem]/chathdr:min-w-10",
 				)}
 			>
 				{/* `text-body` (14), not `text-heading` (16) and not `text-title` (20):
@@ -577,9 +586,11 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				 * team name" and the manager's clarification, 2026-09-26, pinned that the
 				 * title block is the rename's subject; the design round sees this note).
 				 *
-				 * ONE WRITE PATH: it calls `onRenameConversation`, which is the
-				 * dispatcher's own `/rename` (empty args) - the same door the page's
-				 * inline options use - so no second rename surface exists to drift.
+				 * ONE WRITE PATH: it calls `onRenameConversation`, which the page wires
+				 * to the dispatcher's own `/rename` (empty args) through
+				 * `dispatchFromControl` - the same door, and the same failure note, as
+				 * the page's inline options - so no second rename surface exists to
+				 * drift, and a dead command surface reports instead of swallowing.
 				 *
 				 * The slot is RESERVED rather than inserted: opacity is the only thing
 				 * that changes on hover (/motion), so nothing reflows under the pointer,
@@ -587,6 +598,16 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				 * tabbing to the pencil makes it visible. `text-ink-dim` and a 12px glyph
 				 * inside a 20px slot: the ramp's rule for anything smaller than a 28px
 				 * control.
+				 *
+				 * THE 20px SLOT IS A RECORDED TRADE (design round 1, D5), not an
+				 * oversight: the slot sits inside the block above, whose one-line clip
+				 * band is 20px, so nothing in it can present a 24x24 target - a hit area
+				 * cannot extend past the ancestor that clips it, and growing the band
+				 * exposes a sliver of the wrapped second line (measured on the fold
+				 * state; see the PR's Judgement calls). The pencil and the two triggers
+				 * are 20px in a 40px desktop toolbar, kept because the alternative
+				 * re-pins the toolbar step this header's rounds fixed - and the
+				 * measurement is what makes it a decision rather than an accident.
 				 */}
 				<span
 					className={cn(

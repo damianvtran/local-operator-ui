@@ -196,17 +196,36 @@ const IdentityControl: FC<IdentityControlProps> = ({
 			Loading {kind === "team" ? "teams" : "agents"}…
 		</DropdownMenuLabel>
 	) : rows.isError ? (
-		<DropdownMenuLabel className={cn("text-danger")}>
+		/*
+		 * The refusal row carries its own inert hook, the menu's sibling: the
+		 * sweep's refused entry waits on the story's `capturePending` latch, and
+		 * the latch clears on THIS row being in the DOM - a shutter that fired
+		 * before the refused fetch settled once photographed the loading row
+		 * under this name (design D1 / agent review round 1's finding 2). A hook
+		 * is what lets both the latch and the frame's own claim name the state
+		 * rather than measure it by eye.
+		 */
+		<DropdownMenuLabel className={cn("text-danger")} data-header-identity-error="">
 			{errorText(rows.error)}
 		</DropdownMenuLabel>
 	) : items.length === 0 ? (
 		<DropdownMenuLabel>
-			{kind === "team" ? "No teams are registered." : "No profiles found."}
+			{kind === "team" ? "No teams are registered." : "No agents are registered."}
 		</DropdownMenuLabel>
 	) : null;
 
 	return (
-		<DropdownMenu open={open} onOpenChange={onOpenChange}>
+		/*
+		 * `modal={false}` is UX round 1's U4: two controls share one row, and a
+		 * modal menu makes the sibling's click only DISMISS the open menu, so
+		 * swapping menus costs two clicks. Non-modal lets the sibling's press
+		 * dismiss this menu and open its own in the same gesture - the pointer
+		 * event reaches the sibling because no modal layer is holding it - which
+		 * is what "one click swaps" means. The dismiss-on-outside-press and the
+		 * Escape/focus-return behaviour are Radix's either way; what differs is
+		 * only the layer, not the menu's own contract.
+		 */
+		<DropdownMenu open={open} onOpenChange={onOpenChange} modal={false}>
 			<DropdownMenuTrigger asChild>
 				<button
 					type="button"
@@ -222,12 +241,16 @@ const IdentityControl: FC<IdentityControlProps> = ({
 					aria-label={`${triggerLabel}: ${label}. ${
 						assigned
 							? `Switch ${kind === "team" ? "team" : "agent"}`
-							: `Assign a ${kind === "team" ? "team" : "agent"}`
+							: kind === "team"
+								? "Assign a team"
+								: "Assign an agent"
 					}`}
 					title={
 						assigned
 							? `Switch ${kind === "team" ? "team" : "agent"}`
-							: `Assign a ${kind === "team" ? "team" : "agent"}`
+							: kind === "team"
+								? "Assign a team"
+								: "Assign an agent"
 					}
 				>
 					<span className={cn("min-w-0 truncate")}>{label}</span>
@@ -253,9 +276,10 @@ const IdentityControl: FC<IdentityControlProps> = ({
 			<DropdownMenuContent
 				align="start"
 				className={cn("min-w-45")}
-				/* Inert hook for the sweep's shutter: the rig waits for the menu
-				 * to be PRESENT rather than for a clock, so a frame filed under
-				 * an open-menu name cannot photograph the closed control. */
+				/* Inert hook for the sweep's shutter: the rig ASSERTS the menu
+				 * present at shutter time (a one-shot claim, not a wait), so a frame
+				 * filed under an open-menu name cannot photograph the closed
+				 * control. */
 				data-header-identity-menu={kind}
 			>
 				{fallback ?? (
