@@ -869,6 +869,13 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"rowTeamTrailingRestampNote",
 	/*
+	 * The offer card's own: the server-release-notes pass re-derived both
+	 * trees for a change that moves `src/` and `scripts/` and adds twenty-four
+	 * frames in two stories, so the reader is owed the pair AND the reason no
+	 * other still was owed.
+	 */
+	"serverReleaseNotesPassNote",
+	/*
 	 * And the mention-remedy re-stamp's: THIS FILE'S BINDING IS ITS SUBJECT, which
 	 * is the criterion above - it exists to say which two trees the copy change
 	 * moved and which single frame set was re-captured with them - so it is held

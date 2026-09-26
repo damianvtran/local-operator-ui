@@ -3663,6 +3663,45 @@ export const STORIES = [
 	],
 	["common-updatenotification--backend-update-non-managed", 1280, 900],
 	/*
+	 * WHAT CHANGED, on the card that asks the reader to move. The offer panel named
+	 * two versions and a benefit sentence and nothing about the change itself, while
+	 * the app's own update card had carried its notes since it was written; this is
+	 * the reported state (0.62.33 serving, 0.62.34 published) with the note the
+	 * lookup read. Its own entry rather than notes added to the fixtures above,
+	 * because those are machines that could NOT read the release - GitHub
+	 * unreachable, or a tag with no release - which is a state that still exists and
+	 * still renders without the paragraph.
+	 */
+	["common-updatenotification--backend-update-with-release-notes", 1280, 900],
+	/*
+	 * THE CUT ITSELF, ON THE CARD AT ITS SMALLEST WINDOW. The frame above carries
+	 * the one-sentence lead the operator's report produced, so neither the
+	 * producer's 400-character truncation nor the height it costs was photographed
+	 * anywhere - and the height is only a question at the 572px floor the app
+	 * permits, where the card's own cap is 540px. Design review round 1 measured
+	 * the paragraph at up to 180px against ~40px of slack on the taller arms and
+	 * asked for this frame; the summary is the producer's own output for the
+	 * published v0.62.33 body, cut at the budget, so the "…" on the card is the
+	 * real one.
+	 *
+	 * THE HEIGHT IS 556, NOT 572, AND THAT IS THE FLOOR. This story file's own
+	 * content asks for sixteen pixels more than it is declared at - the rig paints
+	 * `max(documentElement.scrollHeight, body.scrollHeight, declared)`, and both
+	 * of this file's stories come out declared+16 at every size - so a row that
+	 * declares 572 paints a 588px viewport and a card capped at 556, i.e. a frame
+	 * one mono line more generous than the state it claims to show. Declaring 556
+	 * lands the painted viewport on the app's own 572 and exercises the real cap.
+	 * Design review round 2 measured that from the bytes; the
+	 * `settings-app-updates-section` rows at the same declared 572 come out at
+	 * exactly 572, which is what makes the +16 this file's own content rather than
+	 * the rig's convention.
+	 */
+	[
+		"common-updatenotification--backend-update-with-long-release-notes",
+		900,
+		556,
+	],
+	/*
 	 * The two states the operator's own report produced (2026-09-15), and neither
 	 * had a frame anywhere in this set: the panel he was STUCK ON ("Updating
 	 * server", which no story could reach without pressing the shipped control,
