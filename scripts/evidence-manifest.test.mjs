@@ -883,6 +883,12 @@ const STAMP_BINDING_NOTES = [
 	 * written as bare SHAs for exactly that reason.
 	 */
 	"mentionsRemedyRestampNote",
+	/*
+	 * This branch's own: it re-stamps the change that added the approval card's
+	 * options, so the reader is owed the pair the file ships - and the two moved
+	 * trees are each that change's own files plus this note's registration here.
+	 */
+	"approvalOptionsRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
