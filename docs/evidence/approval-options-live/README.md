@@ -10,11 +10,29 @@ output, `run: rm -rf ./dist`. No model and no mock is involved. The operator's
 live backend on `127.0.0.1:1111` was never touched; the rig runs with its own
 config root, its own 32-byte token and an OS-assigned port.
 
+## The carrier these frames photograph (design round 5, D33)
+
+These frames are the PRE-FOLD carrier's, not the dock this branch draws. The
+arms ran on `feat/approval-options` at `2c3e9b9440` — the branch whose
+approval-options change `main` carries — so the callout's eyebrow reads
+`Waiting for your answer`, the two options are their own full-width rows
+beneath it, and the hint ends at `press Escape to stop the turn` with no scope
+clause. The `feat/chat-redesign` fold moved the same client-owned pair into
+the question dock: one accent-bordered card, eyebrow `The agent is asking`,
+the hint naming both Escape scopes — `docs/evidence/interrupt-live/
+turn-running.png` is that dock, live, on the folded tip. What the six frames
+here prove is carrier-independent and stays true: the press posts the shipping
+strict boolean to the shipping route, the refusal sentence renders on the card
+rather than in the composer's alert band, and Deny rides the identical route
+with the other boolean. The commands under "Reproduction" drive whichever
+tree the worktree holds, so re-running them on the folded tree photographs the
+dock carrier.
+
 ## What each frame shows
 
 | frame | what it is |
 | --- | --- |
-| `before-click/localOperatorDark.webp` | **The card, live, on the build this branch ships.** A real pending approval in the shipped renderer: the callout names the tool (`bash`) and the action (`run: rm -rf ./dist`), and beneath it the two options this change adds — `1. Approve` and `2. Deny`, each with its consequence line, on the transcript's own ground with the standard control triple. The hint below names all three exits: the buttons, the composer's words (yes/no and the `1`/`2` the card prints), and Escape. |
+| `before-click/localOperatorDark.webp` | **The card, live, on the pre-fold carrier** (see the carrier note above). A real pending approval in the shipped renderer: the callout names the tool (`bash`) and the action (`run: rm -rf ./dist`), and beneath it the two options this change adds — `1. Approve` and `2. Deny`, each with its consequence line, on the transcript's own ground with the standard control triple. The hint below names all three exits: the buttons, the composer's words (yes/no and the `1`/`2` the card prints), and Escape. |
 | `after-click/localOperatorDark.webp` | **The resolution of a press on Approve.** The same run, after a real `Input.dispatchMouseEvent` press and release at the option's hit-tested centre (`x 960, y 622`, `elementFromPoint` resolving to the option itself). The card is **gone** — the gate cleared rather than the page failing — and the composer is ready again. |
 | `deny-click/before-click/localOperatorDark.webp`, `deny-click/after-click/localOperatorDark.webp` | **Deny rides the identical route with the other boolean.** The press resolves the gate the same way and the card clears; what the owner kept is `{"approved": false}`. The two options differ in nothing but that boolean, which is why this arm's evidence is the record rather than the pair of stills. |
 | `refused-card/before-click/localOperatorDark.webp`, `refused-card/after-click/localOperatorDark.webp` | **A refusal, rendered on the card.** A run whose answer route refuses with a bare 409 — the sentence the route itself produces for an answer naming no pending gate ("This question or approval is no longer pending") — so the gate stays pending and the card stays UP: both options disabled, "Your answer was not sent." carrying the refusal under them, where the press was made, and the hint above them swapped off the dead buttons onto the composer, the control that still reaches the gate (remediation round 1, U2/U3). |
@@ -38,9 +56,10 @@ and after are the diff between that directory and this branch's
 
 Each record's `tree` also names the trees the frames were taken from
 (`srcTree`/`head`, with `srcDirty` there to catch a run on an uncommitted
-tree): this set's are `ea3fad4c40` / `2c3e9b9440` — the folded tip this
-branch ships at (the arms are re-run on the folded tree, because #521's
-sidebar is painted in every one of them).
+tree): this set's are `ea3fad4c40` / `2c3e9b9440` — `feat/approval-options`
+at the tip these arms ran on, i.e. the PRE-FOLD carrier whose approval options
+`main` carries (design round 5, D33; the carrier note above is the reading
+key). The dock this branch draws instead is not in these bytes.
 
 ## Reproduction, from the repository
 
