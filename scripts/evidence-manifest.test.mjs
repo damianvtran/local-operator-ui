@@ -911,6 +911,12 @@ const STAMP_BINDING_NOTES = [
 	 * the stills did not move.
 	 */
 	"refusalMarkRestampNote",
+	/*
+	 * This branch's own: it re-stamps the change that added the approval card's
+	 * options, so the reader is owed the pair the file ships - and the two moved
+	 * trees are each that change's own files plus this note's registration here.
+	 */
+	"approvalOptionsRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
