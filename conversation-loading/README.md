@@ -68,12 +68,24 @@ scrolled.
 What each proves, stated in the PR body: the hold (no partial transcript), the
 one-paint arrival (rows + chip + strip together), and the small mark (8x8 CSS px
 at (450, 737), caption 130.4x17.4 at (466, 732.6), opacity 1.00 at rest to 0.70
-at the pulse's trough, measured in the live renderer at 1280x900).
+at the pulse's trough - measured on the SESSION-SWITCH harness's own page at its
+1280x900, so those coordinates verify against the committed frames under
+`docs/evidence/session-switch/`, not against the stills here; the two rigs differ
+by that harness's banner, which is why the mark sits 25.4 px higher in these
+frames).
 
 ## Load-bearing measurements (numbers quoted in the PR body)
 
-- Composer band geometry, live renderer, 1280x900: band top 748.6 / height 110
-  and textarea top 764.6 while the placeholder is up; identical once settled.
+Every number below names the rig it was read on, because two rigs are involved
+and their geometry differs by a banner.
+
+- Composer band geometry, OPEN-LIVE rig (real backend, this harness),
+  1280x900: band top 748.6 / height 110 and textarea top 764.6 while the
+  placeholder is up; identical once settled.
+- The mark and its caption, SESSION-SWITCH rig (the scripted page the committed
+  frames come from), 1280x900: 8x8 at (450, 737), caption 130.4x17.4 at
+  (466, 732.6); the animation samples 1.00 at rest to 0.70 at the trough with
+  the mark's `y` invariant across a 2.6 s requestAnimationFrame sample.
 - The cached-paint stagger on the base tree (switch harness, warm cache): cached
   rows painted in the click's own frame, the readings strip at +67 ms, the stale
   caption left with it, moving the transcript up 33.4 px (pane top 174.4 -> 141).
@@ -83,10 +95,12 @@ at the pulse's trough, measured in the live renderer at 1280x900).
 
 ## Runs
 
-`runs/` holds the harness logs behind the table: `base3` are the base-tree runs
-(the branch's `src/` stashed, same rig), `final-cold`/`final-warm`/
-`final-frames` are this branch's runs at the PR head. Each log prints the load
-average and the per-session p50/p95 its run produced.
+`runs/` holds the harness logs behind the table, one per quoted arm so every
+endpoint the PR body states is traceable: `base3` are the base-tree runs (the
+branch's `src/` stashed, same rig), `after2`/`after3` are intermediate heads
+(the warm envelope's 192 ms and the cold sample's 74.2 ms come from these), and
+`final-cold`/`final-warm`/`final-frames` are the PR head's runs. Each log
+prints the load average and the per-session p50/p95 its run produced.
 
 ## Reproduce
 
@@ -110,15 +124,3 @@ The committed evidence set re-shoots with:
 node_modules/.bin/vite --config scripts/session-switch.vite.mjs   # one shell
 node scripts/session-switch-latency.mjs --frames=docs/evidence/session-switch
 ```
-
-## Fold note
-
-The branch folded `origin/main` (9d3e68ddf6, #467) after this evidence was
-taken, and because the fold moved files the frames render through (the goals'
-props in chat-content / composer-status-row, all gated on a `goal_status` this
-fixture does not carry), the committed `session-switch` set was re-shot at the
-folded tip and **compared rather than overwritten**: every difference is the
-harness's own nondeterminism - the pulse phase in `hydrating`/`slow`, the
-composer's caret in `held-press`, sub-pixel sidebar text for `mark` (10% of the
-sidebar's pixels under 2% amplitude) - so the committed bytes stand. The
-manifest's note records the same check.
