@@ -356,10 +356,13 @@ test("a draft that HOLDS a stream owes no page either: the subscription is a bri
 	);
 });
 
-test("a cold session whose page is in flight still holds the pane, and stops holding when its rows land", () => {
+test("a cold session whose page is in flight still holds the pane, and stops holding when its own rows land", () => {
 	// The other half of the same rule, unchanged by this repair (design D7), read
 	// off the SHIPPED handle so the two claims are one line apart: the segment a
-	// real cold session is entitled to, and the row that ends it.
+	// real cold session is entitled to, and the row that ends it. `stale: false`
+	// is the row that ends it: rows this window CACHED keep the hold (see
+	// `session-switch.test.mjs`'s cached table), because they are this window's
+	// memory of the conversation rather than the conversation.
 	const cold = handleFor(SESSION, true);
 	const owed = waits(cold);
 	const paneView = (recordCount) => ({
@@ -367,6 +370,7 @@ test("a cold session whose page is in flight still holds the pane, and stops hol
 		failure: null,
 		awaitingHydration: owed,
 		recordCount,
+		stale: false,
 	});
 
 	assert.equal(owed, true, "a cold session's page has not landed yet");
