@@ -194,6 +194,15 @@ export type ToolRowProps = {
 	 * than this reaching for one: today the output's first line.
 	 */
 	summaryFallback?: string | null;
+	/**
+	 * Whether the object column is HELD PAST THE MARK THRESHOLD.
+	 *
+	 * The caller holds the column empty while a label read can still answer it
+	 * (`labelPending`), and after `LABEL_HOLD_MARK_MS` of that hold the empty cell
+	 * stops being honest about what the reader is waiting for. This is the LATE
+	 * state of the same hold: static, textless, dim - see the cell below.
+	 */
+	summaryHold?: boolean;
 	outcome: ToolRowOutcome;
 	/**
 	 * Seconds. A settled row shows the tenth-of-a-second format under ten
@@ -543,6 +552,7 @@ export const ToolRow = ({
 	toolName,
 	summary,
 	summaryFallback = null,
+	summaryHold = false,
 	outcome,
 	durationS,
 	startedAt = null,
@@ -625,7 +635,12 @@ export const ToolRow = ({
 				// loses: measured 126.4px of box against 461px of text, so a peer row's
 				// preview read as `"review-agent" · ca…` with no way to see the rest
 				// short of opening the row (UX round 1, U4).
-				title={summaryText}
+				/*
+				 * NO TITLE WHILE HELD: the cell's title is the summary it prints, and a
+				 * held cell prints none - a tooltip stating a fact the cell refuses to
+				 * state would be the same wrong answer one hover later.
+				 */
+				title={summaryHold ? undefined : summaryText}
 			>
 				{/*
 				 * A summary identical to the name beside it is dropped.
@@ -647,7 +662,52 @@ export const ToolRow = ({
 				 * copies of this rule could disagree and leave a row blank with a
 				 * usable fact in hand.
 				 */}
-				{summaryText}
+				{summaryHold ? (
+					/*
+					 * THE LATE-HOLD MARK (design round 2, D6). The held column has waited past
+					 * `LABEL_HOLD_MARK_MS` with no answer, so an empty cell no longer says
+					 * "an answer is coming" - this does, without stating a fact: ONE glyph,
+					 * static, no motion, no count, no output text, in the dimmest ink the
+					 * contract has. It is deliberately not the stand-in: the stand-in is
+					 * ellipsis-PLUS-CONTENT and means "the output is the answer"; this is the
+					 * ellipsis alone and means "a value belongs here and is not known yet".
+					 * It resolves to the command, or to the stand-in at the terminal release
+					 * (`labelOwed`), exactly as the blank did.
+					 */
+					/*
+					 * The glyph is `aria-hidden` and the SPELLED-OUT STATE rides beside it, which is
+					 * this row's own idiom for a mark that says something (`OUTCOME_LABEL`'s
+					 * `sr-only` word): a glyph is not pronounceable, but the pending state is a fact
+					 * the row is the only carrier of, and a reader who cannot see it otherwise hears
+					 * an empty cell for the whole hold - 49.9 s on a wedged owner, 25.0 s on the
+					 * refusing route (UX round 4, U7).
+					 *
+					 * WHY IT IS INSIDE THIS BRANCH AND NOT A LIVE REGION. The word exists only while
+					 * the mark stands, so nothing announces on the rows that are merely blank before
+					 * the threshold, and the release takes the word away with the mark - no stale
+					 * claim survives either transition. Deliberately NOT `aria-live`: the mark's
+					 * arrival is one event for a whole hold batch (26 rows in the reported
+					 * conversation, all in the same frame), so a live region here would announce 26
+					 * times at the instant of the threshold - the "not repeatedly" failure rather
+					 * than its fix. A batch-level announcement ("N labels pending", once per hold)
+					 * belongs at the transcript, not at the row; it is not added here.
+					 * Real reading, stated rather than implied: the row is not a live region today,
+					 * so a reader hears the state when they reach the row - the same way they hear
+					 * "succeeded" - not pushed at them when it begins.
+					 */
+					<>
+						<span
+							className="text-ink-dim"
+							data-label-hold="true"
+							aria-hidden={true}
+						>
+							…
+						</span>
+						<span className={cn("sr-only")}>pending</span>
+					</>
+				) : (
+					summaryText
+				)}
 			</span>
 			<DiffCounters added={added} removed={removed} />
 			<StatusCluster
