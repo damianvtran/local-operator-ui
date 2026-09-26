@@ -1250,6 +1250,13 @@ const STAMP_BINDING_NOTES = [
 	 * than read as history.
 	 */
 	"headerIdentityRoundOneRestampNote",
+	/*
+	 * THIS REMOVAL'S OWN: it re-stamps the change that deletes the legacy History
+	 * settings section - `src/` for the settings page and the tour copy, `scripts/`
+	 * for this note's registration - and re-shoots no frame, so a reader is owed
+	 * the pair and the reason no still was owed.
+	 */
+	"historySettingsRemovalRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
