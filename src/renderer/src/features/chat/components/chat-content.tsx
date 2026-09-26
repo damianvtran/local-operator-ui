@@ -1236,6 +1236,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										 */
 										conversationId={conversationId}
 										labelPending={canonical.view.labelPending}
+										labelHoldLate={canonical.view.labelHoldLate}
 										onReconnect={canonical.view.retry}
 										onAnswer={canonical.onAnswer}
 										// The composer's own in-flight flag, reused: one

@@ -304,6 +304,13 @@ export type CanonicalTranscriptProps = {
 	 */
 	labelPending?: ReadonlySet<string>;
 	/**
+	 * Whether a held row's column should show the LATE-HOLD mark
+	 * (`CanonicalSessionView.labelHoldLate`): the hold has outlived
+	 * `LABEL_HOLD_MARK_MS`, so the cell states that a value belongs there instead of
+	 * staying silent about it. Static and textless; see the cell in `tool-row.tsx`.
+	 */
+	labelHoldLate?: boolean;
+	/**
 	 * Re-arm the session's stream and history read.
 	 *
 	 * Required rather than optional: every caller of this component has a
@@ -712,6 +719,7 @@ const ToolRow = memo(function ToolRow({
 	nameColumn,
 	scope,
 	labelPending = false,
+	labelHoldLate = false,
 }: {
 	record: Extract<TranscriptRecord, { kind: "tool" }>;
 	isSmallView: boolean;
@@ -720,6 +728,8 @@ const ToolRow = memo(function ToolRow({
 	scope: AttachmentScope | null;
 	/** The row's first label read is in flight: hold the stand-in back. */
 	labelPending?: boolean;
+	/** The held column has outlived `LABEL_HOLD_MARK_MS`. */
+	labelHoldLate?: boolean;
 }) {
 	const running = record.phase !== "done";
 	const composing = record.phase === "composing";
@@ -932,6 +942,7 @@ const ToolRow = memo(function ToolRow({
 				toolName={record.toolName}
 				summary={summary}
 				summaryFallback={derived}
+				summaryHold={labelPending === true && labelHoldLate === true}
 				outcome={
 					notRun
 						? "not-run"
@@ -1272,6 +1283,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	scope,
 	conversationId,
 	labelPending = false,
+	labelHoldLate = false,
 }: {
 	row: Row;
 	isSmallView: boolean;
@@ -1283,6 +1295,8 @@ const TranscriptRow = memo(function TranscriptRow({
 	 * every row the set would re-render all of them each time one id settles.
 	 */
 	labelPending?: boolean;
+	/** The held column has outlived `LABEL_HOLD_MARK_MS`. */
+	labelHoldLate?: boolean;
 }) {
 	rowRenderCount.current += 1;
 	const { record } = row;
@@ -1318,6 +1332,7 @@ const TranscriptRow = memo(function TranscriptRow({
 					nameColumn={nameColumn}
 					scope={scope}
 					labelPending={labelPending}
+					labelHoldLate={labelHoldLate}
 				/>
 			);
 			break;
@@ -1405,6 +1420,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	attachmentScope,
 	conversationId,
 	labelPending,
+	labelHoldLate,
 	onReconnect,
 	onAnswer,
 	answering = false,
@@ -2122,6 +2138,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 										row.record.kind === "tool" &&
 										labelPending?.has(row.record.toolCallId) === true
 									}
+									labelHoldLate={labelHoldLate === true}
 								/>
 							))}
 						</CanvasPaneProvider>

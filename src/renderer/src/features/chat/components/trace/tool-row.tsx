@@ -194,6 +194,15 @@ export type ToolRowProps = {
 	 * than this reaching for one: today the output's first line.
 	 */
 	summaryFallback?: string | null;
+	/**
+	 * Whether the object column is HELD PAST THE MARK THRESHOLD.
+	 *
+	 * The caller holds the column empty while a label read can still answer it
+	 * (`labelPending`), and after `LABEL_HOLD_MARK_MS` of that hold the empty cell
+	 * stops being honest about what the reader is waiting for. This is the LATE
+	 * state of the same hold: static, textless, dim - see the cell below.
+	 */
+	summaryHold?: boolean;
 	outcome: ToolRowOutcome;
 	/**
 	 * Seconds. A settled row shows the tenth-of-a-second format under ten
@@ -543,6 +552,7 @@ export const ToolRow = ({
 	toolName,
 	summary,
 	summaryFallback = null,
+	summaryHold = false,
 	outcome,
 	durationS,
 	startedAt = null,
@@ -625,7 +635,12 @@ export const ToolRow = ({
 				// loses: measured 126.4px of box against 461px of text, so a peer row's
 				// preview read as `"review-agent" · ca…` with no way to see the rest
 				// short of opening the row (UX round 1, U4).
-				title={summaryText}
+				/*
+				 * NO TITLE WHILE HELD: the cell's title is the summary it prints, and a
+				 * held cell prints none - a tooltip stating a fact the cell refuses to
+				 * state would be the same wrong answer one hover later.
+				 */
+				title={summaryHold ? undefined : summaryText}
 			>
 				{/*
 				 * A summary identical to the name beside it is dropped.
@@ -647,7 +662,28 @@ export const ToolRow = ({
 				 * copies of this rule could disagree and leave a row blank with a
 				 * usable fact in hand.
 				 */}
-				{summaryText}
+				{summaryHold ? (
+					/*
+					 * THE LATE-HOLD MARK (design round 2, D6). The held column has waited past
+					 * `LABEL_HOLD_MARK_MS` with no answer, so an empty cell no longer says
+					 * "an answer is coming" - this does, without stating a fact: ONE glyph,
+					 * static, no motion, no count, no output text, in the dimmest ink the
+					 * contract has. It is deliberately not the stand-in: the stand-in is
+					 * ellipsis-PLUS-CONTENT and means "the output is the answer"; this is the
+					 * ellipsis alone and means "a value belongs here and is not known yet".
+					 * It resolves to the command, or to the stand-in at the terminal release
+					 * (`labelOwed`), exactly as the blank did.
+					 */
+					<span
+						className="text-ink-dim"
+						data-label-hold="true"
+						aria-hidden={true}
+					>
+						…
+					</span>
+				) : (
+					summaryText
+				)}
 			</span>
 			<DiffCounters added={added} removed={removed} />
 			<StatusCluster

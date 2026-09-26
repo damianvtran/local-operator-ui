@@ -1101,10 +1101,23 @@ test("a join whose targets cannot be durable yet stops at the turn boundary", as
 		reconcileLimit(1),
 		"the read is sized by the goal, exactly as it was before this change",
 	);
+	const leftover = assertHoldIsPerCall(handle, "the turn-bounded walk");
+	/*
+	 * m4: THE LEFTOVER SET IS KEPT. This helper's RETURN is the case's subject - which
+	 * calls a walk that fell short left owed - and asserting only that it is empty
+	 * throws the subject away: the assertion cannot be read against what the walk was
+	 * given. So the set is named, and the case shows its own candidate was not empty
+	 * (the live end frame's call is in no page), which is what makes the emptiness
+	 * mean something rather than pass vacuously.
+	 */
 	assert.deepEqual(
-		assertHoldIsPerCall(handle, "the turn-bounded walk"),
+		leftover,
 		[],
-		"and the calls this walk could not reach are released once it ends, because nothing is pending and no round ending is coming",
+		`and the calls this walk could not reach are released once it ends, because nothing is pending and no round ending is coming (leftover: ${leftover.join(", ")})`,
+	);
+	assert.ok(
+		page.every((record) => record.toolCallId !== UNPRESENT),
+		"the case's candidate: no page names this call, so the walk really did fall short of a target",
 	);
 });
 
@@ -1690,11 +1703,19 @@ test("a call still waiting at a gate does not refuse the floor", async () => {
 	 * until their budget is spent - that is the hold's terminal case, not a
 	 * promise that these rows stay blank forever.
 	 */
+	const leftover = heldSplit(handle).unlabelled.sort();
 	assert.deepEqual(
-		heldSplit(handle).unlabelled.sort(),
+		leftover,
 		[],
-		"and the calls no read can name are released once the walk ends",
+		`and the calls no read can name are released once the walk ends (leftover: ${leftover.join(", ")})`,
 	);
+	/*
+	 * m4: THE LEFTOVER SET IS KEPT. `leftover` is the helper's own return - the calls
+	 * the walk was still holding - and it is named and printed rather than discarded, so
+	 * the emptiness above reads as a statement about THOSE calls. The case's candidate
+	 * side is its fixture (the gate-row call), which the assertion above this block
+	 * already pins as unlabelled; repeating it here would assert the same fact twice.
+	 */
 });
 
 test("a lone unlabelable call stops at the page its orphan needs, not at the journal", async () => {
