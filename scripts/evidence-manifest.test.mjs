@@ -1088,6 +1088,38 @@ const STAMP_BINDING_NOTES = [
 	 * the rule the paragraph above states.
 	 */
 	"foldOntoFd19adc9d9Note",
+	/*
+	 * AND THIS LANE'S OWN, for the sub-view top inset (the operator's report of
+	 * 2026-09-26, "for sub-views like the settings page, the sidebar and view
+	 * doesn't go all the way to the top"): it states the pair THIS FILE SHIPS as
+	 * its opening claim - the re-stamp of a change that moves BOTH trees this
+	 * file binds (the shell's `app.tsx` and the route band's rules under `src/`,
+	 * the new `route-tops` scene and three pins under `scripts/`) while
+	 * re-shooting no committed frame, so a reader is owed the pair and the reason
+	 * no still was owed. The list's own criterion is met the same way
+	 * `focusHoldOperationRestampNote`'s was: the note states this file's binding
+	 * as a backticked claim, so leaving it out would be one more check silently
+	 * not run.
+	 */
+	"subviewInsetRestampNote",
+	/*
+	 * THIS LANE'S OWN, and the criterion is the list's own: its subject is the
+	 * condensed action group, and its opening claim IS this file's binding - the
+	 * pair the first fold re-derived, now carried to the folded tip - so leaving
+	 * it out would be one more check silently not run. It states the captured
+	 * head and every count the pass moved, which is why a reader reaches for it
+	 * first.
+	 */
+	"actionFoldEvidenceNote",
+	/*
+	 * AND THIS FOLD'S OWN - the fold onto `origin/main` = `093a329a4d` (#535, the
+	 * sub-view top inset). ITS SUBJECT IS THIS FILE'S BINDING (the re-derived
+	 * pair), so it is held to the pair the file ships rather than read as
+	 * history - and it is the note that records the union of this list itself:
+	 * main's `subviewInsetRestampNote` joined beside this lane's entries, the rule
+	 * the paragraphs above state.
+	 */
+	"foldOnto093a329a4dNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
