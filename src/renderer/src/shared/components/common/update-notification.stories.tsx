@@ -171,6 +171,52 @@ const APP_OWNED_REMEDY =
 const APP_OWNED_DETAIL =
 	'The server serving this app runs from Local Operator\'s own managed environment at /Users/operator/Library/Application Support/Local Operator/managed-python/3.13, which the app owns rather than a package manager (the backend reports it as install kind "managed-venv"), at version 0.56.10.';
 
+/**
+ * The lead of the real v0.62.34 release, as the lookup hands it to the panel.
+ *
+ * VERBATIM FROM THE PUBLISHED RELEASE rather than written for the fixture, for
+ * the reason the failure strings above are composed by their producer: the frame
+ * has to show copy the app can actually emit. This is the whole body of
+ * `damianvtran/local-operator`'s v0.62.34 release, whose opening (and only)
+ * paragraph is one sentence - and `scripts/server-release-notes.test.mjs` runs
+ * the summariser over that same body and fails if the rule stops producing this
+ * string, which is the drift guard this literal needs because the story cannot
+ * import a main-process module.
+ *
+ * The version pair is the operator's own report: the app offered 0.62.34 to a
+ * machine serving 0.62.33, which is the panel this change was asked for.
+ */
+const SERVER_NOTES_LEAD =
+	"0.62.34 fixes the stall watchdog wedging the very session it existed to watch.";
+
+/** The release page the paragraph's link opens. */
+const SERVER_NOTES_URL =
+	"https://github.com/damianvtran/local-operator/releases/tag/v0.62.34";
+
+/**
+ * A summary AT the producer's budget, so the truncated state is rendered.
+ *
+ * WHAT IT IS: the output of `summariseReleaseBody` over the published v0.62.33
+ * body's opening paragraph - 391 characters, cut at the 400-character budget on
+ * a word boundary and ending in the producer's own `...`. Taken from the real
+ * release for the reason the short lead above is, and pinned by
+ * `scripts/server-release-notes.test.mjs`, which runs the summariser over that
+ * same paragraph and fails if this string stops being what it produces.
+ *
+ * WHY IT IS A SECOND FIXTURE: the frame the operator's report produced carries a
+ * one-sentence lead, so nothing in the committed set showed what a summary at the
+ * limit looks like - the cut, the eight lines it occupies, or what the card does
+ * with them at the smallest window the app permits. Design review round 1
+ * measured the height the paragraph can add (up to 180px against a 540px cap at
+ * the 572px floor) and asked for exactly this frame; it is shot at 900x572.
+ */
+const SERVER_NOTES_AT_THE_LIMIT =
+	'Seven PRs in this window, and the theme is things that were quietly going wrong. A message sent while a job-result delivery turn holds the session lock is no longer silently dropped — the loss class where the sender got a 503 and a same-id retry was answered "already admitted" with nothing written. A bash or eval call that would print a registered secret value is refused before it runs...';
+
+/** The release page that summary's link opens. */
+const SERVER_NOTES_AT_THE_LIMIT_URL =
+	"https://github.com/damianvtran/local-operator/releases/tag/v0.62.33";
+
 /*
  * THE SENTENCE MAIN COMPOSES FOR THIS STATE, not a paraphrase of it (design
  * review round 2, D2).
@@ -388,6 +434,17 @@ const mockUpdaterApi = () => {
 				sourceBuild?: boolean;
 				/** Whether the app owns the daemon it would restart, which decides the promise. */
 				restartable?: boolean;
+				/**
+				 * The build the server SERVING this app reports, when it differs from the
+				 * install - part of the shipped payload the offer's sentence reads.
+				 */
+				runningVersion?: string | null;
+				/** What changed, when the lookup could read the release. */
+				releaseNotes?: {
+					version: string;
+					summary: string;
+					url: string;
+				} | null;
 			}) => void,
 		) => {
 			// For stories that need to trigger this callback
@@ -443,6 +500,63 @@ const mockUpdaterApi = () => {
 					detail:
 						"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool",
 					sourceBuild: false,
+				});
+			}
+			/*
+			 * THE OFFER WITH THE RELEASE NOTES ON IT, which is the state this change
+			 * creates and the one the operator reported: a server installed outside the
+			 * app (`canManageUpdate` true here because the plan's own updater is what
+			 * runs, `restartable` false because the daemon serving the app was not
+			 * started by it), one version behind the release the lookup found notes
+			 * for. Every field but `releaseNotes` is the payload the other fixtures in
+			 * this block already carry - what is new is the paragraph, and it is the
+			 * producer's own shape: `{ version, summary, url }`, with the summary
+			 * already flattened and bounded on the main-process side.
+			 */
+			if (window.triggerBackendUpdateWithNotes) {
+				callback({
+					currentVersion: "0.62.33",
+					latestVersion: "0.62.34",
+					runningVersion: "0.62.33",
+					updateCommand: "uv tool upgrade local-operator",
+					canManageUpdate: true,
+					startupMode: "GLOBAL_INSTALL",
+					restartable: false,
+					detail:
+						"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool",
+					sourceBuild: false,
+					releaseNotes: {
+						version: "0.62.34",
+						summary: SERVER_NOTES_LEAD,
+						url: SERVER_NOTES_URL,
+					},
+				});
+			}
+			/*
+			 * THE SAME OFFER CARRYING A SUMMARY AT THE PRODUCER'S BUDGET, so the cut
+			 * itself and the height it produces are photographed. Shot at the app's
+			 * minimum window (900x572, where the card's own cap is 540px), because the
+			 * paragraph's cost is only a question there - design review round 1
+			 * measured this fixture's lead at 71px against a floor with ~40px of slack
+			 * on the taller arms.
+			 */
+			if (window.triggerBackendUpdateWithLongNotes) {
+				callback({
+					currentVersion: "0.62.32",
+					latestVersion: "0.62.33",
+					runningVersion: "0.62.32",
+					updateCommand: "uv tool upgrade local-operator",
+					canManageUpdate: true,
+					startupMode: "GLOBAL_INSTALL",
+					restartable: false,
+					detail:
+						"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool",
+					sourceBuild: false,
+					releaseNotes: {
+						version: "0.62.33",
+						summary: SERVER_NOTES_AT_THE_LIMIT,
+						url: SERVER_NOTES_AT_THE_LIMIT_URL,
+					},
 				});
 			}
 			return () => {};
@@ -1017,6 +1131,18 @@ declare global {
 		triggerBackendUpdateManualRequired?: boolean;
 		triggerBackendUpdateManualRequiredExistingServer?: boolean;
 		triggerBackendUpdateNonManaged?: boolean;
+		/**
+		 * Raise the managed offer with the release notes the lookup found.
+		 *
+		 * Its own flag rather than a field on an existing fixture, because every
+		 * other server-offer payload in this file is a machine that could NOT read
+		 * them (the ordinary offline/blocked case, which the panel renders without
+		 * the paragraph), and repainting those frames to add one would tell a reader
+		 * the app always has notes - which is not a state it can promise.
+		 */
+		triggerBackendUpdateWithNotes?: boolean;
+		/** The same offer with a summary AT the producer's budget, shot at the floor. */
+		triggerBackendUpdateWithLongNotes?: boolean;
 		triggerUpdateInstallBlocked?: boolean;
 		triggerUpdateInstallBlockedAtStartup?: boolean;
 		triggerUpdateInstallBlockedCannotLaunch?: boolean;
@@ -1077,6 +1203,10 @@ const meta = {
 					context.parameters.triggerBackendUpdateManualRequiredExistingServer;
 				window.triggerBackendUpdateNonManaged =
 					context.parameters.triggerBackendUpdateNonManaged;
+				window.triggerBackendUpdateWithNotes =
+					context.parameters.triggerBackendUpdateWithNotes;
+				window.triggerBackendUpdateWithLongNotes =
+					context.parameters.triggerBackendUpdateWithLongNotes;
 				window.triggerInstallProgress =
 					context.parameters.triggerInstallProgress;
 				window.triggerInstallSucceeded =
@@ -1095,6 +1225,8 @@ const meta = {
 				context.parameters.triggerBackendUpdateManualRequired,
 				context.parameters.triggerBackendUpdateManualRequiredExistingServer,
 				context.parameters.triggerBackendUpdateNonManaged,
+				context.parameters.triggerBackendUpdateWithNotes,
+				context.parameters.triggerBackendUpdateWithLongNotes,
 				context.parameters.triggerInstallProgress,
 				context.parameters.triggerInstallSucceeded,
 			]);
@@ -1525,7 +1657,9 @@ type UpdaterTriggerFlag =
 	| "triggerBackendUpdateSourceBuildInFlight"
 	| "triggerBackendUpdateSourceBuildFailed"
 	| "triggerBackendUpdateFailedOrphan"
-	| "triggerBackendUpdateManualRequiredAppOwned";
+	| "triggerBackendUpdateManualRequiredAppOwned"
+	| "triggerBackendUpdateWithNotes"
+	| "triggerBackendUpdateWithLongNotes";
 
 /**
  * Mount the real component with one of its event triggers already set.
@@ -1676,6 +1810,48 @@ export const BackendUpdateNonManaged: Story = {
 	args: { autoCheck: false },
 	parameters: { triggerBackendUpdateNonManaged: true },
 	render: () => <Triggered flag="triggerBackendUpdateNonManaged" />,
+};
+
+/**
+ * WHAT CHANGED, on the card that asks the reader to change something.
+ *
+ * The state the operator reported, and the one this change is about: a server
+ * one version behind the published release, offered on a card that until now
+ * named two numbers and a benefit sentence and nothing about the change itself -
+ * while the app's OWN update card had carried its release notes since it was
+ * written. Both the version pair (0.62.33 serving, 0.62.34 published) and the
+ * sentence under "Release notes:" are real: the lead is the actual body of that
+ * release, and `scripts/server-release-notes.test.mjs` runs the summariser over
+ * that body and fails if the rule stops producing this string.
+ *
+ * WHY IT IS ITS OWN STORY rather than notes added to the fixtures above. Every
+ * other server-offer payload here is a machine that could NOT read the release -
+ * GitHub unreachable, the tag absent - which is a state that still exists and
+ * still renders (the paragraph simply is not there). Repainting those frames to
+ * carry notes would claim the app always has them, and would spend a re-shoot of
+ * a dozen existing directories proving a sentence about a different state.
+ */
+export const BackendUpdateWithReleaseNotes: Story = {
+	args: { autoCheck: false },
+	parameters: { triggerBackendUpdateWithNotes: true },
+	render: () => <Triggered flag="triggerBackendUpdateWithNotes" />,
+};
+
+/**
+ * THE SUMMARY AT ITS LIMIT, ON THE CARD AT ITS SMALLEST WINDOW.
+ *
+ * Two states this change creates that the frame above cannot show, in one set:
+ * the producer's 400-character cut (a word-boundary truncation ending in `...`,
+ * eight lines rather than three) and the height it costs at the 572px floor the
+ * app permits, where the card's own cap is 540px and the classification line is
+ * what goes into the scroll container. Design review round 1 asked for both, and
+ * measured the alternative - a frame at 900px of slack - as evidence about the
+ * one case where the paragraph is free.
+ */
+export const BackendUpdateWithLongReleaseNotes: Story = {
+	args: { autoCheck: false },
+	parameters: { triggerBackendUpdateWithLongNotes: true },
+	render: () => <Triggered flag="triggerBackendUpdateWithLongNotes" />,
 };
 /**
  * THE APP-OWNED ARM OF THE SKEW, and the state this change is about.
