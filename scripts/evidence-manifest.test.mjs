@@ -1088,6 +1088,28 @@ const STAMP_BINDING_NOTES = [
 	 * the rule the paragraph above states.
 	 */
 	"foldOntoFd19adc9d9Note",
+	/*
+	 * AND THIS LANE'S OWN, for the sub-view top inset (the operator's report of
+	 * 2026-09-26, "for sub-views like the settings page, the sidebar and view
+	 * doesn't go all the way to the top"): it states the pair THIS FILE SHIPS as
+	 * its opening claim - the re-stamp of a change that moves BOTH trees this
+	 * file binds (the shell's `app.tsx` and the route band's rules under `src/`,
+	 * the new `route-tops` scene and three pins under `scripts/`) while
+	 * re-shooting no committed frame, so a reader is owed the pair and the reason
+	 * no still was owed. The list's own criterion is met the same way
+	 * `focusHoldOperationRestampNote`'s was: the note states this file's binding
+	 * as a backticked claim, so leaving it out would be one more check silently
+	 * not run.
+	 */
+	"subviewInsetRestampNote",
+	/*
+	 * And `goalDesignRoundTwoNote`, this branch's own record: it carries the pair the
+	 * judged-goals design-round-2 pass re-derived, so it is the entry later re-stamps
+	 * have to re-point. It joins this list under the union rule rather than replacing
+	 * it: the eight main-side notes it superseded in this branch's narrow spellings
+	 * keep their membership and are held to the shipped pair by the same sweep.
+	 */
+	"goalDesignRoundTwoNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1511,6 +1533,18 @@ const BRANCH_RECORDS = [
 	 * entry a later fold that started from main's copy would drop first.
 	 */
 	"foldOntoFd19adc9d9Note",
+	/*
+	 * Grown by the judged-goals (`feat/goal-done-history`) pass, which wrote four
+	 * top-level records - `goalDoneRestampNote` and `goalDoneFoldRestampNote` from
+	 * its rebases and folds, `goalDoneFramePassNote` from the frame pass, and
+	 * `goalDesignRoundTwoNote` from the batched design-round-2 remediation. A fold
+	 * that starts from main's manifest drops them without a word, which is this
+	 * list's whole subject.
+	 */
+	"goalDoneRestampNote",
+	"goalDoneFoldRestampNote",
+	"goalDoneFramePassNote",
+	"goalDesignRoundTwoNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
