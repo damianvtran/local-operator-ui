@@ -4241,9 +4241,9 @@ for (const { id, palette: p } of palettes) {
 	 * asserted on both row states. `messageSurface` is the sixth: the block renders
 	 * user prose - links and markdown included - so a tone role is genuinely drawn
 	 * on it (fleet minimum 4.60:1, measured). So the tones stay on the six grounds
-	* this file measures them on - the four elevations, `accentWash` and
-	* `messageSurface` - and the row states are held to the ink floors.
-	*/
+	 * this file measures them on - the four elevations, `accentWash` and
+	 * `messageSurface` - and the row states are held to the ink floors.
+	 */
 	const TONE_GROUNDS = [...GROUNDS, "accentWash", "messageSurface"];
 	for (const role of AS_TEXT) {
 		for (const g of TONE_GROUNDS) {
