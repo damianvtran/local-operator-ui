@@ -124,16 +124,30 @@ const FRAMES = flag("frames", null);
  *   `surface` where the mark is claimed to be. This frame scrolls that row into
  *   view first. (The hover half of the same request is NOT captured: see the
  *   note on `mark` below.)
- * - `error`: the rollback's failure sentence, which had no frame while it was
- *   also (measured) painted for about 5 ms and cleared.
+ * - `error`: what the stream's refusal leaves on screen. The subject used to be
+ *   the rollback's failure sentence - "the outgoing conversation still on
+ *   screen" beside an "Unknown session" banner - and #464 deleted that rollback
+ *   with the guard read: the view stays on the target and the pane states the
+ *   tombstone. The frame therefore asserts the state the design has now: the
+ *   view on the refused conversation, the tombstone sentence in the pane, and
+ *   the composer disabled under its own "This conversation is gone".
  * - `slow`: the same hydrating state at the pulse TROUGH. At shipped latency
  *   this state is three frames and invisible; on a slow or remote backend it is
  *   the whole first impression, and it is the frame that exposes a placeholder
  *   whose animation takes it under the contract's floor.
- * - `refusal`: the read window refusing a send - the sentence the composer
- *   paints when the user presses Enter before anything has confirmed the target
- *   (UX round 2 U8, round 3 U9). It is the one state on this path whose evidence
- *   was a reviewer's and a QA's own frame rather than one of this harness's.
+ * - `held-press`: a send pressed inside the read window. The state the arm used
+ *   to photograph was `refusal` - the composer painting "Sending works once it
+ *   is ready" - and that state no longer exists on this head: since #464 a
+ *   press made before anything has confirmed the target is HELD and then
+ *   admitted (`chat-page.tsx`'s `awaitWindow`), so the sentence never paints and
+ *   the arm died waiting for it (measured on this head: typing and pressing
+ *   Enter leaves the words in the box, no alert, no request). What replaced it is
+ *   what a reader sees instead: the words still in the box, no error row, and
+ *   NOTHING on the transport - `sentMessages === 0` is the half a still cannot
+ *   show, and it is the half that matters (the press was answered, not
+ *   swallowed, and it did not go out early). The release-once half is pinned by
+ *   the send-early arms (`session-open-live.mjs --send-early`) and by #464's own
+ *   suite.
  *
  * Every state gets its OWN page load and its own click: the states are all
  * reached from the same starting point, and a capture that reused one load
@@ -143,7 +157,7 @@ const FRAMES = flag("frames", null);
 const FRAME_STATES = [
 	"hydrating",
 	"mark",
-	"refusal",
+	"held-press",
 	"slow",
 	"settled",
 	"error",
@@ -180,32 +194,26 @@ const FRAMES_URL = `${PAGE}?${new URLSearchParams({
  */
 const FRAMES_FAIL_URL = `${FRAMES_URL}&fail=incoming`;
 /**
- * The page a REFUSAL frame is driven on: the read window, held open.
+ * The page a HELD-PRESS frame is driven on: the read window, held open.
  *
- * The state exists only while `sessions.get` has not answered, so this page
- * scripts that read LONG - the same reason every capture runs on a long stream,
+ * The state exists only while nothing has confirmed the target, so this page
+ * scripts the window long - the same reason every capture runs on a long stream,
  * since a window is photographed while it lasts and at shipped latency a
- * round trip leaves no frame to catch. Both bounds are delayed on purpose: with
- * the stream slow as well, the read's own latency is what closes the window,
- * which is the refusal's honest shape on a backend that is merely slow.
+ * round trip leaves no frame to catch. Both bounds are delayed on purpose: a
+ * press inside that window is held for as long as it is open, which is the
+ * state's honest shape on a backend that is merely slow.
  */
-const FRAMES_REFUSAL_URL = `${PAGE}?${new URLSearchParams({
+const FRAMES_HELD_PRESS_URL = `${PAGE}?${new URLSearchParams({
 	get: SCENARIO.get ?? "12000",
 	stream: SCENARIO.stream ?? "12000",
 })}`;
 /**
- * The refusal's message and its sentence, as the shipped copy states them.
+ * The held press's message, as the arm types it.
  *
- * Held here rather than read back from the page, because the frame is evidence
- * FOR this copy: a frame showing another alert, or this sentence with the
- * composer's generic retry appended to it, is a picture of a state the PR no
- * longer ships (UX round 3, U9 - the hint asked for a retry the same window
- * refuses).
+ * One constant because the readback compares against the box's own value: a
+ * frame whose box holds anything else is refused rather than published.
  */
-const REFUSAL_TEXT = "Check the invoice totals";
-const REFUSAL_SENTENCE =
-	"This chat is not ready for messages yet, so the message was not sent. " +
-	"Sending works once it is ready.";
+const HELD_PRESS_TEXT = "Check the invoice totals";
 /**
  * Capture the PRE-CHANGE state of the same switch.
  *
@@ -729,8 +737,8 @@ const captureFrames = async (cdp) => {
 			const url =
 				state === "error"
 					? FRAMES_FAIL_URL
-					: state === "refusal"
-						? FRAMES_REFUSAL_URL
+					: state === "held-press"
+						? FRAMES_HELD_PRESS_URL
 						: FRAMES_URL;
 			await cdp.send("Page.navigate", { url });
 			await waitForCaptureReady(cdp);
@@ -778,9 +786,7 @@ const clickTarget = async (cdp) => {
 		expression: `(() => {
 			const probe = window.__lopSwitch;
 			const meta = probe.snapshot();
-			const row = document.querySelector(
-				'[data-chat-row][title^="' + meta.incomingTitle + '"]',
-			);
+			const row = probe.rowFor(meta.incoming);
 			if (!row) return null;
 			row.click();
 			return meta;
@@ -797,9 +803,7 @@ const clickTarget = async (cdp) => {
 const targetRow = (expression) => `(async () => {
 	const probe = window.__lopSwitch;
 	const meta = probe.snapshot();
-	const row = document.querySelector(
-		'[data-chat-row][title^="' + meta.incomingTitle + '"]',
-	);
+	const row = probe.rowFor(meta.incoming);
 	${expression}
 })()`;
 
@@ -810,17 +814,17 @@ const prepareState = async (cdp, state) => {
 	// not arrived, which IS the state a switch now reaches.
 	await settleFrames(cdp);
 
-	if (state === "refusal") {
+	if (state === "held-press") {
 		/*
-		 * THE SEND THE WINDOW REFUSES, typed and submitted through the real
-		 * composer with real input events - so what is photographed is the shipped
-		 * send path's own refusal and not a sentence planted in the DOM. The store
-		 * raises `SESSION_UNVALIDATED_MESSAGE` from `admitChatDraft`, before the
-		 * draft is latched and before the transport is reached, and the composer
-		 * paints it in the same alert row every other refused send uses.
+		 * THE SEND THE WINDOW HOLDS, typed and submitted through the real composer
+		 * with real input events - so what is photographed is the shipped send
+		 * path's own holding, not a state staged in the DOM. The press is made while
+		 * nothing has confirmed the target, which is the window `awaitWindow` holds
+		 * rather than refuses (#464's U1/D3); the frame is of the moment after it,
+		 * where the words are still in the box and nothing has gone to the
+		 * transport. Both halves are asserted in `shoot` below.
 		 */
-		await sendInComposer(cdp, REFUSAL_TEXT);
-		await waitForComposerAlert(cdp, REFUSAL_SENTENCE);
+		await sendInComposer(cdp, HELD_PRESS_TEXT);
 		await settleFrames(cdp);
 	}
 
@@ -835,24 +839,27 @@ const prepareState = async (cdp, state) => {
 
 	if (state === "error") {
 		/*
-		 * The rollback, by the page's own definition of it: the view is back on the
-		 * outgoing session - and then its CONVERSATION is back too, because that is
-		 * the state the failure path promises ("the outgoing conversation still on
-		 * screen" beside the sentence that explains why). A frame shot the instant
-		 * the view moves would photograph the re-hydration window instead, and the
-		 * claim it is evidence for is about what the user is left with.
+		 * The failure the stream's refusal leaves on screen, in the shape the design
+		 * has had since #464: the view STAYS on the target and the pane states what
+		 * happened. The rollback this arm used to wait for - the view back on the
+		 * outgoing session beside an "Unknown session" banner - was deleted with the
+		 * guard read (#464's F4/F5: "asserts the tombstone and the notice instead of
+		 * the deleted rollback"), so the arm's wait never succeeded and the capture
+		 * died here. What is photographed instead is what a reader is left with:
+		 * the tombstone sentence in the pane, the composer disabled under its own
+		 * "This conversation is gone", and no rows.
 		 */
 		await cdp.send("Runtime.evaluate", {
 			awaitPromise: true,
 			expression: `(async () => {
 				const probe = window.__lopSwitch;
+				const sentence = "no longer on this machine";
 				const deadline = performance.now() + 8000;
 				while (
-					probe.view().activeSessionId !== probe.view().outgoing &&
+					!(document.body.innerText || "").includes(sentence) &&
 					performance.now() < deadline
 				)
 					await new Promise((r) => requestAnimationFrame(() => r()));
-				await probe.settle(probe.view().outgoing);
 			})()`,
 		});
 		await settleFrames(cdp);
@@ -999,28 +1006,7 @@ const sendInComposer = async (cdp, text) => {
 };
 
 /**
- * The composer's alert row, once it states `sentence`. Polled, not slept on, so
- * the capture waits for a paint rather than for a delay - and it gives up loudly:
- * a refusal that never arrived would otherwise be photographed as a hydrating
- * panel with an empty alert.
- */
-const waitForComposerAlert = async (cdp, sentence) => {
-	for (let i = 0; i < 120; i++) {
-		const { result } = await cdp.send("Runtime.evaluate", {
-			returnByValue: true,
-			expression: `(() => {
-				const form = document.querySelector("textarea")?.closest("form");
-				return form?.querySelector('[role="alert"]')?.innerText ?? null;
-			})()`,
-		});
-		if (typeof result.value === "string" && result.value.includes(sentence))
-			return;
-		await sleep(50);
-	}
-	throw new Error(`the composer never stated the refusal: ${sentence}`);
-};
-
-/** Two frames: one for the change to lay out, one for it to paint. */
+ * Two frames: one for the change to lay out, one for it to paint. */
 const settleFrames = (cdp) =>
 	cdp.send("Runtime.evaluate", {
 		awaitPromise: true,
@@ -1044,7 +1030,7 @@ const shoot = async (cdp, path, state, theme) => {
 		returnByValue: true,
 		expression: `(() => ({
 			...window.__lopSwitch.frame(),
-			sentence: document.body.innerText.includes("Unknown session"),
+			sentence: document.body.innerText.includes("no longer on this machine"),
 		}))()`,
 	});
 	const seen = result.value;
@@ -1055,10 +1041,13 @@ const shoot = async (cdp, path, state, theme) => {
 		if (seen.active !== seen.outgoing || !seen.pendingIndicator)
 			refuse("expected the outgoing session held under its pending affordance");
 	} else if (state === "error") {
-		if (seen.active !== seen.outgoing)
-			refuse("the view is not back on the outgoing session");
-		if (!seen.content) refuse("the outgoing conversation has not come back");
-		if (!seen.sentence) refuse("the failure sentence is not on screen");
+		if (seen.active !== seen.target)
+			refuse("the view left the refusal's own conversation");
+		if (!seen.sentence) refuse("the tombstone sentence is not on screen");
+		if (seen.composerPlaceholder !== "This conversation is gone")
+			refuse(
+				`the composer is not stating the gone conversation (${JSON.stringify(seen.composerPlaceholder)})`,
+			);
 	} else {
 		if (seen.active !== seen.target)
 			refuse("the panel is not the switch's target");
@@ -1078,21 +1067,26 @@ const shoot = async (cdp, path, state, theme) => {
 			refuse(
 				`the placeholder is not at its pulse trough (opacity ${seen.placeholderOpacity})`,
 			);
-		if (state === "refusal") {
+		if (state === "held-press") {
 			/*
-			 * The state is the REFUSAL, and the frame has to be a picture of both
-			 * halves of it: the sentence in the composer's own row, and the fact that
+			 * The state is the HELD PRESS, and the frame has to be a picture of both
+			 * halves of it: the words still in the composer's box, and the fact that
 			 * nothing was sent. The second half is the one a still cannot show by
-			 * itself, so it is read off the bridge's request log - the refusal exists
-			 * precisely because no `sessions.message` was issued.
+			 * itself, so it is read off the bridge's request log - the press exists
+			 * precisely because no `sessions.message` was issued for it yet.
+			 *
+			 * NO ALERT is asserted too, and that is the half that changed: the arm
+			 * this replaces waited for a sentence (`SESSION_UNVALIDATED_MESSAGE`)
+			 * that a merely-slow window no longer paints - measured on this head, a
+			 * press inside the open window is held and the composer stays silent.
 			 */
-			if (!(seen.composerAlert ?? "").includes(REFUSAL_SENTENCE))
+			if (seen.composerText !== HELD_PRESS_TEXT)
 				refuse(
-					`the composer is not stating the refusal (${JSON.stringify(seen.composerAlert)})`,
+					`the composer is not still holding the press (${JSON.stringify(seen.composerText)})`,
 				);
-			if ((seen.composerAlert ?? "").includes("Send it again"))
+			if (seen.composerAlert !== null)
 				refuse(
-					"the notice still asks for a retry that this same window refuses",
+					`the composer stated something for a held press (${JSON.stringify(seen.composerAlert)})`,
 				);
 			if (seen.sentMessages !== 0)
 				refuse(`a message reached the transport (${seen.sentMessages})`);
