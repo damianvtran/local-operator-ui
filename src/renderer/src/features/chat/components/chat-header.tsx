@@ -25,8 +25,8 @@ import {
 	Trash2,
 } from "lucide-react";
 import { type FC, useEffect, useRef } from "react";
-import { archiveControlLabel } from "../chat-archived";
 import { canvasToggleCap, isCanvasTogglePress } from "../canvas-shortcut";
+import { archiveControlLabel } from "../chat-archived";
 import type { McpServerRow, RunDetails } from "./run-details";
 import { RunDetailsTrigger } from "./run-details";
 

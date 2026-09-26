@@ -77,16 +77,33 @@ test("the canvas chord is ⌘⇧C / ⌘+Shift+C, and the unshifted ⌘C is never
 	 * `chat-header`'s own source is asserted to call it so the cap cannot be
 	 * printed by a control that never listens.
 	 */
-	assert.equal(mod.isCanvasTogglePress(press("c", { metaKey: true, shiftKey: true })), true);
+	assert.equal(
+		mod.isCanvasTogglePress(press("c", { metaKey: true, shiftKey: true })),
+		true,
+	);
 	// The uppercase spelling is what a shifted press produces on layouts that
 	// report the character rather than the base key.
-	assert.equal(mod.isCanvasTogglePress(press("C", { metaKey: true, shiftKey: true })), true);
-	assert.equal(mod.isCanvasTogglePress(press("c", { ctrlKey: true, shiftKey: true })), true);
+	assert.equal(
+		mod.isCanvasTogglePress(press("C", { metaKey: true, shiftKey: true })),
+		true,
+	);
+	assert.equal(
+		mod.isCanvasTogglePress(press("c", { ctrlKey: true, shiftKey: true })),
+		true,
+	);
 	// NOT the unshifted chord: ⌘C is Copy and belongs to the reader's selection.
 	assert.equal(mod.isCanvasTogglePress(press("c", { metaKey: true })), false);
 	assert.equal(mod.isCanvasTogglePress(press("c")), false);
-	assert.equal(mod.isCanvasTogglePress(press("c", { metaKey: true, shiftKey: true, altKey: true })), false);
-	assert.equal(mod.isCanvasTogglePress(press("b", { metaKey: true, shiftKey: true })), false);
+	assert.equal(
+		mod.isCanvasTogglePress(
+			press("c", { metaKey: true, shiftKey: true, altKey: true }),
+		),
+		false,
+	);
+	assert.equal(
+		mod.isCanvasTogglePress(press("b", { metaKey: true, shiftKey: true })),
+		false,
+	);
 
 	const header = readFileSync(
 		"src/renderer/src/features/chat/components/chat-header.tsx",
@@ -319,18 +336,28 @@ test("no chat row carries a tabIndex prop, so the roving stop is the only writer
 	 * the panel would flicker between one stop and seventy.
 	 *
 	 * The count is the guard rather than a forbidding of the attribute: the three
-	 * sanctioned sites are the panel's own door and the two row acts, all `-1` and
-	 * all deliberately out of the ring. A FOURTH one is a decision somebody has to
-	 * make - which is the point - and the message names the three so the decision
-	 * starts from what is already there.
+	 * sites round 1 sanctioned are the panel's own door and the two row acts, all
+	 * `-1` and all deliberately out of the ring, and UX round 2's U16 added a
+	 * FOURTH with its own reason - the chats SCROLLER, which Chromium makes
+	 * keyboard-focusable on its own (a scrollable section), so it appeared in the
+	 * ring as an unnamed stop the arrow walk already covers. That is still not a
+	 * ROW: `applyRowStop` owns the rows, and the scroller's own `-1` is what keeps
+	 * the ring free of the container that carries them. A fifth one is a decision
+	 * somebody has to make - which is the point - and the message names the four so
+	 * the decision starts from what is already there.
 	 */
 	const props = [...sidebarSource.matchAll(/^\s*tabIndex=\{/gm)];
 	assert.equal(
 		props.length,
-		3,
-		`the sidebar declares ${props.length} tabIndex prop(s); the sanctioned three are the nav's door and the two row acts (applyRowStop owns the rows)`,
+		4,
+		`the sidebar declares ${props.length} tabIndex prop(s); the sanctioned four are the nav's door, the two row acts (applyRowStop owns the rows) and the chats scroller's own -1 (U16)`,
 	);
 	assert.match(sidebarSource, /row\.tabIndex = row === target \? 0 : -1;/);
+	assert.match(
+		sidebarSource,
+		/id=\{CHAT_REGION_ID\}[\s\S]{0,600}?tabIndex=\{-1\}/,
+		"the scroller's own -1 is the U16 site, and it is the fourth the count above sanctions",
+	);
 });
 
 test("both row acts are out of the Tab ring, and the chord is what presses them", () => {

@@ -1377,7 +1377,13 @@ export const PickerHost: FC<PickerHostProps> = ({
 					<div className={cn(bodyOverflows && "border-control border-b")}>
 						<div
 							ref={attachBodyBox}
-							/* biome-ignore lint/a11y/noNoninteractiveTabindex: the tab stop IS the fix; a panel's content sits below the fold and a keyboard user has to be able to reach it. */
+							/*
+							 * The tab stop IS the fix: a panel's content sits below the fold and a
+							 * keyboard user has to be able to reach it. (The suppression that used
+							 * to sit here was reported as UNUSED - the `region` role satisfies the
+							 * rule for this element - so the reasoning is kept and the directive is
+							 * not.)
+							 */
 							role={shell === "panel" ? "region" : undefined}
 							aria-label={
 								shell === "panel" ? (bodyLabel ?? PANEL_BODY_LABEL) : undefined

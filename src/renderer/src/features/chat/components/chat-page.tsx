@@ -271,7 +271,7 @@ function SessionPanel({
 	// Read here rather than threaded from the page, for the same reason as
 	// `panelCapabilities` above: the query is cached (`useServerHealth`'s staleTime),
 	// so this is a store read and not a second request.
-	const serverHealth = useServerHealth();
+	const { data: serverHealth } = useServerHealth();
 	/*
 	 * A RECOVERED SERVER RE-SUBSCRIBES THE OPEN CONVERSATION (UX round 2, U19;
 	 * QA round 2's Q3).
@@ -297,8 +297,8 @@ function SessionPanel({
 		const recovered = serverOnline && !wasOnline.current;
 		wasOnline.current = serverOnline;
 		if (!recovered) return;
-		if (canonical.view.status !== "unavailable") return;
-		canonical.view.retry();
+		if (canonical.status !== "unavailable") return;
+		canonical.retry();
 	}, [serverOnline, canonical]);
 	const setCwd = useCanonicalSessionsStore((state) => state.setCwd);
 	const markTurnStopped = useCanonicalSessionsStore(
@@ -1954,8 +1954,7 @@ function SessionPanel({
 		markTurnStopped(sessionId, pressedAt);
 		void interruptTurn(sessionId, crypto.randomUUID())
 			.then((receipt) => {
-				if (receipt.status !== "interrupted")
-					clearTurnStopped(sessionId);
+				if (receipt.status !== "interrupted") clearTurnStopped(sessionId);
 				setStopNotice(interruptNotice(receipt));
 			})
 			.catch((error) =>

@@ -589,7 +589,9 @@ const TOAST_CLOSE_SELECTOR = "[data-sonner-toast] [data-close-button]";
 /** How many toasts are on screen right now, asked of the app's own DOM. */
 const toastsOnScreen = () =>
 	cdp
-		.evaluate(`document.querySelectorAll(${JSON.stringify(TOAST_SELECTOR)}).length`)
+		.evaluate(
+			`document.querySelectorAll(${JSON.stringify(TOAST_SELECTOR)}).length`,
+		)
 		.catch(() => 0);
 
 /**
@@ -1204,8 +1206,10 @@ try {
 			// under the reservation rather than beside it.
 			box.rect.left >= graceBox.x &&
 			box.rect.left + box.rect.w <= graceBox.x + graceBox.w &&
-			gapBetween(runningMic, runningStopSlot) === gapBetween(graceMic, graceBox) &&
-			gapBetween(runningStopSlot, runningSend) === gapBetween(graceBox, graceSend),
+			gapBetween(runningMic, runningStopSlot) ===
+				gapBetween(graceMic, graceBox) &&
+			gapBetween(runningStopSlot, runningSend) ===
+				gapBetween(graceBox, graceSend),
 		{
 			what: "the row inside the grace window is not the row the turn ran with",
 			running: runningBoxes,
@@ -1417,6 +1421,24 @@ try {
 	record("turn2.admit", await startTurn(sessionId));
 	record("turn2.streaming", await waitForStreaming(sessionId, true));
 	record("turn2.control", { present: await controlPresent() });
+	/*
+	 * WHAT THE ROW SAID BEFORE THE PRESS (U15's own discriminator). The reducer's
+	 * guard needs the killed call's `startedAt`, which only exists if this viewer
+	 * saw the call START; a row this pane met only as it settled has no clock and is
+	 * deliberately refused (`killedByUserStop`'s note). Reading the tail here, while
+	 * the turn still runs, is what tells the two cases apart in the record instead of
+	 * leaving them to be guessed from the settled text.
+	 */
+	record(
+		"turn2.running",
+		JSON.parse(
+			await cdp.evaluate(`(() => {
+		const text = (el) => (el?.textContent ?? "").replace(/\\s+/g, " ").trim();
+		const rows = [...document.querySelectorAll('[data-record-kind="tool"], [data-record-kind="assistant"]')];
+		return JSON.stringify({ tail: rows.slice(-3).map(text) });
+	})()`),
+		),
+	);
 	await pressEscape();
 	record("turn2.settled", await waitForStreaming(sessionId, false));
 	record("turn2.controlAfter", { present: await controlPresent() });

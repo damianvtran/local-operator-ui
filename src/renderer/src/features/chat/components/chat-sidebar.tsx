@@ -6143,20 +6143,22 @@ export function ChatSidebar({
 			 * it must not be CONNECTED. The two clauses that follow are the D9 alert
 			 * suppression and D30's stand-down to the strip.
 			 */}
-			{(feed.available && feed.reported && !feed.connected) &&
+			{feed.available &&
+				feed.reported &&
+				!feed.connected &&
 				!error &&
 				!stripSpeaksConnection && (
-				<p
-					className={cn(
-						"text-meta",
-						sessions.some((row) => row.active)
-							? "text-ink-dim"
-							: "text-warning",
-					)}
-				>
-					Not connected to the backend — showing the last known state.
-				</p>
-			)}
+					<p
+						className={cn(
+							"text-meta",
+							sessions.some((row) => row.active)
+								? "text-ink-dim"
+								: "text-warning",
+						)}
+					>
+						Not connected to the backend — showing the last known state.
+					</p>
+				)}
 		</div>
 	);
 
