@@ -736,3 +736,44 @@ than measured in a browser; it is a pre-existing, hover-only affordance of a
 heavily reviewed component, so it is recorded for its own change rather than
 folded into this one (design round 1 confirmed the two class values and recorded
 the same).
+
+## The failed-send notice: the frames are GONE, and where the states are now
+
+**This section used to document six states of the failed-send notice (seventy-two
+frames across six directories), and every one of them has been removed from this
+set (review round 2, D6).** They showed copy the app no longer produces: the
+unknown-outcome sentence without its "Sending it again is safe." clause, and a 413
+sentence about half the length of the app's own, which the `FailedNotSent` story
+had hand-written rather than taking from the code that writes it. A reader
+comparing those frames with the app - or with this change's own
+`../composer-notice-arms/` - saw two different sentences for one state.
+
+Re-sweeping them was attempted from this worktree and could not run: the repository's
+own sweep refuses the ids against this machine's Storybook index even for a
+`--allow-backend` partial run.
+
+```
+node scripts/capture-evidence.mjs --only=chat-message-input--failed- --allow-backend
+Error: unknown story id(s): chat-message-input--failed-unknown,
+chat-message-input--failed-not-sent, chat-message-input--failed-too-large,
+chat-message-input--failed-merged. Check http://localhost:6017/index.json for the
+real ids.
+```
+
+So the six ids left `scripts/capture-evidence.mjs`'s table and their committed
+frames were deleted, exactly as the copy-rule row did in round 1 (D5). **The
+states are not un-evidenced**: `../composer-notice-arms/` renders every one of them
+from the SHIPPED composer at this head, at three column widths and in the themes
+the design rounds measured, with each sentence imported from the code that writes
+it, and its `delivered` arm is the late-confirmation state with no chip. The
+STORIES stay in `message-input.stories.tsx` and stay tests - `FailedNotSent` now
+takes `DESKTOP_REQUEST_TOO_LARGE_DETAIL`, as `FailedTooLarge` already did, so the
+two cannot drift apart again.
+
+The operator's own report of the screen this all replaces is still committed a few
+directories over -
+[`../chat-cold-send-browser/admission-timeout/localOperatorDark.webp`](../chat-cold-send-browser/admission-timeout/localOperatorDark.webp)
+shows the live app's old model in one frame: an EMPTY composer, the transport's
+twenty-second sentence in red, a grey paragraph ("A message is still being held,
+so a different message cannot be sent yet...") and `Restore message` /
+`Discard message` under it.

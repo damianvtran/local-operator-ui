@@ -46,6 +46,15 @@ const bundle = await build({
 export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";`,
 		resolveDir: process.cwd(),
 	},
+	/*
+	 * The renderer's aliases are tsconfig paths, not node resolutions. The send
+	 * store now imports the composer's own store at runtime (the one return path
+	 * for a failed payload), so a fixture that bundles it has to resolve this.
+	 */
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@features": "./src/renderer/src/features",
+	},
 	bundle: true,
 	format: "esm",
 	platform: "node",
@@ -82,6 +91,7 @@ export const desktopResult = request => globalThis.__switchRequest(request);`,
 				builder.onLoad({ filter: /.*/, namespace: "echo-fixture" }, () => ({
 					contents: `export const echoPendingUser = () => {};
 export const retractPendingUser = () => {};
+export const retractLocalEcho = () => "retracted";
 export const discardPendingEchoes = () => {};`,
 					loader: "js",
 					resolveDir: process.cwd(),
@@ -360,7 +370,20 @@ test("the busy resend is bounded, and hands the refusal to the composer with the
 	const draft = store.getState().drafts[SEND_KEY];
 	assert.equal(draft.pending, false);
 	assert.equal(draft.errorCode, "runtime_busy");
-	assert.equal(draft.submittedText, SEND.text);
+	/*
+	 * NOTHING IS LATCHED FOR A REFUSAL LIKE THIS, AND THE PAYLOAD IS STILL THE
+	 * ROW'S - and the difference between those two facts is the change. A busy
+	 * owner says in its own code that it did not take the message, so the latch is
+	 * off: the pane shows no send in flight, and the app makes no claim about a
+	 * fate. The TEXT stays on the row as the retry rule's comparison basis
+	 * (`payloadMatchesClaim`), because that is what makes an unchanged re-send an
+	 * idempotent replay under the id the owner already answered, rather than a
+	 * second message from an owner that had in fact queued the first. The copy the
+	 * user acts on is in the composer (the store's one return path; its side of
+	 * that is pinned in `composer-send-failure.test.mjs`).
+	 */
+	assert.equal(draft.submittedText, "Review this");
+	assert.equal(draft.admissionAttempted, false);
 });
 
 test("the busy resend waits the backend's retry_after_ms, capped", async () => {

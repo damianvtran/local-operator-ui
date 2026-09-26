@@ -413,6 +413,7 @@ test("a row shows ONE trailing statement, in priority order", () => {
 		unstarted: false,
 		nested: false,
 		binding: "coder",
+		team: "",
 		agentOpened: false,
 	};
 
@@ -435,33 +436,38 @@ test("a row shows ONE trailing statement, in priority order", () => {
 	assert.equal(show({ ...base, marked: true, nested: true }), "conversation");
 
 	/*
-	 * The agent-opened fact, which is the newest claim in the rule and the one
-	 * with a surprise in it: it OUTRANKS the binding while the two claims above
-	 * it are untouched. The pairing is the interesting half - both answer "who",
-	 * and an agent-opened session is USUALLY bound to the agent that opened it, so
-	 * the binding is the half a reader can infer and the provenance is the half
-	 * only the row can say (the 2026-09-18 incident). On a TEAM-bound workstream the
-	 * binding names the team and the yield loses it from the pixels; the rule still
-	 * prefers provenance there (review round 1, m1 - see `rowTrailingStatement`).
+	 * The agent-opened fact, re-cut (operator ask, 2026-09-25): the slot draws the
+	 * TEAM the workstream serves, and NOTHING when it serves none. The decision is
+	 * on the `team` field, not on the slot's binding string - an agent-opened row
+	 * bound to an agent alone has a non-empty `binding` and must still draw nothing,
+	 * which is the case a rule reading `binding` would get wrong.
 	 */
-	assert.equal(show({ ...base, agentOpened: true }), "agent_opened");
+	assert.equal(show({ ...base, agentOpened: true, team: "lopdev" }), "team");
 	assert.equal(
-		show({ ...base, agentOpened: true, binding: "" }),
-		"agent_opened",
-		"the claim is the wire's presence flag, not the binding beside it",
+		show({ ...base, agentOpened: true, team: "lopdev", binding: "" }),
+		"team",
+		"the decision reads the team field, not the binding beside it",
 	);
-	// Provenance is the row's OWN, unlike identity: a nested row still states it.
 	assert.equal(
-		show({ ...base, agentOpened: true, nested: true }),
-		"agent_opened",
+		show({ ...base, agentOpened: true }),
+		"none",
+		"a team-less workstream draws nothing - the binding does NOT fall through",
 	);
+	assert.equal(show({ ...base, agentOpened: true, binding: "" }), "none");
+	// Provenance is the row's OWN, unlike identity: a nested row still draws the
+	// team it serves, wherever the row appears.
+	assert.equal(
+		show({ ...base, agentOpened: true, team: "lopdev", nested: true }),
+		"team",
+	);
+	assert.equal(show({ ...base, agentOpened: true, nested: true }), "none");
 	// And the two claims above it keep their precedence over it.
 	assert.equal(
-		show({ ...base, agentOpened: true, unstarted: true }),
+		show({ ...base, agentOpened: true, team: "lopdev", unstarted: true }),
 		"not_sent",
 	);
 	assert.equal(
-		show({ ...base, agentOpened: true, marked: true }),
+		show({ ...base, agentOpened: true, team: "lopdev", marked: true }),
 		"conversation",
 	);
 
@@ -470,24 +476,26 @@ test("a row shows ONE trailing statement, in priority order", () => {
 	// enforces "at most one" today, so this loop is here to catch a future
 	// refactor that widens it (returning an array of statements would pass every
 	// assertion above and fail here), not to re-assert the type.
-	const allowed = [
-		"conversation",
-		"not_sent",
-		"agent_opened",
-		"binding",
-		"none",
-	];
+	const allowed = ["conversation", "not_sent", "team", "binding", "none"];
 	for (const marked of [false, true])
 		for (const unstarted of [false, true])
 			for (const nested of [false, true])
 				for (const binding of ["", "coder"])
-					for (const agentOpened of [false, true])
-						assert.ok(
-							allowed.includes(
-								show({ marked, unstarted, nested, binding, agentOpened }),
-							),
-							`${JSON.stringify({ marked, unstarted, nested, binding, agentOpened })} produced something outside the five literals`,
-						);
+					for (const team of ["", "lopdev"])
+						for (const agentOpened of [false, true])
+							assert.ok(
+								allowed.includes(
+									show({
+										marked,
+										unstarted,
+										nested,
+										binding,
+										team,
+										agentOpened,
+									}),
+								),
+								`${JSON.stringify({ marked, unstarted, nested, binding, team, agentOpened })} produced something outside the five literals`,
+							);
 });
 
 /*

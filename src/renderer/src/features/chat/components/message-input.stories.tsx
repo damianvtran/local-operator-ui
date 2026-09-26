@@ -1,13 +1,26 @@
+import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import {
 	COMPOSER_PLACEHOLDER,
 	type SendOutcome,
 } from "@shared/hooks/use-message-input";
 import { cn } from "@shared/lib/utils";
+import {
+	SEND_FAILURE_COPY,
+	sendFailureCopy,
+} from "@shared/store/canonical-sessions-store";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
-import { useConversationInputStore } from "@shared/store/conversation-input-store";
+import {
+	type LateDeliveryBox,
+	mergeReturnedText,
+	useConversationInputStore,
+} from "@shared/store/conversation-input-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { screen, userEvent, within } from "@storybook/test";
 import { type ReactNode, useEffect, useState } from "react";
+import {
+	DESKTOP_DEADLINE_EXCEEDED_CODE,
+	DESKTOP_REQUEST_TOO_LARGE_DETAIL,
+} from "../../../../../../src/shared/desktop-contract";
 import type { CanonicalFrontendState } from "../../../../../../src/shared/desktop-session-contract";
 import { interruptNotice, interruptUnavailableNotice } from "../interrupt-turn";
 import type { Message } from "../types/message";
@@ -1984,6 +1997,8 @@ const PendingSendHarness = ({
 	row = "none",
 	stageChip = true,
 	onSendMessage,
+	returned,
+	sendError,
 }: {
 	label: string;
 	isSmallView?: boolean;
@@ -1992,6 +2007,29 @@ const PendingSendHarness = ({
 	row?: PendingSendRow;
 	stageChip?: boolean;
 	onSendMessage?: React.ComponentProps<typeof MessageInput>["onSendMessage"];
+	/**
+	 * The draft a FAILED send leaves, as the composer's own store holds it after
+	 * the return path has run and the box has adopted it.
+	 *
+	 * Staged through the store rather than as a prop, because that is where it
+	 * comes from in the app: `returnInFlight` writes the text and the chips, the
+	 * hook adopts the text into the box, and the user sees the message in the
+	 * composer with one notice beside it. `text` is the box's value at the moment
+	 * the still is taken, so a story that shows an edit made after the failure
+	 * writes the edited value here.
+	 */
+	returned?: {
+		text: string;
+		chip?: string;
+		lateDelivered?: LateDeliveryBox;
+	};
+	/**
+	 * The notice, exactly as `chat-page`'s `reportFailure` hands it over -
+	 * `sendFailureCopy`'s answer, not a sentence written here. A story that typed
+	 * its own string would be a second source of truth for the copy, which is the
+	 * defect the copy table exists to prevent.
+	 */
+	sendError?: React.ComponentProps<typeof MessageInput>["sendError"];
 }) => {
 	useEffect(() => {
 		const store = useConversationInputStore.getState();
@@ -2005,8 +2043,26 @@ const PendingSendHarness = ({
 		if (stageChip)
 			store.addAttachment(PENDING_SESSION, {
 				id: "pending-chip",
-				path: PENDING_CHIP_PATH,
+				path: returned?.chip ?? PENDING_CHIP_PATH,
 			});
+		/*
+		 * And the box, for the states a FAILED send leaves: the returned message is
+		 * in the composer (`returnInFlight` put it there and the hook adopted it), so
+		 * the still has to show the same text the app would. Written last, after the
+		 * attachments, because that is the order the return path writes them in.
+		 */
+		useConversationInputStore.setState({
+			inputByConversation: {
+				...useConversationInputStore.getState().inputByConversation,
+				[PENDING_SESSION]: {
+					...useConversationInputStore.getState().inputByConversation[
+						PENDING_SESSION
+					],
+					currentInput: returned?.text ?? "",
+					lateDelivered: returned?.lateDelivered,
+				},
+			},
+		});
 		/*
 		 * The send, staged in the CANONICAL store because that is where the composer
 		 * reads it. `send:<id>` is the shape a send inside an existing conversation
@@ -2037,7 +2093,7 @@ const PendingSendHarness = ({
 		 * changed `row` while mounted has to re-stage it (agent review round 3,
 		 * BLOCKER 1 - biome's `useExhaustiveDependencies` is right about this one).
 		 */
-	}, [row, stageChip]);
+	}, [row, stageChip, returned]);
 	const composer = (
 		<MessageInput
 			isLoading={isLoading}
@@ -2046,6 +2102,7 @@ const PendingSendHarness = ({
 			messages={NONEMPTY}
 			conversationId={PENDING_SESSION}
 			onSendMessage={onSendMessage ?? (async () => true)}
+			sendError={sendError}
 		/>
 	);
 	return (
@@ -2282,6 +2339,308 @@ export const PendingSendSmallView: Story = {
 	play: async ({ canvasElement }) => {
 		if (!holdAndReset(canvasElement)) return;
 		await assertInheritedSend(canvasElement);
+		releaseShutter();
+	},
+};
+
+/*
+ * ============ THE NOTICE A FAILED SEND LEAVES, one still per arm ============
+ *
+ * The operator's report is the whole reason this set exists: their screen showed
+ * an EMPTY composer, the transport's twenty-second sentence in red, a grey
+ * paragraph explaining that a message was being kept somewhere else, and two
+ * links to get it back. So the frames that answer it have to show the two things
+ * that changed, together and in one still: the message is IN the box, and the
+ * notice beside it is ONE sentence with at most Retry and Clear.
+ *
+ * The sentences are never written here. Each story takes its notice from
+ * `sendFailureCopy`, fed the same failure the app would have caught, so a still
+ * cannot show copy the app is unable to produce - and a change to the table moves
+ * these frames with it rather than leaving them quoting a string that no longer
+ * exists anywhere in the code.
+ */
+const copyFor = (error: unknown) => {
+	const { message, retry } = sendFailureCopy(error);
+	return { message, retry };
+};
+
+/** The timeout/unknown arm: the failure the operator photographed. */
+export const FailedUnknown: Story = {
+	render: () => {
+		const copy = copyFor(
+			new DesktopControlError(
+				504,
+				"The app waits up to 20 seconds for this request, and it was still running when the app stopped waiting.",
+				undefined,
+				DESKTOP_DEADLINE_EXCEEDED_CODE,
+			),
+		);
+		return (
+			<PendingSendHarness
+				row="none"
+				returned={{ text: PENDING_MESSAGE, chip: PENDING_CHIP_PATH }}
+				sendError={{
+					message: copy.message,
+					retry: copy.retry,
+					onRetry: () => undefined,
+					onClear: () => undefined,
+				}}
+				label="a send the app could not confirm: the message and its file are back in the composer, and the notice is one sentence with Retry and Clear"
+			/>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		await assertNoticeKeepsThePayload(canvasElement, copyFor);
+		releaseShutter();
+	},
+};
+
+/** The same shape for a message that provably never left: a 413. */
+export const FailedNotSent: Story = {
+	render: () => {
+		/*
+		 * THE APP'S OWN SENTENCE, not a short stand-in (review round 2, D6 - the same
+		 * defect the round-1 D3 fixed one story above, still standing here): the
+		 * transport's 413 is twice this length, and a story that hand-writes a shorter
+		 * one shows a screen the app never produces.
+		 */
+		const copy = copyFor(
+			new DesktopControlError(413, DESKTOP_REQUEST_TOO_LARGE_DETAIL),
+		);
+		return (
+			<PendingSendHarness
+				row="none"
+				returned={{ text: PENDING_MESSAGE, chip: PENDING_CHIP_PATH }}
+				sendError={{
+					message: copy.message,
+					retry: copy.retry,
+					onClear: () => undefined,
+				}}
+				label="a refusal the guard decided before the wire: the whole message is still the composer's, and the notice offers the remedy its own sentence names"
+			/>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		await assertNoticeKeepsThePayload(canvasElement, copyFor);
+		releaseShutter();
+	},
+};
+
+/**
+ * The too-large arm, at the app's OWN sentence: Clear only, because a press
+ * repeats it.
+ *
+ * THE SENTENCE COMES FROM THE CODE THAT WRITES IT (design round 1, D3). This
+ * story used to hand the 413 a sentence of its own invention - a shorter one with
+ * unformatted numbers - so its frames showed copy the app cannot produce. The
+ * transport's message-tier backstop is what a refused body actually reads, and it
+ * is imported rather than retyped for the same reason the rest of this set takes
+ * its notice from `sendFailureCopy`.
+ */
+export const FailedTooLarge: Story = {
+	render: () => {
+		const copy = copyFor(
+			new DesktopControlError(413, DESKTOP_REQUEST_TOO_LARGE_DETAIL),
+		);
+		return (
+			<PendingSendHarness
+				row="none"
+				returned={{ text: `${PENDING_MESSAGE} and a long paste` }}
+				sendError={{
+					message: copy.message,
+					retry: copy.retry,
+					onClear: () => undefined,
+				}}
+				label="too large to send: the box holds every character, and the notice explains the split rather than offering a press that meets the same limit"
+			/>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		await assertNoticeKeepsThePayload(canvasElement, copyFor);
+		releaseShutter();
+	},
+};
+
+/** The merge: the returned message goes first, the user's own typing follows it. */
+export const FailedMerged: Story = {
+	render: () => {
+		const copy = copyFor(new Error("network down"));
+		return (
+			<PendingSendHarness
+				row="none"
+				returned={{
+					text: mergeReturnedText("a line I typed", PENDING_MESSAGE),
+					chip: PENDING_CHIP_PATH,
+				}}
+				sendError={{
+					message: copy.message,
+					retry: copy.retry,
+					onRetry: () => undefined,
+					onClear: () => undefined,
+				}}
+				label="typed while the send was in flight: the failed message comes first and the user's own sentence is still there underneath it"
+			/>
+		);
+	},
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		await assertNoticeKeepsThePayload(canvasElement, copyFor);
+		releaseShutter();
+	},
+};
+
+/** Delivered after all, and the box had been edited, so the edit stays. */
+export const DeliveredLate: Story = {
+	render: () => (
+		<PendingSendHarness
+			row="none"
+			/*
+			 * NO CHIP (design round 1, D4). This state is the user's OWN edited draft
+			 * over a message that already went - nothing of that message is in the box,
+			 * and a chip staged here reads as "the file is still waiting to be sent",
+			 * which is the one thing this frame must not suggest.
+			 */
+			stageChip={false}
+			returned={{ text: "a line I typed instead", lateDelivered: "draft-only" }}
+			/*
+			 * `lateDeliveryDraft`, because that is what the app produces for this
+			 * state: the delivered message has come OUT of the box, so the sentence
+			 * says so (review round 4, n2). The plain `lateDelivery` string it used to
+			 * read is gone - the arm that needs it is `overlap`, and it has its own.
+			 */
+			sendError={{ message: SEND_FAILURE_COPY.lateDeliveryDraft, muted: true }}
+			label="the earlier message turned out to have been delivered: one muted line, the user's own edit untouched, and no control to act on"
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		await assertNoticeKeepsThePayload(canvasElement, copyFor);
+		releaseShutter();
+	},
+};
+
+/** The send lock: a statement of fact, not a failure, and no controls at all. */
+export const SendLock: Story = {
+	render: () => (
+		<PendingSendHarness
+			row="in-flight"
+			stageChip={false}
+			/*
+			 * The box is NOT empty here, and that is the state the lock is about: the
+			 * user typed a second message and pressed Enter while the first was still
+			 * on its way out, so the press never became a send and their text is exactly
+			 * where they left it. A no-control rule that only holds on an empty composer
+			 * would be no rule at all.
+			 */
+			returned={{ text: "and here is the second one" }}
+			sendError={{ message: SEND_FAILURE_COPY.sendLock, muted: true }}
+			label="a message is still on its way out: one muted sentence, the user's next message still in the box, and nothing to press"
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		await assertMutedNoticeAlone(canvasElement);
+		releaseShutter();
+	},
+};
+
+/*
+ * WHAT EVERY NOTICE FRAME MUST SHOW, asserted rather than assumed, because these
+ * stills are the evidence for the operator's own screen: the sentence is one line
+ * (not a paragraph), the message is in the box rather than somewhere else, and the
+ * only controls beside it are the ones the sentence names.
+ *
+ * It reads the DOM the still is taken from, so a frame cannot be captured on a
+ * tree where the notice regressed to the old shape - the class of failure the
+ * render's own shutter exists to prevent.
+ */
+const assertNoticeKeepsThePayload = async (
+	canvasElement: HTMLElement,
+	_copyFor: (error: unknown) => { message: string; retry: boolean },
+) => {
+	const box = composerField(canvasElement);
+	if (composerValue(box).length === 0)
+		throw new Error(
+			"the failed message is not in the composer, which is the whole point of the frame",
+		);
+	const alert = canvasElement.querySelector('[role="alert"]');
+	if (!alert)
+		throw new Error(
+			"the failure is not announced: the notice row is missing from the composer",
+		);
+	const paragraphs = alert.querySelectorAll("p");
+	if (paragraphs.length > 1)
+		throw new Error(
+			`the notice is a paragraph rather than a sentence: ${paragraphs.length} blocks under the alert`,
+		);
+	if (
+		/still being held|is being kept|cannot be sent yet/i.test(
+			alert.textContent ?? "",
+		)
+	)
+		throw new Error(
+			`the notice speaks the app's own vocabulary again: ${alert.textContent}`,
+		);
+};
+
+/**
+ * The state where the notice is the ONLY thing on screen: a send is still on its
+ * way out, so there is no returned payload to look for and nothing to repair. The
+ * claims that matter are the register (muted - a fact, not a failure), the shape
+ * (one sentence) and the ABSENCE of controls, since both Retry and Clear would
+ * act on a message that is already out of the user's hands.
+ */
+const assertMutedNoticeAlone = async (canvasElement: HTMLElement) => {
+	const alert = canvasElement.querySelector('[role="alert"]');
+	if (!alert)
+		throw new Error(
+			"the send lock is not announced: the notice row is missing",
+		);
+	const text = alert.textContent ?? "";
+	if (!/still sending/i.test(text))
+		throw new Error(`the send lock no longer states the fact: ${text}`);
+	const controls = alert.querySelectorAll("button");
+	if (controls.length !== 0)
+		throw new Error(
+			`the send lock offers ${controls.length} control(s); a message that is already out of the user's hands has none`,
+		);
+	const muted = alert.querySelector(".text-ink-muted");
+	if (!muted)
+		throw new Error(
+			"the send lock is drawn as a failure again, so a fact reads as something to repair",
+		);
+};
+
+/** The two rules above, driven against the table the app itself reads. */
+export const NoticeCopyIsTheAppCopy: Story = {
+	render: () => (
+		<PendingSendHarness
+			row="none"
+			label="the notice's copy, from the one table"
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		const unknown = copyFor(new Error("network down"));
+		if (unknown.message !== SEND_FAILURE_COPY.unconfirmed)
+			throw new Error(
+				`an unclassifiable failure no longer reads from the table: ${unknown.message}`,
+			);
+		const deadline = copyFor(
+			new DesktopControlError(
+				504,
+				"twenty seconds of transport prose",
+				undefined,
+				DESKTOP_DEADLINE_EXCEEDED_CODE,
+			),
+		);
+		if (deadline.message === "twenty seconds of transport prose")
+			throw new Error(
+				"the transport's own timeout sentence is what the composer shows again",
+			);
 		releaseShutter();
 	},
 };

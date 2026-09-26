@@ -37,6 +37,15 @@ const bundle = await build({
 			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {isBlankTitle, resolveChatTitle, catalogueTitleUpdate, UNTITLED_CHAT} from "./src/renderer/src/features/chat/chat-title";',
 		resolveDir: process.cwd(),
 	},
+	/*
+	 * The renderer's aliases are tsconfig paths, not node resolutions. The send
+	 * store now imports the composer's own store at runtime (the one return path
+	 * for a failed payload), so a fixture that bundles it has to resolve this.
+	 */
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@features": "./src/renderer/src/features",
+	},
 	bundle: true,
 	format: "esm",
 	platform: "node",
@@ -70,7 +79,7 @@ export const desktopResult = request => globalThis.__canonicalRequest(request);`
 				);
 				builder.onLoad({ filter: /.*/, namespace: "echo-fixture" }, () => ({
 					contents:
-						"export const echoPendingUser = () => {};\nexport const retractPendingUser = () => {};\nexport const discardPendingEchoes = () => {};",
+						'export const echoPendingUser = () => {};\nexport const retractPendingUser = () => {};\nexport const retractLocalEcho = () => "retracted";\nexport const discardPendingEchoes = () => {};',
 					loader: "js",
 				}));
 			},
