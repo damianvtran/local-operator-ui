@@ -196,15 +196,20 @@ module sets, and the round-1 remediation carries its own two arms:
   policy case and F1's hook case fail (38/1 and 1/1), and against the fixed
   modules, where both pass.
 - Round 3's strict-reading arms (`unit-tests-round3-*.txt`): against
-  `0ed7c7efb`'s modules **39 pass / 3 fail** — the strict-reading cases
+  `0ed7c7efb`'s modules — the pre-strict-fix state review round 1 measured, NOT
+  today's `origin/main` — **39 pass / 3 fail**: the strict-reading cases
   ("a reversal inside one act does not refill the act's fetch budget"; "the
   budget refills when the quiet window opens a new act") plus round 1's F2
-  case (the follow-up case, "a downward notch that OPENS the act still refills
-  the budget", passes on `origin/main` by design — its module has no budget to
-  refuse); against this branch's modules **42/42** (hook suite 2/2, unchanged). The same sequence
-  driven through both builds in one process — up at the wall, then down/up
-  inside one act — prints `fetch` on `0ed7c7efb` and `none` here
-  (`unit-tests-round3-reversal-sequence.txt`).
+  case. The follow-up case ("a downward notch that OPENS the act still refills
+  the budget") passes there for a different reason than "no budget to refuse":
+  that module's down branch clears `actFetchSpent` unconditionally, so the
+  sequence the case pins cannot arise. Against today's `origin/main` blob
+  (`710dc3b7`), whose module has no `actFetchSpent` field at all, the same file
+  is **30 pass / 12 fail** — including the follow-up case, failing at its first
+  assertion; both arms are in `unit-tests-round3-prefix.txt`. Against this
+  branch's modules **42/42** (hook suite 2/2, unchanged). The sequences driven
+  through the policy builds in one process are in
+  `unit-tests-round3-reversal-sequence.txt`.
 - The strict fix does not move the readings above: no committed gesture contains
   a down input inside an act — every scenario's gesture is an upward wheel
   stream, and the rig's only down-wheel sits in the hold fixture, outside the
