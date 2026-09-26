@@ -301,6 +301,56 @@ test("a whitespace-only draft is not a row", () => {
 	);
 });
 
+test("a draft with an open claim keeps its row after the composer clears", () => {
+	/*
+	 * DESIGN REVIEW ROUND 1, D3. The composer clears at the press, and this row
+	 * used to clear with it - so the chat lost its only sidebar presence for the
+	 * whole create hop, and a create that died in that window left the
+	 * conversation unreachable from the list at all (UX round 1, U2). The claim's
+	 * own `submittedText` is the fallback: it is kept on the draft until the
+	 * claim resolves, so the row can name what is in flight.
+	 */
+	const rows = mod.untargetedDraftRows(
+		drafts([
+			[
+				"draft:inflight",
+				{ submittedText: "Summarise yesterday's Q3 numbers" },
+			],
+			["draft:typed", { submittedText: "the claim the hit sent" }],
+		]),
+		input([["draft:typed", "what the user is typing now"]]),
+	);
+	assert.deepEqual(
+		rows.map((row) => row.key),
+		["draft:typed", "draft:inflight"],
+		"insertion order reversed, as the module documents for the newest-last list",
+	);
+	assert.equal(
+		rows[1].label,
+		"Draft: Summarise yesterday's Q3 numbers",
+		"the cleared box's chat is still findable, under the text it sent",
+	);
+	assert.equal(
+		rows[1].text,
+		"Summarise yesterday's Q3 numbers",
+		"and the row carries the claim's text, not only its label",
+	);
+	assert.equal(
+		rows[0].label,
+		"Draft: what the user is typing now",
+		"the composer still wins while it holds text: the row tracks the typing",
+	);
+	// Once the claim resolves the session exists, so condition 1 refuses the row
+	// and nothing here can keep two rows for one conversation.
+	assert.deepEqual(
+		mod.untargetedDraftRows(
+			drafts([["draft:done", { sessionId: "s-1", submittedText: "sent" }]]),
+			input([]),
+		),
+		[],
+	);
+});
+
 test("the rows are newest-last in the store's own order, rendered reversed", () => {
 	const rows = mod.untargetedDraftRows(
 		drafts([
