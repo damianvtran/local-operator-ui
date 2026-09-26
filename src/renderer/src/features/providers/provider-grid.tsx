@@ -1,27 +1,48 @@
 /**
- * "Connect a provider" grid backed by the backend provider registry.
+ * Settings > Model providers, and the connect list onboarding and the connect
+ * dialog show: the registry census as two blocks rather than 18 cards.
  *
- * Replaces the Radient-vs-BYOK two-gate: Radient is one named card among the
- * registry rows, and every card states only the sign-in methods its registry
- * row actually supports. Order is the backend's registry order — stable across
- * renders so the card under the pointer never moves — with one exception: the
- * recommended row is promoted to the front of the UNFILTERED list and only
- * there, while its CUE travels with it into a filtered list (see
- * `RECOMMENDED_PROVIDER_ID`).
+ * ## Why a list and not a grid
  *
- * The search field is rendered with the list, always. It used to be gated behind
- * `rows.length > 6`, on the theory that a field over a three-row list is chrome
- * nobody asked for; the census is 18 rows and only grows, so that condition is
- * unreachable in the shipped app while its failure mode — a short registry
- * hiding the one control a reader scanning it wants — is not. Of the two, the
- * hidden field is the worse failure, and the surface this grid was modelled on
- * (`mcp-management-section.tsx`) renders its field with the list as well.
+ * The grid gave every provider the same card and the same "Needs sign-in"
+ * chip, kept a connected provider in registry position (Radient "Signed in"
+ * was card 15 of 18, below the fold), and mixed local runtimes into the cloud
+ * accounts (design D3, UX U4). The page now answers the question a reader
+ * comes with first -- what is connected, and which is the default -- in a
+ * "Connected" block, and groups the rest by WHERE model access comes from:
+ * a subscription, an API key, or this computer (design § 2, after Zed's
+ * grouping). Every row has exactly one action, named for what it does.
+ *
+ * Selecting a row expands its sign-in panel INLINE beneath it (design § 2,
+ * P1), one at a time, so the reader never loses the list or their place in it.
+ *
+ * ## What stays from the grid
+ *
+ * The recommendation rule (`recommendedProvider`, `visibleProviders`,
+ * `showsRecommendedCue`) and its tests are unchanged: the recommended row still
+ * leads while nothing is connected and drops its cue once it is. The search
+ * field stays with the list, always rendered (see the rationale that used to
+ * head this file: a short registry hiding the one control a scanning reader
+ * wants is the worse failure).
  */
 
+import { ConfigApi } from "@shared/api/local-operator/config-api";
 import type { DesktopProvider } from "@shared/api/local-operator/desktop-api";
+import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { useDesktopProviders } from "@shared/api/local-operator/desktop-hooks";
+import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
 import { Spinner } from "@shared/components/common/spinner";
-import { Alert, Badge, Button, Input } from "@shared/components/ui";
+import {
+	Alert,
+	Button,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+	Input,
+} from "@shared/components/ui";
+import { Disclosure } from "@shared/components/ui/disclosure";
 /*
  * The verdict is read through the composer callout's own module rather than a
  * query of this feature's: the chip and the callout share one cache entry for
@@ -37,17 +58,34 @@ import { useRadientLoginVerdict } from "@shared/hooks/use-radient-session-issue"
  * docblock. Importing the leaf keeps this feature out of that graph.
  */
 import { useRadientUserQuery } from "@shared/hooks/use-radient-user-query";
-import { cn } from "@shared/lib/utils";
-import { Search, X } from "lucide-react";
-import type { FC } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ProviderDetail } from "./provider-detail";
+import { showErrorToast } from "@shared/utils/toast-manager";
+import { useQueryClient } from "@tanstack/react-query";
+import { MoreHorizontal, Search, X } from "lucide-react";
+import type { FC, ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+	FEATURED_PROVIDER_IDS,
+	GROUP_HEADINGS,
+	type ProviderGroup,
+	RECOMMENDED_PROVIDER_ID,
+	addRowMeta,
+	addRowsByGroup,
+	brandOf,
+	connectedRowMeta,
+	connectedRows,
+	modelDisplayName,
+	monogramOf,
+	providerGroup,
+	rowActionLabel,
+} from "./provider-catalog";
+import { ProviderDetail, type ProviderDetailContext } from "./provider-detail";
+import {
+	type ProviderReadiness,
 	loginClaim,
 	providerLoadErrorMessage,
-	providerMethodLabel,
 	providerReadiness,
 } from "./provider-labels";
+import { CONFIG_QUERY_KEY, useDefaultModel } from "./use-provider-status";
 
 /**
  * The provider the first-run flow points a new user at.
@@ -65,7 +103,6 @@ import {
  * card, no second candidate to choose between, and the promoted row's own
  * primary method is the sign-in this recommendation is about.
  */
-const RECOMMENDED_PROVIDER_ID = "radient";
 
 /**
  * The line under the promoted card, and what it is allowed to claim.
@@ -187,35 +224,78 @@ export function visibleProviders(
 	return [rows[index], ...rows.slice(0, index), ...rows.slice(index + 1)];
 }
 
+/** The 32px tile: two letters on the elevated step (design § 2, P1 monograms). */
+const Monogram: FC<{ provider: DesktopProvider }> = ({ provider }) => (
+	<span
+		aria-hidden="true"
+		className="flex size-8 shrink-0 items-center justify-center rounded-md bg-elevated font-medium text-body-sm text-ink"
+	>
+		{monogramOf(brandOf(provider))}
+	</span>
+);
+
+/** A list container: the surface step, rows split by hairlines, no border. */
+const RowList: FC<{ children: ReactNode; label?: string }> = ({
+	children,
+	label,
+}) => (
+	<ul
+		aria-label={label}
+		className="flex flex-col divide-y divide-hairline overflow-hidden rounded-[14px] bg-surface"
+	>
+		{children}
+	</ul>
+);
+
 type ProviderGridProps = {
 	/** Called once any provider reports a stored credential. */
 	onConnected?: () => void;
 	/**
-	 * Provider to open in detail on mount. `/login <provider>` and the
-	 * sign-in picker deep-link here; the grid is otherwise the same surface
-	 * onboarding shows, so a provider's methods live in exactly one place.
+	 * Provider to open on mount. `/login <provider>` and the sign-in picker
+	 * deep-link here, so a provider's methods live in exactly one place.
 	 */
 	initialProviderId?: string | null;
+	/** Where the list is shown; decides only the success action's words. */
+	context?: ProviderDetailContext;
+	/**
+	 * Onboarding's shape: the featured rows first and everything else behind a
+	 * "More providers" disclosure, so the dialog does not scroll an 18-row list
+	 * inside itself (design D6).
+	 */
+	featuredOnly?: boolean;
+	/** Open the "More providers" disclosure on this group, e.g. `local`. */
+	focusGroup?: ProviderGroup | null;
+	/** Called from a success state's action ("Continue" / "Done"). */
+	onDone?: () => void;
+	/** Opens the model picker from a receipt's "Change". */
+	onChangeModel?: () => void;
 };
 
 export const ProviderGrid: FC<ProviderGridProps> = ({
 	onConnected,
 	initialProviderId = null,
+	context = "settings",
+	featuredOnly = false,
+	focusGroup = null,
+	onDone,
+	onChangeModel,
 }) => {
 	const providers = useDesktopProviders(true);
+	const { hosting, model } = useDefaultModel();
+	const queryClient = useQueryClient();
 	/*
 	 * The verdict on this machine's Radient sign-in, which is the one input that
 	 * can tell a credential ROW from a working sign-in (see `loginState`). Read
 	 * HERE rather than passed down, because the row's own facts cannot answer it:
-	 * the card is the surface that claims a sign-in, so it is the surface that
-	 * has to ask.
+	 * the row is the surface that claims a sign-in, so it is the surface that has
+	 * to ask.
 	 */
 	const login = useRadientLoginVerdict();
 	/*
 	 * The app's own answer about whether any Radient sign-in is stored, and
 	 * whether it could be asked at all. It is the second input `loginState` reads,
 	 * and the reason it exists is design round 1's D3: on a runtime whose route
-	 * predates `radient_login` there is no verdict at all, so without this the chip
+	 * predates `radient_login` there is no verdict at all, so without this the row
 	 * falls back to the credential ROW and the contradiction this change removes
 	 * comes back. See `loginState` for why only a `signed-out` answer from an
 	 * enabled read narrows it.
@@ -224,49 +304,187 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 	const [selectedId, setSelectedId] = useState<string | null>(
 		initialProviderId,
 	);
-	// A later deep link to a different provider re-selects; the same id is
-	// a no-op so the user's "Back to providers" is not undone by a re-render.
+	/*
+	 * One press, one navigation. The defer this used to carry (two animation frames)
+	 * was shorter than Radix's focus restore on a quick press, which is why "Change
+	 * model…" worked at 100 ms and did nothing at 0-40 ms: traced live, the
+	 * navigation happened at 36 ms, Radix put focus back on the menu's own trigger at
+	 * 38 ms, and the scroller snapped back at 47 ms (QA round 3 Q3-1, UX round 2
+	 * U2'). The restore is now refused at the menu (see its `onCloseAutoFocus`), so
+	 * the handler can run at once and land the user where they asked to go.
+	 */
+	const openModelSettings = useCallback(() => {
+		onChangeModel?.();
+		/*
+		 * And focus follows the view: the trigger is off-screen once the settings
+		 * scroll lands, so leaving focus on it is what made the keyboard path feel
+		 * broken too.
+		 */
+		requestAnimationFrame(() => {
+			const target = document.getElementById("model-settings");
+			target?.focus?.({ preventScroll: true });
+		});
+	}, [onChangeModel]);
+
+	// A later deep link to a different provider re-selects; the same id is a
+	// no-op so the reader's own collapse is not undone by a re-render.
 	useEffect(() => {
 		if (initialProviderId) setSelectedId(initialProviderId);
 	}, [initialProviderId]);
 	const [query, setQuery] = useState("");
+	const [confirmSignOut, setConfirmSignOut] = useState<string | null>(null);
 	const searchRef = useRef<HTMLInputElement>(null);
-	const cardRefs = useRef(new Map<string, HTMLButtonElement | null>());
+	/**
+	 * The grid itself, focusable as a last resort.
+	 *
+	 * A focus pass that finds nothing lands on `<body>`, which is not a place: the
+	 * user loses their position in the page they just changed (UX round 4 U18, round 5
+	 * U20). The container always exists, so the fallback chain always has an answer.
+	 */
+	const gridRef = useRef<HTMLDivElement>(null);
+	const rowButtons = useRef(new Map<string, HTMLButtonElement | null>());
 
 	const rows = useMemo(() => providers.data ?? [], [providers.data]);
-	/*
-	 * The promotion, decided once and used twice: `recommended` is the row the
-	 * suggestion is about (null once it is signed in, or when the census does not
-	 * carry it), the CUE is that row's identity wherever it appears in the list,
-	 * and the PIN is `visibleProviders` acting on it for an unfiltered list.
-	 */
-	const recommended = useMemo(() => recommendedProvider(rows), [rows]);
-	const recommendedId = recommended?.id ?? null;
-	const ordered = useMemo(
-		() => visibleProviders(rows, query, recommendedId),
-		[rows, query, recommendedId],
+	const connected = useMemo(
+		() => connectedRows(rows, hosting),
+		[rows, hosting],
 	);
+	const groups = useMemo(
+		() => addRowsByGroup(rows, hosting, query),
+		[rows, hosting, query],
+	);
+	const recommendedId = recommendedProvider(rows)?.id ?? null;
 
 	/*
-	 * Where focus goes when the control that held it unmounts.
-	 *
-	 * Radix's focus scope parks focus on the dialog container when the focused
-	 * element disappears, so a keyboard user who opens a provider and comes back
-	 * is returned to the TOP of the dialog: measured, 7-8 Tab presses to get back
-	 * to the field or the card they came from (UX round 1, U1), with `Clear
-	 * search` failing the same way (U4). The grid knows which row the reader was
-	 * on -- `selectedId` is in its own state -- so it hands focus back itself
-	 * rather than leaving it to the focus scope. The fallback is the search field,
-	 * which is the other control the reader could have been using and the one the
-	 * list is filtered by.
+	 * Focus returns to the row's own button when its panel collapses, so a
+	 * keyboard reader lands where they left (the grid's UX round 1, U1, which
+	 * this list inherits).
 	 */
 	const [focusRow, setFocusRow] = useState<string | null>(null);
 	useEffect(() => {
-		if (selectedId !== null || focusRow === null) return;
-		const target = cardRefs.current.get(focusRow) ?? searchRef.current;
+		if (focusRow === null) return;
+		/*
+		 * A DETACHED TARGET IS NOT A TARGET. The destructive arm sets this intent in the
+		 * same tick as the refetch that moves the row out of the Connected list, so the
+		 * registered element is still the OLD row's control -- unmounted, truthy, and
+		 * `focus()` on it does nothing, which is why focus landed on `<body>` after a
+		 * sign-out even with the fallbacks added (review round 6, minor; UX round 5, U20).
+		 * Each candidate has to still be in the document for the chain to mean anything.
+		 */
+		const live = (element: HTMLElement | null | undefined) =>
+			element?.isConnected ? element : null;
+		const target =
+			live(rowButtons.current.get(focusRow)) ??
+			live(searchRef.current) ??
+			/* The surface itself, which is always mounted while this effect can run. */
+			live(gridRef.current);
 		setFocusRow(null);
 		target?.focus();
-	}, [selectedId, focusRow]);
+	}, [focusRow]);
+
+	/*
+	 * The row the user acted on MOVES into "Connected" when its credential lands,
+	 * and in a scrolled dialog or settings page that move carried the receipt off
+	 * screen: the success moment this PR designs happened out of view, and the
+	 * dialog looked as though nothing had happened (UX round 1 U3). The view
+	 * follows the row rather than the row staying put, which keeps "Connected" one
+	 * block. `nearest` is deliberate: a row already on screen does not move.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `connected.length` is the trigger, not a value the body reads - the selected row changes list (and position) when its credential lands while `selectedId` stays the same, so without it the effect never re-runs for the move this scroll exists to follow.
+	useEffect(() => {
+		if (selectedId === null) return;
+		rowButtons.current.get(selectedId)?.closest("li")?.scrollIntoView({
+			block: "nearest",
+		});
+	}, [selectedId, connected.length]);
+
+	const toggle = (id: string) => {
+		if (selectedId === id) {
+			setSelectedId(null);
+			setFocusRow(id);
+		} else {
+			setSelectedId(id);
+		}
+	};
+	const collapse = () => {
+		const id = selectedId;
+		setSelectedId(null);
+		if (id) setFocusRow(id);
+		onDone?.();
+	};
+	/*
+	 * ESCAPE CLOSES AN OPEN PANEL. It did not: the only way out of a Connected row's
+	 * panel was to navigate away and back, and Escape did nothing at all (UX round 4,
+	 * U15). Events that a menu, dialog or popover already handled are left alone, so
+	 * Escape inside the overflow menu or a confirm still belongs to that surface.
+	 */
+	useEffect(() => {
+		if (selectedId === null) return undefined;
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.key !== "Escape" || event.defaultPrevented) return;
+			const target = event.target as HTMLElement | null;
+			if (target?.closest('[role="menu"], [role="dialog"], [role="listbox"]')) {
+				return;
+			}
+			collapse();
+		};
+		document.addEventListener("keydown", onKeyDown);
+		return () => document.removeEventListener("keydown", onKeyDown);
+	});
+
+	const refresh = () => {
+		void queryClient.invalidateQueries({ queryKey: desktopKeys.providers });
+		void queryClient.invalidateQueries({ queryKey: CONFIG_QUERY_KEY });
+	};
+
+	const makeDefault = async (provider: DesktopProvider) => {
+		const suggestion = provider.suggested_model;
+		try {
+			await ConfigApi.updateConfig("", {
+				hosting: provider.id,
+				// The provider's own suggestion when the backend states one; an
+				// empty model otherwise, which the backend resolves to that
+				// provider's default rather than keeping another provider's id.
+				model_name: suggestion?.id ?? "",
+			});
+			refresh();
+		} catch (error) {
+			showErrorToast(
+				error instanceof Error ? error.message : "The default was not changed.",
+			);
+		}
+	};
+
+	const signOut = async (provider: DesktopProvider) => {
+		setConfirmSignOut(null);
+		try {
+			await desktopResult({ op: "auth.logout", provider: provider.id });
+			/*
+			 * AWAITED, so the row has moved before the focus intent below is read: a
+			 * fire-and-forget refetch let the intent be set against the row that was about
+			 * to unmount (review round 6, minor).
+			 */
+			await queryClient.invalidateQueries({
+				queryKey: desktopKeys.providers,
+			});
+			onConnected?.();
+		} catch (error) {
+			showErrorToast(
+				error instanceof Error ? error.message : "Sign-out did not complete.",
+			);
+		} finally {
+			/*
+			 * THE ROW KEEPS THE USER'S PLACE. The confirm replaced the row's own
+			 * control, so when it closed, focus fell to `<body>` and a keyboard user
+			 * was dropped at the top of the page they had just changed -- the same
+			 * destination loss the dialog's Continue has (UX round 4, U18, folding the
+			 * deferred U6 into the destructive arm it belongs with). The row's control
+			 * is still mounted, so focus goes there either way, and the sign-out arm
+			 * leaves a row whose label says what to do next.
+			 */
+			setFocusRow(provider.id);
+		}
+	};
 
 	if (providers.isLoading) {
 		return (
@@ -304,317 +522,435 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 	}
 
 	/*
-	 * NO VERDICT GATE ON THE LIST, deliberately (design round 4, D12 and D14).
-	 * Design round 1's D6 -- a green "Signed in" painted for 72-193 ms on a
-	 * refused machine and then corrected -- used to be closed here by holding the
-	 * whole card list until the verdict's first answer. That held the wrong
-	 * surface: a verdict route that never answers kept 18 cards behind "Loading
-	 * providers" for the transport's 20 s deadline (D14), and a route that FAILED
-	 * released the hold onto a claim the account read had not yet supported (D12:
-	 * green for 2,493 ms, then corrected). The only thing either read decides is
-	 * the Radient row's claim, so the claim is what waits: `loginClaim` answers
-	 * `null` until a read that can support it has answered, and the card renders
-	 * no claim for that window (see the chip below).
+	 * `readiness` is the CONNECTED row's verdict, handed down so the panel cannot
+	 * answer the row: a panel that derived its own read could say "Signed in to
+	 * Radient" directly under a row saying "Needs sign-in" (QA round 4, Q4-2). Add
+	 * rows pass nothing, and the panel derives its own read as before.
 	 */
-	const selected = rows.find((provider) => provider.id === selectedId) ?? null;
+	const panelFor = (
+		provider: DesktopProvider,
+		readiness?: ProviderReadiness | null,
+	) =>
+		selectedId === provider.id ? (
+			<div className="border-hairline border-t bg-surface px-4 py-4">
+				<ProviderDetail
+					provider={provider}
+					onConnected={onConnected}
+					onDone={collapse}
+					onChangeModel={onChangeModel}
+					context={context}
+					readiness={readiness}
+				/>
+			</div>
+		) : null;
 
-	if (selected) {
+	const addRow = (provider: DesktopProvider) => {
+		const isRecommended = showsRecommendedCue(provider.id, recommendedId);
+		const suggestion = provider.suggested_model?.name;
+		const open = selectedId === provider.id;
 		return (
-			<div className="flex flex-col gap-4">
-				<div className="flex items-center gap-3">
+			<li key={provider.id} data-provider-id={provider.id}>
+				<div className="flex min-h-14 items-center gap-3 px-4 py-2">
+					<Monogram provider={provider} />
+					<div className="flex min-w-0 flex-1 flex-col">
+						<span className="flex flex-wrap items-baseline gap-x-2 text-body text-ink">
+							{brandOf(provider)}
+							{isRecommended ? (
+								<span className="font-medium text-ink text-meta">
+									Recommended
+								</span>
+							) : null}
+						</span>
+						<span className="text-ink-muted text-meta">
+							{isRecommended ? RECOMMENDED_REASON : addRowMeta(provider)}
+							{suggestion ? (
+								<span className="text-ink-dim"> · Suggests {suggestion}</span>
+							) : null}
+						</span>
+					</div>
 					<Button
-						variant="ghost"
-						size="sm"
-						onClick={() => {
-							/*
-							 * Name the row on the way out: the card that opened this view is the
-							 * one the reader comes back to, and the effect above hands focus to it
-							 * once the list is mounted again.
-							 */
-							setFocusRow(selectedId);
-							setSelectedId(null);
+						/*
+						 * ADD ROWS REGISTER TOO. The focus pass below restores the user's place
+						 * to "the row's own control", and after a sign-out the row the user
+						 * acted on IS an add row: it stopped registering, and with no search
+						 * field on the settings surface both fallbacks were undefined, so the
+						 * destructive arm dropped focus on `<body>` (UX round 5, U20).
+						 */
+						ref={(element) => {
+							rowButtons.current.set(provider.id, element);
 						}}
+						/*
+						 * The accent is spent once in this block, on the recommendation --
+						 * but only while the recommendation is genuinely the next action.
+						 * Once another row's panel is open, or a provider is already
+						 * connected, the real next action is in that panel and the promoted
+						 * row competed with it: two accent-filled primaries in one small
+						 * dialog (design round 1 D2). The "Recommended" label stays.
+						 */
+						variant={
+							isRecommended &&
+							!open &&
+							selectedId === null &&
+							connected.length === 0
+								? "primary"
+								: "secondary"
+						}
+						size="sm"
+						aria-expanded={open}
+						aria-label={`${open ? "Close" : rowActionLabel(provider)}: ${brandOf(provider)}`}
+						onClick={() => toggle(provider.id)}
 					>
-						Back to providers
+						{open ? "Close" : rowActionLabel(provider)}
 					</Button>
-					<h3 className="text-heading text-ink">{selected.name}</h3>
 				</div>
-				<ProviderDetail provider={selected} onConnected={onConnected} />
+				{panelFor(provider)}
+			</li>
+		);
+	};
+
+	const connectedRow = (provider: DesktopProvider) => {
+		const isDefault = provider.id === hosting;
+		const modelName = isDefault
+			? modelDisplayName(provider, model)
+			: (provider.suggested_model?.name ?? null);
+		const open = selectedId === provider.id;
+		/*
+		 * THE ROW'S CLAIM GOES THROUGH THE VERDICT, NOT THE CREDENTIAL ROW (#426;
+		 * UX U1 on the chat session-issue PR). `isConnectedRow` puts a provider here
+		 * from `has_credential || configured`, and a grant Radient has stopped
+		 * accepting keeps both, so a row that read its own census would say
+		 * "Signed in" for a sign-in that is dead -- which is exactly what the chip
+		 * on the card grid used to do, one screen from a composer saying the sign-in
+		 * needed re-authentication.
+		 *
+		 * `loginClaim` answers `null` until a read that can support a claim has
+		 * answered, and the label is `providerReadiness`' own words, so this row, the
+		 * provider panel and the composer callout cannot spell one verdict two ways.
+		 *
+		 * THE CLAIM WAITS; THE LIST DOES NOT (design round 4, D12 and D14, whose
+		 * rationale moves here with the claim it is about). Design round 1's D6 -- a
+		 * green "Signed in" painted for 72-193 ms on a refused machine and then
+		 * corrected -- used to be closed by holding the whole card list until the
+		 * verdict's first answer. That held the wrong surface: a verdict route that
+		 * never answers kept 18 cards behind "Loading providers" for the transport's
+		 * 20 s deadline (D14), and a route that FAILED released the hold onto a claim
+		 * the account read had not yet supported (D12: green for 2,493 ms, then
+		 * corrected). The only thing either read decides is the Radient row's claim,
+		 * so the claim is the only thing that waits.
+		 */
+		const claim = loginClaim(provider.id, login, { accountRead, unavailable });
+		const readiness =
+			claim === null ? null : providerReadiness(provider, claim);
+		const meta = connectedRowMeta(
+			provider,
+			modelName,
+			readiness?.label ?? null,
+		);
+		return (
+			<li key={provider.id} data-provider-id={provider.id}>
+				<div className="flex min-h-14 items-center gap-3 px-4 py-2">
+					<Monogram provider={provider} />
+					<div className="flex min-w-0 flex-1 flex-col">
+						<span className="text-body text-ink">{brandOf(provider)}</span>
+						{/*
+						 * The claim is this line's first word, and it carries the three
+						 * things the chip carried before it (design round 1, D2): the long form
+						 * on `title`, so a refusal's own sentence is still reachable where the
+						 * short label had to be; the withheld state as `data-claim`, so a rig
+						 * can tell a claim that has not arrived from a row that is not there;
+						 * and the LINE itself, kept when there is no claim to make.
+						 *
+						 * WHY THE LINE IS KEPT RATHER THAN DROPPED: the claim lands in it
+						 * moments later, and a row whose name moves when it does reads as the
+						 * correction D6 removed. The non-breaking space states nothing and
+						 * paints nothing, and the row is `min-h-14`, so the geometry is the
+						 * same in every window.
+						 */}
+						<span
+							/*
+							 * THE CLAIM CARRIES ITS TONE WHERE THE TONE SAYS SOMETHING: a
+							 * refusal keeps the warning ink the badge used to carry, so a dead
+							 * sign-in is not one more quiet grey line (UX round 4, U16; design
+							 * round 4, D14) -- and every other verdict stays in the row's own
+							 * register. `success` is NOT painted here: `loginClaim` answers
+							 * `working` for every provider that is not Radient, so a success
+							 * ink on this line paints all 18 healthy rows green and spends the
+							 * status colour on the state the user already expects. Measured
+							 * against the committed frame: that mistake moved 3.9% of the
+							 * connected list's pixels, and this version of the line is
+							 * byte-identical to it.
+							 */
+							className={`truncate text-meta ${
+								readiness?.tone === "attention"
+									? "text-warning"
+									: "text-ink-muted"
+							}`}
+							title={readiness?.detail}
+							data-claim={claim === null ? "withheld" : undefined}
+							data-claim-tone={readiness?.tone}
+						>
+							{meta ?? "\u00a0"}
+						</span>
+					</div>
+					{/*
+					 * A plain label, not a bordered one: `border-control` is the boundary
+					 * of things you can press, and the bordered chip measured the same
+					 * height and radius as the row's own secondary button, so on the
+					 * Connected row it read as a clickable "Default" control next to the
+					 * overflow (design round 1 D3, UX N5).
+					 */}
+					{isDefault ? (
+						<span className="text-ink-muted text-meta">Default</span>
+					) : null}
+					{confirmSignOut === provider.id ? (
+						<div className="flex items-center gap-2">
+							<span className="text-body-sm text-ink">
+								Sign out of {brandOf(provider)}?
+							</span>
+							<Button
+								variant="danger"
+								size="sm"
+								onClick={() => void signOut(provider)}
+							>
+								Sign out
+							</Button>
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => {
+									setConfirmSignOut(null);
+									setFocusRow(provider.id);
+								}}
+							>
+								Keep
+							</Button>
+						</div>
+					) : (
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button
+									ref={(element) => {
+										rowButtons.current.set(provider.id, element);
+									}}
+									variant="ghost"
+									size="icon-sm"
+									/*
+									 * THE CONTROL SHOWS THAT ITS PANEL IS OPEN. Every add row in this
+									 * grid puts a bordered "Close" in this slot while open, and this
+									 * row -- whose only control is the menu -- said nothing: the
+									 * verdict was in `aria-expanded` alone, which a sighted user
+									 * cannot read (design round 5, D1). The fill is the same colour
+									 * step a hover takes, held while the panel is open.
+									 *
+									 * THE INK STEPS WITH IT (design round 6, D1). The fill was added
+									 * without moving the ink, so the glyph rode on `borderControl` in
+									 * the ghost button's own `text-ink-muted` -- 59/59 palettes below
+									 * the 3:1 floor for a graphic object (2.19:1 by token, 2.02:1 in
+									 * the rendered frame). `text-ink` is not enough either (30/59,
+									 * worst 1.87:1); `on-accent` clears the floor everywhere (worst
+									 * 3.53:1), and the row below in `contrast-contract.mjs` keeps it
+									 * that way.
+									 */
+									className={open ? "bg-control text-on-accent" : undefined}
+									aria-expanded={open}
+									aria-label={`Manage ${brandOf(provider)}`}
+								>
+									<MoreHorizontal aria-hidden="true" />
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent
+								align="end"
+								/*
+								 * Radix restores focus to the trigger as the menu closes, and a
+								 * focus() call scrolls its target into view -- cancelling the
+								 * scroll the item below starts, on exactly the quick presses a
+								 * trackpad makes. The restore is skipped; the item's handler
+								 * moves focus where the user is being sent instead.
+								 */
+								onCloseAutoFocus={(event) => event.preventDefault()}
+							>
+								{!isDefault ? (
+									<DropdownMenuItem onSelect={() => void makeDefault(provider)}>
+										Make default
+									</DropdownMenuItem>
+								) : null}
+								{isDefault && onChangeModel ? (
+									<DropdownMenuItem
+										/*
+										 * BOTH events, one press. Radix fires `onSelect` from its own
+										 * key and pointer paths; a quick trackpad tap -- measured at
+										 * under 60 ms, which is what tap-to-click is -- reached
+										 * neither, so "Change model…" did nothing in five of six
+										 * tries while a 100 ms press worked six of six (UX round 2
+										 * U2'). The handler is deferred by two frames either way,
+										 * because Radix restores focus to the menu's trigger as the
+										 * menu closes and a focus() call scrolls its target into
+										 * view, cancelling the smooth scroll this press starts (UX
+										 * round 1 U2). A ref keeps the pair from navigating twice.
+										 */
+										onClick={() => openModelSettings()}
+										onSelect={() => openModelSettings()}
+									>
+										Change model…
+									</DropdownMenuItem>
+								) : null}
+								{/*
+								 * THE ITEM THAT OPENS THE PANEL CLOSES IT AGAIN. Every add row's
+								 * own control toggles and reads "Close" while open; this row's
+								 * only control is this menu, and it set the id without a way
+								 * back -- so a Connected row's panel could not be dismissed in
+								 * place, Escape included, and the only exit was navigating away
+								 * (UX round 4, U15; review round 4, R4-M1).
+								 */}
+								<DropdownMenuItem
+									onSelect={() => toggle(provider.id)}
+									data-panel-toggle={provider.id}
+								>
+									{open
+										? "Close"
+										: !provider.local
+											? providerGroup(provider) === "key"
+												? "Replace key…"
+												: "Sign in again…"
+											: "Check connection"}
+								</DropdownMenuItem>
+								{!provider.local && provider.stored_credentials > 0 ? (
+									<>
+										<DropdownMenuSeparator />
+										<DropdownMenuItem
+											destructive
+											onSelect={() => setConfirmSignOut(provider.id)}
+										>
+											Sign out…
+										</DropdownMenuItem>
+									</>
+								) : null}
+							</DropdownMenuContent>
+						</DropdownMenu>
+					)}
+				</div>
+				{open ? panelFor(provider, readiness) : null}
+			</li>
+		);
+	};
+
+	const groupOrder: ProviderGroup[] = ["subscription", "key", "local"];
+	const nothingMatches = groupOrder.every(
+		(group) => groups[group].length === 0,
+	);
+
+	const searchField = (
+		<div className="relative w-full sm:w-64">
+			<Search
+				size={16}
+				className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-dim"
+				aria-hidden="true"
+			/>
+			<Input
+				ref={searchRef}
+				value={query}
+				onChange={(event) => setQuery(event.target.value)}
+				placeholder="Search providers"
+				aria-label="Search providers"
+				className="pl-9"
+			/>
+		</div>
+	);
+
+	const groupedBlocks = nothingMatches ? (
+		<div className="flex flex-col items-center gap-2 py-6 text-center">
+			<p className="text-body-sm text-ink-muted">
+				No providers match this search.
+			</p>
+			{/* Clear search restores the list and hands the field back: a reader
+			    who cleared a query is about to type another (UX round 1, U4). */}
+			<Button
+				variant="secondary"
+				size="sm"
+				onClick={() => {
+					setQuery("");
+					searchRef.current?.focus();
+				}}
+			>
+				<X aria-hidden="true" />
+				Clear search
+			</Button>
+		</div>
+	) : (
+		groupOrder.map((group) =>
+			groups[group].length > 0 ? (
+				<div key={group} className="flex flex-col gap-2">
+					<h4 className="text-ink-dim text-meta">{GROUP_HEADINGS[group]}</h4>
+					<RowList label={GROUP_HEADINGS[group]}>
+						{groups[group].map(addRow)}
+					</RowList>
+				</div>
+			) : null,
+		)
+	);
+
+	if (featuredOnly) {
+		const featured = FEATURED_PROVIDER_IDS.map((id) =>
+			rows.find((provider) => provider.id === id),
+		).filter(
+			(provider): provider is DesktopProvider =>
+				provider !== undefined &&
+				!connected.some((row) => row.id === provider.id),
+		);
+		return (
+			<div
+				ref={gridRef}
+				tabIndex={-1}
+				className="flex flex-col gap-4"
+				data-provider-grid=""
+			>
+				{connected.length > 0 ? (
+					<RowList label="Connected">{connected.map(connectedRow)}</RowList>
+				) : null}
+				{featured.length > 0 ? (
+					<RowList label="Suggested providers">{featured.map(addRow)}</RowList>
+				) : null}
+				<Disclosure
+					summary="More providers"
+					defaultOpen={focusGroup !== null || initialProviderId !== null}
+					chevron="trailing"
+				>
+					<div className="flex flex-col gap-4 pt-3">
+						{searchField}
+						{groupedBlocks}
+					</div>
+				</Disclosure>
 			</div>
 		);
 	}
 
 	return (
-		<div className="flex flex-col gap-4">
-			{/*
-			 * Rendered with the list, never gated on its length (see this file's
-			 * header). `sr-only`-style hiding is deliberately not used as a middle
-			 * way: a field a reader cannot see is a field they cannot use, and the
-			 * keyboard path to it would still be a tab stop that looks like nothing.
-			 *
-			 * Nothing here binds a key of its own. The dialog that hosts this step
-			 * focuses its own body on open so the arrow keys scroll it
-			 * (`onboarding-dialog.tsx`), and a global shortcut on this field -- `/`,
-			 * which the composer already spends on slash commands -- would both
-			 * fight that protocol and give one character two meanings in one app.
-			 * The field is the first tab stop in the grid instead.
-			 */}
-			<div className="relative">
-				<Search
-					size={16}
-					className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-dim"
-					aria-hidden="true"
-				/>
-				<Input
-					ref={searchRef}
-					value={query}
-					onChange={(event) => setQuery(event.target.value)}
-					placeholder="Search providers"
-					aria-label="Search providers"
-					className="pl-9"
-				/>
-			</div>
-
-			{ordered.length === 0 ? (
-				<div className="flex flex-col items-center gap-2 py-6 text-center">
-					<p className="text-body-sm text-ink-muted">
-						No providers match this search.
-					</p>
-					{/* An empty result is a dead end of the user's own making; Clear
-					    search restores the list rather than re-asking the backend -- and
-					    hands the field back, because a reader who cleared a query is a
-					    reader about to type another one. Without that, Radix's focus
-					    scope takes the unmounted button's focus to the dialog container and
-					    the field is 7 Tab presses away (UX round 1, U4). */}
-					<Button
-						variant="secondary"
-						size="sm"
-						onClick={() => {
-							setQuery("");
-							searchRef.current?.focus();
-						}}
-					>
-						<X aria-hidden="true" />
-						Clear search
-					</Button>
-				</div>
-			) : (
-				<ul
-					/*
-					 * A hook for a HARNESS rather than for the app, in the same family as
-					 * `[data-onboarding-modal]` in `onboarding-dialog.tsx`. The provider-setup
-					 * stories measure this element -- its container width, the column count the
-					 * browser resolved, and any scroll it carries -- and print the numbers
-					 * beside the frame. Nothing styles or sizes it.
-					 */
-					data-provider-grid=""
-					/*
-					 * COLUMNS FROM THE CONTAINER, not from the window.
-					 *
-					 * This grid ships in two boxes of different widths -- the Settings
-					 * column (896px, `max-w-4xl`) and the onboarding dialog's own body --
-					 * and the old `grid-cols-1 sm:grid-cols-2` asked the WINDOW how wide
-					 * they were, so both surfaces got two columns at every window size and
-					 * the wider dialog would have gained nothing. `auto-fill` with a
-					 * 17.5rem floor is the same rule `agent-hub-page.tsx` uses for its own
-					 * card grid, and it resolves to three columns at 896px, two below
-					 * ~572px and one when the box is narrower than a card.
-					 *
-					 * `min(17.5rem, 100%)` rather than a bare floor is what keeps the
-					 * narrowest case from overflowing: a track can never be asked for more
-					 * room than its own container has, so a 250px box renders one 250px
-					 * card rather than a 280px card and a horizontal scrollbar.
-					 */
-					className="grid grid-cols-[repeat(auto-fill,minmax(min(17.5rem,100%),1fr))] gap-3"
+		<div
+			ref={gridRef}
+			tabIndex={-1}
+			className="flex flex-col gap-6"
+			data-provider-grid=""
+		>
+			{connected.length > 0 ? (
+				<section
+					className="flex flex-col gap-2"
+					aria-labelledby="providers-connected"
 				>
-					{ordered.map((provider) => {
-						const claim = loginClaim(provider.id, login, {
-							accountRead,
-							unavailable,
-						});
-						const readiness =
-							claim === null ? null : providerReadiness(provider, claim);
-						const isRecommended = showsRecommendedCue(
-							provider.id,
-							recommendedId,
-						);
-						return (
-							/*
-							 * The row's own id, so a rig can point at ONE card: the promoted
-							 * card's hover and focus states are evidence a selector has to name,
-							 * not a position it has to count to.
-							 */
-							<li key={provider.id} data-provider-id={provider.id}>
-								<button
-									type="button"
-									ref={(element) => {
-										/*
-										 * Kept so the list can hand focus back to the card the reader came
-										 * from; see `focusRow` above. A row that leaves the filtered list
-										 * unmounts and clears its own entry, which is what makes the
-										 * fallback real rather than defensive.
-										 */
-										cardRefs.current.set(provider.id, element);
-									}}
-									onClick={() => setSelectedId(provider.id)}
-									className={cn(
-										/*
-										 * A card is a FRAME, so it takes the frame radius. The radius it
-										 * used to carry was `rounded-md`, which is 10px on this tree (the
-										 * step `styles/index.css` gives the tabs track), not the 6px a
-										 * control takes -- so this is a fix rather than a preference:
-										 * `rounded-lg` is 14px, the step branding § 5 assigns to cards.
-										 * The boundary stays `border-control` and not `hairline`: it is
-										 * the card's only edge and the entire card is the control.
-										 *
-										 * `h-full` because the cards in a row are one set: a row is as tall
-										 * as its tallest card -- the promoted one, which carries a reason
-										 * line -- and without it the neighbours would end their own boxes
-										 * early and the row would read as three cards of three heights.
-										 * The grid supplies the equal height; this is what lets the
-										 * button inside it accept it.
-										 *
-										 * THE COST OF THAT, NAMED RATHER THAN LEFT AS A SIDE EFFECT
-										 * (design round 1, D2): the promoted row measures 134px against
-										 * 105-107px for every other row, and the two plain cards beside it
-										 * carry the difference as ~40px of empty space under their method
-										 * line instead of the 14px a row-2 card has. One taller card and
-										 * two generously-spaced neighbours is the deliberate trade: the
-										 * alternatives are a ragged first row (worse, and it is the defect
-										 * the four-line composition exists to avoid) or folding the reason
-										 * into the method line, which wraps at 290px and costs the same
-										 * height anyway.
-										 */
-										"flex h-full w-full flex-col gap-2 rounded-lg border border-control bg-surface p-4 text-left",
-										"transition-colors duration-base ease-out-quart hover:bg-row-hover",
-									)}
-								>
-									{/*
-									 * Name above badge, always, with the promotion cue
-									 * joining the NAME's row -- and the history here is
-									 * why it may.
-									 *
-									 * The name and the badge used to share one row with
-									 * `justify-between`; the badge is `shrink-0
-									 * whitespace-nowrap` by contract and the name had no
-									 * `min-w-0`, so on a ~230px card (two columns in
-									 * the 560px dialog) the two fought for the line -- the
-									 * name ran under the badge and the badge clipped at
-									 * the card edge. Wrapping only when needed left a grid
-									 * where neighbouring cards differed in layout, so every
-									 * card stacks the same way and the columns stay
-									 * aligned. 4px between the rows is the
-									 * within-component tier; the 8px card gap separates
-									 * the method line.
-									 *
-									 * The cue is not that badge. It is a word on the name's
-									 * own baseline, wrapping under the name if it ever has
-									 * to, so the collision the note above describes cannot
-									 * come back: the two elements that fought were a
-									 * wrapping NAME and a nowrap BADGE in one line, and
-									 * this is two wrapping pieces of text in a `flex-wrap`
-									 * row sized to the promoted card alone.
-									 */}
-									<span className="flex flex-col items-start gap-1">
-										<span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-											<span className="min-w-0 text-body text-ink">
-												{provider.name}
-											</span>
-											{isRecommended && (
-												<>
-													{/*
-													 * The cue, in the register this app already uses
-													 * for "this option is the one we suggest": WORDS at
-													 * `ink` and `font-medium`, not a coloured chip.
-													 * `ask-options.tsx` is the precedent, and the reasoning
-													 * there holds here: the accent is already spent on this
-													 * screen's primary action and on its own progress track,
-													 * and § 2's budget is three spends per screen.
-													 */}
-													{/*
-													 * The `·` is what keeps the row from reading as one
-													 * string: the name and the cue share a baseline and an
-													 * ink, so without a separator the line is read as
-													 * "Radient Recommended" (design round 1, D5). It is
-													 * the app's own separator, from the transcript's
-													 * `never sent · N composed`; `aria-hidden` because a
-													 * screen reader announcing a punctuation mark would
-													 * read it as content.
-													 */}
-													<span
-														aria-hidden="true"
-														className="shrink-0 text-ink-dim text-meta"
-													>
-														·
-													</span>
-													<span className="shrink-0 font-medium text-ink text-meta">
-														Recommended
-													</span>
-												</>
-											)}
-										</span>
-										{/* States the credential fact, which this census actually
-									    knows. It used to render `configured` as "Connected",
-									    asserting a reachability nothing had checked. */}
-										{readiness ? (
-											<Badge variant={readiness.tone} title={readiness.detail}>
-												{readiness.label}
-											</Badge>
-										) : (
-											/*
-											 * The WITHHELD claim (`loginClaim` answered `null`): no
-											 * reading has answered yet that could support one, and
-											 * any label here would be a guess -- "Signed in" is the
-											 * D12 claim-then-correct, and "Needs sign-in" would send a
-											 * healthy machine to a sign-in it does not need.
-											 *
-											 * The chip's LINE is kept rather than dropped, because the
-											 * claim lands in it moments later: without the slot the
-											 * method line below would jump by a chip's height when it
-											 * does, and a card whose text moves on arrival reads as
-											 * the correction D6 removed. It is the same Badge, so the
-											 * slot is the chip's own height, `invisible` so it paints
-											 * nothing, and `aria-hidden` with no words so it states
-											 * nothing to a screen reader either. The data attribute
-											 * is for rigs, which otherwise cannot tell a withheld
-											 * claim from a missing card.
-											 */
-											<Badge
-												variant="neutral"
-												className="invisible"
-												aria-hidden="true"
-												data-claim="withheld"
-											>
-												{"\u00a0"}
-											</Badge>
-										)}
-										{/*
-										 * The reason the promoted card is promoted: the line
-										 * after the credential fact, before the method.
-										 *
-										 * It used to sit last at `ink-muted`, which made it the
-										 * card's second-loudest stop -- above the two facts the
-										 * card exists to state -- and put the justification below
-										 * the method line it was arguing for (design round 1, D3;
-										 * UX round 1, U7). It is `ink-dim` now, the method
-										 * line's own register, and above it: state, then why,
-										 * then how.
-										 */}
-										{isRecommended && (
-											<span className="text-ink-dim text-meta">
-												{RECOMMENDED_REASON}
-											</span>
-										)}
-									</span>
-									<span className="text-meta text-ink-dim">
-										{providerMethodLabel(provider.auth_methods, provider.local)}
-									</span>
-								</button>
-							</li>
-						);
-					})}
-				</ul>
-			)}
+					<h3 id="providers-connected" className="text-heading text-ink">
+						Connected
+					</h3>
+					<RowList>{connected.map(connectedRow)}</RowList>
+				</section>
+			) : null}
+			<section className="flex flex-col gap-3" aria-labelledby="providers-add">
+				<div className="flex flex-wrap items-center justify-between gap-3">
+					<h3 id="providers-add" className="text-heading text-ink">
+						{connected.length > 0 ? "Add a provider" : "Connect a provider"}
+					</h3>
+					{searchField}
+				</div>
+				{groupedBlocks}
+			</section>
 		</div>
 	);
 };

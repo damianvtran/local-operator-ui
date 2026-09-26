@@ -737,6 +737,32 @@ function buildPaletteActions({
 					},
 				]
 			: []),
+		/*
+		 * Connecting a provider is the first thing a new install needs and the
+		 * palette is where a keyboard user looks for it (design audit section 6).
+		 * It opens the connect dialog over the current page rather than routing
+		 * to Settings, so the chat the user is in survives. The "login" synonyms
+		 * that already route to the Providers section row stay there; this row
+		 * adds the action beside the destination.
+		 */
+		{
+			id: "connect-provider",
+			name: "Connect a model provider",
+			icon: "providers" as const,
+			keywords: [
+				"sign in",
+				"login",
+				"api key",
+				"add provider",
+				"claude",
+				"chatgpt",
+				"radient",
+				"model",
+			],
+			verb: "Connect",
+			command: "connect-provider" as const,
+			featured: true,
+		},
 		{
 			id: "create-agent",
 			name: "Create agent",

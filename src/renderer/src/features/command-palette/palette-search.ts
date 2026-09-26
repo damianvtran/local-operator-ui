@@ -113,6 +113,7 @@ export type PaletteTarget =
 			type: "command";
 			command:
 				| "create-agent"
+				| "connect-provider"
 				| "new-chat"
 				| "clear-conversation"
 				| "toggle-canvas";

@@ -2,6 +2,7 @@ import { BrowserPane } from "@features/browser/components/browser-pane";
 import { useConversationApprovals } from "@features/browser/hooks/use-conversation-approvals";
 import { ConsolePane } from "@features/console/components/console-pane";
 import { useConsoleBlipPulse } from "@features/console/hooks/use-console-attention";
+import { useProviderStatus } from "@features/providers/use-provider-status";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
@@ -187,6 +188,12 @@ type ChatContentProps = {
 		 * `SessionStatusStripProps["draftResolution"]`.
 		 */
 		draftResolution?: DraftResolution;
+		/**
+		 * The readings are the last ones the session reported, held across a
+		 * transient stream gap. Forwarded verbatim to the composer; see
+		 * `SessionStatusStripProps["held"]`.
+		 */
+		held?: boolean;
 	};
 	/**
 	 * The command dispatcher the composer splices an inline command into, with
@@ -502,6 +509,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * conversation to archive or delete, so every one of these is inert there.
 		 */
 		const capabilities = useDesktopCapabilities();
+		// Whether to tell the user to connect a provider before they type; see
+		// `useProviderStatus` for why this is false whenever it is not KNOWN.
+		/*
+		 * Both states, from the one rule: nothing connected at all, and a provider
+		 * connected that this app cannot name a model for (UX round 5, U21).
+		 */
+		const { needsProvider, needsModel } = useProviderStatus();
 		const archiveEnabled = desktopFeatureEnabled(
 			capabilities.data,
 			"session_archive",
@@ -1273,6 +1287,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								onSendMessage={onSendMessage}
 								onComposerInput={onComposerInput}
 								initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
+								noProvider={needsProvider}
+								noModel={needsModel}
 								isLoading={
 									canonical
 										? Boolean(canonical.admitting || canonical.starting)

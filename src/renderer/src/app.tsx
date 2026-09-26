@@ -13,6 +13,7 @@ import { useCommandPaletteShortcut } from "@features/command-palette/use-command
 import { useConsoleAttention } from "@features/console/hooks/use-console-attention";
 import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
+import { ConnectProviderDialog } from "@features/providers/connect-provider-dialog";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
@@ -536,6 +537,11 @@ const App: FC = () => {
 					<ModelsInitializer />
 
 					<OnboardingModal open={isOnboardingActive} />
+
+					{/* The one "connect a model provider" dialog every surface opens
+					    through `useConnectProviderStore` (empty chat, composer line,
+					    the no-provider notice, the palette). Mounted once, here. */}
+					<ConnectProviderDialog />
 
 					<UpdateNotification />
 

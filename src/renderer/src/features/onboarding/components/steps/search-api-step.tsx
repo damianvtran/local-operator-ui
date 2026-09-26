@@ -36,7 +36,20 @@ const KEY_HELP_ID = "onboarding-search-key-help";
 /**
  * Search API step in the onboarding process
  */
-export const SearchApiStep: FC = () => {
+type SearchApiStepProps = {
+	/**
+	 * Whether to print the catalogue's own description under the select.
+	 *
+	 * The onboarding extras step already introduces web search in its own words,
+	 * so the registry blurb there is the same feature explained twice (design
+	 * round 1 D11). It stays on for every other caller.
+	 */
+	showCredentialDescription?: boolean;
+};
+
+export const SearchApiStep: FC<SearchApiStepProps> = ({
+	showCredentialDescription = true,
+}) => {
 	// Get the list of search API credentials and sort Tavily first
 	const searchApiCredentials = CREDENTIAL_MANIFEST.filter(
 		(cred) => cred.type === CredentialType.Search,
@@ -148,9 +161,11 @@ export const SearchApiStep: FC = () => {
 							id={PROVIDER_HELP_ID}
 							className="flex flex-col items-start gap-1"
 						>
-							<p className="text-ink-dim text-meta">
-								{selectedCredentialInfo.description}
-							</p>
+							{showCredentialDescription ? (
+								<p className="text-ink-dim text-meta">
+									{selectedCredentialInfo.description}
+								</p>
+							) : null}
 							<a
 								href={selectedCredentialInfo.url}
 								target="_blank"
