@@ -894,6 +894,7 @@ const STAMP_BINDING_NOTES = [
 	 * m3).
 	 */
 	"firstPaintHoldRestampNote",
+	"firstPaintHoldFoldRestampNote",
 	/*
 	 * THIS BRANCH'S OWN, for round 4, and it belongs here for the list's own reason:
 	 * the late-hold mark's arming, the turn-liveness read, the in-flight set's lifetime
