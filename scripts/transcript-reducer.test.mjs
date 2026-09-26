@@ -4177,3 +4177,66 @@ test("a gap marks a row it cannot vouch for, and leaves a joined row's own claim
 		"a settled row is whole, and the gap marks nothing on it",
 	);
 });
+
+test("a locally stamped echo cannot sort above a row already on screen", () => {
+	/*
+	 * THE OPERATOR'S REPORT (2026-09-26): "when sending a user message, it seems
+	 * to end up in an inconsistent place within the conversation history - it
+	 * shows up above an older message and then corrects after some time to its
+	 * proper position, and this only happened in this design release".
+	 *
+	 * The mechanism, pinned here with both clocks KNOWN rather than hoped for:
+	 * `appendPendingUser` stamps the echo with the CLIENT's `Date.now()`, and
+	 * every merge re-sorts the whole list by `ts` through `withTimeOrder`. A
+	 * session whose owner stamps from a clock even a second AHEAD of the
+	 * client's therefore sorts the fresh echo BEFORE the newest row - above an
+	 * older message - until the owner's durable row (the same id, its own,
+	 * server-stamped ts) replaces it: the visible "corrects after some time".
+	 *
+	 * The echo goes through the real entry point and the re-sort is provoked by
+	 * the next merge, which is the sequence the live path runs.
+	 */
+	const serverNow = 2_000_000;
+	const clientNow = serverNow - 1_000;
+	let state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "u1",
+				ts: serverNow - 5_000,
+				type: "message",
+				payload: { kind: "message", ...user("u1", "older") },
+			},
+			{
+				id: "a1",
+				ts: serverNow,
+				type: "message",
+				payload: { kind: "message", ...assistant("a1", "older answer") },
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	state = appendPendingUser(state, "req-1", "sent now", [], clientNow);
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["u1", "a1", "req-1"],
+		"the echo is appended at the tail before any merge runs",
+	);
+	const merged = applyHistoryPage(state, {
+		entries: [
+			{
+				id: "a2",
+				ts: serverNow + 1_000,
+				type: "message",
+				payload: { kind: "message", ...assistant("a2", "next") },
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		merged.records.map((r) => r.id),
+		["u1", "a1", "req-1", "a2"],
+		"a client clock behind the server's must not sort the echo above the newest painted row",
+	);
+});
