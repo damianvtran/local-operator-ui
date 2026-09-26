@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
  * The `afterPack` hook: keep only the runtime resource trees this build can run
- * (the interpreter seed and the bundled `uv`), and refuse to ship a legacy
- * resource alias beside the private seed.
+ * (the bundled `uv`, on every platform, and the interpreter seed on macOS,
+ * where it ships), and - on macOS - refuse to ship a legacy resource alias
+ * beside the private seed.
  *
  * Why the alias refusal is a build failure rather than a nicety: the seed is
  * inert data that nothing executes from the `.app`, but an incumbent install's
@@ -69,7 +70,14 @@ export default async function afterPack(context) {
 	});
 
 	const pruned = await pruneAfterPack(context);
-	if (!pruned.resourcesDir) return pruned;
+
+	// The legacy-alias refusal is macOS's alone, and the scope matters. On macOS
+	// the names below are the ones shipped builds used and the seed namespace
+	// exists to keep them out; on Windows and Linux `python`/`python_aarch64` are
+	// the LIVE names their copy lists write, so refusing them there would fail a
+	// build over the very layout those platforms are supposed to have.
+	const platform = context.electronPlatformName ?? process.platform;
+	if (platform !== "darwin") return pruned;
 
 	const surviving = [];
 	for (const name of LEGACY_PYTHON_RESOURCE_NAMES) {

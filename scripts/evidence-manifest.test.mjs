@@ -1089,6 +1089,20 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"foldOntoFd19adc9d9Note",
 	/*
+	 * AND THIS LANE'S OWN, for the sub-view top inset (the operator's report of
+	 * 2026-09-26, "for sub-views like the settings page, the sidebar and view
+	 * doesn't go all the way to the top"): it states the pair THIS FILE SHIPS as
+	 * its opening claim - the re-stamp of a change that moves BOTH trees this
+	 * file binds (the shell's `app.tsx` and the route band's rules under `src/`,
+	 * the new `route-tops` scene and three pins under `scripts/`) while
+	 * re-shooting no committed frame, so a reader is owed the pair and the reason
+	 * no still was owed. The list's own criterion is met the same way
+	 * `focusHoldOperationRestampNote`'s was: the note states this file's binding
+	 * as a backticked claim, so leaving it out would be one more check silently
+	 * not run.
+	 */
+	"subviewInsetRestampNote",
+	/*
 	 * ROUND 1 OF THIS FIX'S OWN (#534's shell-regressions remediation), and it
 	 * belongs here for the list's own reason: the round moves BOTH trees this file
 	 * binds - `src/` for the merged sidebar's own `scroller` marker and `chats`
@@ -1100,6 +1114,13 @@ const STAMP_BINDING_NOTES = [
 	 * move.
 	 */
 	"shellRegressionsRestampNote",
+	/*
+	 * THE FOLD UNDER ROUND 1'S OWN: `foldOnto093a329a4dNote` re-derives the pair at
+	 * the merged tip after #535 and #533 landed, and it states this file's binding
+	 * as its opening claim, so it belongs here for the list's own reason - the same
+	 * criterion `foldOntoFd19adc9d9Note` meets.
+	 */
+	"foldOnto093a329a4dNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
