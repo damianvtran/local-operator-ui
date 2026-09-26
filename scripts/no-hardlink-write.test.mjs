@@ -146,15 +146,50 @@ function scratch(name) {
 }
 
 /**
- * A real hard-linked pair OUTSIDE the temp ground, in a fresh directory, with the
- * child's driver file. `c` is pre-linked for the unlink case.
+ * A real hard-linked trio OUTSIDE the temp ground, in its own directory.
+ *
+ * `b` and `c` are names of one inode, and `c` exists so the unlink case has
+ * something to remove. The content is written ONCE, to a name that has not been
+ * linked yet.
  */
 function fixture(name) {
 	const dir = scratch(name);
-	writeFileSync(join(dir, "a"), ORIGINAL);
+	writeFileSync(join(dir, "base"), ORIGINAL);
+	linkSync(join(dir, "base"), join(dir, "a"));
 	linkSync(join(dir, "a"), join(dir, "b"));
 	linkSync(join(dir, "b"), join(dir, "c"));
 	return dir;
+}
+
+/**
+ * Put the fixture back to `ORIGINAL` without EVER writing through a link.
+ *
+ * This function is the reason the suite passes under the runner and not merely
+ * under `node --test`, and getting it wrong is how the first revision of this
+ * file reddened CI: the guard is armed by `run-desktop-tests.mjs` for every file
+ * it runs, so a plain `writeFileSync(join(dir, "a"), ORIGINAL)` in a fixture is
+ * itself refused — the test was performing the very write it exists to forbid.
+ * A single-link target is not the hazard; writing through a linked one is.
+ */
+function reset(dir) {
+	/*
+	 * EVERY name goes, `base` included: leaving even one behind leaves `base`
+	 * with nlink 2, and the write below then becomes a write through a link —
+	 * refused by the guard this file tests, which is how the fixture's own leak
+	 * surfaced instead of passing quietly.
+	 */
+	for (const name of ["base", "a", "b", "c", "spare"]) {
+		rmSync(join(dir, name), { force: true });
+	}
+	writeFileSync(join(dir, "base"), ORIGINAL);
+	assert.equal(
+		statSync(join(dir, "base")).nlink,
+		1,
+		"the reset must write to a name nothing else reaches",
+	);
+	linkSync(join(dir, "base"), join(dir, "a"));
+	linkSync(join(dir, "a"), join(dir, "b"));
+	linkSync(join(dir, "b"), join(dir, "c"));
 }
 
 function run(dir, mode, { guard }) {
@@ -164,14 +199,14 @@ function run(dir, mode, { guard }) {
 	return spawnSync(process.execPath, args, { encoding: "utf8" });
 }
 
-/** Run one case against a freshly linked pair and report what the inode holds. */
+/** Run one case against a freshly linked trio and report what the inode holds. */
 function caseOnce(mode, { guard, dir }) {
-	writeFileSync(join(dir, "a"), ORIGINAL);
+	reset(dir);
 	const result = run(dir, mode, { guard });
 	return {
 		result,
 		output: result.stdout.trim().split("\n")[0],
-		bytes: readFileSync(join(dir, "a"), "utf8"),
+		bytes: readFileSync(join(dir, "base"), "utf8"),
 	};
 }
 
@@ -187,7 +222,7 @@ test.after(() => {
 
 test("without the guard the child clobbers the shared inode (negative control)", () => {
 	const dir = fixture("negative");
-	assert.equal(statSync(join(dir, "a")).nlink, 3);
+	assert.equal(statSync(join(dir, "base")).nlink, 4);
 	const { output, bytes } = caseOnce("writeFileSync", { guard: false, dir });
 	assert.equal(output, "writeFileSync=wrote");
 	assert.equal(
@@ -219,10 +254,10 @@ test("the guard reports what it armed, and names the path, count and inode", () 
 	);
 	const written = output.match(LINK_COUNT);
 	assert.ok(written, `the message must carry both numbers; got:\n${output}`);
-	assert.equal(Number(written[1]), 3);
+	assert.equal(Number(written[1]), 4);
 	assert.equal(
 		Number(written[2]),
-		statSync(join(dir, "a")).ino,
+		statSync(join(dir, "base")).ino,
 		"the inode in the message must be the one the names share",
 	);
 	assert.match(output, /refusing writeFileSync on /);
@@ -243,11 +278,11 @@ test("the namespace operations are allowed, because they move names not content"
 	// without taking the content with it — the two facts that make them safe.
 	const linked = fixture("namespace-count");
 	run(linked, "linkSync", { guard: true });
-	assert.equal(statSync(join(linked, "a")).nlink, 4);
+	assert.equal(statSync(join(linked, "base")).nlink, 5);
 	const unlinked = fixture("namespace-unlink");
 	run(unlinked, "unlinkSync", { guard: true });
-	assert.equal(statSync(join(unlinked, "a")).nlink, 2);
-	assert.equal(readFileSync(join(unlinked, "a"), "utf8"), ORIGINAL);
+	assert.equal(statSync(join(unlinked, "base")).nlink, 3);
+	assert.equal(readFileSync(join(unlinked, "base"), "utf8"), ORIGINAL);
 });
 
 test("a directory is not a hard link, so chmod is allowed", () => {
@@ -307,7 +342,7 @@ test("a read-only open of a linked file is not a write", () => {
 	);
 	assert.equal(result.status, 0, result.stderr);
 	assert.match(result.stdout, /read=ORIGINAL/);
-	assert.equal(readFileSync(join(dir, "a"), "utf8"), ORIGINAL);
+	assert.equal(readFileSync(join(dir, "base"), "utf8"), ORIGINAL);
 });
 
 test("installing twice does not wrap the wrapper", async () => {
@@ -326,7 +361,7 @@ test("the decision is available without a patch, and every surface has a row", a
 	);
 	const dir = fixture("decision");
 	const linked = join(dir, "b");
-	assert.equal(sharedInodeWrite("writeFileSync", linked).nlink, 3);
+	assert.equal(sharedInodeWrite("writeFileSync", linked).nlink, 4);
 	assert.equal(
 		sharedInodeWrite("writeFileSync", join(dir, "absent")),
 		null,
