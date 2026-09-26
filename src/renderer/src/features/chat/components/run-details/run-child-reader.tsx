@@ -543,11 +543,17 @@ export const RunChildReader = ({
 	 * measured gap rather than a preference (UX U3): between 24px and 50px from the
 	 * tail the paging policy already says this reader is NOT following the tail
 	 * (`followingTail: fromTail <= TAIL_EPS_PX`, `use-scroll-paging.ts`) while the
-	 * control was still hidden — so the band in which a reader is being left behind
-	 * was exactly the band in which nothing offered the way back. Measured on the
-	 * pre-remediation head: a reader 40px off the tail took an arrival that left the
-	 * newest row 264px below the fold with the control hidden. One constant, so the
-	 * two conditions cannot drift apart again; the parent's 50 is left alone,
+	 * control stayed hidden — the STATIONARY window in which "not following the
+	 * tail" and "offered the way back" disagreed, and the window a reader actually
+	 * sits in. Measured on the pre-remediation head: at 24, 25, 49 and 50px the
+	 * control is hidden; at 51px it shows.
+	 *
+	 * QA round 2 (Q3) corrected the first version of this sentence, which claimed
+	 * the arrival itself: at 40px the control is hidden pre-remediation and one
+	 * arrival does leave the tail 263px away with the newest row 221px below the
+	 * fold — but the hook's own recompute has SHOWN the control by then, so the
+	 * reproducible defect is the stationary band, not the arrival. One constant, so
+	 * the two conditions cannot drift apart again; the parent's 50 is left alone,
 	 * because the parent's band is a composer and its divergence is its own
 	 * (recorded as a follow-up on the pull request rather than changed here).
 	 *
@@ -890,73 +896,114 @@ export const RunChildReader = ({
 				) : state === "loading" ? (
 					<QuietLine>Loading this subagent's conversation…</QuietLine>
 				) : bodyPaintsConversation ? (
-					<CanonicalTranscript
-						frontend={null}
-						transcript={painted}
-						gate={null}
-						waiting={false}
-						/*
-						 * False by construction rather than by omission: this reader renders a
-						 * subagent's transcript from its own file, so there is no send of ITS
-						 * to wait on. The admitted-send rung belongs to the pane that issued the
-						 * send, and a child reader can never be that pane.
-						 */
-						starting={false}
-						/*
-						 * The foot: what the child is doing, from the roster row rather than from
-						 * `painted.records`. Passing it is the whole change - omitted, the parent
-						 * derives from the records it was given, and a child's durable rows reduce
-						 * to `phase: "done"` (`transcript-reducer.ts:1867`), so the derivation
-						 * paints nothing here; its phase is `null` for a pane that claims no send.
-						 * `null` - a settled child, or a queued one - paints nothing.
-						 */
-						workingLine={workingLine}
-						loadingOlder={loadingOlder}
-						onLoadOlder={loadOlder}
-						containerRef={containerRef}
-						/*
-						 * The pane is 420px by default and the reader is its own column, so the
-						 * transcript's narrow rules do not apply: those exist for a chat column
-						 * squeezed by a pane beside it, and this IS the pane.
-						 *
-						 * The transcript's bottom-pinning (`flex-col-reverse`) is KEPT, and it
-						 * is a deliberate decision rather than an inherited accident: the page
-						 * `§5.3` fetches is the TAIL, so the bottom edge is where the newest
-						 * rows are, and a top-anchored scroller would open a long child on its
-						 * oldest loaded row instead. A short child therefore shows ground above
-						 * its first row, which is the parent's own grammar — and the reader's
-						 * foot is closed by the `§5.6` read-only statement below it, so the
-						 * empty space sits above a settled foot rather than below a floating
-						 * body. Recorded in `docs/run-sidebar.md` (`§5.6`) so it is not
-						 * re-raised as an oversight.
-						 */
-						isSmallView={false}
-						status="live"
-						failure={null}
-						/*
-						 * The reader's question, answered by this reader's own state: this
-						 * branch is reached only where `bodyPaintsConversation` holds, so the
-						 * child's page HAS been read and rows were painted (`ready`, or a
-						 * failed read that kept the rows it had) and nothing is still owed.
-						 * The hold cannot fire anyway — it needs zero records and this branch
-						 * is reached only with rows — and `false` is what the reader's own
-						 * state says rather than a value chosen to keep the predicate quiet.
-						 */
-						awaitingHydration={false}
-						/*
-						 * A child page has no session handle to re-arm: its read is the
-						 * child-scoped route, re-run when the child next beats (`pulse`),
-						 * and `useChildTranscript` exposes no reconnect of its own. The
-						 * prop is required by `CanonicalTranscript` so the live chat
-						 * surface can never paint a notice without its action; this
-						 * reader paints no notice at all (`failure` is null, and its
-						 * unavailable states are the body's own quiet lines rather than
-						 * a notice), so the handler is unreachable rather than an inert
-						 * control.
-						 */
-						onReconnect={() => {}}
-						attachmentScope={attachmentScope}
-					/>
+					/*
+					 * ONE CLIP, AT THE SCROLLER'S OWN BOX (design round 2, D6).
+					 *
+					 * The conversation's scroller is the focused element after any wheel or
+					 * click, so it draws the app's own `:focus-visible` ring
+					 * (`html :focus-visible`, 2px + a 2px offset, `--color-accent`) around
+					 * its border box. Outlines are ink overflow and an ancestor's
+					 * `overflow: hidden` clips them exactly as it clips a shadow — that is
+					 * the stylesheet's own doctrine, and it is why this scroller has never
+					 * shown a ring: in this column the scroller's box is the body's box, so
+					 * the stroke falls outside the clip on every side.
+					 *
+					 * The reserved band below the conversation moved that clip bottom by
+					 * 48px, and the ring's BOTTOM segment — 2px wide, full width, in
+					 * `accent` — landed inside it: a rule across the foot, in twelve of the
+					 * sixteen captured states and in every palette, appearing and
+					 * disappearing with focus. It reads as a divider between the
+					 * conversation and the control, which is not what a quarter of a focus
+					 * ring should look like.
+					 *
+					 * So the clip goes back to the scroller's own box, on a wrapper this
+					 * pane owns rather than on the body: the band is OUTSIDE the clipped
+					 * region, the ring is clipped where it always was, and nothing else
+					 * about the layout moves (the wrapper is the only child's box).
+					 *
+					 * WHAT THIS DOES NOT FIX, stated rather than hidden: the scroller is
+					 * then a focusable element with no VISIBLE ring — the pre-existing
+					 * defect this segment accidentally exposed, not one this pane
+					 * introduced. The parent transcript's scroller sits in the same
+					 * position (its own box is its clip box too), so the honest fix is the
+					 * pattern the stylesheet names for exactly this case — the WRAPPER
+					 * draws the ring (`has-[:focus-visible]:outline-solid`) — applied to
+					 * `CanonicalTranscript`'s scroller, which is shared with the chat page
+					 * and needs its own evidence on the surface with more users. Recorded
+					 * as a follow-up on the pull request; not half-done here.
+					 */
+					<div
+						data-lo-child-transcript-clip=""
+						className={cn("flex min-h-0 grow flex-col overflow-hidden")}
+					>
+						<CanonicalTranscript
+							frontend={null}
+							transcript={painted}
+							gate={null}
+							waiting={false}
+							/*
+							 * False by construction rather than by omission: this reader renders a
+							 * subagent's transcript from its own file, so there is no send of ITS
+							 * to wait on. The admitted-send rung belongs to the pane that issued the
+							 * send, and a child reader can never be that pane.
+							 */
+							starting={false}
+							/*
+							 * The foot: what the child is doing, from the roster row rather than from
+							 * `painted.records`. Passing it is the whole change - omitted, the parent
+							 * derives from the records it was given, and a child's durable rows reduce
+							 * to `phase: "done"` (`transcript-reducer.ts:1867`), so the derivation
+							 * paints nothing here; its phase is `null` for a pane that claims no send.
+							 * `null` - a settled child, or a queued one - paints nothing.
+							 */
+							workingLine={workingLine}
+							loadingOlder={loadingOlder}
+							onLoadOlder={loadOlder}
+							containerRef={containerRef}
+							/*
+							 * The pane is 420px by default and the reader is its own column, so the
+							 * transcript's narrow rules do not apply: those exist for a chat column
+							 * squeezed by a pane beside it, and this IS the pane.
+							 *
+							 * The transcript's bottom-pinning (`flex-col-reverse`) is KEPT, and it
+							 * is a deliberate decision rather than an inherited accident: the page
+							 * `§5.3` fetches is the TAIL, so the bottom edge is where the newest
+							 * rows are, and a top-anchored scroller would open a long child on its
+							 * oldest loaded row instead. A short child therefore shows ground above
+							 * its first row, which is the parent's own grammar — and the reader's
+							 * foot is closed by the `§5.6` read-only statement below it, so the
+							 * empty space sits above a settled foot rather than below a floating
+							 * body. Recorded in `docs/run-sidebar.md` (`§5.6`) so it is not
+							 * re-raised as an oversight.
+							 */
+							isSmallView={false}
+							status="live"
+							failure={null}
+							/*
+							 * The reader's question, answered by this reader's own state: this
+							 * branch is reached only where `bodyPaintsConversation` holds, so the
+							 * child's page HAS been read and rows were painted (`ready`, or a
+							 * failed read that kept the rows it had) and nothing is still owed.
+							 * The hold cannot fire anyway — it needs zero records and this branch
+							 * is reached only with rows — and `false` is what the reader's own
+							 * state says rather than a value chosen to keep the predicate quiet.
+							 */
+							awaitingHydration={false}
+							/*
+							 * A child page has no session handle to re-arm: its read is the
+							 * child-scoped route, re-run when the child next beats (`pulse`),
+							 * and `useChildTranscript` exposes no reconnect of its own. The
+							 * prop is required by `CanonicalTranscript` so the live chat
+							 * surface can never paint a notice without its action; this
+							 * reader paints no notice at all (`failure` is null, and its
+							 * unavailable states are the body's own quiet lines rather than
+							 * a notice), so the handler is unreachable rather than an inert
+							 * control.
+							 */
+							onReconnect={() => {}}
+							attachmentScope={attachmentScope}
+						/>
+					</div>
 				) : (
 					/*
 					 * A page with no rows this renderer paints: the file exists and holds
