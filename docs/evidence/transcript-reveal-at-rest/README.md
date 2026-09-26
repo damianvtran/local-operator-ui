@@ -105,7 +105,7 @@ restatement (later withdrawn, see F3 above), the round-3 strict reading of
 rule 2 (the down branch no longer clears `actFetchSpent`) with F3's
 lurch-sentence removal, and biome's one-line collapse of the F1 gate — so both
 `arm-record.json` files are **re-stamped to the committed head bytes**
-(`scroll-paging.ts` = `352a3d55bbdbf88b`, `use-scroll-paging.ts` =
+(`scroll-paging.ts` = `05ce9c005bb58b3a`, `use-scroll-paging.ts` =
 `4cf55619fef9c915`; re-derive with
 `git show HEAD:<path> | shasum -a 256 | cut -c1-16`), and each record's `note`
 states the capture tree the printed digests belong to. No digest is left
@@ -180,7 +180,7 @@ gutter (0), the selectable text runs (0) and its legs.
 
 ## The test runs, all shown
 
-`scripts/transcript-paging.test.mjs` (39 cases at round 1, **41** from round 3)
+`scripts/transcript-paging.test.mjs` (39 cases at round 1, **42** from round 3)
 and `scripts/transcript-paging-hook.test.mjs` (2 cases) were run against both
 module sets, and the round-1 remediation carries its own two arms:
 
@@ -196,10 +196,12 @@ module sets, and the round-1 remediation carries its own two arms:
   policy case and F1's hook case fail (38/1 and 1/1), and against the fixed
   modules, where both pass.
 - Round 3's strict-reading arms (`unit-tests-round3-*.txt`): against
-  `0ed7c7efb`'s modules **38 pass / 3 fail** — the two new cases ("a reversal
-  inside one act does not refill the act's fetch budget"; "the budget refills
-  when the quiet window opens a new act") plus round 1's F2 case; against this
-  branch's modules **41/41** (hook suite 2/2, unchanged). The same sequence
+  `0ed7c7efb`'s modules **39 pass / 3 fail** — the strict-reading cases
+  ("a reversal inside one act does not refill the act's fetch budget"; "the
+  budget refills when the quiet window opens a new act") plus round 1's F2
+  case (the follow-up case, "a downward notch that OPENS the act still refills
+  the budget", passes on `origin/main` by design — its module has no budget to
+  refuse); against this branch's modules **42/42** (hook suite 2/2, unchanged). The same sequence
   driven through both builds in one process — up at the wall, then down/up
   inside one act — prints `fetch` on `0ed7c7efb` and `none` here
   (`unit-tests-round3-reversal-sequence.txt`).

@@ -2,9 +2,9 @@
 	"arm": "after",
 	"ref": "--",
 	"sha256Before": {
-		"src/renderer/src/features/chat/canonical/scroll-paging.ts": "352a3d55bbdbf88b",
+		"src/renderer/src/features/chat/canonical/scroll-paging.ts": "05ce9c005bb58b3a",
 		"src/renderer/src/features/chat/canonical/use-scroll-paging.ts": "4cf55619fef9c915"
 	},
 	"harnessExit": 0,
-	"note": "Digests are SHA-256 truncated to 16 hex; re-derive with `git show HEAD:<path> | shasum -a 256 | cut -c1-16`. RE-STAMPED FROM THE COMMITTED HEAD BYTES (design round 2's digest observation, re-stamped again in round 3): the capture run's own tree predates three later edits (the 6966->6834 comment restatement, the round-3 strict reading of rule 2 with F3's lurch-sentence removal, and biome's one-line collapse of the F1 gate in use-scroll-paging.ts); the capture digests printed were `scroll-paging.ts` 2a5c4056b1111f36 and `use-scroll-paging.ts` b375dea0a576d08e."
+	"note": "Digests are SHA-256 truncated to 16 hex; re-derive with `git show HEAD:<path> | shasum -a 256 | cut -c1-16`. RE-STAMPED FROM THE COMMITTED HEAD BYTES (design round 2's digest observation, re-stamped again in round 3): the capture run's own tree predates three later edits (the 6966->6834 comment restatement, the round-3 strict reading of rule 2 (two commits) with F3's lurch-sentence removal, and biome's one-line collapse of the F1 gate in use-scroll-paging.ts); the capture digests printed were `scroll-paging.ts` 2a5c4056b1111f36 and `use-scroll-paging.ts` b375dea0a576d08e."
 }

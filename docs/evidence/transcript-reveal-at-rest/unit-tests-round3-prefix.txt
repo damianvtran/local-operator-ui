@@ -1,66 +1,70 @@
 # The paging suite at this round's bytes, against origin/main's two modules
-# (0ed7c7efb). Round 3's two new cases discriminate here exactly as
-# intended: against the replaced modules the down/up sequence spends a
-# second fetch, so "a reversal inside one act does not refill the act's
-# fetch budget" and "the budget refills when the quiet window opens a new
-# act" fail — with the round-1 F2 case, three in all (38/41). The head arm
-# is unit-tests-round3-postfix.txt; the same sequence driven through both
-# builds in one process is unit-tests-round3-reversal-sequence.txt.
+# (0ed7c7efb). The strict-reading cases discriminate here: against the
+# replaced modules the down/up sequence spends a second fetch and the
+# refill case reads a spent budget where it now reads a refill, so
+# "a reversal inside one act does not refill the act's fetch budget"
+# and "the budget refills when the quiet window opens a new act" fail —
+# with the round-1 F2 case, three in all (39/42). The follow-up case ("a
+# downward notch that OPENS the act still refills the budget") passes on
+# origin/main by design: the replaced module has no budget to refuse it.
+# The head arm is unit-tests-round3-postfix.txt; the sequences driven
+# through both builds in one process are unit-tests-round3-reversal-sequence.txt.
 
-✔ a fling of many wheel events yields exactly one fetch (5.616333ms)
-✔ a demand is not spent while input is still arriving (3.79675ms)
-✔ a demand outside the prefetch zone is dropped rather than held (0.137417ms)
-✔ a wheel notch clamped at the top does not re-arm the latch (0.297292ms)
-✔ leaving the top re-arms the latch, because arriving again is a new arrival (0.095292ms)
-✔ a downward gesture cancels the demand retained while busy (0.079167ms)
-✔ a retained demand is honoured when the page lands — as its widen (0.091708ms)
-✔ the local window is widened before the network is reached (0.086792ms)
-✔ one gesture yields one reveal, however near the top it leaves the reader (0.080625ms)
-✔ a transcript too short to scroll chains a bounded number of pages (0.150584ms)
-✔ an unscrollable transcript is not treated as following the tail (0.083666ms)
-✔ the chain stops as soon as the reader has a gesture available (0.740125ms)
-✔ a local widen does not forgive the network failure budget (0.151334ms)
-✔ a reader following the tail is never paged under (0.172125ms)
-✔ automatic retries are bounded; the affordance still works (0.3255ms)
-✔ a successful page clears the failure budget (0.095708ms)
-✖ a failed fetch does not spend the act's budget (1.867459ms)
-✔ nothing is spent when there is nothing left to reveal (0.145083ms)
-✔ the prefetch zone scales with the viewport between its bounds (0.08025ms)
-✔ the anchor correction is a no-op while the extent is stable (1.338959ms)
-✔ reader input skips stale anchor correction while layout-only growth is corrected (0.230708ms)
-✔ a session change discards latch, demand and chain budgets (0.842542ms)
-✔ a fast train is spent at the wall, never mid-motion (2.566917ms)
-✔ a fast train that never settles and never reaches the wall spends nothing (0.341459ms)
-✔ a reader who stops outside the zone spends nothing (0.110666ms)
-✔ no reveal is dispatched while the viewport is travelling (0.10675ms)
-✔ a settled spend inside the zone does not set the latch, and the arrival then buys a widen (0.114125ms)
-✔ a fling that crosses two walls spends exactly one fetch (0.395167ms)
-✔ a landed durable page buys exactly one widen (0.124916ms)
-✔ a page that lands while the reader is still pushing still owes its widen (0.104583ms)
-✔ a landing that moves the reader clear of every window still pays its widen (0.092125ms)
-✔ a landed durable page with nothing hidden buys no widen (0.144834ms)
-✔ a rule-6 widen does not forgive the failure budget either (0.16925ms)
-✔ a travel release is honoured as a demand, and the act's fetch is not re-spent (0.388333ms)
-✖ a reversal inside one act does not refill the act's fetch budget (2.450792ms)
-✖ the budget refills when the quiet window opens a new act (4.407917ms)
-✔ travel below TRAVEL_MIN_PX does not re-arm (0.209791ms)
-✔ extent growth under a clamped reader is not travel (2.070125ms)
-✔ a demand armed off the wall survives the clamped notches it is swallowed beside (1.161541ms)
-✔ a slow approach inside the zone is spent once it settles there (0.252375ms)
-✔ a demand the tail refuses stays armed and outside its spend window (0.215875ms)
-ℹ tests 41
+✔ a fling of many wheel events yields exactly one fetch (0.978125ms)
+✔ a demand is not spent while input is still arriving (0.078ms)
+✔ a demand outside the prefetch zone is dropped rather than held (0.074333ms)
+✔ a wheel notch clamped at the top does not re-arm the latch (0.2295ms)
+✔ leaving the top re-arms the latch, because arriving again is a new arrival (0.066667ms)
+✔ a downward gesture cancels the demand retained while busy (0.068125ms)
+✔ a retained demand is honoured when the page lands — as its widen (0.088584ms)
+✔ the local window is widened before the network is reached (0.071666ms)
+✔ one gesture yields one reveal, however near the top it leaves the reader (0.071125ms)
+✔ a transcript too short to scroll chains a bounded number of pages (0.90975ms)
+✔ an unscrollable transcript is not treated as following the tail (0.448542ms)
+✔ the chain stops as soon as the reader has a gesture available (0.16325ms)
+✔ a local widen does not forgive the network failure budget (0.59125ms)
+✔ a reader following the tail is never paged under (0.079083ms)
+✔ automatic retries are bounded; the affordance still works (0.080625ms)
+✔ a successful page clears the failure budget (0.041375ms)
+✖ a failed fetch does not spend the act's budget (0.600125ms)
+✔ nothing is spent when there is nothing left to reveal (0.092042ms)
+✔ the prefetch zone scales with the viewport between its bounds (0.034292ms)
+✔ the anchor correction is a no-op while the extent is stable (0.068833ms)
+✔ reader input skips stale anchor correction while layout-only growth is corrected (0.049ms)
+✔ a session change discards latch, demand and chain budgets (0.422541ms)
+✔ a fast train is spent at the wall, never mid-motion (0.143333ms)
+✔ a fast train that never settles and never reaches the wall spends nothing (0.072375ms)
+✔ a reader who stops outside the zone spends nothing (0.038375ms)
+✔ no reveal is dispatched while the viewport is travelling (0.04325ms)
+✔ a settled spend inside the zone does not set the latch, and the arrival then buys a widen (0.04825ms)
+✔ a fling that crosses two walls spends exactly one fetch (0.181084ms)
+✔ a landed durable page buys exactly one widen (0.045584ms)
+✔ a page that lands while the reader is still pushing still owes its widen (0.053459ms)
+✔ a landing that moves the reader clear of every window still pays its widen (0.050083ms)
+✔ a landed durable page with nothing hidden buys no widen (0.041792ms)
+✔ a rule-6 widen does not forgive the failure budget either (0.04775ms)
+✔ a travel release is honoured as a demand, and the act's fetch is not re-spent (0.099917ms)
+✖ a reversal inside one act does not refill the act's fetch budget (0.138791ms)
+✖ the budget refills when the quiet window opens a new act (0.114167ms)
+✔ a downward notch that OPENS the act still refills the budget (0.052833ms)
+✔ travel below TRAVEL_MIN_PX does not re-arm (0.0745ms)
+✔ extent growth under a clamped reader is not travel (0.144542ms)
+✔ a demand armed off the wall survives the clamped notches it is swallowed beside (0.047083ms)
+✔ a slow approach inside the zone is spent once it settles there (0.061458ms)
+✔ a demand the tail refuses stays armed and outside its spend window (0.072458ms)
+ℹ tests 42
 ℹ suites 0
-ℹ pass 38
+ℹ pass 39
 ℹ fail 3
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 589.258625
+ℹ duration_ms 160.597959
 
 ✖ failing tests:
 
 test at scripts/transcript-paging.test.mjs:543:1
-✖ a failed fetch does not spend the act's budget (1.867459ms)
+✖ a failed fetch does not spend the act's budget (0.600125ms)
   AssertionError [ERR_ASSERTION]: the reader's continued push retries the failed fetch
   
   'none' !== 'fetch'
@@ -81,13 +85,13 @@ test at scripts/transcript-paging.test.mjs:543:1
     diff: 'simple'
   }
 
-test at scripts/transcript-paging.test.mjs:1184:1
-✖ a reversal inside one act does not refill the act's fetch budget (2.450792ms)
+test at scripts/transcript-paging.test.mjs:1187:1
+✖ a reversal inside one act does not refill the act's fetch budget (0.138791ms)
   AssertionError [ERR_ASSERTION]: a reversal voids the debt, not the budget
   
   false !== true
   
-      at TestContext.<anonymous> (file:///Users/damian/.local-operator/sessions/c50c87690363/scratchpad/paging/arms3/scripts/transcript-paging.test.mjs:1208:9)
+      at TestContext.<anonymous> (file:///Users/damian/.local-operator/sessions/c50c87690363/scratchpad/paging/arms3/scripts/transcript-paging.test.mjs:1211:9)
       at Test.runInAsyncScope (node:async_hooks:226:14)
       at Test.run (node:internal/test_runner/test:1382:25)
       at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
@@ -103,13 +107,13 @@ test at scripts/transcript-paging.test.mjs:1184:1
     diff: 'simple'
   }
 
-test at scripts/transcript-paging.test.mjs:1228:1
-✖ the budget refills when the quiet window opens a new act (4.407917ms)
+test at scripts/transcript-paging.test.mjs:1231:1
+✖ the budget refills when the quiet window opens a new act (0.114167ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
   
   'fetch' !== 'none'
   
-      at TestContext.<anonymous> (file:///Users/damian/.local-operator/sessions/c50c87690363/scratchpad/paging/arms3/scripts/transcript-paging.test.mjs:1251:9)
+      at TestContext.<anonymous> (file:///Users/damian/.local-operator/sessions/c50c87690363/scratchpad/paging/arms3/scripts/transcript-paging.test.mjs:1254:9)
       at Test.runInAsyncScope (node:async_hooks:226:14)
       at Test.run (node:internal/test_runner/test:1382:25)
       at Test.processPendingSubtests (node:internal/test_runner/test:960:18)

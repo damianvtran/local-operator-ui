@@ -226,8 +226,9 @@ export type PagingState = {
 	 * next one, and every crossing looks like a fresh arrival. It is not — the
 	 * act is one gesture, and the operator's report (a scroll-up that loads
 	 * every remaining page in a loop) is what spending per crossing produces.
-	 * Set by a `fetch` spend, cleared by a notch that opens a new act, by a
-	 * downward gesture and by a deliberate one; widens are deliberately not
+	 * Set by a `fetch` spend; cleared by a notch that OPENS A NEW ACT — the
+	 * notch's own direction does not matter — and by a deliberate one; widens
+	 * are deliberately not
 	 * budgeted, because showing rows the reader already has is not a request.
 	 */
 	actFetchSpent: boolean;
@@ -355,6 +356,16 @@ export const noteInput = (
 			armed: false,
 			deliberate: false,
 			retained: false,
+			// The notch that OPENS an act refills the budget whatever its
+			// direction, and this branch returns before the shared act-open test
+			// below can run — so it is mirrored here. A paused reader whose first
+			// notch is downward is in a new act, and the push that follows must be
+			// answered; only a reversal INSIDE one act keeps the act spent
+			// (round-3 review F1, its own follow-up).
+			actFetchSpent:
+				input.at - state.lastInputAt >= GESTURE_GAP_MS
+					? false
+					: state.actFetchSpent,
 			continuation: false,
 			clampLatched: false,
 			// The travel the release below is earned by belongs to the latch, and
