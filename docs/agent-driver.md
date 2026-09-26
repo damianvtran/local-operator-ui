@@ -360,6 +360,19 @@ rule:
   reading taken mid-transition describes a layout that was never on screen - measured:
   chat 942 / canvas 179 at 1380 in one run against the settled 560/560 the frame shows.
 
+- **`route-tops`** — the top of every route the shell draws: `/chat` as the control
+  (a route the change it was written for does not touch) and `/settings`,
+  `/settings?section=integrations`, `/agents`, `/agent-hub` and `/schedules`, each
+  photographed and read back as numbers. It exists because the sub-view inset report
+  (2026-09-26, "for sub-views like the settings page, the sidebar and view doesn't go
+  all the way to the top") was a claim about ONE y coordinate per route — where a
+  column's first box begins — and that number is what a reviewer can check: on a macOS
+  integrated window the lane ends at 32 and every route's first box must start there
+  (measured at y 62.86 before the fix, 32 after, with the app sidebar's row at 32 in
+  both). **Requires `--backend`** for the settings, agents, hub and schedules
+  surfaces to render at all, and is run twice per tree (`--window-size 1380x900` and
+  `800x600`, `--run-label` keeping the two sets of frame names apart).
+
 - **`sidebar-sections`** — the one sidebar's two sections, Agents + Teams and
   Chats, both drawn on a column nobody has touched, and the draggable boundary
   between them. It seeds an agent, a team and eight chats through the backend's
