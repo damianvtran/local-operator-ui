@@ -659,11 +659,15 @@ const bridge = installSwitchBridge({
  * which file called `openSession`. So each frame keeps its function name and the
  * basename of its file, with the dev-server path dropped.
  */
+/*
+ * The frame string's own shape, at module scope: the linter's
+ * `useTopLevelRegex` reads a regex built inside a call as a per-call cost, and
+ * this one runs per recorded call on a page that records every one.
+ */
+const SHORT_FRAME_PATTERN =
+	/^(?<fn>[^(]*?)\s*\(?(?:[^()]*\/)?(?<file>[^/()]+):(?<line>\d+):(?<col>\d+)\)?$/;
 const shortFrame = (frame: string) => {
-	const match =
-		/^(?<fn>[^(]*?)\s*\(?(?:[^()]*\/)?(?<file>[^/()]+):(?<line>\d+):(?<col>\d+)\)?$/.exec(
-			frame.trim(),
-		);
+	const match = SHORT_FRAME_PATTERN.exec(frame.trim());
 	const groups = match?.groups;
 	if (!groups) return frame.trim().slice(0, 120);
 	const fn = groups.fn?.trim() ? `${groups.fn.trim()} ` : "";
@@ -1545,7 +1549,10 @@ probe.__lopSwitch = api;
  * outside a `<Routes>` gave `useParams` nothing, so that effect could never run
  * and the page under test was one effect short of the shipped one.
  */
-const probePath = () => window.location.hash.replace(/^#/, "") || "/chat";
+/* The address bar's fragment marker; see `SHORT_FRAME_PATTERN` for why it lives here. */
+const HASH_PREFIX = /^#/;
+const probePath = () =>
+	window.location.hash.replace(HASH_PREFIX, "") || "/chat";
 
 const ShellFrame = ({ children }: { children: React.ReactNode }) => (
 	<div className={cn("flex h-screen overflow-hidden bg-canvas")}>
@@ -1654,7 +1661,7 @@ const revealFixtureRows = async (): Promise<boolean> => {
 		if (more !== null) more.click();
 		await new Promise((resolve) => setTimeout(resolve, 40));
 	}
-	console.error(`the incoming row never appeared in the sidebar`);
+	console.error("the incoming row never appeared in the sidebar");
 	return false;
 };
 
