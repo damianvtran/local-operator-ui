@@ -96,6 +96,7 @@ const IN_TEMP_STAGED = /IN_TEMP=STAGED/;
 const SHARED_INTACT = /SHARED=ORIGINAL SHARED CONTENT/;
 const SIBLING_INTACT = /SIBLING=ORIGINAL SHARED CONTENT/;
 const SHARED_STUBBED = /SHARED=STUB VIA TEMP GROUND/;
+const BOUND_NAMED = /larger than this guard checks/;
 const WHITESPACE = /\s+/;
 
 /**
@@ -799,6 +800,8 @@ const cases = {
 	fileToFile: () => fs.cpSync(base + "/srcdir/f", base + "/destdir/f"),
 	fileToFileRecursive: () => fs.cpSync(base + "/srcdir/f", base + "/destdir/f", { recursive: true, force: true }),
 	fileToFileExclusive: () => fs.cpSync(base + "/srcdir/f", base + "/destdir/f", { errorOnExist: true }),
+	forceFalse: () => fs.cpSync(base + "/srcdir", base + "/destdir", { recursive: true, force: false }),
+	forceTrue: () => fs.cpSync(base + "/srcdir", base + "/destdir", { recursive: true, force: true }),
 };
 try { cases[mode](); console.log(mode + "=wrote"); }
 catch (error) { console.log(mode + "=threw:" + error.name); }
@@ -854,4 +857,196 @@ catch (error) { console.log(mode + "=threw:" + error.name); }
 			`${mode} replaces the destination NAME, so the sibling keeps its bytes`,
 		);
 	}
+});
+
+test("force:false is skipped by node, so it is not refused; the default still is", () => {
+	/*
+	 * A RECURSIVE COPY WITH `force: false` IS SAFE, and refusing it was a false
+	 * positive on a call node makes harmless — the class that gets a guard switched
+	 * off. Node SKIPS an existing destination file at `force: false` instead of
+	 * rewriting it, so the shared inode is never touched; the measured unguarded
+	 * control returns `wrote` with the sibling intact, which is what makes this a
+	 * false refusal rather than a near miss.
+	 *
+	 * ONLY an explicit `false` is exempt. `force: true` and the DEFAULT
+	 * (`undefined`) both overwrite, which is the hazard the row exists for.
+	 */
+	const dir = fixture("cpsync-force");
+	const probe = join(SCRATCH, "cpsync-force.mjs");
+	writeFileSync(
+		probe,
+		`import fs from "node:fs";
+const [mode, base] = process.argv.slice(2);
+const options = mode === "forceFalse"
+	? { recursive: true, force: false }
+	: mode === "forceTrue"
+		? { recursive: true, force: true }
+		: { recursive: true };
+try { fs.cpSync(base + "/srcdir", base + "/destdir", options); console.log(mode + "=wrote"); }
+catch (error) { console.log(mode + "=threw:" + error.name); }
+`,
+	);
+	const run = (mode) =>
+		spawnSync(process.execPath, [`--import=${PRELOAD}`, probe, mode, dir], {
+			encoding: "utf8",
+		});
+	const sibling = join(dir, "destdir", "sibling");
+	const build = () => {
+		rmSync(sibling, { force: true });
+		rmSync(join(dir, "srcdir"), { recursive: true, force: true });
+		rmSync(join(dir, "destdir"), { recursive: true, force: true });
+		mkdirSync(join(dir, "srcdir"), { recursive: true });
+		mkdirSync(join(dir, "destdir"), { recursive: true });
+		writeFileSync(join(dir, "srcdir", "f"), "STUB");
+		writeFileSync(join(dir, "destdir", "f"), ORIGINAL);
+		// the destination FILE is the one that must share its inode with a name
+		// outside the copied directory, which is the whole hazard
+		linkSync(join(dir, "destdir", "f"), sibling);
+	};
+
+	for (const [mode, expected] of [
+		["forceFalse", "forceFalse=wrote"],
+		["forceTrue", "forceTrue=threw:SharedInodeWriteError"],
+		["forceDefault", "forceDefault=threw:SharedInodeWriteError"],
+	]) {
+		build();
+		const result = run(mode);
+		assert.equal(
+			result.stdout.trim(),
+			expected,
+			`${mode}: got ${JSON.stringify(result.stdout)}${result.stderr}`,
+		);
+		assert.equal(
+			readFileSync(sibling, "utf8"),
+			ORIGINAL,
+			`${mode} must leave the shared inode's bytes intact`,
+		);
+	}
+});
+
+test("the copy walk's bounds are real, and past them it fails CLOSED", () => {
+	/*
+	 * Both bounds were measured FAILING OPEN before this test existed, and each in
+	 * a different direction, which is why there are two probes rather than one:
+	 *
+	 *   - DEPTH: 6 levels refused, but 7 wrote and the sibling became the stub —
+	 *     the cutoff was `depth > 6`;
+	 *   - BREADTH: with 400 sibling subdirectories and the victim at readdir index
+	 *     k, k = 0, 100 and 250 were never reached at all and only k >= 300 was
+	 *     refused, because one counter was shared across the walk and the stack
+	 *     popped LIFO, spending the budget on the LAST-ordered subtrees.
+	 *
+	 * The bounds are now 32 levels and 4000 resolved entries, the walk is
+	 * breadth-first, and a tree past either bound is REFUSED WHOLESALE rather than
+	 * assumed safe. The last row is the fail-closed direction on a tree that has no
+	 * hazard in it at all: refusal there is the intended behaviour, not a bug.
+	 */
+	const dir = fixture("copy-bounds");
+	const depthProbe = join(SCRATCH, "copy-depth.mjs");
+	const breadthProbe = join(SCRATCH, "copy-breadth.mjs");
+	const bulkProbe = join(SCRATCH, "copy-bulk.mjs");
+
+	writeFileSync(
+		depthProbe,
+		`import fs from "node:fs";
+const [base, levels] = process.argv.slice(2);
+const n = Number(levels);
+let s = base + "/src", d = base + "/dest";
+for (let i = 0; i < n; i++) { s += "/l" + i; d += "/l" + i; fs.mkdirSync(s, { recursive: true }); fs.mkdirSync(d, { recursive: true }); }
+fs.writeFileSync(s + "/f", "DEEP STUB");
+fs.writeFileSync(d + "/f", "ORIGINAL SHARED CONTENT");
+fs.linkSync(d + "/f", base + "/sibling");
+try { fs.cpSync(base + "/src", base + "/dest", { recursive: true }); console.log("wrote"); }
+catch (error) { console.log("threw:" + error.name); }
+`,
+	);
+	writeFileSync(
+		breadthProbe,
+		`import fs from "node:fs";
+const [base, kStr] = process.argv.slice(2);
+const k = Number(kStr), N = 400;
+fs.mkdirSync(base + "/src", { recursive: true });
+fs.mkdirSync(base + "/dest", { recursive: true });
+for (let i = 0; i < N; i++) {
+	const name = "d" + String(i).padStart(3, "0");
+	fs.mkdirSync(base + "/src/" + name, { recursive: true });
+	fs.mkdirSync(base + "/dest/" + name, { recursive: true });
+	fs.writeFileSync(base + "/src/" + name + "/f", "STUB");
+	fs.writeFileSync(base + "/dest/" + name + "/f", i === k ? "ORIGINAL SHARED CONTENT" : "plain");
+}
+fs.linkSync(base + "/dest/d" + String(k).padStart(3, "0") + "/f", base + "/sibling");
+try { fs.cpSync(base + "/src", base + "/dest", { recursive: true }); console.log("wrote"); }
+catch (error) { console.log("threw:" + error.name); }
+`,
+	);
+	writeFileSync(
+		bulkProbe,
+		`import fs from "node:fs";
+const [base, countStr] = process.argv.slice(2);
+const count = Number(countStr);
+fs.mkdirSync(base + "/src", { recursive: true });
+fs.mkdirSync(base + "/dest", { recursive: true });
+for (let i = 0; i < count; i++) {
+	fs.writeFileSync(base + "/src/f" + i, "S");
+	fs.writeFileSync(base + "/dest/f" + i, "PRIVATE");
+}
+try { fs.cpSync(base + "/src", base + "/dest", { recursive: true }); console.log("wrote"); }
+catch (error) { console.log("threw:" + error.name); console.log("message:" + error.message); }
+`,
+	);
+
+	const run = (probe, args) =>
+		spawnSync(process.execPath, [`--import=${PRELOAD}`, probe, dir, ...args], {
+			encoding: "utf8",
+		});
+	const fresh = (name) => {
+		rmSync(join(dir, name), { recursive: true, force: true });
+	};
+
+	// DEPTH: the declared edge and the level past it both refuse, sibling intact.
+	for (const levels of ["6", "31", "32", "33"]) {
+		fresh("src");
+		fresh("dest");
+		fresh("sibling");
+		rmSync(join(dir, "sibling"), { force: true });
+		const result = run(depthProbe, [levels]);
+		assert.equal(
+			result.stdout.trim(),
+			"threw:SharedInodeWriteError",
+			`depth ${levels} must be refused; got ${JSON.stringify(result.stdout)}${result.stderr}`,
+		);
+		assert.equal(readFileSync(join(dir, "sibling"), "utf8"), ORIGINAL);
+	}
+
+	// BREADTH: the FIRST-ordered subtree is the one that used to be abandoned.
+	for (const k of ["0", "100", "250", "399"]) {
+		fresh("src");
+		fresh("dest");
+		rmSync(join(dir, "sibling"), { force: true });
+		const result = run(breadthProbe, [k]);
+		assert.equal(
+			result.stdout.trim(),
+			"threw:SharedInodeWriteError",
+			`victim at index ${k} must be reached; got ${JSON.stringify(result.stdout)}${result.stderr}`,
+		);
+		assert.equal(
+			readFileSync(join(dir, "sibling"), "utf8"),
+			ORIGINAL,
+			`victim at index ${k} must keep its bytes`,
+		);
+	}
+
+	// FAIL CLOSED: a private tree inside the budget is allowed, past it is refused
+	// even though nothing in it is shared.
+	fresh("src");
+	fresh("dest");
+	assert.equal(run(bulkProbe, ["3900"]).stdout.trim(), "wrote");
+	fresh("src");
+	fresh("dest");
+	const over = run(bulkProbe, ["4001"]);
+	assert.ok(
+		over.stdout.startsWith("threw:SharedInodeWriteError"),
+		`a tree past the bound must FAIL CLOSED, not pass unverified; got ${JSON.stringify(over.stdout)}`,
+	);
+	assert.match(over.stdout + over.stderr, BOUND_NAMED);
 });

@@ -469,6 +469,23 @@ export function classifyCall(op, args, form = "sync") {
 	 * safe call — the very class this guard must not grow.
 	 */
 	if (spec.onlyIfDirectorySource !== undefined) {
+		/*
+		 * `force: false` makes node SKIP an existing destination file instead of
+		 * rewriting it, so there is no hazard and refusing it would be a false
+		 * positive on a safe call — the same property `COPYFILE_EXCL` is exempted
+		 * for in the mode check above, and the measured unguarded control returns
+		 * normally with the sibling intact. ONLY an explicit `false` is exempt:
+		 * the default (`undefined`) still overwrites, which is the hazard this row
+		 * exists for.
+		 */
+		const options = args[2];
+		if (
+			options !== null &&
+			typeof options === "object" &&
+			options.force === false
+		) {
+			return { hit: null, mayClobber: false };
+		}
 		return classifyRecursiveCopy(
 			op,
 			args[spec.onlyIfDirectorySource],
@@ -478,19 +495,53 @@ export function classifyCall(op, args, form = "sync") {
 	return { hit: sharedInodeWrite(op, args[spec.victim]), mayClobber: true };
 }
 
-/** Depth and breadth bounds for the recursive-copy walk, stated with the check. */
-const COPY_WALK_MAX_DEPTH = 6;
-const COPY_WALK_MAX_ENTRIES = 500;
+/**
+ * The recursive-copy walk's bounds, and WHAT HAPPENS PAST THEM.
+ *
+ * The first version of this check had a single shared counter and two documented
+ * limits that did not mean what they said. Both directions were measured past
+ * them, and both failed OPEN — the clobber proceeded with no refusal:
+ *
+ *   - depth: 6 levels refused, but **7 levels wrote and the sibling became the
+ *     stub**, because the cutoff was `depth > 6`;
+ *   - breadth: with 400 sibling subdirectories and the victim at readdir index k,
+ *     **k = 0, 100 and 250 were never reached at all** — both names became the stub
+ *     — and only k >= 300 was refused. The counter was shared across the whole
+ *     walk and the stack popped LIFO, so the budget was spent on the LAST-ordered
+ *     subtrees while the FIRST-ordered ones were abandoned.
+ *
+ * So the bounds are now real and the failure direction is the safe one:
+ *
+ *   - `MAX_DEPTH` 32 levels against the previous 6, and
+ *   - `MAX_FILES` counts RESOLVED FILES AND DIRECTORIES rather than stack pops, so
+ *     the number means the number of paths examined.
+ *
+ * AND ANYTHING STILL UNEXAMINED IS REFUSED, NOT ASSUMED SAFE. A directory that
+ * would exceed the file budget is not skipped silently: it is recorded, and at the
+ * end of the walk the call is refused with the bound named. For a guard, "I could
+ * not verify this" must never read as "this is safe", and a tree past either bound
+ * is exactly the case where the reader cannot tell the two apart.
+ *
+ * READ THE COVERED RANGE AS: every file of a source tree up to 32 levels deep and
+ * 4000 resolved files or directories is checked individually; a tree past either
+ * bound is REFUSED WHOLESALE, so the boundary is loud rather than silent.
+ */
+const MAX_DEPTH = 32;
+const MAX_FILES = 4000;
 
 /**
- * The first existing destination file a recursive directory copy would rewrite.
+ * The first existing destination file a recursive directory copy would rewrite,
+ * or a refusal when that could not be established.
  *
- * BOUNDED ON PURPOSE, and the bound is this check's honest limitation: a source
- * tree deeper than `COPY_WALK_MAX_DEPTH` or wider than `COPY_WALK_MAX_ENTRIES` is
- * walked only that far. The alternative — refusing every recursive directory copy
- * regardless of its tree — is the false-positive class described above, so the
- * walk is scoped rather than removed, and the measured hazard (a fixture copying
- * a shallow tree over a shared destination file) is well inside it.
+ * Returns `{ hit }` for a file that shares its inode (the caller refuses it),
+ * `{ boundExceeded }` when the tree ran past a bound so the caller can FAIL CLOSED
+ * rather than pass, and `{ hit: null }` only when the whole tree was examined and
+ * every existing destination file was private.
+ *
+ * The walk is BREADTH-FIRST, which is what makes the breadth bound meaningful: a
+ * depth-first walk spends the budget on whichever subtree the stack happens to pop
+ * last, leaving the first ones unvisited — measured, with a victim at readdir
+ * index 0 surviving the walk entirely.
  */
 function classifyRecursiveCopy(op, source, destination) {
 	let sourceIsDir = false;
@@ -500,11 +551,15 @@ function classifyRecursiveCopy(op, source, destination) {
 		sourceIsDir = false;
 	}
 	if (!sourceIsDir) return { hit: null, mayClobber: false };
-	const pending = [{ from: source, to: destination, depth: 0 }];
-	let seen = 0;
-	while (pending.length > 0) {
-		const { from, to, depth } = pending.pop();
-		if (depth > COPY_WALK_MAX_DEPTH || seen > COPY_WALK_MAX_ENTRIES) break;
+	const queue = [{ from: source, to: destination, depth: 0 }];
+	let examined = 0;
+	let bound = null;
+	while (queue.length > 0) {
+		const { from, to, depth } = queue.shift();
+		if (depth > MAX_DEPTH) {
+			bound ??= `a directory ${depth} levels deep (limit ${MAX_DEPTH})`;
+			continue;
+		}
 		let entries;
 		try {
 			entries = fs.readdirSync(String(from), { withFileTypes: true });
@@ -512,11 +567,15 @@ function classifyRecursiveCopy(op, source, destination) {
 			continue;
 		}
 		for (const entry of entries) {
-			seen += 1;
+			examined += 1;
+			if (examined > MAX_FILES) {
+				bound ??= `more than ${MAX_FILES} files and directories`;
+				break;
+			}
 			const childFrom = join(String(from), entry.name);
 			const childTo = join(String(to), entry.name);
 			if (entry.isDirectory()) {
-				pending.push({ from: childFrom, to: childTo, depth: depth + 1 });
+				queue.push({ from: childFrom, to: childTo, depth: depth + 1 });
 				continue;
 			}
 			/*
@@ -526,7 +585,9 @@ function classifyRecursiveCopy(op, source, destination) {
 			const hit = sharedInodeWrite(op, childTo);
 			if (hit) return { hit, mayClobber: true };
 		}
+		if (bound) break;
 	}
+	if (bound) return { hit: null, mayClobber: true, boundExceeded: bound };
 	return { hit: null, mayClobber: true };
 }
 
@@ -564,10 +625,24 @@ export function installHardlinkWriteGuard({ record = recordHit } = {}) {
 		const wrapped = function guardedMutation(...args) {
 			if (guardDepth > 0) return original.apply(holder, args);
 			if (body) return body(args, () => original.apply(holder, args));
-			const { hit, mayClobber } = classifyCall(label, args, form);
+			const { hit, mayClobber, boundExceeded } = classifyCall(
+				label,
+				args,
+				form,
+			);
 			if (hit) {
 				record({ ...hit, mayClobber, form });
 				if (mayClobber && !hit.exemptInTempGround) refuse(hit);
+			}
+			/*
+			 * FAIL CLOSED. A tree past the walk's bounds was not verified, and for a
+			 * guard that must not read as "this is safe" — the two measured failures
+			 * of the first bounds were exactly this, silently writing through.
+			 */
+			if (boundExceeded) {
+				throw new SharedInodeWriteError(
+					`refusing ${label}: the destination tree is larger than this guard checks (${boundExceeded}), so no destination file could be verified as private. Copy a subtree, or raise the bounds in no-hardlink-write.mjs.`,
+				);
 			}
 			guardDepth += 1;
 			try {
