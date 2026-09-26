@@ -388,6 +388,34 @@ export const THEMES = [
 export const SESSION_SECTION =
 	"[data-panel-body] section:has(input[aria-label='Search sessions'])";
 
+/**
+ * The by-model section, for `scrollTo` (see the note in the list below).
+ *
+ * Same reason as `SESSION_SECTION`, one section along: the By-model table sits
+ * below the stat grid, the chart and the two aggregate tables, and the panel
+ * body is capped at `min(76vh, 760px)`, so it is in no at-rest frame at any
+ * viewport - a taller one only adds margin. Design round 2 (D9) found four of
+ * the tokens-per-second stories byte-identical for exactly that reason: the
+ * loading skeleton, the empty answer and the failure sentence all live inside
+ * this section, so with the section out of frame the four names were one image.
+ *
+ * The hook is NOT the table's own accessible name, and that is a measured
+ * correction rather than a preference: the three `model-rows-*` states render a
+ * skeleton or a notice INSTEAD of the table (`ModelTable` returns early for
+ * `loading`/`null` and for `error`), so a selector keyed on
+ * `aria-label='Generation rate by model…'` matches nothing in exactly the three
+ * states this parking exists for — it failed with "matched nothing" on the
+ * first attempt. The By-model section is instead named by the section that
+ * FOLLOWS it, through the same by-session hook `SESSION_SECTION` already
+ * trusts, which every one of these stories renders and which no early return
+ * removes. The sibling combinator has to be spelled as ONE flat relative
+ * selector, not as a `:has()` inside a `:has()`: nested `:has()` is invalid CSS,
+ * the expression threw, and the run reported it as a bare "failed" rather than
+ * as a selector that matched nothing.
+ */
+export const MODEL_SECTION =
+	"[data-panel-body] section:has(+ section input[aria-label='Search sessions'])";
+
 export const STORIES = [
 	/*
 	 * These three DECLARE their content height rather than the 900 the harness
@@ -4027,15 +4055,59 @@ export const STORIES = [
 	 * most on the day this ships: it is the operator's OWN history — every decode
 	 * cell `—` while the wall column carries real numbers — and the whole point of
 	 * the pair is that those are different measurements rather than one rendered
-	 * twice. `model-rows-*` are the slow read's own three states; a taller frame
-	 * than its siblings because the By-model table is the LAST section, so the
-	 * default body cap (`min(76vh, 760px)`) would stop above it.
+	 * twice. `model-rows-*` are the slow read's own three states.
+	 *
+	 * TWO ENTRIES PER STORY, because the body cap makes one frame impossible:
+	 * the panel body is `min(76vh, 760px)` (`picker-host.tsx`) and the By-model
+	 * table is the SECOND-TO-LAST section, below the stat grid, the chart and the
+	 * two aggregate tables, so a taller viewport adds margin rather than content
+	 * — the same property the by-session note below records. The at-rest entry is
+	 * where the pane's top, the new rate column and the coverage line are; the
+	 * `-model` entry parks the body on the section itself through `MODEL_SECTION`,
+	 * which is the only frame that holds a model row.
+	 *
+	 * Design round 2 (D9) is what the second half is for: without it,
+	 * `partial-rate-coverage` and the three `model-rows-*` states captured
+	 * BYTE-IDENTICAL frames in all twelve themes, because everything that tells
+	 * them apart lives inside the section and the section was out of frame. Four
+	 * story names rested on one image, and the pane's new surface was
+	 * unfalsifiable in its own evidence.
 	 */
 	["panels-analytics--pre-metric-ledger", 1140, 1240],
+	[
+		"panels-analytics--pre-metric-ledger",
+		1140,
+		560,
+		{ dir: "pre-metric-ledger-model", scrollTo: MODEL_SECTION },
+	],
 	["panels-analytics--partial-rate-coverage", 1140, 1240],
+	[
+		"panels-analytics--partial-rate-coverage",
+		1140,
+		560,
+		{ dir: "partial-rate-coverage-model", scrollTo: MODEL_SECTION },
+	],
 	["panels-analytics--model-rows-loading", 1140, 1240],
+	[
+		"panels-analytics--model-rows-loading",
+		1140,
+		560,
+		{ dir: "model-rows-loading-model", scrollTo: MODEL_SECTION },
+	],
 	["panels-analytics--model-rows-empty", 1140, 1240],
+	[
+		"panels-analytics--model-rows-empty",
+		1140,
+		560,
+		{ dir: "model-rows-empty-model", scrollTo: MODEL_SECTION },
+	],
 	["panels-analytics--model-rows-unavailable", 1140, 1240],
+	[
+		"panels-analytics--model-rows-unavailable",
+		1140,
+		560,
+		{ dir: "model-rows-unavailable-model", scrollTo: MODEL_SECTION },
+	],
 	/*
 	 * The same state with the panel body parked at its END, which is the only way
 	 * the By-session table's rows are in the picture at all: review round 1 (D6)
