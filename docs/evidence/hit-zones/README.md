@@ -106,6 +106,18 @@ other audited surfaces on the fixed tree: `after-info-dark.png`,
 `after-usage-dark.png`, `after-command-palette-dark.png`,
 `after-sidebar-sheet-dark.png` (900x900), `after-onboarding-dark.png`.
 
+## The fold, and the convergence run
+
+`origin/main` moved under this branch (`fe98692e8e`, #533, the pinned uv on the
+Windows and Linux install paths) and the fold's only conflicts were
+`docs/evidence/manifest.json` and `package.json` - the two files both sides
+rewrite by construction. Main's side is the base and this branch's record is laid
+on top, with the suite list the union of the two. The branch's own delta is
+byte-identical through the fold (`git diff 11cc11b56b..HEAD -- ` the changed
+files is empty), and the scene was re-run once on the merged head -
+`converged-1380x900.log`, same readings (analytics: 7 controls, 0 swallowed, 5
+without the opt-out), all checks passed.
+
 ## What was audited, and what was not
 
 Exercised (headless, this rig):
