@@ -158,12 +158,22 @@ export function chatStatusDisplay(
 	const { server, connectivityIssue } = input;
 
 	/*
-	 * 1. The server answered and refused this app. `pairing.available === false` is
-	 * that answer; a snapshot from a build that predates the field cannot say it,
-	 * so the permissive default is the only honest one there (the same rule
-	 * `pairingHasRemedy` states in `backend-status.ts`).
+	 * 1. The server answered and refused THIS APP'S CREDENTIAL. THE GATE IS THE
+	 * CAUSE, NOT THE UNPAIRED BIT (design note § 0.1): `available === false` is
+	 * true of five causes - successor, governed-elsewhere, pre-handshake,
+	 * unpaired and this one - and this row painting its `credential-refused`
+	 * copy over all five is half of the operator's two-bands-for-one-incident
+	 * report (the strip said "refused this app's credential" while the
+	 * compatibility banner said "replaced while this app was running"). The
+	 * other four causes are the compatibility banner's rows: this surface stays
+	 * silent for them, and the unreachable row retires with the same condition
+	 * below.
+	 *
+	 * The absent `pairing` record is silence rather than a guess: a snapshot
+	 * from a build that predates the field cannot state a cause, and the strip
+	 * may not invent the refusal for it.
 	 */
-	if (server && server.pairing?.available === false) {
+	if (server && server.pairing?.cause === "credential-refused") {
 		return {
 			kind: "credential-refused",
 			role: "alert",
@@ -244,10 +254,30 @@ export function chatStatusDisplay(
 	 * position is the same in each - while main's `detail` says which path was
 	 * taken, which is what keeps `detached` and `wedged` from being described
 	 * alike.
+	 *
+	 * THE ROW RETIRES WHILE A PAIRING CAUSE THE STRIP DOES NOT STATE IS LIVE
+	 * (design note § 2.2/§ 4/§ 5.3: successor, governed-elsewhere, pre-handshake
+	 * and unpaired are "banner only", and § 5.3's cases assert this surface is
+	 * silent for all of them). WHY THAT IS NOT THE NOTE'S OWN "no suppression"
+	 * LINE READ IN REVERSE: that line states the BANNER's yield rules, and this
+	 * is the strip's half of the same one-voice rule - without it the "exactly
+	 * one band" promise does not hold in the states those causes actually occur
+	 * in. Measured, on the governed scene the repo already committed
+	 * (`docs/evidence/any-daemon-attach/after-frames-other-principal.json`):
+	 * state `detached` beside cause `governed-elsewhere`, where this row would
+	 * paint "Can't reach the Local Operator server" as a second band under the
+	 * banner's own sentence. The two WARNING rows above keep firing: a degraded
+	 * connection and an offline machine are separate facts the banner cannot
+	 * state, and § 2.3 names that pair (`degraded`/`internet-offline` beside a
+	 * pairing cause) as one that may legitimately co-render.
 	 */
+	const pairing = server?.pairing ?? null;
+	const unpairedElsewhere =
+		pairing?.available === false && pairing.cause !== "credential-refused";
 	const unreachable =
-		connectivityIssue === "server_offline" ||
-		(server !== null && !isServerReachable(server.state));
+		!unpairedElsewhere &&
+		(connectivityIssue === "server_offline" ||
+			(server !== null && !isServerReachable(server.state)));
 	if (unreachable) {
 		return {
 			kind: "unreachable",
