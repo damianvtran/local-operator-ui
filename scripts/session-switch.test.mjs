@@ -813,7 +813,11 @@ test("the pane paints nothing of a CACHED conversation until its page lands", as
 		["unavailable", false, false, false],
 		["unavailable", false, true, false],
 	];
-	assert.equal(CACHED.length, 16, "a cached combination is missing from the table");
+	assert.equal(
+		CACHED.length,
+		16,
+		"a cached combination is missing from the table",
+	);
 	for (const status of STATUSES)
 		for (const owed of [true, false])
 			for (const admitted of [false, true])

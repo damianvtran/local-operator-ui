@@ -1256,7 +1256,8 @@ const api: Probe = {
 		 */
 		composerAlert: composerAlert(),
 		composerText: document.querySelector("textarea")?.value ?? null,
-		composerPlaceholder: document.querySelector("textarea")?.placeholder ?? null,
+		composerPlaceholder:
+			document.querySelector("textarea")?.placeholder ?? null,
 		sentMessages: bridge.log.requests.filter(
 			(request) => request.op === "sessions.message",
 		).length,
