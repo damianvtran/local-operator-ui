@@ -19,8 +19,8 @@ around that frame; see the PR for the full path list.
 
 WHY THE SIMULATION RATHER THAN A BEFORE/AFTER STILL: what this pass bounds is
 WHEN the frame leaves, and no still can show a wait. The frames it does move
-(remediation round 1) are named below; none of them discriminates the bound on
-its own.
+(remediation rounds 1 and 2) are named below; none of them discriminates the
+bound on its own.
 
 - THE HONEST NUMBER, per attempt and per check: the deadline abandons ONE
   attempt at 30s, and the ladder retries to three attempts total (+1s and +3s
@@ -37,7 +37,13 @@ delays), so a fully stalled manual check rejects - and a silent one resolves
   rendered), and the checking card, the settings button and the download panel
   add a delayed still-working line after 12s (UX U1). The three stories render
   the shipped components now rather than forks of their markup, so the frames
-  cannot drift from what those surfaces draw.
+  cannot drift from what those surfaces draw. REMEDIATION ROUND 2 REGISTERED
+  THE TWO FRAMES THE LINES LIVE IN, so a reviewer can check them without a
+  build: `common-updatenotification/checking/` and
+  `common-updatenotification/downloading/`, each in all twelve themes. The
+  download story mounts behind the same ready gate its siblings use (design
+  D2), because a component that mounts before the decorator's mock bridge
+  subscribes to the module-state stub and photographs an empty frame.
 
 What does discriminate, and is the evidence, is a stalled-feed simulation run
 against the SHIPPED code on both sides of the IPC boundary:
@@ -65,7 +71,7 @@ against the SHIPPED code on both sides of the IPC boundary:
 Re-run either half with:
 
 ```sh
-node --test --test-name-pattern="a feed that never answers|a check the user asked for gets the deadline|an expired sequence settling late|one updater-deduped fetch|a stalled download|download progress resets|the PyPI and npm registry reads|switch silences the watchdog|without the switch the watchdog|skip-list" \
+node --test --test-name-pattern="a feed that never answers|a check the user asked for gets the deadline|an expired sequence settling late|one updater-deduped fetch|a stalled download|download progress resets|the PyPI and npm registry reads|switch silences the watchdog|set-but-empty switch|without the switch the watchdog|skip-list" \
   scripts/update-robustness.test.mjs
 node --test --test-name-pattern="the checking frame clears|says a long check|says a stalled download" \
   scripts/update-affirmation.test.mjs
