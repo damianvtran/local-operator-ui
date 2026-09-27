@@ -526,11 +526,14 @@ test("the offer is drawn in the sidebar's own lane, mounted at the panel's root 
 	assert.match(source, /position: "relative"/);
 	assert.match(source, /position: "static"/);
 	assert.match(source, /"--width": "min\(248px, 100%\)"/);
-	// The pins' failure line keeps its three sites; the register has none left.
+	// ONE FLOW, ONE SITE (2026-09-26): the three assembly branches are one
+	// scroller now, so the pin's failure line renders exactly once. The old
+	// "every assembly branch" shape cannot be kept by a count on one branch.
 	const pins = source.match(/\{pinFailureLine\}/g) ?? [];
-	assert.ok(
-		pins.length >= 3,
-		`expected the pin's failure line in every assembly branch, found ${pins.length}`,
+	assert.equal(
+		pins.length,
+		1,
+		`expected the pin's failure line once in the merged assembly, found ${pins.length}`,
 	);
 	assert.equal(
 		(source.match(/\{archiveRegister\}/g) ?? []).length,
@@ -548,15 +551,19 @@ test("the offer is drawn in the sidebar's own lane, mounted at the panel's root 
 
 test("the press record expires on the pointer's own path", () => {
 	/*
-	 * THE SLICE IS THE CHATS LIST PANEL'S OWN HANDLERS, and its end marker moved 2026-09-22: the
-	 * element used to end at a `className="mt-2` (gone with the gutter/split class work), and the
-	 * list's class list now sits AFTER its handlers as `className={cn(` - the same marker the
-	 * sessionRow slice below uses. Before `between` was hardened, this slice ran to the end of
-	 * the file, so every pattern it asserts could have been satisfied by the ENTITY region's
-	 * nested rows rather than by this panel, which is exactly what its own comment says the
-	 * records are region-scoped about.
+	 * THE SLICE IS THE CHATS LIST PANEL'S OWN HANDLERS, and its start marker moved 2026-09-26: the
+	 * list panel no longer carries `ref={listPanelRef}` (the merged scroller takes the twin ref) and
+	 * its end marker is the new flow class the one-scroll pass gave it, `className={cn("relative
+	 * space-y-4")}` - the same `className={cn(` marker the sessionRow slice below uses. Before
+	 * `between` was hardened, this slice ran to the end of the file, so every pattern it asserts
+	 * could have been satisfied by the ENTITY region's nested rows rather than by this panel, which
+	 * is exactly what its own comment says the records are region-scoped about.
 	 */
-	const panel = between(SIDEBAR, "ref={listPanelRef}", "className={cn(");
+	const panel = between(
+		SIDEBAR,
+		'key="chats"',
+		'className={cn("relative space-y-4")}',
+	);
 	assert.match(panel, /onPointerMove=/);
 	assert.match(panel, /archivePressExpired\(lastArchivePress\.current/);
 	assert.match(panel, /onPointerLeave=/);
@@ -841,7 +848,53 @@ test("the row's press is the same act as the typed command, and keeps the reader
 	);
 	assert.match(source, /function focusRowAfterRemoval\(pressed: HTMLElement\)/);
 	assert.match(source, /element\.isConnected/);
-	assert.match(source, /successor\?\.focus\(\)/);
+	/*
+	 * AND IT DOES NOT TAKE THE READER'S SCROLL WITH IT (QA round 2, Q2). `preventScroll` is half of
+	 * what this clause's own name claims: a plain `focus()` scrolls its element into view, and the
+	 * successor is picked from DOCUMENT order - so on the one-scroll panel it can be a node of the
+	 * ENTITY region, which shares the reader's scroller. The behaviour is read by the driver's
+	 * arrival pair (`--scene session-archive`, D30's clauses): under a plain call the reader's
+	 * `scrollTop` moved `20 -> 4` and a surviving row's top by 16px, and under this one both are
+	 * byte-equal across every sampled frame. The pin is the cheap half; the reading is the claim.
+	 */
+	assert.match(source, /successor\?\.focus\(\{ preventScroll: true \}\)/);
+	/*
+	 * AND THE ROW IT HANDS THE CARET TO IS READ FROM THE LIST'S OWN REGION (UX round 2, U1). The
+	 * query is scoped because the merged panel's document order begins in the ENTITY region, so an
+	 * unscoped one answers with the `Agents` group disclosure: MEASURED, the caret landed there
+	 * (`region=entities`, `aria-expanded=true`, roughly 500px above the row that was pressed) and the
+	 * next ↓ walked the group rows before any conversation. The driver's accepted-press leg reads
+	 * both the caret's region and the stops the next ↓ reaches; this is the cheap half.
+	 */
+	assert.match(
+		source,
+		/querySelectorAll<HTMLElement>\(\s*'\[data-sidebar-region="chats"\] \[data-chat-row\]'\s*,?\s*\)/,
+		"the successor must be read from the chats region, not the panel's document order",
+	);
+	/*
+	 * AND THE ROW IT HANDS THE CARET TO IS RESOLVED FROM THE PRESSED ROW, not from the control's own
+	 * parent (UX round 2, U1's behaviour residual; QA round 4's Q-3 reading): the archive control and
+	 * the row's button are siblings inside a pair wrapper, so the parent query answered nothing and
+	 * the successor rule fell through to the list's FIRST row on every route. Measured in the round:
+	 * `indexTheHandOffComputes: -1` against `trueIndexFromClosest: 1`, four routes, all landing on
+	 * `live[0]` where the row that took the pressed row's place was a different element. The driver's
+	 * row-press clause asserts the successor by id - the cheap half belongs here.
+	 */
+	assert.match(
+		source,
+		/\.closest<HTMLElement>\(\s*"\[data-session-row\]"\s*\)/,
+		"the pressed row must be resolved from the row element, not the control's parent",
+	);
+	/*
+	 * AND A PRESS FROM OUTSIDE THE LIST KEEPS ITS OWN ORDER: the entity region's nested rows carry
+	 * the same archive control, so the region query alone would answer nothing for them and send the
+	 * caret down to the list's first conversation - further than the unscoped rule did.
+	 */
+	assert.match(
+		source,
+		/listRows\.includes\(rowButton\)/,
+		"a press outside the list must keep the panel's order, not fall to the list's first row",
+	);
 });
 
 /*
