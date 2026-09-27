@@ -41,6 +41,7 @@
  */
 
 import { cn } from "@shared/lib/utils";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { useLayoutEffect } from "react";
 import type { ReactNode } from "react";
@@ -55,6 +56,69 @@ const meta = {
 export default meta;
 
 type Story = StoryObj;
+
+/**
+ * The roster the long stories answer with: the operator's own twenty-odd
+ * profiles, plus generated ones up to 150.
+ *
+ * WHY GENERATED. What the frames have to show is the BOUND - a list taller than
+ * the panel, with a footer that says so and a filter that makes it short again -
+ * and the roster is the operator's own machine's, which holds twenty-odd profiles
+ * today and keeps growing. A hundred and fifty is the number the panel's
+ * arithmetic is priced against, so the frame uses it rather than a roster sized
+ * to look tidy. Two thirds are machine-named on purpose: a reader asked to review
+ * real-looking names would review the names instead of the bound.
+ */
+const LONG_AGENTS = [
+	"architect",
+	"coder",
+	"content-designer",
+	"content-writer",
+	"copy-reviewer",
+	"cpp-parity-auditor",
+	"data-entry",
+	"designer",
+	"manager",
+	"pergamon-orchestrator",
+	"post-analyst",
+	"qa-tester",
+	"readme-reader",
+	"regulatory-review",
+	"reviewer",
+	"scout",
+	"security-reviewer",
+	"trend-scout",
+	"tui-designer",
+].map((name) => ({
+	value: name,
+	name,
+	kind: "role",
+	description: `The ${name} profile.`,
+}));
+
+for (let index = 0; index < 131; index += 1) {
+	const name = `pergamon-enrichment-${String(index).padStart(3, "0")}`;
+	LONG_AGENTS.push({
+		value: name,
+		name,
+		kind: "specialist",
+		description: "A Pergamon enrichment specialist.",
+	});
+}
+
+/**
+ * The two recents rings a story declares, so no frame depends on what a previous
+ * run left in `localStorage`.
+ *
+ * Stable module constants rather than literals at the call sites: `Band` seeds
+the store in a layout effect keyed on this object, and a fresh literal each
+render would re-run that effect on every render.
+ */
+const NO_RECENTS = { agent: [] as string[], team: [] as string[] };
+const SEEDED_RECENTS = {
+	agent: ["reviewer", "coder", "qa-tester"],
+	team: ["lopdev", "minerva"],
+};
 
 const SESSION = "2d5ad5da0025";
 
@@ -102,6 +166,12 @@ type BridgeOptions = {
 	/** Whether the catalogue answers rows at all, or refuses/empties instead. */
 	entities?: "rows" | "empty" | "refused";
 	/**
+	 * The agent roster this story's bridge answers with. Defaults to the small
+	 * fixture; the long-roster stories pass `LONG_AGENTS` so the bound has
+	 * something to bind against.
+	 */
+	agents?: typeof AGENTS;
+	/**
 	 * How long `sessions.command` stays in flight. The busy state the rig
 	 * photographs needs the receipt UNSETTLED at shutter time, and the story
 	 * owes the frame that rather than a promise that races it.
@@ -120,6 +190,7 @@ type BridgeOptions = {
 const installBridge = ({
 	entities = "rows",
 	holdCommandMs = 0,
+	agents = AGENTS,
 }: BridgeOptions = {}) => {
 	const ok = <T,>(result: T) => ({ status: 200, body: { result } });
 	const bridge = async (request: { op: string; command?: string }) => {
@@ -138,7 +209,7 @@ const installBridge = ({
 					entities:
 						entities === "rows"
 							? request.command === "agent"
-								? AGENTS
+								? agents
 								: TEAMS.map((team) => ({ ...team, value: team.name }))
 							: [],
 					current: null,
@@ -190,22 +261,38 @@ const installBridge = ({
  */
 const Band = ({
 	width = 560,
+	rings = NO_RECENTS,
 	children,
 }: {
 	width?: number;
+	/**
+	 * The recents rings this frame is rendered against.
+	 *
+	 * SEEDED HERE rather than left to the browser: the ring is persisted
+	 * (`localStorage`), so a frame that did not declare it would show whatever a
+	 * previous story - or a previous run of the sweep - happened to leave behind,
+	 * and a reviewed "no recents band" frame could quietly acquire one. Default
+	 * empty, which is the fresh-install state every existing frame is about.
+	 */
+	rings?: { agent: string[]; team: string[] };
 	children: ReactNode;
-}) => (
-	<div
-		/* An inert hook, for the measurement pass rather than any frame: it is
-		   what a driver grabs to re-price the same band at the app's own widths
-		   (the 220px pane-open header, the 560 band) without a second story. */
-		data-header-band=""
-		className={cn("flex h-[84px] shrink-0 flex-col bg-canvas")}
-		style={{ width }}
-	>
-		{children}
-	</div>
-);
+}) => {
+	useLayoutEffect(() => {
+		useUiPreferencesStore.setState({ profileRecents: rings });
+	}, [rings]);
+	return (
+		<div
+			/* An inert hook, for the measurement pass rather than any frame: it is
+			   what a driver grabs to re-price the same band at the app's own widths
+			   (the 220px pane-open header, the 560 band) without a second story. */
+			data-header-band=""
+			className={cn("flex h-[84px] shrink-0 flex-col bg-canvas")}
+			style={{ width }}
+		>
+			{children}
+		</div>
+	);
+};
 
 const identity = (over: Partial<HeaderIdentityData>): HeaderIdentityData => ({
 	sessionId: SESSION,
@@ -425,6 +512,113 @@ export const NarrowFold: Story = {
 					agentName="Redesign local-operator-ui installer loading panel"
 					description="manager · lopdev"
 					identity={identity({ activeTeam: "lopdev" })}
+					onRenameConversation={() => undefined}
+					onOpenOptions={() => undefined}
+				/>
+			</Band>
+		);
+	},
+};
+
+/**
+ * A hundred and fifty agents, and the panel the operator asked for.
+ *
+ * WHAT THIS FRAME IS FOR (operator, 2026-09-26, second report): "the height is
+ * unbounded and goes past the height of the screen, make sure there's a
+ * reasonable height bound and it might be good to add a search filter to each".
+ * So this story answers a roster nobody can read a screen at a time, and the
+ * arms that photograph it are:
+ *
+ * - the panel OPEN (the agent trigger pressed), which shows the bound: a panel
+ *   that stops short of the window's edge, a scrollable list inside it, and a
+ *   footer naming the roster's full size - the difference between a bound and a
+ *   truncation, photographed;
+ * - the same panel in a SHORT window, where the ceiling is no longer the binding
+ *   term and Radix's available height is - the case a fixed `max-height` gets
+ *   wrong;
+ * - the panel with a filter typed into it, and with a filter that matches
+ *   NOTHING, which is the state most likely to be ugly and the one no still can
+ *   be argued about.
+ *
+ * The agent and team controls are the same component with different nouns, so the
+ * team panel is photographed on this same roster shape by `RecentsBelow` and the
+ * existing `team-menu-open` arm; a reviewer should not have to take the two
+ * agreeing on trust.
+ */
+export const LongRoster: Story = {
+	render: () => {
+		installBridge({ agents: LONG_AGENTS });
+		return (
+			<Band>
+				<ChatHeader
+					agentName="Install the pinned uv on Windows"
+					description="manager · lopdev"
+					identity={identity({ activeTeam: "lopdev", activeAgent: "reviewer" })}
+					onRenameConversation={() => undefined}
+					onOpenOptions={() => undefined}
+				/>
+			</Band>
+		);
+	},
+};
+
+/**
+ * The same roster on a band pinned to the BOTTOM of the viewport.
+ *
+ * WHY A SECOND STORY FOR GEOMETRY. The operator's third ask is about a menu
+ * opened where there is no room under it ("a menu opened near the bottom of the
+ * screen has to cope with that, not overflow off-screen"). Every other story puts
+ * the band at the top, which is where the header really lives - so the only way
+ * to photograph the flip and the shrink is to move the band, and the story says
+ * so rather than pretending the app's header can be at the bottom of the window.
+ * The panel must open UPWARD here, bounded by the room above the chip.
+ */
+export const LongRosterAtTheBottom: Story = {
+	render: () => {
+		installBridge({ agents: LONG_AGENTS });
+		return (
+			<div className="flex min-h-screen w-full flex-col justify-end bg-canvas">
+				<Band>
+					<ChatHeader
+						agentName="Install the pinned uv on Windows"
+						description="manager · lopdev"
+						identity={identity({
+							activeTeam: "lopdev",
+							activeAgent: "reviewer",
+						})}
+						onRenameConversation={() => undefined}
+						onOpenOptions={() => undefined}
+					/>
+				</Band>
+			</div>
+		);
+	},
+};
+
+/**
+ * A ring that has history: the recents band above the roster, in both menus.
+ *
+ * The other half of the pair is every other story in this file - a fresh install,
+ * where the ring is empty and the panel must render NO band and NO heading rather
+ * than an empty `Recent agents` strip. Both halves are captured, because "empty
+ * recents is not a defect, it is the first-run state" is a claim about pixels.
+ *
+ * The rings are seeded by `Band` (see its `rings` prop) rather than by a
+ * localStorage fixture, so the frame cannot inherit whatever a previous story
+ * left behind.
+ */
+export const Recents: Story = {
+	render: () => {
+		installBridge({ agents: LONG_AGENTS });
+		return (
+			<Band rings={SEEDED_RECENTS}>
+				<ChatHeader
+					agentName="Install the pinned uv on Windows"
+					description="manager · lopdev"
+					identity={identity({
+						activeTeam: "lopdev",
+						activeAgent: "reviewer",
+					})}
 					onRenameConversation={() => undefined}
 					onOpenOptions={() => undefined}
 				/>
