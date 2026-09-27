@@ -26480,8 +26480,28 @@ async function sceneRouteTops(cdp) {
 		["settings", "/settings"],
 		["settings-integrations", "/settings?section=integrations"],
 		["agents", "/agents"],
+		/*
+		 * The saved-agent route draws the SAME 280px roster as `/agents` does, and it
+		 * is here because a sweep that covers only the route the operator screenshotted
+		 * is how this defect came back once already: the two are separate components
+		 * (`legacy-agents-page.tsx` and `agents-page.tsx`), so a fix carried by one is
+		 * not carried by the other. The id is arbitrary on purpose - the roster pane is
+		 * unconditional and renders without an agent to show, which is what this route
+		 * needs a reading of.
+		 */
+		["agents-detail", "/agents/local-operator"],
 		["agent-hub", "/agent-hub"],
 		["schedules", "/schedules"],
+		/*
+		 * THE TWO ROUTES THE OPERATOR NAMED AS MUST-NOT-MOVE THAT THE FIRST SWEEP LEFT
+		 * OUT (review round 1, M1). Neither draws a leading column: the projects page's
+		 * root is a vertical flex column with no ground of its own, and the browser
+		 * surface roots on `canvas` behind its own toolbar - so what their readings carry
+		 * is the floor half of the band claim (no column: the band must stop exactly at
+		 * the app sidebar's own edge) plus the route-top assertion every route gets.
+		 */
+		["projects", "/projects"],
+		["browser", "/browser"],
 	];
 	const frames = [];
 	const readings = [];
@@ -26497,31 +26517,113 @@ async function sceneRouteTops(cdp) {
 				const rect = el.getBoundingClientRect();
 				return {
 					top: Math.round(rect.top * 100) / 100,
+					left: Math.round(rect.left * 100) / 100,
+					width: Math.round(rect.width * 100) / 100,
 					height: Math.round(rect.height * 100) / 100,
 				};
 			};
 			const main = document.querySelector("main");
-			let own = null;
+			/*
+			 * A ROLE RESOLVED RATHER THAN GUESSED. --lo-surface is the token the
+			 * lane's band is asked for, and a one-off element is how its computed
+			 * value is read without a second copy of the palette: the marker's
+			 * contract is that a leading column stands on this ground, and that is
+			 * what this reading is for.
+			 */
+			const roleGround = (token) => {
+				const probe = document.createElement("div");
+				probe.style.backgroundColor = "var(" + token + ")";
+				document.body.appendChild(probe);
+				const ground = getComputedStyle(probe).backgroundColor;
+				probe.remove();
+				return ground;
+			};
+			let ownRoot = null;
 			if (main) {
 				for (const child of main.children) {
 					if (child.hasAttribute("data-chrome-route-band")) continue;
-					own = child;
+					ownRoot = child;
 					break;
 				}
 			}
 			const lane = document.querySelector("[data-titlebar-lane]");
 			const band = document.querySelector("[data-chrome-route-band]");
+			/*
+			 * THE LANE'S BAND, read back the way it is painted rather than the way it was
+			 * asked for: the stop is the first length in the RESOLVED gradient (the
+			 * inline style spells it as a custom property, so only the computed form
+			 * proves the variable resolved), and the ground is that gradient's first
+			 * colour. The leading column is whatever a route handed the shell; when there
+			 * is none, the band must be exactly the app sidebar's own width.
+			 */
+			const surfaceGround = roleGround("--lo-surface");
+			/*
+			 * THE ROUTE'S OWN LEADING COLUMN, DERIVED FROM THE LAYOUT RATHER THAN
+			 * LOOKED UP BY THE HANDLE THE FIX ADDED. A rig that asks for the marker
+			 * cannot see the defect it is meant to catch: on the tree where the band
+			 * stops short, the marker does not exist, every reading comes back null,
+			 * and the guard passes by having nothing to check (measured on the base
+			 * tree, 2026-09-27). What is derived instead is the rule itself - a
+			 * full-height column standing on the surface role at the route's own left
+			 * edge - which holds on both trees, and which a route added later is
+			 * subject to without anybody remembering to mark it.
+			 *
+			 * Two levels, and those two conditions, because anything deeper is a card
+			 * rather than a column: schedules' own surface panels are neither
+			 * full-height nor at the route's left edge, and they must not be read as
+			 * columns here.
+			 */
+			const columnAt = (el) => {
+				if (!el) return null;
+				const route = box(ownRoot);
+				const bounds = box(el);
+				if (!route || !bounds) return null;
+				if (Math.abs(bounds.left - route.left) > 0.5) return null;
+				if (bounds.height < route.height - 0.5) return null;
+				return el;
+			};
+			const leading = (() => {
+				if (!ownRoot) return null;
+				if (getComputedStyle(ownRoot).backgroundColor === surfaceGround) {
+					return columnAt(ownRoot);
+				}
+				const first = ownRoot.firstElementChild;
+				if (!first) return null;
+				if (getComputedStyle(first).backgroundColor === surfaceGround) {
+					return columnAt(first);
+				}
+				for (const inner of first.children) {
+					if (getComputedStyle(inner).backgroundColor === surfaceGround) {
+						return columnAt(inner);
+					}
+				}
+				return null;
+			})();
+			const registered = document.querySelector("[data-lane-leading-column]");
+			const laneStyle = lane ? getComputedStyle(lane) : null;
+			const gradient = laneStyle ? laneStyle.backgroundImage : "";
+			const stop = /([0-9.]+)px/.exec(gradient);
+			const rgbAt = gradient.indexOf("rgb");
+			const ground =
+				rgbAt >= 0
+					? gradient.slice(rgbAt, gradient.indexOf(")", rgbAt) + 1)
+					: null;
 			return {
 				platform: document.documentElement.getAttribute("data-chrome-platform"),
 				mode: document.documentElement.getAttribute("data-chrome-mode"),
 				viewport: { width: window.innerWidth, height: window.innerHeight },
 				lane: box(lane),
 				laneDisplay: lane ? getComputedStyle(lane).display : null,
+				laneBandStop: stop ? Number(stop[1]) : null,
+				laneBandGround: ground,
 				band: box(band),
 				bandDisplay: band ? getComputedStyle(band).display : null,
 				sidebar: box(document.querySelector("[data-sidebar-shell]")),
-				route: box(own),
-				routeTag: own ? own.tagName.toLowerCase() : null,
+				route: box(ownRoot),
+				routeTag: ownRoot ? ownRoot.tagName.toLowerCase() : null,
+				leadingColumn: box(leading),
+				registeredColumn: box(registered),
+				surfaceGround: surfaceGround,
 				settingsRail: box(
 					document.querySelector('nav[aria-label="Settings sections"]'),
 				),
@@ -26577,6 +26679,64 @@ async function sceneRouteTops(cdp) {
 				`the route's first box is at y ${reading.route === null ? "(absent)" : reading.route.top} against a lane that ends at ${laneBottom}`,
 				`route y ${reading.route === null ? "(absent)" : reading.route.top}, sidebar y ${reading.sidebar === null ? "(none)" : reading.sidebar.top}, settings rail y ${reading.settingsRail === null ? "(none)" : reading.settingsRail.top}, settings content y ${reading.settingsContent === null ? "(none)" : reading.settingsContent.top}`,
 			);
+		}
+		/*
+		 * THE BAND REACHES EVERY GROUND BESIDE IT, which is the other half of the same
+		 * claim and the one the operator reported twice (2026-09-26, and again
+		 * 2026-09-27 as still true). A column of a route's own - the settings rail, the
+		 * agents list pane - stands on the `surface` ground, but it is INSIDE the
+		 * clipped content column and cannot paint above its own top edge: the lane's
+		 * band is the only thing that can carry its ground to y0, which is why the
+		 * shell has to be told about the column.
+		 *
+		 * THE SUBJECT IS DERIVED, NOT LOOKED UP BY THE HANDLE THE FIX ADDS. Asking the
+		 * page for the marker would make this guard pass on the unfixed tree - the
+		 * marker is not there, every reading comes back null, and a check with nothing
+		 * to check is a check that cannot fail (measured on the base tree: all six
+		 * routes "passed" as routes with no leading column). The rule is derived
+		 * instead, from the layout on both trees: a full-height column on the surface
+		 * role at the route's own left edge. The registration is then asked for
+		 * separately, so a column nobody handed over fails by name rather than quietly
+		 * becoming "no column here".
+		 *
+		 * The control is the routes that draw no such column (chat, schedules, agent
+		 * hub, projects, browser): there the band stays exactly the app sidebar's width,
+		 * which is what keeps this from being a rule that quietly widens every route's
+		 * band.
+		 */
+		for (const [, path, reading] of readings) {
+			if (!reading.lane || reading.laneDisplay === "none") continue;
+			const laneLeft = reading.lane.left;
+			if (reading.leadingColumn) {
+				const column = reading.leadingColumn;
+				const edge = column.left + column.width;
+				check(
+					`${path}: the route's leading column is handed to the shell`,
+					reading.registeredColumn !== null &&
+						Math.abs(reading.registeredColumn.left - column.left) < 0.5,
+					`the column at x ${column.left} is ${reading.registeredColumn === null ? "not registered at all" : `registered at x ${reading.registeredColumn.left}`}`,
+				);
+				check(
+					`${path}: the lane's band reaches the leading column's right edge (${edge}px)`,
+					reading.laneBandStop !== null &&
+						reading.laneBandStop >= edge - laneLeft - 0.5,
+					`the band stops at ${reading.laneBandStop} against a column ending at ${edge}`,
+				);
+				check(
+					`${path}: the band is painted in the surface role the column stands on`,
+					reading.laneBandGround !== null &&
+						reading.laneBandGround === reading.surfaceGround,
+					`the band paints ${reading.laneBandGround} against the surface role's ${reading.surfaceGround}`,
+				);
+			} else if (reading.sidebar) {
+				const edge = reading.sidebar.left + reading.sidebar.width;
+				check(
+					`${path}: with no leading column the band stops at the app sidebar's own edge (${edge}px)`,
+					reading.laneBandStop !== null &&
+						Math.abs(reading.laneBandStop - (edge - laneLeft)) < 0.5,
+					`the band stops at ${reading.laneBandStop} against a sidebar ending at ${edge}`,
+				);
+			}
 		}
 		/*
 		 * The app sidebar is the control for the same number, WHERE IT EXISTS to be
@@ -26836,7 +26996,7 @@ async function main() {
 	}
 	if (SCENE === "route-tops" && BACKEND === null) {
 		throw new Error(
-			"--scene route-tops needs --backend: settings, agents, hub and schedules are gated on the catalogue a live backend advertises, and the macOS lane assertion is read over every one of them",
+			"--scene route-tops needs --backend: settings, agents, projects, hub and schedules are gated on the catalogue a live backend advertises, and the macOS lane assertion is read over every one of them",
 		);
 	}
 	if (SCENE === "pins-search" && (TUI_PYTHON === null || TUI_CONFIG === null)) {
