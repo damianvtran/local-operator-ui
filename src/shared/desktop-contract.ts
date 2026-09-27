@@ -1495,9 +1495,11 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	 * The id is the HUB document's id, not a local row's: the pull addresses what
 	 * was published, and the local copy gets its own fresh id (the local server's
 	 * `GET /v1/teams/pull/{team_id}` reconstructs it, renaming on a local id
-	 * clash through the registry's own convention). No `tenantId`: §4.5's pull
-	 * path is org-agnostic by id, and the credential that reads it is the one the
-	 * local server already holds.
+	 * clash through the registry's own convention). `tenantId` is OPTIONAL and is
+	 * the caller's statement of which organization owns the document, not part of
+	 * the address: §4.5's pull path is org-agnostic by id, the local server
+	 * verifies the claim and refuses a document owned by another tenant, and the
+	 * credential that reads it is the one the local server already holds.
 	 */
 	z
 		.object({
