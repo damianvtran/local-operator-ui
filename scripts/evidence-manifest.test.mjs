@@ -1419,6 +1419,20 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"task17RestampNote",
 	/*
+	 * AND THIS CHANGE'S OWN: the inline-rename fix's re-stamp. Its subject IS
+	 * this file's binding - it moves BOTH trees and re-captures one set's
+	 * states - so a reader is owed the pair and the twelve frames it added.
+	 */
+	"headerRenameInlineRestampNote",
+	/*
+	 * AND THE ROUND-1 REMEDIATION'S OWN, on the same lane: its subject is this
+	 * file's binding too - the save-lifecycle pass moves BOTH trees again (the
+	 * header's committed-save state and its story; the capture row and these
+	 * two lists) and re-captures one state - so a reader is owed the pair and
+	 * the two frames it added.
+	 */
+	"headerRenameInlineRoundOneNote",
+	/*
 	 * AND THE DESKTOP-SUITE TICK WAIT'S OWN: its subject is this file's binding
 	 * too - it moves BOTH trees without taking a frame (nothing in it is
 	 * user-visible; the evidence is the isolated rig runs and the three
@@ -2013,6 +2027,21 @@ const BRANCH_RECORDS = [
 	 * same reason this list exists.
 	 */
 	"task17RestampNote",
+	/*
+	 * And by this lane, whose note is now the newest top-level record on the
+	 * branch: it states the pair the inline-rename fix ships - both trees
+	 * moved, one set's states re-captured - so a fold that started from main's
+	 * copy would drop it first, the same reason this list exists.
+	 */
+	"headerRenameInlineRestampNote",
+	/*
+	 * And by the same lane once more, whose round-1 remediation note is now
+	 * the newest top-level record on the branch: it states the pair the
+	 * save-lifecycle pass ships - both trees moved, one set's state
+	 * re-captured - so a fold that started from main's copy would drop it
+	 * first, the same reason this list exists.
+	 */
+	"headerRenameInlineRoundOneNote",
 	/*
 	 * And by THIS lane, whose note is the newest top-level record on the branch:
 	 * it states the pair this tip ships, moves both trees, and takes no frame -
