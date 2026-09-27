@@ -1138,7 +1138,15 @@ const CONTROLS = [
 		 * `surface` 9.02:1 at worst.
 		 */
 		name: "browser approvals dock",
-		on: ["canvas"],
+		/*
+		 * BOTH HOSTS' GROUNDS, and the second one is this pass's edit. The dock is a
+		 * control band inside `BrowserSurface`, which the ROUTE mounts on `canvas` and
+		 * the chat's pane mounts on the drawer's rung - `elevated` since the pane-slot
+		 * pass (`canvas/index.tsx`). Its edge is asserted against both, and it passes
+		 * on `elevated` because `borderControl` is authored at 3:1 on the lightest
+		 * ground the file asserts (`palette-contract.ts`).
+		 */
+		on: ["canvas", "elevated"],
 		fill: "surface",
 		border: "borderControl",
 		ink: "ink",
@@ -3478,6 +3486,28 @@ const INK_STEP_FLOOR = SYNTAX_COMMENT_FLOOR;
  */
 const FIELD_SEPARATION_FLOOR = 2.0;
 const LINE_SEPARATION_FLOOR = 4.0;
+/*
+ * THE REGION FLOOR, for two planes of the same kind meeting with no rule between
+ * them. Declared separately from the two above for the reason the pair above is:
+ * they move for different measurements, and a change to either is a change to one
+ * job.
+ *
+ * 2.0 was calibrated on adjacent ground FIELDS "like a card sitting on a canvas"
+ * - a small object with corners, where SHAPE does most of the work. Two
+ * full-height regions of one window - the conversation and the drawer beside it -
+ * have only the tone step and no shape cue, which is the same integration
+ * argument the line floor below is built on, one step less severe: hence 4.0, the
+ * number that argument already produced for a mark with almost no area to
+ * integrate over.
+ *
+ * WHICH PAIR THIS IS FOR, and only that pair: the conversation's `canvas` against
+ * the drawer's `elevated` (`pane-slot-ground`'s claim 1 reads the same two roles
+ * out of the lane's own stops). The two candidate rungs it rules out are recorded
+ * in `canvas/index.tsx`: `surface` merges with the sidebar and measures 2.02-6.62
+ * against `canvas` itself - 31 of 59 palettes under 3.0 - and `sunken` is the
+ * field floor with 0.0028 of headroom AND the pane's own recessed content ground.
+ */
+const REGION_SEPARATION_FLOOR = 4.0;
 
 /*
  * THE TWO ROW STATES, and the retirement of `highlight`.
@@ -4949,7 +4979,7 @@ for (const { id, palette: p } of palettes) {
 	   pressed-fill repair could cut dracula's rest-to-pressed distance from
 	   10.43 to 5.72 without a single gate noticing. These are fields - a whole
 	   button fill - so they take the field floor. */
-	for (const [a, b] of [
+	for (const [a, b, floor = FIELD_SEPARATION_FLOOR] of [
 		["canvas", "surface"],
 		["surface", "elevated"],
 		["elevated", "sunken"],
@@ -4963,13 +4993,22 @@ for (const { id, palette: p } of palettes) {
 		   distance was not, which is the same gap `accent`/`accentActive`
 		   closed for the primary. */
 		["surface", "sunken"],
+		/* THE REGION BOUNDARY (design round, D3): the conversation's ground against
+		   the drawer's, the pair the pane-slot lane paints and `pane-slot-ground`'s
+		   claim 1 derives from the same two tokens. It is in THIS list because the
+		   pair meets on screen exactly like the steps above it - and it takes its
+		   own floor (`REGION_SEPARATION_FLOOR`) because two full-height planes with
+		   no rule between them are not a card on a canvas. Measured over the 59
+		   palettes: 4.17 (`catppuccinMacchiato`) to 11.64 (`radient`), median 5.46,
+		   0 under 4.0. */
+		["canvas", "elevated", REGION_SEPARATION_FLOOR],
 	]) {
 		if (!isHex(p[a]) || !isHex(p[b])) continue;
 		assertions++;
 		const got = deltaE(p[a], p[b]);
-		if (got < FIELD_SEPARATION_FLOOR) {
+		if (got < floor) {
 			fail(
-				`${id}: adjacent \`${a}\` and \`${b}\` are ΔE00 ${r2(got)} apart (need ${FIELD_SEPARATION_FLOOR}) — a step the eye cannot see is not a step`,
+				`${id}: adjacent \`${a}\` and \`${b}\` are ΔE00 ${r2(got)} apart (need ${floor}) — a step the eye cannot see is not a step`,
 			);
 		}
 	}

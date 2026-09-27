@@ -16,19 +16,24 @@
  * THE FOUR CLAIMS, and the one derivation that makes the first of them more than a
  * lint:
  *
- *   1. **Every occupant of the slot roots at the lane's own ground.** `chat-layout`
- *      paints the 32px chrome lane `--lo-canvas` from the sidebar's trailing edge to
- *      the window's right edge, and every pane in the slot is mounted inside that
- *      region. So a pane rooted at `bg-canvas` is continuous with the lane from y0
- *      down and the operator's top edge cannot be drawn by construction; a pane
- *      rooted at anything else re-introduces it. This file reads the lane's own
- *      gradient out of `chat-layout.tsx` and the panes' roots out of their own
- *      modules, and asserts the TOKENS are equal rather than asserting a literal,
- *      so repainting the lane and the slot together is a decision this test follows
- *      and repainting one of them is a decision it refuses.
+ *   1. **Every occupant of the slot roots at the lane's last stop.** `chat-layout`
+ *      paints the 32px chrome lane in each column's own ground, and its LAST stop
+ *      is the slot's — `--lo-elevated` since the drawer's rung pass (design round,
+ *      D3; the separation and the two refused alternatives are argued in
+ *      `canvas/index.tsx`). Every pane in the slot is mounted under that stop, so
+ *      a pane rooted at the same token is continuous with the lane from y0 down
+ *      and the operator's top edge cannot be drawn by construction; a pane rooted
+ *      at anything else — the conversation's `canvas` included — re-introduces it
+ *      at y32. This file reads the lane's own gradient out of `chat-layout.tsx`
+ *      and the panes' roots out of their own modules, and asserts the TOKENS are
+ *      equal rather than asserting a literal, so repainting the lane and the slot
+ *      together is a decision this test follows and repainting one of them is a
+ *      decision it refuses.
  *   2. **No seam rule on the slot's wrappers.** The boundary is the tone step
- *      between `surface` and `canvas` now; a `border-l border-hairline` beside it is
- *      the second way of saying one thing, and the operator's ask was borderless.
+ *      the ladder already draws — the sidebar's `surface`, the conversation's
+ *      `canvas` and the slot's `elevated` — and a `border-l border-hairline`
+ *      beside the step is the second way of saying one thing, and the operator's
+ *      ask was borderless.
  *   3. **No ground of its own on the slot's chrome bars.** A bar that paints a
  *      ground is the band the operator reported. The bar's height (40px) is the
  *      slot's, and this file checks the panes agree on it, because a bar that moved
@@ -43,8 +48,9 @@
  * WHAT IT CANNOT SEE: whether the result LOOKS right, and whether any given theme's
  * two grounds are far enough apart to read. The magnitudes are
  * `scripts/contrast-contract.mjs`'s (`surface` -> `canvas` is an asserted adjacent
- * pair there, ΔE00 2.05-6.76 across the palettes) and the frames are the evidence
- * set's. A green run here says the slot is wired the way the report asked.
+ * pair there, and `canvas` -> `elevated` the region pair its `REGION_SEPARATION_FLOOR`
+ * holds at 4.0) and the frames are the evidence set's. A green run here says the
+ * slot is wired the way the report asked.
  */
 
 import assert from "node:assert/strict";
@@ -102,7 +108,7 @@ function withoutComments(source) {
  * call is work the linter is right to refuse.
  */
 const LANE_GRADIENT =
-	/linear-gradient\(to right, var\((--lo-[\w-]+)\) \$\{columnWidth\}px, var\((--lo-[\w-]+)\)/;
+	/linear-gradient\(to right, var\((--lo-[\w-]+)\) \$\{columnWidth\}px, var\((--lo-[\w-]+)\) \$\{columnWidth\}px, var\((--lo-[\w-]+)\) \$\{([\w.]+)\}px, var\((--lo-[\w-]+)\) \$\{([\w.]+)\}px\)/;
 const PANE_ROOT = /className=\{cn\("flex h-full flex-col (bg-[\w-]+)"\)\}/g;
 const PANE_BAR =
 	/"flex (h-\d+) shrink-0 items-center justify-between gap-2 ([^"]*?)px-2"/g;
@@ -136,25 +142,59 @@ const PANE_HOSTS = [
 ];
 
 /**
- * The lane's own ground for the region right of the sidebar, read off the
- * gradient `chat-layout.tsx` paints it with.
+ * The lane's own stops, read off the gradient `chat-layout.tsx` paints it with.
  *
- * The gradient is `linear-gradient(to right, <sidebar> <width>px, <work> <width>px)`:
- * the SECOND stop is the ground every pane in the slot stands on. Reading it here,
- * rather than restating `canvas`, is the whole point of claim 1 — a literal would
- * pass while the lane and the slot disagreed.
+ * The gradient is `linear-gradient(to right, <sidebar> <columnWidth>px,
+ * <conversation> <columnWidth>px, <conversation> <edge>px, <slot> <edge>px)`: the
+ * sidebar's ground to the sidebar's width, the CONVERSATION'S TOKEN REPEATED at
+ * the slot's leading edge, and the slot's own ground from that edge to the
+ * window's right edge. Reading those tokens here, rather than restating them, is
+ * the whole point of claim 1 — a literal would pass while the lane and the slot
+ * disagreed.
+ *
+ * The repeat is asserted rather than assumed, because the shape it refuses is
+ * the near-miss: a three-stop gradient from the conversation's token to the
+ * slot's interpolates one ground into the other across the conversation's whole
+ * width, which is a band that fades rather than a stop that lands.
  */
-function laneWorkGround() {
-	const source = read(CHAT_LAYOUT);
-	const gradient = source.match(LANE_GRADIENT);
+const CHAT_VIEW_GROUND =
+	/"flex h-full min-h-0 grow flex-col overflow-hidden rounded-none (bg-[\w-]+)"/;
+
+/** `bg-elevated` -> `--lo-elevated`, the two spellings of one role. */
+const tokenOf = (utility) => `--lo-${utility.slice(3)}`;
+
+/** The ground the conversation's column declares, as `--lo-<role>`. */
+function conversationGround() {
+	const view = read(CHAT_CONTENT).match(CHAT_VIEW_GROUND);
 	assert.ok(
-		gradient,
-		"chat-layout.tsx no longer paints the lane with a two-stop gradient; the slot's ground is derived from that gradient, so this file must be re-read before it can assert anything",
+		view,
+		"chat-content.tsx no longer declares the chat view's ground as `overflow-hidden rounded-none bg-*`; the lane's conversation stop is derived from that literal, so this file must be re-read before it can assert anything",
 	);
-	return gradient[2];
+	return tokenOf(view[1]);
 }
 
-/** The ground token a pane's root section/div paints, as `--lo-<role>`. */
+function laneStops() {
+	const gradient = read(CHAT_LAYOUT).match(LANE_GRADIENT);
+	assert.ok(
+		gradient,
+		"chat-layout.tsx no longer paints the lane with a four-stop gradient (sidebar, conversation, the conversation repeated at the slot's edge, the slot); the panes' ground is derived from that gradient, so this file must be re-read before it can assert anything",
+	);
+	const [, sidebar, conversation, repeated, firstEdge, slot, slotEdge] =
+		gradient;
+	assert.equal(
+		repeated,
+		conversation,
+		`chat-layout.tsx's lane stops read ${conversation} at the sidebar's edge and ${repeated} at the slot's — the conversation's token has to be REPEATED for the last band to be a hard stop. Two different tokens across the conversation's width is a ramp, which is the fade this pair exists to refuse.`,
+	);
+	assert.equal(
+		firstEdge,
+		slotEdge,
+		`chat-layout.tsx paints its third and fourth stops ${firstEdge}px and ${slotEdge}px from the left — the slot's ground must start exactly where the conversation's ends, or the pair is a ramp with a stop in the middle of it`,
+	);
+	return { sidebar, conversation, slot };
+}
+
+/** The ground token a pane's root section/div paints, as `bg-<role>`. */
 function paneRootGround(file, name) {
 	const source = read(file);
 	const matches = [...source.matchAll(PANE_ROOT)];
@@ -162,28 +202,38 @@ function paneRootGround(file, name) {
 		matches.length > 0,
 		`${name}: no 'flex h-full flex-col bg-*' root found in ${file} — the pane's ground is read off its own class string, so this file has to be re-read before it can assert anything`,
 	);
+	const slotStop = laneStops().slot;
+	/* The lane's last stop in the panes' own spelling: `--lo-elevated` -> `bg-elevated`.
+	 * Derived, never a literal — a literal here would be this file's second, and
+	 * silently disagreeing, source for which rung the slot stands on. */
+	const expected = slotStop.replace(/^--lo-/, "bg-");
 	for (const match of matches) {
 		assert.equal(
 			match[1],
-			"bg-canvas",
-			`${name}: a root in ${file} paints \`${match[1]}\`. Every occupant of the right-pane slot must root at the ground chat-layout.tsx paints the chrome lane with (${laneWorkGround()}), or the pane's own ground meets the lane at the lane's bottom edge — the hard horizontal cut the operator reported.`,
+			expected,
+			`${name}: a root in ${file} paints \`${match[1]}\`. Every occupant of the right-pane slot must root at the lane's LAST stop — chat-layout.tsx paints the slot's band with \`var(${slotStop})\` — or the pane's own ground meets the lane at the lane's bottom edge: the hard horizontal cut the operator reported, one layer up.`,
 		);
 	}
 	return matches.length;
 }
 
-test("every pane in the slot roots at the lane's own ground", () => {
-	const lane = laneWorkGround();
+test("every pane in the slot roots at the lane's slot stop", () => {
+	const lane = laneStops();
+	assert.equal(
+		lane.sidebar,
+		"--lo-surface",
+		`chat-layout.tsx paints the lane's first stop (over the sidebar) with ${lane.sidebar}; the sidebar's own ground is \`bg-surface\` (\`--lo-surface\`). The lane is a mirror of the columns' grounds, so its first stop is not a free choice either.`,
+	);
+	assert.equal(
+		lane.conversation,
+		conversationGround(),
+		`chat-layout.tsx paints the lane over the conversation with ${lane.conversation}; chat-content.tsx's chat view declares ${conversationGround()}. A lane whose middle stops disagree with the column they cover paints a band the conversation below does not draw.`,
+	);
 	for (const pane of PANES) {
 		paneRootGround(pane.file, pane.name);
 	}
-	/* The lane's right-hand stop is the token the panes must use, and this is the
-	 * one place the two are compared rather than one being restated. */
-	assert.equal(
-		lane,
-		"--lo-canvas",
-		`chat-layout.tsx paints the lane right of the sidebar with ${lane}; the slot's panes use \`bg-canvas\` (\`--lo-canvas\`). A lane repainted without the slot is a top edge reintroduced, so this pair is a decision rather than a literal.`,
-	);
+	/* The lane's last stop is the token the panes must use, and this is the one
+	 * place the two are compared rather than one being restated. */
 });
 
 test("no seam rule on the slot's wrappers, in the app or in the harness", () => {
@@ -191,7 +241,7 @@ test("no seam rule on the slot's wrappers, in the app or in the harness", () => 
 		const source = withoutComments(read(host));
 		assert.ok(
 			!source.includes("border-l border-hairline"),
-			`${host} draws \`border-l border-hairline\` beside the pane slot. The slot's seam is the \`surface\` -> \`canvas\` tone step, and the operator's ask was borderless; a rule beside the step is a second way of saying one thing — and a harness copy of it photographs a boundary the product does not draw (design review round 1, D1).`,
+			`${host} draws \`border-l border-hairline\` beside the pane slot. The slot's seam is the tone step the ladder already draws (\`surface\` / \`canvas\` / \`elevated\`), and the operator's ask was borderless; a rule beside the step is a second way of saying one thing — and a harness copy of it photographs a boundary the product does not draw (design review round 1, D1).`,
 		);
 	}
 });
