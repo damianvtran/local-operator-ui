@@ -1,0 +1,108 @@
+[build] current: assets 2026-09-27T19:52:15.903Z >= sources 2026-09-27T19:51:58.496Z
+[note] abandoned scratch trees
+        2 seen, 0 owned by a live pid (kept), 2 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        out/renderer/index.html: http://127.0.0.1:6546 added to frame-src and media-src (build output only; src/ untouched)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/drafts-clear-on-send
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-66401
+  frames        /Users/damian/.local-operator/sessions/b86dd4c5ed19/scratchpad/drafts-evidence/rig/frames-r2-before
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-66401/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:6546   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/drafts-clear-on-send/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:6546","backend":"http://127.0.0.1:6546"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:6546)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[note] the seeded rows, as the section lists them
+        ["[redacted]","draft:7d7d7d7d-0003-4000-8000-000000000003","draft:6c6c6c6c-0002-4000-8000-000000000002","draft:5b5b5b5b-0001-4000-8000-000000000001"]
+[PASS] all four untargeted drafts are rows, the live hop included
+[PASS] the targeted draft is deliberately not a row
+[PASS] at rest the discard control exists but spends nothing (hidden)
+[note] the discard control under the pointer
+        null
+[FAIL] the pointer reveals the discard control
+        null
+[PASS] the reveal moves no row: the hovered row's height is the height at rest
+[note] the live hop's discard control
+        null
+[FAIL] the live hop's control is revealed and disabled
+        null
+[note] discard press
+        no discard control exists on this tree - the press is skipped, not driven
+[note] undo press
+        no offer exists on this tree - the press is skipped
+[note] the composer after opening the draft
+        "This session seems to be wedged, can you check it"
+[note] open-draft discard
+        no discard control exists on this tree - the press is skipped, and the frame is the opened draft
+[note] clear-all press
+        no Clear all control exists on this tree - the press is skipped, not driven
+[FAIL] a relaunch does not resurrect the discarded drafts
+        ["[redacted]","draft:7d7d7d7d-0003-4000-8000-000000000003","draft:6c6c6c6c-0002-4000-8000-000000000002","draft:5b5b5b5b-0001-4000-8000-000000000001"]
+[PASS] the live-hop row was never discarded, so it is still there
+[PASS] and the offer does not outlive the app
+[PASS] every settled capture is a frame the app held still for, with no toast on it
+[FAIL] the offer frames hold the offer, stable
+        drafts-deleted: stable=false toastText=null | drafts-deleted-open: stable=false toastText=null | drafts-cleared: stable=false toastText=null
+
+---- app log (tail) ----
+15:52:27.571 › [browser] denied a media permission request from (unknown origin)
+15:52:27.571 › [browser] denied a media permission request from (unknown origin)
+15:52:27.571 › [browser] denied a web-app-installation permission request from (unknown origin)
+15:52:27.571 › [browser] denied a geolocation permission request from (unknown origin)
+15:52:28.201 › [browser] denied a media permission request from (unknown origin)
+15:52:28.201 › [browser] denied a media permission request from (unknown origin)
+15:52:28.201 › [browser] denied a web-app-installation permission request from (unknown origin)
+15:52:28.201 › [browser] denied a geolocation permission request from (unknown origin)
+15:52:28.276 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+15:52:28.277 › Checking for UI updates...
+15:52:28.277 › Skip checkForUpdates because application is not packed and dev update config is not forced
+Error occurred in handler for 'browser-state': Error: No handler registered for 'browser-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'console-state': Error: No handler registered for 'console-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'browser-state': Error: No handler registered for 'browser-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+15:52:28.340 › [shell-path] /bin/zsh reports PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
+15:52:28.341 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
+15:52:28.341 › Shell environment variables loaded successfully. PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
+15:52:28.342 › [browser] host on 127.0.0.1:59164 (proto 1), profile /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-66401/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+15:52:28.496 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+15:52:28.496 › Checking for UI updates...
+15:52:28.496 › Skip checkForUpdates because application is not packed and dev update config is not forced
+15:52:28.516 › [browser] tab 1 navigated to about:blank
+[window-mode] state: visible=false focused=false focusable=false size=1380x900 content=1380x900
+15:52:30.081 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+15:52:30.081 › Checking for UI updates...
+15:52:30.082 › Skip checkForUpdates because application is not packed and dev update config is not forced
+15:52:30.562 › Checking for updates... (silent mode: true)
+15:52:30.562 › Skip checkForUpdates because application is not packed and dev update config is not forced
+15:52:30.563 › Checking for backend updates... (silent mode: true)
+15:52:30.563 › Skip backend update check in dev mode unless forced
+15:52:33.574 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+15:52:33.576 › Checking for UI updates...
+15:52:33.577 › Skip checkForUpdates because application is not packed and dev update config is not forced
+
+[PASS] no process from this run outlived its boot
+
+frames: drafts-cleared.png, drafts-deleted-open.png, drafts-deleted.png, drafts-hover.png, drafts-pending-disabled.png, drafts-relaunch.png, drafts-rest.png, drafts-undo-restored.png
+frames directory: /Users/damian/.local-operator/sessions/b86dd4c5ed19/scratchpad/drafts-evidence/rig/frames-r2-before
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-66401/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-66401 (the frames are also in --out)
+
+4 CHECK(S) FAILED
