@@ -121,7 +121,18 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 				   email in the row are the name. */
 				aria-label={expanded ? undefined : "Account settings"}
 				className={cn(
-					"flex w-full items-center gap-2 rounded-sm transition-colors duration-fast ease-out-quart hover:bg-row-hover",
+					/*
+					 * `min-w-0` is what lets the row SHRINK below its own content: without it
+					 * the button's min-content width wins, a long name or email pushes the
+					 * foot's settings gear out of the rail, and the sidebar's
+					 * `overflow-hidden` clips it (design round 1, D1 - a 31-character email
+					 * alone was enough, with the gear painting 0 pixels against 331 where it
+					 * belongs). With the class both lines ellipsise inside their own box and
+					 * the gear keeps its place; the text column below already carries the
+					 * same pair one level down (`min-w-0` on the column, `truncate` on each
+					 * of its two lines).
+					 */
+					"flex w-full min-w-0 items-center gap-2 rounded-sm transition-colors duration-fast ease-out-quart hover:bg-row-hover",
 					/*
 					 * `px-2` lands the avatar on the column's own 16px line: the
 					 * destination rows above are `px-2` inside this column's `px-2`
