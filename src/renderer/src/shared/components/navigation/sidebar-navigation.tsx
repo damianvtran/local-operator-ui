@@ -665,10 +665,18 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			<div className="mt-2 flex min-h-0 flex-1 flex-col">{listBody}</div>
 
 			{/*
-			 * THE FOOT, 40px: the account row, whose own menu carries Settings and
-			 * Sign out, and the gear that goes straight to Settings.
+			 * THE FOOT: the account row, whose own menu carries Settings and Sign
+			 * out, and the gear that goes straight to Settings.
+			 *
+			 * `pb-2` is the column's own bottom pad, and it is the same step the
+			 * strip's foot carries - the operator's report of 2026-09-26 was that
+			 * this row sat flush against the window's bottom edge with "no
+			 * padding against the bottom of the screen". `min-h-10` keeps the
+			 * foot at its 40px row height and lets the padding extend the box to
+			 * 48, so the row is not squeezed (a fixed `h-10` with `pb-2` would
+			 * leave a 32px content box and a 40px row overflowing it).
 			 */}
-			<div className="flex h-10 shrink-0 items-center justify-between gap-1 px-2">
+			<div className="flex min-h-10 shrink-0 items-center justify-between gap-1 px-2 pb-2">
 				<UserProfileSidebar expanded />
 				{settingsGear}
 			</div>
