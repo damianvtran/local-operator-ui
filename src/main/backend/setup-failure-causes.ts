@@ -29,6 +29,32 @@ export const SETUP_FAILURE_CAUSES: Array<[RegExp, string]> = [
 	],
 	[
 		/*
+		 * THE INSPECTED CONNECTION, and it goes above the unreachable-index entry
+		 * for the reason that entry's own note gives for its own position: a TLS
+		 * failure IS a network failure to the reader, and the general sentence that
+		 * follows ("check the connection and retry") is the wrong remedy for it -
+		 * the connection works for every other application on the machine, and
+		 * retrying it never helps.
+		 *
+		 * BOTH CLIENTS' WORDS ARE MATCHED, because both are on the install path and
+		 * they fail with different sentences for the same cause: uv says
+		 * `invalid peer certificate: UnknownIssuer`, pip says
+		 * `SSLError(SSLCertVerificationError(...))` / "There was a problem
+		 * confirming the ssl certificate" (both captured against a deliberately
+		 * untrusted local CA on macOS, not quoted from memory). Neither
+		 * sentence matched anything in this table before, so the user got the
+		 * app's generic words with no remedy in them at all.
+		 *
+		 * THE REMEDY NAMES THE STORE, and that is the half this change made true:
+		 * the install now passes `--system-certs`/`UV_SYSTEM_CERTS` to uv, so a root
+		 * that IS in the platform store is trusted, and the sentence a user can act
+		 * on is "your network's root is not in that store yet".
+		 */
+		/invalid peer certificate|UnknownIssuer|SSLError|SSLCertVerificationError|CERTIFICATE_VERIFY_FAILED|problem confirming the ssl certificate|certificate is not trusted/i,
+		"Local Operator could not verify the package index's secure connection, which is usually a network that inspects it (a corporate proxy or firewall). Ask IT for the root certificate and add it to your system certificate store - this app already trusts that store - then retry.",
+	],
+	[
+		/*
 		 * THE UNREACHABLE INDEX, and it goes above the file one on purpose.
 		 *
 		 * pip's "Could not find a version that satisfies the requirement" matched the

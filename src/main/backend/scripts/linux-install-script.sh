@@ -181,6 +181,44 @@ if [ -z "${PYTHON_BIN:-}" ] || ! is_valid_python_binary "${PYTHON_BIN:-}"; then
     "$(pwd)/resources/python/bin/python3"
   )
 
+  # ...AND THEN WHATEVER `PATH` OFFERS, which is the half this probe used to
+  # ignore entirely.
+  #
+  # WHY IT MATTERS, stated as the user story rather than as a rule: Python 3.12
+  # on Linux usually arrives from a version manager (pyenv, mise, asdf, uv) or a
+  # Homebrew/Linuxbrew prefix, and every one of those puts its interpreter
+  # somewhere this list does not name while putting it on `PATH`. The list above
+  # is what the app's own CI runner has (Ubuntu's `/usr/bin/python3`), so the gap
+  # was invisible there and the report on the user's machine was the wrong one:
+  # "No suitable Python installation found (version 3.12 or higher required).
+  # Please install Python 3.12 or higher" - about a machine that had 3.12
+  # installed and working, sending them to reinstall what they already had.
+  #
+  # APPENDED, NOT PREPENDED. A version manager on `PATH` can point at any minor
+  # version, and the fixed list above is the more predictable of the two where it
+  # resolves at all; the version and architecture checks in the loop below are
+  # unchanged and still decide, so an entry added here is a candidate and never
+  # an answer.
+  for python_name in python3.12 python3 python; do
+    resolved_python="$(command -v "${python_name}" 2>/dev/null || true)"
+    if [ -z "${resolved_python}" ]; then
+      continue
+    fi
+    # Deduplicated by hand: a repeated candidate costs a python spawn each and
+    # repeats its own "below the required version" line, which reads as several
+    # separate problems rather than one machine being looked at three times.
+    already_listed=false
+    for listed_path in "${POSSIBLE_PYTHON_PATHS[@]}"; do
+      if [ "${listed_path}" = "${resolved_python}" ]; then
+        already_listed=true
+        break
+      fi
+    done
+    if [ "${already_listed}" = false ]; then
+      POSSIBLE_PYTHON_PATHS+=("${resolved_python}")
+    fi
+  done
+
   # Find the first Python that exists and is version 3.12+ and works on this architecture
   PYTHON_BIN=""
   for path in "${POSSIBLE_PYTHON_PATHS[@]}"; do
@@ -211,7 +249,13 @@ if [ -z "${PYTHON_BIN:-}" ] || ! is_valid_python_binary "${PYTHON_BIN:-}"; then
 
   # If we couldn't find a suitable Python, exit with error
   if [ -z "${PYTHON_BIN:-}" ]; then
-    error_exit "No suitable Python installation found (version 3.12 or higher required).\nPlease install Python 3.12 or higher before running this script.\nYou can install Python from https://www.python.org/downloads/"
+    # WHAT WAS SEARCHED IS PART OF THE DIAGNOSIS, and printing it is the second
+    # half of the fix above: the sentence this used to end with told a user who
+    # already had 3.12 to install it. Naming the paths makes the two real cases
+    # tell themselves apart - nothing is installed, or something is installed and
+    # this process cannot see it - and each of those has its own remedy.
+    log "No suitable Python 3.12+ was found. Checked: ${POSSIBLE_PYTHON_PATHS[*]}"
+    error_exit "No Python 3.12+ found: not in the standard locations and not on this process's PATH. Install Python 3.12 or higher (https://www.python.org/downloads/), or make an existing 3.12+ visible on this process's PATH."
   fi
 fi
 
@@ -386,10 +430,14 @@ echo "Virtual environment structure verified"
 # plus the 2.3-2.8 s pip self-upgrade this path skips, so 1.5-2.8x across two
 # operators rather than the "14.8 s against 128.9 s" quoted here before that
 # reading was withdrawn (`docs/BUILD.md` has the full set). The pip path below is
-# unchanged and runs whenever uv is absent or cannot do the job, and pip STAYS in the venv
-# because the app's backend-update path runs `pip install --upgrade
-# local-operator` inside this same environment - which is also why the venv is
-# still created with `python -m venv` rather than `uv venv`.
+# unchanged and runs whenever uv is absent or cannot do the job, and pip STAYS in
+# the venv because the app's backend-update path runs `<venv>/bin/python -m pip
+# install --upgrade local-operator` inside this same environment - which is why
+# the environment must keep pip, and NOT a reason to avoid `uv venv`: the note
+# that stood here said `uv venv` leaves no pip at all, which is true of bare
+# `uv venv` and false of `uv venv --seed`, and this script's own creation path is
+# still `python -m venv` only because moving it has been measured on macOS and
+# not on this platform yet (see the macOS script for the numbers and the proof).
 #
 # Nothing here searches PATH for a uv: an installed uv is a version and a
 # configuration nobody in this repository chose. `LOCAL_OPERATOR_UV_BIN` is the
@@ -424,8 +472,25 @@ uv_is_usable() {
 # UV_NO_CONFIG: never read `pyproject.toml`/`uv.toml`, wherever they are.
 # UV_PYTHON_DOWNLOADS=never: this install uses the interpreter it was handed and
 # never fetches another.
+# UV_SYSTEM_CERTS: trust the PLATFORM trust store, not only the root bundle uv
+# ships. Off by default, which is the default this line changes; `--system-certs`
+# is the same setting spelled as a flag in the bundled uv 0.12.17.
+#
+# WHY: on a network that inspects TLS the root lives in the platform store (here,
+# `/etc/ssl/certs`), and neither client on this path would otherwise see it - uv
+# would fail the handshake against the roots compiled into it, and the pip
+# fallback resolves against certifi, which is the same Mozilla bundle under
+# another name. uv names this remedy itself when it fails: "Consider enabling use
+# of system TLS certificates with the `--system-certs` command-line flag".
+# Nothing here passed it, so both paths failed and the user was told to check a
+# network that was working for every other application on the machine.
+#
+# IT CANNOT MAKE THINGS WORSE: every uv call below is already followed by the pip
+# fallback on a non-zero exit, so a platform store that cannot be read costs one
+# failed uv attempt and then the path that shipped before uv was bundled.
 uv_run() {
-  UV_NO_CONFIG=1 UV_PYTHON_DOWNLOADS=never UV_CACHE_DIR="${UV_CACHE_DIR}" \
+  UV_NO_CONFIG=1 UV_PYTHON_DOWNLOADS=never UV_SYSTEM_CERTS=1 \
+    UV_CACHE_DIR="${UV_CACHE_DIR}" \
     "${UV_BIN}" "$@"
 }
 

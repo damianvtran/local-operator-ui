@@ -127,81 +127,10 @@ echo "Checking for venv module availability..."
 }
 echo "venv module is available"
 
-# Create virtual environment if it doesn't exist
-if [ ! -d "$VENV_PATH" ]; then
-  echo "|LO1:environment"
-  echo "Creating virtual environment at $VENV_PATH..."
-  # Never repair a path we did not create. Preparation allocates a fresh final
-  # pathname; a collision is evidence to preserve, not a reason to delete it.
-  if [ -e "$VENV_PATH" ] || [ -L "$VENV_PATH" ]; then
-    echo "Refusing to replace an existing environment path: $VENV_PATH" >&2
-    exit 1
-  fi
-  
-  # Make sure parent directory exists and is writable
-  mkdir -p "$(dirname "$VENV_PATH")"
-  
-  # Create the virtual environment with verbosity
-  "$PYTHON_BIN" -m venv "$VENV_PATH" || {
-    echo "ERROR: Failed to create virtual environment. Exit code: $?"
-    echo "Virtual environment path: $VENV_PATH"
-    echo "Python binary used: $PYTHON_BIN"
-    ls -la "$(dirname "$VENV_PATH")"
-    echo "Python executable permissions:"
-    ls -la "$PYTHON_BIN"
-    exit 1
-  }
-  echo "Successfully created virtual environment"
-fi
-
-# Verify the virtual environment structure
-echo "Verifying virtual environment structure..."
-if [ ! -f "$VENV_PATH/bin/python" ] || [ ! -f "$VENV_PATH/bin/pip" ]; then
-  echo "ERROR: Virtual environment is missing critical components"
-  echo "Contents of virtual environment directory:"
-  ls -la "$VENV_PATH"
-  if [ -d "$VENV_PATH/bin" ]; then
-    echo "Contents of bin directory:"
-    ls -la "$VENV_PATH/bin"
-  fi
-  exit 1
-fi
-echo "Virtual environment structure verified"
-
-# --- The package install: uv when there is one, pip otherwise ------------------
+# --- The installer this script prefers: the app's own bundled uv -----------------
 #
-# WHY UV. Installing the backend is the phase a user waits through on a first
-# run, and pip spends it resolving and fetching serially. Measured on this
-# machine, cold cache, three runs each, the same interpreter and dependency set:
-# pip's package install is 33.0-40.7 s against uv's 12.8-16.1 s, plus the
-# 2.3-2.8 s `pip install --upgrade pip` the uv path skips. QA's independent pair
-# on a quieter box was 33.9 s against 22.8 s, so read the ratio as 1.5-2.8x
-# ACROSS those two operators, and the seconds as this box's. Warm, a retry or a
-# repair: 15.9-33.8 s against 0.65-1.57 s.
-#
-# THE FIGURES THIS COMMENT USED TO QUOTE ARE WITHDRAWN, and this note is here so
-# they are not restored: "pip 128.9 s against uv 14.8 s, 178.3 s against 4.5 s
-# warm". The pip reading was taken at load ~90 and did not reproduce at five
-# further attempts. A comment that argues from a withdrawn number is how the next
-# maintainer decides on a ratio five times the measured one - and the decision it
-# argues is whether ~16-20 MiB per artifact earns its place, so the number is
-# load-bearing. `docs/BUILD.md` carries the full set.
-#
-# WHY A FALLBACK RATHER THAN UV ALONE. uv is a NEW resource in the bundle, and
-# every artifact built before this change has none. The pip path below is the one
-# that shipped until now, unchanged, and it runs whenever uv is absent or cannot
-# do the job - a dev checkout whose `pnpm setup-python` was never run, an older
-# artifact, a uv the platform refuses to spawn, a uv install that failed. A
-# fallback that has never been exercised is a claim rather than a feature, which
-# is why the CI install-script jobs run this script with no uv at all.
-#
-# WHY pip STAYS IN THE VENV, and why this does NOT use `uv venv`: the app's
-# backend-update path runs `pip install --upgrade local-operator` inside this same
-# environment (`update-service.ts`, and `update-install.ts` documents why pip is
-# the right command there). `python -m venv` seeds pip from the interpreter's own
-# `ensurepip` wheel, where `uv venv` produces an environment with no pip at all -
-# so switching the creation would silently break every later update. The check
-# above (`"$VENV_PATH/bin/pip"`) is what holds that on both paths.
+# Resolved HERE, above the environment rather than beside the package install,
+# because uv builds the environment too (see the note at the creation below).
 #
 # The app hands the path of the pinned, bundled uv in `LOCAL_OPERATOR_UV_BIN`
 # (`src/main/backend/uv-tool.ts`). Nothing here searches PATH for a uv: an
@@ -251,12 +180,154 @@ uv_is_usable() {
 # UV_PYTHON_DOWNLOADS=never: this install uses the interpreter it was handed and
 # may never fetch another, which is also what keeps it working offline.
 # UV_CACHE_DIR: this install's own cache, passed explicitly for the same reason.
+# UV_SYSTEM_CERTS: trust the PLATFORM trust store, not only the root bundle uv
+# ships. It is OFF by default, which is the default this line changes, and the
+# flag's own name in the bundled uv is `--system-certs`.
+#
+# WHY THIS LINE EXISTS AT ALL. A network that inspects TLS - a corporate proxy,
+# an admin- or profile-installed root - carries its root in the platform store,
+# and NEITHER client on this path would see it: uv would fail the handshake
+# against the roots compiled into it, and the pip fallback resolves against
+# certifi, which is the same Mozilla bundle under another name. So both paths
+# failed and the user was sent to check a network that was working for every
+# other application on the machine. This flag is the whole of the difference
+# between a machine that cannot install at all and one that installs normally.
+#
+# IT CANNOT MAKE THINGS WORSE, which is why it is set unconditionally rather than
+# probed for: every uv call below is already followed by the pip fallback on a
+# non-zero exit, so the cost of a machine whose platform store cannot be read is
+# one failed uv attempt and the path that shipped before uv was bundled.
 uv_run() {
-  UV_NO_CONFIG=1 UV_PYTHON_DOWNLOADS=never UV_CACHE_DIR="$UV_CACHE_DIR" \
+  UV_NO_CONFIG=1 UV_PYTHON_DOWNLOADS=never UV_SYSTEM_CERTS=1 \
+    UV_CACHE_DIR="$UV_CACHE_DIR" \
     "$UV_BIN" "$@"
 }
 
-# Activate virtual environment and install local-operator
+# Create virtual environment if it doesn't exist
+if [ ! -d "$VENV_PATH" ]; then
+  echo "|LO1:environment"
+  echo "Creating virtual environment at $VENV_PATH..."
+  # Never repair a path we did not create. Preparation allocates a fresh final
+  # pathname; a collision is evidence to preserve, not a reason to delete it.
+  if [ -e "$VENV_PATH" ] || [ -L "$VENV_PATH" ]; then
+    echo "Refusing to replace an existing environment path: $VENV_PATH" >&2
+    exit 1
+  fi
+  
+  # Make sure parent directory exists and is writable
+  mkdir -p "$(dirname "$VENV_PATH")"
+  
+  # THE ENVIRONMENT: uv first, the interpreter's own venv module second.
+  #
+  # WHY uv. `python -m venv` seeds pip by running the interpreter's own
+  # `ensurepip`, and that is the slow half of creating an environment. Measured on
+  # this machine against the bundled interpreter, cold, one run each: `python -m
+  # venv` 4.74 s against `uv venv --seed` 1.22 s. Those are this box's numbers
+  # under fleet load, so read the saving as 3.5 s HERE and not as a constant; the
+  # scoping report measured 5.1 s on a quieter machine. uv produces the same
+  # environment: the same `pyvenv.cfg` home pointing at the external runtime, a
+  # `bin/python` symlinked at the interpreter it was handed.
+  #
+  # WHY `--seed`, and this is the part the note that used to stand here got
+  # wrong. The app's backend-update path runs `<venv>/bin/python -m pip install
+  # --upgrade local-operator` inside this environment (`update-service.ts`,
+  # `buildPipUpgradeCommand`), so the environment needs the pip MODULE. The old
+  # note said `uv venv` "produces an environment with no pip at all" - true of
+  # bare `uv venv`, false of the command below: `--seed` installs pip into the
+  # environment (measured: `pip 26.2.1` in the seeded venv against `pip 25.0.1`
+  # from the ensurepip wheel). The stale reason is deleted rather than left
+  # standing, because a comment asserting a constraint that no longer holds is
+  # how the next reader avoids a correct change.
+  # Verified end to end before this change, not argued: the app's own command was
+  # run inside one of these seeded environments and installed `local-operator
+  # 0.63.6`, after which `<venv>/bin/local-operator --version` answered.
+  #
+  # WHY THE FALLBACK IS NOT OPTIONAL. `uv venv --seed` fetches the pip wheel, so
+  # it needs the network - a phase earlier than the package install does. A uv
+  # that cannot run, or that fails this one step, therefore falls through to the
+  # interpreter's own `venv`, which is the path that shipped until now. The `rm`
+  # on that path removes only the directory THIS attempt just made: the guard
+  # above proved the path did not exist a moment ago.
+  VENV_CREATED=false
+  if uv_is_usable; then
+    echo "Creating virtual environment with uv ($("$UV_BIN" --version 2>/dev/null || echo 'version unavailable'))..."
+    if uv_run venv --seed --python "$PYTHON_BIN" "$VENV_PATH"; then
+      VENV_CREATED=true
+    else
+      UV_VENV_STATUS=$?
+      echo "WARNING: the bundled uv could not create the environment (exit ${UV_VENV_STATUS}); retrying with the interpreter's own venv module."
+      rm -rf "$VENV_PATH"
+    fi
+  fi
+
+  if [ "$VENV_CREATED" != true ]; then
+    # Create the virtual environment with verbosity
+    "$PYTHON_BIN" -m venv "$VENV_PATH" || {
+      echo "ERROR: Failed to create virtual environment. Exit code: $?"
+      echo "Virtual environment path: $VENV_PATH"
+      echo "Python binary used: $PYTHON_BIN"
+      ls -la "$(dirname "$VENV_PATH")"
+      echo "Python executable permissions:"
+      ls -la "$PYTHON_BIN"
+      exit 1
+    }
+  fi
+  echo "Successfully created virtual environment"
+fi
+
+# Verify the virtual environment structure
+echo "Verifying virtual environment structure..."
+if [ ! -f "$VENV_PATH/bin/python" ] || [ ! -f "$VENV_PATH/bin/pip" ]; then
+  echo "ERROR: Virtual environment is missing critical components"
+  echo "Contents of virtual environment directory:"
+  ls -la "$VENV_PATH"
+  if [ -d "$VENV_PATH/bin" ]; then
+    echo "Contents of bin directory:"
+    ls -la "$VENV_PATH/bin"
+  fi
+  exit 1
+fi
+echo "Virtual environment structure verified"
+
+# --- The package install: uv when there is one, pip otherwise ------------------
+#
+# WHY UV. Installing the backend is the phase a user waits through on a first
+# run, and pip spends it resolving and fetching serially. Measured on this
+# machine, cold cache, three runs each, the same interpreter and dependency set:
+# pip's package install is 33.0-40.7 s against uv's 12.8-16.1 s, plus the
+# 2.3-2.8 s `pip install --upgrade pip` the uv path skips. QA's independent pair
+# on a quieter box was 33.9 s against 22.8 s, so read the ratio as 1.5-2.8x
+# ACROSS those two operators, and the seconds as this box's. Warm, a retry or a
+# repair: 15.9-33.8 s against 0.65-1.57 s.
+#
+# THE FIGURES THIS COMMENT USED TO QUOTE ARE WITHDRAWN, and this note is here so
+# they are not restored: "pip 128.9 s against uv 14.8 s, 178.3 s against 4.5 s
+# warm". The pip reading was taken at load ~90 and did not reproduce at five
+# further attempts. A comment that argues from a withdrawn number is how the next
+# maintainer decides on a ratio five times the measured one - and the decision it
+# argues is whether ~16-20 MiB per artifact earns its place, so the number is
+# load-bearing. `docs/BUILD.md` carries the full set.
+#
+# WHY A FALLBACK RATHER THAN UV ALONE. uv is a NEW resource in the bundle, and
+# every artifact built before this change has none. The pip path below is the one
+# that shipped until now, unchanged, and it runs whenever uv is absent or cannot
+# do the job - a dev checkout whose `pnpm setup-python` was never run, an older
+# artifact, a uv the platform refuses to spawn, a uv install that failed. A
+# fallback that has never been exercised is a claim rather than a feature, which
+# is why the CI install-script jobs run this script with no uv at all.
+#
+# THE ENVIRONMENT ABOVE ALREADY HAS PIP IN IT, and that is load-bearing: the app's
+# backend-update path runs `<venv>/bin/python -m pip install --upgrade
+# local-operator` inside this same environment (`update-service.ts`,
+# `buildPipUpgradeCommand`). Both creation paths provide it - `uv venv --seed`
+# installs pip, `python -m venv` seeds it from `ensurepip` - and the structural
+# check above (`"$VENV_PATH/bin/pip"`) is what holds that on both.
+#
+# `UV_BIN`, the ambient-`UV_*` sweep, `UV_CACHE_DIR` and `uv_run` are defined
+# beside that creation, above, because uv builds the environment as well as
+# installing into it.
+
+# Activate virtual environment and install local-operator# Activate virtual environment and install local-operator
 echo "Installing local-operator in virtual environment..."
 source "$VENV_PATH/bin/activate"
 
