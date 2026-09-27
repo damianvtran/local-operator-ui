@@ -10480,6 +10480,26 @@ test("an update failure says what happened, and keeps the machine's words subord
 			/could not be downloaded/i,
 		);
 		/*
+		 * AND THE REMAINDER IS THE MACHINE LINE FOR A LABEL WHOSE TEXT CARRIES NO
+		 * MARK AT ALL (design D1, remediation round 1). The download watchdog's
+		 * cancel rejects with builder-util-runtime's `CancellationError`
+		 * ("cancelled") - five words of label-prefixed text with no machine mark,
+		 * which is exactly what the authored-sentence test used to accept, so the
+		 * raw string rendered at reading weight and the stage's sentence never
+		 * appeared. The label is the app's own; only the remainder goes to the
+		 * detail line, and the stage sentence is the sentence.
+		 */
+		const cancelled = copy.updateErrorCopy(
+			"Error downloading update: cancelled",
+		);
+		assert.match(cancelled.sentence, /could not be downloaded/i);
+		assert.equal(
+			cancelled.detail,
+			"cancelled",
+			"the watchdog's word stays subordinate, not at reading weight",
+		);
+		assert.equal(cancelled.action, null);
+		/*
 		 * ONE SENTENCE PER STAGE (design round 3, D-17; review R3-1). All three labels
 		 * are live producers, and one sentence for the family told a reader whose
 		 * download had already landed that the download failed - sending them to a
