@@ -870,7 +870,7 @@ export const ImageUnavailable: Story = {
  * pictures in one run, and the CAP answering it (design review round 1, D3).
  *
  * The first cut let the strip wrap, so eight pictures cost a second row (166px)
- * and 25-30 cost ~391px - past the ~354.7px an EXPANDED group costs, which is the
+ * and 25-30 cost ~391px - past the ~338.7px an EXPANDED group costs, which is the
  * one case where condensing is the taller choice. The strip is now one row for any
  * count: five tiles and `+3 more`, 91px, flat. What the reader gives up is the
  * sixth tile, not the information - the count is in this header (`· 8 images`) and
