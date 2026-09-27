@@ -144,16 +144,41 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 			)}
 
 			{list.isError && (
-				<Alert variant="danger">
-					{list.error instanceof Error && list.error.message
-						? list.error.message
-						: "The projects could not be read."}
-				</Alert>
+				/*
+				 * THE FAILURE OFFERS ITS OWN WAY BACK (design round 1, D5): the alert is
+				 * the page's statement, and the recovery the schedules page pairs with
+				 * each of its failure alerts is the same `refetch` this route already
+				 * wires — the header's icon-only refresh was one tooltip away from being
+				 * findable.
+				 */
+				<div className="flex flex-col items-start gap-2">
+					<Alert variant="danger">
+						{list.error instanceof Error && list.error.message
+							? list.error.message
+							: "The projects could not be read."}
+					</Alert>
+					<Button
+						variant="secondary"
+						size="sm"
+						onClick={() => void list.refetch()}
+					>
+						Try again
+					</Button>
+				</div>
 			)}
 
 			{list.isSuccess && list.data.length === 0 && (
-				<div className="flex flex-col items-center gap-4 rounded-lg border border-hairline bg-surface py-16">
-					<p className="text-body text-ink">No projects yet.</p>
+				/*
+				 * THE EMPTY STATE WEARS THE LIST'S FRAME TOO (design round 1, D3): the
+				 * panel collapsed from 876 to 350 on the arrival of an empty store —
+				 * every first run — while the loading frame it replaced had already
+				 * promised no move. The panel is the page's one body and its height is
+				 * not a fact about how many rows are in it; the content centres in the
+				 * frame instead. The first line also takes the heading step (D7), the
+				 * one the schedules page's empty state uses for the same slot.
+				 */
+				<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 overflow-hidden rounded-lg border border-hairline bg-surface">
+					<p className="text-heading text-ink">No projects yet.</p>
 					<p className="max-w-140 text-center text-body-sm text-ink-muted">
 						Create one here, or ask an agent to create one and link this
 						session.

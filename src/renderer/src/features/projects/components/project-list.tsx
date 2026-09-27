@@ -33,6 +33,7 @@ import {
 	liveSessionsLabel,
 	milestoneCountLabel,
 	progressAge,
+	progressAgePhrase,
 	projectStatusMeta,
 } from "../project-model";
 
@@ -94,7 +95,7 @@ const COLUMNS: Column[] = [
 function progressCellText(project: DesktopProject, nowMs: number): string {
 	const age = progressAge(project.progress_updated_at, nowMs);
 	if (!age) return "not reported";
-	return age === "just now" ? "just now" : `${age} ago`;
+	return progressAgePhrase(age);
 }
 
 export const ProjectList: FC<ProjectListProps> = ({
