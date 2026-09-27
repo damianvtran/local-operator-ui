@@ -15856,22 +15856,31 @@ async function sceneConversationStartAwayFailure(cdp) {
 			})(${JSON.stringify(failedId)})`)
 		: null;
 	note("away rows", JSON.stringify({ failedRowUp: rowUp.ok, awayRow }));
-	if (!rowUp.ok || !awayRow) {
-		note(
-			"on return",
-			"skipped: the sidebar had not painted the rows this round trip needs (its own catalogue lag, recorded rather than thrown)",
+	/*
+	 * THE WALK, WITH THE ROUTE AS THE FALLBACK (measured need: the sidebar's
+	 * catalogue lagged the create by more than the wait on some runs, and the U5
+	 * checks must run either way). The sidebar press is the shape U5 is about; if
+	 * its row is not painted yet, the return is taken through the session's own
+	 * route instead - the same pane resolution by identity is what the fix turns
+	 * on - and the note says which one this run took, so a frame is never captioned
+	 * as a walk it did not make.
+	 */
+	let returnVia = "the sidebar's row";
+	if (rowUp.ok && awayRow) {
+		await clickAt(
+			cdp,
+			`[data-sidebar-region="chats"] [data-session-row="${awayRow}"]`,
 		);
-		return;
+		await wait(2000);
+		await clickAt(
+			cdp,
+			`[data-sidebar-region="chats"] [data-session-row="${failedId}"]`,
+		);
+	} else {
+		returnVia = "the session's own route (the sidebar had not painted the row)";
+		await verb(cdp, "navigate", `/chat/${failedId}`);
 	}
-	await clickAt(
-		cdp,
-		`[data-sidebar-region="chats"] [data-session-row="${awayRow}"]`,
-	);
-	await wait(2000);
-	await clickAt(
-		cdp,
-		`[data-sidebar-region="chats"] [data-session-row="${failedId}"]`,
-	);
+	note("return via", returnVia);
 	const back = await waitForCondition(
 		cdp,
 		`Boolean(document.querySelector('${composerSelector} textarea'))`,
