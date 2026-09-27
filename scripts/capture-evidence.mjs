@@ -4140,6 +4140,12 @@ export const STORIES = [
 	["projects-tab--loading", 1280, 900],
 	["projects-tab--load-error", 1280, 900],
 	["projects-tab--populated", 1280, 900],
+	/* The window floor's OWN container width (design round 1, D6): the app's
+	 * 800x600 minimum leaves ~33rem of list container with the rail open, and
+	 * this story renders the page alone (no rail), so the frame is taken at the
+	 * width that leaves the same container — the shed the floor produces,
+	 * photographed, rather than the unshed full-width page. */
+	["projects-tab--narrow-columns", 560, 600],
 	["projects-tab--many", 1280, 900],
 	["projects-tab--detail", 1280, 900],
 	["projects-tab--stale-progress", 1280, 900],
