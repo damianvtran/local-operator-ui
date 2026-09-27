@@ -1315,6 +1315,16 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"headerIdentityRoundOneRestampNote",
 	/*
+	 * AND THIS PASS'S OWN: the notice-band change
+	 * (`fix/banner-warn-error-consistency-7e4c`) moves BOTH trees this file binds
+	 * - `src/` on the strip, the compatibility banner, `chat-status.ts` and the
+	 * new shared band grammar; `scripts/` on the three suites and the sweep's
+	 * fourteen new rows - so its record states the pair THIS FILE SHIPS as its
+	 * opening claim, which is the case this list wants checked rather than read
+	 * as prose.
+	 */
+	"bannerBandsRestampNote",
+	/*
 	 * AND THIS PASS'S OWN, for the held-first-paint work on the conversation-loading
 	 * report ("everything should load in one solid paint instead of incrementally"):
 	 * it states the pair THIS FILE SHIPS as its opening claim, holds both tokens,
@@ -1433,6 +1443,12 @@ const STAMP_BINDING_NOTES = [
 	 * either side shipped before it.
 	 */
 	"python314RefreshFoldNote",
+	/*
+	 * AND THIS SECOND FOLD'S OWN: it names the `origin/main` the second merge
+	 * resolved against (#550) and the pair re-derived at that tip, for the reason
+	 * this list exists - a fold resolved from main's copy would drop it.
+	 */
+	"python314RefreshSecondFoldNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1917,6 +1933,15 @@ const BRANCH_RECORDS = [
 	 */
 	"headerIdentityRoundOneRestampNote",
 	/*
+	 * And THIS CHANGE'S: the notice-band pass
+	 * (`fix/banner-warn-error-consistency-7e4c`), whose record is the only
+	 * statement of which two trees it moved, which frames it added (168 under
+	 * fourteen new story ids, plus the 56-still pair it declares below), and why
+	 * `head` stays the base the frames were taken at. A fold resolved from main's
+	 * copy would drop it, which is this list's whole subject.
+	 */
+	"bannerBandsRestampNote",
+	/*
 	 * And by this branch's folds onto the action-group lane's own tips - the
 	 * records the header-identity lane's arrival forced a rename of. Main's
 	 * `foldOnto9d3e68ddf6Note`, `foldOnto093a329a4dNote`, `foldOnto22c0fcd4fdNote`
@@ -2018,6 +2043,12 @@ const BRANCH_RECORDS = [
 	 * would drop it, and with it the only statement of which trees moved.
 	 */
 	"python314RefreshFoldNote",
+	/*
+	 * AND THIS SECOND FOLD'S OWN: it names the `origin/main` the second merge
+	 * resolved against (#550) and the pair re-derived at that tip, for the reason
+	 * this list exists - a fold resolved from main's copy would drop it.
+	 */
+	"python314RefreshSecondFoldNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
