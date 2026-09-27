@@ -3877,6 +3877,22 @@ export const STORIES = [
 		741,
 		760,
 	],
+	/* A 41-conversation team expanded: TEN rows and the foot naming the next rung and the position. */
+	["chat-sidebar-view-menu--group-bound-ten", 741, 900, { dir: "group-bound/ten" }],
+	/* The same team after ONE real press on the foot: twenty-five rows drawn. */
+	["chat-sidebar-view-menu--group-bound-after-one", 741, 900, { dir: "group-bound/after-one" }],
+	/* After TWO presses: the third rung exceeds what the team holds, so the group is fully drawn and the foot is gone. */
+	["chat-sidebar-view-menu--group-bound-after-two", 741, 900, { dir: "group-bound/after-two" }],
+	/* The viewed conversation sits below the bound, so it is lifted to the head of the group rather than admitted in place. */
+	["chat-sidebar-view-menu--group-bound-current-lifted", 741, 900, { dir: "group-bound/current-lifted" }],
+	/* A query matching a row the bound has not loaded: the group draws the match. */
+	["chat-sidebar-view-menu--group-bound-search-finds-unloaded", 741, 900, { dir: "group-bound/search-finds-unloaded" }],
+	/* BEFORE the spacing fix: Agents collapsed above Teams expanded, at this branch's head. */
+	["chat-sidebar-view-menu--agents-collapsed-teams-expanded", 741, 620, { dir: "section-gap-before/agents-collapsed-teams-expanded" }],
+	/* BEFORE the spacing fix: both sections collapsed. */
+	["chat-sidebar-view-menu--both-sections-collapsed", 741, 620, { dir: "section-gap-before/both-collapsed" }],
+	/* BEFORE the spacing fix: both sections expanded, the case a shortened constant would tighten unasked. */
+	["chat-sidebar-view-menu--both-sections-expanded", 741, 620, { dir: "section-gap-before/both-expanded" }],
 	[
 		"chat-sidebar-view-menu--band-resting",
 		741,
@@ -3887,6 +3903,12 @@ export const STORIES = [
 			dir: "band-search-hover",
 		},
 	],
+	/* AFTER the spacing fix: Agents collapsed above Teams expanded, the operator's own case. */
+	["chat-sidebar-view-menu--agents-collapsed-teams-expanded", 741, 620, { dir: "section-gap/agents-collapsed-teams-expanded" }],
+	/* AFTER the spacing fix: both sections collapsed - the last-section-on-screen case. */
+	["chat-sidebar-view-menu--both-sections-collapsed", 741, 620, { dir: "section-gap/both-collapsed" }],
+	/* AFTER the spacing fix: both expanded, which must be pixel-identical to the before frame. */
+	["chat-sidebar-view-menu--both-sections-expanded", 741, 620, { dir: "section-gap/both-expanded" }],
 	[
 		"chat-sidebar-view-menu--band-resting",
 		741,
