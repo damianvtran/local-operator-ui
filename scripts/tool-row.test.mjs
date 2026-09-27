@@ -2119,7 +2119,7 @@ test("a wake receipt is the headline, and its prompt is the part behind the enve
 const workingLineBundle = await build({
 	stdin: {
 		contents:
-			'export { deriveWorkingLine, ADMITTED_SEND_ACTIVITY, COMPACTING_ACTIVITY, admittedSendFor, ownerAnswered, turnStopped, stoppedAfterAdmission, workingLineClaimed, workingLineInputFor } from "./src/renderer/src/features/chat/canonical/working-line-model";',
+			'export { deriveWorkingLine, ADMITTED_SEND_ACTIVITY, STARTING_SESSION_ACTIVITY, COMPACTING_ACTIVITY, sendUnsettledForSession, ownerAnswered, turnStopped, stoppedAfterAdmission, workingLineClaimed, workingLineInputFor } from "./src/renderer/src/features/chat/canonical/working-line-model";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -2130,8 +2130,9 @@ const workingLineBundle = await build({
 const {
 	deriveWorkingLine,
 	ADMITTED_SEND_ACTIVITY,
+	STARTING_SESSION_ACTIVITY,
 	COMPACTING_ACTIVITY,
-	admittedSendFor,
+	sendUnsettledForSession,
 	ownerAnswered,
 	turnStopped,
 	stoppedAfterAdmission,
@@ -2350,46 +2351,143 @@ test("the rung only shows when nothing the owner drove has taken over", () => {
 	);
 });
 
-/* ------------------------------------------- which send is "admitted" */
+/* ---------------------------------- which send is "unsettled" (the box's claim) */
 
 /*
- * The one rule that decides whether the rung appears at all (`chat-page.tsx`).
+ * The rule that decides whether the composer says the message is still going
+ * out (`sendUnsettledForSession`), asserted over the draft rows it reads, with
+ * no store and no React - the way `draftIdentityFor` is.
  *
- * It is a derivation over the store's draft row, so it is asserted here the way
- * `draftIdentityFor` and `panelIdentityFor` are: swapping it for the composer's
- * local `admitting` state, or dropping the `sessionId` conjunct, restores the
- * operator's dead-air report while every other test stays green. The row's own
- * lifetime is pinned against the real store in `canonical-chat.test.mjs`.
+ * The old rule at this site was `admittedSendFor(sessionId, row)`, and two of
+ * its three terms are gone. The session-id conjunct was the dead-air window
+ * itself: before `sessions.create` answers there is no session id, so the claim
+ * was false for the whole create hop - the row is now painted at the press
+ * (see `pendingSendForView` in `use-canonical-session`), and the pane's claim
+ * comes from the registry instead. `admissionAttempted` was the receipt's
+ * latch: it is written after the create hop, so requiring it withheld the box's
+ * sentence for exactly the window this reader gained.
+ *
+ * What is left is the row's own `pending`, read by whichever name this
+ * conversation's send can have under: the session id (a row the create
+ * patched), a `send:<id>` key (the live path), and the DRAFT key (a remounted
+ * boom whose create is still in flight). Its lifetime - written at the press,
+ * cleared by the failure arms - is pinned against the real store in
+ * `canonical-chat.test.mjs`.
  */
-test("a send is admitted only when the request was actually issued", () => {
+test("a send is unsettled while its row is pending, under any of its names", () => {
 	const row = {
+		key: "send:111111111111",
 		pending: true,
 		admissionAttempted: true,
 		admissionRequestId: ECHO,
 	};
-	assert.deepEqual(admittedSendFor("111111111111", row), { requestId: ECHO });
+	assert.equal(
+		sendUnsettledForSession({ "send:111111111111": row }, "111111111111"),
+		true,
+	);
 
-	// Before admission there is nothing to wait on: the composer still holds
-	// the user's text, and the store has not issued a request it cannot take
-	// back. On that hop the pane is legitimately empty.
+	// The create hop: pending and NOT yet attempted. This is the window the old
+	// `admissionAttempted` conjunct went silent in, and the sentence a remounted
+	// composer must still find when its create is in flight.
 	assert.equal(
-		admittedSendFor("111111111111", { ...row, admissionAttempted: false }),
-		null,
+		sendUnsettledForSession(
+			{
+				"draft:d1": {
+					key: "draft:d1",
+					pending: true,
+					admissionRequestId: ECHO,
+				},
+			},
+			"draft:d1",
+		),
+		true,
 	);
-	// A settled or failed send: the request is no longer in flight.
+	// The same row found by the session the create patched onto it.
 	assert.equal(
-		admittedSendFor("111111111111", { ...row, pending: false }),
-		null,
+		sendUnsettledForSession(
+			{
+				"draft:d1": {
+					key: "draft:d1",
+					sessionId: "111111111111",
+					pending: true,
+					admissionRequestId: ECHO,
+				},
+			},
+			"111111111111",
+		),
+		true,
 	);
-	// No session yet: the New-chat hop, where the create has not returned and
-	// the owner has no conversation to answer on.
-	assert.equal(admittedSendFor(undefined, row), null);
-	// A row with no identity cannot anchor a clear, so it cannot carry a rung.
+
+	// A settled or failed send: the request is no longer in flight, and the row's
+	// own sentence (or the transcript's) says what happened instead.
 	assert.equal(
-		admittedSendFor("111111111111", { ...row, admissionRequestId: undefined }),
-		null,
+		sendUnsettledForSession(
+			{ "send:111111111111": { ...row, pending: false } },
+			"111111111111",
+		),
+		false,
 	);
-	assert.equal(admittedSendFor("111111111111", undefined), null);
+	// Nothing of this conversation's in flight at all.
+	assert.equal(sendUnsettledForSession({}, "111111111111"), false);
+	assert.equal(sendUnsettledForSession({}, undefined), false);
+});
+
+/* ---------------------------------------------- the create hop's own label */
+
+test("the wait line reads `starting the session` until the session exists", () => {
+	const before = deriveWorkingLine({
+		waiting: false,
+		compacting: false,
+		starting: true,
+		startingAfterId: ECHO,
+		startingSession: true,
+		startingSince: 1_760_000_000_000,
+		gate: false,
+		unavailable: false,
+		records: [],
+	});
+	assert.deepEqual(before, {
+		activity: STARTING_SESSION_ACTIVITY,
+		phase: "thinking",
+		startedAt: 1_760_000_000_000,
+	});
+
+	// The create answered: same wait, same clock, the other label. The PHASES are
+	// equal, which is the whole clock rule - a second phase would restart the
+	// elapsed number at the create's answer.
+	const after = deriveWorkingLine({
+		waiting: false,
+		compacting: false,
+		starting: true,
+		startingAfterId: ECHO,
+		startingSession: false,
+		startingSince: 1_760_000_000_000,
+		gate: false,
+		unavailable: false,
+		records: [],
+	});
+	assert.deepEqual(after, {
+		activity: ADMITTED_SEND_ACTIVITY,
+		phase: "thinking",
+		startedAt: 1_760_000_000_000,
+	});
+	assert.equal(before.phase, after.phase);
+
+	// A caller that knows neither fact derives EXACTLY what it always did,
+	// including the absent anchor: no `startedAt` key, so every deep comparison
+	// in the suites that predate this label keeps its old shape.
+	assert.deepEqual(
+		deriveWorkingLine({
+			waiting: false,
+			compacting: false,
+			starting: true,
+			startingAfterId: ECHO,
+			gate: false,
+			unavailable: false,
+			records: [],
+		}),
+		{ activity: ADMITTED_SEND_ACTIVITY, phase: "thinking" },
+	);
 });
 
 test("the anchored clear is the transcript's own predicate, swept", () => {

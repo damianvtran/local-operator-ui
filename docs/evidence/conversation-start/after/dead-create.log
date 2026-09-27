@@ -1,0 +1,75 @@
+runtime: v0.63.7
+capabilities: session_draft_warm 1
+command: node scripts/renderer-driver.mjs --scene conversation-start-create-failure --backend http://127.0.0.1:7394 --tap-control http://127.0.0.1:7394 --out /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs --seed-onboarding-complete
+[build] current: assets 2026-09-27T11:38:07.337Z >= sources 2026-09-27T07:47:46.064Z
+[note] abandoned scratch trees
+        8 seen, 0 owned by a live pid (kept), 8 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:7394
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/conversation-start
+  scratch       /tmp/lo-renderer-driver-61902
+  frames        /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs
+  app cwd       /tmp/lo-renderer-driver-61902/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:7394   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/conversation-start/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:7394","backend":"http://127.0.0.1:7394"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:7394)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[note] facts (from main)
+        {
+  "windowMode": "headless",
+  "appVersion": "0.31.3",
+  "platform": "darwin",
+  "title": "Local Operator",
+  "windowSize": {
+    "width": 1380,
+    "height": 900
+  },
+  "contentBounds": {
+    "width": 1380,
+    "height": 900
+  },
+  "visible": false,
+  "focused": false,
+  "minimized": false,
+  "frames": [],
+  "outDir": "/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs"
+}
+[PASS] window mode is headless and the window is never shown or focused
+[PASS] the kill arm needs the tap's control door
+[note] tap kill
+        200 {"armed":1}
+[note] after the dead create
+        {"rows":1,"rowIds":["eac494b1-deb7-43ec-a5ed-1ce267b6e616"],"composer":"","controls":["Send again","Edit"],"undelivered":"Couldn't reach Local Operator. Your message may not have been sent.Send againEdit","draftRow":"draft:c1f702ab-658a-4e98-b4f5-9cd4a1060796"}
+[PASS] U2: the message keeps its row when the create dies in the press window
+[PASS] U2: the row states the failure, with both controls
+[PASS] U2: and the composer stays empty - the row is the message's home
+[PASS] U2: the sidebar still lists the chat, so a switch-away can come back to it
+[note] frame
+        {"label":"conversation-start-1380x900-dead-create","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs/conversation-start-1380x900-dead-create.png","bytes":213006,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":0}
+[note] reload
+        {"read":{"rows":1,"rowIds":["eac494b1-deb7-43ec-a5ed-1ce267b6e616"],"composer":"","controls":["Send again","Edit"],"undelivered":"Couldn't reach Local Operator. Your message may not have been sent.Send againEdit","draftRow":"draft:c1f702ab-658a-4e98-b4f5-9cd4a1060796"},"back":true}
+[PASS] U2/T6: after a reload the row is back and still states its failure
+[note] frame
+        {"label":"conversation-start-1380x900-dead-create-reload","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs/conversation-start-1380x900-dead-create-reload.png","bytes":201905,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":3,"stable":true,"toastFree":true,"toastWaitMs":2}
+[PASS] no process from this run outlived its boot
+
+frames: conversation-start-1380x900-away-failure-refusal.png, conversation-start-1380x900-away-failure-return.png, conversation-start-1380x900-away-mid-failure.png, conversation-start-1380x900-away-press.png, conversation-start-1380x900-away.png, conversation-start-1380x900-dead-create-reload.png, conversation-start-1380x900-dead-create.png, conversation-start-1380x900-failure.png, conversation-start-1380x900-flip-plus-1s.png, conversation-start-1380x900-flip.png, conversation-start-1380x900-press.png, conversation-start-1380x900-reload.png, conversation-start-1380x900-return.png, first-send-1380x900-empty.png, first-send-1380x900-sent.png, first-send-1380x900-settled.png, first-send-800x600-empty.png, first-send-800x600-sent.png, first-send-800x600-settled.png
+frames directory: /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs
+app log: /tmp/lo-renderer-driver-61902/app-scene.log
+scratch kept: /tmp/lo-renderer-driver-61902 (the frames are also in --out)
+
+ALL CHECKS PASSED
