@@ -13,6 +13,7 @@ import {
 	DESKTOP_REFUSAL_SENTENCE,
 	desktopEndpoint,
 	desktopRefusalCodeForStatus,
+	desktopRequestDeadlineDetail,
 	desktopRequestTimeoutMs,
 	isDesktopRefusalCode,
 } from "../../../../../shared/desktop-contract";
@@ -56,10 +57,7 @@ export async function desktopRequest(
 			// `isLoading` permanently, which is what issue 89 saw as a Settings
 			// spinner that never resolves. Bound it here, once, so every desktop
 			// control fails honestly instead of hanging.
-			return await withDeadline(
-				window.api.desktop.request(request),
-				request.op,
-			);
+			return await withDeadline(window.api.desktop.request(request), request);
 		} catch (cause) {
 			if (cause instanceof DesktopControlError) throw cause;
 			/*
@@ -117,29 +115,38 @@ export async function desktopRequest(
  * pending IPC promise is left to settle or not on its own; there is no way to
  * cancel an `invoke`, and abandoning it is exactly the point.
  *
- * The deadline it waits out is the op's own, because both sides now size it per
- * op: a ledger read that legitimately takes 40 s is not a stalled control, and a
- * renderer that gave up at 30 s would reject the request main was still going to
- * answer.
+ * THE WHOLE REQUEST, NOT ITS OP, and the difference is a move killed 25 s after
+ * it was sent (agent review round 1, F1). `desktopRequestDeadlineMs` sizes the
+ * transfer from its own request -- 155 s offload, 425 s copy, 725 s for the wait
+ * remedy -- and reads the shape, so a caller that hands it the op string gets the
+ * 20 s control budget for the one op the contract documents as legitimately
+ * taking minutes. The op form stays for a caller that only has an op (a story, a
+ * test); this one has the request in hand.
+ *
+ * THE GIVE-UP CARRIES ITS CODE, and that is the second half of the same defect:
+ * `deadline_exceeded` is one of the move's own unconfirmed codes, and the mesh
+ * surface reads it to say "the request was sent, the outcome is unknown" instead
+ * of rendering a refusal nobody made. A bare `DesktopControlError(null, …)` has
+ * no code, so `meshRefusal` falls to `move_refused` with `unconfirmed: false` and
+ * the surface claims a sent move changed nothing -- the inversion the unconfirmed
+ * arm exists to prevent. `desktopRequestDeadlineDetail` is where that code and
+ * its sentence are authored (`MESH_REFUSAL` vocabulary, one authority per fact).
  */
 function withDeadline(
 	pending: Promise<DesktopResponse>,
-	op: DesktopRequest["op"],
+	request: DesktopRequest,
 ): Promise<DesktopResponse> {
+	const deadlineMs = desktopRequestTimeoutMs(request);
 	let timer: ReturnType<typeof setTimeout>;
 	return Promise.race([
 		pending,
 		new Promise<never>((_, reject) => {
-			timer = setTimeout(
-				() =>
-					reject(
-						new DesktopControlError(
-							null,
-							"Desktop controls could not reach the backend process.",
-						),
-					),
-				desktopRequestTimeoutMs(op),
-			);
+			timer = setTimeout(() => {
+				const detail = desktopRequestDeadlineDetail(request.op, deadlineMs);
+				reject(
+					new DesktopControlError(null, detail.message, undefined, detail.code),
+				);
+			}, deadlineMs);
 		}),
 	]).finally(() => clearTimeout(timer));
 }

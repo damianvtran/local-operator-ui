@@ -715,6 +715,27 @@ const BREACH_SCRIPTS = {
 		return "busy-frame installed";
 	})()`,
 	/**
+	 * A SYNCHRONOUS BLOCK INSIDE A POINTER HANDLER, which is the fault the two timing
+	 * targets exist for: 120 ms burned on every twelfth move is reported as a
+	 * long-animation-frame whose BLOCKING time is over the drag bar. The number is 120 rather
+	 * than 60 because the observer's `blockingDuration` subtracts the browser's own 50 ms
+	 * grace - measured: a 60 ms burn produced 26 drag frames over 50 ms in DURATION and a
+	 * blocking reading that never crossed the bar, so the fault that was supposed to redden
+	 * the target did not. Added because the review found the blocking target unfalsifiable -
+	 * the old `Math.max(0, ...)` floor could not redden (agent review round 1, F7) - and a
+	 * target nobody has seen fail is not a target.
+	 */
+	"long-task": `(() => {
+		let seen = 0;
+		document.addEventListener("pointermove", () => {
+			seen += 1;
+			if (seen % 12 !== 0) return;
+			const until = performance.now() + 120;
+			while (performance.now() < until) { /* burn */ }
+		}, true);
+		return "long-task installed";
+	})()`,
+	/**
 	 * A SECOND write to the world layer's style per frame, which is the mutation the
 	 * one-write-per-frame invariant exists to catch.
 	 */
@@ -1169,7 +1190,43 @@ async function invariants({ evaluate, stub, phases, devices, nodes }) {
 		detail: `${afterPoll.children} elements in the world layer, bound ${bound} (${devices} devices)`,
 	});
 
-	/* 3. ONE STYLE WRITE PER INPUT EVENT, which is the strongest form of "one style write
+	/* 3. THE CHIP ROW IS INTERACTIVE, MEASURED RATHER THAN READ (agent review round 1,
+	 *    QA Q-1 / UX U2, three independent measurements of one defect). Every chip and the
+	 *    `+N more` control is hit-tested AT ITS OWN CENTRE through the browser's own
+	 *    `elementFromPoint`. A control whose centre resolves to something else is not the
+	 *    thing at its own coordinates - which is exactly how a clipped chip came to PAN the
+	 *    canvas instead of starting a drag, and why reading the DOM could not see it: the
+	 *    element was in the document, 315 px outside the row that clips it. */
+	const hitTests = await evaluate(`(() => {
+		const misses = [];
+		let tested = 0;
+		for (const row of document.querySelectorAll("[data-mesh-device]")) {
+			const items = [...row.querySelectorAll("[data-mesh-session], [data-mesh-more]")];
+			for (const item of items) {
+				const name = item.getAttribute("data-mesh-session") ?? item.getAttribute("data-mesh-more");
+				const rect = item.getBoundingClientRect();
+				if (rect.width === 0 || rect.height === 0) {
+					misses.push(name + ": zero box");
+					continue;
+				}
+				tested += 1;
+				const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+				if (!hit || !item.contains(hit)) {
+					misses.push(name + " -> " + (hit ? hit.tagName : "nothing"));
+				}
+			}
+		}
+		return { tested, misses };
+	})()`);
+	results.push({
+		name: "every drawn chip and the +N more control is hittable at its centre",
+		ok: hitTests.tested > 0 && hitTests.misses.length === 0,
+		detail: `${hitTests.tested} controls hit-tested through elementFromPoint${
+			hitTests.misses.length ? `; missed: ${hitTests.misses.join(", ")}` : ""
+		}`,
+	});
+
+	/* 4. ONE STYLE WRITE PER INPUT EVENT, which is the strongest form of "one style write
 	 *    per animation frame" that input can produce: a pan writes the transform only in
 	 *    the frames an input event arrived in, so the count is compared against the
 	 *    EVENTS rather than against the frame total. The slack is the coalescing
@@ -1189,7 +1246,7 @@ async function invariants({ evaluate, stub, phases, devices, nodes }) {
 		detail: `${writes} style writes over ${events} dispatched moves (and ${pan.phaseFrames} frames) in the pan phase`,
 	});
 
-	/* 4. THE INTERACTION ACTUALLY HAPPENED. Every number above is meaningless if the
+	/* 5. THE INTERACTION ACTUALLY HAPPENED. Every number above is meaningless if the
 	 *    script panned nothing, so the phases' own world transforms are compared: a
 	 *    screen that never moved is a bench that measured its own silence. */
 	const panned =
@@ -1250,10 +1307,25 @@ function buildReport({
 	const panZoom = [...deltasIn("pan"), ...deltasIn("zoom")];
 	const dragDeltas = deltasIn("drag");
 	const dragFrames = framesIn("drag");
-	const worstBlocking = Math.max(
-		0,
-		...dragFrames.map((frame) => frame.blocking ?? frame.duration),
+	/*
+	 * NULL RATHER THAN 0 WHEN NOTHING BLOCKED (agent review round 1, F7). The old
+	 * `Math.max(0, ...)` printed `0 ms` for a drag the observer judged free of long frames,
+	 * which reads as a MEASUREMENT of zero rather than as nothing to measure - and a floor
+	 * cannot redden, so the target was unfalsifiable on a clean run. The reading is
+	 * therefore "no long frame observed" when the drag produced none, and the number only
+	 * when the observer actually reported one. It is still a real check: the same run's own
+	 * line (`long frames: N in the whole run, M during the drag`) shows the observer is
+	 * alive, and `--breach=long-task` is the injected fault that moves this target.
+	 */
+	const dragLongFrames = dragFrames.filter(
+		(frame) => (frame.blocking ?? frame.duration) > 50,
 	);
+	const worstBlocking =
+		dragLongFrames.length > 0
+			? Math.max(
+					...dragLongFrames.map((frame) => frame.blocking ?? frame.duration),
+				)
+			: null;
 	const p95Frame = percentile(panZoom, 95);
 	const p95Latency = percentile(bench.latencies, 95);
 
@@ -1270,7 +1342,18 @@ function buildReport({
 			value: worstBlocking,
 			bar: 50,
 			unit: "ms",
-			ok: worstBlocking <= 50,
+			/*
+			 * A DRAG THE OBSERVER NEVER SAW CANNOT PASS, and a drag it saw and measured clean passes
+			 * on the ABSENCE of a long frame rather than on a zero reading. The two halves are
+			 * different questions: `dragDeltas` is whether the gesture produced frames at all
+			 * (`dragFrames` is only the LONG ones, and a clean drag legitimately has none - which
+			 * this check learned the hard way, on a run that reported "0 during the drag" while
+			 * 401 input events moved the world).
+			 */
+			ok:
+				dragDeltas.length > 0 &&
+				(worstBlocking === null || worstBlocking <= 50),
+			reading: worstBlocking === null ? "no long frame observed" : undefined,
 		},
 		{
 			name: "pointer-to-visual (p95)",
@@ -1299,7 +1382,7 @@ function buildReport({
 	lines.push("");
 	for (const target of targets) {
 		lines.push(
-			`  ${target.ok ? "PASS" : "FAIL"}  ${target.name}: ${round(target.value)} ${target.unit} (bar ${target.bar} ${target.unit})`,
+			`  ${target.ok ? "PASS" : "FAIL"}  ${target.name}: ${target.reading ?? `${round(target.value)} ${target.unit}`} (bar ${target.bar} ${target.unit})`,
 		);
 	}
 	lines.push("");

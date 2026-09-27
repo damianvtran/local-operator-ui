@@ -59,6 +59,7 @@ import {
 import {
 	type MeshSlots,
 	fitTransform,
+	keepNodeVisible,
 	meshGeometry,
 	zoomAbout,
 } from "./mesh-positions";
@@ -112,6 +113,8 @@ type MeshCanvasProps = {
 		code: string;
 		sentence: string;
 		remedy: Remedy | null;
+		/** The move the refusal was about, for the `wait` remedy - see `DropVerdict`. */
+		plan: MovePlan | null;
 	}) => void;
 	/** The "+N more" affordance: the panel shows the rest. */
 	onShowAllSessions: (deviceId: string) => void;
@@ -155,6 +158,21 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 		ty: 0,
 	});
 	const fitted = useRef(false);
+	/*
+	 * WHETHER THE GESTURE THAT JUST ENDED WAS A DRAG, for the click that follows it.
+	 *
+	 * A DRAG OWES THE CHIP NOTHING AFTER THE RELEASE. The chip takes pointer capture
+	 * on press (`onChipPointerDown`), so the release is retargeted to the chip and the
+	 * browser then fires the chip's own `click` - which opens the device's panel. The
+	 * measured consequence (UX review round 1, U1) was that every drag, including one
+	 * released over empty ground where the app correctly asks for nothing, opened the
+	 * panel, narrowed the canvas by 335 px and clipped the node column the drag was
+	 * aimed at. The reducer already knows the answer - a press that travelled is
+	 * `dragging`, one that did not is a click - so the flag is read from that
+	 * transition rather than reconstructed from coordinates here.
+	 */
+	const dragEndedAsDrag = useRef(false);
+	const lastViewport = useRef<{ width: number; height: number } | null>(null);
 
 	/*
 	 * The geometry is keyed on the SLOT MAP, which is reference-stable across a poll
@@ -258,6 +276,9 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 	const onChipPointerDown = useCallback(
 		(event: React.PointerEvent<HTMLButtonElement>, session: MeshSessionRow) => {
 			if (!canMove || event.button !== 0) return;
+			// A new press is a new gesture: whatever the last one ended as, this one is
+			// not its echo.
+			dragEndedAsDrag.current = false;
 			const ownerDeviceId =
 				session.locality === "local"
 					? (graph.selfDeviceId ?? "")
@@ -337,6 +358,10 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 			return;
 		}
 		const decided = resolveDrop(drag.payload, drag.target, dropContext);
+		// THE ONE TRANSITION THAT SUPPRESSES THE CHIP'S OWN CLICK: the press travelled
+		// far enough to be a drag, so the trailing `click` is the gesture's echo rather
+		// than an activation (see `dragEndedAsDrag`).
+		dragEndedAsDrag.current = true;
 		setDrag((current) => dragReducer(current, { kind: "release" }));
 		if (decided.kind === "plan") {
 			onAskMove({
@@ -349,6 +374,7 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 				code: decided.code,
 				sentence: decided.sentence,
 				remedy: decided.remedy,
+				plan: decided.plan ?? null,
 			});
 		}
 		setDrag((current) => dragReducer(current, { kind: "settled" }));
@@ -401,6 +427,33 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 		fitted.current = true;
 		setTransform(fitTransform(geometry.bounds, viewport));
 	}, [viewport, geometry.bounds]);
+
+	/*
+	 * A SHRINK IS NOT A POLL, and this is the half the fit-once rule left out (design
+	 * review round 1, D1). The panel opening - or the rail and list pane collapsing -
+	 * takes a third of the canvas in one step, and the transform then points past the
+	 * new edge: at 1024x768 the reader's own node was clipped to 26 px of its 200, so
+	 * the act of clicking a device to inspect it was what hid it.
+	 *
+	 * WHAT DOES NOT MOVE, deliberately: scale, and any pan or zoom the reader chose.
+	 * This is a CLAMP on the selected node (see `keepNodeVisible`), not a re-fit - a
+	 * re-fit here would discard the reader's viewport on every panel toggle, which is
+	 * the defect the fit-once rule exists to remove. It runs only when the measured box
+	 * actually shrank, never on a poll, and it moves the world only by the amount that
+	 * puts the node back, so a reader panned somewhere else stays where they put it.
+	 */
+	useEffect(() => {
+		const previous = lastViewport.current;
+		lastViewport.current = { width: viewport.width, height: viewport.height };
+		if (!previous || !fitted.current) return;
+		if (viewport.width <= 0 || viewport.height <= 0) return;
+		if (viewport.width >= previous.width && viewport.height >= previous.height)
+			return;
+		if (!selectedDeviceId) return;
+		const box = geometry.devices.get(selectedDeviceId);
+		if (!box) return;
+		setTransform((current) => keepNodeVisible(current, box, viewport));
+	}, [viewport, selectedDeviceId, geometry]);
 
 	/**
 	 * Where the ghost is drawn, in this canvas's own coordinates.
@@ -551,6 +604,20 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 	const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
 		const step = event.shiftKey ? KEY_PAN_PX * 4 : KEY_PAN_PX;
 		switch (event.key) {
+			/*
+			 * ESCAPE CANCELS A DRAG, which is the one gesture state with no key of its
+			 * own (UX review round 1, U5): a release is the universal cancel and it is
+			 * clean, but a reader who has already committed the press has no way to take
+			 * it back from the keyboard. The reducer's own `cancel` is the transition -
+			 * the same one the unmount teardown runs - so the canvas does not invent a
+			 * second way to end a gesture.  Nothing is sent: a drag is a request, and a
+			 * cancelled one was never made.
+			 */
+			case "Escape":
+				if (drag.kind !== "pressing" && drag.kind !== "dragging") return;
+				event.preventDefault();
+				setDrag((current) => dragReducer(current, { kind: "cancel" }));
+				return;
 			case "0":
 				event.preventDefault();
 				fit();
@@ -736,7 +803,25 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 								 * cannot share one press, and the feature keeps ONE menu (`mesh-card.tsx`)
 								 * rather than two spellings of the same list.
 								 */
-								onChipClick={() => onOpenDevice(device.id)}
+								onChipClick={() => {
+									/*
+									 * A CHIP'S CLICK OPENS ITS DEVICE'S PANEL, which is where the conversations and
+									 * their move menu live. The chip does NOT open a menu of its own: a menu opens on
+									 * pointerdown, which would swallow the drag before it started - so the two
+									 * cannot share one press, and the feature keeps ONE menu (`mesh-card.tsx`)
+									 * rather than two spellings of the same list.
+									 *
+									 * AND A DRAG'S ECHO IS NOT AN ACTIVATION: the release retargets to the chip
+									 * (pointer capture), so the browser fires this click after every drag. The flag
+									 * is consumed here rather than in the chip so the node stays a presentational
+									 * component and only the canvas knows what the gesture did.
+									 */
+									if (dragEndedAsDrag.current) {
+										dragEndedAsDrag.current = false;
+										return;
+									}
+									onOpenDevice(device.id);
+								}}
 								onShowAllSessions={onShowAllSessions}
 							/>
 						);
@@ -772,16 +857,31 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 			 * THE INDICATOR STATES THE RESULTING OPERATION, which is the rule the drop has
 			 * to satisfy to be honest: "Move to devon-laptop", never a generic "+", and a
 			 * refusal says which refusal before the drop rather than after it.
+			 *
+			 * IT TRAVELS WITH THE POINTER (design review round 1, D4). It used to sit at the
+			 * canvas's bottom-left corner, which measured ~610 px from the card it named -
+			 * diagonally opposite, in the corner of the frame the reader is not looking at,
+			 * while the pointer is on the target. The one sentence that has to be read
+			 * before committing is now beside the thing being dragged, on the side with
+			 * room: below the pointer in the upper two thirds, above it near the floor, and
+			 * never wider than the box it is drawn in.
 			 */}
 			{drag.kind === "dragging" && indicator && (
 				<div
 					data-mesh-indicator=""
 					className={cn(
-						"pointer-events-none absolute bottom-2 left-2 rounded-sm border bg-surface px-2 py-1 text-meta",
+						"pointer-events-none absolute z-10 rounded-sm border bg-surface px-2 py-1 text-meta",
 						liveVerdict?.kind === "refused"
 							? "border-warning text-warning"
 							: "border-control text-ink",
 					)}
+					style={{
+						left: ghost.x,
+						maxWidth: Math.max(160, viewport.width - ghost.x - 12),
+						...(ghost.y > viewport.height * 0.6
+							? { bottom: Math.max(12, viewport.height - ghost.y + 8) }
+							: { top: ghost.y + 24 }),
+					}}
 				>
 					{indicator}
 				</div>

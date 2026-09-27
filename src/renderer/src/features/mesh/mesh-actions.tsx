@@ -507,7 +507,15 @@ export const MoveNotice: FC<{
 					onClick={onUndo}
 					disabled={pending}
 				>
-					Erase the copy
+					{/*
+					 * THE LABEL IS THE PLAN'S OWN VERB (agent review round 1, F3 / UX U4). It used
+					 * to read "Erase the copy" while the request it sent was a recall that leaves
+					 * this device holding a SECOND copy of the conversation - two names for one
+					 * action, and the wrong one on the button. The plan is built next to the
+					 * sentence that describes the loss (`mesh-page.tsx`), so the button cannot
+					 * drift from what pressing it does.
+					 */}
+					{receipt.undo.verb}
 				</Button>
 			)}
 			<Button size="sm" variant="ghost" onClick={onDismiss}>

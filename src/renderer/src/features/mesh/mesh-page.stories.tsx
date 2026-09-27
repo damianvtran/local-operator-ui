@@ -698,10 +698,19 @@ export const MoveRefusedBusy: Story = {
 		return <MeshPage />;
 	},
 	play: async () => {
-		await openPanel(DEVICE_PEER);
-		await chooseFromSessionMenu("0123456789ef", "Recall to this device");
-		// A busy session is refused by the CLIENT's own verdict, so no dialog opens:
-		// the notice carries the code, the sentence and the wait.
+		/*
+		 * THE BUSY SESSION IS THE SUBJECT, and the first version of this story got that wrong
+		 * in a way nothing could see (design review round 1, D3): it opened the panel on the
+		 * PEER and recalled the peer's own conversation, so the busy refinement never arrived,
+		 * no notice was drawn, and the frame showed the confirm dialog with no refusal in it at
+		 * all. The row now carries `expectSentence` ("Wait for the turn to finish"), which is
+		 * what turned that into a failing capture rather than a frame a later round would have
+		 * read as the refusal it is not.
+		 */
+		await openPanel(DEVICE_SELF);
+		await chooseFromSessionMenu("0123456789ab", "Move to cloud-node-1");
+		// A busy session is refused by the CLIENT's own verdict, so no dialog opens: the
+		// notice carries the code, the sentence and the wait.
 		await screen.findByText(/Wait for the turn to finish/);
 	},
 };
@@ -737,7 +746,32 @@ export const MoveCopyWithUndo: Story = {
 /** Admission is two-sided: the invite mints a token, and the receipt says where. */
 export const InviteReceipt: Story = {
 	render: () => {
-		installBridge(actionFixture());
+		const base = actionFixture();
+		installBridge({
+			...base,
+			networks: {
+				...base.networks,
+				/*
+				 * A SECOND NETWORK THE INVITED DEVICE IS NOT IN, which is what the dialog needs to
+				 * offer anything at all (design review round 1, D3). `inviteOptions` excludes the
+				 * networks a device is already an active member of, so inviting the fixture's own
+				 * peer against `actionFixture()` alone opened a dialog with NOTHING to choose:
+				 * `chosen` was null, `Mint the token` was disabled, the story's click did nothing,
+				 * and the row named `invite-receipt` photographed an un-minted dialog. With two
+				 * networks the peer is a member of one and eligible for the other, and the dialog
+				 * pre-selects it.
+				 */
+				networks: [
+					...base.networks.networks,
+					network(NET_LAB, "lab-mesh", [
+						member(DEVICE_SELF, {
+							name: "damians-MacBook-Pro",
+							role: "admin",
+						}),
+					]),
+				],
+			},
+		});
 		return <MeshPage />;
 	},
 	play: async () => {

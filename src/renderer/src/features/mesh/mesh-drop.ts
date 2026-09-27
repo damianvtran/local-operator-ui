@@ -109,7 +109,21 @@ export type Remedy =
 export type DropVerdict =
 	| { kind: "plan"; plan: MovePlan; alternatives: MovePlan[]; risky: boolean }
 	| { kind: "none" }
-	| { kind: "refused"; code: string; sentence: string; remedy: Remedy | null };
+	| {
+			kind: "refused";
+			code: string;
+			sentence: string;
+			remedy: Remedy | null;
+			/**
+			 * The move that was refused, when the refusal is about ONE move rather than about
+			 * a destination (agent review round 1, F2). The `wait` remedy re-issues it with
+			 * the route's own ceiling: without the plan the remedy has nothing to re-issue and
+			 * the button the notice draws does nothing - which is exactly what it did on every
+			 * path that can produce a `busy` refusal, because the page read the plan off a
+			 * `pendingMove` the refusal had already cleared.
+			 */
+			plan?: MovePlan | null;
+	  };
 
 /**
  * What a live runtime costs to move, in the user's terms.
@@ -170,7 +184,7 @@ export function planConfirm(
  * sentence written from one end would be wrong half the time - which is how a
  * dialog comes to say "the copy here is deleted" about a copy that is not here.
  */
-function lossSentence(deletedOn: string, gainedBy: string): string {
+export function lossSentence(deletedOn: string, gainedBy: string): string {
 	return `The copy on ${deletedOn} is deleted once ${gainedBy} has it.`;
 }
 
@@ -293,6 +307,24 @@ export function resolveDrop(
 				kind: "wait",
 				label: "Wait for the turn to finish",
 				waitS: 300,
+			},
+			/*
+			 * THE MOVE THIS REFUSAL IS ABOUT, so the remedy can re-issue it (see the verdict's
+			 * own comment). It is the move the plan arm below would have built for the same
+			 * drop - the destination, the direction, and the non-destructive `keep: false` the
+			 * gesture meant - so choosing to wait continues the move the reader asked for
+			 * rather than posing the question again.
+			 */
+			plan: {
+				sessionId: session.id,
+				to: target.deviceId === selfDeviceId ? "local" : target.deviceId,
+				keep: false,
+				verb:
+					target.deviceId === selfDeviceId
+						? "Recall to this device"
+						: `Move to ${peerLabel(devices.get(target.deviceId), target.deviceId)}`,
+				waitS: 0,
+				lost: null,
 			},
 		};
 	}
