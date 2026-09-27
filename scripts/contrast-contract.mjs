@@ -2501,6 +2501,25 @@ const STRUCTURAL_CALL_SITES = [
 		must: "flex flex-col border border-hairline bg-sunken",
 		why: "the panel is a surface above the composer box and reads as one only while its fill steps away from that box's `surface` and its decorative edge is drawn; `CONTROLS` cannot hold this row (it demands a 3:1 edge on a boundary that is deliberately not one), so the class list is the only place the relationship can be undone unseen",
 	},
+	{
+		/*
+		 * The condensed action group's media tile (design review round 1, D2).
+		 *
+		 * The tile IS a focusable `<button>`, so its frame's edge is a control
+		 * boundary and answers to 3:1 (SC 1.4.11) rather than to taste. The palette
+		 * rows above already prove the COLOUR clears the floor - "outline control"
+		 * measures `borderControl` on all four grounds - and what only this pin can
+		 * see is the edit that puts the tile back on the decorative `hairline`: that
+		 * role has no floor at all, measured at 1.25:1 against the light transcript,
+		 * which is invisible chrome for exactly the picture that needs it most (a
+		 * light-canvas screenshot on a light page, where the tile would otherwise have
+		 * no visible extent).
+		 */
+		what: "condensed group media tile edge",
+		file: "src/renderer/src/features/chat/components/message-item/attachment-frame.tsx",
+		must: '"border border-control"',
+		why: "a media tile is a button whose frame is its whole visible boundary; dropping it to `hairline` leaves the pair green in every palette row while a light-canvas picture stops having a visible extent, which no ratio in this file can see",
+	},
 ];
 
 /**

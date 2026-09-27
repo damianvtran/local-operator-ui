@@ -182,11 +182,18 @@ const click = async (mounted) => {
  * real strip pulls this repository's MUI tree in through `CanonicalImage`,
  * which node's ESM resolver will not take (the same reason
  * `chat-image-expand.test.mjs` bundles its picture components its own way).
- * That file mounts a real `FoldMedia` and asserts the thumbnail's own claims -
- * a named, expandable button at the thumbnail ceiling. What this file asserts
- * is the FOLD's half: the media is on screen while the group is condensed, gone
- * when the reader opens it, and the same node across the live-to-settled
- * transition.
+ * What this file asserts is the FOLD's half: the media is on screen while the
+ * group is condensed, gone when the reader opens it, and the same node across
+ * the live-to-settled transition.
+ *
+ * THE PICTURE'S OWN HALF IS NOT ASSERTED HERE, and that is now stated rather
+ * than implied (agent review round 1, P2: the body claimed node identity on the
+ * `[data-fold-media]` subtree's `<img>` while this file's media was a `<span>`,
+ * so the claim had no assertion behind it in either file). The `<img>`'s survival
+ * across the settle is asserted in `chat-image-expand.test.mjs`, which mounts the
+ * real `TraceFold` + `FoldMedia` + `CanonicalImage` + `ImageAttachment` tree; the
+ * name of that test says which node it holds. Anything this file says about a
+ * picture is about the SLOT the fold reserves for one.
  */
 const mediaStrip = () =>
 	createElement("span", { "data-testid": "fold-media" }, "picture");

@@ -36,24 +36,43 @@ type BaseImageAttachmentProps = {
 	 * produced without every image-bearing group costing the height of a full
 	 * figure, and the click that expands to `full` is the same click either way.
 	 *
-	 * The thumbnail ceiling is the attachment frame's own floor (`min-h-16`,
-	 * 64px) rather than a new number: it is the smallest tile this system already
-	 * draws, so a thumbnail is an existing size used in a new place rather than a
-	 * fourth measure nobody has looked at. A picture smaller than that floor is
-	 * centred in the tile, exactly as it is at `full`.
+	 * The thumbnail is the attachment frame's own floor (`min-h-16`, 64px) used as
+	 * the height of a fixed 96x64 SLOT rather than as a shrink-wrap ceiling: it is
+	 * the smallest tile this system already draws, so a thumbnail is an existing
+	 * measure used in a new place rather than a fourth one nobody has looked at,
+	 * and the fixed width is what keeps a row of tiles a grid when the pictures in
+	 * it have different aspects.
 	 */
 	size?: ImageSize;
 };
 
 /**
- * The two ceilings a picture is drawn to, named from the caller's question
+ * The two boxes a picture is drawn into, named from the caller's question
  * ("is this the picture, or a way into it?") rather than from its pixels.
+ *
+ * `full` is the ledger rule every existing caller already had, spelled out
+ * rather than implied: a shared 240px ceiling, `max-w-full` so a wide capture is
+ * bounded by its column, `object-contain` so nothing is cropped or stretched at
+ * any aspect. The last two are NOT left to Tailwind's preflight
+ * (`img,video{max-width:100%;height:auto}`) even though it agrees with them here:
+ * a constraint that has to hold for every picture has to be written where the
+ * picture's own box is written, or a later change to the box reads the preflight
+ * as permission rather than as a guard.
+ *
+ * `thumbnail` is a SLOT, not a shrink-wrap, and the fixed 96x64 is the point. A
+ * tile sized by its own picture made the strip a ragged grid — a 200x360 portrait
+ * drew 36px wide beside 96px landscapes, so the least legible picture got the
+ * least room — and it also made the wrap count depend on which aspect happened to
+ * be in the row (design review round 1, D4). `object-contain` inside the fixed
+ * slot letterboxes the picture on the frame's own ground instead: every tile is
+ * the same canvas, every picture gets the largest box the row can give it, and
+ * the cap below has one number to hold.
  */
 export type ImageSize = "full" | "thumbnail";
 
-const PICTURE_HEIGHT: Record<ImageSize, string> = {
-	full: "max-h-[240px]",
-	thumbnail: "max-h-16",
+const PICTURE_CLASS: Record<ImageSize, string> = {
+	full: "max-h-[240px] max-w-full object-contain",
+	thumbnail: "h-16 w-24 object-contain",
 };
 
 export type ImageAttachmentProps = BaseImageAttachmentProps & {
@@ -276,15 +295,24 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 		const name = label ?? getFileName(file);
 
 		if (hasError) {
-			return <BrokenAttachment name={name} />;
+			return <BrokenAttachment name={name} compact={size === "thumbnail"} />;
 		}
 
 		const picture = (
-			<AttachmentFrame>
+			<AttachmentFrame
+				/*
+				 * A tile IS a control: the frame is the whole of the button's visible
+				 * boundary, so it takes the control edge rather than the decorative
+				 * hairline (design review round 1, D2). At `full` the frame is an
+				 * illustration's backing and the picture supplies its own extent.
+				 */
+				boundary={size === "thumbnail" ? "control" : "hairline"}
+			>
 				<img
 					className={cn(
-						// A shared height ceiling is the ledger rule. It does leave a
-						// phone-aspect capture (828x1792) as a ~111px slice, but a
+						// A shared height ceiling is the ledger rule, and `object-contain`
+						// plus `max-w-full` is what keeps it honest at every aspect. It does
+						// leave a phone-aspect capture (828x1792) as a ~111px slice, but a
 						// `min-w` floor is NOT the fix and was measured doing harm: it
 						// widens the img BOX while `object-contain` keeps letterboxing
 						// the picture inside it, so the portrait case paints 110.9px
@@ -292,10 +320,10 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 						// gets its width forced to 120px and upscales 5x into a blur.
 						// `AttachmentFrame`'s own `min-h-16`/`min-w-16` already floors
 						// the TILE, which is the level where a small picture should be
-						// centred rather than stretched. Solving the portrait case
-						// properly means bounding by area, or relaxing `max-h` below
-						// roughly a 0.6 aspect — not a width floor on the image.
-						PICTURE_HEIGHT[size],
+						// centred rather than stretched. The thumbnail's own portrait case
+						// is answered at the SLOT instead (a fixed 96x64 box every tile
+						// shares), not by a width floor on the image.
+						PICTURE_CLASS[size],
 						// The picture is invisible, not absent, until it decodes:
 						// the frame has already reserved the box, so nothing moves
 						// when it appears.

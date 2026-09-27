@@ -2580,6 +2580,12 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 												<FoldMedia images={group.images} scope={mediaScope} />
 											) : undefined
 										}
+										/*
+										 * The count travels beside the node: the header prints it as text,
+										 * because a 64px tile cannot carry a label and the count is what the
+										 * strip's own accessible name already says.
+										 */
+										mediaCount={group.images.length}
 									>
 										{group.rows.map((row, index) => (
 											<TranscriptRow
