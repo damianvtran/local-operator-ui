@@ -621,6 +621,15 @@ export const STORIES = [
 	["chat-trace-fold--mid-run", 1280, 130],
 	["chat-trace-fold--finished", 1280, 130],
 	["chat-trace-fold--restored", 1280, 130],
+	/*
+	 * The operator's report of 2026-09-27, as a state: four file reads and three
+	 * agent-profile READS, which folded as `Explored 4 files, delegated 3 tasks`
+	 * while every row above the header read `Delegated`. With the op tier the
+	 * same seven actions fold by kind - `4 files · 3 agents` - under the noun of
+	 * the calls themselves (`KIND_NOUNS`), and this header is the frame the
+	 * design round judges that claim from.
+	 */
+	["chat-trace-fold--agent-ops", 1280, 130],
 	[
 		"chat-trace-fold--expanded",
 		1280,
@@ -1658,6 +1667,14 @@ export const STORIES = [
 	["chat-tool-rows--screenshots-two", 1280, 900],
 	["chat-tool-rows--user-attachments", 1280, 900],
 	["chat-tool-rows--states", 1280, 900],
+	/*
+	 * The meta tools' operations, one row each (agent list/show/create, team,
+	 * hub peek/send, secret, project, network, console, lsp, and a live wait):
+	 * the rows that printed `Delegated` for everything now name what each call
+	 * DID, through the same pipeline the transcript runs (`toolOp` →
+	 * `summaryFromArgs` → `toolRowLabel`).
+	 */
+	["chat-tool-rows--tool-ops", 1280, 380],
 	["chat-tool-rows--names-and-fallbacks", 1280, 900],
 	/* The reported defect, and the only new surface this set added: a viewer that
 	   joins a turn already in flight. Its rows are built by the PRODUCTION

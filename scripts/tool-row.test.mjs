@@ -57,6 +57,8 @@ const {
 	stripDiffHeader,
 	summaryFromArgs,
 	toolCategory,
+	toolOp,
+	toolRowLabel,
 	toolVerb,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -85,7 +87,29 @@ test("the summary is the identity arguments, not the payload", () => {
 		"core Bug",
 	);
 	// Non-scalars are dropped rather than stringified into `[object Object]`.
-	assert.equal(summaryFromArgs("todo", { items: ["a"], op: "add" }), "add");
+	assert.equal(summaryFromArgs("todo", { items: ["a"] }), "todo");
+	// The OPERATION SELECTOR is not an object once a verb table reads it: `op`
+	// is the word the row's verb is about to say, and `{items:["a"], op:"add"}`
+	// used to resolve to `add` - which is how the row came to read `Updated
+	// todos add` and, for `agent`, `Delegated list` (operator report,
+	// 2026-09-27). For a tool with no op table the scalars are untouched.
+	assert.equal(summaryFromArgs("todo", { items: ["a"], op: "add" }), "todo");
+	assert.equal(summaryFromArgs("agent", { op: "list" }), "agent");
+	assert.equal(
+		summaryFromArgs("agent", { op: "show", name: "designer" }),
+		"designer",
+	);
+	assert.equal(
+		summaryFromArgs("browser", { action: "type", text: "hi" }),
+		"type hi",
+	);
+	assert.equal(
+		summaryFromArgs("mcp__linear_create_issue", {
+			action: "list",
+			team: "core",
+		}),
+		"list core",
+	);
 	// Nothing usable at all: the tool's own name, never an empty row.
 	assert.equal(summaryFromArgs("eval", {}), "eval");
 	assert.equal(summaryFromArgs("eval", null), "eval");
@@ -199,6 +223,100 @@ test("a row opens with a verb in the user's terms, never the wire name (D5)", ()
 	// A tool the table does not know takes a generic verb and says so, so the
 	// row keeps the tool's own name at the head of its object.
 	assert.deepEqual(toolVerb("mcp__linear_create_issue"), {
+		settled: "Called",
+		running: "Calling",
+		named: false,
+	});
+});
+
+test("a meta tool's row names its operation, never the family's one word (operator report, 2026-09-27)", () => {
+	/*
+	 * `agent`, `team` and `hub` are one tool each that does many jobs, and their
+	 * name-only verbs said `Delegated` for all of them: the operator's
+	 * screenshot showed `Delegated list` and `Delegated designer` for profile
+	 * READS that delegated nothing. The verb is chosen from the arguments'
+	 * operation (`toolOp`), and the object never echoes the selector back
+	 * (`summaryFromArgs` drops it for the tools whose verb table reads it).
+	 */
+	const row = (name, args) =>
+		toolRowLabel(name, summaryFromArgs(name, args), null, false, toolOp(args));
+
+	// The two rows the operator reported, as labels.
+	assert.deepEqual(row("agent", { op: "list" }), {
+		verb: "Listed agents",
+		object: "",
+	});
+	assert.deepEqual(row("agent", { op: "show", name: "designer" }), {
+		verb: "Viewed agent",
+		object: "designer",
+	});
+	// A write op beside them, so the table is asserted in both directions.
+	assert.equal(
+		row("agent", { op: "create", name: "docs-writer" }).verb,
+		"Created agent",
+	);
+	assert.deepEqual(row("team", { op: "list" }), {
+		verb: "Listed teams",
+		object: "",
+	});
+	assert.deepEqual(row("hub", { op: "peek", to: ["9860"] }), {
+		verb: "Peeked at",
+		object: "",
+	});
+	// The object's own precedence is untouched: `hub send` still leads with the
+	// message it carries, not the target.
+	assert.deepEqual(row("hub", { op: "send", to: ["9860"], message: "ping" }), {
+		verb: "Messaged",
+		object: "ping",
+	});
+	// `task` is the call that IS delegation, and it keeps the word.
+	assert.equal(row("task", { agent: "designer" }).verb, "Delegated");
+	// An operation this build does not know takes the GENERIC verb, and the
+	// selector token does not leak into the object - a claim the table cannot
+	// make is not made.
+	assert.deepEqual(row("agent", { op: "frobnicate" }), {
+		verb: "Called",
+		object: "agent",
+	});
+	assert.deepEqual(row("agent", null), { verb: "Called", object: "agent" });
+	// A COMPOSING row (no arguments in hand yet) takes the same generic verb,
+	// never the old family word: nothing is delegated at that moment.
+	assert.deepEqual(toolRowLabel("agent", "composing · 22 B", null, true), {
+		verb: "Calling",
+		object: "agent composing · 22 B",
+	});
+});
+
+test("the builtins the row table once missed name their call, and their operation when it matters", () => {
+	// The unmapped half of the audit (operator report, 2026-09-27): every tool
+	// the running build can emit has a word. A static one where the name says it
+	// all; an operation's where one name spans materially different calls.
+	assert.equal(toolVerb("web_read").settled, "Read");
+	assert.equal(toolVerb("wait").settled, "Waited for jobs");
+	assert.equal(toolVerb("team_delete").settled, "Deleted team");
+	assert.equal(toolVerb("project_delete").settled, "Deleted project");
+
+	const opRow = (name, op) => toolVerb(name, op);
+	assert.equal(opRow("secret", "retrieve").settled, "Retrieved secret");
+	assert.equal(opRow("secret", "delete").settled, "Deleted secret");
+	assert.equal(opRow("project", "link").settled, "Linked session to");
+	assert.equal(opRow("project", "milestone").settled, "Updated milestone");
+	assert.equal(opRow("todo", "view").settled, "Read todos");
+	assert.equal(opRow("todo", "done").settled, "Updated todos");
+	assert.equal(opRow("wake", "list").settled, "Listed wakes");
+	assert.equal(opRow("jobs", "cancel").settled, "Cancelled job");
+	assert.equal(opRow("network", "status").settled, "Checked network status");
+	assert.equal(opRow("network", "join").settled, "Joined network");
+	assert.equal(opRow("console", "create").settled, "Opened console");
+	assert.equal(opRow("console", "keys").settled, "Sent keys");
+	assert.equal(opRow("lsp", "definitions").settled, "Found definition");
+	assert.equal(opRow("lsp", "rename_preview").settled, "Previewed rename");
+	// The running half is the present participle, as everywhere else.
+	assert.equal(opRow("agent", "sync").running, "Syncing agents");
+	assert.equal(opRow("hub", "resume").running, "Resuming");
+	// And an op-aware tool with no known op is generic, never a neighbouring
+	// claim - the same discipline an unknown NAME takes.
+	assert.deepEqual(toolVerb("secret"), {
 		settled: "Called",
 		running: "Calling",
 		named: false,
@@ -2813,8 +2931,10 @@ test("a tool's category is the TUI's own map, looked up case-insensitively", () 
 		"glob",
 		"grep",
 		"web_fetch",
+		"web_read",
 		"web_search",
 		"browser",
+		"lsp",
 		"list_variables",
 		"read_variable",
 	]) {
@@ -2823,10 +2943,28 @@ test("a tool's category is the TUI's own map, looked up case-insensitively", () 
 	for (const name of ["write", "edit"]) {
 		assert.equal(toolCategory(name), "mutate", `${name} mutates`);
 	}
-	for (const name of ["bash", "eval"]) {
+	// `console` is the app's own terminal in a frame, which is why it takes the
+	// exec ink the TUI gives `bash`/`eval` rather than the wrench's neutral.
+	for (const name of ["bash", "eval", "console"]) {
 		assert.equal(toolCategory(name), "exec", `${name} executes`);
 	}
-	for (const name of ["task", "agent", "hub", "todo", "send", "wake", "ask"]) {
+	for (const name of [
+		"task",
+		"agent",
+		"team",
+		"hub",
+		"todo",
+		"send",
+		"wake",
+		"ask",
+		"wait",
+		"jobs",
+		"secret",
+		"network",
+		"project",
+		"team_delete",
+		"project_delete",
+	]) {
 		assert.equal(toolCategory(name), "meta", `${name} is meta`);
 	}
 
@@ -2844,7 +2982,6 @@ test("a tool's category is the TUI's own map, looked up case-insensitively", () 
 		"mcp__linear_create_issue",
 		"mcp__",
 		"peer",
-		"team",
 		"a_builtin_that_does_not_exist_yet",
 		"",
 	]) {
@@ -2896,7 +3033,11 @@ test("the glyph takes identity ink, the name takes state ink, and they agree on 
 		["bash", "success", "text-ink-muted"],
 		["eval", "success", "text-ink-muted"],
 		["task", "success", "text-accent-alt"],
+		["team", "success", "text-accent-alt"],
 		["hub", "success", "text-accent-alt"],
+		["secret", "success", "text-accent-alt"],
+		["console", "success", "text-ink-muted"],
+		["lsp", "success", "text-info"],
 		// Unclassified, and a receipt whose name is not a tool: the neutral.
 		["mcp__linear_create_issue", "success", "text-ink-muted"],
 		["peer", "receipt", "text-ink-muted"],
