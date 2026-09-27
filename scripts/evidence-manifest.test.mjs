@@ -1517,6 +1517,13 @@ const STAMP_BINDING_NOTES = [
 	 * the prose.
 	 */
 	"pendingEchoRemediationFifthFoldNote",
+	/*
+	 * AND THE TWO-FLAKE LANE'S SECOND FOLD: its subject IS this file's binding -
+	 * the fold onto the moved `origin/main` after #562 and #577 re-derives the
+	 * pair at the folded tip and reads it back from the staged index, so a
+	 * reader is owed the pair rather than the prose.
+	 */
+	"foldOntoA9f4b1d7f4Note",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2159,6 +2166,11 @@ const BRANCH_RECORDS = [
 	 * the same completeness reason stands.
 	 */
 	"pendingEchoRemediationFifthFoldNote",
+	/*
+	 * And the TWO-FLAKE lane's second fold's record rides beside them - each
+	 * fold writes one, and the same completeness reason stands.
+	 */
+	"foldOntoA9f4b1d7f4Note",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
