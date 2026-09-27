@@ -330,6 +330,15 @@ const SCROLL_BUTTON =
 const PANEL =
 	"src/renderer/src/features/chat/components/run-details/run-panel.tsx";
 const CONTENT = "src/renderer/src/features/chat/components/chat-content.tsx";
+/*
+ * The right-pane SLOT, which is where the pane's box - and so its floor - is
+ * declared since the `PaneSlot` refactor (design round 1, D1). Read
+ * comment-stripped, like every other pin in this file: the slot's class note
+ * quotes the floor it states, so a scan that read the note would pass on a
+ * revert that left the prose behind.
+ */
+const SLOT = "src/renderer/src/shared/components/common/pane-slot.tsx";
+const slot = code(SLOT);
 
 /* ---------------------------------------------------------------- */
 /* The nothing state                                                 */
@@ -2014,6 +2023,19 @@ test("the pane's floor is its contract minimum, not the user's preference", () =
 	 * the row can host it - otherwise the range collapses onto the drawn width and a
 	 * write is refused (measured: seven real drags moved the preference 420 -> 360 ->
 	 * 320 -> 440 -> 640 while the pane stayed 303px and the separator never moved).
+	 *
+	 * AND THE FLOOR IS READ FROM THE BOX'S OWN FILE, not from this component: the
+	 * `PaneSlot` refactor (design round 1's D1, whose subject was the five copies of
+	 * this box the app and the stories had each grown) moved the wrapper - and with
+	 * it the floor - into `pane-slot.tsx`, so the literal this file used to find
+	 * here is not `chat-content.tsx`'s to carry any more. What the pin asserts is
+	 * unchanged and is asserted in BOTH places it can now be stated: the slot's box
+	 * floors at ZERO by its own default (read from the slot's source below), and
+	 * the run panel's mount passes it a width and NO floor of its own. Relaxing the
+	 * assertion instead - dropping the zero and keeping only the ban on a pinned
+	 * preference - was refused: a box whose floor is whatever the browser resolves
+	 * for an omission is exactly the shape the D1 defect came back in, and the
+	 * measurement behind the default is in `pane-slot.tsx`'s class note.
 	 */
 	assert.match(content, /const RUN_PANEL_MIN_PX = 320;/);
 	assert.match(
@@ -2021,8 +2043,24 @@ test("the pane's floor is its contract minimum, not the user's preference", () =
 		/minWidth=\{\s*runPanelResizable \? RUN_PANEL_MIN_PX : runPanelDividerValue,?\s*\}/,
 	);
 	assert.match(content, /sidebarWidth=\{runPanelDividerValue\}/);
-	assert.match(content, /minWidth: 0,/);
+	assert.match(slot, /minWidth = 0,/);
+	assert.match(slot, /style=\{\{ minWidth, width \}\}/);
 	assert.doesNotMatch(content, /minWidth: effectiveRunPanelWidth/);
+	/*
+	 * The mount itself: the width it asks for, and no floor beside it. Sliced from
+	 * the ref the pane is measured by to the tag its own probe reads it by, so the
+	 * span is this mount and not the next `PaneSlot` down the file.
+	 */
+	const runSlot = content.slice(
+		content.indexOf("ref={runPanelRef}"),
+		content.indexOf('tourTag="run-panel-dock"'),
+	);
+	assert.match(runSlot, /width=\{effectiveRunPanelWidth\}/);
+	assert.doesNotMatch(
+		runSlot,
+		/minWidth/,
+		"the run panel's box takes its floor from the slot's own default, not from a number written here",
+	);
 	/*
 	 * And the pane's width-derived layout (`tallyBudget`) is handed the width the
 	 * pane is DRAWN at, measured on the wrapper, not the preference it asked for:

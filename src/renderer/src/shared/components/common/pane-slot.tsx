@@ -7,8 +7,10 @@ type PaneSlotProps = HTMLAttributes<HTMLDivElement> & {
 	 */
 	width: number;
 	/**
-	 * A floor for the story arms, which do not run the divider that enforces one in
-	 * the app. Omitted, the pane is free to shrink the way `flex-shrink` allows.
+	 * A floor for the box, in pixels. Omitted, the floor is ZERO — see the class
+	 * note below, where the measurement behind that default is written down. A
+	 * STORY arm that has no divider and no row of its own names its own floor
+	 * here instead (`run-details.stories.tsx`, `canvas.stories.tsx`).
 	 */
 	minWidth?: number;
 	/**
@@ -51,13 +53,29 @@ type PaneSlotProps = HTMLAttributes<HTMLDivElement> & {
  *     column beside it (`canvas/index.tsx` states which ground and why), and the
  *     app draws no rule here. A rule on this element is the defect above;
  *   - no ground of its own either: the occupant paints its surface, so the slot
- *     stays a box.
+ *     stays a box;
+ *   - the WIDTH stays a preference and the FLOOR is always an explicit `0`,
+ *     because the two are not the same number and a box that lets the browser
+ *     choose the second one is a box whose floor nobody can read. MEASURED, on
+ *     the run panel at a row that could not host its preference: with the floor
+ *     omitted the box still shrank to the 320px the row left, and with the floor
+ *     spelled `0` it shrank to the same 320 — because a flex item that is a
+ *     SCROLL CONTAINER (`overflow-hidden`, in this class list) has an automatic
+ *     minimum size of zero, so the clip was carrying the floor the inline
+ *     `minWidth: 0` used to state. The same box with the clip lifted and the
+ *     floor omitted rendered 390.7px and put 70.7px of itself past its row: that
+ *     is the content-minimum floor the `0` is there to refuse, and it is the
+ *     defect this branch's D1/U1 was about. An omission that is safe only
+ *     because a sibling class happens to imply it is an omission the next editor
+ *     of the class list can make unsafe without touching a floor, so the number
+ *     is stated here rather than inferred. `scripts/composer-tabs.test.mjs`
+ *     reads it from this file.
  */
 export const PaneSlot = forwardRef<HTMLDivElement, PaneSlotProps>(
-	({ width, minWidth, tourTag, children, ...rest }, ref) => (
+	({ width, minWidth = 0, tourTag, children, ...rest }, ref) => (
 		<div
 			ref={ref}
-			style={minWidth === undefined ? { width } : { minWidth, width }}
+			style={{ minWidth, width }}
 			data-tour-tag={tourTag}
 			className={cn(
 				"relative h-full overflow-hidden transition-[width] duration-base ease-out-quart",
