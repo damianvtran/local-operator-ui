@@ -1452,6 +1452,17 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"daemonObservationTickWaitRestampNote",
 	/*
+	 * AND THE CREDENTIAL-INPUT CHANGE'S OWN (`fix/secret-ask-credential-input`):
+	 * its subject is this file's binding too - it moves BOTH trees (the dock's
+	 * masked secret field and its answer path in `src/`, the suite's cases and
+	 * the sweep's two new rows in `scripts/`) without committing a frame, so a
+	 * reader is owed the pair AND the reason no still was owed - the same case
+	 * `task17RestampNote` and `daemonObservationTickWaitRestampNote` are in the
+	 * list for. The new rows' frames are the PR's to carry (referenced from the
+	 * pull request), and `countsMean.surfaces` carries the re-derivation.
+	 */
+	"secretAskCredentialRestampNote",
+	/*
 	 * AND THE TWO-FLAKE LANE'S OWN: its subject IS this file's binding too - it
 	 * moves BOTH trees without taking a frame (a dev-mode caret fix and two
 	 * readers, none of which draws anything), so a reader is owed the pair AND
@@ -1544,6 +1555,37 @@ const STAMP_BINDING_NOTES = [
 	 * and this list is the check that notices.
 	 */
 	"foldOnto1e88f7fc16Note",
+	/*
+	 * And the second fold's record rides beside them, for the same completeness
+	 * reason.
+	 */
+	"foldOnto9589bd8fecNote",
+	/*
+	 * AND THE SECOND FOLD'S OWN: main moved again before this branch's push, the
+	 * fold onto `9589bd8fec` re-derived the pair at the folded tip, and a reader
+	 * is owed the check rather than the prose.
+	 */
+	"foldOnto9589bd8fecNote",
+	/*
+	 * AND THE REMEDIATION ROUND'S OWN: round 1's fix moves BOTH trees again -
+	 * `src/` for the one commission entry point (clear, cancel, invalidate)
+	 * with its generation guard and the account row's `min-w-0`, `scripts/`
+	 * for the two suites that pin and measure them plus this file's own
+	 * registrations - and rewrites no frame of the sweep (the re-shot design
+	 * frames are PNG walks under the `account-foot-refresh` set), so a reader
+	 * is owed the two values it binds and the reason no still was owed.
+	 */
+	"accountFootRemediationRestampNote",
+	/*
+	 * AND THIS BRANCH'S OWN (folded in beside it): the account-foot refresh moves
+	 * BOTH trees this file binds - `src/` for the two completion call sites that
+	 * commission the account read on a Radient credential write and the clear
+	 * that lets the re-read be disclosed as "checking", `scripts/` for the three
+	 * suites that pin and measure them - and rewrites no frame of the sweep (its
+	 * evidence is a pair of PNG walks, declared as `account-foot-refresh`), so a
+	 * reader is owed the two values it binds and the reason no still was owed.
+	 */
+	"accountFootRefreshRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2147,6 +2189,16 @@ const BRANCH_RECORDS = [
 	 */
 	"daemonObservationTickWaitRestampNote",
 	/*
+	 * And by the credential-input change, whose note is the newest top-level
+	 * record on the branch: it states the pair this tip ships, moves both trees
+	 * (the dock's masked secret field and its answer path in `src/`, the suite's
+	 * cases and the sweep's two new rows in `scripts/`), and takes no committed
+	 * frame - a fold that started from main's copy would drop it first, and with
+	 * it the only statement of what moved and why no still was committed, which
+	 * is the failure this whole list exists to make loud.
+	 */
+	"secretAskCredentialRestampNote",
+	/*
 	 * And by the TWO-FLAKE lane, whose note is now the newest top-level record on
 	 * the branch: it states the pair this tip ships, moves both trees, and takes
 	 * no frame - a fold that started from main's copy would drop it first, the
@@ -2203,6 +2255,17 @@ const BRANCH_RECORDS = [
 	 * reason.
 	 */
 	"foldOnto1e88f7fc16Note",
+	/*
+	 * And this branch's own record, folded in beside it: the account-foot
+	 * refresh writes one top-level note, registered here for the same
+	 * completeness reason.
+	 */
+	"accountFootRefreshRestampNote",
+	/*
+	 * And the remediation round's record rides beside it - a restamp after the
+	 * round's own changes writes one, and the same completeness reason stands.
+	 */
+	"accountFootRemediationRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

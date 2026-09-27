@@ -127,6 +127,65 @@ const publicationFailure = (response: Response) =>
 	);
 
 /**
+ * The team arm of `controlRefusal`, with the local server's own remedy sentence.
+ *
+ * "Update the backend" is the right instruction for an app running beside a local
+ * server that predates the team routes -- the operation is one this renderer
+ * knows and that server does not -- and it would be the wrong thing to say for
+ * every other refusal, which is why the sentence is chosen per family rather
+ * than once.
+ */
+const teamFailure = (response: Response) =>
+	controlRefusal(
+		response,
+		"This backend cannot pull organization teams yet. Update the backend and try again.",
+	);
+
+/**
+ * Where a publication is meant to land (design §4.4/§8.4).
+ *
+ * Public is the ABSENCE of a target rather than a target naming the public hub:
+ * the local server's route takes `visibility=org&tenant_id=...` or nothing, and
+ * a client that spelled the default would be inventing a third state the route
+ * refuses. The desktop contract keeps the pair together for the same reason.
+ */
+export type PublicationTarget =
+	| { visibility: "org"; tenantId: string }
+	| undefined;
+
+/**
+ * The local team a pull reconstructed, as the backend reports it.
+ *
+ * `renamed_from` is the local registry's own note that the stored name differs
+ * from the published one (the agent pull reports the same field). `invalid_name`
+ * is a BOOLEAN FLAG, not a name: it says the difference INCLUDES the published
+ * name being an invalid local spelling, as opposed to a pure collision rename
+ * (local-operator `teams.py`, `TeamImportOutcome`). It was typed as a string here
+ * and read with `.trim()`, so every successful pull against the merged server
+ * threw a TypeError and dropped its success toast (QA round 1, Q-1). A flag read
+ * as a name is a crash, not a wrong sentence. Both stay optional because the
+ * route sends `renamed_from: null` when the name was kept and a boolean for the
+ * flag, so neither is guaranteed to be truthy on the way in.
+ */
+export type PulledTeam = {
+	id: string;
+	name: string;
+	renamed_from?: string;
+	invalid_name?: boolean;
+};
+
+/**
+ * The two contract fields one target contributes — none at all for the public hub.
+ *
+ * ONE place, because the contract's publish and republish schemas are strict and
+ * the pair must travel together: a `tenantId` without `visibility` (or the
+ * reverse) is refused by that schema before a socket is opened, and the local
+ * server's route refuses the same half-specified target again on its own terms.
+ */
+const targetFields = (target: PublicationTarget) =>
+	target ? { visibility: target.visibility, tenantId: target.tenantId } : {};
+
+/**
  * Agents API client for the Local Operator API
  */
 export const AgentsApi = {
@@ -466,11 +525,13 @@ export const AgentsApi = {
 		_baseUrl: string,
 		agentId: string,
 		document?: PublicationDocumentOverride,
+		target?: PublicationTarget,
 	): Promise<CRUDResponse<PublishedListing>> {
 		const response = await desktopControlResponse({
 			op: "agent.publish",
 			agentId,
 			document,
+			...targetFields(target),
 		});
 
 		if (!response.ok) throw await publicationFailure(response);
@@ -493,12 +554,14 @@ export const AgentsApi = {
 		agentId: string,
 		hubAgentId: string,
 		document?: PublicationDocumentOverride,
+		target?: PublicationTarget,
 	): Promise<CRUDResponse<PublishedListing>> {
 		const response = await desktopControlResponse({
 			op: "agent.republish",
 			agentId,
 			hubAgentId,
 			document,
+			...targetFields(target),
 		});
 
 		if (!response.ok) throw await publicationFailure(response);
@@ -609,5 +672,43 @@ export const AgentsApi = {
 		if (!response.ok) throw await controlRefusal(response);
 
 		return response.json() as Promise<CRUDResponse<AgentDetails>>;
+	},
+
+	/**
+	 * Pull a published organization team into this machine's local registry.
+	 *
+	 * The id is the HUB document's id, and `tenantId` — when the caller knows
+	 * which organization the team came from — is a STATEMENT of ownership the
+	 * local server verifies rather than trusts: a document owned by another
+	 * tenant is refused (409) instead of being stored under a wrong expectation.
+	 * The local server then reconstructs the team through the registry's own
+	 * import, which is what reports the rename when a published name could not be
+	 * held locally.
+	 *
+	 * @param baseUrl - The base URL of the Local Operator API
+	 * @param teamId - ID of the published team document to pull
+	 * @param tenantId - The organization the caller believes owns it, if known
+	 * @returns Promise resolving to the reconstructed local team
+	 * @throws PublicationError on a coded refusal, `DesktopControlError` without one
+	 */
+	async pullOrgTeamFromRadient(
+		_baseUrl: string,
+		teamId: string,
+		tenantId?: string,
+	): Promise<CRUDResponse<PulledTeam>> {
+		/*
+		 * `tenant_id` rides the query because it verifies the READ rather than
+		 * describing the document — the same reason the publish routes take their
+		 * target as query params (§4.4).
+		 */
+		const response = await desktopControlResponse({
+			op: "team.pull",
+			teamId,
+			...(tenantId ? { tenantId } : {}),
+		});
+
+		if (!response.ok) throw await teamFailure(response);
+
+		return response.json() as Promise<CRUDResponse<PulledTeam>>;
 	},
 };
