@@ -9,6 +9,7 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { BackendCompatibilityBanner } from "@shared/components/common/backend-compatibility-banner";
+import { PaneSlot } from "@shared/components/common/pane-slot";
 import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { TabPanel } from "@shared/components/ui";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
@@ -1793,11 +1794,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								label="Resize canvas"
 							/>
 						)}
-						<div
+						<PaneSlot
 							ref={canvasContainerRef}
-							/* Named for the geometry probe: the dock's measured width at
-							 * the default 1380x900 window is the U1 regression check. */
-							data-tour-tag="canvas-dock"
+							width={canvasWidth}
+							tourTag="canvas-dock"
 							/*
 							 * THE MODE AS A FACT ON THE ELEMENT, rather than something a reader has to
 							 * infer from a width. §I's two shapes - docked beside the chat, or over it
@@ -1806,62 +1806,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							 * a test gets subtly wrong.
 							 */
 							data-canvas-mode={canvasDocked ? "docked" : "overlay"}
-							style={{
-								/*
-								 * §I's width for the mode: docked it is `min(560, available - 480)`,
-								 * capped by the user's own preference; overlaying it is that preference,
-								 * capped by the pane it covers.
-								 */
-								width: canvasWidth,
-							}}
-							/*
-							 * No `minWidth`. A floor pinned at the dock's preferred width is what
-							 * made the grid's fourth column unreachable at the app's own default
-							 * window: the chat column has a floor of its own (§B1's 480 since §I; 220
-							 * before it), so 220 + 800 could not fit in an 880px row, the row's
-							 * `overflow-hidden` clipped the rest, and no scroll container in between
-							 * could reach it (measured at 1380x900: the dock ran to x=1520 in a 1380
-							 * window and 8 of 32 tiles had their right edge past it). With the floor
-							 * gone, flex shrinks the dock into the space that is actually available and
-							 * the grid reflows to the width it really has — which is the same rule the
-							 * grid's own `auto-fill` tracks already follow.
-							 *
-							 * THE FLOOR THAT REPLACED IT IS ON THE OTHER COLUMN, deliberately: the
-							 * chat column carries `min-w-[480px]` and the pane's width is derived from
-							 * it (`canvasDockWidth`), so the promise is kept on the pane the reader is
-							 * promised rather than by capping one of the things that may join the row.
-							 */
-							className={cn(
-								/*
-								 * NO SEAM RULE: the pane and the transcript are one plane.
-								 *
-								 * It was `border-l border-hairline`, which is the boundary this app
-								 * draws where two IN-FLOW PANELS meet whose grounds are the same
-								 * (`sidebar-navigation.tsx` draws one on the rail's trailing edge
-								 * for exactly that reason). This seam no longer qualifies: the
-								 * dock's ground is the page's `canvas` (`canvas/index.tsx` states
-								 * why), so the tone step is what separates it from the sidebar, and
-								 * a rule between two planes a tonal step already separates is a
-								 * second way of saying one thing. The operator's ask is the same
-								 * observation from the other end: a hairline here read as the
-								 * canvas being boxed off rather than docked.
-								 *
-								 * The drag affordance is unaffected: `ResizableDivider` renders
-								 * its own hover rule, and it is the same width at rest as the
-								 * shell's sidebar divider, which has never drawn a resting rule
-								 * either.
-								 */
-								"relative h-full overflow-hidden transition-[width] duration-base ease-out-quart",
-								/*
-								 * Docked: a flex item that shrinks. Overlay: lifted out of the flow at
-								 * the row's trailing edge, ABOVE the chat column (`z-20`), with the chat
-								 * still painted behind it and no scrim - §I's "full pane width, scrim
-								 * absent". The row is the positioning context (`relative` above), which
-								 * is also what keeps the pane aligned with the chat column's trailing
-								 * edge rather than the window's.
-								 */
-								canvasDocked ? "shrink" : "absolute inset-y-0 right-0 z-20",
-							)}
 						>
 							<Canvas
 								activeDocumentId={selectedTabId}
@@ -1914,7 +1858,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								onClose={handleCloseCanvas}
 								onCloseDocument={handleCloseDocument}
 							/>
-						</div>
+						</PaneSlot>
 					</>
 				)}
 
@@ -1951,40 +1895,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							onDoubleClick={handleRunPanelWidthReset}
 							label="Resize run details"
 						/>
-						<div
+						<PaneSlot
 							ref={runPanelRef}
-							data-tour-tag="run-panel-dock"
-							style={{
-								/*
-								 * The preference is the `width`, and there is NO floor: `minWidth: 0`
-								 * is what lets the flex item shrink below its own content minimum at
-								 * all, which is the whole of the fix below. Pinning the preference as
-								 * the floor is what put the pane's right edge - its close control and
-								 * its scrollbar - past the window at any window the row could not
-								 * host 420 in: measured 116px past at 1024x673 with the rail
-								 * expanded and 340px at the app's 800x600 floor, with the row's
-								 * `overflow-hidden` hiding the difference and no gesture that
-								 * reaches it. The canvas dock one slot up dropped its own pinned
-								 * floor for exactly this reason.
-								 *
-								 * A floor at the pane's own 320px contract minimum was measured too
-								 * and is NOT enough: it still leaves 16px of the pane past the
-								 * window at 1024x673 with the rail expanded (the close control's
-								 * right edge, off-screen) and 68px at 800x600 with the rail
-								 * collapsed, because the row's other floors - a 220px column and a
-								 * 280px chat list, under a 48px or 220px rail - do not leave 320.
-								 * With no floor the pane takes exactly the space the row has left,
-								 * and the budgets below follow that measured width, so a narrow
-								 * pane sheds and elides inside its own box instead of being cut by
-								 * the window. `RUN_PANEL_MIN_PX` stays the DIVIDER's floor: the
-								 * width the user may drag the preference down to.
-								 */
-								minWidth: 0,
-								width: effectiveRunPanelWidth,
-							}}
-							/* No seam rule either, for the canvas wrapper's reason (above): the
-							   slot's panes share the page ground, so the tone step is the seam. */
-							className="relative h-full shrink overflow-hidden transition-[width] duration-base ease-out-quart"
+							width={effectiveRunPanelWidth}
+							tourTag="run-panel-dock"
 						>
 							<RunPanel
 								details={runDetails}
@@ -2009,7 +1923,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								onReaderChildChange={setReaderChildId}
 								onClose={() => setRunPanelOpen(false)}
 							/>
-						</div>
+						</PaneSlot>
 					</>
 				)}
 
@@ -2046,14 +1960,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							onDoubleClick={restoreDefaultBrowserPanelWidth}
 							label="Resize browser"
 						/>
-						<div
-							/* Named for the geometry probe: the pane's measured width as it opens
-							   is what shows the slot narrowed the conversation rather than
-							   overlaying it. */
-							data-tour-tag="browser-pane-slot"
-							style={{ width: effectiveBrowserPanelWidth }}
-							/* No seam rule, for the canvas wrapper's reason (above). */
-							className="relative h-full overflow-hidden transition-[width] duration-base ease-out-quart"
+						<PaneSlot
+							width={effectiveBrowserPanelWidth}
+							tourTag="browser-pane-slot"
 						>
 							{/*
 							 * The session id as a SCOPE rather than as a page: the pane renders the
@@ -2066,7 +1975,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								sessionId={sessionId ?? null}
 								onClose={() => setBrowserPaneOpen(false)}
 							/>
-						</div>
+						</PaneSlot>
 					</>
 				)}
 				{/*
@@ -2093,17 +2002,15 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							onDoubleClick={restoreDefaultConsolePanelWidth}
 							label="Resize console"
 						/>
-						<div
-							style={{ width: effectiveConsolePanelWidth }}
-							/* No seam rule, for the canvas wrapper's reason (above). */
-							className="relative h-full overflow-hidden transition-[width] duration-base ease-out-quart"
-							data-tour-tag="console-pane-slot"
+						<PaneSlot
+							width={effectiveConsolePanelWidth}
+							tourTag="console-pane-slot"
 						>
 							<ConsolePane
 								sessionId={sessionId ?? null}
 								onClose={() => setConsolePaneOpen(false)}
 							/>
-						</div>
+						</PaneSlot>
 					</>
 				)}
 			</div>

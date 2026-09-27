@@ -106,8 +106,31 @@ const LANE_GRADIENT =
 const PANE_ROOT = /className=\{cn\("flex h-full flex-col (bg-[\w-]+)"\)\}/g;
 const PANE_BAR =
 	/"flex (h-\d+) shrink-0 items-center justify-between gap-2 ([^"]*?)px-2"/g;
-const SLOT_WRAPPER =
-	/overflow-hidden transition-\[width\] duration-base ease-out-quart/g;
+const SLOT_BOX =
+	/"relative h-full overflow-hidden transition-\[width\] duration-base ease-out-quart"/;
+const SLOT_COMPONENT =
+	"src/renderer/src/shared/components/common/pane-slot.tsx";
+
+/**
+ * Every file that mounts a pane or stands in for the slot around one.
+ *
+ * THE STORY ARMS ARE IN THIS LIST BECAUSE THEY WERE THE DEFECT. The first version
+ * of this file scanned the app's own wrapper and nothing else, and the evidence
+ * stories - `canvas.stories.tsx`, `run-details.stories.tsx`,
+ * `browser-pane.stories.tsx` - each wrote their own copy of the slot with the
+ * leading `border-l border-hairline` still on it. So the app stopped drawing a
+ * seam, the harness kept drawing one, and every before/after frame in the
+ * delivered set showed a boundary the product no longer had (design review round
+ * 1, D1). A guard that reads only the app cannot see the instrument.
+ */
+const PANE_HOSTS = [
+	SLOT_COMPONENT,
+	CHAT_CONTENT,
+	"src/renderer/src/features/chat/components/canvas/canvas.stories.tsx",
+	"src/renderer/src/features/chat/components/run-details/run-details.stories.tsx",
+	"src/renderer/src/features/browser/components/browser-pane.stories.tsx",
+	"src/renderer/src/shared/components/navigation/shell.stories.tsx",
+];
 
 /**
  * The lane's own ground for the region right of the sidebar, read off the
@@ -160,16 +183,29 @@ test("every pane in the slot roots at the lane's own ground", () => {
 	);
 });
 
-test("no seam rule on the slot's wrappers", () => {
-	const source = withoutComments(read(CHAT_CONTENT));
-	assert.equal(
-		[...source.matchAll(SLOT_WRAPPER)].length,
-		4,
-		`expected the slot's four wrappers in ${CHAT_CONTENT} — the shapes this file matches by their transition have moved, so re-read the file before trusting the assertion below`,
+test("no seam rule on the slot's wrappers, in the app or in the harness", () => {
+	for (const host of PANE_HOSTS) {
+		const source = withoutComments(read(host));
+		assert.ok(
+			!source.includes("border-l border-hairline"),
+			`${host} draws \`border-l border-hairline\` beside the pane slot. The slot's seam is the \`surface\` -> \`canvas\` tone step, and the operator's ask was borderless; a rule beside the step is a second way of saying one thing — and a harness copy of it photographs a boundary the product does not draw (design review round 1, D1).`,
+		);
+	}
+});
+
+test("the slot's box is spelled once, and every mount site uses that one", () => {
+	const sources = PANE_HOSTS.map((host) => [host, withoutComments(read(host))]);
+	const spellings = sources.filter(([, source]) => SLOT_BOX.test(source));
+	assert.deepEqual(
+		spellings.map(([host]) => host),
+		[SLOT_COMPONENT],
+		`the slot's box class list is spelled in ${spellings.map(([host]) => host).join(", ")}. It belongs in ${SLOT_COMPONENT} alone: the app's four mount sites, the three story arms and the shell story all mount \`<PaneSlot>\`, so a second spelling of the box is a copy that can drift from it — which is exactly how the \`border-l\` outlived its removal.`,
 	);
-	assert.ok(
-		!source.includes("border-l border-hairline"),
-		`${CHAT_CONTENT} draws \`border-l border-hairline\` on something in the pane row. The slot's seam is the \`surface\` -> \`canvas\` tone step, and the operator's ask was borderless; a rule beside the step is a second way of saying one thing — and it is what made the canvas read as boxed off rather than docked.`,
+	const app = withoutComments(read(CHAT_CONTENT));
+	assert.equal(
+		[...app.matchAll(/<PaneSlot\b/g)].length,
+		4,
+		`expected the app's four mount sites in ${CHAT_CONTENT} to use \`<PaneSlot>\`. A fifth pane, or one that went back to a bare div, changes where the slot's ground and seam are decided.`,
 	);
 });
 
@@ -197,10 +233,34 @@ test("the slot's chrome bars carry no ground of their own, at one shared height"
 	);
 });
 
+test("the header's drag rect and the lane are the window's drag surfaces, and the dock's band is neither", () => {
+	/*
+	 * The lane is the empty drag surface above the columns, and the chat header is
+	 * a second one (measured with the header on screen: the lane at `0,0 -> W,32`
+	 * and `header[data-tour-tag="chat-header"]` at `56,32 -> 540,72` in a 960px
+	 * story viewport). A first version of this pass read the window's drag shape
+	 * from a no-backend boot, where the chat route paints its refusal surface and no
+	 * header exists, so it saw one surface and reported that (UX round 1, U1).
+	 *
+	 * What this file can hold without a DOM is the half that can be refused: the
+	 * panes and the slot name no drag attribute, so nothing the dock draws can
+	 * swallow a press. The rects themselves are measured in a browser - and the
+	 * reading is taken from the shell story rather than a backed app boot, because
+	 * `src/renderer/index.html` pins `connect-src` to 1111 and 8080 and both are
+	 * held by other lanes on this machine.
+	 */
+	const header = withoutComments(read(CHAT_CONTENT));
+	assert.ok(
+		!/<PaneSlot[\s\S]{0,400}?data-titlebar-drag/.test(header),
+		`${CHAT_CONTENT} marks the slot's box (or the pane in it) as a drag region. The dock's band is where its controls live; a drag region over it is dead to clicks.`,
+	);
+});
+
 test("nothing in the slot puts a control into the chrome lane", () => {
 	for (const pane of [
 		...PANES,
 		{ name: "slot wrappers", file: CHAT_CONTENT },
+		{ name: "slot box", file: SLOT_COMPONENT },
 	]) {
 		const source = read(pane.file);
 		assert.ok(
