@@ -1537,6 +1537,13 @@ const STAMP_BINDING_NOTES = [
 	 * The reader is owed the pair and that reason.
 	 */
 	"updateStallBoundRestampNote",
+	/*
+	 * AND THE FOLD ONTO `1e88f7fc16`'s OWN: the fold wrote one record, and the
+	 * registration here is the same completeness reason as every note above - a
+	 * fold that started from main's copy would drop this branch's records first,
+	 * and this list is the check that notices.
+	 */
+	"foldOnto1e88f7fc16Note",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2191,6 +2198,11 @@ const BRANCH_RECORDS = [
 	 * drop it first - the same reason this list exists.
 	 */
 	"updateStallBoundRestampNote",
+	/*
+	 * And the fold's own record rides beside them, for the same completeness
+	 * reason.
+	 */
+	"foldOnto1e88f7fc16Note",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
