@@ -1,36 +1,28 @@
 /**
- * The chat sidebar's SPLIT: the boundary between the entity lists and the chats
- * list, the two collapse controls that live on it, the order control beside
- * them, and the restore row a hidden region leaves behind.
+ * The chat sidebar's SECTIONS, as the merged panel draws them (operator report,
+ * 2026-09-26): one scroller, the entity sections and the chats list as its flow.
  *
  * ## What this story proves, and what it cannot
  *
- * These are the RESTING states, photographed with the split already resolved:
- * a stored height renders where it says, a collapsed region leaves a named row
- * behind, a query brings both regions back over a collapse that is still
- * persisted, and a window too short to host both floors clamps the render
- * without rewriting the preference.
+ * These are the RESTING states of the merged panel: the default as it ships, the
+ * panel at its own width clamp, and a query that renders the one agent and the
+ * one conversation it matches. THE SPLIT'S OWN STATES ARE RETIRED with the
+ * split: the boundary, the collapse cluster, the stored list height and the
+ * order swap are not drawn anywhere any more, so no honest frame of them exists
+ * - `docs/evidence/chat-sidebar-sections/README.md` carries each one's record
+ * and `scripts/capture-evidence.mjs` names the six retired rows.
  *
  * What a frame here does NOT prove, stated rather than implied:
  *
- *   - **It is not a drag.** The height is set through the store, so the frame
- *     is a resolved layout rather than a gesture. The drag itself is the
- *     driver's (`--scene sidebar-split`, `scripts/renderer-driver.mjs`), which
- *     enters Chromium's own input pipeline.
- *   - **It is not the reveal.** The cluster is revealed on `:hover`, and a
- *     story cannot enter a pseudo-class: `userEvent.hover` dispatches events,
- *     it does not hover. The revealed cluster is a driver frame for that
- *     reason, which is the same split of labour the class list beside this file
- *     already makes.
+ *   - **It is not a gesture.** The split's drag had nothing left to size; the
+ *     states here are resolved layouts, and the panel's own interactions (the
+ *     view popover, the ladder) are the view-menu set's frames.
  *   - **It is not focus-dependent rendering.** A hidden window has no focus,
  *     so `:focus-visible` rings are not photographed here.
- *   - **It is not the restart.** That the values survive a second boot of the
- *     built app is the acceptance criterion, and only the driver's restart step
- *     can say it.
  *
  * ## What is stubbed, and what is not
  *
- * The real `ChatSidebar`, its real catalogue reads and its real split module.
+ * The real `ChatSidebar`, its real catalogue reads and its real view module.
  * Below them, `window.api.desktop.request` answers the four reads this surface
  * makes - `capabilities`, `sessions.list`, `profiles.list`, `teams.list` - plus
  * `sessions.search`, which the query state needs and which is answered with the
@@ -40,9 +32,9 @@
  *
  * The readout beside the panel is a caption for the evidence, in the idiom
  * `chat-sidebar-status-feed.stories.tsx` uses: it prints the numbers the panel
- * is DRAWN from - the regions that exist, the separator's own `aria-valuenow`
- * and bounds, and the drawn height - read out of the DOM rather than typed by
- * hand, so a frame cannot claim a state the app does not hold.
+ * is DRAWN from - the regions that are mounted, the scroller's own content and
+ * box, and the list's drawn height and row counts - read out of the DOM rather
+ * than typed by hand, so a frame cannot claim a state the app does not hold.
  */
 
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -50,7 +42,6 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { screen, userEvent } from "@storybook/test";
 import { type FC, useEffect, useState } from "react";
 import type { DesktopResponse } from "../../../../../shared/desktop-contract";
-import type { SidebarOrder, SidebarRegions } from "../sidebar-split";
 import { ChatSidebar } from "./chat-sidebar";
 
 /* --------------------------------------------------------------- the bridge */
@@ -254,34 +245,22 @@ const bridge = () => {
 
 /* ------------------------------------------------------------ the fixture */
 
-type SplitState = {
-	regions?: SidebarRegions;
-	listHeight?: number | null;
-	order?: SidebarOrder;
-};
-
 /**
- * The persisted split, written BEFORE the panel mounts so the frame is a
- * resolved layout rather than a transition.
+ * The persisted preferences, reset BEFORE the panel mounts.
  *
- * All three fields are written on every call, including the ones a state does
- * not use: this store persists, so a story that set only one of them would
- * inherit the previous story's answer for the others - which is the same
- * leakage the committed split has to survive, and not something a frame should
- * silently depend on.
+ * The three legacy fields stopped deciding anything when the split was removed
+ * (`sidebar-split.ts` is kept as its record); they are still reset here because
+ * the store persists across stories in one session, so a reset is what keeps a
+ * frame from silently inheriting another story's answer - the same leakage the
+ * committed split had to survive.
  */
-const split = ({
-	regions = "both",
-	listHeight = null,
-	order = "entities-first",
-}: SplitState = {}) => {
+const resetPreferences = () => {
 	useUiPreferencesStore.setState({
-		chatSidebarRegions: regions,
-		chatSidebarListHeight: listHeight,
-		chatSidebarOrder: order,
+		chatSidebarRegions: "both",
+		chatSidebarListHeight: null,
+		chatSidebarOrder: "entities-first",
 	});
 };
-
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Wait until the DOM says what the story is about, rather than for a fixed lag. */
@@ -312,54 +291,38 @@ const chatRows = () =>
 	).length;
 
 /**
- * What a frame must have ON SCREEN before it is photographed.
- *
- * The plays state the claim rather than waiting a fixed lag, and each one names
- * its own state's shape: the entity rows by NAME, and the other region either by
- * a row count or as `"absent"` - which is the strongest form of a collapse
- * claim, since it says the region was UNMOUNTED rather than merely covered.
- */
-/**
  * The panel's geometry, unchanged across consecutive polls.
  *
- * `readoutSettled` above only says the caption and the DOM AGREE - they can agree
- * on a layout that is still moving, which is how the light half of
- * `resting-default` came back describing a capacity 31px smaller than the dark
- * half's while both captions matched their own pixels (design round 1, D4). What
- * a captured frame needs is the state the story ENDS in, so this waits for three
- * consecutive samples to be identical before the shutter opens.
+ * A caption and the DOM can AGREE on a layout that is still moving - the light
+ * half of `resting-default` came back describing a capacity 31px smaller than
+ * the dark half's while both captions matched their own pixels (design round 1,
+ * D4) - so what a captured frame needs is the state the story ENDS in: three
+ * consecutive identical samples of the scroller's content and box, the list's
+ * drawn height, and the READOUT's own two attributes. The caption is a 200ms
+ * sample of a DOM this harness resizes after it, so agreeing with it as well
+ * makes "the caption is stable" a check rather than a hope (agent review round
+ * 2, M-1; design round 2, D4).
  */
 const layoutSettled = () =>
 	waitFor(() => {
 		const sample = () => {
-			const panel = document.querySelector<HTMLElement>(
+			const scroller = document.querySelector<HTMLElement>(
+				'[data-sidebar-region="scroller"]',
+			);
+			const list = document.querySelector<HTMLElement>(
 				'[data-sidebar-region="chats"]',
 			);
-			const entities = document.querySelector<HTMLElement>(
-				'[data-sidebar-region="entities"]',
+			const scrollerLine = document.querySelector<HTMLElement>(
+				"[data-readout-scroller]",
 			);
-			const separator = document.querySelector<HTMLElement>(
-				'[data-sidebar-split] [role="separator"]',
+			const listLine = document.querySelector<HTMLElement>(
+				"[data-readout-list]",
 			);
-			/*
-			 * The sample includes the READOUT's own two attributes, not just the
-			 * layout: the caption is a 200ms sample of a DOM this harness resizes
-			 * after it, and three identical geometry samples can complete inside one
-			 * poll window while the caption still describes the pre-resize viewport
-			 * - which is how the light half of `resting-default` printed a 660-tall
-			 * page's arithmetic into a 691-tall frame through two rounds and a
-			 * re-capture (agent review round 2, M-1; design round 2, D4). Agreeing on
-			 * the readout's values as well makes "the caption is stable" a check
-			 * rather than a hope.
-			 */
-			const drawn = document.querySelector<HTMLElement>("[data-readout-drawn]");
-			const now = document.querySelector<HTMLElement>("[data-readout-now]");
 			return [
-				panel ? Math.round(panel.getBoundingClientRect().height) : -1,
-				entities ? Math.round(entities.getBoundingClientRect().height) : -1,
-				separator?.getAttribute("aria-valuenow") ?? "none",
-				drawn?.dataset.readoutDrawn ?? "none",
-				now?.dataset.readoutNow ?? "none",
+				scroller ? `${scroller.scrollHeight}/${scroller.clientHeight}` : "none",
+				list ? Math.round(list.getBoundingClientRect().height) : -1,
+				scrollerLine?.dataset.readoutScroller ?? "none",
+				listLine?.dataset.readoutList ?? "none",
 			].join("/");
 		};
 		(globalThis as { __sidebarSamples?: string[] }).__sidebarSamples = [
@@ -372,6 +335,18 @@ const layoutSettled = () =>
 		return samples.length === 3 && new Set(samples).size === 1;
 	}, 4_000);
 
+/**
+ * What a frame must have ON SCREEN before it is photographed.
+ *
+ * The plays state the claim rather than waiting a fixed lag, and each one names
+ * its own state's shape: the entity rows by NAME, and the chats list either by
+ * a row count or as `"absent"` - which is the strongest form of a claim, since
+ * it says the region was UNMOUNTED rather than merely covered. `"absent"` is
+ * reachable for the chats list only (it unmounts when the catalogue gate
+ * withdraws); the entity region renders unconditionally in the merged panel, so
+ * the branch kept for it is an instrument nothing can fire - stated here so no
+ * future play leans on it.
+ */
 type SettleSpec = {
 	entities?: string[] | "absent";
 	chats?: number | "absent";
@@ -402,72 +377,38 @@ const settled = ({ entities, chats }: SettleSpec) =>
  * The drawn panel, in numbers.
  *
  * Read from the DOM every 200ms rather than from the store, because the claim
- * is about what is DRAWN: the separator's `aria-valuenow` is the height the
- * region is rendered at, and a stored value that disagrees with it is exactly
- * the defect the split's contract exists to prevent. The stored half is read
- * from the store for the same reason - so a frame that clamps a stored height
- * can show both numbers and let a reviewer see them differ.
+ * is about what is DRAWN. The scroller and list lines carry
+ * `data-readout-scroller` / `data-readout-list`, and every play waits for those
+ * attributes to equal the live DOM, so a frame cannot be one poll behind the
+ * panel it captions.
  */
 const Readout = () => {
-	const regions = useUiPreferencesStore((state) => state.chatSidebarRegions);
-	const storedHeight = useUiPreferencesStore(
-		(state) => state.chatSidebarListHeight,
-	);
-	const order = useUiPreferencesStore((state) => state.chatSidebarOrder);
 	const [drawn, setDrawn] = useState<string[]>([]);
-	/*
-	 * The two numbers a play function waits to agree with, carried as attributes
-	 * so the wait is a comparison rather than a parse: this panel is a 200ms
-	 * SAMPLE of the DOM, so a frame can otherwise be one poll behind the panel
-	 * it captions - which is a caption that lies about a layout that is fine.
-	 */
-	const [agreed, setAgreed] = useState({ drawn: "none", now: "none" });
+	const [agreed, setAgreed] = useState({ scroller: "none", list: "none" });
 	useEffect(() => {
 		const measure = () => {
-			const separator = document.querySelector<HTMLElement>(
-				'[data-sidebar-split] [role="separator"]',
+			const scroller = document.querySelector<HTMLElement>(
+				'[data-sidebar-region="scroller"]',
 			);
 			const list = document.querySelector<HTMLElement>(
 				'[data-sidebar-region="chats"]',
 			);
-			const restore = document.querySelector<HTMLElement>(
-				"[data-sidebar-restore]",
-			);
-			const cluster = document.querySelector<HTMLElement>(
-				"[data-sidebar-cluster]",
-			);
-			const drawnRegions = [
+			const regions = [
 				...document.querySelectorAll<HTMLElement>("[data-sidebar-region]"),
 			].map((node) => node.dataset.sidebarRegion ?? "?");
 			const next = [
 				`Regions drawn: ${
-					drawnRegions.length === 0 ? "(none)" : drawnRegions.join(", ")
+					regions.length === 0 ? "(none)" : regions.join(", ")
 				}`,
-				separator
-					? `Separator: ${separator.getAttribute("aria-orientation")}, now ${separator.getAttribute("aria-valuenow")}, min ${separator.getAttribute("aria-valuemin")}, max ${separator.getAttribute("aria-valuemax")}`
-					: "Separator: (no boundary)",
-				/*
-				 * The separator's ACCESSIBLE NAME, printed because an `aria-label` is
-				 * otherwise unphotographable and D5's fix lives in it: when the window is
-				 * too short for the stored height, this is the only place the clamped
-				 * state says so - `Resize the chats list - showing 344 of 900 pixels in
-				 * this window` - and a claim that appears in no frame is the shape of
-				 * evidence round 1 was about (design round 2, D10).
-				 */
-				separator
-					? `Separator label: “${separator.getAttribute("aria-label")}”`
-					: "Separator label: (no boundary)",
-				`Chats region drawn at: ${
+				scroller
+					? `Scroller: content ${scroller.scrollHeight}, box ${scroller.clientHeight}`
+					: "Scroller: (not mounted)",
+				`Chats list drawn at: ${
 					list
 						? `${Math.round(list.getBoundingClientRect().height)}px`
 						: "(not mounted)"
 				}`,
-				`Restore row: ${
-					restore
-						? `${restore.dataset.sidebarRestore} — “${restore.textContent?.trim()}”`
-						: "(none)"
-				}`,
-				`Cluster: ${cluster ? "mounted, hidden until hover" : "(none)"}`,
+				`Rows drawn: ${entityRows().length} entity · ${chatRows()} chats`,
 			];
 			setDrawn((previous) =>
 				previous.length === next.length &&
@@ -476,13 +417,15 @@ const Readout = () => {
 					: next,
 			);
 			const values = {
-				drawn: list
+				scroller: scroller
+					? `${scroller.scrollHeight}/${scroller.clientHeight}`
+					: "none",
+				list: list
 					? String(Math.round(list.getBoundingClientRect().height))
 					: "none",
-				now: separator?.getAttribute("aria-valuenow") ?? "none",
 			};
 			setAgreed((previous) =>
-				previous.drawn === values.drawn && previous.now === values.now
+				previous.scroller === values.scroller && previous.list === values.list
 					? previous
 					: values,
 			);
@@ -493,24 +436,20 @@ const Readout = () => {
 	}, []);
 	return (
 		<div className="w-[380px] shrink-0 space-y-2 border-l border-hairline p-4 text-meta text-ink-muted">
-			<p className="text-ink">The split as the app resolves it</p>
+			<p className="text-ink">The panel as the app resolves it</p>
 			{drawn.map((line) => (
 				<p
 					key={line}
-					data-readout-drawn={
-						line.startsWith("Chats region drawn at:") ? agreed.drawn : undefined
+					data-readout-scroller={
+						line.startsWith("Scroller:") ? agreed.scroller : undefined
 					}
-					data-readout-now={
-						line.startsWith("Separator:") ? agreed.now : undefined
+					data-readout-list={
+						line.startsWith("Chats list drawn at:") ? agreed.list : undefined
 					}
 				>
 					{line}
 				</p>
 			))}
-			<p className="pt-2">
-				Stored: {regions} ·{" "}
-				{storedHeight === null ? "auto" : `${storedHeight}px`} · {order}
-			</p>
 		</div>
 	);
 };
@@ -543,27 +482,29 @@ const Page: FC<{ sidebarWidth?: number }> = ({ sidebarWidth = 360 }) => (
  * that lands between two samples files a frame whose caption is one poll old -
  * and a caption that disagrees with the panel is worse than no caption, because
  * the whole point of this surface's evidence is that the two numbers ARE the
- * claim. This waits for the sampled value to equal the live one.
+ * claim. This waits for the sampled values to equal the live ones.
  */
 const readoutSettled = () =>
 	waitFor(() => {
-		const drawnLine = document.querySelector<HTMLElement>(
-			"[data-readout-drawn]",
+		const scrollerLine = document.querySelector<HTMLElement>(
+			"[data-readout-scroller]",
 		);
-		const nowLine = document.querySelector<HTMLElement>("[data-readout-now]");
-		const panel = document.querySelector<HTMLElement>(
+		const listLine = document.querySelector<HTMLElement>("[data-readout-list]");
+		const scroller = document.querySelector<HTMLElement>(
+			'[data-sidebar-region="scroller"]',
+		);
+		const list = document.querySelector<HTMLElement>(
 			'[data-sidebar-region="chats"]',
 		);
-		const separator = document.querySelector<HTMLElement>(
-			'[data-sidebar-split] [role="separator"]',
-		);
-		const liveDrawn = panel
-			? String(Math.round(panel.getBoundingClientRect().height))
+		const liveScroller = scroller
+			? `${scroller.scrollHeight}/${scroller.clientHeight}`
 			: "none";
-		const liveNow = separator?.getAttribute("aria-valuenow") ?? "none";
+		const liveList = list
+			? String(Math.round(list.getBoundingClientRect().height))
+			: "none";
 		return (
-			drawnLine?.dataset.readoutDrawn === liveDrawn &&
-			nowLine?.dataset.readoutNow === liveNow
+			scrollerLine?.dataset.readoutScroller === liveScroller &&
+			listLine?.dataset.readoutList === liveList
 		);
 	});
 
@@ -576,18 +517,17 @@ export default meta;
 type Story = StoryObj;
 
 /**
- * No stored split: the panel exactly as it ships.
+ * No stored state: the panel exactly as it ships.
  *
- * This is the frame the parity claim is judged on. With `listHeight` at `null`
- * the region is drawn at its content's height under the same cap it always
- * had, both regions are drawn, and the boundary is a hairline with nothing
- * revealed over it - which is what an upgrading user sees on their first
- * launch, and what every committed sidebar frame already photographs.
+ * This is the frame the parity claim is judged on: both regions drawn inside
+ * the one scroller, the entity sections above the chats list, nothing collapsed
+ * and nothing stored - what an upgrading user sees on their first launch, and
+ * what every committed sidebar frame already photographs.
  */
 export const RestingDefault: Story = {
 	render: () => {
 		bridge();
-		split();
+		resetPreferences();
 		return <Page />;
 	},
 	play: async () => {
@@ -607,131 +547,14 @@ export const RestingDefault: Story = {
 };
 
 /**
- * A split the user dragged: a stored pixel height, drawn at that height.
- *
- * The readout is the check - `now 320, min 72, max <capacity - 72>` and "Chats
- * region drawn at: 320px" are the same number, which is what "the separator
- * announces what the pane renders" means in practice.
- */
-export const DraggedSplit: Story = {
-	render: () => {
-		bridge();
-		split({ listHeight: 320 });
-		return <Page />;
-	},
-	play: async () => {
-		await settled({ entities: ["coder", "reviewer", "architect"], chats: 3 });
-		await readoutSettled();
-		await layoutSettled();
-		/*
-		 * And the readout AGAIN, after the layout has settled: the first pass
-		 * asserts the caption agrees with the DOM, the second asserts it still
-		 * agrees once the DOM has stopped moving. The harness resizes the
-		 * content height after the last sample, so a caption checked only
-		 * before the stability wait is a caption checked against a viewport
-		 * that is about to change (agent review round 2, M-1).
-		 */
-		await readoutSettled();
-	},
-};
-
-/**
- * The chats list hidden: the entity region fills the column and a row at the
- * bottom names what is missing, with the count the list's own `All chats` row
- * carries - so the collapsed state tells the truth about how many chats there
- * are instead of hiding the panel's main signal.
- */
-export const EntitiesOnly: Story = {
-	render: () => {
-		bridge();
-		split({ regions: "entities" });
-		return <Page />;
-	},
-	play: async () => {
-		await settled({
-			entities: ["coder", "reviewer", "architect"],
-			chats: "absent",
-		});
-		await readoutSettled();
-		await layoutSettled();
-		/*
-		 * And the readout AGAIN, after the layout has settled: the first pass
-		 * asserts the caption agrees with the DOM, the second asserts it still
-		 * agrees once the DOM has stopped moving. The harness resizes the
-		 * content height after the last sample, so a caption checked only
-		 * before the stability wait is a caption checked against a viewport
-		 * that is about to change (agent review round 2, M-1).
-		 */
-		await readoutSettled();
-	},
-};
-
-/**
- * The mirror: the entity lists hidden, the restore row directly under the
- * search field, and the chats list filling the column.
- */
-export const ChatsOnly: Story = {
-	render: () => {
-		bridge();
-		split({ regions: "chats" });
-		return <Page />;
-	},
-	play: async () => {
-		await settled({ entities: "absent", chats: 3 });
-		await readoutSettled();
-		await layoutSettled();
-		/*
-		 * And the readout AGAIN, after the layout has settled: the first pass
-		 * asserts the caption agrees with the DOM, the second asserts it still
-		 * agrees once the DOM has stopped moving. The harness resizes the
-		 * content height after the last sample, so a caption checked only
-		 * before the stability wait is a caption checked against a viewport
-		 * that is about to change (agent review round 2, M-1).
-		 */
-		await readoutSettled();
-	},
-};
-
-/**
- * A stored height the window cannot honour: the render clamps, the preference
- * survives.
- *
- * The frame carries both numbers on purpose - `Stored: … 900px` against a
- * `now` and a drawn height of `capacity - 72` - because the claim is precisely
- * that they DIFFER here and that the difference is not written back. Resize the
- * window tall again and the stored 900 is what renders, which is what a stored
- * pixel value is for.
- */
-export const ShortWindow: Story = {
-	render: () => {
-		bridge();
-		split({ listHeight: 900 });
-		return <Page />;
-	},
-	play: async () => {
-		await settled({ entities: ["coder", "reviewer", "architect"], chats: 3 });
-		await readoutSettled();
-		await layoutSettled();
-		/*
-		 * And the readout AGAIN, after the layout has settled: the first pass
-		 * asserts the caption agrees with the DOM, the second asserts it still
-		 * agrees once the DOM has stopped moving. The harness resizes the
-		 * content height after the last sample, so a caption checked only
-		 * before the stability wait is a caption checked against a viewport
-		 * that is about to change (agent review round 2, M-1).
-		 */
-		await readoutSettled();
-	},
-};
-
-/**
- * The panel at the width clamp, where the boundary, the cluster's control
- * positions and the restore row have the least room they ever get.
+ * The panel at the width clamp, where the rows wrap hardest. (The clamp is the
+ * panel's own `chatSidebarWidth`; the boundary and the restore row the old copy
+ * named went with the split - this frame is about the width alone.)
  */
 export const Narrow240: Story = {
 	render: () => {
 		bridge();
-		split();
+		resetPreferences();
 		return <Page sidebarWidth={240} />;
 	},
 	play: async () => {
@@ -751,86 +574,22 @@ export const Narrow240: Story = {
 };
 
 /**
- * The swap: the chats list above, the entity lists below.
+ * A query that renders both regions: the word finds one agent and one
+ * conversation, and both draw.
  *
- * This is the state design round 1's D2 found unphotographed while S9 still
- * declared reorder deferred, and it is the one layout in this change where more
- * than a number changes: the regions trade their `flex-1`/`shrink-0` roles, the
- * boundary moves to the other edge of the list region (`side="bottom"`), the
- * restore row would follow the hidden region, and the rule above the lower
- * region moves from the list to the entities. The readout prints the order and
- * the separator's `side` for exactly that reason - the frame has to say which
- * of the two orders it is, because the pixels alone do not.
- */
-export const ChatsFirst: Story = {
-	render: () => {
-		bridge();
-		split({ order: "chats-first" });
-		return <Page />;
-	},
-	play: async () => {
-		await settled({ entities: ["coder", "reviewer", "architect"], chats: 3 });
-		await readoutSettled();
-		await layoutSettled();
-		/*
-		 * And the readout AGAIN, after the layout has settled: the first pass
-		 * asserts the caption agrees with the DOM, the second asserts it still
-		 * agrees once the DOM has stopped moving. The harness resizes the
-		 * content height after the last sample, so a caption checked only
-		 * before the stability wait is a caption checked against a viewport
-		 * that is about to change (agent review round 2, M-1).
-		 */
-		await readoutSettled();
-	},
-};
-
-/**
- * The same swap at the panel's width clamp, where the three cluster controls and
- * the entity rows have the least room they ever get.
- */
-export const ChatsFirstNarrow: Story = {
-	render: () => {
-		bridge();
-		split({ order: "chats-first" });
-		return <Page sidebarWidth={240} />;
-	},
-	play: async () => {
-		await settled({ entities: ["coder", "reviewer", "architect"], chats: 3 });
-		await readoutSettled();
-		await layoutSettled();
-		/*
-		 * And the readout AGAIN, after the layout has settled: the first pass
-		 * asserts the caption agrees with the DOM, the second asserts it still
-		 * agrees once the DOM has stopped moving. The harness resizes the
-		 * content height after the last sample, so a caption checked only
-		 * before the stability wait is a caption checked against a viewport
-		 * that is about to change (agent review round 2, M-1).
-		 */
-		await readoutSettled();
-	},
-};
-
-/**
- * S7: a query renders BOTH regions over a collapse, and leaves the collapse
- * persisted.
- *
- * The chats list is hidden and the query is in the entity region's half - the
- * state that would otherwise leave `Search chats and agents` a promise the
- * panel cannot keep. The readout still says `Stored: entities`, which is the
- * half a frame can show: the collapse is not rewritten by the query, so
- * clearing it restores exactly what the user chose.
+ * `Search chats and agents` is a promise the merged panel keeps - the word
+ * narrows the entity sections and the chats list together. (The state used to
+ * be photographed over the split's persisted collapse; the collapse is gone,
+ * and the query's own claim is what is left.)
  */
 export const QueryWhileCollapsed: Story = {
 	render: () => {
 		bridge();
-		split({ regions: "entities" });
+		resetPreferences();
 		return <Page />;
 	},
 	play: async () => {
-		await settled({
-			entities: ["coder", "reviewer", "architect"],
-			chats: "absent",
-		});
+		await settled({ entities: ["coder", "reviewer", "architect"], chats: 3 });
 		await userEvent.type(
 			screen.getByLabelText("Search chats and agents"),
 			"reviewer",

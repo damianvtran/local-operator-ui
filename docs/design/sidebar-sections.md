@@ -898,6 +898,12 @@ decision is worth the nullable field.
 
 ### 7.3 The driver — the gesture, the geometry and the restart
 
+> **RETIRED (2026-09-26, round 1 of the #534 remediation):** the scene this
+> subsection specifies was deleted with the split's removal (agent review round 1,
+> R2; QA's Q3) - the merged panel draws no boundary, so it could only throw. Its
+> frames under `../evidence/sidebar-split-live/` remain the record, and this
+> subsection is kept as the design's own account of what it drove.
+
 `scripts/renderer-driver.mjs`, a new scene `--scene sidebar-split`, run with
 `--backend <url>` and a renderer built against that URL (the sidebar's catalogue is
 backend-gated; this is the `--scene pins` situation and it needs the same
@@ -970,7 +976,7 @@ owes the manifest (`AGENTS.md:124-145`), and the stamp must be re-derived from t
 |---|---|---|
 | `docs/evidence/chat-sidebar-sections/*.webp` | Storybook, 12 themes | every resting state (S3, S5, S7, S12), and the parity diff |
 | `docs/evidence/chat-sidebar-sections-baseline/*.webp` | Storybook at the merge base | the "before" half of the parity pair |
-| `docs/evidence/sidebar-split-live/*.png` | `--scene sidebar-split --backend` | the reveal, the drag, the clamps, the collapse and restore, the keyboard path, and the restart |
+| `docs/evidence/sidebar-split-live/*.png` | `--scene sidebar-split --backend` (scene later retired with the split's removal; these frames are its record) | the reveal, the drag, the clamps, the collapse and restore, the keyboard path, and the restart |
 
 Each directory gets a README naming the exact command that produced it (the
 `docs/evidence/chat-usage/README.md` style), and the manifest gets its own
