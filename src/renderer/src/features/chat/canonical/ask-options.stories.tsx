@@ -100,6 +100,7 @@ const Frame = ({
 	height = 320,
 	width = "100%",
 	answering = false,
+	onAnswerSecret,
 }: {
 	pending: PendingDesktopGate;
 	/** The user turn the question is an answer to. See `transcriptWith`. */
@@ -108,6 +109,12 @@ const Frame = ({
 	width?: string;
 	/** An answer is in flight: every option is disabled. */
 	answering?: boolean;
+	/**
+	 * The secret field's door. Absent (the default) renders the field READ-ONLY,
+	 * which is what a surface that cannot address an owner gets — the secret
+	 * stories pass a no-op so the field photographs as the app wires it.
+	 */
+	onAnswerSecret?: (value: string) => void;
 }) => {
 	const containerRef = useRef<HTMLDivElement>(null);
 	return (
@@ -158,6 +165,7 @@ const Frame = ({
 				gate={pending}
 				answering={answering}
 				onAnswer={() => {}}
+				onAnswerSecret={onAnswerSecret}
 				className="pt-2"
 			/>
 		</div>
@@ -372,15 +380,54 @@ export const AnswerInFlight: Story = {
 /**
  * A `secret` ask, which arrives with EMPTY options.
  *
- * The assertion here is an ABSENCE: no option list renders, because the answer
- * is a credential pasted into the composer's masked input and a clickable list
- * has nothing to offer it. The hint falls back to "Type your answer below."
+ * The state the FIELD exists for, and this file is where it is photographed:
+ * no backend this rig can boot will park a secret ask (the mock provider
+ * cannot ask at all — see `renderer-driver.mjs`'s `question-dock` scene, which
+ * carries the same limitation for option asks), so the card's own rendering is
+ * the evidence, and the live half — the composer closure, the masked
+ * attributes, the wire body — is pinned by the desktop suite and driven on the
+ * PR's frames.
+ *
+ * What a reviewer should look for: a PASSWORD field (masked, not a clear-text
+ * value), the reassurance line above it, a Send control disabled while the
+ * field is empty, and a hint that names the field rather than the composer.
+ * The composer is NOT in this frame — the story renders the dock the way
+ * `chat-content.tsx` mounts it; the closure of the box under it is the
+ * composer's own suite's business.
  */
 export const SecretAsk: Story = {
 	render: () => (
 		<Frame
 			asked="Set up the GitHub integration."
 			height={360}
+			onAnswerSecret={() => {}}
+			pending={gate({
+				title: "Paste the GitHub token",
+				detail: "It is stored in the credential store, not in the transcript.",
+				secret: true,
+				options: [],
+			})}
+		/>
+	),
+};
+
+/**
+ * A secret answer in flight.
+ *
+ * The field and its Send control refuse input while the one-answer lock is
+ * held, and the eyebrow says what is happening — "Sending your answer…", the
+ * same in-flight reading the option states carry, from the same card. The value
+ * the user handed over stays in the masked field until the outcome is known; it
+ * clears only once the answer was SENT (`SecretAnswer`'s own rule), so this
+ * frame is also the one that shows the field is NOT prematurely emptied.
+ */
+export const SecretAnswerInFlight: Story = {
+	render: () => (
+		<Frame
+			asked="Set up the GitHub integration."
+			height={360}
+			answering={true}
+			onAnswerSecret={() => {}}
 			pending={gate({
 				title: "Paste the GitHub token",
 				detail: "It is stored in the credential store, not in the transcript.",

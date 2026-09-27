@@ -334,6 +334,16 @@ type ChatContentProps = {
 		 */
 		onAnswer?: (label: string) => void;
 		/**
+		 * Answer the pending `secret` gate with the dock's typed value.
+		 *
+		 * The secret field's sibling of `onAnswer`, raised to the same panel for
+		 * the same reason: `SessionPanel` holds the send lock and the error
+		 * surface, so the value has to reach it rather than post from the field.
+		 * Absent where the surface cannot address an owner — the dock then
+		 * renders the field disabled.
+		 */
+		onAnswerSecret?: (value: string) => void;
+		/**
 		 * What `SessionPanel` knows about the gate it just answered. Passed through
 		 * untouched: the card's hold and its refusal sentence are decided where the
 		 * request and its failure are, not re-derived here.
@@ -1533,6 +1543,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 									className={CHAT_MEASURE}
 									gate={canonical.view.frontend.pending_gate}
 									onAnswer={canonical.onAnswer}
+									/*
+									 * The secret field's own door, forwarded untouched like `onAnswer`:
+									 * the dock decides WHEN a secret is answered from its field, and the
+									 * panel owns the lock, the request and the report behind it.
+									 */
+									onAnswerSecret={canonical.onAnswerSecret}
 									// The composer's own in-flight flag, reused: one answer per
 									// question, whichever surface starts it.
 									answering={Boolean(canonical.admitting)}
@@ -1703,6 +1719,18 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * on the user (UX round 2, U8).
 								 */
 								awaitingAnswer={Boolean(canonical?.view.frontend?.pending_gate)}
+								/*
+								 * AND WHETHER THAT QUESTION TAKES A SECRET: the composer refuses
+								 * input while one waits (`message-input.tsx` reads this as
+								 * `secretAnswer`), because a credential must never be typed into a
+								 * surface that cannot mask it — the answer belongs to the dock's own
+								 * field. `=== true` rather than the raw value so a backend that
+								 * omits `secret` (an older wire) reads as an ordinary ask rather
+								 * than as undefined-that-is-truthy.
+								 */
+								secretAnswer={
+									canonical?.view.frontend?.pending_gate?.secret === true
+								}
 								// A conversation the backend says is gone is a KNOWN
 								// answer, so the composer refuses input rather than
 								// accepting a message that can only 404. The pane above

@@ -3371,6 +3371,46 @@ export const STORIES = [
 	["chat-ask-options--multi-question", 1024, 450],
 	["chat-ask-options--answer-in-flight", 1024, 470],
 	["chat-ask-options--secret-ask", 1024, 360],
+	/*
+	 * THE SECRET STATE'S OWN TWO EXTRAS, added with the credential-input
+	 * change: the EMPTY field's frame above cannot show the mask doing its job,
+	 * and it cannot show the in-flight reading at all.
+	 *
+	 * `secret-ask-typed` types INTO the field through CDP's own input pipeline
+	 * (`Input.insertText`), the same instrument the rename frames use for
+	 * `rename-edit-typed` - so the dots in the frame are a value a user put
+	 * there, not a prop the story set. ITS CLAIM IS CHECKED AT SHUTTER TIME:
+	 * the input the value went into must still be `type="password"`, because
+	 * the mask is the whole of what this surface exists for and a frame filed
+	 * under a secret name with a clear-text field would pass every existing
+	 * guard (nodes present, theme painted, ground covering most of the frame).
+	 */
+	[
+		"chat-ask-options--secret-ask",
+		1024,
+		360,
+		{
+			press: "[data-ask-secret] input",
+			pressSettleMs: 150,
+			insertText: "ghp_example_not_a_real_token",
+			insertTextSettleMs: 150,
+			expectAttribute: {
+				selector: "[data-ask-secret] input",
+				name: "type",
+				equals: "password",
+			},
+			dir: "secret-ask-typed",
+		},
+	],
+	/* The submitting reading, from its own story (`SecretAnswerInFlight`): the
+	   eyebrow says "Sending your answer…" and the field and its Send control
+	   refuse input while the answer is in flight. */
+	[
+		"chat-ask-options--secret-answer-in-flight",
+		1024,
+		360,
+		{ expectPresent: "[data-ask-secret]" },
+	],
 	["chat-ask-options--approval", 1024, 360],
 	["chat-ask-options--approval-answer-in-flight", 1024, 360],
 	["design-system-primitives--all-primitives", 1280, 1600],

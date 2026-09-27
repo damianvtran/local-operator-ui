@@ -1440,6 +1440,17 @@ const STAMP_BINDING_NOTES = [
 	 * still was owed, for the same reason task-17's entry is here.
 	 */
 	"daemonObservationTickWaitRestampNote",
+	/*
+	 * AND THE CREDENTIAL-INPUT CHANGE'S OWN (`fix/secret-ask-credential-input`):
+	 * its subject is this file's binding too - it moves BOTH trees (the dock's
+	 * masked secret field and its answer path in `src/`, the suite's cases and
+	 * the sweep's two new rows in `scripts/`) without committing a frame, so a
+	 * reader is owed the pair AND the reason no still was owed - the same case
+	 * `task17RestampNote` and `daemonObservationTickWaitRestampNote` are in the
+	 * list for. The new rows' frames are the PR's to carry (referenced from the
+	 * pull request), and `countsMean.surfaces` carries the re-derivation.
+	 */
+	"secretAskCredentialRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2042,6 +2053,16 @@ const BRANCH_RECORDS = [
 	 * this list exists.
 	 */
 	"daemonObservationTickWaitRestampNote",
+	/*
+	 * And by the credential-input change, whose note is the newest top-level
+	 * record on the branch: it states the pair this tip ships, moves both trees
+	 * (the dock's masked secret field and its answer path in `src/`, the suite's
+	 * cases and the sweep's two new rows in `scripts/`), and takes no committed
+	 * frame - a fold that started from main's copy would drop it first, and with
+	 * it the only statement of what moved and why no still was committed, which
+	 * is the failure this whole list exists to make loud.
+	 */
+	"secretAskCredentialRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
