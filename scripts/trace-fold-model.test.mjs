@@ -312,6 +312,30 @@ test("the count line names the kinds in the app's own vocabulary", () => {
 		"1 team deletion",
 		"a delete counts under its own noun, never a bare wire name",
 	);
+	// `todo view` is a READ; counting it as an update was the false claim
+	// review round 1 closed (R1-6), so the family splits by op.
+	assert.equal(
+		foldCounts([
+			{ name: "todo", failed: false, op: "view" },
+			{ name: "todo", failed: false, op: "done" },
+			{ name: "todo", failed: false, op: "done" },
+		]),
+		"2 todo updates · 1 todo read",
+		"a view is not an update",
+	);
+	assert.equal(
+		foldCounts([
+			{ name: "todo", failed: false, op: "VIEW" },
+			{ name: "todo", failed: false, op: "add" },
+		]),
+		"1 todo read · 1 todo update",
+		"the op is case-folded like every other wire token",
+	);
+	assert.equal(
+		foldCounts([{ name: "todo", failed: false }]),
+		"1 todo update",
+		"an op-less call keeps the family's write noun",
+	);
 	assert.equal(
 		foldCounts([{ name: "read", failed: false }]),
 		"1 file",

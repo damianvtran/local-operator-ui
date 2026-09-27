@@ -360,20 +360,65 @@ test("the project family names every operation, and the milestone flag decides a
 		{ verb: "Removed milestone", object: "ship-v2" },
 	);
 	// Every op the installed build accepts names its call: `Called` is what a
-	// row says when it does NOT know, and none of these are that.
-	for (const op of [
-		"list",
-		"show",
-		"create",
-		"update",
-		"link",
-		"unlink",
-		"milestone",
-	]) {
-		assert.notEqual(
-			toolVerb("project", op).settled,
-			"Called",
-			`project op \`${op}\` must name its operation`,
+	// row says when it does NOT know, and none of these are that. The four
+	// meta tools whose ops the tables key on are all covered EXHAUSTIVELY here
+	// (review round 1, R1-2): a typo or a dropped entry in any of them used to
+	// fall to `Called` with nothing failing.
+	for (const [tool, ops] of Object.entries({
+		agent: [
+			"list",
+			"show",
+			"search",
+			"install",
+			"reset",
+			"create",
+			"update",
+			"sync",
+		],
+		team: ["list", "show", "create", "update"],
+		hub: ["list", "peek", "send", "ask", "steer", "pause", "cancel", "resume"],
+		project: [
+			"list",
+			"show",
+			"create",
+			"update",
+			"link",
+			"unlink",
+			"milestone",
+		],
+	})) {
+		for (const op of ops) {
+			assert.notEqual(
+				toolVerb(tool, op).settled,
+				"Called",
+				`${tool} op \`${op}\` must name its operation`,
+			);
+		}
+	}
+	// The remove flag's SPELLINGS are the tool's own: pydantic coerces `"true"`
+	// and `1` to True before the milestone op runs, so those spellings remove
+	// and must not read as updates (review round 1, R1-3); the false spellings
+	// keep the update verb.
+	for (const spelling of ["true", 1]) {
+		assert.deepEqual(
+			row("project", {
+				op: "milestone",
+				milestone: "ship-v2",
+				remove: spelling,
+			}),
+			{ verb: "Removed milestone", object: "ship-v2" },
+			`remove: ${JSON.stringify(spelling)} removes`,
+		);
+	}
+	for (const spelling of [false, 0, "false"]) {
+		assert.equal(
+			row("project", {
+				op: "milestone",
+				milestone: "ship-v2",
+				remove: spelling,
+			}).verb,
+			"Updated milestone",
+			`remove: ${JSON.stringify(spelling)} updates`,
 		);
 	}
 	// The separate delete tool, whose name alone could not say it.
@@ -381,18 +426,70 @@ test("the project family names every operation, and the milestone flag decides a
 		row("project_delete", { name: "ui-update-account-robustness" }),
 		{ verb: "Deleted project", object: "ui-update-account-robustness" },
 	);
+	// The count noun for hub's peek steps (design round 1, D1): `Peeked at 3`
+	// cannot say what 3 counts; jobs' peek carries no such count and keeps its
+	// scalar.
+	assert.deepEqual(row("hub", { op: "peek", to: ["9f2a"], steps: 3 }), {
+		verb: "Peeked at",
+		object: "3 steps",
+	});
+	assert.deepEqual(row("hub", { op: "peek", to: ["9f2a"], steps: 1 }), {
+		verb: "Peeked at",
+		object: "1 step",
+	});
+	assert.deepEqual(row("jobs", { op: "peek", job_id: "9360", since: "1h" }), {
+		verb: "Peeked at",
+		object: "9360 1h",
+	});
+	// The wait timeout spells its unit (design round 1, D5): two bare numbers
+	// beside each other read as two ids.
+	assert.deepEqual(row("wait", { job_id: "9360", wait_ms: 600_000 }), {
+		verb: "Waited for jobs",
+		object: "9360 · 10m",
+	});
+	assert.deepEqual(row("wait", { job_id: "9360", wait_ms: 3_600_000 }), {
+		verb: "Waited for jobs",
+		object: "9360 · 1h",
+	});
 });
 
-test("the project row carries its own glyph, and the two fallbacks stay distinct", () => {
+test("toolOp reads the three selector spellings, in their order, and never invents one", () => {
+	// `op` is the meta tools' own word, `network` spells it `action` and
+	// `console` `method`. Pinned directly because the extraction is what every
+	// op-aware label stands on (review round 1, R1-2).
+	assert.equal(toolOp({ op: "send" }), "send");
+	assert.equal(toolOp({ action: "status" }), "status");
+	assert.equal(toolOp({ method: "create" }), "create");
+	// Model-written, so trimmed and case-folded.
+	assert.equal(toolOp({ action: "  STATUS " }), "status");
+	assert.equal(toolOp({ method: "Keys" }), "keys");
+	// `op` wins where several appear; a selector that is not a non-empty string
+	// is skipped rather than coerced.
+	assert.equal(
+		toolOp({ op: "send", action: "status", method: "create" }),
+		"send",
+	);
+	assert.equal(toolOp({ action: "status", method: "create" }), "status");
+	assert.equal(toolOp({ op: "  ", action: "status" }), "status");
+	assert.equal(toolOp({ op: 7, action: "status" }), "status");
+	// Nothing selectable is nothing - the generic verb's territory, never a
+	// guessed token.
+	assert.equal(toolOp(null), "");
+	assert.equal(toolOp({}), "");
+	assert.equal(toolOp({ command: "pnpm test" }), "");
+});
+
+test("the project pair carries its glyphs, and the two fallbacks stay distinct", () => {
 	// A project row under the generic wrench is indistinguishable from a tool
-	// nobody knows (operator report follow-up, 2026-09-27). `project` mirrors
-	// the TUI's project line (sibling branch `feat/tui-project-line-15c4`);
-	// `project_delete` is NOT given the board mark - the TUI's `*_delete` tools
-	// take the default - and the wrench/plug answers stay different answers.
-	assert.equal(toolIcon("project").displayName, "FolderKanban");
+	// nobody knows (operator report follow-up, 2026-09-27). The pair mirrors
+	// the TUI's own marks (sibling branch `feat/tui-project-line-15c4`, commit
+	// `4ce339597`; review round 1, D2/D4 - the first cut took FolderKanban
+	// alone, which is a folder-family mark the sibling's rationale retired):
+	// `Columns3` for the workstream, `Trash2` for the irreversible removal.
+	assert.equal(toolIcon("project").displayName, "Columns3");
 	// Case-insensitive, because a tool name is model-controlled.
-	assert.equal(toolIcon("Project").displayName, "FolderKanban");
-	assert.equal(toolIcon("project_delete").displayName, "Wrench");
+	assert.equal(toolIcon("Project").displayName, "Columns3");
+	assert.equal(toolIcon("project_delete").displayName, "Trash2");
 	assert.equal(toolIcon("some_custom_tool").displayName, "Wrench");
 	assert.equal(toolIcon("mcp__linear_create_issue").displayName, "Plug");
 });
@@ -3094,10 +3191,14 @@ const glyphAndName = (markup) => {
 	return { glyph: spans[glyphIndex], name: spans[nameIndex] };
 };
 
-test("a tool's category is the TUI's own map, looked up case-insensitively", () => {
-	// `_TOOL_CATEGORY` (tool_card.py:218-238), category for category. The axis is
-	// what the call did to the machine, so what is asserted is the SET each tool
-	// lands in and not the spelling of the table.
+test("a tool's category is the ledger's own map, looked up case-insensitively", () => {
+	// `_TOOL_CATEGORY` (tool_card.py:218-238) is the BASE of the map; the entries
+	// the trace-label change added for names the TUI does not carry (`web_read`,
+	// `lsp`, `console`, `team`, `wait`, `jobs`, `secret`, `network`,
+	// `team_delete`) are UI-side decisions stated as such in the source, not
+	// parity claims (review round 1, R1-5). The axis is what the call did to the
+	// machine, so what is asserted is the SET each tool lands in and not the
+	// spelling of the table.
 	for (const name of [
 		"read",
 		"glob",

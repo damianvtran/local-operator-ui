@@ -42,6 +42,46 @@ const IDENTITY_ARGS = new Set([
 	"milestone",
 ]);
 
+/**
+ * The arguments whose BARE scalar reads wrong, and how the object renders them.
+ *
+ * The fallback scan below is the TUI's "every scalar" rule, and for most names
+ * a scalar IS the object. Two do not survive alone, both measured in the trace
+ * label's design round 1: `hub.peek`'s `steps` prints `3` with no unit - "3"
+ * could be a step index, a message count or a byte size (D1) - and `wait`'s
+ * timeout prints as a second bare number beside the job id (`9360 600000`
+ * reads as two ids; the second is ten minutes in milliseconds, D5). Keyed by
+ * tool AND argument because the meaning is the ARGUMENT's: a `steps` on some
+ * other tool would not be steps, and `jobs.peek` carries no such count, so it
+ * keeps its scalar.
+ *
+ * Applied only in the fallback scan: when identity arguments gave the object,
+ * the call's subject is already named and these renderers are not the subject.
+ */
+const ARG_RENDERINGS: Record<
+	string,
+	Record<string, (value: unknown) => string>
+> = {
+	hub: {
+		steps: (value) =>
+			typeof value === "number" && Number.isInteger(value) && value >= 0
+				? `${value} ${value === 1 ? "step" : "steps"}`
+				: "",
+	},
+	wait: {
+		/*
+		 * Spelled in the same vocabulary as a row's own duration
+		 * (`formatDuration`, seconds in), because a span is a span; the separator
+		 * is the renderer's - an id and a SPAN joined by a bare space read as two
+		 * ids (D5).
+		 */
+		wait_ms: (value) =>
+			typeof value === "number" && value > 0
+				? `· ${formatDuration(value / 1000)}`
+				: "",
+	},
+};
+
 /** The minted prefix every MCP tool name carries. */
 const MCP_PREFIX = "mcp__";
 
@@ -162,7 +202,10 @@ export function summaryFromArgs(
 		.map(([, value]) => scalarText(value))
 		.filter(Boolean);
 	if (parts.length === 0) {
-		parts = entries.map(([, value]) => scalarText(value)).filter(Boolean);
+		const renderings = ARG_RENDERINGS[name.toLowerCase()];
+		parts = entries
+			.map(([key, value]) => renderings?.[key]?.(value) || scalarText(value))
+			.filter(Boolean);
 	}
 	return parts.slice(0, 2).join(" ") || name;
 }
@@ -418,6 +461,19 @@ export type ToolCategory = "read" | "mutate" | "exec" | "meta" | "plain";
  * ledger is scanned for: reading is safe, mutating is not, and executing is the
  * one you re-read before trusting.
  *
+ * PARITY IS NOT THE RULE HERE, and review round 1 (R1-5) is why this says so:
+ * the table's base is the TUI's own, and the entries the trace-label change
+ * added beyond it — `web_read`, `lsp`, `console`, `team`, `wait`, `jobs`,
+ * `secret`, `network`, `team_delete` — are UI-side decisions for names the
+ * TUI's table does not carry at all (checked against the installed 0.63.8 /
+ * 0.63.9 and local-operator `origin/main`), each a category someone chose on
+ * purpose. `project`/`project_delete` mirror the sibling TUI branch
+ * `feat/tui-project-line-15c4` (`4ce339597`), as the glyphs do. The GLYPH
+ * table keeps the stricter contract — no icon where the TUI has no mark — so a
+ * shape can be scanned across surfaces; the two axes apply different rules
+ * deliberately, and a future reader should not "restore parity" on one of them
+ * by copying the other.
+ *
  * Looked up case-insensitively because `toolName` is MODEL-controlled: a
  * provider that echoes `Bash` back has to land in `exec` beside `bash`, exactly
  * as `toolIcon` already reasons about its own table.
@@ -425,9 +481,8 @@ export type ToolCategory = "read" | "mutate" | "exec" | "meta" | "plain";
  * Anything unlisted — an `mcp__*` call, or a builtin this table has not
  * classified — is `plain`, the neutral the name column has always used. A tool
  * nobody has filed is QUIET, never guessed into a category it does not belong
- * to. The TUI states the same rule and it is the rule a new tool follows: add
- * an entry here when the category is a decision someone has made, and otherwise
- * leave it plain.
+ * to: add an entry here when the category is a decision someone has made, and
+ * otherwise leave it plain.
  */
 const CATEGORIES: Record<string, ToolCategory> = {
 	read: "read",
@@ -540,8 +595,19 @@ export function toolOp(
 			 * removal - the same species as `Delegated list`. The flag composes the
 			 * token, so the verb table can say which way the call went; the flag is
 			 * the tool's own vocabulary, not a guess.
+			 *
+			 * The spellings are the ones the tool ITSELF accepts, not only the bare
+			 * boolean: pydantic coerces `"true"` and `1` to True before the op runs
+			 * (measured against the generation's own interpreter - review round 1,
+			 * R1-3), so those spellings REMOVE the milestone and must compose the
+			 * same token. `false`, `0` and `"false"` stay updates.
 			 */
-			if (token === "milestone" && args.remove === true) {
+			const remove = args.remove;
+			const removes =
+				remove === true ||
+				remove === 1 ||
+				(typeof remove === "string" && remove.trim().toLowerCase() === "true");
+			if (token === "milestone" && removes) {
 				return "milestone-remove";
 			}
 			return token;

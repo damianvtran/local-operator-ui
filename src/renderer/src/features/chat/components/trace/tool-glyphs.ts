@@ -23,10 +23,10 @@ import {
 	Check,
 	CircleSlash,
 	Clock,
+	Columns3,
 	Download,
 	FilePen,
 	FileText,
-	FolderKanban,
 	FolderOpen,
 	Globe,
 	Inbox,
@@ -38,6 +38,7 @@ import {
 	Send,
 	Tag,
 	Terminal,
+	Trash2,
 	Users,
 	Wrench,
 	X,
@@ -49,7 +50,7 @@ const MCP_PREFIX = "mcp__";
  * The table, in the TUI's own order so the two can be diffed by eye.
  *
  * `eval`, `hub`, `ask`, `team`, `lsp`, `wait`, `jobs`, `secret`, `network`,
- * `web_read` and the two `*_delete` tools are deliberately absent from the
+ * `web_read` and `team_delete` are deliberately absent from the
  * TUI's table and take its default wrench; they are absent here for the same
  * reason. Giving them an icon would be a divergence rather than an
  * improvement — the operator's own screenshot shows a wrench beside `team`.
@@ -58,17 +59,19 @@ const MCP_PREFIX = "mcp__";
  * `bash`'s terminal - a terminal running inside the app rather than the shell
  * this process runs), so it is mirrored here as the desktop-shaped `Monitor`.
  *
- * `project` was on the absent list by the same rule, and the operator's
- * 2026-09-27 report is what changed its answer: a project row under a wrench
- * is indistinguishable from a tool nobody knows. The TUI is gaining the same
- * meaning in the same window - the sibling coder's `feat/tui-project-line-15c4`
- * branch in `damianvtran/local-operator` adds the project line to
- * `local_operator/tui/glyphs.py` (PR pending at the time of writing; if it has
- * landed by the review round, this comment should name it by number and the
- * remediation round owns that edit). The icon chosen is the lucide board mark
- * of the same meaning - a project as a board of tracks - NOT `FolderOpen`
- * (`glob`'s folder) and NOT `ListChecks` (`todo`'s list), the two it would be
- * a re-spelling of.
+ * `project` and `project_delete` were on the absent list by the same rule,
+ * and they leave it WITH the TUI rather than ahead of it (review round 1,
+ * D2/D4 — the first cut of this pair took `FolderKanban` alone, and the
+ * sibling's own rationale retired it): the sibling coder's
+ * `feat/tui-project-line-15c4` branch in `damianvtran/local-operator` adds
+ * BOTH marks to `local_operator/tui/glyphs.py` in commit `4ce339597`. The
+ * project line takes nf-fa-columns — "Deliberately not a folder: `glob`'s
+ * folder is a location on disk, and a project is the workstream" — and
+ * `project_delete` takes nf-fa-trash_o, "its removal is irreversible ..., so
+ * it must not ride a quiet read/update glyph". This table mirrors both
+ * meanings with the lucide marks of the same nouns: `Columns3` (a board of
+ * tracks — not `FolderOpen`, `glob`'s folder, and not `ListChecks`, `todo`'s
+ * list) and `Trash2` (the irreversible removal the TUI's rationale names).
  */
 const TOOL_ICONS: Record<string, LucideIcon> = {
 	bash: Terminal,
@@ -83,7 +86,8 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
 	read_variable: Tag,
 	browser: Globe,
 	console: Monitor,
-	project: FolderKanban,
+	project: Columns3,
+	project_delete: Trash2,
 	web_search: Globe,
 	web_fetch: Download,
 	task: Users,
