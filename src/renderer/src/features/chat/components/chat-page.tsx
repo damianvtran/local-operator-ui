@@ -2938,29 +2938,31 @@ function SessionPanel({
 					descriptionPending={identityPending}
 					identity={identityControls}
 					/*
-					 * THE RENAME PENCIL'S DOOR, and the same one the page's inline options use
-					 * ("rename" above). The citation was corrected in review round 1 (findings
-					 * 4 / bot 4): bare `/rename` is answered by the BACKEND's empty-args rule
+					 * THE INLINE RENAME'S SESSION (operator's report, 2026-09-26), on the
+					 * same gate the old pencil-door had. The header runs the write path
+					 * itself now (`sessions.command` `rename` through `useSessionCommand`,
+					 * the same command `RenamePicker` submits), so the page hands it the
+					 * session rather than a callback - while the door this replaced is
+					 * still `/rename`'s for the surfaces that keep the picker: bare
+					 * `/rename` is answered by the BACKEND's empty-args rule
 					 * (`local_operator/server/routes/desktop_sessions.py` returns a
-					 * `native_action` for the word with no arguments), and the dispatcher's
-					 * `isNativeAction` branch mounts the registry's picker for that
-					 * destination - `PRESENT_DIRECTLY` holds `session.goal` and
-					 * `session.context` and no rename, which is what the old sentence read it
-					 * as. The pencil opens the one existing rename flow rather than a second
-					 * surface for one write path.
+					 * `native_action` for the word with no arguments), and the
+					 * dispatcher's `isNativeAction` branch mounts the registry's picker for
+					 * that destination.
 					 *
-					 * `dispatchFromControl`, not `dispatch`: a control has no composer text
-					 * to report through, so the wrapper is what turns the commands-off
-					 * `"not-a-command"` into the composer's own failure note rather than a
-					 * dead pencil (bot 4; the options row already uses the same wrapper).
-					 * And it is GATED on the command surface being enabled, so with that
-					 * capability off the pencil is omitted instead of rendered dead.
-					 * Omitted on a draft for the same reason the archive and delete controls
-					 * are: a conversation that does not exist yet has no name to change.
+					 * `dispatchFromControl` stays this page's wrapper for the controls that
+					 * still dispatch (the options row, the directory chip), which is what
+					 * turns the commands-off `"not-a-command"` into the composer's own
+					 * failure note; the header's editor reports failures through the app's
+					 * toast channel instead (see `chat-header.tsx`). GATED on the command
+					 * surface being enabled, so with that capability off the header omits
+					 * the affordance instead of rendering it dead; omitted on a draft
+					 * through the same `sessionId` test, because a conversation that does
+					 * not exist yet has no name to change.
 					 */
-					onRenameConversation={
+					renameSessionId={
 						sessionId && desktopFeatureEnabled(capabilities.data, "commands")
-							? () => void dispatchFromControl({ name: "rename", args: "" })
+							? sessionId
 							: undefined
 					}
 					onOpenOptions={() => setOptions((value) => !value)}
