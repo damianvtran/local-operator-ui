@@ -1422,6 +1422,14 @@ const STAMP_BINDING_NOTES = [
 	 * the two frames it added.
 	 */
 	"headerRenameInlineRoundOneNote",
+	/*
+	 * AND THE DESKTOP-SUITE TICK WAIT'S OWN: its subject is this file's binding
+	 * too - it moves BOTH trees without taking a frame (nothing in it is
+	 * user-visible; the evidence is the isolated rig runs and the three
+	 * mutations its note names), so the reader is owed the pair AND the reason no
+	 * still was owed, for the same reason task-17's entry is here.
+	 */
+	"daemonObservationTickWaitRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2008,6 +2016,13 @@ const BRANCH_RECORDS = [
 	 * first, the same reason this list exists.
 	 */
 	"headerRenameInlineRoundOneNote",
+	/*
+	 * And by THIS lane, whose note is the newest top-level record on the branch:
+	 * it states the pair this tip ships, moves both trees, and takes no frame -
+	 * a fold that started from main's copy would drop it first, the same reason
+	 * this list exists.
+	 */
+	"daemonObservationTickWaitRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
