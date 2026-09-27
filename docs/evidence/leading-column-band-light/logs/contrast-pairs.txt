@@ -1,0 +1,6 @@
+  PASS   12.8:1  #f1eee6 on #2b2721  (AAA)  dark: ink on rail surface
+  PASS  15.23:1  #211e18 on #f7f5ee  (AAA)  light: ink on rail surface
+  FAIL    1.1:1  #2b2721 on #22201c  (- )  dark: surface vs canvas adjacency step
+  FAIL   1.07:1  #f7f5ee on #f2ede3  (- )  light: surface vs canvas adjacency step
+
+4 pairs, 2 below AA 4.5

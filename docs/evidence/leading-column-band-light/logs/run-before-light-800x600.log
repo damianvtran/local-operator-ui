@@ -1,0 +1,150 @@
+[build] current: assets 2026-09-27T21:55:22.288Z >= sources 2026-09-27T21:54:33.515Z
+[note] abandoned scratch trees
+        14 seen, 0 owned by a live pid (kept), 14 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:18471
+  serve records 1 linked from /Users/damian/.local-operator/sessions/90b5e8a75d0c/scratchpad/design588/config/run/serve   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui/.worktrees/design588-90b5e8a7
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-71862
+  frames        /Users/damian/.local-operator/sessions/90b5e8a75d0c/scratchpad/design588/frames/before-light-800x600
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-71862/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:18471   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:18471","backend":"http://127.0.0.1:18471"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:18471)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] the app is in the palette this run photographs (localOperatorLight)
+[PASS] the app is on /chat
+[PASS] route-tops-chat-before-light draws the light palette its name claims
+        DOM localOperatorLight #f2ede3; mean luma 238.5 vs 237.3 own / 32.1 other
+[note] the top of /chat
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"left":0,"width":800,"height":32},"laneDisplay":"block","laneBandStop":56,"laneBandGround":"rgb(247, 245, 238)","band":null,"bandDisplay":null,"sidebar":null,"route":{"top":32,"left":56,"width":744,"height":568},"routeTag":"div","leadingColumn":null,"registeredColumn":null,"surfaceGround":"rgb(247, 245, 238)","settingsRail":null,"settingsContent":null}
+[PASS] the app is on /settings
+[PASS] route-tops-settings-before-light draws the light palette its name claims
+        DOM localOperatorLight #f2ede3; mean luma 233.8 vs 237.3 own / 32.1 other
+[note] the top of /settings
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"left":0,"width":800,"height":32},"laneDisplay":"block","laneBandStop":56,"laneBandGround":"rgb(247, 245, 238)","band":{"top":0,"left":0,"width":0,"height":0},"bandDisplay":"none","sidebar":null,"route":{"top":32,"left":56,"width":744,"height":568},"routeTag":"div","leadingColumn":{"top":32,"left":56,"width":47,"height":568},"registeredColumn":null,"surfaceGround":"rgb(247, 245, 238)","settingsRail":{"top":32,"left":56,"width":47,"height":568},"settingsContent":{"top":32,"left":104,"width":696,"height":568}}
+[PASS] the app is on /settings?section=integrations
+[PASS] route-tops-settings-integrations-before-light draws the light palette its name claims
+        DOM localOperatorLight #f2ede3; mean luma 233.6 vs 237.3 own / 32.1 other
+[note] the top of /settings?section=integrations
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"left":0,"width":800,"height":32},"laneDisplay":"block","laneBandStop":56,"laneBandGround":"rgb(247, 245, 238)","band":{"top":0,"left":0,"width":0,"height":0},"bandDisplay":"none","sidebar":null,"route":{"top":32,"left":56,"width":744,"height":568},"routeTag":"div","leadingColumn":{"top":32,"left":56,"width":47,"height":568},"registeredColumn":null,"surfaceGround":"rgb(247, 245, 238)","settingsRail":{"top":32,"left":56,"width":47,"height":568},"settingsContent":{"top":32,"left":104,"width":696,"height":568}}
+[PASS] the app is on /agents
+[PASS] route-tops-agents-before-light draws the light palette its name claims
+        DOM localOperatorLight #f2ede3; mean luma 237.6 vs 237.3 own / 32.1 other
+[note] the top of /agents
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"left":0,"width":800,"height":32},"laneDisplay":"block","laneBandStop":56,"laneBandGround":"rgb(247, 245, 238)","band":{"top":0,"left":0,"width":0,"height":0},"bandDisplay":"none","sidebar":null,"route":{"top":32,"left":56,"width":744,"height":568},"routeTag":"div","leadingColumn":{"top":32,"left":56,"width":256,"height":568},"registeredColumn":null,"surfaceGround":"rgb(247, 245, 238)","settingsRail":null,"settingsContent":null}
+[PASS] the app is on /agents/local-operator
+[PASS] route-tops-agents-detail-before-light draws the light palette its name claims
+        DOM localOperatorLight #f2ede3; mean luma 237.2 vs 237.3 own / 32.1 other
+[note] the top of /agents/local-operator
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"left":0,"width":800,"height":32},"laneDisplay":"block","laneBandStop":56,"laneBandGround":"rgb(247, 245, 238)","band":{"top":0,"left":0,"width":0,"height":0},"bandDisplay":"none","sidebar":null,"route":{"top":32,"left":56,"width":744,"height":568},"routeTag":"div","leadingColumn":{"top":32,"left":56,"width":280,"height":568},"registeredColumn":null,"surfaceGround":"rgb(247, 245, 238)","settingsRail":null,"settingsContent":null}
+[PASS] the app is on /agent-hub
+[PASS] route-tops-agent-hub-before-light draws the light palette its name claims
+        DOM localOperatorLight #f2ede3; mean luma 236.5 vs 237.3 own / 32.1 other
+[note] the top of /agent-hub
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"left":0,"width":800,"height":32},"laneDisplay":"block","laneBandStop":56,"laneBandGround":"rgb(247, 245, 238)","band":{"top":0,"left":0,"width":0,"height":0},"bandDisplay":"none","sidebar":null,"route":{"top":32,"left":56,"width":744,"height":568},"routeTag":"div","leadingColumn":null,"registeredColumn":null,"surfaceGround":"rgb(247, 245, 238)","settingsRail":null,"settingsContent":null}
+[PASS] the app is on /schedules
+[PASS] route-tops-schedules-before-light draws the light palette its name claims
+        DOM localOperatorLight #f2ede3; mean luma 237.7 vs 237.3 own / 32.1 other
+[note] the top of /schedules
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"left":0,"width":800,"height":32},"laneDisplay":"block","laneBandStop":56,"laneBandGround":"rgb(247, 245, 238)","band":{"top":0,"left":0,"width":0,"height":0},"bandDisplay":"none","sidebar":null,"route":{"top":32,"left":56,"width":744,"height":568},"routeTag":"div","leadingColumn":null,"registeredColumn":null,"surfaceGround":"rgb(247, 245, 238)","settingsRail":null,"settingsContent":null}
+[PASS] /chat: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y (none), settings content y (none)
+[PASS] /settings: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y 32, settings content y 32
+[PASS] /settings?section=integrations: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y 32, settings content y 32
+[PASS] /agents: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y (none), settings content y (none)
+[PASS] /agents/local-operator: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y (none), settings content y (none)
+[PASS] /agent-hub: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y (none), settings content y (none)
+[PASS] /schedules: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y (none), settings content y (none)
+[FAIL] /settings: the route's leading column is handed to the shell
+        the column at x 56 is not registered at all
+[FAIL] /settings: the lane's band reaches the leading column's right edge (103px)
+        the band stops at 56 against a column ending at 103
+[PASS] /settings: the band is painted in the surface role the column stands on
+[FAIL] /settings?section=integrations: the route's leading column is handed to the shell
+        the column at x 56 is not registered at all
+[FAIL] /settings?section=integrations: the lane's band reaches the leading column's right edge (103px)
+        the band stops at 56 against a column ending at 103
+[PASS] /settings?section=integrations: the band is painted in the surface role the column stands on
+[FAIL] /agents: the route's leading column is handed to the shell
+        the column at x 56 is not registered at all
+[FAIL] /agents: the lane's band reaches the leading column's right edge (312px)
+        the band stops at 56 against a column ending at 312
+[PASS] /agents: the band is painted in the surface role the column stands on
+[FAIL] /agents/local-operator: the route's leading column is handed to the shell
+        the column at x 56 is not registered at all
+[FAIL] /agents/local-operator: the lane's band reaches the leading column's right edge (336px)
+        the band stops at 56 against a column ending at 336
+[PASS] /agents/local-operator: the band is painted in the surface role the column stands on
+[PASS] every capture is a frame the app held still for, with no toast on it
+[PASS] every capture wrote a PNG of the window's own size
+
+---- app log (tail) ----
+17:55:45.551 › [browser] denied a geolocation permission request from (unknown origin)
+17:55:46.258 › [browser] denied a media permission request from (unknown origin)
+17:55:46.259 › [browser] denied a media permission request from (unknown origin)
+17:55:46.260 › [browser] denied a web-app-installation permission request from (unknown origin)
+17:55:46.261 › [browser] denied a geolocation permission request from (unknown origin)
+17:55:46.278 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+17:55:46.279 › Checking for UI updates...
+17:55:46.280 › Skip checkForUpdates because application is not packed and dev update config is not forced
+Error occurred in handler for 'browser-state': Error: No handler registered for 'browser-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'console-state': Error: No handler registered for 'console-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'browser-state': Error: No handler registered for 'browser-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'browser-state': Error: No handler registered for 'browser-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'browser-webauthn-pending': Error: No handler registered for 'browser-webauthn-pending'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+17:55:46.363 › [shell-path] /bin/zsh reports PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
+17:55:46.363 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
+17:55:46.364 › Shell environment variables loaded successfully. PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
+17:55:46.366 › [browser] host on 127.0.0.1:57987 (proto 1), profile /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-71862/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+17:55:46.553 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+17:55:46.554 › Checking for UI updates...
+17:55:46.554 › Skip checkForUpdates because application is not packed and dev update config is not forced
+17:55:46.668 › [browser] tab 1 navigated to about:blank
+[window-mode] state: visible=false focused=false focusable=false size=800x600 content=800x600
+17:55:47.966 › [window-chrome] applied themeId=localOperatorLight ground=#f2ede3 symbol=#4e4940
+17:55:48.538 › Checking for updates... (silent mode: true)
+17:55:48.539 › Skip checkForUpdates because application is not packed and dev update config is not forced
+17:55:48.540 › Checking for backend updates... (silent mode: true)
+17:55:48.541 › Skip backend update check in dev mode unless forced
+(node:71954) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 backend-status-changed listeners added to [IpcRenderer]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `Electron Helper (Renderer) --trace-warnings ...` to show where the warning was created)
+
+[PASS] no process from this run outlived its boot
+
+frames: route-tops-agent-hub-before-light.png, route-tops-agents-before-light.png, route-tops-agents-detail-before-light.png, route-tops-chat-before-light.png, route-tops-schedules-before-light.png, route-tops-settings-before-light.png, route-tops-settings-integrations-before-light.png
+frames directory: /Users/damian/.local-operator/sessions/90b5e8a75d0c/scratchpad/design588/frames/before-light-800x600
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-71862/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-71862 (the frames are also in --out)
+
+8 CHECK(S) FAILED

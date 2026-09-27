@@ -1,0 +1,16 @@
+25696a25697,25711
+> 	/*
+> 	 * DISPOSABLE DESIGN CAPTURE COPY, not part of the PR: the same `--theme`
+> 	 * handling every theme-parameterised scene carries, so the design round can
+> 	 * photograph this scene's matrix in localOperatorLight. Removed after the
+> 	 * runs; the app tree under capture is the unmodified head build.
+> 	 */
+> 	if (THEME) {
+> 		await verb(cdp, "setTheme", THEME);
+> 		const themed = await verb(cdp, "state");
+> 		check(
+> 			`the app is in the palette this run photographs (${THEME})`,
+> 			themed.theme === THEME,
+> 			`theme is ${themed.theme}`,
+> 		);
+> 	}
