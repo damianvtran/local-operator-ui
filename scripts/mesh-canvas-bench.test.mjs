@@ -51,7 +51,8 @@ function run({
 		start: 5010 + index * 16,
 		duration: 8,
 		blocking: 0,
-	})),	latencies,
+	})),
+	latencies,
 	worldStyleWrites = 100,
 	rafTicks = 100,
 	/* How many frames the DRAG window observed: zero models a gesture the bench never saw. */

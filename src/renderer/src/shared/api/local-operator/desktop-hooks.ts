@@ -481,12 +481,16 @@ export type DesktopFeature =
 	 * `session_pins` makes above.
 	 *
 	 * WHAT A USER WITH NO NETWORK SEES, stated the way it actually happens rather than
-	 * as "no call at all": one READ-ONLY catalogue read is issued for the row's gate,
-	 * it answers `[]` (the backend short-circuits it on `has_any_network()`, an `is_dir`
-	 * test with no mkdir, so nothing is created), and NO rail row, no route content and
-	 * no peer section mounts. The chrome is today's. The frames in
-	 * `docs/evidence/mesh-tab/` measure the TAB rather than that chrome, and the
-	 * chrome claim is pinned in `scripts/mesh-tab.test.mjs` instead.
+	 * as "no call at all": ONE read-only catalogue read is issued when the window starts
+	 * - a `networks.list`, which the backend serves after an `is_dir` test with no mkdir,
+	 * so nothing is created - and because the rail is mounted on every route that read
+	 * carries NO interval (`useMeshMembership` asks for `poll: false`; review round 2,
+	 * R2-1, caught the 30 s interval reaching an always-mounted component and dialling
+	 * every peer on every screen). The catalogue's 30 s cadence belongs to the TAB, and
+	 * the rail rides that observer's cache entry while the tab is open. So: no rail row,
+	 * no route content and no peer section mounts, the chrome is today's, and the frames
+	 * in `docs/evidence/mesh-tab/` measure the TAB rather than that chrome - the chrome
+	 * claim is pinned in `scripts/mesh-tab.test.mjs` instead.
 	 *
 	 * SLICE 2 ADDS `session_transfer`, which is the surface this paragraph reserved
 	 * the key for: it gates the MOVE affordance (a chip's drop targets and the
@@ -497,6 +501,18 @@ export type DesktopFeature =
 	 * every drag outcome falls back to the read-only row.
 	 */
 	| "peers"
+	/*
+	 * The Projects surface: the tab, its CRUD, the milestone routes and the `@`
+	 * picker's project section (`/v1/desktop/projects*`).
+	 *
+	 * ONE key for the whole surface rather than one per route, because the store
+	 * ships as a unit: the backend release that serves the listing is the release
+	 * that serves the milestones. Absent here means the sidebar mounts no
+	 * Projects row, the palette offers no entry, and the `@` picker keeps its
+	 * file-only shape - an older backend renders EXACTLY the surface this app
+	 * shipped before, rather than a tab that 404s on its first read.
+	 */
+	| "projects"
 	/**
 	 * Moving a conversation between devices: `POST /v1/desktop/sessions/{id}/transfer`.
 	 *

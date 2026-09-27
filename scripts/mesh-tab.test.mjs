@@ -741,10 +741,32 @@ test("the palette's destinations are the rail's destinations (R1-3)", () => {
 		/id: "mesh",\s*\n\s*name: "Mesh",\s*\n\s*path: "\/mesh",/,
 		"typing `mesh` finds the destination the rail draws",
 	);
+	/*
+	 * ONE memo, and main's Projects gate lives INSIDE it (the fold onto `a9f4b1d7f4`): main
+	 * filtered `PAGES` inline at the call site while this branch computed the mesh row in a
+	 * memo of its own, and two filters is how the palette, the rail and the route drift
+	 * apart. The pin asserts the shape that makes that impossible rather than the shape of
+	 * either side's edit - the destination set is computed once and handed on.
+	 */
 	assert.match(
 		palette,
-		/meshMembership === "member" \? \[\.\.\.PAGES, MESH_PAGE\] : PAGES/,
-		"gated by the SAME rule as the rail row, so the two lists cannot disagree",
+		/\.\.\.\(meshMembership === "member" \? \[MESH_PAGE\] : \[\]\),/,
+		"one memo carries both gates: this branch's mesh row",
+	);
+	assert.match(
+		palette,
+		/\.\.\.PAGES\.filter\(\(page\) => page\.id !== "projects" \|\| projectsEnabled\),/,
+		"and main's Projects gate, inside the same list rather than beside it",
+	);
+	assert.match(
+		palette,
+		/\[meshMembership, projectsEnabled\],/,
+		"with both gates in the memo's own dependency list",
+	);
+	assert.match(
+		palette,
+		/\.\.\.buildNavigationItems\(pages\),/,
+		"and the navigation rows are built from that one set",
 	);
 });
 
@@ -1432,7 +1454,7 @@ test("the renderer sizes its deadline from the REQUEST, and its give-up carries 
 	 */
 	assert.match(
 		api,
-		/withDeadline\(\s*window\.api\.desktop\.request\(request\),\s*request,\s*\)/,
+		/withDeadline\(\s*window\.api\.desktop\.request\(request\),\s*request,?\s*\)/,
 		"the request is passed, not its op: the transfer's bound is sized from the request",
 	);
 	assert.doesNotMatch(
@@ -1867,5 +1889,69 @@ test("a drag's release does not open the panel, and Escape cancels a drag (U1/U5
 		canvas,
 		/dragReducer\(current, \{ kind: "cancel" \}\)/,
 		"Escape uses the reducer's own cancel rather than a second way to end a gesture",
+	);
+});
+
+/* ------------------------------------------------------- review round 2 (R2-1) */
+
+test("the rail's membership read does not poll: the always-mounted component fans out to nobody", () => {
+	/*
+	 * R2-1's defect: `useMeshMembership` called `useMeshNetworks(enabled)` with no
+	 * options, so the RAIL - mounted on every route by `app.tsx` - inherited this file's
+	 * 30 s interval. One poll is `net_peer_ls`, which dials every peer, plus a `net_show`
+	 * per network, so a member device fanned out to every peer every 30 seconds for the
+	 * life of the window, on any screen. The fix is the `poll: false` observer, and these
+	 * four assertions are the pin that keeps it.
+	 */
+	const store = source("src/renderer/src/features/mesh/mesh-store.ts");
+	assert.match(
+		store,
+		/export function useMeshNetworks\(\s*enabled: boolean,\s*\{ poll = true \}: \{ poll\?: boolean \} = \{\},\s*\)/,
+		"the hook takes the cadence as an option rather than hard-coding it",
+	);
+	assert.match(
+		store,
+		/useMeshNetworks\(enabled, \{ poll: false \}\)/,
+		"and the membership hook - the rail's only reader - asks for the non-polling one",
+	);
+	assert.match(
+		store,
+		/refetchInterval: enabled && poll \? MESH_POLL_MS : false/,
+		"the 30 s cadence is reachable only through the polling observer",
+	);
+	assert.match(
+		store,
+		/staleTime: poll \? 10_000 : Number\.POSITIVE_INFINITY/,
+		"the non-polling observer cannot be woken by a mount or a focus either",
+	);
+	/*
+	 * THE FOCUS LEG, which this pin's first version left to a reader's inference (review round 3,
+	 * R3-3). `refetchOnWindowFocus` is the branch's THIRD wake-up path: a window that loses and
+	 * regains visibility is an ordinary event on a desktop app, and this app's own
+	 * `defaultQueryOptions` sets it `true` (`shared/api/query-client.ts`), so a rail that did not
+	 * switch it off would be woken by every alt-tab - the same fan-out the interval was.
+	 *
+	 * THE BEHAVIOUR BEHIND IT, measured rather than asserted here: the reviewer's own probe drove
+	 * a `visibilitychange` transition and counted refetches - rail observer 0, page observer 1
+	 * (the control), and the rail under a `--defect` regression 1, so the zero is a reading and
+	 * not a vacuous pass. This pin holds the wiring that probe validated; the harness in this
+	 * session's scratchpad is where the count itself is reproduced.
+	 */
+	assert.match(
+		store,
+		/refetchOnWindowFocus: poll,/,
+		"the focus leg follows the same observer split as the interval, so the rail cannot be woken by an alt-tab",
+	);
+	assert.match(
+		source("src/renderer/src/shared/api/query-client.ts"),
+		/refetchOnWindowFocus: true,/,
+		"and the app's own default is the opposite, which is why the rail has to say so itself",
+	);
+	assert.match(
+		source(
+			"src/renderer/src/shared/components/navigation/sidebar-navigation.tsx",
+		),
+		/const meshMembership = useMeshMembership\(meshPaired\);/,
+		"the rail reads membership through that hook, so the pin above is about the rail",
 	);
 });
