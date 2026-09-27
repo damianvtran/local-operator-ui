@@ -370,10 +370,26 @@ export const TraceFold = ({
 						 * How many pictures the run produced, as the count the strip cannot
 						 * carry at 64px - and the reason this clause is here at all is the
 						 * inversion the design round found: the strip's accessible name
-						 * said "2 screenshots from this run" while the visible header said
-						 * nothing, so a sighted reader got strictly less than a screen-reader
-						 * user (design review round 1, D3). It costs no height: it joins the
+						 * stated the count while the visible header said nothing, so a
+						 * sighted reader got strictly less than a screen-reader user
+						 * (design review round 1, D3). It costs no height: it joins the
 						 * facts the header already prints.
+						 *
+						 * IT DOES COST WIDTH, and that is written down here rather than found
+						 * again later: this span is `shrink-0`, so while a call is in flight
+						 * the clause is paid for out of the live clause - the row's only
+						 * truncating element - and `Running git push origin
+						 * feat/condensed-group-images` loses its tail to `…group-…` (design
+						 * review round 2, D5, measured on the long-name pair). It stands for
+						 * now because both ways to give the characters back change what this
+						 * surface's committed frames show - withholding the clause while
+						 * live, or shortening it to `· 1 img` - and the frames are the
+						 * evidence a reviewer reads, so that is a change taken with a
+						 * capture of `image-live` and `long-name` in both palettes rather
+						 * than folded into a comment round. No reader is left without the
+						 * count in the meantime: the strip renders in this same condensed
+						 * window and states it itself - countable while the pictures fit,
+						 * `+N more` past the cap.
 						 */}
 						{foldMediaClause(mediaCount) !== null && (
 							<>

@@ -550,8 +550,10 @@ test("the strip's slots are one row, and past the cap the last of them is the co
 	 * Design review round 1, D3: height grew with the count and had no cap, so
 	 * 25-30 pictures put a CONDENSED group past the height of the expanded one it
 	 * replaces. The cap is the row the strip can hold at the narrowest column it
-	 * renders in - measured at six 98px tiles with five 10px gaps in the live
-	 * window's 638px - and past it the last slot is `+N more`.
+	 * renders in - the rig measured that column at 576px in a 640px window, and the
+	 * committed eight-picture frame puts five slots at 472px end to end (four 98px
+	 * tiles, three 8px gutters, the 8px gap before the count and its 48px of ink) -
+	 * and past it the last slot is `+N more`.
 	 */
 	assert.deepEqual(foldMediaSlots(0), { shown: 0, more: 0 });
 	assert.deepEqual(foldMediaSlots(1), { shown: 1, more: 0 });

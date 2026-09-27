@@ -564,15 +564,18 @@ export const foldImages = (rows: readonly Row[]): TranscriptImage[] => {
  * How many tiles a condensed group's strip draws in its one row.
  *
  * THE ROW IS THE BUDGET, and the number is measured rather than chosen: a tile is
- * 98px with a 10px gap, and the last slot is the `+N more` TEXT rather than a
- * sixth picture, which is why the cap is 5 slots and not 6. Five slots are
- * 4x98 + 3x10 + the count's own ~56 + one gap = ~482px, and the narrowest column
- * this strip renders in was measured at 576px (a 640px window: `max-w-[760px]`
- * minus the transcript's own `p-8`) with the live window at 638px - so the row
- * holds at every width this surface reaches, and the height is 91px for any count.
+ * 98px on an 8px gutter (`gap-2`, and eight ground pixels between the tile boxes
+ * in the committed frames, which put them at x52/158/264/370), and the last slot
+ * is the `+N more` TEXT rather than a picture: the count takes the slot the FIFTH
+ * picture would have had, which is why the cap is 5 slots. Five slots are 4x98 + 3x8 + the count's
+ * own ink + one 8px gap, which the committed eight-picture frame measures at 472px
+ * end to end (its `+4 more` is 48px of ink), and the narrowest column this strip
+ * renders in was measured at 576px (a 640px window: `max-w-[760px]` minus the
+ * transcript's own `p-8`) with the live window at 638px - so the row holds at
+ * every width this surface reaches, and the height is 91px for any count.
  *
  * Capping at all is what makes that claim unconditional: without it a run of 25-30
- * pictures costs ~391px, which is past the ~354.7px an EXPANDED group costs - the
+ * pictures costs ~391px, which is past the ~338.7px an EXPANDED group costs - the
  * one case where condensing would be the taller choice (design review round 1, D3).
  */
 export const FOLD_MEDIA_LIMIT = 5;
@@ -581,7 +584,7 @@ export const FOLD_MEDIA_LIMIT = 5;
  * How many tiles the strip draws, and how many the `+N more` slot stands for.
  *
  * When the run produced more than a row can hold, the LAST slot is the count
- * itself rather than a sixth picture: the row stays one row either way, and the
+ * itself rather than a fifth picture: the row stays one row either way, and the
  * reader is told how many they are not seeing instead of being left to infer it
  * from a clipped row. The count is also in the condensed header
  * (`foldMediaClause`) and in the strip's own accessible name, so no reader - with

@@ -955,8 +955,8 @@ test("a condensed group's pictures are named, expandable thumbnails", async () =
 		);
 		assert.equal(
 			strip.getAttribute("aria-label"),
-			"2 screenshots from this run",
-			"and the set itself is named, so a reader knows how many it is walking into",
+			"2 images from this run",
+			"and the set itself is named, in the header's own noun, so a reader knows how many it is walking into",
 		);
 
 		const controls = [
@@ -1021,7 +1021,7 @@ test("one picture in a group is named as one picture", async () => {
 			api.document
 				.querySelector("[data-fold-media]")
 				.getAttribute("aria-label"),
-			"1 screenshot from this run",
+			"1 image from this run",
 		);
 		assert.equal(
 			pictureButton(api.document).getAttribute("aria-label"),
@@ -1089,7 +1089,7 @@ test("the strip is capped at one row, and says how many it is not showing", asyn
 		/*
 		 * Design review round 1, D3's second half: height grew with the count and had
 		 * no cap, so 25-30 pictures made a CONDENSED group taller than the expanded one
-		 * it replaces (~391px against ~354.7px). One row is the budget, and past it the
+		 * it replaces (~391px against ~338.7px). One row is the budget, and past it the
 		 * last slot is the count.
 		 */
 		const many = Array.from({ length: 8 }, (_, index) => ({

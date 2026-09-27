@@ -26,17 +26,26 @@
  *
  * Raising the tile until text is legible was measured and rejected: roughly 2x
  * (a ~128px picture) puts a group at ~155px and a three-group turn at ~465px,
- * past the ~354.7px one EXPANDED group costs — the budget broken to buy
- * legibility that is still marginal at 128px.
+ * past the ~338.7px one EXPANDED group costs — the budget broken to buy
+ * legibility that is still marginal at 128px. That price is the one measured
+ * AFTER the fold onto main, which took a child off the disclosure body and so
+ * took its 8px `gap-2` out from between folded rows: the open state is 16px
+ * shorter than the 354.7px this comment first quoted, and the re-taken frames in
+ * `docs/evidence/chat-trace-fold/{expanded,image-expanded}` are that measurement
+ * rather than a restatement of it.
  *
  * ## One row, capped, with the count said out loud
  *
- * The strip is one row of 98px tiles at a 10px gap, and it is CAPPED at the six
- * that fit the narrowest column this renders in (the live window's measured
- * 638px; see `FOLD_MEDIA_LIMIT`). Past the cap the last slot is `+N more` rather
+ * The strip is one row of 98px tiles on an 8px gutter — `gap-2` in the class
+ * list, and eight ground pixels between the tile boxes in the committed frames —
+ * and it is CAPPED at FIVE slots: four tiles and the `+N more` count, which is
+ * the slot the fifth picture would have taken, since the count is text rather
+ * than a picture and is what makes the row fit the narrowest column this renders
+ * in (the rig's measured 576px at a 640px window; the live window's own column is
+ * 638px). See `FOLD_MEDIA_LIMIT`. Past the cap the last slot is `+N more` rather
  * than another picture, so the height is bounded at 91px for any count: without
- * the cap a run of 25-30 screenshots cost ~391px, more than the expanded group it
- * was meant to save (design review round 1, D3).
+ * the cap a run of 25-30 screenshots cost ~391px, more than the 338.7px expanded
+ * group it was meant to save (design review round 1, D3).
  *
  * The count is also a clause in the condensed header itself (`· 2 images`), which
  * costs no height at all, and it is what keeps a sighted reader from being offered
@@ -114,10 +123,20 @@ export const FoldMedia = ({ images, scope }: FoldMediaProps) => {
 			/* biome-ignore lint/a11y/noRedundantRoles: WebKit drops the implicit list role when `list-style: none` is set, so the explicit one is what carries the count to VoiceOver. */
 			/* biome-ignore lint/a11y/useSemanticElements: the element already IS the one the rule suggests - the explicit role is the WebKit fix above, not a substitute for `ul`. */
 			role="list"
+			/*
+			 * ONE NOUN for one object, and `image` is the one that wins: it is the word
+			 * `foldMediaClause` already puts in the visible header of this same row, and
+			 * the record's own noun (`TranscriptImage`) — an attachment a run produced
+			 * need not be a capture. The per-tile control keeps the app's word for the
+			 * ACTION ("Screenshot N", the same string every other picture button on
+			 * these surfaces carries), so the strip names its SET in the header's
+			 * register and does not invent a second name for the buttons (design review
+			 * round 2, D7).
+			 */
 			aria-label={
 				images.length === 1
-					? "1 screenshot from this run"
-					: `${images.length} screenshots from this run`
+					? "1 image from this run"
+					: `${images.length} images from this run`
 			}
 			data-fold-media=""
 			className={cn("mt-1 ml-5 flex flex-wrap items-center gap-2")}
