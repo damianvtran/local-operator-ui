@@ -923,6 +923,12 @@ const SLOT_CLASSES = ["h-16", "w-24", "object-contain"];
  */
 const SLOT_BOX = ["h-[66px]", "w-[98px]"];
 const FULL_CEILING = /max-h-\[240px\]/;
+/**
+ * The three classes the ledger rule is made of, asserted on the element rather
+ * than on a re-taken frame: this surface's frames are not byte-stable across two
+ * captures at one head (measured), so the class list is the instrument (P1).
+ */
+const FULL_CEILING_CLASSES = ["max-h-[240px]", "max-w-full", "object-contain"];
 
 test("a condensed group's pictures are named, expandable thumbnails", async () => {
 	await mount(async (api) => {
@@ -1251,5 +1257,35 @@ test("the real <img> survives the live-to-settled transition without remounting"
 			picture,
 			"and so does the picture's - nothing remounts, so nothing re-decodes or flickers",
 		);
+	});
+});
+
+test("the full-ceiling picture keeps the three classes the ledger rule is made of", async () => {
+	await mount(async (api) => {
+		/*
+		 * Agent review round 1, P1: the `size` refactor dropped `max-w-full` and
+		 * `object-contain` from BOTH sizes, so the comment above the class map cited
+		 * `object-contain` as the reason a `min-w` floor was rejected while the element
+		 * no longer carried it. They are restored, and the claim is asserted here
+		 * rather than left to a frame: the pre-existing frames of this surface are not
+		 * byte-stable across captures (measured - two identical sweeps at one head
+		 * differ), so a re-take cannot be the instrument, and the class list is what
+		 * changed.
+		 */
+		await api.render(
+			React.createElement(ImageAttachment, {
+				file: FILE_PATH,
+				src: PNG,
+				label: "invoice",
+				conversationId: "image-expand",
+			}),
+		);
+		const picture = api.document.querySelector("button img");
+		for (const fullClass of FULL_CEILING_CLASSES) {
+			assert.ok(
+				picture.className.split(" ").includes(fullClass),
+				`the transcript's own picture carries \`${fullClass}\``,
+			);
+		}
 	});
 });
