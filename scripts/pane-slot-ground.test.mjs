@@ -108,6 +108,9 @@ const PANE_BAR =
 	/"flex (h-\d+) shrink-0 items-center justify-between gap-2 ([^"]*?)px-2"/g;
 const SLOT_BOX =
 	/"relative h-full overflow-hidden transition-\[width\] duration-base ease-out-quart"/;
+
+/** A drag attribute anywhere in the slot the dock is mounted in. */
+const DRAG_IN_SLOT = /<PaneSlot[\s\S]{0,400}?data-titlebar-drag/;
 const SLOT_COMPONENT =
 	"src/renderer/src/shared/components/common/pane-slot.tsx";
 
@@ -251,7 +254,7 @@ test("the header's drag rect and the lane are the window's drag surfaces, and th
 	 */
 	const header = withoutComments(read(CHAT_CONTENT));
 	assert.ok(
-		!/<PaneSlot[\s\S]{0,400}?data-titlebar-drag/.test(header),
+		!DRAG_IN_SLOT.test(header),
 		`${CHAT_CONTENT} marks the slot's box (or the pane in it) as a drag region. The dock's band is where its controls live; a drag region over it is dead to clicks.`,
 	);
 });
