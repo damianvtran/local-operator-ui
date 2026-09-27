@@ -771,15 +771,39 @@ const builtinOfferSentence = (
  * the reader) exactly where they were.
  */
 function focusRowAfterRemoval(pressed: HTMLElement): () => void {
-	const rows = Array.from(
+	const listRows = Array.from(
 		document.querySelectorAll<HTMLElement>(
 			'[data-sidebar-region="chats"] [data-chat-row]',
 		),
 	);
+	/*
+	 * WHICH ROW WAS PRESSED, read from the row the control sits in rather than from the control's own
+	 * parent: the archive control and the row's button are SIBLINGS inside a pair wrapper, so
+	 * `pressed.parentElement?.querySelector("[data-chat-row]")` answered nothing and the successor
+	 * rule below fell through to `live[0]` - the LIST'S FIRST conversation, on every route, where the
+	 * row that took the pressed row's place was a different element (MEASURED by UX round 2:
+	 * `indexTheHandOffComputes: -1` against `trueIndexFromClosest: 1`, across four routes - mouse and
+	 * `⌘⇧A`, at the list's head and from a scrolled position - every one landing on the first row).
+	 * The scope below was already right; without this line the rule it feeds never ran.
+	 */
 	const rowButton =
-		pressed.parentElement?.querySelector<HTMLElement>("[data-chat-row]") ??
-		null;
-	const index = rowButton ? rows.indexOf(rowButton) : -1;
+		pressed
+			.closest<HTMLElement>("[data-session-row]")
+			?.querySelector<HTMLElement>("[data-chat-row]") ?? null;
+	/*
+	 * WHICH ORDER THE SUCCESSOR IS READ FROM, because the region alone is not enough: inside the list
+	 * it is the list's own region - that is the order the reader sees, and the region the caret
+	 * belongs in (UX round 2, U1). A press whose row is NOT one of the list's rows keeps the PANEL's
+	 * order, so that press still hands the caret to its neighbour instead of sending it down to the
+	 * list's first row, which is what a region-only query with an unresolved index does. The entity
+	 * region's nested rows carry the same archive control, which is why this case is written rather
+	 * than assumed away.
+	 */
+	const rows =
+		rowButton !== null && listRows.includes(rowButton)
+			? listRows
+			: Array.from(document.querySelectorAll<HTMLElement>("[data-chat-row]"));
+	const index = rowButton === null ? -1 : rows.indexOf(rowButton);
 	return () => {
 		const live = rows
 			.map((element, position) => ({ element, position }))
@@ -797,14 +821,17 @@ function focusRowAfterRemoval(pressed: HTMLElement): () => void {
 		 * scroll the app had no business writing. `focus()` says where the caret is; where the reader
 		 * is standing is the reader's - the division `holdFocusedRow` states for its own correction.
 		 *
-		 * WHICH node takes the caret is SCOPED TO THE CHATS REGION (UX round 2, U1), and the scope is
-		 * load-bearing for the same reason it is at the pile-clearing hand-off below: the one-scroll
-		 * change put both regions in ONE document order, so the document's first `[data-chat-row]` is
-		 * the ENTITY region's `Agents` disclosure - and that is where the caret landed, MEASURED
-		 * (`region=entities`, `aria-expanded=true`, roughly 500px above the row that was pressed),
-		 * identically from the first row and through the `⌘⇧A` chord. The next `↓` then walked the
-		 * panel from its top instead of the list from where the reader was. The same partition the
-		 * arrow walk's own `nav` query is written under, read here for the same reason.
+		 * WHICH node takes the caret is SCOPED TO THE CHATS REGION AND RESOLVED FROM THE PRESSED ROW
+		 * (UX round 2, U1 and U2). The scope is load-bearing for the same reason it is at the
+		 * pile-clearing hand-off below: the one-scroll change put both regions in ONE document order, so
+		 * the document's first `[data-chat-row]` is the ENTITY region's `Agents` disclosure - and that is
+		 * where the caret landed, MEASURED (`region=entities`, `aria-expanded=true`, roughly 500px above
+		 * the row that was pressed), identically from the first row and through the `⌘⇧A` chord; the next
+		 * `↓` then walked the panel from its top instead of the list from where the reader was. The index
+		 * is what makes the successor RULE run: with it resolved, the caret goes to the row that took the
+		 * pressed row's place (the next live row, or the last one before it when the pressed row was the
+		 * list's last), and the clause that records this leg's closure asserts that row by id - so the
+		 * claim and the reading are the same statement rather than a region that both satisfy.
 		 */
 		successor?.focus({ preventScroll: true });
 	};
