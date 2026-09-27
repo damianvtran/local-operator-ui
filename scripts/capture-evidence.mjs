@@ -5851,8 +5851,42 @@ export const STORIES = [
 	 * is a reflow the user reads as motion.
 	 */
 	["mesh-tab--device-panel", 1380, 900],
-	["mesh-tab--drag-to-device", 1380, 900],
-	["mesh-tab--drag-refused-over-network", 1380, 900],
+	/*
+	 * THE TWO TRANSIENT FRAMES CARRY A CLAIM, AND THE CLAIM IS CHECKED AT THE SHUTTER.
+	 * `expectSentence` is what this rig already has for a state that exists only inside a
+	 * gesture: it waits up to 2 s for the sentence in the DOM immediately before the
+	 * frame, and throws if it is not there — which is the difference between a frame that
+	 * SHOWS the transient and a frame that merely follows one. Without it the shutter can
+	 * land after the gesture state has gone (measured on this branch: an unguarded run at
+	 * `settleMs` 120 and again at 0 produced the SETTLED canvas, because `play` resolves
+	 * on the indicator's first appearance and the state is not held past it), and a
+	 * settled still under a transient's name is the failure this row's comment exists to
+	 * prevent.
+	 */
+	[
+		"mesh-tab--drag-to-device",
+		1380,
+		900,
+		{
+			drag: {
+				from: `[data-mesh-session="0123456789ab"]`,
+				to: `[data-mesh-device="d_${"b".repeat(32)}"]`,
+			},
+			expectSentence: "Move to cloud-node-1",
+		},
+	],
+	[
+		"mesh-tab--drag-refused-over-network",
+		1380,
+		900,
+		{
+			drag: {
+				from: `[data-mesh-session="0123456789ab"]`,
+				to: `[data-mesh-network="n_${"1".repeat(24)}"]`,
+			},
+			expectSentence: "Drop will be refused",
+		},
+	],
 	["mesh-tab--move-confirm", 1380, 900],
 	["mesh-tab--move-refused-busy", 1380, 900],
 	["mesh-tab--move-copy-with-undo", 1380, 900],
@@ -7322,6 +7356,73 @@ const main = async () => {
 				await cdp.send("Input.insertText", { text: options.insertText });
 				if (options?.insertTextSettleMs)
 					await sleep(options.insertTextSettleMs);
+			}
+
+			/*
+			 * A REAL DRAG, FOR THE STATE A `play` FUNCTION CANNOT HOLD.
+			 *
+			 * The same rule this file already applies to `:active` (see the `hold` arm above)
+			 * reaches further here: the drag's transient - the lifted chip, the ghost, the
+			 * indicator naming the operation - is held by a POINTER THAT IS DOWN, and a
+			 * synthetic `PointerEvent` cannot be that pointer. Measured on the Mesh tab's
+			 * own rows: the story's `play` dispatches a real-looking `pointerdown` and
+			 * `pointermove` and resolves, the sweep takes its frame, and the frame is the
+			 * SETTLED canvas - `expectSentence` then reports the claimed sentence absent,
+			 * which is how this was found rather than assumed. The rig's own input pipeline
+			 * does lift the chip (`Input.dispatchMouseEvent` is what the bench drives the
+			 * shipped app with, and its "chip lifted" assertion passes), so the gesture is
+			 * driven from here: move to `from`, press, interpolate to `to` with the button
+			 * HELD, and leave it down for the guard and the shutter.
+			 *
+			 * Nothing leaks past the story: every capture navigates for its theme and each
+			 * navigation is preceded by `about:blank`, so no page inherits Chromium's input
+			 * state - the same argument the `hold` arm states.
+			 */
+			if (options?.drag) {
+				const point = async (selector) => {
+					for (let i = 0; i < 100; i++) {
+						const { result } = await cdp.send("Runtime.evaluate", {
+							returnByValue: true,
+							expression: `(() => {
+								const el = document.querySelector(${JSON.stringify(selector)});
+								if (!el) return null;
+								const r = el.getBoundingClientRect();
+								if (r.width === 0 || r.height === 0) return null;
+								return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+							})()`,
+						});
+						if (result.value) return result.value;
+						await sleep(150);
+					}
+					throw new Error(
+						`${story} @ ${theme}: the drag selector \`${selector}\` never appeared (15s) - a drag that finds nothing must fail rather than photograph the settled state`,
+					);
+				};
+				const from = await point(options.drag.from);
+				const to = await point(options.drag.to);
+				const mouse = (type, x, y, buttons) =>
+					cdp.send("Input.dispatchMouseEvent", {
+						type,
+						x,
+						y,
+						button: buttons === 0 ? "none" : "left",
+						buttons,
+						clickCount: type === "mousePressed" ? 1 : 0,
+						modifiers: 0,
+						pointerType: "mouse",
+					});
+				await mouse("mouseMoved", from.x, from.y, 0);
+				await mouse("mousePressed", from.x, from.y, 1);
+				const steps = options.drag.steps ?? 12;
+				for (let i = 1; i <= steps; i += 1) {
+					await mouse(
+						"mouseMoved",
+						Math.round(from.x + ((to.x - from.x) * i) / steps),
+						Math.round(from.y + ((to.y - from.y) * i) / steps),
+						1,
+					);
+					await sleep(16);
+				}
 			}
 
 			/*

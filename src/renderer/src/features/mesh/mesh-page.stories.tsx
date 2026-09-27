@@ -582,70 +582,6 @@ function actionFixture() {
 	};
 }
 
-/**
- * Dispatch one pointer event at an element, as a real drag would arrive.
- *
- * A SYNTHETIC `PointerEvent` RATHER THAN `userEvent.pointer`, and the reason is the
- * snapshot: this drag has to be photographed MID-FLIGHT, and `userEvent` completes a
- * gesture (press, move, release) rather than stopping in the middle of one. The
- * events carry real client coordinates because the drop target resolves through the
- * BROWSER's hit-testing (`closest()` from `elementFromPoint`) - a synthetic move at
- * (0,0) would resolve to nothing, which is the failure mode a coordinate-free
- * dispatch would hide.
- */
-function dispatchPointer(target: Element, type: string, x: number, y: number) {
-	target.dispatchEvent(
-		new PointerEvent(type, {
-			bubbles: true,
-			cancelable: true,
-			composed: true,
-			clientX: x,
-			clientY: y,
-			pointerId: 1,
-			pointerType: "mouse",
-			button: 0,
-			buttons: type === "pointerup" ? 0 : 1,
-			isPrimary: true,
-		}),
-	);
-}
-
-const centreOf = (element: Element) => {
-	const rect = element.getBoundingClientRect();
-	return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-};
-
-/** Press a chip and drag it to a node's centre, WITHOUT releasing it. */
-async function dragChipTo(chipId: string, deviceId: string) {
-	await screen.findByText(/networks? · /i);
-	const chip = document.querySelector(`[data-mesh-session="${chipId}"]`);
-	const node = document.querySelector(`[data-mesh-device="${deviceId}"]`);
-	const canvas = document.querySelector("[data-mesh-canvas]");
-	if (!chip || !node || !canvas)
-		throw new Error("the drag's actors are not mounted");
-	const from = centreOf(chip);
-	dispatchPointer(chip, "pointerdown", from.x, from.y);
-	const to = centreOf(node);
-	dispatchPointer(canvas, "pointermove", to.x, to.y);
-	/*
-	 * A LONG TIMEOUT ON PURPOSE. This is the one moment in the set where the frame is
-	 * a TRANSIENT state, and the commit that paints the ghost rides on the next React
-	 * render - which on a loaded machine (this capture runs beside twenty-five other
-	 * sessions) can be well past the default one second. The sweep failed on exactly
-	 * that with `the ghost has not painted yet` on the dark pass of
-	 * `drag-refused-over-network` while the light pass had taken the same frame
-	 * moments earlier, which is a timing failure rather than a state that does not
-	 * exist.
-	 */
-	await waitFor(
-		() => {
-			if (!document.querySelector("[data-mesh-ghost]"))
-				throw new Error("the ghost has not painted yet");
-		},
-		{ timeout: 15_000 },
-	);
-}
-
 /** Click the `⋯` menu on a session row and choose one of its items. */
 async function chooseFromSessionMenu(sessionId: string, label: string) {
 	const user = userEvent.setup();
@@ -688,34 +624,44 @@ export const DevicePanel: Story = {
 	},
 };
 
-/** A chip in the air over a VALID target: the transient state, mid-drag. */
+/**
+ * A chip in the air over a VALID target: the transient state, mid-drag.
+ *
+ * THE GESTURE IS DRIVEN BY THE RIG, NOT BY THIS STORY, and that is a measurement rather
+ * than a preference. A `PointerEvent` dispatched from here has no ACTIVE pointer behind
+ * it, and the state this frame exists to show is held by a pointer that is DOWN: the
+ * synthetic sequence resolves and paints the SETTLED canvas, which the capture's own
+ * `expectSentence` guard then reports as "the frame's claimed sentence is not on the
+ * screen". The rig presses, moves with the button held and interpolates through the real
+ * input pipeline (`Input.dispatchMouseEvent`, the mechanism the canvas bench drives the
+ * shipped app with), so the row carries `drag` and the claim, and this story only mounts
+ * the fixtures. A story that asserts a transient it cannot produce is worse than one that
+ * does not assert it.
+ */
 export const DragToDevice: Story = {
 	render: () => {
 		installBridge(actionFixture());
 		return <MeshPage />;
 	},
 	play: async () => {
-		await dragChipTo("0123456789ab", DEVICE_PEER);
-		await screen.findByText("Move to cloud-node-1");
+		await screen.findByText(/networks? · /i);
 	},
 };
 
-/** A chip over a network lane: the drop the client refuses, says so, and names why. */
+/**
+ * A chip over a network lane: the drop the client refuses, says so, and names why.
+ *
+ * Same rule as `DragToDevice`: the refusal is stated DURING the gesture, the rig drives
+ * the gesture, and the row's claim is what says the refusal was on the screen when the
+ * shutter fired.
+ */
 export const DragRefusedOverNetwork: Story = {
 	render: () => {
 		installBridge(actionFixture());
 		return <MeshPage />;
 	},
 	play: async () => {
-		await dragChipTo("0123456789ab", DEVICE_PEER);
-		const lane = document.querySelector(`[data-mesh-network="${NET_HOME}"]`);
-		const canvas = document.querySelector("[data-mesh-canvas]");
-		if (!lane || !canvas) throw new Error("the lane is not mounted");
-		const to = centreOf(lane);
-		dispatchPointer(canvas, "pointermove", to.x, to.y);
-		await screen.findByText(
-			/Drop will be refused: A conversation lives on a device/,
-		);
+		await screen.findByText(/networks? · /i);
 	},
 };
 
