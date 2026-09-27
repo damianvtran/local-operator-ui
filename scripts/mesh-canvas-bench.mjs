@@ -920,15 +920,15 @@ async function runInteraction(send, evaluate, seconds) {
 	 * phase that needs a visible chip and a visible destination, and a viewer who has
 	 * just panned somewhere unhelpful does the same thing before dragging.
 	 */
-		/*
-		 * THE CANVAS OWNS THE KEY HANDLER (`tabIndex={0}` on the canvas itself), so a
-		 * synthetic key press must be aimed at it: dispatched at the body it reaches
-		 * nothing, which is how a run measured `scale(3)` and five off-screen chips after
-		 * asking for a reset.
-		 */
-		await evaluate(
-			`document.querySelector("[data-mesh-canvas]")?.focus?.() ?? null`,
-		);
+	/*
+	 * THE CANVAS OWNS THE KEY HANDLER (`tabIndex={0}` on the canvas itself), so a
+	 * synthetic key press must be aimed at it: dispatched at the body it reaches
+	 * nothing, which is how a run measured `scale(3)` and five off-screen chips after
+	 * asking for a reset.
+	 */
+	await evaluate(
+		`document.querySelector("[data-mesh-canvas]")?.focus?.() ?? null`,
+	);
 	for (const type of ["keyDown", "keyUp"]) {
 		await send("Input.dispatchKeyEvent", {
 			type,
