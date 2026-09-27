@@ -146,6 +146,48 @@ touches `scripts/`, that stamp cannot include the edit until the edit is committ
 so the order is commit, derive, write the values in, `--amend` - the amendment moves
 `docs/` only, and the value written stays true.
 
+### Re-stamp in a commit that moves `docs/` and nothing else
+
+A stamp has to be read *after* the commit that ships it exists. A working tree has
+no tree hash: derive while a `src/`/`scripts/` edit is still uncommitted and
+`git rev-parse HEAD:src` answers with the commit you are standing on - the
+*parent* of the change - and the hash it returns is real, so nothing about the
+diff looks wrong. Land the content in a commit of its own, then write the values
+into a commit that moves `docs/evidence/manifest.json` and nothing else. The
+`commit, derive, --amend` order above is the same rule, and it holds only while
+the amended commit moves `docs/` on its own.
+
+**Fold first, re-stamp second, as two commits.** The fold is where this keeps
+biting: the re-stamp reads like part of the merge, and sweeping it in reads the
+values against the pre-fold head. Merge `origin/main` in one commit; re-stamp in
+a separate `docs/`-only one.
+
+Measured 2026-09-27 - three PRs in one night, twice during a fold. #553
+(`feat/provider-setup`, `a10e43c25f`) carried 28 frames while also moving `src/`
+and `scripts/`, and `pnpm test:desktop` named both: `srcTree` is `8e4e9a963` but
+`HEAD:src` is `bcb460a19`, `scriptsTree` is `5cb6ff58d` but `HEAD:scripts` is
+`093faaf43`. #555 (`feat/installer-panel-refresh`) named `scriptsTree` is
+`3fea1efbc` but `HEAD:scripts` is `63d3b1d90`. #554 (`feat/condensed-group-images`)
+swept a `trace-fold.stories.tsx` comment into the fold's re-stamp, so the
+`srcTree` it shipped described the tree before itself, and `fabea58083` had to
+re-derive it: `srcTree is 05b975ca5 but HEAD:src is e5e46f9c6`.
+
+The failing test is `not ok - the SHIPPED manifest's stamps describe the tree it
+ships in` (`scripts/evidence-manifest.test.mjs`), inside `pnpm test:desktop`. A
+`DIRTY` head keeps the older green run and acquires no new one, so the first
+symptom is often a PR with no checks reported at all: fold first, do not wait.
+
+**`gh run view` can cut a log off mid-run, so an absent diagnostic may only be
+past the cut.** On #553's failed `Desktop Tests` job, `gh run view --job
+<job-id> --log` returned 18.7 MB of a 37.7 MB job log (the run-level `gh run view
+<run> --log` returned 19.3 MB), ending mid-suite at test 1034 with the post-job
+cleanup as the next line and no `# fail` line - while the failing assertion
+itself, `not ok 1900`, the manifest-stamp test above, sat in the six minutes the
+reader had dropped. Fetch the job log from the API instead: `gh api
+/repos/<owner>/<repo>/actions/jobs/<job-id>/logs`, which returned all 37.7 MB.
+Pass `--allow-escape-sequences`, or `gh` refuses the body outright ("the response
+contains terminal escape sequences") and prints nothing.
+
 `pnpm test:desktop` runs focused desktop transport/security contract checks with
 Node's built-in runner. It bundles the actual TypeScript modules in memory and
 uses real loopback HTTP; its Electron IPC fixture is not native-app or visual
@@ -187,6 +229,18 @@ That is the deliberate trade rather than a regression to tune away: the conditio
 is a host already swapping, and the point of the floor is that this suite is not
 what pushes it over. A `test:desktop` run that looks slow should be read as its
 concurrency line first and its timer second.
+
+**Recorded, not done: a class of desktop tests still synchronises on the wall
+clock.** A lane reported, and a reviewer corroborated, that **41 sites across 19
+files** use a wall-clock budget as their synchronisation, with the same `5000` ms
+budget in four other files; one site was measured convertible in ~1035 ms, and
+only two `healed` waits were judged to need a real event. Those counts and that
+classification are the reporting lane's, not a reading of this file - and the
+`healed` code checked here (`scripts/storybook-query-fixture.test.mjs`) heals on a
+`setTimeout` and then polls `Date.now()`, so it is not itself evidence for that
+exception. The sweep was not performed: out of scope for the change that recorded
+it, and the fleet was under disk pressure at the time. No issue was filed - this
+repository's convention is that deferred findings live in the PR thread.
 
 **Anything that spawns `node --test` must drop `NODE_TEST_CONTEXT`.** Node
 exports it into every test-file process, and a nested `node --test` that inherits
