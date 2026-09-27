@@ -1411,9 +1411,11 @@ const STAMP_BINDING_NOTES = [
 	/*
 	 * AND THE DESKTOP-STEP DIAGNOSTICS' OWN: its subject is this file's binding
 	 * too - it moves the `scripts/` tree without taking a frame (nothing in it is
-	 * user-visible; the evidence is the step body exercised under `bash -e` on
-	 * three synthetic logs, and A17's new pins going red under the mutation), so
-	 * the reader is owed the pair AND the reason no still was owed.
+	 * user-visible; the evidence is the step body EXTRACTED and driven under
+	 * `bash -e` with a stub `pnpm` against five synthetic logs, plus the mutation
+	 * table - six edits that each remove the guarantee, each asserted to change
+	 * the outcome), so the reader is owed the pair AND the reason no still was
+	 * owed.
 	 */
 	"desktopStepDiagnosticsRestampNote",
 ];
