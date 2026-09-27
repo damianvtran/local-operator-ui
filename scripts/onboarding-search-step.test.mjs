@@ -503,12 +503,15 @@ test("a failed save keeps the value and states the refusal on the row", async ()
 
 /*
  * The toast half of the save contract, pinned at the seam the two files meet
- * (UX round 1, U4): this step is `useUpdateCredential`'s only caller and turns
- * the shared toasts OFF, because a toast per field names the env var rather
- * than the provider and repeats away; the hook defaults them back ON so any
- * future caller inherits the announced behaviour.
+ * (UX round 1 U4, widened by round 2's U5): this step is
+ * `useUpdateCredential`'s only caller and turns the shared SUCCESS toast OFF,
+ * because a toast per field names the env var rather than the provider and
+ * repeats away. Failures are NOT switchable: the deduped error toast is the
+ * one report that survives the step unmounting, so leaving Finish/Skip with a
+ * failed save in flight still surfaces it. The hook defaults the success
+ * switch ON for any future caller.
  */
-test("the step silences the shared toasts, and the hook keeps them by default", async () => {
+test("the step silences only the success toast, and the failure backstop is not switchable", async () => {
 	const { readFileSync } = await import("node:fs");
 	const step = readFileSync(
 		"src/renderer/src/features/onboarding/components/steps/search-api-step.tsx",
@@ -519,11 +522,233 @@ test("the step silences the shared toasts, and the hook keeps them by default", 
 		"utf8",
 	);
 	assert.ok(
-		step.includes("useUpdateCredential({ announce: false })"),
-		"the step must own its feedback: the row badge and the inline refusal",
+		step.includes("successToasts: false"),
+		"the step must silence the success announcement",
 	);
 	assert.ok(
-		hook.includes("options?.announce ?? true"),
+		hook.includes("options?.successToasts ?? true"),
 		"the hook's default must stay announced for every future caller",
 	);
+	assert.ok(
+		hook.includes("if (successToasts)") && hook.includes("showSuccessToast("),
+		"the SUCCESS toast is the one the switch gates",
+	);
+	assert.ok(
+		hook.includes("showErrorToast(errorMessage);") &&
+			!hook.includes("if (successToasts) showErrorToast"),
+		"the failure toast must stay raised whichever way the switch is set (U5)",
+	);
+});
+
+/*
+ * The same seam, EXECUTED rather than read: the hook is bundled a second time
+ * with its toast manager and API client replaced by stubs, driven through a
+ * real render, and both directions are asserted - a successful save with the
+ * switch off raises nothing, a failed one still reaches `showErrorToast`.
+ * The stubs are written beside this file (the bundle's own path trick) and
+ * unlinked in the same run; they exist because the seam is a module boundary
+ * and the manager's real dedupe/telemetry is not what this test is about.
+ */
+test("a successful save stays silent, a failed one still raises the backstop", async () => {
+	const { writeFile: writeFileSeam, unlink: unlinkSeam } = await import(
+		"node:fs/promises"
+	);
+	const toastStub = new URL(
+		`./_update-credential-toast-stub-${process.pid}.mjs`,
+		import.meta.url,
+	);
+	const apiStub = new URL(
+		`./_update-credential-api-stub-${process.pid}.mjs`,
+		import.meta.url,
+	);
+	await writeFileSeam(
+		toastStub,
+		`// Records every toast the hook raises, for the test to read.
+` +
+			`globalThis.__TOAST_CALLS__ = globalThis.__TOAST_CALLS__ ?? [];
+` +
+			`export const showSuccessToast = (message) => {
+` +
+			`\tglobalThis.__TOAST_CALLS__.push(["success", message]);
+` +
+			`};
+` +
+			`export const showErrorToast = (message) => {
+` +
+			`\tglobalThis.__TOAST_CALLS__.push(["error", message]);
+` +
+			`};
+`,
+	);
+	await writeFileSeam(
+		apiStub,
+		`// Answers like the desktop transport; refuses when the test says so.
+` +
+			`export const createLocalOperatorClient = () => ({
+` +
+			`\tcredentials: {
+` +
+			`\t\tupdateCredential: async () => {
+` +
+			`\t\t\tif (globalThis.__SEAM_FAIL__) throw new Error("the transport refused this write");
+` +
+			`\t\t\treturn { status: 200, message: "ok" };
+` +
+			`\t\t},
+` +
+			`\t},
+` +
+			`});
+`,
+	);
+	try {
+		const seam = await build({
+			stdin: {
+				contents: `
+					import { createElement } from "react";
+					import { useUpdateCredential } from "./src/renderer/src/shared/hooks/use-update-credential";
+					export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+					export { useUpdateCredential };
+					export { createElement };
+					export const Probe = ({ onReady }) => {
+						onReady(useUpdateCredential({ successToasts: false }));
+						return null;
+					};
+				`,
+				resolveDir: process.cwd(),
+			},
+			bundle: true,
+			format: "esm",
+			platform: "node",
+			// The renderer's aliases are tsconfig paths, not node resolutions.
+			alias: {
+				"@renderer": "./src/renderer/src",
+				"@shared": "./src/renderer/src/shared",
+				"@features": "./src/renderer/src/features",
+				"@assets": "./src/renderer/src/assets",
+			},
+			/*
+			 * Plugins rather than `alias`: alias rewrites SUBPATHS too, and
+			 * `@shared/api/local-operator/backend-error` (imported by a real
+			 * neighbour in this graph) must keep resolving to the SDK. The
+			 * filters are anchored so only the exact specifiers are stubbed.
+			 */
+			plugins: [
+				{
+					name: "update-credential-seam-stubs",
+					setup(buildSeam) {
+						buildSeam.onResolve(
+							{ filter: /^@shared\/api\/local-operator$/ },
+							() => ({ path: apiStub.pathname }),
+						);
+						buildSeam.onResolve(
+							{ filter: /^@shared\/utils\/toast-manager$/ },
+							() => ({ path: toastStub.pathname }),
+						);
+					},
+				},
+			],
+			external: [
+				"react",
+				"react-dom",
+				"react/jsx-runtime",
+				"@tanstack/react-query",
+			],
+			packages: "external",
+			loader: {
+				".css": "empty",
+				".png": "empty",
+				".svg": "empty",
+				".webp": "empty",
+			},
+			define: { "import.meta.env": "globalThis.__RIG_ENV__" },
+			jsx: "automatic",
+			write: false,
+		});
+		const seamPath = new URL(
+			`./_update-credential-seam-${process.pid}.mjs`,
+			import.meta.url,
+		);
+		await writeFileSeam(seamPath, seam.outputFiles[0].text);
+		/*
+		 * The unlink is a `finally`, not the statement after the import: a seam
+		 * bundle that fails to LOAD (measured: the alias-vs-plugin cut of this
+		 * test threw `ERR_MODULE_NOT_FOUND` here) used to leave the file in
+		 * `scripts/`, where `check-scripts-lint` then found it. The temp file
+		 * must not survive either outcome.
+		 */
+		let seamExports;
+		try {
+			seamExports = await import(seamPath.href);
+		} finally {
+			await unlinkSeam(seamPath).catch(() => {});
+		}
+		const {
+			QueryClient: SeamClient,
+			QueryClientProvider: SeamProvider,
+			Probe,
+			createElement: seamCreate,
+		} = seamExports;
+		globalThis.__TOAST_CALLS__.length = 0;
+		globalThis.__SEAM_FAIL__ = false;
+		let mutation = null;
+		const client = new SeamClient({
+			defaultOptions: { mutations: { gcTime: 0 } },
+		});
+		const container = document.createElement("div");
+		document.body.appendChild(container);
+		const root = createRoot(container);
+		try {
+			await act(async () => {
+				root.render(
+					seamCreate(
+						SeamProvider,
+						{ client },
+						seamCreate(Probe, {
+							onReady: (next) => {
+								mutation = next;
+							},
+						}),
+					),
+				);
+			});
+			assert.ok(mutation, "the probe must hand back the mutation");
+			// Direction one: a successful save with the switch OFF raises nothing.
+			await act(async () => {
+				await mutation.mutateAsync({
+					key: "BRAVE_API_KEY",
+					value: "seam-value",
+				});
+			});
+			assert.deepEqual(
+				globalThis.__TOAST_CALLS__,
+				[],
+				"a successful save must stay silent under successToasts: false",
+			);
+			// Direction two: a FAILED save still reaches the shared toast, which
+			// is the report that outlives the step (U5).
+			globalThis.__SEAM_FAIL__ = true;
+			await act(async () => {
+				await assert.rejects(
+					() =>
+						mutation.mutateAsync({
+							key: "BRAVE_API_KEY",
+							value: "seam-value-2",
+						}),
+					"a refused write must reject, so the row's retry stays in charge",
+				);
+			});
+			assert.deepEqual(
+				globalThis.__TOAST_CALLS__,
+				[["error", "the transport refused this write"]],
+				"a failed save must reach the shared toast even with successes silenced",
+			);
+		} finally {
+			await act(async () => root.unmount());
+			container.remove();
+		}
+	} finally {
+		await unlinkSeam(toastStub).catch(() => {});
+		await unlinkSeam(apiStub).catch(() => {});
+	}
 });

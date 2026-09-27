@@ -114,3 +114,14 @@ helper, labels, inputs and links share the option rows' own text column (the
 row's lead-in is the mark's box: p-3 12 + size-4 16 + gap-3 12 = 40px); the
 previous rail sat one gap-unit left of the copy it belongs to. Nothing else in
 the frame changes: the same six rows, the same helper line, both themes.
+
+ROUND 2 NOTE ON FRAME REPRODUCIBILITY (QA round 2, Q1): the dark
+`onboarding-step-3-keys` frame does not byte-reproduce off the session that
+stamped it. Independent regenerations are byte-identical to each other and
+differ from the committed bytes by glyph/edge antialiasing across the modal's
+text (max channel delta 15/255; a +-1-2px correlation test collapses nothing;
+side-by-side crops show identical content, indent and layout; the light variant
+is byte-identical). Same class as the `account-checking` variance recorded in
+`docs/evidence/navigation-user-profile/README.md`: the state is the same state,
+and a re-stamp on another machine will produce bytes that differ from what is
+committed here in the same bounded way.

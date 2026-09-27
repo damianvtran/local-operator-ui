@@ -279,7 +279,9 @@ export const SearchApiStep: FC<SearchApiStepProps> = ({
 }) => {
 	const [mode, setMode] = useState<SearchMode>("free");
 	const { data: credentialsData } = useCredentials();
-	const updateCredentialMutation = useUpdateCredential({ announce: false });
+	const updateCredentialMutation = useUpdateCredential({
+		successToasts: false,
+	});
 	const storedKeys = credentialsData?.keys ?? [];
 
 	const saveKey = async (key: string, value: string) => {
