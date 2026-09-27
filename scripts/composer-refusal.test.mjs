@@ -447,16 +447,87 @@ test("the refusal predicate is declared before the handler whose deps name it", 
 	 * component throws. The predicate is therefore hoisted deliberately, and a
 	 * later tidy that moves it back beside the render that paints it has to
 	 * come here.
+	 *
+	 * THE PREDICATE'S TERMS ARE PINNED HERE, because every door above answers to
+	 * THIS expression and a term that moved out of it would leave the guards
+	 * above refusing on a stale read. `unavailable` and `isBusy` are the base's
+	 * two; `secretAnswerPending` is the secret ask's (`secretAnswer` on the
+	 * props), and it is deliberately a TERM of this predicate rather than a
+	 * fourth guard beside the others: the composer must refuse typing, paste,
+	 * dictation, the slash popup, the chips and the form's own submit TOGETHER
+	 * while a credential question waits, and that togetherness is exactly what
+	 * this one expression buys (see the dedicated case below for why the box
+	 * must not take the credential at all).
 	 */
 	const source = code(COMPOSER);
 	const declared = source.indexOf(
-		"const isInputDisabled = unavailable || isBusy;",
+		"const isInputDisabled = unavailable || isBusy || secretAnswerPending;",
 	);
 	const handler = source.indexOf("const handleComposerKeyDown = useCallback(");
 	assert.ok(declared > -1 && handler > -1);
 	assert.ok(
 		declared < handler,
 		"`isInputDisabled` must be declared above the handler that lists it",
+	);
+});
+
+test("the secret gate's term refuses the box, and the box points at the dock's field", () => {
+	/*
+	 * THE SECRET ASK'S CLOSURE, as the composer's half of it. A `secret: true`
+	 * gate is answered from the dock's masked field
+	 * (`trace/question-dock.tsx`), and THIS box must not be the credential's way
+	 * in: in a real browser a `readOnly` textarea fires no `input` event at all,
+	 * so `onChange` never runs and the draft write the hook performs inside it
+	 * never happens — which is what keeps a credential out of the persisted
+	 * draft store and the recall log, and out of clear text on screen while it
+	 * is typed.
+	 *
+	 * The three pins below are the halves that can be asserted here: the term
+	 * (derived from the prop, so only the page's own gate reading can turn it
+	 * on), its membership in the ONE refusal predicate every writer and
+	 * submitter already answers to, and the placeholder's own arm — read BEFORE
+	 * `inputDisabled`'s, because "Agent is busy" over a parked secret question
+	 * is false about the state and would leave the reader hunting for an input
+	 * that is actually one card above. The browser half (no input event on a
+	 * readOnly field; no keystroke taken) is a real-engine fact that neither
+	 * jsdom nor this scan can see; `scripts/credential-composer.test.mjs`
+	 * carries the jsdom-provable half of the state, and QA drives the engine.
+	 */
+	const source = code(COMPOSER);
+	assert.match(
+		source,
+		/secretAnswer\?: boolean;/,
+		"the prop is declared, so the page's reading has somewhere to land",
+	);
+	assert.match(
+		source,
+		/const secretAnswerPending = Boolean\(secretAnswer\);/,
+		"the term is derived from the prop rather than read ad hoc",
+	);
+	assert.match(
+		source,
+		/const isInputDisabled = unavailable \|\| isBusy \|\| secretAnswerPending;/,
+		"and it joins the one predicate every writer and submitter answers to",
+	);
+	assert.match(
+		source,
+		/composerPlaceholder\(\{[\s\S]{0,240}?secretAnswer: secretAnswerPending,\s*\n\s*inputDisabled: isInputDisabled,/,
+		"the placeholder order hands the term to the sentence chooser ahead of the busy arm",
+	);
+	const placeholder = code(
+		"src/renderer/src/shared/hooks/use-message-input.ts",
+	);
+	assert.match(
+		placeholder,
+		/if \(state\.secretAnswer\) return COMPOSER_PLACEHOLDER\.secretAnswer;/,
+		"and the chooser itself reads it",
+	);
+	assert.ok(
+		placeholder.indexOf("state.secretAnswer") <
+			placeholder.indexOf("state.inputDisabled") &&
+			placeholder.indexOf("state.inputDisabled") <
+				placeholder.indexOf("state.awaitingAnswer"),
+		"the secret arm sits after `unavailable` and before `inputDisabled`/`awaitingAnswer`",
 	);
 });
 
