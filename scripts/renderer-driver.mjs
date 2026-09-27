@@ -16957,14 +16957,19 @@ async function sceneDrafts(cdp) {
 		);
 	}
 	/*
-	 * AND IT TAKES THE CARET ANYWAY, AND SAYS WHY (agent review round 2's R7, design
-	 * round 2's D7). The whole reason the act is `aria-disabled` rather than
-	 * `disabled` is that a disabled control cannot hold focus - the arrow walk's step
-	 * onto it dead-stopped, and its why was unannounceable. The claims are the
-	 * browser's own, and the ink is the design round's: the measured disabled read
-	 * darkened `ink-muted` -> `ink` under the pointer at 45% opacity (D5).
+	 * GUARDED LIKE EVERY PROBE THAT NEEDS THE ACT: main's build has no discard
+	 * control to probe, and the colour read would throw on its missing element.
 	 */
-	const flightProbe = await cdp.evaluate(`(() => {
+	if (flightAct !== null) {
+		/*
+		 * AND IT TAKES THE CARET ANYWAY, AND SAYS WHY (agent review round 2's R7, design
+		 * round 2's D7). The whole reason the act is `aria-disabled` rather than
+		 * `disabled` is that a disabled control cannot hold focus - the arrow walk's step
+		 * onto it dead-stopped, and its why was unannounceable. The claims are the
+		 * browser's own, and the ink is the design round's: the measured disabled read
+		 * darkened `ink-muted` -> `ink` under the pointer at 45% opacity (D5).
+		 */
+		const flightProbe = await cdp.evaluate(`(() => {
 		const el = document.querySelector(${JSON.stringify(`[data-draft-discard="${DRAFTS_FLIGHT}"]`)});
 		if (el === null) return null;
 		el.focus();
@@ -16972,40 +16977,41 @@ async function sceneDrafts(cdp) {
 		const why = whyId === null ? null : document.getElementById(whyId);
 		return { focused: document.activeElement === el, disabledAttr: el.disabled === true, ariaDisabled: el.getAttribute("aria-disabled"), why: why === null ? null : (why.textContent ?? "").trim() };
 	})()`);
-	note("the inapplicable control, probed", JSON.stringify(flightProbe));
-	check(
-		"the inapplicable control can still take the caret",
-		flightProbe !== null &&
-			flightProbe.focused === true &&
-			flightProbe.disabledAttr === false,
-		JSON.stringify(flightProbe),
-	);
-	check(
-		"and says why, in the AT channel",
-		typeof flightProbe?.why === "string" && flightProbe.why.length > 0,
-		JSON.stringify(flightProbe),
-	);
-	const flightColour = () =>
-		cdp.evaluate(
-			`(() => { const el = document.querySelector(${JSON.stringify(`[data-draft-discard="${DRAFTS_FLIGHT}"]`)}); return el === null ? null : getComputedStyle(el).color; })()`,
+		note("the inapplicable control, probed", JSON.stringify(flightProbe));
+		check(
+			"the inapplicable control can still take the caret",
+			flightProbe !== null &&
+				flightProbe.focused === true &&
+				flightProbe.disabledAttr === false,
+			JSON.stringify(flightProbe),
 		);
-	await cdp.send("Input.dispatchMouseEvent", {
-		type: "mouseMoved",
-		x: 2,
-		y: 2,
-		button: "none",
-		buttons: 0,
-	});
-	await wait(160);
-	const flightColourOff = await flightColour();
-	await hoverOver(cdp, `[data-draft-row="${DRAFTS_FLIGHT}"]`);
-	await wait(160);
-	const flightColourOn = await flightColour();
-	check(
-		"the inapplicable control's ink does not move under the pointer",
-		flightColourOff !== null && flightColourOn === flightColourOff,
-		`${JSON.stringify(flightColourOff)} vs ${JSON.stringify(flightColourOn)}`,
-	);
+		check(
+			"and says why, in the AT channel",
+			typeof flightProbe?.why === "string" && flightProbe.why.length > 0,
+			JSON.stringify(flightProbe),
+		);
+		const flightColour = () =>
+			cdp.evaluate(
+				`(() => { const el = document.querySelector(${JSON.stringify(`[data-draft-discard="${DRAFTS_FLIGHT}"]`)}); return el === null ? null : getComputedStyle(el).color; })()`,
+			);
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: 2,
+			y: 2,
+			button: "none",
+			buttons: 0,
+		});
+		await wait(160);
+		const flightColourOff = await flightColour();
+		await hoverOver(cdp, `[data-draft-row="${DRAFTS_FLIGHT}"]`);
+		await wait(160);
+		const flightColourOn = await flightColour();
+		check(
+			"the inapplicable control's ink does not move under the pointer",
+			flightColourOff !== null && flightColourOn === flightColourOff,
+			`${JSON.stringify(flightColourOff)} vs ${JSON.stringify(flightColourOn)}`,
+		);
+	}
 	const pendingFrame = await captureSettled(cdp, "drafts-pending-disabled");
 
 	/*
