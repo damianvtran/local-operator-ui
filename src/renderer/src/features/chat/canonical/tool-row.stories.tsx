@@ -398,7 +398,15 @@ export const States: Story = {
 export const ToolOps: Story = {
 	render: () => (
 		<Frame
-			height={380}
+			height={460}
+			/*
+			 * OPEN, because the rows are the subject: twelve consecutive actions
+			 * condense into one fold, and a frame of that header alone would be a
+			 * picture of the container rather than of the verbs this story exists
+			 * for. Opening leaves both halves in frame - the folded run's own
+			 * summary line and every row beneath it.
+			 */
+			openRows
 			records={[
 				// The three rows the operator reported: a profile listing and two
 				// profile views, which read `Delegated` before this change.
@@ -407,7 +415,7 @@ export const ToolOps: Story = {
 					toolName: "agent",
 					args: { op: "list" },
 					durationS: 0.34,
-					output: "designer\ncoder\nreviewer",
+					output: "3 roles: designer, coder, reviewer",
 				}),
 				tool({
 					id: "op:2",
