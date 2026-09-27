@@ -1003,12 +1003,21 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 		 * Which sentence the panel owes the reader when it has no group list, and the
 		 * one state that must NOT get one: `rad` narrows the shortcut block to
 		 * Radient and leaves the groups empty, so the panel would otherwise be a
-		 * search field over blank space (code round 1, P2 / QA-1). `nothingMatches`
-		 * speaks about the WHOLE census, so it is the reader's query that failed only
-		 * when it is true.
+		 * search field over blank space (code round 1, P2 / QA-1).
+		 *
+		 * THE FAILED-SEARCH TEST IS THE CENSUS, NOT THE GROUPS (review round 2, R2-1).
+		 * `nothingMatches` asks `addRowsByGroup`'s buckets, and those SKIP every
+		 * connected row (`provider-catalog.ts`, `isConnectedRow`), so with a connected
+		 * Radient and the query `rad` it is TRUE while the Connected block above paints
+		 * the very row the query matched -- the panel told the reader their search had
+		 * failed beside its own answer. `matched` is the whole-census set the shortcut
+		 * block already filters on, so the two cannot disagree about whether the query
+		 * found anything. The sentence's wording is deliberately unchanged: it is what
+		 * `in-dialog-more-open-query` photographs, and a matching connected row is still
+		 * a match in a row above.
 		 */
 		const emptyBody = searching
-			? nothingMatches
+			? matched.size === 0
 				? NO_MATCH_SENTENCE
 				: restCount === 0
 					? MATCHES_ABOVE_SENTENCE
