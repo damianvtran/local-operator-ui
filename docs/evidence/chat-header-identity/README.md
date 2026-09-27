@@ -73,6 +73,31 @@ launch shape the rig uses), reading live geometry:
   refocuses its trigger at t+~2ms, the just-opened agent menu reads that as
   focus-outside and dismisses itself at t+4ms.
 
+## The before half: the same roster on `origin/main`'s menu
+
+`before-bound/` is the other side of the pair, and it is the operator's own
+report. It holds the three states above rendered by the UNFIXED tree - this
+branch's stories, whose bridge answers the same 150 names, against
+`origin/main`'s identity module - which is the combination the first pass used
+for `before-main/` and the recipe that set's README documents.
+
+What they show, and why they are the frames to open first:
+
+| frame | what it shows |
+| --- | --- |
+| `long-roster-agent-open` | The 150-name roster as main draws it: one flat menu, no bound, no filter, no grouping - and its last name, `tui-designer`, half off the foot of a 640px window. This is the failure the 352px ceiling and the search field answer. |
+| `long-roster-short-window` | The same list at 560x220, where main has no answer at all: the menu runs past the window and the window keeps nothing. |
+| `menu-near-window-bottom` | The band pinned to the bottom of the viewport: main's menu is drawn off the screen rather than flipped above it. |
+
+One working-tree-only edit was needed to take these, and it is worth recording
+because it is the honest difference between the two halves: the arms assert
+`[role="option"]`, which is THIS branch's combobox listbox, while main's rows
+are Radix `menuitemradio`. That assertion was re-pointed for the run and the rig
+was restored from HEAD afterwards (`git hash-object` against `HEAD:<path>`,
+byte-identical), and the module was restored the same way - verified in the same
+run, which is what `scripts/...` prints as `module restored=identical` /
+`rig restored=identical`.
+
 ## The bound, the filter and the recents band (operator, 2026-09-26, second report)
 
 The first pass made the identity line two controls. The operator's next report
