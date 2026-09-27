@@ -682,17 +682,27 @@ export const RunPanel = ({
 			data-run-panel-pane=""
 			aria-label="Run details"
 			tabIndex={-1}
-			className={cn("flex h-full flex-col bg-surface")}
+			/*
+			 * THE SLOT'S GROUND IS THE PAGE'S, and the canvas states the rule
+			 * (`canvas/index.tsx`): the right-pane slot is part of the work plane, not a
+			 * panel ground, so it contrasts with the sidebar's `surface` by the ladder's
+			 * own `surface` -> `canvas` step and is continuous with the 32px chrome lane
+			 * `chat-layout.tsx` paints above it. It was `surface`, which made this pane
+			 * and the sidebar the same tone on all 59 palettes.
+			 */
+			className={cn("flex h-full flex-col bg-canvas")}
 		>
 			{/*
-			 * `bg-sunken`, the canvas's ground for this bar and the same 40px, so the
-			 * two panes read as one slot with two modes. `shrink-0` because the body
-			 * below owns the remaining height and the bar must not lose a pixel of
-			 * its declared size to a flex deficit.
+			 * NO GROUND OF ITS OWN. It was `bg-sunken`, which made this pane's icon row a
+			 * band whose background differed from the pane's body — the same defect the
+			 * canvas reports, and the same fix: the bar is transparent so the pane reads
+			 * as one surface. `shrink-0` because the body below owns the remaining
+			 * height and the bar must not lose a pixel of its declared size to a flex
+			 * deficit.
 			 */}
 			<div
 				className={cn(
-					"flex h-10 shrink-0 items-center justify-between gap-2 bg-sunken px-2",
+					"flex h-10 shrink-0 items-center justify-between gap-2 px-2",
 					/*
 					 * THE CONTROLS' CORNER, RESERVED (chat redesign §J4). On Windows and Linux
 					 * Electron draws the caption buttons into the client area's top-right 40px,
