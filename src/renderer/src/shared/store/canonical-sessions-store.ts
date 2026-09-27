@@ -1624,6 +1624,55 @@ export function composerIdentityFor(
 }
 
 /**
+ * Retire the COMPOSER's records for a send that has settled successfully, under
+ * every identity the press touched.
+ *
+ * WHY THE PRE-SEND KEY IS IN THIS LIST, AND WHAT ITS ABSENCE COST (the
+ * operator's report, 2026-09-26). The composer records what left it under the
+ * identity the PANE carried at the press (`use-message-input`'s `clearOnce(true)`
+ * -> `beginInFlight`), and on a staged draft that identity is the DRAFT KEY -
+ * the create's answer re-keys the panel later, but the record was already
+ * written. Settling only `composerIdentityFor(key, sessionId)` (the post-flip
+ * identity) left the draft key's `inFlight` to survive every successful send:
+ * nothing writes that key again, no pane reads it, and the store's own
+ * reconciliation never touches it. At the next launch `rehydrateInputRows` folds
+ * a persisted `inFlight` back into the composer (`foldReturn` -> `pendingText`),
+ * which is right for a quit mid-flight and wrong here - the message HAD been
+ * sent - and for a TEAM or AGENT draft the key is STABLE
+ * (`draft:team:<name>`), so the next "New chat with <team>" found the old
+ * message waiting in the box: "coming back to start a new chat with a team and
+ * seeing the old message that I already sent populated in there".
+ *
+ * The failure arm already settles both identities (`admitChatDraft`'s catch, the
+ * S4 boundary rule); this is the same rule for the arm that succeeds, plus the
+ * move the failure arm performs. Anything the pre-send row still holds (text
+ * typed during the create hop, a chip attached there) belongs to the conversation
+ * that now exists, so it crosses with `returnInFlight` rather than being stranded
+ * under a key no pane shows - and the message itself cannot ride that fold home,
+ * because `settleInFlight` runs FIRST and clears the payload record that
+ * `returnInFlight` would otherwise fold.
+ */
+function settleSendComposerRecords(key: string, sessionId: string): void {
+	const input = useConversationInputStore.getState();
+	const to = composerIdentityFor(key, sessionId);
+	// `to` is `""` when a caller reaches here with no session id at all (the
+	// pane's reconciliation passes `?? ""`); `panelIdentityFor` keeps the empty
+	// string because `??` only answers null and undefined, and an empty identity
+	// addresses no row.
+	const identities = to === "" || to === key ? [key] : [key, to];
+	input.settleInFlight(identities);
+	/*
+	 * The move is conditional on the row EXISTING: `returnInFlight` materialises
+	 * an `EMPTY_ROW` for its target when neither side has one, and with the
+	 * payload just settled its fold carries nothing - so a call for a row that
+	 * never existed would only add an empty row to the persisted map (the
+	 * operator's own store already carries 302 of them).
+	 */
+	if (to !== "" && to !== key && input.inputByConversation[key])
+		input.returnInFlight(key, to);
+}
+
+/**
  * Move a message the PREVIOUS release held outside the composer back into it.
  *
  * The released app kept an unconfirmed message in a separate claim on the draft
@@ -2506,10 +2555,11 @@ export async function admitChatDraft(
 			// `delivered` is only ever set with an id in hand (the branch above), so
 			// this is the compiler's need and not a second decision.
 			if (id) {
+				// `finishDraft` carries the whole retire now - both identities the
+				// press touched (`settleSendComposerRecords`), so the extra settle
+				// this arm used to perform on the post-flip identity alone is gone
+				// with it.
 				store.finishDraft(key, id);
-				useConversationInputStore
-					.getState()
-					.settleInFlight([composerIdentityFor(key, id)]);
 				return id;
 			}
 			return null;
@@ -3745,6 +3795,16 @@ type CanonicalSessionsState = {
 	 * next send must match it, and never touch the session or its transcript.
 	 */
 	discardDraft: (key: string) => void;
+	/**
+	 * Discard several drafts in ONE store update — the sidebar's "Clear all".
+	 *
+	 * A batch rather than a caller-side loop: each discard is its own state update,
+	 * and a loop would repaint the list once per row and unmount the very control
+	 * the reader pressed, mid-loop. Every key is discarded with `discardDraft`'s own
+	 * semantics — including the composer-side clear — so the two doors cannot
+	 * drift.
+	 */
+	discardDrafts: (keys: readonly string[]) => void;
 	/**
 	 * Resolve a held send against the server's own answer (§F2's last bullet,
 	 * UX round 1's U5b).
@@ -6037,10 +6097,14 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					 * the caller because every path that ends a send successfully
 					 * comes through this action, including the reconciler that
 					 * discovers a late delivery after a restart.
+					 *
+					 * BOTH IDENTITIES THE PRESS TOUCHED, not only the one the pane has
+					 * afterwards - `settleSendComposerRecords` carries the why (the
+					 * short version: the composer's `inFlight` was written under the
+					 * PRE-send key, and settling only the post-flip one left it to
+					 * fold back into the box at the next launch).
 					 */
-					useConversationInputStore
-						.getState()
-						.settleInFlight([composerIdentityFor(key, sessionId)]);
+					settleSendComposerRecords(key, sessionId);
 					const drafts = { ...state.drafts };
 					delete drafts[key];
 					return {
@@ -6088,6 +6152,20 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					if (abandoned && abandoned !== key) discardPendingSends(abandoned);
 					delete drafts[key];
 					/*
+					 * AND THE COMPOSER'S OWN COPY GOES WITH THE DRAFT (the sidebar's own
+					 * "clear drafts", 2026-09-26: "Each one should have a deletion on
+					 * hover"). A deleted draft that kept its `inputByConversation[key]`
+					 * row was still reachable in two ways: `currentInput` seeds the
+					 * composer's initialiser and `pendingText` is adopted on mount — so
+					 * RE-CREATING a draft under the same key (a team/agent draft's key is
+					 * STABLE: `draft:team:<name>`) found the deleted draft's text waiting
+					 * in the box. The row is dropped whole — text, chips, quotes and the
+					 * up-arrow log — because "delete this draft" is a statement about the
+					 * draft, and a half-cleared row is exactly how a deleted draft comes
+					 * back.
+					 */
+					useConversationInputStore.getState().clearAll(key);
+					/*
 					 * Clear the pointer as well as the draft, the way
 					 * `finishDraft` does. Deleting only the entry leaves
 					 * `activeDraftKey` naming a draft that no longer exists, and
@@ -6102,6 +6180,38 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					return {
 						drafts,
 						...(state.activeDraftKey === key ? { activeDraftKey: null } : {}),
+					};
+				}),
+			/*
+			 * THE BATCH IS THE SINGLE'S RULE APPLIED IN ONE UPDATE (the sidebar's
+			 * "clear all", 2026-09-26). Why a store action rather than a caller-side
+			 * loop: each single discard is its own update, and a loop would repaint
+			 * the list once per row - unmounting the very control the reader pressed
+			 * mid-loop - while one update repaints it once. Every key goes through
+			 * `discardDraft`'s own halves (the two pending-send homes, the composer
+			 * row, the pointer), spelled with the same reads so the two doors cannot
+			 * drift; the keys are tested against the map this loop is BUILDING, not
+			 * the one the caller rendered against, because a claim can retire between
+			 * the render and the press.
+			 */
+			discardDrafts: (keys) =>
+				set((state) => {
+					const drafts = { ...state.drafts };
+					let activeCleared = false;
+					for (const key of keys) {
+						if (!(key in drafts)) continue;
+						const abandoned =
+							drafts[key]?.sessionId ??
+							(key.startsWith("send:") ? key.slice("send:".length) : undefined);
+						discardPendingSends(key);
+						if (abandoned && abandoned !== key) discardPendingSends(abandoned);
+						delete drafts[key];
+						useConversationInputStore.getState().clearAll(key);
+						if (state.activeDraftKey === key) activeCleared = true;
+					}
+					return {
+						drafts,
+						...(activeCleared ? { activeDraftKey: null } : {}),
 					};
 				}),
 			resolveHeldFromServer: (sessionId, entryIds, complete) =>
