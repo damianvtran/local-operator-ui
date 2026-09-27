@@ -1408,6 +1408,15 @@ const STAMP_BINDING_NOTES = [
 	 * `streamRedeliveryRestampNote` is in the list for.
 	 */
 	"task17RestampNote",
+	/*
+	 * AND THIS BRANCH'S OWN: the pending-echo placement fix moves BOTH trees this
+	 * file binds - `src/` for `withTimeOrder`'s load-window case and the
+	 * `provisional` field it reads, `scripts/` for the reducer cases that pin the
+	 * page and seed doors plus the `localEcho` reading the open rig carries - and
+	 * rewrites no frame of the sweep, so a reader is owed the two values it binds
+	 * and the reason no still was owed.
+	 */
+	"pendingEchoRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {

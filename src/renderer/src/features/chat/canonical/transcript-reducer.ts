@@ -108,6 +108,18 @@ export type TranscriptRecord =
 			 * change (risk R2).
 			 */
 			local?: boolean;
+			/**
+			 * The echo was admitted into an EMPTY transcript — it is the load
+			 * window's first row. Nothing was painted to anchor its stamp, so
+			 * `monotonicStamp` had no row to borrow a time from and every row that
+			 * can arrive behind it (the queued page, replay frames, a seed) is one
+			 * whose writer journaled it before this message was even admitted. It
+			 * therefore holds the tail until the owner's same-id row replaces it —
+			 * see `withTimeOrder` case 2 for why a clock comparison is the wrong
+			 * tool here and `provisional` in that function for why the hold does
+			 * not apply to an echo inside an established conversation.
+			 */
+			provisional?: boolean;
 	  }
 	| {
 			kind: "assistant";
@@ -815,7 +827,9 @@ function advancedFrame(
 }
 
 /**
- * The same records in TIME order, ties broken by the position each already had.
+ * The same records in TIME order, ties broken by the position each already had
+ * — EXCEPT the load window's first echo (case 2 below), which holds the tail
+ * until its owner's row arrives.
  *
  * The rule the durable page is ordered by, shared so the live seed places a row
  * by the SAME rule rather than a second one: a row the seed dates from a real
@@ -836,19 +850,75 @@ function advancedFrame(
  * `a1,a2,b1,a3` where this produces `a1,a2,a3,b1`, and
  * `scripts/transcript-reducer.test.mjs` pins the order this produces.
  *
+ * WHY A PENDING ECHO IS NOT SORTED BY ITS STAMP (operator report, 2026-09-26):
+ * "after sending a message, additional messages will load and my message ends
+ * up out of order" — the bubble above assistant content that preceded it. A
+ * local echo's `ts` comes from THIS renderer's clock; every page and seed row
+ * carries the owner's. While the page (or seed) is still owed nothing is
+ * painted to compare against, so the echo is stamped with the client's `now`
+ * and any row that lands afterwards carrying an owner stamp ahead of that
+ * clock (a remote owner, a client whose clock trails — or any row the runtime
+ * dates ahead of the reader) sorted BELOW the echo: the just-sent message
+ * rendered above content that preceded it, and stayed there until something
+ * happened to re-sort again.
+ *
+ * The fix is not another stamp bound (`monotonicStamp` in #534 bounds an echo
+ * against rows painted AT STAMP TIME; rows landing afterwards are exactly what
+ * it cannot see) and it deliberately keeps #534's behaviour where that bound
+ * has something to bound. There are two cases, and they differ in kind:
+ *
+ * 1. Rows WERE painted when the echo was admitted, so its stamp is the newest
+ *    of them (`monotonicStamp`'s cap): a slot on the OWNER's own clock, and a
+ *    later row's stamp sorts against it meaningfully. #534's rule stands — a
+ *    row the stamps place after the cap stays after the echo.
+ * 2. NOTHING was painted at all — the echo is the load window's first row
+ *    (`provisional`), so there is neither a painted anchor for its stamp nor
+ *    any owner-stamped row to compare it to (the page/seed is owed and every
+ *    row it can deliver was journaled before this message could be admitted).
+ *    Sorting the client's clock against the owner's is what put the
+ *    just-sent message above content that preceded it; so no clock comparison
+ *    is made at all. The echo holds the position it was ADMITTED at — after
+ *    every canonical row, and among several such echoes in arrival order —
+ *    until the owner's same-id row (live `message_start` or the durable page)
+ *    replaces it and `local` is gone. The row is canonical from then on and
+ *    sorts by its own stamp like everything else.
+ *
+ * Case 2 is the load window the operator reported on 2026-09-26 ("after
+ * sending a message, additional messages will load and my message ends up out
+ * of order"): every canonical row that can arrive while the echo is pending
+ * was journaled before the echo was ever admitted, so "after them, until the
+ * owner speaks" is where it belongs — and it moves only once, when the owner
+ * states where that is.
+ *
  * Ties keep the order they already had, so this can never reshuffle two rows
  * that state the same instant while the reader is looking at them. No lookup and
  * no fallback: every record's position is the one it arrives with, which is what
  * makes an unknown id unrepresentable here rather than something to default.
  */
 function withTimeOrder(records: TranscriptRecord[]): TranscriptRecord[] {
+	/*
+	 * `local` is the echo's own marker (`appendPendingUser`); only a user record
+	 * carries it, and `provisional` narrows the hold to the echoes case 2
+	 * describes — the load window's first row, admitted into an empty
+	 * transcript. Both clear when the owner's row replaces the record.
+	 */
+	const pendingEcho = (record: TranscriptRecord) =>
+		record.kind === "user" &&
+		record.local === true &&
+		record.provisional === true;
 	return records
 		.map((record, position) => ({ record, position }))
-		.sort((a, b) =>
-			a.record.ts !== b.record.ts
+		.sort((a, b) => {
+			const pendingA = pendingEcho(a.record);
+			const pendingB = pendingEcho(b.record);
+			// A pending echo has no owner-stated time; it holds the tail.
+			if (pendingA !== pendingB) return pendingA ? 1 : -1;
+			// Among pending echoes, arrival order (their admitted positions).
+			if (pendingA && pendingB) return a.position - b.position;
+			return a.record.ts !== b.record.ts
 				? a.record.ts - b.record.ts
-				: a.position - b.position,
-		)
+				: a.position - b.position;
+		})
 		.map((entry) => entry.record);
 }
 
@@ -4449,6 +4519,12 @@ export function appendPendingUser(
 		text,
 		images,
 		local: true,
+		// The load window's first row: nothing was painted to anchor the stamp,
+		// so the echo holds the tail until the owner's row states its place
+		// (`withTimeOrder` case 2). Inside an established conversation — rows
+		// already painted — the stamp itself anchors the row and #534's rule
+		// orders it.
+		...(state.records.length === 0 ? { provisional: true } : {}),
 	});
 }
 

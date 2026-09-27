@@ -36,6 +36,7 @@ import "@renderer/assets/fonts/fonts.css";
 import { ChatPage } from "@features/chat/components/chat-page";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
+import { peekLocalEcho } from "@shared/hooks/use-canonical-session";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { __resetPaintCache } from "@shared/store/paint-cache";
@@ -315,6 +316,16 @@ const open = (target: string, deadlineMs = 30_000) =>
 				settle:
 					entry.settledAt > 0 ? Math.round(entry.settledAt * 10) / 10 : null,
 			})),
+	/**
+	 * Whether the row `id` names is STILL the local echo, as `peekLocalEcho`
+	 * reads it: `owner` once the owner's own row for the admission has replaced
+	 * it. The ordering readings use it to know when the row stops being
+	 * pending - the window the pending-echo placement rule governs.
+	 */
+	localEcho: (id: string) => {
+		const session = useCanonicalSessionsStore.getState().activeSessionId;
+		return session ? peekLocalEcho(session, id) : "unseen";
+	},
 	/** Rows the sidebar has painted, by session id. */
 	rows: () =>
 		[...document.querySelectorAll("[data-session-row]")].map((row) =>

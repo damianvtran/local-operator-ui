@@ -2102,6 +2102,161 @@ test("removeRecord retracts exactly the echo it names", () => {
 	assert.equal(pruned.index.get("req-2"), 0);
 });
 
+/* ------------------------------- a pending echo against the load window */
+
+/*
+ * The operator's report (2026-09-26): "sometimes after sending a message,
+ * additional messages will load and my message ends up out of order", caught
+ * in a screenshot as the just-sent bubble ABOVE assistant content that
+ * preceded it.
+ *
+ * #534's `monotonicStamp` bounds an echo against rows painted AT STAMP TIME.
+ * These pin the residual the load window adds: the page (or seed) is still
+ * OWED when the message is sent, so nothing is painted to bound against — and
+ * it lands AFTER the echo carrying rows whose stamps sit ahead of the echo's.
+ * #534's own comment names that clock ("a remote owner, or any client whose
+ * clock trails"); what it cannot bound is a row that arrives after the stamp
+ * and states a later time while chronologically preceding the send.
+ *
+ * The rule these pin, and the reason it is the right one: while an echo is
+ * still LOCAL the owner has stated no position for it — its row (same id) has
+ * not arrived — so the echo is placed where it was admitted, after every
+ * canonical row, by arrival; the owner's row replaces it and returns it to
+ * the canonical order. A client clock comparison can only decide this wrong,
+ * because the two stamps come from different clocks.
+ */
+const CLIENT_NOW = 1_790_000_000_000;
+// The owner's clock, ahead of the client's: the skew condition itself.
+const OWNER_AHEAD_MS = 20_000;
+
+/** One durable page entry, stamped on the owner's clock. */
+const aheadEntry = (id, tsMs, text) => ({
+	id,
+	ts: tsMs / 1000,
+	type: "message",
+	payload: { kind: "message", ...assistant(id, text) },
+});
+
+test("a locally stamped echo cannot be displaced by a page that lands after the send", () => {
+	const requestId = "b2b1f0d4-0a3a-4b1e-9c1d-7f5a2e6c9a10";
+	// The send happens while the page is still owed, so the echo is stamped
+	// with the client's own clock and nothing else is painted.
+	let state = appendPendingUser(
+		state0(),
+		requestId,
+		"first message",
+		[],
+		CLIENT_NOW,
+	);
+	// The owed page lands: a row the owner stamps ahead of the client's clock,
+	// written before the send.
+	state = applyHistoryPage(state, {
+		entries: [aheadEntry("a1", CLIENT_NOW + OWNER_AHEAD_MS, "an older answer")],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["a1", requestId],
+		"the echo stays after the row that preceded it",
+	);
+	// And the reconcile page that follows must not move it either.
+	state = applyHistoryPage(state, {
+		entries: [aheadEntry("a2", CLIENT_NOW + OWNER_AHEAD_MS * 2, "later still")],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["a1", "a2", requestId],
+		"no page that lands later can place the echo above rows it followed",
+	);
+});
+
+test("a locally stamped echo cannot be displaced by a snapshot seed that lands after the send", () => {
+	const requestId = "0c9f1e2a-6d4b-4a7e-8f3c-2b5d9e1a4c70";
+	let state = appendPendingUser(
+		state0(),
+		requestId,
+		"sent while loading",
+		[],
+		CLIENT_NOW,
+	);
+	// The snapshot's seed lands after the echo and states a clock for a call
+	// the turn in flight had already made — stamped on the owner's ahead clock.
+	state = applyLiveSeed(
+		state,
+		{
+			streaming: true,
+			generation: 1,
+			live_events: [
+				{
+					type: "tool_execution_start",
+					tool_call_id: "c-seed",
+					started_at_epoch: (CLIENT_NOW + OWNER_AHEAD_MS) / 1000,
+				},
+			],
+		},
+		CLIENT_NOW + 10_000,
+	);
+	const ids = state.records.map((r) => r.id);
+	assert.equal(
+		ids.at(-1),
+		requestId,
+		"the echo is the last row, not placed above content the seed dates ahead of it",
+	);
+	assert.equal(
+		ids.filter((id) => id === "tool:c-seed").length,
+		1,
+		"the seeded row painted once",
+	);
+});
+
+test("the owner's row replaces a pending echo and returns it to the canonical order", () => {
+	const requestId = "7f3a2c1e-8b5d-4e6f-9a0b-1c2d3e4f5a6b";
+	let state = appendPendingUser(
+		state0(),
+		requestId,
+		"first message",
+		[],
+		CLIENT_NOW,
+	);
+	state = applyHistoryPage(state, {
+		entries: [aheadEntry("a1", CLIENT_NOW + OWNER_AHEAD_MS, "an older answer")],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["a1", requestId],
+	);
+	// The owner echoes the message back on its own stream: the row is canonical
+	// now (no `local`), and a later merge places it by its own stamp rather than
+	// pinning it after everything.
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: user(requestId, "first message") },
+		CLIENT_NOW + 3_000,
+	);
+	assert.equal(
+		state.records.length,
+		2,
+		"the owner's row replaced the echo, not duplicated it",
+	);
+	const replaced = state.records.find((r) => r.id === requestId);
+	assert.equal(replaced.local, undefined, "the row is no longer local");
+	state = applyHistoryPage(state, {
+		entries: [aheadEntry("a2", CLIENT_NOW + OWNER_AHEAD_MS * 2, "later still")],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		[requestId, "a1", "a2"],
+		"a canonical row sorts by its stamp, not by the pending position",
+	);
+});
+
 /* ------------------------------------------------------- receipt rows */
 
 /*
