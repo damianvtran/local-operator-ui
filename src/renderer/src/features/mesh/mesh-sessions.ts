@@ -32,14 +32,26 @@ import type { MeshSessionRow } from "./mesh-types";
 /**
  * How many chips one device node shows before it says "+N more".
  *
- * FOUR, and the number is a geometry decision rather than a taste one: a node is
- * `NODE_HEIGHT` tall with a title and one stat line, and four chips fit inside it
- * without the node growing - which matters, because a node that grew a row per
- * session would move every node below it on the next poll, the exact reshuffle
- * `mesh-positions.ts` exists to prevent. The cap is read by the stories, the
- * bench and the node together so the three cannot disagree about the bound.
+ * TWO, AND THE NUMBER IS A MEASUREMENT RATHER THAN A TASTE ONE - it changed from FOUR
+ * because four was never true (agent review round 1 / QA Q-1 / UX U2, three independent
+ * measurements of the same defect). A node is `NODE_WIDTH` 200 px, its chip row is 195 px
+ * with `px-3` padding and `overflow-hidden`, and the chips were `shrink-0` at 121-123 px:
+ * 611 px of content in a 195 px box, so only chip 0 was hittable, the `+N more` control
+ * that is supposed to reach the rest sat 315 px past the row's right edge
+ * (`hittable: false`), and - because a clipped chip is not the element at its own
+ * coordinates - pressing where chip 1 appeared to be PANNED the canvas instead of
+ * starting a drag. Keyboard reached all of them (`focus()` scrolls the row); the pointer
+ * reached one.
+ *
+ * What makes two true is the second half of the fix, and it is in the node rather than
+ * here: chips take `min-w-0 flex-1` so they SHARE the row instead of overflowing it, and
+ * the `+N more` control stays a `shrink-0` child of the row - so every chip drawn and
+ * the control that reaches the rest are inside the 195 px box by construction, whatever
+ * the count. Two ≈ 72 px chips with truncated labels and the control are what fits; the
+ * full titles are in the tooltip, the accessible name and the panel, which is where a
+ * reader goes for the ones the cap does not draw.
  */
-export const CHIP_LIMIT = 4;
+export const CHIP_LIMIT = 2;
 
 export type DeviceSessions = {
 	/** Every row this device holds, in the catalogue's own order. */

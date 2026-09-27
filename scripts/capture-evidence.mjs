@@ -5887,10 +5887,32 @@ export const STORIES = [
 			expectSentence: "Drop will be refused",
 		},
 	],
+	/*
+	 * THE THREE DIALOG/REFUSAL ROWS CARRY CLAIMS TOO, for the reason the two drag rows do
+	 * (design review round 1, D3): these states are reached BY `play`, so without a claim
+	 * the shutter can land one click short - and it did. `invite-receipt` photographed the
+	 * PRE-MINT dialog in both palettes ("Admission is two-sided", `Cancel` + `Mint the
+	 * token`) while the receipt branch renders different content and a `Close` footer, and
+	 * `move-refused-busy` photographed the confirm dialog with no refusal anywhere. Both
+	 * claims below are the sentences the story's own `play` waits for, which is what makes
+	 * the frame's name true rather than aspirational.
+	 */
 	["mesh-tab--move-confirm", 1380, 900],
-	["mesh-tab--move-refused-busy", 1380, 900],
+	[
+		"mesh-tab--move-refused-busy",
+		1380,
+		900,
+		{ expectSentence: "Wait for the turn to finish" },
+	],
 	["mesh-tab--move-copy-with-undo", 1380, 900],
-	["mesh-tab--invite-receipt", 1380, 900],
+	/*
+	 * AND A NOTE FOR A LATER READER (design review round 1, D7): this row shows a 2 px
+	 * accent outline outside the dialog frame and `move-confirm` shows none, which is the
+	 * HEADLESS MODE's focus behaviour - the repo's own AGENTS.md lists focus-dependent
+	 * rendering among the things a `headless` capture differs on - rather than a design
+	 * difference between two instances of one component.
+	 */
+	["mesh-tab--invite-receipt", 1380, 900, { expectSentence: "Invited" }],
 	// The narrow case, with the panel open: the column and the canvas have to fit
 	// together at the width the app's own sidebar clamps for.
 	["mesh-tab--device-panel", 1024, 768, { dir: "device-panel-narrow" }],

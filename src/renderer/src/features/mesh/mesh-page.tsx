@@ -57,9 +57,14 @@ import { MeshCanvas } from "./mesh-canvas";
 import {
 	DevicePanel,
 	type MoveDestination,
-	destinationsOnCanvas,
+	destinationsWithVerdicts,
 } from "./mesh-card";
-import { type MovePlan, type Remedy, resolveDrop } from "./mesh-drop";
+import {
+	type MovePlan,
+	type Remedy,
+	lossSentence,
+	resolveDrop,
+} from "./mesh-drop";
 import type { MeshGraph } from "./mesh-graph";
 import { meshSummary } from "./mesh-graph";
 import { MeshList } from "./mesh-list";
@@ -100,7 +105,17 @@ type PendingMove = {
 /** What the last move answered, for the notice under the header. */
 type MoveReport =
 	| { kind: "moved"; verb: string; detail: string; undo: MovePlan | null }
-	| { kind: "refused"; refusal: MeshRefusal };
+	| {
+			kind: "refused";
+			refusal: MeshRefusal;
+			/**
+			 * The move that was refused, when the refusal named one (a `busy` session), so the
+			 * `wait` remedy can re-issue it. `null` for a refusal about a destination rather
+			 * than about a move - there is no move to wait for, and the notice offers `Check
+			 * again` instead (agent review round 1, F2).
+			 */
+			plan: MovePlan | null;
+	  };
 
 /**
  * The tab's body, with everything it renders handed to it.
@@ -143,6 +158,7 @@ export const MeshSurface: FC<{
 		code: string;
 		sentence: string;
 		remedy: Remedy | null;
+		plan: MovePlan | null;
 	}) => void;
 	onChooseMove: (plan: MovePlan) => void;
 	onCancelMove: () => void;
@@ -273,12 +289,6 @@ export const MeshSurface: FC<{
 		? (graph.devices.find((device) => device.id === selectedDeviceId) ?? null)
 		: null;
 
-	/*
-	 * EVERY `⋯` MENU AND EVERY DROP RESOLVE THROUGH ONE FUNCTION. A menu choice is a
-	 * drop that names its target (`resolveDrop`), so the verbs and the loss sentences
-	 * cannot drift between the pointer and the keyboard paths - and the plan the page
-	 * confirms is the same object the indicator would have shown.
-	 */
 	const moveFor = useCallback(
 		(session: MeshSessionRow, destination: MoveDestination, keep: boolean) => {
 			if (!graph) return null;
@@ -308,6 +318,7 @@ export const MeshSurface: FC<{
 					code: verdict.code,
 					sentence: verdict.sentence,
 					remedy: verdict.remedy,
+					plan: verdict.plan ?? null,
 				});
 				return null;
 			}
@@ -558,7 +569,7 @@ export const MeshSurface: FC<{
 							canInvite={state.kind === "ready"}
 							movingSessionId={movingSessionId}
 							destinationsFor={(session) =>
-								destinationsOnCanvas(graph, session, selfLabel)
+								destinationsWithVerdicts(graph, session, selfLabel)
 							}
 							onClose={() => setSelectedDeviceId(null)}
 							onMove={moveFor}
@@ -752,15 +763,31 @@ export const MeshPage: FC = () => {
 											sessionId: receipt.new_session_id,
 											to: "local",
 											keep: false,
+											/*
+											 * WHAT THIS UNDO ACTUALLY IS, AND WHAT IT COSTS (agent review round 1,
+											 * F3 / UX U4). It is a RECALL of the copy, not an erasure: the peer's
+											 * copy is deleted once this device has it, and this device ends with a
+											 * second local copy under a new id. The old button promised "Erase the
+											 * copy" while the plan's own verb said "Bring the copy back" - two labels
+											 * for one action on one screen. The contract has no verb that erases a
+											 * copy living on ANOTHER device (`sessions.delete` addresses this
+											 * device's own route and carries no device field), so the label follows
+											 * the plan and the loss is named, which is what makes the recall
+											 * confirm like every other destructive move.
+											 */
 											verb: `Bring the copy back from ${destination}`,
 											waitS: 0,
-											lost: null,
+											lost: lossSentence(destination, "this device"),
 										}
 									: null,
 						});
 						return;
 					}
-					setMoveReport({ kind: "refused", refusal: outcome.refusal });
+					setMoveReport({
+						kind: "refused",
+						refusal: outcome.refusal,
+						plan,
+					});
 				},
 				onError: () => {
 					setMoveReport({
@@ -772,6 +799,7 @@ export const MeshPage: FC = () => {
 							status: null,
 							unconfirmed: false,
 						},
+						plan,
 					});
 				},
 			});
@@ -838,6 +866,7 @@ export const MeshPage: FC = () => {
 						status: null,
 						unconfirmed: false,
 					},
+					plan: refusal.plan,
 				})
 			}
 			onChooseMove={(plan) => run(plan)}
@@ -846,16 +875,33 @@ export const MeshPage: FC = () => {
 			moveReport={moveReport}
 			onDismissReport={() => setMoveReport(null)}
 			onWaitForIdle={() => {
-				// The same move, re-asked with the route's own ceiling: the session is
-				// busy, so the request waits for the turn to finish rather than
-				// interrupting it.
-				const plan = pendingMove?.plan;
-				if (!plan) return;
-				run(plan, WAIT_FOR_IDLE_S);
+				/*
+				 * THE SAME MOVE, RE-ASKED WITH THE ROUTE'S OWN CEILING: the session is busy, so
+				 * the request waits for the turn to finish rather than interrupting it.
+				 *
+				 * THE PLAN COMES FROM THE REFUSAL, NOT FROM `pendingMove` (agent review round 1,
+				 * F2). The dialog clears `pendingMove` on send and the drag and the menu never set
+				 * it at all, so reading it here meant the button the notice draws did nothing on
+				 * every path that can produce a `busy` refusal. The refusal now carries the move
+				 * it refused, and no plan means no button to press - the notice owns that decision.
+				 */
+				if (moveReport?.kind !== "refused" || !moveReport.plan) return;
+				run(moveReport.plan, WAIT_FOR_IDLE_S);
 			}}
 			onUndoCopy={() => {
 				if (moveReport?.kind !== "moved" || !moveReport.undo) return;
-				run(moveReport.undo);
+				/*
+				 * THE UNDO CONFIRMS, because it is destructive (agent review round 1, F3 / UX
+				 * U4). Recalling the copy deletes the peer's copy once this device has it - the
+				 * plan's own `lost` sentence says so - and this is the one path that used to send
+				 * a destructive plan with no dialog: it is asked as a pending move like every
+				 * other one, so the reader confirms a loss they can read.
+				 */
+				setPendingMove({
+					plan: moveReport.undo,
+					alternatives: [],
+					risky: false,
+				});
 			}}
 			invite={
 				inviteAsk === null

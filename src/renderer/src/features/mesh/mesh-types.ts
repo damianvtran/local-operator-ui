@@ -413,9 +413,21 @@ export type TransferReceipt = {
 export function transferReceipt(value: unknown): TransferReceipt | null {
 	if (!isRecord(value)) return null;
 	const sessionId = text(value.session_id);
-	const newSessionId = text(value.new_session_id) || sessionId;
-	if (!sessionId || !newSessionId) return null;
+	if (!sessionId) return null;
 	const mode = value.mode === "keep" ? "keep" : "move";
+	/*
+	 * A `keep` RECEIPT WITHOUT `new_session_id` IS NOT A RECEIPT, and defaulting it
+	 * to the source id is what this function's own header refuses (agent review
+	 * round 1, F6). The fork mints a NEW id at the destination, so the id the copy
+	 * lives under is the only thing that says which chip moved and what the undo
+	 * acts on: carrying the source id would make the report name the original as
+	 * the copy and point the undo at the conversation that never left. A `move`
+	 * legitimately has no new id (the receipt documents it as equal to the source),
+	 * so only the `keep` arm is refused.
+	 */
+	const newSessionId =
+		text(value.new_session_id) || (mode === "move" ? sessionId : "");
+	if (!newSessionId) return null;
 	return {
 		locality: value.locality === "local" ? "local" : "remote",
 		owner_device: text(value.owner_device),

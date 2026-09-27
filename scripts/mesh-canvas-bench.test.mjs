@@ -41,10 +41,21 @@ import {
 /** A synthetic run: the shape the live bench produces, with the numbers chosen. */
 function run({
 	frameDeltas,
-	dragFrames = [],
-	latencies,
+	/*
+	 * SIX SMALL DRAG FRAMES BY DEFAULT, because a run with NO drag frames is not a clean
+	 * drag: the blocking target now requires the observer to have seen the gesture it
+	 * judges (agent review round 1, F7), and the empty case is asserted on purpose in its
+	 * own test below.
+	 */
+	dragFrames = Array.from({ length: 6 }, (_, index) => ({
+		start: 5010 + index * 16,
+		duration: 8,
+		blocking: 0,
+	})),	latencies,
 	worldStyleWrites = 100,
 	rafTicks = 100,
+	/* How many frames the DRAG window observed: zero models a gesture the bench never saw. */
+	dragSamples = 6,
 	stub = { unknown: () => [], seen: () => [], claims: () => 1 },
 }) {
 	const phases = [
@@ -69,7 +80,6 @@ function run({
 		},
 	];
 	/** Frames inside the DRAG window, which is what the drag target reads. */
-	const dragSamples = 6;
 	const bench = {
 		// Inside the PAN window (1000-3000 ms), so a synthetic run's samples land in the
 		// phase the report reads them from rather than in the drag's.
@@ -137,6 +147,46 @@ test("a drag frame that blocks longer than 50 ms fails", () => {
 	assert.match(
 		blocked.lines.join("\n"),
 		/FAIL {2}worst frame blocking during a drag: 90 ms \(bar 50 ms\)/,
+	);
+});
+
+test("a drag with nothing over the bar reports the absence, not a zero", () => {
+	/*
+	 * THE FLOOR WAS THE DEFECT (agent review round 1, F7): `Math.max(0, ...)` printed
+	 * `0 ms` for a drag the observer judged free of long frames, which reads as a
+	 * measurement of zero. The reading is the absence of a long frame instead, and the
+	 * target still passes - because the run DID observe drag frames, which is the other
+	 * half of the same statement.
+	 */
+	const quiet = run({
+		frameDeltas: Array.from({ length: 600 }, () => 8),
+		latencies: Array.from({ length: 200 }, () => 20),
+		dragFrames: [
+			{ start: 5100, duration: 9, blocking: 0 },
+			{ start: 5200, duration: 11, blocking: 3 },
+		],
+	});
+	assert.equal(quiet.ok, true, quiet.lines.join("\n"));
+	assert.match(
+		quiet.lines.join("\n"),
+		/PASS {2}worst frame blocking during a drag: no long frame observed \(bar 50 ms\)/,
+	);
+});
+
+test("a drag the observer never saw cannot pass the blocking target", () => {
+	// The other half of the falsifiability: no FRAMES in the drag window is not a clean drag,
+	// and the target says so rather than passing on an empty reduction. (`dragFrames` is only
+	// the long ones, so this case is spelled with the drag's frame samples at zero.)
+	const unseen = run({
+		frameDeltas: Array.from({ length: 600 }, () => 8),
+		latencies: Array.from({ length: 200 }, () => 20),
+		dragSamples: 0,
+		dragFrames: [],
+	});
+	assert.equal(unseen.ok, false);
+	assert.match(
+		unseen.lines.join("\n"),
+		/FAIL {2}worst frame blocking during a drag: no long frame observed \(bar 50 ms\)/,
 	);
 });
 
@@ -208,6 +258,10 @@ test("every injected fault is a real script, and a breach is named in the report
 	assert.ok(
 		BREACH_SCRIPTS["double-write"].includes("requestAnimationFrame"),
 		"the double-write fault writes the world layer's style from inside a frame",
+	);
+	assert.ok(
+		BREACH_SCRIPTS["long-task"].includes("120"),
+		"the long-task fault burns 120 ms inside a pointer handler: the observer's blocking reading subtracts a 50 ms grace, so a 60 ms burn never crossed the drag bar",
 	);
 	const breached = buildReport({
 		scene: "s5",

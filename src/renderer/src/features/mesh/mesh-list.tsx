@@ -22,7 +22,7 @@ import { type FC, useMemo, useState } from "react";
 import {
 	type MoveDestination,
 	SessionMoveMenu,
-	moveDestinations,
+	destinationsWithVerdicts,
 } from "./mesh-card";
 import type { MeshDevice, MeshGraph } from "./mesh-graph";
 import { deviceStatLine } from "./mesh-graph";
@@ -36,7 +36,10 @@ export type MeshSort = (typeof MESH_SORTS)[number];
 
 const SORT_LABEL: Record<MeshSort, string> = {
 	name: "Name",
-	chats: "Chats",
+	// THE ONE NOUN (design review round 1, D5): the row's own right column said "chats"
+	// while the left said "conversations", and this feature states the protocol's own
+	// vocabulary rather than a friendlier invention.
+	chats: "Conversations",
 	state: "State",
 };
 
@@ -313,9 +316,14 @@ export const MeshList: FC<MeshListProps> = ({
 														</span>
 														<SessionMoveMenu
 															session={session}
-															destinations={moveDestinations(
-																graph.devices,
-																graph.selfDeviceId,
+															/*
+															 * THROUGH THE SAME RESOLVER THE DRAG USES (UX review round 1, U3): a destination
+															 * the drop would refuse - a move between two devices that are neither end of it -
+															 * is offered disabled with the route's own sentence, so the list does not let a
+															 * reader commit to a move it already knows cannot succeed.
+															 */
+															destinations={destinationsWithVerdicts(
+																graph,
 																session,
 																selfLabel,
 															)}
@@ -348,7 +356,9 @@ export const MeshList: FC<MeshListProps> = ({
 										<span className="text-meta text-ink-dim">
 											{total === 0
 												? "no conversations"
-												: `${total} conversations`}
+												: total === 1
+													? "1 conversation"
+													: `${total} conversations`}
 										</span>
 									)}
 									{(membership?.active || device.state !== "self") && (

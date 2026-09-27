@@ -101,7 +101,9 @@ const {
 	assignSlots,
 	meshGeometry,
 	fitTransform,
+	keepNodeVisible,
 	zoomAbout,
+	NODE_WIDTH,
 	NODE_HEIGHT,
 	ROW_GAP,
 	sessionRows,
@@ -442,10 +444,13 @@ test("an unreachable device carries the backend's own reason", () => {
 	const device = graph.devices[0];
 	assert.equal(device.state, "unreachable");
 	assert.equal(device.reason, "no route to it");
-	assert.equal(
-		deviceStatLine(device, 1_700_000_100),
-		"unreachable (no route to it)",
-	);
+	/*
+	 * THE WORD AT NODE WIDTH, THE REASON ON THE SURFACES THAT HAVE ROOM (design review
+	 * round 1, D6): the pinned 200 px node printed `unreachable (no route t…`, and the
+	 * parenthetical is the only thing that distinguishes one unreachable device from
+	 * another - so the stat line says the state and the reason lives where it fits.
+	 */
+	assert.equal(deviceStatLine(device, 1_700_000_100), "unreachable");
 	assert.equal(deviceStateWords(device), "unreachable (no route to it)");
 });
 
@@ -506,8 +511,8 @@ test("a stat line never claims a heartbeat the wire did not send", () => {
 	assert.equal(deviceStatLine(self, 1_700_000_100), "this device");
 	assert.equal(
 		deviceStatLine(devon, 1_700_000_100),
-		"2 chats · seen just now",
-		"the age comes from the stamp that IS there",
+		"2 conversations · seen just now",
+		"the age comes from the stamp that IS there, and the unit is the feature's one noun",
 	);
 	assert.equal(
 		deviceStatLine(unknown, 1_700_000_100),
@@ -1400,7 +1405,95 @@ test("a busy session refuses rather than being interrupted, and offers the wait"
 		300,
 		"the route's own ceiling on waiting inside the request",
 	);
+	/*
+	 * AND THE REFUSAL CARRIES THE MOVE IT REFUSED (agent review round 1, F2). Without it
+	 * the notice's "Wait for the turn to finish" had nothing to re-issue: the page read the
+	 * plan off a `pendingMove` that this path never set, so the button was drawn and inert
+	 * on every path that can produce a `busy` refusal.
+	 */
+	assert.ok(verdict.plan, "the refusal names the move the remedy re-issues");
+	assert.equal(verdict.plan.to, PEER);
+	assert.equal(verdict.plan.keep, false);
+	assert.match(verdict.plan.verb, /^Move to /);
 	assert.match(hoverSentence(verdict), /^Drop will be refused: /);
+});
+
+test("the renderer sizes its deadline from the REQUEST, and its give-up carries the move's code (F1)", () => {
+	const api = source(
+		"src/renderer/src/shared/api/local-operator/desktop-api.ts",
+	);
+	/*
+	 * THE CALL SITE, NOT ONLY THE ARITHMETIC. The suite pinned the object form of
+	 * `desktopRequestTimeoutMs` while the one shipped caller passed `request.op`, so the
+	 * whole-request branch the contract documents was dead code exactly where it mattered:
+	 * a transfer got the 20 s control budget against a route that publishes 145-415 s, and
+	 * the give-up rejected with no code, so the surface reported a sent move as a refusal
+	 * that changed nothing. Both halves are pinned here.
+	 */
+	assert.match(
+		api,
+		/withDeadline\(\s*window\.api\.desktop\.request\(request\),\s*request,\s*\)/,
+		"the request is passed, not its op: the transfer's bound is sized from the request",
+	);
+	assert.doesNotMatch(
+		api,
+		/withDeadline\([^)]*request\.op/,
+		"the op string is the shape that gave a move the 20 s control budget",
+	);
+	assert.match(
+		api,
+		/function withDeadline\(\s*pending: Promise<DesktopResponse>,\s*request: DesktopRequest,\s*\)/,
+		"the parameter is the request, which is what the deadline is derived from",
+	);
+	assert.match(api, /desktopRequestTimeoutMs\(request\)/);
+	assert.match(
+		api,
+		/desktopRequestDeadlineDetail\(\s*request\.op,\s*deadlineMs,?\s*\)/,
+		"the give-up takes the op's own code and sentence from the contract's one authority",
+	);
+	assert.match(api, /detail\.code/);
+});
+
+test("a move that outran the app's own deadline is unconfirmed, never 'nothing changed' (F1)", () => {
+	const refused = meshRefusal({
+		code: "deadline_exceeded",
+		status: null,
+		message: "the app stopped waiting",
+	});
+	assert.equal(
+		refused.unconfirmed,
+		true,
+		"the request was sent and the outcome is unknown, which is the other instruction entirely",
+	);
+	assert.equal(refused.code, "deadline_exceeded");
+	// The control: a refusal that DID observe the backend stays actionable.
+	assert.equal(
+		meshRefusal({ code: "not_a_device", status: null, message: "no" })
+			.unconfirmed,
+		false,
+	);
+});
+
+test("a keep receipt that omits the new id is refused rather than renamed (F6)", () => {
+	const receipt = {
+		session_id: "a".repeat(12),
+		mode: "keep",
+		locality: "remote",
+		owner_device: `d_${"b".repeat(32)}`,
+		source_retired: false,
+		phases: [],
+	};
+	assert.equal(
+		transferReceipt(receipt),
+		null,
+		"a keep receipt without the minted id cannot say which chip moved or what the undo acts on",
+	);
+	const moved = transferReceipt({ ...receipt, mode: "move" });
+	assert.ok(
+		moved,
+		"a move's receipt documents new_session_id as equal to the source",
+	);
+	assert.equal(moved.new_session_id, receipt.session_id);
 });
 
 test("confirm by risk: every destructive move confirms, and a live runtime is named", () => {
@@ -1626,8 +1719,8 @@ test("the one gesture the protocol refuses is not a drag, and every drag has a m
 	);
 	assert.match(
 		list,
-		/moveDestinations\(/,
-		"from the same destination arithmetic",
+		/destinationsWithVerdicts\(/,
+		"from the same destination arithmetic, and the same verdict the drag would give it",
 	);
 });
 
@@ -1644,5 +1737,135 @@ test("a refusal is rendered from the receipt rather than paraphrased", () => {
 		"with its code beside it, so a support conversation and a log agree",
 	);
 	assert.match(actions, /Wait for the turn to finish/);
-	assert.match(actions, /Erase the copy/, "the reversible half has an undo");
+	/*
+	 * THE UNDO'S LABEL IS THE PLAN'S OWN VERB (agent review round 1, F3 / UX U4): the button
+	 * said "Erase the copy" while the request it sent was a recall that leaves this device
+	 * holding a second copy of the conversation. Pinned as the expression, so a literal
+	 * cannot come back beside it.
+	 */
+	assert.match(actions, /\{receipt\.undo\.verb\}/);
+	assert.doesNotMatch(
+		actions,
+		/>\s*Erase the copy\s*</,
+		"the button's label is the plan's verb, and no literal sits beside it",
+	);
+});
+
+/* ------------------------------------------- the remediation round's invariants */
+
+test("a shrunken viewport brings the selected node back rather than fitting again (D1)", () => {
+	/*
+	 * THE FIX IS A CLAMP, NOT A RE-FIT: scale is the reader's, and a panel toggle may not
+	 * throw away their pan and zoom. Pure, so the property is checkable without pixels - the
+	 * measured defect was 26 px of a 200 px node left on screen at 1024x768 with the panel
+	 * open, against the same two nodes whole with it closed.
+	 */
+	const wide = { width: 1072, height: 700 };
+	const narrow = { width: 736, height: 700 };
+	const box = { x: 600, y: 100, height: 72 };
+	const fitted = fitTransform({ width: 1000, height: 600 }, wide);
+	const kept = keepNodeVisible(fitted, box, narrow);
+	assert.equal(kept.k, fitted.k, "the reader's scale is not touched");
+	assert.notEqual(
+		kept.tx,
+		fitted.tx,
+		"the world moves by what the clamp needs",
+	);
+	const right = kept.tx + (box.x + NODE_WIDTH) * kept.k;
+	assert.ok(
+		right <= narrow.width - 16 + 0.001,
+		`the node's right edge is inside the box (${right.toFixed(1)} <= ${narrow.width - 16})`,
+	);
+	/*
+	 * ALREADY INSIDE IS A NO-OP, and the margin is part of "inside": a node sitting 10 px
+	 * from the edge is nudged to the margin, which is the clamp doing its job rather than a
+	 * bug to assert around.
+	 */
+	const inside = { k: 1, tx: 0, ty: 0 };
+	assert.deepEqual(
+		keepNodeVisible(inside, { x: 100, y: 100, height: 72 }, wide),
+		inside,
+	);
+	assert.equal(
+		keepNodeVisible(inside, { x: 4, y: 4, height: 72 }, wide).tx,
+		12,
+		"a node whose left edge is under the margin is translated BY the difference, so the edge lands on it",
+	);
+});
+
+test("the chip row fits by construction, so both chips and the control are hittable (Q-1/U2)", () => {
+	const node = source("src/renderer/src/features/mesh/mesh-node.tsx");
+	/*
+	 * THE TWO HALVES OF ONE DEFECT, and both are structural rather than numeric: the chips
+	 * SHARE the row (`min-w-0 flex-1`, so no chip can sit outside the box that clips it) and
+	 * the `+N more` control is a `shrink-0` CHILD of that same row, so the affordance that
+	 * reaches the rest cannot be the thing the row clips. Measured before the fix: chip 0
+	 * inside, chip 1 half-clipped, chips 2-3 outside, and the control 315 px past the row's
+	 * right edge with `hittable: false`.
+	 */
+	assert.match(
+		node,
+		/className="min-w-0 flex-1"/,
+		"a chip shares the row rather than overflowing it",
+	);
+	assert.match(
+		node,
+		/w-full max-w-32 truncate/,
+		"and its button fills that share",
+	);
+	assert.match(
+		node,
+		/<li className="shrink-0">/,
+		"the control keeps its own width",
+	);
+	assert.match(
+		node,
+		/data-mesh-more=\{device\.id\}/,
+		"the +N more control is inside the row that clips",
+	);
+	assert.equal(
+		CHIP_LIMIT,
+		2,
+		"two chips and the control are what a 195 px row holds; four measured 611 px of content",
+	);
+});
+
+test("the menu refuses a destination the drag would, before the choice (U3)", () => {
+	const card = source("src/renderer/src/features/mesh/mesh-card.tsx");
+	// The annotation is the same resolver the drop uses, so menu and drag cannot disagree.
+	assert.match(
+		card,
+		/export function destinationsWithVerdicts/,
+		"one resolver for both surfaces",
+	);
+	assert.match(
+		card,
+		/refused:\s*verdict\.kind === "refused" && verdict\.code !== "busy"/,
+		"a busy destination stays offered, because the wait remedy is only reachable by asking",
+	);
+	assert.match(card, /disabled=\{Boolean\(destination\.refused\)\}/);
+	assert.match(card, /title=\{destination\.refused \?\? undefined\}/);
+	// The page and the list both go through it, so neither surface keeps its own copy.
+	const page = source("src/renderer/src/features/mesh/mesh-page.tsx");
+	assert.match(page, /destinationsWithVerdicts\(graph, session, selfLabel\)/);
+	const list = source("src/renderer/src/features/mesh/mesh-list.tsx");
+	assert.match(
+		list,
+		/destinationsWithVerdicts\(\s*graph,\s*session,\s*selfLabel,?\s*\)/,
+	);
+});
+
+test("a drag's release does not open the panel, and Escape cancels a drag (U1/U5)", () => {
+	const canvas = source("src/renderer/src/features/mesh/mesh-canvas.tsx");
+	// The flag is set on the ONE transition that makes the gesture a drag, cleared on the
+	// next press, and consumed by the chip's click.
+	assert.match(canvas, /dragEndedAsDrag\.current = true;/);
+	assert.match(canvas, /dragEndedAsDrag\.current = false;/);
+	assert.match(canvas, /if \(dragEndedAsDrag\.current\) \{/);
+	assert.match(canvas, /case "Escape":/);
+	assert.match(
+		canvas,
+		/dragReducer\(current, \{ kind: "cancel" \}\)/,
+		"Escape uses the reducer's own cancel rather than a second way to end a gesture",
+	);
 });

@@ -103,18 +103,26 @@ const STATE_TEXT: Record<DeviceState, string> = {
  *
  *   - `null` - no drag is over this node. The node's own border.
  *   - `"accept"` - the drop would do what the indicator says. The border takes the
- *     ACCENT, which is the one role that means "this is where it goes" and is
- *     already spent on "this is the device you are on" - spent a second time HERE
- *     because the two claims cannot be on screen at once (this device is never a
- *     valid destination for a conversation it already holds).
+ *     ACCENT, and the node's fill takes the accent WASH with it, because accent is
+ *     already spent on "this is the device you are on" and the two states CAN be on
+ *     screen at once: the identity RING is drawn for the whole gesture (a drag frame
+ *     shows it on the self node while the target wears the accept border - measured,
+ *     design round 1, D2, which falsified this comment's earlier claim that the two
+ *     could not coexist). The ring is a 2 px outline OUTSIDE the border box and the
+ *     wash is the node's own surface, so the states are told apart by a channel that
+ *     neither spends twice: the ring never fills, the accept state does. SLICE 3: the
+ *     rule is that accent means "where it goes" and the identity ring means "where you
+ *     are", and a third state that wants accent has to bring its own second channel
+ *     the way this one brought the wash.
  *   - `"refuse"` - the plan says no, and the node says so BEFORE the release: a
  *     target that accepts a drop and then refuses it is the behaviour the plan's
- *     refusal rules exist to remove.
+ *     refusal rules exist to remove. Warning, never accent: a refusal is not a
+ *     destination, which is the same rule the lane's own comment states at `:190`.
  */
 export type NodeDropState = "accept" | "refuse" | null;
 
 const DROP_BORDER: Record<"accept" | "refuse", string> = {
-	accept: "border-accent",
+	accept: "border-accent bg-accent-wash",
 	refuse: "border-warning",
 };
 
@@ -148,6 +156,35 @@ export function chipFact(session: MeshSessionRow, ownerLabel: string): string {
 	}
 	if (session.live_state.trim()) return session.live_state.trim();
 	return session.locality === "local" ? "on this device" : `on ${ownerLabel}`;
+}
+
+/**
+ * WHETHER THIS CONVERSATION WILL REFUSE A DRAG, as the chip's own stripe.
+ *
+ * `attention` is exactly the two states that answer "no" while the pointer is still
+ * down - a turn in flight (`busy`, which the reducer refuses rather than interrupts)
+ * and a session on a device that is not answering - so the chip can say it before the
+ * reader commits, which is the same prospective rule the drop target and the indicator
+ * follow. It is deliberately NOT a per-word palette: the exact word is in the tooltip,
+ * in the accessible name and in the panel's column, and a 72 px chip that tried to
+ * spell four states would spell none of them.
+ */
+export type ChipStripeKey = "resting" | "attention";
+
+/** The chip's stripe: the node's own channel, at the chip's own weight. */
+const CHIP_STRIPE: Record<ChipStripeKey, string> = {
+	// A resting chip takes the hairline the resting node takes: present, decorative, and
+	// never a second status hue on a surface that already carries one.
+	resting: "border-l-2 border-l-hairline",
+	attention: "border-l-2 border-l-warning",
+};
+
+/** Which stripe a chip wears - see `ChipStripeKey`. */
+export function sessionStripeKey(session: MeshSessionRow): ChipStripeKey {
+	if (!session.reachable) return "attention";
+	return session.live_state.trim().toLowerCase() === "busy"
+		? "attention"
+		: "resting";
 }
 
 type NetworkNodeProps = {
@@ -334,6 +371,10 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 				onClick={() => onOpen(device.id)}
 				className={cn(
 					"flex w-full items-center gap-2 rounded-t-[5px] px-3 pt-2 pb-1 text-left",
+					// A CONTROL'S CURSOR (UX review round 1, U6): this is the click-to-inspect target
+					// and Tailwind's preflight leaves buttons at `cursor: default`, so the title
+					// read like a label. `cursor-pointer` is the app's own spelling.
+					"cursor-pointer",
 					"focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-[-2px]",
 				)}
 			>
@@ -372,7 +413,18 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 			 */}
 			<ul
 				aria-label={`Conversations on ${device.label}`}
-				className="m-0 flex list-none items-center gap-1 overflow-hidden px-3 pb-2"
+				className={cn(
+					"m-0 flex list-none items-center gap-1 overflow-hidden px-3 pb-2",
+					/*
+					 * THE ROW UNDER THE GHOST DIMS (design review round 1, D4): the ghost is drawn at
+					 * the pointer, so over an accepting target it lands on the row it is aimed at and
+					 * split a chip's own label around it (the frame read `Rewrite the imp` · ghost ·
+					 * `y`). Dimming is the minimum that finding asked for, and it is not decoration:
+					 * the label under the pointer stops competing with the one word the reader has to
+					 * read before committing - which the indicator now carries beside the ghost.
+					 */
+					dropState === "accept" && "opacity-40",
+				)}
 			>
 				{sessions.shown.map((session) => (
 					<SessionChip
@@ -480,7 +532,7 @@ const SessionChip: FC<SessionChipProps> = ({
 	}
 	return (
 		<li
-			className="shrink-0"
+			className="min-w-0 flex-1"
 			data-mesh-session-item={session.id}
 			data-mesh-dragging={dragging ? "true" : undefined}
 		>
@@ -495,8 +547,22 @@ const SessionChip: FC<SessionChipProps> = ({
 				onPointerDown={(event) => onPointerDown(event, session)}
 				onClick={() => onClick(session)}
 				className={cn(
-					"max-w-32 truncate rounded-sm border border-hairline bg-surface px-1.5 py-0.5 text-meta text-ink-muted",
+					"w-full max-w-32 truncate rounded-sm border border-hairline bg-surface px-1.5 py-0.5 text-left text-meta text-ink-muted",
+					// THE CURSOR SAYS IT CAN BE GRABBED (UX review round 1, U6): the chips are
+					// the draggable things and the only cue was a `title` tooltip the reader had
+					// to wait for. `cursor-pointer` is the app's own spelling for a control.
+					"cursor-grab active:cursor-grabbing",
 					"hover:text-ink",
+					/*
+					 * THE CHIP'S OWN STATE STRIPE (UX review round 1, U7): on the canvas a `busy`
+					 * conversation and an idle one looked identical, and `busy` is exactly the
+					 * state that refuses the move the reader is about to attempt. The stripe is
+					 * the SAME channel the node uses and is NOT the only one: the exact word is in
+					 * the tooltip, in the accessible name ("…, busy. Opens …") and in the panel's
+					 * own column, so the stripe answers "will this one refuse me" and the words
+					 * stay where there is room for them.
+					 */
+					CHIP_STRIPE[sessionStripeKey(session)],
 					/*
 					 * THE DRAGGED CHIP DIMS RATHER THAN DETACHING. The real element keeps its
 					 * place in the list (so nothing reflows mid-drag and the drop's own layout is

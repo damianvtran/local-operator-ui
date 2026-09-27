@@ -38,7 +38,8 @@ import {
 	TriangleAlert,
 } from "lucide-react";
 import type { FC } from "react";
-import type { MeshDevice } from "./mesh-graph";
+import { resolveDrop } from "./mesh-drop";
+import type { MeshDevice, MeshGraph } from "./mesh-graph";
 import { deviceStatLine, deviceStateWords } from "./mesh-graph";
 import { chipFact, chipLabel } from "./mesh-node";
 import type { DeviceSessions } from "./mesh-sessions";
@@ -60,6 +61,14 @@ export type MoveDestination = {
 	/** The verb the drop indicator would use, so menu and drag say one thing. */
 	verb: string;
 	keepVerb: string;
+	/**
+	 * THE ROUTE'S OWN SENTENCE when this destination can only refuse, or `null` when the
+	 * move is offerable (UX review round 1, U3). Resolved by the caller through
+	 * `resolveDrop` - the same function the drag uses - so the menu cannot disagree with
+	 * the pointer about what a destination would do. A refused destination is rendered
+	 * DISABLED with this sentence as its reason rather than offered and then denied.
+	 */
+	refused?: string | null;
 };
 
 export function moveDestinations(
@@ -114,6 +123,68 @@ export function destinationsOnCanvas(
 }
 
 /**
+ * The same destinations, each carrying the verdict the DROP would give it.
+ *
+ * THE MENU IS THE ACCESSIBLE PATH TO EVERY DRAG OUTCOME, so it may not offer one the
+ * drag refuses (UX review round 1, U3). Measured: a peer's conversation menu listed
+ * `Move to bench-device-2/3/4` - moves between two devices that are neither end of it -
+ * and every one answered `third_device` the moment it was chosen, while the DRAG refuses
+ * that case while the button is still down (`resolveDrop`'s own `third_device` branch).
+ * One decision, one function: each destination is pre-resolved through `resolveDrop`, and
+ * a verdict that refuses annotates the entry so the menu renders it DISABLED with the
+ * route's own sentence as its reason instead of letting the reader commit and be told no.
+ *
+ * IT LIVES HERE, beside the destinations themselves, because both surfaces that offer the
+ * menu - the device panel and the list - reach it with the graph in hand; a version in
+ * either caller would be a second spelling of one rule.
+ */
+export function destinationsWithVerdicts(
+	graph: MeshGraph,
+	session: MeshSessionRow,
+	selfLabel: string,
+): MoveDestination[] {
+	const destinations = destinationsOnCanvas(graph, session, selfLabel);
+	const context = {
+		selfDeviceId: graph.selfDeviceId,
+		devices: new Map(graph.devices.map((device) => [device.id, device])),
+		networks: new Map(graph.networks.map((network) => [network.id, network])),
+	};
+	const ownerDeviceId =
+		session.locality === "local"
+			? (graph.selfDeviceId ?? "")
+			: session.owner_device;
+	const owner = context.devices.get(ownerDeviceId);
+	return destinations.map((destination) => {
+		const verdict = resolveDrop(
+			{
+				session,
+				ownerDeviceId,
+				ownerLabel: owner?.label ?? session.owner_device_name,
+			},
+			{ kind: "device", deviceId: destination.deviceId },
+			context,
+		);
+		return {
+			...destination,
+			/*
+			 * `busy` IS NOT A REASON TO HIDE A DESTINATION (agent review round 1, U3 and the
+			 * round's own F2, which are the same fact seen twice): the refusal is about the
+			 * SESSION'S OWN TURN, not about where it is going, and the notice's remedy - wait
+			 * for the turn to finish - is only reachable by asking. Disabling it here would take
+			 * that remedy off the accessible path on every destination at once, which is the
+			 * opposite of what the menu is for. A destination that can only refuse FOR ITS OWN
+			 * REASON (`third_device`, `unreachable`, `suspect_device`, `revoked_membership`) is
+			 * annotated, and the menu renders it disabled with the route's sentence.
+			 */
+			refused:
+				verdict.kind === "refused" && verdict.code !== "busy"
+					? verdict.sentence
+					: null,
+		};
+	});
+}
+
+/**
  * The keyboard path to every outcome a drag can produce.
  *
  * TWO SECTIONS, NOT A MODE TOGGLE: the move is what the gesture means, and the copy
@@ -159,6 +230,15 @@ export const SessionMoveMenu: FC<{
 				<DropdownMenuItem
 					key={destination.deviceId}
 					data-mesh-move-to={destination.deviceId}
+					/*
+					 * A DESTINATION THAT CAN ONLY REFUSE IS NOT OFFERED (UX review round 1, U3):
+					 * the item is disabled and carries the route's own sentence, so the reader
+					 * learns why from the menu instead of from a refusal after committing. The
+					 * reason is in `title` because the menu has no room for a paragraph, and the
+					 * same sentence is what the drag states prospectively.
+					 */
+					disabled={Boolean(destination.refused)}
+					title={destination.refused ?? undefined}
 					onSelect={() => onChoose(destination, false)}
 				>
 					{destination.verb}
@@ -169,6 +249,8 @@ export const SessionMoveMenu: FC<{
 				<DropdownMenuItem
 					key={`keep-${destination.deviceId}`}
 					data-mesh-copy-to={destination.deviceId}
+					disabled={Boolean(destination.refused)}
+					title={destination.refused ?? undefined}
 					onSelect={() => onChoose(destination, true)}
 				>
 					{destination.keepVerb}

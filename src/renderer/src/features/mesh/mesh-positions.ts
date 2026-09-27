@@ -266,6 +266,48 @@ export function fitTransform(
 	};
 }
 
+/** The breathing room `keepNodeVisible` leaves between a node's edge and the box. */
+export const KEEP_MARGIN_PX = 16;
+
+/**
+ * The MINIMUM translation that puts a node's box back inside a viewport.
+ *
+ * WHY THIS EXISTS, AND WHY IT IS NOT A RE-FIT (design review round 1, D1).
+ * `fitTransform` runs once, behind `fitted`, on the invariant "a poll never changes the
+ * transform" - and a PANEL OPENING is not a poll: it takes ~335 px of the canvas in one
+ * step, leaving the transform pointing past the new right edge. Measured at 1024x768,
+ * opening the panel clipped the node the reader had just clicked to **26 px of its 200**
+ * (13%), with a second node clipped the same way: clicking a device to inspect it is
+ * what hid it. Re-fitting instead would silently discard the reader's own pan and zoom
+ * on every panel toggle, which is the defect the fit-once rule exists to prevent, so
+ * the rule is a CLAMP rather than a fit: the transform keeps its scale and moves only
+ * by the amount needed to bring the node back.
+ *
+ * Pure, and expressed in SCREEN coordinates, so the answer is checkable without pixels:
+ * the node's world box under `translate(t) scale(k)` lands at `t + x*k`, and the clamp
+ * solves each axis independently - right edge first, then left, so a node wider than the
+ * box is left-aligned rather than oscillated between the two rules.
+ */
+export function keepNodeVisible(
+	transform: { k: number; tx: number; ty: number },
+	box: { x: number; y: number; height: number },
+	viewport: { width: number; height: number },
+	margin: number = KEEP_MARGIN_PX,
+): { k: number; tx: number; ty: number } {
+	const left = transform.tx + box.x * transform.k;
+	const right = left + NODE_WIDTH * transform.k;
+	const top = transform.ty + box.y * transform.k;
+	const bottom = top + box.height * transform.k;
+	let dx = 0;
+	if (right > viewport.width - margin) dx = viewport.width - margin - right;
+	if (left + dx < margin) dx = margin - left;
+	let dy = 0;
+	if (bottom > viewport.height - margin) dy = viewport.height - margin - bottom;
+	if (top + dy < margin) dy = margin - top;
+	if (dx === 0 && dy === 0) return transform;
+	return { k: transform.k, tx: transform.tx + dx, ty: transform.ty + dy };
+}
+
 /**
  * The zoom-about-a-point solve: the world point under the pointer is invariant.
  *

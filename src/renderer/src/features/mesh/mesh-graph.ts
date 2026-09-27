@@ -298,8 +298,17 @@ export function seenSentence(seconds: number): string {
 	return `seen ${Math.floor(h / 24)}d ago`;
 }
 
-function chatsSentence(count: number): string {
-	return count === 1 ? "1 chat" : `${count} chats`;
+/**
+ * How many conversations a device holds, in the ONE noun this feature uses.
+ *
+ * "CONVERSATION" RATHER THAN "CHAT", everywhere on this surface (design review round 1,
+ * D5): the same row printed "4 chats" in one column and "4 conversations" in the next,
+ * which is two names for the unit a drag carries on a feature whose stated principle is
+ * the protocol's own vocabulary. Pluralised here rather than interpolated at the call
+ * site, because "1 conversations" is what a bare template produced.
+ */
+function conversationsSentence(count: number): string {
+	return count === 1 ? "1 conversation" : `${count} conversations`;
 }
 
 /**
@@ -334,15 +343,24 @@ export function deviceStatLine(device: MeshDevice, nowSeconds: number): string {
 		case "self":
 			return device.sessionCount === null
 				? "this device"
-				: `this device · ${chatsSentence(device.sessionCount)}`;
+				: `this device · ${conversationsSentence(device.sessionCount)}`;
 		case "suspect":
 			return "identity suspect";
 		case "unreachable":
-			return deviceStateWords(device);
+			/*
+			 * THE WORD AT NODE WIDTH, THE REASON WHERE THERE IS ROOM (design review round 1,
+			 * D6). Measured on `misconfigured` at the pinned width, the node printed
+			 * `unreachable (no route t…` - and the parenthetical is the ONLY thing that
+			 * distinguishes one unreachable device from another, so a cut version of it spends
+			 * the line and answers nothing. The stat line says the word; the panel's own column
+			 * (`deviceStateWords`), the node's accessible name and the hover tooltip carry the
+			 * reason in full.
+			 */
+			return "unreachable";
 		default: {
 			const parts: string[] = [];
 			if (device.sessionCount !== null)
-				parts.push(chatsSentence(device.sessionCount));
+				parts.push(conversationsSentence(device.sessionCount));
 			if (device.lastSeenAt !== null)
 				parts.push(seenSentence(nowSeconds - device.lastSeenAt));
 			/*
