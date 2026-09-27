@@ -453,18 +453,26 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 
 						   THE CLEAR IS DEFERRED ONE MICROTASK, AND THE DEFERRAL IS NOT WHAT PUTS
 						   THE CARET IN THE DEV LOOP — measured, and worth spelling out because
-						   this comment used to claim the opposite. Under `StrictMode` the request
-						   is spent by the mount that is DISCARDED however this clear is
-						   scheduled: the acknowledgement is emitted from that mount's caret
-						   effect before React renders the surviving terminal into state, so no
-						   ordering of this `setFocusRequest` can give the survivor a token to
-						   apply. The half that lands the caret is the mirror's own — it takes
-						   neither the keyboard nor the acknowledgement from a terminal it no
-						   longer holds (the caret effect in `console-mirror.tsx`), and the
-						   StrictMode case in `scripts/console-mirror.test.mjs` is the reading.
-						   What this deferral keeps is the F-1 property the sentence above is
-						   about: the clear still happens before any LATER mount can inherit the
-						   token, because a lens change is a different task. */
+						   this comment used to claim the opposite. What lands the caret is the
+						   mirror's own half: it takes neither the keyboard nor the
+						   acknowledgement from a terminal it no longer holds (the caret effect
+						   in `console-mirror.tsx`), so the request is still standing when the
+						   surviving terminal is in state — the StrictMode case in
+						   `scripts/console-mirror.test.mjs` is the reading. THAT HALF IS ALSO
+						   THE LIMIT OF THE CLAIM: on a mirror WITHOUT it, no ordering of this
+						   `setFocusRequest` could give the survivor a token to apply, because
+						   the acknowledgement is then emitted from the discarded mount's caret
+						   effect before React renders the survivor into state. So the account
+						   above is about the unfixed mirror, and it is why the clear was never
+						   the thing to change.
+
+						   THE DEFERRAL STAYS, AND IT IS UNOBSERVED RATHER THAN PROVEN INERT:
+						   nothing measures that it is needed — the F-1 case above clears
+						   synchronously and passes either way — and nothing measures that it is
+						   not. Its original rationale (a clear that lands before any LATER mount
+						   can inherit the token, since a lens change is a different task) is
+						   reasoning this lane did not test either way, so the line is left as it
+						   is rather than changed on an unmeasured claim. */
 						focusRequest={focusRequest}
 						onFocusTaken={(applied) =>
 							queueMicrotask(() =>

@@ -1064,10 +1064,17 @@ test("the store composes the refusal's own sentence instead of storing the serve
 test("a not-answering row's remedy is reachable by focus, and only on that row", async () => {
 	const SILENT = "d4e5f6a7b8c9";
 	const FAILED = "e5f6a7b8c9d0";
+	/*
+	 * THE ROW'S TITLE IS NAMED ONCE, and both readers below ask for the same thing the
+	 * fixture declares. The tooltip helper matches on `textContent.includes(title)`, so a
+	 * second copy of the literal turns a fixture rename into a null-versus-regex
+	 * assertion failure after the helper's ~2 s bound - the symptom, not the rename.
+	 */
+	const SILENT_TITLE = "Quiet owner (stale beat)";
 	const rows = [
 		{
 			session_id: SILENT,
-			title: "Quiet owner (stale beat)",
+			title: SILENT_TITLE,
 			active: true,
 			status: {
 				code: "wedged",
@@ -1098,14 +1105,14 @@ test("a not-answering row's remedy is reachable by focus, and only on that row",
 	try {
 		const row = (name) =>
 			harness.ring().find((element) => element.textContent?.includes(name));
-		const silent = row("Quiet owner (stale beat)");
+		const silent = row(SILENT_TITLE);
 		const failed = row("Failed turn");
 		assert.ok(silent, "the not-answering row did not render");
 		assert.ok(failed, "the failed row did not render");
 		// The pointer channel: the composed flyout ends with the clause, so the row
 		// itself still carries it where a pointer lands.
 		assert.match(
-			(await flyoutLines(silent, "Quiet owner (stale beat)"))?.at(-1) ?? "",
+			(await flyoutLines(silent, SILENT_TITLE))?.at(-1) ?? "",
 			/· \/stop if it stays silent\.$/,
 		);
 		// The keyboard channel: the row POINTS at the sentence, which is what

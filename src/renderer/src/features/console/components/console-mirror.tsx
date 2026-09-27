@@ -146,16 +146,26 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 	const settledRef = useRef(onSettled);
 	const focusTakenRef = useRef(onFocusTaken);
 	/**
-	 * THE TERMINAL THIS MOUNT HOLDS RIGHT NOW, which is not always the one an effect
-	 * closure was rendered with.
+	 * THE TERMINAL THIS MOUNT HOLDS RIGHT NOW, which is not always the one the caret
+	 * effect's closure was rendered with.
 	 *
 	 * React can flush a passive effect for a render generation whose terminal the
 	 * component has ALREADY disposed — the dev-mode `StrictMode` double mount does
 	 * exactly that (measured: the effect ran with the terminal its own cleanup had
 	 * just disposed, while the surviving terminal was already constructed and a
-	 * render away from being in state). An effect that acts on a terminal this
-	 * component no longer holds is acting on a released resource, so the caret
-	 * effect below asks this ref rather than trusting its closure.
+	 * render away from being in state). The caret effect below takes the keyboard
+	 * and spends the pane's request, so it asks this ref rather than trusting its
+	 * closure.
+	 *
+	 * THIS NARROWS TO THE CARET EFFECT, IT DOES NOT CLOSE THE CLASS — and that is a
+	 * measured scope rather than an oversight. The grid-resize and theme/observer
+	 * effects below act on their closure's `terminal` with no ownership check at all,
+	 * and the subscription effect is safe only by its own `disposed` flag rather than
+	 * by this ref. `@xterm/xterm` 6.0.0 tolerates `write`/`reset`/`resize`/`options`/
+	 * `focus`/`onData` after `dispose()` and logs for `terminal.buffer` alone, which
+	 * none of the three reads — so the caret effect is guarded because it was the one
+	 * with a symptom and a cost the user pays. A reader who generalises this ref into
+	 * an ownership invariant this file does not have will be wrong.
 	 */
 	const heldTerminalRef = useRef<Terminal | null>(null);
 	exitRef.current = onExit;
@@ -459,8 +469,15 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 	 * which is why the token and not the change of it is the trigger. What the
 	 * acknowledgement removes is the OTHER mount: one carrying a token the user's
 	 * gesture is long finished with, which used to take the keyboard from the composer.
+	 *
+	 * THIS EFFECT IS PASSIVE, AND THE GUARD BELOW IS THE WHOLE OF THE FIX. It shipped
+	 * briefly as a `useLayoutEffect` on the way to this PR; measured on the pinned
+	 * case, the effect type decides nothing: `useEffect` + the guard is green 3/3 and
+	 * `useLayoutEffect` + the guard is green 3/3, while with the guard removed BOTH
+	 * are red 3/3. So the timing change was riding in a flake fix without a reason of
+	 * its own, and a caret landing in the dev loop does not need one.
 	 */
-	useLayoutEffect(() => {
+	useEffect(() => {
 		if (!terminal || !focusRequest) return;
 		/*
 		 * ONLY THE TERMINAL THIS MOUNT STILL HOLDS TAKES THE CARET, and this line is the
