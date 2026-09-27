@@ -16865,7 +16865,7 @@ async function sceneDrafts(cdp) {
 				const element = document.querySelector(${JSON.stringify(`[${attribute}="${key}"]`)});
 				if (element === null) return null;
 				const style = getComputedStyle(element);
-				return { display: style.display, width: Math.round(element.getBoundingClientRect().width), disabled: element.disabled === true };
+				return { display: style.display, width: Math.round(element.getBoundingClientRect().width), disabled: element.disabled === true, ariaDisabled: element.getAttribute("aria-disabled") };
 			})()`,
 		);
 	const composerRowExists = (key) =>
@@ -16931,20 +16931,22 @@ async function sceneDrafts(cdp) {
 	/*
 	 * THE LIVE HOP'S ACT IS REVEALED BUT INAPPLICABLE (UX round 1's U2,
 	 * remediation): the seeded `pending: true` row is a send still on the wire, and
-	 * the control is disabled from the row's own marker - so a press moves nothing,
-	 * and a discard can never be followed by a silent send. On a tree without the
-	 * control the checks fail as the change's own claims, the convention this scene
-	 * already follows.
+	 * the control is INAPPLICABLE from the row's own marker - `aria-disabled`, never
+	 * `disabled` (agent review round 2's R7: a disabled control cannot hold focus) -
+	 * so a press moves nothing, and a discard can never be followed by a silent
+	 * send. On a tree without the control the checks fail as the change's own
+	 * claims, the convention this scene already follows.
 	 */
 	await hoverOver(cdp, `[data-draft-row="${DRAFTS_FLIGHT}"]`);
 	await wait(160);
 	const flightAct = await controlState("data-draft-discard", DRAFTS_FLIGHT);
 	note("the live hop's discard control", JSON.stringify(flightAct));
 	check(
-		"the live hop's control is revealed and disabled",
+		"the live hop's control is revealed and inapplicable (aria-disabled, not disabled)",
 		flightAct !== null &&
 			flightAct.display === "flex" &&
-			flightAct.disabled === true,
+			flightAct.disabled === false &&
+			flightAct.ariaDisabled === "true",
 		JSON.stringify(flightAct),
 	);
 	if (flightAct !== null) {
