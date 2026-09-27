@@ -6310,6 +6310,57 @@ test("a version read that never answers is killed, not left running", () => {
 });
 
 /**
+ * The `node:https` stand-in the registry-read case claims its bundle with.
+ *
+ * WHY IT IS NEEDED AT ALL: both version reads fetch hard-coded hosts (`pypi.org`,
+ * `registry.npmjs.org`), so no loopback seam exists for them and every other case
+ * hands their RESULTS in (the substituted list above). This fixture records what
+ * the shipped code asked for and lets the case stall the request on demand, which
+ * is the only way to drive the bound itself rather than its caller.
+ */
+const HTTPS_FIXTURE = `
+const state = () => (globalThis.__loTestHttps ??= { calls: [] });
+const get = (url, optionsOrCallback, maybeCallback) => {
+	const options =
+		typeof optionsOrCallback === "object" && optionsOrCallback !== null
+			? optionsOrCallback
+			: undefined;
+	const record = {
+		url,
+		options: options ?? null,
+		destroyed: false,
+		destroyError: null,
+		handlers: {},
+	};
+	state().calls.push(record);
+	const request = {
+		on(event, handler) {
+			record.handlers[event] = handler;
+			return request;
+		},
+		once(event, handler) {
+			record.handlers[event] = handler;
+			return request;
+		},
+		destroy(error) {
+			record.destroyed = true;
+			record.destroyError = error ?? null;
+			/*
+			 * The real client reports the destruction's error on the request; done on a
+			 * microtask so the shipped code has wired its error handler by then - both
+			 * reads do it synchronously, before the case can fire the timeout.
+			 */
+			queueMicrotask(() => record.handlers.error?.(error ?? new Error("destroyed")));
+			return request;
+		},
+	};
+	return request;
+};
+export { get };
+export default { get };
+`;
+
+/**
  * The shipped update service, bundled with Electron stubbed rather than launched.
  *
  * Extracted from the case that first needed it so a second one can drive the same
@@ -6331,8 +6382,11 @@ test("a version read that never answers is killed, not left running", () => {
  * scripted. The fixture re-exports the shipped module, so a case that overrides one
  * function still runs the rest of the real one, and the override is what makes the
  * ordering assertable without a real pip install.
+ *
+ * `httpsStub` replaces `node:https` for the one case that drives the two registry
+ * reads themselves (agent review minor-1); see `HTTPS_FIXTURE`.
  */
-const loadUpdateServiceModule = async ({ managedPython = null } = {}) => {
+const loadUpdateServiceModule = async ({ managedPython = null, httpsStub = false } = {}) => {
 	/*
 	 * `resolveDir` is set on every fixture module rather than only on the one that
 	 * needs it: a virtual module has no directory of its own, so esbuild refuses to
@@ -6381,9 +6435,22 @@ const loadUpdateServiceModule = async ({ managedPython = null } = {}) => {
 							namespace: "fixture",
 						}));
 					}
+					if (httpsStub) {
+						/*
+						 * Claimed BEFORE esbuild's own external handling for node builtins, so the
+						 * fixture replaces the real client for this one case's module graph.
+						 */
+						builder.onResolve({ filter: /^node:https$/ }, (args) => ({
+							path: args.path,
+							namespace: "fixture",
+						}));
+					}
 					builder.onLoad({ filter: /.*/, namespace: "fixture" }, (args) => {
 						if (args.path === "managed-python-fixture") {
 							return fixture(managedPython);
+						}
+						if (args.path === "node:https") {
+							return fixture(HTTPS_FIXTURE);
 						}
 						if (args.path === "electron") {
 							return fixture(`
@@ -6509,16 +6576,47 @@ const loadUpdateServiceModule = async ({ managedPython = null } = {}) => {
 									 * backticks in this comment: it lives inside a template
 									 * literal, and one would end it here.
 									 */
-									checkForUpdates: async () => {
-										const result = globalThis.__loTestAppCheck
-											? await globalThis.__loTestAppCheck()
-											: null;
-										if (result && !result.isUpdateAvailable) {
-											autoUpdater.emit("update-not-available", {
-												version: "0.0.0-test",
+									checkForUpdates: () => {
+										/*
+										 * THE UPDATER'S RE-ENTRANCY, AS A CASE CAN ASK FOR IT
+										 * (__loTestAppCheckSticky): electron-updater answers a second call
+										 * while one is pending with THE SAME promise (its own "already in
+										 * progress" path), and the abandoned-fetch set's dedupe branch
+										 * rides on that identity (agent review minor-4). With the flag set,
+										 * this fixture serves one cached wrapper for as long as the case's
+										 * promise is unresolved; without it, every call runs fresh, because
+										 * cases that hand back DIFFERENT results per attempt rely on that.
+										 */
+										if (globalThis.__loTestAppCheckSticky) {
+											const pending = globalThis.__loTestAppCheckStickyPending;
+											if (pending) return pending;
+											const run = (async () => {
+												const result = globalThis.__loTestAppCheck
+													? await globalThis.__loTestAppCheck()
+													: null;
+												if (result && !result.isUpdateAvailable) {
+													autoUpdater.emit("update-not-available", {
+														version: "0.0.0-test",
+													});
+												}
+												return result;
+											})().finally(() => {
+												globalThis.__loTestAppCheckStickyPending = null;
 											});
+											globalThis.__loTestAppCheckStickyPending = run;
+											return run;
 										}
-										return result;
+										return (async () => {
+											const result = globalThis.__loTestAppCheck
+												? await globalThis.__loTestAppCheck()
+												: null;
+											if (result && !result.isUpdateAvailable) {
+												autoUpdater.emit("update-not-available", {
+													version: "0.0.0-test",
+												});
+											}
+											return result;
+										})();
 									},
 									/*
 									 * The download is driven through a global like the check above, so a
@@ -7410,6 +7508,10 @@ const loAggregateCheck = async ({
 	} finally {
 		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loTestAppCheck;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestAppCheckSticky;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestAppCheckStickyPending;
 		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loIpcHandlers;
 		if (interval) clearInterval(interval);
@@ -10166,6 +10268,91 @@ test("the skip-list the retries are measured against is the shipped one", async 
 	}
 });
 
+/**
+ * THE TWO REGISTRY READS END A DEAD PEER WITHIN THEIR OWN BOUND (agent review
+ * minor-1, remediation round 1).
+ *
+ * WHY THIS IS DRIVEN RATHER THAN READ. Both reads fetch hard-coded hosts
+ * (`pypi.org`, `registry.npmjs.org`), so no loopback seam exists for them and
+ * every other case hands their RESULTS in (see the substituted list above).
+ * This case claims `node:https` for its own bundle and drives the shipped
+ * methods themselves against a request that records what the code asked for
+ * and stalls on demand: the socket timeout has to be ON THE CALL (absent on
+ * the base, where both reads were bare `https.get(url, cb)`), the timeout has
+ * to destroy the request, and the destruction's error has to resolve the read
+ * to null rather than hang - which is the npm sibling's whole fix, mirrored
+ * from the PyPI read the reviewer named.
+ */
+test("the PyPI and npm registry reads are bounded by their own socket timeouts", async () => {
+	const home = mkdtempSync(join(tmpdir(), "lo-registry-read-"));
+	const userData = join(home, "userData");
+	const fixtureDir = join(home, "service");
+	mkdirSync(userData, { recursive: true });
+	mkdirSync(fixtureDir, { recursive: true });
+	globalThis.__loTestPaths = {
+		home,
+		userData,
+		appData: userData,
+		temp: tmpdir(),
+	};
+	const { service, serviceDir } = await loadUpdateServiceModule({
+		httpsStub: true,
+	});
+	let interval = null;
+	try {
+		const updateService = new service.UpdateService(
+			{
+				isDestroyed: () => false,
+				webContents: { send: () => {}, isDestroyed: () => false },
+			},
+			{ getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL },
+		);
+		interval = updateService.updateCheckInterval;
+		const calls = [];
+		globalThis.__loTestHttps = { calls };
+
+		for (const [name, read] of [
+			["the PyPI read", "getLatestPypiVersion"],
+			["the npm read", "getLatestNpmVersion"],
+		]) {
+			const before = calls.length;
+			const pending = updateService[read]();
+			const call = calls[before];
+			assert.equal(
+				call.url.startsWith("https://"),
+				true,
+				`${name} asks a real host`,
+			);
+			assert.equal(
+				call.options?.timeout,
+				10_000,
+				`${name} carries the shipped socket timeout`,
+			);
+			assert.equal(
+				typeof call.handlers.timeout,
+				"function",
+				`${name} wires the timeout to a handler`,
+			);
+			call.handlers.timeout();
+			assert.equal(call.destroyed, true, `${name} destroys the stalled request`);
+			assert.equal(
+				await pending,
+				null,
+				`${name} resolves null once its bound fires`,
+			);
+		}
+	} finally {
+		if (interval) clearInterval(interval);
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestPaths;
+		// biome-ignore lint/performance/noDelete: same teardown rule as above.
+		delete globalThis.__loTestHttps;
+		rmSync(serviceDir, { recursive: true, force: true });
+		rmSync(fixtureDir, { recursive: true, force: true });
+		rmSync(home, { recursive: true, force: true });
+	}
+});
+
 test("the classifier knows the family the log holds, and refuses the rest", async () => {
 	const { module: transport, dir } = await loadPureModule(
 		"src/shared/transport-failure",
@@ -11223,6 +11410,60 @@ test(
 			probeResult.abandoned,
 			3,
 			"each abandoned fetch is still pending and counted until it settles",
+		);
+	},
+);
+
+/**
+ * THE DEDUPE BRANCH PRODUCTION ACTUALLY RIDES (agent review minor-4, remediation
+ * round 1).
+ *
+ * electron-updater re-serves its in-flight check to every re-entrant call, so
+ * successive attempts inside one ladder - and a successor sequence arriving
+ * mid-flight - hand `fetchFeed()` the same promise, and
+ * `rememberAbandonedAppFeedFetch`'s `has()` early return is the branch that sees
+ * it. Every other case hands a fresh promise per call, so that branch had never
+ * run. The fixture's sticky mode models the updater here (see its own comment);
+ * the assertions are the sibling case's, tightened to the identity: one fetch
+ * between three attempts, counted once.
+ */
+test(
+	"one updater-deduped fetch abandoned by every attempt is counted once",
+	{ timeout: 15_000 },
+	async () => {
+		let attempts = 0;
+		globalThis.__loTestAppCheckSticky = true;
+		const { verdict, sent, probeResult } = await loAggregateCheck({
+			appCheck: () => {
+				attempts += 1;
+				return new Promise(() => {});
+			},
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.44",
+			ipc: { handler: "check-for-updates" },
+			deadlineMs: 25,
+			probe: async (updateService) => ({
+				inFlight: updateService.appFeedFetchInFlight,
+				abandoned: updateService.appFeedAbandonedFetches.size,
+			}),
+		});
+
+		assert.equal(
+			attempts,
+			1,
+			"one fetch serves all three attempts, as the updater dedupes re-entrant calls",
+		);
+		assert.equal(verdict, null, "a silent check still resolves null");
+		assert.deepEqual(
+			sent.map(({ channel }) => channel),
+			[],
+			"a silent check reports nothing at all, on any channel",
+		);
+		assert.equal(probeResult.inFlight, null, "the latch is free");
+		assert.equal(
+			probeResult.abandoned,
+			1,
+			"one fetch, abandoned by every attempt, is counted once - the has() early return",
 		);
 	},
 );
