@@ -599,16 +599,24 @@ type ConversationInputStoreState = {
 	clearAll: (conversationId: string) => void;
 
 	/**
-	 * Put a row back exactly as it stood - the discard-undo's own door into this
-	 * store.
+	 * Put a row back — the discard-undo's own door into this store — and announce it
+	 * as a store write.
 	 *
 	 * WHY A METHOD RATHER THAN THE CANONICAL STORE WRITING THROUGH `setState`:
 	 * the discard and its undo are the canonical store's, but the ROW's shape is
 	 * this store's, and a second writer assigning `inputByConversation` directly
-	 * is a second place the row's invariants would live. This is deliberately the
-	 * narrowest thing that can put a snapshot back: the row goes in whole, under
-	 * the key it came from, and nothing else moves - no revision bump (a restored
-	 * box is the box the reader left), no seeding, no clearing.
+	 * is a second place the row's invariants would live. The row goes in whole,
+	 * under the key it came from, and nothing else moves — no seeding, no clearing.
+	 *
+	 * THE REVISION BUMPS (agent review round 2's R9, UX round 2's U7): the
+	 * composer adopts store text only on a revision change or a `pendingText`
+	 * arrival, so a restore that left the revision alone was INVISIBLE to a box
+	 * already mounted on that key — the exact case `restoreDraftsUndo`'s
+	 * newer-state-wins guard exists for (a stable `draft:team:<name>` key that the
+	 * reader re-staged inside the offer's window has a mounted box). A restore is a
+	 * store write announcing new content for that key, which is the sentence every
+	 * other writer here says with `textRevision` (`beginInFlight`'s own bump); the
+	 * reader gets their words back IN the box, not behind one click.
 	 */
 	restoreRow: (conversationId: string, row: ConversationInputState) => void;
 
@@ -1035,7 +1043,11 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 				set({
 					inputByConversation: {
 						...get().inputByConversation,
-						[conversationId]: row,
+						[conversationId]: {
+							...row,
+							/* The write announcement; the declaration above carries the why (R9/U7b). */
+							textRevision: (row.textRevision ?? 0) + 1,
+						},
 					},
 				});
 			},

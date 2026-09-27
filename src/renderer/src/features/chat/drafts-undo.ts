@@ -20,9 +20,16 @@ import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-stor
  * reader's own Undo, or a second discard replacing it (the store keeps ONE slot,
  * `DraftsUndoOffer`).
  *
- * THE CEILING IS THE ARCHIVE'S OWN NUMBER rather than a second guess at "long
- * enough to read and reach for": one lifetime for the two offers in the same
- * lane, stated once (`ARCHIVE_UNDO_CEILING_MS`).
+ * THE CEILING IS THE LANE'S CARD LIFE, not a second guess at "long enough to
+ * read and reach for": the archive offer's card is drawn for
+ * `ARCHIVE_UNDO_TOAST_MS` (the number the lane's own design record quotes) and
+ * this offer, standing in the same lane at the same price (the band gives up the
+ * card's height), shares it by construction. THE CEILING IS *NOT* THE ARCHIVE'S
+ * `ARCHIVE_UNDO_CEILING_MS` (15 s) — design round 2's D6 measured exactly that
+ * mistake, 15.2 s of card where the lane records eight: the 15 s number answers
+ * how long an unanswered RETIREMENT SUBSCRIPTION may stand, a safety bound
+ * nobody sees, and reaching for it here spent the band for nearly double the
+ * recorded price on every discard.
  *
  * THE WATCH KEYS ON THE OFFER'S IDENTITY (`at`), not on the field — the same
  * guard `useArchiveUndoRetirement` carries and for the same measured reason
@@ -32,10 +39,10 @@ import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-stor
  * the store may hold a later offer that this watch has never seen.
  */
 import { useEffect } from "react";
-import { ARCHIVE_UNDO_CEILING_MS } from "./archive-undo";
+import { ARCHIVE_UNDO_TOAST_MS } from "./archive-undo";
 
-/** Long enough to read the line and reach for it; the archive's own budget. */
-export const DRAFTS_UNDO_CEILING_MS = ARCHIVE_UNDO_CEILING_MS;
+/** The lane's card life, shared with the archive offer (the header's D6 note). */
+export const DRAFTS_UNDO_CEILING_MS = ARCHIVE_UNDO_TOAST_MS;
 
 /**
  * The count an offer prints, with the verb left outside it.

@@ -214,7 +214,22 @@ test("the clear-all is inside the drafts section, rides the row walk, and clears
 	 */
 	assert.match(foot, /clearableDraftRows\.map\(\(row\) => row\.key\)/);
 	assert.match(foot, /discardDrafts\(clearing\);/);
-	assert.match(foot, /disabled=\{clearableDraftRows\.length === 0\}/);
+	/*
+	 * AND THE SAME `aria-disabled` + refused press as the rows (agent review round
+	 * 2's R7, design round 2's D7): the foot stays focusable while inapplicable -
+	 * an arrow-walk step must land somewhere - and its own why is described the
+	 * same way the trash's is.
+	 */
+	assert.match(foot, /aria-disabled=\{clearableDraftRows\.length === 0\}/);
+	assert.ok(
+		!/^\t+disabled=\{clearableDraftRows\.length === 0\}/m.test(foot),
+		"a real disabled attribute is the walk dead stop R7 measured",
+	);
+	assert.match(foot, /if \(clearableDraftRows\.length === 0\) \{/);
+	assert.match(foot, /CLEAR_ALL_WHY_ID/);
+	assert.match(foot, /CLEAR_ALL_WHY/);
+	assert.match(foot, /aria-disabled:text-ink-disabled!/);
+	assert.match(foot, /stagedByDiscardRef\.current/);
 	/*
 	 * THE SAME NO-DEAD-PANE RULE THE ROW ACT CARRIES (UX round 1's U1): when the
 	 * batch took the pane's own draft, a fresh one is staged.
@@ -279,14 +294,39 @@ test("a row whose send hop is live cannot be discarded", () => {
 	);
 	/*
 	 * UX round 1's U2, remediation: with the create request held, the press used to
-	 * remove the row while the send went on to land in an unread chat. The control
-	 * is disabled from the ROW's own field (`DraftRow.pending`, derived by
-	 * `untargetedDraftRows` and asserted in `drafts-clear-on-send.test.mjs`), and
-	 * `Clear all` passes only the settled keys - the store keeps its own documented
-	 * discard semantics (`canonical-chat.test.mjs` pins them).
+	 * remove the row while the send went on to land in an unread chat.
+	 *
+	 * AND IT IS `aria-disabled`, NOT `disabled` (agent review round 2's R7, design
+	 * round 2's D7): a real `disabled` attribute cannot hold focus - the arrow-walk
+	 * step onto it dead-stopped and the why below was unannounceable - so the control
+	 * stays focusable and the PRESS is what refuses. The walk and the ring exclude
+	 * unreachable rows by the same predicate in the sidebar itself (pinned in the
+	 * clear-all test below).
 	 */
-	assert.match(control, /disabled=\{row\.pending\}/);
-	assert.match(control, /disabled:opacity-45/);
+	assert.match(control, /aria-disabled=\{row\.pending\}/);
+	assert.ok(
+		!/^\t+disabled=\{row\.pending\}/m.test(control),
+		"a real disabled attribute is what dropped the control out of the ring",
+	);
+	assert.match(control, /if \(row\.pending\) \{/);
+	assert.match(control, /event\.preventDefault\(\);/);
+	/*
+	 * THE WHY, IN BOTH CHANNELS: the `title` for the pointer and an `sr-only`
+	 * element the control points at (`aria-describedby`), so a keyboard or AT
+	 * reader is told why the act refuses.
+	 */
+	assert.match(control, /aria-describedby=/);
+	assert.match(control, /draftWhyId\(row\.key\)/);
+	assert.match(control, /SENDING_DISCARD_WHY/);
+	/* Colour, never opacity (design round 2's D5; branding.md §6). */
+	assert.match(control, /aria-disabled:text-ink-disabled!/);
+	assert.match(control, /aria-disabled:hover:text-ink-disabled!/);
+	assert.ok(
+		!/disabled:opacity-45/.test(control),
+		"opacity-faded disabled states are the pattern branding.md §6 forbids",
+	);
+	/* And the fresh key the discard stages is remembered for the offer's own press (U7). */
+	assert.match(control, /stagedByDiscardRef\.current/);
 });
 
 test("the discard offer is the lane's own: one id, one slot, an Undo that restores", () => {
@@ -306,10 +346,44 @@ test("the discard offer is the lane's own: one id, one slot, an Undo that restor
 	assert.match(branch, /label: "Undo"/);
 	assert.match(branch, /restoreDraftsUndo\(\);/);
 	/*
+	 * AND THE PRESS PUTS THE READER BACK WHERE THEY WERE WORKING (UX round 2's U7):
+	 * a ONE-key offer whose key the discard replaced with a freshly staged draft
+	 * re-opens the restored key, and only while the pane still shows that staged
+	 * draft (the ref is compared against the CURRENT key).
+	 */
+	assert.match(branch, /stagedByDiscardRef\.current/);
+	assert.match(branch, /state\.activeDraftKey === staged/);
+	assert.match(branch, /state\.openDraft\(draftsUndo\.keys\[0\]\)/);
+	/*
 	 * AND THE OFFER LOSES TIES TO A STANDING ARCHIVE MESSAGE: it wins only by
 	 * being STRICTLY newer than every archive value present, which is also what
 	 * makes the supersession clause above it safe to clear them.
 	 */
 	assert.match(source, /draftsUndo\.at > archiveFailure\.at/);
 	assert.match(source, /draftsUndo\.at > archiveUndo\.at/);
+});
+
+test("the walk and the ring both skip what the caret cannot reach", () => {
+	const source = code(SIDEBAR);
+	/*
+	 * AGENT REVIEW ROUND 2'S R7: `focus()` on a `disabled` control is a no-op, so a
+	 * walk step onto it dead-stopped and `applyRowStop` recorded a stop nobody could
+	 * see. The app measured the same lesson once already (`integration-focus.ts`:
+	 * "focus() did nothing"), and the predicate is the whole of the rule. Both the
+	 * arrow walk's collection and the ring's must exclude unreachable rows, so a
+	 * future `disabled` row can never reintroduce the dead stop.
+	 */
+	const filters = source.match(
+		/\(row as \{ disabled\?: boolean \}\)\.disabled/g,
+	);
+	assert.equal(
+		filters?.length,
+		2,
+		"the arrow walk and applyRowStop must both exclude unreachable rows",
+	);
+	assert.match(
+		source,
+		/row\.tabIndex = rows\.includes\(row\) && row === target \? 0 : -1;/,
+		"an excluded row must not keep tabIndex 0 either",
+	);
 });

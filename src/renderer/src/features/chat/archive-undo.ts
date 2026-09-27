@@ -71,6 +71,21 @@ import { undoOfferStands } from "./chat-archived";
 export const ARCHIVE_UNDO_CEILING_MS = 15_000;
 
 /**
+ * How long the offer's CARD is drawn for - the panel's own clock, not sonner's.
+ *
+ * WHY THIS NUMBER LIVES HERE (agent review round 2's R9 context, design round 2's
+ * D6): it was spelled in `chat-sidebar.tsx` beside the clock effect that runs it,
+ * and it is the DISPLAY life the lane's own design record quotes ("the offer's
+ * eight seconds"); the field above answers a different question - how long a
+ * forgotten SUBSCRIPTION may stand - and a module that wanted the visible life
+ * reaching for the ceiling was measuring the wrong thing. A second offer now shares
+ * this card life exactly (`drafts-undo.ts`'s `DRAFTS_UNDO_CEILING_MS`), so the number
+ * is exported from the offer's own module: one home, and both offers' lives are the
+ * same number by construction rather than by coincidence.
+ */
+export const ARCHIVE_UNDO_TOAST_MS = 8_000;
+
+/**
  * The quoted NAME an archive offer prints, with the verb left outside it.
  *
  * TWO PARTS RATHER THAN ONE SENTENCE, because the card is one line and only one of the
