@@ -664,8 +664,6 @@ incomplete. The text above is left as it was written; these entries govern.
 
 ---
 
----
-
 ## 13. Post-implementation: the notice-band pass (2026-09-26)
 
 § 12 above is the design's own record of its review rounds; this section records

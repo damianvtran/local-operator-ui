@@ -6386,21 +6386,21 @@ export function ChatSidebar({
 				{(error || profiles.error || teams.error) &&
 					!stripSpeaksConnection &&
 					!coveredByCompatibilityBanner && (
-					<div className="pt-2 text-meta text-ink-muted">
-						<p>{error || profiles.error?.message || teams.error?.message}</p>
-						<button
-							type="button"
-							className="mt-1 underline"
-							onClick={() => {
-								void refreshCatalogue();
-								void profiles.refetch();
-								void teams.refetch();
-							}}
-						>
-							Retry refresh
-						</button>
-					</div>
-				)}
+						<div className="pt-2 text-meta text-ink-muted">
+							<p>{error || profiles.error?.message || teams.error?.message}</p>
+							<button
+								type="button"
+								className="mt-1 underline"
+								onClick={() => {
+									void refreshCatalogue();
+									void profiles.refetch();
+									void teams.refetch();
+								}}
+							>
+								Retry refresh
+							</button>
+						</div>
+					)}
 			</TooltipProvider>
 			{/*
 			 * THE SIDEBAR'S OWN TOAST LANE, and `position: absolute` inline is the whole
