@@ -1408,6 +1408,14 @@ const STAMP_BINDING_NOTES = [
 	 * `streamRedeliveryRestampNote` is in the list for.
 	 */
 	"task17RestampNote",
+	/*
+	 * AND THE DESKTOP-STEP DIAGNOSTICS' OWN: its subject is this file's binding
+	 * too - it moves the `scripts/` tree without taking a frame (nothing in it is
+	 * user-visible; the evidence is the step body exercised under `bash -e` on
+	 * three synthetic logs, and A17's new pins going red under the mutation), so
+	 * the reader is owed the pair AND the reason no still was owed.
+	 */
+	"desktopStepDiagnosticsRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1979,6 +1987,13 @@ const BRANCH_RECORDS = [
 	 * same reason this list exists.
 	 */
 	"task17RestampNote",
+	/*
+	 * And by THIS lane, whose note is the newest top-level record on the branch:
+	 * it states the pair this tip ships, moves `scripts/` only, and takes no
+	 * frame - a fold that started from main's copy would drop it first, the same
+	 * reason this list exists.
+	 */
+	"desktopStepDiagnosticsRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

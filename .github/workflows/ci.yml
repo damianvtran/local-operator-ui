@@ -435,12 +435,40 @@ jobs:
         # 0), so the suite runs once. `tee` keeps the log as evidence either
         # way. `scripts/ci-scope.test.mjs` asserts there is exactly one
         # invocation and that this step still fails closed.
+        #
+        # THE SUITE'S STATUS IS CAPTURED, NOT LEFT TO ABORT THE STEP, and the
+        # failures are ANNOTATED - both because a red suite has to SAY WHICH test
+        # was red. GitHub runs a `run:` step as `bash -e`, so a red suite ended
+        # this step at the pipeline: the count greps below never ran, the
+        # `desktop suite: ...` line never printed, and the job's only message was
+        # the runner's `Process completed with exit code 1`. Measured on
+        # 2026-09-27, run 36287261534, where one failing test
+        # (`daemon-observation.test.mjs`) looked to the whole fleet like a hang in
+        # `completion-view-ack.test.mjs` - because `gh run view --log` fetched
+        # 18.7 MB of this job's 37.7 MB blob and the failure's own line sat past
+        # the cut. A check-run annotation does not go through the log.
+        #
+        # FAILS CLOSED, and that is unchanged: every arm below ends in `exit 1`,
+        # so a red suite, a truncated run and a renamed script are all still red.
+        # What changed is that they are red WITH a reason.
         run: |
           set -o pipefail
+          set +e
           pnpm test:desktop 2>&1 | tee /tmp/desktop-tests.log
-          PASS=$(grep -E '^# pass ' /tmp/desktop-tests.log | awk '{print $3}')
-          FAIL=$(grep -E '^# fail ' /tmp/desktop-tests.log | awk '{print $3}')
-          echo "desktop suite: pass=$PASS fail=$FAIL"
+          SUITE_RC=$?
+          set -e
+          # `|| true` so a log with no counts still reaches the guards below
+          # instead of tripping errexit on the way - the `-z "$PASS"` arm is what
+          # names that case, and it cannot name it from here if grep kills the step.
+          PASS=$(grep -E '^# pass ' /tmp/desktop-tests.log | awk '{print $3}' || true)
+          FAIL=$(grep -E '^# fail ' /tmp/desktop-tests.log | awk '{print $3}' || true)
+          echo "desktop suite: rc=$SUITE_RC pass=$PASS fail=$FAIL"
+          # The TAP summary and every `not ok`, on the step's own output and as
+          # annotations, so a reader of a truncated log still sees them.
+          grep -E '^# (tests|pass|fail|skipped) ' /tmp/desktop-tests.log || true
+          grep -E '^not ok ' /tmp/desktop-tests.log | head -20 | while IFS= read -r line; do
+            echo "::error::$line"
+          done || true
           if [ -z "$PASS" ] || [ "$PASS" -lt 60 ]; then
             echo "Desktop suite reported $PASS passing tests; expected at least 60."
             echo "Either tests were dropped or the runner matched no files."
@@ -448,6 +476,10 @@ jobs:
           fi
           if [ "$FAIL" != "0" ]; then
             echo "Desktop suite reported $FAIL failing tests."
+            exit 1
+          fi
+          if [ "$SUITE_RC" != "0" ]; then
+            echo "The desktop suite exited $SUITE_RC while reporting pass=$PASS fail=$FAIL."
             exit 1
           fi
 
