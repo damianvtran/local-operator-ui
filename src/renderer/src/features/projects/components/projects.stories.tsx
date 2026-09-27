@@ -453,6 +453,18 @@ export const LoadError: Story = {
 /** Three projects: the list's ordinary shape. */
 export const Populated: Story = { render: () => page({ projects: THREE }) };
 
+/**
+ * The same listing at the width the 800x600 window floor leaves the list once
+ * the rail is open (~33rem of container), where the container queries shed
+ * `target`/`estimate` and then `milestones`/`live` (design round 1, D6: the shed
+ * was structurally guaranteed but never photographed). This story renders the
+ * page alone, so the capture is taken at the window width that leaves the same
+ * container — see the entry's own comment in `capture-evidence.mjs`. The rows
+ * and the header run the same COLUMNS plan, so this frame is the alignment
+ * proof as well as the width proof.
+ */
+export const NarrowColumns: Story = { render: () => page({ projects: THREE }) };
+
 /** Twelve projects: the list under a scrollbar. */
 export const Many: Story = { render: () => page({ projects: MANY }) };
 
