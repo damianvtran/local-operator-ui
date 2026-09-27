@@ -75,6 +75,17 @@ export type PublicationContext = {
 	name: string;
 	/** Whether a hub listing for this local agent is known, for "Update listing". */
 	hubAgentId: string | null;
+	/**
+	 * WHICH SURFACE is asking, for the arms whose words name the act.
+	 *
+	 * The roster renders this same table for a PULL (agent review round 1's n1),
+	 * and several bodies were authored for a publication — "Nothing was published",
+	 * "then publish again". A table shared by two surfaces has to say which one is
+	 * speaking, or the roster tells the user something that did not happen (copy
+	 * review round 2, C7). Absent means `"publish"`, which is what every caller was
+	 * before the roster read this table.
+	 */
+	surface?: "publish" | "pull";
 };
 
 /**
@@ -202,7 +213,18 @@ export function publicationTreatment(
 	failure: PublicationFailure,
 	context: PublicationContext,
 ): PublicationTreatment {
-	const name = context.name.trim() || "this agent";
+	const pulling = context.surface === "pull";
+	/*
+	 * The two phrases every verb-bearing arm reads, resolved ONCE. A body that
+	 * branched on its own would be half-translated the first time someone added an
+	 * arm — the class of defect the code switch exists to prevent, applied to the
+	 * words rather than to the branch.
+	 */
+	const nothingLanded = pulling
+		? "Nothing was pulled."
+		: "Nothing was published.";
+	const again = pulling ? "pull again" : "publish again";
+	const name = context.name.trim() || (pulling ? "this team" : "this agent");
 	switch (failure.code) {
 		case "name_taken": {
 			const owned = failure.details?.owned_by_caller === true;
@@ -399,7 +421,7 @@ export function publicationTreatment(
 			return {
 				variant: "danger",
 				headline: "The hub refused this machine's sign-in",
-				body: "Nothing was published. Sign in to Radient again to replace the credential the hub refused, then publish again.",
+				body: `${nothingLanded} Sign in to Radient again to replace the credential the hub refused, then ${again}.`,
 				note: null,
 				actions: ["sign-in"],
 			};
@@ -416,22 +438,90 @@ export function publicationTreatment(
 			 */
 			return {
 				variant: "warning",
-				headline: "The publication did not go through",
+				headline: pulling
+					? "The pull did not go through"
+					: "The publication did not go through",
 				body: isInformative(failure.message)
 					? failure.message
-					: "Nothing was published. Try again in a moment, or update the backend if the hub has moved.",
+					: `${nothingLanded} Try again in a moment, or update the backend if the hub has moved.`,
 				note: null,
 				actions: ["retry"],
 			};
 		case "local_failure":
 			return {
 				variant: "warning",
-				headline: "The agent could not be published from this machine",
+				headline: pulling
+					? "The team could not be pulled from this machine"
+					: "The agent could not be published from this machine",
 				body: failure.message,
 				note: null,
 				// Safe to retry: the failure happened before the hub was asked
 				// anything, so no listing can exist from this attempt.
 				actions: ["retry"],
+			};
+		case "team_plan_required":
+			/*
+			 * THE PLAN HALF OF §3.2, which the picker already guards against and which
+			 * a plan can still lapse into between the render and the press. `past_due`
+			 * is NOT this state (§3.1 gives it full entitlements during dunning), so a
+			 * user reading this headline knows the subscription genuinely stopped.
+			 */
+			return {
+				variant: "warning",
+				headline: "That organization needs an active Team plan",
+				body: pulling
+					? "Reading an organization's teams is part of the Team plan. Ask an owner of the organization to activate it in the Radient console, then pull again."
+					: "Sharing agents inside an organization is part of the Team plan. Ask an owner of the organization to activate it in the Radient console, then publish again.",
+				note: null,
+				// Safe to retry, and the only step this dialog can take: the plan is
+				// activated on the console, and a retry is what a user who has just
+				// done that needs. Nothing was published.
+				actions: ["retry"],
+			};
+		case "not_a_member":
+			return {
+				variant: "danger",
+				headline: "You are not a member of that organization",
+				body: `${nothingLanded} Ask an owner of the organization to invite you, then ${again}.`,
+				note: null,
+				/*
+				 * NO ACTION, deliberately. The remedy is somebody else's (an owner has to
+				 * invite this account), so every control this dialog could offer would be
+				 * one that cannot help — and a lone "Close" beside a sentence that names
+				 * the person who can is honest where a "Try again" would be a loop.
+				 */
+				actions: [],
+			};
+		case "insufficient_role": {
+			/*
+			 * The rank the hub named (`details.required`), carried rather than
+			 * restated: this app does not hold the membership matrix, and a client that
+			 * wrote its own "admins and owners" sentence is a second place for §2.1 to
+			 * be got wrong.
+			 */
+			const required = failure.details?.required;
+			return {
+				variant: "danger",
+				headline: "Your organization role does not allow this",
+				body: required
+					? `${pulling ? "Reading an organization's teams needs" : "Publishing into an organization needs"} the ${required} role. Ask an owner of the organization to change your role, then ${again}.`
+					: `${pulling ? "Reading an organization's teams needs" : "Publishing into an organization needs"} a higher role than yours. Ask an owner of the organization to change your role, then ${again}.`,
+				note: null,
+				actions: [],
+			};
+		}
+		case "team_not_found":
+			/*
+			 * The pull's own refusal (§4.5): the document was delisted between the list
+			 * and the press. "Refresh the hub" is the step that shows the roster the
+			 * server now has rather than retrying a read that will answer the same.
+			 */
+			return {
+				variant: "danger",
+				headline: "That team is no longer published",
+				body: "It may have been delisted since this page was loaded.",
+				note: null,
+				actions: ["refresh-hub"],
 			};
 		default:
 			return {
@@ -660,3 +750,24 @@ export const agentActionFailureMessage = (
 	action === "download"
 		? pullRefusalMessage(error, agentName)
 		: backendLoadErrorMessage(OTHER_ACTION_LEAD, error);
+
+/**
+ * The label one treatment action renders with.
+ *
+ * HERE rather than in the dialog that first needed it (agent review round 1,
+ * n1): the actions are declared in THIS file, so their labels belong beside
+ * them, and the roster became a second consumer the moment `team_not_found`'s
+ * `refresh-hub` arm was wired to it. A second table would let one action read
+ * two ways on two surfaces, which is the shape this file exists to prevent.
+ */
+export const PUBLICATION_ACTION_LABEL: Record<PublicationAction, string> = {
+	"focus-name": "Choose another name",
+	"update-listing": "Update the existing listing",
+	"install-builtin": "Install the built-in instead",
+	retry: "Try again",
+	"edit-instructions": "Edit the instructions",
+	"edit-agent": "Edit the agent",
+	"publish-as-new": "Publish as a new listing",
+	"sign-in": "Sign in again",
+	"refresh-hub": "Refresh the hub",
+};
