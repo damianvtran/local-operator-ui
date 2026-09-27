@@ -73,12 +73,15 @@ import {
 } from "../aside";
 import {
 	type AnswerOutcome,
+	SECRET_ANSWER_DOCKED_MESSAGE,
 	type SendLock,
 	answerGateOption,
+	answerGateSecret,
 	answerReport,
 	answerValue,
 	approvalAnswerValue,
 	createSendLock,
+	gateIsSecret,
 } from "../ask-answer";
 import {
 	ownerAnswered,
@@ -458,6 +461,14 @@ function SessionPanel({
 		key: string;
 		sending: boolean;
 		refused: string | null;
+		/**
+		 * Whether a DEFINITE not-sent refusal leaves the kept value sendable again
+		 * (`answerReport`'s classification, on the card arm). The secret card is
+		 * the one reader: it releases its field for a retry on `true` and holds on
+		 * `false`, because an unknowable outcome may have landed and a retry could
+		 * send it twice (see `question-dock.tsx`).
+		 */
+		retryable: boolean;
 	} | null>(null);
 	/*
 	 * The gate this panel is showing, and this panel's own record of having
@@ -520,7 +531,11 @@ function SessionPanel({
 	});
 	const answerForThisGate =
 		pendingGate && answerState?.key === gateKey
-			? { sending: answerState.sending, refused: answerState.refused }
+			? {
+					sending: answerState.sending,
+					refused: answerState.refused,
+					retryable: answerState.retryable,
+				}
 			: null;
 	const lastCatalogueState = useRef("");
 	const [sendError, setSendError] = useState<string | null>(null);
@@ -1577,6 +1592,29 @@ function SessionPanel({
 			if (!draftKey && !sessionId) return false;
 			const gate = canonical.frontend?.pending_gate;
 			if (gate && canonical.ownerEpoch && sessionId) {
+				/*
+				 * A SECRET GATE TAKES NO COMPOSER ANSWER, and this is the door that
+				 * says so for every route that can still reach a send while one waits:
+				 * the composer itself is refused input (`message-input.tsx`'s
+				 * `secretAnswer` term closes typing, paste, dictation, the slash popup
+				 * and the form's own submit), so what arrives here is a suggestion
+				 * chip, the stopped-turn Retry, or a programmatic caller — and none of
+				 * them may post a typed string as a credential's answer. It has to fire
+				 * BEFORE the arms below, which would otherwise answer the gate with
+				 * whatever text the door carried.
+				 *
+				 * The sentence and the code are the ones every refused answer uses, so
+				 * the composer's alert offers no press that cannot work
+				 * (`SECRET_ANSWER_DOCKED_MESSAGE` carries the reasoning). The read itself
+				 * is `gateIsSecret` — the ONE predicate the dock's field arm, the
+				 * composer's closure and the answer door share (agent review round 1,
+				 * NIT-1), so no surface can mask while another stays open.
+				 */
+				if (gateIsSecret(gate))
+					throw new UserFacingError(
+						SECRET_ANSWER_DOCKED_MESSAGE,
+						ANSWER_NOT_SENT_CODE,
+					);
 				if (gate.kind === "approval") {
 					/*
 					 * THE WORDS AND THE ORDINALS, resolved against the TYPED text for the
@@ -2047,6 +2085,124 @@ function SessionPanel({
 		}
 	};
 	/**
+	 * One answer's report, applied to this panel's state — the shared tail of
+	 * EVERY answer path (`answerWithOption`'s press and `answerWithSecret`'s
+	 * submit), because the two are one machinery and a hand-copied second switch
+	 * is how two verdicts for one outcome start.
+	 *
+	 * WHAT it reports and WHERE, from the answer's own outcome plus the live
+	 * facts — see `answerReport`. Nothing here reads the gate's movement to
+	 * decide whether the answer WON: an answer's own success is what removes its
+	 * card, so that reading reported a win as a loss whenever the owner's state
+	 * push painted before the answer's response landed, and the two channels have
+	 * no ordering between them (`ask-answer.ts` carries the margin).
+	 *
+	 * The SENTENCE is the outcome's and the DESTINATION is the frame's, in that
+	 * order (agent review round 2, UX U7 / QA Q1). Deciding the destination first
+	 * meant this arm took the definite not-sent sentence for every failure, so an
+	 * outcome the module calls unknowable — the deadline shape, which leaves the
+	 * card up *precisely because* the request is still in flight — was told
+	 * "your answer was not sent" and then denied it in the next clause.
+	 *
+	 * Every fact it reads is read LIVE, from the refs the layout effect keeps
+	 * current, rather than from the closure the press started in — the closure is
+	 * the one the press STARTED in, so a value read from it is the press
+	 * compared with itself. That was the inert conjunct this branch deleted, and
+	 * the replacements for it cannot be another closure. The identity half matters
+	 * as much as the DOM half: a multi-question ask paints its next question's
+	 * card in the same place under the same `aria-label` with a different key, so
+	 * a query for "a card" answered true for a card that cannot carry this press's
+	 * sentence — the sentence was written to a state no surface reads and the user
+	 * was told nothing while a fresh question appeared where they had pressed.
+	 *
+	 * `cardOnScreen` asks about EITHER answer surface — the options band
+	 * (`[aria-label="Answer options"]`) and the secret field's form
+	 * (`[data-ask-secret]`) — because the question the probe exists for is "is
+	 * this answer's own surface still on screen and able to carry its
+	 * sentence", and a secret answer's surface is the field it was typed in.
+	 *
+	 * `onSent` is the caller's clause for the one state the two paths do not
+	 * share: the approval press retires `1`-`yes.` from the composer (UX round 1,
+	 * U4 — see the call site), while a secret submit has no composer draft to
+	 * consume. Everything else is identical BY CONSTRUCTION, which is the point
+	 * of the tail being here rather than twice beside its callers.
+	 */
+	const settleGateAnswer = (
+		outcome: AnswerOutcome,
+		pressedKey: string,
+		onSent?: () => void,
+	) => {
+		const report = answerReport(outcome, {
+			liveGateKey: liveGateKey.current,
+			pressedGateKey: pressedKey,
+			sentEpoch: canonical.ownerEpoch,
+			liveEpoch: liveOwnerEpoch.current,
+			cardOnScreen:
+				document.querySelector(
+					'[aria-label="Answer options"], [data-ask-secret]',
+				) !== null,
+		});
+		switch (report.to) {
+			case "refused":
+				// Nothing was sent and nothing is wrong: the lock was already held by a
+				// typed send, or this request lost a race inside this window. The lock
+				// holder reports, so this path stays quiet rather than stacking a second
+				// message about the same question.
+				setAnswerState(null);
+				return;
+			case "sent":
+				/*
+				 * The owner took this answer, and that is the whole of the report: the
+				 * model is already acting on it, so a sentence here would be the bug this
+				 * branch exists to remove. The card's hold is settled — it keeps its
+				 * options disabled until the gate itself moves, which is what stops a
+				 * second press from repeating an answer that already landed.
+				 */
+				setAnswerState({
+					key: pressedKey,
+					sending: false,
+					refused: null,
+					// A sent answer has nothing to retry: the secret field clears.
+					retryable: false,
+				});
+				onSent?.();
+				return;
+			case "card":
+				// The sentence belongs on the surface the press was made on, where it
+				// cannot be missed and cannot be repeated. It is the SAME string the
+				// composer would have carried — the register is the outcome's — and
+				// the hold lasts exactly as long as the outcome entitles it to
+				// (UX round 2, U9: the composer arm used to release the hold while
+				// leaving three live options under an unknowable outcome). A DEFINITE
+				// not-sent refusal carries `retryable`, and the secret card spends it
+				// by reopening its field: its composer is closed, so the hold would
+				// strand the kept value with no surface able to send it (round 1's
+				// D1/U1/Q-1 reunite here). An unknowable outcome keeps the hold — a
+				// retry could send it twice.
+				setAnswerState({
+					key: pressedKey,
+					sending: false,
+					refused: report.refused,
+					retryable: report.retryable,
+				});
+				return;
+			case "composer":
+				// The card is gone — or is not this press's any more — so the composer
+				// carries it, in the register the outcome is entitled to: the settled
+				// sentence where the live facts establish that another front end took
+				// the question, the moved-on sentence where the ask advanced past it,
+				// the not-knowable one where no response ever came back, and the
+				// backend's own reason where it answered and refused. The code is
+				// always the report's own, so the alert's hint and remedies are
+				// functions of THIS failure rather than of the draft's last one
+				// (design round 1, D2).
+				setAnswerState(null);
+				setSendError(report.message);
+				setSendErrorCode(report.code);
+				return;
+		}
+	};
+	/**
 	 * Answer the pending gate by pressing one of its options: an `ask` option's
 	 * label, or an approval's Approve/Deny.
 	 *
@@ -2119,7 +2275,7 @@ function SessionPanel({
 			input.current?.focusInput();
 		}
 		setAdmitting(true);
-		setAnswerState({ key, sending: true, refused: null });
+		setAnswerState({ key, sending: true, refused: null, retryable: false });
 		setSendError(null);
 		setSendErrorCode(undefined);
 		let outcome: AnswerOutcome;
@@ -2137,95 +2293,77 @@ function SessionPanel({
 		} finally {
 			setAdmitting(false);
 		}
-		/*
-		 * WHAT the press reports and WHERE, from its own outcome plus the live facts
-		 * — see `answerReport`. Nothing here reads the gate's movement to decide
-		 * whether the press WON: a press's own success is what removes its card, so
-		 * that reading reported a win as a loss whenever the owner's state push
-		 * painted before the answer's response landed, and the two channels have no
-		 * ordering between them (`ask-answer.ts` carries the margin).
-		 *
-		 * The SENTENCE is the outcome's and the DESTINATION is the frame's, in that
-		 * order (agent review round 2, UX U7 / QA Q1). Deciding the destination first
-		 * meant this arm took the definite not-sent sentence for every failure, so an
-		 * outcome the module calls unknowable — the deadline shape, which leaves the
-		 * card up *precisely because* the request is still in flight — was told
-		 * "your answer was not sent" and then denied it in the next clause.
-		 *
-		 * Every fact below is read LIVE, from the refs the layout effect keeps
-		 * current, rather than from the closure this handler resumed in — the closure
-		 * is the one the press STARTED in, so a value read from it is the press
-		 * compared with itself. That was the inert conjunct this branch deleted, and
-		 * the replacements for it cannot be another closure. The identity half matters
-		 * as much as the DOM half: a multi-question ask paints its next question's
-		 * card in the same place under the same `aria-label` with a different key, so
-		 * a query for "a card" answered true for a card that cannot carry this press's
-		 * sentence — the sentence was written to a state no surface reads and the user
-		 * was told nothing while a fresh question appeared where they had pressed.
-		 */
-		const report = answerReport(outcome, {
-			liveGateKey: liveGateKey.current,
-			pressedGateKey: key,
-			sentEpoch: canonical.ownerEpoch,
-			liveEpoch: liveOwnerEpoch.current,
-			cardOnScreen:
-				document.querySelector('[aria-label="Answer options"]') !== null,
+		settleGateAnswer(outcome, key, () => {
+			/*
+			 * AND THE BOX GOES WITH THE ANSWER (UX round 1, U4). A keyboard user
+			 * answers `1` by typing it and then pressing an option; the press consumed
+			 * the answer, but the keystrokes stayed in the composer — where focus
+			 * already is — so the next Enter sent `1` as an ordinary message (measured:
+			 * a real turn started with it). The press consumes the draft exactly as
+			 * the typed path does, through a method that clears ONLY text which IS an
+			 * approval answer (`1`, `yes.`), so a message somebody was writing is
+			 * never wiped. Ask presses keep their inherited behaviour; this round did
+			 * not change them.
+			 */
+			if (gate.kind === "approval") input.current?.consumeApprovalAnswerDraft();
 		});
-		switch (report.to) {
-			case "refused":
-				// Nothing was sent and nothing is wrong: the lock was already held by a
-				// typed send, or this request lost a race inside this window. The lock
-				// holder reports, so this path stays quiet rather than stacking a second
-				// message about the same question.
-				setAnswerState(null);
-				return;
-			case "sent":
-				/*
-				 * The owner took this answer, and that is the whole of the report: the
-				 * model is already acting on it, so a sentence here would be the bug this
-				 * branch exists to remove. The card's hold is settled — it keeps its
-				 * options disabled until the gate itself moves, which is what stops a
-				 * second press from repeating an answer that already landed.
-				 */
-				setAnswerState({ key, sending: false, refused: null });
-				/*
-				 * AND THE BOX GOES WITH THE ANSWER (UX round 1, U4). A keyboard user
-				 * answers `1` by typing it and then pressing an option; the press consumed
-				 * the answer, but the keystrokes stayed in the composer — where focus
-				 * already is — so the next Enter sent `1` as an ordinary message (measured:
-				 * a real turn started with it). The press consumes the draft exactly as
-				 * the typed path does, through a method that clears ONLY text which IS an
-				 * approval answer (`1`, `yes.`), so a message somebody was writing is
-				 * never wiped. Ask presses keep their inherited behaviour; this round did
-				 * not change them.
-				 */
-				if (gate.kind === "approval")
-					input.current?.consumeApprovalAnswerDraft();
-				return;
-			case "card":
-				// The sentence belongs on the surface the press was made on, where it
-				// cannot be missed and cannot be repeated. It is the SAME string the
-				// composer would have carried — the register is the outcome's — and
-				// the hold stays, so the card cannot repeat an answer whose fate is
-				// unknown (UX round 2, U9: the composer arm used to release the hold
-				// while leaving three live options under an unknowable outcome).
-				setAnswerState({ key, sending: false, refused: report.refused });
-				return;
-			case "composer":
-				// The card is gone — or is not this press's any more — so the composer
-				// carries it, in the register the outcome is entitled to: the settled
-				// sentence where the live facts establish that another front end took
-				// the question, the moved-on sentence where the ask advanced past it,
-				// the not-knowable one where no response ever came back, and the
-				// backend's own reason where it answered and refused. The code is
-				// always the report's own, so the alert's hint and remedies are
-				// functions of THIS failure rather than of the draft's last one
-				// (design round 1, D2).
-				setAnswerState(null);
-				setSendError(report.message);
-				setSendErrorCode(report.code);
-				return;
+	};
+
+	/**
+	 * Answer the pending `secret` gate with the dock's typed value.
+	 *
+	 * THE SECRET FIELD'S SIBLING OF `answerWithOption`, and deliberately the same
+	 * machinery: the same `sendLock` (so a submit and a typed send cannot both
+	 * post for one question), the same `admitting` flag (which holds the field
+	 * and the composer together while one answer is in flight), the same
+	 * `settleGateAnswer` tail and the same two destinations a failure can land
+	 * on. What differs is what reaches the gate: `answerGateSecret` takes the
+	 * typed value and owns its own refusals (a non-secret gate, an empty value),
+	 * which is why this handler does not re-ask what that path already answers.
+	 *
+	 * THE FOCUS HAND-OFF IS THE OPTION PATH'S, for the option path's reason: the
+	 * field becomes `disabled` the moment the submit lands, so a keyboard user's
+	 * focus drops to the document body without it (measured on the option path as
+	 * `after-press: BODY`, UX round 3, U12). The restore effect below then puts
+	 * it on the next question's field — or back in the composer — when the gate
+	 * moves, by the same key-change trigger the option path arms.
+	 *
+	 * NO ECHO, like the option path and unlike a normal send: the transcript
+	 * gains nothing from an answer, and for a secret that is the property that
+	 * matters most (see `answerGateSecret`).
+	 */
+	const answerWithSecret = async (value: string) => {
+		const gate = canonical.frontend?.pending_gate;
+		if (!gate || !canonical.ownerEpoch || !sessionId) return;
+		if (sendLock.held) return;
+		const key = gateKeyOf(gate);
+		const fromKeyboard =
+			document.activeElement instanceof HTMLElement &&
+			document.activeElement.closest("[data-ask-secret]") !== null;
+		if (fromKeyboard) {
+			restoreFocus.current = true;
+			input.current?.focusInput();
 		}
+		setAdmitting(true);
+		setAnswerState({ key, sending: true, refused: null, retryable: false });
+		setSendError(null);
+		setSendErrorCode(undefined);
+		let outcome: AnswerOutcome;
+		try {
+			outcome = await answerGateSecret(
+				{
+					gate,
+					sessionId,
+					epoch: canonical.ownerEpoch,
+					value,
+					lock: sendLock,
+				},
+				(request) => desktopResult(request),
+			);
+		} finally {
+			setAdmitting(false);
+		}
+		settleGateAnswer(outcome, key);
 	};
 	/*
 	 * Put focus back after a keyboard answer.
@@ -2236,8 +2374,9 @@ function SessionPanel({
 	 * traverse the whole sidebar again (UX round 1, U3). This runs on the gate
 	 * KEY rather than on the response, because the card is deliberately held
 	 * mounted until the gate itself moves; at that point a gate that advanced to
-	 * the next question takes focus, and a gate that cleared hands it back to the
-	 * composer.
+	 * the next question takes focus — that question's first live option, or its
+	 * masked field when the question is a secret one — and a gate that cleared
+	 * hands it back to the composer.
 	 *
 	 * A LAYOUT effect, not a passive one. Measured on the rig (UX round 2, U8;
 	 * re-measured for this round): the disabled option loses focus at the press,
@@ -2267,7 +2406,14 @@ function SessionPanel({
 		)
 			return;
 		const next = document.querySelector<HTMLElement>(
-			'[aria-label="Answer options"] button:not([disabled])',
+			/*
+			 * BOTH ANSWER SURFACES, ONE QUERY: a next question that is an ask takes
+			 * focus on its first live option, and one that is a SECRET takes it on
+			 * the masked field — the only control on such a card. The dock draws one
+			 * surface or the other, never both, so this stays the "first live thing
+			 * the next question offers" the option-only query was.
+			 */
+			'[aria-label="Answer options"] button:not([disabled]), [data-ask-secret] input:not([disabled])',
 		);
 		if (next) next.focus();
 		else input.current?.focusInput();
@@ -3453,6 +3599,16 @@ function SessionPanel({
 							stopNotice ??
 							interruptUnavailableNotice(busy, interruptAvailable),
 						onAnswer: (label: string) => void answerWithOption(label),
+						/*
+						 * The secret field's own door, wired the same way and to the
+						 * matching machinery (`answerWithSecret` -> `answerGateSecret`):
+						 * the same lock, the same report, the same one-answer-in-flight
+						 * property as the options above. Separate props because the two
+						 * answer paths refuse different things; see `QuestionDockProps`
+						 * for why the split is at the component boundary and not inside
+						 * the dock.
+						 */
+						onAnswerSecret: (value: string) => void answerWithSecret(value),
 						answer: answerForThisGate,
 					}}
 				/>

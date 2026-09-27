@@ -24,6 +24,9 @@ import type {
 	CountResponse,
 	CreateAgentCommentRequest,
 	CreateAgentRequest,
+	HubTeamResult,
+	HubTeamsResult,
+	MembershipsResult,
 	PaginatedAgentList,
 	PaginatedResponse,
 	RadientApiResponse,
@@ -286,5 +289,95 @@ export async function listAccountAgents(
 		operation: "account.agents",
 		accountId,
 		query,
+	});
+}
+
+/* ------------------------------------------------------------- organizations */
+
+/**
+ * The caller's own organization memberships (design §4.1).
+ *
+ * This is the ONLY source of the org selector's list: rows are the account's
+ * own memberships with their plan summary, so a surface can tell an org it may
+ * use from one whose membership is pending or disabled, without a second call
+ * per org. `tenant_id` is the org's identity everywhere below — the org
+ * workspace's list, its teams, and the publish target.
+ */
+export async function listMemberships(): Promise<
+	RadientApiResponse<MembershipsResult>
+> {
+	return radientProxyEnvelope<MembershipsResult>({
+		operation: "memberships.list",
+	});
+}
+
+/**
+ * The agents published into one organization's private workspace (§4.4).
+ *
+ * `org_agents.list` rather than `agents.list` with a filter: the org route is
+ * the one that scopes by the caller's MEMBERSHIP, and `visibility=org` is
+ * pinned server-side by the proxy's request shaper rather than sent from here —
+ * the operation's own name fixes the namespace, so a query spelling of it would
+ * only be a second place the target could be wrong.
+ *
+ * The filters are the public list's, minus `tenant_id`: the organization
+ * travels in the path.
+ */
+export async function listOrgAgents(
+	tenantId: string,
+	page = 1,
+	perPage = 20,
+	params?: {
+		categories?: string;
+		tags?: string;
+		account_id?: string;
+		name?: string;
+		description?: string;
+		sort?: string;
+		order?: string;
+	},
+): Promise<RadientApiResponse<PaginatedAgentList>> {
+	const query: Record<string, string | number> = { page, per_page: perPage };
+	if (params) {
+		for (const [key, value] of Object.entries(params)) {
+			if (value) query[key] = value;
+		}
+	}
+	return radientProxyEnvelope<PaginatedAgentList>({
+		operation: "org_agents.list",
+		tenantId,
+		query,
+	});
+}
+
+/**
+ * The teams published into one organization's private workspace (§4.5).
+ *
+ * The list form omits each team's `instructions` (the brief is detail-only),
+ * so this is what a hub page's roster line renders from; the pull names one
+ * team by id through {@link getOrgTeam}.
+ */
+export async function listOrgTeams(
+	tenantId: string,
+): Promise<RadientApiResponse<HubTeamsResult>> {
+	return radientProxyEnvelope<HubTeamsResult>({
+		operation: "org_teams.list",
+		tenantId,
+	});
+}
+
+/**
+ * One published team document by id (§4.5), including its brief.
+ *
+ * The org-AGNOSTIC read: the id names the document, exactly as the CLI's
+ * `teams pull` addresses it, so the desktop's pull does not need — and must not
+ * invent — a `tenant_id` for a document it is only reading.
+ */
+export async function getOrgTeam(
+	teamId: string,
+): Promise<RadientApiResponse<HubTeamResult>> {
+	return radientProxyEnvelope<HubTeamResult>({
+		operation: "org_team.get",
+		teamId,
 	});
 }
