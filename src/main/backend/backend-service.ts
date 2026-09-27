@@ -131,7 +131,10 @@ import {
  * term in place would inflate `QUIT_CLEANUP_FAILSAFE_MS` by ten seconds of
  * waiting that no longer happens, and that constant's own note says each term
  * has to be the bound it comes from. A future exec on this path owes the
- * failsafe a term again.
+ * failsafe a term again - and one took its place: `checkLocalOperatorExists` now
+ * RUNS the launcher (`probeGlobalLauncher`, which is bounded but not synchronous),
+ * so its worst case is exported as `LAUNCHER_PROBE_WORST_MS` and carried by
+ * `QUIT_CLEANUP_FAILSAFE_MS` where this note used to say nothing was owed.
  */
 
 /** The shutdown escalation one `stop(false)` can spend before it gives up: the

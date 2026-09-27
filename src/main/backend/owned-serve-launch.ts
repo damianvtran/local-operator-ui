@@ -673,6 +673,21 @@ export function consoleInterpreter(consolePath: string): string {
 export const LAUNCHER_PROBE_TIMEOUT_MS = 15_000;
 
 /**
+ * Worst-case wall time for one launcher-usability probe.
+ *
+ * The ceiling plus the escalation that follows it when the child ignores
+ * signals - SIGTERM, `graceMs`, SIGKILL, `slackMs` - which is the same shape
+ * `INTERPRETER_RESOLUTION_WORST_MS` uses and for the same reason: the quit path's
+ * failsafe derives from these numbers rather than restating them, and this probe
+ * sits on that path (a quit can land while `startOwned` is inside it, and `stop()`
+ * waits for that same promise). It was the console resolution's term before that
+ * became a synchronous search; this is the async work that took its place, so the
+ * term comes back with a name rather than as prose (review round 3, F12).
+ */
+export const LAUNCHER_PROBE_WORST_MS =
+	LAUNCHER_PROBE_TIMEOUT_MS + DEFAULT_BUDGET.graceMs + DEFAULT_BUDGET.slackMs;
+
+/**
  * What a resolved global launcher turned out to be once something ran it.
  *
  * WHY A SPAWN AND NOT A FILE CHECK. `resolveGlobalConsoleScript` answers "a file
