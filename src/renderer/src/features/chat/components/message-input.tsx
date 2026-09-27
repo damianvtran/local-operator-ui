@@ -28,6 +28,7 @@ import { useAsideStore } from "@shared/store/aside-store";
 import {
 	CLEAR_LABEL,
 	RETRY_LABEL,
+	SEND_FAILURE_COPY,
 	buildSendPayload,
 } from "@shared/store/canonical-sessions-store";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
@@ -703,6 +704,13 @@ type MessageInputProps = {
 		 * a second authority for a fact the session handle owns.
 		 */
 		held?: boolean;
+		/**
+		 * The readings were dropped at a spent retry budget (task-17, U4); see
+		 * `SessionStatusStripProps["readingsDropped"]`. Forwarded verbatim, for
+		 * the reason `held` is: the pane owns the distinction between "never
+		 * arrived" and "dropped", and this composer must not re-derive it.
+		 */
+		readingsDropped?: boolean;
 	};
 	/**
 	 * Run the command the composer's planner pulled out of the draft, and report
@@ -5878,6 +5886,19 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						 * reconnect): the same structural-marker rule as `data-undelivered`.
 						 */
 						data-composer-notice
+						/*
+						 * THE QUEUED-SEND MARK (task-17, U2), by IDENTITY of the sentence:
+						 * the queued line and the send lock are both muted statements of
+						 * fact about a flight, so the register cannot tell them apart and
+						 * neither can `role`. A reader (this repo's rigs included) that
+						 * needs "is this the queued line" reads this marker rather than the
+						 * copy, so the sentence can be reworded without moving the handle.
+						 */
+						data-composer-queued={
+							sendError?.message === SEND_FAILURE_COPY.queuedSend
+								? true
+								: undefined
+						}
 						className={cn(
 							CHAT_MEASURE,
 							"flex flex-col gap-1 text-body-sm",
@@ -6801,6 +6822,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										onOpenDraftPicker={sessionStatus.onOpenDraftPicker}
 										draftResolution={sessionStatus.draftResolution}
 										held={sessionStatus.held}
+										readingsDropped={sessionStatus.readingsDropped}
 										pendingModel={sessionStatus.pendingModel}
 									/>
 								</ErrorBoundary>

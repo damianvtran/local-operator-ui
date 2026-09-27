@@ -1392,6 +1392,14 @@ const STAMP_BINDING_NOTES = [
 	 * list for.
 	 */
 	"windowsUvStagerFoldNote",
+	/*
+	 * AND TASK-17'S OWN: its subject IS this file's binding too - it moves BOTH
+	 * trees without taking a frame (the change's evidence is the isolated
+	 * headless rig runs and the desktop suite), so the reader is owed the pair
+	 * AND the reason no still was owed - the same case
+	 * `streamRedeliveryRestampNote` is in the list for.
+	 */
+	"task17RestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1948,6 +1956,13 @@ const BRANCH_RECORDS = [
 	 * resolved from main's copy would drop it.
 	 */
 	"windowsUvStagerFoldNote",
+	/*
+	 * And by this lane, whose note is the newest top-level record on the
+	 * branch: it states the pair task-17 ships, moves both trees, and takes no
+	 * frame - a fold that started from main's copy would drop it first, the
+	 * same reason this list exists.
+	 */
+	"task17RestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
