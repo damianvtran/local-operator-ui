@@ -44,6 +44,7 @@
  */
 
 import { displayName, toolRowLabel } from "../components/trace/tool-row-model";
+import type { TranscriptImage } from "./transcript-reducer";
 import type { Row } from "./transcript-rows";
 
 /** §E2: a run of three or more consecutive actions folds. */
@@ -534,6 +535,30 @@ export function foldRuns(
 	flush();
 	return groups;
 }
+
+/**
+ * The images a run produced, in row order.
+ *
+ * A folded run UNMOUNTS the rows that would show these, so the artifacts a turn
+ * produced went with them: the reader had to expand the group to see the
+ * screenshot a command wrote, which is the cost condensing was supposed to
+ * remove. This is which of them the condensed group has to carry instead.
+ *
+ * ONLY TOOL ROWS CONTRIBUTE, and that is the whole rule rather than a filter
+ * that happens to be here. A run is a run of ACTIONS (§E2) and an action's
+ * images are its product - the screenshot a shell command wrote, the frame a
+ * browser call captured. A row that is not an action breaks a run rather than
+ * joining it (`foldRuns`' `isFoldable`), so no other kind of record can be
+ * inside one; the test is stated anyway so the claim is checkable against the
+ * record union rather than inferred from the caller's options.
+ */
+export const foldImages = (rows: readonly Row[]): TranscriptImage[] => {
+	const images: TranscriptImage[] = [];
+	for (const row of rows) {
+		if (row.record.kind === "tool") images.push(...row.record.images);
+	}
+	return images;
+};
 
 /** What a finished turn's foot line reports (§E3). */
 export type TurnFoot = {

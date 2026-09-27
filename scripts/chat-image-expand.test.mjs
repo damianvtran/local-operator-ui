@@ -133,6 +133,7 @@ const bundle = await build({
 			export { ImageAttachment } from "./src/renderer/src/features/chat/components/message-item/image-attachment";
 			export { FileAttachment } from "./src/renderer/src/features/chat/components/message-item/file-attachment";
 			export { CanonicalImage } from "./src/renderer/src/features/chat/canonical/canonical-image";
+			export { FoldMedia } from "./src/renderer/src/features/chat/canonical/fold-media";
 		`,
 		resolveDir: ROOT,
 	},
@@ -173,9 +174,8 @@ const bundle = await build({
 mkdirSync(CACHE, { recursive: true });
 const bundlePath = join(CACHE, "image-expand.mjs");
 writeFileSync(bundlePath, bundle.outputFiles[0].text);
-const { ImageAttachment, FileAttachment, CanonicalImage } = await import(
-	pathToFileURL(bundlePath).href
-);
+const { ImageAttachment, FileAttachment, CanonicalImage, FoldMedia } =
+	await import(pathToFileURL(bundlePath).href);
 
 /* ------------------------------------------------------------------ fixtures */
 
@@ -875,6 +875,108 @@ test("a canonical picture with no bytes is a failure row, not an untappable pict
 			pictureButton(api.document),
 			null,
 			"and it is not a button at all",
+		);
+	});
+});
+
+/**
+ * The condensed action group, which is the surface an image-bearing run is most
+ * often read on.
+ *
+ * A collapsed group UNMOUNTS its rows, so a screenshot a call produced used to
+ * be reachable only by expanding the group — the operator's report. The strip
+ * that answers it is mounted here as the REAL component, because the claims
+ * about it are the same class as every other claim in this file: each picture
+ * is a real button (in the tab order, expanded by Enter or Space like any
+ * other), each is NAMED, each carries the thumbnail ceiling rather than the
+ * row's full 240px one, and a press on one still reaches the overlay.
+ *
+ * The strip's own ceiling is the compactness budget in one number, so it is
+ * asserted rather than described: `max-h-16` is the attachment frame's own
+ * floor, and the full ceiling's literal must be absent.
+ */
+const THUMBNAIL_CEILING = /\bmax-h-16\b/;
+const FULL_CEILING = /max-h-\[240px\]/;
+
+test("a condensed group's pictures are named, expandable thumbnails", async () => {
+	await mount(async (api) => {
+		const second = {
+			id: "image-expand:group:1",
+			data: PNG_BASE64,
+			attachment: null,
+			mimeType: "image/png",
+		};
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: [transcriptImage, second],
+				scope: transcriptScope,
+			}),
+		);
+
+		const strip = api.document.querySelector("[data-fold-media]");
+		assert.ok(strip, "the strip is on screen");
+		assert.equal(strip.tagName, "UL", "a run's pictures are a list of them");
+		assert.equal(
+			api.document.querySelectorAll("[data-fold-media] li").length,
+			2,
+			"every picture the run produced is shown, not one and a count",
+		);
+		assert.equal(
+			strip.getAttribute("aria-label"),
+			"2 screenshots from this run",
+			"and the set itself is named, so a reader knows how many it is walking into",
+		);
+
+		const controls = [
+			...api.document.querySelectorAll("[data-fold-media] button"),
+		];
+		assert.deepEqual(
+			controls.map((control) => control.getAttribute("aria-label")),
+			["Expand Screenshot 1", "Expand Screenshot 2"],
+			"each picture's name says WHICH one it is",
+		);
+		for (const picture of api.document.querySelectorAll(
+			"[data-fold-media] img",
+		)) {
+			assert.match(
+				picture.className,
+				THUMBNAIL_CEILING,
+				"a condensed group's picture is a thumbnail, not a full figure",
+			);
+			assert.doesNotMatch(picture.className, FULL_CEILING);
+		}
+
+		/* The press that made the full picture readable is unchanged. */
+		await api.click(controls[1]);
+		assert.ok(isOpen(api.document), "a thumbnail expands to the full picture");
+		assert.equal(
+			api.document.getElementById(
+				api.document.querySelector(DIALOG).getAttribute("aria-labelledby"),
+			).textContent,
+			"Screenshot 2",
+			"and the overlay is named for the picture that was pressed",
+		);
+	});
+});
+
+test("one picture in a group is named as one picture", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: [transcriptImage],
+				scope: transcriptScope,
+			}),
+		);
+		assert.equal(
+			api.document
+				.querySelector("[data-fold-media]")
+				.getAttribute("aria-label"),
+			"1 screenshot from this run",
+		);
+		assert.equal(
+			pictureButton(api.document).getAttribute("aria-label"),
+			"Expand Screenshot",
+			'a lone picture is not "Screenshot 1"',
 		);
 	});
 });

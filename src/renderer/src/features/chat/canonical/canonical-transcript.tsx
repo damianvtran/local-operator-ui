@@ -107,11 +107,17 @@ import { MISSING_SESSION_NOTICE_ID } from "../missing-session-notice";
 import { CanvasPaneProvider } from "../utils/canvas-pane";
 import { parseReplies } from "../utils/reply-utils";
 import { CanonicalImage } from "./canonical-image";
+import { FoldMedia } from "./fold-media";
 import { LinkToolkit } from "./link-toolkit";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
 import { isQuotable } from "./quote-model";
 import { QuoteToolkit } from "./quote-toolkit";
-import { type TurnFoot, foldRuns, turnFeet } from "./trace-fold-model";
+import {
+	type TurnFoot,
+	foldImages,
+	foldRuns,
+	turnFeet,
+} from "./trace-fold-model";
 import {
 	type CanonicalTranscriptStatus,
 	canonicalTranscriptSpeaks,
@@ -1836,6 +1842,16 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				? {
 						...group,
 						isNewestTurn: (firstIndexOf.get(group.id) ?? 0) > lastUserIndex,
+						/*
+						 * The run's pictures, computed HERE rather than at the fold's call
+						 * site: a collapsed fold unmounts the rows that draw them, so the
+						 * condensed group has to carry what they would have shown, and
+						 * this memo is where the rows are still in hand. Empty for almost
+						 * every run (`foldImages` returns nothing when no action produced
+						 * an image), which is what keeps the no-image case's DOM and its
+						 * height exactly what they were.
+						 */
+						images: foldImages(group.rows),
 					}
 				: group,
 		);
@@ -2552,6 +2568,18 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 										 * turn did.
 										 */
 										sectionLive={working !== null && group.isNewestTurn}
+										/*
+										 * The run's images, while the rows that draw them are
+										 * unmounted. Rendered only while the fold is condensed,
+										 * and not passed at all for a run that produced none -
+										 * the overwhelmingly common case, and the reason a group
+										 * with no images is byte-for-byte the group it was.
+										 */
+										condensedMedia={
+											group.images.length > 0 ? (
+												<FoldMedia images={group.images} scope={mediaScope} />
+											) : undefined
+										}
 									>
 										{group.rows.map((row, index) => (
 											<TranscriptRow

@@ -1205,6 +1205,15 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"actionFoldEvidenceNote",
 	/*
+	 * THE PICTURES PASS, on the same lane and for the same reason: its subject is
+	 * what a condensed group shows of its run's artifacts, and it states the pair
+	 * this commit ships and every count the pass moved, so its own claim is the
+	 * binding this file checks. Listing it is also what makes the pair falsifiable
+	 * rather than prose - an unlisted note quoting a stale pair is exactly the
+	 * defect this list exists to catch.
+	 */
+	"condensedGroupMediaNote",
+	/*
 	 * AND THIS FOLD'S OWN - the fold onto `origin/main` = `093a329a4d` (#535, the
 	 * sub-view top inset). ITS SUBJECT IS THIS FILE'S BINDING (the re-derived
 	 * pair), so it is held to the pair the file ships rather than read as
@@ -1852,6 +1861,7 @@ const BRANCH_RECORDS = [
 	 * records, and they were never this branch's to drop.
 	 */
 	"actionFoldEvidenceNote",
+	"condensedGroupMediaNote",
 	"foldOnto9d3e68ddf6ActionGroupNote",
 	"foldOnto4ae3dbff0dActionGroupNote",
 	"foldOnto22c0fcd4fdActionGroupNote",

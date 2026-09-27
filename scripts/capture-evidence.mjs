@@ -627,6 +627,41 @@ export const STORIES = [
 		210,
 		{ press: '[data-fold-ids] button[aria-expanded="false"]' },
 	],
+	/*
+	 * THE RUN'S OWN PICTURES (`trace-fold.stories.tsx`), added for the operator's
+	 * 2026-09-26 report: a group that condenses itself must not put the screenshot
+	 * its run produced behind the disclosure. Five states, and the heights are the
+	 * argument rather than a crop.
+	 *
+	 * `image-hidden` and `image-shown` are ONE height, so the pair differs in the
+	 * picture and not in the frame: the first is the shipped render of an
+	 * image-bearing run with the strip withheld (which is what `condensedMedia`
+	 * absent MEANS), the second is the same run carrying it. `images-three` is the
+	 * same height again - one picture and three cost the same row - which is the
+	 * compactness claim this change makes and the one a reader of the diff should
+	 * be able to see. The extra 70px over the header-only states is the strip: 64
+	 * of thumbnail, 4 of the row's own `mt-1`, 2 of the fold's gap.
+	 *
+	 * `image-live` is the other window a reader meets the strip in - the picture
+	 * has landed and the run has not finished - and `image-expanded` is the price
+	 * the old behaviour charged, at its own height because the picture is drawn at
+	 * the transcript's 240px ceiling there instead of as a thumbnail.
+	 */
+	["chat-trace-fold--image-hidden", 1280, 200],
+	["chat-trace-fold--image-shown", 1280, 200],
+	["chat-trace-fold--images-three", 1280, 200],
+	/*
+	 * The count at which the row genuinely wraps, framed rather than argued: the
+	 * one case where the strip is not a constant cost, at its own height.
+	 */
+	["chat-trace-fold--images-many", 1280, 380],
+	["chat-trace-fold--image-live", 1280, 200],
+	[
+		"chat-trace-fold--image-expanded",
+		1280,
+		420,
+		{ press: '[data-fold-ids] button[aria-expanded="false"]' },
+	],
 
 	/*
 	 * A turn joined MID-STREAM, which is the one transcript surface whose evidence

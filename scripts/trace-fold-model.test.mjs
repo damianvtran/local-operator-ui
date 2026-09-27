@@ -42,6 +42,7 @@ const {
 	FOLD_MIN_ACTIONS,
 	actionClass,
 	foldCounts,
+	foldImages,
 	foldLive,
 	foldRuns,
 	foldSpan,
@@ -484,4 +485,59 @@ test("a turn's foot counts its own actions, and names its first failure", () => 
 		{ actions: 3, failed: 2, durationS: null, firstFailedId: "t2" },
 		"the jump names the FIRST failure, which is the row a reader wants opened",
 	);
+});
+
+/* --------------------------- the run's pictures --------------------------- */
+
+/**
+ * A row as `foldImages` reads it: the record's kind is what decides, and the
+ * image list is the record's own.
+ */
+const imageRow = (id, images) => ({
+	record: { id, kind: "tool", images },
+	gap: "trace",
+	closesTurn: false,
+});
+
+const picture = (id) => ({
+	id,
+	data: null,
+	attachment: `digest-${id}`,
+	mimeType: "image/png",
+});
+
+test("a run's images are its actions' images, in row order", () => {
+	/*
+	 * The condensed group carries these because it unmounts the rows that would
+	 * draw them, so the order is a claim about the group and not an accident of
+	 * iteration: a run that wrote two screenshots shows them in the order they
+	 * were written, which is the order the expanded rows show.
+	 */
+	const rows = [
+		imageRow("t1", [picture("t1:0")]),
+		{ record: { id: "n1", kind: "notice" }, gap: "trace", closesTurn: false },
+		imageRow("t2", [picture("t2:0"), picture("t2:1")]),
+	];
+	assert.deepEqual(
+		foldImages(rows).map((image) => image.id),
+		["t1:0", "t2:0", "t2:1"],
+	);
+});
+
+test("a run with no pictures yields none, and a user row never contributes", () => {
+	/*
+	 * `images` is a field on user records too — attachments the reader pasted
+	 * into their prompt are not the agent's output, and a run that happened to
+	 * sit below one must not adopt them.
+	 */
+	const rows = [
+		imageRow("t1", []),
+		{
+			record: { id: "u1", kind: "user", images: [picture("u1:0")] },
+			gap: "turn",
+			closesTurn: false,
+		},
+		imageRow("t2", []),
+	];
+	assert.deepEqual(foldImages(rows), []);
 });
