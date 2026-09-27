@@ -38,6 +38,7 @@
  * report was about.
  */
 
+import { PaneSlot } from "@shared/components/common/pane-slot";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
@@ -196,10 +197,7 @@ const RunPane = ({
 			side="left"
 			label="Resize run details"
 		/>
-		<div
-			style={{ minWidth: width, width }}
-			className="relative h-full overflow-hidden border-l border-hairline"
-		>
+		<PaneSlot width={width} minWidth={width}>
 			<RunPanel
 				details={details}
 				mcpServers={deriveMcpServers(mcpServers, mcpErrors, mcpOperations)}
@@ -217,7 +215,7 @@ const RunPane = ({
 				onReaderChildChange={onReaderChildChange}
 				onClose={onClose}
 			/>
-		</div>
+		</PaneSlot>
 	</>
 );
 
