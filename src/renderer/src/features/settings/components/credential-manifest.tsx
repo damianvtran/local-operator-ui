@@ -124,6 +124,38 @@ export const CREDENTIAL_MANIFEST = [
 		type: CredentialType.Search,
 	},
 	{
+		key: "BRAVE_API_KEY",
+		name: "Brave API key",
+		description:
+			"API key for Brave Search, an independent web index with its own crawler.  Allows your agents to search the web for information.",
+		url: "https://api-dashboard.search.brave.com/app/keys",
+		type: CredentialType.Search,
+	},
+	{
+		key: "EXA_API_KEY",
+		name: "Exa API key",
+		description:
+			"API key for Exa, a search API built for AI applications.  Agents can also search through Exa's free tier without a key; a key raises its rate limits.",
+		url: "https://dashboard.exa.ai/api-keys",
+		type: CredentialType.Search,
+	},
+	{
+		key: "PARALLEL_API_KEY",
+		name: "Parallel API key",
+		description:
+			"API key for Parallel, a web search API for AI agents.  Agents can also search through Parallel's free tier without a key; a key raises its rate limits.",
+		url: "https://platform.parallel.ai/",
+		type: CredentialType.Search,
+	},
+	{
+		key: "PERPLEXITY_API_KEY",
+		name: "Perplexity API key",
+		description:
+			"API key for Perplexity's Sonar search.  Perplexity is best-effort: availability varies, so agents may fall back to another provider.",
+		url: "https://console.perplexity.ai/",
+		type: CredentialType.Search,
+	},
+	{
 		key: "FAL_API_KEY",
 		name: "FAL API key",
 		description:

@@ -171,6 +171,34 @@ export type IdentityInfo = {
 };
 
 /**
+ * The signup-grant verification state Radient reports for the account.
+ *
+ * OPTIONAL wherever it is consumed, on purpose: an older backend does not send
+ * it at all, and every consumer reads its absence as "cannot say" rather than
+ * as "not verified" - a callout that prompts a user whose backend simply
+ * predates the field would be misdirection, not a reminder.
+ */
+export type AccountVerification = {
+	/**
+	 * Radient's OWN Turnstile-gated claim state
+	 * (`billing_accounts.email_verified_at`), never inferred from the OAuth
+	 * identity's `email_verified` claim: a Google or Microsoft address being
+	 * verified does not claim the grant, so treating it as though it did would
+	 * hide the one step the user still has to take.
+	 */
+	email_verified: boolean;
+	/** Where the grant stands in its lifecycle. */
+	signup_grant: "claimed" | "pending" | "expired" | "none";
+	/**
+	 * The grant as captured when it was issued, so a later change to the
+	 * backend's constant cannot alter what this screen promises.
+	 */
+	grant_amount?: number;
+	/** Where the claim happens, when the backend names it. */
+	claim_url?: string;
+};
+
+/**
  * User information returned by the /me endpoint
  */
 export type UserInfoResult = {
@@ -182,6 +210,14 @@ export type UserInfoResult = {
 	 * The identity information
 	 */
 	identity: IdentityInfo;
+	/**
+	 * The signup-grant verification state, when the backend reports one.
+	 *
+	 * ADDITIVE and optional: the desktop proxy forwards the upstream body
+	 * verbatim, and a backend that predates the field must not break any
+	 * consumer - which is why nothing here derives a value for its absence.
+	 */
+	verification?: AccountVerification;
 };
 
 /**

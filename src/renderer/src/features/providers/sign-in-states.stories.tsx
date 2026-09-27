@@ -1208,6 +1208,43 @@ export const OnboardingStep3: Story = {
 	),
 };
 
+/**
+ * Step 3's search half in its ADD-KEYS branch: every catalogue provider gets
+ * its own field, and Free is no longer the selection.
+ *
+ * The branch is local state, so the user's own move is what places the story
+ * in it - a click on the radio the step ships - and the shutter stays closed
+ * until the six rows exist, because a frame taken before the re-render is a
+ * picture of the Free branch under a name that says otherwise.
+ */
+export const OnboardingStep3Keys: Story = {
+	render: () => (
+		<Bridge options={OPTS_ONE_CONNECTED}>
+			<OnboardingSearchKeys />
+		</Bridge>
+	),
+};
+
+const OnboardingSearchKeys = () => {
+	useLayoutEffect(() => {
+		document.documentElement.dataset.capturePending = "1";
+		document.getElementById("onboarding-search-mode-keys")?.click();
+		const timer = setTimeout(
+			() => document.documentElement.removeAttribute("data-capture-pending"),
+			120,
+		);
+		return () => {
+			clearTimeout(timer);
+			document.documentElement.removeAttribute("data-capture-pending");
+		};
+	}, []);
+	return (
+		<div className="h-screen bg-canvas">
+			<OnboardingAt step={OnboardingStep.EXTRAS} />
+		</div>
+	);
+};
+
 /** The step-2 summary in its "choose" answer (no suggestion from the backend). */
 export const OnboardingStep2Summaries: Story = {
 	render: () => (

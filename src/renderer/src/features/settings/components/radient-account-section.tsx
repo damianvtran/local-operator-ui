@@ -6,19 +6,104 @@
  * tour tag belong to the section wrapper the settings page renders around this.
  */
 
+import type { AccountVerification } from "@shared/api/radient";
 import { RadientAuthButtons } from "@shared/components/auth";
 import { Spinner } from "@shared/components/common/spinner";
 import { Badge, Button } from "@shared/components/ui";
 import { useRadientAuth } from "@shared/hooks";
+import { useRadientPricesQuery } from "@shared/hooks/use-radient-prices-query";
 import { isRadientAccountFailure } from "@shared/hooks/use-radient-user-query";
 import { useUserStore } from "@shared/store/user-store";
 import { formatCalendarDate } from "@shared/utils/date-utils";
-import { LogOut } from "lucide-react";
+import { Info, LogOut } from "lucide-react";
 import { type FC, useCallback, useMemo } from "react";
 import { InfoGrid, InfoItem } from "./settings-section";
 
 type RadientAccountSectionProps = {
 	onAfterCredentialUpdate?: () => void;
+};
+
+/**
+ * The signup-grant reminder: shown only while the account's email is unverified,
+ * and only when the backend reports a verification block at all.
+ *
+ * WHY THE SECTION OWNS THIS AND NOT A BANNER. The grant is account state and
+ * this is the account's own surface; the lifecycle arms say different things
+ * (waiting on an inbox vs asking for a new link), which is why one sentence
+ * cannot carry both. The amount is the backend's captured `grant_amount` when
+ * present, else the advertised default from the prices endpoint - a fallback
+ * rather than a source, because the prices value is the constant new accounts
+ * are advertised, while the captured amount is what will actually be added.
+ *
+ * The CTA opens the console's verification page through the preload bridge
+ * (`window.api.openExternal`, the same call `use-low-credits-dialog` makes),
+ * with the browser fallback for Storybook and any non-Electron host.
+ */
+const freeCreditsText = (amount: number | undefined): string => {
+	if (typeof amount !== "number" || !Number.isFinite(amount))
+		return "your free credits";
+	return `$${amount.toFixed(2)} in free credits`;
+};
+
+const VERIFY_CLAIM_URL = "https://console.radienthq.com/dashboard/verification";
+
+const verifyCopy = (
+	grant: AccountVerification["signup_grant"],
+	amountText: string,
+): { sentence: string; action: string } => {
+	if (grant === "pending")
+		return {
+			sentence: `Verify your email to claim ${amountText}. Check your inbox for the link Radient sent.`,
+			action: "Open verification page",
+		};
+	if (grant === "expired")
+		return {
+			sentence: `Verify your email to claim ${amountText}. The previous link has expired — request a new one.`,
+			action: "Request a new link",
+		};
+	// `none` (and the gated-out `claimed`, which never reaches this render):
+	// no live link exists to point at, so the copy points at asking for one.
+	return {
+		sentence: `Verify your email to claim ${amountText}. Request the verification link to get started.`,
+		action: "Request a new link",
+	};
+};
+
+const VerifyToClaimCallout: FC<{ verification: AccountVerification }> = ({
+	verification,
+}) => {
+	const { prices } = useRadientPricesQuery();
+	const amount = verification.grant_amount ?? prices?.default_new_credits;
+	const { sentence, action } = verifyCopy(
+		verification.signup_grant,
+		freeCreditsText(amount),
+	);
+	const claimUrl = verification.claim_url || VERIFY_CLAIM_URL;
+
+	return (
+		<div className="mt-8 flex items-start gap-3 rounded-sm border border-hairline bg-surface p-3">
+			<Info
+				className="mt-0.5 size-4 shrink-0 text-ink-muted"
+				aria-hidden="true"
+			/>
+			<div className="flex min-w-0 flex-col items-start gap-2">
+				<p className="text-body-sm text-ink">{sentence}</p>
+				<Button
+					variant="secondary"
+					size="sm"
+					onClick={() => {
+						if (window.api?.openExternal) {
+							window.api.openExternal(claimUrl);
+						} else {
+							window.open(claimUrl, "_blank");
+						}
+					}}
+				>
+					{action}
+				</Button>
+			</div>
+		</div>
+	);
 };
 
 export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
@@ -39,7 +124,11 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 	const accountInfoSection = useMemo(() => {
 		if (!isAuthenticated || !user?.radientUser) return null;
 
-		const { account, identity } = user.radientUser;
+		const { account, identity, verification } = user.radientUser;
+		const showVerifyCallout =
+			verification != null &&
+			!verification.email_verified &&
+			verification.signup_grant !== "claimed";
 
 		return (
 			<>
@@ -76,6 +165,15 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 						value={formatCalendarDate(account.created_at)}
 					/>
 				</InfoGrid>
+
+				{/*
+				 * The reminder sits between the details and the sign-out action:
+				 * it is about the account just described above it, and the sign-out
+				 * block ends the section the same way it always did.
+				 */}
+				{showVerifyCallout && verification ? (
+					<VerifyToClaimCallout verification={verification} />
+				) : null}
 
 				{/*
 				 * A section-tier gap replaces the rule that used to sit here: the

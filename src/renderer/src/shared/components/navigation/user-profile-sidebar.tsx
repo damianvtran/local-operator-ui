@@ -11,7 +11,7 @@ import {
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { isRadientAccountFailure } from "@shared/hooks/use-radient-user-query";
 import { cn } from "@shared/lib/utils";
-import { LogOut, Settings, Shield, User } from "lucide-react";
+import { LogOut, RotateCw, Settings, Shield, User } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import React, { type FC } from "react";
 import { useNavigate } from "react-router-dom";
@@ -77,7 +77,26 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 					? "Account unavailable"
 					: null;
 		const userName = user?.name ?? accountStateLabel ?? "User";
+		/*
+		 * A failed read is the one account state with somewhere to GO, and the row
+		 * is the only place this sidebar can offer it: the foot has no room for a
+		 * second control, and the row is already a button (a link nested in a
+		 * button is not markup a browser can resolve).
+		 *
+		 * So the row itself becomes the affordance. Failed, its second line names
+		 * the move - "Reconnect Radient", in the accent this system uses for
+		 * "there is something to do" - and its press goes straight to the provider
+		 * surface with Radient preselected, which is where a refused or unreadable
+		 * account is actually repaired. Every other state keeps the email line and
+		 * the plain settings destination it always had.
+		 */
+		const reconnect = isRadientAccountFailure(accountRead);
 		const userEmail = user?.email ?? "";
+		const secondLine = reconnect ? "Reconnect Radient" : userEmail;
+		const settingsTarget = reconnect
+			? "/settings?section=providers&provider=radient"
+			: "/settings";
+		const collapsedLabel = reconnect ? "Reconnect Radient" : "Account settings";
 
 		const handleSignOut = useCallback(async () => {
 			if (isAuthenticated) {
@@ -113,13 +132,13 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 		const row = (
 			<button
 				type="button"
-				onClick={useAuth ? undefined : () => navigate("/settings")}
+				onClick={useAuth ? undefined : () => navigate(settingsTarget)}
 				/* Collapsed the row is an avatar, and its initials — or the fallback
 				   mark, when there is no name to initialise — are not a name for
 				   what the control does. The tooltip only contributes
 				   `aria-describedby`, and only while open. Expanded, the name and
 				   email in the row are the name. */
-				aria-label={expanded ? undefined : "Account settings"}
+				aria-label={expanded ? undefined : collapsedLabel}
 				className={cn(
 					"flex w-full items-center gap-2 rounded-sm transition-colors duration-fast ease-out-quart hover:bg-row-hover",
 					/*
@@ -177,9 +196,14 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 						<span className="block truncate text-body-sm text-ink">
 							{userName}
 						</span>
-						{userEmail && (
-							<span className="block truncate text-meta text-ink-dim">
-								{userEmail}
+						{secondLine && (
+							<span
+								className={cn(
+									"block truncate text-meta",
+									reconnect ? "text-accent" : "text-ink-dim",
+								)}
+							>
+								{secondLine}
 							</span>
 						)}
 					</span>
@@ -192,7 +216,7 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 		const labelled = expanded ? (
 			row
 		) : (
-			<Tooltip content="Account settings" side="right">
+			<Tooltip content={collapsedLabel} side="right">
 				{row}
 			</Tooltip>
 		);
@@ -212,11 +236,17 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 				{expanded ? (
 					<DropdownMenuTrigger asChild>{row}</DropdownMenuTrigger>
 				) : (
-					<Tooltip content="Account settings" side="right">
+					<Tooltip content={collapsedLabel} side="right">
 						<DropdownMenuTrigger asChild>{row}</DropdownMenuTrigger>
 					</Tooltip>
 				)}
 				<DropdownMenuContent align="end" side="top" className="min-w-50">
+					{reconnect ? (
+						<DropdownMenuItem onSelect={() => navigate(settingsTarget)}>
+							<RotateCw size={16} aria-hidden="true" />
+							Reconnect Radient
+						</DropdownMenuItem>
+					) : null}
 					<DropdownMenuItem onSelect={() => navigate("/settings")}>
 						<Settings size={16} aria-hidden="true" />
 						Settings
