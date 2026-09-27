@@ -17,6 +17,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
+import { userEvent } from "@storybook/test";
 import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { Route, Routes, useNavigate } from "react-router-dom";
@@ -315,7 +316,16 @@ const releaseShutter = () => {
 const played = new Set<string>();
 
 const poll = async (predicate: () => boolean, what: string) => {
-	for (let attempt = 0; attempt < 100; attempt++) {
+	/*
+	 * SIXTY SECONDS, not five. The plays race the story's own boot — the route
+	 * swap, the stubbed query, and (on a loaded box) the dev server's first
+	 * compile of this story — and a five-second budget turned a slow boot into a
+	 * thrown play: the sweep stopped at `delete-confirm @ localOperatorDark`
+	 * with the dialog on screen and the button about to enable. The loop exits
+	 * on the first true answer, so the generous ceiling costs nothing when the
+	 * state arrives at its usual speed.
+	 */
+	for (let attempt = 0; attempt < 1200; attempt++) {
 		if (predicate()) return;
 		await new Promise((resolve) => setTimeout(resolve, 50));
 	}
@@ -339,6 +349,20 @@ const clickWhen = async (selector: string) => {
 	await poll(() => document.querySelector(selector) !== null, selector);
 	document.querySelector<HTMLElement>(selector)?.click();
 };
+
+/**
+ * Wait for the DETAIL screen the route-based stories navigate to.
+ *
+ * The plays race `RouteTo`'s navigation: the story's first render is the
+ * unmatched route (nothing mounted), the swap happens in an effect, and the
+ * detail's own query settles after that. Every play on a detail screen waits
+ * here first, so its first click targets a control that exists.
+ */
+const waitForDetail = () =>
+	poll(
+		() => document.querySelector('[data-tour-tag="project-edit"]') !== null,
+		"the detail screen",
+	);
 
 /**
  * Walk the story's own router to a route, with the app's OWN route table for
@@ -472,6 +496,7 @@ export const EditDialog: Story = {
 		</RouteTo>
 	),
 	play: playOnce("edit-dialog", async () => {
+		await waitForDetail();
 		await clickWhen('[data-tour-tag="project-edit"]');
 		await poll(
 			() =>
@@ -496,6 +521,7 @@ export const DeleteConfirm: Story = {
 		</RouteTo>
 	),
 	play: playOnce("delete-confirm", async () => {
+		await waitForDetail();
 		await clickWhen('[data-tour-tag="project-delete"]');
 		await poll(
 			() =>
@@ -508,31 +534,35 @@ export const DeleteConfirm: Story = {
 		);
 		if (!input) throw new Error("the delete dialog has no confirm input");
 		/*
-		 * THE NATIVE SETTER, not `input.value = …`. React installs its own value
-		 * tracker on the element, so a plain assignment makes the tracker and the
-		 * property agree and React therefore sees NO change — the state never
-		 * updates and the frame photographs a typed-looking field with the button
-		 * still disabled. Measured: the first capture of this state showed exactly
-		 * that. The prototype setter moves the value past the tracker, and the
-		 * bubbling `input` event is the one React listens for.
+		 * TYPED THROUGH `userEvent`, the layer the mention stories drive the composer
+		 * with — a bare `input.value = …` never updated React's state (its value
+		 * tracker makes the assignment look like no change) and a native-setter
+		 * dispatch worked in a hand-driven browser but NOT under the capture rig:
+		 * the sweep stopped at `delete-confirm @ localOperatorDark` because the
+		 * button never enabled. `userEvent` types the characters as a person does,
+		 * so the state the frame shows is the state a keystroke produces.
 		 */
-		const setter = Object.getOwnPropertyDescriptor(
-			HTMLInputElement.prototype,
-			"value",
-		)?.set;
-		setter?.call(input, "payments-migration");
-		input.dispatchEvent(new Event("input", { bubbles: true }));
+		await userEvent.type(input, "payments-migration");
+		/*
+		 * THE POLL READS THE DIALOG, not `data-tour-tag`: `BaseDialog` puts that tag
+		 * on its scrollable BODY, and the footer's buttons are its siblings — so a
+		 * scoped query found no button at all and the play failed with the typed
+		 * dialog on screen (measured: `buttons: []` while the frame showed Cancel
+		 * and an enabled Delete project). `[role="dialog"]` is the panel that
+		 * contains both halves.
+		 */
 		await poll(
-			() =>
-				[
-					...document.querySelectorAll<HTMLButtonElement>(
-						'[data-tour-tag="project-delete-dialog"] button',
-					),
-				].some(
-					(button) =>
-						!button.disabled &&
-						button.textContent?.includes("Delete project") === true,
-				),
+			() => {
+				const dialog = document.querySelector('[role="dialog"]');
+				return (
+					dialog !== null &&
+					[...dialog.querySelectorAll("button")].some(
+						(button) =>
+							!button.disabled &&
+							button.textContent?.trim() === "Delete project",
+					)
+				);
+			},
 			"the delete button to enable",
 		);
 	}),
@@ -552,6 +582,7 @@ export const MilestoneToggle: Story = {
 		</RouteTo>
 	),
 	play: playOnce("milestone-toggle", async () => {
+		await waitForDetail();
 		await clickWhen('[aria-label="Mark dashboard cutover complete"]');
 		await poll(
 			() =>
