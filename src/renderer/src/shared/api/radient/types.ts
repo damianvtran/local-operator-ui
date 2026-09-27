@@ -464,6 +464,19 @@ export type Agent = {
 	like_count: number;
 	favourite_count: number;
 	download_count: number;
+	/**
+	 * Where this row lives: the public hub or one organization's private
+	 * workspace (design §1.5).
+	 *
+	 * The hub OMITS this for a public row (`AgentResponse.Visibility` is
+	 * `json:"visibility,omitempty"` and is set only for `org`), so the absence is
+	 * the public reading rather than a missing field — every consumer must treat
+	 * `undefined` as "public", and only the literal `"org"` may narrow a surface
+	 * to organization behaviour. Declared as the one value the wire carries
+	 * rather than `"public" | "org"` so a client cannot write `=== "public"`
+	 * against a field that is never `"public"`.
+	 */
+	visibility?: "org";
 };
 
 /**
@@ -698,4 +711,103 @@ export type APIResponse = {
 	msg: string;
 	result?: unknown;
 	error?: string;
+};
+
+/**
+ * The plan half of a membership summary (design §4.1).
+ *
+ * `status` is the tenant plan's own state and `seats` is the current
+ * subscription quantity; `seats` is null until a plan row exists. `past_due`
+ * is NOT a failure state on the wire: §3.1 gives it full entitlements during
+ * dunning (with a payment-issue banner), so a surface that treated it as
+ * unentitled would hide an org the hub would still answer for.
+ */
+export type TeamPlanSummary = {
+	status: "none" | "active" | "past_due" | "canceled";
+	seats: number | null;
+};
+
+/**
+ * One row of `GET /v1/me/memberships` (design §4.1), and the additive
+ * `memberships` field of `GET /v1/me`.
+ *
+ * Rows are the caller's OWN memberships, in every state: `status` can be
+ * `active`, `pending` (accepted before the tenant had a plan) or `disabled`
+ * (a downgrade disabled it), and only `active` entitles org features (§3.2).
+ *
+ * `is_home` marks the account's HOME tenant — the one it belongs to by default —
+ * and it does NOT mean "personal, therefore not an organization": every user's
+ * tenant IS their organization, any tenant (including a home one) may carry a
+ * Team plan, and §10.2(b) renames a user's own tenant into a shared one (Minerva
+ * is its owner's home tenant). So a home row is offered on exactly the same terms
+ * as any other: an active membership whose plan entitles org features (§8.4's
+ * "each org from `memberships.list` where plan is active"). Nothing filters on
+ * `is_home`, and the filter is the PLAN — which is what keeps a plan-less
+ * personal workspace out of the scope selector and out of the picker's selectable
+ * targets, where it is shown DISABLED with its upgrade reason rather than offered
+ * (manager ruling on agent review round 1's M1; the pinned cases live in
+ * `scripts/agent-hub-org-sharing.test.mjs`).
+ *
+ * The console's team page labels its home row "Personal" to explain the row, not
+ * to exclude it; this app has no such label because the same row can be a real
+ * shared organization.
+ */
+export type MembershipSummary = {
+	tenant_id: string;
+	tenant_name: string;
+	role: string;
+	status: "active" | "pending" | "disabled";
+	is_home: boolean;
+	plan: TeamPlanSummary;
+};
+
+export type MembershipsResult = {
+	memberships: MembershipSummary[];
+};
+
+/**
+ * One roster slot of a published hub team (design §1.6/§4.5).
+ *
+ * A team's members are named by their roster HANDLES plus how many of that
+ * slot the team declares — the published document does not carry the local
+ * agent rows, so a pull resolves each name against the local registry. Roster
+ * references are deliberately not validated server-side in v1 (§11 O-6).
+ */
+export type HubTeamMember = {
+	role: string;
+	kind: string;
+	count: number;
+};
+
+/**
+ * A published team document (design §1.6/§4.5).
+ *
+ * The LIST form omits `instructions` — the brief is detail-only, so a list page
+ * does not carry 8 KB per row — which is why it is optional here rather than
+ * required with a default.
+ */
+export type HubTeam = {
+	id: string;
+	tenant_id: string;
+	account_id: string;
+	account_metadata?: AccountMetadata;
+	name: string;
+	description: string;
+	manager: string;
+	members: HubTeamMember[];
+	instructions?: string;
+	project: string;
+	version: string;
+	document_version?: number;
+	created_date: string;
+	updated_at: string;
+};
+
+export type HubTeamsResult = {
+	teams: HubTeam[];
+};
+
+/** `GET /v1/teams/:teamid` — the org-agnostic pull path (§4.5). */
+export type HubTeamResult = {
+	team: HubTeam;
 };
