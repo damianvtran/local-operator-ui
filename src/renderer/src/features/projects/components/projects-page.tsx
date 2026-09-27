@@ -35,13 +35,30 @@ import { FolderKanban, Plus, RefreshCw } from "lucide-react";
 import type { FC } from "react";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import type {
+	DesktopProject,
+	DesktopProjectStatus,
+} from "../../../../../shared/desktop-control-contract";
 import {
 	useCreateProject,
+	useDeleteProject,
+	useProjectMilestones,
 	useProjectsList,
+	useUpdateProject,
 } from "../hooks/use-projects-queries";
+import { projectStatusMeta } from "../project-model";
+import { ProjectBoard } from "./project-board";
+import { ProjectDeleteDialog } from "./project-delete-dialog";
 import { ProjectDetailScreen } from "./project-detail";
 import { ProjectFormDialog } from "./project-form-dialog";
 import { ProjectList } from "./project-list";
+import { ProjectTimeline } from "./project-timeline";
+import {
+	type ProjectsView,
+	ProjectsViewSwitcher,
+	readProjectsView,
+	writeProjectsView,
+} from "./projects-view-switcher";
 
 const GATE_COPY: Record<string, string> = {
 	unpaired:
@@ -62,7 +79,41 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 	const enabled = gate === "enabled";
 	const list = useProjectsList(enabled);
 	const create = useCreateProject();
+	const update = useUpdateProject();
+	const remove = useDeleteProject();
 	const [createOpen, setCreateOpen] = useState(false);
+	/*
+	 * The view, the board's edit/delete targets, and the timeline's fan-out are
+	 * declared BEFORE the gate's early returns: a hook cannot sit behind a
+	 * branch, and the timeline's reads are gated by their own `enabled` flag
+	 * (the same fail-closed rule the list states).
+	 */
+	const [view, setView] = useState<ProjectsView>(() => readProjectsView());
+	const [editing, setEditing] = useState<DesktopProject | null>(null);
+	const [deleting, setDeleting] = useState<DesktopProject | null>(null);
+	const projects = list.data ?? [];
+	const details = useProjectMilestones(
+		view === "timeline" ? projects.map((project) => project.id) : [],
+		enabled,
+	);
+	const timelineItems = projects.map((project, index) => ({
+		project,
+		milestones: details[index]?.data?.project.milestones ?? [],
+	}));
+	const pendingDetails =
+		view === "timeline" ? details.filter((query) => query.isLoading).length : 0;
+	const moveTo = (project: DesktopProject, status: string) => {
+		update.mutate(
+			{
+				key: project.id,
+				fields: { status: status as DesktopProjectStatus },
+			},
+			{
+				onSuccess: () =>
+					showSuccessToast(`Moved to ${projectStatusMeta(status).label}`),
+			},
+		);
+	};
 
 	/*
 	 * One clock per render, read HERE (or handed in by a story's fixture): a
@@ -126,6 +177,22 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 					</Button>
 				</div>
 			</PageHeader>
+
+			{/*
+			 * THE VIEW SWITCHER sits under the header rather than inside it: the
+			 * header's actions are the page's commands (refresh, new), while the
+			 * switcher is a mode of the BODY — and at the app's narrowest window the
+			 * two in one row would squeeze the subtitle to a stub.
+			 */}
+			<div className="flex shrink-0 items-center justify-between gap-3">
+				<ProjectsViewSwitcher
+					value={view}
+					onChange={(next) => {
+						setView(next);
+						writeProjectsView(next);
+					}}
+				/>
+			</div>
 
 			{list.isLoading && (
 				/*
@@ -194,13 +261,81 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 				</div>
 			)}
 
-			{list.isSuccess && list.data.length > 0 && (
+			{list.isSuccess && list.data.length > 0 && view === "list" && (
 				<ProjectList
 					projects={list.data}
 					nowMs={nowMs}
 					onOpen={(project) => void navigate(`/projects/${project.id}`)}
 				/>
 			)}
+
+			{list.isSuccess && list.data.length > 0 && view === "board" && (
+				<ProjectBoard
+					projects={projects}
+					nowMs={nowMs}
+					onOpen={(project) => void navigate(`/projects/${project.id}`)}
+					onEdit={setEditing}
+					onDelete={setDeleting}
+					onMove={moveTo}
+					movingKeys={
+						update.isPending && update.variables ? [update.variables.key] : []
+					}
+				/>
+			)}
+
+			{list.isSuccess && list.data.length > 0 && view === "timeline" && (
+				<ProjectTimeline
+					items={timelineItems}
+					nowMs={nowMs}
+					onOpen={(item) => void navigate(`/projects/${item.project.id}`)}
+					pendingDetails={pendingDetails}
+				/>
+			)}
+
+			<ProjectFormDialog
+				open={editing !== null}
+				mode="edit"
+				initial={
+					editing
+						? {
+								key: editing.id,
+								name: editing.name,
+								description: editing.description,
+								status: editing.status,
+								tags: editing.tags,
+								start_date: editing.start_date,
+								target_date: editing.target_date,
+								estimate: editing.estimate,
+								estimate_unit: editing.estimate_unit,
+							}
+						: null
+				}
+				onClose={() => setEditing(null)}
+				onSubmit={async (payload) => {
+					if (payload.mode !== "edit") return;
+					await update.mutateAsync({
+						key: payload.key,
+						fields: payload.fields,
+					});
+					showSuccessToast("Project saved");
+					setEditing(null);
+				}}
+			/>
+
+			<ProjectDeleteDialog
+				open={deleting !== null}
+				projectName={deleting?.name ?? ""}
+				onClose={() => setDeleting(null)}
+				onConfirm={async (typedName) => {
+					if (!deleting) return;
+					await remove.mutateAsync({
+						key: deleting.id,
+						confirmedName: typedName,
+					});
+					showSuccessToast("Project deleted");
+					setDeleting(null);
+				}}
+			/>
 
 			<ProjectFormDialog
 				open={createOpen}

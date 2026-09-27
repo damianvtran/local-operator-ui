@@ -361,3 +361,110 @@ export function listRowMeta(
 	if (live) rows.push({ key: "live", text: live });
 	return rows;
 }
+
+/* ------------------------------------------------------------- day values -- */
+
+/** One day, in ms. Day arithmetic in this feature is on whole UTC days. */
+export const DAY_MS = 86_400_000;
+
+const ISO_DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/**
+ * One ISO day (`YYYY-MM-DD`) as UTC midnight ms, or `null`.
+ *
+ * SHAPE *AND* CALENDAR, unlike `PROJECT_DAY_FIELD_PATTERN` above: that pattern
+ * is the form dialog's accept rule (a day, or the empty a field carries), while
+ * this one also refuses a calendar the month cannot name — `2026-13-01` rolls
+ * into January in `Date.UTC`, so the round trip is what refuses it. The axis
+ * and the overdue check both read days through here.
+ *
+ * UTC, because the store's own day (`_utc_today`) is UTC: a milestone's
+ * server-derived `overdue` and this feature's own target-date emphasis must not
+ * disagree about which day it is for the hours the two dates differ.
+ */
+export function parseIsoDay(value: string | null | undefined): number | null {
+	if (!value) return null;
+	const match = ISO_DAY.exec(value);
+	if (!match) return null;
+	const year = Number(match[1]);
+	const month = Number(match[2]);
+	const day = Number(match[3]);
+	const ms = Date.UTC(year, month - 1, day);
+	const check = new Date(ms);
+	if (
+		check.getUTCFullYear() !== year ||
+		check.getUTCMonth() !== month - 1 ||
+		check.getUTCDate() !== day
+	)
+		return null;
+	return ms;
+}
+
+/* ----------------------------------------------------------------- board -- */
+
+/**
+ * Board columns in their fixed order; `archived` joins only when non-empty
+ * (the design's rule, kept identical to the TUI board so the two agree).
+ */
+export const BOARD_COLUMNS = ["active", "paused", "done"] as const;
+export const BOARD_EXTRA_COLUMN = "archived";
+
+/**
+ * The board's columns: the fixed three, `archived` when it holds rows, then
+ * one column per status outside the vocabulary.
+ *
+ * THE UNKNOWN-STATUS COLUMN IS A DELIBERATE DELTA FROM THE TUI, and the delta
+ * is a fix rather than a fork: `projects_render.py`'s `_columns_of` builds its
+ * map from every row but returns only the fixed names, so a row written by a
+ * newer build (the DTO's own docstring names that case: "the raw value with
+ * neutral treatment") would silently vanish from the board. Here it gets its
+ * own column after the fixed ones, in first-seen order, so nothing is dropped.
+ */
+export function boardColumns(
+	projects: DesktopProject[],
+): { status: string; projects: DesktopProject[] }[] {
+	const byStatus = new Map<string, DesktopProject[]>();
+	for (const project of projects) {
+		const rows = byStatus.get(project.status) ?? [];
+		rows.push(project);
+		byStatus.set(project.status, rows);
+	}
+	const columns = BOARD_COLUMNS.map((status) => ({
+		status: status as string,
+		projects: byStatus.get(status) ?? [],
+	}));
+	const archived = byStatus.get(BOARD_EXTRA_COLUMN) ?? [];
+	if (archived.length > 0) {
+		columns.push({ status: BOARD_EXTRA_COLUMN, projects: archived });
+	}
+	for (const [status, rows] of byStatus) {
+		if (
+			status !== BOARD_EXTRA_COLUMN &&
+			!BOARD_COLUMNS.includes(status as (typeof BOARD_COLUMNS)[number])
+		) {
+			columns.push({ status, projects: rows });
+		}
+	}
+	return columns;
+}
+
+/**
+ * Whether a project's target day has passed with the work unfinished — the
+ * board's overdue emphasis.
+ *
+ * The three facts it reads are the ones the list already carries (there is no
+ * server flag for project-level lateness; the store derives per-MILESTONE
+ * status only), and the day basis is UTC for the reason `parseIsoDay` states.
+ * A done or archived row is never overdue, completed or not: the target day
+ * stopped being a promise when the work landed.
+ */
+export function projectOverdue(
+	project: Pick<DesktopProject, "target_date" | "completed_at" | "status">,
+	todayMs: number,
+): boolean {
+	if (project.status === "done" || project.status === "archived") return false;
+	if (project.completed_at) return false;
+	const target = parseIsoDay(project.target_date);
+	if (target === null) return false;
+	return target < todayMs;
+}

@@ -21,6 +21,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export * as model from "./src/renderer/src/features/projects/project-model";',
+			'export * as timeline from "./src/renderer/src/features/projects/timeline-model";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -29,7 +30,7 @@ const bundle = await build({
 	platform: "node",
 	write: false,
 });
-const { model } = await import(
+const { model, timeline } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
@@ -319,5 +320,283 @@ test("the list's meta tokens follow the row's own facts", () => {
 			"en-US",
 		),
 		[],
+	);
+});
+
+/* ------------------------------------------------------- board + timeline -- */
+
+/*
+ * The board's grouping and the timeline's arithmetic — the derivations the
+ * two new views read instead of computing anything inline. These are the
+ * pins for what the PR's frames show: the columns' order and membership, the
+ * overdue rule and its day basis, the axis span, the bar rule, the tier
+ * choice, the labels and the milestone marks.
+ */
+
+/** One listing row, with every field the derivations below read. */
+const row = (id, extra = {}) => ({
+	id,
+	name: id,
+	description: "",
+	status: "active",
+	tags: [],
+	start_date: null,
+	target_date: null,
+	completed_at: null,
+	estimate: null,
+	estimate_unit: "points",
+	milestones_completed: 0,
+	milestones_total: 0,
+	sessions: 0,
+	live_sessions: 0,
+	progress_stale: true,
+	progress_updated_at: null,
+	updated_at: 0,
+	...extra,
+});
+
+/** One timeline item: a row plus its (detail-fetched) milestones. */
+const item = (extra = {}, milestones = []) => ({
+	project: row("p", extra),
+	milestones,
+});
+
+/** Sunday 20 September 2026, UTC — the day every derivation is pinned to. */
+const TODAY = model.parseIsoDay("2026-09-20");
+const DAY = (year, month, day) => Date.UTC(year, month - 1, day);
+
+test("a day parses in both shape and calendar", () => {
+	assert.equal(model.parseIsoDay("2026-09-20"), DAY(2026, 9, 20));
+	assert.equal(model.parseIsoDay(""), null);
+	assert.equal(model.parseIsoDay("2026/09/20"), null);
+	assert.equal(model.parseIsoDay("2026-9-20"), null);
+	// A day the month cannot name is refused, not rolled over.
+	assert.equal(model.parseIsoDay("2026-13-01"), null);
+	assert.equal(model.parseIsoDay("2026-02-30"), null);
+	assert.equal(model.parseIsoDay(null), null);
+});
+
+test("the board's columns are the fixed three, then archived when non-empty, then the unknowns", () => {
+	const columns = model.boardColumns([
+		row("a", { status: "archived" }),
+		row("b", { status: "review" }),
+		row("c", { status: "active" }),
+		row("d", { status: "active" }),
+	]);
+	assert.deepEqual(
+		columns.map((column) => column.status),
+		["active", "paused", "done", "archived", "review"],
+	);
+	assert.deepEqual(
+		columns.map((column) => column.projects.length),
+		[2, 0, 0, 1, 1],
+	);
+	// An empty archived column is omitted (the design's rule).
+	assert.deepEqual(
+		model.boardColumns([row("a")]).map((column) => column.status),
+		["active", "paused", "done"],
+	);
+});
+
+test("overdue is a passed target on unfinished work, on the store's UTC day", () => {
+	const at = (extra) =>
+		model.projectOverdue(
+			{ target_date: null, completed_at: null, status: "active", ...extra },
+			TODAY,
+		);
+	assert.equal(at({ target_date: "2026-09-19" }), true);
+	// The target day itself is not late, and neither is a future one.
+	assert.equal(at({ target_date: "2026-09-20" }), false);
+	assert.equal(at({ target_date: "2026-10-01" }), false);
+	// Finished or archived work is never overdue; a completion clears it.
+	assert.equal(at({ target_date: "2026-09-19", status: "done" }), false);
+	assert.equal(at({ target_date: "2026-09-19", status: "archived" }), false);
+	assert.equal(
+		at({ target_date: "2026-09-19", completed_at: "2026-09-18" }),
+		false,
+	);
+	// No target, or one the calendar refuses: nothing to be late about.
+	assert.equal(at({}), false);
+	assert.equal(at({ target_date: "soon" }), false);
+});
+
+test("the axis spans every date the items carry and always includes today", () => {
+	const span = timeline.timelineSpan(
+		[
+			item({ start_date: "2026-09-01", target_date: "2026-10-15" }),
+			item({}, [
+				{
+					name: "m",
+					target_date: "2026-11-01",
+					completed_at: null,
+					status: "upcoming",
+				},
+			]),
+		],
+		TODAY,
+	);
+	assert.deepEqual(span, {
+		startMs: DAY(2026, 9, 1),
+		endMs: DAY(2026, 11, 1),
+	});
+	// Today extends a span that would otherwise end in the past.
+	assert.deepEqual(
+		timeline.timelineSpan([item({ target_date: "2026-08-01" })], TODAY),
+		{ startMs: DAY(2026, 8, 1), endMs: TODAY },
+	);
+	// Nothing dated at all: no axis, and the no-dates section is the answer.
+	assert.equal(timeline.timelineSpan([item()], TODAY), null);
+});
+
+test("a milestone date alone dates a project; nothing dated goes to the trailing section", () => {
+	const dated = {
+		project: row("dated"),
+		milestones: [
+			{
+				name: "m",
+				target_date: "2026-10-01",
+				completed_at: null,
+				status: "upcoming",
+			},
+		],
+	};
+	const undated = { project: row("undated"), milestones: [] };
+	const sections = timeline.timelineSections([dated, undated]);
+	assert.deepEqual(
+		sections.dated.map((entry) => entry.project.id),
+		["dated"],
+	);
+	assert.deepEqual(
+		sections.undated.map((entry) => entry.project.id),
+		["undated"],
+	);
+});
+
+test("a bar runs start→target, and a done project to the day it finished", () => {
+	assert.deepEqual(
+		timeline.timelineBar(
+			item({ start_date: "2026-09-01", target_date: "2026-09-30" }),
+		),
+		{ fromMs: DAY(2026, 9, 1), toMs: DAY(2026, 9, 30) },
+	);
+	assert.equal(
+		timeline.timelineBar(
+			item({
+				status: "done",
+				start_date: "2026-09-01",
+				target_date: "2026-09-30",
+				completed_at: "2026-09-12",
+			}),
+		).toMs,
+		DAY(2026, 9, 12),
+	);
+	// A done project with no completion day falls back to its target.
+	assert.equal(
+		timeline.timelineBar(
+			item({
+				status: "done",
+				start_date: "2026-09-01",
+				target_date: "2026-09-30",
+			}),
+		).toMs,
+		DAY(2026, 9, 30),
+	);
+	// No start: the target alone is a one-day bar, not a fabricated span.
+	assert.deepEqual(timeline.timelineBar(item({ target_date: "2026-09-30" })), {
+		fromMs: DAY(2026, 9, 30),
+		toMs: DAY(2026, 9, 30),
+	});
+	// Reversed inputs still read left-to-right.
+	assert.equal(
+		timeline.timelineBar(
+			item({ start_date: "2026-09-30", target_date: "2026-09-01" }),
+		).fromMs,
+		DAY(2026, 9, 1),
+	);
+	assert.equal(timeline.timelineBar(item()), null);
+});
+
+test("the auto tier is the finest that fits, and never below the vocabulary", () => {
+	assert.equal(timeline.autoTimelineTier(10, 1000), "day");
+	assert.equal(timeline.autoTimelineTier(60, 1000), "week");
+	assert.equal(timeline.autoTimelineTier(200, 1000), "month");
+	assert.equal(timeline.autoTimelineTier(400, 1000), "quarter");
+	// Even the coarsest overflows: still quarter — the pane scrolls rather than
+	// dropping to a tier below the vocabulary.
+	assert.equal(timeline.autoTimelineTier(5000, 1000), "quarter");
+});
+
+test("axis labels sit at unit starts, with a year cue when the year turns", () => {
+	const months = timeline.timelineTicks(
+		DAY(2026, 9, 20),
+		DAY(2027, 2, 10),
+		"month",
+	);
+	assert.deepEqual(
+		months.map((tick) => tick.label),
+		["Sep", "Oct", "Nov", "Dec", "Jan '27", "Feb"],
+	);
+	const quarters = timeline.timelineTicks(
+		DAY(2026, 1, 1),
+		DAY(2026, 12, 31),
+		"quarter",
+	);
+	assert.deepEqual(
+		quarters.map((tick) => tick.label),
+		["Q1", "Q2", "Q3", "Q4"],
+	);
+	const days = timeline.timelineTicks(
+		DAY(2026, 9, 28),
+		DAY(2026, 10, 2),
+		"day",
+	);
+	assert.deepEqual(
+		days.map((tick) => [tick.label, tick.major]),
+		[
+			["28", false],
+			["29", false],
+			["30", false],
+			["Oct 1", true],
+			["2", false],
+		],
+	);
+});
+
+test("milestone marks carry the store's state and only dated milestones", () => {
+	const marks = timeline.timelineMarks(
+		item({}, [
+			{
+				name: "done",
+				target_date: "2026-09-01",
+				completed_at: "2026-09-01",
+				status: "completed",
+			},
+			{
+				name: "late",
+				target_date: "2026-09-15",
+				completed_at: null,
+				status: "overdue",
+			},
+			{
+				name: "soon",
+				target_date: "2026-10-01",
+				completed_at: null,
+				status: "upcoming",
+			},
+			{
+				name: "undated",
+				target_date: null,
+				completed_at: null,
+				status: "upcoming",
+			},
+		]),
+	);
+	assert.deepEqual(
+		marks.map((mark) => [mark.name, mark.status]),
+		[
+			["done", "completed"],
+			["late", "overdue"],
+			["soon", "upcoming"],
+		],
 	);
 });
