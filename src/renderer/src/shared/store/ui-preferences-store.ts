@@ -5,6 +5,8 @@
  * theme selection, and provides methods to update these preferences.
  */
 
+import { CHAT_MEASURE_OVERRIDE_VAR } from "@features/chat/chat-measure";
+import { clampChatMeasureWidth } from "@features/chat/chat-measure-drag";
 import {
 	SIDEBAR_DEFAULT_WIDTH,
 	SIDEBAR_MAX_WIDTH,
@@ -459,6 +461,42 @@ type UiPreferencesState = {
 	chatSidebarListHeight: number | null;
 
 	/**
+	 * The reader's own width for the conversation column, in px, or `null` for
+	 * the shipped one.
+	 *
+	 * `null` is a first-class state rather than a missing value, exactly as
+	 * `chatSidebarListHeight`'s `null` is: it means "the shipped measure", which
+	 * is what every reader who has never dragged the handle sees, and it is what
+	 * the reset restores. The width itself belongs to the stylesheet
+	 * (`--lo-chat-measure-shipped` in `styles/index.css`) and this field is the
+	 * OVERRIDE of it, so this file never needs to know the shipped number.
+	 *
+	 * Like the list height, a number here is never rewritten by a window resize:
+	 * the RENDER clamps (the column cannot be wider than its pane), so a window
+	 * too small to honour the reader's choice does not destroy it.
+	 */
+	chatMeasureWidth: number | null;
+
+	/**
+	 * Set the conversation column's width, clamped to the draggable range.
+	 *
+	 * The clamp is `clampChatMeasureWidth`'s rather than this store's, and it is
+	 * applied HERE as well as at the drag: `localStorage` is not the setter's
+	 * path out, so a value written by an older build or by hand reaches the
+	 * document through this method, and the bounds have to hold on that path too.
+	 */
+	setChatMeasureWidth: (width: number) => void;
+
+	/**
+	 * Forget the reader's own width and go back to the shipped measure.
+	 *
+	 * Deliberately not "store the shipped width": storing a number would make
+	 * the reader's column stop following the product's when the shipped value
+	 * changes, which is the opposite of what a reset means.
+	 */
+	restoreDefaultChatMeasureWidth: () => void;
+
+	/**
 	 * Which of the sidebar's two regions is drawn first.
 	 *
 	 * The header row and the search field stay put; only the two regions trade
@@ -821,6 +859,28 @@ export const consoleUnseenForSession = (
  */
 const EMPTY_CONSOLE_UNSEEN: ConsoleUnseenMark[] = [];
 
+/**
+ * Publish the reader's own column width to the document, or clear it.
+ *
+ * `null` REMOVES the property rather than writing the shipped number: the
+ * stylesheet's chain already falls back to `--lo-chat-measure-shipped`, and
+ * writing a number here would be a second copy of it in JavaScript, which is the
+ * drift the one-home rule for this value exists to prevent.
+ *
+ * `document` is guarded so this module can be bundled where there is no DOM
+ * (`scripts/*.test.mjs` bundles shipped TypeScript in memory). In that case
+ * there is nothing to publish to and the store is still a correct store.
+ */
+const applyChatMeasureOverride = (width: number | null): void => {
+	if (typeof document === "undefined") return;
+	const root = document.documentElement;
+	if (width === null) {
+		root.style.removeProperty(CHAT_MEASURE_OVERRIDE_VAR);
+		return;
+	}
+	root.style.setProperty(CHAT_MEASURE_OVERRIDE_VAR, `${width}px`);
+};
+
 export const useUiPreferencesStore = create<UiPreferencesState>()(
 	persist(
 		(set) => ({
@@ -843,6 +903,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			chatSidebarRegions: DEFAULT_SIDEBAR_REGIONS,
 			chatSidebarView: DEFAULT_SIDEBAR_VIEW,
 			chatSidebarListHeight: null,
+			chatMeasureWidth: null,
 			chatSidebarOrder: "entities-first",
 			isCanvasOpen: false,
 			isRunPanelOpen: false,
@@ -1078,6 +1139,21 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				});
 			},
 
+			setChatMeasureWidth: (width: number) => {
+				const clamped = clampChatMeasureWidth(width);
+				applyChatMeasureOverride(clamped);
+				set({
+					chatMeasureWidth: clamped,
+				});
+			},
+
+			restoreDefaultChatMeasureWidth: () => {
+				applyChatMeasureOverride(null);
+				set({
+					chatMeasureWidth: null,
+				});
+			},
+
 			setChatSidebarOrder: (order: SidebarOrder) => {
 				set({
 					chatSidebarOrder: order,
@@ -1137,6 +1213,21 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			 * being restored and the user opening it.
 			 */
 			partialize: persistedUiPreferences,
+			/*
+			 * PUBLISH THE STORED WIDTH BEFORE THE FIRST PAINT.
+			 *
+			 * `localStorage` is synchronous, so zustand runs this during store
+			 * creation - which is module evaluation, before React renders anything.
+			 * A component effect instead would paint one frame at the shipped
+			 * width and then jump to the reader's, and the whole point of
+			 * remembering the width is that the column comes back where the reader
+			 * left it. `theme-provider.tsx` makes the same argument for
+			 * `useLayoutEffect` over `useEffect`; this is one step earlier still,
+			 * because there is no component to hook.
+			 */
+			onRehydrateStorage: () => (state) => {
+				applyChatMeasureOverride(state?.chatMeasureWidth ?? null);
+			},
 		},
 	),
 );

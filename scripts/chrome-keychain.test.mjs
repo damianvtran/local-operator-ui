@@ -284,6 +284,12 @@ const CHROME_LAUNCH_SITES = [
 		"measures the transcript's horizontal geometry from the live DOM",
 	),
 	guarded(
+		"scripts/chat-measure-drag-evidence.mjs",
+		"spawn",
+		1,
+		"drives the conversation column's drag handle with a real pointer, photographs each state, and asserts what the reader's preference received - including a relaunch, which is why it launches Chrome twice against one profile",
+	),
+	guarded(
 		"scripts/header-cluster-geometry.mjs",
 		"spawn",
 		1,
