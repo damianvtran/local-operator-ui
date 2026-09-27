@@ -16,6 +16,7 @@ import {
 	paletteShortcutCaps,
 	paletteShortcutLabel,
 } from "@features/command-palette/palette-shortcut";
+import { useMeshMembership } from "@features/mesh/mesh-store";
 import {
 	desktopFeatureEnabled,
 	desktopFeatureState,
@@ -157,12 +158,21 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 */
 	const browserApprovals = useAppWideApprovals();
 	/*
-	 * Whether this device is in any mesh AT ALL, as the tri-state: `enabled` is the
-	 * only value that draws a row, which is the same rule `app.tsx` mounts the route
-	 * on (one gate, read in two places, rather than a row that leads to a route that
-	 * is not there).
+	 * Whether this device is in a mesh AT ALL, and it takes TWO facts rather than one
+	 * (review round 1, R1-1). `features.peers` is a CAPABILITY: lop advertises it on
+	 * every install, "including on a machine in no network", because it answers "what can
+	 * this backend do" - so on the key alone every mesh-capable install would get a rail
+	 * item, including a device that is in no mesh, and this is the one piece of chrome
+	 * that is on screen everywhere. Membership is the catalogue's own emptiness; see
+	 * `useMeshMembership` for why that read is safe on a machine that has never joined a
+	 * network, and for why an UNKNOWN answer mounts nothing.
+	 *
+	 * The route itself stays on the capability, deliberately: see the note at the route
+	 * in `app.tsx` for why leaving your last network must not eject you from the tab.
 	 */
-	const meshState = desktopFeatureState(capabilities.data, "peers");
+	const meshPaired =
+		desktopFeatureState(capabilities.data, "peers") === "enabled";
+	const meshMembership = useMeshMembership(meshPaired);
 
 	const navItems: NavItem[] = [
 		{
@@ -198,13 +208,13 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			tourTag: "nav-item-agent-hub",
 		},
 		/*
-		 * The Mesh tab, ONLY when the backend advertises `features.peers`: a rail item
-		 * for a mesh the user is not in would be a dead end on the one piece of chrome
-		 * that is on screen everywhere. Placed after Agent hub and before the Settings
-		 * row - it is a view of THIS machine's infrastructure, which is nearer to Settings
-		 * than to any chat surface.
+		 * The Mesh tab, ONLY for a device that is in a mesh: a rail item for a mesh the
+		 * user is not in would be a dead end on the one piece of chrome that is on screen
+		 * everywhere (R1-1). Placed after Agent hub and before the Settings row - it is a
+		 * view of THIS machine's infrastructure, which is nearer to Settings than to any
+		 * chat surface.
 		 */
-		...(meshState === "enabled"
+		...(meshMembership === "member"
 			? [
 					{
 						icon: Network,

@@ -117,14 +117,16 @@ export const MeshSurface: FC<{
 					 * implicit `role="status"`), so the affordance announces itself as the
 					 * refresh it is without a redundant role attribute.
 					 */}
-					<output
-						className={cn(
-							"text-meta text-ink-dim transition-opacity duration-fast ease-out-quart",
-							checking ? "opacity-100" : "opacity-0",
-						)}
-					>
-						checking…
-					</output>
+					{/*
+					 * MOUNTED ONLY WHILE CHECKING (QA round 1, Q-2). This used to stay in the tree
+					 * at `opacity-0` when settled, which hides it from the eye and not from a
+					 * screen reader: Chrome's own tree still carried `StaticText "checking…"`
+					 * with `ignored: false` in every settled state. Unmounting is the honest way
+					 * to say "this region is not saying anything right now".
+					 */}
+					{checking && (
+						<output className="text-meta text-ink-dim">checking…</output>
+					)}
 					{/*
 					 * THE PRESENTATION CHOICE IS SHOWN ONLY WHEN THERE IS SOMETHING TO
 					 * PRESENT. A control that switches between two views of nothing is a
@@ -132,8 +134,14 @@ export const MeshSurface: FC<{
 					 * so the header carries the sentence and no toggle (caught in the first
 					 * capture, where the virgin frame offered `Canvas | List` over an empty
 					 * panel).
+					 *
+					 * LOADING SHOWS IT DISABLED (design round 1, D3): the control used to appear
+					 * only once data landed, so the header's right side changed IDENTITY when the
+					 * first read resolved - a 59px dim word became a 120px control whose left
+					 * edge appeared 60px further left. Disabled is the same width and the same
+					 * place, so landing moves only the content below it.
 					 */}
-					{state.kind === "ready" && (
+					{(state.kind === "ready" || state.kind === "loading") && (
 						<fieldset className="m-0 w-fit border-0 p-0">
 							<legend className="sr-only">Presentation</legend>
 							<div className="flex gap-0.5 rounded-md bg-sunken p-0.5">
@@ -142,11 +150,19 @@ export const MeshSurface: FC<{
 										key={option}
 										type="button"
 										aria-pressed={presentation === option}
+										disabled={state.kind !== "ready"}
 										onClick={() => setPresentation(option)}
 										className={cn(
 											"h-6 rounded-sm px-3 text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart",
 											"hover:text-ink",
 											"focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
+											/*
+											 * `disabled:` states are explicit rather than inherited: a disabled
+											 * control keeps the `ink-dim` weight and loses the hover step, so the
+											 * loading header reads as "not yours to press yet" instead of as a
+											 * control that ignores the pointer.
+											 */
+											"disabled:text-ink-dim disabled:hover:text-ink-dim",
 											presentation === option && "bg-surface text-ink",
 										)}
 									>
@@ -186,21 +202,31 @@ export const MeshSurface: FC<{
 			)}
 
 			{state.kind === "empty" && (
-				<div className="flex min-h-0 flex-1 flex-col items-start gap-3 rounded-lg border border-hairline bg-surface p-6">
-					<h2 className="text-heading text-ink">No network on this device</h2>
-					<p className="max-w-140 text-body-sm text-ink-muted">
-						This app is not paired with any other device, so there is no mesh to
-						draw. Create one here, then let the second device join it with the
-						invite it prints:
-					</p>
-					{/* Machine voice, so monospace (`branding.md` § 8): the reader types
-					    this, it is not prose. */}
-					<code className="rounded-sm bg-sunken px-2 py-1 font-mono text-meta text-ink">
-						lop network init &lt;name&gt;
-					</code>
-					<p className="text-meta text-ink-dim">
-						A network appears here once this device has joined one.
-					</p>
+				/*
+				 * CENTRED IN THE WELL (design round 1, D4). The well is the region the graph
+				 * will occupy, so it stays; what changed is that the copy is centred in it
+				 * rather than pinned to the top, which is what made a deliberate empty state
+				 * read as a stalled render with 554px (77%) of blank panel below it. The
+				 * copy and the chip stay a left-aligned block inside the centring, and the
+				 * command's `here` is gone (D8): it pointed at nothing in the surface, since
+				 * the command is the next line.
+				 */
+				<div className="flex min-h-0 flex-1 items-center justify-center rounded-lg border border-hairline bg-surface p-6">
+					<div className="flex flex-col items-start gap-3">
+						<h2 className="text-heading text-ink">No network on this device</h2>
+						<p className="max-w-140 text-body-sm text-ink-muted">
+							This device is not in any network, so there is no mesh to draw.
+							Create one on this machine:
+						</p>
+						{/* Machine voice, so monospace (`branding.md` § 8): the reader types
+						    this, it is not prose. */}
+						<code className="rounded-sm bg-sunken px-2 py-1 font-mono text-meta text-ink">
+							lop network init &lt;name&gt;
+						</code>
+						<p className="text-meta text-ink-dim">
+							A network appears here once this device has joined one.
+						</p>
+					</div>
 				</div>
 			)}
 

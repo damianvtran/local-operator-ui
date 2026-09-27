@@ -200,6 +200,16 @@ const App: FC = () => {
 	 * convenience: a reserved destination that renders for a feature the user does not
 	 * have advertises something that cannot work, and a mesh the user has not joined
 	 * must leave this app's chrome exactly as it found it.
+	 *
+	 * THE ROUTE STAYS ON THE CAPABILITY AND THE RAIL ROW DOES NOT - a deliberate split,
+	 * not an oversight (review round 1, R1-1). MEMBERSHIP gates the row, because a rail
+	 * item is an invitation and one for a mesh the user is not in is a dead end. The
+	 * route stays mounted for every daemon that can serve it, for two reasons: a user who
+	 * leaves their last network WHILE ON THIS PAGE must not be ejected out from under
+	 * their pointer by a poll (they get the empty state, which is the honest answer, and
+	 * the row disappears on the next render), and mounting it on membership would make
+	 * the empty and the relay-unavailable states unreachable - the two states this tab
+	 * most needs to be able to say.
 	 */
 	const meshState = desktopFeatureState(capabilities.data, "peers");
 

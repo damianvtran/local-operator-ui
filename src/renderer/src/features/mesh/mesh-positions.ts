@@ -179,6 +179,20 @@ export const MIN_SCALE = 0.25;
 export const MAX_SCALE = 3;
 
 /**
+ * The FIT never enlarges the world past its designed size (design round 1, D2).
+ *
+ * The fit used to scale a small graph up into whatever room the viewport had: the
+ * two-device frame measured the node's fill band at 358px for a 200px world box, i.e.
+ * 1.79x, which renders the label at ~23px beside the page's own 13px subtitle and pins
+ * the ellipsis at 200 WORLD px - so `unreachable (no route t...` is cut mid-word inside
+ * a box with 158px to spare. The designed size is the size the type was designed for,
+ * so a small graph is centred in the viewport rather than blown up into it, and a LARGE
+ * one still shrinks to fit (the `MIN_SCALE` side is unchanged). Zooming IN remains the
+ * user's own gesture - `MAX_SCALE` above is untouched by this.
+ */
+export const MAX_FIT_SCALE = 1;
+
+/**
  * The transform that fits `bounds` inside a viewport, with a margin.
  *
  * Used by "fit" (double-click on empty ground, and the initial view) and NOT by a
@@ -194,6 +208,7 @@ export function fitTransform(
 		return { k: 1, tx: 0, ty: 0 };
 	const k = Math.min(
 		scaleRange.max,
+		MAX_FIT_SCALE,
 		Math.max(
 			scaleRange.min,
 			Math.min(

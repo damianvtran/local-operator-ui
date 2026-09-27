@@ -34,6 +34,7 @@ import {
 	searchChats,
 } from "@features/chat/chat-search";
 import type { ArchiveView } from "@features/chat/chat-search";
+import { useMeshMembership } from "@features/mesh/mesh-store";
 import { DEFAULT_SETTINGS_SECTIONS } from "@features/settings/components/settings-sidebar";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import type { BackendSettings } from "@shared/api/local-operator/desktop-api";
@@ -126,6 +127,23 @@ const PAGES = [
 	},
 ];
 
+/**
+ * The Mesh destination, and it is NOT in `PAGES` above because it is the one row whose
+ * presence depends on a fact `PAGES` cannot read: membership (review round 1, R1-3).
+ *
+ * `PAGES` is "the destinations, in the rail's order", so a rail item the palette cannot
+ * offer makes the palette's own list stop being the rail's; and a rail item the palette
+ * offers when the rail has none is the same defect the other way. Both therefore read
+ * `useMeshMembership`, whose long comment states why the capability alone is not enough.
+ */
+const MESH_PAGE = {
+	id: "mesh",
+	name: "Mesh",
+	path: "/mesh",
+	icon: "network" as const,
+	keywords: ["networks", "peers", "devices", "relay", "mesh"],
+};
+
 export type PaletteChatState = {
 	/** A query is out and its answer has not landed yet. */
 	awaiting: boolean;
@@ -209,6 +227,17 @@ export function usePaletteItems({
 		capabilities.data,
 		"session_catalogue",
 		2,
+	);
+	/*
+	 * The rail's Mesh row, by the SAME rule the rail uses - membership, not the
+	 * capability - so the palette's destinations stay the rail's destinations (R1-3).
+	 */
+	const meshMembership = useMeshMembership(
+		desktopFeatureEnabled(capabilities.data, "peers"),
+	);
+	const pages = useMemo(
+		() => (meshMembership === "member" ? [...PAGES, MESH_PAGE] : PAGES),
+		[meshMembership],
 	);
 	/*
 	 * Whether MAIN has an answer about the credential, which is a different fact
@@ -646,7 +675,7 @@ export function usePaletteItems({
 
 	const items = useMemo(
 		() => [
-			...buildNavigationItems(PAGES),
+			...buildNavigationItems(pages),
 			...buildActionItems(
 				buildPaletteActions({
 					isOnChatPage,
@@ -665,6 +694,7 @@ export function usePaletteItems({
 			hasConversation,
 			isCanvasOpen,
 			canStageDraft,
+			pages,
 			panelItems,
 			settingItems,
 			agentItems,

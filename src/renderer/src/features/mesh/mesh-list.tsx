@@ -140,10 +140,20 @@ export const MeshList: FC<MeshListProps> = ({
 					data-mesh-network-group={network.id}
 					className="flex flex-col gap-2"
 				>
-					<h2 className="flex flex-wrap items-baseline gap-2 text-body-sm text-ink">
+					<h2
+						className="flex flex-wrap items-baseline gap-2 text-body-sm text-ink"
+						/*
+						 * `epoch` LIVES IN THE TITLE, not on the face (design round 1, D8), which is
+						 * the rule `mesh-node.tsx` already states: a protocol number the reader
+						 * cannot act on is reachable without being printed. The list was the second
+						 * policy for the same field, and its own heading is where a reader looks
+						 * first, so the disagreement showed.
+						 */
+						title={`epoch ${network.epoch}`}
+					>
 						{network.label}
 						<span className="text-meta text-ink-dim">
-							epoch {network.epoch} · {network.trust} · {network.memberCount}{" "}
+							{network.trust} · {network.memberCount}{" "}
 							{network.memberCount === 1 ? "device" : "devices"}
 							{network.revokedCount > 0
 								? ` · ${network.revokedCount} revoked`

@@ -55,9 +55,56 @@ wheel-zoom keeps the world point under the pointer invariant. Both are asserted
 numerically in `scripts/mesh-tab.test.mjs`, which is the cheap half of this evidence
 rather than a substitute for it.
 
-The **gated-out** case (no `features.peers`) has no frame on purpose: a user
-without a mesh sees no Mesh row and no `/mesh` route, so the evidence for it is
-absence, pinned at the source in `scripts/mesh-tab.test.mjs` - a screenshot of a
+Two smaller gaps, named rather than implied. **The rail row is not in any frame**:
+the set is page-level `MeshPage` captures, and the one piece of chrome this slice adds
+- the Mesh destination in the sidebar and in the command palette - is pinned at the
+source instead (`scripts/mesh-tab.test.mjs`), because mounting the rail inside these
+stories would be a second harness for one row. And **the self row's `Chats` cell can
+never carry a count in production** (design round 1, D5): `deviceStatLine` prints a
+count when `sessionCount !== null`, and `sessionCount` comes from the PEER row, which
+by construction does not describe this device - so the frame's `this device` is the
+honest production reading, not a fixture gap. The middle column therefore holds a
+count, an identity and a state sentence, and the `Chats` sort compares them as it
+finds them; sourcing self's own count is slice 2's question (it has to come from the
+sessions the app already holds, not from the peer catalogue).
+
+## The gate, precisely (review round 1, R1-1)
+
+Two facts, two jobs, and they are not the same fact:
+
+- **`features.peers` is a CAPABILITY.** lop advertises it on every install, on purpose -
+  "the KEYS answer 'what can this backend do' rather than 'is this machine in a mesh'"
+  (`local_operator/server/routes/capabilities.py`) - so a device in NO network carries it
+  too. It gates the `/mesh` ROUTE, and it is why the route stays mounted when membership
+  goes empty: a reader who leaves their last network while on this page must not be
+  ejected out from under their pointer by a poll, and the empty state is the honest
+  answer to that moment.
+- **Membership is the catalogue's own emptiness**, which is where the backend says the
+  fact lives ("a device in no network answers an empty catalogue, and an empty catalogue
+  mounts nothing"). It gates the RAIL ROW and the command palette's destination, so a
+  device that is in no mesh keeps today's chrome.
+
+The cost, stated because the architecture brief asserted the opposite: a device in no
+network now issues **one read-only catalogue read** it would not have. That read creates
+nothing - the backend short-circuits it on `has_any_network()`, an `is_dir` test whose
+`_networks()` returns `[]` "so nothing else mkdirs" - and the row stays absent until the
+device is KNOWN to be in a mesh. What the brief's "no call is issued" line was protecting
+is the byte-for-byte chrome, and this protects it better than the capability alone did.
+
+**And what a genuinely fresh install meets today is not the empty state.** QA round 1
+(Q-1) traced it: `GET /v1/desktop/commands`, which the app fetches on every boot for the
+palette, CREATES `<config>/network/networks`; `has_any_network()` is an `is_dir` test on
+exactly that path, so the mesh reads then proceed to a relay that has no record and answer
+`503 relay_unavailable`. The page renders that refusal verbatim with a retry, which is
+why `reads-failed` is in this set; the root cause is outside this diff (the backend's
+`has_any_network()` tests a directory that another route creates, and the fix is for it to
+test for a network RECORD). So `virgin-device` is the page's own first-run state - what a
+reader sees wherever the catalogue answers `[]`, including after leaving a network with
+the tab open - and not a claim about what a machine with no mesh shows on first launch.
+
+The **gated-out** case (no `features.peers`) has no frame on purpose: a daemon that
+cannot serve these routes gets no Mesh row and no `/mesh` route, so the evidence for
+it is absence, pinned at the source in `scripts/mesh-tab.test.mjs` - a screenshot of a
 missing row proves nothing a reader could check.
 
 ## The states
@@ -66,10 +113,10 @@ missing row proves nothing a reader could check.
 | --- | --- | --- |
 | `single-device/localOperator*.webp` | a device alone in one network | today's real S=1 shape: one lane, one device, one membership edge, and the summary line naming which device this is |
 | `two-devices/…` | a healthy two-device mesh | the design target: two nodes, one edge, the peer's chat count |
-| `two-devices-narrow/…` | the same screen at 1024x768 | the narrow case the app's own sidebar clamps for: the canvas fits the world into a smaller box rather than scrolling it |
+| `two-devices-narrow/…` | the same screen at 1024x768 | a narrow case: the canvas fits the world into a smaller box rather than scrolling it. The app's own floor is **800x600** (`WINDOW_MIN_WIDTH`/`WINDOW_MIN_HEIGHT` in `src/main/window-mode.ts`), and the design round captured four states there without committing them - all hold, and the node's ellipsis is a world-space cut rather than a responsive one |
 | `overlapping-networks/…` | five devices across two networks, one device in both | THE claim of the model: a device in two networks is ONE node with TWO edges |
 | `misconfigured/…` | a suspect device, an unreachable device, a revoked membership | each misconfiguration is a named state with its own reason, and the revoked edge draws dashed |
-| `virgin-device/…` | no network at all | the state a fresh install meets: the sentence and the command that changes it, with no call issued |
+| `virgin-device/…` | no network at all | the page's own first-run state: the sentence and the command that changes it |
 | `reads-failed/…` | both reads refused | the relay's own sentence, verbatim, and the control that asks again |
 | `loading/…` | the first paint | a skeleton, not a spinner over a blank world |
 | `list-view/…` | the same mesh in the list presentation | the sortable list, which is the other way in and the reason a graph is not the only presentation |
@@ -79,14 +126,16 @@ missing row proves nothing a reader could check.
 Three claims in the frames are quantitative, so they were measured rather than
 looked at; each is quoted in the source beside the decision it decides.
 
-- **The node's boundary is an edge, not a hairline.** `hairline` against the node's
-  own `elevated` fill measures ΔE00 1.44 (`localOperatorLight`) and 1.23
-  (`localOperatorDark`) - below the brand contract's own ΔE00 2.0 field floor, i.e. a
-  border nobody can see - while the fill's own step off the canvas well measures
-  ΔE00 6.85 / 7.71. The node is a control and its edge is its only boundary, so it
-  takes `border-control` (3:1 floor). `scripts/contrast-contract.mjs` now carries a
-  `mesh device node` row asserting that triple, and the gate reports 28,524
-  assertions across 59 themes with 0 consulted exceptions.
+- **The node's edge is a control's edge (corrected in review round 1, D1).** The edge
+  measures **3.92:1** against the node's own `elevated` fill on `localOperatorLight`
+  and **3.30:1** on `localOperatorDark` - above the CONTROLS floor a control whose
+  boundary is its border owes - beside the fill's own step off the canvas well, ΔE00
+  6.85 / 7.71. This bullet used to claim `hairline` on that fill measured ΔE00 1.44 /
+  1.23, "a border nobody can see"; re-measured with the repo's own `deltaE` it is
+  **9.19 / 4.80**, so the hairline is visible and the edge was chosen for the ratio
+  above. `scripts/contrast-contract.mjs` carries a `mesh device node` row asserting
+  that triple, and the gate reports 28,524 assertions across 59 themes with 0
+  consulted exceptions.
 - **Selection needs more than a fill.** `rowSelected` against this node's own
   `elevated` fill measures ΔE00 7.00 on the light brand palette but only 2.19 on the
   dark one - at the field floor, not above it - so a selected node takes the ink edge
