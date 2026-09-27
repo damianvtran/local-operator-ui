@@ -100,6 +100,7 @@ import {
 	isDiffBodyRow,
 	outputFallbackLine,
 	summaryFromArgs,
+	toolOp,
 } from "../components/trace/tool-row-model";
 import { TraceFold } from "../components/trace/trace-fold";
 import { WorkingLine } from "../components/trace/working-line";
@@ -1241,6 +1242,15 @@ const ToolRow = memo(function ToolRow({
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<ToolLedgerRow
 				toolName={record.toolName}
+				/*
+				 * The operation token, so a meta tool's row says what the call DID
+				 * (`Listed agents`, `Viewed agent designer`) rather than the one
+				 * name-only verb its whole family used to share (`Delegated`, the
+				 * operator's report of 2026-09-27). Empty while the arguments are
+				 * still being written, which takes the generic verb rather than a
+				 * guess.
+				 */
+				op={toolOp(record.args)}
 				summary={summary}
 				summaryFallback={derived}
 				summaryHold={
@@ -1889,6 +1899,12 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 */
 			summaryOf: (row) =>
 				row.record.kind === "tool" ? toolRecordSummary(row.record) : "",
+			/*
+			 * The operation token, so the fold's live clause names an op-aware call
+			 * in the same words its own row prints - see `foldLive`.
+			 */
+			opOf: (row) =>
+				row.record.kind === "tool" ? toolOp(row.record.args) : "",
 			runningOf: (row) =>
 				row.record.kind === "tool" && row.record.phase !== "done",
 			/*
