@@ -121,7 +121,11 @@ export type TranscriptRecord =
 			 * position it was admitted at against the merges that carry rows
 			 * (`withTimeOrder`'s tail block). Cleared only when an owner-stamped
 			 * row names the same id: the durable page row replaces this record
-			 * entirely; a seed-stated row is placed on the owner's side. A live
+			 * entirely. The seed route reaches only rows the seed DATES —
+			 * `statedIds` gains an id under `!next.index.has(id)`
+			 * (`applyLiveSeed`) — so a seed restating the echo's own id cannot
+			 * clear its hold: an already-painted echo is settled only by its
+			 * durable row (review round 2, N1). A live
 			 * `message_start` that merely RESTATES the message clears `local`
 			 * (delivery — the store's unknown-outcome arm reads exactly that) but
 			 * deliberately keeps `provisional`: on a reconnect its replay folds
