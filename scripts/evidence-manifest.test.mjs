@@ -1363,6 +1363,13 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"historySettingsRemovalSecondFoldNote",
 	/*
+	 * AND THIS ROUND'S OWN, the newest top-level record on the branch: it states the pair
+	 * this remediation re-derives (`src/` for the caret hand-off and the field's entry into
+	 * the list, `scripts/` for the walk's two new clauses and the two pins) and the walk's
+	 * reading at the tip, so a later fold that started from main's copy would drop it first.
+	 */
+	"uxRoundTwoCaretScopeRestampNote",
+	/*
 	 * AND THE ROUND-2 ARCHIVE-RECAST REMEDIATION'S OWN: it states the pair this
 	 * round re-derives (`src/` for the sidebar's focus hand-off, `scripts/` for
 	 * the driver's arrival rig and the pin on that call) and the walk's reading
@@ -1913,6 +1920,13 @@ const BRANCH_RECORDS = [
 	 * from main's copy would drop it.
 	 */
 	"historySettingsRemovalSecondFoldNote",
+	/*
+	 * AND THIS ROUND'S OWN, the newest top-level record on the branch: it states the pair
+	 * this remediation re-derives (`src/` for the caret hand-off and the field's entry into
+	 * the list, `scripts/` for the walk's two new clauses and the two pins) and the walk's
+	 * reading at the tip, so a later fold that started from main's copy would drop it first.
+	 */
+	"uxRoundTwoCaretScopeRestampNote",
 	/*
 	 * And the round-2 archive-recast remediation's own, the newest top-level
 	 * record on the branch: it states the pair the recast re-derives and the
