@@ -268,7 +268,6 @@ test("the section's gate is what hides the foot: no rows, no control", () => {
 	);
 });
 
-
 test("a row whose send hop is live cannot be discarded", () => {
 	const section = DRAFTS_SECTION();
 	const control = section.slice(

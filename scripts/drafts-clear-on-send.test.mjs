@@ -608,7 +608,6 @@ test("the sweep's claim set is the unsettled claims that have a session to ask",
 	assert.deepEqual(claims.get("aaaa00000000"), ["draft:held"]);
 });
 
-
 test("a discard raises one offer carrying exactly what the write removed, and the restore puts it back", () => {
 	reset();
 	useConversationInputStore.setState({ inputByConversation: {} });
@@ -634,7 +633,11 @@ test("a discard raises one offer carrying exactly what the write removed, and th
 				replies: [],
 				attachments: [],
 				pendingText: "Can you review user-dashboard",
-				returned: { text: "Can you review user-dashboard", chipIds: [], replyIds: [] },
+				returned: {
+					text: "Can you review user-dashboard",
+					chipIds: [],
+					replyIds: [],
+				},
 			},
 		},
 	});
@@ -668,7 +671,11 @@ test("a discard raises one offer carrying exactly what the write removed, and th
 	const row = useConversationInputStore.getState().inputByConversation[key];
 	assert.equal(row.pendingText, "Can you review user-dashboard");
 	assert.deepEqual(row.submittedMessages, ["an earlier message"]);
-	assert.equal(store.getState().draftsUndo, null, "and the offer retires on the press");
+	assert.equal(
+		store.getState().draftsUndo,
+		null,
+		"and the offer retires on the press",
+	);
 });
 
 test("the batch's offer restores every key it ruled, in the order it retired them", () => {
@@ -680,7 +687,7 @@ test("the batch's offer restores every key it ruled, in the order it retired the
 	for (const key of [first, second])
 		useConversationInputStore
 			.getState()
-			.setCurrentInput(key, "text for " + key);
+			.setCurrentInput(key, `text for ${key}`);
 	store.getState().discardDrafts([first, second]);
 	const offer = store.getState().draftsUndo;
 	assert.deepEqual(offer.keys, [first, second]);
@@ -691,8 +698,9 @@ test("the batch's offer restores every key it ruled, in the order it retired the
 		[first, kept, second].sort(),
 	);
 	assert.equal(
-		useConversationInputStore.getState().inputByConversation[first].currentInput,
-		"text for " + first,
+		useConversationInputStore.getState().inputByConversation[first]
+			.currentInput,
+		`text for ${first}`,
 	);
 	assert.equal(store.getState().draftsUndo, null);
 });
@@ -710,11 +718,16 @@ test("a restore never overwrites newer state: a re-staged key and a typed row bo
 	 * undo must not overwrite (`restoreDraftsUndo`'s own rule).
 	 */
 	const again = store.getState().stageDraft({ kind: "team", name: "lopdev" });
-	assert.equal(again, stable, "the key is stable, which is what makes the guard load-bearing");
+	assert.equal(
+		again,
+		stable,
+		"the key is stable, which is what makes the guard load-bearing",
+	);
 	useConversationInputStore.getState().setCurrentInput(stable, "the new text");
 	store.getState().restoreDraftsUndo();
 	assert.equal(
-		useConversationInputStore.getState().inputByConversation[stable].currentInput,
+		useConversationInputStore.getState().inputByConversation[stable]
+			.currentInput,
 		"the new text",
 	);
 	assert.notEqual(
@@ -775,7 +788,10 @@ test("a second discard replaces the first offer, one slot", () => {
 	store.getState().discardDraft(second);
 	const offer = store.getState().draftsUndo;
 	assert.deepEqual(offer.keys, [second]);
-	assert.ok(offer.at > firstAt, "a later raise is a new offer, not the old one re-stamped");
+	assert.ok(
+		offer.at > firstAt,
+		"a later raise is a new offer, not the old one re-stamped",
+	);
 });
 
 test("the caret successor is read by key, from the list as it stood before the write", () => {
@@ -785,9 +801,21 @@ test("the caret successor is read by key, from the list as it stood before the w
 	 * indexed the discard BUTTON among `[data-draft-row]` elements, so it always
 	 * returned -1 and the caret always landed on the first row.
 	 */
-	assert.equal(discardSuccessorIndex(["a", "b", "c"], "b"), 1, "the row that slid up");
+	assert.equal(
+		discardSuccessorIndex(["a", "b", "c"], "b"),
+		1,
+		"the row that slid up",
+	);
 	assert.equal(discardSuccessorIndex(["a", "b", "c"], "a"), 0);
-	assert.equal(discardSuccessorIndex(["a", "b", "c"], "c"), 2, "the last row's own position");
-	assert.equal(discardSuccessorIndex([], "gone"), 0, "a key that is already gone reads as the top");
+	assert.equal(
+		discardSuccessorIndex(["a", "b", "c"], "c"),
+		2,
+		"the last row's own position",
+	);
+	assert.equal(
+		discardSuccessorIndex([], "gone"),
+		0,
+		"a key that is already gone reads as the top",
+	);
 	assert.equal(discardSuccessorIndex(["a", "b"], "missing"), 0);
 });
