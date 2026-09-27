@@ -481,14 +481,38 @@ const waitForGone = async (message) => {
  * Read as LINES rather than as one string because the flyout draws two `block`
  * spans: their textContent concatenates with no separator between them, and a
  * single-string read would compare `ledgerUnseen` against `ledger Unseen`.
+ *
+ * IT WAITS FOR THE EVENT RATHER THAN FOR THE CLOCK, and it reads the tooltip BY NAME.
+ * It used to do neither: a fixed 40 ms sleep, then the FIRST `[role="tooltip"]` in the
+ * document - which on a busy host is the PREVIOUS row's tooltip, because the primitive
+ * keeps an open tooltip's content mounted while it opens the next one. Measured over
+ * 152 CI suite executions (2026-09-26 to 09-27) that read failed 4 of them, every time
+ * byte-identically: `expected 'Quarterly revenue model | Working'`, `actual
+ * 'Reconcile the supplier ledger | Unseen completion, unread'`. A LONGER SLEEP IS NOT
+ * THE FIX - it is the shape that produced the flake, and on a host carrying a fleet it
+ * only moves which run loses. So: close what is open, then wait for the tooltip whose
+ * own text names the row, bounded so a change that stops it opening fails here rather
+ * than hanging. This is the `receiptFlyout` shape below, adopted rather than invented.
  */
-async function flyoutLines(button) {
+async function flyoutLines(button, title) {
 	if (!button) return null;
-	button.dispatchEvent(new DOM.window.FocusEvent("focusin", { bubbles: true }));
-	await new Promise((resolve) => setTimeout(resolve, 40));
-	const tip = document.querySelector('[role="tooltip"]');
-	if (!tip) return null;
-	return [...tip.children].map((line) => line.textContent?.trim() ?? "");
+	button.dispatchEvent(
+		new DOM.window.FocusEvent("focusout", { bubbles: true }),
+	);
+	await new Promise((resolve) => setTimeout(resolve, 60));
+	for (let attempt = 0; attempt < 40; attempt += 1) {
+		button.dispatchEvent(
+			new DOM.window.FocusEvent("focusin", { bubbles: true }),
+		);
+		await new Promise((resolve) => setTimeout(resolve, 50));
+		const tip = [...document.querySelectorAll('[role="tooltip"]')].find(
+			(element) => element.textContent?.includes(title),
+		);
+		if (tip) {
+			return [...tip.children].map((line) => line.textContent?.trim() ?? "");
+		}
+	}
+	return null;
 }
 
 /**
@@ -959,6 +983,7 @@ test("the row tooltip's `, unread` tail follows the mark the row draws, not `uns
 			(
 				await flyoutLines(
 					harness.ring().find((row) => row.textContent?.includes(name)),
+					name,
 				)
 			)?.join(" | ") ?? null;
 		// The mark: the level is named, because the row is drawing it.
@@ -1073,7 +1098,7 @@ test("a not-answering row's remedy is reachable by focus, and only on that row",
 		// The pointer channel: the composed flyout ends with the clause, so the row
 		// itself still carries it where a pointer lands.
 		assert.match(
-			(await flyoutLines(silent))?.at(-1) ?? "",
+			(await flyoutLines(silent, "Quiet owner (stale beat)"))?.at(-1) ?? "",
 			/· \/stop if it stays silent\.$/,
 		);
 		// The keyboard channel: the row POINTS at the sentence, which is what
