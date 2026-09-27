@@ -917,6 +917,15 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// It is a BAND control, so it is outside both regions and cannot be a
 				// current row; the `CURRENT` table could never be asked to resolve it.
 				"hover:bg-row-selected": 2,
+				// ROUND 2's NINTH LITERAL returns this spelling to the file: the drafts
+				// foot's `Clear all` stills its hover GROUND while inapplicable
+				// (`aria-disabled:hover:bg-transparent!`, agent review round 2's R7 and
+				// design round 2's D5 - a refused control must not take the pointer's
+				// step). Like the "Mark all N read" control above, it is a list-level
+				// foot for the drafts group and can never sit inside a current row; it
+				// paints NOTHING here rather than taking a row state, which is why no
+				// expression has to resolve it.
+				"hover:bg-transparent": 1,
 				// The New chat row's disabled reset: it paints NOTHING, which is why no
 				// expression has to resolve it. The bulk read receipt carries no reset of
 				// its own: it is the shared `Button` primitive now, whose disabled styling
