@@ -134,6 +134,7 @@ const bundle = await build({
 			export { FileAttachment } from "./src/renderer/src/features/chat/components/message-item/file-attachment";
 			export { CanonicalImage } from "./src/renderer/src/features/chat/canonical/canonical-image";
 			export { FoldMedia } from "./src/renderer/src/features/chat/canonical/fold-media";
+			export { TraceFold } from "./src/renderer/src/features/chat/components/trace/trace-fold";
 		`,
 		resolveDir: ROOT,
 	},
@@ -174,8 +175,13 @@ const bundle = await build({
 mkdirSync(CACHE, { recursive: true });
 const bundlePath = join(CACHE, "image-expand.mjs");
 writeFileSync(bundlePath, bundle.outputFiles[0].text);
-const { ImageAttachment, FileAttachment, CanonicalImage, FoldMedia } =
-	await import(pathToFileURL(bundlePath).href);
+const {
+	ImageAttachment,
+	FileAttachment,
+	CanonicalImage,
+	FoldMedia,
+	TraceFold,
+} = await import(pathToFileURL(bundlePath).href);
 
 /* ------------------------------------------------------------------ fixtures */
 
@@ -186,6 +192,13 @@ const { ImageAttachment, FileAttachment, CanonicalImage, FoldMedia } =
 const PNG_BASE64 =
 	"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==";
 const PNG = `data:image/png;base64,${PNG_BASE64}`;
+/**
+ * A 2x6 PORTRAIT, for the strip's uniform-slot claim: a tile that sized itself by
+ * its picture drew a phone-shaped capture 36px wide beside 96px landscapes, so the
+ * claim has to be made against two different aspects rather than one fixture twice.
+ */
+const PORTRAIT_BASE64 =
+	"iVBORw0KGgoAAAANSUhEUgAAAAIAAAAGCAIAAABmRdhlAAAAEElEQVR42mMIqDgBRAyEKQCEWRLBtZF+SAAAAABJRU5ErkJggg==";
 /**
  * The legacy shape, which is a PATH on disk and a URL to paint from two different
  * strings: `file` is what the picture is called and what its file-actions menu
@@ -891,18 +904,31 @@ test("a canonical picture with no bytes is a failure row, not an untappable pict
  * other), each is NAMED, each carries the thumbnail ceiling rather than the
  * row's full 240px one, and a press on one still reaches the overlay.
  *
- * The strip's own ceiling is the compactness budget in one number, so it is
- * asserted rather than described: `max-h-16` is the attachment frame's own
- * floor, and the full ceiling's literal must be absent.
+ * The strip's own budget is in its geometry, and the geometry is in three class
+ * contracts rather than one ceiling: `h-16 w-24` is the FIXED 96x64 slot every
+ * tile shares (a picture that sized its own tile made the row a ragged grid — a
+ * 200x360 portrait drew 36px wide beside 96px landscapes), `object-contain` is
+ * what lets a picture of any aspect live in that slot without distortion, and the
+ * row's full ceiling must be absent. The measured boxes are the frames'
+ * (`docs/evidence/chat-trace-fold/*`, `scripts/condensed-group-media-geometry.mjs`);
+ * jsdom has no layout, so what is asserted here is the contract those frames
+ * measure.
  */
-const THUMBNAIL_CEILING = /\bmax-h-16\b/;
+const SLOT_CLASSES = ["h-16", "w-24", "object-contain"];
+/**
+ * The slot's own GEOMETRY, for the boxes that are not pictures: the picture's
+ * classes (`h-16 w-24 object-contain`) belong to an `<img>`, while the frame that
+ * reserves its place and the receipt that stands in for it are the tile's measured
+ * box (98x66) so that all three states occupy one slot.
+ */
+const SLOT_BOX = ["h-[66px]", "w-[98px]"];
 const FULL_CEILING = /max-h-\[240px\]/;
 
 test("a condensed group's pictures are named, expandable thumbnails", async () => {
 	await mount(async (api) => {
 		const second = {
 			id: "image-expand:group:1",
-			data: PNG_BASE64,
+			data: PORTRAIT_BASE64,
 			attachment: null,
 			mimeType: "image/png",
 		};
@@ -935,16 +961,34 @@ test("a condensed group's pictures are named, expandable thumbnails", async () =
 			["Expand Screenshot 1", "Expand Screenshot 2"],
 			"each picture's name says WHICH one it is",
 		);
-		for (const picture of api.document.querySelectorAll(
-			"[data-fold-media] img",
-		)) {
-			assert.match(
-				picture.className,
-				THUMBNAIL_CEILING,
-				"a condensed group's picture is a thumbnail, not a full figure",
-			);
+		const pictures = [
+			...api.document.querySelectorAll("[data-fold-media] img"),
+		];
+		for (const picture of pictures) {
+			for (const slotClass of SLOT_CLASSES) {
+				assert.ok(
+					picture.className.split(" ").includes(slotClass),
+					`a condensed group's picture carries \`${slotClass}\` — the fixed tile slot, not the row's own ceiling`,
+				);
+			}
 			assert.doesNotMatch(picture.className, FULL_CEILING);
 		}
+		/*
+		 * D4: every tile is the SAME slot, whatever the picture's aspect. jsdom
+		 * cannot lay two boxes out, so the claim asserted here is the one that makes
+		 * the layout uniform - identical class strings on two images of different
+		 * intrinsic sizes - and the rendered boxes are the frames' claim.
+		 */
+		assert.notEqual(
+			pictures[0].getAttribute("src"),
+			pictures[1].getAttribute("src"),
+			"the two tiles really are different pictures (fixtures 1x1 and 2x6)",
+		);
+		assert.equal(
+			pictures[0].className,
+			pictures[1].className,
+			"a landscape and a portrait picture get the same slot, so the row stays a grid",
+		);
 
 		/* The press that made the full picture readable is unchanged. */
 		await api.click(controls[1]);
@@ -977,6 +1021,235 @@ test("one picture in a group is named as one picture", async () => {
 			pictureButton(api.document).getAttribute("aria-label"),
 			"Expand Screenshot",
 			'a lone picture is not "Screenshot 1"',
+		);
+	});
+});
+
+/**
+ * The fold's own header, mounted here so the strip's count and the tile's states
+ * can be asserted against the REAL component tree rather than against a stand-in.
+ */
+const foldElement = (props) =>
+	React.createElement(
+		TraceFold,
+		{
+			summary: "Explored 1 file, ran 2 commands",
+			actionCount: 3,
+			failedCount: 0,
+			/*
+			 * Both defaulted to `null` rather than left out: `span?.running` is read on
+			 * every render, so an absent prop is a crash rather than a default, and a
+			 * fold with no stamps and no call in flight is the honest baseline for a
+			 * header assertion.
+			 */
+			span: null,
+			live: null,
+			recordIds: ["t0"],
+			...props,
+		},
+		React.createElement("span", { "data-testid": "fold-row" }, "row"),
+	);
+
+test("the count is text in the header, and a run with no pictures gets no clause", async () => {
+	await mount(async (api) => {
+		/*
+		 * Design review round 1, D3: the strip's accessible name said how many
+		 * pictures the run produced while the visible header said nothing, so a
+		 * sighted reader was offered strictly less than a screen-reader user.
+		 */
+		await api.render(foldElement({ mediaCount: 3 }));
+		assert.match(
+			api.document.body.textContent,
+			/3 images/,
+			"the header states the count as text, not as a title attribute or a badge",
+		);
+		await api.render(foldElement({ mediaCount: 1 }));
+		assert.match(
+			api.document.body.textContent,
+			/1 image\b/,
+			'one picture is one image, not "1 images"',
+		);
+		await api.render(foldElement({ mediaCount: 0 }));
+		assert.doesNotMatch(
+			api.document.body.textContent,
+			/image/,
+			"and a run with no pictures reads exactly as it read before this change",
+		);
+	});
+});
+
+test("the strip is capped at one row, and says how many it is not showing", async () => {
+	await mount(async (api) => {
+		/*
+		 * Design review round 1, D3's second half: height grew with the count and had
+		 * no cap, so 25-30 pictures made a CONDENSED group taller than the expanded one
+		 * it replaces (~391px against ~354.7px). One row is the budget, and past it the
+		 * last slot is the count.
+		 */
+		const many = Array.from({ length: 8 }, (_, index) => ({
+			id: `image-expand:many:${index}`,
+			data: PNG_BASE64,
+			attachment: null,
+			mimeType: "image/png",
+		}));
+		await api.render(
+			React.createElement(FoldMedia, { images: many, scope: transcriptScope }),
+		);
+		const items = [...api.document.querySelectorAll("[data-fold-media] li")];
+		assert.equal(items.length, 5, "one row of slots, whatever the count");
+		assert.equal(
+			api.document.querySelectorAll("[data-fold-media] img").length,
+			4,
+			"four pictures, because the fifth slot is the count",
+		);
+		assert.equal(
+			items.at(-1).textContent,
+			"+4 more",
+			"and the reader is told how many they are not seeing, in words",
+		);
+	});
+});
+
+/**
+ * A digest-backed row: no inline bytes, so the relay is the only way to a URL.
+ *
+ * The DIGEST is a parameter because the hook's in-flight table is module-wide and
+ * keyed by digest, and this file shares one bundled module across its tests: two
+ * tests that used the same digest would be one fetch, so the second would wait on
+ * the first's bridge rather than exercising its own.
+ */
+const durableImage = (id, digestChar) => ({
+	id,
+	data: null,
+	attachment: digestChar.repeat(32),
+	mimeType: "image/png",
+});
+
+test("a tile whose bytes are still coming reserves its box rather than calling the picture unavailable", async () => {
+	await mount(async (api) => {
+		/*
+		 * Agent review round 1, P3: the hook answered `null` for "resolving" and
+		 * "failed" alike, so a durable screenshot's FIRST paint in the strip was the
+		 * unavailable receipt, swapping to a tile a frame later - in the one surface
+		 * whose point is that the artifact is on screen, and on the path that is
+		 * NORMAL there (a collapsed fold unmounts the rows that would have warmed the
+		 * cache). The relay is held OPEN here - the bridge never settles - because
+		 * that is the state under test; the test below is the same mount with the
+		 * relay answering empty.
+		 */
+		api.window.api = { desktop: { media: () => new Promise(() => {}) } };
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: [durableImage("image-expand:durable:1", "b")],
+				scope: transcriptScope,
+			}),
+		);
+		const reserved = api.document.querySelector("[data-attachment-reserved]");
+		assert.ok(reserved, "the first paint is a reserved box, not a receipt");
+		for (const slotClass of SLOT_BOX) {
+			assert.ok(
+				reserved.className.split(" ").includes(slotClass),
+				`the reserved box occupies the tile's own \`${slotClass}\` slot, so nothing reflows when the picture lands`,
+			);
+		}
+		assert.doesNotMatch(
+			api.document.body.textContent,
+			STORE_COPY_RE,
+			"and it does not say the picture is unavailable while it is still coming",
+		);
+	});
+});
+
+test("a tile whose bytes never came shows the receipt, bounded to the tile", async () => {
+	await mount(async (api) => {
+		/*
+		 * The relay answers EMPTY here, deterministically: the previous test holds a
+		 * bridge open forever, and a fetch that fails for real (this rig's dead port)
+		 * needs event-loop turns the settle budget should not have to guess at - the
+		 * state under test is what the hook does with an empty answer, not how long a
+		 * refused connection takes.
+		 */
+		api.window.api = {
+			desktop: {
+				media: async () => ({ status: 404, kind: "error", detail: "gone" }),
+			},
+		};
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: [durableImage("image-expand:durable:2", "c")],
+				scope: transcriptScope,
+			}),
+		);
+		await api.settle(
+			() => api.document.querySelector("[data-attachment-reserved]") === null,
+			40,
+		);
+		const receipt = api.document.querySelector(
+			'[data-fold-media] [role="img"]',
+		);
+		assert.ok(
+			receipt,
+			"the tile becomes a receipt, not a sentence that would blow the strip's height",
+		);
+		for (const slotClass of SLOT_BOX) {
+			assert.ok(
+				receipt.className.split(" ").includes(slotClass),
+				`and the receipt stays inside the tile's own \`${slotClass}\` box`,
+			);
+		}
+		assert.match(
+			receipt.getAttribute("aria-label") ?? "",
+			/could not be displayed/,
+			"named rather than a silent icon: a reader is told which attachment failed, and why",
+		);
+	});
+});
+
+test("the real <img> survives the live-to-settled transition without remounting", async () => {
+	await mount(async (api) => {
+		/*
+		 * Agent review round 1, P2: the body claimed node identity on the picture's
+		 * `<img>` across the settle, and the assertion behind it was node identity on
+		 * a `<span>` stand-in. This is the real tree - `TraceFold` + `FoldMedia` +
+		 * `CanonicalImage` + `ImageAttachment` - across exactly that transition: the
+		 * section carries a live clause and is then settled.
+		 */
+		const images = [
+			{ ...transcriptImage },
+			{ ...transcriptImage, id: "image-expand:settle:1" },
+		];
+		const render = (props) =>
+			api.render(
+				foldElement({
+					...props,
+					mediaCount: images.length,
+					condensedMedia: React.createElement(FoldMedia, {
+						images,
+						scope: transcriptScope,
+					}),
+				}),
+			);
+		await render({
+			sectionLive: true,
+			live: { verb: "Running", object: "pnpm vitest run" },
+		});
+		const strip = api.document.querySelector("[data-fold-media]");
+		const picture = api.document.querySelector("[data-fold-media] img");
+		assert.ok(
+			strip && picture,
+			"the strip and its picture are drawn while live",
+		);
+
+		await render({ sectionLive: false, live: null });
+		assert.equal(
+			api.document.querySelector("[data-fold-media]"),
+			strip,
+			"the strip's own node survives the settle",
+		);
+		assert.equal(
+			api.document.querySelector("[data-fold-media] img"),
+			picture,
+			"and so does the picture's - nothing remounts, so nothing re-decodes or flickers",
 		);
 	});
 });

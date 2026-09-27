@@ -44,6 +44,15 @@ import { withMockKeychain } from "./chrome-keychain.mjs";
 
 const ARGS = process.argv.slice(2);
 const ORIGIN = ARGS.find((a) => !a.startsWith("--")) ?? "http://localhost:6017";
+
+/**
+ * The palette under measurement. An argument rather than a constant because D2's
+ * reading is a claim about BOTH brand palettes and the light one is the palette
+ * the finding is about; the dark one is where nothing depends on the tile's edge.
+ */
+const THEME =
+	process.argv.find((arg) => arg.startsWith("--theme="))?.slice(8) ??
+	"localOperatorDark";
 const AS_JSON = ARGS.includes("--json");
 
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
@@ -66,10 +75,17 @@ const STORIES = [
 	["chat-trace-fold--image-hidden", 1280, 200],
 	["chat-trace-fold--image-shown", 1280, 200],
 	["chat-trace-fold--images-three", 1280, 200],
-	["chat-trace-fold--images-many", 1280, 380],
+	["chat-trace-fold--images-many", 1280, 200],
 	["chat-trace-fold--image-live", 1280, 200],
-	/* The narrow column, where the wrap is reached with fewer pictures. */
-	["chat-trace-fold--images-many", 640, 380],
+	/* Round 1's states: the similar pair, a real screenshot, the page-toned
+	   canvases and the compact receipt. */
+	["chat-trace-fold--image-similar", 1280, 200],
+	["chat-trace-fold--image-screenshot", 1280, 200],
+	["chat-trace-fold--image-tones", 1280, 200],
+	["chat-trace-fold--image-unavailable", 1280, 200],
+	/* The narrow column, where the CAP is the thing that has to hold: six tiles
+	   and five gaps are 638px, which is what the limit is derived from. */
+	["chat-trace-fold--images-many", 640, 200],
 	["chat-trace-fold--images-three", 640, 200],
 	[
 		"chat-trace-fold--image-expanded",
@@ -136,6 +152,19 @@ const teardown = () => {
  */
 const PROBE = `(() => {
 	const round = (n) => Math.round(n * 10) / 10;
+	/* WCAG 2.x relative luminance, so the boundary reading is the standard's
+	   number rather than a hue comparison. */
+	const luminance = (rgb) => {
+		const [r, g, b] = rgb.match(/[\\d.]+/g).slice(0, 3).map(Number).map((c) => {
+			const v = c / 255;
+			return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+		});
+		return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+	};
+	const contrast = (a, b) => {
+		const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+		return round((hi + 0.05) / (lo + 0.05));
+	};
 	const box = (el) => {
 		if (!el) return null;
 		const r = el.getBoundingClientRect();
@@ -166,7 +195,22 @@ const PROBE = `(() => {
 		header: box(header),
 		media: box(media),
 		tileCount: tiles.length,
-		tileRows: topLines.size,
+		/*
+		 * Rows by HEIGHT, not by counting distinct tops: the strip aligns its items
+		 * with items-center, so the +N more slot's top differs from the tiles' by
+		 * design and a top-set would report one row as two. The strip is a whole
+		 * number of tile rows tall, and that is the fact the budget is about.
+		 */
+		tileRows:
+			media && tiles[0]
+				? Math.max(
+						1,
+						Math.round(
+							media.getBoundingClientRect().height /
+								Math.max(tiles[0].getBoundingClientRect().height, 1),
+						),
+					)
+				: 0,
 		tile: box(tiles[0]),
 		/* The tallest picture, which on a mixed-aspect strip is the tall capture. */
 		pictureMaxHeight: pictures.length
@@ -194,12 +238,36 @@ const PROBE = `(() => {
 		/* The item's display, because the gap between the frame and the item IS
 		   the line box's leading and this is the property that removes it. */
 		tileDisplay: tiles[0] ? getComputedStyle(tiles[0]).display : null,
+		/* The tile's OWN class string, because the slot's contract is a rule about
+		   classes and a 2px difference between two states of it is what a class
+		   assertion catches and a box measurement can round away. */
+		frameClass: tiles[0]?.querySelector('[class*="min-h-16"], [class*="h-16"]')
+			? tiles[0]
+					.querySelector('[class*="min-h-16"], [class*="h-16"]')
+					.getAttribute("class")
+			: null,
 		tileChild: box(tiles[0] && tiles[0].firstElementChild),
 		tileGrandchild: box(
 			tiles[0] && tiles[0].firstElementChild && tiles[0].firstElementChild.firstElementChild,
 		),
 		openRows: rows.length,
 		headerText: header ? header.innerText.replace(/\\s+/g, " ").trim() : null,
+		/*
+		 * D2's reading, taken off the RENDER rather than off the tokens: the tile's
+		 * own boundary colour against the ground it sits on, as WCAG's non-text
+		 * ratio. The palette rows in contrast-contract.mjs prove the PAIR is legal
+		 * on every ground; this is the shipped pixels agreeing with them, which is
+		 * what the design round asked for and what a still cannot state.
+		 */
+		boundary: media && tiles[0]
+			? (() => {
+					const tileFrame = tiles[0].querySelector('[class*="min-h-16"]');
+					if (!tileFrame) return null;
+					const border = getComputedStyle(tileFrame).borderTopColor;
+					const ground = getComputedStyle(document.body).backgroundColor;
+					return { border, ground, ratio: contrast(border, ground) };
+				})()
+			: null,
 	};
 })()`;
 
@@ -261,7 +329,7 @@ const main = async () => {
 		await cdp.send("Page.navigate", { url: "about:blank" });
 		await sleep(120);
 		await cdp.send("Page.navigate", {
-			url: `${ORIGIN}/iframe.html?id=${story}&viewMode=story&args=theme:localOperatorDark`,
+			url: `${ORIGIN}/iframe.html?id=${story}&viewMode=story&args=theme:${THEME}`,
 		});
 		/*
 		 * Measurable is three conditions, not one: Storybook's own loader gone,
@@ -332,7 +400,7 @@ const main = async () => {
 		return;
 	}
 	for (const r of results) {
-		console.log(`\n${r.story}  @ ${r.viewport}  (${ORIGIN})`);
+		console.log(`\n${r.story}  @ ${r.viewport}  (${THEME})`);
 		console.log(`  header         "${r.headerText}"`);
 		console.log(
 			`  fold height    ${r.fold.height}   (header ${r.header.height} + media ${r.media ? r.media.height : 0})`,
@@ -343,6 +411,14 @@ const main = async () => {
 		console.log(
 			`  tallest picture ${r.pictureMaxHeight === null ? "none" : `${r.pictureMaxHeight}px`}   rows mounted open=${r.openRows}`,
 		);
+		if (r.frameClass) {
+			console.log(`  tile frame   ${r.frameClass}`);
+		}
+		if (r.boundary) {
+			console.log(
+				`  boundary     ${r.boundary.border} on ${r.boundary.ground} = ${r.boundary.ratio}:1`,
+			);
+		}
 	}
 };
 

@@ -29,6 +29,7 @@
 import { cn } from "@shared/lib/utils";
 import {
 	ATTACHMENT_UNAVAILABLE_COPY,
+	AttachmentFrame,
 	BrokenAttachment,
 } from "../components/message-item/attachment-frame";
 import { ImageAttachment } from "../components/message-item/image-attachment";
@@ -71,12 +72,59 @@ export const CanonicalImage = ({
 	label,
 	size,
 }: CanonicalImageProps) => {
-	const src = useAttachmentUrl(image, scope);
-	if (!src) {
+	const source = useAttachmentUrl(image, scope);
+	if (source.state === "resolving") {
 		return (
-			<BrokenAttachment name={label} detail={ATTACHMENT_UNAVAILABLE_COPY} />
+			/*
+			 * A RESERVED BOX, not a receipt, while the bytes are on their way.
+			 *
+			 * The alternative - painting the unavailable sentence and letting it
+			 * swap to the picture - is what this state exists to end: in the condensed
+			 * group's strip the cold path is the normal path (a collapsed fold unmounts
+			 * the rows that would have warmed the cache), so every durable screenshot
+			 * opened its life as a sentence-shaped block that reflowed into a 66px tile
+			 * a frame later (agent review round 1, P3).
+			 *
+			 * The tile reserves its EXACT box, because the tile's box is fixed by
+			 * construction (96x64) and that is what makes the first paint free. The
+			 * `full` size reserves only the frame's own floor - its ceiling depends on
+			 * an aspect the transcript row does not carry, so a full picture still
+			 * settles to its own height, exactly as every other durable picture has.
+			 *
+			 * `aria-hidden` because there is nothing to announce yet: the picture's
+			 * own button names it the moment it arrives, and a reader told "Screenshot 2"
+			 * twice - once for the empty box and once for the picture - is worse than
+			 * one who waits a frame.
+			 */
+			<div className={cn("inline-block max-w-full")} aria-hidden={true}>
+				<AttachmentFrame
+					boundary={size === "thumbnail" ? "control" : "hairline"}
+					/* The tile's own measured box, for the same reason the receipt spells
+					   it in pixels: a reserved slot has to be the size of the picture that
+					   is coming, or the strip reflows when it lands. */
+					className={size === "thumbnail" ? "h-[66px] w-[98px]" : undefined}
+					/*
+					 * Named for the rigs the way `data-fold-media` is: the reserved box has no
+					 * picture and no text, so `scripts/chat-image-expand.test.mjs` can only
+					 * tell it from the receipt by a marker. It states which state it is rather
+					 * than which element, so the test fails when the STATE changes, not when
+					 * the markup does.
+					 */
+					data-attachment-reserved=""
+				/>
+			</div>
 		);
 	}
+	if (source.state === "missing") {
+		return (
+			<BrokenAttachment
+				name={label}
+				compact={size === "thumbnail"}
+				detail={ATTACHMENT_UNAVAILABLE_COPY}
+			/>
+		);
+	}
+	const src = source.url;
 	return (
 		<div className={cn("inline-block max-w-full")}>
 			<ImageAttachment

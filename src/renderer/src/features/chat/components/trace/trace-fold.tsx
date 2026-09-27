@@ -65,6 +65,7 @@
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import { type ReactNode, useEffect, useState } from "react";
+import { foldMediaClause } from "../../canonical/trace-fold-model";
 import type { FoldLive, FoldSpan } from "../../canonical/trace-fold-model";
 import { formatSettledDuration } from "./tool-row-model";
 
@@ -129,6 +130,18 @@ export type TraceFoldProps = {
 	 */
 	condensedMedia?: ReactNode;
 	/**
+	 * How many pictures `condensedMedia` stands for, for the header's own clause.
+	 *
+	 * A number beside the node rather than something read out of it, because the
+	 * node is opaque here (the caller builds it) and because the COUNT is the part
+	 * a 64px tile cannot carry: the strip is a presence cue, so the reader has to
+	 * be told the number in text - legible at any tile size, reachable without a
+	 * pointer, and the same fact the strip's accessible name already states
+	 * (design review round 1, D3). Zero or absent adds no clause at all, which is
+	 * what keeps a run with no pictures byte-identical.
+	 */
+	mediaCount?: number;
+	/**
 	 * The record ids the fold holds. Stamped on the wrapper (`data-fold-ids`)
 	 * because a collapsed fold UNMOUNTS its rows, so the turn foot's `1 failed`
 	 * jump cannot find the failed row by its `data-record-id` until the fold
@@ -169,6 +182,7 @@ export const TraceFold = ({
 	sectionLive,
 	className,
 	condensedMedia,
+	mediaCount = 0,
 	recordIds,
 	children,
 }: TraceFoldProps) => {
@@ -349,6 +363,28 @@ export const TraceFold = ({
 									className={cn("shrink-0 font-medium text-danger text-meta")}
 								>
 									{failedCount} failed
+								</span>
+							</>
+						)}
+						{/*
+						 * How many pictures the run produced, as the count the strip cannot
+						 * carry at 64px - and the reason this clause is here at all is the
+						 * inversion the design round found: the strip's accessible name
+						 * said "2 screenshots from this run" while the visible header said
+						 * nothing, so a sighted reader got strictly less than a screen-reader
+						 * user (design review round 1, D3). It costs no height: it joins the
+						 * facts the header already prints.
+						 */}
+						{foldMediaClause(mediaCount) !== null && (
+							<>
+								<span
+									aria-hidden={true}
+									className={cn("text-ink-dim text-meta")}
+								>
+									·
+								</span>
+								<span className={cn("shrink-0 text-ink-muted text-meta")}>
+									{foldMediaClause(mediaCount)}
 								</span>
 							</>
 						)}

@@ -39,11 +39,14 @@ const bundle = await build({
 
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`;
 const {
+	FOLD_MEDIA_LIMIT,
 	FOLD_MIN_ACTIONS,
 	actionClass,
 	foldCounts,
 	foldImages,
 	foldLive,
+	foldMediaClause,
+	foldMediaSlots,
 	foldRuns,
 	foldSpan,
 	foldSummary,
@@ -540,4 +543,58 @@ test("a run with no pictures yields none, and a user row never contributes", () 
 		imageRow("t2", []),
 	];
 	assert.deepEqual(foldImages(rows), []);
+});
+
+test("the strip's slots are one row, and past the cap the last of them is the count", () => {
+	/*
+	 * Design review round 1, D3: height grew with the count and had no cap, so
+	 * 25-30 pictures put a CONDENSED group past the height of the expanded one it
+	 * replaces. The cap is the row the strip can hold at the narrowest column it
+	 * renders in - measured at six 98px tiles with five 10px gaps in the live
+	 * window's 638px - and past it the last slot is `+N more`.
+	 */
+	assert.deepEqual(foldMediaSlots(0), { shown: 0, more: 0 });
+	assert.deepEqual(foldMediaSlots(1), { shown: 1, more: 0 });
+	assert.deepEqual(foldMediaSlots(FOLD_MEDIA_LIMIT), {
+		shown: FOLD_MEDIA_LIMIT,
+		more: 0,
+	});
+	// The boundary: the first count that needs the count slot.
+	assert.deepEqual(foldMediaSlots(FOLD_MEDIA_LIMIT + 1), {
+		shown: FOLD_MEDIA_LIMIT - 1,
+		more: 2,
+	});
+	assert.deepEqual(foldMediaSlots(8), { shown: 4, more: 4 });
+	assert.deepEqual(foldMediaSlots(30), { shown: 4, more: 26 });
+	// Whatever the count, the slots never exceed the row.
+	for (const count of [0, 1, 6, 7, 8, 30]) {
+		const { shown, more } = foldMediaSlots(count);
+		assert.ok(
+			shown <= FOLD_MEDIA_LIMIT,
+			`${count} pictures must not draw more than one row of slots`,
+		);
+		assert.equal(shown + more, count, "and no picture is lost from the count");
+	}
+});
+
+test("the header's image clause names the count, and a run with none has no clause", () => {
+	/*
+	 * D3's other half: the strip's accessible name carried the number while the
+	 * visible header said nothing, so a sighted reader got less than a
+	 * screen-reader user. A run with no pictures gets `null` rather than an empty
+	 * clause, which is what keeps that header byte-identical.
+	 */
+	assert.equal(foldMediaClause(0), null, "no pictures, no clause");
+	assert.equal(
+		foldMediaClause(-1),
+		null,
+		"and a nonsense count is not a claim",
+	);
+	assert.equal(
+		foldMediaClause(1),
+		"1 image",
+		'one is an image, not "1 images"',
+	);
+	assert.equal(foldMediaClause(2), "2 images");
+	assert.equal(foldMediaClause(30), "30 images");
 });

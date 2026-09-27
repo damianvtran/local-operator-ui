@@ -639,8 +639,10 @@ export const STORIES = [
 	 * absent MEANS), the second is the same run carrying it. `images-three` is the
 	 * same height again - one picture and three cost the same row - which is the
 	 * compactness claim this change makes and the one a reader of the diff should
-	 * be able to see. The extra 70px over the header-only states is the strip: 64
-	 * of thumbnail, 4 of the row's own `mt-1`, 2 of the fold's gap.
+	 * be able to see. The extra 71px over the header-only states is the strip: 67
+	 * measured (a 64px picture in the frame's 66px box, plus the row's own line
+	 * box) and 4 of the fold's own `mt-1`. Both numbers are the rig's
+	 * (`condensed-group-media-geometry.mjs`), not this comment's arithmetic.
 	 *
 	 * `image-live` is the other window a reader meets the strip in - the picture
 	 * has landed and the run has not finished - and `image-expanded` is the price
@@ -651,10 +653,34 @@ export const STORIES = [
 	["chat-trace-fold--image-shown", 1280, 200],
 	["chat-trace-fold--images-three", 1280, 200],
 	/*
-	 * The count at which the row genuinely wraps, framed rather than argued: the
-	 * one case where the strip is not a constant cost, at its own height.
+	 * THE ROUND-1 REMEDIATION'S STATES (design review round 1, D1-D3), and each
+	 * one answers a finding the first set could not:
+	 *
+	 * - `image-similar` is D1's deciding frame: two TEXT-BEARING plots, same size,
+	 *   same palette, same layout, different data. At the tile their labels and
+	 *   curves are gone, which is what makes this strip a PRESENCE cue rather than
+	 *   a reader of the pictures - the claim the copy now makes.
+	 * - `image-screenshot` is the same question with a real artifact: a live
+	 *   capture of this app, downscaled to the fixture size. A text-heavy
+	 *   screenshot at 96px wide is a smear, and the frame says so.
+	 * - `image-tones` is D2's defect case in both palettes at once - each tile
+	 *   holds a picture whose own canvas IS the page's ground, so the tile's edge
+	 *   is the only thing that gives it an extent.
+	 * - `image-unavailable` is the compact receipt, the one tile state whose SHAPE
+	 *   is new (prose would blow the 66px strip).
+	 *
+	 * `images-many` is now ONE row at 91px, because the cap answers it: the first
+	 * cut let eight pictures wrap to 166px and 25-30 reach ~391px, past the price
+	 * of the expanded group the strip replaces. The cap is 5 SLOTS - four tiles
+	 * and the count - because the count is text rather than a fifth picture, and
+	 * four tiles plus its own width fit the narrowest column this surface renders
+	 * in (measured at a 640px window, 576px of column).
 	 */
-	["chat-trace-fold--images-many", 1280, 380],
+	["chat-trace-fold--images-many", 1280, 200],
+	["chat-trace-fold--image-similar", 1280, 200],
+	["chat-trace-fold--image-screenshot", 1280, 200],
+	["chat-trace-fold--image-tones", 1280, 200],
+	["chat-trace-fold--image-unavailable", 1280, 200],
 	["chat-trace-fold--image-live", 1280, 200],
 	[
 		"chat-trace-fold--image-expanded",
