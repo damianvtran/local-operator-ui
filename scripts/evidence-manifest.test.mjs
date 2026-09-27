@@ -1503,6 +1503,16 @@ const STAMP_BINDING_NOTES = [
 	 * the prose.
 	 */
 	"pendingEchoRemediationFifthFoldNote",
+	/*
+	 * AND THIS BRANCH'S OWN: the account-foot refresh moves BOTH trees this
+	 * file binds - `src/` for the two completion call sites that commission the
+	 * account read on a Radient credential write and the clear that lets the
+	 * re-read be disclosed as "checking", `scripts/` for the three suites that
+	 * pin and measure them - and rewrites no frame of the sweep (its evidence is
+	 * a pair of PNG walks, declared as `account-foot-refresh`), so a reader is
+	 * owed the two values it binds and the reason no still was owed.
+	 */
+	"accountFootRefreshRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2131,6 +2141,11 @@ const BRANCH_RECORDS = [
 	 * the same completeness reason stands.
 	 */
 	"pendingEchoRemediationFifthFoldNote",
+	/*
+	 * And this branch's own record: the account-foot refresh writes one
+	 * top-level note, registered here for the same completeness reason.
+	 */
+	"accountFootRefreshRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
