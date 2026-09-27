@@ -34,15 +34,36 @@ import {
 	useRef,
 	useState,
 } from "react";
+import {
+	type DragState,
+	IDLE_DRAG,
+	dragReducer,
+	draggedSessionId,
+} from "./mesh-drag";
+import {
+	type DragPayload,
+	type DropContext,
+	type DropTarget,
+	type MovePlan,
+	type Remedy,
+	hoverSentence,
+	resolveDrop,
+} from "./mesh-drop";
 import { MeshEdgeLayer } from "./mesh-edge";
 import type { MeshGraph } from "./mesh-graph";
-import { MeshDeviceNode, MeshNetworkNode } from "./mesh-node";
+import {
+	MeshDeviceNode,
+	MeshNetworkNode,
+	type NodeDropState,
+} from "./mesh-node";
 import {
 	type MeshSlots,
 	fitTransform,
 	meshGeometry,
 	zoomAbout,
 } from "./mesh-positions";
+import type { DeviceSessions } from "./mesh-sessions";
+import type { MeshSessionRow } from "./mesh-types";
 
 /** How far one arrow key or one keyboard zoom step moves the view. */
 const KEY_PAN_PX = 48;
@@ -63,7 +84,37 @@ type MeshCanvasProps = {
 	nowSeconds: number;
 	/** The device the reader is on, from the list's own selection. */
 	selectedDeviceId: string | null;
+	/** What each drawn device holds, joined and capped by `mesh-sessions.ts`. */
+	sessions: ReadonlyMap<string, DeviceSessions>;
+	/** The total the peer catalogue claims per device, which may exceed the rows. */
+	sessionTotals: ReadonlyMap<string, number>;
+	/** The chip whose move is in flight, if any. */
+	movingSessionId: string | null;
+	/**
+	 * Whether this backend can move a conversation at all (`features.session_transfer`).
+	 *
+	 * ABSENT MEANS THE CHIPS STILL DRAW AND STILL OPEN THEIR MENU, with the move items
+	 * left out: a backend that can list a peer's sessions and cannot move one is a real
+	 * shape (`routes/capabilities.py` says so in those words), and hiding the sessions
+	 * too would withhold the fact the tab exists to show.
+	 */
+	canMove: boolean;
+	/** Open this device's detail panel. */
 	onOpenDevice: (deviceId: string) => void;
+	/** A drop landed on a valid target: the page confirms and asks. */
+	onAskMove: (ask: {
+		plan: MovePlan;
+		alternatives: MovePlan[];
+		risky: boolean;
+	}) => void;
+	/** A drop the CLIENT refused, with the code and the sentence to show. */
+	onDropRefused: (refusal: {
+		code: string;
+		sentence: string;
+		remedy: Remedy | null;
+	}) => void;
+	/** The "+N more" affordance: the panel shows the rest. */
+	onShowAllSessions: (deviceId: string) => void;
 	/** The summary sentence, which is also this region's accessible name. */
 	summaryId: string;
 };
@@ -73,11 +124,31 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 	slots,
 	nowSeconds,
 	selectedDeviceId,
+	sessions,
+	sessionTotals,
+	movingSessionId,
+	canMove,
 	onOpenDevice,
+	onAskMove,
+	onDropRefused,
+	onShowAllSessions,
 	summaryId,
 }) => {
 	const viewportRef = useRef<HTMLDivElement | null>(null);
-	const [viewport, setViewport] = useState({ width: 0, height: 0 });
+	/*
+	 * The canvas's own box, POSITION INCLUDED. The size is what "fit" needs; the
+	 * position is what the drag ghost needs, because the ghost is drawn in this
+	 * element's coordinates rather than the world's (it must not scale with the zoom),
+	 * and reading `getBoundingClientRect()` during a render to find that out would be a
+	 * forced synchronous layout on every frame of a drag - the one thing this
+	 * component's frame budget cannot afford.
+	 */
+	const [viewport, setViewport] = useState({
+		width: 0,
+		height: 0,
+		left: 0,
+		top: 0,
+	});
 	const [transform, setTransform] = useState<MeshTransform>({
 		k: 1,
 		tx: 0,
@@ -91,6 +162,204 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 	 * layout and cannot move a node.
 	 */
 	const geometry = useMemo(() => meshGeometry(slots), [slots]);
+
+	/*
+	 * THE DROP CONTEXT IS BUILT FROM WHAT THE CANVAS DREW, once per graph: the verdict
+	 * needs a device's state (a suspect device outranks reachability) and a network's
+	 * existence, and looking either up from the raw reads would let the verdict answer
+	 * about a node the picture does not contain.
+	 */
+	const dropContext = useMemo<DropContext>(
+		() => ({
+			selfDeviceId: graph.selfDeviceId,
+			devices: new Map(graph.devices.map((device) => [device.id, device])),
+			networks: new Map(graph.networks.map((network) => [network.id, network])),
+		}),
+		[graph],
+	);
+
+	/*
+	 * THE DRAG IS A REDUCER OVER POINTER EVENTS, and every transition lives in
+	 * `mesh-drag.ts` - including the ones that exist to stop a ghost outliving its
+	 * pointer. What is local to this component is the thing a reducer cannot know: how
+	 * far the pointer is from the canvas's own box (the ghost is placed in the
+	 * VIEWPORT's coordinates, outside the world layer, because a ghost inside the
+	 * transform would scale with the zoom).
+	 */
+	const [drag, setDrag] = useState<DragState>(IDLE_DRAG);
+	const dragTargetRef = useRef<DropTarget>({ kind: "ground" });
+
+	/**
+	 * What the pointer is over, resolved from the DOM.
+	 *
+	 * `closest()` RATHER THAN A HIT-TEST OF OUR OWN, and rather than a map of boxes:
+	 * the nodes are real elements, so the browser's own hit-testing is the answer - the
+	 * same answer a keyboard user gets, which is the property the plan's §2 bought when
+	 * it refused `<canvas>`. The GHOST IS `pointer-events: none`, so it can never be
+	 * the element under the pointer; that is why no `elementFromPoint` offset
+	 * arithmetic is needed here.
+	 */
+	const targetAt = useCallback((x: number, y: number): DropTarget => {
+		const hit = document.elementFromPoint(x, y);
+		const device = hit?.closest("[data-mesh-device]");
+		if (device) {
+			const deviceId = device.getAttribute("data-mesh-device");
+			if (deviceId) return { kind: "device", deviceId };
+		}
+		const network = hit?.closest("[data-mesh-network]");
+		if (network) {
+			const networkId = network.getAttribute("data-mesh-network");
+			if (networkId) return { kind: "network", networkId };
+		}
+		return { kind: "ground" };
+	}, []);
+
+	/** The verdict for the target the pointer is over, live, for the node's own edge. */
+	const liveVerdict = useMemo(() => {
+		if (drag.kind !== "dragging" && drag.kind !== "settling") return null;
+		return resolveDrop(drag.payload, drag.target, dropContext);
+	}, [drag, dropContext]);
+
+	/** Which node is showing the drop affordance, and which way it reads. */
+	const dropStateFor = useCallback(
+		(deviceId: string): NodeDropState => {
+			if (!liveVerdict) return null;
+			if (liveVerdict.kind === "plan") {
+				const target =
+					drag.kind === "dragging" || drag.kind === "settling"
+						? drag.target
+						: null;
+				if (target && target.kind === "device" && target.deviceId === deviceId)
+					return "accept";
+				return null;
+			}
+			if (liveVerdict.kind === "refused") {
+				const target =
+					drag.kind === "dragging" || drag.kind === "settling"
+						? drag.target
+						: null;
+				if (target && target.kind === "device" && target.deviceId === deviceId)
+					return "refuse";
+				return null;
+			}
+			return null;
+		},
+		[liveVerdict, drag],
+	);
+
+	/**
+	 * A press on a chip: the first half of the click-versus-drag decision.
+	 *
+	 * THE POINTER IS CAPTURED HERE, on the chip, and not by the canvas: every later
+	 * move and the release must arrive at THIS chip even if the pointer leaves it during
+	 * the drag, which is what pointer capture is for. The canvas sees the same events as
+	 * they bubble, which is where the target resolution happens.
+	 */
+	const onChipPointerDown = useCallback(
+		(event: React.PointerEvent<HTMLButtonElement>, session: MeshSessionRow) => {
+			if (!canMove || event.button !== 0) return;
+			const ownerDeviceId =
+				session.locality === "local"
+					? (graph.selfDeviceId ?? "")
+					: session.owner_device;
+			const owner = dropContext.devices.get(ownerDeviceId);
+			const payload: DragPayload = {
+				session,
+				ownerDeviceId,
+				ownerLabel: owner?.label ?? session.owner_device_name,
+			};
+			/*
+			 * CAPTURE IS BEST-EFFORT, and the guard is not defensive padding: a
+			 * `PointerEvent` dispatched by a story, a test or a rig has no ACTIVE pointer
+			 * behind it, and `setPointerCapture` throws `InvalidPointerId` for one. The
+			 * capture is what keeps a drag's moves coming when the pointer leaves the chip
+			 * - a real pointer always grants it - so a synthetic press loses only the
+			 * capture, never the drag, and the frame a story photographs is the real one.
+			 */
+			try {
+				event.currentTarget.setPointerCapture(event.pointerId);
+			} catch {
+				// No active pointer: see the comment above.
+			}
+			setDrag((current) =>
+				dragReducer(current, {
+					kind: "press",
+					payload,
+					x: event.clientX,
+					y: event.clientY,
+					pointerId: event.pointerId,
+				}),
+			);
+		},
+		[canMove, dropContext, graph.selfDeviceId],
+	);
+
+	/**
+	 * Pointer motion, whichever gesture is in flight.
+	 *
+	 * TWO GESTURES SHARE THIS HANDLER and they are told apart by what is in flight: a
+	 * chip drag is `pressing`/`dragging` in the reducer, and a pan is `origin.current`.
+	 * The drag is fed EVERY move (the reducer is what decides whether the threshold was
+	 * crossed); the pan keeps slice 1's one-write-per-frame scheduling.
+	 */
+	const onCanvasPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+		if (drag.kind === "pressing" || drag.kind === "dragging") {
+			const target = targetAt(event.clientX, event.clientY);
+			dragTargetRef.current = target;
+			setDrag((current) =>
+				dragReducer(current, {
+					kind: "move",
+					x: event.clientX,
+					y: event.clientY,
+					target,
+				}),
+			);
+			return;
+		}
+		onPointerMove(event);
+	};
+
+	/**
+	 * The release: a click, a drop, or nothing.
+	 *
+	 * `settling` IS THE STATE THAT DECIDES, and the verdict is computed from the target
+	 * the pointer was ACTUALLY over - carried through the reducer rather than re-resolved
+	 * here, because re-resolving would answer about wherever the pointer ended up after
+	 * the last frame, which is not where the user let go.
+	 */
+	const onCanvasPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+		endPan(event);
+		if (drag.kind !== "pressing" && drag.kind !== "dragging") return;
+		if (drag.kind === "pressing") {
+			// A press that never travelled is a CLICK: the chip's own activation runs, the
+			// canvas asks for nothing, and no ghost was ever drawn.
+			setDrag((current) => dragReducer(current, { kind: "cancel" }));
+			return;
+		}
+		const decided = resolveDrop(drag.payload, drag.target, dropContext);
+		setDrag((current) => dragReducer(current, { kind: "release" }));
+		if (decided.kind === "plan") {
+			onAskMove({
+				plan: decided.plan,
+				alternatives: decided.alternatives,
+				risky: decided.risky,
+			});
+		} else if (decided.kind === "refused") {
+			onDropRefused({
+				code: decided.code,
+				sentence: decided.sentence,
+				remedy: decided.remedy,
+			});
+		}
+		setDrag((current) => dragReducer(current, { kind: "settled" }));
+	};
+
+	useEffect(() => {
+		// A drag that is still in flight when the tab unmounts would leave nothing to
+		// settle it: the reducer's own `cancel` is the transition, and it runs on every
+		// teardown rather than only on the ones that happened to be clean.
+		return () => setDrag(IDLE_DRAG);
+	}, []);
 
 	const fit = useCallback(() => {
 		setTransform(fitTransform(geometry.bounds, viewport));
@@ -107,7 +376,12 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 		if (!element) return;
 		const measure = () => {
 			const rect = element.getBoundingClientRect();
-			setViewport({ width: rect.width, height: rect.height });
+			setViewport({
+				width: rect.width,
+				height: rect.height,
+				left: rect.left,
+				top: rect.top,
+			});
 		};
 		measure();
 		const observer = new ResizeObserver(measure);
@@ -127,6 +401,23 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 		fitted.current = true;
 		setTransform(fitTransform(geometry.bounds, viewport));
 	}, [viewport, geometry.bounds]);
+
+	/**
+	 * Where the ghost is drawn, in this canvas's own coordinates.
+	 *
+	 * FROM THE MEASURED BOX RATHER THAN A LIVE `getBoundingClientRect()`, and the
+	 * difference is a forced layout per frame: the drag already produces one style write
+	 * per animation frame, and a layout read here would turn that into a read-write
+	 * pair that the browser cannot batch. The measurement is kept fresh by the
+	 * `ResizeObserver` above and by the scroll a pan already invalidates.
+	 */
+	const ghost =
+		drag.kind === "dragging"
+			? { x: drag.x - viewport.left + 12, y: drag.y - viewport.top + 12 }
+			: { x: 0, y: 0 };
+
+	/** The one line the drop indicator shows, if any. */
+	const indicator = liveVerdict ? hoverSentence(liveVerdict) : null;
 
 	/*
 	 * ONE STYLE WRITE PER ANIMATION FRAME.
@@ -342,9 +633,19 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 			// biome-ignore lint/a11y/noNoninteractiveTabindex: the region carries the pan/zoom/fit keys, so it must be reachable by keyboard; the buttons inside are the next stops, so the walk is not trapped.
 			tabIndex={0}
 			onPointerDown={onPointerDown}
-			onPointerMove={onPointerMove}
-			onPointerUp={endPan}
-			onPointerCancel={endPan}
+			onPointerMove={onCanvasPointerMove}
+			onPointerUp={onCanvasPointerUp}
+			onPointerCancel={(event) => {
+				/*
+				 * A CANCELLED POINTER ENDS THE DRAG, it does not settle it. The browser takes the
+				 * pointer for a system gesture or because the capture was lost, so there is no
+				 * position the user "let go" at - and any other reading of it invents a drop
+				 * nobody made.
+				 */
+				setDrag((current) => dragReducer(current, { kind: "cancel" }));
+				endPan(event);
+			}}
+			data-mesh-gesture={drag.kind}
 			onKeyDown={onKeyDown}
 			onDoubleClick={(event) => {
 				// Empty ground only, the same test the pan uses: a double-click on a node
@@ -391,6 +692,12 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 								network={network}
 								x={box.x}
 								y={box.y}
+								refused={
+									liveVerdict?.kind === "refused" &&
+									drag.kind === "dragging" &&
+									drag.target.kind === "network" &&
+									drag.target.networkId === network.id
+								}
 							/>
 						);
 					})}
@@ -407,12 +714,78 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 								y={box.y}
 								nowSeconds={nowSeconds}
 								selected={device.id === selectedDeviceId}
+								sessions={
+									sessions.get(device.id) ?? {
+										rows: [],
+										shown: [],
+										hidden: 0,
+									}
+								}
+								sessionTotal={
+									sessionTotals.get(device.id) ?? device.sessionCount ?? 0
+								}
+								dropState={dropStateFor(device.id)}
+								movingSessionId={movingSessionId}
+								draggedSessionId={draggedSessionId(drag)}
 								onOpen={onOpenDevice}
+								onChipPointerDown={onChipPointerDown}
+								/*
+								 * A CHIP'S CLICK OPENS ITS DEVICE'S PANEL, which is where the conversations and
+								 * their move menu live. The chip does NOT open a menu of its own: a menu opens on
+								 * pointerdown, which would swallow the drag before it started - so the two
+								 * cannot share one press, and the feature keeps ONE menu (`mesh-card.tsx`)
+								 * rather than two spellings of the same list.
+								 */
+								onChipClick={() => onOpenDevice(device.id)}
+								onShowAllSessions={onShowAllSessions}
 							/>
 						);
 					})}
 				</ul>
 			</div>
+			{/*
+			 * THE DRAG GHOST LIVES OUTSIDE THE WORLD LAYER, and that is deliberate: a ghost
+			 * inside the transform would scale with the zoom, so a chip dragged out of a
+			 * zoomed-in canvas would grow under the pointer - and its own size is the one
+			 * thing about it the user is comparing against the target. It is positioned in
+			 * the VIEWPORT's coordinates, from the canvas's own measured box.
+			 *
+			 * `pointer-events: none` is load-bearing rather than tidy: the ghost sits under the
+			 * pointer by definition, so if it took pointer events it would be the element the
+			 * drop resolved against - the drop would then always land on the ghost and never on
+			 * a device.
+			 */}
+			{drag.kind === "dragging" && (
+				<div
+					data-mesh-ghost=""
+					aria-hidden="true"
+					className="pointer-events-none absolute z-10 max-w-40 truncate rounded-sm border border-ink-dim bg-surface px-1.5 py-0.5 text-meta text-ink"
+					style={{
+						left: ghost.x,
+						top: ghost.y,
+					}}
+				>
+					{drag.payload.session.name || "untitled"}
+				</div>
+			)}
+			{/*
+			 * THE INDICATOR STATES THE RESULTING OPERATION, which is the rule the drop has
+			 * to satisfy to be honest: "Move to devon-laptop", never a generic "+", and a
+			 * refusal says which refusal before the drop rather than after it.
+			 */}
+			{drag.kind === "dragging" && indicator && (
+				<div
+					data-mesh-indicator=""
+					className={cn(
+						"pointer-events-none absolute bottom-2 left-2 rounded-sm border bg-surface px-2 py-1 text-meta",
+						liveVerdict?.kind === "refused"
+							? "border-warning text-warning"
+							: "border-control text-ink",
+					)}
+				>
+					{indicator}
+				</div>
+			)}
 		</div>
 	);
 };

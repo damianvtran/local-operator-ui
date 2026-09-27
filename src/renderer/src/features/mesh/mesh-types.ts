@@ -262,6 +262,239 @@ export function networkTopology(value: unknown): NetworkTopology {
 	};
 }
 
+/* ------------------------------------------------------------- the sessions */
+
+/**
+ * One conversation, as the Mesh tab needs it: WHAT it is, and WHERE it lives.
+ *
+ * A NARROWER ROW THAN THE SIDEBAR'S, on purpose. The tab never renders a preview,
+ * never sorts by pin and never reads a transcript, so the fields it does not use
+ * are not carried - the row exists to key a chip, to name it, and to say which
+ * device holds it and whether that device is answering.
+ *
+ * `locality` IS THE ONLY FIELD THAT ANSWERS "WHERE", and the backend's own model
+ * is emphatic about why: the nested `peer` block is `null` on every row this shape
+ * describes, so "no nested block" must never be read as "local". `owner_device`
+ * is empty on a row this device holds (`locality: "local"`), which is a real
+ * answer rather than a missing one - the device that owns it is the one asking.
+ *
+ * `live_state` is the backend's own vocabulary (`busy`/`attached`/`idle`, plus the
+ * registry's `wedged`), and it is what makes the drag HONEST rather than
+ * optimistic: a `busy` session refuses a move instead of being interrupted, and
+ * the chip can say so BEFORE the drop rather than after the refusal.
+ */
+export type MeshSessionRow = {
+	id: string;
+	name: string;
+	mtime: number;
+	/** `local`/`remote`: which device holds it. Always answered on every row. */
+	locality: "local" | "remote";
+	/** The owning device's id; `""` on a local row, whose owner is this device. */
+	owner_device: string;
+	owner_device_name: string;
+	/** Whether the owning device answered the poll that produced this row. */
+	reachable: boolean;
+	/** The backend's own sentence when it did not; `""` otherwise. */
+	unreachable_reason: string;
+	/** The backend's liveness word for the session itself. */
+	live_state: string;
+	/** Off the default listing; carried so the tab can say so rather than hide it. */
+	archived: boolean;
+};
+
+/**
+ * A session row's `live_state`, when the row carried one that means "do not touch".
+ *
+ * ONLY `busy` IS READ, and it is read as a REFUSAL rather than as a display state:
+ * the route refuses a move of a session with a turn in flight (`busy` is in
+ * `MOVE_REFUSAL_CODES`, "the source has a turn in flight; message is its idle
+ * reason verbatim"), so a drop that offered itself here would be an offer the
+ * backend declines. Everything else - `attached`, `idle`, `wedged`, an unknown word
+ * from a newer backend - is not a client-side refusal, because the client does not
+ * own that decision: the route answers, and its sentence is what the user reads.
+ */
+export function sessionIsBusy(row: MeshSessionRow): boolean {
+	return row.live_state.trim().toLowerCase() === "busy";
+}
+
+/**
+ * `GET /v1/desktop/sessions?include_peers=true`, normalised.
+ *
+ * A ROW WITH NO ID OR NO NAMED-AND-ABSENT LOCALITY IS DROPPED, per this file's own
+ * rule: a session with no id cannot be a chip's React key, and a row whose locality
+ * arrived as neither `local` nor `remote` cannot be filed anywhere - drawing it as
+ * local would put another device's conversation in this device's node, which is a
+ * wrong claim rather than a degraded one. Every other missing field degrades:
+ * an unnamed session prints its id's tail, `live_state` prints nothing rather than
+ * a word nobody said, and `reachable` defaults to `true` ONLY because the backend
+ * sends it on every row and a row that arrived without it described a LOCAL one
+ * ("always true for a local row").
+ *
+ * THE ORDER IS THE BACKEND'S and is not re-sorted here: the catalogue's ranking is
+ * recency, and a chip row that re-sorted it would disagree with the list beside it.
+ */
+export function sessionRows(value: unknown): MeshSessionRow[] {
+	const rows: MeshSessionRow[] = [];
+	const seen = new Set<string>();
+	/*
+	 * THE ENVELOPE'S OWN KEY, unwrapped here rather than in `records`: the wire's
+	 * `SessionList` carries its page as `sessions` (and its `degraded`/`truncated`
+	 * beside it), while a stored or stubbed answer may be the bare array. `records`
+	 * knows only the peer catalogue's `peers`, which is the shape IT was written for -
+	 * so the unwrapping lives with the reader that knows which key it is asking about.
+	 */
+	const page = Array.isArray(value)
+		? value
+		: ((value as { sessions?: unknown } | null)?.sessions ?? value);
+	for (const raw of records(page)) {
+		const id = text(raw.id);
+		if (!id || seen.has(id)) continue;
+		const locality =
+			raw.locality === "remote"
+				? "remote"
+				: text(raw.locality) === "local"
+					? "local"
+					: null;
+		if (!locality) continue;
+		seen.add(id);
+		rows.push({
+			id,
+			name: text(raw.name),
+			mtime: time(raw.mtime) ?? 0,
+			locality,
+			owner_device: text(raw.owner_device),
+			owner_device_name: text(raw.owner_device_name),
+			reachable: flag(raw.reachable, true),
+			unreachable_reason: text(raw.unreachable_reason),
+			live_state: text(raw.live_state),
+			archived: flag(raw.archived, false),
+		});
+	}
+	return rows;
+}
+
+/* ------------------------------------------------------------ the transfer */
+
+/**
+ * A finished move, in the backend's own words (`TransferReceipt`).
+ *
+ * THE RECEIPT IS THE ONLY THING THAT MAY MOVE A CHIP. Optimistic OWNERSHIP is
+ * refused by design (the plan §3): a move may hold an HTTP request for up to 415 s
+ * and may still be refused after it starts, so painting a conversation on a device
+ * that may never receive it puts a row in front of a user that lies about where
+ * their work is. The GESTURE is optimistic (the chip says `moving…` immediately);
+ * the OUTCOME is this structure or nothing.
+ */
+export type TransferReceipt = {
+	/** Where the session lives NOW: `local` when it landed here. */
+	locality: "local" | "remote";
+	/** The device that holds it now - this device's id when it landed here. */
+	owner_device: string;
+	/** True when the source's copy is gone (a `move`); a `keep` never retires it. */
+	source_retired: boolean;
+	session_id: string;
+	/** The id to OPEN: equal to `session_id` for a move, freshly minted for `keep`. */
+	new_session_id: string;
+	mode: "move" | "keep";
+	/** The phases the move reached, in order, as the backend recorded them. */
+	phases: { phase: string; peer: string; progress: number }[];
+};
+
+/**
+ * A move's receipt, normalised - or `null` when the answer was not one.
+ *
+ * WHY `null` IS THE RIGHT ANSWER FOR A SPARSE RECEIPT rather than a row of
+ * defaults: the store applies this by MOVING A CHIP, and a receipt with no session
+ * id or no `new_session_id` cannot say WHICH chip moved or WHAT to open. Defaulting
+ * through that would move the wrong row or silently point the user at nothing; a
+ * `null` leaves the chip where it is and the caller re-reads the row, which is the
+ * honest state after an answer nobody can act on.
+ */
+export function transferReceipt(value: unknown): TransferReceipt | null {
+	if (!isRecord(value)) return null;
+	const sessionId = text(value.session_id);
+	const newSessionId = text(value.new_session_id) || sessionId;
+	if (!sessionId || !newSessionId) return null;
+	const mode = value.mode === "keep" ? "keep" : "move";
+	return {
+		locality: value.locality === "local" ? "local" : "remote",
+		owner_device: text(value.owner_device),
+		source_retired: flag(value.source_retired, mode === "move"),
+		session_id: sessionId,
+		new_session_id: newSessionId,
+		mode,
+		phases: records(value.phases).map((phase) => ({
+			phase: text(phase.phase),
+			peer: text(phase.peer),
+			progress: typeof phase.progress === "number" ? phase.progress : 0,
+		})),
+	};
+}
+
+/* ------------------------------------------------------------- the refusal */
+
+/**
+ * The move's own unconfirmed codes, mirrored from `_MOVE_UNCONFIRMED_CODES`.
+ *
+ * A REFUSAL AND AN UNKNOWN OUTCOME ARE DIFFERENT INSTRUCTIONS, and conflating them
+ * is how a user retries into a second move of something that already moved. These
+ * three (a relay that went away, a deadline that fired, a peer that stopped
+ * replying after the request arrived) all mean "the request WAS sent and this device
+ * never learned the outcome", so the surface re-reads the row and says so; every
+ * other code means nothing changed and the id is still usable.
+ *
+ * `deadline_exceeded` is here because the APP can produce it itself: the transport's
+ * give-up sentence (`desktopRequestDeadlineDetail`) carries this code, so a move that
+ * outran the app's own deadline is reported as unconfirmed rather than as a refusal
+ * nobody made.
+ */
+const MOVE_UNCONFIRMED_CODES: ReadonlySet<string> = new Set([
+	"relay_unavailable",
+	"deadline_exceeded",
+	"peer_unreachable",
+]);
+
+/** A refusal as the surface must render it: the code, and the author's sentence. */
+export type MeshRefusal = {
+	/** The machine contract: a `MOVE_REFUSAL_CODES` member, or the transport's own. */
+	code: string;
+	/** The route's OWN sentence. Never paraphrased, never composed over. */
+	sentence: string;
+	status: number | null;
+	/** True when the outcome is unknown and the request must not be repeated. */
+	unconfirmed: boolean;
+};
+
+/**
+ * A desktop refusal, as the mesh surfaces read it.
+ *
+ * THE SENTENCE TRAVELS VERBATIM. Every mesh refusal is authored for this surface -
+ * `busy` carries the session's own idle reason, `unreachable` names the device -
+ * and a client that composed its own sentence would be paraphrasing a remedy the
+ * machine already stated. The code is kept BESIDE it because the two answer
+ * different questions: the sentence is for the person, the code decides what the
+ * surface offers next (a `busy` refusal gets "wait for the turn to finish"; a 503
+ * gets "read it again").
+ */
+export function meshRefusal(error: unknown): MeshRefusal {
+	const held = error as {
+		code?: unknown;
+		status?: unknown;
+		message?: unknown;
+	} | null;
+	const code = text(held?.code) || "move_refused";
+	const status = typeof held?.status === "number" ? held.status : null;
+	return {
+		code,
+		sentence: text(held?.message) || "the move was refused",
+		status,
+		// A 503 IS the unconfirmed answer whatever code it carries, and a code with no
+		// status is one this process synthesised (the renderer's own deadline), which is
+		// unconfirmed by definition: nothing here observed the backend.
+		unconfirmed: status === 503 || MOVE_UNCONFIRMED_CODES.has(code),
+	};
+}
+
 /* --------------------------------------------------------------- labels */
 
 /**

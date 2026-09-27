@@ -5843,6 +5843,23 @@ export const STORIES = [
 	["chat-backend-compatibility-banner--unanswered-probe", 860, 240],
 	["chat-backend-compatibility-banner--update-failed", 860, 240],
 	["chat-backend-compatibility-banner--double-control", 860, 240],
+	/*
+	 * SLICE 2'S FRAMES, and the two that matter most are the TRANSIENT ones. A drag
+	 * photographed at its endpoints proves nothing about the state the user actually
+	 * meets: the ghost, the drop indicator and the target's own edge exist only while
+	 * the pointer is in the air, and a first frame that differs from the settled one
+	 * is a reflow the user reads as motion.
+	 */
+	["mesh-tab--device-panel", 1380, 900],
+	["mesh-tab--drag-to-device", 1380, 900],
+	["mesh-tab--drag-refused-over-network", 1380, 900],
+	["mesh-tab--move-confirm", 1380, 900],
+	["mesh-tab--move-refused-busy", 1380, 900],
+	["mesh-tab--move-copy-with-undo", 1380, 900],
+	["mesh-tab--invite-receipt", 1380, 900],
+	// The narrow case, with the panel open: the column and the canvas have to fit
+	// together at the width the app's own sidebar clamps for.
+	["mesh-tab--device-panel", 1024, 768, { dir: "device-panel-narrow" }],
 ];
 
 /**

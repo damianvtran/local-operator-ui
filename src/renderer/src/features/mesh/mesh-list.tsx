@@ -15,10 +15,20 @@
  * from a node to its row has a visible landing point.
  */
 
+import { Button, Separator } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
+import { MoreHorizontal } from "lucide-react";
 import { type FC, useMemo, useState } from "react";
+import {
+	type MoveDestination,
+	SessionMoveMenu,
+	moveDestinations,
+} from "./mesh-card";
 import type { MeshDevice, MeshGraph } from "./mesh-graph";
 import { deviceStatLine } from "./mesh-graph";
+import type { DeviceSessions } from "./mesh-sessions";
+import { deviceSessionTotal } from "./mesh-sessions";
+import type { MeshSessionRow } from "./mesh-types";
 
 /** The orders a reader can ask for, in the order the control offers them. */
 export const MESH_SORTS = ["name", "chats", "state"] as const;
@@ -72,16 +82,68 @@ export function sortDevices(
 	}
 }
 
+/** How many of a device's conversations a LIST row prints before it defers. */
+export const LIST_SESSION_ROWS = 8;
+
+/**
+ * The one fact a list row prints beside a conversation's name.
+ *
+ * DELIBERATELY DIFFERENT FROM THE CHIP'S (`chipFact`): a row already sits under its
+ * device, so repeating "on damians-MacBook-Pro" on every line of a device's own
+ * section says nothing - while "on devon-laptop" says where the conversation actually
+ * lives for a row filed under a network two devices share. `selfLabel` is what the
+ * caller calls the reader's own device, because that name is a fact about the reader
+ * rather than about the wire.
+ */
+function sessionFact(session: MeshSessionRow, selfLabel: string): string {
+	if (session.locality === "local") return session.live_state || "here";
+	const where = session.owner_device_name || selfLabel;
+	const state = session.live_state ? ` \u00b7 ${session.live_state}` : "";
+	return session.reachable
+		? `on ${where}${state}`
+		: `on ${where} (not answering)`;
+}
+
 type MeshListProps = {
 	graph: MeshGraph;
 	nowSeconds: number;
 	selectedDeviceId: string | null;
+	/** What each drawn device holds, joined and capped by `mesh-sessions.ts`. */
+	sessions: ReadonlyMap<string, DeviceSessions>;
+	/** What the reader's own device is called, for a recall's destination label. */
+	selfLabel: string;
+	/** Whether this backend can move a conversation (`features.session_transfer`). */
+	canMove: boolean;
+	/** Open a device: the row is the list's own route to the panel. */
+	onSelect: (deviceId: string) => void;
+	/** A `⋯` choice: resolved by the page, which then asks. */
+	onMove: (
+		session: MeshSessionRow,
+		destination: MoveDestination,
+		keep: boolean,
+	) => void;
+	/** Invite a device to a network: the ONE way a member is admitted. */
+	onInvite: (ask: { deviceId: string; deviceLabel: string }) => void;
+	/** Revoke a membership, from the network it belongs to. */
+	onRemove: (ask: {
+		networkId: string;
+		networkLabel: string;
+		deviceId: string;
+		deviceLabel: string;
+	}) => void;
 };
 
 export const MeshList: FC<MeshListProps> = ({
 	graph,
 	nowSeconds,
 	selectedDeviceId,
+	sessions,
+	selfLabel,
+	canMove,
+	onSelect,
+	onMove,
+	onInvite,
+	onRemove,
 }) => {
 	const [sort, setSort] = useState<MeshSort>("name");
 	/*
@@ -166,6 +228,11 @@ export const MeshList: FC<MeshListProps> = ({
 								(m) => m.networkId === network.id,
 							);
 							const selected = device.id === selectedDeviceId;
+							const held = sessions.get(device.id);
+							const rows = held?.rows ?? [];
+							const total = held
+								? deviceSessionTotal(held, device.sessionCount)
+								: (device.sessionCount ?? 0);
 							return (
 								<li
 									key={device.id}
@@ -178,36 +245,150 @@ export const MeshList: FC<MeshListProps> = ({
 										 * new tint: `row-selected` is the fill of the row the reader is
 										 * currently ON, which is exactly what the canvas selection is.
 										 */
-										"flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-md px-3 py-2",
+										"flex flex-col gap-1 rounded-md px-3 py-2",
 										"border border-hairline bg-surface",
 										selected && "border-ink bg-row-selected",
 									)}
 								>
-									<span className="min-w-0 flex-1 truncate text-body-sm text-ink">
-										{device.label}
-									</span>
 									{/*
-									 * The state IN WORDS on every row (the canvas's stripe and this
-									 * row's badge are one claim): an unreachable device carries the
-									 * backend's own reason, and the resting state carries its stat
-									 * line rather than the word "reachable", which says nothing a
-									 * reader needs on a healthy mesh.
+									 * THE NAME IS THE ROW'S CONTROL, and slice 2 is where it became one:
+									 * a row that could be read but not pressed left the list unable to
+									 * reach the panel, and the panel is where this feature's actions
+									 * live. It is a button rather than a whole-row click because the row
+									 * now CONTAINS controls of its own (the session menus), and a click
+									 * target wrapped around a menu is how a menu press becomes a
+									 * selection.
 									 */}
-									<span
-										className={cn(
-											"shrink-0 text-meta",
-											device.state === "unreachable" && "text-warning",
-											device.state === "suspect" && "text-danger",
-											device.state === "self" && "text-accent",
-											device.state === "reachable" && "text-ink-muted",
-										)}
-									>
-										{deviceStatLine(device, nowSeconds)}
-									</span>
-									<span className="shrink-0 text-meta text-ink-dim">
-										{membership?.role ? `${membership.role} · ` : ""}
-										{membership && !membership.active ? "revoked" : "member"}
-									</span>
+									<div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+										<button
+											type="button"
+											data-mesh-device-open={device.id}
+											onClick={() => onSelect(device.id)}
+											className={cn(
+												"min-w-0 flex-1 truncate text-left text-body-sm text-ink",
+												"hover:text-ink-muted",
+												"focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
+											)}
+										>
+											{device.label}
+										</button>
+										{/*
+										 * The state IN WORDS on every row (the canvas's stripe and this
+										 * row's badge are one claim): an unreachable device carries the
+										 * backend's own reason, and the resting state carries its stat
+										 * line rather than the word "reachable", which says nothing a
+										 * reader needs on a healthy mesh.
+										 */}
+										<span
+											className={cn(
+												"shrink-0 text-meta",
+												device.state === "unreachable" && "text-warning",
+												device.state === "suspect" && "text-danger",
+												device.state === "self" && "text-accent",
+												device.state === "reachable" && "text-ink-muted",
+											)}
+										>
+											{deviceStatLine(device, nowSeconds)}
+										</span>
+										<span className="shrink-0 text-meta text-ink-dim">
+											{membership?.role ? `${membership.role} · ` : ""}
+											{membership && !membership.active ? "revoked" : "member"}
+										</span>
+									</div>
+									{rows.length > 0 ? (
+										<>
+											<Separator className="my-1" />
+											<ul className="m-0 flex list-none flex-col gap-0.5 p-0">
+												{rows.slice(0, LIST_SESSION_ROWS).map((session) => (
+													<li
+														key={session.id}
+														data-mesh-row-session={session.id}
+														className="flex items-center gap-2 py-0.5"
+													>
+														<span className="min-w-0 flex-1 truncate text-meta text-ink-muted">
+															{session.name || session.id}
+														</span>
+														<span className="shrink-0 text-meta text-ink-dim">
+															{sessionFact(session, selfLabel)}
+														</span>
+														<SessionMoveMenu
+															session={session}
+															destinations={moveDestinations(
+																graph.devices,
+																graph.selfDeviceId,
+																session,
+																selfLabel,
+															)}
+															disabled={!canMove}
+															onChoose={(destination, keep) =>
+																onMove(session, destination, keep)
+															}
+															trigger={
+																<MoreHorizontal
+																	aria-hidden="true"
+																	className="size-3.5"
+																/>
+															}
+															triggerLabel={`Move ${session.name || session.id}`}
+														/>
+													</li>
+												))}
+											</ul>
+											{total > rows.slice(0, LIST_SESSION_ROWS).length && (
+												<button
+													type="button"
+													onClick={() => onSelect(device.id)}
+													className="w-fit text-meta text-ink-dim hover:text-ink"
+												>
+													{`show all ${total} in the panel`}
+												</button>
+											)}
+										</>
+									) : (
+										<span className="text-meta text-ink-dim">
+											{total === 0
+												? "no conversations"
+												: `${total} conversations`}
+										</span>
+									)}
+									{(membership?.active || device.state !== "self") && (
+										<div className="flex flex-wrap items-center gap-1">
+											{/* ONE MENU PER ROW, and it is the same component the canvas
+											 * chips open through the panel: a table cannot carry a drag, so
+											 * this is where every move outcome lives for a reader who never
+											 * touches a pointer. */}
+											<Button
+												size="sm"
+												variant="ghost"
+												data-mesh-invite={device.id}
+												onClick={() =>
+													onInvite({
+														deviceId: device.id,
+														deviceLabel: device.label,
+													})
+												}
+											>
+												Invite to a network…
+											</Button>
+											{membership?.active && (
+												<Button
+													size="sm"
+													variant="ghost"
+													data-mesh-remove-member={`${network.id}:${device.id}`}
+													onClick={() =>
+														onRemove({
+															networkId: network.id,
+															networkLabel: network.label,
+															deviceId: device.id,
+															deviceLabel: device.label,
+														})
+													}
+												>
+													Remove from {network.label}…
+												</Button>
+											)}
+										</div>
+									)}
 								</li>
 							);
 						})}
