@@ -4032,7 +4032,20 @@ export class BackendServiceManager {
 
 		// Start new interval
 		this.healthCheckInterval = setInterval(() => {
-			void this.checkBackendHealth();
+			/*
+			 * THE TICK'S PROMISE IS RETURNED RATHER THAN VOIDED.
+			 *
+			 * `setInterval` discards a callback's return value, so nothing about the
+			 * running app changes. What it buys is a harness that drives ONE tick by
+			 * hand - `scripts/daemon-observation.test.mjs` records this callback and
+			 * calls it - can await the probe AND its fold, instead of polling the
+			 * snapshot's `updatedAt` against a wall-clock budget. That poll was a bet
+			 * on machine load and it lost on a 4-vCPU CI runner: the Desktop Tests job
+			 * on `main` failed with `timed out waiting for the tick's probe to be
+			 * folded` after 5055 ms of a 5000 ms budget, on a fold that does happen.
+			 * The tick's own completion is the event; a clock cannot stand in for it.
+			 */
+			return this.checkBackendHealth();
 		}, PROBE_INTERVAL_MS);
 	}
 
