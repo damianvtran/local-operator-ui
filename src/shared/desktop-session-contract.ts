@@ -443,7 +443,9 @@ export type PendingDesktopGate = {
 	 *
 	 * ADDITIVE and OPTIONAL for the same version-skew reason as `recommended`.
 	 * Carried here so the type matches the wire; the secret answer path is the
-	 * composer's masked input, which does not branch on this yet.
+	 * docked card's masked field (`trace/question-dock.tsx`'s `SecretAnswer`,
+	 * posted through `ask-answer.ts`'s `answerGateSecret`), which does not
+	 * branch on this yet.
 	 */
 	persist?: boolean;
 	/**
