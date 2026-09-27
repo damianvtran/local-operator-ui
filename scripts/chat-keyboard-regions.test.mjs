@@ -516,7 +516,7 @@ test("the sidebar is a region, and its door is the row the reader is on", () => 
 	// being kept in step with it by hand.
 	assert.match(
 		sidebarSource,
-		/toggleAttribute\(CHAT_REGION_ENTRY_ATTR, rows\.includes\(row\) && row === target\)/,
+		/toggleAttribute\(\s*CHAT_REGION_ENTRY_ATTR,\s*rows\.includes\(row\) && row === target,?\s*\)/,
 	);
 });
 
