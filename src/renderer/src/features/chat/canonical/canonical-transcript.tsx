@@ -197,6 +197,28 @@ export type CanonicalTranscriptProps = {
 	 */
 	startingAfterId?: string | null;
 	/**
+	 * Whether the admitted send is still in its CREATE hop - no session id yet -
+	 * which is what moves the wait line's label from `waiting for the agent` to
+	 * `starting the session`.
+	 *
+	 * Passed from the page that owns the latch rather than re-derived here: the
+	 * fact is the draft row's `sessionId`, and the page stitched it with the
+	 * latch in the same expression that decided `starting`, so the two cannot
+	 * disagree about which half of the wait is on screen.
+	 */
+	startingSession?: boolean;
+	/**
+	 * When the admitted send was issued (epoch ms), or null when nothing is
+	 * admitted - the anchor the line's clock counts from.
+	 *
+	 * WHY IT IS NOT THIS COMPONENT'S MOUNT. The wait outlives every pane that
+	 * renders it (the flip, a switch away and back), and the clock's contract is
+	 * that the number never restarts under the reader; the anchor is the press's
+	 * own instant, persisted on the draft row. See
+	 * `WorkingLineInput.startingSince`.
+	 */
+	startingSince?: number | null;
+	/**
 	 * The working line to paint, for a surface whose line does NOT come from this
 	 * pane's own live session — today the run panel's child reader.
 	 *
@@ -324,11 +346,16 @@ export type CanonicalTranscriptProps = {
 	 *
 	 * WHY IT TRAVELS AS A RECORD ID (§F3, UX round 1's U4). The failure used to be
 	 * stated by a paragraph above the composer - one register for a whole screen's
-	 * worth of failures - and §F3 moves it onto the message: `Not delivered` with
-	 * the two remedies that resolve it. The address is the transcript's own id
-	 * (`record.id`, the id the durable row will carry if it ever lands), so the
-	 * line cannot attach to a neighbouring turn, and the row that wears it is the
-	 * only one that re-renders when it changes.
+	 * worth of failures - and §F3 moves it onto the message: the class's own
+	 * sentence with the remedies that resolve it. The address is the transcript's
+	 * own id (`record.id`, the id the durable row will carry if it ever lands), so
+	 * the line cannot attach to a neighbouring turn, and the row that wears it is
+	 * the only one that re-renders when it changes.
+	 *
+	 * EVERY POST-PAINT FAILURE wears it now (S4): the store keeps the row and
+	 * classifies the failure on it, so this surface - which the unknown class
+	 * already had - became the one place every class states itself. See
+	 * `UndeliveredTurn` for the copy and control rules.
 	 */
 	undelivered?: UndeliveredTurn | null;
 	/**
@@ -360,16 +387,43 @@ export type CanonicalTranscriptProps = {
 // ---------------------------------------------------------------- rows
 
 /**
- * The two controls §F3's line offers, bound to the message they resolve.
+ * The two controls §F3's line offers, bound to the message they resolve, and
+ * the class's own copy for it.
  *
  * `Send again` re-issues the SAME payload through the composer's own send door
  * (so the store's unchanged-payload guard is satisfied by construction, not by a
- * second code path), and `Edit` puts the payload back in the box - idempotent
- * with the return path the failure already performed - reached from the message
- * the restore is about.
+ * second code path), and `Edit` returns the payload to the box - idempotent
+ * with the act the failure's row already performs - reached from the message the
+ * restore is about.
+ *
+ * GENERALISED FROM THE UNKNOWN CLASS TO EVERY POST-PAINT ONE (S4). For a
+ * failure the STORE classified, the sentence is the class's own
+ * (`sendFailureCopy`'s message, carried on the draft row as `error`) and
+ * `retry` is the same call's verdict on whether a press can work - so this
+ * line no longer states the fixed `Not delivered` over a refusal whose remedy
+ * is an edit, and it no longer offers `Send again` where the daemon would only
+ * refuse again. The reconnect-held claim is the one source with neither fact
+ * (nothing classified it), and it keeps the fixed sentence and both controls.
  */
 export type UndeliveredTurn = {
 	recordId: string;
+	/** The class's sentence, or absent for a claim nothing classified. */
+	message?: string;
+	/** Whether a press can work. Absent means the held claim's rule: it can. */
+	retry?: boolean;
+	/**
+	 * Whether the payload is BACK IN THE COMPOSER unchanged, so this press would
+	 * send the message the box already holds (UX round 1, U4).
+	 *
+	 * The row stays - for an unknowable outcome it IS the message's fate
+	 * statement - but two live affordances for one payload read as two messages.
+	 * Dimmed with `aria-disabled` and a refused click rather than `disabled`,
+	 * for `older-history-slot.tsx`'s own reason: a `disabled` button cannot hold
+	 * focus, and the keyboard reader who just put the payload back in the box is
+	 * the reader most likely to be on this control. Absent means "not disabled",
+	 * so every pre-U4 caller keeps the button as it was.
+	 */
+	retryDisabled?: boolean;
 	onSendAgain: () => void;
 	onEdit: () => void;
 };
@@ -656,15 +710,35 @@ const UserRow = memo(function UserRow({
 								aria-hidden="true"
 								className={cn("size-3.5 shrink-0")}
 							/>
-							Not delivered
+							{undelivered.message ?? "Not delivered"}
 						</span>
-						<button
-							type="button"
-							className={cn("cursor-pointer underline")}
-							onClick={undelivered.onSendAgain}
-						>
-							Send again
-						</button>
+						{undelivered.retry !== false && (
+							<button
+								type="button"
+								/*
+								 * DIMMED, NOT GONE, while the composer holds this payload (UX round
+								 * 1, U4): the row keeps its statement and both controls, and the
+								 * box's own Send is the live affordance for this message until the
+								 * text changes. `aria-disabled` rather than `disabled` - see the
+								 * `UndeliveredTurn.retryDisabled` note.
+								 */
+								aria-disabled={undelivered.retryDisabled || undefined}
+								className={cn(
+									undelivered.retryDisabled
+										? "text-ink-muted"
+										: "cursor-pointer underline",
+								)}
+								onClick={(event) => {
+									if (undelivered.retryDisabled) {
+										event.preventDefault();
+										return;
+									}
+									undelivered.onSendAgain();
+								}}
+							>
+								Send again
+							</button>
+						)}
 						<button
 							type="button"
 							className={cn("cursor-pointer underline")}
@@ -1686,6 +1760,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	waiting,
 	starting,
 	startingAfterId,
+	startingSession,
+	startingSince,
 	workingLine,
 	loadingOlder,
 	onLoadOlder,
@@ -2111,6 +2187,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					foldedPhaseStartedAt: frontend?.activity_phase_started_at,
 					starting,
 					startingAfterId,
+					startingSession,
+					startingSince,
 					gate,
 					// One definition of "this pane is speaking for itself", shared with the
 					// band's own greeting decision rather than a second copy of "the
@@ -2145,6 +2223,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			frontend?.activity_phase_started_at,
 			starting,
 			startingAfterId,
+			startingSession,
+			startingSince,
 			gate,
 			status,
 			failure,
@@ -2341,7 +2421,29 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				)}
 				<div
 					data-lo-transcript-content
-					className={cn("flex flex-col", CHAT_MEASURE)}
+					/*
+					 * `mb-auto` IS THE TOP ANCHOR, and it is a mechanism rather than a nudge.
+					 *
+					 * The scroller above is `flex-col-reverse` (its paging hook, its
+					 * `overflow-anchor` pinning and its top-fade mask are all written against
+					 * that origin), so this column is packed to the main-axis start, which is
+					 * the BOTTOM: short content hugs the composer, and always has. In a
+					 * reversed column the column's physical bottom is the main-start side, so
+					 * an auto margin there absorbs positive free space and pushes the column
+					 * to the top of the scroller - while a column that overflows has no
+					 * positive free space at all, the auto margin resolves to zero, and the
+					 * layout is byte-identical to the bottom-packed one. That "only while it
+					 * fits" behaviour is why this is the design rather than a
+					 * `scrollable`-conditioned `justify-end`, which would need a threshold to
+					 * tune and could oscillate around the fill point.
+					 *
+					 * The empty state is untouched by it: a collapsed pane is `h-0` (see
+					 * `collapsed` above), so there is no free space for a margin to absorb
+					 * and the centred splash is unaffected. And a transcript shorter than the
+					 * pane never scrolls, so the mask stays inert (the ramp note in
+					 * `styles/index.css`).
+					 */
+					className={cn("mb-auto flex flex-col", CHAT_MEASURE)}
 				>
 					{/* The state this element exists for: the frame BEFORE the conversation's
 				    first page, when there is nothing of it to paint yet - either because
