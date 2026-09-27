@@ -1440,6 +1440,14 @@ const STAMP_BINDING_NOTES = [
 	 * still was owed, for the same reason task-17's entry is here.
 	 */
 	"daemonObservationTickWaitRestampNote",
+	/*
+	 * AND THIS LANE'S OWN, the newest top-level record on the branch: its subject
+	 * is this file's binding too - the trace-label mapping moves BOTH trees (the
+	 * op tier and its wiring in `src/`; the suites, the two capture rows and this
+	 * registration in `scripts/`) AND adds two states to two sets whose frames it
+	 * re-captured - so a reader is owed the pair and the four frames it added.
+	 */
+	"traceToolLabelsRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2042,6 +2050,14 @@ const BRANCH_RECORDS = [
 	 * this list exists.
 	 */
 	"daemonObservationTickWaitRestampNote",
+	/*
+	 * And by THIS lane, whose note is the newest top-level record on the branch:
+	 * it states the pair this change ships - both trees moved (the op tier and
+	 * its wiring, the suites and the capture rows) and two states added to two
+	 * sets - so a fold that started from main's copy would drop it first, the
+	 * same reason this list exists.
+	 */
+	"traceToolLabelsRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

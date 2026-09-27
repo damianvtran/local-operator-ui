@@ -133,12 +133,29 @@ export function summaryFromArgs(
 	const name = toolName.trim();
 	if (!args) return name;
 	if (name === "send") return sendSummary(args) || name;
-	let parts = Object.entries(args)
+	/*
+	 * The operation selector is not an object, once a verb table reads it.
+	 *
+	 * `agent({op:"list"})` carries ONE scalar and it is the word the VERB is
+	 * about to say; before the verb was op-aware it was the only thing the row
+	 * had, and passing it through is how the row came to read `Delegated list`
+	 * (operator report, 2026-09-27). For the tools whose verb table is keyed by
+	 * an operation (`TOOL_OP_VERBS`) the selector key is dropped from BOTH
+	 * scans, so the object is the call's subject or nothing - never an echo of
+	 * the verb beside it. `network` spells it `action` and `console` `method`,
+	 * which is why three keys are dropped rather than one; a tool with no op
+	 * table keeps every scalar it sent, MCP tools included, because for those
+	 * the fallback's first two scalars are still the only identity the row has.
+	 */
+	const entries = isOpSelectable(name)
+		? Object.entries(args).filter(([key]) => !OP_ARG_KEYS.has(key))
+		: Object.entries(args);
+	let parts = entries
 		.filter(([key]) => IDENTITY_ARGS.has(key))
 		.map(([, value]) => scalarText(value))
 		.filter(Boolean);
 	if (parts.length === 0) {
-		parts = Object.values(args).map(scalarText).filter(Boolean);
+		parts = entries.map(([, value]) => scalarText(value)).filter(Boolean);
 	}
 	return parts.slice(0, 2).join(" ") || name;
 }
@@ -410,21 +427,32 @@ const CATEGORIES: Record<string, ToolCategory> = {
 	glob: "read",
 	grep: "read",
 	web_fetch: "read",
+	web_read: "read",
 	web_search: "read",
 	browser: "read",
+	lsp: "read",
 	list_variables: "read",
 	read_variable: "read",
 	write: "mutate",
 	edit: "mutate",
 	bash: "exec",
 	eval: "exec",
+	console: "exec",
 	task: "meta",
 	agent: "meta",
+	team: "meta",
 	hub: "meta",
 	todo: "meta",
 	send: "meta",
 	wake: "meta",
 	ask: "meta",
+	wait: "meta",
+	jobs: "meta",
+	secret: "meta",
+	network: "meta",
+	project: "meta",
+	team_delete: "meta",
+	project_delete: "meta",
 };
 
 /**
@@ -474,6 +502,57 @@ export function toolCategory(toolName: string): ToolCategory {
  */
 export type ToolVerb = { settled: string; running: string; named: boolean };
 
+/**
+ * The operation a call SELECTED, when its arguments name one.
+ *
+ * A meta tool with an `op` (or `action`, or `method`) is one tool that does
+ * many jobs, and its name alone cannot say which: `agent` reads a profile just
+ * as readily as it authors one. The row said `Delegated` for all of them,
+ * which is the operator's report of 2026-09-27 - `Delegated list` for a profile
+ * LISTING, and the same three reads counted as three delegated tasks in the
+ * action group's summary - and it is wrong in both directions: nothing was
+ * delegated, and the reader cannot tell an install from a search.
+ *
+ * The token is a NORMALISED lookup key, never copy: the verb tables below
+ * decide what each one says, and an op this build does not know keeps the
+ * tool's generic verb rather than being guessed into a neighbouring claim.
+ * Lowercased and trimmed because the arguments are model-written.
+ */
+export function toolOp(
+	args: Record<string, unknown> | null | undefined,
+): string {
+	if (!args) return "";
+	for (const key of OP_ARG_KEYS) {
+		const value = args[key];
+		if (typeof value === "string" && value.trim()) {
+			return value.trim().toLowerCase();
+		}
+	}
+	return "";
+}
+
+/**
+ * The three spellings the harness uses for "which operation".
+ *
+ * `op` is what the meta tools' own schemas call it (`agent`, `team`, `hub`,
+ * `secret`, `project`, `todo`, `wake`, `jobs`), the network tool spells it
+ * `action` (its CLI's own word), and the console tool `method`. One list rather
+ * than three parameters, because the extraction is the same question however
+ * the schema spells the key.
+ */
+const OP_ARG_KEYS: ReadonlySet<string> = new Set(["op", "action", "method"]);
+
+/**
+ * Whether the operation token is the SELECTOR for this tool - i.e. the row's
+ * verb is about to say it, so `summaryFromArgs` must not also echo it
+ * (`agent({op:"list"})` reads `Listed list` otherwise).
+ */
+const isOpSelectable = (toolName: string): boolean =>
+	Object.prototype.hasOwnProperty.call(
+		TOOL_OP_VERBS,
+		toolName.trim().toLowerCase(),
+	);
+
 const TOOL_VERBS: Record<string, Omit<ToolVerb, "named">> = {
 	bash: { settled: "Ran", running: "Running" },
 	eval: { settled: "Ran Python", running: "Running Python" },
@@ -484,27 +563,196 @@ const TOOL_VERBS: Record<string, Omit<ToolVerb, "named">> = {
 	grep: { settled: "Searched", running: "Searching" },
 	web_search: { settled: "Searched the web", running: "Searching the web" },
 	web_fetch: { settled: "Fetched", running: "Fetching" },
+	web_read: { settled: "Read", running: "Reading" },
 	browser: { settled: "Browsed", running: "Browsing" },
-	todo: { settled: "Updated todos", running: "Updating todos" },
-	wake: { settled: "Scheduled", running: "Scheduling" },
 	list_variables: { settled: "Listed variables", running: "Listing variables" },
 	read_variable: { settled: "Read variable", running: "Reading variable" },
-	task: { settled: "Delegated", running: "Delegating" },
-	agent: { settled: "Delegated", running: "Delegating" },
-	team: { settled: "Delegated", running: "Delegating" },
 	ask: { settled: "Asked", running: "Asking" },
 	send: { settled: "Sent", running: "Sending" },
-	hub: { settled: "Messaged", running: "Messaging" },
+	wait: { settled: "Waited for jobs", running: "Waiting for jobs" },
+	team_delete: { settled: "Deleted team", running: "Deleting team" },
+	project_delete: { settled: "Deleted project", running: "Deleting project" },
 	peer: { settled: "Received", running: "Receiving" },
+	/*
+	 * `task` keeps `Delegated` and it is the only entry that earns it: `task`
+	 * launches a subagent, which IS delegation. `agent`/`team`/`hub` used to sit
+	 * beside it and every one of their calls was counted as a task handed off -
+	 * the operator's report of 2026-09-27, where three agent-profile READS
+	 * painted `Delegated` and folded into `delegated 3 tasks`. They live in
+	 * `TOOL_OP_VERBS` below now, where the operation picks the word.
+	 */
+	task: { settled: "Delegated", running: "Delegating" },
 };
 
 /**
- * The verb for a tool name. Case-insensitive for the reason `toolIcon` is: the
- * name is model-controlled, and a provider that echoes `Bash` must not fall to
- * the generic verb.
+ * The verbs a tool uses when its ARGUMENTS name the operation, keyed by tool
+ * and then by `toolOp`'s normalised token.
+ *
+ * A meta tool is one tool that does many jobs - `agent` reads a profile, finds
+ * one by meaning, authors one, resets one - and the name alone cannot say
+ * which. The static table above said `Delegated` for all eight ops, which is
+ * wrong in both directions: it claims a hand-off that never happened and it
+ * hides what the call actually was. These tables say it per op, in the same
+ * short past/present style as the static ones.
+ *
+ * ONLY operations whose claims differ materially appear. A tool that is honest
+ * with one word for every op stays in `TOOL_VERBS` - and a tool NOT in this
+ * table keeps its `action`/`method` argument in the object column, so adding a
+ * name here is also the switch that stops `summaryFromArgs` echoing the
+ * selector.
+ *
+ * The vocabulary is read from the HARNESS, not invented: the keys are the
+ * `Literal[...]` sets of the running build's own tool schemas (`agent_tool`,
+ * `team_tool`, `secret_tool`, `project_tool`, and `hub`/`jobs`/`wake`/`network`/
+ * `console`/`lsp` in the builtin tool module), so a row can only say an
+ * operation the tool itself accepts.
  */
-export function toolVerb(toolName: string): ToolVerb {
-	const known = TOOL_VERBS[toolName.trim().toLowerCase()];
+const TOOL_OP_VERBS: Record<string, Record<string, Omit<ToolVerb, "named">>> = {
+	agent: {
+		list: { settled: "Listed agents", running: "Listing agents" },
+		show: { settled: "Viewed agent", running: "Viewing agent" },
+		search: { settled: "Searched agents", running: "Searching agents" },
+		install: { settled: "Installed agent", running: "Installing agent" },
+		reset: { settled: "Reset agent", running: "Resetting agent" },
+		create: { settled: "Created agent", running: "Creating agent" },
+		update: { settled: "Updated agent", running: "Updating agent" },
+		sync: { settled: "Synced agents", running: "Syncing agents" },
+	},
+	team: {
+		list: { settled: "Listed teams", running: "Listing teams" },
+		show: { settled: "Viewed team", running: "Viewing team" },
+		create: { settled: "Created team", running: "Creating team" },
+		update: { settled: "Updated team", running: "Updating team" },
+	},
+	hub: {
+		list: { settled: "Listed subagents", running: "Listing subagents" },
+		peek: { settled: "Peeked at", running: "Peeking at" },
+		send: { settled: "Messaged", running: "Messaging" },
+		ask: { settled: "Asked", running: "Asking" },
+		steer: { settled: "Steered", running: "Steering" },
+		pause: { settled: "Paused", running: "Pausing" },
+		cancel: { settled: "Cancelled", running: "Cancelling" },
+		resume: { settled: "Resumed", running: "Resuming" },
+	},
+	secret: {
+		store: { settled: "Stored secret", running: "Storing secret" },
+		retrieve: { settled: "Retrieved secret", running: "Retrieving secret" },
+		list: { settled: "Listed secrets", running: "Listing secrets" },
+		describe: { settled: "Described secret", running: "Describing secret" },
+		update: { settled: "Updated secret", running: "Updating secret" },
+		delete: { settled: "Deleted secret", running: "Deleting secret" },
+	},
+	project: {
+		list: { settled: "Listed projects", running: "Listing projects" },
+		show: { settled: "Viewed project", running: "Viewing project" },
+		create: { settled: "Created project", running: "Creating project" },
+		update: { settled: "Updated project", running: "Updating project" },
+		// `link`/`unlink` act on the session named in the object, so the verb
+		// carries the direction - `Linked session to myproject` reads as the
+		// sentence it is, where a bare `Linked myproject` would not.
+		link: { settled: "Linked session to", running: "Linking session to" },
+		unlink: {
+			settled: "Unlinked session from",
+			running: "Unlinking session from",
+		},
+		milestone: { settled: "Updated milestone", running: "Updating milestone" },
+	},
+	todo: {
+		// `view` is a read; every other op changes the list, which is the claim
+		// the five share.
+		view: { settled: "Read todos", running: "Reading todos" },
+		init: { settled: "Updated todos", running: "Updating todos" },
+		add: { settled: "Updated todos", running: "Updating todos" },
+		done: { settled: "Updated todos", running: "Updating todos" },
+		block: { settled: "Updated todos", running: "Updating todos" },
+		drop: { settled: "Updated todos", running: "Updating todos" },
+	},
+	wake: {
+		create: { settled: "Scheduled", running: "Scheduling" },
+		list: { settled: "Listed wakes", running: "Listing wakes" },
+		cancel: { settled: "Cancelled wake", running: "Cancelling wake" },
+	},
+	jobs: {
+		list: { settled: "Listed jobs", running: "Listing jobs" },
+		peek: { settled: "Peeked at", running: "Peeking at" },
+		cancel: { settled: "Cancelled job", running: "Cancelling job" },
+	},
+	network: {
+		// The reads first, each naming its own subject because the object column
+		// is empty for a call that addresses the whole device or network.
+		status: {
+			settled: "Checked network status",
+			running: "Checking network status",
+		},
+		ls: { settled: "Listed networks", running: "Listing networks" },
+		show: { settled: "Viewed network", running: "Viewing network" },
+		peers: {
+			settled: "Listed network peers",
+			running: "Listing network peers",
+		},
+		log: { settled: "Read network log", running: "Reading network log" },
+		doctor: { settled: "Diagnosed network", running: "Diagnosing network" },
+		// Then the trust-changing six, in the CLI's own vocabulary: `init`
+		// creates, `invite` mints a token, `member_rm` removes a device,
+		// `disconnect` leaves, `panic` rotates every member's secret.
+		init: { settled: "Created network", running: "Creating network" },
+		invite: { settled: "Invited device", running: "Inviting device" },
+		join: { settled: "Joined network", running: "Joining network" },
+		member_rm: { settled: "Removed device", running: "Removing device" },
+		disconnect: { settled: "Left network", running: "Leaving network" },
+		panic: { settled: "Raised panic", running: "Raising panic" },
+	},
+	console: {
+		// `console` is the pane's own noun (its aria labels read "Close
+		// console", "New console"), so the rows use it too.
+		list: { settled: "Listed consoles", running: "Listing consoles" },
+		create: { settled: "Opened console", running: "Opening console" },
+		status: { settled: "Checked console", running: "Checking console" },
+		read: { settled: "Read console", running: "Reading console" },
+		screenshot: { settled: "Captured console", running: "Capturing console" },
+		input: { settled: "Typed in console", running: "Typing in console" },
+		keys: { settled: "Sent keys", running: "Sending keys" },
+		resize: { settled: "Resized console", running: "Resizing console" },
+		// The switch toggles both ways; `secured` would be a one-way claim, and
+		// `input` is the pane's own word for it ("Secure input").
+		secure: {
+			settled: "Updated secure input",
+			running: "Updating secure input",
+		},
+		close: { settled: "Closed console", running: "Closing console" },
+	},
+	lsp: {
+		// Every lsp action is read-only (`tools/lsp.py`: `rename_preview`
+		// computes the edits a rename WOULD make), so all four are reads.
+		definitions: { settled: "Found definition", running: "Finding definition" },
+		references: { settled: "Found references", running: "Finding references" },
+		symbols: { settled: "Listed symbols", running: "Listing symbols" },
+		rename_preview: {
+			settled: "Previewed rename",
+			running: "Previewing rename",
+		},
+	},
+};
+
+/**
+ * The verb for a tool name, and for its operation when the tool has an op
+ * tier. Case-insensitive for the reason `toolIcon` is: the name is
+ * model-controlled, and a provider that echoes `Bash` must not fall to the
+ * generic verb.
+ *
+ * An op-aware tool with NO known operation - a composing call, a row whose
+ * arguments the transcript did not keep, or an op newer than this table - takes
+ * the GENERIC verb and keeps its name at the head of the object, exactly like a
+ * tool the table has never heard of. That is the honest direction: `Called
+ * agent foo` claims only that the call happened, while any op-specific verb
+ * would be a guess about what it did.
+ */
+export function toolVerb(toolName: string, op?: string | null): ToolVerb {
+	const name = toolName.trim().toLowerCase();
+	const token = (op ?? "").trim().toLowerCase();
+	const byOp = token ? TOOL_OP_VERBS[name]?.[token] : undefined;
+	if (byOp) return { ...byOp, named: true };
+	const known = TOOL_VERBS[name];
 	if (known) return { ...known, named: true };
 	return { settled: "Called", running: "Calling", named: false };
 }
@@ -536,8 +784,9 @@ export function toolRowLabel(
 	summary: string,
 	summaryFallback: string | null,
 	running: boolean,
+	op = "",
 ): ToolRowLabel {
-	const verb = toolVerb(toolName);
+	const verb = toolVerb(toolName, op);
 	const bare = isBareToolName(summary, toolName)
 		? (summaryFallback ?? "")
 		: summary;

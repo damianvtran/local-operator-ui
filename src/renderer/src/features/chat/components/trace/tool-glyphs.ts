@@ -31,6 +31,7 @@ import {
 	Inbox,
 	ListChecks,
 	type LucideIcon,
+	Monitor,
 	Plug,
 	Search,
 	Send,
@@ -46,10 +47,15 @@ const MCP_PREFIX = "mcp__";
 /**
  * The table, in the TUI's own order so the two can be diffed by eye.
  *
- * `eval`, `hub`, `ask` and `team` are deliberately absent from the TUI's table
- * and take its default wrench; they are absent here for the same reason. Giving
- * them an icon would be a divergence rather than an improvement — the
- * operator's own screenshot shows a wrench beside `team`.
+ * `eval`, `hub`, `ask`, `team`, `lsp`, `wait`, `jobs`, `secret`, `network`,
+ * `project`, `web_read` and the two `*_delete` tools are deliberately absent
+ * from the TUI's table and take its default wrench; they are absent here for
+ * the same reason. Giving them an icon would be a divergence rather than an
+ * improvement — the operator's own screenshot shows a wrench beside `team`.
+ * The one entry this table had fallen behind on is `console`, which the TUI
+ * DOES map (`glyphs.py`: nf-fa-desktop, deliberately a different noun from
+ * `bash`'s terminal - a terminal running inside the app rather than the shell
+ * this process runs), so it is mirrored here as the desktop-shaped `Monitor`.
  */
 const TOOL_ICONS: Record<string, LucideIcon> = {
 	bash: Terminal,
@@ -63,6 +69,7 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
 	list_variables: Tag,
 	read_variable: Tag,
 	browser: Globe,
+	console: Monitor,
 	web_search: Globe,
 	web_fetch: Download,
 	task: Users,
