@@ -1554,6 +1554,26 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"foldOntoA9f4b1d7f4Note",
 	/*
+	 * AND THE REMEDIATION ROUND'S OWN: round 1's fix moves BOTH trees again -
+	 * `src/` for the one commission entry point (clear, cancel, invalidate)
+	 * with its generation guard and the account row's `min-w-0`, `scripts/`
+	 * for the two suites that pin and measure them plus this file's own
+	 * registrations - and rewrites no frame of the sweep (the re-shot design
+	 * frames are PNG walks under the `account-foot-refresh` set), so a reader
+	 * is owed the two values it binds and the reason no still was owed.
+	 */
+	"accountFootRemediationRestampNote",
+	/*
+	 * AND THIS BRANCH'S OWN (folded in beside it): the account-foot refresh moves
+	 * BOTH trees this file binds - `src/` for the two completion call sites that
+	 * commission the account read on a Radient credential write and the clear
+	 * that lets the re-read be disclosed as "checking", `scripts/` for the three
+	 * suites that pin and measure them - and rewrites no frame of the sweep (its
+	 * evidence is a pair of PNG walks, declared as `account-foot-refresh`), so a
+	 * reader is owed the two values it binds and the reason no still was owed.
+	 */
+	"accountFootRefreshRestampNote",
+	/*
 	 * AND THIS LANE'S OWN, the newest top-level record on the branch: its subject
 	 * is this file's binding too - the trace-label mapping moves BOTH trees (the
 	 * op tier and its wiring in `src/`; the suites, the two capture rows and this
@@ -2218,6 +2238,17 @@ const BRANCH_RECORDS = [
 	 * fold writes one, and the same completeness reason stands.
 	 */
 	"foldOntoA9f4b1d7f4Note",
+	/*
+	 * And this branch's own record, folded in beside it: the account-foot
+	 * refresh writes one top-level note, registered here for the same
+	 * completeness reason.
+	 */
+	"accountFootRefreshRestampNote",
+	/*
+	 * And the remediation round's record rides beside it - a restamp after the
+	 * round's own changes writes one, and the same completeness reason stands.
+	 */
+	"accountFootRemediationRestampNote",
 	/*
 	 * And by THIS lane, whose note is the newest top-level record on the branch:
 	 * it states the pair this change ships - both trees moved (the op tier and

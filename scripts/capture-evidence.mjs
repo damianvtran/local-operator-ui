@@ -4032,6 +4032,20 @@ export const STORIES = [
 	["agent-hub-page--focused-search", 1280, 900],
 	["agent-hub-page--narrow-columns", 920, 900],
 	/*
+	 * The organization surfaces (local-operator-ui PR H, design §8.4). Four states,
+	 * all of them unreachable by hand on a working machine: an org scope needs an
+	 * organization with a plan, a lapsed plan needs a subscription to lapse, and a
+	 * revoked membership cannot be revoked from the app. That is what a story is
+	 * for — and each frame carries a claim the source alone cannot show (the badge
+	 * naming the organization, a card footer with no heart, "no access" rendered as
+	 * a state rather than as the outage panel, and a roster with a pull action).
+	 */
+	["agent-hub-page--org-scope-selected", 1280, 900],
+	["agent-hub-page--org-teams", 1280, 900],
+	["agent-hub-page--org-empty", 1280, 900],
+	["agent-hub-page--org-plan-lapsed", 1280, 900],
+	["agent-hub-page--org-access-revoked", 1280, 900],
+	/*
 	 * The chat sidebar's Agents section, at the width that column actually is:
 	 * the frame is the 360px panel inside a little ground, because the section is
 	 * three rows and an action, and a 1280px frame of it would be a picture of the
@@ -4206,6 +4220,15 @@ export const STORIES = [
 	["agents-publish-dialog--moderation-unavailable", 980, 860],
 	["agents-publish-dialog--published", 980, 860],
 	["agents-publish-dialog--update-listing", 980, 860],
+	/*
+	 * The publication target (design §8.4), photographed with the picker OPEN: a
+	 * Radix `SelectContent` renders only while the select is open, so a closed
+	 * picker would show the trigger and nothing about the organizations behind it —
+	 * and the disabled, plan-blocked option is the half a reader is most likely to
+	 * get wrong.
+	 */
+	["agents-publish-dialog--target-org-available", 980, 860],
+	["agents-publish-dialog--target-org-blocked-only", 980, 860],
 	/*
 	 * The pull's four outcomes, each one real toast from the real hook against a
 	 * stubbed transport, held open with `toastDuration: Infinity` because an

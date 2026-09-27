@@ -27,6 +27,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AgentTagsAndCategories } from "./components/agent-tags-and-categories";
 import { CommentsSection } from "./components/comments-section";
+import { OrgOriginBadge } from "./components/org-origin-badge";
 import { useAgentDetailsQuery } from "./hooks/use-agent-details-query";
 import { useAgentFavouriteMutation } from "./hooks/use-agent-favourite-mutation";
 import { useAgentLikeMutation } from "./hooks/use-agent-like-mutation";
@@ -36,6 +37,7 @@ import {
 } from "./hooks/use-agent-statuses-query";
 import { useDelistAgentMutation } from "./hooks/use-delist-agent-mutation";
 import { useDownloadAgentMutation } from "./hooks/use-download-agent-mutation";
+import { useMembershipsQuery } from "./hooks/use-memberships-query";
 
 /*
  * Like and favourite carry the `danger` and `warning` hues when active.
@@ -84,6 +86,35 @@ export const AgentDetailsPage: React.FC = () => {
 		agentId: agentId ?? "",
 		enabled: !!agentId,
 	});
+
+	/*
+	 * Whether this row lives in an organization's private workspace (§1.5), read
+	 * from the RECORD rather than from the route the reader arrived by: this page is
+	 * addressable directly, and a row's visibility is a property of the row.
+	 *
+	 * Declared here, above every consumer, because the viewer-state read below is
+	 * gated on it — and deliberately NOT derived from a route param or a scope the
+	 * navigation may or may not have carried.
+	 */
+	const isOrgRow = agent?.visibility === "org";
+
+	/*
+	 * The org origin badge's name (§8.4). From the memberships this app already
+	 * reads for the hub's scope selector, so this is a cache hit on every path that
+	 * came through the hub, and `null` — a badge that says less — when the viewer
+	 * holds no membership row for the org the document names.
+	 */
+	/*
+	 * Read ONLY for an org row (agent review round 1, n2): the answer is consumed by
+	 * `orgName` below, which is null for a public row, so a public agent's details
+	 * page was spending a memberships read whose result nothing on that page
+	 * rendered. The hook's own auth gate stays; this adds the row's half.
+	 */
+	const { memberships } = useMembershipsQuery({ enabled: isOrgRow });
+	const orgName = isOrgRow
+		? (memberships.find((row) => row.tenant_id === agent?.tenant_id)
+				?.tenant_name ?? null)
+		: null;
 	/*
 	 * One batched read for this one agent's viewer state, rather than the two
 	 * per-agent reads it used to make. Same op as the grid's, so the two surfaces
@@ -97,7 +128,12 @@ export const AgentDetailsPage: React.FC = () => {
 		isFetching: viewerStateIsFetching,
 		refetch: refetchViewerState,
 	} = useAgentStatusesQuery({
-		agentIds: agentId ? [agentId] : [],
+		/*
+		 * Empty for an org row, which disables the read on the hook's own rule: the
+		 * two controls this read feeds are public-only and are not rendered for an
+		 * org row (§4.4), so asking would be a round trip whose answer nothing shows.
+		 */
+		agentIds: agentId && !isOrgRow ? [agentId] : [],
 	});
 	/*
 	 * The same unknown state the grid renders, for the same reason: this read is
@@ -273,65 +309,85 @@ export const AgentDetailsPage: React.FC = () => {
 						</AvatarFallback>
 					</Avatar>
 					{/* Matches the PageHeader title step used on other routes */}
-					<h1 className="truncate text-display text-ink">{agent.name}</h1>
+					<div className="flex min-w-0 items-center gap-2">
+						<h1 className="truncate text-display text-ink">{agent.name}</h1>
+						{/*
+						 * The org origin badge (§8.4). This page is reachable by URL, so the
+						 * scope the reader arrived from is not knowable here: the badge is what
+						 * tells them the row is an organization's and why the public-only actions
+						 * are absent rather than broken.
+						 */}
+						{isOrgRow && <OrgOriginBadge orgName={orgName} />}
+					</div>
 				</div>
 				<div className="flex shrink-0 items-center gap-1">
-					<Tooltip
-						content="Sign in to Radient to use this feature"
-						disabled={isAuthenticated}
-					>
-						<span>
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={handleLikeToggle}
-								disabled={
-									!isAuthenticated ||
-									likeMutation.isPending ||
-									!viewerStateKnown
-								}
-								aria-label={
-									!viewerStateKnown
-										? "Like state unavailable"
-										: isLiked
-											? "Unlike agent"
-											: "Like agent"
-								}
-								className={cn(isLiked && "text-danger")}
+					{/*
+					 * LIKE AND FAVOURITE ARE PUBLIC-ONLY INTERACTIONS (§4.4): the hub answers
+					 * 404 to them on an org row, so on an org row this page renders neither the
+					 * control nor its count. The comment thread below is hidden for the same
+					 * reason — a comment on a row only one organization can see is a public
+					 * interaction on a private document.
+					 */}
+					{!isOrgRow && (
+						<>
+							<Tooltip
+								content="Sign in to Radient to use this feature"
+								disabled={isAuthenticated}
 							>
-								<Heart fill={isLiked ? "currentColor" : "none"} />
-								<CountDisplay>{likeCount}</CountDisplay>
-							</Button>
-						</span>
-					</Tooltip>
-					<Tooltip
-						content="Sign in to Radient to use this feature"
-						disabled={isAuthenticated}
-					>
-						<span>
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={handleFavouriteToggle}
-								disabled={
-									!isAuthenticated ||
-									favouriteMutation.isPending ||
-									!viewerStateKnown
-								}
-								aria-label={
-									!viewerStateKnown
-										? "Favourite state unavailable"
-										: isFavourited
-											? "Unfavourite agent"
-											: "Favourite agent"
-								}
-								className={cn(isFavourited && "text-warning")}
+								<span>
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={handleLikeToggle}
+										disabled={
+											!isAuthenticated ||
+											likeMutation.isPending ||
+											!viewerStateKnown
+										}
+										aria-label={
+											!viewerStateKnown
+												? "Like state unavailable"
+												: isLiked
+													? "Unlike agent"
+													: "Like agent"
+										}
+										className={cn(isLiked && "text-danger")}
+									>
+										<Heart fill={isLiked ? "currentColor" : "none"} />
+										<CountDisplay>{likeCount}</CountDisplay>
+									</Button>
+								</span>
+							</Tooltip>
+							<Tooltip
+								content="Sign in to Radient to use this feature"
+								disabled={isAuthenticated}
 							>
-								<Star fill={isFavourited ? "currentColor" : "none"} />
-								<CountDisplay>{favouriteCount}</CountDisplay>
-							</Button>
-						</span>
-					</Tooltip>
+								<span>
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={handleFavouriteToggle}
+										disabled={
+											!isAuthenticated ||
+											favouriteMutation.isPending ||
+											!viewerStateKnown
+										}
+										aria-label={
+											!viewerStateKnown
+												? "Favourite state unavailable"
+												: isFavourited
+													? "Unfavourite agent"
+													: "Favourite agent"
+										}
+										className={cn(isFavourited && "text-warning")}
+									>
+										<Star fill={isFavourited ? "currentColor" : "none"} />
+										<CountDisplay>{favouriteCount}</CountDisplay>
+									</Button>
+								</span>
+							</Tooltip>
+						</>
+					)}
 					<Tooltip content="Download agent to your computer">
 						<span>
 							<Button
@@ -354,7 +410,7 @@ export const AgentDetailsPage: React.FC = () => {
 						</span>
 					</Tooltip>
 
-					{isOwner && (
+					{isOwner && !isOrgRow && (
 						<Tooltip content="Permanently delist this agent from Agent hub">
 							<span>
 								<Button
@@ -381,7 +437,7 @@ export const AgentDetailsPage: React.FC = () => {
 			 * its own. It stands down while an ACTION's failure is on screen, so the
 			 * two sentences never stack.
 			 */}
-			{isAuthenticated && viewerStateFailed && !failedAction && (
+			{isAuthenticated && viewerStateFailed && !failedAction && !isOrgRow && (
 				/*
 				 * `<output>` rather than a `div` with `role="status"`: the element
 				 * carries that role itself, which is why a measurement of the `role`
@@ -459,7 +515,14 @@ export const AgentDetailsPage: React.FC = () => {
 
 			<Separator className="my-6" />
 
-			<CommentsSection agentId={agent.id} />
+			{/*
+			 * The thread is a PUBLIC-ONLY interaction (§4.4): the hub answers 404 to a
+			 * comment on an org row, and the listing route for a row only one
+			 * organization can see is not a listing. So an org row has no thread rather
+			 * than an empty one — an empty thread would claim nobody had commented on a
+			 * document nobody outside the org can comment on.
+			 */}
+			{!isOrgRow && <CommentsSection agentId={agent.id} />}
 
 			{/*
 			 * Not `ConfirmationModal`, because the confirm button here carries a
