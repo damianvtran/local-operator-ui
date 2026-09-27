@@ -1,0 +1,73 @@
+[build] current: assets 2026-09-27T19:55:18.512Z >= sources 2026-09-27T19:53:07.382Z
+[note] abandoned scratch trees
+        3 seen, 0 owned by a live pid (kept), 3 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        out/renderer/index.html: http://127.0.0.1:6546 added to frame-src and media-src (build output only; src/ untouched)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/drafts-clear-on-send
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-75510
+  frames        /Users/damian/.local-operator/sessions/b86dd4c5ed19/scratchpad/drafts-evidence/rig/frames-r2-after
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-75510/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:6546   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/drafts-clear-on-send/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:6546","backend":"http://127.0.0.1:6546"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:6546)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[note] the seeded rows, as the section lists them
+        ["[redacted]","draft:7d7d7d7d-0003-4000-8000-000000000003","draft:6c6c6c6c-0002-4000-8000-000000000002","draft:5b5b5b5b-0001-4000-8000-000000000001"]
+[PASS] all four untargeted drafts are rows, the live hop included
+[PASS] the targeted draft is deliberately not a row
+[PASS] at rest the discard control exists but spends nothing (hidden)
+[note] the discard control under the pointer
+        {"display":"flex","width":24,"disabled":false}
+[PASS] the pointer reveals the discard control
+[PASS] the reveal moves no row: the hovered row's height is the height at rest
+[note] the live hop's discard control
+        {"display":"flex","width":24,"disabled":true}
+[PASS] the live hop's control is revealed and disabled
+[PASS] a press on it moves nothing: the in-flight row is still there
+[PASS] the press removes the row it names
+[PASS] the other rows stay, the live hop included
+[PASS] and the composer's own row for that key goes with it, so it cannot resurface
+[PASS] the caret lands on a row rather than the document
+[PASS] the discard stands an undo offer in the lane
+[PASS] Undo puts the row back
+[PASS] and its composer row with it
+[PASS] and the offer itself retires
+[note] the composer after opening the draft
+        "This session seems to be wedged, can you check it"
+[PASS] opening the draft puts its text in the composer
+[PASS] the open draft's row goes
+[PASS] and the pane keeps a composer: no dead end
+[PASS] a fresh draft is staged in its place
+[PASS] Undo returns the text to its own key
+[PASS] Clear all removes every settled row and only those
+[PASS] the section stays open for the live hop
+[PASS] the targeted draft is NOT touched (it is not one of the listed rows)
+[PASS] and its composer row survives too
+[PASS] the batch offer names the count that moved
+[PASS] a relaunch does not resurrect the discarded drafts
+[PASS] the live-hop row was never discarded, so it is still there
+[PASS] and the offer does not outlive the app
+[PASS] every settled capture is a frame the app held still for, with no toast on it
+[PASS] the offer frames hold the offer, stable
+[PASS] no process from this run outlived its boot
+
+frames: drafts-cleared.png, drafts-deleted-open.png, drafts-deleted.png, drafts-hover.png, drafts-pending-disabled.png, drafts-relaunch.png, drafts-rest.png, drafts-undo-restored.png
+frames directory: /Users/damian/.local-operator/sessions/b86dd4c5ed19/scratchpad/drafts-evidence/rig/frames-r2-after
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-75510/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-75510 (the frames are also in --out)
+
+ALL CHECKS PASSED
