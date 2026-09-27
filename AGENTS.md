@@ -146,6 +146,23 @@ touches `scripts/`, that stamp cannot include the edit until the edit is committ
 so the order is commit, derive, write the values in, `--amend` - the amendment moves
 `docs/` only, and the value written stays true.
 
+**A note must not quote `srcTree`/`scriptsTree`.** A note that names the pair binds
+itself to a hash that every content commit moves, so every re-stamp has to rewrite
+each note that names it: 128 values in `docs/evidence/manifest.json` quote a token
+(measured 2026-09-27), and that is what spreads a two-line re-stamp across nineteen
+merge regions of a 2.5 MB file. Write a pass's identity as the bare SHAs the pass
+itself read (`git rev-parse HEAD:src` at that commit), which is what the sentence
+needs and does not move when a sibling branch lands; the file's own
+`srcTree`/`scriptsTree` pair stays the file's only statement of the binding.
+`scripts/evidence-manifest.test.mjs` fails a note that quotes a token and names the
+key - mechanically, with no lease, inside `pnpm test:desktop`. The notes that
+already do are carried in that file's frozen `LEGACY_STAMP_QUOTING_NOTES` ledger:
+it may shrink as each is repaired in a `docs/`-only re-stamp, a fold that RENAMES
+a note carries the new name into it in the same commit, and it may never gain a
+name, because a new binding is the defect the assertion exists for. The convention
+it replaces - `STAMP_BINDING_NOTES`, which held its members to the pair the file
+SHIPS - is what kept those notes bound across every fold.
+
 ### Re-stamp in a commit that moves `docs/` and nothing else
 
 A stamp has to be read *after* the commit that ships it exists. A working tree has
