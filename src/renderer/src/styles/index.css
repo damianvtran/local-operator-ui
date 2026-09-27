@@ -675,9 +675,9 @@
 	 */
 	--shadow-overlay: var(--lo-overlay-shadow);
 
-	/* ---- the installer window's one animation -----------------------------
+	/* ---- the installer window's two animations ----------------------------
 	 * The first screen a new user sees, and the only place in the app that
-	 * animates on mount. It follows ONE rule that the rest of this file states in
+	 * animates on mount. Both follow ONE rule that the rest of this file states in
 	 * two places already: the RESTING state is the `to` keyframe, so a document
 	 * that never paints - or a user whose `prefers-reduced-motion` lands the
 	 * animation on its final frame via the cap below - sees the finished state
@@ -689,17 +689,41 @@
 	 * would look like the window repainting, and neither property can move a
 	 * sibling.
 	 *
+	 * `turn` is the panel's two working marks - the rail's head mark, and the
+	 * running step's own marker - and it is the APP'S OWN indeterminate grammar
+	 * (`Spinner`: a hairline ring with a single `accent` quadrant, where the gap is
+	 * what makes a rotation legible) rather than a cadence invented here. Three
+	 * properties of it are deliberate and load-bearing:
+	 *
+	 *   - 1.8s per turn, not `Spinner`'s 1s. This mark turns for the minutes an
+	 *     install takes rather than for the length of a request, and it is the one
+	 *     animation on this screen a user may sit and watch.
+	 *   - `linear` and `infinite`: an eased turn would imply an end the mark does
+	 *     not know.
+	 *   - it animates `transform` ALONE. An opacity breath spends contrast, and in
+	 *     the light themes its trough took the running ring below the waiting rings
+	 *     it has to be told apart from (design D3, measured at 2.88:1 against
+	 *     3.51:1). A turn is at full accent in every phase, so the mark that says
+	 *     "working" is never the faintest thing in the column - and `transform`,
+	 *     unlike a width, cannot move a sibling.
+	 *
 	 * THERE IS NO SWEEP KEYFRAME HERE ANY MORE, deliberately. A travelling segment
 	 * used to carry the state where no step has been announced, and that state's own
 	 * reduced-motion parking is what retired it: parked anywhere on the rail it spans
 	 * a marker on each side of itself, and an accent rule joining two steps is a
 	 * determinate claim about them (measured in the frame). The unannounced state is
-	 * now a short accent stub arriving at the rail's head, breathing with the
-	 * placeholder cadence below - the same gesture the running step's marker makes,
-	 * so this window needs no keyframe of its own.
+	 * now the same ring the running step draws, at the rail's head, so this window
+	 * needs no third keyframe.
 	 */
 	--animate-install-enter: install-enter var(--duration-slow) ease-out-quart
 		both;
+	--animate-install-turn: install-turn 1.8s linear infinite;
+
+	@keyframes install-turn {
+		to {
+			transform: rotate(360deg);
+		}
+	}
 
 	@keyframes install-enter {
 		from {
