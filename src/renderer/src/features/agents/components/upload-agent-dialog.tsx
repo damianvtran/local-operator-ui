@@ -1021,7 +1021,5 @@ const availabilityLine = (availability: {
 	}
 };
 
-/** The label each treatment action carries (contract §6.2). */
-
 /** Re-exported so a story can build the same dialog with mocked inputs. */
 export type { UploadAgentDialogProps };

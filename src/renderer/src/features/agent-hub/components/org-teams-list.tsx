@@ -1,10 +1,12 @@
 import {
 	PUBLICATION_ACTION_LABEL,
+	type PublicationAction,
 	publicationTreatment,
 } from "@features/agents/utils/publication-failure";
 import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
 import { isPublicationError } from "@shared/api/local-operator/publication-errors";
 import type { HubTeam } from "@shared/api/radient/types";
+import { RadientAuthButtons } from "@shared/components/auth/radient-auth-buttons";
 import {
 	Alert,
 	AlertDescription,
@@ -16,6 +18,30 @@ import { useMemo, useState } from "react";
 import { useOrgTeamsQuery } from "../hooks/use-org-teams-query";
 import { useTeamPullMutation } from "../hooks/use-team-pull-mutation";
 import { orgRefusalFromError } from "../org-access";
+
+/**
+ * The treatment actions this surface can HONOUR, and nothing else.
+ *
+ * A control that does something other than its label is worse than no control
+ * (copy review round 2's C8, and the agent review's R-2): the table's actions were
+ * authored against the publish dialog, where `sign-in` opens a credential panel
+ * and `retry` resubmits the same publication. A pull is not a publication, so each
+ * action is mapped to the act this roster can actually perform:
+ *
+ * - `refresh-hub` re-reads the roster, which is what the sentence beside it means;
+ * - `retry` re-pulls the SAME team, which is what "Try again" means here;
+ * - `sign-in` reveals the shared `RadientAuthButtons` panel — the same control the
+ *   dialog uses, because the hub refused a credential and re-running the Radient
+ *   sign-in is the one thing that replaces it.
+ *
+ * Anything else (a publish-only remedy) is not rendered: the body still names the
+ * step in words, and a button that lied about it would not.
+ */
+const ROSTER_ACTIONS: readonly PublicationAction[] = [
+	"refresh-hub",
+	"retry",
+	"sign-in",
+];
 
 /**
  * The org scope's team roster, with the one action v1 gives it (design §8.4:
@@ -58,6 +84,8 @@ export const OrgTeamsList: React.FC<{
 	const [failedTeamId, setFailedTeamId] = useState<string | null>(null);
 	/** The row whose pull is in flight, so only that row reports it. */
 	const [pullingTeamId, setPullingTeamId] = useState<string | null>(null);
+	/** Whether the shared re-sign-in panel is open in place of the action row. */
+	const [reauthenticating, setReauthenticating] = useState(false);
 
 	/*
 	 * A CODED pull refusal renders through the same treatment table the publish
@@ -76,9 +104,32 @@ export const OrgTeamsList: React.FC<{
 				message: pull.error.message,
 				details: pull.error.details,
 			},
-			{ name: failed?.name ?? "this team", hubAgentId: null },
+			// `surface: "pull"`: the table is shared with the publish dialog, and its
+			// verb-bearing bodies must name the act this surface performed (C7).
+			{ name: failed?.name ?? "this team", hubAgentId: null, surface: "pull" },
 		);
 	}, [pull.error, failedTeamId, teams]);
+
+	/*
+	 * One action, one act. `default` renders nothing at all (see ROSTER_ACTIONS):
+	 * the refusal's own sentence is the instruction, and a publish-only remedy
+	 * pressed here would refetch a list instead of doing what it says.
+	 */
+	const runTreatmentAction = (action: PublicationAction, team: HubTeam) => {
+		switch (action) {
+			case "refresh-hub":
+				void refetch();
+				break;
+			case "retry":
+				handlePull(team);
+				break;
+			case "sign-in":
+				setReauthenticating(true);
+				break;
+			default:
+				break;
+		}
+	};
 
 	const handlePull = (team: HubTeam) => {
 		if (pull.isPending) return;
@@ -258,16 +309,37 @@ export const OrgTeamsList: React.FC<{
 												pull.error?.message ??
 												`"${team.name}" could not be pulled.`}
 										</output>
-										{pullTreatment?.actions.map((action) => (
-											<Button
-												key={action}
-												variant="primary"
-												size="sm"
-												onClick={() => void refetch()}
-											>
-												{PUBLICATION_ACTION_LABEL[action]}
-											</Button>
-										))}
+										{pullTreatment?.actions
+											.filter((action) => ROSTER_ACTIONS.includes(action))
+											.map((action) => (
+												<Button
+													key={action}
+													variant="primary"
+													size="sm"
+													onClick={() => runTreatmentAction(action, team)}
+												>
+													{PUBLICATION_ACTION_LABEL[action]}
+												</Button>
+											))}
+										{reauthenticating && (
+											/*
+											 * The `hub_unauthorized` remedy, and the same control the publish
+											 * dialog reveals for it: the credential the hub refused is replaced
+											 * by re-running the Radient sign-in, and the roster has no other
+											 * surface that can do it.
+											 */
+											<div className="mt-1" data-testid="org-team-pull-reauth">
+												<RadientAuthButtons
+													titleText="Sign in again"
+													descriptionText=""
+													onSignInSuccess={() => {
+														setReauthenticating(false);
+														setFailedTeamId(null);
+														void refetch();
+													}}
+												/>
+											</div>
+										)}
 									</div>
 								)}
 							</div>

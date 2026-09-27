@@ -562,8 +562,16 @@ export const AgentHubPage: React.FC = () => {
 					 * because the fact is about the BACKEND and not about the records.
 					 */}
 					{orgNotice && (
+						/*
+						 * `warning`, not `info` (design review round 2, D5): this notice
+						 * belongs to the app's "needs a newer backend" family, and every other
+						 * member of it — backend settings, MCP, Radient sign-in, projects —
+						 * renders `warning`. It also carries the pairing sentence verbatim
+						 * when the cause is a pairing fact, and the banner states that one at
+						 * `warning`; one fact in two registers reads as two facts.
+						 */
 						<Alert
-							variant="info"
+							variant="warning"
 							className="mb-3 max-w-2xl"
 							data-testid="agent-hub-org-unavailable"
 						>

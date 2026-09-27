@@ -1484,11 +1484,6 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	/*
-	 * The same refinement `agent.publish` carries, and it is deliberately spelled
-	 * out rather than shared: the two schemas are separate members of the union, so
-	 * a shared predicate would still have to be attached twice, and a reader of
-	 * either arm should see the rule without following a reference.
-	 */ /*
 	 * Pulling a published organization team into this machine's local registry
 	 * (§4.5/§8.4's "list + pull action").
 	 *
@@ -2262,7 +2257,9 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 		if (request.op !== "agent.publish" && request.op !== "agent.republish") {
 			return;
 		}
-		if ((request.visibility === "org") !== (request.tenantId !== undefined)) {
+		// The same presence test the composer's assert uses (S-2): one predicate for
+		// "is this half specified", so the two boundaries cannot disagree.
+		if (Boolean(request.visibility === "org") !== Boolean(request.tenantId)) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message:
@@ -3610,7 +3607,17 @@ function assertPairedPublicationTarget(request: {
 	visibility?: "org";
 	tenantId?: string;
 }): void {
-	if ((request.visibility === "org") !== (request.tenantId !== undefined)) {
+	/*
+	 * ONE PREDICATE WITH THE SCHEMA'S, AND A PRESENCE TEST RATHER THAN A DEFINED
+	 * TEST (security review round 2, S-2). `!== undefined` read `""` as "present"
+	 * while the composition below reads it as "absent" -- the assert passed and the
+	 * query was dropped, which is the same silent public publication S-1 closed for
+	 * the undefined half. `Boolean` makes the two halves agree on what "a tenant"
+	 * is, so an empty string throws like a missing one. `""` is unreachable from
+	 * the renderer (`id` is `min(1)`), which is why this is the second boundary's
+	 * promise rather than a live hole.
+	 */
+	if (Boolean(request.visibility === "org") !== Boolean(request.tenantId)) {
 		throw new Error(
 			'A publication target needs both `visibility: "org"` and `tenantId`, or neither: one half would publish to the public hub.',
 		);
