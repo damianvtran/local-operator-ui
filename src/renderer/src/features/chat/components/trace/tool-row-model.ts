@@ -43,6 +43,20 @@ const IDENTITY_ARGS = new Set([
 ]);
 
 /**
+ * The string spellings of True its own validator accepts, case-insensitively.
+ *
+ * Measured against the running build's pydantic (2.13.5) via the tool's own
+ * params class: `true`, `1`, and - any case, with no surrounding whitespace -
+ * `"true" | "yes" | "y" | "t" | "on" | "1"` all reach the op as True; a
+ * padded `" true "` is a validation ERROR rather than a spelling, which is why
+ * the caller lowercases without trimming. The falsy spellings need no set:
+ * "not truthy" is exactly what the row composes as the update, and that is
+ * also what a rejected spelling gets, for lack of anything the branches can
+ * claim about a call the tool refused.
+ */
+const TRUTHY_FLAG_SPELLINGS = new Set(["true", "yes", "y", "t", "on", "1"]);
+
+/**
  * The arguments whose BARE scalar reads wrong, and how the object renders them.
  *
  * The fallback scan below is the TUI's "every scalar" rule, and for most names
@@ -50,10 +64,14 @@ const IDENTITY_ARGS = new Set([
  * label's design round 1: `hub.peek`'s `steps` prints `3` with no unit - "3"
  * could be a step index, a message count or a byte size (D1) - and `wait`'s
  * timeout prints as a second bare number beside the job id (`9360 600000`
- * reads as two ids; the second is ten minutes in milliseconds, D5). Keyed by
- * tool AND argument because the meaning is the ARGUMENT's: a `steps` on some
- * other tool would not be steps, and `jobs.peek` carries no such count, so it
- * keeps its scalar.
+ * reads as two ids; the second is ten minutes in milliseconds, D5). Both
+ * arguments arrive as numeric STRINGS in the wild too (`16` calls with a
+ * string `steps` in 36 h of transcripts; the tools' lax ints accept them), so
+ * `numberFrom` feeds the renderers either spelling - a string the tools only
+ * reject is left to the scalar axis untouched (review round 2, QA Q1b).
+ * Keyed by tool AND argument because the meaning is the ARGUMENT's: a `steps`
+ * on some other tool would not be steps, and `jobs.peek` carries no such
+ * count, so it keeps its scalar.
  *
  * Applied only in the fallback scan: when identity arguments gave the object,
  * the call's subject is already named and these renderers are not the subject.
@@ -63,10 +81,12 @@ const ARG_RENDERINGS: Record<
 	Record<string, (value: unknown) => string>
 > = {
 	hub: {
-		steps: (value) =>
-			typeof value === "number" && Number.isInteger(value) && value >= 0
-				? `${value} ${value === 1 ? "step" : "steps"}`
-				: "",
+		steps: (value) => {
+			const n = numberFrom(value);
+			return n !== null && Number.isInteger(n) && n >= 0
+				? `${n} ${n === 1 ? "step" : "steps"}`
+				: "";
+		},
 	},
 	wait: {
 		/*
@@ -75,12 +95,33 @@ const ARG_RENDERINGS: Record<
 		 * is the renderer's - an id and a SPAN joined by a bare space read as two
 		 * ids (D5).
 		 */
-		wait_ms: (value) =>
-			typeof value === "number" && value > 0
-				? `· ${formatDuration(value / 1000)}`
-				: "",
+		wait_ms: (value) => {
+			const n = numberFrom(value);
+			return n !== null && n > 0 ? `· ${formatDuration(n / 1000)}` : "";
+		},
 	},
 };
+
+/**
+ * The number a renderer can format, from either spelling the tool accepts.
+ *
+ * The tools' pydantic fields are lax, so `"3"` and `"600000"` execute exactly
+ * like their numbers - recorded in the wild for `hub.peek` (`16` calls with a
+ * string `steps` in 36 h of transcripts, review round 2 QA Q1b). A renderer
+ * that demanded `typeof value === "number"` let those spellings fall through
+ * to the bare scalar and relit D1/D5's ambiguity for every one of them. This
+ * is the one coercion both renderers share; non-numeric strings (and anything
+ * that is not a finite number) answer null, so the scalar axis keeps them
+ * untouched rather than guessing a unit for them.
+ */
+function numberFrom(value: unknown): number | null {
+	if (typeof value === "number") return Number.isFinite(value) ? value : null;
+	if (typeof value === "string" && value !== "") {
+		const parsed = Number(value);
+		return Number.isFinite(parsed) ? parsed : null;
+	}
+	return null;
+}
 
 /** The minted prefix every MCP tool name carries. */
 const MCP_PREFIX = "mcp__";
@@ -596,17 +637,27 @@ export function toolOp(
 			 * token, so the verb table can say which way the call went; the flag is
 			 * the tool's own vocabulary, not a guess.
 			 *
-			 * The spellings are the ones the tool ITSELF accepts, not only the bare
-			 * boolean: pydantic coerces `"true"` and `1` to True before the op runs
-			 * (measured against the generation's own interpreter - review round 1,
-			 * R1-3), so those spellings REMOVE the milestone and must compose the
-			 * same token. `false`, `0` and `"false"` stay updates.
+			 * The spellings are the FULL set the tool itself accepts, not only the
+			 * bare boolean: pydantic 2.13.5 coerces `true`, `1`, and - any case -
+			 * `"true"`, `"yes"`, `"y"`, `"t"`, `"on"`, `"1"` to True before the op
+			 * runs (measured against the generation's own interpreter; the flag
+			 * half of review round 2 QA Q1 - `"yes"` REMOVES in the wild), so each
+			 * of those spellings must compose the removal token. `false`, `0` and
+			 * every falsy string stay updates, as they run.
+			 *
+			 * There is deliberately no trim: pydantic REJECTS `" true "` (and
+			 * `"true "`, `" true"`) while accepting the untrimmed spellings, so a
+			 * padded value never removed anything and must not claim one. It falls
+			 * to the update token like any other spelling outside the set - a
+			 * rejected call's row is a display guess neither branch can settle
+			 * (QA noted it; nothing composes a removal on a guess).
 			 */
 			const remove = args.remove;
 			const removes =
 				remove === true ||
 				remove === 1 ||
-				(typeof remove === "string" && remove.trim().toLowerCase() === "true");
+				(typeof remove === "string" &&
+					TRUTHY_FLAG_SPELLINGS.has(remove.toLowerCase()));
 			if (token === "milestone" && removes) {
 				return "milestone-remove";
 			}
