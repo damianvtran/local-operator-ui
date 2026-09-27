@@ -596,6 +596,261 @@ check "empty list: rc is 0" "0" "$rc"
 check "empty list: no output" "" "$out"
 
 # ---------------------------------------------------------------------------
+# The workflow guard: the deployment switch must stay wired.
+# ---------------------------------------------------------------------------
+# WHY: reconcile.sh's tests cannot see the workflow file, and on 2026-09-27 the
+# `reconcile` job's "Check the provider key" step read `${RADIENT_API_KEY:-}`
+# with no mapping anywhere in its scope — so every scheduled sweep took the
+# disabled-with-a-warning path and the engine was inert while the secret WAS
+# configured (lo run 36322977510 / ui run 36322896985). This scan is the guard
+# for that class: a step that reads the key, with nothing mapping
+# `secrets.RADIENT_API_KEY` into its environment.
+#
+# CONTRACT: for every step whose block reads RADIENT_API_KEY, a
+# `secrets.RADIENT_API_KEY` mapping must be in scope — on the step itself or on
+# its job — via an `env:` block. Prints `OK`, or one `FAIL: …` line per
+# problem; no network, no `gh`.
+#
+# HELPDESK_WORKFLOW=<path> overrides the scanned file (default: this repo's
+# `.github/workflows/helpdesk.yml`). That is how the guard is demonstrated RED:
+# point it at a copy of the pre-fix YAML (or one with the mapping stripped) and
+# the run must report a FAIL and exit non-zero.
+#
+# LIMITS — it is an indentation-based scan of the workflow's committed style,
+# not a YAML parser. It understands: indent-2 jobs; indent-6 `- ` steps; an
+# `env:` mapping of the exact scalar
+# `RADIENT_API_KEY: ${{ secrets.RADIENT_API_KEY }}` (spacing/quotes tolerated)
+# at indent 6 under a job `env:` or indent 10 under a step `env:`; and reads
+# written as `$RADIENT_API_KEY` / `${RADIENT_API_KEY…}` anywhere in the step
+# block. It can NOT see flow-style maps (`env: {RADIENT_API_KEY: …}`), folded
+# (`>-`) values, a mapping moved under `defaults:`, re-indented files, or
+# reads written without a `$`; a reformat must teach the scan the new shape.
+# It errs strict, never silent: an action-input (`with:`) mapping is not env
+# scope, a `$RADIENT_API_KEY` mentioned in a step comment counts as a read,
+# and a file where no step reads the key at all is reported as vacuous — a
+# guard that matches nothing must not pass.
+workflow_file="${HELPDESK_WORKFLOW:-$here/../../workflows/helpdesk.yml}"
+
+# The scan itself, from a heredoc so its quoting is exact. See the limits above.
+cat > "$tmp/workflow-key-scope.awk" <<'AWK'
+BEGIN {
+  injobs = 0          # inside the `jobs:` section?
+  have_job = 0; job = ""
+  jobmap = 0          # job env maps the secret (indent-6 line under an `env:`)
+  job_env_open = 0
+  si = 0              # steps in the current job
+  step_env_open = 0
+  nreaders = 0; nproblems = 0
+}
+
+function flush_job(   i, nm) {
+  if (!have_job) return
+  for (i = 1; i <= si; i++) {
+    if (sread[i]) {
+      nreaders++
+      if (!jobmap && !smap[i]) {
+        nm = (sname[i] == "") ? "(unnamed step)" : sname[i]
+        printf "FAIL: job '%s': step '%s' reads RADIENT_API_KEY but no secrets.RADIENT_API_KEY mapping is in scope (step or job env)\n", job, nm
+        nproblems++
+      }
+    }
+  }
+  si = 0; jobmap = 0; job_env_open = 0; step_env_open = 0; have_job = 0
+  delete sname; delete sread; delete smap
+}
+
+{
+  body = $0; ind = 0
+  while (substr(body, 1, 1) == " ") { ind++; body = substr(body, 2) }
+
+  if (!injobs) {
+    if (body == "jobs:") injobs = 1
+    next
+  }
+
+  # The jobs section ends at the next column-0 KEY. Blank lines and column-0
+  # comments (both common between jobs) must not end it.
+  if (ind == 0 && body != "" && body !~ /^#/) { flush_job(); injobs = 0; next }
+
+  # A job starts at indent 2 with `name:`.
+  if (ind == 2 && body ~ /^[A-Za-z0-9_.-]+:[ \t]*$/) {
+    flush_job()
+    job = body; sub(/:.*/, "", job)
+    have_job = 1
+    next
+  }
+
+  if (!have_job) next
+
+  # Track an open job-level `env:` block (indent 4).
+  if (ind == 4) { job_env_open = (body ~ /^env:[ \t]*$/) ? 1 : 0 }
+
+  # Job-level mapping: indent 6, directly under the job `env:`.
+  if (ind == 6 && job_env_open && body ~ /^["]?RADIENT_API_KEY["]?[ \t]*:[ \t]*["]?[$][{][{][ \t]*secrets[.]RADIENT_API_KEY[ \t]*[}][}]/) {
+    jobmap = 1; next
+  }
+
+  # A step starts at indent 6 with "- ".
+  if (ind == 6 && substr(body, 1, 2) == "- ") {
+    si++
+    sname[si] = ""; sread[si] = 0; smap[si] = 0
+    step_env_open = 0
+    rest = substr(body, 3)
+    if (rest ~ /^name:[ \t]*/) { sname[si] = rest; sub(/^name:[ \t]*/, "", sname[si]) }
+    if (rest ~ /[$][{]?RADIENT_API_KEY/) sread[si] = 1
+    next
+  }
+
+  # Step body: track the step `env:` (indent 8) and everything at indent >= 8.
+  if (ind >= 8 && si > 0) {
+    if (ind == 8) {
+      step_env_open = (body ~ /^env:[ \t]*$/) ? 1 : 0
+      if (body ~ /^name:[ \t]*/) { sname[si] = body; sub(/^name:[ \t]*/, "", sname[si]) }
+    }
+    # Step-level mapping: indent 10, directly under the step `env:`.
+    if (ind == 10 && step_env_open && body ~ /^["]?RADIENT_API_KEY["]?[ \t]*:[ \t]*["]?[$][{][{][ \t]*secrets[.]RADIENT_API_KEY[ \t]*[}][}]/) smap[si] = 1
+    if (body ~ /[$][{]?RADIENT_API_KEY/) sread[si] = 1
+  }
+}
+
+END {
+  flush_job()
+  if (nreaders == 0) {
+    printf "FAIL: no RADIENT_API_KEY-reading step found in %s — the scan is vacuous (wrong file, or the reads moved out of the scan's shape)\n", FILENAME
+    nproblems++
+  }
+  if (nproblems == 0) printf "OK\n"
+}
+AWK
+
+workflow_key_scope() { # <workflow-file>: prints OK, or FAIL: … lines.
+  local file="$1"
+  if [ ! -f "$file" ]; then
+    printf 'FAIL: workflow file not found: %s\n' "$file"
+    return 0
+  fi
+  awk -f "$tmp/workflow-key-scope.awk" "$file"
+}
+
+check "workflow guard: every RADIENT_API_KEY-reading step has the secret in scope" \
+  "OK" "$(workflow_key_scope "$workflow_file")"
+
+# ---------------------------------------------------------------------------
+# The workflow guard, part 2: the engagement's helpdesk surface comes from the
+# default branch — the overlay step must exist and sit between the PR checkout
+# and the team install.
+# ---------------------------------------------------------------------------
+# WHY: the engagement job checks out `refs/pull/<n>/merge` and reads its
+# surface (prompts, team, roles, setup.sh) from that checkout. A merge ref
+# computed before a helpdesk change carries the old surface and none of the
+# new files — on 2026-09-27 a verdict engagement crashed on exactly that
+# (`cat: .github/helpdesk/prompts/pr-verdict.md: No such file or directory`,
+# lo run 36329557453), and a review engagement would silently run pre-change
+# prompts and team. The overlay step is the fix; this scan is the guard that
+# it exists, runs after the PR checkout, runs before `setup.sh` installs the
+# surface, and still replaces the checkout's copy with the default branch's.
+#
+# CONTRACT: in the `review` job of the workflow, a step named `Overlay the
+# helpdesk surface from the default branch` appears exactly once, its line
+# sits after `Check out the pull request` and before `Install the helpdesk
+# team and roles into the runner's lop config`, and its body carries the
+# fetch, the wholesale removal, and the restore commands. Prints `OK`, or one
+# `FAIL: …` line per problem; no network, no `gh`.
+#
+# HELPDESK_WORKFLOW=<path> overrides the scanned file (same as part 1 above).
+#
+# LIMITS: textual, like part 1 — it reads the `review` job block by indentation
+# and step order from line numbers; it does not parse YAML, resolve `if:`
+# expressions, or notice anything about a step whose name it does not match,
+# and a reformat (re-indent, rename, folded/one-line step bodies) must teach
+# the scan the new shape. A file where the step is missing is reported as a
+# FAIL, never a vacuous OK.
+cat > "$tmp/workflow-surface-scope.awk" <<'AWK'
+BEGIN { in_job = 0; in_overlay_body = 0; ovn = 0 }
+{
+  body = $0; ind = 0
+  while (substr(body, 1, 1) == " ") { ind++; body = substr(body, 2) }
+
+  # Job keys sit at indent 2 (`review:` etc.); only the review job is scanned.
+  if (ind == 2 && body ~ /^[A-Za-z0-9_.-]+:[ \t]*$/) {
+    job = body; sub(/:.*/, "", job)
+    in_job = (job == "review")
+    in_overlay_body = 0
+    next
+  }
+  if (!in_job) next
+
+  # A step starts at indent 6 with `- `; the next step ends an open body.
+  if (ind == 6 && substr(body, 1, 2) == "- ") {
+    in_overlay_body = 0
+    rest = substr(body, 3)
+    name = ""
+    if (rest ~ /^name:[ \t]*/) { name = rest; sub(/^name:[ \t]*/, "", name) }
+    if (name == "Check out the pull request") checkout = NR
+    else if (name == "Overlay the helpdesk surface from the default branch") {
+      ovn++; overlay = NR; in_overlay_body = 1
+    }
+    else if (name == "Install the helpdesk team and roles into the runner's lop config") setup = NR
+    next
+  }
+
+  # The overlay step's body — its `run:` block — until the next step above.
+  if (in_overlay_body && ind >= 8) obody = obody body "\n"
+}
+END {
+  prob = 0
+  if (ovn == 0) {
+    print "FAIL: no `Overlay the helpdesk surface from the default branch` step in the review job"
+    prob++
+  } else if (ovn > 1) {
+    print "FAIL: the overlay step appears " ovn " times in the review job"
+    prob++
+  }
+  if (ovn == 1) {
+    if (!checkout) {
+      print "FAIL: no `Check out the pull request` step in the review job — cannot order the overlay against it"
+      prob++
+    } else if (!(checkout < overlay)) {
+      print "FAIL: the overlay step does not sit after `Check out the pull request`"
+      prob++
+    }
+    if (!setup) {
+      print "FAIL: no `Install the helpdesk team and roles into the runner's lop config` step in the review job — cannot order the overlay against it"
+      prob++
+    } else if (!(overlay < setup)) {
+      print "FAIL: the overlay step does not sit before the team install"
+      prob++
+    }
+    if (index(obody, "git fetch --depth=1 origin main") == 0) {
+      print "FAIL: the overlay step does not fetch the default branch (`git fetch --depth=1 origin main`)"
+      prob++
+    }
+    if (index(obody, "rm -rf .github/helpdesk") == 0) {
+      print "FAIL: the overlay step does not replace the surface wholesale (`rm -rf .github/helpdesk`)"
+      prob++
+    }
+    if (index(obody, "git checkout FETCH_HEAD -- .github/helpdesk") == 0) {
+      print "FAIL: the overlay step does not restore from the default branch (`git checkout FETCH_HEAD -- .github/helpdesk`)"
+      prob++
+    }
+  }
+  if (prob == 0) print "OK"
+}
+AWK
+
+workflow_surface_scope() { # <workflow-file>: prints OK, or FAIL: … lines.
+  local file="$1"
+  if [ ! -f "$file" ]; then
+    printf 'FAIL: workflow file not found: %s\n' "$file"
+    return 0
+  fi
+  awk -f "$tmp/workflow-surface-scope.awk" "$file"
+}
+
+check "workflow guard: the helpdesk surface overlay exists, sits between the PR checkout and the team install, and restores from the default branch" \
+  "OK" "$(workflow_surface_scope "$workflow_file")"
+
+# ---------------------------------------------------------------------------
 
 echo
 if [ "$fails" -eq 0 ]; then
