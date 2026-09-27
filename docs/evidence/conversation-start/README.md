@@ -24,7 +24,7 @@ suites named there, unchanged.
 | `after/dead-create/`, `after/dead-create-reload/` | The tap KILLED the create's socket inside the press window (`POST /__tap/kill-creates`): the row keeps its place and the failure's statement (`Couldn't reach Local Operator. Your message may not have been sent.` with both controls), the composer stays empty, and the sidebar still lists the chat; the reload brings the row back. | U2: a create that dies in the hop leaves the message with a row, a statement and a sidebar presence - not only a reload. |
 | `after/away-press/`, `after/away/`, `after/return/` | A second message pressed with its POST held by the tap for 60 s; the run elsewhere; the return with the in-flight row and `waiting for the agent 5s` (reads at the return's capture: 5s/5s - the number counts from the away press's 0s, across the trip). The unread-mark toast ("The unread mark was not cleared. Click the chat to try again.") is up in `away/` (and in the neighbouring `away-mid-failure/`) - see "What these frames do not prove". | T5: away/back keeps the row and the true elapsed. |
 | `after/away-mid-failure/` | A refusal raised on a LIVE-SESSION send (not a New chat), then a switch-away and back: the row keeps `Not delivered` · `Send again` · `Edit`, the wait line stays absent (`line: null`). | T5 for the general boundary rule: a post-paint failure is the row's wherever it was raised, and leaving the pane does not re-state it as in flight. |
-| `after/away-failure-refusal/`, `after/away-failure-return/` | UX round 2's U5, staged end to end (`--scene conversation-start-away-failure`): a first send refused after the paint, the reader leaves to another chat, and comes back to the chat. THIS run's return took the session's own route, because the sidebar had not painted the chat's row inside the driver's wait (the catalogue lag) - the `return via` note names the path each run took, and the earlier take's sidebar-row walk is the same pane resolution; no frame is captioned as a walk it did not make. Before the fix this return read `waiting for the agent 14s` with `controls: []` and `undelivered: null`; the shipped frames read `Not delivered` · `Send again` · `Edit` and `line: null` at both moments (`controls: ["Send again","Edit"]`, `undelivered: "Not deliveredSend againEdit"` at both the refusal and the return, same row id), and the refusal's own glance shows no duplicated `Draft:` row for the chat (`draftRows: []`; U6's fix - the chat's session row itself had not been painted at that glance either, which is the lag the fallback note records). | U5 + U6: the return is not a state falsehood, and the just-refused chat stays reachable from the list. |
+| `after/away-failure-refusal/`, `after/away-failure-return/` | UX round 2's U5, staged end to end (`--scene conversation-start-away-failure`): a first send refused after the paint, the reader leaves to another chat, and comes back to the chat. THIS run's return took the session's own route, because the sidebar had not painted the chat's row inside the driver's wait (the catalogue lag) - the `return via` note names the path each run took, and the earlier take's sidebar-row walk is the same pane resolution; no frame is captioned as a walk it did not make. Before the fix this return read `line: null` with `controls: []` and `undelivered: null` (the shipped `before/away-failure.log`); the shipped frames read `Not delivered` · `Send again` · `Edit` and `line: null` at both moments (`controls: ["Send again","Edit"]`, `undelivered: "Not deliveredSend againEdit"` at both the refusal and the return, same row id), and the refusal's own glance shows no duplicated `Draft:` row for the chat (`draftRows: []`; U6's fix - the chat's session row itself had not been painted at that glance either, which is the lag the fallback note records). | U5 + U6: the return is not a state falsehood, and the just-refused chat stays reachable from the list. |
 | `before/press/` | The pre-change press: `rows 0`, the composer holding the text (`"Summarise yesterday's QA run."`), no wait line. | The state this change removes. |
 | `before/flip/` | The row appears only with the create's answer, at `rowTops [678]` (packed over the composer), and the clock **starts** there: `waiting for the agent 0s`. | The pre-change flip: bottom-packed and a restarted clock. |
 | `before/failure/`, `before/reload/` | The same failure moment and the same reload: the payload returns to the composer (`"A refusal the owner raises after the paint."`) and, at the failure, the composer's own alert (`Couldn't confirm … Retry Clear`) stands beside the row's `Not delivered · Send again · Edit`; the reload finds no row at all (`controls: []`, `undelivered: null`) and keeps the text in the box. | The two-homes contradiction the boundary rule removes, and #495's keep-it-in-the-composer behaviour for the post-paint arm. |
@@ -53,8 +53,9 @@ suites named there, unchanged.
   the composer with `Couldn't confirm your message was sent. Sending it again is
   safe.RetryClear` as the composer's alert.
 - **J5 one continuous clock.** After: `starting the session 0s` (press) →
-  `waiting for the agent 3s` (flip) → `waiting for the agent 4s` (+1s), each
-  frame's number read on both sides of its capture; the away trip reads 0s (the
+  `waiting for the agent 3s` (flip), the
+  frame's number read on both sides of its capture (the +1s companion is not
+  shipped: the answer landed inside its one-second window in both takes); the away trip reads 0s (the
   press) → 5s (the return), one number carried across the leave and back.
   Before: the flip's line starts at `waiting for the agent 0s` and the return
   restarts it - two clocks, not one.
@@ -160,9 +161,8 @@ named after the frame's own label (the first-send sizes map to
   app's own unread-mark surface reacting to the rig's sidebar clicks. Its own
   note is on `away-mid-failure` (`toastFree: false`, `toastWaitMs` 4847 - the
   toast outlived the capture's bounded wait); `away` is a raw capture, which
-  carries no toast fields, and the corner crops of `away-press` and `return`
-  are empty. It is left in rather than waited out - no claim above is read from
-  the toast's area.
+  carries no toast fields. It is left in rather than waited out - no claim
+  above is read from the toast's area.
 - **Not the model gate.** A press that beats the model's resolution can still
   clear the box with the composer's own refusal (QA round 1's note, reproducible
   on the base tree): the scene presses after the pane's own target chips settle,
