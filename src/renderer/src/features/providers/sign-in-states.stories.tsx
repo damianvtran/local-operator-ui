@@ -50,6 +50,17 @@ import type {
 } from "../../../../shared/desktop-contract";
 import { ProviderGrid } from "./provider-grid";
 
+/*
+ * The plays below query by role and accessible name, and several share the
+ * same pattern; biome's `useTopLevelRegex` wants a literal hoisted once it is
+ * reused, so these are named rather than re-written per play.
+ */
+const SIGN_IN_AGAIN = /Sign in again/;
+const API_KEY_TAB = /API key/;
+const API_KEY_LABEL = /API key/i;
+const SIGN_IN_RADIENT = /Sign in: Radient/;
+const SAVE_BUTTON = /Save/;
+
 const SUGGESTIONS: Record<string, { id: string; name: string }> = {
 	anthropic: { id: "claude-opus-5-5", name: "Claude Opus 5.5" },
 	openai: { id: "gpt-6-astra", name: "GPT-6 Astra" },
@@ -744,7 +755,7 @@ export const PanelRefusedVerdict: Story = {
 			await screen.findByRole("button", { name: "Manage Radient" }),
 		);
 		await userEvent.click(
-			await screen.findByRole("menuitem", { name: /Sign in again/ }),
+			await screen.findByRole("menuitem", { name: SIGN_IN_AGAIN }),
 		);
 		await startIfIdle("succeeded");
 	},
@@ -910,7 +921,7 @@ export const PanelSucceededWithDefault: Story = {
 			await screen.findByRole("button", { name: "Manage Anthropic" }),
 		);
 		await userEvent.click(
-			await screen.findByRole("menuitem", { name: /Sign in again/ }),
+			await screen.findByRole("menuitem", { name: SIGN_IN_AGAIN }),
 		);
 		await startIfIdle("succeeded");
 	},
@@ -949,14 +960,18 @@ const OPTS_KEY_REFUSED: BridgeOptions = {
 /** The key route's settled view, stating the refusal the row states. */
 export const PanelKeyRefusedVerdict = panelStory(
 	OPTS_KEY_REFUSED,
-	/Sign in: Radient/,
+	SIGN_IN_RADIENT,
 	async () => {
-		await userEvent.click(await screen.findByRole("tab", { name: /API key/ }));
+		await userEvent.click(
+			await screen.findByRole("tab", { name: API_KEY_TAB }),
+		);
 		await userEvent.type(
-			await screen.findByLabelText(/API key/i),
+			await screen.findByLabelText(API_KEY_LABEL),
 			"sk-test-key",
 		);
-		await userEvent.click(await screen.findByRole("button", { name: /Save/ }));
+		await userEvent.click(
+			await screen.findByRole("button", { name: SAVE_BUTTON }),
+		);
 	},
 	"radient",
 );
