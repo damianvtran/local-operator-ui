@@ -481,7 +481,16 @@ test("no chat row carries a tabIndex prop, so the roving stop is the only writer
 		4,
 		`the sidebar declares ${props.length} tabIndex prop(s); the sanctioned four are the nav's door, the two row acts (applyRowStop owns the rows) and the chats scroller's own -1 (U16)`,
 	);
-	assert.match(sidebarSource, /row\.tabIndex = row === target \? 0 : -1;/);
+	/*
+	 * AND THE RING'S OWN EXCLUSION (agent review round 2's R7): a row the caret
+	 * cannot reach is not a stop, so `applyRowStop` filters the unreachable rows
+	 * out of the ring's set AND refuses them `tabIndex` 0 - a `disabled` row can
+	 * neither hold the stop nor re-enter the ring through this loop.
+	 */
+	assert.match(
+		sidebarSource,
+		/row\.tabIndex = rows\.includes\(row\) && row === target \? 0 : -1;/,
+	);
 	assert.match(
 		sidebarSource,
 		/id=\{CHAT_REGION_ID\}[\s\S]{0,600}?tabIndex=\{-1\}/,
@@ -507,7 +516,7 @@ test("the sidebar is a region, and its door is the row the reader is on", () => 
 	// being kept in step with it by hand.
 	assert.match(
 		sidebarSource,
-		/toggleAttribute\(CHAT_REGION_ENTRY_ATTR, row === target\)/,
+		/toggleAttribute\(CHAT_REGION_ENTRY_ATTR, rows\.includes\(row\) && row === target\)/,
 	);
 });
 
