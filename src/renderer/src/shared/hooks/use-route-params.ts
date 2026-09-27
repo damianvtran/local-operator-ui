@@ -67,6 +67,7 @@ export const useCurrentView = ():
 	| "settings"
 	| "schedules"
 	| "projects"
+	| "mesh"
 	| "browser" => {
 	const currentPath = getCurrentPath();
 
@@ -96,6 +97,10 @@ export const useCurrentView = ():
 
 	if (pathIncludes(currentPath, "/browser")) {
 		return "browser";
+	}
+
+	if (pathIncludes(currentPath, "/mesh")) {
+		return "mesh";
 	}
 
 	// Default to chat if no match
