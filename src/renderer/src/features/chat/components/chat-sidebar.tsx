@@ -7016,8 +7016,20 @@ export function ChatSidebar({
 				 * sidebar renders on every route while the strip renders only in the
 				 * conversation pane, so a lost server on /settings and its siblings has
 				 * no strip to hand the voice to and this line keeps it.
+				 *
+				 * AND IT YIELDS TO THE COMPATIBILITY BANNER (QA round 2, Q-3). In the
+				 * states the strip is silent for - the four pairing causes the banner
+				 * carries - this line was the second statement of one incident: measured
+				 * in the successor walk, where the banner's sentence stood alone in the
+				 * pane and this foot line still said "did not answer this request" with
+				 * its own `Retry refresh` beneath it (44 of 51 samples, including the
+				 * last). The banner is the one voice for those causes everywhere the
+				 * sidebar is drawn, and `coveredByCompatibilityBanner` is the same
+				 * predicate the capability paragraph above reads.
 				 */}
-				{(error || profiles.error || teams.error) && !stripSpeaksConnection && (
+				{(error || profiles.error || teams.error) &&
+					!stripSpeaksConnection &&
+					!coveredByCompatibilityBanner && (
 					<div className="pt-2 text-meta text-ink-muted">
 						<p>{error || profiles.error?.message || teams.error?.message}</p>
 						<button

@@ -106,6 +106,7 @@ const RE_503 = /503/;
 const RE_THIS_APP_WAS_NOT_GIVEN_THE =
 	/is running a Local Operator daemon this app has no key for/;
 const RE_VITE_DISABLE_BACKEND_MANAG = /VITE_DISABLE_BACKEND_MANAGER/;
+const RE_THE_DAEMON_IS_RUNNING = /The daemon is running/;
 
 /*
  * A pairing token in the operator's environment would let the adoption path
@@ -183,7 +184,7 @@ const bundle = await build({
 							"config-fixture": `
 								export const backendConfig = {
 									get VITE_LOCAL_OPERATOR_API_URL() { return globalThis.__testConfiguredUrl; },
-									VITE_DISABLE_BACKEND_MANAGER: "false",
+									get VITE_DISABLE_BACKEND_MANAGER() { return globalThis.__testDisableBackendManager ?? "false"; },
 								};
 							`,
 						};
@@ -1496,6 +1497,134 @@ test("S4: a plane that refuses this app's bearer reports `credential-refused`", 
 		);
 	} finally {
 		await scene.die();
+	}
+});
+
+test("S4b: a refusal is an ANSWER - the state is `wedged` while the daemon runs, and a tick does not retire it (QA round 2, Q-1)", async () => {
+	/*
+	 * THE LIVE RIG'S OWN CONSTRUCTION (QA round 2, run `refused-r2`): the daemon
+	 * answers `/health` 200 and refuses this app's credential, and the app is
+	 * configured not to spawn (`VITE_DISABLE_BACKEND_MANAGER=true`), which is the
+	 * startup shape the committed live frames use. What this pins is main's half
+	 * of the display contract: the renderer's refused row is gated on `cause +
+	 * not detached` (`chat-status.ts`), and before this pass the pipeline settled
+	 * `detached` - measured live as the band saying "Can't reach the Local
+	 * Operator server" over its own detail line "...The daemon is running."
+	 */
+	const scene = await daemonScene({
+		instanceId: "instance-refused-wedged",
+		acceptedBearer: "f".repeat(64),
+	});
+	try {
+		globalThis.__testDisableBackendManager = "true";
+		globalThis.__testConfiguredUrl = scene.address;
+		const manager = new BackendServiceManager();
+		managers.add(manager);
+		const started = await manager.start({ quiet: true });
+		assert.equal(
+			started,
+			false,
+			"this app may not claim a plane whose key the daemon refuses",
+		);
+		const snapshot = manager.getStatusSnapshot();
+		assert.deepEqual(snapshot.pairing, {
+			available: false,
+			cause: "credential-refused",
+		});
+		assert.equal(
+			snapshot.state,
+			"wedged",
+			"a daemon that answered and refused is running and not attached - `detached` here is the sentence QA round 2 measured as false",
+		);
+		assert.match(
+			snapshot.detail,
+			/refused this app's (claim|credential)/,
+			"the detail names the refusal's own path",
+		);
+		/*
+		 * AND A TICK KEEPS IT. The recovery re-discovery runs while the state is
+		 * `wedged`, re-probes the address, and hears the refusal again - that
+		 * observation must re-publish the same state, not fall through to
+		 * `no-candidate`'s detach every interval.
+		 */
+		await manager.checkBackendHealth();
+		const ticked = manager.getStatusSnapshot();
+		assert.equal(ticked.state, "wedged");
+		assert.deepEqual(ticked.pairing, {
+			available: false,
+			cause: "credential-refused",
+		});
+		await manager.stop(false);
+	} finally {
+		Reflect.deleteProperty(globalThis, "__testDisableBackendManager");
+		await scene.dispose();
+	}
+});
+
+test("S4c: the death of a refused daemon reaches the snapshot - state and detail move, and the renderer is pushed (QA round 2, Q-2)", async () => {
+	/*
+	 * THREE MINUTES AFTER THE KILL the band still said "The daemon is running."
+	 * (QA round 2, `kill-expanded`: 76 samples, every one the same snapshot),
+	 * because the refused shape's recovery had no path that republished the
+	 * reading: an app that never attached has no pid to read, and a
+	 * `VITE_DISABLE_BACKEND_MANAGER=true` app returns before every spawn. The
+	 * sweep IS the witness (it re-reads the record and re-probes the address),
+	 * and this pins that its verdict reaches the state, the detail - and the
+	 * renderer.
+	 */
+	const scene = await daemonScene({
+		instanceId: "instance-refused-dies",
+		acceptedBearer: "f".repeat(64),
+	});
+	try {
+		globalThis.__testDisableBackendManager = "true";
+		globalThis.__testConfiguredUrl = scene.address;
+		const manager = new BackendServiceManager();
+		managers.add(manager);
+		const started = await manager.start({ quiet: true });
+		assert.equal(started, false);
+		assert.equal(manager.getStatusSnapshot().state, "wedged");
+		const pushes = [];
+		manager.onStatusChange((snapshot) => pushes.push(snapshot));
+
+		await scene.die();
+		await manager.checkBackendHealth();
+		const after = manager.getStatusSnapshot();
+		assert.equal(
+			after.state,
+			"detached",
+			"nothing is attachable any more, and the state may not stay `wedged` about a daemon that is gone",
+		);
+		/*
+		 * THE CAUSE IS KEPT, DELIBERATELY: the strip's row 4 fires on exactly
+		 * `detached + a cause that is not banner-owned`, so clearing it would
+		 * silence the strip and hand the death to the banner - contradicting the
+		 * acceptance this test serves ("move to the unreachable row, its own copy,
+		 * main's detail as the second line"). What moves at the strip is the KIND
+		 * (refused -> unreachable), which is also what re-arms a dismissal.
+		 */
+		assert.deepEqual(after.pairing, {
+			available: false,
+			cause: "credential-refused",
+		});
+		assert.doesNotMatch(
+			after.detail,
+			RE_THE_DAEMON_IS_RUNNING,
+			"the sentence may no longer assert a daemon that is gone is running",
+		);
+		assert.match(
+			after.detail,
+			/no longer running|No Local Operator daemon was found/,
+			"the new detail states the absence the sweep found",
+		);
+		assert.ok(
+			pushes.some((pushed) => pushed.state === "detached"),
+			"the renderer has to be PUSHED the correction: a state that only moves in main is still a stale band",
+		);
+		await manager.stop(false);
+	} finally {
+		Reflect.deleteProperty(globalThis, "__testDisableBackendManager");
+		await scene.dispose();
 	}
 });
 
