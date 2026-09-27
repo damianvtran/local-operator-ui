@@ -443,6 +443,27 @@ export function installDevDriver(): string[] {
 				browserPaneOpen: preferences.isBrowserPaneOpen,
 				browserPanelWidth: preferences.browserPanelWidth,
 				activeSessionId: sessions.activeSessionId,
+				/*
+				 * WHERE THE ROW LIVES, for the scenes that come back to a conversation
+				 * (UX round 2, U5): the active draft's key, and - per draft key - only
+				 * presence booleans, never the text. A return that derives
+				 * `send:<sessionId>` while the row sits under `draft:<uuid>` is invisible
+				 * in the DOM (the pane simply renders nothing) and has to be readable
+				 * here.
+				 */
+				activeDraftKey: sessions.activeDraftKey,
+				drafts: Object.fromEntries(
+					Object.entries(sessions.drafts).map(([key, draft]) => [
+						key,
+						{
+							sessionId: draft.sessionId ?? null,
+							error: draft.error !== undefined,
+							undelivered: draft.undelivered !== undefined,
+							submitted: draft.submittedText !== undefined,
+							admissionAttempted: draft.admissionAttempted === true,
+						},
+					]),
+				),
 				sessionCount: sessions.sessions.length,
 				/*
 				 * THE PAGED CATALOGUE'S OWN FACTS, reported rather than inferred.

@@ -922,18 +922,18 @@ export const useMessageInput = ({
 			outcome = await onSubmit?.(submitted, () => clearOnce(true));
 			if (outcome === false) {
 				/*
-				 * THE FAILURE ARM'S WHOLE JOB IS TO NOT UNDO THE STORE'S WORK. The
-				 * payload is already back in this composer's store row - text, chips
-				 * and staged quotes - written there by the store's own return path
-				 * (`returnPayloadToComposer`), because a restore performed HERE only
-				 * works while this component stays mounted: on the New-chat path the
-				 * identity flip unmounts it mid-send, which is how the user ended up
-				 * told to fix a message the box no longer showed (UX round 3, U14).
+				 * THE FAILURE ARM'S WHOLE JOB IS TO NOT UNDO THE STORE'S WORK, and since
+				 * S4 the store's work is the ROW's: a post-paint failure keeps the
+				 * message in the conversation, with the class's sentence and remedies on
+				 * it, and deliberately does NOT hand the payload back to the composer.
 				 *
-				 * So: no local restore, no `retireDraft` (it would wipe the text the
-				 * store has just handed back), and no `addSubmittedMessage`. The text
-				 * reaches the box through the adoption effect below, which merges it
-				 * with whatever the user typed during the flight.
+				 * So: no local restore, no `retireDraft` (it would wipe a box the user
+				 * may have typed into since - the box was already emptied at the press,
+				 * which is where the text left for the transcript), and no
+				 * `addSubmittedMessage`. A restore performed HERE would only work while
+				 * this component stays mounted, and on the New-chat path the identity
+				 * flip unmounts it mid-send (UX round 3, U14) - which is also why a
+				 * second home was the wrong shape for this fact to begin with.
 				 */
 				return;
 			}
