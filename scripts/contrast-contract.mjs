@@ -586,10 +586,13 @@ const CONTROLS = [
 		 * very close to invisible: ΔE00(warningWash, canvas) = 1.01 worst (`paper`;
 		 * 3.59 on `localOperatorLight`), against the 25-percentile step a ground
 		 * change owes elsewhere in this file. The `-border` role is what draws the
-		 * boundary (warningBorder on canvas 3.24:1 worst, dangerBorder 3.23:1
-		 * worst) and it is why the band is a bordered fill rather than a tinted
+		 * boundary, and it is why the band is a bordered fill rather than a tinted
 		 * background - the old strip shipped the wash with no border at all and no
-		 * row anywhere said so.
+		 * row anywhere said so. ITS WORST DEPENDS ON THE SCOPE, so both are named
+		 * (agent review round 1, MINOR-1): over the twelve sweep palettes 3.24:1 /
+		 * 3.23:1 (iceberg), and over all 59 the tightest is rosePineDawn at 3.153:1
+		 * / 3.150:1 against the canvas - still clear of the 3:1 floor everywhere,
+		 * which is what this row asserts per palette rather than as a headline.
 		 *
 		 * The body ink is `ink` (5.73:1 worst on warningWash, 7.03:1 on
 		 * dangerWash), and the washes are deliberately NOT in `GROUNDS6`: that

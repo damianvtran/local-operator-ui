@@ -95,6 +95,17 @@ export const Unreachable: Story = {
 	}),
 };
 
+/**
+ * The refusal: the strip's fact while its daemon is there to refuse.
+ *
+ * THE SECOND LINE IS THE FIXTURE'S, NOT THE SHIPPED ONE (UX round 1's U6):
+ * live, the detail line is main's own sentence about what it observed - the
+ * walk recorded "A daemon is running at …, but it refused this app's credential
+ * for its desktop plane (HTTP 401). The daemon is running." - and main
+ * re-spells it for the same condition, which is why the dismissal key rides the
+ * kind and the cause rather than this prose. The fixture's shorter sentence
+ * keeps the frame's measure legible.
+ */
 export const RefusedCredential: Story = {
 	args: shown({
 		connectivityIssue: null,

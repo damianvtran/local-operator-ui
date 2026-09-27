@@ -109,8 +109,12 @@ export const PreHandshake: Story = {
 
 /**
  * The refusal, in the severity it shares with the strip: ONE fact, ONE
- * severity. Reachable only where the strip is not mounted (it is the strip's
- * fact in the pane), which is why this band is also the `/settings` state.
+ * severity. Reachable only where the strip is silent or absent - the refusal is
+ * the strip's fact in the pane, and this band's own yield stands it down beside
+ * a strip that speaks - so this story is the band's own state and NOT a
+ * `/settings` one: `/settings` mounts neither surface (the evidence README's
+ * mount-site audit; agent review round 1's MINOR-3 corrected this sentence,
+ * which had claimed that page).
  */
 export const CredentialRefused: Story = {
 	args: {
