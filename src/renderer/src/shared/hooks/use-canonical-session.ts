@@ -54,7 +54,6 @@ import {
 	pagePassedOldestStart,
 	reconcileLimit,
 	reconcileWalkDone,
-	removeLocalRecord,
 	removeRecord,
 	seedCallStarts,
 	seedCallsMissingLabels,
@@ -1281,216 +1280,510 @@ export function resyncCanonicalSession(sessionId: string): boolean {
 }
 
 /**
- * Echoes for a session whose transcript had not registered yet, replayed the
- * moment one does.
+ * The optimistic rows this app has painted, retained until they are RESOLVED.
  *
- * WHY THIS QUEUE EXISTS, AND WHY DELIVERY MUST NOT DEPEND ON MOUNT ORDER. On
- * the New-chat path the session id does not exist until `createSession`
- * returns, and the panel keyed on it has not mounted — let alone flushed the
- * passive effect that registers it — at the moment the store paints the echo,
- * because the store patches the id and fires the echo in ONE synchronous
- * block. An unqueued `echoTargets.get(id)?.(...)` therefore dropped the echo
- * silently on exactly the path the echo exists for: review round 1 measured
- * the draft send at 0 landed / 1 dropped / 0 painted, while the
- * existing-session send was 1/0/1.
+ * WHAT REPLACED THE ONE-SHOT BUFFER, AND WHY RETENTION IS THE WHOLE CHANGE. The
+ * old buffer (`pendingEchoes`) was a delivery queue: an entry was consumed the
+ * moment a transcript drained it, which was right while the composer held the
+ * user's text across the create hop. It no longer does - the paint happens at
+ * the PRESS, before `sessions.create`, and the box empties with it (see
+ * `admitChatDraft`) - so a consumed entry would leave the message represented
+ * only by one pane's local state, and the three things this change is for are
+ * exactly what that cannot survive: the identity flip (a remount), a switch
+ * away and back (another remount), and a reload.
  *
- * That silent drop was worse than the bug it replaced. With the composer now
- * clearing on the echo's own paint, a dropped echo means the box empties and
- * the transcript stays blank for the whole engage — where previously the text
- * at least stayed visible while the user waited.
+ * An entry therefore OUTLIVES its delivery, keyed by the identity the pane
+ * shows (`draft:<uuid>` before the create answers, the session id after -
+ * `movePendingSendIdentity` re-keys it inside the store's own synchronous block),
+ * and is dropped only when the claim is resolved: a mounted pane observes the
+ * owner's durable row for that id (`resolveObservedPendingSends`), the user
+ * retires a failure, or the draft is abandoned (`discardPendingSends`).
  *
- * A queue rather than a second key: keying the registry on the panel identity
- * would make delivery depend on the renderer and the store agreeing about what
- * names a conversation before admission, which is the disagreement that caused
- * this. Buffering makes the echo addressable by session id BEFORE any panel for
- * that session exists, so the store keeps one vocabulary and the mount race
- * stops being load-bearing.
+ * DELIVERY STILL MUST NOT DEPEND ON MOUNT ORDER, and it does not: a paint for
+ * an identity with no registered transcript is retained rather than dropped, and
+ * the first transcript to register drains every retained entry
+ * (`__registerEchoTarget`). The difference from the old buffer is only what
+ * happens AFTER a drain - nothing is taken, so the next mount seeds the same
+ * rows again through `seedPendingSends`, idempotently by record id.
  */
-const pendingEchoes = new Map<string, PendingEcho[]>();
 
-/**
- * One buffered echo, and whoever asked to be told that it landed.
- *
- * `onPainted` is how the composer learns that the text it just handed to the
- * store is now IN a transcript. That moment is the only one at which taking the
- * text out of the box costs the user nothing, which is why the callback fires
- * AT THE APPLICATION SITE - synchronously with the mutation when a transcript is
- * mounted, and from the drain when one is not - and never on a timer. Firing it
- * anywhere else puts the composer and the transcript in different frames, which
- * is the defect UX round 1 measured on the New-chat path: the box emptied at
- * Enter and the echo could not exist until `sessions.create` returned
- * (p50 142 ms / max 409 ms at load 433-445), so for the whole create hop the
- * user was looking at an empty box and an empty transcript.
- *
- * The drain's call reaches whichever composer registered, and on the New-chat
- * path that is NOT the one which asked: the identity flip unmounts the draft
- * composer before the panel exists to receive the echo, so the callback lands on
- * a component that is gone while the visible panel paints the echo in its first
- * state. A caller therefore reads the callback as "the echo is in a transcript
- * now", never as "your box was cleared" (round 7, F1).
- */
-type PendingEcho = {
-	mutate: (state: TranscriptState) => TranscriptState;
+export type PendingSend = {
+	/** The identity this entry is addressed by right now. */
+	identity: string;
+	/**
+	 * The admission request id: the row's record id, the id the owner's durable
+	 * row coalesces onto (`appendPendingUser`), and what a resolution names.
+	 */
+	id: string;
+	/**
+	 * What the row paints. Mutable because the credential seam's substitution
+	 * arrives AFTER the paint on the New-chat path (there is no session to store
+	 * into before the create answers) and must land on the same row:
+	 * `replacePendingSendText` is a splice under the same id, never a second
+	 * record.
+	 */
+	text: string;
+	images: TranscriptImage[];
+	/**
+	 * THE CLAIM'S OUTCOME IS KNOWN, and the entry is kept only to keep painting the
+	 * row (design review round 1's D1/D2, extended by what the re-shoot measured).
+	 * The server's complete read answered the claim NO (`resolveHeldFromServer`),
+	 * so nothing is "still going out" - but the row is the message's home and a
+	 * later mount re-paints it from `undelivered`, so the entry has to survive.
+	 * Every "is a send pending" reader skips settled entries
+	 * (`pendingSendForView`); the row readers do not (`seedPendingSends`, the
+	 * drain). Without the distinction, a settled entry answered for the NEXT
+	 * message sent on the same conversation - it is the oldest entry, so the wait
+	 * line anchored to a claim already answered and the rung was withheld from the
+	 * whole new flight (measured on the away step: a second message's row on
+	 * screen with no line over it).
+	 */
+	settled?: boolean;
+	/**
+	 * THE PRESS'S OWN ANCHOR FOR THE WAIT CLOCK (agent review round 2, R2-5), on
+	 * the entry because the entry is what survives every remount: the latch that
+	 * first read `draft.submittedAt` is per-mount, so a switch-away inside the
+	 * receipt-to-owner gap (which deletes the draft row, `finishDraft`) remounted
+	 * with nothing to anchor to and blanked the seconds - the same blanking the
+	 * latch's snapshot closed for a single mount. The value is written at the
+	 * press, so every reader of the entry sees one number.
+	 */
+	submittedAt?: number;
+	/**
+	 * Whoever asked to be told the row reached a transcript. Fires ONCE, at the
+	 * first paint - synchronously when a target is mounted, from the drain when
+	 * one is not - because that is the moment taking the text out of the box
+	 * costs the user nothing (the composer is the only caller that acts on it;
+	 * see `admitChatDraft`'s `onEchoPainted`).
+	 */
 	onPainted?: () => void;
+	/** Whether `onPainted` has fired: a later drain must not fire it twice. */
+	painted?: boolean;
 };
 
+const pendingSends = new Map<string, Map<string, PendingSend>>();
+
 /*
- * What the buffer may retain, and WHY THE LIMITS ARE WHAT THEY ARE.
+ * What the registry may retain, and WHY THE LIMITS ARE WHAT THEY ARE.
  *
- * This is a retention bound, not housekeeping. A queued mutation closes over
- * the user's message text AND its images as base64 (`TranscriptImage`), so an
- * echo for a session that never mounts is that content held in renderer memory
- * for the lifetime of the window - after a failed send the user believes they
- * abandoned, and with no UI anywhere showing it. The drain is destructive, so
- * anything that MOUNTS costs nothing; these limits exist purely for the
- * sessions that never do.
+ * This is a retention bound, not housekeeping. An entry holds the user's
+ * message text AND its images as base64 (`TranscriptImage`), and it now
+ * survives delivery, so a send nothing ever resolves is that content held in
+ * renderer memory for as long as the window lives. Resolution is the normal way
+ * an entry leaves (the owner's row observed, the user's Edit, the draft
+ * discarded); these limits exist for the rows nothing resolves.
  *
- * Per session: a send admits at most one echo plus at most one retraction for
- * the same request id, so 4 covers the legitimate case (a retry that re-echoes
- * before the first mount) with room to spare. Past that the OLDEST goes, since
+ * Per identity: a send paints at most one entry per request id, and the
+ * legitimate case for more than one is a retry whose payload the user edited
+ * (a new id; an unchanged retry re-paints under the SAME id and replaces its
+ * entry). 4 covers that with room to spare, and past it the OLDEST goes, since
  * the newest paint is the one the user is waiting to see.
  *
- * Across sessions: a user can stage drafts faster than panels mount, so the map
- * itself is capped and evicts by insertion order - `Map` preserves it, and the
- * oldest un-mounted session is the one least likely to ever be looked at.
+ * Across identities: a user can stage drafts faster than panels mount, so the
+ * map itself is capped and evicts by insertion order - `Map` preserves it, and
+ * the oldest identity is the one least likely to ever be looked at.
  *
- * Both bounds only ever drop an OPTIMISTIC row. The durable message is the
- * backend's, and it paints from the owner's own `message_start` when the panel
- * mounts, so the worst case of an eviction is the pre-PR behaviour: the user
- * waits for the real row instead of seeing an echo.
+ * Both bounds only ever drop an OPTIMISTIC row, and the worst case of a drop
+ * is the pre-PR behaviour: the row arrives when the owner's own frame does. The
+ * durable row is the backend's either way; what an eviction never takes is the
+ * draft row's own claim fields (`submittedText`, `submittedAt`, `error`),
+ * which are the conversation store's and are what a later pane or the restart
+ * re-synthesis reads to put the failed row back.
  */
-const MAX_PENDING_ECHOES_PER_SESSION = 4;
-const MAX_PENDING_ECHO_SESSIONS = 16;
+const MAX_PENDING_SENDS_PER_IDENTITY = 4;
+const MAX_PENDING_SEND_IDENTITIES = 16;
 
 /**
- * Apply now if a transcript is listening, otherwise hold it for the one that
- * is about to mount.
+ * Put one entry's row into a registered transcript's state, and let the entry
+ * say it painted the first time.
+ *
+ * The callback fires AFTER the mutation, in the same synchronous block, so the
+ * two state updates a composer cares about (the row appearing, the box emptying)
+ * are batched into one commit - and only ONCE per entry, so the drain that
+ * follows a seed cannot fire it a second time.
  */
-function deliverEcho(
-	sessionId: string,
-	mutate: (state: TranscriptState) => TranscriptState,
-	onPainted?: () => void,
+function applyPendingSend(
+	target: (mutate: (state: TranscriptState) => TranscriptState) => void,
+	entry: PendingSend,
 ): void {
-	const target = echoTargets.get(sessionId);
-	if (target) {
-		target(mutate);
-		// AFTER the mutation, in the same synchronous block, so the two state
-		// updates a composer cares about (the row appearing, the box emptying)
-		// are batched into one commit. Cheaper to reason about than to schedule.
-		onPainted?.();
-		return;
+	target((state) =>
+		appendPendingUser(state, entry.id, entry.text, entry.images),
+	);
+	if (!entry.painted) {
+		entry.painted = true;
+		entry.onPainted?.();
 	}
-	const queued = pendingEchoes.get(sessionId);
-	if (queued) {
-		queued.push({ mutate, onPainted });
-		if (queued.length > MAX_PENDING_ECHOES_PER_SESSION) queued.shift();
-		return;
-	}
-	if (pendingEchoes.size >= MAX_PENDING_ECHO_SESSIONS) {
-		// Insertion order: the least recently buffered session is evicted whole.
-		const oldest = pendingEchoes.keys().next();
-		if (!oldest.done) pendingEchoes.delete(oldest.value);
-	}
-	pendingEchoes.set(sessionId, [{ mutate, onPainted }]);
 }
 
 /**
- * Drop anything buffered for a session that will not be coming back.
+ * Splice new text into a record only while it is still this app's own
+ * optimistic row.
  *
- * Called when a draft is abandoned or its send fails terminally, so the text
- * and images do not sit in memory waiting for a panel that has no reason to
- * mount. Safe to call for a session with nothing buffered.
+ * Local to this module on purpose: this is a mutation of ONE local record, not
+ * a transcript rule, and the reducer deliberately has no exported spelling for
+ * "rewrite the echo" - the durable semantics (upsert, coalescing) live there,
+ * while the only writer of a local row's TEXT is the credential seam's late
+ * substitution. `index` is untouched because the record keeps its position;
+ * the owner's row having replaced ours makes this a no-op, which is exactly
+ * right (the wire text won, the seam lost the race).
  */
-export function discardPendingEchoes(sessionId: string): void {
-	pendingEchoes.delete(sessionId);
+function replaceLocalRecordText(
+	state: TranscriptState,
+	id: string,
+	text: string,
+): TranscriptState {
+	const at = state.index.get(id);
+	const record = at === undefined ? undefined : state.records[at];
+	if (
+		at === undefined ||
+		!record ||
+		record.kind !== "user" ||
+		!record.local ||
+		record.text === text
+	)
+		return state;
+	const records = state.records.slice();
+	records[at] = { ...record, text };
+	return { ...state, records };
 }
 
 /**
- * Register a transcript as the echo target for a session, draining whatever
- * was painted before it existed, and return the matching unregister.
+ * Paint the user's message optimistically under `identity`, RETAINING the entry
+ * until it is resolved.
+ *
+ * Called at the PRESS - before `sessions.create` on the New-chat path and
+ * before the message request on every path - so the row is on screen for the
+ * whole engage and the composer can release the text at the same commit. The
+ * application is synchronous when a transcript for `identity` is mounted
+ * (the existing-session path, and the draft pane, whose registration is keyed
+ * by the pane's own identity); retained when none is (the flip's replacement
+ * panel does not exist yet), and drained by whichever registers first.
+ */
+export function paintPendingSend(
+	identity: string,
+	send: {
+		id: string;
+		text: string;
+		images: TranscriptImage[];
+		onPainted?: () => void;
+		/** Only `resynthesisePendingSend`'s resolved arm passes this; see `settled`. */
+		settled?: boolean;
+		/** The press's clock anchor; see `PendingSend.submittedAt`. */
+		submittedAt?: number;
+	},
+): void {
+	let entries = pendingSends.get(identity);
+	if (!entries) {
+		if (pendingSends.size >= MAX_PENDING_SEND_IDENTITIES) {
+			// Insertion order: the least recently painted identity goes whole.
+			const oldest = pendingSends.keys().next();
+			if (!oldest.done) pendingSends.delete(oldest.value);
+		}
+		entries = new Map();
+		pendingSends.set(identity, entries);
+	}
+	/*
+	 * `set` rather than a push: a re-paint under the same id (a retry whose
+	 * payload is unchanged) replaces the entry, and `Map` keeps its insertion
+	 * position, so the oldest-first bound still measures by FIRST paint while
+	 * the row keeps one identity.
+	 */
+	const entry: PendingSend = {
+		identity,
+		id: send.id,
+		text: send.text,
+		images: send.images,
+		onPainted: send.onPainted,
+		settled: send.settled,
+		submittedAt: send.submittedAt,
+	};
+	entries.set(entry.id, entry);
+	while (entries.size > MAX_PENDING_SENDS_PER_IDENTITY) {
+		const oldest = entries.keys().next();
+		if (oldest.done) break;
+		entries.delete(oldest.value);
+	}
+	const target = echoTargets.get(identity);
+	if (target) applyPendingSend(target, entry);
+}
+
+/**
+ * The send this identity has painted and the owner has not answered.
+ *
+ * THE ONE PREDICATE for "a send this pane made is still going out": the pane's
+ * collapse, the band's emptiness and the page's wait-line latch all read it, and
+ * the registry drops an entry exactly when the claim stops being true (the
+ * owner's row observed, or the user resolving a failure). A SETTLED entry is not
+ * dropped - the row it painted is still the message's home - but it is not a
+ * send still going out, so it does not answer here (`settled`).
+ *
+ * Oldest first, so when a retry has painted a second entry the row a reader has
+ * been waiting on longest is the one named.
+ */
+export function pendingSendForView(
+	identity: string | null | undefined,
+): PendingSend | null {
+	if (!identity) return null;
+	const entries = pendingSends.get(identity);
+	if (!entries) return null;
+	for (const entry of entries.values()) {
+		if (!entry.settled) return entry;
+	}
+	return null;
+}
+
+/**
+ * Drop one entry, because its claim is over: the owner's durable row was
+ * observed, the user's Edit retired a failure, or the draft was abandoned.
+ */
+export function resolvePendingSend(identity: string, id: string): void {
+	const entries = pendingSends.get(identity);
+	if (!entries) return;
+	entries.delete(id);
+	if (entries.size === 0) pendingSends.delete(identity);
+}
+
+/**
+ * Mark a retained entry's claim as ANSWERED, keeping the entry for its row.
+ *
+ * The resolution path's counterpart to `resolvePendingSend`: the server's
+ * complete read said the message never landed, so no owner row will ever arrive
+ * to resolve the entry - but the row it painted is the message's own statement
+ * and must keep painting (the design's D1/D2). A later mount re-paints the same
+ * entry settled (`resynthesisePendingSend`); this call covers the tab that never
+ * reloaded, so the very frame the resolution lands on stops answering "still
+ * going out" to every reader of `pendingSendForView`.
+ */
+export function settlePendingSend(identity: string, id: string): void {
+	const entry = pendingSends.get(identity)?.get(id);
+	if (entry) entry.settled = true;
+}
+
+/**
+ * Whether the identifier already has an entry - settled or not.
+ *
+ * The re-synthesis pass's guard, and it has to see settled entries: a resolved
+ * row is re-painted on a later mount precisely because the entry is RETAINED,
+ * so "an entry exists" is what stops a second one being painted over it. This is
+ * the membership question, where `pendingSendForView` is the liveness one.
+ */
+export function hasPendingSend(
+	identity: string | null | undefined,
+	id: string,
+): boolean {
+	if (!identity) return false;
+	return pendingSends.get(identity)?.has(id) === true;
+}
+
+/**
+ * Whether this identity RETAINS an entry at all, settled or not.
+ *
+ * THE ROW-EXISTENCE QUESTION, as distinct from `pendingSendForView`'s liveness
+ * one (agent review round 2's re-shoot). The composer stands down while a row is
+ * on screen to speak the failure it is the home of (S4/J4) - and a settled
+ * claim's row is still a row. The settled distinction exists for the wait line's
+ * sake; using the LIVENESS predicate for this gate handed the sentence back to
+ * the composer the moment a failure settled its own claim, which is the
+ * duplicate statement (row + alert) J4 forbids. Measured on the round-2
+ * re-shoot's first run.
+ */
+export function retainsPendingSend(
+	identity: string | null | undefined,
+): boolean {
+	if (!identity) return false;
+	return (pendingSends.get(identity)?.size ?? 0) > 0;
+}
+
+/**
+ * Replace one entry's text in place, under the same id.
+ *
+ * The credential seam's substitution is the only caller: on the New-chat path
+ * it runs after the paint (there is no session to store into before the create
+ * answers), and the row the user is already looking at must update once rather
+ * than be re-painted as a second message. `rendered` is the same message with
+ * its markers substituted, so identity and position are unchanged - a text
+ * splice applied now if a transcript is mounted, and left for the next seed if
+ * not.
+ */
+export function replacePendingSendText(
+	identity: string,
+	id: string,
+	text: string,
+): void {
+	const entry = pendingSends.get(identity)?.get(id);
+	if (!entry) return;
+	entry.text = text;
+	const target = echoTargets.get(identity);
+	if (target) target((state) => replaceLocalRecordText(state, id, text));
+}
+
+/**
+ * Move every entry for one identity to another - the identity flip's re-key.
+ *
+ * Run in the SAME synchronous block that patches `draft.sessionId` (see
+ * `admitChatDraft`), so the replacement panel's first frame
+ * (`seedPendingSends`) already holds the row it was showing under the draft
+ * key: no duplicate, no gap, and the record's own id is what the following
+ * frames coalesce on.
+ */
+export function movePendingSendIdentity(from: string, to: string): void {
+	if (from === to) return;
+	const entries = pendingSends.get(from);
+	if (!entries) return;
+	pendingSends.delete(from);
+	const destination = pendingSends.get(to) ?? new Map<string, PendingSend>();
+	for (const [id, entry] of entries) {
+		entry.identity = to;
+		destination.set(id, entry);
+	}
+	pendingSends.set(to, destination);
+}
+
+/**
+ * Drop every retained entry. Compilation is per-bundle, so this is WINDOW
+ * state; a suite that reuses one conversation id across cases needs each case
+ * to start from an empty registry rather than inheriting the previous case's
+ * unresolved send. Never called by the app; exported beside
+ * `__registerEchoTarget` for the same reason that is, and the harness owns the
+ * state its own cases share (see `__resetPaintCache`).
+ */
+export function __resetPendingSends(): void {
+	pendingSends.clear();
+}
+
+/**
+ * Drop every entry for an identity that will not be coming back.
+ *
+ * Called when a draft is abandoned (`discardDraft`), so the text and images do
+ * not sit in memory waiting for a pane that has no reason to mount. Safe to
+ * call for an identity with nothing retained.
+ */
+export function discardPendingSends(identity: string): void {
+	pendingSends.delete(identity);
+}
+
+/**
+ * The pane's own resolution pass: drop every entry whose id the transcript now
+ * holds as the OWNER's row.
+ *
+ * WHY THE PANE DOES THIS AND NOT THE STORE. Only a transcript can answer the
+ * question - a durable row is a record, and the store never sees one. The
+ * predicate is the same one `appendPendingUser`'s `local` flag exists for: our
+ * optimistic row carries `local`; the owner's `message_start` (or a durable
+ * history row) for the same id does not, and its arrival is the app's proof
+ * that the claim ended. Cheap by construction: it walks the entries (at most 4)
+ * rather than the records, on each committed transcript change.
+ */
+export function resolveObservedPendingSends(
+	identity: string,
+	transcript: TranscriptState,
+): void {
+	const entries = pendingSends.get(identity);
+	if (!entries) return;
+	for (const id of [...entries.keys()]) {
+		const at = transcript.index.get(id);
+		const record = at === undefined ? undefined : transcript.records[at];
+		if (record?.kind === "user" && record.local !== true)
+			resolvePendingSend(identity, id);
+	}
+}
+
+/**
+ * Register a transcript as the target for a conversation identity, draining
+ * whatever was painted before it existed, and return the matching unregister.
  *
  * Extracted from the effect below so the delivery rule is exercised against the
  * REAL registry rather than a recorder standing in for it. That distinction is
  * not academic: review round 1's blocker — the draft-path echo being dropped
  * because nothing was listening yet — was invisible to every existing test
  * precisely because they aliased this seam to a stub that always recorded.
+ *
+ * NOTHING IS TAKEN, unlike the buffer this replaces: the entries stay, because
+ * the next mount - the identity flip, a switch back, a reload - must seed the
+ * same rows again. Re-applying is harmless by construction (`appendPendingUser`
+ * no-ops for an id already present, and a `local` row can never overwrite the
+ * owner's), which is what makes the retention safe where the old take-and-delete
+ * rule existed to stop a replayed retraction from deleting a durable row.
  */
 export function __registerEchoTarget(
-	sessionId: string,
+	identity: string,
 	apply: (mutate: (state: TranscriptState) => TranscriptState) => void,
 ): () => void {
-	echoTargets.set(sessionId, apply);
-	/*
-	 * Taken and deleted BEFORE applying, so a mutation that throws cannot be
-	 * replayed onto the next mount and a remount cannot paint the same echo
-	 * twice. Re-painting would be harmless alone — `appendPendingUser` no-ops
-	 * for an id already present — but a retraction replayed after its own paint
-	 * had coalesced with the owner's row would delete a durable message.
-	 */
-	const queued = pendingEchoes.get(sessionId);
-	if (queued) {
-		pendingEchoes.delete(sessionId);
-		for (const { mutate, onPainted } of queued) {
-			apply(mutate);
-			onPainted?.();
-		}
+	echoTargets.set(identity, apply);
+	const entries = pendingSends.get(identity);
+	if (entries) {
+		for (const entry of entries.values()) applyPendingSend(apply, entry);
 	}
 	return () => {
-		// Only if still ours: a remount for the same session registers before the
+		// Only if still ours: a remount for the same identity registers before the
 		// old effect cleans up, and an unconditional delete would drop the live
 		// registration.
-		if (echoTargets.get(sessionId) === apply) echoTargets.delete(sessionId);
+		if (echoTargets.get(identity) === apply) echoTargets.delete(identity);
 	};
 }
 
 /**
- * Paint the user's message optimistically, keyed by the admission request id
- * so the owner's durable row coalesces with it instead of duplicating it.
+ * The transcript a panel starts from, with everything retained for its identity
+ * applied - so the FIRST frame it paints can hold the row.
+ *
+ * Why this exists rather than letting the drain do it: on the New-chat path the
+ * panel that receives the row is a fresh mount (the identity flips from the
+ * draft key to the session id, which is what makes it remount), and its paint
+ * arrives through a PASSIVE effect - after the commit that painted its first
+ * frames. Those frames would therefore hold an empty transcript and a
+ * `connecting` status while the user's message was already in flight (UX
+ * round 1, U3). Seeding the initial state closes that gap at its source: the
+ * retained rows are in the state React paints first, and the drain that follows
+ * re-applies them to no effect (`appendPendingUser` is a no-op for an id
+ * already present).
+ *
+ * A PEEK, deliberately, not a take - and now not even destructive of the
+ * registry: `resolvePendingSend` is the only thing that removes an entry, and
+ * a render is free to be discarded, so a seed must not mutate shared state. The
+ * drain stays the only writer, and both readers replay the same rows.
  */
-export function echoPendingUser(
-	sessionId: string,
-	id: string,
-	text: string,
-	images: TranscriptImage[],
-	onPainted?: () => void,
-): void {
-	deliverEcho(
-		sessionId,
-		(state) => appendPendingUser(state, id, text, images),
-		onPainted,
-	);
+export function seedPendingSends(
+	identity: string,
+	state: TranscriptState,
+): TranscriptState {
+	const entries = pendingSends.get(identity);
+	if (!entries) return state;
+	let seeded = state;
+	for (const entry of entries.values()) {
+		seeded = appendPendingUser(seeded, entry.id, entry.text, entry.images);
+	}
+	return seeded;
 }
 
 /**
- * The transcript a panel starts from, with anything already buffered for its
- * session applied - so the FIRST frame it paints can hold the echo.
+ * Whether a change of the pane's stream id is a change of CONVERSATION - i.e.
+ * whether `useCanonicalSessionStream`'s reset effect must replace the transcript.
  *
- * Why this exists rather than letting the drain do it: on the New-chat path the
- * panel that receives the echo is a fresh mount (the identity flips from the
- * draft key to the session id, which is what makes it remount), and its echo
- * arrives through a PASSIVE effect - after the commit that painted its first
- * frames. Those frames therefore held an empty transcript and a `connecting`
- * status while the user's message was already in flight (UX round 1, U3: the
- * echo "can only reach the new panel in a mount effect, so that panel's first
- * frames cannot hold it"). Seeding the initial state closes that gap at its
- * source: the buffered echo is in the state React paints first, and the drain
- * that follows re-applies it to no effect (`appendPendingUser` is a no-op for an
- * id already present, and a retraction is idempotent).
+ * Extracted rather than computed inline for the reason `draftIdentityFor` and
+ * `panelIdentityFor` state: a rule that only exists inside an effect cannot be
+ * exercised outside a renderer, and this one is load-bearing.
  *
- * A PEEK, deliberately, not a take. Mutating the buffer from an initializer
- * would consume an echo in a render React is free to discard, and a render-phase
- * side effect on a shared map is exactly the kind of ownership this file keeps in
- * one place. The drain stays the only consumer.
+ * THE MINT'S BRIDGE ID IS NOT A SESSION (UX round 1, U1). A draft pane's stream
+ * id moves `undefined` -> the id `sessions.draft` minted when the first
+ * keystroke's mint answers, while the conversation the pane SHOWS
+ * (`panelIdentityFor(draftKey, id)`) is unchanged - still the draft key. The
+ * reset used to read that swap as "a different session", replace the transcript
+ * with the new id's cached paint (a draft bridge has none), and take the row the
+ * press had just painted with it: measured on a warm-capable daemon (installed
+ * `lop` 0.63.2, which advertises `session_draft_warm`) as the press reading
+ * `rows:0` with the row reappearing only at the flip, Enter beating the mint's
+ * answer in the 25 ms the rig types and presses. A bridge id names no session
+ * page, so a swap to (or between) bridge ids never replaces the transcript; a
+ * REAL session id still does, which is the rule's other arm.
  */
-export function seedPendingEchoes(
-	sessionId: string,
-	state: TranscriptState,
-): TranscriptState {
-	const queued = pendingEchoes.get(sessionId);
-	if (!queued) return state;
-	let seeded = state;
-	for (const { mutate } of queued) seeded = mutate(seeded);
-	return seeded;
+export function streamChangeKeepsTranscript(
+	previous: string | undefined,
+	next: string | undefined,
+	/** Whether `next` is a session this pane can be owed a page for. */
+	nextIsSession: boolean,
+): boolean {
+	if (previous === next) return true;
+	return !nextIsSession;
 }
 
 /**
@@ -1531,11 +1824,14 @@ export function retractLocalEcho(
 	const target = echoTargets.get(sessionId);
 	if (!target) {
 		/*
-		 * Nothing is mounted, so the echo this retracts has not been painted yet
-		 * either - it is sitting in the buffer with it. Queued in the same order it
-		 * was painted, and conditional on the same flag when it lands.
+		 * Nothing is mounted, so the row this retracts was never painted
+		 * anywhere: there is no record to remove, and resolving the entry IS the
+		 * whole act - a later seed must not paint a message the app knows is not
+		 * on the owner's transcript. "queued" is still the right answer for the
+		 * caller: the decision has been taken and no mounted pane can have seen
+		 * anything else.
 		 */
-		deliverEcho(sessionId, (state) => removeLocalRecord(state, id));
+		resolvePendingSend(sessionId, id);
 		return "queued";
 	}
 	let outcome: EchoRetraction = "queued";
@@ -1549,11 +1845,28 @@ export function retractLocalEcho(
 		outcome = "retracted";
 		return removeRecord(state, id);
 	});
+	/*
+	 * EITHER ANSWER RESOLVES THE ENTRY. `retracted` means the row just came off
+	 * the screen, so a later seed must not paint it back; `owner` means the id's
+	 * record is the owner's own - the claim is answered, whether or not this
+	 * pane's resolution effect has run yet. Leaving the entry in either case is
+	 * the one way the new retention could resurrect a message that is provably
+	 * not ours to show.
+	 */
+	resolvePendingSend(sessionId, id);
 	return outcome;
 }
 
 export function retractPendingUser(sessionId: string, id: string): void {
-	deliverEcho(sessionId, (state) => removeRecord(state, id));
+	/*
+	 * The ENTRY goes with the record, and it has to: with retention, a dropped
+	 * record that still had an entry would be painted again by the next seed -
+	 * and this call means the message is provably not on the owner's transcript,
+	 * so nothing must bring its row back.
+	 */
+	resolvePendingSend(sessionId, id);
+	const target = echoTargets.get(sessionId);
+	if (target) target((state) => removeRecord(state, id));
 }
 
 /**
@@ -1586,12 +1899,14 @@ export function peekLocalEcho(
 }
 
 /**
- * The paint a conversation starts from: the cached rows with any queued
- * optimistic echo applied on top, and whether anything was cached at all.
+ * The paint a conversation starts from: the cached rows, and whether anything
+ * was cached at all.
  *
- * The echo goes LAST because an echo is NEWER than the paint — the cached rows
- * are what the panel last displayed, and a buffered echo is a mutation that
- * happened after it stopped. Same order the live path produces.
+ * The optimistic sends go on top at the CALLER (`seedPendingSends`), because
+ * only the caller knows the pane's own identity: the cache is addressed by
+ * session id, while the row a press just painted may still be addressed by the
+ * draft key. Same order either way - a send is NEWER than the cached rows - and
+ * one seeding site is one place for the rule to live.
  */
 function paintSeed(sessionId: string): {
 	transcript: TranscriptState;
@@ -1602,14 +1917,14 @@ function paintSeed(sessionId: string): {
 	const cached = readPaint(sessionId);
 	if (!cached) {
 		return {
-			transcript: seedPendingEchoes(sessionId, EMPTY_TRANSCRIPT),
+			transcript: EMPTY_TRANSCRIPT,
 			stale: false,
 			owedLabels: NO_LABELS_PENDING,
 			markLabels: NO_LABELS_MARKED,
 		};
 	}
 	return {
-		transcript: seedPendingEchoes(sessionId, cached.transcript),
+		transcript: cached.transcript,
 		stale: true,
 		// The rows this paint was still waiting on, so the FIRST frame already knows
 		// which object columns must stay empty. See `owedLabels` in `paint-cache.ts`
@@ -1682,6 +1997,18 @@ export function useCanonicalSessionStream(
 	 * pre-draft caller passes a session id and keeps the `true` default.
 	 */
 	isSession = true,
+	/**
+	 * The conversation identity THIS PANE addresses - `panelIdentityFor(draftKey,
+	 * id)`, i.e. the draft key before the create answers and the session id
+	 * after.
+	 *
+	 * It is the key of the echo registry and of the first-frame seed, and it is
+	 * deliberately not `sessionId`: for a fresh draft the stream id is the minted
+	 * warm (or nothing at all), while the row a press paints is addressed by the
+	 * pane's own key. Defaults to `sessionId`, which is what every pre-draft
+	 * caller's identity is.
+	 */
+	identity: string | undefined = sessionId,
 ): CanonicalSessionHandle {
 	const [view, setView] = useState<CanonicalSessionView>(() => {
 		const seed = enabled && sessionId ? paintSeed(sessionId) : null;
@@ -1702,12 +2029,13 @@ export function useCanonicalSessionStream(
 			turnsCompleted: 0,
 			failure: null,
 			/*
-			 * SEEDED, and only here. A panel mounted while its own echo is already
-			 * buffered must paint that echo in its FIRST frame: on the New-chat path
-			 * this mount IS the identity flip the send triggers, and the echo reaches
-			 * the panel through a passive effect - one commit too late - unless the
-			 * initial state already holds it. See `seedPendingEchoes` for why this is
-			 * a peek rather than a take, and why the drain that follows is harmless.
+			 * SEEDED, and only here. A panel mounted while a send for its own identity
+			 * is already painted must paint that row in its FIRST frame: on the
+			 * New-chat path this mount IS the identity flip the send triggers, and a
+			 * drain reaches the panel through a passive effect - one commit too late -
+			 * unless the initial state already holds it. See `seedPendingSends` for why
+			 * this is a peek rather than a take, and why the drain that follows is
+			 * harmless.
 			 *
 			 * The echo is applied OVER the cached paint rather than instead of it.
 			 * They are different claims about the same first frame: the paint is this
@@ -1717,10 +2045,9 @@ export function useCanonicalSessionStream(
 			 * click path came for; seeding the paint alone would drop the echo. So the
 			 * echo composes on top of the paint and neither seam is lost.
 			 */
-			transcript:
-				enabled && sessionId
-					? seedPendingEchoes(sessionId, seed?.transcript ?? EMPTY_TRANSCRIPT)
-					: EMPTY_TRANSCRIPT,
+			transcript: identity
+				? seedPendingSends(identity, seed?.transcript ?? EMPTY_TRANSCRIPT)
+				: EMPTY_TRANSCRIPT,
 			// A cached paint is a real memory of a real transcript, but it is not the
 			// owner's current state — so it says so until the snapshot lands.
 			stale: seed?.stale ?? false,
@@ -1799,8 +2126,8 @@ export function useCanonicalSessionStream(
 	 * Which session the transcript IN `view` belongs to, so the reset effect
 	 * below can tell another session's rows from this one's own seeded echo.
 	 *
-	 * WHY THIS EXISTS RATHER THAN A SECOND SEED. `seedPendingEchoes` above puts a
-	 * buffered echo in a panel's FIRST frame - and the effect below used to
+	 * WHY THIS EXISTS RATHER THAN A SECOND SEED. `seedPendingSends` above puts a
+	 * retained row in a panel's FIRST frame - and the effect below used to
 	 * overwrite that same state with `EMPTY_TRANSCRIPT` one commit later, because
 	 * its only question was "did the session id change". On the New-chat path the
 	 * panel that mounts IS the identity flip, so its first render is the seeded
@@ -1816,6 +2143,10 @@ export function useCanonicalSessionStream(
 	 * A ref rather than state: it is read inside the effect's updater, must not
 	 * schedule a render of its own, and only ever changes at a session boundary -
 	 * the same moments the effect itself runs.
+	 *
+	 * A SESSION BOUNDARY, NOT EVERY STREAM-ID CHANGE: the mint's bridge id is not
+	 * a session, and the swap to it must not read as one (see
+	 * `streamChangeKeepsTranscript`, UX round 1's U1).
 	 */
 	const transcriptSession = useRef<string | undefined>(sessionId);
 	// Mutable side-channel for the frame pump; React state is the published,
@@ -3846,12 +4177,22 @@ export function useCanonicalSessionStream(
 		/*
 		 * Kept when the state already belongs to THIS session. The panel that
 		 * mounts on the New-chat flip is exactly that case: it mounted with the id
-		 * it keeps, carrying the echo `seedPendingEchoes` gave its first frame, and
+		 * it keeps, carrying the row `seedPendingSends` gave its first frame, and
 		 * replacing that with an empty transcript is the defect UX round 2's U1
 		 * measured. A real change of session id still resets, because the state on
 		 * screen then belongs to a conversation nobody is looking at.
+		 *
+		 * AND THE MINT'S BRIDGE ID KEEPS IT TOO (UX round 1, U1): the draft pane's
+		 * stream id moves `undefined` -> the minted warm id mid-press, the
+		 * conversation does not change, and this reset used to wipe the row the
+		 * press had just painted. The rule and the measurement are on
+		 * `streamChangeKeepsTranscript`.
 		 */
-		const sameSession = transcriptSession.current === sessionId;
+		const sameSession = streamChangeKeepsTranscript(
+			transcriptSession.current,
+			sessionId,
+			isSession,
+		);
 		transcriptSession.current = sessionId;
 		// The cached rows when this window has shown the conversation before, so a
 		// switch paints in its first frame; empty otherwise. The paint is NOT
@@ -3929,7 +4270,12 @@ export function useCanonicalSessionStream(
 		 * already seen (round 1, QA Q1).
 		 */
 		labelGapRef.current = labelGapFor(sessionId);
-	}, [sessionId]);
+		/*
+		 * `isSession` rides the deps because the rule reads it: the property is
+		 * "is this change a change of conversation", and `undefined` -> the mint's
+		 * bridge id is not one (UX round 1, U1).
+		 */
+	}, [sessionId, isSession]);
 
 	/*
 	 * Cache this conversation's paint on the way out.
@@ -4296,12 +4642,14 @@ export function useCanonicalSessionStream(
 		[commitView, sessionId],
 	);
 
-	// Registered for as long as this session is on screen, so the store's echo
+	// Registered for as long as this pane is on screen, so the store's echo
 	// reaches the transcript the user is looking at. Registration is keyed by
-	// session rather than by panel: two panels for one session would be the same
-	// conversation, and the last mounted one is the one being looked at.
+	// the PANE'S OWN IDENTITY rather than by session: a fresh draft has no
+	// session id yet, and the row its press paints is addressed by the draft key
+	// - while two panels for one session would be the same conversation, and the
+	// last mounted one is the one being looked at.
 	useEffect(() => {
-		if (!sessionId) return;
+		if (!identity) return;
 		const apply = (mutate: (state: TranscriptState) => TranscriptState) => {
 			commitView((current) => {
 				const transcript = mutate(current.transcript);
@@ -4313,12 +4661,27 @@ export function useCanonicalSessionStream(
 		/*
 		 * The same function the delivery test drives, so the registration and
 		 * drain the app performs are the ones under test. Draining here is what
-		 * makes the New-chat path work: the store fires the echo in the same
-		 * synchronous block that patches the session id, so the buffer is where it
-		 * lands and this is the first moment a transcript can receive it.
+		 * makes the New-chat path work: a paint fired while no transcript was
+		 * mounted is retained, and this is the first moment a transcript can
+		 * receive it. At the press itself the DRAFT pane's own registration is the
+		 * target - one identity earlier than the session - so the row paints
+		 * synchronously with the press and the composer clears with it.
 		 */
-		return __registerEchoTarget(sessionId, apply);
-	}, [commitView, sessionId]);
+		return __registerEchoTarget(identity, apply);
+	}, [commitView, identity]);
+
+	/*
+	 * THE OWNER'S ROW ENDS THE CLAIM. When a non-local user record for a
+	 * retained id is in the transcript, the message is on the owner's side and
+	 * the optimistic entry has nothing left to say - `resolveObservedPendingSends`
+	 * drops it, so the pane's collapse, the band and the wait-line latch all stop
+	 * reading a claim whose row is now durable. Walks the ENTRIES (at most four),
+	 * not the records, on each committed transcript change.
+	 */
+	useEffect(() => {
+		if (!identity) return;
+		resolveObservedPendingSends(identity, view.transcript);
+	}, [identity, view.transcript]);
 
 	const clearView = useCallback(() => {
 		commitView((current) => ({
