@@ -232,6 +232,113 @@ async function waitFor(check, describe) {
 }
 
 /**
+ * How long ONE tick may take before this file calls it WEDGED.
+ *
+ * A backstop, not the assertion, and the distinction is the whole point of
+ * `driveTick` below: the tick's own promise is what these cases assert, and it
+ * resolves when that tick's work is done. A minute is a catastrophe budget
+ * rather than a latency budget - a healthy tick of this rig is a loopback
+ * request - so a tick that trips it is wedged, and the run fails with this
+ * file's own message instead of hanging until CI's job timeout.
+ */
+const TICK_BACKSTOP_MS = 60_000;
+
+/**
+ * Run ONE tick of the armed probe loop and return when that tick's own work is
+ * done - the gates evaluated, the probe sent and answered, the answer's
+ * bookkeeping applied.
+ *
+ * THE EVENT, NOT A CLOCK, and this file paid for the difference. `loop.fn()` is
+ * `startHealthCheck()`'s callback, which returns `checkBackendHealth()`'s
+ * promise; awaiting it is what makes a case wait for its own work instead of
+ * for a clock to say the work is late. On 2026-09-27 the Desktop Tests job on
+ * `main` failed on the budget the sites below used to poll instead:
+ *
+ *   not ok 1599 - the operator's report: an ADOPTED daemon that reloads in place
+ *   never re-discovers while admitted traffic keeps clearing the count (2026-09-21)
+ *     error: "timed out waiting for the tick's probe to be folded"
+ *     duration_ms: 5055.130211
+ *
+ * That is a 5000 ms budget and a tick that took 5055 ms on a loaded runner - a
+ * bet on machine load, lost, on a probe round trip that does happen (the same
+ * job's log shows the suite completing, `# fail 1`, so nothing was wedged: the
+ * clock was). The same test failed on `fdff0d84d6`, before this file's
+ * neighbours changed at all. See AGENTS.md's "Wait on the event, never on the
+ * clock".
+ *
+ * @param loop one recorded entry from `withRecordedProbeLoop`, i.e. the manager's
+ *   own interval callback, which must hand back the tick's promise.
+ * @param describe the state this wait is waiting for, named in the backstop's
+ *   failure message.
+ *
+ * WHAT THE AWAITED TICK PROVES, and why nothing here is compared against a
+ * clock. The promise resolves when the tick's own work is done: the gates
+ * evaluated, the probe sent and answered, the answer's fold applied. That is
+ * strictly stronger than the poll it replaces, which any unrelated admitted
+ * answer could satisfy. The case's own proof of the fold is the sequence it
+ * drives, not a stamp on the snapshot.
+ *
+ * THE ASSERTIONS THAT USED TO FOLLOW THIS CALL ARE GONE, and the reason lives
+ * here so nobody re-adds one: they read
+ * `getStatusSnapshot().updatedAt > clockBefore`, and `updatedAt` is stamped from
+ * `Date.now()` (`daemon-status.ts` stamps it at 441 and 542 through `now()`), so
+ * BOTH SIDES OF THAT `>` WERE MILLISECOND WALL-CLOCK VALUES. When the probe's
+ * answer is admitted in the SAME MILLISECOND as the pre-tick read the predicate
+ * is false and cannot become true before the next tick - measured on PR #556's
+ * QA round 1 (Q-1): `updated_delta=0 tick_ms=0 seen_delta=1 admission_stamps=2`,
+ * i.e. two admissions applied to the stamp while the assert claimed none. That
+ * is a FALSE ALARM about a correct implementation, with ZERO margin rather than
+ * a small one, and it is what `main`'s red on 2026-09-27 actually was: the
+ * pre-fix poll burned its whole budget on a tie (reproduced here from a pinned
+ * clock: `5124.6 ms` with the CI's own error string; QA round 1 measured
+ * `5156.7 ms` from the same construction), while the CI job's timeline shows the
+ * probe landing in the first ~55 ms of the case. `await`ing the tick removes the
+ * WAIT, not that granularity; only removing the comparison does.
+ *
+ * What a case may assert then is what is observable without a clock: that the
+ * daemon SAW the probe (`seen`/`healthCount`), and that the tick finished its
+ * own work (`this` promise). The cases below do exactly that.
+ */
+async function driveTick(loop, describe = "the tick's own work to settle") {
+	const tick = loop.fn();
+	/*
+	 * A TICK THAT HANDS BACK NOTHING CANNOT BE AWAITED, and the failure would be
+	 * the silent one: `await undefined` resolves at once, so every assertion after
+	 * it would pass against work that has not happened yet. Refuse the instrument
+	 * rather than take the reading - the manager returns this promise for exactly
+	 * this reason, and this line is what keeps that true.
+	 */
+	assert.equal(
+		typeof tick?.then,
+		"function",
+		"the probe loop's tick must return its work's promise, so a case can await the fold instead of polling a clock",
+	);
+	let backstop;
+	const wedged = new Promise((_, reject) => {
+		backstop = setTimeout(
+			() =>
+				reject(
+					new Error(`timed out waiting for ${describe} (the tick is wedged)`),
+				),
+			TICK_BACKSTOP_MS,
+		);
+	});
+	/*
+	 * The losing arm is OBSERVED rather than left to node's unhandled-rejection
+	 * handler: when the backstop fires, the tick's own later failure would
+	 * otherwise arrive as a second, unexplained crash of the test process - and a
+	 * dead instrument's reading is what this file is careful about everywhere
+	 * else.
+	 */
+	tick.catch(() => {});
+	try {
+		await Promise.race([tick, wedged]);
+	} finally {
+		clearTimeout(backstop);
+	}
+}
+
+/**
  * One case's world: its own config root (so no other case's record is a
  * candidate), a real loopback daemon answering like one, and the live process
  * its record names - so `pidLiveness` has a real process to lose.
@@ -1897,25 +2004,17 @@ async function ownedDaemonScene({
  */
 async function tickArmedProbe(scene) {
 	const counterBefore = (await scene.state()).healthCount;
-	const clockBefore = scene.manager.getStatusSnapshot().updatedAt;
 	const loop = scene.intervals.find((entry) => entry.ms === PROBE_INTERVAL_MS);
 	assert.ok(loop, "startOwned() must have armed the probe loop");
-	loop.fn();
-	const deadline = Date.now() + 2_000;
-	let probed = false;
-	while (Date.now() < deadline) {
-		if ((await scene.state()).healthCount > counterBefore) {
-			probed = true;
-			break;
-		}
-		await new Promise((resolve) => setTimeout(resolve, 10));
-	}
-	if (!probed) return false;
-	await waitFor(
-		() => scene.manager.getStatusSnapshot().updatedAt > clockBefore,
-		"the tick's probe to be folded into the state machine",
-	);
-	return true;
+	/*
+	 * The tick's own promise, not a poll: by the time it resolves the probe has
+	 * been answered and its answer folded, so the daemon's count below is READ
+	 * rather than watched. A tick that made no probe is still reported as such -
+	 * a connection broken in the way a case exists to describe must not be
+	 * reported as a rig fault.
+	 */
+	await driveTick(loop);
+	return (await scene.state()).healthCount > counterBefore;
 }
 
 test("a reload in place of the daemon this app spawned keeps the app attached and paired (2026-09-20)", async () => {
@@ -2294,16 +2393,11 @@ test("A3: an ADOPTED daemon that reloads in place recovers without a restart, by
 			for (let i = 0; i < DEGRADED_AFTER_FAILURES; i++) {
 				const loop = intervals.find((entry) => entry.ms === PROBE_INTERVAL_MS);
 				assert.ok(loop, "adoption must have armed the probe loop");
-				const clockBefore = manager.getStatusSnapshot().updatedAt;
 				const seenBefore = scene.seen.length;
-				loop.fn();
-				await waitFor(
-					() => scene.seen.length > seenBefore,
-					"the tick's probe to reach the daemon",
-				);
-				await waitFor(
-					() => manager.getStatusSnapshot().updatedAt > clockBefore,
-					"the tick's probe to be folded",
+				await driveTick(loop);
+				assert.ok(
+					scene.seen.length > seenBefore,
+					"the tick's probe must reach the daemon",
 				);
 			}
 
@@ -2394,16 +2488,11 @@ test("the operator's report: an ADOPTED daemon that reloads in place never re-di
 
 		const sequence = [];
 		for (let tick = 1; tick <= 5; tick++) {
-			const clockBefore = manager.getStatusSnapshot().updatedAt;
 			const seenBefore = scene.seen.length;
-			loop.fn();
-			await waitFor(
-				() => scene.seen.length > seenBefore,
-				"the tick's probe to reach the daemon",
-			);
-			await waitFor(
-				() => manager.getStatusSnapshot().updatedAt > clockBefore,
-				"the tick's probe to be folded",
+			await driveTick(loop);
+			assert.ok(
+				scene.seen.length > seenBefore,
+				"the tick's probe must reach the daemon",
 			);
 			/*
 			 * The renderer's own traffic between probes - the presence beat and a
