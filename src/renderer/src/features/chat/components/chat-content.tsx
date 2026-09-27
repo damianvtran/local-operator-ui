@@ -113,11 +113,12 @@ type ChatContentProps = {
 	 */
 	identity?: HeaderIdentityData | null;
 	/**
-	 * Opens the existing rename flow for the conversation; see
-	 * `ChatHeaderProps.onRenameConversation`. The page routes it to the same
-	 * dispatcher `/rename` already runs through.
+	 * The session the header's inline rename writes to; see
+	 * `ChatHeaderProps.renameSessionId`. Passed straight through from the page
+	 * (which owns the `commands` capability gate), so this component never
+	 * answers a capability question it cannot see.
 	 */
-	onRenameConversation?: () => void;
+	renameSessionId?: string;
 	onOpenOptions: () => void;
 	isOptionsSidebarOpen: boolean;
 	onCloseOptions: () => void;
@@ -528,7 +529,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		description,
 		descriptionPending,
 		identity,
-		onRenameConversation,
+		renameSessionId,
 		onOpenOptions,
 		isOptionsSidebarOpen,
 		onCloseOptions,
@@ -1334,7 +1335,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							description={description}
 							descriptionPending={descriptionPending}
 							identity={identity}
-							onRenameConversation={onRenameConversation}
+							renameSessionId={renameSessionId}
 							onOpenOptions={onOpenOptions}
 							runDetails={runDetails}
 							fileCount={mentionedFileCount}

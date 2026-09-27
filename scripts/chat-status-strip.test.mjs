@@ -210,38 +210,54 @@ test("the four states, their washes, their roles and their one action", () => {
 	);
 });
 
-test("a refused credential outranks every row below it, and never states two causes", () => {
+test("a refusal is stated only while its daemon is there, and the absence takes over", () => {
 	/*
-	 * THE CONTRADICTION THE TWO BANDS HAD, resolved in favour of the actionable
-	 * fact: "the daemon's process is gone" describes the ATTEMPT, "the credential
-	 * was refused" describes the ANSWER, and when both readings are live the strip
-	 * states the second - it is the one the reader can act on - while the first
-	 * becomes the detail line or is not shown at all.
+	 * THE RULING UX ROUND 1's U1 OVERTURNED. This test used to assert the
+	 * opposite - that a refused credential outranked a gone process - and the
+	 * walk that found U1 measured what that meant in the live app: the daemon was
+	 * killed, main's pairing record still said `credential-refused`, and the strip
+	 * went on asserting "The daemon is running." to a reader whose only truthful
+	 * statement was that nothing answered (the renderer's own log said `Server is
+	 * offline` throughout). A refusal is a CURRENT fact or it is nothing:
+	 * a daemon that answers and refuses is `wedged` (daemon-status's
+	 * `unattachable` arm), and a daemon that is gone is `detached` (the `pid-dead`
+	 * and `no-candidate` arms) - so the row is gated on the state, and the absence
+	 * falls through to the `unreachable` row below.
 	 */
-	const both = chatStatusDisplay({
-		connectivityIssue: "server_offline",
-		server: {
-			state: "detached",
-			detail: "Pairing was refused by a server that is running.",
-			pairing: { available: false, cause: "key-refused" },
-		},
-		internetOffline: false,
-	});
-	assert.equal(both?.kind, "credential-refused");
-	assert.equal(both?.title, CHAT_STATUS_COPY["credential-refused"]);
-	assert.equal(
-		both?.detail,
-		"Pairing was refused by a server that is running.",
-		"the other reading survives as the detail line rather than as a second cause",
-	);
+	const refused = (state) =>
+		chatStatusDisplay({
+			connectivityIssue: state === "detached" ? "server_offline" : null,
+			server: {
+				state,
+				/*
+				 * THE DETAILS ARE THE PIPELINE'S OWN, NOT HAND-BUILT (QA round 2): the
+				 * `wedged` sentence is what `attachIfUsable`/`observeNoCandidate`
+				 * publish while the daemon answers (`runs/refused-r2`), and the
+				 * `detached` one is the sweep's absence sentence after the kill
+				 * (`runs/kill-expanded`, post-fix `S4c`) - the stale refusal detail
+				 * surviving its daemon was U1's whole complaint.
+				 */
+				detail:
+					state === "detached"
+						? "The Local Operator server whose record names pid 1234 is no longer running, but its record is too fresh to reap, so this app did not attach to it."
+						: "A daemon is running at http://127.0.0.1:18955, but it refused this app's credential for its desktop plane (HTTP 401). The daemon is running.",
+				pairing: { available: false, cause: "credential-refused" },
+			},
+			internetOffline: false,
+		});
+
+	/* A daemon that is THERE and refusing: the refusal is the reader's fact. */
+	const wedged = refused("wedged");
+	assert.equal(wedged?.kind, "credential-refused");
+	assert.equal(wedged?.title, CHAT_STATUS_COPY["credential-refused"]);
 	/*
-	 * And there is exactly ONE message: the type has one `title`, so a second cause
-	 * has nowhere to go but the one detail slot, which is what makes "the app never
-	 * shows two root causes at once" a property of the shape rather than a rule
-	 * someone has to remember.
+	 * And there is exactly ONE message: the type has one `title`, so a second
+	 * cause has nowhere to go but the one detail slot, which is what makes "the
+	 * app never shows two root causes at once" a property of the shape rather
+	 * than a rule someone has to remember.
 	 */
 	assert.equal(
-		Object.keys(both ?? {}).filter((key) => key === "title").length,
+		Object.keys(wedged ?? {}).filter((key) => key === "title").length,
 		1,
 	);
 	/*
@@ -251,7 +267,89 @@ test("a refused credential outranks every row below it, and never states two cau
 	 * A control labelled for an act the app cannot perform is the "button that
 	 * provably cannot work" this repository refuses to ship.
 	 */
-	assert.equal(both?.actionLabel, "Retry");
+	assert.equal(wedged?.actionLabel, "Retry");
+
+	/* The same record with the daemon GONE: the absence is the fact now. */
+	const gone = refused("detached");
+	assert.equal(gone?.kind, "unreachable");
+	assert.match(
+		gone?.detail ?? "",
+		/no longer running/,
+		"main's own absence detail is the second line - the sentence that may no longer say 'The daemon is running.' (U1)",
+	);
+	assert.notEqual(
+		chatStatusKey(wedged),
+		chatStatusKey(gone),
+		"the death of the daemon moves the key, so a dismissed strip re-arms (U1)",
+	);
+});
+
+/*
+ * § 0.1's other half: the four causes the COMPATIBILITY BANNER owns leave this
+ * surface silent, and so does a record that states no cause at all.
+ *
+ * WHY THIS IS A TEST AND NOT AN IMPLICATION. The row-1 gate moving from
+ * `available === false` to the cause is only half the fix; the other half is
+ * that the connection rows must not take over the incident the banner is
+ * already stating - measured on the governed scene the repo committed
+ * (`docs/evidence/any-daemon-attach/after-frames-other-principal.json`): state
+ * `detached` beside cause `governed-elsewhere`, where the unreachable row
+ * painted "Can't reach the Local Operator server" as a second band under the
+ * banner's own sentence. The states each cause really occurs in are asserted
+ * rather than one, since a successor is reachable while attached and the other
+ * three are not.
+ */
+test("the causes the banner owns leave the strip silent, in the states they occur in", () => {
+	const at = (cause, state = "attached") =>
+		chatStatusDisplay({
+			connectivityIssue: null,
+			server: { state, detail: null, pairing: { available: false, cause } },
+			internetOffline: false,
+		});
+
+	for (const cause of [
+		"successor",
+		"governed-elsewhere",
+		"pre-handshake",
+		"unpaired",
+		null,
+	]) {
+		for (const state of ["attached", "detached", "wedged"]) {
+			assert.equal(
+				at(cause, state),
+				null,
+				`${cause} + ${state}: the strip must not state a cause the banner owns`,
+			);
+		}
+	}
+
+	/*
+	 * AND IT CANNOT PASS VACUOUSLY: the SAME state, without a pairing record,
+	 * still paints the connection row - which is what makes the silence above a
+	 * property of the cause rather than of a fixture that never drew anything.
+	 * The last case is the server-gone scene as the live rig recorded it (no
+	 * pairing record, `connectivityIssue: server_offline`), where the strip is
+	 * the voice § 2.3's `!answered` yield leaves the pane.
+	 */
+	const bare = (state) =>
+		chatStatusDisplay({
+			connectivityIssue: null,
+			server: { state, detail: null, pairing: null },
+			internetOffline: false,
+		});
+	assert.equal(bare("detached")?.kind, "unreachable");
+	assert.equal(
+		chatStatusDisplay({
+			connectivityIssue: "server_offline",
+			server: {
+				state: "detached",
+				detail: "The daemon's process is gone.",
+				pairing: null,
+			},
+			internetOffline: false,
+		})?.kind,
+		"unreachable",
+	);
 });
 
 test("dismissal is keyed on the state, so a new cause is never muted", () => {
@@ -274,25 +372,23 @@ test("dismissal is keyed on the state, so a new cause is never muted", () => {
 	assert.notEqual(chatStatusKey(unreachable), chatStatusKey(degraded));
 	assert.notEqual(chatStatusKey(unreachable), chatStatusKey(offline));
 	/*
-	 * The same kind with a different DETAIL is a different key: a refused
-	 * credential after a re-pair is not the fact the reader dismissed.
+	 * THE FACT, NOT MAIN'S PROSE (UX round 1's U5). The same kind with a
+	 * different DETAIL is the SAME key: main re-spells one unchanged condition
+	 * (two spellings of the same refusal, plus a mid-scene refinement), and the
+	 * old detail-keyed version voided a reader's dismissal and retired a fresh
+	 * Retry outcome on a wording change. A new KIND still moves the key - that is
+	 * the re-arm - and the refused/absence pair is asserted in the test above.
 	 */
-	assert.notEqual(
+	const wedgedKey = (detail) =>
 		chatStatusKey(
 			chatStatusDisplay({
 				connectivityIssue: null,
-				server: { state: "wedged", detail: "one", pairing: null },
+				server: { state: "wedged", detail, pairing: null },
 				internetOffline: false,
 			}),
-		),
-		chatStatusKey(
-			chatStatusDisplay({
-				connectivityIssue: null,
-				server: { state: "wedged", detail: "two", pairing: null },
-				internetOffline: false,
-			}),
-		),
-	);
+		);
+	assert.equal(wedgedKey("one"), wedgedKey("two"));
+	assert.equal(wedgedKey("one"), wedgedKey(null));
 });
 
 /* --------------------------------------------------------- the surface */
@@ -321,9 +417,17 @@ test("the strip is one live region, one Retry, and one dismissal", () => {
 		"one Retry, one call site",
 	);
 	// Its progress and its outcome are both in the strip (U7's report was a Retry
-	// that did nothing visible).
+	// that did nothing visible). The outcome is KIND-AWARE (UX round 1's U2): a
+	// refusal's answer speaks the refusal's vocabulary, and the reachability
+	// sentence stays for the rows it describes - chosen on the same fact-key the
+	// dismissal rides.
 	assert.match(source, /Retrying…/);
 	assert.match(source, /Still unreachable\./);
+	assert.match(
+		source,
+		/The server is running, but this app's credential is still refused\./,
+	);
+	assert.match(source, /key\?\.startsWith\("credential-refused"\)/);
 	// The dismissal is a REAL collapse (a pill that re-expands), not a hide.
 	assert.match(source, /data-lo-status-pill=""/);
 	assert.match(source, /data-lo-status-strip=""/);
