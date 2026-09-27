@@ -551,20 +551,16 @@ export const DeleteConfirm: Story = {
 		 * and an enabled Delete project). `[role="dialog"]` is the panel that
 		 * contains both halves.
 		 */
-		await poll(
-			() => {
-				const dialog = document.querySelector('[role="dialog"]');
-				return (
-					dialog !== null &&
-					[...dialog.querySelectorAll("button")].some(
-						(button) =>
-							!button.disabled &&
-							button.textContent?.trim() === "Delete project",
-					)
-				);
-			},
-			"the delete button to enable",
-		);
+		await poll(() => {
+			const dialog = document.querySelector('[role="dialog"]');
+			return (
+				dialog !== null &&
+				[...dialog.querySelectorAll("button")].some(
+					(button) =>
+						!button.disabled && button.textContent?.trim() === "Delete project",
+				)
+			);
+		}, "the delete button to enable");
 	}),
 };
 
