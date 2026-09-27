@@ -56,13 +56,17 @@ every route).
 
 ## The scene's verdicts
 
-`before-1380x900.log`: **5 FAIL / 28 PASS**, every FAIL one of the three
+`before-1380x900.log`: **6 FAIL / 33 PASS**, every FAIL one of the three
 leading-column routes — `the route's leading column is handed to the shell` and
 `the lane's band reaches the leading column's right edge` (the band stopped at 260
 against a rail ending at 479 and a pane ending at 516).
 
-`after-1380x900.log`: **45 PASS / 0 FAIL** at 1380x900, and 800x600 the same
-(`after-800x600.log`, exit 0). The control routes (`/chat`, `/agent-hub`,
+`after-1380x900.log`: **45 PASS / 0 FAIL** at 1380x900; `after-800x600.log`: **35 PASS /
+0 FAIL** (fewer checks there because the sidebar-relative ones stand down where the
+dock collapses to the strip), and `before-800x600.log` the same 6 FAIL shape. The
+before set is the six-route list - `/agents/<id>` was added to the scene by this
+change - so that route's before frame and log line are in `before-agents-detail/`
+(43 PASS / 2 FAIL: the hand-over and the band's reach). The control routes (`/chat`, `/agent-hub`,
 `/schedules`) assert the band is exactly the app sidebar's own width, so this is
 not a rule that quietly widens every band.
 
