@@ -772,7 +772,9 @@ const builtinOfferSentence = (
  */
 function focusRowAfterRemoval(pressed: HTMLElement): () => void {
 	const rows = Array.from(
-		document.querySelectorAll<HTMLElement>("[data-chat-row]"),
+		document.querySelectorAll<HTMLElement>(
+			'[data-sidebar-region="chats"] [data-chat-row]',
+		),
 	);
 	const rowButton =
 		pressed.parentElement?.querySelector<HTMLElement>("[data-chat-row]") ??
@@ -795,12 +797,14 @@ function focusRowAfterRemoval(pressed: HTMLElement): () => void {
 		 * scroll the app had no business writing. `focus()` says where the caret is; where the reader
 		 * is standing is the reader's - the division `holdFocusedRow` states for its own correction.
 		 *
-		 * WHICH node takes the caret is deliberately NOT changed here: `rows` is document-wide and the
-		 * pressed control's row is not always resolvable from the control's own parent (the pair
-		 * wrapper is the row button's SIBLING), so `index` can be `-1` and the successor is then the
-		 * document's first `[data-chat-row]`. That mis-target is pre-existing - the same markup picks
-		 * the same node on `origin/main` - and choosing the row that should take the caret is a UX
-		 * decision, recorded on the PR rather than taken in a remediation commit.
+		 * WHICH node takes the caret is SCOPED TO THE CHATS REGION (UX round 2, U1), and the scope is
+		 * load-bearing for the same reason it is at the pile-clearing hand-off below: the one-scroll
+		 * change put both regions in ONE document order, so the document's first `[data-chat-row]` is
+		 * the ENTITY region's `Agents` disclosure - and that is where the caret landed, MEASURED
+		 * (`region=entities`, `aria-expanded=true`, roughly 500px above the row that was pressed),
+		 * identically from the first row and through the `⌘⇧A` chord. The next `↓` then walked the
+		 * panel from its top instead of the list from where the reader was. The same partition the
+		 * arrow walk's own `nav` query is written under, read here for the same reason.
 		 */
 		successor?.focus({ preventScroll: true });
 	};
@@ -4469,14 +4473,28 @@ export function ChatSidebar({
 		}
 		if (target.tagName === "INPUT") {
 			/*
+			 * THE FIELD'S OWN ENTRY INTO THE LIST IS SCOPED TO THE CHATS REGION (UX round 2, U2), and the
+			 * two presses below are the ones the finding names. `event.currentTarget` is the PANEL, so an
+			 * unscoped query answers with the ENTITY region's first `[data-chat-row]` - measured, the
+			 * `Agents` disclosure - and a reader who pressed ↓ to enter the list walked the group rows
+			 * (Agents, then Teams, then Mark all N read) before reaching the first conversation. The list
+			 * this field's own notice calls "the results" is the conversations, so the query asks for the
+			 * region they are in: the same partition the archive's hand-off and the pile-clearing hand-off
+			 * are written under, and the arrow walk's own ring stays the panel's document order, which is
+			 * what makes the region the caret starts in decide the whole path.
+			 */
+			const firstRowInList = () =>
+				event.currentTarget.querySelector<HTMLElement>(
+					'[data-sidebar-region="chats"] [data-chat-row]',
+				);
+			/*
 			 * ↓ ENTERS THE RESULTS, which is the command palette's own model applied
 			 * to the one other list in this column (U15). Without it the field was a
 			 * trap for a keyboard user: the list below it was reachable only by Tab,
 			 * and the field's own notice said nothing about how to get there.
 			 */
 			if (event.key === "ArrowDown") {
-				const first =
-					event.currentTarget.querySelector<HTMLElement>("[data-chat-row]");
+				const first = firstRowInList();
 				if (first) {
 					event.preventDefault();
 					first.focus();
@@ -4494,8 +4512,7 @@ export function ChatSidebar({
 				 * the document and the arrow walk below was unreachable without a pointer
 				 * (U5's "focus lost to `body`", read on this control).
 				 */
-				const first =
-					event.currentTarget.querySelector<HTMLElement>("[data-chat-row]");
+				const first = firstRowInList();
 				if (first) {
 					first.focus();
 					applyRowStop(first);

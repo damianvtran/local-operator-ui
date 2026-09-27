@@ -2547,6 +2547,19 @@ async function scrolledArrival(
 				top: activeRect === null ? null : Math.round(activeRect.top),
 				bottom: activeRect === null ? null : Math.round(activeRect.bottom),
 				visibility: activeRect === null ? "no-row-focused" : visibilityOf(activeRect),
+				/*
+				 * AND THE REGION THE CARET IS IN, named rather than inferred (UX round 2, U1). The defect
+				 * this reading exists for is a caret in the ENTITY region while the reader was working in
+				 * the list, and a reading that said only "some chat row is focused" could not tell that
+				 * state from the right one: both regions' rows carry that attribute, so the attribute
+				 * says nothing about WHICH region the keyboard is in.
+				 */
+				region:
+					active instanceof HTMLElement
+						? (active
+								.closest("[data-sidebar-region]")
+								?.getAttribute("data-sidebar-region") ?? null)
+						: null,
 			},
 			focusedIndex,
 			activeIsChatRow: activeRect !== null,
@@ -2715,24 +2728,61 @@ async function scrolledArrival(
 		 * no samples and no press, and made the whole leg read null rather than red (the vacuous pass
 		 * this clause exists to prevent). So the position goes on first and the cursor is the last row
 		 * that starts inside the clip from where the reader actually is.
+		 *
+		 * AND THE STATE MUST BE ONE A READER COULD BE IN (QA round 3, Q-1). This instrument's subject
+		 * is a reader standing in a scrolled list, so BOTH rows the press is about have to start inside
+		 * the clip: the CURSOR row, which is the one a correction is possible for, and - when the press
+		 * targets a row's own control - the PRESSED row, because a reader presses a row they can see.
+		 * The named-cursor path used to skip the clip condition entirely (it returned the row it was
+		 * given, however far below the fold it lay), so the clause claiming "the pressed row is on
+		 * screen" printed a reading with BOTH rows below the clip: prose and reading disagreeing, which
+		 * is the class this round exists to close. The walk below carries the reader down until both
+		 * start inside and reports both, and the clause's own stateOk reads that report.
 		 */
+		const startsInside = (row) => {
+			if (row === null) return false;
+			const button = row.querySelector("[data-chat-row]");
+			if (button === null) return false;
+			const rect = button.getBoundingClientRect();
+			const clip = clipOf();
+			return rect.top >= clip.top && rect.top < clip.bottom;
+		};
+		const pressSelector = ${JSON.stringify(press?.selector ?? null)};
+		/*
+		 * The pressed row is the row the press's own control sits in. A press whose control is outside
+		 * every row (the lane's Retry, a header action) has none, and then there is nothing to place -
+		 * pressedInside reports true for that press rather than a failure it cannot have caused.
+		 */
+		const pressedRow =
+			pressSelector === null
+				? null
+				: (list.querySelector(pressSelector)?.closest("[data-session-row]") ?? null);
 		list.scrollTop = ${JSON.stringify(scroll)};
 		let chosen = pickFocus();
 		let walked = 0;
+		const placement = () => ({
+			cursorInside: startsInside(chosen),
+			pressedInside: pressedRow === null || startsInside(pressedRow),
+		});
+		let placed = placement();
 		/*
-		 * AND WHEN THE READER'S OWN POSITION LEAVES NO SESSION ROW INSIDE THE CLIP, THE WALK CARRIES
-		 * THEM DOWN to the first position that does - one row of their own list at a time, bounded by
-		 * the content's own end (scrollTop stops moving once the extent is spent). This is the state
-		 * the clause is about, not a number being tuned: a session row has to start in the clip for
-		 * the band's arrival to be able to push it out at all (the geometryOk clause reads exactly
-		 * that), and the position reached is reported back and asserted (scrollAtPress > 0).
+		 * AND WHEN THE READER'S OWN POSITION LEAVES EITHER ROW OUTSIDE THE CLIP, THE WALK CARRIES THEM
+		 * DOWN to the first position that puts both inside - one row of their own list at a time,
+		 * bounded by the content's own end (scrollTop stops moving once the extent is spent). This is
+		 * the state the clauses are about, not a number being tuned: a session row has to start in the
+		 * clip for the band's arrival to be able to push it out at all (the geometryOk clause reads
+		 * exactly that), and the position reached is reported back and asserted (scrollAtPress > 0).
 		 */
-		while (chosen === null && walked < 60) {
+		while (
+			(chosen === null || !placed.cursorInside || !placed.pressedInside) &&
+			walked < 60
+		) {
 			const before = list.scrollTop;
 			list.scrollTop = before + rowStep;
 			if (list.scrollTop === before) break;
 			walked += 1;
 			chosen = pickFocus();
+			placed = placement();
 		}
 		if (chosen === null)
 			return {
@@ -2757,6 +2807,9 @@ async function scrolledArrival(
 			readerAt: ${JSON.stringify(scroll)},
 			walked,
 			rowStep,
+			cursorInside: placed.cursorInside,
+			pressedInside: placed.pressedInside,
+			pressedRow: pressedRow?.getAttribute("data-session-row") ?? null,
 		};
 	})()`);
 	if (placed?.ok !== true) return { label, capped, placed };
@@ -3032,10 +3085,18 @@ function arrivalReading(arrival, base, expect = "none") {
 			: true;
 	return {
 		label: arrival.label,
+		/*
+		 * `cursorInside`/`pressedInside` are the placement's own report that BOTH rows the press is
+		 * about start inside the clip (QA round 3, Q-1). They belong here rather than in a comment: the
+		 * clause that names the state a reader could be in is this boolean, so a future drift that
+		 * leaves the pressed row below the fold reads RED instead of disagreeing with its own prose.
+		 */
 		stateOk:
 			arrival.capped?.ok === true &&
 			arrival.placed?.ok === true &&
 			arrival.placed?.focusHeld === true &&
+			arrival.placed?.cursorInside === true &&
+			arrival.placed?.pressedInside === true &&
 			arrival.armed?.ok === true &&
 			before.ok === true &&
 			before.overflowAtRest === true &&
@@ -4654,35 +4715,46 @@ async function sceneSessionArchive(cdp) {
 		null,
 	);
 	/*
-	 * THE SCOPE THIS SELECTOR LACKS IS THE FINDING, AND IT IS NOW ASSERTED RATHER THAN RECORDED
-	 * (nit, round 2; re-baselined this pass from the reading below).
+	 * AND WHERE IT LANDS IS A CONVERSATION ROW OF THE LIST'S OWN REGION (UX round 2, U1) - which is
+	 * what this check always WANTED and could not have.
 	 *
-	 * `[data-chat-row]` names the catalogue's SECTION HEADINGS as well as its rows, so
-	 * `[data-chat-row]:focus` answers "a chat-row-shaped element holds the keyboard" - a question
-	 * a heading satisfies. The reading this pass produced, in both palettes, is verbatim
-	 * `{"selector":"[data-chat-row]:focus","target":"button \"Agents\"","focused":true}`: what the
-	 * keyboard lands on after a row is clicked is the `Agents` HEADING, not a row. The row-scoped
-	 * form, `[data-session-row] [data-chat-row]:focus`, is the assertion this check WANTS and
-	 * cannot have - it matches NOTHING here (measured, both palettes: ten seconds of waiting and
-	 * then the run threw), i.e. the focused element is not inside a session row.
-	 *
-	 * So the check states what actually lands: a catalogue element that is NOT the row which was
-	 * clicked and NOT the document, with the row-scoped miss read beside it. Landing the scoped
-	 * form as the assertion would be a red walk over a fact about the app's focus rules rather
-	 * than about this change; writing the unscoped form as if it were about a row is what this
-	 * re-baseline removes.
+	 * `[data-chat-row]` names the ENTITY region's group rows as well as the conversations, and the
+	 * merged panel's document order begins with the entity region, so the unscoped hand-off landed on
+	 * the `Agents` HEADING: this pass recorded it verbatim as `{"target":"button \"Agents\"",
+	 * "focused":true}`, with the row-scoped form matching NOTHING (ten seconds of waiting and then the
+	 * run threw), i.e. the focused element was not inside any session row. The hand-off is scoped now,
+	 * so the row-scoped form is the ASSERTION rather than the miss: the caret is inside a SESSION ROW,
+	 * and it is not the row that left.
 	 */
 	const successorScoped = await verb(cdp, "measure", {
 		selector: "[data-session-row] [data-chat-row]:focus",
 		timeoutMs: 400,
 	}).catch(() => null);
+	/*
+	 * AND WHICH REGION IT IS IN, named rather than inferred: the reading below is what distinguishes
+	 * "a chat-row-shaped element" (which an entity row satisfies) from the region the reader is
+	 * working in, and it is the field the hand-off's own finding was stated in.
+	 */
+	const successorRegion = await cdp.evaluate(`(() => {
+		const active = document.activeElement;
+		if (!(active instanceof HTMLElement)) return null;
+		return {
+			tag: active.tagName.toLowerCase(),
+			id: active.closest("[data-session-row]")?.getAttribute("data-session-row") ?? null,
+			region: active.closest("[data-sidebar-region]")?.getAttribute("data-sidebar-region") ?? null,
+			label: active.getAttribute("aria-label"),
+		};
+	})()`);
 	check(
-		"the keyboard lands on a catalogue element rather than back on the document, and NOT inside a session row: the row-scoped form of the selector matches nothing (nit, round 2)",
+		"the keyboard lands on a conversation row of the CHATS region - the row that took the place of the one that left - rather than on an entity row above the list or back on the document (UX round 2, U1's clause; UX round 1, U5)",
 		successor !== null &&
 			successor.focused === true &&
-			successorScoped === null &&
+			successorScoped !== null &&
+			successorScoped.focused === true &&
+			successorRegion?.region === "chats" &&
+			successorRegion?.id !== null &&
 			!/Release notes for 0\.29/.test(successor.target ?? ""),
-		JSON.stringify({ successor, successorScoped }),
+		JSON.stringify({ successor, successorScoped, successorRegion }),
 	);
 	/*
 	 * WHAT IT LANDED ON, RECORDED BESIDE THE ASSERTION: the check above can only say "not a row
@@ -4691,7 +4763,11 @@ async function sceneSessionArchive(cdp) {
 	 */
 	note(
 		"what holds the keyboard after a row is clicked",
-		JSON.stringify({ unscoped: successor, rowScoped: successorScoped }),
+		JSON.stringify({
+			unscoped: successor,
+			rowScoped: successorScoped,
+			region: successorRegion,
+		}),
 	);
 	/*
 	 * THE OFFER, AND THE CONSTRAINT THAT MOVED IT OUT OF THE CORNER (design round 2,
@@ -5583,7 +5659,11 @@ async function sceneSessionArchive(cdp) {
 	check(
 		"the accepted press is set up in the same state: the list overflows at rest, the reader's scroll is off the top, the pressed row is on screen and it is the row the daemon takes",
 		acceptedNow.stateOk,
-		JSON.stringify({ state: acceptedNow.state, rows: acceptedNow.rows }),
+		JSON.stringify({
+			state: acceptedNow.state,
+			rows: acceptedNow.rows,
+			placed: acceptedArrivalReading.placed,
+		}),
 	);
 	check(
 		"and the accepted departure does not take the reader with it: scrollTop is byte-equal in every sampled frame (design round 9, D30's reading)",
@@ -5611,6 +5691,73 @@ async function sceneSessionArchive(cdp) {
 			writes: acceptedNow.writes,
 			mutations: acceptedNow.scroll.mutations,
 		}),
+	);
+	/*
+	 * WHERE THE CARET WENT, AND WHERE THE NEXT DOWN-ARROW GOES FROM THERE (UX round 2, U1 and U2).
+	 *
+	 * The hand-off this arrival drives is the one a reader feels after an ACCEPTED archive. The
+	 * readings above it say only that SOME chat row is focused in the panel's tree - and the ENTITY
+	 * region's `Agents` disclosure cleared that bar while sitting roughly 500px above the row that was
+	 * pressed. Both regions' rows carry `data-chat-row`, so the attribute cannot tell them apart; the
+	 * clause below reads the REGION, which is the defect.
+	 *
+	 * U2 is the same node seen one keystroke later: the arrow walk's ring is the panel's own document
+	 * order, and it resumes from the node the caret is on, so a caret in the group region makes the
+	 * next DOWN-ARROW visit the group rows before any conversation. The probe drives the key through
+	 * Chromium's input pipeline rather than as a page-built `KeyboardEvent`, for the reason `pressChord`
+	 * states, and it reports the stops it reached rather than only their shape. It also reports the
+	 * ring's own length, because a list with a single conversation row cannot demonstrate a step: the
+	 * clause would otherwise pass on a keystroke that never arrived.
+	 */
+	check(
+		"and the accepted departure hands the caret to a conversation row of the CHATS region, not to an entity row above the list (UX round 2, U1)",
+		acceptedNow.stateOk &&
+			acceptedNow.state.focusedAfter?.id !== null &&
+			acceptedNow.state.focusedAfter?.region === "chats",
+		JSON.stringify({
+			focused: acceptedNow.state.focusedAfter,
+			pressedRow: acceptedArrivalReading.atPress?.rowId ?? null,
+			placed: acceptedArrivalReading.placed,
+		}),
+	);
+	const readCaret = () =>
+		cdp.evaluate(`(() => {
+			const active = document.activeElement;
+			if (!(active instanceof HTMLElement))
+				return { tag: null, id: null, region: null, label: null };
+			return {
+				tag: active.tagName.toLowerCase(),
+				id: active.closest("[data-session-row]")?.getAttribute("data-session-row") ?? null,
+				region: active.closest("[data-sidebar-region]")?.getAttribute("data-sidebar-region") ?? null,
+				label: active.getAttribute("aria-label"),
+			};
+		})()`);
+	const caretStops = [await readCaret()];
+	for (let step = 0; step < 3; step += 1) {
+		const from = caretStops[caretStops.length - 1];
+		await pressChord(cdp, {
+			key: "ArrowDown",
+			code: "ArrowDown",
+			virtualKeyCode: 40,
+		});
+		let stop = from;
+		for (
+			let attempt = 0;
+			attempt < 6 && (stop.id ?? stop.label) === (from.id ?? from.label);
+			attempt += 1
+		) {
+			await wait(120);
+			stop = await readCaret();
+		}
+		caretStops.push(stop);
+	}
+	const chatRing = await cdp.evaluate(
+		`document.querySelectorAll('[data-sidebar-region="chats"] [data-chat-row]').length`,
+	);
+	check(
+		"and every stop the next down-arrows reach from that caret is a conversation row of the CHATS region, not a group row above the list (UX round 2, U2)",
+		caretStops.every((stop) => stop.id !== null && stop.region === "chats"),
+		JSON.stringify({ stops: caretStops, ring: chatRing }),
 	);
 	check(
 		"and the yield is exact after an accepted press too: the list's box is its band-0 box less the band the card settled at",
@@ -14564,7 +14711,7 @@ async function sceneBtwAside(cdp) {
 	const rested = await readBand();
 	if (rested.field === null) {
 		throw new Error(
-			"no composer on screen for the session this scene created: check that the backend is on a port the PAGE allows (8080 here — `src/renderer/index.html` pins connect-src to 1111/8080, and 1111 is the operator's own backend) and that the renderer was built with VITE_LOCAL_OPERATOR_API_URL set to that same URL",
+			"no composer on screen for the session this scene created: check that the backend is UP (this run owns it) and that the renderer was built with VITE_LOCAL_OPERATOR_API_URL set to the same URL `--backend` names. The PORT IS NOT THE DISCRIMINATOR, and this message used to say it was: `--scene session-archive` measured 69 PASS / 0 FAIL at `127.0.0.1:8123` on 2026-09-27, a port `src/renderer/index.html`'s `connect-src` does not name. The app's transport is MAIN's (the renderer's `apiBaseUrl` is read over IPC, not fetched) and the driver widens `frame-src`/`media-src` in the gitignored build output, so a rig on any free port is reachable; only `1111` is special, and only because it is the operator's own daemon.",
 		);
 	}
 	note("the band at rest", JSON.stringify(rested));
@@ -17544,6 +17691,20 @@ async function scenePalette(cdp) {
  * round-3 rows were green at 8080 and the port was the only difference). So run the
  * proxy on an allowed port (8080 is what QA used for the green run) and build the
  * renderer with `VITE_LOCAL_OPERATOR_API_URL` set to that same URL.
+ *
+ * THAT PORT CLAIM IS NOT WHAT GENERALISES, and it is corrected here rather than left as advice a
+ * reader would act on. The app's transport is MAIN's - the renderer's `apiBaseUrl` is read over IPC
+ * and never fetched - and the driver widens `frame-src`/`media-src` in the gitignored build output,
+ * so a rig on a port the policy does not name is reachable. MEASURED 2026-09-27: `--scene
+ * session-archive` reads 69 PASS / 0 FAIL at `127.0.0.1:8123`, and the port was the only difference
+ * between the two runs of this scene above. What the CSP line quoted here records is a PAGE-side
+ * fetch of `/v1/credentials`, so it is a signal to check WHICH surface was refused rather than
+ * proof that the port must be allowlisted: read the message beside it before moving the rig. Two
+ * further facts this pass cost, for the next reader: a `-c`-cloned `node_modules` needs
+ * `node_modules/@babel/plugin-transform-arrow-functions` linked out of `.pnpm/node_modules` or
+ * `electron-vite build` dies in its bytecode step, and `pnpm run <script>` in such a tree starts a
+ * full install (it emptied `.bin` mid-run when interrupted) - call the bundler and `node --test`
+ * from `./node_modules/.bin` directly.
  */
 /**
  * The key the UI preferences store is persisted under - the sidebar's width and
@@ -19766,14 +19927,15 @@ async function sceneMentions(cdp) {
 				"(`--backend <url>` plus `--seed-onboarding-complete`, per docs/agent-driver.md), " +
 				"because a session (and with it the composer) is the backend's to create. " +
 				"Without one the chat route paints its offline card and there is nothing to drive. " +
-				"IF THE BACKEND IS IN FACT UP, check the port against the page's own origin " +
-				"allowlist before anything else (QA round 3, Q-6): `src/renderer/index.html` pins " +
-				"`connect-src` to `1111` and `8080` plus three vendor origins and nothing computes " +
-				"it at runtime, so a rig on any other loopback port is refused BY THE PAGE and looks " +
-				"exactly like this (`/v1/credentials ... violates the following Content Security " +
-				"Policy` in the app's own log). Serve the proxy on an allowed port - 8080 is the one " +
-				"QA round 3's green run used - and build the renderer with " +
-				"`VITE_LOCAL_OPERATOR_API_URL` set to that same URL.",
+				"IF THE BACKEND IS IN FACT UP, read the message beside this refusal before anything " +
+				"else: a port the page's `connect-src` does not name is NOT by itself the cause. The " +
+				"app's transport is MAIN's (the renderer's `apiBaseUrl` is read over IPC, never fetched) " +
+				"and the driver widens `frame-src`/`media-src` in the gitignored build output, so a rig " +
+				"on any free port is reachable - MEASURED 2026-09-27: `--scene session-archive` reads " +
+				"69 PASS / 0 FAIL at `127.0.0.1:8123`, a port the policy does not name. A CSP line in " +
+				"the app's log names a PAGE-side fetch (`/v1/credentials`), so check WHICH surface was " +
+				"refused. Build the renderer with `VITE_LOCAL_OPERATOR_API_URL` set to the same URL the " +
+				"proxy is on, whatever port that is.",
 		);
 	}
 	check(
@@ -19814,7 +19976,7 @@ async function sceneMentions(cdp) {
 		throw new Error(
 			`the backend does not advertise \`features.references\` in /v1/capabilities (read: ${JSON.stringify(
 				references,
-			)}), so the composer withholds the whole \`@\` affordance by design and there is no list to drive. This is a statement about the harness, not a defect in this scene: NO released harness carries the key. TO RUN IT, present the capability - a loopback proxy in front of a live daemon this run owns that injects \`result.features.references = 1\` into /v1/capabilities and forwards every other byte (SSE included) unchanged, then pass the PROXY's URL to --backend and build the renderer with VITE_LOCAL_OPERATOR_API_URL set to the same URL. That is the rig QA round 2 ran, and the proxy has to be on a port the PAGE allows (1111 or 8080, per src/renderer/index.html's connect-src) or the composer never mounts and the refusal above is the one you get instead (QA round 3, Q-6).`,
+			)}), so the composer withholds the whole \`@\` affordance by design and there is no list to drive. This is a statement about the harness, not a defect in this scene: NO released harness carries the key. TO RUN IT, present the capability - a loopback proxy in front of a live daemon this run owns that injects \`result.features.references = 1\` into /v1/capabilities and forwards every other byte (SSE included) unchanged, then pass the PROXY's URL to --backend and build the renderer with VITE_LOCAL_OPERATOR_API_URL set to the same URL. That is the rig QA round 2 ran. The proxy does NOT have to sit on a port the page's connect-src names - the app's transport is MAIN's and the driver widens frame-src/media-src in the gitignored build output, measured with the archive walk green at 127.0.0.1:8123 (a port the policy does not name) - but the renderer MUST be built with VITE_LOCAL_OPERATOR_API_URL set to the same URL, or it talks to a backend this run does not own and the refusal above is the one you get instead.`,
 		);
 	}
 

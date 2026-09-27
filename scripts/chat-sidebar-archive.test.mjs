@@ -858,6 +858,19 @@ test("the row's press is the same act as the typed command, and keeps the reader
 	 * byte-equal across every sampled frame. The pin is the cheap half; the reading is the claim.
 	 */
 	assert.match(source, /successor\?\.focus\(\{ preventScroll: true \}\)/);
+	/*
+	 * AND THE ROW IT HANDS THE CARET TO IS READ FROM THE LIST'S OWN REGION (UX round 2, U1). The
+	 * query is scoped because the merged panel's document order begins in the ENTITY region, so an
+	 * unscoped one answers with the `Agents` group disclosure: MEASURED, the caret landed there
+	 * (`region=entities`, `aria-expanded=true`, roughly 500px above the row that was pressed) and the
+	 * next ↓ walked the group rows before any conversation. The driver's accepted-press leg reads
+	 * both the caret's region and the stops the next ↓ reaches; this is the cheap half.
+	 */
+	assert.match(
+		source,
+		/querySelectorAll<HTMLElement>\(\s*'\[data-sidebar-region="chats"\] \[data-chat-row\]'\s*,?\s*\)/,
+		"the successor must be read from the chats region, not the panel's document order",
+	);
 });
 
 /*
