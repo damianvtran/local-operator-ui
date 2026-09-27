@@ -72,3 +72,95 @@ launch shape the rig uses), reading live geometry:
   without the guard: agent `aria-expanded` true at t, team's close-autofocus
   refocuses its trigger at t+~2ms, the just-opened agent menu reads that as
   focus-outside and dismisses itself at t+4ms.
+
+## The bound, the filter and the recents band (operator, 2026-09-26, second report)
+
+The first pass made the identity line two controls. The operator's next report
+is about what the controls OPEN: "on the agent/team dropdowns, the height is
+unbounded and goes past the height of the screen, make sure there's a reasonable
+height bound and it might be good to add a search filter to each to make it
+easier to find especially if there becomes a large number, and have recents
+separated from all with well designed header/dividers."
+
+So each control now opens a bounded, filterable PANEL instead of a flat menu:
+a search field pinned at the top, a scroll viewport that never leaves the
+window, and - when this app has switched profiles before - a `Recent agents` /
+`Recent teams` band above the `All agents` / `All teams` one. Both controls
+render the same component, so the two panels cannot drift apart.
+
+| frame | what it is |
+| --- | --- |
+| `long-roster-agent-open` | The operator's own failure at scale: a 150-name roster, 560x640. The panel stops 352px down and the list scrolls inside it, with the footer stating the roster's full size - the bound, photographed, and the difference between a bound and a truncation stated on screen. |
+| `long-roster-short-window` | The same panel at 560x220, where the 352px ceiling is no longer the binding term and Radix's available height is. The panel measures 173px and its bottom sits 8px inside the window. A fixed `max-height` renders a panel taller than the window here. |
+| `menu-near-window-bottom` | The band pinned to the BOTTOM of the viewport (`LongRosterAtTheBottom`, 560x520), so the panel has to flip: it opens upward, 352px, wholly on screen. The story moves the band because the app's header cannot be at the bottom of the window - the frame is about the placement, and it says so. |
+| `search-results` | `rev` typed into the field of the same 150-name roster: four rows, panel 276px, nothing scrolls, footer `4 of 150 agents match`. This is the composition the operator asked about - the search is what keeps the bound from biting. |
+| `search-no-results` | `zzzz`: the panel shrinks to its field plus one sentence, `Nothing matches "zzzz".`, and the footer stays away rather than claiming a count over an empty result. The state most likely to be ugly, photographed. |
+| `recents-agent-open` | The recents band with history (agent menu): `Recent agents` (reviewer, coder, qa-tester) above `All agents`, each headed by a label on a hairline. All 150 roster rows are still in the DOM underneath - the band REPEATS rows, it never removes them. |
+| `recents-team-open` | The same band in the team menu, so the two pickers are shown agreeing rather than one frame plus an assurance about the other. |
+| `no-recents-team-open` | The fresh install: an empty ring, and therefore NO band and NO heading at all - not an empty `Recent teams` strip. The entry asserts `expectGone` on the heading so a regression fails the run. |
+
+## What the measurements behind the second report's frames say
+
+From the same private headless Chrome (the rig's launch shape, mock keychain
+included), pressing the chip by real mouse events and reading live geometry:
+
+- **The bound is two numbers, and both bind.** The panel's ceiling is 352px
+  (22rem). At 560x640 the panel measures **352px** - the ceiling - with the
+  list viewport 272px against 7,334px of content, i.e. 150 two-line rows and a
+  scrollbar. At 560x220 the same panel measures **173.3px** (`max-height`
+  resolves to `173.297px`, Radix's available height), bottom at 212 - inside
+  the window, with the 8px collision padding. With the band at the bottom of a
+  520px viewport the panel **flips above the chip** (top 91, bottom 443) and is
+  352px there. So a chip near the top of a tall window gets the ceiling, a chip
+  at the bottom of a short one gets the room that exists, and neither escapes
+  the window.
+- **The bound is a viewport, not a slice.** All 150 rows are rendered in every
+  one of those cases (`options: 150`) and the viewport scrolls to them; nothing
+  caps the list. The footer names the roster's own size (`150 agents in all -
+  scroll, or type to filter`), which is what distinguishes this from a
+  truncation: a cut row has a cue, and the sentence says how many rows there
+  are.
+- **The search is what makes the bound rare.** `rev` narrows the same roster to
+  4 rows, the panel shrinks to 276px and the scrollbar disappears; the footer
+  becomes `4 of 150 agents match`. A user with 150 agents therefore types two or
+  three characters and never meets the bound at all - and the 151st, or the
+  150th, is reachable by scrolling inside the bound when they would rather
+  browse. Both paths exist in every state; neither is a fallback for the other.
+- **The recents band is a shortcut that cannot hide anything.** With a ring of
+  3, the panel holds 153 rows - the 150 roster rows plus the 3 repeats in the
+  band - so the band reorders nothing and removes nothing. The ring holds at
+  most 4 names (`PROFILE_RECENTS_LIMIT`), which is what fits above the `All`
+  band's heading inside the ceiling; a remembered name the catalogue no longer
+  offers is dropped rather than rendered as a dead row.
+- **"Recent" is a switch the owner confirmed, app-wide.** The ring is written
+  only when the command answers with a `notice` - `toResult`'s `success` - so a
+  warning, an informational block or a failed transport never earns a row. It
+  is keyed per menu (an agent name is never a team name) and persisted with the
+  rest of the UI preferences, so it survives a reload; a fresh install has two
+  empty rings, which is the `no-recents-team-open` frame.
+- **The keyboard contract, measured rather than asserted.** The field takes
+  focus on open (`document.activeElement` is the combobox, not the chip - and
+  the COLD open is the case that needed the fix: the first frame of a cold open
+  renders the field over a `Loading teams...` line, and Radix's own autofocus
+  had been landing on the panel's box, which is why the busy frame's
+  keyboard-first pick stopped running). Arrows move the active row with focus
+  staying in the field; Enter commits that row; Escape closes and returns focus
+  to the chip. One press on the sibling chip still swaps in one gesture
+  (`agent=true, team=false` after a team press then an agent press), which is
+  UX round 1's U4 re-measured against the popover.
+- **A closed picker takes no typing.** The chip is a `button`, not a field:
+  there is no path by which a keystroke opens a menu the user did not ask for.
+
+## How the second report's frames were produced
+
+    node scripts/capture-evidence.mjs http://localhost:6117 \
+      --only=chat-header-identity \
+      --themes=localOperatorDark,localOperatorLight --allow-backend
+
+The same Storybook and rig as the first pass, with one addition to the rig:
+`type: "<text>"` on an arm, which inserts text into whatever holds focus
+(`Input.insertText`) so a frame can be about a FILTER rather than about a
+state. The two new stories (`LongRoster`, `LongRosterAtTheBottom`) and the
+`Recents` one answer a 150-name roster built in the story file; every story
+declares its recents ring through `Band`'s `rings` prop, so no frame depends on
+what a previous run left in `localStorage`.

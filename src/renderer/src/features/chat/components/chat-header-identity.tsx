@@ -38,6 +38,16 @@
  * ink, and they are only shown where the stream or the catalogue actually says
  * so (the gate lives in the model too).
  *
+ * WHAT THE PANEL IS the operator's second report asked for (2026-09-26, after
+ * the first): the menus opened one flat list of the whole roster, taller than
+ * the window, with no way to reach a named profile except by reading. So each
+ * control opens a BOUNDED, FILTERABLE panel instead - the bound, the search
+ * field and the recents band all live in `chat-header-identity-menu.tsx`, and
+ * the rules behind them (which band a row lands in, what the footer says, what
+ * the ceiling is) are values in `chat-header-identity-menu-model.ts`. The two
+ * controls render ONE panel, because the operator asked the two pickers to agree
+ * rather than to be fixed one at a time.
+ *
  * A SWITCH IS NOT OPTIMISTIC. Picking a row sends the command and nothing
  * else; the labels repaint when the canonical stream publishes the new
  * `active_team`/`active_agent`, so the header never claims a switch the owner
@@ -49,27 +59,23 @@
 
 import { useTeams } from "@shared/api/local-operator/profile-hooks";
 import { Spinner } from "@shared/components/common/spinner";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuLabel,
-	DropdownMenuRadioGroup,
-	DropdownMenuRadioItem,
-	DropdownMenuTrigger,
-} from "@shared/components/ui/dropdown-menu";
+import { Popover, PopoverTrigger } from "@shared/components/ui/popover";
 import { cn } from "@shared/lib/utils";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { showErrorToast, showWarningToast } from "@shared/utils/toast-manager";
 import { ChevronDown } from "lucide-react";
 import {
 	type FC,
 	type MutableRefObject,
-	type ReactNode,
 	useCallback,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
 import { useEntities } from "../pickers/destination-pickers";
+import type { PickerOption } from "../pickers/picker-host";
 import { errorText, useSessionCommand } from "../pickers/use-picker-backend";
+import { IdentityMenu } from "./chat-header-identity-menu";
 import { resolveHeaderIdentity } from "./chat-header-identity-model";
 
 /** The identity fields the header passes through; all optional but the session. */
@@ -157,9 +163,15 @@ type IdentityControlProps = {
 	/** Runs the switch; resolves when the backend has answered. */
 	onPick: (name: string) => void;
 	sessionId: string;
-	/** Loads the menu's rows, lazily on first open. */
+	/** Loads the panel's rows, lazily on first open. */
 	enabled: boolean;
 	triggerLabel: string;
+	/**
+	 * Names this app has switched to before, most recent first - the panel's
+	 * `Recent` band. Read from the store by `ChatHeaderIdentity` and passed
+	 * down, because both controls read their own ring and neither owns it.
+	 */
+	recents: readonly string[];
 	/**
 	 * The pair's swap guard, shared by both controls: set when either trigger
 	 * is PRESSED, cleared on the next task. See `chat-header-identity`'s own
@@ -171,12 +183,12 @@ type IdentityControlProps = {
 };
 
 /**
- * One control: the trigger plus its menu.
+ * One control: the chip plus its panel.
  *
  * Kept as an inner component rather than inlined twice, because the two
- * controls differ only in their noun - the mechanism (lazy row fetch, radio
- * group, busy glyph, honest loading/empty/error rows) is one thing and should
- * not exist twice.
+ * controls differ only in their noun - the mechanism (lazy row fetch, current
+ * marking, busy glyph, the panel's bound/search/bands and its honest
+ * loading/empty/error sentences) is one thing and must not exist twice.
  */
 const IdentityControl: FC<IdentityControlProps> = ({
 	kind,
@@ -189,6 +201,7 @@ const IdentityControl: FC<IdentityControlProps> = ({
 	sessionId,
 	enabled,
 	triggerLabel,
+	recents,
 	swapRef,
 	markSwap,
 }) => {
@@ -200,60 +213,72 @@ const IdentityControl: FC<IdentityControlProps> = ({
 	);
 	const items = rows.data?.entities ?? [];
 	const assigned = current !== null;
+	/*
+	 * A stable id for the listbox, from the noun rather than `useId()`: only one
+	 * panel per noun can exist, the row ids are built from it, and a reader (or a
+	 * capture rig) can name a row without first reading the DOM. `useId()`'s
+	 * `:r1:` spelling is also not a legal CSS selector, which is why the panel
+	 * scrolls its active row by `getElementById`.
+	 */
+	const listId = `header-identity-${kind}-list`;
 
 	/*
-	 * The three non-list states, as rows of the menu's own register: a label
-	 * row is what the primitive already uses for a caption, and a disabled
-	 * ITEM would read as an action the user cannot take rather than a status.
-	 * The error keeps the picker's own wording (`errorText`), so the menu and
-	 * the modal name one cause one way.
+	 * The rows the panel lists, in the shape the app's one option row reads
+	 * (`PickerOption`) - the same shape the modal `/agent` and `/team` pickers
+	 * pass, so the two surfaces cannot render one roster two ways.
+	 *
+	 * `current` comes from `menuValue(current)` and not from the raw
+	 * `active_team`/`active_agent`: the rule the old radio group carried is the
+	 * one that had to survive, because with a team bound and no `/agent` the
+	 * LABEL reads the team's manager, and a panel that marked nothing there would
+	 * disagree with the chip about which profile is in force.
+	 *
+	 * `meta` is the catalogue's own `kind` (role / specialist) - the field the
+	 * modal pickers print in the same slot. Descriptions are printed for the same
+	 * reason: the roster is the same roster, and the reader who needs one needs it
+	 * on both surfaces.
 	 */
-	const fallback: ReactNode = rows.isLoading ? (
-		<DropdownMenuLabel>
-			Loading {kind === "team" ? "teams" : "agents"}…
-		</DropdownMenuLabel>
-	) : rows.isError ? (
-		/*
-		 * The refusal row carries its own inert hook, the menu's sibling: the
-		 * sweep's refused entry waits on the story's `capturePending` latch, and
-		 * the latch clears on THIS row being in the DOM - a shutter that fired
-		 * before the refused fetch settled once photographed the loading row
-		 * under this name (design D1 / agent review round 1's finding 2). A hook
-		 * is what lets both the latch and the frame's own claim name the state
-		 * rather than measure it by eye.
-		 */
-		<DropdownMenuLabel
-			className={cn("text-danger")}
-			data-header-identity-error=""
-		>
-			{errorText(rows.error)}
-		</DropdownMenuLabel>
-	) : items.length === 0 ? (
-		<DropdownMenuLabel>
-			{kind === "team"
-				? "No teams are registered."
-				: "No agents are registered."}
-		</DropdownMenuLabel>
-	) : null;
+	const options = useMemo<PickerOption[]>(
+		() =>
+			items.map((row) => ({
+				value: row.value,
+				label: row.name ?? row.value,
+				description: row.description,
+				meta: row.kind,
+				current: row.value === menuValue(current),
+				/* While a switch is in flight every row is inert: a second switch would
+				 * be a second command against a session already answering one. */
+				disabled: busy,
+			})),
+		[items, current, busy],
+	);
 
 	return (
 		/*
-		 * `modal={false}` is UX round 1's U4: two controls share one row, and a
-		 * modal menu makes the sibling's click only DISMISS the open menu, so
-		 * swapping menus costs two clicks. Non-modal lets the sibling's press
-		 * dismiss this menu and open its own in the same gesture - the pointer
-		 * event reaches the sibling because no modal layer is holding it - which
-		 * is what "one click swaps" means. The dismiss-on-outside-press and the
-		 * Escape/focus-return behaviour are Radix's either way; what differs is
-		 * only the layer, not the menu's own contract.
+		 * `modal={false}` is UX round 1's U4, kept across the move to a popover for
+		 * the same measured reason: two controls share one row, and a modal layer
+		 * makes the sibling's click only DISMISS the open panel, so swapping panels
+		 * costs two clicks. Non-modal lets the sibling's press dismiss this panel and
+		 * open its own in the same gesture - the pointer event reaches the sibling
+		 * because no modal layer is holding it - which is what "one click swaps"
+		 * means. Radix's own dismiss-on-outside-press and Escape/focus-return are the
+		 * same in both families; what differs is the layer, not the contract.
 		 */
-		<DropdownMenu open={open} onOpenChange={onOpenChange} modal={false}>
-			<DropdownMenuTrigger asChild>
+		<Popover open={open} onOpenChange={onOpenChange} modal={false}>
+			<PopoverTrigger asChild>
 				<button
 					type="button"
 					data-header-identity={kind}
 					className={cn(TRIGGER_BOX, !assigned && "text-ink-dim")}
 					aria-busy={busy || undefined}
+					/*
+					 * `listbox`, not the `dialog` a Radix popover trigger announces by
+					 * default: what the press opens is a filterable list of profiles, and
+					 * the field inside it declares `aria-controls` on this same id. The
+					 * override wins because a Slot's own child props are spread last.
+					 */
+					aria-haspopup="listbox"
+					aria-controls={listId}
 					/* The swap guard's mark: every press on either trigger records
 					 * that the closure about to run is a SWAP, not a dismissal - see
 					 * `onCloseAutoFocus` on the menu below, and the pair's own note
@@ -299,20 +324,45 @@ const IdentityControl: FC<IdentityControlProps> = ({
 						)}
 					</span>
 				</button>
-			</DropdownMenuTrigger>
-			<DropdownMenuContent
-				align="start"
-				className={cn("min-w-45")}
+			</PopoverTrigger>
+			{/*
+			 * The panel: the bound, the filter and the bands all live in
+			 * `IdentityMenu`, so the two controls render one panel and the rules are
+			 * pinned as values (`chat-header-identity-menu-model.ts`). What stays
+			 * HERE is the pair's own half - the swap guard below, which is about two
+			 * controls sharing a row rather than about a list.
+			 */}
+			<IdentityMenu
+				kind={kind}
+				open={open}
+				listId={listId}
+				options={options}
+				recents={recents}
+				loading={rows.isLoading}
+				loadError={rows.isError ? errorText(rows.error) : null}
+				emptyText={
+					kind === "team"
+						? "No teams are registered."
+						: "No agents are registered."
+				}
+				busy={busy}
+				onPick={(value) => {
+					/* A pick is a decision, so the panel closes on it - the chip's own
+					 * busy spinner is what says the switch is in flight, and the label
+					 * does not move until the owner reports the new profile. */
+					onOpenChange(false);
+					onPick(value);
+				}}
 				/*
 				 * THE SWAP GUARD (UX round 1, U4 - see the note under
 				 * `ChatHeaderIdentity` for the measured sequence this answers).
 				 * A close caused by a press on the SIBLING control must not run
 				 * Radix's focus-return: that refocus lands on this control's own
-				 * trigger and the just-opened sibling menu reads it as
-				 * focus-outside and dismisses itself 4ms later (measured: agent
-				 * aria-expanded true at t, false at t+4). Outside clicks, Escape
-				 * and same-trigger toggles leave `swapRef` false and keep the
-				 * return.
+				 * trigger and the just-opened sibling panel reads it as
+				 * focus-outside and dismisses itself 4ms later (measured with the
+				 * menu: agent aria-expanded true at t, false at t+4). Outside
+				 * clicks, Escape and same-trigger toggles leave `swapRef` false and
+				 * keep the return.
 				 */
 				onCloseAutoFocus={(event) => {
 					if (swapRef.current) {
@@ -323,32 +373,8 @@ const IdentityControl: FC<IdentityControlProps> = ({
 						event.preventDefault();
 					}
 				}}
-				/* Inert hook for the sweep's shutter: the rig ASSERTS the menu
-				 * present at shutter time (a one-shot claim, not a wait), so a frame
-				 * filed under an open-menu name cannot photograph the closed
-				 * control. */
-				data-header-identity-menu={kind}
-			>
-				{fallback ?? (
-					<DropdownMenuRadioGroup
-						value={menuValue(current)}
-						onValueChange={(value) => onPick(value)}
-					>
-						{items.map((row) => (
-							<DropdownMenuRadioItem
-								key={row.value}
-								value={row.value}
-								disabled={busy}
-							>
-								<span className={cn("min-w-0 truncate")}>
-									{row.name ?? row.value}
-								</span>
-							</DropdownMenuRadioItem>
-						))}
-					</DropdownMenuRadioGroup>
-				)}
-			</DropdownMenuContent>
-		</DropdownMenu>
+			/>
+		</Popover>
 	);
 };
 
@@ -425,6 +451,18 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 	}, []);
 	const teamCommand = useSessionCommand(sessionId);
 	const agentCommand = useSessionCommand(sessionId);
+	/*
+	 * The recents rings, read from the persisted store rather than held here: a
+	 * switch made in one conversation is a recent in the next one, which is the
+	 * whole point of the band (see the store's `profileRecents` for why the ring
+	 * is app-wide rather than per conversation). Both rings are read in one
+	 * subscription so the two controls cannot render different generations of the
+	 * same store.
+	 */
+	const recents = useUiPreferencesStore((state) => state.profileRecents);
+	const rememberProfile = useUiPreferencesStore(
+		(state) => state.rememberProfile,
+	);
 
 	const runSwitch = useCallback(
 		async (
@@ -453,8 +491,16 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 			 */
 			if (result.tone === "error") showErrorToast(result.text);
 			else if (result.tone === "warning") showWarningToast(result.text);
+			/*
+			 * A RECENT is a switch the owner CONFIRMED, and `success` is the only tone
+			 * that claims that: it is what `toResult` maps the owner's own `notice`
+			 * onto. A warning, an informational block or a transport failure is not
+			 * evidence the profile is in force, so none of them earns a row in the
+			 * band - a "recent" that names a profile the session is not on would be
+			 * the label lying in a smaller font.
+			 */ else if (result.tone === "success") rememberProfile(kind, name);
 		},
-		[],
+		[rememberProfile],
 	);
 
 	return (
@@ -481,6 +527,7 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 				onPick={(name) => void runSwitch("agent", name, agentCommand)}
 				sessionId={sessionId}
 				enabled={open === "agent"}
+				recents={recents.agent}
 			/>
 			<IdentityControl
 				kind="team"
@@ -495,6 +542,7 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 				onPick={(name) => void runSwitch("team", name, teamCommand)}
 				sessionId={sessionId}
 				enabled={open === "team"}
+				recents={recents.team}
 			/>
 		</span>
 	);
