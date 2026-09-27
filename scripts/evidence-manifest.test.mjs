@@ -1408,6 +1408,15 @@ const STAMP_BINDING_NOTES = [
 	 * `streamRedeliveryRestampNote` is in the list for.
 	 */
 	"task17RestampNote",
+	/*
+	 * AND THIS PASS'S OWN, the newest top-level record on the branch: its subject IS this
+	 * file's binding too - the install path is not something the evidence sweep renders, so
+	 * it moves BOTH trees without taking a frame, and the reader is owed the pair AND the
+	 * reason no still was owed - the same case `task17RestampNote` is in the list for. `src/`
+	 * moves for the install decision and the scripts' environment build; `scripts/` moves for
+	 * the suites that pin them.
+	 */
+	"installProvisioningRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1979,6 +1988,15 @@ const BRANCH_RECORDS = [
 	 * same reason this list exists.
 	 */
 	"task17RestampNote",
+	/*
+	 * AND THIS PASS'S OWN, the newest top-level record on the branch: its subject IS this
+	 * file's binding too - the install path is not something the evidence sweep renders, so
+	 * it moves BOTH trees without taking a frame, and the reader is owed the pair AND the
+	 * reason no still was owed - the same case `task17RestampNote` is in the list for. `src/`
+	 * moves for the install decision and the scripts' environment build; `scripts/` moves for
+	 * the suites that pin them.
+	 */
+	"installProvisioningRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
