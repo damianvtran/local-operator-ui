@@ -57,6 +57,10 @@ const ERROR_COPY_ROW = /capabilities\.error\.message/;
 const NOTICE_ROW = /<p>\{notice\}<\/p>/;
 const RETRY_REFRESH = /Retry refresh/;
 const SHARED_GATE = "!stripSpeaksConnection";
+const BANNER_GATE = "!coveredByCompatibilityBanner";
+const PANE_BANNER_YIELD =
+	/error && !stripSpeaksConnection && !coveredByCompatibilityBanner/;
+const BANNER_PREDICATE_CALL = /compatibilityBannerShown\(/;
 const STRIP_IMPORT =
 	/import \{ useStripSpeaksConnection \} from "\.\.\/chat-status-presence";/;
 const SIDEBAR_HOOK_CALL =
@@ -86,13 +90,25 @@ const between = (start, end) => {
 	return slice;
 };
 
-test("the capability paragraph stands down on the strip's own reading", () => {
-	const block = between(
-		"{capabilities.error && !stripSpeaksConnection && (",
-		"\n\t\t\t{/*",
-	);
+test("the capability paragraph stands down on the strip's own reading, and the banner's too", () => {
+	const block = between("{capabilities.error &&", "\n\t\t\t{/*");
 	assert.match(block, ERROR_COPY_ROW);
 	assert.match(block, RETRY_REFRESH);
+	assert.ok(
+		block.includes(SHARED_GATE),
+		"the strip's own reading guards this block",
+	);
+	/*
+	 * AND THE BANNER'S CONDITION BESIDE IT (QA round 1's Q-1): the strip is silent
+	 * for the four causes the banner carries, and in those states this paragraph
+	 * was the second statement of one incident - measured in the successor walk,
+	 * where a replacement that refuses this app's credential rendered this
+	 * sentence under the banner's successor sentence.
+	 */
+	assert.ok(
+		block.includes(BANNER_GATE),
+		"the capability paragraph must also yield to the compatibility banner",
+	);
 	assert.equal(
 		block.includes('role="alert"'),
 		false,
@@ -190,6 +206,23 @@ test("the pane's own catalogue error yields to the strip (R11)", () => {
 		PAGE_SOURCE,
 		PANE_YIELDS,
 		"the CATALOGUE half stands down while the strip speaks; the ROUTE half must not",
+	);
+	/*
+	 * AND THE BANNER'S OWN CONDITION, READ FROM THE BANNER'S OWN PREDICATE (QA
+	 * round 1's Q-1): where the strip is silent for a cause the banner carries,
+	 * the catalogue half must yield to the banner — measured in the successor
+	 * walk, where the pane's refusal sentence rendered under the banner's
+	 * successor sentence.
+	 */
+	assert.match(
+		PAGE_SOURCE,
+		PANE_BANNER_YIELD,
+		"the pane's catalogue half must also yield to the compatibility banner",
+	);
+	assert.match(
+		PAGE_SOURCE,
+		BANNER_PREDICATE_CALL,
+		"read through the predicate the banner itself uses, so the two cannot drift",
 	);
 });
 

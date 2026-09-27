@@ -20,6 +20,7 @@
 
 import {
 	type DaemonPairing,
+	type DaemonPairingCause,
 	type DaemonStatusSnapshot,
 	isServerReachable,
 	serverBannerCopy,
@@ -55,6 +56,18 @@ export type ChatStatusDisplay = {
 	 * second line and never a second root cause.
 	 */
 	detail: string | null;
+	/**
+	 * The FACT main published, where the row has one: the pairing cause for the
+	 * refused row, null elsewhere.
+	 *
+	 * IT EXISTS FOR THE KEY, NOT FOR THE COPY (UX round 1's U5): `chatStatusKey`
+	 * keys dismissal and the Retry outcome on `kind` plus this, never on `detail`,
+	 * because main re-spells the detail line for one unchanged condition - measured:
+	 * two spellings of the same refusal, and a mid-scene refinement - and a key that
+	 * moved with the prose voided a reader's dismissal and retired a press's own
+	 * answer while nothing about the fact had changed.
+	 */
+	cause?: DaemonPairingCause | null;
 	/** The one word the strip's action always carries. */
 	action: "retry" | null;
 	actionLabel: string | null;
@@ -169,13 +182,35 @@ export function chatStatusDisplay(
 	 * silent for them, and the unreachable row retires with the same condition
 	 * below.
 	 *
+	 * AND THE REFUSAL MUST BE A CURRENT FACT (UX round 1's U1). The daemon it
+	 * describes may die while main's pairing record still says `credential-refused`,
+	 * and this row then kept claiming "The daemon is running." over a dead process
+	 * for as long as the record stood — while the pane's own log said the daemon
+	 * was gone. `state !== "detached"` is the term that retires the row the moment
+	 * the daemon is ABSENT, so the absence reaches the `unreachable` row below
+	 * (which is the state the strip already renders for it).
+	 *
+	 * WHY THAT TERM AND NOT `isServerReachable` OR THE CONNECTIVITY READING: the
+	 * live refusal's own state is `wedged` ("a daemon is running and this app
+	 * deliberately did not attach to it" — `daemon-status.ts`'s `unattachable`
+	 * arm), and BOTH of those other readings count `wedged` as not-online — the
+	 * connectivity hook is `!isServerReachable(state)` and so reports
+	 * `server_offline` throughout a live refusal, which is exactly the reading the
+	 * walk that found U1 recorded. The absence itself is `detached`, the one state
+	 * `pid-dead` and `no-candidate` produce.
+	 *
 	 * The absent `pairing` record is silence rather than a guess: a snapshot
 	 * from a build that predates the field cannot state a cause, and the strip
 	 * may not invent the refusal for it.
 	 */
-	if (server && server.pairing?.cause === "credential-refused") {
+	if (
+		server &&
+		server.pairing?.cause === "credential-refused" &&
+		server.state !== "detached"
+	) {
 		return {
 			kind: "credential-refused",
+			cause: "credential-refused",
 			role: "alert",
 			wash: "danger-wash",
 			title: CHAT_STATUS_COPY["credential-refused"],
@@ -270,6 +305,11 @@ export function chatStatusDisplay(
 	 * connection and an offline machine are separate facts the banner cannot
 	 * state, and § 2.3 names that pair (`degraded`/`internet-offline` beside a
 	 * pairing cause) as one that may legitimately co-render.
+	 *
+	 * AND IT IS WHERE THE REFUSED ROW FALLS THROUGH TO when the daemon it
+	 * describes is gone (UX round 1's U1): the refusal is retired by the row-1 gate
+	 * the moment the state is `detached`, and the reader's position — nothing is
+	 * answering — is this row, with main's own detail as the second line.
 	 */
 	const pairing = server?.pairing ?? null;
 	const unpairedElsewhere =
@@ -303,14 +343,23 @@ export function chatStatusDisplay(
  * Dismissing is a statement about the CURRENT state, so it is keyed on the state
  * the reader dismissed rather than on a boolean they set once: a strip dismissed
  * while the server was unreachable must come back when the next root cause
- * appears, or the app has a permanent mute button for its own health. The key is
- * the kind plus main's detail line, because the same kind with a different
- * detail is a different path into it (a refused credential after a re-pair is
- * not the fact the reader dismissed).
+ * appears, or the app has a permanent mute button for its own health.
+ *
+ * THE KEY IS THE FACT — `kind` plus main's CAUSE — NEVER MAIN'S PROSE (UX round
+ * 1's U5). It used to carry `detail`, on the reading that the same kind reached
+ * by a different path is a different fact; the drives that found U5 measured
+ * what that meant in practice: main re-spells the detail line for ONE unchanged
+ * condition (two spellings of the same refusal, plus a mid-scene refinement), so
+ * the key moved with the prose — a reader's dismissal was voided and a fresh
+ * Retry outcome was retired while nothing about the condition had changed. The
+ * kind alone already separates the rows; the cause is carried beside it so the
+ * refused row's key survives a copy change and still moves when the FACT moves
+ * (the daemon dying moves it to `unreachable`, which re-arms a dismissed strip —
+ * UX round 1's U1).
  */
 export function chatStatusKey(
 	display: ChatStatusDisplay | null,
 ): string | null {
 	if (!display) return null;
-	return `${display.kind}:${display.detail ?? ""}`;
+	return `${display.kind}:${display.cause ?? ""}`;
 }

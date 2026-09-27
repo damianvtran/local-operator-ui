@@ -24,6 +24,18 @@
  * own column, and the banner keeps it too - it is the one class pair both
  * surfaces share by convention, and it is asserted where the bands' edges are
  * (see `scripts/contrast-contract.mjs`'s status band rows).
+ *
+ * THE CONTENT COLUMN GROWS (agent review round 1, MINOR-2). A band's action
+ * belongs on its trailing edge in EVERY state, which is what the pre-change
+ * strip did (`ml-auto`) and what § 3's "the action column keeps its place"
+ * means; with Alert's children column sized to its content, a band whose copy
+ * is short floats its action mid-band instead - measured in the review's own
+ * frames: the refused story's `Retry` at x 710-754 on an 860px frame. The
+ * selector grows that column (Alert draws the content as its LAST child, after
+ * the mark), so the row inside can span the full band and spend its slack
+ * between the text and the action. Scoped here rather than in `alert.tsx`
+ * because it is a ruling about THE NOTICE BANDS' grammar, not about every
+ * alert in the app.
  */
 export const NOTICE_BAND =
-	"items-center gap-2 px-3 py-2 [&_[data-alert-mark]_svg]:size-3.5";
+	"items-center gap-2 px-3 py-2 [&>div:last-child]:grow [&_[data-alert-mark]_svg]:size-3.5";

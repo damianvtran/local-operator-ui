@@ -292,8 +292,9 @@ export const ChatStatusStrip = () => {
 	 * condition and drew it under a root cause it does not describe, which is §F2's "two
 	 * root causes at once" reached by staleness rather than by composition. The press
 	 * records the key it was made against and the sentence is retired when the key moves:
-	 * the same key means the same fact, including its path into it, so a retry that
-	 * changed nothing keeps its answer, and a retry that changed something loses a
+	 * the same key means the same FACT (kind plus cause — U5 moved the key onto it, so a
+	 * re-spelling of main's prose no longer counts as a change), so a retry that
+	 * changed nothing keeps its answer, and a retry that changed the fact loses a
 	 * sentence that is no longer about anything on screen.
 	 */
 	const outcomeKeyRef = useRef<string | null>(null);
@@ -320,8 +321,20 @@ export const ChatStatusStrip = () => {
 			 * means the reason the reader pressed the button was still there a moment
 			 * later. So the sentence names the state rather than a countdown nobody
 			 * measured.
+			 *
+			 * AND IT SPEAKS THE BAND'S OWN VOCABULARY (UX round 1's U2): a refusal's
+			 * answer used to be the reachability sentence, which the refused band's own
+			 * detail line had just refuted ("A daemon is running at …, but it refused
+			 * this app's credential … The daemon is running." over "Still unreachable.").
+			 * The server IS running and the credential is what fails, so the refusal's
+			 * outcome says exactly that. The key is the fact, so choosing on it keeps
+			 * this in step with the state the press was made against.
 			 */
-			setOutcome("Still unreachable.");
+			setOutcome(
+				key?.startsWith("credential-refused")
+					? "The server is running, but this app's credential is still refused."
+					: "Still unreachable.",
+			);
 			void refetchServerStatus();
 		}
 	}, [key, refetchServerStatus]);
