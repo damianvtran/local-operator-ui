@@ -178,6 +178,19 @@ export type DesktopFeature =
 	| "settings"
 	| "commands"
 	| "catalogues"
+	/**
+	 * The four closed ORGANIZATION operations the merged local server exposes
+	 * (`memberships.list`, `org_agents.list`, `org_team.get`, `org_teams.list`).
+	 *
+	 * ITS OWN KEY because a backend that predates them answers an unknown operation
+	 * with a MASKED 422 ("The request has invalid fields."), which is
+	 * indistinguishable from a malformed call — so a surface that simply attempted
+	 * them would report a mistake the user did not make, and could not tell whether
+	 * to offer a retry or a backend update (local-operator `capabilities.py`, agent
+	 * review round 1's M2). A `below-version` answer here means "update the
+	 * backend", which is the remedy the org surfaces render.
+	 */
+	| "radient_org"
 	| "profile_catalogue"
 	| "team_catalogue"
 	| "session_catalogue"

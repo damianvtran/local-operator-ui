@@ -4,11 +4,7 @@ import type {
 	PaginatedAgentList,
 	RadientApiResponse,
 } from "@shared/api/radient/types";
-import {
-	type QueryClient,
-	keepPreviousData,
-	useQuery,
-} from "@tanstack/react-query";
+import { type QueryClient, useQuery } from "@tanstack/react-query";
 
 /**
  * The filters the hub's list control actually offers.
@@ -105,6 +101,24 @@ export const orgAgentKeys = {
 };
 
 /**
+ * Which scope an agent-list cache key belongs to: a tenant id, or null for the
+ * public hub.
+ *
+ * The inverse of the two key builders above, and it exists for ONE caller: the
+ * placeholder below, which must not carry records from one scope into the other.
+ * Read from position rather than by parsing the key back into filters, because
+ * the scope is the only part of a key that decides whether held records may be
+ * shown at all.
+ */
+export const agentListScopeOfKey = (
+	key: readonly unknown[] | undefined,
+): string | null => {
+	if (!key) return null;
+	if (key[0] === orgAgentKeys.all[0]) return String(key[2] ?? "");
+	return null;
+};
+
+/**
  * Drop every cached page of the public list.
  *
  * A publish or a delist changes membership, and which cached pages that affects
@@ -164,9 +178,11 @@ export type UsePublicAgentsQueryParams = Partial<PublicAgentFilters> & {
  * projection already carries all three (`responses.AgentResponse`), so the
  * per-card count queries were asking the same question twelve more times.
  *
- * `keepPreviousData` is what keeps the grid on screen while the next page or
+ * The placeholder is what keeps the grid on screen while the next page or
  * the next filter loads. Without it React Query reports no data for the new key
- * and the page emptied to a spinner on every page change.
+ * and the page emptied to a spinner on every page change. It is scoped to ONE
+ * scope, though — see the inline comment at the option: carrying records across a
+ * scope flip is the failure the two key prefixes exist to prevent.
  */
 export const usePublicAgentsQuery = ({
 	page = 1,
@@ -233,7 +249,21 @@ export const usePublicAgentsQuery = ({
 		staleTime: 5 * 60 * 1000,
 		gcTime: 10 * 60 * 1000,
 		refetchOnWindowFocus: false,
-		placeholderData: keepPreviousData,
+		/*
+		 * THE PREVIOUS PAGE IS KEPT ONLY WITHIN ONE SCOPE (agent review round 1,
+		 * m2). `keepPreviousData` alone also carried records ACROSS a scope flip: for
+		 * one backend latency the org scope would render the public scope's cards
+		 * under "Showing: <org>", with only "Updating…" beside the count to say so —
+		 * which is the failure the two key prefixes exist to prevent, reintroduced by
+		 * the placeholder (the key builders' own comment calls it "the one failure a
+		 * scope selector must not have"). A scope change therefore renders the cold
+		 * loading state, which is honest about having nothing yet; a page or filter
+		 * change within one scope keeps the placeholder it was written for.
+		 */
+		placeholderData: (previousData, previousQuery) =>
+			agentListScopeOfKey(previousQuery?.queryKey) === (tenantId ?? null)
+				? previousData
+				: undefined,
 	});
 
 	return {

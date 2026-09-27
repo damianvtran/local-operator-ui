@@ -9,20 +9,28 @@
  * ## The rule, and where it comes from
  *
  * `available` — the org's workspace can be read, and a publication can target it:
- * an ACTIVE membership whose tenant plan entitles org features, OR the caller is
- * the OWNER. Both halves are the server's own rule, not this app's reading of it:
- * `CheckOrgAccess` (agent-server, internal/services/membership_service.go)
- * requires an active membership at the needed rank and, "for non-owners", a plan
- * that entitles org features (`planStatusEntitlesOrgAccess`), and §3.2 states the
- * owner half — "the owner retains read access to the org workspace in every
- * state".
+ * an ACTIVE membership whose tenant plan entitles org features. Both halves are
+ * the server's own rule, and the PLAN half has no exception here.
+ *
+ * THE OWNER EXEMPTION IS A WRITE-PATH FACT AND IS DELIBERATELY NOT IN THIS RULE
+ * (manager ruling on agent review round 1's M1). `CheckOrgAccess`
+ * (agent-server, internal/services/membership_service.go) exempts owners "for
+ * non-owners" plan checks on the PUBLISH path only, and the READ gate does not:
+ * measured live against the merged server, a plan-lapsed org read is refused
+ * `team_plan_required` FOR ITS OWNER (QA round 1, QE-5). A selector that offered
+ * an owner their plan-less tenant would therefore offer a scope whose very first
+ * read is a refusal, and a picker that offered it would store a document nobody
+ * can read (the M1 finding's own words: "an org-visibility document visible to
+ * nobody else"). So the entitlement rule is the plan, for every rank — and a
+ * plan-less tenant, home or not, is `plan_inactive` rather than `available`,
+ * which is what keeps a personal workspace out of both surfaces.
  *
  * `plan_inactive` — a membership that cannot use the org because of the PLAN: the
- * caller is not the owner and the plan is `none` or `canceled`. This is the state
- * §8.4's picker renders disabled with an upgrade hint, and it is deliberately NOT
- * `past_due`: §3.1 gives `past_due` FULL entitlements during dunning, with a
- * payment-issue banner rather than a loss of access, so treating it as unentitled
- * would hide an org the hub would still answer for.
+ * plan is `none` or `canceled`. This is the state §8.4's picker renders disabled
+ * with an upgrade hint, and it is deliberately NOT `past_due`: §3.1 gives
+ * `past_due` FULL entitlements during dunning, with a payment-issue banner rather
+ * than a loss of access, so treating it as unentitled would hide an org the hub
+ * would still answer for.
  *
  * `no_access` — the membership itself does not grant org features (`pending`
  * before a plan, or `disabled` by a downgrade, §3.3). The server answers these
@@ -48,7 +56,11 @@ export const planEntitlesOrgFeatures = (
 /** What one membership row entitles, per the module comment above. */
 export const orgAccess = (membership: MembershipSummary): OrgAccess => {
 	if (membership.status !== "active") return "no_access";
-	if (membership.role === "owner") return "available";
+	/*
+	 * The rank is NOT consulted, and the module comment says why: the owner
+	 * exemption belongs to the publish path, while every surface here leads to a
+	 * READ the merged server gates on the plan for every rank.
+	 */
 	return planEntitlesOrgFeatures(membership.plan.status)
 		? "available"
 		: "plan_inactive";

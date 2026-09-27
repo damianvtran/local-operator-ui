@@ -1,4 +1,9 @@
+import {
+	PUBLICATION_ACTION_LABEL,
+	publicationTreatment,
+} from "@features/agents/utils/publication-failure";
 import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
+import { isPublicationError } from "@shared/api/local-operator/publication-errors";
 import type { HubTeam } from "@shared/api/radient/types";
 import {
 	Alert,
@@ -7,7 +12,7 @@ import {
 	Button,
 	Skeleton,
 } from "@shared/components/ui";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useOrgTeamsQuery } from "../hooks/use-org-teams-query";
 import { useTeamPullMutation } from "../hooks/use-team-pull-mutation";
 import { orgRefusalFromError } from "../org-access";
@@ -54,6 +59,27 @@ export const OrgTeamsList: React.FC<{
 	/** The row whose pull is in flight, so only that row reports it. */
 	const [pullingTeamId, setPullingTeamId] = useState<string | null>(null);
 
+	/*
+	 * A CODED pull refusal renders through the same treatment table the publish
+	 * dialog uses (agent review round 1, n1). `team_not_found` is the arm that made
+	 * this necessary: it carries a `refresh-hub` action whose only sensible home is
+	 * this roster's own refetch, and before this it was a row no surface could
+	 * reach — a treatment pinned by a test and rendered by nobody. The name in the
+	 * context is the failed row's, because the sentence is about that document.
+	 */
+	const pullTreatment = useMemo(() => {
+		if (!isPublicationError(pull.error)) return null;
+		const failed = teams.find((team) => team.id === failedTeamId);
+		return publicationTreatment(
+			{
+				code: pull.error.code,
+				message: pull.error.message,
+				details: pull.error.details,
+			},
+			{ name: failed?.name ?? "this team", hubAgentId: null },
+		);
+	}, [pull.error, failedTeamId, teams]);
+
 	const handlePull = (team: HubTeam) => {
 		if (pull.isPending) return;
 		setFailedTeamId(null);
@@ -94,12 +120,21 @@ export const OrgTeamsList: React.FC<{
 			</div>
 
 			{isLoading && (
+				/*
+				 * The skeletons are `aria-hidden` with one `sr-only` line beside them, the
+				 * hub's own loading pattern (`Loading agents…`): a pair of bare skeletons is
+				 * a silent state to a screen reader, and this roster is the only section on
+				 * the page without a loading sentence (copy review round 1, C6).
+				 */
 				<div
 					className="flex flex-col gap-2 px-4 pb-4"
 					data-testid="org-teams-loading"
 				>
-					<Skeleton className="h-4.5 w-40" />
-					<Skeleton className="h-3.5 w-64" />
+					<span className="sr-only">Loading teams…</span>
+					<div aria-hidden="true" className="flex flex-col gap-2">
+						<Skeleton className="h-4.5 w-40" />
+						<Skeleton className="h-3.5 w-64" />
+					</div>
 				</div>
 			)}
 
@@ -118,21 +153,37 @@ export const OrgTeamsList: React.FC<{
 			 * nothing this user can press to change.
 			 */}
 			{!isLoading && isError && (
+				/*
+				 * The SEVERITY follows the state (design round 1, D2): a refusal is a state
+				 * of this surface — §8.4's "render as 'no access' per plan status, not as
+				 * errors" — so the two refusal arms are `warning`, the same treatment the
+				 * agents section gives them. Measured before this: the same code rendered
+				 * amber on one section and red on the next, in one viewport.
+				 *
+				 * `danger` stays for the GENERIC arm, which is a real failure, and "the
+				 * teams could not be read" is the one case here where an alarm is honest.
+				 *
+				 * The retry is `primary`, not `outline` (D1): an outlined control's only
+				 * boundary is its edge against the alert's wash, below the repo's 3:1
+				 * non-text floor in 7 (`warningWash`) and 2 (`dangerWash`) of the 59
+				 * palettes — the measurement that moved `update-error-alert`'s retry onto
+				 * `primary` (`contrast-contract.mjs`).
+				 */
 				<Alert
-					variant="danger"
+					variant={refusal ? "warning" : "danger"}
 					className="mx-4 mb-4"
 					data-testid="org-teams-error"
 				>
 					<AlertTitle>
 						{refusal === "plan"
-							? "That organization needs an active team plan"
+							? "That organization needs an active Team plan"
 							: refusal === "no_access"
 								? "You do not have access to that organization"
 								: "Teams could not be loaded"}
 					</AlertTitle>
 					<AlertDescription>
 						{refusal === "plan"
-							? `Reading an organization's teams is part of the Team plan. An owner of ${orgName ?? "this organization"} can activate it, and then its teams will be listed here.`
+							? `Reading an organization's teams is part of the Team plan. An owner of ${orgName ?? "this organization"} can activate it in the Radient console, and then its teams will be listed here.`
 							: refusal === "no_access"
 								? `You are not a member of ${orgName ?? "that organization"}, so its teams are not listed here. An owner can invite you again.`
 								: backendLoadErrorMessage(
@@ -143,7 +194,7 @@ export const OrgTeamsList: React.FC<{
 					{refusal !== "no_access" && (
 						<div className="mt-2">
 							<Button
-								variant="outline"
+								variant="primary"
 								size="sm"
 								onClick={() => void refetch()}
 								disabled={isFetching}
@@ -193,18 +244,31 @@ export const OrgTeamsList: React.FC<{
 								</span>
 								{failedTeamId === team.id && (
 									/*
-									 * `<output>` rather than a `div` with `role="status"`: the
-									 * element carries the role itself. The sentence is the
-									 * transport's own — `teamFailure` keeps a coded refusal's
-									 * message and puts it back on `mutation.error`.
+									 * `<output>` rather than a `div` with `role="status"`: the element carries
+									 * the role itself. The sentence is the treatment's when the refusal was
+									 * CODED — which is what gives `team_not_found` its body and its refresh
+									 * control — and the transport's own otherwise.
 									 */
-									<output
-										className="mt-1 text-meta text-danger"
+									<div
+										className="mt-1 flex flex-col items-start gap-1"
 										data-testid="org-team-pull-error"
 									>
-										{pull.error?.message ??
-											`"${team.name}" could not be pulled.`}
-									</output>
+										<output className="text-meta text-danger">
+											{pullTreatment?.body ??
+												pull.error?.message ??
+												`"${team.name}" could not be pulled.`}
+										</output>
+										{pullTreatment?.actions.map((action) => (
+											<Button
+												key={action}
+												variant="primary"
+												size="sm"
+												onClick={() => void refetch()}
+											>
+												{PUBLICATION_ACTION_LABEL[action]}
+											</Button>
+										))}
+									</div>
 								)}
 							</div>
 							<Button

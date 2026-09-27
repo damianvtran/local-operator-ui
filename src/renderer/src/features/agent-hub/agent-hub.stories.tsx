@@ -193,6 +193,15 @@ type BridgeBehaviour = {
 	}[];
 	/** Fail the memberships read, so the picker's "could not be read" line shows. */
 	failMemberships?: boolean;
+	/**
+	 * The backend advertises `radient_org` (agent review round 1, M2).
+	 *
+	 * True by default, because every org story above needs the four operations the
+	 * key gates; false is a backend that predates them, whose unknown ops answer a
+	 * masked 422 — the state that must say "update the backend" rather than offer a
+	 * retry that cannot work.
+	 */
+	orgCapability?: boolean;
 };
 
 const installBridge = (behaviour: BridgeBehaviour = {}) => {
@@ -212,6 +221,7 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 		orgRefusal,
 		teams = [],
 		failMemberships = false,
+		orgCapability = true,
 	} = behaviour;
 	ledger.length = 0;
 
@@ -239,7 +249,15 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 				desktop_contract: 1,
 				desktop_available: true,
 				desktop_auth: "bearer",
-				features: { radient: 1, profile_catalogue: 1, team_catalogue: 1 },
+				features: {
+					radient: 1,
+					profile_catalogue: 1,
+					team_catalogue: 1,
+					// Absent means a backend that predates the org operations (M2): the
+					// unknown ops answer a masked 422, so the surfaces must not attempt
+					// them and must say "update the backend" instead.
+					...(orgCapability ? { radient_org: 1 } : {}),
+				},
 			});
 		}
 		if (request.op === "team.pull") {
@@ -722,7 +740,17 @@ export const NarrowColumns: Story = {
 
 /* ------------------------------------------------- organizations (§8.4) */
 
-/** The two organizations these stories switch between, in the §4.1 shape. */
+/**
+ * The two organizations these stories switch between, in the §4.1 shape.
+ *
+ * `Minerva` is the account's HOME tenant and a plan-ACTIVE one, which is the
+ * positive case agent review round 1's M1 settled: a home tenant is an
+ * organization, so it is offered on the same terms as any other. It is not
+ * carried by an owner exemption — this fixture is `plan: "active"` precisely so
+ * that the frame proves the PLAN is what offers it. `Northwind Analytics` is the
+ * plan-blocked case, and it is a member's row so that the blocked list is
+ * exercised on the arm §8.4 describes.
+ */
 const ORGS = [
 	{
 		tenant_id: "tenant-minerva",
@@ -730,9 +758,7 @@ const ORGS = [
 		role: "owner",
 		status: "active" as const,
 		is_home: true,
-		// The owner half of §3.2: no plan, and still entitled — which is why this
-		// organization is SELECTABLE rather than shown as blocked.
-		plan: { status: "none" as const, seats: null },
+		plan: { status: "active" as const, seats: 8 },
 	},
 	{
 		tenant_id: "tenant-northwind",
@@ -740,10 +766,9 @@ const ORGS = [
 		role: "member",
 		status: "active" as const,
 		is_home: false,
-		// `past_due` during dunning: full entitlements with a payment-issue notice
-		// (§3.1), so this organization is usable too — the state a reader is most
-		// likely to mistake for a loss of access.
-		plan: { status: "past_due" as const, seats: 6 },
+		// No plan at all: the blocked arm, and the state §8.4's picker renders
+		// disabled with its upgrade hint.
+		plan: { status: "none" as const, seats: null },
 	},
 ];
 
@@ -919,5 +944,26 @@ export const OrgTeams: Story = {
 			await screen.findByRole("option", { name: "Minerva" }),
 		);
 		await screen.findByTestId("org-teams-count");
+	},
+};
+
+/**
+ * A backend that predates the organization operations (agent review round 1,
+ * M2): `radient_org` is absent, so the page asks for nothing and says why.
+ *
+ * The distinction this frame has to carry is the remedy. Without the capability
+ * the operations answer a masked 422 — "The request has invalid fields." — which
+ * a surface can neither classify nor retry into success, so "try again in a
+ * moment" would send the reader to the one action that cannot work. The absence
+ * of the scope row alone would read as "you have no organizations".
+ */
+export const OrgUnavailable: Story = {
+	render: () => {
+		installBridge({ records: 6, signedIn: true, orgCapability: false });
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-status");
+		await screen.findByTestId("agent-hub-org-unavailable");
 	},
 };
