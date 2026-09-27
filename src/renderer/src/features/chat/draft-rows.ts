@@ -18,9 +18,13 @@
  *
  * THE THREE CONDITIONS, and what each refuses:
  *
- *  - **no `sessionId`** — a draft that has become a session is that session, and
- *    it is already a row in this list under its own title. Listing it twice would
- *    put one conversation on screen under two names, one of them stale.
+ *  - **no `sessionId`, or that session not listed yet** — a draft that has become a
+ *    session is that session, and it is already a row in this list under its own
+ *    title. Listing it twice would put one conversation on screen under two names,
+ *    one of them stale. The owner is read from `sessionId` OR from a
+ *    `send:<sessionId>` key (a live send writes no field), and the row stands only
+ *    while the session's own row is ABSENT from the list the caller is drawing
+ *    (D6: no duplicate; U6: the presence that survives a lagging catalogue).
  *  - **no `target`** — a draft addressed to an agent or a team
  *    (`draft:agent:<name>`) is reachable by pressing that entity's own row, which
  *    is the gesture that CREATED it; a `Draft:` row beside it would be a second
@@ -45,6 +49,9 @@ import type { ChatDraft } from "@shared/store/canonical-sessions-store";
 
 /** What every draft row's label starts with, so the list states what the row is. */
 export const DRAFT_ROW_PREFIX = "Draft: ";
+
+/** The default `listedSessionIds`: a caller that lists no sessions owns no row. */
+const EMPTY_LISTED_SESSIONS: ReadonlySet<string> = new Set();
 
 /**
  * One row the sidebar draws.
@@ -89,14 +96,37 @@ export const draftRowTitle = (text: string): string => {
  * and `stageDraft` writes no clock), and inventing one would be a second fact to
  * keep true. Newest-last is what insertion order gives, and the list renders it
  * reversed for the same reason the chat list puts today above this week.
+ *
+ * THE SESSION ROW IS THE PRESENCE, WHEN IT EXISTS (agent review round 2's D6 and
+ * UX round 2's U6, one rule with two faces). A draft that has become a session
+ * is normally that session's own row: listing it again puts one conversation on
+ * screen under two names, one of them labelled `Draft:` for a message that is in
+ * flight - or, after a refusal, failed (D6 measured exactly that on a live send,
+ * because the `send:<sessionId>` shape never writes the `sessionId` field that
+ * used to refuse it). But "normally" is not "always": between a create's answer
+ * and the catalogue's next paint the session row can be absent, and then the
+ * draft row is the ONLY presence (U6: five attempts could not click back to a
+ * chat that had just refused). So the caller states which sessions it is
+ * listing, and the rule is: skip an owned draft exactly when its own session is
+ * among them.
  */
 export function untargetedDraftRows(
 	drafts: Record<string, ChatDraft>,
 	inputByConversation: Record<string, { currentInput?: string } | undefined>,
+	listedSessionIds: ReadonlySet<string> = EMPTY_LISTED_SESSIONS,
 ): DraftRow[] {
 	const rows: DraftRow[] = [];
 	for (const [key, draft] of Object.entries(drafts)) {
-		if (draft.sessionId) continue;
+		/*
+		 * The conversation this draft belongs to, whichever way its key spells it
+		 * (`draftBelongsToSession` states the same pair in the store): a staged
+		 * draft learns `sessionId` at the create's answer, while the live-send shape
+		 * `send:<sessionId>` carries the id in the key alone.
+		 */
+		const owner =
+			draft.sessionId ??
+			(key.startsWith("send:") ? key.slice("send:".length) : undefined);
+		if (owner && listedSessionIds.has(owner)) continue;
 		if (draft.target) continue;
 		const typed = inputByConversation[key]?.currentInput ?? "";
 		/*
@@ -106,8 +136,19 @@ export function untargetedDraftRows(
 		 * in that window left the conversation unreachable from the list entirely
 		 * (UX round 1, U2). `submittedText` is kept on the draft until the claim
 		 * resolves, so the row can state what is in flight.
+		 *
+		 * AND THE RESOLUTION'S OWN RECORD IS THE THIRD (UX round 2, U6, measured on
+		 * the refusal frame): `resolveHeldFromServer` clears `submittedText` when it
+		 * writes `undelivered`, and this rule then found no text at all - so the
+		 * just-refused chat vanished from the list at exactly the moment a reader
+		 * looks for it, which is U6's five attempts. `undelivered.text` is the same
+		 * string the ROW paints from (`resynthesisePendingSend`'s resolved arm), so
+		 * the list and the row read one source rather than two.
 		 */
-		const text = typed.trim().length > 0 ? typed : (draft.submittedText ?? "");
+		const text =
+			typed.trim().length > 0
+				? typed
+				: (draft.submittedText ?? draft.undelivered?.text ?? "");
 		if (text.trim().length === 0) continue;
 		rows.push({
 			key,

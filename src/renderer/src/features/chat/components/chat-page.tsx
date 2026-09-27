@@ -11,7 +11,9 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
 import {
+	hasPendingSend,
 	pendingSendForView,
+	retainsPendingSend,
 	retractLocalEcho,
 	useCanonicalSessionStream,
 } from "@shared/hooks/use-canonical-session";
@@ -33,9 +35,9 @@ import {
 	SESSION_UNVALIDATED_MESSAGE,
 	UNREADABLE_ATTACHMENT_CODE,
 	admitChatDraft,
-	draftIdentityFor,
 	isSessionUnvalidated,
 	migrateHeldClaim,
+	paneDraftKey,
 	panelIdentityFor,
 	panelSessionIdOfView,
 	pressLockCopy,
@@ -268,7 +270,9 @@ function SessionPanel({
 	draftKey: string | null;
 	sessionId?: string;
 }) {
-	const draftIdentity = draftIdentityFor(draftKey, sessionId);
+	const draftIdentity = useCanonicalSessionsStore((state) =>
+		paneDraftKey(draftKey, sessionId, state.drafts),
+	);
 	const draft = useCanonicalSessionsStore((state) =>
 		draftIdentity ? state.drafts[draftIdentity] : undefined,
 	);
@@ -607,7 +611,8 @@ function SessionPanel({
 		if (admitted.current?.requestId !== pendingNow.id) {
 			admitted.current = {
 				requestId: pendingNow.id,
-				submittedAt: draft?.submittedAt,
+				// The entry first: it is the copy that survives this mount (R2-5).
+				submittedAt: pendingNow.submittedAt ?? draft?.submittedAt,
 			};
 		}
 	}
@@ -1391,9 +1396,13 @@ function SessionPanel({
 		beforeAdmission?: (sessionId: string) => Promise<string | undefined>,
 	): Promise<SendOutcome> => {
 		const store = useCanonicalSessionsStore.getState();
-		// Same identity the view reads, so a send can never address a different
-		// draft than the one whose retained text and Discard control are shown.
-		const key = draftIdentityFor(draftKey, sessionId);
+		// Same ROW the view reads, so a send can never address a different draft
+		// than the one whose retained text and Discard control are shown. The
+		// resolver rather than `draftIdentityFor` alone: a pane reached by the
+		// session's own route derives a key the staged draft never wore, and the
+		// replay rule has to find the row the failure was written to (UX round 2,
+		// U5 - see `paneDraftKey`).
+		const key = paneDraftKey(draftKey, sessionId, store.drafts);
 		if (!key) return false;
 		const previous = store.drafts[key];
 		/*
@@ -1879,10 +1888,20 @@ function SessionPanel({
 			 * it for every class until the row is resolved. The row's own `sessionId`
 			 * is the identity's second half - the create's answer re-keys the entry to
 			 * it, so a message failure after the flip is found there.
+			 *
+			 * AND IT ASKS MEMBERSHIP, NOT LIVENESS (round 2). A recorded failure now
+			 * SETTLES the entry in the very catch this arm runs after (`admitChatDraft`,
+			 * UX round 2's U5), so the liveness predicate would answer null for every
+			 * post-paint failure and this pane would take its `else` branch - the
+			 * composer alert over a row that already states the failure, which is the
+			 * contradiction J4 forbids (measured on the re-shoot's first run).
+			 * `hasPendingSend` asks the question this arm actually has: a row was
+			 * painted for this send, wherever the claim has got to since.
 			 */
 			const row = useCanonicalSessionsStore.getState().drafts[key];
-			const painted = pendingSendForView(
+			const painted = hasPendingSend(
 				panelIdentityFor(draftKey, row?.sessionId ?? sessionId),
+				row?.admissionRequestId ?? "",
 			);
 			if (painted) {
 				/*
@@ -2805,18 +2824,20 @@ function SessionPanel({
 		muted: sendErrorMuted,
 		/*
 		 * THE ROW IS THE FAILURE'S HOME, SO THE COMPOSER DOES NOT RESTATE IT (S4).
-		 * `pendingNow` answers whether a retained row exists for this identity: when
-		 * it does, the sentence, the controls and the press all belong to that row
-		 * (`deliveryTurn` above), and this notice would be the same failure told
-		 * twice - measured in this change's own driver run as "Couldn't confirm your
-		 * message was sent. Sending it again is safe.RetryClear" standing over a row
-		 * that already said it, which is the contradiction J4 forbids. The inputs go
-		 * `undefined` rather than empty so `composerNoticeFor`'s own arms (the
-		 * late-delivery note, the pre-paint copies) are untouched.
+		 * `retainsPendingSend` answers whether a ROW exists for this identity -
+		 * MEMBERSHIP, not liveness, and the distinction is load-bearing since round
+		 * 2: a recorded failure settles its claim in the store's own catch (U5),
+		 * so the liveness predicate answers null for exactly the failures whose row
+		 * is on screen, and this notice put the same sentence back over it
+		 * ("Couldn't confirm your message was sent. Sending it again is safe.RetryClear"
+		 * beside a row that already said it) - the contradiction J4 forbids,
+		 * measured on the re-shoot's first run. The inputs go `undefined` rather
+		 * than empty so `composerNoticeFor`'s own arms (the late-delivery note, the
+		 * pre-paint copies) are untouched.
 		 */
-		rowError: pendingNow ? undefined : draft?.error,
-		rowCode: pendingNow ? undefined : draft?.errorCode,
-		rowRetry: pendingNow ? undefined : draft?.errorRetry,
+		rowError: retainsPendingSend(identity) ? undefined : draft?.error,
+		rowCode: retainsPendingSend(identity) ? undefined : draft?.errorCode,
+		rowRetry: retainsPendingSend(identity) ? undefined : draft?.errorRetry,
 		lateDelivered,
 	});
 	/*
@@ -3282,13 +3303,18 @@ function SessionPanel({
 						startingAfterId: admitted.current?.requestId ?? null,
 						startingSession,
 						/*
-						 * THE ROW'S ANCHOR, WITH THE LATCH'S AS THE FALLBACK: the draft row is
-						 * deleted at the receipt while the latch may still hold (agent review
-						 * round 1's MINOR), and the number must survive that gap rather than
-						 * blank - see the latch's own note.
+						 * THE ROW'S ANCHOR, THEN THE ENTRY'S, THEN THE LATCH'S (agent review
+						 * round 2, R2-5): the draft row is deleted at the receipt while the
+						 * latch may still hold (round 1's MINOR), and a switch-away inside
+						 * that gap remounts with NEITHER the old latch nor the row - so the
+						 * retained entry carries the press's own number and the seconds
+						 * survive that remount too.
 						 */
 						startingSince:
-							draft?.submittedAt ?? admitted.current?.submittedAt ?? null,
+							draft?.submittedAt ??
+							pendingNow?.submittedAt ??
+							admitted.current?.submittedAt ??
+							null,
 						onStop: stop,
 						stopAvailable: interruptAvailable,
 						/*
@@ -3378,8 +3404,25 @@ export function ChatPage() {
 	}, [catalogueState, capabilities]);
 	const active = useCanonicalSessionsStore((state) => state.activeSessionId);
 	const draftKey = useCanonicalSessionsStore((state) => state.activeDraftKey);
+	/*
+	 * THE ROW, RESOLVED BY BELONGING (UX round 2, U5): `draftKey` answers "is a
+	 * staged draft the view" - it is null on a pane reached by the session's own
+	 * route - while the failure's sentence and controls live on the row the send
+	 * wrote, which on a refused first send is the staged `draft:<uuid>` the
+	 * conversation began as. `paneDraftKey` is the same resolver `send` and
+	 * `SessionPanel` read, so the row that renders and the row a retry replays
+	 * cannot be two.
+	 */
+	const draftRow = useCanonicalSessionsStore((state) =>
+		/*
+		 * `active` rather than the derived `id` below: both answer the same when no
+		 * draft is staged (this resolver's fallback arm is only reached then), and
+		 * `id` is computed further down from the row this read is what finds.
+		 */
+		paneDraftKey(draftKey, state.activeSessionId, state.drafts),
+	);
 	const draft = useCanonicalSessionsStore((state) =>
-		draftKey ? state.drafts[draftKey] : undefined,
+		draftRow ? state.drafts[draftRow] : undefined,
 	);
 	const error = useCanonicalSessionsStore((state) => state.error);
 	const [routeError, setRouteError] = useState<string | null>(null);

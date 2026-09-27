@@ -15307,6 +15307,271 @@ async function sceneConversationStartCreateFailure(cdp) {
 	note("frame", JSON.stringify(reloadFrame));
 }
 
+/**
+ * A NEW CHAT'S FIRST SEND REFUSED, THEN AWAY AND BACK (UX round 2, U5).
+ *
+ * WHY A SCENE OF ITS OWN. The main scene's failure arm presses a LIVE
+ * conversation - its first message is delivered, the turn answers, the receipt
+ * retires the staged draft - so its row is keyed `send:<sessionId>`, exactly the
+ * key a pane derives when it is reached by the session's own route; that shape
+ * passes by construction. U5 is the OTHER shape, and it is the one the design's
+ * "switch-away mid-failure" target names: the refusal lands on the staged
+ * draft's own row (`draft:<uuid>`, which the create's answer patches but never
+ * re-keys) while the pane that comes back derives `send:<sessionId>` and finds
+ * nothing - the failure's sentence and both its controls gone, and the retained
+ * claim still answering "in flight" for a send that is not alive.
+ *
+ * So this scene stages exactly that: one refusal on a new chat's FIRST message
+ * (the tap's captured `runtime_unreachable` body), the row up, then a click to
+ * another conversation and straight back - and it reads the store's own draft
+ * map beside the DOM, because "the row exists under a name the pane never asks
+ * for" is invisible in the rendered frame.
+ */
+async function sceneConversationStartAwayFailure(cdp) {
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	const composerSelector = '[data-tour-tag="chat-input-textarea"]';
+	const size = `${WINDOW_WIDTH}x${WINDOW_HEIGHT}`;
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+	check(
+		"the refusal needs the tap's control door",
+		TAP_CONTROL !== null,
+		TAP_CONTROL ?? "pass --tap-control http://127.0.0.1:<tap>",
+	);
+	if (!TAP_CONTROL) return;
+
+	const reads = () =>
+		cdp.evaluate(`(() => {
+			const log = document.querySelector('[role="log"]');
+			const rows = log ? [...log.querySelectorAll('[data-record-id]')] : [];
+			const composer = document.querySelector('${composerSelector} textarea');
+			const undelivered = document.querySelector('[data-undelivered]');
+			return {
+				rows: rows.length,
+				rowIds: rows.map((row) => row.getAttribute('data-record-id')),
+				composer: composer ? composer.value : null,
+				controls: log ? [...log.querySelectorAll('button')].map((b) => b.textContent.trim()) : [],
+				undelivered: undelivered ? undelivered.textContent.trim() : null,
+			};
+		})()`);
+	const waitLine = () =>
+		cdp.evaluate(`(() => {
+			const match = document.body.innerText.match(/(starting the session|waiting for the agent)(?:\\s+(\\d+)s)?/);
+			return match ? { phase: match[1], seconds: match[2] ? Number(match[2]) : null } : null;
+		})()`);
+	const draftState = () =>
+		verb(cdp, "state").then((state) => ({
+			route: state.route,
+			activeSessionId: state.activeSessionId,
+			activeDraftKey: state.activeDraftKey,
+			drafts: state.drafts,
+		}));
+
+	/* A second conversation to leave to, and the run must see its sidebar row. */
+	const second = await createBackendSession();
+	const secondId = second?.id ?? second?.session_id ?? null;
+	note("second conversation", JSON.stringify(second));
+
+	await verb(cdp, "navigate", "/chat");
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${composerSelector}') && document.querySelector('[data-lo-empty-mark]'))`,
+		30_000,
+	);
+	if (secondId) {
+		await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector('[data-sidebar-region="chats"] [data-session-row="${secondId}"]'))`,
+			20_000,
+		);
+	}
+	const armed = await fetch(`${TAP_CONTROL}/__tap/fail-messages`, {
+		method: "POST",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({ count: 1 }),
+	});
+	note("tap control", `${armed.status} ${await armed.text()}`);
+
+	const rowsBefore = (await reads()).rowIds;
+	const refusalWait = `(() => {
+		const log = document.querySelector('[role="log"]');
+		if (!log) return false;
+		const ids = [...log.querySelectorAll('[data-record-id]')].map((r) => r.getAttribute('data-record-id'));
+		const previous = ${JSON.stringify(rowsBefore)};
+		const minted = ids.some((id) => !previous.includes(id));
+		return minted && Boolean(log.querySelector('[data-undelivered]'));
+	})()`;
+	await clickAt(cdp, `${composerSelector} textarea`);
+	await cdp.send("Input.insertText", { text: "Summarise yesterday's QA run." });
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	let refusal = await waitForCondition(cdp, refusalWait, 20_000);
+	if (!refusal.ok) {
+		/* One retry, the same shape the main scene's arm explains. */
+		await pressChord(cdp, {
+			key: "a",
+			code: "KeyA",
+			virtualKeyCode: 65,
+			modifiers: MODIFIER.meta,
+			commands: ["selectAll"],
+		});
+		await pressChord(cdp, {
+			key: "Backspace",
+			code: "Backspace",
+			virtualKeyCode: 8,
+		});
+		await clickAt(cdp, `${composerSelector} textarea`);
+		await cdp.send("Input.insertText", {
+			text: "Summarise yesterday's QA run.",
+		});
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		refusal = await waitForCondition(cdp, refusalWait, 20_000);
+	}
+	await wait(600);
+	const atRefusalFrame = await captureSettled(
+		cdp,
+		`conversation-start-${size}-away-failure-refusal`,
+		{ toastWaitMs: 500 },
+	);
+	note("frame", JSON.stringify(atRefusalFrame));
+	const atRefusal = {
+		read: await reads(),
+		line: await waitLine(),
+		state: await draftState(),
+	};
+	note("at refusal", JSON.stringify(atRefusal));
+	check(
+		"U5: the refusal is up on the row, with both controls",
+		atRefusal.read.undelivered !== null &&
+			atRefusal.read.controls.includes("Send again") &&
+			atRefusal.read.controls.includes("Edit"),
+		`undelivered=${JSON.stringify(atRefusal.read.undelivered)} controls=${JSON.stringify(atRefusal.read.controls)}`,
+	);
+
+	/*
+	 * WHICH conversation just failed. NOT from the route: a refusal means no
+	 * receipt, and the app navigates `/chat/<id>` only on the receipt - so the
+	 * route is still the bare `/chat` while the staged draft's row carries the
+	 * session the create made. The state is the answer; the route would be null.
+	 *
+	 * THE FALLBACK EXISTS FOR THE BEFORE HALF, which is the unmodified base and
+	 * whose dev driver has no `drafts` field to read (the after half's does): the
+	 * chat is found in the sidebar instead, as the session row that is not the
+	 * scene's own second conversation. Same fact, one layer out.
+	 */
+	const refusalSidebar = await cdp.evaluate(`(() => {
+		const region = document.querySelector('[data-sidebar-region="chats"]');
+		if (!region) return { region: false };
+		return {
+			region: true,
+			draftRows: [...region.querySelectorAll('[data-draft-row]')].map((r) => r.getAttribute('data-draft-row')),
+			draftLabels: [...region.querySelectorAll('[data-draft-row]')].map((r) => (r.textContent || '').trim().slice(0, 60)),
+			sessionRowIds: [...region.querySelectorAll('[data-session-row]')].map((r) => r.getAttribute('data-session-row')).slice(0, 8),
+		};
+	})()`);
+	note("sidebar at refusal", JSON.stringify(refusalSidebar));
+	const failedId =
+		(atRefusal.state.activeDraftKey &&
+			atRefusal.state.drafts?.[atRefusal.state.activeDraftKey]?.sessionId) ||
+		(await cdp.evaluate(`(function (second) {
+			var rows = [...document.querySelectorAll('[data-sidebar-region="chats"] [data-session-row]')];
+			for (var row of rows) {
+				var id = row.getAttribute('data-session-row');
+				if (id && id !== second) return id;
+			}
+			return null;
+		})(${JSON.stringify(secondId)})`));
+	note("failed conversation", JSON.stringify(failedId));
+	if (!failedId) {
+		note(
+			"on return",
+			"skipped: no failed conversation could be named (the state carried none and the sidebar painted none)",
+		);
+		return;
+	}
+	/*
+	 * THE ROWS ARE WAITED FOR, AND THE AWAY TARGET IS A VISIBLE ROW (found while
+	 * re-shooting: clicking a row the catalogue has not painted threw and took
+	 * every later capture with it). The failed chat's own row arrives with a
+	 * catalogue refresh - the create's answer issues one, the poll is the backstop -
+	 * and the conversation to leave to is whichever other row the sidebar is
+	 * ACTUALLY drawing, read from the DOM rather than assumed.
+	 */
+	const rowUp = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-sidebar-region="chats"] [data-session-row="${failedId}"]'))`,
+		45_000,
+	);
+	const awayRow = rowUp.ok
+		? await cdp.evaluate(`(function (failed) {
+				var rows = [...document.querySelectorAll('[data-sidebar-region="chats"] [data-session-row]')];
+				for (var row of rows) {
+					var id = row.getAttribute('data-session-row');
+					if (id && id !== failed) return id;
+				}
+				return null;
+			})(${JSON.stringify(failedId)})`)
+		: null;
+	note("away rows", JSON.stringify({ failedRowUp: rowUp.ok, awayRow }));
+	if (!rowUp.ok || !awayRow) {
+		note(
+			"on return",
+			"skipped: the sidebar had not painted the rows this round trip needs (its own catalogue lag, recorded rather than thrown)",
+		);
+		return;
+	}
+	await clickAt(
+		cdp,
+		`[data-sidebar-region="chats"] [data-session-row="${awayRow}"]`,
+	);
+	await wait(2000);
+	await clickAt(
+		cdp,
+		`[data-sidebar-region="chats"] [data-session-row="${failedId}"]`,
+	);
+	const back = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${composerSelector} textarea'))`,
+		20_000,
+	);
+	/*
+	 * Long enough for the return's own read to land: the check is "what the pane
+	 * says after everything that CAN arrive has", not "what it said first".
+	 */
+	await wait(1500);
+	const returnFrame = await captureSettled(
+		cdp,
+		`conversation-start-${size}-away-failure-return`,
+		{ toastWaitMs: 500 },
+	);
+	note("frame", JSON.stringify(returnFrame));
+	const onReturn = {
+		read: await reads(),
+		line: await waitLine(),
+		state: await draftState(),
+		back: back.ok,
+	};
+	note("on return", JSON.stringify(onReturn));
+	check(
+		"U5: the refusal's row, sentence and both controls survive a switch-away and back",
+		onReturn.read.undelivered !== null &&
+			onReturn.read.controls.includes("Send again") &&
+			onReturn.read.controls.includes("Edit"),
+		`undelivered=${JSON.stringify(onReturn.read.undelivered)} controls=${JSON.stringify(onReturn.read.controls)}`,
+	);
+	check(
+		"U5: and no wait claim is drawn for a send that is not alive",
+		onReturn.line === null,
+		`line=${JSON.stringify(onReturn.line)}`,
+	);
+}
+
 async function sceneConversationStart(cdp) {
 	const expectAfter = START_EXPECT !== "before";
 	const facts = await factsOf(cdp);
@@ -15395,6 +15660,23 @@ async function sceneConversationStart(cdp) {
 			return match ? { phase: match[1], seconds: match[2] ? Number(match[2]) : null } : null;
 		})()`);
 	/*
+	 * AND THE FLIP PAIR CAPTURES RAW (D5's own ask). `captureSettled` waits for
+	 * the frame to hold still, and the owner's answer landed inside that window on
+	 * the round-1 re-shoot - both flip frames caught the post-answer moment and
+	 * T2/J5's wait line was not in a frame at all. The instant the flip is
+	 * observed is the moment these frames are for, so this capture does not wait
+	 * for anything but the shot.
+	 */
+	const captureRawWithLine = async (label) => {
+		const lineBefore = await waitLine();
+		const frame = await assertKeptFrame(
+			cdp,
+			await capture(cdp, label, { assertPalette: false }),
+		);
+		const lineAfter = await waitLine();
+		return { ...frame, lineBefore, lineAfter };
+	};
+	/*
 	 * The sidebar's own answer about the chat under test (design review round 1,
 	 * D3): the draft row the press's chat is listed under while no session exists,
 	 * and the session rows beside it - so "the chat is in the list" is read from
@@ -15438,10 +15720,15 @@ async function sceneConversationStart(cdp) {
 	// Inside the tap's hold: the create is in flight, and this is the frame the
 	// whole change is for.
 	await wait(350);
-	const pressFrame = await captureSettled(
-		cdp,
+	/*
+	 * AND THE PRESS FRAME CAPTURES RAW TOO, for the same reading's sake: settled,
+	 * the clock ticked from 0s to 2s across the eight attempts the stable wait
+	 * spent on a frame that never stops changing (the seconds are its content),
+	 * so no caption could say what the pixels carried. Raw, the reads around it
+	 * agree on one number.
+	 */
+	const pressFrame = await captureRawWithLine(
 		`conversation-start-${size}-press`,
-		{ toastWaitMs: 500 },
 	);
 	note("frame", JSON.stringify(pressFrame));
 	const press = {
@@ -15508,17 +15795,11 @@ async function sceneConversationStart(cdp) {
 	const flipRead = await reads();
 	const flipLine = await waitLine();
 	const flipSidebar = await sidebarState();
-	const flipFrame = await captureSettled(
-		cdp,
-		`conversation-start-${size}-flip`,
-		{ toastWaitMs: 500 },
-	);
+	const flipFrame = await captureRawWithLine(`conversation-start-${size}-flip`);
 	note("frame", JSON.stringify(flipFrame));
 	await wait(1000);
-	const plusOneFrame = await captureSettled(
-		cdp,
+	const plusOneFrame = await captureRawWithLine(
 		`conversation-start-${size}-flip-plus-1s`,
-		{ toastWaitMs: 500 },
 	);
 	note("frame", JSON.stringify(plusOneFrame));
 	const flip = {
@@ -15556,9 +15837,17 @@ async function sceneConversationStart(cdp) {
 		);
 		check(
 			"J5: the clock does not restart - the flip's seconds are >= the press's",
+			/*
+			 * `typeof` rather than `!== null`, and the difference is a thrown run:
+			 * `press.line?.seconds` is `undefined` when the whole line is absent -
+			 * the BEFORE half's press has no line at all - and `undefined !== null`
+			 * is true, so the old guard fell through to `flip.line.seconds` on a
+			 * null line and this check took the scene to its `[the run threw]` arm,
+			 * leaving every capture after it unshot.
+			 */
 			flip.line?.phase === "waiting for the agent" &&
-				press.line?.seconds !== null &&
-				flip.line?.seconds !== null &&
+				typeof press.line?.seconds === "number" &&
+				typeof flip.line?.seconds === "number" &&
 				flip.line.seconds >= press.line.seconds,
 			`press=${JSON.stringify(press.line)} flip=${JSON.stringify(flip.line)}`,
 		);
@@ -15608,9 +15897,39 @@ async function sceneConversationStart(cdp) {
 		});
 		note("tap control", `${armed.status} ${await armed.text()}`);
 	}
+	/*
+	 * Q-2 (QA round 2, the scene's own arm): WAIT FOR THE FIRST TURN TO SETTLE
+	 * BEFORE ARMING THE REFUSAL. The arm's presses are only accepted once the
+	 * first message's turn has settled; on a loaded host that settle is ~10-16 s,
+	 * and in the window before it the presses do not post at all - the refusal
+	 * check then reads the PREVIOUS row's controls (it scans the whole log for
+	 * `Send again`) and the run misstates the app. Two guards, because both
+	 * failures were seen: wait on the composer's own settle notice, and scope the
+	 * refusal to the row THIS press minted.
+	 */
+	const firstTurnSettled = await waitForCondition(
+		cdp,
+		`(() => {
+			const body = document.body.innerText;
+			return !/still sending/i.test(body) && !/(starting the session|waiting for the agent)/.test(body);
+		})()`,
+		30_000,
+	);
+	note("first turn settled", JSON.stringify(firstTurnSettled));
+	/*
+	 * The log's last row BEFORE this press: the refusal must attach to a row that
+	 * is not it. `reads()` keeps the ids in DOM order, so the minted echo is the
+	 * one that differs.
+	 */
+	const rowsBeforeRefusal = (await reads()).rowIds;
 	const refusalWait = `(() => {
-			const log = document.querySelector('[role="log"]');
-			return Boolean(log && [...log.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Send again'));
+			const log = document.querySelector('[role=\"log\"]');
+			if (!log) return false;
+			const ids = [...log.querySelectorAll('[data-record-id]')].map((r) => r.getAttribute('data-record-id'));
+			const previous = ${JSON.stringify(rowsBeforeRefusal)};
+			const minted = ids.some((id) => !previous.includes(id));
+			return minted && Boolean(log.querySelector('[data-undelivered]')) &&
+				[...log.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Send again');
 		})()`;
 	await typeIntoComposer("A refusal the owner raises after the paint.");
 	let refused = await waitForCondition(cdp, refusalWait, 8_000);
@@ -15667,6 +15986,127 @@ async function sceneConversationStart(cdp) {
 			"before-arm",
 			"the failure frame on the pre-change tree: the payload comes back to the composer (the #495 decision this change supersedes for post-paint failures)",
 		);
+	}
+
+	/* -------------------------------- SWITCH-AWAY MID-FAILURE (UX round 2, U5) */
+
+	/*
+	 * THE DESIGN'S "switch-away mid-failure" TARGET, which had no check: the
+	 * refusal is up on the row and NOTHING has resolved it yet (resolution needs a
+	 * server read, and none has happened since the refusal), and the user leaves
+	 * the conversation and comes straight back. What the return must present is
+	 * the state the user last saw - the row with its sentence and both controls -
+	 * and NEVER a wait claim: the send is not alive, and the wire records that no
+	 * second POST goes out on this trip.
+	 */
+	const failedConversationId = await cdp.evaluate(`(function () {
+		var parts = (window.location.hash + "/" + window.location.pathname).split("/");
+		var at = parts.indexOf("chat");
+		var id = at !== -1 ? parts[at + 1] : null;
+		return id && new RegExp("^[0-9a-f]{8,}$").test(id) ? id : null;
+	})()`);
+	note("failed conversation", JSON.stringify(failedConversationId));
+	/*
+	 * THE ROW'S OWN ADDRESS, from the dev driver rather than inferred: which draft
+	 * key is active and which keys carry a row (presence only; the driver's
+	 * `state` verb returns no text). This is the fact U5 turns on - the pane
+	 * derives `send:<sessionId>` on a return while the row may sit under
+	 * `draft:<uuid>` - and it is invisible in the DOM.
+	 */
+	const draftState = () =>
+		verb(cdp, "state").then((state) => ({
+			route: state.route,
+			activeSessionId: state.activeSessionId,
+			activeDraftKey: state.activeDraftKey,
+			drafts: state.drafts,
+		}));
+	let midFailure = null;
+	if (failedConversationId) {
+		note("state at refusal", JSON.stringify(await draftState()));
+		/*
+		 * THE ROWS ARE WAITED FOR, AND THE AWAY TARGET IS A VISIBLE ROW (found while
+		 * re-shooting: a row the catalogue has not painted yet made this step throw
+		 * and took every later capture with it). The failed conversation's own row
+		 * arrives with a catalogue refresh - the create's answer issues one and the
+		 * poll is the backstop - and the conversation to leave to is whichever
+		 * other row the sidebar is ACTUALLY drawing, read from the DOM rather than
+		 * assumed from an id the scene created out of band (an empty session's row
+		 * is the catalogue's to paint, not the scene's to count on).
+		 */
+		const failedRowUp = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector('[data-sidebar-region="chats"] [data-session-row="${failedConversationId}"]'))`,
+			45_000,
+		);
+		const awayRow = failedRowUp.ok
+			? await cdp.evaluate(`(function (failed) {
+					var rows = [...document.querySelectorAll('[data-sidebar-region="chats"] [data-session-row]')];
+					for (var row of rows) {
+						var id = row.getAttribute('data-session-row');
+						if (id && id !== failed) return id;
+					}
+					return null;
+				})(${JSON.stringify(failedConversationId)})`)
+			: null;
+		note("away rows", JSON.stringify({ failedRowUp: failedRowUp.ok, awayRow }));
+		if (failedRowUp.ok && awayRow) {
+			await clickAt(
+				cdp,
+				`[data-sidebar-region="chats"] [data-session-row="${awayRow}"]`,
+			);
+			await wait(2000);
+			await clickAt(
+				cdp,
+				`[data-sidebar-region="chats"] [data-session-row="${failedConversationId}"]`,
+			);
+			const midBack = await waitForCondition(
+				cdp,
+				`Boolean(document.querySelector('${composerSelector} textarea'))`,
+				20_000,
+			);
+			/*
+			 * Long enough for the return's read to land: if the resolution runs it must
+			 * have run, because the check below is precisely "what the pane says after
+			 * everything that CAN arrive has".
+			 */
+			await wait(1500);
+			const midFailureFrame = await captureSettled(
+				cdp,
+				`conversation-start-${size}-away-mid-failure`,
+				{ toastWaitMs: 500 },
+			);
+			note("frame", JSON.stringify(midFailureFrame));
+			midFailure = {
+				read: await reads(),
+				line: await waitLine(),
+				back: midBack.ok,
+			};
+			note("away mid-failure", JSON.stringify(midFailure));
+			note("state on return", JSON.stringify(await draftState()));
+			if (expectAfter) {
+				check(
+					"U5: the refusal's row and controls survive a switch-away and back",
+					midFailure.read.controls.includes("Send again") &&
+						midFailure.read.controls.includes("Edit"),
+					`controls=${JSON.stringify(midFailure.read.controls)}`,
+				);
+				check(
+					"U5: and no wait claim appears for a send that is not alive",
+					midFailure.line === null,
+					`line=${JSON.stringify(midFailure.line)}`,
+				);
+			} else {
+				note(
+					"before-arm",
+					"the switch-away mid-failure state on the pre-change tree: the message is not in the transcript at all, so there is no row to come back to",
+				);
+			}
+		} else {
+			note(
+				"away mid-failure",
+				"skipped: the sidebar had not painted the rows this round trip needs (its own catalogue lag, recorded rather than thrown)",
+			);
+		}
 	}
 
 	/* --------------------------------------------------------------- RELOAD */
@@ -15797,72 +16237,124 @@ async function sceneConversationStart(cdp) {
 		 * fading, and a toast that is still up is part of the moment these frames
 		 * photograph (the README says so).
 		 */
-		const awayPressFrame = await captureSettled(
-			cdp,
+		/*
+		 * RAW, for the reason the flip pair is (and one of the re-shoot's own): the
+		 * away trip has to finish inside the app's 25 s send deadline - the held
+		 * POST is the point - and a settled capture's eight attempts spend up to a
+		 * dozen seconds on a frame whose clock never holds still. Measured: the
+		 * trip's frames took longer than the deadline and the return read a
+		 * FINISHED send (`line: null`) instead of the in-flight one T5 is about.
+		 */
+		const awayPressFrame = await captureRawWithLine(
 			`conversation-start-${size}-away-press`,
-			{ toastWaitMs: 500 },
 		);
 		note("frame", JSON.stringify(awayPressFrame));
 		const awayPress = await reads();
 		note("away press", JSON.stringify(awayPress));
-		// LEAVE: the other conversation's own pane replaces this one, pressed the
-		// way a user leaves - the sidebar row, not a route change.
-		await clickAt(
+		/*
+		 * LEAVE: the other conversation's own pane replaces this one, pressed the
+		 * way a user leaves - the sidebar row, not a route change. The target is
+		 * read from the DOM (any visible row that is not this conversation) and
+		 * waited for, found while re-shooting: a row the catalogue has not painted
+		 * yet threw here and took every later capture with it. When no other row is
+		 * up, the step records the skip rather than ending the run.
+		 */
+		const awayRowTarget = await waitForCondition(
 			cdp,
-			`[data-sidebar-region="chats"] [data-session-row="${secondId}"]`,
+			`(function (keep) {
+				var rows = [...document.querySelectorAll('[data-sidebar-region="chats"] [data-session-row]')];
+				for (var row of rows) {
+					var id = row.getAttribute('data-session-row');
+					if (id && id !== keep) return id;
+				}
+				return null;
+			})(${JSON.stringify(firstId ?? "")})`,
+			45_000,
 		);
-		await wait(2000);
-		const sidebar = await cdp.evaluate(`(() => {
-			const region = document.querySelector('[data-sidebar-region="chats"]');
-			if (!region) return null;
-			const rows = [...region.querySelectorAll('[data-session-row], button[data-chat-row]')];
-			return { rows: rows.length, text: region.innerText.slice(0, 400) };
-		})()`);
-		note("sidebar (away)", JSON.stringify(sidebar));
-		// The same bounded toast wait the away-press capture explains.
-		const awayFrame = await captureSettled(
-			cdp,
-			`conversation-start-${size}-away`,
-			{ toastWaitMs: 500 },
-		);
-		note("frame", JSON.stringify(awayFrame));
-		// COME BACK, pressed from the sidebar the way a user returns.
-		if (firstId) {
-			await clickAt(
-				cdp,
-				`[data-sidebar-region="chats"] [data-session-row="${firstId}"]`,
-			);
-		}
-		await wait(600);
-		// The same bounded toast wait the away-press capture explains.
-		const backFrame = await captureSettled(
-			cdp,
-			`conversation-start-${size}-return`,
-			{ toastWaitMs: 500 },
-		);
-		note("frame", JSON.stringify(backFrame));
-		const returned = { read: await reads(), line: await waitLine() };
-		note("return", JSON.stringify(returned));
-		if (expectAfter) {
-			check(
-				"T5: on return the row and its wait line are present, and the composer is empty",
-				returned.read.rows >= 1 &&
-					returned.read.composer === "" &&
-					returned.line !== null,
-				`rows=${returned.read.rows} line=${JSON.stringify(returned.line)} composer=${JSON.stringify(returned.read.composer)}`,
-			);
-			check(
-				"T5: the elapsed number is the true one - it does not restart at the return",
-				returned.line?.seconds !== null &&
-					returned.line?.seconds !== undefined &&
-					returned.line.seconds >= 3,
-				`line=${JSON.stringify(returned.line)}`,
+		note("away row", JSON.stringify(awayRowTarget));
+		if (!awayRowTarget.ok) {
+			note(
+				"switch",
+				"skipped: the sidebar had not painted a second row to leave to (its own catalogue lag, recorded rather than thrown)",
 			);
 		} else {
-			note(
-				"before-arm",
-				"the return frame on the pre-change tree: recorded as-is (no pre-session row existed to return to)",
+			await clickAt(
+				cdp,
+				`[data-sidebar-region="chats"] [data-session-row="${awayRowTarget.last}"]`,
 			);
+			await wait(2000);
+			const sidebar = await cdp.evaluate(`(() => {
+				const region = document.querySelector('[data-sidebar-region="chats"]');
+				if (!region) return null;
+				const rows = [...region.querySelectorAll('[data-session-row], button[data-chat-row]')];
+				return { rows: rows.length, text: region.innerText.slice(0, 400) };
+			})()`);
+			note("sidebar (away)", JSON.stringify(sidebar));
+			// The same bounded toast wait the away-press capture explains.
+			const awayFrame = await captureRawWithLine(
+				`conversation-start-${size}-away`,
+			);
+			note("frame", JSON.stringify(awayFrame));
+			/*
+			 * COME BACK, pressed from the sidebar the way a user returns - and if
+			 * the chat's own row has not been painted, the return is recorded as
+			 * skipped rather than thrown (same reason as the leaving click).
+			 */
+			/*
+			 * A BEAT BEFORE COMING BACK (measured need): the raw captures made the
+			 * whole trip ~2 s long, so the return's clock read 2 s - true, but too
+			 * short to distinguish a continuing number from one that restarted at
+			 * the return (a restart always reads 0-1 s, whenever the click happens,
+			 * which is why the wait sits BEFORE it). Three seconds puts the
+			 * continuing number at ~5 s, still far inside the app's 25 s deadline.
+			 */
+			await wait(3000);
+			const backRow = firstId
+				? await waitForCondition(
+						cdp,
+						`Boolean(document.querySelector('[data-sidebar-region="chats"] [data-session-row="${firstId}"]'))`,
+						45_000,
+					)
+				: { ok: false };
+			if (backRow.ok && firstId) {
+				await clickAt(
+					cdp,
+					`[data-sidebar-region="chats"] [data-session-row="${firstId}"]`,
+				);
+				await wait(600);
+				const backFrame = await captureRawWithLine(
+					`conversation-start-${size}-return`,
+				);
+				note("frame", JSON.stringify(backFrame));
+				const returned = { read: await reads(), line: await waitLine() };
+				note("return", JSON.stringify(returned));
+				if (expectAfter) {
+					check(
+						"T5: on return the row and its wait line are present, and the composer is empty",
+						returned.read.rows >= 1 &&
+							returned.read.composer === "" &&
+							returned.line !== null,
+						`rows=${returned.read.rows} line=${JSON.stringify(returned.line)} composer=${JSON.stringify(returned.read.composer)}`,
+					);
+					check(
+						"T5: the elapsed number is the true one - it does not restart at the return",
+						returned.line?.seconds !== null &&
+							returned.line?.seconds !== undefined &&
+							returned.line.seconds >= 3,
+						`line=${JSON.stringify(returned.line)}`,
+					);
+				} else {
+					note(
+						"before-arm",
+						"the return frame on the pre-change tree: recorded as-is (no pre-session row existed to return to)",
+					);
+				}
+			} else {
+				note(
+					"switch",
+					"skipped the return: the chat's own row was not in the painted list (its catalogue lag, recorded rather than thrown)",
+				);
+			}
 		}
 	} else {
 		note("switch", "no second conversation id: the switch step is skipped");
@@ -26358,6 +26850,12 @@ async function main() {
 			"--scene first-send needs --backend: with no backend the chat route draws its refusal surface and no composer mounts, so there is nothing to send from",
 		);
 	}
+	if (SCENE === "conversation-start-away-failure" && BACKEND === null) {
+		console.error(
+			"the conversation-start-away-failure scene needs --backend <url>: it drives a real refusal through the tap",
+		);
+		process.exit(2);
+	}
 	if (SCENE === "conversation-start" && BACKEND === null) {
 		throw new Error(
 			"--scene conversation-start needs --backend: every frame is a real send against a live owner (and the switch needs a second conversation), so a run with no backend has nothing to photograph",
@@ -26540,6 +27038,8 @@ async function main() {
 			else if (SCENE === "first-send") await sceneFirstSend(cdp);
 			else if (SCENE === "conversation-start")
 				await sceneConversationStart(cdp);
+			else if (SCENE === "conversation-start-away-failure")
+				await sceneConversationStartAwayFailure(cdp);
 			else if (SCENE === "conversation-start-create-failure")
 				await sceneConversationStartCreateFailure(cdp);
 			else if (SCENE === "question-dock") await sceneQuestionDock(cdp);

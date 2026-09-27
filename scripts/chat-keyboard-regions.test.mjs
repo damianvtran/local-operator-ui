@@ -267,7 +267,7 @@ const input = (entries) =>
 		entries.map(([key, currentInput]) => [key, { currentInput }]),
 	);
 
-test("only untargeted, session-less, non-empty drafts become rows", () => {
+test("only untargeted, unlisted, non-empty drafts become rows", () => {
 	const rows = mod.untargetedDraftRows(
 		drafts([
 			["draft:one", {}],
@@ -282,6 +282,11 @@ test("only untargeted, session-less, non-empty drafts become rows", () => {
 			// `draft:four` has no input row at all, which is the state a launch
 			// seed writes and the state after a relaunch of an untouched pane.
 		]),
+		/*
+		 * The sessions the caller is listing (agent review round 2, D6): `s-1`'s own
+		 * row is on screen, so the draft that became it is refused.
+		 */
+		new Set(["s-1"]),
 	);
 	assert.deepEqual(
 		rows.map((row) => row.key),
@@ -337,15 +342,92 @@ test("a draft with an open claim keeps its row after the composer clears", () =>
 		"Draft: what the user is typing now",
 		"the composer still wins while it holds text: the row tracks the typing",
 	);
-	// Once the claim resolves the session exists, so condition 1 refuses the row
-	// and nothing here can keep two rows for one conversation.
+	// Once the claim resolves the session exists, so the owned draft gives way to
+	// that session's own row and nothing here can keep two rows for one
+	// conversation.
 	assert.deepEqual(
 		mod.untargetedDraftRows(
 			drafts([["draft:done", { sessionId: "s-1", submittedText: "sent" }]]),
 			input([]),
+			new Set(["s-1"]),
 		),
 		[],
 	);
+	/*
+	 * AND WHILE THAT ROW IS NOT LISTED YET, the draft row is the only presence
+	 * (UX round 2's U6): the catalogue lags the create, and a reader who watched
+	 * their first message refuse could not click back to it at all. The same
+	 * state, without the session in the list, keeps the row.
+	 */
+	assert.deepEqual(
+		mod
+			.untargetedDraftRows(
+				drafts([["draft:done", { sessionId: "s-1", submittedText: "sent" }]]),
+				input([]),
+				new Set(),
+			)
+			.map((row) => row.key),
+		["draft:done"],
+	);
+	/*
+	 * AND THE RESOLVED SHAPE FINDS ITS TEXT TOO (UX round 2's U6, the live frame
+	 * that measured it): `resolveHeldFromServer` clears `submittedText` when it
+	 * writes `undelivered`, so a just-refused chat was textless and skipped - the
+	 * chat vanished from the list at exactly the moment the reader looked for it.
+	 * `undelivered.text` is what the row itself paints from.
+	 */
+	const resolvedRows = mod.untargetedDraftRows(
+		drafts([
+			[
+				"draft:resolved",
+				{
+					sessionId: "s-1",
+					undelivered: {
+						recordId: "r",
+						text: "the refused message",
+						attachments: [],
+					},
+				},
+			],
+		]),
+		input([]),
+		new Set(),
+	);
+	assert.deepEqual(
+		resolvedRows.map((row) => row.key),
+		["draft:resolved"],
+	);
+	assert.equal(resolvedRows[0].label, "Draft: the refused message");
+});
+
+test("D6/U6: a live send's own draft gives way to the conversation's row", () => {
+	/*
+	 * THE SHAPE AGENT REVIEW ROUND 2 MEASURED (D6): a send into an EXISTING
+	 * conversation is keyed `send:<sessionId>` and writes no `sessionId` field, so
+	 * the old condition 1 never refused it - the sidebar drew `Draft: A refusal…`
+	 * beside the conversation's own row for a message that was in flight or
+	 * failed. The owner is read from the key, and the session's own row is the
+	 * presence.
+	 */
+	assert.deepEqual(
+		mod.untargetedDraftRows(
+			drafts([["send:s-9", { submittedText: "a message already sent into" }]]),
+			input([]),
+			new Set(["s-9"]),
+		),
+		[],
+	);
+	/* Absent that row, the same draft stands as the only way back to it (U6). */
+	const rows = mod.untargetedDraftRows(
+		drafts([["send:s-9", { submittedText: "a message already sent into" }]]),
+		input([]),
+		new Set(),
+	);
+	assert.deepEqual(
+		rows.map((row) => row.key),
+		["send:s-9"],
+	);
+	assert.equal(rows[0].label, "Draft: a message already sent into");
 });
 
 test("the rows are newest-last in the store's own order, rendered reversed", () => {

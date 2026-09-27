@@ -984,3 +984,30 @@ test("the pane's rung memo READS the fold and DEPENDS on it", () => {
 		);
 	}
 });
+
+test("R2-5: the wait clock's anchor survives a remount, through the retained entry", () => {
+	/*
+	 * The per-mount latch was the only holder after a switch-away inside the
+	 * receipt-to-owner gap (the receipt deletes the draft row), so the remounted
+	 * pane blanked the seconds - measured as the residual on agent review round
+	 * 2's R2-5. The press's `submittedAt` now rides the registry entry, and the
+	 * pane's read names it between the row and the latch. Both are read at the
+	 * call site, the shape this suite already uses for call-site facts.
+	 */
+	const chatPage = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	)
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+	assert.match(
+		chatPage,
+		/startingSince:\s*\n\s*draft\?\.submittedAt \?\?\s*\n\s*pendingNow\?\.submittedAt \?\?\s*\n\s*admitted\.current\?\.submittedAt \?\?\s*\n\s*null,/,
+		"the pane reads the entry before the per-mount latch",
+	);
+	assert.match(
+		chatPage,
+		/submittedAt: pendingNow\.submittedAt \?\? draft\?\.submittedAt,/,
+		"and the latch's own snapshot prefers the entry's copy",
+	);
+});
