@@ -1219,6 +1219,11 @@ const AGENTS_PAGE =
 	"src/renderer/src/features/agents/components/agents-page.tsx";
 const CANVAS_SECTION =
 	"src/renderer/src/features/chat/components/canvas/index.tsx";
+/* The list's own plane, and the file the canvas entry's ground is read from: the
+ * pane root in CANVAS_SECTION has to stay `canvas`, so the row plane is split off
+ * into this file rather than the pane being re-grounded. */
+const CANVAS_FILE_VIEWER =
+	"src/renderer/src/features/chat/components/canvas/canvas-file-viewer.tsx";
 const FILE_ROW =
 	"src/renderer/src/features/chat/components/canvas/file-row.tsx";
 const SCHEDULE_ROW =
@@ -1345,11 +1350,16 @@ const ROW_STATE_GROUNDS = [
 	},
 	{
 		/*
-		 * The canvas Files list. It is a `rowCurrent` call site like the other six
-		 * and it is on the canvas SECTION's `surface`; it is here because the
-		 * completeness assertion below is over the tree rather than over the list of
-		 * surfaces the direction happens to name, and a call site nobody enumerates
-		 * is exactly how the rail's ground went unmeasured.
+		 * The canvas Files list. It is a `rowCurrent` call site like the other six,
+		 * and its rows' painted ancestor is the list's OWN plane - the scroller in
+		 * `canvas-file-viewer.tsx`, which wears `surface`. It is NOT the pane root:
+		 * the root has to stay `canvas` - the operator's report made the dock the
+		 * page's ground, and `scripts/pane-slot-ground.test.mjs` reads exactly that
+		 * expression - so the two directions were answered by SPLITTING the element
+		 * rather than by relaxing either of them. It is here because the completeness
+		 * assertion below is over the tree rather than over the list of surfaces the
+		 * direction happens to name, and a call site nobody enumerates is exactly how
+		 * the rail's ground went unmeasured.
 		 */
 		what: "the canvas Files list",
 		rowFile: FILE_ROW,
@@ -1357,11 +1367,11 @@ const ROW_STATE_GROUNDS = [
 		stubs: { rowCurrent, current: true },
 		ground: () =>
 			merged(
-				CANVAS_SECTION,
-				expressionAfter(CANVAS_SECTION, "data-canvas-shortcuts"),
+				CANVAS_FILE_VIEWER,
+				expressionBefore(CANVAS_FILE_VIEWER, 'data-tour-tag="files-scroller"'),
 				{},
 			),
-		groundFile: CANVAS_SECTION,
+		groundFile: CANVAS_FILE_VIEWER,
 	},
 ];
 
