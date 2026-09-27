@@ -658,6 +658,23 @@ const CanvasComponent: FC<CanvasProps> = ({
 		 * tightest) to 6.76 (`radient`), at 3.11-4.87 `L*` — measured across the
 		 * palettes rather than read off one theme, and measured because the two ends
 		 * of this window being one tone is exactly what the operator reported.
+		 *
+		 * ONE PLANE INSIDE THE PANE IS STILL `surface`, AND IT IS NOT A REVERSAL OF
+		 * THE ABOVE. The Files list's rows paint `rowCurrent` and
+		 * `hover:bg-row-hover`, and a surface that paints either role has to BE
+		 * `surface`: both roles are authored as steps OF that panel, so painted on a
+		 * rung the fill lands inside the ladder instead of out of it - § 4 of
+		 * `docs/design/row-states-refinement.md`, whose § 9.2 names this list among
+		 * the surfaces it binds. The two directions therefore collide on one element,
+		 * and the resolution is to SPLIT it rather than to relax either: this root
+		 * keeps `canvas` (the expression `scripts/pane-slot-ground.test.mjs` reads,
+		 * and the one the operator's top edge depends on) and the row plane is the
+		 * list's own scroller in `canvas-file-viewer.tsx`, which wears the `surface`
+		 * its rows are authored against. Measured with the repo's own `deltaE` over
+		 * all 59 palettes: resolved off `canvas` the selection falls under the 2.0
+		 * field floor on 7 of 59 (minimum 0.83, `kanagawaLotus`) and the hover on 5
+		 * (minimum 0.51, `tokyoNightDay`); off that `surface` it is 0 of 59 and 1 of
+		 * 59.
 		 */
 		<section
 			aria-label="Canvas"
