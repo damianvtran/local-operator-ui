@@ -1,13 +1,13 @@
 import { FloatingAlert } from "@shared/components/common/floating-alert";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui";
+import { useElapsedSince } from "@shared/hooks/use-elapsed-since";
 import {
 	UpdateType,
 	useDeferredUpdatesStore,
 } from "@shared/store/deferred-updates-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
 import { updateMessageOf } from "@shared/utils/update-error-copy";
-import { useElapsedSince } from "@shared/hooks/use-elapsed-since";
 import { SLOW_WAIT_HINT_MS } from "@shared/utils/update-slow-wait";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -523,7 +523,6 @@ export const CheckForUpdatesButton = ({
 					minute and a half - the app stops waiting on its own.
 				</p>
 			)}
-
 
 			{/* Manual update instructions */}
 			{manualUpdateInfo && (
