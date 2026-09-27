@@ -1,4 +1,4 @@
-import { Button, Progress } from "@shared/components/ui";
+import { Button } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
@@ -11,7 +11,6 @@ import type {
 } from "../../../../../main/update-service";
 import { UpdateErrorAlert } from "./update-error-alert";
 import {
-	ProgressContainer,
 	RELEASE_NOTES_PROSE,
 	UpdateActions,
 	UpdateContainer,
