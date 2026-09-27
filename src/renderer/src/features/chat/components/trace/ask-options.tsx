@@ -157,9 +157,11 @@ export const AskOptions = ({
 }: AskOptionsProps) => {
 	if (options.length === 0) return null;
 
-	// A `secret` ask arrives with EMPTY options and is answered by the
-	// composer's masked input, so the guard above is also what keeps this
-	// component out of the credential path entirely.
+	// A `secret` ask arrives with EMPTY options and is answered from the dock's
+	// own masked field (`question-dock.tsx`'s `SecretAnswer`), so the guard
+	// above is also what keeps this component out of the credential path
+	// entirely — there is no option list to render and nothing here reads the
+	// typed value.
 	const marked =
 		typeof recommended === "number" &&
 		Number.isInteger(recommended) &&

@@ -199,6 +199,25 @@ const IS_MAC = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 const CREDENTIAL_NOTICE_ID = "composer-credential-notice";
 
 /**
+ * The composer's OWN sentence for the secret closure, and the id its element
+ * carries so the field can be described by it.
+ *
+ * The closure's explanation used to be the PLACEHOLDER alone ("Answer the
+ * secret request above"), and a placeholder paints only while the box is
+ * EMPTY — so the reader most likely to need the reason, the one whose box
+ * holds their own words, got a dimmed box and no words at all (UX round 1,
+ * U2). This is that explanation, in the `<output>` register above the box the
+ * capture's own sentence uses, rendered only while the box holds a draft (the
+ * empty case is the placeholder's, and two sentences saying one thing would be
+ * noise). `aria-describedby` names it while it renders, for the reason
+ * `MISSING_SESSION_NOTICE_ID` exists: a control that refuses input is the one
+ * whose own reason a reader cannot otherwise reach.
+ */
+const SECRET_CLOSURE_NOTICE_ID = "composer-secret-closure-notice";
+const SECRET_CLOSURE_NOTICE =
+	"Answer the secret request above — this box is paused until it is answered, and your draft is kept.";
+
+/**
  * The id the mention layer's description carries, so the field can name it.
  *
  * The chip's own states are carried by a FILL, and a fill is `aria-hidden`
@@ -456,6 +475,31 @@ type MessageInputProps = {
 	 * outlive the line it points at.
 	 */
 	deliveryRemediesReachable?: boolean;
+	/**
+	 * A pending question takes a SECRET answer, and the composer is not where it
+	 * goes.
+	 *
+	 * A `secret: true` ask is answered from the dock's own masked field
+	 * (`trace/question-dock.tsx`), and this prop is what closes the plain
+	 * composer route while it waits: the refusal predicate below takes this as a
+	 * TERM — the same `isInputDisabled` every other writer and submitter on this
+	 * composer already answers to — so typing, paste, dictation, the slash
+	 * popup, the suggestion chips and the form's own submit are all refused
+	 * together, and the placeholder points at the field instead of inviting a
+	 * message. That is the whole point rather than a nicety: a credential typed
+	 * here would be VISIBLE while it is typed and would pass through the draft
+	 * store on its way to being sent, which is the exposure the dock exists to
+	 * remove.
+	 *
+	 * NOT a second copy of `awaitingAnswer`'s semantics: for an ordinary ask the
+	 * composer remains the first-class answer path (typing `yes`/`no`/ordinals),
+	 * and this prop is false there. For a secret ask the composer's answer path
+	 * is replaced, not merely announced — which is why it refuses input rather
+	 * than only changing its placeholder. The page derives it from the same
+	 * pending gate (`chat-content.tsx`), and the field it points at is the only
+	 * surface that posts the value (`answerWithSecret` -> `answerGateSecret`).
+	 */
+	secretAnswer?: boolean;
 	/**
 	 * The canonical session the aside panel addresses, or undefined on a pane that
 	 * has none (a draft, a legacy pane).
@@ -1248,6 +1292,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			awaitingReply = false,
 			awaitingAnswer = false,
 			deliveryRemediesReachable = false,
+			secretAnswer = false,
 			asideSessionId,
 			asideStreaming = false,
 			conversationId,
@@ -3680,7 +3725,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * declaration sits.
 		 */
 		const isBusy = Boolean(isLoading && currentJobId);
-		const isInputDisabled = unavailable || isBusy;
+		/*
+		 * THE SECRET TERM (see the `secretAnswer` prop's own note): a pending
+		 * question that takes a credential refuses this composer the same way a
+		 * conversation this machine does not have does — every door that TYPES
+		 * INTO or SUBMITS the box answers to this one predicate, which is why the
+		 * term lives HERE rather than beside the placeholder that shouts it.
+		 *
+		 * The placeholder reads it BEFORE it reads `inputDisabled`, because the two
+		 * sentences are different facts: "Agent is busy" over a parked secret
+		 * question would be false about the state — the agent is waiting, not busy
+		 * — and would leave the reader hunting for an input that is actually one
+		 * card above.
+		 */
+		const secretAnswerPending = Boolean(secretAnswer);
+		const isInputDisabled = unavailable || isBusy || secretAnswerPending;
 		/*
 		 * THE TWO TERMS THAT REFUSE A SEND, AND THE SENTENCE THEY RAISE, IN ONE PLACE (UX
 		 * round 7, U27).
@@ -5700,6 +5759,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		);
 
 		/*
+		 * Whether the closed box owes the reader WORDS, which is the state the
+		 * placeholder cannot serve (UX round 1, U2): it paints only while the box
+		 * is empty, and this is about a box holding the reader's own draft. The
+		 * sentence renders beside the credential notice, in the same register and
+		 * line style, only while both are true.
+		 */
+		const secretClosureNotice = secretAnswerPending && newMessage.length > 0;
+
+		/*
 		 * THE SESSION ISSUE, THE GAP BETWEEN IT AND THE BOX, AND THE ANNOUNCEMENT.
 		 *
 		 * IT IS AN `<output>` - the band's own element for an asynchronous line,
@@ -6239,6 +6307,23 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						{credentialNotice}
 					</output>
 					{/*
+					 * THE CLOSED BOX'S OWN SENTENCE, for the state the placeholder cannot
+					 * reach (UX round 1, U2): the composer is paused for the secret request
+					 * above, and the box holds a draft no placeholder will explain to. It
+					 * takes the capture notice's line style and the same text edge, and is
+					 * wired into `aria-describedby` below while it renders; conditionally
+					 * rendered rather than `hidden`-classed because the same reserve-nothing
+					 * rule applies to it as to the sentence above.
+					 */}
+					{secretClosureNotice && (
+						<output
+							id={SECRET_CLOSURE_NOTICE_ID}
+							className={cn(CHAT_MEASURE, credentialNoticeLine)}
+						>
+							{SECRET_CLOSURE_NOTICE}
+						</output>
+					)}
+					{/*
 					 * The outside-workspace mentions, described rather than drawn: `sr-only`,
 					 * because the fill already says it to a sighted reader and a second visible
 					 * line under the box is the geometry every round of this composer has had to
@@ -6461,6 +6546,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 											 */
 											composerPlaceholder({
 												unavailable,
+												secretAnswer: secretAnswerPending,
 												inputDisabled: isInputDisabled,
 												awaitingAnswer,
 												asideAttached: aside !== null,
@@ -6695,6 +6781,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 											 * assistive tech, which is what a composer mounted without a transcript
 											 * (a story, a rig) gets.
 											 *
+											 * AND SO DOES THE SECRET CLOSURE'S SENTENCE: the box is paused
+											 * with a draft in it — the one state the placeholder cannot reach
+											 * (UX round 1, U2) — so its own element joins while it renders.
+											 *
 											 * NOT A LIVE REGION. An announcement was the alternative, and it was
 											 * rejected: the state is already spoken by the transcript the reader is
 											 * in, this box is focusable precisely so the reader can go there, and a
@@ -6703,6 +6793,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 											 */
 											[
 												credentialNotice ? CREDENTIAL_NOTICE_ID : null,
+												secretClosureNotice ? SECRET_CLOSURE_NOTICE_ID : null,
 												outsideMentions > 0 ? MENTION_OUTSIDE_NOTICE_ID : null,
 												unavailable ? MISSING_SESSION_NOTICE_ID : null,
 												deliveryRemediesReachable
