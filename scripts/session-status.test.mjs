@@ -61,6 +61,7 @@ const {
 	costTooltip,
 	cumulativeCostKnowledge,
 	effortDisplay,
+	effortQueryModel,
 	effortState,
 	formatContextTokens,
 	formatCost,
@@ -1211,6 +1212,59 @@ test("an unresolved spec is told apart from a model with no levels", () => {
 	// opening the picker is a read and cannot (U12).
 	assert.match(effortState(cold).detail, /run \/effort <level> to set one now/);
 	assert.doesNotMatch(effortState(cold).detail, /open this/);
+});
+
+test("the effort query's model reads through the hold, so a gap is not an edge", () => {
+	/*
+	 * Task-17, F3. The pane invalidates `commands.entities?command=effort` on an
+	 * unresolved -> resolved TRANSITION of `resolvedModel`. Reading only
+	 * `canonical.frontend` made every gap look like that edge: a gap drops
+	 * `frontend` to null for as long as the reconnect lasts, and the
+	 * replacement snapshot restored it - one null -> model flip per cycle,
+	 * each spending a round trip to prove nothing had changed (measured on the
+	 * rig: one refetch per gap->snapshot). This function is the fix's rule:
+	 * the spec is read THROUGH THE HOLD, the same `frontend ?? heldFrontend`
+	 * fallback the strip paints from.
+	 */
+	const live = {
+		effective_model: {
+			provider: "deepseek",
+			model_id: "deepseek/deepseek-flash",
+			display_name: "DeepSeek Flash",
+			reasoning: true,
+			reasoning_effort: "max",
+			reasoning_efforts: ["low", "medium", "high", "max"],
+		},
+	};
+
+	// Live, and the same pane holding it across a gap: ONE value, so the
+	// effect's transition never fires and the query is never invalidated.
+	assert.equal(effortQueryModel(live, null), "deepseek/deepseek-flash");
+	assert.equal(
+		effortQueryModel(null, live),
+		"deepseek/deepseek-flash",
+		"a gap must read the held spec, not null",
+	);
+
+	// No readings anywhere is null: the effect seeds without invalidating.
+	assert.equal(effortQueryModel(null, null), null);
+	assert.equal(effortQueryModel(undefined, undefined), null);
+
+	// An unresolved spec stays unresolved THROUGH the hold - the hold carries
+	// the spec it was holding, whatever it was.
+	const cold = {
+		effective_model: {
+			provider: "openrouter",
+			model_id: "openai/gpt-5-mini",
+			display_name: "",
+			reasoning: false,
+			reasoning_efforts: [],
+			reasoning_effort: null,
+			reasoning_default_effort: null,
+		},
+	};
+	assert.equal(effortQueryModel(null, cold), null);
+	assert.equal(effortQueryModel(cold, null), null);
 });
 
 test("the picker is wired to the shared predicate, not to a copy of the read", () => {
