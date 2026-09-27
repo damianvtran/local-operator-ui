@@ -1691,14 +1691,14 @@ test("the hint names only keys that work", () => {
 	// computes and `secret-ask.test.mjs` drives on the shipped component.
 	assert.equal(
 		questionDockHint(gate({ options: [], secret: true }), true),
-		"Held while this answer's fate is unknown — it may have landed, so nothing can send again · Esc hides",
+		"Held while this answer's fate is unknown — it may have landed, so nothing can send again · Esc in the card hides it",
 	);
 	assert.equal(
 		questionDockHint(
 			gate({ options: [], secret: true, question_index: 1, question_total: 3 }),
 			true,
 		),
-		"Question 2 of 3. Held while this answer's fate is unknown — it may have landed, so nothing can send again · Esc hides",
+		"Question 2 of 3. Held while this answer's fate is unknown — it may have landed, so nothing can send again · Esc in the card hides it",
 	);
 	assert.equal(
 		questionDockHint(gate({ kind: "approval", options: [] })),
