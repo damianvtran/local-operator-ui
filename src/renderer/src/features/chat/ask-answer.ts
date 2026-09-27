@@ -841,6 +841,24 @@ const composerCodeFor = (error: unknown): string => {
 	return errorCodeOf(error) ?? ANSWER_NOT_SENT_CODE;
 };
 
+/**
+ * The sentence for a typed send the composer REFUSES because the pending
+ * question takes a secret.
+ *
+ * A `secret` ask is answered from the dock's own masked field
+ * (`trace/question-dock.tsx`), and the composer is refused input for as long as
+ * one waits — so this sentence is the one a door that still reaches
+ * `chat-page.tsx`'s `send` (a suggestion chip, the stopped-turn Retry, any
+ * programmatic route) is answered with. It says what happened, states the one
+ * fact that makes the refusal make sense, and points at where the answer does
+ * go — the register every authored refusal in this module owes the reader.
+ * `ANSWER_NOT_SENT_CODE` travels WITH it (thrown as a `UserFacingError`), so
+ * the composer's alert offers no press that cannot work, exactly as the
+ * approval's "Reply yes or no" refusal does.
+ */
+export const SECRET_ANSWER_DOCKED_MESSAGE =
+	"Your answer was not sent — a secret request is answered in the field above the composer.";
+
 /** The `sessions.answer` request, as the wire contract defines it. */
 export type GateAnswerRequest = Extract<
 	DesktopRequest,
@@ -933,6 +951,88 @@ export const answerGateOption = async (
 					value: label,
 					questionIndex: gate.question_index,
 				};
+	try {
+		await send(request);
+		return { status: "sent" };
+	} catch (error) {
+		return { status: "failed", request, error };
+	} finally {
+		lock.release();
+	}
+};
+
+/**
+ * Send a TYPED secret as the answer to a pending `secret` ask gate.
+ *
+ * A SIBLING OF `answerGateOption`, not a second implementation of it: the same
+ * `SendLock`, the same one-answer-in-flight guarantee, the same `AnswerOutcome`
+ * and the same `sessions.answer` body the `ask` arm posts (`value` +
+ * `questionIndex`). What differs is what it answers FROM — the dock's masked
+ * field's typed value rather than an option label — and the preconditions that
+ * make it the only path allowed to: the gate must actually be a secret ask, and
+ * the value must actually be a value. `answerGateOption` cannot state either:
+ * nothing in its preconditions reads the label it posts, and an empty string is
+ * a legal "label" to it, so reusing it here would leave the empty-refusal and
+ * the secret-only door as properties of the BUTTON that happens to be painted
+ * rather than of the path.
+ *
+ * THE VALUE IS TRIMMED, and that is the parity pair's own rule rather than a
+ * convenience: the phone card sends `freeText.trim()`
+ * (`mobile/web/src/components/pending-card.tsx`) and the terminal picker
+ * answers with `state.typed.strip()` (`tui/widgets/ask_picker.py`), because a
+ * pasted token arrives with surrounding whitespace often enough that asking
+ * the user to notice it is the defect — while whitespace INSIDE the value is
+ * preserved, since `strip` is the two parity surfaces' whole rule too.
+ *
+ * NO ECHO, on purpose. The answer is not appended to the transcript: the owner
+ * receives it as the question's answer and the press's own report
+ * (`answerReport`) is the only user-visible consequence. That is what keeps a
+ * credential out of the conversation record, and it is why this path must
+ * never grow an optimistic echo the way a normal send has one.
+ */
+export const answerGateSecret = async (
+	deps: {
+		gate: Pick<
+			PendingDesktopGate,
+			"kind" | "request_id" | "question_index" | "secret"
+		>;
+		sessionId?: string | null;
+		epoch?: string | null;
+		value: string;
+		lock: SendLock;
+	},
+	send: (request: GateAnswerRequest) => Promise<unknown>,
+): Promise<AnswerOutcome> => {
+	const { gate, sessionId, epoch, value, lock } = deps;
+	// Preconditions first, for the reason `answerGateOption` states: taking the
+	// lock for a request that was never sent leaves the submit control refused
+	// until a reload.
+	//
+	// THIS DOOR IS FOR SECRET ASKS ALONE. A call aimed at any other gate — an
+	// approval, an ask with options, a non-secret free-text ask — is the same
+	// class of refusal as an approval label the pair does not know: nothing
+	// sent, nothing claimed. The dock only ever wires it on `secret`, so a
+	// refusal here is a door someone reached around the UI, and the safe
+	// answer is to refuse rather than to post a typed string as an answer
+	// whose rules this path does not know.
+	//
+	// The empty half is the field's own rule ("Send disabled while empty"),
+	// stated a second time here so it is a property of the path: a value that
+	// is nothing but whitespace is not an answer, and trimming before the
+	// check is the same trim the wire value gets below.
+	const trimmed = value.trim();
+	if (gate.kind !== "ask" || gate.secret !== true) return { status: "refused" };
+	if (!sessionId || !epoch || trimmed.length === 0)
+		return { status: "refused" };
+	if (!lock.tryAcquire()) return { status: "refused" };
+	const request: GateAnswerRequest = {
+		op: "sessions.answer",
+		sessionId,
+		epoch,
+		requestId: gate.request_id,
+		value: trimmed,
+		questionIndex: gate.question_index,
+	};
 	try {
 		await send(request);
 		return { status: "sent" };
