@@ -33,6 +33,13 @@
  * guidance of its own to it later. Nothing here reads that guidance, so the
  * affordance is exactly as present or absent as the failure classes above
  * decide, whatever prose sits around them.
+ *
+ * WHERE EACH CLASS LANDS. Sign-in failures point at the providers surface with
+ * Radient preselected; Radient billing failures point at the ACCOUNT section,
+ * where the balance, the verify-to-claim callout and the console's billing
+ * entry live (UX round 1, U3); every other failure points at the providers
+ * surface - the one in-app place that can act on it without assuming an
+ * account this app does not manage.
  */
 
 /** The affordance a classified failure earns, and where it opens. */
@@ -48,29 +55,42 @@ export type ProviderErrorAction = {
  * `scripts/settings-section-routes.test.mjs` can bind the section against the
  * settings page's own refs, and so the `provider=` parameter preselects the
  * Radient row in the grid exactly the way `/login radient` does.
+ *
+ * `RADIENT_ACCOUNT_SETTINGS` is the ACCOUNT section, not the providers grid,
+ * and the split is the remedy's own geography (UX round 1, U3): an out-of-
+ * credits failure is repaired where the balance, the verify-to-claim callout
+ * and the console's billing entry live - the provider grid only signs a
+ * provider in. The sign-in class keeps the grid because that is exactly where
+ * signing in happens.
  */
 const PROVIDER_SETTINGS = "/settings?section=providers";
 const RADIENT_PROVIDER_SETTINGS =
 	"/settings?section=providers&provider=radient";
+const RADIENT_ACCOUNT_SETTINGS = "/settings?section=radient";
 
 /** The desktop plane's sentinel sentence for a refused Radient credential. */
 const RADIENT_SIGN_IN = /sign in to radient/i;
 
-/** The out-of-credit family, kept to the wordings quoted in the header. */
-const QUOTA_TEXTS = [
-	/insufficient credits/i,
-	/rate limit or quota/i,
-	/credit balance is too low/i,
-];
+/** The out-of-credit family: failures whose remedy is the account's balance. */
+const BILLING_TEXTS = [/insufficient credits/i, /credit balance is too low/i];
 
-type FailureClass = "sign-in" | "quota";
+/**
+ * The rate-limit family, kept to the wordings quoted in the header. `rate
+ * limit or quota exceeded` stays here rather than in `BILLING_TEXTS`: it is
+ * the relayed 429 the runtime classifies as `rate-limit`, and its remedy is
+ * backing off or switching provider rather than topping up.
+ */
+const QUOTA_TEXTS = [/rate limit or quota/i];
+
+type FailureClass = "sign-in" | "billing" | "quota";
 
 /** The classes the harness's own classification already names. */
 function structuredClass(
 	category: string | null | undefined,
 ): FailureClass | null {
 	if (category === "auth") return "sign-in";
-	if (category === "billing" || category === "rate-limit") return "quota";
+	if (category === "billing") return "billing";
+	if (category === "rate-limit") return "quota";
 	return null;
 }
 
@@ -100,6 +120,8 @@ export function providerErrorGuidance(row: {
 		(row.category == null || row.category === "unknown")
 	) {
 		if (RADIENT_SIGN_IN.test(row.text)) failure = "sign-in";
+		else if (BILLING_TEXTS.some((pattern) => pattern.test(row.text)))
+			failure = "billing";
 		else if (QUOTA_TEXTS.some((pattern) => pattern.test(row.text)))
 			failure = "quota";
 	}
@@ -111,6 +133,16 @@ export function providerErrorGuidance(row: {
 	 */
 	if (failure === "sign-in" && radientNamed)
 		return { label: "Sign in to Radient", to: RADIENT_PROVIDER_SETTINGS };
+	/*
+	 * The billing class lands on the account section when the failure is
+	 * Radient's: that surface carries the balance, the verify-to-claim callout
+	 * and the console's own billing entry, while the provider grid carries only
+	 * sign-in (UX round 1, U3). A non-Radient balance failure is that provider's
+	 * billing, which no surface of this app can top up, so the grid stays the
+	 * honest in-app destination.
+	 */
+	if (failure === "billing" && radientNamed)
+		return { label: "Open Radient account", to: RADIENT_ACCOUNT_SETTINGS };
 	return {
 		label: "Open provider settings",
 		to: radientNamed ? RADIENT_PROVIDER_SETTINGS : PROVIDER_SETTINGS,

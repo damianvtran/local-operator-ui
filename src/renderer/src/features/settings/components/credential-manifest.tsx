@@ -135,7 +135,7 @@ export const CREDENTIAL_MANIFEST = [
 		key: "EXA_API_KEY",
 		name: "Exa API key",
 		description:
-			"API key for Exa, a search API built for AI applications.  Agents can also search through Exa's free tier without a key; a key raises its rate limits.",
+			"API key for Exa, a search API built for AI applications.  Agents can search Exa's keyless MCP tier for free, rate-limited; a key switches to the REST API with query summaries.",
 		url: "https://dashboard.exa.ai/api-keys",
 		type: CredentialType.Search,
 	},

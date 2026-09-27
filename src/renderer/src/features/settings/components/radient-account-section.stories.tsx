@@ -31,7 +31,7 @@ import "../../../styles/index.css";
 type BridgeRequest = { op?: string; control?: { operation?: string } };
 type DesktopResponse = { status: number; body: unknown };
 
-type GrantState = "pending" | "expired" | "claimed";
+type GrantState = "pending" | "expired" | "none" | "claimed";
 
 const ACCOUNT = {
 	id: "acct_storybook_verify",
@@ -70,7 +70,12 @@ const accountBody = (grant: GrantState) => ({
 					verification: {
 						email_verified: grant === "claimed",
 						signup_grant: grant,
-						grant_amount: 5,
+						/*
+						 * The frozen contract attaches `grant_amount` only to the pending and
+						 * expired arms - there is no grant to price on `none` - so the
+						 * fixture must not hand one over (UX round 1, U1).
+						 */
+						grant_amount: grant === "none" ? undefined : 5,
 						claim_url: "https://console.radienthq.com/dashboard/verification",
 					},
 				},
@@ -175,9 +180,18 @@ export const VerifyPending: Story = {
 	render: (args) => <Section grant={args.grant} />,
 };
 
-/** The link is dead: the copy points at asking for a new one. */
+/** The link is dead: the copy states the lapsed window and asks for a new one. */
 export const VerifyExpired: Story = {
 	args: { grant: "expired" },
+	render: (args) => <Section grant={args.grant} />,
+};
+
+/**
+ * No grant attached: the copy promises nothing and points at the console to
+ * check the account (the arm U1 split out of the old expired wording).
+ */
+export const VerifyNone: Story = {
+	args: { grant: "none" },
 	render: (args) => <Section grant={args.grant} />,
 };
 

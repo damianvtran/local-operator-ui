@@ -90,6 +90,12 @@ globalThis.__RIG_ENV__ = {
  */
 let storedKeys = [];
 const updates = [];
+/*
+ * Set per test: a save whose transport refuses, so the row's own refusal
+ * register (U2) and the value-retention contract have a case rather than a
+ * source reading.
+ */
+let failUpdate = false;
 globalThis.window.api = {
 	desktop: {
 		request: async (request) => {
@@ -104,6 +110,12 @@ globalThis.window.api = {
 						},
 					};
 				case "credentials.update": {
+					if (failUpdate) {
+						return {
+							status: 503,
+							body: { detail: "the transport refused this write" },
+						};
+					}
 					updates.push({ key: request.key, value: request.value });
 					if (!storedKeys.includes(request.key)) storedKeys.push(request.key);
 					return { status: 200, body: { status: 200, message: "ok" } };
@@ -274,7 +286,6 @@ const keysRadio = () => document.getElementById("onboarding-search-mode-keys");
 const rowFor = (key) => document.querySelector(`[data-search-key="${key}"]`);
 const inputFor = (key) =>
 	document.querySelector(`[data-search-key="${key}"] input`);
-
 /** The provider keys the keys branch must offer, in the manifest's own order. */
 /**
  * The catalogue's search rows, read from the shipped manifest rather than
@@ -292,6 +303,12 @@ const EXPECTED_NAMES = [
 	"Parallel API key",
 	"Perplexity API key",
 ];
+
+const settle = async (ms = 60) => {
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, ms));
+	});
+};
 
 test("the step opens on Free, and its copy names the free pool and never Perplexity", async () => {
 	storedKeys = [];
@@ -394,6 +411,7 @@ test("the keys branch lists every provider, and leaving a field saves its own ke
 test("a key the backend already holds reads as Saved without touching the field", async () => {
 	storedKeys = ["BRAVE_API_KEY"];
 	updates.length = 0;
+	failUpdate = false;
 	const mounted = await mount();
 	try {
 		await click(keysRadio());
@@ -405,4 +423,107 @@ test("a key the backend already holds reads as Saved without touching the field"
 	} finally {
 		await mounted.teardown();
 	}
+});
+
+test("a blur that changes nothing does not write again", async () => {
+	storedKeys = [];
+	updates.length = 0;
+	failUpdate = false;
+	const mounted = await mount();
+	try {
+		await click(keysRadio());
+		const brave = inputFor("BRAVE_API_KEY");
+		await type(brave, "brave-test-key");
+		await blur(brave);
+		await until(() => updates.length === 1, "the first blur to save");
+		/*
+		 * A second blur with the same bytes is NOT a write (review round 1, R1):
+		 * the field stays populated on purpose - a stored key can be replaced the
+		 * same way it was added - and without the last-saved guard every pass
+		 * over the row wrote the same value again.
+		 */
+		await blur(brave);
+		await settle();
+		assert.equal(updates.length, 1, "an unchanged blur must not re-save");
+		// ...and a changed value still writes.
+		await type(brave, "brave-test-key-2");
+		await blur(brave);
+		await until(() => updates.length === 2, "the changed value to save");
+		assert.deepEqual(updates[1], {
+			key: "BRAVE_API_KEY",
+			value: "brave-test-key-2",
+		});
+	} finally {
+		await mounted.teardown();
+	}
+});
+
+test("a failed save keeps the value and states the refusal on the row", async () => {
+	storedKeys = [];
+	updates.length = 0;
+	failUpdate = true;
+	const mounted = await mount();
+	try {
+		await click(keysRadio());
+		const brave = inputFor("BRAVE_API_KEY");
+		await type(brave, "brave-test-key");
+		await blur(brave);
+		const row = await until(
+			() =>
+				(rowFor("BRAVE_API_KEY")?.textContent ?? "").includes("Not saved")
+					? rowFor("BRAVE_API_KEY")
+					: null,
+			"the row's inline refusal",
+		);
+		assert.ok(
+			row.textContent.includes("Not saved —"),
+			"the refusal names the write, not just a stack",
+		);
+		assert.equal(
+			inputFor("BRAVE_API_KEY").value,
+			"brave-test-key",
+			"the typed value survives a failed save so the next blur can retry",
+		);
+		assert.ok(
+			!(row.textContent ?? "").includes("Saved"),
+			"a refused write must not read as saved",
+		);
+		// A retry after the transport recovers clears the register.
+		failUpdate = false;
+		await blur(inputFor("BRAVE_API_KEY"));
+		await until(() => updates.length === 1, "the retry to save");
+		await until(
+			() => !(rowFor("BRAVE_API_KEY")?.textContent ?? "").includes("Not saved"),
+			"the refusal to clear on success",
+		);
+	} finally {
+		await mounted.teardown();
+	}
+});
+
+/*
+ * The toast half of the save contract, pinned at the seam the two files meet
+ * (UX round 1, U4): this step is `useUpdateCredential`'s only caller and turns
+ * the shared toasts OFF, because a toast per field names the env var rather
+ * than the provider and repeats away; the hook defaults them back ON so any
+ * future caller inherits the announced behaviour.
+ */
+test("the step silences the shared toasts, and the hook keeps them by default", async () => {
+	const { readFileSync } = await import("node:fs");
+	const step = readFileSync(
+		"src/renderer/src/features/onboarding/components/steps/search-api-step.tsx",
+		"utf8",
+	);
+	const hook = readFileSync(
+		"src/renderer/src/shared/hooks/use-update-credential.ts",
+		"utf8",
+	);
+	assert.ok(
+		step.includes("useUpdateCredential({ announce: false })"),
+		"the step must own its feedback: the row badge and the inline refusal",
+	);
+	assert.ok(
+		hook.includes("options?.announce ?? true"),
+		"the hook's default must stay announced for every future caller",
+	);
 });

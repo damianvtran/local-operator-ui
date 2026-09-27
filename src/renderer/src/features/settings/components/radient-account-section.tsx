@@ -58,14 +58,31 @@ const verifyCopy = (
 		};
 	if (grant === "expired")
 		return {
-			sentence: `Verify your email to claim ${amountText}. The previous link has expired — request a new one.`,
+			/*
+			 * The window that lapsed is the LINK's, not the grant's: the verification
+			 * service's `Reissue` mints a fresh link while the grant is still
+			 * unclaimed (agent-server `signup_verification_service.go`), which is why
+			 * the amount stays on this arm (`grant_amount` is attached for pending
+			 * and expired alike) and the console page is where the new one is asked
+			 * for. What drops, rather than weakens, is the instruction to check the
+			 * inbox - that mail expired with the window (UX round 1, U1).
+			 */
+			sentence: `The link to claim ${amountText} has expired. Request a new one from the verification page.`,
 			action: "Request a new link",
 		};
-	// `none` (and the gated-out `claimed`, which never reaches this render):
-	// no live link exists to point at, so the copy points at asking for one.
+	/*
+	 * `none` (and the gated-out `claimed`, which never reaches this render): no
+	 * ticket was ever issued - or none survives - so there is no grant to
+	 * promise and nothing that could be called "new". The copy points at the
+	 * console to CHECK the account instead, and carries no amount: the frozen
+	 * contract attaches `grant_amount` only for pending/expired, and this arm
+	 * must not dress a missing answer as a figure (UX round 1, U1; the previous
+	 * wording promised a claim the state does not support).
+	 */
 	return {
-		sentence: `Verify your email to claim ${amountText}. Request the verification link to get started.`,
-		action: "Request a new link",
+		sentence:
+			"No signup grant is attached to this account. Open the verification page to check the account.",
+		action: "Open verification page",
 	};
 };
 

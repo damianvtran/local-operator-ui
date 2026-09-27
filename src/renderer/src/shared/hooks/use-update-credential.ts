@@ -15,9 +15,17 @@ import { credentialsQueryKey } from "./use-credentials";
 /**
  * Hook for updating a credential
  *
+ * `announce` is the caller's switch for the shared toasts: with it off, a
+ * success or failure raises no toast, and the caller owes the user its own
+ * receipt for the write (the onboarding search step renders a per-row Saved
+ * badge and an inline refusal register instead of one env-var-named toast per
+ * field, review round 1 U2/U4). It defaults to ON - the behaviour every future
+ * caller inherits is the announced one.
+ *
  * @returns Mutation for updating a credential
  */
-export const useUpdateCredential = () => {
+export const useUpdateCredential = (options?: { announce?: boolean }) => {
+	const announce = options?.announce ?? true;
 	const queryClient = useQueryClient();
 	const client = createLocalOperatorClient(apiConfig.baseUrl);
 
@@ -38,7 +46,7 @@ export const useUpdateCredential = () => {
 						? error.message
 						: "An unknown error occurred while updating credential";
 
-				showErrorToast(errorMessage);
+				if (announce) showErrorToast(errorMessage);
 				throw error;
 			}
 		},
@@ -73,7 +81,8 @@ export const useUpdateCredential = () => {
 				type: "all", // Refetch all related queries at once
 			});
 
-			showSuccessToast(`Credential "${variables.key}" updated successfully`);
+			if (announce)
+				showSuccessToast(`Credential "${variables.key}" updated successfully`);
 		},
 		onError: (error) => {
 			console.error("Error updating credential:", error);

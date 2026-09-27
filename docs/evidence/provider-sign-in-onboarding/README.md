@@ -107,3 +107,10 @@ node scripts/capture-evidence.mjs http://localhost:6417 \
   --only=provider-sign-in-onboarding--onboarding-step-3 \
   --themes=localOperatorDark,localOperatorLight --allow-backend --theme-settle-ms=90000
 ```
+
+ROUND 1 REMEDIATION (design round 1, D1, 2026-09-27): `onboarding-step-3-keys`
+is RE-TAKEN. The keys block's left rail moves from `pl-7` to `pl-10` so the
+helper, labels, inputs and links share the option rows' own text column (the
+row's lead-in is the mark's box: p-3 12 + size-4 16 + gap-3 12 = 40px); the
+previous rail sat one gap-unit left of the copy it belongs to. Nothing else in
+the frame changes: the same six rows, the same helper line, both themes.

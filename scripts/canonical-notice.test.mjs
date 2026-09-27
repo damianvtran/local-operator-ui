@@ -171,17 +171,17 @@ const incident = (overrides) => ({
 	...overrides,
 });
 
-test("a Radient-quota incident carries the action, pointed at the Radient row", () => {
+test("a Radient billing incident carries the action, pointed at the account section", () => {
 	const markup = renderRecord(
 		incident({ category: "billing", provider: "radient/sonar-pro" }),
 	);
 	assert.ok(
-		markup.includes("Open provider settings"),
-		"the incident's remedy must be on the row",
+		markup.includes("Open Radient account"),
+		"the incident's remedy must be on the row, and named for where it lands",
 	);
 	assert.ok(
-		markup.includes('href="/settings?section=providers&amp;provider=radient"'),
-		"the action must open the providers surface with Radient selected",
+		markup.includes('href="/settings?section=radient"'),
+		"the billing class must open the account section, where the balance and billing entry live (UX round 1, U3)",
 	);
 });
 

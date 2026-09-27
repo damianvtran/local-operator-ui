@@ -1,13 +1,14 @@
 # The Radient account's verify-to-claim callout
 
-Three states of the account section in Settings, in BOTH brand themes
+Four states of the account section in Settings, in BOTH brand themes
 (`localOperatorDark.webp` / `localOperatorLight.webp`), for the change that tells
 an unverified account holder how to claim the signup grant:
 
 | Directory | What it shows |
 | --- | --- |
 | [`verify-pending`](verify-pending/) | The callout: "Verify your email to claim $5.00 in free credits. Check your inbox for the link Radient sent." with an "Open verification page" action, between the account details and the sign-out block. The amount is the backend's own captured `verification.grant_amount`, rendered through the shipped section. |
-| [`verify-expired`](verify-expired/) | The link is dead: the same callout asks for a new one ("The previous link has expired — request a new one"), which is the copy the `expired` arm owns. |
+| [`verify-expired`](verify-expired/) | The claim window lapsed: "The link to claim $5.00 in free credits has expired. Request a new one from the verification page." with a "Request a new link" action. It is the LINK that expired, not the grant - the verification service's `Reissue` mints a fresh link while the grant is unclaimed (agent-server `signup_verification_service.go`) - so the amount stays and the inbox instruction drops. |
+| [`verify-none`](verify-none/) | No grant attached: "No signup grant is attached to this account. Open the verification page to check the account." with an "Open verification page" action, and no amount - the frozen contract attaches `grant_amount` only to pending/expired, and neither the fixture nor the copy invents one (UX round 1, U1). |
 | [`claimed`](claimed/) | The ABSENCE. The verification block is present and says the grant is claimed (`email_verified: true`), and the section renders no callout at all — the frame exists so the absence is a photograph rather than a sentence. A backend that sends no `verification` block renders the same absence; that arm is asserted in `scripts/radient-verify-callout.test.mjs` rather than photographed, because the pixels are identical. |
 
 ## What produced these frames
@@ -43,3 +44,10 @@ are left alone (`partialCapture` in the manifest records it).
   free credits" when neither exists (never to an invented number).
 - **Claimed means absent.** No greyed-out teaser, no "already claimed" line:
   the prompt's whole job is asking for a step that is still owed.
+
+ROUND 1 REMEDIATION (UX round 1, U1, 2026-09-27): `verify-expired` is RE-TAKEN
+and `verify-none` is NEW. The expired arm no longer promises a claim the state
+cannot show and no longer sends the reader to an inbox whose mail expired with
+the window; the `none` arm no longer promises an amount the contract never
+attaches to it. `verify-pending` (the main case) and `claimed` are untouched,
+because their copy and pixels are.

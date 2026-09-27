@@ -13,7 +13,13 @@
  *    offers nothing - a reconnect under a question mark would send the reader
  *    to fix an account that may be fine;
  *  - `account-ready`: the account resolved, so the row shows the account and
- *    presses through to plain settings, which is what it always did.
+ *    presses through to plain settings, which is what it always did;
+ *  - `account-reconnect-menu`: the same failed read with the row's `useAuth`
+ *    branch - a press opens the account menu, whose "Reconnect Radient" item
+ *    is the same way back. No rail call site passes `useAuth` today, so this
+ *    state exists because the public prop and its menu are part of the
+ *    component's contract and a branch no one can look at is one no one can
+ *    check (QA round 1, Q2).
  *
  * The row is the PRODUCT's, on a faithful slice of the rail foot (the 260px
  * `surface` column, the foot's own padding), so the frame is the row where it
@@ -24,6 +30,7 @@
 import { UserProfileSidebar } from "@shared/components/navigation/user-profile-sidebar";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { FC, ReactNode } from "react";
+import { useLayoutEffect } from "react";
 import "../../../styles/index.css";
 
 type BridgeRequest = { op?: string; control?: { operation?: string } };
@@ -143,6 +150,61 @@ const Row: FC<{ state: RowState }> = ({ state }) => {
 	);
 };
 
+/**
+ * The `useAuth` branch, with its menu held open.
+ *
+ * Radix opens on POINTERDOWN, so a synthetic `.click()` would not open it in
+ * the capture browser; the story dispatches a real `pointerdown` on the trigger
+ * and keeps the shutter up (the `capturePending` convention the other pressed
+ * stories use) until the menu's items are actually in the DOM - pressing again
+ * only while it is still closed, because a second press on an open trigger
+ * toggles it shut.
+ */
+const AuthMenuRow: FC<{ state: RowState }> = ({ state }) => {
+	installBridge(state);
+	useLayoutEffect(() => {
+		document.documentElement.dataset.capturePending = "1";
+		let cancelled = false;
+		let timer = 0;
+		let attempts = 0;
+		const menuOpen = () => document.querySelector('[role="menuitem"]') !== null;
+		const step = () => {
+			if (cancelled) return;
+			if (menuOpen()) {
+				document.documentElement.removeAttribute("data-capture-pending");
+				return;
+			}
+			if (attempts++ < 4) {
+				const trigger = document.querySelector<HTMLElement>(
+					"[data-story-auth-menu] button",
+				);
+				trigger?.dispatchEvent(
+					new PointerEvent("pointerdown", {
+						bubbles: true,
+						cancelable: true,
+						button: 0,
+						pointerType: "mouse",
+					}),
+				);
+			}
+			timer = window.setTimeout(step, 400);
+		};
+		timer = window.setTimeout(step, 150);
+		return () => {
+			cancelled = true;
+			window.clearTimeout(timer);
+			document.documentElement.removeAttribute("data-capture-pending");
+		};
+	}, []);
+	return (
+		<Foot>
+			<span className="contents" data-story-auth-menu>
+				<UserProfileSidebar expanded useAuth />
+			</span>
+		</Foot>
+	);
+};
+
 const meta: Meta<{ state: RowState }> = {
 	title: "Navigation/User profile",
 	parameters: { layout: "fullscreen" },
@@ -167,4 +229,10 @@ export const AccountChecking: Story = {
 export const AccountReady: Story = {
 	args: { state: "account" },
 	render: (args) => <Row state={args.state} />,
+};
+
+/** The `useAuth` branch: the account menu, open, with its reconnect item. */
+export const AccountReconnectMenu: Story = {
+	args: { state: "refused" },
+	render: (args) => <AuthMenuRow state={args.state} />,
 };

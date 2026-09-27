@@ -213,11 +213,16 @@ test("a missing capture falls back to the advertised price, and to words when ne
 	);
 	assert.ok(withPrices.includes("claim $7.50 in free credits"));
 
+	/*
+	 * The words half runs on the PENDING arm: `none` no longer claims anything
+	 * (UX round 1, U1), so the arm whose copy degrades to "your free credits"
+	 * is the one that actually has a grant to point at.
+	 */
 	const withNothing = await renderStatic(
 		seededClient({
 			verification: {
 				email_verified: false,
-				signup_grant: "none",
+				signup_grant: "pending",
 				claim_url: CLAIM_URL,
 			},
 		}),
@@ -237,7 +242,9 @@ test("expired and none point at a new link; pending points at the inbox", async 
 			},
 		}),
 	);
-	assert.ok(expired.includes("The previous link has expired"));
+	assert.ok(
+		expired.includes("The link to claim $5.00 in free credits has expired"),
+	);
 	assert.ok(expired.includes("Request a new link"));
 
 	const none = await renderStatic(
@@ -250,8 +257,12 @@ test("expired and none point at a new link; pending points at the inbox", async 
 			},
 		}),
 	);
-	assert.ok(none.includes("Request the verification link to get started."));
-	assert.ok(none.includes("Request a new link"));
+	assert.ok(none.includes("No signup grant is attached to this account"));
+	assert.ok(none.includes("Open the verification page to check the account"));
+	assert.ok(
+		!none.includes("$"),
+		"the none arm must carry no amount promise (UX round 1, U1)",
+	);
 });
 
 test("a claimed grant, and a backend with no verification block, render nothing", async () => {
@@ -314,6 +325,53 @@ test("the CTA opens the claim URL the backend named, through openExternal", asyn
 			opened,
 			[claimUrl],
 			"the press must open the URL from the backend's own block",
+		);
+	} finally {
+		await act(async () => root.unmount());
+		container.remove();
+	}
+});
+
+test("with no claim_url in the block, the CTA falls back to the console page", async () => {
+	/*
+	 * The fallback the first CTA test cannot reach (review round 1, R4): a
+	 * backend that sends the verification block WITHOUT a `claim_url` binds the
+	 * section's own constant, and a typo there would otherwise ship silently.
+	 */
+	opened.length = 0;
+	const client = seededClient({
+		verification: {
+			email_verified: false,
+			signup_grant: "pending",
+			grant_amount: 5,
+		},
+	});
+	const container = document.createElement("div");
+	document.body.appendChild(container);
+	const root = createRoot(container);
+	try {
+		await act(async () => {
+			root.render(
+				createElement(
+					QueryClientProvider,
+					{ client },
+					createElement(RadientAccountSection, {}),
+				),
+			);
+		});
+		const button = [...container.querySelectorAll("button")].find((el) =>
+			el.textContent.includes("Open verification page"),
+		);
+		assert.ok(button, "the callout's CTA must be rendered and pressable");
+		await act(async () => {
+			button.dispatchEvent(
+				new bootstrapDOM.window.MouseEvent("click", { bubbles: true }),
+			);
+		});
+		assert.deepEqual(
+			opened,
+			["https://console.radienthq.com/dashboard/verification"],
+			"a block with no claim_url must fall back to the console's verification page",
 		);
 	} finally {
 		await act(async () => root.unmount());

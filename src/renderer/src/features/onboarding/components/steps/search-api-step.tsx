@@ -162,18 +162,47 @@ const SearchKeyRow: FC<{
 	 * is state rather than a derived value.
 	 */
 	const [savedLocally, setSavedLocally] = useState(false);
+	/*
+	 * What this row last SENT successfully, so a blur that changes nothing does
+	 * not write again (review round 1, R1). The old single-key form suppressed
+	 * re-saves only by accident of its stored-keys check, and the replace flow
+	 * deliberately keeps the input populated, so without this the same bytes are
+	 * written on every focus/blur. It starts null rather than the stored key's
+	 * value because the stored VALUE is not readable from here - only that a key
+	 * exists - and a first save of the same bytes as an invisible stored value
+	 * is still a write the user made.
+	 */
+	const [lastSaved, setLastSaved] = useState<string | null>(null);
+	/*
+	 * The row's own refusal register. With several rows on this step, the
+	 * shared toast (suppressed here) is one message for five fields, and a
+	 * repeat failure collapses into one toast - so the row states it instead
+	 * (UX round 1, U2), the way the providers panel states a rejected key.
+	 */
+	const [saveError, setSaveError] = useState<string | null>(null);
 	const inputId = keyInputId(credential.key);
 	const showSaved = isStored || savedLocally;
 
 	const handleSave = async () => {
-		if (!value.trim() || isSaving) return;
+		const trimmed = value.trim();
+		if (!trimmed || isSaving || trimmed === lastSaved) return;
 		try {
 			setIsSaving(true);
-			await save(credential.key, value.trim());
+			setSaveError(null);
+			await save(credential.key, trimmed);
+			setLastSaved(trimmed);
 			setSavedLocally(true);
-		} catch {
-			// `useUpdateCredential` already raises the error toast; the row keeps
-			// what the user typed so the save can be retried in place.
+		} catch (error) {
+			/*
+			 * "Not saved" rather than "invalid": the row cannot tell a refusal from
+			 * an unreachable backend, and both leave the value in place for the next
+			 * blur to retry.
+			 */
+			const message =
+				error instanceof Error && error.message
+					? error.message
+					: "The key could not be saved.";
+			setSaveError(`Not saved — ${message}`);
 		} finally {
 			setIsSaving(false);
 		}
@@ -198,6 +227,7 @@ const SearchKeyRow: FC<{
 				onChange={(event) => {
 					setValue(event.target.value);
 					setSavedLocally(false);
+					setSaveError(null);
 				}}
 				onBlur={handleSave}
 				onKeyDown={(event) => {
@@ -208,7 +238,11 @@ const SearchKeyRow: FC<{
 				placeholder="Paste your API key"
 				disabled={isSaving}
 			/>
-			{showDescription ? (
+			{saveError ? (
+				<p className="text-danger text-meta" role="alert">
+					{saveError}
+				</p>
+			) : showDescription ? (
 				<p className="text-ink-dim text-meta">{credential.description}</p>
 			) : null}
 			<a
@@ -245,7 +279,7 @@ export const SearchApiStep: FC<SearchApiStepProps> = ({
 }) => {
 	const [mode, setMode] = useState<SearchMode>("free");
 	const { data: credentialsData } = useCredentials();
-	const updateCredentialMutation = useUpdateCredential();
+	const updateCredentialMutation = useUpdateCredential({ announce: false });
 	const storedKeys = credentialsData?.keys ?? [];
 
 	const saveKey = async (key: string, value: string) => {
@@ -291,7 +325,15 @@ export const SearchApiStep: FC<SearchApiStepProps> = ({
 			</div>
 
 			{mode === "keys" ? (
-				<div className="flex flex-col gap-5 pl-7">
+				/*
+				 * `pl-10` (40px) lands the block on the option rows' TEXT column: a
+				 * row's lead-in is the mark's own box (p-3 12 + size-4 16 + gap-3 12 =
+				 * 40), so the keys block reads as "under the copy above" rather than
+				 * under the mark. The one-step `pl-7` used elsewhere in this repo sits
+				 * under a 28px mark and lands a gap-unit short of the text here
+				 * (design round 1, D1).
+				 */
+				<div className="flex flex-col gap-5 pl-10">
 					<p className="text-ink-dim text-meta">
 						Each key is saved on your device as soon as you leave its field.
 					</p>

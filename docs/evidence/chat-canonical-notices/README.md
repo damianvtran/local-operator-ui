@@ -488,9 +488,20 @@ things happen to this set:
   register at this head (the `session_mcp_unavailable` row included), the
   wake row paints through the receipt model upstream ships (which is what a
   capture at this head must photograph), and the rows whose category the
-  affordance answers — `auth`, `rate-limit`, `provider` — carry their action.
+  affordance answers — `auth`, `billing`, `rate-limit` — carry their action.
   The set's own claims above about the previous capture's row count and wake
   shape remain that capture's record; this section is the delta.
+
+ROUND 1 REMEDIATION (independent review + UX rounds, 2026-09-27):
+`provider-account-actions` is RE-TAKEN for UX round 1's U3 — the Radient
+billing row's action now reads "Open Radient account" and lands on the account
+section (`/settings?section=radient`), where the balance, the verify-to-claim
+callout and the console's billing entry live, rather than on the providers grid
+that only signs a provider in. The auth row keeps "Sign in to Radient" → the
+provider deep link (that is where signing in happens), and the anthropic
+rate-limit row keeps the surface-without-an-account wording. The frame's
+capture row asserts the new target (`a[href*="section=radient"]`) at the
+shutter so a typo in the link fails the capture rather than shipping.
 
 Command (narrowed per surface; the rig ran on `6417` while another worktree's
 Storybook held `6017`):

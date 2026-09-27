@@ -36,6 +36,7 @@ const { providerErrorGuidance } = await import(
 
 const PROVIDER_SETTINGS = "/settings?section=providers";
 const RADIENT_SETTINGS = "/settings?section=providers&provider=radient";
+const RADIENT_ACCOUNT = "/settings?section=radient";
 
 test("the harness's own classification decides when it can", () => {
 	assert.deepEqual(
@@ -61,7 +62,7 @@ test("the harness's own classification decides when it can", () => {
 	);
 });
 
-test("a Radient failure gets the sign-in words and the provider deep link", () => {
+test("a Radient failure gets its own words, and the surface that can act on it", () => {
 	assert.deepEqual(
 		providerErrorGuidance({
 			text: "Radient refused the credential",
@@ -70,13 +71,18 @@ test("a Radient failure gets the sign-in words and the provider deep link", () =
 		}),
 		{ label: "Sign in to Radient", to: RADIENT_SETTINGS },
 	);
+	/*
+	 * The billing class lands on the ACCOUNT section, not the grid: the balance,
+	 * the verify-to-claim callout and the console's billing entry all live there,
+	 * and the grid only signs a provider in (UX round 1, U3).
+	 */
 	assert.deepEqual(
 		providerErrorGuidance({
 			text: "402: insufficient credits",
 			category: "billing",
 			provider: "radient/auto",
 		}),
-		{ label: "Open provider settings", to: RADIENT_SETTINGS },
+		{ label: "Open Radient account", to: RADIENT_ACCOUNT },
 	);
 });
 
@@ -138,9 +144,31 @@ test("ordinary words earn nothing", () => {
 	for (const text of [
 		"The user asked about their credit card.",
 		"The quota feature is documented in the manual.",
+		/*
+		 * The gerund near-miss, and the reason this case is worth keeping: the
+		 * matcher keys on the plane's own phrase ("sign in to Radient"), and a
+		 * broadened matcher that read "signing in" as the same sentence would fail
+		 * here (review round 1, R3).
+		 */
 		"This paragraph mentions signing in to Radient as a concept.",
 		"Credit balance updated successfully.",
 	]) {
 		assert.equal(providerErrorGuidance({ text }), null, text);
 	}
+});
+
+test("the boundary is the sentence, not the concept: the phrase earns the action", () => {
+	/*
+	 * The explicit half of R3's boundary: the matcher keys on the EXACT phrase
+	 * "sign in to Radient" (the desktop plane's own sentence), wherever a row
+	 * carries it - so prose containing it earns the action, and the gerund above
+	 * (which does not contain it) earns nothing. Both directions are pinned
+	 * rather than left to a comment.
+	 */
+	assert.deepEqual(
+		providerErrorGuidance({
+			text: "How do I sign in to Radient from a terminal?",
+		}),
+		{ label: "Sign in to Radient", to: RADIENT_SETTINGS },
+	);
 });
