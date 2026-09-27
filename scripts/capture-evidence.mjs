@@ -621,6 +621,15 @@ export const STORIES = [
 	["chat-trace-fold--mid-run", 1280, 130],
 	["chat-trace-fold--finished", 1280, 130],
 	["chat-trace-fold--restored", 1280, 130],
+	/*
+	 * The operator's report of 2026-09-27, as a state: four file reads and three
+	 * agent-profile READS, which folded as `Explored 4 files, delegated 3 tasks`
+	 * while every row above the header read `Delegated`. With the op tier the
+	 * same seven actions fold by kind - `4 files · 3 agents` - under the noun of
+	 * the calls themselves (`KIND_NOUNS`), and this header is the frame the
+	 * design round judges that claim from.
+	 */
+	["chat-trace-fold--agent-ops", 1280, 130],
 	[
 		"chat-trace-fold--expanded",
 		1280,
@@ -1658,6 +1667,16 @@ export const STORIES = [
 	["chat-tool-rows--screenshots-two", 1280, 900],
 	["chat-tool-rows--user-attachments", 1280, 900],
 	["chat-tool-rows--states", 1280, 900],
+	/*
+	 * The meta tools' operations, one row each (agent list/show/create, team,
+	 * hub peek/send, secret, project, network, console, lsp, and a live wait):
+	 * the rows that printed `Delegated` for everything now name what each call
+	 * DID, through the same pipeline the transcript runs (`toolOp` →
+	 * `summaryFromArgs` → `toolRowLabel`). Height paired with the story's own
+	 * `Frame` (460): twelve consecutive actions condense into a fold, and the
+	 * story OPENS it so the frame holds both the summary line and the rows.
+	 */
+	["chat-tool-rows--tool-ops", 1280, 570],
 	["chat-tool-rows--names-and-fallbacks", 1280, 900],
 	/* The reported defect, and the only new surface this set added: a viewer that
 	   joins a turn already in flight. Its rows are built by the PRODUCTION
@@ -5974,6 +5993,38 @@ export const STORIES = [
 	["chat-slash-highlight--geometry", 1000, 2600],
 	["chat-slash-highlight--scrolled-parity", 1000, 1000],
 	/*
+	 * THE MESH TAB (`features.peers`), at the app's own size and at the narrow one.
+	 *
+	 * WHY THESE EIGHT STATES AND NOT A HAPPY PATH: the tab's whole job is to answer a
+	 * question about a mesh the reader cannot see, and the states it is met with are
+	 * mostly small ones - one device, no network at all, a peer that stopped
+	 * answering, a relay that is down. A set that photographed only a healthy
+	 * five-node mesh would leave the two states a first-run user actually meets
+	 * (VirginDevice, SingleDevice) unreviewed, and the misconfigured one - which is
+	 * what the tab exists to make obvious - unphotographed.
+	 *
+	 * THE NARROW ROWS ARE THE RESPONSIVE CLAIM, and they are a SEPARATE DIRECTORY for
+	 * the reason the row is separate: `--dir` writes `two-devices-narrow/`, so a
+	 * reader can tell the 1024x768 frame from the 1380x900 one instead of comparing
+	 * two files whose names differ only by theme. 1024x768 is the width the app's own
+	 * sidebar clamps for; the app's OWN FLOOR is 800x600 (`WINDOW_MIN_WIDTH` /
+	 * `WINDOW_MIN_HEIGHT` in `src/main/window-mode.ts`), which the design round captured
+	 * six states at - all hold, and the README names that floor rather than this row.
+	 *
+	 * The list presentation gets its own frame because it is the OTHER way in: a
+	 * canvas cannot sort or search, and a one-device mesh has no edges to draw, so the
+	 * tab ships both and each needs a still.
+	 */
+	["mesh-tab--single-device", 1380, 900],
+	["mesh-tab--two-devices", 1380, 900],
+	["mesh-tab--overlapping-networks", 1380, 900],
+	["mesh-tab--misconfigured", 1380, 900],
+	["mesh-tab--virgin-device", 1380, 900],
+	["mesh-tab--reads-failed", 1380, 900],
+	["mesh-tab--loading", 1380, 900],
+	["mesh-tab--list-view", 1380, 900],
+	["mesh-tab--two-devices", 1024, 768, { dir: "two-devices-narrow" }],
+	/*
 	 * THE NOTICE-BAND FAMILY'S OWN SURFACES (fix/banner-warn-error-consistency-7e4c).
 	 *
 	 * The twelve-theme sweep is what makes a frame comparable with the rest of the
@@ -6461,9 +6512,17 @@ const assertBackendDown = async () => {
  * before it. Deriving it from the tree - with the same walker and exclusion
  * list `check-evidence.mjs` compares it against - makes the comparison
  * unfalsifiable and absorbs stray undeclared directories (round 1, R2).
+ *
+ * The previous total is COERCED, and that is not defensive dressing: folds have
+ * hand-resolved this field as a JSON string, and `"9718" + 4` is `"97184"` -
+ * measured on the trace-label pass (2026-09-27), where the string form also
+ * flipped `check-evidence.mjs`'s `typeof === "number"` gate to skipped, so the
+ * drift was silent in both directions for as long as it existed. The same
+ * coercion guards the `refreshedFrames` accumulation below, for the same
+ * reason.
  */
 export function partialFrameCount(previous, added) {
-	return (previous.frames ?? 0) + added.length;
+	return Number(previous.frames ?? 0) + added.length;
 }
 
 /**
@@ -9261,7 +9320,7 @@ const main = async () => {
 								: head,
 							refreshedFrames:
 								(sameHead
-									? (previous.partialCapture?.refreshedFrames ?? 0)
+									? Number(previous.partialCapture?.refreshedFrames ?? 0)
 									: 0) + captured,
 							refreshedStories: [
 								...new Set([
