@@ -1081,6 +1081,29 @@ test("the rail's membership read does not poll: the always-mounted component fan
 		/staleTime: poll \? 10_000 : Number\.POSITIVE_INFINITY/,
 		"the non-polling observer cannot be woken by a mount or a focus either",
 	);
+	/*
+	 * THE FOCUS LEG, which this pin's first version left to a reader's inference (review round 3,
+	 * R3-3). `refetchOnWindowFocus` is the branch's THIRD wake-up path: a window that loses and
+	 * regains visibility is an ordinary event on a desktop app, and this app's own
+	 * `defaultQueryOptions` sets it `true` (`shared/api/query-client.ts`), so a rail that did not
+	 * switch it off would be woken by every alt-tab - the same fan-out the interval was.
+	 *
+	 * THE BEHAVIOUR BEHIND IT, measured rather than asserted here: the reviewer's own probe drove
+	 * a `visibilitychange` transition and counted refetches - rail observer 0, page observer 1
+	 * (the control), and the rail under a `--defect` regression 1, so the zero is a reading and
+	 * not a vacuous pass. This pin holds the wiring that probe validated; the harness in this
+	 * session's scratchpad is where the count itself is reproduced.
+	 */
+	assert.match(
+		store,
+		/refetchOnWindowFocus: poll,/,
+		"the focus leg follows the same observer split as the interval, so the rail cannot be woken by an alt-tab",
+	);
+	assert.match(
+		source("src/renderer/src/shared/api/query-client.ts"),
+		/refetchOnWindowFocus: true,/,
+		"and the app's own default is the opposite, which is why the rail has to say so itself",
+	);
 	assert.match(
 		source(
 			"src/renderer/src/shared/components/navigation/sidebar-navigation.tsx",
