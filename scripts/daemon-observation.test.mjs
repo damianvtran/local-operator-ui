@@ -271,19 +271,35 @@ const TICK_BACKSTOP_MS = 60_000;
  * @param describe the state this wait is waiting for, named in the backstop's
  *   failure message.
  *
- * WHAT THE AWAITED TICK PROVES, and what the assertions around it do not. The
- * promise resolves when the tick's own work is done: the gates evaluated, the
- * probe sent and answered, the answer's bookkeeping applied. That is strictly
- * stronger than the poll it replaces, which any unrelated admitted answer could
- * satisfy. The `updatedAt` assertions the call sites still make are a SEPARATE
- * and weaker check - `recordTransportSuccess()` stamps `updatedAt` too
- * (`daemon-status.ts:542`), so a snapshot that moved says the probe's answer was
- * ADMITTED, not that `observe()` folded an observation. Measured on 2026-09-27
- * rather than assumed: replacing the tick's `observe(observation)` with a read
- * of the current state leaves `updatedAt` advancing and this case green. The
- * case's own proof of the fold is the sequence it drives below, not that assert.
+ * WHAT THE AWAITED TICK PROVES, and why nothing here is compared against a
+ * clock. The promise resolves when the tick's own work is done: the gates
+ * evaluated, the probe sent and answered, the answer's fold applied. That is
+ * strictly stronger than the poll it replaces, which any unrelated admitted
+ * answer could satisfy. The case's own proof of the fold is the sequence it
+ * drives, not a stamp on the snapshot.
+ *
+ * THE ASSERTIONS THAT USED TO FOLLOW THIS CALL ARE GONE, and the reason lives
+ * here so nobody re-adds one: they read
+ * `getStatusSnapshot().updatedAt > clockBefore`, and `updatedAt` is stamped from
+ * `Date.now()` (`daemon-status.ts` stamps it at 441 and 542 through `now()`), so
+ * BOTH SIDES OF THAT `>` WERE MILLISECOND WALL-CLOCK VALUES. When the probe's
+ * answer is admitted in the SAME MILLISECOND as the pre-tick read the predicate
+ * is false and cannot become true before the next tick - measured on PR #556's
+ * QA round 1 (Q-1): `updated_delta=0 tick_ms=0 seen_delta=1 admission_stamps=2`,
+ * i.e. two admissions applied to the stamp while the assert claimed none. That
+ * is a FALSE ALARM about a correct implementation, with ZERO margin rather than
+ * a small one, and it is what `main`'s red on 2026-09-27 actually was: the
+ * pre-fix poll burned its whole budget on a tie (reproduced here from a pinned
+ * clock: `5124.6 ms` with the CI's own error string; QA round 1 measured
+ * `5156.7 ms` from the same construction), while the CI job's timeline shows the
+ * probe landing in the first ~55 ms of the case. `await`ing the tick removes the
+ * WAIT, not that granularity; only removing the comparison does.
+ *
+ * What a case may assert then is what is observable without a clock: that the
+ * daemon SAW the probe (`seen`/`healthCount`), and that the tick finished its
+ * own work (`this` promise). The cases below do exactly that.
  */
-async function driveTick(loop, describe = "the tick's probe to be folded") {
+async function driveTick(loop, describe = "the tick's own work to settle") {
 	const tick = loop.fn();
 	/*
 	 * A TICK THAT HANDS BACK NOTHING CANNOT BE AWAITED, and the failure would be
@@ -1988,22 +2004,17 @@ async function ownedDaemonScene({
  */
 async function tickArmedProbe(scene) {
 	const counterBefore = (await scene.state()).healthCount;
-	const clockBefore = scene.manager.getStatusSnapshot().updatedAt;
 	const loop = scene.intervals.find((entry) => entry.ms === PROBE_INTERVAL_MS);
 	assert.ok(loop, "startOwned() must have armed the probe loop");
 	/*
 	 * The tick's own promise, not a poll: by the time it resolves the probe has
-	 * been answered, so the daemon's count below is READ rather than watched.
-	 * A tick that made no probe is still reported as such - a connection broken
-	 * in the way a case exists to describe must not be reported as a rig fault.
+	 * been answered and its answer folded, so the daemon's count below is READ
+	 * rather than watched. A tick that made no probe is still reported as such -
+	 * a connection broken in the way a case exists to describe must not be
+	 * reported as a rig fault.
 	 */
-	await driveTick(loop, "the tick's probe to be folded into the state machine");
-	if ((await scene.state()).healthCount <= counterBefore) return false;
-	assert.ok(
-		scene.manager.getStatusSnapshot().updatedAt > clockBefore,
-		"the tick's probe reached the daemon but its answer was not admitted into the state machine",
-	);
-	return true;
+	await driveTick(loop);
+	return (await scene.state()).healthCount > counterBefore;
 }
 
 test("a reload in place of the daemon this app spawned keeps the app attached and paired (2026-09-20)", async () => {
@@ -2382,16 +2393,11 @@ test("A3: an ADOPTED daemon that reloads in place recovers without a restart, by
 			for (let i = 0; i < DEGRADED_AFTER_FAILURES; i++) {
 				const loop = intervals.find((entry) => entry.ms === PROBE_INTERVAL_MS);
 				assert.ok(loop, "adoption must have armed the probe loop");
-				const clockBefore = manager.getStatusSnapshot().updatedAt;
 				const seenBefore = scene.seen.length;
 				await driveTick(loop);
 				assert.ok(
 					scene.seen.length > seenBefore,
 					"the tick's probe must reach the daemon",
-				);
-				assert.ok(
-					manager.getStatusSnapshot().updatedAt > clockBefore,
-					"the tick's probe's answer must be admitted into the snapshot",
 				);
 			}
 
@@ -2482,16 +2488,11 @@ test("the operator's report: an ADOPTED daemon that reloads in place never re-di
 
 		const sequence = [];
 		for (let tick = 1; tick <= 5; tick++) {
-			const clockBefore = manager.getStatusSnapshot().updatedAt;
 			const seenBefore = scene.seen.length;
 			await driveTick(loop);
 			assert.ok(
 				scene.seen.length > seenBefore,
 				"the tick's probe must reach the daemon",
-			);
-			assert.ok(
-				manager.getStatusSnapshot().updatedAt > clockBefore,
-				"the tick's probe's answer must be admitted into the snapshot",
 			);
 			/*
 			 * The renderer's own traffic between probes - the presence beat and a
