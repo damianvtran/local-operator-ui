@@ -1273,61 +1273,24 @@ export const Default: Story = {
 
 /**
  * Shows the component when it's checking for updates.
+ *
+ * THE SHIPPED COMPONENT, not a fork of its markup (review U16's rule): the mount
+ * check is held open by an override installed in the RENDER pass rather than in
+ * an effect, because effects run child-first - a wrapper effect would land after
+ * the component's own mount check had already fired against the bridge's
+ * resolving stub. The delay is narrowed so the still-working line (UX U1) is on
+ * screen in the frame.
  */
+function HeldCheck() {
+	window.api.updater.checkForUpdates = () => new Promise<never>(() => {});
+	return <UpdateNotification autoCheck={true} slowWaitHintMs={1} />;
+}
+
 export const Checking: Story = {
 	args: {
 		autoCheck: false,
 	},
-	parameters: {
-		checking: true,
-	},
-	render: () => {
-		// Create a component that forces the checking state to be true
-		const CheckingComponent = () => {
-			// Use useState to directly control the checking state
-			const [isChecking, setIsChecking] = useState(true);
-
-			// Override the checkForUpdates function to never resolve
-			useEffect(() => {
-				// Replace with a function that never resolves
-				window.api.updater.checkForUpdates = async () => {
-					// Set checking state directly
-					setIsChecking(true);
-					// Return a promise that never resolves to keep checking state true
-					return new Promise<never>(() => {});
-				};
-
-				// Call checkForUpdates immediately
-				window.api.updater.checkForUpdates();
-
-				// Cleanup function that doesn't actually clean up
-				// to maintain the state for the story
-				return () => {
-					// No cleanup needed - we want to maintain the state for stories
-				};
-			}, []);
-
-			// If checking, render the checking UI directly
-			if (isChecking) {
-				return (
-					<UpdateContainer>
-						<h2 className="mb-3 text-heading text-ink">Checking for updates</h2>
-						<p className="mb-2 text-body text-ink-muted">
-							Please wait while we check for available updates...
-						</p>
-						<ProgressContainer>
-							<Progress />
-						</ProgressContainer>
-					</UpdateContainer>
-				);
-			}
-
-			// Fallback, should never reach here
-			return <UpdateNotification autoCheck={true} />;
-		};
-
-		return <CheckingComponent />;
-	},
+	render: () => <HeldCheck />,
 };
 
 /**
@@ -1426,7 +1389,26 @@ export const UpdateAvailable: Story = {
 
 /**
  * Shows the notification when an update is being downloaded, with progress indication.
+ *
+ * THE SHIPPED COMPONENT, not a fork (review U16's rule), held in the state the
+ * still-working line (UX U1) is about: the bridge's `downloadUpdate` never
+ * settles, so the wrapper presses the real "Download update" control once it is
+ * mounted and the offer keeps its controls hidden while the download runs.
  */
+function HeldDownload() {
+	useEffect(() => {
+		window.api.updater.downloadUpdate = () => new Promise<never>(() => {});
+		const timer = setTimeout(() => {
+			const control = Array.from(document.querySelectorAll("button")).find(
+				(button) => button.textContent === "Download update",
+			);
+			control?.click();
+		}, 0);
+		return () => clearTimeout(timer);
+	}, []);
+	return <UpdateNotification autoCheck={false} slowWaitHintMs={1} />;
+}
+
 export const Downloading: Story = {
 	args: {
 		autoCheck: false,
@@ -1435,70 +1417,7 @@ export const Downloading: Story = {
 		triggerUpdateAvailable: true,
 		triggerUpdateProgress: true,
 	},
-	render: () => {
-		// Create a component that directly renders the downloading state
-		const DownloadingComponent = () => {
-			// Use state to force the component to render with downloading state
-			const [available, setAvailable] = useState(true);
-			const [downloading, setDownloading] = useState(true);
-			const [info, setInfo] = useState(mockUpdateInfo);
-			const [progress] = useState<ProgressInfo>({
-				percent: 45,
-				transferred: 45 * 1024 * 10,
-				total: 1024 * 1024,
-				bytesPerSecond: 1024 * 50,
-				delta: 45 * 1024,
-			});
-
-			useEffect(() => {
-				// Set the state immediately
-				setAvailable(true);
-				setDownloading(true);
-				setInfo(mockUpdateInfo);
-
-				// Set the trigger flags
-				window.triggerUpdateAvailable = true;
-				window.triggerUpdateProgress = true;
-			}, []);
-
-			// If update is available and downloading, render the UI directly
-			if (available && downloading && info) {
-				return (
-					<UpdateContainer>
-						<h2 className="mb-3 text-heading text-ink">Update available</h2>
-						<p className="mb-2 text-body text-ink-muted">
-							Version {info.version} is available. You are currently using
-							version {process.env.npm_package_version || "1.0.0"}.
-						</p>
-						{info.releaseNotes && (
-							<div className="mt-2 text-body text-ink-muted">
-								Release notes:{" "}
-								{typeof info.releaseNotes === "string"
-									? info.releaseNotes
-									: "See release notes on GitHub"}
-							</div>
-						)}
-
-						<ProgressContainer>
-							<p className="text-body-sm text-ink-muted">
-								Downloading: {Math.round(progress.percent)}%
-							</p>
-							<Progress value={progress.percent} className="mt-2" />
-							<p className="mt-1 text-mono-sm text-ink-dim">
-								{Math.round(progress.transferred / 1024)} KB of{" "}
-								{Math.round(progress.total / 1024)} KB
-							</p>
-						</ProgressContainer>
-					</UpdateContainer>
-				);
-			}
-
-			// Fallback to the actual component
-			return <UpdateNotification autoCheck={false} />;
-		};
-
-		return <DownloadingComponent />;
-	},
+	render: () => <HeldDownload />,
 };
 
 /**

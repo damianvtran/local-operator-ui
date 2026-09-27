@@ -580,7 +580,7 @@ const INCONCLUSIVE = {
  * setter is visible to the next read - which is how a case observes what the
  * user would be looking at after a sequence.
  */
-function mount({ appVersion } = {}) {
+function mount({ appVersion, slowWaitHintMs } = {}) {
 	standIn.reset();
 	/*
 	 * A fresh bridge per mount. A case that leaves a check unanswered (the
@@ -594,7 +594,7 @@ function mount({ appVersion } = {}) {
 	 * the app (design D1). A case leaves it out to stand for a card that has not
 	 * read the version yet.
 	 */
-	standIn.render = () => CheckForUpdatesButton({ appVersion });
+	standIn.render = () => CheckForUpdatesButton({ appVersion, slowWaitHintMs });
 	const handle = {
 		runtime: standIn,
 		tree: null,
@@ -850,7 +850,7 @@ test("R9: an offer before the check does not rob a later check of the sentence",
  * in flight can ask for it, and the check-channel case prefers a check the user's
  * own control started for that same reason.
  */
-function mountNotification({ autoCheck = false } = {}) {
+function mountNotification({ autoCheck = false, slowWaitHintMs } = {}) {
 	standIn.reset();
 	updater.checks.length = 0;
 	updater.backendUpdates.length = 0;
@@ -859,7 +859,7 @@ function mountNotification({ autoCheck = false } = {}) {
 	 * cannot be handled twice - by the panel under test and by an earlier case's.
 	 */
 	updater.handlers.clear();
-	standIn.render = () => UpdateNotification({ autoCheck });
+	standIn.render = () => UpdateNotification({ autoCheck, slowWaitHintMs });
 	const handle = {
 		runtime: standIn,
 		tree: null,
@@ -1293,6 +1293,118 @@ test("the checking frame clears when the deadline rejects the check", async () =
 		false,
 		"the machine's own code is the subordinate line, not the message",
 	);
+});
+
+/**
+ * THE BOUNDED WAIT SAYS SO (UX U1, remediation round 1).
+ *
+ * Three surfaces watch the same class of wait - the check ladder, which can
+ * run ~94 s, and the download stage's ~90 s no-progress bound - and each
+ * rendered as one still image until the moment it ended, which is how a
+ * bounded wait still read as a hung app. The line appears only once the wait
+ * has outlasted the delay, and it is copy: no control is added and none of the
+ * no-dismiss / no-cancel decisions move. The delay is narrowed through the
+ * same override the components take, because the shipped twelve seconds are
+ * exactly what a test must not sit through.
+ */
+test("the settings button says a long check is still running", async () => {
+	const handle = mount({ slowWaitHintMs: 20 });
+	press(handle);
+	handle.render();
+	assert.equal(
+		allText(handle).includes("Still checking"),
+		false,
+		"a fresh check shows no line yet",
+	);
+	await new Promise((resolve) => realSetTimeout(resolve, 60));
+	handle.render();
+	assert.match(
+		allText(handle),
+		/Still checking/,
+		"the line arrives once the wait outlasts the delay",
+	);
+	await settleCheck(handle, new Error("net::ERR_TIMED_OUT"));
+	assert.equal(
+		allText(handle).includes("Still checking"),
+		false,
+		"the line leaves with the wait",
+	);
+});
+
+test("the checking card says a long check is still running", async () => {
+	const handle = mountNotification({ slowWaitHintMs: 20 });
+	// The refusal panel's own control starts the check, the route the sibling
+	// case takes; `autoCheck` would re-run the mount effect on every render this
+	// harness makes, re-arming the frame after the settle.
+	updater.emit("update-install-blocked", {
+		code: "installed-bundle-not-sealed",
+		version: "0.19.5",
+		message: "The downloaded update did not pass its integrity check.",
+		remedy: { text: "Download a fresh copy." },
+	});
+	handle.render();
+	control(handle, "Check for updates").props.onClick();
+	handle.render();
+	assert.ok(
+		showsText(handle, "Checking for updates"),
+		"the frame is up while the check is unanswered",
+	);
+	assert.equal(
+		allText(handle).includes("Still checking"),
+		false,
+		"a fresh check shows no line yet",
+	);
+	await new Promise((resolve) => realSetTimeout(resolve, 60));
+	handle.render();
+	assert.match(
+		allText(handle),
+		/Still checking/,
+		"the line arrives once the wait outlasts the delay",
+	);
+	await settleCheck(
+		handle,
+		new Error(
+			"net::ERR_TIMED_OUT - the update feed did not answer within 30s, so the attempt was abandoned",
+		),
+	);
+	assert.equal(
+		showsText(handle, "Checking for updates"),
+		false,
+		"the bounded failure clears the frame",
+	);
+	assert.equal(
+		allText(handle).includes("Still checking"),
+		false,
+		"the line leaves with the frame",
+	);
+});
+
+test("the download panel says a stalled download is still running", async () => {
+	const handle = mountNotification({ slowWaitHintMs: 20 });
+	updater.emit("update-available", { version: "9.9.9" });
+	handle.render();
+	assert.ok(showsText(handle, "Update available"), "the offer is up");
+	const held = new Promise(() => {});
+	const original = updater.downloadUpdate;
+	updater.downloadUpdate = () => held;
+	try {
+		control(handle, "Download update").props.onClick();
+		handle.render();
+		assert.equal(
+			allText(handle).includes("Still downloading"),
+			false,
+			"a fresh download shows no line yet",
+		);
+		await new Promise((resolve) => realSetTimeout(resolve, 60));
+		handle.render();
+		assert.match(
+			allText(handle),
+			/Still downloading/,
+			"the line arrives once the wait outlasts the delay",
+		);
+	} finally {
+		updater.downloadUpdate = original;
+	}
 });
 
 /**

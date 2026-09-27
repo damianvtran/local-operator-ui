@@ -12,6 +12,8 @@ import {
 	updateMessageFate,
 	updateMessageOf,
 } from "@shared/utils/update-error-copy";
+import { useElapsedSince } from "@shared/hooks/use-elapsed-since";
+import { SLOW_WAIT_HINT_MS } from "@shared/utils/update-slow-wait";
 import {
 	installPhaseCopy,
 	installSucceededCopy,
@@ -875,6 +877,14 @@ export const ProgressContainer = ({
 type UpdateNotificationProps = {
 	/** Whether to automatically check for updates on mount */
 	autoCheck?: boolean;
+	/**
+	 * How long a wait may run before its surface adds a status line (UX U1).
+	 *
+	 * The pair with the settings button's own prop: the app omits both, so the
+	 * shipped delay is `SLOW_WAIT_HINT_MS`, and a test or story narrows it to
+	 * milliseconds rather than sitting through twelve seconds to see the line.
+	 */
+	slowWaitHintMs?: number;
 };
 
 /**
@@ -882,6 +892,7 @@ type UpdateNotificationProps = {
  */
 export const UpdateNotification = ({
 	autoCheck = true,
+	slowWaitHintMs,
 }: UpdateNotificationProps) => {
 	// State for frontend update status
 	const [checking, setChecking] = useState(false);
@@ -896,6 +907,19 @@ export const UpdateNotification = ({
 	const [error, setError] = useState<string | null>(null);
 	const [snackbarOpen, setSnackbarOpen] = useState(false);
 	const [appVersion, setAppVersion] = useState<string>("unknown");
+	/*
+	 * The two long waits this panel can show (UX U1): the check ladder and the
+	 * download stage. Called before every early return below, because the hooks
+	 * order must not depend on which state renders.
+	 */
+	const slowCheck = useElapsedSince(
+		checking,
+		slowWaitHintMs ?? SLOW_WAIT_HINT_MS,
+	);
+	const slowDownload = useElapsedSince(
+		downloading,
+		slowWaitHintMs ?? SLOW_WAIT_HINT_MS,
+	);
 
 	// State for backend update status
 	/**
@@ -2339,6 +2363,18 @@ export const UpdateNotification = ({
 						: "Please wait while we check for available updates..."}
 				</p>
 				{/*
+				 * THE STILL-WORKING LINE (UX U1). The ladder can run ~94 s and this frame
+				 * is otherwise one image for all of it; the line appears only once the
+				 * wait has outlasted the delay, and it offers no control - the
+				 * no-dismiss / no-cancel decisions above stand.
+				 */}
+				{slowCheck && !updatingBackend && (
+					<p className="mt-1 text-body-sm text-ink-muted">
+						Still checking. A slow or stalled connection can hold this for about
+						a minute and a half - the app stops waiting on its own.
+					</p>
+				)}
+				{/*
 				 * THE ELAPSED READING (design D3). The wait can run to ten minutes and the
 				 * rest of this frame does not move: without this line a working wait and a
 				 * hung app are the same pixels, and the main process has the number already
@@ -2552,6 +2588,19 @@ export const UpdateNotification = ({
 							{Math.round(downloadProgress.total / 1024)} KB
 						</p>
 					</ProgressContainer>
+				)}
+
+				{/*
+				 * THE STILL-WORKING LINE (UX U1), same rule as the checking card's: one
+				 * copy addition once the wait has outlasted the delay. The offer panel
+				 * hides both controls while a download runs, so without this its whole
+				 * state is two static lines until the watchdog reports.
+				 */}
+				{slowDownload && (
+					<p className="mb-2 text-body-sm text-ink-muted">
+						Still downloading. A connection that stops sending data is cancelled
+						after about 90 seconds without progress.
+					</p>
 				)}
 
 				<UpdateActions>
