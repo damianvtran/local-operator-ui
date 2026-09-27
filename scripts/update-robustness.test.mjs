@@ -6521,7 +6521,10 @@ export default { get };
  * `httpsStub` replaces `node:https` for the one case that drives the two registry
  * reads themselves (agent review minor-1); see `HTTPS_FIXTURE`.
  */
-const loadUpdateServiceModule = async ({ managedPython = null, httpsStub = false } = {}) => {
+const loadUpdateServiceModule = async ({
+	managedPython = null,
+	httpsStub = false,
+} = {}) => {
 	/*
 	 * `resolveDir` is set on every fixture module rather than only on the one that
 	 * needs it: a virtual module has no directory of its own, so esbuild refuses to
@@ -10469,7 +10472,11 @@ test("the PyPI and npm registry reads are bounded by their own socket timeouts",
 				`${name} wires the timeout to a handler`,
 			);
 			call.handlers.timeout();
-			assert.equal(call.destroyed, true, `${name} destroys the stalled request`);
+			assert.equal(
+				call.destroyed,
+				true,
+				`${name} destroys the stalled request`,
+			);
 			assert.equal(
 				await pending,
 				null,
