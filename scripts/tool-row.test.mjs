@@ -27,6 +27,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export * from "./src/renderer/src/features/chat/components/trace/tool-row-model";',
+			'export * from "./src/renderer/src/features/chat/components/trace/tool-glyphs";',
 			'export { requestDesktopMedia } from "./src/main/desktop-media";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -57,6 +58,7 @@ const {
 	stripDiffHeader,
 	summaryFromArgs,
 	toolCategory,
+	toolIcon,
 	toolOp,
 	toolRowLabel,
 	toolVerb,
@@ -321,6 +323,78 @@ test("the builtins the row table once missed name their call, and their operatio
 		running: "Calling",
 		named: false,
 	});
+});
+
+test("the project family names every operation, and the milestone flag decides add or remove (operator report follow-up, 2026-09-27)", () => {
+	/*
+	 * The second report: a project VIEW rendered `Called project
+	 * ui-update-account-robustness` under the generic wrench. `project` has
+	 * seven ops in the running build's schema (`project_tool.py`: list, show,
+	 * create, update, link, unlink, milestone) and NO `remove` op - the removal
+	 * is the `milestone` op's `remove` flag, which is why the row's token is
+	 * composed from the flag as well as the op.
+	 */
+	const row = (name, args) =>
+		toolRowLabel(name, summaryFromArgs(name, args), null, false, toolOp(args));
+
+	// The row the operator's screenshot showed.
+	assert.deepEqual(
+		row("project", { op: "show", name: "ui-update-account-robustness" }),
+		{
+			verb: "Viewed project",
+			object: "ui-update-account-robustness",
+		},
+	);
+	// A listing has no subject, and the selector never echoes into the object.
+	assert.deepEqual(row("project", { op: "list" }), {
+		verb: "Listed projects",
+		object: "",
+	});
+	// The milestone op goes both ways; the row says which.
+	assert.deepEqual(row("project", { op: "milestone", milestone: "ship-v2" }), {
+		verb: "Updated milestone",
+		object: "ship-v2",
+	});
+	assert.deepEqual(
+		row("project", { op: "milestone", milestone: "ship-v2", remove: true }),
+		{ verb: "Removed milestone", object: "ship-v2" },
+	);
+	// Every op the installed build accepts names its call: `Called` is what a
+	// row says when it does NOT know, and none of these are that.
+	for (const op of [
+		"list",
+		"show",
+		"create",
+		"update",
+		"link",
+		"unlink",
+		"milestone",
+	]) {
+		assert.notEqual(
+			toolVerb("project", op).settled,
+			"Called",
+			`project op \`${op}\` must name its operation`,
+		);
+	}
+	// The separate delete tool, whose name alone could not say it.
+	assert.deepEqual(
+		row("project_delete", { name: "ui-update-account-robustness" }),
+		{ verb: "Deleted project", object: "ui-update-account-robustness" },
+	);
+});
+
+test("the project row carries its own glyph, and the two fallbacks stay distinct", () => {
+	// A project row under the generic wrench is indistinguishable from a tool
+	// nobody knows (operator report follow-up, 2026-09-27). `project` mirrors
+	// the TUI's project line (sibling branch `feat/tui-project-line-15c4`);
+	// `project_delete` is NOT given the board mark - the TUI's `*_delete` tools
+	// take the default - and the wrench/plug answers stay different answers.
+	assert.equal(toolIcon("project").displayName, "FolderKanban");
+	// Case-insensitive, because a tool name is model-controlled.
+	assert.equal(toolIcon("Project").displayName, "FolderKanban");
+	assert.equal(toolIcon("project_delete").displayName, "Wrench");
+	assert.equal(toolIcon("some_custom_tool").displayName, "Wrench");
+	assert.equal(toolIcon("mcp__linear_create_issue").displayName, "Plug");
 });
 
 /* ------------------------------------------------------- the media relay */

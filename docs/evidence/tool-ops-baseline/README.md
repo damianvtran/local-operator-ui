@@ -9,9 +9,10 @@ They exist because the fixed frames cannot show what was wrong. Read the pairs:
 
 | surface | here (unmodified `main`) | on the branch |
 | --- | --- | --- |
-| rows (`Chat/Tool rows / ToolOps`) | `Delegated list`, `Delegated designer`, `Delegated docs-writer`, `Messaged peek 3`, `Called lsp …` | `Listed agents …`, `Viewed agent designer`, `Created agent docs-writer`, `Peeked at 3`, `Found definition …` |
+| rows (`Chat/Tool rows / ToolOps`) | `Delegated list`, `Delegated designer`, `Delegated docs-writer`, `Messaged peek 3`, `Called lsp …`, `Called project ui-update-account-robustness` | `Listed agents …`, `Viewed agent designer`, `Created agent docs-writer`, `Peeked at 3`, `Found definition …`, `Viewed project ui-update-account-robustness` |
+| the project family's glyphs | a wrench on every `project` row (the operator's follow-up screenshot: `Called project ui-update-account-robustness` under the generic wrench) | the board mark on `project`; `project_delete` keeps the wrench, as the TUI's `*_delete` tools do |
 | fold (`Chat/Trace fold / AgentOps`, the operator's own shape) | `Explored 4 files, delegated 3 tasks` | `4 files · 3 agents` |
-| the rows frame's fold header (a mixed ops run) | `3 tasks · 2 hub · 1 console · 1 lsp · …` | `3 agents · 1 team · 2 subagents · 1 code lookup · …` |
+| the rows frame's fold header (a mixed ops run) | `3 tasks · 3 project · 2 hub · 1 console · 1 lsp · 1 network · 1 project_delete · 1 secret · 1 wait` | `3 agents · 1 team · 2 subagents · 3 projects · 1 code lookup · 1 console · 1 network call · 1 project deletion · 1 secret · 1 wait` |
 
 ## Why these live outside their swept sets
 
@@ -50,3 +51,14 @@ The base tree writes its frames to the same paths the branch uses
 (`docs/evidence/chat-tool-rows/tool-ops/<theme>.webp` and
 `docs/evidence/chat-trace-fold/agent-ops/<theme>.webp`); they were copied into
 this set's `rows/` and `fold/` leaves as found, two themes each.
+
+## The rows frames were re-taken for the project family
+
+On 2026-09-27 the operator's follow-up (a project VIEW rendering `Called project
+ui-update-account-robustness` under the generic wrench) added three rows to the
+rows fixture, so the rig above was re-run at the same base commit and the four
+`--only=ops` frames were re-taken: the rows frames now carry the project family,
+and the fold frames came back byte-identical (nothing on main draws them
+differently). Everything else about the recipe - the base commit, the carried
+story files, the capture script - is unchanged, which is why this set is still
+two states photographed from unmodified `origin/main`.
