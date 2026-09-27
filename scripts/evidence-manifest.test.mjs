@@ -1214,6 +1214,14 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"condensedGroupMediaNote",
 	/*
+	 * AND ITS ROUND-1 REMEDIATION, whose subject is the same surface one review
+	 * round later: the cap, the header's count, the fixed slot and the control edge
+	 * are all claims about what these frames show, and the note states the pair it
+	 * ships. A note outside the list would keep whatever pair its own pass derived,
+	 * which is the wrong reading for a record of the shipped tree.
+	 */
+	"condensedGroupMediaRoundOneNote",
+	/*
 	 * AND THIS FOLD'S OWN - the fold onto `origin/main` = `093a329a4d` (#535, the
 	 * sub-view top inset). ITS SUBJECT IS THIS FILE'S BINDING (the re-derived
 	 * pair), so it is held to the pair the file ships rather than read as
@@ -1870,6 +1878,7 @@ const BRANCH_RECORDS = [
 	 */
 	"actionFoldEvidenceNote",
 	"condensedGroupMediaNote",
+	"condensedGroupMediaRoundOneNote",
 	"foldOnto9d3e68ddf6ActionGroupNote",
 	"foldOnto4ae3dbff0dActionGroupNote",
 	"foldOnto22c0fcd4fdActionGroupNote",
