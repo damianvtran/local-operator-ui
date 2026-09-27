@@ -890,6 +890,20 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 	const NO_MATCH_SENTENCE = "No providers match this search.";
 	const MATCHES_ABOVE_SENTENCE =
 		"The matching providers are in the suggested rows above.";
+	/*
+	 * The same claim for the case where the SUGGESTED block is not the one holding
+	 * the match (review round 3, R3-1). Which sentence is true is a question about
+	 * which block is on screen, and the census cannot answer it alone: with a
+	 * CONNECTED Radient and the query `rad`, `featured` is empty by construction
+	 * (`provider-catalog.ts` excludes every connected row from it) while the groups
+	 * are empty too, so the panel named a Suggested block that is not rendered and
+	 * the reader looked for rows that are not there. The suggested sentence's
+	 * wording is deliberately unchanged -- it is what `in-dialog-more-open-query`
+	 * photographs -- so the connected shape gets its own rather than a rewording of
+	 * both.
+	 */
+	const MATCHES_CONNECTED_ABOVE_SENTENCE =
+		"The matching providers are in the connected rows above.";
 
 	/*
 	 * The grouped blocks for ONE bucket set, so the two surfaces can hand this
@@ -1013,14 +1027,19 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 		 * failed beside its own answer. `matched` is the whole-census set the shortcut
 		 * block already filters on, so the two cannot disagree about whether the query
 		 * found anything. The sentence's wording is deliberately unchanged: it is what
-		 * `in-dialog-more-open-query` photographs, and a matching connected row is still
-		 * a match in a row above.
+		 * `in-dialog-more-open-query` photographs. WHICH BLOCK THAT SENTENCE NAMES IS
+		 * NOT UNCHANGED (review round 3, R3-1): a matching connected row is a match in
+		 * a row above, but not in a SUGGESTED one -- `featured` is empty whenever the
+		 * match is connected, so naming it is the R2-1 defect one layer down. The
+		 * choice is made below, where both blocks are in scope.
 		 */
 		const emptyBody = searching
 			? matched.size === 0
 				? NO_MATCH_SENTENCE
 				: restCount === 0
-					? MATCHES_ABOVE_SENTENCE
+					? featured.length > 0
+						? MATCHES_ABOVE_SENTENCE
+						: MATCHES_CONNECTED_ABOVE_SENTENCE
 					: null
 			: null;
 		return (
