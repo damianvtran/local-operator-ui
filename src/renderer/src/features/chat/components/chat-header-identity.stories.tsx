@@ -42,7 +42,7 @@
 
 import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
-import { useLayoutEffect } from "react";
+import { useLayoutEffect, useState } from "react";
 import type { ReactNode } from "react";
 import "../../../styles/index.css";
 import { ChatHeader } from "./chat-header";
@@ -107,6 +107,13 @@ type BridgeOptions = {
 	 * owes the frame that rather than a promise that races it.
 	 */
 	holdCommandMs?: number;
+	/**
+	 * The rename story's stand-in for the canonical stream: called with the name
+	 * `sessions.command` `rename` carried, never before it - which is the
+	 * no-optimistic-label rule the header documents, rendered as this story's own
+	 * state so the save frame's title IS the submitted value.
+	 */
+	onRename?: (name: string) => void;
 };
 
 /**
@@ -120,9 +127,14 @@ type BridgeOptions = {
 const installBridge = ({
 	entities = "rows",
 	holdCommandMs = 0,
+	onRename,
 }: BridgeOptions = {}) => {
 	const ok = <T,>(result: T) => ({ status: 200, body: { result } });
-	const bridge = async (request: { op: string; command?: string }) => {
+	const bridge = async (request: {
+		op: string;
+		command?: string;
+		args?: string;
+	}) => {
 		switch (request.op) {
 			case "teams.list":
 				return ok({ teams: TEAMS });
@@ -153,6 +165,14 @@ const installBridge = ({
 				if (holdCommandMs > 0) {
 					await new Promise((resolve) => setTimeout(resolve, holdCommandMs));
 				}
+				/*
+				 * The rename repaint: the story's own state moves ON THE RECEIPT,
+				 * the same moment the canonical stream would repaint the title in
+				 * the app.
+				 */
+				if (request.command === "rename" && onRename) {
+					onRename(request.args ?? "");
+				}
 				return ok({
 					command: request.command ?? "",
 					result: {
@@ -173,6 +193,7 @@ const installBridge = ({
 				request: (r: {
 					op: string;
 					command?: string;
+					args?: string;
 				}) => Promise<{ status: number; body: unknown }>;
 			};
 		};
@@ -225,7 +246,7 @@ export const TeamBound: Story = {
 					agentName="Install the pinned uv on Windows"
 					description="manager · lopdev"
 					identity={identity({ activeTeam: "lopdev" })}
-					onRenameConversation={() => undefined}
+					renameSessionId={SESSION}
 					onOpenOptions={() => undefined}
 				/>
 			</Band>
@@ -242,7 +263,7 @@ export const NoTeamNoAgent: Story = {
 					agentName="Install the pinned uv on Windows"
 					description="~"
 					identity={identity({})}
-					onRenameConversation={() => undefined}
+					renameSessionId={SESSION}
 					onOpenOptions={() => undefined}
 				/>
 			</Band>
@@ -259,7 +280,7 @@ export const AgentAndTeam: Story = {
 					agentName="Install the pinned uv on Windows"
 					description="coder · lopdev"
 					identity={identity({ activeAgent: "coder", activeTeam: "lopdev" })}
-					onRenameConversation={() => undefined}
+					renameSessionId={SESSION}
 					onOpenOptions={() => undefined}
 				/>
 			</Band>
@@ -293,7 +314,7 @@ export const Wide: Story = {
 					agentName="Redesign local-operator-ui installer loading panel"
 					description="manager · lopdev"
 					identity={identity({ activeTeam: "lopdev" })}
-					onRenameConversation={() => undefined}
+					renameSessionId={SESSION}
 					onOpenOptions={() => undefined}
 				/>
 			</Band>
@@ -311,7 +332,7 @@ export const TeamMenuEmpty: Story = {
 					agentName="Install the pinned uv on Windows"
 					description="manager · lopdev"
 					identity={identity({ activeTeam: "lopdev" })}
-					onRenameConversation={() => undefined}
+					renameSessionId={SESSION}
 					onOpenOptions={() => undefined}
 				/>
 			</Band>
@@ -375,7 +396,7 @@ export const TeamMenuRefused: Story = {
 					agentName="Install the pinned uv on Windows"
 					description="manager · lopdev"
 					identity={identity({ activeTeam: "lopdev" })}
-					onRenameConversation={() => undefined}
+					renameSessionId={SESSION}
 					onOpenOptions={() => undefined}
 				/>
 			</Band>
@@ -399,7 +420,7 @@ export const TeamMenuBusy: Story = {
 					agentName="Install the pinned uv on Windows"
 					description="manager · lopdev"
 					identity={identity({ activeTeam: "lopdev" })}
-					onRenameConversation={() => undefined}
+					renameSessionId={SESSION}
 					onOpenOptions={() => undefined}
 				/>
 			</Band>
@@ -425,10 +446,46 @@ export const NarrowFold: Story = {
 					agentName="Redesign local-operator-ui installer loading panel"
 					description="manager · lopdev"
 					identity={identity({ activeTeam: "lopdev" })}
-					onRenameConversation={() => undefined}
+					renameSessionId={SESSION}
 					onOpenOptions={() => undefined}
 				/>
 			</Band>
 		);
 	},
+};
+
+/**
+ * The INLINE RENAME as a state a reviewer can drive (the operator's report,
+ * 2026-09-26): the pencil opens an editor in the title's own slot - the name
+ * selected, the pencil become an X - and a save submits `sessions.command`
+ * `rename` through the same hook the picker runs.
+ *
+ * The bridge's `onRename` is the canonical-stream stand-in this story has no
+ * socket for: it repaints the title with the name the command CARRIED, on the
+ * receipt - never before it, which is the header's no-optimistic-label rule
+ * rendered as the story's own state. The save frame's title is therefore the
+ * submitted value, and the two cancel entries' titles are the old one.
+ *
+ * The state is a component rather than an inline `render` body because it is
+ * stateful: `useState` + a bridge callback is exactly the pair the app's stream
+ * subscription is, at story scale.
+ */
+const RenameInlineBand = () => {
+	const [name, setName] = useState("Install the pinned uv on Windows");
+	installBridge({ onRename: setName });
+	return (
+		<Band>
+			<ChatHeader
+				agentName={name}
+				description="manager · lopdev"
+				identity={identity({ activeTeam: "lopdev" })}
+				renameSessionId={SESSION}
+				onOpenOptions={() => undefined}
+			/>
+		</Band>
+	);
+};
+
+export const RenameInline: Story = {
+	render: () => <RenameInlineBand />,
 };

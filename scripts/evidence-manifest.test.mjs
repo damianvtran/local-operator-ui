@@ -1408,6 +1408,12 @@ const STAMP_BINDING_NOTES = [
 	 * `streamRedeliveryRestampNote` is in the list for.
 	 */
 	"task17RestampNote",
+	/*
+	 * AND THIS CHANGE'S OWN: the inline-rename fix's re-stamp. Its subject IS
+	 * this file's binding - it moves BOTH trees and re-captures one set's
+	 * states - so a reader is owed the pair and the twelve frames it added.
+	 */
+	"headerRenameInlineRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1979,6 +1985,13 @@ const BRANCH_RECORDS = [
 	 * same reason this list exists.
 	 */
 	"task17RestampNote",
+	/*
+	 * And by this lane, whose note is now the newest top-level record on the
+	 * branch: it states the pair the inline-rename fix ships - both trees
+	 * moved, one set's states re-captured - so a fold that started from main's
+	 * copy would drop it first, the same reason this list exists.
+	 */
+	"headerRenameInlineRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
