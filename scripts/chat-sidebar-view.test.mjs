@@ -18,8 +18,10 @@
  * JSX condition is a decision no test can reach.
  *
  * WHAT IT CANNOT SAY: that the band, the popover and the section headers LOOK
- * right. Those are pixels and they are the rig's job (`--scene sidebar-sections`
- * on the built app, and the frames it writes).
+ * right. Those are pixels and they were the rig's job (`--scene sidebar-sections`
+ * on the built app, and the frames it wrote); that scene was retired with the
+ * split's removal (agent review round 1, R2/Q3), so frames of this surface come
+ * from whoever next runs a capture pass over the merged panel.
  */
 
 import assert from "node:assert/strict";

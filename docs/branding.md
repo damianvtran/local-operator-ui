@@ -881,19 +881,28 @@ text in the transcript — code, stdout and diffs share the treatment — opens
   **If a reading measure is ever wanted back on agent output, it must narrow
   the whole row content box — prose and the ledger together, i.e. the shared
   `CHAT_MEASURE` container — never `max-width` on `.lo-markdown` alone.**
-  Narrowing prose by itself re-creates the two rails this rule removes. The
-  measure is now **640px**, not 900. Measured at the body step (14px SFNS, a
-  700-character sample): 101 characters per line on average, 104 at worst,
-  against 146/146 at 900. The board's own worst reference is 108 (Cursor 3) and
-  the chat-first products sit at 62–87; 680 lands exactly on the board's worst
-  case and 760 is past it. 640 is also the widest column that fits at 800x600
-  with the collapsed 56px sidebar and 24px gutters. What does NOT change is the
-  rule this number serves: the cap is on the shared row content box — prose, the
-  ledger, the user block and the composer together (`CHAT_MEASURE`) — never
-  `max-width` on `.lo-markdown` alone.
-  Cost, recorded: 101 characters is still wider than Claude.ai (76) and Zed (87),
-  which carry no tables or diffs in the answer. If the AFTER frames show the
-  table wrapping badly, the token moves to 680 and nothing else changes.
+  Narrowing prose by itself re-creates the two rails this rule removes.
+  **The operator restored the pre-redesign measure on 2026-09-26 (PR #534): the
+  measure is 900px again, on their own report against the 640px redesign** —
+  whether a wide conversation reads better than a narrow one here is the
+  operator's call on their own product, and this document records the override
+  rather than arguing it. The 640 measurement is KEPT, because it is what an
+  override of the override would need: measured at the body step (14px SFNS, a
+  700-character sample), 640 carries 101 characters per line on average and 104
+  at worst, against 146/146 at 900; the board's own worst reference is 108
+  (Cursor 3) and the chat-first products sit at 62–87; 680 lands exactly on the
+  board's worst case and 760 is past it; and 640 is the widest column that fits
+  at 800x600 with the collapsed 56px sidebar and 24px gutters. Reinstating 640
+  means re-reading that measurement against the frames of the day, not
+  re-arguing it from memory. What does NOT change is the rule this number
+  serves: the cap is on the shared row content box — prose, the ledger, the
+  user block and the composer together (`CHAT_MEASURE`) — never `max-width` on
+  `.lo-markdown` alone.
+  Cost, recorded, under the 640 measure (the trade a future narrowing re-opens):
+  101 characters is still wider than Claude.ai (76) and Zed (87), which carry
+  no tables or diffs in the answer. If fresh AFTER frames at that measure ever
+  show the table wrapping badly, the token moves to 680 and nothing else
+  changes.
 - A security notice is **retrospective** — it records that a risk was reviewed
   and averted. It must not be styled as a prompt, because nothing consumes a
   response to it.
