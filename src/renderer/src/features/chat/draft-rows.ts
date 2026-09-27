@@ -89,6 +89,24 @@ export const draftRowTitle = (text: string): string => {
 };
 
 /**
+ * The accessible name - and the tooltip, which is the same string in both
+ * channels the way the session rows' acts do it - for a draft row's discard
+ * control.
+ *
+ * THE ACTION, NEVER THE STATE (the archive control's rule, one control over),
+ * and the row's own prefix is DROPPED rather than echoed: `Draft: ` is what the
+ * label already says the row IS, so keeping it would have the control read
+ * "Discard draft “Draft: …”" - the noun twice, which is the kind of stutter
+ * that makes a screen-reader pass feel unfinished.
+ */
+export const discardDraftLabel = (label: string): string => {
+	const title = label.startsWith(DRAFT_ROW_PREFIX)
+		? label.slice(DRAFT_ROW_PREFIX.length)
+		: label;
+	return `Discard draft “${title}”`;
+};
+
+/**
  * Every draft the sidebar should list, in the order the store holds them.
  *
  * ORDER is the drafts map's own insertion order, which `persist` round-trips:

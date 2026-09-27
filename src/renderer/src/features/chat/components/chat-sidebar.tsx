@@ -57,6 +57,7 @@ import {
 	Plus,
 	Search,
 	SlidersHorizontal,
+	Trash2,
 	UserPlus,
 	Users,
 	X,
@@ -132,7 +133,7 @@ import {
 } from "../chat-sidebar-view";
 import { useStripSpeaksConnection } from "../chat-status-presence";
 import { clearSearch } from "../clear-search";
-import { untargetedDraftRows } from "../draft-rows";
+import { discardDraftLabel, untargetedDraftRows } from "../draft-rows";
 import {
 	markAllReadCopy,
 	markAllReadReceipt,
@@ -1077,6 +1078,8 @@ export function ChatSidebar({
 	const activeDraftKey = useCanonicalSessionsStore((s) => s.activeDraftKey);
 	const drafts = useCanonicalSessionsStore((s) => s.drafts);
 	const openDraft = useCanonicalSessionsStore((s) => s.openDraft);
+	const discardDraft = useCanonicalSessionsStore((s) => s.discardDraft);
+	const discardDrafts = useCanonicalSessionsStore((s) => s.discardDrafts);
 	/**
 	 * The other half of a draft's identity: the composer's own words.
 	 *
@@ -5688,31 +5691,190 @@ export function ChatSidebar({
 				 * list's own sections.
 				 */
 				<section data-chat-section="drafts">
-					{draftRows.map((row) => (
+					{draftRows.map((row) => {
+						/*
+						 * ONE STATE, READ ONCE, for the reason the session rows spell out
+						 * (review round 1, A7): the wrapper and the button both paint the
+						 * current ground, and two copies of the predicate are two chances
+						 * for them to disagree.
+						 */
+						const current = row.key === activeDraftKey;
+						return (
+							/*
+							 * A WRAPPER PLUS A BUTTON, the shape the session rows settled on
+							 * for a reason that applies word for word: a nested button is invalid
+							 * HTML and unfocusable, so the discard act is the row button's
+							 * SIBLING - and the box is what carries `group`, the state the
+							 * act's reveal reads.
+							 */
+							<div
+								key={row.key}
+								className={cn(
+									rowBoxStyle,
+									"group",
+									/*
+									 * THE HOVER GROUND BELONGS TO THE ROW, NOT TO ITS BUTTON
+									 * (design round 2, D13, measured on the session rows):
+									 * `rowStyle`'s own `hover:bg-row-hover` fires only while the
+									 * pointer is over the BUTTON, so moving onto the act beside it
+									 * dropped the ground under a pointer that never left the row.
+									 * A PLAIN `hover:`, never `group-hover:` - the box carries
+									 * `group`, and `group-hover:` compiles to a DESCENDANT rule
+									 * that can never match its own carrier.
+									 */
+									!current && "hover:bg-row-hover",
+									current && rowCurrent,
+								)}
+							>
+								<button
+									type="button"
+									data-chat-row
+									data-draft-row={row.key}
+									aria-label={`Open ${row.label}`}
+									title={row.label}
+									onClick={() => {
+										openDraft(row.key);
+										navigate("/chat");
+									}}
+									className={cn(
+										rowStyle,
+										"min-w-0 flex-1 text-left",
+										current && rowCurrent,
+									)}
+								>
+									<FileText
+										className="size-4 shrink-0 text-ink-dim"
+										aria-hidden="true"
+									/>
+									<span className="min-w-0 flex-1 truncate">{row.label}</span>
+								</button>
+								{/*
+								 * THE DISCARD ACT (operator, 2026-09-26: "Each one should have a
+								 * deletion on hover"). Revealed by the row's hover or focus, the
+								 * session acts' own pair - and IN the Tab ring, unlike those two:
+								 * their chord (⌘⇧P / ⌘⇧A) is what let them leave it, and a draft
+								 * has no chord. At rest the act is `hidden`, so it costs the ring
+								 * nothing until its row has focus; from there the next Tab lands
+								 * on it, which is the flow the session acts' own block describes.
+								 */}
+								<button
+									type="button"
+									data-draft-discard={row.key}
+									aria-label={discardDraftLabel(row.label)}
+									title={discardDraftLabel(row.label)}
+									onClick={(event) => {
+										/*
+										 * THE REPEAT-PRESS GUARD FIRST, the panel's own record
+										 * (`dropRepeatPress`): the row unmounts under the second click
+										 * of a double-click, and the row that slides up can carry its
+										 * act into the same spot. A dropped press writes nothing and
+										 * moves no caret.
+										 */
+										const button = event.currentTarget;
+										if (
+											dropRepeatPress(
+												event.detail === 0
+													? null
+													: { x: event.clientX, y: event.clientY },
+												row.key,
+											)
+										)
+											return;
+										/*
+										 * AND THE CARET LANDS SOMEWHERE, the archive's own
+										 * no-dead-cursor rule: the node the reader was on is about to
+										 * unmount. The successor's index is read BEFORE the write, and
+										 * the frame callback hands focus to the row occupying that
+										 * position - the next draft row, or the row that slid up into
+										 * the gap, or the first row of the panel when this was last.
+										 */
+										const at = [
+											...(navRef.current?.querySelectorAll(
+												"[data-draft-row]",
+											) ?? []),
+										].indexOf(button);
+										discardDraft(row.key);
+										requestAnimationFrame(() => {
+											const rows = [
+												...(navRef.current?.querySelectorAll<HTMLElement>(
+													"[data-draft-row]",
+												) ?? []),
+											];
+											const next =
+												rows[Math.min(Math.max(at, 0), rows.length - 1)] ??
+												navRef.current?.querySelector<HTMLElement>(
+													"[data-chat-row]",
+												);
+											next?.focus();
+										});
+									}}
+									className={cn(
+										"size-6 shrink-0 items-center justify-center rounded-md",
+										"hidden text-ink-dim group-hover:flex group-hover:text-ink-muted",
+										"group-focus-within:flex group-focus-within:text-ink-muted hover:text-ink!",
+									)}
+								>
+									<Trash2 className="size-4" aria-hidden="true" />
+								</button>
+							</div>
+						);
+					})}
+					{/*
+					 * THE CLEAR-ALL (operator, same message: "also a subtle clear all
+					 * UX"). It clears EXACTLY the rows this section lists - the keys
+					 * `untargetedDraftRows` produced, never a targeted/agent draft that is
+					 * not on screen here - through ONE store write (`discardDrafts`), and
+					 * it is a `data-chat-row` of its own so the arrow walk reaches it from
+					 * the rows above; clearing must not strand the caret, so focus moves
+					 * to the row that takes its place. Hidden with the section, which is
+					 * the only state that has nothing to clear.
+					 */}
+					<div className="flex justify-end pt-1">
 						<button
-							key={row.key}
 							type="button"
 							data-chat-row
-							data-draft-row={row.key}
-							aria-label={`Open ${row.label}`}
-							title={row.label}
-							onClick={() => {
-								openDraft(row.key);
-								navigate("/chat");
+							data-drafts-clear-all
+							aria-label="Clear all drafts"
+							title="Clear all drafts"
+							onClick={(event) => {
+								const button = event.currentTarget;
+								if (
+									dropRepeatPress(
+										event.detail === 0
+											? null
+											: { x: event.clientX, y: event.clientY },
+										// Its own identity in the panel's one press record: the
+										// hazard is the same one the rows guard against - the
+										// control unmounts under the second click of a
+										// double-click and a chat row takes its place.
+										"drafts:clear-all",
+									)
+								)
+									return;
+								const at = [
+									...(navRef.current?.querySelectorAll("[data-chat-row]") ??
+										[]),
+								].indexOf(button);
+								discardDrafts(draftRows.map((row) => row.key));
+								requestAnimationFrame(() => {
+									const rows = [
+										...(navRef.current?.querySelectorAll<HTMLElement>(
+											"[data-chat-row]",
+										) ?? []),
+									];
+									rows[Math.min(Math.max(at, 0), rows.length - 1)]?.focus();
+								});
 							}}
 							className={cn(
-								rowStyle,
-								"w-full text-left",
-								row.key === activeDraftKey && rowCurrent,
+								"flex h-7 items-center rounded-md px-2 text-body-sm",
+								"text-ink-dim transition-colors duration-fast ease-out-quart",
+								"hover:bg-row-hover hover:text-ink",
+								"focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
 							)}
 						>
-							<FileText
-								className="size-4 shrink-0 text-ink-dim"
-								aria-hidden="true"
-							/>
-							<span className="min-w-0 flex-1 truncate">{row.label}</span>
+							Clear all
 						</button>
-					))}
+					</div>
 				</section>
 			)}
 			{/*

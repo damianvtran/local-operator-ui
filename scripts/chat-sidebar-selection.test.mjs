@@ -515,6 +515,33 @@ const CURRENT = [
 	},
 	{
 		/*
+		 * The draft row's BOX, added with the sidebar's own discard act (operator,
+		 * 2026-09-26: "Each one should have a deletion on hover"). Same shape and
+		 * same reason as the conversation row's box above: `rowStyle`'s own `hover:`
+		 * step fires only while the pointer is over the BUTTON, and the discard act
+		 * is a SIBLING outside that button - so the box carries the row's hover step,
+		 * guarded `!current` exactly like the conversation row's, and the row keeps
+		 * its ground while the pointer is on the glyph. Resolved from the draft row's
+		 * own attribute (the box is the nearest `className={cn(` before it).
+		 *
+		 * The section's `Clear all` foot carries a row-state step too and cannot sit
+		 * inside a current row; it is accounted for in the count expectation below,
+		 * the same door the bulk read receipt's sibling took.
+		 */
+		what: "the draft row's box",
+		file: SIDEBAR,
+		expression: () => expressionBefore(SIDEBAR, "data-draft-row={row.key}"),
+		stubs: { revealArmed: true, rowBoxStyle, rowCurrent, current: true },
+		ground: true,
+		notCurrent: {
+			revealArmed: true,
+			rowBoxStyle,
+			rowCurrent,
+			current: false,
+		},
+	},
+	{
+		/*
 		 * `rowCurrent` IS STUBBED HERE SINCE ROUND 5 (design D22, agent A-7), and the stub
 		 * moving with the component is the instrument's contract rather than a detail:
 		 * the rail's current branch reads the symbol it imports from the chat panel, so a
@@ -873,7 +900,16 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// state rather than a ground, which is what this expectation exists to
 				// hold - a foot that answered the pointer with `elevated` would be the
 				// menu ground leaking into the list.
-				"hover:bg-row-hover": 12,
+				// FOURTEEN (the sidebar's own draft rows, 2026-09-26). The draft row's
+				// BOX carries the pointer's step (guarded `!current` - the `CURRENT`
+				// entry above resolves it): the discard act is a sibling of the row's
+				// button, so `rowStyle`'s own step stops at the button's edge and the
+				// act's glyph would otherwise drop the row's ground under a pointer that
+				// never left it. The section's `Clear all` foot carries one too, and it
+				// can never sit inside a current row: it is a list-level action for the
+				// whole drafts group, like the bulk read receipt's heading sibling. Both
+				// take the ROW state rather than a ground.
+				"hover:bg-row-hover": 14,
 				// `rowCurrent` (1), the ground that beats the step above by merge order.
 				// PLUS ONE: the band's view-options button paints `row-selected` while the
 				// view differs from the default (`viewIsCustom`) - the mode's own

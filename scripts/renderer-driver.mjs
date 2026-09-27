@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|none>
+ *   --scene <states|new-chat|first-send|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|drafts|none>
  *                          which built-in scene to run (default: states)
  *   --gate-state <label>   (with --scene settings-gate) what this run's backend
  *                          state is called in the frames and the log, so two
@@ -16707,6 +16707,303 @@ async function sceneConversationStart(cdp) {
 	}
 }
 
+/**
+ * `drafts`: the sidebar's DRAFTS section - the rows, the per-row discard act the
+ * pointer reveals, and the `Clear all` foot.
+ *
+ * WHY THIS SCENE EXISTS (operator, 2026-09-26: "Each one should have a deletion
+ * on hover and also a subtle clear all UX", beside the report that sent drafts
+ * were resurfacing). Three of the claims are about PIXELS and pointer state that
+ * no unit test can hold: that a row spends nothing on the reveal at rest, that
+ * the REAL pointer (not a dispatched `mouseover`) reveals the control, and that
+ * pressing either control removes exactly the rows it names. The fourth is the
+ * relaunch: a discarded draft must not come back after a reload, which is why
+ * `discardDraft` clears the composer's own row as well (`canonical-chat.test.mjs`
+ * carries the store half).
+ *
+ * NO BACKEND IS NEEDED OR WANTED: drafts are LOCAL state, so the run seeds the
+ * two stores' own `localStorage` values and reloads - the exact shape a user is
+ * in after a relaunch - rather than admitting anything on a wire. The seed is
+ * written from the harness and released by a reload, like `seedOnboardingComplete`.
+ *
+ * WRITTEN TO RUN ON BOTH TREES. Against the tree BEFORE this change the discard
+ * control does not exist: the hover frame photographs the row with nothing
+ * revealed, the presses are recorded as skipped rather than driven, and the
+ * checks that fail are the ones the change exists to turn green (the convention
+ * `conversation-start` states).
+ */
+const DRAFTS_TYPED = "draft:5b5b5b5b-0001-4000-8000-000000000001";
+const DRAFTS_STALE = "draft:6c6c6c6c-0002-4000-8000-000000000002";
+const DRAFTS_CLAIM = "draft:7d7d7d7d-0003-4000-8000-000000000003";
+const DRAFTS_TARGETED = "draft:agent:coder";
+
+/**
+ * Seed the drafts store and the composer store, then release the seed by
+ * reloading.
+ *
+ * The rows are the three shapes the section draws: a draft with typed text, one
+ * whose text came from the store's own row, and a CLAIM whose message the client
+ * never confirmed (the operator's own `deadline_exceeded` shape, which is the
+ * row that lingers longest). The targeted draft is seeded to prove `Clear all`
+ * does NOT touch it: targeted drafts are reachable by their entity row and are
+ * deliberately never listed here.
+ */
+async function seedDrafts(cdp) {
+	const seeded = {
+		drafts: {
+			[DRAFTS_TYPED]: {
+				key: DRAFTS_TYPED,
+				createRequestId: "req-typed-0001",
+			},
+			[DRAFTS_STALE]: {
+				key: DRAFTS_STALE,
+				createRequestId: "req-stale-0002",
+			},
+			[DRAFTS_CLAIM]: {
+				key: DRAFTS_CLAIM,
+				createRequestId: "req-claim-0003",
+				admissionRequestId: "req-admit-0003",
+				sessionId: "ad10bf7245e4",
+				admissionAttempted: true,
+				pending: false,
+				submittedText: "Can you check our google drive and tell me what moved",
+				submittedRendered: true,
+				errorCode: "deadline_exceeded",
+				errorRetry: true,
+				error: "Couldn't confirm your message was sent.",
+			},
+			[DRAFTS_TARGETED]: {
+				key: DRAFTS_TARGETED,
+				target: { kind: "agent", name: "coder" },
+				createRequestId: "req-targeted-0004",
+			},
+		},
+		inputRows: {
+			[DRAFTS_TYPED]: {
+				currentInput: "This session seems to be wedged, can you check it",
+				submittedMessages: [],
+				currentHistoryIndex: null,
+				replies: [],
+				attachments: [],
+			},
+			[DRAFTS_STALE]: {
+				currentInput: "Continue",
+				submittedMessages: [],
+				currentHistoryIndex: null,
+				replies: [],
+				attachments: [],
+			},
+			[DRAFTS_TARGETED]: {
+				currentInput: "A draft for an agent, which this section must not list",
+				submittedMessages: [],
+				currentHistoryIndex: null,
+				replies: [],
+				attachments: [],
+			},
+		},
+	};
+	await cdp.evaluate(`(() => {
+		const seeded = ${JSON.stringify(seeded)};
+		const read = (key) => { try { return JSON.parse(localStorage.getItem(key) || "null") || {}; } catch { return {}; } };
+		const canonical = read("canonical-sessions-storage");
+		canonical.state = { ...(canonical.state || {}), activeDraftKey: null, activeSessionId: null };
+		canonical.state.drafts = { ...(canonical.state.drafts || {}), ...seeded.drafts };
+		localStorage.setItem("canonical-sessions-storage", JSON.stringify(canonical));
+		const input = read("conversation-input-store");
+		input.state = { ...(input.state || {}) };
+		input.state.inputByConversation = { ...(input.state.inputByConversation || {}), ...seeded.inputRows };
+		localStorage.setItem("conversation-input-store", JSON.stringify(input));
+		return { drafts: Object.keys(canonical.state.drafts).length };
+	})()`);
+	await cdp.send("Page.reload", { ignoreCache: false });
+	await wait(1500);
+}
+
+async function sceneDrafts(cdp) {
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", "localOperatorDark");
+	await seedDrafts(cdp);
+	await waitForBridge(cdp);
+	await verb(cdp, "measure", '[data-chat-section="drafts"]');
+
+	const readDraftRows = () =>
+		cdp.evaluate(
+			'[...document.querySelectorAll("[data-draft-row]")].map((element) => element.getAttribute("data-draft-row"))',
+		);
+	const controlState = (attribute, key) =>
+		cdp.evaluate(
+			`(() => {
+				const element = document.querySelector(${JSON.stringify(`[${attribute}="${key}"]`)});
+				if (element === null) return null;
+				const style = getComputedStyle(element);
+				return { display: style.display, width: Math.round(element.getBoundingClientRect().width) };
+			})()`,
+		);
+	const composerRowExists = (key) =>
+		cdp.evaluate(
+			`(() => { try { const state = JSON.parse(localStorage.getItem("conversation-input-store") || "null"); return state?.state?.inputByConversation?.[${JSON.stringify(key)}] !== undefined; } catch { return null; } })()`,
+		);
+	const storedDraftExists = (key) =>
+		cdp.evaluate(
+			`(() => { try { const state = JSON.parse(localStorage.getItem("canonical-sessions-storage") || "null"); return state?.state?.drafts?.[${JSON.stringify(key)}] !== undefined; } catch { return null; } })()`,
+		);
+
+	const restRows = await readDraftRows();
+	note("the seeded rows, as the section lists them", JSON.stringify(restRows));
+	check(
+		"all three untargeted drafts are rows",
+		[DRAFTS_TYPED, DRAFTS_STALE, DRAFTS_CLAIM].every((key) =>
+			restRows.includes(key),
+		),
+		JSON.stringify(restRows),
+	);
+	check(
+		"the targeted draft is deliberately not a row",
+		!restRows.includes(DRAFTS_TARGETED),
+		JSON.stringify(restRows),
+	);
+	const restAct = await controlState("data-draft-discard", DRAFTS_TYPED);
+	check(
+		"at rest the discard control exists but spends nothing (hidden)",
+		restAct === null || restAct.display === "none",
+		JSON.stringify(restAct),
+	);
+	const restFrame = await captureSettled(cdp, "drafts-rest");
+
+	/*
+	 * The reveal is compositor state (`:hover` on the row's own box), so it can
+	 * only be produced by the REAL pointer through the input pipeline; `hoverOver`
+	 * answers where the row IS and leaves the pointer there.
+	 */
+	const rowBox = await hoverOver(cdp, `[data-draft-row="${DRAFTS_TYPED}"]`);
+	await wait(160);
+	const hoverAct = await controlState("data-draft-discard", DRAFTS_TYPED);
+	note("the discard control under the pointer", JSON.stringify(hoverAct));
+	check(
+		"the pointer reveals the discard control",
+		hoverAct !== null && hoverAct.display === "flex" && hoverAct.width > 0,
+		JSON.stringify(hoverAct),
+	);
+	check(
+		"the reveal moves no row: the hovered row's height is the height at rest",
+		restRows.length === (await readDraftRows()).length,
+		`rows ${JSON.stringify(restRows)} -> ${JSON.stringify(await readDraftRows())}`,
+	);
+	const hoverFrame = await captureSettled(cdp, "drafts-hover");
+
+	/*
+	 * THE PRESS, through the real pointer: `clickAt` moves the pointer (so the
+	 * reveal is up) and then clicks. Skipped, not driven, on a tree with no
+	 * control - the before half of this pair.
+	 */
+	if (hoverAct === null) {
+		note(
+			"discard press",
+			"no discard control exists on this tree - the press is skipped, not driven",
+		);
+	} else {
+		await clickAt(cdp, `[data-draft-discard="${DRAFTS_TYPED}"]`);
+		await wait(200);
+		const afterPress = await readDraftRows();
+		check(
+			"the press removes the row it names",
+			!afterPress.includes(DRAFTS_TYPED),
+			JSON.stringify(afterPress),
+		);
+		check(
+			"the other rows stay",
+			afterPress.includes(DRAFTS_STALE) && afterPress.includes(DRAFTS_CLAIM),
+			JSON.stringify(afterPress),
+		);
+		check(
+			"and the composer's own row for that key goes with it, so it cannot resurface",
+			(await composerRowExists(DRAFTS_TYPED)) === false,
+			`inputByConversation[${DRAFTS_TYPED}] present=${await composerRowExists(DRAFTS_TYPED)}`,
+		);
+		check(
+			"the caret lands on a row rather than the document",
+			await cdp.evaluate(
+				'document.activeElement !== null && document.activeElement.closest("[data-chat-row]") !== null',
+			),
+		);
+	}
+	const deletedFrame = await captureSettled(cdp, "drafts-deleted");
+
+	/*
+	 * Clear all. Its gate is the section's own (`draftRows.length > 0`), so on a
+	 * tree with no control the frame simply records that.
+	 */
+	const clearControl = await cdp.evaluate(
+		'(() => { const element = document.querySelector("[data-drafts-clear-all]"); if (element === null) return null; const style = getComputedStyle(element); return { display: style.display, width: Math.round(element.getBoundingClientRect().width) }; })()',
+	);
+	if (clearControl === null) {
+		note(
+			"clear-all press",
+			"no Clear all control exists on this tree - the press is skipped, not driven",
+		);
+	} else {
+		await clickAt(cdp, "[data-drafts-clear-all]");
+		await wait(250);
+		const afterClear = await readDraftRows();
+		check(
+			"Clear all removes every listed row",
+			afterClear.length === 0,
+			JSON.stringify(afterClear),
+		);
+		check(
+			"and the section goes with them",
+			(await cdp.evaluate(
+				'Boolean(document.querySelector(\'[data-chat-section="drafts"]\'))',
+			)) === false,
+		);
+		check(
+			"the targeted draft is NOT touched (it is not one of the listed rows)",
+			(await storedDraftExists(DRAFTS_TARGETED)) === true,
+		);
+		check(
+			"and its composer row survives too",
+			(await composerRowExists(DRAFTS_TARGETED)) === true,
+		);
+	}
+	const clearedFrame = await captureSettled(cdp, "drafts-cleared");
+
+	/*
+	 * THE RELAUNCH: the frames' captions are about a state that must survive the
+	 * app restarting, because the operator's report was exactly about what comes
+	 * back after one. A reload rehydrates both stores from `localStorage`, and the
+	 * deleted keys must not be in it.
+	 */
+	await cdp.send("Page.reload", { ignoreCache: false });
+	await wait(1500);
+	await waitForBridge(cdp);
+	const relaunchRows = await readDraftRows();
+	check(
+		"a relaunch does not resurrect the discarded drafts",
+		relaunchRows.length === 0,
+		JSON.stringify(relaunchRows),
+	);
+	const relaunchFrame = await captureSettled(cdp, "drafts-relaunch");
+
+	const frames = [
+		restFrame,
+		hoverFrame,
+		deletedFrame,
+		clearedFrame,
+		relaunchFrame,
+	];
+	check(
+		"every capture is a frame the app held still for, with no toast on it",
+		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: stable=${frame.stable === true} toastFree=${frame.toastFree === true}`,
+			)
+			.join(" | "),
+	);
+	return frames;
+}
+
 async function sceneNewChat(cdp) {
 	/*
 	 * Start anywhere but the chat route: `navigate("/chat")` is 80% of what this
@@ -26205,6 +26502,7 @@ async function main() {
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);
 			else if (SCENE === "btw-aside") await sceneBtwAside(cdp);
 			else if (SCENE === "authoring-refresh") await sceneAuthoringRefresh(cdp);
+			else if (SCENE === "drafts") await sceneDrafts(cdp);
 			else if (SCENE === "settings-model") await sceneSettingsModel(cdp);
 			else if (SCENE === "settings-fields") await sceneSettingsFields(cdp);
 			else if (SCENE === "settings-gate") await sceneSettingsGate(cdp);
