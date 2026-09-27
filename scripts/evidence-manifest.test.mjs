@@ -1408,6 +1408,16 @@ const STAMP_BINDING_NOTES = [
 	 * `streamRedeliveryRestampNote` is in the list for.
 	 */
 	"task17RestampNote",
+	/*
+	 * AND THE CAPTURE RIG'S OWN: the pass record's lineage gate. Its subject IS
+	 * this file's binding as well, and for the shape the entry above states - the
+	 * change moves `scripts/` only (the rig's decision and its test), it takes no
+	 * frame and reads none - so the reader is owed the pair AND the reason no
+	 * still is owed with it: this defect's reproducer is a manifest rather than a
+	 * pixel. PR #555's own is the one that cost a pass its record without moving
+	 * a byte of a frame, so the test beside it is what a reader follows.
+	 */
+	"partialCaptureContinuityRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
