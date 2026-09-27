@@ -287,16 +287,17 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 
 	if (sessionId === null) {
 		return (
-			<div className={cn("flex h-full flex-col bg-surface")}>
-				{/* The slot's bar at the slot's height, so the pane's own bar does not move
-				    between a draft and a conversation — and the CLOSE control is in it for
+			<div className={cn("flex h-full flex-col bg-canvas")}>
+				{/* The slot's bar at the slot's height and with no ground of its own, so
+				    the pane reads as one surface and the bar does not move between a
+				    draft and a conversation — and the CLOSE control is in it for
 				    the same reason every other occupant of this slot has one: a pane the
 				    user cannot close from inside is a pane they have to find the trigger
 				    for, and a draft carries the control even though a draft has no session
 				    for its `+` to act on. */}
 				<div
 					className={cn(
-						"flex h-10 shrink-0 items-center justify-between gap-2 bg-sunken px-2",
+						"flex h-10 shrink-0 items-center justify-between gap-2 px-2",
 						/*
 						 * THE CONTROLS' CORNER, RESERVED (chat redesign §J4). On Windows and Linux
 						 * Electron draws the caption buttons into the client area's top-right 40px,
@@ -491,20 +492,26 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 
 	return (
 		<div
-			// `bg-surface`, the same ground the canvas, the run panel and the browser
-			// pane take, so the four occupants of this slot read as one slot with four
-			// modes (§6.1, §9.4).
-			className={cn("flex h-full flex-col bg-surface")}
+			/*
+			 * THE SLOT'S GROUND IS THE PAGE'S, and the canvas states the rule
+			 * (`canvas/index.tsx`): this slot is part of the work plane, not a panel
+			 * ground, so it contrasts with the sidebar's `surface` by the ladder's own
+			 * `surface` -> `canvas` step and is continuous with the 32px chrome lane
+			 * `chat-layout.tsx` paints above it (§6.1, §9.4). It was `surface`, which made
+			 * these panes and the sidebar the same tone on all 59 palettes.
+			 */
+			className={cn("flex h-full flex-col bg-canvas")}
 			data-tour-tag="console-pane"
 		>
 			{/*
-			 * The pane's header: 40px and `bg-sunken`, the size and ground the slot's
-			 * other three panes state for their own bar, so the bar does not move when
-			 * the user switches mode.
+			 * The pane's header: 40px, the slot's own height, so the bar does not move
+			 * when the user switches mode. NO GROUND OF ITS OWN (`bg-sunken` until the
+			 * canvas chrome pass): the bar is transparent so the pane reads as one
+			 * surface, and the terminal below is what bounds it.
 			 */}
 			<div
 				className={cn(
-					"flex h-10 shrink-0 items-center justify-between gap-2 bg-sunken px-2",
+					"flex h-10 shrink-0 items-center justify-between gap-2 px-2",
 					/*
 					 * THE CONTROLS' CORNER, RESERVED (chat redesign §J4). On Windows and Linux
 					 * Electron draws the caption buttons into the client area's top-right 40px,

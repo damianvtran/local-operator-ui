@@ -618,10 +618,17 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 			{(files.length > 0 || scan?.paging || scan?.stopped) && (
 				<div
 					data-tour-tag="files-scanner-head"
-					className={cn(
-						"flex shrink-0 flex-col gap-2",
-						"border-hairline border-b bg-surface px-2 py-2",
-					)}
+					/*
+					 * NO GROUND AND NO RULE OF ITS OWN, and that is the pane's own
+					 * requirement rather than a preference: the search field is CONTENT of
+					 * this dock, so it sits on the dock's ground (`canvas`, `canvas/index.tsx`)
+					 * with the list beneath it. It used to take `bg-surface` plus a bottom
+					 * `hairline`, which made a third band inside one pane - the nav row's, the
+					 * search row's, then the list - and the operator's report is about exactly
+					 * that banding. The field's own `border-control` is what bounds it; the
+					 * row is separated from the list by space and by the list's own row height.
+					 */
+					className={cn("flex shrink-0 flex-col gap-2 px-2 py-2")}
 				>
 					{files.length > 0 && (
 						<div className={cn("flex items-center gap-2")}>

@@ -1832,7 +1832,26 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							 * promised rather than by capping one of the things that may join the row.
 							 */
 							className={cn(
-								"relative h-full overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart",
+								/*
+								 * NO SEAM RULE: the pane and the transcript are one plane.
+								 *
+								 * It was `border-l border-hairline`, which is the boundary this app
+								 * draws where two IN-FLOW PANELS meet whose grounds are the same
+								 * (`sidebar-navigation.tsx` draws one on the rail's trailing edge
+								 * for exactly that reason). This seam no longer qualifies: the
+								 * dock's ground is the page's `canvas` (`canvas/index.tsx` states
+								 * why), so the tone step is what separates it from the sidebar, and
+								 * a rule between two planes a tonal step already separates is a
+								 * second way of saying one thing. The operator's ask is the same
+								 * observation from the other end: a hairline here read as the
+								 * canvas being boxed off rather than docked.
+								 *
+								 * The drag affordance is unaffected: `ResizableDivider` renders
+								 * its own hover rule, and it is the same width at rest as the
+								 * shell's sidebar divider, which has never drawn a resting rule
+								 * either.
+								 */
+								"relative h-full overflow-hidden transition-[width] duration-base ease-out-quart",
 								/*
 								 * Docked: a flex item that shrinks. Overlay: lifted out of the flow at
 								 * the row's trailing edge, ABOVE the chat column (`z-20`), with the chat
@@ -1963,7 +1982,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								minWidth: 0,
 								width: effectiveRunPanelWidth,
 							}}
-							className="relative h-full shrink overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart"
+							/* No seam rule either, for the canvas wrapper's reason (above): the
+							   slot's panes share the page ground, so the tone step is the seam. */
+							className="relative h-full shrink overflow-hidden transition-[width] duration-base ease-out-quart"
 						>
 							<RunPanel
 								details={runDetails}
@@ -2031,7 +2052,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							   overlaying it. */
 							data-tour-tag="browser-pane-slot"
 							style={{ width: effectiveBrowserPanelWidth }}
-							className="relative h-full overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart"
+							/* No seam rule, for the canvas wrapper's reason (above). */
+							className="relative h-full overflow-hidden transition-[width] duration-base ease-out-quart"
 						>
 							{/*
 							 * The session id as a SCOPE rather than as a page: the pane renders the
@@ -2073,7 +2095,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						/>
 						<div
 							style={{ width: effectiveConsolePanelWidth }}
-							className="relative h-full overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart"
+							/* No seam rule, for the canvas wrapper's reason (above). */
+							className="relative h-full overflow-hidden transition-[width] duration-base ease-out-quart"
 							data-tour-tag="console-pane-slot"
 						>
 							<ConsolePane
