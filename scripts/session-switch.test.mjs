@@ -43,6 +43,7 @@ globalThis.__switchRequest = async (request) => {
 const bundle = await build({
 	stdin: {
 		contents: `export * from "./src/renderer/src/shared/store/canonical-sessions-store";
+export { hasPendingSend, retainsPendingSend } from "@shared/hooks/use-canonical-session";
 export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";`,
 		resolveDir: process.cwd(),
 	},
@@ -89,10 +90,51 @@ export const desktopResult = request => globalThis.__switchRequest(request);`,
 					() => ({ path: "echo", namespace: "echo-fixture" }),
 				);
 				builder.onLoad({ filter: /.*/, namespace: "echo-fixture" }, () => ({
-					contents: `export const echoPendingUser = () => {};
+					/*
+					 * A REAL little registry, not a recorder (agent review round 2, R2-2):
+					 * the refusal case below reads what the send wrote - entry retained,
+					 * entry SETTLED - and a no-op stub cannot tell "kept to paint the row"
+					 * from "still going out", which is the distinction the fix turns on.
+					 * Same shape `composer-send-failure` carries, including the settled
+					 * skip, so the two fixtures stand for one rule.
+					 */
+					contents: `const registry = new Map();
+globalThis.__pendingSendRegistry = registry;
+export const echoPendingUser = () => {};
 export const retractPendingUser = () => {};
 export const retractLocalEcho = () => "retracted";
 export const peekLocalEcho = () => "unseen";
+export const paintPendingSend = (identity, send) => {
+	let entries = registry.get(identity);
+	if (!entries) { entries = new Map(); registry.set(identity, entries); }
+	entries.set(send.id, { identity, id: send.id, text: send.text, images: send.images, settled: send.settled });
+};
+export const movePendingSendIdentity = (from, to) => {
+	if (from === to) return;
+	const entries = registry.get(from);
+	if (!entries) return;
+	registry.delete(from);
+	const destination = registry.get(to) ?? new Map();
+	for (const [id, entry] of entries) { entry.identity = to; destination.set(id, entry); }
+	registry.set(to, destination);
+};
+export const replacePendingSendText = (identity, id, text) => {
+	const entry = registry.get(identity)?.get(id);
+	if (entry) entry.text = text;
+};
+export const discardPendingSends = (identity) => registry.delete(identity);
+export const pendingSendForView = (identity) => {
+	const entries = registry.get(identity);
+	if (!entries) return null;
+	const first = [...entries.values()].find((entry) => entry.settled !== true);
+	return first ?? null;
+};
+export const settlePendingSend = (identity, id) => {
+	const entry = registry.get(identity)?.get(id);
+	if (entry) entry.settled = true;
+};
+export const hasPendingSend = (identity, id) => Boolean(registry.get(identity)?.has(id));
+export const retainsPendingSend = (identity) => Boolean(registry.get(identity)?.size);
 export const discardPendingEchoes = () => {};`,
 					loader: "js",
 					resolveDir: process.cwd(),
@@ -106,6 +148,9 @@ const {
 	useCanonicalSessionsStore: store,
 	admitChatDraft,
 	draftIdentityFor,
+	paneDraftKey,
+	hasPendingSend,
+	retainsPendingSend,
 	SESSION_UNVALIDATED_CODE,
 	DesktopControlError,
 } = await import(
@@ -135,6 +180,12 @@ function refusedByReadWindow(error) {
 }
 
 function reset({ draft = null } = {}) {
+	/*
+	 * The registry is MODULE state and outlives a store reset: without this,
+	 * a case reads entries the previous one left behind (`echo-delivery`'s own
+	 * `reset` clears it the same way).
+	 */
+	globalThis.__pendingSendRegistry?.clear?.();
 	calls.length = 0;
 	answer = async () => ({});
 	store.setState({
@@ -1024,6 +1075,10 @@ const CHAT_URL_BUILDERS = {
 		count: 1,
 		why: "the Schedules row's own `Open conversation`, which is also the cancel toast's path back to the conversation the confirm just promised stays",
 	},
+	"src/renderer/src/features/projects/components/project-links.tsx": {
+		count: 1,
+		why: "the Projects detail's linked-session row, which opens the conversation a project links to - the Schedules row's own case, one surface over: the session the row names may never have been opened in this window, so the row that names it has to be able to reach it",
+	},
 };
 
 /** The files that commit a switch, and why each is allowed to. */
@@ -1039,6 +1094,10 @@ const OPEN_SESSION_CALLERS = {
 	"src/renderer/src/features/schedules/components/schedules-page.tsx": {
 		count: 1,
 		why: "the Schedules row's own `Open conversation`, through the same rule - a wake's conversation is one the user may never have opened, so the row that names it has to be able to reach it",
+	},
+	"src/renderer/src/features/projects/components/project-links.tsx": {
+		count: 1,
+		why: "the Projects detail's linked-session row, through the same rule - a project's linked conversation is one the user may never have opened, so the row that names it has to be able to reach it",
 	},
 };
 
@@ -1181,5 +1240,117 @@ test("every entrance writes the switch's URL with the commit, through one rule",
 		readSource(ENTRANCE_FILES["command-palette.tsx"]).split("openConversation(")
 			.length - 1,
 		1,
+	);
+});
+
+test("U5: a pane reached by the session's own route resolves the staged draft's row", () => {
+	reset();
+	/*
+	 * THE SHAPE UX ROUND 2's U5 MET: a refused FIRST send of a New chat. The draft
+	 * row keeps its staged key (the create's answer patches only `sessionId`), and
+	 * the pane the user returns to - the session's own route, so
+	 * `activeDraftKey` is null - derives `send:<sessionId>`. That key names a row
+	 * nothing wrote, which is how the failure's sentence and both of its controls
+	 * disappeared while the row itself stayed on screen.
+	 *
+	 * The resolver and the expression it replaces are asserted BOTH ways, so the
+	 * case fails on the revision that only ever answered `send:<sessionId>`.
+	 */
+	const drafts = {
+		[DRAFT]: {
+			key: DRAFT,
+			createRequestId: "create",
+			admissionRequestId: "admit",
+			sessionId: TARGET,
+			submittedText: "Review this",
+			error: "Couldn't confirm your message was sent.",
+			errorRetry: true,
+		},
+	};
+	assert.equal(paneDraftKey(null, TARGET, drafts), DRAFT);
+	/* What the pane used to read: a miss, which is the defect. */
+	assert.equal(drafts[draftIdentityFor(null, TARGET)], undefined);
+	/* A live send that never staged a draft keeps the derived fallback. */
+	assert.equal(paneDraftKey(null, TARGET, {}), draftIdentityFor(null, TARGET));
+	/* And a staged pane still answers its own key, unchanged. */
+	assert.equal(paneDraftKey(DRAFT, TARGET, drafts), DRAFT);
+});
+
+test("U5: a refused send stops claiming in flight the moment its row states it", async () => {
+	reset();
+	/*
+	 * The refusal is a POST-PAINT failure on a live session (the general boundary
+	 * rule's arm): the row is written, and the registry entry - the pane's "a send
+	 * is still going out" - must be SETTLED with it, because the store's own
+	 * vocabulary already says so (`pending: false` in the same write). Until this
+	 * round it waited for a server read that may be incomplete or slow, and a
+	 * switch-away inside that window came back reading `waiting for the agent Ns`
+	 * for a send that was not alive (UX round 2, U5).
+	 */
+	await store.getState().openSession(TARGET);
+	store.getState().confirmSessionLive(TARGET);
+	const draftKey = `draft:${crypto.randomUUID()}`;
+	store.setState((state) => ({
+		drafts: {
+			...state.drafts,
+			[draftKey]: {
+				key: draftKey,
+				createRequestId: crypto.randomUUID(),
+				admissionRequestId: crypto.randomUUID(),
+				/*
+				 * The patch the create's answer writes (`updateDraft(key, { sessionId })`):
+				 * the row is how a pane reached by the session's own route finds it, and
+				 * it is what makes this the staged-draft shape rather than a bare one.
+				 */
+				sessionId: TARGET,
+			},
+		},
+	}));
+	answer = async () => {
+		throw new Error("runtime_unreachable");
+	};
+	await assert.rejects(admitChatDraft(draftKey, SEND, TARGET));
+
+	const drafts = store.getState().drafts;
+	assert.notEqual(drafts[draftKey].error, undefined);
+	/* The row is found by the route's own pane - the same resolution as above. */
+	assert.equal(paneDraftKey(null, TARGET, drafts), draftKey);
+	const entries = globalThis.__pendingSendRegistry.get(TARGET);
+	const entry = entries ? [...entries.values()][0] : null;
+	assert.ok(entry, "the entry is RETAINED - it is the row's home");
+	/*
+	 * AND THE PANE'S OWN QUESTION STILL ANSWERS YES (membership, not liveness):
+	 * `chat-page`'s failure arm asks the registry whether this send painted a row
+	 * before it lets the ROW be the one statement of the failure - a liveness
+	 * predicate here would answer null for every post-paint failure and put the
+	 * composer's alert back over the row (measured on the re-shoot's first run).
+	 * The id is the row's own, exactly as the pane reads it off `drafts[key]`.
+	 */
+	const advertisedId = store.getState().drafts[draftKey]?.admissionRequestId;
+	assert.equal(typeof advertisedId, "string");
+	assert.equal(
+		hasPendingSend(TARGET, advertisedId),
+		true,
+		"the pane's painted predicate answers on membership after the settle",
+	);
+	/*
+	 * AND THE COMPOSER'S GATE READS THE SAME DISTINCTION (the re-shoot's J4 arm):
+	 * `retainsPendingSend` says a ROW exists, so the composer keeps its mouth shut
+	 * while `pendingSendForView` - liveness - rightly says the claim is answered.
+	 */
+	assert.equal(retainsPendingSend(TARGET), true);
+	assert.equal(
+		entries
+			? [...entries.values()].filter((e) => e.settled !== true).length
+			: 0,
+		0,
+	);
+	assert.equal(entry.settled, true, "and SETTLED - the send is not alive");
+	assert.equal(
+		entries
+			? [...entries.values()].filter((e) => e.settled !== true).length
+			: 0,
+		0,
+		"no entry still answers `still going out`",
 	);
 });

@@ -498,7 +498,19 @@ export type DesktopFeature =
 	 * advertises but cannot exercise. It lands with the drag layer, which is when a
 	 * backend that lacks it must start gating something.
 	 */
-	| "peers";
+	| "peers"
+	/*
+	 * The Projects surface: the tab, its CRUD, the milestone routes and the `@`
+	 * picker's project section (`/v1/desktop/projects*`).
+	 *
+	 * ONE key for the whole surface rather than one per route, because the store
+	 * ships as a unit: the backend release that serves the listing is the release
+	 * that serves the milestones. Absent here means the sidebar mounts no
+	 * Projects row, the palette offers no entry, and the `@` picker keeps its
+	 * file-only shape - an older backend renders EXACTLY the surface this app
+	 * shipped before, rather than a tab that 404s on its first read.
+	 */
+	| "projects";
 
 /**
  * WHY a negotiated feature surface may not be offered.

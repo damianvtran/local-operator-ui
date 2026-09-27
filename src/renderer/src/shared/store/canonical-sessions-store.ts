@@ -11,10 +11,13 @@ import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
 // registry of mounted transcripts, so the store never touches React state and
 // the dependency stays one-way (the hook does not import this store).
 import {
-	discardPendingEchoes,
-	echoPendingUser,
+	discardPendingSends,
+	hasPendingSend,
+	movePendingSendIdentity,
+	paintPendingSend,
 	peekLocalEcho,
-	retractPendingUser,
+	replacePendingSendText,
+	settlePendingSend,
 } from "@shared/hooks/use-canonical-session";
 /*
  * The composer's own store, imported for the ONE return path (`returnPayload`)
@@ -395,6 +398,20 @@ export type ChatDraft = {
 	submittedAttachments?: string[];
 	submittedImages?: ChatImage[];
 	submittedMode?: "prompt" | "steer";
+	/**
+	 * When the CURRENT attempt was issued, from the press's own clock - the
+	 * anchor the wait line's clock counts from.
+	 *
+	 * WHY THE ROW CARRIES IT RATHER THAN THE PANE. The wait this number describes
+	 * starts at Enter and outlives the pane that pressed it (the identity flip
+	 * remounts, a switch away and back remounts again), and the working line's
+	 * own contract is that the number never restarts under the reader. A pane's
+	 * own mount time cannot count from before the pane existed, and re-deriving
+	 * from `pending` alone would restart the clock at every remount - so the
+	 * anchor is a persisted field of the CLAIM, written in the same update that
+	 * writes `pending` and `submittedText`, and read by whoever paints the line.
+	 */
+	submittedAt?: number;
 	/**
 	 * The text this request actually put on the wire, pinned at the first attempt.
 	 *
@@ -1340,6 +1357,49 @@ export function draftIdentityFor(
 }
 
 /**
+ * The draft ROW a pane's conversation actually lives on.
+ *
+ * WHY THE KEY ALONE IS NOT ENOUGH (UX round 2, U5): a staged draft KEEPS its
+ * `draft:<uuid>` key for its whole life - the key is where the text, the claim
+ * and the failure are written, and the create's answer patches only the row's
+ * `sessionId` field - while `draftIdentityFor` answers
+ * `activeDraftKey ?? send:<sessionId>`. The two disagree the moment a pane is
+ * reached by the session's own route (the sidebar's row, a return after a
+ * switch-away, a deep link): the derived key names a row nothing ever wrote, so
+ * the pane renders no statement and no controls. Measured on the round-2 walk
+ * and re-produced by `--scene conversation-start-away-failure`: a refusal up on
+ * the row, a switch away and straight back, and the failure's whole line - the
+ * sentence and both controls - gone while the row itself was still there.
+ *
+ * So the lookup resolves by BELONGING - the same predicate the resolution
+ * writes through (`draftBelongsToSession`) - and only falls back to the derived
+ * `send:<sessionId>` shape when no row owns the conversation, which is exactly
+ * the live-send-that-never-staged-one case that fallback was for. Among several
+ * owned rows the one CARRYING a row (a claim, a submission, a failure) wins; a
+ * bare row with none of those has nothing to show anyway.
+ */
+export function paneDraftKey(
+	draftKey: string | null,
+	sessionId: string | null | undefined,
+	drafts: Record<string, ChatDraft>,
+): string | null {
+	if (draftKey) return draftKey;
+	if (!sessionId) return null;
+	const owned = Object.entries(drafts).filter(([, draft]) =>
+		draftBelongsToSession(draft, sessionId),
+	);
+	const carrying = owned.find(
+		([, draft]) =>
+			draft.submittedText !== undefined ||
+			draft.undelivered !== undefined ||
+			draft.error !== undefined ||
+			draft.admissionAttempted === true ||
+			draft.pending === true,
+	);
+	return (carrying ?? owned[0])?.[0] ?? `send:${sessionId}`;
+}
+
+/**
  * What React keys the chat panel on, and therefore what makes it remount.
  *
  * The precedence is `id ?? draftKey` and NOT the reverse, because the two name
@@ -1427,13 +1487,16 @@ export function panelIdentityOfView(
  * Whether a send failed BEFORE the owner could have admitted anything.
  *
  * ONE definition, read by everything that has to act on the answer. Inside this
- * module it drives both the echo's retraction and the `admissionAttempted`
- * un-latch, which must not drift apart - they are two answers to the same
- * question. Outside it, the composer reads it to decide whether a failed send's
- * text belongs BACK in the box (`false` here) or must stay out of it because the
- * message may be on the owner and an echo of it is still painted in the
- * transcript (`true`). A second copy of this predicate is how the two consumers
- * come to disagree about one failure.
+ * module it drives the `not_sent` class (`sendFailureClass` below, whose arm
+ * decides the sentence and whether a press is offered) and the
+ * `admissionAttempted` un-latch, which must not drift apart - they are two
+ * answers to the same question. It is EXPORTED for the suites; no app surface
+ * reads it directly, because since S4 the store's failure arm returns nothing
+ * to the composer for a failure raised after the row was painted: the row is
+ * the message's home (`Send again`, and the user's own `Edit` through
+ * `returnPayload`), and the only payload that travels back to the box is the
+ * user's deliberate one. A second copy of this predicate is how the two
+ * consumers come to disagree about one failure.
  *
  * FOUR FAMILIES, and each is a refusal raised before the prompt can reach the
  * session, so the message provably does not exist on the owner.
@@ -1527,34 +1590,6 @@ export function isRefusedBeforeAdmission(error: unknown): boolean {
 			error.code === UNREADABLE_ATTACHMENT_CODE ||
 			isStoreWriteRefusal(error.code))
 	);
-}
-
-/**
- * Put an unconfirmed message back in the composer that sent it.
- *
- * THE ONE PATH A FAILED SEND TAKES BACK. Every failure class ends here - a
- * provable refusal, an unknown outcome, a conversation that is gone - so there is
- * one written record of what "hand the payload back" means rather than a restore
- * in the composer hook (which only works while the component that sent it stays
- * mounted), a prop threaded down from the pane, and the pane's own adoption
- * effect. That trio is what the operator's screen showed: an empty box, a
- * paragraph explaining that a message was being kept somewhere else, and two
- * links to get it back.
- *
- * `from` is the identity the composer had when it pressed Enter and `to` the one
- * the conversation lives under NOW. They differ on the New-chat path, where the
- * session is created inside the send and the pane's identity flips from the draft
- * key to the session id: the composer that pressed is unmounted by the time the
- * failure lands, so anything it still held moves across with the payload (see
- * `returnInFlight`). Nothing is left behind an identity no pane will show again.
- *
- * A STORE WRITE, not a returned value, deliberately: in the third case the user
- * has navigated to another conversation and the message is simply waiting in that
- * conversation's composer when they come back, which is one of the things the
- * operator asked for.
- */
-export function returnPayloadToComposer(from: string, to: string): void {
-	useConversationInputStore.getState().returnInFlight(from, to);
 }
 
 /**
@@ -1722,6 +1757,115 @@ export function migrateHeldClaim(
 }
 
 /**
+ * Put THIS build's failed row back on screen after a reload.
+ *
+ * WHY IT IS NEEDED AT ALL (S6). The registry is process state: a reload starts
+ * with nothing retained, and the row the user was looking at when the send
+ * failed used to come home through the COMPOSER instead (the payload was handed
+ * back and the box was the message's home). S4 moved that home onto the row - and
+ * a row that only exists in memory would leave the conversation silently empty
+ * after a reload, with the payload no longer guaranteed to come home either. So
+ * the row is re-synthesised from the draft's own claim fields, which ARE
+ * persisted: the request id (`admissionRequestId`), the text the row showed when
+ * it failed (`submittedRendered`, pinned before the wire - the typed payload when
+ * the seam never ran), and the images it was painted with.
+ *
+ * THE GUARDS, one by one:
+ *
+ *  - `error` present AND `errorRetry` present: a failure THIS build recorded and
+ *    the user has not resolved. Every path that ends a claim clears one of those
+ *    (the server's later answer, a retry that landed, the user's own `Edit` on a
+ *    row that provably never left), and the released app's rows carry no
+ *    `errorRetry` at all - `migrateHeldClaim` above owns those.
+ *  - the registry does not already hold it: in the live process the press's own
+ *    paint is still there, and the server's own reconciliation
+ *    (`resolveObservedPendingSends`) drops the entry the moment the durable row
+ *    is observed - which is the other half of T6, and why this cannot resurrect
+ *    a message the owner has answered for.
+ *
+ * Idempotent by construction: the first call paints, every later one sees the
+ * entry and returns false. Run from the pane that is showing the conversation,
+ * beside `migrateHeldClaim` - the pane is the only place with the fact that the
+ * row is still on screen at all (the same R6 argument the migration carries).
+ *
+ * TWO SHAPES CARRY A ROW BACK, and the second one arrived with design review
+ * round 1's D2: an UNRESOLVED failure (`error` + `errorRetry`, S6) and a claim
+ * the server RESOLVED AS UNDELIVERED (`undelivered`, whose row is the message's
+ * fate statement and its remedy). The resolved shape used to be refused here
+ * because `resolveHeldFromServer` clears exactly the fields the failure arm
+ * demands - `submittedText`, `error`, `errorRetry` - so a second reload after
+ * the resolution painted nothing: no row, no line, and a payload that is
+ * deliberately not in the composer either, which is the message surviving
+ * nowhere at all. `undelivered` carries `recordId`/`text`/`attachments`, so the
+ * row is re-painted under the id the durable row would carry, with the §F3 line
+ * (which reads the same field) supplying the sentence and the two controls.
+ */
+export function resynthesisePendingSend(
+	key: string,
+	draft: ChatDraft | undefined,
+): boolean {
+	if (!draft) return false;
+	const resolved = draft.undelivered;
+	const submittedText = draft.submittedText;
+	const failed =
+		submittedText !== undefined &&
+		draft.error !== undefined &&
+		draft.errorRetry !== undefined;
+	if (!resolved && !failed) return false;
+	const identity = composerIdentityFor(key, draft.sessionId);
+	if (resolved) {
+		/*
+		 * The RESOLVED arm: the id and the text are the resolution's own record, and
+		 * there are no images to restore - `undelivered` keeps the attachment PATHS
+		 * (the payload basis), not encoded bytes, and a row that showed none at paint
+		 * time must not invent them. The line's controls act on the same text.
+		 *
+		 * PAINTED SETTLED, and the guard is membership rather than liveness: the
+		 * claim's outcome is known (that is what the record IS), so this entry keeps
+		 * painting the row without answering "still going out" for it - the
+		 * distinction a NEXT message on the same conversation needed, because the
+		 * oldest entry is the one every pending reader names (see `settled`).
+		 */
+		if (hasPendingSend(identity, resolved.recordId)) return false;
+		paintPendingSend(identity, {
+			id: resolved.recordId,
+			text: resolved.text,
+			images: [],
+			settled: true,
+			submittedAt: draft.submittedAt,
+		});
+		return true;
+	}
+	// The failure arm's own guard, repeated as a narrowing rather than trusted
+	// from a boolean: `submittedText` is what the row shows when nothing was
+	// pinned, and the renderer reads it below.
+	if (submittedText === undefined) return false;
+	const id = draft.admissionRequestId;
+	if (hasPendingSend(identity, id)) return false;
+	paintPendingSend(identity, {
+		id,
+		/*
+		 * The text the ROW showed when the failure landed, not the payload basis:
+		 * the seam's substitution is what the wire carried and what the row was
+		 * spliced to, and it is pinned before the attempt. `submittedText` is the
+		 * fallback for the classes whose failure came before the seam.
+		 */
+		text: draft.submittedRendered ?? submittedText,
+		/* The press's clock anchor survives with the row; see `PendingSend`. */
+		submittedAt: draft.submittedAt,
+		// The same id shape the press's own paint used, so a later owner row for
+		// this id coalesces with it rather than sitting beside it.
+		images: (draft.submittedImages ?? []).map((image, index) => ({
+			id: `${id}:${index}`,
+			data: image.data_b64,
+			attachment: null,
+			mimeType: image.mime_type,
+		})),
+	});
+	return true;
+}
+
+/**
  * Whether the payload a composer holds is the one the claim was issued for.
  *
  * The retry rule's one comparison, and it is over the payload the OWNER will
@@ -1844,10 +1988,11 @@ export async function admitChatDraft(
 	},
 	sessionId?: string,
 	/**
-	 * Called when the optimistic echo is applied to a mounted transcript, i.e.
-	 * when the message is actually on screen. Passed straight to
-	 * `echoPendingUser`; the composer is the only caller that has anything to do
-	 * with the answer (see `PendingEcho` in `use-canonical-session`).
+	 * Called when the optimistic row is PAINTED - i.e. when the message is
+	 * actually on screen. It fires at the press now (the paint happens before
+	 * `sessions.create`), passed straight to `paintPendingSend`; the composer is
+	 * the only caller that has anything to do with the answer (see `PendingSend`
+	 * in `use-canonical-session`).
 	 */
 	onEchoPainted?: () => void,
 	/**
@@ -1977,6 +2122,13 @@ export async function admitChatDraft(
 		previous?.submittedText === undefined || replay
 			? (previous?.admissionRequestId ?? crypto.randomUUID())
 			: crypto.randomUUID();
+	/*
+	 * ONE PRESS, ONE ANCHOR (agent review round 2, R2-5): the same number goes on
+	 * the draft row (the panes' read) and on the registry entry painted below
+	 * (which survives remounts - see `PendingSend.submittedAt`), so the wait
+	 * clock cannot be two clocks.
+	 */
+	const submittedAt = Date.now();
 	store.updateDraft(key, {
 		...draft,
 		/*
@@ -2002,7 +2154,54 @@ export async function admitChatDraft(
 		 */
 		error: undefined,
 		errorCode: undefined,
+		// The press's own anchor for the wait line's clock, written with the
+		// claim it belongs to: see `submittedAt` for why the row carries it.
+		submittedAt,
 	});
+	/*
+	 * THE PAINT MOVES TO THE PRESS, AND THAT IS THE HALF OF THE FELT-LATENCY FIX
+	 * THAT WAS STILL MISSING.
+	 *
+	 * The echo used to be fired after the create and the credential seam, so on a
+	 * New chat the user watched an emptied composer and an empty transcript for
+	 * the whole create hop (~1.15 s on a cold runtime), and the row could only
+	 * reach the replacement panel through a buffered drain. Painting here instead
+	 * removes both: the draft pane has registered under its own identity since
+	 * its first keystroke, so the row lands SYNCHRONOUSLY with the press and
+	 * `onEchoPainted` releases the composer's text in the same commit (AC2).
+	 *
+	 * The identity is the PANE's, not the session's, and that distinction is
+	 * load-bearing: `panelIdentityFor` answers the draft key while no session
+	 * exists, which is exactly the identity the draft pane is registered under,
+	 * while a `send:<id>` row addresses the session itself. The re-key to the
+	 * created session happens at the id's own patch point below, in the same
+	 * synchronous block, so no frame between the two ever addresses an identity
+	 * nobody holds.
+	 *
+	 * Keyed by `admissionRequestId` - the id the owner gives the durable row - so
+	 * this coalesces with `message_start` instead of duplicating it. See
+	 * `appendPendingUser`.
+	 */
+	const paintIdentity =
+		panelIdentityFor(
+			key.startsWith("draft:") ? key : null,
+			sessionId ?? draft.sessionId,
+		) ?? null;
+	if (paintIdentity)
+		paintPendingSend(paintIdentity, {
+			id: admissionRequestId,
+			submittedAt,
+			text,
+			// Same id shape `extractImages` gives the owner's row, so the coalesced
+			// record keeps its image keys across the swap.
+			images: images.map((image, index) => ({
+				id: `${admissionRequestId}:${index}`,
+				data: image.data_b64,
+				attachment: null,
+				mimeType: image.mime_type,
+			})),
+			onPainted: onEchoPainted,
+		});
 	/*
 	 * Whether the message request was ISSUED - the store's own latch, read at the
 	 * catch to decide whether an owner row could possibly exist. Local rather than
@@ -2011,9 +2210,9 @@ export async function admitChatDraft(
 	 * with itself.
 	 */
 	let attempted = replay;
-	// Declared outside the try because the catch needs it to address the echo:
+	// Declared outside the try because the catch needs it to address the row:
 	// `draft` is the pre-send snapshot, so reading `draft.sessionId` there would
-	// miss a session this very call created and leave its echo unretractable.
+	// miss a session this very call created and leave its row unretractable.
 	let id = sessionId ?? draft.sessionId;
 	/*
 	 * WHICH REQUEST THE FAILURE CAME FROM, and the reason this is recorded rather
@@ -2060,6 +2259,35 @@ export async function admitChatDraft(
 					useCanonicalSessionsStore.getState().error ?? "Chat could not start.",
 				);
 			store.updateDraft(key, { sessionId: id });
+			/*
+			 * THE RE-KEY RIDES THE SAME SYNCHRONOUS BLOCK as the id's own patch,
+			 * and that is a requirement rather than tidiness: the panel keyed on the
+			 * new id mounts on the commit that follows this block, and its first
+			 * frame is seeded from the registry (`seedPendingSends`). Re-keyed after
+			 * an await - or in an effect - the replacement panel would paint an
+			 * empty transcript for a frame and then receive the row through the
+			 * drain, which is the flash the design's J1/J2 forbid. `movePendingSendIdentity`
+			 * is therefore called only from here, between the patch and anything
+			 * that can await.
+			 */
+			if (paintIdentity) movePendingSendIdentity(paintIdentity, id);
+			/*
+			 * AND THE CATALOGUE IS RE-READ HERE (S5), on the create's OWN answer
+			 * rather than after the send resolves. The sidebar's draft row drops the
+			 * moment `sessionId` is patched on the row (`draft-rows.ts` condition 1)
+			 * while the session row only arrives with a catalogue answer - and the
+			 * post-send read below lives in the PANE that pressed, so a user who
+			 * switched away has only the 30 s poll; between the two the conversation
+			 * is in neither list. Issuing the read here makes the appearance overlap
+			 * the disappearance instead of leaving a gap.
+			 *
+			 * ONE READ, NOT A SECOND REFRESH POLICY: `fetchSessions` coalesces
+			 * concurrent catalogue reads (`coalesceSessionCatalogueRequest`), so the
+			 * pane's own post-send read joins this one in the common path and costs
+			 * nothing extra. The post-send read STAYS - it re-reads once the message
+			 * is admitted, which is an answer this one predates.
+			 */
+			void store.fetchSessions();
 		}
 		// From here the outcome is unknowable on failure: the owner may have
 		// admitted the command before the response was lost.
@@ -2117,44 +2345,19 @@ export async function admitChatDraft(
 			submittedRendered: rendered,
 		});
 		/*
-		 * Paint the message BEFORE the await, not after it.
+		 * THE ROW IS ALREADY ON SCREEN: it was painted at the press, and the seam's
+		 * answer only ever REPLACES its text - `rendered` is the same message with
+		 * its credential markers substituted, so the row's identity (the request id)
+		 * and its position are unchanged (one splice, same row; risk R4). A seam
+		 * that answered with the unchanged text is a no-op by construction.
 		 *
-		 * This is the whole felt-latency fix: the message request spends ~1.15 s
-		 * engaging a cold runtime on a session nobody warmed, and until now the
-		 * user's text sat in the composer for all of it with nothing on screen.
-		 * The echo is synchronous, so the text moves from box to transcript in
-		 * one frame regardless of what the backend costs.
-		 *
-		 * "Synchronous" is exact only when a transcript for this session is already
-		 * mounted. On the New-chat path there is none - the panel keyed on the id
-		 * this block is about to mint does not exist yet - so the echo buffers and
-		 * lands when that panel mounts, one create hop later. `onEchoPainted` is
-		 * what keeps the composer honest there: the box holds the text until the
-		 * echo is actually painted rather than until this line runs. What that means
-		 * mechanically is worth spelling out, because the callback does NOT clear the
-		 * box the user is looking at: the drain delivers it into the composer this
-		 * `updateDraft` has already unmounted, and the interval ends because the panel
-		 * that replaces it never held the text and seeds its first state from the
-		 * buffer (U3, `seedPendingEchoes`).
-		 *
-		 * Keyed by `admissionRequestId` — the id the owner gives the durable row
-		 * — so this coalesces with `message_start` instead of duplicating it.
-		 * See `appendPendingUser`.
+		 * The old order fired the echo HERE - after the create, after the seam -
+		 * which is what put the row behind the whole engage and forced the drain's
+		 * buffering. Nothing about the felt-latency fix is deferred to this line
+		 * any more: by the time it runs the user has been looking at their message
+		 * for the create hop, and this only settles its final text.
 		 */
-		echoPendingUser(
-			id,
-			admissionRequestId,
-			rendered,
-			images.map((image, index) => ({
-				// Same id shape `extractImages` gives the owner's row, so the
-				// coalesced record keeps its image keys across the swap.
-				id: `${admissionRequestId}:${index}`,
-				data: image.data_b64,
-				attachment: null,
-				mimeType: image.mime_type,
-			})),
-			onEchoPainted,
-		);
+		if (id) replacePendingSendText(id, admissionRequestId, rendered);
 		inFlight = "sessions.message";
 		await messageWithBusyResend({
 			op: "sessions.message",
@@ -2237,12 +2440,24 @@ export async function admitChatDraft(
 		 * pane's reconciliation re-reads the verdict when a panel mounts.
 		 */
 		let delivered = false;
-		if (id && attempted) {
-			if (klass === "unknown") {
-				delivered = peekLocalEcho(id, admissionRequestId) === "owner";
-			} else {
-				retractPendingUser(id, admissionRequestId);
-			}
+		/*
+		 * THE ROW LIVES UNDER THE IDENTITY THE PAINT USED, and at the catch that is
+		 * whichever identity the send has reached: the session id once the create
+		 * answered (the move above put it there), the pane's own key while it has
+		 * not. Reading `id` alone missed the create-stage row - the one this change
+		 * newly paints - which is what `rowIdentity` is for.
+		 */
+		const rowIdentity = id ?? paintIdentity ?? undefined;
+		if (rowIdentity && klass === "unknown") {
+			/*
+			 * The one question the store still asks its transcript: did the owner's own
+			 * row for this id arrive anyway (the response was lost, the message landed)?
+			 * `peekLocalEcho` because for an unknown outcome the row must NOT be
+			 * retracted before the answer is read - the verdict and the retraction would
+			 * race, and the losing order deletes a durable message.
+			 */
+			delivered =
+				attempted && peekLocalEcho(rowIdentity, admissionRequestId) === "owner";
 		}
 		/*
 		 * WHAT A FAILURE LEAVES ON THE ROW: the LATCH only for an unknown outcome, and
@@ -2281,53 +2496,109 @@ export async function admitChatDraft(
 			errorRetry: copy.retry,
 		});
 		/*
-		 * THE ONE RETURN PATH, for all three classes, and it is the point of this
-		 * change: whatever happened to the request, the user's message is back in
-		 * the composer of the conversation that sent it - text, chips and staged
-		 * replies - with one sentence and at most Retry and Clear beside it. There
-		 * is no second copy of it anywhere and nothing to restore.
-		 *
-		 * `from` is the identity the composer pressed under and `to` the one the
-		 * conversation has now; on the New-chat path they differ, and the payload
-		 * that was staged under the draft key moves across with it.
+		 * DELIVERED AFTER ALL: the send is a success, so the composer stays empty,
+		 * nothing is handed back, and the draft row retires exactly as it does on the
+		 * acknowledged path. The pane's reconciliation would reach the same answer a
+		 * moment later from the transcript; resolving here is what saves the user a
+		 * frame in which their message appeared to have failed when it had not.
 		 */
-		if (!delivered) {
-			const to = id ?? draft.sessionId;
-			const composerKey = composerIdentityFor(key, to);
-			returnPayloadToComposer(
-				panelIdentityFor(
-					key.startsWith("draft:") ? key : null,
-					draft.sessionId,
-				) ?? composerKey,
-				composerKey,
-			);
-			throw leadingSlash
-				? new DesktopControlError(
-						422,
-						LEADING_SLASH_MESSAGE,
-						error,
-						LEADING_SLASH_CODE,
-					)
-				: error;
+		if (delivered) {
+			// `delivered` is only ever set with an id in hand (the branch above), so
+			// this is the compiler's need and not a second decision.
+			if (id) {
+				store.finishDraft(key, id);
+				useConversationInputStore
+					.getState()
+					.settleInFlight([composerIdentityFor(key, id)]);
+				return id;
+			}
+			return null;
 		}
 		/*
-		 * Delivered after all: the send is a success, so the composer stays empty,
-		 * nothing is handed back, and the draft row retires exactly as it does on
-		 * the acknowledged path. The pane's reconciliation would reach the same
-		 * answer a moment later from the transcript; resolving here is what saves
-		 * the user a frame in which their message appeared to have failed when it
-		 * had not.
+		 * NO RETURN PATH FOR THE ROW CASE (S4), AND THAT IS THE BOUNDARY RULE.
+		 *
+		 * "A failure raised after the optimistic row was painted belongs to the row;
+		 * before it, the composer." Everything that reaches this catch was raised
+		 * after the paint - the paint is the first thing `admitChatDraft` does, and
+		 * the failures that predate it (the send lock, the read window, planner
+		 * refusals) never entered this function - so the payload does NOT come home,
+		 * and the row the user is looking at carries the class's sentence and its
+		 * remedies instead (`chat-page.tsx` renders them from this row; the
+		 * transcript line is the existing §F3 surface, generalised from the unknown
+		 * class to every one).
+		 *
+		 * THIS DELIBERATELY REPLACES THE PREVIOUS COMPANY LINE, #495's "a failed
+		 * message comes back to the composer": for a POST-PAINT failure that was
+		 * one event with two homes - the message on screen AND the same text back in
+		 * the box - and the box's copy was the one that could be sent twice. The fix
+		 * keeps the message where the user can see it and edits it there (`Edit`
+		 * returns the payload; `Send again` replays under the same rules), and leaves
+		 * the composer for the failures that were never painted - its copy for those
+		 * is unchanged.
+		 *
+		 * What stays on the row is the payload BASIS (`submittedText` and friends,
+		 * written above): a fingerprint for the unchanged-retry rule, not a claim
+		 * anybody has to release.
 		 */
-		// `delivered` is only ever set with an id in hand (the branch above), so
-		// this is the compiler's need and not a second decision.
-		if (id) {
-			store.finishDraft(key, id);
+		/*
+		 * AND THE COMPOSER'S OWN RECORDS END WITH THE ATTEMPT (S4).
+		 *
+		 * `settleInFlight` is this store's "nothing is in flight or waiting" write, and
+		 * leaving the record standing would undo the boundary rule three ways: the
+		 * row-line's `Edit` calls `returnPayload`, whose guard refuses while `inFlight`
+		 * is set (a control that cannot work); `rehydrateInputRows` folds a persisted
+		 * `inFlight` back into the box on the next reload, which is exactly the second
+		 * home this change moved the message out of; and the record would keep
+		 * claiming an attempt the row is already carrying.
+		 *
+		 * THE MOVE ACROSS THE FLIP IS STILL OWED (U14/Q7), AND IT IS STILL MADE. On
+		 * the arm that creates its session mid-send, anything the PRESSED row holds
+		 * (text typed during the create hop, a chip attached there) belongs to the
+		 * conversation that now exists, and dropping it stranding the user's own
+		 * words under an identity no pane shows is the defect U14 measured. So the
+		 * records are settled FIRST and `returnInFlight` then performs its move -
+		 * with nothing left in flight, its payload fold has nothing to fold, which is
+		 * what keeps the message out of the box while the user's own content still
+		 * crosses (the design's "`returnInFlight` is not called" is exactly this:
+		 * the payload does not come home).
+		 */
+		const composerTo = composerIdentityFor(key, id ?? draft.sessionId);
+		const settleIds =
+			paintIdentity && paintIdentity !== composerTo
+				? [paintIdentity, composerTo]
+				: [composerTo];
+		useConversationInputStore.getState().settleInFlight(settleIds);
+		if (paintIdentity && paintIdentity !== composerTo)
 			useConversationInputStore
 				.getState()
-				.settleInFlight([composerIdentityFor(key, id)]);
-			return id;
-		}
-		return null;
+				.returnInFlight(paintIdentity, composerTo);
+		/*
+		 * AND THE REGISTRY'S OWN CLAIM ENDS WITH THE ATTEMPT (UX round 2, U5), the
+		 * same statement `settleInFlight` makes directly above: a recorded failure
+		 * means the send is NOT alive - `pending` goes false on the row in this same
+		 * catch - so the retained entry must stop answering "still going out" the
+		 * moment the sentence is stated, rather than waiting for a server read that
+		 * may never conclude (an incomplete page proves nothing, and
+		 * `resolveHeldFromServer` rightly refuses to conclude from one). The entry
+		 * itself STAYS: it is the row's home, and `settled` is exactly the difference
+		 * between "kept to paint the row" and "still in flight" (see
+		 * `PendingSend.settled`).
+		 *
+		 * Both identities, because the claim travels: `rowIdentity` is where the row
+		 * lives now (the session once the create answered, the pane's key before it),
+		 * and `key` covers a draft the re-key has not reached. A settle for an
+		 * identity with no entry is a no-op.
+		 */
+		if (rowIdentity) settlePendingSend(rowIdentity, admissionRequestId);
+		if (key !== rowIdentity) settlePendingSend(key, admissionRequestId);
+		throw leadingSlash
+			? new DesktopControlError(
+					422,
+					LEADING_SLASH_MESSAGE,
+					error,
+					LEADING_SLASH_CODE,
+				)
+			: error;
 	}
 }
 
@@ -5805,7 +6076,16 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					const abandoned =
 						drafts[key]?.sessionId ??
 						(key.startsWith("send:") ? key.slice("send:".length) : undefined);
-					if (abandoned) discardPendingEchoes(abandoned);
+					/*
+					 * BOTH HOMES GO, because the entry's identity moves with the send:
+					 * before the create answers it lives under the draft key, after it
+					 * under the session id (`movePendingSendIdentity`), and a discard can
+					 * land on either side of that hop. The raw key is named
+					 * unconditionally - for a `send:<id>` row there is nothing under it -
+					 * and the session id when the row carries one.
+					 */
+					discardPendingSends(key);
+					if (abandoned && abandoned !== key) discardPendingSends(abandoned);
 					delete drafts[key];
 					/*
 					 * Clear the pointer as well as the draft, the way
@@ -5901,6 +6181,16 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						errorRetry: _errorRetry,
 						...kept
 					} = draft;
+					/*
+					 * AND THE CLAIM IS ANSWERED FOR THE TAB THAT NEVER RELOADS (design review
+					 * round 1, D1/D2, as the re-shoot extended it): the entry stays - it is the
+					 * row's home - but it is marked ANSWERED, so the very frame the
+					 * resolution lands on stops answering "still going out" to the pane's
+					 * latch and to any next message sent on this conversation. The identity is
+					 * the session itself: the re-key moved the entry there at the create, and
+					 * a live-session send was addressed by it from the press.
+					 */
+					if (!delivered) settlePendingSend(sessionId, recordId);
 					return {
 						drafts: {
 							...drafts,

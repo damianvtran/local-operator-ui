@@ -697,8 +697,35 @@ test("the palette's destinations are the rail's destinations (R1-3)", () => {
 	);
 	assert.match(
 		palette,
-		/meshMembership === "member" \? \[\.\.\.PAGES, MESH_PAGE\] : PAGES/,
+		/meshMembership === "member" \? \[MESH_PAGE\] : \[\]/,
 		"gated by the SAME rule as the rail row, so the two lists cannot disagree",
+	);
+	/*
+	 * ONE memo, and main's Projects gate lives INSIDE it (the fold onto `a9f4b1d7f4`): main
+	 * filtered `PAGES` inline at the call site while this branch computed the mesh row in a
+	 * memo of its own, and two filters is how the palette, the rail and the route drift
+	 * apart. The pin asserts the shape that makes that impossible rather than the shape of
+	 * either side's edit - the destination set is computed once and handed on.
+	 */
+	assert.match(
+		palette,
+		/\.\.\.\(meshMembership === "member" \? \[MESH_PAGE\] : \[\]\),/,
+		"one memo carries both gates: this branch's mesh row",
+	);
+	assert.match(
+		palette,
+		/\.\.\.PAGES\.filter\(\(page\) => page\.id !== "projects" \|\| projectsEnabled\),/,
+		"and main's Projects gate, inside the same list rather than beside it",
+	);
+	assert.match(
+		palette,
+		/\[meshMembership, projectsEnabled\],/,
+		"with both gates in the memo's own dependency list",
+	);
+	assert.match(
+		palette,
+		/\.\.\.buildNavigationItems\(pages\),/,
+		"and the navigation rows are built from that one set",
 	);
 });
 
@@ -829,7 +856,13 @@ test("this slice ships no mesh mutation, and the absence is deliberate", () => {
 	const hooks = source(
 		"src/renderer/src/shared/api/local-operator/desktop-hooks.ts",
 	);
-	assert.match(hooks, /\| "peers";/, "the feature key exists");
+	/*
+	 * `| "peers"` and not `| "peers";`: the fold onto `a9f4b1d7f4` put main's Projects member
+	 * after this one in the same union, so the terminator moved. The pin's subject is that
+	 * this branch's key is still IN the union - which is what the surfaces above gate on -
+	 * not where the union happens to end.
+	 */
+	assert.match(hooks, /\| "peers"\n/, "the feature key exists");
 	assert.doesNotMatch(
 		hooks,
 		/\| "session_transfer";/,

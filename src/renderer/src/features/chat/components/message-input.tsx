@@ -209,6 +209,23 @@ const CREDENTIAL_NOTICE_ID = "composer-credential-notice";
  * asked for.
  */
 const MENTION_OUTSIDE_NOTICE_ID = "composer-mention-outside-notice";
+
+/**
+ * The id the delivery remedies' hint carries, so the field it describes can
+ * name it (UX round 1, U3).
+ *
+ * WHAT IT DESCRIBES, AND WHY A HINT RATHER THAN A CONTROL. A post-paint
+ * failure's `Send again` / `Edit` controls sit in the transcript ABOVE this
+ * box, which precedes the composer in DOM order: a keyboard reader sitting in
+ * the box reaches them with Shift+Tab, and nothing on screen says so - the
+ * round measured forward Tab leaving the chat for the sidebar rail. A forward
+ * path cannot be added without moving the controls out of the reading order
+ * that puts them under the message they repair, and capturing Tab in a textarea
+ * to redirect it is the kind of focus trap that breaks the platform's contract,
+ * so the hint is the honest half of that trade: one sentence, present only
+ * while the line it speaks about is on screen.
+ */
+const DELIVERY_REMEDIES_HINT_ID = "composer-delivery-remedies-hint";
 import {
 	ConnectProviderCard,
 	NoProviderLine,
@@ -428,6 +445,17 @@ type MessageInputProps = {
 	 * something else, and no send is gated by it.
 	 */
 	awaitingAnswer?: boolean;
+	/**
+	 * A failed message's own `Send again` / `Edit` controls are on screen in this
+	 * pane's transcript, which a keyboard reader in this box reaches with
+	 * Shift+Tab (UX round 1, U3).
+	 *
+	 * The fact lives in the pane ("the row exists in this transcript", computed
+	 * once by `ChatContent`) rather than here: a composer mounted alone - a
+	 * story, a rig - has no transcript to be described by, and the hint must not
+	 * outlive the line it points at.
+	 */
+	deliveryRemediesReachable?: boolean;
 	/**
 	 * The canonical session the aside panel addresses, or undefined on a pane that
 	 * has none (a draft, a legacy pane).
@@ -1219,6 +1247,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			isLoading,
 			awaitingReply = false,
 			awaitingAnswer = false,
+			deliveryRemediesReachable = false,
 			asideSessionId,
 			asideStreaming = false,
 			conversationId,
@@ -2172,9 +2201,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * New-chat identity flip REPLACES (`panelIdentityFor`, "THE FLIP IS A
 		 * REMOUNT"), so on the arm the operator photographed both were false and the
 		 * box fell through to `Waiting for the agent`. A row is not state of the keyed
-		 * subtree: `sendUnsettledForSession` finds it by session id alone, and it is
-		 * the SAME predicate the pane reads through its `starting` latch for the
-		 * transcript's working line, so the box and the line cannot disagree about
+		 * subtree: `sendUnsettledForSession` finds it by the CONVERSATION's identity -
+		 * the session id, a `send:<id>` key, or the draft key while the create is in
+		 * flight - and it describes the same send the pane's `starting` latch does
+		 * (there from the painted row, `pendingSendForView`; here from the claim's own
+		 * `pending`), so the box and the transcript's line cannot disagree about
 		 * whether a send is going out. A different conversation is a different row,
 		 * which is the boundary that keeps its send from reaching this composer.
 		 *
@@ -6221,6 +6252,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								: `${outsideMentions} references point outside this session's working directory; the agent will ask you to approve them before reading.`}
 						</span>
 					)}
+					{/*
+					 * The way back to the failed message's controls, described rather than
+					 * drawn, and the same shape the mention notice above uses: `sr-only`,
+					 * because the hint is for the reader whose focus is in this box and
+					 * cannot see that the controls above are one Shift+Tab away (UX round
+					 * 1, U3). It renders only while the line is on screen, so an ordinary
+					 * draft is not described by an empty element.
+					 */}
+					{deliveryRemediesReachable && (
+						<span id={DELIVERY_REMEDIES_HINT_ID} className="sr-only">
+							The message that could not be delivered has Send again and Edit
+							controls in the conversation above this box: press Shift+Tab to
+							reach them.
+						</span>
+					)}
 					<div
 						className={cn(
 							COMPOSER_BOX,
@@ -6384,7 +6430,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 											 *
 											 * The two facts this call is built from: `sendInFlight` is this composer's own
 											 * unsettled press, and `sendingUnsettled` is the STORE's row for this
-											 * conversation (`sendUnsettledForSession` -> `admittedSendFor`), which is what
+											 * conversation (`sendUnsettledForSession` -> `draftRowForSession`, over the
+											 * row's own `pending`), which is what
 											 * survives the New-chat identity flip - a flag held by the panel being replaced
 											 * cannot, which is what review round 2's R2-1 found in the round-1 wiring. They
 											 * are OR'd because they are the two halves of one fact at two scopes, and the
@@ -6658,6 +6705,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												credentialNotice ? CREDENTIAL_NOTICE_ID : null,
 												outsideMentions > 0 ? MENTION_OUTSIDE_NOTICE_ID : null,
 												unavailable ? MISSING_SESSION_NOTICE_ID : null,
+												deliveryRemediesReachable
+													? DELIVERY_REMEDIES_HINT_ID
+													: null,
 											]
 												.filter(Boolean)
 												.join(" ") || undefined
