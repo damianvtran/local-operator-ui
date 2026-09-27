@@ -106,6 +106,7 @@ const RE_503 = /503/;
 const RE_THIS_APP_WAS_NOT_GIVEN_THE =
 	/is running a Local Operator daemon this app has no key for/;
 const RE_VITE_DISABLE_BACKEND_MANAG = /VITE_DISABLE_BACKEND_MANAGER/;
+const RE_THE_DAEMON_IS_RUNNING = /The daemon is running/;
 
 /*
  * A pairing token in the operator's environment would let the adoption path
@@ -183,7 +184,7 @@ const bundle = await build({
 							"config-fixture": `
 								export const backendConfig = {
 									get VITE_LOCAL_OPERATOR_API_URL() { return globalThis.__testConfiguredUrl; },
-									VITE_DISABLE_BACKEND_MANAGER: "false",
+									get VITE_DISABLE_BACKEND_MANAGER() { return globalThis.__testDisableBackendManager ?? "false"; },
 								};
 							`,
 						};
@@ -228,6 +229,113 @@ async function waitFor(check, describe) {
 		if (Date.now() > deadline)
 			throw new Error(`timed out waiting for ${describe}`);
 		await new Promise((resolve) => setTimeout(resolve, 10));
+	}
+}
+
+/**
+ * How long ONE tick may take before this file calls it WEDGED.
+ *
+ * A backstop, not the assertion, and the distinction is the whole point of
+ * `driveTick` below: the tick's own promise is what these cases assert, and it
+ * resolves when that tick's work is done. A minute is a catastrophe budget
+ * rather than a latency budget - a healthy tick of this rig is a loopback
+ * request - so a tick that trips it is wedged, and the run fails with this
+ * file's own message instead of hanging until CI's job timeout.
+ */
+const TICK_BACKSTOP_MS = 60_000;
+
+/**
+ * Run ONE tick of the armed probe loop and return when that tick's own work is
+ * done - the gates evaluated, the probe sent and answered, the answer's
+ * bookkeeping applied.
+ *
+ * THE EVENT, NOT A CLOCK, and this file paid for the difference. `loop.fn()` is
+ * `startHealthCheck()`'s callback, which returns `checkBackendHealth()`'s
+ * promise; awaiting it is what makes a case wait for its own work instead of
+ * for a clock to say the work is late. On 2026-09-27 the Desktop Tests job on
+ * `main` failed on the budget the sites below used to poll instead:
+ *
+ *   not ok 1599 - the operator's report: an ADOPTED daemon that reloads in place
+ *   never re-discovers while admitted traffic keeps clearing the count (2026-09-21)
+ *     error: "timed out waiting for the tick's probe to be folded"
+ *     duration_ms: 5055.130211
+ *
+ * That is a 5000 ms budget and a tick that took 5055 ms on a loaded runner - a
+ * bet on machine load, lost, on a probe round trip that does happen (the same
+ * job's log shows the suite completing, `# fail 1`, so nothing was wedged: the
+ * clock was). The same test failed on `fdff0d84d6`, before this file's
+ * neighbours changed at all. See AGENTS.md's "Wait on the event, never on the
+ * clock".
+ *
+ * @param loop one recorded entry from `withRecordedProbeLoop`, i.e. the manager's
+ *   own interval callback, which must hand back the tick's promise.
+ * @param describe the state this wait is waiting for, named in the backstop's
+ *   failure message.
+ *
+ * WHAT THE AWAITED TICK PROVES, and why nothing here is compared against a
+ * clock. The promise resolves when the tick's own work is done: the gates
+ * evaluated, the probe sent and answered, the answer's fold applied. That is
+ * strictly stronger than the poll it replaces, which any unrelated admitted
+ * answer could satisfy. The case's own proof of the fold is the sequence it
+ * drives, not a stamp on the snapshot.
+ *
+ * THE ASSERTIONS THAT USED TO FOLLOW THIS CALL ARE GONE, and the reason lives
+ * here so nobody re-adds one: they read
+ * `getStatusSnapshot().updatedAt > clockBefore`, and `updatedAt` is stamped from
+ * `Date.now()` (`daemon-status.ts` stamps it at 441 and 542 through `now()`), so
+ * BOTH SIDES OF THAT `>` WERE MILLISECOND WALL-CLOCK VALUES. When the probe's
+ * answer is admitted in the SAME MILLISECOND as the pre-tick read the predicate
+ * is false and cannot become true before the next tick - measured on PR #556's
+ * QA round 1 (Q-1): `updated_delta=0 tick_ms=0 seen_delta=1 admission_stamps=2`,
+ * i.e. two admissions applied to the stamp while the assert claimed none. That
+ * is a FALSE ALARM about a correct implementation, with ZERO margin rather than
+ * a small one, and it is what `main`'s red on 2026-09-27 actually was: the
+ * pre-fix poll burned its whole budget on a tie (reproduced here from a pinned
+ * clock: `5124.6 ms` with the CI's own error string; QA round 1 measured
+ * `5156.7 ms` from the same construction), while the CI job's timeline shows the
+ * probe landing in the first ~55 ms of the case. `await`ing the tick removes the
+ * WAIT, not that granularity; only removing the comparison does.
+ *
+ * What a case may assert then is what is observable without a clock: that the
+ * daemon SAW the probe (`seen`/`healthCount`), and that the tick finished its
+ * own work (`this` promise). The cases below do exactly that.
+ */
+async function driveTick(loop, describe = "the tick's own work to settle") {
+	const tick = loop.fn();
+	/*
+	 * A TICK THAT HANDS BACK NOTHING CANNOT BE AWAITED, and the failure would be
+	 * the silent one: `await undefined` resolves at once, so every assertion after
+	 * it would pass against work that has not happened yet. Refuse the instrument
+	 * rather than take the reading - the manager returns this promise for exactly
+	 * this reason, and this line is what keeps that true.
+	 */
+	assert.equal(
+		typeof tick?.then,
+		"function",
+		"the probe loop's tick must return its work's promise, so a case can await the fold instead of polling a clock",
+	);
+	let backstop;
+	const wedged = new Promise((_, reject) => {
+		backstop = setTimeout(
+			() =>
+				reject(
+					new Error(`timed out waiting for ${describe} (the tick is wedged)`),
+				),
+			TICK_BACKSTOP_MS,
+		);
+	});
+	/*
+	 * The losing arm is OBSERVED rather than left to node's unhandled-rejection
+	 * handler: when the backstop fires, the tick's own later failure would
+	 * otherwise arrive as a second, unexplained crash of the test process - and a
+	 * dead instrument's reading is what this file is careful about everywhere
+	 * else.
+	 */
+	tick.catch(() => {});
+	try {
+		await Promise.race([tick, wedged]);
+	} finally {
+		clearTimeout(backstop);
 	}
 }
 
@@ -1499,6 +1607,134 @@ test("S4: a plane that refuses this app's bearer reports `credential-refused`", 
 	}
 });
 
+test("S4b: a refusal is an ANSWER - the state is `wedged` while the daemon runs, and a tick does not retire it (QA round 2, Q-1)", async () => {
+	/*
+	 * THE LIVE RIG'S OWN CONSTRUCTION (QA round 2, run `refused-r2`): the daemon
+	 * answers `/health` 200 and refuses this app's credential, and the app is
+	 * configured not to spawn (`VITE_DISABLE_BACKEND_MANAGER=true`), which is the
+	 * startup shape the committed live frames use. What this pins is main's half
+	 * of the display contract: the renderer's refused row is gated on `cause +
+	 * not detached` (`chat-status.ts`), and before this pass the pipeline settled
+	 * `detached` - measured live as the band saying "Can't reach the Local
+	 * Operator server" over its own detail line "...The daemon is running."
+	 */
+	const scene = await daemonScene({
+		instanceId: "instance-refused-wedged",
+		acceptedBearer: "f".repeat(64),
+	});
+	try {
+		globalThis.__testDisableBackendManager = "true";
+		globalThis.__testConfiguredUrl = scene.address;
+		const manager = new BackendServiceManager();
+		managers.add(manager);
+		const started = await manager.start({ quiet: true });
+		assert.equal(
+			started,
+			false,
+			"this app may not claim a plane whose key the daemon refuses",
+		);
+		const snapshot = manager.getStatusSnapshot();
+		assert.deepEqual(snapshot.pairing, {
+			available: false,
+			cause: "credential-refused",
+		});
+		assert.equal(
+			snapshot.state,
+			"wedged",
+			"a daemon that answered and refused is running and not attached - `detached` here is the sentence QA round 2 measured as false",
+		);
+		assert.match(
+			snapshot.detail,
+			/refused this app's (claim|credential)/,
+			"the detail names the refusal's own path",
+		);
+		/*
+		 * AND A TICK KEEPS IT. The recovery re-discovery runs while the state is
+		 * `wedged`, re-probes the address, and hears the refusal again - that
+		 * observation must re-publish the same state, not fall through to
+		 * `no-candidate`'s detach every interval.
+		 */
+		await manager.checkBackendHealth();
+		const ticked = manager.getStatusSnapshot();
+		assert.equal(ticked.state, "wedged");
+		assert.deepEqual(ticked.pairing, {
+			available: false,
+			cause: "credential-refused",
+		});
+		await manager.stop(false);
+	} finally {
+		Reflect.deleteProperty(globalThis, "__testDisableBackendManager");
+		await scene.dispose();
+	}
+});
+
+test("S4c: the death of a refused daemon reaches the snapshot - state and detail move, and the renderer is pushed (QA round 2, Q-2)", async () => {
+	/*
+	 * THREE MINUTES AFTER THE KILL the band still said "The daemon is running."
+	 * (QA round 2, `kill-expanded`: 76 samples, every one the same snapshot),
+	 * because the refused shape's recovery had no path that republished the
+	 * reading: an app that never attached has no pid to read, and a
+	 * `VITE_DISABLE_BACKEND_MANAGER=true` app returns before every spawn. The
+	 * sweep IS the witness (it re-reads the record and re-probes the address),
+	 * and this pins that its verdict reaches the state, the detail - and the
+	 * renderer.
+	 */
+	const scene = await daemonScene({
+		instanceId: "instance-refused-dies",
+		acceptedBearer: "f".repeat(64),
+	});
+	try {
+		globalThis.__testDisableBackendManager = "true";
+		globalThis.__testConfiguredUrl = scene.address;
+		const manager = new BackendServiceManager();
+		managers.add(manager);
+		const started = await manager.start({ quiet: true });
+		assert.equal(started, false);
+		assert.equal(manager.getStatusSnapshot().state, "wedged");
+		const pushes = [];
+		manager.onStatusChange((snapshot) => pushes.push(snapshot));
+
+		await scene.die();
+		await manager.checkBackendHealth();
+		const after = manager.getStatusSnapshot();
+		assert.equal(
+			after.state,
+			"detached",
+			"nothing is attachable any more, and the state may not stay `wedged` about a daemon that is gone",
+		);
+		/*
+		 * THE CAUSE IS KEPT, DELIBERATELY: the strip's row 4 fires on exactly
+		 * `detached + a cause that is not banner-owned`, so clearing it would
+		 * silence the strip and hand the death to the banner - contradicting the
+		 * acceptance this test serves ("move to the unreachable row, its own copy,
+		 * main's detail as the second line"). What moves at the strip is the KIND
+		 * (refused -> unreachable), which is also what re-arms a dismissal.
+		 */
+		assert.deepEqual(after.pairing, {
+			available: false,
+			cause: "credential-refused",
+		});
+		assert.doesNotMatch(
+			after.detail,
+			RE_THE_DAEMON_IS_RUNNING,
+			"the sentence may no longer assert a daemon that is gone is running",
+		);
+		assert.match(
+			after.detail,
+			/no longer running|No Local Operator daemon was found/,
+			"the new detail states the absence the sweep found",
+		);
+		assert.ok(
+			pushes.some((pushed) => pushed.state === "detached"),
+			"the renderer has to be PUSHED the correction: a state that only moves in main is still a stale band",
+		);
+		await manager.stop(false);
+	} finally {
+		Reflect.deleteProperty(globalThis, "__testDisableBackendManager");
+		await scene.dispose();
+	}
+});
+
 /*
  * ===========================================================================
  * A RELOAD IS NOT A REPLACEMENT (2026-09-20)
@@ -1897,25 +2133,17 @@ async function ownedDaemonScene({
  */
 async function tickArmedProbe(scene) {
 	const counterBefore = (await scene.state()).healthCount;
-	const clockBefore = scene.manager.getStatusSnapshot().updatedAt;
 	const loop = scene.intervals.find((entry) => entry.ms === PROBE_INTERVAL_MS);
 	assert.ok(loop, "startOwned() must have armed the probe loop");
-	loop.fn();
-	const deadline = Date.now() + 2_000;
-	let probed = false;
-	while (Date.now() < deadline) {
-		if ((await scene.state()).healthCount > counterBefore) {
-			probed = true;
-			break;
-		}
-		await new Promise((resolve) => setTimeout(resolve, 10));
-	}
-	if (!probed) return false;
-	await waitFor(
-		() => scene.manager.getStatusSnapshot().updatedAt > clockBefore,
-		"the tick's probe to be folded into the state machine",
-	);
-	return true;
+	/*
+	 * The tick's own promise, not a poll: by the time it resolves the probe has
+	 * been answered and its answer folded, so the daemon's count below is READ
+	 * rather than watched. A tick that made no probe is still reported as such -
+	 * a connection broken in the way a case exists to describe must not be
+	 * reported as a rig fault.
+	 */
+	await driveTick(loop);
+	return (await scene.state()).healthCount > counterBefore;
 }
 
 test("a reload in place of the daemon this app spawned keeps the app attached and paired (2026-09-20)", async () => {
@@ -2294,16 +2522,11 @@ test("A3: an ADOPTED daemon that reloads in place recovers without a restart, by
 			for (let i = 0; i < DEGRADED_AFTER_FAILURES; i++) {
 				const loop = intervals.find((entry) => entry.ms === PROBE_INTERVAL_MS);
 				assert.ok(loop, "adoption must have armed the probe loop");
-				const clockBefore = manager.getStatusSnapshot().updatedAt;
 				const seenBefore = scene.seen.length;
-				loop.fn();
-				await waitFor(
-					() => scene.seen.length > seenBefore,
-					"the tick's probe to reach the daemon",
-				);
-				await waitFor(
-					() => manager.getStatusSnapshot().updatedAt > clockBefore,
-					"the tick's probe to be folded",
+				await driveTick(loop);
+				assert.ok(
+					scene.seen.length > seenBefore,
+					"the tick's probe must reach the daemon",
 				);
 			}
 
@@ -2394,16 +2617,11 @@ test("the operator's report: an ADOPTED daemon that reloads in place never re-di
 
 		const sequence = [];
 		for (let tick = 1; tick <= 5; tick++) {
-			const clockBefore = manager.getStatusSnapshot().updatedAt;
 			const seenBefore = scene.seen.length;
-			loop.fn();
-			await waitFor(
-				() => scene.seen.length > seenBefore,
-				"the tick's probe to reach the daemon",
-			);
-			await waitFor(
-				() => manager.getStatusSnapshot().updatedAt > clockBefore,
-				"the tick's probe to be folded",
+			await driveTick(loop);
+			assert.ok(
+				scene.seen.length > seenBefore,
+				"the tick's probe must reach the daemon",
 			);
 			/*
 			 * The renderer's own traffic between probes - the presence beat and a

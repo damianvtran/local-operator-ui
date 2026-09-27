@@ -1,0 +1,87 @@
+[build] current: assets 2026-09-27T05:42:56.470Z >= sources 2026-09-27T05:34:07.625Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:18988
+  serve records 1 linked from /Users/damian/.local-operator/sessions/1129cd006573/scratchpad/r2rig/rootW/run/serve   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/banner-fix-7e4c
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-53299
+  frames        /Users/damian/.local-operator/sessions/1129cd006573/scratchpad/r2rig/frames
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-53299/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:18988   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/banner-fix-7e4c/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:18988","backend":"http://127.0.0.1:18988"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:18988)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown or focused
+[PASS] the pane's strip states the REFUSAL while the daemon answers /health
+[PASS] the daemon is answering /health at the same moment (the run's own probe)
+[note] live regions while refused
+        [{"role":"alert","text":"The running server refused this app's credential, so sign-in, settings and slash commands are unavailable.A Local Operator daemon is running at http://127.0.0.1:18988 and refused this app's credential for its desktop plane (HTTP 401), so this app is not attach","controls":["Retry","Dismiss"],"box":{"x":284,"y":76,"w":1072,"h":72}}]
+[PASS] ONE live region states the incident (U3b), and it is the REFUSED row - not the unreachable row over a running daemon
+[note] Retry-named controls, screen-wide
+        ["Retry","Model: this conversation's model was not resolved. Retry."]
+[PASS] the refused band offers exactly ONE Retry (and its one dismiss)
+[note] frame
+        {"label":"refused-1380x900-refused","path":"/Users/damian/.local-operator/sessions/1129cd006573/scratchpad/r2rig/frames/refused-1380x900-refused.png","bytes":206318,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":8}
+[PASS] the press's outcome says the server is RUNNING and the credential is still refused (U2)
+[PASS] the reachability sentence does NOT appear in the refused state (U2's contradiction)
+[note] frame
+        {"label":"refused-1380x900-retry-outcome","path":"/Users/damian/.local-operator/sessions/1129cd006573/scratchpad/r2rig/frames/refused-1380x900-retry-outcome.png","bytes":215645,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":3,"stable":true,"toastFree":true,"toastWaitMs":4}
+[PASS] dismissing collapses the strip to the pill
+[note] the pill after dismissal
+        {"label":"Connection status: The running server refused this app's credential, so sign-in, settings and slash commands are unavailable. The server is running, but this app's credential is still refused. Show details","text":"Connection"}
+[PASS] the pill announces the strip's own sentence AND the press's outcome (U12), with the disclosure
+[note] frame
+        {"label":"refused-1380x900-dismissed","path":"/Users/damian/.local-operator/sessions/1129cd006573/scratchpad/r2rig/frames/refused-1380x900-dismissed.png","bytes":160748,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":1}
+[PASS] the run-owned daemon was signalled (SIGTERM to the pid its own record names)
+[PASS] the daemon's listener is gone: /health refuses after the kill
+[PASS] the death moves the band: the unreachable copy, and the refusal's stale sentence gone (Q-2/U1)
+[PASS] the dismissal re-armed: the strip is expanded again (U1)
+[note] frame
+        {"label":"refused-1380x900-rearmed","path":"/Users/damian/.local-operator/sessions/1129cd006573/scratchpad/r2rig/frames/refused-1380x900-rearmed.png","bytes":184244,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":14}
+[PASS] the revived daemon answers /health at --backend
+[note] serve records re-linked after the revive
+        1
+[PASS] the revive clears the band: the app attaches to the accepting daemon (U1's clear half)
+[note] frame
+        {"label":"refused-1380x900-cleared","path":"/Users/damian/.local-operator/sessions/1129cd006573/scratchpad/r2rig/frames/refused-1380x900-cleared.png","bytes":187233,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":7,"stable":true,"toastFree":true,"toastWaitMs":39}
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Credentials connectivity error: Server is offline. Please check your connection.
+  [renderer] Agents connectivity error: Server is offline. Please check your connection.
+[PASS] no process from this run outlived its boot
+
+frames: refused-1380x900-cleared.png, refused-1380x900-dismissed.png, refused-1380x900-rearmed.png, refused-1380x900-refused.png, refused-1380x900-retry-outcome.png
+frames directory: /Users/damian/.local-operator/sessions/1129cd006573/scratchpad/r2rig/frames
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-53299/app-scene.log
+scratch removed (--clean)
+
+ALL CHECKS PASSED

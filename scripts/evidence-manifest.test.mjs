@@ -1315,6 +1315,16 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"headerIdentityRoundOneRestampNote",
 	/*
+	 * AND THIS PASS'S OWN: the notice-band change
+	 * (`fix/banner-warn-error-consistency-7e4c`) moves BOTH trees this file binds
+	 * - `src/` on the strip, the compatibility banner, `chat-status.ts` and the
+	 * new shared band grammar; `scripts/` on the three suites and the sweep's
+	 * fourteen new rows - so its record states the pair THIS FILE SHIPS as its
+	 * opening claim, which is the case this list wants checked rather than read
+	 * as prose.
+	 */
+	"bannerBandsRestampNote",
+	/*
 	 * AND THIS PASS'S OWN, for the held-first-paint work on the conversation-loading
 	 * report ("everything should load in one solid paint instead of incrementally"):
 	 * it states the pair THIS FILE SHIPS as its opening claim, holds both tokens,
@@ -1408,6 +1418,28 @@ const STAMP_BINDING_NOTES = [
 	 * `streamRedeliveryRestampNote` is in the list for.
 	 */
 	"task17RestampNote",
+	/*
+	 * AND THIS CHANGE'S OWN: the inline-rename fix's re-stamp. Its subject IS
+	 * this file's binding - it moves BOTH trees and re-captures one set's
+	 * states - so a reader is owed the pair and the twelve frames it added.
+	 */
+	"headerRenameInlineRestampNote",
+	/*
+	 * AND THE ROUND-1 REMEDIATION'S OWN, on the same lane: its subject is this
+	 * file's binding too - the save-lifecycle pass moves BOTH trees again (the
+	 * header's committed-save state and its story; the capture row and these
+	 * two lists) and re-captures one state - so a reader is owed the pair and
+	 * the two frames it added.
+	 */
+	"headerRenameInlineRoundOneNote",
+	/*
+	 * AND THE DESKTOP-SUITE TICK WAIT'S OWN: its subject is this file's binding
+	 * too - it moves BOTH trees without taking a frame (nothing in it is
+	 * user-visible; the evidence is the isolated rig runs and the three
+	 * mutations its note names), so the reader is owed the pair AND the reason no
+	 * still was owed, for the same reason task-17's entry is here.
+	 */
+	"daemonObservationTickWaitRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1892,6 +1924,15 @@ const BRANCH_RECORDS = [
 	 */
 	"headerIdentityRoundOneRestampNote",
 	/*
+	 * And THIS CHANGE'S: the notice-band pass
+	 * (`fix/banner-warn-error-consistency-7e4c`), whose record is the only
+	 * statement of which two trees it moved, which frames it added (168 under
+	 * fourteen new story ids, plus the 56-still pair it declares below), and why
+	 * `head` stays the base the frames were taken at. A fold resolved from main's
+	 * copy would drop it, which is this list's whole subject.
+	 */
+	"bannerBandsRestampNote",
+	/*
 	 * And by this branch's folds onto the action-group lane's own tips - the
 	 * records the header-identity lane's arrival forced a rename of. Main's
 	 * `foldOnto9d3e68ddf6Note`, `foldOnto093a329a4dNote`, `foldOnto22c0fcd4fdNote`
@@ -1979,6 +2020,28 @@ const BRANCH_RECORDS = [
 	 * same reason this list exists.
 	 */
 	"task17RestampNote",
+	/*
+	 * And by this lane, whose note is now the newest top-level record on the
+	 * branch: it states the pair the inline-rename fix ships - both trees
+	 * moved, one set's states re-captured - so a fold that started from main's
+	 * copy would drop it first, the same reason this list exists.
+	 */
+	"headerRenameInlineRestampNote",
+	/*
+	 * And by the same lane once more, whose round-1 remediation note is now
+	 * the newest top-level record on the branch: it states the pair the
+	 * save-lifecycle pass ships - both trees moved, one set's state
+	 * re-captured - so a fold that started from main's copy would drop it
+	 * first, the same reason this list exists.
+	 */
+	"headerRenameInlineRoundOneNote",
+	/*
+	 * And by THIS lane, whose note is the newest top-level record on the branch:
+	 * it states the pair this tip ships, moves both trees, and takes no frame -
+	 * a fold that started from main's copy would drop it first, the same reason
+	 * this list exists.
+	 */
+	"daemonObservationTickWaitRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

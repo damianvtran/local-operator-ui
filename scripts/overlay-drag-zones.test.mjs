@@ -245,3 +245,55 @@ test("F-4 the fixed surface mounted above the strip carries the opt-out", () => 
 		);
 	}
 });
+
+/**
+ * F-5 - the opt-out used INSIDE a drag surface by the surface's own subject.
+ *
+ * The four checks above are about overlays painting OVER a drag surface. This
+ * one is the same vocabulary applied to the surface itself: the chat header row
+ * is a drag region, and the conversation title inside it had no opt-out - so
+ * every point over the title was a window drag, the renderer never saw the
+ * pointer, and the operator's report (2026-09-26) is what that looks like from
+ * the seat: "the rename interaction only happens when you hover to the right of
+ * the conversation title but not on the title itself". The pencil beside it
+ * worked because it is a `button`, which the descendant rule opts out.
+ *
+ * THE RUNNING HALF IS `--scene hit-zones`'s `chat-header-title` surface: five
+ * samples over the title, swallowed with the header's own drag rect as their
+ * cover before the fix and outside the region after it. This half is what a
+ * refactor re-breaks FIRST - moving the marker to the wrong element, or
+ * dropping it from a rewritten block - because the running half boots the app
+ * and this one reads the source that decides.
+ */
+test("F-5 the chat header's title block keeps its opt-out inside the drag row", () => {
+	const path = "src/renderer/src/features/chat/components/chat-header.tsx";
+	const tags = openingTags(read(path));
+	/*
+	 * PER ELEMENT, the same shape as F-2/F-3: the marker must be a direct prop
+	 * of the block that carries `group/title` (the title + its rename control),
+	 * which is what the region walk subtracts. A file-level `includes` would
+	 * pass with the marker on anything else in the file.
+	 */
+	const blocks = tags.filter((tag) => tag.text.includes("group/title"));
+	assert.ok(
+		blocks.length === 1,
+		`${path}: expected exactly one element carrying the title block's \`group/title\` marker, found ${blocks.length} - the scan is looking at the wrong shape of file`,
+	);
+	assert.ok(
+		blocks[0].text.includes('data-titlebar-no-drag=""'),
+		`${path}: the title block sits inside the header's drag row; without this opt-out every point over the title text is a window drag, so hovering the title reveals nothing and a double-click never reaches it (the operator's rename report, 2026-09-26 - the \`chat-header-title\` surface in \`--scene hit-zones\` is the running half)`,
+	);
+	/*
+	 * And the header keeps being the drag surface the rest of the bar is moved
+	 * by: the fix is the title's opt-out, not a retired drag row. Both halves
+	 * asserted on the same element, so a "fix" that dropped `data-titlebar-drag`
+	 * instead fails here rather than in a user's hand.
+	 */
+	const headers = tags.filter((tag) =>
+		tag.text.includes('data-tour-tag="chat-header"'),
+	);
+	assert.ok(
+		headers.length === 1 && headers[0].text.includes('data-titlebar-drag=""'),
+		`${path}: the chat header row is the drag surface the bar is moved by (and the reason the title needed the opt-out at all); it must keep \`data-titlebar-drag\``,
+	);
+});
