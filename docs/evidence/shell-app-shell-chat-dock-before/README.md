@@ -39,6 +39,15 @@ these two are here for the sub-views themselves.
 **Palettes.** Seven: `localOperatorDark`, `localOperatorLight`, `sage`,
 `catppuccinMacchiato`, `oneLight`, `iceberg`, `tokyoNightDay` - the two brand themes
 and the five whose `surface` -> `canvas` step is smallest, which is where the seam
-is hardest to read. The remaining five of the sweep's twelve are owed a full pass
-before merge; `canvasChromeStaleFramesNote` in `docs/evidence/manifest.json`
-records that as a merge precondition rather than certifying stale frames.
+is hardest to read. Those step numbers are the TOKEN PAIR's, read off the palette
+objects, and not the frames': webp is lossy at this magnitude, so the same two
+grounds DECODE to roughly a fifth of a ΔE00 higher (design review round 2, D3). Say
+which pair a number comes from wherever a frame is presented beside it.
+
+The remaining five of the sweep's twelve are owed a full pass before merge; so is a
+re-capture of the four pane surfaces, whose committed frames were not re-taken when
+this change moved their ground. `canvasChromeStaleFramesNote` in
+`docs/evidence/manifest.json` carries both debts as merge preconditions rather than
+certifying stale frames, and its machine-readable companion `carriedFrames` records
+the second one per surface, with the pixel reading that shows a carried frame still
+drawing the removed band.
