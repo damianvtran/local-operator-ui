@@ -111,3 +111,22 @@ The daemon this run started was stopped by the scene itself (`revived daemon
 stopped` in `run.log`), and no process from the run outlived its boot. The
 change's 56-still pair and the twelve-palette sweep live in
 `docs/evidence/chat-status-bands/`.
+
+### Re-driven for the review-round remediation (2026-09-26)
+
+The same scene was driven once more from the remediated tree (the refusal's
+reachability gate, the fact-keyed dismissal, the kind-aware Retry outcome and
+the two banner stand-downs - the commit this directory ships in). `run.log` is
+that run's record: **ALL CHECKS PASSED**, 25 checks, including the same one-voice
+pair and the reconnect resolution the section above reports.
+
+ONE ENVIRONMENT NOTE, recorded rather than smoothed over: the operator's `lop`
+was updated to a newer generation (`7dd016e34536`) mid-round, and **two
+re-drives against it did not complete the scene's mock-turn baseline** - no mock
+answer in 60s, so the §F3 and reconnect checks fell through with it, and no turn
+request reached that daemon at all (verified in its own request log). The
+frames here were therefore taken against `20260926T212703Z-0.63.3`, the same
+generation the committed set was shot against, so this pair stays comparable
+state-for-state; current-generation live behaviour is for QA to drive rather
+than to assert from here. The renderer's own notice-band delta is the
+story-provided set's to prove (`docs/evidence/chat-status-bands/` either way).
