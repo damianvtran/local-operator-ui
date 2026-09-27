@@ -148,7 +148,11 @@ test("an expanded group draws the ladder's prefix, in the catalogue's own order"
 		row(`s${index}`, SECONDS(index + 1)),
 	);
 	const page = entityRows(rows, { loads: 0 });
-	assert.equal(page.rows.length, 10, "ten rows first, whatever the group holds");
+	assert.equal(
+		page.rows.length,
+		10,
+		"ten rows first, whatever the group holds",
+	);
 	assert.equal(page.held, 41);
 	assert.equal(page.hidden, 31);
 	assert.deepEqual(
