@@ -52,6 +52,8 @@ type BridgeRequest = {
 	control?: {
 		operation?: string;
 		query?: Record<string, string | number>;
+		/** The org an `org_agents.list` read names, which rides the path server-side. */
+		tenant_id?: string;
 	};
 };
 
@@ -153,6 +155,44 @@ type BridgeBehaviour = {
 	/** Viewer state to report for the ids the page asks about. */
 	liked?: string[];
 	favourited?: string[];
+	/**
+	 * The viewer's organizations (§4.1), in the membership-summary shape.
+	 *
+	 * Empty by default, which is the public-hub-only state every story before this
+	 * change was in: no memberships means no scope selector at all, because a
+	 * control holding one option cannot change anything.
+	 */
+	orgs?: {
+		tenant_id: string;
+		tenant_name: string;
+		role: string;
+		status: "active" | "pending" | "disabled";
+		is_home: boolean;
+		plan: {
+			status: "none" | "active" | "past_due" | "canceled";
+			seats: number | null;
+		};
+	}[];
+	/** Records the ORG list answers with, and any filters it carries. */
+	orgAgents?: number;
+	/**
+	 * Refuse the org list with one of the two frozen membership codes (§2.2).
+	 *
+	 * "plan" is `team_plan_required` — a lapsed plan, which the hub answers with a
+	 * 403 rather than an empty list — and "no_access" is `not_a_member`, the same
+	 * 403 a stranger gets. The page must render neither as an outage.
+	 */
+	orgRefusal?: "plan" | "no_access";
+	/** Teams for `org_teams.list`. */
+	teams?: {
+		id: string;
+		name: string;
+		project: string;
+		version: string;
+		members: { role: string; kind: string; count: number }[];
+	}[];
+	/** Fail the memberships read, so the picker's "could not be read" line shows. */
+	failMemberships?: boolean;
 };
 
 const installBridge = (behaviour: BridgeBehaviour = {}) => {
@@ -167,6 +207,11 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 		failStatuses = false,
 		liked = [],
 		favourited = [],
+		orgs = [],
+		orgAgents = 0,
+		orgRefusal,
+		teams = [],
+		failMemberships = false,
 	} = behaviour;
 	ledger.length = 0;
 
@@ -197,6 +242,23 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 				features: { radient: 1, profile_catalogue: 1, team_catalogue: 1 },
 			});
 		}
+		if (request.op === "team.pull") {
+			/*
+			 * The pull's own op, on the local server's transport rather than the
+			 * Radient proxy's: it reconstructs a local team from the published
+			 * document, and this fixture reports the rename the way the local registry
+			 * does — a story that pulls the same team twice is the state the warning is
+			 * for.
+			 */
+			return ok({
+				status: 200,
+				message: "Team pulled from Radient successfully",
+				result: {
+					id: "local-team-1",
+					name: String(teams[0]?.name ?? "Team"),
+				},
+			});
+		}
 		if (request.op === "sessions.list") {
 			return ok({ sessions: [], truncated: false });
 		}
@@ -205,6 +267,113 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 		}
 		if (request.op === "radient.request") {
 			switch (operation) {
+				case "memberships.list":
+					/*
+					 * The memberships the scope selector is built from. A failure here is a
+					 * REAL state rather than a defensive one — an older backend answers 422
+					 * for the unknown op — and the page degrades to the public hub, which is
+					 * the point of the arm.
+					 */
+					if (failMemberships) {
+						return { status: 500, body: { detail: "Memberships failed." } };
+					}
+					return proxy({
+						msg: "Memberships listed successfully",
+						result: { memberships: orgs },
+					});
+				case "org_agents.list": {
+					/*
+					 * The org workspace. Its REFUSALS are the subject of two of these stories:
+					 * the frozen membership codes (§2.2) arrive as `detail.code` on a 403, the
+					 * shape the desktop transport preserves, and the page must render them as
+					 * a state of the surface rather than as an outage.
+					 */
+					if (orgRefusal === "plan") {
+						return {
+							status: 403,
+							body: {
+								detail: {
+									code: "team_plan_required",
+									message: "This organization needs an active team plan",
+								},
+							},
+						};
+					}
+					if (orgRefusal === "no_access") {
+						return {
+							status: 403,
+							body: {
+								detail: {
+									code: "not_a_member",
+									message: "You are not a member of this organization",
+								},
+							},
+						};
+					}
+					/*
+					 * Every record carries `visibility: "org"`, which is what the hub sends
+					 * ONLY for an org row (`json:"visibility,omitempty"`) — the card's badge and
+					 * its absent heart both hang off that one field, so a fixture that
+					 * omitted it would photograph the public card in an org scope.
+					 *
+					 * The tenant id is the one the page ASKED about, not a literal: the badge
+					 * resolves the organization's name through `tenant_id`, so a record whose
+					 * tenant did not match the scope's would render the badge's fallback
+					 * ("Organization") and quietly prove less than the frame claims.
+					 */
+					const orgTenant = String(
+						request.control?.tenant_id ?? "tenant-minerva",
+					);
+					return proxy({
+						msg: "Agents listed successfully",
+						result: {
+							page: 1,
+							per_page: 12,
+							total_pages: 1,
+							total_records: orgAgents,
+							records: buildAgents(orgAgents, longCounts).map((record) => ({
+								...record,
+								tenant_id: orgTenant,
+								visibility: "org" as const,
+							})),
+						},
+					});
+				}
+				case "org_teams.list": {
+					/*
+					 * The roster is refused with the SAME code the workspace was, because the
+					 * server gates both on the same membership and plan (§4.5) — a fixture that
+					 * answered this read successfully while the other was refused would
+					 * photograph an organization that had lost its plan and could still list
+					 * its teams, which is a state the backend does not have.
+					 */
+					if (orgRefusal === "plan") {
+						return {
+							status: 403,
+							body: {
+								detail: {
+									code: "team_plan_required",
+									message: "This organization needs an active team plan",
+								},
+							},
+						};
+					}
+					if (orgRefusal === "no_access") {
+						return {
+							status: 403,
+							body: {
+								detail: {
+									code: "not_a_member",
+									message: "You are not a member of this organization",
+								},
+							},
+						};
+					}
+					return proxy({
+						msg: "Teams listed successfully",
+						result: { teams },
+					});
+				}
 				case "account":
 					// The signed-out shape: the proxy answers 409 with this sentence
 					// when no Radient credential is stored, which `use-radient-auth`
@@ -548,5 +717,207 @@ export const NarrowColumns: Story = {
 	render: () => {
 		installBridge({ records: 12, longCounts: true });
 		return <AgentHubPage />;
+	},
+};
+
+/* ------------------------------------------------- organizations (§8.4) */
+
+/** The two organizations these stories switch between, in the §4.1 shape. */
+const ORGS = [
+	{
+		tenant_id: "tenant-minerva",
+		tenant_name: "Minerva",
+		role: "owner",
+		status: "active" as const,
+		is_home: true,
+		// The owner half of §3.2: no plan, and still entitled — which is why this
+		// organization is SELECTABLE rather than shown as blocked.
+		plan: { status: "none" as const, seats: null },
+	},
+	{
+		tenant_id: "tenant-northwind",
+		tenant_name: "Northwind Analytics",
+		role: "member",
+		status: "active" as const,
+		is_home: false,
+		// `past_due` during dunning: full entitlements with a payment-issue notice
+		// (§3.1), so this organization is usable too — the state a reader is most
+		// likely to mistake for a loss of access.
+		plan: { status: "past_due" as const, seats: 6 },
+	},
+];
+
+const TEAMS = [
+	{
+		id: "team-hub-1",
+		name: "Adverse media desk",
+		project: "Onboarding",
+		version: "1.2.0",
+		members: [
+			{ role: "manager", kind: "role", count: 1 },
+			{ role: "screener", kind: "role", count: 3 },
+		],
+	},
+	{
+		id: "team-hub-2",
+		name: "Quarterly close",
+		project: "Finance",
+		version: "0.4.0",
+		members: [{ role: "analyst", kind: "specialist", count: 1 }],
+	},
+];
+
+/**
+ * The org scope, selected — the whole desktop surface this change adds, in the
+ * state a member actually works in.
+ *
+ * The frame carries four claims at once, and each is a thing a reader would
+ * otherwise have to take on trust from the source: the scope selector with the
+ * two organizations it may use, the grid listing the ORG route's records, a card
+ * whose origin badge names the organization and whose footer has NO heart and NO
+ * star (they are public-only interactions, §4.4), and the roster below the grid
+ * with its pull action.
+ *
+ * The scope is switched the way a person switches it — the trigger, then the
+ * option — and the shutter is released only once an org badge is on screen, so
+ * the frame cannot be of the public hub with an org label pasted on it.
+ */
+export const OrgScopeSelected: Story = {
+	render: () => {
+		installBridge({
+			records: 12,
+			signedIn: true,
+			orgs: ORGS,
+			orgAgents: 6,
+			teams: TEAMS,
+		});
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-status");
+		await userEvent.click(await screen.findByTestId("agent-hub-scope"));
+		await userEvent.click(
+			await screen.findByRole("option", { name: "Minerva" }),
+		);
+		await screen.findByTestId("agent-org-badge");
+		await screen.findByTestId("org-teams");
+	},
+};
+
+/**
+ * An organization that has shared nothing yet: the empty panel, which must not
+ * invite a PUBLIC publication on a surface whose rows only one organization can
+ * see (§8.4 keeps the two namespaces distinct), and which offers "Publish an
+ * agent" only to a role the hub would accept one from.
+ *
+ * The owner's arm, so the action is present: the member's arm is the same panel
+ * without the button, and the difference is the rank the membership carries.
+ */
+export const OrgEmpty: Story = {
+	render: () => {
+		installBridge({ records: 12, signedIn: true, orgs: ORGS, orgAgents: 0 });
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-status");
+		await userEvent.click(await screen.findByTestId("agent-hub-scope"));
+		await userEvent.click(
+			await screen.findByRole("option", { name: "Minerva" }),
+		);
+		await screen.findByText("This organization has no shared agents yet.");
+	},
+};
+
+/**
+ * The org list refused with `team_plan_required` — a plan that lapsed between the
+ * memberships read and the read of the workspace, which is the state the code
+ * exists for.
+ *
+ * It must render as a STATE of the surface and not as the outage panel: the
+ * sentence names the remedy (an owner activates the plan) and there is no "the
+ * hub could not be loaded" anywhere in the frame, because retrying an organization
+ * whose subscription stopped answers the same thing forever.
+ */
+export const OrgPlanLapsed: Story = {
+	render: () => {
+		installBridge({
+			records: 12,
+			signedIn: true,
+			orgs: ORGS,
+			orgRefusal: "plan",
+		});
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-status");
+		await userEvent.click(await screen.findByTestId("agent-hub-scope"));
+		await userEvent.click(
+			await screen.findByRole("option", { name: "Minerva" }),
+		);
+		await screen.findByTestId("agent-hub-org-no-access");
+	},
+};
+
+/**
+ * The revoked half: a membership that is no longer active answers `not_a_member`,
+ * which is the SAME 403 a stranger gets (§2.2 refuses to say which of the three
+ * it was).
+ *
+ * Its copy deliberately offers no retry — nothing this user can press changes it,
+ * and an owner has to invite them again — so the frame is also the evidence that
+ * the two refusal arms do not share one treatment.
+ */
+export const OrgAccessRevoked: Story = {
+	render: () => {
+		installBridge({
+			records: 12,
+			signedIn: true,
+			orgs: ORGS,
+			orgRefusal: "no_access",
+		});
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-status");
+		await userEvent.click(await screen.findByTestId("agent-hub-scope"));
+		await userEvent.click(
+			await screen.findByRole("option", { name: "Minerva" }),
+		);
+		await screen.findByTestId("agent-hub-org-no-access");
+	},
+};
+
+/**
+ * The org roster, with its pull action, photographed in a viewport that HOLDS it.
+ *
+ * The grid above it is deliberately empty of agents, and that is the fixture's
+ * one concession: a populated grid (six cards) pushes the roster below the fold
+ * of a captured viewport, and the page's scroll container is an INNER column, so
+ * neither the capture rig's document scroll nor a `scrollIntoView` in this play
+ * reaches it — measured, twice: the frame came back pixel-identical to the grid
+ * story's, which is a frame that would have claimed a roster nobody could see.
+ * Teams shared with no agents shared is a real state of an organization (§8.4's
+ * roster is a separate document family), and it is the one that photographs the
+ * claim this story exists for: the list, the count line, the slot summary and the
+ * Pull control.
+ */
+export const OrgTeams: Story = {
+	render: () => {
+		installBridge({
+			records: 12,
+			signedIn: true,
+			orgs: ORGS,
+			orgAgents: 0,
+			teams: TEAMS,
+		});
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-status");
+		await userEvent.click(await screen.findByTestId("agent-hub-scope"));
+		await userEvent.click(
+			await screen.findByRole("option", { name: "Minerva" }),
+		);
+		await screen.findByTestId("org-teams-count");
 	},
 };
