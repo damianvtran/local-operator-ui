@@ -1936,13 +1936,16 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	assert.match(plan.script, /osascript -e 'on run argv'/);
 	/*
 	 * THE NOTICE OBEYS THE LAUNCH'S KILL SWITCH (operator report, remediation round
-	 * 1): the guard is in the script, a plan built WITHOUT the switch adds nothing
-	 * (an empty value must never override a non-empty inherited one), and a plan
-	 * built with it carries the value into the script's environment.
+	 * 1), AND PRESENCE IS THE RULE (review minor, remediation round 2): the script
+	 * silences on any SET value - the `+x` set-test, not a non-empty test - because
+	 * `resolveNotificationLaunch` resolves a present-but-empty launch key to the
+	 * silencing value and an env block with an empty default spells "a test run".
+	 * A plan built WITHOUT the switch adds nothing, and one built with a value
+	 * writes it verbatim, empty included.
 	 */
 	assert.match(
 		plan.script,
-		/\[ -n "\$\{LOCAL_OPERATOR_NO_NOTIFICATIONS:-\}" \] && return 0/,
+		/\[ -n "\$\{LOCAL_OPERATOR_NO_NOTIFICATIONS\+x\}" \] && return 0/,
 	);
 	assert.equal(
 		Object.hasOwn(plan.env, "LOCAL_OPERATOR_NO_NOTIFICATIONS"),
@@ -1962,6 +1965,23 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 		noNotifications: "1",
 	});
 	assert.equal(silenced.env.LOCAL_OPERATOR_NO_NOTIFICATIONS, "1");
+	const emptied = buildWatchdogPlan({
+		appBundlePath: "/Applications/Local Operator.app",
+		executableName: "Local Operator",
+		appPid: 1,
+		shipItJob: null,
+		targetVersion: "0.18.0",
+		timeoutSeconds: 60,
+		intervalSeconds: 1,
+		settleSeconds: 1,
+		appearSeconds: 2,
+		noNotifications: "",
+	});
+	assert.equal(
+		emptied.env.LOCAL_OPERATOR_NO_NOTIFICATIONS,
+		"",
+		"an empty value is transported verbatim, and the script's presence guard is what silences it",
+	);
 	// Backgrounded with its status dropped, so a notifier that fails, hangs or
 	// does not exist cannot decide anything or hold the script open.
 	assert.match(plan.script, /"Local Operator" >\/dev\/null 2>&1 &/);
@@ -2805,6 +2825,55 @@ test("the switch silences the watchdog's own notice", async () => {
 		fixture.notifications(),
 		[],
 		"still silent by the time the watchdog has decided and exited",
+	);
+	assert.equal(await waitForLaunches(fixture, before + 1), true);
+});
+
+test("a set-but-empty switch is the silencing value too", async () => {
+	const dir = tempDir("lo-watchdog-emptied-");
+	const fixture = makeWatchdogFixture(dir);
+	const app = startProcess("/bin/sleep", ["30"]);
+	const installer = startProcess("/bin/sleep", ["30"]);
+	const plan = buildWatchdogPlan({
+		appBundlePath: fixture.bundle,
+		executableName: "Fixture",
+		appPid: app.pid,
+		shipItJob: "com.local-operator.ShipIt",
+		installerPid: installer.pid,
+		platform: "darwin",
+		signals: fixture.probes,
+		timeoutSeconds: 4,
+		intervalSeconds: 1,
+		settleSeconds: 1,
+		appearSeconds: 1,
+		announceSeconds: 1,
+	});
+	const before = fixture.launches().length;
+	const watchdog = runWatchdog({
+		plan,
+		binDir: fixture.binDir,
+		env: { LOCAL_OPERATOR_NO_NOTIFICATIONS: "" },
+	});
+	app.kill();
+	/*
+	 * THE SET-TEST IS THE FIX (review minor, remediation round 2): an empty value
+	 * used to fall through the script's `-n` guard and reach osascript, while both
+	 * named spellings of this switch call the same launch silenced. The window is
+	 * the sibling case's, for the same reason - it must outlast the announcement.
+	 */
+	await new Promise((resolve) => setTimeout(resolve, 4000));
+	assert.deepEqual(
+		fixture.notifications(),
+		[],
+		"an empty-but-set switch must silence the notice",
+	);
+	installer.kill();
+	const result = await watchdog.exit;
+	assert.equal(result.code, 0);
+	assert.deepEqual(
+		fixture.notifications(),
+		[],
+		"and it stays silent through the decision, not only the announcement",
 	);
 	assert.equal(await waitForLaunches(fixture, before + 1), true);
 });

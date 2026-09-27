@@ -1,5 +1,9 @@
 import { Button } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
+import {
+	UpdateType,
+	useDeferredUpdatesStore,
+} from "@shared/store/deferred-updates-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import parse from "html-react-parser";
@@ -1394,8 +1398,33 @@ export const UpdateAvailable: Story = {
  * settles, so the wrapper presses the real "Download update" control once it is
  * mounted and the offer keeps its controls hidden while the download runs.
  */
+/**
+ * Hold the shipped component's offer in its DOWNLOADING state.
+ *
+ * THE READY GATE IS THE FIX (design D2, remediation round 2): the decorator's
+ * `mockUpdaterApi()` installs the bridge in ITS effect, which runs after this
+ * component's, so a component mounted immediately subscribes to the module-state
+ * stub and the offer never fires - which is the one render of delay `Triggered`
+ * above exists for. Mount after ready, then press the real control against a
+ * download the bridge holds open.
+ */
 function HeldDownload() {
+	const [ready, setReady] = useState(false);
 	useEffect(() => {
+		/*
+		 * The flags and the deferred-updates store are settled BEFORE the post-ready
+		 * mount: the store is localStorage-backed, and a record left in this browser
+		 * would let `shouldShowUpdate` suppress the offer - photographing an empty
+		 * frame instead of the panel the line lives on.
+		 */
+		window.triggerUpdateAvailable = true;
+		window.triggerUpdateProgress = true;
+		window.localStorage.removeItem("deferred-updates-storage");
+		useDeferredUpdatesStore.getState().clearDeferredUpdate(UpdateType.UI);
+		setReady(true);
+	}, []);
+	useEffect(() => {
+		if (!ready) return;
 		window.api.updater.downloadUpdate = () => new Promise<never>(() => {});
 		const timer = setTimeout(() => {
 			const control = Array.from(document.querySelectorAll("button")).find(
@@ -1404,8 +1433,10 @@ function HeldDownload() {
 			control?.click();
 		}, 0);
 		return () => clearTimeout(timer);
-	}, []);
-	return <UpdateNotification autoCheck={false} slowWaitHintMs={1} />;
+	}, [ready]);
+	return ready ? (
+		<UpdateNotification autoCheck={false} slowWaitHintMs={1} />
+	) : null;
 }
 
 export const Downloading: Story = {
