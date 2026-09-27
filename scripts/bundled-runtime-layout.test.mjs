@@ -144,7 +144,7 @@ test("no version-bearing path in the definition spells a Python minor", () => {
 });
 
 test("the version-bearing paths expand to the declared release", () => {
-	assert.equal(PYTHON_ABI, "3.12");
+	assert.equal(PYTHON_ABI, "3.14");
 	assert.equal(
 		SEED_STDLIB_MARKER,
 		`lib/python${PYTHON_ABI}/encodings/__init__.py`,
@@ -162,10 +162,9 @@ test("the version-bearing paths expand to the declared release", () => {
 });
 
 test("the prune list names the files the tree actually has", () => {
-	// The three spellings a standalone CPython tree uses, pinned to the real ones:
-	// `bin/2to3-3.12` carries the whole `<major>.<minor>`, while `bin/idle3.12` and
-	// `bin/pydoc3.12` carry only the minor after the tool's own name, and the stdlib
-	// lives under `lib/python3.12`.
+	// The spellings a standalone CPython tree uses, pinned to the real ones:
+	// `bin/idle3.12` carries only the minor after the tool's own name while the
+	// stdlib lives under `lib/python3.12`.
 	//
 	// WHY THIS IS A TEST AND NOT A COMMENT: one token for all three prunes NOTHING,
 	// and it fails in the direction nobody sees. Measured on the first version of
@@ -173,8 +172,28 @@ test("the prune list names the files the tree actually has", () => {
 	// has, so the prune removed 8 of the 10 files it names and the release gate's
 	// "the pruned paths are absent" assertion passed for the two that stayed - the
 	// exact silent outcome the `{pyver}` token exists to prevent.
-	for (const expected of [
+	//
+	// NO 2to3 ENTRY IS EXPECTED any more, and its absence is asserted rather than
+	// merely unlisted: CPython 3.13 removed both the `2to3` program and the
+	// `lib2to3` module (whatsnew/3.13, cpython#104780), so the 3.14 tree has
+	// `bin/2to3`, `bin/2to3-3.14` and `lib/python3.14/lib2to3` and none of them can
+	// come back under a version this repository would pin. The three entries were
+	// therefore DELETED from `prunedSeedPaths` rather than moved to
+	// `prunedSeedPathsOptional`: a required entry must exist in the tree the
+	// declared build produces (`pruneSeed` throws otherwise), and the optional list
+	// is bound to the Tcl/Tk line by its own test below, which encodes what it is
+	// for - content a build may ship under a versioned directory. A rollback to the
+	// previous release is a revert of this change, which restores the three.
+	for (const gone of [
+		"bin/2to3",
 		`bin/2to3-${PYTHON_ABI}`,
+		`lib/python${PYTHON_ABI}/lib2to3`,
+	])
+		assert.ok(
+			!PRUNED_SEED_PATHS.includes(gone),
+			`${gone} was removed upstream before ${PYTHON_VERSION}; a required prune entry for it fails the build`,
+		);
+	for (const expected of [
 		`bin/idle3.${PYTHON_MINOR}`,
 		`bin/pydoc3.${PYTHON_MINOR}`,
 		`lib/python${PYTHON_ABI}/idlelib`,
