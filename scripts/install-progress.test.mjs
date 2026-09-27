@@ -520,6 +520,39 @@ test("the window, the story and the capture tuple agree on one size", () => {
 	);
 });
 
+test("the panel states distance in steps, never as a fraction of the run", () => {
+	/*
+	 * The rail replaced a bar whose fill was `indexOf(phase)/4`. That expression is
+	 * the defect this change exists to remove, so it is pinned rather than described
+	 * in a comment, and the two halves are asserted separately because they fail for
+	 * different reasons.
+	 *
+	 * A `percent` (or an inline width) is a fraction reintroduced directly. The
+	 * first-run half is the reason it matters: `python` is the whole of a cold run's
+	 * opening minutes and nothing is behind it, so the bar claimed 0% for all of
+	 * them while `components` claimed exactly 50% for the longest step in the run -
+	 * the same lie in two places, because the panel knows stage BOUNDARIES and
+	 * publishes nothing inside one.
+	 *
+	 * The connector's own expression is the second half: a connector is a LENGTH,
+	 * and a length is what invites a fraction back in by accident, so the fill is
+	 * asserted to follow one step's own completion and nothing else.
+	 */
+	const panel = readFileSync(
+		"src/renderer/src/features/installer/components/installer-panel.tsx",
+		"utf8",
+	);
+	assert.ok(
+		!/percent|style=\{\{\s*width/.test(panel),
+		"the installer panel sizes a progress element from a fraction of the run again",
+	);
+	assert.match(
+		panel,
+		/state === "done"[\s\S]{0,24}"bg-accent"/,
+		"the rail's connector is no longer filled from the step above it being complete",
+	);
+});
+
 test("the window and the main process name the same channels", () => {
 	const main = readFileSync("src/main/backend/backend-installer.ts", "utf8");
 	const renderer = readFileSync(

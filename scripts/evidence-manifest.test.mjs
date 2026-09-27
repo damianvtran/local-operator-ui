@@ -1357,6 +1357,16 @@ const STAMP_BINDING_NOTES = [
 	 * list for.
 	 */
 	"windowsUvStagerFoldNote",
+	/*
+	 * AND THIS LANE'S OWN, for the setup window's rail: its subject IS this file's
+	 * binding - it states the pair the file ships and what the pass moved - so a
+	 * reader is owed the check rather than the prose, the case the two entries
+	 * above are in the list for. Unlike them it re-shot a whole surface (the
+	 * installer's eight states, twelve themes each), which is why the note also
+	 * carries the frame arithmetic: the swept count moves by the two states this
+	 * lane adds, and by nothing else.
+	 */
+	"installerPanelRailNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1899,6 +1909,12 @@ const BRANCH_RECORDS = [
 	 * resolved from main's copy would drop it.
 	 */
 	"windowsUvStagerFoldNote",
+	/*
+	 * And this LANE's newest top-level record: the setup window's rail states the pair
+	 * the file ships and the surface it re-shot, so a fold resolved from main's copy
+	 * would drop it first - the reason this list exists.
+	 */
+	"installerPanelRailNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
