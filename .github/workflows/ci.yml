@@ -391,13 +391,22 @@ jobs:
     # `timeout` in `scripts/backend-settings-collapse.test.mjs` only covers a
     # test body that never settles, and is blind to a leak that outlives every
     # test.
+    #
+    # RAISED FROM 20 TO 35 on 2026-09-26 (#534's round-1 remediation), measured
+    # rather than guessed: `main`'s Desktop Tests took 10m43s / 11m0s / 11m10s
+    # across three runs that day, while this branch's suite did not finish
+    # inside 20 minutes on the two consecutive heads either side of the round
+    # (the pre-remediation head and the folded one) - the cap was the bound
+    # being hit, not a hang, so the ceiling was clipping the suite this job
+    # exists to run, and it is raised so the suite can finish and be read. Nothing else changes: the job still runs the suite once,
+    # fails on any red, and the whole-tree count assertions stand.
     name: Desktop Tests
     needs: [changes]
     if: >-
       !cancelled() &&
       needs.changes.outputs.unit != 'false'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
 
     steps:
       - name: Checkout code

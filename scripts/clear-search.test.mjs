@@ -184,8 +184,21 @@ test("Escape clears the field and hands focus to the list, and comes back from i
 	);
 	assert.match(
 		keyDown,
-		/event\.key === "ArrowDown"\)[\s\S]*?querySelector<HTMLElement>\(\s*"\[data-chat-row\]"\s*\)/,
+		/event\.key === "ArrowDown"\)[\s\S]*?firstRowInList\(\)/,
 		"↓ must enter the list from the field (the palette's model)",
+	);
+	/*
+	 * AND THE LIST IT ENTERS IS THE CONVERSATIONS' OWN REGION (UX round 2, U2). The query under the
+	 * branch is written once, in `firstRowInList`, so this reads the branch AND the query it calls:
+	 * an unscoped `querySelector("[data-chat-row]")` on the PANEL answers with the ENTITY region's
+	 * first row - measured, the `Agents` disclosure - so ↓ entered the group rows and a reader walked
+	 * Agents, Teams and Mark all N read before the first conversation. The same scope the archive's
+	 * own caret hand-off carries, for the same reason.
+	 */
+	assert.match(
+		keyDown,
+		/const firstRowInList = \(\) =>[\s\S]*?querySelector<HTMLElement>\(\s*'\[data-sidebar-region="chats"\] \[data-chat-row\]'\s*,?\s*\)/,
+		"the list the field enters is the chats region, not the panel's document order",
 	);
 	/*
 	 * Read from the ESCAPE BRANCH rather than from the handler, and the reason is the
