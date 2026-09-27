@@ -151,11 +151,11 @@ const useExpandedPictureLatch = () => {
 /**
  * The message view's shape: the agent's prose at reading weight, then the
  * attachment in the wrapper `message-item/index.tsx` gives it, in the shared
- * 900px column the contract caps agent output at.
+ * 820px column the contract caps agent output at.
  */
 const Column = ({ children }: { children: ReactNode }) => (
 	<div className="min-h-screen bg-canvas p-8">
-		<div className="mx-auto flex w-full max-w-[900px] flex-col gap-4">
+		<div className="mx-auto flex w-full max-w-[820px] flex-col gap-4">
 			<p className="text-body text-ink">
 				March is reconciled. Three invoices are still outstanding; the totals
 				are in the table below.
