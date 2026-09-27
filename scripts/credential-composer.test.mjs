@@ -442,6 +442,15 @@ async function mount({
 	isLoading = false,
 	currentJobId,
 	/*
+	 * The SECRET-GATE arm, as a prop: the page passes `true` exactly while a
+	 * `secret` ask waits (`chat-content.tsx` reads it off the pending gate), and
+	 * the composer must then refuse the credential — no keystrokes, no draft, no
+	 * recall entry, nothing on the answer wire from this box. Mounted here the
+	 * way the other refusal arms are, because this is the only place that mounts
+	 * the shipped component without a page deciding them.
+	 */
+	secretAnswer = false,
+	/*
 	 * The composer's note seam (`onSlashNote`), recorded the way `onSendMessage` is.
 	 * Every OTHER outcome that rewrites the box narrates itself through it — a staged
 	 * line, a list that owns the key — and the locked run's own sentence goes the same
@@ -571,6 +580,7 @@ async function mount({
 					conversationId,
 					sessionStatus,
 					unavailable,
+					secretAnswer,
 					currentJobId,
 					deliveryRemediesReachable,
 					onSendMessage: async (...args) => {
@@ -5016,5 +5026,180 @@ test("a fresh hold after the notice's own remedy raises its own sentence", async
 		ran.length,
 		0,
 		"the re-armed press is still held, not dispatched",
+	);
+});
+
+/* ------------------------------------------------------------------ */
+/* The secret gate: the credential does not come through this box      */
+/* ------------------------------------------------------------------ */
+
+test("a secret gate refuses the composer the way an unavailable one is refused, and points at the dock's field", async () => {
+	/*
+	 * THE SECRET ASK'S COMPOSER CLOSURE. While a `secret` ask waits, the answer
+	 * is the dock's masked field (`trace/question-dock.tsx`) and this box must
+	 * not be the credential's way in: a value typed here would be painted in
+	 * clear, written through the persisted draft store on every keystroke, and
+	 * — before this change — sent as the question's answer. Those are the three
+	 * exposures the operator's request names, and this state closes the first
+	 * two at the keystroke and the third at the door.
+	 *
+	 * The SHAPE of the refusal is the base's own, deliberately: `readOnly` (never
+	 * `disabled` — the focus loss the unavailable arm records), `aria-disabled`,
+	 * and the term inside the one predicate every writer and submitter already
+	 * answers to. What is NEW is what the state CLAIMS: the placeholder names
+	 * the card above, because "Agent is busy" over a parked question is false
+	 * about the state and "This conversation is gone" is false about the pane.
+	 *
+	 * The half this file cannot prove, stated rather than implied: that a real
+	 * browser's read-only field fires no `input` event (the rig MODELS that
+	 * refusal in its own `key` helper, which is what makes the no-draft
+	 * assertion below meaningful only in the rig's model), and that the implicit
+	 * Enter submission from a live field reaches the form. Both are engine
+	 * facts; QA drives the engine, and `composer-refusal.test.mjs` pins the
+	 * source halves.
+	 */
+	const frame = await mount({ secretAnswer: true });
+	const field = frame.textarea();
+	assert.equal(field.readOnly, true);
+	assert.equal(
+		field.disabled,
+		false,
+		"`disabled` on the composer is the focus loss this base removed",
+	);
+	assert.equal(field.getAttribute("aria-disabled"), "true");
+	assert.equal(
+		field.placeholder,
+		"Answer the secret request above",
+		"the empty refusal says where the answer goes",
+	);
+	assert.equal(
+		field.getAttribute("aria-describedby"),
+		null,
+		"an empty refused box is described by nothing: the placeholder carries the short form",
+	);
+	assert.equal(
+		document.getElementById("composer-secret-closure-notice"),
+		null,
+		"and the draft-case sentence exists only when there is a draft it can serve",
+	);
+	assert.equal(
+		frame.button().disabled,
+		true,
+		"the Send control carries the refusal",
+	);
+
+	/* Typing takes nothing: the rig applies the browser's own read-only refusal. */
+	await type(frame, "ghp_not_a_real_token");
+	assert.equal(frame.value(), "", "a refused box takes no keystrokes");
+	assert.equal(frame.draft(), undefined, "and no draft reaches the store");
+
+	/* Enter takes nothing (the keydown guard), and the form seam refuses a
+	   submit that a press or a script reaches without a keydown. */
+	await enter(frame);
+	const form = frame.box().closest("form");
+	assert.ok(form, "the composer is a form");
+	await act(async () => {
+		form.requestSubmit();
+	});
+	await settle();
+	assert.equal(frame.sent.length, 0, "nothing reaches the page's send door");
+	assert.equal(
+		calls.filter((call) => call.request?.op === "sessions.answer").length,
+		0,
+		"and nothing reaches the answer op",
+	);
+	assert.equal(
+		useConversationInputStore.getState().inputByConversation[
+			frame.conversationId
+		]?.submittedMessages?.length ?? 0,
+		0,
+		"no recall entry is written from the refused path",
+	);
+});
+
+test("a draft written before the question survives it, and is never sent as its answer", async () => {
+	/*
+	 * THE STATE ORDERING THAT MATTERS: a gate can arrive while the box already
+	 * holds the user's own text. Both ways to get that wrong are pinned here —
+	 * clearing the box (destroying words nothing about this feature owns) and
+	 * sending it (the pre-change behaviour: ANY send while a gate was pending
+	 * became the gate's answer, so a draft someone wrote before the question
+	 * was asked would have been posted as the credential). The draft is HELD,
+	 * the press is REFUSED, and neither the draft nor the recall log moves.
+	 */
+	const conversationId = "conv-secret-held-draft";
+	const before = await mount({ conversationId });
+	await type(before, "draft written before the question");
+	assert.equal(before.draft(), "draft written before the question");
+
+	const frame = await mount({
+		conversationId,
+		keepWorld: true,
+		remount: true,
+		secretAnswer: true,
+	});
+	assert.equal(
+		frame.value(),
+		"draft written before the question",
+		"the draft is adopted into the refused box, not cleared",
+	);
+	await enter(frame);
+	await settle();
+	assert.equal(
+		frame.sent.length,
+		0,
+		"the held draft is not sent as the question's answer",
+	);
+	assert.equal(
+		calls.filter((call) => call.request?.op === "sessions.answer").length,
+		0,
+	);
+	assert.equal(
+		frame.value(),
+		"draft written before the question",
+		"a refused press does not clear the user's words",
+	);
+	assert.equal(
+		frame.draft(),
+		"draft written before the question",
+		"on disk either",
+	);
+});
+
+test("the closed box with a draft carries a visible reason (UX round 1, U2)", async () => {
+	/*
+	 * The closure's explanation was a PLACEHOLDER, and a placeholder paints only
+	 * while the box is empty - so the reader most likely to need the reason (a box
+	 * already holding their words) saw a dimmed box and no words at all. The
+	 * sentence now renders in the composer's own register above the box, and the
+	 * field is DESCRIBED by it while it renders (`aria-describedby`, the same
+	 * wiring the missing-session notice uses for its pane sentence).
+	 */
+	const conversationId = "conv-secret-closure-sentence";
+	const before = await mount({ conversationId });
+	await type(before, "half-written note from before the question");
+	assert.equal(before.draft(), "half-written note from before the question");
+
+	const frame = await mount({
+		conversationId,
+		keepWorld: true,
+		remount: true,
+		secretAnswer: true,
+	});
+	assert.equal(
+		frame.value(),
+		"half-written note from before the question",
+		"the draft is adopted into the refused box",
+	);
+	const notice = document.getElementById("composer-secret-closure-notice");
+	assert.ok(notice, "the closed box with a draft renders its explanation");
+	assert.equal(
+		notice.textContent,
+		"Answer the secret request above — this box is paused until it is answered, and your draft is kept.",
+	);
+	assert.match(
+		frame.textarea().getAttribute("aria-describedby") ?? "",
+		/composer-secret-closure-notice/,
+		"and the field is described by it",
 	);
 });
