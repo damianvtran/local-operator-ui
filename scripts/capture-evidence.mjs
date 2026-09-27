@@ -3371,6 +3371,108 @@ export const STORIES = [
 	["chat-ask-options--multi-question", 1024, 450],
 	["chat-ask-options--answer-in-flight", 1024, 470],
 	["chat-ask-options--secret-ask", 1024, 360],
+	/*
+	 * THE SECRET STATE'S OWN TWO EXTRAS, added with the credential-input
+	 * change: the EMPTY field's frame above cannot show the mask doing its job,
+	 * and it cannot show the in-flight reading at all.
+	 *
+	 * `secret-ask-typed` types INTO the field through CDP's own input pipeline
+	 * (`Input.insertText`), the same instrument the rename frames use for
+	 * `rename-edit-typed` - so the dots in the frame are a value a user put
+	 * there, not a prop the story set. ITS CLAIM IS CHECKED AT SHUTTER TIME:
+	 * the input the value went into must still be `type="password"`, because
+	 * the mask is the whole of what this surface exists for and a frame filed
+	 * under a secret name with a clear-text field would pass every existing
+	 * guard (nodes present, theme painted, ground covering most of the frame).
+	 */
+	[
+		"chat-ask-options--secret-ask",
+		1024,
+		360,
+		{
+			press: "[data-ask-secret] input",
+			pressSettleMs: 150,
+			insertText: "ghp_example_not_a_real_token",
+			insertTextSettleMs: 150,
+			expectAttribute: {
+				selector: "[data-ask-secret] input",
+				name: "type",
+				equals: "password",
+			},
+			// And the value that made the dots is STILL on the field: a frame
+			// under this name with an empty field would be a clear, not a mask.
+			expectValueKept: "[data-ask-secret] input",
+			dir: "secret-ask-typed",
+		},
+	],
+	/* The submitting reading, from its own story (`SecretAnswerInFlight`): the
+	   eyebrow says "Sending your answer…", the field and its Send control
+	   refuse input, AND the typed value is still under the mask.
+
+	   THE ROW DRIVES THE STATE (design round 1, D2; agent review round 1,
+	   MINOR-1): the story renders the idle field and cannot be seeded from
+	   props, so the rig types through the real input pipeline and submits
+	   through the real key pipeline - the same two instruments the typed frame
+	   uses - and the shutter is held until the story has flipped to in-flight
+	   (`expectSentence` waits) AND the typed value is still on the field
+	   (`expectValueKept`). The previous version photographed an empty field,
+	   which is equally what a premature clear looks like. */
+	[
+		"chat-ask-options--secret-answer-in-flight",
+		1024,
+		360,
+		{
+			press: "[data-ask-secret] input",
+			pressSettleMs: 150,
+			insertText: "ghp_example_not_a_real_token",
+			insertTextSettleMs: 150,
+			keys: [{ key: "Enter", settleMs: 400, text: "\r" }],
+			expectPresent: "[data-ask-secret]",
+			expectAttribute: {
+				selector: "[data-ask-secret] input",
+				name: "type",
+				equals: "password",
+			},
+			expectSentence: {
+				selector: '[data-lo-question-dock="expanded"]',
+				includes: "Sending your answer",
+			},
+			expectValueKept: "[data-ask-secret] input",
+			dir: "secret-answer-in-flight",
+		},
+	],
+	/* The HELD reading (`SecretAnswerHeld`): after an UNKNOWABLE outcome the
+	   field and Send are disabled with the typed value kept, and the hint names
+	   no dead control (design round 1, D1; UX round 1, U1; QA round 1, Q-1).
+
+	   Driven the same way as the in-flight row, and the shutter waits for the
+	   HELD HINT ITSELF - the sentence this state exists to show - scoped to the
+	   card rather than the document, so a frame cannot be committed with the
+	   idle sentence under a held name. */
+	[
+		"chat-ask-options--secret-answer-held",
+		1024,
+		360,
+		{
+			press: "[data-ask-secret] input",
+			pressSettleMs: 150,
+			insertText: "ghp_example_not_a_real_token",
+			insertTextSettleMs: 150,
+			keys: [{ key: "Enter", settleMs: 400, text: "\r" }],
+			expectPresent: "[data-ask-secret]",
+			expectAttribute: {
+				selector: "[data-ask-secret] input",
+				name: "type",
+				equals: "password",
+			},
+			expectSentence: {
+				selector: '[data-lo-question-dock="expanded"]',
+				includes: "nothing can send again",
+			},
+			expectValueKept: "[data-ask-secret] input",
+			dir: "secret-answer-held",
+		},
+	],
 	["chat-ask-options--approval", 1024, 360],
 	["chat-ask-options--approval-answer-in-flight", 1024, 360],
 	["design-system-primitives--all-primitives", 1280, 1600],
@@ -8532,6 +8634,20 @@ const main = async () => {
 							windowsVirtualKeyCode: codes.keyCode,
 							nativeVirtualKeyCode: codes.keyCode,
 							modifiers: spec.shiftKey ? 8 : 0,
+							/*
+							 * `spec.text`: the optional half that makes a key's DEFAULT ACTION
+							 * run. A `keyDown` without `text` delivers keydown alone; with it,
+							 * Chromium also produces the keypress Blink hangs default actions
+							 * on - measured on this sweep's own Enter-submits-a-form row
+							 * (`secret-answer-in-flight`): without `text` the story never
+							 * flipped, the shutter refused, and the frame was correctly not
+							 * taken. Rows that drive EXPLICIT keydown handlers leave it out on
+							 * purpose: adding a keypress to THEIR dispatch would change what
+							 * they exercise.
+							 */
+							...(spec.text !== undefined && type !== "keyUp"
+								? { text: spec.text }
+								: {}),
 						});
 					}
 					await sleep(spec.settleMs ?? 120);
@@ -8640,6 +8756,37 @@ const main = async () => {
 						`${story} @ ${theme}: \`${claim.selector}\` carries ${claim.name}=${JSON.stringify(value)}, which does not satisfy ${JSON.stringify(claim.equals ?? `includes ${claim.includes}`)} - the press did not produce the state this frame is named for`,
 					);
 				}
+			}
+
+			/*
+			 * `expectValueKept: "<selector>"` — the value the row's OWN `insertText`
+			 * typed is STILL on that field at the shutter.
+			 *
+			 * The secret frames exist to show the mask HOLDING a value (typed, and for
+			 * the in-flight and held states KEPT while the outcome is unknown); an
+			 * empty field is equally what a premature clear would look like, and no
+			 * existing claim can tell the two apart — `expectAttribute` reads
+			 * ATTRIBUTES (a controlled input's value is a property, not an attribute)
+			 * and `expectSentence` reads text, which a bullet mask is not. The
+			 * comparison uses the row's own `insertText`, so the fixture never becomes
+			 * a second literal that can drift, and failures report LENGTHS, never the
+			 * value: this option exists for a credential field and must not become the
+			 * thing that echoes one into a log.
+			 */
+			if (options?.expectValueKept) {
+				if (options.insertText === undefined)
+					throw new Error(
+						`${story} @ ${theme}: expectValueKept has nothing to compare against — the row must also carry \`insertText\``,
+					);
+				const { result: keptRead } = await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression: `document.querySelector(${JSON.stringify(options.expectValueKept)})?.value ?? null`,
+				});
+				const keptValue = keptRead?.value ?? null;
+				if (keptValue !== options.insertText)
+					throw new Error(
+						`${story} @ ${theme}: \`${options.expectValueKept}\` does not hold the typed value at the shutter (typed ${options.insertText.length} characters, read ${keptValue === null ? "no such field" : `${String(keptValue).length}`}) — the frame would show a field this state claims it is not`,
+					);
 			}
 
 			/*
