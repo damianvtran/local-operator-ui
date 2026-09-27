@@ -2497,9 +2497,13 @@ export function ChatSidebar({
 	 * result at the exact moment the reader is looking for one. Esc clears the field,
 	 * so the way back is the same key that put them there.
 	 */
+	const listedSessionIds = useMemo(
+		() => new Set(matching.map((row) => row.session_id)),
+		[matching],
+	);
 	const draftRows = useMemo(
-		() => untargetedDraftRows(drafts, inputByConversation),
-		[drafts, inputByConversation],
+		() => untargetedDraftRows(drafts, inputByConversation, listedSessionIds),
+		[drafts, inputByConversation, listedSessionIds],
 	);
 	const page = pageRows(pageOrder(rest, view.orderBy), {
 		limit: pageLimit(view.loads),

@@ -97,6 +97,13 @@ const PAGES = [
 		keywords: ["bots", "assistants", "roster", "agent list"],
 	},
 	{
+		id: "projects",
+		name: "Projects",
+		path: "/projects",
+		icon: "projects" as const,
+		keywords: ["workstreams", "milestones", "tracking", "planning"],
+	},
+	{
 		id: "agent-hub",
 		name: "Agent hub",
 		path: "/agent-hub",
@@ -209,6 +216,18 @@ export function usePaletteItems({
 		capabilities.data,
 		"session_catalogue",
 		2,
+	);
+	/*
+	 * The Projects entry is offered only on a backend that serves the surface —
+	 * the same predicate the sidebar row and the route's own gate read, so the
+	 * three surfaces cannot disagree. Absent means the entry is not built at
+	 * all, which is what keeps an older backend's palette byte-identical to the
+	 * one this app shipped before Projects.
+	 */
+	const projectsEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"projects",
+		1,
 	);
 	/*
 	 * Whether MAIN has an answer about the credential, which is a different fact
@@ -646,7 +665,9 @@ export function usePaletteItems({
 
 	const items = useMemo(
 		() => [
-			...buildNavigationItems(PAGES),
+			...buildNavigationItems(
+				PAGES.filter((page) => page.id !== "projects" || projectsEnabled),
+			),
 			...buildActionItems(
 				buildPaletteActions({
 					isOnChatPage,
@@ -665,6 +686,7 @@ export function usePaletteItems({
 			hasConversation,
 			isCanvasOpen,
 			canStageDraft,
+			projectsEnabled,
 			panelItems,
 			settingItems,
 			agentItems,
