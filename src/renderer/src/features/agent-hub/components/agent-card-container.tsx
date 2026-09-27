@@ -26,6 +26,16 @@ type AgentCardContainerProps = {
 	 * COUNTS are unaffected: they come from the list record, not from this read.
 	 */
 	viewerStateKnown?: boolean;
+	/**
+	 * The organization this row came from, when it is an org row (§8.4).
+	 *
+	 * Resolved by the page from the memberships it already read — the record
+	 * carries only `tenant_id` — and `null` for a public row. It is what the org
+	 * origin badge names, and its presence is also how the card knows to hide the
+	 * public-only interactions: `agent.visibility` is the authority, and this is the
+	 * name to render beside it.
+	 */
+	orgName?: string | null;
 };
 
 /**
@@ -40,6 +50,7 @@ export const AgentCardContainer: React.FC<AgentCardContainerProps> = ({
 	agent,
 	status,
 	viewerStateKnown = true,
+	orgName = null,
 }) => {
 	const { isAuthenticated } = useRadientAuth();
 	const [failedAction, setFailedAction] = useState<
@@ -118,6 +129,7 @@ export const AgentCardContainer: React.FC<AgentCardContainerProps> = ({
 			isFavouriteActionLoading={favouriteMutation.isPending}
 			isDownloading={downloadMutation.isPending}
 			viewerStateKnown={viewerStateKnown}
+			orgName={orgName}
 			actionError={
 				failure
 					? agentActionFailureMessage(failure.action, failure.error, agent.name)
