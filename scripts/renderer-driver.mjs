@@ -17985,15 +17985,23 @@ function readHitZones(cdp, spec) {
 		const inRegion = (x, y) => inRegionOver(x, y, () => true);
 		/*
 		 * THE SAME POINT WITHOUT THIS SURFACE'S OWN OPT-OUT, which is the before
-		 * reading every run gets for free. The fix adds only no-drag entries, so
-		 * removing the ones this surface contributes (its own subtree) is exactly
-		 * the region the point met before the marker existed - verified against the
-		 * pre-fix run once, and printed for every sample so a reader does not have
-		 * to take it on faith: the close button that failed with 5/5 samples
-		 * swallowed reads swallowed false / swallowedBefore true on the fixed tree.
+		 * reading every run gets for free: the region as it stood before the marker
+		 * this surface contributes existed. That is every no-drag entry in the
+		 * subtree, NOT every entry in it - chat-header-title is a surface whose own
+		 * subtree contributes the DRAG surface itself (the header row), and taking
+		 * that out would erase the pre-fix verdict this reconstruction exists to
+		 * state. For the portalled overlays the two forms coincide, because everything
+		 * a panel's marker contributes is no-drag (the value inherits, and
+		 * pre-marker those descendants computed none), so their readings are
+		 * unchanged: the close button that failed with 5/5 samples swallowed reads
+		 * swallowed false / swallowedBefore true on the fixed tree.
 		 */
 		const inRegionBefore = (x, y) =>
-			inRegionOver(x, y, (entry) => !root.contains(entry.node));
+			inRegionOver(
+				x,
+				y,
+				(entry) => !(root.contains(entry.node) && entry.mode === "no-drag"),
+			);
 		const rootRect = root.getBoundingClientRect();
 		const inViewport = (rect) =>
 			rect.left >= -1 && rect.top >= -1 &&
@@ -18098,6 +18106,39 @@ function readHitZones(cdp, spec) {
 				cover: region.cover,
 			});
 		}
+		/*
+		 * A BESPOKE PRESERVATION POINT, for the surface whose subject is a control
+		 * being carved OUT of a drag surface that must otherwise keep dragging
+		 * (chat-header-title). The lane points above sit at y=16 - the window's own
+		 * lane - so they say nothing about the ROW a fix touches; this one lands
+		 * dx from the named anchor (8px left of the title text is inside the row's
+		 * padding, beside the title) and must read INSIDE the region on every tree.
+		 * It is not part of preserved because those are skipped when they fall
+		 * inside the surface's own box, and this point is deliberately inside it.
+		 */
+		let stillDrags = null;
+		const wanted = ${JSON.stringify(spec.stillDrags ?? null)};
+		if (wanted !== null) {
+			const anchorEl = root.querySelector(wanted.anchor);
+			if (anchorEl === null) {
+				stillDrags = {
+					name: wanted.name ?? "beside " + wanted.anchor,
+					missing: true,
+				};
+			} else {
+				const box = anchorEl.getBoundingClientRect();
+				const x = box.left + (wanted.dx ?? -8);
+				const y = box.top + box.height / 2;
+				const region = inRegion(x, y);
+				stillDrags = {
+					name: wanted.name ?? "beside " + wanted.anchor,
+					x: Math.round(x * 10) / 10,
+					y: Math.round(y * 10) / 10,
+					inside: region.inside,
+					cover: region.cover,
+				};
+			}
+		}
 		const dragEntries = entries.filter((entry) => entry.mode === "drag");
 		const noDragEntries = entries.filter((entry) => entry.mode === "no-drag");
 		/*
@@ -18142,6 +18183,7 @@ function readHitZones(cdp, spec) {
 			controls,
 			skipped,
 			preserved,
+			stillDrags,
 		};
 	})()`);
 }
@@ -18207,6 +18249,28 @@ function checkHitZones(surface, report) {
 			)
 			.join(" | "),
 	);
+	/*
+	 * THE GUTTER BESIDE A CARVED-OUT CONTROL, for the surface whose fix adds an
+	 * opt-out INSIDE a drag surface that must keep dragging elsewhere
+	 * (`chat-header-title`). The lane checks above are about the strip outside the
+	 * surface; this one is about the ROW the new marker sits in, which no lane
+	 * point covers.
+	 */
+	const still = report.stillDrags;
+	if (still !== undefined && still !== null) {
+		check(
+			`[${surface}] ${still.name} still drags`,
+			still.missing !== true && still.inside === true,
+			still.missing === true
+				? `the anchor ${still.name} is measured from was not found`
+				: `${still.name} (${still.x}, ${still.y}) is outside the region; last cover: ${still.cover}`,
+			still.missing === true
+				? "anchor missing"
+				: `${still.name} (${still.x}, ${still.y}): inside=${still.inside}${
+						still.cover ? ` (cover ${still.cover})` : ""
+					}`,
+		);
+	}
 	return report;
 }
 
@@ -18709,7 +18773,81 @@ async function sceneHitZones(cdp) {
 			bandStoodDown
 				? "leading branch (the lane is the drag surface)"
 				: "caption-trailing branch (the band is the drag surface)"
-		}; only the host's own branch runs here — the other platform's assertions ride the runners that render it`,
+		} ; only the host's own branch runs here — the other platform's assertions ride the runners that render it`,
+	);
+
+	/*
+	 * THE CHAT HEADER'S TITLE BLOCK, the surface the operator's rename report
+	 * (2026-09-26) is about: hovering the title did nothing while hovering the
+	 * pencil beside it worked, because the header row is a drag region and the
+	 * title text had no opt-out - every point over it was a window drag, so the
+	 * renderer never saw the pointer. The title rides this surface's CONTROLS,
+	 * deliberately, so the five-point walk applies to it: on the tree before the
+	 * fix those points are swallowed with the header's own drag rect as their
+	 * cover, and the `swallowedBefore` reconstruction cannot launder that, because
+	 * the fix adds only no-drag entries. The `stillDrags` point beside the title
+	 * is the other half of the same claim: carving the title out must not take the
+	 * row with it.
+	 *
+	 * A session is created on this run's own backend and opened the way a user
+	 * opens one - the sidebar's list, then the row, the path `sceneBrowserPane`
+	 * drives - because the title block and its pencil exist on a conversation.
+	 */
+	await verb(cdp, "navigate", "/chat");
+	const headerCreated = await createBackendSession();
+	note(
+		"a conversation for the chat-header surface",
+		JSON.stringify(headerCreated),
+	);
+	check(
+		"[chat-header-title] a conversation exists on this run's own backend",
+		Boolean(headerCreated.id),
+		JSON.stringify(headerCreated),
+	);
+	if (headerCreated.id) {
+		if (
+			await cdp.evaluate(
+				`Boolean(document.querySelector('[data-tour-tag="chat-all-chats"]'))`,
+			)
+		) {
+			await verb(cdp, "press", {
+				selector: '[data-tour-tag="chat-all-chats"]',
+			});
+		}
+		const headerRowSelector = '[data-tour-tag="chat-session-row"]';
+		let headerRowPressed = false;
+		const headerDeadline = Date.now() + 20_000;
+		while (Date.now() < headerDeadline) {
+			if (await drawnSelector(cdp, headerRowSelector)) {
+				await verb(cdp, "press", { selector: headerRowSelector });
+				headerRowPressed = true;
+				break;
+			}
+			await wait(500);
+		}
+		check(
+			"[chat-header-title] the conversation row painted and was opened",
+			headerRowPressed,
+			`${headerRowSelector} never appeared within 20s`,
+		);
+		await wait(600);
+	}
+	const headerFrame = await captureSettled(cdp, "hit-zones-chat-header-dark");
+	note("frame chat-header-title", JSON.stringify(headerFrame));
+	surfaces.push(
+		checkHitZones(
+			"chat-header-title",
+			await readHitZones(cdp, {
+				surface: "chat-header-title",
+				root: '[data-chat-region="header"]',
+				controls: `${HIT_ZONE_CONTROLS}, [data-header-title]`,
+				stillDrags: {
+					anchor: "[data-header-title]",
+					dx: -8,
+					name: "the row 8px left of the title text",
+				},
+			}),
+		),
 	);
 
 	note(
