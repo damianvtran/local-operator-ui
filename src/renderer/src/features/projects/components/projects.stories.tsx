@@ -804,6 +804,71 @@ export const BoardStatuses: Story = {
 		}),
 };
 
+/**
+ * An EMPTY column: only active and done hold rows, so the board draws its own
+ * "No projects here." line — the state no populated story photographs (design
+ * round 1, D8).
+ */
+export const BoardEmptyColumns: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: [THREE[0], THREE[2]],
+			details: detailsFor([THREE[0], THREE[2]]),
+		}),
+};
+
+/**
+ * The card's sessions popover, OPEN: the door the card names, drawn (design
+ * round 1, D8). `userEvent.click` dispatches the full pointer sequence, which
+ * is what a Radix trigger listens for — a bare `.click()` would leave the
+ * frame showing a card and no drawer.
+ */
+export const BoardSessionsPopover: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: THREE,
+			details: { p1: DETAIL },
+		}),
+	play: playOnce("board-sessions-popover", async () => {
+		await poll(
+			() => document.querySelector('[data-project-sessions="p1"]') !== null,
+			"the sessions trigger",
+		);
+		const trigger = document.querySelector<HTMLElement>(
+			'[data-project-sessions="p1"]',
+		);
+		if (!trigger) throw new Error("the p1 card has no sessions trigger");
+		await userEvent.click(trigger);
+		await poll(
+			() => (document.body.textContent ?? "").includes("Payments cutover"),
+			"the popover to list a linked session",
+		);
+	}),
+};
+
+/** The card menu, open — Open / Set status / Edit / Delete, the no-drag rule. */
+export const BoardCardMenu: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: THREE,
+			details: detailsFor(THREE),
+		}),
+	play: playOnce("board-card-menu", async () => {
+		const selector = '[aria-label="Actions for payments-migration"]';
+		await poll(() => document.querySelector(selector) !== null, selector);
+		const trigger = document.querySelector<HTMLElement>(selector);
+		if (!trigger) throw new Error("the p1 card has no menu trigger");
+		await userEvent.click(trigger);
+		await poll(
+			() => (document.body.textContent ?? "").includes("Set status"),
+			"the card menu",
+		);
+	}),
+};
+
 /** The timeline: bars, milestone diamonds in all three states, today marker. */
 export const Timeline: Story = {
 	render: () => (

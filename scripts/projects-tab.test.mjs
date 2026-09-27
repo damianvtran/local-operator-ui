@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -45,6 +46,8 @@ const {
 	milestoneCountLabel,
 	liveSessionsLabel,
 	sessionsCountLabel,
+	boardProgressText,
+	sessionsTriggerLabel,
 	linkStateMeta,
 	subagentChipLabel,
 	todoChipLabel,
@@ -580,6 +583,66 @@ test("axis labels sit at unit starts, with a year cue when the year turns", () =
 	);
 });
 
+test("a unit label that would collide with the one before it stands down", () => {
+	/*
+	 * THE QA ROUND 1 REPRO, pinned: the span opens three days before a month
+	 * boundary, so at the month tier's 3px/day `Aug` sits 9px from `Jul` and
+	 * the axis read `JuAug` (measured live at `[513..529.5]` vs `[522..544.1]`).
+	 * The month tier now carries the day tier's own rule, at unit scale.
+	 */
+	const crowded = timeline.timelineTicks(
+		DAY(2026, 7, 29),
+		DAY(2026, 10, 28),
+		"month",
+	);
+	assert.deepEqual(
+		crowded.map((tick) => tick.label),
+		["Jul", "Sep", "Oct"],
+	);
+	// The control: from the boundary itself every label clears the gap.
+	const clean = timeline.timelineTicks(
+		DAY(2026, 7, 1),
+		DAY(2026, 10, 28),
+		"month",
+	);
+	assert.deepEqual(
+		clean.map((tick) => tick.label),
+		["Jul", "Aug", "Sep", "Oct"],
+	);
+	// Quarters carry the same rule: at 1px/day a boundary 12 days in is inside
+	// the 26px floor, so `Q1 '27` stands down rather than touching `Q4`.
+	const quarters = timeline.timelineTicks(
+		DAY(2026, 12, 20),
+		DAY(2027, 7, 20),
+		"quarter",
+	);
+	assert.deepEqual(
+		quarters.map((tick) => tick.label),
+		["Q4", "Q2", "Q3"],
+	);
+});
+
+test("the timeline's alpha steps are the measured floor, not taste", () => {
+	/*
+	 * DESIGN ROUND 1, D2/D3: at `accent/70` the bar measured 2.97:1
+	 * (localOperatorLight) and 2.98:1 (sage) over the surface; the today marker
+	 * at `accent/30` measured 1.52–2.57:1 in EVERY theme. Both now sit at
+	 * `accent/75` (3.27:1 on the light palettes), and this pin is the decision
+	 * itself: a restyle that changes the step has to come back here and bring
+	 * a measurement with it.
+	 */
+	const source = readFileSync(
+		"src/renderer/src/features/projects/components/project-timeline.tsx",
+		"utf8",
+	);
+	assert.ok(
+		source.includes("bg-accent/75"),
+		"the bar and the today marker share the measured step",
+	);
+	assert.ok(!source.includes("bg-accent/70"), "the 2.97:1 step");
+	assert.ok(!source.includes("bg-accent/30"), "the 1.52:1 step");
+});
+
 test("milestone marks carry the store's state and only dated milestones", () => {
 	const marks = timeline.timelineMarks(
 		item({}, [
@@ -617,4 +680,41 @@ test("milestone marks carry the store's state and only dated milestones", () => 
 			["soon", "upcoming"],
 		],
 	);
+});
+
+/* ------------------------------------------------------------- board copy -- */
+
+test("the card's progress line carries ONE 'ago'", () => {
+	/*
+	 * DESIGN ROUND 1, D1: the card appended its own `" ago"` to a phrase that
+	 * already ends in one, so every card with an age read "reported 2h ago
+	 * ago" (measured in the committed board frames). The sentence is derived in
+	 * the model now, and this pin is the same one `progressLine` keeps.
+	 */
+	assert.equal(boardProgressText("2h"), "reported 2h ago");
+	assert.equal(boardProgressText("6d"), "reported 6d ago");
+	assert.equal(boardProgressText("just now"), "reported just now");
+	assert.equal(boardProgressText(""), "no progress");
+});
+
+test("the sessions trigger names the door and keeps liveness beside it", () => {
+	/*
+	 * UX ROUND 1, U1 and DESIGN ROUND 1, D5: the trigger printed liveness
+	 * alone (`0 live` on a project whose links are merely stopped) — a state
+	 * where the number should be — so it now names the linked sessions the
+	 * popover lists, and folds the live count in while there is one.
+	 */
+	assert.equal(
+		sessionsTriggerLabel({ sessions: 3, live_sessions: 2 }),
+		"3 sessions · 2 live",
+	);
+	assert.equal(
+		sessionsTriggerLabel({ sessions: 1, live_sessions: 0 }),
+		"1 session",
+	);
+	assert.equal(
+		sessionsTriggerLabel({ sessions: 4, live_sessions: 4 }),
+		"4 sessions · 4 live",
+	);
+	assert.equal(sessionsTriggerLabel({ sessions: 0, live_sessions: 0 }), "");
 });

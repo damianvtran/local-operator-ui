@@ -64,6 +64,10 @@ type ProjectTimelineProps = {
 	onOpen: (item: TimelineItem) => void;
 	/** How many projects' milestone details are still in flight. */
 	pendingDetails: number;
+	/** How many milestone reads FAILED — a failed read is not an empty one. */
+	failedDetails: number;
+	/** Refetch every failed milestone read; the page owns the queries. */
+	onRetryDetails: () => void;
 };
 
 export const ProjectTimeline: FC<ProjectTimelineProps> = ({
@@ -71,6 +75,8 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 	nowMs,
 	onOpen,
 	pendingDetails,
+	failedDetails,
+	onRetryDetails,
 }) => {
 	const [manual, setManual] = useState<TimelineTier | null>(null);
 	const [width, setWidth] = useState(0);
@@ -117,17 +123,27 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 		>
 			<div className="flex shrink-0 items-center justify-between gap-3 border-b border-hairline px-3 py-2">
 				<span className="truncate text-meta text-ink-muted" data-timeline-note>
-					{pendingDetails > 0
-						? `Loading milestones for ${pendingDetails} project${pendingDetails === 1 ? "" : "s"}…`
-						: `${sections.dated.length} dated · ${sections.undated.length} without dates`}
+					{failedDetails > 0
+						? `Milestones could not be read for ${failedDetails} project${failedDetails === 1 ? "" : "s"}.`
+						: pendingDetails > 0
+							? `Loading milestones for ${pendingDetails} project${pendingDetails === 1 ? "" : "s"}…`
+							: `${sections.dated.length} dated · ${sections.undated.length} without dates`}
 				</span>
 				<span className="flex shrink-0 items-center gap-1">
+					{failedDetails > 0 && (
+						/* The detail screen's own rule: a failed read gets a sentence and
+						 * a door back (review round 1) — this surface would otherwise
+						 * draw a bar with silently missing marks. */
+						<Button variant="secondary" size="sm" onClick={onRetryDetails}>
+							Try again
+						</Button>
+					)}
 					<Button
 						variant="secondary"
 						size="icon"
 						aria-label="Zoom in"
 						title="Zoom in (finer)"
-						disabled={tier === TIMELINE_TIERS[0]}
+						disabled={!span || tier === TIMELINE_TIERS[0]}
 						onClick={() => step(1)}
 					>
 						<Plus />
@@ -140,7 +156,9 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 						size="icon"
 						aria-label="Zoom out"
 						title="Zoom out (coarser)"
-						disabled={tier === TIMELINE_TIERS[TIMELINE_TIERS.length - 1]}
+						disabled={
+							!span || tier === TIMELINE_TIERS[TIMELINE_TIERS.length - 1]
+						}
 						onClick={() => step(-1)}
 					>
 						<Minus />
@@ -269,8 +287,16 @@ const TimelineRow: FC<{
 				style={{ width: trackPx, height: ROW_PX }}
 			>
 				{bar && (
+					/*
+					 * THE BAR'S ALPHA IS A MEASURED FLOOR, not a taste: at `accent/70`
+					 * it measured 2.97:1 (localOperatorLight) and 2.98:1 (sage) over the
+					 * surface — under the 3:1 non-text class exactly where light themes
+					 * hide it; `accent/75` measures 3.27:1 there and clears the floor in
+					 * every sweep theme (design round 1, D3). Pinned in
+					 * `scripts/projects-tab.test.mjs` so a restyle has to re-measure.
+					 */
 					<span
-						className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-accent/70"
+						className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-accent/75"
 						style={{
 							left: dayOffset(spanStart, bar.fromMs) * pxPerDay,
 							width: (dayOffset(bar.fromMs, bar.toMs) + 1) * pxPerDay,
@@ -294,7 +320,13 @@ const TimelineRow: FC<{
 					/>
 				))}
 				<span
-					className="absolute inset-y-0 w-px bg-accent/30"
+					/*
+					 * THE TODAY MARKER shares the bar's measured floor: at `accent/30` it
+					 * measured 1.52–2.57:1 across all twelve sweep themes — the faintest
+					 * element on the timeline (design round 1, D2). Same step as the bar
+					 * (`accent/75`), same pin in the test: one value, one measurement.
+					 */
+					className="absolute inset-y-0 w-px bg-accent/75"
 					style={{ left: dayOffset(spanStart, today) * pxPerDay }}
 					aria-hidden="true"
 				/>

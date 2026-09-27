@@ -25,7 +25,7 @@
  * (`openConversation`, the chat feature's one owner of that URL write).
  */
 
-import { Badge } from "@shared/components/ui";
+import { Badge, Button } from "@shared/components/ui";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -44,7 +44,7 @@ import {
 import { cn } from "@shared/lib/utils";
 import { MoreHorizontal } from "lucide-react";
 import type { FC } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { DesktopProject } from "../../../../../shared/desktop-control-contract";
 import { openConversation } from "../../chat/open-conversation";
@@ -54,11 +54,12 @@ import {
 	BOARD_EXTRA_COLUMN,
 	PROGRESS_STALE_LABEL,
 	boardColumns,
+	boardProgressText,
 	listRowMeta,
 	progressAge,
-	progressAgePhrase,
 	projectOverdue,
 	projectStatusMeta,
+	sessionsTriggerLabel,
 } from "../project-model";
 import { todayUtcMs } from "../timeline-model";
 
@@ -80,7 +81,8 @@ const COLUMN_NOTE: Record<string, string> = {
 	active: "In flight",
 	paused: "On hold",
 	done: "Finished",
-	archived: "Archived",
+	/* archived has no note on purpose: a note that repeats the label ("Archived
+	 * Archived") is noise, not information (design round 1, D4). */
 };
 
 export const ProjectBoard: FC<ProjectBoardProps> = ({
@@ -179,6 +181,20 @@ const BoardCard: FC<BoardCardProps> = ({
 	);
 	const overdue = projectOverdue(project, todayUtcMs(nowMs));
 	const age = progressAge(project.progress_updated_at, nowMs);
+	const triggerRef = useRef<HTMLButtonElement>(null);
+	/*
+	 * FOCUS COMES BACK WHEN A MOVE ENDS. The trigger disables itself while the
+	 * write is in flight, and disabling a focused control blurs it - so the
+	 * caret fell to `document.body` and a keyboard user who moved a card lost
+	 * their place (UX round 1, U2). The effect fires the moment `busy` goes
+	 * false, which is the re-enable, so the caret returns to the control the
+	 * user pressed.
+	 */
+	const wasBusy = useRef(busy);
+	useEffect(() => {
+		if (wasBusy.current && !busy) triggerRef.current?.focus();
+		wasBusy.current = busy;
+	}, [busy]);
 	return (
 		<div
 			data-project-name={project.name}
@@ -191,7 +207,7 @@ const BoardCard: FC<BoardCardProps> = ({
 				<button
 					type="button"
 					onClick={onOpen}
-					className="min-w-0 flex-1 text-left"
+					className="-mx-1 min-w-0 flex-1 rounded-sm px-1 text-left hover:bg-elevated"
 				>
 					<span className="block truncate text-body-sm font-medium text-ink">
 						{project.name}
@@ -204,6 +220,7 @@ const BoardCard: FC<BoardCardProps> = ({
 				</button>
 				<DropdownMenu>
 					<DropdownMenuTrigger
+						ref={triggerRef}
 						aria-label={`Actions for ${project.name}`}
 						disabled={busy}
 						className={cn(
@@ -257,7 +274,7 @@ const BoardCard: FC<BoardCardProps> = ({
 			</div>
 			<div className="flex items-center justify-between gap-2">
 				<span className="truncate text-meta text-ink-muted">
-					{age ? `reported ${progressAgePhrase(age)} ago` : "no progress"}
+					{boardProgressText(age)}
 				</span>
 				<span className="flex items-center gap-1.5">
 					{(project.progress_stale || !age) && (
@@ -286,10 +303,13 @@ const CardSessionsPopover: FC<{ project: DesktopProject }> = ({ project }) => {
 	const navigate = useNavigate();
 	const detail = useProjectDetail(project.id, open);
 	const links = detail.data?.links ?? [];
-	const linkLabel = `${project.live_sessions} live`;
+	const linkLabel = sessionsTriggerLabel(project);
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger
+				/* The sweep's own hook into the door, in the `data-project-name`
+				 * family this card already uses. */
+				data-project-sessions={project.id}
 				aria-label={`Sessions linked to ${project.name}`}
 				className={cn(
 					"rounded-sm px-1 text-meta",
@@ -305,6 +325,27 @@ const CardSessionsPopover: FC<{ project: DesktopProject }> = ({ project }) => {
 					<p className="px-1 py-2 text-meta text-ink-muted">
 						Loading linked sessions…
 					</p>
+				) : detail.isError ? (
+					/*
+					 * A FAILED READ IS NOT AN EMPTY ONE (review round 1). Without this
+					 * branch the popover showed nothing at all, which reads as "no
+					 * sessions" while the truth is "not known" - the detail screen's
+					 * own rule, in the popover's smaller voice.
+					 */
+					<div className="flex flex-col items-start gap-1.5 px-1 py-2">
+						<p className="text-meta text-ink-muted">
+							{detail.error instanceof Error && detail.error.message
+								? detail.error.message
+								: "The linked sessions could not be read."}
+						</p>
+						<Button
+							variant="secondary"
+							size="sm"
+							onClick={() => void detail.refetch()}
+						>
+							Try again
+						</Button>
+					</div>
 				) : links.length === 0 ? (
 					<p className="px-1 py-2 text-meta text-ink-muted">
 						No sessions linked yet.
