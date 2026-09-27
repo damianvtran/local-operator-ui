@@ -1425,6 +1425,136 @@ export const STORIES = [
 		84,
 		{ hover: "[data-header-title]", dir: "title-hover" },
 	],
+	/*
+	 * THE INLINE RENAME (the operator's report, 2026-09-26): the report names
+	 * exactly these moments - hovering the title reveals the pencil
+	 * (`title-hover` above, unchanged), the pencil press AND the title's own
+	 * double-click open the editor, and Enter, Escape and the X are the three
+	 * exits - so each has a frame whose claim is asserted at shutter time. The
+	 * editor's own hook (`[data-header-rename-input]`) must be PRESENT for the
+	 * entries that open it and GONE for the entries that close it, and
+	 * `rename-edit`'s `aria-label` claim is the pencil-becomes-X half; a frame
+	 * cannot ship under a rename name with the editor never opened, never
+	 * closed, or the X still labelled as the pencil.
+	 *
+	 * `rename-edit-typed` and `rename-save` split the save in two ON PURPOSE:
+	 * the typed frame is where `Input.insertText` landing (and the select-all it
+	 * replaces) is visible in pixels, and the save frame is the round trip - the
+	 * story's bridge repaints the title with the name the command CARRIED, so
+	 * the frame carries the submitted value rather than a claim about it.
+	 */
+	[
+		"chat-header-identity--rename-inline",
+		560,
+		84,
+		{
+			press: "[data-header-rename]",
+			pressSettleMs: 250,
+			expectPresent: "[data-header-rename-input]",
+			expectAttribute: {
+				selector: "[data-header-rename]",
+				name: "aria-label",
+				equals: "Cancel rename",
+			},
+			dir: "rename-edit",
+		},
+	],
+	[
+		"chat-header-identity--rename-inline",
+		560,
+		84,
+		{
+			dblclick: "[data-header-title]",
+			dblclickSettleMs: 250,
+			expectPresent: "[data-header-rename-input]",
+			dir: "rename-edit-dblclick",
+		},
+	],
+	[
+		"chat-header-identity--rename-inline",
+		560,
+		84,
+		{
+			press: ["[data-header-rename]", "[data-header-rename]"],
+			pressSettleMs: 250,
+			expectGone: "[data-header-rename-input]",
+			expectAttribute: {
+				selector: "[data-header-rename]",
+				name: "aria-label",
+				equals: "Rename conversation",
+			},
+			dir: "rename-cancel-x",
+		},
+	],
+	[
+		"chat-header-identity--rename-inline",
+		560,
+		84,
+		{
+			press: "[data-header-rename]",
+			pressSettleMs: 250,
+			keys: [{ key: "Escape", settleMs: 300 }],
+			expectGone: "[data-header-rename-input]",
+			dir: "rename-cancel-esc",
+		},
+	],
+	[
+		"chat-header-identity--rename-inline",
+		560,
+		84,
+		{
+			press: "[data-header-rename]",
+			pressSettleMs: 250,
+			insertText: "Rename round trip (rig)",
+			insertTextSettleMs: 200,
+			dir: "rename-edit-typed",
+		},
+	],
+	[
+		"chat-header-identity--rename-inline",
+		560,
+		84,
+		{
+			press: "[data-header-rename]",
+			pressSettleMs: 250,
+			insertText: "Rename round trip (rig)",
+			insertTextSettleMs: 200,
+			keys: [{ key: "Enter", settleMs: 400 }],
+			expectGone: "[data-header-rename-input]",
+			dir: "rename-save",
+		},
+	],
+	/*
+	 * The save IN FLIGHT (agent review round 1's NIT-2, UX round 1's U1-U3,
+	 * fixed in round 1's remediation): the story holds the receipt for six
+	 * seconds, the entry submits and the shutter reads the state the fixes ARE -
+	 * `aria-busy` on the control, the spinner in the X's slot, and the field
+	 * present AND `[readonly]` in one selector (the element the claim is about,
+	 * not a sibling). A frame that arrived after the receipt resolved fails
+	 * rather than lying.
+	 */
+	[
+		"chat-header-identity--rename-inline-saving",
+		560,
+		84,
+		{
+			press: "[data-header-rename]",
+			pressSettleMs: 250,
+			insertText: "Rename round trip (rig)",
+			insertTextSettleMs: 200,
+			keys: [{ key: "Enter", settleMs: 250 }],
+			expectPresent: [
+				"[data-header-rename-input][readonly]",
+				"[data-header-rename] .animate-spin",
+			],
+			expectAttribute: {
+				selector: "[data-header-rename]",
+				name: "aria-busy",
+				equals: "true",
+			},
+			dir: "rename-saving",
+		},
+	],
 	["chat-header-identity--no-team-no-agent", 560, 84],
 	[
 		"chat-header-identity--no-team-no-agent",
@@ -6951,13 +7081,23 @@ const main = async () => {
 				}
 			}
 
-			if (options?.press) {
+			/*
+			 * `press` takes ONE selector or a LIST of them, pressed in order. The list
+			 * exists for the rename editor's X, which lives in the same element slot
+			 * as the pencil: entry one (the pencil) opens the editor, entry two (the
+			 * same selector, now an X) leaves it through the cancel handler. Each
+			 * press is a full move/press/release through the input pipeline; `hold`
+			 * applies to the LAST press only, because holding an earlier one would
+			 * leave a button down when the next press begins.
+			 */
+			const pressSelectors = options?.press ? [options.press].flat() : [];
+			for (const [index, pressSelector] of pressSelectors.entries()) {
 				let target = { value: null };
 				for (let i = 0; i < 100 && !target.value; i++) {
 					const { result } = await cdp.send("Runtime.evaluate", {
 						returnByValue: true,
 						expression: `(() => {
-							const el = document.querySelector(${JSON.stringify(options.press)});
+							const el = document.querySelector(${JSON.stringify(pressSelector)});
 							if (!el) return null;
 							const r = el.getBoundingClientRect();
 							if (r.width === 0 || r.height === 0) return null;
@@ -6969,7 +7109,7 @@ const main = async () => {
 				}
 				if (!target.value) {
 					throw new Error(
-						`${story} @ ${theme}: the press selector \`${options.press}\` never appeared (15s) - a press that finds nothing must fail rather than photograph the resting state under a name that claims otherwise`,
+						`${story} @ ${theme}: the press selector \`${pressSelector}\` never appeared (15s) - a press that finds nothing must fail rather than photograph the resting state under a name that claims otherwise`,
 					);
 				}
 				await cdp.send("Input.dispatchMouseEvent", {
@@ -7000,7 +7140,7 @@ const main = async () => {
 				 * this story: every capture navigates for its theme and each navigation is
 				 * preceded by `about:blank`, so no page inherits Chromium's input state.
 				 */
-				if (!options?.hold) {
+				if (!(options?.hold && index === pressSelectors.length - 1)) {
 					await cdp.send("Input.dispatchMouseEvent", {
 						type: "mouseReleased",
 						x: target.value.x,
@@ -7013,6 +7153,86 @@ const main = async () => {
 					});
 				}
 				if (options?.pressSettleMs) await sleep(options.pressSettleMs);
+			}
+
+			/*
+			 * A DOUBLE CLICK through the same input pipeline `press` uses - two
+			 * press/release pairs, the second carrying `clickCount: 2`, which is what
+			 * Blink runs its own double-click detection on (`dblclick` fires after the
+			 * second release). It exists for the chat header's rename editor, whose
+			 * entry gesture the operator named as a double-click on the title: a
+			 * scene-level `element.dispatchEvent` would not prove the handler is
+			 * REACHABLE through real input, which is the same reason `press` is a
+			 * pointer sequence rather than a `.click()`.
+			 */
+			if (options?.dblclick) {
+				let target = { value: null };
+				for (let i = 0; i < 100 && !target.value; i++) {
+					const { result } = await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression: `(() => {
+							const el = document.querySelector(${JSON.stringify(options.dblclick)});
+							if (!el) return null;
+							const r = el.getBoundingClientRect();
+							if (r.width === 0 || r.height === 0) return null;
+							return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+						})()`,
+					});
+					target = result;
+					if (!target.value) await sleep(150);
+				}
+				if (!target.value) {
+					throw new Error(
+						`${story} @ ${theme}: the dblclick selector \`${options.dblclick}\` never appeared (15s)`,
+					);
+				}
+				await cdp.send("Input.dispatchMouseEvent", {
+					type: "mouseMoved",
+					x: target.value.x,
+					y: target.value.y,
+					button: "none",
+					buttons: 0,
+					clickCount: 0,
+					modifiers: 0,
+					pointerType: "mouse",
+				});
+				for (const clickCount of [1, 2]) {
+					await cdp.send("Input.dispatchMouseEvent", {
+						type: "mousePressed",
+						x: target.value.x,
+						y: target.value.y,
+						button: "left",
+						buttons: 1,
+						clickCount,
+						modifiers: 0,
+						pointerType: "mouse",
+					});
+					await cdp.send("Input.dispatchMouseEvent", {
+						type: "mouseReleased",
+						x: target.value.x,
+						y: target.value.y,
+						button: "left",
+						buttons: 0,
+						clickCount,
+						modifiers: 0,
+						pointerType: "mouse",
+					});
+				}
+				if (options?.dblclickSettleMs) await sleep(options.dblclickSettleMs);
+			}
+
+			/*
+			 * TEXT through the input pipeline (`Input.insertText`), for the claims
+			 * about what a field DOES WITH INPUT rather than about a key press. It
+			 * lands in the focused element and replaces its selection - which is how
+			 * the rename editor's select-all is exercised: the typed string replaces
+			 * the prefilled name rather than appending to it, and that it landed is
+			 * verifiable in the frame itself (`rename-edit-typed`).
+			 */
+			if (options?.insertText !== undefined) {
+				await cdp.send("Input.insertText", { text: options.insertText });
+				if (options?.insertTextSettleMs)
+					await sleep(options.insertTextSettleMs);
 			}
 
 			/*
