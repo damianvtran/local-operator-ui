@@ -559,7 +559,9 @@ test("axis labels sit at unit starts, with a year cue when the year turns", () =
 			// The month's name, not "Oct 1": at 24px/day the day number would
 			// collide with the next label (measured in the first capture).
 			["Oct", true],
-			["2", false],
+			// And the day beside the month stands down (the TUI's rule for a
+			// label that would collide): "Sep" + "2" reads as one token.
+			["", false],
 		],
 	);
 	// The week tier names the month the week TURNS OVER, not every Monday.
