@@ -683,6 +683,14 @@ test("the region walks the listing and always ends on a whole row", () => {
 	// The header pitch is a measured constant, pinned like the row pitch so an
 	// edit to it is a decision.
 	assert.equal(AT_SECTION_HEADER_PITCH, 29);
+	// `rows` is the ceiling on both paths (review round 3's R3-3): a runs list
+	// that over-counts the listing is clipped to the rows the listing holds, and
+	// the window still ends on a row — the next run's header is not charged for
+	// rows the ceiling refuses.
+	assert.deepEqual(atRegionPlan(2, 8, [2, 2]), {
+		shown: 2,
+		cap: AT_SECTION_HEADER_PITCH + 2 * AT_ROW_PITCH,
+	});
 	// The runs the plan walks: consecutive rows of one section are a run, and a
 	// missing section value is a run of its own (the file half).
 	assert.deepEqual(

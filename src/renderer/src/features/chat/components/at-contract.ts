@@ -143,8 +143,11 @@ export function atSectionRuns(
  * inside the cap. `shown` is the rows inside that window and `cap` is the
  * window's own height, so the region always ends on a row's bottom edge — never
  * on a sliced row, and never on a section name with no rows under it (entering
- * a run costs its header AND at least one row). The footer's count is then one
- * currency: the rows drawn against the rows the listing holds.
+ * a run costs its header AND at least one row). `rows` is the listing's own
+ * length and is the walk's ceiling as well as the file-only clip, so a runs
+ * list that over-counts can never draw more rows than the listing holds. The
+ * footer's count is then one currency: the rows drawn against the rows the
+ * listing holds.
  */
 export function atRegionPlan(
 	rows: number,
@@ -159,10 +162,16 @@ export function atRegionPlan(
 	let shown = 0;
 	for (const count of sectionRuns) {
 		if (count <= 0) continue;
+		// The listing is fully drawn: stop here rather than charge the next run's
+		// header for rows the ceiling will refuse (agent review round 3's R3-3).
+		if (shown >= rows) break;
 		if (used + AT_SECTION_HEADER_PITCH + AT_ROW_PITCH > room) break;
 		used += AT_SECTION_HEADER_PITCH;
 		let taken = 0;
-		while (taken < count && used + AT_ROW_PITCH <= room) {
+		// `rows` is the ceiling on BOTH paths (agent review round 3's R3-3): the
+		// runs describe the same list, so an over-counting caller can never draw
+		// more rows than the listing holds.
+		while (taken < count && shown < rows && used + AT_ROW_PITCH <= room) {
 			used += AT_ROW_PITCH;
 			taken += 1;
 			shown += 1;
