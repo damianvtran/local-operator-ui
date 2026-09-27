@@ -1452,6 +1452,20 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"daemonObservationTickWaitRestampNote",
 	/*
+	 * AND THE TWO-FLAKE LANE'S OWN: its subject IS this file's binding too - it
+	 * moves BOTH trees without taking a frame (a dev-mode caret fix and two
+	 * readers, none of which draws anything), so a reader is owed the pair AND
+	 * the reason no still was owed, the same case task-17's entry states.
+	 */
+	"twoFlakesRestampNote",
+	/*
+	 * AND THE SAME LANE'S SECOND FOLD, WHOSE SUBJECT IS THIS BINDING ITSELF: the
+	 * fold carried main's four merges under the branch's own change, so it moved
+	 * BOTH trees and the pair was re-derived at the folded tip - the case a reader
+	 * is owed the pair for, and the one this list is what holds them to.
+	 */
+	"foldOntoE885227046Note",
+	/*
 	 * AND THIS BRANCH'S OWN: the pending-echo placement fix moves BOTH trees this
 	 * file binds - `src/` for `withTimeOrder`'s load-window case and the
 	 * `provisional` field it reads, `scripts/` for the reducer cases that pin the
@@ -1504,6 +1518,14 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"pendingEchoRemediationFifthFoldNote",
 	/*
+	 /*
+	 * AND THE TWO-FLAKE LANE'S SECOND FOLD: its subject IS this file's binding -
+	 * the fold onto the moved `origin/main` after #562 and #577 re-derives the
+	 * pair at the folded tip and reads it back from the staged index, so a
+	 * reader is owed the pair rather than the prose.
+	 */
+	"foldOntoA9f4b1d7f4Note",
+	 /*
 	 * AND THE STALL BOUND'S OWN: it bounds the update feed fetch, the update
 	 * download and the PyPI version read so a stalled network cannot hold the
 	 * checking frame. It moves BOTH trees - `src/` for the deadline, the latch
@@ -2119,6 +2141,20 @@ const BRANCH_RECORDS = [
 	 */
 	"daemonObservationTickWaitRestampNote",
 	/*
+	 * And by the TWO-FLAKE lane, whose note is now the newest top-level record on
+	 * the branch: it states the pair this tip ships, moves both trees, and takes
+	 * no frame - a fold that started from main's copy would drop it first, the
+	 * same reason this list exists.
+	 */
+	"twoFlakesRestampNote",
+	/*
+	 * And by the TWO-FLAKE lane's second fold, whose record is now the newest
+	 * top-level note on the branch: it states the pair the folded tip ships, moves
+	 * both trees, and takes no frame - a fold that started from main's copy would
+	 * drop it first, the same reason this list exists.
+	 */
+	"foldOntoE885227046Note",
+	/*
 	 * Grown by the pending-echo lane: its fix, its round-1 remediation and its
 	 * two folds each wrote a top-level record. The first fold registered them
 	 * with the stamp-binding list only, so a fold that resolved this file from
@@ -2145,6 +2181,12 @@ const BRANCH_RECORDS = [
 	 */
 	"pendingEchoRemediationFifthFoldNote",
 	/*
+	 /*
+	 * And the TWO-FLAKE lane's second fold's record rides beside them - each
+	 * fold writes one, and the same completeness reason stands.
+	 */
+	"foldOntoA9f4b1d7f4Note",
+	 /*
 	 * And this pass's own, the newest top-level record on the branch: it states
 	 * the pair this re-stamp derives and records the simulation the pass ships
 	 * in place of frames, so a later fold that started from main's copy would
