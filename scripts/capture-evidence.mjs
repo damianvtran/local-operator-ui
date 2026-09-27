@@ -6286,9 +6286,17 @@ const assertBackendDown = async () => {
  * before it. Deriving it from the tree - with the same walker and exclusion
  * list `check-evidence.mjs` compares it against - makes the comparison
  * unfalsifiable and absorbs stray undeclared directories (round 1, R2).
+ *
+ * The previous total is COERCED, and that is not defensive dressing: folds have
+ * hand-resolved this field as a JSON string, and `"9718" + 4` is `"97184"` -
+ * measured on the trace-label pass (2026-09-27), where the string form also
+ * flipped `check-evidence.mjs`'s `typeof === "number"` gate to skipped, so the
+ * drift was silent in both directions for as long as it existed. The same
+ * coercion guards the `refreshedFrames` accumulation below, for the same
+ * reason.
  */
 export function partialFrameCount(previous, added) {
-	return (previous.frames ?? 0) + added.length;
+	return Number(previous.frames ?? 0) + added.length;
 }
 
 /**
@@ -9041,7 +9049,7 @@ const main = async () => {
 								: head,
 							refreshedFrames:
 								(sameHead
-									? (previous.partialCapture?.refreshedFrames ?? 0)
+									? Number(previous.partialCapture?.refreshedFrames ?? 0)
 									: 0) + captured,
 							refreshedStories: [
 								...new Set([
