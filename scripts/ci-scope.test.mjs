@@ -976,6 +976,18 @@ test("A16: docs/evidence/** keeps the suite and nothing else", () => {
  * job was paid twice for no signal. `pipefail` gives the first half; the counts
  * give the second (a renamed script or a glob matching nothing still exits 0).
  * Mutation: re-add the second `pnpm test:desktop`.
+ *
+ * Defect, second half (2026-09-27, run 36287261534): GitHub runs a `run:` step
+ * as `bash -e`, so a RED suite ended the step at its own pipeline - the count
+ * greps never ran, the `desktop suite: ...` line never printed, and the job's
+ * only message was the runner's `Process completed with exit code 1`. The one
+ * failing test was invisible in the artefact everyone reads, because `gh run
+ * view --log` fetches 18.7 MB of this job's 37.7 MB blob and the failure's own
+ * line sits past the cut, so a single failing test read as a silent hang. The
+ * step now captures the suite's status and annotates the `not ok` lines, which
+ * a check-run carries outside the log; the two pins below hold that, and the
+ * mutation is to move the pipeline back under errexit (drop `SUITE_RC=$?`) or
+ * to drop the `::error::` echo.
  */
 test("A17: exactly one desktop-suite invocation, behind a failing-closed step", () => {
 	const invocations = runBlocks("test")
@@ -997,6 +1009,24 @@ test("A17: exactly one desktop-suite invocation, behind a failing-closed step", 
 	// reading as a pass have to survive the collapse.
 	assert.match(suite, /-lt 60/, "the pass-count floor is gone");
 	assert.match(suite, /"\$FAIL" != "0"/, "the fail-count assertion is gone");
+	/*
+	 * AND THE TWO THAT MAKE A RED SUITE SAY WHICH TEST WAS RED. Without them a
+	 * future `bash -e` regression puts the step back to dying at its pipeline
+	 * with only an exit code (the second defect above), and the diagnostics this
+	 * step now writes - the rc line, the TAP summary, the annotations - are the
+	 * difference between a five-minute diagnosis and a fleet-wide hunt for a
+	 * hang that never existed.
+	 */
+	assert.match(
+		suite,
+		/SUITE_RC=\$\?/,
+		"the step no longer captures the desktop suite's own status, so `bash -e` will swallow its counts and diagnostics again",
+	);
+	assert.match(
+		suite,
+		/::error::/,
+		"the step no longer annotates the failing tests, so a truncated log hides them again",
+	);
 	assert.ok(
 		blocks.some((block) => block.includes("git status --porcelain")),
 		"the 'the run left the tree clean' assertion is gone",
