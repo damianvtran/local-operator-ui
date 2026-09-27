@@ -621,6 +621,15 @@ export const STORIES = [
 	["chat-trace-fold--mid-run", 1280, 130],
 	["chat-trace-fold--finished", 1280, 130],
 	["chat-trace-fold--restored", 1280, 130],
+	/*
+	 * The operator's report of 2026-09-27, as a state: four file reads and three
+	 * agent-profile READS, which folded as `Explored 4 files, delegated 3 tasks`
+	 * while every row above the header read `Delegated`. With the op tier the
+	 * same seven actions fold by kind - `4 files · 3 agents` - under the noun of
+	 * the calls themselves (`KIND_NOUNS`), and this header is the frame the
+	 * design round judges that claim from.
+	 */
+	["chat-trace-fold--agent-ops", 1280, 130],
 	[
 		"chat-trace-fold--expanded",
 		1280,
@@ -1658,6 +1667,16 @@ export const STORIES = [
 	["chat-tool-rows--screenshots-two", 1280, 900],
 	["chat-tool-rows--user-attachments", 1280, 900],
 	["chat-tool-rows--states", 1280, 900],
+	/*
+	 * The meta tools' operations, one row each (agent list/show/create, team,
+	 * hub peek/send, secret, project, network, console, lsp, and a live wait):
+	 * the rows that printed `Delegated` for everything now name what each call
+	 * DID, through the same pipeline the transcript runs (`toolOp` →
+	 * `summaryFromArgs` → `toolRowLabel`). Height paired with the story's own
+	 * `Frame` (460): twelve consecutive actions condense into a fold, and the
+	 * story OPENS it so the frame holds both the summary line and the rows.
+	 */
+	["chat-tool-rows--tool-ops", 1280, 570],
 	["chat-tool-rows--names-and-fallbacks", 1280, 900],
 	/* The reported defect, and the only new surface this set added: a viewer that
 	   joins a turn already in flight. Its rows are built by the PRODUCTION
@@ -6503,9 +6522,17 @@ const assertBackendDown = async () => {
  * before it. Deriving it from the tree - with the same walker and exclusion
  * list `check-evidence.mjs` compares it against - makes the comparison
  * unfalsifiable and absorbs stray undeclared directories (round 1, R2).
+ *
+ * The previous total is COERCED, and that is not defensive dressing: folds have
+ * hand-resolved this field as a JSON string, and `"9718" + 4` is `"97184"` -
+ * measured on the trace-label pass (2026-09-27), where the string form also
+ * flipped `check-evidence.mjs`'s `typeof === "number"` gate to skipped, so the
+ * drift was silent in both directions for as long as it existed. The same
+ * coercion guards the `refreshedFrames` accumulation below, for the same
+ * reason.
  */
 export function partialFrameCount(previous, added) {
-	return (previous.frames ?? 0) + added.length;
+	return Number(previous.frames ?? 0) + added.length;
 }
 
 /**
@@ -9303,7 +9330,7 @@ const main = async () => {
 								: head,
 							refreshedFrames:
 								(sameHead
-									? (previous.partialCapture?.refreshedFrames ?? 0)
+									? Number(previous.partialCapture?.refreshedFrames ?? 0)
 									: 0) + captured,
 							refreshedStories: [
 								...new Set([
