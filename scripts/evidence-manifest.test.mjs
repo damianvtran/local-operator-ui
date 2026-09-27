@@ -1418,6 +1418,12 @@ const STAMP_BINDING_NOTES = [
 	 * lane adds, and by nothing else.
 	 */
 	"installerPanelRailNote",
+	/*
+	 * And the pass under it: the round-1 remediation of the same rail, which
+	 * re-shot the surface whole and is the record a fold resolved from main's
+	 * copy would drop first, for the same reason.
+	 */
+	"installerPanelRailRemediationNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1995,6 +2001,12 @@ const BRANCH_RECORDS = [
 	 * main's copy would drop it first - the reason this list exists.
 	 */
 	"installerPanelRailNote",
+	/*
+	 * And the pass under it: the round-1 remediation of the same rail, which
+	 * re-shot the surface whole and is the record a fold resolved from main's
+	 * copy would drop first, for the same reason.
+	 */
+	"installerPanelRailRemediationNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
