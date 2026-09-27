@@ -904,6 +904,18 @@ export function ChatSidebar({
 			? (serverHealth.snapshot.pairing.cause ?? "unpaired")
 			: null;
 	/*
+	 * THE BANNER'S OWN CONDITION, read once through the banner's own predicate
+	 * (design round 1's D3; QA round 1's Q-1): the gate's withdrawn notice has
+	 * carried it since D3, and the capability-error paragraph below stands down to
+	 * it too - QA's successor walk, where the strip is deliberately silent for the
+	 * cause and the pane's own refusal sentence had no other stand-down left, so
+	 * one incident was stated twice within a screen.
+	 */
+	const coveredByCompatibilityBanner = compatibilityBannerShown(
+		capabilities.data,
+		pairingCause,
+	);
+	/*
 	 * Losing the backend mid-session must not look like an empty catalogue, and
 	 * neither must losing the GATE. Once the sidebar has been ready we keep its
 	 * structure and last-known rows mounted through a capability error or a
@@ -1025,10 +1037,7 @@ export function ChatSidebar({
 		storeFailed: Boolean(error),
 		// The banner's own condition, read through the same predicate it uses, so
 		// the two cannot drift into stating one condition twice (design round 1, D3).
-		coveredByCompatibilityBanner: compatibilityBannerShown(
-			capabilities.data,
-			pairingCause,
-		),
+		coveredByCompatibilityBanner,
 	});
 	const profiles = useProfiles(
 		ready && desktopFeatureEnabled(capabilities.data, "profile_catalogue"),
@@ -4772,27 +4781,35 @@ export function ChatSidebar({
 			 * screen - and, since R11, it carries the strip's own PRESENCE beside the
 			 * copy condition, so a route the strip is not mounted on keeps this voice.
 			 *
+			 * AND THE BANNER'S OWN CONDITION BESIDE IT (QA round 1's Q-1): the strip is
+			 * silent for the four causes the banner carries, and in those states this
+			 * paragraph was the second statement of one incident - measured in the
+			 * successor walk, where a replacement that refuses this app's credential
+			 * rendered this sentence under the banner's successor sentence.
+			 *
 			 * NO `role="alert"` HERE EITHER: the strip owns the one live region for
 			 * connection state (branding § 9's one register for the status slot), and a
 			 * second live region about one fact is the defect this exists to remove. The
 			 * word is the foot's own "Retry refresh" - the strip's one "Retry" is
 			 * re-negotiation, and a screen cannot offer two verbs for one re-read.
 			 */}
-			{capabilities.error && !stripSpeaksConnection && (
-				<div className="space-y-1 text-meta text-ink-muted">
-					<p>
-						{capabilities.error.message}
-						{stale ? " Showing the last chats loaded." : ""}
-					</p>
-					<button
-						type="button"
-						className="underline"
-						onClick={() => void capabilities.refetch()}
-					>
-						Retry refresh
-					</button>
-				</div>
-			)}
+			{capabilities.error &&
+				!stripSpeaksConnection &&
+				!coveredByCompatibilityBanner && (
+					<div className="space-y-1 text-meta text-ink-muted">
+						<p>
+							{capabilities.error.message}
+							{stale ? " Showing the last chats loaded." : ""}
+						</p>
+						<button
+							type="button"
+							className="underline"
+							onClick={() => void capabilities.refetch()}
+						>
+							Retry refresh
+						</button>
+					</div>
+				)}
 			{/*
 			    The sentence is the gate's, not this file's (see the module): which half of
 			    the gate closed, whether the store's own read has already failed (the D9 rule
@@ -6359,23 +6376,35 @@ export function ChatSidebar({
 				 * sidebar renders on every route while the strip renders only in the
 				 * conversation pane, so a lost server on /settings and its siblings has
 				 * no strip to hand the voice to and this line keeps it.
+				 *
+				 * AND IT YIELDS TO THE COMPATIBILITY BANNER (QA round 2, Q-3). In the
+				 * states the strip is silent for - the four pairing causes the banner
+				 * carries - this line was the second statement of one incident: measured
+				 * in the successor walk, where the banner's sentence stood alone in the
+				 * pane and this foot line still said "did not answer this request" with
+				 * its own `Retry refresh` beneath it (44 of 51 samples, including the
+				 * last). The banner is the one voice for those causes everywhere the
+				 * sidebar is drawn, and `coveredByCompatibilityBanner` is the same
+				 * predicate the capability paragraph above reads.
 				 */}
-				{(error || profiles.error || teams.error) && !stripSpeaksConnection && (
-					<div className="pt-2 text-meta text-ink-muted">
-						<p>{error || profiles.error?.message || teams.error?.message}</p>
-						<button
-							type="button"
-							className="mt-1 underline"
-							onClick={() => {
-								void refreshCatalogue();
-								void profiles.refetch();
-								void teams.refetch();
-							}}
-						>
-							Retry refresh
-						</button>
-					</div>
-				)}
+				{(error || profiles.error || teams.error) &&
+					!stripSpeaksConnection &&
+					!coveredByCompatibilityBanner && (
+						<div className="pt-2 text-meta text-ink-muted">
+							<p>{error || profiles.error?.message || teams.error?.message}</p>
+							<button
+								type="button"
+								className="mt-1 underline"
+								onClick={() => {
+									void refreshCatalogue();
+									void profiles.refetch();
+									void teams.refetch();
+								}}
+							>
+								Retry refresh
+							</button>
+						</div>
+					)}
 			</TooltipProvider>
 			{/*
 			 * THE SIDEBAR'S OWN TOAST LANE, and `position: absolute` inline is the whole

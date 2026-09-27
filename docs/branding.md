@@ -775,10 +775,17 @@ the one place the prop legitimately appears.
 ## 6. Focus, disabled, and the two rules people break
 
 **Focus ring is `outline`, never `box-shadow`.** An outline honours
-`border-radius: inherit` and is not clipped by an ancestor's `overflow: hidden`.
-This app is mostly scroll containers, so a box-shadow ring silently disappears
-in exactly the places keyboard users need it. `:focus-visible` only — a mouse
-user clicking a button should not get a ring.
+`border-radius: inherit`, but it is NOT exempt from clipping: an outline is ink
+overflow, and an ancestor's `overflow: hidden` (or `overflow-clip`) cuts it
+exactly as it cuts an outset shadow. This file claimed otherwise until design
+round 1's D3 of the inline-rename work — a premise `styles/index.css` had
+already corrected, and the wrong premise is how a clipped ring (the pencil's,
+in the header's one-line clip band) went unchecked. Choose outline because it
+follows `border-radius` without a shadow layer, and give a ring that must sit
+near a clipped ancestor a non-clipped wrapper. This app is mostly scroll
+containers, so a box-shadow ring silently disappears in exactly the places
+keyboard users need it. `:focus-visible` only — a mouse user clicking a button
+should not get a ring.
 
 **Disabled changes colour, never opacity.** An opacity-faded control fades its
 own background too, so the same disabled button lands on a different colour over
