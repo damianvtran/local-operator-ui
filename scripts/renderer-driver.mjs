@@ -16755,7 +16755,7 @@ const DRAFTS_FLIGHT = "[redacted]";
  * does NOT touch it: targeted drafts are reachable by their entity row and are
  * deliberately never listed here.
  */
-async function seedDrafts(cdp) {
+async function seedDrafts(cdp, { pendingAll = false } = {}) {
 	const seeded = {
 		drafts: {
 			[DRAFTS_TYPED]: {
@@ -16818,6 +16818,19 @@ async function seedDrafts(cdp) {
 			},
 		},
 	};
+	if (pendingAll) {
+		/*
+		 * EVERY LISTED ROW MID-HOP (agent review round 2's R7): the one state in which
+		 * `Clear all` is inapplicable, planted so the scene can walk onto it. A pending
+		 * row states its claim (`admissionAttempted` + text) the way the store's own
+		 * admission does; the typed rows' text lives in their composer rows.
+		 */
+		for (const key of [DRAFTS_TYPED, DRAFTS_STALE, DRAFTS_CLAIM]) {
+			seeded.drafts[key].pending = true;
+			seeded.drafts[key].admissionAttempted = true;
+			seeded.drafts[key].submittedText ??= "typed, never sent";
+		}
+	}
 	await cdp.evaluate(`(() => {
 		const seeded = ${JSON.stringify(seeded)};
 		const read = (key) => { try { return JSON.parse(localStorage.getItem(key) || "null") || {}; } catch { return {}; } };
@@ -16943,6 +16956,56 @@ async function sceneDrafts(cdp) {
 			JSON.stringify(await readDraftRows()),
 		);
 	}
+	/*
+	 * AND IT TAKES THE CARET ANYWAY, AND SAYS WHY (agent review round 2's R7, design
+	 * round 2's D7). The whole reason the act is `aria-disabled` rather than
+	 * `disabled` is that a disabled control cannot hold focus - the arrow walk's step
+	 * onto it dead-stopped, and its why was unannounceable. The claims are the
+	 * browser's own, and the ink is the design round's: the measured disabled read
+	 * darkened `ink-muted` -> `ink` under the pointer at 45% opacity (D5).
+	 */
+	const flightProbe = await cdp.evaluate(`(() => {
+		const el = document.querySelector(${JSON.stringify(`[data-draft-discard="${DRAFTS_FLIGHT}"]`)});
+		if (el === null) return null;
+		el.focus();
+		const whyId = el.getAttribute("aria-describedby");
+		const why = whyId === null ? null : document.getElementById(whyId);
+		return { focused: document.activeElement === el, disabledAttr: el.disabled === true, ariaDisabled: el.getAttribute("aria-disabled"), why: why === null ? null : (why.textContent ?? "").trim() };
+	})()`);
+	note("the inapplicable control, probed", JSON.stringify(flightProbe));
+	check(
+		"the inapplicable control can still take the caret",
+		flightProbe !== null &&
+			flightProbe.focused === true &&
+			flightProbe.disabledAttr === false,
+		JSON.stringify(flightProbe),
+	);
+	check(
+		"and says why, in the AT channel",
+		typeof flightProbe?.why === "string" && flightProbe.why.length > 0,
+		JSON.stringify(flightProbe),
+	);
+	const flightColour = () =>
+		cdp.evaluate(
+			`(() => { const el = document.querySelector(${JSON.stringify(`[data-draft-discard="${DRAFTS_FLIGHT}"]`)}); return el === null ? null : getComputedStyle(el).color; })()`,
+		);
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseMoved",
+		x: 2,
+		y: 2,
+		button: "none",
+		buttons: 0,
+	});
+	await wait(160);
+	const flightColourOff = await flightColour();
+	await hoverOver(cdp, `[data-draft-row="${DRAFTS_FLIGHT}"]`);
+	await wait(160);
+	const flightColourOn = await flightColour();
+	check(
+		"the inapplicable control's ink does not move under the pointer",
+		flightColourOff !== null && flightColourOn === flightColourOff,
+		`${JSON.stringify(flightColourOff)} vs ${JSON.stringify(flightColourOn)}`,
+	);
 	const pendingFrame = await captureSettled(cdp, "drafts-pending-disabled");
 
 	/*
@@ -17088,7 +17151,37 @@ async function sceneDrafts(cdp) {
 			"Undo returns the text to its own key",
 			(await composerRowExists(DRAFTS_TYPED)) === true,
 		);
+		/*
+		 * AND THE PANE GOES BACK TO IT (UX round 2's U7): the discard staged a fresh
+		 * draft, and the offer's press re-opens the ONE key it restored - the text is in
+		 * the box rather than behind a click on the returned row.
+		 */
+		check(
+			"Undo puts the pane back on the restored draft",
+			(await activeDraftKey()) === DRAFTS_TYPED,
+			`activeDraftKey ${JSON.stringify(await activeDraftKey())}`,
+		);
+		check(
+			"and its text is in the composer again",
+			(await composerText())?.includes("This session seems to be wedged") ===
+				true,
+			JSON.stringify(await composerText()),
+		);
 	}
+
+	/*
+	 * AND THE BATCH TAKES THE OPEN DRAFT, TOO (agent review round 2's R8): the pane is
+	 * opened on the typed draft so `Clear all` really does take the pane's own key -
+	 * the fresh-staging branch the static pin could not prove. Both trees open it; only
+	 * the after tree has the act.
+	 */
+	await clickAt(cdp, `[data-draft-row="${DRAFTS_TYPED}"]`);
+	await wait(250);
+	check(
+		"the pane is open on the typed draft before the batch",
+		(await activeDraftKey()) === DRAFTS_TYPED,
+		`activeDraftKey ${JSON.stringify(await activeDraftKey())}`,
+	);
 
 	/*
 	 * Clear all. Its gate is the section's own (`clearableDraftRows.length > 0`),
@@ -17134,8 +17227,49 @@ async function sceneDrafts(cdp) {
 				offer.includes("Undo"),
 			JSON.stringify(offer),
 		);
+		/*
+		 * THE BATCH'S OWN FRESH-STAGING BRANCH (agent review round 2's R8): it took the
+		 * pane's key, so the no-dead-pane rule must stage a fresh draft and the composer
+		 * must survive.
+		 */
+		check(
+			"the batch keeps a composer: no dead end",
+			(await composerText()) !== null,
+			JSON.stringify(await composerText()),
+		);
+		const batchFresh = await activeDraftKey();
+		check(
+			"and stages a fresh draft in its place",
+			typeof batchFresh === "string" && batchFresh !== DRAFTS_TYPED,
+			`activeDraftKey ${JSON.stringify(batchFresh)}`,
+		);
 	}
 	const clearedFrame = await captureWithToast(cdp, "drafts-cleared");
+	if (hoverAct !== null) {
+		/*
+		 * AND THE BATCH'S OWN UNDO (UX round 2's U7): a multi-subject restore puts the
+		 * rows back but leaves the pane alone - the re-open is single-key only.
+		 */
+		const paneBefore = await activeDraftKey();
+		await clickAt(cdp, `${SIDEBAR_TOAST} [data-button]`);
+		await wait(250);
+		const afterBatchUndo = await readDraftRows();
+		check(
+			"the batch's undo restores every settled row",
+			[DRAFTS_TYPED, DRAFTS_STALE, DRAFTS_CLAIM].every((key) =>
+				afterBatchUndo.includes(key),
+			),
+			JSON.stringify(afterBatchUndo),
+		);
+		check(
+			"and a multi-subject restore leaves the pane where it was",
+			(await activeDraftKey()) === paneBefore,
+			`activeDraftKey ${JSON.stringify(paneBefore)} -> ${JSON.stringify(await activeDraftKey())}`,
+		);
+		/* Clear all once more, so the relaunch is from a fully discarded state. */
+		await clickAt(cdp, "[data-drafts-clear-all]");
+		await wait(250);
+	}
 
 	/*
 	 * THE RELAUNCH: the frames' captions are about a state that must survive the
@@ -17168,6 +17302,124 @@ async function sceneDrafts(cdp) {
 	);
 	const relaunchFrame = await captureSettled(cdp, "drafts-relaunch");
 
+	/*
+	 * THE INAPPLICABLE `Clear all` (agent review round 2's R7, design round 2's D5/D7):
+	 * every listed row mid-hop is its one inapplicable state, and a second seed plants
+	 * it. The claims are the browser's and the walk's own: the control is
+	 * `aria-disabled` (not `disabled`), it TAKES the caret, it explains itself, a real
+	 * press moves nothing, the ink it paints does not shift under the pointer, and the
+	 * arrow walk lands on it and moves past rather than dead-stopping.
+	 */
+	await seedDrafts(cdp, { pendingAll: true });
+	await waitForBridge(cdp);
+	const clearAllActExists = await cdp.evaluate(
+		'Boolean(document.querySelector("[data-drafts-clear-all]"))',
+	);
+	if (!clearAllActExists) {
+		note(
+			"the inapplicable Clear all",
+			"no such control exists on this tree - the probes are skipped, and the frame records the seeded rows",
+		);
+	} else {
+		const disabledProbe = await cdp.evaluate(`(() => {
+			const el = document.querySelector("[data-drafts-clear-all]");
+			const whyId = el.getAttribute("aria-describedby");
+			const why = whyId === null ? null : document.getElementById(whyId);
+			return { disabledAttr: el.disabled === true, ariaDisabled: el.getAttribute("aria-disabled"), why: why === null ? null : (why.textContent ?? "").trim() };
+		})()`);
+		note("the inapplicable Clear all, probed", JSON.stringify(disabledProbe));
+		check(
+			"the inapplicable Clear all is aria-disabled, not disabled",
+			disabledProbe.disabledAttr === false &&
+				disabledProbe.ariaDisabled === "true",
+			JSON.stringify(disabledProbe),
+		);
+		check(
+			"and says why, in the AT channel",
+			typeof disabledProbe.why === "string" && disabledProbe.why.length > 0,
+			JSON.stringify(disabledProbe),
+		);
+		const clearFocusable = await cdp.evaluate(
+			'(() => { const el = document.querySelector("[data-drafts-clear-all]"); if (el === null) return null; el.focus(); return document.activeElement === el; })()',
+		);
+		check(
+			"the inapplicable Clear all can take the caret",
+			clearFocusable === true,
+			JSON.stringify(clearFocusable),
+		);
+		/*
+		 * AND THE WALK PASSES THROUGH IT (R7): from the last draft row, ArrowDown lands
+		 * on the inapplicable control - a focusable step, not a dead stop - and the next
+		 * ArrowDown moves past it instead of sticking.
+		 */
+		await cdp.evaluate(
+			'(() => { const rows = [...document.querySelectorAll("[data-draft-row]")]; rows[rows.length - 1]?.focus(); })()',
+		);
+		await pressChord(cdp, {
+			key: "ArrowDown",
+			code: "ArrowDown",
+			virtualKeyCode: 40,
+			modifiers: 0,
+		});
+		const afterWalk = await cdp.evaluate(
+			'(() => { const el = document.activeElement; return { onClear: el === document.querySelector("[data-drafts-clear-all]"), hasAttr: el === null ? null : el.hasAttribute("data-drafts-clear-all") }; })()',
+		);
+		check(
+			"ArrowDown from the last draft row lands on the inapplicable control",
+			afterWalk.onClear === true,
+			JSON.stringify(afterWalk),
+		);
+		await pressChord(cdp, {
+			key: "ArrowDown",
+			code: "ArrowDown",
+			virtualKeyCode: 40,
+			modifiers: 0,
+		});
+		const walkedPast = await cdp.evaluate(
+			'(() => { const el = document.activeElement; return { onClear: el === document.querySelector("[data-drafts-clear-all]") }; })()',
+		);
+		check(
+			"and the next step moves past it rather than sticking",
+			walkedPast.onClear === false,
+			JSON.stringify(walkedPast),
+		);
+		const clearColour = () =>
+			cdp.evaluate(
+				'(() => { const el = document.querySelector("[data-drafts-clear-all]"); return el === null ? null : getComputedStyle(el).color; })()',
+			);
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: 2,
+			y: 2,
+			button: "none",
+			buttons: 0,
+		});
+		await wait(160);
+		const clearColourOff = await clearColour();
+		await hoverOver(cdp, "[data-drafts-clear-all]");
+		await wait(160);
+		const clearColourOn = await clearColour();
+		check(
+			"the inapplicable Clear all's ink does not move under the pointer",
+			clearColourOff !== null && clearColourOn === clearColourOff,
+			`${JSON.stringify(clearColourOff)} vs ${JSON.stringify(clearColourOn)}`,
+		);
+		const rowsBeforePress = await readDraftRows();
+		await clickAt(cdp, "[data-drafts-clear-all]");
+		await wait(200);
+		check(
+			"a press on the inapplicable control moves nothing",
+			(await readDraftRows()).length === rowsBeforePress.length,
+			`${JSON.stringify(rowsBeforePress)} -> ${JSON.stringify(await readDraftRows())}`,
+		);
+		check(
+			"and raises no offer",
+			(await toastsOnScreen(cdp)) === 0,
+			`toasts=${await toastsOnScreen(cdp)}`,
+		);
+	}
+	const clearDisabledFrame = await captureSettled(cdp, "drafts-clear-disabled");
+
 	const frames = [
 		restFrame,
 		hoverFrame,
@@ -17177,13 +17429,26 @@ async function sceneDrafts(cdp) {
 		openDeletedFrame,
 		clearedFrame,
 		relaunchFrame,
+		clearDisabledFrame,
 	];
 	check(
 		"every settled capture is a frame the app held still for, with no toast on it",
-		[restFrame, hoverFrame, pendingFrame, restoredFrame, relaunchFrame].every(
-			(frame) => frame.stable === true && frame.toastFree === true,
-		),
-		[restFrame, hoverFrame, pendingFrame, restoredFrame, relaunchFrame]
+		[
+			restFrame,
+			hoverFrame,
+			pendingFrame,
+			restoredFrame,
+			relaunchFrame,
+			clearDisabledFrame,
+		].every((frame) => frame.stable === true && frame.toastFree === true),
+		[
+			restFrame,
+			hoverFrame,
+			pendingFrame,
+			restoredFrame,
+			relaunchFrame,
+			clearDisabledFrame,
+		]
 			.map(
 				(frame) =>
 					`${frame.label}: stable=${frame.stable === true} toastFree=${frame.toastFree === true}`,

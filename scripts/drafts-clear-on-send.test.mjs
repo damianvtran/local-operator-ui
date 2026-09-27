@@ -64,7 +64,7 @@ globalThis.__canonicalEcho = (event) => {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {DesktopControlError} from "@shared/api/local-operator/desktop-api"; export {desktopRequestSchema} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {mergeReturnedText, mergeReturnedPayload} from "./src/renderer/src/shared/store/conversation-input-store";export { sendUnsettledForSession } from "./src/renderer/src/features/chat/canonical/working-line-model"; export { composerIdentityFor, panelIdentityFor as composerPanelIdentity } from "./src/renderer/src/shared/store/canonical-sessions-store"; export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store"; export { rehydrateInputRows } from "./src/renderer/src/shared/store/conversation-input-store"; export { heldSendClaimsBySession, resolveHeldSendsFromServer } from "./src/renderer/src/features/chat/draft-resolution"; export { discardSuccessorIndex, untargetedDraftRows } from "./src/renderer/src/features/chat/draft-rows";',
+			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {DesktopControlError} from "@shared/api/local-operator/desktop-api"; export {desktopRequestSchema} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {mergeReturnedText, mergeReturnedPayload} from "./src/renderer/src/shared/store/conversation-input-store";export { sendUnsettledForSession } from "./src/renderer/src/features/chat/canonical/working-line-model"; export { composerIdentityFor, panelIdentityFor as composerPanelIdentity } from "./src/renderer/src/shared/store/canonical-sessions-store"; export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store"; export { rehydrateInputRows } from "./src/renderer/src/shared/store/conversation-input-store"; export { heldSendClaimsBySession, resolveHeldSendsFromServer } from "./src/renderer/src/features/chat/draft-resolution"; export { discardSuccessorIndex, untargetedDraftRows } from "./src/renderer/src/features/chat/draft-rows"; export { DRAFTS_UNDO_CEILING_MS } from "./src/renderer/src/features/chat/drafts-undo"; export { ARCHIVE_UNDO_TOAST_MS } from "./src/renderer/src/features/chat/archive-undo";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -206,6 +206,8 @@ const {
 	resolveHeldSendsFromServer,
 	discardSuccessorIndex,
 	untargetedDraftRows,
+	DRAFTS_UNDO_CEILING_MS,
+	ARCHIVE_UNDO_TOAST_MS,
 } = module;
 function reset() {
 	calls.length = 0;
@@ -672,6 +674,11 @@ test("a discard raises one offer carrying exactly what the write removed, and th
 	assert.equal(row.pendingText, "Can you review user-dashboard");
 	assert.deepEqual(row.submittedMessages, ["an earlier message"]);
 	assert.equal(
+		row.textRevision,
+		1,
+		"the restore announces itself as a store write, so a mounted composer adopts the text (R9/U7b)",
+	);
+	assert.equal(
 		store.getState().draftsUndo,
 		null,
 		"and the offer retires on the press",
@@ -818,4 +825,16 @@ test("the caret successor is read by key, from the list as it stood before the w
 		"a key that is already gone reads as the top",
 	);
 	assert.equal(discardSuccessorIndex(["a", "b"], "missing"), 0);
+});
+
+test("the discard offer's life is the lane's own card life, not a second number", () => {
+	/*
+	 * DESIGN ROUND 2'S D6: the drafts offer measured 15.2 s of card against the lane's
+	 * recorded eight, because it had reached for `ARCHIVE_UNDO_CEILING_MS` - the
+	 * retirement SUBSCRIPTION's safety bound (a number nobody sees) - instead of the
+	 * display life both offers share. One number, one home (`archive-undo.ts`), and
+	 * this comparison is what keeps a future edit from re-splitting them.
+	 */
+	assert.equal(DRAFTS_UNDO_CEILING_MS, ARCHIVE_UNDO_TOAST_MS);
+	assert.equal(DRAFTS_UNDO_CEILING_MS, 8_000);
 });
