@@ -151,6 +151,18 @@ test("the foot line and the two paragraphs read one predicate, not three", () =>
 		foot.includes(SHARED_GATE),
 		"the foot line reads the same predicate as the two paragraphs",
 	);
+	/*
+	 * AND THE BANNER TERM BESIDE IT (QA round 2, Q-3). The round-1 pin stopped at
+	 * the shared predicate, so the foot line kept passing while it never learned
+	 * the banner term the capability paragraph got - and the successor walk
+	 * measured the cost: the banner's sentence alone in the pane, this foot
+	 * line's own "did not answer this request" and `Retry refresh` beneath it
+	 * (44 of 51 samples). The foot line and the paragraph read the SAME gate.
+	 */
+	assert.ok(
+		foot.includes(BANNER_GATE),
+		"the foot line must also yield to the compatibility banner",
+	);
 	const caption = between("feed.available &&", "Not connected");
 	assert.ok(
 		caption.includes(SHARED_GATE),

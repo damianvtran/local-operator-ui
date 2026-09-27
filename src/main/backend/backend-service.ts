@@ -77,6 +77,7 @@ import {
 	PROBE_INTERVAL_MS,
 	PROBE_TIMEOUT_MS,
 	type ProbeObservation,
+	REATTACH_BACKOFF_MS,
 } from "./daemon-status";
 import type {
 	DiscoveredDaemon,
@@ -784,6 +785,18 @@ export class BackendServiceManager {
 	 */
 	private answeredButUnusable: { address: string; status: number } | null =
 		null;
+	/**
+	 * Records the last refusal an ANSWERING daemon gave this app - the claim
+	 * route's refusal or the desktop read's - beside `answeredButUnusable` and for
+	 * its reason (QA round 2, Q-1): both are answers, and an app that answered
+	 * with a status is not an absence. It is what lets a later `observeNoCandidate`
+	 * keep the refusal's state (`wedged`) instead of letting the `no-candidate` arm
+	 * publish `detached` - "the server is offline" - for a daemon that is
+	 * demonstrably running; it is cleared at the top of every sweep, so a refusal
+	 * the fresh discovery could not re-observe (the daemon died, or was replaced)
+	 * stops holding the state (Q-2).
+	 */
+	private answeredRefused: { address: string; status: number } | null = null;
 	/**
 	 * Records discovery found alive but unresponsive (pid alive, heartbeat
 	 * stopped). They are why no candidate exists AND why spawning is forbidden,
@@ -1784,6 +1797,7 @@ export class BackendServiceManager {
 	 * lets the copy say "a server is running and this app did not attach to it"
 	 * instead of "the server is offline". */
 	private observeNoCandidate(): void {
+		const before = this.daemonState.snapshot();
 		const wedged = this.discoveryWedged.find((record) => record.alive);
 		const goneRecord = this.discoveryWedged.find((record) => !record.alive);
 		if (wedged) {
@@ -1798,6 +1812,22 @@ export class BackendServiceManager {
 			this.daemonState.observe({
 				kind: "heartbeat-stale",
 				detail: `A Local Operator daemon is running (pid ${wedged.pid}), but it stopped publishing its heartbeat, so this app did not attach to it. Waiting without starting a second one.`,
+			});
+		} else if (this.answeredRefused) {
+			/*
+			 * A REFUSAL IS AN ANSWER (QA round 2, Q-1). In the live refusal scene
+			 * the daemon answers `/health` 200 and refuses the desktop read with a
+			 * 401 - a daemon that is running and this app has deliberately not
+			 * attached to, which is the state the `unattachable` arm's own contract
+			 * names ("a key the daemon refused"). Reaching `no-candidate` here
+			 * published `detached` instead, which retired the renderer's refused row
+			 * (its gate is `cause + not detached`) and left the band saying "Can't
+			 * reach the Local Operator server" over its own detail line "...The
+			 * daemon is running."
+			 */
+			this.daemonState.observe({
+				kind: "unattachable",
+				detail: `A Local Operator daemon is running at ${this.answeredRefused.address} and refused this app's credential for its desktop plane (HTTP ${this.answeredRefused.status}), so this app is not attached to it. Nothing is being started over it; it keeps probing.`,
 			});
 		} else if (this.answeredButUnusable) {
 			/*
@@ -1830,7 +1860,15 @@ export class BackendServiceManager {
 							: "No Local Operator daemon was found and this app is configured not to start one.",
 			});
 		}
-		this.notifyStatus();
+		/*
+		 * PUSH ONLY A REAL CHANGE, the discipline the tick keeps. This now runs from
+		 * the recovery path as well (Q-2's refresh), where a refused daemon left
+		 * running re-observes the same reading on every paced attempt.
+		 */
+		const after = this.daemonState.snapshot();
+		if (after.state !== before.state || after.detail !== before.detail) {
+			this.notifyStatus();
+		}
 	}
 
 	/**
@@ -2021,6 +2059,7 @@ export class BackendServiceManager {
 		if (this.isAppClosing) return false;
 		this.discoveryWedged = [];
 		this.answeredButUnusable = null;
+		this.answeredRefused = null;
 		if (this.remoteConfigured) {
 			this.discoveryBlocksSpawn = true;
 			return await this.legacyFixedPortAdoption();
@@ -2163,7 +2202,7 @@ export class BackendServiceManager {
 					});
 					this.notifyStatus();
 					return false;
-				case "refused":
+				case "refused": {
 					// The daemon answered and refused the claim for a reason of its own. A
 					// `503` is the one status the daemon's contract uses for "this plane never
 					// published a key", which is the pre-handshake shape again; everything
@@ -2172,12 +2211,38 @@ export class BackendServiceManager {
 						`Daemon ${candidate.address} did not accept this app's claim (${outcome.outcome} ${outcome.status}); not attaching.`,
 						LogFileType.BACKEND,
 					);
+					/*
+					 * THE CLAIM-ROUTE HALF OF Q-1: a refusal here is the same fact the
+					 * desktop-read refusal below is - the daemon ANSWERED - so it takes the
+					 * same `unattachable` observation and the same flag, and the state is
+					 * `wedged` whether the refusal arrived through the claim route or the
+					 * read. Without it this arm left the state wherever the sweep's
+					 * `no-candidate` fallthrough put it: `detached`.
+					 */
+					const refusedBefore = this.daemonState.snapshot();
 					this.daemonState.setPairing({
 						available: false,
 						cause:
 							outcome.status === 503 ? "pre-handshake" : "credential-refused",
 					});
+					this.answeredRefused = {
+						address: candidate.address,
+						status: outcome.status,
+					};
+					this.daemonState.observe({
+						kind: "unattachable",
+						detail: `A Local Operator daemon is running at ${candidate.address} and refused this app's claim for its desktop plane (HTTP ${outcome.status}), so this app is not attached to it. Nothing is being started over it; it keeps probing.`,
+					});
+					const refusedAfter = this.daemonState.snapshot();
+					if (
+						refusedAfter.state !== refusedBefore.state ||
+						refusedAfter.detail !== refusedBefore.detail ||
+						refusedAfter.pairing.cause !== refusedBefore.pairing.cause
+					) {
+						this.notifyStatus();
+					}
 					return false;
+				}
 				case "unreachable":
 					logger.info(
 						`Daemon ${candidate.address} could not be reached to claim its desktop plane: ${outcome.detail}`,
@@ -2192,16 +2257,39 @@ export class BackendServiceManager {
 				`Daemon ${candidate.address} refused this app's bearer for its desktop plane (HTTP ${probe.status}); not attaching (it would refuse every session list and every stream).`,
 				LogFileType.BACKEND,
 			);
+			const before = this.daemonState.snapshot();
 			this.daemonState.setPairing({
 				available: false,
 				cause: "credential-refused",
+			});
+			/*
+			 * Q-1, THE DESKTOP-READ HALF (the claim-route half is in `attachIfUsable`):
+			 * publish the refusal as `unattachable` - the arm whose contract names "a
+			 * key the daemon refused" - so the state is `wedged`, a daemon IS running,
+			 * and the renderer's row-1 gate keeps drawing the refusal while this daemon
+			 * answers. `capability` still sets the detail sentence.
+			 */
+			this.answeredRefused = {
+				address: candidate.address,
+				status: probe.status,
+			};
+			this.daemonState.observe({
+				kind: "unattachable",
+				detail: `A daemon is running at ${candidate.address} and refused this app's credential for its desktop plane (HTTP ${probe.status}), so this app is not attached to it. Nothing is being started over it; it keeps probing.`,
 			});
 			this.daemonState.observe({
 				kind: "capability",
 				status: probe.status,
 				detail: `A daemon is running at ${candidate.address}, but it refused this app's credential for its desktop plane (HTTP ${probe.status}).`,
 			});
-			this.notifyStatus();
+			const after = this.daemonState.snapshot();
+			if (
+				after.state !== before.state ||
+				after.detail !== before.detail ||
+				after.pairing.cause !== before.pairing.cause
+			) {
+				this.notifyStatus();
+			}
 			return false;
 		}
 		if (probe.verdict === "unusable") {
@@ -4291,6 +4379,21 @@ export class BackendServiceManager {
 				return;
 			if (await this.discoverAndAttach()) return;
 			/*
+			 * AN ANSWERED REFUSAL IS NOT A FAILED RE-ATTACH (QA round 2, Q-2). The
+			 * reattach backoff paces retries that FAILED; a sweep that just heard the
+			 * daemon refuse again got an ANSWER - the daemon is still there, still
+			 * refusing. Letting the doubled wait gate the next look (up to
+			 * `REATTACH_BACKOFF_CEILING_MS`) is what would leave the daemon's death
+			 * unnoticed for minutes: the state and detail move only when a fresh sweep
+			 * fails, and the sweep is what the backoff gates. The base cadence is one
+			 * directory read plus two loopback probes per interval - the cost this file
+			 * already accepts for an unpaired app - and it is the cadence at which the
+			 * daemon's death, or its repair, is noticed.
+			 */
+			if (this.answeredRefused) {
+				this.nextRecoveryAt = Date.now() + REATTACH_BACKOFF_MS;
+			}
+			/*
 			 * `discoveryBlocksSpawn` is deliberately NOT a term here (2026-09-23). It is
 			 * discovery's verdict scoped to the configured address, and refusing on it
 			 * vetoed the recovery spawn on the FALLBACK address in exactly the incident
@@ -4301,12 +4404,24 @@ export class BackendServiceManager {
 			 * spawn over a live daemon remains impossible, without one address's record
 			 * silencing every other address.
 			 */
-			if (
-				!this.managerMaySpawn ||
-				this.remoteConfigured ||
-				this.isExternalBackend
-			)
+			if (!this.managerMaySpawn) {
+				/*
+				 * PUBLISH THIS PASS'S READING BEFORE THE MAY-NOT-SPAWN RETURN (QA round 2,
+				 * Q-2). An unmanaged app whose daemon died had no refresher at all: the
+				 * recovery ran (the pairing carries a remedy), discovery found nothing,
+				 * and this return left the snapshot at the refusal's stale
+				 * state/detail - the expanded band still said "The daemon is running."
+				 * three minutes after the kill. `observeNoCandidate` is this file's own
+				 * arbiter for "nothing attachable was found and nothing will be started",
+				 * and running it here is what publishes the absence's own sentence - the
+				 * refusal's cause is kept (the strip's row 4 fires on `detached + a
+				 * non-banner-owned cause`), while the state and detail are the sweep's
+				 * fresh reading.
+				 */
+				this.observeNoCandidate();
 				return;
+			}
+			if (this.remoteConfigured || this.isExternalBackend) return;
 			await this.start({ quiet: true });
 		} finally {
 			this.recoveryInFlight = false;

@@ -229,8 +229,18 @@ test("a refusal is stated only while its daemon is there, and the absence takes 
 			connectivityIssue: state === "detached" ? "server_offline" : null,
 			server: {
 				state,
+				/*
+				 * THE DETAILS ARE THE PIPELINE'S OWN, NOT HAND-BUILT (QA round 2): the
+				 * `wedged` sentence is what `attachIfUsable`/`observeNoCandidate`
+				 * publish while the daemon answers (`runs/refused-r2`), and the
+				 * `detached` one is the sweep's absence sentence after the kill
+				 * (`runs/kill-expanded`, post-fix `S4c`) - the stale refusal detail
+				 * surviving its daemon was U1's whole complaint.
+				 */
 				detail:
-					"A daemon is running at http://127.0.0.1:18955, but it refused this app's credential for its desktop plane (HTTP 401). The daemon is running.",
+					state === "detached"
+						? "The Local Operator server whose record names pid 1234 is no longer running, but its record is too fresh to reap, so this app did not attach to it."
+						: "A daemon is running at http://127.0.0.1:18955, but it refused this app's credential for its desktop plane (HTTP 401). The daemon is running.",
 				pairing: { available: false, cause: "credential-refused" },
 			},
 			internetOffline: false,
@@ -262,6 +272,11 @@ test("a refusal is stated only while its daemon is there, and the absence takes 
 	/* The same record with the daemon GONE: the absence is the fact now. */
 	const gone = refused("detached");
 	assert.equal(gone?.kind, "unreachable");
+	assert.match(
+		gone?.detail ?? "",
+		/no longer running/,
+		"main's own absence detail is the second line - the sentence that may no longer say 'The daemon is running.' (U1)",
+	);
 	assert.notEqual(
 		chatStatusKey(wedged),
 		chatStatusKey(gone),
