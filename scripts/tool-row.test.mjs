@@ -395,11 +395,22 @@ test("the project family names every operation, and the milestone flag decides a
 			);
 		}
 	}
-	// The remove flag's SPELLINGS are the tool's own: pydantic coerces `"true"`
-	// and `1` to True before the milestone op runs, so those spellings remove
-	// and must not read as updates (review round 1, R1-3); the false spellings
-	// keep the update verb.
-	for (const spelling of ["true", 1]) {
+	// The remove flag's SPELLINGS are the full set the tool itself accepts, not
+	// only the bare boolean: pydantic 2.13.5 coerces `true`, `1` and - any case -
+	// `"true" | "yes" | "y" | "t" | "on" | "1"` to True before the milestone op
+	// runs, and `"yes"` removes in the wild (review round 2, QA Q1a), so every
+	// one of them must compose the removal and must not read as an update.
+	for (const spelling of [
+		true,
+		1,
+		"true",
+		"TRUE",
+		"Yes",
+		"y",
+		"T",
+		"on",
+		"1",
+	]) {
 		assert.deepEqual(
 			row("project", {
 				op: "milestone",
@@ -410,7 +421,23 @@ test("the project family names every operation, and the milestone flag decides a
 			`remove: ${JSON.stringify(spelling)} removes`,
 		);
 	}
-	for (const spelling of [false, 0, "false"]) {
+	// The falsy set keeps the update verb, and so do spellings the tool REJECTS:
+	// `" true "` (with whitespace) is a validation error, not a spelling - the
+	// comparison lowercases but never trims - and `2` is no boolean at all.
+	// Neither removed anything, which is the one thing the row must not claim.
+	for (const spelling of [
+		false,
+		0,
+		"false",
+		"FALSE",
+		"No",
+		"off",
+		"n",
+		"F",
+		"0",
+		" true ",
+		2,
+	]) {
 		assert.equal(
 			row("project", {
 				op: "milestone",
@@ -450,6 +477,26 @@ test("the project family names every operation, and the milestone flag decides a
 	assert.deepEqual(row("wait", { job_id: "9360", wait_ms: 3_600_000 }), {
 		verb: "Waited for jobs",
 		object: "9360 · 1h",
+	});
+	// The tools' lax ints accept the STRING spellings of the same counts and
+	// execute them (`"3"` arrives 16 times in 36 h of transcripts - review
+	// round 2, QA Q1b), so the renderers coerce numeric strings and keep the
+	// unit; a non-numeric string is not a number and stays untouched.
+	assert.deepEqual(row("hub", { op: "peek", to: ["9f2a"], steps: "3" }), {
+		verb: "Peeked at",
+		object: "3 steps",
+	});
+	assert.deepEqual(row("hub", { op: "peek", to: ["9f2a"], steps: "1" }), {
+		verb: "Peeked at",
+		object: "1 step",
+	});
+	assert.deepEqual(row("wait", { job_id: "9360", wait_ms: "600000" }), {
+		verb: "Waited for jobs",
+		object: "9360 · 10m",
+	});
+	assert.deepEqual(row("hub", { op: "peek", to: ["9f2a"], steps: "many" }), {
+		verb: "Peeked at",
+		object: "many",
 	});
 });
 
