@@ -203,6 +203,18 @@ export type SessionStatusStripProps = {
 	 * ask the question without reading the copy.
 	 */
 	held?: boolean;
+	/**
+	 * These readings are not merely absent - they were PAINTED and then dropped,
+	 * because the stream spent its retry budget while holding them (task-17, U4).
+	 *
+	 * Told, never inferred, for the reason `held` is told: "no `frontend`" is
+	 * true both here and for a pane that never received a page, and only the
+	 * first is a state where a reader has just watched four values disappear.
+	 * The pane owns the distinction (it remembers which sessions have painted
+	 * readings); all this flag asks is whether to leave ONE sentence where the
+	 * strip was - `READINGS_DROPPED_NOTE` - instead of rendering nothing.
+	 */
+	readingsDropped?: boolean;
 	className?: string;
 };
 
@@ -352,6 +364,25 @@ function useActiveSeconds(banked: number, startedAt: number | null): number {
  * makes about a value (see `modelReason`, `costTooltip`, `contextTooltipLines`).
  */
 export const LAST_READING_NOTE = "Last reading from before the reconnect.";
+
+/**
+ * The sentence that stands where the readings were, when the stream spent its
+ * retry budget and the held readings were dropped (task-17, U4).
+ *
+ * WHY IT EXISTS: the terminal arms clear `heldFrontend` on purpose (`the one
+ * thing still claiming to describe a live stream`), but the strip then vanished
+ * with no word of its own - the failure notice speaks for the STREAM, and the
+ * reader who was watching `20.3%/1M` and `$0.515` saw them go with nothing
+ * saying the READINGS had been let go. It is a sentence in this module rather
+ * than in the pane for the same reason `LAST_READING_NOTE` is: the register
+ * belongs to the readings, whichever state they are in.
+ *
+ * "Dropped" rather than "gone" or "unavailable": it states what the app did
+ * (it stopped holding them), not what the numbers became - nothing measured
+ * them again, so anything stronger would be a claim nobody observed (R21).
+ */
+export const READINGS_DROPPED_NOTE =
+	"Readings dropped when the connection was lost.";
 
 /**
  * One reading, as a button when it can be opened and a label when it cannot.
@@ -695,6 +726,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	held = false,
 	onOpenDraftPicker,
 	draftResolution,
+	readingsDropped = false,
 	className,
 }) => {
 	/*
@@ -704,7 +736,33 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	 * nothing without a snapshot, which is honest about a session that has not
 	 * reported.
 	 */
-	if (!frontend && !(draft && draftResolution)) return null;
+	if (!frontend && !(draft && draftResolution)) {
+		/*
+		 * THE READINGS THAT WERE DROPPED STILL SAY SO (task-17, U4). Every other
+		 * empty pane stays silent - a session that has not reported yet has
+		 * nothing to explain - but a pane whose readings were dropped at a spent
+		 * budget was showing values a moment ago, and their disappearance is a
+		 * fact this slot can state in the strip's own register. The `!draft`
+		 * guard is structural rather than a second condition: a draft has no
+		 * stream, so it can never have dropped one.
+		 */
+		if (readingsDropped && !draft) {
+			return (
+				<p
+					data-lo-readings-dropped={true}
+					/* biome-ignore lint/a11y/useSemanticElements: `role="status"` is the polite announcement this sentence wants, and `<output>` - the element the rule suggests - is a form-result element with its own implied semantics; this is neither a form result nor a control. The file's group role carries the same suppression for the same reason. */
+					role="status"
+					className={cn(
+						"order-2 -mx-1.5 min-w-0 text-meta text-ink-dim",
+						className,
+					)}
+				>
+					{READINGS_DROPPED_NOTE}
+				</p>
+			);
+		}
+		return null;
+	}
 
 	/*
 	 * The dispatcher a reading may use, or `undefined` when nothing here opens.
