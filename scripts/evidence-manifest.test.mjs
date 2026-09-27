@@ -1471,6 +1471,13 @@ const STAMP_BINDING_NOTES = [
 	 * the check rather than the prose.
 	 */
 	"pendingEchoRemediationSecondFoldNote",
+	/*
+	 * AND THE THIRD FOLD'S OWN: same shape again - the fold onto the moved
+	 * `origin/main` after #553 re-derives the pair at the folded tip and reads
+	 * it back from the staged index, so a reader is owed the check rather than
+	 * the prose.
+	 */
+	"pendingEchoRemediationThirdFoldNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2084,6 +2091,11 @@ const BRANCH_RECORDS = [
 	"pendingEchoRemediationNote",
 	"pendingEchoRemediationFoldNote",
 	"pendingEchoRemediationSecondFoldNote",
+	/*
+	 * And the third fold's record rides beside the two above - each fold writes
+	 * one, and the same completeness reason stands.
+	 */
+	"pendingEchoRemediationThirdFoldNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
