@@ -4153,6 +4153,24 @@ export const STORIES = [
 	["projects-tab--edit-dialog", 1280, 900],
 	["projects-tab--delete-confirm", 1280, 900],
 	["projects-tab--milestone-toggle", 1280, 900],
+	/*
+	 * The board and the timeline (slice 6bc): the switcher's three views on the
+	 * same page. The board's states are the columns — archived joining only
+	 * when it holds rows, an out-of-vocabulary status kept in its own column
+	 * rather than dropped, and the many-cards scroll. The timeline's are the
+	 * axis with bars and all three milestone-mark states plus the today
+	 * marker, the honest no-dates empty axis, and a passed target with an
+	 * overdue milestone going to the trailing "no dates" section for the one
+	 * undated project. The timeline stories stub one `projects.get` per project
+	 * — the fan-out the view itself performs — from the same desktop-bridge
+	 * boundary every other frame in this set uses.
+	 */
+	["projects-tab--board", 1280, 900],
+	["projects-tab--board-many", 1280, 900],
+	["projects-tab--board-statuses", 1280, 900],
+	["projects-tab--timeline", 1280, 900],
+	["projects-tab--timeline-no-dates", 1280, 900],
+	["projects-tab--timeline-overdue", 1280, 900],
 	["common-confirmationmodal--dangerous", 1280, 900],
 	/* The operator's own alert, over the screen they were working on: their
 	   update-service.log holds this exact transport code at 09:03:12 on
