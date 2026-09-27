@@ -16774,7 +16774,8 @@ async function seedDrafts(cdp) {
 				admissionAttempted: true,
 				pending: false,
 				submittedText: "Can you check our google drive and tell me what moved",
-				submittedRendered: "Can you check our google drive and tell me what moved",
+				submittedRendered:
+					"Can you check our google drive and tell me what moved",
 				errorCode: "deadline_exceeded",
 				errorRetry: true,
 				error: "Couldn't confirm your message was sent.",
@@ -16868,7 +16869,7 @@ async function sceneDrafts(cdp) {
 		);
 	const composerText = () =>
 		cdp.evaluate(
-			'(() => { const box = document.querySelector(\'[data-tour-tag="chat-input-textarea"] textarea\'); return box === null ? null : box.value; })()',
+			"(() => { const box = document.querySelector('[data-tour-tag=\"chat-input-textarea\"] textarea'); return box === null ? null : box.value; })()",
 		);
 
 	const restRows = await readDraftRows();
@@ -16928,7 +16929,9 @@ async function sceneDrafts(cdp) {
 	note("the live hop's discard control", JSON.stringify(flightAct));
 	check(
 		"the live hop's control is revealed and disabled",
-		flightAct !== null && flightAct.display === "flex" && flightAct.disabled === true,
+		flightAct !== null &&
+			flightAct.display === "flex" &&
+			flightAct.disabled === true,
 		JSON.stringify(flightAct),
 	);
 	if (flightAct !== null) {
@@ -17041,11 +17044,15 @@ async function sceneDrafts(cdp) {
 	 */
 	await clickAt(cdp, `[data-draft-row="${DRAFTS_TYPED}"]`);
 	await wait(250);
-	note("the composer after opening the draft", JSON.stringify(await composerText()));
+	note(
+		"the composer after opening the draft",
+		JSON.stringify(await composerText()),
+	);
 	if (hoverAct !== null) {
 		check(
 			"opening the draft puts its text in the composer",
-			(await composerText())?.includes("This session seems to be wedged") === true,
+			(await composerText())?.includes("This session seems to be wedged") ===
+				true,
 			JSON.stringify(await composerText()),
 		);
 		await clickAt(cdp, `[data-draft-discard="${DRAFTS_TYPED}"]`);
@@ -17107,7 +17114,7 @@ async function sceneDrafts(cdp) {
 		check(
 			"the section stays open for the live hop",
 			await cdp.evaluate(
-				'Boolean(document.querySelector(\'[data-chat-section="drafts"]\'))',
+				"Boolean(document.querySelector('[data-chat-section=\"drafts\"]'))",
 			),
 		);
 		check(
