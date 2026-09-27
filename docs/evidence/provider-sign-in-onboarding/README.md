@@ -1,6 +1,6 @@
 # The provider sign-in, the Providers page, first run and the empty chat
 
-Thirty-four states, each captured in BOTH brand themes (`localOperatorDark.webp` and
+Thirty-five states, each captured in BOTH brand themes (`localOperatorDark.webp` and
 `localOperatorLight.webp`), for the change that makes a provider reachable from the
 app: the
 Providers settings page (a first run, connected, and a row's overflow menu open),
@@ -41,9 +41,11 @@ command - and in the re-run's own words the three are the directories
 `panel-refused-verdict`, `panel-succeeded-unconfirmed` and `panel-key-refused-verdict`,
 which is why the state names above are the short forms. THE `panel-` PREFIX IS NOT
 UNIVERSAL HERE, and the sentence that stood in this place claimed it was: the re-run
-prints 34 directories of which 22 carry the prefix, and the 12 that do not are the
+prints 35 directories at this head (the 34 of that round's re-run plus
+`onboarding-step-3-keys`, added by the search-setup round below) of which 22 carry the
+prefix, and the 13 that do not are the
 onboarding steps and the provider-list states around them (`onboarding-step-1` through
-`onboarding-step-3`, `providers-*`, `connect-dialog`, `empty-chat-card`). What is true,
+`onboarding-step-3-keys`, `providers-*`, `connect-dialog`, `empty-chat-card`). What is true,
 and what the short forms rest on, is that all THREE verdict-register directories carry
 it - so a reader looking for the state names in the `ls` output knows to look for the
 prefixed ones, rather than for every name in the set (agent review round 2, MINOR 4).
@@ -79,3 +81,29 @@ onboarding dialog and in the Settings column) - and, upstream of that pass,
 The design audit that named these states, with the matching BEFORE frames and the
 per-state target spec, is the design round's own document on the PR; this
 directory is the re-derivable half of it.
+
+## The search-setup round (2026-09-27)
+
+Two step-3 states re-taken and one added, by the change that makes the search step
+open on **Free** (the runtime's rotating free-provider pool) with adding keys as
+the opt-in branch:
+
+- `onboarding-step-3` — RE-TAKEN. Its committed predecessor (the copy before this
+  round, whose frames are this directory's own history at `bb882d97a^`) showed one
+  key field with Tavily recommended; the frame now shows the Free/Add-API-keys
+  choice with Free selected and Recommended.
+- `onboarding-step-3-keys` — NEW. The add-keys branch: one row per catalogue
+  provider (six at this head), each saving on blur, and the step's own helper
+  line. The story presses the branch's radio until the rows are in the DOM (a
+  single click can be undone by the modal's own mount pass — measured, the first
+  cut of this story photographed the free copy), and the capture row's
+  `expectPresent` asserts the same state.
+
+Command (the sanctioned narrowed form; `6017` was another worktree's Storybook,
+so this round's rig ran on `6417`):
+
+```
+node scripts/capture-evidence.mjs http://localhost:6417 \
+  --only=provider-sign-in-onboarding--onboarding-step-3 \
+  --themes=localOperatorDark,localOperatorLight --allow-backend --theme-settle-ms=90000
+```

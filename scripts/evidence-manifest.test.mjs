@@ -1451,6 +1451,13 @@ const STAMP_BINDING_NOTES = [
 	 * still was owed, for the same reason task-17's entry is here.
 	 */
 	"daemonObservationTickWaitRestampNote",
+	/*
+	 * AND THE SEARCH-AND-QUOTA UX PASS'S OWN: its subject IS this file's binding
+	 * too - the pass moves BOTH trees and re-took four sets' frames (two states
+	 * re-shot, one state and two sets added) - so a reader is owed the pair and
+	 * the five sets it names.
+	 */
+	"searchQuotaUxRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2053,6 +2060,12 @@ const BRANCH_RECORDS = [
 	 * this list exists.
 	 */
 	"daemonObservationTickWaitRestampNote",
+	/*
+	 * And by the search-and-quota UX pass, whose note is this branch's newest
+	 * top-level record: it states the pair this tip ships, moves both trees,
+	 * and names the five sets its capture moved.
+	 */
+	"searchQuotaUxRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
