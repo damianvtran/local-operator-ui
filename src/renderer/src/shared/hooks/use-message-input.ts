@@ -215,6 +215,15 @@ export const COMPOSER_PLACEHOLDER = {
 	busy: "Agent is busy",
 	answer: "Type your own answer…",
 	/*
+	 * A SECRET ASK'S OWN SENTENCE, and it is not `answer`'s: the ordinary
+	 * answer arm invites typing into this box, which is exactly what a secret
+	 * question refuses (`message-input.tsx`'s `secretAnswer` term). So this one
+	 * points at the dock's masked field instead — the only surface the value
+	 * may pass through — and it is read BEFORE `inputDisabled`'s, because "Agent
+	 * is busy" would be false about the state: the agent is waiting, not busy.
+	 */
+	secretAnswer: "Answer the secret request above",
+	/*
 	 * The exit is named beside the verb for the reason the `@` list's own line
 	 * names its ("Nothing to insert · Esc closes").
 	 */
@@ -235,11 +244,13 @@ export const COMPOSER_PLACEHOLDER = {
  * The READ of the order: a conversation this machine does not have outranks every
  * other reading (`isInputDisabled` is true for one, so the gone-state sentence has
  * to be asked first or a reader of a missing conversation is told `Agent is busy`
- * about a turn nobody is running - design round 2, D3); then the box's own
- * refusal; then a gate that is waiting to be answered; then an attached aside;
- * then THIS pane's send; then the agent; then the invitation.
+ * about a turn nobody is running - design round 2, D3); then a gate that takes a
+ * SECRET, whose sentence names the dock's field because the box refuses input for
+ * it and pointing is all this slot can usefully do; then the box's own refusal;
+ * then a gate that is waiting to be answered; then an attached aside; then THIS
+ * pane's send; then the agent; then the invitation.
  *
- * THE ASIDE TERM SITS AFTER THE TWO REFUSALS AND AFTER THE GATE, and both sides
+ * THE ASIDE TERM SITS AFTER THE REFUSALS AND AFTER THE GATE, and both sides
  * of that position are load-bearing. After the refusals, because a box that takes
  * no keystrokes must not be invited to take one: "Ask off the record" over a
  * read-only composer is a promise nothing can keep. After `awaitingAnswer`,
@@ -262,6 +273,12 @@ export const composerPlaceholder = (state: {
 	inputDisabled: boolean;
 	/** A pending `ask` gate is waiting for an answer in this pane. */
 	awaitingAnswer: boolean;
+	/**
+	 * A pending `ask` gate that takes a SECRET, whose answer goes in the dock's
+	 * masked field instead of this box (see `message-input.tsx`'s
+	 * `secretAnswer`). Read before `inputDisabled`: see the sentence's own note.
+	 */
+	secretAnswer: boolean;
 	/** The `/btw` aside is attached, so the press asks it rather than the thread. */
 	asideAttached: boolean;
 	/** A send this pane issued has not settled. */
@@ -278,6 +295,7 @@ export const composerPlaceholder = (state: {
 	noProvider?: boolean;
 }): string => {
 	if (state.unavailable) return COMPOSER_PLACEHOLDER.unavailable;
+	if (state.secretAnswer) return COMPOSER_PLACEHOLDER.secretAnswer;
 	if (state.inputDisabled) return COMPOSER_PLACEHOLDER.busy;
 	if (state.awaitingAnswer) return COMPOSER_PLACEHOLDER.answer;
 	if (state.asideAttached) return COMPOSER_PLACEHOLDER.aside;

@@ -45,6 +45,7 @@ import {
 	goalCapability,
 	goalPresent,
 } from "../../../../../shared/desktop-session-contract";
+import { gateIsSecret } from "../ask-answer";
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
 import type { UndeliveredTurn } from "../canonical/canonical-transcript";
 import { canonicalTranscriptSpeaks } from "../canonical/transcript-pane";
@@ -343,6 +344,16 @@ type ChatContentProps = {
 		 * it rather than posted from the row that was clicked.
 		 */
 		onAnswer?: (label: string) => void;
+		/**
+		 * Answer the pending `secret` gate with the dock's typed value.
+		 *
+		 * The secret field's sibling of `onAnswer`, raised to the same panel for
+		 * the same reason: `SessionPanel` holds the send lock and the error
+		 * surface, so the value has to reach it rather than post from the field.
+		 * Absent where the surface cannot address an owner — the dock then
+		 * renders the field disabled.
+		 */
+		onAnswerSecret?: (value: string) => void;
 		/**
 		 * What `SessionPanel` knows about the gate it just answered. Passed through
 		 * untouched: the card's hold and its refusal sentence are decided where the
@@ -1545,6 +1556,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 									className={CHAT_MEASURE}
 									gate={canonical.view.frontend.pending_gate}
 									onAnswer={canonical.onAnswer}
+									/*
+									 * The secret field's own door, forwarded untouched like `onAnswer`:
+									 * the dock decides WHEN a secret is answered from its field, and the
+									 * panel owns the lock, the request and the report behind it.
+									 */
+									onAnswerSecret={canonical.onAnswerSecret}
 									// The composer's own in-flight flag, reused: one answer per
 									// question, whichever surface starts it.
 									answering={Boolean(canonical.admitting)}
@@ -1725,6 +1742,20 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * on the user (UX round 2, U8).
 								 */
 								awaitingAnswer={Boolean(canonical?.view.frontend?.pending_gate)}
+								/*
+								 * AND WHETHER THAT QUESTION TAKES A SECRET: the composer refuses
+								 * input while one waits (`message-input.tsx` reads this as
+								 * `secretAnswer`), because a credential must never be typed into a
+								 * surface that cannot mask it — the answer belongs to the dock's own
+								 * field. Through `gateIsSecret`, the ONE predicate every consumer of
+								 * that reading shares (agent review round 1, NIT-1): the field arm,
+								 * the page's send refusal and the answer door read it too, so a
+								 * value the wire means as secret cannot be masked on one surface
+								 * while this one stays open — the mix that re-opened the exposure.
+								 */
+								secretAnswer={gateIsSecret(
+									canonical?.view.frontend?.pending_gate,
+								)}
 								// A conversation the backend says is gone is a KNOWN
 								// answer, so the composer refuses input rather than
 								// accepting a message that can only 404. The pane above
