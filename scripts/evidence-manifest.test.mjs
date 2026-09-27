@@ -1279,6 +1279,17 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"goalDesignRoundTwoNote",
 	/*
+	 * THIS BRANCH'S OWN, and it arrives under the union rule the list states: the
+	 * pair below is the MERGED tree's - re-derived on THIS fold (onto `origin/main`
+	 * = `eddfae750b`, #537/#540/#541/#542) with `git write-tree` on the resolved
+	 * index and `<tree>:src` / `<tree>:scripts`, so it rides the tree it describes
+	 * rather than either side of the merge - and every note that quotes the pair
+	 * as a pointer to this file's own values is substituted with it, main's own
+	 * list carried whole.
+	 */
+	"conversationStartEvidenceNote",
+
+	/*
 	 * THIS CHANGE'S OWN: it re-stamps the pass that made the chat header's
 	 * identity slot the controls it describes (the team and the agent menus,
 	 * the rename pencil) and re-captured its own eleven states - so ITS
@@ -1441,19 +1452,27 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"daemonObservationTickWaitRestampNote",
 	/*
+	 * AND THIS BRANCH'S OWN: the pending-echo placement fix moves BOTH trees this
+	 * file binds - `src/` for `withTimeOrder`'s load-window case and the
+	 * `provisional` field it reads, `scripts/` for the reducer cases that pin the
+	 * page and seed doors plus the `localEcho` reading the open rig carries - and
+	 * rewrites no frame of the sweep, so a reader is owed the two values it binds
+	 * and the reason no still was owed.
+	 */
+	"pendingEchoRestampNote",
+	"pendingEchoRemediationNote",
+	"pendingEchoRemediationFoldNote",
+	"pendingEchoRemediationSecondFoldNote",
+	"pendingEchoRemediationThirdFoldNote",
+	"pendingEchoRemediationFourthFoldNote",
+	"pendingEchoRemediationFifthFoldNote",
+	/*
 	 * AND THIS BRANCH'S OWN, the mesh tab's slice 1: its subject IS this file's
 	 * binding - the set is new, both trees moved under it, and the tab ships dark
 	 * behind a capability gate - so a reader is owed the check rather than the prose,
 	 * and a later fold that started from main's copy would drop it first.
 	 */
 	"meshTabRestampNote",
-	/*
-	 * ROUND 2'S OWN RESTAMP NOTE, and it is registered for the reason the convention
-	 * states: its subject is THIS FILE'S BINDING - it records the seventh re-derivation
-	 * and quotes the pair this commit ships. `meshTabRestampNote` above records the sixth
-	 * and stays listed for the same reason; the two are the mesh set's own history, each
-	 * held to the values it actually ships.
-	 */
 	"meshTabRound2RestampNote",
 ];
 
@@ -2057,6 +2076,32 @@ const BRANCH_RECORDS = [
 	 * this list exists.
 	 */
 	"daemonObservationTickWaitRestampNote",
+	/*
+	 * Grown by the pending-echo lane: its fix, its round-1 remediation and its
+	 * two folds each wrote a top-level record. The first fold registered them
+	 * with the stamp-binding list only, so a fold that resolved this file from
+	 * main's copy could have dropped them with nothing failing; this
+	 * registration closes that hole for the records the branch is carrying.
+	 */
+	"pendingEchoRestampNote",
+	"pendingEchoRemediationNote",
+	"pendingEchoRemediationFoldNote",
+	"pendingEchoRemediationSecondFoldNote",
+	/*
+	 * And the third fold's record rides beside the two above - each fold writes
+	 * one, and the same completeness reason stands.
+	 */
+	"pendingEchoRemediationThirdFoldNote",
+	/*
+	 * And the fourth fold's record rides beside them - each fold writes one, and
+	 * the same completeness reason stands.
+	 */
+	"pendingEchoRemediationFourthFoldNote",
+	/*
+	 * And the fifth fold's record rides beside them - each fold writes one, and
+	 * the same completeness reason stands.
+	 */
+	"pendingEchoRemediationFifthFoldNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

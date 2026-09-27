@@ -48,6 +48,10 @@ globalThis.localStorage = {
 const calls = [];
 globalThis.__canonicalRequest = async (request) => {
 	calls.push(request);
+	// The catalogue read the create's answer now issues (S5): answered here rather
+	// than queued, because it is not a send and every queue in this file is
+	// written for the send path alone.
+	if (request.op === "sessions.list") return { sessions: [], truncated: false };
 	const queued = responses.shift();
 	if (queued instanceof Error) throw queued;
 	return queued ?? {};
@@ -109,14 +113,79 @@ export const desktopResult = request => globalThis.__canonicalRequest(request);`
 					() => ({ path: "echo", namespace: "echo-fixture" }),
 				);
 				builder.onLoad({ filter: /.*/, namespace: "echo-fixture" }, () => ({
-					contents: `export const echoPendingUser = (sessionId, id, text, images) =>
-	globalThis.__canonicalEcho({ kind: "echo", sessionId, id, text, images });
+					/*
+					 * The registry is a REAL little Map now, not a recorder (S6): the restart
+					 * adapter's guard (`pendingSendForView`) and its paint share it, and a
+					 * recorder could not tell "the press already painted this row" from
+					 * "nothing is retained" - which is exactly the reload the S6 case stages.
+					 * Every recorded echo is byte-identical to before; the Map only backs
+					 * the reads.
+					 */
+					contents: `const registry = new Map();
+globalThis.__pendingSendRegistry = registry;
+export const paintPendingSend = (identity, send) => {
+	globalThis.__canonicalEcho({ kind: "echo", sessionId: identity, id: send.id, text: send.text, images: send.images });
+	let entries = registry.get(identity);
+	if (!entries) { entries = new Map(); registry.set(identity, entries); }
+	entries.set(send.id, {
+		identity,
+		id: send.id,
+		text: send.text,
+		images: send.images,
+		settled: send.settled,
+	});
+};
+export const settlePendingSend = (identity, id) => {
+	const entry = registry.get(identity)?.get(id);
+	if (entry) entry.settled = true;
+};
+export const hasPendingSend = (identity, id) => Boolean(registry.get(identity)?.has(id));
+export const pendingSendForView = (identity) => {
+	/*
+	 * THE SETTLED SKIP IS PART OF THE RULE THE FIXTURE STANDS FOR (agent review
+	 * round 2, R2-2): the real predicate answers the oldest entry that is NOT
+	 * settled, because a resolved claim stays in the registry to keep painting its
+	 * row. A fixture that returned the settled entry would let a regression pass
+	 * here while the app showed no wait line at all.
+	 */
+	const entries = registry.get(identity);
+	if (!entries) return null;
+	const first = [...entries.values()].find((entry) => entry.settled !== true);
+	return first ?? null;
+};
+export const movePendingSendIdentity = (from, to) => {
+	globalThis.__canonicalEcho({ kind: "move", from, to });
+	if (from === to) return;
+	const entries = registry.get(from);
+	if (!entries) return;
+	registry.delete(from);
+	const destination = registry.get(to) ?? new Map();
+	for (const [id, entry] of entries) { entry.identity = to; destination.set(id, entry); }
+	registry.set(to, destination);
+};
+export const replacePendingSendText = (identity, id, text) => {
+	globalThis.__canonicalEcho({ kind: "replace", sessionId: identity, id, text });
+	const entry = registry.get(identity)?.get(id);
+	if (entry) entry.text = text;
+};
+export const resolvePendingSend = (identity, id) => {
+	const entries = registry.get(identity);
+	if (!entries) return;
+	entries.delete(id);
+	if (entries.size === 0) registry.delete(identity);
+};
+export const discardPendingSends = (sessionId) => {
+	globalThis.__canonicalEcho({ kind: "discard", sessionId });
+	registry.delete(sessionId);
+};
 export const retractPendingUser = (sessionId, id) =>
 	globalThis.__canonicalEcho({ kind: "retract", sessionId, id });
 export const peekLocalEcho = (sessionId, id) =>
 	globalThis.__canonicalEcho({ kind: "peekLocal", sessionId, id });
-export const discardPendingEchoes = (sessionId) =>
-	globalThis.__canonicalEcho({ kind: "discard", sessionId });`,
+export const discardPendingEchoes = (sessionId) => {
+	globalThis.__canonicalEcho({ kind: "discard", sessionId });
+	registry.delete(sessionId);
+};`,
 					loader: "js",
 					resolveDir: process.cwd(),
 				}));
@@ -139,6 +208,7 @@ const {
 	mergeReturnedPayload,
 	mergeReturnedText,
 	rehydrateInputRows,
+	resynthesisePendingSend,
 	withholdsRetryHint,
 	sendFailureClass,
 	sendFailureCopy,
@@ -173,6 +243,8 @@ function reset() {
 		error: null,
 	});
 	useConversationInputStore.setState({ inputByConversation: {} });
+	// The registry is process state: a case starts in a fresh process's shape.
+	globalThis.__pendingSendRegistry.clear();
 }
 
 const key = `send:${SESSION}`;
@@ -455,17 +527,17 @@ test("the replay sends the pinned RENDERED text, not a re-render of the box", as
 	assert.equal(sent[0].text, "rendered-1");
 });
 
-/* --------------------------------------------------------------- return path */
+/* --------------------------------------------------- the boundary rule (S4) */
 
-test("a failure puts the text, the chips and the quotes back in the composer", async () => {
+test("a failure hands NOTHING back to the composer: the row is the message's home", async () => {
 	reset();
 	stageComposer(SESSION, {
 		text: "Review this",
 		paths: ["/tmp/a.png"],
 		replies: [{ id: "r1", text: "quoted" }],
 	});
-	// The echo empties the composer and takes the whole payload with it, which is
-	// the state the failure has to undo.
+	// The paint empties the composer and takes the whole payload with it, which
+	// is the state this case starts from.
 	useConversationInputStore.getState().beginInFlight(
 		SESSION,
 		{
@@ -478,25 +550,36 @@ test("a failure puts the text, the chips and the quotes back in the composer", a
 	assert.equal(composerRow(SESSION).currentInput, "");
 
 	responses.push(new DesktopControlError(504, "deadline_exceeded"));
-	await assert.rejects(admitChatDraft(key, input, SESSION));
+	await assert.rejects(
+		admitChatDraft(key, { ...input, attachments: ["/tmp/a.png"] }, SESSION),
+	);
 
+	/*
+	 * THE BOUNDARY RULE, ON THE BOX (S4): everything the store rethrows was raised
+	 * after the paint, so the payload does NOT come home. The message is on its
+	 * row in the conversation, with the class's sentence and the two controls that
+	 * resolve it; the composer is not a second home for it. The old contract
+	 * returned text, chips and quotes to this row - that is the #495 behaviour
+	 * this change supersedes, and the reason it had to go is that the box's copy
+	 * was the one that could be sent a second time.
+	 */
 	const row = composerRow(SESSION);
-	assert.equal(row.pendingText, "Review this", "the text comes back");
-	assert.deepEqual(
-		row.attachments.map((chip) => chip.path),
-		["/tmp/a.png"],
-		"so do the chips",
-	);
-	assert.deepEqual(
-		row.replies.map((reply) => reply.id),
-		["r1"],
-		"and the staged quotes",
-	);
+	assert.equal(row.pendingText, undefined, "no text comes back");
+	assert.deepEqual(row.attachments, [], "and no chips");
+	assert.deepEqual(row.replies, [], "and no quotes");
 	assert.equal(
 		row.inFlight,
 		undefined,
-		"the in-flight record is consumed by the return",
+		"the attempt is settled, not returned: nothing comes home, and nothing keeps claiming to be in flight",
 	);
+	/*
+	 * AND THE PAYLOAD BASIS IS ON THE DRAFT ROW, which is where the row-line's
+	 * `Send again` replays from and its `Edit` restores from - the one copy the
+	 * two surfaces read instead of a second copy in the box.
+	 */
+	const draft = draftRow();
+	assert.equal(draft.submittedText, "Review this");
+	assert.deepEqual(draft.submittedAttachments, ["/tmp/a.png"]);
 });
 
 test("a delivered-after-all failure hands nothing back and resolves as a success", async () => {
@@ -524,7 +607,7 @@ test("a delivered-after-all failure hands nothing back and resolves as a success
 	assert.equal(draftRow(), undefined, "and the claim retires");
 });
 
-test("the New-chat flip returns the payload under the session id, not the draft key", async () => {
+test("the New-chat flip leaves the payload on the draft row, under the identity the send minted", async () => {
 	reset();
 	const draftKey = "draft:22222222-2222-2222-2222-222222222222";
 	stageComposer(draftKey, {
@@ -532,25 +615,184 @@ test("the New-chat flip returns the payload under the session id, not the draft 
 		paths: ["/tmp/b.png"],
 		replies: [{ id: "r2", text: "quoted" }],
 	});
+	// The press: the draft pane's composer hands the payload over and empties - the
+	// state the failure used to hand everything back to.
+	useConversationInputStore.getState().beginInFlight(
+		draftKey,
+		{
+			text: "Review this",
+			attachments: [{ id: "chip-/tmp/b.png", path: "/tmp/b.png" }],
+			replies: [{ id: "r2", text: "quoted" }],
+		},
+		true,
+	);
 	responses.push({ session_id: SESSION }); // sessions.create
 	responses.push(new DesktopControlError(504, "deadline_exceeded"));
-	await assert.rejects(admitChatDraft(draftKey, input, undefined));
-	const row = composerRow(SESSION);
-	assert.equal(row?.pendingText, "Review this");
-	assert.deepEqual(
-		row?.attachments.map((chip) => chip.path),
-		["/tmp/b.png"],
+	await assert.rejects(
+		admitChatDraft(
+			draftKey,
+			{ ...input, attachments: ["/tmp/b.png"] },
+			undefined,
+		),
 	);
-	assert.deepEqual(
-		row?.replies.map((reply) => reply.id),
-		["r2"],
-	);
+	/*
+	 * S4's boundary rule on the draft path: the failure belongs to the row, so
+	 * neither identity's composer gets the payload. The DRAFT-KEY row is the one
+	 * that used to collect it in the released app (the R1 finding this case was
+	 * built for), and the SESSION-ID row used to collect it after the flip - this
+	 * asserts both stay empty, and that the identity the send minted is still the
+	 * one the pane and the registry agree on (`composerIdentityFor`).
+	 */
 	assert.equal(
 		composerRow(draftKey),
 		undefined,
-		"the identity the pane replaced is not left holding a copy",
+		"the pressed identity's row is gone: its leftovers moved with the flip (U14/Q7), and nothing is stranded under an identity no pane will show again",
 	);
+	assert.equal(
+		composerRow(SESSION)?.pendingText,
+		undefined,
+		"and the minted row holds no returned text: the transcript row is the message's home",
+	);
+	const draft = useCanonicalSessionsStore.getState().drafts[draftKey];
+	assert.equal(draft.submittedText, "Review this");
+	assert.deepEqual(draft.submittedAttachments, ["/tmp/b.png"]);
 	assert.equal(composerIdentityFor(draftKey, SESSION), SESSION);
+});
+
+/*
+ * T6: A RELOAD. The registry is process state and starts empty in a fresh
+ * process; the draft row's claim fields persist. The row must come back - S4
+ * made it the message's home, and a reload that lost it would leave the
+ * conversation silently empty with the payload no longer coming home either.
+ *
+ * THE ADAPTER'S SHAPE IS THE FAILED ROW, NOT "STILL-PENDING" (agent review
+ * round 1, NIT). §4d's wording offers a still-pending case and one cannot exist:
+ * `pending` is stripped at persist, so a mid-send reload has no claim to
+ * re-paint and the message is still in the box (the `inFlight` fold); what
+ * re-paints is a failure this build recorded and the user has not resolved, or
+ * - D2 below - a claim the server RESOLVED.
+ */
+test("a failed row is re-synthesised after a reload, under the id the durable row would carry", async () => {
+	reset();
+	const draftKey = "draft:33333333-3333-3333-3333-333333333333";
+	responses.push({ session_id: SESSION });
+	responses.push(new DesktopControlError(504, "deadline_exceeded"));
+	await assert.rejects(admitChatDraft(draftKey, { ...input }, undefined));
+	const draft = useCanonicalSessionsStore.getState().drafts[draftKey];
+	assert.equal(
+		draft.admissionAttempted,
+		true,
+		"an unknown outcome: the claim survives on the row",
+	);
+	assert.equal(
+		draft.submittedRendered,
+		"Review this",
+		"and the text the row showed is the pinned render - the seam ran before the wire",
+	);
+	// The reload: a fresh process retains nothing.
+	globalThis.__pendingSendRegistry.clear();
+	// The pane's mount pass, reading the row it is on screen with.
+	assert.equal(
+		resynthesisePendingSend(draftKey, draft),
+		true,
+		"the row comes back",
+	);
+	const identity = composerIdentityFor(draftKey, draft.sessionId);
+	const restored = globalThis.__pendingSendRegistry
+		.get(identity)
+		?.get(draft.admissionRequestId);
+	assert.equal(
+		restored?.id,
+		draft.admissionRequestId,
+		"under the id the durable row would carry, so a later owner row coalesces with it",
+	);
+	assert.equal(
+		restored?.text,
+		"Review this",
+		"with the text the row showed when it failed",
+	);
+	// Idempotent: the effect can run again without painting a second row.
+	assert.equal(resynthesisePendingSend(draftKey, draft), false);
+	// And the SHAPE guards, exercised with the registry empty again.
+	globalThis.__pendingSendRegistry.clear();
+	assert.equal(
+		resynthesisePendingSend(draftKey, {
+			...draft,
+			errorRetry: undefined,
+			submittedRendered: undefined,
+		}),
+		false,
+		"a released-app row is not this adapter's to re-paint - `migrateHeldClaim` owns it",
+	);
+	assert.equal(
+		resynthesisePendingSend(draftKey, {
+			...draft,
+			error: undefined,
+			errorCode: undefined,
+			errorRetry: undefined,
+		}),
+		false,
+		"nor is a failure the user already resolved (the not-delivered Edit clears the sentence, and D2's record with it)",
+	);
+	assert.equal(
+		resynthesisePendingSend(draftKey, draft),
+		true,
+		"while the unresolved failure still paints - the guards are about the shape, not the clear",
+	);
+});
+
+/*
+ * D2: A RELOAD AFTER THE CLAIM RESOLVED. The server's complete read has answered
+ * the claim NO: `resolveHeldFromServer` clears `error`/`errorRetry`/`submittedText`
+ * and records `undelivered` - the state whose row is the message's fate statement
+ * and whose remedy is the §F3 line. Re-synthesising only from `error` +
+ * `errorRetry` refused exactly this shape, so a second reload lost the row AND
+ * the line, with the payload deliberately not in the composer: the message
+ * surviving nowhere at all (design review round 1, D2).
+ */
+test("a resolved-undelivered row is re-synthesised after a reload, from the resolution's own record", () => {
+	reset();
+	const draftKey = "draft:44444444-4444-4444-4444-444444444444";
+	const resolvedId = "66666666-6666-4666-8666-666666666666";
+	// The shape `resolveHeldFromServer` writes: the failure's fields are gone
+	// (the not-found arm destructures them away) and the record that replaces
+	// them names the row the message will wear.
+	const draft = {
+		key: draftKey,
+		admissionRequestId: "55555555-5555-4555-8555-555555555555",
+		undelivered: {
+			recordId: resolvedId,
+			text: "Review this",
+			attachments: ["/tmp/b.png"],
+		},
+	};
+	assert.equal(
+		resynthesisePendingSend(draftKey, draft),
+		true,
+		"the resolved row comes back, where the failure-shape guard alone refused it",
+	);
+	const identity = composerIdentityFor(draftKey, draft.sessionId);
+	const restored = globalThis.__pendingSendRegistry
+		.get(identity)
+		?.get(resolvedId);
+	assert.equal(
+		restored?.text,
+		"Review this",
+		"with the resolution's text, under the id the durable row would carry",
+	);
+	assert.equal(
+		resynthesisePendingSend(draftKey, draft),
+		false,
+		"and idempotently - the entry is what `already painted` means",
+	);
+	// The user's Edit retires the row AND the record (chat-page's retirement),
+	// so nothing is left for the adapter to re-paint on the next load.
+	globalThis.__pendingSendRegistry.clear();
+	assert.equal(
+		resynthesisePendingSend(draftKey, { ...draft, undelivered: undefined }),
+		false,
+		"a retired row leaves nothing to re-paint",
+	);
 });
 
 /* --------------------------------------------------------------------- merge */
@@ -1287,7 +1529,8 @@ test("a codeless 409 on a fresh attempt is a refusal: the daemon's sentence, no 
 	/*
 	 * The composer's own echo write, which is what puts the payload in flight: a real
 	 * send is pressed from a mounted composer and this is the one write that paints
-	 * it (`beginInFlight`), so the return path has something to hand back.
+	 * it (`beginInFlight`), so the record of the attempt is the composer's own - the
+	 * store's failure arm no longer touches this row either way (S4).
 	 */
 	const store = useConversationInputStore.getState();
 	store.setCurrentInput(SESSION, input.text);
@@ -1321,9 +1564,10 @@ test("a codeless 409 on a fresh attempt is a refusal: the daemon's sentence, no 
 	);
 	assert.equal(row.admissionAttempted, false);
 	const box = useConversationInputStore.getState().inputByConversation[SESSION];
-	assert.ok(
-		box?.pendingText === input.text || box?.currentInput === input.text,
-		"the refused message is not back in the composer",
+	assert.equal(
+		box?.pendingText,
+		undefined,
+		"nothing came home (S4): the row states the refusal and its Edit is the way back to the bytes",
 	);
 });
 

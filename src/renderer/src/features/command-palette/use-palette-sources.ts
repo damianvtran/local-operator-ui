@@ -98,6 +98,13 @@ const PAGES = [
 		keywords: ["bots", "assistants", "roster", "agent list"],
 	},
 	{
+		id: "projects",
+		name: "Projects",
+		path: "/projects",
+		icon: "projects" as const,
+		keywords: ["workstreams", "milestones", "tracking", "planning"],
+	},
+	{
 		id: "agent-hub",
 		name: "Agent hub",
 		path: "/agent-hub",
@@ -229,15 +236,33 @@ export function usePaletteItems({
 		2,
 	);
 	/*
+	/*
 	 * The rail's Mesh row, by the SAME rule the rail uses - membership, not the
-	 * capability - so the palette's destinations stay the rail's destinations (R1-3).
+	 * capability - so the palette's destination SET stays the rail's set (R1-3). The row
+	 * is appended after `PAGES`, which keeps this file's single ordering rule for the rows
+	 * `PAGES` owns; the mesh row's own position in the rail is the tab's business, not
+	 * this list's, and a reader comparing the two sees the same set either way.
 	 */
 	const meshMembership = useMeshMembership(
 		desktopFeatureEnabled(capabilities.data, "peers"),
 	);
+	/*
+	 * The Projects entry is offered only on a backend that serves the surface - the same
+	 * predicate the sidebar row and the route's own gate read, so the three surfaces cannot
+	 * disagree. Absent means the entry is not built at all, which is what keeps an older
+	 * backend's palette byte-identical to the one this app shipped before Projects.
+	 */
+	const projectsEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"projects",
+		1,
+	);
 	const pages = useMemo(
-		() => (meshMembership === "member" ? [...PAGES, MESH_PAGE] : PAGES),
-		[meshMembership],
+		() => [
+			...PAGES.filter((page) => page.id !== "projects" || projectsEnabled),
+			...(meshMembership === "member" ? [MESH_PAGE] : []),
+		],
+		[meshMembership, projectsEnabled],
 	);
 	/*
 	 * Whether MAIN has an answer about the credential, which is a different fact

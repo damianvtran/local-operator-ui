@@ -290,3 +290,122 @@ export type DesktopControlResult<T = Record<string, unknown>> = {
 	data: T;
 	replayed?: boolean;
 };
+
+/*
+ * The Projects surface's wire DTOs (`/v1/desktop/projects*`), mirrored from the
+ * backend's slice-1 models (`server/models/desktop_projects.py`). The backend
+ * validates with `extra="allow"`, so a field a NEWER backend adds crosses
+ * additively and this renderer ignores it; the fields below are the frozen
+ * contract the tab codes against.
+ *
+ * THREE THINGS CARRIED RATHER THAN RE-DERIVED HERE, each for a stated reason:
+ *
+ * - `progress_stale` is computed by the server from the one 30-minute constant,
+ *   so the list's stale badge and the completion check cannot disagree about a
+ *   record. This renderer must never re-derive it from `progress_updated_at`
+ *   with its own threshold.
+ * - A milestone's `status` is DERIVED on the server (completed when
+ *   `completed_at` is set, else overdue when its `target_date` has passed,
+ *   else upcoming) — never stored, so a chip can never drift from the date it
+ *   contradicts.
+ * - `live_sessions` is a count from ONE machine-wide runtime scan per listing
+ *   call, not a per-row dial; the list column and the detail dots read the same
+ *   number.
+ */
+export type DesktopProjectStatus = "active" | "paused" | "done" | "archived";
+export type DesktopMilestoneStatus = "completed" | "overdue" | "upcoming";
+
+/** One listing/board row (`projects.list`, and every write's answer). */
+export type DesktopProject = {
+	id: string;
+	name: string;
+	description: string;
+	/**
+	 * One of {@link DesktopProjectStatus} on this build.
+	 *
+	 * A plain `string` on purpose: a row written by a newer build may carry a
+	 * status this app has never heard of, and the honest rendering of one is the
+	 * raw value with neutral treatment rather than a crash or a guessed chip.
+	 */
+	status: string;
+	tags: string[];
+	start_date: string | null;
+	target_date: string | null;
+	completed_at: string | null;
+	estimate: number | null;
+	estimate_unit: string;
+	milestones_completed: number;
+	milestones_total: number;
+	sessions: number;
+	live_sessions: number;
+	progress_stale: boolean;
+	progress_updated_at: number | null;
+	updated_at: number;
+};
+
+/** One milestone, with its server-derived status (see the module comment). */
+export type DesktopProjectMilestone = {
+	name: string;
+	target_date: string | null;
+	completed_at: string | null;
+	status: DesktopMilestoneStatus;
+};
+
+/** The full record — what `projects.get` and every milestone write answer. */
+export type DesktopProjectView = {
+	id: string;
+	name: string;
+	description: string;
+	status: string;
+	progress: string;
+	progress_updated_at: number | null;
+	/** A session id, `"operator"`, or `""` — free text, never rendered raw. */
+	progress_reported_by: string;
+	progress_stale: boolean;
+	tags: string[];
+	/** Linked session ids, in link order. */
+	sessions: string[];
+	created_at: number;
+	updated_at: number;
+	start_date: string | null;
+	target_date: string | null;
+	completed_at: string | null;
+	estimate: number | null;
+	estimate_unit: string;
+	milestones: DesktopProjectMilestone[];
+};
+
+/** A linked session's runtime record, as the one scan classifies it. */
+export type DesktopLinkedSessionRuntime = {
+	/** `live` | `wedged` | `stale` | `stopped` (stopped = no record at all). */
+	state: string;
+	busy: boolean | null;
+	heartbeat_age_s: number | null;
+	pid: number | null;
+};
+
+/**
+ * One linked-session row of the composed view.
+ *
+ * `subagents`/`todos` are `null` for UNKNOWN — a session that never launched a
+ * child has no roster sidecar, and one that never persisted a todo snapshot has
+ * none — and null is never rendered as 0. `exists: false` marks a session whose
+ * directory is gone (deleted or retention-cleaned): shown as missing, never
+ * silently unlinked.
+ */
+export type DesktopLinkedSession = {
+	session_id: string;
+	exists: boolean;
+	title: string | null;
+	created_at: number | null;
+	archived: boolean;
+	runtime: DesktopLinkedSessionRuntime;
+	subagents: { running: number; settled: number; names: string[] } | null;
+	todos: { open: number; total: number } | null;
+};
+
+/** `projects.get`'s answer: the row plus one row per linked session. */
+export type DesktopProjectDetail = {
+	project: DesktopProjectView;
+	links: DesktopLinkedSession[];
+};

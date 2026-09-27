@@ -726,6 +726,90 @@ const catalogueScopeName = z.string().min(1).max(64);
  */
 const catalogueCursor = z.string().min(1).max(256);
 
+/*
+ * The Projects contract's own vocabulary, mirroring the backend store's grammar
+ * rather than re-inventing one. The name rule is the store's exactly
+ * (`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`): a project name is both a `/project`
+ * argument and an `@project:<name>` token, so a space or a slash in one would
+ * break the surfaces that read it. It is checked HERE so a typo is a named
+ * refusal in the dialog rather than the backend's generic 422; every STATE
+ * question (a name already taken, the 64-link cap, a row written by a newer
+ * build) stays the backend's right to answer.
+ */
+const PROJECT_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+const projectName = z.string().regex(PROJECT_NAME_PATTERN, {
+	message: "Letters, digits, dot, underscore and dash; no spaces.",
+});
+/** The four statuses the store declares, in the board's fixed order. */
+const PROJECT_STATUSES = ["active", "paused", "done", "archived"] as const;
+const projectStatus = z.enum(PROJECT_STATUSES);
+/**
+ * A planning date: ISO `YYYY-MM-DD`, or `""` to CLEAR the field.
+ *
+ * The empty string is a member on purpose — it is the PATCH tri-state's third
+ * value (omit leaves the field alone, `""` clears it, a date sets it), and a
+ * schema that refused it would make "make this date TBD again" inexpressible
+ * from the edit dialog.
+ */
+const projectDate = z
+	.string()
+	.regex(/^$|^\d{4}-\d{2}-\d{2}$/, "Dates are YYYY-MM-DD, or empty to clear.");
+/** The tag grammar, bounded as the store bounds it (≤8 tags, ≤24 chars each). */
+const projectTags = z.array(z.string().min(1).max(24)).max(8);
+/** A route key: an exact id, or a name the route resolves case-insensitively. */
+const projectKey = z.string().min(1).max(64);
+
+/**
+ * Longest progress snippet the store accepts, in CHARACTERS.
+ *
+ * Deliberately NOT reachable from this app's own edit dialog — progress is
+ * tool-authored (the design's §2.3) — but the bound is declared beside the ops
+ * that carry it so a hand-built request cannot project a document where a
+ * snippet is expected.
+ */
+export const PROJECT_PROGRESS_MAX_CHARS = 1000;
+
+/**
+ * Longest description the store accepts, in CHARACTERS.
+ *
+ * The edit dialog's own counter reads this constant, so the refusal and the
+ * promise above the field cannot state two different limits.
+ */
+export const PROJECT_DESCRIPTION_MAX_CHARS = 240;
+
+/** Longest milestone name the store accepts, in CHARACTERS. */
+export const PROJECT_MILESTONE_NAME_MAX_CHARS = 80;
+
+/** The store's own tag grammar (`projects.py`'s `_TAG_RE`), hoisted so the rule
+ *  below and anything else that has to name it agree on one object. */
+export const PROJECT_TAG_PATTERN = /^[a-z0-9][a-z0-9_-]{0,23}$/;
+
+/**
+ * The name check as a DIALOG needs it: a sentence for the user, or null.
+ *
+ * The same pattern the schema validates with, exposed so an inline refusal
+ * under the field and the 422 the wire would answer cannot say two different
+ * things about one name. The empty case gets its own sentence rather than the
+ * grammar's, because "give it a name" is a different mistake from "this name
+ * has a space in it".
+ */
+export function projectNameRule(name: string): string | null {
+	if (!name) return "Give the project a name.";
+	if (!PROJECT_NAME_PATTERN.test(name))
+		return "Names start with a letter or digit and may use letters, digits, dot, underscore or dash.";
+	return null;
+}
+
+/**
+ * The tag grammar, one tag at a time (`PROJECT_TAG_PATTERN` — the store's own
+ * `_TAG_RE`), as a dialog sentence or null.
+ */
+export function projectTagRule(tag: string): string | null {
+	if (!PROJECT_TAG_PATTERN.test(tag))
+		return "Tags are 1-24 characters of lowercase letters, digits, underscore or dash.";
+	return null;
+}
+
 export const desktopRequestSchema = z.discriminatedUnion("op", [
 	z.object({ op: z.literal("capabilities") }).strict(),
 	z.object({ op: z.literal("profiles.list") }).strict(),
@@ -2012,6 +2096,99 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 		.object({ op: z.literal("peers.list") })
 		.strict(),
 	z.object({ op: z.literal("networks.list") }).strict(),
+	/*
+	 * The Projects surface (`/v1/desktop/projects*`), APPENDED to the union
+	 * rather than inserted beside the other catalogue ops: the backend serves
+	 * these routes from its own release, and an older daemon that has never
+	 * heard of the op is a backend this app must be able to gate against —
+	 * which it does through the `projects` capability key, not through this
+	 * schema (a request this client refuses to build is not a negotiation).
+	 *
+	 * One op per route; the wipe and the milestone routes are the two shapes
+	 * that do not fit the plain CRUD, and both exist because the backend
+	 * declared them separately (a milestone is add-or-update-by-name, and a
+	 * removal is a DELETE with the name in the path). `projects.update` carries
+	 * its editable fields as a NESTED `fields` object for the same reason the
+	 * profile ops do: the fields differ per surface, and a flat op would put
+	 * every future field at the top level of a union member.
+	 */
+	z
+		.object({ op: z.literal("projects.list") })
+		.strict(),
+	z.object({ op: z.literal("projects.get"), key: projectKey }).strict(),
+	z
+		.object({
+			op: z.literal("projects.create"),
+			name: projectName,
+			description: z.string().max(PROJECT_DESCRIPTION_MAX_CHARS).optional(),
+			status: projectStatus.optional(),
+			tags: projectTags.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("projects.update"),
+			key: projectKey,
+			/*
+			 * Only the keys the caller includes travel; an omitted key leaves the
+			 * field alone, and `""` clears a date or the progress snippet (the
+			 * route forwards `model_fields_set`, and this client mirrors it).
+			 */
+			fields: z
+				.object({
+					name: projectName.optional(),
+					description: z.string().max(PROJECT_DESCRIPTION_MAX_CHARS).optional(),
+					status: projectStatus.optional(),
+					progress: z.string().max(PROJECT_PROGRESS_MAX_CHARS).optional(),
+					tags: projectTags.optional(),
+					start_date: projectDate.optional(),
+					target_date: projectDate.optional(),
+					completed_at: projectDate.optional(),
+					estimate: z.number().positive().max(1000).optional(),
+					estimate_unit: z.enum(["points", "days"]).optional(),
+				})
+				.strict(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("projects.delete"),
+			key: projectKey,
+			confirmed_name: projectName,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("projects.link"),
+			key: projectKey,
+			sessionId,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("projects.unlink"),
+			key: projectKey,
+			sessionId,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("projects.milestone"),
+			key: projectKey,
+			name: z.string().min(1).max(PROJECT_MILESTONE_NAME_MAX_CHARS),
+			/** `""` clears it; omitted leaves it alone. */
+			targetDate: projectDate.optional(),
+			/** `true` stamps today, `false` clears; omitted leaves it alone. */
+			completed: z.boolean().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("projects.milestone.remove"),
+			key: projectKey,
+			name: z.string().min(1).max(PROJECT_MILESTONE_NAME_MAX_CHARS),
+		})
+		.strict(),
 ]);
 
 export type DesktopRequest = z.infer<typeof desktopRequestSchema>;
@@ -4170,6 +4347,80 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: "/v1/credentials",
 				method: "PATCH",
 				body: { key: request.key, value: request.value },
+			};
+		/*
+		 * The Projects routes, in the store's own wire vocabulary: snake_case
+		 * bodies, the typed NAME in `confirm` for the delete (the route compares
+		 * it case-insensitively against the row it resolved), and every key
+		 * URL-encoded because it is user text — a project name may carry dots
+		 * and dashes, and a milestone name is free text up to 80 chars.
+		 */
+		case "projects.list":
+			return { path: "/v1/desktop/projects", method: "GET" };
+		case "projects.get":
+			return {
+				path: `/v1/desktop/projects/${encodeURIComponent(request.key)}`,
+				method: "GET",
+			};
+		case "projects.create":
+			return {
+				path: "/v1/desktop/projects",
+				method: "POST",
+				// Absent fields are OMITTED: the route's own defaults are the
+				// answer for "no status, no tags, no description".
+				body: {
+					name: request.name,
+					...(request.description !== undefined
+						? { description: request.description }
+						: {}),
+					...(request.status !== undefined ? { status: request.status } : {}),
+					...(request.tags !== undefined ? { tags: request.tags } : {}),
+				},
+			};
+		case "projects.update":
+			return {
+				path: `/v1/desktop/projects/${encodeURIComponent(request.key)}`,
+				method: "PATCH",
+				// Exactly the keys the caller included travel, so an omitted key
+				// leaves its field alone and `""` clears a date (the route
+				// forwards `model_fields_set` into the store's edit model).
+				body: { ...request.fields },
+			};
+		case "projects.delete":
+			return {
+				path: `/v1/desktop/projects/${encodeURIComponent(request.key)}`,
+				method: "DELETE",
+				body: { confirm: request.confirmed_name },
+			};
+		case "projects.link":
+			return {
+				path: `/v1/desktop/projects/${encodeURIComponent(request.key)}/links`,
+				method: "POST",
+				body: { session_id: request.sessionId },
+			};
+		case "projects.unlink":
+			return {
+				path: `/v1/desktop/projects/${encodeURIComponent(request.key)}/links/${encodeURIComponent(request.sessionId)}`,
+				method: "DELETE",
+			};
+		case "projects.milestone":
+			return {
+				path: `/v1/desktop/projects/${encodeURIComponent(request.key)}/milestones`,
+				method: "POST",
+				body: {
+					name: request.name,
+					...(request.targetDate !== undefined
+						? { target_date: request.targetDate }
+						: {}),
+					...(request.completed !== undefined
+						? { completed: request.completed }
+						: {}),
+				},
+			};
+		case "projects.milestone.remove":
+			return {
+				path: `/v1/desktop/projects/${encodeURIComponent(request.key)}/milestones/${encodeURIComponent(request.name)}`,
+				method: "DELETE",
 			};
 	}
 }
