@@ -383,6 +383,19 @@ const DEFAULT_DOWNLOAD_STALL_TIMEOUT_MS = 90_000;
  */
 const PYPI_VERSION_READ_TIMEOUT_MS = 10_000;
 
+/**
+ * The same bound for the npm registry read, which the npx install shape reaches
+ * instead of PyPI's.
+ *
+ * WHY IT EXISTS AT ALL (agent review minor-1, remediation round 1): this read is
+ * awaited from `checkForUpdates`'s npx branch, so a stalled registry connection
+ * held a non-silent check open with no bound of any kind - the same bug class
+ * this PR bounds for the feed, on a rarer install shape. Kept separate from the
+ * PyPI constant rather than shared: two reads on two hosts, and a future
+ * re-price of one must not silently re-price the other.
+ */
+const NPM_VERSION_READ_TIMEOUT_MS = 10_000;
+
 /** ` to version X`, or nothing when the version is unknown. */
 function versionSuffix(version: string | null | undefined): string {
 	return version ? ` to version ${version}` : "";
@@ -5631,8 +5644,16 @@ export class UpdateService {
 			const packageName = "local-operator-ui";
 			const url = `https://registry.npmjs.org/${packageName}`;
 
-			https
-				.get(url, (res) => {
+			const request = https.get(
+				url,
+				/*
+				 * The same socket timeout its PyPI sibling carries (agent review
+				 * minor-1, remediation round 1): without it a stalled registry
+				 * connection holds a non-silent npx check open, which is the bug
+				 * class this PR bounds for the feed.
+				 */
+				{ timeout: NPM_VERSION_READ_TIMEOUT_MS },
+				(res) => {
 					let data = "";
 
 					res.on("data", (chunk) => {
@@ -5653,15 +5674,28 @@ export class UpdateService {
 							resolve(null);
 						}
 					});
-				})
-				.on("error", (error) => {
-					logger.error(
-						"Error fetching from npm registry:",
-						LogFileType.UPDATE_SERVICE,
-						error,
-					);
-					resolve(null);
-				});
+				},
+			);
+			/*
+			 * The timeout only ANNOUNCES idleness; the request has to be destroyed for
+			 * the read to actually end, and that destruction's error is what the
+			 * ordinary failure path below reads.
+			 */
+			request.on("timeout", () => {
+				request.destroy(
+					new Error(
+						`The npm version read did not answer within ${NPM_VERSION_READ_TIMEOUT_MS}ms`,
+					),
+				);
+			});
+			request.on("error", (error) => {
+				logger.error(
+					"Error fetching from npm registry:",
+					LogFileType.UPDATE_SERVICE,
+					error,
+				);
+				resolve(null);
+			});
 		});
 	}
 
