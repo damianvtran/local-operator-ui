@@ -66,6 +66,7 @@ export const useCurrentView = ():
 	| "agent-hub"
 	| "settings"
 	| "schedules"
+	| "projects"
 	| "browser" => {
 	const currentPath = getCurrentPath();
 
@@ -87,6 +88,10 @@ export const useCurrentView = ():
 
 	if (pathIncludes(currentPath, "/schedules")) {
 		return "schedules";
+	}
+
+	if (pathIncludes(currentPath, "/projects")) {
+		return "projects";
 	}
 
 	if (pathIncludes(currentPath, "/browser")) {
