@@ -68,11 +68,15 @@ const Sheet = ({ children }: { children: ReactNode }) => (
  * One row's facts, as the transcript would hold them.
  *
  * `executing` is the row's own `phase === "running"`: the call is in flight and
- * its name is known, which is what the header's live clause paints.
+ * its name is known, which is what the header's live clause paints. `op` is the
+ * call's operation token (`toolOp`), which the row's verb composition reads for
+ * the meta tools - passed through here so the story cannot show a label the
+ * app would not (`AgentOps` below is the operator's own shape).
  */
 type RowSpec = {
 	name: string;
 	object: string;
+	op?: string;
 	durationS: number | null;
 	failed?: boolean;
 	executing?: boolean;
@@ -91,7 +95,7 @@ const foldProps = (specs: RowSpec[]) => {
 	}));
 	const executing = specs.find((spec) => spec.executing === true);
 	const label = executing
-		? toolRowLabel(executing.name, executing.object, null, true)
+		? toolRowLabel(executing.name, executing.object, null, true, executing.op)
 		: null;
 	return {
 		summary: foldSummary(actions),
@@ -108,6 +112,7 @@ const FoldRows = ({ specs }: { specs: RowSpec[] }) => (
 			<ToolRow
 				key={`${spec.name}:${spec.object}`}
 				toolName={spec.name}
+				op={spec.op}
 				summary={spec.object}
 				outcome={spec.executing ? "running" : spec.failed ? "error" : "success"}
 				durationS={spec.durationS}
@@ -261,5 +266,49 @@ export const Restored: Story = {
 		sectionLive: false,
 		recordIds: ["h1"],
 		children: <FoldRows specs={RESTORED_ROWS} />,
+	},
+};
+
+const AGENT_OPS_ROWS: RowSpec[] = [
+	{ name: "grep", object: "delegated", durationS: 0.2 },
+	{
+		name: "read",
+		object: "src/renderer/src/features/chat/components/trace/tool-row-model.ts",
+		durationS: 0.1,
+	},
+	{
+		name: "read",
+		object: "src/renderer/src/features/chat/canonical/trace-fold-model.ts",
+		durationS: 0.1,
+	},
+	{ name: "glob", object: "src/renderer/src/features/**/*.ts", durationS: 0.1 },
+	// The empty object is the DERIVED text, not a gap: `summaryFromArgs` drops
+	// the operation selector once the verb says it (`toolOp`), and a listing
+	// with nothing else in its arguments resolves to nothing to add.
+	{ name: "agent", object: "", op: "list", durationS: 0.31 },
+	{ name: "agent", object: "designer", op: "show", durationS: 0.12 },
+	{ name: "agent", object: "ux-reviewer", op: "show", durationS: 0.11 },
+];
+
+/**
+ * The operator's own shape, and the header it must not claim (2026-09-27).
+ *
+ * Four file reads and three agent-profile READS used to fold as `Explored 4
+ * files, delegated 3 tasks` - the word for a hand-off spent on calls that
+ * delegated nothing - while each row above it read `Delegated`. With the op
+ * tier the same seven actions fold by kind under the profile calls' own noun
+ * (`4 files · 3 agents`), and the rows carry the operation's verb (`Listed
+ * agents`, `Viewed agent designer`). The rows behind the trigger are the same
+ * composition the transcript paints (`FoldRows` renders the shipped `ToolRow`),
+ * so a frame cannot claim a label the app would not produce.
+ */
+export const AgentOps: Story = {
+	args: {
+		...foldProps(AGENT_OPS_ROWS),
+		span: { startedAtMs: 1_000, endedAtMs: 6_000, running: false },
+		live: null,
+		sectionLive: false,
+		recordIds: ["s1", "s2", "s3", "s4", "s5", "s6", "s7"],
+		children: <FoldRows specs={AGENT_OPS_ROWS} />,
 	},
 };
