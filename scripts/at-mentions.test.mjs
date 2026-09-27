@@ -70,7 +70,10 @@ const {
 	atRowId,
 	atCandidateKey,
 	atChipSpans,
+	atRegionPlan,
+	atProjectName,
 	AT_ROW_PITCH,
+	AT_SECTION_HEADER_PITCH,
 	AT_UNAVAILABLE_REASON,
 } = contract;
 
@@ -642,6 +645,48 @@ test("the row budget is measured, clamped, and a whole number of rows", () => {
 	assert.equal(AT_ROW_PITCH, 35.5);
 });
 
+test("section headers are charged against the region's cap", () => {
+	// No sections: the plan is exactly the arithmetic the cap always was, and the
+	// rows drawn are the budget's worth.
+	assert.deepEqual(atRegionPlan(20, 8, 0), { shown: 8, cap: 8 * AT_ROW_PITCH });
+	// A short listing is bounded by its own length, not the budget.
+	assert.deepEqual(atRegionPlan(3, 8, 0), {
+		shown: 3,
+		cap: 8 * AT_ROW_PITCH,
+	});
+	// A merged listing: the two headers (design round 1, D1 measured them at
+	// 29px each) come OUT of the cap, so the region ends on a whole row instead
+	// of painting a slice of the ninth — 284px of room minus 58px of headers is
+	// six rows, and the count that goes with it is "6 of 14".
+	const merged = atRegionPlan(14, 8, 2);
+	assert.equal(merged.shown, 6);
+	assert.equal(merged.cap, 2 * AT_SECTION_HEADER_PITCH + 6 * AT_ROW_PITCH);
+	// The header pitch is a measured constant, pinned like the row pitch so an
+	// edit to it is a decision.
+	assert.equal(AT_SECTION_HEADER_PITCH, 29);
+	// One header (a listing that carries only one section's rows yet still draws
+	// the section's name) takes one header's worth of room.
+	assert.equal(atRegionPlan(14, 8, 1).shown, 7);
+	// A cap too small for even one row after the headers still ends on the
+	// headers rather than on a negative allowance.
+	assert.deepEqual(atRegionPlan(9, 1, 2), {
+		shown: 0,
+		cap: 2 * AT_SECTION_HEADER_PITCH,
+	});
+});
+
+test("a project namespace names a project, and only after the colon", () => {
+	assert.equal(atProjectName("project:docs-sweep"), "docs-sweep");
+	assert.equal(atProjectName("project:Docs-Sweep"), "Docs-Sweep");
+	// Mid-typing is not a reference to an empty name.
+	assert.equal(atProjectName("project:"), null);
+	assert.equal(atProjectName("project"), null);
+	// A path that merely contains the word is a path.
+	assert.equal(atProjectName("src/project:payments"), null);
+	assert.equal(atProjectName("src/app.py"), null);
+	assert.equal(atProjectName(undefined), null);
+});
+
 test("the footer reads off the active row", () => {
 	// "Enter"/"Esc" name KEYS, and the slash popup in the same slot capitalises
 	// them too (design round 1, D5).
@@ -733,6 +778,21 @@ test("the four empty facts get four different sentences", () => {
 			scope: "./",
 		}),
 		'No files match "zz" in ./.',
+	);
+	// THE MERGED LISTING SPEAKS FOR BOTH SOURCES (UX round 1, U2): with the
+	// projects section consulted, the sentence names neither file nor project
+	// and says "nothing here matches" — while a file-only popup keeps the exact
+	// sentence above, which is what its frames show.
+	assert.equal(
+		atEmptyCopy({
+			loading: false,
+			entries: 12,
+			matched: 0,
+			query: "zz",
+			scope: "./",
+			projects: true,
+		}),
+		'Nothing here matches "zz" in ./.',
 	);
 	assert.equal(
 		atEmptyCopy({
