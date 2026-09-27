@@ -80,6 +80,7 @@ import { createServer } from "node:http";
 import { loadavg } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 
 /** The one route the bench lets the app WRITE to, hoisted so the pattern is compiled
@@ -440,9 +441,14 @@ function launchApp({ port, scratch, size }) {
 			`--window-size=${width}x${height}`,
 			`--remote-debugging-port=${port}`,
 			`--user-data-dir=${join(scratch, "profile")}`,
-			// Chromium's own store, or a rig's private profile tries to create a login
-			// keychain and prompts the operator for one (`scripts/chrome-keychain.mjs`).
-			"--use-mock-keychain",
+			/*
+			 * THE SWITCH COMES FROM THE ONE MODULE THAT SPELLS IT. Chromium's store under a
+			 * scratch profile tries to create a login keychain and asks the operator for one
+			 * (`scripts/chrome-keychain.mjs` documents the measurement); typing the flag here
+			 * would be a second spelling of it, which `scripts/chrome-keychain.test.mjs`
+			 * refuses by name.
+			 */
+			MOCK_KEYCHAIN_SWITCH,
 		],
 		{
 			cwd: ROOT,
@@ -907,6 +913,34 @@ async function runInteraction(send, evaluate, seconds) {
 		}),
 	);
 
+	/*
+	 * RESET THE VIEW BEFORE THE DRAG (`0` is the plan's own binding), so the drag's
+	 * actors are on screen at ANY scripted duration rather than only when the pan
+	 * happens to have carried the world back near where it started. A drag is the one
+	 * phase that needs a visible chip and a visible destination, and a viewer who has
+	 * just panned somewhere unhelpful does the same thing before dragging.
+	 */
+		/*
+		 * THE CANVAS OWNS THE KEY HANDLER (`tabIndex={0}` on the canvas itself), so a
+		 * synthetic key press must be aimed at it: dispatched at the body it reaches
+		 * nothing, which is how a run measured `scale(3)` and five off-screen chips after
+		 * asking for a reset.
+		 */
+		await evaluate(
+			`document.querySelector("[data-mesh-canvas]")?.focus?.() ?? null`,
+		);
+	for (const type of ["keyDown", "keyUp"]) {
+		await send("Input.dispatchKeyEvent", {
+			type,
+			key: "0",
+			code: "Digit0",
+			windowsVirtualKeyCode: 48,
+			nativeVirtualKeyCode: 48,
+			text: type === "keyDown" ? "0" : undefined,
+		});
+	}
+	await sleep(150);
+
 	/* -- drag: a session chip lifted off a device and carried to another ---------- */
 	/*
 	 * THE DRAG'S ACTORS ARE PICKED BY REACHABILITY, NOT BY ORDER. Panning and zooming
@@ -960,6 +994,15 @@ async function runInteraction(send, evaluate, seconds) {
 		 * key, and it is stated rather than hidden: without it, a run whose pan carried
 		 * every chip off screen would report a drag it never made.
 		 */
+		/*
+		 * THE CANVAS OWNS THE KEY HANDLER (`tabIndex={0}` on the canvas itself), so a
+		 * synthetic key press must be aimed at it: dispatched at the body it reaches
+		 * nothing, which is how a run measured `scale(3)` and five off-screen chips after
+		 * asking for a reset.
+		 */
+		await evaluate(
+			`document.querySelector("[data-mesh-canvas]")?.focus?.() ?? null`,
+		);
 		for (const type of ["keyDown", "keyUp"]) {
 			await send("Input.dispatchKeyEvent", {
 				type,
@@ -974,8 +1017,34 @@ async function runInteraction(send, evaluate, seconds) {
 		actors = await pick();
 	}
 	if (!actors) {
+		/*
+		 * THE REFUSAL CARRIES ITS OWN DIAGNOSIS. "No visible chip" is not actionable: the
+		 * difference between a chip behind an overlay, a chip outside the viewport and a
+		 * transform that never reset is one query, and the next reader should not have to
+		 * add it.
+		 */
+		const why = await evaluate(`(() => {
+			const canvas = document.querySelector("[data-mesh-canvas]");
+			const chips = [...document.querySelectorAll("[data-mesh-session]")];
+			const devices = [...document.querySelectorAll("[data-mesh-device]")];
+			const box = canvas?.getBoundingClientRect();
+			const chipAt = chips[0]?.getBoundingClientRect();
+			return {
+				chips: chips.length,
+				devices: devices.length,
+				transform: document.querySelector("[data-mesh-world]")?.style.transform ?? null,
+				canvas: box ? [Math.round(box.left), Math.round(box.top), Math.round(box.width), Math.round(box.height)] : null,
+				firstChip: chipAt ? [Math.round(chipAt.left), Math.round(chipAt.top), Math.round(chipAt.width), Math.round(chipAt.height)] : null,
+				hit: chipAt
+					? (() => {
+							const found = document.elementFromPoint(chipAt.left + chipAt.width / 2, chipAt.top + chipAt.height / 2);
+							return found ? found.tagName + "." + (found.className ?? "").toString().slice(0, 60) : "nothing";
+						})()
+					: null,
+			};
+		})()`);
 		throw new Error(
-			"the drag's actors are not reachable: no visible chip and no visible destination",
+			`the drag's actors are not reachable: ${JSON.stringify(why)}`,
 		);
 	}
 	const chip = actors.chip;
