@@ -55,7 +55,12 @@ wheel-zoom keeps the world point under the pointer invariant. Both are asserted
 numerically in `scripts/mesh-tab.test.mjs`, which is the cheap half of this evidence
 rather than a substitute for it.
 
-Two smaller gaps, named rather than implied. **The rail row is not in any frame**:
+Two smaller gaps, named rather than implied. **The node's on-screen type size is the app's
+own, not a scaled one** (design round 1, D2; N2): `MAX_FIT_SCALE = 1` means the world is
+never enlarged by the fit, so the node's label renders at `text-body-sm` (13px) and its
+stat line at `text-meta` (12px) beside the page's own 13px subtitle and 12px summary line.
+A reader coming to these frames from the pre-D2 set, where the same node measured 1.79x
+(≈23px and ≈21px), is looking at a different type size. **The rail row is not in any frame**:
 the set is page-level `MeshPage` captures, and the one piece of chrome this slice adds
 - the Mesh destination in the sidebar and in the command palette - is pinned at the
 source instead (`scripts/mesh-tab.test.mjs`), because mounting the rail inside these
@@ -84,21 +89,63 @@ Two facts, two jobs, and they are not the same fact:
   mounts nothing"). It gates the RAIL ROW and the command palette's destination, so a
   device that is in no mesh keeps today's chrome.
 
-The cost, stated because the architecture brief asserted the opposite: a device in no
-network now issues **one read-only catalogue read** it would not have. That read creates
-nothing - the backend short-circuits it on `has_any_network()`, an `is_dir` test whose
-`_networks()` returns `[]` "so nothing else mkdirs" - and the row stays absent until the
-device is KNOWN to be in a mesh. What the brief's "no call is issued" line was protecting
-is the byte-for-byte chrome, and this protects it better than the capability alone did.
+The cost, stated as it actually behaves (review round 2, R2-1, measured it - the first
+version of this paragraph said "one read" without a cadence, and the code was polling
+every 30 seconds because the always-mounted rail had inherited the tab's interval):
+
+- **one read-only catalogue read per window**, issued when the window starts: a
+  `networks.list`, which creates nothing - the backend short-circuits it on
+  `has_any_network()`, an `is_dir` test whose `_networks()` returns `[]` "so nothing else
+  mkdirs";
+- **no interval, no window-focus refetch and an infinite `staleTime`** on the rail's
+  observer (`useMeshMembership` asks for `poll: false`), because a mesh listing DIALS
+  every peer - so nothing about this row may poll on a screen that is not the tab;
+- the catalogue's **30 s cadence belongs to the TAB**, and the rail rides that observer's
+  cache entry while the tab is open;
+- and a daemon that does not advertise `peers` issues nothing at all.
+
+**The residual cost, stated rather than implied**, because this is the number round 2 asked
+for: that one read FANS OUT. The rail is mounted before anything else, so its read is the
+first thing a mesh-capable window does, and a `networks.list` dials every peer. It is one
+fan-out per window instead of one every 30 s, and it is not removable from this side:
+membership cannot be known without asking, `peers` is advertised by every install, and
+keying the row on the capability instead is the R1-1 defect. The read that would make even
+the window-start fan-out free is a membership summary that does not dial peers - a
+`has_network` field on the capabilities payload, or a summary route - a backend ask,
+deferred, and not faked here by having the renderer read the config directory.
+
+The row stays absent until the device is KNOWN to be in a mesh. What the brief's "no call
+is issued" line was protecting is the byte-for-byte chrome, and this protects it better
+than the capability alone did.
 
 **And what a genuinely fresh install meets today is not the empty state.** QA round 1
 (Q-1) traced it: `GET /v1/desktop/commands`, which the app fetches on every boot for the
-palette, CREATES `<config>/network/networks`; `has_any_network()` is an `is_dir` test on
-exactly that path, so the mesh reads then proceed to a relay that has no record and answer
-`503 relay_unavailable`. The page renders that refusal verbatim with a retry, which is
-why `reads-failed` is in this set; the root cause is outside this diff (the backend's
-`has_any_network()` tests a directory that another route creates, and the fix is for it to
-test for a network RECORD). So `virgin-device` is the page's own first-run state - what a
+palette, CREATES `<config>/network/networks`. Round 2 challenged the attribution, because an
+import scan of that route finds nothing from the network package - the import is
+**function-local**, which is exactly why. The chain at `damianvtran/local-operator`
+`origin/main` (`801c8731b`):
+
+```
+GET /v1/desktop/commands
+  routes/desktop_catalogues.py:128  command_catalogue()      -> reply({"commands": ...})
+  utils/desktop_commands.py:46      command_catalogue()      -> argument_words(spec), per row
+  utils/desktop_commands.py:43      argument_words()         -> command_argument_words(spec)
+  slash_commands.py:1726            ArgumentShape.REMOTE_PEER -> local import of known_peer_names
+  network/peers.py:101              known_peer_names()       -> known_peers(root)
+  network/peers.py:84               known_peers()            -> store.list_networks(root)
+  network/store.py:650              list_networks()          -> networks_dir(root).glob("*.json")
+  network/store.py:117              networks_dir()           -> path.mkdir(parents=True, exist_ok=True)
+```
+
+`list_networks` is a READ that creates, reached through the vocabulary the catalogue
+publishes for every row. `has_any_network()` is then an `is_dir` test on exactly that path,
+so the mesh reads proceed to a relay that has no record and answer `503
+relay_unavailable` on a machine that has never joined anything - which is why `reads-failed`
+is in this set. The root cause is outside this diff, and its fix is in flight as its own
+backend PR: **#1666, "fix(network): a read must not create the network plane"**, which
+re-derives this trace, records the two `mkdir` events an audit hook saw, and shows **0 of
+53** GET routes create the plane after it. So `virgin-device` is the page's own first-run
+state - what a
 reader sees wherever the catalogue answers `[]`, including after leaving a network with
 the tab open - and not a claim about what a machine with no mesh shows on first launch.
 
