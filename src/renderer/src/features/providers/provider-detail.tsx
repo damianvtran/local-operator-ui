@@ -70,8 +70,7 @@ import {
  * docblock. Importing the leaf keeps this feature out of that graph.
  */
 import {
-	forgetAccountReadFailure,
-	radientUserKeys,
+	commissionAccountRead,
 	useRadientUserQuery,
 } from "@shared/hooks/use-radient-user-query";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
@@ -678,11 +677,14 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		 * sign-in funnels through this callback - the settings grid's Radient row,
 		 * the connect dialog and the onboarding step all render this same panel,
 		 * and `RadientAuthButtons` renders it for the account section and the
-		 * upload dialog - and NONE of them invalidated `radientUserKeys`. The
-		 * re-read then waited for something else to mount an observer on the
-		 * failed query, which is the operator's report: after a re-sign-in the
-		 * sidebar foot still read "Account unavailable", and it healed only when a
-		 * later Settings visit happened to mount a new observer.
+		 * upload dialog. Before this branch none of those wrote to
+		 * `radientUserKeys` from here: only `RadientAuthButtons`' own `onConnected`
+		 * (which its two surfaces reach through `onConnected` below) invalidated
+		 * the key, and the grid, connect dialog and onboarding step have no such
+		 * callback - so the re-read waited for something else to mount an observer
+		 * on the failed query. That is the operator's report: after a re-sign-in
+		 * the sidebar foot still read "Account unavailable", and it healed only
+		 * when a later Settings visit happened to mount a new observer.
 		 *
 		 * WHY THE GATE, when the four invalidations around it are unconditional:
 		 * their input is "any credential", the account read's input is the RADIENT
@@ -690,18 +692,18 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		 * account is, and re-asking anyway would make the foot say "Checking
 		 * account…" about a fact nothing touched.
 		 *
-		 * WHY THE CLEAR COMES FIRST: the recorded class says the OLD credential
-		 * was refused, and a completed write is the event that falsifies that
-		 * premise - so the re-read under it is disclosed as "Checking account…"
-		 * rather than the foot sitting unchanged on the stale class for the whole
-		 * retry chain (`forgetAccountReadFailure` carries the full rule). If the
-		 * new credential is refused too, the read fails again and records again.
-		 * `RadientAuthButtons`' own `onConnected` invalidation, reached through
-		 * `onConnected?.()` below, stays and is idempotent with this one.
+		 * WHAT THE CALL DOES: `commissionAccountRead` clears the class the write
+		 * just falsified and CANCELS any pre-write chain before invalidating -
+		 * without the cancel, an invalidation JOINS a data-less chain still in
+		 * flight and re-asks nothing, and the abandoned chain's late settle would
+		 * re-record the stale class (review round 1, M1; both are measured in
+		 * `scripts/settings-account-gate.test.mjs`). The full reasoning lives on
+		 * the function's own docblock. `RadientAuthButtons`' own `onConnected`
+		 * invalidation, reached through `onConnected?.()` below, stays and is
+		 * idempotent with this one.
 		 */
 		if (provider.id === "radient") {
-			forgetAccountReadFailure();
-			void queryClient.invalidateQueries({ queryKey: radientUserKeys.all });
+			void commissionAccountRead(queryClient);
 		}
 		/*
 		 * AND THE CONFIG: a sign-in can write the default model, and the composer,

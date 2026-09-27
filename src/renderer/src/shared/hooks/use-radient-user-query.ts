@@ -23,7 +23,12 @@ import { radientProxy } from "@shared/api/radient/proxy";
 import type { UserInfoResult } from "@shared/api/radient/types";
 import { useUserStore } from "@shared/store/user-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	type QueryClient,
+	useMutation,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 import { useSyncExternalStore } from "react";
 
 // Query keys for Radient user data
@@ -236,6 +241,23 @@ function recordAccountReadFailure(kind: RadientAccountReadFailure): void {
 }
 
 /**
+ * The clear-generation: bumped by every `forgetAccountReadFailure`.
+ *
+ * WHY AN ATTEMPT'S FAILURE IS GATED ON IT. The class is recorded by the query
+ * function's own catch, and an attempt that STARTED before a clear can settle
+ * AFTER it: a credential write cancels the chain the old credential left
+ * asking, but cancellation discards a chain's RESULT without stopping the
+ * query function's own promise - so the abandoned attempt's late rejection
+ * would re-arm exactly the class the write just cleared (measured in review
+ * round 1's mid-chain repro: the foot flipped back to "Account unavailable"
+ * right after the completion cleared it, and in the last-attempt repro the
+ * re-recorded class outlived the chain entirely). An attempt may only record
+ * while no clear has happened since it started; an attempt from the newer era
+ * - the re-read the clear commissioned - records normally.
+ */
+let accountReadGeneration = 0;
+
+/**
  * Drop the recorded class: the read it describes has been answered (or the
  * ordinary signed-out reply came back), the query holding it has been removed
  * on sign-out, or a completed Radient credential WRITE replaced the credential
@@ -254,8 +276,51 @@ function recordAccountReadFailure(kind: RadientAccountReadFailure): void {
  * which is the defect this whole map exists to avoid (`failureCount`).
  */
 export function forgetAccountReadFailure(): void {
+	/*
+	 * Bumped even when nothing was recorded: the caller is asserting that an
+	 * event falsified the premise of every attempt already in flight, and an
+	 * attempt from before it must not record after it (see
+	 * `accountReadGeneration`). The clear below is only the visible half.
+	 */
+	accountReadGeneration += 1;
 	if (!accountFailureKinds.delete(ACCOUNT_READ_KEY)) return;
 	announceAccountFailureChange();
+}
+
+/**
+ * Commission the account read for a completed Radient credential write.
+ *
+ * THE ONE ENTRY POINT both completion paths call - `provider-detail.tsx`'s
+ * `refreshProviders` (gated on the Radient credential) and
+ * `use-radient-session-issue.ts`'s succeeded branch - rather than a
+ * clear-then-invalidate pair spelled at each site.
+ *
+ * WHY THE CANCEL, when an invalidation alone reads like it commissions a read
+ * (review round 1, M1). React Query JOINS an in-flight, data-less chain instead
+ * of restarting it (`Query.fetch` continues the retry when
+ * `fetchStatus !== "idle"` and no data has arrived - query-core 5.73.3,
+ * `query.js`, the `continueRetry` path), so an invalidation issued while the
+ * PREVIOUS credential's chain is still asking re-asks NOTHING: the joined chain
+ * answers with the old attempt's outcome, and a write that lands in that
+ * chain's last attempt settles with everything marked invalidated and no
+ * attempt left to re-ask - the foot then waits for a later focus or mount,
+ * which is the operator's symptom surviving remount-free. Cancelling first
+ * drops the pre-write chain (its result can no longer settle the query) and the
+ * invalidation that follows starts a fresh chain under the credential that
+ * just landed: one read per write, no re-ask loop, and the abandoned attempts
+ * can no longer record (the generation bump inside the clear).
+ *
+ * The clear runs FIRST so the fresh chain is disclosed as "Checking account…"
+ * rather than the foot sitting on the class the write just made stale - the
+ * same rule as `forgetAccountReadFailure`'s, now enforced for the in-flight
+ * case too.
+ */
+export async function commissionAccountRead(
+	queryClient: QueryClient,
+): Promise<void> {
+	forgetAccountReadFailure();
+	await queryClient.cancelQueries({ queryKey: radientUserKeys.all });
+	await queryClient.invalidateQueries({ queryKey: radientUserKeys.all });
 }
 
 /**
@@ -300,6 +365,12 @@ export const useRadientUserQuery = ({
 	const userQuery = useQuery<UserInfoResult | null, Error>({
 		queryKey: radientUserKeys.user(),
 		queryFn: async () => {
+			/*
+			 * Captured BEFORE the read: a clear that lands while this attempt is
+			 * in flight falsifies its premise, and its late settle must not
+			 * re-arm the class that clear removed (see `accountReadGeneration`).
+			 */
+			const generation = accountReadGeneration;
 			try {
 				const account = await radientProxy<UserInfoResult>({
 					operation: "account",
@@ -323,8 +394,12 @@ export const useRadientUserQuery = ({
 				}
 				// Recorded HERE rather than from a render, so the class is known for
 				// every reader of this key from the first failure on - see
-				// `accountFailureKinds`.
-				recordAccountReadFailure(classifyRadientAccountFailure(error));
+				// `accountFailureKinds` - and ONLY while this attempt belongs to the
+				// current era: a clear since it started means the event it recorded
+				// for has been superseded, and this attempt may not speak for it.
+				if (generation === accountReadGeneration) {
+					recordAccountReadFailure(classifyRadientAccountFailure(error));
+				}
 				throw error;
 			}
 		},
