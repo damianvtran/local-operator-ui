@@ -1,6 +1,7 @@
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import { FloatingAlert } from "@shared/components/common/floating-alert";
 import { Button, Progress } from "@shared/components/ui";
+import { useElapsedSince } from "@shared/hooks/use-elapsed-since";
 import { cn } from "@shared/lib/utils";
 import {
 	UpdateType,
@@ -12,12 +13,11 @@ import {
 	updateMessageFate,
 	updateMessageOf,
 } from "@shared/utils/update-error-copy";
-import { useElapsedSince } from "@shared/hooks/use-elapsed-since";
-import { SLOW_WAIT_HINT_MS } from "@shared/utils/update-slow-wait";
 import {
 	installPhaseCopy,
 	installSucceededCopy,
 } from "@shared/utils/update-install-copy";
+import { SLOW_WAIT_HINT_MS } from "@shared/utils/update-slow-wait";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import parse from "html-react-parser";
 import { AlertTriangle, Check, Copy } from "lucide-react";

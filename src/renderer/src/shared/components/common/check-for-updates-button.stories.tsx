@@ -346,8 +346,7 @@ type Story = StoryObj<typeof meta>;
  */
 function HeldCheckButton() {
 	useEffect(() => {
-		window.api.updater.checkForAllUpdates = () =>
-			new Promise<never>(() => {});
+		window.api.updater.checkForAllUpdates = () => new Promise<never>(() => {});
 		const timer = setTimeout(() => {
 			const control = Array.from(document.querySelectorAll("button")).find(
 				(button) => button.textContent === "Check for updates",
