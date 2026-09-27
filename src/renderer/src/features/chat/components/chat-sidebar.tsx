@@ -133,7 +133,16 @@ import {
 } from "../chat-sidebar-view";
 import { useStripSpeaksConnection } from "../chat-status-presence";
 import { clearSearch } from "../clear-search";
-import { discardDraftLabel, untargetedDraftRows } from "../draft-rows";
+import {
+	discardDraftLabel,
+	discardSuccessorIndex,
+	untargetedDraftRows,
+} from "../draft-rows";
+import {
+	DRAFTS_OFFERED_VERB,
+	draftsOfferedName,
+	useDraftsUndoRetirement,
+} from "../drafts-undo";
 import {
 	markAllReadCopy,
 	markAllReadReceipt,
@@ -1852,6 +1861,7 @@ export function ChatSidebar({
 	const forgottenFacts = useCanonicalSessionsStore((s) => s.forgotten);
 	const archiveFailure = useCanonicalSessionsStore((s) => s.archiveFailure);
 	const archiveUndo = useCanonicalSessionsStore((s) => s.archiveUndo);
+	const draftsUndo = useCanonicalSessionsStore((s) => s.draftsUndo);
 	/*
 	 * THE OFFER'S OWN RETIREMENT WATCH (design round 8, D27). The offer is RAISED by the store
 	 * now - in the update that settles the write, so the accepted departure and the band that
@@ -1859,6 +1869,14 @@ export function ChatSidebar({
 	 * true. One call, keyed on the offer's identity, so a second archive in a row re-arms it.
 	 */
 	useArchiveUndoRetirement();
+	/*
+	 * THE DISCARD OFFER'S OWN WATCH, beside the archive's and for the same reason: the
+	 * value is the store's (raised in the update that removes the rows,
+	 * `DraftsUndoOffer`), and WHEN it stops being offered is its own module's rule
+	 * (`drafts-undo.ts` - a ceiling, because a discard is a local write and no answer
+	 * can end it early).
+	 */
+	useDraftsUndoRetirement();
 	/*
 	 * BOTH LANE MESSAGES' OWN WRITES, because the panel is what decides which message the lane
 	 * shows and therefore when a message's turn is over - and a value that outlives its message
@@ -1872,13 +1890,24 @@ export function ChatSidebar({
 	);
 	const setArchiveUndo = useCanonicalSessionsStore((s) => s.setArchiveUndo);
 	/*
+	 * THE DISCARD OFFER'S TWO WRITES, for the two ends of its life the panel owns: the
+	 * Undo press (`restoreDraftsUndo`) and the supersession clause below, which clears an
+	 * offer a strictly newer message outranked. `drafts-undo.ts` owns the other end
+	 * (the ceiling).
+	 */
+	const restoreDraftsUndo = useCanonicalSessionsStore(
+		(s) => s.restoreDraftsUndo,
+	);
+	const setDraftsUndo = useCanonicalSessionsStore((s) => s.setDraftsUndo);
+	/*
 	 * WHAT THE LANE LAST DREW, and its stamp: the clearing rule below needs BOTH - which message
 	 * the reader was last looking at, and whether the one that replaces it outranks it - because
 	 * clearing on the ordering alone removed a refusal while its own card was still up.
 	 */
-	const laneDrawnRef = useRef<{ kind: "offer" | "failure"; at: number } | null>(
-		null,
-	);
+	const laneDrawnRef = useRef<{
+		kind: "offer" | "failure" | "drafts";
+		at: number;
+	} | null>(null);
 	const setSessionArchived = useCanonicalSessionsStore(
 		(s) => s.setSessionArchived,
 	);
@@ -2508,6 +2537,13 @@ export function ChatSidebar({
 		() => untargetedDraftRows(drafts, inputByConversation, listedSessionIds),
 		[drafts, inputByConversation, listedSessionIds],
 	);
+	/*
+	 * THE ROWS `Clear all` MAY ACT ON: the listed rows minus the ones whose send hop
+	 * is live (UX round 1's U2 - the store refuses those keys too, and the two
+	 * lists have to agree or the count in the offer would promise more than moved).
+	 * A failed claim is not pending and is clearable.
+	 */
+	const clearableDraftRows = draftRows.filter((row) => !row.pending);
 	const page = pageRows(pageOrder(rest, view.orderBy), {
 		limit: pageLimit(view.loads),
 		currentId: selectedConversation,
@@ -5064,7 +5100,7 @@ export function ChatSidebar({
 	 * takes the whole panel down with it. The ref below is what makes that possible: a toast is
 	 * retired when the lane's own message GOES, not when the panel mounts without one.
 	 */
-	const laneMessageRef = useRef<"offer" | "failure" | null>(null);
+	const laneMessageRef = useRef<"offer" | "failure" | "drafts" | null>(null);
 	/*
 	 * ONE EFFECT SETTLES THE LANE, and that is a guarantee rather than a tidier arrangement
 	 * of two (agent review round 2, R2-4). Both messages share one id, so what the lane must
@@ -5092,7 +5128,7 @@ export function ChatSidebar({
 	 * conversation the reader had restored).
 	 */
 	useEffect(() => {
-		if (!archiveFailure && !archiveUndo) {
+		if (!archiveFailure && !archiveUndo && !draftsUndo) {
 			if (laneMessageRef.current === null) return;
 			laneMessageRef.current = null;
 			dismissToast(ARCHIVE_TOAST_ID);
@@ -5110,14 +5146,27 @@ export function ChatSidebar({
 		 * raised them and the NEWER one is drawn; the lane still holds one message at a time and
 		 * still replaces in place under the one stable id.
 		 */
+		/*
+		 * THREE KINDS IN ONE SLOT, AND THE DRAFTS OFFER LOSES TIES (2026-09-27, this
+		 * remediation's own extension of the lane). A discard raises `draftsUndo` on the
+		 * SAME counter the archive's two messages take (`answerSeq`), so currency decides
+		 * between all three as it already does between the refusal and the offer, and the
+		 * tie rule follows from what each message IS: the standing archive message keeps
+		 * the lane and the discard offer waits its turn, because an archive message is
+		 * about a write the daemon answered while a discard is entirely this window's own.
+		 */
 		const newest =
-			archiveFailure && archiveUndo
-				? archiveUndo.at > archiveFailure.at
-					? "offer"
-					: "failure"
-				: archiveFailure
-					? "failure"
-					: "offer";
+			draftsUndo !== null &&
+			(archiveFailure === null || draftsUndo.at > archiveFailure.at) &&
+			(archiveUndo === null || draftsUndo.at > archiveUndo.at)
+				? "drafts"
+				: archiveFailure && archiveUndo
+					? archiveUndo.at > archiveFailure.at
+						? "offer"
+						: "failure"
+					: archiveFailure
+						? "failure"
+						: "offer";
 		/*
 		 * THE MESSAGE THE NEWER ONE SUPERSEDED IS CLEARED, WHICH IS U10 ITSELF (UX round 3). The
 		 * currency rule above decides which of the two is the lane's newest word - and until this
@@ -5163,7 +5212,11 @@ export function ChatSidebar({
 		 * reader's own press, answered - is never the loser of a comparison it wins.
 		 */
 		const drawnAt =
-			newest === "offer" ? (archiveUndo?.at ?? 0) : (archiveFailure?.at ?? 0);
+			newest === "offer"
+				? (archiveUndo?.at ?? 0)
+				: newest === "drafts"
+					? (draftsUndo?.at ?? 0)
+					: (archiveFailure?.at ?? 0);
 		const drawnBefore = laneDrawnRef.current;
 		laneDrawnRef.current = { kind: newest, at: drawnAt };
 		if (
@@ -5171,8 +5224,31 @@ export function ChatSidebar({
 			drawnBefore.kind !== newest &&
 			drawnAt > drawnBefore.at
 		) {
-			if (newest === "offer") clearArchiveFailure();
-			else setArchiveUndo(null);
+			if (newest === "failure") {
+				setArchiveUndo(null);
+			} else if (newest === "offer") {
+				clearArchiveFailure();
+			} else {
+				/*
+				 * THE DRAFTS OFFER CAN ONLY WIN BY BEING STRICTLY NEWER THAN EVERY ARCHIVE
+				 * VALUE PRESENT (the tie rule above), so both archive values it drew over
+				 * are strictly superseded and go with the same clause the pair uses on each
+				 * other. A value that tied or outranked the drafts offer was not superseded
+				 * and stays: an offer outranking a refusal is exactly why the pair's clause
+				 * is currency-guarded rather than kind-guarded, and the drafts value gets
+				 * the same respect.
+				 */
+				clearArchiveFailure();
+				setArchiveUndo(null);
+			}
+			/*
+			 * AND THE DRAFTS OFFER IS CLEARED BY A MESSAGE THAT OUTRANKS IT, BY THE SAME
+			 * STRICTLY-GREATER TERM the clause above applies to the archive pair - a tie is
+			 * left standing, because the value that tied is the one on screen and this one
+			 * gets its turn when that one retires.
+			 */
+			if (newest !== "drafts" && draftsUndo !== null && draftsUndo.at < drawnAt)
+				setDraftsUndo(null);
 		}
 		if (newest === "failure" && archiveFailure) {
 			laneMessageRef.current = "failure";
@@ -5299,12 +5375,47 @@ export function ChatSidebar({
 				},
 			);
 		}
+		if (newest === "drafts" && draftsUndo) {
+			laneMessageRef.current = "drafts";
+			showInfoToast(
+				<span className="flex min-w-0 items-baseline gap-1">
+					<span className="min-w-0 truncate">
+						{draftsOfferedName(draftsUndo.keys.length)}
+					</span>
+					<span className="shrink-0">{DRAFTS_OFFERED_VERB}</span>
+				</span>,
+				{
+					id: ARCHIVE_TOAST_ID,
+					className: ARCHIVE_TOAST_CLASS,
+					duration: ARCHIVE_TOAST_PERSISTENT,
+					position: ARCHIVE_TOAST_LANE,
+					action: {
+						label: "Undo",
+						onClick: (event) => {
+							event.preventDefault();
+							/*
+							 * ONE WRITE, THEN THE LANE DRAWS WHATEVER IS LEFT: the store puts
+							 * the snapshot back and clears `draftsUndo` in the same update, so the
+							 * dismissal is the effect's own empty-lane branch - the one dismissal
+							 * with nothing to replace it (the archive offer's own U3/R2-1 clause,
+							 * one control over). Unlike an archive undo there is no answer to wait
+							 * for: the restore is local and immediate.
+							 */
+							restoreDraftsUndo();
+						},
+					},
+				},
+			);
+		}
 	}, [
 		archiveFailure,
 		archiveUndo,
+		draftsUndo,
 		setSessionArchived,
 		clearArchiveFailure,
 		setArchiveUndo,
+		restoreDraftsUndo,
+		setDraftsUndo,
 	]);
 
 	/*
@@ -5320,6 +5431,20 @@ export function ChatSidebar({
 	 * ref standing would make the next empty-lane commit skip the dismissal it owes.
 	 */
 	useEffect(() => {
+		/*
+		 * AND IT DOES NOT ARM FOR AN ARCHIVE VALUE THE DRAFTS OFFER OUTRANKS (2026-09-27):
+		 * the drawing effect has the drafts card on screen in that state, and an archive
+		 * timer expiring here would dismiss a message that is not the archive's - the
+		 * wrong-card defect one layer down. When the drafts offer retires, this effect
+		 * re-runs, the archive value becomes the lane's message and ITS clock starts then;
+		 * the value is not lost, it has simply not had its turn yet.
+		 */
+		if (
+			draftsUndo !== null &&
+			(archiveFailure === null || draftsUndo.at > archiveFailure.at) &&
+			(archiveUndo === null || draftsUndo.at > archiveUndo.at)
+		)
+			return;
 		const message = archiveFailure ? "failure" : archiveUndo ? "offer" : null;
 		if (message === null) return;
 		const timer = setTimeout(
@@ -5341,16 +5466,26 @@ export function ChatSidebar({
 			message === "failure" ? ARCHIVE_FAILURE_TOAST_MS : ARCHIVE_UNDO_TOAST_MS,
 		);
 		return () => clearTimeout(timer);
-	}, [archiveFailure, archiveUndo, clearArchiveFailure, setArchiveUndo]);
+	}, [
+		archiveFailure,
+		archiveUndo,
+		draftsUndo,
+		clearArchiveFailure,
+		setArchiveUndo,
+	]);
 
 	/*
 	 * THE BAND'S HEIGHT IS THE CARD'S OWN, PLUS THE GAP (design round 4, D14), and it is
-	 * measured rather than declared because only one of the two messages has a fixed height:
-	 * the offer is one line at every width (its name truncates), while the refusal carries the
-	 * daemon's sentence about why the write was refused and wrapped to eight lines - 170px -
-	 * at the 280 panel. A declaration would have to pick one of them and be wrong about the
-	 * other, and wrong in the direction that either clips a refusal or spends 120px of list on
-	 * a one-line offer.
+	 * measured rather than declared because only two of the three messages have a fixed
+	 * height: the archive offer and the discard offer are one line at every width (their
+	 * names truncate), while the refusal carries the daemon's sentence about why the
+	 * write was refused and wrapped to eight lines - 170px - at the 280 panel. A
+	 * declaration would have to pick one of them and be wrong about the other, and wrong
+	 * in the direction that either clips a refusal or spends 120px of list on a one-line
+	 * message. The drafts half of the fallback below can reserve the offer's height for
+	 * one commit while a refusal is still unmeasured (it reads the VALUES, not the latest
+	 * draw); the measurement lands the truth on the next commit, and the window is the
+	 * one in which a refusal and a fresh discard stand at once.
 	 *
 	 * TWO OBSERVERS, BECAUSE THE CARD ARRIVES AFTER THE COMMIT: sonner mounts the toast in its
 	 * own render, so the first measurement of a fresh message finds nothing and the childList
@@ -5372,7 +5507,7 @@ export function ChatSidebar({
 	const bandHeightNow =
 		bandHeight > 0
 			? bandHeight
-			: archiveUndo !== null
+			: archiveUndo !== null || draftsUndo !== null
 				? ARCHIVE_OFFER_BAND_HEIGHT
 				: 0;
 	const laneBandRef = useRef<HTMLDivElement | null>(null);
@@ -5760,8 +5895,21 @@ export function ChatSidebar({
 								<button
 									type="button"
 									data-draft-discard={row.key}
+									/*
+									 * INAPPLICABLE WHILE THE ROW'S SEND HOP IS LIVE (UX round 1's U2): a
+									 * press here used to remove the row while the request went on to land
+									 * in an unread chat - a discard followed by a silent send. The
+									 * store's own semantics are unchanged (a deliberate discard still
+									 * outranks the abandoned request - its record pins that), so the
+									 * withholding is the ACT's, here and in the batch below.
+									 */
+									disabled={row.pending}
 									aria-label={discardDraftLabel(row.label)}
-									title={discardDraftLabel(row.label)}
+									title={
+										row.pending
+											? "Sending - this draft can be discarded when the send settles"
+											: discardDraftLabel(row.label)
+									}
 									onClick={(event) => {
 										/*
 										 * THE REPEAT-PRESS GUARD FIRST, the panel's own record
@@ -5770,7 +5918,6 @@ export function ChatSidebar({
 										 * act into the same spot. A dropped press writes nothing and
 										 * moves no caret.
 										 */
-										const button = event.currentTarget;
 										if (
 											dropRepeatPress(
 												event.detail === 0
@@ -5783,17 +5930,33 @@ export function ChatSidebar({
 										/*
 										 * AND THE CARET LANDS SOMEWHERE, the archive's own
 										 * no-dead-cursor rule: the node the reader was on is about to
-										 * unmount. The successor's index is read BEFORE the write, and
-										 * the frame callback hands focus to the row occupying that
-										 * position - the next draft row, or the row that slid up into
-										 * the gap, or the first row of the panel when this was last.
+										 * unmount. The successor is read BY KEY before the write
+										 * (`discardSuccessorIndex` carries the measured why: the old
+										 * version indexed the discard BUTTON among `[data-draft-row]`
+										 * elements, so it always landed on the first row), and the
+										 * frame callback hands focus to the row occupying that
+										 * position - the row that slid up into the gap, or the first
+										 * row of the panel when this was last.
 										 */
-										const at = [
+										const keys = [
 											...(navRef.current?.querySelectorAll(
 												"[data-draft-row]",
 											) ?? []),
-										].indexOf(button);
+										].map((el) => el.getAttribute("data-draft-row") ?? "");
+										const at = discardSuccessorIndex(keys, row.key);
 										discardDraft(row.key);
+										/*
+										 * A PANE THAT WAS SHOWING THIS DRAFT IS GIVEN A FRESH ONE
+										 * (UX round 1's U1, remediation): `discardDraft` clears
+										 * `activeDraftKey`, and the chat page's residue arm has no
+										 * composer - discarding the open draft used to leave a bare
+										 * `New chat` surface. `onStageDraft(undefined, true)` is
+										 * exactly the two steps the New chat row performs (stage a
+										 * fresh draft, stay on `/chat`), and it runs only when the
+										 * pane really was on this key.
+										 */
+										if (activeDraftKey === row.key)
+											onStageDraft(undefined, true);
 										requestAnimationFrame(() => {
 											const rows = [
 												...(navRef.current?.querySelectorAll<HTMLElement>(
@@ -5812,6 +5975,7 @@ export function ChatSidebar({
 										"size-6 shrink-0 items-center justify-center rounded-md",
 										"hidden text-ink-dim group-hover:flex group-hover:text-ink-muted",
 										"group-focus-within:flex group-focus-within:text-ink-muted hover:text-ink!",
+										"disabled:opacity-45",
 									)}
 								>
 									<Trash2 className="size-4" aria-hidden="true" />
@@ -5834,6 +5998,14 @@ export function ChatSidebar({
 							type="button"
 							data-chat-row
 							data-drafts-clear-all
+							/*
+							 * NOTHING CLEARABLE IS THE ONE DISABLED STATE (UX round 1's U2):
+							 * every listed row is mid-hop, so the press would move nothing.
+							 * With at least one settled row the batch clears exactly those
+							 * (the store keeps its own semantics for the keys it is given)
+							 * and the offer prints the count that moved.
+							 */
+							disabled={clearableDraftRows.length === 0}
 							aria-label="Clear all drafts"
 							title="Clear all drafts"
 							onClick={(event) => {
@@ -5855,7 +6027,18 @@ export function ChatSidebar({
 									...(navRef.current?.querySelectorAll("[data-chat-row]") ??
 										[]),
 								].indexOf(button);
-								discardDrafts(draftRows.map((row) => row.key));
+								const clearing = clearableDraftRows.map((row) => row.key);
+								discardDrafts(clearing);
+								/*
+								 * THE SAME NO-DEAD-PANE RULE THE PER-ROW ACT CARRIES (UX
+								 * round 1's U1): when the batch took the pane's own draft, a
+								 * fresh one is staged so the composer never disappears.
+								 */
+								if (
+									activeDraftKey !== null &&
+									clearing.includes(activeDraftKey)
+								)
+									onStageDraft(undefined, true);
 								requestAnimationFrame(() => {
 									const rows = [
 										...(navRef.current?.querySelectorAll<HTMLElement>(
@@ -5870,6 +6053,7 @@ export function ChatSidebar({
 								"text-ink-dim transition-colors duration-fast ease-out-quart",
 								"hover:bg-row-hover hover:text-ink",
 								"focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
+								"disabled:opacity-45",
 							)}
 						>
 							Clear all

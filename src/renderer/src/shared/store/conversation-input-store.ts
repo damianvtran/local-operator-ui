@@ -24,7 +24,7 @@ export type Attachment = {
 /**
  * State for a single conversation's input
  */
-type ConversationInputState = {
+export type ConversationInputState = {
 	/**
 	 * The current in-progress message in the input box
 	 */
@@ -599,6 +599,20 @@ type ConversationInputStoreState = {
 	clearAll: (conversationId: string) => void;
 
 	/**
+	 * Put a row back exactly as it stood - the discard-undo's own door into this
+	 * store.
+	 *
+	 * WHY A METHOD RATHER THAN THE CANONICAL STORE WRITING THROUGH `setState`:
+	 * the discard and its undo are the canonical store's, but the ROW's shape is
+	 * this store's, and a second writer assigning `inputByConversation` directly
+	 * is a second place the row's invariants would live. This is deliberately the
+	 * narrowest thing that can put a snapshot back: the row goes in whole, under
+	 * the key it came from, and nothing else moves - no revision bump (a restored
+	 * box is the box the reader left), no seeding, no clearing.
+	 */
+	restoreRow: (conversationId: string, row: ConversationInputState) => void;
+
+	/**
 	 * Move the composer's payload into `inFlight` and empty the composer, in one
 	 * update: text (only if the box still holds exactly what was sent), the chips
 	 * and the quotes that went with it. `record: false` is the plain retire for a
@@ -1014,6 +1028,15 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 				const { [conversationId]: _, ...rest } = get().inputByConversation;
 				set({
 					inputByConversation: rest,
+				});
+			},
+
+			restoreRow: (conversationId, row) => {
+				set({
+					inputByConversation: {
+						...get().inputByConversation,
+						[conversationId]: row,
+					},
 				});
 			},
 

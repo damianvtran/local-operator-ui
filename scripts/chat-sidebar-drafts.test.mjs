@@ -10,8 +10,8 @@ import { build } from "esbuild";
  * WHY THIS FILE EXISTS. The operator asked for both on 2026-09-26 - "Each one
  * should have a deletion on hover and also a subtle clear all UX" - beside the
  * report that sent drafts were resurfacing (the store half of that is
- * `canonical-chat.test.mjs`; the composer-side row this section's delete has to
- * clear with it is `discardDraft`'s own store tests). The sidebar cannot be
+ * `drafts-clear-on-send.test.mjs`; the composer-side row this section's delete
+ * has to clear with it is `discardDraft`'s own store tests). The sidebar cannot be
  * mounted in this suite for a rendered assertion (it reads the router, the store,
  * every picker and the capability hooks; `mark-all-read-control.test.mjs` carries
  * a jsdom mount and its own scope), so what is left here is what no module can
@@ -175,14 +175,26 @@ test("the press is guarded against the row that slides up, and hands the caret t
 	 */
 	assert.match(control, /dropRepeatPress\(/);
 	/*
-	 * THE CARET LANDS SOMEWHERE, the archive's no-dead-cursor rule: the successor
-	 * index is read from the DOM before the write and focus is handed to the row
-	 * occupying that position after it - never left on `<body>`.
+	 * THE CARET LANDS SOMEWHERE, the archive's no-dead-cursor rule - and the
+	 * successor is read BY KEY (agent review round 1's R2 = design round 1's D2):
+	 * the old expression indexed the discard BUTTON among `[data-draft-row]`
+	 * elements, so it always returned -1 and the caret always landed on the first
+	 * row. The arithmetic itself is exercised in `drafts-clear-on-send.test.mjs`
+	 * (`discardSuccessorIndex`'s own cases); what this suite pins is that the
+	 * handler reads the keys and hands the same helper those keys.
 	 */
-	assert.match(control, /discardDraft\(row\.key\);/);
+	assert.match(control, /discardSuccessorIndex\(keys, row\.key\)/);
+	assert.match(control, /getAttribute\("data-draft-row"\)/);
 	assert.match(control, /requestAnimationFrame\(\(\) => \{/);
-	assert.match(control, /\[data-draft-row\]/);
 	assert.match(control, /next\?\.focus\(\);/);
+	/*
+	 * AND A PANE THAT WAS SHOWING THIS DRAFT IS GIVEN A FRESH ONE (UX round 1's U1):
+	 * `discardDraft` clears `activeDraftKey`, and the chat page's residue arm has no
+	 * composer - so the press stages the New chat row's own pair when the pane was
+	 * on this key.
+	 */
+	assert.match(control, /activeDraftKey === row\.key/);
+	assert.match(control, /onStageDraft\(undefined, true\)/);
 });
 
 test("the clear-all is inside the drafts section, rides the row walk, and clears exactly the listed keys", () => {
@@ -194,11 +206,21 @@ test("the clear-all is inside the drafts section, rides the row walk, and clears
 		"the foot control is not inside the drafts section",
 	);
 	/*
-	 * EXACTLY THE ROWS THE SECTION LISTS: `draftRows` is `untargetedDraftRows`'s
-	 * output, so a targeted/agent draft - never a row here - can never be cleared
-	 * by this control. One store write, not a caller-side loop.
+	 * EXACTLY THE ROWS THE SECTION LISTS: the keys come from
+	 * `untargetedDraftRows`'s output (minus any live send hop, UX round 1's U2),
+	 * so a targeted/agent draft - never a row here - can never be cleared by this
+	 * control, and a row mid-send is not silently cancelled by the batch. One
+	 * store write, not a caller-side loop.
 	 */
-	assert.match(foot, /discardDrafts\(draftRows\.map\(\(row\) => row\.key\)\);/);
+	assert.match(foot, /clearableDraftRows\.map\(\(row\) => row\.key\)/);
+	assert.match(foot, /discardDrafts\(clearing\);/);
+	assert.match(foot, /disabled=\{clearableDraftRows\.length === 0\}/);
+	/*
+	 * THE SAME NO-DEAD-PANE RULE THE ROW ACT CARRIES (UX round 1's U1): when the
+	 * batch took the pane's own draft, a fresh one is staged.
+	 */
+	assert.match(foot, /clearing\.includes\(activeDraftKey\)/);
+	assert.match(foot, /onStageDraft\(undefined, true\)/);
 	/*
 	 * THE SAME PRESS GUARD as the rows, under its own identity: this control also
 	 * unmounts under a repeat press (the section empties), and the chat row that
@@ -244,4 +266,51 @@ test("the section's gate is what hides the foot: no rows, no control", () => {
 		gate < section && section < foot,
 		"the foot must sit inside the section's gate",
 	);
+});
+
+
+test("a row whose send hop is live cannot be discarded", () => {
+	const section = DRAFTS_SECTION();
+	const control = section.slice(
+		section.indexOf("data-draft-discard={row.key}"),
+		section.indexOf(
+			"</button>",
+			section.indexOf("data-draft-discard={row.key}"),
+		),
+	);
+	/*
+	 * UX round 1's U2, remediation: with the create request held, the press used to
+	 * remove the row while the send went on to land in an unread chat. The control
+	 * is disabled from the ROW's own field (`DraftRow.pending`, derived by
+	 * `untargetedDraftRows` and asserted in `drafts-clear-on-send.test.mjs`), and
+	 * `Clear all` passes only the settled keys - the store keeps its own documented
+	 * discard semantics (`canonical-chat.test.mjs` pins them).
+	 */
+	assert.match(control, /disabled=\{row\.pending\}/);
+	assert.match(control, /disabled:opacity-45/);
+});
+
+test("the discard offer is the lane's own: one id, one slot, an Undo that restores", () => {
+	const source = code(SIDEBAR);
+	const at = source.indexOf('if (newest === "drafts" && draftsUndo)');
+	assert.notEqual(at, -1, "the drafts branch is not in the lane effect");
+	const branch = source.slice(at, at + 2600);
+	/*
+	 * THE ARCHIVE OFFER'S OWN REGISTER (design round 1's D1): one id, one class, the
+	 * persistent duration and the lane position - a second discard REPLACES the
+	 * first offer because the id is stable and the store keeps one slot.
+	 */
+	assert.match(branch, /id: ARCHIVE_TOAST_ID/);
+	assert.match(branch, /className: ARCHIVE_TOAST_CLASS/);
+	assert.match(branch, /duration: ARCHIVE_TOAST_PERSISTENT/);
+	assert.match(branch, /position: ARCHIVE_TOAST_LANE/);
+	assert.match(branch, /label: "Undo"/);
+	assert.match(branch, /restoreDraftsUndo\(\);/);
+	/*
+	 * AND THE OFFER LOSES TIES TO A STANDING ARCHIVE MESSAGE: it wins only by
+	 * being STRICTLY newer than every archive value present, which is also what
+	 * makes the supersession clause above it safe to clear them.
+	 */
+	assert.match(source, /draftsUndo\.at > archiveFailure\.at/);
+	assert.match(source, /draftsUndo\.at > archiveUndo\.at/);
 });
