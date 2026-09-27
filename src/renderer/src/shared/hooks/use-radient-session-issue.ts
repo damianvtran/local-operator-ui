@@ -63,10 +63,7 @@ import {
  * config at import time (which throws in Node bundles) - the same reason
  * `provider-detail.tsx` imports the leaf.
  */
-import {
-	forgetAccountReadFailure,
-	radientUserKeys,
-} from "@shared/hooks/use-radient-user-query";
+import { commissionAccountRead } from "@shared/hooks/use-radient-user-query";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -468,9 +465,15 @@ export function useRadientSessionIssue(): UseRadientSessionIssue {
 				 * is in the store now, and without this the account surfaces kept
 				 * whatever the failed read recorded - the operator's foot sat on
 				 * "Account unavailable" after a completed re-sign-in until some other
-				 * surface mounted a new observer on the failed query. The clear beside
-				 * it discloses the re-read as "Checking account…": the recorded class
-				 * named the credential this write just replaced.
+				 * surface mounted a new observer on the failed query.
+				 *
+				 * `commissionAccountRead` is the same entry point the providers panel
+				 * uses: it clears the class the write just replaced - so the re-read is
+				 * disclosed as "Checking account…" - and CANCELS any chain the old
+				 * credential left asking before invalidating, because an invalidation on
+				 * its own JOINS a data-less chain in flight and re-asks nothing (review
+				 * round 1, M1; the window-focus refetch is the chain a returned-from-
+				 * browser sign-in most often lands on top of).
 				 *
 				 * NOT awaited, unlike `refreshVerdict` below: that await holds THIS
 				 * callout's own settling state, and the account read has its own retry
@@ -478,8 +481,7 @@ export function useRadientSessionIssue(): UseRadientSessionIssue {
 				 * hold the callout open. The foot and the settings surfaces track it
 				 * on their own.
 				 */
-				forgetAccountReadFailure();
-				void queryClient.invalidateQueries({ queryKey: radientUserKeys.all });
+				void commissionAccountRead(queryClient);
 				await refreshVerdict();
 				setPhase({ kind: "idle" });
 				return;
