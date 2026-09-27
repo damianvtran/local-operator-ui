@@ -308,8 +308,10 @@ test("the value clears when the answer was SENT - and is kept while in flight, a
 		"and the field refuses edits mid-flight",
 	);
 
-	/* Refused: the same - the value stays where a retry can use it, and the
-	   refusal sentence is the card's business, not this field's. */
+	/* Refused: the same - the value stays with the card, which is the surface that
+	   owns it now. WHICH refusal releases it is `retryable`'s business (the next
+	   test): this fixture carries no classification, so it reads as HELD, and the
+	   value is kept either way - clearing is only ever the SENT outcome's. */
 	await render({
 		...props(),
 		answer: {
@@ -327,6 +329,229 @@ test("the value clears when the answer was SENT - and is kept while in flight, a
 	await render({ ...props(), answer: { sending: false, refused: null } });
 	assert.equal(fieldOf().value, "", "a sent answer clears the field");
 	assert.equal(sendOf().disabled, true, "and the empty field refuses again");
+});
+
+test("a definite refusal RELEASES the field for a retry; an unknowable outcome holds it", async () => {
+	/*
+	 * THE SPLIT THE ROUND-1 REVIEWS ASKED FOR (design D1; UX U1; QA Q-1). A refusal
+	 * used to leave the field disabled with the value kept and no path back: the
+	 * composer refuses input while a secret question waits, so the kept value was
+	 * unreachable. `answerReport`'s `retryable` now says which arm a failure is -
+	 * and the arms deserve opposite handlers:
+	 *
+	 * - DEFINITE (established not-sent; the same question is still live): the
+	 *   field is RELEASED, so the kept value can be sent again;
+	 * - UNKNOWABLE (the answer may have landed): the hold stays, because a retry
+	 *   could send it twice, and the hint swaps to a sentence that names no dead
+	 *   control.
+	 */
+	const gate = secretGate();
+	const answered = [];
+	const props = () => ({
+		gate,
+		onAnswer: () => {},
+		onAnswerSecret: (v) => answered.push(v),
+	});
+	await render(props());
+	await type("ghp_not_a_real_token");
+
+	/* UNKNOWABLE: the hold stays. */
+	await render({
+		...props(),
+		answer: {
+			sending: false,
+			refused:
+				"Whether your answer landed is not knowable. The request could not be completed.",
+			retryable: false,
+		},
+	});
+	assert.equal(
+		fieldOf().value,
+		"ghp_not_a_real_token",
+		"the held field keeps the value",
+	);
+	assert.equal(fieldOf().disabled, true, "and refuses edits");
+	assert.equal(sendOf().disabled, true, "and nothing can send");
+	assert.match(
+		document.body.textContent ?? "",
+		/Held while this answer's fate is unknown/,
+		"the hint carries the held sentence",
+	);
+	assert.doesNotMatch(
+		document.body.textContent ?? "",
+		/Enter sends/,
+		"and not the key that cannot send",
+	);
+
+	/* DEFINITE: the field is RELEASED. */
+	await render({
+		...props(),
+		answer: {
+			sending: false,
+			refused: "Your answer was not sent. The request could not be completed.",
+			retryable: true,
+		},
+	});
+	assert.equal(
+		fieldOf().value,
+		"ghp_not_a_real_token",
+		"the released field keeps the value",
+	);
+	assert.equal(fieldOf().disabled, false, "and takes input again");
+	assert.equal(sendOf().disabled, false, "so the kept value can be sent again");
+	assert.doesNotMatch(
+		document.body.textContent ?? "",
+		/Held while this answer's fate is unknown/,
+		"the held sentence is gone: every control it would warn about works",
+	);
+
+	/* The retry is the SAME door as the first attempt. */
+	await submit();
+	assert.deepEqual(
+		answered,
+		["ghp_not_a_real_token"],
+		"a retry hands the kept value over",
+	);
+});
+
+test("a refusal with NO classification keeps the hold (the conservative default)", async () => {
+	/* The `answer` prop's `retryable` is optional with the HOLD as its default: a
+	   caller that did not classify its refusal is not entitled to reopen a send. */
+	await render({
+		gate: secretGate(),
+		onAnswer: () => {},
+		onAnswerSecret: () => {},
+		answer: {
+			sending: false,
+			refused: "Your answer was not sent. The request could not be completed.",
+		},
+	});
+	assert.equal(fieldOf().disabled, true, "an unclassified refusal stays held");
+	assert.match(
+		document.body.textContent ?? "",
+		/Held while this answer's fate is unknown/,
+	);
+});
+
+test("Esc and Show keep the typed secret, and Show hands focus back to the field", async () => {
+	/*
+	 * UX ROUND 1, U3 AND U4. The draft used to live in `SecretAnswer`'s own state
+	 * and the collapsed pill unmounts that component, so Esc silently discarded a
+	 * typed secret and Show returned an empty field; and the expand effect queried
+	 * option buttons only, so Show dropped focus to `document.body` on a card with
+	 * no options. The draft is the dock's now (keyed per question), and the focus
+	 * query includes the masked field.
+	 */
+	await render({
+		gate: secretGate(),
+		onAnswer: () => {},
+		onAnswerSecret: () => {},
+	});
+	await type("ghp_not_a_real_token");
+
+	const card = document.querySelector(
+		'[data-lo-question-dock="expanded"] section',
+	);
+	assert.ok(card, "the expanded card is up");
+	await act(async () => {
+		card.dispatchEvent(
+			new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+		);
+	});
+	await settle();
+	assert.ok(
+		document.querySelector('[data-lo-question-dock="collapsed"]'),
+		"Esc hides the card",
+	);
+	assert.equal(
+		document.querySelector("[data-ask-secret]"),
+		null,
+		"the field is unmounted while hidden - the draft cannot live in it",
+	);
+
+	const show = document.querySelector(
+		'[aria-label="Show the agent\'s question"]',
+	);
+	assert.ok(show, "the pill's Show control is up");
+	await act(async () => {
+		show.click();
+	});
+	await settle();
+	assert.equal(
+		fieldOf().value,
+		"ghp_not_a_real_token",
+		"Show returns the typed value (UX round 1, U3)",
+	);
+	assert.equal(
+		document.activeElement,
+		fieldOf(),
+		"and focus lands on the field, not the body (UX round 1, U4)",
+	);
+});
+
+test("every consumer of the secret reading goes through the one predicate", () => {
+	/*
+	 * AGENT REVIEW ROUND 1, NIT-1: `secret` was read with THREE spellings - the
+	 * composer closed on `=== true`, the dock and the page's send refusal read
+	 * truthiness, and `answerGateSecret` refused anything but `=== true` - and for
+	 * a contract-violating truthy value that mix left the dock painting a masked
+	 * field while the composer stayed OPEN, the exposure this feature removes.
+	 * Pinned at the source, comments stripped, the way the other source pins in
+	 * this tree are: every consumer calls `gateIsSecret`, and no old spelling
+	 * survives anywhere that matters.
+	 */
+	const strip = (text) =>
+		text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+	const read = (path) => strip(readFileSync(path, "utf8"));
+	const sources = {
+		"ask-answer.ts": read("src/renderer/src/features/chat/ask-answer.ts"),
+		"question-dock.tsx": read(
+			"src/renderer/src/features/chat/components/trace/question-dock.tsx",
+		),
+		"chat-page.tsx": read(
+			"src/renderer/src/features/chat/components/chat-page.tsx",
+		),
+		"chat-content.tsx": read(
+			"src/renderer/src/features/chat/components/chat-content.tsx",
+		),
+	};
+	assert.match(
+		sources["ask-answer.ts"],
+		/export const gateIsSecret =/,
+		"the predicate lives in ask-answer.ts",
+	);
+	assert.match(
+		sources["ask-answer.ts"],
+		/!gateIsSecret\(gate\)/,
+		"the answer door reads it",
+	);
+	assert.match(
+		sources["question-dock.tsx"],
+		/gateIsSecret\(gate\)/,
+		"the dock reads it",
+	);
+	assert.match(
+		sources["chat-page.tsx"],
+		/gateIsSecret\(gate\)/,
+		"the page's send refusal reads it",
+	);
+	assert.match(
+		sources["chat-content.tsx"],
+		/gateIsSecret\(/,
+		"the composer's closure reads it",
+	);
+	for (const [name, source] of Object.entries(sources)) {
+		assert.doesNotMatch(
+			source,
+			/gate\.secret\b/,
+			`${name}: the bare gate.secret read is gone - one predicate, or none`,
+		);
+		assert.doesNotMatch(
+			source,
+			/secret (===|!==) true/,
+			`${name}: the strict spelling is gone with it`,
+		);
+	}
 });
 
 test("the next question of the same ask starts from a fresh field", async () => {

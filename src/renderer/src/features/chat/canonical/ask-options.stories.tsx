@@ -42,11 +42,16 @@
  *   semantics from drifting apart between them.
  */
 
+import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import type { Meta, StoryObj } from "@storybook/react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import type { PendingDesktopGate } from "../../../../../shared/desktop-session-contract";
 import "../../../styles/index.css";
-import { QuestionDock } from "../components/trace/question-dock";
+import { answerUnconfirmedMessage } from "../ask-answer";
+import {
+	QuestionDock,
+	type QuestionDockProps,
+} from "../components/trace/question-dock";
 import { CanonicalTranscript } from "./canonical-transcript";
 import type { TranscriptRecord, TranscriptState } from "./transcript-reducer";
 
@@ -100,6 +105,7 @@ const Frame = ({
 	height = 320,
 	width = "100%",
 	answering = false,
+	answer = null,
 	onAnswerSecret,
 }: {
 	pending: PendingDesktopGate;
@@ -109,6 +115,13 @@ const Frame = ({
 	width?: string;
 	/** An answer is in flight: every option is disabled. */
 	answering?: boolean;
+	/**
+	 * This pane's record of the gate it answered — what `chat-page.tsx` hands the
+	 * dock once an outcome landed. A refused answer renders the held card; the
+	 * secret stories reach that state the way a reader does (see
+	 * `SecretAnswerHeldFrame`).
+	 */
+	answer?: QuestionDockProps["answer"];
 	/**
 	 * The secret field's door. Absent (the default) renders the field READ-ONLY,
 	 * which is what a surface that cannot address an owner gets — the secret
@@ -164,6 +177,7 @@ const Frame = ({
 			<QuestionDock
 				gate={pending}
 				answering={answering}
+				answer={answer}
 				onAnswer={() => {}}
 				onAnswerSecret={onAnswerSecret}
 				className="pt-2"
@@ -412,22 +426,36 @@ export const SecretAsk: Story = {
 };
 
 /**
- * A secret answer in flight.
+ * A secret answer in flight, WITH THE TYPED VALUE UNDER THE MASK.
  *
  * The field and its Send control refuse input while the one-answer lock is
  * held, and the eyebrow says what is happening — "Sending your answer…", the
  * same in-flight reading the option states carry, from the same card. The value
  * the user handed over stays in the masked field until the outcome is known; it
- * clears only once the answer was SENT (`SecretAnswer`'s own rule), so this
- * frame is also the one that shows the field is NOT prematurely emptied.
+ * clears only once the answer was SENT (`SecretAnswer`'s own rule), so the
+ * reading this state exists to show is the DOTS STILL PRESENT mid-submit.
+ *
+ * THE FRAME IS REACHED THE WAY A READER REACHES IT (design round 1, D2; agent
+ * review round 1, MINOR-1). The story renders the idle field; the sweep row
+ * types a fixture into it through the real input pipeline (`insertText`) and
+ * presses Enter through the real key pipeline, and the submit the form receives
+ * flips this story's own `answering` — there is no way to seed a value into the
+ * shipped field from props, and an untyped field made the retention claim
+ * unfalsifiable: an empty field is equally what a premature clear looks like
+ * (which is what this story shipped first, and the round 1 review caught).
  */
 export const SecretAnswerInFlight: Story = {
-	render: () => (
+	render: () => <SecretAnswerInFlightFrame />,
+};
+
+const SecretAnswerInFlightFrame = () => {
+	const [answering, setAnswering] = useState(false);
+	return (
 		<Frame
 			asked="Set up the GitHub integration."
 			height={360}
-			answering={true}
-			onAnswerSecret={() => {}}
+			answering={answering}
+			onAnswerSecret={() => setAnswering(true)}
 			pending={gate({
 				title: "Paste the GitHub token",
 				detail: "It is stored in the credential store, not in the transcript.",
@@ -435,7 +463,59 @@ export const SecretAnswerInFlight: Story = {
 				options: [],
 			})}
 		/>
-	),
+	);
+};
+
+/**
+ * A secret answer HELD: the outcome is unknown, so nothing can send again.
+ *
+ * The one state the round 1 reviews converged on (design D1; UX U1; QA Q-1):
+ * after an UNKNOWABLE outcome the field and Send are disabled with the typed
+ * value kept — a retry could send the answer twice — and the hint swaps to a
+ * sentence that names no dead control. A DEFINITE not-sent refusal does NOT
+ * hold (its field is released for a retry) and this story shows the arm that
+ * does.
+ *
+ * REACHED THE WAY THE IN-FLIGHT FRAME IS: the sweep types a value and presses
+ * Enter, and the submit flips this story's answer to the held outcome — the
+ * same shape `chat-page.tsx` produces from the transport arm of
+ * `answerReport`. The sentence is the shipped one
+ * (`answerUnconfirmedMessage`), not a fixture literal, so the frame cannot
+ * drift from the copy the app renders.
+ */
+export const SecretAnswerHeld: Story = {
+	render: () => <SecretAnswerHeldFrame />,
+};
+
+const SecretAnswerHeldFrame = () => {
+	const [answer, setAnswer] = useState<QuestionDockProps["answer"]>(null);
+	return (
+		<Frame
+			asked="Set up the GitHub integration."
+			height={360}
+			answer={answer}
+			onAnswerSecret={() =>
+				setAnswer({
+					sending: false,
+					refused: answerUnconfirmedMessage(
+						new DesktopControlError(
+							null,
+							"Desktop controls could not reach the backend process.",
+						),
+					),
+					// The unknowable arm holds; a definite refusal would carry `true`
+					// and release the field (round 1's D1/U1/Q-1 split).
+					retryable: false,
+				})
+			}
+			pending={gate({
+				title: "Paste the GitHub token",
+				detail: "It is stored in the credential store, not in the transcript.",
+				secret: true,
+				options: [],
+			})}
+		/>
+	);
 };
 
 /**

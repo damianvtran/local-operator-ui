@@ -69,7 +69,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { AskOptions } from "./src/renderer/src/features/chat/components/trace/ask-options";',
-			'export { resolveNumericAnswer, answerValue, answerReport, answerRefusedWithoutACode, answerOutcomeIsUnknown, answerUnconfirmedMessage, SETTLED_ELSEWHERE_MESSAGE, QUESTION_MOVED_ON_MESSAGE, ANSWER_UNCONFIRMED_LEAD, ANSWER_LOST_TO_RECONNECT_MESSAGE, unsentAnswerMessage, shouldTabIntoAnswerOptions, composerFocusIsOurs, createSendLock, APPROVAL_OPTIONS, approvalVerdict, approvalAnswerValue, answerGateOption, answerGateSecret, SECRET_ANSWER_DOCKED_MESSAGE, errorCodeOf, ANSWER_UNCONFIRMED_CODE } from "./src/renderer/src/features/chat/ask-answer";',
+			'export { resolveNumericAnswer, answerValue, answerReport, answerRefusedWithoutACode, answerOutcomeIsUnknown, answerUnconfirmedMessage, SETTLED_ELSEWHERE_MESSAGE, QUESTION_MOVED_ON_MESSAGE, ANSWER_UNCONFIRMED_LEAD, ANSWER_LOST_TO_RECONNECT_MESSAGE, unsentAnswerMessage, shouldTabIntoAnswerOptions, composerFocusIsOurs, createSendLock, APPROVAL_OPTIONS, approvalVerdict, approvalAnswerValue, answerGateOption, answerGateSecret, SECRET_ANSWER_DOCKED_MESSAGE, errorCodeOf, ANSWER_UNCONFIRMED_CODE, gateIsSecret } from "./src/renderer/src/features/chat/ask-answer";',
 			'export { DesktopControlError, UserFacingError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
 			'export { buildSendPayload, sendFailureCopy, ANSWER_NOT_SENT_CODE } from "./src/renderer/src/shared/store/canonical-sessions-store";',
 			'export { DESKTOP_LOST_SIGHT_CODE } from "./src/shared/desktop-contract";',
@@ -145,6 +145,7 @@ const {
 	sendFailureCopy,
 	ANSWER_NOT_SENT_CODE,
 	ANSWER_UNCONFIRMED_CODE,
+	gateIsSecret,
 	DESKTOP_LOST_SIGHT_CODE,
 	desktopRequestSchema,
 	desktopEndpoint,
@@ -957,8 +958,8 @@ test("the press's report is routed by the LIVE card's identity, at the call site
 	// 2, U7 / QA Q1).
 	assert.match(
 		code,
-		/case "card":[\s\S]{0,600}?setAnswerState\(\{\s*key: pressedKey,\s*sending: false,\s*refused: report\.refused,\s*\}\);/,
-		"the card arm must write the report's own sentence onto the press's card state",
+		/case "card":[\s\S]{0,600}?setAnswerState\(\{\s*key: pressedKey,\s*sending: false,\s*refused: report\.refused,\s*retryable: report\.retryable,\s*\}\);/,
+		"the card arm must write the report's own sentence AND its retryable classification onto the press's card state - the classification is what lets a definite refusal release the secret field while an unknowable one keeps the hold",
 	);
 	assert.doesNotMatch(
 		code,
@@ -970,8 +971,8 @@ test("the press's report is routed by the LIVE card's identity, at the call site
 	// register this assertion protects is the ABSENCE of a sentence here.)
 	assert.match(
 		code,
-		/case "sent":[\s\S]{0,1600}?setAnswerState\(\{ key: pressedKey, sending: false, refused: null \}\);[\s\S]{0,200}?onSent\?\.\(\);[\s\S]{0,200}?return;/,
-		"the sent arm settles the card's hold, invokes the caller's clause, and returns without a sentence",
+		/case "sent":[\s\S]{0,1600}?setAnswerState\(\{\s*key: pressedKey,\s*sending: false,\s*refused: null,\s*retryable: false,\s*\}\);\s*\n?[\s\S]{0,200}?onSent\?\.\(\);\s*\n?[\s\S]{0,200}?return;/,
+		"the sent arm settles the card's hold with nothing to retry, invokes the caller's clause, and returns without a sentence",
 	);
 	assert.doesNotMatch(
 		code,
@@ -1252,6 +1253,10 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 	assert.deepEqual(onPressedCard(deadline), {
 		to: "card",
 		refused: answerUnconfirmedMessage(deadline),
+		// THE UNKNOWABLE ARM KEEPS THE HOLD: the answer may have landed, so a
+		// retry could send it twice — the one classification the secret field
+		// reads before it dares reopen (design round 1, D1; UX round 1, U1).
+		retryable: false,
 	});
 	// The card's copy does not assert a loss, which is the whole finding.
 	assert.doesNotMatch(
@@ -1274,6 +1279,9 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 		{
 			to: "card",
 			refused: ANSWER_LOST_TO_RECONNECT_MESSAGE,
+			// A DEFINITE not-sent refusal is retryable: the same question is
+			// still live and a retry carries the live epoch.
+			retryable: true,
 		},
 	);
 	assert.equal(
@@ -1302,6 +1310,9 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 	assert.deepEqual(onPressedCard(settled), {
 		to: "card",
 		refused: `Your answer was not sent. ${settled.message}`,
+		// Established not-sent, so the secret card may offer the kept value
+		// again; the options band never reads this.
+		retryable: true,
 	});
 
 	// (v) NO HTTP RESPONSE AT ALL: the outcome is unknown, and the sentence says
@@ -1671,6 +1682,24 @@ test("the hint names only keys that work", () => {
 		),
 		"Question 2 of 3. Type or paste the secret above · Enter sends · Esc hides",
 	);
+	// Held — an UNKNOWABLE outcome keeps the secret field and Send disabled
+	// (a retry could send the answer twice), so the sentence must name the one
+	// key that still works and never an Enter that cannot send (design round 1,
+	// D1; UX round 1, U1; QA round 1, Q-1). The call site passes `held` only
+	// for that arm — a DEFINITE refusal releases the field, so it keeps the
+	// idle sentence — which is the split `question-dock.tsx`'s `secretReleased`
+	// computes and `secret-ask.test.mjs` drives on the shipped component.
+	assert.equal(
+		questionDockHint(gate({ options: [], secret: true }), true),
+		"Held while this answer's fate is unknown — it may have landed, so nothing can send again · Esc hides",
+	);
+	assert.equal(
+		questionDockHint(
+			gate({ options: [], secret: true, question_index: 1, question_total: 3 }),
+			true,
+		),
+		"Question 2 of 3. Held while this answer's fate is unknown — it may have landed, so nothing can send again · Esc hides",
+	);
 	assert.equal(
 		questionDockHint(gate({ kind: "approval", options: [] })),
 		"Choose Approve or Deny above, type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.",
@@ -1690,6 +1719,27 @@ test("the hint names only keys that work", () => {
 		questionDockHint(gate({ options: twelve })),
 		/Enter or 1-9 answers/,
 	);
+});
+
+test("the secret predicate fails closed, in ONE spelling for every consumer", () => {
+	/*
+	 * `gateIsSecret` is the SINGLE reading of `secret` (agent review round 1,
+	 * NIT-1): the dock's field arm, the hint, the composer's closure, the page's
+	 * send refusal and `answerGateSecret`'s precondition all import it, so a
+	 * contract-violating value cannot be masked on one surface while another
+	 * stays open. It reads TRUTHINESS — anything the wire means as "secret" gets
+	 * the masked treatment, and that is the fail-closed direction — while only
+	 * false/absent read as an ordinary ask. The non-boolean truthy is the case
+	 * the three old spellings disagreed about.
+	 */
+	assert.equal(gateIsSecret({ secret: true }), true);
+	assert.equal(gateIsSecret({ secret: 1 }), true);
+	assert.equal(gateIsSecret({ secret: "yes" }), true);
+	assert.equal(gateIsSecret({ secret: {} }), true);
+	assert.equal(gateIsSecret({ secret: false }), false);
+	assert.equal(gateIsSecret({}), false);
+	assert.equal(gateIsSecret(null), false);
+	assert.equal(gateIsSecret(undefined), false);
 });
 
 test("the option keys: arrows rove, digits answer, and nothing else is claimed", () => {
@@ -2045,7 +2095,9 @@ test("the pane refuses a typed send while a secret question waits, before any an
 	 * This refusal is what stops any of them posting their text as a
 	 * credential's answer, and it must sit BEFORE the approval/ask arms below it
 	 * — after them, the ask arm would answer the gate with whatever the door
-	 * carried.
+	 * carried. The READ is `gateIsSecret` — the one predicate every consumer of
+	 * the secret bit shares (agent review round 1, NIT-1), so this door cannot
+	 * disagree with the composer's closure or the dock's field arm.
 	 */
 	const pane = readFileSync(
 		"src/renderer/src/features/chat/components/chat-page.tsx",
@@ -2054,7 +2106,7 @@ test("the pane refuses a typed send while a secret question waits, before any an
 	const from = pane.indexOf("const send = async (");
 	assert.ok(from > -1, "the page's send door is still one function");
 	const body = pane.slice(from);
-	const refusal = body.indexOf("if (gate.secret)");
+	const refusal = body.indexOf("if (gateIsSecret(gate))");
 	const approval = body.indexOf('if (gate.kind === "approval")');
 	const ask = body.indexOf("await answerGate", approval);
 	assert.ok(refusal > -1, "the secret refusal exists");

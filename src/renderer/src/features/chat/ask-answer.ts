@@ -195,6 +195,30 @@ export const approvalVerdict = (label: string): boolean | null => {
 };
 
 /**
+ * Whether an `ask` gate takes a SECRET — ONE predicate for every consumer.
+ *
+ * The wire type says `secret: boolean` (`desktop-session-contract.ts`), but the
+ * field is PUSHED and runtime-unvalidated, so a value that is not a boolean has
+ * to have a meaning. This reads TRUTHINESS, and fails CLOSED: anything JS reads
+ * as true takes the masked treatment (the dock's field, the closed composer,
+ * the `answerGateSecret` door), because the cost of masking an ask that meant
+ * "not secret" is a field the user answers normally, while the cost of the
+ * other reading is a credential typed in clear into a surface that persists it
+ * — the exposure this path exists to remove.
+ *
+ * It exists because the reading was once spelled THREE ways: the composer
+ * closure tested `=== true`, the page's send refusal and the dock tested
+ * truthiness, and `answerGateSecret` refused anything but `=== true`. For a
+ * contract-violating truthy value that mix left the dock painting a masked
+ * field and refusing the value while the composer stayed OPEN — the typing and
+ * draft-persistence exposure this feature removes (agent review round 1,
+ * NIT-1). Every site imports this now, so the consumers cannot disagree again.
+ */
+export const gateIsSecret = (
+	gate: Pick<PendingDesktopGate, "secret"> | null | undefined,
+): boolean => Boolean(gate?.secret);
+
+/**
  * The verdict a composer answer to an approval gate carries, or `null` when
  * the text is no answer to that gate at all.
  *
@@ -645,7 +669,23 @@ export type AnswerReport =
 	 * one the composer would carry, chosen from the outcome rather than from the
 	 * surface (see `answerReport`).
 	 */
-	| { readonly to: "card"; readonly refused: string }
+	| {
+			readonly to: "card";
+			readonly refused: string;
+			/**
+			 * Whether the failure DEFINITELY did not send this answer, so the surface
+			 * that kept the pressed value may send it again. `true` for every arm but
+			 * `answerOutcomeIsUnknown`'s: a definite refusal was established by the
+			 * owner (or by the app's own reading of a refusal that never settled our
+			 * value), and the card arm's own frame says the pressed question is still
+			 * the live one, so a retry carries the live epoch and cannot double-settle.
+			 * `false` — the unknowable arm — keeps the hold: the answer may have
+			 * landed, so repeating it could send it twice. The secret card is the one
+			 * consumer (`question-dock.tsx`): its composer is closed, so a hold would
+			 * strand the kept value with nothing able to send it.
+			 */
+			readonly retryable: boolean;
+	  }
 	/** The card is gone, so the composer carries the report. */
 	| {
 			readonly to: "composer";
@@ -760,7 +800,14 @@ export const answerReport = (
 	if (outcome.status === "sent") return { to: "sent" };
 	const sentence = pressSentenceFor(outcome.error, frame);
 	if (frame.cardOnScreen && frame.liveGateKey === frame.pressedGateKey)
-		return { to: "card", refused: sentence };
+		return {
+			to: "card",
+			refused: sentence,
+			// The classification the KEPT VALUE's retry hangs on: definite arms are
+			// established not-sent, the unknowable one is not (see the field's own
+			// note on `AnswerReport`).
+			retryable: !answerOutcomeIsUnknown(outcome.error),
+		};
 	return {
 		to: "composer",
 		message: sentence,
@@ -1021,7 +1068,11 @@ export const answerGateSecret = async (
 	// is nothing but whitespace is not an answer, and trimming before the
 	// check is the same trim the wire value gets below.
 	const trimmed = value.trim();
-	if (gate.kind !== "ask" || gate.secret !== true) return { status: "refused" };
+	// `gateIsSecret`, not `secret === true`: the SAME reading every other
+	// consumer makes (agent review round 1, NIT-1), so a contract-violating
+	// truthy value is masked, composer-closed and sendable through this door
+	// rather than masked-but-unsendable (see `gateIsSecret`).
+	if (gate.kind !== "ask" || !gateIsSecret(gate)) return { status: "refused" };
 	if (!sessionId || !epoch || trimmed.length === 0)
 		return { status: "refused" };
 	if (!lock.tryAcquire()) return { status: "refused" };

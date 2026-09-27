@@ -5023,6 +5023,16 @@ test("a secret gate refuses the composer the way an unavailable one is refused, 
 		"the empty refusal says where the answer goes",
 	);
 	assert.equal(
+		field.getAttribute("aria-describedby"),
+		null,
+		"an empty refused box is described by nothing: the placeholder carries the short form",
+	);
+	assert.equal(
+		document.getElementById("composer-secret-closure-notice"),
+		null,
+		"and the draft-case sentence exists only when there is a draft it can serve",
+	);
+	assert.equal(
 		frame.button().disabled,
 		true,
 		"the Send control carries the refusal",
@@ -5103,5 +5113,43 @@ test("a draft written before the question survives it, and is never sent as its 
 		frame.draft(),
 		"draft written before the question",
 		"on disk either",
+	);
+});
+
+test("the closed box with a draft carries a visible reason (UX round 1, U2)", async () => {
+	/*
+	 * The closure's explanation was a PLACEHOLDER, and a placeholder paints only
+	 * while the box is empty - so the reader most likely to need the reason (a box
+	 * already holding their words) saw a dimmed box and no words at all. The
+	 * sentence now renders in the composer's own register above the box, and the
+	 * field is DESCRIBED by it while it renders (`aria-describedby`, the same
+	 * wiring the missing-session notice uses for its pane sentence).
+	 */
+	const conversationId = "conv-secret-closure-sentence";
+	const before = await mount({ conversationId });
+	await type(before, "half-written note from before the question");
+	assert.equal(before.draft(), "half-written note from before the question");
+
+	const frame = await mount({
+		conversationId,
+		keepWorld: true,
+		remount: true,
+		secretAnswer: true,
+	});
+	assert.equal(
+		frame.value(),
+		"half-written note from before the question",
+		"the draft is adopted into the refused box",
+	);
+	const notice = document.getElementById("composer-secret-closure-notice");
+	assert.ok(notice, "the closed box with a draft renders its explanation");
+	assert.equal(
+		notice.textContent,
+		"Answer the secret request above — this box is paused until it is answered, and your draft is kept.",
+	);
+	assert.match(
+		frame.textarea().getAttribute("aria-describedby") ?? "",
+		/composer-secret-closure-notice/,
+		"and the field is described by it",
 	);
 });

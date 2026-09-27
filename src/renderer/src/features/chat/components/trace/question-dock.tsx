@@ -54,9 +54,15 @@
  * answer path and the hint names it. The field sends through the same
  * one-answer machinery as an option press (`answerGateSecret`), clears once the
  * answer was SENT, and is keyed per question (`questionKeyOf`) so its state
- * cannot survive into the next one. This is the desktop arm of a rule the
- * phone card and the terminal picker already keep: a credential is never typed
- * into a surface that cannot mask it.
+ * cannot survive into the next one. Its DRAFT is owned by this dock rather than
+ * by the field, so collapsing the card (which unmounts the field) cannot drop a
+ * typed secret (UX round 1, U3). A refusal holds the field only as long as the
+ * outcome entitles it to: a DEFINITE not-sent refusal releases the field so the
+ * kept value can be sent again, while an UNKNOWABLE outcome holds it (a retry
+ * could send it twice) and swaps the hint to a sentence that names no dead
+ * control. This is the desktop arm of a rule the phone card and the terminal
+ * picker already keep: a credential is never typed into a surface that cannot
+ * mask it.
  */
 
 import { Button, Input } from "@shared/components/ui";
@@ -64,7 +70,7 @@ import { cn } from "@shared/lib/utils";
 import { MessageCircleQuestion } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { PendingDesktopGate } from "../../../../../../shared/desktop-session-contract";
-import { APPROVAL_OPTIONS } from "../../ask-answer";
+import { APPROVAL_OPTIONS, gateIsSecret } from "../../ask-answer";
 import { focusComposer } from "../../composer-field";
 import { MarkdownRenderer } from "../markdown-renderer";
 import { AskOptions } from "./ask-options";
@@ -93,9 +99,18 @@ export type QuestionDockProps = {
 	/**
 	 * This panel's own record of the gate it answered: the card holds itself
 	 * disabled after a press until the gate moves, and `refused` carries the
-	 * sentence when the owner would not take the answer.
+	 * sentence when the owner would not take the answer. `retryable` is
+	 * `answerReport`'s classification of a refusal — `true` only for the arms
+	 * that DEFINITELY did not send (so the secret field may offer the kept value
+	 * again), absent/false for the unknowable arm whose hold must stay. Optional
+	 * with the hold as the default, because a caller that did not classify a
+	 * refusal is not entitled to reopen a send.
 	 */
-	answer?: { sending: boolean; refused: string | null } | null;
+	answer?: {
+		sending: boolean;
+		refused: string | null;
+		retryable?: boolean;
+	} | null;
 	/** Extra classes on the dock's outer box (the caller owns the measure). */
 	className?: string;
 };
@@ -157,9 +172,21 @@ export const questionDockHint = (
 	 * this sentence does not claim). It deliberately does NOT repeat the
 	 * field's own reassurance line or invite the composer, which refuses input
 	 * while this question waits.
+	 *
+	 * AND THE HELD SENTENCE NAMES NO DEAD CONTROL (design round 1, D1; UX round
+	 * 1, U1; QA round 1, Q-1). While an UNKNOWABLE outcome holds the card the
+	 * field and Send are disabled, so the idle sentence's "Enter sends" would
+	 * instruct a key that cannot send - the same class the approval arm's held
+	 * sentence exists for, and `ask-options.test.mjs` pins the pair beside each
+	 * other. What remains true in the held state is the reason (the answer may
+	 * have landed, so nothing can send again) and the one working key, `Esc` -
+	 * the composer cannot be named as an exit: it refuses input while this
+	 * question waits.
 	 */
-	if (gate.kind === "ask" && gate.secret)
-		return `${prefix}Type or paste the secret above · Enter sends · Esc hides`;
+	if (gate.kind === "ask" && gateIsSecret(gate))
+		return held
+			? `${prefix}Held while this answer's fate is unknown — it may have landed, so nothing can send again · Esc hides`
+			: `${prefix}Type or paste the secret above · Enter sends · Esc hides`;
 	if (gate.options.length === 0) return `${prefix}Type your answer below.`;
 	const digits =
 		gate.options.length === 1 ? "1" : `1-${Math.min(gate.options.length, 9)}`;
@@ -193,13 +220,20 @@ export const questionDockHint = (
  *   card enforces (`disabled={inert || !freeText.trim()}` over a form submit),
  *   and the reason the empty half is ALSO a precondition of `answerGateSecret`
  *   rather than only an attribute on a button.
- * - **The value clears when it was SENT** — not at the press. A refusal (a held
- *   lock, a lost owner epoch, the owner saying no) leaves the value masked and
- *   in place for a retry; clearing at the press would destroy a token on
- *   exactly the failures the user has to repeat.
+ * - **The value clears when it was SENT** — not at the press. A DEFINITE
+ *   refusal (a held lock, a lost owner epoch, a not-sent failure the owner
+ *   established) leaves the value masked and RELEASED: the field can send it
+ *   again, because clearing or holding would strand a token on exactly the
+ *   failures the user has to repeat, and this card's composer is closed so no
+ *   other surface can carry it. An UNKNOWABLE outcome (the answer may have
+ *   landed) HOLDS the field instead, because a retry could send it twice — the
+ *   split `answerReport`'s `retryable` exists for, and the hint swaps with it.
  * - **Per-question state**: the dock renders this keyed on `questionKeyOf`
  *   (`request_id:question_index`), so the next question gets a fresh field.
- *   The phone card keys its whole card the same way, for the same reason.
+ *   The phone card keys its whole card the same way, for the same reason. The
+ *   DRAFT itself is owned by the dock (keyed the same way) rather than by this
+ *   component, so collapsing the card — which unmounts this component, the pill
+ *   being an early return — cannot drop it (UX round 1, U3).
  *
  * Read-only is a real state here, not a degradation: with no `onAnswerSecret`
  * (a surface that cannot address an owner) the field renders DISABLED rather
@@ -207,25 +241,25 @@ export const questionDockHint = (
  */
 const SecretAnswer = ({
 	busy,
-	sent,
+	value,
+	onChange,
 	onAnswer,
 }: {
-	/** An answer is in flight from any surface: the field refuses input. */
+	/**
+	 * An answer is in flight from any surface, or the hold is on (an unknowable
+	 * outcome): the field refuses input. A DEFINITE refusal does not set this —
+	 * see the release the dock computes.
+	 */
 	busy: boolean;
-	/** This panel's answer for this question was SENT: the value is cleared. */
-	sent: boolean;
+	/**
+	 * The draft, owned by the dock so a collapse/Show cycle cannot drop it (the
+	 * rules above). A controlled field, not an internal `useState`.
+	 */
+	value: string;
+	onChange: (value: string) => void;
 	/** Submit the typed value; absent where the surface cannot answer. */
 	onAnswer?: (value: string) => void;
 }) => {
-	const [value, setValue] = useState("");
-	/*
-	 * The clear the contract promises ("field cleared after submit"), tied to
-	 * the SENT outcome rather than to the press: see the rules above for why the
-	 * two are not the same moment.
-	 */
-	useEffect(() => {
-		if (sent) setValue("");
-	}, [sent]);
 	const ready = value.trim().length > 0 && !busy && Boolean(onAnswer);
 	return (
 		<form
@@ -261,7 +295,7 @@ const SecretAnswer = ({
 					autoCorrect="off"
 					spellCheck={false}
 					value={value}
-					onChange={(event) => setValue(event.target.value)}
+					onChange={(event) => onChange(event.target.value)}
 					disabled={busy || !onAnswer}
 					// `min-w-0` so the field can shrink inside the flex row; the
 					// shared Input is `w-full` and the Send control keeps its width.
@@ -288,16 +322,21 @@ export const QuestionDock = ({
 	const collapsed = collapsedKey === key;
 	const cardRef = useRef<HTMLElement>(null);
 	/*
-	 * Re-expanding hands focus to the card's first live option, because the press
-	 * that expanded it was a request to see and answer the question; collapsing
-	 * hands it to the composer (below), which is where the reader goes next.
+	 * Re-expanding hands focus to the card's first live answer control: an option
+	 * when the card draws a live one, else THE SECRET FIELD, because the press
+	 * that expanded the pill was a request to see and answer the question and a
+	 * secret card has no option to take it. Without the second selector the
+	 * focus fell to `document.body` on every secret Show — the pill button that
+	 * was pressed had just unmounted (UX round 1, U4; the restore effect in
+	 * `chat-page.tsx` reads the same pair). Collapsing hands focus to the
+	 * composer (below), which is where the reader goes next.
 	 */
 	const [expandedByPress, setExpandedByPress] = useState(false);
 	useEffect(() => {
 		if (!expandedByPress || collapsed) return;
 		setExpandedByPress(false);
 		const first = cardRef.current?.querySelector<HTMLElement>(
-			"button[data-ask-option]:not([disabled])",
+			"button[data-ask-option]:not([disabled]), [data-ask-secret] input:not([disabled])",
 		);
 		first?.focus();
 	}, [expandedByPress, collapsed]);
@@ -310,10 +349,60 @@ export const QuestionDock = ({
 	 * with neither a send in flight nor a refusal is what the answer machinery
 	 * leaves behind once the owner took the answer. The other two states are the
 	 * send still out (`answer.sending`, or the shared `answering` flag) and a
-	 * refusal (`answer.refused`) — and both keep the typed value where the user
-	 * can retry it.
+	 * refusal (`answer.refused`).
 	 */
 	const sent = answer !== null && !answer.sending && answer.refused === null;
+	/*
+	 * THE SECRET DRAFT, OWNED BY THE DOCK (UX round 1, U3).
+	 *
+	 * It used to live in `SecretAnswer`'s own state; collapsing the card unmounts
+	 * that component (the pill is an early return), so Esc silently dropped a
+	 * typed or pasted secret and Show returned an empty field. Owning it here
+	 * fixes the cycle and keeps every other property:
+	 *
+	 * - a collapse/Show pair remounts `SecretAnswer` but only reads this record;
+	 * - the next question starts empty BY CONSTRUCTION rather than by an effect —
+	 *   the record is keyed, and a different key reads as "" (the shape
+	 *   `chat-page.tsx`'s `answerState` uses for its own hold);
+	 * - the clear below stays tied to the SENT outcome (the contract's "field
+	 *   cleared after submit"), never to the press.
+	 */
+	const [secretDraft, setSecretDraft] = useState<{
+		key: string;
+		value: string;
+	} | null>(null);
+	const secretValue = secretDraft?.key === key ? secretDraft.value : "";
+	useEffect(() => {
+		if (sent) setSecretDraft((draft) => (draft?.key === key ? null : draft));
+	}, [sent, key]);
+	/*
+	 * HELD OR RELEASED (design round 1, D1; UX round 1, U1; QA round 1, Q-1).
+	 *
+	 * A refusal renders a sentence and holds the card disabled. For an OPTION
+	 * press that hold is for the card's whole life — the composer is the retry
+	 * path there, and the approval hint names it. The SECRET arm has no composer
+	 * (it refuses input while this question waits), so an unconditional hold
+	 * would strand the kept value with nothing able to send it — the reviewer's
+	 * repro was exactly that dead end. The split is driven by the outcome's own
+	 * classification, `answerReport`'s `retryable`: a DEFINITE not-sent refusal
+	 * releases the field (a retry carries the live epoch and cannot
+	 * double-settle), and an UNKNOWABLE outcome keeps the hold (a retry could
+	 * send the answer twice). `secretReleased` is gated on `gateIsSecret` so a
+	 * definite refusal of an OPTION press — whose report now also carries
+	 * `retryable` — cannot release anything, and the held hint below is false for
+	 * exactly the states whose controls work.
+	 */
+	const secretReleased =
+		gateIsSecret(gate) &&
+		answer !== null &&
+		!answer.sending &&
+		answer.refused !== null &&
+		answer.retryable === true;
+	const secretBusy =
+		answering ||
+		Boolean(answer?.sending) ||
+		(answer !== null && !secretReleased);
+	const held = Boolean(answer?.refused) && !secretReleased;
 	/*
 	 * The rows this card draws: an ask's model-authored set, or the client's own
 	 * approval pair (main's arm, carried into this carrier by the fold). ONE
@@ -412,17 +501,21 @@ export const QuestionDock = ({
 					<MarkdownRenderer content={content} />
 				</div>
 				{gate.kind === "ask" &&
-					(gate.secret ? (
+					(gateIsSecret(gate) ? (
 						/*
 						 * THE SECRET FIELD IS THIS CARD'S, not the composer's: the answer is
 						 * a credential, and this field is the only surface allowed to hold it
-						 * (see `SecretAnswer`). Keyed on the question, so a multi-question
-						 * ask never carries one question's value into the next.
+						 * (see `SecretAnswer`). Keyed on the question as well as keyed at the
+						 * draft, so not even DOM state (focus, selection) survives into the
+						 * next question. `busy` is `secretBusy` rather than the options'
+						 * `busy`: a definite refusal RELEASES this field while it holds the
+						 * options band (see the split above).
 						 */
 						<SecretAnswer
 							key={key}
-							busy={busy}
-							sent={sent}
+							busy={secretBusy}
+							value={secretValue}
+							onChange={(value) => setSecretDraft({ key, value })}
 							onAnswer={onAnswerSecret}
 						/>
 					) : (
@@ -454,9 +547,7 @@ export const QuestionDock = ({
 						onAnswer={(label) => onAnswer?.(label)}
 					/>
 				)}
-				<p className="text-ink-dim text-meta">
-					{questionDockHint(gate, Boolean(answer?.refused))}
-				</p>
+				<p className="text-ink-dim text-meta">{questionDockHint(gate, held)}</p>
 				{/*
 				 * A refused answer lands on the card it was pressed on, outcome first,
 				 * and the card stays held so it cannot be pressed twice (QA round 1, Q3;
