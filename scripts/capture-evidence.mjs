@@ -4738,6 +4738,11 @@ export const STORIES = [
 	 * than two states of it.
 	 */
 	["chat-mention-chips--picker-with-projects", 1380, 768],
+	/* The full first page's own frame (QA round 2's Q-3): twelve projects put ONE
+	 * header in the window, and the region's edge lands on a whole row because
+	 * the cap is measured from the content the scroller draws, not from every
+	 * header the listing holds. */
+	["chat-mention-chips--picker-heavy-projects", 1380, 768],
 	/*
 	 * The design's own narrow case, 800x600, as its open item 3 asks: the picker's
 	 * top edge must be inside the column and the row count must have FALLEN rather
