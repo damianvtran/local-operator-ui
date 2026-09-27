@@ -239,6 +239,12 @@ type ChatContentProps = {
 		 * `SessionStatusStripProps["held"]`.
 		 */
 		held?: boolean;
+		/**
+		 * The readings were DROPPED at a spent retry budget rather than never
+		 * painted. Forwarded verbatim to the composer; see
+		 * `SessionStatusStripProps["readingsDropped"]` (task-17, U4).
+		 */
+		readingsDropped?: boolean;
 	};
 	/**
 	 * The command dispatcher the composer splices an inline command into, with

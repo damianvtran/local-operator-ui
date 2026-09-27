@@ -36,7 +36,7 @@ const bundle = await build({
 			import { createElement } from "react";
 			import { renderToStaticMarkup } from "react-dom/server";
 			import { SessionStatusStrip } from "./src/renderer/src/features/chat/session-status/session-status-strip";
-			export { LAST_READING_NOTE } from "./src/renderer/src/features/chat/session-status/session-status-strip";
+			export { LAST_READING_NOTE, READINGS_DROPPED_NOTE } from "./src/renderer/src/features/chat/session-status/session-status-strip";
 			export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";
 
 			export const renderStrip = (props) =>
@@ -78,6 +78,7 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
 	renderStrip,
 	LAST_READING_NOTE,
+	READINGS_DROPPED_NOTE,
 	desktopEndpoint,
 	desktopRequestSchema,
 } = await import(bundlePath.href);
@@ -587,6 +588,38 @@ test("a session with no snapshot is still silent, not pending", () => {
 	// report it, and claiming a resolution on its behalf would be a new lie.
 	const html = renderStrip({ frontend: null });
 	assert.equal(text(html), "");
+});
+
+test("a session whose readings were dropped leaves one sentence where they were", () => {
+	// Task-17, U4. The terminal arms clear `heldFrontend` on purpose, but the
+	// strip then vanished with no word of its own - the failure notice speaks
+	// for the STREAM - and the reader watching `20.3%/1M` saw it go unexplained.
+	// The flag is TOLD by the pane (which remembers the session once painted
+	// readings), never inferred here.
+	const html = renderStrip({ readingsDropped: true });
+	assert.equal(text(html), READINGS_DROPPED_NOTE);
+	assert.match(html, /data-lo-readings-dropped/);
+	assert.match(html, /role="status"/);
+
+	// The same flag on the two states that are NOT a drop: nothing to say.
+	assert.equal(
+		text(renderStrip({ readingsDropped: true, draft: true })),
+		"",
+		"a draft has no stream, so it can never have dropped one",
+	);
+});
+
+test("the dropped sentence never outranks readings that exist", () => {
+	// The flag rides the sessionStatus object beside `frontend`; a stale true
+	// (one commit behind a reconnect) must not replace readings a reader can
+	// see with a sentence about their disappearance.
+	const html = renderStrip({ frontend: DRAFT, readingsDropped: true });
+	assert.match(
+		html,
+		/aria-label="Model:/,
+		"the readings still paint when there are readings to paint",
+	);
+	assert.ok(!html.includes(READINGS_DROPPED_NOTE));
 });
 
 test("a ladderless draft offers no effort control even where the model can be picked", () => {

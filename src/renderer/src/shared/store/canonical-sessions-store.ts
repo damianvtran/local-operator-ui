@@ -1042,6 +1042,18 @@ export const SEND_FAILURE_COPY = {
 	 * text is still in the box because the press never became a send.
 	 */
 	sendLock: "Your last message is still sending.",
+	/**
+	 * The queued press (task-17, U1/U2). A press made while the conversation's
+	 * read window is still open - the pane is loading its first page, or is
+	 * reconnecting with no page yet - is not refused: it is HELD and delivered
+	 * the moment the pane's first snapshot lands. This is the sentence that
+	 * makes the wait visible; without it the press had no answer at all until
+	 * the delivery (or until the stream gave up), which is the silence the UX
+	 * round measured as "sending blocked". Muted, like `sendLock`: nothing
+	 * failed, the message is with the app, and the delivery takes care of
+	 * itself - so it takes no controls and no error register.
+	 */
+	queuedSend: "Your message will send as soon as the conversation is ready.",
 	/** The same lock, with the question that explains it on screen. */
 	gateLock: "Answer the question above first.",
 	/*
