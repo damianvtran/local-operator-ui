@@ -945,6 +945,27 @@ const STAMP_BINDING_NOTES = [
 	"usageInFlightConvergenceNote",
 	"macNativeComponentsRestampNote",
 	"telemetrySwitchRestampNote",
+	/*
+	 * ROUND 1 OF THIS FIX'S OWN (#534's shell-regressions remediation), and it
+	 * belongs here for the list's own reason: the round moves BOTH trees this file
+	 * binds - `src/` for the merged sidebar's own `scroller` marker and `chats`
+	 * moved onto the list region it names, plus the measure and stop-control
+	 * call-site corrections, and `scripts/` for the two retired scenes, the walk's
+	 * recast from the unreachable `chats-only` mode and the rewritten suites - and
+	 * re-shoots no frame (six stories and their twelve frames leave instead), so a
+	 * reader is owed the two values it binds and the reason the stills did not
+	 * move.
+	 */
+	"shellRegressionsRestampNote",
+	/*
+	 * THE WALK'S FIRST FULL RUN'S OWN: the run found one stale pin in the driver (the
+	 * offer-frame count), so `scripts/` moved on its own and this note re-derives the pair
+	 * that fix ships - the same criterion the fold note above meets.
+	 */
+	"walkFirstRunRestampNote",
+	"scratchDriverRemovalRestampNote",
+	"foldSpliceLintRestampNote",
+	"foldOntoFdff0d84dNote",
 	// The seventh: `readReceiptRestampNote` states this file's own pair for the
 	// read-receipt branch, so it is held to that pair rather than read as history -
 	// the distinction `candidateMacArchRestampNote` above is in the list for.
@@ -1342,19 +1363,33 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"historySettingsRemovalSecondFoldNote",
 	/*
-	 * THIS BRANCH'S OWN: its subject IS this file's binding - the mesh set's frames
-	 * are new and both trees moved under them - so a reader is owed the check rather
-	 * than the prose.
+	 * AND THIS ROUND'S OWN, the newest top-level record on the branch: it states the pair
+	 * this remediation re-derives (`src/` for the pressed-row resolution and the outside-the-
+	 * list order, `scripts/` for the successor clause and the pressed-id reading) and the
+	 * walk's reading at the tip, so a later fold that started from main's copy would drop it
+	 * first.
 	 */
-	"meshTabRestampNote",
+	"uxRoundThreeSuccessorRestampNote",
 	/*
-	 * AND THE WINDOWS STAGER LANE'S OWN, carried through the fold onto
-	 * `origin/main` = `eeabb4cd9c`: the digest fix's subject IS this file's
-	 * binding - it moves `scripts/` only, the CI job that caught the failure is
-	 * outside both trees this file binds, and a build script paints no pixel - so
-	 * a reader is owed the pair and the reason no still is owed, the case
-	 * `streamRedeliveryRestampNote` states one entry over. Its fold note is in the
-	 * list for that fold's own reason.
+	 * AND THIS ROUND'S OWN, the newest top-level record on the branch: it states the pair
+	 * this remediation re-derives (`src/` for the caret hand-off and the field's entry into
+	 * the list, `scripts/` for the walk's two new clauses and the two pins) and the walk's
+	 * reading at the tip, so a later fold that started from main's copy would drop it first.
+	 */
+	"uxRoundTwoCaretScopeRestampNote",
+	/*
+	 * AND THE ROUND-2 ARCHIVE-RECAST REMEDIATION'S OWN: it states the pair this
+	 * round re-derives (`src/` for the sidebar's focus hand-off, `scripts/` for
+	 * the driver's arrival rig and the pin on that call) and the walk's reading
+	 * at the tip, so a reader is owed the check rather than the prose.
+	 */
+	"qaRoundTwoRecastRestampNote",
+	/*
+	 * AND THIS LANE'S OWN: the Windows stager's digest fix. Its subject IS this
+	 * file's binding - the change moves `scripts/` only, the CI job that caught
+	 * the failure is outside both trees this file binds, and a build script
+	 * paints no pixel - so a reader is owed the pair and the reason no still is
+	 * owed, the case `streamRedeliveryRestampNote` states one entry over.
 	 */
 	"windowsUvStagerRestampNote",
 	/*
@@ -1373,6 +1408,21 @@ const STAMP_BINDING_NOTES = [
 	 * `streamRedeliveryRestampNote` is in the list for.
 	 */
 	"task17RestampNote",
+	/*
+	 * AND THE DESKTOP-SUITE TICK WAIT'S OWN: its subject is this file's binding
+	 * too - it moves BOTH trees without taking a frame (nothing in it is
+	 * user-visible; the evidence is the isolated rig runs and the three
+	 * mutations its note names), so the reader is owed the pair AND the reason no
+	 * still was owed, for the same reason task-17's entry is here.
+	 */
+	"daemonObservationTickWaitRestampNote",
+	/*
+	 * AND THIS BRANCH'S OWN, the mesh tab's slice 1: its subject IS this file's
+	 * binding - the set is new, both trees moved under it, and the tab ships dark
+	 * behind a capability gate - so a reader is owed the check rather than the prose,
+	 * and a later fold that started from main's copy would drop it first.
+	 */
+	"meshTabRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1902,6 +1952,28 @@ const BRANCH_RECORDS = [
 	 */
 	"historySettingsRemovalSecondFoldNote",
 	/*
+	 * AND THIS ROUND'S OWN, the newest top-level record on the branch: it states the pair
+	 * this remediation re-derives (`src/` for the pressed-row resolution and the outside-the-
+	 * list order, `scripts/` for the successor clause and the pressed-id reading) and the
+	 * walk's reading at the tip, so a later fold that started from main's copy would drop it
+	 * first.
+	 */
+	"uxRoundThreeSuccessorRestampNote",
+	/*
+	 * AND THIS ROUND'S OWN, the newest top-level record on the branch: it states the pair
+	 * this remediation re-derives (`src/` for the caret hand-off and the field's entry into
+	 * the list, `scripts/` for the walk's two new clauses and the two pins) and the walk's
+	 * reading at the tip, so a later fold that started from main's copy would drop it first.
+	 */
+	"uxRoundTwoCaretScopeRestampNote",
+	/*
+	 * And the round-2 archive-recast remediation's own, the newest top-level
+	 * record on the branch: it states the pair the recast re-derives and the
+	 * walk's reading at the tip, so a later fold that started from main's copy
+	 * would drop it first - the same reason this list exists.
+	 */
+	"qaRoundTwoRecastRestampNote",
+	/*
 	 * And by this lane, whose notes are this branch's newest: the stager fix's
 	 * re-stamp and the fold that carries it state the pair this branch ships
 	 * and the runs that pin the failure it removes, so a later fold that
@@ -1922,6 +1994,13 @@ const BRANCH_RECORDS = [
 	 * same reason this list exists.
 	 */
 	"task17RestampNote",
+	/*
+	 * And by THIS lane, whose note is the newest top-level record on the branch:
+	 * it states the pair this tip ships, moves both trees, and takes no frame -
+	 * a fold that started from main's copy would drop it first, the same reason
+	 * this list exists.
+	 */
+	"daemonObservationTickWaitRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

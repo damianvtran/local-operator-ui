@@ -409,18 +409,19 @@ const ROW_RUNGS = [
  * about, where the row is the two controls and nothing between them.
  */
 /*
- * THE STOP'S WIDTH IS SYMBOLIC NOW, and that is the honest model rather than a
- * convenience (chat redesign §G3 / U3).
+ * THE STOP'S WIDTH IS SYMBOLIC AGAIN, and now for the mirror's sake rather
+ * than the label's (chat redesign §G3 / U3; operator report, 2026-09-26).
  *
- * The control was an icon button, so its box was a class the model could resolve
- * into pixels. It is LABELLED (a glyph, the word `Stop`, its `Esc` cap), so its
- * width is its own content and no class states it. What the row's invariants are
- * actually about survives the change untouched: the slot and the control occupy
- * the SAME box, one gap sits between consecutive children, and the settled row
- * has no middle child at all. Each of those is a relation between boxes rather
- * than a measurement, so they are asserted with the shared token below - and the
- * claim that the token is legitimate (the slot mirrors the control's markup) is
- * its own assertion, in `the held box is the Stop control's own markup`.
+ * The control is the icon-only red square it was before the redesign, whose
+ * box IS a class the model could resolve (`icon-sm`/`icon`, the same expression
+ * the dictation control beside it carries). The token stays anyway because the
+ * properties this file asserts are RELATIONS between the slot and the control -
+ * one box, one gap between consecutive children, no middle child once the
+ * window has passed - and those hold while the slot renders the control's own
+ * markup, which is its own assertion (`the held box is the Stop control's own
+ * markup`). A shared token is the one spelling that cannot drift by half a
+ * class when either side's padding is edited; the source pins below keep the
+ * markup itself in step.
  */
 const STOP_BOX = "the Stop control's own box";
 
@@ -506,27 +507,30 @@ test("the row's own controls and the held box, from the source", () => {
 		);
 		for (const part of [
 			/<Button/,
-			/variant="secondary"/,
-			/size=\{isSmallView \? "sm" : "md"\}/,
+			/variant="danger"/,
+			/size=\{isSmallView \? "icon-sm" : "icon"\}/,
 			/<Square aria-hidden="true" \/>/,
-			/Stop/,
-			/shortcut="Esc"/,
+			/aria-label="Stop"/,
+			/aria-keyshortcuts="Escape"/,
 		])
 			assert.match(
 				stopCluster,
 				part,
 				`the Stop control lost ${part} - the slot mirrors this markup, so the two boxes part company`,
 			);
+		/*
+		 * AND IT IS ICON-ONLY AGAIN (operator report, 2026-09-26): the visible word
+		 * and the `Esc` cap the redesign added are gone; the accessible name and the
+		 * key binding pinned above are what the label's removal had to keep.
+		 */
+		assert.doesNotMatch(stopCluster, /<KeyboardShortcut/);
+		assert.doesNotMatch(stopCluster, /Stop\s*<\/Button>/);
 		assert.match(
 			ROW_PARTS.slotElement,
 			/<Button/,
 			"the slot is not the control's own markup drawn invisible",
 		);
-		for (const part of [
-			/variant="secondary"/,
-			/<Square aria-hidden="true" \/>/,
-			/Stop/,
-		])
+		for (const part of [/variant="danger"/, /<Square aria-hidden="true" \/>/])
 			assert.match(ROW_PARTS.slotElement, part);
 		/*
 		 * The one difference between the two is what the invisibility is for: the
