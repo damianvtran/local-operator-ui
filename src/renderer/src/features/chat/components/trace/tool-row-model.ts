@@ -33,6 +33,13 @@ const IDENTITY_ARGS = new Set([
 	"name",
 	"target",
 	"message",
+	/*
+	 * The project tool's milestone op names its subject in `milestone` (the
+	 * milestone's name), beside the flag that decides add-or-remove; without it
+	 * the identity scan falls through to every scalar and the `remove` boolean
+	 * leaks into the object (`Removed milestone ship-v2 true`).
+	 */
+	"milestone",
 ]);
 
 /** The minted prefix every MCP tool name carries. */
@@ -525,7 +532,19 @@ export function toolOp(
 	for (const key of OP_ARG_KEYS) {
 		const value = args[key];
 		if (typeof value === "string" && value.trim()) {
-			return value.trim().toLowerCase();
+			const token = value.trim().toLowerCase();
+			/*
+			 * `project`'s milestone op removes the named milestone when its `remove`
+			 * flag is set (`project_tool.py`, ``milestone: remove the named
+			 * milestone``), and `Updated milestone` would be a false claim for a
+			 * removal - the same species as `Delegated list`. The flag composes the
+			 * token, so the verb table can say which way the call went; the flag is
+			 * the tool's own vocabulary, not a guess.
+			 */
+			if (token === "milestone" && args.remove === true) {
+				return "milestone-remove";
+			}
+			return token;
 		}
 	}
 	return "";
@@ -656,6 +675,14 @@ const TOOL_OP_VERBS: Record<string, Record<string, Omit<ToolVerb, "named">>> = {
 			running: "Unlinking session from",
 		},
 		milestone: { settled: "Updated milestone", running: "Updating milestone" },
+		// The remove flag's own verb, composed by `toolOp`: the milestone op
+		// UPDATES when the flag is off and REMOVES when it is on, and the row
+		// says which (operator report follow-up, 2026-09-27: a removal must not
+		// read as an update any more than a read may read as a delegation).
+		"milestone-remove": {
+			settled: "Removed milestone",
+			running: "Removing milestone",
+		},
 	},
 	todo: {
 		// `view` is a read; every other op changes the list, which is the claim

@@ -398,9 +398,9 @@ export const States: Story = {
 export const ToolOps: Story = {
 	render: () => (
 		<Frame
-			height={460}
+			height={570}
 			/*
-			 * OPEN, because the rows are the subject: twelve consecutive actions
+			 * OPEN, because the rows are the subject: fifteen consecutive actions
 			 * condense into one fold, and a frame of that header alone would be a
 			 * picture of the container rather than of the verbs this story exists
 			 * for. Opening leaves both halves in frame - the folded run's own
@@ -473,22 +473,49 @@ export const ToolOps: Story = {
 					durationS: 0.11,
 					output: "linked",
 				}),
+				// The operator's follow-up report (2026-09-27): a project VIEW rendered
+				// `Called project ui-update-account-robustness` under the generic
+				// wrench. Three rows pin the family: the view that was reported, the
+				// milestone op going the OTHER way (`remove`, which is why its verb is
+				// composed from the flag rather than the op alone), and the separate
+				// delete tool, whose name alone could not say it.
 				tool({
 					id: "op:9",
+					toolName: "project",
+					args: { op: "show", name: "ui-update-account-robustness" },
+					durationS: 0.09,
+					output: "active · est 5pt · 1 session",
+				}),
+				tool({
+					id: "op:10",
+					toolName: "project",
+					args: { op: "milestone", milestone: "ship-v2", remove: true },
+					durationS: 0.06,
+					output: "removed",
+				}),
+				tool({
+					id: "op:11",
+					toolName: "project_delete",
+					args: { name: "ui-update-account-robustness" },
+					durationS: 0.07,
+					output: "deleted",
+				}),
+				tool({
+					id: "op:12",
 					toolName: "network",
 					args: { action: "status", network: "" },
 					durationS: 0.3,
 					output: "home: 3 peers, 0 pending",
 				}),
 				tool({
-					id: "op:10",
+					id: "op:13",
 					toolName: "console",
 					args: { method: "create", command: "pnpm", args: ["test:desktop"] },
 					durationS: 1.2,
 					output: "con:1:9f2a",
 				}),
 				tool({
-					id: "op:11",
+					id: "op:14",
 					toolName: "lsp",
 					args: {
 						action: "definitions",
@@ -501,7 +528,7 @@ export const ToolOps: Story = {
 				// A live row, so the present-participle half of the op table is on the
 				// frame too: `Waiting for jobs`, with the job id as its object.
 				tool({
-					id: "op:12",
+					id: "op:15",
 					toolName: "wait",
 					args: { job_id: "9360", wait_ms: 600000 },
 					phase: "running",

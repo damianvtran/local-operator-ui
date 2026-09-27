@@ -26,6 +26,7 @@ import {
 	Download,
 	FilePen,
 	FileText,
+	FolderKanban,
 	FolderOpen,
 	Globe,
 	Inbox,
@@ -48,14 +49,26 @@ const MCP_PREFIX = "mcp__";
  * The table, in the TUI's own order so the two can be diffed by eye.
  *
  * `eval`, `hub`, `ask`, `team`, `lsp`, `wait`, `jobs`, `secret`, `network`,
- * `project`, `web_read` and the two `*_delete` tools are deliberately absent
- * from the TUI's table and take its default wrench; they are absent here for
- * the same reason. Giving them an icon would be a divergence rather than an
+ * `web_read` and the two `*_delete` tools are deliberately absent from the
+ * TUI's table and take its default wrench; they are absent here for the same
+ * reason. Giving them an icon would be a divergence rather than an
  * improvement — the operator's own screenshot shows a wrench beside `team`.
  * The one entry this table had fallen behind on is `console`, which the TUI
  * DOES map (`glyphs.py`: nf-fa-desktop, deliberately a different noun from
  * `bash`'s terminal - a terminal running inside the app rather than the shell
  * this process runs), so it is mirrored here as the desktop-shaped `Monitor`.
+ *
+ * `project` was on the absent list by the same rule, and the operator's
+ * 2026-09-27 report is what changed its answer: a project row under a wrench
+ * is indistinguishable from a tool nobody knows. The TUI is gaining the same
+ * meaning in the same window - the sibling coder's `feat/tui-project-line-15c4`
+ * branch in `damianvtran/local-operator` adds the project line to
+ * `local_operator/tui/glyphs.py` (PR pending at the time of writing; if it has
+ * landed by the review round, this comment should name it by number and the
+ * remediation round owns that edit). The icon chosen is the lucide board mark
+ * of the same meaning - a project as a board of tracks - NOT `FolderOpen`
+ * (`glob`'s folder) and NOT `ListChecks` (`todo`'s list), the two it would be
+ * a re-spelling of.
  */
 const TOOL_ICONS: Record<string, LucideIcon> = {
 	bash: Terminal,
@@ -70,6 +83,7 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
 	read_variable: Tag,
 	browser: Globe,
 	console: Monitor,
+	project: FolderKanban,
 	web_search: Globe,
 	web_fetch: Download,
 	task: Users,
