@@ -657,3 +657,92 @@ export function consoleInterpreter(consolePath: string): string {
 		"Cannot safely own this backend launcher; use a directly paired external backend",
 	);
 }
+
+/**
+ * How long a resolved global launcher gets to answer `--version`.
+ *
+ * Not the serve probe's 30 s: that ceiling exists because a COLD first import of
+ * `local_operator` can exceed 5 s on a loaded machine (three launches did, which
+ * is why the ceiling moved), and a probe that inherits it makes a hung launcher
+ * cost the caller half a minute before it can do anything else. 15 s is the
+ * middle: measured on this fleet-loaded host, the operator's own
+ * `~/.local/bin/local-operator --version` answers in 1.96 s warm-cold (0.33 s on
+ * an idle box), so the ceiling is ~7x the slowest reading and still short enough
+ * that a launcher which never answers is reported rather than waited on.
+ */
+export const LAUNCHER_PROBE_TIMEOUT_MS = 15_000;
+
+/**
+ * What a resolved global launcher turned out to be once something ran it.
+ *
+ * WHY A SPAWN AND NOT A FILE CHECK. `resolveGlobalConsoleScript` answers "a file
+ * is there", which is a different question from "this install can serve": the
+ * measured failure is a launcher whose shebang names an interpreter that no
+ * longer exists (a tool environment deleted under the shim, a pruned install),
+ * and the second is a launcher whose interpreter starts but cannot import
+ * `local_operator` (the package uninstalled under it). Both look identical to
+ * `existsSync`, and both are reported by running it.
+ *
+ * WHAT `usable` MEANS: the launcher's own `--version` exited 0. That is the whole
+ * of the claim - its preamble names an interpreter that exists, the interpreter
+ * starts, and the package imports - and it is deliberately NOT a version
+ * comparison. An old-but-working install is the operator's own choice and the
+ * update path's subject (`classifyGlobalInstall`, `backend-version-drift`), and
+ * disowning one here would be this probe deciding something it cannot see.
+ *
+ * `interpreter` is null on Windows, where there is no shebang to read and the
+ * shim is a PE launcher rather than a script; the Windows interpreter claims are
+ * resolved by `windowsInterpreterCandidates` and admitted by the identity probe,
+ * which is where that platform's own evidence lives (see `ownedServeLaunch`).
+ * `version` is the launcher's first line of output, reported rather than
+ * interpreted, so a log line can name WHICH install the app is running on.
+ */
+export type LauncherUsability =
+	| { usable: true; interpreter: string | null; version: string | null }
+	| { usable: false; interpreter: string | null; reason: string };
+
+/**
+ * Run a resolved global launcher far enough to know whether this app may use it
+ * as its backend - the gate that keeps a broken install from suppressing
+ * provisioning.
+ *
+ * Never throws: a caller about to decide whether to prepare a whole managed
+ * environment cannot be left holding a rejection for a question with an obvious
+ * negative answer.
+ */
+export async function probeGlobalLauncher(
+	consolePath: string,
+	env: NodeJS.ProcessEnv,
+	platform = process.platform,
+	timeoutMs = LAUNCHER_PROBE_TIMEOUT_MS,
+): Promise<LauncherUsability> {
+	let interpreter: string | null = null;
+	if (platform !== "win32") {
+		try {
+			interpreter = consoleInterpreter(consolePath);
+		} catch (error) {
+			return {
+				usable: false,
+				interpreter: null,
+				reason: `it is not a local-operator launcher this app can run (${describe(error)})`,
+			};
+		}
+		if (!existsSync(interpreter)) {
+			return {
+				usable: false,
+				interpreter,
+				reason: `the interpreter its own preamble names, ${interpreter}, no longer exists`,
+			};
+		}
+	}
+	try {
+		const stdout = await runBounded(consolePath, ["--version"], env, {
+			...DEFAULT_BUDGET,
+			timeoutMs,
+		});
+		const first = stdout.trim().split(NEWLINES)[0]?.trim() ?? "";
+		return { usable: true, interpreter, version: first || null };
+	} catch (error) {
+		return { usable: false, interpreter, reason: describe(error) };
+	}
+}
