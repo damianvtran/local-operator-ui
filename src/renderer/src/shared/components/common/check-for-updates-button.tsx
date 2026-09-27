@@ -7,6 +7,8 @@ import {
 } from "@shared/store/deferred-updates-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
 import { updateMessageOf } from "@shared/utils/update-error-copy";
+import { useElapsedSince } from "@shared/hooks/use-elapsed-since";
+import { SLOW_WAIT_HINT_MS } from "@shared/utils/update-slow-wait";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
@@ -17,6 +19,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
  */
 export const CheckForUpdatesButton = ({
 	appVersion = null,
+	slowWaitHintMs,
 }: {
 	/**
 	 * The version NOW running, as the card's own "Application version" row reads it.
@@ -33,10 +36,28 @@ export const CheckForUpdatesButton = ({
 	 * then names the target and claims nothing about what is running.
 	 */
 	appVersion?: string | null;
+	/**
+	 * How long a check may run before this card adds a status line (UX U1).
+	 *
+	 * The settings surface watched "Checking..." for the full 94.0 s with nothing
+	 * else on screen; the line appears only once the wait has outlasted the delay.
+	 * App-omitted, so the shipped delay is `SLOW_WAIT_HINT_MS`; a test or story
+	 * narrows it.
+	 */
+	slowWaitHintMs?: number;
 }) => {
 	/** Where a user gets a copy that installs by hand. */
 	const DOWNLOAD_PAGE = "https://local-operator.com/download";
 	const [checking, setChecking] = useState(false);
+	/*
+	 * The still-working line's clock (UX U1). The card's pair is in
+	 * `update-notification.tsx`; both narrow the same shipped delay through the
+	 * same override prop when a test or story wants the line without the wait.
+	 */
+	const slowCheck = useElapsedSince(
+		checking,
+		slowWaitHintMs ?? SLOW_WAIT_HINT_MS,
+	);
 	const [snackbarOpen, setSnackbarOpen] = useState(false);
 	const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
 	/**
@@ -491,6 +512,18 @@ export const CheckForUpdatesButton = ({
 				{checking ? <Spinner size="sm" /> : null}
 				{checking ? "Checking..." : "Check for updates"}
 			</Button>
+			{/*
+			 * THE STILL-WORKING LINE (UX U1), under the control whose caption it
+			 * qualifies: "Checking..." alone was the entire surface for the full
+			 * ladder. Copy only, so the button's own states are untouched.
+			 */}
+			{slowCheck && (
+				<p className="mt-2 text-meta text-ink-muted">
+					Still checking. A slow or stalled connection can hold this for about a
+					minute and a half - the app stops waiting on its own.
+				</p>
+			)}
+
 
 			{/* Manual update instructions */}
 			{manualUpdateInfo && (

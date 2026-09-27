@@ -335,50 +335,32 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const ButtonDefault: Story = {
-	render: () => {
-		// Create a component that ensures no snackbar is shown initially
-		const DefaultComponent = () => {
-			const [checking, setChecking] = useState(false);
-
-			// Override the checkForUpdates function to simulate the flow
-			useEffect(() => {
-				// Replace with a function that simulates checking but doesn't show any snackbar
-				window.api.updater.checkForUpdates = async () => {
-					setChecking(true);
-
-					// Simulate a delay for checking
-					setTimeout(() => {
-						setChecking(false);
-					}, 500);
-
-					return Promise.resolve({
-						updateInfo: mockUpdateInfo,
-						cancellationToken: {},
-					});
-				};
-
-				return () => {
-					// No cleanup needed for the story
-				};
-			}, []);
-
-			return (
-				<div className="relative min-h-25">
-					<Button
-						variant="outline"
-						onClick={() => window.api.updater.checkForUpdates()}
-						disabled={checking}
-					>
-						{checking ? <Spinner size="sm" /> : null}
-						{checking ? "Checking..." : "Check for updates"}
-					</Button>
-				</div>
+/**
+ * The shipped button, held in its busy state.
+ *
+ * Renders the real component rather than a copy of its markup (review U16's
+ * rule): the check never answers, and the still-working line (UX U1) appears
+ * through the narrowed delay. The press is dispatched to the real control once
+ * it is mounted, and the held call lives on `checkForAllUpdates` because that
+ * is the request this component's own check makes.
+ */
+function HeldCheckButton() {
+	useEffect(() => {
+		window.api.updater.checkForAllUpdates = () =>
+			new Promise<never>(() => {});
+		const timer = setTimeout(() => {
+			const control = Array.from(document.querySelectorAll("button")).find(
+				(button) => button.textContent === "Check for updates",
 			);
-		};
+			control?.click();
+		}, 0);
+		return () => clearTimeout(timer);
+	}, []);
+	return <CheckForUpdatesButton slowWaitHintMs={1} />;
+}
 
-		return <DefaultComponent />;
-	},
+export const ButtonDefault: Story = {
+	render: () => <HeldCheckButton />,
 };
 
 /**
