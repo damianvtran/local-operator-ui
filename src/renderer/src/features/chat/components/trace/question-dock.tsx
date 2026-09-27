@@ -71,7 +71,7 @@ import { MessageCircleQuestion } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { PendingDesktopGate } from "../../../../../../shared/desktop-session-contract";
 import { APPROVAL_OPTIONS, gateIsSecret } from "../../ask-answer";
-import { focusComposer } from "../../composer-field";
+import { composerField, focusComposer } from "../../composer-field";
 import { MarkdownRenderer } from "../markdown-renderer";
 import { AskOptions } from "./ask-options";
 
@@ -179,13 +179,18 @@ export const questionDockHint = (
 	 * instruct a key that cannot send - the same class the approval arm's held
 	 * sentence exists for, and `ask-options.test.mjs` pins the pair beside each
 	 * other. What remains true in the held state is the reason (the answer may
-	 * have landed, so nothing can send again) and the one working key, `Esc` -
-	 * the composer cannot be named as an exit: it refuses input while this
-	 * question waits.
+	 * have landed, so nothing can send again) and the one working key, `Esc`,
+	 * now SCOPED to where it works: a held outcome hands the card focus when the
+	 * press had parked it in the composer (the held hand-off below), but a reader
+	 * who has moved on would meet a bare "Esc hides" that does nothing from where
+	 * they are - so the clause is "Esc in the card hides it", the same scoping the
+	 * approval arm gives its message-box clause (UX round 2, U5). The composer
+	 * still cannot be named as an exit: it refuses input while this question
+	 * waits.
 	 */
 	if (gate.kind === "ask" && gateIsSecret(gate))
 		return held
-			? `${prefix}Held while this answer's fate is unknown — it may have landed, so nothing can send again · Esc hides`
+			? `${prefix}Held while this answer's fate is unknown — it may have landed, so nothing can send again · Esc in the card hides it`
 			: `${prefix}Type or paste the secret above · Enter sends · Esc hides`;
 	if (gate.options.length === 0) return `${prefix}Type your answer below.`;
 	const digits =
@@ -329,7 +334,9 @@ export const QuestionDock = ({
 	 * focus fell to `document.body` on every secret Show — the pill button that
 	 * was pressed had just unmounted (UX round 1, U4; the restore effect in
 	 * `chat-page.tsx` reads the same pair). Collapsing hands focus to the
-	 * composer (below), which is where the reader goes next.
+	 * composer (below), which is where the reader goes next. A HELD card has no
+	 * live control for this query to find at all; its landing is the held
+	 * hand-off below, which owns every focus move that state needs.
 	 */
 	const [expandedByPress, setExpandedByPress] = useState(false);
 	useEffect(() => {
@@ -403,6 +410,38 @@ export const QuestionDock = ({
 		Boolean(answer?.sending) ||
 		(answer !== null && !secretReleased);
 	const held = Boolean(answer?.refused) && !secretReleased;
+	const secretHeld = held && gateIsSecret(gate);
+	/*
+	 * A HELD SECRET CARD TAKES FOCUS WHEN ITS OUTCOME LANDS, AND WHEN IT IS
+	 * RE-SHOWN, from the place the press parked it (UX round 2, U5).
+	 *
+	 * Submitting parks focus in the composer, and a held outcome arrives later
+	 * with every control on the card disabled - so the card contributes no Tab
+	 * stop, the reader's focus sits where the hint's "Esc" did not reach
+	 * (measured: Escape did nothing until a click landed inside the card), and a
+	 * keyboard-only reader had no path to the card at all. The card IS the one
+	 * control that state offers, so it is handed the focus the same way a gate's
+	 * advance hands focus to its question (`chat-page.tsx`'s restore effect), and
+	 * "Esc in the card hides it" is then true from where the reader stands. The
+	 * collapse flip is why this effect, and not the expand query above, also
+	 * lands the focus after Show: a held card has no live control for that query
+	 * to find, and the pill that was pressed unmounts under the pointer.
+	 *
+	 * Scoped to the parked case on purpose: only nothing/`document.body` (a
+	 * story, a rig) and the composer the press parked it in are moved. A reader
+	 * who has deliberately focused anything else - the sidebar, a transcript
+	 * control - keeps it; this hand-off never steals a taken focus.
+	 */
+	useEffect(() => {
+		if (!secretHeld || collapsed) return;
+		const active = document.activeElement;
+		const parked =
+			active === null ||
+			active === document.body ||
+			(composerField() !== null && active === composerField());
+		if (!parked) return;
+		cardRef.current?.focus();
+	}, [secretHeld, collapsed]);
 	/*
 	 * The rows this card draws: an ask's model-authored set, or the client's own
 	 * approval pair (main's arm, carried into this carrier by the fold). ONE

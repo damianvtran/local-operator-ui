@@ -465,7 +465,6 @@ type MessageInputProps = {
 	 */
 	awaitingAnswer?: boolean;
 	/**
-	/**
 	 * A failed message's own `Send again` / `Edit` controls are on screen in this
 	 * pane's transcript, which a keyboard reader in this box reaches with
 	 * Shift+Tab (UX round 1, U3).

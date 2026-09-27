@@ -107,6 +107,7 @@ const bundle = await build({
 		contents: [
 			'export { QuestionDock } from "./src/renderer/src/features/chat/components/trace/question-dock";',
 			'export { answerGateSecret, createSendLock } from "./src/renderer/src/features/chat/ask-answer";',
+			'export { registerComposerFocus } from "./src/renderer/src/features/chat/composer-field";',
 			'export { desktopRequestSchema } from "./src/shared/desktop-contract";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -142,8 +143,13 @@ const React = await import("react");
 const { createRoot } = await import("react-dom/client");
 const { act } = React;
 const h = React.createElement;
-const { QuestionDock, answerGateSecret, createSendLock, desktopRequestSchema } =
-	await import(bundlePath.href);
+const {
+	QuestionDock,
+	answerGateSecret,
+	createSendLock,
+	desktopRequestSchema,
+	registerComposerFocus,
+} = await import(bundlePath.href);
 // Unlinked as soon as the graph is evaluated, so no build artifact survives a
 // crash mid-run and none can be committed by accident.
 await unlink(bundlePath);
@@ -431,6 +437,156 @@ test("a refusal with NO classification keeps the hold (the conservative default)
 		document.body.textContent ?? "",
 		/Held while this answer's fate is unknown/,
 	);
+});
+
+test("a held outcome hands the parked focus to the card, where Esc works", async () => {
+	/*
+	 * UX ROUND 2, U5. Submitting parks focus in the composer; the held outcome
+	 * arrives later with every control on the card disabled (no Tab stop, nothing
+	 * to click into), so the hint's "Esc" was unreachable from where the reader
+	 * stood and a keyboard-only reader could not reach the card at all. The card
+	 * is handed the focus the press had parked - only then: a focus the reader
+	 * has since taken elsewhere is never stolen (the next test).
+	 *
+	 * The asserts compare node IDENTITIES as booleans (`assert.ok(a === b)`):
+	 * `assert.equal` on two DOM nodes serialises them on failure, and a jsdom
+	 * node's graph took this runner past its heap limit - a failing assert must
+	 * report, not abort.
+	 */
+	await render({
+		gate: secretGate(),
+		onAnswer: () => {},
+		onAnswerSecret: () => {},
+	});
+	const composer = document.createElement("textarea");
+	composer.setAttribute("aria-label", "Message");
+	document.body.appendChild(composer);
+	const unregister = registerComposerFocus(
+		() => composer.focus(),
+		() => composer,
+	);
+	composer.focus();
+	assert.ok(document.activeElement === composer, "the press's parked focus");
+
+	await render({
+		gate: secretGate(),
+		onAnswer: () => {},
+		onAnswerSecret: () => {},
+		answer: {
+			sending: false,
+			refused:
+				"Whether your answer landed is not knowable. The request could not be completed.",
+			retryable: false,
+		},
+	});
+	const card = document.querySelector(
+		'[data-lo-question-dock="expanded"] section',
+	);
+	assert.ok(card, "the held card is up");
+	assert.ok(
+		document.activeElement === card,
+		"the held outcome hands the parked focus to the card",
+	);
+	await act(async () => {
+		card.dispatchEvent(
+			new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+		);
+	});
+	await settle();
+	assert.ok(
+		document.querySelector('[data-lo-question-dock="collapsed"]'),
+		"Esc from the handed focus hides the card",
+	);
+	/* Re-show so this test leaves the dock EXPANDED: the collapse state lives in
+	   the dock across re-renders while the key is unchanged, and every test after
+	   this one answers the same fixture gate. */
+	const show = document.querySelector(
+		'[aria-label="Show the agent\'s question"]',
+	);
+	assert.ok(show, "the pill is up");
+	await act(async () => {
+		show.click();
+	});
+	await settle();
+	assert.ok(
+		document.querySelector('[data-lo-question-dock="expanded"]'),
+		"the card is back, ready for the next test",
+	);
+	unregister();
+	composer.remove();
+});
+
+test("the held hand-off never steals a focus taken elsewhere", async () => {
+	/* The scope the dock states: only nothing/`document.body` and the composer the
+	   press parked it in are moved. A reader who has deliberately focused another
+	   control keeps it (UX round 2, U5's guard). */
+	await render({
+		gate: secretGate(),
+		onAnswer: () => {},
+		onAnswerSecret: () => {},
+	});
+	const outside = document.createElement("button");
+	document.body.appendChild(outside);
+	outside.focus();
+	await render({
+		gate: secretGate(),
+		onAnswer: () => {},
+		onAnswerSecret: () => {},
+		answer: {
+			sending: false,
+			refused: "Whether your answer landed is not knowable.",
+			retryable: false,
+		},
+	});
+	assert.ok(document.activeElement === outside, "a taken focus is not moved");
+	outside.remove();
+});
+
+test("Show on a held card lands focus on the card itself", async () => {
+	/* The re-expand query hands focus to a live option or the masked field, and a
+	   held card draws NEITHER - so the landing is the held hand-off's business
+	   (the `secretHeld` / `collapsed` effect on the dock), which fires when the
+	   collapsed flip re-renders: the card takes the focus that would otherwise
+	   fall to `document.body` (UX round 2, U5). */
+	await render({
+		gate: secretGate(),
+		onAnswer: () => {},
+		onAnswerSecret: () => {},
+	});
+	await render({
+		gate: secretGate(),
+		onAnswer: () => {},
+		onAnswerSecret: () => {},
+		answer: {
+			sending: false,
+			refused:
+				"Whether your answer landed is not knowable. The request could not be completed.",
+			retryable: false,
+		},
+	});
+	const card = document.querySelector(
+		'[data-lo-question-dock="expanded"] section',
+	);
+	assert.ok(card, "the held card is expanded");
+	await act(async () => {
+		card.dispatchEvent(
+			new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+		);
+	});
+	await settle();
+	const show = document.querySelector(
+		'[aria-label="Show the agent\'s question"]',
+	);
+	assert.ok(show, "the pill is up");
+	await act(async () => {
+		show.click();
+	});
+	await settle();
+	const again = document.querySelector(
+		'[data-lo-question-dock="expanded"] section',
+	);
+	assert.ok(again, "the card came back");
+	assert.ok(document.activeElement === again, "Show hands the held card focus");
 });
 
 test("Esc and Show keep the typed secret, and Show hands focus back to the field", async () => {
