@@ -4383,8 +4383,19 @@ export const STORIES = [
 	 */
 	["onboarding-providersetup--in-dialog", 1280, 900],
 	["onboarding-providersetup--in-dialog", 800, 600],
+	/*
+	 * The dialog's body parked at the end of its own list -- the state where "the
+	 * field scrolls away with the content" is visible rather than argued. IT
+	 * BELONGS TO THE EXPANDED DISCLOSURE now, and that is a correction rather than
+	 * a move for tidiness: #436 captured this on the COLLAPSED step, whose 18-card
+	 * grid overflowed the body, and #494's grouped list fits the collapsed step
+	 * without scrolling at all (`in-dialog` measures body `638x380`, overflow 0),
+	 * so `scrollToEnd` matched a box that does not scroll and the entry failed the
+	 * run with "none of them scrolls". The claim survives where the scroll does:
+	 * the expanded panel overflows by ~645px.
+	 */
 	[
-		"onboarding-providersetup--in-dialog",
+		"onboarding-providersetup--in-dialog-more-open",
 		1280,
 		900,
 		{
@@ -4392,6 +4403,22 @@ export const STORIES = [
 			scrollToEnd: "[role=dialog] > div:nth-of-type(2)",
 		},
 	],
+	/*
+	 * THE EXPANDED DISCLOSURE, which had no frame at all until design round 1
+	 * (D1) found that fact to be why this surface shipped a defect: the four
+	 * suggested rows were listed a second time inside their own groups, and every
+	 * one of the eight stories this set photographed showed the step COLLAPSED, so
+	 * the duplication was never in front of a reviewer. The story's own `play`
+	 * presses "More providers", so the frame is of the state a reader reaches by
+	 * the same press.
+	 */
+	["onboarding-providersetup--in-dialog-more-open", 1280, 900],
+	/*
+	 * ...and the same state with a query whose only match is in the shortcut
+	 * block, because that panel body is empty for a DIFFERENT reason and the
+	 * sentence it carries is the whole distinction (code round 1 P2 / QA-1).
+	 */
+	["onboarding-providersetup--in-dialog-more-open-query", 1280, 900],
 	[
 		"onboarding-providersetup--settings-column",
 		1000,
@@ -4403,12 +4430,17 @@ export const STORIES = [
 		1000,
 		1100,
 		/*
-		 * `> button` because the hook is on the ROW: the element a keyboard user
-		 * reaches is the card inside it, which is what `tabTo` asserts.
+		 * A DESCENDANT button, not a child: the hook is on the whole ROW (the
+		 * `<li>`), and the control a keyboard user reaches is the action button
+		 * inside it. `> button` was right for #436's card grid, whose card WAS the
+		 * button; #494's list nests the action one level deeper, so that selector
+		 * matched nothing and `tabTo` -- which fails the run when its selector never
+		 * takes focus -- made this surface unsweepable (code round 1, P1's evidence
+		 * sibling; found while adding the frame above).
 		 */
 		{
 			dir: "card-focused",
-			tabTo: '[data-provider-id="radient"] > button',
+			tabTo: '[data-provider-id="radient"] button',
 		},
 	],
 

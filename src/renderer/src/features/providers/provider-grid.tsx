@@ -556,9 +556,28 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 						<span className="flex flex-wrap items-baseline gap-x-2 text-body text-ink">
 							{brandOf(provider)}
 							{isRecommended ? (
-								<span className="font-medium text-ink text-meta">
-									Recommended
-								</span>
+								<>
+									{/*
+									 * The `·` is what keeps the row from reading as one string: the brand
+									 * and the cue share a baseline, a size and an ink, so without a
+									 * separator the line reads as "Radient Recommended". #436's design
+									 * round 1 recorded exactly that (D5) and remedied it with the app's
+									 * own separator, taken from the transcript's
+									 * `never sent · N composed`; #494's rebuild of this list dropped it and
+									 * nothing in that change records the substitution, so it is restored
+									 * here as the same two nodes. `aria-hidden` because a screen reader
+									 * announcing a punctuation mark would read it as content.
+									 */}
+									<span
+										aria-hidden="true"
+										className="shrink-0 text-ink-dim text-meta"
+									>
+										·
+									</span>
+									<span className="shrink-0 font-medium text-ink text-meta">
+										Recommended
+									</span>
+								</>
 							) : null}
 						</span>
 						<span className="text-ink-muted text-meta">
@@ -858,26 +877,38 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 	);
 
 	/*
+	 * The two sentences this panel can carry INSTEAD of a group list.
+	 *
+	 * There are two because "nothing here" has two different meanings on the
+	 * onboarding shape, and saying the wrong one is a lie: a query that matches no
+	 * provider anywhere means the search failed, while a query whose every match is
+	 * in the shortcut block ABOVE means the panel is simply empty of the rest --
+	 * and the second state used to render as a search field over blank space, which
+	 * is the shape the hidden-trigger rule below exists to avoid (code round 1,
+	 * P2 / QA-1).
+	 */
+	const NO_MATCH_SENTENCE = "No providers match this search.";
+	const MATCHES_ABOVE_SENTENCE =
+		"The matching providers are in the suggested rows above.";
+
+	/*
 	 * The grouped blocks for ONE bucket set, so the two surfaces can hand this
 	 * function different buckets without either restating the markup.
 	 *
-	 * `showEmptyState` is the caller's answer rather than `nothingMatches` read
-	 * here, because what "nothing" means differs by surface: onboarding's shape
-	 * paints a shortcut block ABOVE these groups, so a query that only matches a
-	 * suggested row has found something and must not be told otherwise (see the
-	 * `featuredOnly` branch).
+	 * `sentence` is the caller's answer rather than a boolean read here, because
+	 * which sentence is true differs by surface: onboarding's shape paints a
+	 * shortcut block ABOVE these groups, so a query that only matches a suggested
+	 * row has found something and must not be told otherwise (see the `featuredOnly`
+	 * branch). Both sentences keep the way back, because a reader who cleared a
+	 * query is about to type another (UX round 1, U4).
 	 */
 	const blocksFor = (
 		buckets: Record<ProviderGroup, DesktopProvider[]>,
-		showEmptyState: boolean,
+		sentence: string | null,
 	) =>
-		showEmptyState ? (
+		sentence ? (
 			<div className="flex flex-col items-center gap-2 py-6 text-center">
-				<p className="text-body-sm text-ink-muted">
-					No providers match this search.
-				</p>
-				{/* Clear search restores the list and hands the field back: a reader
-				    who cleared a query is about to type another (UX round 1, U4). */}
+				<p className="text-body-sm text-ink-muted">{sentence}</p>
 				<Button
 					variant="secondary"
 					size="sm"
@@ -903,7 +934,10 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 			)
 		);
 
-	const groupedBlocks = blocksFor(groups, nothingMatches);
+	const groupedBlocks = blocksFor(
+		groups,
+		nothingMatches ? NO_MATCH_SENTENCE : null,
+	);
 
 	if (featuredOnly) {
 		/*
@@ -965,6 +999,21 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 		 * trigger mid-search would take away the reader's own way back.
 		 */
 		const searching = query.trim().length > 0;
+		/*
+		 * Which sentence the panel owes the reader when it has no group list, and the
+		 * one state that must NOT get one: `rad` narrows the shortcut block to
+		 * Radient and leaves the groups empty, so the panel would otherwise be a
+		 * search field over blank space (code round 1, P2 / QA-1). `nothingMatches`
+		 * speaks about the WHOLE census, so it is the reader's query that failed only
+		 * when it is true.
+		 */
+		const emptyBody = searching
+			? nothingMatches
+				? NO_MATCH_SENTENCE
+				: restCount === 0
+					? MATCHES_ABOVE_SENTENCE
+					: null
+			: null;
 		return (
 			<div
 				ref={gridRef}
@@ -986,10 +1035,7 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 					>
 						<div className="flex flex-col gap-4 pt-3">
 							{searchField}
-							{/* `nothingMatches` still speaks about the WHOLE census, and the
-							    shortcut block above can be the thing that matched: the empty
-							    sentence is only true when nothing anywhere did. */}
-							{blocksFor(rest, searching && nothingMatches)}
+							{blocksFor(rest, emptyBody)}
 						</div>
 					</Disclosure>
 				) : null}

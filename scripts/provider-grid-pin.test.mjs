@@ -400,8 +400,17 @@ test("a 'More providers' trigger with nothing behind it is not rendered", () => 
 	/*
 	 * A census that is only the shortcut rows has no "rest", and an open panel
 	 * whose whole content is a search field over an empty list is the shape that
-	 * reads as broken. Hiding the trigger is also what keeps the field out of a
-	 * four-row screen, where scanning costs less than typing.
+	 * reads as broken.
+	 *
+	 * TWO CASES REACH THIS RULE, and the second is why it is stated in terms of
+	 * the rest rather than of the census size (code round 1, P3): a short census
+	 * (the four-row screen, where scanning costs less than typing), and a LARGE
+	 * census whose every non-featured row is already connected -- a returning
+	 * user's fifteen-row list. In the second the rule hides no row: all of them
+	 * are on screen, in the Connected block, and `addRowsByGroup` has already
+	 * excluded them, so a trigger here would open onto nothing rather than onto
+	 * something. That is the difference from the threshold gate this field used to
+	 * carry, which hid rows a reader was looking for.
 	 */
 	const html = renderFeatured(census());
 	assert.equal(html.split("More providers").length - 1, 0);
