@@ -5643,6 +5643,38 @@ export const STORIES = [
 	["chat-slash-highlight--clipped-boundary", 900, 240],
 	["chat-slash-highlight--geometry", 1000, 2600],
 	["chat-slash-highlight--scrolled-parity", 1000, 1000],
+	/*
+	 * THE NOTICE-BAND FAMILY'S OWN SURFACES (fix/banner-warn-error-consistency-7e4c).
+	 *
+	 * The twelve-theme sweep is what makes a frame comparable with the rest of the
+	 * set, and the change these belong to moves the band grammar, the severity
+	 * glyphs and the co-render rule on BOTH surfaces at once - so the states a
+	 * reader would check are registered rather than left to a two-palette still:
+	 * the refused band at the width where its sentence wraps; the warning pill;
+	 * the four composed stacks that show one incident as ONE band where it used to
+	 * be two (and the blessed two-band pair, so that ruling stays visible); and
+	 * the compatibility banner's own states, which had no story before this change
+	 * and therefore no frame at any theme.
+	 *
+	 * The viewports are tight for the uniformity ceiling's sake - a short band on a
+	 * tall page is one colour covering most of the frame, which `check-evidence`
+	 * rejects (`docs/evidence/chat-status-bands/README.md` carries the reasoning
+	 * and the pair of stills).
+	 */
+	["chat-chat-status-strip--narrow", 640, 340],
+	["chat-chat-status-strip--dismissed-warning", 860, 260],
+	["chat-chat-status-strip--composed-refused", 860, 320],
+	["chat-chat-status-strip--composed-successor", 860, 320],
+	["chat-chat-status-strip--composed-degraded-successor", 860, 320],
+	["chat-chat-status-strip--composed-server-gone", 860, 320],
+	["chat-backend-compatibility-banner--successor", 860, 240],
+	["chat-backend-compatibility-banner--governed-elsewhere", 860, 240],
+	["chat-backend-compatibility-banner--pre-handshake", 860, 240],
+	["chat-backend-compatibility-banner--credential-refused", 860, 240],
+	["chat-backend-compatibility-banner--unpaired", 860, 240],
+	["chat-backend-compatibility-banner--unanswered-probe", 860, 240],
+	["chat-backend-compatibility-banner--update-failed", 860, 240],
+	["chat-backend-compatibility-banner--double-control", 860, 240],
 ];
 
 /**
