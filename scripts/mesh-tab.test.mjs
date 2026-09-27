@@ -48,6 +48,9 @@ const bundle = await build({
 			export * from "./src/renderer/src/features/mesh/mesh-types";
 			export * from "./src/renderer/src/features/mesh/mesh-graph";
 			export * from "./src/renderer/src/features/mesh/mesh-positions";
+			export * from "./src/renderer/src/features/mesh/mesh-sessions";
+			export * from "./src/renderer/src/features/mesh/mesh-drop";
+			export * from "./src/renderer/src/features/mesh/mesh-drag";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -61,6 +64,30 @@ const bundle = await build({
 
 const mesh = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
+
+/*
+ * A SECOND BUNDLE, FOR THE CONTRACT ITSELF. The deadline arithmetic and the endpoint
+ * mapping are decisions of the shared contract rather than of the feature, and they
+ * are the ones a front end can get wrong invisibly: a transfer left on the 20 s
+ * control budget gives up before the route answers, and a wrong path or body key is a
+ * 422 that no frame would show.
+ */
+const contractBundle = await build({
+	stdin: {
+		contents: `export * from "./src/shared/desktop-contract";`,
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	mainFields: ["module", "main"],
+	conditions: ["import"],
+	write: false,
+});
+
+const contractRuntime = await import(
+	`data:text/javascript;base64,${Buffer.from(contractBundle.outputFiles[0].text).toString("base64")}`
 );
 
 const {
@@ -77,6 +104,20 @@ const {
 	zoomAbout,
 	NODE_HEIGHT,
 	ROW_GAP,
+	sessionRows,
+	transferReceipt,
+	meshRefusal,
+	CHIP_LIMIT,
+	sessionsByDevice,
+	ownerOf,
+	deviceSessionTotal,
+	resolveDrop,
+	planConfirm,
+	hoverSentence,
+	DRAG_THRESHOLD_PX,
+	IDLE_DRAG,
+	dragReducer,
+	draggedSessionId,
 } = mesh;
 
 /* ------------------------------------------------------------------ fixtures */
@@ -813,28 +854,107 @@ test("the two mesh reads are reads: GET, long-budget, and classified as read-onl
 	);
 });
 
-test("this slice ships no mesh mutation, and the absence is deliberate", () => {
+test("the three mesh writes exist, and each is gated on the key that owns it", () => {
 	const contract = source("src/shared/desktop-contract.ts");
 	for (const op of [
 		"sessions.transfer",
 		"networks.invite",
 		"networks.member.remove",
 	]) {
-		assert.doesNotMatch(
+		assert.match(
 			contract,
 			new RegExp(`z\\.literal\\("${op.replace(".", "\\.")}"\\)`),
-			`${op} is a slice-4/5 surface: a request schema entry with no caller advertises a capability this app cannot exercise`,
+			`${op} has a caller in this slice and a schema that refuses a misspelt key`,
 		);
 	}
 	const hooks = source(
 		"src/renderer/src/shared/api/local-operator/desktop-hooks.ts",
 	);
-	assert.match(hooks, /\| "peers";/, "the feature key exists");
-	assert.doesNotMatch(
+	assert.match(hooks, /\| "peers"/, "the mesh read's key");
+	assert.match(
 		hooks,
 		/\| "session_transfer";/,
-		"and `session_transfer` waits for the drag layer that gates on it",
+		"the transfer is its OWN key, so a backend that can list peers and cannot move one does not offer a control that 404s",
 	);
+	/*
+	 * The two keys are asked SEPARATELY, and the page is where that shows: gating the
+	 * move on `peers` would draw drop targets against a route that refuses.
+	 */
+	const page = source("src/renderer/src/features/mesh/mesh-page.tsx");
+	assert.match(
+		page,
+		/desktopFeatureState\(capabilities\.data, "session_transfer"\) === "enabled"/,
+	);
+	assert.match(
+		page,
+		/desktopFeatureState\(capabilities\.data, "peers"\) === "enabled"/,
+	);
+});
+
+test("a move's deadline is derived from the route's own bound, not from the control budget", () => {
+	const contract = source("src/shared/desktop-contract.ts");
+	/*
+	 * The published numbers, asserted as numbers: an offload is bounded at 145 s and a
+	 * `keep` copy or a recall at 415 s at `wait_s=0` (`move_client_bound_s`). A client
+	 * whose own deadline is shorter gives up first and reports its own timeout for a
+	 * move the backend was about to answer - the defect this derivation exists for.
+	 */
+	const terms = contract.slice(contract.indexOf("const MOVE_OP_DEADLINE_S"));
+	const offload = /MOVE_OP_DEADLINE_S = (\d+);/.exec(terms);
+	const copy = /MOVE_COPY_WAIT_S = (\d+);/.exec(terms);
+	const confirm = /MOVE_OFFLOAD_CONFIRM_S = (\d+);/.exec(terms);
+	const slack = /MOVE_CONTROL_SLACK_S = (\d+);/.exec(terms);
+	const margin = /MOVE_CLIENT_MARGIN_S = (\d+);/.exec(terms);
+	for (const [name, hit] of [
+		["MOVE_OP_DEADLINE_S", offload],
+		["MOVE_COPY_WAIT_S", copy],
+		["MOVE_OFFLOAD_CONFIRM_S", confirm],
+		["MOVE_CONTROL_SLACK_S", slack],
+		["MOVE_CLIENT_MARGIN_S", margin],
+	]) {
+		assert.ok(hit, `${name} is mirrored from the backend, by name`);
+	}
+	const base = Number(offload[1]) + Number(slack[1]) + Number(margin[1]);
+	assert.equal(base + Number(confirm[1]), 145, "an offload's published bound");
+	assert.equal(
+		base + Number(copy[1]),
+		415,
+		"a copy's or a recall's published bound",
+	);
+	assert.match(
+		contract,
+		/to === "local"|recall = shape\.to === "local"/,
+		"a recall takes the copy's term, not the offload's settle window",
+	);
+	const transfer = contractRuntime.moveClientBoundMs({
+		to: "d_peer",
+		keep: false,
+		waitS: 0,
+	});
+	assert.equal(transfer, 145_000);
+	assert.equal(
+		contractRuntime.moveClientBoundMs({ to: "local", keep: false, waitS: 0 }),
+		415_000,
+	);
+	assert.equal(
+		contractRuntime.moveClientBoundMs({ to: "d_peer", keep: true, waitS: 0 }),
+		415_000,
+	);
+	assert.ok(
+		contractRuntime.desktopRequestTimeoutMs({
+			op: "sessions.transfer",
+			sessionId: "a".repeat(12),
+			to: "d_peer",
+		}) > 145_000,
+		"the renderer's own bound is above the transport's, which is above the route's",
+	);
+	const detail = contractRuntime.desktopRequestDeadlineDetail(
+		"sessions.transfer",
+		415_000,
+	);
+	assert.match(detail.message, /unknown/);
+	assert.doesNotMatch(detail.message, /Nothing was read/);
+	assert.equal(detail.code, "deadline_exceeded");
 });
 
 test("the reads poll at the catalogue's cadence and stop when the tab is not mounted", () => {
@@ -1014,4 +1134,515 @@ test("this device is a ring, and the stripe carries status (D6)", () => {
 		/self: "border-l-accent"/,
 		"the accent stripe is gone, not merely joined by a ring",
 	);
+});
+/* --------------------------------------------------------------- slice 2: drops */
+
+/**
+ * The fixtures the drop matrix runs on, built through the REAL graph constructor.
+ *
+ * Hand-built device objects would test `resolveDrop` against a shape only this file
+ * believes in; `meshGraph` is what the canvas hands it, so the two cannot drift.
+ */
+function dropFixture() {
+	const topology = networkTopology({
+		self_device_id: SELF,
+		networks: [
+			{
+				network_id: NET_HOME,
+				name: "damian-mesh",
+				epoch: 4,
+				trust: "active",
+				members: [
+					{
+						device_id: SELF,
+						name: "damians-MacBook-Pro",
+						role: "admin",
+						capabilities: ["sessions", "transfer"],
+						active: true,
+						suspect: false,
+						endpoints: [],
+						last_seen_at: null,
+						reachable: true,
+						reason: "",
+					},
+					{
+						device_id: PEER,
+						name: "devon-laptop",
+						role: "drive",
+						capabilities: ["sessions", "transfer"],
+						active: true,
+						suspect: false,
+						endpoints: [],
+						last_seen_at: null,
+						reachable: true,
+						reason: "",
+					},
+					{
+						device_id: BURNED,
+						name: "old-thinkpad",
+						role: "drive",
+						capabilities: ["sessions"],
+						active: false,
+						suspect: false,
+						endpoints: [],
+						last_seen_at: null,
+						reachable: true,
+						reason: "",
+					},
+					{
+						device_id: SUSPECT,
+						name: "duplicate-key",
+						role: "drive",
+						capabilities: ["sessions"],
+						active: true,
+						suspect: true,
+						endpoints: [],
+						last_seen_at: null,
+						reachable: true,
+						reason: "",
+					},
+					{
+						device_id: THIRD,
+						name: "studio-imac",
+						role: "drive",
+						capabilities: ["sessions", "transfer"],
+						active: true,
+						suspect: false,
+						endpoints: [],
+						last_seen_at: null,
+						reachable: true,
+						reason: "",
+					},
+				],
+			},
+		],
+	});
+	const peers = peerList({
+		self_device_id: SELF,
+		peers: [
+			{
+				device_id: PEER,
+				name: "devon-laptop",
+				reachable: true,
+				unreachable_reason: "",
+				last_seen_at: null,
+				session_count: 2,
+				rtt_ms: null,
+			},
+		],
+	});
+	const graph = meshGraph({ topology, peers });
+	return {
+		graph,
+		context: {
+			selfDeviceId: graph.selfDeviceId,
+			devices: new Map(graph.devices.map((device) => [device.id, device])),
+			networks: new Map(graph.networks.map((network) => [network.id, network])),
+		},
+	};
+}
+
+const SELF = `d_${"a".repeat(32)}`;
+const PEER = `d_${"b".repeat(32)}`;
+const BURNED = `d_${"c".repeat(32)}`;
+const SUSPECT = `d_${"d".repeat(32)}`;
+const THIRD = `d_${"e".repeat(32)}`;
+const NET_HOME = `n_${"1".repeat(24)}`;
+
+const session = (fields = {}) => ({
+	id: "0123456789ab",
+	name: "Sweep 001",
+	mtime: 1,
+	locality: "local",
+	owner_device: "",
+	owner_device_name: "",
+	reachable: true,
+	unreachable_reason: "",
+	live_state: "idle",
+	archived: false,
+	...fields,
+});
+
+const SELF_LABEL = "damians-MacBook-Pro";
+
+const drag = (row, ownerDeviceId, ownerLabel) => ({
+	session: row,
+	ownerDeviceId,
+	ownerLabel,
+});
+
+test("the drop matrix: only a valid target accepts, and the verb names the operation", () => {
+	const { context } = dropFixture();
+	const local = session();
+	const remote = session({
+		id: "0123456789cd",
+		locality: "remote",
+		owner_device: PEER,
+		owner_device_name: "devon-laptop",
+	});
+	// The PAYLOAD is what `resolveDrop` takes, not the bare row: a drag knows which
+	// device holds the session and what that device is called, and the verdict's
+	// sentences are written from those facts.
+	const offloadDrag = drag(local, SELF, SELF_LABEL);
+	const recallDrag = drag(remote, PEER, "devon-laptop");
+
+	// An offload: this device asks the peer to pull.
+	const offload = resolveDrop(
+		offloadDrag,
+		{ kind: "device", deviceId: PEER },
+		context,
+	);
+	assert.equal(offload.kind, "plan");
+	assert.equal(offload.plan.to, PEER);
+	assert.equal(offload.plan.keep, false);
+	assert.match(offload.plan.verb, /^Move to devon-laptop$/);
+	assert.equal(offload.alternatives.length, 1);
+	assert.equal(
+		offload.alternatives[0].keep,
+		true,
+		"the reversible half is offered",
+	);
+	assert.equal(offload.alternatives[0].lost, null, "a copy loses nothing");
+	assert.match(offload.plan.lost, /deleted once devon-laptop has it/);
+
+	// A recall: the opposite protocol, through the same route.
+	const recall = resolveDrop(
+		recallDrag,
+		{ kind: "device", deviceId: SELF },
+		context,
+	);
+	assert.equal(recall.kind, "plan");
+	assert.equal(recall.plan.to, "local");
+	assert.match(recall.plan.verb, /Recall to this device/);
+	assert.match(recall.plan.lost, /deleted once this device has it/);
+
+	// A drop where the session already is: nothing happened, and nothing is said.
+	assert.equal(
+		resolveDrop(offloadDrag, { kind: "device", deviceId: SELF }, context).kind,
+		"none",
+	);
+
+	// A third device: this desktop is neither end, and the route would refuse it.
+	const third = resolveDrop(
+		recallDrag,
+		{ kind: "device", deviceId: THIRD },
+		context,
+	);
+	assert.equal(third.kind, "refused");
+	assert.equal(third.code, "third_device");
+
+	// A lane holds devices, not conversations.
+	const lane = resolveDrop(
+		offloadDrag,
+		{ kind: "network", networkId: NET_HOME },
+		context,
+	);
+	assert.equal(lane.kind, "refused");
+	assert.equal(lane.code, "not_a_device");
+	assert.match(lane.sentence, /lives on a device/);
+
+	// Ground is not a target either.
+	assert.equal(
+		resolveDrop(offloadDrag, { kind: "ground" }, context).kind,
+		"none",
+		"a drop on empty ground is a change of mind, not an error to report",
+	);
+});
+
+test("the two facts that outrank reachability refuse the drop before the route is asked", () => {
+	const { context } = dropFixture();
+	const payload = drag(session(), SELF, SELF_LABEL);
+	const local = session();
+	const suspect = resolveDrop(
+		payload,
+		{ kind: "device", deviceId: SUSPECT },
+		context,
+	);
+	assert.equal(
+		suspect.code,
+		"suspect_device",
+		"a duplicated key is a security fact",
+	);
+	const burned = resolveDrop(
+		payload,
+		{ kind: "device", deviceId: BURNED },
+		context,
+	);
+	assert.equal(burned.code, "revoked_membership");
+	/*
+	 * The client's two are NOT spelled as move codes: `MOVE_REFUSAL_CODES` has no
+	 * `suspect_device` and no `revoked_membership`, so a reader can tell which side
+	 * decided - the route saying no, or this app refusing to ask.
+	 */
+	/*
+	 * The two client-local codes are the APP's, and the file says so where it names
+	 * them: the alternative - a mirrored copy of the backend's `MOVE_REFUSAL_CODES` -
+	 * is a list that drifts silently, and the route is the only thing that owns it.
+	 */
+	const drop = source("src/renderer/src/features/mesh/mesh-drop.ts");
+	assert.match(drop, /client-side two are named/);
+	assert.match(drop, /not_a_device/);
+});
+
+test("a busy session refuses rather than being interrupted, and offers the wait", () => {
+	const { context } = dropFixture();
+	const busy = session({ live_state: "busy" });
+	const verdict = resolveDrop(
+		drag(busy, SELF, SELF_LABEL),
+		{ kind: "device", deviceId: PEER },
+		context,
+	);
+	assert.equal(verdict.kind, "refused");
+	assert.equal(verdict.code, "busy");
+	assert.equal(verdict.remedy.kind, "wait");
+	assert.equal(
+		verdict.remedy.waitS,
+		300,
+		"the route's own ceiling on waiting inside the request",
+	);
+	assert.match(hoverSentence(verdict), /^Drop will be refused: /);
+});
+
+test("confirm by risk: every destructive move confirms, and a live runtime is named", () => {
+	const { context } = dropFixture();
+	const quiet = resolveDrop(
+		drag(session(), SELF, SELF_LABEL),
+		{ kind: "device", deviceId: PEER },
+		context,
+	);
+	assert.equal(quiet.risky, false);
+	const quietConfirm = planConfirm(quiet.plan, quiet.risky);
+	assert.ok(quietConfirm, "a move deletes the source's copy, so it confirms");
+	assert.doesNotMatch(quietConfirm.body, /running/);
+
+	const live = resolveDrop(
+		drag(session({ live_state: "attached" }), SELF, SELF_LABEL),
+		{ kind: "device", deviceId: PEER },
+		context,
+	);
+	assert.equal(live.risky, true);
+	const liveConfirm = planConfirm(live.plan, live.risky);
+	assert.match(liveConfirm.body, /running on this device right now/);
+	assert.equal(liveConfirm.risky, true);
+	assert.equal(
+		planConfirm(live.alternatives[0], live.risky),
+		null,
+		"the copy never confirms: its undo is the erasure of what it made",
+	);
+});
+
+test("the drag reducer: a press is not a drag until it travels, and nothing outlives its pointer", () => {
+	const payload = drag(session(), SELF, "damians-MacBook-Pro");
+	let state = dragReducer(IDLE_DRAG, {
+		kind: "press",
+		payload,
+		x: 100,
+		y: 100,
+		pointerId: 1,
+	});
+	assert.equal(state.kind, "pressing");
+	assert.equal(
+		draggedSessionId(state),
+		null,
+		"a chip is not marked as lifted while it may still be a click",
+	);
+	state = dragReducer(state, {
+		kind: "move",
+		x: 102,
+		y: 101,
+		target: { kind: "device", deviceId: PEER },
+	});
+	assert.equal(
+		state.kind,
+		"pressing",
+		"under the threshold it is still a click",
+	);
+	state = dragReducer(state, {
+		kind: "move",
+		x: 100 + DRAG_THRESHOLD_PX + 1,
+		y: 100,
+		target: { kind: "device", deviceId: PEER },
+	});
+	assert.equal(state.kind, "dragging");
+	assert.equal(draggedSessionId(state), payload.session.id);
+	// A second pointer cannot lift a second chip.
+	assert.equal(
+		dragReducer(state, {
+			kind: "press",
+			payload: drag(session({ id: "ffffffffffff" }), SELF, "here"),
+			x: 500,
+			y: 500,
+			pointerId: 2,
+		}).payload.session.id,
+		payload.session.id,
+	);
+	// The release settles over the target the pointer was ACTUALLY over.
+	const settled = dragReducer(state, { kind: "release" });
+	assert.equal(settled.kind, "settling");
+	assert.deepEqual(settled.target, { kind: "device", deviceId: PEER });
+	assert.equal(dragReducer(settled, { kind: "settled" }).kind, "idle");
+	// A press that never travelled is a click, and a cancel never leaves a ghost.
+	const pressed = dragReducer(IDLE_DRAG, {
+		kind: "press",
+		payload,
+		x: 1,
+		y: 1,
+		pointerId: 3,
+	});
+	assert.equal(dragReducer(pressed, { kind: "release" }).kind, "idle");
+	assert.equal(
+		dragReducer(
+			{
+				kind: "dragging",
+				payload,
+				x: 1,
+				y: 1,
+				target: { kind: "ground" },
+				pointerId: 4,
+			},
+			{ kind: "cancel" },
+		).kind,
+		"idle",
+	);
+});
+
+test("sessions file under the device that holds them, capped, with orphans counted", () => {
+	const rows = sessionRows({
+		sessions: [
+			session({ id: "000000000001", name: "mine" }),
+			session({
+				id: "000000000002",
+				name: "theirs",
+				locality: "remote",
+				owner_device: PEER,
+				owner_device_name: "devon-laptop",
+			}),
+			session({
+				id: "000000000003",
+				name: "nobody",
+				locality: "remote",
+				owner_device: `d_${"f".repeat(32)}`,
+				owner_device_name: "vanished",
+			}),
+		],
+	});
+	assert.equal(rows.length, 3);
+	assert.equal(
+		ownerOf(rows[0], SELF),
+		SELF,
+		"a local row's owner is this device",
+	);
+	assert.equal(ownerOf(rows[1], SELF), PEER);
+	const join = sessionsByDevice(rows, SELF, [SELF, PEER, BURNED]);
+	assert.equal(join.byDevice.get(SELF).rows.length, 1);
+	assert.equal(join.byDevice.get(PEER).rows.length, 1);
+	assert.equal(
+		join.byDevice.get(BURNED).rows.length,
+		0,
+		"every drawn device has an entry, empty or not",
+	);
+	assert.equal(
+		join.orphans,
+		1,
+		"a row nobody drew is counted, never silently dropped",
+	);
+
+	// The cap: a node shows a bounded handful and says how many it is not showing.
+	const many = Array.from({ length: CHIP_LIMIT + 5 }, (_, index) =>
+		session({ id: String(index).padStart(12, "0"), name: `chat ${index}` }),
+	);
+	const capped = sessionsByDevice(many, SELF, [SELF]).byDevice.get(SELF);
+	assert.equal(capped.shown.length, CHIP_LIMIT);
+	assert.equal(capped.hidden, 5);
+	assert.equal(capped.rows.length, many.length);
+	// And the total prefers the catalogue's count when it is larger than the page.
+	assert.equal(deviceSessionTotal(capped, 42), 42);
+	assert.equal(deviceSessionTotal(capped, null), many.length);
+});
+
+test("the transfer receipt is read as a value, and an unreadable one is not a success", () => {
+	const receipt = transferReceipt({
+		locality: "remote",
+		owner_device: PEER,
+		source_retired: true,
+		session_id: "0123456789ab",
+		new_session_id: "0123456789ab",
+		mode: "move",
+		phases: [{ phase: "prepared", peer: PEER, progress: 0.25 }],
+	});
+	assert.equal(receipt.mode, "move");
+	assert.equal(receipt.source_retired, true);
+	assert.equal(receipt.phases.length, 1);
+	assert.equal(
+		transferReceipt({ locality: "local" }),
+		null,
+		"no session id, no claim",
+	);
+	const refusal = meshRefusal({
+		code: "busy",
+		message: "a turn is in flight",
+		status: 409,
+	});
+	assert.equal(refusal.unconfirmed, false);
+	assert.equal(
+		refusal.sentence,
+		"a turn is in flight",
+		"the route's words, verbatim",
+	);
+	const unconfirmed = meshRefusal({
+		code: "deadline_exceeded",
+		message: "the app stopped waiting",
+		status: 503,
+	});
+	assert.equal(unconfirmed.unconfirmed, true);
+});
+
+test("the one gesture the protocol refuses is not a drag, and every drag has a menu", () => {
+	const node = source("src/renderer/src/features/mesh/mesh-node.tsx");
+	// A DEVICE is not draggable: the node's button opens the panel and starts nothing.
+	const buttonStart = node.indexOf("data-mesh-device-open=");
+	assert.ok(buttonStart > 0, "the node's own button is addressable");
+	const deviceButton = node.slice(buttonStart, node.indexOf(">", buttonStart));
+	assert.doesNotMatch(
+		deviceButton,
+		/onPointerDown|onPointerDownCapture|draggable/,
+		"a device dragged into a network would promise an add the protocol declines; the invite is an ACTION, and the node's own button starts no drag",
+	);
+	// The affordance that DOES admit a device, where a reader meets it.
+	const card = source("src/renderer/src/features/mesh/mesh-card.tsx");
+	assert.match(card, /Invite to a network/);
+	// And every drag outcome is reachable from a menu (the plan's accessibility rule).
+	assert.match(card, /export const SessionMoveMenu/);
+	assert.match(
+		card,
+		/data-mesh-session-menu=/,
+		"the menu's trigger is addressable",
+	);
+	const list = source("src/renderer/src/features/mesh/mesh-list.tsx");
+	assert.match(
+		list,
+		/<SessionMoveMenu/,
+		"the list carries the same menu per row",
+	);
+	assert.match(
+		list,
+		/moveDestinations\(/,
+		"from the same destination arithmetic",
+	);
+});
+
+test("a refusal is rendered from the receipt rather than paraphrased", () => {
+	const actions = source("src/renderer/src/features/mesh/mesh-actions.tsx");
+	assert.match(
+		actions,
+		/\{receipt \? receipt\.verb : refusal\?\.sentence\}/,
+		"the route's sentence reaches the screen unchanged",
+	);
+	assert.match(
+		actions,
+		/\{refusal\?\.code\}/,
+		"with its code beside it, so a support conversation and a log agree",
+	);
+	assert.match(actions, /Wait for the turn to finish/);
+	assert.match(actions, /Erase the copy/, "the reversible half has an undo");
 });

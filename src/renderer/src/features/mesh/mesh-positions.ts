@@ -82,7 +82,36 @@ export const EMPTY_SLOTS: MeshSlots = {
 
 /** Geometry, in world CSS pixels. */
 export const NODE_WIDTH = 200;
-export const NODE_HEIGHT = 48;
+/**
+ * A NETWORK LANE'S HEIGHT: one line of text, a count, and nothing else.
+ *
+ * Split from the device node's height in slice 2 rather than shared, because the
+ * two nodes stopped being the same shape: a lane is a heading, while a device node
+ * carries its conversations (a title, a stat line and a reserved chip band). The
+ * lane is still CENTRED on the column beside it, so the two heights do not have to
+ * match for the picture to hold - and sharing one number would have padded every
+ * lane with 24 px of nothing.
+ */
+export const NETWORK_HEIGHT = 48;
+/**
+ * A DEVICE NODE'S HEIGHT, chip band included WHETHER OR NOT IT HOLDS ANYTHING.
+ *
+ * THE BAND IS RESERVED, and that is the plan's "a node must not breathe on a poll"
+ * applied to the second axis: a node that grew when its first conversation appeared
+ * would move every node below it in the column at that moment - the reshuffle this
+ * module exists to prevent - and it would do it under the reader's pointer. 48 px is
+ * slice 1's node; the extra 24 px is the band (`NODE_CHIP_BAND`).
+ */
+export const NODE_CHIP_BAND = 24;
+export const DEVICE_HEIGHT = 72;
+/**
+ * The node height a caller means when it does not say, kept as the device's.
+ *
+ * Slice 1 had one height for both columns and its readers import it by this name;
+ * leaving it as an alias rather than renaming every call site keeps the diff on the
+ * geometry that actually changed.
+ */
+export const NODE_HEIGHT = DEVICE_HEIGHT;
 export const ROW_GAP = 16;
 /**
  * The room the edges fan in, and the reason a two-network mesh reads as two lines
@@ -91,8 +120,8 @@ export const ROW_GAP = 16;
 export const COLUMN_GAP = 200;
 export const PAD = 24;
 
-/** A node's box in world coordinates. */
-export type NodeBox = { key: string; x: number; y: number };
+/** A node's box in world coordinates, with the height its own kind of node uses. */
+export type NodeBox = { key: string; x: number; y: number; height: number };
 
 export type ColumnGeometry = {
 	boxes: Map<string, NodeBox>;
@@ -103,13 +132,18 @@ export type ColumnGeometry = {
 /** The world's extent, from the two columns. */
 export type MeshBounds = { width: number; height: number };
 
-function column(slots: SlotMap, x: number): ColumnGeometry {
+function column(slots: SlotMap, x: number, nodeHeight: number): ColumnGeometry {
 	const boxes = new Map<string, NodeBox>();
 	for (const [key, slot] of slots) {
 		// No padding here: the COLUMN does not own the world's margin. `meshGeometry`
 		// places the column inside the world, which is what lets a short column be
 		// centred against a tall one.
-		boxes.set(key, { key, x, y: slot * (NODE_HEIGHT + ROW_GAP) });
+		boxes.set(key, {
+			key,
+			x,
+			y: slot * (nodeHeight + ROW_GAP),
+			height: nodeHeight,
+		});
 	}
 	/*
 	 * The span the column's SLOTS occupy, not the count of nodes: a gap at slot 3
@@ -119,7 +153,7 @@ function column(slots: SlotMap, x: number): ColumnGeometry {
 	const used = slots.size === 0 ? 0 : Math.max(...slots.values()) + 1;
 	return {
 		boxes,
-		height: used === 0 ? 0 : used * NODE_HEIGHT + (used - 1) * ROW_GAP,
+		height: used === 0 ? 0 : used * nodeHeight + (used - 1) * ROW_GAP,
 	};
 }
 
@@ -137,8 +171,12 @@ export type MeshGeometry = {
  * network sits at the second device's row rather than at the top of the world.
  */
 export function meshGeometry(slots: MeshSlots): MeshGeometry {
-	const networkColumn = column(slots.networks, PAD);
-	const deviceColumn = column(slots.devices, PAD + NODE_WIDTH + COLUMN_GAP);
+	const networkColumn = column(slots.networks, PAD, NETWORK_HEIGHT);
+	const deviceColumn = column(
+		slots.devices,
+		PAD + NODE_WIDTH + COLUMN_GAP,
+		DEVICE_HEIGHT,
+	);
 	const span = Math.max(networkColumn.height, deviceColumn.height);
 	const height = PAD * 2 + span;
 	/*
@@ -167,9 +205,13 @@ export function meshGeometry(slots: MeshSlots): MeshGeometry {
 /** The cubic from a network's right edge to a device's left edge. */
 export function edgePath(from: NodeBox, to: NodeBox): string {
 	const x1 = from.x + NODE_WIDTH;
-	const y1 = from.y + NODE_HEIGHT / 2;
+	// EACH END USES ITS OWN HEIGHT: a lane and a node are different shapes since
+	// slice 2, so one shared midpoint would draw every edge slightly off the lane it
+	// starts from - visible at two networks and invisible at one, which is the kind of
+	// defect that ships.
+	const y1 = from.y + from.height / 2;
 	const x2 = to.x;
-	const y2 = to.y + NODE_HEIGHT / 2;
+	const y2 = to.y + to.height / 2;
 	const mid = (x1 + x2) / 2;
 	return `M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}`;
 }

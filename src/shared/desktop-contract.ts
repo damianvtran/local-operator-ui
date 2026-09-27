@@ -48,6 +48,19 @@ export const SUBSCRIPTION_ID_PATTERN = /^[a-f0-9]{32}$/;
 const requestId = z
 	.string()
 	.regex(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/);
+/**
+ * A mesh device or network id (`d_`/`n_` + hex today), on its way into a URL path.
+ *
+ * MIRRORS `MESH_ID_PATTERN` in `local_operator/server/models/desktop_mesh.py`, and
+ * the property being mirrored is PATH-SAFETY rather than the exact shape: every
+ * one of these reaches a route path, so what must be impossible is `/`, `.` and
+ * `%` — which is also why the endpoint builder still `encodeURIComponent`s it. The
+ * pattern is deliberately wider than today's ids so the transport may evolve its
+ * ids without a renderer release, and narrow enough that a client bug (an empty
+ * string, a sentence, a path fragment) is refused HERE, by name, rather than by
+ * the daemon's generic 422.
+ */
+const meshId = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
 const sessionImage = z
 	.object({
 		data_b64: z.string().min(1).max(1_000_000),
@@ -787,6 +800,24 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			 * archived state, and an unarchive control on a row found by search.
 			 */
 			include_archived: z.boolean().optional(),
+			/*
+			 * Whether conversations OTHER devices hold belong in the answer.
+			 *
+			 * ABSENT MEANS `false`, the same compatibility promise `include_archived`
+			 * makes and for the same reason: the app's own sidebar fetch has always
+			 * meant "this device's catalogue", and a client that predates the mesh must
+			 * keep reading exactly that. The Mesh tab is the ONE surface that asks for
+			 * the federated list, because "which conversation is on which device" is its
+			 * question and it cannot answer it from `session_count` alone.
+			 *
+			 * THE COST IS NOT ZERO, which is why only that surface asks: the backend's
+			 * peer projection dials each peer's relay under a 12 s fan-out budget and is
+			 * TTL-cached at 20 s (`network/relay.py`, `session/peer_rows.py`), while a
+			 * machine in no network short-circuits to no call at all — so the flag costs
+			 * a paired device one cached fan-out per cadence, and an unpaired one
+			 * nothing. The sidebar's two-second poll must never carry it.
+			 */
+			include_peers: z.boolean().optional(),
 			/*
 			 * The four parameters that make the catalogue PAGEABLE, and the switch that
 			 * makes the daemon count it.
@@ -2002,16 +2033,89 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 	 * UI that could would have to re-implement the relay's authorisation model in
 	 * JavaScript.
 	 *
-	 * THE MUTATING MESH OPS ARE NOT HERE YET, deliberately: slice 1 of the Mesh tab is
-	 * a read surface, and a request schema entry with no caller is a capability this
-	 * app advertises but cannot exercise. `networks.invite`,
-	 * `networks.member.remove` and `sessions.transfer` land with the surfaces that use
-	 * them (the invite action, the member table, the drag layer).
+	 * THE MUTATING MESH OPS LANDED WITH THE SURFACES THAT USE THEM (slice 2: the drag
+	 * layer, the invite action, the member list), which is the rule this block stated
+	 * while they were still absent: a request schema entry with no caller is a
+	 * capability this app advertises but cannot exercise.
+	 *
+	 * `features.session_transfer` gates the TRANSFER and only it (`capabilities.py`):
+	 * a backend can host a network, mint invites and remove members without being able
+	 * to move a conversation, and the surfaces that gate on the wrong key draw a
+	 * control that 404s. The three ops below therefore sit behind different keys —
+	 * `networks.invite`/`networks.member.remove` behind `features.peers` (they are
+	 * routes the mesh itself introduced), `sessions.transfer` behind
+	 * `features.session_transfer`.
+	 *
+	 * WHAT TRAVELS, AND WHAT DOES NOT. `to` is the destination device id or the
+	 * literal `"local"` (a RECALL), because that is the route's own shape: one route,
+	 * two protocols, and the direction is decided by which of the two ends is asking
+	 * — see `guide://network`. `request_id` is minted by the CALLER and is what makes
+	 * a retry replay a recorded outcome instead of starting a second move for a
+	 * request that may still be running, so it is sent on every drop rather than kept
+	 * for a retry path this surface does not have.
 	 */
 	z
 		.object({ op: z.literal("peers.list") })
 		.strict(),
 	z.object({ op: z.literal("networks.list") }).strict(),
+	/*
+	 * Mint an invite. `role` is the joined device's own role in the network and
+	 * `device` BINDS the token to one device id, so a token intercepted on its way to
+	 * another machine cannot be redeemed by a third one. The token itself NEVER
+	 * crosses this API (the receipt carries a path, and it is written where the
+	 * renderer cannot read it) — which is why the answer is a receipt and not a
+	 * secret.
+	 */
+	z
+		.object({
+			op: z.literal("networks.invite"),
+			networkId: meshId,
+			role: z.enum(["read", "drive", "admin"]),
+			deviceId: meshId.optional(),
+		})
+		.strict(),
+	/*
+	 * Revoke a membership. `confirm` is the NETWORK'S NAME, typed by the user, and
+	 * the route compares it exactly: this is the one mesh act that changes other
+	 * devices' state (every peer is rekeyed and the removed device is locked out on
+	 * its next handshake), so the request must carry what the user was shown rather
+	 * than a bool a stray retry could also send.
+	 */
+	z
+		.object({
+			op: z.literal("networks.member.remove"),
+			networkId: meshId,
+			deviceId: meshId,
+			confirm: z.string().min(1).max(256),
+		})
+		.strict(),
+	/*
+	 * Ask a device to take a conversation, or ask THIS device to take one back.
+	 *
+	 * THE DIRECTION IS THE PROTOCOL'S, not a UI preference: there is no push verb, so
+	 * a drop on a peer is this device asking that peer to PULL (`to: <device_id>`),
+	 * and a drop on this device is a recall (`to: "local"`). `keep` is the reversible
+	 * half — it mints a new id at the destination and leaves the source running —
+	 * while a move deletes the source's copy once the handoff commits, which is why
+	 * `source_retired = (mode == "move")` on the receipt.
+	 *
+	 * `wait_s` is a CEILING ON WAITING INSIDE THE REQUEST, not a promise: the route
+	 * returns as soon as it has a definite outcome, and a `busy` source refuses
+	 * rather than being interrupted. The desktop's own deadline for this op is
+	 * derived from the route's published bound rather than from the 20 s control
+	 * budget (see `moveClientBoundMs`) — the defect this avoids is a client that gives
+	 * up first and reports its own timeout for a move the backend was about to answer.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.transfer"),
+			sessionId,
+			to: z.union([z.literal("local"), meshId]),
+			keep: z.boolean().optional(),
+			waitS: z.number().min(0).max(300).optional(),
+			requestId: requestId.optional(),
+		})
+		.strict(),
 ]);
 
 export type DesktopRequest = z.infer<typeof desktopRequestSchema>;
@@ -2590,8 +2694,83 @@ const LONG_READ_OPS: ReadonlySet<string> = new Set([
 	...MESH_READ_OPS,
 ]);
 
-/** The deadline one op's request may run for. */
-export function desktopRequestDeadlineMs(op: DesktopRequest["op"]): number {
+/*
+ * THE TRANSFER'S BOUND IS THE ONE OP WHOSE DEADLINE DEPENDS ON ITS OWN REQUEST.
+ *
+ * MIRRORED FROM THE BACKEND, NEVER CHOSEN HERE. `network/mobility.py` publishes
+ * `move_client_bound_s(wait_s, keep, to)` — "the deadline a CLIENT's own request
+ * must not be shorter than" — and every term below is one of its constants, named
+ * so a reader can diff this against that file. The published answers at the
+ * `wait_s=0` both routes default to are **145 s** for an offload, **415 s** for a
+ * `keep` copy and **415 s** for a recall; the terms are 90 s (the peer's slow-op
+ * budget), 30 s or 300 s (the relay's own held time for that shape), 10 s (the
+ * control socket's answer coming back) and 15 s (the client's margin over the
+ * route's answer).
+ *
+ * WHY THIS EXISTS AT ALL, and it is not symmetry: the desktop transport used to
+ * give up at `wait_s + 15` against a route that answers at `wait_s + 30`, so a
+ * user read "the move may have happened, check the other device" while the backend
+ * was about to answer "nothing was deleted". The timeout's vaguer sentence always
+ * won, because the client's own bound was shorter than the backend's. A recall is
+ * the harder half: it is bounded by a BUDGET rather than a promise (the copy is
+ * transcript-sized), so a client deadline that fires on one knows NOTHING about
+ * the outcome and must report it as unknown — never as a refusal, and never retry
+ * into a second move.
+ */
+const MOVE_OP_DEADLINE_S = 90;
+const MOVE_OFFLOAD_CONFIRM_S = 30;
+const MOVE_COPY_WAIT_S = 300;
+const MOVE_CONTROL_SLACK_S = 10;
+const MOVE_CLIENT_MARGIN_S = 15;
+
+/**
+ * The app's own margin over the route's published bound.
+ *
+ * The transport must outwait the route, so `moveClientBoundMs` is the FLOOR and
+ * this is what makes the app's deadline strictly above it rather than exactly on
+ * it — an answer landing on the boundary is the one case where a client that
+ * waited long enough still reports its own timeout.
+ */
+const MOVE_APP_MARGIN_MS = 10_000;
+
+/** One transfer request's shape, as the deadline needs it. */
+export type MoveShape = { to: string; keep?: boolean; waitS?: number };
+
+/**
+ * The route's own bound for one transfer shape, in the terms it publishes.
+ *
+ * `to: "local"` is the recall, and it is NOT the offload's term with a different
+ * direction: nothing is confirmed over the link, so what bounds it is the copy
+ * (300 s) rather than the 30 s settle window — the mistake `move_bound_s`'s own
+ * docstring was written to stop being published as "the formula for all of them".
+ */
+export function moveClientBoundMs(shape: MoveShape): number {
+	const recall = shape.to === "local";
+	const hold = recall || shape.keep ? MOVE_COPY_WAIT_S : MOVE_OFFLOAD_CONFIRM_S;
+	const waitS = Math.max(0, shape.waitS ?? 0);
+	return (
+		(MOVE_OP_DEADLINE_S + hold + MOVE_CONTROL_SLACK_S + MOVE_CLIENT_MARGIN_S) *
+			1000 +
+		waitS * 1000
+	);
+}
+
+/**
+ * The deadline one request may run for.
+ *
+ * Takes the OP for every ordinary case and the whole REQUEST where the shape
+ * decides the budget — today that is `sessions.transfer` alone, and it is the only
+ * op whose answer may legitimately take minutes. A caller with the request in hand
+ * should pass it; the string form is what a caller that only has an op uses (a
+ * story, a test, a panel sizing its own spinner).
+ */
+export function desktopRequestDeadlineMs(
+	request: DesktopRequest | DesktopRequest["op"],
+): number {
+	if (typeof request !== "string" && request.op === "sessions.transfer") {
+		return moveClientBoundMs(request) + MOVE_APP_MARGIN_MS;
+	}
+	const op = typeof request === "string" ? request : request.op;
 	return LONG_READ_OPS.has(op)
 		? DESKTOP_LONG_READ_DEADLINE_MS
 		: DESKTOP_CONTROL_DEADLINE_MS;
@@ -2621,9 +2800,11 @@ export function desktopRequestDeadlineMs(op: DesktopRequest["op"]): number {
  */
 export const DESKTOP_DEADLINE_MARGIN_MS = 5000;
 
-/** The renderer's own deadline for one op, derived from the transport's. */
-export function desktopRequestTimeoutMs(op: DesktopRequest["op"]): number {
-	return desktopRequestDeadlineMs(op) + DESKTOP_DEADLINE_MARGIN_MS;
+/** The renderer's own deadline for one request, derived from the transport's. */
+export function desktopRequestTimeoutMs(
+	request: DesktopRequest | DesktopRequest["op"],
+): number {
+	return desktopRequestDeadlineMs(request) + DESKTOP_DEADLINE_MARGIN_MS;
 }
 
 /**
@@ -2794,6 +2975,23 @@ export function desktopRequestDeadlineDetail(
 ): { code: string; message: string } {
 	const seconds = Math.round(deadlineMs / 1000);
 	const code = DESKTOP_DEADLINE_EXCEEDED_CODE;
+	/*
+	 * A MOVE THAT RAN OUT OF TIME IS NOT A FAILED REQUEST, and this is the one op
+	 * where the difference decides what the user does next. The route returns as soon
+	 * as it has a definite outcome but may legitimately hold one for minutes (145 s
+	 * for an offload, 415 s for a copy), so a client-side deadline can fire while the
+	 * move is still progressing on the other device. `deadline_exceeded` is one of the
+	 * move's OWN unconfirmed codes (`MOVE_REFUSAL_CODES`, and the set the route
+	 * journals rather than replays), so the sentence says what that code means: the
+	 * request was sent, the outcome is unknown, re-read the session — and never send
+	 * a second move for it.
+	 */
+	if (op === "sessions.transfer") {
+		return {
+			code,
+			message: `The app waits up to ${seconds} seconds for a move, and it was still running when the app stopped waiting. The move was asked for, so its outcome is unknown from here: read the session again before moving it anywhere else.`,
+		};
+	}
 	if (READ_ONLY_OPS.has(op)) {
 		return {
 			code,
@@ -3379,6 +3577,46 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return { path: "/v1/desktop/peers", method: "GET" };
 		case "networks.list":
 			return { path: "/v1/desktop/networks", method: "GET" };
+		/*
+		 * THE THREE MESH WRITES. Each path segment is `encodeURIComponent`ed even
+		 * though `meshId` already refuses `/`, `.` and `%`: the schema is this
+		 * client's check, and a redirect or a hand-built request must not be able to
+		 * turn a device id into a path fragment. `device: null` on an invite is the
+		 * route's own "unbound token" — an invite any device may redeem once.
+		 */
+		case "networks.invite":
+			return {
+				path: `/v1/desktop/networks/${encodeURIComponent(request.networkId)}/invite`,
+				method: "POST",
+				body: { role: request.role, device: request.deviceId ?? null },
+			};
+		case "networks.member.remove":
+			return {
+				path: `/v1/desktop/networks/${encodeURIComponent(request.networkId)}/members/${encodeURIComponent(request.deviceId)}`,
+				method: "DELETE",
+				// The NETWORK'S NAME, as typed: see the op's own comment for why the
+				// route takes a name rather than a bool.
+				body: { confirm: request.confirm },
+			};
+		case "sessions.transfer":
+			return {
+				path: `/v1/desktop/sessions/${encodeURIComponent(request.sessionId)}/transfer`,
+				method: "POST",
+				body: {
+					to: request.to,
+					// Sent explicitly rather than omitted-when-false: `keep` decides whether
+					// the SOURCE'S COPY IS DELETED, so the request says which move it is
+					// rather than leaving the route's default to answer for a drop a user
+					// made from a menu that offered the copy.
+					keep: request.keep ?? false,
+					wait_s: request.waitS ?? 0,
+					// Omitted while absent, and this one is load-bearing: the route
+					// journals an UNCONFIRMED move under this key so a retry replays the
+					// recorded outcome instead of moving twice, and a request with no key
+					// is a different (unjournalled) request on purpose.
+					...(request.requestId ? { request_id: request.requestId } : {}),
+				},
+			};
 		case "profiles.list":
 			return { path: "/v1/desktop/profiles", method: "GET" };
 		case "profiles.get":
@@ -3463,6 +3701,10 @@ export function desktopEndpoint(request: DesktopRequest): {
 			if (request.scope_name) params.set("scope_name", request.scope_name);
 			if (request.cursor) params.set("cursor", request.cursor);
 			if (request.with_counts) params.set("with_counts", "true");
+			// Appended LAST and omitted when false, `with_counts`'s rule rather than
+			// the paging three's: it is a boolean whose route default is false, so the
+			// ordinary request keeps the exact bytes it sent before this flag existed.
+			if (request.include_peers) params.set("include_peers", "true");
 			return {
 				path: `/v1/desktop/sessions?${params}`,
 				method: "GET",
