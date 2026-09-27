@@ -1279,6 +1279,17 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"goalDesignRoundTwoNote",
 	/*
+	 * THIS BRANCH'S OWN, and it arrives under the union rule the list states: the
+	 * pair below is the MERGED tree's - re-derived on THIS fold (onto `origin/main`
+	 * = `eddfae750b`, #537/#540/#541/#542) with `git write-tree` on the resolved
+	 * index and `<tree>:src` / `<tree>:scripts`, so it rides the tree it describes
+	 * rather than either side of the merge - and every note that quotes the pair
+	 * as a pointer to this file's own values is substituted with it, main's own
+	 * list carried whole.
+	 */
+	"conversationStartEvidenceNote",
+
+	/*
 	 * THIS CHANGE'S OWN: it re-stamps the pass that made the chat header's
 	 * identity slot the controls it describes (the team and the agent menus,
 	 * the rename pencil) and re-captured its own eleven states - so ITS
@@ -1478,6 +1489,13 @@ const STAMP_BINDING_NOTES = [
 	 * the prose.
 	 */
 	"pendingEchoRemediationThirdFoldNote",
+	/*
+	 * AND THE FOURTH FOLD'S OWN: same shape again - the fold onto the moved
+	 * `origin/main` after #576/#544/#561 re-derives the pair at the folded tip
+	 * and reads it back from the staged index, so a reader is owed the check
+	 * rather than the prose.
+	 */
+	"pendingEchoRemediationFourthFoldNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2096,6 +2114,11 @@ const BRANCH_RECORDS = [
 	 * one, and the same completeness reason stands.
 	 */
 	"pendingEchoRemediationThirdFoldNote",
+	/*
+	 * And the fourth fold's record rides beside them - each fold writes one, and
+	 * the same completeness reason stands.
+	 */
+	"pendingEchoRemediationFourthFoldNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
