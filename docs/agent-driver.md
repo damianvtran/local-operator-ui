@@ -363,16 +363,36 @@ rule:
 
 - **`route-tops`** — the top of every route the shell draws: `/chat` as the control
   (a route the change it was written for does not touch) and `/settings`,
-  `/settings?section=integrations`, `/agents`, `/agent-hub` and `/schedules`, each
-  photographed and read back as numbers. It exists because the sub-view inset report
-  (2026-09-26, "for sub-views like the settings page, the sidebar and view doesn't go
-  all the way to the top") was a claim about ONE y coordinate per route — where a
-  column's first box begins — and that number is what a reviewer can check: on a macOS
-  integrated window the lane ends at 32 and every route's first box must start there
-  (measured at y 62.86 before the fix, 32 after, with the app sidebar's row at 32 in
-  both). **Requires `--backend`** for the settings, agents, hub and schedules
-  surfaces to render at all, and is run twice per tree (`--window-size 1380x900` and
-  `800x600`, `--run-label` keeping the two sets of frame names apart).
+  `/settings?section=integrations`, `/agents`, `/agents/<any id>` (the saved-agent
+  route, which draws its own 280px roster through a different component),
+  `/agent-hub` and `/schedules`, each photographed and read back as numbers. It
+  exists because the sub-view inset report (2026-09-26, "for sub-views like the
+  settings page, the sidebar and view doesn't go all the way to the top") was a
+  claim about ONE y coordinate per route — where a column's first box begins — and
+  that number is what a reviewer can check: on a macOS integrated window the lane
+  ends at 32 and every route's first box must start there (measured at y 62.86
+  before the fix, 32 after, with the app sidebar's row at 32 in both).
+
+  **TWO CLAIMS, BECAUSE THE REPORT CAME TWICE (2026-09-27, "Same issue with agents
+  and teams").** The second is the same y as a GROUND rather than as a box: the
+  lane's `surface` band is a mirror of the columns' grounds, so a route's own
+  leading column — the settings rail, the agents list pane — needs the band to run
+  past its right edge, or the content ground is painted over its width and the
+  column's panel starts below the strip. The scene reads the lane's RESOLVED
+  gradient (its stop and its first colour) and the route's leading column, and
+  asserts the stop reaches the column's right edge in the `surface` role; where a
+  route draws no such column the stop must be exactly the app sidebar's own width.
+  The column is DERIVED from the layout (a full-height surface column at the
+  route's left edge) rather than looked up by the marker the fix adds, because a
+  rig that asks for a handle the broken tree does not have passes by having nothing
+  to check — measured on the base tree, where that shape reported every route as
+  having no leading column. The readings on the tree this was written for: the band
+  stopped at 260 against a rail ending at 479 and a list pane ending at 516 (both
+  FAIL), and reaches 479/516/540 after.
+
+  **Requires `--backend`** for the settings, agents, hub and schedules surfaces to
+  render at all, and is run twice per tree (`--window-size 1380x900` and `800x600`,
+  `--run-label` keeping the two sets of frame names apart).
 
 - **`hit-zones`** — the window drag region against the overlays painted over it,
   and the audit that goes with it: every control of every overlay the scene can
