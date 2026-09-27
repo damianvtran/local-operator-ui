@@ -871,6 +871,30 @@ test("the row's press is the same act as the typed command, and keeps the reader
 		/querySelectorAll<HTMLElement>\(\s*'\[data-sidebar-region="chats"\] \[data-chat-row\]'\s*,?\s*\)/,
 		"the successor must be read from the chats region, not the panel's document order",
 	);
+	/*
+	 * AND THE ROW IT HANDS THE CARET TO IS RESOLVED FROM THE PRESSED ROW, not from the control's own
+	 * parent (UX round 2, U1's behaviour residual; QA round 4's Q-3 reading): the archive control and
+	 * the row's button are siblings inside a pair wrapper, so the parent query answered nothing and
+	 * the successor rule fell through to the list's FIRST row on every route. Measured in the round:
+	 * `indexTheHandOffComputes: -1` against `trueIndexFromClosest: 1`, four routes, all landing on
+	 * `live[0]` where the row that took the pressed row's place was a different element. The driver's
+	 * row-press clause asserts the successor by id - the cheap half belongs here.
+	 */
+	assert.match(
+		source,
+		/\.closest<HTMLElement>\(\s*"\[data-session-row\]"\s*\)/,
+		"the pressed row must be resolved from the row element, not the control's parent",
+	);
+	/*
+	 * AND A PRESS FROM OUTSIDE THE LIST KEEPS ITS OWN ORDER: the entity region's nested rows carry
+	 * the same archive control, so the region query alone would answer nothing for them and send the
+	 * caret down to the list's first conversation - further than the unscoped rule did.
+	 */
+	assert.match(
+		source,
+		/listRows\.includes\(rowButton\)/,
+		"a press outside the list must keep the panel's order, not fall to the list's first row",
+	);
 });
 
 /*

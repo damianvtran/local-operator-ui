@@ -2799,6 +2799,43 @@ async function scrolledArrival(
 		const reached = Math.round(list.scrollTop);
 		button.focus();
 		list.scrollTop = reached;
+		/*
+		 * AND THE ROW THAT TAKES THE PRESSED ROW'S PLACE, computed by the RULE the hand-off implements
+		 * rather than by re-stating its result: the pressed row's position among the rows the hand-off
+		 * may pick from - the list's own region when the press is inside it, the panel's order when it
+		 * is not - then the next one, or the last one before it when the pressed row was the list's
+		 * last. Read BEFORE the press, which is the order the hand-off's own snapshot is taken in.
+		 *
+		 * WHY THE CLAUSE NEEDS THIS TO BE ABLE TO FAIL (UX round 2, U2): the accepted leg presses the
+		 * list's LAST row, where "the row above" and the list's first row are the same element, so a
+		 * clause asking only for "a conversation row of the chats region" passes on a successor rule
+		 * that never ran. The rule's own output is asserted against the caret's row instead.
+		 */
+		const handOffRows = (() => {
+			const scoped = Array.from(
+				document.querySelectorAll(
+					'[data-sidebar-region="chats"] [data-chat-row]',
+				),
+			);
+			if (
+				pressedRow !== null &&
+				scoped.some((candidate) => pressedRow.contains(candidate))
+			)
+				return scoped;
+			return Array.from(document.querySelectorAll("[data-chat-row]"));
+		})();
+		const pressedPosition =
+			pressedRow === null
+				? -1
+				: handOffRows.findIndex((candidate) => pressedRow.contains(candidate));
+		const successorRow =
+			pressedPosition === -1
+				? null
+				: (handOffRows[pressedPosition + 1] ??
+						handOffRows[pressedPosition - 1] ??
+						null)
+						?.closest("[data-session-row]")
+						?.getAttribute("data-session-row") ?? null;
 		return {
 			ok: true,
 			focusedId: chosen.getAttribute("data-session-row"),
@@ -2810,6 +2847,9 @@ async function scrolledArrival(
 			cursorInside: placed.cursorInside,
 			pressedInside: placed.pressedInside,
 			pressedRow: pressedRow?.getAttribute("data-session-row") ?? null,
+			pressedPosition,
+			handOffRowCount: handOffRows.length,
+			successorRow,
 		};
 	})()`);
 	if (placed?.ok !== true) return { label, capped, placed };
@@ -4709,6 +4749,38 @@ async function sceneSessionArchive(cdp) {
 	await hoverOver(cdp, `[data-session-row]:has(${offeredRow})`);
 	await wait(300);
 	await hoverOver(cdp, offeredRow);
+	/*
+	 * THE PAIR THIS CLAUSE IS ABOUT, read BEFORE the press: which row the press is on, and which row
+	 * takes its place - by the same rule the hand-off implements (the next live row in the list's
+	 * order, or the last one before it when the pressed row was the list's last). Recording the
+	 * pressed row beside the landed one is what makes the pair checkable from the log alone, instead
+	 * of a reader having to reconstruct the press from this step's own source (QA round 4, Q-3).
+	 *
+	 * COMPUTING THE SUCCESSOR RATHER THAN DESCRIBING IT is what makes this clause able to fail on the
+	 * defect it names (UX round 2, U2): this row sits in the MIDDLE of its list, so the successor and
+	 * the list's first row are different elements - which is exactly the difference a rule that fell
+	 * through to `live[0]` cannot produce.
+	 */
+	const handOffExpectation = await cdp.evaluate(`(() => {
+		const control = document.querySelector(${JSON.stringify(offeredRow)});
+		const row = control?.closest("[data-session-row]") ?? null;
+		if (row === null) return null;
+		const rows = Array.from(
+			document.querySelectorAll('[data-sidebar-region="chats"] [data-chat-row]'),
+		);
+		const position = rows.findIndex((candidate) => row.contains(candidate));
+		const successor =
+			position === -1 ? null : (rows[position + 1] ?? rows[position - 1] ?? null);
+		const idOf = (node) =>
+			node?.closest("[data-session-row]")?.getAttribute("data-session-row") ?? null;
+		return {
+			pressedRow: row.getAttribute("data-session-row"),
+			position,
+			rowCount: rows.length,
+			firstRow: idOf(rows[0]),
+			successorRow: idOf(successor),
+		};
+	})()`);
 	await clickAt(cdp, offeredRow);
 	await wait(500);
 	const successor = await verb(cdp, "measure", "[data-chat-row]:focus").catch(
@@ -4746,15 +4818,21 @@ async function sceneSessionArchive(cdp) {
 		};
 	})()`);
 	check(
-		"the keyboard lands on a conversation row of the CHATS region - the row that took the place of the one that left - rather than on an entity row above the list or back on the document (UX round 2, U1's clause; UX round 1, U5)",
+		"the keyboard lands on the row that took the place of the one that left - a conversation row of the CHATS region, not the list's first row, not an entity row above the list, and not back on the document (UX round 2, U1/U2; UX round 1, U5)",
 		successor !== null &&
 			successor.focused === true &&
 			successorScoped !== null &&
 			successorScoped.focused === true &&
 			successorRegion?.region === "chats" &&
-			successorRegion?.id !== null &&
+			successorRegion?.id === handOffExpectation?.successorRow &&
+			successorRegion?.id !== handOffExpectation?.pressedRow &&
 			!/Release notes for 0\.29/.test(successor.target ?? ""),
-		JSON.stringify({ successor, successorScoped, successorRegion }),
+		JSON.stringify({
+			successor,
+			successorScoped,
+			successorRegion,
+			handOff: handOffExpectation,
+		}),
 	);
 	/*
 	 * WHAT IT LANDED ON, RECORDED BESIDE THE ASSERTION: the check above can only say "not a row
@@ -4762,11 +4840,16 @@ async function sceneSessionArchive(cdp) {
 	 * some other chat-row-shaped surface - so both readings are printed rather than summarised.
 	 */
 	note(
-		"what holds the keyboard after a row is clicked",
+		"what holds the keyboard after a row is clicked, against the row that took the pressed row's place",
 		JSON.stringify({
+			pressedRow: handOffExpectation?.pressedRow ?? null,
+			successorRow: handOffExpectation?.successorRow ?? null,
+			landedRow: successorRegion?.id ?? null,
+			landedRegion: successorRegion?.region ?? null,
+			firstRow: handOffExpectation?.firstRow ?? null,
+			rowCount: handOffExpectation?.rowCount ?? null,
 			unscoped: successor,
 			rowScoped: successorScoped,
-			region: successorRegion,
 		}),
 	);
 	/*
@@ -5709,15 +5792,36 @@ async function sceneSessionArchive(cdp) {
 	 * ring's own length, because a list with a single conversation row cannot demonstrate a step: the
 	 * clause would otherwise pass on a keystroke that never arrived.
 	 */
+	/*
+	 * WHERE THE CARET WENT, AND WHERE THE NEXT DOWN-ARROW GOES FROM THERE (UX round 2, U1 and U2).
+	 *
+	 * The hand-off this arrival drives is the one a reader feels after an ACCEPTED archive. The clause
+	 * asserts the ROW, not just the region: it reads the placement's own computation of the successor
+	 * (the rule the hand-off implements, evaluated on the same pre-press order the hand-off snapshots)
+	 * and requires the caret to be on that row. The region alone was the over-claim UX round 2, U2
+	 * named - both regions' rows carry `data-chat-row`, so "a conversation row of the chats region"
+	 * passes on a rule that never ran.
+	 *
+	 * THIS LEG IS STILL NOT THE DISCRIMINATING ONE, and that is stated rather than hidden: it presses
+	 * the list's LAST row, where the successor and the list's first row are the same element, so a
+	 * rule that fell through to `live[0]` would satisfy it. The discriminating witness is the row
+	 * press in step 10, whose row sits in the MIDDLE of its list - the successor there is a different
+	 * element from `live[0]`, which is why its clause is the one that FAILS when the rule is reverted.
+	 */
 	check(
-		"and the accepted departure hands the caret to a conversation row of the CHATS region, not to an entity row above the list (UX round 2, U1)",
+		"and the accepted departure hands the caret to the row that took the pressed row's place - a conversation row of the CHATS region, not an entity row above the list and not the list's first row (UX round 2, U1 and U2)",
 		acceptedNow.stateOk &&
-			acceptedNow.state.focusedAfter?.id !== null &&
-			acceptedNow.state.focusedAfter?.region === "chats",
+			acceptedNow.state.focusedAfter?.region === "chats" &&
+			acceptedNow.state.focusedAfter?.id ===
+				acceptedArrivalReading.placed?.successorRow &&
+			acceptedNow.state.focusedAfter?.id !==
+				acceptedArrivalReading.placed?.pressedRow,
 		JSON.stringify({
 			focused: acceptedNow.state.focusedAfter,
-			pressedRow: acceptedArrivalReading.atPress?.rowId ?? null,
-			placed: acceptedArrivalReading.placed,
+			pressedRow: acceptedArrivalReading.placed?.pressedRow ?? null,
+			successorRow: acceptedArrivalReading.placed?.successorRow ?? null,
+			pressedPosition: acceptedArrivalReading.placed?.pressedPosition ?? null,
+			handOffRowCount: acceptedArrivalReading.placed?.handOffRowCount ?? null,
 		}),
 	);
 	const readCaret = () =>
