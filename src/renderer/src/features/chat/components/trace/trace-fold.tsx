@@ -110,6 +110,25 @@ export type TraceFoldProps = {
 	/** The fold's own margin: the gap tier its first row arrived with (D8). */
 	className?: string;
 	/**
+	 * Media the run produced, drawn UNDER the condensed header.
+	 *
+	 * The rows inside a collapsed fold are unmounted (`Disclosure` renders
+	 * `isOpen && children`), so a picture a call produced went with them: the
+	 * reader had to expand the group to see the artifact, which is the cost
+	 * condensing exists to remove. This is the fold's own copy of the principle
+	 * #537 applied to metadata — the condensed state carries the facts the rows
+	 * would have carried.
+	 *
+	 * Render it ONLY while condensed, and that is what the prop asks of its
+	 * caller rather than something this component can check: open, the rows draw
+	 * their own media (`TranscriptRow`'s `media`) and a strip here as well would
+	 * put one picture on screen twice. The caller composes it
+	 * (`canonical-transcript.tsx` builds a `FoldMedia` from the run's images)
+	 * rather than this file importing it, because the fold is a trace-tier
+	 * component and the transcript is what knows a record's images.
+	 */
+	condensedMedia?: ReactNode;
+	/**
 	 * The record ids the fold holds. Stamped on the wrapper (`data-fold-ids`)
 	 * because a collapsed fold UNMOUNTS its rows, so the turn foot's `1 failed`
 	 * jump cannot find the failed row by its `data-record-id` until the fold
@@ -149,6 +168,7 @@ export const TraceFold = ({
 	live,
 	sectionLive,
 	className,
+	condensedMedia,
 	recordIds,
 	children,
 }: TraceFoldProps) => {
@@ -363,6 +383,15 @@ export const TraceFold = ({
 			>
 				{children}
 			</Disclosure>
+			{/*
+			 * The run's pictures, while the rows that would draw them are unmounted.
+			 *
+			 * OUTSIDE the disclosure and below it, so the header keeps its own 24px
+			 * pitch and the strip is what the reader gains rather than something the
+			 * header now has to trade against. Only while condensed: open, every row
+			 * draws its own media and rendering both would show one picture twice.
+			 */}
+			{!open && condensedMedia}
 		</div>
 	);
 };

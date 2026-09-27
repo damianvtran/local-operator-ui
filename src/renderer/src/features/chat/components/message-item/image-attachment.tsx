@@ -27,6 +27,33 @@ type BaseImageAttachmentProps = {
 	 * ("Screenshot") instead.
 	 */
 	label?: string;
+	/**
+	 * The height ceiling the picture is drawn to.
+	 *
+	 * `full` is the transcript's own ceiling (240px): the size a picture is read
+	 * at when it IS the thing on screen. `thumbnail` is for a picture that is an
+	 * AFFORDANCE TO the full one — a condensed action group shows what its run
+	 * produced without every image-bearing group costing the height of a full
+	 * figure, and the click that expands to `full` is the same click either way.
+	 *
+	 * The thumbnail ceiling is the attachment frame's own floor (`min-h-16`,
+	 * 64px) rather than a new number: it is the smallest tile this system already
+	 * draws, so a thumbnail is an existing size used in a new place rather than a
+	 * fourth measure nobody has looked at. A picture smaller than that floor is
+	 * centred in the tile, exactly as it is at `full`.
+	 */
+	size?: ImageSize;
+};
+
+/**
+ * The two ceilings a picture is drawn to, named from the caller's question
+ * ("is this the picture, or a way into it?") rather than from its pixels.
+ */
+export type ImageSize = "full" | "thumbnail";
+
+const PICTURE_HEIGHT: Record<ImageSize, string> = {
+	full: "max-h-[240px]",
+	thumbnail: "max-h-16",
 };
 
 export type ImageAttachmentProps = BaseImageAttachmentProps & {
@@ -89,7 +116,7 @@ const getFileName = (path: string): string => {
  * canonical surface takes the same shape through its `inline-block` wrapper.
  */
 export const ImageAttachment: FC<ImageAttachmentProps> = memo(
-	({ file, src, conversationId, label }) => {
+	({ file, src, conversationId, label, size = "full" }) => {
 		const [hasError, setHasError] = useState(false);
 		const [isLoaded, setIsLoaded] = useState(false);
 		/**
@@ -268,7 +295,7 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 						// centred rather than stretched. Solving the portrait case
 						// properly means bounding by area, or relaxing `max-h` below
 						// roughly a 0.6 aspect — not a width floor on the image.
-						"max-h-[240px] max-w-full object-contain",
+						PICTURE_HEIGHT[size],
 						// The picture is invisible, not absent, until it decodes:
 						// the frame has already reserved the box, so nothing moves
 						// when it appears.

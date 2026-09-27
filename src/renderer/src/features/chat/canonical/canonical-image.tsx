@@ -32,6 +32,7 @@ import {
 	BrokenAttachment,
 } from "../components/message-item/attachment-frame";
 import { ImageAttachment } from "../components/message-item/image-attachment";
+import type { ImageSize } from "../components/message-item/image-attachment";
 import type { TranscriptImage } from "./transcript-reducer";
 import { type AttachmentScope, useAttachmentUrl } from "./use-attachment-url";
 
@@ -52,12 +53,23 @@ export type CanonicalImageProps = {
 	 * a canonical image has no filename to give.
 	 */
 	label: string;
+	/**
+	 * The size the picture is drawn at.
+	 *
+	 * Defaults to `ImageAttachment`'s own `full` ceiling, so every existing
+	 * caller renders exactly what it rendered before. A caller showing a
+	 * transcript image as an INDEX into the picture rather than as the picture
+	 * itself — the condensed action group — asks for `thumbnail` and keeps the
+	 * click that expands it.
+	 */
+	size?: ImageSize;
 };
 
 export const CanonicalImage = ({
 	image,
 	scope,
 	label,
+	size,
 }: CanonicalImageProps) => {
 	const src = useAttachmentUrl(image, scope);
 	if (!src) {
@@ -88,6 +100,7 @@ export const CanonicalImage = ({
 				// from the URL it would be the blob's UUID, which is what a screen
 				// reader announced. It is also the expanded overlay's own name.
 				label={label}
+				size={size}
 				conversationId={scope?.sessionId ?? ""}
 			/>
 		</div>

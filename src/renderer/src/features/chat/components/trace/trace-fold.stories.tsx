@@ -37,9 +37,12 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import "../../../../styles/index.css";
+import { CanonicalImage } from "../../canonical/canonical-image";
+import { FoldMedia } from "../../canonical/fold-media";
 import { foldSummary } from "../../canonical/trace-fold-model";
+import type { TranscriptImage } from "../../canonical/transcript-reducer";
 import { ToolRow } from "./tool-row";
 import { toolRowLabel } from "./tool-row-model";
 import { TraceFold } from "./trace-fold";
@@ -73,6 +76,13 @@ const Sheet = ({ children }: { children: ReactNode }) => (
 type RowSpec = {
 	name: string;
 	object: string;
+	/**
+	 * The pictures THIS action produced, as the record would carry them. On the
+	 * spec rather than on the fold because that is where they belong: the strip
+	 * is the run's concatenation of its rows' images, so a fixture that hung
+	 * them off the group would not be modelling anything the app can produce.
+	 */
+	images?: TranscriptImage[];
 	durationS: number | null;
 	failed?: boolean;
 	executing?: boolean;
@@ -110,6 +120,7 @@ const FoldRows = ({ specs }: { specs: RowSpec[] }) => (
 				toolName={spec.name}
 				summary={spec.object}
 				outcome={spec.executing ? "running" : spec.failed ? "error" : "success"}
+				media={spec.images ? <RowPictures images={spec.images} /> : undefined}
 				durationS={spec.durationS}
 				// A running row's clock is cleared rather than stamped: a still
 				// taken at a fixed instant cannot carry a ticking number.
@@ -119,13 +130,120 @@ const FoldRows = ({ specs }: { specs: RowSpec[] }) => (
 	</>
 );
 
+/**
+ * Hold the capture shutter until the story's pictures have DECODED.
+ *
+ * A picture is `opacity-0` until its own `onLoad` fires (`ImageAttachment`'s
+ * no-flash rule), so a shutter that fires once the story's own elements are up
+ * photographs the reserved box and nothing in it. The first pass of these
+ * frames did exactly that: the strip came back as an empty dark tile in both
+ * themes, and the file is 15,257 bytes of frame nobody can judge. The latch is
+ * the repository's own convention for it (`image-expand.stories.tsx`,
+ * `run-details.stories.tsx`): set `data-capture-pending` on mount, clear it
+ * only when every picture on the page reports `complete` with real dimensions,
+ * and leave it SET if that never happens - an exhausted latch fails the capture
+ * rather than shipping the empty box.
+ *
+ * TWO ARMING RULES, because the two states arrive differently. A condensed
+ * group has its strip at mount, so the latch arms at once. A frame of the
+ * PRESSED-OPEN group has no strip at all - the rig presses before this probe,
+ * and pressing unmounts it - so that story arms on the fold being OPEN and then
+ * waits for the row's own full-size picture. Arming on "an image exists" for
+ * both would race the press: the loop could see the strip's picture decoded in
+ * the window between the press and the row's picture mounting.
+ *
+ * It renders nothing, and it is inert on a story with no pictures: the
+ * attribute is only ever set once the arm condition holds, so the six
+ * image-less stories take the frames they took before this existed.
+ */
+const PicturesLatch = ({ whenOpen = false }: { whenOpen?: boolean }) => {
+	useEffect(() => {
+		let frame = 0;
+		let cancelled = false;
+		let armed = false;
+		let decoding = false;
+		const tick = () => {
+			if (cancelled) return;
+			if (!armed) {
+				/*
+				 * Arm on THIS story's own state, and not on anything weaker: a
+				 * condensed group arms when its strip is in the DOM, the pressed-open
+				 * one arms when the fold is open. A story with neither - every
+				 * image-less state in this set - never arms, never sets the attribute,
+				 * and takes the frame it took before this existed.
+				 */
+				const state = whenOpen
+					? '[data-fold-ids] button[aria-expanded="true"]'
+					: "[data-fold-media] img";
+				if (!document.querySelector(state)) {
+					if (frame++ < 600) requestAnimationFrame(tick);
+					return;
+				}
+				armed = true;
+			}
+			document.documentElement.dataset.capturePending = "1";
+			const pictures = [...document.images];
+			if (pictures.length === 0 || decoding) {
+				if (frame++ < 600) requestAnimationFrame(tick);
+				return;
+			}
+			/*
+			 * `decode()` rather than `complete`: this latch is also the assertion
+			 * that the fixture is a real picture, and `complete` does NOT answer
+			 * that. A TRUNCATED base64 literal reported `complete` with the right
+			 * `naturalWidth` - the IHDR parses, the data does not - and every
+			 * picture in this set photographed as an empty reserved box for two
+			 * passes because of it. `decode()` resolves only when the bytes are
+			 * decodable and ready to paint, and it REJECTS for a broken one; the
+			 * rejection leaves the attribute set, so the capture FAILS loudly
+			 * instead of shipping the empty box.
+			 */
+			if (
+				pictures.every(
+					(picture) => picture.complete && picture.naturalWidth > 0,
+				)
+			) {
+				decoding = true;
+				Promise.all(
+					pictures.map((picture) =>
+						picture.decode().then(
+							() => true,
+							() => false,
+						),
+					),
+				).then((decoded) => {
+					if (cancelled) return;
+					if (decoded.every(Boolean)) {
+						document.documentElement.removeAttribute("data-capture-pending");
+						return;
+					}
+					console.error(
+						"[trace-fold stories] a picture in this story will not decode; leaving the shutter latched so the capture fails rather than photographing an empty box",
+					);
+				});
+				return;
+			}
+			/* 600 frames is ten seconds; exhaustion leaves the attribute set,
+			   which fails the run rather than shipping a blank tile. */
+			if (frame++ < 600) requestAnimationFrame(tick);
+		};
+		requestAnimationFrame(tick);
+		return () => {
+			cancelled = true;
+			document.documentElement.removeAttribute("data-capture-pending");
+		};
+	}, [whenOpen]);
+	return null;
+};
+
 const meta = {
 	title: "chat/trace-fold",
 	component: TraceFold,
 	parameters: { layout: "fullscreen" },
-	render: (args) => (
+	render: (args, context) => (
 		<Sheet>
 			<TraceFold {...args} />
+			<PicturesLatch whenOpen={context?.parameters?.picturesLatch === "open"} />
 		</Sheet>
 	),
 } satisfies Meta<typeof TraceFold>;
@@ -261,5 +379,329 @@ export const Restored: Story = {
 		sectionLive: false,
 		recordIds: ["h1"],
 		children: <FoldRows specs={RESTORED_ROWS} />,
+	},
+};
+
+/* ------------------------- the run's own pictures ------------------------- */
+
+/*
+ * THE IMAGE-BEARING GROUP, added for the operator's 2026-09-26 report: a group
+ * that condenses itself while the screenshot its run produced goes behind the
+ * disclosure is the one artifact the fold was not allowed to hide. Five frames,
+ * because the states are five: the BEFORE shape (an image-bearing run condensed
+ * with nothing shown - which is today's render, spelled out so the pair is a
+ * difference rather than two descriptions of it), the same run with the strip,
+ * three pictures in one run, the live window where the picture has landed and a
+ * later call is still going, and the pressed-open state where the rows draw the
+ * pictures at full size instead.
+ *
+ * THE PICTURES ARE REAL BYTES, not a grey box: a reader has to be able to tell
+ * "the picture rendered" from "the frame rendered", which is the same reason
+ * `image-expand.stories.tsx` carries a literal. Four of them, because the strip
+ * has to show that three pictures cost what one costs and that a portrait
+ * capture (the phone-aspect case `image-attachment.tsx` names) is a narrow tile
+ * rather than a stretched one. Flat bands only, so the literals stay small
+ * enough to sit in a source file - a few hundred bytes of PNG each.
+ */
+const FOLD_SHOT_ONE =
+	"iVBORw0KGgoAAAANSUhEUgAAAWgAAADwCAIAAACixWkYAAAC/0lEQVR42u3UsQnAIBRFUacJVs6RgTKLjbUOaRo3CPwiksCBM8HjcdORC0BIMgEgHIBwAMIBCAcgHADCAQgHIByAcADCASAcgHAAwgEIByAcAMIBCAcgHIBwAMIBCAeAcADCAQgHIByAcAAIByAcwAfCUVsHCBEOQDiADeGY8wYIEQ5AOADhAIQDEA5AOACEAxAOQDgA4QCEA0A4AOEAhAMQDkA4AIQDEA5AOADhAIQDEA4rAMIBCAcgHIBwAMIB8KdwnNcAngmHcIBwCAcIh3CAcAgHCIdwgHAIh3CAcAgHCIdwgHAIBwiHcIBwCAcgHMIBwiEcIBzCAcIhHCAcwgEIh3CAcAgHCIdwgHAIBwiHcIBwCIdwgHAIBwiHcIBwCAcIh3CAcAiHT4BwCAcIh3CAcAgHCIdwgHAIByAcwgHCIRwgHMIBwiEcIBzCAQiHcIBwCAcIh3CAcAgHCIdwgHAIh3CAcAgHCIdwgHAIBwiHcIBwCAcgHMIBwiEcIBzCAcIhHCAcwgEIh3CAcAgHCIdwgHAIBwiHcADCIRwgHMIBwiEcIBzCAcIhHCAcwiEcIBzCAcIhHCAcwgHCIRwgHMIBCIdwgHAIBwiHcIBwCAcIh3AAwiEcIBzCAcIhHCAcwgHCIRyAcAgHCIdwgHAIBwiHcIBwCAcIh3AIBwiHcIBwCAcIh3CAcAgHCIdwAMIhHCAcwgHCIRwgHMIBwiEcgHAIBwiHcIBwCAcIh3CAcAgHCIdwCAcIh3CAcAgHCIdwgHAIBwiHcAgHCIdwgHAIBwiHcIBwCAcIh3AAwiEcIBzCAcIhHCAcwgHCIRyAcAgHCIdwgHAACAcgHIBwAMIBCAeAcADCAQgHIByAcAAIByAcgHAAwgEIByAcAMIBCAcgHIBwAMIBIByAcADCAQgHIBwAwgEIByAcgHAAwgEgHIBwAMIBCAcgHIBwAAgHIByAcADCAQgHgHAAwgEIByAcgHAACAcgHIBwAMIBCAeAcADCAQgHIByAcADCASAcwCsWE+1fusL0MMsAAAAASUVORK5CYII=";
+("gTKLjbUOaRo3CPwiksCBM8HjcdORC0BIMgEgHIBwAMIBCAcgHADCAQgHIByAcADCASAcgHAAwgEI");
+("ByAcAMIBCAcgHIBwAMIBCAeAcADCAQgHIByAcAAIByAcwAfCUVsHCBEOQDiADeGY8wYIEQ5AOADh");
+("AIQDEA5AOACEAxAOQDgA4QCEA0A4AOEAhAMQDkA4AIQDEA5AOADhAIQDEA4rAMIBCAcgHIBwAMIB");
+("8KdwnNcAngmHcIBwCAcIh3CAcAgHCIdwgHAIh3CAcAgHCIdwgHAIBwiHcIBwCAcgHMIBwiEcIBzC");
+("AcIhHCAcwgEIh3CAcAgHCIdwgHAIBwiHcIBwCIdwgHAIBwiHcIBwCAcIh3CAcAiHT4BwCAcIh3CA");
+("cAgHCIdwgHAIByAcwgHCIRwgHMIBwiEcIBzCAQiHcIBwCAcIh3CAcAgHCIdwgHAIh3CAcAgHCIdw");
+("gHAIBwiHcIBwCAcgHMIBwiEcIBzCAcIhHCAcwgEIh3CAcAgHCIdwgHAIBwiHcADCIRwgHMIBwiEc");
+("IBzCAcIhHCAcwiEcIBzCAcIhHCAcwgHCIRwgHMIBCIdwgHAIBwiHcIBwCAcIh3AAwiEcIBzCAcIh");
+("HCAcwgHCIRyAcAgHCIdwgHAIBwiHcIBwCAcIh3AIBwiHcIBwCAcIh3CAcAgHCIdwAMIhHCAcwgHC");
+("IRwgHMIBwiEcgHAIBwiHcIBwCAcIh3CAcAgHCIdwCAcIh3CAcAgHCIdwgHAIBwiHcAgHCIdwgHAI");
+("BwiHcIBwCAcIh3AAwiEcIBzCAcIhHCAcwgHCIRyAcAgHCIdwgHAACAcgHIBwAMIBCAeAcADCAQgH");
+("IByAcAAIByAcgHAAwgEIByAcAMIBCAcgHIBwAMIBIByAcADCAQgHIBwAwgEIByAcgHAAwgEgHIBw");
+("AMIBCAcgHIBwAAgHIByAcADCAQgHgHAAwgEIByAcgHAACAcgHIBwAMIBCAeAcADCAQgHIByAcADC");
+("ASAcwCsWE+1fusL0MMsAAAAASUVORK5CYII=");
+const FOLD_SHOT_TWO =
+	"iVBORw0KGgoAAAANSUhEUgAAAWgAAADwCAIAAACixWkYAAADAElEQVR42u3UsQnAIBRFUacJVk6USTKIjY2NS5rGDQK/iCRw4EzweNx05AIQkkwACAcgHIBwAMIBCAeAcADCAQgHIByAcAAIByAcgHAAwgEIB4BwAMIBCAcgHIBwAMIBIByAcADCAQgHIBwAwgEIB/CBcNQ2AEKEAxAOYEM45rwBQoQDEA5AOADhAIQDEA4A4QCEAxAOQDgA4QAQDkA4AOEAhAMQDgDhAIQDEA5AOADhAITDCoBwAMIBCAcgHIBwAPwpHNfZgWfCIRwgHMIBwiEcIBzCAcIhHCAcwiEcIBzCAcIhHCAcwgHCIRwgHMIBCIdwgHAIBwiHcIBwCAcIh3AAwiEcIBzCAcIhHCAcwgHCIRwgHMIhHCAcwgHCIRwgHMIBwiEcIBzC4RMgHMIBwiEcIBzCAcIhHCAcwgEIh3CAcAgHCIdwgHAIBwiHcADCIRwgHMIBwiEcIBzCAcIhHCAcwiEcIBzCAcIhHCAcwgHCIRwgHMIBCIdwgHAIBwiHcIBwCAcIh3AAwiEcIBzCAcIhHCAcwgHCIRyAcAgHCIdwgHAIBwiHcIBwCAcIh3AIBwiHcIBwCAcIh3CAcAgHCIdwAMIhHCAcwgHCIRwgHMIBwiEcgHAIBwiHcIBwCAcIh3CAcAgHIBzCAcIhHCAcwgHCIRwgHMIBwiEcwgHCIRwgHMIBwiEcIBzCAcIhHIBwCAcIh3CAcAgHCIdwgHAIByAcwgHCIRwgHMIBwiEcIBzCAcIhHMIBwiEcIBzCAcIhHCAcwgHCIRzCAcIhHCAcwgHCIRwgHMIBwiEcgHAIBwiHcIBwCAcIh3CAcAgHIBzCAcIhHCAcAMIBCAcgHIBwAMIBIByAcADCAQgHIBwAwgEIByAcgHAAwgEIB4BwAMIBCAcgHIBwAAgHIByAcADCAQgHgHAAwgEIByAcgHAACAcgHIBwAMIBCAcgHADCAQgHIByAcADCASAcgHAAwgEIByAcAMIBCAcgHIBwAMIBIByAcADCAQgHIByAcAAIB/CKBeLQJSwAty3/AAAAAElFTkSuQmCC";
+("STKIjY2NS5rGDQK/iCRw4EzweNx05AIQkkwACAcgHIBwAMIBCAeAcADCAQgHIByAcAAIByAcgHAA");
+("wgEIB4BwAMIBCAcgHIBwAMIBIByAcADCAQgHIBwAwgEIB/CBcNQ2AEKEAxAOYEM45rwBQoQDEA5A");
+("OADhAIQDEA4A4QCEAxAOQDgA4QAQDkA4AOEAhAMQDgDhAIQDEA5AOADhAITDCoBwAMIBCAcgHIBw");
+("APwpHNfZgWfCIRwgHMIBwiEcIBzCAcIhHCAcwiEcIBzCAcIhHCAcwgHCIRwgHMIBCIdwgHAIBwiH");
+("cIBwCAcIh3AAwiEcIBzCAcIhHCAcwgHCIRwgHMIhHCAcwgHCIRwgHMIBwiEcIBzC4RMgHMIBwiEc");
+("IBzCAcIhHCAcwgEIh3CAcAgHCIdwgHAIBwiHcADCIRwgHMIBwiEcIBzCAcIhHCAcwiEcIBzCAcIh");
+("HCAcwgHCIRwgHMIBCIdwgHAIBwiHcIBwCAcIh3AAwiEcIBzCAcIhHCAcwgHCIRyAcAgHCIdwgHAI");
+("BwiHcIBwCAcIh3AIBwiHcIBwCAcIh3CAcAgHCIdwAMIhHCAcwgHCIRwgHMIBwiEcgHAIBwiHcIBw");
+("CAcIh3CAcAgHIBzCAcIhHCAcwgHCIRwgHMIBwiEcwgHCIRwgHMIBwiEcIBzCAcIhHIBwCAcIh3CA");
+("cAgHCIdwgHAIByAcwgHCIRwgHMIBwiEcIBzCAcIhHMIBwiEcIBzCAcIhHCAcwgHCIRzCAcIhHCAc");
+("wgHCIRwgHMIBwiEcgHAIBwiHcIBwCAcIh3CAcAgHIBzCAcIhHCAcAMIBCAcgHIBwAMIBIByAcADC");
+("AQgHIBwAwgEIByAcgHAAwgEIB4BwAMIBCAcgHIBwAAgHIByAcADCAQgHgHAAwgEIByAcgHAACAcg");
+("HIBwAMIBCAcgHADCAQgHIByAcADCASAcgHAAwgEIByAcAMIBCAcgHIBwAMIBIByAcADCAQgHIByA");
+("cAAIB/CKBeLQJSwAty3/AAAAAElFTkSuQmCC");
+const FOLD_SHOT_THREE =
+	"iVBORw0KGgoAAAANSUhEUgAAAWgAAADwCAIAAACixWkYAAADAElEQVR42u3UsQnAIBRFUacJVo6RcTKJtY21S5rGDQK/iCRw4EzweNx05AIQkkwACAcgHIBwAMIBCAeAcADCAQgHIByAcAAIByAcgHAAwgEIB4BwAMIBCAcgHIBwAMIBIByAcADCAQgHIBwAwgEIB/CBcLQ+AEKEAxAOYEM45rwBQoQDEA5AOADhAIQDEA4A4QCEAxAOQDgA4QAQDkA4AOEAhAMQDgDhAIQDEA5AOADhAITDCoBwAMIBCAcgHIBwAPwpHGe9gGfCIRwgHMIBwiEcIBzCAcIhHCAcwiEcIBzCAcIhHCAcwgHCIRwgHMIBCIdwgHAIBwiHcIBwCAcIh3AAwiEcIBzCAcIhHCAcwgHCIRwgHMIhHCAcwgHCIRwgHMIBwiEcIBzC4RMgHMIBwiEcIBzCAcIhHCAcwgEIh3CAcAgHCIdwgHAIBwiHcADCIRwgHMIBwiEcIBzCAcIhHCAcwiEcIBzCAcIhHCAcwgHCIRwgHMIBCIdwgHAIBwiHcIBwCAcIh3AAwiEcIBzCAcIhHCAcwgHCIRyAcAgHCIdwgHAIBwiHcIBwCAcIh3AIBwiHcIBwCAcIh3CAcAgHCIdwAMIhHCAcwgHCIRwgHMIBwiEcgHAIBwiHcIBwCAcIh3CAcAgHIBzCAcIhHCAcwgHCIRwgHMIBwiEcwgHCIRwgHMIBwiEcIBzCAcIhHIBwCAcIh3CAcAgHCIdwgHAIByAcwgHCIRwgHMIBwiEcIBzCAcIhHMIBwiEcIBzCAcIhHCAcwgHCIRzCAcIhHCAcwgHCIRwgHMIBwiEcgHAIBwiHcIBwCAcIh3CAcAgHIBzCAcIhHCAcAMIBCAcgHIBwAMIBIByAcADCAQgHIBwAwgEIByAcgHAAwgEIB4BwAMIBCAcgHIBwAAgHIByAcADCAQgHgHAAwgEIByAcgHAACAcgHIBwAMIBCAcgHADCAQgHIByAcADCASAcgHAAwgEIByAcAMIBCAcgHIBwAMIBIByAcADCAQgHIByAcAAIB/CKBX8yw0V7YSOJAAAAAElFTkSuQmCC";
+("cTKJtY21S5rGDQK/iCRw4EzweNx05AIQkkwACAcgHIBwAMIBCAeAcADCAQgHIByAcAAIByAcgHAA");
+("wgEIB4BwAMIBCAcgHIBwAMIBIByAcADCAQgHIBwAwgEIB/CBcLQ+AEKEAxAOYEM45rwBQoQDEA5A");
+("OADhAIQDEA4A4QCEAxAOQDgA4QAQDkA4AOEAhAMQDgDhAIQDEA5AOADhAITDCoBwAMIBCAcgHIBw");
+("APwpHGe9gGfCIRwgHMIBwiEcIBzCAcIhHCAcwiEcIBzCAcIhHCAcwgHCIRwgHMIBCIdwgHAIBwiH");
+("cIBwCAcIh3AAwiEcIBzCAcIhHCAcwgHCIRwgHMIhHCAcwgHCIRwgHMIBwiEcIBzC4RMgHMIBwiEc");
+("IBzCAcIhHCAcwgEIh3CAcAgHCIdwgHAIBwiHcADCIRwgHMIBwiEcIBzCAcIhHCAcwiEcIBzCAcIh");
+("HCAcwgHCIRwgHMIBCIdwgHAIBwiHcIBwCAcIh3AAwiEcIBzCAcIhHCAcwgHCIRyAcAgHCIdwgHAI");
+("BwiHcIBwCAcIh3AIBwiHcIBwCAcIh3CAcAgHCIdwAMIhHCAcwgHCIRwgHMIBwiEcgHAIBwiHcIBw");
+("CAcIh3CAcAgHIBzCAcIhHCAcwgHCIRwgHMIBwiEcwgHCIRwgHMIBwiEcIBzCAcIhHIBwCAcIh3CA");
+("cAgHCIdwgHAIByAcwgHCIRwgHMIBwiEcIBzCAcIhHMIBwiEcIBzCAcIhHCAcwgHCIRzCAcIhHCAc");
+("wgHCIRwgHMIBwiEcgHAIBwiHcIBwCAcIh3CAcAgHIBzCAcIhHCAcAMIBCAcgHIBwAMIBIByAcADC");
+("AQgHIBwAwgEIByAcgHAAwgEIB4BwAMIBCAcgHIBwAAgHIByAcADCAQgHgHAAwgEIByAcgHAACAcg");
+("HIBwAMIBCAcgHADCAQgHIByAcADCASAcgHAAwgEIByAcAMIBCAcgHIBwAMIBIByAcADCAQgHIByA");
+("cAAIB/CKBX8yw0V7YSOJAAAAAElFTkSuQmCC");
+const FOLD_SHOT_TALL =
+	"iVBORw0KGgoAAAANSUhEUgAAAMgAAAFoCAIAAACdUSOTAAADD0lEQVR42u3SsQ2AIBRFUaYxVszhNIxjYy1DfhpXoPgJkpzkTvDeKcdZpfSKCQSWwBJYElgCS2BJYAksgSWBJbAElgSWwBJYElgCS2BJYAksgSWBJbAElgSWwBJYElgCS2BJYAksgSWBJbAElgSWwBJYElgCS2BJYGk1rPt5pfTAEljaCFbEkNIDS2AJLIFlBYElsASWBJbAElgSWAJLYElgCSyBJYElsASWBJbAElgSWAJLYElgCSyBJYElsASWBJbAElgSWAJLYElgCSyBJYElsATWVL1d2jewBJbAAgsssASWwAILLLAElsACCyywBJbAAgsssASWwAILLLAElsACCyywBJbAAgsssASWwAILLLAElsACCyywBJbAAgsssASWwAILLLAElsACCyywBJbAAgsssASWwAILLLAElsACCyywBJbAAgsssASWwAILLLAElsACCyywBJbAAgsssASWwAILLLAElsACCyywBJbAAgsssASWwPINWGAJLIElsMASWAJLYIElsASWwAJLYAksgQWWwBJYAgssgSWwBBZYYIElsAQWWGCBJbAEFlhggSWwBBZYYIElsAQWWGCBJbAEFlhggSWwBBZYYIElsAQWWGCBJbAEFlhggSWwBBZYYIElsAQWWGCBJbAEFlhggSWwBBZYYIElsAQWWGCBJbAEFlhggSWwBBZYYIElsAQWWGCBJbAEFlhggSWwBBZYYIElsAQWWGCBJbAEFlhggSWwBBZYYIElsAQWWGCBJbAElnvAAktgCSyBBZbAElgCCyyBJbAEFlgCS2AJLLAElsASWGCBBZbAElhggQWWwBJYElgCS2BJYAksgSWBJbAElgSWwBJYElgCS2BJYAksgSWBJbAElgSWwBJYElgCS2BJYAksgSWBJbAElgSWwBJYElgCS2BJYAksgSWBJbAElgSWwBJYElgCS2BJYAksgSWBJbAElgSWwBJYElgCS2BJYAksgSWBJbAElsAygcASWAJLAktgCSwJLIElsCSwBJbAksASWAJLAktgCSwJLP20D2a4hLjaytrlAAAAAElFTkSuQmCC";
+("NIxjYy1DfhpXoPgJkpzkTvDeKcdZpfSKCQSWwBJYElgCS2BJYAksgSWBJbAElgSWwBJYElgCS2BJ");
+("YAksgSWBJbAElgSWwBJYElgCS2BJYAksgSWBJbAElgSWwBJYElgCS2BJYGk1rPt5pfTAEljaCFbE");
+("kNIDS2AJLIFlBYElsASWBJbAElgSWAJLYElgCSyBJYElsASWBJbAElgSWAJLYElgCSyBJYElsASW");
+("BJbAElgSWAJLYElgCSyBJYElsATWVL1d2jewBJbAAgsssASWwAILLLAElsACCyywBJbAAgsssASW");
+("wAILLLAElsACCyywBJbAAgsssASWwAILLLAElsACCyywBJbAAgsssASWwAILLLAElsACCyywBJbA");
+("AgsssASWwAILLLAElsACCyywBJbAAgsssASWwAILLLAElsACCyywBJbAAgsssASWwAILLLAElsAC");
+("CyywBJbAAgsssASWwPINWGAJLIElsMASWAJLYIElsASWwAJLYAksgQWWwBJYAgssgSWwBBZYYIEl");
+("sAQWWGCBJbAEFlhggSWwBBZYYIElsAQWWGCBJbAEFlhggSWwBBZYYIElsAQWWGCBJbAEFlhggSWw");
+("BBZYYIElsAQWWGCBJbAEFlhggSWwBBZYYIElsAQWWGCBJbAEFlhggSWwBBZYYIElsAQWWGCBJbAE");
+("FlhggSWwBBZYYIElsAQWWGCBJbAEFlhggSWwBBZYYIElsAQWWGCBJbAElnvAAktgCSyBBZbAElgC");
+("CyyBJbAEFlgCS2AJLLAElsASWGCBBZbAElhggQWWwBJYElgCS2BJYAksgSWBJbAElgSWwBJYElgC");
+("S2BJYAksgSWBJbAElgSWwBJYElgCS2BJYAksgSWBJbAElgSWwBJYElgCS2BJYAksgSWBJbAElgSW");
+("wBJYElgCS2BJYAksgSWBJbAElgSWwBJYElgCS2BJYAksgSWBJbAElsAygcASWAJLAktgCSwJLIEl");
+("sCSwBJbAksASWAJLAktgCSwJLP20D2a4hLjaytrlAAAAAElFTkSuQmCC");
+
+const SHOT_BYTES = {
+	one: FOLD_SHOT_ONE,
+	two: FOLD_SHOT_TWO,
+	three: FOLD_SHOT_THREE,
+	tall: FOLD_SHOT_TALL,
+} as const;
+
+/**
+ * One picture as the reducer hands it over: inline bytes, so nothing here
+ * reaches a backend, a port or a store on disk.
+ */
+const shot = (
+	name: keyof typeof SHOT_BYTES,
+	index: number,
+): TranscriptImage => ({
+	id: `s${index}:${name}`,
+	data: SHOT_BYTES[name],
+	attachment: null,
+	mimeType: "image/png",
+});
+
+/**
+ * The row's own media, composed the way `canonical-transcript.tsx` composes it
+ * (`mt-1 ml-5`, the full ceiling, a position as the name).
+ *
+ * Mirrored rather than imported because the transcript's composition is a
+ * private branch of a 2,600-line module; the sheet above mirrors the
+ * transcript's column for the same reason, and the frame exists to show what
+ * EXPANDING costs beside what the strip costs. The strip itself is the real
+ * component in every frame, because that is what is being judged.
+ */
+const RowPictures = ({ images }: { images: TranscriptImage[] }) => (
+	<div className="mt-1 ml-5 flex flex-col gap-2">
+		{images.map((image, index) => (
+			<CanonicalImage
+				key={image.id}
+				image={image}
+				scope={null}
+				label={images.length === 1 ? "Screenshot" : `Screenshot ${index + 1}`}
+			/>
+		))}
+	</div>
+);
+
+/** The run's pictures as the fold carries them while condensed. */
+const foldPictures = (images: TranscriptImage[]) => (
+	<FoldMedia images={images} scope={null} />
+);
+
+const IMAGE_ROWS: RowSpec[] = [
+	{
+		name: "bash",
+		object: "python3 scripts/plot.py --out out/network_f0w.png",
+		durationS: 2.4,
+	},
+	{
+		name: "read",
+		object: "out/network_f0w.png",
+		durationS: 0.3,
+		images: [shot("one", 0)],
+	},
+	{ name: "bash", object: "git status --short", durationS: 0.1 },
+];
+
+const IMAGE_ACTIONS = IMAGE_ROWS.map((spec) => spec.images?.[0]).filter(
+	(image): image is TranscriptImage => image !== undefined,
+);
+
+/**
+ * THE BEFORE FRAME, and the reason it is a story rather than a claim: condensing
+ * is new, and the state it left behind is "the artifact is not on screen". This
+ * renders the same run as `ImageShown` with the strip withheld, which is exactly
+ * what the shipped component does when no `condensedMedia` is passed - so the
+ * pair differs in the picture and nothing else.
+ */
+export const ImageHidden: Story = {
+	args: {
+		...foldProps(IMAGE_ROWS),
+		span: { startedAtMs: 1_000, endedAtMs: 3_000, running: false },
+		live: null,
+		sectionLive: false,
+		recordIds: ["s1", "s2", "s3"],
+		children: <FoldRows specs={IMAGE_ROWS} />,
+	},
+};
+
+/** The same finished run AFTER: the picture it produced is on screen. */
+export const ImageShown: Story = {
+	args: {
+		...foldProps(IMAGE_ROWS),
+		span: { startedAtMs: 1_000, endedAtMs: 3_000, running: false },
+		live: null,
+		sectionLive: false,
+		recordIds: ["s1", "s2", "s3"],
+		condensedMedia: foldPictures(IMAGE_ACTIONS),
+		children: <FoldRows specs={IMAGE_ROWS} />,
+	},
+};
+
+const THREE_IMAGE_ROWS: RowSpec[] = [
+	{
+		name: "bash",
+		object: "python3 scripts/plot.py --all --out out/",
+		durationS: 4.8,
+	},
+	{
+		name: "read",
+		object: "out/network_f0w.png out/latency.png out/phone.png",
+		durationS: 0.4,
+		images: [shot("one", 1), shot("two", 1), shot("tall", 1)],
+	},
+	{ name: "bash", object: "git status --short", durationS: 0.1 },
+];
+
+/** Three pictures, one of them a portrait capture: the cost the wrap is about. */
+export const ImagesThree: Story = {
+	args: {
+		...foldProps(THREE_IMAGE_ROWS),
+		span: { startedAtMs: 1_000, endedAtMs: 7_000, running: false },
+		live: null,
+		sectionLive: false,
+		recordIds: ["s1", "s2", "s3"],
+		condensedMedia: foldPictures(
+			(THREE_IMAGE_ROWS[1].images ?? []) as TranscriptImage[],
+		),
+		children: <FoldRows specs={THREE_IMAGE_ROWS} />,
+	},
+};
+
+const LIVE_IMAGE_ROWS: RowSpec[] = [
+	{
+		name: "bash",
+		object: "python3 scripts/plot.py --out out/network_f0w.png",
+		durationS: 2.4,
+	},
+	{
+		name: "read",
+		object: "out/network_f0w.png",
+		durationS: 0.3,
+		images: [shot("one", 0)],
+	},
+	{
+		name: "bash",
+		object: "git push origin feat/condensed-group-images",
+		durationS: null,
+		executing: true,
+	},
+];
+
+/**
+ * THE LIVE WINDOW: the picture has landed, the run has not finished, and the
+ * group is condensed (it arrives that way; only the reader opens it). The strip
+ * is the same element it will be once the section ends - `trace-fold-behaviour`
+ * asserts that identity across the settle - so this frame and `ImageShown` are
+ * the two things a reader sees around that transition.
+ */
+export const ImageLive: Story = {
+	args: {
+		...foldProps(LIVE_IMAGE_ROWS),
+		span: { startedAtMs: 1_000, endedAtMs: 9_000, running: false },
+		sectionLive: true,
+		recordIds: ["s1", "s2", "s3"],
+		condensedMedia: foldPictures(
+			(LIVE_IMAGE_ROWS[1].images ?? []) as TranscriptImage[],
+		),
+		children: <FoldRows specs={LIVE_IMAGE_ROWS} />,
+	},
+};
+
+/**
+ * The reader's own press, on the run that produced a picture: the rows are back
+ * and the picture is drawn by the row that produced it, at the transcript's own
+ * ceiling - and the strip is NOT rendered beside them, which is what keeps one
+ * picture from being on screen twice. The pair against `ImageShown` is the
+ * whole height argument in two frames.
+ */
+export const ImageExpanded: Story = {
+	parameters: { picturesLatch: "open" },
+	args: {
+		...foldProps(IMAGE_ROWS),
+		span: { startedAtMs: 1_000, endedAtMs: 3_000, running: false },
+		live: null,
+		sectionLive: false,
+		recordIds: ["s1", "s2", "s3"],
+		condensedMedia: foldPictures(IMAGE_ACTIONS),
+		children: <FoldRows specs={IMAGE_ROWS} />,
+	},
+};
+
+const MANY_IMAGE_ROWS: RowSpec[] = [
+	{
+		name: "bash",
+		object: "node scripts/capture-evidence.mjs --only=chat- --themes=all",
+		durationS: 41.6,
+	},
+	{
+		name: "read",
+		object: "out/*.webp (8 frames)",
+		durationS: 1.2,
+		images: [
+			shot("one", 2),
+			shot("two", 2),
+			shot("three", 2),
+			shot("tall", 2),
+			shot("one", 3),
+			shot("two", 3),
+			shot("three", 3),
+			shot("tall", 3),
+		],
+	},
+	{ name: "bash", object: "git add docs/evidence", durationS: 0.2 },
+];
+
+/**
+ * THE PATHOLOGICAL CASE, framed rather than argued: eight pictures in one run.
+ *
+ * Three pictures and one cost the same row; eight are the count at which the
+ * column genuinely cannot hold another 64px tile, so the strip wraps and the
+ * group grows by a second and third row. It is a real cost and it is the one
+ * this design accepts - a scroller would hold the height constant and hide the
+ * count, which is the operator's complaint about hidden artifacts wearing a
+ * different hat. The frame is here so the design round judges the trade from a
+ * render, and the geometry rig reports the height it actually takes.
+ */
+export const ImagesMany: Story = {
+	args: {
+		...foldProps(MANY_IMAGE_ROWS),
+		span: { startedAtMs: 1_000, endedAtMs: 43_000, running: false },
+		live: null,
+		sectionLive: false,
+		recordIds: ["s1", "s2", "s3"],
+		condensedMedia: foldPictures(
+			(MANY_IMAGE_ROWS[1].images ?? []) as TranscriptImage[],
+		),
+		children: <FoldRows specs={MANY_IMAGE_ROWS} />,
 	},
 };
