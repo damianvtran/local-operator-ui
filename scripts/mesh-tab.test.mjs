@@ -1015,3 +1015,44 @@ test("this device is a ring, and the stripe carries status (D6)", () => {
 		"the accent stripe is gone, not merely joined by a ring",
 	);
 });
+
+/* ------------------------------------------------------- review round 2 (R2-1) */
+
+test("the rail's membership read does not poll: the always-mounted component fans out to nobody", () => {
+	/*
+	 * R2-1's defect: `useMeshMembership` called `useMeshNetworks(enabled)` with no
+	 * options, so the RAIL - mounted on every route by `app.tsx` - inherited this file's
+	 * 30 s interval. One poll is `net_peer_ls`, which dials every peer, plus a `net_show`
+	 * per network, so a member device fanned out to every peer every 30 seconds for the
+	 * life of the window, on any screen. The fix is the `poll: false` observer, and these
+	 * four assertions are the pin that keeps it.
+	 */
+	const store = source("src/renderer/src/features/mesh/mesh-store.ts");
+	assert.match(
+		store,
+		/export function useMeshNetworks\(\s*enabled: boolean,\s*\{ poll = true \}: \{ poll\?: boolean \} = \{\},\s*\)/,
+		"the hook takes the cadence as an option rather than hard-coding it",
+	);
+	assert.match(
+		store,
+		/useMeshNetworks\(enabled, \{ poll: false \}\)/,
+		"and the membership hook - the rail's only reader - asks for the non-polling one",
+	);
+	assert.match(
+		store,
+		/refetchInterval: enabled && poll \? MESH_POLL_MS : false/,
+		"the 30 s cadence is reachable only through the polling observer",
+	);
+	assert.match(
+		store,
+		/staleTime: poll \? 10_000 : Number\.POSITIVE_INFINITY/,
+		"the non-polling observer cannot be woken by a mount or a focus either",
+	);
+	assert.match(
+		source(
+			"src/renderer/src/shared/components/navigation/sidebar-navigation.tsx",
+		),
+		/const meshMembership = useMeshMembership\(meshPaired\);/,
+		"the rail reads membership through that hook, so the pin above is about the rail",
+	);
+});

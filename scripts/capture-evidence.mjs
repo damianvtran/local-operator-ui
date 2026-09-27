@@ -5796,7 +5796,9 @@ export const STORIES = [
 	 * the reason the row is separate: `--dir` writes `two-devices-narrow/`, so a
 	 * reader can tell the 1024x768 frame from the 1380x900 one instead of comparing
 	 * two files whose names differ only by theme. 1024x768 is the width the app's own
-	 * sidebar clamps for, i.e. the smallest window this tab has to work at.
+	 * sidebar clamps for; the app's OWN FLOOR is 800x600 (`WINDOW_MIN_WIDTH` /
+	 * `WINDOW_MIN_HEIGHT` in `src/main/window-mode.ts`), which the design round captured
+	 * six states at - all hold, and the README names that floor rather than this row.
 	 *
 	 * The list presentation gets its own frame because it is the OTHER way in: a
 	 * canvas cannot sort or search, and a one-device mesh has no edges to draw, so the

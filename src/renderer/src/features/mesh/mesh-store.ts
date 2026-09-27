@@ -14,7 +14,9 @@
  * surfaces. A failed read here leaves the last known mesh painted and says so; it
  * never touches a session row.
  *
- * POLL, NOT STREAM, at 30 s while the tab is mounted and visible:
+ * POLL, NOT STREAM, at 30 s WHILE THE TAB IS MOUNTED AND VISIBLE - and the cadence
+ * is now stated per OBSERVER, because review round 2 (R2-1) caught this file
+ * claiming something the code no longer did:
  *
  *   - a mesh listing DIALS every peer on the backend (`relay.peer_status` under
  *     `LISTING_PROBE_BUDGET_S = 12.0`), so it is not free, and the peer-session
@@ -26,8 +28,19 @@
  *   - `refetchIntervalInBackground` is left at its default `false`, so a window in
  *     the background costs nothing - unlike the capabilities poll, which runs in
  *     background for a reason of its own;
- *   - and the hook is `enabled: false` whenever the tab is not mounted, which is
- *     the gate: a machine in no mesh issues NO call at all.
+ *   - and THE PAGE IS THE ONLY POLLER. The rail (`sidebar-navigation.tsx`) is mounted
+ *     on every route and reads this same cache entry for its row, so its observer
+ *     asks for NO interval: it makes ONE read when the window starts and then rides
+ *     whatever the page's observer fetches while the tab is open. Before round 2 the
+ *     rail inherited this 30 s interval, which turned an always-mounted component
+ *     into a fan-out to every peer, every 30 seconds, on every screen - the cost the
+ *     membership gate exists to avoid paying.
+ *
+ * ONE READ, NOT ZERO, and that is the honest floor rather than a choice: membership
+ * cannot be known without asking (lop advertises `peers` on every install and the
+ * catalogue's emptiness is the fact), so a mesh-capable daemon serves exactly one
+ * `networks.list` per window for the rail. A daemon that does not advertise `peers`
+ * issues nothing at all, because `enabled` is the capability.
  */
 
 import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
@@ -80,16 +93,29 @@ export function useMeshPeers(enabled: boolean) {
 	});
 }
 
-/** `GET /v1/desktop/networks`, normalised: one entry per network, members per network. */
-export function useMeshNetworks(enabled: boolean) {
+/** `GET /v1/desktop/networks`, normalised: one entry per network, members per network.
+ *
+ * `poll: false` is for the RAIL, which is mounted on every route and needs the
+ * membership fact rather than a live topology: an always-mounted observer with this
+ * file's 30 s interval turns one read into a background fan-out to every peer on every
+ * screen (review round 2, R2-1). Its observer asks for no interval, no window-focus
+ * refetch and an infinite `staleTime`, so it reads once when the window starts and then
+ * RIDES the page's observer through the shared cache entry - the same `queryKey`, so
+ * one fetch serves both.
+ */
+export function useMeshNetworks(
+	enabled: boolean,
+	{ poll = true }: { poll?: boolean } = {},
+) {
 	return useQuery({
 		queryKey: meshKeys.networks,
 		enabled,
 		queryFn: async () =>
 			networkTopology(await desktopResult<unknown>({ op: "networks.list" })),
 		retry: false,
-		staleTime: 10_000,
-		refetchInterval: enabled ? MESH_POLL_MS : false,
+		staleTime: poll ? 10_000 : Number.POSITIVE_INFINITY,
+		refetchInterval: enabled && poll ? MESH_POLL_MS : false,
+		refetchOnWindowFocus: poll,
 	});
 }
 
@@ -101,7 +127,7 @@ export function useMeshNetworks(enabled: boolean) {
  * this shares its one cache entry rather than issuing a second read.
  */
 export function useMeshMembership(enabled: boolean): MeshMembership {
-	const networks = useMeshNetworks(enabled);
+	const networks = useMeshNetworks(enabled, { poll: false });
 	return meshMembership({ enabled, networks: networks.data });
 }
 

@@ -1447,6 +1447,14 @@ const STAMP_BINDING_NOTES = [
 	 * and a later fold that started from main's copy would drop it first.
 	 */
 	"meshTabRestampNote",
+	/*
+	 * ROUND 2'S OWN RESTAMP NOTE, and it is registered for the reason the convention
+	 * states: its subject is THIS FILE'S BINDING - it records the seventh re-derivation
+	 * and quotes the pair this commit ships. `meshTabRestampNote` above records the sixth
+	 * and stays listed for the same reason; the two are the mesh set's own history, each
+	 * held to the values it actually ships.
+	 */
+	"meshTabRound2RestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
