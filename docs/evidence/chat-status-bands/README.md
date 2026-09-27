@@ -48,9 +48,16 @@ both sets.
 ## `after/` — the branch head that ships this commit
 
 Same states, plus the new ones, at both brand palettes. The `src`/`scripts`
-delta these frames depict is the fix commit **`81fc6aac8`** (every `after/`
-frame was shot from its worktree before it was committed); the frames ship in
-the evidence commit stacked on it, whose trees the pair names.
+delta these frames depict is the fix commit **`81fc6aac8`** PLUS review round 1's
+remediation (**`85dbd0c839`**, this directory's shipping commit): the `after/`
+frames were RE-SHOT on the remediated tree with the same rig, and the states the
+remediation's pixels did not move (`dismissed`, the pill - byte-identical, which
+is the control that says the pill is untouched by design) were left as first
+shot. The action column moved to the band's trailing edge in this
+round (agent review MINOR-2): on the 860px `composed-refused` frame the
+primary's fill bbox moved from x709-755 to x744-790, its action group's ink now
+ending at x814. `refreshedStories`/`partialCapture` in the manifest carry the
+same record.
 
 | file | answers |
 | --- | --- |
