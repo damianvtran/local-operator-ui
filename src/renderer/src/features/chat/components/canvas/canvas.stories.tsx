@@ -21,6 +21,7 @@
  * story that set only one of the two rendered a half-themed panel.
  */
 
+import { PaneSlot } from "@shared/components/common/pane-slot";
 import type { Meta, StoryObj } from "@storybook/react";
 import { fireEvent, screen, userEvent, waitFor, within } from "@storybook/test";
 import { Mic, Paperclip, Send } from "lucide-react";
@@ -928,10 +929,7 @@ const CanvasFrame = ({
 	return (
 		<SplitFrame height={bandHeight}>
 			<ChatColumnMock />
-			<div
-				style={{ width, minWidth: width }}
-				className="h-full overflow-hidden border-l border-hairline"
-			>
+			<PaneSlot width={width} minWidth={width}>
 				<Canvas
 					activeDocumentId={activeId ?? undefined}
 					initialDocuments={documents}
@@ -948,7 +946,7 @@ const CanvasFrame = ({
 					onClose={() => {}}
 					onCloseDocument={() => {}}
 				/>
-			</div>
+			</PaneSlot>
 		</SplitFrame>
 	);
 };
@@ -1937,10 +1935,7 @@ const ViewerFrame = ({ document }: { document: CanvasDocument }) => {
 	return (
 		<SplitFrame>
 			<ChatColumnMock />
-			<div
-				style={{ width: 720, minWidth: 720 }}
-				className="h-full overflow-hidden border-l border-hairline"
-			>
+			<PaneSlot width={720} minWidth={720}>
 				<Canvas
 					activeDocumentId={document.id}
 					initialDocuments={[document]}
@@ -1954,7 +1949,7 @@ const ViewerFrame = ({ document }: { document: CanvasDocument }) => {
 					onClose={() => {}}
 					onCloseDocument={() => {}}
 				/>
-			</div>
+			</PaneSlot>
 		</SplitFrame>
 	);
 };
