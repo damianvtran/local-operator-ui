@@ -14,14 +14,24 @@
  * query client, React or a router (`scripts/mesh-tab.test.mjs` bundles this file with
  * esbuild). The hook that feeds it lives in `mesh-store.ts`, beside the query it reads.
  *
- * THE COST, stated because the architecture brief asserted the opposite: a device in no
- * network now issues ONE catalogue read it would not have. That read is safe by
- * construction - the backend short-circuits it on `has_any_network()`, an `is_dir` test
- * whose `_networks()` returns `[]` "so nothing else mkdirs" - so a machine that has never
- * joined a network creates nothing. What the brief's "no call is issued" line was
- * protecting is the byte-for-byte chrome, and membership gating protects that BETTER than
- * the key did: the row is absent until the device is KNOWN to be in a mesh, where the key
- * alone put a rail item on every mesh-capable install.
+ * THE COST, stated precisely because the architecture brief asserted the opposite and
+ * review round 2 (R2-1) measured what the code actually did: a mesh-capable daemon
+ * serves ONE `networks.list` per window for this row, issued when the window starts. It
+ * is a real fan-out - the backend's listing dials every peer - so the RAIL ASKS FOR NO
+ * INTERVAL, no window-focus refetch and an infinite `staleTime` (`mesh-store.ts`'s
+ * `poll: false`), and it rides the page's own 30 s observer through the shared cache
+ * entry while the tab is open. Nothing polls because a rail row is on screen: the
+ * always-mounted component is exactly why this read is one-shot, and "one catalogue read"
+ * with no cadence attached is what three sentences in this change claimed before the
+ * measurement was made. A daemon that does not advertise `peers` issues nothing at all.
+ *
+ * That read is safe by construction - the backend short-circuits it on
+ * `has_any_network()`, an `is_dir` test whose `_networks()` returns `[]` "so nothing else
+ * mkdirs" - so a machine that has never joined a network creates nothing. What the
+ * brief's "no call is issued" line was protecting is the byte-for-byte chrome, and
+ * membership gating protects that BETTER than the key did: the row is absent until the
+ * device is KNOWN to be in a mesh, where the key alone put a rail item on every
+ * mesh-capable install.
  *
  * `unknown` is a real answer and it mounts nothing: no capability, no answer yet, or a
  * first read that failed all mean "not known to be in a mesh", and a row for an unknown

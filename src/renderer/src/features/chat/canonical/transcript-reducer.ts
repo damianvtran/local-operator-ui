@@ -99,7 +99,10 @@ export type TranscriptRecord =
 			 * point of it. A failed send has to be able to retract its OWN echo and
 			 * must never remove the owner's row for the same id, because that row is
 			 * proof the message was delivered: the two cases are indistinguishable by
-			 * id alone, and only the echo knows which it is.
+			 * id alone, and only the echo knows which it is. Cleared by the owner's
+			 * same-id row — a live `message_start` or the durable page row (which
+			 * also ends the position hold; see `provisional` for why the live one
+			 * does not).
 			 *
 			 * The cost is one extra render of the user row per send (its first
 			 * update replaces a record with one more key), measured as a single
@@ -108,6 +111,28 @@ export type TranscriptRecord =
 			 * change (risk R2).
 			 */
 			local?: boolean;
+			/**
+			 * The owner has stated no position for this row yet, so no clock
+			 * comparison can decide its place: the echo's `ts` is this renderer's
+			 * clock, every page/seed row carries the owner's, and a row landing
+			 * later can exceed any cap the echo borrowed (agent review round 1,
+			 * F1). Set by `appendPendingUser` on EVERY echo — over an empty
+			 * transcript or a painted cache alike — and the row holds the tail
+			 * position it was admitted at against the merges that carry rows
+			 * (`withTimeOrder`'s tail block). Cleared only when an owner-stamped
+			 * row names the same id: the durable page row replaces this record
+			 * entirely. The seed route reaches only rows the seed DATES —
+			 * `statedIds` gains an id under `!next.index.has(id)`
+			 * (`applyLiveSeed`) — so a seed restating the echo's own id cannot
+			 * clear its hold: an already-painted echo is settled only by its
+			 * durable row (review round 2, N1). A live
+			 * `message_start` that merely RESTATES the message clears `local`
+			 * (delivery — the store's unknown-outcome arm reads exactly that) but
+			 * deliberately keeps `provisional`: on a reconnect its replay folds
+			 * BEFORE the snapshot's page, and ending the hold there is what put
+			 * the echo above the page's pre-send rows (review round 1, F2).
+			 */
+			provisional?: boolean;
 	  }
 	| {
 			kind: "assistant";
@@ -815,7 +840,9 @@ function advancedFrame(
 }
 
 /**
- * The same records in TIME order, ties broken by the position each already had.
+ * The same records in TIME order, ties broken by the position each already had
+ * — EXCEPT the tail block a pending send holds (below), which keeps arrival
+ * order until the owner's row states where it sits.
  *
  * The rule the durable page is ordered by, shared so the live seed places a row
  * by the SAME rule rather than a second one: a row the seed dates from a real
@@ -836,19 +863,120 @@ function advancedFrame(
  * `a1,a2,b1,a3` where this produces `a1,a2,a3,b1`, and
  * `scripts/transcript-reducer.test.mjs` pins the order this produces.
  *
+ * WHY A PENDING ECHO IS NOT SORTED BY ITS STAMP (operator report, 2026-09-26):
+ * "after sending a message, additional messages will load and my message ends
+ * up out of order" — the bubble above assistant content that preceded it. A
+ * local echo's `ts` comes from THIS renderer's clock; every page and seed row
+ * carries the owner's. While the page (or seed) is still owed nothing is
+ * painted to compare against, so the echo is stamped with the client's `now`
+ * and any row that lands afterwards carrying an owner stamp ahead of that
+ * clock (a remote owner, a client whose clock trails — or any row the runtime
+ * dates ahead of the reader) sorted BELOW the echo: the just-sent message
+ * rendered above content that preceded it, and stayed there until something
+ * happened to re-sort again.
+ *
+ * The fix is not another stamp bound (`monotonicStamp` in #534 bounds an echo
+ * against rows painted AT STAMP TIME; rows landing afterwards are exactly what
+ * it cannot see). While the owner has stated no position for the message, NO
+ * clock comparison can decide its place — the two stamps come from different
+ * clocks, and any cap the echo borrowed can be exceeded by a row that lands
+ * later (agent review round 1, F1) — so the send holds a TAIL BLOCK instead:
+ *
+ * - `provisional` marks the row whose position the owner has not stated. It
+ *   is set on EVERY echo (`appendPendingUser`), over an empty transcript or a
+ *   painted cache — "transcript non-empty" was never the boundary (review
+ *   round 1, F1/F3: an echo over a few cached rows, or over a notice-only
+ *   transcript, faces the same unchecked clock). It is cleared only when an
+ *   owner-stamped row names the id: the durable page row replaces the record
+ *   and it takes its canonical place. A live `message_start` that merely
+ *   RESTATES the message clears `local` (the owner has the message; the
+ *   store's unknown-outcome delivery read depends on exactly that) but NOT
+ *   `provisional` — on a reconnect its replay folds BEFORE the snapshot's
+ *   page, and ending the hold there put the echo above the page's pre-send
+ *   rows (review round 1, F2).
+ * - At every merge a tail block is cut from the list being sorted: every
+ *   provisional row, plus every row ADMITTED while one was pending (its
+ *   position in the list is past the earliest provisional row's) that THIS
+ *   merge does not state on the owner's side (`ownerIds` — a page's durable
+ *   rows, a seed's stated-clock rows). Non-block rows keep the time order
+ *   they always had; block rows keep arrival order; every non-block row sorts
+ *   above every block row — so the queued page's pre-send rows land above the
+ *   echo, and a row admitted after it (a live answer) never lands above it,
+ *   whatever the two clocks say.
+ *
+ * WHY A BLOCK AND NOT A COMPARATOR CASE: the relations are not a total order.
+ * [pre-send row dated +40s, echo, live answer dated +5s] asks for
+ * pre-send < echo < answer while the stamps say answer < pre-send; any
+ * pairwise rule that honours both asks closes a cycle, and an inconsistent
+ * comparator leaves the result to comparison order — the one thing an order
+ * may not be. Cutting the block makes the comparison total again (class
+ * first, then the key the class owns), and it is the shape the single-echo
+ * case already had — "after every canonical row, arrival order among several"
+ * — widened from "the echoes" to "the rows the send left unresolved".
+ *
+ * WHAT THE BLOCK GIVES UP, stated rather than left for a reviewer to find:
+ * - A replay frame for a row that will turn out to be PRE-send sits after the
+ *   echo until the page states it — durable wins, and it then sorts by its
+ *   own stamp; the correction arrives with the merge that owns it.
+ * - A row whose durable form never arrives (a settled streaming row) keeps
+ *   the arrival position it was admitted at; once no provisional row remains
+ *   the block dissolves and everything sorts by stamps again.
+ *
  * Ties keep the order they already had, so this can never reshuffle two rows
  * that state the same instant while the reader is looking at them. No lookup and
  * no fallback: every record's position is the one it arrives with, which is what
  * makes an unknown id unrepresentable here rather than something to default.
  */
-function withTimeOrder(records: TranscriptRecord[]): TranscriptRecord[] {
-	return records
-		.map((record, position) => ({ record, position }))
-		.sort((a, b) =>
-			a.record.ts !== b.record.ts
+const NO_OWNER_IDS: ReadonlySet<string> = new Set();
+
+function withTimeOrder(
+	records: TranscriptRecord[],
+	/**
+	 * The ids THIS merge states on the owner's side: a page's durable rows, and
+	 * the rows a seed dates from a real clock. They sort above the tail block
+	 * whatever the stamps say — a page whose rows postdate the send carries the
+	 * echo's own row too, and until that arrives the rows it does carry are the
+	 * journal in front of the send (agent review round 1, F1).
+	 */
+	ownerIds: ReadonlySet<string> = NO_OWNER_IDS,
+): TranscriptRecord[] {
+	/*
+	 * `provisional` is the hold; `appendPendingUser` sets it on every echo and
+	 * the owner's stamped row is what clears it. `local` deliberately does NOT
+	 * participate: the live restating `message_start` clears `local` (delivery —
+	 * `peekLocalEcho`'s "owner" is the store's test) while the position hold
+	 * must survive it (review round 1, F2).
+	 */
+	const pendingEcho = (record: TranscriptRecord) =>
+		record.kind === "user" && record.provisional === true;
+	const positioned = records.map((record, position) => ({ record, position }));
+	// The earliest admitted pending row bounds the block. `position` is the
+	// index the record already held in the list being merged — admission order,
+	// which no earlier merge may have re-spelled for rows past the block.
+	const frontier = positioned.reduce(
+		(min, entry) =>
+			pendingEcho(entry.record) && entry.position < min ? entry.position : min,
+		Number.POSITIVE_INFINITY,
+	);
+	/*
+	 * Rows past the frontier were ADMITTED after the send, so they hold the
+	 * tail with it unless this merge itself places them on the owner's side.
+	 */
+	const inTailBlock = (entry: { record: TranscriptRecord; position: number }) =>
+		pendingEcho(entry.record) ||
+		(entry.position > frontier && !ownerIds.has(entry.record.id));
+	return positioned
+		.sort((a, b) => {
+			const blockA = inTailBlock(a);
+			const blockB = inTailBlock(b);
+			if (blockA !== blockB) return blockA ? 1 : -1;
+			// Inside the block, arrival order; outside it, the time order this
+			// function has always produced.
+			if (blockA) return a.position - b.position;
+			return a.record.ts !== b.record.ts
 				? a.record.ts - b.record.ts
-				: a.position - b.position,
-		)
+				: a.position - b.position;
+		})
 		.map((entry) => entry.record);
 }
 
@@ -2297,7 +2425,15 @@ export function applyHistoryPage(
 	 * function of that list, so a page applied twice, a `replace` re-seed and a
 	 * cold load all end at the same rows (`collapseSettledCompactions`).
 	 */
-	const records = collapseSettledCompactions(withTimeOrder([...byId.values()]));
+	const records = collapseSettledCompactions(
+		withTimeOrder(
+			[...byId.values()],
+			// The rows this page states on the owner's side; the sort holds them
+			// above the pending echo's tail block whatever the stamps say
+			// (agent review round 1, F1).
+			new Set(incoming.map((record) => record.id)),
+		),
+	);
 	// The paging cursor is the first entry of the OLDEST page received: a
 	// newer page (the snapshot's tail after a history_delta) must not move it
 	// forward, or the next "load older" request would skip rows.
@@ -2536,16 +2672,34 @@ export function applyEvent(
 				 * prompt as the user's own words.
 				 */
 				if (isHarnessInjected(message.provider_payload)) return state;
+				/*
+				 * A RESTATING `message_start` FOR A ROW STILL HOLDING ITS PLACE IS NOT
+				 * THE OWNER STATING WHERE IT SITS (agent review round 1, F2).
+				 *
+				 * `local` clears — the owner has the message, and the store's
+				 * unknown-outcome arm reads exactly that (`peekLocalEcho` === "owner"
+				 * is its delivered test) — but `provisional` stays, and the stamp
+				 * stays OFF the client clock: on a reconnect these frames replay
+				 * BEFORE the snapshot's page, and letting the swap end the hold is
+				 * what sorted the echo above the page's pre-send rows. The durable
+				 * row still ends the hold by replacing the record entirely.
+				 */
+				const keepsHold =
+					current?.kind === "user" && current.provisional === true;
 				return upsert(state, {
 					kind: "user",
 					id: message.id,
-					ts: now,
+					// `monotonicStamp`, not `now`, mirrors #534's doctrine: a
+					// locally-derived time may never lift the row above what is
+					// already painted.
+					ts: keepsHold ? monotonicStamp(state, now) : now,
 					text: messageText(message),
 					images: extractImages(
 						message,
 						message.id,
 						current?.kind === "user" ? current.images : undefined,
 					),
+					...(keepsHold ? { provisional: true } : {}),
 				});
 			}
 			if (message.role !== "assistant") return state;
@@ -3654,6 +3808,7 @@ export function applyLiveSeed(
 	const inFlight = frontend.streaming === true;
 	/* A row was placed at a time the seed itself stated, so order by time. */
 	let placed = false;
+	const statedIds = new Set<string>();
 	for (const data of frontend.live_events ?? []) {
 		const event = data as LiveEvent;
 		let clock = now;
@@ -3663,6 +3818,7 @@ export function applyLiveSeed(
 			if (stated !== null) {
 				clock = stated;
 				placed = true;
+				statedIds.add(id);
 			} else if (
 				settlesACall(event) ||
 				finishedDictationFrame(event) ||
@@ -3687,7 +3843,10 @@ export function applyLiveSeed(
 		});
 	}
 	if (!placed) return next;
-	const records = withTimeOrder(next.records);
+	// The rows this seed DATES from a real clock are on the owner's side of the
+	// pending echo's tail block (the seed door of review round 1, F1); a
+	// provisional row's own durable row is what ends its hold.
+	const records = withTimeOrder(next.records, statedIds);
 	return { ...next, records, index: withIndex(records) };
 }
 
@@ -4449,6 +4608,13 @@ export function appendPendingUser(
 		text,
 		images,
 		local: true,
+		// Every echo holds its place until the owner states the row: "no rows
+		// painted" was never the boundary (agent review round 1, F1/F3 — an
+		// echo over painted rows, cached or live, faces the same unchecked
+		// clock), so the hold is admission order against the merges that
+		// carry rows (`withTimeOrder`'s tail block). `message_start` clears
+		// `local` alone; the owner's stamped row ends the hold.
+		provisional: true,
 	});
 }
 
