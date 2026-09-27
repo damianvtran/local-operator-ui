@@ -1,0 +1,83 @@
+runtime: v0.63.7
+capabilities: session_draft_warm 1
+command: node scripts/renderer-driver.mjs --scene conversation-start-away-failure --backend http://127.0.0.1:7394 --tap-control http://127.0.0.1:7394 --out /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs --seed-onboarding-complete
+[build] current: assets 2026-09-27T11:38:07.337Z >= sources 2026-09-27T07:47:46.064Z
+[note] abandoned scratch trees
+        9 seen, 0 owned by a live pid (kept), 9 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:7394
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/conversation-start
+  scratch       /tmp/lo-renderer-driver-62546
+  frames        /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs
+  app cwd       /tmp/lo-renderer-driver-62546/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:7394   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/conversation-start/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:7394","backend":"http://127.0.0.1:7394"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:7394)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[note] facts (from main)
+        {
+  "windowMode": "headless",
+  "appVersion": "0.31.3",
+  "platform": "darwin",
+  "title": "Local Operator",
+  "windowSize": {
+    "width": 1380,
+    "height": 900
+  },
+  "contentBounds": {
+    "width": 1380,
+    "height": 900
+  },
+  "visible": false,
+  "focused": false,
+  "minimized": false,
+  "frames": [],
+  "outDir": "/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs"
+}
+[PASS] window mode is headless and the window is never shown or focused
+[PASS] the refusal needs the tap's control door
+[note] second conversation
+        {"status":200,"body":{"status":200,"message":"Desktop session result.","result":{"binding":{"agent":null,"team":null},"session_id":"b53faecd8f22","replayed":false,"identity":null,"warming":false,"admitted":true,"detail":"","model":{"applied":false,"detail":""}}},"id":"b53faecd8f22"}
+[note] tap control
+        200 {"armed":1}
+[note] frame
+        {"label":"conversation-start-1380x900-away-failure-refusal","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs/conversation-start-1380x900-away-failure-refusal.png","bytes":200194,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":1}
+[note] at refusal
+        {"read":{"rows":1,"rowIds":["427d2d4f-f142-4ed1-84ff-2bb9721ded0e"],"composer":"","controls":["Send again","Edit"],"undelivered":"Not deliveredSend againEdit"},"line":null,"state":{"route":"/chat","activeSessionId":null,"activeDraftKey":"draft:69b5ce57-c5ac-4b22-9ef4-1787e6f647c0","drafts":{"draft:69b5ce57-c5ac-4b22-9ef4-1787e6f647c0":{"sessionId":"836998be77c5","error":false,"undelivered":true,"submitted":false,"admissionAttempted":false}}}}
+[PASS] U5: the refusal is up on the row, with both controls
+[note] sidebar at refusal
+        {"region":true,"draftRows":[],"draftLabels":[],"sessionRowIds":["8ac2f632abb2","03d42f59a989","3e86eb229701","40bb6457eeca","d9cabdee66b3","b0946967a766","cf289468b20a","67d998ca834c"]}
+[note] failed conversation
+        "836998be77c5"
+[note] away rows
+        {"failedRowUp":false,"awayRow":null}
+[note] return via
+        the session's own route (the sidebar had not painted the row)
+[note] frame
+        {"label":"conversation-start-1380x900-away-failure-return","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs/conversation-start-1380x900-away-failure-return.png","bytes":200375,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":3,"stable":true,"toastFree":true,"toastWaitMs":2}
+[note] on return
+        {"read":{"rows":1,"rowIds":["427d2d4f-f142-4ed1-84ff-2bb9721ded0e"],"composer":"","controls":["Send again","Edit"],"undelivered":"Not deliveredSend againEdit"},"line":null,"state":{"route":"/chat/836998be77c5","activeSessionId":"836998be77c5","activeDraftKey":null,"drafts":{"draft:69b5ce57-c5ac-4b22-9ef4-1787e6f647c0":{"sessionId":"836998be77c5","error":false,"undelivered":true,"submitted":false,"admissionAttempted":false}}},"back":true}
+[PASS] U5: the refusal's row, sentence and both controls survive a switch-away and back
+[PASS] U5: and no wait claim is drawn for a send that is not alive
+[PASS] no process from this run outlived its boot
+
+frames: conversation-start-1380x900-away-failure-refusal.png, conversation-start-1380x900-away-failure-return.png, conversation-start-1380x900-away-mid-failure.png, conversation-start-1380x900-away-press.png, conversation-start-1380x900-away.png, conversation-start-1380x900-dead-create-reload.png, conversation-start-1380x900-dead-create.png, conversation-start-1380x900-failure.png, conversation-start-1380x900-flip-plus-1s.png, conversation-start-1380x900-flip.png, conversation-start-1380x900-press.png, conversation-start-1380x900-reload.png, conversation-start-1380x900-return.png, first-send-1380x900-empty.png, first-send-1380x900-sent.png, first-send-1380x900-settled.png, first-send-800x600-empty.png, first-send-800x600-sent.png, first-send-800x600-settled.png
+frames directory: /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs
+app log: /tmp/lo-renderer-driver-62546/app-scene.log
+scratch kept: /tmp/lo-renderer-driver-62546 (the frames are also in --out)
+
+ALL CHECKS PASSED
