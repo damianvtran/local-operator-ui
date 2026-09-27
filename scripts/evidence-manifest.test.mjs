@@ -1461,7 +1461,7 @@ const STAMP_BINDING_NOTES = [
 	 * case `headerRenameInlineRestampNote` is in the list for.
 	 */
 	"projectsBoardTimelineNote",
-
+	/*
 	 * AND THIS BRANCH'S OWN: the pending-echo placement fix moves BOTH trees this
 	 * file binds - `src/` for `withTimeOrder`'s load-window case and the
 	 * `provisional` field it reads, `scripts/` for the reducer cases that pin the
@@ -1513,7 +1513,6 @@ const STAMP_BINDING_NOTES = [
 	 * the prose.
 	 */
 	"pendingEchoRemediationFifthFoldNote",
-
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
