@@ -857,46 +857,112 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 		</div>
 	);
 
-	const groupedBlocks = nothingMatches ? (
-		<div className="flex flex-col items-center gap-2 py-6 text-center">
-			<p className="text-body-sm text-ink-muted">
-				No providers match this search.
-			</p>
-			{/* Clear search restores the list and hands the field back: a reader
-			    who cleared a query is about to type another (UX round 1, U4). */}
-			<Button
-				variant="secondary"
-				size="sm"
-				onClick={() => {
-					setQuery("");
-					searchRef.current?.focus();
-				}}
-			>
-				<X aria-hidden="true" />
-				Clear search
-			</Button>
-		</div>
-	) : (
-		groupOrder.map((group) =>
-			groups[group].length > 0 ? (
-				<div key={group} className="flex flex-col gap-2">
-					<h4 className="text-ink-dim text-meta">{GROUP_HEADINGS[group]}</h4>
-					<RowList label={GROUP_HEADINGS[group]}>
-						{groups[group].map(addRow)}
-					</RowList>
-				</div>
-			) : null,
-		)
-	);
+	/*
+	 * The grouped blocks for ONE bucket set, so the two surfaces can hand this
+	 * function different buckets without either restating the markup.
+	 *
+	 * `showEmptyState` is the caller's answer rather than `nothingMatches` read
+	 * here, because what "nothing" means differs by surface: onboarding's shape
+	 * paints a shortcut block ABOVE these groups, so a query that only matches a
+	 * suggested row has found something and must not be told otherwise (see the
+	 * `featuredOnly` branch).
+	 */
+	const blocksFor = (
+		buckets: Record<ProviderGroup, DesktopProvider[]>,
+		showEmptyState: boolean,
+	) =>
+		showEmptyState ? (
+			<div className="flex flex-col items-center gap-2 py-6 text-center">
+				<p className="text-body-sm text-ink-muted">
+					No providers match this search.
+				</p>
+				{/* Clear search restores the list and hands the field back: a reader
+				    who cleared a query is about to type another (UX round 1, U4). */}
+				<Button
+					variant="secondary"
+					size="sm"
+					onClick={() => {
+						setQuery("");
+						searchRef.current?.focus();
+					}}
+				>
+					<X aria-hidden="true" />
+					Clear search
+				</Button>
+			</div>
+		) : (
+			groupOrder.map((group) =>
+				buckets[group].length > 0 ? (
+					<div key={group} className="flex flex-col gap-2">
+						<h4 className="text-ink-dim text-meta">{GROUP_HEADINGS[group]}</h4>
+						<RowList label={GROUP_HEADINGS[group]}>
+							{buckets[group].map(addRow)}
+						</RowList>
+					</div>
+				) : null,
+			)
+		);
+
+	const groupedBlocks = blocksFor(groups, nothingMatches);
 
 	if (featuredOnly) {
+		/*
+		 * WHICH ROWS THE SHORTCUT BLOCK MAY HOLD, and why it is filtered at all.
+		 *
+		 * The block is a SHORTCUT, not a second list: it repeats the matcher the
+		 * groups below use (through `visibleProviders`, which is where that rule is
+		 * written down) so a query cannot mean one thing above the field and another
+		 * underneath it -- type `rad` and the shortcut narrows to the row it names
+		 * instead of sitting there unfiltered above a blank list.
+		 *
+		 * `featuredIds` is the set of ids the shortcut block EXISTS for and this census
+		 * has, taken from the ids rather than from the painted rows: the painted set
+		 * varies with the credential and the query, while what the disclosure must not
+		 * repeat is the block's subject. The groups are filtered on the same two
+		 * predicates, so the exclusion cannot drop a row the block is not painting.
+		 */
+		const matched = new Set(visibleProviders(rows, query, null).map((p) => p.id));
 		const featured = FEATURED_PROVIDER_IDS.map((id) =>
 			rows.find((provider) => provider.id === id),
 		).filter(
 			(provider): provider is DesktopProvider =>
 				provider !== undefined &&
-				!connected.some((row) => row.id === provider.id),
+				!connected.some((row) => row.id === provider.id) &&
+				matched.has(provider.id),
 		);
+		const featuredIds: Set<string> = new Set(
+			FEATURED_PROVIDER_IDS.filter((id) =>
+				rows.some((provider) => provider.id === id),
+			),
+		);
+		/*
+		 * "MORE PROVIDERS" IS THE REST OF THE REGISTRY, LITERALLY.
+		 *
+		 * `addRowsByGroup` excludes only CONNECTED rows, so the four suggested rows
+		 * came back a second time inside their own groups: measured on the shipped
+		 * census, opening the disclosure painted 22 rows for 18 providers, with
+		 * Radient twice -- both carrying the "Recommended" cue and the accent
+		 * primary, which is the two-accent-primaries-in-one-dialog shape design
+		 * round 1 removed (D2). The step's own docblock says "the rest behind 'More
+		 * providers'", so the code and the contract disagreed; the contract wins.
+		 */
+		const rest: Record<ProviderGroup, DesktopProvider[]> = {
+			subscription: groups.subscription.filter((p) => !featuredIds.has(p.id)),
+			key: groups.key.filter((p) => !featuredIds.has(p.id)),
+			local: groups.local.filter((p) => !featuredIds.has(p.id)),
+		};
+		const restCount = groupOrder.reduce(
+			(count, group) => count + rest[group].length,
+			0,
+		);
+		/*
+		 * A disclosure with nothing behind it is not rendered at all: with a census
+		 * that is only the shortcut rows there is no "rest", and an open panel whose
+		 * whole content is a search field over an empty list is the shape that reads
+		 * as broken. A query keeps it, because the field lives inside it -- hiding the
+		 * trigger mid-search would take away the reader's own way back.
+		 */
+		const searching = query.trim().length > 0;
 		return (
 			<div
 				ref={gridRef}
@@ -910,16 +976,21 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 				{featured.length > 0 ? (
 					<RowList label="Suggested providers">{featured.map(addRow)}</RowList>
 				) : null}
-				<Disclosure
-					summary="More providers"
-					defaultOpen={focusGroup !== null || initialProviderId !== null}
-					chevron="trailing"
-				>
-					<div className="flex flex-col gap-4 pt-3">
-						{searchField}
-						{groupedBlocks}
-					</div>
-				</Disclosure>
+				{searching || restCount > 0 ? (
+					<Disclosure
+						summary="More providers"
+						defaultOpen={focusGroup !== null || initialProviderId !== null}
+						chevron="trailing"
+					>
+						<div className="flex flex-col gap-4 pt-3">
+							{searchField}
+							{/* `nothingMatches` still speaks about the WHOLE census, and the
+							    shortcut block above can be the thing that matched: the empty
+							    sentence is only true when nothing anywhere did. */}
+							{blocksFor(rest, searching && nothingMatches)}
+						</div>
+					</Disclosure>
+				) : null}
 			</div>
 		);
 	}

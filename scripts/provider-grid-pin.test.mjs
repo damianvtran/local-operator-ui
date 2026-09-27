@@ -52,6 +52,26 @@ const bundle = await build({
 						createElement(ProviderGrid, {}),
 					),
 				);
+
+			/*
+			 * The onboarding shape, with its "More providers" disclosure forced OPEN.
+			 * focusGroup is what defaultOpen reads, and Disclosure MOUNTS its content
+			 * on open (shared/components/ui/disclosure.tsx), so without it the blocks
+			 * behind the trigger are not in the markup at all and every assertion
+			 * about them would pass vacuously. (No backticks in this string: it is a
+			 * template literal, and one would end it.)
+			 */
+			export const renderProviderGridFeatured = (client) =>
+				renderToStaticMarkup(
+					createElement(
+						QueryClientProvider,
+						{ client },
+						createElement(ProviderGrid, {
+							featuredOnly: true,
+							focusGroup: "local",
+						}),
+					),
+				);
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -119,6 +139,7 @@ const {
 	QueryClient,
 	desktopKeys,
 	renderProviderGrid,
+	renderProviderGridFeatured,
 	recommendedProvider,
 	showsRecommendedCue,
 	visibleProviders,
@@ -188,6 +209,26 @@ const ids = (rows) => rows.map((provider) => provider.id);
 
 /** The markup the grid paints for one census, without a DOM and without a fetch. */
 function render(rows) {
+	return paint(rows, renderProviderGrid);
+}
+
+/**
+ * The same census in the onboarding shape, with its "More providers" disclosure
+ * forced OPEN.
+ *
+ * `focusGroup` is what `defaultOpen` reads, and `Disclosure` MOUNTS its content
+ * on open (`shared/components/ui/disclosure.tsx`), so a closed trigger leaves the
+ * blocks behind it out of the markup entirely -- and every assertion about them
+ * would then pass vacuously. Sharing `paint` rather than a second seeder is the
+ * point: a second copy of the capability seeding is how one of them silently
+ * stops matching the grid's own gate.
+ */
+function renderFeatured(rows) {
+	return paint(rows, renderProviderGridFeatured);
+}
+
+/** One seeded client, painted by whichever shape the case is about. */
+function paint(rows, shape) {
 	const client = new QueryClient({
 		defaultOptions: {
 			queries: {
@@ -214,7 +255,7 @@ function render(rows) {
 		desktop_available: true,
 		features: {},
 	});
-	return renderProviderGrid(client);
+	return shape(client);
 }
 
 test("the unfiltered list is registry order with the recommendation pinned first", () => {
@@ -316,6 +357,59 @@ test("the signed-in census renders no cue anywhere", () => {
 		true,
 	);
 	assert.equal(html.split('data-provider-id="radient"').length - 1, 1);
+});
+
+/**
+ * The number of rows a static render paints for one provider.
+ *
+ * `data-provider-id` is on the row itself, one per row, so this counts ROWS
+ * rather than mentions: a string that repeats elsewhere in the markup cannot
+ * move it.
+ */
+const rowCount = (html, id) =>
+	html.split(`data-provider-id="${id}"`).length - 1;
+
+test("the shortcut rows are not repeated behind 'More providers'", () => {
+	/*
+	 * The step's contract ("four featured rows ... with the rest behind 'More
+	 * providers'", `connect-provider-step.tsx`) against what the disclosure
+	 * painted: `addRowsByGroup` excludes only CONNECTED rows, so on a first-run
+	 * census the four suggested rows came back a second time inside their own
+	 * groups -- Radient twice, each copy carrying the "Recommended" cue and the
+	 * accent primary, which is the two-accent-primaries-in-one-dialog shape design
+	 * round 1 removed (D2). Measured on the shipped census: 22 rows for 18
+	 * providers.
+	 */
+	const local = {
+		...row("ollama", "Ollama", ["local", "self-hosted"], []),
+		local: true,
+		credential_optional: true,
+	};
+	const html = renderFeatured([...census(), local]);
+	for (const id of ["radient", "openai", "anthropic"]) {
+		assert.equal(rowCount(html, id), 1, `${id} is painted exactly once`);
+	}
+	// The non-featured row is still there, in its own group: the exclusion must
+	// remove the repeats without emptying the disclosure.
+	assert.equal(rowCount(html, "ollama"), 1);
+	assert.match(html, /Run models on this computer/);
+	assert.match(html, /aria-label="Search providers"/);
+});
+
+test("a 'More providers' trigger with nothing behind it is not rendered", () => {
+	/*
+	 * A census that is only the shortcut rows has no "rest", and an open panel
+	 * whose whole content is a search field over an empty list is the shape that
+	 * reads as broken. Hiding the trigger is also what keeps the field out of a
+	 * four-row screen, where scanning costs less than typing.
+	 */
+	const html = renderFeatured(census());
+	assert.equal(html.split("More providers").length - 1, 0);
+	assert.doesNotMatch(html, /Search providers/);
+	// And the rows themselves still paint: the trigger is the only thing gone.
+	for (const id of ["radient", "openai", "anthropic"]) {
+		assert.equal(rowCount(html, id), 1);
+	}
 });
 
 test("every step takes the same panel measure, and it is clamped", () => {
