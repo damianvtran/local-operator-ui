@@ -4037,6 +4037,31 @@ export const STORIES = [
 	["schedules-page--picker-open", 1280, 900],
 	["schedules-page--row-actions-revealed", 1280, 900],
 	["schedules-page--row-action-label", 1280, 900],
+	/*
+	 * The Projects tab: the design's foundation slice — the list, the detail
+	 * (progress, milestones in all three derived states, linked sessions), CRUD
+	 * dialogs and the milestone toggle — on the page's PRODUCTION components with
+	 * the desktop bridge stubbed at its boundary (the agent-hub stories' shape),
+	 * so a frame is evidence about the page rather than about a fixture.
+	 *
+	 * The states are the ones the design names: empty / loading / error /
+	 * populated, plus the twelve-row list where the scrollbar appears, the detail
+	 * with a progress snippet, the three dialogs (create, edit, delete with the
+	 * name typed), and the milestone toggle AFTER the press — whose value is that
+	 * the settled frame is a re-read of a real mutation rather than two adjacent
+	 * states.
+	 */
+	["projects-tab--empty", 1280, 900],
+	["projects-tab--loading", 1280, 900],
+	["projects-tab--load-error", 1280, 900],
+	["projects-tab--populated", 1280, 900],
+	["projects-tab--many", 1280, 900],
+	["projects-tab--detail", 1280, 900],
+	["projects-tab--stale-progress", 1280, 900],
+	["projects-tab--create-dialog", 1280, 900],
+	["projects-tab--edit-dialog", 1280, 900],
+	["projects-tab--delete-confirm", 1280, 900],
+	["projects-tab--milestone-toggle", 1280, 900],
 	["common-confirmationmodal--dangerous", 1280, 900],
 	/* The operator's own alert, over the screen they were working on: their
 	   update-service.log holds this exact transport code at 09:03:12 on
@@ -4613,6 +4638,15 @@ export const STORIES = [
 	["chat-mention-chips--picker-empty-folder", 1380, 768],
 	["chat-mention-chips--picker-unreadable", 1380, 768],
 	["chat-mention-chips--picker-many-rows", 1380, 768],
+	/*
+	 * The projects section, and the AFTER half of the `@`-popup pair this
+	 * branch's design names. Its BEFORE half is `picker-open` above: that story's
+	 * harness carries no `projects` key, which is what a current release of this
+	 * app ships against, and the same code renders the file-only popup there —
+	 * no headers, the same rows — so the two frames compare the section rather
+	 * than two states of it.
+	 */
+	["chat-mention-chips--picker-with-projects", 1380, 768],
 	/*
 	 * The design's own narrow case, 800x600, as its open item 3 asks: the picker's
 	 * top edge must be inside the column and the row count must have FALLEN rather

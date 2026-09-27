@@ -36,6 +36,7 @@ import {
 	CalendarDays,
 	ChevronLeft,
 	ChevronRight,
+	FolderKanban,
 	Globe,
 	MessageSquarePlus,
 	Search,
@@ -154,6 +155,20 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * chat header's count.
 	 */
 	const browserApprovals = useAppWideApprovals();
+	/*
+	 * Whether this backend serves the Projects surface at all.
+	 *
+	 * FAIL-CLOSED MEANS NO ROW, the pins gate's rule: below the `projects`
+	 * version (or on a plane this app holds no credential for) the column renders
+	 * byte-for-byte the one that never heard of Projects — no row, no disabled
+	 * row, nothing to click into a 404. The route itself repeats the gate for a
+	 * URL typed by hand; see `projects-page.tsx`.
+	 */
+	const projectsEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"projects",
+		1,
+	);
 
 	const navItems: NavItem[] = [
 		{
@@ -163,6 +178,21 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			isActive: currentView === "agents",
 			tourTag: "nav-item-agents",
 		},
+		/*
+		 * Projects sits beside Agents — the two are the "things I own" pair — but
+		 * only on a backend that carries the surface; see `projectsEnabled` above.
+		 */
+		...(projectsEnabled
+			? [
+					{
+						icon: FolderKanban,
+						label: "Projects",
+						path: "/projects",
+						isActive: currentView === "projects",
+						tourTag: "nav-item-projects",
+					},
+				]
+			: []),
 		{
 			icon: CalendarDays,
 			label: "Schedules",

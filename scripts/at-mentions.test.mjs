@@ -295,6 +295,7 @@ const row = (path, directory = false) => {
 		name,
 		parent: cut === -1 ? "./" : path.slice(0, cut + 1),
 		directory,
+		section: "file",
 	};
 };
 
@@ -425,6 +426,7 @@ test("descendRows lists a matched directory's children under its own path", () =
 			name: "button.tsx",
 			parent: "src/components/",
 			directory: false,
+			section: "file",
 		},
 	]);
 });
@@ -452,6 +454,95 @@ test("interleaveDescend puts children after the row that matched", () => {
 		interleaveDescend(ranked, children).map((entry) => entry.path),
 		["components", "components/button.tsx", "app.py"],
 	);
+});
+
+/* ---------------------------------------------------------------- projects -- */
+
+/*
+ * The projects section: the `@project:<name>` rows, the query rules that offer
+ * them, and the merge that puts them first. These pin the INDEX-SPACE contract
+ * the picker's key handling depends on — the merged list is the selectable set,
+ * and the section only ever prepends rows to it.
+ */
+
+const PROJECTS = [
+	{ name: "payments-migration", description: "Cut over the API" },
+	{ name: "q4-hardening", description: "" },
+	{ name: "docs-pass", description: null },
+];
+
+const projectRows = rank.projectAtRows(PROJECTS);
+
+/*
+ * `projectAtRows` and `projectSectionRows` are reached through the namespace
+ * object, because the bundle's export list is fixed (the modules are bundled
+ * through `export * as rank`). The destructure above cannot gain a name that
+ * did not exist when this file was written without editing the bundle input —
+ * which is fine here: `rank.projectAtRows` IS the shipped export.
+ */
+const { projectAtRows, projectSectionRows, mergeProjectRows } = rank;
+
+test("a project row writes the namespaced token, not a path", () => {
+	assert.deepEqual(
+		projectAtRows([{ name: "payments-migration", description: "Cut over" }]),
+		[
+			{
+				path: "project:payments-migration",
+				name: "payments-migration",
+				parent: "",
+				directory: false,
+				section: "project",
+				detail: "Cut over",
+			},
+		],
+	);
+	// The acceptance path the picker runs: `atReference` on a project row.
+	assert.equal(
+		atReference({ path: "project:payments-migration", directory: false }),
+		"@project:payments-migration ",
+	);
+});
+
+test("the projects section is offered when the query wants projects", () => {
+	// A bare `@` is what the section is for.
+	assert.equal(projectSectionRows(projectRows, "").length, 3);
+	// The namespace itself, whole or half-typed, narrows within the section.
+	for (const query of ["p", "pr", "proj", "project", "project:"]) {
+		assert.equal(projectSectionRows(projectRows, query).length, 3, query);
+	}
+	assert.deepEqual(
+		projectSectionRows(projectRows, "project:q4").map((r) => r.name),
+		["q4-hardening"],
+	);
+	// A name match is a name match, with the same fuzzy bands files use.
+	assert.deepEqual(
+		projectSectionRows(projectRows, "payments").map((r) => r.name),
+		["payments-migration"],
+	);
+	assert.deepEqual(
+		projectSectionRows(projectRows, "q4").map((r) => r.name),
+		["q4-hardening"],
+	);
+	// Nothing matching contributes no rows, never a section of near-misses.
+	assert.deepEqual(projectSectionRows(projectRows, "zzz"), []);
+	// And an empty store offers no section however the query reads.
+	assert.deepEqual(projectSectionRows([], "project:"), []);
+});
+
+test("the merged list is projects first and keeps the file order", () => {
+	const files = rankAtRows(LISTING, "");
+	const merged = mergeProjectRows(projectRows, files);
+	assert.deepEqual(
+		merged.slice(0, projectRows.length).map((r) => r.section),
+		["project", "project", "project"],
+	);
+	assert.deepEqual(
+		merged.slice(projectRows.length).map((r) => r.path),
+		files.map((r) => r.path),
+	);
+	// No projects: the file list is returned exactly, the byte-identical shape an
+	// older backend and an empty store both get.
+	assert.deepEqual(mergeProjectRows([], files), files);
 });
 
 /* ---------------------------------------------------------------- contract -- */
