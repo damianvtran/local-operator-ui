@@ -785,9 +785,17 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  * MEMBERSHIP IS CURATION, NOT A PREDICATE, and the paragraph above states the
  * criterion: a note belongs here when THIS FILE'S BINDING is its subject, not when
  * it records the fold, pass or review it came from. It cannot be re-derived by
- * testing the text - the re-stamp below rewrites every note's backticked claims to
- * the shipped pair, so after any fold many more notes quote both stamps at that pair
- * than this list curates, and the extras are history by subject. (Run the predicate
+ * testing the text - the re-stamp below re-points THE NOTES THIS LIST CARRIES, and
+ * nothing else in the file: curation decides the rewrite's scope, a note outside
+ * the list keeps the pair its own pass derived (history by subject, the exception
+ * the paragraph above names), so a predicate over the file matches more notes than
+ * this list curates - at their own passes' pairs, not at the shipped one. (SCOPE,
+ * pinned after agent review round 2's R2-1, which found this sentence claiming a
+ * file-wide rewrite the re-stamps do not in fact apply; re-pointing the file's
+ * other notes would also garble the transition records among them - `headNote`'s
+ * `X -> Y` spellings state where a pass moved the pair from, and re-pointing X
+ * breaks them - which is why the exception stays and this list is the rewrite's
+ * scope.) (Run the predicate
  * this test applies over `docs/evidence/manifest.json` rather than trusting a count
  * written here: it matches dozens, and the number moves with every fold.)
  * `headNote`, `installerNetworkRestampNote`, the console notes and
@@ -850,6 +858,41 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  * `827f45f4fd`, and had coined the same SHA-named keys for their own fold
  * narratives, so the union keeps main's copies under the plain names and this
  * branch's under the `ActionGroup` suffix. No key from either side was dropped.
+ *
+ * THE UNION THIS FOLD TOOK (`origin/main` `eddfae750b`, #537 the condensed action
+ * groups and the running call, over this branch's `c8e231859d`), stated here
+ * because the rule above asks for it: this branch's side named
+ * `streamRedeliveryRestampNote`; main's side named seventeen entries - the
+ * action-fold set (`actionFoldEvidenceNote` and its six `ActionGroup` fold
+ * records), `overlayDragZonesRestampNote`, `subviewInsetRestampNote`,
+ * `messageSurfaceRestampNote`, `goalDesignRoundTwoNote`,
+ * `headerIdentityRestampNote`, `headerIdentityRoundOneRestampNote`,
+ * `childReaderScrollControlRestampNote`, and its own `foldOnto093a329a4dNote`,
+ * `foldOnto9d3e68ddf6Note` and `foldOnto22c0fcd4fdNote`. THE UNION IS 54 + 1 =
+ * 55 ENTRIES, no duplicates, both sides' arrays evaluated and set-diffed
+ * against the merged array rather than read off the conflict; no key from
+ * either side was dropped, and this fold's own `foldOntoEddfae750bNote` is
+ * registered beside them. The same union was applied to
+ * `docs/evidence/manifest.json`, which took main's 198 top-level records whole
+ * and appended this branch's one - and the fold's re-stamp commit re-points
+ * every backticked claim in this list to the pair the merged tree produces.
+ *
+ * THE UNION THIS FOLD TOOK (`origin/main` `2e12a54d56`, #543 the conversation's
+ * solid first paint and the held header identity, over this branch's
+ * `5ff02d58a4`), stated here because the rule above asks for it: the two sides'
+ * appends collided at one anchor - this branch's side named
+ * `streamRedeliveryRestampNote` and `foldOntoEddfae750bNote`, main's side named
+ * `heldFirstPaintRestampNote` - so all three are kept, by key. THE UNION IS
+ * 55 + 2 = 57 ENTRIES, no duplicates, both sides' arrays set-diffed against the
+ * merged array rather than read off the conflict; no key from either side was
+ * dropped, and this fold's own `foldOnto2e12a54d56Note` is registered beside
+ * them. The same union was applied to `docs/evidence/manifest.json`, which took
+ * main's 199 top-level records whole and added this branch's two keys AS MAIN'S
+ * EXACT BYTES PLUS TWO INSERTED LINES - main's last passes re-spelled the file
+ * pure ASCII, so the resolution preserves its escaping style rather than
+ * re-serializing it away - and the fold's re-stamp commit re-points the claims
+ * of every note in THIS list (the scope pinned above) to the pair the merged
+ * tree produces.
  */
 const STAMP_BINDING_NOTES = [
 	/*
@@ -1261,6 +1304,43 @@ const STAMP_BINDING_NOTES = [
 	 * silently not run.
 	 */
 	"heldFirstPaintRestampNote",
+	/*
+	 * THIS LANE'S OWN: the streaming re-delivery fix, which moves `src/` AND
+	 * `scripts/` without taking a frame — the change is a reducer/transport
+	 * correctness fix whose evidence is the pinned repro in
+	 * `scripts/transcript-reducer.test.mjs` and the desktop suite, so the reader
+	 * is owed the pair AND the reason no still was owed.
+	 */
+	"streamRedeliveryRestampNote",
+	/*
+	 * AND THIS FOLD'S OWN: its subject IS this file's binding (the pair the
+	 * merged, remediated tree produces - re-derived in the re-stamp commit that
+	 * follows the round-1 fixes), so a reader is owed the check rather than the
+	 * prose - the same case `foldOntoFd19adc9d9Note` is in the list for.
+	 */
+	"foldOntoEddfae750bNote",
+	/*
+	 * AND THIS FOLD'S OWN: its subject IS this file's binding too - the second
+	 * fold onto a moved `origin/main`, and the one whose resolution was taken as
+	 * main's exact bytes plus two inserted lines - so a reader is owed the check
+	 * rather than the prose, the same case `foldOntoFd19adc9d9Note` is in the
+	 * list for.
+	 */
+	"foldOnto2e12a54d56Note",
+	/*
+	 * THIS REMOVAL'S OWN: it re-stamps the change that deletes the legacy History
+	 * settings section - `src/` for the settings page and the tour copy, `scripts/`
+	 * for this note's registration - and re-shoots no frame, so a reader is owed
+	 * the pair and the reason no still was owed.
+	 */
+	"historySettingsRemovalRestampNote",
+	/*
+	 * AND THIS FOLD'S OWN: its subject IS this file's binding (the pair the
+	 * folded tree produces, re-derived in the fold commit itself and read back
+	 * from its staged index), so a reader is owed the check rather than the
+	 * prose - the same case `foldOntoFd19adc9d9Note` is in the list for.
+	 */
+	"historySettingsRemovalSecondFoldNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1762,6 +1842,33 @@ const BRANCH_RECORDS = [
 	"foldOnto093a329a4dActionGroupNote",
 	"foldOnto827f45f4fdActionGroupNote",
 	"foldOnto44c7f8fd76ActionGroupNote",
+	/*
+	 * And by this lane, whose note is the newest top-level record on the
+	 * branch: it states the pair the streaming re-delivery fix ships, and a
+	 * later fold that started from main's copy would drop it first.
+	 */
+	"streamRedeliveryRestampNote",
+	/*
+	 * And this FOLD's own, beside the lane's re-stamp record: it states the
+	 * union the merge resolved against `origin/main` = `eddfae750b` and the
+	 * pair the re-stamp after the round-1 fixes re-derives, for the reason
+	 * this list exists - a fold resolved from main's copy would drop it.
+	 */
+	"foldOntoEddfae750bNote",
+	/*
+	 * And the NEXT fold's own, beside it: it states the union resolved against
+	 * `origin/main` = `2e12a54d56` and the pair its re-stamp re-derives - a fold
+	 * that started from main's copy would drop it first, the same reason the
+	 * list exists.
+	 */
+	"foldOnto2e12a54d56Note",
+	/*
+	 * And this FOLD's own, beside the removal's records: it states the union
+	 * the merge resolved against `origin/main` = `fb89e6e374` and the pair its
+	 * re-stamp re-derives, for the reason this list exists - a fold resolved
+	 * from main's copy would drop it.
+	 */
+	"historySettingsRemovalSecondFoldNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
