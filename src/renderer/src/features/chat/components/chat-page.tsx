@@ -1,4 +1,7 @@
-import { backendPaneSentence } from "@shared/api/local-operator/backend-error";
+import {
+	backendPaneSentence,
+	compatibilityBannerShown,
+} from "@shared/api/local-operator/backend-error";
 import {
 	UserFacingError,
 	desktopResult,
@@ -3266,6 +3269,22 @@ export function ChatPage() {
 			: null;
 	const pairingSentence = backendPaneSentence(catalogueState, pairingCause);
 	/*
+	 * AND WHETHER THE COMPATIBILITY BANNER OWNS THE SAME FACT (QA round 1, Q-1).
+	 * The strip is silent for the four causes the banner carries (§ 0.1), so in
+	 * exactly those states the store's catalogue error had no stand-down left and
+	 * came back beside the banner: measured in the successor walk, a replacement
+	 * that refuses this app's credential rendered the pane's own sentence
+	 * (`This app's credential … was refused …`) directly under the banner's
+	 * successor sentence - one incident, two statements. The banner's own
+	 * predicate is the one to read (it renders unless the plane is available and
+	 * every feature is advertised), so the pane cannot drift from what the banner
+	 * actually draws.
+	 */
+	const coveredByCompatibilityBanner = compatibilityBannerShown(
+		capabilities.data,
+		pairingCause,
+	);
+	/*
 	 * NO CONTROL WHERE NO REMEDY EXISTS, asked of the ONE predicate that answers it
 	 * (design round 3): this used to spell the two causes out again, which is a
 	 * second copy of a rule that has three other readers, and a copy is how the
@@ -3379,9 +3398,13 @@ export function ChatPage() {
 			 * renders. `error` is the store's catalogue failure, which for a dead
 			 * backend IS the connection fact the strip owns; while the strip speaks,
 			 * this half stands down so one press of Retry is not offered twice for one
-			 * root cause.
+			 * root cause. AND WHERE THE STRIP IS SILENT BUT THE COMPATIBILITY BANNER IS
+			 * UP (QA round 1's Q-1), the banner owns the fact instead: the store's
+			 * sentence is the same incident the banner is stating, so this half stands
+			 * down to it as well.
 			 */}
-			{(routeError || (error && !stripSpeaksConnection)) && (
+			{(routeError ||
+				(error && !stripSpeaksConnection && !coveredByCompatibilityBanner)) && (
 				<p role="alert" className={cn("px-4 py-2 text-body-sm text-danger")}>
 					{routeError || error}
 				</p>
