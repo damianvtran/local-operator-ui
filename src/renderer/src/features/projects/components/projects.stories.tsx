@@ -792,30 +792,50 @@ export const BoardStatuses: Story = {
 				...THREE,
 				project("a1", "payments-v1", { status: "archived" }),
 				project("r1", "review-pass", { status: "review" }),
+				/* A passed target with the work unfinished: the card's Overdue
+				   emphasis, photographed rather than argued. */
+				project("o1", "release-prep", {
+					target_date: "2026-09-15",
+					estimate: 8,
+					milestones_completed: 0,
+					milestones_total: 1,
+				}),
 			],
 		}),
 };
 
 /** The timeline: bars, milestone diamonds in all three states, today marker. */
 export const Timeline: Story = {
-	render: () =>
-		page({
-			view: "timeline",
-			projects: THREE,
-			details: detailsFor(THREE),
-		}),
+	render: () => (
+		<>
+			<HoldUntilPresent text="without dates" />
+			{page({
+				view: "timeline",
+				projects: THREE,
+				details: detailsFor(THREE),
+			})}
+		</>
+	),
 };
 
 /** No project carries a date: the honest empty axis, not fabricated rows. */
 export const TimelineNoDates: Story = {
-	render: () =>
-		page({
-			view: "timeline",
-			projects: [
-				project("u1", "papercuts", { description: "Small fixes" }),
-				project("u2", "onboarding-notes", { status: "paused" }),
-			],
-		}),
+	render: () => (
+		<>
+			<HoldUntilPresent text="without dates" />
+			{page({
+				view: "timeline",
+				projects: [
+					project("u1", "papercuts", { description: "Small fixes" }),
+					project("u2", "onboarding-notes", { status: "paused" }),
+				],
+				details: {
+					u1: detailFor(project("u1", "papercuts")),
+					u2: detailFor(project("u2", "onboarding-notes")),
+				},
+			})}
+		</>
+	),
 };
 
 /**
@@ -833,19 +853,25 @@ export const TimelineOverdue: Story = {
 			milestones_total: 1,
 		});
 		const undated = project("u1", "papercuts", { description: "Small fixes" });
-		return page({
-			view: "timeline",
-			projects: [overdue, undated],
-			details: {
-				o1: detailFor(overdue, [
-					{
-						name: "cut rc",
-						target_date: "2026-09-14",
-						completed_at: null,
-						status: "overdue",
+		return (
+			<>
+				<HoldUntilPresent text="without dates" />
+				{page({
+					view: "timeline",
+					projects: [overdue, undated],
+					details: {
+						o1: detailFor(overdue, [
+							{
+								name: "cut rc",
+								target_date: "2026-09-14",
+								completed_at: null,
+								status: "overdue",
+							},
+						]),
+						u1: detailFor(undated),
 					},
-				]),
-			},
-		});
+				})}
+			</>
+		);
 	},
 };

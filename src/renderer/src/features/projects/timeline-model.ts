@@ -308,7 +308,9 @@ export function timelineTicks(
 		for (let day = startMs; day <= endMs; day += DAY_MS) {
 			const { day: dayOfMonth, month } = utcParts(day);
 			if (dayOfMonth === 1) {
-				push(day, `${MONTHS[month - 1]} 1`, true);
+				// The month's own name, NOT "Sep 1": at 24px/day the longer form
+				// runs into the next day's label (measured in the first capture).
+				push(day, MONTHS[month - 1], true);
 			} else {
 				push(day, String(dayOfMonth), false);
 			}
@@ -321,7 +323,11 @@ export function timelineTicks(
 		for (let day = weekStart(startMs); day <= endMs; day += 7 * DAY_MS) {
 			if (day < startMs) continue;
 			const { day: dayOfMonth, month } = utcParts(day);
-			const monthTurn = dayOffset(weekStart(day), monthStart(day)) > 0;
+			// The month turns over inside this week exactly when the PREVIOUS
+			// Monday sat in a different month (the TUI's rule); labelling by the
+			// bare day number only would leave a months-long axis with nothing
+			// naming a month at all (measured in the first capture).
+			const monthTurn = utcParts(day - 7 * DAY_MS).month !== month;
 			if (monthTurn) {
 				push(day, `${MONTHS[month - 1]} ${dayOfMonth}`, true);
 			} else {
