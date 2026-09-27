@@ -1934,6 +1934,34 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	assert.match(plan.script, /if \[ "\$holding" -eq 1 \]; then/);
 	assert.match(plan.script, /notify\(\) \{/);
 	assert.match(plan.script, /osascript -e 'on run argv'/);
+	/*
+	 * THE NOTICE OBEYS THE LAUNCH'S KILL SWITCH (operator report, remediation round
+	 * 1): the guard is in the script, a plan built WITHOUT the switch adds nothing
+	 * (an empty value must never override a non-empty inherited one), and a plan
+	 * built with it carries the value into the script's environment.
+	 */
+	assert.match(
+		plan.script,
+		/\[ -n "\$\{LOCAL_OPERATOR_NO_NOTIFICATIONS:-\}" \] && return 0/,
+	);
+	assert.equal(
+		Object.hasOwn(plan.env, "LOCAL_OPERATOR_NO_NOTIFICATIONS"),
+		false,
+		"a launch without the switch adds nothing to the script's environment",
+	);
+	const silenced = buildWatchdogPlan({
+		appBundlePath: "/Applications/Local Operator.app",
+		executableName: "Local Operator",
+		appPid: 1,
+		shipItJob: null,
+		targetVersion: "0.18.0",
+		timeoutSeconds: 60,
+		intervalSeconds: 1,
+		settleSeconds: 1,
+		appearSeconds: 2,
+		noNotifications: "1",
+	});
+	assert.equal(silenced.env.LOCAL_OPERATOR_NO_NOTIFICATIONS, "1");
 	// Backgrounded with its status dropped, so a notifier that fails, hangs or
 	// does not exist cannot decide anything or hold the script open.
 	assert.match(plan.script, /"Local Operator" >\/dev\/null 2>&1 &/);
@@ -2029,13 +2057,16 @@ test("a target that is already installed is never handed to the watchdog", () =>
  * Run the script exactly as the app does - `spawn("/bin/sh", ["-c", script])`,
  * detached, with the plan's environment - against a real process tree.
  */
-function runWatchdog({ plan, binDir }) {
+function runWatchdog({ plan, binDir, env }) {
 	const child = spawn("/bin/sh", ["-c", plan.script], {
 		detached: true,
 		stdio: "ignore",
 		env: {
 			...process.env,
 			...plan.env,
+			// A case's extra environment (the notification kill switch's two
+			// directions) wins per key, exactly as a caller's `env` would.
+			...(env ?? {}),
 			PATH: `${binDir}:${process.env.PATH ?? ""}`,
 		},
 	});
@@ -2711,6 +2742,110 @@ test("a failed notification does not change the watchdog's decision or its exit 
 	const result = await watchdog.exit;
 	assert.equal(result.code, 0);
 	assert.equal(await waitForLaunches(fixture, before + 1), true);
+});
+
+/**
+ * THE SWITCH REACHES THE WATCHDOG'S OWN NOTICE (operator report, remediation
+ * round 1).
+ *
+ * Real banners landed on the operator's Notification Center from rehearsal
+ * activity of the update machinery, and the text matched this script's
+ * soft-bound notice - the one notice path that runs while the app is dead, so
+ * nothing inside the app can silence it. The launch's kill switch now travels
+ * in the script's environment and the script's `notify` obeys it. The
+ * assertions are about what the recording shim was asked to say; no real
+ * banner is ever fired to prove either direction.
+ */
+test("the switch silences the watchdog's own notice", async () => {
+	const dir = tempDir("lo-watchdog-silenced-");
+	const fixture = makeWatchdogFixture(dir);
+	const app = startProcess("/bin/sleep", ["30"]);
+	const installer = startProcess("/bin/sleep", ["30"]);
+	const plan = buildWatchdogPlan({
+		appBundlePath: fixture.bundle,
+		executableName: "Fixture",
+		appPid: app.pid,
+		shipItJob: "com.local-operator.ShipIt",
+		installerPid: installer.pid,
+		platform: "darwin",
+		signals: fixture.probes,
+		timeoutSeconds: 4,
+		intervalSeconds: 1,
+		settleSeconds: 1,
+		appearSeconds: 1,
+		announceSeconds: 1,
+	});
+	const before = fixture.launches().length;
+	const watchdog = runWatchdog({
+		plan,
+		binDir: fixture.binDir,
+		env: { LOCAL_OPERATOR_NO_NOTIFICATIONS: "1" },
+	});
+	app.kill();
+	/*
+	 * Past the announcement with wall-clock margin, then asserted again at the
+	 * end: on a loaded host the notice can arrive seconds late, so silence has to
+	 * hold over the whole live stretch rather than at one instant.
+	 */
+	await new Promise((resolve) => setTimeout(resolve, 4000));
+	assert.deepEqual(
+		fixture.notifications(),
+		[],
+		"a switched-off launch must not reach the notifier at all",
+	);
+	assert.equal(
+		fixture.launches().length,
+		before,
+		"and a silenced notice must not become a launch into the live install",
+	);
+	installer.kill();
+	const result = await watchdog.exit;
+	assert.equal(result.code, 0);
+	assert.deepEqual(
+		fixture.notifications(),
+		[],
+		"still silent by the time the watchdog has decided and exited",
+	);
+	assert.equal(await waitForLaunches(fixture, before + 1), true);
+});
+
+test("without the switch the watchdog's notice is still raised", async () => {
+	const dir = tempDir("lo-watchdog-armed-");
+	const fixture = makeWatchdogFixture(dir);
+	const app = startProcess("/bin/sleep", ["30"]);
+	const installer = startProcess("/bin/sleep", ["30"]);
+	const plan = buildWatchdogPlan({
+		appBundlePath: fixture.bundle,
+		executableName: "Fixture",
+		appPid: app.pid,
+		shipItJob: "com.local-operator.ShipIt",
+		installerPid: installer.pid,
+		platform: "darwin",
+		signals: fixture.probes,
+		timeoutSeconds: 4,
+		intervalSeconds: 1,
+		settleSeconds: 1,
+		appearSeconds: 1,
+		announceSeconds: 1,
+	});
+	const watchdog = runWatchdog({ plan, binDir: fixture.binDir });
+	app.kill();
+	/*
+	 * A DEADLINE rather than one tick: the notice is best-effort and backgrounded,
+	 * and on a loaded host it can arrive seconds late - the sibling case's fixed
+	 * 2.5 s window is exactly what flakes here, so this one waits for it instead.
+	 */
+	const deadline = Date.now() + 12_000;
+	while (fixture.notifications().length === 0 && Date.now() < deadline) {
+		await new Promise((resolve) => setTimeout(resolve, 200));
+	}
+	assert.ok(
+		fixture.notifications().length > 0,
+		"an unflagged launch must still raise the notice",
+	);
+	installer.kill();
+	const result = await watchdog.exit;
+	assert.equal(result.code, 0);
 });
 
 /**

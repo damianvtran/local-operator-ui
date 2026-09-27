@@ -1638,6 +1638,16 @@ function startRelaunchWatchdog(input: {
 			target: input.targetVersion,
 			running: input.runningVersion,
 		}),
+		/*
+		 * The notification kill switch travels with the plan (operator report,
+		 * remediation round 1): the script's own `notify` is the one notice path
+		 * the app cannot silence from inside, so a launch that carried the switch
+		 * must place it in the script's environment explicitly rather than lean on
+		 * the spawn's `process.env` spread. Read from `launchEnv`, not `process.env`:
+		 * the app's own guard (`notificationsSilenced`) reads the LAUNCH's value for
+		 * the same reason - a fact about the launch must come from the launch.
+		 */
+		noNotifications: launchEnv[NOTIFICATIONS_ENV],
 		// Stated rather than read off `process.platform` at the plan: this
 		// watchdog exists for Squirrel.Mac's ShipIt, the guard above already
 		// refuses it anywhere else, and the script's two probes (launchd's job

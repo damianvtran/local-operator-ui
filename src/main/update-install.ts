@@ -2755,6 +2755,19 @@ export function buildWatchdogPlan(input: {
 	 * branch is exercised on any host instead of only on a Mac. Production passes
 	 * neither this nor `platform` and gets `watchdogSignals("darwin")`.
 	 */
+	/**
+	 * The notification kill switch's value at launch, passed into the script's
+	 * environment so the watchdog's own notice obeys it.
+	 *
+	 * WHY IT TRAVELS EXPLICITLY rather than only through the spawn's `process.env`
+	 * spread (operator report, remediation round 1): the notice paths are supposed
+	 * to be INCAPABLE of bannering from a non-user run, and an inheritance nobody
+	 * asserts is one refactor of this spawn away from being dropped. Only a
+	 * non-empty value is written - an empty string must never override a non-empty
+	 * inherited value (`{...process.env, ...plan.env}` would let it), and the
+	 * script arms on empty or absent either way.
+	 */
+	noNotifications?: string | null;
 	signals?: WatchdogSignals;
 }): WatchdogPlan {
 	const signals = input.signals ?? watchdogSignals(input.platform ?? "darwin");
@@ -2924,6 +2937,15 @@ install_live() {
 # AppleScript, so no word of it needs escaping.
 notify() {
 	[ -n "$1" ] || return 0
+	# THE NOTIFICATION KILL SWITCH (LOCAL_OPERATOR_NO_NOTIFICATIONS). A test,
+	# harness or evidence run that launched this app must not reach the operator's
+	# real Notification Center, and this script is the one notice path nobody can
+	# silence from inside the app: the app is dead while the watchdog runs. The
+	# switch the LAUNCH carried therefore has to reach this environment too -
+	# startRelaunchWatchdog passes it through the plan rather than relying on
+	# inheritance - and the rule is notify.py's: any non-empty value silences,
+	# while empty or absent arms (an empty value is never a considered choice).
+	[ -n "\${LOCAL_OPERATOR_NO_NOTIFICATIONS:-}" ] && return 0
 	osascript -e 'on run argv' -e 'display notification (item 1 of argv) with title (item 2 of argv)' -e 'end run' "$1" "Local Operator" >/dev/null 2>&1 &
 }
 # launchctl list <label> exits 0 when the job is loaded and 113 when launchd has
@@ -3215,6 +3237,9 @@ exit 0
 	return {
 		script,
 		env: {
+			...(input.noNotifications
+				? { LOCAL_OPERATOR_NO_NOTIFICATIONS: input.noNotifications }
+				: {}),
 			LO_UPDATE_WATCHDOG_APP_PID: String(input.appPid),
 			LO_UPDATE_WATCHDOG_APP_BUNDLE: input.appBundlePath,
 			LO_UPDATE_WATCHDOG_APP_NAME: input.executableName,
