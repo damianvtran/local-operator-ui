@@ -23,7 +23,9 @@
  * can read (the M1 finding's own words: "an org-visibility document visible to
  * nobody else"). So the entitlement rule is the plan, for every rank — and a
  * plan-less tenant, home or not, is `plan_inactive` rather than `available`,
- * which is what keeps a personal workspace out of both surfaces.
+ * which is what keeps a personal workspace out of the scope selector and off the
+ * picker's list of selectable targets (it is shown disabled there, with the
+ * upgrade hint §8.4 asks for).
  *
  * `plan_inactive` — a membership that cannot use the org because of the PLAN: the
  * plan is `none` or `canceled`. This is the state §8.4's picker renders disabled

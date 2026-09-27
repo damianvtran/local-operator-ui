@@ -1123,9 +1123,12 @@ test("the plan remedy names the Team plan and the console", () => {
  *
  * Captured 2026-09-27 from the merged local server (`local-operator` @ 5bba6a917,
  * the app served over a real socket) against a stub hub on loopback — the rig is
- * `qa-evidence/loui-H/qa-round2/rig_org_pull.py` and its raw output is beside it.
- * Both bodies below are verbatim; the two names are the two branches: one the
- * local rule can hold, one it must rewrite.
+ * `qa-evidence/loui-H/qa-round2/rig_org_pull.py`. These two bodies are verbatim
+ * from the 17:57 run, whose raw output is `qa-round2/rig-output.txt`; the earlier
+ * 17:40 run of the same rig produced the same shapes with different row ids and
+ * `created_date`, which is the only field pair that differs between them (agent
+ * review round 2, N-1). The two names are the two branches: one the local rule
+ * can hold, one it must rewrite.
  *
  * The mount is the point: `describePulledTeam` alone proves the SENTENCE, and the
  * defect Q-1 was in the DISPATCH — a success handler that threw before any toast
@@ -1328,4 +1331,186 @@ test("the shipped pull hook toasts the real responses and crashes on neither", a
 			await mounted.teardown();
 		}
 	}
+});
+
+/* ------------------------------- 9. the convergence round's small corrections */
+
+/*
+ * C7 (copy round 2): a table shared by two surfaces has to say which one speaks.
+ *
+ * The roster renders `publicationTreatment` for a PULL, and three of its bodies
+ * were authored for a publication — "Nothing was published", "then publish
+ * again". The context's `surface` selects the voice, and these are the arms the
+ * copy round named.
+ */
+test("the treatment speaks the puller's verbs when the roster asks", async () => {
+	const bundle = await build({
+		stdin: {
+			contents: `
+				export { publicationTreatment } from "./src/renderer/src/features/agents/utils/publication-failure";
+			`,
+			resolveDir: process.cwd(),
+		},
+		bundle: true,
+		format: "esm",
+		platform: "node",
+		loader: { ".css": "empty" },
+		alias: {
+			"@shared": `${process.cwd()}/src/renderer/src/shared`,
+			"@features": `${process.cwd()}/src/renderer/src/features`,
+		},
+		write: false,
+	});
+	const mod = await import(
+		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+	);
+	const { publicationTreatment } = mod;
+	const pull = { name: "Inbox-Triage", hubAgentId: null, surface: "pull" };
+	const publish = { name: "Inbox-Triage", hubAgentId: null };
+
+	for (const code of [
+		"team_plan_required",
+		"hub_unauthorized",
+		"not_a_member",
+	]) {
+		const pulled = publicationTreatment(
+			{ code, message: "", details: {} },
+			pull,
+		);
+		const published = publicationTreatment(
+			{ code, message: "", details: {} },
+			publish,
+		);
+		assert.doesNotMatch(
+			pulled.body,
+			/publish/,
+			`${code} must not tell a puller to publish`,
+		);
+		assert.match(pulled.body, /pull/, `${code}: the pull arm names the act`);
+		assert.match(
+			published.body,
+			/publish/,
+			`${code}: the dialog's own arm is unchanged`,
+		);
+	}
+
+	// The unnamed-subject fallback follows the surface too: a pull's subject is a
+	// team, not an agent.
+	const unnamed = publicationTreatment(
+		{ code: "insufficient_role", message: "", details: { required: "admin" } },
+		{ name: "", hubAgentId: null, surface: "pull" },
+	);
+	assert.match(unnamed.body, /admin/);
+	assert.match(unnamed.body, /pull again/);
+
+	// Absent `surface` is exactly the publish voice: every caller before the
+	// roster read this table.
+	const absent = publicationTreatment(
+		{ code: "hub_unauthorized", message: "", details: {} },
+		{ name: "x", hubAgentId: null },
+	);
+	assert.equal(
+		absent.body,
+		"Nothing was published. Sign in to Radient again to replace the credential the hub refused, then publish again.",
+	);
+});
+
+/*
+ * R-2 and C8 (agent + copy round 2): one action, one act.
+ *
+ * The roster maps each honoured action to the act it names — a retry re-pulls the
+ * SAME team, a refresh reads the roster, a sign-in opens the shared credential
+ * panel — and renders nothing for an action it cannot honour. `refetch` for every
+ * action was the defect: "Sign in again" reloaded a list.
+ */
+test("the roster honours its actions, and renders no others", () => {
+	const roster = read(
+		"src/renderer/src/features/agent-hub/components/org-teams-list.tsx",
+	);
+	assert.match(
+		roster,
+		/const ROSTER_ACTIONS: readonly PublicationAction\[\] = \[/,
+	);
+	for (const action of ["refresh-hub", "retry", "sign-in"]) {
+		assert.match(roster, new RegExp(`"${action}"`));
+	}
+	assert.match(
+		roster,
+		/case "retry":\s*\n\s*handlePull\(team\);/,
+		"a retry re-pulls the team the refusal is about",
+	);
+	assert.match(
+		roster,
+		/case "refresh-hub":\s*\n\s*void refetch\(\);/,
+		"a refresh re-reads the roster",
+	);
+	assert.match(
+		roster,
+		/case "sign-in":\s*\n\s*setReauthenticating\(true\);/,
+		"a sign-in opens the credential panel rather than reloading the list",
+	);
+	// The control is the SHARED one the dialog uses, not a second sign-in path.
+	assert.match(roster, /<RadientAuthButtons/);
+	assert.match(roster, /data-testid="org-team-pull-reauth"/);
+	// And the filter is what keeps a publish-only remedy off the row.
+	assert.match(
+		roster,
+		/\.filter\(\(action\) => ROSTER_ACTIONS\.includes\(action\)\)/,
+	);
+	// The pull asks for the pull voice.
+	assert.match(roster, /surface: "pull"/);
+});
+
+/*
+ * S-2 (security round 2): the second boundary agrees with the query composer
+ * about what "a tenant is present" means.
+ *
+ * `!== undefined` read `""` as present while the composition read it as absent:
+ * the assert passed and the query was dropped — the same silent public
+ * publication S-1 closed for the undefined half.
+ */
+test("a falsy-but-defined tenantId is refused at both boundaries", () => {
+	const falsy = { visibility: "org", tenantId: "" };
+	assert.throws(
+		() => desktopEndpoint({ op: "agent.publish", agentId: "a", ...falsy }),
+		/half/,
+		"an empty tenantId must throw rather than compose a public publication",
+	);
+	assert.throws(
+		() =>
+			desktopEndpoint({
+				op: "agent.republish",
+				agentId: "a",
+				hubAgentId: "h",
+				...falsy,
+			}),
+		/half/,
+	);
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			op: "agent.publish",
+			agentId: "a",
+			...falsy,
+		}).success,
+		false,
+		"the schema refuses it too — one predicate, both boundaries",
+	);
+});
+
+/*
+ * D5 (design round 2): the org capability notice wears its family's register.
+ */
+test("the org capability notice is a warning, like its four siblings", () => {
+	const page = read("src/renderer/src/features/agent-hub/agent-hub-page.tsx");
+	const notice = page.split('data-testid="agent-hub-org-unavailable"')[0];
+	assert.match(
+		notice.slice(-400),
+		/variant="warning"/,
+		"the notice that says 'update the backend' is a warning, as its siblings are",
+	);
+	// The refusals directly below it carry the same register for the same reason.
+	assert.match(
+		page,
+		/variant=\{orgRefusal \? "warning" : "danger"\}|orgRefusal[\s\S]{0,120}variant="warning"/,
+	);
 });

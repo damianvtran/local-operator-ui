@@ -743,7 +743,8 @@ export type TeamPlanSummary = {
  * as any other: an active membership whose plan entitles org features (§8.4's
  * "each org from `memberships.list` where plan is active"). Nothing filters on
  * `is_home`, and the filter is the PLAN — which is what keeps a plan-less
- * personal workspace out of the scope selector and the publish target picker
+ * personal workspace out of the scope selector and out of the picker's selectable
+ * targets, where it is shown DISABLED with its upgrade reason rather than offered
  * (manager ruling on agent review round 1's M1; the pinned cases live in
  * `scripts/agent-hub-org-sharing.test.mjs`).
  *

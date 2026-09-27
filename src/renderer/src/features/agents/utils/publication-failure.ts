@@ -75,6 +75,17 @@ export type PublicationContext = {
 	name: string;
 	/** Whether a hub listing for this local agent is known, for "Update listing". */
 	hubAgentId: string | null;
+	/**
+	 * WHICH SURFACE is asking, for the arms whose words name the act.
+	 *
+	 * The roster renders this same table for a PULL (agent review round 1's n1),
+	 * and several bodies were authored for a publication — "Nothing was published",
+	 * "then publish again". A table shared by two surfaces has to say which one is
+	 * speaking, or the roster tells the user something that did not happen (copy
+	 * review round 2, C7). Absent means `"publish"`, which is what every caller was
+	 * before the roster read this table.
+	 */
+	surface?: "publish" | "pull";
 };
 
 /**
@@ -202,7 +213,18 @@ export function publicationTreatment(
 	failure: PublicationFailure,
 	context: PublicationContext,
 ): PublicationTreatment {
-	const name = context.name.trim() || "this agent";
+	const pulling = context.surface === "pull";
+	/*
+	 * The two phrases every verb-bearing arm reads, resolved ONCE. A body that
+	 * branched on its own would be half-translated the first time someone added an
+	 * arm — the class of defect the code switch exists to prevent, applied to the
+	 * words rather than to the branch.
+	 */
+	const nothingLanded = pulling
+		? "Nothing was pulled."
+		: "Nothing was published.";
+	const again = pulling ? "pull again" : "publish again";
+	const name = context.name.trim() || (pulling ? "this team" : "this agent");
 	switch (failure.code) {
 		case "name_taken": {
 			const owned = failure.details?.owned_by_caller === true;
@@ -399,7 +421,7 @@ export function publicationTreatment(
 			return {
 				variant: "danger",
 				headline: "The hub refused this machine's sign-in",
-				body: "Nothing was published. Sign in to Radient again to replace the credential the hub refused, then publish again.",
+				body: `${nothingLanded} Sign in to Radient again to replace the credential the hub refused, then ${again}.`,
 				note: null,
 				actions: ["sign-in"],
 			};
@@ -416,17 +438,21 @@ export function publicationTreatment(
 			 */
 			return {
 				variant: "warning",
-				headline: "The publication did not go through",
+				headline: pulling
+					? "The pull did not go through"
+					: "The publication did not go through",
 				body: isInformative(failure.message)
 					? failure.message
-					: "Nothing was published. Try again in a moment, or update the backend if the hub has moved.",
+					: `${nothingLanded} Try again in a moment, or update the backend if the hub has moved.`,
 				note: null,
 				actions: ["retry"],
 			};
 		case "local_failure":
 			return {
 				variant: "warning",
-				headline: "The agent could not be published from this machine",
+				headline: pulling
+					? "The team could not be pulled from this machine"
+					: "The agent could not be published from this machine",
 				body: failure.message,
 				note: null,
 				// Safe to retry: the failure happened before the hub was asked
@@ -443,7 +469,9 @@ export function publicationTreatment(
 			return {
 				variant: "warning",
 				headline: "That organization needs an active Team plan",
-				body: "Sharing agents inside an organization is part of the Team plan. Ask an owner of the organization to activate it in the Radient console, then publish again.",
+				body: pulling
+					? "Reading an organization's teams is part of the Team plan. Ask an owner of the organization to activate it in the Radient console, then pull again."
+					: "Sharing agents inside an organization is part of the Team plan. Ask an owner of the organization to activate it in the Radient console, then publish again.",
 				note: null,
 				// Safe to retry, and the only step this dialog can take: the plan is
 				// activated on the console, and a retry is what a user who has just
@@ -454,7 +482,7 @@ export function publicationTreatment(
 			return {
 				variant: "danger",
 				headline: "You are not a member of that organization",
-				body: "Nothing was published. Ask an owner of the organization to invite you, then publish again.",
+				body: `${nothingLanded} Ask an owner of the organization to invite you, then ${again}.`,
 				note: null,
 				/*
 				 * NO ACTION, deliberately. The remedy is somebody else's (an owner has to
@@ -476,8 +504,8 @@ export function publicationTreatment(
 				variant: "danger",
 				headline: "Your organization role does not allow this",
 				body: required
-					? `Publishing into an organization needs the ${required} role. Ask an owner of the organization to change your role, then publish again.`
-					: "Publishing into an organization needs a higher role than yours. Ask an owner of the organization to change your role, then publish again.",
+					? `${pulling ? "Reading an organization's teams needs" : "Publishing into an organization needs"} the ${required} role. Ask an owner of the organization to change your role, then ${again}.`
+					: `${pulling ? "Reading an organization's teams needs" : "Publishing into an organization needs"} a higher role than yours. Ask an owner of the organization to change your role, then ${again}.`,
 				note: null,
 				actions: [],
 			};
