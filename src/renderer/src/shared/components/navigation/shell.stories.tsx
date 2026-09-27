@@ -595,13 +595,21 @@ const INERT_REMEDY: McpRemedyControls = {
  * one, and its rect is the one a press aimed at the pane beside it has to survive
  * (UX round 1, U1). A frame that does not contain the header cannot measure that,
  * so the header is in every dock frame.
+ * THE COLUMN'S CLASSES ARE THE APP'S OWN (`w-0 min-w-[480px] flex-1`, `chat-content.tsx`),
+ * and that is load-bearing rather than tidy: `grow` alone leaves the flex BASIS at auto,
+ * so this column's basis was its CONTENT's width (a paragraph ~848px wide at this
+ * viewport) and the dock beside it was squeezed to its 400px floor in every frame of
+ * the set - a composition the app never draws, where the column's `w-0` basis makes the
+ * 480px floor the whole story and the dock keeps the width the slot resolves for it.
+ * The lane's stop above the dock is derived from the pane's real leading edge, so a
+ * squeezed dock is also a lane stop 140px off the boundary it is meant to land on.
  */
 const ConversationStandIn = ({
 	details,
 }: {
 	details: ReturnType<typeof deriveRunDetails>;
 }) => (
-	<div className="flex h-full min-h-0 min-w-[480px] grow flex-col overflow-hidden">
+	<div className="w-0 min-w-[480px] flex-1 flex h-full min-h-0 flex-col overflow-hidden">
 		<ChatHeader
 			agentName="Core"
 			description="Invoices workspace \u00b7 on this machine"
