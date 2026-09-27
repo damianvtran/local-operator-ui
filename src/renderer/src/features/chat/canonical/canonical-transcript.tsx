@@ -559,7 +559,7 @@ const UserRow = memo(function UserRow({
 							// `messageSurface` in the palette contract for the floor and the
 							// arithmetic.
 							//
-							// `max-w-[85%]` of the 640 column is 544px (§D2), so the block
+							// `max-w-[85%]` of the 900 column is 765px (§D2), so the block
 							// reads as an aside by width and never needs a cap on its TEXT
 							// (branding §7 - the block's own width is what caps it). Padding
 							// is 12px inline and 10px block; `rounded-frame` is the ramp's

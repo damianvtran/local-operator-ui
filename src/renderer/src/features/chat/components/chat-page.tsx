@@ -31,6 +31,7 @@ import {
 	ANSWER_NOT_SENT_CODE,
 	ASIDE_NOT_ANSWERED_CODE,
 	ASIDE_STILL_ANSWERING_CODE,
+	SEND_FAILURE_COPY,
 	SESSION_UNVALIDATED_CODE,
 	SESSION_UNVALIDATED_MESSAGE,
 	UNREADABLE_ATTACHMENT_CODE,
@@ -109,7 +110,7 @@ import {
 } from "../move-session";
 import { openConversation } from "../open-conversation";
 import { PickerOutlet } from "../pickers/picker-registry";
-import { specUnresolved } from "../session-status/session-model";
+import { effortQueryModel } from "../session-status/session-model";
 import { unreadableAttachmentRefusal } from "../utils/attachment-read";
 import { type WireImage, boundImagesForBudget } from "../utils/bound-image";
 import { canvasDocumentForPath } from "../utils/canvas-document";
@@ -418,6 +419,15 @@ function SessionPanel({
 	const sendLockRef = useRef<SendLock | null>(null);
 	sendLockRef.current ??= createSendLock();
 	const sendLock = sendLockRef.current;
+	/*
+	 * Whether a press is waiting for the session's read window (see `send`),
+	 * held as a ref BESIDE the notice it renders: `answerLockedSend` has to read
+	 * it synchronously on a second press, before React re-renders, and the muted
+	 * sentence it gates is what makes the wait visible (task-17, U1/U2). No
+	 * state: the sentence's own lifecycle is the notice's, and a second source
+	 * for "is a press waiting" is a second thing that can drift.
+	 */
+	const queuedSend = useRef(false);
 	/*
 	 * The stream's latest answer, readable from inside an awaiting `send`, whose
 	 * closure is the render it started in. Written during render on purpose: the
@@ -966,9 +976,24 @@ function SessionPanel({
 	 * happens once per model.
 	 */
 	const queryClient = useQueryClient();
-	const resolvedModel = specUnresolved(canonical.frontend?.effective_model)
-		? null
-		: (canonical.frontend?.effective_model?.model_id ?? null);
+	/*
+	 * THE SPEC IS READ THROUGH THE HOLD - `frontend ?? heldFrontend` - the same
+	 * fallback the readings strip and the destination pickers already paint from
+	 * (task-17, F3). Reading only `frontend` made every GAP look like the
+	 * unresolved -> resolved edge this effect exists for: a gap drops `frontend`
+	 * to null (the authoritative snapshot is gone until its replacement lands),
+	 * so the model read as `null` for the whole gap and the next snapshot
+	 * restored it - a null -> model transition once per reconnect, each one
+	 * invalidating the effort query and spending a `commands.entities` round
+	 * trip to prove nothing had changed (measured: one refetch per gap->snapshot
+	 * cycle). The hold is dropped by every terminal state and by a real session
+	 * change, so the fallback cannot keep a stale model alive past the point
+	 * where the pane stops describing a stream.
+	 */
+	const resolvedModel = effortQueryModel(
+		canonical.frontend,
+		canonical.heldFrontend,
+	);
 	/*
 	 * Only an actual unresolved -> resolved TRANSITION invalidates.
 	 *
@@ -999,6 +1024,47 @@ function SessionPanel({
 			queryKey: ["desktop", "entities", sessionId, "effort", ""],
 		});
 	}, [sessionId, resolvedModel, queryClient]);
+	/*
+	 * WHETHER THE READINGS WERE DROPPED RATHER THAN NEVER ARRIVED (task-17, U4).
+	 *
+	 * The stream's terminal arms clear `heldFrontend` on purpose - a reading
+	 * held past a spent retry budget is the one thing still claiming to describe
+	 * a live stream - but the strip then vanishes with no word of its own, and
+	 * the reader who was watching `$0.515` and `20.3%/1M` sees them go without
+	 * an explanation of their own (the failure notice speaks for the STREAM).
+	 * This remembers, per session, that readings were once painted, so the pane
+	 * can tell "the readings were dropped" apart from "this pane never had
+	 * any" - the first gets one sentence, the second stays silent. Keyed by the
+	 * session the drop belongs to, so a session switch cannot inherit it.
+	 */
+	const readingsWereLive = useRef<string | null>(null);
+	const [readingsDroppedFor, setReadingsDroppedFor] = useState<string | null>(
+		null,
+	);
+	useEffect(() => {
+		if (!sessionId) {
+			setReadingsDroppedFor(null);
+			return;
+		}
+		if (canonical.frontend || canonical.heldFrontend) {
+			readingsWereLive.current = sessionId;
+			setReadingsDroppedFor(null);
+			return;
+		}
+		setReadingsDroppedFor(
+			readingsWereLive.current === sessionId &&
+				canonical.status === "unavailable" &&
+				!canonical.missing
+				? sessionId
+				: null,
+		);
+	}, [
+		sessionId,
+		canonical.frontend,
+		canonical.heldFrontend,
+		canonical.status,
+		canonical.missing,
+	]);
 	/*
 	 * ONE declaration for two readers, which is what the merge has to settle rather
 	 * than what either side wrote: `main` added this call for the draft-preview
@@ -1413,7 +1479,21 @@ function SessionPanel({
 		 * a press on a flight it can see reads the same helper.
 		 */
 		const answerLockedSend = (): false => {
-			setSendError(pressLockCopy(canonical.frontend?.pending_gate));
+			/*
+			 * A SECOND PRESS WHILE THE FIRST IS QUEUED KEEPS THE QUEUE'S OWN
+			 * SENTENCE (task-17, U2). The locked press is answered by the claim
+			 * that is on screen - "your message will send as soon as the
+			 * conversation is ready" - rather than by the send-lock copy, because
+			 * "still sending" would contradict the mark the reader can see and
+			 * overwrite the pending affordance with a claim about a different
+			 * state. Both are muted statements of fact about the same flight, so
+			 * the register does not move; only the sentence that is true does.
+			 */
+			setSendError(
+				queuedSend.current
+					? SEND_FAILURE_COPY.queuedSend
+					: pressLockCopy(canonical.frontend?.pending_gate),
+			);
 			setSendErrorCode(undefined);
 			setSendErrorRetry(false);
 			setSendErrorMuted(true);
@@ -1798,7 +1878,37 @@ function SessionPanel({
 					sessionId,
 				)
 			) {
-				const outcome = await awaitWindow();
+				/*
+				 * THE WAIT IS VISIBLE, AND THE PRESS IS ANSWERED IN ITS OWN
+				 * COMMIT (task-17, U1/U2). A press made before the session's first
+				 * page has landed - `Loading conversation…`, or `Reconnecting` with
+				 * no page yet - is not refused: it is held here and delivered the
+				 * moment the snapshot closes the window. What it must not be is
+				 * SILENT, which is the state both were measured in: the Send
+				 * control looked idle, nothing moved, and the only trace of the
+				 * press was a POST seconds later (or the stream giving up, ~23 s
+				 * out). So the press now states the queue immediately, in the
+				 * muted register the send lock already uses - nothing failed, the
+				 * message is with the app, and the delivery takes care of itself.
+				 *
+				 * THE REF, not only the state: `answerLockedSend` reads it
+				 * synchronously on a second press, before React has re-rendered.
+				 * The sentence is retired by the machinery that already owns
+				 * muted flight claims (`lockAnswerOutlived` - `admitting` holds it
+				 * for exactly this window), replaced by the failure's own sentence
+				 * if the stream gives up, and never cleared by hand here.
+				 */
+				queuedSend.current = true;
+				setSendError(SEND_FAILURE_COPY.queuedSend);
+				setSendErrorCode(undefined);
+				setSendErrorRetry(false);
+				setSendErrorMuted(true);
+				let outcome: WindowOutcome;
+				try {
+					outcome = await awaitWindow();
+				} finally {
+					queuedSend.current = false;
+				}
 				if (outcome !== "ready") {
 					if (outcome === "failed") {
 						setSendError(
@@ -3204,6 +3314,13 @@ function SessionPanel({
 										canonical.frontend === null &&
 										canonical.heldFrontend !== null,
 									/*
+									 * Whether the readings were DROPPED at a spent budget rather
+									 * than never painted (task-17, U4): the strip leaves one
+									 * sentence where it was, so the values the reader was
+									 * watching do not vanish without one.
+									 */
+									readingsDropped: readingsDroppedFor === sessionId,
+									/*
 									 * The chosen-but-unconfirmed model, so the strip can paint the pick
 									 * the moment it is made instead of waiting out a cold runtime bind
 									 * (latency U1). Straight off the handle, which owns both the paint and
@@ -3543,8 +3660,17 @@ export function ChatPage() {
 					)}
 				>
 					<p className={cn("text-center")}>
+						{/*
+						 * THE LOADING SENTENCE CARRIES THE REASSURANCE (task-17, U3).
+						 * This pane is the whole chat surface for the length of the
+						 * capabilities handshake, composer included, so a reader with a
+						 * conversation open and nowhere to type cannot tell "the app is
+						 * dialling its server" from "your conversation is gone". The
+						 * clause states the one fact true of the wait: the conversation
+						 * itself is untouched while the backend is being reached.
+						 */}
 						{capabilities.isLoading
-							? "Connecting to the backend…"
+							? "Connecting to the backend… Your conversation is safe."
 							: capabilities.error
 								? userFacingMessage(
 										capabilities.error,

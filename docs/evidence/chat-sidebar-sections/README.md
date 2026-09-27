@@ -1,33 +1,22 @@
-# The chat sidebar's split — the boundary, the collapse controls and the restore row
+# The chat sidebar's sections — the merged panel's resting states
 
-The operator asked for the rule between the entity lists and the chats list to be
-draggable with memory, and for either region to be collapsible "so that it
-doesn't take up a whole line of space at all times". `docs/design/sidebar-sections.md`
-is the design contract; this directory is what it looks like when it renders.
+The operator asked for one scroll in the sidebar (report, 2026-09-26): the entity
+sections and the chats list are the flow of a single scroller, with no boundary
+between them, no collapse controls and no order swap. `docs/design/sidebar-sections.md`
+is the split-era design contract, kept as the record; this directory is what the
+merged panel looks like when it renders.
 
 ## What produced these frames
 
-Storybook, from this branch. **Re-taken twice: once in one pass on `d109863e2`,
-with the two swapped-order states the swap's own review round (D2) asked for, and
-again on this head (round 2) for `resting-default` and every state whose readout
-changed.** Both palettes are now settled the same way — the caption is checked
-against the DOM, then checked again after the layout stops moving, and the
-viewport is declared at the content's own height so no resize happens under the
-caption at all.
-
-**What the light half of `resting-default` actually was, corrected.** Rounds 1
-and 2 both read it, and the first explanation was wrong: it is not a transient
-inside the panel's own chrome, and the panel's geometry was never in doubt. Both
-frames are 741x691 and both draw the boundary at row 379 — the same 304px list
-region, in both palettes. What was wrong was the CAPTION: it printed
-`now 290 / max 484`, which is exactly the arithmetic of a **660**-tall page
-(`(660 − 104) − 72 = 484`, `round(0.45 × (660 − 16)) = 290`), and 660 was this
-story's declaration in `scripts/capture-evidence.mjs`. The harness resizes the
-content height to `max(scrollHeight, body, declared)` AFTER the readout's last
-sample, so the caption described the viewport the frame was about to leave
-(agent review round 2, M-1; design round 2, D4). The fix is the declaration
-(`741x691`: the content's own height) plus the stability check folding the
-readout's values in, so the frame and its caption cannot disagree again.
+Storybook, from this branch. **Round 1 of this remediation (agent review R2, QA's
+Q3) retired the split's own states**, because the merged panel cannot draw them:
+the boundary, the collapse cluster, the stored list height and the swap are gone
+from the app, and three of the old stories' plays could only throw against it.
+Three stories remain — `resting-default`, `narrow-240` and `query-while-collapsed`
+— and the readout beside each panel now prints the merged panel's own numbers.
+The six frames on disk were taken in earlier passes, under the old readout; this
+round did NOT re-capture, so they remain the record of their own heads, and the
+next capture pass over this surface re-shoots the three surviving stories.
 
 ```
 pnpm check-types && pnpm lint && pnpm check-themes
@@ -38,47 +27,40 @@ node scripts/capture-evidence.mjs http://localhost:6031 \
   --allow-backend
 ```
 
-Seven states, `localOperatorDark` and `localOperatorLight` — the two palettes the
-brief requires as a minimum, so fourteen frames. `--allow-backend` because
-another session's `local-operator serve` was answering on 1111 for the whole
-pass, which the rig refuses by default; this surface talks to nothing, since
+Three states, `localOperatorDark` and `localOperatorLight` — the two palettes the
+brief requires as a minimum, so six frames. `--allow-backend` because another
+session's `local-operator serve` may be answering on 1111 for the whole pass, which
+the rig refuses by default; this surface talks to nothing, since
 `window.api.desktop.request` is stubbed by the story, so no frame here can be a
 picture of that backend's replies.
 
 The width is the panel plus the 380px readout beside it (`741` at the panel's
-360, `621` at its 240), and the height is sized to the band each state draws —
-`entities-only` is a filled column and one 28px row, and a 900px frame of it
-would be a picture of ground.
+360, `621` at its 240), and the height is declared above each state's content, so
+the harness's resize is a no-op and the caption describes the viewport the
+shutter opens on.
 
 ## What each frame is
 
 | story | what it is |
 | --- | --- |
-| `resting-default` | no stored split: both regions, the boundary at rest, nothing revealed. **This is the frame the parity claim is judged on** — it is what an upgrading user sees on first launch. |
-| `dragged-split` | a height the user chose (`320px`), drawn at exactly that height: the readout's `now`, its `Chats region drawn at` and the stored value are one number. |
-| `entities-only` | the chats list hidden: the entity region fills the column and a row at the bottom names what is missing *with its count*, so the collapsed state still says how many chats there are. |
-| `chats-only` | the mirror: the entity region's restore row sits directly under the search field and the chats list fills the column. |
-| `short-window` | a stored `900px` in a 480px window: the render clamps to `capacity - 72` (the readout shows `Stored: 900px` beside `now 344`) and the entity region keeps its own floor — the preference is not rewritten. |
-| `narrow-240` | the panel at its own width clamp, where the rows wrap hardest and the boundary has the least room. |
-| `query-while-collapsed` | a query with the chats list **persisted as hidden**: both regions render, the word finds one agent and one conversation, and `Stored: entities` still reads the collapse the user chose. |
-| `chats-first` | the swap: the chats list above and the entity lists below, at 360px. The one state in this change where more than a number moves — the regions trade their `flex-1`/`shrink-0` roles, the boundary moves to the list region's bottom edge (`side="bottom"`), and the rule above the lower region moves from the list to the entities. Design round 1 (D2) is the reason it is photographed: it shipped uninspected. |
-| `chats-first-narrow` | the same swap at the panel's width clamp, where the cluster's three glyphs have the least room. |
+| `resting-default` | no stored state: both regions drawn inside the one scroller, the entity sections above the chats list, nothing collapsed. **This is the frame the parity claim is judged on** — it is what an upgrading user sees on first launch. |
+| `narrow-240` | the panel at its own width clamp (`chatSidebarWidth`), where the rows wrap hardest. |
+| `query-while-collapsed` | a query that finds one agent and one conversation, both regions drawn. (The name is the split's; the collapse it names is gone, and the query's own claim is what the frame carries.) |
+
+**Retired with the split — frames deleted, stories deleted, in one commit round
+(agent review R2, QA's Q3):** `dragged-split` (a stored drag height),
+`entities-only` and `chats-only` (the collapse modes), `short-window` (a stored
+height the render clamped), `chats-first` and `chats-first-narrow` (the order
+swap). Each photographed a state the merged panel cannot reach; the reasons are
+stated here so a later reader meets the deletion rather than a surprise.
 
 ## What these frames do NOT prove
 
-Stated here rather than left to a caption, because each one is a claim somebody
-could otherwise read into a still:
-
-- **They are not a drag.** The split is set through the store by each story, so a
-  frame is a RESOLVED layout, not a gesture. The gesture is the driver's
-  (`--scene sidebar-split`), which enters Chromium's own input pipeline.
-- **They are not the reveal.** The collapse cluster is revealed on `:hover`, and a
-  story cannot enter a pseudo-class: `userEvent.hover` dispatches events rather
-  than hovering. The revealed cluster is a driver frame for that reason.
+- **They are not a gesture.** The split's drag had nothing left to size; the
+  states here are resolved layouts, and the panel's own interactions (the view
+  popover, the page ladder) are the view-menu set's frames.
 - **They are not focus-dependent rendering.** A hidden window has no focus, so no
   `:focus-visible` ring is photographed here.
-- **They are not the restart.** That a drag and a collapse survive a second boot
-  is the acceptance criterion, and only the driver's restart step can say it.
 - **They are not the eleven palettes this set does not carry.** Two palettes are
   the brief's minimum; a design round that wants the other ten can re-take this
   set with `--themes=` naming them, which is a narrowed run like this one.
@@ -86,22 +68,14 @@ could otherwise read into a still:
 ## The numbers in the frames
 
 The readout beside the panel is part of the evidence, not decoration: it prints
-the separator's own `aria-orientation`, `aria-valuenow`, `aria-valuemin` and
-`aria-valuemax`, the regions actually mounted, the chats region's drawn height,
-the restore row and its content, whether the cluster is mounted, and the stored
-preference — every one of them read out of the DOM rather than typed by hand.
+the regions actually mounted (read off their own markers), the scroller's own
+`scrollHeight`/`clientHeight`, the chats list's drawn height and the drawn row
+counts, every one of them read out of the DOM rather than typed by hand.
 
 It is a 200ms sample of the DOM, so each story's `play` ends by waiting for the
 sampled numbers to EQUAL the live ones (`readoutSettled`) before the shutter
 opens. Without that a frame can be one poll behind the panel it captions, which
-is a caption that would disagree with a layout that is fine — the failure this
-directory is least able to afford, since "the separator announces what the region
-renders" is the whole contract.
-
-Two of these frames each show a pair of numbers that differ on purpose, and they
-are the two the contract is about: `short-window` shows `Stored: 900px` against
-`now 344`, and `query-while-collapsed` shows `Stored: entities` against both
-regions drawn.
+is a caption that would disagree with a layout that is fine.
 
 ## The pair
 
