@@ -1228,11 +1228,29 @@ export const OnboardingStep3Keys: Story = {
 const OnboardingSearchKeys = () => {
 	useLayoutEffect(() => {
 		document.documentElement.dataset.capturePending = "1";
-		document.getElementById("onboarding-search-mode-keys")?.click();
-		const timer = setTimeout(
-			() => document.documentElement.removeAttribute("data-capture-pending"),
-			120,
-		);
+		/*
+		 * PRESSED UNTIL THE BRANCH STICKS, not once. The modal finishes
+		 * mounting after its first paint - `OnboardingAt` drives the store in a
+		 * layout effect - and a click that lands before that settles can be
+		 * undone by the re-render it causes, which is a frame of the FREE
+		 * branch under a name that says otherwise (measured: the first cut of
+		 * this story photographed the free copy). So the loop's exit condition
+		 * is the state itself - one of the keys rows in the DOM - which is also
+		 * what the capture table's `expectPresent` asserts.
+		 */
+		let timer: ReturnType<typeof setTimeout>;
+		const press = (attempt = 0) => {
+			document.getElementById("onboarding-search-mode-keys")?.click();
+			if (
+				document.querySelector("[data-search-key]") !== null ||
+				attempt > 60
+			) {
+				document.documentElement.removeAttribute("data-capture-pending");
+				return;
+			}
+			timer = setTimeout(() => press(attempt + 1), 50);
+		};
+		timer = setTimeout(() => press(), 0);
 		return () => {
 			clearTimeout(timer);
 			document.documentElement.removeAttribute("data-capture-pending");
