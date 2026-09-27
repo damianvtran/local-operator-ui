@@ -108,11 +108,78 @@ f6f53e197218806c062b47ea3bcb04462a2e28b7426fa0eaff082825c6c143b4  before/still-u
 - **The interim frame is the held read, not a spinner's animation.** No spinner
   is drawn in the foot; "Checking account…" is the row's own state label while
   the read is out, and the 4 s hold is what makes it a stable still.
-- **The 60 s credential backoff is not part of the claim.** If a completion's
-  read lands inside the store's backoff window (a press within 60 s of a refused
-  attempt), the read is refused again and the recorded class re-arms; that is the
-  store's own behaviour, unchanged by this branch, and it is why the walk waits
-  the window out rather than pressing immediately after the prompt.
+- **The 60 s credential backoff is not part of the claim, and the class is
+  NAMED here rather than left implicit** (round 1 asked for both halves). The
+  shape, measured by QA and the UX walk on this head: a completion whose read
+  lands inside the store's `DEFAULT_BLOCK_MS` window (a press within 60 s of a
+  refused attempt) is answered `502 radient_upstream_failed` /
+  `credential_unavailable` -- the store short-circuits before upstream, so
+  `GET /me` is never hit (3 x 502, zero upstream calls, until the window
+  passes) -- the recorded class re-arms after the retry chain, and the foot
+  returns to "Account unavailable" until some later natural re-read. The root
+  is backend-side: `upsert_credential` drops the row's tombstone markers but
+  clears no `auth_credential_blocks`, so an interactive write does not lift the
+  refusal its own predecessor wrote. That is `local-operator`'s `AuthStore`
+  policy and is deliberately NOT changed from the renderer; it is recorded as a
+  deferred finding on the PR (round 1, U1) rather than papered over with a UI
+  timer that would re-spell the store's window. It is also why every walk in
+  this set waits the window out before pressing -- the operator's own timeline
+  (minutes between prompt and completion) is past it.
 - **No Storybook sweep ran for this branch.** No committed swept frame renders
   the foot's account states; `manifest.json`'s `srcTree`/`scriptsTree` are
   re-derived for the tree these walks ship in, and the note beside them says so.
+
+## Design round 1 re-renders (the D1 fix, photographed)
+
+The design round's D1 finding was a pre-existing defect ON this branch's
+surface: the account row could not shrink below its content, so once a name or
+email exceeded the row's text budget the settings gear was pushed out of the
+rail and clipped by `[data-sidebar-shell]` (`overflow-hidden`) -- a 31-character
+email alone was enough, with the gear painting 0 stroke pixels against 331
+where it belongs. The fix is one class, `min-w-0` on the row button in
+`user-profile-sidebar.tsx`; these frames are that fix, re-rendered so round 2
+can close visually.
+
+They are rendered through the DESIGN round's own named-state kit (a scratch
+copy: isolated HOME/config, its own ports, `scripts/renderer-driver.mjs` from
+the tree, a scene that boots the app against a backend ALREADY in the state
+under test and never presses a sign-in), whose runner bootstraps the state
+through the product's own `AuthStore` -- `refused` = the dead grant, `checking`
+= a healthy credential with the fake IdP holding every `GET /me` for 4 s,
+`ready` = a healthy credential answering. Every frame's own palette assertion
+passed (`... draws the light/dark palette its name claims`), every run is
+`headless` and asserts a connection to its own backend and none to the
+operator's, and each run reaped its own processes by pidfile.
+
+| frame | state, identity | geometry read from the live DOM |
+| --- | --- | --- |
+| `design/d583-refused-light.png` | the dead grant, light | row 208x48.9 at x=8, gear x=220..252, foot reads "Account unavailable" |
+| `design/d583-checking-light.png` | healthy, `GET /me` held 4 s, light | same row/gear boxes, foot reads "Checking account..." while the read is out |
+| `design/d583-ready-light.png` | healthy, answered, light | same row/gear boxes, foot reaches the account |
+| `design/d583-long-ready-light.png` | 29-char name + 62-char email, light | row w=208, gear x=220..252; name 187 -> 156 px ellipsised, email 378 -> 156 px, `overflowing: true` on both |
+| `design/d583-long-ready-dark.png` | same identity, dark | same geometry (gear x=220..252) |
+| `design/d583-xlong-ready-light.png` | 37-char name, light | name 237 -> 156 px; the visible prefix truncates to the same text as the long frame, so the two PNGs are byte-identical (same painted pixels, by design, not by accident) |
+| `design/d583-med-ready-light.png` | short name + `jonathan.smithson@example.com`, light | name fits (156/156), email 190 -> 156 px ellipsised, gear x=220..252 -- this length hid the gear entirely before the fix |
+| `design/d583-lemail-ready-light.png` | short name + 62-char email, light | email ellipsised at 156 px, gear x=220..252 |
+
+WHAT THE FRAMES DO NOT CLAIM: the reviewer's exact long/extra-long strings were
+never recorded in their kit, so the identity strings here match their NAMED
+lengths (29-char name + 62-char email; 37-char name; the med address is the one
+their finding quotes verbatim) rather than byte-for-byte their inputs; the
+painted property under review -- both lines ellipsise at the 156 px budget and
+the gear keeps its x=220..252 place -- is length-determined and reads
+identically. The reviewer's live "fix probe" frame is not re-shot because these
+frames ARE the fixed tree (the probe existed to preview a style not yet landed;
+that style is landed here). And the frame names keep the design kit's `d583-`
+prefix so round 2 can hold them against the originals one-to-one.
+
+```
+198b3f5b1c03841f65c474f2f74ab3bcafc0a3ea46c81ee33577fac3cf15d1f4  design/d583-checking-light.png
+5944bb92c4f2ee5d595b8b3d472f0f671475d1e2618476c28dc3d501546dd440  design/d583-lemail-ready-light.png
+59435ce37515ba85ac332c29a15284b280fd75f57ab2cda1e7278a447e2f6098  design/d583-long-ready-dark.png
+c07ad54db858671d477595de5b9c72a5e4abd4094d0609f51b19dd385f4f07dc  design/d583-long-ready-light.png
+fc39bbf1ba0b2b6cba128b494816aa3c5123ed660759e4871de7046bc403ba50  design/d583-med-ready-light.png
+0abfd0fb22daac5b77df3feb8ee53f90a5d3be02f4ffca0b368bf43cd8b6bd7d  design/d583-ready-light.png
+2cb9c2346b19be0cc4695f08754dafaaf385f50bcfdbc710ff3911ae182441f3  design/d583-refused-light.png
+c07ad54db858671d477595de5b9c72a5e4abd4094d0609f51b19dd385f4f07dc  design/d583-xlong-ready-light.png
+```
