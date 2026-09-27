@@ -4416,22 +4416,68 @@ export const STORIES = [
 	   test beside `install-install-progress.test.mjs` reads those two numbers
 	   against this tuple so a third copy of the size cannot drift again (design
 	   D15 - a story at one size while the window said another is exactly what the
-	   1380x800 set was). EIGHT states now, because a user can be left in eight and
-	   two of them had never been photographed: the mounted entry, an indeterminate
-	   first frame, the FIRST phase (`python`, which is the whole of a cold run's
-	   opening minutes and the state a fill-based progress affordance reads as
-	   nothing at all), the long download, the LAST phase (`verify`, whose smoke
-	   probe is the longest runway of any step and the one that can still fail
-	   after a successful pip), a failure with a recognised cause, a failure
-	   WITHOUT one (the composition the code calls the common case, whose only
-	   specific line is the machine one below the sentence - design D12), and the
-	   settled panel. One frame of DEFAULT was all this surface had, which is why
-	   the failure state could have shipped as a dialog nobody had looked at. */
+	   1380x800 set was). EIGHT states, because a user can be left in eight and
+	   three of them had never been photographed: the mounted entry, the FIRST
+	   phase (`python`, which is the whole of a cold run's opening minutes and the
+	   state a fill-based progress affordance reads as nothing at all), the long
+	   download, the LAST phase (`verify`, whose smoke probe is the longest runway
+	   of any step and the one that can still fail after a successful pip), a failure
+	   that happened BEFORE the first marker - so the payload names no phase at all,
+	   which the validator accepts and `installFailureSentence(null)` is written for,
+	   and which the rail used to contradict with a turning "work is happening" mark
+	   over four hollow rings - a failure with a recognised cause, a failure WITHOUT
+	   one (the composition the code calls the common case, whose only specific line
+	   is the machine one below the sentence - design D12), and the settled panel.
+	   One frame of DEFAULT was all this surface had, which is why the failure state
+	   could have shipped as a dialog nobody had looked at.
+
+	   THE `indeterminate` ROW IS GONE, FOLDED INTO `default`, because the two were
+	   byte-identical in all twelve themes (measured across the whole frame, 0
+	   differing pixels - review 6): `phase: null` IS the state the entry mounts in,
+	   so a second row documented no state of its own while the tuple declared it as
+	   one. What the pair proved - that the props path and the mount path agree - is
+	   recorded in the stories file, where the measurement belongs.
+
+	   THE TWO reduced-motion ROWS are this surface's animation seen the way a user
+	   who asked for less motion sees it (design D5; the repo's convention, as in
+	   `chat-composer-band` and `chat-run-panel`). The rig answers
+	   `prefers-reduced-motion: reduce` at CAPTURE time, so the panel's own duration
+	   cap applies and both working marks rest frozen on their first frame - and the
+	   frames are the proof of that: every keyframe in this surface is written so its
+	   RESTING state is the visible one, and until these rows existed nothing on this
+	   surface showed it. `mid-install` carries the running step's ring and
+	   `default` the rail's head mark, which are the two places the panel moves; they
+	   get their own directories rather than a ninth state because they are the same
+	   payloads under a different preference, not different states.
+
+	   AND THEY ARE BYTE-IDENTICAL TO THEIR COUNTERPARTS - 12 of 12 themes each, by
+	   md5 - which is a measurement, not an oversight, and it is the same identity
+	   the repo's other reduced-motion set has (`activity-chips-reduced-motion`
+	   against `activity-chips`, verified the same way). It is also what the property
+	   MEANS here: every still this rig takes is already an animation-declined frame
+	   (it injects `animation: none` before the shutter), so "the preference changes
+	   nothing in the picture" is exactly the claim that the resting state is the
+	   visible one - the one thing a reduced-motion user must not lose. A row whose
+	   frames DIFFERED from its counterpart would mean the panel renders something
+	   under one preference that it does not render under the other, which is the
+	   defect these rows exist to catch. */
 	["installer-installercontent--default", 640, 480],
-	["installer-installercontent--indeterminate", 640, 480],
+	[
+		"installer-installercontent--default",
+		640,
+		480,
+		{ dir: "unannounced-reduced-motion", reducedMotion: true },
+	],
 	["installer-installercontent--first-stage", 640, 480],
 	["installer-installercontent--mid-install", 640, 480],
+	[
+		"installer-installercontent--mid-install",
+		640,
+		480,
+		{ dir: "reduced-motion", reducedMotion: true },
+	],
 	["installer-installercontent--verifying", 640, 480],
+	["installer-installercontent--failure-before-phase", 640, 480],
 	["installer-installercontent--failure", 640, 480],
 	["installer-installercontent--failure-fallback", 640, 480],
 	["installer-installercontent--installed", 640, 480],
