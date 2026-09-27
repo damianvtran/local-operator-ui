@@ -1451,6 +1451,19 @@ const STAMP_BINDING_NOTES = [
 	 * still was owed, for the same reason task-17's entry is here.
 	 */
 	"daemonObservationTickWaitRestampNote",
+	/*
+	 * AND THE STALL BOUND'S OWN: it bounds the update feed fetch, the update
+	 * download and the PyPI version read so a stalled network cannot hold the
+	 * checking frame. It moves BOTH trees - `src/` for the deadline, the latch
+	 * epoch, the abandoned-fetch attribution and the download watchdog;
+	 * `scripts/` for the four suites that drive them and the fixtures'
+	 * `CancellationToken` - and takes NO frame: the checking frame and the
+	 * alert's pixels are the same before and after (what changed is WHEN the
+	 * frame leaves), so the discriminating evidence is the simulation under
+	 * `docs/evidence/update-stall-bound/`, on both sides of the IPC boundary.
+	 * The reader is owed the pair and that reason.
+	 */
+	"updateStallBoundRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2053,6 +2066,13 @@ const BRANCH_RECORDS = [
 	 * this list exists.
 	 */
 	"daemonObservationTickWaitRestampNote",
+	/*
+	 * And this pass's own, the newest top-level record on the branch: it states
+	 * the pair this re-stamp derives and records the simulation the pass ships
+	 * in place of frames, so a later fold that started from main's copy would
+	 * drop it first - the same reason this list exists.
+	 */
+	"updateStallBoundRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

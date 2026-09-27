@@ -1239,6 +1239,63 @@ test("a check-time failure does not end the check or claim an attempt", () => {
 });
 
 /**
+ * THE OPERATOR'S STALL, at the surface they watched: the checking frame must
+ * clear when the check is ANSWERED, and the answer the deadline produces is a
+ * failure - so it clears into the sentence the copy already has, not into
+ * silence and not into the machine's raw string.
+ *
+ * The main-process half (a feed that never answers is abandoned at its
+ * deadline) is `update-robustness.test.mjs`; this is what the shipped panel
+ * does with the rejection it produces. The rejection IS the shape: a check the
+ * user asked for rethrows, and the component's catch is the only path that
+ * reports it.
+ */
+test("the checking frame clears when the deadline rejects the check", async () => {
+	const handle = mountNotification();
+	// The refusal panel's own control starts the check the user asked for -
+	// the half of the operator's rule that reports a failure.
+	updater.emit("update-install-blocked", {
+		code: "installed-bundle-not-sealed",
+		version: "0.19.5",
+		message: "The downloaded update did not pass its integrity check.",
+		remedy: { text: "Download a fresh copy." },
+	});
+	handle.render();
+	control(handle, "Check for updates").props.onClick();
+	handle.render();
+	assert.ok(
+		showsText(handle, "Checking for updates"),
+		"the frame is up while the check is unanswered",
+	);
+
+	await settleCheck(
+		handle,
+		new Error(
+			"net::ERR_TIMED_OUT - the update feed did not answer within 30s, so the attempt was abandoned",
+		),
+	);
+
+	assert.equal(
+		showsText(handle, "Checking for updates"),
+		false,
+		"the bounded failure clears the frame",
+	);
+	const toasts = dangerToasts(handle);
+	assert.equal(toasts.length, 1, JSON.stringify(visible(handle)));
+	assert.match(
+		toasts[0].text,
+		/could not reach the update server/i,
+		"the sentence this family already has",
+	);
+	assert.match(toasts[0].text, /net::ERR_TIMED_OUT/);
+	assert.equal(
+		toasts[0].text.includes("was abandoned"),
+		false,
+		"the machine's own code is the subordinate line, not the message",
+	);
+});
+
+/**
  * A check's failure cannot become the attempt's reason (review R2-1, QA Q2).
  *
  * A server update takes minutes and the sibling surfaces stay live, so a check

@@ -34,7 +34,11 @@ import {
 	ipcMain,
 	powerMonitor,
 } from "electron";
-import { type UpdateInfo, autoUpdater } from "electron-updater";
+import {
+	CancellationToken,
+	type UpdateInfo,
+	autoUpdater,
+} from "electron-updater";
 import {
 	type DriftAbsence,
 	type DriftRestartHold,
@@ -330,6 +334,55 @@ const STARTUP_SEAL_PROBE_DELAY_MS = 15_000;
  */
 const POST_WAKE_CHECK_DELAY_MS = 20_000;
 
+/**
+ * How long ONE app-feed fetch attempt may run before it is abandoned, in ms.
+ *
+ * WHY THIS EXISTS AT ALL, measured. The updater's feed fetch runs through
+ * Electron's `net` module, which has no read deadline, and electron-updater
+ * exposes no cancel for `checkForUpdates` - so a stalled-but-established
+ * connection never settles and nothing downstream ever hears back. The
+ * operator hit exactly that at 10:40:31 with the app's "Checking for updates"
+ * frame up: the first settle was 2m29.6s later, when the wifi was reset, and
+ * the frame had no way out until then (`update-service.log`). This is the
+ * bound it gets instead: a fetch that has not answered in this long is
+ * abandoned, reported through the transient path the retry ladder already
+ * owns, and its late settle can never be read as this check's answer.
+ *
+ * Thirty seconds sits between the two measured facts: the operator's
+ * successful feed reads answer in seconds, and the failure this bounds had not
+ * settled in minutes.
+ */
+const DEFAULT_APP_FEED_DEADLINE_MS = 30_000;
+
+/**
+ * How long an update download may make NO progress before it is cancelled, in ms.
+ *
+ * The same class of bound, one stage later: `downloadUpdate` accepts a
+ * cancellation token but carries no deadline of its own, so a download whose
+ * connection stalls after the first bytes sits on "Downloading..." for as long
+ * as the connection does. Progress is the liveness signal - `download-progress`
+ * fires per chunk and the progress handler resets this watchdog - so this is
+ * the gap between two chunks, not the length of the download.
+ *
+ * Ninety seconds rather than thirty because a download is megabytes (not one
+ * JSON read) and a slow-but-alive start is ordinary; the settle that follows a
+ * stall is the failure path the user asked for, and the install path behind it
+ * already carries its own much longer watchdogs (600s/1800s).
+ */
+const DEFAULT_DOWNLOAD_STALL_TIMEOUT_MS = 90_000;
+
+/**
+ * How long the PyPI version read may take, in ms.
+ *
+ * The read runs inside `checkForAllUpdates`, which is SEQUENTIAL - the server
+ * channel's wait is added to the app channel's - and `https.get` with no
+ * `timeout` has no bound at all, so a stalled read can hold the whole check's
+ * window open behind a fetch that has already finished. One JSON document from
+ * pypi.org; a read that cannot answer in ten seconds is not going to answer
+ * usefully.
+ */
+const PYPI_VERSION_READ_TIMEOUT_MS = 10_000;
+
 /** ` to version X`, or nothing when the version is unknown. */
 function versionSuffix(version: string | null | undefined): string {
 	return version ? ` to version ${version}` : "";
@@ -359,6 +412,31 @@ function offlineTransportError(): Error {
 		"net::ERR_INTERNET_DISCONNECTED - the machine reported no network, so no request was made",
 	);
 }
+
+/**
+ * The failure a fetch attempt hands its ladder when the feed never answered.
+ *
+ * WHY THE `net::ERR_TIMED_OUT` SPELLING. Two readers classify this error, and
+ * they must disagree about it in exactly one way:
+ *
+ * - the attempt ladder RETRIES it, because `transientTransportCode` knows
+ *   `net::ERR_TIMED_OUT` as a transient transport failure - the code the
+ *   operator's own log carries 24 times for this state;
+ * - the LEGACY filter (`shouldFilterUpdateError`) must NOT swallow it. Its
+ *   network clause matches the errno spelling `ETIMEDOUT` and does not list
+ *   this one - deliberately, and the two strings do not overlap. A filtered
+ *   failure is answered as "no updates available", and a check that could not
+ *   read the feed must never be told as one that found nothing newer: that is
+ *   how a user on a dead network would be told they are up to date.
+ */
+function feedDeadlineError(deadlineMs: number): Error {
+	return new Error(
+		`net::ERR_TIMED_OUT - the update feed did not answer within ${Math.round(
+			deadlineMs / 1000,
+		)}s, so the attempt was abandoned`,
+	);
+}
+
 /**
  * Run a command and report its exit code rather than throwing on failure.
  *
@@ -2007,6 +2085,27 @@ export class UpdateService {
 	private updateStage: "idle" | "downloading" | "installing" = "idle";
 
 	/**
+	 * How long an update download may make no progress before it is cancelled, in ms.
+	 *
+	 * The shipped value is `DEFAULT_DOWNLOAD_STALL_TIMEOUT_MS`; a test overrides
+	 * it to milliseconds, the same treatment as `appFeedRetryDelaysMs`.
+	 */
+	public downloadStallTimeoutMs: number = DEFAULT_DOWNLOAD_STALL_TIMEOUT_MS;
+
+	/**
+	 * The watchdog armed while a download is in flight, and the token it cancels.
+	 *
+	 * Armed on the download, reset on every `download-progress` event (the
+	 * download's own liveness signal), and on expiry it cancels the token, which
+	 * rejects `downloadUpdate` with the updater's `CancellationError` - its
+	 * message matches no filter, deliberately, because a download the user asked
+	 * for must report its failure rather than be answered "no updates
+	 * available".
+	 */
+	private downloadStallWatchdog: NodeJS.Timeout | null = null;
+	private downloadCancellationToken: CancellationToken | null = null;
+
+	/**
 	 * The install that just landed, for the one-line affirmation the next launch
 	 * owes the user (UX U4). Null once it has been reported.
 	 */
@@ -2028,6 +2127,24 @@ export class UpdateService {
 	private appChecksInFlight = 0;
 
 	/**
+	 * Feed fetches a deadline has abandoned that have NOT settled yet.
+	 *
+	 * WHY THE OWNERSHIP RULE NEEDS ITS OWN SET. A fetch whose attempt expired is
+	 * still running inside the updater, and when it eventually fails the updater
+	 * emits `error` for it - measured at 2m29.6s after the check that started it
+	 * had to give up, in the operator's own log. That event belongs to a check
+	 * that has already answered its caller, so it must not be reported as fresh
+	 * news: while one of these is pending, an availability-stage `error` is
+	 * attributed to it and logged rather than sent, exactly as with a check in
+	 * flight. Membership ends when the fetch settles - its result is never read
+	 * as an answer, but its settle is the end of the window in which its events
+	 * are expected. Keyed by the promise itself: electron-updater answers a
+	 * re-entrant check with the still-pending promise, so the same fetch can be
+	 * abandoned by more than one sequence and that is the same window.
+	 */
+	private appFeedAbandonedFetches = new Set<Promise<unknown>>();
+
+	/**
 	 * The attempt sequence in flight in the app channel, so a second check rides
 	 * it instead of doubling it.
 	 *
@@ -2046,6 +2163,22 @@ export class UpdateService {
 	> | null = null;
 
 	/**
+	 * The epoch of the sequence `appFeedFetchInFlight` holds, if any.
+	 *
+	 * WHY A NUMBER RIDES BESIDE THE PROMISE. A fetch attempt that expires frees
+	 * the latch (`awaitAppFeedFetch`), so a check arriving afterwards starts its
+	 * own attempt sequence instead of attending one that has already spent a
+	 * deadline. That opens the one window the unconditional clear could not
+	 * produce: the abandoned sequence is still running when a successor has
+	 * taken the latch, and the abandoned sequence's settle must not unpin the
+	 * successor. Every clear site therefore checks that the epoch it is clearing
+	 * is still the current one. (Before the deadline existed, a stalled sequence
+	 * never settled at all, so its clear never ran and the hazard could not
+	 * arise.)
+	 */
+	private appFeedFetchEpoch = 0;
+
+	/**
 	 * The wake-armed check, held so a second wake cannot arm a second one.
 	 */
 	private postWakeCheckTimer: NodeJS.Timeout | null = null;
@@ -2059,6 +2192,16 @@ export class UpdateService {
 	 * case; nothing else does.
 	 */
 	public appFeedRetryDelaysMs: readonly number[] = [1_000, 3_000];
+
+	/**
+	 * How long ONE fetch attempt may run before it is abandoned, in ms.
+	 *
+	 * The shipped value is `DEFAULT_APP_FEED_DEADLINE_MS`; a test overrides it to
+	 * milliseconds rather than waiting half a minute per case, and the default is
+	 * asserted as a value in the suite so the bound cannot go missing behind the
+	 * narrowings.
+	 */
+	public appFeedDeadlineMs: number = DEFAULT_APP_FEED_DEADLINE_MS;
 
 	/** The last update the updater told us about, for its file metadata. */
 	private lastUpdateInfo: UpdateInfo | null = null;
@@ -4207,6 +4350,11 @@ export class UpdateService {
 		// rest of them.
 		this.stopInstallInFlightRecheck();
 
+		// And a download's stall watchdog, for the same reason: it would otherwise
+		// survive the service and fire into a token whose download this window no
+		// longer owns.
+		this.clearDownloadStallWatchdog();
+
 		// Remove all autoUpdater event listeners
 		autoUpdater.removeAllListeners();
 
@@ -4265,12 +4413,21 @@ export class UpdateService {
 		 * starting another one; see `appFeedFetchInFlight`.
 		 */
 		if (this.appFeedFetchInFlight) return this.appFeedFetchInFlight;
-		const sequence = this.runAppFeedAttempts(fetchFeed);
+		const epoch = this.appFeedFetchEpoch + 1;
+		this.appFeedFetchEpoch = epoch;
+		const sequence = this.runAppFeedAttempts(fetchFeed, epoch);
 		this.appFeedFetchInFlight = sequence;
 		try {
 			return await sequence;
 		} finally {
-			this.appFeedFetchInFlight = null;
+			/*
+			 * EPOCH-GUARDED, because `awaitAppFeedFetch` frees the latch on the
+			 * first expired attempt: by the time this sequence settles, a check that
+			 * arrived after that expiry may already hold its own successor sequence,
+			 * and a clear from here must not unpin THAT one (see
+			 * `appFeedFetchEpoch`).
+			 */
+			if (this.appFeedFetchEpoch === epoch) this.appFeedFetchInFlight = null;
 		}
 	}
 
@@ -4289,11 +4446,16 @@ export class UpdateService {
 
 	/**
 	 * The attempt sequence itself: the retries, and the depth that owns them.
+	 *
+	 * `epoch` is the sequence's own latch epoch, passed down so the deadline's
+	 * latch-freeing is guarded the same way the caller's clear is (see
+	 * `appFeedFetchEpoch`).
 	 */
 	private async runAppFeedAttempts(
 		fetchFeed: () => Promise<
 			Awaited<ReturnType<typeof autoUpdater.checkForUpdates>>
 		>,
+		epoch: number,
 	): Promise<Awaited<ReturnType<typeof autoUpdater.checkForUpdates>>> {
 		this.appChecksInFlight += 1;
 		try {
@@ -4326,7 +4488,7 @@ export class UpdateService {
 						);
 						continue;
 					}
-					return await fetchFeed();
+					return await this.awaitAppFeedFetch(fetchFeed(), epoch);
 				} catch (error) {
 					const code = transientTransportCode(error);
 					if (code === null || attempt >= delays.length) throw error;
@@ -4347,6 +4509,125 @@ export class UpdateService {
 		} finally {
 			this.appChecksInFlight -= 1;
 		}
+	}
+
+	/**
+	 * One feed fetch, bounded by this service's own deadline.
+	 *
+	 * WHY A DEADLINE HERE RATHER THAN IN electron-updater: `checkForUpdates`'s
+	 * fetch goes through Electron's `net` module, which has no read deadline at
+	 * all, and the updater exposes no cancel for it - so a stalled-but-
+	 * established connection never settles and nothing downstream ever hears
+	 * back. The race below is the only bound available: the attempt rejects with
+	 * a transient-classified failure (`feedDeadlineError`), the ladder retries it
+	 * like any other transient, and what the check then reports is its ordinary
+	 * failure path - `null` for an app-initiated check, a rejection for one the
+	 * user pressed.
+	 *
+	 * THE ABANDONED FETCH IS REMEMBERED, not dropped: it is still running inside
+	 * the updater, it may settle minutes later, and its settle emits the same
+	 * `error` event any failed check emits - so it is counted for the duration
+	 * (`appFeedAbandonedFetches`), and its result is never read as this attempt's
+	 * answer (the race has already settled by then, and a settled promise cannot
+	 * resolve twice).
+	 */
+	private awaitAppFeedFetch<T>(fetch: Promise<T>, epoch: number): Promise<T> {
+		return new Promise<T>((resolve, reject) => {
+			const deadline = setTimeout(() => {
+				/*
+				 * THE STALLED SEQUENCE LOSES THE LATCH. Sharing exists so checks
+				 * that start together make one fetch; a sequence whose attempt has
+				 * expired is not one a later check should attend to its end - the
+				 * successor runs its own bounded ladder from the moment it asked.
+				 * Guarded by the epoch, because a successor may already hold the
+				 * latch when a LATER attempt of this sequence expires.
+				 */
+				if (this.appFeedFetchEpoch === epoch) {
+					this.appFeedFetchInFlight = null;
+				}
+				this.rememberAbandonedAppFeedFetch(fetch);
+				reject(feedDeadlineError(this.appFeedDeadlineMs));
+			}, this.appFeedDeadlineMs);
+			fetch.then(
+				(value) => {
+					clearTimeout(deadline);
+					resolve(value);
+				},
+				(error) => {
+					clearTimeout(deadline);
+					reject(error);
+				},
+			);
+		});
+	}
+
+	/**
+	 * Count an abandoned fetch until it settles, so its late events are
+	 * attributed to it rather than reported as fresh news (see the set's own
+	 * docstring).
+	 *
+	 * Both handlers are the same function because either outcome ends the window:
+	 * the point is only that the fetch is still pending inside the updater,
+	 * whichever way it ends.
+	 */
+	private rememberAbandonedAppFeedFetch(fetch: Promise<unknown>): void {
+		if (this.appFeedAbandonedFetches.has(fetch)) return;
+		this.appFeedAbandonedFetches.add(fetch);
+		const settled = () => {
+			this.appFeedAbandonedFetches.delete(fetch);
+		};
+		fetch.then(settled, settled);
+	}
+
+	/**
+	 * Arm the download's stall watchdog for a fresh attempt.
+	 *
+	 * Replaces any timer left by a previous one rather than assuming none: there
+	 * can be only one download at a time (the IPC handler's stage and the
+	 * updater's own `downloadPromise` both enforce it), but the token-and-timer
+	 * pair is per attempt and must not leak into the next.
+	 */
+	private armDownloadStallWatchdog(cancellationToken: CancellationToken): void {
+		this.downloadCancellationToken = cancellationToken;
+		this.resetDownloadStallWatchdog();
+	}
+
+	/**
+	 * Restart the stall clock: arming time, and every `download-progress` event.
+	 *
+	 * The reset is what makes the watchdog measure a GAP rather than a duration -
+	 * `download-progress` is the download's own liveness signal, so a download
+	 * that streams for an hour in chunks never fires it, while one that stops
+	 * after the first chunk fires it once.
+	 */
+	private resetDownloadStallWatchdog(): void {
+		if (this.downloadStallWatchdog) {
+			clearTimeout(this.downloadStallWatchdog);
+			this.downloadStallWatchdog = null;
+		}
+		const token = this.downloadCancellationToken;
+		if (!token) return;
+		this.downloadStallWatchdog = setTimeout(() => {
+			this.downloadStallWatchdog = null;
+			logger.warn(
+				`The update download made no progress for ${this.downloadStallTimeoutMs}ms; cancelling it through the updater's own cancellation token.`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			token.cancel();
+		}, this.downloadStallTimeoutMs);
+	}
+
+	/**
+	 * Drop the watchdog AND the token; the download handler's `finally`, and
+	 * `dispose()`, so a timer can never outlive the attempt it was armed for or
+	 * fire into a later one.
+	 */
+	private clearDownloadStallWatchdog(): void {
+		if (this.downloadStallWatchdog) {
+			clearTimeout(this.downloadStallWatchdog);
+			this.downloadStallWatchdog = null;
+		}
+		this.downloadCancellationToken = null;
 	}
 
 	private setupUpdateEvents(): void {
@@ -4426,14 +4707,25 @@ export class UpdateService {
 			 * is why `actionable` is tested first: a download that dies while an
 			 * availability check happens to be running is still a failure the user
 			 * asked for.
+			 *
+			 * The ABANDONED half: a fetch a deadline gave up on is still running in
+			 * the updater, and its late failure emits this same event minutes after
+			 * its check answered (`appFeedAbandonedFetches`). It is attributed to
+			 * that fetch and logged, never sent - the alternative is an alert about
+			 * a check the user already got an answer for, which is exactly what the
+			 * operator's log holds a 2m29.6s-late settle of.
 			 */
-			if (!actionable && this.appChecksInFlight > 0) {
+			if (
+				!actionable &&
+				(this.appChecksInFlight > 0 || this.appFeedAbandonedFetches.size > 0)
+			) {
 				logger.info(
 					// The rule, at the point it is implemented: a check in flight owns
 					// its own failure report, and an app-initiated check's owner is a
 					// silent one - so this is the log line that replaces the alert the
-					// operator saw, not a swallowed error.
-					"Update error during an availability check: the check reports its own failure",
+					// operator saw, not a swallowed error. The same holds for a fetch
+					// one of those checks has already given up on.
+					"Update error during an availability check (or from a fetch one abandoned): the owning check reports its own failure",
 					LogFileType.UPDATE_SERVICE,
 				);
 				return;
@@ -4470,6 +4762,12 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 				progressObj,
 			);
+			/*
+			 * THE STALL WATCHDOG'S LIVENESS SIGNAL: every chunk resets it, so it
+			 * fires on the gap between chunks rather than on the age of the
+			 * download (see `resetDownloadStallWatchdog`).
+			 */
+			this.resetDownloadStallWatchdog();
 			if (
 				this.mainWindow &&
 				!this.mainWindow.isDestroyed() &&
@@ -4763,8 +5061,21 @@ export class UpdateService {
 		ipcMain.handle("download-update", async () => {
 			logger.info("Downloading update...", LogFileType.UPDATE_SERVICE);
 			this.updateStage = "downloading";
+			/*
+			 * A REAL TOKEN, and a watchdog that cancels through it. The updater's
+			 * download has no deadline of its own either, and a connection that
+			 * stalls after the first bytes sits on "Downloading..." for as long as
+			 * the connection does; `downloadUpdate` accepts exactly this token for
+			 * exactly this. Cancelling rejects with the updater's
+			 * `CancellationError` ("cancelled"), which the catch below reports -
+			 * deliberately unfiltered, so the user who asked for the download is
+			 * told it failed rather than answered "no updates available".
+			 */
+			const cancellationToken = new CancellationToken();
+			this.armDownloadStallWatchdog(cancellationToken);
 			try {
-				const downloadedPaths = await autoUpdater.downloadUpdate();
+				const downloadedPaths =
+					await autoUpdater.downloadUpdate(cancellationToken);
 				// The paths are the updater's own answer for where the artifact
 				// landed, so the verification that follows does not have to guess.
 				if (Array.isArray(downloadedPaths) && downloadedPaths.length > 0) {
@@ -4805,6 +5116,12 @@ export class UpdateService {
 
 				throw error;
 			} finally {
+				/*
+				 * The watchdog goes with the attempt: its timer must never outlive
+				 * the download it was armed for, and any settle - success, refusal
+				 * or the cancel it just caused - is the end of the window it guards.
+				 */
+				this.clearDownloadStallWatchdog();
 				this.updateStage = "idle";
 			}
 		});
@@ -5580,8 +5897,16 @@ export class UpdateService {
 	private getLatestPypiVersion(): Promise<string | null> {
 		return new Promise((resolve) => {
 			const url = "https://pypi.org/pypi/local-operator/json";
-			https
-				.get(url, (res) => {
+			const request = https.get(
+				url,
+				/*
+				 * A socket timeout, so this read cannot hold `checkForAllUpdates`'s
+				 * sequential window open: the app channel already answers before the
+				 * server channel's first byte is asked for, and a stalled read here
+				 * was the one leg of the pair with no bound of any kind.
+				 */
+				{ timeout: PYPI_VERSION_READ_TIMEOUT_MS },
+				(res) => {
 					let data = "";
 					res.on("data", (chunk) => {
 						data += chunk;
@@ -5600,15 +5925,28 @@ export class UpdateService {
 							resolve(null);
 						}
 					});
-				})
-				.on("error", (error) => {
-					logger.error(
-						"Error fetching from PyPI:",
-						LogFileType.UPDATE_SERVICE,
-						error,
-					);
-					resolve(null);
-				});
+				},
+			);
+			/*
+			 * The socket timeout only ANNOUNCES idleness; the request has to be
+			 * destroyed for the read to actually end present-tense, and the
+			 * destruction's error is what the ordinary failure path below reads.
+			 */
+			request.on("timeout", () => {
+				request.destroy(
+					new Error(
+						`The PyPI version read did not answer within ${PYPI_VERSION_READ_TIMEOUT_MS}ms`,
+					),
+				);
+			});
+			request.on("error", (error) => {
+				logger.error(
+					"Error fetching from PyPI:",
+					LogFileType.UPDATE_SERVICE,
+					error,
+				);
+				resolve(null);
+			});
 		});
 	}
 
@@ -9546,7 +9884,15 @@ export class UpdateService {
 			return true;
 		}
 
-		// Filter network errors that might be temporary
+		/*
+		 * Filter network errors that might be temporary.
+		 *
+		 * `ETIMEDOUT` is the errno spelling and stays; the feed deadline's own
+		 * `net::ERR_TIMED_OUT` is deliberately NOT listed here in any form - a
+		 * fetch a deadline gave up on must reach the caller as a failure, not be
+		 * answered as "no updates available" (see `feedDeadlineError`). The two
+		 * strings do not overlap, so this branch cannot catch it by accident.
+		 */
 		if (
 			errorMessage.includes("ENOTFOUND") ||
 			errorMessage.includes("ETIMEDOUT") ||

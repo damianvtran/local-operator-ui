@@ -6520,7 +6520,17 @@ const loadUpdateServiceModule = async ({ managedPython = null } = {}) => {
 										}
 										return result;
 									},
-									downloadUpdate: async () => [],
+									/*
+									 * The download is driven through a global like the check above, so a
+									 * case can hand it a promise that stalls; the token is what the
+									 * service now constructs and passes, and a case observes the
+									 * watchdog's cancel by registering on it.
+									 */
+									downloadUpdate: async (cancellationToken) => {
+										const download = globalThis.__loTestDownload;
+										if (!download) return [];
+										return await download(cancellationToken);
+									},
 									quitAndInstall: () => {},
 									setFeedURL: () => {},
 									autoDownload: false,
@@ -6538,6 +6548,33 @@ const loadUpdateServiceModule = async ({ managedPython = null } = {}) => {
 								 * one would end it here.
 								 */
 								globalThis.__loAutoUpdater = autoUpdater;
+								/*
+								 * The class electron-updater re-exports from builder-util-runtime,
+								 * which the service constructs once per download and cancels
+								 * through. Mirrors the pieces the service and a case touch
+								 * (cancel/cancelled/onCancel/onCancelRequested), so the cancel path
+								 * under test is the service's own. No backticks in this comment:
+								 * it lives inside a template literal.
+								 */
+								export class CancellationToken {
+									constructor() {
+										this.cancelled = false;
+										this.handlers = [];
+									}
+									onCancel(handler) {
+										if (this.cancelled) handler();
+										else this.handlers.push(handler);
+									}
+									onCancelRequested(handler) {
+										this.onCancel(handler);
+										return { dispose: () => {} };
+									}
+									cancel() {
+										if (this.cancelled) return;
+										this.cancelled = true;
+										for (const handler of this.handlers.splice(0)) handler();
+									}
+								}
 							`);
 						}
 						return fixture(`
@@ -7079,6 +7116,24 @@ const loAggregateCheck = async ({
 	 */
 	retryDelaysMs = [5, 5],
 	/*
+	 * How long one feed fetch attempt may run before the deadline abandons it,
+	 * in ms. The shipped value is 30s; narrowed here for the same reason as the
+	 * backoff above, and asserted as a value in the deadline cases so the
+	 * shipped bound cannot go missing behind the narrowings.
+	 */
+	deadlineMs = null,
+	/*
+	 * How long a download may make no progress before the stall watchdog
+	 * cancels it, in ms. The shipped value is 90s; narrowed the same way.
+	 */
+	downloadStallTimeoutMs = null,
+	/*
+	 * What the updater's `downloadUpdate` does, when a case drives the download
+	 * handler itself. Absent, the stub resolves an empty list, which is every
+	 * case from before the watchdog existed.
+	 */
+	download = null,
+	/*
 	 * What the machine's own network reading says, for the pre-flight gate.
 	 * `null` leaves the stub answering `true`, which is every case from before
 	 * the gate existed.
@@ -7261,6 +7316,11 @@ const loAggregateCheck = async ({
 		}
 		updateService.getLatestPypiVersion = async () => publishedVersion ?? null;
 		updateService.appFeedRetryDelaysMs = retryDelaysMs;
+		if (deadlineMs !== null) updateService.appFeedDeadlineMs = deadlineMs;
+		if (downloadStallTimeoutMs !== null) {
+			updateService.downloadStallTimeoutMs = downloadStallTimeoutMs;
+		}
+		if (download) globalThis.__loTestDownload = download;
 		updateService.updateStage = stage;
 		/*
 		 * The install, stubbed on the same terms as the registry above, and for the
@@ -7361,6 +7421,8 @@ const loAggregateCheck = async ({
 		delete globalThis.__loTestNetIsOnline;
 		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loTestLogs;
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestDownload;
 		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
 		delete globalThis.__loTestPaths;
 		rmSync(serviceDir, { recursive: true, force: true });
@@ -10079,6 +10141,21 @@ test("the skip-list the retries are measured against is the shipped one", async 
 			[1000, 3000],
 			"two retries, so three attempts at one feed fetch",
 		);
+		/*
+		 * The two NEW bounds, for the same reason: every case that drives them
+		 * narrows them to milliseconds, so this is the only place the shipped
+		 * numbers are pinned - 30s for one feed attempt, 90s of a stalled download.
+		 */
+		assert.equal(
+			updateService.appFeedDeadlineMs,
+			30_000,
+			"a feed attempt may run 30s before the deadline abandons it",
+		);
+		assert.equal(
+			updateService.downloadStallTimeoutMs,
+			90_000,
+			"a download may make no progress for 90s before its token is cancelled",
+		);
 	} finally {
 		if (interval) clearInterval(interval);
 		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
@@ -10722,6 +10799,124 @@ test("a failure the user asked for is still reported during a check", async () =
 });
 
 /**
+ * The download's own stall, bounded the same way: the watchdog cancels through
+ * the token `downloadUpdate` was given, the handler's ordinary catch reports the
+ * cancel, and the legacy filter must not turn it into "no updates available" -
+ * the user asked for this download, so its failure is theirs to see.
+ *
+ * The download stub registers on the token it is handed, which is what makes
+ * the case discriminate: without the watchdog nothing ever cancels; with the
+ * watchdog the stub's promise rejects the way the real updater's does under a
+ * `CancellationError`.
+ */
+test(
+	"a stalled download is cancelled through the updater's token, and the cancel is reported",
+	{ timeout: 15_000 },
+	async () => {
+		let cancelled = false;
+		let seenToken = null;
+		const { sent, rejected, service } = await loAggregateCheck({
+			appCheck: loAppCurrent,
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.44",
+			ipc: { handler: "download-update" },
+			downloadStallTimeoutMs: 40,
+			download: (cancellationToken) => {
+				seenToken = cancellationToken;
+				return new Promise((_, reject) => {
+					cancellationToken.onCancelRequested(() => {
+						cancelled = true;
+						reject(new Error("cancelled"));
+					});
+				});
+			},
+		});
+
+		assert.equal(
+			typeof seenToken?.onCancelRequested,
+			"function",
+			"the updater must be handed a real CancellationToken",
+		);
+		assert.equal(
+			cancelled,
+			true,
+			"the stall watchdog cancelled through the token the updater was given",
+		);
+		assert.ok(
+			rejected instanceof Error,
+			"the cancel is the download's failure; it must not resolve as success",
+		);
+		assert.equal(rejected.message, "cancelled");
+		assert.equal(
+			service.shouldFilterUpdateError(rejected),
+			false,
+			"a cancel must not be filtered: that branch answers 'no updates available'",
+		);
+		assert.deepEqual(
+			sent.map(({ channel }) => channel),
+			[],
+			"the rejection is the report; no event may double it",
+		);
+		assert.equal(
+			service.downloadStallWatchdog,
+			null,
+			"the watchdog is disarmed when the attempt settles",
+		);
+	},
+);
+
+/**
+ * Progress is the reset: a download that keeps reporting chunks must not be
+ * cancelled however long it runs, and the same handler that forwards progress
+ * to the renderer is what keeps the watchdog alive. The stub observes its own
+ * token, so a watchdog that ignored progress would cancel it here.
+ */
+test(
+	"download progress resets the stall watchdog",
+	{ timeout: 15_000 },
+	async () => {
+		let cancelled = false;
+		const { verdict, rejected, sent, service } = await loAggregateCheck({
+			appCheck: loAppCurrent,
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.44",
+			ipc: { handler: "download-update" },
+			downloadStallTimeoutMs: 50,
+			download: async (cancellationToken) => {
+				cancellationToken.onCancelRequested(() => {
+					cancelled = true;
+				});
+				for (let step = 1; step <= 3; step += 1) {
+					await new Promise((resolve) => setTimeout(resolve, 30));
+					globalThis.__loAutoUpdater.emit("download-progress", {
+						percent: step * 25,
+					});
+				}
+				return ["/synthetic/update.zip"];
+			},
+		});
+
+		assert.equal(
+			cancelled,
+			false,
+			"a download that keeps reporting progress is not cancelled",
+		);
+		assert.equal(rejected, null);
+		assert.deepEqual(verdict, ["/synthetic/update.zip"]);
+		const progress = sent.filter(
+			({ channel }) => channel === "update-progress",
+		);
+		assert.equal(progress.length, 3, "each chunk's event reached the renderer");
+		assert.equal(service.downloadedArtifactPath, "/synthetic/update.zip");
+		assert.equal(
+			service.downloadStallWatchdog,
+			null,
+			"the watchdog is disarmed with the attempt",
+		);
+	},
+);
+
+/**
  * An `error` event with NO check in flight - a failure from the updater's own
  * internals - still reports, and it reports the machine's words stripped of the
  * nested `Error: ` prefix rather than as the log wrote them.
@@ -10946,6 +11141,317 @@ test("two overlapping checks share one attempt sequence", async () => {
 		"two concurrent checks made ONE fetch between them, not one each",
 	);
 });
+
+/**
+ * THE OPERATOR'S BUG, one case: a feed fetch that never settles must not hold
+ * the check. The deadline abandons the attempt, the ladder retries it as the
+ * transient it is classified as, and an app-initiated check then answers the
+ * way every other failed check does - silently, with a result that claims
+ * nothing.
+ *
+ * This drives the IPC boundary the renderer's mount check crosses, because
+ * that is the shape the operator watched: `null` is what "this check did not
+ * produce a result" means there (the same shape the updater itself uses).
+ *
+ * The `timeout` is load-bearing rather than decoration: with no deadline this
+ * case never resolves at all - nothing else in the ladder has a clock - so a
+ * regression is a red test rather than a hung suite.
+ */
+test(
+	"a feed that never answers is abandoned at the deadline, and a silent check stays silent",
+	{ timeout: 15_000 },
+	async () => {
+		let attempts = 0;
+		const { verdict, sent, probeResult } = await loAggregateCheck({
+			appCheck: () => {
+				attempts += 1;
+				return new Promise(() => {});
+			},
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.44",
+			ipc: { handler: "check-for-updates" },
+			deadlineMs: 25,
+			probe: async (updateService) => ({
+				deadline: updateService.appFeedDeadlineMs,
+				inFlight: updateService.appFeedFetchInFlight,
+				abandoned: updateService.appFeedAbandonedFetches.size,
+			}),
+		});
+
+		assert.equal(
+			attempts,
+			3,
+			"the ladder retried the abandoned attempt, as a transient gets retried",
+		);
+		assert.equal(
+			verdict,
+			null,
+			"an app-initiated check resolves null - the shape the verdict reads as unavailable",
+		);
+		assert.deepEqual(
+			sent.map(({ channel }) => channel),
+			[],
+			"a silent check reports nothing at all, on any channel",
+		);
+		assert.equal(probeResult.deadline, 25);
+		assert.equal(
+			probeResult.inFlight,
+			null,
+			"the latch is free once the sequence has settled",
+		);
+		assert.equal(
+			probeResult.abandoned,
+			3,
+			"each abandoned fetch is still pending and counted until it settles",
+		);
+	},
+);
+
+/**
+ * The click's half of the same feed: the check the user asked for must be
+ * ANSWERED with the deadline's failure, not left hanging and not filtered into
+ * "no updates available". That filter is this repository's documented defect
+ * class - a check that could not find out is not a check that found nothing
+ * newer - and it is why the deadline's spelling has to thread both needles:
+ * transient to the retry ladder, invisible to the legacy filter.
+ */
+test(
+	"a check the user asked for gets the deadline's failure, not a filtered 'up to date'",
+	{ timeout: 15_000 },
+	async () => {
+		const copyReader = await loadPureModule(
+			"src/renderer/src/shared/utils/update-error-copy",
+			"deadline-copy-reader",
+		);
+		const transportReader = await loadPureModule(
+			"src/shared/transport-failure",
+			"deadline-transport-reader",
+		);
+		try {
+			let attempts = 0;
+			const { sent, rejected, service } = await loAggregateCheck({
+				appCheck: () => {
+					attempts += 1;
+					return new Promise(() => {});
+				},
+				serverVersion: "0.54.44",
+				publishedVersion: "0.54.44",
+				// The app channel alone: what the failure alert's own retry invokes.
+				ipc: { handler: "check-for-updates", options: { manual: true } },
+				deadlineMs: 25,
+			});
+
+			assert.equal(attempts, 3);
+			assert.ok(
+				rejected instanceof Error,
+				"the click is answered with a failure, not a hung invoke",
+			);
+			assert.match(
+				rejected.message,
+				/^net::ERR_TIMED_OUT\b/,
+				"the code the machine's own stack gives for this state",
+			);
+			assert.equal(
+				transportReader.module.transientTransportCode(rejected.message),
+				"net::ERR_TIMED_OUT",
+				"the retry ladder must read it as the transient it is",
+			);
+			assert.equal(
+				service.shouldFilterUpdateError(rejected),
+				false,
+				"and the legacy filter must NOT: that branch answers 'no updates available'",
+			);
+			assert.deepEqual(
+				sent.map(({ channel }) => channel),
+				[],
+				"one owner: the rejection IS the report, so no event doubles it",
+			);
+			// What the person reads, from the shipped copy rather than a copy of it.
+			const shown = copyReader.module.updateErrorCopy(rejected.message);
+			assert.match(shown.sentence, /could not reach the update server/i);
+			assert.equal(shown.detail, "net::ERR_TIMED_OUT");
+			assert.equal(
+				shown.action,
+				"check",
+				"and the retry it names has an owner",
+			);
+		} finally {
+			rmSync(copyReader.dir, { recursive: true, force: true });
+			rmSync(transportReader.dir, { recursive: true, force: true });
+		}
+	},
+);
+
+/**
+ * The latch edge the deadline introduces, in the shape that would corrupt it
+ * without a guard: an attempt that expires FREES the latch, so a check that
+ * arrives afterwards starts its own sequence instead of attending the stalled
+ * one - and that is only safe while the stalled sequence's own settle cannot
+ * unpin the successor.
+ *
+ * Concretely: the second check below takes the latch while the first is still
+ * running its last attempt. The first then settles - which without the epoch
+ * guard clears the latch the second is using, and a third check would start
+ * mid-flight, with each sequence's settle clearing the other's latch. The
+ * discriminating assertion is the latch's IDENTITY after the stale settle.
+ *
+ * The abandoned fetch from the first sequence also fails LATE here in both of
+ * its shapes: its rejection (absorbed - the race settled long ago, so nothing
+ * may resolve from it) and the `error` event the updater emits beside it
+ * (attributed to the abandoned fetch, so a check that already answered is not
+ * re-reported). The last emission, after every fetch has settled, is the
+ * control: the attribution lasts exactly as long as the abandoned fetch does.
+ */
+test(
+	"an expired sequence settling late cannot unpin or re-report a successor check",
+	{ timeout: 15_000 },
+	async () => {
+		const deferred = [];
+		let fetches = 0;
+		const stall = () => {
+			let rejectLate;
+			const promise = new Promise((_, reject) => {
+				rejectLate = reject;
+			});
+			deferred.push({ promise, rejectLate });
+			return promise;
+		};
+		const errorsIn = (sent) =>
+			sent.filter(({ channel }) => channel === "update-error").length;
+		const { probeResult } = await loAggregateCheck({
+			appCheck: () => {
+				fetches += 1;
+				/*
+				 * Nine stalled fetches: the main drive's sequence, then the probe's
+				 * two, at three attempts each. The tenth answers normally - the next
+				 * check, which is the one that must still work afterwards.
+				 */
+				return fetches <= 9 ? stall() : loAppCurrent();
+			},
+			serverVersion: "0.54.44",
+			publishedVersion: "0.54.44",
+			silentAppCheck: true,
+			deadlineMs: 100,
+			retryDelaysMs: [30, 30],
+			probe: async (updateService, sent) => {
+				const errorsBefore = errorsIn(sent);
+				const first = updateService.checkForUpdates(true);
+				/*
+				 * Into the first sequence's LAST attempt window: its settle lands ~20ms
+				 * after the second check below takes the latch, inside the second's
+				 * first attempt window - the only window in which a stale clear could
+				 * unpin it.
+				 */
+				await new Promise((resolve) => setTimeout(resolve, 340));
+				const second = updateService.checkForUpdates(true);
+				const secondLatch = updateService.appFeedFetchInFlight;
+				/*
+				 * The abandoned fetch's late failure: its own `error` event first,
+				 * exactly as the updater emits it, then the rejection. deferred[3] is
+				 * the first sequence's first attempt - abandoned 240ms ago.
+				 */
+				deferred[3].rejectLate(new Error("net::ERR_CONNECTION_RESET"));
+				globalThis.__loAutoUpdater.emit(
+					"error",
+					new Error("net::ERR_CONNECTION_RESET"),
+				);
+				await new Promise((resolve) => setTimeout(resolve, 10));
+				const latchAfterAbandon = updateService.appFeedFetchInFlight;
+
+				const firstStatus = await first;
+				const latchAfterStaleSettle = updateService.appFeedFetchInFlight;
+				const secondStatus = await second;
+				const latchAfterSecond = updateService.appFeedFetchInFlight;
+
+				/*
+				 * No check in flight now, and eight abandoned fetches still pending:
+				 * an error event in THIS window must stay attributed.
+				 */
+				globalThis.__loAutoUpdater.emit(
+					"error",
+					new Error("net::ERR_CONNECTION_RESET"),
+				);
+				await new Promise((resolve) => setTimeout(resolve, 10));
+				const errorsWhileAbandoned = errorsIn(sent);
+
+				const thirdStatus = await updateService.checkForUpdates(true);
+
+				/*
+				 * Every abandoned fetch settles; the attribution window is over with
+				 * them, so the next stray error is fresh news again - the pre-existing
+				 * contract for an error outside any check.
+				 */
+				for (const item of deferred) {
+					item.rejectLate(new Error("net::ERR_CONNECTION_RESET"));
+				}
+				await new Promise((resolve) => setTimeout(resolve, 10));
+				globalThis.__loAutoUpdater.emit(
+					"error",
+					new Error("net::ERR_CONNECTION_RESET"),
+				);
+				await new Promise((resolve) => setTimeout(resolve, 10));
+				const errorsAfterSettle = errorsIn(sent);
+
+				return {
+					errorsBefore,
+					errorsWhileAbandoned,
+					errorsAfterSettle,
+					firstStatus,
+					secondStatus,
+					thirdStatus,
+					secondLatch,
+					latchAfterAbandon,
+					latchAfterStaleSettle,
+					latchAfterSecond,
+					abandonedAtEnd: updateService.appFeedAbandonedFetches.size,
+				};
+			},
+		});
+
+		assert.equal(
+			fetches,
+			10,
+			"three sequences at three attempts, then the check that works",
+		);
+		assert.equal(probeResult.firstStatus, "unavailable");
+		assert.equal(probeResult.secondStatus, "unavailable");
+		assert.equal(probeResult.thirdStatus, "current");
+		assert.ok(
+			probeResult.secondLatch,
+			"the successor took the latch while the first was still running",
+		);
+		assert.equal(
+			probeResult.latchAfterAbandon,
+			probeResult.secondLatch,
+			"a late failure from an abandoned fetch leaves the successor's latch alone",
+		);
+		assert.equal(
+			probeResult.latchAfterStaleSettle,
+			probeResult.secondLatch,
+			"the stale sequence's settle must not unpin the successor (the epoch guard)",
+		);
+		assert.equal(
+			probeResult.latchAfterSecond,
+			null,
+			"the successor's own settle frees the latch",
+		);
+		assert.equal(
+			probeResult.errorsWhileAbandoned,
+			probeResult.errorsBefore,
+			"a late error from an abandoned fetch is attributed, not reported as news",
+		);
+		assert.equal(
+			probeResult.errorsAfterSettle,
+			probeResult.errorsBefore + 1,
+			"once every abandoned fetch has settled, a stray error reports again",
+		);
+		assert.equal(
+			probeResult.abandonedAtEnd,
+			0,
+			"every abandoned fetch left the set when it settled",
+		);
+	},
+);
 
 /**
  * The wake half of the root cause: a resume arms ONE check a moment later, so
