@@ -1444,6 +1444,16 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			op: z.literal("agent.publish"),
 			agentId: id,
 			document: publicationDocument.optional(),
+			/*
+			 * The publication TARGET (§4.4/§4.7). Both travel together or neither
+			 * does: the local server's route rejects a `tenant_id` without
+			 * `visibility=org` and a `visibility=org` without a `tenant_id`, so a
+			 * half-specified target is refused there rather than silently published
+			 * to the public hub. Absent means the public hub, which is exactly what
+			 * every caller did before this field existed.
+			 */
+			visibility: z.literal("org").optional(),
+			tenantId: id.optional(),
 		})
 		.strict(),
 	z
@@ -1456,6 +1466,34 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			// overwrite — and guessing here overwrites somebody's listing.
 			hubAgentId: id,
 			document: publicationDocument.optional(),
+			/** The publication target, on the same terms as `agent.publish` above. */
+			visibility: z.literal("org").optional(),
+			tenantId: id.optional(),
+		})
+		.strict(),
+	/*
+	 * Pulling a published organization team into this machine's local registry
+	 * (§4.5/§8.4's "list + pull action").
+	 *
+	 * The id is the HUB document's id, not a local row's: the pull addresses what
+	 * was published, and the local copy gets its own fresh id (the local server's
+	 * `GET /v1/teams/pull/{team_id}` reconstructs it, renaming on a local id
+	 * clash through the registry's own convention). No `tenantId`: §4.5's pull
+	 * path is org-agnostic by id, and the credential that reads it is the one the
+	 * local server already holds.
+	 */
+	z
+		.object({
+			op: z.literal("team.pull"),
+			teamId: id,
+			/*
+			 * The caller's statement of which organization owns the document. The local
+			 * server verifies it and refuses a document owned by another tenant rather
+			 * than storing it under the wrong expectation, so sending it is a stronger
+			 * read where the caller knows the org — and omitting it is still legal
+			 * (§4.5's pull path is org-agnostic by id).
+			 */
+			tenantId: id.optional(),
 		})
 		.strict(),
 	z
@@ -2017,12 +2055,24 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 						"comments.update",
 						"comments.delete",
 						"account.agents",
+						/*
+						 * The organization operations (design §4.7). They are named here as well as
+						 * in `shared/api/radient/proxy.ts` because this schema is what validates the
+						 * request the renderer actually sends: an op in one list and not the other
+						 * is a request that never leaves the renderer. `team_id` is the published
+						 * team document an `org_team.get` pull names.
+						 */
+						"memberships.list",
+						"org_agents.list",
+						"org_team.get",
+						"org_teams.list",
 					]),
 					request_id: requestId.optional(),
 					tenant_id: id.optional(),
 					account_id: id.optional(),
 					agent_id: id.optional(),
 					comment_id: id.optional(),
+					team_id: id.optional(),
 					query: z
 						.record(z.union([z.string().max(1024), z.number().int()]))
 						.optional(),
@@ -3868,9 +3918,21 @@ export function desktopEndpoint(request: DesktopRequest): {
 			};
 		case "legacy.agent.upload":
 			return { path: `/v1/agents/${request.agentId}/upload`, method: "POST" };
-		case "agent.publish":
+		case "agent.publish": {
+			/*
+			 * The org target rides on QUERY PARAMS, not in the body (§4.4): the
+			 * published document's schema is strict, and the target is not part of
+			 * the document. `URLSearchParams` rather than string interpolation so a
+			 * tenant id can never compose a path or a second parameter.
+			 */
+			const query = new URLSearchParams();
+			if (request.visibility === "org" && request.tenantId) {
+				query.set("visibility", "org");
+				query.set("tenant_id", request.tenantId);
+			}
+			const search = query.toString();
 			return {
-				path: `/v1/agents/${request.agentId}/publish`,
+				path: `/v1/agents/${request.agentId}/publish${search ? `?${search}` : ""}`,
 				method: "POST",
 				// The route's own body shape: a partial override of the document the
 				// backend builds from the local row. `{}` rather than `undefined` when
@@ -3879,15 +3941,32 @@ export function desktopEndpoint(request: DesktopRequest): {
 				// answer 422.
 				body: { document: request.document ?? {} },
 			};
-		case "agent.republish":
+		}
+		case "agent.republish": {
+			const query = new URLSearchParams();
+			if (request.visibility === "org" && request.tenantId) {
+				query.set("visibility", "org");
+				query.set("tenant_id", request.tenantId);
+			}
+			const search = query.toString();
 			return {
-				path: `/v1/agents/${request.agentId}/publish`,
+				path: `/v1/agents/${request.agentId}/publish${search ? `?${search}` : ""}`,
 				method: "PUT",
 				body: {
 					hub_agent_id: request.hubAgentId,
 					document: request.document ?? {},
 				},
 			};
+		}
+		case "team.pull": {
+			const query = new URLSearchParams();
+			if (request.tenantId) query.set("tenant_id", request.tenantId);
+			const search = query.toString();
+			return {
+				path: `/v1/teams/pull/${request.teamId}${search ? `?${search}` : ""}`,
+				method: "GET",
+			};
+		}
 		case "agent.nameAvailability": {
 			// `name` travel as the user typed it: the hub is the one that trims and
 			// normalises, and a client that pre-normalised would be answering a

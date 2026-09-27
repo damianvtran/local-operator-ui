@@ -77,6 +77,24 @@ type Scenario = {
 		  };
 	/** A hub listing this app remembers for the agent, for the republish affordance. */
 	listing?: { hubAgentId: string };
+	/**
+	 * The viewer's organizations (design §4.1), for the publication target.
+	 *
+	 * Empty by default, which is the state every story before this change was in:
+	 * no membership, no target control, and the dialog publishes to the public hub
+	 * exactly as it always did.
+	 */
+	memberships: {
+		tenant_id: string;
+		tenant_name: string;
+		role: string;
+		status: "active" | "pending" | "disabled";
+		is_home: boolean;
+		plan: {
+			status: "none" | "active" | "past_due" | "canceled";
+			seats: number | null;
+		};
+	}[];
 };
 
 const scenarioOf = (over: Partial<Scenario> = {}): Scenario => ({
@@ -86,6 +104,7 @@ const scenarioOf = (over: Partial<Scenario> = {}): Scenario => ({
 		"You screen entities from a supplied list against adverse media coverage and report the hits with their sources.",
 	availability: { available: true },
 	publish: { kind: "ok", name: AGENT.name, hubAgentId: "listing-7f3a" },
+	memberships: [],
 	...over,
 });
 
@@ -139,6 +158,32 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 	}
 	const request = JSON.parse(String(init?.body ?? "{}"));
 	switch (request.op) {
+		/*
+		 * The auth preamble, and it is not decoration: the memberships read that
+		 * decides whether this dialog offers a publication target is gated on
+		 * `useRadientAuth().isAuthenticated`, which reads `account` through the
+		 * proxy and the `radient` capability behind it. A stub that answered the
+		 * memberships list but not these two left the query disabled, and the frame
+		 * showed the PUBLIC dialog with no picker at all — a state the story then
+		 * claimed was the org target's.
+		 */
+		case "capabilities":
+			/*
+			 * `desktop({result})`, not `desktop({...capabilities})`: `desktopResult` returns
+			 * the transport body's `result` field, so a capabilities object passed as the
+			 * body itself reaches `desktopFeatureEnabled` as `undefined` — which disables
+			 * the account read behind `useRadientAuth`, which disables the memberships
+			 * read behind THIS story's picker. Measured: the dialog rendered with no
+			 * publication target at all and the frame looked plausible.
+			 */
+			return desktop({
+				result: {
+					desktop_contract: 1,
+					desktop_available: true,
+					desktop_auth: "bearer",
+					features: { radient: 1, profile_catalogue: 1, team_catalogue: 1 },
+				},
+			});
 		case "profiles.list":
 			return desktop({
 				status: 200,
@@ -181,6 +226,56 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 					...(taken ? { code: "name_taken", details: {} } : {}),
 				},
 			});
+		}
+		case "radient.request": {
+			/*
+			 * The dialog's ONE organization read: the memberships that decide whether a
+			 * publication target exists at all (§8.4). It answers through the Radient
+			 * proxy's double envelope — the route replies `{data: {msg, result}}` and
+			 * `radientProxyEnvelope` unwraps the outer one — so a fixture that returned
+			 * the membership list in the inner slot would render as no organizations.
+			 */
+			if (request.control?.operation === "account") {
+				/*
+				 * Note the two `result` keys. `radientProxy` unwraps BOTH envelopes —
+				 * `desktopResult` hands back the transport's `result`, and
+				 * `radientProxyEnvelope` hands back that envelope's `data`, whose own
+				 * `result` is what a caller reads. A stub that answered `{account}` one
+				 * level up would leave `useRadientAuth().isAuthenticated` false while the
+				 * dialog's own prop said true, and the memberships read it gates on would
+				 * never fire: the frame then shows the public dialog with no picker, which is
+				 * a state the story must not claim.
+				 */
+				return desktop({
+					result: {
+						data: {
+							msg: "Account read",
+							result: {
+								account: {
+									id: "acct-1",
+									name: "Dana",
+									email: "d@example.com",
+								},
+							},
+						},
+					},
+				});
+			}
+			if (request.control?.operation === "memberships.list") {
+				return desktop({
+					status: 200,
+					message: "Memberships listed successfully",
+					result: {
+						data: {
+							msg: "Memberships listed successfully",
+							result: { memberships: scenario.memberships },
+						},
+					},
+				});
+			}
+			throw new Error(
+				`unexpected Radient operation in this story: ${request.control?.operation}`,
+			);
 		}
 		case "agent.publish":
 		case "agent.republish": {
@@ -373,6 +468,25 @@ const settleOn = (text: string) => async (): Promise<void> => {
 	} finally {
 		delete document.documentElement.dataset.capturePending;
 	}
+};
+
+/**
+ * Opens the publication-target picker, then holds the shutter until the named
+ * option is on screen.
+ *
+ * The popup has to be OPENED rather than waited for: a Radix `SelectContent`
+ * renders only while the select is open, so a capture of a closed picker shows
+ * the trigger and nothing about the organizations in it — and the DISABLED item
+ * is the whole subject of the state §8.4 names. Opening it by clicking the
+ * shipped trigger is also what makes the frame evidence of the flow rather than
+ * of a fixture: this is exactly the pointer sequence a person performs.
+ */
+const openTargetPicker = (option: string) => async (): Promise<void> => {
+	const trigger = document.querySelector('[data-testid="publish-target"]');
+	if (!trigger)
+		throw new Error("the publication target trigger is not rendered");
+	await userEvent.click(trigger);
+	await settleOn(option)();
 };
 
 /**
@@ -655,4 +769,69 @@ export const Published: Story = {
 export const UpdateListing: Story = {
 	...publishDialog({}, true),
 	play: settleOn("This name looks free."),
+};
+
+/**
+ * The publication target, with an organization the viewer may publish into and
+ * one whose plan does not entitle it yet (design §8.4).
+ *
+ * Two memberships rather than one, because the control has two jobs and only the
+ * pair photographs both: "Public hub" plus an org the dialog will accept, and a
+ * DISABLED org whose label carries the reason. A story with only the usable org
+ * would leave the blocked state — the one §8.4 names — unrendered, and the
+ * blocked row is the half a reader is most likely to get wrong (an org that is
+ * simply ABSENT from the picker cannot be told from one the viewer was never in).
+ *
+ * `Minerva` is the usable one: the viewer is its owner, which is the role the
+ * server's own rule excepts from the plan half (§3.2). `Northwind Analytics` is
+ * a member whose team plan has lapsed, so the server would answer
+ * `team_plan_required` — which is why the dialog does not offer it.
+ */
+export const TargetOrgAvailable: Story = {
+	...publishDialog({
+		memberships: [
+			{
+				tenant_id: "tenant-minerva",
+				tenant_name: "Minerva",
+				role: "owner",
+				status: "active",
+				is_home: true,
+				plan: { status: "none", seats: null },
+			},
+			{
+				tenant_id: "tenant-northwind",
+				tenant_name: "Northwind Analytics",
+				role: "member",
+				status: "active",
+				is_home: false,
+				plan: { status: "canceled", seats: 4 },
+			},
+		],
+	}),
+	play: openTargetPicker("Northwind Analytics — upgrade needed"),
+};
+
+/**
+ * The same control with NOTHING but a blocked organization: the state a member
+ * whose team plan lapsed is in, where the picker has no org it can offer.
+ *
+ * It is a separate story because the hint's sentence is different — it names the
+ * one blocked organization rather than pointing at "the organizations marked
+ * above" — and because a reader needs to see that the public hub is still there,
+ * selected, with the publication not blocked.
+ */
+export const TargetOrgBlockedOnly: Story = {
+	...publishDialog({
+		memberships: [
+			{
+				tenant_id: "tenant-northwind",
+				tenant_name: "Northwind Analytics",
+				role: "member",
+				status: "active",
+				is_home: false,
+				plan: { status: "none", seats: null },
+			},
+		],
+	}),
+	play: openTargetPicker("Northwind Analytics — upgrade needed"),
 };

@@ -433,6 +433,68 @@ export function publicationTreatment(
 				// anything, so no listing can exist from this attempt.
 				actions: ["retry"],
 			};
+		case "team_plan_required":
+			/*
+			 * THE PLAN HALF OF §3.2, which the picker already guards against and which
+			 * a plan can still lapse into between the render and the press. `past_due`
+			 * is NOT this state (§3.1 gives it full entitlements during dunning), so a
+			 * user reading this headline knows the subscription genuinely stopped.
+			 */
+			return {
+				variant: "warning",
+				headline: "That organization needs an active team plan",
+				body: "Sharing agents inside an organization is part of the Team plan. Ask an owner of the organization to activate it, then publish again.",
+				note: null,
+				// Safe to retry, and the only step this dialog can take: the plan is
+				// activated on the console, and a retry is what a user who has just
+				// done that needs. Nothing was published.
+				actions: ["retry"],
+			};
+		case "not_a_member":
+			return {
+				variant: "danger",
+				headline: "You are not a member of that organization",
+				body: "Nothing was published. Ask an owner of the organization to invite you, then publish again.",
+				note: null,
+				/*
+				 * NO ACTION, deliberately. The remedy is somebody else's (an owner has to
+				 * invite this account), so every control this dialog could offer would be
+				 * one that cannot help — and a lone "Close" beside a sentence that names
+				 * the person who can is honest where a "Try again" would be a loop.
+				 */
+				actions: [],
+			};
+		case "insufficient_role": {
+			/*
+			 * The rank the hub named (`details.required`), carried rather than
+			 * restated: this app does not hold the membership matrix, and a client that
+			 * wrote its own "admins and owners" sentence is a second place for §2.1 to
+			 * be got wrong.
+			 */
+			const required = failure.details?.required;
+			return {
+				variant: "danger",
+				headline: "Your organization role does not allow this",
+				body: required
+					? `Publishing into an organization needs the ${required} role. Ask an owner of the organization to change your role, then publish again.`
+					: "Publishing into an organization needs a higher role than yours. Ask an owner of the organization to change your role, then publish again.",
+				note: null,
+				actions: [],
+			};
+		}
+		case "team_not_found":
+			/*
+			 * The pull's own refusal (§4.5): the document was delisted between the list
+			 * and the press. "Refresh the hub" is the step that shows the roster the
+			 * server now has rather than retrying a read that will answer the same.
+			 */
+			return {
+				variant: "danger",
+				headline: "That team is no longer published",
+				body: "It may have been delisted since this page was loaded.",
+				note: null,
+				actions: ["refresh-hub"],
+			};
 		default:
 			return {
 				variant: "danger",
