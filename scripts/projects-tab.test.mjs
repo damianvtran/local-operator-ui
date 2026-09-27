@@ -556,8 +556,24 @@ test("axis labels sit at unit starts, with a year cue when the year turns", () =
 			["28", false],
 			["29", false],
 			["30", false],
-			["Oct 1", true],
+			// The month's name, not "Oct 1": at 24px/day the day number would
+			// collide with the next label (measured in the first capture).
+			["Oct", true],
 			["2", false],
+		],
+	);
+	// The week tier names the month the week TURNS OVER, not every Monday.
+	const weeks = timeline.timelineTicks(
+		DAY(2026, 9, 28),
+		DAY(2026, 10, 12),
+		"week",
+	);
+	assert.deepEqual(
+		weeks.map((tick) => [tick.label, tick.major]),
+		[
+			["28", false],
+			["Oct 5", true],
+			["12", false],
 		],
 	);
 });

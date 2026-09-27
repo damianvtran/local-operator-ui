@@ -237,11 +237,22 @@ const BoardCard: FC<BoardCardProps> = ({
 				</DropdownMenu>
 			</div>
 			<div className="flex flex-wrap gap-1.5">
-				{meta.map((entry) => (
-					<span key={entry.key} className="text-meta text-ink-muted">
-						{entry.text}
-					</span>
-				))}
+				{/*
+				 * The LIVE token is dropped on purpose: the card's own popover
+				 * carries liveness (and is the door into a conversation), and a
+				 * second "2 live" on the facts line was rendering the same number
+				 * twice - measured in the first capture of this set.
+				 */}
+				{meta
+					.filter((entry) => entry.key !== "live")
+					.map((entry) => (
+						<span
+							key={entry.key}
+							className="rounded-sm bg-sunken px-1.5 py-0.5 text-meta text-ink-muted"
+						>
+							{entry.text}
+						</span>
+					))}
 				{overdue && <Badge variant="warning">Overdue</Badge>}
 			</div>
 			<div className="flex items-center justify-between gap-2">
