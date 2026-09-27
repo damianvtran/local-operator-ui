@@ -130,3 +130,45 @@ generation the committed set was shot against, so this pair stays comparable
 state-for-state; current-generation live behaviour is for QA to drive rather
 than to assert from here. The renderer's own notice-band delta is the
 story-provided set's to prove (`docs/evidence/chat-status-bands/` either way).
+
+## `refusal-band/` - the wrong-bearer refusal, driven live (2026-09-27, head `9493b5792`)
+
+The scene QA round 2's Q-1 reconstructed, committed as the pass's own live
+record: **the refusal while the daemon answers, the death, and the revive**.
+The construction is a WRONG-BEARER pair, and it is the app's own pipeline that
+produces the refusal - no fixture, no stub:
+
+- the daemon (`lop serve`, v0.63.6, generation `20260927T031704Z-700dfc4518bd`)
+  was started with `LOCAL_OPERATOR_DESKTOP_TOKEN=<D>` of its own, so its serve
+  record publishes `claim_key: ""` and `desktop: true` - an env-governed plane;
+- the APP was given a DIFFERENT token (`<A>`) in its environment, so discovery
+  admits the record as a candidate, the claim path is skipped (no key on disk),
+  and the desktop read is made with `<A>` - which the daemon refuses with a 401
+  while `/health` answers 200 throughout;
+- the kill is the scene's own (`SIGTERM` to the pid the record names), and the
+  revive starts an ACCEPTING daemon (token `<A>`) on the same address, whose
+  fresh record the run re-links into the app's config root.
+
+`run.log` is the run's full record: **ALL CHECKS PASSED**, 23 checks, including
+`the pane's strip states the REFUSAL while the daemon answers /health`,
+`ONE live region ... it is the REFUSED row - not the unreachable row over a
+running daemon`, `the press's outcome says the server is RUNNING and the
+credential is still refused (U2)`, `the death moves the band: the unreachable
+copy, and the refusal's stale sentence gone (Q-2/U1)`, `the dismissal re-armed`,
+and `the revive clears the band`. Two re-runs were needed and the first's two
+FAILs are worth naming: both were the instrument's, not the app's - a screen-wide
+Retry count that caught the composer's unrelated "Model ... Retry" line, and a
+pill assertion that read `textContent` where the sentence lives in the button's
+`aria-label`. Both were fixed in the scene, and the passing run is the one here.
+
+| file | state | note |
+| --- | --- | --- |
+| `refused-1380x900-refused.png` | daemon answering, credential refused | the danger band, the refusal's own title, ONE `Retry` + dismiss; the sidebar foot line is silent |
+| `refused-1380x900-retry-outcome.png` | after the press | the outcome speaks the refusal: "The server is running, but this app's credential is still refused." - "Still unreachable." appears nowhere |
+| `refused-1380x900-dismissed.png` | after dismiss | the pill; its `aria-label` keeps the sentence AND the outcome (U12) |
+| `refused-1380x900-rearmed.png` | daemon killed | the band moved to the absence - "Can't reach the Local Operator server", the stale "The daemon is running." gone - and the dismissal re-armed (strip expanded, no pill) |
+| `refused-1380x900-cleared.png` | accepting daemon revived | the app attaches; the band clears |
+
+Every daemon this run started was reaped by exact pid (the run script's own
+reaper, by the pids its records name); no process outlived the run (`no process
+from this run outlived its boot` in the log).
