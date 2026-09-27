@@ -921,7 +921,9 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 		 * repeat is the block's subject. The groups are filtered on the same two
 		 * predicates, so the exclusion cannot drop a row the block is not painting.
 		 */
-		const matched = new Set(visibleProviders(rows, query, null).map((p) => p.id));
+		const matched = new Set(
+			visibleProviders(rows, query, null).map((p) => p.id),
+		);
 		const featured = FEATURED_PROVIDER_IDS.map((id) =>
 			rows.find((provider) => provider.id === id),
 		).filter(
