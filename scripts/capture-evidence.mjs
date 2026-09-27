@@ -1524,6 +1524,37 @@ export const STORIES = [
 			dir: "rename-save",
 		},
 	],
+	/*
+	 * The save IN FLIGHT (agent review round 1's NIT-2, UX round 1's U1-U3,
+	 * fixed in round 1's remediation): the story holds the receipt for six
+	 * seconds, the entry submits and the shutter reads the state the fixes ARE -
+	 * `aria-busy` on the control, the spinner in the X's slot, and the field
+	 * present AND `[readonly]` in one selector (the element the claim is about,
+	 * not a sibling). A frame that arrived after the receipt resolved fails
+	 * rather than lying.
+	 */
+	[
+		"chat-header-identity--rename-inline-saving",
+		560,
+		84,
+		{
+			press: "[data-header-rename]",
+			pressSettleMs: 250,
+			insertText: "Rename round trip (rig)",
+			insertTextSettleMs: 200,
+			keys: [{ key: "Enter", settleMs: 250 }],
+			expectPresent: [
+				"[data-header-rename-input][readonly]",
+				"[data-header-rename] .animate-spin",
+			],
+			expectAttribute: {
+				selector: "[data-header-rename]",
+				name: "aria-busy",
+				equals: "true",
+			},
+			dir: "rename-saving",
+		},
+	],
 	["chat-header-identity--no-team-no-agent", 560, 84],
 	[
 		"chat-header-identity--no-team-no-agent",

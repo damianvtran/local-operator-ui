@@ -489,3 +489,30 @@ const RenameInlineBand = () => {
 export const RenameInline: Story = {
 	render: () => <RenameInlineBand />,
 };
+
+/**
+ * The save IN FLIGHT, the state whose absence UX round 1's U2/U3 named: the
+ * bridge holds the receipt for six seconds, so a shutter can catch the editor
+ * mid-save - the slot showing the busy spinner in the X's place, `aria-busy`
+ * on the control, and the field carrying `[readonly]` (the two halves of the
+ * committed-save rule: a late Esc or X click no-ops, and typing cannot land in
+ * a field the write already ignores).
+ */
+const RenameInlineSavingBand = () => {
+	installBridge({ holdCommandMs: 6000 });
+	return (
+		<Band>
+			<ChatHeader
+				agentName="Install the pinned uv on Windows"
+				description="manager · lopdev"
+				identity={identity({ activeTeam: "lopdev" })}
+				renameSessionId={SESSION}
+				onOpenOptions={() => undefined}
+			/>
+		</Band>
+	);
+};
+
+export const RenameInlineSaving: Story = {
+	render: () => <RenameInlineSavingBand />,
+};

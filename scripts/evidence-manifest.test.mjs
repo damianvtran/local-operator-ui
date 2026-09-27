@@ -1414,6 +1414,14 @@ const STAMP_BINDING_NOTES = [
 	 * states - so a reader is owed the pair and the twelve frames it added.
 	 */
 	"headerRenameInlineRestampNote",
+	/*
+	 * AND THE ROUND-1 REMEDIATION'S OWN, on the same lane: its subject is this
+	 * file's binding too - the save-lifecycle pass moves BOTH trees again (the
+	 * header's committed-save state and its story; the capture row and these
+	 * two lists) and re-captures one state - so a reader is owed the pair and
+	 * the two frames it added.
+	 */
+	"headerRenameInlineRoundOneNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1992,6 +2000,14 @@ const BRANCH_RECORDS = [
 	 * copy would drop it first, the same reason this list exists.
 	 */
 	"headerRenameInlineRestampNote",
+	/*
+	 * And by the same lane once more, whose round-1 remediation note is now
+	 * the newest top-level record on the branch: it states the pair the
+	 * save-lifecycle pass ships - both trees moved, one set's state
+	 * re-captured - so a fold that started from main's copy would drop it
+	 * first, the same reason this list exists.
+	 */
+	"headerRenameInlineRoundOneNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

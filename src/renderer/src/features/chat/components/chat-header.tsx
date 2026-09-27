@@ -1,3 +1,4 @@
+import { Spinner } from "@shared/components/common/spinner";
 import {
 	Badge,
 	Button,
@@ -497,6 +498,11 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	 * `<body>` - the defect UX round 1 (U2) found on the pane triggers.
 	 */
 	const renameCommand = useSessionCommand(renameSessionId ?? "");
+	/* The in-flight span of the save, read from the hook's own `busy` rather than
+	 * tracked a second time here: it is true from the `run` call to its settle,
+	 * which is exactly the span in which a submitted save is committed - the field
+	 * freezes and the slot shows the spinner (see the U1/U3 notes at both). */
+	const renameSaving = renameCommand.busy;
 	const [renaming, setRenaming] = useState(false);
 	const [renameDraft, setRenameDraft] = useState("");
 	const [renameWidth, setRenameWidth] = useState<number | null>(null);
@@ -553,11 +559,22 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			/* Re-open only if the editor was still the user's current move: a
 			 * cancel during the flight keeps its outcome (the toast still
 			 * reports the failed command). */
-			if (renamePhaseRef.current === "saving") renamePhaseRef.current = "edit";
+			if (renamePhaseRef.current === "saving") {
+				renamePhaseRef.current = "edit";
+				/* THE RETRY STARTS WHERE THE VALUE IS (UX round 1's U4): a failed
+				 * save leaves the editor open with the typed value, so the field
+				 * gets its focus back - the Enter path never lost it, and the blur
+				 * path used to leave the editor open but unfocused on `body`. */
+				renameInputRef.current?.focus();
+			}
 			return;
 		}
 		if (result.tone === "warning") showWarningToast(result.text);
-		closeRename(restoreFocus);
+		/* ONLY THIS SAVE MAY CLOSE THE EDITOR (agent review round 1's MINOR-1):
+		 * the latch is read back before acting, so a stale resolution can never
+		 * close an editor that came after it - the error branch above guards the
+		 * same case, and this closes the latch's completeness. */
+		if (renamePhaseRef.current === "saving") closeRename(restoreFocus);
 	};
 
 	/*
@@ -790,6 +807,16 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							)}
 							style={renameWidth === null ? undefined : { width: renameWidth }}
 							value={renameDraft}
+							/*
+							 * FROZEN WHILE SAVING, visibly (UX round 1's U3): the command
+							 * already carries the value that was on screen when Enter or the
+							 * blur submitted it, so edits accepted after that point could only
+							 * be text the write silently ignores. `readOnly` rather than
+							 * `disabled`: it blocks edits while keeping focus, caret and
+							 * selection, and the busy spinner in the slot states why nothing
+							 * types rather than the keystrokes simply vanishing.
+							 */
+							readOnly={renameSaving}
 							aria-label="Conversation name"
 							onChange={(event) => setRenameDraft(event.target.value)}
 							onKeyDown={(event) => {
@@ -802,6 +829,14 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 									 * `use-interrupt-on-escape.ts`): the field owns the key,
 									 * so a cancel cannot also reach the turn's interrupt. */
 									event.preventDefault();
+									/* A SUBMITTED SAVE IS COMMITTED (UX round 1's U1): once
+									 * the write is in flight its outcome is the backend's, and
+									 * an exit that only closed the editor would promise an
+									 * abort it cannot make. The no-op is visible - the slot
+									 * shows the busy spinner and the field is read-only - and
+									 * the escape claim above still runs, so the key cannot
+									 * fall through to the turn's interrupt either. */
+									if (renamePhaseRef.current === "saving") return;
 									closeRename(true);
 								}
 							}}
@@ -837,24 +872,58 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							ref={renameControlRef}
 							type="button"
 							data-header-rename=""
-							aria-label={renaming ? "Cancel rename" : "Rename conversation"}
-							title={renaming ? "Cancel rename" : "Rename conversation"}
+							/*
+							 * THE LABEL STATES THE TRUE AFFORDANCE OF EACH PHASE: the
+							 * pencil's name, the X's cancel, and - while the write is in
+							 * flight - the busy state itself, because a "Cancel rename"
+							 * label over a no-op would be the same lie the U1 rule exists
+							 * to avoid.
+							 */
+							aria-label={
+								renameSaving
+									? "Saving the conversation name"
+									: renaming
+										? "Cancel rename"
+										: "Rename conversation"
+							}
+							title={
+								renameSaving
+									? "Saving the conversation name"
+									: renaming
+										? "Cancel rename"
+										: "Rename conversation"
+							}
+							/*
+							 * THE BUSY CUE, in the identity trigger's pattern: `aria-busy`
+							 * plus the spinner taking the icon's slot, the 20px box fixed so
+							 * geometry never moves. `aria-disabled`, not `disabled`: the
+							 * button keeps its place and never steals focus back from the
+							 * field; the press guard below is what actually no-ops.
+							 */
+							aria-busy={renameSaving || undefined}
+							aria-disabled={renameSaving || undefined}
 							/*
 							 * The X half of the blur race: consume the press's own
 							 * `mousedown` so the input never blurs on the way to this
 							 * handler (a blur would save first), and let go of a
-							 * multi-click's second press so double-clicking the PENCIL
-							 * cannot open-then-cancel in one gesture.
+							 * multi-click's second press so NOTHING toggles twice in one
+							 * gesture - the guard is symmetric (agent review round 1's
+							 * NIT-1): without it a double-click on the X cancels on the
+							 * first press and RE-OPENS on the second.
 							 */
 							onMouseDown={(event) => {
 								if (renaming) event.preventDefault();
 							}}
 							onClick={(event) => {
+								if (event.detail > 1) return;
+								/* A submitted save is committed (U1): while it is in
+								 * flight this control is the busy indicator, never the
+								 * cancel exit. */
+								if (renamePhaseRef.current === "saving") return;
 								if (!renaming) {
 									startRename();
 									return;
 								}
-								if (event.detail > 1) return;
 								closeRename(true);
 							}}
 							className={cn(
@@ -874,7 +943,12 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								"hover:text-ink-muted",
 							)}
 						>
-							{renaming ? (
+							{renameSaving ? (
+								/* The spinner takes the X's slot while the write is in
+								 * flight - the identity trigger's busy glyph, one scale
+								 * step up from the 12px icons to match it. */
+								<Spinner size="xs" />
+							) : renaming ? (
 								<X className={cn("size-3")} aria-hidden="true" />
 							) : (
 								<Pencil className={cn("size-3")} aria-hidden="true" />

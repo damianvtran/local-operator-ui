@@ -16,8 +16,11 @@ never saw the pointer there. The title block now opts out with
 `data-titlebar-no-drag`, and the pencil opens an INLINE editor in the title's
 own slot - Enter or blur saves, Escape or the X cancels - instead of the
 `RenamePicker` dialog (`/rename` keeps its picker; both submit through the same
-`sessions.command` path). The six `rename-*` frames below are that
-interaction; the region readings behind them are in "The drag region" section.
+`sessions.command` path). A submitted save is committed: while the write is in
+flight the field is read-only and the slot shows a busy spinner in the X's
+place, and Escape / the X no-op rather than promising an abort they cannot
+make. The seven `rename-*` frames below are that interaction; the region
+readings behind them are in "The drag region" section.
 
 ## How these frames were produced
 
@@ -58,6 +61,7 @@ every story here answers `desktop.request` from its own bridge (`teams.list`,
 | `rename-edit-dblclick` | The same editor from the title's own double-click - the report's second ask, asserted present rather than photographed from a hover. |
 | `rename-edit-typed` | Typing lands in the editor (`Input.insertText`, selection replaced); the input carries no chrome of its own by design - the type ramp and the X are the whole affordance. |
 | `rename-save` | Enter: the editor closes and the title repaints from the story's canonical-stream stand-in with the name the command CARRIED (`Rename round trip (rig)`) - no optimistic label; the pencil carries the focus ring. |
+| `rename-saving` | The save in flight (round-1 remediation): the story holds the receipt for six seconds, and the slot carries the busy spinner in the X's place with `aria-busy="true"` on the control and the field `[readonly]` - all asserted at shutter time, so a frame taken after the receipt resolved fails. |
 | `rename-cancel-x` | The X click cancels: editor gone, the old title stands, the pencil is back (`Rename conversation`). |
 | `rename-cancel-esc` | Escape cancels the same way. |
 | `no-team-no-agent` | The assign affordance both controls fall to: subdued `No team` / `No agent` with chevrons. |
@@ -120,9 +124,11 @@ launch shape the rig uses), reading live geometry:
 - **Entering the edit moves nothing** (measured over raw CDP against this
   worktree's Storybook, headless Chrome, the story the frames capture): the
   header's box is identical before and during (`0,0,560,40`); the title
-  cluster grows 0.14px (the ceil pin - the input's text engine lays the same
-  string 0.14px wider than the h2 did, so the alternative would clip the
-  glyph tail); the identity trigger reads inside the same-state jitter band -
+  cluster grows by the ceil pin - 0.14px at this story's title, and up to 1px
+  by construction (0.97px measured at the 1380 story's 49-character title,
+  design round 1's D2: `ceil(w)-w` of the h2's fractional width; accepted as
+  a bound rather than pinned to zero, because the alternative is the clipped
+  glyph tail below); the identity trigger reads inside the same-state jitter band -
   two reads of ONE unchanged box, 400ms apart, moved 0.17px and shrank
   0.16px - and the during-edit readings sit inside that band. The input's ramp
   equals the h2's (`14px/500/system-ui`); the trigger keeps its own
