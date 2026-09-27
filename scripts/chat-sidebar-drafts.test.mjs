@@ -29,7 +29,6 @@ import { build } from "esbuild";
  */
 
 const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
-const DRAFT_ROWS = "src/renderer/src/features/chat/draft-rows.ts";
 
 const read = (path) => readFileSync(path, "utf8");
 /** Comments stripped, so a rule can never be satisfied by prose about the rule. */
@@ -129,13 +128,19 @@ test("the control is out of sight at rest and revealed by hover or focus, as one
 	const section = DRAFTS_SECTION();
 	const control = section.slice(
 		section.indexOf("data-draft-discard={row.key}"),
-		section.indexOf("</button>", section.indexOf("data-draft-discard={row.key}")),
+		section.indexOf(
+			"</button>",
+			section.indexOf("data-draft-discard={row.key}"),
+		),
 	);
 	/*
 	 * The session acts' own pair, verbatim: base `hidden` plus a variant that adds
 	 * `flex`, so the reveal does not reflow an element that was laid out anyway.
 	 */
-	assert.match(control, /"hidden text-ink-dim group-hover:flex group-hover:text-ink-muted"/);
+	assert.match(
+		control,
+		/"hidden text-ink-dim group-hover:flex group-hover:text-ink-muted"/,
+	);
 	assert.match(
 		control,
 		/"group-focus-within:flex group-focus-within:text-ink-muted hover:text-ink!"/,
@@ -158,7 +163,10 @@ test("the press is guarded against the row that slides up, and hands the caret t
 	const section = DRAFTS_SECTION();
 	const control = section.slice(
 		section.indexOf("data-draft-discard={row.key}"),
-		section.indexOf("</button>", section.indexOf("data-draft-discard={row.key}")),
+		section.indexOf(
+			"</button>",
+			section.indexOf("data-draft-discard={row.key}"),
+		),
 	);
 	/*
 	 * The panel's own record (`dropRepeatPress`), read BEFORE the write: the row
@@ -204,7 +212,10 @@ test("the clear-all is inside the drafts section, rides the row walk, and clears
 	 * takes its place when it clears itself away.
 	 */
 	assert.match(foot, /data-chat-row/);
-	assert.match(foot, /rows\[Math\.min\(Math\.max\(at, 0\), rows\.length - 1\)\]\?\.focus\(\);/);
+	assert.match(
+		foot,
+		/rows\[Math\.min\(Math\.max\(at, 0\), rows\.length - 1\)\]\?\.focus\(\);/,
+	);
 	/*
 	 * SUBTLE, and a row state rather than a ground: the low-emphasis register
 	 * (`text-ink-dim` stepping to `ink` on hover, no elevation) that the section's
@@ -229,5 +240,8 @@ test("the section's gate is what hides the foot: no rows, no control", () => {
 	const foot = source.indexOf("data-drafts-clear-all");
 	assert.notEqual(gate, -1, "the drafts section's render gate moved");
 	assert.notEqual(foot, -1, "the foot control is gone");
-	assert.ok(gate < section && section < foot, "the foot must sit inside the section's gate");
+	assert.ok(
+		gate < section && section < foot,
+		"the foot must sit inside the section's gate",
+	);
 });

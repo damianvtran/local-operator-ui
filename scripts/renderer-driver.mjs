@@ -16953,7 +16953,7 @@ async function sceneDrafts(cdp) {
 		check(
 			"and the section goes with them",
 			(await cdp.evaluate(
-				'Boolean(document.querySelector(\'[data-chat-section="drafts"]\'))',
+				"Boolean(document.querySelector('[data-chat-section=\"drafts\"]'))",
 			)) === false,
 		);
 		check(

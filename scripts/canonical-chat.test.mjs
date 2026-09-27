@@ -1081,22 +1081,26 @@ test("a landed draft send retires the composer record under the pre-send key, so
 			};
 		return {};
 	};
-	const key = store
-		.getState()
-		.stageDraft({ kind: "team", name: "minervadev" });
+	const key = store.getState().stageDraft({ kind: "team", name: "minervadev" });
 	/*
 	 * What the composer records at the echo's paint (use-message-input's
 	 * `clearOnce(true)` -> `beginInFlight(..., record: true)`): the in-flight
 	 * payload lands under the DRAFT KEY because the identity flip has not
 	 * happened yet - the create's answer re-keys the panel later.
 	 */
-	useConversationInputStore.getState().beginInFlight(
-		key,
-		{ text: "Can you check our google drive", attachments: [], replies: [] },
-		true,
-	);
+	useConversationInputStore
+		.getState()
+		.beginInFlight(
+			key,
+			{ text: "Can you check our google drive", attachments: [], replies: [] },
+			true,
+		);
 	await admitChatDraft(key, input);
-	assert.equal(store.getState().drafts[key], undefined, "the draft row retires");
+	assert.equal(
+		store.getState().drafts[key],
+		undefined,
+		"the draft row retires",
+	);
 	assert.equal(
 		useConversationInputStore.getState().inputByConversation[key],
 		undefined,
@@ -1177,13 +1181,13 @@ test("a landed draft send carries text typed during the create hop to the new co
 test("discarding a draft clears its composer row, so a stable key starts empty next time", () => {
 	reset();
 	useConversationInputStore.setState({ inputByConversation: {} });
-	const key = store
-		.getState()
-		.stageDraft({ kind: "team", name: "radientdev" });
+	const key = store.getState().stageDraft({ kind: "team", name: "radientdev" });
 	useConversationInputStore
 		.getState()
 		.setCurrentInput(key, "the deleted draft's text");
-	useConversationInputStore.getState().addSubmittedMessage(key, "an older send");
+	useConversationInputStore
+		.getState()
+		.addSubmittedMessage(key, "an older send");
 	store.getState().discardDraft(key);
 	assert.equal(store.getState().drafts[key], undefined);
 	assert.equal(
@@ -1201,8 +1205,8 @@ test("discarding a draft clears its composer row, so a stable key starts empty n
 		.stageDraft({ kind: "team", name: "radientdev" });
 	assert.equal(again, key, "the team key is stable");
 	assert.equal(
-		useConversationInputStore.getState().inputByConversation[again]?.currentInput ??
-			"",
+		useConversationInputStore.getState().inputByConversation[again]
+			?.currentInput ?? "",
 		"",
 	);
 });
@@ -1213,9 +1217,7 @@ test("the batch discard clears exactly the keys it is given, in one update", () 
 	const first = store
 		.getState()
 		.stageDraft({ kind: "team", name: "minervadev" });
-	const second = store
-		.getState()
-		.stageDraft({ kind: "agent", name: "coder" });
+	const second = store.getState().stageDraft({ kind: "agent", name: "coder" });
 	const kept = store.getState().stageDraft({ kind: "team", name: "lopdev" });
 	for (const key of [first, second, kept])
 		useConversationInputStore
@@ -1228,7 +1230,11 @@ test("the batch discard clears exactly the keys it is given, in one update", () 
 	});
 	store.getState().discardDrafts([first, second]);
 	unsubscribe();
-	assert.equal(updates, 1, "one write for the whole clear, so the list repaints once");
+	assert.equal(
+		updates,
+		1,
+		"one write for the whole clear, so the list repaints once",
+	);
 	assert.deepEqual(Object.keys(store.getState().drafts), [kept]);
 	assert.equal(
 		useConversationInputStore.getState().inputByConversation[first],
@@ -1239,7 +1245,8 @@ test("the batch discard clears exactly the keys it is given, in one update", () 
 		undefined,
 	);
 	assert.equal(
-		useConversationInputStore.getState().inputByConversation[kept]?.currentInput,
+		useConversationInputStore.getState().inputByConversation[kept]
+			?.currentInput,
 		`text for ${kept}`,
 		"a key that was not named is untouched",
 	);
@@ -1282,7 +1289,11 @@ const heldComposerRow = () => ({
 	replies: [],
 	attachments: [],
 	pendingText: "Can you check our google drive",
-	returned: { text: "Can you check our google drive", chipIds: [], replyIds: [] },
+	returned: {
+		text: "Can you check our google drive",
+		chipIds: [],
+		replyIds: [],
+	},
 });
 
 test("the sweep resolves a delivered claim nobody visits, and the message leaves the composer", async () => {
@@ -1337,7 +1348,14 @@ test("a sweep that does not find the message leaves the claim and its retry mate
 	globalThis.__canonicalRequest = async (request) => {
 		calls.push(request);
 		return {
-			entries: [{ id: "ffffffffffffffffffffffffffffffff", ts: 2, type: "user", payload: {} }],
+			entries: [
+				{
+					id: "ffffffffffffffffffffffffffffffff",
+					ts: 2,
+					type: "user",
+					payload: {},
+				},
+			],
 			has_more: false,
 			cursor_missing: false,
 		};
@@ -1353,7 +1371,8 @@ test("a sweep that does not find the message leaves the claim and its retry mate
 	assert.equal(row.admissionAttempted, true);
 	assert.match(row.error, /Couldn't confirm your message was sent\./);
 	assert.equal(
-		useConversationInputStore.getState().inputByConversation[HELD_KEY]?.pendingText,
+		useConversationInputStore.getState().inputByConversation[HELD_KEY]
+			?.pendingText,
 		"Can you check our google drive",
 		"and the retry material is untouched",
 	);
@@ -1367,7 +1386,10 @@ test("a session whose history cannot be read resolves nothing", async () => {
 	};
 	const outcome = await resolveHeldSendsFromServer();
 	assert.deepEqual(outcome, { visited: 1, resolved: 0 });
-	assert.equal(store.getState().drafts[HELD_KEY].submittedText, "Can you check our google drive");
+	assert.equal(
+		store.getState().drafts[HELD_KEY].submittedText,
+		"Can you check our google drive",
+	);
 });
 
 test("the sweep's claim set is the unsettled claims that have a session to ask", () => {
