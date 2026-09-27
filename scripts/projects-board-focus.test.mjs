@@ -6,19 +6,30 @@ import { JSDOM } from "jsdom";
 import React, { act } from "react";
 
 /*
- * WHERE THE CARET GOES AFTER A CARD'S STATUS MOVE (UX round 1, U2).
+ * WHERE THE CARET GOES AFTER A CARD'S STATUS MOVE (UX round 1 U2; the pin that
+ * round 2's Q-2/Q-2 proved was measuring the wrong tree).
  *
- * WHAT IS AND IS NOT EVIDENCE HERE. jsdom has no layout engine and no IPC:
- * what this file asserts is the DOM focus contract around the card's ⋯
- * trigger — the caret parks on it, a move's `busy` window (which DISABLES the
- * control and so blurs it) drops the caret to `<body>` exactly as the UX round
- * measured in the real app, and the re-enable hands it back. The app-level half
- * (the popover/menu rendering, the writes themselves) is the sweep's
- * play-driven board frames and QA's pass.
+ * WHY THIS FILE WAS REWRITTEN. Round 1 pinned a card-local effect: on the busy
+ * edge, focus the trigger the card held. The pin passed and the LIVE app still
+ * lost the caret, because a status move RE-PARENTS the card into another column
+ * - React unmounts the old `li` and mounts a new one, so by the time the write
+ * settles the instance that pressed the trigger is gone and its ref points at a
+ * DETACHED node. The round-1 harness never relocated the card, so it asserted a
+ * contract the product could not keep (QA round 2, Q-2).
  *
- * MODELLED ON `browser-tab-strip-focus.test.mjs`: the shipped component, its
- * own effects, jsdom, and a generated harness — a stand-in component here
- * would assert the stand-in.
+ * WHAT THIS FILE ASSERTS NOW, against the SHIPPED component and the shipped
+ * `useMoveFocusHandoff` the page wires: the relocation really detaches the old
+ * trigger; the relocated card does NOT grab the caret when it mounts; and the
+ * page's hand-off - called after the listing settles - lands the caret on the
+ * NEW trigger in the new column. A later render that moves nothing must not
+ * steal it back.
+ *
+ * THE HARNESS IS THE PAGE'S SEQUENCE, not a stand-in for it: `beginMove` is
+ * the write plus the refetched listing re-parenting the card (`movingKeys`
+ * turning on and the status changing), `settleMove` is the write settling, and
+ * `handOff` is what `projects-page.tsx`'s `moveTo` does once its refetch
+ * resolves. Modelled on `browser-tab-strip-focus.test.mjs`: jsdom, the shipped
+ * modules, a generated harness.
  */
 
 // React DOM feature-detects input events at import time, so the document has to
@@ -63,7 +74,7 @@ import { createElement, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
-import { ProjectBoard } from "./src/renderer/src/features/projects/components/project-board";
+import { ProjectBoard, useMoveFocusHandoff } from "./src/renderer/src/features/projects/components/project-board";
 
 const PROJECT = {
 	id: "p1",
@@ -95,10 +106,26 @@ export function mount(container) {
 		defaultOptions: { queries: { retry: false } },
 	});
 	const Harness = () => {
+		const [projects, setProjects] = useState([PROJECT]);
 		const [moving, setMoving] = useState([]);
-		api = { setMoving };
+		const handOff = useMoveFocusHandoff();
+		api = {
+			/* The write goes in flight AND the refetched listing re-parents the
+			 * card: React unmounts the old li and mounts one in the paused
+			 * column. */
+			beginMove: () => {
+				setMoving(["p1"]);
+				setProjects((current) => [{ ...current[0], status: "paused" }]);
+			},
+			/* The write settles: the trigger re-enables. */
+			settleMove: () => setMoving([]),
+			/* What the page does once its refetch resolves. */
+			handOff: () => handOff("p1"),
+			/* A render that moves nothing. */
+			noop: () => setProjects((current) => [...current]),
+		};
 		return createElement(ProjectBoard, {
-			projects: [PROJECT],
+			projects,
 			nowMs: Date.now(),
 			onOpen: () => {},
 			onEdit: () => {},
@@ -153,6 +180,8 @@ function caret() {
 	return `${el.tagName} ${el.getAttribute("aria-label") ?? ""}`.trim();
 }
 
+const TRIGGER = "BUTTON Actions for payments-migration";
+
 async function open() {
 	const container = document.getElementById("root");
 	container.innerHTML = "";
@@ -169,11 +198,20 @@ async function open() {
 		focusTrigger: async () => {
 			await act(() => trigger()?.focus());
 		},
-		setBusy: async (keys) => {
-			await act(() => api.setMoving(keys));
-		},
 		/** Where a browser's disable-blur leaves the caret: off the control. */
 		focusOutside: () => document.getElementById("outside")?.focus(),
+		beginMove: async () => {
+			await act(() => api.beginMove());
+		},
+		settleMove: async () => {
+			await act(() => api.settleMove());
+		},
+		handOff: async () => {
+			await act(() => api.handOff());
+		},
+		noop: async () => {
+			await act(() => api.noop());
+		},
 		caret,
 		trigger,
 		unmount: async () => {
@@ -183,40 +221,50 @@ async function open() {
 	};
 }
 
-test("a move's busy window drops the caret to body and the re-enable hands it back", async () => {
+test("a status move lands the caret on the trigger in the NEW column, and nothing grabs it on the way", async () => {
 	const view = await open();
 	await view.focusTrigger();
-	assert.equal(view.caret(), "BUTTON Actions for payments-migration");
-	/*
-	 * The write goes in flight and the trigger disables itself. JSDOM DOES NOT
-	 * BLUR A DISABLED CONTROL (a browser does — the UX round measured the caret
-	 * on `document.body`), so the drop is stated here rather than inherited:
-	 * blur is exactly what the browser did to this control.
-	 */
-	await view.setBusy(["p1"]);
-	/*
-	 * JSDOM KEEPS FOCUS ON A DISABLED CONTROL (it refuses to blur it); a
-	 * browser blurs it, which is the UX round's measured drop to
-	 * `document.body`. The drop is therefore STATED — the caret moves where
-	 * the browser put it — and the assertion under test is the recovery.
-	 */
+	const old = view.trigger();
+	assert.ok(old, "the card has a menu trigger");
+	assert.equal(view.caret(), TRIGGER);
+
+	// THE MOVE: the write is in flight and the refetched listing re-parents the
+	// card. React DETACHES the node the caret was on - this is the relocation
+	// the round-1 pin never performed.
+	await view.beginMove();
+	assert.equal(
+		old.isConnected,
+		false,
+		"the move must re-parent the card (detaching the old trigger)",
+	);
+	// The relocated card must NOT take the caret when it mounts: nothing
+	// focuses it until the page hands the caret back. (This is the reviewer's
+	// guard-removal mutation, pinned.)
+	assert.notEqual(
+		view.caret(),
+		TRIGGER,
+		"the card must not grab the caret when it mounts in its new column",
+	);
+
+	// The listing settles and the page hands the caret back.
+	await view.settleMove();
+	await view.handOff();
+	assert.equal(
+		view.caret(),
+		TRIGGER,
+		"the hand-off must land the caret on the trigger's new node",
+	);
+	const fresh = view.trigger();
+	assert.ok(fresh && fresh !== old && fresh.isConnected);
+
+	// A later render that moves nothing must not steal it back.
 	view.focusOutside();
 	assert.equal(view.caret(), "INPUT");
-	// A second render INSIDE the spell must not grab it early: the effect keys
-	// off the busy EDGE, not on every render while a write is out.
-	await view.setBusy(["p1"]);
+	await view.noop();
 	assert.equal(
 		view.caret(),
 		"INPUT",
-		"still-in-flight must not grab the caret back",
-	);
-	// The write settles with no error: the trigger re-enables, and the effect
-	// returns the caret to the control the user pressed.
-	await view.setBusy([]);
-	assert.equal(
-		view.caret(),
-		"BUTTON Actions for payments-migration",
-		"the re-enable must hand the caret back",
+		"an unrelated render must not steal the caret",
 	);
 	await view.unmount();
 });

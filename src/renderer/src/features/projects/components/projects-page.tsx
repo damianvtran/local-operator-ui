@@ -47,7 +47,7 @@ import {
 	useUpdateProject,
 } from "../hooks/use-projects-queries";
 import { projectStatusMeta } from "../project-model";
-import { ProjectBoard } from "./project-board";
+import { ProjectBoard, useMoveFocusHandoff } from "./project-board";
 import { ProjectDeleteDialog } from "./project-delete-dialog";
 import { ProjectDetailScreen } from "./project-detail";
 import { ProjectFormDialog } from "./project-form-dialog";
@@ -91,6 +91,8 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 	const [view, setView] = useState<ProjectsView>(() => readProjectsView());
 	const [editing, setEditing] = useState<DesktopProject | null>(null);
 	const [deleting, setDeleting] = useState<DesktopProject | null>(null);
+	/* The caret's hand-back after a status move; see `moveTo` and the hook. */
+	const handOffFocus = useMoveFocusHandoff();
 	const projects = list.data ?? [];
 	const details = useProjectMilestones(
 		view === "timeline" ? projects.map((project) => project.id) : [],
@@ -117,8 +119,19 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 				fields: { status: status as DesktopProjectStatus },
 			},
 			{
-				onSuccess: () =>
-					showSuccessToast(`Moved to ${projectStatusMeta(status).label}`),
+				onSuccess: () => {
+					showSuccessToast(`Moved to ${projectStatusMeta(status).label}`);
+					/*
+					 * THE CARET COMES BACK AFTER THE LIST SETTLES, from here rather than
+					 * from the card: the refetch re-parents the card into its new column,
+					 * which DETACHES the trigger the user pressed (UX round 2, Q-2/U2 -
+					 * the card-local effect restored focus to a detached node and the
+					 * caret fell to `<body>`). The refetch's resolution is the settle
+					 * signal, and `useMoveFocusHandoff` focuses the trigger wherever the
+					 * card now lives.
+					 */
+					void list.refetch().then(() => handOffFocus(project.id));
+				},
 			},
 		);
 	};

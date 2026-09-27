@@ -70,7 +70,9 @@ const THREE: DesktopProject[] = [
 		estimate: 13,
 		milestones_completed: 2,
 		milestones_total: 5,
-		sessions: 3,
+		/* Four, matching `DETAIL.project.sessions`: the door's count and the
+		 * drawer's rows are one fact on two surfaces (design round 2, D11). */
+		sessions: 4,
 		live_sessions: 2,
 		progress_stale: false,
 		progress_updated_at: FIXTURE_NOW_MS / 1000 - 2 * HOUR_S,
