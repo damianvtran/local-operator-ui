@@ -1465,6 +1465,58 @@ const STAMP_BINDING_NOTES = [
 	 * is owed the pair for, and the one this list is what holds them to.
 	 */
 	"foldOntoE885227046Note",
+	/*
+	 * AND THIS BRANCH'S OWN: the pending-echo placement fix moves BOTH trees this
+	 * file binds - `src/` for `withTimeOrder`'s load-window case and the
+	 * `provisional` field it reads, `scripts/` for the reducer cases that pin the
+	 * page and seed doors plus the `localEcho` reading the open rig carries - and
+	 * rewrites no frame of the sweep, so a reader is owed the two values it binds
+	 * and the reason no still was owed.
+	 */
+	"pendingEchoRestampNote",
+	/*
+	 * AND THIS REMEDIATION'S OWN: it states the pair this round re-derives
+	 * (`src/` for the tail block that places a pending send against every row
+	 * that lands while it is unresolved, `scripts/` for the pins across the
+	 * doors and the rig's `localEcho` drop) and the failing-first reading at
+	 * the tip.
+	 */
+	"pendingEchoRemediationNote",
+	/*
+	 * AND THE FOLD'S OWN: its subject IS this file's binding too - the fold onto
+	 * a moved `origin/main` re-derives the pair at the folded tip and reads it
+	 * back from the staged index, so a reader is owed the check rather than the
+	 * prose.
+	 */
+	"pendingEchoRemediationFoldNote",
+	/*
+	 * AND THE SECOND FOLD'S OWN: its subject IS this file's binding too - the
+	 * fold onto the moved `origin/main` after #559 re-derives the pair at the
+	 * folded tip and reads it back from the staged index, so a reader is owed
+	 * the check rather than the prose.
+	 */
+	"pendingEchoRemediationSecondFoldNote",
+	/*
+	 * AND THE THIRD FOLD'S OWN: same shape again - the fold onto the moved
+	 * `origin/main` after #553 re-derives the pair at the folded tip and reads
+	 * it back from the staged index, so a reader is owed the check rather than
+	 * the prose.
+	 */
+	"pendingEchoRemediationThirdFoldNote",
+	/*
+	 * AND THE FOURTH FOLD'S OWN: same shape again - the fold onto the moved
+	 * `origin/main` after #576/#544/#561 re-derives the pair at the folded tip
+	 * and reads it back from the staged index, so a reader is owed the check
+	 * rather than the prose.
+	 */
+	"pendingEchoRemediationFourthFoldNote",
+	/*
+	 * AND THE FIFTH FOLD'S OWN: same shape again - the fold onto the moved
+	 * `origin/main` after #571 re-derives the pair at the folded tip and reads
+	 * it back from the staged index, so a reader is owed the check rather than
+	 * the prose.
+	 */
+	"pendingEchoRemediationFifthFoldNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2081,6 +2133,32 @@ const BRANCH_RECORDS = [
 	 * drop it first, the same reason this list exists.
 	 */
 	"foldOntoE885227046Note",
+	/*
+	 * Grown by the pending-echo lane: its fix, its round-1 remediation and its
+	 * two folds each wrote a top-level record. The first fold registered them
+	 * with the stamp-binding list only, so a fold that resolved this file from
+	 * main's copy could have dropped them with nothing failing; this
+	 * registration closes that hole for the records the branch is carrying.
+	 */
+	"pendingEchoRestampNote",
+	"pendingEchoRemediationNote",
+	"pendingEchoRemediationFoldNote",
+	"pendingEchoRemediationSecondFoldNote",
+	/*
+	 * And the third fold's record rides beside the two above - each fold writes
+	 * one, and the same completeness reason stands.
+	 */
+	"pendingEchoRemediationThirdFoldNote",
+	/*
+	 * And the fourth fold's record rides beside them - each fold writes one, and
+	 * the same completeness reason stands.
+	 */
+	"pendingEchoRemediationFourthFoldNote",
+	/*
+	 * And the fifth fold's record rides beside them - each fold writes one, and
+	 * the same completeness reason stands.
+	 */
+	"pendingEchoRemediationFifthFoldNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
