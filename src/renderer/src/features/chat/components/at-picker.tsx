@@ -32,10 +32,16 @@
  * from the field the user is typing in.
  */
 
+import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { FC, KeyboardEvent } from "react";
 import {
+	Fragment,
 	useCallback,
 	useEffect,
 	useId,
@@ -44,6 +50,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import type { DesktopProject } from "../../../../../shared/desktop-control-contract";
 import {
 	AT_ROWS_MIN,
 	AT_ROW_PITCH,
@@ -62,6 +69,9 @@ import {
 	atDescendTargets,
 	descendRows,
 	interleaveDescend,
+	mergeProjectRows,
+	projectAtRows,
+	projectSectionRows,
 	rankAtRows,
 	rowsFromListing,
 } from "./at-rank";
@@ -351,10 +361,81 @@ export function useAtPicker({
 		};
 	}, [available, descendKey, cwd]);
 
-	const rows = useMemo(
+	/*
+	 * THE PROJECTS SECTION, fetched once per picker opening.
+	 *
+	 * `token !== null` is the "picker is up" fact available at this point in the
+	 * hook (the token exists while the caret is inside it, across every keystroke),
+	 * and it is the only trigger allowed to reach the network: a fetch per
+	 * keystroke would re-dial the store for a list that changes at human speed,
+	 * and the fetch per open is what the design asks for. `projectsRequested` also
+	 * carries the two gates — a backend that does not advertise `projects` and a
+	 * picker that is not available at all (no bridge, or references refused) — so
+	 * an older backend's popup is the surface this app shipped before: no section,
+	 * no header, no extra IPC.
+	 *
+	 * A FAILED READ IS SILENT, deliberately: the picker's job is files, the
+	 * project section is a convenience, and a banner in a one-row list region over
+	 * a store the user may not even have opened would be a louder surface for this
+	 * than for the listing's own failure. The console carries the raw reason, the
+	 * same rule `reportListingError` states for the listing's syscall detail.
+	 */
+	const capabilities = useDesktopCapabilities();
+	const projectsEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"projects",
+		1,
+	);
+	const [projectRows, setProjectRows] = useState<AtRow[]>([]);
+	const projectsRequested = token !== null && available && projectsEnabled;
+	useEffect(() => {
+		if (!projectsRequested) {
+			setProjectRows([]);
+			return;
+		}
+		let cancelled = false;
+		void desktopResult<{ projects: DesktopProject[] }>({ op: "projects.list" })
+			.then((result) => {
+				if (!cancelled) setProjectRows(projectAtRows(result.projects));
+			})
+			.catch((error: unknown) => {
+				if (cancelled) return;
+				setProjectRows([]);
+				console.warn(
+					"[mentions] could not list projects:",
+					error instanceof Error ? error.message : error,
+				);
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, [projectsRequested]);
+
+	const fileRows = useMemo(
 		() => interleaveDescend(ranked, children),
 		[ranked, children],
 	);
+
+	/*
+	 * THE MERGED LIST, projects first.
+	 *
+	 * The section is offered only at the ROOT listing (`dirPart === ""`): a user
+	 * who has drilled into `@src/` is inside a directory, and project references
+	 * are not entries of it — offering them there would put a row in a list that
+	 * cannot contain it. Within the section, `projectSectionRows` decides which
+	 * rows the query offers (empty query and the `project:` namespace included),
+	 * and the file half is exactly `interleaveDescend`'s answer, unchanged.
+	 *
+	 * The combined list is bounded by the same `AT_ROW_LIMIT` the file ranking
+	 * uses, so one bound governs the candidate set however it was composed; with
+	 * the section's rows at the head, the bound can only clip file rows in a
+	 * listing that was already at the cap.
+	 */
+	const rows = useMemo(() => {
+		const projects =
+			dirPart === "" ? projectSectionRows(projectRows, nameQuery) : [];
+		return mergeProjectRows(projects, fileRows);
+	}, [projectRows, fileRows, dirPart, nameQuery]);
 
 	/*
 	 * Esc latches PER TOKEN, by the token's own text and start — the slash popup's
@@ -692,6 +773,19 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 	 */
 	const count = atCount(Math.min(state.rows.length, budget), state.entries);
 
+	/*
+	 * WHETHER THE SECTION HEADERS ARE DRAWN, which is exactly when the projection
+	 * carries a projects section. Two headers over one section is chrome — and a
+	 * lone "Files" header over the same listing the directory strip already names
+	 * is chrome twice — so the file-only popup renders byte-for-byte the surface
+	 * this app shipped before Projects existed, which is also what makes the
+	 * before/after evidence pair a fair comparison. The `aria-label` stays
+	 * `"Files"` for the region, unchanged: it is the name the `mentions` driver
+	 * scene and the stories query the listbox by, and the sections are labelled
+	 * in-region by the header rows themselves.
+	 */
+	const showSections = state.rows.some((row) => row.section === "project");
+
 	return (
 		/* biome-ignore lint/a11y/useFocusableInteractive: the textarea keeps focus; the listbox is reached through aria-activedescendant, so it is not in the tab order. */
 		<div
@@ -764,89 +858,124 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 				) : (
 					<ul>
 						{state.rows.map((row, index) => (
-							/* biome-ignore lint/a11y/useFocusableInteractive: focus stays in the composer textarea; the active option is announced through aria-activedescendant. */
-							/* biome-ignore lint/a11y/useKeyWithClickEvents: the keyboard is handled on the textarea, not on the option. */
-							<li
-								key={row.path}
-								id={`${state.listId}-${atRowId(row)}`}
-								ref={index === state.active ? activeRef : null}
-								// biome-ignore lint/a11y/useFocusableInteractive: focus stays in the composer textarea; the active option is announced through aria-activedescendant.
-								// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a combobox option cannot be a native <option> here.
-								// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox option cannot be a native <option>.
-								role="option"
-								aria-selected={index === state.active}
-								className={cn(
-									"relative flex cursor-default items-baseline gap-3 px-3 py-2",
-									index === state.active
-										? cn(
-												"bg-accent-wash",
-												// The row Enter will apply was carried by hue alone in the
-												// slash popup — the wash measures 1.000:1 against its own
-												// ground in `dune` — so the 2px accent bar on the leading
-												// edge is the second, non-luminance signal, and it costs
-												// no layout.
-												"before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent",
-											)
-										: "bg-transparent",
-								)}
-								onMouseDown={(event) => {
-									// Focus, not the pick: preventing the default keeps the
-									// textarea's caret and draft position, which a focus change to
-									// the row would drop before the handler could read them.
-									event.preventDefault();
-								}}
-								onClick={() => onPick(row)}
-								onMouseEnter={() => state.setActiveHover(index)}
-							>
-								{/*
-								 * THE NAME YIELDS, and the design's `shrink-0` is the reason this
-								 * comment is longer than the class it explains. A name wider than the
-								 * region made the whole ROW wider than the region, which summoned a
-								 * horizontal scrollbar and cost the cap above a row's worth of its
-								 * whole-row arithmetic (QA round 2, Q-5: a 200-character name
-								 * measured `scrollWidth` 789 against a 242px `clientWidth`).
-								 *
-								 * The shape is the design's own PRIORITY ORDER rather than its literal
-								 * `shrink-0`: the name is the thing being scanned, so it is the last
-								 * column to give — the parent column beside it is `flex-1 min-w-0`
-								 * `truncate` and already yields, and with `nowrap` and a zero minimum
-								 * width this one keeps every pixel until the row cannot fit at all and
-								 * only then ellipsises. A row that fits is byte-identical to the
-								 * frames taken before it, which is every committed frame at every
-								 * width: only a name too long for the region changes.
-								 */}
-								<span className="min-w-0 shrink truncate font-mono text-body-sm text-ink">
-									{row.name}
-								</span>
-								{/*
-								 * The parent column, relative to the listing — `./` for the entry in
-								 * the directory being listed, `src/components/` for one reached by
-								 * descending. `ink-muted` rather than `ink-dim`: this is a NEW long
-								 * string and `ink-dim` on `elevated` clears its floor by 0.01
-								 * (`dracula`), which is a margin no new string has any business
-								 * starting from.
-								 *
-								 * SUPPRESSED WHERE IT EQUALS THE HEADER, and suppressed rather than
-								 * removed, so the three-column row geometry is identical in every
-								 * state (design round 1, D6): a plain listing printed `./` on all
-								 * seven rows under a header that already said `./`, and
-								 * `caret-inside-token` printed `src/components/` three times on one
-								 * screen. The column EARNS its place in the descend state, where it
-								 * is what separates `src/` rows from `src/components/` rows, which
-								 * is why the fix is a suppression and not a deletion.
-								 */}
-								<span className="min-w-0 flex-1 truncate font-mono text-body-sm text-ink-muted">
-									{row.parent === state.header ? null : row.parent}
-								</span>
-								{/*
-								 * The type tag. `Directory` rather than the terminal's `Dir`: this
-								 * app's own composer already says "Working directory", and the tag
-								 * answers the one question a path cannot.
-								 */}
-								<span className="shrink-0 text-meta text-ink-dim">
-									{row.directory ? "Directory" : "File"}
-								</span>
-							</li>
+							<Fragment key={row.path}>
+								{showSections &&
+									(index === 0 ||
+										state.rows[index - 1].section !== row.section) && (
+										/*
+										 * A section header, as a NON-SELECTABLE row in the region: the
+										 * sections are separated inside one listbox, and `state.rows`
+										 * (the selectable set) is untouched, so every index the key
+										 * contract walks — `atKeyIntent`, the active-row arithmetic,
+										 * `aria-activedescendant` — is the same list it always was.
+										 */
+										<li
+											role="presentation"
+											className="px-3 pt-2 pb-1 text-meta text-ink-muted"
+										>
+											{row.section === "project" ? "Projects" : "Files"}
+										</li>
+									)}
+								{/* biome-ignore lint/a11y/useFocusableInteractive: focus stays in the composer textarea; the active option is announced through aria-activedescendant. */}
+								{/* biome-ignore lint/a11y/useKeyWithClickEvents: the keyboard is handled on the textarea, not on the option. */}
+								<li
+									key={row.path}
+									id={`${state.listId}-${atRowId(row)}`}
+									ref={index === state.active ? activeRef : null}
+									// biome-ignore lint/a11y/useFocusableInteractive: focus stays in the composer textarea; the active option is announced through aria-activedescendant.
+									// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a combobox option cannot be a native <option> here.
+									// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox option cannot be a native <option>.
+									role="option"
+									aria-selected={index === state.active}
+									className={cn(
+										"relative flex cursor-default items-baseline gap-3 px-3 py-2",
+										index === state.active
+											? cn(
+													"bg-accent-wash",
+													// The row Enter will apply was carried by hue alone in the
+													// slash popup — the wash measures 1.000:1 against its own
+													// ground in `dune` — so the 2px accent bar on the leading
+													// edge is the second, non-luminance signal, and it costs
+													// no layout.
+													"before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent",
+												)
+											: "bg-transparent",
+									)}
+									onMouseDown={(event) => {
+										// Focus, not the pick: preventing the default keeps the
+										// textarea's caret and draft position, which a focus change to
+										// the row would drop before the handler could read them.
+										event.preventDefault();
+									}}
+									onClick={() => onPick(row)}
+									onMouseEnter={() => state.setActiveHover(index)}
+								>
+									{/*
+									 * THE NAME YIELDS, and the design's `shrink-0` is the reason this
+									 * comment is longer than the class it explains. A name wider than the
+									 * region made the whole ROW wider than the region, which summoned a
+									 * horizontal scrollbar and cost the cap above a row's worth of its
+									 * whole-row arithmetic (QA round 2, Q-5: a 200-character name
+									 * measured `scrollWidth` 789 against a 242px `clientWidth`).
+									 *
+									 * The shape is the design's own PRIORITY ORDER rather than its literal
+									 * `shrink-0`: the name is the thing being scanned, so it is the last
+									 * column to give — the parent column beside it is `flex-1 min-w-0`
+									 * `truncate` and already yields, and with `nowrap` and a zero minimum
+									 * width this one keeps every pixel until the row cannot fit at all and
+									 * only then ellipsises. A row that fits is byte-identical to the
+									 * frames taken before it, which is every committed frame at every
+									 * width: only a name too long for the region changes.
+									 */}
+									<span className="min-w-0 shrink truncate font-mono text-body-sm text-ink">
+										{row.name}
+									</span>
+									{/*
+									 * The parent column, relative to the listing — `./` for the entry in
+									 * the directory being listed, `src/components/` for one reached by
+									 * descending. `ink-muted` rather than `ink-dim`: this is a NEW long
+									 * string and `ink-dim` on `elevated` clears its floor by 0.01
+									 * (`dracula`), which is a margin no new string has any business
+									 * starting from.
+									 *
+									 * SUPPRESSED WHERE IT EQUALS THE HEADER, and suppressed rather than
+									 * removed, so the three-column row geometry is identical in every
+									 * state (design round 1, D6): a plain listing printed `./` on all
+									 * seven rows under a header that already said `./`, and
+									 * `caret-inside-token` printed `src/components/` three times on one
+									 * screen. The column EARNS its place in the descend state, where it
+									 * is what separates `src/` rows from `src/components/` rows, which
+									 * is why the fix is a suppression and not a deletion.
+									 */}
+									{row.section === "project" ? (
+										/*
+										 * A project row's middle column is its DESCRIPTION, where a file
+										 * row's is its parent directory: prose rather than a path, so it
+										 * is not mono, and empty (not a placeholder) when the store has
+										 * none to show.
+										 */
+										<span className="min-w-0 flex-1 truncate text-body-sm text-ink-muted">
+											{row.detail ?? null}
+										</span>
+									) : (
+										<span className="min-w-0 flex-1 truncate font-mono text-body-sm text-ink-muted">
+											{row.parent === state.header ? null : row.parent}
+										</span>
+									)}
+									{/*
+									 * The type tag. `Directory` rather than the terminal's `Dir`: this
+									 * app's own composer already says "Working directory", and the tag
+									 * answers the one question a path cannot.
+									 */}
+									<span className="shrink-0 text-meta text-ink-dim">
+										{row.section === "project"
+											? "Project"
+											: row.directory
+												? "Directory"
+												: "File"}
+									</span>
+								</li>
+							</Fragment>
 						))}
 					</ul>
 				)}
