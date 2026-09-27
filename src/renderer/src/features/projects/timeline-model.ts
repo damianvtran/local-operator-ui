@@ -305,12 +305,21 @@ export function timelineTicks(
 		ticks.push({ dayMs, label, major });
 	};
 	if (tier === "day") {
+		let afterMonthStart = false;
 		for (let day = startMs; day <= endMs; day += DAY_MS) {
 			const { day: dayOfMonth, month } = utcParts(day);
 			if (dayOfMonth === 1) {
 				// The month's own name, NOT "Sep 1": at 24px/day the longer form
 				// runs into the next day's label (measured in the first capture).
 				push(day, MONTHS[month - 1], true);
+				afterMonthStart = true;
+			} else if (afterMonthStart) {
+				// AND THE DAY BESIDE IT STANDS DOWN - the TUI's rule for a label
+				// that would collide ("a label is placed only when it fits with a
+				// blank cell beside it"): "Sep" + "2" at 24px/day reads as one
+				// token, measured in the second capture's overdue frame.
+				push(day, "", false);
+				afterMonthStart = false;
 			} else {
 				push(day, String(dayOfMonth), false);
 			}
