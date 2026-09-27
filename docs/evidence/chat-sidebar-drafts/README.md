@@ -7,7 +7,7 @@ The operator's two reports (2026-09-26), which this set photographs:
 2. the sidebar's `Draft:` rows had no way to be removed: *"Each one should have a
    deletion on hover and also a subtle clear all UX"*.
 
-The store-side half of (1) is asserted by `scripts/canonical-chat.test.mjs` (the
+The store-side half of (1) is asserted by `scripts/drafts-clear-on-send.test.mjs` (the
 pre-send composer record retired at `finishDraft`, the launch sweep, the
 delivered-only resolution) and the sidebar half by
 `scripts/chat-sidebar-drafts.test.mjs`. This set is the rendered half: the rows,
@@ -103,7 +103,7 @@ moment.
 - **Not the sweep's own resolution.** The launch sweep (`draft-resolution.ts`)
   reads a session's history tail from a live daemon; its delivered / silent /
   read-failure arms are asserted at the store level in
-  `scripts/canonical-chat.test.mjs`, not photographed here.
+  `scripts/drafts-clear-on-send.test.mjs`, not photographed here.
 - **Not the composer's relaunch.** The operator's "coming back to a New chat
   with a team found the old message" is a store-level claim (the same suite),
   which is the shape that can assert it without a turn: the rendered half of
