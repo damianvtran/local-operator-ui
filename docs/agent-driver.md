@@ -360,6 +360,7 @@ rule:
   reading taken mid-transition describes a layout that was never on screen - measured:
   chat 942 / canvas 179 at 1380 in one run against the settled 560/560 the frame shows.
 
+
 - **`route-tops`** — the top of every route the shell draws: `/chat` as the control
   (a route the change it was written for does not touch) and `/settings`,
   `/settings?section=integrations`, `/agents`, `/agent-hub` and `/schedules`, each
@@ -389,13 +390,15 @@ rule:
   the Windows/Linux runners that render it. The evidence set is
   `docs/evidence/hit-zones/`, force-tracked run logs included.
 
-- **`sidebar-sections`** — the one sidebar's two sections, Agents + Teams and
-  Chats, both drawn on a column nobody has touched, and the draggable boundary
-  between them. It seeds an agent, a team and eight chats through the backend's
-  own routes, then photographs the default, two drags, both floors (72px each),
-  a keyboard resize, a relaunch that must redraw the same persisted height, and the
-  bubbled brand mark in the brand row, the 56px strip and the empty state, in both
-  brand palettes. **Requires `--backend`** (the sections are gated on the catalogue).
+- **`sidebar-sections`** — RETIRED with the split's removal (agent review
+  round 1, R2; QA's Q3). It walked the sidebar's draggable boundary, its two
+  collapse controls, the persisted height a relaunch had to restore and the
+  bubbled brand mark, and the merged panel draws none of the split's furniture -
+  one scroller, no boundary, no collapse - so the scene could only throw at its
+  own preconditions. `sidebar-split.ts` and `docs/design/sidebar-sections.md`
+  remain the feature's record, and the frames it took remain the record of the
+  trees they were taken on.
+
 - **`canvas-freshness`** — the canvas document kept current with the file on
   disk. The scene writes the file ITSELF, from outside the app, which is the only
   way to produce the event the feature exists for, and it sets the mtime to a
