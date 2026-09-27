@@ -138,6 +138,24 @@ test("a partial run that adds a surface satisfies the guard", () => {
 	assert.ok(guardAccepts(root, manifest), "an added surface must be accounted");
 });
 
+test("counts a fold hand-wrote as JSON strings still add, instead of concatenating", () => {
+	/*
+	 * Measured on the trace-label pass (2026-09-27): `frames` and
+	 * `partialCapture.refreshedFrames` had been hand-resolved by folds as JSON
+	 * STRINGS (`"9718"`, `"7929"`), so one narrowed run's `previous + added`
+	 * produced `"97184"` and `"79294"` - and the string form then flipped
+	 * `check-evidence.mjs`'s `typeof === "number"` gate to skipped, so the drift
+	 * was silent in both directions. A legacy string is COERCED, never
+	 * concatenated: what this function returns is a count.
+	 */
+	const root = tree({ "chat-trace/conversation": 2, "chat-new/states": 2 });
+	const manifest = partialManifest({ frames: "2", supplementary: [] }, root, [
+		"chat-new/states",
+	]);
+	assert.equal(manifest.frames, 4);
+	assert.equal(typeof manifest.frames, "number");
+});
+
 test("a partial run that only refreshes does not move the count", () => {
 	// Frames overwritten in a pre-existing directory are ones the manifest
 	// already covers; counting them again would fail the guard from the other
@@ -1533,6 +1551,14 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"meshTabRestampNote",
 	"meshTabRound2RestampNote",
+	/*
+	 * AND THIS LANE'S OWN, the newest top-level record on the branch: its subject
+	 * is this file's binding too - the trace-label mapping moves BOTH trees (the
+	 * op tier and its wiring in `src/`; the suites, the two capture rows and this
+	 * registration in `scripts/`) AND adds two states to two sets whose frames it
+	 * re-captured - so a reader is owed the pair and the four frames it added.
+	 */
+	"traceToolLabelsRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2293,6 +2319,14 @@ const BRANCH_RECORDS = [
 	 * round's own changes writes one, and the same completeness reason stands.
 	 */
 	"accountFootRemediationRestampNote",
+	/*
+	 * And by THIS lane, whose note is the newest top-level record on the branch:
+	 * it states the pair this change ships - both trees moved (the op tier and
+	 * its wiring, the suites and the capture rows) and two states added to two
+	 * sets - so a fold that started from main's copy would drop it first, the
+	 * same reason this list exists.
+	 */
+	"traceToolLabelsRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
