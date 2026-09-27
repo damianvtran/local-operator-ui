@@ -438,6 +438,32 @@ export function specUnresolved(
 }
 
 /**
+ * The model the EFFORT QUERY keys on, read THROUGH THE HOLD - the same
+ * `frontend ?? heldFrontend` fallback the strip and the destination pickers
+ * paint from (task-17, F3).
+ *
+ * WHY IT IS ONE FUNCTION rather than two reads at the call site: reading only
+ * `frontend` made every GAP look like the unresolved -> resolved edge the
+ * effort query invalidates for - a gap drops `frontend` to null (the
+ * authoritative snapshot is gone until its replacement lands), so the model
+ * read as `null` for the whole gap and the next snapshot restored it, one
+ * null -> model transition per reconnect, each spending a `commands.entities`
+ * round trip to prove nothing had changed (measured: one refetch per
+ * gap->snapshot cycle). The hold is dropped by every terminal state and by a
+ * real session change, so the fallback cannot keep a stale model alive past
+ * the point where the pane stops describing a stream. Exported, and asserted
+ * in `scripts/session-status.test.mjs`, so the next surface that keys a query
+ * on the model reads the same rule instead of re-deriving it from `frontend`.
+ */
+export function effortQueryModel(
+	frontend: CanonicalFrontendState | null | undefined,
+	heldFrontend: CanonicalFrontendState | null | undefined,
+): string | null {
+	const spec = (frontend ?? heldFrontend)?.effective_model;
+	return specUnresolved(spec) ? null : (spec?.model_id ?? null);
+}
+
+/**
  * `_effort_label`, plus the older-backend degradation the TUI never needs.
  *
  * The TUI reads a live `ModelSpec` object and can rely on every field being
