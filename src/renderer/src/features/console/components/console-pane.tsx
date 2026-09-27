@@ -451,16 +451,20 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 						   applies it, so a mirror mounted later for a surface the user never asked
 						   for finds a zero and leaves the keyboard where it is.
 
-						   THE CLEAR IS DEFERRED ONE MICROTASK, and that is not hedging: the app
-						   mounts its tree inside `React.StrictMode`, whose dev-mode double
-						   invocation runs this mirror's effects, unmounts it and runs them again
-						   inside ONE commit — so an acknowledgement applied synchronously spends the
-						   request on the mount that is immediately discarded and the caret never
-						   lands (measured in the browser harness with StrictMode on: the subscribe
-						   replayed twice and `helperFocused` was false; the shipped build has no
-						   double invocation and lands it). A microtask still clears the token
-						   before any LATER render can mount a mirror, because a lens change is a
-						   different task — which is the property the finding is about. */
+						   THE CLEAR IS DEFERRED ONE MICROTASK, AND THE DEFERRAL IS NOT WHAT PUTS
+						   THE CARET IN THE DEV LOOP — measured, and worth spelling out because
+						   this comment used to claim the opposite. Under `StrictMode` the request
+						   is spent by the mount that is DISCARDED however this clear is
+						   scheduled: the acknowledgement is emitted from that mount's caret
+						   effect before React renders the surviving terminal into state, so no
+						   ordering of this `setFocusRequest` can give the survivor a token to
+						   apply. The half that lands the caret is the mirror's own — it takes
+						   neither the keyboard nor the acknowledgement from a terminal it no
+						   longer holds (the caret effect in `console-mirror.tsx`), and the
+						   StrictMode case in `scripts/console-mirror.test.mjs` is the reading.
+						   What this deferral keeps is the F-1 property the sentence above is
+						   about: the clear still happens before any LATER mount can inherit the
+						   token, because a lens change is a different task. */
 						focusRequest={focusRequest}
 						onFocusTaken={(applied) =>
 							queueMicrotask(() =>

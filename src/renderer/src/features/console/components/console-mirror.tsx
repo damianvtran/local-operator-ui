@@ -145,6 +145,19 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 	const exitRef = useRef(onExit);
 	const settledRef = useRef(onSettled);
 	const focusTakenRef = useRef(onFocusTaken);
+	/**
+	 * THE TERMINAL THIS MOUNT HOLDS RIGHT NOW, which is not always the one an effect
+	 * closure was rendered with.
+	 *
+	 * React can flush a passive effect for a render generation whose terminal the
+	 * component has ALREADY disposed — the dev-mode `StrictMode` double mount does
+	 * exactly that (measured: the effect ran with the terminal its own cleanup had
+	 * just disposed, while the surviving terminal was already constructed and a
+	 * render away from being in state). An effect that acts on a terminal this
+	 * component no longer holds is acting on a released resource, so the caret
+	 * effect below asks this ref rather than trusting its closure.
+	 */
+	const heldTerminalRef = useRef<Terminal | null>(null);
 	exitRef.current = onExit;
 	settledRef.current = onSettled;
 	/*
@@ -272,9 +285,11 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 		};
 		host.addEventListener("copy", onCopy);
 
+		heldTerminalRef.current = term;
 		setTerminal(term);
 		return () => {
 			host.removeEventListener("copy", onCopy);
+			heldTerminalRef.current = null;
 			setTerminal(null);
 			term.dispose();
 		};
@@ -445,8 +460,31 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 	 * acknowledgement removes is the OTHER mount: one carrying a token the user's
 	 * gesture is long finished with, which used to take the keyboard from the composer.
 	 */
-	useEffect(() => {
+	useLayoutEffect(() => {
 		if (!terminal || !focusRequest) return;
+		/*
+		 * ONLY THE TERMINAL THIS MOUNT STILL HOLDS TAKES THE CARET, and this line is the
+		 * difference between a caret and a spent token in the dev loop (`pnpm dev`).
+		 *
+		 * `StrictMode` double-invokes a mount's effects: this effect is flushed once for
+		 * the generation whose `terminal` was the FIRST terminal, then that mount is
+		 * unmounted (its layout cleanup disposes the terminal) and re-created with a
+		 * second one — and the flush for the first generation can still arrive after the
+		 * disposal. Without this guard the effect focuses that DISPOSED terminal and
+		 * acknowledges the request, so the pane clears the token before React renders
+		 * the surviving terminal into state, and the caret never lands on the mirror the
+		 * user is looking at. Measured (dev harness, 5/5): `focusRequest` 1 at the moment
+		 * of the acknowledgement, the discarded terminal `focusCount 1`, the survivor
+		 * `0` — and the pane's own deferral of the clear cannot help, because the
+		 * acknowledgement is emitted before the survivor's render either way.
+		 *
+		 * A released terminal also must not be focused on its own account: it holds no
+		 * subscription and the process behind it is gone, so a focus there is a lie the
+		 * caret then pays for. A terminal that IS still held takes both — the keyboard
+		 * and the acknowledgement — and a request the guard declines is not consumed: it
+		 * is still standing for the re-created mount, which is what lets it land.
+		 */
+		if (heldTerminalRef.current !== terminal) return;
 		terminal.focus();
 		focusTakenRef.current?.(focusRequest);
 	}, [terminal, focusRequest]);
