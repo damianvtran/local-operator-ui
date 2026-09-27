@@ -5974,6 +5974,38 @@ export const STORIES = [
 	["chat-slash-highlight--geometry", 1000, 2600],
 	["chat-slash-highlight--scrolled-parity", 1000, 1000],
 	/*
+	 * THE MESH TAB (`features.peers`), at the app's own size and at the narrow one.
+	 *
+	 * WHY THESE EIGHT STATES AND NOT A HAPPY PATH: the tab's whole job is to answer a
+	 * question about a mesh the reader cannot see, and the states it is met with are
+	 * mostly small ones - one device, no network at all, a peer that stopped
+	 * answering, a relay that is down. A set that photographed only a healthy
+	 * five-node mesh would leave the two states a first-run user actually meets
+	 * (VirginDevice, SingleDevice) unreviewed, and the misconfigured one - which is
+	 * what the tab exists to make obvious - unphotographed.
+	 *
+	 * THE NARROW ROWS ARE THE RESPONSIVE CLAIM, and they are a SEPARATE DIRECTORY for
+	 * the reason the row is separate: `--dir` writes `two-devices-narrow/`, so a
+	 * reader can tell the 1024x768 frame from the 1380x900 one instead of comparing
+	 * two files whose names differ only by theme. 1024x768 is the width the app's own
+	 * sidebar clamps for; the app's OWN FLOOR is 800x600 (`WINDOW_MIN_WIDTH` /
+	 * `WINDOW_MIN_HEIGHT` in `src/main/window-mode.ts`), which the design round captured
+	 * six states at - all hold, and the README names that floor rather than this row.
+	 *
+	 * The list presentation gets its own frame because it is the OTHER way in: a
+	 * canvas cannot sort or search, and a one-device mesh has no edges to draw, so the
+	 * tab ships both and each needs a still.
+	 */
+	["mesh-tab--single-device", 1380, 900],
+	["mesh-tab--two-devices", 1380, 900],
+	["mesh-tab--overlapping-networks", 1380, 900],
+	["mesh-tab--misconfigured", 1380, 900],
+	["mesh-tab--virgin-device", 1380, 900],
+	["mesh-tab--reads-failed", 1380, 900],
+	["mesh-tab--loading", 1380, 900],
+	["mesh-tab--list-view", 1380, 900],
+	["mesh-tab--two-devices", 1024, 768, { dir: "two-devices-narrow" }],
+	/*
 	 * THE NOTICE-BAND FAMILY'S OWN SURFACES (fix/banner-warn-error-consistency-7e4c).
 	 *
 	 * The twelve-theme sweep is what makes a frame comparable with the rest of the
