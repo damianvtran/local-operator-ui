@@ -44,7 +44,7 @@ import {
 import { cn } from "@shared/lib/utils";
 import { MoreHorizontal } from "lucide-react";
 import type { FC } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { DesktopProject } from "../../../../../shared/desktop-control-contract";
 import { openConversation } from "../../chat/open-conversation";
@@ -84,6 +84,37 @@ const COLUMN_NOTE: Record<string, string> = {
 	/* archived has no note on purpose: a note that repeats the label ("Archived
 	 * Archived") is noise, not information (design round 1, D4). */
 };
+
+/**
+ * WHERE THE CARET GOES AFTER A STATUS MOVE (UX round 2, Q-2/U2).
+ *
+ * The card cannot do this itself. A move re-parents the card into another
+ * column, so React unmounts the old `li` and mounts a new one - by the time the
+ * write settles, the instance that pressed the trigger is gone and its ref
+ * points at a DETACHED node, which is why the round-1 card-local effect passed
+ * its jsdom pin and failed in the live app: the pin never relocated the card.
+ *
+ * So the page owns the hand-back: after the listing refetches (the write's own
+ * settle signal), it calls the returned function with the project's id, and the
+ * effect below focuses the trigger wherever the card now lives - one frame
+ * after the re-render that re-parented it, and only when a move actually
+ * finished. It focuses nothing on mount and nothing on an unrelated render:
+ * the pending id is the whole state, and it is cleared once the node is
+ * focused.
+ */
+export function useMoveFocusHandoff(): (projectId: string) => void {
+	const [pending, setPending] = useState<string | null>(null);
+	useEffect(() => {
+		if (!pending) return;
+		const node = document.querySelector<HTMLElement>(
+			`[data-project-menu="${pending}"]`,
+		);
+		if (!node) return; // not re-parented yet; the next render retries
+		node.focus();
+		setPending(null);
+	});
+	return useCallback((projectId: string) => setPending(projectId), []);
+}
 
 export const ProjectBoard: FC<ProjectBoardProps> = ({
 	projects,
@@ -181,20 +212,6 @@ const BoardCard: FC<BoardCardProps> = ({
 	);
 	const overdue = projectOverdue(project, todayUtcMs(nowMs));
 	const age = progressAge(project.progress_updated_at, nowMs);
-	const triggerRef = useRef<HTMLButtonElement>(null);
-	/*
-	 * FOCUS COMES BACK WHEN A MOVE ENDS. The trigger disables itself while the
-	 * write is in flight, and disabling a focused control blurs it - so the
-	 * caret fell to `document.body` and a keyboard user who moved a card lost
-	 * their place (UX round 1, U2). The effect fires the moment `busy` goes
-	 * false, which is the re-enable, so the caret returns to the control the
-	 * user pressed.
-	 */
-	const wasBusy = useRef(busy);
-	useEffect(() => {
-		if (wasBusy.current && !busy) triggerRef.current?.focus();
-		wasBusy.current = busy;
-	}, [busy]);
 	return (
 		<div
 			data-project-name={project.name}
@@ -220,11 +237,14 @@ const BoardCard: FC<BoardCardProps> = ({
 				</button>
 				<DropdownMenu>
 					<DropdownMenuTrigger
-						ref={triggerRef}
+						/* The handoff's own hook, in the `data-project-name` family: the
+						 * page focuses this node by id after a move settles (see
+						 * `useMoveFocusHandoff`). */
+						data-project-menu={project.id}
 						aria-label={`Actions for ${project.name}`}
 						disabled={busy}
 						className={cn(
-							"rounded-sm p-1 text-ink-muted",
+							"shrink-0 rounded-sm p-1 text-ink-muted whitespace-nowrap",
 							"hover:bg-elevated hover:text-ink",
 						)}
 					>
@@ -273,10 +293,10 @@ const BoardCard: FC<BoardCardProps> = ({
 				{overdue && <Badge variant="warning">Overdue</Badge>}
 			</div>
 			<div className="flex items-center justify-between gap-2">
-				<span className="truncate text-meta text-ink-muted">
+				<span className="min-w-0 truncate text-meta text-ink-muted">
 					{boardProgressText(age)}
 				</span>
-				<span className="flex items-center gap-1.5">
+				<span className="flex shrink-0 items-center gap-1.5">
 					{(project.progress_stale || !age) && (
 						<span
 							aria-label={PROGRESS_STALE_LABEL}
@@ -312,7 +332,11 @@ const CardSessionsPopover: FC<{ project: DesktopProject }> = ({ project }) => {
 				data-project-sessions={project.id}
 				aria-label={`Sessions linked to ${project.name}`}
 				className={cn(
-					"rounded-sm px-1 text-meta",
+					/* `whitespace-nowrap` + the row's `shrink-0`: the door is a
+					 * label, not prose - "2 sessions · 2 live" wrapped mid-phrase
+					 * ("2 sessions · 2 / live") when the card got narrow (design
+					 * round 2, D9). The row's left half truncates instead. */
+					"rounded-sm px-1 text-meta whitespace-nowrap",
 					project.live_sessions > 0
 						? "text-success hover:bg-elevated"
 						: "text-ink-muted hover:bg-elevated",
@@ -320,7 +344,18 @@ const CardSessionsPopover: FC<{ project: DesktopProject }> = ({ project }) => {
 			>
 				{linkLabel}
 			</PopoverTrigger>
-			<PopoverContent align="end" className="w-64 p-2">
+			<PopoverContent
+				align="end"
+				/*
+				 * NO PANEL RING (design round 2, D10): the content receives focus on
+				 * open, and the global `:focus-visible` rule then paints the 2px accent
+				 * outline around the whole panel where every other floating surface reads
+				 * as a hairline card. This is the sanctioned suppression - focus lands
+				 * here programmatically and a ring is noise, while the rows inside keep
+				 * their own rings.
+				 */
+				className="w-64 p-2 outline-none"
+			>
 				{detail.isLoading ? (
 					<p className="px-1 py-2 text-meta text-ink-muted">
 						Loading linked sessions…
