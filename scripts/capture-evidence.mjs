@@ -4416,16 +4416,22 @@ export const STORIES = [
 	   test beside `install-install-progress.test.mjs` reads those two numbers
 	   against this tuple so a third copy of the size cannot drift again (design
 	   D15 - a story at one size while the window said another is exactly what the
-	   1380x800 set was). SIX states, because a user can be left in six: the
-	   mounted entry, an indeterminate first frame, the long download, a failure
-	   with a recognised cause, a failure WITHOUT one (the composition the code
-	   calls the common case, whose only specific line is the machine one below the
-	   sentence - design D12), and the settled panel. One frame of DEFAULT was all
-	   this surface had, which is why the failure state could have shipped as a
-	   dialog nobody had looked at. */
+	   1380x800 set was). EIGHT states now, because a user can be left in eight and
+	   two of them had never been photographed: the mounted entry, an indeterminate
+	   first frame, the FIRST phase (`python`, which is the whole of a cold run's
+	   opening minutes and the state a fill-based progress affordance reads as
+	   nothing at all), the long download, the LAST phase (`verify`, whose smoke
+	   probe is the longest runway of any step and the one that can still fail
+	   after a successful pip), a failure with a recognised cause, a failure
+	   WITHOUT one (the composition the code calls the common case, whose only
+	   specific line is the machine one below the sentence - design D12), and the
+	   settled panel. One frame of DEFAULT was all this surface had, which is why
+	   the failure state could have shipped as a dialog nobody had looked at. */
 	["installer-installercontent--default", 640, 480],
 	["installer-installercontent--indeterminate", 640, 480],
+	["installer-installercontent--first-stage", 640, 480],
 	["installer-installercontent--mid-install", 640, 480],
+	["installer-installercontent--verifying", 640, 480],
 	["installer-installercontent--failure", 640, 480],
 	["installer-installercontent--failure-fallback", 640, 480],
 	["installer-installercontent--installed", 640, 480],

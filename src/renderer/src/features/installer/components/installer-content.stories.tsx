@@ -39,9 +39,11 @@ import { InstallPanel } from "./installer-panel";
  * the same component the window uses, with the same props, given the state
  * directly. Nothing here is a mock of the panel; the mock would be the bridge.
  *
- * The five states are the five a user can be left in: the mounted entry, nothing
- * announced yet (indeterminate), the long download (phase 3), the failure (the
- * sentence, the captured line under it, and the Retry), and the moment after
+ * The eight states are the eight a user can be left in: the mounted entry, nothing
+ * announced yet (indeterminate), the first phase with nothing behind it (the
+ * cold run's opening minutes), the long download (phase 3), the last phase with
+ * its smoke probe running, the failure in both compositions (a recognised cause
+ * and the unrecognised one the code calls the common case), and the moment after
  * success.
  */
 const meta: Meta = {
@@ -97,6 +99,28 @@ export const Indeterminate: Story = {
 	render: () =>
 		panel({
 			phase: null,
+			installed: false,
+			failure: null,
+			onCancel: noop,
+			onRetry: noop,
+		}),
+};
+
+/**
+ * The first phase, with nothing finished behind it.
+ *
+ * WHY THIS IS A FRAME AND NOT A COROLLARY OF `MidInstall`. This is the state the
+ * window sits in for the first minutes of a COLD first run - `python` is the
+ * runtime copy, and on a machine that has never had one it is the only phase
+ * whose work is entirely in front of the user. A panel whose progress affordance
+ * is a fill reads NOTHING here (this is the measured first-run frame of the
+ * previous round: an empty track for 2m37s, design D4/UX U9), so the state the
+ * whole design is judged on had no frame at all until this one.
+ */
+export const FirstStage: Story = {
+	render: () =>
+		panel({
+			phase: "python",
 			installed: false,
 			failure: null,
 			onCancel: noop,
@@ -180,6 +204,26 @@ export const FailureFallback: Story = {
 					"ERROR: Could not find a version that satisfies the requirement local-operator (from versions: none)",
 				exitCode: 1,
 			},
+			onCancel: noop,
+			onRetry: noop,
+		}),
+};
+
+/**
+ * The last phase, which is the one that can still fail after a successful pip.
+ *
+ * It is also the phase with the longest RUNWAY of any in the panel - the smoke
+ * probe starts the installed server and waits on `/health` - and it was never
+ * photographed, so the composition of a full rail with one step still running
+ * was undocumented (see `installer-panel.tsx` on why `installed` is sent on the
+ * far side of that probe rather than at the end of the script).
+ */
+export const Verifying: Story = {
+	render: () =>
+		panel({
+			phase: "verify",
+			installed: false,
+			failure: null,
 			onCancel: noop,
 			onRetry: noop,
 		}),
