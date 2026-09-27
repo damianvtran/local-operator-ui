@@ -55,21 +55,23 @@ import { act } from "react";
 const bundle = await build({
 	stdin: {
 		contents: `
-			import { createElement } from "react";
+			import { createElement, useEffect } from "react";
 			import { renderToStaticMarkup } from "react-dom/server";
 			import { createRoot } from "react-dom/client";
 			import { MemoryRouter } from "react-router-dom";
 			import { QueryClientProvider } from "@tanstack/react-query";
 			import { SettingsPage } from "./src/renderer/src/features/settings/components/settings-page";
+			import { UserProfileSidebar } from "./src/renderer/src/shared/components/navigation/user-profile-sidebar";
 			import {
 				classifyRadientAccountFailure,
+				forgetAccountReadFailure,
 				radientUserKeys,
 				useRadientUserQuery,
 			} from "./src/renderer/src/shared/hooks/use-radient-user-query";
 			export { QueryClient } from "@tanstack/react-query";
 			export { configQueryKey } from "./src/renderer/src/shared/hooks/use-config";
 			export { desktopResult, DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
-			export { classifyRadientAccountFailure, radientUserKeys, useRadientUserQuery };
+			export { classifyRadientAccountFailure, forgetAccountReadFailure, radientUserKeys, useRadientUserQuery };
 
 			export const renderSettings = (client) =>
 				renderToStaticMarkup(
@@ -85,6 +87,27 @@ const bundle = await build({
 				);
 
 			/*
+			 * The FOOT itself, the operator's own surface: the shipped
+			 * "UserProfileSidebar", resolved against a client the mounted probes have
+			 * already driven. A static render (like "renderSettings") reads the query
+			 * state and the recorded class synchronously, which is exactly the
+			 * reading the row paints - so the assertions about what the foot SAYS
+			 * are made against the component that says it, not a restatement.
+			 */
+			export const renderFoot = (client) =>
+				renderToStaticMarkup(
+					createElement(
+						QueryClientProvider,
+						{ client },
+						createElement(
+							MemoryRouter,
+							{ initialEntries: ["/chat"] },
+							createElement(UserProfileSidebar, { expanded: true }),
+						),
+					),
+				);
+
+			/*
 			 * The MOUNTED probe: the shipped hook, publishing its own reading on every
 			 * render so a test can read the classification the surfaces render from
 			 * without reaching into React. refreshUser is exposed as the control the
@@ -92,6 +115,15 @@ const bundle = await build({
 			 */
 			export const ReadProbe = () => {
 				const read = useRadientUserQuery();
+				/*
+				 * The no-remount counter the credential-landing case asserts through:
+				 * a mounting surface would increment it, so "the answer reached the
+				 * surfaces without a remount" is a counted fact rather than an
+				 * assumption about the harness.
+				 */
+				useEffect(() => {
+					globalThis.__accountReadMounts = (globalThis.__accountReadMounts ?? 0) + 1;
+				}, []);
 				globalThis.__accountReadProbe = {
 					accountRead: read.accountRead,
 					isLoading: Boolean(read.isLoading),
@@ -392,6 +424,18 @@ globalThis.window.api = {
 							resolve(ACCOUNT_ANSWERS[accountBehaviour]);
 					});
 				}
+				if (accountBehaviour === "landing") {
+					/*
+					 * THE CREDENTIAL HAS JUST LANDED, and this read is the completion
+					 * path's own re-commission, held open so the interim can be read as a
+					 * state rather than raced against the poll (the same technique the
+					 * evidence rigs' `complete.py` records). The release answers with
+					 * the account the new credential unlocks.
+					 */
+					return await new Promise((resolve) => {
+						releaseHeldOpenRead = () => resolve(ACCOUNT_ANSWERS.account);
+					});
+				}
 				return ACCOUNT_ANSWERS[accountBehaviour];
 			}
 			if (request?.op === "capabilities") {
@@ -432,6 +476,8 @@ const {
 	desktopResult,
 	DesktopControlError,
 	renderSettings,
+	renderFoot,
+	forgetAccountReadFailure,
 	mountReadProbe,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
@@ -593,6 +639,12 @@ async function until(predicate, what, timeoutMs = 20_000) {
 async function mountAccountRead(behaviour) {
 	accountBehaviour = behaviour;
 	attemptsOnAccount = 0;
+	/*
+	 * The no-remount counter: reset per mount so the credential-landing case can
+	 * assert that the ANSWER reached the surface which rendered the refusal,
+	 * rather than a newly mounted one.
+	 */
+	globalThis.__accountReadMounts = 0;
 	const client = clientWithConfig({ gcTime: 0 });
 	const container = bootstrapDOM.window.document.createElement("div");
 	bootstrapDOM.window.document.body.appendChild(container);
@@ -669,6 +721,22 @@ async function mountAccountRead(behaviour) {
 				"the account to be rendered",
 			);
 			return { state: state(), snapshot: snapshot() };
+		},
+		/*
+		 * THE CREDENTIAL-WRITE COMPLETION, as the app's paths perform it: the clear
+		 * (`forgetAccountReadFailure`, exported by the hook module) and then the
+		 * `radientUserKeys.all` invalidation both `provider-detail.tsx` and
+		 * `use-radient-session-issue.ts` issue for the Radient credential. The call
+		 * sites are pinned by source in `scripts/picker-feedback.test.mjs`; this
+		 * drives the same pair so the behaviour is measured rather than asserted
+		 * in prose.
+		 */
+		credentialWrite: async () => {
+			await act(async () => {
+				forgetAccountReadFailure();
+				void client.invalidateQueries({ queryKey: radientUserKeys.all });
+				await new Promise((resolve) => setTimeout(resolve, 0));
+			});
 		},
 		press: pressed,
 		/*
@@ -1027,6 +1095,91 @@ test("a failed account read survives the press that starts the next attempt", as
 			afterPress.isFetching,
 			true,
 			"the control's pending state must be reachable while its own re-read is out",
+		);
+	} finally {
+		await mounted.teardown();
+	}
+});
+
+/*
+ * THE CREDENTIAL LANDS: THE FOOT MOVES, AND THE ANSWER REACHES IT WITHOUT A
+ * REMOUNT.
+ *
+ * The operator's report, on the installed app: after a re-sign-in completed, the
+ * sidebar foot kept reading "Account unavailable" - no completion path had
+ * re-commissioned the account read, so it waited for something else to mount an
+ * observer on the failed query, and it healed only on a later Settings visit.
+ *
+ * Two halves are asserted here, both against the shipped hook and the shipped
+ * foot component (`renderFoot` mounts `UserProfileSidebar`, the row itself):
+ *
+ *  - the interim is LEGIBLE: a completed credential write clears the recorded
+ *    class, so the re-read under it reads as "Checking account…" instead of the
+ *    foot sitting unchanged on a class the write just made stale;
+ *  - the answer REACHES the mounted surfaces: the SAME `ReadProbe` instance
+ *    that rendered the refusal renders "ready", which is what "without a
+ *    remount" means, and the counter makes that a fact rather than an assumption.
+ *
+ * The bridge holds the re-read open while the interim is read: a read that
+ * answers as fast as the driver asks would make "the foot moved" a race against
+ * the poll, and completing before the capture is exactly how a frame gets
+ * mislabelled (the evidence rigs' `complete.py` records the same trap).
+ */
+test("a completed credential write moves the foot while the read is out, and the answer reaches it without a remount", async () => {
+	const mounted = await mountAccountRead("refused");
+	try {
+		const failed = await mounted.settleOnFailure();
+		assert.equal(failed.snapshot.accountRead, "refused");
+		assert.equal(
+			globalThis.__accountReadMounts,
+			1,
+			"the probe must be on its first mount before the credential lands",
+		);
+		const refusedFoot = text(renderFoot(mounted.client));
+		assert.ok(
+			refusedFoot.includes("Account unavailable"),
+			`the reference frame must be the stale foot the operator reported; it showed: ${refusedFoot.slice(0, 200)}`,
+		);
+
+		/* The credential lands, and the read it commissions is held open. */
+		accountBehaviour = "landing";
+		await mounted.credentialWrite();
+		const interim = await until(() => {
+			const page = mounted.snapshot();
+			const rail = mounted.snapshotB();
+			return page?.accountRead === "checking" &&
+				rail?.accountRead === "checking"
+				? { page, rail }
+				: null;
+		}, "both surfaces to move to `checking` while the completion's re-read is out");
+		assert.equal(
+			interim.page.isFetching,
+			true,
+			"the interim must be a read actually in flight, not a cleared class on its own",
+		);
+		const checkingFoot = text(renderFoot(mounted.client));
+		assert.ok(
+			checkingFoot.includes("Checking account…"),
+			`the foot did not move while the re-read was out; it still showed: ${checkingFoot.slice(0, 200)}`,
+		);
+
+		/* The answer lands, on the SAME probes, with no remount in between. */
+		releaseHeldOpenRead();
+		await until(
+			() => mounted.snapshot()?.accountRead === "ready",
+			"the completion's read to be answered and rendered",
+		);
+		assert.equal(
+			globalThis.__accountReadMounts,
+			1,
+			"the foot reached the account without a remount, so the no-remount claim is counted rather than assumed",
+		);
+		assert.equal(mounted.snapshot()?.hasAccount, true);
+		const readyFoot = text(renderFoot(mounted.client));
+		assert.ok(
+			readyFoot.includes("QA Settings Gate") &&
+				readyFoot.includes("qa-settings-gate@example.test"),
+			`the foot did not reach the account the credential unlocked; it showed: ${readyFoot.slice(0, 240)}`,
 		);
 	} finally {
 		await mounted.teardown();
