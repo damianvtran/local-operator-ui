@@ -359,7 +359,19 @@ export function foldCounts(actions: FoldableAction[]): string {
 			bump("class:edits", { noun: "edit", plural: "edits" });
 		else if (cls === "delegated")
 			bump("class:delegated", { noun: "task", plural: "tasks" });
-		else {
+		else if (n === "todo") {
+			/*
+			 * `todo view` is a READ and the five write ops are not; one noun for
+			 * the family counted a view as an update (`2 todo updates` over a
+			 * `Read todos` row - review round 1, R1-6), the same false-claim
+			 * species the operator's report closed. The op tells them apart and
+			 * the split keeps the fold and the row saying the same thing; an
+			 * op-less call is the write noun the family already had.
+			 */
+			if ((action.op ?? "").toLowerCase() === "view")
+				bump("kind:todo:view", { noun: "todo read", plural: "todo reads" });
+			else bump("kind:todo", KIND_NOUNS.todo);
+		} else {
 			const noun = KIND_NOUNS[n];
 			if (noun) bump(`kind:${n}`, noun);
 			else {

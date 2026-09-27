@@ -9,10 +9,10 @@ They exist because the fixed frames cannot show what was wrong. Read the pairs:
 
 | surface | here (unmodified `main`) | on the branch |
 | --- | --- | --- |
-| rows (`Chat/Tool rows / ToolOps`) | `Delegated list`, `Delegated designer`, `Delegated docs-writer`, `Messaged peek 3`, `Called lsp …`, `Called project ui-update-account-robustness` | `Listed agents …`, `Viewed agent designer`, `Created agent docs-writer`, `Peeked at 3`, `Found definition …`, `Viewed project ui-update-account-robustness` |
-| the project family's glyphs | a wrench on every `project` row (the operator's follow-up screenshot: `Called project ui-update-account-robustness` under the generic wrench) | the board mark on `project`; `project_delete` keeps the wrench, as the TUI's `*_delete` tools do |
+| rows (`Chat/Tool rows / ToolOps`) | `Delegated list`, `Delegated designer`, `Delegated docs-writer`, `Messaged peek 3`, `Called lsp …`, `Called project ui-update-account-robustness` | `Listed agents …`, `Viewed agent designer`, `Created agent docs-writer`, `Peeked at 3 steps`, `Found definition …`, `Viewed project ui-update-account-robustness` |
+| the project family's glyphs | a wrench on every `project` row (the operator's follow-up screenshot: `Called project ui-update-account-robustness` under the generic wrench) | the columns mark on `project` and the trash mark on `project_delete`, mirroring the TUI's own pair (`feat/tui-project-line-15c4`, commit `4ce339597`: a project is a workstream, not a folder; an irreversible removal must not wear a read/update mark) |
 | fold (`Chat/Trace fold / AgentOps`, the operator's own shape) | `Explored 4 files, delegated 3 tasks` | `4 files · 3 agents` |
-| the rows frame's fold header (a mixed ops run) | `3 tasks · 3 project · 2 hub · 1 console · 1 lsp · 1 network · 1 project_delete · 1 secret · 1 wait` | `3 agents · 1 team · 2 subagents · 3 projects · 1 code lookup · 1 console · 1 network call · 1 project deletion · 1 secret · 1 wait` |
+| the rows frame's fold header (a mixed ops run) | `3 tasks · 3 project · 2 hub · 1 console · 1 lsp · 1 network · 1 project_delete · 1 secret · 1 team · 1 wait` | `3 agents · 1 team · 2 subagents · 3 projects · 1 code lookup · 1 console · 1 network call · 1 project deletion · 1 secret · 1 wait` |
 
 ## Why these live outside their swept sets
 
