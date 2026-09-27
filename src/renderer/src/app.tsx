@@ -69,6 +69,11 @@ const SchedulesPage = lazy(() =>
 		default: m.SchedulesPage,
 	})),
 );
+const ProjectsPage = lazy(() =>
+	import("@features/projects/components/projects-page").then((m) => ({
+		default: m.ProjectsPage,
+	})),
+);
 const BrowserPage = lazy(() =>
 	import("@features/browser/components/browser-page").then((m) => ({
 		default: m.BrowserPage,
@@ -666,6 +671,11 @@ const App: FC = () => {
 											element={<AgentDetailsPage />}
 										/>
 										<Route path="/schedules" element={<SchedulesPage />} />
+										<Route path="/projects" element={<ProjectsPage />} />
+										<Route
+											path="/projects/:projectId"
+											element={<ProjectsPage />}
+										/>
 										<Route path="/browser" element={<BrowserPage />} />
 										<Route path="*" element={<Navigate to="/chat" replace />} />
 									</Routes>

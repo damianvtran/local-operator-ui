@@ -21636,10 +21636,21 @@ async function sceneMentions(cdp) {
 		cdp.evaluate(`(() => {
 		const list = document.querySelector('[role="listbox"][aria-label="Files"]');
 		const rows = list ? [...list.querySelectorAll('[role="option"]')] : [];
+		/*
+		 * THE FILE ROWS ARE READ BY SECTION (QA round 1, Q-2). Since the popup
+		 * can carry a projects section above the listing, "the first 8 options"
+		 * is no longer a statement about the file listing: a store with twelve
+		 * projects put twelve project rows first and this check read them as if
+		 * they were the directory. The data-section attribute is what the picker
+		 * paints for exactly this reader; an app build without it reads as
+		 * file-only, which is the honest default for the rows that predate it.
+		 */
+		const fileRows = rows.filter((row) => row.dataset.section !== "project");
 		return {
 			list: Boolean(list),
 			rows: rows.length,
-			names: rows.slice(0, 8).map((row) => row.textContent),
+			projectRows: rows.length - fileRows.length,
+			names: fileRows.slice(0, 8).map((row) => row.textContent),
 			header: list?.firstElementChild?.textContent ?? null,
 			footer: list?.lastElementChild?.textContent ?? null,
 			controls: document.querySelector(${JSON.stringify(FIELD)})?.getAttribute("aria-controls") ?? null,
@@ -21660,9 +21671,16 @@ async function sceneMentions(cdp) {
 	check(
 		"the list is populated from the working directory over the real IPC",
 		opened.rows > 0 &&
+			/*
+			 * The rows this check is about are the FILE rows: the projects section
+			 * is asserted on its own below, and mixing the two made this scene a
+			 * false FAIL against a store with a full first page of projects
+			 * (QA round 1, Q-2 — 31 PASS / 2 FAIL with twelve projects seeded, 33/33
+			 * with the store emptied).
+			 */
 			opened.names.some((name) => name.includes("README.md")) &&
 			opened.names.some((name) => name.includes("src")),
-		JSON.stringify(opened.names),
+		JSON.stringify({ names: opened.names, projectRows: opened.projectRows }),
 	);
 	check(
 		"the listbox is named by the field it belongs to, with aria-controls and aria-expanded",
@@ -21891,6 +21909,93 @@ async function sceneMentions(cdp) {
 	 */
 	await verb(cdp, "setTheme", "localOperatorLight");
 	const pairLight = await captureSettled(cdp, "mentions-pair-light");
+
+	/*
+	 * A PROJECT REFERENCE, when the backend has one (UX round 1, U1's pin).
+	 *
+	 * The `@project:` namespace resolves against the STORE rather than the path
+	 * probe, and the composer's chip is this app's one signal that a reference
+	 * resolves — an accepted project token used to paint nothing and read as a
+	 * typo. This block accepts a project row from the picker and reads the chip
+	 * layer back: the value must be exactly the namespaced token, and the fill
+	 * must paint. A backend whose store is empty offers no project row, and
+	 * that case is NOTED rather than failed — this scene seeds nothing, and QA
+	 * runs it against a seeded store for the positive case (Q-2's run).
+	 */
+	await cdp.send("Input.insertText", { text: "\n@project:" });
+	const readProjectOffer = () =>
+		cdp.evaluate(`(() => {
+		const list = document.querySelector('[role="listbox"][aria-label="Files"]');
+		const rows = list ? [...list.querySelectorAll('[role="option"]')] : [];
+		const projects = rows.filter((row) => row.dataset.section === "project");
+		return {
+			list: Boolean(list),
+			offers: projects.length,
+			names: projects.map((row) => row.querySelector("span")?.textContent ?? ""),
+		};
+	})()`);
+	let offer = await readProjectOffer();
+	for (let attempt = 0; attempt < 40 && offer.offers === 0; attempt++) {
+		await wait(100);
+		offer = await readProjectOffer();
+	}
+	note("the projects offer for @project:", JSON.stringify(offer));
+	if (offer.offers > 0) {
+		const projectName = offer.names[0];
+		const readAccepted = () =>
+			cdp.evaluate(`(() => {
+			const field = document.querySelector(${JSON.stringify(FIELD)});
+			return {
+				value: field?.value ?? null,
+				chips: [...document.querySelectorAll("[data-mention-chip]")].map((el) => el.dataset.mentionChip),
+			};
+		})()`);
+		/*
+		 * THE FIELD ALREADY HOLDS FILE CHIPS, so the chip count is read BEFORE the
+		 * accept and the check is the count INCREASING. A bare `chips.length >= 1`
+		 * passed on this scene's own earlier `@README.md` chips, and the wait loop
+		 * returned on its first read without ever giving a project chip the chance
+		 * to paint (review round 2's R2-1).
+		 */
+		const chipsBefore = (await readAccepted()).chips.length;
+		for (const type of ["keyDown", "keyUp"]) {
+			await cdp.send("Input.dispatchKeyEvent", {
+				type,
+				key: "Enter",
+				code: "Enter",
+				windowsVirtualKeyCode: 13,
+				nativeVirtualKeyCode: 13,
+			});
+		}
+		let accepted = await readAccepted();
+		for (
+			let attempt = 0;
+			attempt < 40 && accepted.chips.length <= chipsBefore;
+			attempt++
+		) {
+			await wait(100);
+			accepted = await readAccepted();
+		}
+		note(
+			"the accepted project token",
+			JSON.stringify({ ...accepted, chipsBefore }),
+		);
+		check(
+			"accepting a project row writes the namespaced token",
+			typeof accepted.value === "string" &&
+				accepted.value.endsWith(`@project:${projectName} `),
+			JSON.stringify(accepted.value),
+		);
+		check(
+			"a project reference the store resolves paints its chip",
+			accepted.chips.length > chipsBefore,
+			JSON.stringify({ before: chipsBefore, after: accepted.chips }),
+		);
+	} else {
+		note(
+			"no projects in the store; the project chip checks are skipped in this run",
+		);
+	}
 
 	const frames = [openFrame, noMatchFrame, chipFrame, pairFrame, pairLight];
 	check(
