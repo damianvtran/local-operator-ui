@@ -1419,6 +1419,20 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"task17RestampNote",
 	/*
+	 * AND THIS CHANGE'S OWN: the inline-rename fix's re-stamp. Its subject IS
+	 * this file's binding - it moves BOTH trees and re-captures one set's
+	 * states - so a reader is owed the pair and the twelve frames it added.
+	 */
+	"headerRenameInlineRestampNote",
+	/*
+	 * AND THE ROUND-1 REMEDIATION'S OWN, on the same lane: its subject is this
+	 * file's binding too - the save-lifecycle pass moves BOTH trees again (the
+	 * header's committed-save state and its story; the capture row and these
+	 * two lists) and re-captures one state - so a reader is owed the pair and
+	 * the two frames it added.
+	 */
+	"headerRenameInlineRoundOneNote",
+	/*
 	 * AND THE DESKTOP-SUITE TICK WAIT'S OWN: its subject is this file's binding
 	 * too - it moves BOTH trees without taking a frame (nothing in it is
 	 * user-visible; the evidence is the isolated rig runs and the three
@@ -1450,6 +1464,13 @@ const STAMP_BINDING_NOTES = [
 	 * prose.
 	 */
 	"pendingEchoRemediationFoldNote",
+	/*
+	 * AND THE SECOND FOLD'S OWN: its subject IS this file's binding too - the
+	 * fold onto the moved `origin/main` after #559 re-derives the pair at the
+	 * folded tip and reads it back from the staged index, so a reader is owed
+	 * the check rather than the prose.
+	 */
+	"pendingEchoRemediationSecondFoldNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2031,12 +2052,38 @@ const BRANCH_RECORDS = [
 	 */
 	"task17RestampNote",
 	/*
+	 * And by this lane, whose note is now the newest top-level record on the
+	 * branch: it states the pair the inline-rename fix ships - both trees
+	 * moved, one set's states re-captured - so a fold that started from main's
+	 * copy would drop it first, the same reason this list exists.
+	 */
+	"headerRenameInlineRestampNote",
+	/*
+	 * And by the same lane once more, whose round-1 remediation note is now
+	 * the newest top-level record on the branch: it states the pair the
+	 * save-lifecycle pass ships - both trees moved, one set's state
+	 * re-captured - so a fold that started from main's copy would drop it
+	 * first, the same reason this list exists.
+	 */
+	"headerRenameInlineRoundOneNote",
+	/*
 	 * And by THIS lane, whose note is the newest top-level record on the branch:
 	 * it states the pair this tip ships, moves both trees, and takes no frame -
 	 * a fold that started from main's copy would drop it first, the same reason
 	 * this list exists.
 	 */
 	"daemonObservationTickWaitRestampNote",
+	/*
+	 * Grown by the pending-echo lane: its fix, its round-1 remediation and its
+	 * two folds each wrote a top-level record. The first fold registered them
+	 * with the stamp-binding list only, so a fold that resolved this file from
+	 * main's copy could have dropped them with nothing failing; this
+	 * registration closes that hole for the records the branch is carrying.
+	 */
+	"pendingEchoRestampNote",
+	"pendingEchoRemediationNote",
+	"pendingEchoRemediationFoldNote",
+	"pendingEchoRemediationSecondFoldNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
