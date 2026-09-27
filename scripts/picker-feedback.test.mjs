@@ -1237,6 +1237,57 @@ test("a credential change drops the catalogue the renderer is holding", () => {
 	);
 });
 
+test("a completed Radient credential write commissions the account read", () => {
+	/*
+	 * The other half of the operator's report (2026-09-27): after a Radient
+	 * re-sign-in completed, the sidebar foot kept reading "Account unavailable"
+	 * because NO completion path re-commissioned the account read - the paths
+	 * invalidated providers/catalogue/config/verdict but never `radientUserKeys`,
+	 * and a read nobody re-asks cannot heal. A later Settings visit healed it
+	 * only by mounting a new observer on the failed query.
+	 *
+	 * The KEY is asserted through the shared binding rather than as a literal,
+	 * for the reason the catalogue pin above records: a call site that spells the
+	 * key itself passes a literal check while missing every consumer that
+	 * subscribes through the binding.
+	 */
+	const hook = source("shared/hooks/use-radient-user-query.ts");
+	assert.match(
+		hook,
+		/export const radientUserKeys = \{\s*all: \["radient-user"\] as const,/,
+		"the account key is registered once, as the prefix every consumer subscribes under",
+	);
+	assert.match(
+		hook,
+		/export function forgetAccountReadFailure\(\): void \{/,
+		"the clear a credential write performs is exported beside the key it clears",
+	);
+
+	const detail = source("features/providers/provider-detail.tsx");
+	assert.match(
+		detail,
+		/import \{[\s\S]{0,200}?radientUserKeys[\s\S]{0,200}?\} from "@shared\/hooks\/use-radient-user-query";/,
+		"the panel imports the key's module directly (the barrel exports it as a type only)",
+	);
+	assert.match(
+		detail,
+		/invalidateQueries\(\{ queryKey: desktopKeys\.catalogue \}\);[\s\S]{0,2600}?if \(provider\.id === "radient"\) \{[\s\S]{0,120}?forgetAccountReadFailure\(\);[\s\S]{0,120}?invalidateQueries\(\{ queryKey: radientUserKeys\.all \}\)/,
+		"a Radient credential landing drops the account read with the catalogue, clearing the stale class first",
+	);
+
+	const issue = source("shared/hooks/use-radient-session-issue.ts");
+	assert.match(
+		issue,
+		/import \{[\s\S]{0,200}?radientUserKeys[\s\S]{0,200}?\} from "@shared\/hooks\/use-radient-user-query";/,
+		"the callout imports the key's module directly too",
+	);
+	assert.match(
+		issue,
+		/forgetAccountReadFailure\(\);[\s\S]{0,120}?invalidateQueries\(\{ queryKey: radientUserKeys\.all \}\);[\s\S]{0,120}?await refreshVerdict\(\)/,
+		"the composer callout's completed sign-in commissions the account read beside the verdict",
+	);
+});
+
 test("one invalidation reaches both catalogue keys, and nothing else", async () => {
 	/*
 	 * QA round 1's Q-1 was a coverage gap rather than a defect: the credential half
