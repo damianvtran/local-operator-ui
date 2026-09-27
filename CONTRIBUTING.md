@@ -256,6 +256,9 @@ version.
 - Linting passes
 - Type checking passes
 - All CI checks pass
+- If the change touches `src/` or `scripts/`, `docs/evidence/manifest.json` is
+  re-stamped in a commit of its own — fold first, re-stamp second (AGENTS.md,
+  "Re-stamp in a commit that moves `docs/` and nothing else")
 - UI/UX considerations addressed (for user-facing features)
 - Responsive design considerations addressed
 
