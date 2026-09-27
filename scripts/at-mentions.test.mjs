@@ -71,6 +71,7 @@ const {
 	atCandidateKey,
 	atChipSpans,
 	atRegionPlan,
+	atSectionRuns,
 	atProjectName,
 	AT_ROW_PITCH,
 	AT_SECTION_HEADER_PITCH,
@@ -645,34 +646,51 @@ test("the row budget is measured, clamped, and a whole number of rows", () => {
 	assert.equal(AT_ROW_PITCH, 35.5);
 });
 
-test("section headers are charged against the region's cap", () => {
+test("the region walks the listing and always ends on a whole row", () => {
 	// No sections: the plan is exactly the arithmetic the cap always was, and the
 	// rows drawn are the budget's worth.
-	assert.deepEqual(atRegionPlan(20, 8, 0), { shown: 8, cap: 8 * AT_ROW_PITCH });
+	assert.deepEqual(atRegionPlan(20, 8, []), {
+		shown: 8,
+		cap: 8 * AT_ROW_PITCH,
+	});
 	// A short listing is bounded by its own length, not the budget.
-	assert.deepEqual(atRegionPlan(3, 8, 0), {
+	assert.deepEqual(atRegionPlan(3, 8, []), {
 		shown: 3,
 		cap: 8 * AT_ROW_PITCH,
 	});
-	// A merged listing: the two headers (design round 1, D1 measured them at
-	// 29px each) come OUT of the cap, so the region ends on a whole row instead
-	// of painting a slice of the ninth — 284px of room minus 58px of headers is
-	// six rows, and the count that goes with it is "6 of 14".
-	const merged = atRegionPlan(14, 8, 2);
+	// A merged listing whose runs BOTH fit: the two headers (design round 1, D1
+	// measured them at 29px each) come out of the cap and the region ends on a
+	// whole row — 29px + 3 rows, twice, is 271px of the 284px room, "6 of 14".
+	const merged = atRegionPlan(6, 8, [3, 3]);
 	assert.equal(merged.shown, 6);
 	assert.equal(merged.cap, 2 * AT_SECTION_HEADER_PITCH + 6 * AT_ROW_PITCH);
+	// THE FULL FIRST PAGE (QA round 2's Q-3, measured on the built app twice):
+	// twelve projects put ONE header inside the window, so the previous fix —
+	// which charged every header of the LISTING — left 25.6px of the eighth row
+	// drawn under a 271px cap. The walk stops at 29 + 7 rows = 277.5px, a whole
+	// row's bottom edge, and the count is "7 of 15".
+	const heavy = atRegionPlan(15, 8, [12, 3]);
+	assert.equal(heavy.shown, 7);
+	assert.equal(heavy.cap, AT_SECTION_HEADER_PITCH + 7 * AT_ROW_PITCH);
+	// Entering a run costs its header AND at least one row: a window that could
+	// take a header alone would end on a section name with nothing under it, so
+	// the Files run is not entered here at all.
+	const lone = atRegionPlan(4, 3, [3, 1]);
+	assert.deepEqual(lone, {
+		shown: 2,
+		cap: AT_SECTION_HEADER_PITCH + 2 * AT_ROW_PITCH,
+	});
 	// The header pitch is a measured constant, pinned like the row pitch so an
 	// edit to it is a decision.
 	assert.equal(AT_SECTION_HEADER_PITCH, 29);
-	// One header (a listing that carries only one section's rows yet still draws
-	// the section's name) takes one header's worth of room.
-	assert.equal(atRegionPlan(14, 8, 1).shown, 7);
-	// A cap too small for even one row after the headers still ends on the
-	// headers rather than on a negative allowance.
-	assert.deepEqual(atRegionPlan(9, 1, 2), {
-		shown: 0,
-		cap: 2 * AT_SECTION_HEADER_PITCH,
-	});
+	// The runs the plan walks: consecutive rows of one section are a run, and a
+	// missing section value is a run of its own (the file half).
+	assert.deepEqual(
+		atSectionRuns(["project", "project", undefined, undefined]),
+		[2, 2],
+	);
+	assert.deepEqual(atSectionRuns([undefined, undefined, undefined]), [3]);
+	assert.deepEqual(atSectionRuns([]), []);
 });
 
 test("a project namespace names a project, and only after the colon", () => {

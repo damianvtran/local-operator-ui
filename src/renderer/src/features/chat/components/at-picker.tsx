@@ -63,6 +63,7 @@ import {
 	atRegionPlan,
 	atRowBudget,
 	atRowId,
+	atSectionRuns,
 } from "./at-contract";
 import {
 	type AtRow,
@@ -793,19 +794,23 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 	const showSections = state.rows.some((row) => row.section === "project");
 
 	/*
-	 * THE HEADERS ARE CHARGED AGAINST THE CAP (design round 1, D1). They are
-	 * children of the same scroller and were never in the row budget, so a merged
-	 * listing overran its cap by two headers and rested on a sliced row — and the
-	 * count below, `min(rows, budget)`, reported the budget rather than the rows
-	 * drawn while its denominator still counted files alone ("8 of 11" where six
-	 * whole rows rendered out of fourteen merged entries). With sections the
-	 * count is one currency — rows drawn of merged rows — and without them the
-	 * arithmetic and the file-entry denominator are exactly what they were.
+	 * THE HEADERS ARE CHARGED AGAINST THE CAP, BY WALKING THE CONTENT (design
+	 * round 1, D1; QA round 2's Q-3). Headers are children of the same scroller
+	 * and were never in the row budget, so a merged listing overran its cap by
+	 * its headers and rested on a sliced row — and the count below,
+	 * `min(rows, budget)`, reported the budget rather than the rows drawn while
+	 * its denominator still counted files alone ("8 of 11" where six whole rows
+	 * rendered out of fourteen merged entries). Charging a FIXED number of
+	 * headers only holds while every header is inside the window; the plan walks
+	 * header-then-rows per run instead, so a window holding ONE header (a full
+	 * first page of projects) is measured against that one header. With sections
+	 * the count is one currency — rows drawn of merged rows — and without them
+	 * the arithmetic and the file-entry denominator are exactly what they were.
 	 */
-	const headerCount = showSections
-		? new Set(state.rows.map((row) => row.section)).size
-		: 0;
-	const plan = atRegionPlan(state.rows.length, budget, headerCount);
+	const sectionRuns = showSections
+		? atSectionRuns(state.rows.map((row) => row.section ?? "file"))
+		: [];
+	const plan = atRegionPlan(state.rows.length, budget, sectionRuns);
 	const count = showSections
 		? atCount(plan.shown, state.rows.length)
 		: atCount(plan.shown, state.entries);

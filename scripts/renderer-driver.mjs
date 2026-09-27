@@ -20627,6 +20627,22 @@ async function sceneMentions(cdp) {
 	note("the projects offer for @project:", JSON.stringify(offer));
 	if (offer.offers > 0) {
 		const projectName = offer.names[0];
+		const readAccepted = () =>
+			cdp.evaluate(`(() => {
+			const field = document.querySelector(${JSON.stringify(FIELD)});
+			return {
+				value: field?.value ?? null,
+				chips: [...document.querySelectorAll("[data-mention-chip]")].map((el) => el.dataset.mentionChip),
+			};
+		})()`);
+		/*
+		 * THE FIELD ALREADY HOLDS FILE CHIPS, so the chip count is read BEFORE the
+		 * accept and the check is the count INCREASING. A bare `chips.length >= 1`
+		 * passed on this scene's own earlier `@README.md` chips, and the wait loop
+		 * returned on its first read without ever giving a project chip the chance
+		 * to paint (review round 2's R2-1).
+		 */
+		const chipsBefore = (await readAccepted()).chips.length;
 		for (const type of ["keyDown", "keyUp"]) {
 			await cdp.send("Input.dispatchKeyEvent", {
 				type,
@@ -20636,24 +20652,19 @@ async function sceneMentions(cdp) {
 				nativeVirtualKeyCode: 13,
 			});
 		}
-		const readAccepted = () =>
-			cdp.evaluate(`(() => {
-			const field = document.querySelector(${JSON.stringify(FIELD)});
-			return {
-				value: field?.value ?? null,
-				chips: [...document.querySelectorAll("[data-mention-chip]")].map((el) => el.dataset.mentionChip),
-			};
-		})()`);
 		let accepted = await readAccepted();
 		for (
 			let attempt = 0;
-			attempt < 40 && accepted.chips.length === 0;
+			attempt < 40 && accepted.chips.length <= chipsBefore;
 			attempt++
 		) {
 			await wait(100);
 			accepted = await readAccepted();
 		}
-		note("the accepted project token", JSON.stringify(accepted));
+		note(
+			"the accepted project token",
+			JSON.stringify({ ...accepted, chipsBefore }),
+		);
 		check(
 			"accepting a project row writes the namespaced token",
 			typeof accepted.value === "string" &&
@@ -20662,8 +20673,8 @@ async function sceneMentions(cdp) {
 		);
 		check(
 			"a project reference the store resolves paints its chip",
-			accepted.chips.length >= 1,
-			JSON.stringify(accepted.chips),
+			accepted.chips.length > chipsBefore,
+			JSON.stringify({ before: chipsBefore, after: accepted.chips }),
 		);
 	} else {
 		note(

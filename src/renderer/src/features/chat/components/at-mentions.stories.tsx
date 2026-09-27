@@ -199,6 +199,31 @@ const PROJECTS = [
 ];
 
 /**
+ * A FULL FIRST PAGE of projects: enough rows that the window holds only the
+ * first section's header, which is the case QA round 2's Q-3 was measured on
+ * (twelve projects and a Files section under a 271px cap left 25.6px of the
+ * eighth project row drawn). Names are short and distinct so the frame's own
+ * reading is about the region's edge, not about wrapping.
+ */
+const MANY_PROJECTS = [
+	"payments-migration",
+	"q4-hardening",
+	"docs-pass",
+	"billing-export",
+	"auth-audit",
+	"rate-limits",
+	"mobile-sync",
+	"search-relevance",
+	"offline-cache",
+	"webhooks-v2",
+	"data-retention",
+	"onboarding-flow",
+].map((name, index) => ({
+	name,
+	description: `Workstream ${index + 1} of the quarter`,
+}));
+
+/**
  * WHICH HARNESS THE BRIDGE ANSWERS FOR, set by the story that is mounting.
  *
  * The bridge is installed at module scope (before any story renders) and
@@ -212,6 +237,14 @@ const PROJECTS = [
  * same way.
  */
 let activeHarness: (typeof HARNESS)[string] = HARNESS.withMentions;
+
+/**
+ * WHICH PROJECT LIST THE BRIDGE ANSWERS WITH, set the same way and for the same
+ * reason as `activeHarness`: the story that is mounting decides, before React
+ * mounts, what `projects.list` will answer — a story whose list was swapped
+ * after mount would be photographed against the previous story's answer.
+ */
+let activeProjects: typeof PROJECTS = PROJECTS;
 
 /**
  * The desktop bridge, installed at module scope for the reason
@@ -268,7 +301,7 @@ const installFixtureBridge = (harness: (typeof HARNESS)[string]) => {
 			 */
 			if (request.op === "projects.list") {
 				return "projects" in activeHarness.features
-					? { status: 200, body: { result: { projects: PROJECTS } } }
+					? { status: 200, body: { result: { projects: activeProjects } } }
 					: {
 							status: 501,
 							body: { detail: "this story has no projects store" },
@@ -357,6 +390,12 @@ type DraftStory = {
 	 * today, and the gate's own state.
 	 */
 	harness?: keyof typeof HARNESS;
+	/**
+	 * The projects store's answer, when the state's point is the LIST's size
+	 * rather than one project's row (the heavy first page, QA round 2's Q-3).
+	 * Omitted, the story answers the three-project fixture.
+	 */
+	projects?: typeof PROJECTS;
 	/** Where the caret is left, when the state is about the caret. */
 	moveCaretTo?: (box: HTMLTextAreaElement) => void;
 	/** True once the state the frame is OF exists on screen. */
@@ -510,6 +549,7 @@ const stateStory = (state: DraftStory): Story => ({
 		 * whichever harness the previous story left active.
 		 */
 		installFixtureBridge(HARNESS[state.harness ?? "withMentions"]);
+		activeProjects = state.projects ?? PROJECTS;
 		return (
 			<Column label={state.label} width={state.width} story={state.story}>
 				{/*
@@ -775,6 +815,31 @@ export const PickerWithProjects: Story = stateStory({
 		return (
 			rowCount() > 0 &&
 			text.includes("payments-migration") &&
+			text.includes("Projects")
+		);
+	},
+});
+
+/**
+ * A FULL FIRST PAGE: twelve projects over the same listing, so the window's
+ * content holds ONE header (the Projects section's) and not the Files one —
+ * the case the previous cap arithmetic got wrong, measured on the built app
+ * (region resting on 25.6px of the eighth project row; QA round 2's Q-3). The
+ * frame's claim is its bottom edge: a whole row's, with the count below saying
+ * how many of the listing's rows are drawn.
+ */
+export const PickerHeavyProjects: Story = stateStory({
+	story: "picker-heavy-projects",
+	harness: "withProjects",
+	projects: MANY_PROJECTS,
+	label:
+		"a bare @ with a full first page of projects: one header in the window, a whole row at its edge",
+	draft: "@",
+	settled: () => {
+		const text = document.body.textContent ?? "";
+		return (
+			rowCount() >= 12 &&
+			text.includes("onboarding-flow") &&
 			text.includes("Projects")
 		);
 	},

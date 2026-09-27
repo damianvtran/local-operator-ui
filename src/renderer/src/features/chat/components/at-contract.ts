@@ -93,35 +93,83 @@ export function atRowBudget(anchorTop: number, clipTop: number): number {
 export const AT_SECTION_HEADER_PITCH = 29;
 
 /**
+ * The row runs of a merged listing, in draw order: one count per section, the
+ * way the listing will lay its headers out (a header precedes each run).
+ *
+ * The picker has the rows; the region's arithmetic needs to know WHERE the
+ * headers fall, not just how many there are, because the visible window may
+ * hold one header and not the next. A run of `section: undefined` rows is one
+ * run — a listing without a projects projection draws no headers, and its
+ * caller passes `[]` rather than this.
+ */
+export function atSectionRuns(
+	sections: readonly (string | undefined)[],
+): number[] {
+	const runs: number[] = [];
+	let current: string | undefined;
+	for (const section of sections) {
+		if (runs.length === 0 || section !== current) {
+			runs.push(1);
+			current = section;
+		} else {
+			runs[runs.length - 1] += 1;
+		}
+	}
+	return runs;
+}
+
+/**
  * The row region's own plan, with SECTION HEADERS CHARGED against its cap
- * (design round 1, D1).
+ * (design round 1, D1; measured-content rule for a full first page, QA round
+ * 2's Q-3).
  *
  * The cap is `budget * AT_ROW_PITCH` and the budget is measured in ROWS, so a
  * section header — a non-row child of the same scroller — was never charged
- * anything: a merged listing drew its two headers INSIDE the row cap, which
- * pushed the `budget`th whole row past the cap and left the region resting on a
- * sliced row, exactly the half-row reading the whole-row arithmetic exists to
- * prevent. Charging the headers is the fix; it is charged in the CAP rather
- * than by shrinking the header, because the header is the row that names the
- * section.
+ * anything: a merged listing drew its headers INSIDE the row cap, which pushed
+ * the `budget`th whole row past the cap and left the region resting on a sliced
+ * row, exactly the half-row reading the whole-row arithmetic exists to prevent.
  *
- * `shown` is the rows the region draws at rest — `rows` clipped by what the
- * charged cap leaves — and `cap` is the scroller's own max-height in px, so the
- * region always ends on a row's bottom edge. The footer's count is then one
+ * The first fix charged ONE HEADER PER RUN against the budget and divided the
+ * remainder into rows. That is only correct while every header is inside the
+ * window: `floor((budget * pitch - headers * headerPitch) / pitch)` rows leaves
+ * `(budget * pitch - headers * headerPitch) mod pitch` px of the next row drawn
+ * when the window's own content holds FEWER headers than the listing does —
+ * twelve projects and a Files section put one header in the window, not two,
+ * and the region rested on 25.6px of a project row (QA round 2's Q-3, measured
+ * on the built app twice).
+ *
+ * So the plan WALKS THE CONTENT the way the scroller lays it out: a header,
+ * then its rows, for each run, stopping at the last boundary that fits wholly
+ * inside the cap. `shown` is the rows inside that window and `cap` is the
+ * window's own height, so the region always ends on a row's bottom edge — never
+ * on a sliced row, and never on a section name with no rows under it (entering
+ * a run costs its header AND at least one row). The footer's count is then one
  * currency: the rows drawn against the rows the listing holds.
  */
 export function atRegionPlan(
 	rows: number,
 	budget: number,
-	headerCount: number,
+	sectionRuns: readonly number[],
 ): { shown: number; cap: number } {
-	const headerPx = Math.max(0, headerCount) * AT_SECTION_HEADER_PITCH;
-	const room = Math.max(0, budget * AT_ROW_PITCH - headerPx);
-	const visibleRows = Math.floor(room / AT_ROW_PITCH);
-	return {
-		shown: Math.max(0, Math.min(rows, visibleRows)),
-		cap: headerPx + visibleRows * AT_ROW_PITCH,
-	};
+	const room = Math.max(0, budget * AT_ROW_PITCH);
+	if (sectionRuns.length === 0) {
+		return { shown: Math.max(0, Math.min(rows, budget)), cap: room };
+	}
+	let used = 0;
+	let shown = 0;
+	for (const count of sectionRuns) {
+		if (count <= 0) continue;
+		if (used + AT_SECTION_HEADER_PITCH + AT_ROW_PITCH > room) break;
+		used += AT_SECTION_HEADER_PITCH;
+		let taken = 0;
+		while (taken < count && used + AT_ROW_PITCH <= room) {
+			used += AT_ROW_PITCH;
+			taken += 1;
+			shown += 1;
+		}
+		if (taken < count) break;
+	}
+	return { shown, cap: used };
 }
 
 /**
