@@ -2177,7 +2177,6 @@ const BRANCH_RECORDS = [
 	 */
 	"pendingEchoRemediationFifthFoldNote",
 	/*
-	/*
 	 * And the TWO-FLAKE lane's second fold's record rides beside them - each
 	 * fold writes one, and the same completeness reason stands.
 	 */
