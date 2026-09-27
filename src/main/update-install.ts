@@ -2762,10 +2762,12 @@ export function buildWatchdogPlan(input: {
 	 * WHY IT TRAVELS EXPLICITLY rather than only through the spawn's `process.env`
 	 * spread (operator report, remediation round 1): the notice paths are supposed
 	 * to be INCAPABLE of bannering from a non-user run, and an inheritance nobody
-	 * asserts is one refactor of this spawn away from being dropped. Only a
-	 * non-empty value is written - an empty string must never override a non-empty
-	 * inherited value (`{...process.env, ...plan.env}` would let it), and the
-	 * script arms on empty or absent either way.
+	 * asserts is one refactor of this spawn away from being dropped. The CALLER
+	 * resolves a present-but-empty launch key to the silencing value (see
+	 * startRelaunchWatchdog; the same `resolveNotificationLaunch` the backend
+	 * child gets), and this plan writes whatever it is handed whenever it is not
+	 * null - so the script's presence-based guard silences on any set value, and
+	 * only an absent key adds nothing to the environment at all.
 	 */
 	noNotifications?: string | null;
 	signals?: WatchdogSignals;
@@ -2943,9 +2945,13 @@ notify() {
 	# silence from inside the app: the app is dead while the watchdog runs. The
 	# switch the LAUNCH carried therefore has to reach this environment too -
 	# startRelaunchWatchdog passes it through the plan rather than relying on
-	# inheritance - and the rule is notify.py's: any non-empty value silences,
-	# while empty or absent arms (an empty value is never a considered choice).
-	[ -n "\${LOCAL_OPERATOR_NO_NOTIFICATIONS:-}" ] && return 0
+	# inheritance - and PRESENCE is the rule, as the repo's two named spellings
+	# resolve it: notification-launch.ts turns a present-but-empty launch key
+	# into the silencing value, and notifications-off.mjs sets this key by name.
+	# Any SET value silences - empty included, because an env block with an empty
+	# default spells "a run", not "the user's own app" - and only an ABSENT key
+	# arms. The "NAME+x" set-test (no colon) stays legal under set -u.
+	[ -n "\${LOCAL_OPERATOR_NO_NOTIFICATIONS+x}" ] && return 0
 	osascript -e 'on run argv' -e 'display notification (item 1 of argv) with title (item 2 of argv)' -e 'end run' "$1" "Local Operator" >/dev/null 2>&1 &
 }
 # launchctl list <label> exits 0 when the job is loaded and 113 when launchd has
@@ -3237,7 +3243,12 @@ exit 0
 	return {
 		script,
 		env: {
-			...(input.noNotifications
+			// Presence, not truthiness (review minor, remediation round 2): the
+			// caller resolves a present-but-empty launch key to the silencing value
+			// the way `resolveNotificationLaunch` does, and an absent one writes
+			// nothing - so whatever arrives here is written verbatim, and the
+			// script's own guard silences on any set value.
+			...(input.noNotifications != null
 				? { LOCAL_OPERATOR_NO_NOTIFICATIONS: input.noNotifications }
 				: {}),
 			LO_UPDATE_WATCHDOG_APP_PID: String(input.appPid),

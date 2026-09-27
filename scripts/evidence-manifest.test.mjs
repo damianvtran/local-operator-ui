@@ -1561,6 +1561,17 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"foldOnto9589bd8fecNote",
 	/*
+	 * And the remediation round 2's record rides beside it, for the same
+	 * completeness reason.
+	 */
+	"updateStallBoundRoundTwoNote",
+	/*
+	 * AND THE REMEDIATION ROUND 2'S OWN: it registers the two U1 frames the
+	 * download panel and the checking card now ship, rewrites the download line's
+	 * subject, and moves both trees - so a reader is owed the pair.
+	 */
+	"updateStallBoundRoundTwoNote",
+	/*
 	 * AND THE SECOND FOLD'S OWN: main moved again before this branch's push, the
 	 * fold onto `9589bd8fec` re-derived the pair at the folded tip, and a reader
 	 * is owed the check rather than the prose.

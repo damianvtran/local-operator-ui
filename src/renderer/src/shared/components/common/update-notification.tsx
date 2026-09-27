@@ -2595,11 +2595,15 @@ export const UpdateNotification = ({
 				 * copy addition once the wait has outlasted the delay. The offer panel
 				 * hides both controls while a download runs, so without this its whole
 				 * state is two static lines until the watchdog reports.
+				 *
+				 * The subject is the DOWNLOAD (design D4, remediation round 2): what the
+				 * watchdog cancels is the download's progress, not the connection - a
+				 * connection is what the transport failure copy says on the check side.
 				 */}
 				{slowDownload && (
 					<p className="mb-2 text-body-sm text-ink-muted">
-						Still downloading. A connection that stops sending data is cancelled
-						after about 90 seconds without progress.
+						Still downloading. A download that stops making progress is
+						cancelled after about 90 seconds.
 					</p>
 				)}
 

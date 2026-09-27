@@ -77,7 +77,10 @@ import {
 	updateManagedPython,
 } from "./backend/managed-python";
 import { managedPythonOptions } from "./backend/managed-python-options";
-import { NOTIFICATIONS_ENV } from "./backend/notification-launch";
+import {
+	NOTIFICATIONS_ENV,
+	resolveNotificationLaunch,
+} from "./backend/notification-launch";
 import {
 	SESSION_ENGAGE_BEAT_MS,
 	SESSION_ENGAGE_HOLD_MS,
@@ -1646,8 +1649,14 @@ function startRelaunchWatchdog(input: {
 		 * the spawn's `process.env` spread. Read from `launchEnv`, not `process.env`:
 		 * the app's own guard (`notificationsSilenced`) reads the LAUNCH's value for
 		 * the same reason - a fact about the launch must come from the launch.
+		 * RESOLVED, NOT PASSED THROUGH (review minor, remediation round 2): a
+		 * present-but-empty launch key becomes the silencing value exactly as
+		 * `resolveNotificationLaunch` resolves it for the backend child, so the
+		 * empty spelling cannot fall through to the script's osascript while the
+		 * repo's named rules call the same launch silenced.
 		 */
-		noNotifications: launchEnv[NOTIFICATIONS_ENV],
+		noNotifications:
+			resolveNotificationLaunch(launchEnv)[NOTIFICATIONS_ENV] ?? null,
 		// Stated rather than read off `process.platform` at the plan: this
 		// watchdog exists for Squirrel.Mac's ShipIt, the guard above already
 		// refuses it anywhere else, and the script's two probes (launchd's job

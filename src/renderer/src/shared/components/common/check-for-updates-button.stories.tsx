@@ -346,8 +346,16 @@ type Story = StoryObj<typeof meta>;
  */
 function HeldCheckButton() {
 	useEffect(() => {
-		window.api.updater.checkForAllUpdates = () => new Promise<never>(() => {});
+		/*
+		 * THE OVERRIDE IS (RE-)APPLIED IN THE PRESS CALLBACK (design D3,
+		 * remediation round 2): the decorator's `mockUpdaterApi()` re-assigns
+		 * `window.api.updater` in ITS effect, which runs after this story's, so an
+		 * override installed up front is gone by the time the click would call it.
+		 * Immediately before the press is the one moment that runs after the mocks.
+		 */
 		const timer = setTimeout(() => {
+			window.api.updater.checkForAllUpdates = () =>
+				new Promise<never>(() => {});
 			const control = Array.from(document.querySelectorAll("button")).find(
 				(button) => button.textContent === "Check for updates",
 			);
