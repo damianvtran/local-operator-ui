@@ -177,6 +177,13 @@ const ROW_HEIGHT = "min-h-5 py-0";
 export type ToolRowProps = {
 	/** Wire name. Drives the glyph and the category ink; displayed via `displayName`. */
 	toolName: string;
+	/**
+	 * The call's operation token (`toolOp`), for the meta tools whose name alone
+	 * cannot say what the call did (`agent`, `team`, `hub`, and the rest of the
+	 * op tier in `tool-row-model.ts`). Empty when the arguments are not in hand
+	 * yet - a composing row - which takes the generic verb rather than guessing.
+	 */
+	op?: string;
 	/** Pre-derived argument summary (`summaryFromArgs`). */
 	summary: string;
 	/**
@@ -600,6 +607,7 @@ const StatusCluster = ({
 
 export const ToolRow = ({
 	toolName,
+	op = "",
 	summary,
 	summaryFallback = null,
 	summaryHold = false,
@@ -639,6 +647,7 @@ export const ToolRow = ({
 		summary,
 		summaryFallback,
 		running,
+		op,
 	);
 
 	const row = (
