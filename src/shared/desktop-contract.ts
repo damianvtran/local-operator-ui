@@ -810,7 +810,7 @@ export function projectTagRule(tag: string): string | null {
 	return null;
 }
 
-export const desktopRequestSchema = z.discriminatedUnion("op", [
+const desktopRequestUnion = z.discriminatedUnion("op", [
 	z.object({ op: z.literal("capabilities") }).strict(),
 	z.object({ op: z.literal("profiles.list") }).strict(),
 	z.object({ op: z.literal("profiles.get"), name: profileName }).strict(),
@@ -1444,6 +1444,28 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			op: z.literal("agent.publish"),
 			agentId: id,
 			document: publicationDocument.optional(),
+			/*
+			 * The publication TARGET (§4.4/§4.7). Both travel together or neither does,
+			 * and the rule is a `superRefine` on the whole UNION (below) rather than a
+			 * `.refine` here — a refined member becomes a `ZodEffects`, which cannot be a
+			 * member of a discriminated union; measured, it does not compile.
+			 *
+			 * WHY THE COMMENT CHANGED (security review round 1, S-1). It used to say a
+			 * half-specified target was "refused there rather than silently published to
+			 * the public hub". The local server's route does refuse one, but
+			 * `desktopEndpoint` dropped an unpaired half before the request was composed,
+			 * so what reached the server was indistinguishable from a deliberate public
+			 * publication: the documented guarantee held at neither boundary, and it
+			 * failed OPEN on a privacy-relevant target. Measured at the previous head:
+			 * each half parsed on its own and `desktopEndpoint({visibility: "org"})`
+			 * composed a plain `/publish` with no query at all.
+			 *
+			 * Absent means the public hub, which is exactly what every caller did before
+			 * this field existed — so the rule is "one half is an error", not "absent is
+			 * an error".
+			 */
+			visibility: z.literal("org").optional(),
+			tenantId: id.optional(),
 		})
 		.strict(),
 	z
@@ -1456,6 +1478,36 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			// overwrite — and guessing here overwrites somebody's listing.
 			hubAgentId: id,
 			document: publicationDocument.optional(),
+			/** The publication target, on the same terms as `agent.publish` above. */
+			visibility: z.literal("org").optional(),
+			tenantId: id.optional(),
+		})
+		.strict(),
+	/*
+	 * Pulling a published organization team into this machine's local registry
+	 * (§4.5/§8.4's "list + pull action").
+	 *
+	 * The id is the HUB document's id, not a local row's: the pull addresses what
+	 * was published, and the local copy gets its own fresh id (the local server's
+	 * `GET /v1/teams/pull/{team_id}` reconstructs it, renaming on a local id
+	 * clash through the registry's own convention). `tenantId` is OPTIONAL and is
+	 * the caller's statement of which organization owns the document, not part of
+	 * the address: §4.5's pull path is org-agnostic by id, the local server
+	 * verifies the claim and refuses a document owned by another tenant, and the
+	 * credential that reads it is the one the local server already holds.
+	 */
+	z
+		.object({
+			op: z.literal("team.pull"),
+			teamId: id,
+			/*
+			 * The caller's statement of which organization owns the document. The local
+			 * server verifies it and refuses a document owned by another tenant rather
+			 * than storing it under the wrong expectation, so sending it is a stronger
+			 * read where the caller knows the org — and omitting it is still legal
+			 * (§4.5's pull path is org-agnostic by id).
+			 */
+			tenantId: id.optional(),
 		})
 		.strict(),
 	z
@@ -2017,12 +2069,24 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 						"comments.update",
 						"comments.delete",
 						"account.agents",
+						/*
+						 * The organization operations (design §4.7). They are named here as well as
+						 * in `shared/api/radient/proxy.ts` because this schema is what validates the
+						 * request the renderer actually sends: an op in one list and not the other
+						 * is a request that never leaves the renderer. `team_id` is the published
+						 * team document an `org_team.get` pull names.
+						 */
+						"memberships.list",
+						"org_agents.list",
+						"org_team.get",
+						"org_teams.list",
 					]),
 					request_id: requestId.optional(),
 					tenant_id: id.optional(),
 					account_id: id.optional(),
 					agent_id: id.optional(),
 					comment_id: id.optional(),
+					team_id: id.optional(),
 					query: z
 						.record(z.union([z.string().max(1024), z.number().int()]))
 						.optional(),
@@ -2173,7 +2237,40 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 		.strict(),
 ]);
 
+/**
+ * The desktop request union, with the ONE rule that cannot live on a member.
+ *
+ * A publication target is two fields or none: `visibility: "org"` without a
+ * `tenantId` (or the reverse) is refused HERE, before any socket is opened
+ * (security review round 1, S-1). It is a `superRefine` on the union rather than
+ * a `.refine` on the two members because a refined member is a `ZodEffects` and
+ * `z.discriminatedUnion` accepts only `ZodObject` options — measured: the member
+ * form does not compile. `assertPairedPublicationTarget` enforces the same rule
+ * at the path composer, so a half pair cannot reach the wire by either route.
+ *
+ * The failure direction is the reason this is enforced twice: dropping the half
+ * silently published to the PUBLIC hub, which is the one outcome that must not
+ * be a default.
+ */
+export const desktopRequestSchema = desktopRequestUnion.superRefine(
+	(request, ctx) => {
+		if (request.op !== "agent.publish" && request.op !== "agent.republish") {
+			return;
+		}
+		// The same presence test the composer's assert uses (S-2): one predicate for
+		// "is this half specified", so the two boundaries cannot disagree.
+		if (Boolean(request.visibility === "org") !== Boolean(request.tenantId)) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message:
+					'A publication target needs both `visibility: "org"` and `tenantId`, or neither: one half would publish to the public hub.',
+			});
+		}
+	},
+);
+
 export type DesktopRequest = z.infer<typeof desktopRequestSchema>;
+
 /**
  * The machine register for a desktop-control REFUSAL, and the one translator that
  * turns it into a sentence a user reads.
@@ -3491,6 +3588,42 @@ function wakeTiming(request: {
 	};
 }
 
+/**
+ * Refuse a publication target that names only one of its two fields.
+ *
+ * WHY THIS EXISTS BESIDE THE SCHEMA'S OWN `.refine` (security review round 1,
+ * S-1): the refinement is what a CALLER meets, and this is the same rule one
+ * boundary later, where the path is composed. Both are needed for the property
+ * the comments promised — "a half-specified target is refused rather than
+ * silently published to the public hub" — because the failure mode was that a
+ * half pair parsed and then composed a plain `/publish`: a PUBLIC publication
+ * with no error anywhere, on the one field where failing open is a disclosure.
+ *
+ * It throws rather than returning a refusal because this is a programming error
+ * (a cast hole, a dynamic object with `tenantId: undefined`), not a state a user
+ * can be in: the dialog builds the pair as one unit.
+ */
+function assertPairedPublicationTarget(request: {
+	visibility?: "org";
+	tenantId?: string;
+}): void {
+	/*
+	 * ONE PREDICATE WITH THE SCHEMA'S, AND A PRESENCE TEST RATHER THAN A DEFINED
+	 * TEST (security review round 2, S-2). `!== undefined` read `""` as "present"
+	 * while the composition below reads it as "absent" -- the assert passed and the
+	 * query was dropped, which is the same silent public publication S-1 closed for
+	 * the undefined half. `Boolean` makes the two halves agree on what "a tenant"
+	 * is, so an empty string throws like a missing one. `""` is unreachable from
+	 * the renderer (`id` is `min(1)`), which is why this is the second boundary's
+	 * promise rather than a live hole.
+	 */
+	if (Boolean(request.visibility === "org") !== Boolean(request.tenantId)) {
+		throw new Error(
+			'A publication target needs both `visibility: "org"` and `tenantId`, or neither: one half would publish to the public hub.',
+		);
+	}
+}
+
 export function desktopEndpoint(request: DesktopRequest): {
 	path: string;
 	method: string;
@@ -3868,9 +4001,31 @@ export function desktopEndpoint(request: DesktopRequest): {
 			};
 		case "legacy.agent.upload":
 			return { path: `/v1/agents/${request.agentId}/upload`, method: "POST" };
-		case "agent.publish":
+		case "agent.publish": {
+			/*
+			 * The org target rides on QUERY PARAMS, not in the body (§4.4): the
+			 * published document's schema is strict, and the target is not part of
+			 * the document. `URLSearchParams` rather than string interpolation so a
+			 * tenant id can never compose a path or a second parameter.
+			 */
+			/*
+			 * A HALF PAIR THROWS rather than composing a public publication (security
+			 * review round 1, S-1): this builder used to drop an unpaired half, which
+			 * turned `{visibility: "org"}` alone into a plain `/publish` — a silent
+			 * PUBLIC publication where the comment promised a refusal. The schema's own
+			 * `.refine` is the enforcement the renderer meets; this is the same rule at
+			 * the boundary that composes the path, so a caller that reached here through
+			 * a cast cannot publish to the wrong audience either.
+			 */
+			assertPairedPublicationTarget(request);
+			const query = new URLSearchParams();
+			if (request.visibility === "org" && request.tenantId) {
+				query.set("visibility", "org");
+				query.set("tenant_id", request.tenantId);
+			}
+			const search = query.toString();
 			return {
-				path: `/v1/agents/${request.agentId}/publish`,
+				path: `/v1/agents/${request.agentId}/publish${search ? `?${search}` : ""}`,
 				method: "POST",
 				// The route's own body shape: a partial override of the document the
 				// backend builds from the local row. `{}` rather than `undefined` when
@@ -3879,15 +4034,42 @@ export function desktopEndpoint(request: DesktopRequest): {
 				// answer 422.
 				body: { document: request.document ?? {} },
 			};
-		case "agent.republish":
+		}
+		case "agent.republish": {
+			/*
+			 * A HALF PAIR THROWS rather than composing a public publication (security
+			 * review round 1, S-1): this builder used to drop an unpaired half, which
+			 * turned `{visibility: "org"}` alone into a plain `/publish` — a silent
+			 * PUBLIC publication where the comment promised a refusal. The schema's own
+			 * `.refine` is the enforcement the renderer meets; this is the same rule at
+			 * the boundary that composes the path, so a caller that reached here through
+			 * a cast cannot publish to the wrong audience either.
+			 */
+			assertPairedPublicationTarget(request);
+			const query = new URLSearchParams();
+			if (request.visibility === "org" && request.tenantId) {
+				query.set("visibility", "org");
+				query.set("tenant_id", request.tenantId);
+			}
+			const search = query.toString();
 			return {
-				path: `/v1/agents/${request.agentId}/publish`,
+				path: `/v1/agents/${request.agentId}/publish${search ? `?${search}` : ""}`,
 				method: "PUT",
 				body: {
 					hub_agent_id: request.hubAgentId,
 					document: request.document ?? {},
 				},
 			};
+		}
+		case "team.pull": {
+			const query = new URLSearchParams();
+			if (request.tenantId) query.set("tenant_id", request.tenantId);
+			const search = query.toString();
+			return {
+				path: `/v1/teams/pull/${request.teamId}${search ? `?${search}` : ""}`,
+				method: "GET",
+			};
+		}
 		case "agent.nameAvailability": {
 			// `name` travel as the user typed it: the hub is the one that trims and
 			// normalises, and a client that pre-normalised would be answering a
