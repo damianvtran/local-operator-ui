@@ -1459,6 +1459,17 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"searchQuotaUxRestampNote",
 	/*
+	 * AND THE CREDENTIAL-INPUT CHANGE'S OWN (`fix/secret-ask-credential-input`):
+	 * its subject is this file's binding too - it moves BOTH trees (the dock's
+	 * masked secret field and its answer path in `src/`, the suite's cases and
+	 * the sweep's two new rows in `scripts/`) without committing a frame, so a
+	 * reader is owed the pair AND the reason no still was owed - the same case
+	 * `task17RestampNote` and `daemonObservationTickWaitRestampNote` are in the
+	 * list for. The new rows' frames are the PR's to carry (referenced from the
+	 * pull request), and `countsMean.surfaces` carries the re-derivation.
+	 */
+	"secretAskCredentialRestampNote",
+	/*
 	 * AND THE TWO-FLAKE LANE'S OWN: its subject IS this file's binding too - it
 	 * moves BOTH trees without taking a frame (a dev-mode caret fix and two
 	 * readers, none of which draws anything), so a reader is owed the pair AND
@@ -2139,6 +2150,16 @@ const BRANCH_RECORDS = [
 	 * and names the five sets its capture moved.
 	 */
 	"searchQuotaUxRestampNote",
+	/*
+	 * And by the credential-input change, whose note is the newest top-level
+	 * record on the branch: it states the pair this tip ships, moves both trees
+	 * (the dock's masked secret field and its answer path in `src/`, the suite's
+	 * cases and the sweep's two new rows in `scripts/`), and takes no committed
+	 * frame - a fold that started from main's copy would drop it first, and with
+	 * it the only statement of what moved and why no still was committed, which
+	 * is the failure this whole list exists to make loud.
+	 */
+	"secretAskCredentialRestampNote",
 	/*
 	 * And by the TWO-FLAKE lane, whose note is now the newest top-level record on
 	 * the branch: it states the pair this tip ships, moves both trees, and takes
