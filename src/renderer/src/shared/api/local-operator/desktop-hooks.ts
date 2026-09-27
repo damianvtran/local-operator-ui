@@ -460,18 +460,33 @@ export type DesktopFeature =
 	 */
 	| "session_delete"
 	/**
-	 * The mesh: this backend is one device in one or more networks.
+	 * The mesh: this DAEMON can serve the peer catalogue and the network catalogue.
 	 *
 	 * `mesh-session-mobility.md` §9.3's key, unchanged: the peer catalogue
 	 * (`GET /v1/desktop/peers`), the networks read (`GET /v1/desktop/networks`) and
 	 * the locality fields on the session rows behind them.
 	 *
+	 * IT IS A CAPABILITY, NOT A MEMBERSHIP, and review round 1 (R1-1) caught this
+	 * comment claiming the opposite. lop advertises `peers` unconditionally, on
+	 * purpose - `local_operator/server/routes/capabilities.py`: "the KEYS answer 'what
+	 * can this backend do' rather than 'is this machine in a mesh'" - so a device in NO
+	 * network carries the key too. The backend names where the membership fact lives
+	 * instead: "a device in no network answers an empty catalogue, and an empty
+	 * catalogue mounts nothing". `useMeshMembership` reads exactly that, and it is what
+	 * the rail row and the palette destination are gated on.
+	 *
 	 * ABSENT MEANS NOT MOUNTED, never mounted-disabled: no Mesh rail row, no `/mesh`
 	 * route, no peer sections and no device choice on `/new`. A reserved empty
 	 * destination advertises a feature the user does not have - the argument
-	 * `session_pins` makes above - and a user with no network must get today's
-	 * chrome byte for byte, which is the property the frames in
-	 * `docs/evidence/mesh-tab/` measure rather than assert.
+	 * `session_pins` makes above.
+	 *
+	 * WHAT A USER WITH NO NETWORK SEES, stated the way it actually happens rather than
+	 * as "no call at all": one READ-ONLY catalogue read is issued for the row's gate,
+	 * it answers `[]` (the backend short-circuits it on `has_any_network()`, an `is_dir`
+	 * test with no mkdir, so nothing is created), and NO rail row, no route content and
+	 * no peer section mounts. The chrome is today's. The frames in
+	 * `docs/evidence/mesh-tab/` measure the TAB rather than that chrome, and the
+	 * chrome claim is pinned in `scripts/mesh-tab.test.mjs` instead.
 	 *
 	 * SLICE 1 READS ONLY. `session_transfer` is deliberately NOT added here yet: it
 	 * gates the MOVE affordance (a chip's drag target and the table's `Move to…`

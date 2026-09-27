@@ -38,6 +38,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useRef } from "react";
 import { type MeshGraph, meshGraph } from "./mesh-graph";
+import { type MeshMembership, meshMembership } from "./mesh-membership";
 import {
 	EMPTY_SLOTS,
 	type MeshSlots,
@@ -90,6 +91,18 @@ export function useMeshNetworks(enabled: boolean) {
 		staleTime: 10_000,
 		refetchInterval: enabled ? MESH_POLL_MS : false,
 	});
+}
+
+/* -------------------------------------------------------------- membership */
+
+/**
+ * The membership gate's hook: the pure rule is `mesh-membership.ts` (testable without a
+ * query client), and this is where it is fed - the page reads the catalogue anyway, so
+ * this shares its one cache entry rather than issuing a second read.
+ */
+export function useMeshMembership(enabled: boolean): MeshMembership {
+	const networks = useMeshNetworks(enabled);
+	return meshMembership({ enabled, networks: networks.data });
 }
 
 /* ------------------------------------------------------------------ states */

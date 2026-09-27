@@ -642,18 +642,37 @@ test("the /mesh route is mounted only when the tri-state says enabled", () => {
 	);
 });
 
-test("the Mesh rail row is gated on the same tri-state, and named the operator's word", () => {
+test("the Mesh rail row is gated on MEMBERSHIP, and the route on the capability", () => {
+	/*
+	 * The split is deliberate and review round 1 (R1-1) is why it exists: `features.peers`
+	 * is advertised by lop on EVERY install, so a key-only row is a rail item on the one
+	 * piece of chrome that is always on screen, for a device that is in no mesh. The row
+	 * therefore reads the catalogue's emptiness; the route stays on the capability so that
+	 * leaving your last network while on the page cannot eject you from the tab (see the
+	 * note at the route in `app.tsx`).
+	 */
 	const nav = source(
 		"src/renderer/src/shared/components/navigation/sidebar-navigation.tsx",
 	);
 	assert.match(
 		nav,
-		/const meshState = desktopFeatureState\(capabilities\.data, "peers"\);/,
+		/const meshPaired =\s*desktopFeatureState\(capabilities\.data, "peers"\) === "enabled";/,
+		"the capability is still read as the tri-state, at the site that decides",
 	);
 	assert.match(
 		nav,
-		/\.\.\.\(meshState === "enabled"\s*\?\s*\[\s*\{\s*icon: Network,\s*label: "Mesh",\s*path: "\/mesh",/,
-		"one gate read in two places, rather than a row that leads to a route that is not there",
+		/const meshMembership = useMeshMembership\(meshPaired\);/,
+		"and MEMBERSHIP is the second fact, from the hook that owns the rule",
+	);
+	assert.match(
+		nav,
+		/\.\.\.\(meshMembership === "member"\s*\?\s*\[\s*\{\s*icon: Network,\s*label: "Mesh",\s*path: "\/mesh",/,
+		"a row appears only for a device KNOWN to be in a mesh - not for an unknown or empty answer",
+	);
+	assert.doesNotMatch(
+		nav,
+		/meshState === "enabled"/,
+		"the key-only gate is gone, not merely supplemented",
 	);
 	assert.match(
 		nav,
@@ -664,6 +683,97 @@ test("the Mesh rail row is gated on the same tri-state, and named the operator's
 		source("src/renderer/src/shared/hooks/use-route-params.ts"),
 		/"mesh"/,
 		"`useCurrentView` knows the view, or the row can never light up",
+	);
+});
+
+test("the palette's destinations are the rail's destinations (R1-3)", () => {
+	const palette = source(
+		"src/renderer/src/features/command-palette/use-palette-sources.ts",
+	);
+	assert.match(
+		palette,
+		/id: "mesh",\s*\n\s*name: "Mesh",\s*\n\s*path: "\/mesh",/,
+		"typing `mesh` finds the destination the rail draws",
+	);
+	assert.match(
+		palette,
+		/meshMembership === "member" \? \[\.\.\.PAGES, MESH_PAGE\] : PAGES/,
+		"gated by the SAME rule as the rail row, so the two lists cannot disagree",
+	);
+});
+
+test("the membership rule itself, executed rather than read", async () => {
+	/*
+	 * The rule is bundled and RUN, because the pins above can only say that some gate is
+	 * written - and the defect this round fixed was a gate that was written and MEANT the
+	 * wrong thing. `mesh-membership.ts` is pure (no React, no query client, no router), so
+	 * this is the cheap half of the evidence and the half a future edit cannot fake.
+	 */
+	const built = await build({
+		stdin: {
+			contents:
+				'export * from "./src/renderer/src/features/mesh/mesh-membership";',
+			resolveDir: process.cwd(),
+		},
+		bundle: true,
+		format: "esm",
+		platform: "node",
+		write: false,
+	});
+	const mod = await import(
+		`data:text/javascript;base64,${Buffer.from(built.outputFiles[0].text).toString("base64")}`
+	);
+	/*
+	 * Case (a) of the review's own list: a daemon too old to carry the key. Nothing may
+	 * mount, and nothing is asked.
+	 */
+	assert.equal(
+		mod.meshMembership({ enabled: false, networks: undefined }),
+		"unknown",
+	);
+	/* And a stale answer cannot resurrect it either. */
+	assert.equal(
+		mod.meshMembership({
+			enabled: false,
+			networks: { networks: [{ id: "n" }] },
+		}),
+		"unknown",
+	);
+	/* No answer yet: unknown, which mounts nothing - no flash of a row that may vanish. */
+	assert.equal(
+		mod.meshMembership({ enabled: true, networks: undefined }),
+		"unknown",
+	);
+	/* A first read that FAILED is also unknown, and mounts nothing. */
+	assert.equal(
+		mod.meshMembership({ enabled: true, networks: undefined, error: true }),
+		"unknown",
+	);
+	/* Case (b): the capability is on and the catalogue ANSWERED EMPTY - no row. */
+	assert.equal(
+		mod.meshMembership({ enabled: true, networks: { networks: [] } }),
+		"none",
+	);
+	/* Case (c): a device in a network. */
+	assert.equal(
+		mod.meshMembership({
+			enabled: true,
+			networks: { networks: [{ id: "n" }] },
+		}),
+		"member",
+	);
+	/*
+	 * A device already known to be in a mesh keeps `member` across a failed REFETCH,
+	 * because React Query hands the last good `data` back - so a relay hiccup cannot make
+	 * the row disappear under the user. The shape below is that state.
+	 */
+	assert.equal(
+		mod.meshMembership({
+			enabled: true,
+			networks: { networks: [{ id: "n" }] },
+			error: true,
+		}),
+		"member",
 	);
 });
 
@@ -846,4 +956,62 @@ test("a device whose every membership is revoked says so, not 'no sessions'", ()
 	assert.ok(alive);
 	assert.notEqual(deviceStatLine(alive, 1_700_000_000), "revoked membership");
 	assert.equal(alive.memberships.length, 2);
+});
+
+/* ---------------------------------------------------- the review-round fixes */
+
+test("the fit never enlarges the world past its designed size (D2)", async () => {
+	const built = await build({
+		stdin: {
+			contents:
+				'export * from "./src/renderer/src/features/mesh/mesh-positions";',
+			resolveDir: process.cwd(),
+		},
+		bundle: true,
+		format: "esm",
+		platform: "node",
+		write: false,
+	});
+	const mod = await import(
+		`data:text/javascript;base64,${Buffer.from(built.outputFiles[0].text).toString("base64")}`
+	);
+	const bounds = { x: 0, y: 0, width: 400, height: 200 };
+	/* A viewport with room to spare: the fit centres and does NOT scale up. */
+	const roomy = mod.fitTransform(bounds, { width: 2000, height: 1200 });
+	assert.equal(
+		roomy.k,
+		1,
+		"1.79x is what put a 13px label at 23px in the frames",
+	);
+	assert.ok(
+		roomy.tx > 0 && roomy.ty > 0,
+		"and the graph is centred in the room it does not use",
+	);
+	/* A viewport that is too small still shrinks to fit - unchanged. */
+	const tight = mod.fitTransform(bounds, { width: 320, height: 160 });
+	assert.ok(tight.k < 1, "the shrink side of the fit is untouched");
+	/* And the user's own zoom is not capped by the fit's ceiling. */
+	assert.ok(
+		mod.MAX_SCALE > mod.MAX_FIT_SCALE,
+		"zooming in is still a gesture the reader can make",
+	);
+});
+
+test("this device is a ring, and the stripe carries status (D6)", () => {
+	const node = source("src/renderer/src/features/mesh/mesh-node.tsx");
+	assert.match(
+		node,
+		/const STATE_RING: Record<DeviceState, string \| null> = \{\s*self: "ring-2 ring-accent",/,
+		"identity is its own channel: a ring no status state can spend",
+	);
+	assert.match(
+		node,
+		/const STATE_STRIPE: Record<DeviceState, string> = \{\s*self: "border-l-hairline",/,
+		"and the self stripe is the neutral one a resting node wears, so a green bar cannot read as healthy in a misconfigured graph",
+	);
+	assert.doesNotMatch(
+		node,
+		/self: "border-l-accent"/,
+		"the accent stripe is gone, not merely joined by a ring",
+	);
 });

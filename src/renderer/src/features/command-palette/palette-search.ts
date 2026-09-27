@@ -67,6 +67,7 @@ export type PaletteIconName =
 	| "chat"
 	| "agents"
 	| "hub"
+	| "network"
 	| "schedules"
 	| "browser"
 	| "settings"

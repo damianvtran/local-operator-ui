@@ -1262,16 +1262,24 @@ const CONTROLS = [
 		 *
 		 * THE GROUND IS `sunken`, because the canvas is a well: the topology is drawn
 		 * inside one recessed region rather than on the page. The node's boundary is
-		 * `border-control` and that is a decision the numbers made rather than taste: it
-		 * shipped as a `hairline` first, and `hairline` against the node's own `elevated`
-		 * fill measures ΔE00 1.44 on `localOperatorLight` and 1.23 on `localOperatorDark`
-		 * - below this file's own ΔE00 2.0 field floor, i.e. a boundary nobody can see -
-		 * while the fill's own step off the well (`elevated` on `sunken`) is ΔE00 6.85 / 7.71,
-		 * which is what separates the node.
+		 * `border-control`, and the number that decides it is this file's own CONTROLS
+		 * floor: the edge measures 3.92:1 against the node's `elevated` fill on
+		 * `localOperatorLight` and 3.30:1 on `localOperatorDark`, above the 3:1 a control
+		 * owes, and the fill's own step off the well (`elevated` on `sunken`) adds ΔE00
+		 * 6.85 / 7.71 beside it.
 		 *
-		 * The SELF node's accent stripe, the warning and danger stripes and the ink edge a
-		 * selected node takes are all state, not boundary, and each is a role this file
-		 * already measures (accent, warning, danger on their grounds; ink on fill here).
+		 * CORRECTED IN REVIEW ROUND 1 (D1). This row shipped claiming `hairline` on
+		 * `elevated` measured ΔE00 1.44 / 1.23, "below the field floor"; re-measured with
+		 * this repository's own `deltaE` that pair is **9.19 / 4.80**, i.e. the hairline is
+		 * visible, and no role pair in either palette measures 1.44. The edge is right; the
+		 * number that justified it was not, and the frames agree with the corrected one.
+		 *
+		 * The stripe carries STATUS: `hairline` at rest (a deliberate quiet bar, ΔE00 9.19 /
+		 * 4.80 against the fill), `warning` when unreachable, `danger` when suspect. THIS
+		 * DEVICE IS A RING RATHER THAN A STRIPE (design round 1, D6) - `ring-2
+		 * ring-accent` - so identity and status are different channels instead of the
+		 * accent sharing the stripe the three anomalies spend. The ink edge a selected node
+		 * takes is state too, measured as ink on this fill, already above its floor.
 		 */
 		name: "mesh device node",
 		on: ["sunken"],

@@ -22,25 +22,48 @@ import { deviceStatLine, deviceStateWords } from "./mesh-graph";
 import { NODE_HEIGHT, NODE_WIDTH } from "./mesh-positions";
 
 /**
- * The node's state stripe and its state ink, by role - and WHY ONE OF THE FOUR IS
- * NEUTRAL, which is measured rather than assumed (kept from PR #498, whose design
- * round measured it).
+ * The node's state stripe, its state ink, and the ring that says WHICH NODE IS YOU -
+ * three channels, and WHY ONE OF THE FOUR STATES IS NEUTRAL, which is measured rather
+ * than assumed (kept from PR #498, whose design round measured it).
  *
  * The obvious mapping - self=accent, reachable=success, unreachable=warning,
- * suspect=danger - spends TWO GREENS on one channel: `localOperatorDark`'s accent
- * and success are two neighbouring greens, so a graph whose "this device" node and
- * whose healthy nodes are those two has no status channel left. The RESTING state
- * is therefore the quiet one, which is the rule the rest of this app already
- * applies: reachable is the ordinary case - most nodes, most of the time - so it
- * takes the neutral role, and the three states that mean something take a hue each.
+ * suspect=danger - spends TWO GREENS on one channel: the two roles measure ΔE00 5.07
+ * apart on `localOperatorDark` (`accent` `#38c96a` against `success` `#57c785`) and
+ * 2.22 on `localOperatorLight` (`#137742` against `#19764a`, the same green to the
+ * eye), so a graph whose "this device" node and whose healthy nodes are those two has
+ * no status channel left. The RESTING state is therefore the quiet one, which is the
+ * rule the rest of this app already applies: reachable is the ordinary case - most
+ * nodes, most of the time - so it takes the neutral role, and the three states that
+ * mean something take a hue each.
+ *
+ * SELF IS A RING, NOT A HUE (design round 1, D6). The identity channel and the status
+ * channel are separate on purpose: `self` takes the same neutral stripe a resting node
+ * takes, and the accent lives in a ring around the node's box, which no status state
+ * can spend. Before this, "this device" was an accent STRIPE - the same channel the
+ * three anomalies use - so in a misconfigured graph the reader saw one green bar among
+ * red and amber ones, where green conventionally reads "healthy".
  */
 const STATE_STRIPE: Record<DeviceState, string> = {
-	self: "border-l-accent",
+	self: "border-l-hairline",
 	// The resting state is the QUIET one: `border-control` is already the node's edge,
 	// so its stripe takes the decorative hairline rather than a second, louder line.
 	reachable: "border-l-hairline",
 	unreachable: "border-l-warning",
 	suspect: "border-l-danger",
+};
+
+/**
+ * The identity ring, and it is `null` for every state that is not this device.
+ *
+ * `ring-2 ring-accent` rather than an `outline`: the ring is drawn OUTSIDE the border
+ * box, so it does not eat into the 200x48 world box the layout pins, and it survives
+ * the world layer's `transform: scale()` the same way the border does.
+ */
+const STATE_RING: Record<DeviceState, string | null> = {
+	self: "ring-2 ring-accent",
+	reachable: null,
+	unreachable: null,
+	suspect: null,
 };
 
 const STATE_TEXT: Record<DeviceState, string> = {
@@ -128,12 +151,18 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 			/*
 			 * A CONTROL'S EDGE, per the system's own rule (`branding.md` § 2): the node is a
 			 * button, its boundary is the only thing that says where it ends, so it takes
-			 * `border-control` (3:1 floor) rather than the `hairline` this shipped first.
-			 * The measurement that decided it: `hairline` on the node's own `elevated` fill is
-			 * ΔE00 1.44 (`localOperatorLight`) and 1.23 (`localOperatorDark`) - below the
-			 * system's own ΔE00 2.0 field floor, i.e. a border nobody can see - while the
-			 * fill's own step off the canvas measures ΔE00 6.85 / 7.71 and is what actually
-			 * separates the node from the well.
+			 * `border-control` - **3.92:1** against its own `elevated` fill on
+			 * `localOperatorLight` and **3.30:1** on `localOperatorDark`, above the CONTROLS
+			 * floor - beside the fill's own step off the canvas well, ΔE00 6.85 / 7.71.
+			 *
+			 * THE RATIONALE HERE WAS CORRECTED IN REVIEW ROUND 1 (D1), because this comment
+			 * shipped a number that does not reproduce: it claimed `hairline` on `elevated`
+			 * measured ΔE00 1.44 / 1.23, "a border nobody can see". Re-measured on the same
+			 * head with the repo's own `deltaE`, that pair is **9.19 / 4.80** - the hairline is
+			 * VISIBLE, and the frame agrees (the stripe renders as a band of `#dad5cb` against
+			 * the `#fefdfa` fill in light, `#403b2c` against `#322D22` in dark). The edge is
+			 * chosen for the ratio above, not for the hairline's invisibility, and the resting
+			 * stripe is a deliberate quiet bar rather than nothing.
 			 */
 			"absolute flex items-center gap-2 rounded-md border border-l-4 border-control bg-elevated px-3 text-left",
 			/*
@@ -154,6 +183,7 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 			 */
 			selected && "border-y-ink border-r-ink bg-row-selected",
 			STATE_STRIPE[device.state],
+			STATE_RING[device.state],
 		)}
 		style={{ left: x, top: y, width: NODE_WIDTH, height: NODE_HEIGHT }}
 	>
