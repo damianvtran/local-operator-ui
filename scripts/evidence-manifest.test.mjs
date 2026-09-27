@@ -1341,6 +1341,12 @@ const STAMP_BINDING_NOTES = [
 	 * prose - the same case `foldOntoFd19adc9d9Note` is in the list for.
 	 */
 	"historySettingsRemovalSecondFoldNote",
+	/*
+	 * THIS BRANCH'S OWN: its subject IS this file's binding - the mesh set's frames
+	 * are new and both trees moved under them - so a reader is owed the check rather
+	 * than the prose.
+	 */
+	"meshTabRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
