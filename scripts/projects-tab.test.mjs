@@ -48,6 +48,7 @@ const {
 	subagentChipLabel,
 	todoChipLabel,
 	listRowMeta,
+	PROJECT_DAY_FIELD_PATTERN,
 } = model;
 
 /* ----------------------------------------------------------------- chips -- */
@@ -112,6 +113,19 @@ test("an ISO day renders as a local calendar date, never a UTC-shifted one", () 
 	assert.equal(formatProjectDay("not-a-day", "en-US", now), "not-a-day");
 });
 
+test("the date field's rule accepts a day or its own empty", () => {
+	// The rule the form dialog and the milestone add row share (review round 1's
+	// nit): a day, or the empty string a field carries when unset. SHAPE ONLY —
+	// a calendar the month cannot name (`2026-13-01`) passes this and is refused
+	// by the store, which is the division of labour the wire already states.
+	assert.ok(PROJECT_DAY_FIELD_PATTERN.test("2026-10-01"));
+	assert.ok(PROJECT_DAY_FIELD_PATTERN.test(""));
+	assert.ok(!PROJECT_DAY_FIELD_PATTERN.test("10/01/2026"));
+	assert.ok(!PROJECT_DAY_FIELD_PATTERN.test("2026-1-1"));
+	assert.ok(!PROJECT_DAY_FIELD_PATTERN.test("2026-10-1"));
+	assert.ok(!PROJECT_DAY_FIELD_PATTERN.test(" 2026-10-01 "));
+});
+
 /* -------------------------------------------------------------------- age -- */
 
 test("progress age is bounded by the unit it reads best in", () => {
@@ -152,6 +166,24 @@ test("the progress line tells 'never reported' apart from 'stale'", () => {
 			1_700_000_000_000,
 		),
 		"reported 2h ago by session 4e92693767fa",
+	);
+	/*
+	 * QA round 1's Q-1, read live as "reported just now ago by the operator":
+	 * `progressAge` returns a complete phrase at the <60s mark, and the line
+	 * appended " ago" to it unconditionally while the list cell special-cased
+	 * the phrase. Both surfaces go through `progressAgePhrase` now, so this pin
+	 * is the sentence a reader actually sees in the first minute.
+	 */
+	assert.equal(
+		progressLine(
+			{
+				progress: "started the cutover",
+				progress_updated_at: 1_700_000_000 - 5,
+				progress_reported_by: "operator",
+			},
+			1_700_000_000_000,
+		),
+		"reported just now by the operator",
 	);
 });
 
@@ -230,6 +262,12 @@ test("unknown subagent and todo counts render nothing, never zero", () => {
 	assert.equal(
 		subagentChipLabel({ running: 2, settled: 3, names: [] }),
 		"2 subagents running",
+	);
+	// The singular, which the story fixture itself renders (design round 1,
+	// D4: the detail frame read "1 subagents running").
+	assert.equal(
+		subagentChipLabel({ running: 1, settled: 2, names: [] }),
+		"1 subagent running",
 	);
 	assert.equal(
 		subagentChipLabel({ running: 0, settled: 1, names: [] }),

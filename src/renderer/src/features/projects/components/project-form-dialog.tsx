@@ -53,6 +53,7 @@ import type {
 	ProjectCreateFields,
 	ProjectEditFields,
 } from "../hooks/use-projects-queries";
+import { PROJECT_DAY_FIELD_PATTERN } from "../project-model";
 
 /** The status words, in the board's fixed order. */
 const STATUS_OPTIONS: { value: DesktopProjectStatus; label: string }[] = [
@@ -111,7 +112,7 @@ const EMPTY_FORM: FormState = {
 };
 
 /** `2026-09-20`, or `""` — the one day shape every date field accepts. */
-const ISO_DAY = /^$|^\d{4}-\d{2}-\d{2}$/;
+const ISO_DAY = PROJECT_DAY_FIELD_PATTERN;
 
 /** The comma text a tags field holds, as the wire's list. */
 export function parseProjectTags(raw: string): string[] {
@@ -447,6 +448,25 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 							{errors.estimate && (
 								<p className="text-meta text-danger">{errors.estimate}</p>
 							)}
+							{/*
+							 * THE CLEARED-ESTIMATE HINT (review round 1, the emptied-Estimate
+							 * finding): the backend's edit model cannot clear one
+							 * (`projects.py` merges only when `fields.estimate is not
+							 * None`), so an emptied field saved "Project saved" and kept the
+							 * old value with no hint at all. Until the wire can clear one,
+							 * the hint says what the save will do — shown only when there IS
+							 * a value the save would keep, so a create form and an edit of a
+							 * project with no estimate stay quiet.
+							 */}
+							{mode === "edit" &&
+								form.estimate.trim() === "" &&
+								initial?.estimate !== null &&
+								initial?.estimate !== undefined && (
+									<p className="text-meta text-ink-muted">
+										Clearing an estimate is not supported yet — saving keeps its
+										current value.
+									</p>
+								)}
 						</div>
 					</>
 				)}

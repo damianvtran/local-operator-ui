@@ -157,6 +157,32 @@ export function progressAge(
 }
 
 /**
+ * An age token as a sentence fragment: `just now`, or `<age> ago`.
+ *
+ * ONE RULE, TWO READERS. `progressAge` returns "just now" as a complete
+ * phrase, and appending " ago" to it is the copy defect QA round 1's Q-1 read
+ * live ("reported just now ago by the operator"): the list cell special-cased
+ * the phrase and the detail's `progressLine` did not, so the two surfaces
+ * spelled one fact two ways. This is the one place the rule lives now, and both
+ * callers go through it.
+ */
+export function progressAgePhrase(age: string): string {
+	return age === "just now" ? "just now" : `${age} ago`;
+}
+
+/**
+ * The date FIELD rule: an ISO `YYYY-MM-DD` day, or the empty string (a field's
+ * own "unset").
+ *
+ * Distinct from the parsing pattern above, which needs capture groups and
+ * refuses empty because it is reading a stored date; this one is what an input
+ * accepts. Exported so the form dialog's date fields and the milestone add row
+ * refuse malformed input in the same words rather than one of them leaving it
+ * to the wire (the reviewer's round-1 nit).
+ */
+export const PROJECT_DAY_FIELD_PATTERN = /^$|^\d{4}-\d{2}-\d{2}$/;
+
+/**
  * The progress line's reporter half: who wrote the snippet.
  *
  * `""` means the row does not say; `"operator"` is the route's own word for a
@@ -191,7 +217,7 @@ export function progressLine(
 	if (!view.progress) return "not reported yet";
 	const age = progressAge(view.progress_updated_at, nowMs);
 	const reporter = progressReporterLabel(view.progress_reported_by);
-	const parts = [age ? `reported ${age} ago` : "reported"];
+	const parts = [age ? `reported ${progressAgePhrase(age)}` : "reported"];
 	if (reporter) parts.push(`by ${reporter}`);
 	return parts.join(" ");
 }
@@ -281,7 +307,10 @@ export function subagentChipLabel(
 	summary: DesktopLinkedSession["subagents"],
 ): string {
 	if (!summary) return "";
-	if (summary.running > 0) return `${summary.running} subagents running`;
+	if (summary.running > 0)
+		return summary.running === 1
+			? "1 subagent running"
+			: `${summary.running} subagents running`;
 	return summary.settled === 1 ? "1 subagent" : `${summary.settled} subagents`;
 }
 

@@ -24,7 +24,11 @@ import { Plus, X } from "lucide-react";
 import type { FC } from "react";
 import { useState } from "react";
 import type { DesktopProjectMilestone } from "../../../../../shared/desktop-control-contract";
-import { formatProjectDay, milestoneStatusMeta } from "../project-model";
+import {
+	PROJECT_DAY_FIELD_PATTERN,
+	formatProjectDay,
+	milestoneStatusMeta,
+} from "../project-model";
 
 type ProjectMilestonesProps = {
 	milestones: DesktopProjectMilestone[];
@@ -45,7 +49,15 @@ export const ProjectMilestones: FC<ProjectMilestonesProps> = ({
 	const [draftName, setDraftName] = useState("");
 	const [draftDate, setDraftDate] = useState("");
 
-	const canAdd = draftName.trim().length > 0 && !busy;
+	/*
+	 * THE DATE IS VALIDATED HERE, in the same words the form dialog uses
+	 * (review round 1's nit): the add row used to submit whatever was typed and
+	 * let the WIRE refuse it, which turned a typo into a toast after a round
+	 * trip while every other date in the feature refuses malformed input
+	 * inline. Empty is legal (the field is optional) and the pattern says so.
+	 */
+	const dateInvalid = !PROJECT_DAY_FIELD_PATTERN.test(draftDate.trim());
+	const canAdd = draftName.trim().length > 0 && !dateInvalid && !busy;
 
 	const submitAdd = () => {
 		if (!canAdd) return;
@@ -137,7 +149,13 @@ export const ProjectMilestones: FC<ProjectMilestonesProps> = ({
 						value={draftDate}
 						onChange={(event) => setDraftDate(event.target.value)}
 						placeholder="YYYY-MM-DD"
+						aria-invalid={dateInvalid}
 					/>
+					{dateInvalid && (
+						<p className="text-meta text-danger">
+							Dates are YYYY-MM-DD, or empty.
+						</p>
+					)}
 				</div>
 				<Button
 					variant="secondary"
