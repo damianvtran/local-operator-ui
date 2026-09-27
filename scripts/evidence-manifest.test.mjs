@@ -1362,6 +1362,13 @@ const STAMP_BINDING_NOTES = [
 	 * prose - the same case `foldOntoFd19adc9d9Note` is in the list for.
 	 */
 	"historySettingsRemovalSecondFoldNote",
+	/*
+	 * AND THE ROUND-2 ARCHIVE-RECAST REMEDIATION'S OWN: it states the pair this
+	 * round re-derives (`src/` for the sidebar's focus hand-off, `scripts/` for
+	 * the driver's arrival rig and the pin on that call) and the walk's reading
+	 * at the tip, so a reader is owed the check rather than the prose.
+	 */
+	"qaRoundTwoRecastRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1890,6 +1897,13 @@ const BRANCH_RECORDS = [
 	 * from main's copy would drop it.
 	 */
 	"historySettingsRemovalSecondFoldNote",
+	/*
+	 * And the round-2 archive-recast remediation's own, the newest top-level
+	 * record on the branch: it states the pair the recast re-derives and the
+	 * walk's reading at the tip, so a later fold that started from main's copy
+	 * would drop it first - the same reason this list exists.
+	 */
+	"qaRoundTwoRecastRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
