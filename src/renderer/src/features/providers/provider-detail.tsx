@@ -69,7 +69,11 @@ import {
  * `scripts/backend-error-surfaces.test.mjs` bundles this grid and says so in its own
  * docblock. Importing the leaf keeps this feature out of that graph.
  */
-import { useRadientUserQuery } from "@shared/hooks/use-radient-user-query";
+import {
+	forgetAccountReadFailure,
+	radientUserKeys,
+	useRadientUserQuery,
+} from "@shared/hooks/use-radient-user-query";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useModelsStore } from "@shared/store/models-store";
 import { showErrorToast } from "@shared/utils/toast-manager";
@@ -668,6 +672,38 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		 */
 		void queryClient.invalidateQueries({ queryKey: desktopKeys.catalogue });
 		/*
+		 * THE ACCOUNT READ, when the credential that just landed is Radient's own.
+		 *
+		 * WHY IT MUST BE HERE AT ALL: every surface that completes a Radient
+		 * sign-in funnels through this callback - the settings grid's Radient row,
+		 * the connect dialog and the onboarding step all render this same panel,
+		 * and `RadientAuthButtons` renders it for the account section and the
+		 * upload dialog - and NONE of them invalidated `radientUserKeys`. The
+		 * re-read then waited for something else to mount an observer on the
+		 * failed query, which is the operator's report: after a re-sign-in the
+		 * sidebar foot still read "Account unavailable", and it healed only when a
+		 * later Settings visit happened to mount a new observer.
+		 *
+		 * WHY THE GATE, when the four invalidations around it are unconditional:
+		 * their input is "any credential", the account read's input is the RADIENT
+		 * credential alone. A write to any other provider cannot change who the
+		 * account is, and re-asking anyway would make the foot say "Checking
+		 * account…" about a fact nothing touched.
+		 *
+		 * WHY THE CLEAR COMES FIRST: the recorded class says the OLD credential
+		 * was refused, and a completed write is the event that falsifies that
+		 * premise - so the re-read under it is disclosed as "Checking account…"
+		 * rather than the foot sitting unchanged on the stale class for the whole
+		 * retry chain (`forgetAccountReadFailure` carries the full rule). If the
+		 * new credential is refused too, the read fails again and records again.
+		 * `RadientAuthButtons`' own `onConnected` invalidation, reached through
+		 * `onConnected?.()` below, stays and is idempotent with this one.
+		 */
+		if (provider.id === "radient") {
+			forgetAccountReadFailure();
+			void queryClient.invalidateQueries({ queryKey: radientUserKeys.all });
+		}
+		/*
 		 * AND THE CONFIG: a sign-in can write the default model, and the composer,
 		 * the model settings, the empty-chat card and the composer's model chip all
 		 * read it from there. The two invalidations answer two different questions
@@ -692,7 +728,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		 */
 		void queryClient.invalidateQueries({ queryKey: radientSessionIssueKey });
 		onConnected?.();
-	}, [queryClient, onConnected]);
+	}, [queryClient, onConnected, provider.id]);
 
 	/*
 	 * The default this Local Operator writes ITSELF -- and only in ONE case.

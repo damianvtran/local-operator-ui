@@ -183,7 +183,9 @@ const ACCOUNT_READ_KEY = JSON.stringify(radientUserKeys.user());
  * the reader who pressed Retry is told the fault is gone by the act of asking
  * again, which is design round 1's D4 over again. Nothing about starting a fetch
  * touches this record: it is written by the query function's catch and cleared
- * by its ANSWER, and by the query's removal.
+ * by its ANSWER, by the query's removal, and by a completed credential write
+ * (`forgetAccountReadFailure`, whose own docblock says why that event and a
+ * press are not the same kind of thing).
  *
  * AND WHY IT IS A SUBSCRIBED STORE RATHER THAN A BARE MAP (qa round 3, Q2). A map
  * is invisible to React, and React Query notifies an observer only when a prop
@@ -234,14 +236,24 @@ function recordAccountReadFailure(kind: RadientAccountReadFailure): void {
 }
 
 /**
- * Drop the recorded class, because the read it describes has been answered (or
- * the query holding it has been removed).
+ * Drop the recorded class: the read it describes has been answered (or the
+ * ordinary signed-out reply came back), the query holding it has been removed
+ * on sign-out, or a completed Radient credential WRITE replaced the credential
+ * the recorded class was about.
  *
- * One function rather than four `delete`s so the rule has one home: a recorded
- * failure may only be forgotten by an ANSWER, never by the start of the next
- * attempt - which is the defect this whole map exists to avoid (`failureCount`).
+ * The third one is why this is exported rather than private. "Refused" names
+ * the credential a completed write just replaced, so the write falsifies the
+ * class's premise and the re-read that follows is disclosed as "Checking
+ * account…" only because the stale class is gone from under it - see the two
+ * callers, `provider-detail.tsx`'s `refreshProviders` (gated on the Radient
+ * credential) and `use-radient-session-issue.ts`'s succeeded branch.
+ *
+ * One function rather than a `delete` per caller so the rule has one home: a
+ * recorded failure may only be forgotten by an ANSWER, or by an event whose
+ * completion makes its premise false, never by the start of the next attempt -
+ * which is the defect this whole map exists to avoid (`failureCount`).
  */
-function forgetAccountReadFailure(): void {
+export function forgetAccountReadFailure(): void {
 	if (!accountFailureKinds.delete(ACCOUNT_READ_KEY)) return;
 	announceAccountFailureChange();
 }
@@ -293,10 +305,11 @@ export const useRadientUserQuery = ({
 					operation: "account",
 				});
 				/*
-				 * An ANSWER is the only thing that clears a recorded failure - never the
-				 * start of the next attempt, which is what React Query resets
-				 * (`failureCount` and `error`) and what the press beneath the alert
-				 * used to erase the fault with. See `accountFailureKinds`.
+				 * An ANSWER clears a recorded failure - a completed credential write
+				 * clears one too (see `forgetAccountReadFailure`) - but never the START
+				 * of the next attempt, which is what React Query resets (`failureCount`
+				 * and `error`) and what the press beneath the alert used to erase the
+				 * fault with. See `accountFailureKinds`.
 				 */
 				forgetAccountReadFailure();
 				return account;
