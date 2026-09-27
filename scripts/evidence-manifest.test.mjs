@@ -1279,6 +1279,17 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"goalDesignRoundTwoNote",
 	/*
+	 * THIS BRANCH'S OWN, and it arrives under the union rule the list states: the
+	 * pair below is the MERGED tree's - re-derived on THIS fold (onto `origin/main`
+	 * = `eddfae750b`, #537/#540/#541/#542) with `git write-tree` on the resolved
+	 * index and `<tree>:src` / `<tree>:scripts`, so it rides the tree it describes
+	 * rather than either side of the merge - and every note that quotes the pair
+	 * as a pointer to this file's own values is substituted with it, main's own
+	 * list carried whole.
+	 */
+	"conversationStartEvidenceNote",
+
+	/*
 	 * THIS CHANGE'S OWN: it re-stamps the pass that made the chat header's
 	 * identity slot the controls it describes (the team and the agent menus,
 	 * the rename pencil) and re-captured its own eleven states - so ITS
