@@ -1440,6 +1440,13 @@ const STAMP_BINDING_NOTES = [
 	 * still was owed, for the same reason task-17's entry is here.
 	 */
 	"daemonObservationTickWaitRestampNote",
+	/*
+	 * AND THE TWO-FLAKE LANE'S OWN: its subject IS this file's binding too - it
+	 * moves BOTH trees without taking a frame (a dev-mode caret fix and two
+	 * readers, none of which draws anything), so a reader is owed the pair AND
+	 * the reason no still was owed, the same case task-17's entry states.
+	 */
+	"twoFlakesRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2042,6 +2049,13 @@ const BRANCH_RECORDS = [
 	 * this list exists.
 	 */
 	"daemonObservationTickWaitRestampNote",
+	/*
+	 * And by the TWO-FLAKE lane, whose note is now the newest top-level record on
+	 * the branch: it states the pair this tip ships, moves both trees, and takes
+	 * no frame - a fold that started from main's copy would drop it first, the
+	 * same reason this list exists.
+	 */
+	"twoFlakesRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
