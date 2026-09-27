@@ -181,7 +181,11 @@ test("counts say nothing at zero and say the noun at one", () => {
 test("a linked session's state has a precedence: missing, archived, runtime", () => {
 	// Gone session: the one state that needs an operator decision.
 	assert.deepEqual(
-		linkStateMeta({ exists: false, archived: false, runtime: { state: "live" } }),
+		linkStateMeta({
+			exists: false,
+			archived: false,
+			runtime: { state: "live" },
+		}),
 		{ label: "Missing", variant: "outline" },
 	);
 	// Archived wins over the runtime record.
@@ -194,7 +198,11 @@ test("a linked session's state has a precedence: missing, archived, runtime", ()
 		{ label: "Archived", variant: "neutral" },
 	);
 	assert.deepEqual(
-		linkStateMeta({ exists: true, archived: false, runtime: { state: "live" } }),
+		linkStateMeta({
+			exists: true,
+			archived: false,
+			runtime: { state: "live" },
+		}),
 		{ label: "Live", variant: "success" },
 	);
 	assert.deepEqual(
@@ -219,9 +227,18 @@ test("unknown subagent and todo counts render nothing, never zero", () => {
 	assert.equal(subagentChipLabel(null), "");
 	assert.equal(subagentChipLabel(undefined), "");
 	assert.equal(todoChipLabel(null), "");
-	assert.equal(subagentChipLabel({ running: 2, settled: 3, names: [] }), "2 subagents running");
-	assert.equal(subagentChipLabel({ running: 0, settled: 1, names: [] }), "1 subagent");
-	assert.equal(subagentChipLabel({ running: 0, settled: 0, names: [] }), "0 subagents");
+	assert.equal(
+		subagentChipLabel({ running: 2, settled: 3, names: [] }),
+		"2 subagents running",
+	);
+	assert.equal(
+		subagentChipLabel({ running: 0, settled: 1, names: [] }),
+		"1 subagent",
+	);
+	assert.equal(
+		subagentChipLabel({ running: 0, settled: 0, names: [] }),
+		"0 subagents",
+	);
 	assert.equal(todoChipLabel({ open: 1, total: 4 }), "4 todos");
 	assert.equal(todoChipLabel({ open: 0, total: 1 }), "1 todo");
 });
