@@ -44,6 +44,7 @@ import {
 	goalCapability,
 	goalPresent,
 } from "../../../../../shared/desktop-session-contract";
+import { gateIsSecret } from "../ask-answer";
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
 import type { UndeliveredTurn } from "../canonical/canonical-transcript";
 import { canonicalTranscriptSpeaks } from "../canonical/transcript-pane";
@@ -1724,13 +1725,15 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * input while one waits (`message-input.tsx` reads this as
 								 * `secretAnswer`), because a credential must never be typed into a
 								 * surface that cannot mask it — the answer belongs to the dock's own
-								 * field. `=== true` rather than the raw value so a backend that
-								 * omits `secret` (an older wire) reads as an ordinary ask rather
-								 * than as undefined-that-is-truthy.
+								 * field. Through `gateIsSecret`, the ONE predicate every consumer of
+								 * that reading shares (agent review round 1, NIT-1): the field arm,
+								 * the page's send refusal and the answer door read it too, so a
+								 * value the wire means as secret cannot be masked on one surface
+								 * while this one stays open — the mix that re-opened the exposure.
 								 */
-								secretAnswer={
-									canonical?.view.frontend?.pending_gate?.secret === true
-								}
+								secretAnswer={gateIsSecret(
+									canonical?.view.frontend?.pending_gate,
+								)}
 								// A conversation the backend says is gone is a KNOWN
 								// answer, so the composer refuses input rather than
 								// accepting a message that can only 404. The pane above

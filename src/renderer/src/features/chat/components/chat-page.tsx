@@ -74,6 +74,7 @@ import {
 	answerValue,
 	approvalAnswerValue,
 	createSendLock,
+	gateIsSecret,
 } from "../ask-answer";
 import {
 	type AdmittedSend,
@@ -444,6 +445,14 @@ function SessionPanel({
 		key: string;
 		sending: boolean;
 		refused: string | null;
+		/**
+		 * Whether a DEFINITE not-sent refusal leaves the kept value sendable again
+		 * (`answerReport`'s classification, on the card arm). The secret card is
+		 * the one reader: it releases its field for a retry on `true` and holds on
+		 * `false`, because an unknowable outcome may have landed and a retry could
+		 * send it twice (see `question-dock.tsx`).
+		 */
+		retryable: boolean;
 	} | null>(null);
 	/*
 	 * The gate this panel is showing, and this panel's own record of having
@@ -506,7 +515,11 @@ function SessionPanel({
 	});
 	const answerForThisGate =
 		pendingGate && answerState?.key === gateKey
-			? { sending: answerState.sending, refused: answerState.refused }
+			? {
+					sending: answerState.sending,
+					refused: answerState.refused,
+					retryable: answerState.retryable,
+				}
 			: null;
 	const lastCatalogueState = useRef("");
 	const [sendError, setSendError] = useState<string | null>(null);
@@ -1508,9 +1521,12 @@ function SessionPanel({
 				 *
 				 * The sentence and the code are the ones every refused answer uses, so
 				 * the composer's alert offers no press that cannot work
-				 * (`SECRET_ANSWER_DOCKED_MESSAGE` carries the reasoning).
+				 * (`SECRET_ANSWER_DOCKED_MESSAGE` carries the reasoning). The read itself
+				 * is `gateIsSecret` — the ONE predicate the dock's field arm, the
+				 * composer's closure and the answer door share (agent review round 1,
+				 * NIT-1), so no surface can mask while another stays open.
 				 */
-				if (gate.secret)
+				if (gateIsSecret(gate))
 					throw new UserFacingError(
 						SECRET_ANSWER_DOCKED_MESSAGE,
 						ANSWER_NOT_SENT_CODE,
@@ -2016,20 +2032,32 @@ function SessionPanel({
 				 * options disabled until the gate itself moves, which is what stops a
 				 * second press from repeating an answer that already landed.
 				 */
-				setAnswerState({ key: pressedKey, sending: false, refused: null });
+				setAnswerState({
+					key: pressedKey,
+					sending: false,
+					refused: null,
+					// A sent answer has nothing to retry: the secret field clears.
+					retryable: false,
+				});
 				onSent?.();
 				return;
 			case "card":
 				// The sentence belongs on the surface the press was made on, where it
 				// cannot be missed and cannot be repeated. It is the SAME string the
 				// composer would have carried — the register is the outcome's — and
-				// the hold stays, so the card cannot repeat an answer whose fate is
-				// unknown (UX round 2, U9: the composer arm used to release the hold
-				// while leaving three live options under an unknowable outcome).
+				// the hold lasts exactly as long as the outcome entitles it to
+				// (UX round 2, U9: the composer arm used to release the hold while
+				// leaving three live options under an unknowable outcome). A DEFINITE
+				// not-sent refusal carries `retryable`, and the secret card spends it
+				// by reopening its field: its composer is closed, so the hold would
+				// strand the kept value with no surface able to send it (round 1's
+				// D1/U1/Q-1 reunite here). An unknowable outcome keeps the hold — a
+				// retry could send it twice.
 				setAnswerState({
 					key: pressedKey,
 					sending: false,
 					refused: report.refused,
+					retryable: report.retryable,
 				});
 				return;
 			case "composer":
@@ -2121,7 +2149,7 @@ function SessionPanel({
 			input.current?.focusInput();
 		}
 		setAdmitting(true);
-		setAnswerState({ key, sending: true, refused: null });
+		setAnswerState({ key, sending: true, refused: null, retryable: false });
 		setSendError(null);
 		setSendErrorCode(undefined);
 		let outcome: AnswerOutcome;
@@ -2191,7 +2219,7 @@ function SessionPanel({
 			input.current?.focusInput();
 		}
 		setAdmitting(true);
-		setAnswerState({ key, sending: true, refused: null });
+		setAnswerState({ key, sending: true, refused: null, retryable: false });
 		setSendError(null);
 		setSendErrorCode(undefined);
 		let outcome: AnswerOutcome;
