@@ -14,6 +14,18 @@ that owns the pane stages a fresh one instead of leaving the pane composerless.
 Three states are new (`drafts-pending-disabled`, `drafts-undo-restored`,
 `drafts-deleted-open`) and the rest were re-taken at the folded tip.
 
+**Round 2's remediation re-captured it again** (agent review R7-R9, design
+D5-D7, UX U6-U7, QA's delta pass): the two inapplicable controls are
+`aria-disabled` with a refused press — so the arrow walk lands on them instead
+of dead-stopping, and their why is reachable by keyboard and AT rather than
+riding a `title` alone; their disabled ink is a colour role, never an opacity;
+the offer's life is the lane's own eight seconds, not the 15 s subscription
+bound it had reached for; Undo re-opens the single draft it restored when the
+pane still shows the draft the discard staged; and the batch's own
+fresh-staging branch has its runtime checks (R8). A **ninth state**,
+`drafts-clear-disabled`, photographs the one state where `Clear all` is
+inapplicable — every listed row mid-hop — in both halves.
+
 The store-side half of (1) is asserted by `scripts/drafts-clear-on-send.test.mjs` (the
 pre-send composer record retired at `finishDraft`, the launch sweep, the
 delivered-only resolution, and the discard offer's snapshot/restore) and the
@@ -60,24 +72,29 @@ LOCAL_OPERATOR_DESKTOP_TOKEN=<token> \
 scrim (`fixed inset-0 z-50 bg-scrim`) covers the window and the pointer never
 reaches a row — measured, and the scene's first attempt photographed the scrim.
 
-**Two runs, one script.** The before half checked `origin/main` `38dc028e72`'s
-`src` out into the same worktree and built it there; the after half is the folded
-tip `3d340b5e66`. The raw logs are **committed beside the frames**
-(`before-run.log`: 14 PASS / 4 FAIL; `after-run.log`: 37 PASS / 0 FAIL), and the
-four failures are the change's own claims:
+**Two runs, one script.** The before half checked `origin/main` `678f6c5c69`'s
+`src` out into the same worktree and built it there; the after half is this
+round's capture tip `8161d043cc` (the fold plus the round-2 scene fixes). The
+raw logs are **committed beside the frames** (`before-run.log`: 15 PASS / 4
+FAIL; `after-run.log`: 55 PASS / 0 FAIL), and the four failures are the change's
+own claims:
 
 ```
-[FAIL] the pointer reveals the discard control            (no such control exists before)
-[FAIL] the live hop's control is revealed and disabled    (no such control exists before)
-[FAIL] a relaunch does not resurrect the discarded drafts (nothing was deleted before)
-[FAIL] the offer frames hold the offer, stable            (no offer exists before)
+[FAIL] the pointer reveals the discard control                    (no such control exists before)
+[FAIL] the live hop's control is revealed and inapplicable        (no such control exists before)
+[FAIL] a relaunch does not resurrect the discarded drafts         (nothing was deleted before)
+[FAIL] the offer frames hold the offer, stable                    (no offer exists before)
 ```
 
-The keyboard claims are not in these frames: reachability (the control is a
+The Tab-order claims are not in these frames: reachability (the control is a
 sibling of the row's button, in the Tab ring, revealed by `group-focus-within`)
 is asserted in `scripts/chat-sidebar-drafts.test.mjs`, and the chord/ring
-contracts in `chat-keyboard-regions.test.mjs`. A frame proves what a pointer and
-a press produce; it cannot prove Tab order.
+contracts in `chat-keyboard-regions.test.mjs`. The after run's checks DO carry
+the arrow walk over the inapplicable controls (ArrowDown from the last draft row
+lands on the foot and the next step moves past it), the caret probe (the control
+takes focus), the why (an announced `sr-only` element), and the ink probe (the
+disabled read does not shift under the pointer) — those are runtime facts a
+frame cannot show, and they are read in the same run that takes the frame.
 
 ## Before / after
 
@@ -92,11 +109,12 @@ it and its composer text alone).
 | --- | --- | --- |
 | Rows at rest | [`before-drafts-rest`](before-drafts-rest/localOperatorDark.webp) — four `Draft:` rows, no control anywhere | [`after-drafts-rest`](after-drafts-rest/localOperatorDark.webp) — the same rows and the same width; the discard control spends nothing while it is hidden |
 | Pointer on the typed row | [`before-drafts-hover`](before-drafts-hover/localOperatorDark.webp) — hover is a bare colour step | [`after-drafts-hover`](after-drafts-hover/localOperatorDark.webp) — the trash glyph stands in its slot; the row's own box keeps the ground under the pointer |
-| Pointer on the live-hop row | [`before-drafts-pending-disabled`](before-drafts-pending-disabled/localOperatorDark.webp) — hover is a bare colour step | [`after-drafts-pending-disabled`](after-drafts-pending-disabled/localOperatorDark.webp) — the control is revealed and DISABLED (dimmed); a real press on it moves nothing, so a discard can never be followed by a silent send |
+| Pointer on the live-hop row | [`before-drafts-pending-disabled`](before-drafts-pending-disabled/localOperatorDark.webp) — hover is a bare colour step | [`after-drafts-pending-disabled`](after-drafts-pending-disabled/localOperatorDark.webp) — the control is revealed and INAPPLICABLE (`aria-disabled`: a colour role, never an opacity; still in the Tab ring, and its why is announced); a real press on it moves nothing, so a discard can never be followed by a silent send |
 | After the discard press | [`before-drafts-deleted`](before-drafts-deleted/localOperatorDark.webp) — nothing removes a row | [`after-drafts-deleted`](after-drafts-deleted/localOperatorDark.webp) — the pressed row is gone, the other rows stand, the composer's own record for that key went with it, and the lane stands the offer: `Draft discarded.` with its Undo |
-| After the offer's Undo | [`before-drafts-undo-restored`](before-drafts-undo-restored/localOperatorDark.webp) — no offer to press | [`after-drafts-undo-restored`](after-drafts-undo-restored/localOperatorDark.webp) — the row and its composer record are back, and the offer retired with the press |
+| After the offer's Undo | [`before-drafts-undo-restored`](before-drafts-undo-restored/localOperatorDark.webp) — no offer to press | [`after-drafts-undo-restored`](after-drafts-undo-restored/localOperatorDark.webp) — the row and its composer record are back, the offer retired with the press, and (U7) the pane is on the restored draft when the discard had left it on the freshly staged one |
 | After discarding the OPEN draft | [`before-drafts-deleted-open`](before-drafts-deleted-open/localOperatorDark.webp) — the draft is open and nothing can remove it | [`after-drafts-deleted-open`](after-drafts-deleted-open/localOperatorDark.webp) — the row goes and the pane KEEPS a composer (a fresh draft staged in its place), instead of the bare `New chat` surface the round-1 report measured |
 | After `Clear all` | [`before-drafts-cleared`](before-drafts-cleared/localOperatorDark.webp) — no such control | [`after-drafts-cleared`](after-drafts-cleared/localOperatorDark.webp) — every settled row is gone and the batch's offer reads `3 drafts discarded.`; the live-hop row is deliberately left standing |
+| `Clear all` inapplicable (every listed row mid-hop) | [`before-drafts-clear-disabled`](before-drafts-clear-disabled/localOperatorDark.webp) — no such control | [`after-drafts-clear-disabled`](after-drafts-clear-disabled/localOperatorDark.webp) — the foot is drawn `aria-disabled` with its why announced; the arrow walk lands on it from the last row and moves past, a press moves nothing, and its ink holds still under the pointer |
 | After a relaunch (reload) | [`before-drafts-relaunch`](before-drafts-relaunch/localOperatorDark.webp) — the rows the reader could not remove are still there | [`after-drafts-relaunch`](after-drafts-relaunch/localOperatorDark.webp) — the discarded drafts do not come back, the live-hop row (never discarded) is still there, and the offer does not outlive the app |
 
 The press frames are taken **after** a real press through CDP's own input
@@ -113,9 +131,10 @@ frames and the state are the same moment. The offer frames use
   driven headless; no message is ever admitted on a wire, so nothing here is
   about what an owner answers. The `deadline_exceeded` row and the `pending` row
   are seeded shapes, not refusals this run produced.
-- **Not the offer's lifetime or the snapshot's rules.** The 15s ceiling, the
-  one-slot replacement, the restore's "newer state wins" guard and the disabled
-  row's marker are asserted at the store level in
+- **Not the offer's lifetime or the snapshot's rules.** The offer's life (the
+  lane's own eight seconds, shared with the archive card), the one-slot
+  replacement, the restore's "newer state wins" guard, the restore's revision
+  bump and the row's `pending` marker are asserted at the store level in
   `scripts/drafts-clear-on-send.test.mjs`; the frames catch the offer at its
   raise and at its press.
 - **One theme.** `localOperatorDark` only; the twelve-theme sweep belongs to the
