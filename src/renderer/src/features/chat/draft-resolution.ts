@@ -64,7 +64,23 @@ const SWEEP_MAX_SESSIONS = 16;
 const SWEEP_CONCURRENCY = 3;
 
 /** One unsettled claim, with the session a server read can answer it from. */
-export type HeldSendClaim = { key: string; sessionId: string };
+export type HeldSendClaim = {
+	key: string;
+	sessionId: string;
+	/**
+	 * When the press that made the claim was issued (`ChatDraft.submittedAt`), or 0
+	 * when the row carries none (a claim persisted before the field, or one whose
+	 * press never stamped).
+	 *
+	 * WHY THE CLAIM CARRIES IT (agent review round 1's R5, remediation): the sweep's
+	 * `SWEEP_MAX_SESSIONS` cap makes ORDER a fairness question, and insertion order
+	 * into the claims map is the drafts map's own - stable across launches - so a
+	 * claims set larger than the cap leaves the same tail unvisited on every launch.
+	 * The age is what can order them oldest-first; a zero is the OLDEST, which is
+	 * the right direction for a row that has been lingering longest.
+	 */
+	submittedAt: number;
+};
 
 /** What one sweep did, for the tests and for anyone reading the log. */
 export type HeldSendSweepOutcome = { visited: number; resolved: number };
@@ -89,7 +105,7 @@ export function heldSendClaims(
 			draft.sessionId ??
 			(key.startsWith("send:") ? key.slice("send:".length) : undefined);
 		if (!sessionId) continue;
-		claims.push({ key, sessionId });
+		claims.push({ key, sessionId, submittedAt: draft.submittedAt ?? 0 });
 	}
 	return claims;
 }
@@ -99,7 +115,28 @@ export function heldSendClaimsBySession(
 	drafts: Record<string, ChatDraft>,
 ): Map<string, string[]> {
 	const bySession = new Map<string, string[]>();
-	for (const claim of heldSendClaims(drafts)) {
+	/*
+	 * OLDEST CLAIM FIRST, so the sweep's cap cannot starve the tail (agent review
+	 * round 1's R5). The queue the sweep builds is this map's insertion order, and
+	 * before this it was the drafts map's order - stable across launches - so a
+	 * claims set larger than `SWEEP_MAX_SESSIONS` left the same tail unvisited on
+	 * every visit, while new claims kept arriving above it. Age orders the visit; a
+	 * session with several claims takes its slot at its EARLIEST claim's age, which
+	 * is the one that has been lingering longest.
+	 *
+	 * WHAT THIS DOES NOT FIX, said rather than implied: if a claims set larger than
+	 * the cap consists entirely of claims that CANNOT resolve (a message that never
+	 * landed), the 16 oldest are re-read every launch and the newer ones wait. That
+	 * residual is the honest direction - a stuck claim is a row the reader sees and
+	 * can discard by hand, while a fresh claim's own pane settles it - and the
+	 * alternative (a persisted rotation cursor) is a store field this sweep does not
+	 * yet need. The outcome's `visited`/`resolved` numbers say which shape a launch
+	 * actually met.
+	 */
+	const ordered = heldSendClaims(drafts).sort(
+		(a, b) => a.submittedAt - b.submittedAt,
+	);
+	for (const claim of ordered) {
 		const keys = bySession.get(claim.sessionId);
 		if (keys) keys.push(claim.key);
 		else bySession.set(claim.sessionId, [claim.key]);

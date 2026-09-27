@@ -64,6 +64,18 @@ export type DraftRow = {
 	key: string;
 	label: string;
 	text: string;
+	/**
+	 * Whether this row's send hop is LIVE (`ChatDraft.pending`): a create or a
+	 * message still on the wire, with nothing decided yet.
+	 *
+	 * WHY THE ROW CARRIES IT (UX round 1's U2, remediation): the discard acts are
+	 * inapplicable in exactly this state — a press that removes the row while the
+	 * send goes on to land is a "discard" followed by a silent send — and the
+	 * sidebar disables them from this field rather than re-deriving the predicate
+	 * (the same one-place rule the row's `text` states above). A FAILED claim is
+	 * not pending and stays discardable.
+	 */
+	pending: boolean;
 };
 
 /**
@@ -105,6 +117,31 @@ export const discardDraftLabel = (label: string): string => {
 		: label;
 	return `Discard draft “${title}”`;
 };
+
+/**
+ * The position a discard should hand the caret to, computed from the keys as
+ * they stood BEFORE the write.
+ *
+ * WHY THIS IS A FUNCTION RATHER THAN AN EXPRESSION IN THE HANDLER (agent review
+ * round 1's R2 = design round 1's D2). The handler's own version read the index
+ * of the button it was handed among the rows' `[data-draft-row]` elements — and
+ * that button carries `data-draft-discard`, so the index was always -1, the
+ * clamp always `0`, and deleting the third draft dropped the reader at the TOP
+ * of the list (measured on the built app; the suite that "pinned" it asserted
+ * the expression's shape rather than its arithmetic). THE KEY IS THE ONLY SAFE
+ * IDENTITY here — rows reorder under the write — and the number returned is the
+ * position in the AFTER list the caret should take: the removed row's own
+ * index, so the row that slides up gets focus. A key that is no longer there
+ * (already discarded) reads as position 0, which the caller clamps against
+ * whatever remains.
+ */
+export function discardSuccessorIndex(
+	keysBefore: readonly string[],
+	removedKey: string,
+): number {
+	const at = keysBefore.indexOf(removedKey);
+	return Math.max(at, 0);
+}
 
 /**
  * Every draft the sidebar should list, in the order the store holds them.
@@ -172,6 +209,7 @@ export function untargetedDraftRows(
 			key,
 			label: `${DRAFT_ROW_PREFIX}${draftRowTitle(text)}`,
 			text,
+			pending: draft.pending === true,
 		});
 	}
 	return rows.reverse();

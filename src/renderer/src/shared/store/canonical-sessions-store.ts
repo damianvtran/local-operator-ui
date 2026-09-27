@@ -25,7 +25,10 @@ import {
  * already the one this module's callers use: the composer store holds no
  * session state, so nothing here can cycle through it.
  */
-import { useConversationInputStore } from "@shared/store/conversation-input-store";
+import {
+	type ConversationInputState,
+	useConversationInputStore,
+} from "@shared/store/conversation-input-store";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
@@ -255,6 +258,43 @@ export type ArchiveUndoOffer = {
 	 * successful archive's offer was never drawn.
 	 */
 	at: number;
+};
+
+/**
+ * The undo a discard stands, and the SNAPSHOT that makes it real.
+ *
+ * WHY THE SNAPSHOT IS THE POINT (design round 1, D1; UX round 1, U3). A discard
+ * deletes the draft row AND the composer's row for its key whole — text, chips,
+ * quotes and the up-arrow log — and until this type that deletion was the only
+ * record of what had been there: the PR's own note ("nothing to restore from")
+ * was the reason it shipped with no offer, which argued for the very loss this
+ * app's two precedents refuse (an archive offers an Undo because a recoverable
+ * action with no visible trace reads as a delete; conversation delete asks in a
+ * dialog that names the thing). The offer is therefore built from the exact
+ * entries the write is about to remove, kept in ONE value beside `drafts` so the
+ * removal and its offer land in the same update — a split update would leave the
+ * lane a window in which the offer stands for a state that has not moved yet.
+ *
+ * ONE SLOT, REPLACED RATHER THAN STACKED: a second discard overwrites this value,
+ * so only the most recent removal is recoverable, exactly as the archive lane
+ * keeps one pressable offer at a time. `restoreDraftsUndo` is the only consumer;
+ * the retirement watch lives with the offer's own module
+ * (`features/chat/drafts-undo.ts`).
+ *
+ * THE COMPOSER ROWS ARE PART OF THE SNAPSHOT rather than re-derived, because
+ * `clearAll` drops the row outright and there is no third place the payload
+ * lives — the snapshot IS the payload's only surviving home between the write and
+ * a restore.
+ */
+export type DraftsUndoOffer = {
+	/** The write stamp this offer was raised under — the offer's own identity, so a retirement watch cannot take a LATER offer off the screen (the `ArchiveUndoOffer.at` rule). */
+	at: number;
+	/** The keys retired, in the order the write retired them. */
+	keys: string[];
+	/** The draft entries exactly as they stood before the delete. */
+	drafts: Record<string, ChatDraft>;
+	/** The composer rows exactly as they stood before `clearAll` dropped them. */
+	composer: Record<string, ConversationInputState>;
 };
 
 /**
@@ -3383,11 +3423,36 @@ type CanonicalSessionsState = {
 	 */
 	archiveUndo: ArchiveUndoOffer | null;
 	/**
+	 * The undo a discard stands, snapshot and all (`DraftsUndoOffer` above): the one
+	 * slot the sidebar's offer reads — `features/chat/drafts-undo.ts` owns its
+	 * lifetime — and `restoreDraftsUndo` consumes.
+	 */
+	draftsUndo: DraftsUndoOffer | null;
+	/**
 	 * Record - or clear - the undo offer a successful archive stands.
 	 *
 	 * The offer's own module owns WHEN it is retired; this is only the write.
 	 */
 	setArchiveUndo: (offer: ArchiveUndoOffer | null) => void;
+	/**
+	 * Record — or clear — the undo offer a discard stands.
+	 *
+	 * The write only, matching `setArchiveUndo` above; WHEN it retires is
+	 * `features/chat/drafts-undo.ts`'s rule.
+	 */
+	setDraftsUndo: (offer: DraftsUndoOffer | null) => void;
+	/**
+	 * Put a standing offer's snapshot back: the draft entries and the composer rows
+	 * the discard removed, in one update.
+	 *
+	 * A KEY THAT EXISTS AGAIN IS LEFT AS IT STANDS, and so is a composer row that
+	 * holds text the reader typed since: a team/agent draft's key is STABLE
+	 * (`draft:team:<name>`), so the same pane can be re-staged inside the offer's
+	 * lifetime, and the newer state is exactly what an undo must not overwrite.
+	 * What is skipped is skipped silently; the offer retires either way, because it
+	 * was pressed.
+	 */
+	restoreDraftsUndo: () => void;
 	/**
 	 * Publish whether the daemon can page, so an unnamed catalogue read can size itself.
 	 *
@@ -4536,6 +4601,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			stoppedTurns: {},
 			archiveFailure: null,
 			archiveUndo: null,
+			draftsUndo: null,
 			deleteCandidate: null,
 			error: null,
 			cwd: "~",
@@ -5220,6 +5286,36 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			setArchiveUndo: (offer) => {
 				set({ archiveUndo: offer });
 			},
+			setDraftsUndo: (offer) => {
+				set({ draftsUndo: offer });
+			},
+			restoreDraftsUndo: () =>
+				set((state) => {
+					const offer = state.draftsUndo;
+					if (!offer) return {};
+					const drafts = { ...state.drafts };
+					for (const [key, entry] of Object.entries(offer.drafts)) {
+						if (key in drafts) continue;
+						drafts[key] = entry;
+					}
+					/*
+					 * THE COMPOSER SIDE GOES BACK THROUGH ITS OWN STORE'S DOOR (`restoreRow`),
+					 * and only where the key is not currently holding prose: `clearAll` dropped
+					 * the row, so the snapshot IS the payload — text, chips, replies and the
+					 * up-arrow log — and it goes back whole. A row the reader has since typed
+					 * into wins over the offer, because their newer text is the state they mean.
+					 */
+					const input = useConversationInputStore.getState();
+					for (const [key, row] of Object.entries(offer.composer)) {
+						const current = input.inputByConversation[key];
+						const occupied =
+							(current?.currentInput ?? "").length > 0 ||
+							(current?.pendingText ?? null) !== null;
+						if (occupied) continue;
+						input.restoreRow(key, row);
+					}
+					return { drafts, draftsUndo: null };
+				}),
 			clearArchiveFailure: () => {
 				set({ archiveFailure: null });
 			},
@@ -6116,6 +6212,17 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				}),
 			discardDraft: (key) =>
 				set((state) => {
+					/*
+					 * A LIVE SEND HOP IS WITHHELD FROM THE ACTS, NOT REFUSED HERE (UX round 1's
+					 * U2, remediation, 2026-09-27): the sidebar disables the discard control for
+					 * a `pending` row and `Clear all` passes only the settled keys, so a press
+					 * can no longer remove a row whose send then lands unread — while THIS
+					 * action keeps the semantics its own record pins ("discard is deliberate
+					 * and outranks the outcome of the request it abandoned", `updateDraft`'s
+					 * no-resurrect guard), which a store-level refusal here would contradict:
+					 * a deliberate discard of a mid-flight row is a legal write, and the guard
+					 * is what makes the settling request harmless afterwards.
+					 */
 					const drafts = { ...state.drafts };
 					/*
 					 * Abandoning the message also drops any echo buffered for its
@@ -6140,6 +6247,16 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					const abandoned =
 						drafts[key]?.sessionId ??
 						(key.startsWith("send:") ? key.slice("send:".length) : undefined);
+					/*
+					 * THE SNAPSHOT IS READ BEFORE ANYTHING IS DROPPED, and it is what the
+					 * offer restores from: the draft entry as it stood, and the composer row
+					 * `clearAll` is about to delete. `composerRow` may be absent (a draft whose
+					 * box never held anything); the entry is what makes an offer possible at
+					 * all.
+					 */
+					const entry = drafts[key];
+					const composerRow =
+						useConversationInputStore.getState().inputByConversation[key];
 					/*
 					 * BOTH HOMES GO, because the entry's identity moves with the send:
 					 * before the create answers it lives under the draft key, after it
@@ -6177,8 +6294,26 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					 * active - a discarded draft never became one - so the selection
 					 * is left where it was.
 					 */
+					const nextOffer = entry
+						? {
+								at: state.answerSeq + 1,
+								keys: [key],
+								drafts: { [key]: entry },
+								composer: composerRow ? { [key]: composerRow } : {},
+							}
+						: null;
 					return {
 						drafts,
+						/*
+						 * THE OFFER IS RAISED IN THE SAME UPDATE AS THE REMOVAL (design round
+						 * 1, D1): a split update would leave a commit in which the lane offers
+						 * an undo for a draft that is still there - or the row is gone with
+						 * nothing offering it back. `answerSeq` advances with the stamp so two
+						 * raises cannot share one (`DraftsUndoOffer.at`).
+						 */
+						...(nextOffer
+							? { answerSeq: nextOffer.at, draftsUndo: nextOffer }
+							: {}),
 						...(state.activeDraftKey === key ? { activeDraftKey: null } : {}),
 					};
 				}),
@@ -6198,19 +6333,45 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				set((state) => {
 					const drafts = { ...state.drafts };
 					let activeCleared = false;
+					const removedKeys: string[] = [];
+					const removedDrafts: Record<string, ChatDraft> = {};
+					const removedComposer: Record<string, ConversationInputState> = {};
 					for (const key of keys) {
 						if (!(key in drafts)) continue;
+						/*
+						 * THE CALLER DECIDES WHICH KEYS MOVED (UX round 1's U2): `Clear all`
+						 * passes the settled rows only (`clearableDraftRows`), so a live send
+						 * hop is never handed to this action by the UI, and the count the
+						 * offer prints is the count that moved. The action itself keeps
+						 * `discardDraft`'s semantics for every key it is given.
+						 */
+						const entry = drafts[key];
+						if (!entry) continue;
 						const abandoned =
-							drafts[key]?.sessionId ??
+							entry.sessionId ??
 							(key.startsWith("send:") ? key.slice("send:".length) : undefined);
 						discardPendingSends(key);
 						if (abandoned && abandoned !== key) discardPendingSends(abandoned);
+						removedKeys.push(key);
+						removedDrafts[key] = entry;
+						const composerRow =
+							useConversationInputStore.getState().inputByConversation[key];
+						if (composerRow) removedComposer[key] = composerRow;
 						delete drafts[key];
 						useConversationInputStore.getState().clearAll(key);
 						if (state.activeDraftKey === key) activeCleared = true;
 					}
+					if (removedKeys.length === 0) return {};
+					const at = state.answerSeq + 1;
 					return {
 						drafts,
+						answerSeq: at,
+						draftsUndo: {
+							at,
+							keys: removedKeys,
+							drafts: removedDrafts,
+							composer: removedComposer,
+						},
 						...(activeCleared ? { activeDraftKey: null } : {}),
 					};
 				}),

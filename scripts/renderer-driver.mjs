@@ -16718,7 +16718,7 @@ async function sceneConversationStart(cdp) {
  * the REAL pointer (not a dispatched `mouseover`) reveals the control, and that
  * pressing either control removes exactly the rows it names. The fourth is the
  * relaunch: a discarded draft must not come back after a reload, which is why
- * `discardDraft` clears the composer's own row as well (`canonical-chat.test.mjs`
+ * `discardDraft` clears the composer's own row as well (`drafts-clear-on-send.test.mjs`
  * carries the store half).
  *
  * NO BACKEND IS NEEDED OR WANTED: drafts are LOCAL state, so the run seeds the
@@ -16736,6 +16736,13 @@ const DRAFTS_TYPED = "draft:5b5b5b5b-0001-4000-8000-000000000001";
 const DRAFTS_STALE = "draft:6c6c6c6c-0002-4000-8000-000000000002";
 const DRAFTS_CLAIM = "draft:7d7d7d7d-0003-4000-8000-000000000003";
 const DRAFTS_TARGETED = "draft:agent:coder";
+/**
+ * A row whose send hop is LIVE (`pending: true`): the shape UX round 1's U2
+ * reproduced - with the create held, the trash used to remove the row while the
+ * message went on to land. The control is disabled for this row, and the scene
+ * presses it to show that nothing moves.
+ */
+const DRAFTS_FLIGHT = "[redacted]";
 
 /**
  * Seed the drafts store and the composer store, then release the seed by
@@ -16767,7 +16774,7 @@ async function seedDrafts(cdp) {
 				admissionAttempted: true,
 				pending: false,
 				submittedText: "Can you check our google drive and tell me what moved",
-				submittedRendered: true,
+				submittedRendered: "Can you check our google drive and tell me what moved",
 				errorCode: "deadline_exceeded",
 				errorRetry: true,
 				error: "Couldn't confirm your message was sent.",
@@ -16776,6 +16783,14 @@ async function seedDrafts(cdp) {
 				key: DRAFTS_TARGETED,
 				target: { kind: "agent", name: "coder" },
 				createRequestId: "req-targeted-0004",
+			},
+			[DRAFTS_FLIGHT]: {
+				key: DRAFTS_FLIGHT,
+				createRequestId: "req-flight-0005",
+				admissionRequestId: "req-deliver-0005",
+				admissionAttempted: true,
+				pending: true,
+				submittedText: "and the alert one too",
 			},
 		},
 		inputRows: {
@@ -16836,7 +16851,7 @@ async function sceneDrafts(cdp) {
 				const element = document.querySelector(${JSON.stringify(`[${attribute}="${key}"]`)});
 				if (element === null) return null;
 				const style = getComputedStyle(element);
-				return { display: style.display, width: Math.round(element.getBoundingClientRect().width) };
+				return { display: style.display, width: Math.round(element.getBoundingClientRect().width), disabled: element.disabled === true };
 			})()`,
 		);
 	const composerRowExists = (key) =>
@@ -16847,12 +16862,20 @@ async function sceneDrafts(cdp) {
 		cdp.evaluate(
 			`(() => { try { const state = JSON.parse(localStorage.getItem("canonical-sessions-storage") || "null"); return state?.state?.drafts?.[${JSON.stringify(key)}] !== undefined; } catch { return null; } })()`,
 		);
+	const activeDraftKey = () =>
+		cdp.evaluate(
+			'(() => { try { return JSON.parse(localStorage.getItem("canonical-sessions-storage") || "null")?.state?.activeDraftKey ?? null; } catch { return null; } })()',
+		);
+	const composerText = () =>
+		cdp.evaluate(
+			'(() => { const box = document.querySelector(\'[data-tour-tag="chat-input-textarea"] textarea\'); return box === null ? null : box.value; })()',
+		);
 
 	const restRows = await readDraftRows();
 	note("the seeded rows, as the section lists them", JSON.stringify(restRows));
 	check(
-		"all three untargeted drafts are rows",
-		[DRAFTS_TYPED, DRAFTS_STALE, DRAFTS_CLAIM].every((key) =>
+		"all four untargeted drafts are rows, the live hop included",
+		[DRAFTS_TYPED, DRAFTS_STALE, DRAFTS_CLAIM, DRAFTS_FLIGHT].every((key) =>
 			restRows.includes(key),
 		),
 		JSON.stringify(restRows),
@@ -16892,6 +16915,34 @@ async function sceneDrafts(cdp) {
 	const hoverFrame = await captureSettled(cdp, "drafts-hover");
 
 	/*
+	 * THE LIVE HOP'S ACT IS REVEALED BUT INAPPLICABLE (UX round 1's U2,
+	 * remediation): the seeded `pending: true` row is a send still on the wire, and
+	 * the control is disabled from the row's own marker - so a press moves nothing,
+	 * and a discard can never be followed by a silent send. On a tree without the
+	 * control the checks fail as the change's own claims, the convention this scene
+	 * already follows.
+	 */
+	await hoverOver(cdp, `[data-draft-row="${DRAFTS_FLIGHT}"]`);
+	await wait(160);
+	const flightAct = await controlState("data-draft-discard", DRAFTS_FLIGHT);
+	note("the live hop's discard control", JSON.stringify(flightAct));
+	check(
+		"the live hop's control is revealed and disabled",
+		flightAct !== null && flightAct.display === "flex" && flightAct.disabled === true,
+		JSON.stringify(flightAct),
+	);
+	if (flightAct !== null) {
+		await clickAt(cdp, `[data-draft-discard="${DRAFTS_FLIGHT}"]`);
+		await wait(200);
+		check(
+			"a press on it moves nothing: the in-flight row is still there",
+			(await readDraftRows()).includes(DRAFTS_FLIGHT),
+			JSON.stringify(await readDraftRows()),
+		);
+	}
+	const pendingFrame = await captureSettled(cdp, "drafts-pending-disabled");
+
+	/*
 	 * THE PRESS, through the real pointer: `clickAt` moves the pointer (so the
 	 * reveal is up) and then clicks. Skipped, not driven, on a tree with no
 	 * control - the before half of this pair.
@@ -16902,6 +16953,13 @@ async function sceneDrafts(cdp) {
 			"no discard control exists on this tree - the press is skipped, not driven",
 		);
 	} else {
+		/*
+		 * The pointer is parked on the live hop's row from the block above, and a
+		 * `hidden` control measures at zero - so the row is hovered first, which is
+		 * what a reader does anyway (the press needs the reveal up).
+		 */
+		await hoverOver(cdp, `[data-draft-row="${DRAFTS_TYPED}"]`);
+		await wait(160);
 		await clickAt(cdp, `[data-draft-discard="${DRAFTS_TYPED}"]`);
 		await wait(200);
 		const afterPress = await readDraftRows();
@@ -16911,8 +16969,10 @@ async function sceneDrafts(cdp) {
 			JSON.stringify(afterPress),
 		);
 		check(
-			"the other rows stay",
-			afterPress.includes(DRAFTS_STALE) && afterPress.includes(DRAFTS_CLAIM),
+			"the other rows stay, the live hop included",
+			afterPress.includes(DRAFTS_STALE) &&
+				afterPress.includes(DRAFTS_CLAIM) &&
+				afterPress.includes(DRAFTS_FLIGHT),
 			JSON.stringify(afterPress),
 		);
 		check(
@@ -16926,12 +16986,106 @@ async function sceneDrafts(cdp) {
 				'document.activeElement !== null && document.activeElement.closest("[data-chat-row]") !== null',
 			),
 		);
+		/*
+		 * AND THE OFFER STANDS IN THE LANE (design round 1's D1): the one-line
+		 * `Draft discarded.` with its Undo, the archive offer's own register. The
+		 * sentence is built as two spans (name, verb), so the two halves are read
+		 * separately rather than as one string.
+		 */
+		const offer = await toastText(cdp);
+		check(
+			"the discard stands an undo offer in the lane",
+			typeof offer === "string" &&
+				offer.includes("Draft") &&
+				offer.includes("discarded.") &&
+				offer.includes("Undo"),
+			JSON.stringify(offer),
+		);
 	}
-	const deletedFrame = await captureSettled(cdp, "drafts-deleted");
+	const deletedFrame = await captureWithToast(cdp, "drafts-deleted");
 
 	/*
-	 * Clear all. Its gate is the section's own (`draftRows.length > 0`), so on a
-	 * tree with no control the frame simply records that.
+	 * AND THE OFFER'S OWN PRESS (design round 1's D1): the snapshot goes back -
+	 * the draft entry and the composer row - in the one write, and the offer
+	 * retires with the press.
+	 */
+	if (hoverAct === null) {
+		note("undo press", "no offer exists on this tree - the press is skipped");
+	} else {
+		await clickAt(cdp, `${SIDEBAR_TOAST} [data-button]`);
+		await wait(250);
+		const afterUndo = await readDraftRows();
+		check(
+			"Undo puts the row back",
+			afterUndo.includes(DRAFTS_TYPED),
+			JSON.stringify(afterUndo),
+		);
+		check(
+			"and its composer row with it",
+			(await composerRowExists(DRAFTS_TYPED)) === true,
+		);
+		check(
+			"and the offer itself retires",
+			(await toastsOnScreen(cdp)) === 0,
+			`toasts=${await toastsOnScreen(cdp)}`,
+		);
+	}
+	const restoredFrame = await captureSettled(cdp, "drafts-undo-restored");
+
+	/*
+	 * THE OPEN DRAFT'S DISCARD (UX round 1's U1, remediation). Both trees open the
+	 * draft - the press is a plain row click - and only the after tree has a
+	 * control to press afterwards: with the draft open, the sidebar's discard used
+	 * to strand the pane (no composer, a bare `New chat`). The press now stages a
+	 * fresh draft, the New chat row's own pair, so the composer is still there.
+	 */
+	await clickAt(cdp, `[data-draft-row="${DRAFTS_TYPED}"]`);
+	await wait(250);
+	note("the composer after opening the draft", JSON.stringify(await composerText()));
+	if (hoverAct !== null) {
+		check(
+			"opening the draft puts its text in the composer",
+			(await composerText())?.includes("This session seems to be wedged") === true,
+			JSON.stringify(await composerText()),
+		);
+		await clickAt(cdp, `[data-draft-discard="${DRAFTS_TYPED}"]`);
+		await wait(250);
+		const afterOpenDelete = await readDraftRows();
+		check(
+			"the open draft's row goes",
+			!afterOpenDelete.includes(DRAFTS_TYPED),
+			JSON.stringify(afterOpenDelete),
+		);
+		check(
+			"and the pane keeps a composer: no dead end",
+			(await composerText()) !== null,
+			JSON.stringify(await composerText()),
+		);
+		const nowOpen = await activeDraftKey();
+		check(
+			"a fresh draft is staged in its place",
+			typeof nowOpen === "string" && nowOpen !== DRAFTS_TYPED,
+			`activeDraftKey ${JSON.stringify(nowOpen)}`,
+		);
+	} else {
+		note(
+			"open-draft discard",
+			"no discard control exists on this tree - the press is skipped, and the frame is the opened draft",
+		);
+	}
+	const openDeletedFrame = await captureWithToast(cdp, "drafts-deleted-open");
+	if (hoverAct !== null) {
+		await clickAt(cdp, `${SIDEBAR_TOAST} [data-button]`);
+		await wait(250);
+		check(
+			"Undo returns the text to its own key",
+			(await composerRowExists(DRAFTS_TYPED)) === true,
+		);
+	}
+
+	/*
+	 * Clear all. Its gate is the section's own (`clearableDraftRows.length > 0`),
+	 * so on a tree with no control the frame simply records that.
 	 */
 	const clearControl = await cdp.evaluate(
 		'(() => { const element = document.querySelector("[data-drafts-clear-all]"); if (element === null) return null; const style = getComputedStyle(element); return { display: style.display, width: Math.round(element.getBoundingClientRect().width) }; })()',
@@ -16946,15 +17100,15 @@ async function sceneDrafts(cdp) {
 		await wait(250);
 		const afterClear = await readDraftRows();
 		check(
-			"Clear all removes every listed row",
-			afterClear.length === 0,
+			"Clear all removes every settled row and only those",
+			afterClear.length === 1 && afterClear[0] === DRAFTS_FLIGHT,
 			JSON.stringify(afterClear),
 		);
 		check(
-			"and the section goes with them",
-			(await cdp.evaluate(
-				"Boolean(document.querySelector('[data-chat-section=\"drafts\"]'))",
-			)) === false,
+			"the section stays open for the live hop",
+			await cdp.evaluate(
+				'Boolean(document.querySelector(\'[data-chat-section="drafts"]\'))',
+			),
 		);
 		check(
 			"the targeted draft is NOT touched (it is not one of the listed rows)",
@@ -16964,14 +17118,25 @@ async function sceneDrafts(cdp) {
 			"and its composer row survives too",
 			(await composerRowExists(DRAFTS_TARGETED)) === true,
 		);
+		const offer = await toastText(cdp);
+		check(
+			"the batch offer names the count that moved",
+			typeof offer === "string" &&
+				offer.includes("3 drafts") &&
+				offer.includes("discarded.") &&
+				offer.includes("Undo"),
+			JSON.stringify(offer),
+		);
 	}
-	const clearedFrame = await captureSettled(cdp, "drafts-cleared");
+	const clearedFrame = await captureWithToast(cdp, "drafts-cleared");
 
 	/*
 	 * THE RELAUNCH: the frames' captions are about a state that must survive the
 	 * app restarting, because the operator's report was exactly about what comes
 	 * back after one. A reload rehydrates both stores from `localStorage`, and the
-	 * deleted keys must not be in it.
+	 * deleted keys must not be in it - while the live-hop row, which was never
+	 * discarded, is still there. The offer is transient by construction (the store
+	 * field is not persisted), so it does not outlive the app either.
 	 */
 	await cdp.send("Page.reload", { ignoreCache: false });
 	await wait(1500);
@@ -16979,25 +17144,64 @@ async function sceneDrafts(cdp) {
 	const relaunchRows = await readDraftRows();
 	check(
 		"a relaunch does not resurrect the discarded drafts",
-		relaunchRows.length === 0,
+		!relaunchRows.includes(DRAFTS_TYPED) &&
+			!relaunchRows.includes(DRAFTS_STALE) &&
+			!relaunchRows.includes(DRAFTS_CLAIM),
 		JSON.stringify(relaunchRows),
+	);
+	check(
+		"the live-hop row was never discarded, so it is still there",
+		relaunchRows.includes(DRAFTS_FLIGHT),
+		JSON.stringify(relaunchRows),
+	);
+	check(
+		"and the offer does not outlive the app",
+		(await toastsOnScreen(cdp)) === 0,
+		`toasts=${await toastsOnScreen(cdp)}`,
 	);
 	const relaunchFrame = await captureSettled(cdp, "drafts-relaunch");
 
 	const frames = [
 		restFrame,
 		hoverFrame,
+		pendingFrame,
 		deletedFrame,
+		restoredFrame,
+		openDeletedFrame,
 		clearedFrame,
 		relaunchFrame,
 	];
 	check(
-		"every capture is a frame the app held still for, with no toast on it",
-		frames.every((frame) => frame.stable === true && frame.toastFree === true),
-		frames
+		"every settled capture is a frame the app held still for, with no toast on it",
+		[restFrame, hoverFrame, pendingFrame, restoredFrame, relaunchFrame].every(
+			(frame) => frame.stable === true && frame.toastFree === true,
+		),
+		[restFrame, hoverFrame, pendingFrame, restoredFrame, relaunchFrame]
 			.map(
 				(frame) =>
 					`${frame.label}: stable=${frame.stable === true} toastFree=${frame.toastFree === true}`,
+			)
+			.join(" | "),
+	);
+	/*
+	 * AND THE OFFER FRAMES CARRY THE OFFER: `captureWithToast` records the lane's
+	 * own sentence on the frame it keeps, so a frame of the offer is known to hold
+	 * the message its caption quotes. On a tree without the offer these frames
+	 * read `toastText: null` and the check fails as the change's claim.
+	 */
+	check(
+		"the offer frames hold the offer, stable",
+		[deletedFrame, openDeletedFrame, clearedFrame].every(
+			(frame) =>
+				frame.stable === true &&
+				typeof frame.toastText === "string" &&
+				frame.toastText.includes("discarded.") &&
+				frame.toastText.includes("Undo"),
+		),
+		[deletedFrame, openDeletedFrame, clearedFrame]
+			.map(
+				(frame) =>
+					`${frame.label}: stable=${frame.stable === true} toastText=${JSON.stringify(frame.toastText)}`,
 			)
 			.join(" | "),
 	);

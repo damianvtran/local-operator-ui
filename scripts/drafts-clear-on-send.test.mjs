@@ -64,7 +64,7 @@ globalThis.__canonicalEcho = (event) => {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {DesktopControlError} from "@shared/api/local-operator/desktop-api"; export {desktopRequestSchema} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {mergeReturnedText, mergeReturnedPayload} from "./src/renderer/src/shared/store/conversation-input-store";export { sendUnsettledForSession } from "./src/renderer/src/features/chat/canonical/working-line-model"; export { composerIdentityFor, panelIdentityFor as composerPanelIdentity } from "./src/renderer/src/shared/store/canonical-sessions-store"; export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store"; export { rehydrateInputRows } from "./src/renderer/src/shared/store/conversation-input-store"; export { heldSendClaimsBySession, resolveHeldSendsFromServer } from "./src/renderer/src/features/chat/draft-resolution";',
+			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {DesktopControlError} from "@shared/api/local-operator/desktop-api"; export {desktopRequestSchema} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {mergeReturnedText, mergeReturnedPayload} from "./src/renderer/src/shared/store/conversation-input-store";export { sendUnsettledForSession } from "./src/renderer/src/features/chat/canonical/working-line-model"; export { composerIdentityFor, panelIdentityFor as composerPanelIdentity } from "./src/renderer/src/shared/store/canonical-sessions-store"; export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store"; export { rehydrateInputRows } from "./src/renderer/src/shared/store/conversation-input-store"; export { heldSendClaimsBySession, resolveHeldSendsFromServer } from "./src/renderer/src/features/chat/draft-resolution"; export { discardSuccessorIndex, untargetedDraftRows } from "./src/renderer/src/features/chat/draft-rows";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -204,6 +204,8 @@ const {
 	rehydrateInputRows,
 	heldSendClaimsBySession,
 	resolveHeldSendsFromServer,
+	discardSuccessorIndex,
+	untargetedDraftRows,
 } = module;
 function reset() {
 	calls.length = 0;
@@ -584,6 +586,7 @@ test("the sweep's claim set is the unsettled claims that have a session to ask",
 		"send:bbbb00000000": {
 			key: "send:bbbb00000000",
 			admissionAttempted: true,
+			submittedAt: 900,
 			submittedText: "in flight",
 		},
 		"draft:held": {
@@ -591,10 +594,200 @@ test("the sweep's claim set is the unsettled claims that have a session to ask",
 			sessionId: "aaaa00000000",
 			admissionAttempted: true,
 			pending: false,
+			submittedAt: 100,
 			submittedText: "Can you check our google drive",
 		},
 	});
-	assert.deepEqual([...claims.keys()], ["bbbb00000000", "aaaa00000000"]);
+	/*
+	 * OLDEST CLAIM FIRST (agent review round 1's R5): the stamped claim above is
+	 * NEWER than `draft:held`'s, so its session waits and held's is visited first -
+	 * the cap cannot starve the row that has been lingering longest.
+	 */
+	assert.deepEqual([...claims.keys()], ["aaaa00000000", "bbbb00000000"]);
 	assert.deepEqual(claims.get("bbbb00000000"), ["send:bbbb00000000"]);
 	assert.deepEqual(claims.get("aaaa00000000"), ["draft:held"]);
+});
+
+
+test("a discard raises one offer carrying exactly what the write removed, and the restore puts it back", () => {
+	reset();
+	useConversationInputStore.setState({ inputByConversation: {} });
+	const key = store.getState().stageDraft({ kind: "team", name: "minervadev" });
+	store.setState({
+		drafts: {
+			...store.getState().drafts,
+			[key]: {
+				...store.getState().drafts[key],
+				admissionAttempted: true,
+				pending: false,
+				sessionId: "6b736ae921df",
+				submittedText: "Can you review user-dashboard",
+			},
+		},
+	});
+	useConversationInputStore.setState({
+		inputByConversation: {
+			[key]: {
+				currentInput: "",
+				submittedMessages: ["an earlier message"],
+				currentHistoryIndex: null,
+				replies: [],
+				attachments: [],
+				pendingText: "Can you review user-dashboard",
+				returned: { text: "Can you review user-dashboard", chipIds: [], replyIds: [] },
+			},
+		},
+	});
+	const before = store.getState().drafts[key];
+	store.getState().discardDraft(key);
+	/*
+	 * ONE SLOT, AND IT HOLDS THE EXACT STATE THE WRITE REMOVED (design round 1's
+	 * D1): the entry as it stood and the composer row `clearAll` dropped, so an
+	 * Undo has something to restore FROM.
+	 */
+	const offer = store.getState().draftsUndo;
+	assert.equal(offer.keys.length, 1);
+	assert.equal(offer.keys[0], key);
+	assert.deepEqual(offer.drafts[key], before);
+	assert.equal(
+		offer.composer[key].pendingText,
+		"Can you review user-dashboard",
+		"the payload's only surviving home between the write and the restore",
+	);
+	assert.equal(store.getState().drafts[key], undefined);
+	assert.equal(
+		useConversationInputStore.getState().inputByConversation[key],
+		undefined,
+	);
+	store.getState().restoreDraftsUndo();
+	assert.deepEqual(
+		store.getState().drafts[key],
+		before,
+		"the draft entry comes back as it stood",
+	);
+	const row = useConversationInputStore.getState().inputByConversation[key];
+	assert.equal(row.pendingText, "Can you review user-dashboard");
+	assert.deepEqual(row.submittedMessages, ["an earlier message"]);
+	assert.equal(store.getState().draftsUndo, null, "and the offer retires on the press");
+});
+
+test("the batch's offer restores every key it ruled, in the order it retired them", () => {
+	reset();
+	useConversationInputStore.setState({ inputByConversation: {} });
+	const first = store.getState().stageDraft();
+	const second = store.getState().stageDraft();
+	const kept = store.getState().stageDraft({ kind: "agent", name: "coder" });
+	for (const key of [first, second])
+		useConversationInputStore
+			.getState()
+			.setCurrentInput(key, "text for " + key);
+	store.getState().discardDrafts([first, second]);
+	const offer = store.getState().draftsUndo;
+	assert.deepEqual(offer.keys, [first, second]);
+	assert.deepEqual(Object.keys(store.getState().drafts), [kept]);
+	store.getState().restoreDraftsUndo();
+	assert.deepEqual(
+		Object.keys(store.getState().drafts).sort(),
+		[first, kept, second].sort(),
+	);
+	assert.equal(
+		useConversationInputStore.getState().inputByConversation[first].currentInput,
+		"text for " + first,
+	);
+	assert.equal(store.getState().draftsUndo, null);
+});
+
+test("a restore never overwrites newer state: a re-staged key and a typed row both win", () => {
+	reset();
+	useConversationInputStore.setState({ inputByConversation: {} });
+	const stable = store.getState().stageDraft({ kind: "team", name: "lopdev" });
+	useConversationInputStore.getState().setCurrentInput(stable, "the old text");
+	const beforeEntry = store.getState().drafts[stable];
+	store.getState().discardDraft(stable);
+	/*
+	 * The reader re-stages the SAME stable key inside the offer's lifetime and types
+	 * their own words; the offer is then pressed. Their newer state is the thing an
+	 * undo must not overwrite (`restoreDraftsUndo`'s own rule).
+	 */
+	const again = store.getState().stageDraft({ kind: "team", name: "lopdev" });
+	assert.equal(again, stable, "the key is stable, which is what makes the guard load-bearing");
+	useConversationInputStore.getState().setCurrentInput(stable, "the new text");
+	store.getState().restoreDraftsUndo();
+	assert.equal(
+		useConversationInputStore.getState().inputByConversation[stable].currentInput,
+		"the new text",
+	);
+	assert.notEqual(
+		store.getState().drafts[stable].createRequestId,
+		beforeEntry.createRequestId,
+		"the re-staged entry survives: the key existed again, so the snapshot did not overwrite it",
+	);
+});
+
+test("a live send hop is stated on the row, which is what withholds the acts", () => {
+	reset();
+	useConversationInputStore.setState({ inputByConversation: {} });
+	const inFlight = store.getState().stageDraft();
+	const settled = store.getState().stageDraft();
+	useConversationInputStore
+		.getState()
+		.setCurrentInput(settled, "a settled row, typed and waiting");
+	store.setState({
+		drafts: {
+			...store.getState().drafts,
+			[inFlight]: {
+				...store.getState().drafts[inFlight],
+				admissionAttempted: true,
+				pending: true,
+				submittedText: "still in flight",
+			},
+		},
+	});
+	/*
+	 * UX round 1's U2, remediation: the CONTROL is withheld for a live hop (sidebar:
+	 * `disabled={row.pending}`, and the batch passes only settled keys), so what the
+	 * store owes the reader is the marker itself - `untargetedDraftRows` must say
+	 * which rows are mid-send, including the create-hop shape (no sessionId yet,
+	 * text carried by the claim). The store's own discard semantics are unchanged
+	 * and stay pinned where they were documented (`canonical-chat.test.mjs`: a
+	 * deliberate discard still outranks the abandoned request).
+	 */
+	const rows = untargetedDraftRows(
+		store.getState().drafts,
+		useConversationInputStore.getState().inputByConversation,
+		new Set(),
+	);
+	assert.equal(
+		rows.find((row) => row.key === inFlight)?.pending,
+		true,
+		"the live hop is stated",
+	);
+	assert.equal(rows.find((row) => row.key === settled)?.pending, false);
+});
+
+test("a second discard replaces the first offer, one slot", () => {
+	reset();
+	useConversationInputStore.setState({ inputByConversation: {} });
+	const first = store.getState().stageDraft();
+	const second = store.getState().stageDraft();
+	store.getState().discardDraft(first);
+	const firstAt = store.getState().draftsUndo.at;
+	store.getState().discardDraft(second);
+	const offer = store.getState().draftsUndo;
+	assert.deepEqual(offer.keys, [second]);
+	assert.ok(offer.at > firstAt, "a later raise is a new offer, not the old one re-stamped");
+});
+
+test("the caret successor is read by key, from the list as it stood before the write", () => {
+	/*
+	 * THE BEHAVIOUR THE HANDLER NEEDS, exercised as arithmetic rather than pinned as
+	 * a regex (agent review round 1's R2 = design round 1's D2): the old expression
+	 * indexed the discard BUTTON among `[data-draft-row]` elements, so it always
+	 * returned -1 and the caret always landed on the first row.
+	 */
+	assert.equal(discardSuccessorIndex(["a", "b", "c"], "b"), 1, "the row that slid up");
+	assert.equal(discardSuccessorIndex(["a", "b", "c"], "a"), 0);
+	assert.equal(discardSuccessorIndex(["a", "b", "c"], "c"), 2, "the last row's own position");
+	assert.equal(discardSuccessorIndex([], "gone"), 0, "a key that is already gone reads as the top");
+	assert.equal(discardSuccessorIndex(["a", "b"], "missing"), 0);
 });
