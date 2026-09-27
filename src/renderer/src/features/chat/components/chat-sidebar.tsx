@@ -4529,7 +4529,10 @@ export function ChatSidebar({
 			 * the ring start disagreeing. `[data-region-entry]` is what `enterChatRegion`
 			 * reads, and the roving stop is the only thing that writes it here.
 			 */
-			row.toggleAttribute(CHAT_REGION_ENTRY_ATTR, rows.includes(row) && row === target);
+			row.toggleAttribute(
+				CHAT_REGION_ENTRY_ATTR,
+				rows.includes(row) && row === target,
+			);
 		}
 	};
 	useLayoutEffect(() => {
