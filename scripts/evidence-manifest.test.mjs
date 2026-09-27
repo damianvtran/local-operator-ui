@@ -1451,6 +1451,15 @@ const STAMP_BINDING_NOTES = [
 	 * still was owed, for the same reason task-17's entry is here.
 	 */
 	"daemonObservationTickWaitRestampNote",
+	/*
+	 * AND THIS LANE'S OWN: the board/timeline pass. Its subject IS this file's
+	 * binding - the change moves BOTH trees (the projects feature's board,
+	 * timeline, switcher and their pins; the capture rows and this list) and
+	 * re-shoots the whole projects-tab set (144 frames re-taken, 72 added) - so
+	 * a reader is owed the pair and what the capture moved with it, the same
+	 * case `headerRenameInlineRestampNote` is in the list for.
+	 */
+	"projectsBoardTimelineNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
