@@ -21,10 +21,13 @@ import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import {
 	type FC,
 	type ReactNode,
+	type RefObject,
 	createContext,
 	useCallback,
 	useContext,
 	useEffect,
+	useLayoutEffect,
+	useRef,
 	useState,
 } from "react";
 import { ResizableDivider } from "./resizable-divider";
@@ -76,6 +79,114 @@ type ChatLayoutProps = {
  * focus and a Radix menu keeps its own keys.
  */
 const SIDEBAR_SHEET_SCOPE = "data-sidebar-sheet";
+
+/**
+ * The marker a route's own leading column wears, so the lane can carry its ground.
+ *
+ * WHY A ROUTE HAS TO SAY ANYTHING AT ALL. The lane above the two shell columns is a
+ * MIRROR of their grounds: it paints the app sidebar's width in `surface` and the
+ * rest in `canvas`. It has to be - a column cannot paint above its own top edge, and
+ * the row that holds the columns is `overflow: hidden` with a second clipped column
+ * inside it, so nothing a route renders can reach y0. The mirror is therefore the
+ * only thing that can put a route-owned column's ground up there, and it has to be
+ * told which column that is.
+ *
+ * WHAT IT ASKS FOR, and the two halves are one contract: the marked element is a
+ * full-height leading column standing on the DEFAULT `surface` ground, and the lane's
+ * `surface` band must therefore run past its right edge. A column on another ground
+ * could not be served by this band - the lane would need that ground's role per
+ * marker - which is why the marker names a ground rather than a width.
+ *
+ * WRITTEN BY `useLaneLeadingColumn` rather than spelled in the JSX, so the attribute
+ * and the registration that gives it meaning cannot be separated: an element wearing
+ * the attribute is exactly an element the shell was handed. It stays in the DOM as
+ * the handle a rig finds the column by (`--scene route-tops`).
+ */
+const LANE_LEADING_COLUMN = "data-lane-leading-column";
+
+/** The shell's half of the contract: a route hands its leading column over. */
+type LaneLeadingRegistration = (column: HTMLElement | null) => void;
+
+const LaneLeadingContext = createContext<LaneLeadingRegistration | null>(null);
+
+/**
+ * Attach to a route's own leading column - `ref={laneLeadingColumn}` - and the shell
+ * puts that column's ground behind the window's top strip.
+ *
+ * A REF RATHER THAN A QUERY, and the settings rail is why: it renders after the
+ * route's config read resolves, so on a cold route it is not in the tree at the
+ * commit the shell renders in, and a shell that looked for it once would find nothing
+ * and never look again (measured 2026-09-27 - the settings rail stayed under the
+ * strip on the run that arrived cold, while the second visit, whose store was warm,
+ * was carried). Registration is an event: whatever commit the column appears in,
+ * this runs in it.
+ *
+ * OUTSIDE THE SHELL IT IS INERT IN BOTH HALVES (review round 1, N1), which is what
+ * a story rendering one of these routes on its own gets (`register` is null):
+ * nothing registers and no marker is written, and only the lane's band is missing,
+ * because there is no lane.
+ */
+export const useLaneLeadingColumn = (): LaneLeadingRegistration => {
+	const register = useContext(LaneLeadingContext);
+	return useCallback<LaneLeadingRegistration>(
+		(column) => {
+			/*
+			 * GATED ON `register` (review round 1, N1): the marker's one meaning is "this
+			 * element was handed to the shell", and outside the shell there is no shell to
+			 * hand it to - so a story rendering the route alone must not wear it.
+			 */
+			if (column && register) column.setAttribute(LANE_LEADING_COLUMN, "");
+			register?.(column);
+		},
+		[register],
+	);
+};
+
+/**
+ * Where the lane's `surface` band has to end on the route that is up.
+ *
+ * The right edge of the registered column, in the lane's own coordinates, or null
+ * where the route has no such column - which is most of them (chat, schedules, agent
+ * hub, projects), and where the band keeps the app sidebar's own width.
+ *
+ * MEASURED IN A LAYOUT EFFECT, so the band is right in the FIRST painted frame of a
+ * route rather than one frame later: a state update from `useLayoutEffect` is flushed
+ * before the browser paints. `ResizeObserver` rather than a dependency on the window
+ * width is what keeps it true when the column changes size for a reason that is not a
+ * React render - the rail's `min-[1040px]:` step is a media query, and a container
+ * query or a font arriving would be the same shape of change.
+ */
+function useLaneLeadingEdge(
+	lane: RefObject<HTMLDivElement | null>,
+	column: HTMLElement | null,
+	sidebarWidth: number,
+): number | null {
+	const [edge, setEdge] = useState<number | null>(null);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `sidebarWidth` is a re-measure TRIGGER rather than a value the body reads. The registered column's right edge moves with the sidebar it stands beside, and the observer cannot see that: dragging the divider does not change the column's own box at all, only where it sits.
+	useLayoutEffect(() => {
+		const laneElement = lane.current;
+		if (!laneElement || !column) {
+			setEdge(null);
+			return;
+		}
+		const measure = () => {
+			/* One rounding, so a fractional box does not re-render the shell on its own
+			   noise: the value becomes a background stop, and a stop is a length. */
+			const next =
+				Math.round(
+					(column.getBoundingClientRect().right -
+						laneElement.getBoundingClientRect().left) *
+						100,
+				) / 100;
+			setEdge((previous) => (previous === next ? previous : next));
+		};
+		const observer = new ResizeObserver(measure);
+		observer.observe(column);
+		measure();
+		return () => observer.disconnect();
+	}, [column, lane, sidebarWidth]);
+	return edge;
+}
 
 /**
  * What the sidebar itself needs to know about where it is drawn.
@@ -139,6 +250,10 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	 * chose the app in. Reopening the window does not reopen it.
 	 */
 	const [sheetRequested, setSheetRequested] = useState(false);
+	/* The strip the band is painted on, and whichever leading column the route has
+	   handed over through `useLaneLeadingColumn` - null on every route that draws none. */
+	const laneRef = useRef<HTMLDivElement | null>(null);
+	const [leadingColumn, setLeadingColumn] = useState<HTMLElement | null>(null);
 
 	useEffect(() => {
 		const onResize = () => setViewportWidth(window.innerWidth);
@@ -266,6 +381,18 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	 */
 	const columnWidth =
 		layout.mode === "docked" ? layout.width : SIDEBAR_COLLAPSED_WIDTH;
+	/*
+	 * THE BAND'S OWN WIDTH, which is the sidebar's UNLESS the route beside it draws a
+	 * leading column of its own: settings has its rail, agents its list pane, and the
+	 * saved-agent route a 280px roster. On those routes the rail's ground stopped at
+	 * the lane's `canvas` band - the operator's report of 2026-09-26, and again of
+	 * 2026-09-27 as still true, with a screenshot showing the settings rail's ground
+	 * beginning below a differently-toned strip. The sidebar's width is the FLOOR
+	 * rather than the answer: a route column can only ever stand to the right of it,
+	 * and with no marker the number is exactly what it always was.
+	 */
+	const leadingEdge = useLaneLeadingEdge(laneRef, leadingColumn, columnWidth);
+	const bandWidth = Math.max(columnWidth, leadingEdge ?? 0);
 	return (
 		<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
 			{/*
@@ -285,11 +412,12 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 			 * OS is not drawing over the app loses nothing to it.
 			 */}
 			<div
+				ref={laneRef}
 				data-titlebar-lane=""
 				data-titlebar-drag=""
 				className="h-8 shrink-0"
 				style={{
-					background: `linear-gradient(to right, var(--lo-surface) ${columnWidth}px, var(--lo-canvas) ${columnWidth}px)`,
+					background: `linear-gradient(to right, var(--lo-surface) ${bandWidth}px, var(--lo-canvas) ${bandWidth}px)`,
 				}}
 			/>
 			<div className="flex min-h-0 flex-1 overflow-hidden">
@@ -343,7 +471,9 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 				 * that is the property this wrapper has to reproduce, not replace.
 				 */}
 				<div className="flex h-full min-w-0 grow flex-col overflow-hidden">
-					{content}
+					<LaneLeadingContext.Provider value={setLeadingColumn}>
+						{content}
+					</LaneLeadingContext.Provider>
 				</div>
 			</div>
 			<Sheet
