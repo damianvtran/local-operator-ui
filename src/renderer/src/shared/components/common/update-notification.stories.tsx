@@ -2132,6 +2132,12 @@ export const ErrorStateRetrying: Story = {
  * again, a download does not, so the sentence names the surface that owns the
  * retry - the update panel behind this alert - and the box offers no control. The
  * frame is the check on that rule, next to `ErrorState`'s, which does carry one.
+ *
+ * THE MESSAGE IS THE STALL'S OWN SHAPE (remediation round 1, D1): the watchdog's
+ * cancel rejects with `cancelled` - label-prefixed text carrying no machine mark,
+ * which the classifier used to hand back verbatim at reading weight, so the
+ * sentence below never rendered. This frame is the evidence for the fixed
+ * rendering: the stage's sentence, with the watchdog's word on the machine line.
  */
 export const ErrorStateDownload: Story = {
 	args: { autoCheck: false },
@@ -2139,7 +2145,7 @@ export const ErrorStateDownload: Story = {
 		<div className="h-screen bg-canvas">
 			<UpdateErrorAlert
 				open
-				message="Error downloading update: net::ERR_TIMED_OUT"
+				message="Error downloading update: cancelled"
 				onClose={() => {}}
 				onRetry={() => {}}
 			/>

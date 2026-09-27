@@ -17,16 +17,27 @@ around that frame; see the PR for the full path list.
 
 ## The money evidence: the simulation
 
-No pixels move in this change. The checking frame and the failure alert are the
-same pixels before and after — what changes is WHEN the frame leaves and what
-it is replaced by — so a before/after still pair would not discriminate the
-fix, and none was taken. (The checking frame's story
-(`update-notification.stories.tsx`'s `Checking`) has no committed frame and is
-not registered in the capture sweep; adding a registered set is a capture pass
-of its own, and it would render the same frame this pass ships no change to.
-The alert's own stills are committed under
-`docs/evidence/common-updatenotification/error-state-retrying/` and the other
-`error-state*`/`install-*` sets.)
+WHY THE SIMULATION RATHER THAN A BEFORE/AFTER STILL: what this pass bounds is
+WHEN the frame leaves, and no still can show a wait. The frames it does move
+(remediation round 1) are named below; none of them discriminates the bound on
+its own.
+
+- THE HONEST NUMBER, per attempt and per check: the deadline abandons ONE
+  attempt at 30s, and the ladder retries to three attempts total (+1s and +3s
+delays), so a fully stalled manual check rejects - and a silent one resolves
+  `null` - at ~94s, not 30s. The download's no-progress bound is 90s, and the
+  two registry reads 10s each. The tests pin `attempts == 3` and the shipped
+  values; quote the ladder's ~94s when reading "bounded".
+- The alert's own stills are committed under
+  `docs/evidence/common-updatenotification/error-state-retrying/` and the other
+  `error-state*`/`install-*` sets. REMEDIATION ROUND 1 moved frames the way it
+  moved pixels: `error-state-download/` was re-shot at the stall's own message
+  (`Error downloading update: cancelled`, design D1 - the classifier used to
+  hand that string back at reading weight, so the stage's sentence never
+  rendered), and the checking card, the settings button and the download panel
+  add a delayed still-working line after 12s (UX U1). The three stories render
+  the shipped components now rather than forks of their markup, so the frames
+  cannot drift from what those surfaces draw.
 
 What does discriminate, and is the evidence, is a stalled-feed simulation run
 against the SHIPPED code on both sides of the IPC boundary:
@@ -54,9 +65,9 @@ against the SHIPPED code on both sides of the IPC boundary:
 Re-run either half with:
 
 ```sh
-node --test --test-name-pattern="a feed that never answers|a check the user asked for gets the deadline|an expired sequence settling late|a stalled download|download progress resets|skip-list" \
+node --test --test-name-pattern="a feed that never answers|a check the user asked for gets the deadline|an expired sequence settling late|one updater-deduped fetch|a stalled download|download progress resets|the PyPI and npm registry reads|switch silences the watchdog|without the switch the watchdog|skip-list" \
   scripts/update-robustness.test.mjs
-node --test --test-name-pattern="the checking frame clears" \
+node --test --test-name-pattern="the checking frame clears|says a long check|says a stalled download" \
   scripts/update-affirmation.test.mjs
 ```
 
