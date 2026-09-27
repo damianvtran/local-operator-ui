@@ -33,7 +33,16 @@ claim a frame can fail rather than one it merely illustrates.
 | `frames/secret-ask--<theme>.webp` | the empty field: placeholder, reassurance line, Send disabled |
 | `frames/secret-ask-typed--<theme>.webp` | the mask mid-entry (`Input.insertText`); Send enabled |
 | `frames/secret-answer-in-flight--<theme>.webp` | mid-submit: "Sending your answer…" + field and Send refused, WITH the typed value still under the mask (the reading the round-1 review found unphotographed) |
-| `frames/secret-answer-held--<theme>.webp` | the held card after an unknowable outcome: field and Send disabled, the typed value kept, and the held hint ("nothing can send again · Esc hides") |
+| `frames/secret-answer-held--<theme>.webp` | the held card after an unknowable outcome: field and Send disabled, the typed value kept, and the held hint ("nothing can send again · Esc in the card hides it") |
+
+
+**RE-CAPTURED AGAIN FOR THE ROUND-2 REMEDIATION** (UX U5; the fold's R2-1 theme):
+all four states were re-taken at `9b99206577` because the fix moves the dock - the
+held hint gains its scope ("nothing can send again · Esc in the card hides it") and
+the held card now TAKES the focus the press had parked in the composer, so the hint's
+key works from where the reader stands (a keys-only change, invisible in a still). The
+six files the held state does not touch came back BYTE-IDENTICAL to the round-1
+capture, so only the two `secret-answer-held` frames are new in this commit.
 
 The `secret-ask-typed` entry carries a shutter-time claim (`expectAttribute`
 `type="password"`), the in-flight and held entries carry theirs too plus the
