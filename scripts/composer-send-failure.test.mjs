@@ -141,10 +141,17 @@ export const settlePendingSend = (identity, id) => {
 };
 export const hasPendingSend = (identity, id) => Boolean(registry.get(identity)?.has(id));
 export const pendingSendForView = (identity) => {
+	/*
+	 * THE SETTLED SKIP IS PART OF THE RULE THE FIXTURE STANDS FOR (agent review
+	 * round 2, R2-2): the real predicate answers the oldest entry that is NOT
+	 * settled, because a resolved claim stays in the registry to keep painting its
+	 * row. A fixture that returned the settled entry would let a regression pass
+	 * here while the app showed no wait line at all.
+	 */
 	const entries = registry.get(identity);
 	if (!entries) return null;
-	const first = entries.values().next();
-	return first.done ? null : first.value;
+	const first = [...entries.values()].find((entry) => entry.settled !== true);
+	return first ?? null;
 };
 export const movePendingSendIdentity = (from, to) => {
 	globalThis.__canonicalEcho({ kind: "move", from, to });

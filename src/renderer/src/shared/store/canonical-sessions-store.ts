@@ -1345,6 +1345,49 @@ export function draftIdentityFor(
 }
 
 /**
+ * The draft ROW a pane's conversation actually lives on.
+ *
+ * WHY THE KEY ALONE IS NOT ENOUGH (UX round 2, U5): a staged draft KEEPS its
+ * `draft:<uuid>` key for its whole life - the key is where the text, the claim
+ * and the failure are written, and the create's answer patches only the row's
+ * `sessionId` field - while `draftIdentityFor` answers
+ * `activeDraftKey ?? send:<sessionId>`. The two disagree the moment a pane is
+ * reached by the session's own route (the sidebar's row, a return after a
+ * switch-away, a deep link): the derived key names a row nothing ever wrote, so
+ * the pane renders no statement and no controls. Measured on the round-2 walk
+ * and re-produced by `--scene conversation-start-away-failure`: a refusal up on
+ * the row, a switch away and straight back, and the failure's whole line - the
+ * sentence and both controls - gone while the row itself was still there.
+ *
+ * So the lookup resolves by BELONGING - the same predicate the resolution
+ * writes through (`draftBelongsToSession`) - and only falls back to the derived
+ * `send:<sessionId>` shape when no row owns the conversation, which is exactly
+ * the live-send-that-never-staged-one case that fallback was for. Among several
+ * owned rows the one CARRYING a row (a claim, a submission, a failure) wins; a
+ * bare row with none of those has nothing to show anyway.
+ */
+export function paneDraftKey(
+	draftKey: string | null,
+	sessionId: string | null | undefined,
+	drafts: Record<string, ChatDraft>,
+): string | null {
+	if (draftKey) return draftKey;
+	if (!sessionId) return null;
+	const owned = Object.entries(drafts).filter(([, draft]) =>
+		draftBelongsToSession(draft, sessionId),
+	);
+	const carrying = owned.find(
+		([, draft]) =>
+			draft.submittedText !== undefined ||
+			draft.undelivered !== undefined ||
+			draft.error !== undefined ||
+			draft.admissionAttempted === true ||
+			draft.pending === true,
+	);
+	return (carrying ?? owned[0])?.[0] ?? `send:${sessionId}`;
+}
+
+/**
  * What React keys the chat panel on, and therefore what makes it remount.
  *
  * The precedence is `id ?? draftKey` and NOT the reverse, because the two name
@@ -1777,6 +1820,7 @@ export function resynthesisePendingSend(
 			text: resolved.text,
 			images: [],
 			settled: true,
+			submittedAt: draft.submittedAt,
 		});
 		return true;
 	}
@@ -1795,6 +1839,8 @@ export function resynthesisePendingSend(
 		 * fallback for the classes whose failure came before the seam.
 		 */
 		text: draft.submittedRendered ?? submittedText,
+		/* The press's clock anchor survives with the row; see `PendingSend`. */
+		submittedAt: draft.submittedAt,
 		// The same id shape the press's own paint used, so a later owner row for
 		// this id coalesces with it rather than sitting beside it.
 		images: (draft.submittedImages ?? []).map((image, index) => ({
@@ -2064,6 +2110,13 @@ export async function admitChatDraft(
 		previous?.submittedText === undefined || replay
 			? (previous?.admissionRequestId ?? crypto.randomUUID())
 			: crypto.randomUUID();
+	/*
+	 * ONE PRESS, ONE ANCHOR (agent review round 2, R2-5): the same number goes on
+	 * the draft row (the panes' read) and on the registry entry painted below
+	 * (which survives remounts - see `PendingSend.submittedAt`), so the wait
+	 * clock cannot be two clocks.
+	 */
+	const submittedAt = Date.now();
 	store.updateDraft(key, {
 		...draft,
 		/*
@@ -2091,7 +2144,7 @@ export async function admitChatDraft(
 		errorCode: undefined,
 		// The press's own anchor for the wait line's clock, written with the
 		// claim it belongs to: see `submittedAt` for why the row carries it.
-		submittedAt: Date.now(),
+		submittedAt,
 	});
 	/*
 	 * THE PAINT MOVES TO THE PRESS, AND THAT IS THE HALF OF THE FELT-LATENCY FIX
@@ -2125,6 +2178,7 @@ export async function admitChatDraft(
 	if (paintIdentity)
 		paintPendingSend(paintIdentity, {
 			id: admissionRequestId,
+			submittedAt,
 			text,
 			// Same id shape `extractImages` gives the owner's row, so the coalesced
 			// record keeps its image keys across the swap.
@@ -2506,6 +2560,25 @@ export async function admitChatDraft(
 			useConversationInputStore
 				.getState()
 				.returnInFlight(paintIdentity, composerTo);
+		/*
+		 * AND THE REGISTRY'S OWN CLAIM ENDS WITH THE ATTEMPT (UX round 2, U5), the
+		 * same statement `settleInFlight` makes directly above: a recorded failure
+		 * means the send is NOT alive - `pending` goes false on the row in this same
+		 * catch - so the retained entry must stop answering "still going out" the
+		 * moment the sentence is stated, rather than waiting for a server read that
+		 * may never conclude (an incomplete page proves nothing, and
+		 * `resolveHeldFromServer` rightly refuses to conclude from one). The entry
+		 * itself STAYS: it is the row's home, and `settled` is exactly the difference
+		 * between "kept to paint the row" and "still in flight" (see
+		 * `PendingSend.settled`).
+		 *
+		 * Both identities, because the claim travels: `rowIdentity` is where the row
+		 * lives now (the session once the create answered, the pane's key before it),
+		 * and `key` covers a draft the re-key has not reached. A settle for an
+		 * identity with no entry is a no-op.
+		 */
+		if (rowIdentity) settlePendingSend(rowIdentity, admissionRequestId);
+		if (key !== rowIdentity) settlePendingSend(key, admissionRequestId);
 		throw leadingSlash
 			? new DesktopControlError(
 					422,

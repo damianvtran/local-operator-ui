@@ -1340,6 +1340,16 @@ export type PendingSend = {
 	 */
 	settled?: boolean;
 	/**
+	 * THE PRESS'S OWN ANCHOR FOR THE WAIT CLOCK (agent review round 2, R2-5), on
+	 * the entry because the entry is what survives every remount: the latch that
+	 * first read `draft.submittedAt` is per-mount, so a switch-away inside the
+	 * receipt-to-owner gap (which deletes the draft row, `finishDraft`) remounted
+	 * with nothing to anchor to and blanked the seconds - the same blanking the
+	 * latch's snapshot closed for a single mount. The value is written at the
+	 * press, so every reader of the entry sees one number.
+	 */
+	submittedAt?: number;
+	/**
 	 * Whoever asked to be told the row reached a transcript. Fires ONCE, at the
 	 * first paint - synchronously when a target is mounted, from the drain when
 	 * one is not - because that is the moment taking the text out of the box
@@ -1458,6 +1468,8 @@ export function paintPendingSend(
 		onPainted?: () => void;
 		/** Only `resynthesisePendingSend`'s resolved arm passes this; see `settled`. */
 		settled?: boolean;
+		/** The press's clock anchor; see `PendingSend.submittedAt`. */
+		submittedAt?: number;
 	},
 ): void {
 	let entries = pendingSends.get(identity);
@@ -1483,6 +1495,7 @@ export function paintPendingSend(
 		images: send.images,
 		onPainted: send.onPainted,
 		settled: send.settled,
+		submittedAt: send.submittedAt,
 	};
 	entries.set(entry.id, entry);
 	while (entries.size > MAX_PENDING_SENDS_PER_IDENTITY) {
@@ -1560,6 +1573,25 @@ export function hasPendingSend(
 ): boolean {
 	if (!identity) return false;
 	return pendingSends.get(identity)?.has(id) === true;
+}
+
+/**
+ * Whether this identity RETAINS an entry at all, settled or not.
+ *
+ * THE ROW-EXISTENCE QUESTION, as distinct from `pendingSendForView`'s liveness
+ * one (agent review round 2's re-shoot). The composer stands down while a row is
+ * on screen to speak the failure it is the home of (S4/J4) - and a settled
+ * claim's row is still a row. The settled distinction exists for the wait line's
+ * sake; using the LIVENESS predicate for this gate handed the sentence back to
+ * the composer the moment a failure settled its own claim, which is the
+ * duplicate statement (row + alert) J4 forbids. Measured on the round-2
+ * re-shoot's first run.
+ */
+export function retainsPendingSend(
+	identity: string | null | undefined,
+): boolean {
+	if (!identity) return false;
+	return (pendingSends.get(identity)?.size ?? 0) > 0;
 }
 
 /**

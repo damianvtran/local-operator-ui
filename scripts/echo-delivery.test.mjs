@@ -122,6 +122,7 @@ const {
 	replacePendingSendText,
 	resolvePendingSend,
 	resolveObservedPendingSends,
+	settlePendingSend,
 	pendingSendForView,
 	discardPendingSends,
 	retractPendingUser,
@@ -1890,5 +1891,56 @@ test("F6 x R1: a refused off-record ask keeps the staged halves it carried", asy
 		settled.storedDraft,
 		"",
 		"and the persisted draft is retired as for any accepted press",
+	);
+});
+
+test("R2-2/U5: a settled claim stops answering for the send that follows", async () => {
+	reset();
+	/*
+	 * THE DISTINCTION THE ROUND-2 RE-SHOOT MEASURED, pinned (agent review round 2,
+	 * R2-2): a resolution keeps the entry - it is the row's home - and marks it
+	 * SETTLED, and `pendingSendForView` skips settled entries so a claim the
+	 * server already answered can never be the "still going out" answer for the
+	 * NEXT message on that conversation. Without the skip the resolved entry,
+	 * being the oldest, was the one the pane's latch anchored to and the next
+	 * send flew with no wait line at all.
+	 */
+	paintPendingSend(SESSION_ID, { id: "older", text: "First", images: [] });
+	paintPendingSend(SESSION_ID, {
+		id: "newer",
+		text: "Second",
+		images: [],
+		/* The press's clock anchor rides the entry (agent review round 2, R2-5). */
+		submittedAt: 1234,
+	});
+	assert.equal(pendingSendForView(SESSION_ID)?.id, "older");
+	assert.equal(
+		pendingSendForView(SESSION_ID)?.submittedAt,
+		undefined,
+		"an entry painted without an anchor has none - the field is the press's",
+	);
+	settlePendingSend(SESSION_ID, "older");
+	assert.equal(
+		pendingSendForView(SESSION_ID)?.id,
+		"newer",
+		"the settled entry must not answer over the one that is still alive",
+	);
+	assert.equal(
+		pendingSendForView(SESSION_ID)?.submittedAt,
+		1234,
+		"and the anchor survives to the entry the pane's remount reads",
+	);
+	/* A settled entry is a row, not a claim: it still paints on the next mount. */
+	assert.equal(
+		seedPendingSends(SESSION_ID, EMPTY_TRANSCRIPT).records.some(
+			(record) => record.id === "older",
+		),
+		true,
+	);
+	settlePendingSend(SESSION_ID, "newer");
+	assert.equal(
+		pendingSendForView(SESSION_ID),
+		null,
+		"with every claim answered, nothing answers `still going out`",
 	);
 });
