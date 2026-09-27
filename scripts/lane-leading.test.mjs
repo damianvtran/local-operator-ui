@@ -75,6 +75,19 @@ test("the marker and the registration are one thing", () => {
 		/column\.setAttribute\(LANE_LEADING_COLUMN, ""\)/,
 		"the hand-over hook writes the marker itself",
 	);
+	/*
+	 * GATED ON A SHELL (review round 1, N1): the marker's one meaning is "this
+	 * element was handed to the shell", so its write is conditioned on a `register`
+	 * existing - a route rendered outside the shell (a story) must mark nothing. The
+	 * match is whitespace-tolerant for the same reason `chat-sidebar-selection`'s
+	 * anchor read now is: what is asserted is the gate, not the line break a format
+	 * pass may put inside it.
+	 */
+	assert.match(
+		layout,
+		/if \(\s*(?:column\s*&&\s*register|register\s*&&\s*column)\s*\)[\s\S]{0,60}?setAttribute\(\s*LANE_LEADING_COLUMN, ""\)/,
+		"the hand-over hook writes the marker only while a shell (`register`) is there to hand the column to: written from outside the shell, the marker describes a hand-over that never happened",
+	);
 	assert.doesNotMatch(
 		layout.replace(/column\.setAttribute\([^)]*\)/, ""),
 		/data-lane-leading-column=""/,

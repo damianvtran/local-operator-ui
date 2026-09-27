@@ -365,7 +365,11 @@ rule:
   (a route the change it was written for does not touch) and `/settings`,
   `/settings?section=integrations`, `/agents`, `/agents/<any id>` (the saved-agent
   route, which draws its own 280px roster through a different component),
-  `/agent-hub` and `/schedules`, each photographed and read back as numbers. It
+  `/agent-hub`, `/schedules`, `/projects` and `/browser`, each photographed and read
+  back as numbers. `/projects` and `/browser` joined the sweep for review round 1's
+  M1 (the operator-named must-not-move routes the first sweep left out); neither
+  draws a leading column, so their reading is the floor half of the band claim
+  rather than a hand-over. It
   exists because the sub-view inset report (2026-09-26, "for sub-views like the
   settings page, the sidebar and view doesn't go all the way to the top") was a
   claim about ONE y coordinate per route — where a column's first box begins — and
@@ -390,9 +394,9 @@ rule:
   stopped at 260 against a rail ending at 479 and a list pane ending at 516 (both
   FAIL), and reaches 479/516/540 after.
 
-  **Requires `--backend`** for the settings, agents, hub and schedules surfaces to
-  render at all, and is run twice per tree (`--window-size 1380x900` and `800x600`,
-  `--run-label` keeping the two sets of frame names apart).
+  **Requires `--backend`** for the settings, agents, projects, hub and schedules
+  surfaces to render at all, and is run twice per tree (`--window-size 1380x900` and
+  `800x600`, `--run-label` keeping the two sets of frame names apart).
 
 - **`hit-zones`** — the window drag region against the overlays painted over it,
   and the audit that goes with it: every control of every overlay the scene can

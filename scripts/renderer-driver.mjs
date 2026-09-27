@@ -25711,6 +25711,16 @@ async function sceneRouteTops(cdp) {
 		["agents-detail", "/agents/local-operator"],
 		["agent-hub", "/agent-hub"],
 		["schedules", "/schedules"],
+		/*
+		 * THE TWO ROUTES THE OPERATOR NAMED AS MUST-NOT-MOVE THAT THE FIRST SWEEP LEFT
+		 * OUT (review round 1, M1). Neither draws a leading column: the projects page's
+		 * root is a vertical flex column with no ground of its own, and the browser
+		 * surface roots on `canvas` behind its own toolbar - so what their readings carry
+		 * is the floor half of the band claim (no column: the band must stop exactly at
+		 * the app sidebar's own edge) plus the route-top assertion every route gets.
+		 */
+		["projects", "/projects"],
+		["browser", "/browser"],
 	];
 	const frames = [];
 	const readings = [];
@@ -25909,8 +25919,9 @@ async function sceneRouteTops(cdp) {
 		 * becoming "no column here".
 		 *
 		 * The control is the routes that draw no such column (chat, schedules, agent
-		 * hub): there the band stays exactly the app sidebar's width, which is what
-		 * keeps this from being a rule that quietly widens every route's band.
+		 * hub, projects, browser): there the band stays exactly the app sidebar's width,
+		 * which is what keeps this from being a rule that quietly widens every route's
+		 * band.
 		 */
 		for (const [, path, reading] of readings) {
 			if (!reading.lane || reading.laneDisplay === "none") continue;
@@ -26204,7 +26215,7 @@ async function main() {
 	}
 	if (SCENE === "route-tops" && BACKEND === null) {
 		throw new Error(
-			"--scene route-tops needs --backend: settings, agents, hub and schedules are gated on the catalogue a live backend advertises, and the macOS lane assertion is read over every one of them",
+			"--scene route-tops needs --backend: settings, agents, projects, hub and schedules are gated on the catalogue a live backend advertises, and the macOS lane assertion is read over every one of them",
 		);
 	}
 	if (SCENE === "pins-search" && (TUI_PYTHON === null || TUI_CONFIG === null)) {

@@ -121,15 +121,21 @@ const LaneLeadingContext = createContext<LaneLeadingRegistration | null>(null);
  * was carried). Registration is an event: whatever commit the column appears in,
  * this runs in it.
  *
- * OUTSIDE THE SHELL IT IS INERT, which is what a story rendering one of these routes
- * on its own gets (`register` is null): the route keeps its own layout and only the
- * lane's band is missing, because there is no lane.
+ * OUTSIDE THE SHELL IT IS INERT IN BOTH HALVES (review round 1, N1), which is what
+ * a story rendering one of these routes on its own gets (`register` is null):
+ * nothing registers and no marker is written, and only the lane's band is missing,
+ * because there is no lane.
  */
 export const useLaneLeadingColumn = (): LaneLeadingRegistration => {
 	const register = useContext(LaneLeadingContext);
 	return useCallback<LaneLeadingRegistration>(
 		(column) => {
-			if (column) column.setAttribute(LANE_LEADING_COLUMN, "");
+			/*
+			 * GATED ON `register` (review round 1, N1): the marker's one meaning is "this
+			 * element was handed to the shell", and outside the shell there is no shell to
+			 * hand it to - so a story rendering the route alone must not wear it.
+			 */
+			if (column && register) column.setAttribute(LANE_LEADING_COLUMN, "");
 			register?.(column);
 		},
 		[register],
