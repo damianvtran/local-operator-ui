@@ -28,8 +28,8 @@
  *
  * Raw CDP against a private headless Chrome, deliberately the same approach as
  * `capture-evidence.mjs` and `chat-alignment-geometry.mjs` (fresh user-data-dir
- * under the machine's temp directory, killed on exit, `--use-mock-keychain` so a
- * scratch profile never asks macOS for a login keychain, and no
+ * under the machine's temp directory, killed on exit, routed through the shared
+ * mock-keychain helper so a scratch profile never asks macOS for a login keychain, and no
  * browser-automation dependency added to the repo). Duplicating that driver here
  * rather than importing it is the smaller evil, for the reason
  * `chat-alignment-geometry.mjs` gives: the evidence sweep is the one script in

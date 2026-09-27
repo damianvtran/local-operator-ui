@@ -284,6 +284,12 @@ const CHROME_LAUNCH_SITES = [
 		"measures the transcript's horizontal geometry from the live DOM",
 	),
 	guarded(
+		"scripts/condensed-group-media-geometry.mjs",
+		"spawn",
+		1,
+		"measures the condensed action group's height and its thumbnail strip from the live DOM, which is the compactness budget the pictures pass states as a number",
+	),
+	guarded(
 		"scripts/header-cluster-geometry.mjs",
 		"spawn",
 		1,
