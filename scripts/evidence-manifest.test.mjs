@@ -1458,6 +1458,13 @@ const STAMP_BINDING_NOTES = [
 	 * the reason no still was owed, the same case task-17's entry states.
 	 */
 	"twoFlakesRestampNote",
+	/*
+	 * AND THE SAME LANE'S SECOND FOLD, WHOSE SUBJECT IS THIS BINDING ITSELF: the
+	 * fold carried main's four merges under the branch's own change, so it moved
+	 * BOTH trees and the pair was re-derived at the folded tip - the case a reader
+	 * is owed the pair for, and the one this list is what holds them to.
+	 */
+	"foldOntoE885227046Note",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2067,6 +2074,13 @@ const BRANCH_RECORDS = [
 	 * same reason this list exists.
 	 */
 	"twoFlakesRestampNote",
+	/*
+	 * And by the TWO-FLAKE lane's second fold, whose record is now the newest
+	 * top-level note on the branch: it states the pair the folded tip ships, moves
+	 * both trees, and takes no frame - a fold that started from main's copy would
+	 * drop it first, the same reason this list exists.
+	 */
+	"foldOntoE885227046Note",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
