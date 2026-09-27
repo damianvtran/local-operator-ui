@@ -36,7 +36,6 @@ import "@renderer/assets/fonts/fonts.css";
 import { ChatPage } from "@features/chat/components/chat-page";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
-import { peekLocalEcho } from "@shared/hooks/use-canonical-session";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { __resetPaintCache } from "@shared/store/paint-cache";
@@ -316,16 +315,6 @@ const open = (target: string, deadlineMs = 30_000) =>
 				settle:
 					entry.settledAt > 0 ? Math.round(entry.settledAt * 10) / 10 : null,
 			})),
-	/**
-	 * Whether the row `id` names is STILL the local echo, as `peekLocalEcho`
-	 * reads it: `owner` once the owner's own row for the admission has replaced
-	 * it. The ordering readings use it to know when the row stops being
-	 * pending - the window the pending-echo placement rule governs.
-	 */
-	localEcho: (id: string) => {
-		const session = useCanonicalSessionsStore.getState().activeSessionId;
-		return session ? peekLocalEcho(session, id) : "unseen";
-	},
 	/** Rows the sidebar has painted, by session id. */
 	rows: () =>
 		[...document.querySelectorAll("[data-session-row]")].map((row) =>
@@ -335,10 +324,12 @@ const open = (target: string, deadlineMs = 30_000) =>
 	 * Back to the landing, so the next click is a real move onto a fresh pane.
 	 *
 	 * `cold` also empties the in-memory paint cache (`paint-cache.ts`): with it,
-	 * a repeat open paints this window's memory of the conversation in its first
-	 * frame, which is a real and good path but not the one the operator's "open a
-	 * conversation" is - so the driver defaults to cold, and every open paints
-	 * from the wire.
+	 * a repeat open keeps this window's memory of the conversation in the cache
+	 * for a later frame, but this head holds stale rows back while a page is
+	 * owed, so the cached rows are revealed at the page's commit rather than in
+	 * the mount's first frames (QA round 1, cell 4) - a real and good path, but
+	 * not the one the operator's "open a conversation" is - so the driver
+	 * defaults to cold, and every open paints from the wire.
 	 */
 	home: (cold = true) => {
 		if (cold) __resetPaintCache();

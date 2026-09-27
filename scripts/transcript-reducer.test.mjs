@@ -2112,18 +2112,23 @@ test("removeRecord retracts exactly the echo it names", () => {
  *
  * #534's `monotonicStamp` bounds an echo against rows painted AT STAMP TIME.
  * These pin the residual the load window adds: the page (or seed) is still
- * OWED when the message is sent, so nothing is painted to bound against — and
- * it lands AFTER the echo carrying rows whose stamps sit ahead of the echo's.
- * #534's own comment names that clock ("a remote owner, or any client whose
- * clock trails"); what it cannot bound is a row that arrives after the stamp
- * and states a later time while chronologically preceding the send.
+ * OWED when the message is sent — over nothing, over a painted cache, over a
+ * notice-only transcript alike — and it lands AFTER the echo carrying rows
+ * whose stamps sit ahead of the echo's. #534's own comment names that clock
+ * ("a remote owner, or any client whose clock trails"); what it cannot bound
+ * is a row that arrives after the stamp and states a later time while
+ * chronologically preceding the send.
  *
- * The rule these pin, and the reason it is the right one: while an echo is
- * still LOCAL the owner has stated no position for it — its row (same id) has
- * not arrived — so the echo is placed where it was admitted, after every
- * canonical row, by arrival; the owner's row replaces it and returns it to
- * the canonical order. A client clock comparison can only decide this wrong,
- * because the two stamps come from different clocks.
+ * The rule these pin, and the reason it is the right one (review round 1, F1
+ * through F3): while the owner has stated no position for the row, no client
+ * clock comparison can decide it — the two stamps come from different clocks,
+ * and a row landing later can exceed any cap the echo borrowed. So EVERY
+ * echo holds the tail position it was admitted at (admission is not "empty
+ * transcript": a few cached rows or a notice-only transcript state no owner
+ * time either), rows admitted while it holds keep its tail block, and only
+ * an owner-stamped row naming the id — the durable page row, not a live
+ * `message_start` merely restating the message — ends the hold and returns
+ * the row to the canonical order.
  */
 const CLIENT_NOW = 1_790_000_000_000;
 // The owner's clock, ahead of the client's: the skew condition itself.
@@ -2135,6 +2140,14 @@ const aheadEntry = (id, tsMs, text) => ({
 	ts: tsMs / 1000,
 	type: "message",
 	payload: { kind: "message", ...assistant(id, text) },
+});
+
+/** One durable page entry for a USER row, stamped on the owner's clock. */
+const aheadUserEntry = (id, tsMs, text) => ({
+	id,
+	ts: tsMs / 1000,
+	type: "message",
+	payload: { kind: "message", ...user(id, text) },
 });
 
 test("a locally stamped echo cannot be displaced by a page that lands after the send", () => {
@@ -2212,7 +2225,7 @@ test("a locally stamped echo cannot be displaced by a snapshot seed that lands a
 	);
 });
 
-test("the owner's row replaces a pending echo and returns it to the canonical order", () => {
+test("a restating message_start does not end the hold; the durable row returns the echo to order", () => {
 	const requestId = "7f3a2c1e-8b5d-4e6f-9a0b-1c2d3e4f5a6b";
 	let state = appendPendingUser(
 		state0(),
@@ -2230,21 +2243,37 @@ test("the owner's row replaces a pending echo and returns it to the canonical or
 		state.records.map((r) => r.id),
 		["a1", requestId],
 	);
-	// The owner echoes the message back on its own stream: the row is canonical
-	// now (no `local`), and a later merge places it by its own stamp rather than
-	// pinning it after everything.
+	/*
+	 * The owner echoes the message back on its own stream (a reconnect's
+	 * replay folds these frames BEFORE the snapshot's page - review round 1,
+	 * F2). Delivery is now the owner's, so `local` clears - that flag is the
+	 * store's own delivered read (`peekLocalEcho`) - but the POSITION is
+	 * still unstated: the swap must not re-stamp the row onto the client
+	 * clock and must not end the hold, or the page that follows would sort
+	 * the echo above its pre-send rows (the retired case asserted exactly
+	 * that lifted order as correct).
+	 */
 	state = applyEvent(
 		state,
 		{ type: "message_start", message: user(requestId, "first message") },
 		CLIENT_NOW + 3_000,
 	);
+	const restated = state.records.find((r) => r.id === requestId);
 	assert.equal(
-		state.records.length,
-		2,
-		"the owner's row replaced the echo, not duplicated it",
+		restated.local,
+		undefined,
+		"the live echo is the owner's for delivery",
 	);
-	const replaced = state.records.find((r) => r.id === requestId);
-	assert.equal(replaced.local, undefined, "the row is no longer local");
+	assert.equal(
+		restated.provisional,
+		true,
+		"but its position is still the owner's to state",
+	);
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["a1", requestId],
+		"the restating frame does not lift the echo onto the client clock",
+	);
 	state = applyHistoryPage(state, {
 		entries: [aheadEntry("a2", CLIENT_NOW + OWNER_AHEAD_MS * 2, "later still")],
 		has_more: false,
@@ -2252,9 +2281,252 @@ test("the owner's row replaces a pending echo and returns it to the canonical or
 	});
 	assert.deepEqual(
 		state.records.map((r) => r.id),
-		[requestId, "a1", "a2"],
-		"a canonical row sorts by its stamp, not by the pending position",
+		["a1", "a2", requestId],
+		"rows that land after the send never displace it",
 	);
+	// The owner states the position in the end: the durable row carries its
+	// own stamp (between a1's and a2's) and replaces the echo, which sorts
+	// there like any canonical row.
+	state = applyHistoryPage(state, {
+		entries: [
+			aheadUserEntry(
+				requestId,
+				CLIENT_NOW + OWNER_AHEAD_MS + 5_000,
+				"first message",
+			),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["a1", requestId, "a2"],
+		"the durable row returns it to the canonical order",
+	);
+});
+
+test("two echoes admitted in the load window both hold, in arrival order", () => {
+	let state = appendPendingUser(state0(), "req-A", "first", [], CLIENT_NOW);
+	state = appendPendingUser(state, "req-B", "second", [], CLIENT_NOW + 500);
+	state = applyHistoryPage(state, {
+		entries: [aheadEntry("a1", CLIENT_NOW + OWNER_AHEAD_MS, "older")],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["a1", "req-A", "req-B"],
+		"no later row may place either echo above a row that preceded it",
+	);
+	state = applyHistoryPage(state, {
+		entries: [aheadEntry("a2", CLIENT_NOW + OWNER_AHEAD_MS * 2, "later")],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["a1", "a2", "req-A", "req-B"],
+		"and the second page cannot either",
+	);
+});
+
+test("an echo admitted over a painted cache is held against the owed page (+2s)", () => {
+	// The QA cell-2 residual: the cache gives the echo a borrowed slot, but
+	// the owed page's row is journaled before the send and dated past any cap
+	// the echo could take — a cap cannot bound a row that lands after it
+	// (review round 1, F1) — so the echo holds instead.
+	let state = applyHistoryPage(state0(), {
+		entries: [aheadEntry("c1", CLIENT_NOW - 300_000, "cached")],
+		has_more: false,
+		cursor_missing: false,
+	});
+	state = appendPendingUser(state, "req-cache", "hello", [], CLIENT_NOW);
+	state = applyHistoryPage(state, {
+		entries: [
+			aheadEntry("o1", CLIENT_NOW + 2_000, "row journaled before the send"),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["c1", "o1", "req-cache"],
+		"the owed row holds above the echo, not below it",
+	);
+	// And the merges after it must not show the correction jump QA cell 2
+	// logged: the live echo states delivery only, and the next page keeps
+	// the order.
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: user("req-cache", "hello") },
+		CLIENT_NOW + 3_000,
+	);
+	state = applyHistoryPage(state, {
+		entries: [aheadEntry("n1", CLIENT_NOW - 500, "a later landing row")],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["c1", "n1", "o1", "req-cache"],
+		"no correction jump: the echo was never above the owed row",
+	);
+});
+
+test("an echo admitted over a painted cache is held against the owed page (+40s)", () => {
+	let state = applyHistoryPage(state0(), {
+		entries: [aheadEntry("c1", CLIENT_NOW - 300_000, "cached")],
+		has_more: false,
+		cursor_missing: false,
+	});
+	state = appendPendingUser(state, "req-cache2", "hello", [], CLIENT_NOW);
+	state = applyHistoryPage(state, {
+		entries: [
+			aheadEntry("o1", CLIENT_NOW + 40_000, "row journaled before the send"),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["c1", "o1", "req-cache2"],
+		"the wider the skew, the further past any borrowed cap the owed row sits",
+	);
+});
+
+test("a seed that dates a call cannot displace an echo admitted over a painted cache", () => {
+	let state = applyHistoryPage(state0(), {
+		entries: [aheadEntry("c1", CLIENT_NOW - 300_000, "cached")],
+		has_more: false,
+		cursor_missing: false,
+	});
+	state = appendPendingUser(state, "req-cache3", "hello", [], CLIENT_NOW);
+	state = applyLiveSeed(
+		state,
+		{
+			streaming: true,
+			generation: 1,
+			live_events: [
+				{
+					type: "tool_execution_start",
+					tool_call_id: "c-seed",
+					started_at_epoch: (CLIENT_NOW + OWNER_AHEAD_MS) / 1000,
+				},
+			],
+		},
+		CLIENT_NOW + 1_000,
+	);
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["c1", "tool:c-seed", "req-cache3"],
+		"the seeded call was journaled before the send; it holds above the echo",
+	);
+});
+
+test("a notice-only transcript does not anchor the owner clock, so the echo still holds", () => {
+	// A renderer-local notice (a move receipt, a recovery line) is minted from
+	// the CLIENT clock: it is non-empty, but it states no owner time for a
+	// later page to sort against (review round 1, F3).
+	let state = appendLocalNote(
+		state0(),
+		"a first local notice",
+		"info",
+		CLIENT_NOW,
+	);
+	const noticeId = state.records[0].id;
+	state = appendPendingUser(state, "req-7", "hello", [], CLIENT_NOW + 1);
+	state = applyHistoryPage(state, {
+		entries: [
+			aheadEntry("g1", CLIENT_NOW + 15_000, "row journaled before the send"),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		[noticeId, "g1", "req-7"],
+		"the owed row holds above the echo",
+	);
+});
+
+test("a live answer arriving while the echo holds does not land above it", () => {
+	// The symmetric arm of review round 1's F2: a genuinely post-send row
+	// admitted while the echo is unresolved must stay under it (base's
+	// [req-1, ans-1] may not regress to [ans-1, req-1]), and the page that
+	// follows keeps it there: [...pre-send, req, ans].
+	let state = appendPendingUser(state0(), "req-1", "sent now", [], CLIENT_NOW);
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: assistant("ans-1", "") },
+		CLIENT_NOW + 3_000,
+	);
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["req-1", "ans-1"],
+		"the answer arrives under the question",
+	);
+	state = applyHistoryPage(state, {
+		entries: [
+			aheadEntry("a-old", CLIENT_NOW + OWNER_AHEAD_MS, "an older answer"),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["a-old", "req-1", "ans-1"],
+		"pre-send rows hold above the echo, and the answer holds under it",
+	);
+});
+
+test("a page that carries the echo's own row settles it into the canonical order", () => {
+	let state = appendPendingUser(
+		state0(),
+		"req-9",
+		"first message",
+		[],
+		CLIENT_NOW,
+	);
+	state = applyHistoryPage(state, {
+		entries: [aheadEntry("a1", CLIENT_NOW + OWNER_AHEAD_MS, "older")],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["a1", "req-9"],
+	);
+	state = applyHistoryPage(state, {
+		entries: [aheadEntry("a2", CLIENT_NOW + OWNER_AHEAD_MS * 2, "later still")],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["a1", "a2", "req-9"],
+	);
+	// The owner's own row for the echo arrives: it replaces the record (no
+	// duplication) and takes its place by its own stamp, between the rows the
+	// pages brought.
+	state = applyHistoryPage(state, {
+		entries: [
+			aheadUserEntry(
+				"req-9",
+				CLIENT_NOW + OWNER_AHEAD_MS + 5_000,
+				"first message",
+			),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["a1", "req-9", "a2"],
+		"the echo's own durable row settles it where the owner put it",
+	);
+	const settled = state.records.find((r) => r.id === "req-9");
+	assert.equal(settled.local, undefined);
+	assert.equal(settled.provisional, undefined);
 });
 
 /* ------------------------------------------------------- receipt rows */
@@ -4452,9 +4724,15 @@ test("a locally stamped echo cannot sort above a row already on screen", () => {
 		"the echo is appended at the tail before any merge runs",
 	);
 	/*
-	 * THE FIX, IN ONE ASSERTION: the echo's stamp is the MAXIMUM already painted
-	 * (a tie with `a1`, kept after it by insertion order), not the raw client
-	 * stamp - so the next merge cannot lift it above a painted row.
+	 * THE FIRST HALF, IN ONE ASSERTION: the echo's stamp is the MAXIMUM already
+	 * painted (a tie with `a1`, kept after it by insertion order), not the raw
+	 * client stamp - so no merge can sort the echo above a painted row. The
+	 * SECOND half moved with review round 1 (F1): a row that lands AFTER the
+	 * stamp is exactly what the cap cannot bound - `a2` here is dated past the
+	 * cap, and so is any row written within the skew window before the send -
+	 * so `a2` holds above the echo and the durable row below returns it to
+	 * canonical order. What this case pins (the echo never sorts above the
+	 * newest painted row; the owner's row lands canonically) is unchanged.
 	 */
 	assert.equal(
 		state.records.find((r) => r.id === "req-1").ts,
@@ -4475,8 +4753,8 @@ test("a locally stamped echo cannot sort above a row already on screen", () => {
 	});
 	assert.deepEqual(
 		merged.records.map((r) => r.id),
-		["u1", "a1", "req-1", "a2"],
-		"a client clock behind the server's must not sort the echo above the newest painted row",
+		["u1", "a1", "a2", "req-1"],
+		"a client clock behind the server's must not sort the echo above the newest painted row, and a row landing after it takes its place above the hold",
 	);
 	/*
 	 * AND THE DURABLE ROW STAYS AUTHORITATIVE WHERE IT LANDS: the owner's own

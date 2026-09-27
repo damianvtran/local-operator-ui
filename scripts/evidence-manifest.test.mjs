@@ -1417,6 +1417,15 @@ const STAMP_BINDING_NOTES = [
 	 * and the reason no still was owed.
 	 */
 	"pendingEchoRestampNote",
+	/*
+	 * AND THIS REMEDIATION'S OWN, the newest top-level record on the branch: it
+	 * states the pair this round re-derives (`src/` for the tail block that places
+	 * a pending send against every row that lands while it is unresolved, `scripts/`
+	 * for the pins across the doors and the rig's `localEcho` drop) and the
+	 * failing-first reading at the tip, so a later fold that started from main's
+	 * copy would drop it first.
+	 */
+	"pendingEchoRemediationNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
