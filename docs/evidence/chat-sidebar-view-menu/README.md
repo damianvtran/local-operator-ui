@@ -23,8 +23,10 @@ talks to it: `window.api.desktop.request` is stubbed by the story (`capabilities
 `sessions.list`, `profiles.list`, `teams.list`, `sessions.search`) and anything
 else is refused by name, so no frame can be a picture of that backend's replies.
 
-The frames were re-captured on the clean tree (`4f731d1c9d`), which is what the
-manifest's `dirtyWorkingTree` and the `srcTree`/`scriptsTree` stamps record.
+The frames were re-captured on a clean tree, which is what the manifest's
+`dirtyWorkingTree` and the `srcTree`/`scriptsTree` stamps record. **Twenty
+frames** — ten states in both palettes: four in `group-bound/`, three in
+`section-gap/` and the same three in `section-gap-before/`.
 
 ## The two reports, and what each group of frames is
 
@@ -42,7 +44,18 @@ bound to it, one bound elsewhere, the rest of the sidebar as it ships.
 | `group-bound/after-one/` | After **one real press** on that foot: twenty-five rows, the foot reading `Show 16 more chats · 25 of 41`. The press is a click on the control the first frame draws, not a seeded state. |
 | `group-bound/after-two/` | After **two presses**: the third rung is fifty against forty-one held, so the group is fully drawn and **the foot is gone** — the other half of the count agreeing with the disclosure, since a reader seeing no control is seeing all of it. |
 | `group-bound/current-lifted/` | The reader is IN `team-0034` — the group's 35th row, which the bound withholds. It is **lifted to the head of the group** under the panel's own `CURRENT CHAT` label rather than admitted in place (admitting it would draw the thirty-four rows between: the complaint this change answers). Eleven rows are drawn and the foot says `11 of 41`, because eleven is what is on screen. |
-| `group-bound/search-finds-unloaded/` | A query matching `team-0034` — the same unloaded row. The group draws the match and the badge narrows to `1`. A bound that acted as a filter over the search answer would return nothing here, which is the defect the operator named ("search should still be able to search and find"). |
+
+**Withdrawn: `group-bound/search-finds-unloaded` has NO frame, deliberately.** The
+claim it existed for — a query reaches a row the bound has not loaded, which is
+the operator's "search should still be able to search and find" — is asserted in
+`scripts/chat-sidebar-view.test.mjs` ("a query is never bounded: the bound cannot
+hide a hit"), over a 41-row group. Its frame could not be made reproducible: six
+captures of that story on one clean tree produced **two distinct end states**,
+the pixel diff spanning the whole panel rather than one label, and neither a
+settle-wait on the layout nor an assertion on the story's own facts removed it.
+A frame that photographs one of two states under a caption claiming one is worse
+than no frame. The story stays in Storybook, documented, for a human to look at;
+it is not in `STORIES`.
 
 ### `section-gap-before/` and `section-gap/` — the collapsed section's gap
 
@@ -91,6 +104,8 @@ nothing traded a header gap for a phantom scroll region.
   no `:focus-visible` ring is photographed here. The foot's keyboard path
   (`data-chat-row`) is asserted in `scripts/chat-sidebar-view.test.mjs` and
   `scripts/chat-sidebar-scope-paging.test.mjs`, not shown.
+- **The search claim has no frame at all**, for the reproducibility reason stated
+  above; it is a test claim only.
 - **They are not the paged path.** Every story here runs against a stub with no
   `session_catalogue_page` in its capabilities — which is what the shipped daemon
   advertises (`local_operator/server/routes/capabilities.py` has
