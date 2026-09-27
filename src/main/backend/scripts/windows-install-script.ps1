@@ -241,10 +241,14 @@ if (-not (Test-Path "$VenvPath\\Scripts\\Activate.ps1")) {
 # plus the 2.3-2.8 s pip self-upgrade this path skips, so 1.5-2.8x across two
 # operators rather than the "14.8 s against 128.9 s" quoted here before that
 # reading was withdrawn (`docs/BUILD.md` has the full set). The pip path below is
-# unchanged and runs whenever uv is absent or cannot do the job, and pip STAYS in the venv
-# because the app's backend-update path runs `pip install --upgrade
-# local-operator` inside this same environment - which is also why the venv is
-# still created with `python -m venv` rather than `uv venv`.
+# unchanged and runs whenever uv is absent or cannot do the job, and pip STAYS in
+# the venv because the app's backend-update path runs `pip install --upgrade
+# local-operator` inside this same environment - which is why the environment must
+# keep pip, and NOT a reason to avoid `uv venv`: the note that stood here said
+# `uv venv` leaves no pip at all, which is true of bare `uv venv` and false of
+# `uv venv --seed`, and this script's creation path is still `python -m venv` only
+# because moving it has been measured on macOS and not on this platform yet (see
+# the macOS script for the numbers and the proof).
 #
 # Nothing here searches PATH for a uv: an installed uv is a version and a
 # configuration nobody in this repository chose. `LOCAL_OPERATOR_UV_BIN` is the
@@ -263,7 +267,7 @@ function Test-UvUsable {
     }
 }
 
-# Drop every UV_* variable the launching environment carried, then set the three
+# Drop every UV_* variable the launching environment carried, then set the four
 # settings this install depends on. Measured on uv 0.12.17: a user-level
 # `uv.toml` naming an unreachable index is obeyed by `uv pip install` and ignored
 # with `UV_NO_CONFIG=1`; an ambient `UV_INDEX_URL` changes where packages come
@@ -287,9 +291,26 @@ foreach ($uvAmbientName in $uvAmbientNames) {
 # never fetches another.
 # UV_CACHE_DIR: under the app's own support directory rather than the user's
 # shared uv cache.
+#
+# UV_SYSTEM_CERTS: trust the PLATFORM trust store (the Windows certificate
+# stores), not only the root bundle uv ships - off by default, which is the
+# default this line changes; `--system-certs` is the same setting spelled as a
+# flag in the bundled uv 0.12.17.
+#
+# WHY: on a network that inspects TLS the root is installed in the platform
+# store, and neither client on this path would otherwise see it - uv would fail
+# the handshake against the roots compiled into it, and the pip fallback resolves
+# against certifi, the same Mozilla bundle under another name. uv names the
+# remedy itself when it fails: "Consider enabling use of system TLS certificates
+# with the `--system-certs` command-line flag". Nothing here passed it.
+#
+# IT CANNOT MAKE THINGS WORSE: every uv call below is already followed by the pip
+# fallback on a non-zero exit, so a platform store that cannot be read costs one
+# failed uv attempt and then the path that shipped before uv was bundled.
 $env:UV_NO_CONFIG = "1"
 $env:UV_PYTHON_DOWNLOADS = "never"
 $env:UV_CACHE_DIR = $UvCacheDir
+$env:UV_SYSTEM_CERTS = "1"
 
 # Activate virtual environment and install local-operator
 # --- Progress markers -------------------------------------------------------
