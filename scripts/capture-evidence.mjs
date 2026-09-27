@@ -3554,6 +3554,28 @@ export const STORIES = [
 	["shell-app-shell--settings", 1280, 800],
 	["shell-app-shell--agents-empty", 1280, 800],
 	["shell-app-shell--rail-collapsed", 1280, 800],
+	/*
+	 * THE DOCK, IN THE SHELL THAT DECIDES ITS TOP EDGE (canvas chrome, 2026-09-27).
+	 *
+	 * These two rows exist because the pane's own set cannot carry the operator's
+	 * report: `canvas-workspace` and `chat-run-panel` are both `SplitFrame`, so no
+	 * frame in either contains the rail the dock is meant to contrast with or the
+	 * 32px lane that decides where the dock's ground starts - the only ground pair
+	 * in shot is the dock against the conversation, which are the same token now
+	 * (ΔE00 0), and the pair the change actually relies on appears in none of them
+	 * (design review round 1, D2). This set already mounts the real rail, so the
+	 * dock's frames belong here: `app.tsx` composes `ChatLayout` with
+	 * `SidebarNavigation` beside `<main>`, and the story is that composition with a
+	 * conversation stand-in in place of the one that needs a live session.
+	 *
+	 * A row is also how a NEW story becomes capturable at all: `--only` filters
+	 * this literal, so a story that is not declared here is invisible to every pass,
+	 * however it looks in the index (measured: `--only=shell-app-shell--chat-dock-files
+	 * --dirs= matched no story`, and the message names the two filters rather than
+	 * the missing row).
+	 */
+	["shell-app-shell--chat-dock-files", 1280, 900],
+	["shell-app-shell--chat-dock-run-panel", 1280, 900],
 
 	/*
 	 * Settings, Application updates and info, in the state the operator reported:
