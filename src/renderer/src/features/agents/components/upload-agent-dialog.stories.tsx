@@ -95,6 +95,24 @@ type Scenario = {
 			seats: number | null;
 		};
 	}[];
+	/**
+	 * The memberships read FAILS (agent review round 1, m1).
+	 *
+	 * A distinct state from "no organizations": the reader is about to publish and
+	 * the two facts mean different things, which is why the dialog says which one
+	 * happened. Before this field existed the state had no story and no frame, and
+	 * its sentence sat inside the picker's own gate where it could not render at
+	 * all on an empty cache.
+	 */
+	membershipsFail?: boolean;
+	/**
+	 * The backend advertises `radient_org` (agent review round 1, M2).
+	 *
+	 * True by default because every org story needs the operations the key gates;
+	 * false is the pre-G backend, whose unknown ops answer a masked 422 — the state
+	 * that must say "update the backend" rather than "try again".
+	 */
+	orgCapability?: boolean;
 };
 
 const scenarioOf = (over: Partial<Scenario> = {}): Scenario => ({
@@ -181,7 +199,12 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 					desktop_contract: 1,
 					desktop_available: true,
 					desktop_auth: "bearer",
-					features: { radient: 1, profile_catalogue: 1, team_catalogue: 1 },
+					features: {
+						radient: 1,
+						profile_catalogue: 1,
+						team_catalogue: 1,
+						...(scenario.orgCapability === false ? {} : { radient_org: 1 }),
+					},
 				},
 			});
 		case "profiles.list":
@@ -262,6 +285,18 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 				});
 			}
 			if (request.control?.operation === "memberships.list") {
+				if (scenario.membershipsFail) {
+					/*
+					 * Exactly what the pre-G backend answers an unknown op: a 422 whose
+					 * detail is the masked sentence, which is what makes the capability key
+					 * the only way to tell the two apart (M2).
+					 */
+					return desktop({
+						status: 422,
+						message: "The request has invalid fields.",
+						result: null,
+					});
+				}
 				return desktop({
 					status: 200,
 					message: "Memberships listed successfully",
@@ -782,10 +817,12 @@ export const UpdateListing: Story = {
  * blocked row is the half a reader is most likely to get wrong (an org that is
  * simply ABSENT from the picker cannot be told from one the viewer was never in).
  *
- * `Minerva` is the usable one: the viewer is its owner, which is the role the
- * server's own rule excepts from the plan half (§3.2). `Northwind Analytics` is
- * a member whose team plan has lapsed, so the server would answer
- * `team_plan_required` — which is why the dialog does not offer it.
+ * `Minerva` is the usable one: a plan-ACTIVE home tenant, offered on the same
+ * terms as any other organization (manager ruling on agent review round 1's M1 —
+ * the owner exemption is a write-path fact, not a read one, so this fixture does
+ * not lean on a role). `Northwind Analytics` is a member whose team plan is not
+ * active, so the read would be refused `team_plan_required` — which is why the
+ * dialog does not offer it, and shows it disabled with the reason instead.
  */
 export const TargetOrgAvailable: Story = {
 	...publishDialog({
@@ -796,7 +833,7 @@ export const TargetOrgAvailable: Story = {
 				role: "owner",
 				status: "active",
 				is_home: true,
-				plan: { status: "none", seats: null },
+				plan: { status: "active", seats: 8 },
 			},
 			{
 				tenant_id: "tenant-northwind",
@@ -808,7 +845,7 @@ export const TargetOrgAvailable: Story = {
 			},
 		],
 	}),
-	play: openTargetPicker("Northwind Analytics — upgrade needed"),
+	play: openTargetPicker("Northwind Analytics (upgrade needed)"),
 };
 
 /**
@@ -833,5 +870,35 @@ export const TargetOrgBlockedOnly: Story = {
 			},
 		],
 	}),
-	play: openTargetPicker("Northwind Analytics — upgrade needed"),
+	play: openTargetPicker("Northwind Analytics (upgrade needed)"),
+};
+
+/**
+ * The memberships read FAILED, with nothing cached: the sentence beside no picker
+ * (agent review round 1, m1).
+ *
+ * The state this exists for was unreachable before the remediation: the failure
+ * sentence lived inside the picker's own gate, and a failed read with no cached
+ * rows leaves both the usable and the blocked lists empty — so no picker, and no
+ * sentence either. What a reader must not be left with is the picker's absence
+ * read as "you have no organizations", which is why this story is the one that
+ * renders the distinction.
+ */
+export const TargetOrgReadFailed: Story = {
+	...publishDialog({ membershipsFail: true }),
+	play: settleOn("could not be read"),
+};
+
+/**
+ * A backend older than the organization operations: the capability key is
+ * absent, so the surface says so instead of attempting an op it cannot classify
+ * (agent review round 1, M2).
+ *
+ * The remedy is the reason this is a state and not an error: a retry cannot make
+ * a backend that predates `radient_org` answer these routes, so the sentence
+ * names the update.
+ */
+export const OrgSurfaceUnavailable: Story = {
+	...publishDialog({ orgCapability: false }),
+	play: settleOn("Update the backend and try again."),
 };

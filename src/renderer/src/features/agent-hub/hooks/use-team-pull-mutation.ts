@@ -15,6 +15,17 @@
  * the surface that owns the button to render beside it. The hub has one error
  * language (the surface), and a toast for a refusal that is also on screen says
  * the same thing twice.
+ *
+ * ## The wire shape is a CONTRACT, not a guess (QA round 1, Q-1)
+ *
+ * The first revision of this hook read `invalid_name` as the offending NAME and
+ * called `.trim()` on it. The route sends a BOOLEAN flag (local-operator
+ * `teams.py`'s `TeamImportOutcome`), so every successful pull threw a TypeError
+ * inside the success handler, showed the minified message in the roster's error
+ * slot and dropped the toast — the pull had landed, and the UI said it had
+ * failed. The lesson is recorded here rather than only in the fix: a field's
+ * TYPE is part of the wire contract, and the sentence built from it belongs in a
+ * pure function that a test can reach without a mounted mutation.
  */
 
 import { AgentsApi } from "@shared/api/local-operator/agents-api";
@@ -24,6 +35,7 @@ import {
 	showWarningToast,
 } from "@shared/utils/toast-manager";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { describePulledTeam } from "../team-pull-report";
 
 export type TeamPullVariables = {
 	/** The HUB document's id — what was published, not a local row's id. */
@@ -49,27 +61,18 @@ export const useTeamPullMutation = () => {
 			);
 		},
 		onSuccess: (data, variables) => {
-			const stored = data.result;
-			const storedName =
-				stored?.name?.trim() || variables.name?.trim() || "Team";
-			const renamedFrom = stored?.renamed_from?.trim() || null;
-			const invalidName = stored?.invalid_name?.trim() || null;
-
-			if (renamedFrom) {
-				showSuccessToast(
-					`Pulled "${storedName}" — you already have a team called "${renamedFrom}".`,
-				);
-			} else if (invalidName) {
-				/*
-				 * The published name broke the LOCAL rules, so the registry replaced
-				 * it. Reported as a warning rather than a success: the user asked for a
-				 * name and got another, which is the same class of news as a rename.
-				 */
-				showWarningToast(
-					`Pulled "${storedName}". The published name "${invalidName}" is not usable locally, so the team was stored under "${storedName}".`,
-				);
+			/*
+			 * The report comes from the wire's own fields, and the wire shape is the
+			 * defect this reads around (Q-1): `invalid_name` is a boolean flag, so it is
+			 * read as one and the name to quote comes from `renamed_from`. Every sentence
+			 * below is derived locally from those two fields; nothing is inferred from a
+			 * field the server does not send.
+			 */
+			const report = describePulledTeam(data.result, variables.name);
+			if (report.level === "warning") {
+				showWarningToast(report.message);
 			} else {
-				showSuccessToast(`Pulled team "${storedName}".`);
+				showSuccessToast(report.message);
 			}
 
 			// The local team registry is what the rest of the app reads (`useTeams`,

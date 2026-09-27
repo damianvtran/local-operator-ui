@@ -734,7 +734,22 @@ export type TeamPlanSummary = {
  * Rows are the caller's OWN memberships, in every state: `status` can be
  * `active`, `pending` (accepted before the tenant had a plan) or `disabled`
  * (a downgrade disabled it), and only `active` entitles org features (§3.2).
- * `is_home` marks the personal tenant, which is never an org workspace.
+ *
+ * `is_home` marks the account's HOME tenant — the one it belongs to by default —
+ * and it does NOT mean "personal, therefore not an organization": every user's
+ * tenant IS their organization, any tenant (including a home one) may carry a
+ * Team plan, and §10.2(b) renames a user's own tenant into a shared one (Minerva
+ * is its owner's home tenant). So a home row is offered on exactly the same terms
+ * as any other: an active membership whose plan entitles org features (§8.4's
+ * "each org from `memberships.list` where plan is active"). Nothing filters on
+ * `is_home`, and the filter is the PLAN — which is what keeps a plan-less
+ * personal workspace out of the scope selector and the publish target picker
+ * (manager ruling on agent review round 1's M1; the pinned cases live in
+ * `scripts/agent-hub-org-sharing.test.mjs`).
+ *
+ * The console's team page labels its home row "Personal" to explain the row, not
+ * to exclude it; this app has no such label because the same row can be a real
+ * shared organization.
  */
 export type MembershipSummary = {
 	tenant_id: string;

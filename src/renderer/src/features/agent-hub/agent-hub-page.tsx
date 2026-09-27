@@ -1,4 +1,8 @@
 import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
+import {
+	desktopFeatureState,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import type { Agent } from "@shared/api/radient/types";
 import { CompactPagination } from "@shared/components/common/compact-pagination";
 import { PageHeader } from "@shared/components/common/page-header";
@@ -15,6 +19,7 @@ import {
 	SelectValue,
 	Skeleton,
 } from "@shared/components/ui";
+import { usePairingCause } from "@shared/hooks/use-pairing-cause";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { cn } from "@shared/lib/utils";
 import { Store } from "lucide-react";
@@ -36,6 +41,7 @@ import {
 	usePublicAgentsQuery,
 } from "./hooks/use-public-agents-query";
 import { orgRefusalFromError, usableOrgs } from "./org-access";
+import { orgSurfaceNotice, orgSurfaceReady } from "./org-surface-gate";
 
 /**
  * The hub's sort control, as the list control it really is.
@@ -213,6 +219,22 @@ export const AgentHubPage: React.FC = () => {
 		SORT_OPTIONS[0];
 
 	/*
+	 * WHETHER THE ORG SURFACE MAY RENDER AT ALL (agent review round 1's M2).
+	 *
+	 * The four operations ride the `radient_org` capability, and a backend that
+	 * predates them answers with a MASKED 422 — indistinguishable from a malformed
+	 * call — so the reads are never issued against it (`enabled: orgSurfaceReady`)
+	 * and the surface says which remedy applies instead. `usePairingCause` is the
+	 * same seam the banner and the sidebar catalogue gate read, so an unpaired
+	 * backend gets that table's sentence rather than a restatement of it.
+	 */
+	const capabilities = useDesktopCapabilities();
+	const pairingCause = usePairingCause();
+	const orgState = desktopFeatureState(capabilities.data, "radient_org");
+	const orgNotice = isAuthenticated
+		? orgSurfaceNotice(orgState, pairingCause)
+		: null;
+	/*
 	 * The viewer's organizations (§4.1), read once for the whole surface.
 	 *
 	 * The query is disabled for a signed-out viewer (there is no membership to
@@ -220,8 +242,15 @@ export const AgentHubPage: React.FC = () => {
 	 * org: an empty list is the same reading as "this account holds none", which
 	 * is exactly why the publish picker says when the read failed rather than
 	 * claiming the user has no organizations.
+	 *
+	 * It is ALSO gated on the backend advertising `radient_org` (§8.4, M2): a
+	 * backend without it answers these operations with a masked 422, so this app
+	 * asks for nothing and says which remedy applies instead — see
+	 * `org-surface-gate.ts`.
 	 */
-	const { memberships } = useMembershipsQuery();
+	const { memberships } = useMembershipsQuery({
+		enabled: orgSurfaceReady(orgState),
+	});
 	const selectableOrgs = useMemo(() => usableOrgs(memberships), [memberships]);
 
 	/*
@@ -525,6 +554,23 @@ export const AgentHubPage: React.FC = () => {
 					 * Rendered only when the viewer has an organization to switch to: "Public hub"
 					 * alone is a control that cannot change anything.
 					 */}
+					{/*
+					 * The CAPABILITY notice, in the scope row's own place: without
+					 * `radient_org` there is no scope to offer, and the reader is owed the
+					 * reason rather than silence (agent review round 1's M2). It sits above
+					 * the controls row and outside every gate, like the scope row it replaces,
+					 * because the fact is about the BACKEND and not about the records.
+					 */}
+					{orgNotice && (
+						<Alert
+							variant="info"
+							className="mb-3 max-w-2xl"
+							data-testid="agent-hub-org-unavailable"
+						>
+							<AlertTitle>Organizations are unavailable</AlertTitle>
+							<AlertDescription>{orgNotice}</AlertDescription>
+						</Alert>
+					)}
 					{selectableOrgs.length > 0 && (
 						<div className="mb-3 flex flex-wrap items-center gap-2">
 							<span
@@ -866,18 +912,27 @@ export const AgentHubPage: React.FC = () => {
 						>
 							<AlertTitle>
 								{orgRefusal === "plan"
-									? "That organization needs an active team plan"
+									? "That organization needs an active Team plan"
 									: "You do not have access to that organization"}
 							</AlertTitle>
 							<AlertDescription>
 								{orgRefusal === "plan"
-									? `Sharing agents inside an organization is part of the Team plan. An owner of ${activeOrg.tenant_name || "this organization"} can activate it, and then its agents will be listed here.`
+									? `Sharing agents inside an organization is part of the Team plan. An owner of ${activeOrg.tenant_name || "this organization"} can activate it in the Radient console, and then its agents will be listed here.`
 									: `You are not a member of ${activeOrg.tenant_name || "that organization"}, so its agents are not listed here. An owner can invite you again.`}
 							</AlertDescription>
 							{orgRefusal === "plan" && (
 								<div className="mt-2">
+									{/*
+									 * `primary`, not `outline` (design round 1, D1): an outlined
+									 * control's only boundary is its own edge against the alert's wash,
+									 * and `borderControl` against `warningWash`/`dangerWash` is below
+									 * the repo's own 3:1 non-text floor in 7 and 2 of the 59 palettes
+									 * respectively — the same measurement that moved
+									 * `update-error-alert`'s retry onto `primary`
+									 * (`contrast-contract.mjs`, "THE FAILURE ALERT'S OWN CONTROL").
+									 */}
 									<Button
-										variant="outline"
+										variant="primary"
 										size="sm"
 										onClick={() => void refetch()}
 										disabled={isFetching}

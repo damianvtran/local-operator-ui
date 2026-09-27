@@ -104,7 +104,13 @@ export const AgentDetailsPage: React.FC = () => {
 	 * came through the hub, and `null` — a badge that says less — when the viewer
 	 * holds no membership row for the org the document names.
 	 */
-	const { memberships } = useMembershipsQuery();
+	/*
+	 * Read ONLY for an org row (agent review round 1, n2): the answer is consumed by
+	 * `orgName` below, which is null for a public row, so a public agent's details
+	 * page was spending a memberships read whose result nothing on that page
+	 * rendered. The hook's own auth gate stays; this adds the row's half.
+	 */
+	const { memberships } = useMembershipsQuery({ enabled: isOrgRow });
 	const orgName = isOrgRow
 		? (memberships.find((row) => row.tenant_id === agent?.tenant_id)
 				?.tenant_name ?? null)

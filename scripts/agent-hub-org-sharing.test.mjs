@@ -21,10 +21,17 @@
  *    NO query at all must appear when there is no target, because the local
  *    route refuses a half-specified one rather than falling back.
  *
- * 3. THE ENTITLEMENT RULE MATCHES THE SERVER'S. `orgAccess` is asserted against
- *    the matrix §3.2/§3.3 describe — including the two rows a reader is most
- *    likely to get wrong: a `past_due` plan ENTITLES (full access during dunning,
- *    §3.1), and an owner keeps access with no plan at all.
+ * 3. THE ENTITLEMENT RULE IS THE PLAN, FOR EVERY RANK. `orgAccess` is asserted
+ *    against the matrix §3.2/§3.3 describe — including the two rows a reader is
+ *    most likely to get wrong: a `past_due` plan ENTITLES (full access during
+ *    dunning, §3.1), and the OWNER EXEMPTION IS NOT HERE. It belongs to the
+ *    publish path; the READ gate the merged server answers does not carry it
+ *    (measured: a plan-lapsed org read is refused `team_plan_required` for its
+ *    owner, QA round 1 QE-5), so a selector that offered an owner their plan-less
+ *    tenant would offer a scope whose first read is a refusal. This is the
+ *    manager's ruling on agent review round 1's M1, and it is what keeps a
+ *    plan-less PERSONAL workspace out of both org surfaces: a home tenant is an
+ *    organization like any other, so it is offered on plan terms, not on role.
  *
  * 4. THE ORG LIST IS A DIFFERENT READ, NOT A FILTER. Mounted against a real
  *    QueryClient, the shipped list hook registers the ORG key when it is given a
@@ -37,6 +44,17 @@
  *    codes classify as a state of the surface rather than a failure, and each has
  *    a treatment — the plan one with a retry, the membership ones with none,
  *    because the remedy is somebody else's.
+ *
+ * 6. THE WIRE SHAPES ARE PINNED, NOT REMEMBERED. Two of them cost a round:
+ *    `invalid_name` is a BOOLEAN FLAG (not a name — reading it with `.trim()`
+ *    threw on every successful pull and dropped the toast, QA round 1 Q-1), and
+ *    a half-specified publication target must be REFUSED rather than composed as
+ *    a public publication (security round 1, S-1). Both are asserted against the
+ *    shipped functions.
+ *
+ * 7. THE ORG SURFACE IS GATED ON THE BACKEND'S OWN CAPABILITY. A backend that
+ *    predates the four operations answers a masked 422, so the reads are not
+ *    attempted and the sentence names the update rather than a retry (M2).
  *
  * WHAT IT DOES NOT PROVE: that the local server answers any of this (its own
  * suite and PR G's carry that), or that any of it renders (the frames do). The
@@ -85,16 +103,22 @@ test("every organization operation is named in both closed vocabularies", () => 
 	// carry the field the operation names it with.
 	assert.match(contract, /team_id: id\.optional\(\)/);
 	assert.match(proxy, /teamId\?: string/);
-	assert.match(proxy, /\.\.\.\(args\.teamId \? \{ team_id: args\.teamId \} : \{\}\),?/);
+	assert.match(
+		proxy,
+		/\.\.\.\(args\.teamId \? \{ team_id: args\.teamId \} : \{\}\),?/,
+	);
 });
 
 test("the publish and team ops are in the desktop request union", () => {
 	const contract = read("src/shared/desktop-contract.ts");
 	assert.match(contract, /op: z\.literal\("team\.pull"\)/);
-	assert.match(contract, /op: z\.literal\("agent\.publish"\)[\s\S]{0,400}visibility/);
 	assert.match(
 		contract,
-		/op: z\.literal\("agent\.republish"\)[\s\S]{0,600}tenantId/,
+		/op: z\.literal\("agent\.publish"\)[\s\S]{0,2500}visibility/,
+	);
+	assert.match(
+		contract,
+		/op: z\.literal\("agent\.republish"\)[\s\S]{0,2500}tenantId/,
 	);
 });
 
@@ -103,7 +127,7 @@ test("the publish and team ops are in the desktop request union", () => {
 const contractBundle = await build({
 	stdin: {
 		contents: `
-			export { desktopEndpoint } from "./src/shared/desktop-contract";
+			export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -116,7 +140,7 @@ const contractBundle = await build({
 const contractModule = await import(
 	`data:text/javascript;base64,${Buffer.from(contractBundle.outputFiles[0].text).toString("base64")}`
 );
-const { desktopEndpoint } = contractModule;
+const { desktopEndpoint, desktopRequestSchema } = contractModule;
 
 test("an org target rides the publish query; no target sends no query", () => {
 	const bare = desktopEndpoint({ op: "agent.publish", agentId: "agent-1" });
@@ -129,7 +153,10 @@ test("an org target rides the publish query; no target sends no query", () => {
 		visibility: "org",
 		tenantId: "org-9",
 	});
-	assert.equal(org.path, "/v1/agents/agent-1/publish?visibility=org&tenant_id=org-9");
+	assert.equal(
+		org.path,
+		"/v1/agents/agent-1/publish?visibility=org&tenant_id=org-9",
+	);
 
 	const republish = desktopEndpoint({
 		op: "agent.republish",
@@ -184,7 +211,7 @@ const accessBundle = await build({
 const accessModule = await import(
 	`data:text/javascript;base64,${Buffer.from(accessBundle.outputFiles[0].text).toString("base64")}`
 );
-const { orgAccess, usableOrgs, planBlockedOrgs, orgRefusalFromError } = accessModule;
+const { orgAccess, usableOrgs, planBlockedOrgs } = accessModule;
 
 const membership = (over = {}) => ({
 	tenant_id: "org-1",
@@ -203,14 +230,23 @@ test("the membership matrix matches the server's own rule", () => {
 		orgAccess(membership({ plan: { status: "past_due", seats: 3 } })),
 		"available",
 	);
-	// An owner keeps the workspace in every plan state (§3.2).
+	/*
+	 * THE RANK DOES NOT ENTITLE (M1). The owner exemption lives on the publish
+	 * path, and the read gate the surfaces lead to does not carry it — so an owner
+	 * of a plan-less tenant is the picker's disabled row like anybody else, and
+	 * their personal workspace stays out of the scope selector.
+	 */
 	assert.equal(
-		orgAccess(membership({ role: "owner", plan: { status: "none", seats: null } })),
-		"available",
+		orgAccess(
+			membership({ role: "owner", plan: { status: "none", seats: null } }),
+		),
+		"plan_inactive",
 	);
 	assert.equal(
-		orgAccess(membership({ role: "owner", plan: { status: "canceled", seats: 1 } })),
-		"available",
+		orgAccess(
+			membership({ role: "owner", plan: { status: "canceled", seats: 1 } }),
+		),
+		"plan_inactive",
 	);
 	// A member whose plan lapsed is the picker's disabled row.
 	assert.equal(
@@ -224,20 +260,62 @@ test("the membership matrix matches the server's own rule", () => {
 	// A membership that is not active grants nothing, whatever the plan says.
 	assert.equal(orgAccess(membership({ status: "pending" })), "no_access");
 	assert.equal(orgAccess(membership({ status: "disabled" })), "no_access");
+});
+
+/*
+ * THE TWO PINS THE MANAGER ASKED FOR, in the shape every user's account actually
+ * has: a HOME tenant (the personal workspace, `is_home: true`) that may or may
+ * not carry a Team plan. Nothing reads `is_home`; the plan decides.
+ */
+test("a plan-active home tenant is offered, and a plan-less one is not", () => {
+	const homeWithPlan = membership({
+		tenant_id: "home",
+		tenant_name: "Minerva",
+		role: "owner",
+		is_home: true,
+		plan: { status: "active", seats: 8 },
+	});
+	const homeWithoutPlan = membership({
+		tenant_id: "personal",
+		tenant_name: "Dana's workspace",
+		role: "owner",
+		is_home: true,
+		plan: { status: "none", seats: null },
+	});
+	const shared = membership({ tenant_id: "shared" });
+
+	assert.deepEqual(
+		usableOrgs([homeWithPlan, homeWithoutPlan, shared]).map(
+			(row) => row.tenant_id,
+		),
+		["home", "shared"],
+		"a home tenant is an organization: the PLAN is what offers it",
+	);
+	assert.deepEqual(
+		planBlockedOrgs([homeWithPlan, homeWithoutPlan, shared]).map(
+			(row) => row.tenant_id,
+		),
+		["personal"],
+		"a plan-less personal workspace is offered DISABLED, never as a target",
+	);
 
 	const rows = [
 		membership({ tenant_id: "a" }),
 		membership({ tenant_id: "b", plan: { status: "none", seats: null } }),
 		membership({ tenant_id: "c", status: "disabled" }),
-		membership({ tenant_id: "d", role: "owner", plan: { status: "none", seats: null } }),
+		membership({
+			tenant_id: "d",
+			role: "owner",
+			plan: { status: "none", seats: null },
+		}),
 	];
 	assert.deepEqual(
 		usableOrgs(rows).map((row) => row.tenant_id),
-		["a", "d"],
+		["a"],
 	);
 	assert.deepEqual(
 		planBlockedOrgs(rows).map((row) => row.tenant_id),
-		["b"],
+		["b", "d"],
 		"only a plan-blocked org is offered disabled; a disabled membership is not offered at all",
 	);
 });
@@ -247,7 +325,7 @@ test("the membership matrix matches the server's own rule", () => {
 const mountBundle = await build({
 	stdin: {
 		contents: `
-			export { orgAgentKeys, publicAgentKeys, usePublicAgentsQuery } from "./src/renderer/src/features/agent-hub/hooks/use-public-agents-query";
+			export { agentListScopeOfKey, orgAgentKeys, publicAgentKeys, usePublicAgentsQuery } from "./src/renderer/src/features/agent-hub/hooks/use-public-agents-query";
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 		`,
 		resolveDir: process.cwd(),
@@ -312,7 +390,9 @@ const mountListHook = async (filters) => {
 	const { QueryClient, QueryClientProvider } = await import(mountPath.href);
 	const { createRoot } = await import("react-dom/client");
 
-	const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+	const queryClient = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
 	const Probe = () => {
 		usePublicAgentsQuery(filters);
 		return null;
@@ -428,10 +508,19 @@ test("the frozen org codes classify as a state, and nothing else does", async ()
 	);
 	const classify = mod.orgRefusalFromError;
 	const Error_ = mod.DesktopControlError;
-	assert.ok(Error_, "the desktop control error must be importable for this test");
+	assert.ok(
+		Error_,
+		"the desktop control error must be importable for this test",
+	);
 
-	assert.equal(classify(new Error_("403", "x", undefined, "team_plan_required")), "plan");
-	assert.equal(classify(new Error_("403", "x", undefined, "not_a_member")), "no_access");
+	assert.equal(
+		classify(new Error_("403", "x", undefined, "team_plan_required")),
+		"plan",
+	);
+	assert.equal(
+		classify(new Error_("403", "x", undefined, "not_a_member")),
+		"no_access",
+	);
 	assert.equal(
 		classify(new Error_("403", "x", undefined, "insufficient_role")),
 		"no_access",
@@ -439,8 +528,14 @@ test("the frozen org codes classify as a state, and nothing else does", async ()
 	// An outage, a refused credential and a transport failure all keep the
 	// surface's own failure treatment: reading any of them as "no access" would
 	// render a backend that is not running as an organization that revoked access.
-	assert.equal(classify(new Error_("502", "x", undefined, "radient_upstream_failed")), null);
-	assert.equal(classify(new Error_("401", "x", undefined, "radient_credential_refused")), null);
+	assert.equal(
+		classify(new Error_("502", "x", undefined, "radient_upstream_failed")),
+		null,
+	);
+	assert.equal(
+		classify(new Error_("401", "x", undefined, "radient_credential_refused")),
+		null,
+	);
 	assert.equal(classify(new Error_("503", "x")), null);
 	assert.equal(classify(null), null);
 	assert.equal(classify("not_a_member"), null);
@@ -498,7 +593,11 @@ test("every org refusal has a treatment, and only the plan one offers a retry", 
 	// The rank the hub named is quoted rather than restated: this app does not
 	// hold the membership matrix.
 	const role = publicationErrorFromBody(403, {
-		detail: { code: "insufficient_role", message: "x", details: { required: "admin" } },
+		detail: {
+			code: "insufficient_role",
+			message: "x",
+			details: { required: "admin" },
+		},
 	});
 	const roleTreatment = publicationTreatment(
 		{ code: role.code, message: role.message, details: role.details },
@@ -548,7 +647,10 @@ test("the surfaces hide the public-only affordances for an org row", () => {
 		/agentIds: agentId && !isOrgRow \? \[agentId\] : \[\]/,
 		"the viewer-state read is not issued for an org row",
 	);
-	assert.match(details, /\{isOrgRow && <OrgOriginBadge orgName=\{orgName\} \/>\}/);
+	assert.match(
+		details,
+		/\{isOrgRow && <OrgOriginBadge orgName=\{orgName\} \/>\}/,
+	);
 });
 
 test("the hub page scopes its read and renders the org states", () => {
@@ -559,7 +661,10 @@ test("the hub page scopes its read and renders the org states", () => {
 	assert.match(page, /data-testid="agent-hub-scope"/);
 	// "no access" is a state of the surface, not the outage panel.
 	assert.match(page, /data-testid="agent-hub-org-no-access"/);
-	assert.match(page, /const orgRefusal = activeOrg \? orgRefusalFromError\(error\) : null/);
+	assert.match(
+		page,
+		/const orgRefusal = activeOrg \? orgRefusalFromError\(error\) : null/,
+	);
 	assert.match(page, /!isColdLoading && error && !orgRefusal/);
 	// The roster is the org scope's, and it is mounted only there.
 	assert.match(page, /\{activeOrg && \(\s*<OrgTeamsList/);
@@ -577,7 +682,7 @@ test("the publish dialog offers the org target and disables a plan-blocked one",
 	);
 	assert.match(
 		dialog,
-		/\{org\.tenant_name \|\| "Organization"\} — upgrade needed/,
+		/\{org\.tenant_name \|\| "Organization"\} \(upgrade needed\)/,
 		"the blocked item carries the reason in its own label",
 	);
 	assert.match(
@@ -587,4 +692,640 @@ test("the publish dialog offers the org target and disables a plan-blocked one",
 	);
 	// An org target never carries the remembered PUBLIC listing id.
 	assert.match(dialog, /options\?\.asNewListing \|\| targetIsOrg/);
+});
+
+/*
+ * C1: the dialog's CHROME follows the target, like its body already did.
+ *
+ * The defect was one line above the control that corrected it: with an
+ * organization selected, a title and a receipt still said "the Agent hub" and the
+ * submit button said "Update listing" on a press that always CREATES a new org
+ * document. A frame cannot see this without reading the words, so it is pinned
+ * here.
+ */
+test("the dialog's title and submit label describe the selected target", () => {
+	const dialog = read(
+		"src/renderer/src/features/agents/components/upload-agent-dialog.tsx",
+	);
+	assert.match(
+		dialog,
+		/published\.orgName\s*\?\s*`Published "\$\{agentName\}" to \$\{published\.orgName\}`/,
+		"the receipt names the organization, not the hub",
+	);
+	assert.match(
+		dialog,
+		/targetIsOrg\s*\?\s*`Publish "\$\{agentName\}" to \$\{targetDisplayName\}\?`/,
+		"the pre-submit title names the organization",
+	);
+	assert.match(
+		dialog,
+		/listing && !targetIsOrg/,
+		"`Update listing` is only true of a PUBLIC listing, because an org publication is always new",
+	);
+});
+
+/*
+ * M2 and m1: the two sentences beside NO picker.
+ *
+ * A retry cannot make a backend that predates the operations answer them, and a
+ * failed read is not "you have no organizations" — two facts a reader about to
+ * publish needs told apart, which is why both are states of the surface rather
+ * than an absent control.
+ */
+test("the dialog says why there is no picker, and names the right remedy", () => {
+	const dialog = read(
+		"src/renderer/src/features/agents/components/upload-agent-dialog.tsx",
+	);
+	assert.match(dialog, /data-testid="publish-target-unavailable"/);
+	assert.match(dialog, /data-testid="publish-target-failed"/);
+	assert.match(
+		dialog,
+		/enabled: open && isAuthenticated && orgReady/,
+		"the read is not attempted against a backend that cannot answer it",
+	);
+	// The capability arm comes BEFORE the failed arm: a pre-G backend's read
+	// failure IS the masked 422, and the retry it would otherwise be offered
+	// cannot work.
+	const unavailable = dialog.indexOf(
+		'data-testid="publish-target-unavailable"',
+	);
+	const failed = dialog.indexOf('data-testid="publish-target-failed"');
+	assert.ok(
+		unavailable > 0 && failed > unavailable,
+		"the capability sentence is the one a pre-G backend gets",
+	);
+});
+
+/* ------------------------------------ 7. the org surface is capability-gated */
+
+test("a backend without the org capability is told to update, not to retry", async () => {
+	const bundle = await build({
+		stdin: {
+			contents: `
+				export { orgSurfaceNotice, orgSurfaceReady } from "./src/renderer/src/features/agent-hub/org-surface-gate";
+			`,
+			resolveDir: process.cwd(),
+		},
+		bundle: true,
+		format: "esm",
+		platform: "node",
+		loader: { ".css": "empty" },
+		alias: {
+			"@shared": "./src/renderer/src/shared",
+			"@features": "./src/renderer/src/features",
+		},
+		write: false,
+	});
+	const mod = await import(
+		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+	);
+	const { orgSurfaceNotice, orgSurfaceReady } = mod;
+
+	assert.equal(orgSurfaceReady("enabled"), true);
+	assert.equal(orgSurfaceReady("below-version"), false);
+	assert.equal(orgSurfaceReady("unpaired"), false);
+	// No answer yet: a surface must not assert either cause before main replies.
+	assert.equal(orgSurfaceReady("unknown"), false);
+
+	assert.equal(orgSurfaceNotice("enabled", null), null);
+	assert.equal(orgSurfaceNotice("unknown", null), null);
+	assert.match(
+		orgSurfaceNotice("below-version", null),
+		/Update the backend and try again\.$/,
+		"the remedy for a backend that predates the operations is the update",
+	);
+	assert.doesNotMatch(
+		orgSurfaceNotice("below-version", null),
+		/try again in a moment/,
+		"a retry cannot make a pre-G backend answer these routes",
+	);
+	// An unpaired backend keeps the house pairing sentence, which is not this
+	// surface's to author.
+	assert.match(orgSurfaceNotice("unpaired", "unpaired"), /not paired/);
+});
+
+/*
+ * The capability must be in the UNION, not only in the payload: `Record<string,
+ * number>` would accept any typo, and a surface that gated on a misspelled key
+ * would gate on `undefined` and hide itself silently.
+ */
+test("the org capability key is a typed member of the feature union", () => {
+	const hooks = read(
+		"src/renderer/src/shared/api/local-operator/desktop-hooks.ts",
+	);
+	assert.match(hooks, /\| "radient_org"/);
+	const page = read("src/renderer/src/features/agent-hub/agent-hub-page.tsx");
+	assert.match(
+		page,
+		/desktopFeatureState\(capabilities\.data, "radient_org"\)/,
+	);
+	assert.match(page, /enabled: orgSurfaceReady\(orgState\)/);
+});
+
+/* ------------------------- 8. the wire shapes, pinned (Q-1, S-1, m2, D1, D2) */
+
+/*
+ * S-1: a HALF publication target is refused at BOTH boundaries.
+ *
+ * The defect was fail-open on the one field where that is a disclosure: each half
+ * parsed on its own, and the path composer dropped the unpaired half — so
+ * `{visibility: "org"}` alone became a plain `/publish`, a PUBLIC publication
+ * with no error anywhere. The schema is what the renderer meets; the composer is
+ * what a cast could still reach.
+ */
+test("a half-specified publication target is refused, not read as the public hub", () => {
+	for (const op of ["agent.publish", "agent.republish"]) {
+		const base =
+			op === "agent.publish"
+				? { agentId: "a" }
+				: { agentId: "a", hubAgentId: "h" };
+		const visibilityOnly = desktopRequestSchema.safeParse({
+			op,
+			...base,
+			visibility: "org",
+		});
+		assert.equal(
+			visibilityOnly.success,
+			false,
+			`${op} with no tenantId must not parse: it would publish publicly`,
+		);
+		const tenantOnly = desktopRequestSchema.safeParse({
+			op,
+			...base,
+			tenantId: "org-9",
+		});
+		assert.equal(
+			tenantOnly.success,
+			false,
+			`${op} with no visibility must not parse`,
+		);
+		const paired = desktopRequestSchema.safeParse({
+			op,
+			...base,
+			visibility: "org",
+			tenantId: "org-9",
+		});
+		assert.equal(paired.success, true, `${op} must accept the full pair`);
+		const neither = desktopRequestSchema.safeParse({
+			op,
+			...base,
+		});
+		assert.equal(neither.success, true, `${op} must still mean the public hub`);
+	}
+
+	// The composer refuses the same pair rather than composing a public request.
+	assert.throws(
+		() =>
+			desktopEndpoint({ op: "agent.publish", agentId: "a", visibility: "org" }),
+		/half/,
+	);
+	assert.throws(
+		() => desktopEndpoint({ op: "agent.publish", agentId: "a", tenantId: "t" }),
+		/half/,
+	);
+	assert.equal(
+		desktopEndpoint({ op: "agent.publish", agentId: "a" }).path,
+		"/v1/agents/a/publish",
+		"no target still composes the public route, which is what every caller did before",
+	);
+});
+
+/*
+ * Q-1: `invalid_name` is a BOOLEAN, and the sentence is derived locally.
+ *
+ * The first revision read it as the offending NAME and called `.trim()` on it. The
+ * route sends a flag (local-operator `teams.py`), so every successful pull threw a
+ * TypeError inside the success handler: the pull landed and the UI said it failed.
+ * The booleans below are the SHAPE that broke it; the string case is the
+ * regression guard for a shape nothing sends, because a crash is not an
+ * acceptable answer to an unexpected one either.
+ */
+const pullBundle = await build({
+	stdin: {
+		contents: `
+			export { describePulledTeam } from "./src/renderer/src/features/agent-hub/team-pull-report";
+		`,
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	packages: "external",
+	loader: { ".css": "empty" },
+	alias: {
+		"@shared": `${process.cwd()}/src/renderer/src/shared`,
+		"@features": `${process.cwd()}/src/renderer/src/features`,
+	},
+	write: false,
+});
+const pullPath = new URL(
+	`./_org-sharing-pull-${process.pid}.mjs`,
+	import.meta.url,
+);
+await writeFile(pullPath, pullBundle.outputFiles[0].text);
+after(async () => {
+	await unlink(pullPath).catch(() => {});
+});
+const { describePulledTeam } = await import(pullPath.href);
+
+test("a pulled team's report reads `invalid_name` as the boolean the wire sends", () => {
+	// The exact shape that threw: a boolean flag with no rename to report.
+	const plain = describePulledTeam({
+		id: "t",
+		name: "Incident response",
+		renamed_from: undefined,
+		invalid_name: false,
+	});
+	assert.equal(plain.level, "success");
+	assert.match(plain.message, /Pulled team "Incident response"\./);
+
+	// `true` with the published name on `renamed_from`: the spelling was adjusted,
+	// and the name to quote is the published one because the flag carries none.
+	const adjusted = describePulledTeam({
+		id: "t",
+		name: "Incident response",
+		renamed_from: "incident/response",
+		invalid_name: true,
+	});
+	assert.equal(adjusted.level, "warning");
+	assert.match(adjusted.message, /"incident\/response" is not usable locally/);
+	// No em dash in the sentence (copy review round 1, C3).
+	assert.doesNotMatch(adjusted.message, /—/);
+
+	// A pure collision: a rename, reported as a success.
+	const renamed = describePulledTeam({
+		id: "t",
+		name: "Incident response 2",
+		renamed_from: "Incident response",
+		invalid_name: false,
+	});
+	assert.equal(renamed.level, "success");
+	assert.match(
+		renamed.message,
+		/you already have a team called "Incident response"/,
+	);
+	assert.doesNotMatch(renamed.message, /—/);
+
+	// The regression guard: a shape nothing sends must not throw either.
+	assert.doesNotThrow(() =>
+		describePulledTeam({
+			id: "t",
+			name: "Anything",
+			renamed_from: "Anything else",
+			invalid_name: "some-name",
+		}),
+	);
+	assert.doesNotThrow(() => describePulledTeam(undefined, "Requested"));
+	assert.equal(
+		describePulledTeam(undefined, "Requested").message,
+		'Pulled team "Requested".',
+	);
+});
+
+/*
+ * m2: the placeholder does NOT cross a scope flip.
+ *
+ * Kept records are what stops the grid emptying on a page change, and they are
+ * also what would render the PUBLIC scope's cards under "Showing: <org>" for one
+ * latency — the failure the two key prefixes exist to prevent. The scope is read
+ * from the key, so the two key builders and the predicate cannot disagree.
+ */
+test("held records never cross a scope flip", async () => {
+	const mounted = await mountListHook({ ...FILTERS, tenantId: "org-9" });
+	try {
+		const { agentListScopeOfKey } = await import(mountPath.href);
+		assert.equal(
+			agentListScopeOfKey(mounted.orgAgentKeys.list("org-9", FILTERS)),
+			"org-9",
+		);
+		assert.equal(
+			agentListScopeOfKey(mounted.publicAgentKeys.list(FILTERS)),
+			null,
+			"the public list's scope is null, so an org scope can never match it",
+		);
+		assert.equal(agentListScopeOfKey(undefined), null);
+
+		const list = read(
+			"src/renderer/src/features/agent-hub/hooks/use-public-agents-query.ts",
+		);
+		assert.match(
+			list,
+			/placeholderData: \(previousData, previousQuery\) =>\s*agentListScopeOfKey\(previousQuery\?\.queryKey\) === \(tenantId \?\? null\)/,
+			"the placeholder is decided by the SCOPE, not by recency",
+		);
+		assert.doesNotMatch(
+			list,
+			/placeholderData: keepPreviousData/,
+			"the unscoped placeholder is what carried the other scope's records",
+		);
+	} finally {
+		await mounted.teardown();
+	}
+});
+
+/*
+ * D1 and D2, and the two nits whose fix is a wiring rather than a sentence.
+ *
+ * These are SOURCE anchors on purpose: what a frame shows is an amber panel; what
+ * it cannot show is that the same code renders `danger` two sections over, or that
+ * the retry's own edge clears the 3:1 floor in the other 57 palettes. The
+ * measurements are the design round's; the decisions are pinned here.
+ */
+test("both refusal sections agree on severity, and both retries are filled controls", () => {
+	const page = read("src/renderer/src/features/agent-hub/agent-hub-page.tsx");
+	const roster = read(
+		"src/renderer/src/features/agent-hub/components/org-teams-list.tsx",
+	);
+	// D2: a refusal is a `warning` on BOTH sections; `danger` is the generic arm.
+	assert.match(roster, /variant=\{refusal \? "warning" : "danger"\}/);
+	// D1: the retry is a filled control, the shape `update-error-alert` moved to.
+	assert.match(
+		page,
+		/variant="primary"\s*\n\s*size="sm"\s*\n\s*onClick=\{\(\) => void refetch\(\)\}/,
+	);
+	assert.match(
+		roster,
+		/variant="primary"\s*\n\s*size="sm"\s*\n\s*onClick=\{\(\) => void refetch\(\)\}/,
+	);
+	assert.doesNotMatch(
+		page.split('data-testid="agent-hub-org-no-access"')[1]?.slice(0, 1200) ??
+			"",
+		/variant="outline"/,
+		"the refusal retry is not an outlined control",
+	);
+	// C6: the roster's loading state is not silent.
+	assert.match(roster, /<span className="sr-only">Loading teams…<\/span>/);
+	assert.match(roster, /aria-hidden="true" className="flex flex-col gap-2"/);
+});
+
+test("the roster renders a coded pull refusal through the shared treatment", () => {
+	const roster = read(
+		"src/renderer/src/features/agent-hub/components/org-teams-list.tsx",
+	);
+	// n1: `team_not_found`'s `refresh-hub` arm used to be a row nobody could reach.
+	assert.match(roster, /publicationTreatment\(/);
+	assert.match(roster, /PUBLICATION_ACTION_LABEL\[action\]/);
+	assert.match(roster, /onClick=\{\(\) => void refetch\(\)\}/);
+	// One label table for every surface that renders a treatment.
+	const failure = read(
+		"src/renderer/src/features/agents/utils/publication-failure.ts",
+	);
+	assert.match(failure, /export const PUBLICATION_ACTION_LABEL/);
+	const dialog = read(
+		"src/renderer/src/features/agents/components/upload-agent-dialog.tsx",
+	);
+	assert.doesNotMatch(
+		dialog,
+		/const ACTION_LABEL: Record<PublicationAction, string>/,
+		"the dialog no longer owns a second copy of the labels",
+	);
+});
+
+test("the details page reads memberships only for an org row", () => {
+	const details = read(
+		"src/renderer/src/features/agent-hub/agent-details-page.tsx",
+	);
+	// n2: the answer is consumed only for an org row, so a public row does not
+	// spend a read on it.
+	assert.match(details, /useMembershipsQuery\(\{ enabled: isOrgRow \}\)/);
+});
+
+test("the plan remedy names the Team plan and the console", () => {
+	const page = read("src/renderer/src/features/agent-hub/agent-hub-page.tsx");
+	const roster = read(
+		"src/renderer/src/features/agent-hub/components/org-teams-list.tsx",
+	);
+	const failure = read(
+		"src/renderer/src/features/agents/utils/publication-failure.ts",
+	);
+	// C2: one spelling of the plan across the surface.
+	for (const source of [page, roster, failure]) {
+		assert.doesNotMatch(source, /active team plan/);
+	}
+	// C5: plan activation happens in the console, and the sentence says so.
+	assert.match(page, /can activate it in the Radient console/);
+	assert.match(roster, /can activate it in the Radient console/);
+	assert.match(
+		failure,
+		/activate it in the Radient console, then publish again/,
+	);
+	// C4: the plural branch reads as a plural. It lives in the DIALOG, beside the
+	// picker it explains.
+	const dialog = read(
+		"src/renderer/src/features/agents/components/upload-agent-dialog.tsx",
+	);
+	assert.match(dialog, /any of the organizations marked above/);
+	assert.doesNotMatch(dialog, /An owner of the organizations marked above/);
+});
+
+/*
+ * THE REAL RESPONSES, THROUGH THE SHIPPED HOOK, ONTO THE TOAST.
+ *
+ * Captured 2026-09-27 from the merged local server (`local-operator` @ 5bba6a917,
+ * the app served over a real socket) against a stub hub on loopback — the rig is
+ * `qa-evidence/loui-H/qa-round2/rig_org_pull.py` and its raw output is beside it.
+ * Both bodies below are verbatim; the two names are the two branches: one the
+ * local rule can hold, one it must rewrite.
+ *
+ * The mount is the point: `describePulledTeam` alone proves the SENTENCE, and the
+ * defect Q-1 was in the DISPATCH — a success handler that threw before any toast
+ * was asked for. So the shipped hook is mounted with a recording stub in the
+ * toast manager's place, and the assertion is that a toast was asked for at all,
+ * at the level the wire's own flag selects.
+ */
+const CAPTURED_PULL = {
+	validName: {
+		status: 200,
+		message: "Team pulled from Radient successfully",
+		result: {
+			id: "b365d427-4e28-4dbd-97a8-e6734eab0558",
+			name: "Inbox-Triage",
+			created_date: "2026-09-27T17:40:30.527277Z",
+			description: "A published team.",
+			manager: "adverse-media-desk",
+			members: [{ role: "researcher", count: 2, kind: "agent" }],
+			instructions: "Screen, then report.",
+			project: "Onboarding",
+			renamed_from: null,
+			invalid_name: false,
+		},
+	},
+	invalidName: {
+		status: 200,
+		message: "Team pulled from Radient successfully",
+		result: {
+			id: "77f1c266-04ef-41a5-9952-f01e3c0c7fba",
+			name: "Feature-Release-Crew",
+			created_date: "2026-09-27T17:40:31.928391Z",
+			description: "A published team.",
+			manager: "adverse-media-desk",
+			members: [{ role: "researcher", count: 2, kind: "agent" }],
+			instructions: "Screen, then report.",
+			project: "Onboarding",
+			renamed_from: "Feature Release Crew",
+			invalid_name: true,
+		},
+	},
+};
+
+const toastStubPath = new URL(
+	`./_org-sharing-toasts-${process.pid}.mjs`,
+	import.meta.url,
+);
+/*
+ * The SECOND dependency replaced, and for the same reason the reporter was moved
+ * out of this hook: `@shared/config` builds the app's environment at module scope
+ * and throws in a bare node import (measured: "Failed to load configuration").
+ * The hook reads `apiConfig.baseUrl` and nothing else from it.
+ */
+const configStubPath = new URL(
+	`./_org-sharing-config-${process.pid}.mjs`,
+	import.meta.url,
+);
+await writeFile(
+	configStubPath,
+	`export const apiConfig = { baseUrl: "http://127.0.0.1:1" };
+	export const config = {};`,
+);
+after(async () => {
+	await unlink(configStubPath).catch(() => {});
+});
+await writeFile(
+	toastStubPath,
+	`export const shown = [];
+	export const showSuccessToast = (message) => { shown.push(["success", message]); return 0; };
+	export const showWarningToast = (message) => { shown.push(["warning", message]); return 0; };
+	export const showErrorToast = () => 0;
+	export const showInfoToast = () => 0;
+	export const showLoadingToast = () => 0;
+	export const dismissToast = () => {};
+	`,
+);
+after(async () => {
+	await unlink(toastStubPath).catch(() => {});
+});
+
+const hookBundle = await build({
+	stdin: {
+		contents: `
+			export { useTeamPullMutation } from "./src/renderer/src/features/agent-hub/hooks/use-team-pull-mutation";
+			export { shown } from "@shared/utils/toast-manager";
+			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+		`,
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	packages: "external",
+	loader: { ".css": "empty" },
+	jsx: "automatic",
+	alias: {
+		"@shared": `${process.cwd()}/src/renderer/src/shared`,
+		"@features": `${process.cwd()}/src/renderer/src/features`,
+		// The one dependency replaced: the hook asks the toast manager, and this
+		// records the ask instead of rendering it.
+		"@shared/utils/toast-manager": toastStubPath.pathname,
+		"@shared/config": configStubPath.pathname,
+	},
+	write: false,
+});
+const hookPath = new URL(
+	`./_org-sharing-hook-${process.pid}.mjs`,
+	import.meta.url,
+);
+await writeFile(hookPath, hookBundle.outputFiles[0].text);
+after(async () => {
+	await unlink(hookPath).catch(() => {});
+});
+
+const mountPull = async (body) => {
+	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
+		pretendToBeVisual: true,
+		url: "http://localhost/",
+	});
+	const previous = { window: globalThis.window, document: globalThis.document };
+	globalThis.window = dom.window;
+	globalThis.document = dom.window.document;
+	globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+	dom.window.api = {
+		desktop: {
+			// The transport hands the route's CRUDResponse through verbatim, which
+			// is what `desktopControlResponse` re-serialises into a `Response` and
+			// what the hook's `data.result` reads the document out of.
+			request: async () => ({ status: 200, body }),
+		},
+	};
+
+	const mod = await import(hookPath.href);
+	// The stub's array is module state: it survives a remount in one process.
+	mod.shown.length = 0;
+	const { QueryClient, QueryClientProvider } = await import(hookPath.href);
+	const { createRoot } = await import("react-dom/client");
+	const queryClient = new QueryClient({
+		defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+	});
+	let mutation;
+	const Probe = () => {
+		mutation = mod.useTeamPullMutation();
+		return null;
+	};
+	const root = createRoot(dom.window.document.getElementById("root"));
+	await act(async () => {
+		root.render(
+			React.createElement(
+				QueryClientProvider,
+				{ client: queryClient },
+				React.createElement(Probe),
+			),
+		);
+	});
+	await act(async () => {
+		await mutation.mutateAsync({
+			teamId: "team-qa-1",
+			tenantId: "org-a",
+			name: "Inbox-Triage",
+		});
+	});
+	return {
+		shown: mod.shown,
+		error: mutation.error,
+		teardown: async () => {
+			await act(async () => root.unmount());
+			queryClient.clear();
+			dom.window.close();
+			globalThis.window = previous.window;
+			globalThis.document = previous.document;
+			globalThis.IS_REACT_ACT_ENVIRONMENT = false;
+		},
+	};
+};
+
+test("the shipped pull hook toasts the real responses and crashes on neither", async () => {
+	for (const [label, body] of Object.entries(CAPTURED_PULL)) {
+		const mounted = await mountPull(body);
+		try {
+			assert.equal(
+				mounted.error,
+				null,
+				`${label}: the success handler must not throw (Q-1 was a TypeError here)`,
+			);
+			assert.equal(mounted.shown.length, 1, `${label}: exactly one statement`);
+			const [level, message] = mounted.shown[0];
+			if (body.result.invalid_name === true) {
+				assert.equal(level, "warning", `${label}: a rewritten name is news`);
+				assert.match(message, /Feature Release Crew/);
+				assert.match(message, /Feature-Release-Crew/);
+			} else {
+				assert.equal(
+					level,
+					"success",
+					`${label}: an unchanged name is a success`,
+				);
+				assert.match(message, /Inbox-Triage/);
+			}
+		} finally {
+			await mounted.teardown();
+		}
+	}
 });

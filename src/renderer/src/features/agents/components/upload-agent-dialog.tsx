@@ -33,11 +33,19 @@
 
 import { useMembershipsQuery } from "@features/agent-hub/hooks/use-memberships-query";
 import { planBlockedOrgs, usableOrgs } from "@features/agent-hub/org-access";
+import {
+	orgSurfaceNotice,
+	orgSurfaceReady,
+} from "@features/agent-hub/org-surface-gate";
 import type {
 	PublicationDocumentOverride,
 	PublishedListing,
 } from "@shared/api/local-operator/agents-api";
 import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
+import {
+	desktopFeatureState,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { useProfiles } from "@shared/api/local-operator/profile-hooks";
 import { isPublicationError } from "@shared/api/local-operator/publication-errors";
 import { RadientAuthButtons } from "@shared/components/auth/radient-auth-buttons";
@@ -60,6 +68,7 @@ import {
 	SelectValue,
 } from "@shared/components/ui";
 import { useAgentSystemPrompt } from "@shared/hooks/use-agent-system-prompt";
+import { usePairingCause } from "@shared/hooks/use-pairing-cause";
 import { cn } from "@shared/lib/utils";
 import {
 	usePublishedListing,
@@ -78,6 +87,7 @@ import { useNavigate } from "react-router-dom";
 import { useAgentNameAvailability } from "../hooks/use-agent-name-availability";
 import { usePublishAgent } from "../hooks/use-publish-agent";
 import {
+	PUBLICATION_ACTION_LABEL,
 	type PublicationAction,
 	type PublicationFailure,
 	publicationTreatment,
@@ -168,8 +178,24 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 	 * it is closed, so an unconditional read would ask about organizations for a
 	 * dialog nobody opened.
 	 */
+	/*
+	 * WHETHER THE ORG TARGET MAY BE OFFERED AT ALL (agent review round 1, M2).
+	 *
+	 * The capability gates the read itself: a backend without `radient_org` answers
+	 * these operations with a masked 422, and attempting one would produce a
+	 * sentence about a malformed call. `orgSurfaceReady` is the same predicate the
+	 * hub page uses, and the sentence below the picker comes from the same module —
+	 * one condition, one statement.
+	 */
+	const capabilities = useDesktopCapabilities();
+	const pairingCause = usePairingCause();
+	const orgState = desktopFeatureState(capabilities.data, "radient_org");
+	const orgReady = orgSurfaceReady(orgState);
+	const orgNotice = isAuthenticated
+		? orgSurfaceNotice(orgState, pairingCause)
+		: null;
 	const { memberships, isError: membershipsFailed } = useMembershipsQuery({
-		enabled: open && isAuthenticated,
+		enabled: open && isAuthenticated && orgReady,
 	});
 	const publishTargets = useMemo(() => usableOrgs(memberships), [memberships]);
 	const blockedTargets = useMemo(
@@ -441,12 +467,16 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 	 * apart from their own frames.
 	 */
 	const title = published
-		? published.republished
-			? `Updated the Agent hub listing for "${agentName}"`
-			: `Published "${agentName}" to the Agent hub`
-		: listing
-			? `Update the Agent hub listing for "${agentName}"?`
-			: `Publish "${agentName}" to the Agent hub?`;
+		? published.orgName
+			? `Published "${agentName}" to ${published.orgName}`
+			: published.republished
+				? `Updated the Agent hub listing for "${agentName}"`
+				: `Published "${agentName}" to the Agent hub`
+		: targetIsOrg
+			? `Publish "${agentName}" to ${targetDisplayName}?`
+			: listing
+				? `Update the Agent hub listing for "${agentName}"?`
+				: `Publish "${agentName}" to the Agent hub?`;
 
 	/*
 	 * Where focus goes when a RESULT renders, and why it goes to a SINK.
@@ -528,7 +558,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 						onClick={() => runAction(action)}
 						disabled={submitting}
 					>
-						{ACTION_LABEL[action]}
+						{PUBLICATION_ACTION_LABEL[action]}
 					</PrimaryButton>
 				) : (
 					<SecondaryButton
@@ -536,7 +566,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 						onClick={() => runAction(action)}
 						disabled={submitting}
 					>
-						{ACTION_LABEL[action]}
+						{PUBLICATION_ACTION_LABEL[action]}
 					</SecondaryButton>
 				),
 			)}
@@ -576,7 +606,18 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 						!agreedToTerms || issues.length > 0 || !name.trim() || submitting
 					}
 				>
-					{submitting ? "Publishing…" : listing ? "Update listing" : "Publish"}
+					{/*
+					 * `listing && !targetIsOrg`: a remembered public listing never becomes an
+					 * update of an org target, because an org publication is always a NEW
+					 * document (the remembered id is a public listing's, and the submit path
+					 * drops it — see `submit`). A label promising an update on a press that
+					 * creates would be the receipt's own defect, one control earlier.
+					 */}
+					{submitting
+						? "Publishing…"
+						: listing && !targetIsOrg
+							? "Update listing"
+							: "Publish"}
 				</PrimaryButton>
 			)}
 		</>
@@ -742,8 +783,15 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 						 * team plan lapsed with no sign the organization exists at all — the state
 						 * §8.4 names — and a member whose organization is simply absent from a list
 						 * cannot tell that from an organization they were never in.
+						 *
+						 * THE TWO SENTENCES BESIDE NO PICKER exist because "no pointer" and "the read
+						 * failed" are different facts (agent review round 1, m1): `membershipsFailed`
+						 * with no cached rows used to render the picker's own failure line NOWHERE,
+						 * because that line lived inside this gate. The capability absence is the
+						 * third (M2) and it comes first: a backend that predates the org operations
+						 * cannot be retried into answering them.
 						 */}
-						{(publishTargets.length > 0 || blockedTargets.length > 0) && (
+						{publishTargets.length > 0 || blockedTargets.length > 0 ? (
 							<div className="flex flex-col gap-1.5">
 								<Label htmlFor={`${termsCheckboxId}-target`}>Publish to</Label>
 								<Select value={targetTenant} onValueChange={setTargetTenant}>
@@ -772,7 +820,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 												value={org.tenant_id}
 												disabled
 											>
-												{org.tenant_name || "Organization"} — upgrade needed
+												{org.tenant_name || "Organization"} (upgrade needed)
 											</SelectItem>
 										))}
 									</SelectContent>
@@ -781,19 +829,32 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 									className="text-meta text-ink-muted"
 									data-testid="publish-target-hint"
 								>
-									{membershipsFailed
-										? "Your organizations could not be read, so this publishes to the public hub. Try again in a moment to publish into an organization."
-										: blockedTargets.length > 0
-											? `Sharing agents inside an organization is part of the Team plan. An owner of ${
-													blockedTargets.length === 1
-														? blockedTargets[0].tenant_name ||
-															"this organization"
-														: "the organizations marked above"
-												} can activate it.`
-											: "Public hub publications are readable by anyone. An organization's agents are readable by its members only."}
+									{blockedTargets.length > 0
+										? `Sharing agents inside an organization is part of the Team plan. An owner of ${
+												blockedTargets.length === 1
+													? blockedTargets[0].tenant_name || "this organization"
+													: "any of the organizations marked above"
+											} can activate it in the Radient console.`
+										: "Public hub publications are readable by anyone. An organization's agents are readable by its members only."}
 								</p>
 							</div>
-						)}
+						) : orgNotice ? (
+							<p
+								className="text-meta text-ink-muted"
+								data-testid="publish-target-unavailable"
+							>
+								{orgNotice}
+							</p>
+						) : membershipsFailed ? (
+							<p
+								className="text-meta text-ink-muted"
+								data-testid="publish-target-failed"
+							>
+								Your organizations could not be read, so this publishes to the
+								public hub. Try again in a moment to publish into an
+								organization.
+							</p>
+						) : null}
 
 						{issues.length > 0 && (
 							// The one boundary inside the dialog: this list has to read as a
@@ -961,17 +1022,6 @@ const availabilityLine = (availability: {
 };
 
 /** The label each treatment action carries (contract §6.2). */
-const ACTION_LABEL: Record<PublicationAction, string> = {
-	"focus-name": "Choose another name",
-	"update-listing": "Update the existing listing",
-	"install-builtin": "Install the built-in instead",
-	retry: "Try again",
-	"edit-instructions": "Edit the instructions",
-	"edit-agent": "Edit the agent",
-	"publish-as-new": "Publish as a new listing",
-	"sign-in": "Sign in again",
-	"refresh-hub": "Refresh the hub",
-};
 
 /** Re-exported so a story can build the same dialog with mocked inputs. */
 export type { UploadAgentDialogProps };

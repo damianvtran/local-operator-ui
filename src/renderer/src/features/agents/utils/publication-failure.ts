@@ -442,8 +442,8 @@ export function publicationTreatment(
 			 */
 			return {
 				variant: "warning",
-				headline: "That organization needs an active team plan",
-				body: "Sharing agents inside an organization is part of the Team plan. Ask an owner of the organization to activate it, then publish again.",
+				headline: "That organization needs an active Team plan",
+				body: "Sharing agents inside an organization is part of the Team plan. Ask an owner of the organization to activate it in the Radient console, then publish again.",
 				note: null,
 				// Safe to retry, and the only step this dialog can take: the plan is
 				// activated on the console, and a retry is what a user who has just
@@ -722,3 +722,24 @@ export const agentActionFailureMessage = (
 	action === "download"
 		? pullRefusalMessage(error, agentName)
 		: backendLoadErrorMessage(OTHER_ACTION_LEAD, error);
+
+/**
+ * The label one treatment action renders with.
+ *
+ * HERE rather than in the dialog that first needed it (agent review round 1,
+ * n1): the actions are declared in THIS file, so their labels belong beside
+ * them, and the roster became a second consumer the moment `team_not_found`'s
+ * `refresh-hub` arm was wired to it. A second table would let one action read
+ * two ways on two surfaces, which is the shape this file exists to prevent.
+ */
+export const PUBLICATION_ACTION_LABEL: Record<PublicationAction, string> = {
+	"focus-name": "Choose another name",
+	"update-listing": "Update the existing listing",
+	"install-builtin": "Install the built-in instead",
+	retry: "Try again",
+	"edit-instructions": "Edit the instructions",
+	"edit-agent": "Edit the agent",
+	"publish-as-new": "Publish as a new listing",
+	"sign-in": "Sign in again",
+	"refresh-hub": "Refresh the hub",
+};

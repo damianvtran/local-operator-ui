@@ -156,16 +156,22 @@ export type PublicationTarget =
 /**
  * The local team a pull reconstructed, as the backend reports it.
  *
- * `renamed_from` is the local registry's own note that the published name could
- * not be held (the same field the agent pull reports), and `invalid_name` says
- * the published name broke the local rules and was replaced. Both are optional
- * because a backend older than the team routes sends nothing at all.
+ * `renamed_from` is the local registry's own note that the stored name differs
+ * from the published one (the agent pull reports the same field). `invalid_name`
+ * is a BOOLEAN FLAG, not a name: it says the difference INCLUDES the published
+ * name being an invalid local spelling, as opposed to a pure collision rename
+ * (local-operator `teams.py`, `TeamImportOutcome`). It was typed as a string here
+ * and read with `.trim()`, so every successful pull against the merged server
+ * threw a TypeError and dropped its success toast (QA round 1, Q-1). A flag read
+ * as a name is a crash, not a wrong sentence. Both stay optional because the
+ * route sends `renamed_from: null` when the name was kept and a boolean for the
+ * flag, so neither is guaranteed to be truthy on the way in.
  */
 export type PulledTeam = {
 	id: string;
 	name: string;
 	renamed_from?: string;
-	invalid_name?: string;
+	invalid_name?: boolean;
 };
 
 /**
