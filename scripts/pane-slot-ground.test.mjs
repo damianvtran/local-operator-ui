@@ -1,0 +1,274 @@
+/**
+ * The right-pane slot's ground and seam, executable.
+ *
+ *     node --test scripts/pane-slot-ground.test.mjs
+ *
+ * WHY THIS FILE EXISTS. The operator's report was that the canvas "hard cuts off"
+ * at the top, that its icon row sat on "a band whose background differs from the
+ * panel body beneath it", and that it should be "a similar borderless background
+ * with contrast to the left sidebar". Three of those four clauses are properties
+ * of CLASS STRINGS rather than of a rendered surface, which is exactly the shape
+ * no palette assertion and no screenshot can hold: the pane was `bg-surface`, the
+ * sidebar is `bg-surface`, and the bar was `bg-sunken`, and every existing gate
+ * stayed green through all three. What the operator had to look at a frame to see,
+ * a source scan can refuse.
+ *
+ * THE FOUR CLAIMS, and the one derivation that makes the first of them more than a
+ * lint:
+ *
+ *   1. **Every occupant of the slot roots at the lane's own ground.** `chat-layout`
+ *      paints the 32px chrome lane `--lo-canvas` from the sidebar's trailing edge to
+ *      the window's right edge, and every pane in the slot is mounted inside that
+ *      region. So a pane rooted at `bg-canvas` is continuous with the lane from y0
+ *      down and the operator's top edge cannot be drawn by construction; a pane
+ *      rooted at anything else re-introduces it. This file reads the lane's own
+ *      gradient out of `chat-layout.tsx` and the panes' roots out of their own
+ *      modules, and asserts the TOKENS are equal rather than asserting a literal,
+ *      so repainting the lane and the slot together is a decision this test follows
+ *      and repainting one of them is a decision it refuses.
+ *   2. **No seam rule on the slot's wrappers.** The boundary is the tone step
+ *      between `surface` and `canvas` now; a `border-l border-hairline` beside it is
+ *      the second way of saying one thing, and the operator's ask was borderless.
+ *   3. **No ground of its own on the slot's chrome bars.** A bar that paints a
+ *      ground is the band the operator reported. The bar's height (40px) is the
+ *      slot's, and this file checks the panes agree on it, because a bar that moved
+ *      would take the "icons stay on the app's top line" invariant with it.
+ *   4. **The bars are not in the drag region's path.** Nothing here puts a control
+ *      into the lane — the lane stays an empty drag surface above the columns — and
+ *      this file refuses a bar (or a wrapper) that names a drag attribute, so the
+ *      next author cannot quietly move a control into the band that eats clicks.
+ *      The band itself is measured in the app: `scripts/renderer-driver.mjs`'s
+ *      hit-zone read is the instrument for that, not this file.
+ *
+ * WHAT IT CANNOT SEE: whether the result LOOKS right, and whether any given theme's
+ * two grounds are far enough apart to read. The magnitudes are
+ * `scripts/contrast-contract.mjs`'s (`surface` -> `canvas` is an asserted adjacent
+ * pair there, ΔE00 2.05-6.76 across the palettes) and the frames are the evidence
+ * set's. A green run here says the slot is wired the way the report asked.
+ */
+
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { test } from "node:test";
+import { fileURLToPath } from "node:url";
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
+
+const CHAT_LAYOUT = "src/renderer/src/shared/components/common/chat-layout.tsx";
+const CHAT_CONTENT =
+	"src/renderer/src/features/chat/components/chat-content.tsx";
+
+/**
+ * The slot's four occupants: the pane's own root class expression, and the file
+ * that states the slot's rule (the canvas, which carries the long note the others
+ * point at).
+ */
+const PANES = [
+	{
+		name: "canvas",
+		file: "src/renderer/src/features/chat/components/canvas/index.tsx",
+		authority: true,
+	},
+	{
+		name: "run panel",
+		file: "src/renderer/src/features/chat/components/run-details/run-panel.tsx",
+	},
+	{
+		name: "browser pane",
+		file: "src/renderer/src/features/browser/components/browser-pane.tsx",
+	},
+	{
+		name: "console pane",
+		file: "src/renderer/src/features/console/components/console-pane.tsx",
+	},
+];
+
+/** The source with its comments removed.
+ *
+ * WHY: several of these files QUOTE the class they no longer carry, in the note
+ * that says why it left. A scan over the raw text reads that note as a use, so the
+ * instrument would refuse the very record that keeps the decision, and the next
+ * author would delete the note to get a green run.
+ */
+function withoutComments(source) {
+	return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+}
+
+/*
+ * The four shapes this file reads, at module scope for `useTopLevelRegex`: each is
+ * a literal over source text that does not change within a run, so building one per
+ * call is work the linter is right to refuse.
+ */
+const LANE_GRADIENT =
+	/linear-gradient\(to right, var\((--lo-[\w-]+)\) \$\{columnWidth\}px, var\((--lo-[\w-]+)\)/;
+const PANE_ROOT = /className=\{cn\("flex h-full flex-col (bg-[\w-]+)"\)\}/g;
+const PANE_BAR =
+	/"flex (h-\d+) shrink-0 items-center justify-between gap-2 ([^"]*?)px-2"/g;
+const SLOT_BOX =
+	/"relative h-full overflow-hidden transition-\[width\] duration-base ease-out-quart"/;
+
+/** A drag attribute anywhere in the slot the dock is mounted in. */
+const DRAG_IN_SLOT = /<PaneSlot[\s\S]{0,400}?data-titlebar-drag/;
+const SLOT_COMPONENT =
+	"src/renderer/src/shared/components/common/pane-slot.tsx";
+
+/**
+ * Every file that mounts a pane or stands in for the slot around one.
+ *
+ * THE STORY ARMS ARE IN THIS LIST BECAUSE THEY WERE THE DEFECT. The first version
+ * of this file scanned the app's own wrapper and nothing else, and the evidence
+ * stories - `canvas.stories.tsx`, `run-details.stories.tsx`,
+ * `browser-pane.stories.tsx` - each wrote their own copy of the slot with the
+ * leading `border-l border-hairline` still on it. So the app stopped drawing a
+ * seam, the harness kept drawing one, and every before/after frame in the
+ * delivered set showed a boundary the product no longer had (design review round
+ * 1, D1). A guard that reads only the app cannot see the instrument.
+ */
+const PANE_HOSTS = [
+	SLOT_COMPONENT,
+	CHAT_CONTENT,
+	"src/renderer/src/features/chat/components/canvas/canvas.stories.tsx",
+	"src/renderer/src/features/chat/components/run-details/run-details.stories.tsx",
+	"src/renderer/src/features/browser/components/browser-pane.stories.tsx",
+	"src/renderer/src/shared/components/navigation/shell.stories.tsx",
+];
+
+/**
+ * The lane's own ground for the region right of the sidebar, read off the
+ * gradient `chat-layout.tsx` paints it with.
+ *
+ * The gradient is `linear-gradient(to right, <sidebar> <width>px, <work> <width>px)`:
+ * the SECOND stop is the ground every pane in the slot stands on. Reading it here,
+ * rather than restating `canvas`, is the whole point of claim 1 — a literal would
+ * pass while the lane and the slot disagreed.
+ */
+function laneWorkGround() {
+	const source = read(CHAT_LAYOUT);
+	const gradient = source.match(LANE_GRADIENT);
+	assert.ok(
+		gradient,
+		"chat-layout.tsx no longer paints the lane with a two-stop gradient; the slot's ground is derived from that gradient, so this file must be re-read before it can assert anything",
+	);
+	return gradient[2];
+}
+
+/** The ground token a pane's root section/div paints, as `--lo-<role>`. */
+function paneRootGround(file, name) {
+	const source = read(file);
+	const matches = [...source.matchAll(PANE_ROOT)];
+	assert.ok(
+		matches.length > 0,
+		`${name}: no 'flex h-full flex-col bg-*' root found in ${file} — the pane's ground is read off its own class string, so this file has to be re-read before it can assert anything`,
+	);
+	for (const match of matches) {
+		assert.equal(
+			match[1],
+			"bg-canvas",
+			`${name}: a root in ${file} paints \`${match[1]}\`. Every occupant of the right-pane slot must root at the ground chat-layout.tsx paints the chrome lane with (${laneWorkGround()}), or the pane's own ground meets the lane at the lane's bottom edge — the hard horizontal cut the operator reported.`,
+		);
+	}
+	return matches.length;
+}
+
+test("every pane in the slot roots at the lane's own ground", () => {
+	const lane = laneWorkGround();
+	for (const pane of PANES) {
+		paneRootGround(pane.file, pane.name);
+	}
+	/* The lane's right-hand stop is the token the panes must use, and this is the
+	 * one place the two are compared rather than one being restated. */
+	assert.equal(
+		lane,
+		"--lo-canvas",
+		`chat-layout.tsx paints the lane right of the sidebar with ${lane}; the slot's panes use \`bg-canvas\` (\`--lo-canvas\`). A lane repainted without the slot is a top edge reintroduced, so this pair is a decision rather than a literal.`,
+	);
+});
+
+test("no seam rule on the slot's wrappers, in the app or in the harness", () => {
+	for (const host of PANE_HOSTS) {
+		const source = withoutComments(read(host));
+		assert.ok(
+			!source.includes("border-l border-hairline"),
+			`${host} draws \`border-l border-hairline\` beside the pane slot. The slot's seam is the \`surface\` -> \`canvas\` tone step, and the operator's ask was borderless; a rule beside the step is a second way of saying one thing — and a harness copy of it photographs a boundary the product does not draw (design review round 1, D1).`,
+		);
+	}
+});
+
+test("the slot's box is spelled once, and every mount site uses that one", () => {
+	const sources = PANE_HOSTS.map((host) => [host, withoutComments(read(host))]);
+	const spellings = sources.filter(([, source]) => SLOT_BOX.test(source));
+	assert.deepEqual(
+		spellings.map(([host]) => host),
+		[SLOT_COMPONENT],
+		`the slot's box class list is spelled in ${spellings.map(([host]) => host).join(", ")}. It belongs in ${SLOT_COMPONENT} alone: the app's four mount sites, the three story arms and the shell story all mount \`<PaneSlot>\`, so a second spelling of the box is a copy that can drift from it — which is exactly how the \`border-l\` outlived its removal.`,
+	);
+	const app = withoutComments(read(CHAT_CONTENT));
+	assert.equal(
+		[...app.matchAll(/<PaneSlot\b/g)].length,
+		4,
+		`expected the app's four mount sites in ${CHAT_CONTENT} to use \`<PaneSlot>\`. A fifth pane, or one that went back to a bare div, changes where the slot's ground and seam are decided.`,
+	);
+});
+
+test("the slot's chrome bars carry no ground of their own, at one shared height", () => {
+	const heights = new Set();
+	for (const pane of PANES) {
+		const source = read(pane.file);
+		const bars = [...source.matchAll(PANE_BAR)];
+		assert.ok(
+			bars.length > 0,
+			`${pane.name}: no 40px chrome bar found in ${pane.file} — this file reads the bar's own class string and has to be re-read when that shape moves`,
+		);
+		for (const bar of bars) {
+			heights.add(bar[1]);
+			assert.ok(
+				!bar[2].includes("bg-"),
+				`${pane.name}: a chrome bar paints \`${bar[2].trim()}\`. The bar floats on the pane's own ground — a bar with a ground of its own is the band the operator reported, and it is what made the icons read as chrome sitting in a tray rather than on the pane.`,
+			);
+		}
+	}
+	assert.equal(
+		heights.size,
+		1,
+		`the slot's chrome bars disagree about their height (${[...heights].join(", ")}). The draw is to keep the bar at the slot's 40px, because that is what keeps the icon row on the line the rest of the app's first row sits on when the pane opens and closes.`,
+	);
+});
+
+test("the header's drag rect and the lane are the window's drag surfaces, and the dock's band is neither", () => {
+	/*
+	 * The lane is the empty drag surface above the columns, and the chat header is
+	 * a second one (measured with the header on screen: the lane at `0,0 -> W,32`
+	 * and `header[data-tour-tag="chat-header"]` at `56,32 -> 540,72` in a 960px
+	 * story viewport). A first version of this pass read the window's drag shape
+	 * from a no-backend boot, where the chat route paints its refusal surface and no
+	 * header exists, so it saw one surface and reported that (UX round 1, U1).
+	 *
+	 * What this file can hold without a DOM is the half that can be refused: the
+	 * panes and the slot name no drag attribute, so nothing the dock draws can
+	 * swallow a press. The rects themselves are measured in a browser - and the
+	 * reading is taken from the shell story rather than a backed app boot, because
+	 * `src/renderer/index.html` pins `connect-src` to 1111 and 8080 and both are
+	 * held by other lanes on this machine.
+	 */
+	const header = withoutComments(read(CHAT_CONTENT));
+	assert.ok(
+		!DRAG_IN_SLOT.test(header),
+		`${CHAT_CONTENT} marks the slot's box (or the pane in it) as a drag region. The dock's band is where its controls live; a drag region over it is dead to clicks.`,
+	);
+});
+
+test("nothing in the slot puts a control into the chrome lane", () => {
+	for (const pane of [
+		...PANES,
+		{ name: "slot wrappers", file: CHAT_CONTENT },
+		{ name: "slot box", file: SLOT_COMPONENT },
+	]) {
+		const source = read(pane.file);
+		assert.ok(
+			!source.includes("data-titlebar-drag"),
+			`${pane.name} (${pane.file}) marks a drag region. The window's only drag surface in this area is the empty 32px lane \`chat-layout.tsx\` draws above the columns; a control inside a drag region is dead to clicks, which is the defect #539 fixed for overlays.`,
+		);
+	}
+});
