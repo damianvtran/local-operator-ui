@@ -1,14 +1,17 @@
-[build] current: assets 2026-09-26T22:51:20.566Z >= sources 2026-09-26T22:29:00.501Z
+runtime: v0.63.6
+capabilities: session_draft_warm 1
+command: node scripts/renderer-driver.mjs --scene first-send --window-size 800x600 --backend http://127.0.0.1:7394 --out /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs --seed-onboarding-complete
+[build] current: assets 2026-09-27T04:17:05.312Z >= sources 2026-09-27T04:09:19.808Z
 [note] abandoned scratch trees
-        3 seen, 0 owned by a live pid (kept), 3 younger than 30m (kept), 0 removed
+        19 seen, 0 owned by a live pid (kept), 19 younger than 30m (kept), 0 removed
 [note] csp for this run's backend
-        already widened for http://127.0.0.1:7391
+        already widened for http://127.0.0.1:7394
 local-operator-ui renderer driver
   repo          /Users/damian/local-operator-ui-worktrees/conversation-start
-  scratch       /tmp/lo-renderer-driver-71923
-  frames        /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r3-shoot/after
-  app cwd       /tmp/lo-renderer-driver-71923/cwd   (scratch: the repo's .env is not read)
-  backend url   http://127.0.0.1:7391   (--backend: a live isolated backend this run owns)
+  scratch       /tmp/lo-renderer-driver-38969
+  frames        /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs
+  app cwd       /tmp/lo-renderer-driver-38969/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:7394   (--backend: a live isolated backend this run owns)
   electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/conversation-start/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
   electron pin  44.3.0   (package.json optionalDependencies)
 [PASS] the harness is driving the Electron this branch pins
@@ -20,15 +23,15 @@ local-operator-ui renderer driver
 [PASS] the armed launch said so on stdout
 [PASS] the app's logs went to this run's scratch tree, not the operator's
 [note] renderer's api base URL at hello, against --backend
-        {"apiBaseUrl":"http://127.0.0.1:7391","backend":"http://127.0.0.1:7391"}
-[PASS] the app holds a connection to this run's backend (http://127.0.0.1:7391)
+        {"apiBaseUrl":"http://127.0.0.1:7394","backend":"http://127.0.0.1:7394"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:7394)
 [PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
 [note] profile seeded
         onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
 [note] facts (from main)
         {
   "windowMode": "headless",
-  "appVersion": "0.31.1",
+  "appVersion": "0.31.2",
   "platform": "darwin",
   "title": "Local Operator",
   "windowSize": {
@@ -43,19 +46,19 @@ local-operator-ui renderer driver
   "focused": false,
   "minimized": false,
   "frames": [],
-  "outDir": "/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r3-shoot/after"
+  "outDir": "/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs"
 }
 [PASS] window mode is headless and the window is never shown or focused
 [PASS] the chat route shows the empty state with a composer
 [note] frame
-        {"label":"first-send-800x600-empty","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r3-shoot/after/first-send-800x600-empty.png","bytes":90257,"pixels":{"width":1600,"height":1200},"viewport":{"width":800,"height":600,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":4}
+        {"label":"first-send-800x600-empty","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs/first-send-800x600-empty.png","bytes":90257,"pixels":{"width":1600,"height":1200},"viewport":{"width":800,"height":600,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":9}
 [note] empty state
         {"composer":{"x":108,"y":474,"width":640,"height":110},"chips":{"y":283,"bottom":346,"chips":4}}
 [PASS] the chips sit ABOVE the docked composer (§H)
 [PASS] the composer is docked in the pane's lower half on the empty state
 [PASS] the first message reached the transcript and the empty state is gone
 [note] frame
-        {"label":"first-send-800x600-sent","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r3-shoot/after/first-send-800x600-sent.png","bytes":68739,"pixels":{"width":1600,"height":1200},"viewport":{"width":800,"height":600,"devicePixelRatio":2},"attempts":8,"stable":false,"toastFree":false,"toastWaitMs":25}
+        {"label":"first-send-800x600-sent","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs/first-send-800x600-sent.png","bytes":68744,"pixels":{"width":1600,"height":1200},"viewport":{"width":800,"height":600,"devicePixelRatio":2},"attempts":8,"stable":false,"toastFree":false,"toastWaitMs":74}
 [note] anchor
         {"region":{"top":72,"bottom":466,"height":394},"content":{"top":88,"bottom":204,"height":116},"row":{"top":132,"bottom":174,"height":42},"slot":{"top":88,"bottom":116,"height":28},"overflow":0,"scrollTop":0}
 [PASS] a short transcript is anchored to the TOP of the pane: the row sits in the region's upper half
@@ -63,16 +66,16 @@ local-operator-ui renderer driver
 [PASS] the row sits just under the region's top inset, below the start-of-conversation slot
         row.top 132 region.top 72 slot {"top":88,"bottom":116,"height":28}
 [note] frame
-        {"label":"first-send-800x600-settled","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r3-shoot/after/first-send-800x600-settled.png","bytes":81999,"pixels":{"width":1600,"height":1200},"viewport":{"width":800,"height":600,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":19}
+        {"label":"first-send-800x600-settled","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs/first-send-800x600-settled.png","bytes":81635,"pixels":{"width":1600,"height":1200},"viewport":{"width":800,"height":600,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":9}
 [note] composer box
         {"before":{"x":108,"y":474,"width":640,"height":110},"after":{"x":108,"y":474,"width":640,"height":110},"settled":{"x":108,"y":474,"width":640,"height":110},"answered":true}
 [PASS] the first send does not move the composer: its box is identical
 [PASS] the agent's answer arrived and the composer is still where it was
 [PASS] no process from this run outlived its boot
 
-frames: conversation-start-1380x900-away-press.png, conversation-start-1380x900-away.png, conversation-start-1380x900-dead-create-reload.png, conversation-start-1380x900-dead-create.png, conversation-start-1380x900-failure-before-retry.png, conversation-start-1380x900-failure.png, conversation-start-1380x900-flip-plus-1s.png, conversation-start-1380x900-flip.png, conversation-start-1380x900-press.png, conversation-start-1380x900-reload.png, conversation-start-1380x900-return.png, first-send-1380x900-empty.png, first-send-1380x900-sent.png, first-send-1380x900-settled.png, first-send-800x600-empty.png, first-send-800x600-sent.png, first-send-800x600-settled.png
-frames directory: /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r3-shoot/after
-app log: /tmp/lo-renderer-driver-71923/app-scene.log
-scratch removed (--clean)
+frames: conversation-start-1380x900-away-failure-refusal.png, conversation-start-1380x900-away-failure-return.png, conversation-start-1380x900-away-mid-failure.png, conversation-start-1380x900-away-press.png, conversation-start-1380x900-away.png, conversation-start-1380x900-dead-create-reload.png, conversation-start-1380x900-dead-create.png, conversation-start-1380x900-failure.png, conversation-start-1380x900-flip-plus-1s.png, conversation-start-1380x900-flip.png, conversation-start-1380x900-press.png, conversation-start-1380x900-reload.png, conversation-start-1380x900-return.png, first-send-1380x900-empty.png, first-send-1380x900-sent.png, first-send-1380x900-settled.png, first-send-800x600-empty.png, first-send-800x600-sent.png, first-send-800x600-settled.png
+frames directory: /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs
+app log: /tmp/lo-renderer-driver-38969/app-scene.log
+scratch kept: /tmp/lo-renderer-driver-38969 (the frames are also in --out)
 
 ALL CHECKS PASSED
