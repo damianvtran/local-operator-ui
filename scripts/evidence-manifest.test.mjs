@@ -1518,14 +1518,13 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"pendingEchoRemediationFifthFoldNote",
 	/*
-	 /*
 	 * AND THE TWO-FLAKE LANE'S SECOND FOLD: its subject IS this file's binding -
 	 * the fold onto the moved `origin/main` after #562 and #577 re-derives the
 	 * pair at the folded tip and reads it back from the staged index, so a
 	 * reader is owed the pair rather than the prose.
 	 */
 	"foldOntoA9f4b1d7f4Note",
-	 /*
+	/*
 	 * AND THE STALL BOUND'S OWN: it bounds the update feed fetch, the update
 	 * download and the PyPI version read so a stalled network cannot hold the
 	 * checking frame. It moves BOTH trees - `src/` for the deadline, the latch
@@ -2181,12 +2180,11 @@ const BRANCH_RECORDS = [
 	 */
 	"pendingEchoRemediationFifthFoldNote",
 	/*
-	 /*
 	 * And the TWO-FLAKE lane's second fold's record rides beside them - each
 	 * fold writes one, and the same completeness reason stands.
 	 */
 	"foldOntoA9f4b1d7f4Note",
-	 /*
+	/*
 	 * And this pass's own, the newest top-level record on the branch: it states
 	 * the pair this re-stamp derives and records the simulation the pass ships
 	 * in place of frames, so a later fold that started from main's copy would
