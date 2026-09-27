@@ -336,6 +336,95 @@ const chatRows = () =>
 		'[data-sidebar-region="chats"] [data-tour-tag="chat-session-row"]',
 	).length;
 
+const groupRowsDrawn = () =>
+	document.querySelectorAll(
+		'[data-sidebar-region="entities"] [data-tour-tag="chat-session-row"]',
+	).length;
+
+/**
+ * The gap the operator reported (2026-09-27): "shrink the gap between agents and
+ * teams headers when agents is collapsed".
+ *
+ * Measured between the two SECTIONS' own boxes, and against the distances that
+ * make a gap readable as "extra": the heading-to-first-entry distance inside a
+ * section, and one entry's own height. A heading's own box is not the section -
+ * an EXPANDED section's rows sit between its heading and the next section's, so
+ * measuring heading-to-heading would report the rows as gap.
+ */
+const sectionBox = (key: string) => {
+	const button = document.querySelector<HTMLElement>(
+		`[data-chat-section="${key}"]`,
+	);
+	return button?.closest("section")?.getBoundingClientRect() ?? null;
+};
+
+const gapReport = () => {
+	const agents = sectionBox("agents");
+	const teams = sectionBox("teams");
+	if (!agents || !teams) return "sections: (not drawn)";
+	/*
+	 * The Teams heading's own box, for the heading-to-first-entry term: the
+	 * section starts with the `h-7` heading wrapper, so the heading's bottom is
+	 * the section's top plus its own 28px row.
+	 */
+	const teamsHeading = document
+		.querySelector<HTMLElement>('[data-chat-section="teams"]')
+		?.parentElement?.getBoundingClientRect();
+	/*
+	 * Scoped to the TEAMS section: `[data-entity-name]` matches an agent row too,
+	 * and the first one on screen is in the Agents section - which measured
+	 * `-172px` before this was scoped, a number that is not a distance at all.
+	 */
+	const firstEntry = document
+		.querySelector<HTMLElement>('[data-chat-section="teams"]')
+		?.closest("section")
+		?.querySelector<HTMLElement>("[data-entity-name]");
+	const entryBox = firstEntry?.parentElement?.getBoundingClientRect();
+	return [
+		`agents section ${Math.round(agents.height)}px, teams section ${Math.round(teams.height)}px`,
+		`gap agents->teams ${(teams.top - agents.bottom).toFixed(1)}px`,
+		entryBox && teamsHeading
+			? `teams heading->first entry ${(entryBox.top - teamsHeading.bottom).toFixed(1)}px`
+			: "teams heading->first entry (none)",
+		entryBox
+			? `entry height ${Math.round(entryBox.height)}px`
+			: "entry height (none)",
+	].join(" · ");
+};
+
+/**
+ * THE ONE SCROLL LAYER, counted rather than assumed.
+ *
+ * #534 established that this sidebar has exactly one scrollable layer (the
+ * entity region, which the chats list is a flow of), and the bound is only
+ * allowed to shorten its content - never to introduce a second scroller inside
+ * a group. This counts the elements that actually scroll, and prints the
+ * scroller's own content-versus-box so a frame can be read for whether the
+ * bound traded rows for a scrollbar.
+ */
+const scrollerReport = () => {
+	/*
+	 * A scroll LAYER is an element the browser would scroll (`overflow-y` is
+	 * `auto` or `scroll`), which is the property #534 is about; whether it is
+	 * currently OVERFLOWING is reported beside it, because a second layer that
+	 * happens not to overflow is still a second layer waiting for a longer list.
+	 */
+	const layers = [...document.querySelectorAll<HTMLElement>("*")].filter((el) =>
+		["auto", "scroll"].includes(getComputedStyle(el).overflowY),
+	);
+	const overflowing = layers.filter(
+		(el) => el.scrollHeight > el.clientHeight + 1,
+	);
+	const names = layers.map((el) => {
+		const tag =
+			el.dataset.sidebarRegion ??
+			el.className.toString().split(/\s+/)[0] ??
+			el.tagName;
+		return `${tag} ${el.scrollHeight}/${el.clientHeight}`;
+	});
+	return `scroll layers ${layers.length} (overflowing ${overflowing.length}) · ${names.join(" | ")}`;
+};
+
 const press = async (selector: string) => {
 	const element = document.querySelector<HTMLElement>(selector);
 	if (!element)
@@ -402,6 +491,7 @@ const Readout = () => {
 				),
 			].map((el) => `${el.dataset.sidebarSectionMore}: "${text(el)}"`);
 			const panel = document.querySelector("[data-sidebar-view-panel]");
+			const groupFoot = document.querySelector("[data-entity-more]");
 			const checks = [
 				...document.querySelectorAll<HTMLElement>(
 					"[data-sidebar-view-section]",
@@ -422,6 +512,10 @@ const Readout = () => {
 				`Stored view: ${stored.groupBy}/${stored.orderBy} · hidden [${stored.hidden.join(", ")}] · loads ${stored.loads}`,
 				`Drawn: ${chatRows()} chat row(s)`,
 				pageMore ? `Page foot: “${text(pageMore)}”` : "Page foot: (none)",
+				groupFoot ? `Group foot: “${text(groupFoot)}”` : "Group foot: (none)",
+				`Group rows drawn: ${groupRowsDrawn()}`,
+				`Gap: ${gapReport()}`,
+				`Scroller: ${scrollerReport()}`,
 				sectionFeet.length
 					? `Section feet: ${sectionFeet.join(" · ")}`
 					: "Section feet: (none)",
@@ -454,14 +548,17 @@ const Readout = () => {
 	);
 };
 
-const Page: FC<{ sidebarWidth?: number }> = ({ sidebarWidth = 360 }) => (
+const Page: FC<{ sidebarWidth?: number; selectedConversation?: string }> = ({
+	sidebarWidth = 360,
+	selectedConversation,
+}) => (
 	<div className="flex h-screen overflow-hidden bg-canvas text-ink">
 		<div
 			className="shrink-0 border-r border-hairline"
 			style={{ width: `${sidebarWidth}px` }}
 		>
 			<ChatSidebar
-				selectedConversation={undefined}
+				selectedConversation={selectedConversation}
 				onSelectConversation={() => undefined}
 				onStageDraft={() => undefined}
 			/>
@@ -806,6 +903,251 @@ export const OffRouteVoice: Story = {
 		await waitFor(() => document.body.textContent?.includes("Retry refresh"));
 		await waitFor(() =>
 			document.body.textContent?.includes("Showing the last chats loaded."),
+		);
+		await sleep(350);
+	},
+};
+
+/* ----------------------------------------- an expanded group's own bound */
+
+/**
+ * The roster an expanded TEAM is photographed on: `minervadev` with the
+ * operator's own 41 conversations bound to it (his screenshot, 2026-09-27),
+ * newest first, plus one conversation bound to another team so the group is a
+ * GROUP rather than the whole list.
+ */
+const TEAM = "minervadev";
+const TEAM_ROWS = 41;
+const teamRoster = (count = TEAM_ROWS): WireRow[] => [
+	...Array.from({ length: count }, (_, index) =>
+		row(
+			`team-${String(index).padStart(4, "0")}`,
+			`Team conversation ${index + 1}`,
+			NOW_SECONDS() - (index + 1) * 3_600,
+			{ binding: { agent: null, team: TEAM } },
+		),
+	),
+	row("elsewhere-0001", "Docs pod notes", NOW_SECONDS() - 60, {
+		binding: { agent: null, team: "content" },
+	}),
+];
+
+/** The team's disclosure, seeded before mount - the state IS the point here. */
+const openTeam = () => disclosures({ [`team:${TEAM}`]: true });
+const groupFootSelector = `[data-entity-more="team:${TEAM}"]`;
+
+/**
+ * A 41-conversation team expanded: TEN rows drawn, and the foot under them
+ * naming the next rung AND the position - `Show 15 more chats · 10 of 41`.
+ *
+ * This is the operator's report, answered: before this change the same frame
+ * drew all 41 rows into a column that also holds every other group and the
+ * chats list.
+ */
+export const GroupBoundTen: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		teamsList = [TEAM, "content"];
+		openTeam();
+		roster = teamRoster();
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(() => groupRowsDrawn() === 10);
+		await sleep(350);
+	},
+};
+
+/**
+ * The same team after ONE press: twenty-five drawn, the foot naming the step to
+ * fifty (`Show 25 more chats · 25 of 41`).
+ *
+ * DRIVEN, not seeded: the press is a real click on the control the previous
+ * frame draws, which is what makes this a frame of the ladder rather than of a
+ * state the story set for itself.
+ */
+export const GroupBoundAfterOne: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		teamsList = [TEAM, "content"];
+		openTeam();
+		roster = teamRoster();
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(() => groupRowsDrawn() === 10);
+		await press(groupFootSelector);
+		await waitFor(() => groupRowsDrawn() === 25);
+		await sleep(350);
+	},
+};
+
+/**
+ * And after TWO: the third rung is fifty against forty-one held, so the group
+ * is fully drawn and the foot is GONE - which is the other half of the count
+ * agreeing with the disclosure: a reader seeing no control is seeing all of it.
+ */
+export const GroupBoundAfterTwo: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		teamsList = [TEAM, "content"];
+		openTeam();
+		roster = teamRoster();
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(() => groupRowsDrawn() === 10);
+		await press(groupFootSelector);
+		await waitFor(() => groupRowsDrawn() === 25);
+		await press(groupFootSelector);
+		await waitFor(() => groupRowsDrawn() === TEAM_ROWS);
+		await sleep(350);
+	},
+};
+
+/**
+ * The reader is IN a conversation that sorts below the group's bound.
+ *
+ * `team-0034` is the group's 35th row and the group draws ten, so the bound
+ * withheld the very conversation the transcript pane is showing. It is LIFTED
+ * to the head of the group rather than admitted in place: admitting it would
+ * mean drawing the thirty-four rows between, which is the complaint this change
+ * answers. Eleven rows are drawn - the ten-row prefix plus the lifted one - and
+ * the foot reads `11 of 41`, because eleven is what the reader is looking at.
+ * The `CURRENT CHAT` label above it is `sectionLabel`'s own, the same wording
+ * the chats list uses for its lifted row, so the out-of-order row is explained
+ * rather than left to read as a broken sort.
+ */
+export const GroupBoundCurrentLifted: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		teamsList = [TEAM, "content"];
+		openTeam();
+		roster = teamRoster();
+		return <Page selectedConversation="team-0034" />;
+	},
+	play: async () => {
+		await waitFor(() => groupRowsDrawn() === 11);
+		await sleep(350);
+	},
+};
+
+/**
+ * A query that matches a row the bound has NOT loaded.
+ *
+ * "Team conversation 35" is `team-0034` - the same unloaded row as the frame
+ * above. A bound that filtered the answer would return nothing here, which is
+ * the defect the operator named ("search should still be able to search and
+ * find"); the group draws the match and the foot is gone, because with the
+ * query active there is nothing withheld to disclose.
+ */
+export const GroupBoundSearchFindsUnloaded: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		teamsList = [TEAM, "content"];
+		openTeam();
+		roster = teamRoster();
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(() => groupRowsDrawn() === 10);
+		const box = document.querySelector<HTMLInputElement>(
+			'[aria-label="Search chats and agents"]',
+		);
+		if (!box) throw new Error("the search box never mounted");
+		await userEvent.type(box, "Team conversation 35");
+		await waitFor(() => groupRowsDrawn() === 1);
+		await sleep(350);
+	},
+};
+
+/* ------------------------------------------- the collapsed section's gap */
+
+/**
+ * The operator's exact case (2026-09-27): `Agents` COLLAPSED above `Teams`
+ * EXPANDED, with the teams' own rows under it.
+ *
+ * The gap this frame is read for is between the two headings, and the readout
+ * prints it in pixels beside the heading-to-first-entry distance and one
+ * entry's height - because a gap is only "extra" relative to something.
+ */
+export const AgentsCollapsedTeamsExpanded: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		teamsList = [TEAM, "content"];
+		disclosures({ agents: false, teams: true });
+		roster = teamRoster();
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(
+			() =>
+				document.querySelector('[data-chat-section="teams"]') !== null &&
+				document.querySelector("[data-entity-name]") !== null,
+		);
+		await sleep(350);
+	},
+};
+
+/** Both sections collapsed: the spacing a collapsed section leaves behind. */
+export const BothSectionsCollapsed: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		teamsList = [TEAM, "content"];
+		disclosures({ agents: false, teams: false });
+		roster = teamRoster();
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(
+			() =>
+				document.querySelector('[data-chat-section="teams"]') !== null &&
+				document.querySelector("[data-entity-name]") === null,
+		);
+		await sleep(350);
+	},
+};
+
+/** Both expanded, so the same pair of headings can be compared with rows under
+ * each of them - the case a fix that merely shortened the constant would
+ * tighten without anyone asking. */
+export const BothSectionsExpanded: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		teamsList = [TEAM, "content"];
+		disclosures({ agents: true, teams: true });
+		roster = teamRoster();
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(
+			() =>
+				document.querySelector('[data-chat-section="teams"]') !== null &&
+				document.querySelectorAll("[data-entity-name]").length >= 4,
 		);
 		await sleep(350);
 	},

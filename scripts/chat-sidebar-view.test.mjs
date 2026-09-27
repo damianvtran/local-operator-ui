@@ -72,6 +72,11 @@ const {
 	shownSections,
 	toggleSection,
 	isActiveRow,
+	entityRows,
+	entityMore,
+	entitySectionGap,
+	ENTITY_SECTION_GAP,
+	ENTITY_SECTION_GAP_COLLAPSED,
 	CHAT_LIST_SECTIONS,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(
@@ -128,6 +133,203 @@ test("the foot control names the next page, bounded by what is left", () => {
  * not in it - because the row the app is displaying sits at position 300 and
  * the page stopped at 10.
  */
+/*
+ * THE EXPANDED GROUP'S OWN BOUND (operator, 2026-09-27): "there's far too many
+ * team/agent messages shown on screen at once when expanded, can you have max 10
+ * at first sorted by most recent/active then click to load more".
+ *
+ * The chats list has been bounded by the ladder since it shipped; the rows INSIDE
+ * an expanded team or agent were not, which is what his screenshot shows. These
+ * four tests are the requests's four load-bearing clauses, one each, so that
+ * breaking any of them reddens a named claim rather than a picture.
+ */
+test("an expanded group draws the ladder's prefix, in the catalogue's own order", () => {
+	const rows = Array.from({ length: 41 }, (_, index) =>
+		row(`s${index}`, SECONDS(index + 1)),
+	);
+	const page = entityRows(rows, { loads: 0 });
+	assert.equal(page.rows.length, 10, "ten rows first, whatever the group holds");
+	assert.equal(page.held, 41);
+	assert.equal(page.hidden, 31);
+	assert.deepEqual(
+		page.rows.map((entry) => entry.session_id),
+		rows.slice(0, 10).map((entry) => entry.session_id),
+		"the bound takes a PREFIX - it never re-sorts the group",
+	);
+	assert.equal(page.lifted, false);
+	/*
+	 * AND THE LADDER IS THE CHATS LIST'S, not a second set of numbers: 10, then
+	 * 25, then 50, then fifty more a press. A group is that list one level down.
+	 */
+	for (const [loads, expected] of [
+		[0, 10],
+		[1, 25],
+		[2, 50],
+		[3, 100],
+	]) {
+		assert.equal(
+			entityRows(rows, { loads }).rows.length,
+			Math.min(expected, 41),
+			`rung ${loads} draws ${expected}`,
+		);
+	}
+	assert.equal(
+		entityRows(rows, { loads: 9 }).hidden,
+		0,
+		"a rung past the group's size withholds nothing",
+	);
+});
+
+test("the bound never hides live work: a running row is out of the quota", () => {
+	const quiet = Array.from({ length: 41 }, (_, index) =>
+		row(`s${index}`, SECONDS(index + 1)),
+	);
+	const rows = [...quiet];
+	rows[40] = row("s40", SECONDS(41), "busy");
+	const page = entityRows(rows, { loads: 0 });
+	assert.equal(
+		page.rows.some((entry) => entry.session_id === "s40"),
+		true,
+		"a turn in flight at position 40 is drawn, not withheld",
+	);
+	assert.equal(
+		page.rows.findIndex((entry) => entry.session_id === "s40"),
+		// Ten drawn rows, then the running one wherever it sits in the catalogue.
+		10,
+		"and it is drawn IN PLACE, so the order is still the catalogue's",
+	);
+	assert.equal(page.rows.length, 11, "one extra row, not a re-sort");
+	/*
+	 * The exemption is the RUNNING section's own predicate rather than a second
+	 * list of status codes, so the two cannot drift: `approval` and `wedged` are
+	 * as live as `busy` here because they are live there.
+	 */
+	for (const code of ["busy", "delegating", "approval", "answer", "wedged"]) {
+		const only = entityRows(
+			[...quiet.slice(0, 40), row("live", SECONDS(41), code)],
+			{ loads: 0 },
+		);
+		assert.equal(
+			only.rows.some((entry) => entry.session_id === "live"),
+			true,
+			`a ${code} row is never withheld`,
+		);
+	}
+	assert.equal(
+		entityRows([...quiet.slice(0, 40), row("cold", SECONDS(41))], {
+			loads: 0,
+		}).rows.some((entry) => entry.session_id === "cold"),
+		false,
+		"while the same row with no live state IS withheld",
+	);
+});
+
+test("a query is never bounded: the bound cannot hide a hit", () => {
+	const rows = Array.from({ length: 41 }, (_, index) =>
+		row(`s${index}`, SECONDS(index + 1)),
+	);
+	const page = entityRows(rows, { loads: 0, searching: true });
+	assert.equal(page.rows.length, 41, "every match the query produced is drawn");
+	assert.equal(page.hidden, 0);
+	assert.equal(page.lifted, false);
+});
+
+test("the viewed conversation is lifted when the bound withheld it", () => {
+	const rows = Array.from({ length: 41 }, (_, index) =>
+		row(`s${index}`, SECONDS(index + 1)),
+	);
+	const page = entityRows(rows, { loads: 0, currentId: "s34" });
+	assert.equal(page.lifted, true);
+	assert.equal(page.rows[0].session_id, "s34", "it leads the group");
+	assert.equal(page.rows.length, 11, "one row is added, not forty");
+	assert.equal(
+		new Set(page.rows.map((entry) => entry.session_id)).size,
+		page.rows.length,
+		"no row is drawn twice",
+	);
+	assert.deepEqual(
+		page.rows.slice(1).map((entry) => entry.session_id),
+		rows.slice(0, 10).map((entry) => entry.session_id),
+		"the sort behind it is untouched",
+	);
+	assert.equal(page.hidden, 30, "the lifted row is not also counted as hidden");
+	/*
+	 * AND A VIEWED ROW THE BOUND ALREADY DRAWS IS NOT MOVED: the lift is a remedy
+	 * for one situation, and applying it unconditionally would reorder a group the
+	 * reader is looking at for no reason at all.
+	 */
+	const inside = entityRows(rows, { loads: 0, currentId: "s3" });
+	assert.equal(inside.lifted, false);
+	assert.deepEqual(
+		inside.rows.map((entry) => entry.session_id),
+		rows.slice(0, 10).map((entry) => entry.session_id),
+	);
+	/*
+	 * A CONVERSATION THIS GROUP DOES NOT HOLD IS NOT ADOPTED. Another team's session
+	 * being the viewed one must not put a row under this team.
+	 */
+	const elsewhere = entityRows(rows, { loads: 0, currentId: "other-team" });
+	assert.equal(elsewhere.lifted, false);
+	assert.equal(elsewhere.rows.length, 10);
+});
+
+/*
+ * THE COUNT AND THE DISCLOSURE AGREE (the brief's fourth clause): the badge states
+ * what the group HOLDS, so a reader under `41` looking at ten rows could not tell
+ * ten-of-forty-one from all-of-forty-one until the control said so.
+ */
+test("the group's foot names the next page AND the position it is drawn from", () => {
+	const foot = entityMore({ add: 15, drawn: 10, total: 41 });
+	assert.equal(foot.label, "Show 15 more chats · 10 of 41");
+	assert.equal(foot.aria, "Show 15 more chats, 10 of 41 shown");
+	/* A press that adds one row counts it, for `pageMoreLabel`'s reason. */
+	assert.equal(
+		entityMore({ add: 1, drawn: 40, total: 41 }).label,
+		"Show 1 more chat · 40 of 41",
+	);
+	/*
+	 * And it drops the position when the reader is already looking at everything,
+	 * which is what keeps the control from contradicting the badge beside it.
+	 */
+	assert.equal(
+		entityMore({ add: 15, drawn: 41, total: 41 }).label,
+		"Show 15 more chats",
+	);
+	/* Nothing withheld and no cursor: no control, so `10 of 10` is never printed. */
+	assert.equal(entityMore({ add: 0, drawn: 10, total: 10 }), null);
+});
+
+/*
+ * THE COLLAPSED SECTION'S GAP (operator, 2026-09-27): "shrink the gap between
+ * agents and teams headers when agents is collapsed, there's an extra gap wasting
+ * space there". Measured on the panel at 360px, the gap between the two headings
+ * is 16.0px with `Agents` collapsed AND 16.0px with it expanded - one shared
+ * `space-y-4` that does not know whether there are rows for it to separate. So
+ * the fix is a conditional value; a smaller constant would tighten the expanded
+ * case, where the rhythm is doing real work.
+ */
+test("the gap below a section is conditional on whether that section drew rows", () => {
+	assert.equal(entitySectionGap(true), ENTITY_SECTION_GAP);
+	assert.equal(entitySectionGap(false), ENTITY_SECTION_GAP_COLLAPSED);
+	assert.notEqual(
+		ENTITY_SECTION_GAP_COLLAPSED,
+		ENTITY_SECTION_GAP,
+		"a single smaller constant is exactly the fix this refuses",
+	);
+	/*
+	 * Tailwind's own 4px step, so "tighter" is a number rather than a claim: the
+	 * collapsed gap is strictly smaller than the section rhythm it replaces.
+	 */
+	const px = (cls) => Number(/(\d+)/.exec(cls)?.[1] ?? Number.NaN) * 4;
+	assert.ok(px(ENTITY_SECTION_GAP_COLLAPSED) < px(ENTITY_SECTION_GAP));
+	/*
+	 * AND IT IS THE SAME WHATEVER THE COLLAPSED SECTION HOLDS - the argument is one
+	 * boolean, so an empty section and a section holding forty rows cannot space
+	 * differently. That is the case a per-count rule gets wrong.
+	 */
+	assert.equal(entitySectionGap(false), entitySectionGap(false));
+});
+
 test("invariant 1: the viewed conversation is on screen past the page's end", () => {
 	const rows = Array.from({ length: 60 }, (_, index) =>
 		row(`s${index}`, SECONDS(index + 1)),

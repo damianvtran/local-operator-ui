@@ -1512,11 +1512,17 @@ const FEED_HOOK_SRC = readFileSync(
 );
 
 test("the Show-more control names its group, joins the arrow-key idiom, and is focus-safe (U2, U6)", () => {
+	/*
+	 * THE LABEL NOW CARRIES THREE FACTS RATHER THAN TWO (operator, 2026-09-27):
+	 * what the press does, how far into the group the reader is (`foot.aria`, whose
+	 * own position clause is what makes the count and the disclosure agree), and
+	 * WHICH group - `in ${name}`, the clause that stops a group of one team being
+	 * announced as another's. The assertion moved with the copy; the intent it
+	 * states is the same three clauses it stated before.
+	 */
 	assert.ok(
-		SIDEBAR_SRC.includes(
-			"aria-label={`Show ${view.addCount} more chats in ${name}`}",
-		),
-		"the press must say what it does AND which group it belongs to",
+		SIDEBAR_SRC.includes("aria-label={`${foot.aria} in ${name}`}"),
+		"the press must say what it does, where in the group the reader is, AND which group it belongs to",
 	);
 	assert.ok(
 		SIDEBAR_SRC.includes(
