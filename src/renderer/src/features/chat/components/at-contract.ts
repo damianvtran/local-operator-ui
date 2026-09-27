@@ -80,6 +80,71 @@ export function atRowBudget(anchorTop: number, clipTop: number): number {
 	return Math.max(AT_ROWS_MIN, Math.min(AT_ROWS_MAX, rows));
 }
 
+/**
+ * One section header's height, in px: `pt-2 pb-1` (12) plus the header's
+ * `text-meta` line box.
+ *
+ * MEASURED rather than derived, the way `AT_ROW_PITCH` above was: design round
+ * 1's D1 read the two headers of a merged listing at 29px each on the built
+ * app's own frames. It is a constant for the same reason the pitch is — the
+ * region's cap is arithmetic over it, and a header that grew would otherwise be
+ * a cap that quietly overflows by a slice of a row.
+ */
+export const AT_SECTION_HEADER_PITCH = 29;
+
+/**
+ * The row region's own plan, with SECTION HEADERS CHARGED against its cap
+ * (design round 1, D1).
+ *
+ * The cap is `budget * AT_ROW_PITCH` and the budget is measured in ROWS, so a
+ * section header — a non-row child of the same scroller — was never charged
+ * anything: a merged listing drew its two headers INSIDE the row cap, which
+ * pushed the `budget`th whole row past the cap and left the region resting on a
+ * sliced row, exactly the half-row reading the whole-row arithmetic exists to
+ * prevent. Charging the headers is the fix; it is charged in the CAP rather
+ * than by shrinking the header, because the header is the row that names the
+ * section.
+ *
+ * `shown` is the rows the region draws at rest — `rows` clipped by what the
+ * charged cap leaves — and `cap` is the scroller's own max-height in px, so the
+ * region always ends on a row's bottom edge. The footer's count is then one
+ * currency: the rows drawn against the rows the listing holds.
+ */
+export function atRegionPlan(
+	rows: number,
+	budget: number,
+	headerCount: number,
+): { shown: number; cap: number } {
+	const headerPx = Math.max(0, headerCount) * AT_SECTION_HEADER_PITCH;
+	const room = Math.max(0, budget * AT_ROW_PITCH - headerPx);
+	const visibleRows = Math.floor(room / AT_ROW_PITCH);
+	return {
+		shown: Math.max(0, Math.min(rows, visibleRows)),
+		cap: headerPx + visibleRows * AT_ROW_PITCH,
+	};
+}
+
+/**
+ * The project a `@` span names, or `null` when the span names something else.
+ *
+ * A project reference shares the `@` token grammar with a file path — `:` is
+ * not special to the tokenizer (`at-token.ts` ports the Python one, whose
+ * `_token_end` stops on whitespace only) — so the two are told apart by the
+ * `project:` NAMESPACE the picker writes and the backend's classifier resolves
+ * (`references.py`: `@project:<name>`). Everything after the namespace is the
+ * project NAME, which is what the store is asked about; a token with nothing
+ * after it (`@project:`) is mid-typing rather than a reference to a project
+ * with an empty name.
+ *
+ * The namespace is a literal here, the way `at-rank.ts` spells it in
+ * `projectAtRows` and its namespace filter: one spelling, three readers.
+ */
+export function atProjectName(path: string | undefined): string | null {
+	if (!path?.startsWith("project:")) return null;
+	const name = path.slice("project:".length);
+	return name.length === 0 ? null : name;
+}
+
 /** What a key does to the list. `pass` hands the event back to the composer. */
 export type AtKeyIntent =
 	/**
@@ -356,12 +421,25 @@ export function atEmptyCopy(state: {
 	query: string;
 	/** The directory being listed, as the header spells it (`./`, `src/`). */
 	scope: string;
+	/**
+	 * Whether the PROJECTS section was among the sources this pass searched
+	 * (UX round 1, U2). The no-match sentence has to be true of what was
+	 * consulted: with a store in the projection the row used to say `No files
+	 * match` and name one source, while a mistyped project name — a fact only
+	 * the projects source could answer — got the file sentence and no hint that
+	 * projects were searched at all. `false`/absent keeps the file-only
+	 * sentence, which is what the file-only popup ships and what its frames
+	 * show.
+	 */
+	projects?: boolean;
 }): string {
 	if (state.error) return unreadableCopy(state.error);
 	if (state.loading && state.entries === 0) return "Reading this folder…";
 	if (state.entries === 0) return "This folder is empty.";
 	if (state.matched === 0)
-		return `No files match "${state.query}" in ${state.scope}.`;
+		return state.projects
+			? `Nothing here matches "${state.query}" in ${state.scope}.`
+			: `No files match "${state.query}" in ${state.scope}.`;
 	// Unreachable while the caller renders a notice only when it has no rows, and
 	// stated rather than left undefined so a future caller that asks anyway gets a
 	// sentence instead of an empty div.

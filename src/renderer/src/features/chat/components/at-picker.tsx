@@ -53,7 +53,6 @@ import {
 import type { DesktopProject } from "../../../../../shared/desktop-control-contract";
 import {
 	AT_ROWS_MIN,
-	AT_ROW_PITCH,
 	AT_UNAVAILABLE_REASON,
 	type AtKeyInput,
 	type AtKeyIntent,
@@ -61,6 +60,7 @@ import {
 	atEmptyCopy,
 	atFooter,
 	atKeyIntent,
+	atRegionPlan,
 	atRowBudget,
 	atRowId,
 } from "./at-contract";
@@ -589,6 +589,11 @@ export function useAtPicker({
 			matched: rows.length,
 			query: nameQuery,
 			scope: dirPart === "" ? "./" : dirPart,
+			// The projects section is consulted only at the root listing (a
+			// project does not live in a directory), so the source-neutral
+			// sentence is owed only where the section was actually projected
+			// (UX round 1, U2).
+			projects: dirPart === "" && projectRows.length > 0,
 		}),
 		loading,
 		close,
@@ -768,10 +773,11 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 	 * The footer's right column: the rows the REGION draws against the entries the
 	 * listing holds, so the pair answers "am I looking at everything?" rather
 	 * than "how many rows did the query admit". Assembled here rather than in the
-	 * hook because the first number is `budget`, this component's own measurement
-	 * (design round 1, D3).
+	 * hook because the first number is `plan.shown`, this component's own
+	 * measurement — and since design round 1's follow-up it is the SAME plan the
+	 * scroller is capped by, so the count and the window cannot describe two
+	 * different things.
 	 */
-	const count = atCount(Math.min(state.rows.length, budget), state.entries);
 
 	/*
 	 * WHETHER THE SECTION HEADERS ARE DRAWN, which is exactly when the projection
@@ -785,6 +791,24 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 	 * in-region by the header rows themselves.
 	 */
 	const showSections = state.rows.some((row) => row.section === "project");
+
+	/*
+	 * THE HEADERS ARE CHARGED AGAINST THE CAP (design round 1, D1). They are
+	 * children of the same scroller and were never in the row budget, so a merged
+	 * listing overran its cap by two headers and rested on a sliced row — and the
+	 * count below, `min(rows, budget)`, reported the budget rather than the rows
+	 * drawn while its denominator still counted files alone ("8 of 11" where six
+	 * whole rows rendered out of fourteen merged entries). With sections the
+	 * count is one currency — rows drawn of merged rows — and without them the
+	 * arithmetic and the file-entry denominator are exactly what they were.
+	 */
+	const headerCount = showSections
+		? new Set(state.rows.map((row) => row.section)).size
+		: 0;
+	const plan = atRegionPlan(state.rows.length, budget, headerCount);
+	const count = showSections
+		? atCount(plan.shown, state.rows.length)
+		: atCount(plan.shown, state.entries);
 
 	return (
 		/* biome-ignore lint/a11y/useFocusableInteractive: the textarea keeps focus; the listbox is reached through aria-activedescendant, so it is not in the tab order. */
@@ -833,7 +857,7 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 			 */}
 			<div
 				className="overflow-y-auto overflow-x-hidden"
-				style={{ maxHeight: `${budget * AT_ROW_PITCH}px` }}
+				style={{ maxHeight: `${plan.cap}px` }}
 			>
 				{state.rows.length === 0 ? (
 					/*
@@ -887,6 +911,11 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 									// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox option cannot be a native <option>.
 									role="option"
 									aria-selected={index === state.active}
+									/* The row's own source, for the rigs that read this list: since
+									 * a merged popup can carry two sections, "the first N options"
+									 * is no longer a statement about the FILE listing (QA round 1,
+									 * Q-2). One attribute, read by the mentions scene. */
+									data-section={row.section ?? "file"}
 									className={cn(
 										"relative flex cursor-default items-baseline gap-3 px-3 py-2",
 										index === state.active
