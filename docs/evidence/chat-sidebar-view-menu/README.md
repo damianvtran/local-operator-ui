@@ -85,8 +85,10 @@ Panel 360px + 380px readout = 741px wide.
 | gap between the two section headings, `Agents` collapsed | **16.0px before → 8.0px after** |
 | gap between the two section headings, `Agents` expanded | **16.0px before → 16.0px after** (shared, hence the conditional value) |
 | heading-to-first-entry distance, inside a section | 0.0px |
-| `minervadev` section height at 10 / 25 / 41 rows drawn | 525px / 949px / 1436px |
+| `minervadev` section height with 41 rows drawn | **1436px** of a 900px frame, so the group is 20 screens' worth of a 848px region — which is the complaint |
+| entity section height in the gap pair | 28px collapsed, 124px when `Teams` is expanded (heading 28 + three 32px rows) |
 | scroller content/box, `Agents` collapsed + `Teams` expanded | **628/568 before → 620/568 after** |
+| scroller content/box with 41 rows drawn | **2068/848** |
 | scroll layers (of which overflowing) | **6 (1)** — one real layer, the entity region; the other five are Storybook's own 0/0 decorators. The count is 6 (0) in `search-finds-unloaded`, where the query narrows the list until it fits. |
 
 **The bound does not introduce a second scroller.** The overflow count is 1 in

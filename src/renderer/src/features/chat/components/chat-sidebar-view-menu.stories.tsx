@@ -1008,6 +1008,7 @@ export const GroupBoundTen: Story = {
 	},
 	play: async () => {
 		await waitFor(() => groupRowsDrawn() === 10);
+		await settled();
 		await sleep(350);
 	},
 };
@@ -1035,6 +1036,7 @@ export const GroupBoundAfterOne: Story = {
 		await waitFor(() => groupRowsDrawn() === 10);
 		await press(groupFootSelector);
 		await waitFor(() => groupRowsDrawn() === 25);
+		await settled();
 		await sleep(350);
 	},
 };
@@ -1061,6 +1063,7 @@ export const GroupBoundAfterTwo: Story = {
 		await waitFor(() => groupRowsDrawn() === 25);
 		await press(groupFootSelector);
 		await waitFor(() => groupRowsDrawn() === TEAM_ROWS);
+		await settled();
 		await sleep(350);
 	},
 };
@@ -1091,6 +1094,7 @@ export const GroupBoundCurrentLifted: Story = {
 	},
 	play: async () => {
 		await waitFor(() => groupRowsDrawn() === 11);
+		await settled();
 		await sleep(350);
 	},
 };
@@ -1192,6 +1196,7 @@ export const AgentsCollapsedTeamsExpanded: Story = {
 				document.querySelector('[data-chat-section="teams"]') !== null &&
 				document.querySelector("[data-entity-name]") !== null,
 		);
+		await settled();
 		await sleep(350);
 	},
 };
@@ -1214,6 +1219,7 @@ export const BothSectionsCollapsed: Story = {
 				document.querySelector('[data-chat-section="teams"]') !== null &&
 				document.querySelector("[data-entity-name]") === null,
 		);
+		await settled();
 		await sleep(350);
 	},
 };
@@ -1238,6 +1244,7 @@ export const BothSectionsExpanded: Story = {
 				document.querySelector('[data-chat-section="teams"]') !== null &&
 				document.querySelectorAll("[data-entity-name]").length >= 4,
 		);
+		await settled();
 		await sleep(350);
 	},
 };
