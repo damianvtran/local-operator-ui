@@ -1,16 +1,16 @@
 runtime: v0.63.7
 capabilities: session_draft_warm 1
 command: node scripts/renderer-driver.mjs --scene conversation-start --backend http://127.0.0.1:7394 --tap-control http://127.0.0.1:7394 --out /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs --clean --seed-onboarding-complete
-[build] current: assets 2026-09-27T06:08:27.870Z >= sources 2026-09-27T05:55:52.467Z
+[build] current: assets 2026-09-27T11:38:07.337Z >= sources 2026-09-27T07:47:46.064Z
 [note] abandoned scratch trees
-        5 seen, 0 owned by a live pid (kept), 5 younger than 30m (kept), 0 removed
+        8 seen, 0 owned by a live pid (kept), 8 younger than 30m (kept), 0 removed
 [note] csp for this run's backend
-        out/renderer/index.html: http://127.0.0.1:7394 added to frame-src and media-src (build output only; src/ untouched)
+        already widened for http://127.0.0.1:7394
 local-operator-ui renderer driver
   repo          /Users/damian/local-operator-ui-worktrees/conversation-start
-  scratch       /tmp/lo-renderer-driver-32388
+  scratch       /tmp/lo-renderer-driver-60714
   frames        /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs
-  app cwd       /tmp/lo-renderer-driver-32388/cwd   (scratch: the repo's .env is not read)
+  app cwd       /tmp/lo-renderer-driver-60714/cwd   (scratch: the repo's .env is not read)
   backend url   http://127.0.0.1:7394   (--backend: a live isolated backend this run owns)
   electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/conversation-start/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
   electron pin  44.3.0   (package.json optionalDependencies)
@@ -50,25 +50,25 @@ local-operator-ui renderer driver
 }
 [PASS] window mode is headless and the window is never shown or focused
 [note] second conversation
-        {"status":200,"body":{"status":200,"message":"Desktop session result.","result":{"binding":{"agent":null,"team":null},"session_id":"24d71420ef17","replayed":false,"identity":null,"warming":false,"admitted":true,"detail":"","model":{"applied":false,"detail":""}}},"id":"24d71420ef17"}
+        {"status":200,"body":{"status":200,"message":"Desktop session result.","result":{"binding":{"agent":null,"team":null},"session_id":"4bca2081c968","replayed":false,"identity":null,"warming":false,"admitted":true,"detail":"","model":{"applied":false,"detail":""}}},"id":"4bca2081c968"}
 [PASS] the chat route shows the empty state with a composer
 [note] focus at the press
         {"tag":"TEXTAREA","editable":true}
 [note] frame
-        {"label":"conversation-start-1380x900-press","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs/conversation-start-1380x900-press.png","bytes":194188,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"lineBefore":{"phase":"starting the session","seconds":0},"lineAfter":{"phase":"starting the session","seconds":0}}
+        {"label":"conversation-start-1380x900-press","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs/conversation-start-1380x900-press.png","bytes":195133,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"lineBefore":{"phase":"starting the session","seconds":0},"lineAfter":{"phase":"starting the session","seconds":0}}
 [note] press
-        {"read":{"rows":1,"rowIds":["8756d94d-280f-4c00-8caa-4211eecec6af"],"rowTops":[132],"scrollTop":0,"overflow":0,"composer":"","alert":"","controls":[],"undelivered":null},"line":{"phase":"starting the session","seconds":0},"sidebar":{"draftRow":"draft:95cdd356-8a13-4b16-9b4a-965d48468ba0","draftLabel":"Draft: Summarise yesterday's QA run.","sessionRows":10}}
+        {"read":{"rows":1,"rowIds":["5b097f32-7902-4a5a-9b3b-3401e20fd64e"],"rowTops":[132],"scrollTop":0,"overflow":0,"composer":"","alert":"","controls":[],"undelivered":null},"line":{"phase":"starting the session","seconds":0},"sidebar":{"draftRow":"draft:4f480156-bb59-4dcd-946c-da4f74b57b71","draftLabel":"Draft: Summarise yesterday's QA run.","sessionRows":10}}
 [PASS] J1: the row is painted BEFORE the session exists - one row, and it is the press
 [PASS] the composer is empty at the press: the row is the message's home
 [PASS] the wait line reads 'starting the session' with the clock running
 [PASS] and no alert speaks over the row for a send that has not failed
 [PASS] D3: the sidebar keeps the chat's own row through the create hop
 [note] frame
-        {"label":"conversation-start-1380x900-flip","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs/conversation-start-1380x900-flip.png","bytes":192327,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"lineBefore":{"phase":"waiting for the agent","seconds":3},"lineAfter":{"phase":"waiting for the agent","seconds":3}}
+        {"label":"conversation-start-1380x900-flip","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs/conversation-start-1380x900-flip.png","bytes":193709,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"lineBefore":{"phase":"waiting for the agent","seconds":3},"lineAfter":{"phase":"waiting for the agent","seconds":3}}
 [note] frame
-        {"label":"conversation-start-1380x900-flip-plus-1s","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs/conversation-start-1380x900-flip-plus-1s.png","bytes":193008,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"lineBefore":{"phase":"waiting for the agent","seconds":4},"lineAfter":{"phase":"waiting for the agent","seconds":4}}
+        {"label":"conversation-start-1380x900-flip-plus-1s","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs/conversation-start-1380x900-flip-plus-1s.png","bytes":207852,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"lineBefore":null,"lineAfter":null}
 [note] flip
-        {"read":{"rows":1,"rowIds":["8756d94d-280f-4c00-8caa-4211eecec6af"],"rowTops":[132],"scrollTop":0,"overflow":0,"composer":"","alert":"","controls":[],"undelivered":null},"line":{"phase":"waiting for the agent","seconds":3},"sidebar":{"draftRow":null,"draftLabel":null,"sessionRows":10},"flipped":true}
+        {"read":{"rows":1,"rowIds":["5b097f32-7902-4a5a-9b3b-3401e20fd64e"],"rowTops":[132],"scrollTop":0,"overflow":0,"composer":"","alert":"","controls":[],"undelivered":null},"line":{"phase":"waiting for the agent","seconds":3},"sidebar":{"draftRow":null,"draftLabel":null,"sessionRows":10},"flipped":true}
 [PASS] J1: one row across the flip - the SAME id the press painted, once
 [PASS] J2: no position jump across the flip - the row's top is within 1px
 [PASS] J3: no scroll jump across the flip - the scroller stays at its origin
@@ -78,72 +78,72 @@ local-operator-ui renderer driver
 [note] tap control
         200 {"armed":1}
 [note] first turn settled
-        {"ok":true,"waitedMs":1589,"last":true}
+        {"ok":true,"waitedMs":0,"last":true}
 [note] focus at the press
         {"tag":"TEXTAREA","editable":true}
 [note] frame
-        {"label":"conversation-start-1380x900-failure","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs/conversation-start-1380x900-failure.png","bytes":231123,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":3,"stable":true,"toastFree":true,"toastWaitMs":6}
+        {"label":"conversation-start-1380x900-failure","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs/conversation-start-1380x900-failure.png","bytes":231228,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":0}
 [note] failure
-        {"read":{"rows":3,"rowIds":["8756d94d-280f-4c00-8caa-4211eecec6af","761b5b5a27974fafbdeceb9bef4d764a","e35fbfd2-3023-4556-829c-1f682eefee10"],"rowTops":[132,206,282],"scrollTop":0,"overflow":0,"composer":"","alert":"","controls":["Send again","Edit"],"undelivered":"Couldn't confirm your message was sent. Sending it again is safe.Send againEdit"},"refused":true}
+        {"read":{"rows":3,"rowIds":["5b097f32-7902-4a5a-9b3b-3401e20fd64e","68f1037535c7456ea3f96a7d0dacdb48","86491564-ecbc-465c-bbd7-359bed48cd2b"],"rowTops":[132,206,282],"scrollTop":0,"overflow":0,"composer":"","alert":"","controls":["Send again","Edit"],"undelivered":"Couldn't confirm your message was sent. Sending it again is safe.Send againEdit"},"refused":true}
 [PASS] a post-paint refusal keeps its row, with the class's two controls
 [PASS] and the payload does NOT come back to the composer (one home, the row)
 [PASS] no composer alert speaks over a failure the row states
 [note] failed conversation
-        "cf289468b20a"
+        "8ac2f632abb2"
 [note] state at refusal
-        {"route":"/chat/cf289468b20a","activeSessionId":"cf289468b20a","activeDraftKey":null,"drafts":{"send:cf289468b20a":{"sessionId":null,"error":true,"undelivered":false,"submitted":true,"admissionAttempted":true}}}
+        {"route":"/chat/8ac2f632abb2","activeSessionId":"8ac2f632abb2","activeDraftKey":null,"drafts":{"send:8ac2f632abb2":{"sessionId":null,"error":true,"undelivered":false,"submitted":true,"admissionAttempted":true}}}
 [note] away rows
-        {"failedRowUp":true,"awayRow":"67d998ca834c"}
+        {"failedRowUp":true,"awayRow":"03d42f59a989"}
 [note] frame
-        {"label":"conversation-start-1380x900-away-mid-failure","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs/conversation-start-1380x900-away-mid-failure.png","bytes":240512,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":8,"stable":false,"toastFree":false,"toastWaitMs":4929}
+        {"label":"conversation-start-1380x900-away-mid-failure","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs/conversation-start-1380x900-away-mid-failure.png","bytes":240514,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":8,"stable":false,"toastFree":false,"toastWaitMs":4847}
 [note] away mid-failure
-        {"read":{"rows":3,"rowIds":["8756d94d-280f-4c00-8caa-4211eecec6af","761b5b5a27974fafbdeceb9bef4d764a","e35fbfd2-3023-4556-829c-1f682eefee10"],"rowTops":[132,206,282],"scrollTop":0,"overflow":0,"composer":"","alert":"","controls":["Send again","Edit"],"undelivered":"Not deliveredSend againEdit"},"line":null,"back":true}
+        {"read":{"rows":3,"rowIds":["5b097f32-7902-4a5a-9b3b-3401e20fd64e","68f1037535c7456ea3f96a7d0dacdb48","86491564-ecbc-465c-bbd7-359bed48cd2b"],"rowTops":[132,206,282],"scrollTop":0,"overflow":0,"composer":"","alert":"","controls":["Send again","Edit"],"undelivered":"Not deliveredSend againEdit"},"line":null,"back":true}
 [note] state on return
-        {"route":"/chat/cf289468b20a","activeSessionId":"cf289468b20a","activeDraftKey":null,"drafts":{"send:cf289468b20a":{"sessionId":null,"error":false,"undelivered":true,"submitted":false,"admissionAttempted":false}}}
+        {"route":"/chat/8ac2f632abb2","activeSessionId":"8ac2f632abb2","activeDraftKey":null,"drafts":{"send:8ac2f632abb2":{"sessionId":null,"error":false,"undelivered":true,"submitted":false,"admissionAttempted":false}}}
 [PASS] U5: the refusal's row and controls survive a switch-away and back
 [PASS] U5: and no wait claim appears for a send that is not alive
 [note] frame
-        {"label":"conversation-start-1380x900-reload","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs/conversation-start-1380x900-reload.png","bytes":221272,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":3,"stable":true,"toastFree":true,"toastWaitMs":3}
+        {"label":"conversation-start-1380x900-reload","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs/conversation-start-1380x900-reload.png","bytes":221437,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":3,"stable":true,"toastFree":true,"toastWaitMs":8}
 [note] reload
-        {"read":{"rows":3,"rowIds":["8756d94d-280f-4c00-8caa-4211eecec6af","761b5b5a27974fafbdeceb9bef4d764a","e35fbfd2-3023-4556-829c-1f682eefee10"],"rowTops":[132,206,282],"scrollTop":0,"overflow":0,"composer":"","alert":"","controls":["Send again","Edit"],"undelivered":"Not deliveredSend againEdit"},"back":true,"line":null}
+        {"read":{"rows":3,"rowIds":["5b097f32-7902-4a5a-9b3b-3401e20fd64e","68f1037535c7456ea3f96a7d0dacdb48","86491564-ecbc-465c-bbd7-359bed48cd2b"],"rowTops":[132,206,282],"scrollTop":0,"overflow":0,"composer":"","alert":"","controls":["Send again","Edit"],"undelivered":"Not deliveredSend againEdit"},"back":true,"line":null}
 [PASS] T6: the failed row is back after a reload, under the id the durable row would carry
 [PASS] D1: the resolved claim stops waiting - no line under a `Not delivered` row
 [note] first conversation
-        "cf289468b20a"
+        "8ac2f632abb2"
 [note] tap hold
         200 {"count":1,"ms":60000}
 [note] focus at the press
         {"tag":"TEXTAREA","editable":true}
 [note] frame
-        {"label":"conversation-start-1380x900-away-press","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs/conversation-start-1380x900-away-press.png","bytes":237274,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"lineBefore":{"phase":"waiting for the agent","seconds":0},"lineAfter":{"phase":"waiting for the agent","seconds":0}}
+        {"label":"conversation-start-1380x900-away-press","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs/conversation-start-1380x900-away-press.png","bytes":237420,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"lineBefore":{"phase":"waiting for the agent","seconds":0},"lineAfter":{"phase":"waiting for the agent","seconds":0}}
 [note] away press
-        {"rows":4,"rowIds":["8756d94d-280f-4c00-8caa-4211eecec6af","761b5b5a27974fafbdeceb9bef4d764a","e35fbfd2-3023-4556-829c-1f682eefee10","11c2d0b7-7b7f-423d-bb33-8018801d590d"],"rowTops":[132,206,282,378],"scrollTop":0,"overflow":0,"composer":"","alert":"","controls":["Send again","Edit"],"undelivered":"Not deliveredSend againEdit"}
+        {"rows":4,"rowIds":["5b097f32-7902-4a5a-9b3b-3401e20fd64e","68f1037535c7456ea3f96a7d0dacdb48","86491564-ecbc-465c-bbd7-359bed48cd2b","caf9c421-87a6-46c0-85b9-b3390b5b1cba"],"rowTops":[132,206,282,378],"scrollTop":0,"overflow":0,"composer":"","alert":"","controls":["Send again","Edit"],"undelivered":"Not deliveredSend againEdit"}
 [note] away row
-        {"ok":true,"waitedMs":1,"last":"67d998ca834c"}
+        {"ok":true,"waitedMs":0,"last":"03d42f59a989"}
 [note] sidebar (away)
-        {"rows":21,"text":"TODAY\nMark all 28 read\nUnseen completion, unread\nHello from the mock provider\nnow\n, just now\nUnseen completion, unread\nHello from the mock provider\n, 1 hour ago\nNot marked read. Click the chat to try again.\nUnseen completion, unread\nHello from the mock provider\n1h\n, 1 hour ago\nUnseen completion, unread\nHello from the mock provider\n1h\n, 1 hour ago\nUnseen completion, unread\nHello from the mock provi"}
+        {"rows":21,"text":"TODAY\nMark all 34 read\nUnseen completion, unread\nHello from the mock provider\nnow\n, just now\nUnseen completion, unread\nHello from the mock provider\n, 1 minute ago\nNot marked read. Click the chat to try again.\nUnseen completion, unread\nHello from the mock provider\n1m\n, 1 minute ago\nUnseen completion, unread\nHello from the mock provider\n4m\n, 4 minutes ago\nUnseen completion, unread\nHello from the moc"}
 [note] frame
-        {"label":"conversation-start-1380x900-away","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs/conversation-start-1380x900-away.png","bytes":226817,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"lineBefore":null,"lineAfter":null}
+        {"label":"conversation-start-1380x900-away","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs/conversation-start-1380x900-away.png","bytes":224479,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"lineBefore":null,"lineAfter":null}
 [note] frame
-        {"label":"conversation-start-1380x900-return","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs/conversation-start-1380x900-return.png","bytes":237742,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"lineBefore":{"phase":"waiting for the agent","seconds":5},"lineAfter":{"phase":"waiting for the agent","seconds":5}}
+        {"label":"conversation-start-1380x900-return","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs/conversation-start-1380x900-return.png","bytes":237552,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"lineBefore":{"phase":"waiting for the agent","seconds":5},"lineAfter":{"phase":"waiting for the agent","seconds":5}}
 [note] return
-        {"read":{"rows":4,"rowIds":["8756d94d-280f-4c00-8caa-4211eecec6af","761b5b5a27974fafbdeceb9bef4d764a","e35fbfd2-3023-4556-829c-1f682eefee10","11c2d0b7-7b7f-423d-bb33-8018801d590d"],"rowTops":[132,206,282,378],"scrollTop":0,"overflow":0,"composer":"","alert":"","controls":["Send again","Edit"],"undelivered":"Not deliveredSend againEdit"},"line":{"phase":"waiting for the agent","seconds":5}}
+        {"read":{"rows":4,"rowIds":["5b097f32-7902-4a5a-9b3b-3401e20fd64e","68f1037535c7456ea3f96a7d0dacdb48","86491564-ecbc-465c-bbd7-359bed48cd2b","caf9c421-87a6-46c0-85b9-b3390b5b1cba"],"rowTops":[132,206,282,378],"scrollTop":0,"overflow":0,"composer":"","alert":"","controls":["Send again","Edit"],"undelivered":"Not deliveredSend againEdit"},"line":{"phase":"waiting for the agent","seconds":5}}
 [PASS] T5: on return the row and its wait line are present, and the composer is empty
 [PASS] T5: the elapsed number is the true one - it does not restart at the return
-  [renderer] [attention] 67d998ca834c receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
-    at a5e (file:///Users/damian/local-operator-ui-worktrees/conversation-start/out/renderer/assets/index-CWEEM9zm.js:767:97590)
-    at async kt (file:///Users/damian/local-operator-ui-worktrees/conversation-start/out/renderer/assets/index-CWEEM9zm.js:767:98724)
-  [renderer] [attention] cf289468b20a receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
-    at a5e (file:///Users/damian/local-operator-ui-worktrees/conversation-start/out/renderer/assets/index-CWEEM9zm.js:767:97590)
-    at async kt (file:///Users/damian/local-operator-ui-worktrees/conversation-start/out/renderer/assets/index-CWEEM9zm.js:767:98724)
-  [renderer] [attention] 67d998ca834c receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
-    at a5e (file:///Users/damian/local-operator-ui-worktrees/conversation-start/out/renderer/assets/index-CWEEM9zm.js:767:97590)
-    at async kt (file:///Users/damian/local-operator-ui-worktrees/conversation-start/out/renderer/assets/index-CWEEM9zm.js:767:98724)
+  [renderer] [attention] 03d42f59a989 receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
+    at l5e (file:///Users/damian/local-operator-ui-worktrees/conversation-start/out/renderer/assets/index-C0K_lGNU.js:762:97590)
+    at async Tt (file:///Users/damian/local-operator-ui-worktrees/conversation-start/out/renderer/assets/index-C0K_lGNU.js:762:98724)
+  [renderer] [attention] 8ac2f632abb2 receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
+    at l5e (file:///Users/damian/local-operator-ui-worktrees/conversation-start/out/renderer/assets/index-C0K_lGNU.js:762:97590)
+    at async Tt (file:///Users/damian/local-operator-ui-worktrees/conversation-start/out/renderer/assets/index-C0K_lGNU.js:762:98724)
+  [renderer] [attention] 03d42f59a989 receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
+    at l5e (file:///Users/damian/local-operator-ui-worktrees/conversation-start/out/renderer/assets/index-C0K_lGNU.js:762:97590)
+    at async Tt (file:///Users/damian/local-operator-ui-worktrees/conversation-start/out/renderer/assets/index-C0K_lGNU.js:762:98724)
 [PASS] no process from this run outlived its boot
 
 frames: conversation-start-1380x900-away-failure-refusal.png, conversation-start-1380x900-away-failure-return.png, conversation-start-1380x900-away-mid-failure.png, conversation-start-1380x900-away-press.png, conversation-start-1380x900-away.png, conversation-start-1380x900-dead-create-reload.png, conversation-start-1380x900-dead-create.png, conversation-start-1380x900-failure.png, conversation-start-1380x900-flip-plus-1s.png, conversation-start-1380x900-flip.png, conversation-start-1380x900-press.png, conversation-start-1380x900-reload.png, conversation-start-1380x900-return.png, first-send-1380x900-empty.png, first-send-1380x900-sent.png, first-send-1380x900-settled.png, first-send-800x600-empty.png, first-send-800x600-sent.png, first-send-800x600-settled.png
 frames directory: /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-after/pngs
-app log: /tmp/lo-renderer-driver-32388/app-scene.log
+app log: /tmp/lo-renderer-driver-60714/app-scene.log
 scratch removed (--clean)
 
 ALL CHECKS PASSED
