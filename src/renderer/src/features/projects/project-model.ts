@@ -171,6 +171,20 @@ export function progressAgePhrase(age: string): string {
 }
 
 /**
+ * The board card's progress line: `reported 2h ago`, `reported just now`, or
+ * `no progress`.
+ *
+ * The card used to append its own `" ago"` to `progressAgePhrase`'s answer,
+ * so every card carrying an age read "reported 2h ago ago" (design review
+ * round 1, D1 — measured in the committed board frames). The sentence is
+ * derived HERE for the same reason the phrase is: one rule, one place, and a
+ * test can hold it.
+ */
+export function boardProgressText(age: string): string {
+	return age ? `reported ${progressAgePhrase(age)}` : "no progress";
+}
+
+/**
  * The date FIELD rule: an ISO `YYYY-MM-DD` day, or the empty string (a field's
  * own "unset").
  *
@@ -258,6 +272,27 @@ export function liveSessionsLabel(live: number): string {
 export function sessionsCountLabel(count: number): string {
 	if (count <= 0) return "";
 	return count === 1 ? "1 session" : `${count} sessions`;
+}
+
+/**
+ * The board card's popover trigger: the DOOR's name, with liveness folded in.
+ *
+ * The trigger used to print liveness alone (`0 live` on a project whose links
+ * are merely stopped), which names a state and never the action (UX round 1,
+ * U1) and whose number disagreed with the popover's own contents (design
+ * round 1, D5). It now names what opens — the linked sessions — and keeps the
+ * live count while there is one: `3 sessions · 2 live`, `1 session`. Zero
+ * live reads as the plain count, because a plain count is exactly what the
+ * popover lists.
+ */
+export function sessionsTriggerLabel(project: {
+	sessions: number;
+	live_sessions: number;
+}): string {
+	const count = sessionsCountLabel(project.sessions);
+	if (!count) return "";
+	const live = liveSessionsLabel(project.live_sessions);
+	return live ? `${count} · ${live}` : count;
 }
 
 /**

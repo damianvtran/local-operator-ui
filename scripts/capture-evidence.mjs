@@ -4190,6 +4190,14 @@ export const STORIES = [
 	["projects-tab--board", 1280, 900],
 	["projects-tab--board-many", 1280, 900],
 	["projects-tab--board-statuses", 1280, 900],
+	/* The three board states design round 1, D8 named as the sweep's own gaps:
+	 * a column with no rows (the "No projects here." line), the sessions
+	 * popover open (the card's door, listing links), and the card menu open
+	 * (the no-drag rule's only status door). All three are play-driven: the
+	 * first renders settled, the other two press their own control. */
+	["projects-tab--board-empty-columns", 1280, 900],
+	["projects-tab--board-sessions-popover", 1280, 900],
+	["projects-tab--board-card-menu", 1280, 900],
 	["projects-tab--timeline", 1280, 900],
 	["projects-tab--timeline-no-dates", 1280, 900],
 	["projects-tab--timeline-overdue", 1280, 900],

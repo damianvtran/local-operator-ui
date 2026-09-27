@@ -102,6 +102,14 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 	}));
 	const pendingDetails =
 		view === "timeline" ? details.filter((query) => query.isLoading).length : 0;
+	const failedDetails =
+		view === "timeline" ? details.filter((query) => query.isError).length : 0;
+	/* The retry the timeline's toolbar offers: only the reads that failed. */
+	const retryDetails = () => {
+		for (const query of details) {
+			if (query.isError) void query.refetch();
+		}
+	};
 	const moveTo = (project: DesktopProject, status: string) => {
 		update.mutate(
 			{
@@ -289,6 +297,8 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 					nowMs={nowMs}
 					onOpen={(item) => void navigate(`/projects/${item.project.id}`)}
 					pendingDetails={pendingDetails}
+					failedDetails={failedDetails}
+					onRetryDetails={retryDetails}
 				/>
 			)}
 

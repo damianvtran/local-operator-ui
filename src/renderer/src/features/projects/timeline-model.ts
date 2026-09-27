@@ -286,6 +286,14 @@ function weekStart(ms: number): number {
 }
 
 /**
+ * The air a unit label needs before the next one: its own text plus a blank
+ * gap, in px. `Jul` measures 16.5px at `text-meta` (read off the QA round 1
+ * frame), so ~26px keeps two labels off each other at every size the sweep
+ * captures; below that the two read as one token (`JuAug`).
+ */
+const UNIT_LABEL_MIN_GAP_PX = 26;
+
+/**
  * The axis row: one label per unit start, per tier.
  *
  * A YEAR CHANGE CARRIES A TWO-DIGIT CUE (`Jan '27`) — an 18-month span reads
@@ -366,12 +374,27 @@ export function timelineTicks(
 			: `Q${quarter}`;
 	};
 	push(startMs, unitLabel(unitStart(startMs)), true);
+	/*
+	 * AND THE NEXT UNIT'S LABEL STANDS DOWN WHEN IT WOULD COLLIDE - the day
+	 * tier's own rule, at unit scale: a span that starts within ~4 days of a
+	 * month boundary put `Jul` and `Aug` 9px apart (3px/day x 3 days) and the
+	 * axis read `JuAug` (QA round 1, Q-1). The walk keeps emitting labels and
+	 * tests each against the last one that was ACTUALLY PLACED, so a long
+	 * stretch of crowded boundaries drops labels rather than stacking them,
+	 * and every emitted label is still a unit start.
+	 */
+	const minGapDays = Math.ceil(
+		UNIT_LABEL_MIN_GAP_PX / TIMELINE_TIER_PX_PER_DAY[tier],
+	);
+	let lastEmitted = startMs;
 	for (
 		let day = nextUnit(unitStart(startMs));
 		day <= endMs;
 		day = nextUnit(day)
 	) {
+		if (dayOffset(lastEmitted, day) < minGapDays) continue;
 		push(day, unitLabel(day), true);
+		lastEmitted = day;
 	}
 	return ticks;
 }
