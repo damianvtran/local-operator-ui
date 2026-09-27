@@ -2005,6 +2005,15 @@ const BRANCH_RECORDS = [
 	 * this list exists.
 	 */
 	"daemonObservationTickWaitRestampNote",
+	/*
+	 * And by THIS lane too - the pass record's lineage gate. Its note is the
+	 * newest top-level record on this branch after the fold above, it states the
+	 * pair this tip ships, and it moves `scripts/` only without taking a frame, so
+	 * a fold resolved from main's copy would drop it first. That is the same class
+	 * of loss this branch's own fix is about, one file along - and the reason this
+	 * note is listed here rather than trusted to the union.
+	 */
+	"partialCaptureContinuityRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
