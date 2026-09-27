@@ -288,7 +288,7 @@ export const AgentHubPage: React.FC = () => {
 	/*
 	 * Tenant id to organization name, from the memberships this page already read.
 	 *
-	 * The venIDe badge names the organization a row came from, and the row carries
+	 * The org badge names the organization a row came from, and the row carries
 	 * only its `tenant_id` — so the name has to come from here. A Map rather than a
 	 * lookup per card, because the grid renders twelve of them.
 	 */
