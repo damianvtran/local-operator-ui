@@ -281,8 +281,20 @@ test("a New-chat send paints into the transcript that mounts after the session e
 	 * empty box and an empty transcript for the whole ~1.15s engage.
 	 */
 	let mounted = null;
+	let entryAtPress = null;
+	let rowAtPress = null;
 	globalThis.__echoRequest = async (request) => {
 		if (request.op === "sessions.create") {
+			/*
+			 * R3-4: read BOTH carriers at the press, while the create is in
+			 * flight - the row is the fallback and the entry is what survives
+			 * the receipt's row deletion, so the anchor must be on each. A paint
+			 * that dropped `submittedAt` would blank the clock again after a
+			 * remount while every other suite stayed green: this is the write's
+			 * own pin, taken where `admitChatDraft` makes it.
+			 */
+			entryAtPress = pendingSendForView(key)?.submittedAt ?? null;
+			rowAtPress = store.getState().drafts[key]?.submittedAt ?? null;
 			// The panel for this session begins mounting as a consequence of the
 			// store patching the id.
 			mounted = mountTranscript(SESSION_ID);
@@ -293,6 +305,21 @@ test("a New-chat send paints into the transcript that mounts after the session e
 	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
 	const requestId = store.getState().drafts[key].admissionRequestId;
 	await admitChatDraft(key, input);
+	assert.equal(
+		typeof entryAtPress,
+		"number",
+		"the press writes its clock anchor onto the painted entry (R3-4)",
+	);
+	assert.equal(
+		rowAtPress,
+		entryAtPress,
+		"the row and the entry carry the same press",
+	);
+	assert.equal(
+		pendingSendForView(SESSION_ID)?.submittedAt,
+		entryAtPress,
+		"and the identity re-key carries the same anchor to the id the remount reads",
+	);
 
 	const transcript = await mounted;
 	assert.deepEqual(

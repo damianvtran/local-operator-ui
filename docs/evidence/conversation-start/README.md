@@ -22,7 +22,7 @@ suites named there, unchanged.
 | `after/failure/` | A message the owner refused AFTER the paint: its row carries `Couldn't confirm your message was sent. Sending it again is safe.` with `Send again` · `Edit`; the composer is empty (`composer ""`) and **no alert is up** (`alert ""`) - the sentence exists once, on the row. | T4/J4: one failure, one sentence, one home. |
 | `after/reload/` | `Page.reload` after the failure and its resolution: the row is back with `Not delivered` · `Send again` · `Edit`, and **no wait line** (`line: null`) - the settled claim is not "still going out". | T6 + D1/D2: a painted-but-failed (or resolved-undelivered) row survives a reload, and one message cannot be both `Not delivered` and waited on. |
 | `after/dead-create/`, `after/dead-create-reload/` | The tap KILLED the create's socket inside the press window (`POST /__tap/kill-creates`): the row keeps its place and the failure's statement (`Couldn't reach Local Operator. Your message may not have been sent.` with both controls), the composer stays empty, and the sidebar still lists the chat; the reload brings the row back. | U2: a create that dies in the hop leaves the message with a row, a statement and a sidebar presence - not only a reload. |
-| `after/away-press/`, `after/away/`, `after/return/` | A second message pressed with its POST held by the tap for 60 s; the run elsewhere; the return with the in-flight row and `waiting for the agent 5s` (reads at the return's capture: 5s/5s - the number counts from the away press's 0s, across the trip). The unread-mark toast ("The unread mark was not cleared. Click the chat to try again.") is up in these three frames - see "What these frames do not prove". | T5: away/back keeps the row and the true elapsed. |
+| `after/away-press/`, `after/away/`, `after/return/` | A second message pressed with its POST held by the tap for 60 s; the run elsewhere; the return with the in-flight row and `waiting for the agent 5s` (reads at the return's capture: 5s/5s - the number counts from the away press's 0s, across the trip). The unread-mark toast ("The unread mark was not cleared. Click the chat to try again.") is up in `away/` (and in the neighbouring `away-mid-failure/`) - see "What these frames do not prove". | T5: away/back keeps the row and the true elapsed. |
 | `after/away-mid-failure/` | A refusal raised on a LIVE-SESSION send (not a New chat), then a switch-away and back: the row keeps `Not delivered` · `Send again` · `Edit`, the wait line stays absent (`line: null`). | T5 for the general boundary rule: a post-paint failure is the row's wherever it was raised, and leaving the pane does not re-state it as in flight. |
 | `after/away-failure-refusal/`, `after/away-failure-return/` | UX round 2's U5, staged end to end (`--scene conversation-start-away-failure`): a first send refused after the paint, the reader leaves to another chat, and comes back **through the sidebar's session row**. Before the fix this return read `waiting for the agent 14s` with `controls: []` and `undelivered: null`; the shipped frames read `Not delivered` · `Send again` · `Edit` and `line: null` at both moments (`controls: ["Send again","Edit"]`, `undelivered: "Not deliveredSend againEdit"` at both the refusal and the return, same row id), and the sidebar carries exactly one presence for the chat - its own session row, with no duplicated `Draft:` row (`draftRows: []` at the refusal; U6's fix). | U5 + U6: the return is not a state falsehood, and the just-refused chat stays reachable from the list. |
 | `before/press/` | The pre-change press: `rows 0`, the composer holding the text (`"Summarise yesterday's QA run."`), no wait line. | The state this change removes. |
@@ -84,7 +84,7 @@ sidebar's row, so no frame is captioned as a walk it did not make.
 asserts `visible=false focused=false` in every run.
 
 **The backend** is the installed `local-operator` runtime as it ships that day -
-`lop` v0.63.6, advertising `session_draft_warm: 1` - run as a throwaway
+`lop` v0.63.7, advertising `session_draft_warm: 1` - run as a throwaway
 `lop serve --hosting test --model mock` in its own `LOCAL_OPERATOR_CONFIG_DIR`,
 its bearer generated inside this rig, every inherited `CMUX_*`/`LOP_*` variable
 stripped. Each run's log names the version and the capability on its first two
@@ -101,7 +101,7 @@ reproduced; and it connects to the backend only when it forwards, so a held
 request cannot idle-die upstream. Every request it forwarded is in `wire.log`.
 
 **The two halves, one instrument.** The before half is a detached worktree at
-unmodified `7d6f83b47c` (the base after this branch's second fold round), built
+unmodified `eca30754b7` (the final fold's base, and this branch's third fold round), built
 against the same tap and the same warm daemon, and it carries only the driver
 and the tap from this branch - never the app change. The after-only claims are
 notes there, and its checks that fail are the ones the change exists to turn
@@ -155,20 +155,23 @@ named after the frame's own label (the first-send sizes map to
 - **Not the real owner.** The failure's body is the captured
   `runtime_unreachable` response, and the mock provider's answers are not turns
   an agent ran.
-- **A toast is up in the away three** (`after/away-press/`, `after/away/`,
-  `after/return/`): "The unread mark was not cleared. Click the chat to try
-  again." It is the app's own unread-mark surface reacting to the rig's sidebar
-  clicks, it is measured in each frame's notes (`toastFree: false`,
-  `toastWaitMs` bounded to 500 ms so a toast already fading does not push the
-  trip past the send deadline), and it is left in rather than waited out - no
-  claim above is read from the toast's area.
+- **A toast is up in two frames** (`after/away/`, `after/away-mid-failure/`):
+  "The unread mark was not cleared. Click the chat to try again." It is the
+  app's own unread-mark surface reacting to the rig's sidebar clicks. Its own
+  note is on `away-mid-failure` (`toastFree: false`, `toastWaitMs` 4929 - the
+  toast outlived the capture's bounded wait); `away` is a raw capture, which
+  carries no toast fields, and the corner crops of `away-press` and `return`
+  are empty. It is left in rather than waited out - no claim above is read from
+  the toast's area.
 - **Not the model gate.** A press that beats the model's resolution can still
   clear the box with the composer's own refusal (QA round 1's note, reproducible
   on the base tree): the scene presses after the pane's own target chips settle,
   and no frame here stages that race.
 - **No retry-arm frame.** The failure step retries once when its first press does
-  not reach the wire; this run's first press landed, so no retry moment existed
-  to photograph and no frame is shipped standing in for one. The arm is covered
+  not reach the wire; in both runs the first press landed, so no retry moment
+  existed to photograph, and no frame is shipped standing in for one - the
+  before half's stale `failure-before-retry` capture was dropped in round 3
+  rather than captioned against a log that never read it. The arm is covered
   by `scripts/composer-send-failure.test.mjs`, and the scene records the arm's
   own readings in its log when it does run.
 - **The frames are one moment each.** Every row's `line`, `alert` and `controls`
