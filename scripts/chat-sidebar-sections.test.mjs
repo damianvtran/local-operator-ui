@@ -14,8 +14,13 @@
  * heights rather than at a fixture's.
  *
  * WHAT THIS CANNOT SAY: that the sections LOOK right, or that a drag on the real
- * boundary produces these numbers - `renderer-driver.mjs --scene sidebar-sections`
- * does that on the built app, and its frames are the claim.
+ * boundary produces these numbers. That used to be `renderer-driver.mjs --scene
+ * sidebar-sections`'s job on the built app; the scene was RETIRED with the
+ * split's removal (agent review round 1, R2/Q3 - the merged panel draws no
+ * boundary and no collapse), so this file's contract over the module kept as the
+ * record, and the surviving stories under
+ * `docs/evidence/chat-sidebar-sections/` for the merged panel's own frames, are
+ * what is left.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -83,6 +88,8 @@ const {
  * Both were read off the built app by `--scene sidebar-sections` at 1380x900 and
  * 1024x673 (`capacity`, `panel` in its `default geometry` note; at 900 the two
  * drags' extremes 72 + 480 re-derive the same 552) - real numbers, not round ones.
+ * (The scene has since been retired with the split's removal; the numbers stay
+ * as the module record's own.)
  */
 const AT_900 = { capacity: 552, panel: 560 };
 const AT_673 = { capacity: 325, panel: 333 };
@@ -153,36 +160,24 @@ test("the split is offered at every docked window height the app draws", () => {
 
 test("with no dragged height, the chats take the larger share", () => {
 	/*
-	 * The one-sidebar merge's reason for existing was that the agents tree pushed
-	 * the chats below the fold. With both sections visible by default, the auto
-	 * rule is what keeps that from coming back: a long chat list is capped at 60%
-	 * of the panel, so the chats hold more of the column than the section above.
+	 * The auto rule is still the module's, and the module still ships it (the
+	 * split's arithmetic is the record of the removed feature and stays covered
+	 * here). The COMPONENT no longer draws a cap of its own: the one-scroll pass
+	 * of 2026-09-26 removed the two-region cap from the sidebar entirely,
+	 * because one scroller is the operator's whole report - what bounds a long
+	 * list now is the section ladder (`data-sidebar-section-more` /
+	 * `data-sidebar-page-more`), which the one-scroller test below still pins.
 	 */
 	assert.equal(SIDEBAR_AUTO_MAX_FRACTION, 0.6);
-	/*
-	 * AND THE COMPONENT'S OWN FALLBACK CLASS IS BOUND TO IT (agent review round 1, R4).
-	 *
-	 * `chat-sidebar.tsx` puts `max-h-[60%]` on the chats region as the rule the module's
-	 * docblock names (`:267`), and that class resolves against the SPLIT CONTAINER rather
-	 * than against the panel's content box the module measures - the exact box the module
-	 * says it deliberately does not use, "because the regions' container is a fraction of a
-	 * panel shorter than the panel, and the cap would silently move by tens of px at a
-	 * 900px window". Two numbers for one cap, in two boxes, with nothing reading the class:
-	 * `assert.equal(0.6)` next door cannot see it move. The assertion below derives the class
-	 * FROM the constant, so an edit to either one alone fails here instead of shipping a
-	 * fallback that caps against the wrong box. (`scripts/chat-pane-floors.test.mjs` binds
-	 * `min-w-[480px]` to `CHAT_PANE_MIN_PX` the same way, which is where the pattern comes
-	 * from.)
-	 */
 	const sidebarSource = readFileSync(
 		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
 		"utf8",
 	);
 	assert.ok(
-		sidebarSource.includes(
+		!sidebarSource.includes(
 			`max-h-[${String(Math.round(SIDEBAR_AUTO_MAX_FRACTION * 100))}%]`,
 		),
-		`the chats region's fallback cap must be the auto fraction the module documents (\`max-h-[${String(Math.round(SIDEBAR_AUTO_MAX_FRACTION * 100))}%]\`)`,
+		`the component must not draw the split's \`max-h-[${String(Math.round(SIDEBAR_AUTO_MAX_FRACTION * 100))}%]\` fallback any more: one-scroll removed the region cap, and the section ladder is what bounds a list (operator report, 2026-09-26)`,
 	);
 	const out = split({
 		capacity: AT_900.capacity,
@@ -237,12 +232,15 @@ test("the dragged size is persisted, and survives the round trip to disk", () =>
  * scroller wrapping the two its sections carry, which is exactly what the operator
  * photographed. No node test in this suite renders CSS, and jsdom computes no
  * layout at all, so the instrument is the shipped class list on the two elements
- * that decide it, plus the drill the rig runs: `--scene sidebar-sections`
- * `checkSidebarScroll` measures `scrollHeight === clientHeight` on the column and the
- * panel, one scrollable element under a point, and a wheel over either pane leaving
- * the chrome and the other pane where they were, in both palettes and at short
- * heights. Read together - this file says the classes are right, the scene says the
- * browser agrees.
+ * that decide it - and that is the instrument ALONE since the scene that used to
+ * take the browser's word for them (`--scene sidebar-sections`, whose
+ * `checkSidebarScroll` measured `scrollHeight === clientHeight` on the column and
+ * the panel, one scrollable element under a point, and a wheel leaving the chrome
+ * and the other pane where they were) was retired with the split's removal (agent
+ * review round 1, R2/Q3). Per-region slices rather than whole-file counts, for the
+ * reason the round-1 R7 finding states: a whole-file count can be satisfied by two
+ * unrelated occurrences, and the previous `overflow-y-auto === 1` counted text in
+ * comments while missing `overflow-y-scroll` altogether.
  */
 test("the sidebar's column cannot scroll, and its panes contain their own overflow", () => {
 	const sidebar = readFileSync(
@@ -275,18 +273,61 @@ test("the sidebar's column cannot scroll, and its panes contain their own overfl
 		"utf8",
 	);
 	/*
-	 * Both region class lists, by the marker each carries: the entity pane's
-	 * `[overflow-anchor:none]` and the list pane's `[scrollbar-gutter:stable]`.
+	 * ONE SCROLLER (operator report, 2026-09-26). The two regions are ordinary
+	 * flow inside it: no `overflow` of their own, no cap of their own. The pins
+	 * below are the merged scroller's class tail, the EXACTLY-ONE count of
+	 * scrollable layers in the panel, the two regions' shared flow class, and
+	 * the absence of the split's affordances from the DOM.
 	 */
-	for (const [marker, label] of [
-		["min-h-0 flex-1 space-y-4 overflow-y-auto", "the agents pane"],
-		["relative space-y-4 overflow-y-auto", "the chats pane"],
-	]) {
+	assert.ok(
+		pane.includes(
+			"relative min-h-0 flex-1 space-y-4 overflow-y-auto p-1 [overflow-anchor:none] [scrollbar-gutter:stable]",
+		),
+		"the merged scroller's class list must carry the single overflow layer",
+	);
+	/*
+	 * PER-REGION SLICES, NOT WHOLE-FILE COUNTS (agent review round 1, R7). The
+	 * scroller's own tag is read for the one scrollable layer; each region's own
+	 * tag-to-class slice is read for ordinary flow and for the absence of a scroll
+	 * layer of its own; and the class whole-file scan the old count missed is kept
+	 * as an absence check. A count over the file could be satisfied by two
+	 * unrelated occurrences and could be fed by comments - this cannot.
+	 */
+	const scrollerClass = pane.match(
+		/data-sidebar-region="scroller"[\s\S]{0,400}?className="([^"]+)"/,
+	);
+	assert.ok(scrollerClass, "the scroller's own class list was not found");
+	assert.match(
+		scrollerClass[1],
+		/(^|\s)overflow-y-auto(\s|$)/,
+		"the one scrollable layer is the merged scroller's",
+	);
+	const regionClass = 'className={cn("relative space-y-4")}';
+	for (const region of ["entities", "chats"]) {
+		const marker = `data-sidebar-region="${region}"`;
+		const at = pane.indexOf(marker);
+		assert.ok(at >= 0, `${marker} is not drawn`);
+		const classAt = pane.indexOf(regionClass, at);
 		assert.ok(
-			pane.includes(marker),
-			`${label}'s class list must carry ${marker}`,
+			classAt > at,
+			`the ${region} region's own class list was not found`,
+		);
+		assert.doesNotMatch(
+			pane.slice(at, classAt + regionClass.length),
+			/overflow(-y)?-(auto|scroll)/,
+			`the ${region} region must be ordinary flow inside the one scroller: no scroll layer of its own`,
 		);
 	}
+	assert.doesNotMatch(
+		pane,
+		/overflow-y-scroll/,
+		"no `overflow-y-scroll` layer anywhere in the panel (the whole-file count this replaces looked only for `overflow-y-auto`)",
+	);
+	assert.doesNotMatch(
+		pane,
+		/data-sidebar-split|data-sidebar-cluster|data-sidebar-order|data-sidebar-restore/,
+		"the split's affordances (divider, cluster, order swap, restore row) must not be drawn any more",
+	);
 
 	/*
 	 * AND THE SECTIONS THAT CAN GROW WITHOUT BOUND CAP THEMSELVES, which is the
