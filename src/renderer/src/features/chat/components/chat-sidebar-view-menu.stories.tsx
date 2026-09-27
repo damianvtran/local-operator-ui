@@ -331,6 +331,57 @@ const waitFor = async (predicate: () => boolean, timeoutMs = 8_000) => {
 	throw new Error("the fixture never reached the state this story photographs");
 };
 
+/**
+ * Wait until consecutive samples of the LAYOUT agree.
+ *
+ * A predicate that has become true is not the same as a panel that has stopped
+ * moving, and this file has a measured instance of the difference: the
+ * `search-finds-unloaded` frame came back with a different byte hash on a
+ * re-capture of the same tree, with the diff spread across the search box, both
+ * entity sections AND the readout column - i.e. the whole column had shifted
+ * between two layouts either side of the query's 150ms debounce, not one label
+ * changing. So the story waits for the state AND for the layout, which is the
+ * same two-part wait `chat-sidebar-sections.stories.tsx` documents at length
+ * (its design round 1, D4).
+ *
+ * The sample is STRUCTURAL - box heights, row counts and the foot's own copy -
+ * and never the readout's text, which is a live region on a 250ms timer and
+ * would never converge.
+ */
+const settled = async (samples = 4, gapMs = 120) => {
+	const sample = () => {
+		const region = document.querySelector<HTMLElement>(
+			'[data-sidebar-region="entities"]',
+		);
+		return [
+			region?.scrollHeight ?? 0,
+			region?.clientHeight ?? 0,
+			groupRowsDrawn(),
+			document.querySelector("[data-entity-more]")?.textContent ?? "",
+			/*
+			 * AND THE NAMES-ONLY NOTICE, which is the term that actually flaked here.
+			 * It draws on `query && ready && !searchSupported`, and `ready` is the
+			 * CATALOGUE gate - a different query's answer from the one the play is
+			 * typing into - so the notice can arrive a beat after the rows do and push
+			 * everything below the box down by its own line. Two captures of one tree
+			 * differed across the search box, BOTH entity sections and the readout
+			 * column: one line, the whole column shifted.
+			 */
+			document.body.textContent?.includes("Searching chat names only") ?? false,
+		].join("|");
+	};
+	let last = sample();
+	for (let i = 0; i < samples; i += 1) {
+		await sleep(gapMs);
+		const now = sample();
+		if (now === last) return;
+		last = now;
+	}
+	throw new Error(
+		"the panel never settled: the frame would photograph a layout in motion",
+	);
+};
+
 const chatRows = () =>
 	document.querySelectorAll(
 		'[data-sidebar-region="chats"] [data-tour-tag="chat-session-row"]',
@@ -1052,6 +1103,14 @@ export const GroupBoundCurrentLifted: Story = {
  * the defect the operator named ("search should still be able to search and
  * find"); the group draws the match and the foot is gone, because with the
  * query active there is nothing withheld to disclose.
+ *
+ * NOT CAPTURED AS EVIDENCE, and this note is why rather than a puzzle for the
+ * next reader: six captures of this story on one clean tree produced TWO
+ * distinct end states, the diff spanning the whole panel rather than one label,
+ * and neither a settle-wait on the layout nor an assertion on the story's own
+ * facts removed it. The claim it exists for is asserted in
+ * `scripts/chat-sidebar-view.test.mjs` instead. Fix the state pinning before
+ * adding it to `STORIES` in `scripts/capture-evidence.mjs`.
  */
 export const GroupBoundSearchFindsUnloaded: Story = {
 	render: () => {
@@ -1072,6 +1131,36 @@ export const GroupBoundSearchFindsUnloaded: Story = {
 		if (!box) throw new Error("the search box never mounted");
 		await userEvent.type(box, "Team conversation 35");
 		await waitFor(() => groupRowsDrawn() === 1);
+		/*
+		 * THE NAMES-ONLY NOTICE IS PART OF THIS FRAME'S STATE, so the story waits for
+		 * it rather than racing it. It draws on `query && ready && !searchSupported`,
+		 * and this stub advertises no `session_search` - so it WILL draw, but only once
+		 * the CATALOGUE gate has answered, which is a different query's answer from
+		 * the box the play is typing into. Waiting only for the rows left the two
+		 * captures either side of that arrival: one extra line under the box shifts
+		 * every section below it, which is the flake measured above.
+		 */
+		await waitFor(
+			() =>
+				document.body.textContent?.includes("Searching chat names only") ===
+				true,
+		);
+		/*
+		 * AND THE TWO FACTS THE FRAME'S CAPTION CLAIMS ARE ASSERTED HERE, which turns
+		 * a flake into a FAILURE rather than a wrong frame: a capture that races the
+		 * query's own application writes a picture of a different state under a
+		 * caption that says otherwise, which is worse than no frame at all ("a dead
+		 * instrument returns a reading, not an error"). Asserted on the DOM facts
+		 * this frame is ABOUT - the one matching row under the group, and the notice
+		 * that says which search ran - rather than on the input's own `value`, which
+		 * is component state two re-renders away and read `""` here even on the runs
+		 * that photographed the typed query.
+		 */
+		if (groupRowsDrawn() !== 1)
+			throw new Error(
+				`the group draws ${groupRowsDrawn()} rows rather than the one match this frame is of`,
+			);
+		await settled(8, 150);
 		await sleep(350);
 	},
 };
