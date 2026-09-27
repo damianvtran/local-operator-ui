@@ -1246,6 +1246,12 @@ test("a completed Radient credential write commissions the account read", () => 
 	 * and a read nobody re-asks cannot heal. A later Settings visit healed it
 	 * only by mounting a new observer on the failed query.
 	 *
+	 * Round 1 narrowed the shape (M1): the completion must go through the hook
+	 * module's ONE entry point `commissionAccountRead`, which clears, CANCELS a
+	 * pre-write chain still asking - an invalidation alone JOINS a data-less
+	 * chain and re-asks nothing - and only then invalidates. The pins below hold
+	 * the entry point's three steps in order and both call sites to it.
+	 *
 	 * The KEY is asserted through the shared binding rather than as a literal,
 	 * for the reason the catalogue pin above records: a call site that spells the
 	 * key itself passes a literal check while missing every consumer that
@@ -1259,31 +1265,36 @@ test("a completed Radient credential write commissions the account read", () => 
 	);
 	assert.match(
 		hook,
-		/export function forgetAccountReadFailure\(\): void \{/,
-		"the clear a credential write performs is exported beside the key it clears",
+		/export async function commissionAccountRead\(/,
+		"the completion paths' one entry point is exported by the module that owns the key",
+	);
+	assert.match(
+		hook,
+		/commissionAccountRead\([\s\S]{0,300}?forgetAccountReadFailure\(\);[\s\S]{0,120}?cancelQueries\(\{ queryKey: radientUserKeys\.all \}\);[\s\S]{0,120}?invalidateQueries\(\{ queryKey: radientUserKeys\.all \}\)/,
+		"the entry point clears, cancels any chain still asking, then invalidates - an invalidation alone would join it",
 	);
 
 	const detail = source("features/providers/provider-detail.tsx");
 	assert.match(
 		detail,
-		/import \{[\s\S]{0,200}?radientUserKeys[\s\S]{0,200}?\} from "@shared\/hooks\/use-radient-user-query";/,
-		"the panel imports the key's module directly (the barrel exports it as a type only)",
+		/import \{[\s\S]{0,200}?commissionAccountRead[\s\S]{0,200}?\} from "@shared\/hooks\/use-radient-user-query";/,
+		"the panel imports the entry point's module directly (the barrel exports it as a type only)",
 	);
 	assert.match(
 		detail,
-		/invalidateQueries\(\{ queryKey: desktopKeys\.catalogue \}\);[\s\S]{0,2600}?if \(provider\.id === "radient"\) \{[\s\S]{0,120}?forgetAccountReadFailure\(\);[\s\S]{0,120}?invalidateQueries\(\{ queryKey: radientUserKeys\.all \}\)/,
-		"a Radient credential landing drops the account read with the catalogue, clearing the stale class first",
+		/invalidateQueries\(\{ queryKey: desktopKeys\.catalogue \}\);[\s\S]{0,2600}?if \(provider\.id === "radient"\) \{[\s\S]{0,120}?void commissionAccountRead\(queryClient\)/,
+		"a Radient credential landing commissions the account read through the one entry point, with the catalogue",
 	);
 
 	const issue = source("shared/hooks/use-radient-session-issue.ts");
 	assert.match(
 		issue,
-		/import \{[\s\S]{0,200}?radientUserKeys[\s\S]{0,200}?\} from "@shared\/hooks\/use-radient-user-query";/,
-		"the callout imports the key's module directly too",
+		/import \{[\s\S]{0,200}?commissionAccountRead[\s\S]{0,200}?\} from "@shared\/hooks\/use-radient-user-query";/,
+		"the callout imports the entry point's module directly too",
 	);
 	assert.match(
 		issue,
-		/forgetAccountReadFailure\(\);[\s\S]{0,120}?invalidateQueries\(\{ queryKey: radientUserKeys\.all \}\);[\s\S]{0,120}?await refreshVerdict\(\)/,
+		/void commissionAccountRead\(queryClient\);[\s\S]{0,120}?await refreshVerdict\(\)/,
 		"the composer callout's completed sign-in commissions the account read beside the verdict",
 	);
 });
