@@ -1365,6 +1365,14 @@ const STAMP_BINDING_NOTES = [
 	 * `streamRedeliveryRestampNote` is in the list for.
 	 */
 	"task17RestampNote",
+	/*
+	 * AND THIS LANE'S OWN: the bundled-interpreter refresh. Its subject IS this
+	 * file's binding - the change moves both trees, and the proof it owes is a
+	 * build and a boot rather than a frame, because an interpreter the renderer
+	 * never loads paints no pixel - so a reader is owed the pair and the reason
+	 * no still was owed, the case `windowsUvStagerRestampNote` states above.
+	 */
+	"python314RefreshRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1914,6 +1922,13 @@ const BRANCH_RECORDS = [
 	 * same reason this list exists.
 	 */
 	"task17RestampNote",
+	/*
+	 * And by this lane, whose note is the newest top-level record on the branch:
+	 * it states the pair the interpreter refresh ships, moves both trees, and
+	 * takes no frame - a fold that started from main's copy would drop it first,
+	 * the same reason this list exists.
+	 */
+	"python314RefreshRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
