@@ -4122,6 +4122,37 @@ export const STORIES = [
 	["schedules-page--picker-open", 1280, 900],
 	["schedules-page--row-actions-revealed", 1280, 900],
 	["schedules-page--row-action-label", 1280, 900],
+	/*
+	 * The Projects tab: the design's foundation slice — the list, the detail
+	 * (progress, milestones in all three derived states, linked sessions), CRUD
+	 * dialogs and the milestone toggle — on the page's PRODUCTION components with
+	 * the desktop bridge stubbed at its boundary (the agent-hub stories' shape),
+	 * so a frame is evidence about the page rather than about a fixture.
+	 *
+	 * The states are the ones the design names: empty / loading / error /
+	 * populated, plus the twelve-row list where the scrollbar appears, the detail
+	 * with a progress snippet, the three dialogs (create, edit, delete with the
+	 * name typed), and the milestone toggle AFTER the press — whose value is that
+	 * the settled frame is a re-read of a real mutation rather than two adjacent
+	 * states.
+	 */
+	["projects-tab--empty", 1280, 900],
+	["projects-tab--loading", 1280, 900],
+	["projects-tab--load-error", 1280, 900],
+	["projects-tab--populated", 1280, 900],
+	/* The window floor's OWN container width (design round 1, D6): the app's
+	 * 800x600 minimum leaves ~33rem of list container with the rail open, and
+	 * this story renders the page alone (no rail), so the frame is taken at the
+	 * width that leaves the same container — the shed the floor produces,
+	 * photographed, rather than the unshed full-width page. */
+	["projects-tab--narrow-columns", 560, 600],
+	["projects-tab--many", 1280, 900],
+	["projects-tab--detail", 1280, 900],
+	["projects-tab--stale-progress", 1280, 900],
+	["projects-tab--create-dialog", 1280, 900],
+	["projects-tab--edit-dialog", 1280, 900],
+	["projects-tab--delete-confirm", 1280, 900],
+	["projects-tab--milestone-toggle", 1280, 900],
 	["common-confirmationmodal--dangerous", 1280, 900],
 	/* The operator's own alert, over the screen they were working on: their
 	   update-service.log holds this exact transport code at 09:03:12 on
@@ -4468,8 +4499,19 @@ export const STORIES = [
 	 */
 	["onboarding-providersetup--in-dialog", 1280, 900],
 	["onboarding-providersetup--in-dialog", 800, 600],
+	/*
+	 * The dialog's body parked at the end of its own list -- the state where "the
+	 * field scrolls away with the content" is visible rather than argued. IT
+	 * BELONGS TO THE EXPANDED DISCLOSURE now, and that is a correction rather than
+	 * a move for tidiness: #436 captured this on the COLLAPSED step, whose 18-card
+	 * grid overflowed the body, and #494's grouped list fits the collapsed step
+	 * without scrolling at all (`in-dialog` measures body `638x380`, overflow 0),
+	 * so `scrollToEnd` matched a box that does not scroll and the entry failed the
+	 * run with "none of them scrolls". The claim survives where the scroll does:
+	 * the expanded panel overflows by ~645px.
+	 */
 	[
-		"onboarding-providersetup--in-dialog",
+		"onboarding-providersetup--in-dialog-more-open",
 		1280,
 		900,
 		{
@@ -4477,6 +4519,22 @@ export const STORIES = [
 			scrollToEnd: "[role=dialog] > div:nth-of-type(2)",
 		},
 	],
+	/*
+	 * THE EXPANDED DISCLOSURE, which had no frame at all until design round 1
+	 * (D1) found that fact to be why this surface shipped a defect: the four
+	 * suggested rows were listed a second time inside their own groups, and every
+	 * one of the eight stories this set photographed showed the step COLLAPSED, so
+	 * the duplication was never in front of a reviewer. The story's own `play`
+	 * presses "More providers", so the frame is of the state a reader reaches by
+	 * the same press.
+	 */
+	["onboarding-providersetup--in-dialog-more-open", 1280, 900],
+	/*
+	 * ...and the same state with a query whose only match is in the shortcut
+	 * block, because that panel body is empty for a DIFFERENT reason and the
+	 * sentence it carries is the whole distinction (code round 1 P2 / QA-1).
+	 */
+	["onboarding-providersetup--in-dialog-more-open-query", 1280, 900],
 	[
 		"onboarding-providersetup--settings-column",
 		1000,
@@ -4488,12 +4546,27 @@ export const STORIES = [
 		1000,
 		1100,
 		/*
-		 * `> button` because the hook is on the ROW: the element a keyboard user
-		 * reaches is the card inside it, which is what `tabTo` asserts.
+		 * A DESCENDANT button, not a child: the hook is on the whole ROW (the
+		 * `<li>`), and the control a keyboard user reaches is the action button
+		 * inside it. `> button` was right for #436's card grid, whose card WAS the
+		 * button; #494's list nests the action one level deeper, so that selector
+		 * matched nothing and `tabTo` -- which fails the run when its selector never
+		 * takes focus -- made this surface unsweepable (code round 1, P1's evidence
+		 * sibling; found while adding the frame above).
+		 *
+		 * AND IT NAMES THE CONTROL, NOT EVERY BUTTON THE ROW HOLDS (review round 2,
+		 * R2-2). The assertion is `document.activeElement.matches(selector)`, so a
+		 * selector that resolves to a SET passes on any member of it: the row's `<li>`
+		 * is more than the strip above -- `panelFor(provider)` renders inside the same
+		 * `<li>`, and the connected row's sign-out confirm adds two more -- so a bare
+		 * `button` descendant would accept focus sitting in an open panel as the row's
+		 * own focus ring. `> div > button` is the row's action control: the `<li>`'s
+		 * strip is a single `<div>` and its only button is the one `aria-expanded`
+		 * describes.
 		 */
 		{
 			dir: "card-focused",
-			tabTo: '[data-provider-id="radient"] > button',
+			tabTo: '[data-provider-id="radient"] > div > button',
 		},
 	],
 
@@ -4698,6 +4771,20 @@ export const STORIES = [
 	["chat-mention-chips--picker-empty-folder", 1380, 768],
 	["chat-mention-chips--picker-unreadable", 1380, 768],
 	["chat-mention-chips--picker-many-rows", 1380, 768],
+	/*
+	 * The projects section, and the AFTER half of the `@`-popup pair this
+	 * branch's design names. Its BEFORE half is `picker-open` above: that story's
+	 * harness carries no `projects` key, which is what a current release of this
+	 * app ships against, and the same code renders the file-only popup there —
+	 * no headers, the same rows — so the two frames compare the section rather
+	 * than two states of it.
+	 */
+	["chat-mention-chips--picker-with-projects", 1380, 768],
+	/* The full first page's own frame (QA round 2's Q-3): twelve projects put ONE
+	 * header in the window, and the region's edge lands on a whole row because
+	 * the cap is measured from the content the scroller draws, not from every
+	 * header the listing holds. */
+	["chat-mention-chips--picker-heavy-projects", 1380, 768],
 	/*
 	 * The design's own narrow case, 800x600, as its open item 3 asks: the picker's
 	 * top edge must be inside the column and the row count must have FALLEN rather
