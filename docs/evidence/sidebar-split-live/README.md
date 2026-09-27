@@ -8,6 +8,13 @@ about two moments rather than one, and "a restart restores your adjustments" is 
 claim about two boots. This is `--scene sidebar-split` in
 `scripts/renderer-driver.mjs`, and these are its frames.
 
+**RETIRED (2026-09-26, round 1 of the #534 remediation - agent review R2, QA's
+Q3):** the scene that produced these frames was deleted with the split's removal,
+so these frames are now the RECORD of the surface rather than a re-runnable set:
+the merged panel draws no boundary, no collapse cluster and no order swap, and
+`--scene sidebar-split` no longer exists to re-run. Nothing here is retracted;
+the recipe below is kept as the command that took them.
+
 The design contract is `docs/design/sidebar-sections.md` (S1–S12, § 7.3, § 7.4);
 the resting states are the story set in `../chat-sidebar-sections/`.
 
