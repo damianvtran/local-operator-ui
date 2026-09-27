@@ -1503,48 +1503,11 @@ const STAMP_BINDING_NOTES = [
 	 * and the reason no still was owed.
 	 */
 	"pendingEchoRestampNote",
-	/*
-	 * AND THIS REMEDIATION'S OWN: it states the pair this round re-derives
-	 * (`src/` for the tail block that places a pending send against every row
-	 * that lands while it is unresolved, `scripts/` for the pins across the
-	 * doors and the rig's `localEcho` drop) and the failing-first reading at
-	 * the tip.
-	 */
 	"pendingEchoRemediationNote",
-	/*
-	 * AND THE FOLD'S OWN: its subject IS this file's binding too - the fold onto
-	 * a moved `origin/main` re-derives the pair at the folded tip and reads it
-	 * back from the staged index, so a reader is owed the check rather than the
-	 * prose.
-	 */
 	"pendingEchoRemediationFoldNote",
-	/*
-	 * AND THE SECOND FOLD'S OWN: its subject IS this file's binding too - the
-	 * fold onto the moved `origin/main` after #559 re-derives the pair at the
-	 * folded tip and reads it back from the staged index, so a reader is owed
-	 * the check rather than the prose.
-	 */
 	"pendingEchoRemediationSecondFoldNote",
-	/*
-	 * AND THE THIRD FOLD'S OWN: same shape again - the fold onto the moved
-	 * `origin/main` after #553 re-derives the pair at the folded tip and reads
-	 * it back from the staged index, so a reader is owed the check rather than
-	 * the prose.
-	 */
 	"pendingEchoRemediationThirdFoldNote",
-	/*
-	 * AND THE FOURTH FOLD'S OWN: same shape again - the fold onto the moved
-	 * `origin/main` after #576/#544/#561 re-derives the pair at the folded tip
-	 * and reads it back from the staged index, so a reader is owed the check
-	 * rather than the prose.
-	 */
 	"pendingEchoRemediationFourthFoldNote",
-	/*
-	 * AND THE FIFTH FOLD'S OWN: same shape again - the fold onto the moved
-	 * `origin/main` after #571 re-derives the pair at the folded tip and reads
-	 * it back from the staged index, so a reader is owed the check rather than
-	 * the prose.
-	 */
 	"pendingEchoRemediationFifthFoldNote",
 	/*
 	 * AND THE TWO-FLAKE LANE'S SECOND FOLD: its subject IS this file's binding -
@@ -1573,6 +1536,14 @@ const STAMP_BINDING_NOTES = [
 	 * reader is owed the two values it binds and the reason no still was owed.
 	 */
 	"accountFootRefreshRestampNote",
+	/*
+	 * AND THIS BRANCH'S OWN, the mesh tab's slice 1: its subject IS this file's
+	 * binding - the set is new, both trees moved under it, and the tab ships dark
+	 * behind a capability gate - so a reader is owed the check rather than the prose,
+	 * and a later fold that started from main's copy would drop it first.
+	 */
+	"meshTabRestampNote",
+	"meshTabRound2RestampNote",
 	/*
 	 * AND THIS LANE'S OWN, the newest top-level record on the branch: its subject
 	 * is this file's binding too - the trace-label mapping moves BOTH trees (the
@@ -1810,6 +1781,92 @@ test("a manifest with no countsMean is not this guard's failure", (t) => {
 		countsMeanFailures({ frames: 3, supplementary: [] }, countsGit, countsTree),
 		[],
 	);
+});
+
+/*
+ * A countsMean CELL IS A HISTORY: the leading paragraph describes the tree this file ships
+ * and the ones under it describe older ones, which is why `countsMeanFailures` reads the
+ * leading paragraph only. That leaves the space below it unguarded against the one mistake a
+ * re-stamp makes - inserting the SAME paragraph twice - and both mistakes of that shape are
+ * real: the eighth fold inserted a copy of the seventh fold's sentence into `frames` and
+ * `surfaces`, and `themes` carries an identical pair inherited from `2d0734b0f8`.
+ *
+ * WHY THIS EXISTS AT ALL, which is the finding that produced it (review round 4, R4-1). The
+ * ninth fold's record claimed the writer "asserts zero consecutive duplicate paragraphs ...
+ * before it writes. The assertion existed in the authoring session's scratch script and NOT
+ * here, so the sentence could not fail - a claim about a guard, made in the one place a reader
+ * would trust it, that stops the next reader from looking. This is that assertion committed,
+ * and the first case below is what makes it falsifiable rather than merely present.
+ */
+/*
+ * Top-level, not inline: `lint/performance/useTopLevelRegex` (and `scripts/check-scripts-lint.mjs`,
+ * which treats that warning as not-lint-clean) requires a literal used in a function to be a
+ * module constant. The first version of this guard put three of them inline and failed the gate
+ * - the file's pre-existing literals pass because they were written that way, and a new one does
+ * not get to opt out.
+ */
+const PARAGRAPH_BREAK = /\n\s*\n/;
+const REPEATED_PARAGRAPH = /countsMean\.themes repeats its paragraph 1/;
+const DELETE_THE_COPY = /delete the copy/;
+
+const duplicateParagraphFailures = (manifest) => {
+	const failures = [];
+	const mean = manifest?.countsMean;
+	if (!mean || typeof mean !== "object") return failures;
+	for (const [field, value] of Object.entries(mean)) {
+		if (typeof value !== "string") continue;
+		const paragraphs = value.trim().split(PARAGRAPH_BREAK);
+		for (let i = 1; i < paragraphs.length; i += 1) {
+			if (paragraphs[i] !== paragraphs[i - 1]) continue;
+			/*
+			 * One template literal rather than a concatenation: `lint/style/useTemplate` is an
+			 * ERROR under this project's config, and the gate above treats an error-severity
+			 * diagnostic in a changed file as a failure - which is how this message was caught.
+			 */
+			failures.push(
+				`manifest.json: countsMean.${field} repeats its paragraph ${i} verbatim (${paragraphs[i].slice(0, 60)}...) - a fold inserted the same sentence twice instead of deriving one for its own tree; delete the copy rather than editing it in place`,
+			);
+		}
+	}
+	return failures;
+};
+
+test("a countsMean cell that repeats a paragraph verbatim fails", () => {
+	const sentence =
+		"RE-DERIVED FOR THIS FOLD: 12 theme names in the `THEMES` literal, counted the same way.";
+	const failed = duplicateParagraphFailures({
+		countsMean: { themes: `${sentence}\n\n${sentence}` },
+	});
+	assert.equal(
+		failed.length,
+		1,
+		"the copy has to be flagged, or the guard is decoration",
+	);
+	assert.match(failed[0], REPEATED_PARAGRAPH);
+	assert.match(failed[0], DELETE_THE_COPY);
+	// And a cell whose paragraphs differ - the normal case, history included - is not a failure.
+	assert.deepEqual(
+		duplicateParagraphFailures({
+			countsMean: {
+				themes: `${sentence}\n\nRE-DERIVED FOR AN OLDER FOLD: 12 theme names.`,
+			},
+		}),
+		[],
+	);
+});
+
+test("the SHIPPED manifest repeats no paragraph in any countsMean cell", () => {
+	/*
+	 * The shipped half, in the same shape as `stampFailures` above: a guard that only had a
+	 * fixture case would pass while the file it guards carried the copy. `themes`' duplicate
+	 * at the head is exactly what this catches - and it is why the duplicate was removed in
+	 * the same commit rather than after it, since introducing a guard on a file that fails it
+	 * is how a red suite gets excused.
+	 */
+	const manifest = JSON.parse(
+		readFileSync("docs/evidence/manifest.json", "utf8"),
+	);
+	assert.deepEqual(duplicateParagraphFailures(manifest), []);
 });
 
 /*
