@@ -641,6 +641,41 @@ const CanvasComponent: FC<CanvasProps> = ({
 	);
 
 	return (
+		/*
+		 * THE DOCK IS ON THE WORK PLANE, NOT ON A PANEL GROUND.
+		 *
+		 * It was `surface` — the role every panel in this app takes, including the
+		 * sidebar the operator compares it against — so the two ends of the window
+		 * were literally the same tone (`surface` against itself measures ΔE00 0, on
+		 * all 59 palettes) with the transcript's `canvas` between them. It is now the
+		 * PAGE ground, the same `canvas` the conversation column and this slot's other
+		 * panes sit on, so the window reads as chrome beside work rather than as three
+		 * stacked panels.
+		 *
+		 * WHAT SEPARATES IT FROM THE SIDEBAR is therefore the `surface` -> `canvas`
+		 * step, which this app already asserts as an adjacent ground pair and which
+		 * its own shell uses in both directions: ΔE00 2.05 (`sage`, the fleet's
+		 * tightest) to 6.76 (`radient`), at 3.11-4.87 `L*` — measured across the
+		 * palettes rather than read off one theme, and measured because the two ends
+		 * of this window being one tone is exactly what the operator reported.
+		 *
+		 * ONE PLANE INSIDE THE PANE IS STILL `surface`, AND IT IS NOT A REVERSAL OF
+		 * THE ABOVE. The Files list's rows paint `rowCurrent` and
+		 * `hover:bg-row-hover`, and a surface that paints either role has to BE
+		 * `surface`: both roles are authored as steps OF that panel, so painted on a
+		 * rung the fill lands inside the ladder instead of out of it - § 4 of
+		 * `docs/design/row-states-refinement.md`, whose § 9.2 names this list among
+		 * the surfaces it binds. The two directions therefore collide on one element,
+		 * and the resolution is to SPLIT it rather than to relax either: this root
+		 * keeps `canvas` (the expression `scripts/pane-slot-ground.test.mjs` reads,
+		 * and the one the operator's top edge depends on) and the row plane is the
+		 * list's own scroller in `canvas-file-viewer.tsx`, which wears the `surface`
+		 * its rows are authored against. Measured with the repo's own `deltaE` over
+		 * all 59 palettes: resolved off `canvas` the selection falls under the 2.0
+		 * field floor on 7 of 59 (minimum 0.83, `kanagawaLotus`) and the hover on 5
+		 * (minimum 0.51, `tokyoNightDay`); off that `surface` it is 0 of 59 and 1 of
+		 * 59.
+		 */
 		<section
 			aria-label="Canvas"
 			data-tour-tag="canvas-container"
@@ -653,7 +688,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 			 * outside it.
 			 */
 			data-canvas-shortcuts
-			className={cn("flex h-full flex-col bg-surface")}
+			className={cn("flex h-full flex-col bg-canvas")}
 		>
 			{/*
 			 * One 40px chrome bar: what you are looking at on the left, what you
@@ -662,15 +697,28 @@ const CanvasComponent: FC<CanvasProps> = ({
 			 * as content — the same weight relationship Zed and VS Code use
 			 * between a dock's title bar and the editor under it.
 			 *
-			 * `sunken`, the same ground as the tab strip below it, so the two read
-			 * as one recessed chrome block rather than two stacked bars. The
-			 * document is the only thing on `surface`, and the selected tab takes
-			 * `surface` to say it belongs to the document rather than to the
-			 * chrome — the tab metaphor doing the job it was invented for.
+			 * NO GROUND OF ITS OWN. It was `sunken`, which is what made the pane's icon
+			 * row a band whose background differed from the pane's body — the operator's
+			 * report. Transparent is the fix rather than a smaller band: the icons float
+			 * on the dock's own ground, so the pane reads as ONE surface from its top
+			 * edge down.
+			 *
+			 * What carries their legibility is the ladder's own ink floors rather than a
+			 * band, and they are measured rather than assumed: across the 59 palettes the
+			 * inactive segments' `ink-muted` reaches 6.23:1 on `canvas` at its worst
+			 * (`kanagawaLotus`) and the segment that is selected takes `surface` + `ink`,
+			 * which is 8.01:1 on `canvas` at its worst (`rosePineDawn`) and 8.15:1 on
+			 * `surface` (`catppuccinFrappe`). The bar's own contrast is unchanged by this
+			 * pass: what moved under the icons is the ground, not the ink.
+			 *
+			 * The tab strip below keeps `sunken`, and it is now the only recessed track
+			 * in the pane — which is this app's idiom for a control group's track (the
+			 * `ViewSwitcher`'s own note says the same) and is what keeps the selected
+			 * tab's `surface` reading as continuous with the document.
 			 */}
 			<div
 				className={cn(
-					"flex h-10 shrink-0 items-center justify-between gap-2 bg-sunken px-2",
+					"flex h-10 shrink-0 items-center justify-between gap-2 px-2",
 					/*
 					 * THE CONTROLS' CORNER, RESERVED (chat redesign §J4). On Windows and Linux
 					 * Electron draws the caption buttons into the client area's top-right 40px,
