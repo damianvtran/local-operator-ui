@@ -1341,6 +1341,22 @@ const STAMP_BINDING_NOTES = [
 	 * prose - the same case `foldOntoFd19adc9d9Note` is in the list for.
 	 */
 	"historySettingsRemovalSecondFoldNote",
+	/*
+	 * AND THIS LANE'S OWN: the Windows stager's digest fix. Its subject IS this
+	 * file's binding - the change moves `scripts/` only, the CI job that caught
+	 * the failure is outside both trees this file binds, and a build script
+	 * paints no pixel - so a reader is owed the pair and the reason no still is
+	 * owed, the case `streamRedeliveryRestampNote` states one entry over.
+	 */
+	"windowsUvStagerRestampNote",
+	/*
+	 * AND THIS FOLD'S OWN: its subject IS this file's binding too (the pair the
+	 * folded tree produces, re-derived in the fold commit itself and read back
+	 * from its staged index), so a reader is owed the check rather than the
+	 * prose - the same case `historySettingsRemovalSecondFoldNote` is in the
+	 * list for.
+	 */
+	"windowsUvStagerFoldNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1869,6 +1885,20 @@ const BRANCH_RECORDS = [
 	 * from main's copy would drop it.
 	 */
 	"historySettingsRemovalSecondFoldNote",
+	/*
+	 * And by this lane, whose notes are this branch's newest: the stager fix's
+	 * re-stamp and the fold that carries it state the pair this branch ships
+	 * and the runs that pin the failure it removes, so a later fold that
+	 * started from main's copy would drop them first.
+	 */
+	"windowsUvStagerRestampNote",
+	/*
+	 * And this FOLD's own, beside the lane's re-stamp record: it states the
+	 * union the merge resolved against `origin/main` = `d62caa6751` and the
+	 * pair its re-stamp re-derives, for the reason this list exists - a fold
+	 * resolved from main's copy would drop it.
+	 */
+	"windowsUvStagerFoldNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
