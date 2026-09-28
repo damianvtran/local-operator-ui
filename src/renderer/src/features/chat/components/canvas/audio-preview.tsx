@@ -41,7 +41,11 @@ const AudioPreviewComponent: FC<{ document: CanvasDocument }> = ({
 	});
 
 	return (
-		<div className={cn("flex h-full w-full flex-col bg-canvas")}>
+		/* The letterbox wears the PANE's ground (`canvas/index.tsx`): it is the pane's
+		   body behind the media, so it takes the drawer's rung rather than the
+		   conversation's `canvas`, which would leave the pane's tone under a changed
+		   bar. */
+		<div className={cn("flex h-full w-full flex-col bg-elevated")}>
 			<ViewerChrome path={document.path} />
 			{state.status === "ready" ? (
 				<div
