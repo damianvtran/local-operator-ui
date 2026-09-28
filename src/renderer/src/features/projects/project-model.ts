@@ -84,6 +84,21 @@ export function projectStatusMeta(status: string): ChipMeta {
 }
 
 /**
+ * Whether the status's chip carries a check BESIDE its colour.
+ *
+ * WHY `done` AND ONLY `done` (design round 1, D1): active maps to `accent` and
+ * done to `success`, and in the brand palettes those are all but one chip
+ * (ΔE00 2.22 light / 5.07 dark, washes byte-identical on dark) while the
+ * Status column draws them SIDE BY SIDE - so the difference has to be a shape
+ * as well as a hue. The rule lives here rather than inside the component so
+ * this tab's own lane can hold it (the component and the test consume the
+ * same function, which is the property every other label in this model has).
+ */
+export function statusCarriesCheck(status: string): boolean {
+	return status === "done";
+}
+
+/**
  * The milestone vocabulary. These three are the SERVER's derived statuses
  * (`completed` when `completed_at` is set, else `overdue` when the target date
  * has passed, else `upcoming`) — this map only names them and gives the overdue
@@ -463,8 +478,9 @@ export const BOARD_COLUMNS = [
 export const BOARD_SIDE_COLUMNS = ["paused", "archived"] as const;
 
 /**
- * The board's columns: the fixed three, `archived` when it holds rows, then
- * one column per status outside the vocabulary.
+ * The board's columns: the five fixed pipeline phases, the side states
+ * (`paused`, `archived`) when they hold rows, then one column per status
+ * outside the vocabulary.
  *
  * THE UNKNOWN-STATUS COLUMN IS A DELIBERATE DELTA FROM THE TUI, and the delta
  * is a fix rather than a fork: `projects_render.py`'s `_columns_of` builds its

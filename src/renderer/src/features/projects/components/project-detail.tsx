@@ -37,6 +37,7 @@
  * the prompt is deliberately NOT auto-sent.
  */
 
+import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
@@ -71,7 +72,6 @@ import {
 	milestoneSummaryLabel,
 	progressLine,
 	projectDisplayName,
-	projectStatusMeta,
 	sessionLabel,
 	sessionTargetLabel,
 	startSessionPrompt,
@@ -85,8 +85,17 @@ import {
 	ProjectStartSessionDialog,
 	type StartSessionSelection,
 } from "./project-start-session";
+import { ProjectStatusBadge } from "./project-status-badge";
 import { ProjectTodos } from "./project-todos";
 import { ProjectUpdates } from "./project-updates";
+
+/**
+ * The daemon's own category for a row that is gone, read off `detail.code` in
+ * the 404 body. The route answers it for a key no row holds - including one
+ * deleted between the list read and this page's own fetch - and the page maps
+ * exactly this one to a crafted sentence (design round 1, D2).
+ */
+const PROJECT_NOT_FOUND_CODE = "project_not_found";
 
 type ProjectDetailScreenProps = {
 	projectKey: string;
@@ -127,24 +136,51 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 	}
 
 	if (detail.isError || !detail.data) {
+		/*
+		 * A MISSING ROW IS SAID IN THE APP'S OWN WORDS (design round 1, D2). The
+		 * daemon's refusal for a row that is gone is `no such project` - lowercase,
+		 * no next step - and passing it through made the state read as a defect of
+		 * this page rather than as a fact about the row. The category is declared
+		 * on the wire (`detail.code`), so it is read rather than matched against a
+		 * sentence; anything else keeps the transport's own words, the same
+		 * passthrough the list uses, now with the same way back (`Try again`, the
+		 * list's own recovery, design round 1 D5 there).
+		 */
+		const gone =
+			detail.error instanceof DesktopControlError &&
+			(detail.error.code === PROJECT_NOT_FOUND_CODE ||
+				detail.error.status === 404);
 		return (
 			<div className="mx-auto flex w-full max-w-200 flex-col items-start gap-4">
 				<Alert variant="danger" className="w-full">
-					{detail.error instanceof Error && detail.error.message
-						? detail.error.message
-						: "The project could not be read."}
+					{gone
+						? "This project could not be found. It may have been deleted."
+						: detail.error instanceof Error && detail.error.message
+							? detail.error.message
+							: "The project could not be read."}
 				</Alert>
-				<Button variant="secondary" onClick={() => void navigate("/projects")}>
-					<ArrowLeft />
-					All projects
-				</Button>
+				<div className="flex items-center gap-2">
+					<Button
+						variant="secondary"
+						size="sm"
+						onClick={() => void detail.refetch()}
+					>
+						Try again
+					</Button>
+					<Button
+						variant="secondary"
+						onClick={() => void navigate("/projects")}
+					>
+						<ArrowLeft />
+						All projects
+					</Button>
+				</div>
 			</div>
 		);
 	}
 
 	const { project, links } = detail.data;
 	const displayName = projectDisplayName(project);
-	const statusMeta = projectStatusMeta(project.status);
 	const managedBy = managedByLine(project.owner, project.team);
 	const milestoneSummary = milestoneSummaryLabel(
 		project.milestones.filter((item) => item.completed_at !== null).length,
@@ -251,7 +287,7 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 							<h1 className="min-w-0 truncate text-display text-ink">
 								{displayName}
 							</h1>
-							<Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
+							<ProjectStatusBadge status={project.status} />
 							{project.progress_stale && (
 								<Badge variant="warning">{PROGRESS_STALE_LABEL}</Badge>
 							)}
@@ -296,23 +332,21 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 
 			<ProjectProperties project={project} nowMs={nowMs} />
 
-			{project.updates.length === 0 && (
+			{/*
+			 * THE PRE-LOG PROGRESS, and only when there is a reading to show: an
+			 * empty one would land beside the feed's own empty state and say
+			 * "nothing yet" twice (design round 1, D3) - the feed's line is the more
+			 * informative of the two, so it is the one that stays.
+			 */}
+			{project.updates.length === 0 && project.progress && (
 				<section className="flex flex-col gap-2">
 					<h2 className="text-title text-ink">Progress</h2>
-					{project.progress ? (
-						<>
-							<ProjectMarkdown className="text-body">
-								{project.progress}
-							</ProjectMarkdown>
-							<p className="text-meta text-ink-muted">
-								{progressLine(project, nowMs)}
-							</p>
-						</>
-					) : (
-						<p className="text-body-sm text-ink-muted">
-							No progress has been reported yet.
-						</p>
-					)}
+					<ProjectMarkdown className="text-body">
+						{project.progress}
+					</ProjectMarkdown>
+					<p className="text-meta text-ink-muted">
+						{progressLine(project, nowMs)}
+					</p>
 				</section>
 			)}
 

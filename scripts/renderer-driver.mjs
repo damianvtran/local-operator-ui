@@ -27320,11 +27320,11 @@ async function sceneProjectDetail(cdp) {
 	await captureSettled(cdp, `project-detail-${size}-${theme}-quick-send`);
 	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
 	/*
-	 * ONE REFUSAL HERE IS THE APP BEING RIGHT, and the scene has to tell it from
+	 * ONE REFUSAL HERE IS THE APP BEING RIGHT, and the scene tells it apart from
 	 * a strip that silently did nothing. `admitChatDraft` refuses a send that
 	 * names a session whose own stream has not answered yet (its validation
-	 * window, opened by whatever committed a view of it - here, the shell
-	 * restoring the profile's last conversation): the composer keeps the text
+	 * window, opened by whatever committed a view of it - the shell restoring
+	 * the profile's last conversation, typically): the composer keeps the text
 	 * and shows the sentence rather than sending. So the read is: cleared
 	 * (admitted), or the sentence on screen (refused before admission, text
 	 * kept) - and on the refusal the scene waits the window out and presses once
@@ -27332,6 +27332,24 @@ async function sceneProjectDetail(cdp) {
 	 * failure this check exists for.
 	 */
 	const REFUSAL = "not ready for messages yet";
+	const outcome = await waitForCondition(
+		cdp,
+		`(() => {
+			const input = document.querySelector('${inputSelector}');
+			if (input.value === "") return "admitted";
+			return document.body.textContent.includes(${JSON.stringify(REFUSAL)}) ? "refused" : null;
+		})()`,
+		30_000,
+	);
+	const firstOutcome = String(outcome.last ?? "none");
+	if (firstOutcome === "refused") {
+		await waitForCondition(
+			cdp,
+			`(() => !document.body.textContent.includes(${JSON.stringify(REFUSAL)}))()`,
+			60_000,
+		);
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	}
 	const cleared = await waitForCondition(
 		cdp,
 		`document.querySelector('${inputSelector}').value === ""`,
@@ -27346,11 +27364,11 @@ async function sceneProjectDetail(cdp) {
 	 */
 	const stripToast = cleared.ok ? null : await toastText(cdp).catch(() => null);
 	check(
-		"pressing Enter admits the message (the strip clears on the way out of admitChatDraft)",
+		"pressing Enter admits the message (a pre-admission refusal is waited out and re-pressed)",
 		cleared.ok,
 		cleared.ok
-			? `cleared after ${cleared.waitedMs}ms`
-			: `still holding after ${cleared.waitedMs}ms; toast: ${stripToast ?? "none"}`,
+			? `first outcome=${firstOutcome}, cleared after ${cleared.waitedMs}ms`
+			: `first outcome=${firstOutcome}, still holding after ${cleared.waitedMs}ms; toast: ${stripToast ?? "none"}`,
 	);
 
 	/*
@@ -27682,11 +27700,6 @@ async function main() {
 	if (SCENE === "route-tops" && BACKEND === null) {
 		throw new Error(
 			"--scene route-tops needs --backend: settings, agents, projects, hub and schedules are gated on the catalogue a live backend advertises, and the macOS lane assertion is read over every one of them",
-		);
-	}
-	if (SCENE === "project-detail" && BACKEND === null) {
-		throw new Error(
-			"--scene project-detail needs --backend: the seed, the quick-send message and the picker's create are all real requests to the daemon this run owns, so a run with none would photograph three refusals",
 		);
 	}
 	if (SCENE === "project-detail" && BACKEND === null) {

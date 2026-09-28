@@ -794,6 +794,14 @@ export const DetailEmpty: Story = {
  * The detail read REFUSED: the route's own 404 sentence, drawn as the screen's
  * alert. The state a deleted row's stale URL lands on.
  */
+/**
+ * The detail load refusal, in the app's own words (design round 1, D2): the
+ * daemon's 404 names the row's absence (`no such project`) and the page maps it
+ * to a crafted sentence plus the recovery the list pairs with its failures -
+ * so the frame is the sentence and the `Try again`, and the play waits for
+ * exactly that state (the raw passthrough this state used to assert is no
+ * longer what the page draws for a 404).
+ */
 export const DetailLoadError: Story = {
 	render: () => (
 		<RouteTo path="/projects/p1">{page({ projects: THREE })}</RouteTo>
@@ -801,8 +809,9 @@ export const DetailLoadError: Story = {
 	play: playOnce("detail-load-error", async () => {
 		await poll(
 			() =>
-				(document.body.textContent ?? "").includes("no such project") &&
-				document.querySelector('[data-tour-tag="project-edit"]') === null,
+				(document.body.textContent ?? "").includes(
+					"This project could not be found.",
+				) && document.querySelector('[data-tour-tag="project-edit"]') === null,
 			"the detail refusal",
 		);
 	}),
