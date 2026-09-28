@@ -48,10 +48,25 @@ import React, { act } from "react";
 // React DOM feature-detects at import time, so the document exists first.
 const DOM = new JSDOM("<!doctype html><html><body></body></html>", {
 	url: "http://localhost/chats",
-	/* Sonner's mount and dismiss paths reach a `requestAnimationFrame`, and this
-	   file drives a rendering frame as its settle (`settleFrames`). */
-	pretendToBeVisual: true,
 });
+/*
+ * THE FRAME IS QUEUED, NOT SCHEDULED - jsdom's `pretendToBeVisual` runs a real
+ * 16ms animation loop for as long as the window is open, which leaves the
+ * process holding a pending timer so `node:test` never exits (the harness bug
+ * `mark-all-read-control.test.mjs` records in its own words: a pending frame the
+ * loop cannot drain). Sonner's mount and dismiss paths reach a
+ * `requestAnimationFrame` and this file drives a rendering frame as its settle,
+ * so the same shim answers both: callbacks queue, `frame()` drains them.
+ */
+const queuedFrames = [];
+globalThis.requestAnimationFrame = (callback) => {
+	queuedFrames.push(callback);
+	return queuedFrames.length;
+};
+globalThis.cancelAnimationFrame = () => {};
+const frame = () => {
+	for (const callback of queuedFrames.splice(0)) callback(0);
+};
 /** jsdom's constructors are FORCED onto the global; Node 26 has its own. */
 const FORCE_FROM_JSDOM = [
 	"Event",
@@ -88,7 +103,18 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 /** A rendered frame, driven the way jsdom can be asked to run one. */
 const settleFrames = async () => {
-	await new Promise((resolve) => DOM.window.requestAnimationFrame(resolve));
+	await act(async () => {});
+	await act(async () => frame());
+	/*
+	 * AND A MACROTASK TICK: the queued frame above drains requestAnimationFrame
+	 * callbacks, but React's own commit and sonner's state writes also hop through
+	 * `setTimeout`-class timers, and a settle that only drains frames reads a
+	 * toast's REPLACEMENT before its commit lands (measured while this file was
+	 * being hardened: the supersede case saw the old message still painted).
+	 */
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
 };
 
 // jsdom implements no layout, so the components' own observers are no-ops here.
@@ -216,7 +242,24 @@ const bundle = await build({
 });
 const bundlePath = new URL("._undo-toasts.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-after(() => unlink(bundlePath).catch(() => {}));
+after(async () => {
+	/*
+	 * THE PROCESS IS HANDED BACK EMPTY (the reason this teardown exists at all):
+	 * the last surface unmounts, the jsdom window closes, and the scratch bundle
+	 * leaves - so no timer, observer or window keeps `node:test` alive after the
+	 * last case. The queued-frame shim above removes the timer the window would
+	 * otherwise hold; this is the belt to that.
+	 */
+	if (root !== null) {
+		const previous = root;
+		root = null;
+		await act(async () => {
+			previous.unmount();
+		});
+	}
+	DOM.window.close();
+	await unlink(bundlePath).catch(() => {});
+});
 const {
 	UndoToasts,
 	ARCHIVE_TOAST_ID,
