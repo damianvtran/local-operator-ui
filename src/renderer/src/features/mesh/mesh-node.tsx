@@ -154,9 +154,20 @@ export function chipLabel(session: MeshSessionRow): string {
  * chip cannot move), then the liveness word, then the owner. Nothing here invents a
  * claim: an unknown `live_state` prints the owner rather than a word the backend
  * never said.
+ *
+ * IT READS THE OWNER DEVICE'S REACHABILITY, NOT THE ROW'S (agent review round 3, U13).
+ * This is U9 one layer up: the stripe and `resolveDrop` were reconciled onto the device's
+ * own fact, while the sentence a reader HEARS and READS - the chip's `title` and its
+ * `aria-label` - still asked the row's copy. Where the two disagree, a screen reader
+ * announces "on this device" beside a stripe that says the drop will be refused, and the
+ * name is the version that is read aloud.
  */
-export function chipFact(session: MeshSessionRow, ownerLabel: string): string {
-	if (!session.reachable) {
+export function chipFact(
+	session: MeshSessionRow,
+	ownerLabel: string,
+	ownerReachable: boolean,
+): string {
+	if (!ownerReachable) {
 		return `unreachable${session.unreachable_reason ? ` (${session.unreachable_reason})` : ""}`;
 	}
 	if (session.live_state.trim()) return session.live_state.trim();
@@ -539,7 +550,7 @@ const SessionChip: FC<SessionChipProps> = ({
 	onPointerDown,
 	onClick,
 }) => {
-	const fact = chipFact(session, ownerLabel);
+	const fact = chipFact(session, ownerLabel, ownerReachable);
 	if (moving) {
 		return (
 			// biome-ignore lint/a11y/useSemanticElements: `role="status"` has no semantic element of its own; `<output>` is for a form's result, and this is a live region inside a list item.
@@ -613,14 +624,18 @@ const SessionChip: FC<SessionChipProps> = ({
 				{/*
 				 * THE TAIL IS THE READABLE END, so the truncation happens at the OTHER one.
 				 *
-				 * `direction: rtl` plus `unicode-bidi: plaintext` is the standard way to ask the
-				 * browser for left-truncation: `plaintext` takes the paragraph direction from the
-				 * text's own first strong character, so an English (or Arabic) title keeps its glyph
-				 * order while the ellipsis moves to the START - which is where the overflow has to
-				 * be, because a device's conversations are named in series (`bench-device-1 chat 0`,
-				 * `bench-device-1 chat 1`) and the part that tells two of them apart is the END.
-				 * End-truncation is what round 2 measured at the cap: two conversations rendered as
-				 * `Swe…` and `Res…`.
+				 * `direction: rtl` with `text-align: left` is what asks the browser for left-truncation: the
+				 * box's direction decides which side the overflow - and the ellipsis - falls on, while an
+				 * LTR title inside it still renders its words in order (the run is LTR; only the line's
+				 * overflow side follows the box). That is where the overflow has to be, because a device's
+				 * conversations are named in series (`bench-device-1 chat 0`, `bench-device-1 chat 1`) and
+				 * the part that tells two of them apart is the END. End-truncation is what round 2 measured
+				 * at the cap: two conversations rendered as `Swe…` and `Res…`.
+				 *
+				 * NOT `unicode-bidi: plaintext`, which the button's own comment above rules out: it makes the
+				 * PARAGRAPH direction follow the text's first strong character, which sends the ellipsis back
+				 * to the end. This comment claimed `plaintext` for a round after the class was removed
+				 * (design review round 3, D15) - the code and the frames were right, the prose was stale.
 				 *
 				 * WHY NOT A CHARACTER BUDGET, which is what this started as: the chip's text area at
 				 * the cap is **53 px** (a 67.9 px chip less its 12 px of padding and its borders),

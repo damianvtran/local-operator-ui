@@ -131,6 +131,12 @@ type Fixture = {
 	transfer?: unknown;
 	/** What an invite answers. */
 	invite?: unknown;
+	/**
+	 * Run BEFORE a transfer is answered, so the reads that follow it see the world the receipt
+	 * claims. A fixture that keeps answering the pre-move world photographs a receipt the app has
+	 * already contradicted (`MoveBusyWaited`'s own case, design review round 3, D13).
+	 */
+	afterTransfer?: (fixture: Fixture) => void;
 	/** Whether the sessions read refuses too. */
 	failSessions?: boolean;
 };
@@ -178,6 +184,15 @@ function installBridge(fixture: Fixture) {
 			});
 		}
 		if (request.op === "sessions.transfer") {
+			/*
+			 * A TRANSFER CHANGES THE WORLD, and the fixture has to say so (design review round 3,
+			 * D13). The page invalidates `sessions` and `peers` on success (`mesh-store.ts`), so a
+			 * static fixture re-answers the world the receipt just contradicted - the frame showed
+			 * "the copy here is gone" over a canvas that still drew the moved session under
+			 * `Conversations (2)`. `afterTransfer` rewrites the fixture to the world the receipt
+			 * claims, BEFORE the answer, which is the order the real backend has anyway.
+			 */
+			fixture.afterTransfer?.(fixture);
 			if (fixture.transfer) return answer(fixture.transfer);
 			return answer({
 				locality: "remote",
@@ -840,19 +855,28 @@ export const MoveBusyWaited: Story = {
 				name: "Wait for the turn to finish",
 			}),
 		);
-		await waitFor(() => {
-			const transfers = sent.filter((r) => r.op === "sessions.transfer");
-			if (transfers.length !== 1)
-				throw new Error(
-					`the busy refusal sends nothing, and the remedy sends ONE move: saw ${transfers.length}`,
-				);
-			if (transfers[0].waitS !== 300)
-				throw new Error(
-					`the re-issued move must carry the route's own wait ceiling, not ${transfers[0].waitS}`,
-				);
-		});
-		// And the notice moves on to the outcome rather than leaving the refusal standing.
 		await screen.findByText("Moved");
+		/*
+		 * THEN THE ASSERTION, SYNCHRONOUSLY (agent review round 3, the MAJOR). The first version of
+		 * this play asserted INSIDE `waitFor`, and a retrying `waitFor` only rejects when its own
+		 * budget runs out - by which time the capture rig has already read the console for play
+		 * failures and written the frame. Measured: with the wait dropped at the call site (the wire
+		 * carrying `waitS: 0`), the rig reported success and committed the frame anyway, so the pin
+		 * could not fail where it matters.
+		 *
+		 * So the wait is for the OUTCOME (the notice the re-issued move produces) and the checks run
+		 * once, synchronously: a wrong `waitS` throws on the spot, naming the value it saw, which is
+		 * the shape the reviewer's own copy of this condition had.
+		 */
+		const transfers = sent.filter((r) => r.op === "sessions.transfer");
+		if (transfers.length !== 1)
+			throw new Error(
+				`the busy refusal sends nothing, and the remedy sends ONE move: saw ${transfers.length}`,
+			);
+		if (transfers[0].waitS !== 300)
+			throw new Error(
+				`the re-issued move must carry the route's own wait ceiling, not ${transfers[0].waitS}`,
+			);
 	},
 };
 
@@ -861,6 +885,42 @@ export const MoveCopyWithUndo: Story = {
 	render: () => {
 		installBridge({
 			...actionFixture(),
+			/*
+			 * AND THE WORLD IT ANSWERS AFTERWARDS AGREES WITH ITS OWN RECEIPT (design review round 3,
+			 * D13). The receipt says "the copy here is gone"; the page re-reads both lists on success,
+			 * so this is what those reads must return - this device holds one conversation and the peer
+			 * holds two - or the frame contradicts itself in three places at once (the canvas, the panel
+			 * and the peer's own count). A static fixture cannot do that, which is why `afterTransfer`
+			 * exists.
+			 */
+			afterTransfer: (world) => {
+				world.sessions = [
+					sessionRow("0123456789cd", "Resume the roadmap", {
+						live_state: "attached",
+					}),
+					sessionRow("0123456789ef", "Rewrite the importer", {
+						locality: "remote",
+						owner_device: DEVICE_PEER,
+						owner_device_name: "cloud-node-1",
+					}),
+					sessionRow("0123456789ab", "Sweep 001", {
+						locality: "remote",
+						owner_device: DEVICE_PEER,
+						owner_device_name: "cloud-node-1",
+					}),
+				];
+				world.peers = {
+					self_device_id: DEVICE_SELF,
+					peers: [
+						peer(DEVICE_PEER, {
+							name: "cloud-node-1",
+							last_seen_at: seenMinutesAgo(9),
+							session_count: 2,
+						}),
+					],
+					degraded: [],
+				};
+			},
 			transfer: {
 				locality: "remote",
 				owner_device: DEVICE_PEER,

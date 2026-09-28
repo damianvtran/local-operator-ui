@@ -150,6 +150,15 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 	const [viewport, setViewport] = useState({
 		width: 0,
 		height: 0,
+		/*
+		 * THE CLIP BOX, which is the PADDING box rather than the border box (QA review round 3,
+		 * Q-1). `overflow: hidden` clips content at the padding edge, so a node clamped to
+		 * `width` sits one border pixel under the border - measured at 1024x768 as a clicked node
+		 * that was 199 of its 200 px visible, genuinely clipped. Geometry that centres or maps a
+		 * point (fit, pan, the ghost) uses the border box; "this must be visible" uses this one.
+		 */
+		clipWidth: 0,
+		clipHeight: 0,
 		left: 0,
 		top: 0,
 	});
@@ -406,6 +415,8 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 			setViewport({
 				width: rect.width,
 				height: rect.height,
+				clipWidth: element.clientWidth,
+				clipHeight: element.clientHeight,
 				left: rect.left,
 				top: rect.top,
 			});
@@ -455,27 +466,23 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 		if (!box) return;
 		setTransform((current) => {
 			/*
-			 * THE MARGIN IS SLACK, SO IT IS SPENT ONLY WHEN THERE IS SLACK (design review round
-			 * 2, D10). The clamp keeps the node the reader asked for whole by pushing whatever is
-			 * on the other side out of the canvas, and at 1024x768 with the panel open the world
-			 * (602 px) is wider than the canvas (591 px) - so something must be outside, and a
-			 * blanket 16 px margin spent 16 of those pixels on a NEIGHBOUR the reader did not ask
-			 * about: the network node lost ~23 px of itself, icon included. The 16 px is breathing
-			 * room around a node that FITS; where the world does not fit, the honest use of the
-			 * last pixels is the node under the pointer, and the remainder is the arithmetic's
-			 * rather than the margin's.
+			 * THE CLIP BOX, NOT THE BORDER BOX (QA review round 3, Q-1): the canvas clips at its
+			 * padding edge, so a clamp against `viewport.width` leaves the node's last pixel under
+			 * the border - 199 of 200 px visible at 1024x768. The slack is measured against the same
+			 * box, since the margin is only spent where the world fits inside it.
 			 */
+			const clip = { width: viewport.clipWidth, height: viewport.clipHeight };
 			const slack = Math.max(
 				0,
 				Math.min(
-					viewport.width - geometry.bounds.width * current.k,
-					viewport.height - geometry.bounds.height * current.k,
+					clip.width - geometry.bounds.width * current.k,
+					clip.height - geometry.bounds.height * current.k,
 				),
 			);
 			return keepNodeVisible(
 				current,
 				box,
-				viewport,
+				clip,
 				Math.min(KEEP_MARGIN_PX, slack),
 			);
 		});

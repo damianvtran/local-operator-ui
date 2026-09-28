@@ -1582,6 +1582,78 @@ test("the busy remedy is EXECUTED, not merely drawn (agent review round 2, F2)",
 	);
 });
 
+test("the wait ceiling is carried from the click to the wire, and the pin fails where it matters (round 3)", () => {
+	/*
+	 * THE ROUND-3 MAJOR, AND IT WAS ABOUT THE GUARD RATHER THAN THE CODE. The story presses the
+	 * button, but its assertions sat INSIDE a retrying `waitFor`, and the capture rig reads the
+	 * console for play failures before such a rejection lands - so with the wait dropped anywhere on
+	 * the way, the rig reported success and wrote the frame anyway. Reverting either of the two lines
+	 * below left this suite green, which is what made that possible.
+	 *
+	 * Each pin names `waitS` in its message, so the run that goes red says which value stopped
+	 * travelling.
+	 */
+	const page = source("src/renderer/src/features/mesh/mesh-page.tsx");
+	assert.match(
+		page,
+		/waitS: waitS \?\? plan\.waitS,/,
+		"`waitS` must reach the ask from the click that asked for it, falling back to the plan's own ceiling",
+	);
+	const store = source("src/renderer/src/features/mesh/mesh-store.ts");
+	assert.match(
+		store,
+		/waitS: ask\.waitS \?\? 0,/,
+		"and the request must send that `waitS` rather than a constant",
+	);
+	/*
+	 * AND THE ASSERTION MUST NOT BE INSIDE A RETRY. The story waits for the OUTCOME and then checks
+	 * once, synchronously, so a wrong `waitS` throws on the spot instead of after a `waitFor`
+	 * budget the rig has already stopped watching.
+	 */
+	const stories = source(
+		"src/renderer/src/features/mesh/mesh-page.stories.tsx",
+	);
+	assert.match(
+		stories,
+		/findByText\("Moved"\)[\s\S]{0,1200}const transfers = sent\.filter/,
+		"the outcome is awaited first and the `waitS` check runs after it",
+	);
+	assert.doesNotMatch(
+		stories,
+		/waitFor\(\(\) => \{[\s\S]{0,80}const transfers = sent\.filter/,
+		"and the check is NOT wrapped in a retrying `waitFor`, which is the shape that could not fail",
+	);
+});
+
+test("the chip's spoken fact and its stripe read the same reachability (U13)", () => {
+	/*
+	 * U9 ONE LAYER UP (agent review round 3, U13). The stripe and `resolveDrop` were reconciled onto
+	 * the owner DEVICE's reachability, while the chip's `title` and `aria-label` still asked the
+	 * session ROW's copy - so in the mismatch a screen reader announced "on this device" beside a
+	 * stripe saying the drop will be refused. The name is the version that is read aloud, so it
+	 * cannot be the stale one.
+	 */
+	const node = source("src/renderer/src/features/mesh/mesh-node.tsx");
+	assert.match(
+		node,
+		/export function chipFact\(\s*session: MeshSessionRow,\s*ownerLabel: string,\s*ownerReachable: boolean,\s*\)/,
+		"`chipFact` takes the device's own fact",
+	);
+	assert.match(
+		node,
+		/if \(!ownerReachable\) \{/,
+		"and decides on it rather than on `session.reachable`",
+	);
+	assert.doesNotMatch(
+		node,
+		/if \(!session\.reachable\) \{/,
+		"the row's copy is gone from the sentence",
+	);
+	assert.match(node, /chipFact\(session, ownerLabel, ownerReachable\)/);
+	const card = source("src/renderer/src/features/mesh/mesh-card.tsx");
+	assert.match(card, /chipFact\(session, device\.label, device\.reachable\)/);
+});
+
 test("the renderer sizes its deadline from the REQUEST, and its give-up carries the move's code (F1)", () => {
 	const api = source(
 		"src/renderer/src/shared/api/local-operator/desktop-api.ts",
@@ -2008,9 +2080,11 @@ test("the cap's two chips stay legible, and two long titles still differ (D8/U10
 	/*
 	 * THE CONTROL PAYS FOR THE CHIPS (design review round 2, D8). At the cap the row holds two
 	 * chips and the overflow control; the control's full `+4 more` label measured 59.4 px of the
-	 * row's 171 px content box, which left each chip 51.8 px - a 49 px text box showing seven
-	 * characters, and two truncations that read `Swe…` and `Res…`. `+4` costs 27.3 px and gives
-	 * each chip 67.8 px, which is what makes a real title fit whole.
+	 * row's 171 px content box, which left each chip a **51.8 px box** - of which **37.8 px is
+	 * text** (the chip's 12 px of padding and its borders take the rest, and round 3's D15 is
+	 * right that the earlier sentence here called that 49 px). Seven characters of a
+	 * twenty-one character title, two truncations that read `Swe…` and `Res…`. `+4` costs 27.3 px,
+	 * so each chip gets a 67.9 px box and **53 px of text**.
 	 */
 	const node = source("src/renderer/src/features/mesh/mesh-node.tsx");
 	assert.match(
@@ -2031,11 +2105,13 @@ test("the cap's two chips stay legible, and two long titles still differ (D8/U10
 	/*
 	 * AND THE CHIPS KEEP THE PART THAT DISTINGUISHES THEM (design review round 2, U10): the titles
 	 * this app holds are named in series, so the readable end is the END - and the browser is the
-	 * only thing that can measure how much of it fits. `direction: rtl` + `unicode-bidi: plaintext`
-	 * asks it for left-truncation while `plaintext` keeps every title's own glyph order and script
-	 * direction. A character budget was tried first and removed: eight characters measured between
-	 * 49 px and 62 px over the titles these stories use, against a 53 px text area, so any count
-	 * clips the tail on exactly the widest titles.
+	 * only thing that can measure how much of it fits. `direction: rtl` with `text-align: left` is
+	 * what asks it for left-truncation (NOT `unicode-bidi: plaintext`, which hands the paragraph
+	 * direction to the text and sends the ellipsis back to the end - this comment claimed
+	 * `plaintext` for a round after the class was removed; design review round 3, D15). A character
+	 * budget was tried first and removed: eight characters measured between 49 px and 62 px over
+	 * the titles these stories use, against a 53 px text area, so any count clips the tail on
+	 * exactly the widest titles.
 	 */
 	assert.match(
 		node,
@@ -2207,13 +2283,18 @@ test("the keep-in-view margin is SLACK, so an overflowing world loses only what 
 	const canvas = source("src/renderer/src/features/mesh/mesh-canvas.tsx");
 	assert.match(
 		canvas,
-		/const slack = Math\.max\(\s*0,\s*Math\.min\(\s*viewport\.width - geometry\.bounds\.width \* current\.k,\s*viewport\.height - geometry\.bounds\.height \* current\.k,\s*\),\s*\);/,
-		"the slack is measured from the world's own size at the current scale",
+		/clipWidth: element\.clientWidth,/,
+		"the viewport record keeps the clip box as well as the border box (QA round 3, Q-1)",
 	);
 	assert.match(
 		canvas,
-		/Math\.min\(KEEP_MARGIN_PX, slack\),/,
-		"and the clamp gets the smaller of the margin and the room that exists",
+		/const clip = \{ width: viewport\.clipWidth, height: viewport\.clipHeight \};/,
+		"and the clamp is solved against it: `overflow: hidden` clips at the padding edge, so a node clamped to the border box loses its last pixel",
+	);
+	assert.match(
+		canvas,
+		/keepNodeVisible\(\s*current,\s*box,\s*clip,\s*Math\.min\(KEEP_MARGIN_PX, slack\),\s*\)/,
+		"both the clamp and its slack read the same box, or the margin is a pixel too generous",
 	);
 });
 

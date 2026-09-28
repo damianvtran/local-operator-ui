@@ -430,7 +430,7 @@ export const DevicePanel: FC<{
 									{chipLabel(session)}
 								</span>
 								<span className="shrink-0 text-meta text-ink-dim">
-									{chipFact(session, device.label)}
+									{chipFact(session, device.label, device.reachable)}
 								</span>
 								{movingSessionId === session.id ? (
 									<span className="shrink-0 text-meta text-ink-muted">

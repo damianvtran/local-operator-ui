@@ -190,8 +190,10 @@ looked at; each is quoted in the source beside the decision it decides.
   1.23, "a border nobody can see"; re-measured with the repo's own `deltaE` it is
   **9.19 / 4.80**, so the hairline is visible and the edge was chosen for the ratio
   above. `scripts/contrast-contract.mjs` carries a `mesh device node` row asserting
-  that triple, and the gate reports 28,524 assertions across 59 themes with 0
-  consulted exceptions.
+  that triple, and the gate reports **29,293 assertions across 59 themes** with 0
+  consulted exceptions — re-derived at this head (design review round 3, D17: this
+  sentence said 28,524, which was true when it was written and moved as the contract
+  gained rows; the number is a reading, not a constant).
 - **Selection needs more than a fill.** `rowSelected` against this node's own
   `elevated` fill measures ΔE00 7.00 on the light brand palette but only 2.19 on the
   dark one - at the field floor, not above it - so a selected node takes the ink edge
