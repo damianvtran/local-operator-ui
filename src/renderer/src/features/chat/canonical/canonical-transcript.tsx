@@ -380,6 +380,18 @@ export type CanonicalTranscriptProps = {
 	 */
 	labelMarked?: ReadonlySet<string>;
 	/**
+	 * Mount the measure's drag handles on this column.
+	 *
+	 * Opt-in, and only the chat page passes it: the width a handle writes is a
+	 * document-root property shared by every chat surface, so a second mount
+	 * (the run pane's child reader) would let a drag there resize the main
+	 * column (review, finding 2). A transcript without it is indistinguishable
+	 * from the state before the handles existed - they are absolutely
+	 * positioned children of this column, and the `relative` on the column is
+	 * theirs.
+	 */
+	measureHandle?: boolean;
+	/**
 	 * Re-arm the session's stream and history read.
 	 *
 	 * Required rather than optional: every caller of this component has a
@@ -1774,6 +1786,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	undelivered = null,
 	labelHoldLate,
 	labelMarked,
+	measureHandle = false,
 	onReconnect,
 }) => {
 	// A crash-recovered outcome has no durable row of its own, so it is
@@ -2468,17 +2481,17 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					className={cn("mb-auto relative flex flex-col", CHAT_MEASURE)}
 				>
 					{/*
-					 * One handle per edge of the measure. `width` is the CAP - the
-					 * reader's own width, else the shipped default - and never the width
-					 * on screen: see `chat-measure-drag.ts` for why that distinction is
-					 * the difference between a drag and a bug.
+					 * One handle per edge of the measure, where the mount opts in
+					 * (`measureHandle` - only the chat page does) AND there is a measure to
+					 * resize: `readShippedChatMeasurePx` answers `null` in a host with no
+					 * stylesheet, where the column has no cap at all and a control
+					 * offering to resize it would be inventing one.
 					 *
-					 * Rendered only when there IS a measure: `readShippedChatMeasurePx`
-					 * answers `null` in a host with no stylesheet, where the column has no
-					 * cap at all and a control offering to resize it would be inventing
-					 * one.
+					 * `width` is the CAP - the reader's own width, else the shipped
+					 * default - and never the width on screen: see `chat-measure-drag.ts`
+					 * for why that distinction is the difference between a drag and a bug.
 					 */}
-					{measurePx !== null && (
+					{measureHandle && measurePx !== null && (
 						<>
 							<ChatMeasureHandle
 								edge="left"
