@@ -128,6 +128,7 @@ import { TranscriptPlaceholder } from "./transcript-placeholder";
 import {
 	type TranscriptRecord,
 	type TranscriptState,
+	isInterruptedFault,
 	streamDiagnostics,
 	withRecoveredOutcome,
 } from "./transcript-reducer";
@@ -1271,7 +1272,14 @@ const ToolRow = memo(function ToolRow({
 				}
 				outcome={
 					notRun
-						? "not-run"
+						? /* The never-run verdict's own class decides which row this is: a
+						     steer-skip or a stop is an interrupt (the same two kinds the
+						     end events carry), and every other verdict is the failure it
+						     was. A record with no kind keeps the not-run state - the legacy
+						     and hand-built shape. */
+							isInterruptedFault(record.notRunKind)
+							? "interrupted"
+							: "not-run"
 						: running
 							? "running"
 							: record.isError
