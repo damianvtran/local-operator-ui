@@ -577,7 +577,7 @@ test("a capture reads the LIVE history, and skips a view that is already gone", 
 	const two = views.get(2);
 	assert.equal(two.webContents.historyEntries.length, 1);
 
-	const captured = captureTabs(registry.list(), first.tabId);
+	const captured = captureTabs(registry.list(), first.tabId, new Set());
 	assert.equal(captured.length, 2);
 	assert.equal(captured[0].active, true, "the active tab is marked");
 	assert.equal(captured[1].active, false);
@@ -586,7 +586,44 @@ test("a capture reads the LIVE history, and skips a view that is already gone", 
 	// A view destroyed between the destruction and the registry's cleanup must not
 	// be written as a blank tab the user never opened.
 	views.get(1).webContents.destroyed = true;
-	assert.equal(captureTabs(registry.list(), first.tabId).length, 1);
+	assert.equal(captureTabs(registry.list(), first.tabId, new Set()).length, 1);
+});
+
+// ---- a capture marks the tabs whose load failed (2026-09-28) ----------------
+
+/*
+ * The mark is what stops the accumulation the operator reported: a tab whose last
+ * navigation was refused when the session ends is written with `lastLoadFailed: true`,
+ * and `readSession` skips it, so a dead tab is not re-created (and re-persisted) on
+ * every launch until someone closes it by hand. The five unit cases live in
+ * `browser-host.test.mjs`; this one covers the LIVE branch (a committed tab), which the
+ * host file's stricter fake (no `getAllEntries` at all) cannot reach.
+ */
+
+test("a capture stamps the failed mark on the live row, and only on it", () => {
+	const { registry } = makeRegistry();
+	const dead = registry.create({ owner: "user" });
+	const alive = registry.create({ owner: "user" });
+
+	const captured = captureTabs(
+		registry.list(),
+		alive.tabId,
+		new Set([dead.tabId]),
+	);
+	assert.equal(captured[0].lastLoadFailed, true, "the failed tab is marked");
+	assert.equal(
+		"lastLoadFailed" in captured[1],
+		false,
+		"and a healthy row carries no mark at all (additive, omitted when false)",
+	);
+
+	// The next capture without the failure clears the mark: the flag is a statement
+	// about the capture, not a verdict on the tab.
+	assert.equal(
+		"lastLoadFailed" in captureTabs(registry.list(), alive.tabId, new Set())[0],
+		false,
+		"a successful load clears the mark",
+	);
 });
 
 // ---- a capture is never partial (review round 2, B2) ------------------------
@@ -615,7 +652,7 @@ test("a restored tab with no history yet is captured from the row it was restore
 	// the tab came from, not a guess about a blank page.
 	const fresh = registry.create({ owner: "user" });
 
-	const captured = captureTabs(registry.list(), fresh.tabId);
+	const captured = captureTabs(registry.list(), fresh.tabId, new Set());
 	assert.deepEqual(
 		captured.map((tab) => tab.entries[0].url),
 		["https://restored.example/page"],
@@ -655,7 +692,7 @@ test("the moment a restored tab has history of its own, the live stack replaces 
 	];
 	contents.activeIndex = 1;
 
-	const captured = captureTabs(registry.list(), record.tabId);
+	const captured = captureTabs(registry.list(), record.tabId, new Set());
 	assert.deepEqual(
 		captured[0].entries.map((entry) => entry.url),
 		["https://restored.example/page", "https://live.example/after"],
@@ -815,7 +852,7 @@ test("a destroyed view is captured from its recorded row rather than dropped", (
 	views.get(plain.tabId).webContents.destroyed = true;
 	views.get(kept.tabId).webContents.destroyed = true;
 
-	const captured = captureTabs(registry.list(), kept.tabId);
+	const captured = captureTabs(registry.list(), kept.tabId, new Set());
 	assert.deepEqual(
 		captured.map((tab) => tab.entries[0].url),
 		["https://kept.example/page"],
