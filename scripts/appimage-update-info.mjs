@@ -125,6 +125,9 @@ export const APPIMAGE_UPDATE_INFO =
  * than read from the installed package so this script also works from a
  * checkout without `node_modules`, and so a future electron-builder bump that
  * changes the toolset shows up as a diff here instead of silently riding along.
+ * The drift is not left to hope: `appimage-update-info.test.mjs` reads the
+ * INSTALLED package's own `appimageChecksums["0.0.0"]` and fails when it
+ * disagrees with this copy, so the diff is forced at bump time.
  */
 export const TOOLSET_ARCHIVE = {
 	filename: "appimage-12.0.1.7z",
@@ -207,8 +210,11 @@ function readCString(buffer, start) {
  * (e_shnum == 0, e_shstrndx == SHN_XINDEX) is refused with its own message:
  * both are cases where a lenient parser would silently read the wrong offsets,
  * and the only files this script ever reads for real are the pinned x86-64
- * runtime and AppImages built from it. Anything outside that gets a loud
- * refusal rather than a guess.
+ * runtime and AppImages built from it. `e_shstrndx == SHN_UNDEF` is refused by
+ * name too (review round 1, R2): falling through would use section 0 - the
+ * reserved null entry - as the name table and report a malformed table, which
+ * names the wrong cause. Anything outside that gets a loud refusal rather than
+ * a guess.
  */
 export function readUpdateInfo(filePath) {
 	const header = readBytes(filePath, 0, 64);
@@ -227,6 +233,10 @@ export function readUpdateInfo(filePath) {
 	if (sectionCount === 0 || namesIndex === 0xffff)
 		throw new Error(
 			`${filePath} uses extended ELF section numbering, which this reader refuses rather than guessing at`,
+		);
+	if (namesIndex === 0)
+		throw new Error(
+			`${filePath} carries no section name string table (e_shstrndx = SHN_UNDEF), so its section names cannot be read; this reader refuses rather than reading the reserved null entry as a table`,
 		);
 	if (sectionHeaderSize !== 64)
 		throw new Error(
