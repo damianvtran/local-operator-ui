@@ -124,6 +124,8 @@ const Frame = ({ height = 620 }: { height?: number }) => {
 				loadingOlder={false}
 				onLoadOlder={async () => true}
 				containerRef={containerRef}
+				/* The handles ARE this story's subject; the rig drives them. */
+				measureHandle
 				isSmallView={false}
 				status={"live" as const}
 				failure={null as SessionFailureNotice | null}

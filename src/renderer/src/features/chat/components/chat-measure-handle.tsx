@@ -46,6 +46,7 @@
  */
 
 import {
+	HOVER_INTENT_MS,
 	addResizeCursorOverlay,
 	removeResizeCursorOverlay,
 } from "@shared/components/common/resizable-divider";
@@ -63,17 +64,6 @@ import {
 /** Arrow-key resize step, and the coarse step Shift selects. */
 const KEYBOARD_STEP = 16;
 const KEYBOARD_STEP_COARSE = 64;
-
-/**
- * How long the pointer must rest in the gutter before the cue appears.
- *
- * The gutter is crossed constantly on the way to the scrollbar and to the text
- * itself, and a cue that lit on every pass would be a flicker rather than an
- * affordance. Leaving is instant, because a control that lingers after the
- * pointer has gone reads as stuck. Same number and same argument as the
- * divider's.
- */
-const HOVER_INTENT_MS = 200;
 
 /** The cue's length, and the solid core inside it. See the file comment. */
 const CUE_HEIGHT_PX = 72;
@@ -141,6 +131,20 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 		);
 	};
 
+	/*
+	 * THE PREVENTDEFAULT MUST LAND IN THE CAPTURE PHASE, which is why the render
+	 * block binds this as `onKeyDownCapture` and not `onKeyDown`.
+	 *
+	 * The transcript scroller registers a NATIVE bubble-phase `keydown` listener
+	 * (`use-scroll-paging.ts`), and the handles are DOM descendants of that
+	 * scroller: React's delegated bubble handlers run at the root container,
+	 * which is an ANCESTOR of the scroller, so a bubble-phase `preventDefault`
+	 * reached the paging guard (`event.defaultPrevented`) too late - Home/End
+	 * paged the transcript before this handler resized the column (review,
+	 * finding 3). React's capture-phase delegation also runs at the root
+	 * container, but in the capture descent, before any bubble listener on an
+	 * ancestor, so the guard sees the flag this handler sets first.
+	 */
 	const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
 		const step = event.shiftKey ? KEYBOARD_STEP_COARSE : KEYBOARD_STEP;
 		switch (event.key) {
@@ -348,7 +352,7 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 				onBlur={() => {
 					if (!draggingRef.current) setHovering(false);
 				}}
-				onKeyDown={onKeyDown}
+				onKeyDownCapture={onKeyDown}
 				onMouseDown={onMouseDown}
 			/>
 		</div>
