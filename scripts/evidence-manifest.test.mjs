@@ -1799,6 +1799,28 @@ const STAMP_BINDING_NOTES = [
 	 * move.
 	 */
 	"agentsOfferDismissCommentRestampNote",
+	/*
+	 * Moved by the dead-tab and popout pass (2026-09-28): this note states the pair
+	 * it ships and the set the pass moves, so it is held to the same bar as every
+	 * other member - it quotes both stamps and the file it sits in ships them.
+	 */
+	"browserTabLifecycleNote",
+	/*
+	 * AND THE SAME PASS'S ROUND-1 REMEDIATION: `browserTabCleanupRoundOnePass`
+	 * states the pair it ships, the frames it re-shot (the two strip stories and
+	 * the load-failure trio), the runs as they ran and the one frame set it NAMES
+	 * as owed, so it is held to the pair this file ships rather than read as
+	 * history - the same bar as the note above it, which this fold re-points too.
+	 */
+	"browserTabCleanupRoundOnePass",
+	/*
+	 * AND ITS ROUND-2 ANSWERS: `browserTabCleanupRoundTwoPass` states the pair it
+	 * ships, the two owed photographs it pays (composition `20` re-encoded and `22`
+	 * re-encoded with the clearance the same run measured), the D3 re-capture with
+	 * its measured slack, and the run's own verdict — so it is held to the pair this
+	 * file ships rather than read as history, on the same bar as its two neighbours.
+	 */
+	"browserTabCleanupRoundTwoPass",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
