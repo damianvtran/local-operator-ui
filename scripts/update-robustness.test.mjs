@@ -28,7 +28,7 @@ import {
 	relative,
 	resolve,
 } from "node:path";
-import { after, before, test } from "node:test";
+import { after, afterEach, before, test } from "node:test";
 import { build } from "esbuild";
 
 /**
@@ -2097,6 +2097,16 @@ test("a target that is already installed is never handed to the watchdog", () =>
  * detached, with the plan's environment - against a real process tree.
  */
 function runWatchdog({ plan, binDir, env }) {
+	/*
+	 * A fixture plan carrying the production hard bound is a freeze waiting for a
+	 * trigger: any early exit that skips a case's cleanup leaves the script (and
+	 * this file) running for half an hour. Every plan in this file carries a
+	 * small bound; this assert is what makes an omission loud instead of silent.
+	 */
+	assert.ok(
+		plan.hardTimeoutSeconds <= 25,
+		`a watchdog fixture plan must carry a small hardTimeoutSeconds (got ${plan.hardTimeoutSeconds}): the production default holds the whole test file open (CI freeze, 2026-09-28)`,
+	);
 	const child = spawn("/bin/sh", ["-c", plan.script], {
 		detached: true,
 		stdio: "ignore",
@@ -2109,11 +2119,68 @@ function runWatchdog({ plan, binDir, env }) {
 			PATH: `${binDir}:${process.env.PATH ?? ""}`,
 		},
 	});
+	/*
+	 * NO unref ON THIS CHILD, deliberately. Every case awaits `exit` - that is the
+	 * case's synchronization - and unref'ing the handle under an await lets the
+	 * event loop drain while the promise is still pending, which node's runner
+	 * reports as "Promise resolution is still pending but the event loop has
+	 * already resolved" and a cancelled case (measured while fixing the CI freeze,
+	 * 2026-09-28; the runner's own diagnosis, not a timeout). What keeps a leaked
+	 * script from holding THIS FILE is the reaper below, not handle tricks: it
+	 * SIGKILLs any group still standing when a case ended, and a group it kills
+	 * takes its handles with it. The small hardTimeoutSeconds on every plan is the
+	 * other half: it bounds how long a case can wait for an exit at all.
+	 */
+	liveFixtureWatchdogs.add(child.pid);
 	const exit = new Promise((resolve) =>
 		child.on("exit", (code, signal) => resolve({ code, signal })),
 	);
 	return { child, exit };
 }
+
+/**
+ * Fixture scripts still running, for the reaper's ledger.
+ */
+const liveFixtureWatchdogs = new Set();
+
+/**
+ * The regression the freeze taught: a case must leave no fixture behind.
+ *
+ * Runs after EVERY case. A group still standing when its case ended is a leak:
+ * it fails the case that left it (the assert names pids, not prose), and is then
+ * SIGKILLed so the file can always exit. The vacated check gets a short grace
+ * because the script's backgrounded notifier/relaunch shims can outlive the
+ * script's own exit by a fork - and a script that legitimately holds past its
+ * case is a bug in the case, not a reason to let it hold the runner.
+ */
+async function fixtureGroupVacated(pid, timeoutMs = 2000) {
+	const deadline = Date.now() + timeoutMs;
+	for (;;) {
+		if (processGroupIsEmpty(pid)) return true;
+		if (Date.now() > deadline) return false;
+		await new Promise((resolve) => setTimeout(resolve, 50));
+	}
+}
+
+afterEach(async () => {
+	const leaked = [];
+	for (const pid of liveFixtureWatchdogs) {
+		if (!(await fixtureGroupVacated(pid))) leaked.push(pid);
+	}
+	for (const pid of liveFixtureWatchdogs) {
+		try {
+			process.kill(-pid, "SIGKILL");
+		} catch (error) {
+			if (error.code !== "ESRCH") throw error;
+		}
+	}
+	liveFixtureWatchdogs.clear();
+	assert.deepEqual(
+		leaked,
+		[],
+		"a watchdog fixture was still running when its case ended - keep its plan's hardTimeoutSeconds small and make sure the case reaps it (a leaked script holds the test file, and the job, open)",
+	);
+});
 
 /**
  * Whether the watchdog's own process group has been vacated.
@@ -2287,6 +2354,16 @@ test("the watchdog relaunches a real process tree and never exits without trying
 	const fixture = makeWatchdogFixture(dir);
 	const fast = {
 		timeoutSeconds: 4,
+		/*
+		 * THE FIXTURE'S OWN HARD BOUND, SMALL ON PURPOSE (CI freeze, 2026-09-28): a
+		 * plan that leaves this at the production default (1800 s) turns any
+		 * early-return or stuck await in a case into a script that outlives its test
+		 * by half an hour - and a script outliving its test holds the whole test FILE
+		 * (and so the job) open, which is exactly how this file held CI's Desktop run
+		 * to its 35-minute bound with no failing test to show for it. Production's
+		 * own default is asserted in the plan itself, not here.
+		 */
+		hardTimeoutSeconds: 8,
 		intervalSeconds: 1,
 		settleSeconds: 1,
 		appearSeconds: 1,
@@ -2406,6 +2483,11 @@ test("the watchdog leaves early when the swap has landed, job or no job", async 
 			// A bound long enough that reaching it is distinguishable from leaving
 			// on the swap: a pass here cannot be a pass by timeout.
 			timeoutSeconds: 120,
+			// ...but never the production hard bound: the three elapsed-threshold cases
+			// raise THIS one past their own thresholds (so a bound-exit still fails
+			// them), and every other case takes the small fixture default - a holding
+			// script must never outlive its case (CI freeze, 2026-09-28).
+			hardTimeoutSeconds: 8,
 			intervalSeconds: 1,
 			settleSeconds: 1,
 			appearSeconds: 1,
@@ -2421,7 +2503,10 @@ test("the watchdog leaves early when the swap has landed, job or no job", async 
 		const app = startProcess("/bin/sleep", ["30"]);
 		const before = fixture.launches().length;
 		const watchdog = runWatchdog({
-			plan: planFor(app.pid),
+			// Bound ABOVE this case's threshold: if the signal under test ever stops
+			// ending the wait, the script exits at the bound (~20 s) and the elapsed
+			// assert below fails - so a pass cannot be a pass by timeout.
+			plan: planFor(app.pid, { hardTimeoutSeconds: 20 }),
 			binDir: fixture.binDir,
 		});
 		const started = Date.now();
@@ -2490,7 +2575,10 @@ test("the watchdog leaves early when the swap has landed, job or no job", async 
 		const app = startProcess("/bin/sleep", ["30"]);
 		const before = fixture.launches().length;
 		const watchdog = runWatchdog({
-			plan: planFor(app.pid),
+			// Bound ABOVE this case's threshold: if the signal under test ever stops
+			// ending the wait, the script exits at the bound (~20 s) and the elapsed
+			// assert below fails - so a pass cannot be a pass by timeout.
+			plan: planFor(app.pid, { hardTimeoutSeconds: 20 }),
 			binDir: fixture.binDir,
 		});
 		const started = Date.now();
@@ -2515,7 +2603,14 @@ test("the watchdog leaves early when the swap has landed, job or no job", async 
 		const app = startProcess("/bin/sleep", ["30"]);
 		const before = fixture.launches().length;
 		const watchdog = runWatchdog({
-			plan: planFor(app.pid, { shipItJob: null, appearSeconds: 30 }),
+			// Bound ABOVE this case's threshold: if the signal under test ever stops
+			// ending the wait, the script exits at the bound (~20 s) and the elapsed
+			// assert below fails - so a pass cannot be a pass by timeout.
+			plan: planFor(app.pid, {
+				shipItJob: null,
+				appearSeconds: 30,
+				hardTimeoutSeconds: 20,
+			}),
 			binDir: fixture.binDir,
 		});
 		const started = Date.now();
@@ -2757,6 +2852,7 @@ test("a failed notification does not change the watchdog's decision or its exit 
 		platform: "darwin",
 		signals: fixture.probes,
 		timeoutSeconds: 4,
+		hardTimeoutSeconds: 8,
 		intervalSeconds: 1,
 		settleSeconds: 1,
 		appearSeconds: 1,
@@ -2809,6 +2905,7 @@ test("the switch silences the watchdog's own notice", async () => {
 		platform: "darwin",
 		signals: fixture.probes,
 		timeoutSeconds: 4,
+		hardTimeoutSeconds: 8,
 		intervalSeconds: 1,
 		settleSeconds: 1,
 		appearSeconds: 1,
@@ -2862,6 +2959,7 @@ test("a set-but-empty switch is the silencing value too", async () => {
 		platform: "darwin",
 		signals: fixture.probes,
 		timeoutSeconds: 4,
+		hardTimeoutSeconds: 8,
 		intervalSeconds: 1,
 		settleSeconds: 1,
 		appearSeconds: 1,
@@ -2911,6 +3009,7 @@ test("without the switch the watchdog's notice is still raised", async () => {
 		platform: "darwin",
 		signals: fixture.probes,
 		timeoutSeconds: 4,
+		hardTimeoutSeconds: 8,
 		intervalSeconds: 1,
 		settleSeconds: 1,
 		appearSeconds: 1,
@@ -2965,6 +3064,7 @@ test("the stay-closed notice follows a job that launchd submits late", async () 
 		platform: "darwin",
 		signals: fixture.probes,
 		timeoutSeconds: 30,
+		hardTimeoutSeconds: 20,
 		intervalSeconds: 1,
 		settleSeconds: 1,
 		appearSeconds: 20,
@@ -3069,6 +3169,7 @@ test("a dead installer pid with this app's ShipIt still at work is a live instal
 		platform: "darwin",
 		signals: fixture.probes,
 		timeoutSeconds: 20,
+		hardTimeoutSeconds: 20,
 		intervalSeconds: 1,
 		settleSeconds: 1,
 		appearSeconds: 1,
@@ -3136,6 +3237,9 @@ test("without launchd or plutil the bound decides, and nothing is left behind", 
 			settleSeconds: 1,
 			appearSeconds: 1,
 			platform: "linux",
+			// Same reason as the darwin group above: a fixture script may not be
+			// able to hold this file open (CI freeze, 2026-09-28).
+			hardTimeoutSeconds: 8,
 			...overrides,
 		});
 
