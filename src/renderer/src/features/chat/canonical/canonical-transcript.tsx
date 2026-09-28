@@ -108,6 +108,7 @@ import { MISSING_SESSION_NOTICE_ID } from "../missing-session-notice";
 import { CanvasPaneProvider } from "../utils/canvas-pane";
 import { parseReplies } from "../utils/reply-utils";
 import { CanonicalImage } from "./canonical-image";
+import { type FoldOpenEntry, foldOpenOf, withFoldOpen } from "./fold-open";
 import { LinkToolkit } from "./link-toolkit";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
 import { isQuotable } from "./quote-model";
@@ -1860,6 +1861,51 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		setWindowSession(sessionId);
 		setWindowSize(WINDOW);
 	}
+	/*
+	 * THE FOLD-OPEN REGISTRY, keyed to the conversation and reset the same
+	 * render-phase way (operator report, 2026-09-27). It lives HERE rather than
+	 * on each `TraceFold` because a fold's React identity is its key - the first
+	 * row of its run - and the render window's leading edge walks through runs as
+	 * rows arrive, remounting them; `fold-open.ts`'s header carries the measured
+	 * walk and the migration the registry performs. `sessionId` is the
+	 * transcript's own conversation identity, the same value the window above
+	 * resets on, so the two cannot disagree about a switch.
+	 *
+	 * THE IDENTITY IS STICKY ACROSS A NULL, and that is the report's own failure
+	 * class one layer down: the reconnect gap arms null `frontend` outright, so a
+	 * registry keyed on `sessionId` alone would close every fold the reader opened
+	 * on every reconnect. The last STATED id is held until a different one
+	 * arrives - a gap keeps the conversation, a switch changes it.
+	 */
+	const foldSession = useRef(sessionId);
+	if (sessionId !== null) foldSession.current = sessionId;
+	const [foldOpen, setFoldOpen] = useState<{
+		session: string | null;
+		entries: readonly FoldOpenEntry[];
+	}>(() => ({ session: foldSession.current, entries: [] }));
+	if (foldOpen.session !== foldSession.current) {
+		setFoldOpen({ session: foldSession.current, entries: [] });
+	}
+	/**
+	 * The reader's press on a fold, recorded against the fold's CURRENT id set.
+	 *
+	 * `keep` is every record the conversation holds - not just the render window:
+	 * a fold scrolled outside the window is still the reader's, and pruning its
+	 * entry the moment its rows leave the window would reproduce the bug this
+	 * registry exists to fix, one scroll later.
+	 */
+	const setFoldOpenFor = (ids: readonly string[], open: boolean) => {
+		const keep = new Set(transcript.records.map((record) => record.id));
+		setFoldOpen((current) => ({
+			session: foldSession.current,
+			entries: withFoldOpen(
+				current.session === foldSession.current ? current.entries : [],
+				ids,
+				open,
+				keep,
+			),
+		}));
+	};
 	const total = rows.length;
 	const visible = useMemo(
 		() => (total > windowSize ? rows.slice(total - windowSize) : rows),
@@ -1878,14 +1924,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 */
 	const rowGroups = useMemo(() => {
 		/*
-		 * The newest turn is the one after the last user row: a run in an OLDER turn
-		 * must not open itself because a LATER turn happens to be running.
+		 * `isNewestTurn` used to be computed here for the fold's condense; the
+		 * condense is retired (the fold's open state is the reader's, see
+		 * `fold-open.ts`), so the map that carried it is gone with it.
 		 */
-		let lastUserIndex = -1;
-		for (let index = 0; index < visible.length; index += 1) {
-			if (visible[index].record.kind === "user") lastUserIndex = index;
-		}
-		const groups = foldRuns(visible, {
+		return foldRuns(visible, {
 			nameOf: (row) => ledgerName(row.record),
 			failedOf: (row) =>
 				row.record.kind === "tool" && row.record.isError === true,
@@ -1921,16 +1964,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				row.record.kind === "tool" ? row.record.endedAt : null,
 			isFoldable: (row) => row.record.kind === "tool",
 		});
-		const firstIndexOf = new Map<string, number>();
-		visible.forEach((row, index) => firstIndexOf.set(row.record.id, index));
-		return groups.map((group) =>
-			group.kind === "run"
-				? {
-						...group,
-						isNewestTurn: (firstIndexOf.get(group.id) ?? 0) > lastUserIndex,
-					}
-				: group,
-		);
 	}, [visible]);
 	const feet = useMemo(
 		() =>
@@ -2662,14 +2695,24 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 										span={group.span}
 										live={group.live}
 										/*
-										 * THE FOLD'S SECTION: the newest turn while that turn is in
-										 * flight. While it is true nothing condenses the fold; when it
-										 * turns false the fold closes itself once (see `TraceFold`'s
-										 * condense rule). `working` is the same liveness the working
-										 * line reads, so the section ends exactly when the pane says the
-										 * turn did.
+										 * THE READER'S OPEN STATE, held by the conversation rather than
+										 * by the fold (operator report, 2026-09-27): the fold's React key
+										 * is its first row, and the render window's leading edge walks
+										 * through a run as rows arrive, which remounts the fold - state
+										 * kept on the instance cannot survive that, and the fold
+										 * re-collapsed under the reader. The registry answers for the
+										 * fold's CURRENT id set and migrates with it.
 										 */
-										sectionLive={working !== null && group.isNewestTurn}
+										open={foldOpenOf(
+											foldOpen.entries,
+											group.rows.map((row) => row.record.id),
+										)}
+										onOpenChange={(next) =>
+											setFoldOpenFor(
+												group.rows.map((row) => row.record.id),
+												next,
+											)
+										}
 									>
 										{group.rows.map((row, index) => (
 											<TranscriptRow

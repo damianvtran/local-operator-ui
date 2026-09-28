@@ -6,31 +6,35 @@ import { JSDOM } from "jsdom";
 import React, { act } from "react";
 
 /*
- * THE FOLD'S FOUR BEHAVIOURS, driven through the SHIPPED component.
+ * THE FOLD'S BEHAVIOURS, driven through the SHIPPED component.
  *
  * `trace-fold-model.test.mjs` asserts the ARITHMETIC (what folds, what the
  * summary says, the span, the live clause). This file asserts what the pure
- * model cannot: when the fold is OPEN, and when the app is allowed to close it.
- * Those are the rules the operator's report is about - "have them collapse after
- * the section is done" with two carve-outs that exist so the app never fights
- * the reader - and the failure they guard against is exactly the kind nobody
- * sees in a still:
+ * model cannot: when the fold is OPEN. Those are the rules the operator's two
+ * reports are about, and the failure they guard against is exactly the kind
+ * nobody sees in a still:
  *
  *   - a group that ARRIVES OPEN (the shipped defect: auto-opened for the newest
  *     turn and never closed, so a finished turn was a wall of expanded groups);
- *   - a group that closes UNDER a reader watching its live section;
- *   - a group that condenses while a call inside it is still running, which
- *     would hide a live clock behind a "finished" summary;
- *   - and the settle it must fire exactly ONCE, so a fold the reader opens after
- *     the section ended - the failed-row jump opens one this way - is theirs.
+ *   - a fold that closes UNDER THE READER while its conversation updates -
+ *     which is every close this component used to own. The 2026-09-27 report
+ *     is the spec now: "they shouldn't be closed/contracted simply by state
+ *     updates if they've been explicitly opened." The condense #537 shipped
+ *     (close once, when the section stops being live) was written for the
+ *     auto-open that no longer exists; with groups arriving condensed its
+ *     remaining client was the READER'S OWN fold - measured on the rig closing
+ *     at every turn end (`expanded true -> false`) - so the close is gone and
+ *     the reader's press is the only one left, in BOTH directions: an
+ *     explicitly-closed fold must not be re-opened by updates either.
  *
  * WHY A MOUNT AND NOT A FRAME. A frame says what the condensed and expanded
  * states LOOK like; it cannot say why a fold that was open is now closed, and
- * the auto-close is a transition with guards rather than a state. jsdom has no
- * layout engine, so "the rows are visible" is asserted as the component's own
- * contract - the rows are in the DOM, and the collapsed state unmounts them
- * (`Disclosure` renders `isOpen && children`) - never as geometry. Pixels live
- * in `docs/evidence/chat-trace-fold/`.
+ * the closes this file polices are transitions with guards rather than states.
+ * jsdom has no layout engine, so "the rows are visible" is asserted as the
+ * component's own contract - the rows are in the DOM, and the collapsed state
+ * unmounts them (`Disclosure` renders `isOpen && children`) - never as
+ * geometry. Pixels live on the rig (`scripts/scroll-shift-evidence.mjs`) and in
+ * `docs/evidence/scroll-shift/`.
  *
  * The harness is this repository's committed one for a rendered surface: esbuild
  * bundles the shipped component against the renderer's own aliases and React
@@ -116,27 +120,39 @@ after(() => unlink(bundlePath).catch(() => {}));
 
 const { TraceFold, createElement } = await import(bundlePath.href);
 
+/**
+ * Controlled the way the transcript drives it, so the mount exercises the
+ * SHIPPED contract rather than a self-managed fold: `open` comes in, the
+ * press is reported upward, and the harness keeps that state across
+ * re-renders the way the transcript's registry does (`fold-open.ts`).
+ */
+const ControlledFold = ({ initialOpen = false, ...props }) => {
+	const [open, setOpen] = React.useState(initialOpen);
+	return createElement(
+		TraceFold,
+		{ ...props, open, onOpenChange: setOpen },
+		createElement("span", { "data-testid": "fold-row" }, "row"),
+	);
+};
+
 /** The running call the frames use: `wait` blocks for an hour, named in words. */
 const LIVE = { verb: "Running", object: "pnpm vitest run" };
 
 // Top-level (biome's `useTopLevelRegex`): the copy these assertions pin.
 const SUMMARY_MIXED = /3 shell · 1 python/;
 const SUMMARY_UPDATED = /4 shell · 1 python/;
+const SUMMARY_GROWN = /5 shell · 1 python/;
 const NEVER_A_ZERO = /0s/;
 const LIVE_SPAN_SECONDS = /^4[45]s$/;
 
 const element = (props) =>
-	createElement(
-		TraceFold,
-		{
-			summary: "3 shell · 1 python",
-			actionCount: 4,
-			failedCount: 0,
-			recordIds: ["t0"],
-			...props,
-		},
-		createElement("span", { "data-testid": "fold-row" }, "row"),
-	);
+	createElement(ControlledFold, {
+		summary: "3 shell · 1 python",
+		actionCount: 4,
+		failedCount: 0,
+		recordIds: ["t0"],
+		...props,
+	});
 
 const mount = async (t, props) => {
 	/* Teardown is armed FIRST, so a throw anywhere in a body still unmounts. */
@@ -181,7 +197,6 @@ test("a group arrives condensed and names the running call", async (t) => {
 	const mounted = await mount(t, {
 		span: { startedAtMs: 1_000, endedAtMs: 23_000, running: false },
 		live: LIVE,
-		sectionLive: true,
 	});
 	assert.equal(rows(mounted), 0, "the rows are not on screen until asked for");
 	assert.equal(liveClause(mounted), "Running pnpm vitest run");
@@ -189,11 +204,10 @@ test("a group arrives condensed and names the running call", async (t) => {
 	assert.match(mounted.container.textContent, SUMMARY_MIXED);
 });
 
-test("the reader's press opens it, and a live section leaves it open", async (t) => {
+test("the reader's press opens it, and conversation updates leave it open", async (t) => {
 	const mounted = await mount(t, {
 		span: { startedAtMs: 1_000, endedAtMs: 23_000, running: false },
 		live: LIVE,
-		sectionLive: true,
 	});
 	await click(mounted);
 	assert.equal(rows(mounted), 1, "the press is the one thing that opens it");
@@ -207,109 +221,115 @@ test("the reader's press opens it, and a live section leaves it open", async (t)
 		summary: "4 shell · 1 python",
 		span: { startedAtMs: 1_000, endedAtMs: 23_000, running: true },
 		live: LIVE,
-		sectionLive: true,
 	});
 	assert.equal(
 		rows(mounted),
 		1,
-		"a live section never closes the reader's fold",
+		"an update to a running section never closes the reader's fold",
 	);
 	assert.match(mounted.container.textContent, SUMMARY_UPDATED);
 	/*
-	 * THE LIVE-AND-IDLE WINDOW (agent review R1): the run's calls have all
-	 * settled but the TURN is still finishing, so the section is live with no
-	 * call to name. This is where a simplification - "close once the run's calls
-	 * have settled" - would fold the reader's group out from under them, and no
-	 * committed case covered it: `sectionLive: true` only ever appeared beside a
-	 * running call. The reader's fold stays open here too; the close still comes
-	 * from the section's end and only from there.
+	 * THE LIVE-AND-IDLE WINDOW: the run's calls have all settled but the TURN is
+	 * still finishing. Updates keep arriving here - the target of the operator's
+	 * report - and the fold is the reader's throughout.
 	 */
 	await mounted.render({
 		summary: "4 shell · 1 python",
 		span: { startedAtMs: 1_000, endedAtMs: 23_000, running: false },
 		live: null,
-		sectionLive: true,
 	});
 	assert.equal(
 		rows(mounted),
 		1,
 		"a live section with nothing in flight does not close the reader's fold",
 	);
-	// And the latch is still armed: the section's own end is what closes it.
+	/*
+	 * THE SECTION'S OWN END - the event the shipped condense closed on, and the
+	 * close the 2026-09-27 report rules out for an explicitly-opened fold:
+	 * "they shouldn't be closed/contracted simply by state updates if they've
+	 * been explicitly opened." Measured on the rig before this change: the fold
+	 * went `expanded true -> false` on this exact transition, at every turn end.
+	 */
 	await mounted.render({
 		summary: "4 shell · 1 python",
-		span: { startedAtMs: 1_000, endedAtMs: 23_000, running: false },
+		span: { startedAtMs: 1_000, endedAtMs: 45_000, running: false },
 		live: null,
-		sectionLive: false,
 	});
-	assert.equal(rows(mounted), 0, "the section's end finds the latch armed");
+	assert.equal(
+		rows(mounted),
+		1,
+		"the section's end does not close a fold the reader opened",
+	);
+	// And the next turn's updates find it exactly as the reader left it.
+	await mounted.render({
+		summary: "4 shell · 1 python",
+		span: { startedAtMs: 46_000, endedAtMs: null, running: true },
+		live: LIVE,
+	});
+	assert.equal(
+		rows(mounted),
+		1,
+		"a fold the reader opened survives the next turn's updates too",
+	);
 });
 
-test("the section's end condenses it once, and not a moment early", async (t) => {
+test("the reader's own press is the only close, in both directions", async (t) => {
 	const mounted = await mount(t, {
 		span: { startedAtMs: 1_000, endedAtMs: 23_000, running: false },
 		live: LIVE,
-		sectionLive: true,
 	});
 	await click(mounted);
 	assert.equal(rows(mounted), 1);
-
-	// The section is over but a call in the run has not settled: no condense.
+	await click(mounted);
+	assert.equal(rows(mounted), 0, "the reader can always put it back");
+	/*
+	 * BOTH DIRECTIONS (the report's own ask): a fold the reader CLOSED is as much
+	 * theirs as one they opened, and no update may re-open it - the close is a
+	 * decision, not a default.
+	 */
 	await mounted.render({
-		span: { startedAtMs: 1_000, endedAtMs: 23_000, running: true },
+		summary: "5 shell · 1 python",
+		span: { startedAtMs: 1_000, endedAtMs: null, running: true },
 		live: LIVE,
-		sectionLive: false,
 	});
 	assert.equal(
 		rows(mounted),
-		1,
-		"nothing condenses while a call in the run is still running",
+		0,
+		"a fold the reader closed is not re-opened by updates",
 	);
-
-	// Settled: the finished section condenses.
-	await mounted.render({
-		span: { startedAtMs: 1_000, endedAtMs: 45_000, running: false },
-		live: null,
-		sectionLive: false,
-	});
-	assert.equal(rows(mounted), 0, "finished sections condense");
-	assert.equal(liveClause(mounted), null);
-	assert.equal(spanText(mounted), "44s");
-
-	// And it fires ONCE: reopening a finished fold makes it the reader's again.
+	assert.match(mounted.container.textContent, SUMMARY_GROWN);
+	// And their next press opens it again, for good.
 	await click(mounted);
-	assert.equal(rows(mounted), 1);
 	await mounted.render({
-		span: { startedAtMs: 1_000, endedAtMs: 45_000, running: false },
-		live: null,
-		sectionLive: false,
+		summary: "6 shell · 1 python",
+		span: { startedAtMs: 1_000, endedAtMs: null, running: true },
+		live: LIVE,
 	});
 	assert.equal(
 		rows(mounted),
 		1,
-		"a fold the reader reopened is not closed a second time",
+		"re-opening is the reader's, and stays open under updates",
 	);
 });
 
 test("a fold the reader opens after its section ended stays open", async (t) => {
 	// The restored-history shape, and the failed-row jump's: the fold has never
-	// been live in this mount, so there is no transition to condense on.
+	// been live in this mount, and nothing about its section's state changes
+	// what the reader's press means.
 	const mounted = await mount(t, {
 		span: null,
 		live: null,
-		sectionLive: false,
 	});
 	await click(mounted);
 	assert.equal(rows(mounted), 1);
-	await mounted.render({ span: null, live: null, sectionLive: false });
+	await mounted.render({ span: null, live: null });
 	assert.equal(rows(mounted), 1, "its section ended before the reader arrived");
 });
 
-test("no stamps, no clock — and never a `0s`", async (t) => {
+test("no stamps, no clock - and never a `0s`", async (t) => {
 	const mounted = await mount(t, {
 		span: null,
 		live: null,
-		sectionLive: false,
 	});
 	assert.equal(
 		spanText(mounted),
@@ -321,7 +341,6 @@ test("no stamps, no clock — and never a `0s`", async (t) => {
 	await mounted.render({
 		span: { startedAtMs: 1_000, endedAtMs: 1_300, running: false },
 		live: null,
-		sectionLive: false,
 	});
 	assert.equal(spanText(mounted), "0.3s");
 });
@@ -332,7 +351,6 @@ test("a live span computes against now and keeps ticking", async (t) => {
 	const mounted = await mount(t, {
 		span: { startedAtMs: Date.now() - 45_000, endedAtMs: null, running: true },
 		live: LIVE,
-		sectionLive: true,
 	});
 	assert.match(spanText(mounted) ?? "", LIVE_SPAN_SECONDS);
 });
