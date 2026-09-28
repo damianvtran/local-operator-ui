@@ -4930,8 +4930,16 @@ export function ChatSidebar({
 			    because it does not evaluate alpha). These rows are also the only way to
 			    reach a conversation, so dimming them says "unavailable" about the one
 			    thing that still works. Design round 1, D1. */}
+			{/*
+			 * NO `space-y-4` ON THE WRAPPER ANY MORE, and it is not a tidy-up: the
+			 * rhythm between two entity sections is CONDITIONAL on whether the one above
+			 * it draws rows (the teams section below carries the two values and the
+			 * measurement), and a parent `space-y-*` would set a `margin-top` on the
+			 * same element the child's class does - two declarations of one property,
+			 * settled by stylesheet order rather than by the decision.
+			 */}
 			{showList && (
-				<div className="space-y-4 pb-2">
+				<div className="pb-2">
 					<section>
 						{heading("agents", "Agents", true, undefined, Bot)}
 						{(query || isOpen("agents", true)) && (
@@ -5036,7 +5044,26 @@ export function ChatSidebar({
 							</>
 						)}
 					</section>
-					<section>
+					{/*
+					 * THE GAP BETWEEN THE TWO SECTIONS IS CONDITIONAL, and it is not a smaller
+					 * constant. Measured at 360px: the 16px between these sections is SHARED
+					 * - an open `Agents` above needs a section rhythm's 16px between the two,
+					 * and a shorter constant would tighten that case unasked - while a
+					 * collapsed section hands the heading below it the list's own 8px step,
+					 * because a section that draws no rows has nothing for a section rhythm to
+					 * separate. Operator report, 2026-09-27, asked twice: "shrink the gap
+					 * between agents and teams headers when agents is collapsed, there's an
+					 * extra gap wasting space there."
+					 *
+					 * `mt-4` and `mt-2` are the design's own two steps - the 16px section tier
+					 * and the 8px a label takes when the section above draws no rows to
+					 * separate - stated inline because this is the one site that takes the
+					 * conditional, and a query force-opens the section, which is the same
+					 * condition the rows' own gate reads.
+					 */}
+					<section
+						className={cn(query || isOpen("agents", true) ? "mt-4" : "mt-2")}
+					>
 						{heading("teams", "Teams", true, undefined, Users)}
 						{(query || isOpen("teams", true)) && (
 							<>

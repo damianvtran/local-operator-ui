@@ -1642,6 +1642,28 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"traceToolLabelsRestampNote",
 	/*
+	 * AND THIS BRANCH'S OWN, the stopped-row measure fix: it moves BOTH trees this
+	 * file binds - `src/` for §G3's stopped line taking the conversation's shared
+	 * measure (its wrapper now declares the chatcol container the dock and the
+	 * composer band already declare) plus the rig's handle on the composer box
+	 * (`data-lo-composer-measure`), `scripts/` for the geometry claims added to
+	 * `scripts/interrupt-esc-proof.mjs`, the discriminator that pins the property
+	 * (`scripts/stopped-row-measure.test.mjs`), its registration in
+	 * `package.json`'s `test:desktop` and this note's own registration - and it
+	 * rewrites no frame of the sweep (its evidence is a set of live-app PNGs,
+	 * `stopped-row-measure`, which the sweep's WebP predicate does not admit), so
+	 * a reader is owed the two values it binds and the reason no still was owed.
+	 */
+	"stoppedRowRestampNote",
+	/*
+	 * AND THIS LANE'S OWN, the newest top-level record on the branch: the sidebar
+	 * bottom zone moves BOTH trees (the destinations boundary and the entity
+	 * sections' conditional in `src/`; the `sidebar-bottom` scene and this
+	 * registration in `scripts/`) and adds a PNG set outside the sweep, so a
+	 * reader is owed the pair it binds and the readings it ships.
+	 */
+	"sidebarBottomZoneRestampNote",
+	/*
 	 * AND THE POINTER-AFFORDANCE SWEEP'S OWN - it belongs here for the list's own
 	 * reason: ITS SUBJECT IS THIS FILE'S BINDING. The sweep moves BOTH trees (the
 	 * base-layer rule and the five click sites under `src/`; the audit that
@@ -2472,6 +2494,21 @@ const BRANCH_RECORDS = [
 	 * same reason this list exists.
 	 */
 	"traceToolLabelsRestampNote",
+	/*
+	 * And by the stopped-row measure fix, whose note is the newest top-level
+	 * record on the branch: it states the pair this tip ships, moves both trees
+	 * (the stopped line's container in `src/`, the rig, its discriminator and
+	 * the two registrations in `scripts/`) and commits no swept frame - so a
+	 * fold that started from main's copy would drop it first, the same reason
+	 * this list exists.
+	 */
+	"stoppedRowRestampNote",
+	/*
+	 * And this branch's own record rides beside it: the sidebar bottom zone
+	 * writes one top-level note, registered here for the same completeness
+	 * reason - a fold that started from main's copy would drop it first.
+	 */
+	"sidebarBottomZoneRestampNote",
 	/*
 	 * And this branch's own record rides beside it - the pointer-affordance sweep
 	 * writes one top-level note, registered here for the same completeness reason.
