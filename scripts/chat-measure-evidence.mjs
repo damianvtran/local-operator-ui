@@ -46,13 +46,13 @@ const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
  * The frames this set carries, and what each one is for.
  *
  * `width`/`height` are the VIEWPORT. The stories draw their own pane inside it
- * at a fixed 1024px (`chat-measure.stories.tsx`), which is wider than the 868px
- * an 820px cap needs to bind AND wider than the 948 an 900px cap needs - so both
+ * at a fixed 1024px (`chat-measure.stories.tsx`), which is wider than the 858px
+ * an 810px cap needs to bind AND wider than the 948 an 900px cap needs - so both
  * halves of the pair are at their cap in the same frame, and the difference
  * between them is the number rather than the pane.
  *
  * `narrow-pane` is the control, and it is the pair that answers "does the change
- * fight the responsive step". At a 700px pane the content box is 652px, so
+ * fight the responsive step". At a 700px pane the content box is 668px, so
  * neither cap can bind: the two frames must be IDENTICAL, and the run asserts
  * that numerically rather than leaving it to the eye. If they ever differ, the
  * 750px gate has started to bind, which is the one way this change could narrow
@@ -60,13 +60,13 @@ const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
  *
  * `composer-row` is the regression surface the measure is SHARED with: the
  * composer's readings row decides whether to sit inline from a container
- * (pane-width) threshold, and narrowing the content inside that row by 80px is
+ * (pane-width) threshold, and narrowing the content inside that row by 90px is
  * exactly the kind of change that moves a row from one line to two. Its frames
  * are the check, and the run prints the row's geometry beside them.
  */
 const CASES = [
 	{
-		frame: "transcript-at-820",
+		frame: "transcript-at-810",
 		story: "chat-measure--transcript",
 		width: 1024,
 		height: 620,
@@ -78,7 +78,7 @@ const CASES = [
 		height: 620,
 	},
 	{
-		frame: "narrow-pane-at-820",
+		frame: "narrow-pane-at-810",
 		story: "chat-measure--narrow-pane",
 		width: 760,
 		height: 520,
@@ -98,12 +98,12 @@ const CASES = [
 	 * its own frames one branch over.
 	 */
 	{
-		frame: "composer-row-at-820",
+		frame: "composer-row-at-810",
 		story: "chat-composer-status-row--states",
 		ready: '[class*="@container/chatcol"]',
 		width: 996,
 		height: 900,
-		measure: 820,
+		measure: 810,
 		themes: ["localOperatorDark", "localOperatorLight"],
 	},
 	{

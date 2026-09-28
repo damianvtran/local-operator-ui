@@ -38,7 +38,7 @@ const TS = 1_760_000_000_000;
 /**
  * The sample the characters-per-line reading is taken over.
  *
- * 1,006 characters of the register this surface actually carries - an agent
+ * 1,059 characters of the register this surface actually carries - an agent
  * explaining a decision to its owner - because a line-length figure is only
  * comparable between two widths when the two runs wrap the same text. A
  * synthetic `lorem ipsum` would be a different average (the word lengths differ)
@@ -127,7 +127,7 @@ const RECORDS: TranscriptRecord[] = [
  * container query in `CHAT_MEASURE` resolves against a width this story states
  * rather than against the story iframe.
  *
- * The width is `1024`, which is above the 868px at which an 820px cap starts to
+ * The width is `1024`, which is above the 858px at which an 810px cap starts to
  * bind AND above the 948 an 900px cap needs - so both values are at their cap in
  * the same frame and the pair measures the two numbers rather than the pane.
  */
@@ -196,8 +196,8 @@ export const PreviousMeasure: Story = {
 /*
  * THE CONTROL PAIR.
  *
- * A 700px pane is below the 868px an 820px cap needs to bind, so at that pane
- * the content box is the pane less its insets - 652px - under BOTH measures.
+ * A 700px pane is below the 858px an 810px cap needs to bind, so at that pane
+ * the content box is the pane less its insets - 668px - under BOTH measures.
  * The two frames must therefore be identical, and
  * `scripts/chat-measure-evidence.mjs` fails the run if they are not: a
  * difference would mean the 750px gate had started to bind, which is the one
