@@ -993,10 +993,22 @@ export const AgentHubPage: React.FC = () => {
 								 * the same width. Two panels for the same moment, 295px apart, one of
 								 * which was a full-bleed 967px slab holding two centred sentences
 								 * (design round 1, D6).
+								 *
+								 * AN ORGANIZATION'S SCOPE KEEPS THE ROSTER'S WIDTH INSTEAD: there
+								 * this panel is the grid's only child, and its company is not the
+								 * load-failure alert but the Teams roster below — which spans the
+								 * content column. A 672px island centred in a 968px column, with a
+								 * full-width card flush beneath it, read as a panel that had lost its
+								 * width (the operator's report of 2026-09-27), so here the panel takes
+								 * the roster's own width. The public shapes — the ones D6 is about —
+								 * keep the capped, centred form.
 								 */
 								<div
 									data-testid="agent-hub-empty"
-									className="col-span-full w-full max-w-2xl justify-self-center flex flex-col items-center gap-2 rounded-md bg-surface px-6 py-10 text-center"
+									className={cn(
+										"col-span-full w-full flex flex-col items-center gap-2 rounded-md bg-surface px-6 py-10 text-center",
+										!orgScopeId && "max-w-2xl justify-self-center",
+									)}
 								>
 									<p className="text-heading text-ink">
 										{orgScopeId
