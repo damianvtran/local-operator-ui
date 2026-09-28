@@ -1655,6 +1655,14 @@ const STAMP_BINDING_NOTES = [
 	 * a reader is owed the two values it binds and the reason no still was owed.
 	 */
 	"stoppedRowRestampNote",
+	/*
+	 * AND THIS LANE'S OWN, the newest top-level record on the branch: the sidebar
+	 * bottom zone moves BOTH trees (the destinations boundary and the entity
+	 * sections' conditional in `src/`; the `sidebar-bottom` scene and this
+	 * registration in `scripts/`) and adds a PNG set outside the sweep, so a
+	 * reader is owed the pair it binds and the readings it ships.
+	 */
+	"sidebarBottomZoneRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2485,6 +2493,12 @@ const BRANCH_RECORDS = [
 	 * this list exists.
 	 */
 	"stoppedRowRestampNote",
+	/*
+	 * And this branch's own record rides beside it: the sidebar bottom zone
+	 * writes one top-level note, registered here for the same completeness
+	 * reason - a fold that started from main's copy would drop it first.
+	 */
+	"sidebarBottomZoneRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
