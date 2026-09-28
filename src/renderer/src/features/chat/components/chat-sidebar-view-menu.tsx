@@ -76,7 +76,7 @@ import { cn } from "@shared/lib/utils";
 import {
 	Activity,
 	Bot,
-	CalendarPlus,
+	Calendar,
 	Check,
 	ChevronDown,
 	ChevronUp,
@@ -156,6 +156,19 @@ const choice = (
 );
 
 export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
+	/*
+	 * WHETHER A SECTION WOULD DRAW, for `canMoveSection` (round 1's m1/U1): a
+	 * chat section with no loaded rows draws no label in the column
+	 * (`chat-sidebar.tsx`: "An empty section contributes no label"), so a swap
+	 * with one moves the stored order and this panel while the column stands
+	 * still. The counts are the sidebar's own per-section numbers - the same
+	 * ones the rows below print and the headers draw - so the disabled state
+	 * and the drawn column cannot disagree. A caller with no counts gets the
+	 * geometric rule, which is the most that caller can honestly answer.
+	 */
+	const draws = counts
+		? (key: SidebarSectionKey) => (counts[key] ?? 0) > 0
+		: undefined;
 	const groupBy: { key: SidebarGroupBy; label: string; icon: ReactNode }[] = [
 		{
 			key: "section",
@@ -183,7 +196,12 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 		{
 			key: "created",
 			label: "Created",
-			icon: <CalendarPlus aria-hidden="true" className="size-3.5" />,
+			/*
+			 * A plain calendar, not `CalendarPlus` (design round 1, D3): the plus
+			 * reads "add to calendar", an action - the row is a fact about the record's
+			 * own clock, so it takes the action-less glyph.
+			 */
+			icon: <Calendar aria-hidden="true" className="size-3.5" />,
 		},
 	];
 	const orderBy: { key: SidebarOrderBy; label: string; icon: ReactNode }[] = [
@@ -290,8 +308,11 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 					 * order, so a pair on either moved the stored order and this menu while
 					 * the column stood still - the popover then described a column that did
 					 * not exist. `canMoveSection` is the model's rule, asked rather than
-					 * re-derived; the disabled state IS the "adjacent shown section is a
-					 * chat section" answer.
+					 * re-derived; the disabled state IS the "adjacent shown section is a chat
+					 * section" answer - and where this panel has counts (it does), the same
+					 * numbers the section headers draw are asked whether BOTH ends of the
+					 * move would draw, so an empty section's pair is disabled rather than
+					 * moving something no one can see (round 1's m1/U1).
 					 */
 					return (
 						<div
@@ -362,7 +383,7 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 										size="icon-sm"
 										data-sidebar-view-move={`${key}:up`}
 										aria-label={`Move ${SIDEBAR_SECTION_LABEL[key]} up`}
-										disabled={!canMoveSection(view, key, -1)}
+										disabled={!canMoveSection(view, key, -1, draws)}
 										className="size-6"
 										onClick={() => onView(moveSection(view, key, -1))}
 									>
@@ -373,7 +394,7 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 										size="icon-sm"
 										data-sidebar-view-move={`${key}:down`}
 										aria-label={`Move ${SIDEBAR_SECTION_LABEL[key]} down`}
-										disabled={!canMoveSection(view, key, 1)}
+										disabled={!canMoveSection(view, key, 1, draws)}
 										className="size-6"
 										onClick={() => onView(moveSection(view, key, 1))}
 									>

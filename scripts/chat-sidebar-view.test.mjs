@@ -463,6 +463,57 @@ test("a reorder pair is offered only where a press can land (D1)", () => {
 	assert.equal(canMoveSection(DEFAULT_SIDEBAR_VIEW, "older", 1), false);
 });
 
+test("an empty section cannot move, and nothing moves against one (round 1's m1/U1)", () => {
+	/*
+	 * THE DEFECT THIS PINS, driven end to end in round 1: with a store whose only
+	 * row sits in Today, `This week` is shown but draws no rows (an empty chat
+	 * section contributes no label), and `Move Today down` was enabled - pressing
+	 * it rewrote the stored order and the panel's own list while the column the
+	 * reader was watching stood still. The mirror is an empty SOURCE: pressing an
+	 * empty section's own arrow at a drawn neighbour is equally invisible, because
+	 * the section being moved contributed nothing to the drawn sequence either
+	 * way. So the predicate asks BOTH ends - the section being moved and the
+	 * adjacent shown section in that direction must both draw - and with no
+	 * predicate (a caller with no rows to point at) the geometric rule stands.
+	 */
+	const draws = (drawn) => (key) => drawn.includes(key);
+	assert.equal(
+		canMoveSection(
+			DEFAULT_SIDEBAR_VIEW,
+			"today",
+			1,
+			draws(["running", "today"]),
+		),
+		false,
+		"today cannot move against an empty week",
+	);
+	assert.equal(
+		canMoveSection(
+			DEFAULT_SIDEBAR_VIEW,
+			"running",
+			1,
+			draws(["today", "week"]),
+		),
+		false,
+		"an empty section cannot move at all",
+	);
+	assert.equal(
+		canMoveSection(
+			DEFAULT_SIDEBAR_VIEW,
+			"today",
+			1,
+			draws(["running", "today", "week"]),
+		),
+		true,
+		"both ends drawn: the press is real",
+	);
+	assert.equal(
+		canMoveSection(DEFAULT_SIDEBAR_VIEW, "today", 1),
+		true,
+		"no predicate: the geometric rule alone",
+	);
+});
+
 test("a hidden section cannot move, and a hidden neighbour makes a new one adjacent", () => {
 	const hidden = toggleSection(DEFAULT_SIDEBAR_VIEW, "today");
 	assert.equal(

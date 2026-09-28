@@ -588,6 +588,33 @@ export const PopoverOpenShort: Story = {
 };
 
 /**
+ * The panel in the shape the APP can actually reach with a short window.
+ *
+ * The 800x600 capture is the design contract's floor (`WINDOW_MIN_WIDTH/HEIGHT`),
+ * but the popover it photographs is not reachable there in the product: below
+ * ~1024px the nav rail collapses and the chat column, and so the View options
+ * trigger, is not drawn (round 1's Q-2, reproduced independently by QA: no
+ * `[data-sidebar-view-options]` in ten seconds at 800x600). The reachable worst
+ * case is a DOCKED width with a short height, so this state is that pair:
+ * 1100x600, the same panel and the same bottom inset the short capture shows.
+ * The geometry is declared in the capture rig's STORIES row for this story.
+ */
+export const PopoverOpenNarrow: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		roster = groupRoster();
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(() => chatRows() >= 3);
+		await openViewPopover();
+	},
+};
+
+/**
  * The popover with one section switched OFF, driven by its own switch.
  *
  * The press is the switch itself (`data-sidebar-view-section="running"`), so
@@ -820,6 +847,16 @@ export const ReorderEdges: Story = {
 		for (const selector of [
 			'[data-sidebar-view-move="running:up"]',
 			'[data-sidebar-view-move="older:down"]',
+			/*
+			 * AND THE EMPTY-SECTION CASES (round 1's m1/U1), which this roster holds in
+			 * both directions: `running` has no loaded rows, so its own down-press is a
+			 * source that draws nothing, and Today's up-neighbour IS that empty
+			 * running, so its press would move nothing the reader sees. Both are
+			 * disabled rather than offered - the dead-control read the round-1 finding
+			 * measured on a store whose only row sat in Today.
+			 */
+			'[data-sidebar-view-move="running:down"]',
+			'[data-sidebar-view-move="today:up"]',
 		]) {
 			const element = document.querySelector<HTMLButtonElement>(selector);
 			if (!element) {

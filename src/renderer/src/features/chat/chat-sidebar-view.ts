@@ -433,7 +433,8 @@ export function isChatSection(key: SidebarSectionKey): boolean {
 }
 
 /**
- * Whether a section's move arrow can do what its label says (2026-09-28, D1).
+ * Whether a section's move arrow can do what its label says (2026-09-28, D1;
+ * tightened the same day for the empty-section case).
  *
  * THE DEFECT IT ANSWERS, measured on the operator's own panel by pressing the
  * arrows: the pair used to be offered on every non-entity row and enabled by
@@ -444,22 +445,38 @@ export function isChatSection(key: SidebarSectionKey): boolean {
  * below the chats list in fixed order. In both cases the popover then disagreed
  * with the column it was describing.
  *
- * THE RULE: a chat section's arrow is enabled only when the adjacent SHOWN
- * section in that direction is another drawn chat section. Pinned and the
- * entity rows draw no pair at all (the menu's own rule), and a hidden section
- * cannot move - it is not drawn, so "up" has no meaning for it.
+ * THE RULE: a chat section's arrow is enabled only when the move would change
+ * what the reader is looking at - the section being moved AND the adjacent
+ * SHOWN section in that direction must both be sections the column DRAWS.
+ * Pinned and the entity rows draw no pair at all (the menu's own rule); a
+ * hidden section cannot move - it is not drawn, so "up" has no meaning for it;
+ * and an EMPTY chat section draws nothing either (`chat-sidebar.tsx`: "An empty
+ * section contributes no label"), so a swap with one rewrites the stored order
+ * while the column stands still - round 1's m1/U1, whose repro was Today's
+ * down-arrow enabled against an empty `week`, and whose mirror is an empty
+ * `running` as the source of an equally invisible down-press.
+ *
+ * WHAT DRAWABILITY IS NOT THIS MODULE'S TO KNOW: it is a fact about the loaded
+ * rows, which the renderer holds and this pure model does not. So the caller
+ * passes the predicate it can answer - the sidebar's own per-section counts,
+ * the same numbers the section headers draw - and an absent predicate keeps
+ * the geometric rule only, which is what a caller with no rows to point at
+ * can honestly answer.
  */
 export function canMoveSection(
 	view: SidebarView,
 	key: SidebarSectionKey,
 	direction: -1 | 1,
+	draws?: (key: SidebarSectionKey) => boolean,
 ): boolean {
 	if (!isChatSection(key)) return false;
+	if (draws && !draws(key)) return false;
 	const shown = shownSections(view);
 	const at = shown.indexOf(key);
 	if (at < 0) return false;
 	const target = shown[at + direction];
-	return target !== undefined && isChatSection(target);
+	if (target === undefined || !isChatSection(target)) return false;
+	return draws ? draws(target) : true;
 }
 
 const GROUP_BY: readonly SidebarGroupBy[] = ["section", "agent", "flat"];

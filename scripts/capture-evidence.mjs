@@ -4219,6 +4219,13 @@ export const STORIES = [
 	["chat-sidebar-view-menu--reorder-edges", 741, 760],
 	/* The design direction's D2 capture: the same panel in the window floor. */
 	["chat-sidebar-view-menu--popover-open-short", 800, 600],
+	/*
+	 * The same state in the shape the APP can reach with a short window (round
+	 * 1's Q-2): the popover does not exist below ~1024px because the rail
+	 * collapses, so a docked width and a short height is the honest worst case
+	 * the reader can drive.
+	 */
+	["chat-sidebar-view-menu--popover-open-narrow", 1100, 600],
 	[
 		/*
 		 * The first rung needs no scroll: the rig proved it by refusing - at ten
