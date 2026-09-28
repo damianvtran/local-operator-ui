@@ -43,7 +43,7 @@ import {
 } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { MoreHorizontal } from "lucide-react";
-import type { FC } from "react";
+import type { FC, KeyboardEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { DesktopProject } from "../../../../../shared/desktop-control-contract";
@@ -224,9 +224,53 @@ const BoardCard: FC<BoardCardProps> = ({
 	);
 	const overdue = projectOverdue(project, todayUtcMs(nowMs));
 	const age = progressAge(project.progress_updated_at, nowMs);
+	/*
+	 * THE WHOLE CARD IS THE TARGET (operator report, 2026-09-28: "only the
+	 * title opens the details"). Before this, the name/description button was
+	 * the card's only door - the facts line, the chips and the progress row
+	 * were inert - so the pointer said "nothing here" over most of a surface
+	 * that reads as one object.
+	 *
+	 * WHY A ROOT HANDLER rather than wrapping everything in a button: the
+	 * card's menu and its sessions door are real buttons, and a button cannot
+	 * contain them. So the root carries the role and the handler, the title
+	 * becomes plain text inside it, and the two nested doors stop the bubble
+	 * at themselves (see the guards below) - which is also what keeps a
+	 * keyboard activation of EITHER door from navigating the card it sits in.
+	 */
+	const openFromCard = () => {
+		/* A selection is a deliberate drag across the card's own text, and the
+		 * click that ends it must not navigate; the card's text is selectable
+		 * (truncation is visual), so this guard is what keeps "select the due
+		 * date" from also opening the project. */
+		const selection = window.getSelection();
+		if (selection && !selection.isCollapsed) return;
+		onOpen();
+	};
+	const openFromKeyboard = (event: KeyboardEvent<HTMLDivElement>) => {
+		if (event.key !== "Enter" && event.key !== " ") return;
+		/* A focused child (the menu, the sessions door) owns its own keys; its
+		 * click is stopped above, and this keeps the same line for keys that
+		 * never become clicks. */
+		if (event.target !== event.currentTarget) return;
+		/* Space would scroll the column under the caret otherwise. */
+		event.preventDefault();
+		onOpen();
+	};
 	return (
 		<div
 			data-project-name={project.name}
+			// biome-ignore lint/a11y/useSemanticElements: a `<button>` cannot contain the card's own menu and sessions buttons; the root role keeps the card reachable and named while those doors stay legal inside it.
+			/* The card navigates to the detail route - the same act the list
+			 * row's full-width button and the menu's `Open` item perform - and
+			 * the role is what makes that act reachable from the keyboard and
+			 * keeps the pointer affordance the base layer gives semantic
+			 * controls (`styles/index.css`). */
+			role="button"
+			tabIndex={0}
+			aria-label={`Open ${project.name}`}
+			onClick={openFromCard}
+			onKeyDown={openFromKeyboard}
 			/*
 			 * 6px, no edge: the card is an ITEM inside the column's well, one step
 			 * below the column's 10 — the same 10/6 pair the view switcher's track
@@ -235,18 +279,20 @@ const BoardCard: FC<BoardCardProps> = ({
 			 * information, and this is the one boundary the system does not
 			 * delete (docs/branding.md § 2: "ask whether removing it entirely
 			 * would lose information").
+			 *
+			 * The hover step is the rows' own (`transition-colors duration-fast
+			 * ease-out-quart hover:bg-elevated`): while the title alone was the
+			 * target, only the title lifted; now that the whole card is the
+			 * target, the whole card answers the pointer.
 			 */
 			className={cn(
 				"group/card flex flex-col gap-2 rounded-sm bg-surface p-3",
+				"transition-colors duration-fast ease-out-quart hover:bg-elevated",
 				overdue && "border border-warning-border",
 			)}
 		>
 			<div className="flex items-start justify-between gap-2">
-				<button
-					type="button"
-					onClick={onOpen}
-					className="-mx-1 min-w-0 flex-1 rounded-sm px-1 text-left hover:bg-elevated"
-				>
+				<span className="min-w-0 flex-1">
 					<span className="block truncate text-body-sm font-medium text-ink">
 						{project.name}
 					</span>
@@ -255,7 +301,7 @@ const BoardCard: FC<BoardCardProps> = ({
 							{project.description}
 						</span>
 					)}
-				</button>
+				</span>
 				<DropdownMenu>
 					<DropdownMenuTrigger
 						/* The handoff's own hook, in the `data-project-name` family: the
@@ -264,6 +310,11 @@ const BoardCard: FC<BoardCardProps> = ({
 						data-project-menu={project.id}
 						aria-label={`Actions for ${project.name}`}
 						disabled={busy}
+						/* THE CARD'S HANDLER MUST NOT SEE THIS PRESS (mouse or
+						 * keyboard): the trigger acts, the card does not navigate. Radix
+						 * opens on pointerdown, and the click that follows would bubble
+						 * into `openFromCard`; this is where that bubble stops. */
+						onClick={(event) => event.stopPropagation()}
 						className={cn(
 							"shrink-0 rounded-sm p-1 text-ink-muted whitespace-nowrap",
 							"hover:bg-elevated hover:text-ink",
@@ -352,6 +403,9 @@ const CardSessionsPopover: FC<{ project: DesktopProject }> = ({ project }) => {
 				 * family this card already uses. */
 				data-project-sessions={project.id}
 				aria-label={`Sessions linked to ${project.name}`}
+				/* The card's handler must not see this press either: the door
+				 * opens the popover, the card does not navigate. */
+				onClick={(event) => event.stopPropagation()}
 				className={cn(
 					/* `whitespace-nowrap` + the row's `shrink-0`: the door is a
 					 * label, not prose - "2 sessions · 2 live" wrapped mid-phrase
