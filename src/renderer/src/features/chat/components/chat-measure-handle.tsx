@@ -42,12 +42,24 @@
  *    divider in `shared/components/common/resizable-divider.tsx`, including its
  *    full-viewport cursor overlay, which is imported rather than re-written.
  *
- * THE TWO KEYS DEVIATE FROM THE DIVIDER, deliberately. The divider's arrows are
- * edge-relative (on a right-anchored pane ArrowRight widens it), which is right
- * for a boundary between two panes. Here there are TWO handles for ONE value, so
- * edge-relative keys would make the same physical key mean opposite things
- * depending on which handle happens to hold focus - the reader could not learn
- * it. ArrowRight widens and ArrowLeft narrows on both edges.
+ * THE KEY MAP IS THE DIVIDER'S OWN, via `keyboardTarget`, with two register
+ * choices rather than a second implementation (agent review round 1's R1-2):
+ * `side: "right"` makes the arrows value-relative - Right widens on BOTH
+ * handles - where the divider's edge-relative arrows would make the same key
+ * mean opposite things depending on which handle holds focus, with TWO handles
+ * for ONE value; and `homeEnd: "value"` puts Home/End at the value's own
+ * extremes rather than at the divider's axis extremes. Both are parameters the
+ * shared map already carries.
+ *
+ * THE HANDLES EXIST ONLY WHERE THE OVERRIDE CAN ACT (agent review round 1's
+ * R1-1). The measure's own application is gated behind `@min-[750px]/chatcol:`,
+ * and below that gate the column takes the whole pane - there is no cap to
+ * resize. The wrapper carries the same gate, so a sub-750 pane renders no
+ * strip, no cue and no dead tab stop: the band is reachable in ordinary use
+ * (the app's 800px minimum window, and windows with a docked right-hand pane),
+ * and an affordance that silently stores values nothing applies is worse than
+ * an absent one. This is the same principle as `measurePx === null`, one gate
+ * later.
  */
 
 import {
@@ -55,6 +67,7 @@ import {
 	addResizeCursorOverlay,
 	removeResizeCursorOverlay,
 } from "@shared/components/common/resizable-divider";
+import { keyboardTarget } from "@shared/components/common/resizable-divider-geometry";
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
 import { useRef, useState } from "react";
@@ -65,10 +78,6 @@ import {
 	draggedChatMeasureWidth,
 	releasedChatMeasureWidth,
 } from "../chat-measure-drag";
-
-/** Arrow-key resize step, and the coarse step Shift selects. */
-const KEYBOARD_STEP = 16;
-const KEYBOARD_STEP_COARSE = 64;
 
 /**
  * The cue's mask geometry: the full bar, the solid core inside it, and the fade
@@ -157,30 +166,26 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 	 * ancestor, so the guard sees the flag this handler sets first.
 	 */
 	const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-		const step = event.shiftKey ? KEYBOARD_STEP_COARSE : KEYBOARD_STEP;
-		switch (event.key) {
-			case "ArrowRight":
-				event.preventDefault();
-				onWidthChange(width + step);
-				return;
-			case "ArrowLeft":
-				event.preventDefault();
-				onWidthChange(width - step);
-				return;
-			case "Home":
-				event.preventDefault();
-				onWidthChange(CHAT_MEASURE_MIN_PX);
-				return;
-			case "End":
-				event.preventDefault();
-				onWidthChange(CHAT_MEASURE_MAX_PX);
-				return;
-			case "Enter":
-				event.preventDefault();
-				onReset();
-				return;
-			default:
+		/*
+		 * `undefined` is the shared map declining a key this widget does not own;
+		 * `null` is Enter (the caller's own default). See the file comment for the
+		 * two register choices.
+		 */
+		const target = keyboardTarget(event.key, {
+			shiftKey: event.shiftKey,
+			value: width,
+			min: CHAT_MEASURE_MIN_PX,
+			max: CHAT_MEASURE_MAX_PX,
+			side: "right",
+			homeEnd: "value",
+		});
+		if (target === undefined) return;
+		event.preventDefault();
+		if (target === null) {
+			onReset();
+			return;
 		}
+		onWidthChange(target);
 	};
 
 	const onMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -299,7 +304,14 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 		<div
 			ref={rootRef}
 			className={cn(
-				"absolute top-0 z-10 h-full w-2.5",
+				/*
+				 * `hidden` below the same `@min-[750px]/chatcol` gate the measure's
+				 * application wears: below it the column takes the pane and there is
+				 * nothing to resize (agent review round 1's R1-1). The cue and the
+				 * separator are the wrapper's children, so one class removes the
+				 * paint AND the tab stop out of the band together.
+				 */
+				"hidden @min-[750px]/chatcol:block absolute top-0 z-10 h-full w-2.5",
 				/*
 				 * The strip floats 24px OUT from the content edge - the reference's
 				 * own offset - so the cue sits 28px from the longest glyph. The
