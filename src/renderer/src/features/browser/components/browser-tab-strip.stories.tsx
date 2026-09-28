@@ -80,14 +80,18 @@ const SESSIONS = [
 	{ session_id: "session-onboarding", title: null },
 ];
 
-/** A ground under the strip, so the active tab's notch — the 1px of `canvas` that
- * makes the tab continuous with the page — is a thing the frame can show. Without
- * it the frame ends at the strip's rule and the claim is untestable. */
+/** A ground under the strip, so the active tab's notch — the 1px that makes the
+ * tab continuous with the page — is a thing the frame can show. The ground is the
+ * PAGE's own `elevated`: since the drawer's-rung pass the page stands there
+ * (`browser-surface.tsx`, the URL bar), so the stand-in has to as well — a
+ * `canvas` stand-in would photograph a seam the product does not draw, which is
+ * the failure this harness exists to keep out of the frames. Without a ground at
+ * all the frame ends at the strip's rule and the claim is untestable. */
 const decorators: Meta<typeof BrowserTabStrip>["decorators"] = [
 	(Story) => (
-		<div className="flex flex-col bg-canvas">
+		<div className="flex flex-col bg-elevated">
 			<Story />
-			<div className="h-16 bg-canvas" />
+			<div className="h-16 bg-elevated" />
 		</div>
 	),
 ];
