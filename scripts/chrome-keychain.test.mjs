@@ -332,6 +332,12 @@ const CHROME_LAUNCH_SITES = [
 		"photographs scroll-driven history paging in the real renderer",
 	),
 	guarded(
+		"scripts/scroll-shift-evidence.mjs",
+		"spawn",
+		1,
+		"the per-frame instrument for the transcript's foot-row shift and the fold rounds - boots a private headless Chrome over CDP against the packaged page and samples scrollTop, scrollHeight, clientHeight and the leading edge every animation frame",
+	),
+	guarded(
 		"scripts/sidebar-resort-geometry.mjs",
 		"spawn",
 		1,
