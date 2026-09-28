@@ -59,6 +59,12 @@ const PAGE = FIXTURE.page.entries;
 const TWIN_PAGE = FIXTURE.pageWithTwin.entries;
 const SEED = FIXTURE.seed.liveEvents;
 const QUEUED_FRAME = FIXTURE.queuedSeed.liveEvents[0];
+/*
+ * The same terminal shape PLUS the interrupted-vs-failed workstream's new
+ * `not_run_kind`. Synthetic, like `queuedSeed`: the snapshot predates the field,
+ * which is exactly why the verbatim frames' own tolerance case below matters.
+ */
+const KIND_FRAME = FIXTURE.skippedKindSeed.liveEvents[0];
 const LAST_TS = FIXTURE.historyWindow.lastTs;
 const ARRIVAL_MS = Math.round((LAST_TS + 3 * 3600) * 1000);
 
@@ -98,6 +104,16 @@ test("the fixture is the terminal shape: four never-run frames, one real start",
 		assert.match(
 			frame.not_run_reason,
 			/^Invalid arguments: arguments are not valid JSON/,
+		);
+		/*
+		 * AND NO KIND: these are verbatim frames from a session captured before the
+		 * field existed, so the suite must keep reading them as today's rows. The
+		 * settlement below pins the other half - the record's kind stays null.
+		 */
+		assert.equal(
+			frame.not_run_kind,
+			undefined,
+			"the snapshot predates `not_run_kind`; a legacy frame must state none",
 		);
 	}
 	const all = SEED.map((event) => event.type);
@@ -193,12 +209,73 @@ test("a never-run frame settles the row its own announcement left, in place", ()
 		"the fact a turn-death settlement shares with this one",
 	);
 	assert.equal(
+		row.notRunKind,
+		null,
+		"a frame that states no kind settles without a class - today's row",
+	);
+	assert.equal(
 		row.ts,
 		ARRIVAL_MS,
 		"the row keeps the instant its announcement was painted at",
 	);
 	// A second replay of the same verdict is the same state, not a second settle.
 	assert.equal(applyEvent(settled, NEVER_RUN[0], ARRIVAL_MS + 900), settled);
+});
+
+test("a verdict carrying `not_run_kind` settles the same row and lands its class", () => {
+	/*
+	 * The interrupted-vs-failed half: the terminal frame gains a machine-readable
+	 * class (`skipped` here - the steering skip the operator reported), which is
+	 * what lets the row read as interrupted rather than failed. It changes NOTHING
+	 * else about the settle: same row, same position, the reason beside it, and
+	 * the never-sent shape a class-less verdict leaves.
+	 */
+	const callId = KIND_FRAME.tool_call_id;
+	const announced = applyEvent(
+		withPage(),
+		{
+			type: "tool_call_compose",
+			tool_call_id: callId,
+			tool_name: "bash",
+			argument_bytes: 96,
+			dictation_complete: false,
+			not_run_reason: null,
+		},
+		ARRIVAL_MS,
+	);
+	const settled = applyEvent(announced, KIND_FRAME, ARRIVAL_MS + 500);
+	const rows = settled.records.filter((r) => r.id === `tool:${callId}`);
+	assert.equal(rows.length, 1, "settled in place, never a second row");
+	const row = rows[0];
+	assert.equal(row.notRunKind, "skipped", "the class the producer stated");
+	assert.equal(
+		row.notRunReason,
+		KIND_FRAME.not_run_reason,
+		"with the harness's own words beside it",
+	);
+	assert.equal(row.neverSent, true);
+	assert.equal(row.isError, false, "nothing ran, so nothing failed");
+	assert.equal(row.phase, "done");
+	assert.equal(row.startedAt, null, "nothing executed, so no clock");
+	// And the class-less fixture frames above settle with NO class - the
+	// tolerance case, pinned on the same field.
+	const legacy = applyEvent(
+		applyEvent(
+			withPage(),
+			{
+				type: "tool_call_compose",
+				tool_call_id: CALL_IDS[0],
+				tool_name: "hub",
+				argument_bytes: 1900,
+				dictation_complete: false,
+				not_run_reason: null,
+			},
+			ARRIVAL_MS,
+		),
+		NEVER_RUN[0],
+		ARRIVAL_MS + 500,
+	);
+	assert.equal(rowFor(legacy, `tool:${CALL_IDS[0]}`).notRunKind, null);
 });
 
 test("a never-run frame cannot walk a settled durable row back to composing", () => {
