@@ -85,12 +85,14 @@ export function staysVisibleWhileCollapsed(record: TranscriptRecord): boolean {
  * `Stopped before finishing` caption carries that fact where it already does.
  *
  * ONE LOCAL HELPER on purpose: the sibling's shared outcome predicate is not
- * landed yet, so this is the single place to swap when it is (their
- * machine-readable `notRunKind` replaces the `neverSent`/`notRunReason` pair
- * and their fix clears `isError` on a durable `skipped` row). NAMED RESIDUAL:
- * until their fix lands, a durable `__fault === "skipped"` row still carries
- * `isError: true` and therefore counts here — the PR names this as a
- * dependency rather than papering over it.
+ * exported yet, so this is the single place to swap when it is. Their
+ * interrupted-vs-failed fix HAS LANDED (PR #613): a durable `skipped` row now
+ * clears `isError` and sets `stopped`, and a live end event with
+ * `__fault` in {skipped, aborted} does the same - so this helper's exclusions
+ * read the settled state rather than working around it, and the count is
+ * genuine `error` only. The planning-fault never-run kinds (`denied`,
+ * `gate_failed`, ...) stay excluded here because the frozen contract excludes
+ * every never-sent call; their rows keep their own failure treatment.
  */
 export function isFailedCall(record: TranscriptRecord): boolean {
 	if (record.kind !== "tool") return false;
