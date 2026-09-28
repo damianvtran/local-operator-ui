@@ -1,9 +1,18 @@
-# Mesh tab (read-only slice, `features.peers`)
+# Mesh tab (interactive canvas, `features.peers` + `features.session_transfer`)
 
-The Mesh tab's states, in both brand palettes, at the app's own window size and at
-the narrow one. This is slice 1 of the Mesh build: the read surface, the tab that
-ships **dark** - mounted only when the backend advertises `features.peers` - with no
-mutation, no drag and no sidebar change.
+The Mesh tab's states, in both brand palettes, at the app's own window size and at the
+narrow one. The tab still ships **dark** - mounted only when the backend advertises
+`features.peers`, with no call at all on a machine in no mesh - and this set is slice 2's:
+the canvas became interactive (pan, zoom, hover, the device panel, the drag and its
+transient states, the two dialogs, the busy refusal and its executed remedy), so the set
+grew from slice 1's nine states to the **nineteen** below.
+
+**Re-captured, not carried forward (design review round 2, D9).** Slice 2's frames were
+re-shot at this branch's own head through the command below: the previous set still
+rendered `4 chats` - a string the renamed code can no longer produce - and contained no
+frame of any interactive state, while this README documented the command that writes
+them. A frame that contradicts the code reads as verified, which is worse than a missing
+one.
 
 ## Which surface produced these frames, and what they do not prove
 
@@ -29,7 +38,7 @@ node scripts/capture-evidence.mjs --only=mesh-tab \
   --themes=localOperatorLight,localOperatorDark --allow-backend
 ```
 
-18 frames, 9 states x 2 palettes, written through the repo's own sweep (a private
+38 frames, 19 states x 2 palettes, written through the repo's own sweep (a private
 headless Chrome, `Page.captureScreenshot` at deviceScaleFactor 2, `assertFramePaints`
 on every frame). `manifest.json` records this as a **partial** capture
 (`partialCapture`), which is what it is: the set is the tab's own states, not a

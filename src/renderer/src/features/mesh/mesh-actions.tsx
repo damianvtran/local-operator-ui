@@ -248,8 +248,12 @@ export const InviteDialog: FC<{
 						<span className="text-meta text-ink-dim">
 							The token was written here, and this app never reads it:
 						</span>
-						<code className="break-all font-mono text-meta text-ink">
-							{receipt.token_path || "(the route did not name a path)"}
+						<code className="break-words font-mono text-meta text-ink">
+							{receipt.token_path ? (
+								<BreakablePath path={receipt.token_path} />
+							) : (
+								"(the route did not name a path)"
+							)}
 						</code>
 					</div>
 				) : (
@@ -434,6 +438,41 @@ export const RemoveMemberDialog: FC<{
 };
 
 /**
+ * A PATH THAT BREAKS WHERE PATHS BREAK (design review round 2, D11).
+ *
+ * The receipt's token path is the one line in this dialog a reader is expected to copy, and
+ * `break-all` split it mid-word in both palettes - `.../invites/devon-la` / `ptop.token`, two
+ * lines that read as two different paths. Break opportunities belong AFTER the separators, so
+ * every `/` gets a `<wbr>` and **every segment is a `whitespace-nowrap` span**: the separators
+ * are where a path may wrap, and a file name is one unbreakable unit.
+ *
+ * WHY THE SEGMENTS AND NOT ONLY THE `<wbr>`S: shot on this branch's own re-capture, `<wbr>`
+ * alone still broke inside the name - `.../invites/devon-` / `laptop.token` - because a hyphen
+ * is a break opportunity of its own and `devon-laptop.token` has one. The span is what makes
+ * the name whole; the `<wbr>` after each slash keeps the wrap AT a separator rather than at
+ * whatever space the browser would otherwise find.
+ */
+function BreakablePath({ path }: { path: string }): React.ReactNode {
+	/*
+	 * KEYS FROM THE POSITION IN THE PATH rather than the array index: two segments of one path
+	 * can be identical (`/a/b/a`), and an index key renames the element React is reconciling as
+	 * soon as the path's shape changes.
+	 */
+	let offset = 0;
+	return path.split("/").flatMap((part) => {
+		const start = offset;
+		offset += part.length + 1;
+		const segment = (
+			<span key={`path-segment-${start}`} className="whitespace-nowrap">
+				{part}
+			</span>
+		);
+		return start === 0
+			? [segment]
+			: [<wbr key={`path-break-${start}`} />, "/", segment];
+	});
+}
+/**
  * What happened to the last move, and the one action it leaves.
  *
  * A REFUSAL IS RENDERED FROM THE RECEIPT RATHER THAN FROM COPY WRITTEN HERE: the
@@ -443,16 +482,34 @@ export const RemoveMemberDialog: FC<{
  * turn to finish (a `busy` refusal with the route's own `wait_s` ceiling) — and
  * neither of them is a retry of the same request, which is the one action that is
  * wrong for an unconfirmed outcome.
+ *
+ * THE WAIT BUTTON IS THIS COMPONENT'S OWN DECISION, NOT THE CODE'S (agent review round 2,
+ * MINOR). It used to render on `refusal.code === "busy"` alone, while the handler that
+ * makes it work lives in the page and silently returns when the refusal carries no move -
+ * so a `busy` refusal arriving without one would draw a control that does nothing, which
+ * is the shape round 1 filed. `canWait` is that move's presence, passed down, so the
+ * button and the handler read one fact and the button is only drawn when pressing it acts.
  */
 export const MoveNotice: FC<{
 	receipt: { verb: string; detail: string; undo: MovePlan | null } | null;
+	/** Whether the MOVE this refusal carries can be re-issued. */
+	canWait: boolean;
 	refusal: MeshRefusal | null;
 	onWait: () => void;
 	onRecheck: () => void;
 	onUndo: () => void;
 	onDismiss: () => void;
 	pending: boolean;
-}> = ({ receipt, refusal, onWait, onRecheck, onUndo, onDismiss, pending }) => {
+}> = ({
+	receipt,
+	canWait,
+	refusal,
+	onWait,
+	onRecheck,
+	onUndo,
+	onDismiss,
+	pending,
+}) => {
 	if (!receipt && !refusal) return null;
 	return (
 		/*
@@ -480,7 +537,7 @@ export const MoveNotice: FC<{
 					{refusal?.code}
 				</span>
 			)}
-			{refusal?.code === "busy" && (
+			{refusal?.code === "busy" && canWait && (
 				<Button
 					size="sm"
 					variant="secondary"

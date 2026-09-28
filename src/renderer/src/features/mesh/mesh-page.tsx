@@ -515,6 +515,14 @@ export const MeshSurface: FC<{
 								refusal={
 									moveReport.kind === "refused" ? moveReport.refusal : null
 								}
+								/*
+								 * THE REFUSAL'S OWN MOVE, read once and handed to the notice: the wait button is
+								 * drawn from this and the handler below re-issues it, so the two cannot disagree
+								 * about whether pressing it does anything (agent review round 2, MINOR).
+								 */
+								canWait={
+									moveReport.kind === "refused" && moveReport.plan !== null
+								}
 								onWait={onWaitForIdle}
 								onRecheck={onRetry}
 								onUndo={onUndoCopy}

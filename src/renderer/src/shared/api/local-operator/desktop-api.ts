@@ -136,17 +136,26 @@ function withDeadline(
 	pending: Promise<DesktopResponse>,
 	request: DesktopRequest,
 ): Promise<DesktopResponse> {
-	const deadlineMs = desktopRequestTimeoutMs(request);
+	/*
+	 * THE TIMEOUT, NOT THE DEADLINE, and the name says so (agent review round 2, NIT).
+	 * `desktopRequestTimeoutMs` is `desktopRequestDeadlineMs + DESKTOP_DEADLINE_MARGIN_MS`
+	 * (155 s offload becomes 160 s), and this value feeds BOTH the timer and the sentence
+	 * the give-up carries - so "the app waits up to 160 seconds" is what the process
+	 * actually did. Named `deadlineMs` it read as the smaller number while holding the
+	 * larger one, which is how the round-2 reading of line 145 concluded the copy and the
+	 * timer disagreed by the margin; they are the same value.
+	 */
+	const timeoutMs = desktopRequestTimeoutMs(request);
 	let timer: ReturnType<typeof setTimeout>;
 	return Promise.race([
 		pending,
 		new Promise<never>((_, reject) => {
 			timer = setTimeout(() => {
-				const detail = desktopRequestDeadlineDetail(request.op, deadlineMs);
+				const detail = desktopRequestDeadlineDetail(request.op, timeoutMs);
 				reject(
 					new DesktopControlError(null, detail.message, undefined, detail.code),
 				);
-			}, deadlineMs);
+			}, timeoutMs);
 		}),
 	]).finally(() => clearTimeout(timer));
 }

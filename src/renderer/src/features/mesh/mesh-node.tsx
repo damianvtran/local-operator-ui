@@ -36,9 +36,14 @@ import { Monitor, Network } from "lucide-react";
 import type { FC } from "react";
 import { DRAG_THRESHOLD_PX } from "./mesh-drag";
 import type { DeviceState, MeshDevice, MeshNetwork } from "./mesh-graph";
-import { deviceStatLine, deviceStateWords } from "./mesh-graph";
+import {
+	deviceNodeStatLine,
+	deviceStatLine,
+	deviceStateWords,
+} from "./mesh-graph";
 import { DEVICE_HEIGHT, NETWORK_HEIGHT, NODE_WIDTH } from "./mesh-positions";
-import type { DeviceSessions } from "./mesh-sessions";
+import { sessionStripeKey } from "./mesh-sessions";
+import type { ChipStripeKey, DeviceSessions } from "./mesh-sessions";
 import type { MeshSessionRow } from "./mesh-types";
 
 /**
@@ -158,18 +163,12 @@ export function chipFact(session: MeshSessionRow, ownerLabel: string): string {
 	return session.locality === "local" ? "on this device" : `on ${ownerLabel}`;
 }
 
-/**
- * WHETHER THIS CONVERSATION WILL REFUSE A DRAG, as the chip's own stripe.
- *
- * `attention` is exactly the two states that answer "no" while the pointer is still
- * down - a turn in flight (`busy`, which the reducer refuses rather than interrupts)
- * and a session on a device that is not answering - so the chip can say it before the
- * reader commits, which is the same prospective rule the drop target and the indicator
- * follow. It is deliberately NOT a per-word palette: the exact word is in the tooltip,
- * in the accessible name and in the panel's column, and a 72 px chip that tried to
- * spell four states would spell none of them.
+/*
+ * `ChipStripeKey` AND `sessionStripeKey` LIVE IN `mesh-sessions` rather than here: the
+ * stripe is a DECISION about a row (the same predicate `resolveDrop` refuses on), while
+ * this file is the class names it is drawn with - and keeping the decision in a module
+ * with no React in it is what lets the row's own suite call it (UX review round 2, U9).
  */
-export type ChipStripeKey = "resting" | "attention";
 
 /** The chip's stripe: the node's own channel, at the chip's own weight. */
 const CHIP_STRIPE: Record<ChipStripeKey, string> = {
@@ -178,14 +177,6 @@ const CHIP_STRIPE: Record<ChipStripeKey, string> = {
 	resting: "border-l-2 border-l-hairline",
 	attention: "border-l-2 border-l-warning",
 };
-
-/** Which stripe a chip wears - see `ChipStripeKey`. */
-export function sessionStripeKey(session: MeshSessionRow): ChipStripeKey {
-	if (!session.reachable) return "attention";
-	return session.live_state.trim().toLowerCase() === "busy"
-		? "attention"
-		: "resting";
-}
 
 type NetworkNodeProps = {
 	network: MeshNetwork;
@@ -297,6 +288,13 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 	onShowAllSessions,
 }) => {
 	const stat = deviceStatLine(device, nowSeconds);
+	/*
+	 * WHAT THE NODE PAINTS IS THE NARROWER FORM (design review round 2, D12): the
+	 * sentence above is what this node's accessible name and its tooltip carry, and the
+	 * line below is the same facts in the words that fit 147 px. They are two renderings
+	 * of one builder (`mesh-graph.ts`), so a fact cannot appear in one and not the other.
+	 */
+	const statAtNodeWidth = deviceNodeStatLine(device, nowSeconds);
 	const name = deviceNodeName(device, nowSeconds);
 	return (
 		<li
@@ -396,7 +394,7 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 						title={stat}
 						className={cn("block truncate text-meta", STATE_TEXT[device.state])}
 					>
-						{stat}
+						{statAtNodeWidth}
 						{device.memberships.length > 1
 							? ` · ${device.memberships.length} networks`
 							: ""}
@@ -431,6 +429,7 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 						key={session.id}
 						session={session}
 						ownerLabel={device.label}
+						ownerReachable={device.reachable}
 						moving={movingSessionId === session.id}
 						dragging={draggedSessionId === session.id}
 						onPointerDown={onChipPointerDown}
@@ -452,8 +451,20 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 							// "4 of 37" over a page of 8 rows is a wrong total rather than a
 							// rounded one (`deviceSessionTotal`).
 							title={`Showing ${sessions.shown.length} of ${sessionTotal} conversations`}
+							/*
+							 * THE WORD "MORE" IS IN THE NAME, NOT ON THE CONTROL (design review round 2,
+							 * D8). Measured in the shipped renderer at the pinned 200 px: the full `+4 more`
+							 * label (47.4 px of text plus its 12 px of padding) took 59.4 px of the row's
+							 * 171 px content box, which left each of the two chips a 51.8 px box - 37 px of
+							 * text, about five characters of a title, and two truncations that read `Swe…`
+							 * and `Res…`. `+4` costs 27.3 px, so each chip gets 67.9 px and 53 px of text:
+							 * **+43%** more characters per chip for a word that was costing both of them.
+							 * The affordance is not the word: the button's own name and its tooltip both
+							 * still say what it opens, and the panel it opens is the whole list.
+							 */
+							aria-label={`Show all ${sessionTotal} conversations`}
 						>
-							+{sessions.hidden} more
+							+{sessions.hidden}
 						</button>
 					</li>
 				)}
@@ -484,6 +495,14 @@ function emptyChipWords(device: MeshDevice): string | null {
 type SessionChipProps = {
 	session: MeshSessionRow;
 	ownerLabel: string;
+	/**
+	 * THE OWNER DEVICE'S OWN REACHABILITY, from the node that draws it.
+	 *
+	 * Passed rather than read off the row so the chip's stripe and the resolver's refusal
+	 * are the same answer to the same question (UX review round 2, U9) - see
+	 * `ChipStripeKey`.
+	 */
+	ownerReachable: boolean;
 	moving: boolean;
 	dragging: boolean;
 	onPointerDown: (
@@ -514,6 +533,7 @@ type SessionChipProps = {
 const SessionChip: FC<SessionChipProps> = ({
 	session,
 	ownerLabel,
+	ownerReachable,
 	moving,
 	dragging,
 	onPointerDown,
@@ -548,6 +568,23 @@ const SessionChip: FC<SessionChipProps> = ({
 				onClick={() => onClick(session)}
 				className={cn(
 					"w-full max-w-32 truncate rounded-sm border border-hairline bg-surface px-1.5 py-0.5 text-left text-meta text-ink-muted",
+					/*
+					 * LEFT-TRUNCATION: `direction: rtl` with `text-align: left` is what moves the
+					 * overflow - and the ellipsis - to the START, which is where it has to be, because a
+					 * device's conversations are named in series (`Sweep 011`, `Sweep 012`) and the part
+					 * that tells two of them apart is the END. End-truncation is what round 2 measured at
+					 * the cap: two conversations rendered as `Swe…` and `Res…`.
+					 *
+					 * NOT `unicode-bidi: plaintext`, which is the tempting companion and the wrong one: it
+					 * makes the PARAGRAPH direction follow the first strong character, so the box goes back
+					 * to truncating at the end - photographed on this branch's own `cap-at-four` frame, where
+					 * the chips read `Sweep …` with the ellipsis on the right. An LTR title inside an RTL
+					 * box still renders its words in order (the run is LTR; only the line's overflow side
+					 * follows the box), and the full title is in the tooltip and the accessible name either
+					 * way, so a title in another script is a rendering this can be judged on rather than a
+					 * claim made here.
+					 */
+					"[direction:rtl]",
 					// THE CURSOR SAYS IT CAN BE GRABBED (UX review round 1, U6): the chips are
 					// the draggable things and the only cue was a `title` tooltip the reader had
 					// to wait for. `cursor-pointer` is the app's own spelling for a control.
@@ -562,7 +599,7 @@ const SessionChip: FC<SessionChipProps> = ({
 					 * own column, so the stripe answers "will this one refuse me" and the words
 					 * stay where there is room for them.
 					 */
-					CHIP_STRIPE[sessionStripeKey(session)],
+					CHIP_STRIPE[sessionStripeKey(session, ownerReachable)],
 					/*
 					 * THE DRAGGED CHIP DIMS RATHER THAN DETACHING. The real element keeps its
 					 * place in the list (so nothing reflows mid-drag and the drop's own layout is
@@ -573,6 +610,25 @@ const SessionChip: FC<SessionChipProps> = ({
 					"focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
 				)}
 			>
+				{/*
+				 * THE TAIL IS THE READABLE END, so the truncation happens at the OTHER one.
+				 *
+				 * `direction: rtl` plus `unicode-bidi: plaintext` is the standard way to ask the
+				 * browser for left-truncation: `plaintext` takes the paragraph direction from the
+				 * text's own first strong character, so an English (or Arabic) title keeps its glyph
+				 * order while the ellipsis moves to the START - which is where the overflow has to
+				 * be, because a device's conversations are named in series (`bench-device-1 chat 0`,
+				 * `bench-device-1 chat 1`) and the part that tells two of them apart is the END.
+				 * End-truncation is what round 2 measured at the cap: two conversations rendered as
+				 * `Swe…` and `Res…`.
+				 *
+				 * WHY NOT A CHARACTER BUDGET, which is what this started as: the chip's text area at
+				 * the cap is **53 px** (a 67.9 px chip less its 12 px of padding and its borders),
+				 * which is about eight average characters - but the width of eight characters ranges
+				 * from 49 px to 62 px over the titles these stories use, so any character count is a
+				 * guess that clips the tail on exactly the widest titles. The browser measures; the
+				 * classes only say WHICH END loses characters.
+				 */}
 				{chipLabel(session)}
 			</button>
 		</li>

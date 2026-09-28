@@ -679,6 +679,52 @@ export const MoveConfirm: Story = {
 };
 
 /**
+ * The cap, with four conversations on ONE peer: what the row does when it runs out.
+ *
+ * THIS STORY EXISTS BECAUSE NOTHING SHOWED THE CASE (design review round 2, D8). Every
+ * other story in this file puts at most two conversations on a device, so the overflow
+ * control was never drawn in a frame and the cap could only be judged from the two-row
+ * case - which is how round 1 shipped with two chips reading `Swe…` and `Res…`.
+ *
+ * THE TITLES ARE DELIBERATE: four conversations named in series, differing only in their
+ * last characters, which is the shape this app's own fixtures use and the shape an
+ * end-truncation renders as four identical chips. The chip truncates from the LEFT
+ * (`mesh-node.tsx`), so what survives is the part that tells them apart.
+ */
+export const CapAtFour: Story = {
+	render: () => {
+		const base = actionFixture();
+		installBridge({
+			...base,
+			peers: {
+				...base.peers,
+				peers: [
+					peer(DEVICE_PEER, {
+						name: "cloud-node-1",
+						last_seen_at: seenMinutesAgo(9),
+						session_count: 4,
+					}),
+				],
+			},
+			sessions: [
+				sessionRow("0123456789ab", "Sweep 001"),
+				sessionRow("0123456789cd", "Resume the roadmap", {
+					live_state: "attached",
+				}),
+				...["011", "012", "013", "014"].map((tail) =>
+					sessionRow(`0123456789${tail}`, `Sweep ${tail}`, {
+						locality: "remote",
+						owner_device: DEVICE_PEER,
+						owner_device_name: "cloud-node-1",
+					}),
+				),
+			],
+		});
+		return <MeshPage />;
+	},
+};
+
+/**
  * A session with a turn in flight: REFUSED before anything is sent, with the route's
  * vocabulary and the one action that is honest - wait for the turn to finish.
  */
@@ -715,6 +761,101 @@ export const MoveRefusedBusy: Story = {
 	},
 };
 
+/**
+ * The `busy` remedy EXECUTED, and the request it sends (agent review round 2, F2).
+ *
+ * WHY THIS IS A STORY OF ITS OWN, and why it is not the story above. Round 1 fixed the
+ * inert button and round 2 measured that nothing in the tree had ever pressed it: the
+ * read path that makes it work (`moveReport.plan` -> `run(plan, WAIT_FOR_IDLE_S)`) was
+ * unpinned, and `MoveRefusedBusy`'s own play stops at `findByText` - it cannot press the
+ * button, because pressing it replaces the notice with the outcome and that row's
+ * `expectSentence` claim is the refusal. This story is the same setup one step further,
+ * with the `play` doing the thing a reader does and asserting what went on the wire.
+ *
+ * THE ASSERTION IS ON THE APP'S OWN SEAM. The bridge this file installs is wrapped for the
+ * duration of the play, so what is recorded is exactly what the page asked for - and the
+ * fact asserted is `waitS`, the renderer-side spelling of the route's `wait_s` ceiling
+ * (`desktop-contract.ts` maps it at the transport). Round 1's defect was that the button
+ * did nothing; a `waitS` other than 300 would mean it re-issued the move WITHOUT waiting,
+ * which is the one thing the remedy must not do - it would be refused again.
+ */
+export const MoveBusyWaited: Story = {
+	render: () => {
+		installBridge({
+			...actionFixture(),
+			/*
+			 * THE BUSY ROW IS THE SUBJECT, exactly as it is in `MoveRefusedBusy`: without it the
+			 * gesture reaches the ordinary move-confirm dialog, there is no refusal, and therefore no
+			 * `Wait for the turn to finish` to press. The first version of this story omitted it and
+			 * the capture failed on the frame's own claim - which is the claim doing its job.
+			 */
+			sessions: [
+				sessionRow("0123456789ab", "Sweep 001", { live_state: "busy" }),
+				sessionRow("0123456789cd", "Resume the roadmap", {
+					live_state: "attached",
+				}),
+				sessionRow("0123456789ef", "Rewrite the importer", {
+					locality: "remote",
+					owner_device: DEVICE_PEER,
+					owner_device_name: "cloud-node-1",
+				}),
+			],
+			transfer: {
+				locality: "remote",
+				owner_device: DEVICE_PEER,
+				source_retired: true,
+				session_id: "0123456789ab",
+				new_session_id: "0".repeat(12),
+				mode: "move",
+				phases: [],
+			},
+		});
+		return <MeshPage />;
+	},
+	play: async () => {
+		const sent: Array<BridgeRequest & { waitS?: number }> = [];
+		const page = window as unknown as {
+			api?: {
+				desktop?: {
+					request: (
+						r: BridgeRequest & { waitS?: number },
+					) => Promise<DesktopResponse>;
+				};
+			};
+		};
+		const installed = page.api?.desktop?.request;
+		const desktop = page.api?.desktop;
+		if (!installed || !desktop)
+			throw new Error("the story's bridge is not installed");
+		desktop.request = (request) => {
+			sent.push(request);
+			return installed(request);
+		};
+
+		await openPanel(DEVICE_SELF);
+		await chooseFromSessionMenu("0123456789ab", "Move to cloud-node-1");
+		const user = userEvent.setup();
+		await user.click(
+			await screen.findByRole("button", {
+				name: "Wait for the turn to finish",
+			}),
+		);
+		await waitFor(() => {
+			const transfers = sent.filter((r) => r.op === "sessions.transfer");
+			if (transfers.length !== 1)
+				throw new Error(
+					`the busy refusal sends nothing, and the remedy sends ONE move: saw ${transfers.length}`,
+				);
+			if (transfers[0].waitS !== 300)
+				throw new Error(
+					`the re-issued move must carry the route's own wait ceiling, not ${transfers[0].waitS}`,
+				);
+		});
+		// And the notice moves on to the outcome rather than leaving the refusal standing.
+		await screen.findByText("Moved");
+	},
+};
+
 /** The reversible half, and the undo it leaves: a `--keep` copy that can be erased. */
 export const MoveCopyWithUndo: Story = {
 	render: () => {
@@ -739,7 +880,7 @@ export const MoveCopyWithUndo: Story = {
 		await user.click(
 			await screen.findByRole("button", { name: "Copy here, leave it there" }),
 		);
-		await screen.findByText("Erase the copy");
+		await screen.findByText(/Bring the copy back from/);
 	},
 };
 

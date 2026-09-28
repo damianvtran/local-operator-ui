@@ -6065,6 +6065,13 @@ export const STORIES = [
 	 */
 	["mesh-tab--device-panel", 1380, 900],
 	/*
+	 * THE CAP ITSELF, in a frame (design review round 2, D8): four conversations on one peer,
+	 * named in series so the chip's own truncation is what the frame is about. Nothing in the
+	 * story set put three or more rows on one device before this row existed, which is why
+	 * round 1's cap shipped having been judged only from the two-row case.
+	 */
+	["mesh-tab--cap-at-four", 1380, 900],
+	/*
 	 * THE TWO TRANSIENT FRAMES CARRY A CLAIM, AND THE CLAIM IS CHECKED AT THE SHUTTER.
 	 * `expectSentence` is what this rig already has for a state that exists only inside a
 	 * gesture: it waits up to 2 s for the sentence in the DOM immediately before the
@@ -6118,6 +6125,16 @@ export const STORIES = [
 		{ expectSentence: "Wait for the turn to finish" },
 	],
 	["mesh-tab--move-copy-with-undo", 1380, 900],
+	/*
+	 * THE REMEDY, EXECUTED, AND ITS CLAIM IS THE OUTCOME (agent review round 2, F2).
+	 * This row is the only one that presses `Wait for the turn to finish`: the story's play
+	 * re-issues the refused move and asserts the request carried `waitS: 300`, and the
+	 * sentence below is the receipt that replaces the notice when that request lands. The
+	 * claim is what ties the FRAME to the assertion - a still of the refusal under a name
+	 * that says "waited" would be the same class of defect as the two rows above, and the
+	 * round-2 review measured that nobody had pressed the button at all.
+	 */
+	["mesh-tab--move-busy-waited", 1380, 900, { expectSentence: "holds it now" }],
 	/*
 	 * AND A NOTE FOR A LATER READER (design review round 1, D7): this row shows a 2 px
 	 * accent outline outside the dialog frame and `move-confirm` shows none, which is the
