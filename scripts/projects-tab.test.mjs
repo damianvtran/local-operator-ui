@@ -70,6 +70,7 @@ const {
 	defaultSendTarget,
 	startSessionPrompt,
 	sessionTargetLabel,
+	refusalCopy,
 } = model;
 
 /* ----------------------------------------------------------------- chips -- */
@@ -1038,4 +1039,32 @@ test("a start-session toast names the target it started with", () => {
 		"agent reviewer",
 	);
 	assert.equal(sessionTargetLabel(null), "");
+});
+
+/* ------------------------------------------------------------- refusals -- */
+
+test("the done-gate refusal is re-spoken as something this dialog can do", () => {
+	/*
+	 * The daemon's sentence verbatim (project-lifecycle's `_refuse_done_if_
+	 * incomplete`): the names and counts are the useful half and must survive;
+	 * the `force_done=true` tail is a tool-call field the desktop update body
+	 * does not carry, so it must not reach the dialog.
+	 */
+	const daemon =
+		"cannot set status 'done': 2 milestones still incomplete ('alpha', 'beta') — complete them, or pass force_done=true to close with them open";
+	const copy = refusalCopy(daemon);
+	assert.ok(copy.includes("'alpha', 'beta'"), "the incomplete names survive");
+	assert.ok(
+		!copy.includes("force_done"),
+		"the field this dialog cannot send is gone",
+	);
+	assert.ok(
+		copy.includes("complete or remove the incomplete milestones"),
+		"the tail is the actions the dialog can do",
+	);
+	/* Every other refusal is shown as written, never silently reworded. */
+	assert.equal(
+		refusalCopy("no project with id or name 'nope'"),
+		"no project with id or name 'nope'",
+	);
 });

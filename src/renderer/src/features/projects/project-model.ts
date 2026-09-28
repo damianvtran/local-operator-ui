@@ -858,3 +858,27 @@ export function sessionTargetLabel(
 		? `team ${target.name}`
 		: `agent ${target.name}`;
 }
+
+/* ------------------------------------------ refusals, re-spoken for here ---- */
+
+/**
+ * The daemon's done-gate sentence, re-spoken for the desktop dialog.
+ *
+ * WHY (UX round 2, U4): the backend's refusal ends "— complete them, or pass
+ * force_done=true to close with them open", and `force_done` is a tool-call
+ * field the desktop update body does not carry - the dialog CANNOT send it,
+ * so the tail offers a door this surface has no key to. The head (what is
+ * still incomplete, by name) is kept verbatim; only that tail becomes the two
+ * actions the dialog can actually do. Any other refusal passes through
+ * untouched, so a message this function has never seen is shown as written
+ * rather than silently reworded.
+ */
+const DONE_GATE_TAIL =
+	"complete them, or pass force_done=true to close with them open";
+const DONE_GATE_TAIL_COPY =
+	"complete or remove the incomplete milestones, then mark it done";
+
+export function refusalCopy(message: string): string {
+	if (!message.includes(DONE_GATE_TAIL)) return message;
+	return message.replace(DONE_GATE_TAIL, DONE_GATE_TAIL_COPY);
+}
