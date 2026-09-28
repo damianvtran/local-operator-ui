@@ -12,6 +12,7 @@ import { useConsentAttentionLifetime } from "@features/browser/hooks/use-consent
 // ChatPage is the boot route (/ redirects to /chat), so it stays statically
 // imported: lazy-loading it would put a Suspense fallback on first paint.
 import { ChatPage } from "@features/chat/components/chat-page";
+import { useHeldDraftResolution } from "@features/chat/hooks/use-held-draft-resolution";
 import { shouldStartNewChat } from "@features/chat/new-chat-shortcut";
 import { PanelOutlet } from "@features/chat/pickers/panel-outlet";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
@@ -403,6 +404,12 @@ const App: FC = () => {
 	// named, and land on it" — the change that made the click come forward at all did
 	// not put a window call in the renderer.
 	useConsentAttentionLifetime();
+	/*
+	 * The held sends a reader has walked away from are settled once at launch
+	 * (`draft-resolution.ts` carries the why); the hook is idempotent per
+	 * process.
+	 */
+	useHeldDraftResolution();
 
 	useEffect(() => {
 		const unsubscribe = window.api?.browser?.onConsentAttention?.((payload) => {

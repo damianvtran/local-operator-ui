@@ -4383,6 +4383,32 @@ export const STORIES = [
 	["projects-tab--edit-dialog", 1280, 900],
 	["projects-tab--delete-confirm", 1280, 900],
 	["projects-tab--milestone-toggle", 1280, 900],
+	/*
+	 * The board and the timeline (slice 6bc): the switcher's three views on the
+	 * same page. The board's states are the columns — archived joining only
+	 * when it holds rows, an out-of-vocabulary status kept in its own column
+	 * rather than dropped, and the many-cards scroll. The timeline's are the
+	 * axis with bars and all three milestone-mark states plus the today
+	 * marker, the honest no-dates empty axis, and a passed target with an
+	 * overdue milestone going to the trailing "no dates" section for the one
+	 * undated project. The timeline stories stub one `projects.get` per project
+	 * — the fan-out the view itself performs — from the same desktop-bridge
+	 * boundary every other frame in this set uses.
+	 */
+	["projects-tab--board", 1280, 900],
+	["projects-tab--board-many", 1280, 900],
+	["projects-tab--board-statuses", 1280, 900],
+	/* The three board states design round 1, D8 named as the sweep's own gaps:
+	 * a column with no rows (the "No projects here." line), the sessions
+	 * popover open (the card's door, listing links), and the card menu open
+	 * (the no-drag rule's only status door). All three are play-driven: the
+	 * first renders settled, the other two press their own control. */
+	["projects-tab--board-empty-columns", 1280, 900],
+	["projects-tab--board-sessions-popover", 1280, 900],
+	["projects-tab--board-card-menu", 1280, 900],
+	["projects-tab--timeline", 1280, 900],
+	["projects-tab--timeline-no-dates", 1280, 900],
+	["projects-tab--timeline-overdue", 1280, 900],
 	["common-confirmationmodal--dangerous", 1280, 900],
 	/* The operator's own alert, over the screen they were working on: their
 	   update-service.log holds this exact transport code at 09:03:12 on
@@ -6197,6 +6223,21 @@ export const STORIES = [
 	 * claim is what ties the FRAME to the assertion - a still of the refusal under a name
 	 * that says "waited" would be the same class of defect as the two rows above, and the
 	 * round-2 review measured that nobody had pressed the button at all.
+	 */
+	/*
+	 * AND A NOTE ON WHAT THIS FRAME PROVES, because round 3 measured that it is less than the row's
+	 * name suggests (design review round 3, D13). The story's play drives the real path: it presses the
+	 * remedy, asserts the re-issue carried `waitS: 300`, waits for the re-read, and then asserts the
+	 * CANVAS agrees with the receipt — the panel reads `Conversations (1)` and the canvas draws exactly
+	 * one conversation on this device, checked synchronously against the DOM. What the FRAME shows is
+	 * the receipt (it carries `expectSentence` for that reason) over the world the capture's own mount
+	 * builds, which is the pre-move fixture: measured on this branch, the notice and the pre-move
+	 * canvas appear together while the play ends in the post-move world.
+	 *
+	 * So the claim is narrowed to what the pixels carry — the receipt, its sentence and its Dismiss —
+	 * and the post-move state is pinned where it can be: the story's own assertions. A frame that
+	 * implied the canvas beside it shows a landed move would claim a world the shutter never took, which
+	 * is the drift this round exists to remove.
 	 */
 	["mesh-tab--move-busy-waited", 1380, 900, { expectSentence: "holds it now" }],
 	/*
