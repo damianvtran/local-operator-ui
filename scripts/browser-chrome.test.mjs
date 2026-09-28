@@ -72,7 +72,7 @@ const PROBE = `
 	import { BrowserApprovalsDock } from "./src/renderer/src/features/browser/components/browser-approvals-dock";
 	import { BrowserTabStrip, stateChips, tabFloor } from "./src/renderer/src/features/browser/components/browser-tab-strip";
 	import { approvalRows, approvalScopeLabel, liveApprovalCount, liveRequests, originOfUrl, reconcileResolved, remainingLabel, requestsInScope, waitingOrdinals, RESOLVED_KEEP } from "./src/renderer/src/features/browser/model/approval-queue-model";
-	import { closeConversationIntent, closeOthersIntent, closeToTheRightIntent, groupTabsBySession, pooledTabs, scopeFromKey, scopeKey, sessionDisplayName, summariseConversations, tabsBySession, tabsInScope } from "./src/renderer/src/features/browser/model/tab-index-model";
+	import { closeConversationIntent, closeFailedIntent, closeOthersIntent, closeToTheRightIntent, groupTabsBySession, pooledTabs, scopeFromKey, scopeKey, sessionDisplayName, summariseConversations, tabsBySession, tabsInScope } from "./src/renderer/src/features/browser/model/tab-index-model";
 	import { BrowserLoadFailure, loadFailureSentence } from "./src/renderer/src/features/browser/components/browser-load-failure";
 	import { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
 	import { browserBridgeAvailable, clearBrowserProjectionReadError, readBrowserProjection, refreshBrowserProjection, subscribeBrowserProjection } from "./src/renderer/src/features/browser/model/browser-projection-store";
@@ -122,6 +122,7 @@ const PROBE = `
 		waitingOrdinals,
 		RESOLVED_KEEP,
 		closeConversationIntent,
+		closeFailedIntent,
 		closeOthersIntent,
 		closeToTheRightIntent,
 		groupTabsBySession,
@@ -244,6 +245,7 @@ const {
 	waitingOrdinals,
 	RESOLVED_KEEP,
 	closeConversationIntent,
+	closeFailedIntent,
 	closeOthersIntent,
 	closeToTheRightIntent,
 	groupTabsBySession,
@@ -2544,6 +2546,33 @@ test("the bulk closes resolve to the tabs the labels name", () => {
 	});
 });
 
+test("`close failed tabs` closes exactly the tabs whose last navigation was refused", () => {
+	/*
+	 * `failed` is the strip's own per-tab fact (`chromeState().tabs[].failed`), and
+	 * this item is the anti-accumulation control: a tab whose page refused to load is
+	 * a dead end, and N of them used to pile up until each was closed by hand. The
+	 * count in the label and the ids the press closes are ONE filter, so the
+	 * disclosure cannot drift from the action.
+	 */
+	const tabs = [
+		{ tabId: 1, sessionId: null, failed: true },
+		{ tabId: 2, sessionId: "alice", failed: false },
+		{ tabId: 3, sessionId: null },
+		{ tabId: 4, sessionId: "alice", failed: true },
+	];
+	assert.deepEqual(
+		closeFailedIntent(tabs),
+		{ mode: "ids", tabIds: [4, 1] },
+		"only the failed tabs, in the order the strip shows (the grouped one: `alice`'s tabs first)",
+	);
+	assert.equal(
+		closeFailedIntent([{ tabId: 2, sessionId: "alice", failed: false }]),
+		null,
+		"nothing failed means the item is not offered",
+	);
+	assert.equal(closeFailedIntent([]), null, "an empty strip offers no cleanup");
+});
+
 test("the strip feeds `close others` the list it is showing, and nothing wider (the U7 ruling)", () => {
 	/*
 	 * WHY THIS IS A SOURCE ASSERTION rather than an input to the model: the model takes
@@ -2564,6 +2593,11 @@ test("the strip feeds `close others` the list it is showing, and nothing wider (
 		strip,
 		/closeOthersIntent\(tabs, actionsTabId\)/,
 		"`Close N other tabs` must be built from the strip's own `tabs`: what it shows is what the label counts and what the press closes",
+	);
+	assert.match(
+		strip,
+		/closeFailedIntent\(tabs\)/,
+		"and `Close N failed tabs` reads the same visible list, so its count is what the press closes",
 	);
 	assert.ok(
 		!strip.includes("poolTabs"),
