@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|none>
+ *   --scene <states|new-chat|first-send|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|drafts|none>
  *                          which built-in scene to run (default: states)
  *   --gate-state <label>   (with --scene settings-gate) what this run's backend
  *                          state is called in the frames and the log, so two
@@ -7612,6 +7612,341 @@ async function sceneRowSpace(cdp) {
 		}
 	}
 	return [...frames, ...offerFrames];
+}
+
+/**
+ * `--scene sidebar-bottom`: the sidebar column's bottom zone - the gap under the
+ * destinations, the band's own spacing, and the `Agents`/`Teams` headings' gap
+ * when the first is collapsed - read from the rendered DOM and photographed.
+ *
+ * THE OPERATOR'S REPORT (2026-09-27) is what the numbers are against: "there's a
+ * bunch of extra space" between the bottom-most nav row and the band (the chat
+ * view's control row: Search, View options, New agent or team), "maybe some
+ * reduction between the controls and the sections below them" to be more
+ * compact, and - asked twice - the wasted gap between the `Agents` and `Teams`
+ * headings when the first is collapsed.
+ *
+ * ## What it runs against
+ *
+ * `--backend` names the sidebar row-space set's own stand-in daemon
+ * (`docs/evidence/sidebar-row-space/harness/stub-daemon.mjs`), reused rather
+ * than copied: a session catalogue (the band and the entity sections both take
+ * the catalogue's gate), two agents, two teams and conversations, so the zone
+ * below the destinations is the app's own composition rather than a stage.
+ * The app is the real one: its catalogue read, its store, its sidebar, its
+ * disclosure state.
+ *
+ * ## The states, and what each one is for
+ *
+ * One palette per launch; the same steps run in both halves:
+ *
+ *   - `both-expanded`   both entity sections draw rows - the control case, where
+ *     the headings' gap must NOT move;
+ *   - `agents-collapsed`  `Agents` closed above `Teams` - the state the first
+ *     report named, where the gap must be the list's own 8px step;
+ *   - `both-collapsed`  both closed, the section-with-no-rows case;
+ *   - `strip`  the 56px column this change does not move, taken as the variant
+ *     a reviewer can see standing still rather than take on trust.
+ *
+ * The disclosure states are reached by PRESSING the headers - never by seeding -
+ * and each press is asserted against the `aria-expanded` it moved.
+ *
+ * ## The readings, and where they live
+ *
+ * One evaluate per state returns the boxes the gaps are subtractions over
+ * (`shell-evidence`'s own idiom), written to
+ * `sidebar-bottom-geometry-<theme>.json` beside the frames: the rhythm rows
+ * above the destinations, the destination list's own box, the band, both
+ * headings, the scroller and the foot - so every number quoted in the README is
+ * a subtraction over that file rather than a class name read aloud.
+ *
+ * ## The halves
+ *
+ * `--expect after` (the default) asserts the change's own claims - 16px under
+ * the destinations, and the conditional headings' gap - while the band's own gap
+ * to the first label is RECORDED at its unchanged 12px: the operator's second
+ * ask was a floated "maybe", and the only lever for it (the band's trailing
+ * margin or the scroll box's inset) moves the pixels of every committed sidebar
+ * frame by 4px, which is a re-capture pass of its own rather than part of this
+ * change. `--expect before` runs the same steps and records the same readings.
+ *
+ *   node scripts/renderer-driver.mjs --scene sidebar-bottom \
+ *     --backend http://127.0.0.1:18417 --backend-records <dir> \
+ *     --seed-onboarding-complete --theme localOperatorDark --out <dir>
+ */
+async function sceneSidebarBottom(cdp) {
+	const frames = [];
+	const expectAfter = START_EXPECT !== "before";
+	const states = {};
+
+	/*
+	 * THE CHANGE'S OWN CLAIMS, and the one place the two halves differ: `after`
+	 * asserts them, `before` records the same reading under a label that says
+	 * which half it is. The scene's own structural checks below run in both.
+	 */
+	const claim = (label, ok, detail) => {
+		if (expectAfter) check(label, ok, detail);
+		else note(`${label} (before half, not asserted)`, detail);
+	};
+
+	const hello = await verb(cdp, "hello");
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+	if (THEME) {
+		await verb(cdp, "setTheme", THEME);
+		const themed = await verb(cdp, "state");
+		check(
+			`the app is in the palette this run photographs (${THEME})`,
+			themed.theme === THEME,
+			`theme is ${themed.theme}`,
+		);
+	}
+
+	await verb(cdp, "navigate", "/chat");
+	/*
+	 * THE BAND IS THE WAIT THAT SAYS THE ZONE IS REAL: it takes the catalogue's
+	 * own gate (`showList`), so its presence is the app's own answer that the
+	 * catalogue mounted - and it is the control row the report is about.
+	 */
+	const band = await verb(cdp, "measure", {
+		selector: "[data-sidebar-band]",
+		timeoutMs: 15_000,
+	});
+	check(
+		"the band is drawn and hit-testable: the catalogue answered and the row the gap is measured to is the one on screen",
+		band.hitTest === true && band.inViewport === true && band.rect.height > 0,
+		JSON.stringify({
+			hitTest: band.hitTest,
+			inViewport: band.inViewport,
+			rect: band.rect,
+		}),
+	);
+	await verb(cdp, "measure", {
+		selector: '[data-chat-section="teams"]',
+		timeoutMs: 10_000,
+	});
+	await wait(300);
+
+	/*
+	 * The destinations list, addressed by the one row every build carries rather
+	 * than by a row the fixture may or may not draw (`Mesh` needs a mesh
+	 * membership this stand-in does not serve; the LAST row is whichever row the
+	 * build's bottom-most destination is, and the gap under the list is the
+	 * list's own bottom either way).
+	 */
+	const DESTINATIONS = 'ul:has(> li > button[data-tour-tag="nav-item-agents"])';
+
+	const readZone = async () =>
+		await cdp.evaluate(`(() => {
+			const info = (el) => {
+				if (!el) return null;
+				const r = el.getBoundingClientRect();
+				return {
+					x: Math.round(r.x),
+					y: Math.round(r.y),
+					width: Math.round(r.width),
+					height: Math.round(r.height),
+					bottom: Math.round(r.bottom),
+				};
+			};
+			const expanded = (el) => (el ? el.getAttribute("aria-expanded") : null);
+			const destinations = document.querySelector(${JSON.stringify(DESTINATIONS)});
+			const lastDestination = destinations
+				? destinations.lastElementChild.querySelector("button")
+				: null;
+			const band = document.querySelector("[data-sidebar-band]");
+			const agentsHeading = document.querySelector('[data-chat-section="agents"]');
+			const teamsHeading = document.querySelector('[data-chat-section="teams"]');
+			/*
+			 * THE TWO SECTION BOXES, not the two headings: between the headings sits the
+			 * open section's own rows, so a heading-to-heading subtraction measures the
+			 * section's content when it draws any - the margin this change is about only
+			 * exists between the BOXES, and a collapsed section's box IS its heading.
+			 */
+			const agentsSection = agentsHeading ? agentsHeading.closest("section") : null;
+			const teamsSection = teamsHeading ? teamsHeading.closest("section") : null;
+			const gear = document.querySelector('[data-tour-tag="nav-item-settings"]');
+			const foot = gear ? gear.parentElement : null;
+			const scroller = document.querySelector('[data-sidebar-region="scroller"]');
+			const strip = document.querySelector("[data-sidebar-strip]");
+			const boxes = {
+				newChat: info(document.querySelector("[data-new-chat-row]")),
+				searchRow: info(document.querySelector("[data-command-palette-trigger]")),
+				destinations: info(destinations),
+				lastDestination: info(lastDestination),
+				band: info(band),
+				agentsHeading: info(agentsHeading),
+				teamsHeading: info(teamsHeading),
+				agentsSection: info(agentsSection),
+				teamsSection: info(teamsSection),
+				scroller: info(scroller),
+				foot: info(foot),
+			};
+			const gap = (upper, lower) =>
+				upper && lower ? Math.round(lower.y - upper.bottom) : null;
+			return {
+				viewport: { w: innerWidth, h: innerHeight },
+				expanded: { agents: expanded(agentsHeading), teams: expanded(teamsHeading) },
+				boxes,
+				gaps: {
+					withinPrimary: gap(boxes.newChat, boxes.searchRow),
+					primaryToDestinations: gap(boxes.searchRow, boxes.destinations),
+					destinationsToBand: gap(boxes.destinations, boxes.band),
+					bandToFirstHeading: gap(boxes.band, boxes.agentsHeading),
+					agentsToTeams: gap(boxes.agentsSection, boxes.teamsSection),
+					scrollerToFoot: gap(boxes.scroller, boxes.foot),
+					footToViewportBottom: boxes.foot
+						? Math.round(innerHeight - boxes.foot.bottom)
+						: null,
+				},
+				strip: Boolean(strip),
+			};
+		})()`);
+
+	const readState = async (state) => {
+		const frame = await captureSettled(cdp, state);
+		frames.push(frame);
+		states[state] = await readZone();
+		return states[state];
+	};
+
+	/*
+	 * Press a section header until its `aria-expanded` reads `want`, and fail by
+	 * name if it will not - a scene that pressed nothing and measured anyway
+	 * would photograph the wrong state under the right label.
+	 */
+	const ensureExpanded = async (key, want) => {
+		const selector = `[data-chat-section="${key}"]`;
+		for (let attempt = 0; attempt < 3; attempt += 1) {
+			const now = await cdp.evaluate(
+				`document.querySelector('${selector}').getAttribute("aria-expanded")`,
+			);
+			if (now === want) return;
+			await verb(cdp, "press", selector);
+			await wait(300);
+		}
+		const now = await cdp.evaluate(
+			`document.querySelector('${selector}').getAttribute("aria-expanded")`,
+		);
+		throw new Error(
+			`${selector} did not reach aria-expanded=${want} (reads ${now})`,
+		);
+	};
+
+	await ensureExpanded("agents", "true");
+	await ensureExpanded("teams", "true");
+	// The entity rows load after the headings, and a frame of "Loading agents…"
+	// is not the state the gap is measured in.
+	await verb(cdp, "measure", { selector: "[data-entity]", timeoutMs: 10_000 });
+	const bothExpanded = await readState("both-expanded");
+	check(
+		"both sections are open for the control case",
+		bothExpanded.expanded.agents === "true" &&
+			bothExpanded.expanded.teams === "true",
+		JSON.stringify(bothExpanded.expanded),
+	);
+
+	await ensureExpanded("agents", "false");
+	const agentsCollapsed = await readState("agents-collapsed");
+	check(
+		"the press collapsed the agents section and left the teams section open",
+		agentsCollapsed.expanded.agents === "false" &&
+			agentsCollapsed.expanded.teams === "true",
+		JSON.stringify(agentsCollapsed.expanded),
+	);
+
+	await ensureExpanded("teams", "false");
+	const bothCollapsed = await readState("both-collapsed");
+	check(
+		"the second press collapsed the teams section",
+		bothCollapsed.expanded.agents === "false" &&
+			bothCollapsed.expanded.teams === "false",
+		JSON.stringify(bothCollapsed.expanded),
+	);
+
+	/*
+	 * The claims, over the readings above. `destinationsToBand` is the operator's
+	 * "bunch of extra space": 24px before this change (the group's 8px bottom
+	 * step + the body's 8px tier half + the panel's own 8px inset), 16px after
+	 * (§B6's one section tier, with the inset no longer stacked on top of it -
+	 * the edit's own comment in `sidebar-navigation.tsx` carries the arithmetic).
+	 * `bandToFirstHeading` is the weaker ask: 12px before (the band's 8px + the
+	 * scroller's 4px), 8px after. `agentsToTeams` is 16px whenever the section
+	 * above draws rows - the shared value a smaller constant would tighten
+	 * unasked - and the list's own 8px step when it draws none.
+	 */
+	claim(
+		"the gap under the destinations is the 16px section step",
+		agentsCollapsed.gaps.destinationsToBand === 16,
+		`${agentsCollapsed.gaps.destinationsToBand}px (expected 16)`,
+	);
+	claim(
+		"the band's own gap to the first section label is recorded at 12px, unchanged: the second ask was floated, and moving it costs every sidebar frame a re-capture",
+		agentsCollapsed.gaps.bandToFirstHeading === 12,
+		`${agentsCollapsed.gaps.bandToFirstHeading}px (12 on both halves)`,
+	);
+	claim(
+		"a collapsed section hands the heading below it the 8px step",
+		agentsCollapsed.gaps.agentsToTeams === 8 &&
+			bothCollapsed.gaps.agentsToTeams === 8,
+		`agents-collapsed ${agentsCollapsed.gaps.agentsToTeams}px, both-collapsed ${bothCollapsed.gaps.agentsToTeams}px (expected 8 in both)`,
+	);
+	claim(
+		"an expanded section keeps the full 16px tier: a shorter constant would tighten this unasked",
+		bothExpanded.gaps.agentsToTeams === 16,
+		`${bothExpanded.gaps.agentsToTeams}px (expected 16)`,
+	);
+
+	const geometryPath = join(
+		FRAMES,
+		`sidebar-bottom-geometry-${THEME ?? "default"}${RUN_LABEL}.json`,
+	);
+	writeFileSync(
+		geometryPath,
+		JSON.stringify(
+			{
+				scene: "sidebar-bottom",
+				theme: THEME ?? null,
+				expect: START_EXPECT,
+				runtime: electronRuntime(),
+				viewport: states["both-expanded"]?.viewport ?? null,
+				states,
+			},
+			null,
+			2,
+		),
+	);
+	note("geometry written", geometryPath);
+	for (const [state, reading] of Object.entries(states)) {
+		say(
+			`  ${state}: destinations->band ${reading.gaps.destinationsToBand ?? "-"}px, band->first label ${reading.gaps.bandToFirstHeading ?? "-"}px, agents->teams ${reading.gaps.agentsToTeams ?? "-"}px (agents ${reading.expanded.agents}, teams ${reading.expanded.teams})`,
+		);
+	}
+
+	/*
+	 * The strip, last: the collapse toggle narrows the column to 56px, the state a
+	 * reader keeps it in. Nothing in this change branches on it, and the frames
+	 * are here so that "it does not move" is a pair of pictures rather than a
+	 * sentence.
+	 */
+	await verb(cdp, "press", { selector: '[aria-label="Collapse sidebar"]' });
+	await verb(cdp, "measure", {
+		selector: "[data-sidebar-strip]",
+		timeoutMs: 8_000,
+	});
+	await wait(400);
+	frames.push(await captureSettled(cdp, "strip"));
+	states.strip = await readZone();
+	check(
+		"the column collapsed to the strip",
+		states.strip.strip === true,
+		JSON.stringify({ strip: states.strip.strip }),
+	);
+
+	return frames;
 }
 
 /**
@@ -16720,6 +17055,787 @@ async function sceneConversationStart(cdp) {
 	}
 }
 
+/**
+ * `drafts`: the sidebar's DRAFTS section - the rows, the per-row discard act the
+ * pointer reveals, and the `Clear all` foot.
+ *
+ * WHY THIS SCENE EXISTS (operator, 2026-09-26: "Each one should have a deletion
+ * on hover and also a subtle clear all UX", beside the report that sent drafts
+ * were resurfacing). Three of the claims are about PIXELS and pointer state that
+ * no unit test can hold: that a row spends nothing on the reveal at rest, that
+ * the REAL pointer (not a dispatched `mouseover`) reveals the control, and that
+ * pressing either control removes exactly the rows it names. The fourth is the
+ * relaunch: a discarded draft must not come back after a reload, which is why
+ * `discardDraft` clears the composer's own row as well (`drafts-clear-on-send.test.mjs`
+ * carries the store half).
+ *
+ * NO BACKEND IS NEEDED OR WANTED: drafts are LOCAL state, so the run seeds the
+ * two stores' own `localStorage` values and reloads - the exact shape a user is
+ * in after a relaunch - rather than admitting anything on a wire. The seed is
+ * written from the harness and released by a reload, like `seedOnboardingComplete`.
+ *
+ * WRITTEN TO RUN ON BOTH TREES. Against the tree BEFORE this change the discard
+ * control does not exist: the hover frame photographs the row with nothing
+ * revealed, the presses are recorded as skipped rather than driven, and the
+ * checks that fail are the ones the change exists to turn green (the convention
+ * `conversation-start` states).
+ */
+const DRAFTS_TYPED = "draft:5b5b5b5b-0001-4000-8000-000000000001";
+const DRAFTS_STALE = "draft:6c6c6c6c-0002-4000-8000-000000000002";
+const DRAFTS_CLAIM = "draft:7d7d7d7d-0003-4000-8000-000000000003";
+const DRAFTS_TARGETED = "draft:agent:coder";
+/**
+ * A row whose send hop is LIVE (`pending: true`): the shape UX round 1's U2
+ * reproduced - with the create held, the trash used to remove the row while the
+ * message went on to land. The control is disabled for this row, and the scene
+ * presses it to show that nothing moves.
+ */
+const DRAFTS_FLIGHT = "[redacted]";
+
+/**
+ * Seed the drafts store and the composer store, then release the seed by
+ * reloading.
+ *
+ * The rows are the three shapes the section draws: a draft with typed text, one
+ * whose text came from the store's own row, and a CLAIM whose message the client
+ * never confirmed (the operator's own `deadline_exceeded` shape, which is the
+ * row that lingers longest). The targeted draft is seeded to prove `Clear all`
+ * does NOT touch it: targeted drafts are reachable by their entity row and are
+ * deliberately never listed here.
+ */
+async function seedDrafts(cdp, { pendingAll = false } = {}) {
+	const seeded = {
+		drafts: {
+			[DRAFTS_TYPED]: {
+				key: DRAFTS_TYPED,
+				createRequestId: "req-typed-0001",
+			},
+			[DRAFTS_STALE]: {
+				key: DRAFTS_STALE,
+				createRequestId: "req-stale-0002",
+			},
+			[DRAFTS_CLAIM]: {
+				key: DRAFTS_CLAIM,
+				createRequestId: "req-claim-0003",
+				admissionRequestId: "req-admit-0003",
+				sessionId: "ad10bf7245e4",
+				admissionAttempted: true,
+				pending: false,
+				submittedText: "Can you check our google drive and tell me what moved",
+				submittedRendered:
+					"Can you check our google drive and tell me what moved",
+				errorCode: "deadline_exceeded",
+				errorRetry: true,
+				error: "Couldn't confirm your message was sent.",
+			},
+			[DRAFTS_TARGETED]: {
+				key: DRAFTS_TARGETED,
+				target: { kind: "agent", name: "coder" },
+				createRequestId: "req-targeted-0004",
+			},
+			[DRAFTS_FLIGHT]: {
+				key: DRAFTS_FLIGHT,
+				createRequestId: "req-flight-0005",
+				admissionRequestId: "req-deliver-0005",
+				admissionAttempted: true,
+				pending: true,
+				submittedText: "and the alert one too",
+			},
+		},
+		inputRows: {
+			[DRAFTS_TYPED]: {
+				currentInput: "This session seems to be wedged, can you check it",
+				submittedMessages: [],
+				currentHistoryIndex: null,
+				replies: [],
+				attachments: [],
+			},
+			[DRAFTS_STALE]: {
+				currentInput: "Continue",
+				submittedMessages: [],
+				currentHistoryIndex: null,
+				replies: [],
+				attachments: [],
+			},
+			[DRAFTS_TARGETED]: {
+				currentInput: "A draft for an agent, which this section must not list",
+				submittedMessages: [],
+				currentHistoryIndex: null,
+				replies: [],
+				attachments: [],
+			},
+		},
+	};
+	if (pendingAll) {
+		/*
+		 * EVERY LISTED ROW MID-HOP (agent review round 2's R7): the one state in which
+		 * `Clear all` is inapplicable, planted so the scene can walk onto it. A pending
+		 * row states its claim (`admissionAttempted` + text) the way the store's own
+		 * admission does; the typed rows' text lives in their composer rows.
+		 */
+		for (const key of [DRAFTS_TYPED, DRAFTS_STALE, DRAFTS_CLAIM]) {
+			seeded.drafts[key].pending = true;
+			seeded.drafts[key].admissionAttempted = true;
+			seeded.drafts[key].submittedText ??= "typed, never sent";
+		}
+	}
+	await cdp.evaluate(`(() => {
+		const seeded = ${JSON.stringify(seeded)};
+		const read = (key) => { try { return JSON.parse(localStorage.getItem(key) || "null") || {}; } catch { return {}; } };
+		const canonical = read("canonical-sessions-storage");
+		canonical.state = { ...(canonical.state || {}), activeDraftKey: null, activeSessionId: null };
+		canonical.state.drafts = { ...(canonical.state.drafts || {}), ...seeded.drafts };
+		localStorage.setItem("canonical-sessions-storage", JSON.stringify(canonical));
+		const input = read("conversation-input-store");
+		input.state = { ...(input.state || {}) };
+		input.state.inputByConversation = { ...(input.state.inputByConversation || {}), ...seeded.inputRows };
+		localStorage.setItem("conversation-input-store", JSON.stringify(input));
+		return { drafts: Object.keys(canonical.state.drafts).length };
+	})()`);
+	await cdp.send("Page.reload", { ignoreCache: false });
+	await wait(1500);
+}
+
+async function sceneDrafts(cdp) {
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", "localOperatorDark");
+	await seedDrafts(cdp);
+	await waitForBridge(cdp);
+	await verb(cdp, "measure", '[data-chat-section="drafts"]');
+
+	const readDraftRows = () =>
+		cdp.evaluate(
+			'[...document.querySelectorAll("[data-draft-row]")].map((element) => element.getAttribute("data-draft-row"))',
+		);
+	const controlState = (attribute, key) =>
+		cdp.evaluate(
+			`(() => {
+				const element = document.querySelector(${JSON.stringify(`[${attribute}="${key}"]`)});
+				if (element === null) return null;
+				const style = getComputedStyle(element);
+				return { display: style.display, width: Math.round(element.getBoundingClientRect().width), disabled: element.disabled === true, ariaDisabled: element.getAttribute("aria-disabled") };
+			})()`,
+		);
+	const composerRowExists = (key) =>
+		cdp.evaluate(
+			`(() => { try { const state = JSON.parse(localStorage.getItem("conversation-input-store") || "null"); return state?.state?.inputByConversation?.[${JSON.stringify(key)}] !== undefined; } catch { return null; } })()`,
+		);
+	const storedDraftExists = (key) =>
+		cdp.evaluate(
+			`(() => { try { const state = JSON.parse(localStorage.getItem("canonical-sessions-storage") || "null"); return state?.state?.drafts?.[${JSON.stringify(key)}] !== undefined; } catch { return null; } })()`,
+		);
+	const activeDraftKey = () =>
+		cdp.evaluate(
+			'(() => { try { return JSON.parse(localStorage.getItem("canonical-sessions-storage") || "null")?.state?.activeDraftKey ?? null; } catch { return null; } })()',
+		);
+	const composerText = () =>
+		cdp.evaluate(
+			"(() => { const box = document.querySelector('[data-tour-tag=\"chat-input-textarea\"] textarea'); return box === null ? null : box.value; })()",
+		);
+
+	const restRows = await readDraftRows();
+	note("the seeded rows, as the section lists them", JSON.stringify(restRows));
+	check(
+		"all four untargeted drafts are rows, the live hop included",
+		[DRAFTS_TYPED, DRAFTS_STALE, DRAFTS_CLAIM, DRAFTS_FLIGHT].every((key) =>
+			restRows.includes(key),
+		),
+		JSON.stringify(restRows),
+	);
+	check(
+		"the targeted draft is deliberately not a row",
+		!restRows.includes(DRAFTS_TARGETED),
+		JSON.stringify(restRows),
+	);
+	const restAct = await controlState("data-draft-discard", DRAFTS_TYPED);
+	check(
+		"at rest the discard control exists but spends nothing (hidden)",
+		restAct === null || restAct.display === "none",
+		JSON.stringify(restAct),
+	);
+	const restFrame = await captureSettled(cdp, "drafts-rest");
+
+	/*
+	 * The reveal is compositor state (`:hover` on the row's own box), so it can
+	 * only be produced by the REAL pointer through the input pipeline; `hoverOver`
+	 * answers where the row IS and leaves the pointer there.
+	 */
+	const rowBox = await hoverOver(cdp, `[data-draft-row="${DRAFTS_TYPED}"]`);
+	await wait(160);
+	const hoverAct = await controlState("data-draft-discard", DRAFTS_TYPED);
+	note("the discard control under the pointer", JSON.stringify(hoverAct));
+	check(
+		"the pointer reveals the discard control",
+		hoverAct !== null && hoverAct.display === "flex" && hoverAct.width > 0,
+		JSON.stringify(hoverAct),
+	);
+	check(
+		"the reveal moves no row: the hovered row's height is the height at rest",
+		restRows.length === (await readDraftRows()).length,
+		`rows ${JSON.stringify(restRows)} -> ${JSON.stringify(await readDraftRows())}`,
+	);
+	const hoverFrame = await captureSettled(cdp, "drafts-hover");
+
+	/*
+	 * THE LIVE HOP'S ACT IS REVEALED BUT INAPPLICABLE (UX round 1's U2,
+	 * remediation): the seeded `pending: true` row is a send still on the wire, and
+	 * the control is INAPPLICABLE from the row's own marker - `aria-disabled`, never
+	 * `disabled` (agent review round 2's R7: a disabled control cannot hold focus) -
+	 * so a press moves nothing, and a discard can never be followed by a silent
+	 * send. On a tree without the control the checks fail as the change's own
+	 * claims, the convention this scene already follows.
+	 */
+	await hoverOver(cdp, `[data-draft-row="${DRAFTS_FLIGHT}"]`);
+	await wait(160);
+	const flightAct = await controlState("data-draft-discard", DRAFTS_FLIGHT);
+	note("the live hop's discard control", JSON.stringify(flightAct));
+	check(
+		"the live hop's control is revealed and inapplicable (aria-disabled, not disabled)",
+		flightAct !== null &&
+			flightAct.display === "flex" &&
+			flightAct.disabled === false &&
+			flightAct.ariaDisabled === "true",
+		JSON.stringify(flightAct),
+	);
+	if (flightAct !== null) {
+		await clickAt(cdp, `[data-draft-discard="${DRAFTS_FLIGHT}"]`);
+		await wait(200);
+		check(
+			"a press on it moves nothing: the in-flight row is still there",
+			(await readDraftRows()).includes(DRAFTS_FLIGHT),
+			JSON.stringify(await readDraftRows()),
+		);
+	}
+	/*
+	 * GUARDED LIKE EVERY PROBE THAT NEEDS THE ACT: main's build has no discard
+	 * control to probe, and the colour read would throw on its missing element.
+	 */
+	if (flightAct !== null) {
+		/*
+		 * AND IT TAKES THE CARET ANYWAY, AND SAYS WHY (agent review round 2's R7, design
+		 * round 2's D7). The whole reason the act is `aria-disabled` rather than
+		 * `disabled` is that a disabled control cannot hold focus - the arrow walk's step
+		 * onto it dead-stopped, and its why was unannounceable. The claims are the
+		 * browser's own, and the ink is the design round's: the measured disabled read
+		 * darkened `ink-muted` -> `ink` under the pointer at 45% opacity (D5).
+		 */
+		const flightProbe = await cdp.evaluate(`(() => {
+		const el = document.querySelector(${JSON.stringify(`[data-draft-discard="${DRAFTS_FLIGHT}"]`)});
+		if (el === null) return null;
+		el.focus();
+		const whyId = el.getAttribute("aria-describedby");
+		const why = whyId === null ? null : document.getElementById(whyId);
+		return { focused: document.activeElement === el, disabledAttr: el.disabled === true, ariaDisabled: el.getAttribute("aria-disabled"), why: why === null ? null : (why.textContent ?? "").trim() };
+	})()`);
+		note("the inapplicable control, probed", JSON.stringify(flightProbe));
+		check(
+			"the inapplicable control can still take the caret",
+			flightProbe !== null &&
+				flightProbe.focused === true &&
+				flightProbe.disabledAttr === false,
+			JSON.stringify(flightProbe),
+		);
+		check(
+			"and says why, in the AT channel",
+			typeof flightProbe?.why === "string" && flightProbe.why.length > 0,
+			JSON.stringify(flightProbe),
+		);
+		const flightColour = () =>
+			cdp.evaluate(
+				`(() => { const el = document.querySelector(${JSON.stringify(`[data-draft-discard="${DRAFTS_FLIGHT}"]`)}); return el === null ? null : getComputedStyle(el).color; })()`,
+			);
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: 2,
+			y: 2,
+			button: "none",
+			buttons: 0,
+		});
+		await wait(160);
+		const flightColourOff = await flightColour();
+		await hoverOver(cdp, `[data-draft-row="${DRAFTS_FLIGHT}"]`);
+		await wait(160);
+		const flightColourOn = await flightColour();
+		check(
+			"the inapplicable control's ink does not move under the pointer",
+			flightColourOff !== null && flightColourOn === flightColourOff,
+			`${JSON.stringify(flightColourOff)} vs ${JSON.stringify(flightColourOn)}`,
+		);
+	}
+	const pendingFrame = await captureSettled(cdp, "drafts-pending-disabled");
+
+	/*
+	 * THE PRESS, through the real pointer: `clickAt` moves the pointer (so the
+	 * reveal is up) and then clicks. Skipped, not driven, on a tree with no
+	 * control - the before half of this pair.
+	 */
+	if (hoverAct === null) {
+		note(
+			"discard press",
+			"no discard control exists on this tree - the press is skipped, not driven",
+		);
+	} else {
+		/*
+		 * The pointer is parked on the live hop's row from the block above, and a
+		 * `hidden` control measures at zero - so the row is hovered first, which is
+		 * what a reader does anyway (the press needs the reveal up).
+		 */
+		await hoverOver(cdp, `[data-draft-row="${DRAFTS_TYPED}"]`);
+		await wait(160);
+		await clickAt(cdp, `[data-draft-discard="${DRAFTS_TYPED}"]`);
+		await wait(200);
+		const afterPress = await readDraftRows();
+		check(
+			"the press removes the row it names",
+			!afterPress.includes(DRAFTS_TYPED),
+			JSON.stringify(afterPress),
+		);
+		check(
+			"the other rows stay, the live hop included",
+			afterPress.includes(DRAFTS_STALE) &&
+				afterPress.includes(DRAFTS_CLAIM) &&
+				afterPress.includes(DRAFTS_FLIGHT),
+			JSON.stringify(afterPress),
+		);
+		check(
+			"and the composer's own row for that key goes with it, so it cannot resurface",
+			(await composerRowExists(DRAFTS_TYPED)) === false,
+			`inputByConversation[${DRAFTS_TYPED}] present=${await composerRowExists(DRAFTS_TYPED)}`,
+		);
+		check(
+			"the caret lands on a row rather than the document",
+			await cdp.evaluate(
+				'document.activeElement !== null && document.activeElement.closest("[data-chat-row]") !== null',
+			),
+		);
+		/*
+		 * AND THE OFFER STANDS IN THE LANE (design round 1's D1): the one-line
+		 * `Draft discarded.` with its Undo, the archive offer's own register. The
+		 * sentence is built as two spans (name, verb), so the two halves are read
+		 * separately rather than as one string.
+		 */
+		const offer = await toastText(cdp);
+		check(
+			"the discard stands an undo offer in the lane",
+			typeof offer === "string" &&
+				offer.includes("Draft") &&
+				offer.includes("discarded.") &&
+				offer.includes("Undo"),
+			JSON.stringify(offer),
+		);
+	}
+	const deletedFrame = await captureWithToast(cdp, "drafts-deleted");
+
+	/*
+	 * AND THE OFFER'S OWN PRESS (design round 1's D1): the snapshot goes back -
+	 * the draft entry and the composer row - in the one write, and the offer
+	 * retires with the press.
+	 */
+	if (hoverAct === null) {
+		note("undo press", "no offer exists on this tree - the press is skipped");
+	} else {
+		await clickAt(cdp, `${SIDEBAR_TOAST} [data-button]`);
+		await wait(250);
+		const afterUndo = await readDraftRows();
+		check(
+			"Undo puts the row back",
+			afterUndo.includes(DRAFTS_TYPED),
+			JSON.stringify(afterUndo),
+		);
+		check(
+			"and its composer row with it",
+			(await composerRowExists(DRAFTS_TYPED)) === true,
+		);
+		check(
+			"and the offer itself retires",
+			(await toastsOnScreen(cdp)) === 0,
+			`toasts=${await toastsOnScreen(cdp)}`,
+		);
+	}
+	const restoredFrame = await captureSettled(cdp, "drafts-undo-restored");
+
+	/*
+	 * THE OPEN DRAFT'S DISCARD (UX round 1's U1, remediation). Both trees open the
+	 * draft - the press is a plain row click - and only the after tree has a
+	 * control to press afterwards: with the draft open, the sidebar's discard used
+	 * to strand the pane (no composer, a bare `New chat`). The press now stages a
+	 * fresh draft, the New chat row's own pair, so the composer is still there.
+	 */
+	await clickAt(cdp, `[data-draft-row="${DRAFTS_TYPED}"]`);
+	await wait(250);
+	note(
+		"the composer after opening the draft",
+		JSON.stringify(await composerText()),
+	);
+	if (hoverAct !== null) {
+		check(
+			"opening the draft puts its text in the composer",
+			(await composerText())?.includes("This session seems to be wedged") ===
+				true,
+			JSON.stringify(await composerText()),
+		);
+		await clickAt(cdp, `[data-draft-discard="${DRAFTS_TYPED}"]`);
+		await wait(250);
+		const afterOpenDelete = await readDraftRows();
+		check(
+			"the open draft's row goes",
+			!afterOpenDelete.includes(DRAFTS_TYPED),
+			JSON.stringify(afterOpenDelete),
+		);
+		check(
+			"and the pane keeps a composer: no dead end",
+			(await composerText()) !== null,
+			JSON.stringify(await composerText()),
+		);
+		const nowOpen = await activeDraftKey();
+		check(
+			"a fresh draft is staged in its place",
+			typeof nowOpen === "string" && nowOpen !== DRAFTS_TYPED,
+			`activeDraftKey ${JSON.stringify(nowOpen)}`,
+		);
+	} else {
+		note(
+			"open-draft discard",
+			"no discard control exists on this tree - the press is skipped, and the frame is the opened draft",
+		);
+	}
+	const openDeletedFrame = await captureWithToast(cdp, "drafts-deleted-open");
+	if (hoverAct !== null) {
+		await clickAt(cdp, `${SIDEBAR_TOAST} [data-button]`);
+		await wait(250);
+		check(
+			"Undo returns the text to its own key",
+			(await composerRowExists(DRAFTS_TYPED)) === true,
+		);
+		/*
+		 * AND THE PANE GOES BACK TO IT (UX round 2's U7): the discard staged a fresh
+		 * draft, and the offer's press re-opens the ONE key it restored - the text is in
+		 * the box rather than behind a click on the returned row.
+		 */
+		check(
+			"Undo puts the pane back on the restored draft",
+			(await activeDraftKey()) === DRAFTS_TYPED,
+			`activeDraftKey ${JSON.stringify(await activeDraftKey())}`,
+		);
+		check(
+			"and its text is in the composer again",
+			(await composerText())?.includes("This session seems to be wedged") ===
+				true,
+			JSON.stringify(await composerText()),
+		);
+	}
+
+	/*
+	 * AND THE BATCH TAKES THE OPEN DRAFT, TOO (agent review round 2's R8): the pane is
+	 * opened on the typed draft so `Clear all` really does take the pane's own key -
+	 * the fresh-staging branch the static pin could not prove. Both trees open it; only
+	 * the after tree has the act.
+	 */
+	await clickAt(cdp, `[data-draft-row="${DRAFTS_TYPED}"]`);
+	await wait(250);
+	check(
+		"the pane is open on the typed draft before the batch",
+		(await activeDraftKey()) === DRAFTS_TYPED,
+		`activeDraftKey ${JSON.stringify(await activeDraftKey())}`,
+	);
+
+	/*
+	 * Clear all. Its gate is the section's own (`clearableDraftRows.length > 0`),
+	 * so on a tree with no control the frame simply records that.
+	 */
+	const clearControl = await cdp.evaluate(
+		'(() => { const element = document.querySelector("[data-drafts-clear-all]"); if (element === null) return null; const style = getComputedStyle(element); return { display: style.display, width: Math.round(element.getBoundingClientRect().width) }; })()',
+	);
+	if (clearControl === null) {
+		note(
+			"clear-all press",
+			"no Clear all control exists on this tree - the press is skipped, not driven",
+		);
+	} else {
+		await clickAt(cdp, "[data-drafts-clear-all]");
+		await wait(250);
+		const afterClear = await readDraftRows();
+		check(
+			"Clear all removes every settled row and only those",
+			afterClear.length === 1 && afterClear[0] === DRAFTS_FLIGHT,
+			JSON.stringify(afterClear),
+		);
+		check(
+			"the section stays open for the live hop",
+			await cdp.evaluate(
+				"Boolean(document.querySelector('[data-chat-section=\"drafts\"]'))",
+			),
+		);
+		check(
+			"the targeted draft is NOT touched (it is not one of the listed rows)",
+			(await storedDraftExists(DRAFTS_TARGETED)) === true,
+		);
+		check(
+			"and its composer row survives too",
+			(await composerRowExists(DRAFTS_TARGETED)) === true,
+		);
+		const offer = await toastText(cdp);
+		check(
+			"the batch offer names the count that moved",
+			typeof offer === "string" &&
+				offer.includes("3 drafts") &&
+				offer.includes("discarded.") &&
+				offer.includes("Undo"),
+			JSON.stringify(offer),
+		);
+		/*
+		 * THE BATCH'S OWN FRESH-STAGING BRANCH (agent review round 2's R8): it took the
+		 * pane's key, so the no-dead-pane rule must stage a fresh draft and the composer
+		 * must survive.
+		 */
+		check(
+			"the batch keeps a composer: no dead end",
+			(await composerText()) !== null,
+			JSON.stringify(await composerText()),
+		);
+		const batchFresh = await activeDraftKey();
+		check(
+			"and stages a fresh draft in its place",
+			typeof batchFresh === "string" && batchFresh !== DRAFTS_TYPED,
+			`activeDraftKey ${JSON.stringify(batchFresh)}`,
+		);
+	}
+	const clearedFrame = await captureWithToast(cdp, "drafts-cleared");
+	if (hoverAct !== null) {
+		/*
+		 * AND THE BATCH'S OWN UNDO (UX round 2's U7): a multi-subject restore puts the
+		 * rows back but leaves the pane alone - the re-open is single-key only.
+		 */
+		const paneBefore = await activeDraftKey();
+		await clickAt(cdp, `${SIDEBAR_TOAST} [data-button]`);
+		await wait(250);
+		const afterBatchUndo = await readDraftRows();
+		check(
+			"the batch's undo restores every settled row",
+			[DRAFTS_TYPED, DRAFTS_STALE, DRAFTS_CLAIM].every((key) =>
+				afterBatchUndo.includes(key),
+			),
+			JSON.stringify(afterBatchUndo),
+		);
+		check(
+			"and a multi-subject restore leaves the pane where it was",
+			(await activeDraftKey()) === paneBefore,
+			`activeDraftKey ${JSON.stringify(paneBefore)} -> ${JSON.stringify(await activeDraftKey())}`,
+		);
+		/* Clear all once more, so the relaunch is from a fully discarded state. */
+		await clickAt(cdp, "[data-drafts-clear-all]");
+		await wait(250);
+	}
+
+	/*
+	 * THE RELAUNCH: the frames' captions are about a state that must survive the
+	 * app restarting, because the operator's report was exactly about what comes
+	 * back after one. A reload rehydrates both stores from `localStorage`, and the
+	 * deleted keys must not be in it - while the live-hop row, which was never
+	 * discarded, is still there. The offer is transient by construction (the store
+	 * field is not persisted), so it does not outlive the app either.
+	 */
+	await cdp.send("Page.reload", { ignoreCache: false });
+	await wait(1500);
+	await waitForBridge(cdp);
+	const relaunchRows = await readDraftRows();
+	check(
+		"a relaunch does not resurrect the discarded drafts",
+		!relaunchRows.includes(DRAFTS_TYPED) &&
+			!relaunchRows.includes(DRAFTS_STALE) &&
+			!relaunchRows.includes(DRAFTS_CLAIM),
+		JSON.stringify(relaunchRows),
+	);
+	check(
+		"the live-hop row was never discarded, so it is still there",
+		relaunchRows.includes(DRAFTS_FLIGHT),
+		JSON.stringify(relaunchRows),
+	);
+	check(
+		"and the offer does not outlive the app",
+		(await toastsOnScreen(cdp)) === 0,
+		`toasts=${await toastsOnScreen(cdp)}`,
+	);
+	const relaunchFrame = await captureSettled(cdp, "drafts-relaunch");
+
+	/*
+	 * THE INAPPLICABLE `Clear all` (agent review round 2's R7, design round 2's D5/D7):
+	 * every listed row mid-hop is its one inapplicable state, and a second seed plants
+	 * it. The claims are the browser's and the walk's own: the control is
+	 * `aria-disabled` (not `disabled`), it TAKES the caret, it explains itself, a real
+	 * press moves nothing, the ink it paints does not shift under the pointer, and the
+	 * arrow walk lands on it and moves past rather than dead-stopping.
+	 */
+	await seedDrafts(cdp, { pendingAll: true });
+	await waitForBridge(cdp);
+	const clearAllActExists = await cdp.evaluate(
+		'Boolean(document.querySelector("[data-drafts-clear-all]"))',
+	);
+	if (!clearAllActExists) {
+		note(
+			"the inapplicable Clear all",
+			"no such control exists on this tree - the probes are skipped, and the frame records the seeded rows",
+		);
+	} else {
+		const disabledProbe = await cdp.evaluate(`(() => {
+			const el = document.querySelector("[data-drafts-clear-all]");
+			const whyId = el.getAttribute("aria-describedby");
+			const why = whyId === null ? null : document.getElementById(whyId);
+			return { disabledAttr: el.disabled === true, ariaDisabled: el.getAttribute("aria-disabled"), why: why === null ? null : (why.textContent ?? "").trim() };
+		})()`);
+		note("the inapplicable Clear all, probed", JSON.stringify(disabledProbe));
+		check(
+			"the inapplicable Clear all is aria-disabled, not disabled",
+			disabledProbe.disabledAttr === false &&
+				disabledProbe.ariaDisabled === "true",
+			JSON.stringify(disabledProbe),
+		);
+		check(
+			"and says why, in the AT channel",
+			typeof disabledProbe.why === "string" && disabledProbe.why.length > 0,
+			JSON.stringify(disabledProbe),
+		);
+		const clearFocusable = await cdp.evaluate(
+			'(() => { const el = document.querySelector("[data-drafts-clear-all]"); if (el === null) return null; el.focus(); return document.activeElement === el; })()',
+		);
+		check(
+			"the inapplicable Clear all can take the caret",
+			clearFocusable === true,
+			JSON.stringify(clearFocusable),
+		);
+		/*
+		 * AND THE WALK PASSES THROUGH IT (R7): from the last draft row, ArrowDown lands
+		 * on the inapplicable control - a focusable step, not a dead stop - and the next
+		 * ArrowDown moves past it instead of sticking.
+		 */
+		await cdp.evaluate(
+			'(() => { const rows = [...document.querySelectorAll("[data-draft-row]")]; rows[rows.length - 1]?.focus(); })()',
+		);
+		await pressChord(cdp, {
+			key: "ArrowDown",
+			code: "ArrowDown",
+			virtualKeyCode: 40,
+			modifiers: 0,
+		});
+		const afterWalk = await cdp.evaluate(
+			'(() => { const el = document.activeElement; return { onClear: el === document.querySelector("[data-drafts-clear-all]"), hasAttr: el === null ? null : el.hasAttribute("data-drafts-clear-all") }; })()',
+		);
+		check(
+			"ArrowDown from the last draft row lands on the inapplicable control",
+			afterWalk.onClear === true,
+			JSON.stringify(afterWalk),
+		);
+		await pressChord(cdp, {
+			key: "ArrowDown",
+			code: "ArrowDown",
+			virtualKeyCode: 40,
+			modifiers: 0,
+		});
+		const walkedPast = await cdp.evaluate(
+			'(() => { const el = document.activeElement; return { onClear: el === document.querySelector("[data-drafts-clear-all]") }; })()',
+		);
+		check(
+			"and the next step moves past it rather than sticking",
+			walkedPast.onClear === false,
+			JSON.stringify(walkedPast),
+		);
+		const clearColour = () =>
+			cdp.evaluate(
+				'(() => { const el = document.querySelector("[data-drafts-clear-all]"); return el === null ? null : getComputedStyle(el).color; })()',
+			);
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: 2,
+			y: 2,
+			button: "none",
+			buttons: 0,
+		});
+		await wait(160);
+		const clearColourOff = await clearColour();
+		await hoverOver(cdp, "[data-drafts-clear-all]");
+		await wait(160);
+		const clearColourOn = await clearColour();
+		check(
+			"the inapplicable Clear all's ink does not move under the pointer",
+			clearColourOff !== null && clearColourOn === clearColourOff,
+			`${JSON.stringify(clearColourOff)} vs ${JSON.stringify(clearColourOn)}`,
+		);
+		const rowsBeforePress = await readDraftRows();
+		await clickAt(cdp, "[data-drafts-clear-all]");
+		await wait(200);
+		check(
+			"a press on the inapplicable control moves nothing",
+			(await readDraftRows()).length === rowsBeforePress.length,
+			`${JSON.stringify(rowsBeforePress)} -> ${JSON.stringify(await readDraftRows())}`,
+		);
+		check(
+			"and raises no offer",
+			(await toastsOnScreen(cdp)) === 0,
+			`toasts=${await toastsOnScreen(cdp)}`,
+		);
+	}
+	const clearDisabledFrame = await captureSettled(cdp, "drafts-clear-disabled");
+
+	const frames = [
+		restFrame,
+		hoverFrame,
+		pendingFrame,
+		deletedFrame,
+		restoredFrame,
+		openDeletedFrame,
+		clearedFrame,
+		relaunchFrame,
+		clearDisabledFrame,
+	];
+	check(
+		"every settled capture is a frame the app held still for, with no toast on it",
+		[
+			restFrame,
+			hoverFrame,
+			pendingFrame,
+			restoredFrame,
+			relaunchFrame,
+			clearDisabledFrame,
+		].every((frame) => frame.stable === true && frame.toastFree === true),
+		[
+			restFrame,
+			hoverFrame,
+			pendingFrame,
+			restoredFrame,
+			relaunchFrame,
+			clearDisabledFrame,
+		]
+			.map(
+				(frame) =>
+					`${frame.label}: stable=${frame.stable === true} toastFree=${frame.toastFree === true}`,
+			)
+			.join(" | "),
+	);
+	/*
+	 * AND THE OFFER FRAMES CARRY THE OFFER: `captureWithToast` records the lane's
+	 * own sentence on the frame it keeps, so a frame of the offer is known to hold
+	 * the message its caption quotes. On a tree without the offer these frames
+	 * read `toastText: null` and the check fails as the change's claim.
+	 */
+	check(
+		"the offer frames hold the offer, stable",
+		[deletedFrame, openDeletedFrame, clearedFrame].every(
+			(frame) =>
+				frame.stable === true &&
+				typeof frame.toastText === "string" &&
+				frame.toastText.includes("discarded.") &&
+				frame.toastText.includes("Undo"),
+		),
+		[deletedFrame, openDeletedFrame, clearedFrame]
+			.map(
+				(frame) =>
+					`${frame.label}: stable=${frame.stable === true} toastText=${JSON.stringify(frame.toastText)}`,
+			)
+			.join(" | "),
+	);
+	return frames;
+}
+
 async function sceneNewChat(cdp) {
 	/*
 	 * Start anywhere but the chat route: `navigate("/chat")` is 80% of what this
@@ -25712,8 +26828,28 @@ async function sceneRouteTops(cdp) {
 		["settings", "/settings"],
 		["settings-integrations", "/settings?section=integrations"],
 		["agents", "/agents"],
+		/*
+		 * The saved-agent route draws the SAME 280px roster as `/agents` does, and it
+		 * is here because a sweep that covers only the route the operator screenshotted
+		 * is how this defect came back once already: the two are separate components
+		 * (`legacy-agents-page.tsx` and `agents-page.tsx`), so a fix carried by one is
+		 * not carried by the other. The id is arbitrary on purpose - the roster pane is
+		 * unconditional and renders without an agent to show, which is what this route
+		 * needs a reading of.
+		 */
+		["agents-detail", "/agents/local-operator"],
 		["agent-hub", "/agent-hub"],
 		["schedules", "/schedules"],
+		/*
+		 * THE TWO ROUTES THE OPERATOR NAMED AS MUST-NOT-MOVE THAT THE FIRST SWEEP LEFT
+		 * OUT (review round 1, M1). Neither draws a leading column: the projects page's
+		 * root is a vertical flex column with no ground of its own, and the browser
+		 * surface roots on `canvas` behind its own toolbar - so what their readings carry
+		 * is the floor half of the band claim (no column: the band must stop exactly at
+		 * the app sidebar's own edge) plus the route-top assertion every route gets.
+		 */
+		["projects", "/projects"],
+		["browser", "/browser"],
 	];
 	const frames = [];
 	const readings = [];
@@ -25729,31 +26865,113 @@ async function sceneRouteTops(cdp) {
 				const rect = el.getBoundingClientRect();
 				return {
 					top: Math.round(rect.top * 100) / 100,
+					left: Math.round(rect.left * 100) / 100,
+					width: Math.round(rect.width * 100) / 100,
 					height: Math.round(rect.height * 100) / 100,
 				};
 			};
 			const main = document.querySelector("main");
-			let own = null;
+			/*
+			 * A ROLE RESOLVED RATHER THAN GUESSED. --lo-surface is the token the
+			 * lane's band is asked for, and a one-off element is how its computed
+			 * value is read without a second copy of the palette: the marker's
+			 * contract is that a leading column stands on this ground, and that is
+			 * what this reading is for.
+			 */
+			const roleGround = (token) => {
+				const probe = document.createElement("div");
+				probe.style.backgroundColor = "var(" + token + ")";
+				document.body.appendChild(probe);
+				const ground = getComputedStyle(probe).backgroundColor;
+				probe.remove();
+				return ground;
+			};
+			let ownRoot = null;
 			if (main) {
 				for (const child of main.children) {
 					if (child.hasAttribute("data-chrome-route-band")) continue;
-					own = child;
+					ownRoot = child;
 					break;
 				}
 			}
 			const lane = document.querySelector("[data-titlebar-lane]");
 			const band = document.querySelector("[data-chrome-route-band]");
+			/*
+			 * THE LANE'S BAND, read back the way it is painted rather than the way it was
+			 * asked for: the stop is the first length in the RESOLVED gradient (the
+			 * inline style spells it as a custom property, so only the computed form
+			 * proves the variable resolved), and the ground is that gradient's first
+			 * colour. The leading column is whatever a route handed the shell; when there
+			 * is none, the band must be exactly the app sidebar's own width.
+			 */
+			const surfaceGround = roleGround("--lo-surface");
+			/*
+			 * THE ROUTE'S OWN LEADING COLUMN, DERIVED FROM THE LAYOUT RATHER THAN
+			 * LOOKED UP BY THE HANDLE THE FIX ADDED. A rig that asks for the marker
+			 * cannot see the defect it is meant to catch: on the tree where the band
+			 * stops short, the marker does not exist, every reading comes back null,
+			 * and the guard passes by having nothing to check (measured on the base
+			 * tree, 2026-09-27). What is derived instead is the rule itself - a
+			 * full-height column standing on the surface role at the route's own left
+			 * edge - which holds on both trees, and which a route added later is
+			 * subject to without anybody remembering to mark it.
+			 *
+			 * Two levels, and those two conditions, because anything deeper is a card
+			 * rather than a column: schedules' own surface panels are neither
+			 * full-height nor at the route's left edge, and they must not be read as
+			 * columns here.
+			 */
+			const columnAt = (el) => {
+				if (!el) return null;
+				const route = box(ownRoot);
+				const bounds = box(el);
+				if (!route || !bounds) return null;
+				if (Math.abs(bounds.left - route.left) > 0.5) return null;
+				if (bounds.height < route.height - 0.5) return null;
+				return el;
+			};
+			const leading = (() => {
+				if (!ownRoot) return null;
+				if (getComputedStyle(ownRoot).backgroundColor === surfaceGround) {
+					return columnAt(ownRoot);
+				}
+				const first = ownRoot.firstElementChild;
+				if (!first) return null;
+				if (getComputedStyle(first).backgroundColor === surfaceGround) {
+					return columnAt(first);
+				}
+				for (const inner of first.children) {
+					if (getComputedStyle(inner).backgroundColor === surfaceGround) {
+						return columnAt(inner);
+					}
+				}
+				return null;
+			})();
+			const registered = document.querySelector("[data-lane-leading-column]");
+			const laneStyle = lane ? getComputedStyle(lane) : null;
+			const gradient = laneStyle ? laneStyle.backgroundImage : "";
+			const stop = /([0-9.]+)px/.exec(gradient);
+			const rgbAt = gradient.indexOf("rgb");
+			const ground =
+				rgbAt >= 0
+					? gradient.slice(rgbAt, gradient.indexOf(")", rgbAt) + 1)
+					: null;
 			return {
 				platform: document.documentElement.getAttribute("data-chrome-platform"),
 				mode: document.documentElement.getAttribute("data-chrome-mode"),
 				viewport: { width: window.innerWidth, height: window.innerHeight },
 				lane: box(lane),
 				laneDisplay: lane ? getComputedStyle(lane).display : null,
+				laneBandStop: stop ? Number(stop[1]) : null,
+				laneBandGround: ground,
 				band: box(band),
 				bandDisplay: band ? getComputedStyle(band).display : null,
 				sidebar: box(document.querySelector("[data-sidebar-shell]")),
-				route: box(own),
-				routeTag: own ? own.tagName.toLowerCase() : null,
+				route: box(ownRoot),
+				routeTag: ownRoot ? ownRoot.tagName.toLowerCase() : null,
+				leadingColumn: box(leading),
+				registeredColumn: box(registered),
+				surfaceGround: surfaceGround,
 				settingsRail: box(
 					document.querySelector('nav[aria-label="Settings sections"]'),
 				),
@@ -25809,6 +27027,64 @@ async function sceneRouteTops(cdp) {
 				`the route's first box is at y ${reading.route === null ? "(absent)" : reading.route.top} against a lane that ends at ${laneBottom}`,
 				`route y ${reading.route === null ? "(absent)" : reading.route.top}, sidebar y ${reading.sidebar === null ? "(none)" : reading.sidebar.top}, settings rail y ${reading.settingsRail === null ? "(none)" : reading.settingsRail.top}, settings content y ${reading.settingsContent === null ? "(none)" : reading.settingsContent.top}`,
 			);
+		}
+		/*
+		 * THE BAND REACHES EVERY GROUND BESIDE IT, which is the other half of the same
+		 * claim and the one the operator reported twice (2026-09-26, and again
+		 * 2026-09-27 as still true). A column of a route's own - the settings rail, the
+		 * agents list pane - stands on the `surface` ground, but it is INSIDE the
+		 * clipped content column and cannot paint above its own top edge: the lane's
+		 * band is the only thing that can carry its ground to y0, which is why the
+		 * shell has to be told about the column.
+		 *
+		 * THE SUBJECT IS DERIVED, NOT LOOKED UP BY THE HANDLE THE FIX ADDS. Asking the
+		 * page for the marker would make this guard pass on the unfixed tree - the
+		 * marker is not there, every reading comes back null, and a check with nothing
+		 * to check is a check that cannot fail (measured on the base tree: all six
+		 * routes "passed" as routes with no leading column). The rule is derived
+		 * instead, from the layout on both trees: a full-height column on the surface
+		 * role at the route's own left edge. The registration is then asked for
+		 * separately, so a column nobody handed over fails by name rather than quietly
+		 * becoming "no column here".
+		 *
+		 * The control is the routes that draw no such column (chat, schedules, agent
+		 * hub, projects, browser): there the band stays exactly the app sidebar's width,
+		 * which is what keeps this from being a rule that quietly widens every route's
+		 * band.
+		 */
+		for (const [, path, reading] of readings) {
+			if (!reading.lane || reading.laneDisplay === "none") continue;
+			const laneLeft = reading.lane.left;
+			if (reading.leadingColumn) {
+				const column = reading.leadingColumn;
+				const edge = column.left + column.width;
+				check(
+					`${path}: the route's leading column is handed to the shell`,
+					reading.registeredColumn !== null &&
+						Math.abs(reading.registeredColumn.left - column.left) < 0.5,
+					`the column at x ${column.left} is ${reading.registeredColumn === null ? "not registered at all" : `registered at x ${reading.registeredColumn.left}`}`,
+				);
+				check(
+					`${path}: the lane's band reaches the leading column's right edge (${edge}px)`,
+					reading.laneBandStop !== null &&
+						reading.laneBandStop >= edge - laneLeft - 0.5,
+					`the band stops at ${reading.laneBandStop} against a column ending at ${edge}`,
+				);
+				check(
+					`${path}: the band is painted in the surface role the column stands on`,
+					reading.laneBandGround !== null &&
+						reading.laneBandGround === reading.surfaceGround,
+					`the band paints ${reading.laneBandGround} against the surface role's ${reading.surfaceGround}`,
+				);
+			} else if (reading.sidebar) {
+				const edge = reading.sidebar.left + reading.sidebar.width;
+				check(
+					`${path}: with no leading column the band stops at the app sidebar's own edge (${edge}px)`,
+					reading.laneBandStop !== null &&
+						Math.abs(reading.laneBandStop - (edge - laneLeft)) < 0.5,
+					`the band stops at ${reading.laneBandStop} against a sidebar ending at ${edge}`,
+				);
+			}
 		}
 		/*
 		 * The app sidebar is the control for the same number, WHERE IT EXISTS to be
@@ -26068,7 +27344,7 @@ async function main() {
 	}
 	if (SCENE === "route-tops" && BACKEND === null) {
 		throw new Error(
-			"--scene route-tops needs --backend: settings, agents, hub and schedules are gated on the catalogue a live backend advertises, and the macOS lane assertion is read over every one of them",
+			"--scene route-tops needs --backend: settings, agents, projects, hub and schedules are gated on the catalogue a live backend advertises, and the macOS lane assertion is read over every one of them",
 		);
 	}
 	if (SCENE === "pins-search" && (TUI_PYTHON === null || TUI_CONFIG === null)) {
@@ -26200,6 +27476,7 @@ async function main() {
 			if (SCENE === "session-archive") await sceneSessionArchive(cdp);
 			else if (SCENE === "connection-drop") await sceneConnectionDrop(cdp);
 			else if (SCENE === "row-space") await sceneRowSpace(cdp);
+			else if (SCENE === "sidebar-bottom") await sceneSidebarBottom(cdp);
 			else if (SCENE === "states") await sceneStates(cdp);
 			/*
 			 * §I's pane floors (the chat column's 480, the canvas's dock cap and its
@@ -26218,6 +27495,7 @@ async function main() {
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);
 			else if (SCENE === "btw-aside") await sceneBtwAside(cdp);
 			else if (SCENE === "authoring-refresh") await sceneAuthoringRefresh(cdp);
+			else if (SCENE === "drafts") await sceneDrafts(cdp);
 			else if (SCENE === "settings-model") await sceneSettingsModel(cdp);
 			else if (SCENE === "settings-fields") await sceneSettingsFields(cdp);
 			else if (SCENE === "settings-gate") await sceneSettingsGate(cdp);
