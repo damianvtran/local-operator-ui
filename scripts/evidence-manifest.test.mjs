@@ -1711,6 +1711,10 @@ const STAMP_BINDING_NOTES = [
 	 * this file ships rather than read as history.
 	 */
 	"foldOntoe2394f9ff1Note",
+	/*
+	 * AND THIS FOLD'S: `foldOnto8a03152c61Note` states the pair the second folded tip binds, so it is held to the pair this file ships rather than read as history.
+	 */
+	"foldOnto8a03152c61Note",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2651,6 +2655,10 @@ const BRANCH_RECORDS = [
 	 * And this fold's record rides beside them - registered here for the same completeness reason.
 	 */
 	"foldOntoe2394f9ff1Note",
+	/*
+	 * And this fold's record rides beside them - registered here for the same completeness reason.
+	 */
+	"foldOnto8a03152c61Note",
 
 ];
 
