@@ -2290,7 +2290,8 @@ async function main() {
 						 */
 						/*
 						 * THE NOTCH, measured because nothing else measures it (review round 6,
-						 * MAJOR 1). It is 1px of 'canvas' at '-bottom-px', and for one round the
+						 * MAJOR 1). It is 1px of the page's own ground ('elevated') at '-bottom-px',
+						 * and for one round the
 						 * row-level clip removed it entirely on every active tab while every
 						 * check stayed green. A clip is an intersection with the padding boxes of
 						 * the overflow ancestors, so that is what this computes: if the notch's

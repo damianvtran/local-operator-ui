@@ -658,7 +658,7 @@ Three `CONTROLS` rows and one modification. Without them
 | `browser approvals tray row (selected)` **(new)** | `["surface"]` | `elevated` | `borderControl` | `ink` |
 | `browser approvals dock` **(new)** | `["canvas"]` | `surface` | `borderControl` | `ink` |
 | `browser tab (hover)` **(new)** | `["sunken"]` | `elevated` | *(none)* | `ink` |
-| `browser active tab` **(modified)** | `["sunken"]` | `canvas` | `borderControl` | `ink` |
+| `browser active tab` **(modified)** | `["sunken"]` | `elevated` | `borderControl` | `ink` |
 
 Notes for whoever edits the file: the badge's grounds are the URL bar
 (`bg-canvas`, `browser-url-bar.tsx:120-123`), the chat pane's header (`canvas` — the
@@ -667,9 +667,11 @@ the app rail's Browser row in its two states (2026-09-23: `rowSelected` while `/
 is the route, `rowHover` under the pointer) — the rail is the host that made the
 two-ground version incomplete, and the `inkMuted` edge is what lets one role clear the
 3:1 floor on all four; the
-active tab's fill becomes `canvas` (the page's own ground) and its bottom edge
+active tab's fill becomes `elevated` (the page's own ground — revised 2026-09-27 by
+the drawer's-rung remediation: the page below the strip moved to `elevated` in the
+drawer's-rung pass and the tab's fill and its 1px notch followed it) and its bottom edge
 stops existing, so its `on` list loses `surface` — the ground step alone is
-1.11:1 in the dark palettes, which is the measurement D18 already recorded, so
+1.18:1 at its tightest across the palettes, a depth cue rather than a marker, so
 the row asserts the edge, exactly as it does today. The tray row and the dock
 both hold text, which is why they are `CONTROLS` rows rather than `GRAPHICS`.
 
@@ -688,8 +690,8 @@ belongs to.
 | Strip | `bg-sunken`, `border-b border-control`, `min-h-10`, `px-2 py-1` | keep | The strip is the well; `border-control` is its one structural boundary against the page (D18, `:92-95`). Unchanged |
 | Tab, inactive | `bg-surface`, `border-transparent`, `rounded-sm`, `text-ink-muted` | **no fill**, top-only radius, `text-ink-muted`, 1px `hairline` divider between adjacent tabs | Inactive tabs are a row of titles in the well, not raised controls. Removing the fill loses no information (the titles and the divider identify them — the `branding.md:96-107` test), so the fill comes off rather than being promoted |
 | Tab, hover | `hover:bg-elevated hover:text-ink` | keep, and only that | A colour step; nothing lifts, scales or translates (`branding.md:245-250`) |
-| Tab, active | `bg-elevated border-control` all round, `rounded-sm` | `bg-canvas`, `border-x border-t border-control`, no bottom edge, `rounded-t-sm`, `text-ink` | The active tab takes **the page's own ground** and is continuous with the content area through a 1px notch in the strip's bottom rule. `border-control` on the three edges it has is what makes it survive a glance (D18); the ground step is the depth cue, not the marker |
-| Notch | — | the active tab paints a 1px `bg-canvas` span across its own bottom edge (`relative` + an absolutely positioned child) | This is what "connected to the content area" means mechanically, and it is why the strip's own `border-b` stays: the rule continues everywhere except under the active tab |
+| Tab, active | `bg-elevated border-control` all round, `rounded-sm` | `bg-elevated`, `border-x border-t border-control`, no bottom edge, `rounded-t-sm`, `text-ink` | The active tab takes **the page's own ground** and is continuous with the content area through a 1px notch in the strip's bottom rule. `border-control` on the three edges it has is what makes it survive a glance (D18); the ground step is the depth cue, not the marker. (Revised 2026-09-27 by the drawer's-rung remediation: the page below the strip moved to `elevated`, and the tab's fill and its notch moved with it — left on `canvas` they drew a 1px seam where the sheet was.) |
+| Notch | — | the active tab paints a 1px `bg-elevated` span across its own bottom edge (`relative` + an absolutely positioned child) | This is what "connected to the content area" means mechanically, and it is why the strip's own `border-b` stays: the rule continues everywhere except under the active tab |
 | Title | `truncate`, native `title` | keep | Truncation is recoverable with the pointer and the full text is in the DOM (D13, `:145-152`) |
 | Width policy | `basis-32 grow min-w-32 max-w-[50%]`, row scrolls | keep | D13's reviewed policy. Chrome shrinks tabs below 128px; this strip cannot, because the mark, the chips and the close button need the room, and a 60px tab would show no name at all. **A deliberate difference from Chrome**, stated so it is not "fixed" later |
 | Close | always rendered per tab | rendered for the active tab always; for an inactive tab on hover **or** focus-within; always available from the row's menu | A focusable but invisible control is a keyboard trap of its own; the menu's `Close tab` (`:237-239`) is the always-visible path. Reveal is a colour/opacity transition, never a layout shift |
