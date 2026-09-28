@@ -22,7 +22,8 @@
  * Raw CDP against a private headless Chrome with no browser-automation
  * dependency, exactly like `session-switch-latency.mjs` and
  * `scroll-paging-evidence.mjs` (fresh user-data-dir under /tmp, killed on
- * exit, `--use-mock-keychain` so nothing touches the operator's keychain).
+ * exit, argv routed through `withMockKeychain` so nothing touches the
+ * operator's keychain).
  */
 
 import { spawn } from "node:child_process";
