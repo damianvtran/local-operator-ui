@@ -554,6 +554,22 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	 */
 	const closeFocus = useRef<CloseFocusPending | null>(null);
 	const closeFocusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	/**
+	 * Set when a CLOSE item is what dismisses the menu, and read once by the menu's
+	 * `onCloseAutoFocus`.
+	 *
+	 * THE RACE THIS CLOSES (QA round 2, Q2-1). Radix returns focus to the ⋯ trigger off a
+	 * `setTimeout(0)` scheduled when the content unmounts, while this strip's landing
+	 * placement focuses the survivor off the projection's commit. Which write lands LAST
+	 * owns the caret, and both orders occur under load: measured ~2/20 runs ended on the
+	 * trigger (`BUTTON in-tab=2 id=radix-…`) because the projection had already committed
+	 * and Radix's queued refocus then took the caret back. The close record owns the caret
+	 * while it is armed, so the menu YIELDS to it: a dismissal that ran a close suppresses
+	 * the return, and a dismissal that ran no close item (Escape, an outside press,
+	 * Watch/Copy) keeps Radix's default. Every close path calls `armCloseFocus`, which sets
+	 * this, and the dismissal it suppresses clears it, so a later open starts clean.
+	 */
+	const menuCloseOwnsFocus = useRef(false);
 
 	/** Drop the record and its timer. Nothing here touches focus: every caller has already
 	 * decided that this close will not move the caret (a refusal, a landing, an expiry). */
@@ -578,6 +594,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 				parked: false,
 				decided: false,
 			};
+			menuCloseOwnsFocus.current = true;
 			closeFocus.current = pending;
 			closeFocusTimer.current = setTimeout(() => {
 				if (closeFocus.current === pending) clearCloseFocus();
@@ -1337,17 +1354,38 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 												<DropdownMenuContent
 													align="end"
 													/*
-													 * CLEAR OF THE APPROVALS PILL (design round 1, D2). The panel is end-anchored
-													 * to its trigger, so on the strip's rightmost tab its right edge lands at
+													 * CLEAR OF THE APPROVALS PILL (design round 1, D2; the numbers
+													 * corrected by QA round 2, Q2-2). The panel is end-anchored to its
+													 * trigger, so on the strip's rightmost tab its right edge used to land at
 													 * CSS 1300-1301 in the operator's own worst case, over the pill whose
 													 * leading content starts at CSS 1281.5 — the pill read `pprovals`.
 													 * `collisionPadding` is stated against the WINDOW's right edge rather than
 													 * the pill's coordinates because the pill is right-anchored: 120 = the
-													 * pill's own inset (~98.5) plus a 20px gap, so a panel that would reach
-													 * into that corner shifts left to 1260 and one that fits is untouched.
-													 * The shift only engages when the panel would otherwise overlap.
+													 * pill's own inset (~98.5) plus a 20px gap.
+													 *
+													 * THE SHIFT'S LIMIT IS THE ANCHOR'S WIDTH, which the first version of
+													 * this comment got wrong: Radix's shift runs with `sticky` at its
+													 * `"partial"` default, `limitShift()` is derived from that setting, and
+													 * it caps the shift at the anchor's width — 28px for this trigger — so
+													 * the measured worst case lands at right ≈ 1272.5, ~9px clear of the
+													 * pill, not the ≤1260 the old text claimed. The goal holds (the pill is
+													 * no longer covered; a panel that fits is untouched); the bound is what
+													 * the pinned middleware actually is.
 													 */
 													collisionPadding={{ right: 120 }}
+													/*
+													 * THE CLOSE RECORD WINS (QA round 2, Q2-1): while a close this menu
+													 * started is still deciding where the caret goes, Radix's own
+													 * return-to-trigger would race the landing placement — see the
+													 * `menuCloseOwnsFocus` note above. A dismissal that ran no close
+													 * item keeps the default, which is what Escape, an outside press
+													 * and the reveal/copy items rely on.
+													 */
+													onCloseAutoFocus={(event) => {
+														if (!menuCloseOwnsFocus.current) return;
+														menuCloseOwnsFocus.current = false;
+														event.preventDefault();
+													}}
 													className="min-w-56"
 													data-tour-tag="browser-tab-actions"
 												>

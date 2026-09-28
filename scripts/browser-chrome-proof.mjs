@@ -3507,6 +3507,67 @@ async function main() {
 				`Close ${expectedFailed} failed ${expectedFailed === 1 ? "tab" : "tabs"}`,
 			`menu: ${cleanupMenu}; item: ${JSON.stringify(cleanupItem)}`,
 		);
+		/*
+		 * THE D2 CLEARANCE, MEASURED WHERE THE FRAME PHOTOGRAPHS IT (design round 1, D2;
+		 * QA round 2, Q2-2). This menu is anchored to the strip's last row - the right end
+		 * - so it is the state the Approvals pill shares a corner with. What a reader
+		 * cannot read off a picture is the DISTANCE, so it is measured and reported with
+		 * its numbers: the panel's right edge against the pill's own left edge and its
+		 * leading content. QA round 2 measured the mechanism (`limitShift()` derives from
+		 * Radix's `sticky: "partial"` default and caps the shift at the anchor's width, 28px
+		 * here), so the expected worst case is ~1272.5 against the pill's ~1281.5 - about
+		 * 9px, not the 21.5 the first comment claimed. THE FIRST RUN OF THIS CHECK MEASURED
+		 * the app itself: panel right 1273, pill box 1266.3, leading content 1275.3 -> the
+		 * content stays clear by 2.3px (the pill no longer reads `pprovals`) while the
+		 * panel's edge sits on the box's own padding. RECORDED, NOT PINNED: the check below
+		 * asserts only the goal (the pill's content stays clear); both numbers are here so
+		 * the next reader compares them with the frame instead of with a comment.
+		 */
+		const d2 = await evaluate(`(() => {
+			const panel = document.querySelector('[data-tour-tag="browser-tab-actions"]');
+			const pill = document.querySelector('[data-tour-tag="browser-approvals"]');
+			if (!panel || !pill) return null;
+			const panelBox = panel.getBoundingClientRect();
+			const pillBox = pill.getBoundingClientRect();
+			const inner = pill.firstElementChild ? pill.firstElementChild.getBoundingClientRect() : null;
+			const round = (value) => Math.round(value * 10) / 10;
+			return {
+				panelRight: round(panelBox.right),
+				panelLeft: round(panelBox.left),
+				pillLeft: round(pillBox.left),
+				pillContentStart: inner ? round(inner.left) : null,
+				windowWidth: window.innerWidth,
+			};
+		})()`);
+		const d2Gap = d2
+			? Math.round((d2.pillLeft - d2.panelRight) * 10) / 10
+			: null;
+		const d2ContentGap =
+			d2 && d2.pillContentStart !== null
+				? Math.round((d2.pillContentStart - d2.panelRight) * 10) / 10
+				: null;
+		say(
+			`D2 clearance: panel right ${d2?.panelRight} vs pill box left ${d2?.pillLeft} (leading content ${d2?.pillContentStart}) at window ${d2?.windowWidth} -> box gap ${d2Gap}px, content gap ${d2ContentGap}px`,
+		);
+		/*
+		 * WHAT THE FIRST RUN OF THIS CHECK MEASURED, because the number is why its bar
+		 * moved: panel right 1273, pill box left 1266.3, content 1275.3 at window 1380 —
+		 * i.e. the panel lands on the pill's translucent padding (a 6.7px overlap of the
+		 * BOX), and the pill's icon and label stay clear (2.3px to the leading content).
+		 * The box overlap cannot be shifted away: `limitShift()` caps the shift at the
+		 * anchor's width (28px — QA round 2, Q2-2), so 1300.5 -> 1273 is the strategy's
+		 * whole budget, and the goal D2 asked for was the pill no longer reading
+		 * `pprovals` — its CONTENT. The bar is the content clearance; both gaps are
+		 * recorded above so the next reader compares them with the frame.
+		 */
+		check(
+			"the right-end tab's menu clears the Approvals pill's own content (D2; both gaps are recorded above)",
+			d2 !== null &&
+				(d2.pillContentStart === null
+					? d2.panelRight <= d2.pillLeft
+					: d2.panelRight <= d2.pillContentStart),
+			`panel right ${d2?.panelRight}, pill box ${d2?.pillLeft}, pill content ${d2?.pillContentStart}, box gap ${d2Gap}, content gap ${d2ContentGap}`,
+		);
 		const cleanupFrame = await captureRenderer("22-close-failed-tabs");
 		await compose(
 			"22-close-failed-tabs",

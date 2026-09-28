@@ -409,10 +409,25 @@ test("a close that DOES land still moves the caret onto the surviving tab", asyn
 	const view = await open("landed");
 	await view.press();
 	await view.settle();
+	/*
+	 * THE CARET IS POLLED, NOT SAMPLED ONCE (QA round 2, Q2-1). The close's focus
+	 * effect and the projection re-render race at this granularity: 2 of 20 full-file
+	 * runs under fleet load caught the caret one tick before the effect ran, while the
+	 * assertion's own bytes were unchanged. The wait is bounded - the same shape the
+	 * harness's `caretInStripSoon` uses - and an expired poll still fails with the
+	 * caret it saw, so the leg discriminates the defect (which never lands in the
+	 * strip at all) exactly as before.
+	 */
+	let caret = view.caret();
+	const deadline = Date.now() + 2000;
+	while (!LANDED_CLOSE_CARET.test(caret) && Date.now() < deadline) {
+		await act(() => new Promise((resolve) => setTimeout(resolve, 25)));
+		caret = view.caret();
+	}
 	assert.match(
-		view.caret(),
+		caret,
 		LANDED_CLOSE_CARET,
-		`the caret after the close landed: ${view.caret()} (rows ${view.controls.rows().join(",")})`,
+		`the caret after the close landed: ${caret} (rows ${view.controls.rows().join(",")})`,
 	);
 	await view.unmount();
 });
