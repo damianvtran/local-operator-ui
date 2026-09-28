@@ -46,6 +46,11 @@
  * - a text-entry element (`input` of a text-like type, `textarea`,
  *   `[contenteditable="true"]`) must NOT compute `pointer` - the text cursor
  *   is the platform's to give and this audit's job is to leave it alone;
+ * - a `label` whose control is a choice control (the `sr-only` radios behind a
+ *   segmented control, a checkbox a settings row toggles) IS the click target,
+ *   so it must compute `pointer` too - a label is not in the base layer's
+ *   semantic list, so this arm is what keeps those click targets from silently
+ *   keeping the wrong cursor;
  * - a focusable separator widget (`role="separator"` with `aria-valuenow`)
  *   must compute its own resize cursor (`col-resize` or `row-resize`), which
  *   is the convention `resizable-divider.tsx` already follows;
@@ -80,6 +85,13 @@
  * walks a story list of its own and measures instead of shooting, and
  * threading a third mode through the evidence sweep would complicate the one
  * script in this repo that must stay boring, for the benefit of a probe.
+ *
+ * A story that fails to render is REPORTED - the SKIP line, the summary and
+ * the JSON - and not asserted: story health belongs to the evidence gates
+ * and to whoever changed the story, and a gate that cannot pass on a tree
+ * with one broken story is a gate nobody runs. This run's claim is about the
+ * cursors of the stories that do render, and the printed `scanned N/M` line
+ * is the size of that claim.
  *
  * One theme is deliberately enough. Cursor is not a palette token - no theme
  * in `themes.generated.css` sets a cursor - so a defect this audit exists for
@@ -265,6 +277,18 @@ const SCAN = `(() => {
 		check(el, 'control', ['pointer'], (c) => c === 'pointer');
 	}
 
+	/* Choice labels: the label IS the target a person clicks (the control it
+	   names is often sr-only), so it is held to the pointer the same way. */
+	const choiceLabel = (el) => {
+		if (el.tagName !== 'LABEL') return false;
+		const ctl = el.control;
+		return Boolean(ctl && (ctl.type === 'checkbox' || ctl.type === 'radio'));
+	};
+	for (const el of document.querySelectorAll('label')) {
+		if (!choiceLabel(el)) continue;
+		check(el, 'control-label', ['pointer'], (c) => c === 'pointer');
+	}
+
 	/* Separator widgets: the resize handles. A NON-widget separator (a
 	   decorative rule) has no cursor opinion and is not counted. Keep the
 	   attribute spelled in quotes below - a backtick in this template string
@@ -313,6 +337,9 @@ const SCAN = `(() => {
 		if (el.parentElement && el.parentElement.closest(CONTROLS)) continue;
 		if (el.parentElement && getComputedStyle(el.parentElement).cursor === 'pointer') continue;
 		if (el.closest('[contenteditable="true"]')) continue;
+		/* A choice label's pointer is this audit's own expectation above, not an
+		   unattributed surprise. */
+		if (choiceLabel(el)) continue;
 		unattributed.push(desc(el));
 	}
 
@@ -489,6 +516,8 @@ const main = async () => {
 		unrendered: [],
 		interactive: 0,
 		interactiveWrong: 0,
+		controlLabels: 0,
+		controlLabelWrong: 0,
 		textEntry: 0,
 		textEntryWrong: 0,
 		draggable: 0,
@@ -550,7 +579,13 @@ const main = async () => {
 		const wrongCount = scan.wrong.length;
 		const interactive = Object.entries(scan.byCategory)
 			.filter(
-				([k]) => !["text-entry", "draggable", "separator-widget"].includes(k),
+				([k]) =>
+					![
+						"control-label",
+						"text-entry",
+						"draggable",
+						"separator-widget",
+					].includes(k),
 			)
 			.reduce(
 				(n, [, v]) => n + Object.values(v.totals).reduce((a, b) => a + b, 0),
@@ -560,6 +595,15 @@ const main = async () => {
 		summary.interactive += interactive;
 		summary.interactiveWrong += scan.wrong.filter(
 			(w) => w.category === "control" || w.category === "disabled-control",
+		).length;
+		summary.controlLabels += scan.byCategory["control-label"]
+			? Object.values(scan.byCategory["control-label"].totals).reduce(
+					(a, b) => a + b,
+					0,
+				)
+			: 0;
+		summary.controlLabelWrong += scan.wrong.filter(
+			(w) => w.category === "control-label",
 		).length;
 		summary.textEntry += scan.byCategory["text-entry"]
 			? Object.values(scan.byCategory["text-entry"].totals).reduce(
@@ -637,6 +681,16 @@ const main = async () => {
 		console.log(
 			`scanned ${summary.stories - summary.unrendered.length}/${summary.stories} stories in ${elapsedS}s`,
 		);
+		/* Story health is REPORTED, not asserted: a story that fails to render
+		   is storybook's problem (capture-evidence's gates own it) or a real
+		   finding for whoever changed it - it is not a cursor value, and a gate
+		   that cannot pass on a tree with one broken story is a gate nobody
+		   runs. The list stays in the JSON and here. */
+		if (summary.unrendered.length > 0) {
+			console.log(
+				`note: ${summary.unrendered.length} stories did not render (listed above, not asserted): ${summary.unrendered.map((u) => u.id).join(", ")}`,
+			);
+		}
 	}
 
 	if (ASSERT_CLEAN) {
@@ -644,6 +698,10 @@ const main = async () => {
 		if (summary.interactiveWrong > 0)
 			problems.push(
 				`${summary.interactiveWrong} interactive elements with the wrong cursor`,
+			);
+		if (summary.controlLabelWrong > 0)
+			problems.push(
+				`${summary.controlLabelWrong} choice labels without a pointer`,
 			);
 		if (summary.textEntryWrong > 0)
 			problems.push(
@@ -657,8 +715,6 @@ const main = async () => {
 			problems.push(
 				`${summary.separatorWrong} separator widgets without a resize cursor`,
 			);
-		if (summary.unrendered.length > 0)
-			problems.push(`${summary.unrendered.length} stories did not render`);
 		if (problems.length > 0) {
 			console.error(`cursor audit failed: ${problems.join("; ")}`);
 			process.exitCode = 1;
