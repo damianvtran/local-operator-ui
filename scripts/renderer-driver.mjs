@@ -27399,6 +27399,69 @@ async function sceneProjectDetail(cdp) {
 	await captureSettled(cdp, `project-detail-${size}-${theme}-delivered`);
 
 	/*
+	 * 3b. THE POINTER SEND, AND WHERE THE KEYBOARD LANDS (UX round 1, U2): the
+	 * same strip, a second message, and a REAL press of the Send control - the
+	 * gesture the finding measured, where the click focuses the button, the
+	 * button disables while the send is in flight, and the browser drops focus
+	 * to `<body>` unless the strip hands the keyboard back. Three checks: the
+	 * strip clears, the daemon holds the second text, and `document.activeElement`
+	 * IS the input again - the last one is the one that fails if the refocus
+	 * regresses, and it is measured with a trusted pointer for exactly that
+	 * reason: a programmatic click would not have moved focus in the first
+	 * place, so a synthetic press could not have failed.
+	 */
+	await verb(cdp, "navigate", `/projects/${PROJECT}`);
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${inputSelector}'))`,
+		60_000,
+	);
+	const pointerText = `Pointer press leg. [${Date.now().toString(36)}]`;
+	await cdp.evaluate(
+		`document.querySelector('${inputSelector}').scrollIntoView({ block: "center" })`,
+	);
+	await wait(150);
+	await clickAt(cdp, inputSelector);
+	await wait(150);
+	await cdp.send("Input.insertText", { text: pointerText });
+	await wait(200);
+	await clickAt(cdp, '[data-tour-tag="project-quick-send"]');
+	const pointerCleared = await waitForCondition(
+		cdp,
+		`document.querySelector('${inputSelector}').value === ""`,
+		60_000,
+	);
+	check(
+		"a pointer press of Send admits the second message (the strip clears)",
+		pointerCleared.ok,
+		pointerCleared.ok
+			? `cleared after ${pointerCleared.waitedMs}ms`
+			: `still holding after ${pointerCleared.waitedMs}ms`,
+	);
+	const focusBack = await waitForCondition(
+		cdp,
+		`document.activeElement === document.querySelector('${inputSelector}')`,
+		10_000,
+	);
+	const landedOn = await cdp.evaluate(
+		`document.activeElement ? (document.activeElement.getAttribute("aria-label") || document.activeElement.tagName) : "none"`,
+	);
+	check(
+		"the pointer send hands the keyboard back to the strip (UX round 1, U2)",
+		focusBack.ok,
+		focusBack.ok ? `focused after ${focusBack.waitedMs}ms` : `focus landed on ${landedOn}`,
+	);
+	const pointerHistory = await fetchSessionHistory(linkedSession);
+	check(
+		"the second message is admitted into the transcript too (daemon read)",
+		pointerHistory.status === 200 &&
+			JSON.stringify(pointerHistory.body?.result?.entries ?? []).includes(
+				pointerText,
+			),
+		`status=${pointerHistory.status}`,
+	);
+
+	/*
 	 * 4. START SESSION. The picker opens on the detail; pressing Start creates a
 	 * PLAIN session on this backend (the isolated config root has no teams or
 	 * agents to offer, and the dialog says so), links it, and lands on the
