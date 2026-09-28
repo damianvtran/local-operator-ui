@@ -63,6 +63,41 @@ globalThis.IntersectionObserver = class {
 	unobserve() {}
 	disconnect() {}
 };
+/*
+ * RADIX'S DISMISSABLE LAYER DISPATCHES ITS OWN EVENT ON THE DOCUMENT when a menu
+ * layer mounts (`new CustomEvent(...)` + `document.dispatchEvent`), and this file
+ * opens one: the row's actions are a Radix popout since 2026-09-28. Node defines
+ * `Event`/`CustomEvent` as globals of its OWN, and the copy loop above keeps any
+ * global that already exists, so without these two rebindings Radix builds a Node
+ * event that jsdom's `dispatchEvent` refuses - "parameter 1 is not of type
+ * 'Event'" - thrown from inside the layer's mount effect. `provider-chip-verdict.test.mjs`
+ * rebinds the same pair for the same Radix layers; this is that shape, not a new one.
+ */
+globalThis.Event = dom.window.Event;
+globalThis.CustomEvent = dom.window.CustomEvent;
+/*
+ * `:modal` IS A JSDOM LANDMINE UNDER FLOATING-UI (measured 2026-09-28). The popout's
+ * popper walks its ancestors with floating-ui's `getContainingBlock`, which probes
+ * each one with `element.matches(':modal')` (`isTopLayer`, floating-ui.utils.dom).
+ * jsdom 26.1.0 answers `:modal` by delegating back into its own selector engine -
+ * `nwsapi isModal -> matchesNative(node, ':modal') -> node.matches(':modal')` - and
+ * that call re-enters the engine instead of resolving, so the file spins inside the
+ * matcher for minutes with nothing thrown through to the caller. The hang is
+ * floating-ui's ancestor probe against jsdom's `:modal`, not the component: a
+ * browser WITHOUT `:modal` support answers a SyntaxError, which is exactly what
+ * `isTopLayer`'s own try/catch is written for, so the probe is made to answer the
+ * way it does in such a browser - the selector layer rejects it, nothing else does.
+ */
+const nativeMatches = dom.window.Element.prototype.matches;
+dom.window.Element.prototype.matches = function matches(selector) {
+	if (String(selector).includes(":modal")) {
+		throw new dom.window.DOMException(
+			":modal is not supported here",
+			"SyntaxError",
+		);
+	}
+	return nativeMatches.call(this, selector);
+};
 // React 18 reads this to decide whether `act` is real; without it every effect
 // flush warns instead of being batched with the render it belongs to.
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -205,16 +240,43 @@ async function open(mode) {
 		handle = mount(container, mode);
 	});
 	const controls = handle.api();
+	/*
+	 * THE PRESS A REAL POINTER MAKES, delivered as the event the control opens on.
+	 *
+	 * The row's actions are a Radix popout now (2026-09-28): its trigger opens on
+	 * `pointerdown` - the event a real press sends - and a bare `.click()` is not
+	 * one, so the driver sends the pointerdown a press sends. Everything after it
+	 * is unchanged: the menu ITEM still selects on its own click, and the caret
+	 * contract these tests are about is asserted exactly as it was.
+	 */
 	const press = async () => {
 		// The band opens from the row's own menu, exactly as a press does in the app.
 		const trigger = document.querySelector(
 			'[data-tab-id="2"] [data-tour-tag="browser-tab-menu"]',
 		);
-		await act(() => trigger.click());
+		await act(() => {
+			trigger.dispatchEvent(
+				new dom.window.MouseEvent("pointerdown", {
+					bubbles: true,
+					cancelable: true,
+					button: 0,
+				}),
+			);
+		});
 		const item = document.querySelector(
 			'[data-tour-tag="browser-tab-close-others"]',
 		);
 		await act(() => item.click());
+		/*
+		 * RADIX RETURNS FOCUS TO THE TRIGGER WHEN THE MENU CLOSES, AND IT DOES SO OFF A
+		 * MACROTASK: FocusScope's unmount cleanup runs its autofocus on a `setTimeout(0)`
+		 * (focus-scope/dist, the `AUTOFOCUS_ON_UNMOUNT` dispatch), so the caret lands
+		 * back on the trigger one task after the item's click - before any person could
+		 * have moved it themselves. The driver flushes that task here so the tests below
+		 * observe the state a human's next action starts from, not a focus that was still
+		 * in flight when the assertion ran.
+		 */
+		await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
 	};
 	return {
 		controls,
