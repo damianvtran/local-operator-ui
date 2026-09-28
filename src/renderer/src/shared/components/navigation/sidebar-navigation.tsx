@@ -35,7 +35,11 @@ import { Badge, Button, Tooltip } from "@shared/components/ui";
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { useCurrentView } from "@shared/hooks/use-route-params";
 import { cn } from "@shared/lib/utils";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	CATALOGUE_HEAD_PAGE,
+	LEGACY_CATALOGUE_PAGE,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import type { LucideIcon } from "lucide-react";
@@ -55,7 +59,7 @@ import {
 	Store,
 	X,
 } from "lucide-react";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import type { FC, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -184,30 +188,75 @@ type NavItem = {
  *
  * `useDesktopFeed` is not only a status reporter: its subscription is what
  * MERGES `attention` and `session_status` frames into the sessions store, and
- * its consumer was `ChatSidebar` - which the strip does not render ("THE LIST
- * IS NOT DRAWN HERE"). So with the rail collapsed nothing was listening: her
- * marks, both sourced from the catalogue store, went stale until the rail
- * expanded again, while the browser row's approvals badge (fed by the browser
- * bridge's own projection) stayed live at every width. Measured on the marks
- * rig: the expanded run painted a receipt within seconds, and the strip run
- * never did - 30 s of polling at 50 ms - with no other consumer in the tree.
+ * its consumer for the CATALOGUE was `ChatSidebar` - which the strip does not
+ * render ("THE LIST IS NOT DRAWN HERE"). (Authoring lists mount the hook
+ * wherever they render - the chat header, the agents page - so this is not the
+ * app's only feed listener; those merges are revision-guarded and idempotent.
+ * What IS exclusive is keeper-versus-list: an either/or in this column.) So
+ * with the rail collapsed nothing kept the CATALOGUE current: her marks, both
+ * sourced from the store, went stale until the rail expanded again, while the
+ * browser row's approvals badge (fed by the browser bridge's own projection)
+ * stayed live at every width. Measured on the marks rig: the expanded run
+ * painted a receipt within seconds, and the strip run never did - 30 s of
+ * polling at 50 ms - with no other catalogue-side consumer in the tree.
  *
- * The keeper renders nothing and consumes nothing: MOUNTING the hook is the
- * subscription, and every frame's store write happens inside it. It is drawn
- * only in the strip, so an app carries one feed connection at a time - this
- * one, or the docked list's own.
+ * FIVE THINGS HERE, each one a thing the list did that the strip otherwise
+ * lost with it (review round 1, F1/F2):
+ *
+ * - the subscription itself (mounting the hook);
+ * - the PAGEABILITY PUBLISH: the store sizes every UNNAMED catalogue read from
+ *   this flag (`cataloguePageDefault`), and its only publisher was the list -
+ *   so a launch (or a sub-1024px window) that STARTS collapsed read the legacy
+ *   500-row page the paging work exists to remove;
+ * - the mount read, gated on the catalogue capability (`ready`) exactly as the
+ *   list gates it, because a frame can only merge into a row that exists;
+ * - the INVALIDATION trigger: `feed.catalogueRevision` advances when the
+ *   backend says the catalogue changed (a row added, renamed or archived
+ *   elsewhere, or a frame missed), and re-running the read is how the strip
+ *   reconciles that without waiting for an expand;
+ * - nothing else. The list's feed-less safety poll is deliberately NOT
+ *   mirrored: without a feed the marks do not move either - they arrive on
+ *   this same subscription - so the poll would re-read a catalogue whose
+ *   changes the strip cannot paint anyway. The reduced case belongs to the
+ *   docked list, not to a second poll in a 56px column.
  */
 const StripFeedKeeper: FC = () => {
-	useDesktopFeed();
+	const feed = useDesktopFeed();
+	const capabilities = useDesktopCapabilities();
+	const setCataloguePageable = useCanonicalSessionsStore(
+		(store) => store.setCataloguePageable,
+	);
+	const fetchSessions = useCanonicalSessionsStore(
+		(store) => store.fetchSessions,
+	);
+	const pageable = desktopFeatureEnabled(
+		capabilities.data,
+		"session_catalogue_page",
+	);
 	useEffect(() => {
-		/*
-		 * The docked list's own mount read, mirrored (`chat-sidebar.tsx`'s
-		 * `refreshCatalogue` effect). The strip draws no list, so nobody else in
-		 * this column would read the catalogue at all - and a frame can only
-		 * merge into a row that exists.
-		 */
-		void useCanonicalSessionsStore.getState().fetchSessions();
-	}, []);
+		setCataloguePageable(pageable);
+	}, [pageable, setCataloguePageable]);
+	/*
+	 * The gate, spelled as the list spells it: the desktop plane available AND
+	 * the backend advertising `session_catalogue` v2. Below it no read is sent -
+	 * the same answer the list gives, not a second opinion.
+	 */
+	const ready =
+		desktopFeatureState(capabilities.data, "session_catalogue", 2) ===
+		"enabled";
+	const refreshCatalogue = useCallback(
+		() =>
+			fetchSessions(
+				pageable ? CATALOGUE_HEAD_PAGE : LEGACY_CATALOGUE_PAGE,
+				pageable,
+			),
+		[fetchSessions, pageable],
+	);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: catalogueRevision is a trigger, not a read
+	useEffect(() => {
+		if (!ready) return;
+		void refreshCatalogue();
+	}, [ready, refreshCatalogue, feed.catalogueRevision]);
 	return null;
 };
 

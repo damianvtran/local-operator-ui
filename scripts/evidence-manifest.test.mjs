@@ -1691,15 +1691,6 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"aidaSidebarRestampNote",
 	/*
-	 * And AIDA'S MISSED-MESSAGES BADGE, WORKING MARK, DISPLAY-NAME FALLBACK AND
-	 * STRIP FEED KEEPER ride beside it: the change moves both trees this file
-	 * binds (the two selectors, the marks' per-row fields, the contract's
-	 * optional `name`, the keeper; the test and this note's registrations) and
-	 * takes no frame of the sweep, so a reader is owed the pair it binds and the
-	 * reason no still was owed to `docs/evidence`.
-	 */
-	"aidaBadgeRestampNote",
-	/*
 	 * And AIDA'S SECOND UI SLICE's own: `aidaBadgeRestampNote` states THIS FILE's
 	 * own pair for her rail row's marks - the missed-messages badge, the working
 	 * mark, the display-name fallback, and the strip's feed keeper (why the
@@ -2612,6 +2603,15 @@ const BRANCH_RECORDS = [
 	 * still was owed to `docs/evidence`.
 	 */
 	"aidaSidebarRestampNote",
+	/*
+	 * And AIDA'S MISSED-MESSAGES BADGE, WORKING MARK, DISPLAY-NAME FALLBACK AND
+	 * STRIP FEED KEEPER ride beside it: the change moves both trees this file
+	 * binds (the two selectors, the marks' per-row fields, the contract's
+	 * optional `name`, the keeper; the test and this note's registrations) and
+	 * takes no frame of the sweep, so a reader is owed the pair it binds and the
+	 * reason no still was owed to `docs/evidence`.
+	 */
+	"aidaBadgeRestampNote",
 	/*
 	 * And this branch's own record rides beside it - the pointer-affordance sweep
 	 * writes one top-level note, registered here for the same completeness reason.

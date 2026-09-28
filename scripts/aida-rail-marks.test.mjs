@@ -787,9 +787,17 @@ test("the working mark wears the sidebar row's own glyph and ink", () => {
 	assert.match(nav, /if \(!expanded\) \{[\s\S]{0,900}?<StripFeedKeeper \/>/);
 	assert.match(
 		nav,
-		/const StripFeedKeeper: FC = \(\) => \{\s*useDesktopFeed\(\);/,
+		/const StripFeedKeeper: FC = \(\) => \{\s*const feed = useDesktopFeed\(\);/,
 	);
-	assert.match(nav, /getState\(\)\.fetchSessions\(\)/);
+	/*
+	 * And the keeper's own wiring, each pin one of the list's behaviours it
+	 * mirrors (review round 1, F1/F2): the pageability publish, the page-sized
+	 * read, the capability gate, and the invalidation trigger.
+	 */
+	assert.match(nav, /setCataloguePageable\(pageable\)/);
+	assert.match(nav, /pageable \? CATALOGUE_HEAD_PAGE : LEGACY_CATALOGUE_PAGE/);
+	assert.match(nav, /if \(!ready\) return;/);
+	assert.match(nav, /\[ready, refreshCatalogue, feed\.catalogueRevision\]/);
 	assert.match(nav, /const aidaName = aida\.data\?\.name \?\? "Aida";/);
 	assert.match(nav, /label: aidaName,/);
 	assert.match(nav, /workingName: `\$\{aidaName\}, working`,/);
