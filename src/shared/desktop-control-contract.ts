@@ -413,13 +413,15 @@ export type DesktopProjectDetail = {
 /**
  * Aida's control state, as `GET /v1/desktop/aida` answers it (`design.md` § 4).
  *
- * WHY `enabled` IS ON THE READ AND NOT ON THE POST. `features.aida` says the
- * backend HAS the surface; this says whether THIS install runs her
+ * WHY `enabled` IS ON THE READ AND IS NOT READ FROM THE POST. `features.aida`
+ * says the backend HAS the surface; this says whether THIS install runs her
  * (`aida.enabled` / `LOCAL_OPERATOR_NO_AIDA`, R17/R18). They are different
  * facts and the rail's row is absent for the second one — a row whose every
  * press would answer `409 aida_disabled` is the dead control fail-closed means
- * to omit. The read is the only place that fact is published; the POST's answer
- * is a consequence of an op that already had to pass it.
+ * to omit. The read is where the UI is TOLD that fact; the POST's answer is a
+ * consequence of an op that already had to pass it, and the implemented route
+ * carrying `enabled` there too (its `AidaState` serves both verbs; agent review
+ * round 1, NIT-1) is extra rather than a second publication this UI reads.
  */
 export type DesktopAidaState = {
 	enabled: boolean;
@@ -432,8 +434,11 @@ export type DesktopAidaState = {
 };
 
 /**
- * The POST's answer: the same state minus `enabled` — the route reports that
- * fact on the read alone, and a control that inferred it from "the call
- * succeeded" would be answering a question nobody asked it.
+ * The POST's answer: the freeze's subset of the state — `session_id`, `paused`,
+ * `greeted`. `enabled` is deliberately not typed here even though the
+ * implemented route carries it (agent review round 1, NIT-1): extra fields are
+ * ignored at this boundary, and a control that inferred the install's switch
+ * from "the call succeeded" would be answering a question nobody asked it —
+ * which is why the field is read from the READ wherever the UI needs it.
  */
 export type DesktopAidaControlResult = Omit<DesktopAidaState, "enabled">;

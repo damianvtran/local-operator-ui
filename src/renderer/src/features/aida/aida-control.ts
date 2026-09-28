@@ -2,14 +2,19 @@
  * Aida's vocabulary: the actions her route takes, the reserved words of `/aida`,
  * and the sentences its receipts and refusals use.
  *
- * PURE — no React, no transport — because this is the half the desktop suite
- * bundles and EXECUTES (`scripts/aida-sidebar.test.mjs`), the same split
- * `slash-submit.ts` keeps from `slash-dispatch.ts`: the rules a press turns on
- * are run by the test, and only the wiring is pinned as source. The hooks and
- * the route calls live in `use-aida-target.ts`.
+ * PURE IN THE TEST'S SENSE — no React, no route calls — because this is the half
+ * the desktop suite bundles and EXECUTES (`scripts/aida-sidebar.test.mjs`), the
+ * same split `slash-submit.ts` keeps from `slash-dispatch.ts`: the rules a press
+ * turns on are run by the test, and only the wiring is pinned as source. It
+ * imports `userFacingMessage` from the transport module, and deliberately: which
+ * thrown messages are authored copy is a judgement that lives in ONE place
+ * (`desktop-api.ts`, beside `DesktopControlError`), and a second copy of it here
+ * is how a raw exception finds its way back to the screen (agent review round 1,
+ * MINOR-1). The hooks and the route calls live in `use-aida-target.ts`.
  */
 
 import type { DesktopAidaControlResult } from "../../../../shared/desktop-control-contract";
+import { userFacingMessage } from "../../shared/api/local-operator/desktop-api";
 
 /** The route's own op vocabulary, mirrored (`aida.control`, `design.md` § 4). */
 export type AidaControlAction =
@@ -28,18 +33,44 @@ export type AidaControlAction =
  * sentence the user addressed to an agent. Case-insensitive, so `/aida Pause`
  * still reads as the control word.
  *
- * The reserved vocabulary is `design.md`'s (§ 2.5, "reserved subcommands:
- * pause, resume, status") and it is deliberately a closed set with no escape
- * grammar in this build: the TUI's `=pause` spelling is a terminal grammar for
- * talking ABOUT those words, and nothing here has been given the authority to
- * define a second one for the desktop.
+ * THE `=` ESCAPE IS THE TUI'S, TOO (cross-host grammar ruling, agent review round
+ * 1 MINOR-3): `/aida =pause` is a message and never a control — `aidaMessageText`
+ * strips the `=` — so both hosts of this one command read the same grammar, with
+ * one spelling for "talk to her about a word from her own vocabulary". The
+ * reserved vocabulary is `design.md`'s (§ 2.5: pause, resume, status), and an
+ * escaped argument is excluded HERE rather than at the caller so no future
+ * caller can re-derive the rule and reintroduce the divergence.
  */
 export function aidaReservedAction(
 	argument: string,
 ): "pause" | "resume" | "status" | null {
-	const word = argument.trim().toLowerCase();
-	if (word === "pause" || word === "resume" || word === "status") return word;
+	const word = argument.trim();
+	/* The escape, first: `=pause` is a message about the word, never the control. */
+	if (word.startsWith("=")) return null;
+	const lower = word.toLowerCase();
+	if (lower === "pause" || lower === "resume" || lower === "status")
+		return lower;
 	return null;
+}
+
+/**
+ * The text `/aida <argument>` sends her, with the escape resolved.
+ *
+ * Mirrors the TUI's own parse (`_cmd_aida` in `app.py`): a leading `=` is
+ * STRIPPED, along with any whitespace it introduced, and the remainder is a
+ * message even when it is one of her reserved words — that is the escape's whole
+ * point (R2's "send `[command]` as a turn" with a spelling for a command that
+ * opens with a word she reserves). An escape that strips to nothing (`/aida =`)
+ * is the bare form and sends nothing, which the caller reads off the empty
+ * string rather than off a second rule.
+ *
+ * The unescaped text is passed through UNCHANGED — this function resolves the
+ * escape and nothing else, so it cannot disagree with `aidaReservedAction` about
+ * where the control/message line is.
+ */
+export function aidaMessageText(argument: string): string {
+	const trimmed = argument.trim();
+	return trimmed.startsWith("=") ? trimmed.slice(1).trimStart() : trimmed;
 }
 
 /**
@@ -72,13 +103,19 @@ export function aidaControlReceipt(
 /**
  * The sentence a failed open or control shows.
  *
- * The transport's and the backend's own words travel verbatim when there are any
- * (`DesktopControlError` carries the route's `detail.message`, or the app's own
- * composed sentence for a transport failure); the fallback exists only for a
- * throw that carried nothing, because the one thing this surface must not do is
- * fail silently.
+ * Routed through the app's ONE copy authority (`userFacingMessage`) rather than
+ * echoing whatever a throw carried (agent review round 1, MINOR-1). A runtime
+ * exception's `message` is a stack fragment ("TypeError: fetch failed"), and a
+ * pairing refusal's is the DAEMON's prose about this app's ownership — both are
+ * the register `branding.md` § 8 and § 5.1 refuse. `userFacingMessage` answers
+ * with the backend's authored `detail` where there is one, this app's own
+ * sentence for the refusal families it knows, and this fallback otherwise: the
+ * one thing this surface must not do is fail silently, and the second thing it
+ * must not do is fail in the language of the crash.
  */
 export function aidaControlFailureCopy(error: unknown): string {
-	if (error instanceof Error && error.message) return error.message;
-	return "Aida's controls could not reach the backend.";
+	return userFacingMessage(
+		error,
+		"Aida's controls could not reach the backend.",
+	);
 }
