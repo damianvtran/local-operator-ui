@@ -1700,6 +1700,12 @@ const STAMP_BINDING_NOTES = [
 	 * this file ships rather than read as history.
 	 */
 	"foldOnto8320e52366Note",
+	/*
+	 * AND THIS FOLD'S: `foldOnto55d7b0a19bNote` states the pair the fourth
+	 * folded tip binds, so it is held to the pair this file ships rather
+	 * than read as history.
+	 */
+	"foldOnto55d7b0a19bNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2574,6 +2580,11 @@ const BRANCH_RECORDS = [
 	 * same completeness reason.
 	 */
 	"foldOnto8320e52366Note",
+	/*
+	 * And this fold's record rides beside them - registered here for the same
+	 * completeness reason.
+	 */
+	"foldOnto55d7b0a19bNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
