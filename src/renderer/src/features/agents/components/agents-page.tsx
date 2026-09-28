@@ -11,6 +11,7 @@ import {
 	useProfiles,
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
+import { useLaneLeadingColumn } from "@shared/components/common/chat-layout";
 import { Button } from "@shared/components/ui/button";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
@@ -530,6 +531,7 @@ function TeamEditor({
 }
 
 export function AgentsPage() {
+	const laneLeadingColumn = useLaneLeadingColumn();
 	const { agentId } = useParams<{ agentId?: string }>();
 	const [params, setParams] = useSearchParams();
 	const teamMode =
@@ -568,7 +570,18 @@ export function AgentsPage() {
 		);
 	return (
 		<div className="flex h-full min-h-0 bg-canvas text-ink">
-			<aside className="flex w-64 shrink-0 flex-col gap-4 border-r border-hairline bg-surface p-4">
+			{/*
+			 * The shell puts this list pane's ground behind the window's top strip: the
+			 * pane is a leading column on the default `surface` ground, and until it is
+			 * handed over the lane above the shell's columns paints the CONTENT ground
+			 * across its width, so the pane's own ground starts below the strip with a
+			 * differently-toned band over it (the operator's report of 2026-09-27,
+			 * "Same issue with agents and teams"). `chat-layout.tsx` owns the rule.
+			 */}
+			<aside
+				ref={laneLeadingColumn}
+				className="flex w-64 shrink-0 flex-col gap-4 border-r border-hairline bg-surface p-4"
+			>
 				<h1 className="text-heading">Agents and teams</h1>
 				<div className="flex gap-2">
 					<Button
