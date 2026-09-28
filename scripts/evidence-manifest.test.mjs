@@ -2535,6 +2535,12 @@ const BRANCH_RECORDS = [
 	 * successor `ac83ec7d92`, resolved the same by-key way.
 	 */
 	"canvasElevatedFifthFoldNote",
+	/*
+	 * And the SIXTH fold's own, added with it: the fold onto `ac83ec7d92`'s
+	 * successor `8367cbfaee` (#591's agent-hub org-empty-state fix), resolved
+	 * the same by-key way.
+	 */
+	"canvasElevatedSixthFoldNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
