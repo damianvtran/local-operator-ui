@@ -1642,6 +1642,44 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"traceToolLabelsRestampNote",
 	/*
+	 * AND THIS BRANCH'S OWN, the stopped-row measure fix: it moves BOTH trees this
+	 * file binds - `src/` for §G3's stopped line taking the conversation's shared
+	 * measure (its wrapper now declares the chatcol container the dock and the
+	 * composer band already declare) plus the rig's handle on the composer box
+	 * (`data-lo-composer-measure`), `scripts/` for the geometry claims added to
+	 * `scripts/interrupt-esc-proof.mjs`, the discriminator that pins the property
+	 * (`scripts/stopped-row-measure.test.mjs`), its registration in
+	 * `package.json`'s `test:desktop` and this note's own registration - and it
+	 * rewrites no frame of the sweep (its evidence is a set of live-app PNGs,
+	 * `stopped-row-measure`, which the sweep's WebP predicate does not admit), so
+	 * a reader is owed the two values it binds and the reason no still was owed.
+	 */
+	"stoppedRowRestampNote",
+	/*
+	 * AND THIS LANE'S OWN, the newest top-level record on the branch: the sidebar
+	 * bottom zone moves BOTH trees (the destinations boundary and the entity
+	 * sections' conditional in `src/`; the `sidebar-bottom` scene and this
+	 * registration in `scripts/`) and adds a PNG set outside the sweep, so a
+	 * reader is owed the pair it binds and the readings it ships.
+	 */
+	"sidebarBottomZoneRestampNote",
+	/*
+	 * This branch's own: `aidaSidebarRestampNote` states THIS FILE's own pair for Aida's sidebar
+	 * slice (see its BRANCH_RECORDS entry for what moved), so it is held to that
+	 * pair rather than read as history - the same distinction
+	 * `candidateMacArchRestampNote` is in the list for.
+	 */
+	"aidaSidebarRestampNote",
+	/*
+	 * AND THE POINTER-AFFORDANCE SWEEP'S OWN - it belongs here for the list's own
+	 * reason: ITS SUBJECT IS THIS FILE'S BINDING. The sweep moves BOTH trees (the
+	 * base-layer rule and the five click sites under `src/`; the audit that
+	 * measures them under `scripts/`) and re-shoots no frame - a cursor is not a
+	 * pixel, so the committed set renders identically and the audit's measured
+	 * report is the PR's evidence - so a reader is owed the two values it binds
+	 * and the reason the stills did not move.
+	 */
+	"mouseCursorRestampNote" /*
 	 * AND THIS BRANCH'S OWN, the settings rail's edge and ground
 	 * (`fix/settings-rail-edge`): its subject is this file's binding - the change
 	 * moves BOTH trees (`src/` for the rail's rung on `elevated`, the lane's stop
@@ -1649,8 +1687,14 @@ const STAMP_BINDING_NOTES = [
 	 * and rule checks, the two guards and this registration) and takes NO frame
 	 * of the sweep - so a reader is owed the pair and the reason no still was
 	 * owed, and a later fold that started from main's copy would drop it first.
-	 */
+	 */,
 	"settingsRailGroundRestampNote",
+	/*
+	 * And THIS FOLD's own, beside the rail's: it states the union the merge resolved
+	 * against `origin/main` = `8320e52366` and the pair its re-stamp re-derives, for
+	 * the reason this list exists - a fold resolved from main's copy would drop it.
+	 */
+	"foldOnto8320e52366Note",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2473,14 +2517,47 @@ const BRANCH_RECORDS = [
 	 */
 	"traceToolLabelsRestampNote",
 	/*
+	 * And by the stopped-row measure fix, whose note is the newest top-level
+	 * record on the branch: it states the pair this tip ships, moves both trees
+	 * (the stopped line's container in `src/`, the rig, its discriminator and
+	 * the two registrations in `scripts/`) and commits no swept frame - so a
+	 * fold that started from main's copy would drop it first, the same reason
+	 * this list exists.
+	 */
+	"stoppedRowRestampNote",
+	/*
+	 * And this branch's own record rides beside it: the sidebar bottom zone
+	 * writes one top-level note, registered here for the same completeness
+	 * reason - a fold that started from main's copy would drop it first.
+	 */
+	"sidebarBottomZoneRestampNote",
+	/*
+	 * And AIDA'S SIDEBAR SLICE rides beside them: the change moves both trees this
+	 * file binds (the rail's row and its two gates, the composer's `/aida`, the two
+	 * desktop ops; the new desktop test and the updated pins) and takes no frame of
+	 * the sweep, so a reader is owed the two values it binds and the reason no
+	 * still was owed to `docs/evidence`.
+	 */
+	"aidaSidebarRestampNote",
+	/*
+	 * And this branch's own record rides beside it - the pointer-affordance sweep
+	 * writes one top-level note, registered here for the same completeness reason.
+	 */
+	"mouseCursorRestampNote" /*
 	 * And by THIS lane, whose note is the newest top-level record on the branch:
 	 * it states the pair this change ships - both trees moved (the rail's rung,
 	 * the lane's stop list and the three right rules in `src/`; the scene's two
 	 * new checks, the two suites and the capture rows in `scripts/`) and takes no
 	 * frame - so a fold that started from main's copy would drop it first, the
 	 * same reason this list exists.
-	 */
+	 */,
 	"settingsRailGroundRestampNote",
+	/*
+	 * And THIS FOLD's own, beside the rail's record: it states the union the merge
+	 * resolved against `origin/main` = `8320e52366` and the pair its re-stamp
+	 * re-derives, registered for the reason the list exists.
+	 */
+	"foldOnto8320e52366Note",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
