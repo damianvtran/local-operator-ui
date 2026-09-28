@@ -877,6 +877,29 @@ export const MoveBusyWaited: Story = {
 			throw new Error(
 				`the re-issued move must carry the route's own wait ceiling, not ${transfers[0].waitS}`,
 			);
+		/*
+		 * AND THE WORLD IT PAINTS IS WAITED FOR, not assumed (design review round 3, D13). The page
+		 * invalidates `sessions` and `peers` on success, and that refetch settles AFTER the notice -
+		 * so a capture gated only on "Moved" photographs the pre-move canvas beside a receipt saying
+		 * the source is gone, which is exactly what the round measured on the first re-shot frame.
+		 * The panel's own count is the reading: this device holds one conversation once the re-read
+		 * has landed, and two until then.
+		 */
+		await screen.findByText("Conversations (1)");
+		/*
+		 * AND THE CANVAS AGREES WITH THE PANEL, checked synchronously (design review round 3, D13).
+		 * The panel's count and the canvas are two renderings of the same rows, so if one says one
+		 * conversation and the other draws two, the frame is a claim about a world that never existed.
+		 * This is the reading that decides whether the receipt's sentence is backed by the pixels next
+		 * to it, and it names the number it saw.
+		 */
+		const drawn = document.querySelectorAll(
+			`[data-mesh-device="${DEVICE_SELF}"] [data-mesh-session]`,
+		).length;
+		if (drawn !== 1)
+			throw new Error(
+				`the receipt says this device's copy is gone, so the canvas must draw ONE conversation; it drew ${drawn}`,
+			);
 	},
 };
 
