@@ -16,6 +16,10 @@
  * would make every frame churn on every capture.
  */
 
+import type {
+	ReusableProfile,
+	ReusableTeam,
+} from "@shared/api/local-operator/profile-hooks";
 import type { Meta, StoryObj } from "@storybook/react";
 import { userEvent } from "@storybook/test";
 import type { ReactNode } from "react";
@@ -26,6 +30,7 @@ import type {
 	DesktopProject,
 	DesktopProjectDetail,
 	DesktopProjectMilestone,
+	DesktopProjectUpdate,
 } from "../../../../../shared/desktop-control-contract";
 import "../../../styles/index.css";
 import { ProjectsPage } from "./projects-page";
@@ -44,6 +49,9 @@ const project = (
 	id,
 	name,
 	description: "",
+	owner: null,
+	team: null,
+	title: null,
 	status: "active",
 	tags: [],
 	start_date: null,
@@ -137,11 +145,58 @@ const LINK = (
 	...extra,
 });
 
+/**
+ * The history log, newest LAST (the wire's own order). Spread over three local
+ * days so the feed's grouping has two headings and a Today; the markdown is
+ * deliberately the shape agents write (headings, lists, inline code, a fence,
+ * a link) and the last entry carries both attachment kinds.
+ */
+const UPDATES: DesktopProjectUpdate[] = [
+	{
+		at: "2026-09-18T10:15:00Z",
+		text: "Cutover dry-run started. Planning notes are in `notes/rollout.md`.",
+		by: "operator",
+		attachments: [],
+	},
+	{
+		at: "2026-09-19T17:05:00Z",
+		text: "## Staging verification\n\n- parity checks pass on `v2/payments`\n- retry budget unchanged at **0.4%**\n\n```text\nparity: 412 passed / 0 failed\n```\n\nThe [runbook](https://example.com/runbook) is updated.",
+		by: "a1a1a1a1a1a1",
+		attachments: [
+			{
+				name: "parity.png",
+				kind: "image",
+				path: "/Users/dana/work/projects/payments/parity.png",
+				bytes: 182_400,
+				added_at: "2026-09-19T17:05:00Z",
+			},
+		],
+	},
+	{
+		at: "2026-09-20T17:45:00Z",
+		text: "Dashboard cutover is done; API parity holds on staging. Next: flip the read path.",
+		by: "4e92693767fa",
+		attachments: [
+			{
+				name: "cutover-report.csv",
+				kind: "data",
+				path: "/Users/dana/work/projects/payments/cutover-report.csv",
+				bytes: 4_096,
+				added_at: "2026-09-20T17:45:00Z",
+			},
+		],
+	},
+];
+
 const DETAIL: DesktopProjectDetail = {
 	project: {
 		id: "p1",
 		name: "payments-migration",
-		description: "Cut the payments API over to the new service",
+		title: "Payments migration",
+		owner: "atlas",
+		team: "platform",
+		description:
+			"Cut the payments API over to the new service.\n\n**Scope**\n\n- the read path (staging first)\n- the dashboard\n- the retry budget",
 		status: "active",
 		progress:
 			"Dashboard cutover is done; API parity holds on staging. Next: flip the read path.",
@@ -177,6 +232,7 @@ const DETAIL: DesktopProjectDetail = {
 				status: "overdue",
 			},
 		],
+		updates: UPDATES,
 	},
 	links: [
 		LINK("4e92693767fa", {
@@ -190,7 +246,12 @@ const DETAIL: DesktopProjectDetail = {
 			subagents: { running: 1, settled: 2, names: ["mapper"] },
 			todos: { open: 3, total: 7 },
 		}),
-		LINK("a1a1a1a1a1a1", { title: "API parity checks" }),
+		LINK("a1a1a1a1a1a1", {
+			title: "API parity checks",
+			runtime: { state: "live", busy: null, heartbeat_age_s: 32, pid: 4243 },
+			subagents: { running: 0, settled: 1, names: ["verifier"] },
+			todos: { open: 1, total: 5 },
+		}),
 		LINK("b2b2b2b2b2b2", { exists: false, title: null }),
 		LINK("c3c3c3c3c3c3", { title: "Old cutover notes", archived: true }),
 	],
@@ -209,6 +270,9 @@ const detailFor = (
 	project: {
 		id: project.id,
 		name: project.name,
+		title: project.title,
+		owner: project.owner,
+		team: project.team,
 		description: project.description,
 		status: project.status,
 		progress: "",
@@ -225,6 +289,7 @@ const detailFor = (
 		estimate: project.estimate,
 		estimate_unit: project.estimate_unit,
 		milestones,
+		updates: [],
 	},
 	links,
 });
@@ -316,7 +381,11 @@ const answer = (request: {
 					desktop_contract: 1,
 					desktop_available: true,
 					desktop_auth: "bearer",
-					features: { projects: 1 },
+					//
+					// The two registries are ADVERTISED here so the start-session picker
+					// draws its real options; the plain-only degradation is a different
+					// state and has its own story.
+					features: { projects: 1, team_catalogue: 1, profile_catalogue: 1 },
 				},
 			},
 		};
@@ -371,6 +440,27 @@ const answer = (request: {
 		case "projects.link":
 		case "projects.unlink":
 			return { status: 200, body: { result: stub.projects[0] ?? null } };
+		/*
+		 * The two registries the start-session picker reads, and the one write the
+		 * quick-send strip's press issues. The message answer is the envelope the
+		 * admission path consumes (`admitted` is its receipt field); nothing about
+		 * the response body drives the UI beyond arrival, so the fixture is the
+		 * shape and not a synthetic conversation.
+		 */
+		case "teams.list":
+			return { status: 200, body: { result: { teams: TEAMS } } };
+		case "profiles.list":
+			return { status: 200, body: { result: { profiles: AGENT_PROFILES } } };
+		case "sessions.message":
+			return {
+				status: 200,
+				body: {
+					result: {
+						session_id: String(request.sessionId ?? ""),
+						admitted: true,
+					},
+				},
+			};
 		case "projects.milestone.remove":
 			if (stub.detail) {
 				const projectView = stub.detail.project;
@@ -385,15 +475,97 @@ const answer = (request: {
 	}
 };
 
+/**
+ * The two registries the start-session picker reads, shaped like the routes'
+ * rows (and typed by the same interfaces the real hook returns, so a fixture
+ * that stops matching the wire fails `check-types` rather than a frame).
+ */
+const TEAMS: ReusableTeam[] = [
+	{
+		id: "t1",
+		name: "atlas",
+		description: "The payments platform team",
+		manager: "manager",
+		members: [{ role: "coder", count: 2, kind: "agent" }],
+	},
+	{
+		id: "t2",
+		name: "ops",
+		description: "Infrastructure and releases",
+		manager: "manager",
+		members: [],
+	},
+];
+
+const AGENT_PROFILES: ReusableProfile[] = [
+	{
+		name: "reviewer",
+		kind: "role",
+		source: "installed",
+		agent_id: "a1",
+		description: "Reviews changes for correctness",
+		tools: null,
+		effort: null,
+		delegate: false,
+	},
+	{
+		name: "docs-writer",
+		kind: "specialist",
+		source: "installed",
+		agent_id: "a2",
+		description: "Writes and edits documentation",
+		tools: null,
+		effort: null,
+		delegate: false,
+	},
+];
+
+/** A drawn 320x200 PNG, so the feed's picture is real bytes (no committed asset). */
+const pngBytes = (): Uint8Array => {
+	const canvas = document.createElement("canvas");
+	canvas.width = 320;
+	canvas.height = 200;
+	const context = canvas.getContext("2d");
+	if (!context) return new Uint8Array();
+	const gradient = context.createLinearGradient(0, 0, 320, 200);
+	gradient.addColorStop(0, "#1f6feb");
+	gradient.addColorStop(1, "#7ee787");
+	context.fillStyle = gradient;
+	context.fillRect(0, 0, 320, 200);
+	context.fillStyle = "rgba(255,255,255,0.92)";
+	context.font = "16px sans-serif";
+	context.fillText("parity.png", 16, 32);
+	const base64 = canvas.toDataURL("image/png").split(",")[1] ?? "";
+	const binary = atob(base64);
+	const bytes = new Uint8Array(binary.length);
+	for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+	return bytes;
+};
+
 const installBridge = () => {
 	const page = window as unknown as {
 		api?: {
 			desktop?: { request: (r: Parameters<typeof answer>[0]) => unknown };
+			readFileBytes?: (path: string) => unknown;
 		};
 	};
 	const api = page.api ?? {};
 	page.api = api;
 	api.desktop = { request: answer };
+	/*
+	 * The local-file bridge, for the one image the feed carries. Storybook's
+	 * global mock has no `readFileBytes`, so without this the update's picture
+	 * would draw its honest "unavailable" sentence in every frame — a story
+	 * about a state the desktop app does not have. Bytes are drawn here rather
+	 * than committed as an asset (the canvas stories' rule).
+	 */
+	api.readFileBytes = async (path: string) => {
+		if (!path.endsWith(".png")) {
+			return { success: false, code: "not-found", error: `No file at ${path}` };
+		}
+		const bytes = pngBytes();
+		return { success: true, data: bytes, sizeBytes: bytes.byteLength };
+	};
 };
 installBridge();
 
@@ -596,6 +768,181 @@ export const Detail: Story = {
 	}),
 };
 
+/**
+ * A project nothing has happened to yet — every EMPTY state on the screen at
+ * once: no description, no progress, no milestones, no links, no to-dos and no
+ * history. The frame is what a just-created project looks like.
+ */
+const EMPTY_ROW = project("p9", "fresh-notes", {
+	updated_at: FIXTURE_NOW_MS / 1000 - DAY_S,
+	progress_stale: true,
+});
+const EMPTY_DETAIL = detailFor(EMPTY_ROW);
+
+export const DetailEmpty: Story = {
+	render: () => (
+		<RouteTo path="/projects/p9">
+			{page({ projects: [EMPTY_ROW], detail: EMPTY_DETAIL })}
+		</RouteTo>
+	),
+	play: playOnce("detail-empty", async () => {
+		await waitForDetail();
+	}),
+};
+
+/**
+ * The detail read REFUSED: the route's own 404 sentence, drawn as the screen's
+ * alert. The state a deleted row's stale URL lands on.
+ */
+/**
+ * The detail load refusal, in the app's own words (design round 1, D2): the
+ * daemon's 404 names the row's absence (`no such project`) and the page maps it
+ * to a crafted sentence plus the recovery the list pairs with its failures -
+ * so the frame is the sentence and the `Try again`, and the play waits for
+ * exactly that state (the raw passthrough this state used to assert is no
+ * longer what the page draws for a 404).
+ */
+export const DetailLoadError: Story = {
+	render: () => (
+		<RouteTo path="/projects/p1">{page({ projects: THREE })}</RouteTo>
+	),
+	play: playOnce("detail-load-error", async () => {
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"This project could not be found.",
+				) && document.querySelector('[data-tour-tag="project-edit"]') === null,
+			"the detail refusal",
+		);
+	}),
+};
+
+/** The quick-send strip with a message typed but not sent. */
+export const DetailQuickSend: Story = {
+	render: () => (
+		<RouteTo path="/projects/p1">
+			{page({ projects: THREE, detail: DETAIL })}
+		</RouteTo>
+	),
+	play: playOnce("detail-quick-send", async () => {
+		await waitForDetail();
+		const input = document.querySelector<HTMLInputElement>(
+			'[aria-label="Message the selected session"]',
+		);
+		if (!input) throw new Error("the quick-send input never appeared");
+		await userEvent.type(
+			input,
+			"Status check — reply with the current blocker.",
+		);
+		await poll(
+			() =>
+				(document.querySelector<HTMLInputElement>(
+					'[aria-label="Message the selected session"]',
+				)?.value.length ?? 0) > 0,
+			"the typed message",
+		);
+	}),
+};
+
+/**
+ * The same strip right after Send: the message left through the chat's own
+ * admission path (the stub admits it), and the composer is empty again.
+ */
+export const DetailQuickSendSent: Story = {
+	render: () => (
+		<RouteTo path="/projects/p1">
+			{page({ projects: THREE, detail: DETAIL })}
+		</RouteTo>
+	),
+	play: playOnce("detail-quick-send-sent", async () => {
+		await waitForDetail();
+		const input = document.querySelector<HTMLInputElement>(
+			'[aria-label="Message the selected session"]',
+		);
+		if (!input) throw new Error("the quick-send input never appeared");
+		await userEvent.type(input, "Please post the next progress update.");
+		await clickWhen('[data-tour-tag="project-quick-send"]');
+		await poll(
+			() =>
+				(document.querySelector<HTMLInputElement>(
+					'[aria-label="Message the selected session"]',
+				)?.value.length ?? 0) === 0,
+			"the admitted message to clear the composer",
+		);
+	}),
+};
+
+/**
+ * The updates feed itself, scrolled into view: the day groups, the markdown an
+ * agent writes (heading, list, inline code, fence, link) and both attachment
+ * kinds — the picture through the same expandable frame the transcript uses,
+ * the data file as a labelled row with its size and actions menu.
+ */
+export const DetailFeed: Story = {
+	render: () => (
+		<RouteTo path="/projects/p1">
+			{page({ projects: THREE, detail: DETAIL })}
+		</RouteTo>
+	),
+	play: playOnce("detail-feed", async () => {
+		await waitForDetail();
+		/*
+		 * Scroll by the section's own heading rather than by a test-only
+		 * attribute: the frame is meant to be the reader's own view, and a
+		 * selector invented for the harness is one more thing the surface
+		 * carries for somebody who is not the user.
+		 */
+		await poll(() => {
+			const heading = [...document.querySelectorAll("h2")].find(
+				(node) => node.textContent === "Updates",
+			);
+			if (!heading) return false;
+			heading.scrollIntoView({ block: "start" });
+			return true;
+		}, "the feed heading");
+		/* Let the scroll and any decode settle before the shutter lands. */
+		await new Promise((resolve) => setTimeout(resolve, 400));
+	}),
+};
+
+/**
+ * The start-session picker, opened from the linked-sessions header with its
+ * registry list expanded (teams and agents, from the same two queries the chat
+ * sidebar reads).
+ */
+export const StartSessionDialog: Story = {
+	render: () => (
+		<RouteTo path="/projects/p1">
+			{page({ projects: THREE, detail: DETAIL })}
+		</RouteTo>
+	),
+	play: playOnce("start-session-dialog", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-start-session"]');
+		await poll(
+			() =>
+				document.querySelector(
+					'[data-tour-tag="project-start-session-dialog"]',
+				) !== null,
+			"the start-session dialog",
+		);
+		await clickWhen(
+			'[data-tour-tag="project-start-session-dialog"] [role="combobox"]',
+		);
+		/*
+		 * The list is PORTALED to `document.body` by the popover, so it is
+		 * NOT inside the dialog's tag — a scoped selector here polls forever
+		 * (measured: the play sat pending and the capture timed out at 60 s
+		 * with the dialog on screen). Only one combobox list is open at a time
+		 * in this story.
+		 */
+		await poll(
+			() => document.querySelector('[role="listbox"]') !== null,
+			"the registry list",
+		);
+	}),
+};
+
 /** The create dialog, opened from the page's own button. */
 export const CreateDialog: Story = {
 	render: () => page({ projects: THREE }),
@@ -792,6 +1139,11 @@ export const BoardStatuses: Story = {
 			view: "board",
 			projects: [
 				...THREE,
+				/* One row per lifecycle phase the vocabulary names, plus the two side
+				   states and one word this build has never heard of. */
+				project("p0", "rfc-scope", { status: "planning" }),
+				project("q1", "dash-qa", { status: "qa" }),
+				project("v1", "edge-watch", { status: "validation" }),
 				project("a1", "payments-v1", { status: "archived" }),
 				project("r1", "review-pass", { status: "review" }),
 				/* A passed target with the work unfinished: the card's Overdue
@@ -867,6 +1219,22 @@ export const BoardCardMenu: Story = {
 		await poll(
 			() => (document.body.textContent ?? "").includes("Set status"),
 			"the card menu",
+		);
+		/*
+		 * THE STATUS SUBMENU IS OPENED TOO (slice S6d): the frame is the evidence
+		 * that the move menu carries the whole lifecycle. The poll counts the
+		 * RADIO ITEMS by role rather than searching for words: "Planning" and
+		 * "Validation" also name board columns behind the menu, so a text match
+		 * would pass before the submenu ever opened.
+		 */
+		const subTrigger = [
+			...document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+		].find((element) => element.textContent?.includes("Set status"));
+		if (!subTrigger) throw new Error("the card menu has no Set status row");
+		await userEvent.hover(subTrigger);
+		await poll(
+			() => document.querySelectorAll('[role="menuitemradio"]').length >= 7,
+			"the status submenu",
 		);
 	}),
 };
