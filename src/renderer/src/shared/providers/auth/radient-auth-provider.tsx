@@ -6,7 +6,11 @@
  */
 
 import { queryClient } from "@shared/api/query-client";
-import type { AccountInfo, IdentityInfo } from "@shared/api/radient";
+import type {
+	AccountInfo,
+	AccountVerification,
+	IdentityInfo,
+} from "@shared/api/radient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import type { FC, ReactNode } from "react";
 
@@ -22,6 +26,12 @@ export type RadientUser = {
 	 * The identity information
 	 */
 	identity: IdentityInfo;
+	/**
+	 * The signup-grant verification state, when the backend reports one.
+	 * Optional because the field is additive: an older backend omits it, and
+	 * the account surfaces must render that absence as "cannot say".
+	 */
+	verification?: AccountVerification;
 };
 
 /**
