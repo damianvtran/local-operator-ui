@@ -34,9 +34,9 @@ Storybook story cannot answer any of them (a fourth and a fifth arrive in the
 | `17b-actions-page-restored/localOperatorDark.webp` | the dismissal (2026-09-28 pass): after Escape the menu is gone, no suppression is left and the paused note has yielded; the user tab's page has no handle to composite, so the content area is chrome-only, as in `03` |
 | `18-approvals-dock/localOperatorDark.webp` | the dock open, the page still visible and narrowed, no suppression (D2, D9) |
 | `19-strip-marked-tab-at-rest/localOperatorDark.webp` | the strip at rest with a user and an agent-marked row, **and on this head the strip IS in the picture**: re-taken 2026-09-17 on the harness that calls `exposeStrip()` before every frame, the frame carries the strip's own row with the `Agent` chip legible on `Proof page two` beside the group label `proof-open 1` and the unmarked row `Proof page one` (see the D9 note below for what moved and what the DOM reading says). The no-daemon banner is still painted across the top of the window — the harness has no daemon by design — but the strip now sits BELOW it rather than under it, which is the difference between a frame that shows the subject and one that only shows where it would have been |
-| `20-strip-failed-and-agent-markers/localOperatorDark.webp` | the same surface with **the band in its OLD in-band form** — OWED A RE-SHOOT at the 2026-09-28 pass (see the note below): the strip's own row carries the pair at once — `Agent` and the `Failed` pill side by side on `127.0.0.1:52792/broken` — with the band's items (`Let an agent use "Proof page one"…`, `Close "Proof page one"`, `Close 1 other tab`, `Copy URL`) below it and the URL bar under those. The MARKER claim is untouched by the 2026-09-28 pass (no diff line alters chip rendering) and still depicts this tree; the band's form does not |
+| `20-strip-failed-and-agent-markers/localOperatorDark.webp` | RE-SHOT IN ROUND 2 (2026-09-28): the strip at rest carrying the pair at once — the `Agent` chip and the `Failed` pill side by side on `127.0.0.1:60296/broken` — with the URL bar under it. The pixels this replaces came from the 2026-09-17 run and showed the band in its deleted in-band form; the re-shoot keeps the frame's headline (the marker pair, which no diff line alters) and drops the superseded state. The discharge is recorded in the note at the end of this file |
 | `21-dead-tabs-in-strip/localOperatorDark.webp` | the mess, made deliberately (2026-09-28 pass): two tabs driven at the dead port, both marked `Failed` in the strip (`tabIds [13,14]`), the active one's failure panel behind them |
-| `22-close-failed-tabs/localOperatorDark.webp` | the counted cleanup (2026-09-28 pass): `Close 2 failed tabs` — the count IS the disclosure — offered from the dead tab itself, with the paused note behind the open menu |
+| `22-close-failed-tabs/localOperatorDark.webp` | the counted cleanup AND THE D2 CLEARANCE PHOTOGRAPH (round 2, 2026-09-28): `Close 2 failed tabs` — the count IS the disclosure — offered from the dead tab itself (the strip's right end), with the paused note behind the open menu. Measured in the very state this frame photographs: the panel's right edge at CSS 1273 against the Approvals pill's leading content at 1275.3 — the pill's icon and label stay clear and it no longer reads `pprovals`; the shift's own cap is the anchor's 28px (QA round 2, Q2-2), so the panel's edge sits on the pill's transparent padding |
 | `23-dead-tabs-cleared/localOperatorDark.webp` | the strip after ONE press (2026-09-28 pass): the failed set is gone (`failed tabs after the press: []`) |
 
 Source, exactly:
@@ -189,11 +189,12 @@ state the old frame photographed no longer exists, and the name moved with it (s
 `22-close-failed-tabs/` and `23-dead-tabs-cleared/`. WHAT DID NOT MOVE:
 `03-surface-populated/`, `12-approvals-queue/`, `18-approvals-dock/`,
 `19-strip-marked-tab-at-rest/` are not re-taken and keep the pixels of their own runs.
-`20-strip-failed-and-agent-markers/` ALSO was not re-taken, and that is named here rather
-than left to read as current (remediation round 1, reviewer m-4 / designer D1): its band
-is the IN-BAND row this pass deleted, so the frame is owed a re-shoot — see the addendum
-at the end of this section — while its marker claim (the `Agent`/`Failed` pair on one row)
-is untouched by this pass's diff and still depicts this tree.
+`20-strip-failed-and-agent-markers/` was kept at the 2026-09-28 pass — its band was the
+IN-BAND row that pass deleted, so it was NAMED AS OWED rather than left to read as current
+(remediation round 1, reviewer m-4 / designer D1) — and the debt is PAID in round 2: the
+frame is re-shot from the round-2 harness run and now carries the strip at rest with the
+`Agent`/`Failed` pair and no band at all. The discharge, with the run's numbers, is at the
+end of this section.
 
 WHAT EACH NEW FRAME PROVES, from the run's own assertions and transcript (this run
 reported `92 PASS / 0 FAIL / ALL CHECKS PASSED`):
@@ -235,3 +236,20 @@ directive and **named as owed** here rather than left to read as current: the ne
 re-shoots it (and with it gains the popout's photograph over this surface). What the frame still
 proves is its own headline — the `Agent`/`Failed` marker pair on one row — which no diff line in
 this pass alters, and the frame's strip reads identically to `21`/`23`.
+
+**DISCHARGED (round 2, 2026-09-28).** The owed items this section named are paid, from
+ONE bounded harness run (`scripts/browser-chrome-proof.mjs --keep`) at the round-2 head:
+
+- `20-strip-failed-and-agent-markers/` is re-encoded from the run's own
+  `16-surface-strip-failed-agent-tab` — the strip at rest with the `Agent`/`Failed` pair
+  on `127.0.0.1:60296/broken` and no band of any form. The deleted in-band row no longer
+  appears anywhere in the set.
+- `22-close-failed-tabs/` is re-encoded from the same run's frame of that name — the
+  app-side D2 photograph, with the clearance MEASURED in the run itself rather than
+  read off the picture: panel right 1273 against the pill's box left 1266.3 and its
+  leading content 1275.3 (window 1380) — the content clear, no `pprovals`, and the
+  panel's edge on the pill's transparent padding, which is as far as the shift goes
+  (`limitShift()` caps it at the anchor's 28px — QA round 2, Q2-2).
+
+Both frames ride the same run's numbers recorded in the manifest note
+`browserTabCleanupRoundTwoPass`.

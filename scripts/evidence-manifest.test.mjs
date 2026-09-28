@@ -1778,6 +1778,14 @@ const STAMP_BINDING_NOTES = [
 	 * history - the same bar as the note above it, which this fold re-points too.
 	 */
 	"browserTabCleanupRoundOnePass",
+	/*
+	 * AND ITS ROUND-2 ANSWERS: `browserTabCleanupRoundTwoPass` states the pair it
+	 * ships, the two owed photographs it pays (composition `20` re-encoded and `22`
+	 * re-encoded with the clearance the same run measured), the D3 re-capture with
+	 * its measured slack, and the run's own verdict — so it is held to the pair this
+	 * file ships rather than read as history, on the same bar as its two neighbours.
+	 */
+	"browserTabCleanupRoundTwoPass",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
