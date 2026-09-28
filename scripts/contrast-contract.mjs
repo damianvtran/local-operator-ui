@@ -3389,12 +3389,21 @@ if (palettes.length === 0) {
  * at 0.00 — where `accent` and `success` are the same hex. In the brand pair
  * that is the point, because the brand has one hue and "it worked" is the state
  * it is happiest to own; in monokai and sage it follows from palettes built
- * around a single signature green. Either way it is a decision rather than a
- * defect: nothing in the product asks a user to distinguish an accent from a
- * success, whereas `success` against `info` is a distinction a callout exists
- * to make. A gate that fails by design teaches people to
- * silence gates, so accent is out of the family rather than pinned as an
- * exception in every palette.
+ * around a single signature green.
+ *
+ * THAT USED TO REST ON "nothing in the product asks a user to distinguish an
+ * accent from a success", AND THE STATUS CHANNEL NOW ASKS IT (design round 1,
+ * D1): the projects detail page renders `active` (accent) and `done` (success)
+ * as chips SIDE BY SIDE in one Status column, at the numbers above - 2.22 in
+ * localOperatorLight and 5.07 in localOperatorDark, whose washes are
+ * byte-identical, and 0.00 in monokai. The answer is not a palette change:
+ * `ProjectStatusBadge` carries a check glyph on `done`, so the difference the
+ * channel asks for is made by SHAPE in every palette, and this family stays as
+ * it is - there is no chromatic step left for a user to read. The acceptance is
+ * recorded here rather than re-litigated per palette, the same way
+ * `accentAlt`/`info` records its own below. A gate that fails by design teaches
+ * people to silence gates, so accent is out of the family rather than pinned as
+ * an exception in every palette.
  *
  * The floor is 15 and it is a judgement about *recall*, not comparison. A
  * ΔE00 around 2.3 is where a difference becomes visible with both colours
