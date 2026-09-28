@@ -191,7 +191,7 @@ missing row proves nothing a reader could check.
 | `cap-at-four/…` | four conversations on one peer | the cap's own case: two chips and the `+N` control, with the chip's label truncated from the LEFT so the end that distinguishes series-named conversations survives |
 | `move-confirm/…` | the confirm a destructive move raises | the dialog names what is lost, because the source copy is deleted once the peer has it |
 | `move-refused-busy/…` | a turn in flight refuses the move | the code, the route's own sentence, and the one remedy that changes anything: wait for the turn to finish |
-| `move-busy-waited/…` | the remedy executed | the receipt the re-issued move produces (`cloud-node-1 holds it now; the copy here is gone.`), which is this row's whole claim - see the note above |
+| `move-busy-waited/…` | the remedy executed | the receipt the re-issued move produces (`cloud-node-1 holds it now; the copy here is gone.`) **and the world it claims**: this device holds one conversation, and the peer draws the moved `Sweep 001` beside its own - see the note above |
 | `move-copy-with-undo/…` | a `--keep` copy, and its undo | the peer gains a copy under a new id, the original stays, and the undo is a recall that names its own loss |
 | `invite-receipt/…` | an invite, minted | admission is two-sided, so the affordance is a dialog rather than a drag: the token's path, and why this app never reads it |
 | `drag-to-device/…` | a session lifted over a valid target | the transient: the ghost under the pointer, the target's own edge, and the indicator naming the operation the drop would perform |
