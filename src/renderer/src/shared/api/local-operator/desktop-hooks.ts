@@ -178,6 +178,19 @@ export type DesktopFeature =
 	| "settings"
 	| "commands"
 	| "catalogues"
+	/**
+	 * The four closed ORGANIZATION operations the merged local server exposes
+	 * (`memberships.list`, `org_agents.list`, `org_team.get`, `org_teams.list`).
+	 *
+	 * ITS OWN KEY because a backend that predates them answers an unknown operation
+	 * with a MASKED 422 ("The request has invalid fields."), which is
+	 * indistinguishable from a malformed call — so a surface that simply attempted
+	 * them would report a mistake the user did not make, and could not tell whether
+	 * to offer a retry or a backend update (local-operator `capabilities.py`, agent
+	 * review round 1's M2). A `below-version` answer here means "update the
+	 * backend", which is the remedy the org surfaces render.
+	 */
+	| "radient_org"
 	| "profile_catalogue"
 	| "team_catalogue"
 	| "session_catalogue"
@@ -460,6 +473,46 @@ export type DesktopFeature =
 	 */
 	| "session_delete"
 	/**
+	 * The mesh: this DAEMON can serve the peer catalogue and the network catalogue.
+	 *
+	 * `mesh-session-mobility.md` §9.3's key, unchanged: the peer catalogue
+	 * (`GET /v1/desktop/peers`), the networks read (`GET /v1/desktop/networks`) and
+	 * the locality fields on the session rows behind them.
+	 *
+	 * IT IS A CAPABILITY, NOT A MEMBERSHIP, and review round 1 (R1-1) caught this
+	 * comment claiming the opposite. lop advertises `peers` unconditionally, on
+	 * purpose - `local_operator/server/routes/capabilities.py`: "the KEYS answer 'what
+	 * can this backend do' rather than 'is this machine in a mesh'" - so a device in NO
+	 * network carries the key too. The backend names where the membership fact lives
+	 * instead: "a device in no network answers an empty catalogue, and an empty
+	 * catalogue mounts nothing". `useMeshMembership` reads exactly that, and it is what
+	 * the rail row and the palette destination are gated on.
+	 *
+	 * ABSENT MEANS NOT MOUNTED, never mounted-disabled: no Mesh rail row, no `/mesh`
+	 * route, no peer sections and no device choice on `/new`. A reserved empty
+	 * destination advertises a feature the user does not have - the argument
+	 * `session_pins` makes above.
+	 *
+	 * WHAT A USER WITH NO NETWORK SEES, stated the way it actually happens rather than
+	 * as "no call at all": ONE read-only catalogue read is issued when the window starts
+	 * - a `networks.list`, which the backend serves after an `is_dir` test with no mkdir,
+	 * so nothing is created - and because the rail is mounted on every route that read
+	 * carries NO interval (`useMeshMembership` asks for `poll: false`; review round 2,
+	 * R2-1, caught the 30 s interval reaching an always-mounted component and dialling
+	 * every peer on every screen). The catalogue's 30 s cadence belongs to the TAB, and
+	 * the rail rides that observer's cache entry while the tab is open. So: no rail row,
+	 * no route content and no peer section mounts, the chrome is today's, and the frames
+	 * in `docs/evidence/mesh-tab/` measure the TAB rather than that chrome - the chrome
+	 * claim is pinned in `scripts/mesh-tab.test.mjs` instead.
+	 *
+	 * SLICE 1 READS ONLY. `session_transfer` is deliberately NOT added here yet: it
+	 * gates the MOVE affordance (a chip's drag target and the table's `Move to…`
+	 * row), and a feature key with no surface behind it is a capability this app
+	 * advertises but cannot exercise. It lands with the drag layer, which is when a
+	 * backend that lacks it must start gating something.
+	 */
+	| "peers"
+	/*
 	 * The Projects surface: the tab, its CRUD, the milestone routes and the `@`
 	 * picker's project section (`/v1/desktop/projects*`).
 	 *
@@ -470,7 +523,16 @@ export type DesktopFeature =
 	 * file-only shape - an older backend renders EXACTLY the surface this app
 	 * shipped before, rather than a tab that 404s on its first read.
 	 */
-	| "projects";
+	| "projects"
+	/*
+	 * AIDA'S CONTROL PLANE (`features.aida`): the read and the control op the
+	 * sidebar's row and the composer's `/aida` share. ITS OWN KEY rather than a
+	 * bump of anything, because a client that does not read it must keep working
+	 * unchanged: absent means "this backend has no Aida", which hides the row and
+	 * forbids her route (`design.md` § 3.4/§ 4), while every other surface serves
+	 * exactly as it did before.
+	 */
+	| "aida";
 
 /**
  * WHY a negotiated feature surface may not be offered.

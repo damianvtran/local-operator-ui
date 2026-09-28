@@ -461,12 +461,19 @@
  * restating a value, so the transcript, the composer band and every story that
  * renders them resolve against one number and cannot drift apart.
  *
+ * It is a custom property rather than a Tailwind `max-w-[810px]` literal in the
+ * class string because a class can only carry a literal: the value has to be
+ * addressable by name for a runtime change to reach the transcript and the
+ * composer together, and a second copy of the number in a class string is the
+ * drift this file's sibling comment (in `chat-measure.ts`) exists to prevent.
+ *
  * ## Two properties, because a drag needs two questions answered
  *
  * `--lo-chat-measure-shipped` is what the column is for a reader who has never
- * touched it. `--lo-chat-measure` is what it renders as, and it resolves the
- * reader's own width FIRST and falls back to the shipped one. That is the whole
- * of the precedence rule: an override REPLACES the shipped default rather than
+ * touched it - 810px, and the measurement behind that value is below.
+ * `--lo-chat-measure` is what it renders as, and it resolves the reader's own
+ * width FIRST and falls back to the shipped one. That is the whole of the
+ * precedence rule: an override REPLACES the shipped default rather than
  * sitting beside it, and there is no window size below which it stops applying.
  * The pattern is `deepseek-harness`'s (`--dsh-chat-content-width: var(
  * --dsh-chat-user-width, clamp(...))`), adopted here with this app's own shape.
@@ -475,6 +482,37 @@
  * reason the reset path exists: with the shipped value still declared, "put it
  * back" is `removeProperty` on the override, which cannot restore the wrong
  * number and does not need the number to be carried around in JavaScript.
+ *
+ * ## Why 810, and not 640
+ *
+ * The `-90` (10%) from the 900 the column carried is the whole change, and the
+ * reasoning is a measurement rather than a taste margin. Measured on the
+ * rendered app (`scripts/chat-measure-evidence.mjs`, `Chat/Measure`), over a
+ * 1,059-character sample of answer prose at the 14px body step, where the
+ * characters-per-line figure is the sample's character count divided by the
+ * number of rendered line boxes - which INCLUDES the short last line, so it is
+ * a lower bound on the full-line figure rather than an average of full lines:
+ *
+ *  - 900px: 8 lines, 132.4 characters per line, widest line 891.0px.
+ *  - 810px: 9 lines, 117.7 characters per line, widest line 809.7px.
+ *
+ * So the step buys 14.7 characters a line - 11% - for 90px of column.
+ *
+ * ## The figure this replaces, and the one it sits beside
+ *
+ * Two quantities live in `markdown.css`'s measure comment and this file must not
+ * conflate them. The 98.1 it has carried since #106 is a `ch` reading, not a
+ * count of characters, and that file says so explicitly: `ch` is the width of
+ * the glyph `0`, which is roughly half again as wide as an average character of
+ * prose at this font. The character figure it derives from the rendered breaks
+ * is 131 characters on an 832.6px line, and the measurement above is the same
+ * method on a different sample: 132.4 at the 900px column, 117.7 at 810px. The
+ * two agree, which is what makes either usable.
+ *
+ * 640 - what the redesign carried and what the owner reverted on 2026-09-26 - is
+ * inside the design board's comparator range. The brief for this change is
+ * explicitly "narrow the constraint just a bit", so the step is deliberately
+ * well above 640 and does not re-open the redesign.
  *
  * ## The override is the CAP, and a resize never rewrites it
  *
@@ -498,10 +536,16 @@
  * shipped TypeScript in memory instead of rendering it, so a clamp written into
  * a JSX handler is a decision nothing can reach. `scripts/chat-measure-drag.test.mjs`
  * drives that module directly.
+ *
+ * The class still gates the cap behind `@min-[750px]/chatcol:`, and the two do
+ * not fight: at a 750px container the content box is 750 - 48 = 702px, so a
+ * 810px cap can only bind above an 858px container. The gate is therefore inert
+ * at every width the product renders, and it is kept because it states the
+ * intent (a narrow column takes the full width) that the number alone does not.
  */
 :root {
 	/* The shipped default: the number, written once. */
-	--lo-chat-measure-shipped: 900px;
+	--lo-chat-measure-shipped: 810px;
 	/*
 	 * The measure as rendered. The override wins outright when the reader has
 	 * set one; the shipped default is the fallback term, so a removed override
@@ -511,6 +555,7 @@
 		--lo-chat-measure-override,
 		var(--lo-chat-measure-shipped)
 	);
+}
 }
 
 /*
@@ -835,6 +880,77 @@
 	 */
 	:where(:focus-visible) {
 		border-radius: inherit;
+	}
+
+	/*
+	 * THE POINTER AFFORDANCE, RESTORED CENTRALLY.
+	 *
+	 * Tailwind v4's preflight deliberately stopped giving buttons the pointer
+	 * cursor - v3's preflight set `button { cursor: pointer }`, and v4 removed it
+	 * to follow the platform's own default - and this app's port off MUI landed
+	 * AFTER that change. MUI's ButtonBase painted its own pointer, so nothing in
+	 * this tree ever had to, and nothing does: measured on the design system's
+	 * own primitives story, all 68 buttons, every Radix trigger (combobox,
+	 * checkbox, switch, tab) and every menu item computed `cursor: default` or
+	 * `auto`. The operator's report - "no pointer affordance across the app" -
+	 * is that same reading taken from a mouse.
+	 *
+	 * ONE LIST, BY SEMANTICS, SO THE NEXT COMPONENT INHERITS IT. The selector is
+	 * the control vocabulary - the roles the shadcn ports render as
+	 * (`role="menuitem"`, `tab`, `switch` ...) plus the native controls the app
+	 * actually uses - so a component added later gets the affordance from what it
+	 * IS rather than from a class somebody remembered to attach, which is the
+	 * property that makes this hold as the app grows. The full audit of every
+	 * story (`scripts/cursor-audit.mjs`) is what keeps the list honest: it
+	 * asserts this vocabulary by name, so a control missing from this rule shows
+	 * up as a measurement rather than as a user's complaint.
+	 *
+	 * `:where()` IS THE MECHANISM, NOT A STYLE. Zero specificity means every
+	 * deliberate word a component says about its own cursor still wins: an
+	 * explicit `cursor-pointer` on a non-semantic card, a `cursor-default` that
+	 * marks an inert row or a control whose affordance is deliberately withdrawn
+	 * (the composer's readings, the dead-directory chip), the resize handles' own
+	 * `col-resize` - all of them are utilities, and a utility always beats a
+	 * base-layer rule. The disabled rule below still wins for a disabled control
+	 * for a different reason: same specificity as this one, and it is the later
+	 * rule.
+	 *
+	 * WHAT IT DELIBERATELY LEAVES ALONE: text entry (the I-beam is the
+	 * platform's to give, and text fields are kept out of the list by name - a
+	 * `textarea` or text `input` carrying `role="combobox"`, which this app puts
+	 * on the composer and on the pickers' filter fields, is a text surface
+	 * first, so the one role a text field can wear is excluded explicitly); `label` elements
+	 * (a label's click-through to its control is a per-component decision);
+	 * resize handles (`role="separator"` names its own cursor); and drag
+	 * surfaces (owned per surface - the mermaid and mesh canvases each swap
+	 * `grab`/`grabbing` themselves).
+	 */
+	:where(
+			a[href],
+			button,
+			summary,
+			select,
+			input[type="button"],
+			input[type="submit"],
+			input[type="reset"],
+			input[type="file"],
+			input[type="checkbox"],
+			input[type="radio"],
+			[role="button"],
+			[role="link"],
+			[role="menuitem"],
+			[role="menuitemcheckbox"],
+			[role="menuitemradio"],
+			[role="tab"],
+			[role="switch"],
+			[role="checkbox"],
+			[role="radio"],
+			[role="option"],
+			[role="combobox"]:not(input):not(textarea):not([contenteditable="true"]),
+			[role="slider"],
+			[role="treeitem"]
+		) {
+		cursor: pointer;
 	}
 
 	/*

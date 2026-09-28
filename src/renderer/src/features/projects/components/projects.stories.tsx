@@ -25,6 +25,7 @@ import type {
 	DesktopLinkedSession,
 	DesktopProject,
 	DesktopProjectDetail,
+	DesktopProjectMilestone,
 } from "../../../../../shared/desktop-control-contract";
 import "../../../styles/index.css";
 import { ProjectsPage } from "./projects-page";
@@ -64,11 +65,14 @@ const THREE: DesktopProject[] = [
 	project("p1", "payments-migration", {
 		description: "Cut the payments API over to the new service",
 		tags: ["q4", "payments"],
+		start_date: "2026-09-01",
 		target_date: "2026-10-15",
 		estimate: 13,
 		milestones_completed: 2,
 		milestones_total: 5,
-		sessions: 3,
+		/* Four, matching `DETAIL.project.sessions`: the door's count and the
+		 * drawer's rows are one fact on two surfaces (design round 2, D11). */
+		sessions: 4,
 		live_sessions: 2,
 		progress_stale: false,
 		progress_updated_at: FIXTURE_NOW_MS / 1000 - 2 * HOUR_S,
@@ -76,6 +80,7 @@ const THREE: DesktopProject[] = [
 	project("p2", "q4-hardening", {
 		description: "Error budgets, retries and the load shed",
 		status: "paused",
+		start_date: "2026-09-10",
 		target_date: "2026-12-01",
 		estimate: 4,
 		estimate_unit: "days",
@@ -192,9 +197,97 @@ const DETAIL: DesktopProjectDetail = {
 };
 
 /** One listing answer, as the route's envelope: `{result: {projects}}`. */
+/**
+ * One detail document, composed from a listing row plus its milestones — the
+ * shape the timeline's fan-out and a card popover read.
+ */
+const detailFor = (
+	project: DesktopProject,
+	milestones: DesktopProjectMilestone[] = [],
+	links: DesktopLinkedSession[] = [],
+): DesktopProjectDetail => ({
+	project: {
+		id: project.id,
+		name: project.name,
+		description: project.description,
+		status: project.status,
+		progress: "",
+		progress_updated_at: project.progress_updated_at,
+		progress_reported_by: "",
+		progress_stale: project.progress_stale,
+		tags: project.tags,
+		sessions: [],
+		created_at: project.updated_at,
+		updated_at: project.updated_at,
+		start_date: project.start_date,
+		target_date: project.target_date,
+		completed_at: project.completed_at,
+		estimate: project.estimate,
+		estimate_unit: project.estimate_unit,
+		milestones,
+	},
+	links,
+});
+
+/** The milestones each fixture project's detail carries, all three states. */
+const MILESTONES: Record<string, DesktopProjectMilestone[]> = {
+	p1: [
+		{
+			name: "api parity",
+			target_date: "2026-09-10",
+			completed_at: "2026-09-09",
+			status: "completed",
+		},
+		{
+			name: "dashboard cutover",
+			target_date: "2026-09-15",
+			completed_at: null,
+			status: "overdue",
+		},
+		{
+			name: "beta cut",
+			target_date: "2026-10-01",
+			completed_at: null,
+			status: "upcoming",
+		},
+	],
+	p2: [
+		{
+			name: "error budget",
+			target_date: "2026-11-01",
+			completed_at: null,
+			status: "upcoming",
+		},
+	],
+	p3: [
+		{
+			name: "guides shipped",
+			target_date: "2026-09-12",
+			completed_at: "2026-09-12",
+			status: "completed",
+		},
+	],
+};
+
+/** The fan-out's answers for a fixture set: one detail per listing row. */
+const detailsFor = (projects: DesktopProject[]) =>
+	Object.fromEntries(
+		projects.map((project) => [
+			project.id,
+			detailFor(project, MILESTONES[project.id] ?? []),
+		]),
+	);
+
 type StubState = {
 	projects: DesktopProject[];
 	detail: DesktopProjectDetail | null;
+	/**
+	 * Per-key details, for the surfaces that fan out one `projects.get` per
+	 * project (the Timeline's milestone fan-out and a board card's sessions
+	 * popover). `detail` above stays the single-document case the detail-screen
+	 * stories use.
+	 */
+	details: Record<string, DesktopProjectDetail> | null;
 	/** The listing read fails with this sentence. */
 	failList: string | null;
 	/** The listing read never settles: the loading frame's only honest shape. */
@@ -204,6 +297,7 @@ type StubState = {
 let stub: StubState = {
 	projects: [],
 	detail: null,
+	details: null,
 	failList: null,
 	hang: false,
 };
@@ -233,10 +327,11 @@ const answer = (request: {
 			if (stub.failList)
 				return { status: 500, body: { detail: stub.failList } };
 			return { status: 200, body: { result: { projects: stub.projects } } };
-		case "projects.get":
-			if (!stub.detail)
-				return { status: 404, body: { detail: "no such project" } };
-			return { status: 200, body: { result: stub.detail } };
+		case "projects.get": {
+			const found = stub.details?.[String(request.key ?? "")] ?? stub.detail;
+			if (!found) return { status: 404, body: { detail: "no such project" } };
+			return { status: 200, body: { result: found } };
+		}
 		case "projects.milestone": {
 			/*
 			 * The toggle, full fidelity enough to be evidence about the UI: the
@@ -407,14 +502,29 @@ export default meta;
 type Story = StoryObj;
 
 /** The page against one stub, at the app's own row width. */
-const page = (state: Partial<StubState>) => {
+const page = (
+	state: Partial<StubState> & { view?: "list" | "board" | "timeline" },
+) => {
 	stub = {
 		projects: [],
 		detail: null,
+		details: null,
 		failList: null,
 		hang: false,
 		...state,
 	};
+	/*
+	 * The view choice is PERSISTED (the app's layout-choice rule), so each
+	 * story states it explicitly and clears it otherwise: without the clear, a
+	 * board story would leak its view into the next list story through the
+	 * same storage the app reads.
+	 */
+	try {
+		if (state.view) localStorage.setItem("projects-view", state.view);
+		else localStorage.removeItem("projects-view");
+	} catch {
+		/* storage is not what these stories are about */
+	}
 	/*
 	 * `h-screen`, the schedules page's rule: in the app this page is a full-height
 	 * column, and a story without the height photographs a panel hugging its own
@@ -648,3 +758,187 @@ function HoldUntilPresent({
 	}, [selector, text]);
 	return null;
 }
+
+/* ---------------------------------------------------------- board + timeline */
+
+/** The board with all three columns populated — the ordinary shape. */
+export const Board: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: THREE,
+			details: detailsFor(THREE),
+		}),
+};
+
+/** Twelve cards across the columns: the board under its own scroll. */
+export const BoardMany: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: MANY,
+			details: detailsFor(MANY),
+		}),
+};
+
+/**
+ * `archived` joins only when it holds rows, and a status outside the fixed
+ * vocabulary gets its own column rather than being dropped (the deliberate
+ * delta from the TUI's board).
+ */
+export const BoardStatuses: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: [
+				...THREE,
+				project("a1", "payments-v1", { status: "archived" }),
+				project("r1", "review-pass", { status: "review" }),
+				/* A passed target with the work unfinished: the card's Overdue
+				   emphasis, photographed rather than argued. */
+				project("o1", "release-prep", {
+					target_date: "2026-09-15",
+					estimate: 8,
+					milestones_completed: 0,
+					milestones_total: 1,
+				}),
+			],
+		}),
+};
+
+/**
+ * An EMPTY column: only active and done hold rows, so the board draws its own
+ * "No projects here." line — the state no populated story photographs (design
+ * round 1, D8).
+ */
+export const BoardEmptyColumns: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: [THREE[0], THREE[2]],
+			details: detailsFor([THREE[0], THREE[2]]),
+		}),
+};
+
+/**
+ * The card's sessions popover, OPEN: the door the card names, drawn (design
+ * round 1, D8). `userEvent.click` dispatches the full pointer sequence, which
+ * is what a Radix trigger listens for — a bare `.click()` would leave the
+ * frame showing a card and no drawer.
+ */
+export const BoardSessionsPopover: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: THREE,
+			details: { p1: DETAIL },
+		}),
+	play: playOnce("board-sessions-popover", async () => {
+		await poll(
+			() => document.querySelector('[data-project-sessions="p1"]') !== null,
+			"the sessions trigger",
+		);
+		const trigger = document.querySelector<HTMLElement>(
+			'[data-project-sessions="p1"]',
+		);
+		if (!trigger) throw new Error("the p1 card has no sessions trigger");
+		await userEvent.click(trigger);
+		await poll(
+			() => (document.body.textContent ?? "").includes("Payments cutover"),
+			"the popover to list a linked session",
+		);
+	}),
+};
+
+/** The card menu, open — Open / Set status / Edit / Delete, the no-drag rule. */
+export const BoardCardMenu: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: THREE,
+			details: detailsFor(THREE),
+		}),
+	play: playOnce("board-card-menu", async () => {
+		const selector = '[aria-label="Actions for payments-migration"]';
+		await poll(() => document.querySelector(selector) !== null, selector);
+		const trigger = document.querySelector<HTMLElement>(selector);
+		if (!trigger) throw new Error("the p1 card has no menu trigger");
+		await userEvent.click(trigger);
+		await poll(
+			() => (document.body.textContent ?? "").includes("Set status"),
+			"the card menu",
+		);
+	}),
+};
+
+/** The timeline: bars, milestone diamonds in all three states, today marker. */
+export const Timeline: Story = {
+	render: () => (
+		<>
+			<HoldUntilPresent text="without dates" />
+			{page({
+				view: "timeline",
+				projects: THREE,
+				details: detailsFor(THREE),
+			})}
+		</>
+	),
+};
+
+/** No project carries a date: the honest empty axis, not fabricated rows. */
+export const TimelineNoDates: Story = {
+	render: () => (
+		<>
+			<HoldUntilPresent text="without dates" />
+			{page({
+				view: "timeline",
+				projects: [
+					project("u1", "papercuts", { description: "Small fixes" }),
+					project("u2", "onboarding-notes", { status: "paused" }),
+				],
+				details: {
+					u1: detailFor(project("u1", "papercuts")),
+					u2: detailFor(project("u2", "onboarding-notes")),
+				},
+			})}
+		</>
+	),
+};
+
+/**
+ * A passed target and an overdue milestone, with one undated project landing
+ * in the trailing "no dates" section.
+ */
+export const TimelineOverdue: Story = {
+	render: () => {
+		const overdue = project("o1", "release-prep", {
+			status: "active",
+			start_date: "2026-08-20",
+			target_date: "2026-09-15",
+			estimate: 8,
+			milestones_completed: 0,
+			milestones_total: 1,
+		});
+		const undated = project("u1", "papercuts", { description: "Small fixes" });
+		return (
+			<>
+				<HoldUntilPresent text="without dates" />
+				{page({
+					view: "timeline",
+					projects: [overdue, undated],
+					details: {
+						o1: detailFor(overdue, [
+							{
+								name: "cut rc",
+								target_date: "2026-09-14",
+								completed_at: null,
+								status: "overdue",
+							},
+						]),
+						u1: detailFor(undated),
+					},
+				})}
+			</>
+		);
+	},
+};

@@ -69,6 +69,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { Link } from "react-router-dom";
 import type {
 	CanonicalFrontendState,
 	PendingDesktopGate,
@@ -106,6 +107,7 @@ import {
 	isDiffBodyRow,
 	outputFallbackLine,
 	summaryFromArgs,
+	toolOp,
 } from "../components/trace/tool-row-model";
 import { TraceFold } from "../components/trace/trace-fold";
 import { WorkingLine } from "../components/trace/working-line";
@@ -115,6 +117,10 @@ import { parseReplies } from "../utils/reply-utils";
 import { CanonicalImage } from "./canonical-image";
 import { LinkToolkit } from "./link-toolkit";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
+import {
+	type ProviderErrorAction,
+	providerErrorGuidance,
+} from "./provider-error-guidance";
 import { isQuotable } from "./quote-model";
 import { QuoteToolkit } from "./quote-toolkit";
 import { type TurnFoot, foldRuns, turnFeet } from "./trace-fold-model";
@@ -1259,6 +1265,15 @@ const ToolRow = memo(function ToolRow({
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<ToolLedgerRow
 				toolName={record.toolName}
+				/*
+				 * The operation token, so a meta tool's row says what the call DID
+				 * (`Listed agents`, `Viewed agent designer`) rather than the one
+				 * name-only verb its whole family used to share (`Delegated`, the
+				 * operator's report of 2026-09-27). Empty while the arguments are
+				 * still being written, which takes the generic verb rather than a
+				 * guess.
+				 */
+				op={toolOp(record.args)}
 				summary={summary}
 				summaryFallback={derived}
 				summaryHold={
@@ -1294,6 +1309,25 @@ const ToolRow = memo(function ToolRow({
 	);
 });
 
+/**
+ * The remedy a classified provider failure earns: one quiet control under the
+ * row, on the row's own left rail.
+ *
+ * The same shape the no-provider notice's action already uses - a secondary
+ * `sm` button - because a second notice idiom for one register would be the
+ * defect the disclosure section of branding.md records. It is a router `Link`
+ * rather than a press handler: the destination is a route a reader may want to
+ * open in a new tab or copy, and the chat pane has no navigation of its own to
+ * reuse.
+ */
+const ProviderAction: FC<{ action: ProviderErrorAction }> = ({ action }) => (
+	<div className="mt-1 pl-6">
+		<Button variant="secondary" size="sm" asChild>
+			<Link to={action.to}>{action.label}</Link>
+		</Button>
+	</div>
+);
+
 const NoticeRow = memo(function NoticeRow({
 	record,
 	isSmallView,
@@ -1319,6 +1353,11 @@ const NoticeRow = memo(function NoticeRow({
 	// paints what it is given rather than re-deciding how long is too long.
 	if (record.kind === "custom") {
 		const Icon = record.level === "error" ? CircleAlert : MessageSquareText;
+		const providerAction = providerErrorGuidance({
+			text: record.text,
+			category: record.category,
+			provider: record.provider,
+		});
 		return (
 			<MessageContainer isUser={false} isSmallView={isSmallView}>
 				<TraceLine
@@ -1357,6 +1396,7 @@ const NoticeRow = memo(function NoticeRow({
 						) : undefined
 					}
 				/>
+				{providerAction ? <ProviderAction action={providerAction} /> : null}
 			</MessageContainer>
 		);
 	}
@@ -1392,6 +1432,7 @@ const NoticeRow = memo(function NoticeRow({
 	// paints through the static branch, which is the honest affordance: a chevron
 	// that reveals the same bytes promises material it does not add.
 	const { headline, rest } = splitFirstLine(record.text);
+	const providerAction = providerErrorGuidance({ text: record.text });
 	return (
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<TraceLine
@@ -1436,6 +1477,7 @@ const NoticeRow = memo(function NoticeRow({
 					</Button>
 				</div>
 			) : null}
+			{providerAction ? <ProviderAction action={providerAction} /> : null}
 		</MessageContainer>
 	);
 });
@@ -1908,6 +1950,12 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 */
 			summaryOf: (row) =>
 				row.record.kind === "tool" ? toolRecordSummary(row.record) : "",
+			/*
+			 * The operation token, so the fold's live clause names an op-aware call
+			 * in the same words its own row prints - see `foldLive`.
+			 */
+			opOf: (row) =>
+				row.record.kind === "tool" ? toolOp(row.record.args) : "",
 			runningOf: (row) =>
 				row.record.kind === "tool" && row.record.phase !== "done",
 			/*

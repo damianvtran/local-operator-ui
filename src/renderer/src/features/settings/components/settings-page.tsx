@@ -3,6 +3,7 @@ import { useOnboardingTour } from "@features/onboarding/hooks/use-onboarding-tou
 import { ProviderGrid } from "@features/providers/provider-grid";
 import { pairingCardCopy } from "@shared/api/local-operator/backend-error";
 import type { ConfigUpdate } from "@shared/api/local-operator/types";
+import { useLaneLeadingColumn } from "@shared/components/common/chat-layout";
 import { EditableField } from "@shared/components/common/editable-field";
 import { PageHeader } from "@shared/components/common/page-header";
 import { RadientMark } from "@shared/components/common/radient-mark";
@@ -270,6 +271,7 @@ const RadientSectionTitle: FC = () => (
 );
 
 export const SettingsPage: FC = () => {
+	const laneLeadingColumn = useLaneLeadingColumn();
 	const showAgentReasoning = useUiPreferencesStore(
 		(state) => state.showAgentReasoning,
 	);
@@ -890,7 +892,22 @@ export const SettingsPage: FC = () => {
 			 * to render whole, so anything between 48 and 220 buys a few pixels of
 			 * content in exchange for an ellipsis on a destination's name.
 			 */}
-			<div className="w-12 shrink-0 overflow-y-auto border-r border-hairline min-[1040px]:w-55">
+			<div
+				/*
+				 * The shell puts this rail's ground behind the window's top strip: the
+				 * rail is a leading column on the default `surface` ground, and without
+				 * being handed over here the lane above the two shell columns paints
+				 * the CONTENT ground across this rail's width, so the rail's own panel
+				 * begins below the strip and the band over it is a different tone (the
+				 * operator's report of 2026-09-26, and again of 2026-09-27).
+				 *
+				 * The width is NOT restated there: the shell measures this element, which
+				 * is what keeps the two-width rule below (48px under 1040, 220 at and
+				 * above it) a single decision. `chat-layout.tsx` states the contract.
+				 */
+				ref={laneLeadingColumn}
+				className="w-12 shrink-0 overflow-y-auto border-r border-hairline min-[1040px]:w-55"
+			>
 				<SettingsSidebar
 					activeSection={activeSection}
 					onSelectSection={handleSelectSection}

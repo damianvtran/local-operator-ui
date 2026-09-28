@@ -43,7 +43,7 @@
  * the top of the 45-75 range the typographic guidance cites - so the floor is
  * the point past which further narrowing is not a narrower ledger but a broken
  * one, and it is stated in the unit the trade-off is actually about rather than
- * as a round number. It is deliberately well below the shipped 820 so the
+ * as a round number. It is deliberately well below the shipped 810 so the
  * affordance has room in both directions.
  */
 export const CHAT_MEASURE_MIN_PX = 520;
@@ -55,7 +55,7 @@ export const CHAT_MEASURE_MIN_PX = 520;
  * design board measured. A ceiling exists because "customize the width" is not
  * "remove the cap": without one, a 5K display would draw a single line of prose
  * across the whole window, which is the failure the measure exists to prevent.
- * The reader gets 280px more than the shipped default and no more.
+ * The reader gets 290px more than the shipped default and no more.
  */
 export const CHAT_MEASURE_MAX_PX = 1100;
 
