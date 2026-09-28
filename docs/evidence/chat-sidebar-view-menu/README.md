@@ -18,7 +18,17 @@ node scripts/capture-evidence.mjs http://localhost:6047 --only=chat-sidebar-view
 node scripts/capture-evidence.mjs http://localhost:6047 --only=chat-sidebar-view-menu--popover-basis- --allow-backend
 node scripts/capture-evidence.mjs http://localhost:6047 --only=chat-sidebar-view-menu--reorder-edges --allow-backend
 node scripts/capture-evidence.mjs http://localhost:6047 --only=chat-sidebar-view-menu--popover-open-short --allow-backend
+node scripts/capture-evidence.mjs http://localhost:6047 --only=chat-sidebar-view-menu--popover-open-narrow --allow-backend
 ```
+
+THE ROUND-1 RE-SHOOT PASS re-took every state the round-1 fixes touch, from the
+folded tip: `popover-open` and both basis stills (the `Created` row's glyph, D3,
+and the empty-section rail rule, m1/U1), `reorder-edges` (the same rule),
+`popover-open-short` (the panel's 16px bottom inset, D1), `popover-hidden-section`
+and `popover-reordered-pair` (panel states too - the glyph and the rule are in
+their content), and the new `popover-open-narrow` (Q-2's reachable short window).
+`completion-moves-bin` was not re-taken: the D2 fix is inside its settle loop and
+changes no pixel.
 
 Twelve themes per state, the set's convention (the sweep's own list). The port
 was 6047 because the neighbours were serving other sessions' worktrees at the
@@ -36,12 +46,13 @@ of the rig, not of the state.
 
 | story | what it is |
 | --- | --- |
-| `popover-open` | the panel on a fresh view: four labelled groups, one check per single-choice group, seven section rows with the rail. Re-shot by this pass; the three-group panel it replaces is this set's previous revision in git. |
+| `popover-open` | the panel on a fresh view: four labelled groups, one check per single-choice group, seven section rows with the rail. Re-shot by this pass (the four-group panel) and by round 1 (the `Created` row's action-less `Calendar` glyph, D3). The three-group panel it replaces is this set's previous revision in git. |
 | `popover-basis-last-active` | the basis fixture below under the DEFAULT basis: `Stored view: section/active/active-first`, `basis [active=true created=false]`. |
 | `popover-basis-created` | the same fixture with `Created` pressed: the check moves, the readout says `section/created/active-first`, and the sections and labels below re-read. |
-| `reorder-edges` | the rail after D1: Pinned and both entity rows draw NO pair; Running's up and Older's down are disabled; a legal press (`today:down`) still moves the section. |
-| `popover-open-short` | D2's own capture: the same panel in an 800x600 window, where the fourth group pushed it past the floor. The FIRST shot of this state clipped (the panel ran off the bottom; the Teams row was unreachable), so the panel took `max-height: var(--radix-popover-content-available-height)` and its own scroll, and the frame above shows the remedy with its numbers in the readout: `box 240x558 · bottom 600/600 · content 598 (scrolls)` - the box ends inside the window and the content overflows the box BY DESIGN, which is what makes the last row reachable. |
-| `popover-hidden-section`, `popover-reordered-pair`, `page-ladder-*`, `section-cap-*`, `expanded-agent-group`, `band-resting`, `band-*-hover`, `off-route-voice` | the states earlier passes added; unchanged by this one. |
+| `reorder-edges` | the rail after D1 and round 1's m1/U1: Pinned and both entity rows draw NO pair; Running's pair is disabled on BOTH sides (its up-neighbour is Pinned, and an empty section's own press draws nothing either); Today's up is disabled (its shown neighbour, the empty Running, draws nothing) while `today:down` is live; Older's down is disabled. The legal press still moves the section in the panel and the column behind it. |
+| `popover-open-short` | D2's own capture: the same panel in an 800x600 window, where the fourth group pushed it past the floor, plus round 1's D1 inset: the cap is `calc(var(--radix-popover-content-available-height) - 16px)`, so the panel's own bottom edge stays 16px above the window's and the clipped row shows a visible sliver instead of ending flush. The first shot of this state clipped outright (the panel ran off the bottom; the Teams row was unreachable); the frame above shows the remedy with its numbers in the readout: `box 240x542 · bottom 584/600 · content 598 (scrolls)`. |
+| `popover-open-narrow` | the same state in the shape the APP can reach with a short window (round 1, Q-2): the popover does not exist below ~1024px - the nav rail collapses and the trigger is not drawn - so a docked width with a short height (1100x600) is the honest worst case. Same inset, same numbers (`box 240x542 · bottom 584/600`). |
+| `popover-hidden-section`, `popover-reordered-pair`, `page-ladder-*`, `section-cap-*`, `expanded-agent-group`, `band-resting`, `band-*-hover`, `off-route-voice` | the states earlier passes added. The two panel states were re-shot in round 1 (the glyph and the rail rule are in their content); the rest are unchanged by this pass. |
 
 ## The Time basis pair, and what the sections say under each
 
@@ -97,11 +108,17 @@ Before this pass the panel drew a move pair on every non-entity row and enabled
 it from "is there a shown section above/below" alone, so a press could land
 where the column cannot follow: Pinned always draws first, and the entity region
 draws in fixed source order. `reorder-edges` shows the repair: no pair on Pinned
-or the entity rows, Running's up disabled (its shown neighbour is Pinned), Older's
+or the entity rows, Running's pair disabled on both sides (its shown neighbour
+is Pinned, and an empty section's own press is invisible), Older's
 down disabled (the entity region), and a legal `today:down` press still reorders
-the panel and the list behind it. The model's rule is `canMoveSection`, asserted
-in `scripts/chat-sidebar-view.test.mjs`; this frame is the same rule seen from
-the pointer's side.
+the panel and the list behind it. Round 1 extended the rule to the empty-section
+case (m1/U1): an empty chat section draws no label, so a swap with one - or from
+one - rewrites the stored order while the column stands still; `canMoveSection`
+now takes the caller's drawability predicate (the sidebar's own per-section
+counts, the same numbers the headers draw) and requires BOTH ends of the move to
+draw. The model's rule is asserted in `scripts/chat-sidebar-view.test.mjs`
+(both ends, the empty-source mirror, and the predicate-less geometric form);
+these frames are the same rule seen from the pointer's side.
 
 ## What these frames do NOT prove
 
@@ -111,14 +128,20 @@ the pointer's side.
   state; the band's own hover frames live in this set from earlier passes.
 - **Where the before half of the popover lives.** It is this set's previous
   revision in git (the three-group panel, captured under
-  `remediationRound4EvidenceNote`'s pass); this pass re-shoots `popover-open`, the
-  basis pair, the rail and the short capture, and
-  does not re-take the base tree, which is a pass of its own. A design round that
-  wants the pair side by side can ask for it.
+  `remediationRound4EvidenceNote`'s pass); round 1 re-shoots `popover-open`, the
+  basis pair, the rail, the short capture, the two other panel states and the
+  new narrow state, and does not re-take the base tree, which is a pass of its
+  own. A design round that wants the pair side by side can ask for it.
 - **What sits below `popover-open-short`'s fold.** The panel scrolls, so what a
   tall window would show under the box's edge is not in the frame; the readout's
-  own numbers carry the claim instead (`content 598` against `box 240x558`), and
+  own numbers carry the claim instead (`content 598` against `box 240x542`), and
   the story's play asserts all seven rows are present. The pre-remedy shot of the
   same state - the clipped one - is described in the state's row above rather
   than kept beside it: a frame that photographs a defect the same pass removed
   belongs to the record of the reading, not the set.
+- **THAT THE 800x600 SHAPE IS REACHABLE.** It is not: the panel's floor capture
+  is the design contract's window minimum (`WINDOW_MIN_WIDTH/HEIGHT`), but at
+  800x600 the app's nav rail is collapsed and the View options trigger does not
+  exist (round 1's Q-2, reproduced independently). `popover-open-narrow`
+  (1100x600) is the frame for the reachable shape; the short one is kept because
+  the contract it tests is at that size, and its numbers are the contract's.
