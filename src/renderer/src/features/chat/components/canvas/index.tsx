@@ -642,22 +642,45 @@ const CanvasComponent: FC<CanvasProps> = ({
 
 	return (
 		/*
-		 * THE DOCK IS ON THE WORK PLANE, NOT ON A PANEL GROUND.
+		 * THE DOCK IS THE DRAWER, AND `elevated` IS THE DRAWER'S RUNG.
 		 *
-		 * It was `surface` — the role every panel in this app takes, including the
-		 * sidebar the operator compares it against — so the two ends of the window
-		 * were literally the same tone (`surface` against itself measures ΔE00 0, on
-		 * all 59 palettes) with the transcript's `canvas` between them. It is now the
-		 * PAGE ground, the same `canvas` the conversation column and this slot's other
-		 * panes sit on, so the window reads as chrome beside work rather than as three
-		 * stacked panels.
+		 * It was `canvas` — the conversation's own ground — so the pane's body and the
+		 * transcript read as one plane; and the pass before this one had already refused
+		 * `surface` for the opposite reason: `surface` IS the sidebar's role, and
+		 * `surface` against itself measures ΔE00 0 on all 59 palettes — "the two ends of
+		 * the window were literally the same tone", which is the report that moved this
+		 * pane off `surface` in the first place.
 		 *
-		 * WHAT SEPARATES IT FROM THE SIDEBAR is therefore the `surface` -> `canvas`
-		 * step, which this app already asserts as an adjacent ground pair and which
-		 * its own shell uses in both directions: ΔE00 2.05 (`sage`, the fleet's
-		 * tightest) to 6.76 (`radient`), at 3.11-4.87 `L*` — measured across the
-		 * palettes rather than read off one theme, and measured because the two ends
-		 * of this window being one tone is exactly what the operator reported.
+		 * `elevated` is one rung ABOVE the chrome, which is what a drawer is: the ladder
+		 * is monotone on all 59 palettes in one ordering (`sunken` < `canvas` <
+		 * `surface` < `elevated`), `pane-slot.tsx` already calls this slot a drawer ("the
+		 * drawer opening and closing that moves it"), and `branding.md`'s elevation
+		 * clause lists exactly the things that leave the flow — menu, dialog, drawer,
+		 * popover, tooltip, select. Measured with the repo's own `deltaE` over all 59
+		 * palettes: `elevated` against the conversation's `canvas` is ΔE00 4.17
+		 * (`catppuccinMacchiato`, the fleet's tightest) to 11.64 (`radient`), median
+		 * 5.46 — 0 of 59 under 4.0, which is the region floor
+		 * `scripts/contrast-contract.mjs` asserts on that pair.
+		 *
+		 * THE TWO REFUSED ALTERNATIVES, stated so this is not re-litigated by
+		 * "simplifying" it back: `surface` merges with the sidebar (ΔE00 0 against
+		 * itself on every palette — the first clause of the operator's earlier report)
+		 * and separates from the conversation by only 2.05 at the tight end, 31 of 59
+		 * palettes under 3.0. `sunken` is refused by the number before the argument:
+		 * 2.0028 against the conversation is the field floor with 0.0028 of headroom, and
+		 * `sunken` is already where this pane's own recessed content lives — the tab
+		 * strip, the editor, the terminal. A fifth token is refused because it cannot be
+		 * authored honestly: the four rungs are monotone on every palette in one single
+		 * ordering, so a new ground between any two of them lands under the field floor
+		 * exactly where they are closest, at the price of 59 literal declarations and a
+		 * permanent drift risk against the rung it duplicates.
+		 *
+		 * THE LANE'S THIRD STOP MOVES WITH THIS ROOT (`chat-layout.tsx`): the 32px band
+		 * above the slot is painted in this pane's ground, so the pane is continuous from
+		 * y0 down. A pane-only change would leave this tone meeting the lane at y32 —
+		 * the hard horizontal cut the previous pass removed, one layer up and at a bigger
+		 * step. `scripts/pane-slot-ground.test.mjs` reads the stop and this root and
+		 * refuses them disagreeing, because only the pair is a decision.
 		 *
 		 * ONE PLANE INSIDE THE PANE IS STILL `surface`, AND IT IS NOT A REVERSAL OF
 		 * THE ABOVE. The Files list's rows paint `rowCurrent` and
@@ -667,11 +690,11 @@ const CanvasComponent: FC<CanvasProps> = ({
 		 * `docs/design/row-states-refinement.md`, whose § 9.2 names this list among
 		 * the surfaces it binds. The two directions therefore collide on one element,
 		 * and the resolution is to SPLIT it rather than to relax either: this root
-		 * keeps `canvas` (the expression `scripts/pane-slot-ground.test.mjs` reads,
-		 * and the one the operator's top edge depends on) and the row plane is the
-		 * list's own scroller in `canvas-file-viewer.tsx`, which wears the `surface`
-		 * its rows are authored against. Measured with the repo's own `deltaE` over
-		 * all 59 palettes: resolved off `canvas` the selection falls under the 2.0
+		 * wears `elevated` (the expression `scripts/pane-slot-ground.test.mjs` reads
+		 * from the lane's own stop) and the row plane is the list's own scroller in
+		 * `canvas-file-viewer.tsx`, which wears the `surface` its rows are authored
+		 * against. Measured with the repo's own `deltaE` over all 59 palettes:
+		 * resolved off `canvas` the selection falls under the 2.0
 		 * field floor on 7 of 59 (minimum 0.83, `kanagawaLotus`) and the hover on 5
 		 * (minimum 0.51, `tokyoNightDay`); off that `surface` it is 0 of 59 and 1 of
 		 * 59.
@@ -688,7 +711,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 			 * outside it.
 			 */
 			data-canvas-shortcuts
-			className={cn("flex h-full flex-col bg-canvas")}
+			className={cn("flex h-full flex-col bg-elevated")}
 		>
 			{/*
 			 * One 40px chrome bar: what you are looking at on the left, what you

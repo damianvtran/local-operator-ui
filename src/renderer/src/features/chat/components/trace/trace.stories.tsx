@@ -307,7 +307,7 @@ const ConversationList = () => {
 	const rows = groupMessages(CONVERSATION, showAgentReasoning);
 
 	return (
-		<div className="mx-auto flex w-full max-w-[900px] flex-col">
+		<div className="mx-auto flex w-full max-w-[810px] flex-col">
 			{rows.map((row) => (
 				<div
 					key={row.message.id}
