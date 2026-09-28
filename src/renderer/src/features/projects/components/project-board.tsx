@@ -23,9 +23,18 @@
  * what the hand gets while dragging is the lifted column and the drop
  * indicator line in the gap the column would land in.
  *
- * COLUMNS SCROLL IN THE PANEL; the strip scrolls horizontally when the window
- * is narrow (`overflow-x-auto` on the strip, `overflow-y-auto` per column), so
- * a board never clips a column into an unreachable one.
+ * COLUMNS SIZE TO THEIR CARDS AND ONE SCROLLER OWNS THE BOARD (slice 3): the
+ * strip scrolls both axes — vertically when the tallest column overflows,
+ * horizontally when the window is narrow — and no column keeps a scrollbar of
+ * its own. The per-column wells existed to give each column its own height;
+ * one scroller is what the operator asked for, and it also means a column's
+ * header can pin (`top-0`) with nothing between it and the scrollport.
+ *
+ * COLUMNS ARE GROUPED BY TEAM, the same `groupByTeam` rule the list and the
+ * timeline run: each team's cards sit under a strap pinned just below the
+ * column header (`top-11`, that header's own height), so the team you are
+ * reading stays named while its cards pass under, and the next strap pushes
+ * the previous out — the ordinary sticky contract.
  *
  * THE LIVE CHIP IS A POPOVER, and it is the board's own door into a
  * conversation: the listing carries session COUNTS, not ids, so the popover
@@ -68,6 +77,7 @@ import type {
 	PointerEvent as ReactPointerEvent,
 } from "react";
 import {
+	Fragment,
 	useCallback,
 	useEffect,
 	useLayoutEffect,
@@ -81,13 +91,16 @@ import { useProjectDetail } from "../hooks/use-projects-queries";
 import {
 	BOARD_COLUMNS,
 	BOARD_SIDE_COLUMNS,
+	NO_TEAM_LABEL,
 	PROGRESS_STALE_LABEL,
 	boardColumns,
 	boardProgressText,
+	groupByTeam,
 	listRowMeta,
 	progressAge,
 	projectOverdue,
 	projectStatusMeta,
+	projectTeamName,
 	readBoardColumnOrder,
 	reorderColumnOrder,
 	sessionsTriggerLabel,
@@ -522,12 +535,13 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 	return (
 		<div
 			/*
-			 * Frame tier: 10px and no edge. A view frame's boundary is its ground
-			 * step off the canvas — the rule the chat's panes already follow — and
-			 * the hairline was the extra mark this pass retires (docs/branding.md
-			 * § 2, § 5).
+			 * NO FRAME GROUND (slice 3): the columns are the board's structure now,
+			 * the way the detail sheet runs — a panel holding wells holding cards
+			 * stacked the same 10px radius twice on one view, which is the nesting
+			 * the operator's re-skin retires. The columns keep the canvas behind
+			 * them, so the well→card step is the ground ladder a board needs.
 			 */
-			className="@container flex min-h-0 flex-1 flex-col overflow-hidden rounded-md bg-surface"
+			className="@container flex min-h-0 flex-1 flex-col"
 			data-testid="project-board"
 		>
 			{/*
@@ -554,7 +568,13 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 			<div
 				ref={stripRef}
 				className={cn(
-					"relative flex min-h-0 flex-1 items-stretch gap-3 overflow-x-auto p-3",
+					/*
+					 * ONE SCROLLER, BOTH AXES (slice 3): a column that overflows is
+					 * reached by scrolling the strip, not by a bar of its own, and a
+					 * column shorter than its neighbours keeps its own height
+					 * (`items-start`) instead of stretching to the tallest.
+					 */
+					"relative flex min-h-0 flex-1 items-start gap-3 overflow-auto p-3",
 					drag && "cursor-grabbing select-none",
 				)}
 			>
@@ -573,12 +593,12 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 							key={column.status}
 							data-board-column={column.status}
 							/*
-							 * The column is a well, not a card: it keeps the panel tier's 10 and
-							 * drops its edge. The sunken step inside the surface panel is the
-							 * boundary; panel + column + card edges were three borders stacked
-							 * on one small object.
+							 * The column is a well on the page canvas: with the frame's ground
+							 * retired, the sunken step is the boundary a column needs. No
+							 * `overflow-hidden`: the header and the team straps must be able
+							 * to stick, and a clipped well would freeze them mid-scroll.
 							 */
-							className="flex w-64 shrink-0 flex-col overflow-hidden rounded-md bg-sunken"
+							className="flex w-64 shrink-0 flex-col rounded-md bg-sunken"
 						>
 							<header
 								data-board-column-handle={column.status}
@@ -589,7 +609,14 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 								onPointerUp={onHeaderPointerUp}
 								onPointerCancel={onHeaderPointerCancel}
 								className={cn(
-									"flex shrink-0 cursor-grab items-center justify-between gap-2 border-b border-hairline px-3 py-2 active:cursor-grabbing",
+									/*
+									 * The header PINS (top-0 in the strip's scroller) and its height
+									 * is fixed at 44 (`h-11`) so the team straps below pin flush at
+									 * `top-11` — the two offsets are one fact written twice. The
+									 * hairline under it retired with the frame's, and the radius
+									 * matches the well's so the corners do not square off.
+									 */
+									"sticky top-0 z-20 flex h-11 shrink-0 cursor-grab items-center justify-between gap-2 rounded-t-md bg-sunken px-3 active:cursor-grabbing",
 									drag?.status === column.status && "opacity-85",
 								)}
 							>
@@ -627,20 +654,42 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 									No projects here.
 								</p>
 							) : (
-								<ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2">
-									{column.projects.map((project) => (
-										<li key={project.id}>
-											<BoardCard
-												project={project}
-												nowMs={nowMs}
-												busy={moving.has(project.id)}
-												onOpen={() => onOpen(project)}
-												onEdit={() => onEdit(project)}
-												onDelete={() => onDelete(project)}
-												onMove={(status) => onMove(project, status)}
-											/>
-										</li>
-									))}
+								/*
+								 * The straps pin at `top-11` — under the column header, which is
+								 * 44px tall — and their ground is the well's own, so cards pass
+								 * under an opaque band rather than through it.
+								 */
+								<ul className="flex flex-col gap-2 p-2">
+									{groupByTeam(column.projects, projectTeamName).map(
+										(group) => (
+											<Fragment key={group.team ?? ""}>
+												<li
+													className="sticky top-11 z-10 flex items-center gap-2 bg-sunken px-3 py-1 text-meta"
+													data-board-team={group.team ?? ""}
+												>
+													<span className="truncate text-ink-muted">
+														{group.team ?? NO_TEAM_LABEL}
+													</span>
+													<span className="shrink-0 text-ink-muted">
+														{group.items.length}
+													</span>
+												</li>
+												{group.items.map((project) => (
+													<li key={project.id}>
+														<BoardCard
+															project={project}
+															nowMs={nowMs}
+															busy={moving.has(project.id)}
+															onOpen={() => onOpen(project)}
+															onEdit={() => onEdit(project)}
+															onDelete={() => onDelete(project)}
+															onMove={(status) => onMove(project, status)}
+														/>
+													</li>
+												))}
+											</Fragment>
+										),
+									)}
 								</ul>
 							)}
 						</section>
