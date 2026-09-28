@@ -438,6 +438,197 @@ test("the board's columns are the five lifecycle phases, then the non-empty side
 	);
 });
 
+test("a stored column order ranks the columns present, and the rest append by the derivation's own rules", () => {
+	const rows = [
+		row("a", { status: "archived" }),
+		row("b", { status: "review" }),
+		row("c", { status: "active" }),
+		row("d", { status: "paused" }),
+	];
+	/*
+	 * THE MERGE RULE: ranked columns first in their stored order, everything
+	 * else after them in the derivation's own order (phases -> populated side
+	 * states -> unknowns). Present here: the five phases, paused, archived,
+	 * review.
+	 */
+	assert.deepEqual(
+		model
+			.boardColumns(rows, ["done", "validation", "qa", "active", "planning"])
+			.map((column) => column.status),
+		[
+			"done",
+			"validation",
+			"qa",
+			"active",
+			"planning",
+			"paused",
+			"archived",
+			"review",
+		],
+	);
+	/* A partial order is honoured where it speaks and appends where it does not. */
+	assert.deepEqual(
+		model.boardColumns(rows, ["qa", "planning"]).map((column) => column.status),
+		[
+			"qa",
+			"planning",
+			"active",
+			"validation",
+			"done",
+			"paused",
+			"archived",
+			"review",
+		],
+	);
+	/* `[]` and the identity order both mean the lifecycle default. */
+	assert.deepEqual(
+		model.boardColumns(rows).map((column) => column.status),
+		model.boardColumns(rows, []).map((column) => column.status),
+	);
+	assert.deepEqual(
+		model
+			.boardColumns(rows, ["planning", "active", "qa", "validation", "done"])
+			.map((column) => column.status),
+		[
+			"planning",
+			"active",
+			"qa",
+			"validation",
+			"done",
+			"paused",
+			"archived",
+			"review",
+		],
+	);
+});
+
+test("a stored status that holds no column ranks nothing and resurrects nothing", () => {
+	/*
+	 * `archived` is IN the stored order but has no rows this session: it keeps
+	 * no rank and no column, and the ranks that do speak still apply. The slot
+	 * is not forgotten — the next reorder writes the order of the columns the
+	 * user actually saw.
+	 */
+	assert.deepEqual(
+		model
+			.boardColumns([row("a")], ["archived", "done", "planning"])
+			.map((column) => column.status),
+		["done", "planning", "active", "qa", "validation"],
+	);
+});
+
+test("one column's move re-inserts it at the index it lands on", () => {
+	const order = ["planning", "active", "qa", "validation", "done"];
+	/* One place LEFT is `from - 1`; one place RIGHT is `from + 1` (not a swap). */
+	assert.deepEqual(model.reorderColumnOrder(order, "qa", 1), [
+		"planning",
+		"qa",
+		"active",
+		"validation",
+		"done",
+	]);
+	assert.deepEqual(model.reorderColumnOrder(order, "active", 2), [
+		"planning",
+		"qa",
+		"active",
+		"validation",
+		"done",
+	]);
+	assert.deepEqual(model.reorderColumnOrder(order, "qa", 0), [
+		"qa",
+		"planning",
+		"active",
+		"validation",
+		"done",
+	]);
+	assert.deepEqual(model.reorderColumnOrder(order, "planning", 4), [
+		"active",
+		"qa",
+		"validation",
+		"done",
+		"planning",
+	]);
+	/* The ends clamp rather than inventing positions. */
+	assert.deepEqual(model.reorderColumnOrder(order, "done", 99), order);
+	assert.deepEqual(model.reorderColumnOrder(order, "planning", -3), order);
+	/* The input is not the output's costume: it is not mutated. */
+	const before = [...order];
+	model.reorderColumnOrder(order, "qa", 0);
+	assert.deepEqual(order, before);
+});
+
+test("the column order's store is guarded, validated and deduped", () => {
+	const key = model.PROJECTS_BOARD_ORDER_STORAGE_KEY;
+	const original = globalThis.localStorage;
+	const store = new Map();
+	globalThis.localStorage = {
+		getItem: (name) => store.get(name) ?? null,
+		setItem: (name, value) => store.set(name, value),
+		removeItem: (name) => store.delete(name),
+	};
+	try {
+		/*
+		 * THE STORE'S OWN PARSING, asked before anything writes: with no session
+		 * copy in play a read is the store's answer alone. (Once a write lands,
+		 * the session copy leads the read - the case the next test pins - so
+		 * these assertions have to come first, which is also the order a fresh
+		 * session meets them in.)
+		 */
+		assert.deepEqual(model.readBoardColumnOrder(), []);
+		/* Anything unusable reads as ABSENT, never half-applied. */
+		store.set(key, "not json");
+		assert.deepEqual(model.readBoardColumnOrder(), []);
+		store.set(key, JSON.stringify({ order: ["done"] }));
+		assert.deepEqual(model.readBoardColumnOrder(), []);
+		store.set(key, JSON.stringify(["a", 2]));
+		assert.deepEqual(model.readBoardColumnOrder(), []);
+		store.set(key, JSON.stringify(["a", "", "b"]));
+		assert.deepEqual(model.readBoardColumnOrder(), []);
+		/* One status must not rank twice: first position wins. */
+		store.set(key, JSON.stringify(["a", "a", "b"]));
+		assert.deepEqual(model.readBoardColumnOrder(), ["a", "b"]);
+		/* A write lands in the store. */
+		model.writeBoardColumnOrder(["done", "planning"]);
+		assert.equal(store.get(key), JSON.stringify(["done", "planning"]));
+	} finally {
+		globalThis.localStorage = original;
+	}
+});
+
+test("a blocked store cannot take the session's order away", () => {
+	/*
+	 * UX ROUND 1, U4. The promise was "the move stands for this session"
+	 * while a view switch re-ran the read; with only localStorage behind it,
+	 * a locked store made that false. The session copy leads the read, so the
+	 * two things a remount does - read again, write nothing - keep the order.
+	 *
+	 * Ordering note: this test runs after the store test above, and that one's
+	 * assertions do not depend on a missing session copy once it has written.
+	 */
+	const original = globalThis.localStorage;
+	globalThis.localStorage = {
+		getItem: () => {
+			throw new Error("locked");
+		},
+		setItem: () => {
+			throw new Error("locked");
+		},
+	};
+	try {
+		/* A failed write never throws, and the move is still the session's. */
+		model.writeBoardColumnOrder(["qa", "planning"]);
+		assert.deepEqual(model.readBoardColumnOrder(), ["qa", "planning"]);
+		/* The remount read (what a view switch performs) sees the same order. */
+		assert.deepEqual(model.readBoardColumnOrder(), ["qa", "planning"]);
+		/* The returned array is a copy: a caller cannot edit the session's. */
+		const copy = model.readBoardColumnOrder();
+		copy.push("done");
+		assert.deepEqual(model.readBoardColumnOrder(), ["qa", "planning"]);
+	} finally {
+		globalThis.localStorage = original;
+	}
+});
+
 test("every status the lifecycle names has a chip, and an unknown one keeps its word", () => {
 	const labels = [
 		"planning",
