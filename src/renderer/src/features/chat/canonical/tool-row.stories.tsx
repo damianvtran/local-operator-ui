@@ -94,6 +94,7 @@ const tool = (over: Partial<ToolRecord> & { id: string }): ToolRecord => ({
 	// call was still being dictated. Every row here but the never-run states is
 	// a call that really was sent to a tool.
 	notRunReason: null,
+	notRunKind: null,
 	neverSent: false,
 	durationS: 0.4,
 	startedAt: null,
