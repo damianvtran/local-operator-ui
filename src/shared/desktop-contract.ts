@@ -1165,7 +1165,9 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	 * `state: "unsupported"` — a fact about where the bytes are, not a failure
 	 * — and the rail hides, the same degradation as an empty manifest.
 	 */
-	z.object({ op: z.literal("sessions.checkpoints"), sessionId }).strict(),
+	z
+		.object({ op: z.literal("sessions.checkpoints"), sessionId })
+		.strict(),
 	/*
 	 * Buy names for checkpoints (design D2/D9): idempotent, bounded, and never
 	 * blocking on the model call itself — the backend schedules one

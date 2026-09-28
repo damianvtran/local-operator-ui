@@ -88,8 +88,7 @@ export function checkpointTitle(checkpoint: Checkpoint): string {
 /** Whether the card should say a name is still being generated. */
 export function checkpointNamingPending(checkpoint: Checkpoint): boolean {
 	return (
-		checkpoint.kind === "completion" &&
-		checkpoint.naming?.state === "pending"
+		checkpoint.kind === "completion" && checkpoint.naming?.state === "pending"
 	);
 }
 
@@ -97,7 +96,7 @@ export function checkpointNamingPending(checkpoint: Checkpoint): boolean {
 export function checkpointSummary(checkpoint: Checkpoint): string | null {
 	const summary =
 		checkpoint.naming?.state === "ready" ? checkpoint.naming.summary : null;
-	return summary && summary.trim() ? summary : null;
+	return summary?.trim() ? summary : null;
 }
 
 /** The highest turn ordinal in the manifest, for "Turn N of M". */
@@ -160,9 +159,7 @@ export function checkpointClockLabel(ts: number): string {
 export function checkpointAriaLabel(checkpoint: Checkpoint): string {
 	if (checkpoint.kind === "user") {
 		const clock = checkpointClockLabel(checkpoint.ts);
-		return clock
-			? `Jump to your message, ${clock}`
-			: "Jump to your message";
+		return clock ? `Jump to your message, ${clock}` : "Jump to your message";
 	}
 	return `Jump to completion: ${checkpointTitle(checkpoint)}`;
 }
