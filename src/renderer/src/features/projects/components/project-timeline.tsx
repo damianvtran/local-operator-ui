@@ -118,7 +118,7 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 	return (
 		<div
 			ref={panelRef}
-			className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-hairline bg-surface"
+			className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md bg-surface"
 			data-testid="project-timeline"
 		>
 			<div className="flex shrink-0 items-center justify-between gap-3 border-b border-hairline px-3 py-2">

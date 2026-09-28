@@ -102,7 +102,7 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 					this project so its progress stays with them.
 				</p>
 			) : (
-				<ul className="flex flex-col divide-y divide-hairline rounded-lg border border-hairline bg-surface">
+				<ul className="flex flex-col divide-y divide-hairline rounded-md bg-surface">
 					{links.map((link) => {
 						const meta = linkStateMeta(link);
 						const subagents = subagentChipLabel(link.subagents);
