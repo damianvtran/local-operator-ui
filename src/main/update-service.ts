@@ -1806,13 +1806,17 @@ const LAUNCH_HOLD_NOTICE_BUDGET_MS =
  * switch, and the BACKEND honours it. The hold's banner is raised by the MAIN
  * process, which never read it - so a harness that switched notifications off
  * (every rig that boots this app does, and the operator's rules require it) still
- * put this path's banner on the operator's screen. Presence-based, like
- * `notify.py`: any non-empty value is off, because `0` and `false` are spellings
- * of "off" the repo's own tooling passes.
+ * put this path's banner on the operator's screen. PRESENCE is the rule (review
+ * round 3, unified with the watchdog's `+x` set-test and with
+ * `resolveNotificationLaunch`, which resolves the same launch for the backend
+ * child): any SET value silences - empty included, because a launch block with
+ * an empty default spells "a test run", not "the user's own app" - and only an
+ * ABSENT key arms. `0` and `false` are spellings of "off" the repo's own tooling
+ * passes, and they keep working.
  */
 function notificationsSilenced(): boolean {
 	const value = launchEnv[NOTIFICATIONS_ENV];
-	return typeof value === "string" && value.length > 0;
+	return typeof value === "string";
 }
 
 /**

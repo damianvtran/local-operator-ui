@@ -1425,14 +1425,30 @@ function HeldDownload() {
 	}, []);
 	useEffect(() => {
 		if (!ready) return;
-		window.api.updater.downloadUpdate = () => new Promise<never>(() => {});
-		const timer = setTimeout(() => {
+		/*
+		 * PRESS WHEN THE CONTROL EXISTS (design D5, remediation round 3): a single
+		 * one-shot timer assumed the offer was already painted, and a cold load that
+		 * parked on the offer found no control - silently photographing the offer
+		 * instead of the state under test. Retry on a short bounded loop; the moment
+		 * the press lands the render is identical to the one-shot's, because it is
+		 * the same click on the same button. The download override is (re-)applied
+		 * immediately before the press, the one moment that runs after the
+		 * decorator's `mockUpdaterApi()` has installed the bridge.
+		 */
+		const deadline = Date.now() + 2000;
+		const timer = setInterval(() => {
 			const control = Array.from(document.querySelectorAll("button")).find(
 				(button) => button.textContent === "Download update",
 			);
-			control?.click();
-		}, 0);
-		return () => clearTimeout(timer);
+			if (control) {
+				window.api.updater.downloadUpdate = () => new Promise<never>(() => {});
+				control.click();
+				clearInterval(timer);
+				return;
+			}
+			if (Date.now() > deadline) clearInterval(timer);
+		}, 50);
+		return () => clearInterval(timer);
 	}, [ready]);
 	return ready ? (
 		<UpdateNotification autoCheck={false} slowWaitHintMs={1} />
