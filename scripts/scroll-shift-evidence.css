@@ -1,0 +1,12 @@
+/*
+ * The harness's stylesheet: the app's own, plus the sources it has to scan.
+ *
+ * Same reason as `session-switch.css`: Tailwind v4 discovers class names by
+ * scanning source files rooted at the build's working directory (`scripts/`),
+ * so importing `styles/index.css` alone would generate the harness's own few
+ * utilities and NONE of the app's - a page whose DOM is right and whose chat
+ * column has collapsed to 0px. `@source` names the tree to scan. `@import`
+ * leads because CSS requires it to (biome's `noInvalidPositionAtImportRule`).
+ */
+@import "../src/renderer/src/styles/index.css";
+@source "../src/renderer/src";
