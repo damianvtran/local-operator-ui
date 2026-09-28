@@ -1710,6 +1710,17 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"mouseCursorRestampNote",
 	/*
+	 * AND THE PROJECTS CARD'S WHOLE-SURFACE TARGET - it belongs here for the
+	 * list's own reason: ITS SUBJECT IS THIS FILE'S BINDING. The card's root
+	 * role, click and keyboard activation move both trees (the component
+	 * under `src/`; the interaction pin and its lane entry under
+	 * `scripts/`), and no frame was re-taken - the pointer is not a pixel, so
+	 * the committed set renders identically and the PR's stills carry the
+	 * before/after a reader would want - so a reader is owed the two values
+	 * it binds and the reason the stills did not move.
+	 */
+	"projectsCardClickRestampNote",
+	/*
 	 * AND THE REGENERATED SCHEDULES BEFORE HALVES' OWN - it belongs here for the
 	 * list's own reason: THE NOTE STATES THIS FILE'S BINDING. The regeneration
 	 * moves `scripts/` (this note's registration) and no file under `src/` - the
@@ -1770,6 +1781,14 @@ const STAMP_BINDING_NOTES = [
 	 * every entry above it.
 	 */
 	"sidebarBinBasisFoldNote",
+	/*
+	 * AND THE ROUND-1 FOLD'S OWN (2026-09-28): `roundOneFoldNote` is the fold onto
+	 * the moved `origin/main` `1b1a52d5cf` while the four round-1 reports were
+	 * being answered - the manifest conflict (the only one) resolved as a union,
+	 * the pair re-derived from the folded tip. It quotes that pair, so it is held
+	 * to this file like every entry above it.
+	 */
+	"roundOneFoldNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2634,6 +2653,17 @@ const BRANCH_RECORDS = [
 	 * writes one top-level note, registered here for the same completeness reason.
 	 */
 	"mouseCursorRestampNote",
+	/*
+	 * AND THE PROJECTS CARD'S WHOLE-SURFACE TARGET - it belongs here for the
+	 * list's own reason: ITS SUBJECT IS THIS FILE'S BINDING. The card's root
+	 * role, click and keyboard activation move both trees (the component
+	 * under `src/`; the interaction pin and its lane entry under
+	 * `scripts/`), and no frame was re-taken - the pointer is not a pixel, so
+	 * the committed set renders identically and the PR's stills carry the
+	 * before/after a reader would want - so a reader is owed the two values
+	 * it binds and the reason the stills did not move.
+	 */
+	"projectsCardClickRestampNote",
 	/*
 	 * And this lane's own D1 fix rides beside them: the regenerated schedules
 	 * before halves write one top-level note, registered here for the same
