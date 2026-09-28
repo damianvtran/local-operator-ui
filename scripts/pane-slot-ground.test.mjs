@@ -102,7 +102,7 @@ function withoutComments(source) {
  * call is work the linter is right to refuse.
  */
 const LANE_GRADIENT =
-	/linear-gradient\(to right, var\((--lo-[\w-]+)\) \$\{columnWidth\}px, var\((--lo-[\w-]+)\)/;
+	/linear-gradient\(to right, var\((--lo-[\w-]+)\) \$\{[\w-]+\}px, var\((--lo-[\w-]+)\) \$\{[\w-]+\}px\)/;
 const PANE_ROOT = /className=\{cn\("flex h-full flex-col (bg-[\w-]+)"\)\}/g;
 const PANE_BAR =
 	/"flex (h-\d+) shrink-0 items-center justify-between gap-2 ([^"]*?)px-2"/g;
@@ -143,13 +143,20 @@ const PANE_HOSTS = [
  * the SECOND stop is the ground every pane in the slot stands on. Reading it here,
  * rather than restating `canvas`, is the whole point of claim 1 — a literal would
  * pass while the lane and the slot disagreed.
+ *
+ * THE STOP'S POSITION IS DELIBERATELY NOT READ HERE. It is the sidebar's width on a
+ * route with no column of its own and that column's right edge where one exists
+ * (the band is `Math.max` over the two), and the geometry of that number is
+ * `lane-leading.test.mjs`'s subject rather than this file's — this file reads the
+ * two GROUNDS and only the grounds. The stop count is asserted, so a third one is a
+ * re-read rather than a silently ignored band.
  */
 function laneWorkGround() {
 	const source = read(CHAT_LAYOUT);
 	const gradient = source.match(LANE_GRADIENT);
 	assert.ok(
 		gradient,
-		"chat-layout.tsx no longer paints the lane with a two-stop gradient; the slot's ground is derived from that gradient, so this file must be re-read before it can assert anything",
+		"chat-layout.tsx no longer paints the lane with a TWO-STOP role gradient (`linear-gradient(to right, var(--lo-<role>) ${<stop>}px, var(--lo-<role>) ${<stop>}px)`); the slot's ground is read off its second stop, so any other shape - a third stop, a literal colour - has to be re-read before this file can assert anything",
 	);
 	return gradient[2];
 }

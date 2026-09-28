@@ -1231,6 +1231,15 @@ const SCHEDULE_ROW =
 const BROWSER_TABS =
 	"src/renderer/src/features/browser/components/browser-tab-strip.tsx";
 
+/*
+ * The regex metacharacters an anchor may carry, and the literal spaces that stand
+ * for a run of whitespace inside one. Module scope for `useTopLevelRegex`; both feed
+ * the anchor pattern `literalClassAt` builds per call, which is where the anchor's
+ * own policy is stated.
+ */
+const REGEX_META = /[.*+?^${}()|[\]\\]/g;
+const ANCHOR_SPACE = / /g;
+
 /** The comment-stripped source of a file, cached the way the two above are. */
 /*
  * A plain `className="..."` literal, addressed by a nearby anchor and a
@@ -1242,7 +1251,23 @@ const BROWSER_TABS =
  */
 const literalClassAt = (file, anchor, where) => {
 	const source = sourceOf(file);
-	const at = source.indexOf(anchor);
+	/*
+	 * THE ANCHOR IS READ AS WHITESPACE, NOT AS BYTES (review round 1, B1). `<aside `
+	 * was an `indexOf`, and this repository's formatter is free to break a line after
+	 * a tag name — it did, in the very change this guard rode in on — at which point
+	 * the scan reported "no element" for an element that was still there, still the
+	 * one ground this table reads. Every literal space in an anchor now matches any
+	 * whitespace (a newline, and the indent after it), so the guard cannot fail for a
+	 * reason that is the formatter's rather than the ground's. Nothing else is
+	 * relaxed: the anchor's tokens are still required verbatim, so a renamed or
+	 * rewritten element still fails by name, and the className read below still walks
+	 * the same window from the same element.
+	 */
+	const at = source.search(
+		new RegExp(
+			anchor.replace(REGEX_META, "\\$&").replace(ANCHOR_SPACE, "\\s+"),
+		),
+	);
 	assert.notEqual(
 		at,
 		-1,

@@ -50,6 +50,17 @@ import type {
 } from "../../../../shared/desktop-contract";
 import { ProviderGrid } from "./provider-grid";
 
+/*
+ * The plays below query by role and accessible name, and several share the
+ * same pattern; biome's `useTopLevelRegex` wants a literal hoisted once it is
+ * reused, so these are named rather than re-written per play.
+ */
+const SIGN_IN_AGAIN = /Sign in again/;
+const API_KEY_TAB = /API key/;
+const API_KEY_LABEL = /API key/i;
+const SIGN_IN_RADIENT = /Sign in: Radient/;
+const SAVE_BUTTON = /Save/;
+
 const SUGGESTIONS: Record<string, { id: string; name: string }> = {
 	anthropic: { id: "claude-opus-5-5", name: "Claude Opus 5.5" },
 	openai: { id: "gpt-6-astra", name: "GPT-6 Astra" },
@@ -744,7 +755,7 @@ export const PanelRefusedVerdict: Story = {
 			await screen.findByRole("button", { name: "Manage Radient" }),
 		);
 		await userEvent.click(
-			await screen.findByRole("menuitem", { name: /Sign in again/ }),
+			await screen.findByRole("menuitem", { name: SIGN_IN_AGAIN }),
 		);
 		await startIfIdle("succeeded");
 	},
@@ -910,7 +921,7 @@ export const PanelSucceededWithDefault: Story = {
 			await screen.findByRole("button", { name: "Manage Anthropic" }),
 		);
 		await userEvent.click(
-			await screen.findByRole("menuitem", { name: /Sign in again/ }),
+			await screen.findByRole("menuitem", { name: SIGN_IN_AGAIN }),
 		);
 		await startIfIdle("succeeded");
 	},
@@ -949,14 +960,18 @@ const OPTS_KEY_REFUSED: BridgeOptions = {
 /** The key route's settled view, stating the refusal the row states. */
 export const PanelKeyRefusedVerdict = panelStory(
 	OPTS_KEY_REFUSED,
-	/Sign in: Radient/,
+	SIGN_IN_RADIENT,
 	async () => {
-		await userEvent.click(await screen.findByRole("tab", { name: /API key/ }));
+		await userEvent.click(
+			await screen.findByRole("tab", { name: API_KEY_TAB }),
+		);
 		await userEvent.type(
-			await screen.findByLabelText(/API key/i),
+			await screen.findByLabelText(API_KEY_LABEL),
 			"sk-test-key",
 		);
-		await userEvent.click(await screen.findByRole("button", { name: /Save/ }));
+		await userEvent.click(
+			await screen.findByRole("button", { name: SAVE_BUTTON }),
+		);
 	},
 	"radient",
 );
@@ -1206,6 +1221,61 @@ export const OnboardingStep3: Story = {
 			</div>
 		</Bridge>
 	),
+};
+
+/**
+ * Step 3's search half in its ADD-KEYS branch: every catalogue provider gets
+ * its own field, and Free is no longer the selection.
+ *
+ * The branch is local state, so the user's own move is what places the story
+ * in it - a click on the radio the step ships - and the shutter stays closed
+ * until the six rows exist, because a frame taken before the re-render is a
+ * picture of the Free branch under a name that says otherwise.
+ */
+export const OnboardingStep3Keys: Story = {
+	render: () => (
+		<Bridge options={OPTS_ONE_CONNECTED}>
+			<OnboardingSearchKeys />
+		</Bridge>
+	),
+};
+
+const OnboardingSearchKeys = () => {
+	useLayoutEffect(() => {
+		document.documentElement.dataset.capturePending = "1";
+		/*
+		 * PRESSED UNTIL THE BRANCH STICKS, not once. The modal finishes
+		 * mounting after its first paint - `OnboardingAt` drives the store in a
+		 * layout effect - and a click that lands before that settles can be
+		 * undone by the re-render it causes, which is a frame of the FREE
+		 * branch under a name that says otherwise (measured: the first cut of
+		 * this story photographed the free copy). So the loop's exit condition
+		 * is the state itself - one of the keys rows in the DOM - which is also
+		 * what the capture table's `expectPresent` asserts.
+		 */
+		let timer: ReturnType<typeof setTimeout>;
+		const press = (attempt = 0) => {
+			document.getElementById("onboarding-search-mode-keys")?.click();
+			if (
+				document.querySelector("[data-search-key]") !== null ||
+				attempt > 60
+			) {
+				document.documentElement.removeAttribute("data-capture-pending");
+				return;
+			}
+			timer = setTimeout(() => press(attempt + 1), 50);
+		};
+		timer = setTimeout(() => press(), 0);
+		return () => {
+			clearTimeout(timer);
+			document.documentElement.removeAttribute("data-capture-pending");
+		};
+	}, []);
+	return (
+		<div className="h-screen bg-canvas">
+			<OnboardingAt step={OnboardingStep.EXTRAS} />
+		</div>
+	);
 };
 
 /** The step-2 summary in its "choose" answer (no suggestion from the backend). */
