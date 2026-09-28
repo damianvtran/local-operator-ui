@@ -21,8 +21,10 @@ import { build } from "esbuild";
  *  1. THE GUARDS, over the cases in the report and the ones the deliberate
  *     changes are about: every price stays literal TEXT (not an `inlineMath`
  *     node, `$` visible), a price ahead of a genuine span no longer steals it,
- *     and the two accepted deviations (spaced `$ x $`, digit-led `$2^n$`) are
- *     pinned AS deviations rather than left to drift.
+ *     a (b)/(c)-rejected closer fails its attempt instead of leaving a span
+ *     open across prose (agent review R1-1; QA's rows 10/11/13), and the two
+ *     accepted deviations (spaced `$ x $`, digit-led `$2^n$`) are pinned AS
+ *     deviations rather than left to drift.
  *  2. THE EQUALITY HALF: for a pure-math corpus, the guarded plugin and
  *     `remark-math` produce IDENTICAL mdast (positions stripped). This is the
  *     half that catches a guard that reaches further than its comment claims -
@@ -49,7 +51,12 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { default as remarkGuardedMath } from "./src/renderer/src/features/chat/components/markdown-math-guarded";
+			export {
+				default as remarkGuardedMath,
+				upstreamMathFlow,
+				defaultGuardedMathText,
+			} from "./src/renderer/src/features/chat/components/markdown-math-guarded";
+			export { math } from "micromark-extension-math";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -58,9 +65,10 @@ const bundle = await build({
 	platform: "node",
 	write: false,
 });
-const { remarkGuardedMath } = await import(
-	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-);
+const { remarkGuardedMath, upstreamMathFlow, defaultGuardedMathText, math } =
+	await import(
+		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+	);
 
 const { default: remarkMath } = await import("remark-math");
 const { unified } = await import("unified");
@@ -95,7 +103,10 @@ const renderWith = async (plugin, source) =>
 			.use(remarkGfm)
 			.use(plugin)
 			.use(remarkRehype)
-			.use(rehypeKatex)
+			// `throwOnError: false` renders a KaTeX parse error as a
+			// `katex-error` span instead of throwing, so a test can assert on the
+			// user-visible symptom BY NAME (the red box) rather than by a stack.
+			.use(rehypeKatex, { throwOnError: false })
 			.use(rehypeStringify)
 			.process(source),
 	);
@@ -359,6 +370,87 @@ test("the citation-shaped pair stays literal - it did NOT before this change", (
 });
 
 /* ---------------------------------------------------------------------------
+ * 4b. A rejected closer FAILS the attempt - no span may cross prose.
+ * ---------------------------------------------------------------------------
+ */
+
+test("a (b)/(c)-rejected closer fails the attempt, so no span crosses prose", async () => {
+	/*
+	 * The class agent review round 1 (R1-1) and QA round 1 (Q-1) measured: an
+	 * opener passes guard (a), a later closer candidate is rejected by (b) or
+	 * (c), and further `$`s exist. Demote-and-continue left the span OPEN, so
+	 * the NEXT eligible `$` closed one span whose value contained the rejected
+	 * run - `inlineMath("a$5 and $b")`, which KaTeX paints as a red ParseError
+	 * where upstream rendered clean spans. The fix fails the attempt: the
+	 * opening `$` stays literal and a later `$...$` parses as its own span.
+	 */
+	const cases = [
+		// The reviewer's two shapes:
+		["cost $a$5 and $b$ now", "cost $a$5 and ", "b", " now"],
+		["cost $x to $y and $z$", "cost $x to $y and ", "z", ""],
+		// QA round 1's live rows 10, 11 and 13, verbatim:
+		[
+			"Closer space: a $x $ stays literal, and $w^2$ renders.",
+			"Closer space: a $x $ stays literal, and ",
+			"w^2",
+			" renders.",
+		],
+		[
+			"Closer digit: a $x$5 stays literal, and $q^2$ renders.",
+			"Closer digit: a $x$5 stays literal, and ",
+			"q^2",
+			" renders.",
+		],
+		[
+			"Tab closer: a $c^2\t$ span is refused, and $u^2$ renders.",
+			"Tab closer: a $c^2\t$ span is refused, and ",
+			"u^2",
+			" renders.",
+		],
+	];
+	for (const [source, before, value, after] of cases) {
+		const tree = guarded(source);
+		const maths = nodesOf(tree, "inlineMath");
+		assert.equal(maths.length, 1, source);
+		assert.equal(maths[0].value, value, source);
+		assert.ok(
+			!maths[0].value.includes("$"),
+			`no span may contain a rejected run: ${source}`,
+		);
+		const children = tree.children[0].children;
+		assert.deepEqual(
+			children.map((node) => node.type),
+			after ? ["text", "inlineMath", "text"] : ["text", "inlineMath"],
+			source,
+		);
+		assert.equal(children[0].value, before, source);
+		if (after) assert.equal(children[2].value, after, source);
+		// And the user-visible symptom: no KaTeX error box in the HTML.
+		const html = await renderWith(remarkGuardedMath, source);
+		assert.ok(!html.includes("katex-error"), html);
+	}
+});
+
+test("the rejected-closer class stays clean across its spellings", async () => {
+	// The class as a systematic deck rather than only the reported rows: each
+	// fragment is an opener that passes guard (a) followed by a closer
+	// candidate that fails (b)/(c); a later clean `$b$` must still parse.
+	const fragments = ["$a $", "$a\t$", "$a$5"];
+	const deck = [
+		...fragments.map((fragment) => `x ${fragment} y $b$ z`),
+		`x ${fragments[0]} y ${fragments[1]} z $b$`,
+		`x ${fragments[2]} y ${fragments[0]} z $b$`,
+	];
+	for (const source of deck) {
+		const maths = nodesOf(guarded(source), "inlineMath");
+		assert.equal(maths.length, 1, source);
+		assert.equal(maths[0].value, "b", source);
+		const html = await renderWith(remarkGuardedMath, source);
+		assert.ok(!html.includes("katex-error"), `${source}\n${html}`);
+	}
+});
+
+/* ---------------------------------------------------------------------------
  * 5. The rendered HTML: the `$` is VISIBLE and KaTeX is not involved.
  * ---------------------------------------------------------------------------
  */
@@ -452,17 +544,33 @@ test("nothing under src/ imports remark-math any more", () => {
 });
 
 test("the plugin registers exactly the guarded text tokenizer over upstream's flow", () => {
+	// The count is a DELTA: `remark-gfm` pushes one micromark extension of its
+	// own, so "exactly one" is this plugin's addition, not the array's length.
+	const base = unified().use(remarkParse).use(remarkGfm).freeze();
 	const frozen = unified()
 		.use(remarkParse)
 		.use(remarkGfm)
 		.use(remarkGuardedMath)
 		.freeze();
-	const extension = frozen.data().micromarkExtensions.at(-1);
-	assert.ok(extension, "the plugin must register a micromark extension");
-	assert.ok(
-		extension.flow[36],
-		"the `$$` flow construct must come from upstream",
+	const extensions = frozen.data().micromarkExtensions;
+	assert.equal(
+		extensions.length,
+		base.data().micromarkExtensions.length + 1,
+		"the plugin pushes exactly one micromark extension",
 	);
+	const extension = extensions.at(-1);
+	/*
+	 * Identity, not shape (agent review round 1, R1-3): the registered flow IS
+	 * the module's exported upstream map, whose `$` entry IS the package's own
+	 * display construct (`micromark-extension-math` holds it as a module-level
+	 * constant, so a fresh `math()` call hands back the same object); the
+	 * registered text tokenizer IS the module's exported default guarded
+	 * construct, and is NOT upstream's own text construct.
+	 */
+	assert.equal(extension.flow, upstreamMathFlow);
+	assert.equal(extension.flow[36], math().flow[36]);
+	assert.equal(extension.text[36], defaultGuardedMathText);
+	assert.notEqual(extension.text[36], math().text[36]);
 	assert.equal(extension.text[36].name, "mathText");
 });
 

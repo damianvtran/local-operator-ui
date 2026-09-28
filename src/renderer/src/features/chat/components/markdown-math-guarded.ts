@@ -40,17 +40,28 @@
  *
  * All three apply to `sizeOpen === 1` only: `$$` display and multi-dollar
  * inline behaviour are upstream's, byte for byte. When a candidate close fails
- * (b) or (c) the run is demoted to data and scanning continues - the same
- * recovery upstream uses for a size mismatch - which is what keeps
- * `$0.30/M fresh-in, $0.006/M cached-in` fully literal rather than an
- * open-ended span from the first `$` to the last. Rationale for each arm is
+ * (b) or (c) the attempt FAILS: the opening `$` stays literal text and
+ * scanning resumes AFTER it, so a rejected closer cannot leave the span open
+ * for a later `$` to close across prose. Measured on the alternative (demote
+ * the run to data and keep scanning), `cost $a$5 and $b$ now` became one
+ * `inlineMath("a$5 and $b")` - a span across prose that KaTeX paints as a red
+ * ParseError where upstream rendered two clean spans (agent review round 1,
+ * R1-1; QA's live rows are its space-left and tab-left spellings). Guard (a)
+ * alone keeps `$0.30/M fresh-in, $0.006/M cached-in` literal (both `$`s are
+ * digit-led and refused at the opener); this rule is what keeps the same text
+ * clean when an opener survives and a later closer is rejected. The OTHER
+ * demote path - a close run whose SIZE does not match the opener's, upstream's
+ * own recovery for a size mismatch - is untouched. Rationale for each arm is
  * on the guard itself below.
  *
- * THE DIGIT ARM IS ALREADY THIS REPOSITORY'S OWN HEURISTIC. `markdown-math.ts`
+ * THE DIGIT ARM AGREES WITH THIS REPOSITORY'S OWN HEURISTIC. `markdown-math.ts`
  * gates the pipeline with "a lone dollar sign only counts when it is not
- * followed by a digit", so the parser now refuses a single-dollar span in
- * exactly the case the gate already treated as a price. The two rules agreeing
- * is the point; the gate's job (whether to pay for KaTeX at all) is unchanged.
+ * followed by a digit", so the parser refuses the same digit-led shape the
+ * gate already reads as a price - the two rules agree on WHAT A PRICE LOOKS
+ * LIKE. The agreement is at the shape level, not the document level: the gate
+ * decides per DOCUMENT whether to pay for KaTeX at all (any one renderable
+ * span keeps the pipeline on, whatever the other dollars look like), while
+ * the parser decides per SPAN. The gate's behaviour is unchanged.
  *
  * PROVENANCE AND REFRESH. `guardedMathText` below is
  * `micromark-extension-math@3.1.0`'s `lib/math-text.js` (MIT, © Titus Wormer
@@ -74,13 +85,17 @@
  *     literal. Pandoc's own rule refuses both ends of it, and a text that
  *     writes both spaces is far more often two prices than a formula.
  *   - digit-led single-dollar math no longer renders: `$2^n - 1$` stays
- *     literal. The gate above already refused these documents when the digit
- *     was the FIRST character after the dollar; now the parser agrees. A
- *     formula can be written `$2^{n} - 1$`-style with a leading letter, or
- *     with `$$`, if a document needs one.
- *   - a closer followed by a digit demotes the whole span (`a $x$5` is
- *     literal), because `$5` there is a price and the span boundary would be
- *     a guess.
+ *     literal. The gate above refuses a DOCUMENT whose only dollar signals
+ *     are digit-led, but a mixed document keeps the pipeline on - `the
+ *     identity $2^n - 1$ is odd and $$E = mc^2$$` rendered both spans under
+ *     `remark-math` and now renders the display span alone - so a digit-led
+ *     single-dollar span in a mixed document is a REAL change, not a
+ *     consistency fix. If such a formula is needed, write it as display math
+ *     (`$$2^n - 1$$`) or start the single-dollar span with a non-digit
+ *     (`$\left(2^n - 1\right)$`).
+ *   - a closer followed by a digit fails the attempt (`a $x$5` is literal,
+ *     while a later `$b$` in the same text still typesets), because `$5`
+ *     there is a price and a span boundary drawn across it would be a guess.
  *
  * Everything else - `$$` display, multi-dollar inline, fenced and indented
  * code, `\$` escapes, citations' own dollar sign - keeps the behaviour it had
@@ -297,18 +312,25 @@ const guardedMathText = (
 				 * Measured cases: `$20,000 and $30,000` (pandoc's own example -
 				 * the second `$` sits after a space, so without (b) the pair
 				 * typesets `20,000 and`); `a $x $ b` (space before the closer);
-				 * `price $x$5 more` (digit after it). A failed closer is
-				 * DEMOTED to data and scanning continues - upstream's own
-				 * recovery for a size mismatch - which is what keeps
-				 * `$0.30/M fresh-in, $0.006/M cached-in` literal instead of one
-				 * span from the first `$` to the last.
+				 * `price $x$5 more` (digit after it).
+				 *
+				 * A REJECTED CANDIDATE FAILS THE ATTEMPT. Demoting the run to
+				 * data and scanning on - what this did until R1-1 - leaves the
+				 * span OPEN, and the next eligible `$` then closes a span whose
+				 * value contains the rejected run: `cost $a$5 and $b$ now`
+				 * became one `inlineMath("a$5 and $b")`, which KaTeX paints as
+				 * a red ParseError where upstream rendered two clean spans.
+				 * `nok` makes the opening `$` literal and resumes scanning
+				 * AFTER it, so `a $x $ stays literal, and $w^2$ renders` keeps
+				 * its prose and still typesets `w^2` (QA's live row 10; rows 11
+				 * and 13 are the digit-right and tab-left spellings). Nothing
+				 * spans prose, and nothing reaches KaTeX that could fail.
 				 */
 				if (
 					sizeOpen === 1 &&
 					(isGuardWhitespace(closeGuardPrev) || isDigit(code))
 				) {
-					token.type = "mathTextData";
-					return data(code);
+					return nok(code);
 				}
 
 				effects.exit("mathTextSequence");
@@ -396,6 +418,25 @@ function previous(this: TokenizeContext, code: Code): boolean {
 }
 
 /**
+ * Upstream's `$$` display flow map, built once and registered by the plugin
+ * below. Exported so the harness can assert the registration by IDENTITY: the
+ * pushed extension's `flow` IS this object, and its `[DOLLAR_SIGN]` entry IS
+ * the package's own display construct (a module-level constant inside
+ * `micromark-extension-math`, so every `math()` call shares it). The flow map
+ * never reads `options` - `math()` returns the same map for every call - so
+ * one shared instance is behaviour-preserving (agent review round 1, R1-3).
+ */
+export const upstreamMathFlow = math().flow;
+
+/**
+ * The default guarded single-dollar construct - options-free, i.e. single
+ * dollar math ON - shared between the plugin's default path and the harness's
+ * identity assertions. Sharing one instance is safe because the construct
+ * holds no per-parse state: every `tokenize` call builds its own locals.
+ */
+export const defaultGuardedMathText = guardedMathText();
+
+/**
  * The remark plugin the renderer wires in place of `remark-math`: upstream's
  * flow map for `$$`, upstream's `mathFromMarkdown` transform, and the guarded
  * single-dollar tokenizer above. `toMarkdown` is deliberately not registered -
@@ -414,11 +455,19 @@ export default function remarkGuardedMath(
 	const micromarkExtensions = data.micromarkExtensions;
 	const fromMarkdownExtensions = data.fromMarkdownExtensions;
 
-	// `math()`'s flow map is the `$$` display syntax; only its `text` entry is
-	// replaced, so display and multi-dollar behaviour is upstream's own code.
+	/*
+	 * `flow` is upstream's `$$` display map; only the `text` entry is replaced,
+	 * with the guarded construct. `singleDollarTextMath === false` keeps its
+	 * upstream meaning (only `$$` opens text math), so an explicit option
+	 * builds its own construct while the default shares the module-level one.
+	 */
+	const text =
+		options?.singleDollarTextMath === undefined
+			? defaultGuardedMathText
+			: guardedMathText(options);
 	micromarkExtensions.push({
-		flow: math(options).flow,
-		text: { [DOLLAR_SIGN]: guardedMathText(options) },
+		flow: upstreamMathFlow,
+		text: { [DOLLAR_SIGN]: text },
 	});
 	fromMarkdownExtensions.push(mathFromMarkdown());
 }
