@@ -8147,7 +8147,10 @@ async function sceneFirstSend(cdp) {
  * answers a `[bash:N]` prompt with one call that sleeps N seconds and then a
  * text answer (`providers/clients.py`), which is a completed turn with exactly
  * one in-between row (§5 case 2) - and the sleep is what makes the mid-run
- * window wide enough to photograph.
+ * window wide enough to photograph. The call parks on the approval card first
+ * (this config's `tool_approval_mode` is `ask`), which the scene answers the
+ * way a reader does - option `1` typed into the composer and sent - so the
+ * running and completed states below are reached through the real gate.
  *
  * WHAT IT ASSERTS, and why each claim is a check rather than a frame: "no bar
  * while live", "exactly one bar and one stamp when finished", "the press
@@ -8207,29 +8210,138 @@ async function sceneTurnCollapse(cdp) {
 			};
 		})()`);
 
-	/* The turn: one call that takes measurable time, then the mock's answer. */
-	await clickAt(cdp, `${composerSelector} textarea`);
-	await cdp.send("Input.insertText", { text: "Run the checks [bash:4]" });
-	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
-	const midRun = await waitForCondition(
+	/*
+	 * READY BEFORE TYPING. A send pressed while the pane is still resolving its
+	 * model goes nowhere at all - measured on this scene's second run: the
+	 * composer took the text and the Enter produced NO session, NO message POST
+	 * at the daemon and no row, while the same press a minute later worked. The
+	 * model chip in the composer's footer is the reading that the transport has
+	 * resolved (it is what the pane paints once the backend answers), so the send
+	 * waits for it rather than for a sleep.
+	 */
+	const ready = await waitForCondition(
 		cdp,
-		`(() => {
-			const log = document.querySelector('[role="log"]');
-			return Boolean(
-				log &&
-					log.textContent.includes("Run the checks") &&
-					log.querySelector('[data-record-kind="tool"]'),
-			);
-		})()`,
-		45_000,
+		`document.body.textContent.includes("mock-model")`,
+		90_000,
 	);
 	check(
-		"the sent message reached the transcript and the call is on the ledger",
-		midRun.ok,
-		`after ${midRun.waitedMs ?? "?"}ms: ${JSON.stringify(midRun.last)}`,
+		"the composer resolves the daemon's model before the send",
+		ready.ok,
+		`after ${ready.waitedMs ?? "?"}ms: ${JSON.stringify(ready.last)}`,
 	);
+
+	/* The turn: one call that takes measurable time, then the mock's answer. */
+	const typePrompt = async () => {
+		await clickAt(cdp, `${composerSelector} textarea`);
+		await cdp.evaluate(
+			`document.querySelector('${composerSelector} textarea').focus()`,
+		);
+		await wait(150);
+		await cdp.send("Input.insertText", { text: "Run the checks [bash:12]" });
+		await wait(150);
+		const value = await cdp.evaluate(
+			`document.querySelector('${composerSelector} textarea').value`,
+		);
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		return value;
+	};
+	const typed = await typePrompt();
+	check(
+		"the prompt reached the composer",
+		typeof typed === "string" && typed.includes("Run the checks"),
+		JSON.stringify(typed),
+	);
+	const painted = () =>
+		waitForCondition(
+			cdp,
+			`(() => {
+				const log = document.querySelector('[role="log"]');
+				return Boolean(
+					log &&
+						log.querySelector('[data-record-kind="user"]') &&
+						log.textContent.includes("Run the checks"),
+				);
+			})()`,
+			20_000,
+		);
+	let sent = await painted();
+	if (!sent.ok) {
+		/*
+		 * The press is repeated rather than the prompt retyped: an Enter over an
+		 * empty composer is the app's own no-op, so a second press cannot double
+		 * a message that did land.
+		 */
+		note(
+			"the first press was dropped; repeating the Enter",
+			JSON.stringify(sent.last),
+		);
+		await clickAt(cdp, `${composerSelector} textarea`);
+		await cdp.evaluate(
+			`document.querySelector('${composerSelector} textarea').focus()`,
+		);
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		sent = await painted();
+	}
+	check(
+		"the sent message reached the transcript",
+		sent.ok,
+		`after ${sent.waitedMs ?? "?"}ms: ${JSON.stringify(sent.last)}`,
+	);
+	const asked = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-lo-question-dock]'))`,
+		120_000,
+	);
+	check(
+		"the call parks on the approval card",
+		asked.ok,
+		`after ${asked.waitedMs ?? "?"}ms: ${JSON.stringify(asked.last)}`,
+	);
+	/*
+	 * THE RIG'S OWN GATE, ANSWERED THE WAY A READER ANSWERS IT. `tool_approval_mode`
+	 * is `ask` in this config, so the bash call parks on the question dock and the
+	 * turn cannot finish without an answer; option 1 is Approve, typed and sent
+	 * through the composer's real key handler like the prompt itself. The PARKED
+	 * reading is kept as a note rather than asserted on - it is the state whose
+	 * collapse behaviour the design round will judge beside the others.
+	 */
+	const parked = await readTranscript();
+	note("parked on the approval", JSON.stringify(parked));
+	await clickAt(cdp, `${composerSelector} textarea`);
+	await cdp.evaluate(
+		`document.querySelector('${composerSelector} textarea').focus()`,
+	);
+	await wait(150);
+	await cdp.send("Input.insertText", { text: "1" });
+	await wait(150);
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	const cleared = () =>
+		waitForCondition(
+			cdp,
+			`!document.querySelector('[data-lo-question-dock]')`,
+			30_000,
+		);
+	let approved = await cleared();
+	if (!approved.ok) {
+		note(
+			"the approval press was dropped; repeating the Enter",
+			JSON.stringify(approved.last),
+		);
+		await clickAt(cdp, `${composerSelector} textarea`);
+		await cdp.evaluate(
+			`document.querySelector('${composerSelector} textarea').focus()`,
+		);
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		approved = await cleared();
+	}
+	check(
+		"the approval clears the card and the call starts running",
+		approved.ok,
+		`after ${approved.waitedMs ?? "?"}ms: ${JSON.stringify(approved.last)}`,
+	);
+	await wait(400);
 	const live = await readTranscript();
-	note("mid-run", JSON.stringify(live));
+	note("mid-run, after the approval", JSON.stringify(live));
 	check(
 		"mid-run: nothing has collapsed - the turn is live and every row is its own",
 		live !== null && live.bars === 0 && live.toolRows >= 1,
