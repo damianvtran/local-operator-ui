@@ -661,9 +661,25 @@ export function turnFeet(
 		failedOf: (row: Row) => boolean;
 		durationOf?: (row: Row) => number | null;
 		isAction: (row: Row) => boolean;
+		/**
+		 * Whether this row OPENS a turn, i.e. starts a new `runsOf` run.
+		 *
+		 * The caller passes the partition (`transcript-rows.ts:runsOf`) so the
+		 * foot counts the SAME unit the caption rule and the turn collapse do.
+		 * The default — `gap === "turn" || "first"` — is the historical proxy and
+		 * is WRONG for a steered turn: a steer row carries the turn gap as well,
+		 * and resetting there is how a steered run's foot reported only the rows
+		 * after the steer (`4 actions` under a bar saying `12`, the F5 defect the
+		 * unified unit removes). Callers with no partition in hand (tests, a
+		 * record-space walk) keep the proxy.
+		 */
+		opensRun?: (row: Row) => boolean;
 	},
 ): Map<string, TurnFoot> {
 	const feet = new Map<string, TurnFoot>();
+	const opensRun =
+		options.opensRun ??
+		((row: Row) => row.gap === "turn" || row.gap === "first");
 	let actions = 0;
 	let failed = 0;
 	let durationS: number | null = null;
@@ -675,7 +691,7 @@ export function turnFeet(
 		 * turn above it did, and carrying the previous turn's counts into the next
 		 * one would report the conversation rather than the turn.
 		 */
-		if (row.gap === "turn" || row.gap === "first") {
+		if (opensRun(row)) {
 			actions = 0;
 			failed = 0;
 			durationS = null;

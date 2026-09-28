@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|project-detail|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|drafts|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|project-detail|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|drafts|none>
  *                          which built-in scene to run (default: states)
  *   --project <key>        (with --scene project-detail) the seeded project the
  *                          detail scene drives; the seed decides the name and a
@@ -8131,6 +8131,188 @@ async function sceneFirstSend(cdp) {
 	 * mock provider (a configured user, which is the state the claim is about).
 	 */
 	return [emptyFrame, sentFrame, settledFrame];
+}
+
+/**
+ * THE COLLAPSED TURN, driven end to end in the built app: the interaction half
+ * of the turn-collapse design's evidence plan (§10.3), which a still cannot
+ * state.
+ *
+ * WHY THIS SCENE EXISTS. The story set photographs the states; only a real turn
+ * shows the TRANSITION the feature is made of: a run while it is live (every
+ * row its own, no bar), the same run the moment its answer settles (the bar
+ * replaces the in-between rows), the reader's press (the rows come back, the
+ * bar stays as the toggle), and a reload (the durable re-read arrives collapsed
+ * again, with the same run and the same action count). The daemon's mock
+ * answers a `[bash:N]` prompt with one call that sleeps N seconds and then a
+ * text answer (`providers/clients.py`), which is a completed turn with exactly
+ * one in-between row (§5 case 2) - and the sleep is what makes the mid-run
+ * window wide enough to photograph.
+ *
+ * WHAT IT ASSERTS, and why each claim is a check rather than a frame: "no bar
+ * while live", "exactly one bar and one stamp when finished", "the press
+ * reveals the row behind it", "the reload comes back collapsed with the same
+ * run and the same action count". The duration clause is NOTED, not asserted
+ * equal across the reload: live it is the settle frame's clock (`settledAt`)
+ * and durable it is the producer's commit `ts`, and the pair of readings in the
+ * log is what says whether the two agree on this run (§R1).
+ *
+ * Requires `--backend` like first-send: with no backend the chat route draws
+ * its refusal surface and no composer mounts, so there is nothing to send.
+ */
+async function sceneTurnCollapse(cdp) {
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	const composerSelector = '[data-tour-tag="chat-input-textarea"]';
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+	await verb(cdp, "navigate", "/chat");
+	const mounted = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${composerSelector}') && document.querySelector('[data-lo-empty-mark]'))`,
+		30_000,
+	);
+	check(
+		"the chat route shows the empty state with a composer",
+		mounted.ok,
+		`composer + empty mark present: ${JSON.stringify(mounted.last)}`,
+	);
+
+	/*
+	 * The readings, scoped to the transcript region: the sidebar carries its own
+	 * clocks and rows, and a whole-document query would fold them into every
+	 * count below.
+	 */
+	const readTranscript = () =>
+		cdp.evaluate(`(() => {
+			const log = document.querySelector('[role="log"]');
+			if (!log) return null;
+			const bar = log.querySelector('[data-turn-summary]');
+			return {
+				bars: log.querySelectorAll('[data-turn-summary]').length,
+				runIds: bar ? bar.getAttribute('data-run-ids') : null,
+				barText: bar ? bar.textContent : null,
+				barOpen: bar
+					? bar.querySelector('button[aria-expanded]')?.getAttribute('aria-expanded')
+					: null,
+				toolRows: log.querySelectorAll('[data-record-kind="tool"]').length,
+				stamps: log.querySelectorAll('[data-stamp]').length,
+				foot: log.textContent.includes('Worked'),
+			};
+		})()`);
+
+	/* The turn: one call that takes measurable time, then the mock's answer. */
+	await clickAt(cdp, `${composerSelector} textarea`);
+	await cdp.send("Input.insertText", { text: "Run the checks [bash:4]" });
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	const midRun = await waitForCondition(
+		cdp,
+		`(() => {
+			const log = document.querySelector('[role="log"]');
+			return Boolean(
+				log &&
+					log.textContent.includes("Run the checks") &&
+					log.querySelector('[data-record-kind="tool"]'),
+			);
+		})()`,
+		45_000,
+	);
+	check(
+		"the sent message reached the transcript and the call is on the ledger",
+		midRun.ok,
+		`after ${midRun.waitedMs ?? "?"}ms: ${JSON.stringify(midRun.last)}`,
+	);
+	const live = await readTranscript();
+	note("mid-run", JSON.stringify(live));
+	check(
+		"mid-run: nothing has collapsed - the turn is live and every row is its own",
+		live !== null && live.bars === 0 && live.toolRows >= 1,
+		JSON.stringify(live),
+	);
+	const liveFrame = await captureSettled(cdp, "turn-collapse-live-no-bar");
+	note("frame", JSON.stringify(liveFrame));
+
+	const answered = await waitForCondition(
+		cdp,
+		`(() => {
+			const log = document.querySelector('[role="log"]');
+			return Boolean(log && log.textContent.includes("from the mock provider"));
+		})()`,
+		60_000,
+	);
+	check(
+		"the mock's answer arrived and the turn completed",
+		answered.ok,
+		`after ${answered.waitedMs ?? "?"}ms: ${JSON.stringify(answered.last)}`,
+	);
+	await wait(1_000);
+	const finished = await readTranscript();
+	note("completed", JSON.stringify(finished));
+	check(
+		"completed: the finished turn condenses to exactly one bar",
+		finished !== null &&
+			finished.bars === 1 &&
+			(finished.runIds ?? "").split(" ").length >= 3,
+		JSON.stringify(finished),
+	);
+	check(
+		"completed: the bar carries the turn's one stamp and the foot stands down",
+		finished !== null && finished.stamps === 1 && finished.foot === false,
+		JSON.stringify(finished),
+	);
+	const completedFrame = await captureSettled(cdp, "turn-collapse-completed");
+	note("frame", JSON.stringify(completedFrame));
+
+	await verb(cdp, "press", {
+		selector: "[data-turn-summary] button[aria-expanded]",
+	});
+	await wait(500);
+	const opened = await readTranscript();
+	note("expanded", JSON.stringify(opened));
+	check(
+		"the press reveals the work behind the bar, and the bar stays as the toggle",
+		opened !== null && opened.barOpen === "true" && opened.toolRows >= 1,
+		JSON.stringify(opened),
+	);
+	const expandedFrame = await captureSettled(cdp, "turn-collapse-expanded");
+	note("frame", JSON.stringify(expandedFrame));
+
+	/* The reload half (§R1/§10.3): the durable re-read must arrive collapsed. */
+	await cdp.send("Page.reload", { ignoreCache: false });
+	const back = await waitForCondition(
+		cdp,
+		`(() => {
+			const log = document.querySelector('[role="log"]');
+			return Boolean(log && log.querySelector('[data-turn-summary]'));
+		})()`,
+		30_000,
+	);
+	await wait(800);
+	const reloaded = await readTranscript();
+	note(
+		"reloaded",
+		JSON.stringify({ read: reloaded, back: back.ok, before: finished }),
+	);
+	check(
+		"reload: the turn comes back collapsed, with the same run and the same action count",
+		back.ok === true &&
+			reloaded !== null &&
+			reloaded.barOpen === "false" &&
+			reloaded.runIds === finished.runIds &&
+			/\b1 action\b/.test(reloaded.barText ?? "") ===
+				/\b1 action\b/.test(finished.barText ?? ""),
+		JSON.stringify({ reloaded, finished }),
+	);
+	const reloadFrame = await captureSettled(cdp, "turn-collapse-reloaded");
+	note("frame", JSON.stringify(reloadFrame));
+
+	return [liveFrame, completedFrame, expandedFrame, reloadFrame];
 }
 
 /**
@@ -28466,6 +28648,11 @@ async function main() {
 			"--scene first-send needs --backend: with no backend the chat route draws its refusal surface and no composer mounts, so there is nothing to send from",
 		);
 	}
+	if (SCENE === "turn-collapse" && BACKEND === null) {
+		throw new Error(
+			"--scene turn-collapse needs --backend: the bar collapses a turn the daemon has to actually run, and with no backend the chat route draws its refusal surface and no composer mounts",
+		);
+	}
 	if (SCENE === "conversation-start-away-failure" && BACKEND === null) {
 		console.error(
 			"the conversation-start-away-failure scene needs --backend <url>: it drives a real refusal through the tap",
@@ -28670,6 +28857,7 @@ async function main() {
 			 * widths it is written about.
 			 */ else if (SCENE === "floors") await sceneFloors(cdp);
 			else if (SCENE === "first-send") await sceneFirstSend(cdp);
+			else if (SCENE === "turn-collapse") await sceneTurnCollapse(cdp);
 			else if (SCENE === "conversation-start")
 				await sceneConversationStart(cdp);
 			else if (SCENE === "conversation-start-away-failure")

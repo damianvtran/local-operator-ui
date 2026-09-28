@@ -144,6 +144,24 @@ export type TranscriptRecord =
 			/** Still receiving deltas; the view shows the text without a cursor. */
 			streaming: boolean;
 			/**
+			 * Viewer-clock ms when this record SETTLED, or absent while it streams.
+			 *
+			 * WHY THE LIVE ROW NEEDS IT: `ts` on a live assistant record is its stream
+			 * START (`message_start`'s frame-arrival clock, kept through
+			 * `message_end`), so a wall-clock span built from `ts` would read short by
+			 * the answer's whole streaming time and then jump when the reconcile
+			 * replaces the row with its durable twin, whose `ts` IS the commit
+			 * instant. Stamping the settle moment closes that skew: a live span and
+			 * the same span after a reload agree by construction (the runtime is
+			 * local, one clock — the same assumption `compactingSince` documents).
+			 *
+			 * NOT set on durable rows, deliberately: a page cannot restamp a
+			 * completion it did not witness, and a durable `ts` already means
+			 * "commit = completion". Viewer-transient like `ts` is: superseded by the
+			 * durable row with the same id exactly as `ts` is.
+			 */
+			settledAt?: number;
+			/**
 			 * What this row's text is NOT, when this viewer cannot hold the whole
 			 * message. Absent means the row is the answer.
 			 *
@@ -2649,9 +2667,16 @@ export function applyEvent(
 			let next = state;
 			for (const record of state.records) {
 				if (record.kind === "assistant" && record.streaming) {
+					/*
+					 * The settle stamp rides the same sweep that clears `streaming`: a
+					 * record the turn end settles (an aborted stream is the one this arm
+					 * exists for) settles at the turn's own end instant, which is what
+					 * the span composition reads as `settledAt ?? ts`.
+					 */
 					next = upsert(next, {
 						...record,
 						streaming: false,
+						settledAt: now,
 						stopReason: event.aborted ? "aborted" : record.stopReason,
 					});
 				}
@@ -2975,12 +3000,26 @@ export function applyEvent(
 			if (message.role !== "assistant") return state;
 			const position = state.index.get(message.id);
 			const text = messageText(message);
+			/*
+			 * THE SETTLE INSTANT, kept when the row already settled: a replayed
+			 * `message_end` (a receipt replay after a reconnect, a flush from a dead
+			 * stream) must not restamp a completion — the record is replaced id-for-id,
+			 * and the instant it first settled with is the one anything built on it
+			 * already reads. A row arriving here settled for the first time stamps
+			 * `now`, the viewer clock the span composition shares.
+			 */
+			const previous =
+				position === undefined ? undefined : state.records[position];
 			const settled: TranscriptRecord = {
 				kind: "assistant",
 				id: message.id,
 				ts: position === undefined ? now : state.records[position].ts,
 				text,
 				streaming: false,
+				settledAt:
+					previous?.kind === "assistant" && previous.settledAt !== undefined
+						? previous.settledAt
+						: now,
 				stopReason: (message.stop_reason as string | null) ?? null,
 				error: Boolean(message.is_error),
 			};
