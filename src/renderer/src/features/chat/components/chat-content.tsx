@@ -24,8 +24,10 @@ import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import {
+	DEFAULT_BROWSER_PANEL_WIDTH,
 	DEFAULT_CONSOLE_PANEL_WIDTH,
 	DEFAULT_RUN_PANEL_WIDTH,
+	resolveRightSlotWidth,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
@@ -59,11 +61,7 @@ import {
 	CHAT_COLUMN_INSET,
 	CHAT_MEASURE,
 } from "../chat-measure";
-import {
-	CHAT_PANE_MIN_PX,
-	canvasDockWidth,
-	canvasPaneMode,
-} from "../chat-sidebar-layout";
+import { CHAT_PANE_MIN_PX, canvasPaneMode } from "../chat-sidebar-layout";
 import type {
 	DraftPickerDestination,
 	DraftResolution,
@@ -739,7 +737,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			};
 		}, []);
 
-		const canvasPanelWidth = useUiPreferencesStore((s) => s.canvasWidth);
 		const setCanvasPanelWidth = useUiPreferencesStore((s) => s.setCanvasWidth);
 		const restoreDefaultCanvasPanelWidth = useUiPreferencesStore(
 			(s) => s.restoreDefaultCanvasWidth,
@@ -882,13 +879,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const mentionedFileCount = (canvasState ?? defaultCanvasState)
 			.mentionedFiles.length;
 
-		// No effect needed: always use the value from the store, or fallback to default if 0
-		const effectiveCanvasPanelWidth =
-			canvasPanelWidth === 0 ? 450 : canvasPanelWidth;
 		// The run panel's own zero-fallback is its default rather than the canvas's
 		// 450: the two panes are deliberately different widths, and an unset
-		// preference should land the run panel on the design's 420.
-		const effectiveRunPanelWidth = runPanelWidth === 0 ? 420 : runPanelWidth;
+		// preference should land the run panel on the design's default. Both numbers
+		// live in the store, where the slot's own resolver reads them too.
+		const effectiveRunPanelWidth =
+			runPanelWidth === 0 ? DEFAULT_RUN_PANEL_WIDTH : runPanelWidth;
 
 		/*
 		 * The browser pane: the third occupant of the same slot
@@ -914,7 +910,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		// unset preference should land the browser on the design's 640 (a page's room)
 		// rather than on whichever pane's number happens to be first.
 		const effectiveBrowserPanelWidth =
-			browserPanelWidth === 0 ? 640 : browserPanelWidth;
+			browserPanelWidth === 0 ? DEFAULT_BROWSER_PANEL_WIDTH : browserPanelWidth;
 
 		/*
 		 * The console pane: the FOURTH occupant of the same slot (design 6.1), read
@@ -1103,39 +1099,21 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			return () => observer.disconnect();
 		}, []);
 		/*
-		 * §I's two canvas rules, from that one measured number and the user's own
-		 * preference: the pane DOCKED is `min(560, available - 480)`, and where that
-		 * leaves less than the pane's own 400px floor it stops docking and overlays the
-		 * chat instead. `paneRowWidth` is 0 for one frame before the first layout effect
-		 * runs, and the docked branch is the honest reading of "not measured yet": it
-		 * draws the pane at the width it already had rather than flashing a full-pane
-		 * overlay for a frame.
+		 * §I's two canvas rules, from the one measured number: the pane DOCKED is
+		 * `min(560, available - 480)`, and where that leaves less than the pane's own
+		 * 400px floor it stops docking and overlays the chat instead. `canvasDocked`
+		 * is the mode (the divider and `data-canvas-mode` read it); the WIDTH is the
+		 * slot resolver's own answer (`resolveRightSlotWidth`, `ui-preferences-store`),
+		 * which is also what the chrome lane above the row calls — one number for the
+		 * pane's leading edge rather than two that can disagree. The resolver's note
+		 * carries the arithmetic, the overlay case and the unmeasured frame, all three
+		 * of which used to be restated here.
 		 */
 		const canvasDocked =
 			canvasPaneMode(paneRowWidth || Number.MAX_SAFE_INTEGER) === "docked";
-		const canvasWidth = canvasDocked
-			? /*
-				 * UNMEASURED IS NOT ZERO. `paneRowWidth` is 0 for the frame before the layout effect
-				 * runs, and `canvasDockWidth(0)` is 0 - which, with the wrapper's
-				 * `transition-[width] duration-base`, drew a zero-width pane and then ANIMATED it to
-				 * its real width. Anyone measuring inside that window reads a layout that is on its
-				 * way somewhere else (the pane's own scene did, and reported 179px against a settled
-				 * 560). The preference is the honest fallback: the pane starts where the user asked
-				 * for it and is corrected by the row's real width in the same commit.
-				 */
-				paneRowWidth > 0
-				? Math.min(effectiveCanvasPanelWidth, canvasDockWidth(paneRowWidth))
-				: effectiveCanvasPanelWidth
-			: /*
-				 * THE OVERLAY'S WIDTH IS THE PANE'S OWN (§I: "full pane width, scrim
-				 * absent"), capped by the row so a preference stored in a wider window cannot
-				 * push it past the pane it covers. Not the row's leftover: the point of the
-				 * mode is that the chat column's floor stops deciding the canvas's width.
-				 */
-				Math.min(
-					effectiveCanvasPanelWidth,
-					paneRowWidth || effectiveCanvasPanelWidth,
-				);
+		const canvasWidth = useUiPreferencesStore((state) =>
+			resolveRightSlotWidth(paneRowWidth, state),
+		);
 		/*
 		 * THE DIVIDER'S CONTRACT, in one place: what the separator announces and
 		 * accepts is what the pane renders.
