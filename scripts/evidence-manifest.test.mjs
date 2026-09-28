@@ -1582,6 +1582,11 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"foldOntoA72909b1f4Note",
 	/*
+	 * AND THE NINTH FOLD'S OWN: the fold onto `cc5a329040` re-derived the pair once more minutes later
+	 * and wrote one record - same reason, same check.
+	 */
+	"foldOntoCc5a329040Note",
+	/*
 	 * AND THIS LANE'S OWN: the board/timeline pass. Its subject IS this file's
 	 * binding - the change moves BOTH trees (the projects feature's board,
 	 * timeline, switcher and their pins; the capture rows and this list) and
@@ -2416,6 +2421,10 @@ const BRANCH_RECORDS = [
 	 * And the eighth fold's record rides beside them - same reason, same check.
 	 */
 	"foldOntoA72909b1f4Note",
+	/*
+	 * And the ninth fold's record rides beside them - same reason, same check.
+	 */
+	"foldOntoCc5a329040Note",
 	/*
 	 * And this branch's own record, folded in beside it: the account-foot
 	 * refresh writes one top-level note, registered here for the same
