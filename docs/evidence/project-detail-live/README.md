@@ -70,7 +70,7 @@ node scripts/renderer-driver.mjs --scene project-detail \
 
 ## The scene's checks, as the run printed them
 
-All 18 PASS on both palettes, 0 FAIL:
+All 21 PASS on both palettes, 0 FAIL:
 
 ```
 the harness is driving the Electron this branch pins
@@ -83,15 +83,26 @@ window mode is headless and the window is never shown or focused
 the seeded project exists on this run's daemon, with one linked session
 the sheet draws the seeded project: title, key, managed-by, milestone and feed
 the strip holds the typed message
-pressing Enter admits the message (the strip clears on the way out of admitChatDraft)
+pressing Enter admits the message (a pre-admission refusal is waited out and re-pressed)
 the message is admitted into the linked session's transcript (daemon read)
 the message renders in the linked session's conversation
+a pointer press of Send admits the second message (the strip clears)
+the pointer send hands the keyboard back to the strip (UX round 1, U2)
+the second message is admitted into the transcript too (daemon read)
 the picker's Start session control is on screen and was pressed
 the started session lands on its chat with the prompt PRE-FILLED and unsent
 the daemon holds one more linked session than before the create
 the linked-sessions list draws a row for the new link too
 no process from this run outlived its boot
 ```
+
+The last three of the scene's own checks are the pointer leg (added by round-1
+remediation, UX U2): one real `Input.dispatchMouseEvent` press of Send, then
+the strip's own state, the daemon's transcript and `document.activeElement` -
+the check that fails when the refocus regresses, measured with a trusted
+pointer because a programmatic click would not have moved focus at all. The
+scene exits non-zero on any FAIL (the negative run, refocus disabled, printed
+`[FAIL] the pointer send hands the keyboard back to the strip` and rc=1).
 
 ## The seed
 
