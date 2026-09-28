@@ -15153,11 +15153,24 @@ async function sceneBtwAside(cdp) {
 					 * that element - it is inset by the box's own padding - and comparing
 					 * the panel against it reported a 17px misalignment that does not
 					 * exist on screen.
+					 *
+					 * Matched on the container-query PREFIX (chatcol:max-w-) rather than
+					 * on the value, because the value is no longer in the class: the
+					 * measure resolves the --lo-chat-measure property, so that one number
+					 * serves the transcript and the composer together, and this selector used to
+					 * spell max-w-[900px]. It stopped matching when the value moved into
+					 * the property, which read as "the composer has no frame" - the two
+					 * readings this block exists to compare would both have been null and
+					 * the misalignment check would have passed over nothing. The prefix is
+					 * stable across a value change, which is the property a rig wants.
+					 *
+					 * NO BACKTICKS ABOVE, and that is not a style choice: this block is
+					 * inside the template literal the rig sends to the page, so a backtick here
+					 * ends the string and the file stops parsing - which is exactly what the
+					 * first version of this comment did.
 					 */
 					const shared = Array.from(
-						document.querySelectorAll(
-							'[class*="@min-[750px]/chatcol:max-w-[900px]"]',
-						),
+						document.querySelectorAll('[class*="chatcol:max-w-"]'),
 					);
 					const frame = field
 						? shared.find((el) => el.contains(field))
