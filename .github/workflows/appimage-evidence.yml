@@ -1,0 +1,105 @@
+name: AppImage update information (evidence branch)
+
+# A THROWAWAY HARNESS, NOT A RELEASE PATH. This file exists only on the
+# `evidence/appimage-linux-build` branch, to exercise the AppImage update
+# information end to end on a real ubuntu-latest runner: the same pins as
+# publish.yml's `build-linux` job (pnpm 10.29.2, Node 22.13.1), the same apt
+# additions (`zsync`, `p7zip-full`), and the same step order -
+# prepare-toolset -> build -> finalize - followed by one artifact upload for
+# inspection. It publishes nothing and touches no release.
+#
+# WHY `pull_request` IS DECLARED ALONGSIDE `workflow_dispatch`. GitHub will only
+# dispatch a `workflow_dispatch` workflow the default branch has seen: a brand
+# new workflow file that exists only on a branch answers "workflow not found"
+# (cli/cli#5268), and the pull_request event is the documented way a workflow's
+# first run happens from a branch. The pull request this rides on is the
+# evidence PR for the feature branch, opened explicitly to host this run; it is
+# never merged.
+on:
+  workflow_dispatch:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: appimage-evidence-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  appimage:
+    name: Build the AppImage with update information
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        # pinned: the version every workflow installs with (see AGENTS.md
+        # "Which pnpm may install and package")
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.1'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Stage the bundled uv (Linux)
+        run: pnpm setup-python
+
+      - name: Install AppImage update tooling
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq zsync p7zip-full
+
+      - name: Prepare the AppImage toolset with embedded update information
+        run: |
+          bash scripts/require-report.sh "AppImage toolset" node scripts/appimage-update-info.mjs prepare-toolset --dir "$RUNNER_TEMP/appimage-tools"
+          echo "APPIMAGE_TOOLS_PATH=$RUNNER_TEMP/appimage-tools" >> "$GITHUB_ENV"
+
+      - name: Build Linux app
+        # `APPIMAGE_TOOLS_PATH` arrives from the prepare step through
+        # `$GITHUB_ENV`, exactly as the release job wires it.
+        run: pnpm dist:linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          VITE_MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
+          VITE_MICROSOFT_TENANT_ID: ${{ secrets.MICROSOFT_TENANT_ID }}
+
+      - name: Assert the packaged app carries its whole runtime closure
+        run: bash scripts/require-report.sh "Packaged closure check" node scripts/check-packaged-closure.mjs --dist dist
+
+      - name: Verify the packaged app carries its bundled uv
+        run: bash scripts/require-report.sh "Bundled uv check" node scripts/verify-bundled-uv.mjs --dist dist --platform linux
+
+      - name: Write the AppImage zsync and assert its update information
+        run: bash scripts/require-report.sh "AppImage update information" node scripts/appimage-update-info.mjs finalize --dist dist
+
+      - name: Read the update information back from the built artifact
+        run: node scripts/appimage-update-info.mjs read --file dist/*.AppImage
+
+      - name: Run the hermetic suite on the CI node version
+        run: node --test scripts/appimage-update-info.test.mjs
+
+      - name: Record digests
+        run: |
+          sha256sum dist/*.AppImage dist/*.AppImage.zsync dist/latest-linux.yml | tee "$RUNNER_TEMP/appimage-digests.txt"
+
+      - name: Upload the built AppImage, its zsync and the feed
+        uses: actions/upload-artifact@v4
+        with:
+          name: appimage-evidence
+          path: |
+            dist/*.AppImage
+            dist/*.AppImage.zsync
+            dist/latest-linux.yml
+          if-no-files-found: error
+          retention-days: 3
