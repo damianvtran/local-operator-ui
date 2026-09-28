@@ -218,3 +218,20 @@ viewport, so its frames are 2760x1800 device px, where the 2026-09-15/17 frames 
 set are 2760x1736 (a 1380x868 viewport). Nothing was cropped to make them match; the
 reading is stated instead, and a re-take of the older five at the taller viewport is
 available to anyone who wants one height for the whole set.
+
+## Remediation round 1 (2026-09-28): the in-band band one frame still shows, named rather than left to read as current
+
+Review round 1 on this pass (agent review `m-4`, design `D1`) found that the frames which still
+show the tab-actions band in its in-band form were neither re-shot nor named. Two of the three
+are re-shot in the remediation commit: `browser-tab-strip/actions-expanded` and
+`actions-expanded-batch`, 12 themes each, at this head — so the popout has its light-theme and
+inactive-tab (`Watch` row) coverage in the committed sweep, and no committed frame of that story
+surface shows the deleted band.
+
+The third is the one above: `20-strip-failed-and-agent-markers/localOperatorDark.webp` keeps the
+pixels of its own run, and its band is the in-band row this pass deleted. Its re-shoot is a
+**harness run** rather than a Storybook capture, so it is deferred under the fleet's load
+directive and **named as owed** here rather than left to read as current: the next harness run
+re-shoots it (and with it gains the popout's photograph over this surface). What the frame still
+proves is its own headline — the `Agent`/`Failed` marker pair on one row — which no diff line in
+this pass alters, and the frame's strip reads identically to `21`/`23`.
