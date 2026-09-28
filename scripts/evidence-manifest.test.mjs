@@ -2659,7 +2659,6 @@ const BRANCH_RECORDS = [
 	 * And this fold's record rides beside them - registered here for the same completeness reason.
 	 */
 	"foldOnto8a03152c61Note",
-
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
