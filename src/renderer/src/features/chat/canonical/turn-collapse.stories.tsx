@@ -27,7 +27,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useRef } from "react";
 import "../../../styles/index.css";
-import type { DesktopHistoryPage } from "../../../../../shared/desktop-session-contract";
+import type {
+	DesktopHistoryPage,
+	PendingDesktopGate,
+} from "../../../../../shared/desktop-session-contract";
 import { CanonicalTranscript } from "./canonical-transcript";
 import type { CanonicalTranscriptStatus } from "./transcript-pane";
 import {
@@ -39,6 +42,18 @@ import {
 
 /** One instant for every frame, so the frames are byte-reproducible. */
 const TS = 1_760_000_000_000;
+
+/**
+ * The wall clock the LIVE cells measure against (design round 1, D5).
+ *
+ * A cell whose row is still running paints elapsed = now − start (`formatDuration`
+ * clamps), so a fixture pinned to `TS` alone read `100d+` — the capture-time now
+ * against a stamp from last October. The frozen `TS` stays where the frame's
+ * stamps are FICTION-FREE anyway (a completed turn's stamp is a fixed fact), and
+ * the two in-flight cells (`Running`, `Parked`) take `NOW` instead so their
+ * clocks describe the seconds the frame actually shows.
+ */
+const NOW = Date.now();
 
 /** The reader's own pane height (see the file comment). */
 const PANE = 685;
@@ -303,14 +318,22 @@ const restoredTurn = (): TranscriptState => {
 		ts: number,
 		payload: Record<string, unknown>,
 	): Entry => ({ id, ts, type: "message", payload });
+	/*
+	 * DURABLE ENTRIES CARRY SECONDS, not milliseconds (design round 1, D1):
+	 * `applyHistoryPage` multiplies by 1000 the way the wire stores them, so
+	 * feeding it `TS` read 72,000ms as 72,000s — `Took 20h`, stamp year 57742.
+	 * The frame must read what the collapsed cell reads: `Took 1m12s` and
+	 * `Oct 9, 2025`.
+	 */
+	const S = TS / 1000;
 	return applyHistoryPage(EMPTY_TRANSCRIPT, {
 		entries: [
-			entry("u1", TS, {
+			entry("u1", S, {
 				kind: "message",
 				role: "user",
 				content: [{ text: QUESTION }],
 			}),
-			entry("t1", TS + 3_000, {
+			entry("t1", S + 3, {
 				kind: "message",
 				role: "tool",
 				tool_call_id: "c1",
@@ -318,7 +341,7 @@ const restoredTurn = (): TranscriptState => {
 				content: [{ type: "text", text: "tests 40\npass 40\n" }],
 				provider_payload: { duration_s: 12.5, details: {} },
 			}),
-			entry("a1", TS + 72_000, {
+			entry("a1", S + 72, {
 				kind: "message",
 				role: "assistant",
 				content: [{ type: "text", text: ANSWER }],
@@ -330,12 +353,16 @@ const restoredTurn = (): TranscriptState => {
 	});
 };
 
-/** A turn still in flight: the control - nothing condenses while it runs. */
+/**
+ * A turn still in flight: the control - nothing condenses while it runs.
+ *
+ * `NOW`-based (D5): the held call's clock is the frame's own seconds.
+ */
 const runningTurn = (): TranscriptState => {
 	const state = applyEvent(
 		EMPTY_TRANSCRIPT,
 		{ type: "message_start", message: userMessage("u1", QUESTION) },
-		TS,
+		NOW,
 	);
 	return runCalls(
 		state,
@@ -343,8 +370,126 @@ const runningTurn = (): TranscriptState => {
 			{ ...CALL_A, holding: true },
 			{ ...CALL_B, holding: true },
 		],
-		TS + 2_000,
+		NOW + 2_000,
 	);
+};
+
+/**
+ * A turn PARKED on the reader's gate (design review round 1, D3).
+ *
+ * The same shape the live rig parks in: the call is out and the transcript
+ * awaits an approval, so the pane's working line stands down - which is why
+ * the collapse cannot read the working line alone. `Parked` passes the gate;
+ * the fix's own test is that NO bar renders here (and the live set carries the
+ * moment with its question card).
+ */
+const parkedTurn = (): TranscriptState => {
+	const state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: userMessage("u1", QUESTION) },
+		NOW,
+	);
+	return runCalls(state, [{ ...CALL_A, holding: true }], NOW + 2_000);
+};
+
+/** A minimal pending approval, shaped as the wire sends it. */
+const PARKED_GATE: PendingDesktopGate = {
+	request_id: "gate-1",
+	kind: "approval",
+	title: "Run the checks?",
+	detail: "bash: pnpm test:desktop",
+	options: [{ label: "Approve" }, { label: "Deny" }],
+	secret: false,
+	question_index: 0,
+	question_total: 1,
+};
+
+/**
+ * §5 case 3 (design round 1, D4a): the in-between is NARRATION - a settled
+ * mid-turn assistant row and no calls at all - so the bar's whole sentence is
+ * the span (`Took 1m12s`, no action clause).
+ */
+const narrationTurn = (): TranscriptState => {
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: userMessage("u1", QUESTION) },
+		TS,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: assistantMessage("n1", "") },
+		TS + 20_000,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "message_end",
+			message: assistantMessage("n1", "Checking the invoice ledger first."),
+		},
+		TS + 21_000,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: assistantMessage("a1", "") },
+		TS + 70_000,
+	);
+	return applyEvent(
+		state,
+		{ type: "message_end", message: assistantMessage("a1", ANSWER) },
+		TS + 72_000,
+	);
+};
+
+/**
+ * §11-R4 (design round 1, D4b): a PINNED statement inside the span - a
+ * completion marker between two call rows - so the clustering the caveat names
+ * is on a frame: collapsed, the marker sits below the bar, in its own place.
+ */
+const pinnedTurn = (): TranscriptState => {
+	const S = TS / 1000;
+	type Entry = DesktopHistoryPage["entries"][number];
+	const entry = (
+		id: string,
+		ts: number,
+		payload: Record<string, unknown>,
+	): Entry => ({ id, ts, type: "message", payload });
+	return applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			entry("u1", S, {
+				kind: "message",
+				role: "user",
+				content: [{ text: QUESTION }],
+			}),
+			entry("t1", S + 3, {
+				kind: "message",
+				role: "tool",
+				tool_call_id: "c1",
+				tool_name: "bash",
+				content: [{ type: "text", text: "tests 40\npass 40\n" }],
+				provider_payload: { duration_s: 12.5, details: {} },
+			}),
+			entry("n1", S + 6, {
+				custom_type: "completion_attention",
+				details: { anchor: "n1", kind: "interrupted" },
+			}),
+			entry("t2", S + 9, {
+				kind: "message",
+				role: "tool",
+				tool_call_id: "c2",
+				tool_name: "read",
+				content: [{ type: "text", text: "src/invoices/query.ts\n" }],
+				provider_payload: { duration_s: 0.4, details: {} },
+			}),
+			entry("a1", S + 72, {
+				kind: "message",
+				role: "assistant",
+				content: [{ type: "text", text: ANSWER }],
+				stop_reason: "stop",
+			}),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
 };
 
 const Frame = ({
@@ -352,11 +497,13 @@ const Frame = ({
 	caption,
 	status = "live",
 	waiting = false,
+	gate = null,
 }: {
 	transcript: TranscriptState;
 	caption: string;
 	status?: CanonicalTranscriptStatus;
 	waiting?: boolean;
+	gate?: PendingDesktopGate | null;
 }) => {
 	const containerRef = useRef<HTMLDivElement>(null);
 	return (
@@ -372,7 +519,7 @@ const Frame = ({
 			>
 				<CanonicalTranscript
 					transcript={transcript}
-					gate={null}
+					gate={gate}
 					waiting={waiting}
 					starting={false}
 					loadingOlder={false}
@@ -478,6 +625,44 @@ export const Running: Story = {
 			transcript={runningTurn()}
 			caption="A turn still in flight — nothing condenses while it runs."
 			waiting={true}
+		/>
+	),
+};
+
+/** §5 case 3, named by design round 1 (D4a): narration only, no calls. */
+export const Narration: Story = {
+	render: () => (
+		<Frame
+			transcript={narrationTurn()}
+			caption="Narration between the question and the answer — no calls, so the bar is the span alone."
+		/>
+	),
+};
+
+/** §11-R4, named by design round 1 (D4b): a pinned statement in the span. */
+export const Pinned: Story = {
+	render: () => (
+		<Frame
+			transcript={pinnedTurn()}
+			caption="A completion marker among the call rows — a pinned statement the collapse keeps in its own place."
+		/>
+	),
+};
+
+/**
+ * D3's cell: the turn parks on the reader's gate, so nothing condenses.
+ *
+ * The gate is a real `PendingDesktopGate`; the question CARD itself docks
+ * above the composer outside this frame (the live set's parked capture shows
+ * it), and what this cell pins is the transcript's half of the same moment:
+ * no bar while the turn waits.
+ */
+export const Parked: Story = {
+	render: () => (
+		<Frame
+			transcript={parkedTurn()}
+			caption="A turn parked on an approval — the gate holds it, so nothing condenses."
+			gate={PARKED_GATE}
 		/>
 	),
 };

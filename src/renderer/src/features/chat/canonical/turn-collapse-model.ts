@@ -27,7 +27,10 @@
  */
 
 import { type FoldableAction, foldSummary } from "./trace-fold-model";
-import { isInterruptedFault, type TranscriptRecord } from "./transcript-reducer";
+import {
+	type TranscriptRecord,
+	isInterruptedFault,
+} from "./transcript-reducer";
 import { type Row, type TurnRun, ledgerName, runsOf } from "./transcript-rows";
 
 /**
@@ -182,11 +185,16 @@ export type CollapsePlan = {
 /**
  * Plan the collapse over a visible row list.
  *
- * `live` is the pane's own liveness (the working line's predicate): the NEWEST
- * run is the one a live turn is being written in, so it never collapses — the
- * same rule `TraceFold` reads as `sectionLive` ("nothing condenses while a
- * call in it is still running"), which is why a running turn renders exactly
- * as today and condenses once, at the turn end.
+ * PENDING QUESTION IS NOT A SETTLED TURN (design review round 1, D3). `live`
+ * is the newest run's UNSETTLEDNESS, and the caller composes it from both
+ * halves of that fact: the working line's predicate (a turn being written) and
+ * the reader gate (a turn PARKED on a question). The gate half exists because
+ * the working line stands down while a question is pending — that stand-down is
+ * deliberate (`WorkingLine` yields to the dock) — so a rule that read only the
+ * working line condensed a parked turn, then un-condensed it when the call
+ * resumed: a bar appearing and vanishing with no reader action, stating `Took`
+ * and counts of a turn that had handed over no answer (the live rig's
+ * `parked on the approval` note).
  *
  * The tail — rows the bar must NOT hide — is the run's closing answer and
  * everything after it: the collapse summarises the PREFIX of the turn, and the
@@ -199,11 +207,11 @@ export function collapsePlan(
 ): CollapsePlan {
 	/*
 	 * Only the NEWEST run can be the one in flight, and only while the pane says
-	 * a turn is running: every earlier run is a finished turn and behaves like
-	 * one even when a later turn is streaming above the reader's place (§4.5's
-	 * live rule, which `TraceFold`'s `sectionLive` states for folds as "a run in
-	 * an OLDER turn must not open itself because a LATER turn happens to be
-	 * running").
+	 * the turn is unsettled (`live`): every earlier run is a finished turn and
+	 * behaves like one even when a later turn is streaming above the reader's
+	 * place (§4.5's live rule, which `TraceFold`'s `sectionLive` states for
+	 * folds as "a run in an OLDER turn must not open itself because a LATER turn
+	 * happens to be running").
 	 */
 	const runs = runsOf(rows);
 	return {

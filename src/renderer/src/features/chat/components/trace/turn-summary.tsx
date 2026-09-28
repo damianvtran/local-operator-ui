@@ -28,21 +28,28 @@
  * non-text floor (the primitive's own docstring measured 2.70:1 — the case
  * `chevronClassName` exists for).
  *
- * THE FAILED CLAUSE IS A PRESS ON THE BAR, NOT A NESTED BUTTON. The trigger
- * IS a button and a button inside a button is not markup a browser resolves
- * (the disclosure docstring's own rule), so the clause is a span styled as the
- * foot's control (`font-medium text-danger hover:underline`) and the bar
- * watches for a press that lands on it (`onClickCapture`, i.e. before the
- * trigger's toggle). The jump opens the bar itself, so the press stops there —
- * letting the toggle also run would open and shut the bar in one gesture. The
- * trade, stated rather than hidden: the express lane is pointer-only — a
- * keyboard reader opens the bar (Enter/Space on the trigger) and reaches every
- * row's own disclosure from there, one gesture longer.
+ * THE FAILURE CONTROL IS A REAL BUTTON, in the disclosure's `trailing` slot
+ * (UX round 1, U1). It used to be a span inside the trigger watched by an
+ * `onClickCapture`, which left the foot's own control — a real `<button>`
+ * (`canonical-transcript.tsx`'s closing line) — with a keyboard route the bar
+ * lost exactly when the turn collapsed: a parity regression, not a symmetric
+ * trade, because the jump's auto-open and centre-scroll is the part a keyboard
+ * reader could no longer reach. A control that belongs beside the trigger
+ * cannot be a child of it (a `<button>` inside a `<button>` is invalid markup),
+ * and the primitive ships the slot for exactly this pairing — so the clause's
+ * press is the primitive's own trailing control now, with the SAME copy and
+ * the SAME classes as the foot's button. The layout note the move carries:
+ * the clause now sits at the row's trailing edge, past the chevron, rather
+ * than inside the left sentence; the design round verifies that placement from
+ * the re-shot frames.
+ *
+ * The trade, stated rather than hidden: the control renders only when the run
+ * has a first failed row, so a passing turn's row is byte-identical to before.
  */
 
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
-import type { FC, MouseEvent as ReactMouseEvent, ReactNode } from "react";
+import type { FC, ReactNode } from "react";
 import { jumpToFailedRow } from "../../canonical/failed-row-jump";
 import { TurnTimestamp } from "../message-item/turn-timestamp";
 import { formatDuration } from "./tool-row-model";
@@ -115,27 +122,12 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 	onOpenChange,
 	children,
 }) => {
-	/**
-	 * The failure control's press, caught before it can reach the trigger (see
-	 * the header): a press on the clause IS a press with a destination, not a
-	 * toggle. `jumpToFailedRow` opens the bar itself when it is still closed, so
-	 * the gesture lands the same way from either state.
-	 */
-	const onFailedPress = (event: ReactMouseEvent<HTMLDivElement>) => {
-		const target = event.target instanceof Element ? event.target : null;
-		if (!target?.closest("[data-failed-clause]") || !firstFailedId) return;
-		event.stopPropagation();
-		const root =
-			event.currentTarget.closest("[data-lo-transcript-content]") ?? document;
-		jumpToFailedRow(root, firstFailedId);
-	};
 	return (
 		<div
 			className={className}
 			data-turn-summary=""
 			data-run-ids={recordIds.join(" ")}
 			data-record-id={anchorRecordId}
-			onClickCapture={onFailedPress}
 		>
 			<Disclosure
 				/*
@@ -172,29 +164,16 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 								{actionCount === 1 ? "1 action" : `${actionCount} actions`}
 							</span>
 						)}
-						{actionCount > 0 && failedCount > 0 && <Dot />}
-						{failedCount > 0 && (
-							<span
-								/*
-								 * A span rather than a button: the trigger above it is one, and the
-								 * press that lands here is caught by the bar's own capture handler
-								 * (see the header). `data-failed-clause` is the marker that handler
-								 * looks for — the styled span IS the control's face.
-								 */
-								data-failed-clause=""
-								className={cn(
-									"shrink-0 cursor-pointer font-medium text-danger text-meta hover:underline",
-								)}
-							>
-								{failedCount === 1 ? "1 failed" : `${failedCount} failed`}
-							</span>
-						)}
 						{stampTs !== null && (
 							/*
-							 * THE TURN'S ONE STAMP, re-homed from the foot this bar
-							 * suppresses (`ml-auto` like the foot's, so it keeps the same
-							 * right edge); `answer` scope because the instant is the closing
-							 * answer's — the same fact the foot stated, moved one row up.
+							 * THE TURN'S ONE STAMP, re-homed from the foot this bar suppresses
+							 * (`answer` scope because the instant is the closing answer's — the same
+							 * fact the foot stated, moved one row up). Its box sits ahead of the
+							 * trailing chevron, so the row's rightmost ink is the chevron (or the
+							 * failure control, when one renders) — which groups with the ledger's
+							 * value edge, not with the foot stamp's own right edge (design review
+							 * round 1, D6 measured the two: foot 1043 vs bar 1007; the value edge is
+							 * the one the design round judged better).
 							 */
 							<span className={cn("ml-auto")}>
 								<TurnTimestamp timestamp={stampTs} scope="answer" />
@@ -202,8 +181,38 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 						)}
 					</span>
 				}
+				// A real control, outside the trigger: the same one the foot renders,
+				// with keyboard parity lost nowhere (UX round 1, U1).
+				trailing={
+					failedCount > 0 && firstFailedId ? (
+						<button
+							type="button"
+							data-failed-clause=""
+							onClick={(event) => {
+								const root =
+									event.currentTarget.closest("[data-lo-transcript-content]") ??
+									document;
+								jumpToFailedRow(root, firstFailedId);
+							}}
+							className={cn(
+								"-mr-2 shrink-0 px-2 font-medium text-danger text-meta hover:underline",
+							)}
+						>
+							{failedCount === 1 ? "1 failed" : `${failedCount} failed`}
+						</button>
+					) : undefined
+				}
 			>
-				{children}
+				{/*
+				 * ONE CHILD, SO THE BODY'S OWN `gap-2` NEVER SITS BETWEEN ROWS — the
+				 * exact mechanism `TraceFold` documents at its own body (design review
+				 * round 1, D2 measured the regression this closes: 30px pitch against
+				 * the ledger's 22px because the body's 8px step landed between every
+				 * child). Passing the groups as ONE flex child keeps the body's 4px
+				 * padding and takes its gap out of the run, so the expansion measures
+				 * what the same run measures unfolded: N x 20px + (N-1) x 2px.
+				 */}
+				<div className={cn("flex flex-col")}>{children}</div>
 			</Disclosure>
 		</div>
 	);

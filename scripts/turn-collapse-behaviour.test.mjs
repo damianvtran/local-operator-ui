@@ -113,7 +113,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
-			'export { __resetTurnCollapseOpen } from "./src/renderer/src/shared/store/turn-collapse-open";',
+			'export { __resetTurnCollapseOpen, writeRunExpanded, expandedRunsOf, forgetTurnCollapseOpen, __turnCollapseOpenStats } from "./src/renderer/src/shared/store/turn-collapse-open";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -144,9 +144,14 @@ const bundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { CanonicalTranscript, __resetTurnCollapseOpen } = await import(
-	bundlePath.href
-);
+const {
+	CanonicalTranscript,
+	__resetTurnCollapseOpen,
+	writeRunExpanded,
+	expandedRunsOf,
+	forgetTurnCollapseOpen,
+	__turnCollapseOpenStats,
+} = await import(bundlePath.href);
 await unlink(bundlePath);
 
 /* ------------------------------- fixtures ------------------------------- */
@@ -195,6 +200,16 @@ const answerRecord = (id, over = {}) => ({
 	error: false,
 	...over,
 });
+/** A statement the collapse pins in place (a completion marker). */
+const noticeRecord = (id, over = {}) => ({
+	kind: "notice",
+	id,
+	ts: TS,
+	text: "Interrupted",
+	level: "warning",
+	complete: true,
+	...over,
+});
 
 const transcriptOf = (records) => ({
 	records,
@@ -223,7 +238,7 @@ const mount = async (t, records, over = {}) => {
 				h(CanonicalTranscript, {
 					frontend: nextOver.frontend ?? null,
 					transcript: transcriptOf(next),
-					gate: null,
+					gate: nextOver.gate ?? null,
 					waiting: nextOver.waiting ?? false,
 					loadingOlder: false,
 					onLoadOlder: async () => true,
@@ -241,6 +256,9 @@ const mount = async (t, records, over = {}) => {
 		mounted.root = createRoot(mounted.container);
 	});
 	await render(records);
+	/* Re-render is part of the harness: the parked-turn test drives a gate on
+	 * and off the same transcript (D3's call-site composition). */
+	mounted.render = render;
 	return mounted;
 };
 
@@ -404,8 +422,26 @@ test("the failure control is one press from the failed row: bar, fold, disclosur
 	]);
 	const summary = bar(mounted);
 	assert.match(summary.textContent, /1 failed/, "the failure is stated");
-	const failedControl = [...summary.querySelectorAll("span")].find(
-		(span) => span.textContent === "1 failed",
+	/*
+	 * THE CONTROL IS A REAL BUTTON, OUTSIDE THE TRIGGER (UX round 1, U1): a
+	 * keyboard reader gets the foot's own route — focus it, press it — instead
+	 * of a capture belt on the toggle. `closest("button") === it` is the
+	 * markup claim (never nested); `not the trigger's descendant` is the reach
+	 * claim; and a native button's Enter/Space activation is the browser's own
+	 * default action (jsdom has no default actions, so the press below is the
+	 * click that activation produces).
+	 */
+	const failedControl = summary.querySelector("[data-failed-clause]");
+	assert.ok(failedControl, "the failure control exists");
+	assert.equal(failedControl.tagName, "BUTTON", "a real button");
+	assert.equal(
+		failedControl.closest("button"),
+		failedControl,
+		"not nested inside another button",
+	);
+	assert.ok(
+		!barTrigger(mounted).contains(failedControl),
+		"outside the trigger, so it is separately focusable",
 	);
 	await click(failedControl);
 	await flushFrames();
@@ -497,5 +533,159 @@ test("a run the window has cut renders as today: no bar, and the foot as it was"
 		mounted.container.textContent,
 		/Worked/,
 		"its foot line stands as it always did",
+	);
+});
+
+test("the store's caps evict and forget clears — the delete path's two halves", () => {
+	/*
+	 * AGENT REVIEW ROUND 1, R1-2. The store's contract (`turn-collapse-open.ts`)
+	 * names caps and a forget path; the forget path was unwired until the 404 /
+	 * session-gone arm called it beside `dropPaint`, and neither cap had a test.
+	 * This drives the store directly — the same module the transcript imports,
+	 * through the bundle's exports.
+	 */
+	__resetTurnCollapseOpen();
+	for (let session = 0; session < 9; session += 1) {
+		writeRunExpanded(`session-${session}`, `run-${session}`, true);
+	}
+	const capped = __turnCollapseOpenStats();
+	assert.equal(capped.sessions, 8, "the ninth conversation evicts the first");
+	assert.equal(
+		expandedRunsOf("session-0").size,
+		0,
+		"the least recently written conversation arrives collapsed again",
+	);
+	assert.equal(expandedRunsOf("session-8").size, 1, "the newest survives");
+
+	__resetTurnCollapseOpen();
+	for (let run = 0; run < 129; run += 1) {
+		writeRunExpanded("one", `run-${run}`, true);
+	}
+	const runs = __turnCollapseOpenStats();
+	assert.equal(runs.sessions, 1, "one conversation");
+	assert.equal(runs.runs, 128, "the 129th expansion evicts the oldest");
+	assert.equal(expandedRunsOf("one").has("run-0"), false, "oldest gone");
+	assert.equal(expandedRunsOf("one").has("run-128"), true, "newest kept");
+
+	forgetTurnCollapseOpen("one");
+	assert.equal(
+		expandedRunsOf("one").size,
+		0,
+		"forget clears the conversation, the dropPaint sibling",
+	);
+	assert.equal(__turnCollapseOpenStats().sessions, 0, "nothing left behind");
+});
+
+test("pinned statements never hide: the notice stays mounted, after the bar", async (t) => {
+	/*
+	 * AGENT REVIEW ROUND 1, R1-4 / design D4b. The pin list is a model fact
+	 * (`staysVisibleWhileCollapsed`), and this pins the RENDER half: while the
+	 * run is collapsed the pinned notice is mounted with the bar (the tool rows
+	 * are not), and opening does not reorder it — the pinned row renders after
+	 * the bar in document order, per §4.5's render formula.
+	 */
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1"),
+		noticeRecord("notice:1"),
+		toolRecord("tool:2"),
+		answerRecord("answer:1", { settledAt: TS + 70_000 }),
+	]);
+	const summary = bar(mounted);
+	assert.ok(summary, "the run collapsed");
+	const notice = rowBox(mounted, "notice:1");
+	assert.ok(notice, "the pinned notice is mounted while collapsed");
+	assert.equal(
+		rowBox(mounted, "tool:1"),
+		null,
+		"the hidden tool row is not mounted while collapsed",
+	);
+	const order = (a, b) =>
+		a.compareDocumentPosition(b) & window.Node.DOCUMENT_POSITION_FOLLOWING;
+	assert.ok(
+		order(summary, notice),
+		"the notice renders after the bar, in its own slot",
+	);
+	await click(barTrigger(mounted));
+	await flushFrames();
+	assert.ok(rowBox(mounted, "tool:1"), "the hidden row mounts on the press");
+	assert.ok(
+		order(summary, notice),
+		"the pinned row keeps its place relative to the bar when expanded",
+	);
+});
+
+test("a parked turn does not condense: the gate is half of the liveness", async (t) => {
+	/*
+	 * DESIGN ROUND 1, D3. The working line deliberately stands down while a
+	 * question holds the stage, so the newest run's unsettledness cannot be
+	 * read from the working line alone — the call site composes it from
+	 * `working !== null || gate !== null`. This is the transcript half of the
+	 * composition: the same parked transcript condenses with no gate pending
+	 * (the pre-fix reading) and does not condense once the gate is set.
+	 */
+	__resetTurnCollapseOpen();
+	const parked = [
+		userRecord("user:1"),
+		toolRecord("tool:1", {
+			phase: "running",
+			output: null,
+			durationS: null,
+			endedAt: null,
+			startedAt: TS + 2_000,
+		}),
+	];
+	const gate = {
+		request_id: "gate-1",
+		kind: "approval",
+		title: "Run the checks?",
+		detail: "bash: pnpm test:desktop",
+		options: [{ label: "Approve" }, { label: "Deny" }],
+		secret: false,
+		question_index: 0,
+		question_total: 1,
+	};
+	const mounted = await mount(t, parked, { gate });
+	assert.equal(
+		bar(mounted),
+		null,
+		"nothing condenses while the turn waits on the gate",
+	);
+	await mounted.render(parked, { gate: null });
+	assert.ok(
+		bar(mounted),
+		"the same transcript with no gate pending condenses — the gate is the difference",
+	);
+});
+
+test("the trigger is focusable; the only press inside it toggles", async (t) => {
+	/*
+	 * DESIGN D4d's assertion, in the smallest honest form: the trigger is a
+	 * native `<button>` and takes focus (the global ring's reach is CSS, stated
+	 * in the remediation round rather than asserted here), and no OTHER
+	 * separate control lives inside it — the failure control sits beside it in
+	 * the trailing slot.
+	 */
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", { isError: true }),
+		answerRecord("answer:1", { settledAt: TS + 70_000 }),
+	]);
+	const trigger = barTrigger(mounted);
+	trigger.focus();
+	assert.equal(
+		document.activeElement,
+		trigger,
+		"the bar's trigger takes keyboard focus",
+	);
+	const controlsInside = [
+		...trigger.querySelectorAll('button, a, input, [role="button"]'),
+	];
+	assert.deepEqual(
+		controlsInside.map((node) => node.tagName),
+		[],
+		"no separate control lives inside the trigger",
 	);
 });
