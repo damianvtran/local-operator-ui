@@ -293,15 +293,19 @@ export type DesktopControlResult<T = Record<string, unknown>> = {
 
 /*
  * The Projects surface's wire DTOs (`/v1/desktop/projects*`), mirrored from the
- * backend's slice-1 models (`server/models/desktop_projects.py`). The backend
+ * backend's models (`server/models/desktop_projects.py`) — slice 1 plus the
+ * slice-2 additions this tab renders: `title`/`owner`/`team` on both the
+ * summary and the view, and the append-only `updates` log (with attachments)
+ * on the view. The backend
  * validates with `extra="allow"`, so a field a NEWER backend adds crosses
  * additively and this renderer ignores it; the fields below are the frozen
  * contract the tab codes against.
  *
  * THREE THINGS CARRIED RATHER THAN RE-DERIVED HERE, each for a stated reason:
  *
- * - `progress_stale` is computed by the server from the one 30-minute constant,
- *   so the list's stale badge and the completion check cannot disagree about a
+ * - `progress_stale` is computed by the server from the store's one staleness
+ *   constant (four hours, and only `active` records can read stale), so the
+ *   list's stale badge and the completion check cannot disagree about a
  *   record. This renderer must never re-derive it from `progress_updated_at`
  *   with its own threshold.
  * - A milestone's `status` is DERIVED on the server (completed when
@@ -312,7 +316,14 @@ export type DesktopControlResult<T = Record<string, unknown>> = {
  *   call, not a per-row dial; the list column and the detail dots read the same
  *   number.
  */
-export type DesktopProjectStatus = "active" | "paused" | "done" | "archived";
+export type DesktopProjectStatus =
+	| "planning"
+	| "active"
+	| "qa"
+	| "validation"
+	| "done"
+	| "paused"
+	| "archived";
 export type DesktopMilestoneStatus = "completed" | "overdue" | "upcoming";
 
 /** One listing/board row (`projects.list`, and every write's answer). */
@@ -320,6 +331,15 @@ export type DesktopProject = {
 	id: string;
 	name: string;
 	description: string;
+	/**
+	 * The optional display `title` and the two attributions. `null` means
+	 * UNKNOWN — a row written before these fields existed, or one this build
+	 * cleared — and never a placeholder string, so the renderer falls back to
+	 * `name` for display (`projectDisplayName`) rather than inventing one.
+	 */
+	owner: string | null;
+	team: string | null;
+	title: string | null;
 	/**
 	 * One of {@link DesktopProjectStatus} on this build.
 	 *
@@ -351,11 +371,51 @@ export type DesktopProjectMilestone = {
 	status: DesktopMilestoneStatus;
 };
 
+/**
+ * One attachment a history entry carries.
+ *
+ * Attachments are COPIED into the project's store when the update is written
+ * (at most 10 files of at most 5 MB each, refused beyond either), and `path`
+ * is the stored copy's location on the machine that serves the payload — the
+ * handle this renderer reads bytes from (`readFileBytes`) or opens
+ * (`openFile`). `kind` is the classification made at copy time: `image` for
+ * image formats, `data` otherwise.
+ */
+export type DesktopProjectAttachment = {
+	name: string;
+	kind: string;
+	path: string;
+	bytes: number;
+	added_at: string;
+};
+
+/**
+ * One append-only history entry, newest last (the log's own order — the feed
+ * reverses it for display).
+ *
+ * `at` is ISO-8601 UTC at second granularity (`2026-09-20T14:00:00Z`), `text`
+ * is the progress line as markdown, and `by` is the writing session's id or
+ * `"operator"` for a surface with no session — free text, never rendered raw
+ * (`progressReporterLabel` names it). The log is bounded at 500 entries
+ * server-side, oldest evicted first; the LATEST entry is the record's own
+ * `progress` summary, which is why the feed can render history and the
+ * summary chip the same fact from two places.
+ */
+export type DesktopProjectUpdate = {
+	at: string;
+	text: string;
+	by: string;
+	attachments: DesktopProjectAttachment[];
+};
+
 /** The full record — what `projects.get` and every milestone write answer. */
 export type DesktopProjectView = {
 	id: string;
 	name: string;
 	description: string;
+	owner: string | null;
+	team: string | null;
+	title: string | null;
 	status: string;
 	progress: string;
 	progress_updated_at: number | null;
@@ -373,6 +433,12 @@ export type DesktopProjectView = {
 	estimate: number | null;
 	estimate_unit: string;
 	milestones: DesktopProjectMilestone[];
+	/**
+	 * The append-only history, newest last. Detail-only on the wire: the
+	 * listing (summary) must not carry it, and a renderer that reads it off a
+	 * `DesktopProject` row would be reading a field the route never sends.
+	 */
+	updates: DesktopProjectUpdate[];
 };
 
 /** A linked session's runtime record, as the one scan classifies it. */
