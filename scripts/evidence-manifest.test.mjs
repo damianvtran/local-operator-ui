@@ -1663,6 +1663,14 @@ const STAMP_BINDING_NOTES = [
 	 * reader is owed the pair it binds and the readings it ships.
 	 */
 	"sidebarBottomZoneRestampNote",
+	/*
+	 * AND THE CHAT-MEASURE LANE'S FOLD: `foldOntoAc83ec7d92Note` states the pair
+	 * the folded tip binds AND the retarget the fold carries (the measure moves
+	 * to 810px - 900 minus exactly 10% - and the set's 12 frames were re-taken
+	 * at the folded tip), so it is held to the pair this file ships rather than
+	 * read as history.
+	 */
+	"foldOntoAc83ec7d92Note",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2499,6 +2507,12 @@ const BRANCH_RECORDS = [
 	 * reason - a fold that started from main's copy would drop it first.
 	 */
 	"sidebarBottomZoneRestampNote",
+	/*
+	 * And the chat-measure lane's fold record rides beside it - registered here
+	 * for the same completeness reason: a fold that started from main's copy
+	 * would drop it first.
+	 */
+	"foldOntoAc83ec7d92Note",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
