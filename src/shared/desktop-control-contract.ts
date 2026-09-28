@@ -409,3 +409,31 @@ export type DesktopProjectDetail = {
 	project: DesktopProjectView;
 	links: DesktopLinkedSession[];
 };
+
+/**
+ * Aida's control state, as `GET /v1/desktop/aida` answers it (`design.md` § 4).
+ *
+ * WHY `enabled` IS ON THE READ AND NOT ON THE POST. `features.aida` says the
+ * backend HAS the surface; this says whether THIS install runs her
+ * (`aida.enabled` / `LOCAL_OPERATOR_NO_AIDA`, R17/R18). They are different
+ * facts and the rail's row is absent for the second one — a row whose every
+ * press would answer `409 aida_disabled` is the dead control fail-closed means
+ * to omit. The read is the only place that fact is published; the POST's answer
+ * is a consequence of an op that already had to pass it.
+ */
+export type DesktopAidaState = {
+	enabled: boolean;
+	/** Her single long conversation (R7), or null until first ensured. */
+	session_id: string | null;
+	/** Whether the proactive cadence is paused (R13); flipped by pause/resume. */
+	paused: boolean;
+	/** Whether the first-run greeting has been delivered (PR 2's gate). */
+	greeted: boolean;
+};
+
+/**
+ * The POST's answer: the same state minus `enabled` — the route reports that
+ * fact on the read alone, and a control that inferred it from "the call
+ * succeeded" would be answering a question nobody asked it.
+ */
+export type DesktopAidaControlResult = Omit<DesktopAidaState, "enabled">;
