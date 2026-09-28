@@ -139,12 +139,15 @@ const Frame = ({
 	caption,
 	waiting,
 	openRows,
+	smallView = false,
 }: {
 	transcript: TranscriptState;
 	caption: string;
 	waiting: boolean;
 	/** Click every row open, the way a reader reaches a row's body. */
 	openRows?: boolean;
+	/** The pane's narrow / small-view layout (design round 1, D3). */
+	smallView?: boolean;
 }) => {
 	const containerRef = useRef<HTMLDivElement>(null);
 	useEffect(() => {
@@ -178,7 +181,7 @@ const Frame = ({
 					loadingOlder={false}
 					onLoadOlder={async () => true}
 					containerRef={containerRef}
-					isSmallView={false}
+					isSmallView={smallView}
 					status="live"
 					failure={null}
 					awaitingHydration={false}
@@ -290,6 +293,77 @@ export const TurnCounts: Story = {
 			waiting={false}
 			caption="One turn, three calls (the first is the steering skip), folded: the group chip and the foot both count `1 failed` before, and neither does after."
 			transcript={withPage(TURN_COUNTS_PAGE)}
+		/>
+	),
+};
+
+/**
+ * The steering skip, live, EXPANDED - the other half of the operator's report.
+ *
+ * The report's row was opened when the reader hit it: before this change the
+ * body reads `Not run` in DANGER ink with the reason in danger ink, on a call
+ * whose only fault was being redirected. After it, the interrupted kinds label
+ * the body `Interrupted` in the neutral label ink (the word the row's own
+ * sr-only announcement and the TUI use) with the harness's reason in ordinary
+ * ink - while the genuine never-run faults keep the danger `Not run` (the
+ * control is `genuine-failure`, whose expansion is a result, not a verdict).
+ */
+export const SkipLiveExpanded: Story = {
+	render: () => (
+		<Frame
+			waiting={true}
+			openRows={true}
+			caption="The live steering skip, opened: before `Not run` in danger ink; after `Interrupted` in the muted label ink, the reason in ordinary ink."
+			transcript={skipLive()}
+		/>
+	),
+};
+
+/**
+ * A call the user's stop killed, opened - the same body fix on the wire path.
+ *
+ * The end frame's own `aborted` marker classifies the row (no client stop
+ * window stands), and its body follows the same rule as the live skip's: the
+ * label names the state rather than claiming an `Output` that never existed.
+ */
+export const StopExpanded: Story = {
+	render: () => (
+		<Frame
+			waiting={true}
+			openRows={true}
+			caption="The wire-marked stop, opened: the body is labelled `Interrupted` (before: `Not run`/none - the row was `failed`), and the measured span is kept."
+			transcript={stopMidFlight()}
+		/>
+	),
+};
+
+/**
+ * The durable skip at the pane's narrow / small-view width, COLLAPSED (D3).
+ *
+ * The states matrix wants the minimum supported width for the claims in this
+ * set; the classification is layout-independent, so this pair is coverage
+ * rather than a new claim - the row's mark and its summary at 720px.
+ */
+export const SkipDurableNarrow: Story = {
+	render: () => (
+		<Frame
+			waiting={false}
+			smallView={true}
+			caption="The durable skip at the pane's narrow width (720px), collapsed: the interrupted mark and the summary survive the small-view layout."
+			transcript={withPage(SKIP_PAGE)}
+		/>
+	),
+};
+
+/** The same narrow state, opened: the body label at the small-view width. */
+export const SkipDurableNarrowExpanded: Story = {
+	render: () => (
+		<Frame
+			waiting={false}
+			smallView={true}
+			openRows={true}
+			caption="The durable skip at the pane's narrow width, opened: the `Interrupted` body label at the small-view width."
+			transcript={withPage(SKIP_PAGE)}
 		/>
 	),
 };
