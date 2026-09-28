@@ -79,6 +79,12 @@ type WireRow = {
 	status: { code: string; label: string };
 	status_revision: number;
 	status_epoch: string;
+	/**
+	 * When the conversation was born, in epoch seconds - the second clock on this
+	 * row (`SessionCatalogueRow.created_at`). Optional because a backend that
+	 * predates the field does not send it; the Created basis reads it.
+	 */
+	created_at?: number;
 };
 
 const EPOCH = "3f2a1b4c5d6e7f8091a2b3c4d5e6f708";
@@ -336,6 +342,14 @@ const chatRows = () =>
 		'[data-sidebar-region="chats"] [data-tour-tag="chat-session-row"]',
 	).length;
 
+/** The drawn column, top to bottom, as session ids. */
+const drawnRowIds = () =>
+	[
+		...document.querySelectorAll<HTMLElement>(
+			'[data-sidebar-region="chats"] [data-session-row]',
+		),
+	].map((el) => el.dataset.sessionRow ?? "");
+
 const press = async (selector: string) => {
 	const element = document.querySelector<HTMLElement>(selector);
 	if (!element)
@@ -402,6 +416,21 @@ const Readout = () => {
 				),
 			].map((el) => `${el.dataset.sidebarSectionMore}: "${text(el)}"`);
 			const panel = document.querySelector("[data-sidebar-view-panel]");
+			/*
+			 * D2's own proof, in the frame: the panel's box measured against the
+			 * viewport, and whether its content overflows the box. The defect the
+			 * 800x600 capture found was a box running PAST the viewport edge with
+			 * nothing scrolling; the remedy is a box that stays inside the window
+			 * with the content taller than it - so both numbers are read here
+			 * rather than judged from the pixels.
+			 */
+			const panelGeometry = (el: Element) => {
+				const rect = el.getBoundingClientRect();
+				const node = el as HTMLElement;
+				return `box ${Math.round(rect.width)}x${Math.round(rect.height)} · bottom ${Math.round(rect.bottom)}/${window.innerHeight} · content ${node.scrollHeight}${
+					node.scrollHeight > node.clientHeight + 1 ? " (scrolls)" : ""
+				}`;
+			};
 			const checks = [
 				...document.querySelectorAll<HTMLElement>(
 					"[data-sidebar-view-section]",
@@ -415,11 +444,17 @@ const Readout = () => {
 					"[data-sidebar-view-section]",
 				),
 			].map((el) => el.dataset.sidebarViewSection);
+			const basisChecks = [
+				...document.querySelectorAll<HTMLElement>("[data-sidebar-view-basis]"),
+			].map(
+				(el) =>
+					`${el.dataset.sidebarViewBasis}=${el.getAttribute("aria-checked")}`,
+			);
 			const retryRefresh = [...document.querySelectorAll("button")].filter(
 				(el) => text(el) === "Retry refresh",
 			).length;
 			const next = [
-				`Stored view: ${stored.groupBy}/${stored.orderBy} · hidden [${stored.hidden.join(", ")}] · loads ${stored.loads}`,
+				`Stored view: ${stored.groupBy}/${stored.basis}/${stored.orderBy} · hidden [${stored.hidden.join(", ")}] · loads ${stored.loads}`,
 				`Drawn: ${chatRows()} chat row(s)`,
 				pageMore ? `Page foot: “${text(pageMore)}”` : "Page foot: (none)",
 				sectionFeet.length
@@ -429,7 +464,7 @@ const Readout = () => {
 					health.data ? String(health.data.online) : "(probe pending)"
 				}`,
 				panel
-					? `Panel: OPEN — sections [${orderNow.join(", ")}] · ${checks.join(" ")}`
+					? `Panel: OPEN — sections [${orderNow.join(", ")}] · ${checks.join(" ")} · basis [${basisChecks.join(" ")}] · ${panelGeometry(panel)}`
 					: "Panel: (not open)",
 				`“Retry refresh” controls on screen: ${retryRefresh}`,
 			];
@@ -507,11 +542,37 @@ const openViewPopover = async () => {
  * THE FRAME D28 NAMED, and it is DRIVEN: the play presses the band's own
  * `View options` control and waits for the real Radix panel, so a frame shows
  * the surface after a gesture rather than a prop summary. What it must show:
- * the three labelled groups ("Group by" / "Order by" / "Sections"), the check
- * on the active row of each single-choice group, and the seven section rows in
- * their stored order with the move pair on the shown ones.
+ * the four labelled groups ("Group by" / "Time basis" / "Order by" / "Sections"),
+ * the check on the active row of each single-choice group, and the seven section
+ * rows in their stored order with the move pair on the shown chat sections.
  */
 export const PopoverOpen: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		roster = groupRoster();
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(() => chatRows() >= 3);
+		await openViewPopover();
+	},
+};
+
+/**
+ * The same panel in an 800x600 window - the design direction's D2 capture.
+ *
+ * The new group adds roughly 100px to a panel that was already close to the
+ * window floor, so the pair to look at is the SHORT window: all four groups,
+ * all seven section rows and the hidden-sections sentence must be reachable
+ * (visible, or inside the panel's own scroll), and if Radix's shift does not
+ * save them the remedy is `max-height: var(--radix-popover-content-available-height)`
+ * with `overflow-y: auto` on the panel. The geometry is declared in the capture
+ * rig's STORIES row for this story; the state itself is PopoverOpen's.
+ */
+export const PopoverOpenShort: Story = {
 	render: () => {
 		resetFixtures();
 		bridge();
@@ -580,6 +641,198 @@ export const PopoverReorderedPair: Story = {
 	play: async () => {
 		await waitFor(() => chatRows() >= 3);
 		await openViewPopover();
+		await press('[data-sidebar-view-move="today:down"]');
+		await waitFor(() => {
+			const order = [
+				...document.querySelectorAll<HTMLElement>(
+					"[data-sidebar-view-section]",
+				),
+			].map((el) => el.dataset.sidebarViewSection);
+			return (
+				order.indexOf("week") >= 0 &&
+				order.indexOf("week") < order.indexOf("today")
+			);
+		});
+		await sleep(350);
+	},
+};
+
+/**
+ * The fixture where the two clocks DISAGREE, plus the two rows every basis must
+ * leave where they are.
+ *
+ * `moved` is the operator's own case: created forty days ago, asked an hour
+ * ago. `born` is recent under both clocks and `steady` is old under both. The
+ * pinned row and the running row are the invariance claim's subjects - the
+ * pinned partition and the RUNNING status partition are not the basis's to
+ * move, so they must sit in the same place and carry the same state under
+ * either basis, while the today/week/older membership shifts around them.
+ */
+const basisRoster = (): WireRow[] => {
+	const now = NOW_SECONDS();
+	return [
+		row("basis-moved", "Backdated ledger, asked today", now - 3_600, {
+			created_at: now - 40 * 86_400,
+		}),
+		row("basis-born", "Started this morning", now - 1_800, {
+			created_at: now - 7_200,
+		}),
+		row("basis-pinned", "Pinned and untouched for days", now - 5 * 86_400, {
+			pinned: true,
+			created_at: now - 20 * 86_400,
+		}),
+		row("basis-running", "Working right now", now - 300, {
+			status: { code: "busy", label: "Working" },
+			status_revision: 3,
+			created_at: now - 2 * 86_400,
+		}),
+		row("basis-steady", "Untouched for over a week", now - 9 * 86_400, {
+			created_at: now - 30 * 86_400,
+		}),
+	];
+};
+
+/**
+ * The two clocks disagreeing, photographed on ONE roster: the default basis and
+ * `Created` beside it.
+ *
+ * The README states the expected membership of each section under each basis
+ * (the `moved` row is TODAY "1h" under Last active and OLDER under Created),
+ * and both frames carry the popover, so the counts shifting with the membership
+ * are in the photograph rather than only in prose.
+ */
+export const PopoverBasisLastActive: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		roster = basisRoster();
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(() => chatRows() >= 5);
+		await openViewPopover();
+		await sleep(350);
+	},
+};
+
+/**
+ * The same roster with `Created` pressed, and the assertion a still cannot make
+ * on its own: the LIST ORDER must not change.
+ *
+ * The design's rule is that the basis moves what the TIME numbers read - the
+ * bins and the labels - and is orthogonal to the ordering axes; a frame shows
+ * the first half, and the drawn-row ids compared before and after the press are
+ * the second.
+ */
+export const PopoverBasisCreated: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		roster = basisRoster();
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(() => chatRows() >= 5);
+		await openViewPopover();
+		await press('[data-sidebar-view-basis="created"]');
+		await waitFor(
+			() =>
+				document
+					.querySelector('[data-sidebar-view-basis="created"]')
+					?.getAttribute("aria-checked") === "true",
+		);
+		/*
+		 * The design's own claim, asserted rather than left to the eye: the basis
+		 * moves WHAT the sections and the labels read, never the ORDER the list is
+		 * sorted in. Section MEMBERSHIP is the basis's to change - `basis-moved`
+		 * lands under OLDER once Created is pressed, and that is the feature - so
+		 * the comparison is each row's position WITHIN its drawn section against
+		 * the catalogue's own order: a basis that re-sorted by `created_at` would
+		 * put rows in an order the catalogue never sent. (The first version of this
+		 * check compared the whole column and failed on the membership change
+		 * itself - the rig's own error, kept in the set's history as the reason
+		 * this reads the sections separately.)
+		 */
+		const rosterOrder = [
+			"basis-moved",
+			"basis-born",
+			"basis-pinned",
+			"basis-running",
+			"basis-steady",
+		];
+		const sectionOfRow = (id: string) =>
+			document
+				.querySelector(`[data-session-row="${id}"]`)
+				?.closest("[data-chat-section]")
+				?.getAttribute("data-chat-section") ?? null;
+		for (const section of ["running", "today", "week", "older"]) {
+			const drawn = drawnRowIds().filter((id) => sectionOfRow(id) === section);
+			const positions = drawn.map((id) => rosterOrder.indexOf(id));
+			const sorted = [...positions].sort((a, b) => a - b);
+			if (positions.join(",") !== sorted.join(",")) {
+				throw new Error(
+					`the Created basis re-sorted ${section}: drawn [${drawn.join(", ")}] against the catalogue's own order`,
+				);
+			}
+		}
+		await sleep(350);
+	},
+};
+
+/**
+ * The reorder rail after D1, photographed where the old pair lied.
+ *
+ * Three claims in one frame, because they are one rule: Pinned and the two
+ * entity rows draw NO move pair (a press there moved the stored order and this
+ * panel while the column stood still); a chat section's arrows are disabled
+ * where the adjacent shown section is not another drawn chat section (Running
+ * up, against Pinned; Older down, against the entity region); and a legal press
+ * still reorders both the panel and the list behind it.
+ */
+export const ReorderEdges: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		roster = groupRoster();
+		return <Page />;
+	},
+	play: async () => {
+		await waitFor(() => chatRows() >= 3);
+		await openViewPopover();
+		for (const selector of [
+			'[data-sidebar-view-move="pinned:up"]',
+			'[data-sidebar-view-move="pinned:down"]',
+			'[data-sidebar-view-move="agents:up"]',
+			'[data-sidebar-view-move="teams:up"]',
+		]) {
+			if (document.querySelector(selector)) {
+				throw new Error(
+					`the panel draws a move pair it cannot honour: \`${selector}\``,
+				);
+			}
+		}
+		for (const selector of [
+			'[data-sidebar-view-move="running:up"]',
+			'[data-sidebar-view-move="older:down"]',
+		]) {
+			const element = document.querySelector<HTMLButtonElement>(selector);
+			if (!element) {
+				throw new Error(
+					`the expected rail control is missing: \`${selector}\``,
+				);
+			}
+			if (!element.disabled) {
+				throw new Error(
+					`\`${selector}\` says it can move, and the model's rule says it cannot`,
+				);
+			}
+		}
 		await press('[data-sidebar-view-move="today:down"]');
 		await waitFor(() => {
 			const order = [

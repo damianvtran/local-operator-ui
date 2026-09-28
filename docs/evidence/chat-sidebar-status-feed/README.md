@@ -17,6 +17,70 @@ unacknowledged completions.
   story is also the pair's "after" half**: `chat-sidebar-status-feed-baseline/`
   is the same story captured from unmodified `origin/main`, where the pile of
   marks is present and there is no way to clear it in bulk.
+- **`completion-moves-bin/`** — a completion that moves the row's TIME BIN
+  (2026-09-28, the operator's report: "even if I've asked an older session
+  something today, once it completes I can't see it within the today bin"): an
+  older session starts under THIS WEEK "5d", the frames a finished turn always
+  publishes land (a `session_status` edge and an `attention` mark — no
+  `catalogue` frame at all, which is the point), and the row re-files under
+  TODAY "1m" with its unread check. The still cannot carry the LATENCY the
+  report is about; that is the live measurement below.
+
+## The bin move, measured live
+
+Stills carry the poles; the promptness needs timestamps. The measurement is a
+driver scene (`scripts/renderer-driver.mjs`, `--scene sidebar-bin-promptness`,
+`--bin-expect prompt|stale`) against a scratch daemon the run owns
+(v0.64.1), with a headless app built against it:
+
+```
+node scripts/renderer-driver.mjs --scene sidebar-bin-promptness \
+  --backend http://127.0.0.1:8080 --backend-records <config>/run/serve \
+  --seed-onboarding-complete --bin-expect stale|prompt \
+  --out <frames> --window-size=1380x900
+```
+
+The scene creates the subject through the daemon's own routes, materialises it
+with one real turn, then BACKDATES both clocks (birth record and transcript
+mtime, 40 days) and reads them back from `sessions.list` before measuring
+anything. It subscribes to `/v1/desktop/events` from its own Node process, so
+the completion's `attention` frame is timestamped by the same clock that polls
+the DOM for the row's `data-chat-section`.
+
+**Before** (`--bin-expect stale`, base tree, subject carrying its unread mark
+the way the operator's store does):
+
+```
+{"expect":"stale","completionFrameAt":2063,"completionAt":2029,
+ "catalogueAfterMs":[],"subjectFrames":["attention@2063ms"],
+ "binAt":28408,"lagMs":26345,
+ "transitions":[{"at":28408,"section":"today","time":"now"}]}
+```
+
+The backend published the `attention` frame and NOTHING else — no `catalogue`
+invalidation, because the completion moved no order key (the subject was
+already in its completion band and the busy band was missed). The row sat in its
+old bin for **26.3 s after the completion**, moving only at +28.4 s when the
+sidebar's 30 s safety poll fired. That is the operator's report, measured.
+
+**After** (`--bin-expect prompt`, branch tree, same steps):
+
+```
+{"expect":"prompt","completionFrameAt":1102,"completionAt":1103,
+ "catalogueAfterMs":[966,1113],
+ "subjectFrames":["session_status@965ms","attention@1102ms","session_status@1113ms"],
+ "binAt":1103,"lagMs":1,
+ "transitions":[{"at":987,"section":"running","time":null},
+                 {"at":1103,"section":"today","time":"now"}]}
+```
+
+The row left for RUNNING at +987 ms on the busy edge, and the bin changed at
++1103 ms — **1 ms after the completion frame, 10 ms BEFORE the backend's own
+`catalogue` frame at +1113 ms**. So the mover was the client's refetch on the
+completion's own frames (`activityRevision` in `use-desktop-feed.ts`), not the
+catalogue invalidation arriving behind it. The class of completion that
+published no invalidation at all is the one measured above, and it now lands
+inside the 2 s budget instead of the poll's 26 s.
 
 ## `wedged-owner/` — the row the operator reported, and the tooltip
 
@@ -151,7 +215,12 @@ round 1, R6).
 
 Both states this round added came from the same two lines, narrowed:
 `--only=chat-sidebar-status-feed--mark-all-read-unseen-without-mark` and
-`--only=chat-sidebar-status-feed--mark-all-read-mixed-marks`. **The first capture
+`--only=chat-sidebar-status-feed--mark-all-read-mixed-marks`. The
+`completion-moves-bin` state arrived in a LATER pass (2026-09-28, the bin
+report) from the same two lines on port 6047 —
+`node scripts/capture-evidence.mjs http://localhost:6047
+--only=chat-sidebar-status-feed--completion-moves-bin --allow-backend` — and
+the commands above remain the record for the states that pass produced. **The first capture
 after a story file changes FAILS, on a cold Storybook**: the theme wait gives the
 page 10 s and a cold vite transform of this component graph outlasts it
 (`document carries theme "" after 10s`). Re-running the same command succeeds —
