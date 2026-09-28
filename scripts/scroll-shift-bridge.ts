@@ -20,6 +20,16 @@
  * `message_update` per chunk with the script's own cadence, then `message_end`
  * - and every frame goes through the same consumer a real turn's frames take.
  *
+ * AND A TOOL DOOR (`playToolTurn`) BESIDE IT (fold-collapse/scroll-anchor
+ * rounds, 2026-09-27): the operator's repro involves updates that are not
+ * prose - "updates to the conversation like new tool calls [load] in" while
+ * an action group is expanded - so the harness needs turns made of TOOL
+ * EXECUTIONS, emitted as the producer's own `tool_execution_start` /
+ * `tool_execution_end` receipts. The `frontend.streaming` flag brackets the
+ * turn exactly as the prose door brackets its own, because that flag is what
+ * `waiting`/`busy` - and therefore the working line and the fold's
+ * `sectionLive` - are derived from.
+ *
  * WHAT IS SCRIPTED, EXACTLY. The cadence and the text. The frame SHAPES are the
  * contract's (`DesktopSessionFrame`'s `event` receipts; the producer's
  * delta-only `message_update`), and the consumer is the shipped one, so a shape
@@ -63,6 +73,34 @@ export type LiveTurnScript = {
 	frontend?: boolean;
 };
 
+/**
+ * One TOOL turn, as the harness plays it: a sequence of executions reported
+ * as the producer's own receipts.
+ *
+ * `tool_execution_start` is the only live frame that carries `args`, so the
+ * script states the object text once and the row keeps it through its end -
+ * the same path a real call's arguments take. `runMs` is the call's spent
+ * time, which the end receipt reports as `duration_s`.
+ */
+export type ToolTurnScript = {
+	afterStartMs?: number;
+	calls: Array<{
+		/** The call id; the tool record's key is `tool:<callId>`. */
+		callId: string;
+		toolName: string;
+		/** The arguments the start receipt carries (`{\command}` shape). */
+		object: string;
+		/** Ms between this call's start and end receipts. */
+		runMs: number;
+		/** Ms to wait BEFORE this call's start (after the previous end). */
+		gapMs?: number;
+		/** Whether the end receipt reports a failure. */
+		failed?: boolean;
+	}>;
+	/** Whether to bracket the turn with `frontend` streaming flags (default true). */
+	frontend?: boolean;
+};
+
 /** One frame this bridge emitted, for the driver's log. */
 export type EmittedFrame = {
 	t: number;
@@ -76,6 +114,8 @@ export type EmittedFrame = {
 export type ScrollShiftHandle = {
 	/** Play a scripted turn against `sessionId`'s live subscription. */
 	play: (sessionId: string, script: LiveTurnScript) => Promise<void>;
+	/** Play a scripted TOOL turn (execution receipts) on the subscription. */
+	playToolTurn: (sessionId: string, script: ToolTurnScript) => Promise<void>;
 	/** Every frame emitted, in order. */
 	emitted: EmittedFrame[];
 	/** Whether a pane is currently subscribed to `sessionId`. */
@@ -350,13 +390,7 @@ export function installScrollShiftOwner(
 	 * being invisible except as "the stream did nothing".
 	 */
 	const play = async (sessionId: string, script: LiveTurnScript) => {
-		const deadline = now() + 15_000;
-		while (subscriptions.get(sessionId)?.disposed() !== false) {
-			if (now() > deadline)
-				throw new Error(`no live subscription for ${sessionId} after 15s`);
-			await wait(20);
-		}
-		const sub = subscriptions.get(sessionId) as Subscription;
+		const sub = await subscribed(sessionId);
 		await wait(script.startAfterMs ?? 0);
 		const full: string[] = [];
 		sub.emitEvent({
@@ -396,8 +430,68 @@ export function installScrollShiftOwner(
 		}
 	};
 
+	/**
+	 * Play one scripted TOOL turn on a live subscription (fold rounds,
+	 * 2026-09-27).
+	 *
+	 * Each call is the producer's own pair: a `tool_execution_start` receipt
+	 * (the only live frame that carries `args`) and a `tool_execution_end`
+	 * receipt with the `result` body and `duration_s`. The `frontend`
+	 * streaming flag brackets the whole turn, exactly as the prose door's does
+	 * - it is what `waiting`/`busy`, and through them the working line and the
+	 * fold's `sectionLive`, are derived from, so a turn played without it would
+	 * be measuring a different state than the app shows during one.
+	 */
+	const playToolTurn = async (sessionId: string, script: ToolTurnScript) => {
+		const sub = await subscribed(sessionId);
+		await wait(script.afterStartMs ?? 0);
+		if (script.frontend ?? true) {
+			sub.emitFrontend({ epoch: sub.epoch, streaming: true, sequence: 6 });
+		}
+		for (const call of script.calls) {
+			await wait(call.gapMs ?? 0);
+			if (sub.disposed()) return;
+			sub.emitEvent({
+				type: "tool_execution_start",
+				tool_call_id: call.callId,
+				tool_name: call.toolName,
+				args: { command: call.object },
+				started_at_epoch: Date.now() / 1000,
+			});
+			await wait(call.runMs);
+			if (sub.disposed()) return;
+			sub.emitEvent({
+				type: "tool_execution_end",
+				tool_call_id: call.callId,
+				tool_name: call.toolName,
+				result: {
+					content: [
+						{ type: "text", text: `${call.toolName} ${call.callId} ok` },
+					],
+				},
+				duration_s: call.runMs / 1000,
+				is_error: call.failed === true,
+			});
+		}
+		if (script.frontend ?? true) {
+			sub.emitFrontend({ epoch: sub.epoch, streaming: false, sequence: 7 });
+		}
+	};
+
+	/** Bounded wait for the pane's live subscription, shared by both doors. */
+	const subscribed = async (sessionId: string): Promise<Subscription> => {
+		const deadline = now() + 15_000;
+		while (subscriptions.get(sessionId)?.disposed() !== false) {
+			if (now() > deadline)
+				throw new Error(`no live subscription for ${sessionId} after 15s`);
+			await wait(20);
+		}
+		return subscriptions.get(sessionId) as Subscription;
+	};
+
 	return {
 		play,
+		playToolTurn,
 		emitted,
 		hasSubscriber: (sessionId) => subscriptions.has(sessionId),
 	};

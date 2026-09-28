@@ -48,6 +48,29 @@ const WORDS = Number(flag("words", "12"));
 const CHUNKS = Number(flag("chunks", "80"));
 const CHUNK_WORDS = Number(flag("chunk-words", "6"));
 const TICK = Number(flag("tick", "60"));
+/*
+ * The fold arm's own parameters (fold/scroll-anchor rounds, 2026-09-27).
+ * `--calls > 0` selects the TOOL turn instead of the prose stream: with
+ * `--expand` it clicks a fixture fold open first, and `--scroll-away` walks the
+ * reader off the tail before the turn starts so the run can also measure what
+ * an append does to a reader who is NOT following it.
+ */
+const PRE = Number(flag("pre", "0"));
+const TOOLS = Number(flag("tools", "0"));
+const POST = Number(flag("post", "0"));
+const CALLS = Number(flag("calls", "0"));
+const CALL_MS = Number(flag("call-ms", "180"));
+const CALL_GAP_MS = Number(flag("call-gap-ms", "60"));
+const EXPAND = Number(flag("expand", "-1"));
+const SCROLL_AWAY = Number(flag("scroll-away", "0"));
+/** After the turn, this many +60px scroll notches, to measure the repair path. */
+const SCROLL_PROBE = Number(flag("scroll-probe", "0"));
+/**
+ * After the turn, press the (expanded) fold shut - the reader's own collapse,
+ * which is the one that still exists now that the section-end condense is
+ * retired (operator report, 2026-09-27). 0 = skip.
+ */
+const COLLAPSE_AFTER = Number(flag("collapse-after", "0"));
 /**
  * A chunk script handed in as a JSON array of strings, when a scenario needs
  * text the word-built default cannot express (a forming code fence, a table).
@@ -62,7 +85,7 @@ const CHROME =
 	process.env.CHROME_PATH ??
 	"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const DEBUG_WS_RE = /ws:\/\/[^\s]+/;
-const PAGE = `${ORIGIN}/scroll-shift-evidence.html?rows=${ROWS}&words=${WORDS}`;
+const PAGE = `${ORIGIN}/scroll-shift-evidence.html?rows=${ROWS}&words=${WORDS}&pre=${PRE}&tools=${TOOLS}&post=${POST}`;
 
 mkdirSync(OUT, { recursive: true });
 const dataDir = join(tmpdir(), `lo-scroll-shift-profile-${process.pid}`);
@@ -176,54 +199,174 @@ shots.push(await shot("before"));
 
 await evaluate("window.__shift.start(); 'ok'");
 
-/*
- * One scripted turn: `CHUNKS` chunks of `CHUNK_WORDS` words each, `TICK` ms
- * apart. The chunk text is written here rather than in the page so a run's
- * cadence and content are both parameters of the run.
- */
-const chunkText = (i) => {
-	const pool =
-		"alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi omicron pi rho sigma tau upsilon phi chi psi omega".split(
-			" ",
+if (CALLS > 0) {
+	/*
+	 * THE FOLD ARM (fold/scroll-anchor rounds, 2026-09-27). The operator's repro
+	 * is "expand an action group, then updates to the conversation like new tool
+	 * calls [load] in", so this arm expands a fixture fold FIRST and then plays a
+	 * live TOOL turn under it. The per-frame sampler is already running, so the
+	 * expansion itself is in the trace; `--scroll-away` walks the reader off the
+	 * tail before either, because whether the view holds while the conversation
+	 * updates is a different question at the tail than away from it, and both are
+	 * legitimate measurements of the reported defect.
+	 */
+	if (SCROLL_AWAY > 0) {
+		await evaluate(`window.__shift.setScroll(${-SCROLL_AWAY}); 'ok'`);
+		await sleep(400);
+	}
+	const preFold = await evaluate("JSON.stringify(window.__shift.foldStates())");
+	console.log(`folds before expand: ${preFold}`);
+	if (EXPAND >= 0) {
+		await evaluate(`window.__shift.expandFold(${EXPAND}); 'ok'`);
+		await sleep(700);
+		await evaluate("window.__shift.mark('fold-expanded'); 'ok'");
+		shots.push(await shot("expanded"));
+	}
+	const postFold = await evaluate(
+		"JSON.stringify(window.__shift.foldStates())",
+	);
+	console.log(`folds after expand: ${postFold}`);
+	const toolScript = {
+		afterStartMs: 250,
+		frontend: true,
+		calls: Array.from({ length: CALLS }, (_, i) => ({
+			callId: `live-${i}`,
+			toolName: "bash",
+			object: `echo live-${i}`,
+			runMs: CALL_MS,
+			gapMs: i === 0 ? 0 : CALL_GAP_MS,
+		})),
+	};
+	await evaluate("window.__shift.mark('turn-start'); 'ok'");
+	void (await evaluate(
+		`(() => { void window.__shift.playToolTurn(${JSON.stringify(toolScript)}).then(() => { window.__turnDone = true; }); return "started"; })()`,
+	));
+	/*
+	 * Watch for the change the report is about - the expanded fold going back
+	 * down, or its id set moving under it - and photograph the frame it lands
+	 * on. A still cannot show a collapse; the pairing of this shot with the
+	 * trace's fold column can, because the trace says which frame it was.
+	 */
+	let foldShot = false;
+	const foldDeadline = Date.now() + 90_000;
+	const beforeFolds = JSON.parse(postFold);
+	for (;;) {
+		if (Date.now() > foldDeadline)
+			throw new Error("the tool turn never finished");
+		const snap = await evaluate(`(() => ({
+			done: window.__turnDone === true,
+			folds: window.__shift.foldStates(),
+			n: window.__shift.samples.length,
+		}))()`);
+		if (!foldShot) {
+			const count = Math.max(snap.folds.length, beforeFolds.length);
+			for (let i = 0; i < count; i += 1) {
+				const b = beforeFolds[i];
+				const f = snap.folds[i];
+				if (!b || !f) continue;
+				const changed =
+					b.ids !== f.ids || (b.expanded === "true" && f.expanded !== "true");
+				if (changed) {
+					foldShot = true;
+					shots.push(await shot("fold-changed"));
+					await evaluate("window.__shift.mark('fold-changed'); 'ok'");
+					console.log(
+						`fold ${i} changed at sample ${snap.n}: ids "${b.ids}" -> "${f.ids}", expanded ${b.expanded} -> ${f.expanded}, rows ${b.rows} -> ${f.rows}`,
+					);
+				}
+			}
+		}
+		if (snap.done) break;
+		await sleep(40);
+	}
+	/*
+	 * THE READER'S OWN COLLAPSE, measured where the fix must hold: with the fold
+	 * expanded and the turn finished, the same press that opened it closes it,
+	 * and the settled content around it must not move (while the reader is away
+	 * from the tail; at the tail the pinned edge re-flushes and the trace says
+	 * so).
+	 */
+	if (COLLAPSE_AFTER > 0 && EXPAND >= 0) {
+		await sleep(300);
+		const beforeCollapse = await evaluate(
+			"JSON.stringify(window.__shift.foldStates())",
 		);
-	return Array.from(
-		{ length: CHUNK_WORDS },
-		(_, k) => pool[(i * 5 + k * 3) % pool.length],
-	).join(" ");
-};
+		await evaluate(`window.__shift.expandFold(${EXPAND}); 'ok'`);
+		await sleep(500);
+		await evaluate("window.__shift.mark('fold-collapsed'); 'ok'");
+		shots.push(await shot("collapsed"));
+		console.log(
+			`fold collapse: ${beforeCollapse} -> ${await evaluate("JSON.stringify(window.__shift.foldStates())")}`,
+		);
+	}
+	/*
+	 * THE REPAIR PATH, MEASURED RATHER THAN DESCRIBED (operator item 3: "attempting
+	 * to scroll ends up resetting the view and fixing the issue"): a few real
+	 * scroll notches on the live scroller, with the sampler still running, so the
+	 * trace shows whether a gesture moves the view, snaps it back, or is a no-op.
+	 */
+	if (SCROLL_PROBE > 0) {
+		console.log(`scroll probe: ${SCROLL_PROBE} notches, -60px then +60px`);
+		for (let k = 0; k < SCROLL_PROBE; k += 1) {
+			// Up first (toward older content), then down: a displaced reader tries
+			// both, and the two directions discriminate a repair from a plain move.
+			const delta = k < Math.ceil(SCROLL_PROBE / 2) ? -60 : 60;
+			await evaluate(
+				`(() => { const el = document.querySelector('[data-lo-canonical-transcript]'); if (el) el.scrollTop += ${delta}; return 'ok'; })()`,
+			);
+			await sleep(300);
+			await evaluate(`window.__shift.mark('scroll-probe-${k}'); 'ok'`);
+		}
+	}
+} else {
+	/*
+	 * One scripted turn: `CHUNKS` chunks of `CHUNK_WORDS` words each, `TICK` ms
+	 * apart. The chunk text is written here rather than in the page so a run's
+	 * cadence and content are both parameters of the run.
+	 */
+	const chunkText = (i) => {
+		const pool =
+			"alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi omicron pi rho sigma tau upsilon phi chi psi omega".split(
+				" ",
+			);
+		return Array.from(
+			{ length: CHUNK_WORDS },
+			(_, k) => pool[(i * 5 + k * 3) % pool.length],
+		).join(" ");
+	};
 
-const script = {
-	messageId: `${"5c011a33ca11"}-live-1`,
-	startAfterMs: 0,
-	chunks: CHUNKS_FILE
-		? JSON.parse(readFileSync(CHUNKS_FILE, "utf8")).map((text) => ({
-				text,
-				afterMs: TICK,
-			}))
-		: Array.from({ length: CHUNKS }, (_, i) => ({
-				text: `${i === 0 ? "" : " "}${chunkText(i)}`,
-				afterMs: TICK,
-			})),
-	end: true,
-	frontend: true,
-};
+	const script = {
+		messageId: `${"5c011a33ca11"}-live-1`,
+		startAfterMs: 0,
+		chunks: CHUNKS_FILE
+			? JSON.parse(readFileSync(CHUNKS_FILE, "utf8")).map((text) => ({
+					text,
+					afterMs: TICK,
+				}))
+			: Array.from({ length: CHUNKS }, (_, i) => ({
+					text: `${i === 0 ? "" : " "}${chunkText(i)}`,
+					afterMs: TICK,
+				})),
+		end: true,
+		frontend: true,
+	};
 
-await evaluate("window.__shift.mark('turn-start'); 'ok'");
-void (await evaluate(
-	`(() => { void window.__shift.playTurn(${JSON.stringify(script)}).then(() => { window.__turnDone = true; }); return "started"; })()`,
-));
+	await evaluate("window.__shift.mark('turn-start'); 'ok'");
+	void (await evaluate(
+		`(() => { void window.__shift.playTurn(${JSON.stringify(script)}).then(() => { window.__turnDone = true; }); return "started"; })()`,
+	));
 
-// Watch while the turn streams: detect the crossing and photograph it, and
-// photograph the column's first shift (the foot row's engagement) once its
-// move has settled - the state a single still cannot show is the one 300ms
-// after the geometry landed.
-let crossingShot = false;
-let popShot = false;
-let prevTop0 = null;
-const turnDeadline = Date.now() + 90_000;
-for (;;) {
-	if (Date.now() > turnDeadline) throw new Error("the turn never finished");
-	const state = await evaluate(`(() => {
+	// Watch while the turn streams: detect the crossing and photograph it, and
+	// photograph the column's first shift (the foot row's engagement) once its
+	// move has settled - the state a single still cannot show is the one 300ms
+	// after the geometry landed.
+	let crossingShot = false;
+	let popShot = false;
+	let prevTop0 = null;
+	const turnDeadline = Date.now() + 90_000;
+	for (;;) {
+		if (Date.now() > turnDeadline) throw new Error("the turn never finished");
+		const state = await evaluate(`(() => {
 		const s = window.__shift.samples;
 		const last = s[s.length - 1] ?? null;
 		return {
@@ -235,32 +378,33 @@ for (;;) {
 			top0: last?.rows?.length ? last.rows[0][1] : null,
 		};
 	})()`);
-	if (!crossingShot && state.scrollable) {
-		crossingShot = true;
-		shots.push(await shot("crossing"));
+		if (!crossingShot && state.scrollable) {
+			crossingShot = true;
+			shots.push(await shot("crossing"));
+		}
+		/*
+		 * A row moving UP is the signature this whole rig exists for: in the
+		 * top-populating phase rows only arrive BELOW the settled ones, and `top0`
+		 * - the oldest row's top - is therefore static until the anchor moves the
+		 * column. Shot 300ms later so the frame shows the settled geometry rather
+		 * than a mid-transition blur of it.
+		 */
+		if (
+			!popShot &&
+			state.top0 !== null &&
+			prevTop0 !== null &&
+			state.top0 - prevTop0 < -4
+		) {
+			popShot = true;
+			await sleep(300);
+			shots.push(await shot("pop"));
+		}
+		if (state.top0 !== null) prevTop0 = state.top0;
+		if (state.done) break;
+		await sleep(40);
 	}
-	/*
-	 * A row moving UP is the signature this whole rig exists for: in the
-	 * top-populating phase rows only arrive BELOW the settled ones, and `top0`
-	 * - the oldest row's top - is therefore static until the anchor moves the
-	 * column. Shot 300ms later so the frame shows the settled geometry rather
-	 * than a mid-transition blur of it.
-	 */
-	if (
-		!popShot &&
-		state.top0 !== null &&
-		prevTop0 !== null &&
-		state.top0 - prevTop0 < -4
-	) {
-		popShot = true;
-		await sleep(300);
-		shots.push(await shot("pop"));
-	}
-	if (state.top0 !== null) prevTop0 = state.top0;
-	if (state.done) break;
-	await sleep(40);
+	if (!crossingShot) shots.push(await shot("crossing"));
 }
-if (!crossingShot) shots.push(await shot("crossing"));
 
 await sleep(900);
 await evaluate("window.__shift.mark('settle'); 'ok'");
