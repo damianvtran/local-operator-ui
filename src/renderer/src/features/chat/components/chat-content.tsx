@@ -1578,13 +1578,29 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * the conversation it ended: the transcript is the record of what was said, and
 						 * this is the pane's statement about the run.
 						 *
+						 * IT TAKES THE CONVERSATION'S SHARED MEASURE, and the wrapper is what declares
+						 * it: `CHAT_MEASURE`'s cap and centring are keyed to the named chatcol container
+						 * (`@min-[750px]/chatcol`), so a row with no named container anywhere above it
+						 * matches NEITHER variant - the line keeps `w-full` and paints at the column's
+						 * 24px inset while every surface that does declare one centres into the measure.
+						 * That is the operator's report of 2026-09-27: at a 1120px column the line sat at
+						 * x=284 (column + inset) against the composer box's x=370 (column + 110), 86px
+						 * apart. The dock above and the composer band below already declare the container
+						 * for the same reason; this row is a third consumer and declares it the same way.
+						 *
 						 * The retry RE-SENDS THE TURN through the same door the composer uses
 						 * (`onSendMessage` is the page's own `send`), so it carries the same admission,
 						 * the same echo and the same failure handling as a press on Enter — a second send
 						 * path would be the defect, not the fix.
 						 */}
 						{stoppedTurnAt !== null && (
-							<div className={cn(CHAT_COLUMN_INSET, "w-full shrink-0 pt-2")}>
+							<div
+								className={cn(
+									CHAT_COLUMN_CONTAINER,
+									CHAT_COLUMN_INSET,
+									"w-full shrink-0 pt-2",
+								)}
+							>
 								<p
 									data-stopped-turn
 									className={cn(
