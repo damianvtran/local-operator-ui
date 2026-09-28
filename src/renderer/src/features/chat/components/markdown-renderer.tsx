@@ -8,7 +8,6 @@ import ReactMarkdown, {
 } from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
 import { type CanvasPane, useCanvasPane } from "../utils/canvas-pane";
 import {
 	LINK_TARGET_ATTR,
@@ -33,6 +32,12 @@ import { remarkLinkifyTargets } from "../utils/remark-linkify-targets";
 import { remarkSoftBreaks } from "../utils/remark-soft-breaks";
 import { citationAwareAnchor } from "./credential-citation";
 import { remarkCredentialCitations } from "./credential-citation-remark";
+// NOT `remark-math`: its single-dollar tokenizer has no adjacency rules, so
+// once math is on for a message a price's `$` and a later `$` pair up and the
+// text between them is typeset (operator report, 2026-09-27).
+// `markdown-math-guarded.ts` carries the guarded tokenizer, its provenance
+// from `micromark-extension-math@3.1.0`, and the pandoc rules it implements.
+import remarkGuardedMath from "./markdown-math-guarded";
 import "./markdown.css";
 import { MAX_PROBE_PATHS } from "../../../../../shared/desktop-contract";
 import { containsRenderableMath } from "./markdown-math";
@@ -365,7 +370,7 @@ const MARKDOWN_COMPONENTS_WITH_CITATIONS: Components = {
 };
 
 const GFM_ONLY = [remarkGfm];
-const GFM_AND_MATH = [remarkGfm, remarkMath];
+const GFM_AND_MATH = [remarkGfm, remarkGuardedMath];
 /*
  * Every combination of the three things this pipeline can add, hoisted for the
  * reason `MARKDOWN_COMPONENTS`'s comment records - and, MEASURED on
@@ -384,7 +389,7 @@ const GFM_AND_MATH = [remarkGfm, remarkMath];
  * selector over them.
  */
 const GFM_LINKIFY = [remarkGfm, remarkLinkifyTargets];
-const GFM_MATH_LINKIFY = [remarkGfm, remarkMath, remarkLinkifyTargets];
+const GFM_MATH_LINKIFY = [remarkGfm, remarkGuardedMath, remarkLinkifyTargets];
 /*
  * THE FOUR CITATION-BEARING PIPELINES ARE ALSO THE FOUR USER-TURN PIPELINES,
  * and `remarkSoftBreaks` rides them (operator report, 2026-09-25). The report:
@@ -419,7 +424,7 @@ const GFM_AND_CITATIONS = [
 ];
 const GFM_MATH_AND_CITATIONS = [
 	remarkGfm,
-	remarkMath,
+	remarkGuardedMath,
 	remarkCredentialCitations,
 	remarkSoftBreaks,
 ];
@@ -431,7 +436,7 @@ const GFM_LINKIFY_AND_CITATIONS = [
 ];
 const GFM_MATH_LINKIFY_AND_CITATIONS = [
 	remarkGfm,
-	remarkMath,
+	remarkGuardedMath,
 	remarkLinkifyTargets,
 	remarkCredentialCitations,
 	remarkSoftBreaks,
@@ -461,7 +466,7 @@ const KATEX_ONLY = [rehypeKatex];
  *
  * THE DECISION LIVES IN `markdown-math.ts` NOW (code review round 1, R1-1), and
  * it is no longer only about cost: the citation transform is a remark plugin and
- * `remark-math` is a micromark SYNTAX extension, so enabling math can split a
+ * the math plugin is a micromark SYNTAX extension, so enabling math can split a
  * citation at parse time - before any plugin sees a tree. The citation pass
  * therefore has to be able to veto the math pass, and that rule is a pure
  * function of the content, asserted in `scripts/credential-capture.test.mjs` over

@@ -1679,7 +1679,34 @@ const STAMP_BINDING_NOTES = [
 	 * report is the PR's evidence - so a reader is owed the two values it binds
 	 * and the reason the stills did not move.
 	 */
-	"mouseCursorRestampNote" /*
+	"mouseCursorRestampNote",
+	/*
+	 * AND THE CHAT-MEASURE LANE'S FOLD: `foldOntoAc83ec7d92Note` states the pair
+	 * the folded tip binds AND the retarget the fold carries (the measure moves
+	 * to 810px - 900 minus exactly 10% - and the set's 12 frames were re-taken
+	 * at the folded tip), so it is held to the pair this file ships rather than
+	 * read as history.
+	 */
+	"foldOntoAc83ec7d92Note",
+	/*
+	 * AND THE SECOND FOLD'S: `foldOnto8367cbfaeeNote` states the pair the second
+	 * folded tip binds and that no frame moved for it, so it is held to the pair
+	 * this file ships rather than read as history.
+	 */
+	"foldOnto8367cbfaeeNote",
+	/*
+	 * AND THE THIRD FOLD'S: `foldOnto8320e52366Note` states the pair the third
+	 * folded tip binds and that no frame moved for it, so it is held to the pair
+	 * this file ships rather than read as history.
+	 */
+	"foldOnto8320e52366Note",
+	/*
+	 * AND THIS FOLD'S: `foldOnto55d7b0a19bNote` states the pair the fourth
+	 * folded tip binds, so it is held to the pair this file ships rather
+	 * than read as history.
+	 */
+	"foldOnto55d7b0a19bNote",
+	/*
 	 * AND THIS BRANCH'S OWN, the settings rail's edge and ground
 	 * (`fix/settings-rail-edge`): its subject is this file's binding - the change
 	 * moves BOTH trees (`src/` for the rail's rung on `elevated`, the lane's stop
@@ -1687,14 +1714,25 @@ const STAMP_BINDING_NOTES = [
 	 * and rule checks, the two guards and this registration) and takes NO frame
 	 * of the sweep - so a reader is owed the pair and the reason no still was
 	 * owed, and a later fold that started from main's copy would drop it first.
-	 */,
+	 */
 	"settingsRailGroundRestampNote",
 	/*
 	 * And THIS FOLD's own, beside the rail's: it states the union the merge resolved
 	 * against `origin/main` = `8320e52366` and the pair its re-stamp re-derives, for
 	 * the reason this list exists - a fold resolved from main's copy would drop it.
+	 * Re-keyed to this lane's name by the fold onto `e2394f9ff1`: main's copy
+	 * already carries the chat-measure lane's `foldOnto8320e52366Note` for the same
+	 * target, and neither record may displace the other.
 	 */
-	"foldOnto8320e52366Note",
+	"foldOnto8320e52366SettingsRailNote",
+	/*
+	 * And THIS FOLD's own, beside the two above: it states the union the fold onto
+	 * `e2394f9ff1` resolved - main's records carried whole, this branch's
+	 * `settingsRailGroundRestampNote` and its re-keyed fold record kept, and the
+	 * key sets diffed against the merged file rather than against a diff of added
+	 * lines - so a later fold that started from main's copy would drop it first.
+	 */
+	"foldOntoE2394f9ff1Note",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2543,21 +2581,60 @@ const BRANCH_RECORDS = [
 	 * And this branch's own record rides beside it - the pointer-affordance sweep
 	 * writes one top-level note, registered here for the same completeness reason.
 	 */
-	"mouseCursorRestampNote" /*
+	"mouseCursorRestampNote",
+
+	/*
+	 * AND THIS LANE'S OWN, the math-currency pass's record - written by
+	 * `fix/currency-math` beside `captureOrigin.mathCurrencyPass`: the note is
+	 * this branch's newest top-level record and the one a fold that started
+	 * from main's copy would drop first, which is exactly what this list is
+	 * for.
+	 */
+	"mathCurrencyCaptureNote",
+	/*
+	 * And the chat-measure lane's fold record rides beside it - registered here
+	 * for the same completeness reason: a fold that started from main's copy
+	 * would drop it first.
+	 */
+	"foldOntoAc83ec7d92Note",
+	/*
+	 * And the second fold's record rides beside them - registered here for the
+	 * same completeness reason.
+	 */
+	"foldOnto8367cbfaeeNote",
+	/*
+	 * And the third fold's record rides beside them - registered here for the
+	 * same completeness reason.
+	 */
+	"foldOnto8320e52366Note",
+	/*
+	 * And this fold's record rides beside them - registered here for the same
+	 * completeness reason.
+	 */
+	"foldOnto55d7b0a19bNote",
+	/*
 	 * And by THIS lane, whose note is the newest top-level record on the branch:
 	 * it states the pair this change ships - both trees moved (the rail's rung,
 	 * the lane's stop list and the three right rules in `src/`; the scene's two
 	 * new checks, the two suites and the capture rows in `scripts/`) and takes no
 	 * frame - so a fold that started from main's copy would drop it first, the
 	 * same reason this list exists.
-	 */,
+	 */
 	"settingsRailGroundRestampNote",
 	/*
 	 * And THIS FOLD's own, beside the rail's record: it states the union the merge
 	 * resolved against `origin/main` = `8320e52366` and the pair its re-stamp
-	 * re-derives, registered for the reason the list exists.
+	 * re-derives, registered for the reason the list exists. Re-keyed to this
+	 * lane's name by the fold onto `e2394f9ff1`, because main's copy already
+	 * carries the chat-measure lane's record for the same target.
 	 */
-	"foldOnto8320e52366Note",
+	"foldOnto8320e52366SettingsRailNote",
+	/*
+	 * And THIS FOLD's own, beside them: it states the union the fold onto
+	 * `e2394f9ff1` resolved and the pair the re-stamp commit beside it re-derives,
+	 * registered for the reason the list exists.
+	 */
+	"foldOntoE2394f9ff1Note",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
