@@ -1559,6 +1559,20 @@ const STAMP_BINDING_NOTES = [
 	 * re-captured - so a reader is owed the pair and the four frames it added.
 	 */
 	"traceToolLabelsRestampNote",
+	/*
+	 * AND THIS BRANCH'S OWN, the stopped-row measure fix: it moves BOTH trees this
+	 * file binds - `src/` for §G3's stopped line taking the conversation's shared
+	 * measure (its wrapper now declares the chatcol container the dock and the
+	 * composer band already declare) plus the rig's handle on the composer box
+	 * (`data-lo-composer-measure`), `scripts/` for the geometry claims added to
+	 * `scripts/interrupt-esc-proof.mjs`, the discriminator that pins the property
+	 * (`scripts/stopped-row-measure.test.mjs`), its registration in
+	 * `package.json`'s `test:desktop` and this note's own registration - and it
+	 * rewrites no frame of the sweep (its evidence is a set of live-app PNGs,
+	 * `stopped-row-measure`, which the sweep's WebP predicate does not admit), so
+	 * a reader is owed the two values it binds and the reason no still was owed.
+	 */
+	"stoppedRowRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2327,6 +2341,15 @@ const BRANCH_RECORDS = [
 	 * same reason this list exists.
 	 */
 	"traceToolLabelsRestampNote",
+	/*
+	 * And by the stopped-row measure fix, whose note is the newest top-level
+	 * record on the branch: it states the pair this tip ships, moves both trees
+	 * (the stopped line's container in `src/`, the rig, its discriminator and
+	 * the two registrations in `scripts/`) and commits no swept frame - so a
+	 * fold that started from main's copy would drop it first, the same reason
+	 * this list exists.
+	 */
+	"stoppedRowRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
