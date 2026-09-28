@@ -8,15 +8,18 @@
  * exists next door — the rule a later reader or a behavioural test holds lives
  * outside the component that happens to call it first.
  *
- * THE SIGNATURE IS THE SORTED NAMES, NOT A COUNT AND NOT A BOOLEAN. A count
- * would re-arm on an install made somewhere else (the set narrowed without the
- * offer changing its claim); a boolean would stay dismissed through a catalogue
- * that gained a NEW built-in — the one arrival this offer exists to announce.
- * Sorted because the catalogue's order is the backend's business: the same
- * names arriving in a different order are the same offer and must not re-arm
- * the block. Joined with a newline, which no profile name carries, so two
- * different name lists cannot collide into one signature the way a plain
- * concatenation could ("ab"+"c" and "a"+"bc" are one string).
+ * THE SIGNATURE IS THE SORTED NAMES, NOT A COUNT AND NOT A BOOLEAN. The
+ * discriminator against a count is a same-cardinality SWAP: a catalogue that
+ * trades one built-in for another (`manager` out, `auditor` in) keeps a count
+ * where it was, so a count would stay dismissed through the arrival this offer
+ * exists to announce — it cannot tell a swap from the state it dismissed,
+ * while the sorted names re-arm on it. (A NARROWED set moves both signals, so
+ * the loss case cannot separate them; and a boolean would miss every arrival,
+ * swap or not.) Sorted because the catalogue's order is the backend's
+ * business: the same names arriving in a different order are the same offer
+ * and must not re-arm the block. Joined with a newline, which no profile name
+ * carries, so two different name lists cannot collide into one signature the
+ * way a plain concatenation could ("ab"+"c" and "a"+"bc" are one string).
  */
 
 /**
