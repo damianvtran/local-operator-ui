@@ -2881,6 +2881,20 @@ const BRANCH_RECORDS = [
 	"sttRecordingDisplayFoldFiveNote",
 	"sttRecordingDisplayFoldSixNote",
 	"sttRecordingDisplayFoldSevenNote",
+	/*
+	 * AND THIS BRANCH'S OWN (feat/mesh-canvas-redesign, 2026-09-30): the two records
+	 * of the mesh canvas redesign - `meshCanvasRedesignRestampNote` (the pass: the
+	 * whole mesh-tab set re-captured at 42 frames through the repo's own sweep, the
+	 * pair's derivation and the reason both halves moved) and
+	 * `meshCanvasRedesignFoldNote` (the branch's earlier fold onto `b897ebeb93`) -
+	 * plus `rebaseOntoA298bfb120Note` (this sync's own record: a rebase rather than
+	 * a fold, its two conflicted paths resolved, and the way the manifest's spine
+	 * was re-laid). All three spell their identity as bare SHAs, so they add no
+	 * name to the quoting ledger.
+	 */
+	"meshCanvasRedesignRestampNote",
+	"meshCanvasRedesignFoldNote",
+	"rebaseOntoA298bfb120Note",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
