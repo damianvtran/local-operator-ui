@@ -61,6 +61,7 @@
  * when the offer must retire (`useArchiveUndoRetirement`).
  */
 
+import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
 	dismissToast,
@@ -285,11 +286,11 @@ export function UndoToasts() {
 				 * (`truncate`) and the verb is a fixed tail that always fits; the full
 				 * name is one dwell away in the row's own flyout.
 				 */
-				<span className="flex min-w-0 items-baseline gap-1">
-					<span className="min-w-0 truncate">
+				<span className={cn("flex min-w-0 items-baseline gap-1")}>
+					<span className={cn("min-w-0 truncate")}>
 						{archiveOfferedName(archiveUndo.title)}
 					</span>
-					<span className="shrink-0">{ARCHIVE_OFFERED_VERB}</span>
+					<span className={cn("shrink-0")}>{ARCHIVE_OFFERED_VERB}</span>
 				</span>,
 				{
 					id: ARCHIVE_TOAST_ID,
@@ -366,11 +367,11 @@ export function UndoToasts() {
 			draftsDrawnRef.current = false;
 		};
 		showInfoToast(
-			<span className="flex min-w-0 items-baseline gap-1">
-				<span className="min-w-0 truncate">
+			<span className={cn("flex min-w-0 items-baseline gap-1")}>
+				<span className={cn("min-w-0 truncate")}>
 					{draftsOfferedName(draftsUndo.keys.length)}
 				</span>
-				<span className="shrink-0">{DRAFTS_OFFERED_VERB}</span>
+				<span className={cn("shrink-0")}>{DRAFTS_OFFERED_VERB}</span>
 			</span>,
 			{
 				id: DRAFTS_UNDO_TOAST_ID,

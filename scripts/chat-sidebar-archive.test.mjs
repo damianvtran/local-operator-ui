@@ -431,7 +431,7 @@ test("the offer's card truncates its NAME and can never truncate the verb (agent
 	// TAIL, and the tail of `“<title>” archived.` is the verb.
 	assert.match(offer, /archiveOfferedName\(archiveUndo\.title\)/);
 	assert.match(offer, /ARCHIVE_OFFERED_VERB/);
-	assert.match(offer, /className="min-w-0 truncate"/);
+	assert.match(offer, /className=\{cn\("min-w-0 truncate"\)\}/);
 	assert.equal(
 		offer.includes("archiveOfferedText"),
 		false,

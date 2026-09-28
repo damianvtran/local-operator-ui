@@ -1,0 +1,275 @@
+[build] current: assets 2026-09-28T08:06:49.603Z >= sources 2026-09-28T07:58:33.149Z
+[note] abandoned scratch trees
+        7 seen, 0 owned by a live pid (kept), 4 younger than 30m (kept), 3 removed: lo-renderer-driver-1436, lo-renderer-driver-2487, lo-renderer-driver-3377
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:18322
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/undo-toasts-0927-235510
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-73607
+  frames        /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/undo-toasts-r2-37574/rig2/frames-mine-rs-light
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-73607/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:18322   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/undo-toasts-0927-235510/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:18322","backend":"http://127.0.0.1:18322"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:18322)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[note] U6 the pinned row's resting cost
+        {"pinned":{"rowWidth":228,"archivePresent":true,"archiveDisplay":"none","archiveWidth":0},"unpinned":{"rowWidth":228,"archivePresent":true,"archiveDisplay":"none","archiveWidth":0}}
+[PASS] U6: the pinned row's mark does not move when the pointer arrives
+[note] U6 hit target at the mark's resting centre (pointer on the row)
+        path < svg < button[data-session-pin] < div[data-session-control-pair] < div < section | pointer-events: auto
+[PASS] U6: the pinned row at rest costs the pin alone (the archive is not reserving a slot)
+[PASS] U6: the hit target at the mark's resting centre is the mark itself, not the archive
+[PASS] U6: a press at the visible mark's centre does NOT archive the conversation
+[PASS] the renderer reports this run's frames directory
+[PASS] the renderer sees the built app, not a bare Vite page
+[PASS] the app is in the palette this run photographs (localOperatorLight)
+[PASS] the catalogue answered and the panel is drawing its rows
+[note] rows drawn before anything is photographed
+        5
+[note] rows on the panel
+        [
+  {
+    "id": "2d5ad5da0025",
+    "title": "Invoice reconciliation",
+    "rowButton": true,
+    "pin": true,
+    "archive": true,
+    "pair": true,
+    "actions": false
+  },
+  {
+    "id": "c4e17b90a2f6",
+    "title": "AWS cost increase review with Grafana dashboards",
+    "rowButton": true,
+    "pin": true,
+    "archive": true,
+    "pair": true,
+    "actions": false
+  },
+  {
+    "id": "e059761608ae",
+    "title": "Release notes for 0.29",
+    "rowButton": true,
+    "pin": true,
+    "archive": true,
+    "pair": true,
+    "actions": false
+  },
+  {
+    "id": "7c1b0f2a4d31",
+    "title": "Migration checklist",
+    "rowButton": true,
+    "pin": true,
+    "archive": true,
+    "pair": true,
+    "actions": false
+  },
+  {
+    "id": "b3f1a09c7d52",
+    "title": "Quarterly retention sweep and the transcripts it dropped",
+    "rowButton": true,
+    "pin": true,
+    "archive": true,
+    "pair": true,
+    "actions": false
+  }
+]
+[PASS] the four rows this set measures are all on the panel
+[PASS] no row carries the retired shared control's anchor any more
+[PASS] the fixture's pin can be put back: the mark is drawn at a non-zero, stable box and the hit test at its centre is the mark itself
+[PASS] and the fixture IS pinned again: the row the frames call PINNED reads `aria-pressed true`, and the restore wrote a pin and no archive
+[PASS] the restore leaves no caret behind, so no frame carries focus the fixture does not have
+[PASS] the panel is at the width this frame is labelled with (240)
+[PASS] the panel is at the width this frame is labelled with (280)
+[PASS] the panel is at the width this frame is labelled with (320)
+[PASS] the composer is on screen, so the offer frame is also the evidence for where the offer must not go
+[PASS] the offer is of an offer that was really there
+[PASS] and the offer is the app's standard bottom-right toast: one container, outside the panel, with no band element anywhere (the operator's re-accepted shape, 2026-09-27)
+[PASS] the offer's own Undo put the row back, so the list is the fixture's list again
+[PASS] at the 240 clamp minimum the offer is UNCHANGED - the same viewport-anchored card as at 280, still outside the panel (the panel's width no longer reaches it since the lane was retired, 2026-09-27)
+[PASS] and the 240 offer is of an offer that was really there
+[note] the 320 card's x, and the container and panel it sits in (the lane's old D16 question, kept as a reading now that the card is viewport-anchored)
+        {"panel":{"left":0,"right":320,"top":276,"bottom":843.1,"width":320,"height":567.1,"centre":{"x":160,"y":559.55}},"container":{"left":1000,"right":1356,"top":876,"bottom":876,"width":356,"height":0,"centre":{"x":1178,"y":876}},"card":{"left":1000,"right":1356,"top":826,"bottom":876,"width":356,"height":50,"centre":{"x":1178,"y":851}},"text":"“Migration checklist”archived.Undo"}
+[PASS] the long name reaches the card whole and the card is inside the app's one container (design round 3, D7/D13; the lane the wording named was retired 2026-09-27)
+[note] the long name in the card, as a box (D7's acceptance reading)
+        {"text":"“Quarterly retention sweep and the transcripts it dropped”","clientWidth":189,"scrollWidth":338,"elided":true,"className":"min-w-0 truncate"}
+[PASS] and both offers' rows are back, so every check below reads the fixture's list
+[PASS] the list region reserves the scrollbar gutter, and this run measured what it costs a row
+[PASS] at rest an unpinned row's title has the whole row: no reserved box, and neither act painted
+[FAIL] at rest the unpinned title measures the widths the spec promises (196 / 236 / 276), less the gutter this machine reserves
+        [{"width":240,"title":146.4,"expected":188,"gutter":8},{"width":280,"title":186.4,"expected":228,"gutter":8},{"width":320,"title":226.4,"expected":268,"gutter":8}]
+[FAIL] at rest on a PINNED row the mark is drawn at every width - including the 240 clamp minimum, where the shipped build drew nothing at all
+        [{"id":"c4e17b90a2f6","present":true,"pinned":true,"current":null,"rowWidth":208,"rowHeight":32,"rowLeft":12,"buttonWidth":180,"statusWidth":16,"titleWidth":118.4,"titleLeft":36,"titleText":"AWS cost increase review with Grafana dashboards","titleOverflows":true,"titleScrollWidth":311,"titleClientWidth":118,"titleClipTransform":"none","titleTextTransform":null,"titleTextWidth":null,"titleMask":"none","tailAfterTitle":65.6,"pairWidth":24,"pinWidth":24,"pinPainted":true,"archiveWidth":0,"archivePainted":false},{"id":"c4e17b90a2f6","present":true,"pinned":true,"current":null,"rowWidth":248,"rowHeight":32,"rowLeft":12,"buttonWidth":220,"statusWidth":16,"titleWidth":158.4,"titleLeft":36,"titleText":"AWS cost increase review with Grafana dashboards","titleOverflows":true,"titleScrollWidth":311,"titleClientWidth":158,"titleClipTransform":"none","titleTextTransform":null,"titleTextWidth":null,"titleMask":"none","tailAfterTitle":65.6,"pairWidth":24,"pinWidth":24,"pinPainted":true,"archiveWidth":0,"archivePainted":false},{"id":"c4e17b90a2f6","present":true,"pinned":true,"current":null,"rowWidth":288,"rowHeight":32,"rowLeft":12,"buttonWidth":260,"statusWidth":16,"titleWidth":198.4,"titleLeft":36,"titleText":"AWS cost increase review with Grafana dashboards","titleOverflows":true,"titleScrollWidth":311,"titleClientWidth":198,"titleClipTransform":"none","titleTextTransform":null,"titleTextWidth":null,"titleMask":"none","tailAfterTitle":65.6,"pairWidth":24,"pinWidth":24,"pinPainted":true,"archiveWidth":0,"archivePainted":false}]
+[FAIL] with the pointer on the row both acts are painted and the title's box is 140 / 180 / 220, less the gutter
+        [{"id":"b3f1a09c7d52","present":true,"pinned":false,"current":null,"rowWidth":208,"rowHeight":32,"rowLeft":12,"buttonWidth":152,"statusWidth":16,"titleWidth":124,"titleLeft":36,"titleText":"Quarterly retention sweep and the transcripts it dropped","titleOverflows":true,"titleScrollWidth":341,"titleClientWidth":124,"titleClipTransform":"none","titleTextTransform":"matrix(1, 0, 0, 1, -216.984, 0)","titleTextWidth":340.98,"titleMask":"linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 12px, rgb(0, 0, 0) calc(100% - 12px), rgba(0, 0, 0, 0) 100%)","tailAfterTitle":60,"pairWidth":52,"pinWidth":24,"pinPainted":true,"archiveWidth":24,"archivePainted":true},{"id":"b3f1a09c7d52","present":true,"pinned":false,"current":null,"rowWidth":248,"rowHeight":32,"rowLeft":12,"buttonWidth":192,"statusWidth":16,"titleWidth":164,"titleLeft":36,"titleText":"Quarterly retention sweep and the transcripts it dropped","titleOverflows":true,"titleScrollWidth":341,"titleClientWidth":164,"titleClipTransform":"none","titleTextTransform":"matrix(1, 0, 0, 1, -176.984, 0)","titleTextWidth":340.98,"titleMask":"linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 12px, rgb(0, 0, 0) calc(100% - 12px), rgba(0, 0, 0, 0) 100%)","tailAfterTitle":60,"pairWidth":52,"pinWidth":24,"pinPainted":true,"archiveWidth":24,"archivePainted":true},{"id":"b3f1a09c7d52","present":true,"pinned":false,"current":null,"rowWidth":288,"rowHeight":32,"rowLeft":12,"buttonWidth":232,"statusWidth":16,"titleWidth":204,"titleLeft":36,"titleText":"Quarterly retention sweep and the transcripts it dropped","titleOverflows":true,"titleScrollWidth":341,"titleClientWidth":204,"titleClipTransform":"none","titleTextTransform":"matrix(1, 0, 0, 1, -136.984, 0)","titleTextWidth":340.98,"titleMask":"linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 12px, rgb(0, 0, 0) calc(100% - 12px), rgba(0, 0, 0, 0) 100%)","tailAfterTitle":60,"pairWidth":52,"pinWidth":24,"pinPainted":true,"archiveWidth":24,"archivePainted":true}]
+[PASS] what moves when the pointer arrives is the title's CLIP: the row's box, its height and the title's leading edge are identical in both states
+[FAIL] and the acts are what takes it: 56px on an unpinned row, 28 on a pinned one
+        [{"width":240,"unpinned":22.400000000000006,"pinned":-5.599999999999994},{"width":280,"unpinned":22.400000000000006,"pinned":-5.599999999999994},{"width":320,"unpinned":22.400000000000006,"pinned":-5.599999999999994}]
+[PASS] the long title truncates at every width photographed here
+[PASS] the pan reached the title's own overflow and stopped there, at every width
+[PASS] at rest there is no mask and no transform: the pan's own paint exists only while it runs
+[PASS] leaving the row clears the pan and the mask in the same frame, from wherever it got to
+[PASS] and a pointer that crosses the row faster than the dwell starts no pan at all
+[PASS] a title that FITS does not move: no overflow, no transform, no mask
+[PASS] the offer is drawn exactly once in the app's one container, and the Send-vs-offer boxes are both on the frame - the overlap D12 measured is the operator's re-accepted trade
+[PASS] every settled capture is a frame the app held still for, with no toast on it
+[PASS] and the offer's own frame is of a held-still picture with the offer on it
+[PASS] every capture wrote a PNG of the requested size
+[PASS] every hovered row carries a flyout of its own - the row under the pointer, whose facts it describes, clear of that row's own acts
+[PASS] and no flyout outlives the pointer: with it parked off the panel the tooltip lane is empty, WHILE the row it was drawn on did carry one in the same run (agent review round 2, R2-N3: without that positive control this check passes in a build where the flyout never opens at all, since the sweep before it hovers for less than the dwell)
+[PASS] the pinned row's own button can hold focus, which is where the keyboard walk starts
+[FAIL] one Tab from the row's button lands on its pin, drawn for focus alone
+        {"label":null,"pressed":null}
+[FAIL] the recorder is installed, the pin is on the panel, and the pin is what has focus - the state the Enter chord is about to be sent into
+        {"installed":true,"pin":true,"focused":false,"label":null,"pressed":null}
+[FAIL] the Enter chord reached the focused pin through Chromium's input pipeline and produced its activation - the precondition the walk below depends on (the instrument's own claim, not the app's)
+        {"delivered":{"pinKeydown":0,"pinKeypress":0,"pinClick":0,"anyClick":1},"activeTag":"BUTTON"}
+[FAIL] unpinning from the keyboard flips the state and keeps the row's place: the activation was delivered, the pair stays displayed and focus stays inside the row (U2)
+        {"pressed":"true","pairDisplay":"flex","focusInsideRow":false,"activeTag":"BUTTON","delivered":{"pinKeydown":0,"pinKeypress":0,"pinClick":0,"anyClick":1},"verdict":"rig: the Enter chord never reached the pin (no keydown on it)"}
+[PASS] no press in this run wrote an archive for the conversation the U6 press was aimed at
+[note] geometry written
+        /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/undo-toasts-r2-37574/rig2/frames-mine-rs-light/row-space-geometry-localOperatorLight.json
+  rest-240 b3f1a09c7d52: row 208 title 146.4 (overflows true, x null) tail 37.6 pair 0 pin 0- archive 0-
+  rest-240 7c1b0f2a4d31: row 208 title 146.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  rest-240 c4e17b90a2f6: row 208 title 118.4 (overflows true, x null) tail 65.6 pair 24 pin 24+ archive 0-
+  rest-240 2d5ad5da0025: row 208 title 146.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  hover-long-240 b3f1a09c7d52: row 208 title 124 (overflows true, x matrix(1, 0, 0, 1, -216.984, 0)) tail 60 pair 52 pin 24+ archive 24+
+  hover-long-240 7c1b0f2a4d31: row 208 title 146.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  hover-long-240 c4e17b90a2f6: row 208 title 118.4 (overflows true, x null) tail 65.6 pair 24 pin 24+ archive 0-
+  hover-long-240 2d5ad5da0025: row 208 title 146.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  pan-reset-240 b3f1a09c7d52: row 208 title 146.4 (overflows true, x null) tail 37.6 pair 0 pin 0- archive 0-
+  pan-reset-240 7c1b0f2a4d31: row 208 title 146.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  pan-reset-240 c4e17b90a2f6: row 208 title 118.4 (overflows true, x null) tail 65.6 pair 24 pin 24+ archive 0-
+  pan-reset-240 2d5ad5da0025: row 208 title 146.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  hover-pinned-240 b3f1a09c7d52: row 208 title 146.4 (overflows true, x null) tail 37.6 pair 0 pin 0- archive 0-
+  hover-pinned-240 7c1b0f2a4d31: row 208 title 146.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  hover-pinned-240 c4e17b90a2f6: row 208 title 124 (overflows true, x matrix(1, 0, 0, 1, -187.031, 0)) tail 60 pair 52 pin 24+ archive 24+
+  hover-pinned-240 2d5ad5da0025: row 208 title 146.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  rest-280 b3f1a09c7d52: row 248 title 186.4 (overflows true, x null) tail 37.6 pair 0 pin 0- archive 0-
+  rest-280 7c1b0f2a4d31: row 248 title 186.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  rest-280 c4e17b90a2f6: row 248 title 158.4 (overflows true, x null) tail 65.6 pair 24 pin 24+ archive 0-
+  rest-280 2d5ad5da0025: row 248 title 186.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  hover-long-280 b3f1a09c7d52: row 248 title 164 (overflows true, x matrix(1, 0, 0, 1, -176.984, 0)) tail 60 pair 52 pin 24+ archive 24+
+  hover-long-280 7c1b0f2a4d31: row 248 title 186.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  hover-long-280 c4e17b90a2f6: row 248 title 158.4 (overflows true, x null) tail 65.6 pair 24 pin 24+ archive 0-
+  hover-long-280 2d5ad5da0025: row 248 title 186.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  pan-reset-280 b3f1a09c7d52: row 248 title 186.4 (overflows true, x null) tail 37.6 pair 0 pin 0- archive 0-
+  pan-reset-280 7c1b0f2a4d31: row 248 title 186.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  pan-reset-280 c4e17b90a2f6: row 248 title 158.4 (overflows true, x null) tail 65.6 pair 24 pin 24+ archive 0-
+  pan-reset-280 2d5ad5da0025: row 248 title 186.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  hover-pinned-280 b3f1a09c7d52: row 248 title 186.4 (overflows true, x null) tail 37.6 pair 0 pin 0- archive 0-
+  hover-pinned-280 7c1b0f2a4d31: row 248 title 186.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  hover-pinned-280 c4e17b90a2f6: row 248 title 164 (overflows true, x matrix(1, 0, 0, 1, -147.031, 0)) tail 60 pair 52 pin 24+ archive 24+
+  hover-pinned-280 2d5ad5da0025: row 248 title 186.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  rest-320 b3f1a09c7d52: row 288 title 226.4 (overflows true, x null) tail 37.6 pair 0 pin 0- archive 0-
+  rest-320 7c1b0f2a4d31: row 288 title 226.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  rest-320 c4e17b90a2f6: row 288 title 198.4 (overflows true, x null) tail 65.6 pair 24 pin 24+ archive 0-
+  rest-320 2d5ad5da0025: row 288 title 226.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  hover-long-320 b3f1a09c7d52: row 288 title 204 (overflows true, x matrix(1, 0, 0, 1, -136.984, 0)) tail 60 pair 52 pin 24+ archive 24+
+  hover-long-320 7c1b0f2a4d31: row 288 title 226.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  hover-long-320 c4e17b90a2f6: row 288 title 198.4 (overflows true, x null) tail 65.6 pair 24 pin 24+ archive 0-
+  hover-long-320 2d5ad5da0025: row 288 title 226.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  pan-reset-320 b3f1a09c7d52: row 288 title 226.4 (overflows true, x null) tail 37.6 pair 0 pin 0- archive 0-
+  pan-reset-320 7c1b0f2a4d31: row 288 title 226.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  pan-reset-320 c4e17b90a2f6: row 288 title 198.4 (overflows true, x null) tail 65.6 pair 24 pin 24+ archive 0-
+  pan-reset-320 2d5ad5da0025: row 288 title 226.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  hover-pinned-320 b3f1a09c7d52: row 288 title 226.4 (overflows true, x null) tail 37.6 pair 0 pin 0- archive 0-
+  hover-pinned-320 7c1b0f2a4d31: row 288 title 226.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  hover-pinned-320 c4e17b90a2f6: row 288 title 204 (overflows true, x matrix(1, 0, 0, 1, -107.031, 0)) tail 60 pair 52 pin 24+ archive 24+
+  hover-pinned-320 2d5ad5da0025: row 288 title 226.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  hover-short-280 b3f1a09c7d52: row 248 title 186.4 (overflows true, x null) tail 37.6 pair 0 pin 0- archive 0-
+  hover-short-280 7c1b0f2a4d31: row 248 title 164 (overflows false, x null) tail 60 pair 52 pin 24+ archive 24+
+  hover-short-280 c4e17b90a2f6: row 248 title 158.4 (overflows true, x null) tail 65.6 pair 24 pin 24+ archive 0-
+  hover-short-280 2d5ad5da0025: row 248 title 186.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  hover-current-280 b3f1a09c7d52: row 248 title 186.4 (overflows true, x null) tail 37.6 pair 0 pin 0- archive 0-
+  hover-current-280 7c1b0f2a4d31: row 248 title 186.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  hover-current-280 c4e17b90a2f6: row 248 title 158.4 (overflows true, x null) tail 65.6 pair 24 pin 24+ archive 0-
+  hover-current-280 2d5ad5da0025: row 248 title 164 (overflows false, x null) tail 60 pair 52 pin 24+ archive 24+
+  pan-swept-280 b3f1a09c7d52: row 248 title 186.4 (overflows true, x null) tail 37.6 pair 0 pin 0- archive 0-
+  pan-swept-280 7c1b0f2a4d31: row 248 title 186.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  pan-swept-280 c4e17b90a2f6: row 248 title 158.4 (overflows true, x null) tail 65.6 pair 24 pin 24+ archive 0-
+  pan-swept-280 2d5ad5da0025: row 248 title 186.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  flyout-closed-280 b3f1a09c7d52: row 248 title 186.4 (overflows true, x null) tail 37.6 pair 0 pin 0- archive 0-
+  flyout-closed-280 7c1b0f2a4d31: row 248 title 186.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  flyout-closed-280 c4e17b90a2f6: row 248 title 158.4 (overflows true, x null) tail 65.6 pair 24 pin 24+ archive 0-
+  flyout-closed-280 2d5ad5da0025: row 248 title 186.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  offer-toast-280 b3f1a09c7d52: row 248 title 164 (overflows true, x null) tail 60 pair 52 pin 24+ archive 24+
+  offer-toast-280 7c1b0f2a4d31: row null title null (overflows null, x null) tail null pair null pin null- archive null-
+  offer-toast-280 c4e17b90a2f6: row 248 title 158.4 (overflows true, x null) tail 65.6 pair 24 pin 24+ archive 0-
+  offer-toast-280 2d5ad5da0025: row 248 title 186.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  offer-toast-240 b3f1a09c7d52: row 208 title 124 (overflows true, x null) tail 60 pair 52 pin 24+ archive 24+
+  offer-toast-240 7c1b0f2a4d31: row null title null (overflows null, x null) tail null pair null pin null- archive null-
+  offer-toast-240 c4e17b90a2f6: row 208 title 118.4 (overflows true, x null) tail 65.6 pair 24 pin 24+ archive 0-
+  offer-toast-240 2d5ad5da0025: row 208 title 146.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  offer-toast-320 b3f1a09c7d52: row 288 title 204 (overflows true, x null) tail 60 pair 52 pin 24+ archive 24+
+  offer-toast-320 7c1b0f2a4d31: row null title null (overflows null, x null) tail null pair null pin null- archive null-
+  offer-toast-320 c4e17b90a2f6: row 288 title 198.4 (overflows true, x null) tail 65.6 pair 24 pin 24+ archive 0-
+  offer-toast-320 2d5ad5da0025: row 288 title 226.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+  offer-long-280 b3f1a09c7d52: row null title null (overflows null, x null) tail null pair null pin null- archive null-
+  offer-long-280 7c1b0f2a4d31: row 248 title 164 (overflows false, x null) tail 60 pair 52 pin 24+ archive 24+
+  offer-long-280 c4e17b90a2f6: row 248 title 158.4 (overflows true, x null) tail 65.6 pair 24 pin 24+ archive 0-
+  offer-long-280 2d5ad5da0025: row 248 title 186.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
+
+---- app log (tail) ----
+Error occurred in handler for 'console-state': Error: No handler registered for 'console-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+04:12:35.575 › [browser] denied a media permission request from (unknown origin)
+04:12:35.575 › [browser] denied a media permission request from (unknown origin)
+04:12:35.575 › [browser] denied a web-app-installation permission request from (unknown origin)
+04:12:35.575 › [browser] denied a geolocation permission request from (unknown origin)
+Error occurred in handler for 'browser-state': Error: No handler registered for 'browser-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'browser-state': Error: No handler registered for 'browser-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'browser-webauthn-pending': Error: No handler registered for 'browser-webauthn-pending'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+04:12:35.745 › [shell-path] /bin/zsh reports PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
+04:12:35.745 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
+04:12:35.745 › Shell environment variables loaded successfully. PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
+04:12:35.749 › [browser] host on 127.0.0.1:54627 (proto 1), profile /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-73607/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+04:12:35.752 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+04:12:35.752 › Checking for UI updates...
+04:12:35.752 › Skip checkForUpdates because application is not packed and dev update config is not forced
+04:12:35.887 › [browser] tab 1 navigated to about:blank
+[window-mode] state: visible=false focused=false focusable=false size=1380x900 content=1380x900
+04:12:37.900 › Checking for updates... (silent mode: true)
+04:12:37.901 › Skip checkForUpdates because application is not packed and dev update config is not forced
+04:12:37.902 › Checking for backend updates... (silent mode: true)
+04:12:37.902 › Skip backend update check in dev mode unless forced
+04:12:38.892 › [window-chrome] applied themeId=localOperatorLight ground=#f2ede3 symbol=#4e4940
+04:12:44.813 › Backend health check response status: 200
+04:12:49.901 › The pre-split environment at /Users/damian/Library/Application Support/Local Operator/local-operator-venv is built on the interpreter inside /Applications/Local Operator.app; it is left exactly as it is, and this instance does not use it.
+04:12:54.813 › Backend health check response status: 200
+04:13:04.816 › Backend health check response status: 200
+04:13:14.818 › Backend health check response status: 200
+04:13:24.820 › Backend health check response status: 200
+04:13:34.820 › Backend health check response status: 200
+04:13:44.823 › Backend health check response status: 200
+04:13:54.825 › Backend health check response status: 200
+
+[PASS] no process from this run outlived its boot
+
+frames: hover-current-280.png, hover-long-240.png, hover-long-280.png, hover-long-320.png, hover-pinned-240.png, hover-pinned-280.png, hover-pinned-320.png, hover-short-280.png, offer-long-280.png, offer-toast-240.png, offer-toast-280.png, offer-toast-320.png, rest-240.png, rest-280.png, rest-320.png, settle-probe.png
+frames directory: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/undo-toasts-r2-37574/rig2/frames-mine-rs-light
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-73607/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-73607 (the frames are also in --out)
+
+8 CHECK(S) FAILED
+driver rc=1

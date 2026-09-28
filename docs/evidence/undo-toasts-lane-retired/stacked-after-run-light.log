@@ -1,0 +1,49 @@
+[build] current: assets 2026-09-28T08:06:49.603Z >= sources 2026-09-28T07:58:33.149Z
+[note] abandoned scratch trees
+        24 seen, 0 owned by a live pid (kept), 24 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:18322
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/undo-toasts-0927-235510
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-2373
+  frames        /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/undo-toasts-r2-37574/rig2/frames-mine-st-light
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-2373/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:18322   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/undo-toasts-0927-235510/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:18322","backend":"http://127.0.0.1:18322"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:18322)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] the renderer reports this run's frames directory
+[PASS] the catalogue answered and the panel is drawing its rows
+[PASS] the archive press raises its own offer
+[PASS] the discard press raises its own offer beside the archive's
+[PASS] two offers stand together as ordinary toasts: the archive's and the discard's, one container, no band and no lane
+[PASS] the newer message is the fully drawn one and the older peeks behind it - sonner's own stack
+[note] the stack, as the two boxes
+        {"archive":{"top":813,"bottom":861,"left":1009,"right":1347},"discard":{"top":826,"bottom":876,"left":1000,"right":1356},"containers":1}
+[PASS] the pair held still for the frame it kept
+[PASS] hovering the stack expands it: both offers report expanded, fully drawn and disjoint
+[note] the expanded stack, as the two boxes
+        {"archive":{"box":{"top":754,"bottom":804,"left":1000,"right":1356},"expanded":"true"},"discard":{"box":{"top":818,"bottom":868,"left":1000,"right":1356},"expanded":"true"}}
+[PASS] the expanded pair held still for the frame it kept
+[PASS] no process from this run outlived its boot
+
+frames: stacked-expanded.png, stacked-offers.png
+frames directory: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/undo-toasts-r2-37574/rig2/frames-mine-st-light
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-2373/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-2373 (the frames are also in --out)
+
+ALL CHECKS PASSED
+driver rc=0
