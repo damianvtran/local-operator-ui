@@ -58,15 +58,20 @@ import {
  * |---|---|
  * | inactive tab | no fill at all: a title in the well, separated from its neighbour by a 1px `hairline` |
  * | hover | the `elevated` colour step and `ink`, and nothing lifts, scales or translates (`branding.md`) |
- * | active tab | the PAGE's own ground (`canvas`), `border-x border-t border-control`, no bottom edge, `rounded-t-sm` |
- * | the notch | a 1px `canvas` span painted across the active tab's bottom edge, so the strip's own rule continues everywhere except under it |
+ * | active tab | the PAGE's own ground (`elevated`), `border-x border-t border-control`, no bottom edge, `rounded-t-sm` |
+ * | the notch | a 1px `elevated` span painted across the active tab's bottom edge, so the strip's own rule continues everywhere except under it |
  *
  * Removing the inactive fill loses no information — the titles and the dividers
  * identify them (the `branding.md` "would removing it lose anything" test), so the
  * fill comes off rather than being promoted to a second ground. `border-control`
- * on the active tab's three edges is what makes it survive a glance; the ground
- * step alone measures 1.11:1 in the dark palettes (design round 3, D18) and a
- * depth cue is not a marker.
+ * on the active tab's three edges is what makes it survive a glance; at the old
+ * `canvas` rung the ground step alone measured 1.11:1 in the dark palettes
+ * (design round 3, D18) and a depth cue is not a marker — the edge is what this
+ * grammar spends on the tab. THE FILL AND THE NOTCH FOLLOW THE PAGE (remediation
+ * pass): the page below the strip moved to the drawer's rung (`elevated`,
+ * `browser-surface.tsx` and `browser-url-bar.tsx`), so the tab's fill and its
+ * notch moved with it — left on `canvas` they drew a 1px seam where the sheet
+ * used to be, in every theme.
  *
  * WHY THE ROW ACTIONS EXPAND INSIDE THE BAND (spec §6). They used to be a Radix
  * dropdown anchored at the strip's bottom edge, painting DOWNWARD into the content
@@ -1040,7 +1045,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										"group relative flex max-w-[50%] grow basis-32 items-center gap-1.5 px-2 text-body-sm rounded-t-sm",
 										floor,
 										active
-											? "border-control border-x border-t bg-canvas text-ink"
+											? "border-control border-x border-t bg-elevated text-ink"
 											: "text-ink-muted hover:bg-row-hover hover:text-ink",
 										// The tab whose actions row is open keeps a visible selected treatment:
 										// the row is a band under the whole strip, and the only other tie to its
@@ -1226,13 +1231,14 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 														// shrink, controls cannot - so below `@max-2xl` (42rem, measured on the
 														// strip's own container) the active row takes exactly
 														// the treatment every inactive row has had since D13: overlaid on the
-														// row's right end, revealed on hover or focus, with the elevated
-														// ground so the title it covers is not read through it. It stays
+														// row's right end, revealed on hover or focus, with a `surface`
+														// ground rather than the tab's own `elevated` fill, so the title it
+														// covers is not read through it. It stays
 														// reachable by keyboard through the same `group-focus-within` the other
 														// rows use, and the actions expansion is still the always-reachable
 														// path for the mouse.
 														"@max-2xl:absolute @max-2xl:inset-y-0 @max-2xl:right-1",
-														"@max-2xl:group-hover:bg-elevated @max-2xl:group-focus-within:bg-elevated",
+														"@max-2xl:group-hover:bg-surface @max-2xl:group-focus-within:bg-surface",
 													)
 												: "absolute inset-y-0 right-1 flex items-center gap-1.5",
 											// Its own actions row being open is not a hover, so the ground
@@ -1240,7 +1246,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 											!active &&
 												"group-hover:bg-elevated group-focus-within:bg-elevated",
 											actionsTabId === tab.tabId &&
-												(active ? "@max-2xl:bg-elevated" : "bg-elevated"),
+												(active ? "@max-2xl:bg-surface" : "bg-elevated"),
 										)}
 									>
 										{/* The actions trigger. The menu it used to open painted into the
@@ -1313,13 +1319,13 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										// THE NOTCH. The strip's rule runs along the whole band, and the
 										// active tab paints the page's own ground across its own bottom
 										// edge so the tab and the content area read as one sheet. It is
-										// one pixel of `canvas` — the same role the tab's fill and the
+										// one pixel of `elevated` — the same role the tab's fill and the
 										// content area use — and it is why the strip keeps its own
 										// `border-b`: the rule continues everywhere except here.
 										<span
 											aria-hidden
 											data-tour-tag="browser-tab-notch"
-											className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-canvas"
+											className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-elevated"
 										/>
 									)}
 								</div>
