@@ -57,6 +57,7 @@ import {
 	Plus,
 	Search,
 	SlidersHorizontal,
+	Trash2,
 	UserPlus,
 	Users,
 	X,
@@ -79,6 +80,7 @@ import { useNavigate } from "react-router-dom";
 import { SESSION_SEARCH_MAX_CHARS } from "../../../../../shared/desktop-contract";
 import {
 	ARCHIVE_OFFERED_VERB,
+	ARCHIVE_UNDO_TOAST_MS,
 	archiveOfferedName,
 	useArchiveUndoRetirement,
 } from "../archive-undo";
@@ -132,7 +134,16 @@ import {
 } from "../chat-sidebar-view";
 import { useStripSpeaksConnection } from "../chat-status-presence";
 import { clearSearch } from "../clear-search";
-import { untargetedDraftRows } from "../draft-rows";
+import {
+	discardDraftLabel,
+	discardSuccessorIndex,
+	untargetedDraftRows,
+} from "../draft-rows";
+import {
+	DRAFTS_OFFERED_VERB,
+	draftsOfferedName,
+	useDraftsUndoRetirement,
+} from "../drafts-undo";
 import {
 	markAllReadCopy,
 	markAllReadReceipt,
@@ -293,8 +304,29 @@ const ARCHIVE_TOAST_LANE = "bottom-left";
  * refusal. The life belongs to the MESSAGE, so the panel runs the clock (the lane's
  * second effect) and sonner is told never to expire an entry.
  */
-const ARCHIVE_UNDO_TOAST_MS = 8_000;
+/*
+ * THE OFFER'S CARD LIFE IS NOT HERE ANY MORE (design round 2, D6): it moved to
+ * `archive-undo.ts` (`ARCHIVE_UNDO_TOAST_MS`), the one module both this panel's
+ * clock and the drafts offer's retirement can read - a number two offers share
+ * cannot live in a module one of them cannot import. The refusal's own life has
+ * no second consumer and stays.
+ */
 const ARCHIVE_FAILURE_TOAST_MS = 10_000;
+/**
+ * The sentence a withheld discard carries - ONE copy, read by both channels: the
+ * `title` (pointer) and the `sr-only` element the control points at while it is
+ * inapplicable (design round 2's D7, UX round 2's U6: a title on a `disabled`
+ * control was the pointer-only channel engines are least reliable about, and it
+ * reached no keyboard reader at all).
+ */
+const SENDING_DISCARD_WHY =
+	"Sending - this draft can be discarded when the send settles";
+/** The sr-only why's id, keyed so each row's control points at its own. */
+const draftWhyId = (key: string) => `draft-discard-why-${key}`;
+/** The disabled Clear all's own why, same two-channel rule. */
+const CLEAR_ALL_WHY =
+	"Drafts are sending - they can be cleared when the sends settle";
+const CLEAR_ALL_WHY_ID = "drafts-clear-all-why";
 /**
  * What the lane tells sonner, so it never ends a message on its own: the entry stays
  * mounted until the panel's clock fires or a state change dismisses it.
@@ -1077,6 +1109,8 @@ export function ChatSidebar({
 	const activeDraftKey = useCanonicalSessionsStore((s) => s.activeDraftKey);
 	const drafts = useCanonicalSessionsStore((s) => s.drafts);
 	const openDraft = useCanonicalSessionsStore((s) => s.openDraft);
+	const discardDraft = useCanonicalSessionsStore((s) => s.discardDraft);
+	const discardDrafts = useCanonicalSessionsStore((s) => s.discardDrafts);
 	/**
 	 * The other half of a draft's identity: the composer's own words.
 	 *
@@ -1849,6 +1883,7 @@ export function ChatSidebar({
 	const forgottenFacts = useCanonicalSessionsStore((s) => s.forgotten);
 	const archiveFailure = useCanonicalSessionsStore((s) => s.archiveFailure);
 	const archiveUndo = useCanonicalSessionsStore((s) => s.archiveUndo);
+	const draftsUndo = useCanonicalSessionsStore((s) => s.draftsUndo);
 	/*
 	 * THE OFFER'S OWN RETIREMENT WATCH (design round 8, D27). The offer is RAISED by the store
 	 * now - in the update that settles the write, so the accepted departure and the band that
@@ -1856,6 +1891,14 @@ export function ChatSidebar({
 	 * true. One call, keyed on the offer's identity, so a second archive in a row re-arms it.
 	 */
 	useArchiveUndoRetirement();
+	/*
+	 * THE DISCARD OFFER'S OWN WATCH, beside the archive's and for the same reason: the
+	 * value is the store's (raised in the update that removes the rows,
+	 * `DraftsUndoOffer`), and WHEN it stops being offered is its own module's rule
+	 * (`drafts-undo.ts` - a ceiling, because a discard is a local write and no answer
+	 * can end it early).
+	 */
+	useDraftsUndoRetirement();
 	/*
 	 * BOTH LANE MESSAGES' OWN WRITES, because the panel is what decides which message the lane
 	 * shows and therefore when a message's turn is over - and a value that outlives its message
@@ -1869,13 +1912,24 @@ export function ChatSidebar({
 	);
 	const setArchiveUndo = useCanonicalSessionsStore((s) => s.setArchiveUndo);
 	/*
+	 * THE DISCARD OFFER'S TWO WRITES, for the two ends of its life the panel owns: the
+	 * Undo press (`restoreDraftsUndo`) and the supersession clause below, which clears an
+	 * offer a strictly newer message outranked. `drafts-undo.ts` owns the other end
+	 * (the ceiling).
+	 */
+	const restoreDraftsUndo = useCanonicalSessionsStore(
+		(s) => s.restoreDraftsUndo,
+	);
+	const setDraftsUndo = useCanonicalSessionsStore((s) => s.setDraftsUndo);
+	/*
 	 * WHAT THE LANE LAST DREW, and its stamp: the clearing rule below needs BOTH - which message
 	 * the reader was last looking at, and whether the one that replaces it outranks it - because
 	 * clearing on the ordering alone removed a refusal while its own card was still up.
 	 */
-	const laneDrawnRef = useRef<{ kind: "offer" | "failure"; at: number } | null>(
-		null,
-	);
+	const laneDrawnRef = useRef<{
+		kind: "offer" | "failure" | "drafts";
+		at: number;
+	} | null>(null);
 	const setSessionArchived = useCanonicalSessionsStore(
 		(s) => s.setSessionArchived,
 	);
@@ -2505,6 +2559,13 @@ export function ChatSidebar({
 		() => untargetedDraftRows(drafts, inputByConversation, listedSessionIds),
 		[drafts, inputByConversation, listedSessionIds],
 	);
+	/*
+	 * THE ROWS `Clear all` MAY ACT ON: the listed rows minus the ones whose send hop
+	 * is live (UX round 1's U2 - the store refuses those keys too, and the two
+	 * lists have to agree or the count in the offer would promise more than moved).
+	 * A failed claim is not pending and is clearable.
+	 */
+	const clearableDraftRows = draftRows.filter((row) => !row.pending);
 	const page = pageRows(pageOrder(rest, view.orderBy), {
 		limit: pageLimit(view.loads),
 		currentId: selectedConversation,
@@ -4436,7 +4497,16 @@ export function ChatSidebar({
 	const applyRowStop = (stop: HTMLElement | null) => {
 		const nav = navRef.current;
 		if (nav === null) return;
-		const rows = [...nav.querySelectorAll<HTMLElement>("[data-chat-row]")];
+		/*
+		 * AND THE RING EXCLUDES WHAT THE CARET CANNOT REACH (agent review round 2's
+		 * R7): the same rule the arrow walk applies below, so a `disabled` row can
+		 * neither hold the stop nor keep `tabIndex` 0 - `focus()` on it is a no-op,
+		 * and a stop nobody can focus is the dead stop that finding measured.
+		 */
+		const allRows = [...nav.querySelectorAll<HTMLElement>("[data-chat-row]")];
+		const rows = allRows.filter(
+			(row) => !(row as { disabled?: boolean }).disabled,
+		);
 		if (rows.length === 0) return;
 		/*
 		 * A departed stop hands the ring to the first row rather than leaving it
@@ -4450,8 +4520,8 @@ export function ChatSidebar({
 		 */
 		const target = stop !== null && rows.includes(stop) ? stop : rows[0];
 		rowStopRef.current = target;
-		for (const row of rows) {
-			row.tabIndex = row === target ? 0 : -1;
+		for (const row of allRows) {
+			row.tabIndex = rows.includes(row) && row === target ? 0 : -1;
 			/*
 			 * AND IT IS THE REGION'S DOOR TOO. `F6` into the sidebar should land on the
 			 * row the reader was on, not on the panel's box: the stop is exactly "the row
@@ -4459,7 +4529,10 @@ export function ChatSidebar({
 			 * the ring start disagreeing. `[data-region-entry]` is what `enterChatRegion`
 			 * reads, and the roving stop is the only thing that writes it here.
 			 */
-			row.toggleAttribute(CHAT_REGION_ENTRY_ATTR, row === target);
+			row.toggleAttribute(
+				CHAT_REGION_ENTRY_ATTR,
+				rows.includes(row) && row === target,
+			);
 		}
 	};
 	useLayoutEffect(() => {
@@ -4588,9 +4661,20 @@ export function ChatSidebar({
 			if (filterShown) searchRef.current?.focus();
 			return;
 		}
+		/*
+		 * AND THE WALK SKIPS WHAT CANNOT TAKE THE CARET (agent review round 2's R7,
+		 * remediation). A `disabled` control cannot: `focus()` on it is a no-op, so the
+		 * step landed on nothing and the walk dead-stopped at the boundary, and
+		 * `applyRowStop` recorded a stop the reader could not see. The app measured
+		 * exactly this once already (`integration-focus.ts`'s `canTakeFocus`: "`focus()`
+		 * did nothing"), and the predicate is the whole of the rule - a candidate the
+		 * caret cannot reach is not a stop. The two draft acts no longer render
+		 * `disabled` at all (they carry `aria-disabled` + a refused press, below), so
+		 * this filter protects the class rather than only today's controls.
+		 */
 		const rows = [
 			...event.currentTarget.querySelectorAll<HTMLElement>("[data-chat-row]"),
-		];
+		].filter((row) => !(row as { disabled?: boolean }).disabled);
 		const index = rows.indexOf(target);
 		const next =
 			event.key === "ArrowDown"
@@ -5088,7 +5172,16 @@ export function ChatSidebar({
 	 * takes the whole panel down with it. The ref below is what makes that possible: a toast is
 	 * retired when the lane's own message GOES, not when the panel mounts without one.
 	 */
-	const laneMessageRef = useRef<"offer" | "failure" | null>(null);
+	const laneMessageRef = useRef<"offer" | "failure" | "drafts" | null>(null);
+	/*
+	 * THE FRESHLY STAGED KEY A DISCARD LEFT THE PANE ON (UX round 2's U7), or null
+	 * when the discard did not take the pane. The offer's own Undo press is the only
+	 * reader: it re-opens the restored key exactly when this is still the pane's
+	 * current draft, so "give me back what I was working on" lands the reader on it
+	 * rather than on an empty fresh draft. Written by BOTH discard handlers, null
+	 * whenever the act did not take the pane.
+	 */
+	const stagedByDiscardRef = useRef<string | null>(null);
 	/*
 	 * ONE EFFECT SETTLES THE LANE, and that is a guarantee rather than a tidier arrangement
 	 * of two (agent review round 2, R2-4). Both messages share one id, so what the lane must
@@ -5116,7 +5209,7 @@ export function ChatSidebar({
 	 * conversation the reader had restored).
 	 */
 	useEffect(() => {
-		if (!archiveFailure && !archiveUndo) {
+		if (!archiveFailure && !archiveUndo && !draftsUndo) {
 			if (laneMessageRef.current === null) return;
 			laneMessageRef.current = null;
 			dismissToast(ARCHIVE_TOAST_ID);
@@ -5134,14 +5227,27 @@ export function ChatSidebar({
 		 * raised them and the NEWER one is drawn; the lane still holds one message at a time and
 		 * still replaces in place under the one stable id.
 		 */
+		/*
+		 * THREE KINDS IN ONE SLOT, AND THE DRAFTS OFFER LOSES TIES (2026-09-27, this
+		 * remediation's own extension of the lane). A discard raises `draftsUndo` on the
+		 * SAME counter the archive's two messages take (`answerSeq`), so currency decides
+		 * between all three as it already does between the refusal and the offer, and the
+		 * tie rule follows from what each message IS: the standing archive message keeps
+		 * the lane and the discard offer waits its turn, because an archive message is
+		 * about a write the daemon answered while a discard is entirely this window's own.
+		 */
 		const newest =
-			archiveFailure && archiveUndo
-				? archiveUndo.at > archiveFailure.at
-					? "offer"
-					: "failure"
-				: archiveFailure
-					? "failure"
-					: "offer";
+			draftsUndo !== null &&
+			(archiveFailure === null || draftsUndo.at > archiveFailure.at) &&
+			(archiveUndo === null || draftsUndo.at > archiveUndo.at)
+				? "drafts"
+				: archiveFailure && archiveUndo
+					? archiveUndo.at > archiveFailure.at
+						? "offer"
+						: "failure"
+					: archiveFailure
+						? "failure"
+						: "offer";
 		/*
 		 * THE MESSAGE THE NEWER ONE SUPERSEDED IS CLEARED, WHICH IS U10 ITSELF (UX round 3). The
 		 * currency rule above decides which of the two is the lane's newest word - and until this
@@ -5187,7 +5293,11 @@ export function ChatSidebar({
 		 * reader's own press, answered - is never the loser of a comparison it wins.
 		 */
 		const drawnAt =
-			newest === "offer" ? (archiveUndo?.at ?? 0) : (archiveFailure?.at ?? 0);
+			newest === "offer"
+				? (archiveUndo?.at ?? 0)
+				: newest === "drafts"
+					? (draftsUndo?.at ?? 0)
+					: (archiveFailure?.at ?? 0);
 		const drawnBefore = laneDrawnRef.current;
 		laneDrawnRef.current = { kind: newest, at: drawnAt };
 		if (
@@ -5195,8 +5305,31 @@ export function ChatSidebar({
 			drawnBefore.kind !== newest &&
 			drawnAt > drawnBefore.at
 		) {
-			if (newest === "offer") clearArchiveFailure();
-			else setArchiveUndo(null);
+			if (newest === "failure") {
+				setArchiveUndo(null);
+			} else if (newest === "offer") {
+				clearArchiveFailure();
+			} else {
+				/*
+				 * THE DRAFTS OFFER CAN ONLY WIN BY BEING STRICTLY NEWER THAN EVERY ARCHIVE
+				 * VALUE PRESENT (the tie rule above), so both archive values it drew over
+				 * are strictly superseded and go with the same clause the pair uses on each
+				 * other. A value that tied or outranked the drafts offer was not superseded
+				 * and stays: an offer outranking a refusal is exactly why the pair's clause
+				 * is currency-guarded rather than kind-guarded, and the drafts value gets
+				 * the same respect.
+				 */
+				clearArchiveFailure();
+				setArchiveUndo(null);
+			}
+			/*
+			 * AND THE DRAFTS OFFER IS CLEARED BY A MESSAGE THAT OUTRANKS IT, BY THE SAME
+			 * STRICTLY-GREATER TERM the clause above applies to the archive pair - a tie is
+			 * left standing, because the value that tied is the one on screen and this one
+			 * gets its turn when that one retires.
+			 */
+			if (newest !== "drafts" && draftsUndo !== null && draftsUndo.at < drawnAt)
+				setDraftsUndo(null);
 		}
 		if (newest === "failure" && archiveFailure) {
 			laneMessageRef.current = "failure";
@@ -5323,12 +5456,63 @@ export function ChatSidebar({
 				},
 			);
 		}
+		if (newest === "drafts" && draftsUndo) {
+			laneMessageRef.current = "drafts";
+			showInfoToast(
+				<span className="flex min-w-0 items-baseline gap-1">
+					<span className="min-w-0 truncate">
+						{draftsOfferedName(draftsUndo.keys.length)}
+					</span>
+					<span className="shrink-0">{DRAFTS_OFFERED_VERB}</span>
+				</span>,
+				{
+					id: ARCHIVE_TOAST_ID,
+					className: ARCHIVE_TOAST_CLASS,
+					duration: ARCHIVE_TOAST_PERSISTENT,
+					position: ARCHIVE_TOAST_LANE,
+					action: {
+						label: "Undo",
+						onClick: (event) => {
+							event.preventDefault();
+							/*
+							 * ONE WRITE, THEN THE LANE DRAWS WHATEVER IS LEFT: the store puts
+							 * the snapshot back and clears `draftsUndo` in the same update, so the
+							 * dismissal is the effect's own empty-lane branch - the one dismissal
+							 * with nothing to replace it (the archive offer's own U3/R2-1 clause,
+							 * one control over). Unlike an archive undo there is no answer to wait
+							 * for: the restore is local and immediate.
+							 */
+							restoreDraftsUndo();
+							/*
+							 * AND THE PANE GOES BACK TO WHAT CAME BACK (UX round 2's U7), where that
+							 * is unambiguous: a ONE-key offer whose key the discard replaced with a
+							 * freshly staged draft the pane still shows. The batch's offer has several
+							 * subjects and leaves the pane where it was; a reader who has since
+							 * opened something else is not moved either (the ref is cleared by every
+							 * discard that did not take the pane, and compared against the CURRENT
+							 * key here).
+							 */
+							const staged = stagedByDiscardRef.current;
+							stagedByDiscardRef.current = null;
+							if (draftsUndo.keys.length === 1 && staged !== null) {
+								const state = useCanonicalSessionsStore.getState();
+								if (state.activeDraftKey === staged)
+									state.openDraft(draftsUndo.keys[0]);
+							}
+						},
+					},
+				},
+			);
+		}
 	}, [
 		archiveFailure,
 		archiveUndo,
+		draftsUndo,
 		setSessionArchived,
 		clearArchiveFailure,
 		setArchiveUndo,
+		restoreDraftsUndo,
+		setDraftsUndo,
 	]);
 
 	/*
@@ -5344,6 +5528,20 @@ export function ChatSidebar({
 	 * ref standing would make the next empty-lane commit skip the dismissal it owes.
 	 */
 	useEffect(() => {
+		/*
+		 * AND IT DOES NOT ARM FOR AN ARCHIVE VALUE THE DRAFTS OFFER OUTRANKS (2026-09-27):
+		 * the drawing effect has the drafts card on screen in that state, and an archive
+		 * timer expiring here would dismiss a message that is not the archive's - the
+		 * wrong-card defect one layer down. When the drafts offer retires, this effect
+		 * re-runs, the archive value becomes the lane's message and ITS clock starts then;
+		 * the value is not lost, it has simply not had its turn yet.
+		 */
+		if (
+			draftsUndo !== null &&
+			(archiveFailure === null || draftsUndo.at > archiveFailure.at) &&
+			(archiveUndo === null || draftsUndo.at > archiveUndo.at)
+		)
+			return;
 		const message = archiveFailure ? "failure" : archiveUndo ? "offer" : null;
 		if (message === null) return;
 		const timer = setTimeout(
@@ -5365,16 +5563,26 @@ export function ChatSidebar({
 			message === "failure" ? ARCHIVE_FAILURE_TOAST_MS : ARCHIVE_UNDO_TOAST_MS,
 		);
 		return () => clearTimeout(timer);
-	}, [archiveFailure, archiveUndo, clearArchiveFailure, setArchiveUndo]);
+	}, [
+		archiveFailure,
+		archiveUndo,
+		draftsUndo,
+		clearArchiveFailure,
+		setArchiveUndo,
+	]);
 
 	/*
 	 * THE BAND'S HEIGHT IS THE CARD'S OWN, PLUS THE GAP (design round 4, D14), and it is
-	 * measured rather than declared because only one of the two messages has a fixed height:
-	 * the offer is one line at every width (its name truncates), while the refusal carries the
-	 * daemon's sentence about why the write was refused and wrapped to eight lines - 170px -
-	 * at the 280 panel. A declaration would have to pick one of them and be wrong about the
-	 * other, and wrong in the direction that either clips a refusal or spends 120px of list on
-	 * a one-line offer.
+	 * measured rather than declared because only two of the three messages have a fixed
+	 * height: the archive offer and the discard offer are one line at every width (their
+	 * names truncate), while the refusal carries the daemon's sentence about why the
+	 * write was refused and wrapped to eight lines - 170px - at the 280 panel. A
+	 * declaration would have to pick one of them and be wrong about the other, and wrong
+	 * in the direction that either clips a refusal or spends 120px of list on a one-line
+	 * message. The drafts half of the fallback below can reserve the offer's height for
+	 * one commit while a refusal is still unmeasured (it reads the VALUES, not the latest
+	 * draw); the measurement lands the truth on the next commit, and the window is the
+	 * one in which a refusal and a fresh discard stand at once.
 	 *
 	 * TWO OBSERVERS, BECAUSE THE CARD ARRIVES AFTER THE COMMIT: sonner mounts the toast in its
 	 * own render, so the first measurement of a fresh message finds nothing and the childList
@@ -5396,7 +5604,7 @@ export function ChatSidebar({
 	const bandHeightNow =
 		bandHeight > 0
 			? bandHeight
-			: archiveUndo !== null
+			: archiveUndo !== null || draftsUndo !== null
 				? ARCHIVE_OFFER_BAND_HEIGHT
 				: 0;
 	const laneBandRef = useRef<HTMLDivElement | null>(null);
@@ -5715,31 +5923,328 @@ export function ChatSidebar({
 				 * list's own sections.
 				 */
 				<section data-chat-section="drafts">
-					{draftRows.map((row) => (
+					{draftRows.map((row) => {
+						/*
+						 * ONE STATE, READ ONCE, for the reason the session rows spell out
+						 * (review round 1, A7): the wrapper and the button both paint the
+						 * current ground, and two copies of the predicate are two chances
+						 * for them to disagree.
+						 */
+						const current = row.key === activeDraftKey;
+						return (
+							/*
+							 * A WRAPPER PLUS A BUTTON, the shape the session rows settled on
+							 * for a reason that applies word for word: a nested button is invalid
+							 * HTML and unfocusable, so the discard act is the row button's
+							 * SIBLING - and the box is what carries `group`, the state the
+							 * act's reveal reads.
+							 */
+							<div
+								key={row.key}
+								className={cn(
+									rowBoxStyle,
+									"group",
+									/*
+									 * THE HOVER GROUND BELONGS TO THE ROW, NOT TO ITS BUTTON
+									 * (design round 2, D13, measured on the session rows):
+									 * `rowStyle`'s own `hover:bg-row-hover` fires only while the
+									 * pointer is over the BUTTON, so moving onto the act beside it
+									 * dropped the ground under a pointer that never left the row.
+									 * A PLAIN `hover:`, never `group-hover:` - the box carries
+									 * `group`, and `group-hover:` compiles to a DESCENDANT rule
+									 * that can never match its own carrier.
+									 */
+									!current && "hover:bg-row-hover",
+									current && rowCurrent,
+								)}
+							>
+								<button
+									type="button"
+									data-chat-row
+									data-draft-row={row.key}
+									aria-label={`Open ${row.label}`}
+									title={row.label}
+									onClick={() => {
+										openDraft(row.key);
+										navigate("/chat");
+									}}
+									className={cn(
+										rowStyle,
+										"min-w-0 flex-1 text-left",
+										current && rowCurrent,
+									)}
+								>
+									<FileText
+										className="size-4 shrink-0 text-ink-dim"
+										aria-hidden="true"
+									/>
+									<span className="min-w-0 flex-1 truncate">{row.label}</span>
+								</button>
+								{/*
+								 * THE WHY, WHERE BOTH CHANNELS CAN READ IT (design round 2's D7, UX
+								 * round 2's U6). A `title` on a `disabled` control is the pointer-only
+								 * channel engines are least reliable about, and it reaches no keyboard
+								 * reader at all - so the sentence also exists as an `sr-only` element the
+								 * control points at with `aria-describedby` while it is inapplicable.
+								 * It lives OUTSIDE the button because `aria-label` owns the button's
+								 * name; nothing reads this span as the act's label.
+								 */}
+								<span id={draftWhyId(row.key)} className="sr-only">
+									{SENDING_DISCARD_WHY}
+								</span>
+								{/*
+								 * THE DISCARD ACT (operator, 2026-09-26: "Each one should have a
+								 * deletion on hover"). Revealed by the row's hover or focus, the
+								 * session acts' own pair - and IN the Tab ring, unlike those two:
+								 * their chord (⌘⇧P / ⌘⇧A) is what let them leave it, and a draft
+								 * has no chord. At rest the act is `hidden`, so it costs the ring
+								 * nothing until its row has focus; from there the next Tab lands
+								 * on it, which is the flow the session acts' own block describes.
+								 */}
+								<button
+									type="button"
+									data-draft-discard={row.key}
+									/*
+									 * INAPPLICABLE WHILE THE ROW'S SEND HOP IS LIVE (UX round 1's U2): a
+									 * press here used to remove the row while the request went on to land
+									 * in an unread chat - a discard followed by a silent send. The
+									 * store's own semantics are unchanged (a deliberate discard still
+									 * outranks the abandoned request - its record pins that), so the
+									 * withholding is the ACT's, here and in the batch below.
+									 *
+									 * AND IT STAYS FOCUSABLE (agent review round 2's R7, design round 2's
+									 * D7): a real `disabled` attribute drops the control out of the Tab
+									 * ring and out of the arrow walk - `focus()` on it is a no-op, so a
+									 * walk step onto it dead-stopped - and it leaves the why
+									 * unannounceable. `aria-disabled` + a refused press is the app's own
+									 * idiom for exactly this (`older-history-slot.tsx`: a disabled button
+									 * cannot hold focus, and the keyboard reader is the one most likely
+									 * to be on the control; `session-status-strip.tsx` the same).
+									 */
+									aria-disabled={row.pending}
+									aria-describedby={
+										row.pending ? draftWhyId(row.key) : undefined
+									}
+									aria-label={discardDraftLabel(row.label)}
+									title={
+										row.pending
+											? SENDING_DISCARD_WHY
+											: discardDraftLabel(row.label)
+									}
+									onClick={(event) => {
+										/*
+										 * THE REFUSED PRESS, before anything else (R7/D7): `aria-disabled`
+										 * does not stop the click, so the handler is what makes it inert -
+										 * no write, no caret move, no offer.
+										 */
+										if (row.pending) {
+											event.preventDefault();
+											return;
+										}
+										/*
+										 * THEN THE REPEAT-PRESS GUARD, the panel's own record
+										 * (`dropRepeatPress`): the row unmounts under the second click
+										 * of a double-click, and the row that slides up can carry its
+										 * act into the same spot. A dropped press writes nothing and
+										 * moves no caret.
+										 */
+										if (
+											dropRepeatPress(
+												event.detail === 0
+													? null
+													: { x: event.clientX, y: event.clientY },
+												row.key,
+											)
+										)
+											return;
+										/*
+										 * AND THE CARET LANDS SOMEWHERE, the archive's own
+										 * no-dead-cursor rule: the node the reader was on is about to
+										 * unmount. The successor is read BY KEY before the write
+										 * (`discardSuccessorIndex` carries the measured why: the old
+										 * version indexed the discard BUTTON among `[data-draft-row]`
+										 * elements, so it always landed on the first row), and the
+										 * frame callback hands focus to the row occupying that
+										 * position - the row that slid up into the gap, or the first
+										 * row of the panel when this was last.
+										 */
+										const keys = [
+											...(navRef.current?.querySelectorAll(
+												"[data-draft-row]",
+											) ?? []),
+										].map((el) => el.getAttribute("data-draft-row") ?? "");
+										const at = discardSuccessorIndex(keys, row.key);
+										discardDraft(row.key);
+										/*
+										 * A PANE THAT WAS SHOWING THIS DRAFT IS GIVEN A FRESH ONE
+										 * (UX round 1's U1, remediation): `discardDraft` clears
+										 * `activeDraftKey`, and the chat page's residue arm has no
+										 * composer - discarding the open draft used to leave a bare
+										 * `New chat` surface. `onStageDraft(undefined, true)` is
+										 * exactly the two steps the New chat row performs (stage a
+										 * fresh draft, stay on `/chat`), and it runs only when the
+										 * pane really was on this key.
+										 */
+										if (activeDraftKey === row.key) {
+											onStageDraft(undefined, true);
+											/*
+											 * THE FRESH KEY IS REMEMBERED FOR THE OFFER'S OWN PRESS (UX
+											 * round 2's U7): the snapshot restores THIS key's draft on an
+											 * Undo, and the offer's handler re-opens it only when the pane
+											 * still shows the freshly staged draft - the ref is what makes
+											 * "the pane sits on the staged key" a fact rather than a
+											 * guess. Every discard writes it (null when the pane was not
+											 * taken), so an offer never re-opens a pane the reader has
+											 * since moved.
+											 */
+											stagedByDiscardRef.current =
+												useCanonicalSessionsStore.getState().activeDraftKey;
+										} else {
+											stagedByDiscardRef.current = null;
+										}
+										requestAnimationFrame(() => {
+											const rows = [
+												...(navRef.current?.querySelectorAll<HTMLElement>(
+													"[data-draft-row]",
+												) ?? []),
+											];
+											const next =
+												rows[Math.min(Math.max(at, 0), rows.length - 1)] ??
+												navRef.current?.querySelector<HTMLElement>(
+													"[data-chat-row]",
+												);
+											next?.focus();
+										});
+									}}
+									className={cn(
+										"size-6 shrink-0 items-center justify-center rounded-md",
+										"hidden text-ink-dim group-hover:flex group-hover:text-ink-muted",
+										"group-focus-within:flex group-focus-within:text-ink-muted hover:text-ink!",
+										/*
+										 * COLOUR, NEVER OPACITY (design round 2's D5; branding.md §6): an
+										 * opacity-faded control fades its own background too, so the same
+										 * button lands on a different colour over each ground - measured at
+										 * 1.89:1 / 2.13:1, BELOW the disabled role the palette ships for
+										 * exactly this. The hover step is stilled explicitly, because the
+										 * measured disabled read darkened under the pointer.
+										 */
+										"aria-disabled:cursor-default aria-disabled:text-ink-disabled!",
+										"aria-disabled:hover:text-ink-disabled!",
+									)}
+								>
+									<Trash2 className="size-4" aria-hidden="true" />
+								</button>
+							</div>
+						);
+					})}
+					{/*
+					 * THE CLEAR-ALL (operator, same message: "also a subtle clear all
+					 * UX"). It clears EXACTLY the rows this section lists - the keys
+					 * `untargetedDraftRows` produced, never a targeted/agent draft that is
+					 * not on screen here - through ONE store write (`discardDrafts`), and
+					 * it is a `data-chat-row` of its own so the arrow walk reaches it from
+					 * the rows above; clearing must not strand the caret, so focus moves
+					 * to the row that takes its place. Hidden with the section, which is
+					 * the only state that has nothing to clear.
+					 */}
+					<div className="flex justify-end pt-1">
 						<button
-							key={row.key}
 							type="button"
 							data-chat-row
-							data-draft-row={row.key}
-							aria-label={`Open ${row.label}`}
-							title={row.label}
-							onClick={() => {
-								openDraft(row.key);
-								navigate("/chat");
+							data-drafts-clear-all
+							/*
+							 * NOTHING CLEARABLE IS THE ONE INAPPLICABLE STATE (UX round 1's U2;
+							 * `aria-disabled` rather than `disabled` since agent review round 2's
+							 * R7): every listed row is mid-hop, so the press would move nothing.
+							 * With at least one settled row the batch clears exactly those (the
+							 * store keeps its own semantics for the keys it is given) and the
+							 * offer prints the count that moved. It stays FOCUSABLE while
+							 * inapplicable - an arrow-walk step must land on something, and the
+							 * why below must be reachable - and the press is what refuses (the
+							 * app's own idiom, `older-history-slot.tsx`).
+							 */
+							aria-disabled={clearableDraftRows.length === 0}
+							aria-describedby={
+								clearableDraftRows.length === 0 ? CLEAR_ALL_WHY_ID : undefined
+							}
+							aria-label="Clear all drafts"
+							title={
+								clearableDraftRows.length === 0
+									? CLEAR_ALL_WHY
+									: "Clear all drafts"
+							}
+							onClick={(event) => {
+								/*
+								 * THE REFUSED PRESS (R7/D7): nothing to clear means the press is
+								 * inert - no write, no caret move, no offer.
+								 */
+								if (clearableDraftRows.length === 0) {
+									event.preventDefault();
+									return;
+								}
+								const button = event.currentTarget;
+								if (
+									dropRepeatPress(
+										event.detail === 0
+											? null
+											: { x: event.clientX, y: event.clientY },
+										// Its own identity in the panel's one press record: the
+										// hazard is the same one the rows guard against - the
+										// control unmounts under the second click of a
+										// double-click and a chat row takes its place.
+										"drafts:clear-all",
+									)
+								)
+									return;
+								const at = [
+									...(navRef.current?.querySelectorAll("[data-chat-row]") ??
+										[]),
+								].indexOf(button);
+								const clearing = clearableDraftRows.map((row) => row.key);
+								discardDrafts(clearing);
+								/*
+								 * THE SAME NO-DEAD-PANE RULE THE PER-ROW ACT CARRIES (UX
+								 * round 1's U1): when the batch took the pane's own draft, a
+								 * fresh one is staged so the composer never disappears - and
+								 * the fresh key is remembered for the offer's own press (U7),
+								 * exactly as the per-row act remembers it.
+								 */
+								if (
+									activeDraftKey !== null &&
+									clearing.includes(activeDraftKey)
+								) {
+									onStageDraft(undefined, true);
+									stagedByDiscardRef.current =
+										useCanonicalSessionsStore.getState().activeDraftKey;
+								} else {
+									stagedByDiscardRef.current = null;
+								}
+								requestAnimationFrame(() => {
+									const rows = [
+										...(navRef.current?.querySelectorAll<HTMLElement>(
+											"[data-chat-row]",
+										) ?? []),
+									];
+									rows[Math.min(Math.max(at, 0), rows.length - 1)]?.focus();
+								});
 							}}
 							className={cn(
-								rowStyle,
-								"w-full text-left",
-								row.key === activeDraftKey && rowCurrent,
+								"flex h-7 items-center rounded-md px-2 text-body-sm",
+								"text-ink-dim transition-colors duration-fast ease-out-quart",
+								"hover:bg-row-hover hover:text-ink",
+								"focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
+								/* Colour, never opacity - the trash's own D5 note is the full one. */
+								"aria-disabled:cursor-default aria-disabled:text-ink-disabled!",
+								"aria-disabled:hover:bg-transparent! aria-disabled:hover:text-ink-disabled!",
 							)}
 						>
-							<FileText
-								className="size-4 shrink-0 text-ink-dim"
-								aria-hidden="true"
-							/>
-							<span className="min-w-0 flex-1 truncate">{row.label}</span>
+							Clear all
 						</button>
-					))}
+						{/* The why the control points at while inapplicable (D7/U6): the trash's sibling, above. */}
+						<span id={CLEAR_ALL_WHY_ID} className="sr-only">
+							{CLEAR_ALL_WHY}
+						</span>
+					</div>
 				</section>
 			)}
 			{/*
