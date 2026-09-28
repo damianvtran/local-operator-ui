@@ -1,6 +1,5 @@
 /**
- * The tab's Board view: one column per status, cards of facts — the desktop's
- * kanban, no drag-and-drop.
+ * The tab's Board view: one column per status, cards of facts.
  *
  * WHAT A CARD SAYS, from the feature's own derivations rather than inline
  * formatting: the name, the meta chips `listRowMeta` already produces for the
@@ -9,9 +8,20 @@
  * the progress age with the stale badge, and an OVERDUE chip for a target day
  * that has passed with the work unfinished (`projectOverdue`).
  *
- * NO DRAG: status moves are the card menu's `Set status` action, stated in the
- * design (§V2.B.1) and in the plan — a drag would add a dependency tree and a
- * second interaction model for one field.
+ * COLUMNS REORDER BY THEIR HEADER, AND NOTHING ELSE DRAGS: a card's status
+ * still moves through the card menu's `Set status` action, stated in the design
+ * (§V2.B.1) — the drag here is about the BOARD'S LAYOUT, which is a preference
+ * the user sets by dragging a column's header, or by focusing its grip and
+ * pressing the arrow keys. The order is kept between sessions under
+ * `projects-board-column-order` (the `projects-view` key style: guarded reads
+ * and writes, anything unusable reading as the lifecycle default). A drag arms
+ * only after a few pixels of travel and only from the header, so a press on a
+ * card can never reorder anything.
+ *
+ * THE REORDER SNAPS: no column animates to its new place (no FLIP, no
+ * transition), so there is no motion to reduce for `prefers-reduced-motion`;
+ * what the hand gets while dragging is the lifted column and the drop
+ * indicator line in the gap the column would land in.
  *
  * COLUMNS SCROLL IN THE PANEL; the strip scrolls horizontally when the window
  * is narrow (`overflow-x-auto` on the strip, `overflow-y-auto` per column), so
@@ -42,9 +52,19 @@ import {
 	PopoverTrigger,
 } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
-import { MoreHorizontal } from "lucide-react";
-import type { FC } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { GripVertical, MoreHorizontal } from "lucide-react";
+import type {
+	FC,
+	KeyboardEvent as ReactKeyboardEvent,
+	PointerEvent as ReactPointerEvent,
+} from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import type { DesktopProject } from "../../../../../shared/desktop-control-contract";
 import { openConversation } from "../../chat/open-conversation";
@@ -59,7 +79,10 @@ import {
 	progressAge,
 	projectOverdue,
 	projectStatusMeta,
+	readBoardColumnOrder,
+	reorderColumnOrder,
 	sessionsTriggerLabel,
+	writeBoardColumnOrder,
 } from "../project-model";
 import { todayUtcMs } from "../timeline-model";
 
@@ -116,6 +139,12 @@ export function useMoveFocusHandoff(): (projectId: string) => void {
 	return useCallback((projectId: string) => setPending(projectId), []);
 }
 
+/** Pixels of travel before a press on a header becomes a drag (not a press). */
+const DRAG_ARM_DISTANCE = 4;
+
+/** The live gesture: which column is in the air, and where it would land. */
+type DragState = { status: string; over: number };
+
 export const ProjectBoard: FC<ProjectBoardProps> = ({
 	projects,
 	nowMs,
@@ -125,8 +154,204 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 	onMove,
 	movingKeys = [],
 }) => {
-	const columns = boardColumns(projects);
+	/*
+	 * The order is board state, read once per mount from the guarded store the
+	 * view switcher also reads, and written on every move: a failed read or
+	 * write falls back to the lifecycle and never fails a reorder.
+	 */
+	const [order, setOrder] = useState<string[]>(readBoardColumnOrder);
+	const columns = boardColumns(projects, order);
+	const [drag, setDrag] = useState<DragState | null>(null);
+	const [announcement, setAnnouncement] = useState("");
+	const stripRef = useRef<HTMLDivElement | null>(null);
+	const indicatorRef = useRef<HTMLDivElement | null>(null);
+	const gesture = useRef<{
+		pointerId: number;
+		status: string;
+		startX: number;
+		startY: number;
+		armed: boolean;
+		over: number;
+	} | null>(null);
 	const moving = new Set(movingKeys);
+
+	/**
+	 * Move a column and say so. The order written is the order of the columns on
+	 * SCREEN — a dormant stored rank is not preserved through a reorder (the
+	 * merge rule's other half, see `boardColumns`).
+	 */
+	const commitMove = (status: string, to: number) => {
+		const next = reorderColumnOrder(
+			columns.map((column) => column.status),
+			status,
+			to,
+		);
+		setOrder(next);
+		writeBoardColumnOrder(next);
+		setAnnouncement(
+			`Moved ${projectStatusMeta(status).label} column to position ${next.indexOf(status) + 1} of ${next.length}.`,
+		);
+	};
+
+	/*
+	 * THE DROP INDEX, from the pointer's x against the other columns' midpoints:
+	 * the count of columns (the one in the air aside) whose center lies left of
+	 * the pointer IS the insertion index among them. Read from live rects rather
+	 * than cached layout, because the strip scrolls horizontally.
+	 */
+	const dropIndexAt = (clientX: number, dragged: string): number => {
+		const strip = stripRef.current;
+		if (!strip) return 0;
+		let index = 0;
+		const sections = strip.querySelectorAll<HTMLElement>("[data-board-column]");
+		for (const section of sections) {
+			if (section.dataset.boardColumn === dragged) continue;
+			const rect = section.getBoundingClientRect();
+			if (clientX > (rect.left + rect.right) / 2) index += 1;
+		}
+		return index;
+	};
+
+	/** Where the drop would land, in words, for the live region. */
+	const dropPhrase = (dragged: string, over: number): string => {
+		const others = columns.filter((column) => column.status !== dragged);
+		const before = others[over - 1]?.status;
+		const after = others[over]?.status;
+		if (before && after)
+			return `between ${projectStatusMeta(before).label} and ${projectStatusMeta(after).label}`;
+		if (after) return `before ${projectStatusMeta(after).label}`;
+		if (before) return `after ${projectStatusMeta(before).label}`;
+		return "in place";
+	};
+
+	const onHeaderPointerDown = (
+		event: ReactPointerEvent<HTMLElement>,
+		status: string,
+	) => {
+		if (event.button !== 0) return;
+		/*
+		 * Pointer capture keeps every move aimed at this header even when the
+		 * pointer leaves it. Guarded because a synthetic pointer (a story's
+		 * `userEvent`) owns no active pointer and `setPointerCapture` throws
+		 * `InvalidPointerId` for one — the mesh canvas's rule.
+		 */
+		try {
+			event.currentTarget.setPointerCapture(event.pointerId);
+		} catch {
+			/* synthetic pointer: the dispatched moves still arrive here */
+		}
+		gesture.current = {
+			pointerId: event.pointerId,
+			status,
+			startX: event.clientX,
+			startY: event.clientY,
+			armed: false,
+			over: columns.findIndex((column) => column.status === status),
+		};
+	};
+
+	const onHeaderPointerMove = (event: ReactPointerEvent<HTMLElement>) => {
+		const live = gesture.current;
+		if (!live || event.pointerId !== live.pointerId) return;
+		if (!live.armed) {
+			const travel = Math.hypot(
+				event.clientX - live.startX,
+				event.clientY - live.startY,
+			);
+			if (travel < DRAG_ARM_DISTANCE) return;
+			live.armed = true;
+			setDrag({ status: live.status, over: live.over });
+			setAnnouncement(`Moving ${projectStatusMeta(live.status).label} column.`);
+		}
+		const over = dropIndexAt(event.clientX, live.status);
+		if (over !== live.over) {
+			live.over = over;
+			setDrag({ status: live.status, over });
+			/* Announce the landing, not every pixel of travel. */
+			setAnnouncement(
+				`Moving ${projectStatusMeta(live.status).label} column; it will drop ${dropPhrase(live.status, over)}.`,
+			);
+		}
+	};
+
+	const settleDrag = (commit: boolean) => {
+		const live = gesture.current;
+		gesture.current = null;
+		setDrag(null);
+		if (commit && live?.armed) commitMove(live.status, live.over);
+	};
+
+	const onHeaderPointerUp = (event: ReactPointerEvent<HTMLElement>) => {
+		const live = gesture.current;
+		if (!live || event.pointerId !== live.pointerId) return;
+		settleDrag(true);
+	};
+
+	const onHeaderPointerCancel = () => {
+		/*
+		 * A cancelled pointer ENDS a drag, it does not settle it (the mesh
+		 * canvas's rule): the browser took the gesture away mid-air, and settling
+		 * a position nobody released would move a column the user did not drop.
+		 */
+		settleDrag(false);
+	};
+
+	/* Escape cancels, the one gesture state with no pointer of its own. */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: gated on the drag state, not on the per-render closures it calls.
+	useEffect(() => {
+		if (!drag) return;
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.key !== "Escape") return;
+			settleDrag(false);
+		};
+		window.addEventListener("keydown", onKeyDown);
+		return () => window.removeEventListener("keydown", onKeyDown);
+	}, [drag !== null]);
+
+	/*
+	 * The indicator's x is measured AFTER the render that moves it (the rects
+	 * must be the ones on screen): the line sits in the gap the column would
+	 * land in, half a strip gap off the neighbouring column's edge.
+	 */
+	useLayoutEffect(() => {
+		const strip = stripRef.current;
+		const line = indicatorRef.current;
+		if (!strip || !line || !drag) return;
+		const stripRect = strip.getBoundingClientRect();
+		const others: DOMRect[] = [];
+		for (const section of strip.querySelectorAll<HTMLElement>(
+			"[data-board-column]",
+		)) {
+			if (section.dataset.boardColumn !== drag.status) {
+				others.push(section.getBoundingClientRect());
+			}
+		}
+		const HALF_GAP = 6; /* half of the strip's `gap-3` (12px) */
+		const edge =
+			drag.over >= others.length
+				? (others[others.length - 1]?.right ?? stripRect.left) + HALF_GAP
+				: (others[drag.over]?.left ?? stripRect.right) - HALF_GAP;
+		line.style.left = `${Math.round(edge - stripRect.left)}px`;
+	});
+
+	const onGripKeyDown = (
+		event: ReactKeyboardEvent<HTMLElement>,
+		status: string,
+	) => {
+		if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+		event.preventDefault();
+		const statuses = columns.map((column) => column.status);
+		const from = statuses.indexOf(status);
+		const to = event.key === "ArrowLeft" ? from - 1 : from + 1;
+		if (to < 0 || to >= statuses.length) {
+			setAnnouncement(
+				`${projectStatusMeta(status).label} column is already ${to < 0 ? "first" : "last"}.`,
+			);
+			return;
+		}
+		commitMove(status, to);
+	};
+
 	return (
 		<div
 			/*
@@ -138,7 +363,33 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 			className="@container flex min-h-0 flex-1 flex-col overflow-hidden rounded-md bg-surface"
 			data-testid="project-board"
 		>
-			<div className="flex min-h-0 flex-1 items-stretch gap-3 overflow-x-auto p-3">
+			{/*
+			 * THE MOVE IS ANNOUNCED HERE, the board's one live region: a reorder
+			 * changes pixels a screen reader cannot see, and the drag's would-be
+			 * landing is the part a pointer user reads off the indicator line.
+			 */}
+			<output
+				aria-live="polite"
+				className="sr-only"
+				data-board-column-announcement=""
+			>
+				{announcement}
+			</output>
+			<div
+				ref={stripRef}
+				className={cn(
+					"relative flex min-h-0 flex-1 items-stretch gap-3 overflow-x-auto p-3",
+					drag && "cursor-grabbing select-none",
+				)}
+			>
+				{drag && (
+					<div
+						ref={indicatorRef}
+						aria-hidden="true"
+						data-board-drop-indicator=""
+						className="pointer-events-none absolute top-3 bottom-3 w-0.5 rounded-full bg-accent"
+					/>
+				)}
 				{columns.map((column) => {
 					const meta = projectStatusMeta(column.status);
 					return (
@@ -153,16 +404,42 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 							 */
 							className="flex w-64 shrink-0 flex-col overflow-hidden rounded-md bg-sunken"
 						>
-							<header className="flex shrink-0 items-center justify-between gap-2 border-b border-hairline px-3 py-2">
-								<span className="flex min-w-0 items-baseline gap-2">
-									<span className="truncate text-body-sm font-medium text-ink">
-										{meta.label}
-									</span>
-									{COLUMN_NOTE[column.status] && (
-										<span className="truncate text-meta text-ink-muted">
-											{COLUMN_NOTE[column.status]}
+							<header
+								data-board-column-handle={column.status}
+								onPointerDown={(event) =>
+									onHeaderPointerDown(event, column.status)
+								}
+								onPointerMove={onHeaderPointerMove}
+								onPointerUp={onHeaderPointerUp}
+								onPointerCancel={onHeaderPointerCancel}
+								className={cn(
+									"flex shrink-0 cursor-grab items-center justify-between gap-2 border-b border-hairline px-3 py-2 active:cursor-grabbing",
+									drag?.status === column.status && "opacity-60",
+								)}
+							>
+								<span className="flex min-w-0 flex-1 items-center gap-1.5">
+									<Button
+										type="button"
+										variant="ghost"
+										size="icon-sm"
+										data-board-column-grip={column.status}
+										aria-label={`Move ${meta.label} column`}
+										title="Drag the header, or press the arrow keys, to move this column"
+										className="-ml-1.5 cursor-grab text-ink-muted active:cursor-grabbing"
+										onKeyDown={(event) => onGripKeyDown(event, column.status)}
+									>
+										<GripVertical aria-hidden="true" />
+									</Button>
+									<span className="flex min-w-0 items-baseline gap-2">
+										<span className="truncate text-body-sm font-medium text-ink">
+											{meta.label}
 										</span>
-									)}
+										{COLUMN_NOTE[column.status] && (
+											<span className="truncate text-meta text-ink-muted">
+												{COLUMN_NOTE[column.status]}
+											</span>
+										)}
+									</span>
 								</span>
 								<span className="text-meta text-ink-muted">
 									{column.projects.length}

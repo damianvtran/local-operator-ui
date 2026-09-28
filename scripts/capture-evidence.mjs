@@ -4458,6 +4458,33 @@ export const STORIES = [
 	["projects-tab--board-empty-columns", 1280, 900],
 	["projects-tab--board-sessions-popover", 1280, 900],
 	["projects-tab--board-card-menu", 1280, 900],
+	/*
+	 * The column reorder: the layer the drag writes. `board-column-order-stored`
+	 * is the reload half (a stored order applied at mount),
+	 * `board-column-keyboard-move` is the accessible half (a focused grip's
+	 * arrow key, with the write and the retained focus asserted inside the
+	 * play), and `board-column-drag` is the transient — the rig presses the
+	 * `active` header and HOLDS it over `done`, and the frame's claim is the
+	 * live region's "Moving Active column", which is in the document exactly
+	 * while the gesture is armed. The gesture is the rig's own `drag` option
+	 * rather than the story's play for the mesh canvas's reason: a synthetic
+	 * sequence from a play resolves to the settled board before the shutter.
+	 */
+	["projects-tab--board-column-order-stored", 1280, 900],
+	["projects-tab--board-column-keyboard-move", 1280, 900],
+	["projects-tab--board-column-drop-commits", 1280, 900],
+	[
+		"projects-tab--board-column-drag",
+		1280,
+		900,
+		{
+			drag: {
+				from: '[data-board-column-handle="active"]',
+				to: '[data-board-column="done"]',
+			},
+			expectSentence: "Moving Active column",
+		},
+	],
 	["projects-tab--timeline", 1280, 900],
 	["projects-tab--timeline-no-dates", 1280, 900],
 	["projects-tab--timeline-overdue", 1280, 900],

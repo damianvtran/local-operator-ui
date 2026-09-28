@@ -478,6 +478,74 @@ export const BOARD_COLUMNS = [
 export const BOARD_SIDE_COLUMNS = ["paused", "archived"] as const;
 
 /**
+ * Where the user's own column order is stored, in the app's layout-choice key
+ * style (`projects-view`, `chat-sidebar-disclosures`): a preference kept
+ * between sessions, read with guarded fallbacks so a locked store reads as the
+ * default order rather than a broken board.
+ */
+export const PROJECTS_BOARD_ORDER_STORAGE_KEY = "projects-board-column-order";
+
+/**
+ * The stored column order, or `[]` (the lifecycle default) for anything
+ * unusable.
+ *
+ * VALIDATED, NOT TRUSTED: the value crosses sessions and app versions, so a
+ * hand-edited array is read as ABSENT rather than half-applied — every entry
+ * must be a non-empty string or the whole order is dropped. Duplicates keep
+ * their first position (one status must not rank twice), and an empty list
+ * means the same as no list at all.
+ */
+export function readBoardColumnOrder(): string[] {
+	try {
+		const raw = localStorage.getItem(PROJECTS_BOARD_ORDER_STORAGE_KEY);
+		if (!raw) return [];
+		const parsed: unknown = JSON.parse(raw);
+		if (!Array.isArray(parsed)) return [];
+		const order: string[] = [];
+		for (const entry of parsed) {
+			if (typeof entry !== "string" || entry.length === 0) return [];
+			if (!order.includes(entry)) order.push(entry);
+		}
+		return order;
+	} catch {
+		/* storage unavailable or the value not JSON: the default is the answer */
+		return [];
+	}
+}
+
+/** Persist the order; a failed write must not fail the move (see above). */
+export function writeBoardColumnOrder(order: string[]): void {
+	try {
+		localStorage.setItem(
+			PROJECTS_BOARD_ORDER_STORAGE_KEY,
+			JSON.stringify(order),
+		);
+	} catch {
+		/* storage unavailable: the move stands for this session */
+	}
+}
+
+/**
+ * The order after ONE column moves: `status` re-inserted so it lands at index
+ * `to` of the full list, clamped to the ends.
+ *
+ * `to` is the column's NEW POSITION among all columns — the number a drag's
+ * drop index and the keyboard's ±1 both speak — so the arithmetic is "take
+ * the column out, put it back at that index", which is also why moving a
+ * column two places LEFT is `to = from - 1` and not a swap.
+ */
+export function reorderColumnOrder(
+	order: string[],
+	status: string,
+	to: number,
+): string[] {
+	const others = order.filter((entry) => entry !== status);
+	const clamped = Math.max(0, Math.min(to, others.length));
+	others.splice(clamped, 0, status);
+	return others;
+}
+
+/**
  * The board's columns: the five fixed pipeline phases, the side states
  * (`paused`, `archived`) when they hold rows, then one column per status
  * outside the vocabulary.
@@ -491,6 +559,7 @@ export const BOARD_SIDE_COLUMNS = ["paused", "archived"] as const;
  */
 export function boardColumns(
 	projects: DesktopProject[],
+	order: string[] = [],
 ): { status: string; projects: DesktopProject[] }[] {
 	const byStatus = new Map<string, DesktopProject[]>();
 	for (const project of projects) {
@@ -516,7 +585,22 @@ export function boardColumns(
 			columns.push({ status, projects: rows });
 		}
 	}
-	return columns;
+	if (order.length === 0) return columns;
+	/*
+	 * THE STORED ORDER APPLIES TO THE COLUMNS PRESENT, and this is the whole
+	 * merge rule: the columns the stored order names come first, sorted by their
+	 * stored rank; every other column keeps the derivation's own order and
+	 * appends after them (side states when populated, unknowns last). A stored
+	 * status that holds no column — a side state with no rows this session, a
+	 * status another build wrote — ranks nothing and is NOT resurrected; it is
+	 * only forgotten when the user reorders again, which writes the order of the
+	 * columns they actually saw.
+	 */
+	const rank = new Map(order.map((status, index) => [status, index]));
+	const ranked = columns.filter((column) => rank.has(column.status));
+	ranked.sort((a, b) => (rank.get(a.status) ?? 0) - (rank.get(b.status) ?? 0));
+	const rest = columns.filter((column) => !rank.has(column.status));
+	return [...ranked, ...rest];
 }
 
 /**
