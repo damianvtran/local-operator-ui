@@ -275,7 +275,9 @@ function ProfileEditor({
 									Unsupported tiers are rejected before saving.
 								</span>
 							</label>
-							<label className="flex items-center gap-2 text-body-sm">
+							{/* The label is the toggle's whole visible target, so it says so: the
+							    base layer's pointer list is controls, and a label is not one. */}
+							<label className="flex cursor-pointer items-center gap-2 text-body-sm">
 								<input
 									type="checkbox"
 									checked={delegate}

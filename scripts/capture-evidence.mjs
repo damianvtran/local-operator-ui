@@ -978,6 +978,28 @@ export const STORIES = [
 	 * margin, and the widest step of all, which the change does NOT move.
 	 */
 	["chat-canonical-message-surface--user-turn", 1024, 560],
+	/*
+	 * CURRENCY AND MATH IN ONE MESSAGE (operator report, 2026-09-27). Four
+	 * states of `math-currency.stories.tsx` - a cost report whose amounts must
+	 * stay literal with its bold intact, pandoc's own `$20,000 and $30,000`
+	 * example, a price ahead of a genuine span, and a formulas-only control -
+	 * captured at 1024 wide, each frame just under its own content (the rig's
+	 * paint assertion counts a frame whose ink is under 1.5% of its height as
+	 * having painted nothing).
+	 *
+	 * THE BEFORE HALF IS NOT A ROW HERE. It is the declared supplementary set
+	 * `../chat-math-currency-before/`: the same four stories against the
+	 * pre-change pipeline, captured by suffixing the story's title `before`
+	 * for that run - with matching temporary rows - so the ids land in their
+	 * own directory (`capture-evidence.mjs` writes `OUT/<id before `--`>/<leaf>`).
+	 *
+	 * TWO THEMES, NOT TWELVE. The claim is text SHAPE, which no palette moves;
+	 * the sweep's twelve would photograph the same glyph runs in different ink.
+	 */
+	["chat-math-currency--cost-report", 1024, 380],
+	["chat-math-currency--pandoc-classic", 1024, 300],
+	["chat-math-currency--price-then-formula", 1024, 300],
+	["chat-math-currency--genuine-math", 1024, 300],
 	/* THE CITATION A SENT MESSAGE CARRIES, as the chip the composer showed before
 	   the send (operator report, 2026-09-17). Three stories at the user-card
 	   measure's own 1024x620 pane, so they read beside the rows above: the reported
