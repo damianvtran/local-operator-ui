@@ -53,6 +53,23 @@ const {
 	todoChipLabel,
 	listRowMeta,
 	PROJECT_DAY_FIELD_PATTERN,
+	projectDisplayName,
+	managedByLine,
+	sessionLabel,
+	updatesNewestFirst,
+	updatesCountLabel,
+	updateDayKey,
+	updateDayLabel,
+	updateAgePhrase,
+	updateMetaTokens,
+	groupUpdatesByDay,
+	attachmentSizeText,
+	milestoneSummaryLabel,
+	todosAggregate,
+	todosCountLabel,
+	defaultSendTarget,
+	startSessionPrompt,
+	sessionTargetLabel,
 } = model;
 
 /* ----------------------------------------------------------------- chips -- */
@@ -379,26 +396,74 @@ test("a day parses in both shape and calendar", () => {
 	assert.equal(model.parseIsoDay(null), null);
 });
 
-test("the board's columns are the fixed three, then archived when non-empty, then the unknowns", () => {
+test("the board's columns are the five lifecycle phases, then the non-empty side states, then the unknowns", () => {
+	/*
+	 * THE FIXED SET IS THE PIPELINE (planning -> active -> qa -> validation ->
+	 * done); `paused` and `archived` are SIDE states that join when they hold
+	 * rows, in that order, and an out-of-vocabulary status keeps its own
+	 * column after them so a newer backend's row is never dropped.
+	 */
 	const columns = model.boardColumns([
 		row("a", { status: "archived" }),
 		row("b", { status: "review" }),
 		row("c", { status: "active" }),
 		row("d", { status: "active" }),
+		row("e", { status: "planning" }),
+		row("f", { status: "qa" }),
+		row("g", { status: "validation" }),
+		row("h", { status: "paused" }),
 	]);
 	assert.deepEqual(
 		columns.map((column) => column.status),
-		["active", "paused", "done", "archived", "review"],
+		[
+			"planning",
+			"active",
+			"qa",
+			"validation",
+			"done",
+			"paused",
+			"archived",
+			"review",
+		],
 	);
 	assert.deepEqual(
 		columns.map((column) => column.projects.length),
-		[2, 0, 0, 1, 1],
+		[1, 2, 1, 1, 0, 1, 1, 1],
 	);
-	// An empty archived column is omitted (the design's rule).
+	// Empty side columns are omitted (the design's rule) while every phase shows.
 	assert.deepEqual(
 		model.boardColumns([row("a")]).map((column) => column.status),
-		["active", "paused", "done"],
+		["planning", "active", "qa", "validation", "done"],
 	);
+});
+
+test("every status the lifecycle names has a chip, and an unknown one keeps its word", () => {
+	const labels = [
+		"planning",
+		"active",
+		"qa",
+		"validation",
+		"done",
+		"paused",
+		"archived",
+	].map((status) => model.projectStatusMeta(status).label);
+	assert.deepEqual(labels, [
+		"Planning",
+		"Active",
+		"QA",
+		"Validation",
+		"Done",
+		"Paused",
+		"Archived",
+	]);
+	/*
+	 * The vocabulary is OPEN: a word this build has never heard of renders
+	 * itself with neutral treatment rather than a guessed chip.
+	 */
+	assert.deepEqual(model.projectStatusMeta("shadowed"), {
+		label: "shadowed",
+		variant: "neutral",
+	});
 });
 
 test("overdue is a passed target on unfinished work, on the store's UTC day", () => {
@@ -717,4 +782,244 @@ test("the sessions trigger names the door and keeps liveness beside it", () => {
 		"4 sessions · 4 live",
 	);
 	assert.equal(sessionsTriggerLabel({ sessions: 0, live_sessions: 0 }), "");
+});
+
+/* --------------------------------------------------- naming the project ----- */
+
+test("the display name is the title when set, and the key otherwise", () => {
+	/*
+	 * THE BACKEND'S PRECEDENCE, mirrored (`display_name()`): `name` stays the
+	 * key every route addresses, and `title` is what a reader sees. An empty
+	 * title is UNKNOWN — the wire would not send one — so it falls back rather
+	 * than blanking a heading.
+	 */
+	assert.equal(
+		projectDisplayName({
+			name: "payments-migration",
+			title: "Payments migration",
+		}),
+		"Payments migration",
+	);
+	assert.equal(
+		projectDisplayName({ name: "payments-migration", title: null }),
+		"payments-migration",
+	);
+	assert.equal(
+		projectDisplayName({ name: "payments-migration", title: "" }),
+		"payments-migration",
+	);
+	assert.equal(
+		projectDisplayName({ name: "payments-migration" }),
+		"payments-migration",
+	);
+});
+
+test("'Managed by' joins the owner and the team once each", () => {
+	assert.equal(managedByLine("atlas", "platform"), "atlas · platform");
+	assert.equal(managedByLine("atlas", null), "atlas");
+	assert.equal(managedByLine(null, "platform"), "platform");
+	/* The two fields are often the same word; it prints once. */
+	assert.equal(managedByLine("atlas", "atlas"), "atlas");
+	assert.equal(managedByLine(null, null), "");
+	assert.equal(managedByLine(undefined, undefined), "");
+});
+
+test("a session row is named by its title, or its id in the machine voice", () => {
+	assert.equal(
+		sessionLabel({ title: "Payments cutover", session_id: "4e92693767fa" }),
+		"Payments cutover",
+	);
+	assert.equal(
+		sessionLabel({ title: null, session_id: "4e92693767fa" }),
+		"4e92693767fa",
+	);
+});
+
+/* -------------------------------------------------------------- the feed ---- */
+
+const update = (at, text, extra = {}) => ({
+	at,
+	text,
+	by: "",
+	attachments: [],
+	...extra,
+});
+
+test("the feed is the log reversed, newest first, and leaves the wire's order alone", () => {
+	const log = [
+		update("2026-09-18T10:00:00Z", "one"),
+		update("2026-09-19T10:00:00Z", "two"),
+	];
+	assert.deepEqual(
+		updatesNewestFirst(log).map((entry) => entry.text),
+		["two", "one"],
+	);
+	assert.equal(log[0].text, "one");
+	assert.equal(updatesCountLabel(0), "");
+	assert.equal(updatesCountLabel(1), "1 update");
+	assert.equal(updatesCountLabel(12), "12 updates");
+});
+
+test("a day heading is Today, Yesterday, then the reader's calendar date", () => {
+	/*
+	 * LOCAL instants converted to ISO, so the test states one rule in any zone:
+	 * the 20th at 9am local is Today, the 19th at 11pm local is Yesterday, and
+	 * a day the reader's year does not contain gets its year (the
+	 * `formatProjectDay` rule, reused rather than restated).
+	 */
+	const now = new Date(2026, 8, 20, 14, 0, 0);
+	const dayOf = (y, m, d, h) =>
+		updateDayKey(new Date(y, m, d, h).toISOString());
+	assert.equal(updateDayLabel(dayOf(2026, 8, 20, 9), "en-US", now), "Today");
+	assert.equal(
+		updateDayLabel(dayOf(2026, 8, 19, 23), "en-US", now),
+		"Yesterday",
+	);
+	assert.equal(updateDayLabel(dayOf(2026, 8, 18, 12), "en-US", now), "Sep 18");
+	assert.equal(
+		updateDayLabel(dayOf(2025, 8, 18, 12), "en-US", now),
+		"Sep 18, 2025",
+	);
+	/* An unparsable stamp groups with no heading rather than a made-up one. */
+	assert.equal(updateDayKey(""), "");
+	assert.equal(updateDayLabel("", "en-US", now), "");
+});
+
+test("the feed's day groups are consecutive and in reverse order", () => {
+	const now = new Date(2026, 8, 20, 14, 0, 0);
+	const at = (y, m, d, h) => new Date(y, m, d, h).toISOString();
+	const groups = groupUpdatesByDay(
+		[
+			update(at(2026, 8, 18, 10), "one"),
+			update(at(2026, 8, 19, 9), "two"),
+			update(at(2026, 8, 19, 16), "three"),
+			update(at(2026, 8, 20, 9), "four"),
+		],
+		"en-US",
+		now,
+	);
+	assert.deepEqual(
+		groups.map((group) => group.label),
+		["Today", "Yesterday", "Sep 18"],
+	);
+	assert.deepEqual(
+		groups.map((group) => group.entries.map((entry) => entry.text)),
+		[["four"], ["three", "two"], ["one"]],
+	);
+});
+
+test("an update's meta line names the author, the clock and the age", () => {
+	const nowMs = new Date(2026, 8, 20, 14, 0, 0).getTime();
+	const at = new Date(nowMs - 15 * 60 * 1000).toISOString();
+	const tokens = updateMetaTokens({ at, by: "4e92693767fa" }, "en-US", nowMs);
+	assert.deepEqual(
+		tokens.map((token) => token.key),
+		["author", "time", "age"],
+	);
+	assert.equal(tokens[0].text, "session 4e92693767fa");
+	assert.match(tokens[1].text, /1:45\s?PM/);
+	assert.equal(tokens[2].text, "15m ago");
+	/* The operator's own writes name the operator — one rule, the stale line's. */
+	const operator = updateMetaTokens({ at, by: "operator" }, "en-US", nowMs);
+	assert.equal(operator[0].text, "the operator");
+	/*
+	 * An entry missing a fact DROPS its token rather than printing a separator
+	 * around nothing (the `listRowMeta` shape).
+	 */
+	assert.deepEqual(updateMetaTokens({ at: "", by: "" }, "en-US", nowMs), []);
+	assert.equal(updateAgePhrase(at, nowMs), "15m ago");
+	assert.equal(
+		updateAgePhrase(new Date(nowMs - 30 * 1000).toISOString(), nowMs),
+		"just now",
+	);
+	assert.equal(updateAgePhrase("", nowMs), "");
+});
+
+test("an attachment's size reads the way the tool prints it", () => {
+	/* The backend's `file_size_text`, mirrored: B / one-decimal KB / one-decimal MB. */
+	assert.equal(attachmentSizeText(12), "12 B");
+	assert.equal(attachmentSizeText(4096), "4.0 KB");
+	assert.equal(attachmentSizeText(182400), "178.1 KB");
+	assert.equal(attachmentSizeText(5 * 1024 * 1024), "5.0 MB");
+	assert.equal(attachmentSizeText(Number.NaN), "");
+	assert.equal(attachmentSizeText(-4), "");
+});
+
+/* ------------------------------------------------------- detail summaries -- */
+
+test("the milestones header counts what it can", () => {
+	assert.equal(milestoneSummaryLabel(2, 5), "2 of 5 complete");
+	assert.equal(milestoneSummaryLabel(0, 0), "");
+});
+
+test("the to-dos aggregate counts only what it knows, and rows keep their own", () => {
+	const links = [
+		{ todos: { open: 3, total: 7 } },
+		{ todos: null },
+		{ todos: { open: 1, total: 5 } },
+	];
+	assert.deepEqual(todosAggregate(links), { open: 4, total: 12 });
+	/* Unknown is not zero: an all-unknown project says so rather than reporting 0 open. */
+	assert.equal(todosAggregate([{ todos: null }]), null);
+	assert.equal(todosAggregate([]), null);
+	assert.equal(todosCountLabel({ open: 4, total: 12 }), "4 open of 12");
+});
+
+/* --------------------------------------------------------- session actions -- */
+
+test("quick-send aims at the first live link, then the first that exists", () => {
+	const link = (session_id, exists, state) => ({
+		session_id,
+		exists,
+		runtime: { state, busy: null },
+	});
+	assert.equal(
+		defaultSendTarget([link("a", true, "stopped"), link("b", true, "live")]),
+		"b",
+	);
+	assert.equal(
+		defaultSendTarget([
+			link("a", false, "stopped"),
+			link("b", true, "stopped"),
+		]),
+		"b",
+	);
+	assert.equal(defaultSendTarget([link("a", false, "stopped")]), null);
+	assert.equal(defaultSendTarget([]), null);
+});
+
+test("the start-session prompt carries the title, the key and the latest progress", () => {
+	assert.equal(
+		startSessionPrompt({
+			name: "payments-migration",
+			title: "Payments migration",
+			progress: "Dashboard cutover is done.",
+		}),
+		[
+			'Continue work on project "Payments migration" (payments-migration).',
+			"Latest progress: Dashboard cutover is done.",
+			"Review the project details and continue or complete the work.",
+		].join("\n"),
+	);
+	/* No progress yet is a fact the prompt states, not a blank line. */
+	assert.equal(
+		startSessionPrompt({ name: "fresh-notes", title: null, progress: "" }),
+		[
+			'Continue work on project "fresh-notes" (fresh-notes).',
+			"Latest progress: not reported yet",
+			"Review the project details and continue or complete the work.",
+		].join("\n"),
+	);
+});
+
+test("a start-session toast names the target it started with", () => {
+	assert.equal(
+		sessionTargetLabel({ kind: "team", name: "atlas" }),
+		"team atlas",
+	);
+	assert.equal(
+		sessionTargetLabel({ kind: "agent", name: "reviewer" }),
+		"agent reviewer",
+	);
+	assert.equal(sessionTargetLabel(null), "");
 });

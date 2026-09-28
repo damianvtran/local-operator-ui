@@ -89,8 +89,11 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|none>
+ *   --scene <states|new-chat|first-send|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|project-detail|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|none>
  *                          which built-in scene to run (default: states)
+ *   --project <key>        (with --scene project-detail) the seeded project the
+ *                          detail scene drives; the seed decides the name and a
+ *                          default would photograph whatever it happened to use
  *   --gate-state <label>   (with --scene settings-gate) what this run's backend
  *                          state is called in the frames and the log, so two
  *                          runs against two backends can be told apart
@@ -302,6 +305,13 @@ const BACKEND = argValue("--backend", null);
  * daemon was started with).
  */
 const BACKEND_RECORDS = argValue("--backend-records", null);
+/**
+ * The project key `--scene project-detail` drives (the lane's seed writes it).
+ *
+ * An ARGUMENT rather than a constant: the seed decides the name, and a scene
+ * that guessed would photograph whatever the seed happened to call its row.
+ */
+const PROJECT = argValue("--project", null);
 /**
  * The command that starts a fresh daemon on the `--backend` address, for
  * `--scene connection-drop`'s reconnect half.
@@ -26009,6 +26019,302 @@ async function sceneRouteTops(cdp) {
 	return frames;
 }
 
+/**
+ * One project's detail View and one session's transcript page, as the daemon
+ * answers `projects.get` and `history`, for a scene's own assertions.
+ *
+ * The scene reads the daemon BACK for what a frame cannot prove on its own - a
+ * link the create promised, the id of the session quick-send aimed at, a
+ * message that is IN a transcript rather than painted on one - the same way
+ * `createBackendSession` reads the create it made. The bearer is this run's
+ * own token and never argv.
+ */
+async function fetchProjectView(key) {
+	const response = await fetch(
+		`${BACKEND}/v1/desktop/projects/${encodeURIComponent(key)}`,
+		{
+			headers: {
+				authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+			},
+		},
+	);
+	const body = await response.json().catch(() => null);
+	return { status: response.status, body };
+}
+
+/**
+ * One session's transcript page, for the delivery assertion `fetchProjectView`
+ * exists beside: the daemon's own record of what was admitted.
+ */
+async function fetchSessionHistory(sessionId) {
+	const response = await fetch(
+		`${BACKEND}/v1/desktop/sessions/${encodeURIComponent(sessionId)}/history`,
+		{
+			headers: {
+				authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+			},
+		},
+	);
+	const body = await response.json().catch(() => null);
+	return { status: response.status, body };
+}
+
+/**
+ * THE PROJECT DETAIL PAGE (slice S6d), on the real app against the isolated
+ * backend this run owns.
+ *
+ * WHAT THIS SCENE IS FOR: the Stories set photographs the detail's states, but
+ * a story stubs the bridge at its boundary. This scene drives the same screen
+ * against a live daemon and exercises the two acts a still cannot claim - the
+ * quick-send strip delivering a message into a linked session through the
+ * chat's own send path, and the start-session picker creating a session,
+ * linking it, and landing on that session's chat with a PRE-FILLED (never
+ * auto-sent) prompt. Both claims are read back from state the daemon keeps:
+ * the message from the session's transcript, the link from `projects.get`.
+ *
+ * THE SEEDED ROW is the lane's own script (`seed.py`): one project named by
+ * `--project`, with a title, owner/team, a progress line and one linked
+ * session. The scene refuses to guess any of it - a missing project is a
+ * refused precondition, not a photographed empty page.
+ */
+async function sceneProjectDetail(cdp) {
+	if (PROJECT === null) {
+		throw new Error(
+			"--scene project-detail needs --project <key>: the detail page is reached by the project's own key, and a default would drive whatever the lane's seed happened to call its row",
+		);
+	}
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+	const size = `${WINDOW_WIDTH}x${WINDOW_HEIGHT}`;
+	// Frame labels are lowercase-only (the capture verb refuses anything else).
+	const theme = (THEME ?? "localOperatorDark")
+		.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
+		.replace(/^-/, "");
+
+	/*
+	 * The seeded row, read straight off the daemon: the key the route needs and
+	 * the id of the linked session quick-send will aim at. Neither is guessed.
+	 */
+	const seeded = await fetchProjectView(PROJECT);
+	const linkedSession = seeded.body?.result?.links?.[0]?.session_id ?? null;
+	check(
+		"the seeded project exists on this run's daemon, with one linked session",
+		seeded.status === 200 && typeof linkedSession === "string",
+		`status=${seeded.status} links=${JSON.stringify(seeded.body?.result?.links)}`,
+	);
+
+	/*
+	 * 1. THE SHEET. The heading is the DISPLAY name (`title`), and the key rides
+	 * under it in the machine voice; the checks name the facts a reader would
+	 * hunt for: the attribution line, the milestone and the seeded history entry.
+	 */
+	await verb(cdp, "navigate", `/projects/${PROJECT}`);
+	const sheet = await waitForCondition(
+		cdp,
+		`(() => {
+			const h = document.querySelector("h1");
+			if (!h || h.textContent.trim() !== "Rig detail") return null;
+			return document.body.textContent;
+		})()`,
+		30_000,
+	);
+	const sheetText = String(sheet.last ?? "");
+	check(
+		"the sheet draws the seeded project: title, key, managed-by, milestone and feed",
+		sheet.ok &&
+			sheetText.includes(PROJECT) &&
+			sheetText.includes("Managed by atlas · platform") &&
+			sheetText.includes("rig milestone") &&
+			sheetText.includes("Seeded by the evidence rig"),
+		`after ${sheet.waitedMs}ms`,
+	);
+	note("detail route", `${await verb(cdp, "state")}`);
+	await captureSettled(cdp, `project-detail-${size}-${theme}-sheet`);
+
+	/*
+	 * 2. QUICK-SEND. The composer's own path: type, press Enter, and the strip
+	 * must clear - which is the admission receipt, because `admitChatDraft`
+	 * only clears on the way out.
+	 */
+	const inputSelector = '[aria-label="Message the selected session"]';
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${inputSelector}'))`,
+		30_000,
+	);
+	await clickAt(cdp, inputSelector);
+	const messageText = "Rig check: report your current blocker.";
+	await cdp.send("Input.insertText", { text: messageText });
+	await wait(150);
+	const typed = await cdp.evaluate(
+		`document.querySelector('${inputSelector}').value`,
+	);
+	check(
+		"the strip holds the typed message",
+		typed === messageText,
+		JSON.stringify(typed),
+	);
+	await captureSettled(cdp, `project-detail-${size}-${theme}-quick-send`);
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	/*
+	 * ONE REFUSAL HERE IS THE APP BEING RIGHT, and the scene has to tell it from
+	 * a strip that silently did nothing. `admitChatDraft` refuses a send that
+	 * names a session whose own stream has not answered yet (its validation
+	 * window, opened by whatever committed a view of it - here, the shell
+	 * restoring the profile's last conversation): the composer keeps the text
+	 * and shows the sentence rather than sending. So the read is: cleared
+	 * (admitted), or the sentence on screen (refused before admission, text
+	 * kept) - and on the refusal the scene waits the window out and presses once
+	 * more, which is the operator's own move. A strip that did NEITHER is the
+	 * failure this check exists for.
+	 */
+	const REFUSAL = "not ready for messages yet";
+	const cleared = await waitForCondition(
+		cdp,
+		`document.querySelector('${inputSelector}').value === ""`,
+		60_000,
+	);
+	/*
+	 * A STILL-HOLDING STRIP IS NAMED WITH ITS OWN REASON: the send path reports a
+	 * refusal as a toast and hands the text BACK to the box (the composer keeps
+	 * what was not sent), so the toast is read here and put in the failure
+	 * line - a check that only said "did not clear" would leave the reader to
+	 * re-run the whole rig to learn why.
+	 */
+	const stripToast = cleared.ok ? null : await toastText(cdp).catch(() => null);
+	check(
+		"pressing Enter admits the message (the strip clears on the way out of admitChatDraft)",
+		cleared.ok,
+		cleared.ok
+			? `cleared after ${cleared.waitedMs}ms`
+			: `still holding after ${cleared.waitedMs}ms; toast: ${stripToast ?? "none"}`,
+	);
+
+	/*
+	 * 3. THE PROOF, from the daemon's own transcript: the delivery claim is read
+	 * back off the server (`history`), not off the page - a painted optimistic
+	 * echo also puts the text on screen, so the DOM alone cannot tell an admitted
+	 * message from a row that may still be replaced. The frame is the UI half:
+	 * the same sentence rendering in the conversation it was sent to.
+	 */
+	const history = await fetchSessionHistory(linkedSession);
+	check(
+		"the message is admitted into the linked session's transcript (daemon read)",
+		history.status === 200 &&
+			JSON.stringify(history.body?.result?.entries ?? []).includes(messageText),
+		`status=${history.status} entries=${JSON.stringify(history.body?.result?.entries ?? []).slice(0, 200)}`,
+	);
+	await verb(cdp, "navigate", `/chat/${linkedSession}`);
+	const delivered = await waitForCondition(
+		cdp,
+		`document.body.textContent.includes(${JSON.stringify(messageText)})`,
+		60_000,
+	);
+	check(
+		"the message renders in the linked session's conversation",
+		delivered.ok,
+		`after ${delivered.waitedMs}ms`,
+	);
+	await captureSettled(cdp, `project-detail-${size}-${theme}-delivered`);
+
+	/*
+	 * 4. START SESSION. The picker opens on the detail; pressing Start creates a
+	 * PLAIN session on this backend (the isolated config root has no teams or
+	 * agents to offer, and the dialog says so), links it, and lands on the
+	 * session's chat with the prompt pre-filled in the composer - the textarea
+	 * is READ rather than acted on, which is what "never auto-sent" means.
+	 */
+	await verb(cdp, "navigate", `/projects/${PROJECT}`);
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-tour-tag="project-start-session"]'))`,
+		30_000,
+	);
+	await clickAt(cdp, '[data-tour-tag="project-start-session"]');
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-tour-tag="project-start-session-dialog"]'))`,
+		30_000,
+	);
+	await captureSettled(cdp, `project-detail-${size}-${theme}-start-session`);
+	/*
+	 * The dialog's own primary action, found by its WORD rather than by its
+	 * position: the actions row is a sibling of the scrollable body the tour tag
+	 * names, so a tag-scoped selector would miss it. One evaluate, one click -
+	 * the same element a person presses.
+	 */
+	const pressed = await cdp.evaluate(
+		`(() => {
+			const button = [...document.querySelectorAll("button")].find(
+				(el) => el.textContent.trim() === "Start session",
+			);
+			if (!button) return "missing";
+			button.click();
+			return "clicked";
+		})()`,
+	);
+	check(
+		"the picker's Start session control is on screen and was pressed",
+		pressed === "clicked",
+		String(pressed),
+	);
+	const composer = await waitForCondition(
+		cdp,
+		`document.querySelector('[data-tour-tag="chat-input-textarea"] textarea')?.value ?? null`,
+		60_000,
+	);
+	const composerText = String(composer.last ?? "");
+	check(
+		"the started session lands on its chat with the prompt PRE-FILLED and unsent",
+		composer.ok &&
+			composerText.includes(
+				`Continue work on project "Rig detail" (${PROJECT}).`,
+			) &&
+			composerText.includes(
+				"Review the project details and continue or complete the work.",
+			),
+		`after ${composer.waitedMs}ms: ${composerText.slice(0, 80)}`,
+	);
+	await captureSettled(cdp, `project-detail-${size}-${theme}-composer`);
+
+	/*
+	 * 5. THE LINK, from the daemon and from the page: the create promised a link,
+	 * and both readers must agree it exists.
+	 */
+	const after = await fetchProjectView(PROJECT);
+	/*
+	 * THE DELTA, not a fixed 2: a scene that runs twice against one seeded
+	 * daemon (the dark pass and the light one) would otherwise fail its own
+	 * second run for the link the first one made, and a check that only passes
+	 * on a virgin daemon is a check nobody can re-run.
+	 */
+	const linksBefore = seeded.body?.result?.links?.length ?? 0;
+	check(
+		"the daemon holds one more linked session than before the create",
+		(after.body?.result?.links?.length ?? 0) === linksBefore + 1,
+		`status=${after.status} links=${JSON.stringify(after.body?.result?.links)}`,
+	);
+	await verb(cdp, "navigate", `/projects/${PROJECT}`);
+	const rows = await waitForCondition(
+		cdp,
+		`document.querySelectorAll('button[aria-label^="Unlink"]').length`,
+		30_000,
+	);
+	check(
+		"the linked-sessions list draws a row for the new link too",
+		rows.ok && Number(rows.last) === linksBefore + 1,
+		`after ${rows.waitedMs}ms: ${rows.last} (linksBefore=${linksBefore})`,
+	);
+	await captureSettled(cdp, `project-detail-${size}-${theme}-linked`);
+}
+
 async function main() {
 	await assertBuildIsCurrent();
 	/*
@@ -26218,6 +26524,16 @@ async function main() {
 			"--scene route-tops needs --backend: settings, agents, projects, hub and schedules are gated on the catalogue a live backend advertises, and the macOS lane assertion is read over every one of them",
 		);
 	}
+	if (SCENE === "project-detail" && BACKEND === null) {
+		throw new Error(
+			"--scene project-detail needs --backend: the seed, the quick-send message and the picker's create are all real requests to the daemon this run owns, so a run with none would photograph three refusals",
+		);
+	}
+	if (SCENE === "project-detail" && BACKEND === null) {
+		throw new Error(
+			"--scene project-detail needs --backend: the seeded row, quick-send's message and the picker's create are all real requests to the daemon this run owns, so a run with none would photograph three refusals",
+		);
+	}
 	if (SCENE === "pins-search" && (TUI_PYTHON === null || TUI_CONFIG === null)) {
 		throw new Error(
 			"--scene pins-search needs --tui-python and --tui-config: the third surface it asserts is the store the terminal reads",
@@ -26371,6 +26687,8 @@ async function main() {
 			else if (SCENE === "settings-integrations")
 				await sceneSettingsIntegrations(cdp);
 			else if (SCENE === "route-tops") await sceneRouteTops(cdp);
+			else if (SCENE === "project-detail") await sceneProjectDetail(cdp);
+			else if (SCENE === "project-detail") await sceneProjectDetail(cdp);
 			else if (SCENE === "palette") await scenePalette(cdp);
 			else if (SCENE === "hit-zones") await sceneHitZones(cdp);
 			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);
