@@ -664,9 +664,12 @@ isolation.**
   tooltip, badge, skeleton. A 32px-tall control cannot carry more: 10px eats a
   third of its height and reads as a lozenge, and every desktop tool that feels
   precise sits at 4–6.
-- **10px, panels and callouts.** Things that sit over or beside content and are
-  read as one block: menu, popover, select panel, alert.
-- **14px, frames.** Cards and dialogs — the containers other things sit inside.
+- **10px, panels, frames and cards.** Things that sit over or beside content
+  and are read as one block — menu, popover, select panel, alert — and, at the
+  same tier, the app's in-flow surfaces: a view's own frame (board, list,
+  timeline, schedules) and a panel-scale card (the agent-hub card).
+- **14px, dialogs.** The one frame that leaves the flow and carries the
+  system's shadow; the radius stays with it.
 - **2px** is for bars too small to carry 6: the progress track, the scrollbar
   thumb, the checkbox.
 - **16px (`frame`)** is the **composer's** radius, and the composer's alone: it
@@ -678,6 +681,13 @@ isolation.**
 - **Nested radii are concentric, not repeated:** an inner radius is the outer
   radius minus the padding between them. The tabs track is 10 with 4px padding,
   so its pills are 6.
+- **A card's boundary is its ground, not an edge.** A card, a frame and the
+  well under a board's cards separate by their step on the four grounds (§ 2);
+  a hairline on a repeating card is the extra mark this system deletes, the
+  way `message-surface`'s border was retired. A card nested inside a well
+  takes 6 — the tabs track's own 10/6 pair (the board card in its sunken
+  column). A card in a STATE keeps its edge, because the state is the
+  information (the overdue board card's `warning-border`).
 - `rounded-full` stays reserved for avatars, status dots and pill badges.
 
 **Motion** — durations 80 / 120 / 180 / 240ms. Nothing in this app animates for

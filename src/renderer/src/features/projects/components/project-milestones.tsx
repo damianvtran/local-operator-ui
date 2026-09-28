@@ -85,8 +85,11 @@ export const ProjectMilestones: FC<ProjectMilestonesProps> = ({
 					planned around.
 				</p>
 			) : (
-				/* Borderless rows, the chat page's chrome: hairlines, no group box. */
-				<ul className="flex flex-col divide-y divide-hairline">
+				/*
+				 * Borderless group, main's card restyle (#608): surface ground, stepped
+				 * radius, no border.
+				 */
+				<ul className="flex flex-col divide-y divide-hairline rounded-md bg-surface">
 					{milestones.map((milestone) => {
 						const meta = milestoneStatusMeta(milestone.status);
 						const completed = milestone.completed_at !== null;

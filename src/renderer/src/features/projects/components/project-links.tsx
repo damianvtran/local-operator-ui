@@ -157,13 +157,12 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 				</p>
 			) : (
 				/*
-				 * BORDERLESS ROWS (the chat page's chrome): hairlines between rows on
-				 * the page's own ground, no box around the group, and a 6px-radius
-				 * hover pill on the rows that open something. The previous
-				 * `rounded-lg border bg-surface` panel was a card drawn around a
-				 * list the chat's own lists never wear.
+				 * BORDERLESS GROUP (main's card restyle, #608): the `surface` ground
+				 * stays at the stepped radius and the border retires - a card drawn
+				 * around a list is what the three surfaces' pass removed. The 6px
+				 * hover pill on the rows that open something is this branch's.
 				 */
-				<ul className="flex flex-col divide-y divide-hairline">
+				<ul className="flex flex-col divide-y divide-hairline rounded-md bg-surface">
 					{links.map((link) => {
 						const meta = linkStateMeta(link);
 						const subagents = subagentChipLabel(link.subagents);
