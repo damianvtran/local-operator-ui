@@ -1680,6 +1680,32 @@ const STAMP_BINDING_NOTES = [
 	 * and the reason the stills did not move.
 	 */
 	"mouseCursorRestampNote",
+	/*
+	 * AND THE CHAT-MEASURE LANE'S FOLD: `foldOntoAc83ec7d92Note` states the pair
+	 * the folded tip binds AND the retarget the fold carries (the measure moves
+	 * to 810px - 900 minus exactly 10% - and the set's 12 frames were re-taken
+	 * at the folded tip), so it is held to the pair this file ships rather than
+	 * read as history.
+	 */
+	"foldOntoAc83ec7d92Note",
+	/*
+	 * AND THE SECOND FOLD'S: `foldOnto8367cbfaeeNote` states the pair the second
+	 * folded tip binds and that no frame moved for it, so it is held to the pair
+	 * this file ships rather than read as history.
+	 */
+	"foldOnto8367cbfaeeNote",
+	/*
+	 * AND THE THIRD FOLD'S: `foldOnto8320e52366Note` states the pair the third
+	 * folded tip binds and that no frame moved for it, so it is held to the pair
+	 * this file ships rather than read as history.
+	 */
+	"foldOnto8320e52366Note",
+	/*
+	 * AND THIS FOLD'S: `foldOnto55d7b0a19bNote` states the pair the fourth
+	 * folded tip binds, so it is held to the pair this file ships rather
+	 * than read as history.
+	 */
+	"foldOnto55d7b0a19bNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2538,6 +2564,27 @@ const BRANCH_RECORDS = [
 	 * for.
 	 */
 	"mathCurrencyCaptureNote",
+	/*
+	 * And the chat-measure lane's fold record rides beside it - registered here
+	 * for the same completeness reason: a fold that started from main's copy
+	 * would drop it first.
+	 */
+	"foldOntoAc83ec7d92Note",
+	/*
+	 * And the second fold's record rides beside them - registered here for the
+	 * same completeness reason.
+	 */
+	"foldOnto8367cbfaeeNote",
+	/*
+	 * And the third fold's record rides beside them - registered here for the
+	 * same completeness reason.
+	 */
+	"foldOnto8320e52366Note",
+	/*
+	 * And this fold's record rides beside them - registered here for the same
+	 * completeness reason.
+	 */
+	"foldOnto55d7b0a19bNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
