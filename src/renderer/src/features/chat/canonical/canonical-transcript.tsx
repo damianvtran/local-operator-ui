@@ -2716,19 +2716,57 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						</CanvasPaneProvider>
 					)}
 
-					{working && (
-						// On the `item` tier, not a tier of its own: the working line is
-						// the foot of the run above it and shares that run's rhythm. It
-						// takes slightly more than `trace` because it is the one row that
-						// is not a completed action, and slightly less than a turn
-						// boundary because the turn has not ended.
-						<div className={GAP.item[isSmallView ? 1 : 0]}>
-							<WorkingLine
-								activity={working.activity}
-								phase={working.phase}
-								startedAt={working.startedAt}
-								clock={working.clock}
-							/>
+					{/*
+					 * THE FOOT SLOT IS RESERVED, NOT TOGGLED (operator report, 2026-09-27).
+					 *
+					 * "Sometimes the whole conversation including the leading edge shifts up
+					 * even though we're now in the scroll phase." Measured on the harness
+					 * (`scripts/scroll-shift-evidence.mjs`, a tall fixture at 1380x872):
+					 * while the transcript is anchored at the tail, this row MOUNTING moved
+					 * every settled row and the last row's bottom edge - the leading edge -
+					 * up 29.4px in one frame at the turn's start, and its unmount moved them
+					 * back down at the turn's end. The scroller is pinned at `scrollTop = 0`,
+					 * so anything that appears below the last row displaces the whole
+					 * conversation; the fix is that nothing appears: the line mounts into a
+					 * row that was already there.
+					 *
+					 * 29.4px is this row's own footprint - `GAP.item`'s 12px plus one
+					 * `text-mono-sm` line at 1.45 line-height (17.4px) - and `min-h-[1lh]`
+					 * rather than a number is what keeps the reserve glued to the thing it
+					 * reserves: the reserve is exactly one line of the line's own type, so a
+					 * change to that token moves both together. The reserved row is
+					 * otherwise empty - it paints no text when no turn is running and holds
+					 * no live region - so the idle pane is the same picture it was, one row
+					 * taller.
+					 *
+					 * This is the older-history slot's rule, one element down ("One
+					 * fixed-height slot for every state of both, so a state change above the
+					 * oldest row can never shift the conversation under the reader"), and it
+					 * is withheld on the same terms: the slot belongs to a CONVERSATION, not
+					 * to a turn, and the failure surfaces replace the rows rather than sit
+					 * above them.
+					 */}
+					{transcript.records.length > 0 && !stale && !missing && (
+						<div
+							data-lo-transcript-foot={true}
+							className={cn(
+								// On the `item` tier, not a tier of its own: the working line is
+								// the foot of the run above it and shares that run's rhythm. It
+								// takes slightly more than `trace` because it is the one row that
+								// is not a completed action, and slightly less than a turn
+								// boundary because the turn has not ended.
+								GAP.item[isSmallView ? 1 : 0],
+								"min-h-[1lh] font-mono text-mono-sm",
+							)}
+						>
+							{working && (
+								<WorkingLine
+									activity={working.activity}
+									phase={working.phase}
+									startedAt={working.startedAt}
+									clock={working.clock}
+								/>
+							)}
 						</div>
 					)}
 
