@@ -1367,9 +1367,13 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 													 * this comment got wrong: Radix's shift runs with `sticky` at its
 													 * `"partial"` default, `limitShift()` is derived from that setting, and
 													 * it caps the shift at the anchor's width — 28px for this trigger — so
-													 * the measured worst case lands at right ≈ 1272.5, ~9px clear of the
-													 * pill, not the ≤1260 the old text claimed. The goal holds (the pill is
-													 * no longer covered; a panel that fits is untouched); the bound is what
+													 * the worst case lands at right ≈ 1273: the app's own measurement from
+													 * the D2 photograph's state (window 1380) reads panel right 1273
+													 * against the pill's box 1266.3 and its leading content 1275.3 — a
+													 * content gap of 2.3px and a box gap of −6.7px, the overlap landing on
+													 * the pill's transparent padding while the pill reads whole — not the
+													 * ≤1260 / 21.5px the old text claimed. The goal holds (the pill is no
+													 * longer covered; a panel that fits is untouched); the bound is what
 													 * the pinned middleware actually is.
 													 */
 													collisionPadding={{ right: 120 }}
