@@ -58,9 +58,10 @@ head and timestamp; they do not relabel the historical capture.
 
 | Directory | Tree | What it shows |
 | --- | --- | --- |
-| [`session-incidents`](session-incidents/) | this change | The fixed rows: danger glyph and category label, the provider the incident names, the vendor's message in place and wrapping, the harness's advice behind the disclosure. |
+| [`session-incidents`](session-incidents/) | this change | The fixed rows: danger glyph and category label, the provider the incident names, the vendor's message in place and wrapping, the harness's advice behind the disclosure. Re-taken in the provider-remedies round below, which adds an action to the rows that have a remedy. |
 | [`session-incidents-narrow`](session-incidents-narrow/) | this change | The same rows at 560, where a row wraps hardest — the width the wrapped-mark defect was measured at. **The frame holds 17 rows; the story renders 18 at this head**, because the `session_mcp_unavailable` fixture landed after this set was taken — see the deferral below. |
 | [`notice-lengths`](notice-lengths/) | this change | The notice register's own length cases, including the bulky one that used to render as the literal word "Notice". |
+| [`provider-account-actions`](provider-account-actions/) | this change | The new state, at a readable height: a failed provider call carries the action that repairs it. Three rows from one story — a Radient quota 402 (`Open provider settings`, Radient preselected), a refused Radient credential 401 (`Sign in to Radient`), and an anthropic 429 (`Open provider settings`, no account assumed) — whose texts are the runtime's own incident formatter's output for the raws the client relays. The must-not-match cases live in `scripts/provider-error-guidance.test.mjs`, not in a frame. |
 | [`../session-incident-rows-before`](../session-incident-rows-before/) | unmodified `origin/main` (`73977340a`) | The defect, from the same story and the same payloads: ten rows reading `session incident`, the info ink, no message anywhere but behind the chevrons. |
 
 The pair is same-viewport (1280x700), same story, same themes, and the only
@@ -466,3 +467,53 @@ node scripts/capture-evidence.mjs http://localhost:6006 --only=notice-lengths
 The `before` frames cannot be re-derived from this tree; they live in
 `../session-incident-rows-before/` and are declared as a supplementary set for
 that reason.
+
+## The provider-remedies round (2026-09-27)
+
+The change that gives a failed provider call the action that repairs it. Two
+things happen to this set:
+
+- `provider-account-actions` — NEW. The reported case at a readable height
+  (three rows, 380px viewport, both themes). Its texts are the runtime's own
+  `format_incident_message` output for the raws the client relays, so the
+  frames show the sentences the harness really writes. The must-not-match
+  controls (a `network`-category row whose payload quotes a credit refusal —
+  the classifier's answer outranks the prose; an `mcp` authorization row; and
+  ordinary words like "credit card" or "the quota feature is documented",
+  which must earn nothing) are asserted in
+  `scripts/provider-error-guidance.test.mjs` rather than photographed, because
+  their assertion is the absence of a button, which a still cannot falsify.
+- `session-incidents` and `session-incidents-narrow` — RE-TAKEN. This is the
+  recapture the note above deferred: the frames now hold the story's whole
+  register at this head (the `session_mcp_unavailable` row included), the
+  wake row paints through the receipt model upstream ships (which is what a
+  capture at this head must photograph), and the rows whose category the
+  affordance answers — `auth`, `billing`, `rate-limit` — carry their action.
+  The set's own claims above about the previous capture's row count and wake
+  shape remain that capture's record; this section is the delta.
+
+ROUND 1 REMEDIATION (independent review + UX rounds, 2026-09-27):
+`provider-account-actions` is RE-TAKEN for UX round 1's U3 — the Radient
+billing row's action now reads "Open Radient account" and lands on the account
+section (`/settings?section=radient`), where the balance, the verify-to-claim
+callout and the console's billing entry live, rather than on the providers grid
+that only signs a provider in. The auth row keeps "Sign in to Radient" → the
+provider deep link (that is where signing in happens), and the anthropic
+rate-limit row keeps the surface-without-an-account wording. The frame's
+capture row asserts the new target (`a[href*="section=radient"]`) at the
+shutter so a typo in the link fails the capture rather than shipping.
+
+Command (narrowed per surface; the rig ran on `6417` while another worktree's
+Storybook held `6017`):
+
+```
+node scripts/capture-evidence.mjs http://localhost:6417 \
+  --only=chat-canonical-notices--provider-account-actions \
+  --themes=localOperatorDark,localOperatorLight --allow-backend
+node scripts/capture-evidence.mjs http://localhost:6417 \
+  --only=chat-canonical-notices--session-incidents \
+  --themes=localOperatorDark,localOperatorLight --allow-backend
+```
+
+One state of this set is deliberately NOT re-taken: `notice-lengths` carries
+none of the texts this round matches on, so its frames still stand.

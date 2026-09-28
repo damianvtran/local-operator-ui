@@ -1476,6 +1476,21 @@ const GRAPHICS = [
 		on: ["borderControl"],
 		fg: "onAccent",
 	},
+	{
+		/*
+		 * The checked mark's dot in the onboarding search step's mode option
+		 * (`search-api-step.tsx`: a `size-2` `bg-on-accent` dot inside the
+		 * `accent` fill). A graphic object on a FILL rather than a theme ground,
+		 * the same shape as the overflow trigger's glyph row above; the unchecked
+		 * ring needs no row of its own because `borderControl` is asserted across
+		 * `GROUNDS` by `CONTROLS`' outline-control row. Listed because the option's
+		 * selection is carried by this mark as well as by the ground step (design
+		 * round 1, D2), and no row described it.
+		 */
+		name: "search setup mode mark dot (checked)",
+		on: ["accent"],
+		fg: "onAccent",
+	},
 	...["danger", "info"].map((role) => ({
 		/*
 		 * The run pane's trigger dot, which gained a second ink
@@ -1605,6 +1620,24 @@ const PERCEPTIBLE = [
 		 * (iceberg). The label is `ink`, asserted at 7:1 on `sunken` by the ink loop.
 		 */
 		name: "question dock option row hover fill",
+		role: "sunken",
+		on: ["elevated"],
+		minDeltaE: 5.0,
+		pairedWith: "elevated",
+		maxWeightChange: 2.0,
+		against: "elevated",
+	},
+	{
+		/*
+		 * The onboarding search step's mode option rows (`search-api-step.tsx`):
+		 * a control row whose selected state is `bg-sunken` on the dialog's
+		 * `elevated` plus a filled mark, the same shape as the dock row above and
+		 * the same floor. The mark's half is asserted by `GRAPHICS` below; this
+		 * row owns the GROUND STEP, which is what the selection reads as at a
+		 * glance (design round 1, D2 - measured 7.71 dark / 6.85 light on the
+		 * brand pair when the row was added, but no theme was asserting it).
+		 */
+		name: "search setup mode option row selected fill",
 		role: "sunken",
 		on: ["elevated"],
 		minDeltaE: 5.0,
