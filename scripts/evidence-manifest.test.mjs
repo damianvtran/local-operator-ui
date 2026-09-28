@@ -1592,6 +1592,11 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"updateStallBoundCiFixRestampNote",
 	/*
+	 * AND THE TENTH FOLD'S OWN: the fold onto `7bd3803598` re-derived the pair once more and wrote
+	 * one record - same reason, same check.
+	 */
+	"foldOnto7bd3803598Note",
+	/*
 	 * AND THIS LANE'S OWN: the board/timeline pass. Its subject IS this file's
 	 * binding - the change moves BOTH trees (the projects feature's board,
 	 * timeline, switcher and their pins; the capture rows and this list) and
@@ -2434,6 +2439,10 @@ const BRANCH_RECORDS = [
 	 * And the CI-reds fix's restamp rides beside them - same reason, same check.
 	 */
 	"updateStallBoundCiFixRestampNote",
+	/*
+	 * And the tenth fold's record rides beside them - same reason, same check.
+	 */
+	"foldOnto7bd3803598Note",
 	/*
 	 * And this branch's own record, folded in beside it: the account-foot
 	 * refresh writes one top-level note, registered here for the same
