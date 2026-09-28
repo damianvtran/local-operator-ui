@@ -21,10 +21,10 @@ import React, { act } from "react";
  *   (`preventDefault`) so the column under the caret does not scroll;
  * - a text selection inside the card suppresses the navigation the releasing
  *   click would otherwise perform;
- * - the menu door's press acts WITHOUT navigating the card - the shape a
- *   keyboard activation of the door takes, which bubbles exactly like a mouse
- *   click; the sessions door carries the identical one-line guard, on the same
- *   handler the card installs.
+ * - each door's own press acts WITHOUT navigating the card - the shape a
+ *   keyboard activation of a door takes, which bubbles exactly like a mouse
+ *   click - and neither door's CONTENT does either (the content roots stop
+ *   the React-tree bubble the portals still carry).
  *
  * THE HARNESS IS THE SHIPPED COMPONENT (jsdom + esbuild), modelled on
  * `projects-board-focus.test.mjs`; the providers are what the app gives the
@@ -187,6 +187,7 @@ await unlink(bundlePath);
 
 const CARD = '[data-project-name="payments-migration"]';
 const MENU = '[aria-label="Actions for payments-migration"]';
+const SESSIONS = '[data-project-sessions="p1"]';
 
 /** Mount the board on its own host and return the handles the tests drive. */
 async function open() {
@@ -206,6 +207,14 @@ async function open() {
 		calls: handle.calls,
 		card,
 		press,
+		/* A no-act teardown for a test that must not flush the tree's queued
+		 * work (the sessions door's press queues the popover's open); the
+		 * caller owns the act-environment flag around it. */
+		teardown: () => {
+			handle.root.unmount();
+			handle.client.clear();
+			host.remove();
+		},
 		unmount: async () => {
 			await act(() => {
 				handle.root.unmount();
@@ -316,4 +325,34 @@ test("the menu door's press does not navigate the card", async () => {
 		"the trigger's press does not navigate the card",
 	);
 	await view.unmount();
+});
+
+test("the sessions door's press does not navigate the card", async () => {
+	const view = await open();
+	const trigger = document.querySelector(SESSIONS);
+	assert.ok(trigger, "the sessions door is on the card");
+	/*
+	 * A bare click with no pointerdown ahead of it: the discriminating
+	 * dispatch, the same shape the menu door's test uses - without the guard
+	 * it bubbles to the card and the counter moves.
+	 *
+	 * The dispatch is DELIBERATELY not act-wrapped: this click also queues
+	 * the popover's open, and settling Radix's portal is the load-scaled cost
+	 * the block comment above documents. The assertion is read synchronously,
+	 * from the dispatch itself, and the tree is torn down before the queued
+	 * update is ever flushed.
+	 */
+	trigger.dispatchEvent(
+		new dom.window.MouseEvent("click", { bubbles: true, cancelable: true }),
+	);
+	assert.equal(
+		view.calls.open,
+		0,
+		"the sessions door's press does not navigate",
+	);
+	/* React would warn for the un-acted unmount; this teardown is the test's
+	 * own leak-stop, not a state transition under assertion. */
+	globalThis.IS_REACT_ACT_ENVIRONMENT = false;
+	view.teardown();
+	globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 });

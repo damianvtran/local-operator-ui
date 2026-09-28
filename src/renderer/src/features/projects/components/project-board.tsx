@@ -260,12 +260,23 @@ const BoardCard: FC<BoardCardProps> = ({
 	return (
 		<div
 			data-project-name={project.name}
-			// biome-ignore lint/a11y/useSemanticElements: a `<button>` cannot contain the card's own menu and sessions buttons; the root role keeps the card reachable and named while those doors stay legal inside it.
+			// biome-ignore lint/a11y/useSemanticElements: a `<button>` element cannot contain the card's own menu and sessions buttons; the content-root guards below make the doors behave under the ROOT HANDLER this role needs. ARIA's presentational-children caveat is accepted deliberately and recorded in the block comment below.
 			/* The card navigates to the detail route - the same act the list
 			 * row's full-width button and the menu's `Open` item perform - and
 			 * the role is what makes that act reachable from the keyboard and
 			 * keeps the pointer affordance the base layer gives semantic
-			 * controls (`styles/index.css`). */
+			 * controls (`styles/index.css`).
+			 *
+			 * THE TRADE THIS ROLE MAKES, recorded honestly (review round 1, M2;
+			 * design round 1, D3): `button` has presentational children, so the
+			 * two door buttons are not exposed as independent controls by the
+			 * spec, and some AT flattens them. That is the cost of a card whose
+			 * whole surface is one control with its own actions inside - the
+			 * accepted pattern - and it is taken because the alternative (a
+			 * stretched-link layer) buys the doors their own exposure at the
+			 * price of a second interactive layer to keep in sync. The doors
+			 * keep their own names and focus stops for the pointer domain; an
+			 * AT pass is tracked as a follow-up, not assumed away here. */
 			role="button"
 			tabIndex={0}
 			aria-label={`Open ${project.name}`}
@@ -317,12 +328,32 @@ const BoardCard: FC<BoardCardProps> = ({
 						onClick={(event) => event.stopPropagation()}
 						className={cn(
 							"shrink-0 rounded-sm p-1 text-ink-muted whitespace-nowrap",
-							"hover:bg-elevated hover:text-ink",
+							/* SUNKEN, NOT ELEVATED (design round 1, D2 / UX round 1, U2):
+							 * the card now paints `elevated` while hovered, so the doors'
+							 * old hover - the same token - had no readable step left on a
+							 * lit card. The ladder's next step DOWN reads against the
+							 * elevated card in both palettes and keeps the glyph's own
+							 * `text-ink` step. */
+							"hover:bg-sunken hover:text-ink",
 						)}
 					>
 						<MoreHorizontal className="size-4" />
 					</DropdownMenuTrigger>
-					<DropdownMenuContent align="end">
+					{/*
+					 * THE DOORS' CONTENT IS STILL THE CARD'S DESCENDANT IN THE REACT
+					 * TREE (review round 1, B1 / QA round 1, Q-1 / UX round 1, U1).
+					 * Radix portals the content to the body, but React keeps
+					 * propagating its events to REACT-tree ancestors - so without
+					 * this stop, a press on any item below runs `openFromCard` too:
+					 * measured on the shipped component, `Set status` moved the card
+					 * AND navigated to its detail, `Edit` opened no dialog and left
+					 * the board, and a sessions row's conversation was clobbered by
+					 * the project push. The trigger guards cover the triggers; this
+					 * covers the items. */}
+					<DropdownMenuContent
+						align="end"
+						onClick={(event) => event.stopPropagation()}
+					>
 						<DropdownMenuItem onSelect={onOpen}>Open</DropdownMenuItem>
 						<DropdownMenuSub>
 							<DropdownMenuSubTrigger>Set status</DropdownMenuSubTrigger>
@@ -413,8 +444,8 @@ const CardSessionsPopover: FC<{ project: DesktopProject }> = ({ project }) => {
 					 * round 2, D9). The row's left half truncates instead. */
 					"rounded-sm px-1 text-meta whitespace-nowrap",
 					project.live_sessions > 0
-						? "text-success hover:bg-elevated"
-						: "text-ink-muted hover:bg-elevated",
+						? "text-success hover:bg-sunken"
+						: "text-ink-muted hover:bg-sunken",
 				)}
 			>
 				{linkLabel}
@@ -430,6 +461,11 @@ const CardSessionsPopover: FC<{ project: DesktopProject }> = ({ project }) => {
 				 * their own rings.
 				 */
 				className="w-64 p-2 outline-none"
+				/* The menu content's stop, for the same reason and the same
+				 * measured failure: a row's press (or `Try again`'s) bubbles in the
+				 * React tree to the card without it, and the card's own navigation
+				 * overwrites the row's. */
+				onClick={(event) => event.stopPropagation()}
 			>
 				{detail.isLoading ? (
 					<p className="px-1 py-2 text-meta text-ink-muted">
