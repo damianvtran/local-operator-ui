@@ -18,6 +18,7 @@ of the app's empty right-hand side).
 | story | what it is |
 | --- | --- |
 | `empty-with-shortcut` | no agents of the user's own, six built-ins waiting |
+| `offer-dismissed` | the same user after dismissing the offer: the block is gone, and the section is its heading, the create row the press put the caret on, and nothing else |
 | `empty-without-shortcut` | the same empty section on a server with no packaged profiles — the shortcut is absent, not broken |
 | `installed-with-builtins` | three agents of the user's own, three built-ins still available |
 | `all-installed` | nothing left to offer: no line, no action |
@@ -25,26 +26,35 @@ of the app's empty right-hand side).
 | `installing-mid-run` | the same batch four installs in: three answered and the fourth held open, so the bar has a FILL and reports the step the sentence reports |
 | `install-summary` | the end of a mixed batch: one already present, one name the user already holds; the skip is one count-led sentence and `Done` is a 28px control that takes focus |
 
-The last three are driven by their stories' own `play` functions — a real click on
-the action, then a wait for the state under test — so they are pictures of the
-component reacting rather than of a prop that fakes a state.
+The play-driven frames — `installing`, `installing-mid-run`, `install-summary` and
+`offer-dismissed` — are driven by their stories' own `play` functions: a real click
+on the action (`offer-dismissed` presses the dismiss control instead), then a wait
+for the state under test, so they are pictures of the component reacting rather
+than of a prop that fakes a state.
 
-**Every frame in this directory is from the FOLD onto `origin/main` =
-`c69f78b92` on head `742448248`** — all seven stories, twelve themes each, taken
-in one narrowed run (`--only=chat-sidebar-agents --allow-backend`) at that head,
-the merge commit that carries `main`'s #313 (`feat(chat): mark all as read in one
-gesture`) into this branch. #313 rewrote `chat-sidebar.tsx` itself — the
-bulk-read control — and `shared/store/canonical-sessions-store.ts` and the two
-`shared/api/local-operator/desktop-*` modules, which the sidebar renders through,
-so the frames this directory carried were pictures of the previous sidebar. The
-set was re-taken whole rather than in the states that moved, for the reason
-`agent-hub-page/`'s own README gives: the fold moved the surface, and the carried
-frames were pictures of a tree that no longer renders that way.
-`installing-mid-run` keeps the twelve frames it was added for, and every state
-here is still a picture of the meter, summary, announcement and copy this round
-ships. These frames replace the round-2 re-capture on head `40db9e792` (after the
-fold onto `2f85777b0`), which is the pass the manifest's `headNote` records
-before this one.
+**Every frame in this directory is from the AGENTS-OFFER DISMISS PASS on head
+`aa216acd8e`** — the fold onto `origin/main` = `160faa5f9f` (#614, Aida's
+missed-messages badge) — all eight stories, twelve themes each, taken in one
+narrowed run (`--only=chat-sidebar-agents --allow-backend
+--theme-settle-ms=180000`, the raised theme budget this host's load required; the
+10 s default failed on the first story's cold compile) at that head. The set
+gained `offer-dismissed` and the other seven stories were re-taken whole, because
+the surface had moved twice since the frames it carried: this change puts the
+dismiss control on the empty state, and main's own sidebar redesign (the view
+band, `e2f97f8c53`'s lane) had replaced the chrome every story renders inside.
+**The 84 carried frames all moved, and the chrome is the reason they moved**:
+`installing`'s before/after pairs carry the same box content — same line, same
+sentence, same meter, same rows — and differ only in the sidebar around them, so
+the redesign, not this change, is credited for the frames this change does not
+touch. These frames replace the re-take on head `742448248` (the fold onto
+`c69f78b92`), which the paragraphs below this one describe.
+
+**The byte diff is a measurement in three parts**: all 84 carried frames were
+rewritten by this run and `git diff` names each one (no frame is a leftover
+nobody re-took); `offer-dismissed` arrives as twelve new files; and the move's
+shape is a size DROP of roughly 2-4 KB per frame (`installing/localOperatorDark`
+14936 -> 11404) because the redesigned sidebar paints less furniture — the
+frame got smaller, not emptier, and the box's own states are unchanged inside it.
 
 **The re-capture came back byte-identical in all 84 frames**, and that is a
 measurement rather than a claim that the set was left alone: every file in this
@@ -118,6 +128,12 @@ moving.
   rather than a state a user can reach (design round 2, D6 named it): the real
   section gains rows as its invalidated read returns, and that is the live app's
   surface, not a story's.
+- **Not the dismissal's storage or its re-arm.** A still cannot show that the
+  dismissal survives a restart or that a catalogue gaining a built-in brings the
+  offer back: `scripts/agents-offer-dismiss.test.mjs` mounts the shipped sidebar
+  six ways and holds the signature, the busy gate, the press's focus handoff and
+  the re-arm; these frames show the states a press moves between. The focus ring
+  `offer-dismissed` carries is that handoff already made, not the move itself.
 - **Not a focus move or an announcement.** These are stills. Where focus lands at
   each transition, and that the region is a persistent one written into, was read
   off the rendered page (above); the frames show the states those readings were
