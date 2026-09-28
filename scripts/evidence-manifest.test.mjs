@@ -1641,6 +1641,16 @@ const STAMP_BINDING_NOTES = [
 	 * re-captured - so a reader is owed the pair and the four frames it added.
 	 */
 	"traceToolLabelsRestampNote",
+	/*
+	 * AND THIS BRANCH'S OWN, the settings rail's edge and ground
+	 * (`fix/settings-rail-edge`): its subject is this file's binding - the change
+	 * moves BOTH trees (`src/` for the rail's rung on `elevated`, the lane's stop
+	 * list and the three right rules that leave; `scripts/` for the scene's rung
+	 * and rule checks, the two guards and this registration) and takes NO frame
+	 * of the sweep - so a reader is owed the pair and the reason no still was
+	 * owed, and a later fold that started from main's copy would drop it first.
+	 */
+	"settingsRailGroundRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2462,6 +2472,15 @@ const BRANCH_RECORDS = [
 	 * same reason this list exists.
 	 */
 	"traceToolLabelsRestampNote",
+	/*
+	 * And by THIS lane, whose note is the newest top-level record on the branch:
+	 * it states the pair this change ships - both trees moved (the rail's rung,
+	 * the lane's stop list and the three right rules in `src/`; the scene's two
+	 * new checks, the two suites and the capture rows in `scripts/`) and takes no
+	 * frame - so a fold that started from main's copy would drop it first, the
+	 * same reason this list exists.
+	 */
+	"settingsRailGroundRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
