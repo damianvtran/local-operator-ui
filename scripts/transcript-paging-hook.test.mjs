@@ -319,3 +319,62 @@ test("a rule-6 debt landed inside the debounce is re-decided at the settle", asy
 		hook.close();
 	}
 });
+
+/*
+ * THE STANDING READER-HOLD (fold rounds, 2026-09-27). The reveal-armed hold
+ * above was bounded to the reveal's settling window, so the case the operator's
+ * report names - a layout change with NO reveal behind it, like a fold's body
+ * collapsing - found no sample and dragged every settled row in one frame
+ * (measured on the rig: `rows moved 228` at a turn end, and a 217px viewport
+ * jump away from the tail). The invariant now: while the reader is away from
+ * the tail, the place their last gesture left the scroll at is held across
+ * layout changes, refreshed once the gesture settles, and dropped again when
+ * they return to the tail.
+ */
+test("after the reader's gesture settles, a later layout change is corrected again", async () => {
+	// `hasMore: false` and no hidden rows: no page can be dispatched, so no
+	// fetch-armed `holdAnchor` exists and any correction here is the STANDING
+	// sample's - the thing this test is about.
+	const hook = mountHook({ hiddenRows: 0, hasMore: false });
+	try {
+		hook.setScrollTop(-200);
+		hook.readerInput();
+		// The gesture settles: the rearm fires on its own timer (the same
+		// SETTLE_MS the policy debounces input with), and nothing about the
+		// settle itself may move the reader.
+		await new Promise((resolve) => setTimeout(resolve, SETTLE_MS + 80));
+		hook.flushFrames(2);
+		assert.equal(hook.scrollTop, -200, "the settle itself writes nothing");
+		// A collapse-shaped change: the extent shrinks and the held row is
+		// dragged down 24px. The correction must land it back where the reader
+		// left it.
+		hook.growAboveAnchor();
+		assert.equal(
+			hook.scrollTop,
+			-176,
+			"the standing sample absorbs the change after a settle",
+		);
+	} finally {
+		hook.close();
+	}
+});
+
+test("a layout change at the tail is not fought - the tail follows", async () => {
+	const hook = mountHook({ hiddenRows: 0, hasMore: false });
+	try {
+		// Establish the standing sample away from the tail...
+		hook.setScrollTop(-200);
+		hook.readerInput();
+		await new Promise((resolve) => setTimeout(resolve, SETTLE_MS + 80));
+		hook.flushFrames(2);
+		// ...then the reader returns to the newest end and content changes. The
+		// tail gate must both refuse the correction and drop the sample: at the
+		// tail the newest content is pinned, and holding anything there would
+		// fight the following the transcript wants.
+		hook.setScrollTop(0);
+		hook.growAboveAnchor();
+		assert.equal(hook.scrollTop, 0, "no correction is written at the tail");
+	} finally {
+		hook.close();
+	}
+});
