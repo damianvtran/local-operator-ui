@@ -350,6 +350,11 @@ export function slashDestructive(
  * its own: `/btw` opens a PANEL rather than a list of arguments, so a pick of it
  * must run the command (`openAsidePanel`/`askAside` is the only way the panel ever
  * appears), and there is nothing a pick could usefully complete into.
+ *
+ * `aida` owes the same empty answer one more time: her row carries no argument
+ * list (its trailing text is a MESSAGE — `consumes_prompt` on the catalogue row
+ * is what has a pick STAGE it rather than run it, and that gate is not this
+ * type's), and there is nothing a pick could complete into either.
  */
 export type PickDestination =
 	| {
@@ -358,6 +363,7 @@ export type PickDestination =
 	  }
 	| { kind: "machine-panel" }
 	| { kind: "aside" }
+	| { kind: "aida" }
 	| { kind: "navigate" }
 	| { kind: "direct" };
 

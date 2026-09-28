@@ -2281,6 +2281,34 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			name: z.string().min(1).max(PROJECT_MILESTONE_NAME_MAX_CHARS),
 		})
 		.strict(),
+	/*
+	 * AIDA'S CONTROL PLANE: one read and one control op on the same route
+	 * (`/v1/desktop/aida`), because the rail's row and the composer's `/aida`
+	 * need the SAME state and a second spelling of it would be a second answer
+	 * about her one long session (`design.md` § 4 freezes the route).
+	 *
+	 * The feature is gated by its OWN capability key (`features.aida`), never a
+	 * bump of `commands`: a renderer that does not read it keeps working against
+	 * this backend, and this renderer must not call the route while the key is
+	 * absent or 0 (§ 3.4's version skew).
+	 *
+	 * Deliberately NOT a `MESSAGE_OPS` member (see `desktopRequestByteBudget`):
+	 * an enum word and a receipt are not prose, so this costs the control budget.
+	 */
+	z
+		.object({ op: z.literal("aida.status") })
+		.strict(),
+	z
+		.object({
+			op: z.literal("aida.control"),
+			/*
+			 * The route's own op vocabulary, held to it here: a word the backend does
+			 * not serve must fail at this boundary rather than travel as a 422 the
+			 * user reads as a defect of their press.
+			 */
+			action: z.enum(["open", "pause", "resume", "greet", "status"]),
+		})
+		.strict(),
 ]);
 
 /**
@@ -4631,6 +4659,19 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: `/v1/desktop/projects/${encodeURIComponent(request.key)}/milestones/${encodeURIComponent(request.name)}`,
 				method: "DELETE",
+			};
+		case "aida.status":
+			return { path: "/v1/desktop/aida", method: "GET" };
+		case "aida.control":
+			return {
+				path: "/v1/desktop/aida",
+				method: "POST",
+				/*
+				 * The route's body is `{"op": ...}` — its own word, not this envelope's
+				 * — so the ACTION travels under the route's field name and the two `op`s
+				 * cannot be read as one.
+				 */
+				body: { op: request.action },
 			};
 	}
 }
