@@ -4145,6 +4145,13 @@ export const STORIES = [
 	 * app's empty right-hand side.
 	 */
 	["chat-sidebar-agents--empty-with-shortcut", 420, 760],
+	/*
+	 * The same offer AFTER the reader dismissed it: the whole empty-state block
+	 * leaves and the section is its heading and the create row. The dismissal is
+	 * a real click in the story's play, like the batch frames below, so the
+	 * frame is the component reacting rather than a prop that fakes the state.
+	 */
+	["chat-sidebar-agents--offer-dismissed", 420, 760],
 	["chat-sidebar-agents--empty-without-shortcut", 420, 760],
 	["chat-sidebar-agents--installed-with-builtins", 420, 760],
 	["chat-sidebar-agents--all-installed", 420, 760],
