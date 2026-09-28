@@ -571,8 +571,16 @@ test("failed counts genuine errors only: not aborts, not never-sent, not skips",
 		 * neither `stopped` nor the reason pair - the same reading their reducer
 		 * and row ladder make, consumed here through `isInterruptedFault`.
 		 */
-		["a skipped call by class alone", { isError: true, notRunKind: "skipped" }, false],
-		["an aborted call by class alone", { isError: true, notRunKind: "aborted" }, false],
+		[
+			"a skipped call by class alone",
+			{ isError: true, notRunKind: "skipped" },
+			false,
+		],
+		[
+			"an aborted call by class alone",
+			{ isError: true, notRunKind: "aborted" },
+			false,
+		],
 		["a success", {}, false],
 	]) {
 		assert.equal(
