@@ -2018,6 +2018,18 @@ derivation to guard. What remains:
   — or drop the bump with `git revert <the bump commit>` and cut the version the
   window actually wants. Neither is something to leave unattended: a version that
   was bumped but never tagged is a number the next window has to skip.
+- **The Linux AppImage must be built from the prepared toolset, and never edited
+  post-build.** The update information AppImageUpdate reads lives in the AppImage
+  runtime's `.upd_info` ELF section, and the only place it can be written is that
+  runtime inside the toolset `build-linux` prepares
+  (`scripts/appimage-update-info.mjs prepare-toolset`, wired to the build through
+  `APPIMAGE_TOOLS_PATH`); electron-builder prepends it verbatim. Editing the
+  finished AppImage instead — an in-place section write, an appimagetool repack —
+  invalidates the embedded blockmap and/or `latest-linux.yml`, which
+  electron-updater consumes, and the release ships metadata describing bytes nobody
+  downloads. The `finalize` step is what turns that into a failed build instead of
+  an un-updatable release, and the `dist/*.AppImage.zsync` upload glob is what
+  carries the update channel to the release.
 
 ## Notes for Future Agents
 

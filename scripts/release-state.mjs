@@ -120,6 +120,23 @@ function missingAssets(assets) {
 		if (!names.includes(PLATFORM_UPDATE_METADATA[platform]))
 			missing.push(`${platform} update metadata`);
 	}
+	// An AppImage's update channel is the `.zsync` published beside it: the
+	// update information embedded in the AppImage names that file by pattern,
+	// and AppImageUpdate - the tool the release promises can update this
+	// artifact - fetches it by name. A release that ships an AppImage without
+	// its `.zsync` is the half-state AppImage/appimage.github.io#4905 reported
+	// for v0.31.5, so it joins the list by the same mechanics as
+	// PLATFORM_UPDATE_METADATA. Conditional on the release CARRYING an
+	// AppImage, so the check speaks about what was shipped rather than
+	// demanding a file from a release that predates the AppImage work: a repair
+	// of such a release never reaches this function, because a manual dispatch
+	// stands down before the asset check in both window jobs.
+	if (
+		names.some(
+			(name) => /\.AppImage$/.test(name) && !names.includes(`${name}.zsync`),
+		)
+	)
+		missing.push("linux appimage zsync");
 	return missing;
 }
 
