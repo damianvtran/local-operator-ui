@@ -4,8 +4,9 @@
  * at rest.
  *
  * WHAT THIS IS MODELLED ON, named so the next reader does not have to infer it:
- * `deepseek-harness`'s conversation-width controls. Four of its decisions are
- * taken here and one is not, and the differences are the interesting part:
+ * `deepseek-harness`'s conversation-width controls. Three of its decisions are
+ * taken here and two are deliberately not, and the differences are the
+ * interesting part:
  *
  *  - **The cue is a short bar centred on the pointer's Y, not a full-height
  *    line.** A full-height rule at the column edge reads as chrome and is visible
@@ -17,12 +18,16 @@
  *    "must not flicker": a bar that chased the pointer along the edge would
  *    twitch on every pass, and the cue would be reporting the hand rather than
  *    the edge. The pointer's Y is written once on entry rather than per move.
- *  - **The handle is OUTSIDE the column.** The strip sits in the gutter the
- *    measure already reserves (`p-4` + the 8px scrollbar gutter = 24px per side
- *    in `chat-measure.ts`), 10px of it immediately outside the content edge. So
- *    it can never swallow a click meant for the text underneath, because there is
- *    never text underneath it - the guarantee is geometric rather than something
- *    a z-index or a hit-test has to keep true.
+ *  - **The handle is OUTSIDE the column, floating 24px clear of it.** The strip
+ *    sits in the gutter the measure already reserves (`p-4` + the 8px scrollbar
+ *    gutter = 24px per side in `chat-measure.ts`), 24px out from the content
+ *    edge - the reference's own offset - 10px wide, with the cue another 4px in
+ *    again (28px from the longest glyph). So it can never swallow a click meant
+ *    for the text underneath, because there is never text underneath it - the
+ *    guarantee is geometric rather than something a z-index or a hit-test has
+ *    to keep true. The flush variant this first shipped with DID swallow one:
+ *    design round 1's D2 measured it over the fold-row button's hit box by
+ *    8x20px, which is why the offset is part of the design, not decoration.
  *  - **`deepseek-harness` has no reset, and this one does.** Double-click (or
  *    Enter on the focused handle) goes back to the shipped measure. That is a
  *    deliberate difference: without it, one drag makes the product's own choice
@@ -65,9 +70,15 @@ import {
 const KEYBOARD_STEP = 16;
 const KEYBOARD_STEP_COARSE = 64;
 
-/** The cue's length, and the solid core inside it. See the file comment. */
+/**
+ * The cue's mask geometry: the full bar, the solid core inside it, and the fade
+ * each side. 72 = 28 + 16 + 28 exactly - the reference's own proportions, which
+ * the file comment claims, so the three move together or the claim is wrong.
+ * See the stops in the render block: they sit at the FADE, not the core.
+ */
 const CUE_HEIGHT_PX = 72;
 const CUE_CORE_PX = 16;
+const CUE_FADE_PX = (CUE_HEIGHT_PX - CUE_CORE_PX) / 2;
 
 export type ChatMeasureHandleProps = {
 	/** Which edge of the column this handle sits on. */
@@ -289,20 +300,47 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 			ref={rootRef}
 			className={cn(
 				"absolute top-0 z-10 h-full w-2.5",
-				edge === "left" ? "-left-2.5" : "-right-2.5",
+				/*
+				 * The strip floats 24px OUT from the content edge - the reference's
+				 * own offset - so the cue sits 28px from the longest glyph. The
+				 * flush variant this first shipped with sat on the fold-row
+				 * button's hit box by 8x20px (design round 1's D2); the offset is
+				 * part of the design, not decoration.
+				 *
+				 * THE CLASS IS THE FALLBACK AND THE STYLE IS THE CLAMP. `deepseek-harness`
+				 * can hold a fixed 24px offset because its cap is dynamic (content <= column
+				 * minus its edge budget), so side room always exists; this app's cap is
+				 * fixed, and at the widest the room is smaller than 34px - the strip would
+				 * slide off the pane and the handle would become unreachable (measured:
+				 * box -18..-8, `elementFromPoint` null). So the inset is `max(-34px, (100%
+				 * - 100cqw) / 2)`: 34px out while the pane's own side space allows it, and
+				 * sliding flush at the widths where it does not. If `cqw` ever fails to
+				 * resolve the declaration is invalid and the class above still holds the
+				 * 34px offset.
+				 */
+				edge === "left" ? "-left-[34px]" : "-right-[34px]",
 			)}
+			style={{
+				[edge === "left" ? "left" : "right"]:
+					"max(-34px, calc((100% - 100cqw) / 2))",
+			}}
 		>
 			{/*
 			 * The cue. `pointer-events-none` because the separator is the target
 			 * and this is paint; masked at the ends rather than given a gradient,
 			 * so the fade is a property of the shape and not of the colour theme.
+			 * The stops sit 28px in from each end - the fade, leaving the 16px
+			 * core - not at the core's own edges, which would paint a 40px
+			 * plateau (design round 1's D1 measured the earlier stops at 16/56
+			 * against the 28/44 the reference draws).
 			 */}
 			<span
 				aria-hidden="true"
 				data-lo-chat-measure-cue={edge}
 				className={cn(
 					"pointer-events-none absolute w-0.5",
-					edge === "left" ? "right-0" : "left-0",
+					/* 4px in from the strip's inner edge: 24 + 4 = the reference's 28px. */
+					edge === "left" ? "right-1" : "left-1",
 					dragging ? "bg-accent" : "bg-control",
 					"transition-opacity duration-fast ease-out-quart",
 					lit ? "opacity-100" : "opacity-0",
@@ -311,8 +349,8 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 					top: "var(--lo-chat-measure-cue-y, 50%)",
 					height: CUE_HEIGHT_PX,
 					transform: "translateY(-50%)",
-					maskImage: `linear-gradient(to bottom, transparent 0, black ${CUE_CORE_PX}px, black ${CUE_HEIGHT_PX - CUE_CORE_PX}px, transparent ${CUE_HEIGHT_PX}px)`,
-					WebkitMaskImage: `linear-gradient(to bottom, transparent 0, black ${CUE_CORE_PX}px, black ${CUE_HEIGHT_PX - CUE_CORE_PX}px, transparent ${CUE_HEIGHT_PX}px)`,
+					maskImage: `linear-gradient(to bottom, transparent 0, black ${CUE_FADE_PX}px, black ${CUE_HEIGHT_PX - CUE_FADE_PX}px, transparent ${CUE_HEIGHT_PX}px)`,
+					WebkitMaskImage: `linear-gradient(to bottom, transparent 0, black ${CUE_FADE_PX}px, black ${CUE_HEIGHT_PX - CUE_FADE_PX}px, transparent ${CUE_HEIGHT_PX}px)`,
 				}}
 			/>
 			{/*
