@@ -1141,16 +1141,17 @@ export const CompletionMovesBin: Story = {
 		// Settle on the refile where the branch produces one, without failing the
 		// capture where it does not: the base tree's frame is the defect state.
 		//
-		// BY THE FILE'S OWN ROW CONVENTION (design round 1, D2): rows carry
-		// `[data-chat-row]` (a marker, not an id) and the subject is found by its
-		// title, as the row-titles probe above does. The previous lookup asked for
-		// `[data-session-row="…"]`, which no element in this story's DOM carries -
-		// so it could never break early and would not have noticed a regressed
-		// refile, which is the one thing this story exists to observe.
+		// BY THE FILE'S OWN ROW CONVENTION (design round 1, D2; corrected round 2,
+		// R2-1): rows carry `[data-chat-row]` - a marker, not an id - and the
+		// subject is found by its TEXT, the shape `scrollToRow` / `focusRow` use. The
+		// first form of this lookup matched on a native `title`, which no session row
+		// has carried since the row-space change (design D7), so it could never
+		// break early and would not have noticed a regressed refile - the one thing
+		// this story exists to observe.
 		const sectionOfSubject = () =>
 			[...document.querySelectorAll("[data-chat-row]")]
-				.find(
-					(row) => row.getAttribute("title") === "Migrate the deploy script",
+				.find((row) =>
+					(row.textContent ?? "").trim().includes("Migrate the deploy script"),
 				)
 				?.closest("[data-chat-section]")
 				?.getAttribute("data-chat-section") ?? null;
