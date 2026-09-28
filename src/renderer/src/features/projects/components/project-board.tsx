@@ -129,7 +129,13 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 	const moving = new Set(movingKeys);
 	return (
 		<div
-			className="@container flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-hairline bg-surface"
+			/*
+			 * Frame tier: 10px and no edge. A view frame's boundary is its ground
+			 * step off the canvas — the rule the chat's panes already follow — and
+			 * the hairline was the extra mark this pass retires (docs/branding.md
+			 * § 2, § 5).
+			 */
+			className="@container flex min-h-0 flex-1 flex-col overflow-hidden rounded-md bg-surface"
 			data-testid="project-board"
 		>
 			<div className="flex min-h-0 flex-1 items-stretch gap-3 overflow-x-auto p-3">
@@ -139,7 +145,13 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 						<section
 							key={column.status}
 							data-board-column={column.status}
-							className="flex w-64 shrink-0 flex-col overflow-hidden rounded-md border border-hairline bg-sunken"
+							/*
+							 * The column is a well, not a card: it keeps the panel tier's 10 and
+							 * drops its edge. The sunken step inside the surface panel is the
+							 * boundary; panel + column + card edges were three borders stacked
+							 * on one small object.
+							 */
+							className="flex w-64 shrink-0 flex-col overflow-hidden rounded-md bg-sunken"
 						>
 							<header className="flex shrink-0 items-center justify-between gap-2 border-b border-hairline px-3 py-2">
 								<span className="flex min-w-0 items-baseline gap-2">
@@ -215,9 +227,18 @@ const BoardCard: FC<BoardCardProps> = ({
 	return (
 		<div
 			data-project-name={project.name}
+			/*
+			 * 6px, no edge: the card is an ITEM inside the column's well, one step
+			 * below the column's 10 — the same 10/6 pair the view switcher's track
+			 * and pills use — and the surface-on-sunken step is its boundary. The
+			 * overdue card keeps its warning edge on purpose: a state is
+			 * information, and this is the one boundary the system does not
+			 * delete (docs/branding.md § 2: "ask whether removing it entirely
+			 * would lose information").
+			 */
 			className={cn(
-				"group/card flex flex-col gap-2 rounded-md border bg-surface p-3",
-				overdue ? "border-warning-border" : "border-hairline",
+				"group/card flex flex-col gap-2 rounded-sm bg-surface p-3",
+				overdue && "border border-warning-border",
 			)}
 		>
 			<div className="flex items-start justify-between gap-2">

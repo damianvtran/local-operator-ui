@@ -12,7 +12,6 @@ import {
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
 import { useChatSearch } from "@shared/api/local-operator/session-search";
-import { ThemedToastContainer } from "@shared/components/common/themed-toast-container";
 import { Button } from "@shared/components/ui/button";
 import { Checkbox } from "@shared/components/ui/checkbox";
 import { Label } from "@shared/components/ui/label";
@@ -36,7 +35,6 @@ import { useConversationInputStore } from "@shared/store/conversation-input-stor
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import {
 	dismissToast,
-	showInfoToast,
 	showSuccessToast,
 	showWarningToast,
 } from "@shared/utils/toast-manager";
@@ -63,7 +61,6 @@ import {
 	X,
 } from "lucide-react";
 import {
-	type CSSProperties,
 	type KeyboardEvent,
 	type FocusEvent as ReactFocusEvent,
 	type ReactNode,
@@ -78,12 +75,7 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import { SESSION_SEARCH_MAX_CHARS } from "../../../../../shared/desktop-contract";
-import {
-	ARCHIVE_OFFERED_VERB,
-	ARCHIVE_UNDO_TOAST_MS,
-	archiveOfferedName,
-	useArchiveUndoRetirement,
-} from "../archive-undo";
+import { ARCHIVE_FAILURE_TOAST_MS } from "../archive-undo";
 import {
 	type ArchivePressRecord,
 	archivePressExpired,
@@ -139,11 +131,6 @@ import {
 	discardSuccessorIndex,
 	untargetedDraftRows,
 } from "../draft-rows";
-import {
-	DRAFTS_OFFERED_VERB,
-	draftsOfferedName,
-	useDraftsUndoRetirement,
-} from "../drafts-undo";
 import {
 	markAllReadCopy,
 	markAllReadReceipt,
@@ -232,35 +219,13 @@ const rowBoxStyle = "flex h-8 items-center gap-1 rounded-md";
  */
 const MARK_ALL_READ_LABEL_SHED = "@max-[253px]/chatheading:sr-only";
 
-/*
- * THE ARCHIVE OFFER'S TOAST CADENCE AND ITS LANE.
- *
- * `archive-undo.ts` owns the sentence the offer makes and the rule that retires it;
- * these four are the sidebar's, because the sidebar is the surface the archive was
- * performed from and the lane is its own box (design D11).
- *
- * ONE ID FOR THE TWO MESSAGES THE PANEL PUTS IN ITS OWN LANE, so the newest REPLACES
- * the one before it rather than stacking under it.
- *
- * The design's rule is the spec's ("stable toast ids so a second archive replaces the
- * first", `docs/design/sidebar-row-space.md` §10), and it is read here at the width the
- * lane actually has rather than as one-id-per-kind: the lane is the panel's own box
- * (216px of toast inside a 280px column), and sonner stacks a second toast by offsetting
- * it against the first's height - measured, 2026-09-21, in the dark palette: a refusal
- * raised while the offer was still up landed at y 844..1014 in an 868px viewport, i.e.
- * `hitTest:false` and `inViewport:false`, and the frame of it was not a still. The lane
- * is a lane, not a stack: a refusal replaces the offer it belongs to, and an offer
- * replaces a refusal - which is also the honest reading of the store's single-value
- * model, because only one of those two facts is ever the panel's latest word.
- */
-const ARCHIVE_TOAST_ID = "archive";
 /**
- * The receipt announcement's own lane id, and it is STABLE ON PURPOSE.
+ * The receipt announcement's own toast id, and it is STABLE ON PURPOSE.
  *
  * A toast is a claim about the state it was raised in, and this one is the only
  * sentence in the panel the app itself can falsify: the reader presses the row it
  * names, the receipt lands on the next tick, the mark clears - and the sentence kept
- * telling them to press for the rest of its life (UX round 2, U4). The archive lane
+ * telling them to press for the rest of its life (UX round 2, U4). The archive's own id
  * above already made that rule AND the shape that keeps it true across a remount: ONE
  * id any instance can dismiss. A per-instance handle cannot keep it - the id lived in
  * a ref, so a route change off `/chat` and back re-mounted the panel with a fresh ref
@@ -270,48 +235,6 @@ const ARCHIVE_TOAST_ID = "archive";
  * standing one instead of stacking a second copy of the same fact.
  */
 const READ_ACK_TOAST_ID = "read-ack";
-/**
- * THE LANE'S OWN `position`, and it is NOT what keeps this message out of the other
- * container - the comment here used to claim the opposite, and R-4 of agent review
- * round 1 refuted it against the installed sonner 2.0.3. What the library does with
- * a positioned toast is draw it in EVERY mounted container (the reading and the
- * mechanism are written out in `styles/index.css` beside the two rules that narrow it),
- * so the confinement is the app's own: the marker class below, scoped to this panel.
- * The constraint survives in the other direction - nothing else in the app publishes a
- * toast with this `position`, because the panel's rules key on the class rather than on
- * the position and a second use of the spelling would only invite the assumption back.
- *
- * A SECOND, HARDER PROPERTY LIVES IN THIS ID: `chat-sidebar.tsx`'s lane draws both of
- * its messages under it, so a message that follows a dismissal of the id can be lost to
- * the dismissal if it lands inside sonner's unmount window. The app avoids that by
- * REPLACING rather than dismissing (see the two lane effects and the store's press), and
- * the measured mechanism is recorded there.
- */
-const ARCHIVE_TOAST_LANE = "bottom-left";
-/**
- * Long enough to read the sentence and reach for it - sonner's 4000ms default is
- * short for an Undo - and the refusal is longer because it carries a Retry the
- * reader has to read before pressing.
- *
- * THE PANEL ARMS THESE, NOT SONNER (agent review round 2 - the re-assertion).
- * sonner's life belongs to the ENTRY: `remainingTime` is a ref inside its toast
- * component whose only reset is a CHANGED `duration`
- * (`node_modules/sonner/dist/index.mjs`), so a message RE-ASSERTED by an answer - the
- * refusal a refused Retry puts back - inherited the clock of the message it replaced
- * and disappeared seconds later, with nothing left to redraw it, because the store's
- * refusal had not changed. Measured in the `session-archive` scene before the fix: dark
- * 5068ms / light 5096ms after the press, `painted false` while the store still held the
- * refusal. The life belongs to the MESSAGE, so the panel runs the clock (the lane's
- * second effect) and sonner is told never to expire an entry.
- */
-/*
- * THE OFFER'S CARD LIFE IS NOT HERE ANY MORE (design round 2, D6): it moved to
- * `archive-undo.ts` (`ARCHIVE_UNDO_TOAST_MS`), the one module both this panel's
- * clock and the drafts offer's retirement can read - a number two offers share
- * cannot live in a module one of them cannot import. The refusal's own life has
- * no second consumer and stays.
- */
-const ARCHIVE_FAILURE_TOAST_MS = 10_000;
 /**
  * The sentence a withheld discard carries - ONE copy, read by both channels: the
  * `title` (pointer) and the `sr-only` element the control points at while it is
@@ -327,101 +250,6 @@ const draftWhyId = (key: string) => `draft-discard-why-${key}`;
 const CLEAR_ALL_WHY =
 	"Drafts are sending - they can be cleared when the sends settle";
 const CLEAR_ALL_WHY_ID = "drafts-clear-all-why";
-/**
- * What the lane tells sonner, so it never ends a message on its own: the entry stays
- * mounted until the panel's clock fires or a state change dismisses it.
- *
- * Stated cost, because it is a real one: sonner's hover-pause no longer applies - a
- * reader hovering the message cannot hold it past its life - since sonner is no longer
- * what ends it. That is the trade for a life that re-arms on every re-assertion, which
- * is the property the lane needs and the library cannot express on a mounted entry.
- */
-const ARCHIVE_TOAST_PERSISTENT = Number.POSITIVE_INFINITY;
-/**
- * The class BOTH archive toasts carry, and the one hook the panel's lane rules read
- * (`styles/index.css`). It exists because sonner draws every mounted container's copy
- * of every toast: the marker is what tells the stylesheet which toast belongs in the
- * panel's lane and which are the global container's duplicates.
- */
-const ARCHIVE_TOAST_CLASS = "lo-archive-toast";
-/**
- * The gap the band keeps under its card, in px: one unit of the panel's own rhythm, and the
- * slack that keeps a card flush against nothing.
- */
-const ARCHIVE_TOAST_BAND_GAP = 8;
-/**
- * THE OFFER'S BAND, DECLARED (design round 9, D30's second clause) - and it is declared because it
- * has to be KNOWN in the commit that raises the offer.
- *
- * The band's measured height is panel state written by the observer below, and the observer can only
- * see the card once sonner has mounted it - a render of its own, after the commit that raises the
- * offer. So on an ACCEPTED archive the commit that takes the pressed row's height out of the list is
- * also the commit in which the measured band is still 0: the extent falls by the row while the box is
- * still the band-0 one, `scrollHeight - clientHeight` falls under the reader's position, and the
- * browser's clamp takes it. MEASURED at 1380x900 on a list capped to 200px with a reader on 20: the
- * extent `241 -> 209` against a `199` box, and `scrollTop` `20 -> 10.5` in the first frame the sampler
- * saw - with the write trap EMPTY, so it is the clamp and not the focus-hold.
- *
- * The offer is ONE LINE AT EVERY WIDTH (its name truncates), which is what makes a constant honest
- * here - and it is not a second source of truth: the measurement replaces it the moment the card lands
- * (`58` again, the card's 50 plus the gap). The REFUSAL is deliberately NOT covered, because its
- * height is the daemon's own sentence and only the card knows it.
- */
-const ARCHIVE_OFFER_BAND_HEIGHT = 58;
-
-/**
- * THE BAND'S OWN BOX (design round 4, D14) - the lane is no longer an overlay.
- *
- * It was `position: absolute` on sonner's container, which drew the card OVER the list and was
- * the whole subject of three independent findings (Q-1 through four streams on one selector,
- * Q-2 from QA's press loop, D11 from the design round): a dead zone over the three or four rows
- * the card covered, and - measured, not inferred - the offer's own Undo button sitting exactly
- * over the archive control of the row beneath it, so a real press there wrote NOTHING at all.
- * The designer's ruling settled the shape with measurements rather than taste: the acts column
- * is the row's last 52px and the card is 8px wider than the row, so there is no offset that
- * clears it - a control under a card cannot be aimed at, whatever the card does with presses.
- *
- * SO THE CARD TAKES ITS OWN HEIGHT OUT OF THE COLUMN INSTEAD. The container is the panel flex
- * column's LAST CHILD - it already was, which is why this is a change of one declaration plus a
- * height - so as a band it gives the list back nothing at rest (`height: 0`) and exactly
- * `card + 8` while a message stands, and the ROWS DO NOT MOVE: the list is `flex-1`, so what
- * yields is its bottom (an empty tail in a short list, formerly-hidden bottom rows when it
- * overflows) with `scrollTop` untouched. That is the trade the ruling records and accepts:
- * 58px of list viewport for the offer's eight seconds, or the refusal's height plus eight for
- * its ten, spent when the list is already rearranging - against a wrong write or a dead control
- * on every archive made while a message stood.
- *
- * `position: relative` IS THE CARD'S CONTAINING BLOCK, not decoration: sonner draws its toast
- * `position: absolute` with `left: 0; right: 0`, so the band has to be the positioned ancestor
- * for the card to be the band's width rather than the panel's - which is what keeps D10's
- * reading true (``--width: min(248px, 100%)`` resolves against this box, and it measured 248 of
- * a 248 lane at 280 and 208 of a 208 lane at 240). `overflow: hidden` is what makes `height: 0`
- * mean INVISIBLE rather than merely out of flow, and it is also what clips the card against
- * `max-height` - the ceiling the ruling names, so a pathological message cannot push the list
- * out of the panel entirely.
- *
- * NO TRANSITION, and that is the ruling's own word: the band's height snaps with the message
- * that causes it, because a band that animated would move rows under the reader's pointer for
- * the length of the animation - the very class of defect this change removes.
- */
-const ARCHIVE_TOAST_BAND_STYLE: CSSProperties = {
-	position: "relative",
-	width: "100%",
-	flexShrink: 0,
-	overflow: "hidden",
-	maxHeight: "calc(100% - 56px)",
-	"--width": "min(248px, 100%)",
-} as CSSProperties;
-
-/**
- * The container statement, which is now only about the CARD: the band is the positioned
- * ancestor (`ARCHIVE_TOAST_BAND_STYLE`), so sonner's own `position: fixed` has to be beaten
- * here or every card would be laid out against the viewport again.
- */
-const ARCHIVE_TOAST_CONTAINER_STYLE: CSSProperties = {
-	position: "static",
-	width: "100%",
-} as CSSProperties;
 
 /*
  * WHERE THE ROW'S PER-ROW CONTROLS SHED: NOWHERE, AND THE RULE THAT REPLACED IT.
@@ -1159,15 +987,15 @@ export function ChatSidebar({
 		 * ONE ARM ANNOUNCES ITSELF AND THE OTHER TWO DO NOT. `unsettled` is the state
 		 * the reader is owed a sentence about - the app has stopped retrying promptly
 		 * and the mark is still there - and it is the arm the bulk path already says
-		 * in this lane. `pending` is an in-flight cue, and `offscreen` is a remedy
+		 * in this register. `pending` is an in-flight cue, and `offscreen` is a remedy
 		 * whose move is to look at the row's own clause: a toast for either would be
-		 * noise where the reader has the fact already, and the lane is shared with the
-		 * bulk receipt and the archive offers.
+		 * noise where the reader has the fact already, and the register holds the bulk
+		 * receipt and the archive offers too.
 		 */
 		if (readAckNotice?.kind !== "unsettled") {
 			// The fact the sentence stated has gone (the receipt landed, the loop was
 			// torn down, another kind replaced it), so the sentence goes with it. By the
-			// LANE'S id rather than a handle: this instance may not be the one that
+			// STABLE id rather than a handle: this instance may not be the one that
 			// raised it, and dismissing an id nothing is using is a no-op either way.
 			dismissToast(READ_ACK_TOAST_ID);
 			return;
@@ -1176,10 +1004,11 @@ export function ChatSidebar({
 		// sentence on screen rather than stacking a second copy of the same fact.
 		if (!changed) return;
 		/*
-		 * THE LANE'S OWN LIFETIME, not sonner's four-second default (design round 1,
-		 * D3). This arm is a sentence plus a remedy the reader has to read before
-		 * acting - the same shape as the archive failure's, which is why it takes that
-		 * lane's number: at the default, a two-line sentence was being read in four
+		 * A LONGER LIFE THAN SONNER'S DEFAULT, and it is the refusal's own number
+		 * (design round 1, D3). This arm is a sentence plus a remedy the reader has to
+		 * read before acting - the same shape as the archive failure's, which is why it
+		 * takes that message's number (`ARCHIVE_FAILURE_TOAST_MS`, whose one home is
+		 * `archive-undo.ts`): at the default, a two-line sentence was being read in four
 		 * seconds, and the reader who pressed the row it names spent that time
 		 * watching a fact that had just stopped being true.
 		 */
@@ -1307,8 +1136,8 @@ export function ChatSidebar({
 	/*
 	 * This runs after every render and clears itself; the guard IS the state it waits on. (The
 	 * `useExhaustiveDependencies` suppression that stood here became unused once the band's own height
-	 * was derived for the yield - `bandHeightNow` - and Biome reports an unused suppression as an error,
-	 * so the reason stays and the directive goes.)
+	 * was derived for the yield - that whole calculation has since gone with the lane - and Biome
+	 * reports an unused suppression as an error, so the reason stays and the directive goes.)
 	 */
 	useEffect(() => {
 		const moved = movedRef.current;
@@ -1881,55 +1710,20 @@ export function ChatSidebar({
 	const widened = archivedSearchWidened(includeArchived, query, archiveEnabled);
 	const archiveFacts = useCanonicalSessionsStore((s) => s.archiveFacts);
 	const forgottenFacts = useCanonicalSessionsStore((s) => s.forgotten);
-	const archiveFailure = useCanonicalSessionsStore((s) => s.archiveFailure);
-	const archiveUndo = useCanonicalSessionsStore((s) => s.archiveUndo);
-	const draftsUndo = useCanonicalSessionsStore((s) => s.draftsUndo);
 	/*
-	 * THE OFFER'S OWN RETIREMENT WATCH (design round 8, D27). The offer is RAISED by the store
-	 * now - in the update that settles the write, so the accepted departure and the band that
-	 * answers it are one commit - and what stays with the offer's module is WHEN it stops being
-	 * true. One call, keyed on the offer's identity, so a second archive in a row re-arms it.
+	 * THE TOASTS THEMSELVES LIVE OUTSIDE THIS PANEL NOW (operator request, 2026-09-27):
+	 * the archive offer and refusal and the discard offer are raised by an always-mounted
+	 * surface (`undo-toasts.tsx`, beside the global container in `main.tsx`), because the
+	 * acts that produce them are reachable while this panel is not even mounted - the
+	 * column collapses to a 56px strip without it, and the chat pane's header menu, a
+	 * typed `/archive` and the composer's own Clear all stay reachable. What the panel
+	 * still owns is the ONE piece of state those messages need from it: the key a discard
+	 * staged in the pane's place (`stagedByDiscard`), written by the two discard handlers
+	 * below and read by the offer's Undo press one surface over.
 	 */
-	useArchiveUndoRetirement();
-	/*
-	 * THE DISCARD OFFER'S OWN WATCH, beside the archive's and for the same reason: the
-	 * value is the store's (raised in the update that removes the rows,
-	 * `DraftsUndoOffer`), and WHEN it stops being offered is its own module's rule
-	 * (`drafts-undo.ts` - a ceiling, because a discard is a local write and no answer
-	 * can end it early).
-	 */
-	useDraftsUndoRetirement();
-	/*
-	 * BOTH LANE MESSAGES' OWN WRITES, because the panel is what decides which message the lane
-	 * shows and therefore when a message's turn is over - and a value that outlives its message
-	 * is U10 (the two uses are beside the drawing effect's currency rule and in its clock).
-	 * `setArchiveUndo` is normally the offer's own module's (`archive-undo.ts` owns WHEN the
-	 * offer is retired by the conversation's state); the clock needs it for the other end of the
-	 * same life - a message that expired unread.
-	 */
-	const clearArchiveFailure = useCanonicalSessionsStore(
-		(s) => s.clearArchiveFailure,
+	const setStagedByDiscard = useCanonicalSessionsStore(
+		(s) => s.setStagedByDiscard,
 	);
-	const setArchiveUndo = useCanonicalSessionsStore((s) => s.setArchiveUndo);
-	/*
-	 * THE DISCARD OFFER'S TWO WRITES, for the two ends of its life the panel owns: the
-	 * Undo press (`restoreDraftsUndo`) and the supersession clause below, which clears an
-	 * offer a strictly newer message outranked. `drafts-undo.ts` owns the other end
-	 * (the ceiling).
-	 */
-	const restoreDraftsUndo = useCanonicalSessionsStore(
-		(s) => s.restoreDraftsUndo,
-	);
-	const setDraftsUndo = useCanonicalSessionsStore((s) => s.setDraftsUndo);
-	/*
-	 * WHAT THE LANE LAST DREW, and its stamp: the clearing rule below needs BOTH - which message
-	 * the reader was last looking at, and whether the one that replaces it outranks it - because
-	 * clearing on the ordering alone removed a refusal while its own card was still up.
-	 */
-	const laneDrawnRef = useRef<{
-		kind: "offer" | "failure" | "drafts";
-		at: number;
-	} | null>(null);
 	const setSessionArchived = useCanonicalSessionsStore(
 		(s) => s.setSessionArchived,
 	);
@@ -3736,9 +3530,10 @@ export function ChatSidebar({
 								/*
 								 * A REFUSED PRESS MOVES NOTHING, focus included: the row is still
 								 * there and the reader is still on the control they pressed, with
-								 * the store's refusal sentence in the panel's own toast lane (design
-								 * D11 - it was a register at the panel's root before that, and the
-								 * register is deleted rather than kept beside it).
+								 * the store's refusal sentence as an ordinary toast in the app's one
+								 * container (design D11's supersession entry of 2026-09-27: the
+								 * sidebar lane that replaced the root register was itself retired,
+								 * and the register is not kept beside it).
 								 *
 								 * AND AN ACCEPTED ONE NEEDS NOTHING FROM THIS HANDLER EITHER: the Undo
 								 * offer this press stands is written by the STORE, in the same update
@@ -5102,632 +4897,6 @@ export function ChatSidebar({
 	 * sentence is the durable half. `warning` and not `danger`: the list is
 	 * intact and only this row's pin did not move.
 	 */
-	/*
-	 * THE ARCHIVE OFFER MOVES TO THE SIDEBAR'S OWN TOAST LANE (design D11, in
-	 * `docs/design/sidebar-row-space.md`), and the register this replaces is
-	 * DELETED rather than kept beside it.
-	 *
-	 * WHY THE REGISTER WENT, measured rather than argued: the offer was a 264x25.4px
-	 * line whose top sat at y 493.6 - 8px above the split line and 117px above the
-	 * first row of the list it is about - because it was positioned by the flex
-	 * column between the two regions rather than by the list. That is the operator's
-	 * "weird awkward spot in the sidebar with a gap below it", and the placement rule
-	 * is the reason: it moved with the split and with the region above it.
-	 *
-	 * WHY THE LANE IS THE SIDEBAR'S AND NOT THE VIEWPORT'S CORNER, which is the half
-	 * design round 2's D12 found the hard way: a toast in the bottom-right corner
-	 * spanned x 1001..1360.5, y 789..842.5 in both palettes and landed exactly on the
-	 * Send control at x 1307..1339, y 803..835 - an offer to take an action back that
-	 * could send a message. Both of D12's constraints are now met STRUCTURALLY:
-	 *
-	 *  - it cannot reach the composer's controls, because the two are siblings in one
-	 *    flex row and the chat column begins where the sidebar ends (the sidebar's
-	 *    outer box is x 220..500 at the default panel width and the composer's form
-	 *    starts at x 524 - the chat column's own padding is the whole gap). The lane
-	 *    is the panel's own box, capped to its content width, so it is confined to a
-	 *    column the composer is never in, at any panel width and any composer height.
-	 *    `renderer-driver.mjs`'s `row-space` scene asserts the measured boxes rather
-	 *    than this sentence: the offer's box is inside the panel's, and disjoint from
-	 *    the composer's form.
-	 *  - and it sits on the surface that performed the action, because the archive is
-	 *    performed from the sidebar and the offer appears in the sidebar. That was the
-	 *    half a corner toast could not have.
-	 *
-	 * THE RETIREMENT RULE IS UNCHANGED, only re-spelled, and it now waits for the ANSWER
-	 * it is a rule about: the offer stands while the conversation still holds the state the
-	 * offer was taken from (`undoOfferStands`, in `chat-archived.ts`), the store clears
-	 * `archiveUndo` when it knows it does not, and the effect below takes the toast down
-	 * through `dismissToast`. A press whose own fact is still unanswered decides nothing
-	 * (`ArchiveFact.answered` in `canonical-sessions-store.ts`), because that fact is
-	 * written optimistically and the ANSWER is what the lane is about - without the gate a
-	 * refusal replaces a message the press had already dismissed, which is R2-1.
-	 *
-	 * ONE ID FOR BOTH KINDS, `ARCHIVE_TOAST_ID`, so a second message REPLACES the first
-	 * rather than stacking - which matches the store's single-value model
-	 * (`archiveUndo`/`archiveFailure`). Spec §10 said one id per kind and the
-	 * implementation deliberately did not: the id is the whole mechanism of "one
-	 * message at a time" here, because the second message arrives as an update of the
-	 * mounted toast. The spec now says what ships (agent review round 1, R-5).
-	 * The consequence is stated rather than hidden: only the most recent offer is
-	 * pressable, and an older restore is still reachable where it always was - the
-	 * row's own Unarchive control, the header's Archived pill, and `/unarchive`.
-	 *
-	 * AND REPLACEMENT IS NOT ONLY TIDIER THAN DISMISS-THEN-SHOW, IT IS REQUIRED: a
-	 * message created on this id inside sonner's own unmount window (a dismissal's
-	 * `requestAnimationFrame` plus its 200ms delay) is destroyed with the entry being
-	 * removed, which is how the retry's refusal used to vanish (UX report round 1, U3;
-	 * the measurement is beside the Retry action below and in the store's press).
-	 * Nothing in the lane dismisses a message it is about to replace.
-	 *
-	 * The refusals keep their `warning` register and their Retry, at the durations
-	 * `ARCHIVE_*_TOAST_MS` names, and neither toast carries `role="alert"`: what
-	 * announces a refusal is the row coming back with its control in the state the
-	 * user left it.
-	 *
-	 * NOTHING IS DISMISSED ON MOUNT, and that is a fact about the toast library rather
-	 * than a nicety. Sonner's `dismiss` reaches a bare `requestAnimationFrame`, so a
-	 * dismiss on every mount of this panel is a call with no toast behind it - and in
-	 * a DOM without `requestAnimationFrame` at all, which is the jsdom the sidebar's
-	 * own tests mount in, it is a `ReferenceError` thrown from a passive effect that
-	 * takes the whole panel down with it. The ref below is what makes that possible: a toast is
-	 * retired when the lane's own message GOES, not when the panel mounts without one.
-	 */
-	const laneMessageRef = useRef<"offer" | "failure" | "drafts" | null>(null);
-	/*
-	 * THE FRESHLY STAGED KEY A DISCARD LEFT THE PANE ON (UX round 2's U7), or null
-	 * when the discard did not take the pane. The offer's own Undo press is the only
-	 * reader: it re-opens the restored key exactly when this is still the pane's
-	 * current draft, so "give me back what I was working on" lands the reader on it
-	 * rather than on an empty fresh draft. Written by BOTH discard handlers, null
-	 * whenever the act did not take the pane.
-	 */
-	const stagedByDiscardRef = useRef<string | null>(null);
-	/*
-	 * ONE EFFECT SETTLES THE LANE, and that is a guarantee rather than a tidier arrangement
-	 * of two (agent review round 2, R2-4). Both messages share one id, so what the lane must
-	 * show is the store's NEWEST word about the conversation; with one effect per message,
-	 * which of the two wins a commit in which both moved is decided by the order they happen
-	 * to be declared in - and the reversed order dismisses the id and then creates into
-	 * sonner's unmount window, which is U3 restored with nothing failing. One decision per
-	 * commit removes the question instead of documenting it.
-	 *
-	 * WHAT THE LANE SHOWS is therefore a function of the store's two values and nothing
-	 * else: a refusal (which only an ANSWER ever sets) is the newest word when it is set,
-	 * and an offer stands while the rule in `archive-undo.ts` keeps it. BOTH ACTIONS BELOW
-	 * SEND THEIR WRITE AND NOTHING ELSE - neither takes its own message down first - so
-	 * "nothing in the lane dismisses a message it is about to replace" is exact: the
-	 * replacement is the next draw, on the same id, an update OF the mounted toast. A
-	 * dismissal would instead destroy a create that landed inside sonner's own unmount
-	 * window (its `requestAnimationFrame` plus the 200ms delay), which is the mechanism U3
-	 * was (agent review round 1) and the reason the id is shared at all.
-	 *
-	 * THE ONE DISMISSAL IS THE LANE GOING EMPTY, and `laneMessageRef` is what makes that
-	 * answerable: the effect asks whether it DREW a message, never what the store happens to
-	 * hold, because a store value can outlive its own message (agent review round 1, R-1:
-	 * gating the offer's retirement on `archiveFailure` let one refused archive disable
-	 * retirement for the rest of a session, leaving a still-pressable Undo over a
-	 * conversation the reader had restored).
-	 */
-	useEffect(() => {
-		if (!archiveFailure && !archiveUndo && !draftsUndo) {
-			if (laneMessageRef.current === null) return;
-			laneMessageRef.current = null;
-			dismissToast(ARCHIVE_TOAST_ID);
-			return;
-		}
-		/*
-		 * WHICH MESSAGE WINS IS DECIDED BY CURRENCY, NOT BY KIND (agent review round 3, R3-1 =
-		 * UX round 3, U7). This effect used to take the failure branch unconditionally and reach
-		 * the offer only when the store held NO refusal - and `archiveFailure` is cleared in just
-		 * two places, both scoped to its own conversation (`store` and `archive-undo.ts`), while
-		 * the panel's clock clears the DRAWING and not the value. So after ONE refused archive,
-		 * every later successful archive's offer was never painted: the lane re-printed the old
-		 * conversation's refusal, re-armed it for a fresh 10s, and the new offer expired unread -
-		 * measured 4x in both palettes. Both messages now carry the stamp of the write that
-		 * raised them and the NEWER one is drawn; the lane still holds one message at a time and
-		 * still replaces in place under the one stable id.
-		 */
-		/*
-		 * THREE KINDS IN ONE SLOT, AND THE DRAFTS OFFER LOSES TIES (2026-09-27, this
-		 * remediation's own extension of the lane). A discard raises `draftsUndo` on the
-		 * SAME counter the archive's two messages take (`answerSeq`), so currency decides
-		 * between all three as it already does between the refusal and the offer, and the
-		 * tie rule follows from what each message IS: the standing archive message keeps
-		 * the lane and the discard offer waits its turn, because an archive message is
-		 * about a write the daemon answered while a discard is entirely this window's own.
-		 */
-		const newest =
-			draftsUndo !== null &&
-			(archiveFailure === null || draftsUndo.at > archiveFailure.at) &&
-			(archiveUndo === null || draftsUndo.at > archiveUndo.at)
-				? "drafts"
-				: archiveFailure && archiveUndo
-					? archiveUndo.at > archiveFailure.at
-						? "offer"
-						: "failure"
-					: archiveFailure
-						? "failure"
-						: "offer";
-		/*
-		 * THE MESSAGE THE NEWER ONE SUPERSEDED IS CLEARED, WHICH IS U10 ITSELF (UX round 3). The
-		 * currency rule above decides which of the two is the lane's newest word - and until this
-		 * clause the LOSING one stayed in the store: archive a second conversation while a refusal
-		 * stands and the offer takes the lane, press that offer's own Undo, and the lane went EMPTY
-		 * and then re-printed the OLD refusal with a fresh ten-second clock (measured: empty at
-		 * +450ms, the refusal back at +1.75s in the dark palette and +450ms in the light one).
-		 * Clearing the superseded value here is what makes "the lane shows the newest word" true
-		 * over TIME rather than only at the moment the newer word arrives.
-		 *
-		 * AND IT CLEARS ONLY ON A STRICT RANKING, WHICH IS THE OTHER HALF OF THIS FIX (the walk's own
-		 * finishing check caught the tie). Both messages are stamped from the SAME counter - the
-		 * refusal takes `state.answerSeq` and the offer takes it too - so an undo whose refusal lands
-		 * in the answer that re-raises the offer puts them at the SAME stamp. Under the old `>=` the
-		 * offer won that tie and this clause then DELETED the refusal: the lane drew the offer for its
-		 * eight seconds (measured: `lane cleared in 8169ms`, the offer's ceiling, not the refusal's
-		 * ten) and the refusal's own Retry had no card left to be - so the walk's last request never
-		 * reached the wire (`stub … /archive -> 409` is the log's final archive-family line) and the
-		 * row stayed archived. A refusal is a fact about a press that was ANSWERED while an offer is a
-		 * fact about a write (`canonical-sessions-store.ts` says so where it builds it), so on a tie
-		 * the refusal is the message that stands - and the clause below therefore deletes only what
-		 * the rule ranked STRICTLY older.
-		 */
-		/*
-		 * AND THE MESSAGE A NEWER ONE SUPERSEDED IS CLEARED ONLY WHEN THAT NEWER ONE WAS ACTUALLY
-		 * DRAWN OVER IT, AND IS STRICTLY NEWER. The two clauses this replaces cleared on the
-		 * ORDERING alone, and the walk's finishing sequence proved what that costs: the refusal
-		 * for a press the reader had just made was removed from the store while its OWN CARD was
-		 * still on screen (measured: the store reads `"archiveFailure":null` with the row's press
-		 * counted at `archiveAttempts:36`, while the step before it passes asserting the lane holds
-		 * that refusal with a hit-testable Retry), so the clock re-armed from what the store did
-		 * hold - an offer, hence an eight-second ceiling rather than the refusal's ten - the card
-		 * was dismissed, and the Retry had nothing left to be: the walk's last request never
-		 * reached the wire and the row stayed archived.
-		 *
-		 * A sonner entry persists until it is dismissed, so a value and its card CAN disagree; the
-		 * rule that keeps them together is the one the drawn message itself defines. `drawnRef`
-		 * records what was last drawn and its stamp, and the superseded value is cleared only when
-		 * a message of the OTHER kind is drawn with a strictly higher stamp - i.e. only when the
-		 * older message's turn in the lane is genuinely over. U10's defect is exactly that case (a
-		 * refusal for A drawn, then B's offer drawn strictly later: the refusal goes, and it is not
-		 * re-printed when the offer retires), while a refusal that arrives AFTER an offer - the
-		 * reader's own press, answered - is never the loser of a comparison it wins.
-		 */
-		const drawnAt =
-			newest === "offer"
-				? (archiveUndo?.at ?? 0)
-				: newest === "drafts"
-					? (draftsUndo?.at ?? 0)
-					: (archiveFailure?.at ?? 0);
-		const drawnBefore = laneDrawnRef.current;
-		laneDrawnRef.current = { kind: newest, at: drawnAt };
-		if (
-			drawnBefore !== null &&
-			drawnBefore.kind !== newest &&
-			drawnAt > drawnBefore.at
-		) {
-			if (newest === "failure") {
-				setArchiveUndo(null);
-			} else if (newest === "offer") {
-				clearArchiveFailure();
-			} else {
-				/*
-				 * THE DRAFTS OFFER CAN ONLY WIN BY BEING STRICTLY NEWER THAN EVERY ARCHIVE
-				 * VALUE PRESENT (the tie rule above), so both archive values it drew over
-				 * are strictly superseded and go with the same clause the pair uses on each
-				 * other. A value that tied or outranked the drafts offer was not superseded
-				 * and stays: an offer outranking a refusal is exactly why the pair's clause
-				 * is currency-guarded rather than kind-guarded, and the drafts value gets
-				 * the same respect.
-				 */
-				clearArchiveFailure();
-				setArchiveUndo(null);
-			}
-			/*
-			 * AND THE DRAFTS OFFER IS CLEARED BY A MESSAGE THAT OUTRANKS IT, BY THE SAME
-			 * STRICTLY-GREATER TERM the clause above applies to the archive pair - a tie is
-			 * left standing, because the value that tied is the one on screen and this one
-			 * gets its turn when that one retires.
-			 */
-			if (newest !== "drafts" && draftsUndo !== null && draftsUndo.at < drawnAt)
-				setDraftsUndo(null);
-		}
-		if (newest === "failure" && archiveFailure) {
-			laneMessageRef.current = "failure";
-			showWarningToast(
-				`Could not ${archiveFailure.archived ? "archive" : "unarchive"} “${archiveFailure.title}”.${archiveFailure.detail ? ` ${archiveFailure.detail}` : ""}`,
-				{
-					id: ARCHIVE_TOAST_ID,
-					className: ARCHIVE_TOAST_CLASS,
-					duration: ARCHIVE_TOAST_PERSISTENT,
-					position: ARCHIVE_TOAST_LANE,
-					action: {
-						label: "Retry",
-						/*
-						 * SONNER DISMISSES THE TOAST AFTER AN ACTION UNLESS THE HANDLER PREVENTS IT.
-						 * 2.0.3's action button is `onClick(event); if (event.defaultPrevented) return;
-						 * deleteToast();` - so an unprevented press put this entry into its 200ms
-						 * removal window, the answer's re-assert 2-4ms later was merged into the entry
-						 * being removed and destroyed with it, and the lane ended EMPTY while the
-						 * store still held the refusal. Measured 2026-09-21 with the transition
-						 * sampler: 15ms after the press `removed: 1` and `nodes: 2` (the dying entry
-						 * drawn over the new one, which is also why `hitTest` read false on the Retry
-						 * the reader had just pressed), the lane empty ~5s later. This is the other
-						 * half of the round-2 fix below: that removed the APP's dismissal, not the
-						 * library's.
-						 */
-						onClick: (event) => {
-							event.preventDefault();
-							/*
-							 * THE RETRY DOES NOT TAKE ITS OWN MESSAGE DOWN FIRST (UX report round 1, U3:
-							 * "Retry on a refused archive leaves no message at all").
-							 *
-							 * A `dismissToast(id)` here reached sonner's dismiss path, whose removal
-							 * runs through a `requestAnimationFrame` and a 200ms unmount delay; the
-							 * answer to this very press arrives in 2-4ms against a daemon that is on
-							 * this machine, and a create landing inside that window is merged into the
-							 * entry being removed and destroyed with it. Measured three ways on
-							 * 2026-09-21: in the running app (the dismiss and the re-create 2-4ms
-							 * apart, `showWarningToast` called and no toast element ever mounted -
-							 * MutationObserver, no addition, lane empty at +2.5s), against the installed
-							 * sonner 2.0.3 in jsdom (created on a dismissed id: painted at +50ms, gone
-							 * by +600ms; the same create 600ms later mounts), and in the store (the
-							 * write does set `archiveFailure`, so the effect did run).
-							 *
-							 * WHAT REACHES THE SCREEN INSTEAD: the refusal stays UP while the retry is
-							 * in flight - the last answer to a press on this conversation is still the
-							 * honest thing to show - and the answer replaces it in place, through the
-							 * same id, with no dismissal anywhere in the path.
-							 */
-							void setSessionArchived(
-								archiveFailure.sessionId,
-								archiveFailure.archived,
-								archiveFailure.title,
-							);
-							/*
-							 * ONE ACT, ONE REGISTER (UX round 1, U2), KEPT WITHOUT A HANDLER HERE: an
-							 * accepted retry is the same act as the row's own press, and the store raises
-							 * the same offer for it in the update that settles the write (design round 8,
-							 * D27) - so the refusal is retired by the offer landing rather than by a
-							 * second `offerArchiveUndo` in this `.then`, which is also what keeps the
-							 * departure and its band in one commit on this path too.
-							 */
-						},
-					},
-				},
-			);
-			return;
-		}
-		if (archiveUndo) {
-			laneMessageRef.current = "offer";
-			showInfoToast(
-				/*
-				 * THE NAME FLEXES; THE VERB DOES NOT (agent review round 2, R2-3). The sentence is
-				 * two elements because a single string that overflows loses its TAIL - which for
-				 * `“<title>” archived.` is the verb, i.e. the half that says what happened, cut
-				 * off by the operator's own long titles. The name ellipsises inside its own box
-				 * (`truncate`) and the verb is a fixed tail that always fits; the full name is
-				 * one dwell away in the row's own flyout, so the truncation costs nothing a
-				 * reader cannot recover.
-				 */
-				<span className="flex min-w-0 items-baseline gap-1">
-					<span className="min-w-0 truncate">
-						{archiveOfferedName(archiveUndo.title)}
-					</span>
-					<span className="shrink-0">{ARCHIVE_OFFERED_VERB}</span>
-				</span>,
-				{
-					id: ARCHIVE_TOAST_ID,
-					className: ARCHIVE_TOAST_CLASS,
-					duration: ARCHIVE_TOAST_PERSISTENT,
-					position: ARCHIVE_TOAST_LANE,
-					action: {
-						label: "Undo",
-						/*
-						 * AND THE SAME PREVENTION FOR THE OFFER'S OWN PRESS, for the same reason and
-						 * with the same measurement behind it (the round-2 remediation re-asserted
-						 * the offer in place on an accepted/unrefused answer, and sonner would delete
-						 * the entry under it exactly as it did for the Retry).
-						 */
-						onClick: (event) => {
-							event.preventDefault();
-							/*
-							 * THE UNDO SENDS ITS WRITE AND NOTHING ELSE (agent review round 2, R2-1), and
-							 * this is U3's twin on the control beside the Retry: it used to take its own
-							 * message down before the answer, and the optimistic fact retired the offer at
-							 * the same press, so a refused unarchive raised its refusal on the id that was
-							 * just dismissed - the destroy-inside-the-unmount-window pattern, on a
-							 * refusal that is an ordinary outcome (the conversation is live, or the
-							 * transport failed).
-							 *
-							 * NOTHING HERE OR IN THE STORE RETIRES THE OFFER AT THE PRESS: the retirement
-							 * subscription skips a press whose fact is still unanswered, so the offer is
-							 * held while its own write is out, and the ANSWER settles the lane - an
-							 * accepted undo clears `archiveUndo` (the lane goes empty, which is the one
-							 * dismissal with nothing to replace it) and a refused one replaces the offer
-							 * in place with the refusal the store raises for this conversation.
-							 */
-							void setSessionArchived(
-								archiveUndo.sessionId,
-								!archiveUndo.archived,
-								archiveUndo.title,
-							);
-						},
-					},
-				},
-			);
-		}
-		if (newest === "drafts" && draftsUndo) {
-			laneMessageRef.current = "drafts";
-			showInfoToast(
-				<span className="flex min-w-0 items-baseline gap-1">
-					<span className="min-w-0 truncate">
-						{draftsOfferedName(draftsUndo.keys.length)}
-					</span>
-					<span className="shrink-0">{DRAFTS_OFFERED_VERB}</span>
-				</span>,
-				{
-					id: ARCHIVE_TOAST_ID,
-					className: ARCHIVE_TOAST_CLASS,
-					duration: ARCHIVE_TOAST_PERSISTENT,
-					position: ARCHIVE_TOAST_LANE,
-					action: {
-						label: "Undo",
-						onClick: (event) => {
-							event.preventDefault();
-							/*
-							 * ONE WRITE, THEN THE LANE DRAWS WHATEVER IS LEFT: the store puts
-							 * the snapshot back and clears `draftsUndo` in the same update, so the
-							 * dismissal is the effect's own empty-lane branch - the one dismissal
-							 * with nothing to replace it (the archive offer's own U3/R2-1 clause,
-							 * one control over). Unlike an archive undo there is no answer to wait
-							 * for: the restore is local and immediate.
-							 */
-							restoreDraftsUndo();
-							/*
-							 * AND THE PANE GOES BACK TO WHAT CAME BACK (UX round 2's U7), where that
-							 * is unambiguous: a ONE-key offer whose key the discard replaced with a
-							 * freshly staged draft the pane still shows. The batch's offer has several
-							 * subjects and leaves the pane where it was; a reader who has since
-							 * opened something else is not moved either (the ref is cleared by every
-							 * discard that did not take the pane, and compared against the CURRENT
-							 * key here).
-							 */
-							const staged = stagedByDiscardRef.current;
-							stagedByDiscardRef.current = null;
-							if (draftsUndo.keys.length === 1 && staged !== null) {
-								const state = useCanonicalSessionsStore.getState();
-								if (state.activeDraftKey === staged)
-									state.openDraft(draftsUndo.keys[0]);
-							}
-						},
-					},
-				},
-			);
-		}
-	}, [
-		archiveFailure,
-		archiveUndo,
-		draftsUndo,
-		setSessionArchived,
-		clearArchiveFailure,
-		setArchiveUndo,
-		restoreDraftsUndo,
-		setDraftsUndo,
-	]);
-
-	/*
-	 * THE CLOCK THE DRAW ABOVE DOES NOT RUN (agent review round 2 - the re-assertion):
-	 * the lane's life, armed per MESSAGE rather than per sonner entry.
-	 *
-	 * It derives the current message from the same two values the drawing effect reads,
-	 * so it needs no ref, no declaration order and no record of what was drawn: a
-	 * re-assertion is a NEW object from the store, this effect re-runs, and the full life
-	 * starts again - which is the whole point (see `ARCHIVE_TOAST_PERSISTENT` for what the
-	 * library could not do). `laneMessageRef` is cleared with the dismissal, because the
-	 * drawing effect reads it as "was there a message": an expired message that left the
-	 * ref standing would make the next empty-lane commit skip the dismissal it owes.
-	 */
-	useEffect(() => {
-		/*
-		 * AND IT DOES NOT ARM FOR AN ARCHIVE VALUE THE DRAFTS OFFER OUTRANKS (2026-09-27):
-		 * the drawing effect has the drafts card on screen in that state, and an archive
-		 * timer expiring here would dismiss a message that is not the archive's - the
-		 * wrong-card defect one layer down. When the drafts offer retires, this effect
-		 * re-runs, the archive value becomes the lane's message and ITS clock starts then;
-		 * the value is not lost, it has simply not had its turn yet.
-		 */
-		if (
-			draftsUndo !== null &&
-			(archiveFailure === null || draftsUndo.at > archiveFailure.at) &&
-			(archiveUndo === null || draftsUndo.at > archiveUndo.at)
-		)
-			return;
-		const message = archiveFailure ? "failure" : archiveUndo ? "offer" : null;
-		if (message === null) return;
-		const timer = setTimeout(
-			() => {
-				laneMessageRef.current = null;
-				dismissToast(ARCHIVE_TOAST_ID);
-				/*
-				 * AND THE VALUE GOES WITH ITS MESSAGE (the same U10 clause, at the other end of the
-				 * life): an expired message that left its value standing was drawn again by the next
-				 * commit that re-ran the effect, with a FRESH clock - the reader's own dismissal undone
-				 * by a re-render they did not cause, and the clock the design says belongs to the
-				 * message because sonner's is no longer what ends one. What does not depend on the lane
-				 * is untouched: a live offer is still reachable from the row's own Unarchive control,
-				 * the header's Archived pill and `/unarchive`.
-				 */
-				if (message === "failure") clearArchiveFailure();
-				else setArchiveUndo(null);
-			},
-			message === "failure" ? ARCHIVE_FAILURE_TOAST_MS : ARCHIVE_UNDO_TOAST_MS,
-		);
-		return () => clearTimeout(timer);
-	}, [
-		archiveFailure,
-		archiveUndo,
-		draftsUndo,
-		clearArchiveFailure,
-		setArchiveUndo,
-	]);
-
-	/*
-	 * THE BAND'S HEIGHT IS THE CARD'S OWN, PLUS THE GAP (design round 4, D14), and it is
-	 * measured rather than declared because only two of the three messages have a fixed
-	 * height: the archive offer and the discard offer are one line at every width (their
-	 * names truncate), while the refusal carries the daemon's sentence about why the
-	 * write was refused and wrapped to eight lines - 170px - at the 280 panel. A
-	 * declaration would have to pick one of them and be wrong about the other, and wrong
-	 * in the direction that either clips a refusal or spends 120px of list on a one-line
-	 * message. The drafts half of the fallback below can reserve the offer's height for
-	 * one commit while a refusal is still unmeasured (it reads the VALUES, not the latest
-	 * draw); the measurement lands the truth on the next commit, and the window is the
-	 * one in which a refusal and a fresh discard stand at once.
-	 *
-	 * TWO OBSERVERS, BECAUSE THE CARD ARRIVES AFTER THE COMMIT: sonner mounts the toast in its
-	 * own render, so the first measurement of a fresh message finds nothing and the childList
-	 * watcher is what notices it land; the ResizeObserver re-reads the card when its own height
-	 * changes (a wrap at a narrower panel, a longer daemon detail), and it re-targets when the
-	 * card is replaced - the same stable sonner entry, a new element, which is exactly what a
-	 * supersession looks like from here. `setBandHeight` with an unchanged value is a no-op in
-	 * React, so the two can run on the same commit without a loop.
-	 */
-	const [bandHeight, setBandHeight] = useState(0);
-	/*
-	 * THE HEIGHT THE LAYOUT RESERVES FOR THE LANE, which is the MEASURED band when a card has landed
-	 * and the offer's declared band in the commit that raises it - the one commit in which the pressed
-	 * row's height is already gone while no card has been measured yet (`ARCHIVE_OFFER_BAND_HEIGHT` has
-	 * the measurement and the arithmetic). Everything the band's height is asked for - the list's own
-	 * yield, the base-read guard and the tent itself - reads this rather than the raw state, so the box
-	 * and the row cannot move in different commits.
-	 */
-	const bandHeightNow =
-		bandHeight > 0
-			? bandHeight
-			: archiveUndo !== null || draftsUndo !== null
-				? ARCHIVE_OFFER_BAND_HEIGHT
-				: 0;
-	const laneBandRef = useRef<HTMLDivElement | null>(null);
-	useEffect(() => {
-		const band = laneBandRef.current;
-		if (band === null) return;
-		const settled = new ResizeObserver(() => measure());
-		let watched: HTMLElement | null = null;
-		const measure = () => {
-			const card = band.querySelector<HTMLElement>(`.${ARCHIVE_TOAST_CLASS}`);
-			if (card !== watched) {
-				if (watched !== null) settled.unobserve(watched);
-				watched = card;
-				if (card !== null) settled.observe(card);
-			}
-			/*
-			 * THE SETTLED CARD, NOT THE ANIMATED ONE (QA round 3, Q-4). Sonner animates the toast's own
-			 * `height` over 400ms (`transition: ... height 400ms`, 2.0.3), so its
-			 * `getBoundingClientRect().height` grows through the entrance - and this effect read THAT, so
-			 * the band rode the entrance with it and the rows rode the band (measured: the band ~40px
-			 * ahead of the card at low frame rates, which is the motion `transition: none` on the band
-			 * exists to prevent).
-			 *
-			 * WHERE THE SETTLED HEIGHT IS READ FROM, AND WHY NOT SONNER'S OWN NUMBER: the first cut of
-			 * this read `--initial-height`, which is the library's own statement of the height the card
-			 * settles at - measured once, AT MOUNT. That is exactly wrong for this lane, because both
-			 * messages share ONE sonner entry (`ARCHIVE_TOAST_ID`): the offer mounts it at one line (34),
-			 * the refusal replaces the message in the same entry (142 settled), and the variable is never
-			 * re-measured - measured in the walk, `band 42 / card 42` where the pair should read
-			 * `150 / 142`, i.e. the band sized from the offer's height while a refusal stood.
-			 *
-			 * So the settled height is taken from the card's own LAYOUT: `scrollHeight` is the content's
-			 * own height (independent of the animated box) and the two border widths turn it into the
-			 * border-box height the rect reports at rest, which is the number the band's ruling is
-			 * written in. It re-reads correctly on a replacement, because the content is what changed.
-			 */
-			const animated = card === null ? 0 : card.getBoundingClientRect().height;
-			const cardStyle = card === null ? null : getComputedStyle(card);
-			const borders =
-				cardStyle === null
-					? 0
-					: (Number.parseFloat(cardStyle.borderTopWidth) || 0) +
-						(Number.parseFloat(cardStyle.borderBottomWidth) || 0);
-			const cardHeight =
-				card === null
-					? 0
-					: card.scrollHeight > 0
-						? card.scrollHeight + borders
-						: animated;
-			setBandHeight(
-				card === null ? 0 : Math.round(cardHeight) + ARCHIVE_TOAST_BAND_GAP,
-			);
-		};
-		const arrived = new MutationObserver(measure);
-		arrived.observe(band, { childList: true, subtree: true });
-		measure();
-		return () => {
-			arrived.disconnect();
-			settled.disconnect();
-		};
-	}, []);
-
-	/*
-	 * THE BAND IS SPENT BY THE COLUMN'S BOTTOM-MOST REGION (design round 6's Q-3 ruling, shape (b)),
-	 * and in the measured `entities-first` assembly that region is the chats list. The rule: that
-	 * region is forced to a DEFINITE box of `max(0, base - band)`, `base` being the height it had with
-	 * no message standing - so its top edge does not move, the `flex-1` entity region above keeps its
-	 * box to the pixel, the rows in BOTH regions keep their offsets, and neither `scrollTop` is
-	 * written. What the band spends is then the list's own bottom, where `overflow-y` clips: the
-	 * rows it hides are the overflow, which is what D14 promised and what QA round 3 measured it not
-	 * doing (the entity region above paid 94 of the band's 142 and every row rode up with it).
-	 *
-	 * `base` IS READ ONLY WHILE NO BAND STANDS, and that is a CONSTRAINT rather than a detail: the
-	 * forced box IS what a re-read returns, so re-reading while a message is up subtracts the band
-	 * from the already-subtracted height - 289 -> 147 -> 5 -> 0, one message at a time (the designer
-	 * named the trap). The observer is attached in the band-0 state and this effect's own cleanup
-	 * tears it down the moment a message appears.
-	 *
-	 * IN `chats-first` THE LIST IS NOT THE BOTTOM REGION: the entity region is, and it is the
-	 * `flex-1` one, so it yields by itself and this rule leaves the list exactly as it was. That is
-	 * the shape's other half, not an omission.
-	 */
-	// ONE REGION, AND IT IS THE BOTTOM ONE: the merged scroller takes the
-	// band's yield directly (there is no flex-1 region above it to move).
-	const listIsBottomRegion = true;
-	const [listBase, setListBase] = useState<number | null>(null);
-	/*
-	 * THE BASE IS READ IN THE COMMIT ITSELF, AND THAT IS THE FIX FOR AN INTERMITTENT FAILURE RATHER
-	 * THAN A TIDY-UP (measured 2026-09-22, the yield's own check: the LIGHT pass reading
-	 * `yieldExact: true` against the DARK pass's `{"rowsHeld":false,"entityBoxHeld":false,
-	 * "scrollHeld":true,"yieldExact":false}` on identical code, with the list's box unchanged at 289
-	 * and the entity region paying the band - the pre-fix behaviour exactly, once in five runs).
-	 *
-	 * The first cut read the base from a PASSIVE effect that attached a `ResizeObserver` and returned
-	 * early whenever a band stood. Two ways to lose that race, and a run that loses either leaves the
-	 * base `null` for the band's whole life: the passive effect may never run in a band-0 commit if
-	 * the region was not rendered yet (the ref is null, the effect returns, and its dependencies - the
-	 * band's height, the assembly's flags - do not change again before the message arrives), and an
-	 * observer's first callback is delivered in a rendering update that a headless window does not
-	 * produce on its own. A LAYOUT effect with NO dependency list runs in every commit, synchronously,
-	 * before paint, so the commit that first renders the region is the commit that measures it - and
-	 * no message can exist before that, because a message needs a press.
-	 *
-	 * The observer is gone with it: the read happens on every commit while no band stands, which is
-	 * the same coverage without a callback that can be late. `setListBase` bails on an unchanged
-	 * value, so the extra call is free and cannot loop.
-	 *
-	 * The FREEZE itself is the designer's constraint, and it is kept: while a band stands this returns
-	 * immediately, so the forced box (`max(0, base - band)`) is never re-read as a new base. The
-	 * merged scroller IS the bottom region, so the yield applies to it directly:
-	 * there is no flex-1 region above it for the band to move.
-	 */
-	useLayoutEffect(() => {
-		if (bandHeightNow > 0) return;
-		const list = listPanelRef.current;
-		if (list === null) return;
-		const measured = Math.round(list.getBoundingClientRect().height);
-		setListBase((previous) => (previous === measured ? previous : measured));
-	});
-	const listYield: number | undefined =
-		listIsBottomRegion && bandHeightNow > 0 && listBase !== null
-			? Math.max(0, listBase - bandHeightNow)
-			: undefined;
 
 	const pinFailureLine = pinFailure ? (
 		/*
@@ -6091,16 +5260,17 @@ export function ChatSidebar({
 											 * THE FRESH KEY IS REMEMBERED FOR THE OFFER'S OWN PRESS (UX
 											 * round 2's U7): the snapshot restores THIS key's draft on an
 											 * Undo, and the offer's handler re-opens it only when the pane
-											 * still shows the freshly staged draft - the ref is what makes
-											 * "the pane sits on the staged key" a fact rather than a
+											 * still shows the freshly staged draft - the stored key is what
+											 * makes "the pane sits on the staged key" a fact rather than a
 											 * guess. Every discard writes it (null when the pane was not
 											 * taken), so an offer never re-opens a pane the reader has
 											 * since moved.
 											 */
-											stagedByDiscardRef.current =
-												useCanonicalSessionsStore.getState().activeDraftKey;
+											setStagedByDiscard(
+												useCanonicalSessionsStore.getState().activeDraftKey,
+											);
 										} else {
-											stagedByDiscardRef.current = null;
+											setStagedByDiscard(null);
 										}
 										requestAnimationFrame(() => {
 											const rows = [
@@ -6214,10 +5384,11 @@ export function ChatSidebar({
 									clearing.includes(activeDraftKey)
 								) {
 									onStageDraft(undefined, true);
-									stagedByDiscardRef.current =
-										useCanonicalSessionsStore.getState().activeDraftKey;
+									setStagedByDiscard(
+										useCanonicalSessionsStore.getState().activeDraftKey,
+									);
 								} else {
-									stagedByDiscardRef.current = null;
+									setStagedByDiscard(null);
 								}
 								requestAnimationFrame(() => {
 									const rows = [
@@ -6499,10 +5670,12 @@ export function ChatSidebar({
 			tabIndex={-1}
 			onFocus={onRowFocus}
 			/*
-			 * `relative` IS THE PANEL'S OWN ANCHOR for anything absolutely positioned inside it, and the
-			 * archive band's card is no longer one of those: the band carries `position: relative`
-			 * itself (`ARCHIVE_TOAST_BAND_STYLE`, design round 4, D14), because a card contained by
-			 * the panel is a card drawn over the list. The container declaration the old per-row shed
+			 * `relative` IS THE PANEL'S OWN ANCHOR for anything absolutely positioned inside it.
+			 * The archive lane that used to hang off it - a band at the column's foot, sized by the
+			 * card it held - is gone with the operator's own request (2026-09-27: the messages are
+			 * ordinary sonner toasts again, raised by `undo-toasts.tsx` into the global container),
+			 * and the lane, its measurements and its supersession are recorded in
+			 * `docs/design/sidebar-row-space.md` §10. The container declaration the old per-row shed
 			 * measured against is gone with the shed: this panel no longer changes what it draws by
 			 * width.
 			 */
@@ -6881,7 +6054,6 @@ export function ChatSidebar({
 						refreshFocusedInside(listPanelRef.current, listSlotRef);
 						extendCatalogueTail();
 					}}
-					style={listYield === undefined ? undefined : { height: listYield }}
 					className="relative min-h-0 flex-1 space-y-4 overflow-y-auto p-1 [overflow-anchor:none] [scrollbar-gutter:stable]"
 				>
 					{entityRegion}
@@ -6938,69 +6110,6 @@ export function ChatSidebar({
 						</div>
 					)}
 			</TooltipProvider>
-			{/*
-			 * THE SIDEBAR'S OWN TOAST LANE, and `position: absolute` inline is the whole
-			 * mechanism: sonner's stylesheet pins the container `fixed`, and an inline value
-			 * is the only thing that can beat it (the reason `themed-toast-container.tsx`
-			 * states its own colours inline). Anchored by the nav's `relative`, so the lane
-			 * is the panel's box rather than the viewport's corner; the global container in
-			 * `main.tsx` keeps every other toast exactly where it is. WHAT SONNER 2.0.3
-			 * ACTUALLY DOES IS NOT ROUTING, and this comment used to assert that it was:
-			 * every mounted container keeps a copy of every toast and draws one `<ol>` per
-			 * position ANY of them carries, so a positioned toast is drawn in BOTH containers
-			 * and the `position` argument cannot confine it. What confines it is the app's own
-			 * rule in `styles/index.css` - the marker class these two messages carry, scoped
-			 * to this panel - and the reading behind that rule is recorded there.
-			 * a toast by `position`.
-			 */}
-			{/*
-			 * THE BAND, THEN THE CONTAINER INSIDE IT (design round 4, D14). The wrapper is what the app
-			 * can size and clip; sonner's own root keeps every rule its stylesheet gives it except the
-			 * positioning, which the container style overrides - see `ARCHIVE_TOAST_BAND_STYLE` for why
-			 * the card is the band's and no longer the panel's.
-			 *
-			 * THE BRACES ARE THE COMMENT, AND WITHOUT THEM THIS SENTENCE IS UI (measured 2026-09-22). A
-			 * block comment written without them in a children position is not a comment to JSX: it is a
-			 * TEXT NODE, so this block was DRAWN in the panel's own bottom - `pnpm lint`'s
-			 * `lint/suspicious/noCommentText` caught it, and every frame of the panel taken on the heads
-			 * between it landing and this fix photographs the sentence. A block comment among JSX children
-			 * needs the braces, which is why the block above it carries them - and why the delimiters are
-			 * not spelled out here: the closing one would end this comment early.
-			 */}
-			<div
-				ref={laneBandRef}
-				data-archive-toast-band
-				style={{ ...ARCHIVE_TOAST_BAND_STYLE, height: bandHeightNow }}
-				/*
-				 * A WHEEL AT THE PANEL'S BOTTOM IS A GESTURE ABOUT THE LIST (QA round 3, Q-5). The band put
-				 * the card BESIDE the list instead of over it (D14), so the gesture has nowhere to land on
-				 * its own: the card is `pointer-events: none`, this wrapper is not a scroller, and the rule
-				 * in `styles/index.css` that claimed a wheel here "reaches the list behind it" measured
-				 * 0 -> 0 while the same wheel over a row scrolled 0 -> 40.5. The reader's gesture at the
-				 * panel's bottom is scrolling the list, so it is forwarded there - and to the CARD first
-				 * when the card has somewhere to go, because a message taller than the band's ceiling is
-				 * read by scrolling it (the short-panel refusal, `max-height: 100%; overflow-y: auto`),
-				 * which a `pointer-events: none` card cannot be driven to by a wheel on its own.
-				 */
-				onWheel={(event) => {
-					const card = laneBandRef.current?.querySelector<HTMLElement>(
-						`.${ARCHIVE_TOAST_CLASS}`,
-					);
-					const scroller =
-						card !== null &&
-						card !== undefined &&
-						card.scrollHeight > card.clientHeight
-							? card
-							: listPanelRef.current;
-					if (scroller === null || scroller === undefined) return;
-					scroller.scrollTop += event.deltaY;
-				}}
-			>
-				<ThemedToastContainer
-					position={ARCHIVE_TOAST_LANE}
-					style={ARCHIVE_TOAST_CONTAINER_STYLE}
-				/>
-			</div>
 		</nav>
 	);
 }

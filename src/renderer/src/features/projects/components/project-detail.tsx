@@ -160,9 +160,16 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 							: "The project could not be read."}
 				</Alert>
 				<div className="flex items-center gap-2">
+					{/*
+					 * THE PAIR MATCHES IN SIZE (design round 2, D5): `Try again` was a
+					 * `size="sm"` control beside the default-size escape the page has
+					 * always drawn, and a one-step height mismatch between two adjacent
+					 * recoveries reads built-by-hand - hierarchy here belongs to the
+					 * variant, not to the height. The list's own `Try again` keeps its
+					 * `sm` size: it stands alone there, with nothing to mismatch.
+					 */}
 					<Button
 						variant="secondary"
-						size="sm"
 						onClick={() => void detail.refetch()}
 					>
 						Try again
