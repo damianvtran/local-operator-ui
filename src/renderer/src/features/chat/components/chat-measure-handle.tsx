@@ -41,6 +41,10 @@
  *    default - so the feature is reachable without a pointer. It follows the
  *    divider in `shared/components/common/resizable-divider.tsx`, including its
  *    full-viewport cursor overlay, which is imported rather than re-written.
+ *    The map and the reset are ANNOUNCED - the separator's `aria-keyshortcuts`
+ *    and the mounts' labels - rather than drawn (UX round 1's U2): the
+ *    subtlety is the operator's ask, and the double-click reset matches the
+ *    app's other five dividers, so parity is kept consciously.
  *
  * THE KEY MAP IS THE DIVIDER'S OWN, via `keyboardTarget`, with two register
  * choices rather than a second implementation (agent review round 1's R1-2):
@@ -329,6 +333,12 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 				 * sliding flush at the widths where it does not. If `cqw` ever fails to
 				 * resolve the declaration is invalid and the class above still holds the
 				 * 34px offset.
+				 *
+				 * AT THE CLAMP the strip shares the pane's outermost 10px with the 8px
+				 * scrollbar gutter the app reserves at that edge (UX round 1's U3):
+				 * with no side room there is no other 10px on that edge that is not
+				 * over text, so the share is a bounded consequence of the flush case
+				 * rather than a separate choice.
 				 */
 				edge === "left" ? "-left-[34px]" : "-right-[34px]",
 			)}
@@ -375,6 +385,13 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 				role="separator"
 				data-lo-chat-measure-handle={edge}
 				aria-label={label}
+				/*
+				 * The keys, machine-readable (UX round 1's U2): `aria-keyshortcuts` is
+				 * the app's existing spelling for this (`message-input.tsx`,
+				 * `sidebar-navigation.tsx`), and the mounts' labels carry the same
+				 * story for screen readers in prose.
+				 */
+				aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight Home End Enter"
 				aria-orientation="vertical"
 				aria-valuenow={Math.round(width)}
 				aria-valuemin={CHAT_MEASURE_MIN_PX}

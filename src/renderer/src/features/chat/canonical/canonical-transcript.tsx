@@ -2546,14 +2546,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 								width={measurePx}
 								onWidthChange={setChatMeasureWidth}
 								onReset={restoreDefaultChatMeasureWidth}
-								label="Widen or narrow the conversation column (left edge)"
+								label="Widen or narrow the conversation column (left edge). Arrow keys adjust the width; Home and End go to the limits; Enter restores the default."
 							/>
 							<ChatMeasureHandle
 								edge="right"
 								width={measurePx}
 								onWidthChange={setChatMeasureWidth}
 								onReset={restoreDefaultChatMeasureWidth}
-								label="Widen or narrow the conversation column (right edge)"
+								label="Widen or narrow the conversation column (right edge). Arrow keys adjust the width; Home and End go to the limits; Enter restores the default."
 							/>
 						</>
 					)}
