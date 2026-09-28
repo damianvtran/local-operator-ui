@@ -1537,15 +1537,11 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"foldOnto1e88f7fc16Note",
 	/*
-	 * And the second fold's record rides beside them, for the same completeness
-	 * reason.
+	 * AND THE SECOND FOLD'S OWN: main moved again before this branch's push, the
+	 * fold onto `9589bd8fec` re-derived the pair at the folded tip, and a reader
+	 * is owed the check rather than the prose.
 	 */
 	"foldOnto9589bd8fecNote",
-	/*
-	 * And the remediation round 2's record rides beside it, for the same
-	 * completeness reason.
-	 */
-	"updateStallBoundRoundTwoNote",
 	/*
 	 * AND THE REMEDIATION ROUND 2'S OWN: it registers the two U1 frames the
 	 * download panel and the checking card now ship, rewrites the download line's
@@ -1553,11 +1549,21 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"updateStallBoundRoundTwoNote",
 	/*
-	 * AND THE SECOND FOLD'S OWN: main moved again before this branch's push, the
-	 * fold onto `9589bd8fec` re-derived the pair at the folded tip, and a reader
-	 * is owed the check rather than the prose.
+	 * AND THE FIFTH FOLD'S OWN: the fold onto `678f6c5c69` moved both trees and
+	 * wrote one record, and a reader is owed the pair it binds.
 	 */
-	"foldOnto9589bd8fecNote",
+	"foldOnto678f6c5c69Note",
+	/*
+	 * AND THE SIXTH FOLD'S OWN: main moved once more inside round 2 and the fold
+	 * onto `3428f5f475` re-derived the pair again - same reason, same check.
+	 */
+	"foldOnto3428f5f475Note",
+	/*
+	 * AND REMEDIATION ROUND 3'S OWN: it moves both trees again (the gate-coverage
+	 * registration, the retrying story presses, the unified switch rule), so a
+	 * reader is owed the pair.
+	 */
+	"updateStallBoundRoundThreeNote",
 	/*
 	 * AND THE REMEDIATION ROUND'S OWN: round 1's fix moves BOTH trees again -
 	 * `src/` for the one commission entry point (clear, cancel, invalidate)
@@ -2349,6 +2355,27 @@ const BRANCH_RECORDS = [
 	 * reason.
 	 */
 	"foldOnto1e88f7fc16Note",
+	/*
+	 * And the second fold's record rides beside them, for the same completeness
+	 * reason.
+	 */
+	"foldOnto9589bd8fecNote",
+	/*
+	 * And the remediation round 2's record rides beside it, for the same
+	 * completeness reason.
+	 */
+	"updateStallBoundRoundTwoNote",
+	/*
+	 * And the two later folds' records ride beside them, for the same
+	 * completeness reason - review round 3 found the guard skipping the newest
+	 * records while they lived only in the STAMP_BINDING_NOTES list.
+	 */
+	"foldOnto678f6c5c69Note",
+	"foldOnto3428f5f475Note",
+	/*
+	 * And remediation round 3's record closes the set, for the same reason.
+	 */
+	"updateStallBoundRoundThreeNote",
 	/*
 	 * And this branch's own record, folded in beside it: the account-foot
 	 * refresh writes one top-level note, registered here for the same

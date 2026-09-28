@@ -347,21 +347,31 @@ type Story = StoryObj<typeof meta>;
 function HeldCheckButton() {
 	useEffect(() => {
 		/*
-		 * THE OVERRIDE IS (RE-)APPLIED IN THE PRESS CALLBACK (design D3,
-		 * remediation round 2): the decorator's `mockUpdaterApi()` re-assigns
+		 * PRESS WHEN THE CONTROL EXISTS (design D5, remediation round 3): a single
+		 * one-shot timer assumed the button was already painted, and a cold load
+		 * found no control - which would silently photograph the idle button
+		 * instead of the held check. Retry on a short bounded loop; when the press
+		 * lands the render is identical to the one-shot's, because it is the same
+		 * click on the same button. The override is (re-)applied immediately before
+		 * the press (design D3): the decorator's `mockUpdaterApi()` re-assigns
 		 * `window.api.updater` in ITS effect, which runs after this story's, so an
 		 * override installed up front is gone by the time the click would call it.
-		 * Immediately before the press is the one moment that runs after the mocks.
 		 */
-		const timer = setTimeout(() => {
-			window.api.updater.checkForAllUpdates = () =>
-				new Promise<never>(() => {});
+		const deadline = Date.now() + 2000;
+		const timer = setInterval(() => {
 			const control = Array.from(document.querySelectorAll("button")).find(
 				(button) => button.textContent === "Check for updates",
 			);
-			control?.click();
-		}, 0);
-		return () => clearTimeout(timer);
+			if (control) {
+				window.api.updater.checkForAllUpdates = () =>
+					new Promise<never>(() => {});
+				control.click();
+				clearInterval(timer);
+				return;
+			}
+			if (Date.now() > deadline) clearInterval(timer);
+		}, 50);
+		return () => clearInterval(timer);
 	}, []);
 	return <CheckForUpdatesButton slowWaitHintMs={1} />;
 }

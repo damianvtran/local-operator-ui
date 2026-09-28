@@ -1982,6 +1982,25 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 		"",
 		"an empty value is transported verbatim, and the script's presence guard is what silences it",
 	);
+	/*
+	 * THE HOLD'S GUARD READS THE SAME RULE (review round 3, the rule unified
+	 * rather than split): a set-but-empty launch silences the watchdog script and
+	 * the hold's banner alike - one present key, one meaning - so the two guards
+	 * cannot drift into "silent here, bannering there" for the same launch. The
+	 * guard is private to update-service, so this pins its source the way the
+	 * script's own guard is pinned: presence, and no length test to restore.
+	 */
+	const serviceSource = readFileSync("src/main/update-service.ts", "utf8");
+	const holdGuard = serviceSource.match(
+		/function notificationsSilenced\(\): boolean \{[\s\S]*?\n\}/,
+	);
+	assert.ok(holdGuard, "notificationsSilenced not found in update-service.ts");
+	assert.match(holdGuard[0], /typeof value === "string"/);
+	assert.doesNotMatch(
+		holdGuard[0],
+		/value\.length/,
+		"the hold guard must not fall back to a non-empty test: that is the split round 3 unified",
+	);
 	// Backgrounded with its status dropped, so a notifier that fails, hangs or
 	// does not exist cannot decide anything or hold the script open.
 	assert.match(plan.script, /"Local Operator" >\/dev\/null 2>&1 &/);
