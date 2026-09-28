@@ -1470,6 +1470,13 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"daemonObservationTickWaitRestampNote",
 	/*
+	 * AND THE SEARCH-AND-QUOTA UX PASS'S OWN: its subject IS this file's binding
+	 * too - the pass moves BOTH trees and re-took four sets' frames (two states
+	 * re-shot, one state and two sets added) - so a reader is owed the pair and
+	 * the five sets it names.
+	 */
+	"searchQuotaUxRestampNote",
+	/*
 	 * AND THE CREDENTIAL-INPUT CHANGE'S OWN (`fix/secret-ask-credential-input`):
 	 * its subject is this file's binding too - it moves BOTH trees (the dock's
 	 * masked secret field and its answer path in `src/`, the suite's cases and
@@ -1564,6 +1571,11 @@ const STAMP_BINDING_NOTES = [
 	 * reader is owed the pair.
 	 */
 	"updateStallBoundRoundThreeNote",
+	/*
+	 * AND THE SEVENTH FOLD'S OWN: the fold onto `8b082c33d8` moved both trees and wrote one
+	 * record, and a reader is owed the pair it binds.
+	 */
+	"foldOnto8b082c33d8Note",
 	/*
 	 * AND THE REMEDIATION ROUND'S OWN: round 1's fix moves BOTH trees again -
 	 * `src/` for the one commission entry point (clear, cancel, invalidate)
@@ -2289,6 +2301,12 @@ const BRANCH_RECORDS = [
 	 */
 	"daemonObservationTickWaitRestampNote",
 	/*
+	 * And by the search-and-quota UX pass, whose note is this branch's newest
+	 * top-level record: it states the pair this tip ships, moves both trees,
+	 * and names the five sets its capture moved.
+	 */
+	"searchQuotaUxRestampNote",
+	/*
 	 * And by the credential-input change, whose note is the newest top-level
 	 * record on the branch: it states the pair this tip ships, moves both trees
 	 * (the dock's masked secret field and its answer path in `src/`, the suite's
@@ -2376,6 +2394,10 @@ const BRANCH_RECORDS = [
 	 * And remediation round 3's record closes the set, for the same reason.
 	 */
 	"updateStallBoundRoundThreeNote",
+	/*
+	 * And the seventh fold's record rides beside them - same reason, same check.
+	 */
+	"foldOnto8b082c33d8Note",
 	/*
 	 * And this branch's own record, folded in beside it: the account-foot
 	 * refresh writes one top-level note, registered here for the same
