@@ -778,6 +778,77 @@
 	}
 
 	/*
+	 * THE POINTER AFFORDANCE, RESTORED CENTRALLY.
+	 *
+	 * Tailwind v4's preflight deliberately stopped giving buttons the pointer
+	 * cursor - v3's preflight set `button { cursor: pointer }`, and v4 removed it
+	 * to follow the platform's own default - and this app's port off MUI landed
+	 * AFTER that change. MUI's ButtonBase painted its own pointer, so nothing in
+	 * this tree ever had to, and nothing does: measured on the design system's
+	 * own primitives story, all 68 buttons, every Radix trigger (combobox,
+	 * checkbox, switch, tab) and every menu item computed `cursor: default` or
+	 * `auto`. The operator's report - "no pointer affordance across the app" -
+	 * is that same reading taken from a mouse.
+	 *
+	 * ONE LIST, BY SEMANTICS, SO THE NEXT COMPONENT INHERITS IT. The selector is
+	 * the control vocabulary - the roles the shadcn ports render as
+	 * (`role="menuitem"`, `tab`, `switch` ...) plus the native controls the app
+	 * actually uses - so a component added later gets the affordance from what it
+	 * IS rather than from a class somebody remembered to attach, which is the
+	 * property that makes this hold as the app grows. The full audit of every
+	 * story (`scripts/cursor-audit.mjs`) is what keeps the list honest: it
+	 * asserts this vocabulary by name, so a control missing from this rule shows
+	 * up as a measurement rather than as a user's complaint.
+	 *
+	 * `:where()` IS THE MECHANISM, NOT A STYLE. Zero specificity means every
+	 * deliberate word a component says about its own cursor still wins: an
+	 * explicit `cursor-pointer` on a non-semantic card, a `cursor-default` that
+	 * marks an inert row or a control whose affordance is deliberately withdrawn
+	 * (the composer's readings, the dead-directory chip), the resize handles' own
+	 * `col-resize` - all of them are utilities, and a utility always beats a
+	 * base-layer rule. The disabled rule below still wins for a disabled control
+	 * for a different reason: same specificity as this one, and it is the later
+	 * rule.
+	 *
+	 * WHAT IT DELIBERATELY LEAVES ALONE: text entry (the I-beam is the
+	 * platform's to give, and text fields are kept out of the list by name - a
+	 * `textarea` or text `input` carrying `role="combobox"`, which this app puts
+	 * on the composer and on the pickers' filter fields, is a text surface
+	 * first, so the one role a text field can wear is excluded explicitly); `label` elements
+	 * (a label's click-through to its control is a per-component decision);
+	 * resize handles (`role="separator"` names its own cursor); and drag
+	 * surfaces (owned per surface - the mermaid and mesh canvases each swap
+	 * `grab`/`grabbing` themselves).
+	 */
+	:where(
+			a[href],
+			button,
+			summary,
+			select,
+			input[type="button"],
+			input[type="submit"],
+			input[type="reset"],
+			input[type="file"],
+			input[type="checkbox"],
+			input[type="radio"],
+			[role="button"],
+			[role="link"],
+			[role="menuitem"],
+			[role="menuitemcheckbox"],
+			[role="menuitemradio"],
+			[role="tab"],
+			[role="switch"],
+			[role="checkbox"],
+			[role="radio"],
+			[role="option"],
+			[role="combobox"]:not(input):not(textarea):not([contenteditable="true"]),
+			[role="slider"],
+			[role="treeitem"]
+		) {
+		cursor: pointer;
+	}
+
+	/*
 	 * Disabled changes colour, never opacity.
 	 *
 	 * An opacity-faded control fades its own background too, so the same
