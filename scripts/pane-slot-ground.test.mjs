@@ -48,9 +48,9 @@
  * WHAT IT CANNOT SEE: whether the result LOOKS right, and whether any given theme's
  * two grounds are far enough apart to read. The magnitudes are
  * `scripts/contrast-contract.mjs`'s (`surface` -> `canvas` is an asserted adjacent
- * pair there, and `canvas` -> `elevated` the region pair its `REGION_SEPARATION_FLOOR`
- * holds at 4.0) and the frames are the evidence set's. A green run here says the
- * slot is wired the way the report asked.
+ * pair there, ΔE00 2.05-6.76 across the palettes, and `canvas` -> `elevated` the
+ * region pair its `REGION_SEPARATION_FLOOR` holds at 4.0) and the frames are the
+ * evidence set's. A green run here says the slot is wired the way the report asked.
  */
 
 import assert from "node:assert/strict";
@@ -108,7 +108,7 @@ function withoutComments(source) {
  * call is work the linter is right to refuse.
  */
 const LANE_GRADIENT =
-	/linear-gradient\(to right, var\((--lo-[\w-]+)\) \$\{columnWidth\}px, var\((--lo-[\w-]+)\) \$\{columnWidth\}px, var\((--lo-[\w-]+)\) \$\{([\w.]+)\}px, var\((--lo-[\w-]+)\) \$\{([\w.]+)\}px\)/;
+	/linear-gradient\(to right, var\((--lo-[\w-]+)\) \$\{[\w-]+\}px, var\((--lo-[\w-]+)\) \$\{[\w-]+\}px, var\((--lo-[\w-]+)\) \$\{([\w.]+)\}px, var\((--lo-[\w-]+)\) \$\{([\w.]+)\}px\)/;
 const PANE_ROOT = /className=\{cn\("flex h-full flex-col (bg-[\w-]+)"\)\}/g;
 const PANE_BAR =
 	/"flex (h-\d+) shrink-0 items-center justify-between gap-2 ([^"]*?)px-2"/g;
@@ -144,9 +144,9 @@ const PANE_HOSTS = [
 /**
  * The lane's own stops, read off the gradient `chat-layout.tsx` paints it with.
  *
- * The gradient is `linear-gradient(to right, <sidebar> <columnWidth>px,
- * <conversation> <columnWidth>px, <conversation> <edge>px, <slot> <edge>px)`: the
- * sidebar's ground to the sidebar's width, the CONVERSATION'S TOKEN REPEATED at
+ * The gradient is `linear-gradient(to right, <sidebar> <band>px,
+ * <conversation> <band>px, <conversation> <edge>px, <slot> <edge>px)`: the
+ * sidebar's ground to the band's width, the CONVERSATION'S TOKEN REPEATED at
  * the slot's leading edge, and the slot's own ground from that edge to the
  * window's right edge. Reading those tokens here, rather than restating them, is
  * the whole point of claim 1 — a literal would pass while the lane and the slot
@@ -156,6 +156,14 @@ const PANE_HOSTS = [
  * the near-miss: a three-stop gradient from the conversation's token to the
  * slot's interpolates one ground into the other across the conversation's whole
  * width, which is a band that fades rather than a stop that lands.
+ *
+ * THE BAND'S OWN STOP IS DELIBERATELY NOT READ HERE, beyond its existence: it is
+ * the sidebar's width on a route with no column of its own and that column's
+ * right edge where one exists (`Math.max` over the two), and that geometry is
+ * `lane-leading.test.mjs`'s subject rather than this file's. What this file
+ * holds is the SHAPE — four stops, the conversation's token repeated, the slot's
+ * ground starting exactly where the conversation's ends — and the stop count, so
+ * any other shape is a re-read rather than a silently ignored band.
  */
 const CHAT_VIEW_GROUND =
 	/"flex h-full min-h-0 grow flex-col overflow-hidden rounded-none (bg-[\w-]+)"/;
@@ -177,7 +185,7 @@ function laneStops() {
 	const gradient = read(CHAT_LAYOUT).match(LANE_GRADIENT);
 	assert.ok(
 		gradient,
-		"chat-layout.tsx no longer paints the lane with a four-stop gradient (sidebar, conversation, the conversation repeated at the slot's edge, the slot); the panes' ground is derived from that gradient, so this file must be re-read before it can assert anything",
+		"chat-layout.tsx no longer paints the lane with a four-stop role gradient (`linear-gradient(to right, var(--lo-<role>) ${<band>}px, var(--lo-<role>) ${<band>}px, var(--lo-<role>) ${<edge>}px, var(--lo-<role>) ${<edge>}px)`); the panes' ground is derived from that gradient, so any other shape - a three-stop ramp, a literal colour - has to be re-read before this file can assert anything",
 	);
 	const [, sidebar, conversation, repeated, firstEdge, slot, slotEdge] =
 		gradient;
