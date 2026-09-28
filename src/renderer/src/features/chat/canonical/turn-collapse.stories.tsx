@@ -356,13 +356,15 @@ const restoredTurn = (): TranscriptState => {
 /**
  * A turn still in flight: the control - nothing condenses while it runs.
  *
- * `NOW`-based (D5): the held call's clock is the frame's own seconds.
+ * The stamps sit BEHIND the capture's own clock (D5): a call started five
+ * seconds ago reads `5s` rather than the `0s` a start at module load shows or
+ * the `100d+` the frozen `TS` showed.
  */
 const runningTurn = (): TranscriptState => {
 	const state = applyEvent(
 		EMPTY_TRANSCRIPT,
 		{ type: "message_start", message: userMessage("u1", QUESTION) },
-		NOW,
+		NOW - 10_000,
 	);
 	return runCalls(
 		state,
@@ -370,7 +372,7 @@ const runningTurn = (): TranscriptState => {
 			{ ...CALL_A, holding: true },
 			{ ...CALL_B, holding: true },
 		],
-		NOW + 2_000,
+		NOW - 5_000,
 	);
 };
 
@@ -387,9 +389,9 @@ const parkedTurn = (): TranscriptState => {
 	const state = applyEvent(
 		EMPTY_TRANSCRIPT,
 		{ type: "message_start", message: userMessage("u1", QUESTION) },
-		NOW,
+		NOW - 10_000,
 	);
-	return runCalls(state, [{ ...CALL_A, holding: true }], NOW + 2_000);
+	return runCalls(state, [{ ...CALL_A, holding: true }], NOW - 5_000);
 };
 
 /** A minimal pending approval, shaped as the wire sends it. */
@@ -453,6 +455,17 @@ const pinnedTurn = (): TranscriptState => {
 		ts: number,
 		payload: Record<string, unknown>,
 	): Entry => ({ id, ts, type: "message", payload });
+	/*
+	 * The marker is a CUSTOM entry, not a message (the durable reader switches
+	 * on `entry.type === "custom" && payload.custom_type ===
+	 * "completion_attention"`): a `message` spelling of it silently paints
+	 * nothing, which is how the first capture of this cell missed its notice.
+	 */
+	const customEntry = (
+		id: string,
+		ts: number,
+		payload: Record<string, unknown>,
+	): Entry => ({ id, ts, type: "custom", payload });
 	return applyHistoryPage(EMPTY_TRANSCRIPT, {
 		entries: [
 			entry("u1", S, {
@@ -468,7 +481,7 @@ const pinnedTurn = (): TranscriptState => {
 				content: [{ type: "text", text: "tests 40\npass 40\n" }],
 				provider_payload: { duration_s: 12.5, details: {} },
 			}),
-			entry("n1", S + 6, {
+			customEntry("n1", S + 6, {
 				custom_type: "completion_attention",
 				details: { anchor: "n1", kind: "interrupted" },
 			}),
