@@ -138,6 +138,9 @@ export const ayuDark: ThemeDefinition = {
 		 * `elevated` is the tightest ground at ΔE00 5.02.
 		 */
 		hairline: "#3B414B",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.85:1 there against `hairline`'s 1.71:1.
+		hairlineStrong: "#404650",
 		// upstream's ui line 2B3038 is 1.11:1 on `elevated` — a ground colour
 		// doing a boundary's job. Lifted along the same blue-grey.
 		/*

@@ -21,7 +21,7 @@
  * "showing 6 of 37" can never be read as a census.
  */
 
-import { Button, Separator, Tooltip } from "@shared/components/ui";
+import { Button, Separator } from "@shared/components/ui";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -40,8 +40,9 @@ import {
 import type { FC } from "react";
 import { resolveDrop } from "./mesh-drop";
 import type { MeshDevice, MeshGraph } from "./mesh-graph";
-import { deviceStatLine, deviceStateWords } from "./mesh-graph";
+import { agoSentence, conversationUnit } from "./mesh-graph";
 import { chipFact, chipLabel } from "./mesh-node";
+import { SUSPECT_WORDS, deviceReach, reachWords } from "./mesh-reach";
 import type { DeviceSessions } from "./mesh-sessions";
 import type { MeshSessionRow } from "./mesh-types";
 
@@ -305,7 +306,30 @@ export const DevicePanel: FC<{
 	onInvite,
 	onRemoveMember,
 }) => {
-	const words = deviceStateWords(device);
+	const reach = deviceReach(device);
+	/*
+	 * THE HEADER SPEAKS THE REACH MODEL, and the age is NOT in it (design round's panel
+	 * frame): the shipped header read `3 conversations · seen 9m ago`, which printed the
+	 * rotation stamp under a heartbeat's name AND printed it a second time in the section
+	 * below. One fact, one place - so the header carries the member-record fact where there
+	 * is one (a revoked membership, a suspect identity) beside the reach, and the age lives
+	 * in the Status section that labels it.
+	 */
+	const revoked = device.memberships.every((membership) => !membership.active);
+	const countWords =
+		device.sessionCount === null
+			? conversationUnit(null)
+			: `${device.sessionCount} ${conversationUnit(device.sessionCount)}`;
+	/*
+	 * A SUSPECT IDENTITY WINS THE HEADER (the design's own ordering: a security fact about
+	 * the member record outranks every probe result), and the reach is still one line below
+	 * in the Status section - so the header never has to say two things at once.
+	 */
+	const headWords = device.suspect
+		? SUSPECT_WORDS
+		: [revoked ? "revoked membership" : countWords, reachWords(reach)]
+				.filter(Boolean)
+				.join(" · ");
 	const shownOf =
 		sessionTotal > sessions.rows.length
 			? `${sessions.rows.length} of ${sessionTotal}`
@@ -332,26 +356,22 @@ export const DevicePanel: FC<{
 				 * node's stripe follows, stated here because a panel has room to name it.
 				 */}
 				<p className="flex items-center gap-1.5 text-meta text-ink-muted">
-					{device.state === "suspect" && (
+					{device.suspect && (
 						<ShieldAlert aria-hidden="true" className="size-3.5 text-danger" />
 					)}
-					{device.state === "unreachable" && (
+					{!device.suspect && reach === "unanswered" && (
 						<TriangleAlert
 							aria-hidden="true"
 							className="size-3.5 text-warning"
 						/>
 					)}
 					{/*
-					 * THE STAT LINE IS THE NODE'S OWN LINE, rendered here from the same function: the
-					 * panel does not get a second opinion about how a device is described, and the
-					 * reason an unreachable device carries is the backend's sentence verbatim.
+					 * THE HEADER IS ONE BUILT SENTENCE, not a state word beside a stat line: see
+					 * `headWords` above for what wins, and the Status section below for the reach's own
+					 * row. Two readings of one fact in two registers is what this header used to be.
 					 */}
-					{words || deviceStatLine(device, nowSeconds)}
+					{headWords}
 				</p>
-				{/* The reason is the backend's own sentence and is never re-worded here. */}
-				{device.reason && (
-					<p className="text-meta text-warning">{device.reason}</p>
-				)}
 			</header>
 
 			<Separator />
@@ -454,13 +474,80 @@ export const DevicePanel: FC<{
 						))}
 					</ul>
 				)}
-				{device.endpoints.length > 0 && (
-					<Tooltip content={device.endpoints.join("\n")}>
-						<span className="w-fit text-meta text-ink-dim">
-							{device.endpoints.length}{" "}
-							{device.endpoints.length === 1 ? "address" : "addresses"}
-						</span>
-					</Tooltip>
+			</section>
+
+			<Separator />
+
+			{/*
+			 * NETWORK ADDRESSES, in full rather than behind a hover (design round's D5).
+			 *
+			 * The shipped panel rendered this as `1 address` plus a tooltip, so the wire's own
+			 * strings were reachable only by pointer - and a keyboard or touch reader never saw one
+			 * of them. The addresses are the ONLY input to the canvas's boundaries, so a reader who
+			 * cannot see them cannot check the drawing either.
+			 *
+			 * `advertised` AND NOT `observed`: these strings come from the OWNING device's own
+			 * `advertise_endpoints`, and an observed set does not exist on this wire - a column
+			 * headed `observed` would be empty forever. The port inside the string is printed as
+			 * part of the address and given NO NOUN: nothing in the payload distinguishes the
+			 * relay's listener from a dial target, so calling it a listener would be a guess.
+			 */}
+			<section className="flex flex-col gap-2">
+				<h3 className="text-meta text-ink-dim">Network addresses</h3>
+				{device.endpoints.length === 0 ? (
+					<p className="text-meta text-ink-dim">No address published.</p>
+				) : (
+					<ul className="m-0 flex list-none flex-col gap-1 p-0">
+						{device.endpoints.map((endpoint) => (
+							<li
+								key={endpoint}
+								className="flex items-baseline justify-between gap-2"
+							>
+								<span className="min-w-0 truncate font-mono text-body-sm text-ink">
+									{endpoint}
+								</span>
+								<span className="shrink-0 text-meta text-ink-dim">
+									advertised
+								</span>
+							</li>
+						))}
+					</ul>
+				)}
+			</section>
+
+			<Separator />
+
+			{/*
+			 * STATUS: the reach, then the age under the name the wire's own writer gives it.
+			 *
+			 * `Last status frame` IS THE FIX (design round's D4): the value is a ROTATION stamp,
+			 * not a heartbeat, and there is no per-device liveness field on this wire at all. The
+			 * label names what the field is; `never` rather than a date computed from zero is what
+			 * the `null` case says, because a date derived from `0` is 1970 wearing a timestamp's
+			 * clothes.
+			 *
+			 * The relay's own sentence for a silence sits HERE, under the reach it explains,
+			 * rather than under the header: it is part of the answer to "how was it reached", and it
+			 * is never re-worded.
+			 */}
+			<section className="flex flex-col gap-2">
+				<h3 className="text-meta text-ink-dim">Status</h3>
+				<dl className="m-0 flex flex-col gap-1">
+					<div className="flex items-baseline justify-between gap-2">
+						<dt className="text-meta text-ink-dim">Reach</dt>
+						<dd className="m-0 text-body-sm text-ink">{reachWords(reach)}</dd>
+					</div>
+					<div className="flex items-baseline justify-between gap-2">
+						<dt className="text-meta text-ink-dim">Last status frame</dt>
+						<dd className="m-0 text-body-sm text-ink">
+							{device.lastSeenAt === null
+								? "never"
+								: agoSentence(nowSeconds - device.lastSeenAt)}
+						</dd>
+					</div>
+				</dl>
+				{device.reason && (
+					<p className="text-meta text-warning">{device.reason}</p>
 				)}
 			</section>
 
