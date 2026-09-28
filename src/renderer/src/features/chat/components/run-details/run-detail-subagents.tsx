@@ -13,10 +13,13 @@
  *    `Space` on a focused row does the same, because the TUI's row is
  *    `can_focus` with `Binding("enter", ...)` and a mouse-only affordance would
  *    make one of the two a guess (`subagent_panel.py:1341-1343`).
- * 2. **The row HAS a hover ground** — `bg-elevated`, the role `branding.md` names
- *    for a hovered row. The old rule ("no row has a hover ground, because nothing
- *    here is clickable") was right and is inverted by this change; the to-do rows
- *    keep none, so the two lists no longer have to agree.
+ * 2. **The row HAS a hover ground** — `hover:bg-surface`, the colour step down
+ *    from the slot's `elevated` root this pane stands on (the drawer's-rung pass
+ *    moved the root and re-grounded the rows with it; `elevated` is the ROOT's
+ *    role here, so the step cannot also use it. Nothing lifts, scales or
+ *    translates, `branding.md`). The old rule ("no row has a hover ground,
+ *    because nothing here is clickable") was right and is inverted by this
+ *    change; the to-do rows keep none, so the two lists no longer have to agree.
  * 3. **`+N more` is a real disclosure control**, not an inert line: a child behind
  *    the cap would otherwise be unreachable, and a roster where six rows are
  *    reachable and the seventh silently is not is the defect, not the fix.
@@ -51,7 +54,7 @@ import { DetailLine, SubagentRowBody } from "./run-detail-row-parts";
  * Exported because the reader's own subagents section is a second list of the
  * same rows, and it is the WRAPPER rather than the content that carries the rules
  * a reader would notice if the two drifted: the app's `outline` focus ring, the
- * `bg-elevated` hover ground, the accessible name being the row's own text, and
+ * `hover:bg-surface` hover ground, the accessible name being the row's own text, and
  * the unlit branch below. A second wrapper is a second chance for a row to become
  * mouse-only or to lose its height (`§ 6`, `§5`).
  */
@@ -156,7 +159,10 @@ export const SubagentRowView = ({
 				onClick={() => onOpen(row.id)}
 				className={cn(
 					"flex items-start gap-2 px-3 py-1.5 text-left",
-					"cursor-pointer transition-colors duration-fast hover:bg-elevated",
+					/* The row's hover is a step DOWN from the pane's ground (`canvas/index.tsx`),
+					   not up to `elevated`: the rows ride the pane with no plane of their own,
+					   so an `elevated` hover measures ΔE00 0 against the drawer's rung. */
+					"cursor-pointer transition-colors duration-fast hover:bg-surface",
 				)}
 			>
 				{body}

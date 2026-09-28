@@ -19,9 +19,20 @@ import { apiConfig } from "@shared/config/api-config";
 import { cn } from "@shared/lib/utils";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import {
+	DEFAULT_CANVAS_WIDTH,
+	DEFAULT_RUN_PANEL_WIDTH,
+	resolveRightSlotWidth,
+	useUiPreferencesStore,
+} from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { type FC, type ReactNode, useLayoutEffect } from "react";
+import {
+	type FC,
+	type ReactNode,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import {
 	UP_TO_DATE_AFFIRMATION,
 	type UpdateCheckVerdict,
@@ -584,13 +595,21 @@ const INERT_REMEDY: McpRemedyControls = {
  * one, and its rect is the one a press aimed at the pane beside it has to survive
  * (UX round 1, U1). A frame that does not contain the header cannot measure that,
  * so the header is in every dock frame.
+ * THE COLUMN'S CLASSES ARE THE APP'S OWN (`w-0 min-w-[480px] flex-1`, `chat-content.tsx`),
+ * and that is load-bearing rather than tidy: `grow` alone leaves the flex BASIS at auto,
+ * so this column's basis was its CONTENT's width (a paragraph ~848px wide at this
+ * viewport) and the dock beside it was squeezed to its 400px floor in every frame of
+ * the set - a composition the app never draws, where the column's `w-0` basis makes the
+ * 480px floor the whole story and the dock keeps the width the slot resolves for it.
+ * The lane's stop above the dock is derived from the pane's real leading edge, so a
+ * squeezed dock is also a lane stop 140px off the boundary it is meant to land on.
  */
 const ConversationStandIn = ({
 	details,
 }: {
 	details: ReturnType<typeof deriveRunDetails>;
 }) => (
-	<div className="flex h-full min-h-0 min-w-[480px] grow flex-col overflow-hidden">
+	<div className="w-0 min-w-[480px] flex-1 flex h-full min-h-0 flex-col overflow-hidden">
 		<ChatHeader
 			agentName="Core"
 			description="Invoices workspace · on this machine"
@@ -638,11 +657,41 @@ const useMacChrome = () => {
 };
 
 const ChatShellFrame: FC<{
-	children: ReactNode;
+	/**
+	 * The dock, rendered at the width the app's own slot resolves for this frame's
+	 * row. A render prop rather than a literal because the story mounts the REAL
+	 * `ChatLayout`, so the lane above the dock is painted from
+	 * `resolveRightSlotWidth` — and a pane drawn at any other width would photograph
+	 * a boundary the app does not draw (the defect the pane-slot guard's own note
+	 * records: a harness copy of a removed seam). The width the two arms used to
+	 * pass (`560`, `420`) was a literal the app never draws at the capture's 1280px
+	 * frame; the dock now draws at the app's number for the row it is in.
+	 */
+	pane?: (slotWidth: number) => ReactNode;
 	details: ReturnType<typeof deriveRunDetails>;
-}> = ({ children, details }) => {
+}> = ({ pane, details }) => {
 	useFixtureFetch();
 	useMacChrome();
+
+	/*
+	 * The row the pane shares with the conversation, measured — the same quantity
+	 * `chat-content.tsx` measures for its own resolver call, and 0 for the frame
+	 * before this layout effect, which the resolver reads as "not measured yet".
+	 */
+	const rowRef = useRef<HTMLDivElement | null>(null);
+	const [rowWidth, setRowWidth] = useState(0);
+	useLayoutEffect(() => {
+		const row = rowRef.current;
+		if (!row) return;
+		const measure = () => setRowWidth(row.getBoundingClientRect().width);
+		measure();
+		const observer = new ResizeObserver(measure);
+		observer.observe(row);
+		return () => observer.disconnect();
+	}, []);
+	const slotWidth = useUiPreferencesStore((state) =>
+		resolveRightSlotWidth(rowWidth, state),
+	);
 
 	/*
 	 * The app's own shell root, and it is load-bearing rather than tidy:
@@ -659,9 +708,12 @@ const ChatShellFrame: FC<{
 				sidebar={<SidebarNavigation />}
 				content={
 					<main className="flex min-w-0 grow flex-col overflow-hidden">
-						<div className="flex h-full min-h-0 w-full overflow-hidden">
+						<div
+							ref={rowRef}
+							className="flex h-full min-h-0 w-full overflow-hidden"
+						>
 							<ConversationStandIn details={details} />
-							{children}
+							{pane?.(slotWidth)}
 						</div>
 					</main>
 				}
@@ -688,47 +740,79 @@ export const ChatDockFiles: Story = {
 					},
 				},
 			}));
+			/*
+			 * The pane's OPEN STATE lives in the preferences store, and the lane above
+			 * the dock reads it through the same resolver the pane does - so a story
+			 * that mounted the dock without claiming the slot would photograph a lane
+			 * painted for no pane (and a lane stop of 0). The width is the store's own
+			 * default: the story states which pane is up, not a number the app decides.
+			 */
+			useUiPreferencesStore.setState({
+				isCanvasOpen: true,
+				canvasWidth: DEFAULT_CANVAS_WIDTH,
+			});
+			return () => {
+				useUiPreferencesStore.setState({ isCanvasOpen: false });
+			};
 		}, []);
 
 		return (
-			<ChatShellFrame details={deriveRunDetails(runFixtures.settled())}>
-				<PaneSlot width={560} tourTag="canvas-dock">
-					<Canvas
-						activeDocumentId={undefined}
-						initialDocuments={DOCK_DOCUMENTS}
-						conversationId={DOCK_CONVERSATION_ID}
-						agentId="shell-story-agent"
-						fileCount={DOCK_DOCUMENTS.length}
-						onChangeActiveDocument={() => undefined}
-						onClose={() => undefined}
-						onCloseDocument={() => undefined}
-					/>
-				</PaneSlot>
-			</ChatShellFrame>
+			<ChatShellFrame
+				details={deriveRunDetails(runFixtures.settled())}
+				pane={(slotWidth) => (
+					<PaneSlot width={slotWidth} tourTag="canvas-dock">
+						<Canvas
+							activeDocumentId={undefined}
+							initialDocuments={DOCK_DOCUMENTS}
+							conversationId={DOCK_CONVERSATION_ID}
+							agentId="shell-story-agent"
+							fileCount={DOCK_DOCUMENTS.length}
+							onChangeActiveDocument={() => undefined}
+							onClose={() => undefined}
+							onCloseDocument={() => undefined}
+						/>
+					</PaneSlot>
+				)}
+			/>
 		);
 	},
 };
 
 /** The dock in its run-details sub-view - the other shape the report named. */
 export const ChatDockRunPanel: Story = {
-	render: () => (
-		<ChatShellFrame details={deriveRunDetails(runFixtures.bothInFlight())}>
-			<PaneSlot width={420} minWidth={420} tourTag="run-panel-dock">
-				<RunPanel
-					details={deriveRunDetails(runFixtures.bothInFlight())}
-					mcpServers={deriveMcpServers([], {}, [])}
-					mcpGrantRunning={mcpGrantInFlight([])}
-					mcpRemedy={INERT_REMEDY}
-					sessionId="a1b2c3d4e5f6"
-					pulses={{}}
-					childrenOpenable
-					paneWidth={420}
-					readerChildId={null}
-					previewPage={null}
-					onReaderChildChange={() => undefined}
-					onClose={() => undefined}
-				/>
-			</PaneSlot>
-		</ChatShellFrame>
-	),
+	render: () => {
+		useLayoutEffect(() => {
+			useUiPreferencesStore.setState({
+				isRunPanelOpen: true,
+				runPanelWidth: DEFAULT_RUN_PANEL_WIDTH,
+			});
+			return () => {
+				useUiPreferencesStore.setState({ isRunPanelOpen: false });
+			};
+		}, []);
+
+		return (
+			<ChatShellFrame
+				details={deriveRunDetails(runFixtures.bothInFlight())}
+				pane={(slotWidth) => (
+					<PaneSlot width={slotWidth} minWidth={420} tourTag="run-panel-dock">
+						<RunPanel
+							details={deriveRunDetails(runFixtures.bothInFlight())}
+							mcpServers={deriveMcpServers([], {}, [])}
+							mcpGrantRunning={mcpGrantInFlight([])}
+							mcpRemedy={INERT_REMEDY}
+							sessionId="a1b2c3d4e5f6"
+							pulses={{}}
+							childrenOpenable
+							paneWidth={slotWidth}
+							readerChildId={null}
+							previewPage={null}
+							onReaderChildChange={() => undefined}
+							onClose={() => undefined}
+						/>
+					</PaneSlot>
+				)}
+			/>
+		);
+	},
 };

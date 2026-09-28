@@ -236,9 +236,13 @@ export const ConsoleEndedBar: FC<{
 	exitCode: number | null;
 	live: boolean;
 }> = ({ exitCode, live }) => (
+	/* The notice is a band on the PANE's ground, so it wears a step of its own:
+	   `elevated` on the drawer's rung (`canvas/index.tsx`) measures ΔE00 0, which
+	   is why this is `surface` — a step down that survives every palette, and the
+	   same way the browser's consent bar reads. */
 	<div
 		className={cn(
-			"flex shrink-0 items-center gap-2 border-hairline border-b bg-elevated px-3 py-1.5",
+			"flex shrink-0 items-center gap-2 border-hairline border-b bg-surface px-3 py-1.5",
 		)}
 		data-tour-tag="console-ended"
 	>
