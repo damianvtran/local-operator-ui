@@ -1672,7 +1672,7 @@ const STAMP_BINDING_NOTES = [
 	 * reader is owed the pair and what the capture moved with it, the same case
 	 * `projectsBoardTimelineNote` is in the list for.
 	 */
-	 "cardSurfacesRestyleNote",
+	"cardSurfacesRestyleNote",
 	/*
 	 * This branch's own: `aidaSidebarRestampNote` states THIS FILE's own pair for Aida's sidebar
 	 * slice (see its BRANCH_RECORDS entry for what moved), so it is held to that
@@ -2531,7 +2531,7 @@ const BRANCH_RECORDS = [
 	 * completeness reason: a fold that started from main's copy would drop the
 	 * card-surfaces restyle's note first.
 	 */
-	 "cardSurfacesRestyleNote",
+	"cardSurfacesRestyleNote",
 	/*
 	 * And AIDA'S SIDEBAR SLICE rides beside them: the change moves both trees this
 	 * file binds (the rail's row and its two gates, the composer's `/aida`, the two
