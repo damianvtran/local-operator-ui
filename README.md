@@ -5,70 +5,58 @@
        src="./resources/local-operator-icon-2-light-clear.png">
 </picture>
 
-<h1 align="center">Local Operator: AI Agent Assistants On Your Device</h1>
-<div align="center">
-  <h2>🤖 Personal AI Assistants that Turn Ideas into Action</h2>
-  <p><i>Real-time code execution on your device through natural conversation</i></p>
-</div>
+<h1 align="center">Local Operator</h1>
+
+<p align="center"><i>AI agent assistants on your device — they plan, write, and run Python, and every step stays in the conversation.</i></p>
+
+<p align="center">
+  <a href="https://github.com/damianvtran/local-operator-ui/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/damianvtran/local-operator-ui"></a>
+  <a href="https://github.com/damianvtran/local-operator-ui/actions/workflows/ci.yml"><img alt="CI status" src="https://img.shields.io/github/actions/workflow/status/damianvtran/local-operator-ui/ci.yml?branch=main"></a>
+  <a href="https://www.npmjs.com/package/local-operator-ui"><img alt="npm version" src="https://img.shields.io/npm/v/local-operator-ui"></a>
+  <a href="./LICENSE"><img alt="License: MIT" src="https://img.shields.io/github/license/damianvtran/local-operator-ui"></a>
+  <img alt="Platforms: macOS, Windows, and Linux" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey">
+</p>
 
 <br />
 
 <p align="center">
-  <img src="./resources/preview-example.gif" alt="Local Operator UI Dashboard Example" style="width: 640px">
-</div>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./resources/readme/app-shell-chat-dark.webp">
+    <source media="(prefers-color-scheme: light)" srcset="./resources/readme/app-shell-chat-light.webp">
+    <img alt="The app's chat view: an agent's reply, the run details panel with two subagents running, and their shared to-do list." src="./resources/readme/app-shell-chat-light.webp">
+  </picture>
+  <br />
+  <sub><code>the app at work</code> — a conversation with an agent, two subagents running beside it, and the to-do list they share.</sub>
+</p>
 
 <br />
 
-**<span style="color: #38C96A">Local Operator</span>** empowers you to run Python code safely on your own machine through an intuitive chat interface. The AI agent:
+**Local Operator** runs AI agent assistants on your own machine, from a desktop chat app. You give an agent a goal; it plans the work, writes and runs Python on your device, reads and writes files, and asks before it takes anything risky. The whole run — messages, tool calls, commands, and results — stays in the conversation in front of you.
 
-🎯 **Plans & Executes** - Breaks down complex goals into manageable steps and executes them with precision.
+For the agent environment CLI and server backend, see the [Local Operator repository](https://github.com/damianvtran/local-operator).
 
-🔒 **Prioritizes Security** - Built-in safety checks by independent AI review and user confirmations keep your system protected
-
-🌐 **Flexible Deployment** - Run completely locally with Ollama models or leverage cloud providers like OpenAI
-
-🔧 **Problem Solving** - Intelligently handles errors and roadblocks by adapting approaches and finding alternative solutions
-
-This project is proudly open source under the MIT license. We believe AI tools should be accessible to everyone, given their transformative impact on productivity. Your contributions and feedback help make this vision a reality!
-
-> "Democratizing AI-powered productivity, one conversation at a time."
-
-<div align="center">
-  <a href="https://github.com/damianvtran/local-operator">Agent Backend</a> •
-  <a href="https://local-operator.com">Learn More</a> •
+<p align="center">
+  <a href="https://github.com/damianvtran/local-operator">Agent backend</a> •
+  <a href="https://local-operator.com">Website</a> •
   <a href="https://github.com/damianvtran/local-operator/tree/main/examples/notebooks">Examples</a>
-</div>
+</p>
 
-## 💡 Overview
-
-The Local Operator UI is a user interface for managing and interacting with the Local Operator agent environment. It is built using Electron, React, and TypeScript, leveraging modern web technologies for a rich and responsive user experience.
-
-👉 For the agent environment CLI and Server backend, see the [Local Operator GitHub repository](https://github.com/damianvtran/local-operator).
-
-## 🚀 Getting Started
+## Getting started
 
 ### Prerequisites
 
-Before you begin, ensure you have the following installed:
+- **Node.js** 22.13.1 or newer, for the npm install paths below. [nvm](https://github.com/nvm-sh/nvm) is a good way to manage Node versions. The desktop installers need no toolchain.
 
-- **Node.js**: Version 22.13.1 or higher. It's recommended to use [nvm](https://github.com/nvm-sh/nvm) for managing Node.js versions.
-
-The Local Operator backend is now bundled with the application and will be installed automatically when you first run the application. If you prefer to use an existing Local Operator backend installation, the application will detect it and use it instead.
-
-### NPM Installation
-
-You can install and run Local Operator UI directly using [npx](https://docs.n8n.io/hosting/installation/npm/).
+### Run with npx
 
 ```bash
-# Install and run in one command
+# Download and run in one command
 npx local-operator-ui
 ```
 
-This will download and execute the latest version of the Local Operator UI, launching the application immediately.
+This runs the latest version and launches the app.
 
-### Manual Installation
-
-Alternatively, without npx, you can install the package globally with standard npm:
+### Install with npm
 
 ```bash
 # Install globally
@@ -78,29 +66,95 @@ npm install -g local-operator-ui
 local-operator-ui
 ```
 
-After installation, the application will automatically connect to the Local Operator backend API at `http://localhost:1111` by default.
+### Desktop applications
 
-### Desktop Applications
+Prebuilt apps are on the [download page](https://local-operator.com/download) and the [releases page](https://github.com/damianvtran/local-operator-ui/releases):
 
-Pre-built desktop applications are available for macOS, Windows, and Linux. Visit the [Releases](https://github.com/damianvtran/local-operator-ui/releases) page to download the latest version for your platform.
-
-- **macOS**: Download the `.dmg` file and drag the application to your Applications folder.
+- **macOS**: Download the `.dmg` (or `.zip`) and open it.
 - **Windows**: Download the `.exe` installer and follow the installation prompts.
-- **Linux**: Download the appropriate package (`.deb`, `.rpm`, or `.AppImage`) for your distribution.
+- **Linux**: Download the `.deb`, `.rpm`, or `.AppImage` for your distribution.
 
-### Building from Source
+The Local Operator backend is bundled with the application and is installed automatically on first run. If you already have a Local Operator backend installed, the application detects it and uses it instead; by default it connects to the backend API at `http://localhost:1111`.
+
+## What it looks like
+
+### Chat and agents
+
+| Light | Dark |
+| :---: | :---: |
+| <img src="./resources/readme/chat-trace-light.webp" alt="Light theme: a conversation showing tool rows, a blocked risky action, and a question the agent asked." width="420"> | <img src="./resources/readme/chat-trace-dark.webp" alt="Dark theme: the same conversation." width="420"> |
+
+<sub><code>chat</code> — a working agent's tool rows, a blocked risky action, and the question it asked before continuing.</sub>
+
+### Agent hub
+
+| Light | Dark |
+| :---: | :---: |
+| <img src="./resources/readme/agent-hub-light.webp" alt="Light theme: the agent hub with categories and a grid of community agents." width="420"> | <img src="./resources/readme/agent-hub-dark.webp" alt="Dark theme: the agent hub grid." width="420"> |
+
+<sub><code>agent hub</code> — community agents you can browse and download, by category.</sub>
+
+### Schedules
+
+| Light | Dark |
+| :---: | :---: |
+| <img src="./resources/readme/schedules-light.webp" alt="Light theme: the schedules page, listing scheduled wakes with their cadence and run history." width="420"> | <img src="./resources/readme/schedules-dark.webp" alt="Dark theme: the schedules page." width="420"> |
+
+<sub><code>schedules</code> — conversations that wake on a timer, with what ran and when they run next.</sub>
+
+### Projects
+
+| Light | Dark |
+| :---: | :---: |
+| <img src="./resources/readme/projects-board-light.webp" alt="Light theme: the projects board with active, paused, and done columns." width="420"> | <img src="./resources/readme/projects-board-dark.webp" alt="Dark theme: the projects board." width="420"> |
+
+<sub><code>projects</code> — workstreams you and your agents track across sessions, as a board or a timeline.</sub>
+
+### Appearance
+
+| Light | Dark |
+| :---: | :---: |
+| <img src="./resources/readme/appearance-light.webp" alt="Light theme: the appearance picker showing the Local Operator themes as swatches." width="420"> | <img src="./resources/readme/appearance-dark.webp" alt="Dark theme: the appearance picker." width="420"> |
+
+<sub><code>appearance</code> — 59 colour themes ship with the app; the Local Operator light and dark palettes are the defaults.</sub>
+
+## Features
+
+- **Chat with agents** — real-time conversation with markdown rendering for code blocks and formatted text, syntax highlighting, and per-conversation history.
+- **Agent management** — create, update, and delete agents, and configure their settings: model and description (general), temperature and top_p (chat), and security prompt and execution permissions (security).
+- **Settings** — system prompt configuration, API credentials management, and application configuration in one place.
+- **Local Operator API integration** — the app talks to the Local Operator backend API and shows real-time status updates for long-running operations.
+- **Bundled backend** — the Local Operator backend is installed automatically on first run on every platform; an existing backend installation is detected and used instead.
+
+## Project structure
+
+The codebase is organized for modularity and code reuse:
+
+- `src/renderer/src/shared/`: Contains all shared code, including components, hooks, stores, configuration, themes, and utilities. Use the `@shared/` path alias for imports.
+- `src/renderer/src/features/`: Contains feature-specific code for the UI, organized by domain.
+- `src/renderer/src/app.tsx`, `main.tsx`, etc.: Entry points for the Electron renderer process.
+- `build/`, `resources/`, `scripts/`: Build assets, static resources, and build scripts.
+
+**Import conventions:**
+
+- Use `@shared/` for shared modules (e.g., `import { useAgents } from "@shared/hooks/use-agents"`).
+- Use `@features/` for feature-specific modules.
+- The old aliases (`@renderer`, `@components`, `@hooks`, etc.) have been removed in favor of this unified structure.
+
+For more details on building or contributing, see the [Contributing Guide](./CONTRIBUTING.md) and [BUILD.md](./docs/BUILD.md).
+
+## Building from source
 
 If you want to build the application from source, see the [BUILD.md](./docs/BUILD.md) file for detailed instructions.
 
-#### Python Bundling
+### Python bundling
 
-For macOS builds, we now bundle a standalone Python directly with the application instead of requiring Homebrew installation. This approach:
+For macOS builds, the app bundles a standalone Python directly instead of requiring a Homebrew installation. This approach:
 
-- Eliminates the need for admin privileges during installation
-- Makes the application more self-contained
+- Needs no admin privileges during installation
+- Keeps the application self-contained
 - Works offline
-- Provides a more reliable user experience
-- Supports installation of Python packages via pip
+- Supports installing Python packages with pip
 
 To set up the standalone Python for development:
 
@@ -113,7 +167,7 @@ This uses [python-build-standalone](https://github.com/indygreg/python-build-sta
 
 For more details, see the [PYTHON_BUNDLING.md](./docs/PYTHON_BUNDLING.md) documentation.
 
-### Code Signing and Notarization
+### Code signing and notarization
 
 All desktop applications are code signed and notarized to ensure security and trust:
 
@@ -123,68 +177,13 @@ All desktop applications are code signed and notarized to ensure security and tr
 
 For detailed information about the code signing and notarization process, see the [CODE_SIGNING.md](./docs/CODE_SIGNING.md) document.
 
-## 🗂️ Project Structure
-
-The codebase is organized for modularity and code reuse:
-
-- `src/renderer/src/shared/`: Contains all shared code, including components, hooks, stores, configuration, themes, and utilities. Use the `@shared/` path alias for imports.
-- `src/renderer/src/features/`: Contains feature-specific code for the UI, organized by domain.
-- `src/renderer/src/app.tsx`, `main.tsx`, etc.: Entry points for the Electron renderer process.
-- `build/`, `resources/`, `scripts/`: Build assets, static resources, and build scripts.
-
-**Import Conventions:**
-
-- Use `@shared/` for shared modules (e.g., `import { useAgents } from "@shared/hooks/use-agents"`).
-- Use `@features/` for feature-specific modules.
-- The old aliases (`@renderer`, `@components`, `@hooks`, etc.) have been removed in favor of this unified structure.
-
-For more details on building or contributing, see the [Contributing Guide](./CONTRIBUTING.md) and [BUILD.md](./docs/BUILD.md).
-
-## ✨ Features
-
-The Local Operator UI provides a comprehensive interface for interacting with AI agents:
-
-### Chat Interface
-
-- Real-time chat with AI agents
-- Markdown rendering for code blocks and formatted text
-- Syntax highlighting for code snippets
-- Message history and conversation management
-
-### Agent Management
-
-- Create, update, and delete AI agents
-- Configure agent settings:
-  - General settings (name, description, model)
-  - Chat settings (temperature, top_p, etc.)
-  - Security settings (security prompt, execution permissions)
-
-### Settings
-
-- System prompt configuration
-- API credentials management
-- Application configuration
-
-### API Integration
-
-- Seamless integration with the Local Operator backend API
-- Real-time status updates for long-running operations
-- Error handling and retry mechanisms
-
-### Bundled Backend
-
-- The Local Operator backend is now bundled with the application
-- Automatic installation of the backend when first running the application
-- Automatic detection and use of existing backend installations
-- Cross-platform support for Windows, macOS, and Linux
-
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please see our [Contributing Guide](./CONTRIBUTING.md) for details on how to get started with development, code style guidelines, and our contribution process.
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
-### Common Issues
+### Common issues
 
 #### Application fails to connect to the backend
 
@@ -197,7 +196,7 @@ Contributions are welcome! Please see our [Contributing Guide](./CONTRIBUTING.md
 #### Backend installation fails
 
 - Check the application logs for error messages
-- For macOS, the application now uses a bundled Python framework instead of requiring Homebrew and pyenv
+- For macOS, the application uses a bundled Python framework instead of requiring Homebrew and pyenv
 - If you encounter issues with the bundled Python, see the [PYTHON_BUNDLING.md](./docs/PYTHON_BUNDLING.md) documentation
 - As a fallback, you can try installing the backend manually with `pip install local-operator` and then start it with `local-operator serve`
 
@@ -215,38 +214,23 @@ Contributions are welcome! Please see our [Contributing Guide](./CONTRIBUTING.md
 
 #### The window came to the front on its own, or a run never appeared
 
-Every time the app brings a window to the front it writes one line to its own
-backend log (`~/Library/Application Support/Local Operator/logs/backend-service.log`
-on macOS; the `LOCAL_OPERATOR_LOG_DIR` environment variable moves it):
+Every time the app brings a window to the front it writes one line to its own backend log (`~/Library/Application Support/Local Operator/logs/backend-service.log` on macOS; the `LOCAL_OPERATOR_LOG_DIR` environment variable moves it):
 
 ```
 [window-raise] trigger=second-instance mode=normal requested=focus pid=9182 cwd=/Users/you/project applied=restore+show+focus
 ```
 
-`trigger` names what asked: `initial-present` (the app starting up),
-`second-instance` (a second launch sharing this profile), `banner-click`,
-`viewer-focus` or `viewer-resume`. `pid` and `cwd`, when they are there, name the
-process that asked — that is the one to stop if something keeps doing it. A run
-that raises nothing writes nothing, so an app that never came forward has no line
-at all — although a conversation that is WAITING for a window does: a `headless`
-launch against an app with no window open writes `applied=parked`, `parked=<id>`
-rather than a raise, and that conversation opens the next window you give the app.
-In the line above, `mode` is the window mode the raise ran under and `applied` is
-what it actually did.
+`trigger` names what asked: `initial-present` (the app starting up), `second-instance` (a second launch sharing this profile), `banner-click`, `viewer-focus` or `viewer-resume`. `pid` and `cwd`, when they are there, name the process that asked — that is the one to stop if something keeps doing it. A run that raises nothing writes nothing, so an app that never came forward has no line at all — although a conversation that is WAITING for a window does: a `headless` launch against an app with no window open writes `applied=parked`, `parked=<id>` rather than a raise, and that conversation opens the next window you give the app. In the line above, `mode` is the window mode the raise ran under and `applied` is what it actually did.
 
-A second launch only brings the window as far as IT asked: a `headless` run never
-raises it (it can still load the conversation it names), an `inactive` one orders
-the window without activating the app and without pulling it back out of the
-Dock, and a launch that declares nothing — you double-clicking the app while it is
-already running — still comes to the front.
+A second launch only brings the window as far as IT asked: a `headless` run never raises it (it can still load the conversation it names), an `inactive` one orders the window without activating the app and without pulling it back out of the Dock, and a launch that declares nothing — you double-clicking the app while it is already running — still comes to the front.
 
-### Getting Help
+## Getting help
 
 If you encounter issues not covered here, please:
 
 1. Check the [GitHub Issues](https://github.com/damianvtran/local-operator-ui/issues) for similar problems
 2. Open a new issue if your problem hasn't been reported
 
-## 📄 License
+## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details. It is open source because AI tools should be accessible to everyone, and your contributions and feedback help make that real.
