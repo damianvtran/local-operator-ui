@@ -28,7 +28,7 @@ import {
 	Trash2,
 	X,
 } from "lucide-react";
-import { type FC, useEffect, useRef, useState } from "react";
+import { type FC, type ReactNode, useEffect, useRef, useState } from "react";
 import { canvasToggleCap, isCanvasTogglePress } from "../canvas-shortcut";
 import { archiveControlLabel } from "../chat-archived";
 import { useSessionCommand } from "../pickers/use-picker-backend";
@@ -85,6 +85,25 @@ type ChatHeaderProps = {
 	 * absent state, not a dead control.
 	 */
 	identity?: HeaderIdentityData | null;
+	/**
+	 * The device control: where this conversation runs, as one chip beside the
+	 * identity slots.
+	 *
+	 * A NODE RATHER THAN A STATE OBJECT, deliberately. The control's facts live in
+	 * three different stores (the draft row's own destination, this pane's move
+	 * outcome, the mesh's peer reads) and its picker issues a transfer - none of
+	 * which are this header's business, and each of which would put a network read
+	 * and a mutation behind a component whose whole job is chrome. The page that
+	 * owns the session and the draft composes it (`features/chat/device`), exactly
+	 * as it composes `identity` from its own capability gate; withdrawn (no
+	 * `features.peers`, no session and no draft) the title block renders as it did
+	 * before the control existed.
+	 *
+	 * IT IS NOT IN THE ACTION CLUSTER. That cluster is icon-only - it cannot name a
+	 * device, the globe in it already means "open the browser pane", and its shed
+	 * ladder is a five-rung sequence a placement fact has no business joining.
+	 */
+	deviceSlot?: ReactNode;
 	/**
 	 * The session the inline rename writes to, when this header offers rename.
 	 *
@@ -249,6 +268,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	description = "Your on-device AI assistant",
 	descriptionPending = false,
 	identity,
+	deviceSlot,
 	renameSessionId,
 	onOpenOptions,
 	runDetails = null,
@@ -1019,6 +1039,17 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 						{middleTruncatePath(shownDescription, PATH_CHIP_CHARS)}
 					</span>
 				) : null}
+				{/*
+				 * THE DEVICE CONTROL SITS LAST IN THE TITLE BLOCK, which is where the design
+				 * put it: the block already hosts controls of exactly this shape (the team
+				 * and agent chips, 20px `rounded-xs` buttons with a popover), so the chip
+				 * inherits that geometry instead of inventing one. The block clips its own
+				 * second line, so at widths under the app's 800px minimum this chip is the
+				 * first thing to fold - the design's own note, and the reason to move this
+				 * one line above the identity slot if a docked pane's header ever has to
+				 * keep the placement fact and shed the identity pair instead.
+				 */}
+				{deviceSlot}
 			</div>
 			{/*
 			 * The header's action cluster: the run-panel trigger, the browser pane's trigger,
