@@ -1744,6 +1744,15 @@ const STAMP_BINDING_NOTES = [
 	 * re-stamp rides the same re-derivation.
 	 */
 	"foldOntoA8ac7f673cNote",
+	/*
+	 * AND THIS BRANCH'S OWN, the agents offer's dismissal: its subject IS this
+	 * file's binding - the change moves BOTH trees (the offer module, the store
+	 * field, the sidebar control and its story fixture under `src/`; the capture
+	 * row, the new behavioural suite and this registration under `scripts/`)
+	 * AND adds one story's twelve frames while re-shooting the set - so a reader
+	 * is owed the pair and what the capture moved with it.
+	 */
+	"agentsOfferDismissNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2699,6 +2708,16 @@ const BRANCH_RECORDS = [
 	 * that started from main's copy would drop it first.
 	 */
 	"foldOntoA8ac7f673cNote",
+	/*
+	 * And THIS lane's own, added with it: the agents offer's dismissal writes
+	 * one top-level note - it states the pair this change ships, moves both
+	 * trees (the offer module, the store field, the sidebar control and its
+	 * story fixture; the capture row, the new behavioural suite and both
+	 * registrations) and adds one story's twelve frames while re-shooting the
+	 * set - and it is registered here for the same completeness reason: a fold
+	 * that started from main's copy would drop it first.
+	 */
+	"agentsOfferDismissNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
