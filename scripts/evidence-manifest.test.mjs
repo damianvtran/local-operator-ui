@@ -1577,6 +1577,20 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"foldOnto8b082c33d8Note",
 	/*
+	 * AND THE EIGHTH FOLD'S OWN: the fold onto `a72909b1f4` resolved TWO conflicted paths (this list
+	 * and the manifest) and wrote one record, and a reader is owed the pair it binds.
+	 */
+	"foldOntoA72909b1f4Note",
+	/*
+	 * AND THIS LANE'S OWN: the board/timeline pass. Its subject IS this file's
+	 * binding - the change moves BOTH trees (the projects feature's board,
+	 * timeline, switcher and their pins; the capture rows and this list) and
+	 * re-shoots the whole projects-tab set (144 frames re-taken, 72 added) - so
+	 * a reader is owed the pair and what the capture moved with it, the same
+	 * case `headerRenameInlineRestampNote` is in the list for.
+	 */
+	"projectsBoardTimelineNote",
+	/*
 	 * AND THE REMEDIATION ROUND'S OWN: round 1's fix moves BOTH trees again -
 	 * `src/` for the one commission entry point (clear, cancel, invalidate)
 	 * with its generation guard and the account row's `min-w-0`, `scripts/`
@@ -2398,6 +2412,10 @@ const BRANCH_RECORDS = [
 	 * And the seventh fold's record rides beside them - same reason, same check.
 	 */
 	"foldOnto8b082c33d8Note",
+	/*
+	 * And the eighth fold's record rides beside them - same reason, same check.
+	 */
+	"foldOntoA72909b1f4Note",
 	/*
 	 * And this branch's own record, folded in beside it: the account-foot
 	 * refresh writes one top-level note, registered here for the same
