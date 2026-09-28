@@ -33,6 +33,10 @@ import type {
 	DesktopProjectUpdate,
 } from "../../../../../shared/desktop-control-contract";
 import "../../../styles/index.css";
+import {
+	PROJECTS_BOARD_ORDER_STORAGE_KEY,
+	writeBoardColumnOrder,
+} from "../project-model";
 import { ProjectsPage } from "./projects-page";
 
 /** Sunday 20 September 2026, 2:00 PM local — every label derives from this. */
@@ -675,7 +679,10 @@ type Story = StoryObj;
 
 /** The page against one stub, at the app's own row width. */
 const page = (
-	state: Partial<StubState> & { view?: "list" | "board" | "timeline" },
+	state: Partial<StubState> & {
+		view?: "list" | "board" | "timeline";
+		columnOrder?: string[];
+	},
 ) => {
 	stub = {
 		projects: [],
@@ -697,6 +704,14 @@ const page = (
 	} catch {
 		/* storage is not what these stories are about */
 	}
+	/*
+	 * The column order is persisted the same way, so every story states it and
+	 * clears it otherwise: a stored order leaking into the next board story
+	 * would make its frame a picture of the previous story's drag.
+	 * `writeBoardColumnOrder` is the page's own guarded writer, so the story
+	 * and the app cannot drift on the key.
+	 */
+	writeBoardColumnOrder(state.columnOrder ?? []);
 	/*
 	 * `h-screen`, the schedules page's rule: in the app this page is a full-height
 	 * column, and a story without the height photographs a panel hugging its own
@@ -1236,6 +1251,162 @@ export const BoardCardMenu: Story = {
 			() => document.querySelectorAll('[role="menuitemradio"]').length >= 7,
 			"the status submenu",
 		);
+	}),
+};
+
+/**
+ * A stored column order, applied: the board as the user left it — `QA` moved
+ * ahead of `active`, `done` untouched at the end — read from the same store
+ * the drag writes (`projects-board-column-order`). This is also the RELOAD
+ * half of the persistence claim: the story mounts fresh, and the order is
+ * already there.
+ */
+export const BoardColumnOrderStored: Story = {
+	render: () =>
+		page({
+			view: "board",
+			columnOrder: ["planning", "qa", "active", "validation", "done"],
+			projects: THREE,
+			details: detailsFor(THREE),
+		}),
+};
+
+/**
+ * A column header lifted, mid-drag: the transient the reorder's indicator
+ * exists for.
+ *
+ * THE RIG DRIVES THE GESTURE, NOT THIS STORY (the mesh canvas's rule): the
+ * mid-drag state is held by a pointer that is DOWN, and a synthetic sequence
+ * from here resolves to the settled board before the shutter. The capture's
+ * own `drag` option presses this board's `active` header and holds it over
+ * `done`, and the frame's claim — "Moving Active column" — is the board's
+ * live-region announcement, present in the document exactly while the gesture
+ * is armed.
+ */
+export const BoardColumnDrag: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: THREE,
+			details: detailsFor(THREE),
+		}),
+};
+
+/**
+ * The keyboard route, after one press: the `QA` column moved right by a
+ * focused grip's arrow key — the accessible half of the reorder, driven
+ * through the real key handler, with the write and the retained focus
+ * asserted so the frame is a state the keyboard can actually reach.
+ */
+export const BoardColumnKeyboardMove: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: THREE,
+			details: detailsFor(THREE),
+		}),
+	play: playOnce("board-column-keyboard-move", async () => {
+		const grip = '[data-board-column-grip="qa"]';
+		await poll(() => document.querySelector(grip) !== null, grip);
+		const handle = document.querySelector<HTMLElement>(grip);
+		if (!handle) throw new Error("the QA column has no grip");
+		handle.focus();
+		await userEvent.keyboard("{ArrowRight}");
+		await poll(
+			() =>
+				[...document.querySelectorAll<HTMLElement>("[data-board-column]")]
+					.map((section) => section.dataset.boardColumn)
+					.join(",") === "planning,active,validation,qa,done,paused",
+			"the moved order",
+		);
+		/*
+		 * The write is the claim the reload depends on, and the grip keeps the
+		 * focus across the re-render — a reorder that drops the keyboard user
+		 * back to the body is a reorder they can only do once.
+		 */
+		const stored = JSON.parse(
+			localStorage.getItem(PROJECTS_BOARD_ORDER_STORAGE_KEY) ?? "[]",
+		) as string[];
+		if (stored.join(",") !== "planning,active,validation,qa,done,paused") {
+			throw new Error(`the move did not persist: ${stored.join(",")}`);
+		}
+		if (document.activeElement !== handle) {
+			throw new Error("the moved column dropped the keyboard focus");
+		}
+	}),
+};
+
+/**
+ * The DROP, committed: a full press-move-release through the board's own
+ * handlers reorders the columns and writes the order — the half the mid-drag
+ * frame cannot show, because the rig holds its button down on purpose.
+ *
+ * THE PLAY DISPATCHES THE POINTER SEQUENCE ITSELF (`userEvent.pointer`), and
+ * that is the measurement rather than a shortcut: a COMMIT is a settled state,
+ * so the sequence resolving on the release is exactly what this story claims.
+ * The transient frame next door needs the rig precisely because a synthetic
+ * sequence cannot HOLD a dragged column in the air.
+ */
+export const BoardColumnDropCommits: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: THREE,
+			details: detailsFor(THREE),
+		}),
+	play: playOnce("board-column-drop-commits", async () => {
+		const readOrder = () =>
+			[...document.querySelectorAll<HTMLElement>("[data-board-column]")]
+				.map((section) => section.dataset.boardColumn)
+				.join(",");
+		const gripSelector = '[data-board-column-grip="active"]';
+		await poll(
+			() => document.querySelector(gripSelector) !== null,
+			gripSelector,
+		);
+		const handle = document.querySelector<HTMLElement>(gripSelector);
+		const header = document.querySelector<HTMLElement>(
+			'[data-board-column-handle="active"]',
+		);
+		const done = document.querySelector<HTMLElement>(
+			'[data-board-column="done"]',
+		);
+		if (!handle || !header || !done)
+			throw new Error("the active header or its drop target is missing");
+		const start = handle.getBoundingClientRect();
+		const landing = done.getBoundingClientRect();
+		const x = Math.round(landing.left + landing.width / 2);
+		const y = Math.round(landing.top + 12);
+		await userEvent.pointer([
+			{ keys: "[MouseLeft>]", target: handle },
+			{
+				target: header,
+				coords: {
+					x: Math.round(start.left + 30),
+					y: Math.round(start.top + 12),
+				},
+			},
+			{ target: header, coords: { x, y } },
+			{ keys: "[/MouseLeft]", target: header },
+		]);
+		/*
+		 * The landing is asserted as the full order, and so is the write: the
+		 * reload half (`board-column-order-stored`) is only honest if the drop
+		 * really persisted what it dropped.
+		 */
+		await poll(
+			() => readOrder() === "planning,qa,validation,active,done,paused",
+			"the dropped order",
+		);
+		if (readOrder() !== "planning,qa,validation,active,done,paused") {
+			throw new Error(`the drop landed as: ${readOrder()}`);
+		}
+		const stored = JSON.parse(
+			localStorage.getItem(PROJECTS_BOARD_ORDER_STORAGE_KEY) ?? "[]",
+		) as string[];
+		if (stored.join(",") !== "planning,qa,validation,active,done,paused") {
+			throw new Error(`the drop did not persist: ${stored.join(",")}`);
+		}
 	}),
 };
 
