@@ -1,6 +1,6 @@
 /**
- * The checkpoint rail's pure half: the wire manifest's shape, the tick
- * placement arithmetic, and the fallback text rules.
+ * The checkpoint rail's pure half: the tick placement arithmetic and the
+ * fallback text rules.
  *
  * Extracted from the rail component so the decision can be exercised directly
  * (`scripts/checkpoint-model.test.mjs` bundles this module), for the reason
@@ -8,111 +8,23 @@
  * eyeballed in a story is a rule that drifts silently when the surface around
  * it changes.
  *
- * THE WIRE SHAPE IS FROZEN (design D9, `sessions.checkpoints`); this module
- * mirrors it rather than re-deriving it, and every field's unit is stated here
- * because the manifest mixes two of them: `ts` is the JOURNAL's own epoch
- * SECONDS (the same unit every durable transcript entry carries, converted
- * once in `checkpointClockLabel` the way `transcript-reducer.ts` converts
- * `entry.ts`), while `built_at` is a cache file's `st_mtime` in the same
- * seconds. Nothing else in this module reads a clock.
- *
- * The manifest deliberately omits fields rather than nulling them, and the
- * types keep that: `outcome` is absent on checkpoints no attention marker
- * resolved (S3's finding 3 - markers only exist from partway through a
- * session's life, so pre-mechanism turns have no outcome to show), and
- * `naming` is present only on COMPLETION checkpoints, because a name is
- * attached to a finished turn. A type that made either required would force
- * the renderer to invent a value the wire never claimed.
+ * The WIRE DTOs live in `src/shared/desktop-contract.ts` beside the op that
+ * answers with them (`sessions.checkpoints`); this module imports them rather
+ * than holding a second definition that could drift from the schema. What it
+ * adds is the two things a wire shape cannot carry: the placement arithmetic
+ * and the copy rules. One unit note survives the move because this file is
+ * where it is spent: `ts` is the JOURNAL's own epoch SECONDS (the same unit
+ * every durable transcript entry carries), converted once in
+ * `checkpointClockLabel` the way `transcript-reducer.ts` converts a durable
+ * `entry.ts`. Nothing else in this module reads a clock.
  */
 
-/** What a checkpoint marks: the reader's own message, or a finished turn. */
-export type CheckpointKind = "user" | "completion";
-
-/**
- * A settled turn's ending, when the journal can prove one.
- *
- * `open` is the live tail: no marker resolves it and no newer settled run
- * followed it (S3 addendum note 2), so the rail draws an in-progress dot
- * rather than staying silent about the turn the reader is sitting in.
- */
-export type CheckpointOutcome = "complete" | "error" | "interrupted" | "open";
-
-/**
- * How far a completion checkpoint's naming has got.
- *
- * `unavailable` is a FAILED call inside its cooldown (`checkpoint_naming.py`
- * persists the marker), not a pending one: the card shows the fallback text
- * with no "Generating…" line, because nothing is generating.
- */
-export type CheckpointNamingState = "ready" | "pending" | "unavailable";
-
-export type CheckpointNaming = {
-	state: CheckpointNamingState;
-	/** The model's name, or `null` while pending/unavailable. */
-	name: string | null;
-	/** One sentence, or `null`; `""` is a ready name that carries no summary. */
-	summary: string | null;
-};
-
-export type Checkpoint = {
-	/** The journal entry id — the jump target (D1) and the warm's handle. */
-	id: string;
-	kind: CheckpointKind;
-	/** 1-based turn ordinal, assigned structurally by the backend. */
-	turn: number;
-	/** Epoch SECONDS (journal unit); see this file's header. */
-	ts: number;
-	/** The journal ordinal the tick's position is proportional to. */
-	seq: number;
-	/** User text, or the turn's closing answer text (flattened, capped). */
-	text: string;
-	/** Absent when no marker resolved the turn (see the header). */
-	outcome?: CheckpointOutcome;
-	/** Present on completion checkpoints only. */
-	naming?: CheckpointNaming;
-};
-
-/**
- * The index's own state, as the manifest reports it.
- *
- * `building` and `stale` both mean "a scan is in flight over a previous
- * answer" — the rail renders whatever checkpoints arrived and pulses its top
- * mark, rather than hiding. `unsupported` is a REMOTE conversation, whose
- * journal is not on this machine (the backend answers it in place of an
- * error, because it is a fact about where the bytes are); the rail hides,
- * which is the same honest degradation as an empty manifest.
- */
-export type CheckpointIndexState =
-	| "ready"
-	| "building"
-	| "stale"
-	| "error"
-	| "unsupported";
-
-export type CheckpointManifest = {
-	session_id: string;
-	index: {
-		state: CheckpointIndexState;
-		/** The cache file's mtime, epoch seconds; absent on a cold answer. */
-		built_at?: number;
-	};
-	checkpoints: Checkpoint[];
-};
-
-/**
- * The warm op's answer: ids this call took ownership of, and the subset still
- * waiting on a name. An id already named (same digest) or inside its failure
- * cooldown is accepted but not pending — the rail's poll has nothing left to
- * wait for on it.
- */
-export type CheckpointWarmAnswer = {
-	accepted: string[];
-	pending: string[];
-};
-
-/** The ids schema's bound and the default selection size (D9/D2). */
-export const CHECKPOINT_WARM_MAX_IDS = 16;
-export const CHECKPOINT_WARM_DEFAULT_LIMIT = 8;
+import type {
+	Checkpoint,
+	CheckpointManifest,
+	CheckpointNamingState,
+	CheckpointOutcome,
+} from "../../../../../shared/desktop-contract";
 
 /** The card's line while a completion's name is still being generated. */
 export const CHECKPOINT_GENERATING_NAME = "Generating name…";
