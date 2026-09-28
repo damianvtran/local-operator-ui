@@ -1028,6 +1028,21 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			 * that cannot resolve the id mints fresh rather than failing the send.
 			 */
 			draftId: sessionId.optional(),
+			/*
+			 * The DEVICE to create the conversation on (`features.peers`): the mesh route's
+			 * own field, sent only when the user actually picked one, so the body of an
+			 * ordinary create is unchanged. Omitted means this device.
+			 *
+			 * THE DIRECTORY RULE THAT COMES WITH IT, which is why the app must not offer this
+			 * choice without saying so: a remote create carries an explicit `cwd` and an EMPTY
+			 * one resolves to that device's home rather than to this project, so a pane with a
+			 * peer destination names the directory it will use.
+			 *
+			 * `--yolo` and friends are NOT here because the peer's own route refuses them: a
+			 * remote create that let this machine run tools unattended on another one is the
+			 * thing the route declines to express.
+			 */
+			peer: meshId.optional(),
 		})
 		.strict(),
 	/*

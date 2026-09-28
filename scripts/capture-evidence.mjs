@@ -6287,6 +6287,119 @@ export const STORIES = [
 	// The narrow case, with the panel open: the column and the canvas have to fit
 	// together at the width the app's own sidebar clamps for.
 	["mesh-tab--device-panel", 1024, 768, { dir: "device-panel-narrow" }],
+	/*
+	 * THE CHAT HEADER'S DEVICE CONTROL (feat/chat-move-control), one surface, in the
+	 * states the design's own spec names. WHAT EACH ROW CLAIMS, because a frame's name
+	 * has to be true rather than aspirational:
+	 *
+	 * - `before-new-chat` is the SAME TREE with `deviceSlot` omitted - the design's own
+	 *   before half, and the reason the header can be read against it pixel for pixel;
+	 * - `draft-against-live` is the PAIR the whole design exists for: `New on this
+	 *   device` and `On this device` differ by one word, and a user who reads a draft as
+	 *   a live session waits for output that is not coming;
+	 * - `new-chat-peer` is the same draft after the destination was set to a peer - the
+	 *   destination rides the draft row, which is the field `sessions.create` sends;
+	 * - `arrived-cold` and `arrived-live` are the two arrival sentences. The cold one's
+	 *   SECOND line is mandatory (`expectSentence` claims it), and the live one is only
+	 *   reachable when the wire says the destination engaged - nothing here guesses from
+	 *   a peer's build;
+	 * - `refused-busy` claims the remedy's own label, the one the Mesh tab already
+	 *   ships, on the app's existing notice;
+	 * - the four picker rows OPEN THE REAL MENU with a real pointer press and claim the
+	 *   panel is present before the shutter, so a frame cannot ship under a picker name
+	 *   with the menu never opened. `picker-live-local` additionally claims an ineligible
+	 *   row is present (a device that cannot receive a move stays visible and explained,
+	 *   never hidden), and `picker-ineligible-hover` is the pointer case for the same row,
+	 *   which is how "ineligibility is not a dimmed name" is photographed rather than
+	 *   argued: the row keeps `ink-muted` ink and takes no hover wash.
+	 */
+	["chat-device--before-new-chat", 1000, 168],
+	["chat-device--before-live-local", 1000, 168],
+	["chat-device--draft-against-live", 1000, 268],
+	["chat-device--new-chat-local", 1000, 168],
+	["chat-device--new-chat-peer", 1000, 168],
+	["chat-device--live-local", 1000, 168],
+	["chat-device--live-remote-moved", 1000, 168],
+	["chat-device--live-remote-unreachable", 1000, 168],
+	["chat-device--moving", 1000, 268, { expectSentence: "Moving to build-box" }],
+	[
+		"chat-device--arrived-cold",
+		1000,
+		320,
+		{ expectSentence: "Nothing is running on build-box yet." },
+	],
+	[
+		"chat-device--arrived-live",
+		1000,
+		268,
+		{ expectSentence: "running there now" },
+	],
+	[
+		"chat-device--refused-busy",
+		1000,
+		268,
+		{ expectSentence: "Wait for the turn to finish" },
+	],
+	["chat-device--narrow-band", 1000, 460],
+	[
+		"chat-device--new-chat-local",
+		1000,
+		520,
+		{
+			press: "[data-device-chip]",
+			pressSettleMs: 400,
+			expectPresent: "[data-device-picker]",
+			dir: "picker-new-chat",
+		},
+	],
+	[
+		"chat-device--live-local",
+		1000,
+		520,
+		{
+			press: "[data-device-chip]",
+			pressSettleMs: 400,
+			expectPresent: ["[data-device-picker]", '[data-device-row="ineligible"]'],
+			dir: "picker-live-local",
+		},
+	],
+	[
+		"chat-device--live-remote-moved",
+		1000,
+		520,
+		{
+			press: "[data-device-chip]",
+			pressSettleMs: 400,
+			expectPresent: "[data-device-picker]",
+			dir: "picker-live-remote",
+		},
+	],
+	[
+		"chat-device--live-local",
+		1000,
+		520,
+		{
+			press: "[data-device-chip]",
+			keys: [{ key: "ArrowDown", settleMs: 300 }],
+			expectPresent: [
+				"[data-device-picker]",
+				"[data-device-picker] [data-highlighted]",
+			],
+			dir: "picker-keyboard-highlight",
+		},
+	],
+	[
+		"chat-device--live-local",
+		1000,
+		520,
+		{
+			press: "[data-device-chip]",
+			pressSettleMs: 400,
+			hover: '[data-device-row="ineligible"]',
+			hoverSettleMs: 400,
+			dir: "picker-ineligible-hover",
+		},
+	],
 ];
 
 /**

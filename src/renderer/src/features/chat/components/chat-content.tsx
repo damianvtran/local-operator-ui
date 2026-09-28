@@ -113,6 +113,21 @@ type ChatContentProps = {
 	 */
 	identity?: HeaderIdentityData | null;
 	/**
+	 * The chat header's device control, composed by the page that owns the session
+	 * and the draft; see `ChatHeaderProps.deviceSlot`, which explains why the header
+	 * takes a node rather than the facts behind it.
+	 */
+	deviceSlot?: React.ReactNode;
+	/**
+	 * What the last move did, in the row under the header's band.
+	 *
+	 * A SEPARATE SLOT BECAUSE IT IS A SEPARATE PLACE: the chip answers "where does
+	 * this run" in the title block, and the outcome of one move is a line under the
+	 * header, where the transcript begins. Both are composed from ONE store keyed by
+	 * this pane, so the two cannot disagree about what happened.
+	 */
+	deviceNotice?: React.ReactNode;
+	/**
 	 * The session the header's inline rename writes to; see
 	 * `ChatHeaderProps.renameSessionId`. Passed straight through from the page
 	 * (which owns the `commands` capability gate), so this component never
@@ -539,6 +554,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		description,
 		descriptionPending,
 		identity,
+		deviceSlot,
+		deviceNotice,
 		renameSessionId,
 		onOpenOptions,
 		isOptionsSidebarOpen,
@@ -1325,6 +1342,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							description={description}
 							descriptionPending={descriptionPending}
 							identity={identity}
+							deviceSlot={deviceSlot}
 							renameSessionId={renameSessionId}
 							onOpenOptions={onOpenOptions}
 							runDetails={runDetails}
@@ -1397,6 +1415,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							consoleUnseenCount={consoleUnseenMarks.length}
 							consoleUnseenPulsing={consoleUnseenPulsing}
 						/>
+						{/*
+						 * WHAT THE LAST MOVE DID, directly under the header that issued it: the notice
+						 * is about a request this pane made, so it belongs in the pane, above the
+						 * transcript - not over the window's chrome, which belongs to the app.
+						 */}
+						{deviceNotice}
 						{/*
 						 * THE STATUS STRIP AND THE COMPATIBILITY BAND, IN THE PANE (§F2, D3).
 						 *

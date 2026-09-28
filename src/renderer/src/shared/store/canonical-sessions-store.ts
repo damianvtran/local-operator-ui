@@ -433,6 +433,24 @@ export type ChatDraft = {
 	 * that the row states the intent rather than the absence of a key.
 	 */
 	model?: DesktopModelSelection | null;
+	/**
+	 * The DEVICE this draft's conversation will be created on, when the user picked a
+	 * peer from the chat header's device control (`features.peers`). Absent means this
+	 * device, which is the only shape every backend has ever served.
+	 *
+	 * DRAFT state, like `model` above and for the same reason: choosing a machine for
+	 * one conversation must not move any machine's default. The header's chip reads it
+	 * to answer "where WILL this be created" before any runtime exists - the state the
+	 * operator's own screenshot was in - and `sessions.create` sends the same value as
+	 * the wire's `peer` (`desktop-contract.ts`).
+	 *
+	 * THE DIRECTORY FACT THAT RIDES WITH IT: a remote create carries an explicit `cwd`,
+	 * and an EMPTY one resolves to the peer's home rather than to this project (the
+	 * peer's own resolver, `relay._resolve_peer_cwd`), so a pane with a peer
+	 * destination must name the directory it will use rather than implying the one on
+	 * screen.
+	 */
+	peer?: string;
 	pending?: boolean;
 	error?: string;
 	errorCode?: string;
@@ -2344,6 +2362,10 @@ export async function admitChatDraft(
 					// send before the mint answered — and the create then mints fresh
 					// exactly as it always did.
 					draft.warmId,
+					// The device the pane's own control picked, if it picked one. `undefined`
+					// for every draft nobody aimed at a peer, which is what keeps the body
+					// of an ordinary create byte-identical to what it was before the control.
+					draft.peer,
 				)) ?? undefined;
 			if (!id)
 				throw new UserFacingError(
@@ -3596,6 +3618,12 @@ type CanonicalSessionsState = {
 		 * rather than failing the send (see `ensureDraftWarm`).
 		 */
 		draftId?: string,
+		/**
+		 * The device to create the conversation ON, when the pane's device control
+		 * picked a peer (`features.peers`). Omitted otherwise, and the request body
+		 * then carries no `peer` at all - see the implementation's own note.
+		 */
+		peer?: string,
 	) => Promise<string | null>;
 	/**
 	 * The turns THIS WINDOW stopped, by session id, stamped in wall-clock ms.
@@ -5674,6 +5702,16 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				 * mints fresh rather than refusing the send.
 				 */
 				draftId?: string,
+				/**
+				 * The device to create the conversation ON, when the pane's device control
+				 * picked a peer (`features.peers`; `CreateSession.peer` on the wire).
+				 *
+				 * OMITTED WHEN NOTHING WAS PICKED, the same omission rule as `model` and
+				 * `draftId`: the body then stays byte-for-byte the one this app sent before
+				 * the control existed, which is what makes the field additive for every
+				 * caller and every older daemon.
+				 */
+				peer?: string,
 			) => {
 				try {
 					const result = await desktopResult<{
@@ -5695,6 +5733,9 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						// absent leaves this request byte-for-byte what it was before drafts
 						// could be warmed. The draft row's own note explains the lifecycle.
 						...(draftId ? { draftId } : {}),
+						// And the third: a pane that never picked a device sends no `peer`, so its
+						// create is exactly what it always was.
+						...(peer ? { peer } : {}),
 					});
 					get().upsertSession({
 						session_id: result.session_id,
@@ -6165,6 +6206,14 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				if (!state.draftWarmable) return;
 				const draft = state.drafts[key];
 				if (!draft || draft.sessionId || draft.warmId || !state.cwd) return;
+				/*
+				 * A DRAFT DESTINED FOR A PEER IS NOT WARMED HERE, and there would be nothing to
+				 * warm: `sessions.draft` registers an id on THIS daemon's registry while the
+				 * create that adopts it runs on the PEER (the header's control sets the pane's
+				 * `peer`, and `sessions.create` sends it). Minting would spend a runtime here
+				 * for a conversation that is born on another machine.
+				 */
+				if (draft.peer) return;
 				/*
 				 * A STABLE request id, generated lazily and stored BEFORE the request
 				 * goes out: two keystrokes landing before the first answer must be one
