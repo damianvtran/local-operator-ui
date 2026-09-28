@@ -921,8 +921,13 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 									 * is no longer a statement about the FILE listing (QA round 1,
 									 * Q-2). One attribute, read by the mentions scene. */
 									data-section={row.section ?? "file"}
+									/*
+									 * No cursor class, on purpose: the row is `role="option"`, so the
+									 * base layer gives it the pointer, and an explicit utility would
+									 * also beat that layer's disabled arm for a disabled option.
+									 */
 									className={cn(
-										"relative flex cursor-default items-baseline gap-3 px-3 py-2",
+										"relative flex items-baseline gap-3 px-3 py-2",
 										index === state.active
 											? cn(
 													"bg-accent-wash",
