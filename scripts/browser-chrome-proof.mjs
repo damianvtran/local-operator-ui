@@ -1944,9 +1944,29 @@ async function main() {
 					const content = document.querySelector('[data-tour-tag="browser-content"]');
 					const box = menu.getBoundingClientRect();
 					const rect = content.getBoundingClientRect();
+					const strip = document.querySelector('[data-tour-tag="browser-tab-strip"]');
+					const stripBox = strip ? strip.getBoundingClientRect() : null;
 					return JSON.stringify({
 						portaledOutsideTheStrip: !menu.closest('[data-tour-tag="browser-tab-strip"]'),
-						overThePage: Math.round(box.bottom) > Math.round(rect.top),
+						/*
+						 * RECORDED, NOT ASSERTED: whether the popout's rectangle reaches the content
+						 * element's top. This section runs with a consent band between the strip and
+						 * the content, so a menu this tall hangs over the URL bar and the band without
+						 * touching the content rect — measured 2026-09-28 at a menu bottom of 222
+						 * against a content top of 348 — and a check that demanded the overlap would
+						 * be asserting an accident of the band's height. The popout's actual claims
+						 * are that it floats free of the strip's box and that the app registers
+						 * suppression while it is up; both are asserted below, and the geometry is
+						 * reported in the detail so a reader can see where it landed in this state.
+						 */
+						overlapsContent: Math.round(box.bottom) > Math.round(rect.top),
+						menuBox: {
+							top: Math.round(box.top),
+							bottom: Math.round(box.bottom),
+							height: Math.round(box.height),
+						},
+						contentTop: Math.round(rect.top),
+						stripBottom: stripBox ? Math.round(stripBox.bottom) : null,
 						suppressedBy: content.dataset.suppressedBy || "",
 						paused: !!document.querySelector('[data-tour-tag="browser-paused"]'),
 						menuHeight: Math.round(box.height),
@@ -1964,10 +1984,10 @@ async function main() {
 		const actionsFrame = await captureRenderer("17-tab-actions-popout");
 		await compose("17-tab-actions-popout", actionsFrame, null, rectWithActions);
 		check(
-			"the tab actions open as a PORTALED popout over the page, not in the strip and not under the native view",
+			"the tab actions open as a PORTALED popout that leaves the strip's box, with the page suppressed behind it",
 			openedActions !== "missing" &&
 				actionsDom?.portaledOutsideTheStrip === true &&
-				actionsDom?.overThePage === true &&
+				actionsDom.menuBox.bottom > actionsDom.stripBottom &&
 				actionsDom.suppressedBy.includes("browser-tab-actions") &&
 				actionsDom.paused === true &&
 				actionsDom.tags.includes("browser-tab-hand-over") &&
@@ -3427,16 +3447,33 @@ async function main() {
 		 * restored, fail again and are re-written — the loop the operator's strip was
 		 * full of.
 		 */
+		/*
+		 * THE DEAD TABS' OWN ROWS are the ones SITTING on the dead URL — their last
+		 * entry is it. The filter is deliberately the LAST entry rather than any entry:
+		 * a HEALTHY tab whose history contains the dead URL is a tab that once tried
+		 * the port and was recovered (this run drives one in section 4), and demanding
+		 * the mark of it fails on a working tree. Measured 2026-09-28: the any-entry
+		 * filter read the recovered tab's row and reported the mark missing on a head
+		 * where the relaunch was already refusing the dead tab.
+		 */
+		const rowsOnDeadUrl = (parsed) =>
+			(parsed.tabs ?? []).filter((row) => {
+				const entries = row.entries ?? [];
+				return (
+					entries.length > 0 && entries[entries.length - 1].url === deadUrl
+				);
+			});
 		const deadRows = await waitFor(
 			async () => {
 				if (!existsSync(deadSessionPath)) return null;
 				const parsed = JSON.parse(readFileSync(deadSessionPath, "utf8"));
-				const rows = (parsed.tabs ?? []).filter((row) =>
-					(row.entries ?? []).some((entry) => entry.url === deadUrl),
-				);
-				return rows.length === 2 ? rows : null;
+				const rows = rowsOnDeadUrl(parsed);
+				return rows.length === 2 &&
+					rows.every((row) => row.lastLoadFailed === true)
+					? rows
+					: null;
 			},
-			"the dead tabs to reach the session file",
+			"the dead tabs' rows to reach the session file carrying the mark",
 			10_000,
 		).catch(() => null);
 		check(
@@ -3524,12 +3561,12 @@ async function main() {
 		const standingRow = await waitFor(
 			async () => {
 				const parsed = JSON.parse(readFileSync(deadSessionPath, "utf8"));
-				const rows = (parsed.tabs ?? []).filter((row) =>
-					(row.entries ?? []).some((entry) => entry.url === deadUrl),
-				);
-				return rows.length === 1 ? rows[0] : null;
+				const rows = rowsOnDeadUrl(parsed);
+				return rows.length === 1 && rows[0].lastLoadFailed === true
+					? rows[0]
+					: null;
 			},
-			"the last dead tab to reach the session file",
+			"the last dead tab to reach the session file carrying the mark",
 			10_000,
 		).catch(() => null);
 		check(

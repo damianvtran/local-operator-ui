@@ -1744,6 +1744,12 @@ const STAMP_BINDING_NOTES = [
 	 * re-stamp rides the same re-derivation.
 	 */
 	"foldOntoA8ac7f673cNote",
+	/*
+	 * Moved by the dead-tab and popout pass (2026-09-28): this note states the pair
+	 * it ships and the set the pass moves, so it is held to the same bar as every
+	 * other member - it quotes both stamps and the file it sits in ships them.
+	 */
+	"browserTabLifecycleNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {

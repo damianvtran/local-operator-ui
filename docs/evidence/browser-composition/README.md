@@ -2,15 +2,17 @@
 
 **EVERY FRAME HERE IS COMMITTED AS `<name>/<theme>.webp`** (2026-09-25). The evidence gate
 derives a frame's expected ground from its FILENAME, so the name has to be the palette the
-frame was painted under; these six were committed under the state they show instead, and
-were renamed in place - the bytes are untouched.
+frame was painted under; the six frames of the first pass were committed under the state
+they show instead, and were renamed in place - the bytes are untouched. Frames added since
+are named in their own sections below.
 
-Six frames from `scripts/browser-chrome-proof.mjs`, which is the only path in this
+Eleven frames from `scripts/browser-chrome-proof.mjs`, which is the only path in this
 repository that photographs the browser feature the way a user meets it: the real
 chrome over a real page, in one frame, at the window size the app actually runs.
 
 They are here because three of the operator's four asks are COMPOSITION asks, and a
-Storybook story cannot answer any of them:
+Storybook story cannot answer any of them (a fourth and a fifth arrive in the
+2026-09-28 pass, in their own section below):
 
 - "a better approval surface (a list openable and closable from an approvals section
   inside the browser page)" is a claim about a panel that narrows a live page. Every
@@ -25,12 +27,17 @@ Storybook story cannot answer any of them:
 
 | frame | what it is for |
 |---|---|
-| `03-surface-populated/localOperatorDark.webp` | the strip over the USER's own tab, whose page has no handle to composite — chrome and the content rectangle only. The "over a real page" claim is carried by `12-approvals-queue/` and `18-approvals-dock/`, and the "user tab beside an agent tab" claim by `12-approvals-queue/`, `17-tab-actions-in-band/` and `18-approvals-dock/`; this frame is here for the strip's own grammar |
+| `03-surface-populated/localOperatorDark.webp` | the strip over the USER's own tab, whose page has no handle to composite — chrome and the content rectangle only. The "over a real page" claim is carried by `12-approvals-queue/` and `18-approvals-dock/`, and the "user tab beside an agent tab" claim by `12-approvals-queue/`, `17-tab-actions-popout/` and `18-approvals-dock/`; this frame is here for the strip's own grammar |
 | `12-approvals-queue/localOperatorDark.webp` | the band with a numbered queue: the count, the chips, the selected request's card |
-| `17-tab-actions-in-band/localOperatorDark.webp` | the tab actions row and the badge in situ (D3, D4) |
+| `12-restored-after-restart/localOperatorDark.webp` | the relaunch after the quit (2026-09-28 pass): the healthy tabs back with their `Restored` marker, and the tab that was showing a load failure when the session ended NOT restored — the accumulation engine's other end, photographed |
+| `17-tab-actions-popout/localOperatorDark.webp` | REPLACES `17-tab-actions-in-band/` (2026-09-28 pass): the tab actions as a portaled popout — free of the strip's box (`menuBox.bottom 225` against `stripBottom 69`), over the suppressed content area with the paused note behind it, the badge in situ (D3, D4) and the strip's height and the page's rectangle unchanged while it is open |
+| `17b-actions-page-restored/localOperatorDark.webp` | the dismissal (2026-09-28 pass): after Escape the menu is gone, no suppression is left and the paused note has yielded; the user tab's page has no handle to composite, so the content area is chrome-only, as in `03` |
 | `18-approvals-dock/localOperatorDark.webp` | the dock open, the page still visible and narrowed, no suppression (D2, D9) |
 | `19-strip-marked-tab-at-rest/localOperatorDark.webp` | the strip at rest with a user and an agent-marked row, **and on this head the strip IS in the picture**: re-taken 2026-09-17 on the harness that calls `exposeStrip()` before every frame, the frame carries the strip's own row with the `Agent` chip legible on `Proof page two` beside the group label `proof-open 1` and the unmarked row `Proof page one` (see the D9 note below for what moved and what the DOM reading says). The no-daemon banner is still painted across the top of the window — the harness has no daemon by design — but the strip now sits BELOW it rather than under it, which is the difference between a frame that shows the subject and one that only shows where it would have been |
 | `20-strip-failed-and-agent-markers/localOperatorDark.webp` | the same surface with the band OPEN, and the same re-take: the strip's own row carries the pair at once — `Agent` and the `Failed` pill side by side on `127.0.0.1:52792/broken` — with the band's items (`Let an agent use "Proof page one"…`, `Close "Proof page one"`, `Close 1 other tab`, `Copy URL`) below it and the URL bar under those. This is the frame D11/D12 asked for: the closed actions block is gone and the band carries TWO counted closes, which are the band's only red — `Close "Proof page one"` and `Close 1 other tab` (the four-close count is the batch story's, in `browser-tab-strip/actions-expanded-batch`) |
+| `21-dead-tabs-in-strip/localOperatorDark.webp` | the mess, made deliberately (2026-09-28 pass): two tabs driven at the dead port, both marked `Failed` in the strip (`tabIds [13,14]`), the active one's failure panel behind them |
+| `22-close-failed-tabs/localOperatorDark.webp` | the counted cleanup (2026-09-28 pass): `Close 2 failed tabs` — the count IS the disclosure — offered from the dead tab itself, with the paused note behind the open menu |
+| `23-dead-tabs-cleared/localOperatorDark.webp` | the strip after ONE press (2026-09-28 pass): the failed set is gone (`failed tabs after the press: []`) |
 
 Source, exactly:
 
@@ -93,10 +100,15 @@ reported `83 PASS / 0 FAIL / ALL CHECKS PASSED`.
 Where each frame comes from, stated rather than implied, because three of the names are
 not the run's own: `03-surface-populated/localOperatorDark.webp`, `12-approvals-queue/localOperatorDark.webp` and `18-approvals-dock/localOperatorDark.webp`
 are the run's frames of those names in its own scratch directory, and
-`17-tab-actions-in-band/localOperatorDark.webp` is too; `19-strip-marked-tab-at-rest/localOperatorDark.webp` is the run's
+`17-tab-actions-in-band/localOperatorDark.webp` was too before the 2026-09-28 pass replaced
+it with `17-tab-actions-popout/localOperatorDark.webp` (the run's own frame of that name);
+`19-strip-marked-tab-at-rest/localOperatorDark.webp` is the run's
 `09-strip-user-and-agent` (the strip at rest with one user and one agent-marked tab) and
 `20-strip-failed-and-agent-markers/localOperatorDark.webp` is its `16-surface-strip-failed-agent-tab` (the
-`Failed` and `Agent` markers painted together), each encoded to `.webp` at quality 90.
+`Failed` and `Agent` markers painted together), each encoded to `.webp` at quality 90. The
+2026-09-28 pass's five new names — `12-restored-after-restart/`, `17b-actions-page-restored/`,
+`21-dead-tabs-in-strip/`, `22-close-failed-tabs/`, `23-dead-tabs-cleared/` — are the run's own
+frames of those names, encoded the same way.
 
 ## The two frames named for the strip's markers now contain the strip (review round 2, D9, DISCHARGED 2026-09-17)
 
@@ -152,3 +164,53 @@ answered /health` while the host was up — is documented in its `frontmost()` d
 and fixed in the same commit that ships these frames. The re-take is the command above,
 with the `17-tab-actions-in-band/localOperatorDark.webp`, `09-strip-user-and-agent` and
 `16-surface-strip-failed-agent-tab` scratch PNGs encoded to `.webp` at quality 90.
+
+## The 2026-09-28 pass: the dead-tab lifecycle, and the popout tab menu
+
+TWO MORE OPERATOR REPORTS, and both are composition claims:
+
+- a strip full of `[Restored] [Failed]` tabs pointed at dead loopback URLs, with a "15"
+  overflow count. The accumulation turned out to be mechanical rather than a usage
+  problem: a tab whose page refused to load kept its session-store row like any other
+  tab, so every launch re-created it — where it failed again — and re-persisted it at
+  the next quit. Nothing in the product ever dropped a dead tab, and no bulk control
+  targeted the failed set. The fix marks such a row when it is captured and does not
+  restore it on the next launch, and a counted `Close N failed tabs` clears a pile in
+  one press.
+- the in-band actions row ("shifting down like this"): it grew the strip by up to 214px
+  at its designed worst case and moved the page and the URL bar down with it. The menu
+  is a registered popout now: it floats free of the strip's box, the native view hides
+  while it is open, and the paused note shows behind it.
+
+WHAT MOVED: `17-tab-actions-in-band/` is REPLACED by `17-tab-actions-popout/` — the
+state the old frame photographed no longer exists, and the name moved with it (same
+`<name>/<theme>.webp` rule, same encoder). Five names are new:
+`12-restored-after-restart/`, `17b-actions-page-restored/`, `21-dead-tabs-in-strip/`,
+`22-close-failed-tabs/` and `23-dead-tabs-cleared/`. WHAT DID NOT MOVE:
+`03-surface-populated/`, `12-approvals-queue/`, `18-approvals-dock/`,
+`19-strip-marked-tab-at-rest/` and `20-strip-failed-and-agent-markers/` are not re-taken
+and keep the pixels of their own runs.
+
+WHAT EACH NEW FRAME PROVES, from the run's own assertions and transcript (this run
+reported `92 PASS / 0 FAIL / ALL CHECKS PASSED`):
+
+| frame | what it proves |
+|---|---|
+| `21-dead-tabs-in-strip/` | the mess, made deliberately: two tabs driven at the dead port, both marked `Failed` in the strip (`tabIds [13,14]`), the active one's failure panel behind them |
+| `22-close-failed-tabs/` | the counted cleanup — `Close 2 failed tabs` — offered from the dead tab itself, the paused note behind the open menu |
+| `23-dead-tabs-cleared/` | the strip after ONE press: `failed tabs after the press: []` |
+| `12-restored-after-restart/` | the relaunch: `healthy at quit 2, restored 2`, and the tab that was dead at the quit NOT restored, with the app's own log line naming the refusal — `[browser] 1 recorded tab(s) were showing a load failure when the session ended; not restored` |
+| `17-tab-actions-popout/` | the popout: portaled outside the strip, `data-suppressed-by="browser-tab-actions::…"`, the paused note behind it, and both the strip's height and the page's rectangle unchanged while it is open (`strip height 37 -> 37; content rect {"x":260,"y":348,"width":1120,"height":552} -> the same`). The menu it measures is 152px tall, its top at 73 and its bottom at 225 against a strip bottom of 69: it leaves the band's box. It does NOT reach the content element's top (348) in this state, and the harness records that rather than asserting it — this section runs with a consent band between the strip and the content, and the popout's claims are the ones the check asserts: free of the strip, suppression registered, the page's rect untouched |
+| `17b-actions-page-restored/` | the dismissal: after Escape the menu is gone, no suppression is left, and the paused note has yielded to the page |
+
+THE OPEN AND CLOSE TRANSITIONS WERE SAMPLED PER FRAME (the probe the policy file calls
+P11): twelve samples across the open, every one with the menu up AND the registration in
+place, and twelve across the close, every one with both cleared — so no sampled frame
+shows the menu up without the suppression behind it, which is the flicker this probe
+exists to catch.
+
+THE WINDOW HEIGHT IS NOT THE OLD FRAMES' (measured): this run's app reports a 1380x900
+viewport, so its frames are 2760x1800 device px, where the 2026-09-15/17 frames in the
+set are 2760x1736 (a 1380x868 viewport). Nothing was cropped to make them match; the
+reading is stated instead, and a re-take of the older five at the taller viewport is
+available to anyone who wants one height for the whole set.
