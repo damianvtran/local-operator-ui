@@ -23,12 +23,14 @@ import {
 	statSync,
 	writeFileSync,
 } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
 	APPIMAGE_UPDATE_INFO,
+	TOOLSET_ARCHIVE,
 	assertZsyncHeaders,
 	embedUpdateInfo,
 	finalize,
@@ -37,6 +39,8 @@ import {
 	prepareToolset,
 	readUpdateInfo,
 } from "./appimage-update-info.mjs";
+
+const require = createRequire(import.meta.url);
 
 const SCRIPT = fileURLToPath(
 	new URL("./appimage-update-info.mjs", import.meta.url),
@@ -267,6 +271,17 @@ test("readUpdateInfo refuses the shapes it cannot read instead of guessing", () 
 			() => readUpdateInfo(extended),
 			/uses extended ELF section numbering, which this reader refuses rather than guessing at/,
 		);
+
+		// e_shstrndx = SHN_UNDEF: the file says no section name string table
+		// lives in it at all. Walking on would read section 0 - the reserved
+		// null entry, offset 0/size 0 - as the table and report a malformed
+		// one, which names the wrong cause (review round 1, R2).
+		const noNameTable = join(root, "no-name-table");
+		writeFileSync(noNameTable, buildElf({ namesIndex: 0 }));
+		assert.throws(
+			() => readUpdateInfo(noNameTable),
+			/carries no section name string table \(e_shstrndx = SHN_UNDEF\), so its section names cannot be read/,
+		);
 	}));
 
 test("readUpdateInfo reports an absent .upd_info section without inventing one", () =>
@@ -319,6 +334,54 @@ test("prepareToolset refuses an injected archive whose sha256 is not the pin", a
 			/Refusing the toolset archive at .*appimage-12\.0\.1\.7z: sha256 [0-9a-f]{64}, expected d12ff7eb8f1d1ec4652ca5237a7fbdca33acc0c758045636feca62dc6ecb8ec4 \(the pin app-builder-lib 26\.16\.1 declares for appimage-12\.0\.1\.7z\)/,
 		);
 	}));
+
+/* ---- the pin, against the dependency that declares it -------------------- */
+
+test("the toolset pin equals the one the installed app-builder-lib declares", (t) => {
+	// WHY THIS EXISTS (review round 1, R1): the prepare step exports
+	// `APPIMAGE_TOOLS_PATH`, so electron-builder builds from THIS toolset and
+	// app-builder-lib's own download path - the one its `appimageChecksums`
+	// pin guards - is never reached. Nothing else compares the two, so a
+	// dependency bump that moved the toolset would leave this script fetching
+	// the old archive with no diff and no failure. This test reads the
+	// INSTALLED package's own checksum table (the require chain
+	// `test-publish-workflow.mjs` uses for the same dependency) and fails when
+	// it disagrees, turning that silent drift into a red suite at bump time.
+	// A checkout without `node_modules` skips rather than failing: the copied
+	// pin only means something beside the dependency it was copied from, and
+	// CI's release-contract step runs this with dependencies present.
+	let builderRequire;
+	try {
+		builderRequire = createRequire(
+			require.resolve("electron-builder/package.json"),
+		);
+	} catch (error) {
+		if (error?.code !== "MODULE_NOT_FOUND") throw error;
+		t.skip(
+			"electron-builder is not installed in this checkout (bare tree); run with node_modules to check the pin",
+		);
+		return;
+	}
+	const appRequire = createRequire(builderRequire.resolve("app-builder-lib"));
+	const { appimageChecksums } = appRequire(
+		"app-builder-lib/out/toolsets/linux.js",
+	);
+	const declared = appimageChecksums["0.0.0"];
+	assert.ok(
+		declared,
+		"app-builder-lib no longer declares appimageChecksums['0.0.0']; re-derive TOOLSET_ARCHIVE against the installed package before trusting this pin",
+	);
+	assert.deepEqual(
+		Object.keys(declared),
+		[TOOLSET_ARCHIVE.filename],
+		`app-builder-lib now pins different toolset files (${Object.keys(declared).join(", ")}) than TOOLSET_ARCHIVE.filename (${TOOLSET_ARCHIVE.filename}); update the pin, its URL and the notes together`,
+	);
+	assert.equal(
+		declared[TOOLSET_ARCHIVE.filename],
+		TOOLSET_ARCHIVE.sha256,
+		`${TOOLSET_ARCHIVE.filename}: app-builder-lib declares sha256 ${declared[TOOLSET_ARCHIVE.filename]}, TOOLSET_ARCHIVE carries ${TOOLSET_ARCHIVE.sha256}; the two must move together`,
+	);
+});
 
 /* ---- the zsync ----------------------------------------------------------- */
 
