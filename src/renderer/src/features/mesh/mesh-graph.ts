@@ -43,6 +43,7 @@
  *     seen a device-level role, and nothing renders one as if it were.
  */
 
+import { deviceReach, reachWords } from "./mesh-reach";
 import {
 	type NetworkMember,
 	type NetworkTopology,
@@ -71,6 +72,18 @@ export type Membership = {
 	role: string;
 	capabilities: string[];
 	active: boolean;
+	/**
+	 * The operator's DECLARED scope for this membership, or `""` for none.
+	 *
+	 * THE WIRE HAS NO SUCH FIELD YET (the backend ask behind the scope layer's
+	 * `declared` tier): there is no per-member or per-network scope today, so this is
+	 * empty in every install and the declared boundary renders never. The client half
+	 * is here so that the day the field arrives the boundary appears with the
+	 * operator's own word on it and no renderer change - and so that nothing can be
+	 * drawn as `declared` out of arithmetic, which is the failure the tier exists to
+	 * exclude.
+	 */
+	scope: string;
 };
 
 export type MeshDevice = {
@@ -239,6 +252,7 @@ export function meshGraph(input: {
 					role: text(entry.member.role),
 					capabilities: strings(entry.member.capabilities),
 					active: entry.member.active,
+					scope: entry.member.scope,
 				})),
 				reachable,
 				reason: reachable
@@ -287,15 +301,49 @@ export function meshNodeCount(graph: MeshGraph): number {
  * itself is a backend change (the plan's § 7), not something a sentence here may
  * repair: an age computed from a stamp that is not a heartbeat would be false
  * precision, which is why the absence is rendered as absence.
+ *
+ * AND THE WORDS SAY WHICH STAMP IT IS (mesh redesign, D4). This read `seen 9m ago`
+ * on the node and in the panel - a heartbeat's name on a rotation stamp, which is
+ * the one thing the field cannot support. `Last status frame` is the same fact under
+ * the name the wire's own writer gives it, and it is the label the panel's Status
+ * section uses, so the two surfaces cannot describe one stamp two ways.
  */
-export function seenSentence(seconds: number): string {
+export function agoSentence(seconds: number): string {
 	const s = Math.max(0, Math.round(seconds));
-	if (s < 60) return "seen just now";
+	if (s < 60) return "just now";
 	const m = Math.floor(s / 60);
-	if (m < 60) return `seen ${m}m ago`;
+	if (m < 60) return `${m} ${m === 1 ? "minute" : "minutes"} ago`;
 	const h = Math.floor(m / 60);
-	if (h < 48) return `seen ${h}h ago`;
-	return `seen ${Math.floor(h / 24)}d ago`;
+	if (h < 48) return `${h} ${h === 1 ? "hour" : "hours"} ago`;
+	const d = Math.floor(h / 24);
+	return `${d} ${d === 1 ? "day" : "days"} ago`;
+}
+
+/**
+ * The age with the noun the wire's own writer gives it: `last status frame 9 minutes ago`.
+ *
+ * This is the sentence for a surface that prints a WHOLE line (the list view's stat, the
+ * canvas node's accessible name and its tooltip). The panel's own Status section has the
+ * noun in its row LABEL, so it prints `agoSentence`'s value alone - one fact, one label,
+ * one place, which is the defect the redesign's own panel frame caught (the age used to be
+ * printed twice, once under a heartbeat's name).
+ */
+export function lastStatusFrameSentence(seconds: number): string {
+	return `last status frame ${agoSentence(seconds)}`;
+}
+
+/**
+ * The conversation count as a sentence or a phrase, and one HOME for its words.
+ *
+ * `null` is "the relay did not name this device" and never zero: this is the
+ * `null`-is-not-`0` rule the join and the chip cap already follow
+ * (`deviceSessionTotal`), which is why the not-reported case is a SENTENCE rather than a
+ * zero with a dimmed unit - the node's metric rail draws the same words beside an en
+ * dash, and neither surface invents a count.
+ */
+export function conversationUnit(count: number | null): string {
+	if (count === null) return "conversations not reported";
+	return count === 1 ? "conversation" : "conversations";
 }
 
 /**
@@ -308,61 +356,30 @@ export function seenSentence(seconds: number): string {
  * site, because "1 conversations" is what a bare template produced.
  */
 function conversationsSentence(count: number): string {
-	return count === 1 ? "1 conversation" : `${count} conversations`;
+	return `${count} ${conversationUnit(count)}`;
 }
 
 /**
- * The same count, for the canvas node's own 147 px stat line: `6 conv`.
+ * The node's ONE stat line, after its title.
  *
- * AN ABBREVIATION IN ONE PLACE, AND FOR A MEASURED REASON (design review round 2,
- * D12). The rename D5 asked for - the right one for the noun - made the resting
- * sentence five characters longer than the line it has to fit on, and the value a
- * reader came for (`seen 9m ago`) was the part that fell off the end: every peer node
- * with a stamp read `6 conversations · seen …`.
+ * The resting state reports the facts (`6 conversations · last status frame 4 minutes
+ * ago`); the states that mean something say so in words and spend no line on counts.
+ * That is the plan's §5 node contract, and it is also what keeps colour from being
+ * the only channel: a node whose state matters never carries it in a stripe alone.
  *
- * Measured in the shipped renderer at the pinned width, the stat line's box is 147 px
- * and this app's 12 px system-ui makes the candidates:
- *
- *   `6 conversations · seen 1m ago` 170.9   over
- *   `6 conversations · 9m ago`      142.6   fits at six, over at twelve (147.7)
- *   `40 conv · seen just now`       133.5   fits - the worst case of the short form
- *   `6 conv · seen 1m ago`          119.2   fits
- *
- * So the noun is shortened on THIS surface only, and the full word stays everywhere
- * there is room for it: the list view's column, the panel's column, this node's own
- * accessible name and its tooltip all still read "6 conversations" (they call
- * `deviceStatLine`). Nothing here is a second name for the unit - it is the same name
- * where a reader cannot see six more characters of it anyway.
- */
-function conversationsAtNodeWidth(count: number): string {
-	return count === 1 ? "1 conv" : `${count} conv`;
-}
-
-/**
- * The node's ONE stat line, after its title: the fact a reader most needs about
- * this device, in the order they need it.
- *
- * The resting state is the ONE that reports work (`6 conv · seen 4m ago` at node
- * width, `6 conversations · seen 4m ago` where there is room — `branding.md` § 2's
- * `ink-dim` register for metadata); the three states that mean
- * something say so in words and spend no line on counts. That is the plan's §5
- * node contract - "stat = '2 chats · seen 4m ago', or 'unreachable (<reason>)'" -
- * and it is also what keeps colour from being the only channel: a node whose state
- * matters never carries it in a stripe alone.
+ * IT IS NO LONGER PAINTED ON THE CANVAS NODE (mesh redesign, D4/D6). The node draws a
+ * metric rail and a state line instead, and this sentence is what its accessible name
+ * and its tooltip carry - the two places a full sentence still has a reader, and the
+ * reason the empty chip band no longer needs a sentence of its own.
  *
  * `nowSeconds` is INJECTED rather than read from the clock here, so a story or a
  * test gets the same sentence at any moment (the frames in `docs/evidence/mesh-tab/`
  * are captured from this same function).
  *
- * ONE BUILDER, TWO WIDTHS: the count's own sentence is the parameter, so the canvas
- * node and the list view cannot drift into two descriptions of the same device - the
- * difference is which noun fits, and that is a drawing decision rather than a fact.
+ * ONE BUILDER, ONE WIDTH: the list view and the panel both call it, so two columns
+ * cannot drift into two descriptions of one device.
  */
-function statLine(
-	device: MeshDevice,
-	nowSeconds: number,
-	countSentence: (count: number) => string,
-): string {
+function statLine(device: MeshDevice, nowSeconds: number): string {
 	/*
 	 * REVOKED OUTRANKS THE REST, because it is not a link state at all: the device is
 	 * not a member of any network this app can name, and a burned device id is never
@@ -379,26 +396,24 @@ function statLine(
 		case "self":
 			return device.sessionCount === null
 				? "this device"
-				: `this device · ${countSentence(device.sessionCount)}`;
+				: `this device · ${conversationsSentence(device.sessionCount)}`;
 		case "suspect":
 			return "identity suspect";
 		case "unreachable":
 			/*
-			 * THE WORD AT NODE WIDTH, THE REASON WHERE THERE IS ROOM (design review round 1,
-			 * D6). Measured on `misconfigured` at the pinned width, the node printed
-			 * `unreachable (no route t…` - and the parenthetical is the ONLY thing that
-			 * distinguishes one unreachable device from another, so a cut version of it spends
-			 * the line and answers nothing. The stat line says the word; the panel's own column
-			 * (`deviceStateWords`), the node's accessible name and the hover tooltip carry the
-			 * reason in full.
+			 * THE WORD COMES FROM THE REACH MODEL, which is what stops this sentence telling the
+			 * reader that a machine failed when it was never asked (design round's D2). It used to
+			 * say `unreachable`, which the relay's own join cannot support: three different
+			 * `false` cases arrive as one boolean, so `unreachable` here named a state the wire
+			 * never published. `mesh-reach.ts` owns the classification and its debt note.
 			 */
-			return "unreachable";
+			return reachWords(deviceReach(device));
 		default: {
 			const parts: string[] = [];
 			if (device.sessionCount !== null)
-				parts.push(countSentence(device.sessionCount));
+				parts.push(conversationsSentence(device.sessionCount));
 			if (device.lastSeenAt !== null)
-				parts.push(seenSentence(nowSeconds - device.lastSeenAt));
+				parts.push(lastStatusFrameSentence(nowSeconds - device.lastSeenAt));
 			/*
 			 * Nothing to count and no stamp to read is a REAL state - a device that has
 			 * never been seen and whose sessions the relay did not count - and it says
@@ -411,43 +426,22 @@ function statLine(
 
 /** The full sentence, for every surface with room for it. */
 export function deviceStatLine(device: MeshDevice, nowSeconds: number): string {
-	return statLine(device, nowSeconds, conversationsSentence);
+	return statLine(device, nowSeconds);
 }
 
-/**
- * The same line in the canvas node's own 147 px: the noun shortened, nothing else.
+/*
+ * `deviceNodeStatLine` and `conversationsAtNodeWidth` are GONE with the node's stat
+ * line (mesh redesign, D4/D6): the node no longer paints a sentence, so a second
+ * rendering of one had no reader. The count it used to carry is the metric rail's now
+ * - a monospace number at a fixed x, which is the glance affordance a sentence could
+ * not be - and the sentence itself survives for the surfaces with room for it
+ * (`deviceStatLine`, which the node's accessible name and tooltip carry).
  *
- * See `conversationsAtNodeWidth` for the measurements - this is the form the NODE
- * paints, while its tooltip and its accessible name carry `deviceStatLine`'s full
- * sentence (the node's `title` is what a reader gets for hovering, and it is the only
- * place the full words are one gesture away).
+ * `deviceStateWords` is gone with it, and the reason is the defect this change exists
+ * for: its `unreachable (reason)` branch was a SECOND vocabulary for one state, and it
+ * was the one that told readers a machine had failed when the machine was never asked
+ * (D2). Where those words are still wanted, `mesh-reach.ts` owns them.
  */
-export function deviceNodeStatLine(
-	device: MeshDevice,
-	nowSeconds: number,
-): string {
-	return statLine(device, nowSeconds, conversationsAtNodeWidth);
-}
-
-/**
- * What is drawn beside the state, in the state's own words.
- *
- * Colour is never the only channel (`branding.md` § 2, WCAG 1.4.1): every node
- * carries its state as text as well as a stripe, and an unreachable node carries
- * the backend's reason when there is one.
- */
-export function deviceStateWords(device: MeshDevice): string {
-	switch (device.state) {
-		case "self":
-			return "this device";
-		case "suspect":
-			return "identity suspect";
-		case "unreachable":
-			return device.reason ? `unreachable (${device.reason})` : "unreachable";
-		default:
-			return "";
-	}
-}
 
 /**
  * The sentence above the canvas, which is also the canvas region's accessible name
@@ -457,6 +451,16 @@ export function deviceStateWords(device: MeshDevice): string {
  * counted as holding none, and "this device is X" appears only when a read named
  * this device. A machine in no network gets the empty state instead, so this
  * sentence is never asked to describe nothing.
+ *
+ * IT COUNTS BY REACH, NOT BY `state` (design round's D3). Counting
+ * `state === "unreachable"` printed `2 unreachable` over a canvas where one of the
+ * two had never been dialled - the node's own conflation one layer up, in the tab's
+ * single-sentence answer. `no answer` and `not asked` are counted apart now, so a
+ * device nobody asked is never filed under a failure.
+ *
+ * `unknown` is deliberately NOT counted: "no answer" and "not asked" are claims the
+ * reads support, while `unknown` is the absence of a read, and a summary that
+ * enumerated its own blind spots would read as one more failure mode.
  */
 export function meshSummary(graph: MeshGraph): string {
 	const parts: string[] = [];
@@ -466,10 +470,13 @@ export function meshSummary(graph: MeshGraph): string {
 	parts.push(
 		`${graph.devices.length} ${graph.devices.length === 1 ? "device" : "devices"}`,
 	);
-	const unreachable = graph.devices.filter(
-		(device) => device.state === "unreachable",
-	).length;
-	if (unreachable) parts.push(`${unreachable} unreachable`);
+	const reaches = graph.devices.map((device) => deviceReach(device));
+	const unanswered = reaches.filter((reach) => reach === "unanswered").length;
+	const notAsked = reaches.filter((reach) => reach === "not-attempted").length;
+	const suspected = graph.devices.filter((device) => device.suspect).length;
+	if (unanswered) parts.push(`${unanswered} no answer`);
+	if (notAsked) parts.push(`${notAsked} not asked`);
+	if (suspected) parts.push(`${suspected} suspected`);
 	if (graph.selfDeviceId !== null) {
 		const self = graph.devices.find(
 			(device) => device.id === graph.selfDeviceId,

@@ -143,6 +143,9 @@ export const solarizedLight: ThemeDefinition = {
 		 * `sunken` is the tightest ground at ΔE00 4.02.
 		 */
 		hairline: "#D6CFB8",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.59:1 there against `hairline`'s 1.17:1.
+		hairlineStrong: "#B3B3A4",
 		// The scheme's own rules are cream tones: edge-hi D5CDAE is 1.30:1 against the page, and
 		// base2 is 1.14:1, so neither can be a control's only edge. The structural role is that
 		// rule tone walked away from the grounds to 3.1:1 instead.

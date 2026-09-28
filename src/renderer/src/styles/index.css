@@ -596,6 +596,13 @@
 	--color-ink-disabled: var(--lo-ink-disabled);
 
 	--color-hairline: var(--lo-hairline);
+	/* The decorative line ONE STEP ABOVE `hairline`, for textures and rules that have to
+	   read on a light palette as well as a dark one. Decoration only, so it has no contrast
+	   floor - the moment it bounds or fills a control it is `control` and takes that role's
+	   3:1, which is a `CONTROLS` row in `scripts/contrast-contract.mjs` rather than a claim
+	   made here. See `hairlineStrong` in the palette contract for the per-palette
+	   derivation and `.mesh-ground` below for the first surface that spends it. */
+	--color-hairline-strong: var(--lo-hairline-strong);
 	--color-control: var(--lo-border-control);
 
 	--color-accent: var(--lo-accent);
@@ -1249,4 +1256,38 @@ html .Mui-focusVisible {
  */
 .slash-run-bold {
 	-webkit-text-stroke: 0.5px currentColor;
+}
+
+/*
+ * The canvas's ground: the 24 px dot field from `local_operator/callback_page.py`.
+ *
+ * A PLAIN RULE RATHER THAN A UTILITY CLASS, for the reason `.caret-ink` is one: the
+ * reference is `radial-gradient(circle at 1px 1px, var(--hairline-strong) 1px,
+ * transparent 0)` with `background-size: 24px 24px`, and a 200-character arbitrary-value
+ * className is not where a role mapping belongs.
+ *
+ * THE SIZE DOES NOT SCALE WITH THE CANVAS ZOOM, and that property is the whole of the
+ * ground's design. The element is a SIBLING of the transformed world layer rather than a
+ * child of it, so this is a length in the viewport's own units: measured off the pixels at
+ * k = 1.0 and k = 0.61 the pitch is 24.0 px at both (thirty dot columns centre-to-centre)
+ * and each dot is 2 px wide. A texture inside the world would be scaled with the content -
+ * sub-pixel mush that aliases into grey noise at k = 0.25, and 3 px blobs that read as a
+ * RULER the graph is supposed to align to at k = 3.
+ *
+ * IT PANS WITH THE WORLD ANYWAY, because a field that stayed put while the nodes moved
+ * would read as content sliding under a sticker rather than as a place; the offset comes
+ * from the same style write the pan already performs (`backgroundPosition`), so this costs
+ * no extra frame.
+ *
+ * THE INK IS THE STRONG HAIRLINE, not `hairline`: on three of the twelve themes the plain
+ * role measured 1.15-1.23 : 1 against the well and the field was effectively invisible.
+ * See `hairlineStrong` in the palette contract.
+ */
+.mesh-ground {
+	background-image: radial-gradient(
+		circle at 1px 1px,
+		var(--lo-hairline-strong) 1px,
+		transparent 0
+	);
+	background-size: 24px 24px;
 }

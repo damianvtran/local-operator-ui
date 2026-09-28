@@ -63,6 +63,7 @@ const member = (
 		reason: string;
 		last_seen_at: number | null;
 		endpoints: string[];
+		scope: string;
 	}> = {},
 ) => ({
 	device_id,
@@ -75,6 +76,9 @@ const member = (
 	last_seen_at: null,
 	reachable: true,
 	reason: "",
+	// No backend sends a declared scope yet: `""` is every real install's value, and the
+	// `declared` tier needs one to render at all (`mesh-scope.ts`).
+	scope: "",
 	...fields,
 });
 
@@ -636,6 +640,190 @@ export const DevicePanel: Story = {
 		await openPanel(DEVICE_PEER);
 		await screen.findByText("Sweep 001", { exact: false });
 		await screen.findByText(/Conversations/);
+	},
+};
+
+/**
+ * THE FIVE REACH STATES ON ONE CANVAS, plus the one device that is working.
+ *
+ * THIS STORY EXISTS BECAUSE NO SHIPPED FIXTURE CAN PRODUCE THREE OF ITS SIX DEVICES, and
+ * that is a measurement rather than an oversight: the shipped bridge is all-or-nothing, so
+ * `NOT_ATTEMPTED_REASON` had never been on screen; no fixture had `live_state: "busy"` on a
+ * remote row, so `working` had never been rendered; and no fixture left a drawn device
+ * unnamed by the peer catalogue, so `conversations not reported` had never been rendered
+ * either. The sentences below are the relay's own - the not-attempted one copied from
+ * `relay.NOT_ATTEMPTED_REASON` through `resume.peer_reason_words`, which is what a member
+ * row actually carries - and NOT invented for the frame.
+ *
+ * What the frame is for: `build-box` was the defect this redesign exists to fix. Its stripe
+ * used to be the amber of `unreachable` while its words said `not asked`, because the relay
+ * flattens "we never dialled it" and "it did not answer" into one boolean. The stripe is
+ * keyed on reach now, and this is the frame where the two channels agree.
+ */
+export const ReachStates: Story = {
+	render: () => {
+		installBridge({
+			networks: {
+				self_device_id: DEVICE_SELF,
+				networks: [
+					network(NET_HOME, "damian-mesh", [
+						member(DEVICE_SELF, {
+							name: "damians-MacBook-Pro",
+							role: "admin",
+							endpoints: ["192.168.1.10:4097"],
+						}),
+						member(DEVICE_PEER, {
+							name: "build-box",
+							endpoints: ["10.88.0.7:4097"],
+							reachable: false,
+							reason:
+								"the listing budget ran out before this member was probed",
+						}),
+						member(DEVICE_THIRD, {
+							name: "cloud-node-1",
+							endpoints: ["10.88.0.4:4097"],
+							last_seen_at: seenMinutesAgo(9),
+						}),
+						/*
+						 * NO READ NAMED THIS DEVICE: a membership with an empty reason and no peer
+						 * row is `unknown`, and the node says so rather than drawing a zero.
+						 */
+						member(DEVICE_FOURTH, {
+							name: "ghost",
+							endpoints: [],
+							reachable: false,
+							reason: "",
+						}),
+						member(DEVICE_FIFTH, {
+							name: "old-laptop",
+							endpoints: ["192.168.1.40:4097"],
+							suspect: true,
+							reachable: false,
+							reason: "no route to it",
+						}),
+						member(`d_${"f".repeat(32)}`, {
+							name: "workshop-mini",
+							endpoints: ["203.0.113.9:4097"],
+							reachable: false,
+							reason: "it did not answer",
+						}),
+					]),
+				],
+			},
+			peers: {
+				self_device_id: DEVICE_SELF,
+				peers: [
+					peer(DEVICE_PEER, {
+						name: "build-box",
+						reachable: false,
+						unreachable_reason:
+							"the listing budget ran out before this member was probed",
+						session_count: 3,
+					}),
+					peer(DEVICE_THIRD, {
+						name: "cloud-node-1",
+						session_count: 4,
+						last_seen_at: seenMinutesAgo(9),
+					}),
+					peer(DEVICE_FIFTH, {
+						name: "old-laptop",
+						reachable: false,
+						unreachable_reason: "no route to it",
+						session_count: 2,
+						last_seen_at: seenMinutesAgo(9),
+					}),
+					peer(`d_${"f".repeat(32)}`, {
+						name: "workshop-mini",
+						reachable: false,
+						unreachable_reason: "it did not answer",
+						session_count: 1,
+					}),
+				],
+				degraded: [],
+			},
+			sessions: [
+				/*
+				 * THE ONE POSITIVE-LOUD STATE. `busy` is the backend's own word for a turn in
+				 * flight, and it is the only activity this wire can report: there is no heartbeat,
+				 * which is why `last_seen_at` is a rotation stamp and is labelled as one.
+				 */
+				sessionRow(`s_${"1".repeat(12)}`, "Sweep 011", {
+					locality: "remote",
+					owner_device: DEVICE_PEER,
+					owner_device_name: "build-box",
+					live_state: "busy",
+				}),
+			],
+		});
+		return <MeshPage />;
+	},
+};
+
+/**
+ * THE THREE DRAWN TIERS OF THE SCOPE LAYER, and the two that are not drawn at all.
+ *
+ * `aws-node-1` and `aws-node-2` share `10.88.0.0/24`, which is WIREGUARD'S DEFAULT and
+ * collides across unrelated installs - so they get the DASHED enclosure and the words
+ * `same prefix`, which name the test rather than claiming a path. `backup-nas` shares
+ * `192.168.1.0/24` with THIS device, which is a statement about the machine the reader is
+ * sitting at, so it gets the SOLID one. `cold-storage` and `edge-proxy` get nothing: the
+ * first publishes an address the classifier refuses to group, the second a public address
+ * that shares a prefix with nobody here - and the internet is not a container to draw.
+ *
+ * THE ADDRESSES ARE ALSO IN THE PANEL, which is what keeps the drawing checkable: the
+ * canvas's boundaries are arithmetic on the strings the panel lists in full.
+ */
+export const Scopes: Story = {
+	render: () => {
+		installBridge({
+			networks: {
+				self_device_id: DEVICE_SELF,
+				networks: [
+					network(NET_HOME, "damian-mesh", [
+						member(DEVICE_SELF, {
+							name: "damians-MacBook-Pro",
+							role: "admin",
+							endpoints: ["192.168.1.10:4097"],
+						}),
+						member(DEVICE_PEER, {
+							name: "aws-node-1",
+							endpoints: ["10.88.0.7:4097"],
+						}),
+						member(DEVICE_THIRD, {
+							name: "aws-node-2",
+							endpoints: ["10.88.0.4:4097"],
+						}),
+						member(DEVICE_FOURTH, {
+							name: "backup-nas",
+							endpoints: ["192.168.1.40:4097"],
+						}),
+						member(DEVICE_FIFTH, {
+							name: "cold-storage",
+							endpoints: ["0.0.0.0:4097"],
+						}),
+						member(`d_${"f".repeat(32)}`, {
+							name: "edge-proxy",
+							endpoints: ["203.0.113.9:4097"],
+						}),
+					]),
+				],
+			},
+			peers: {
+				self_device_id: DEVICE_SELF,
+				peers: [
+					peer(DEVICE_PEER, { name: "aws-node-1", session_count: 4 }),
+					peer(DEVICE_THIRD, { name: "aws-node-2", session_count: 2 }),
+					peer(DEVICE_FOURTH, { name: "backup-nas", session_count: 0 }),
+					peer(DEVICE_FIFTH, { name: "cold-storage", session_count: 0 }),
+					peer(`d_${"f".repeat(32)}`, {
+						name: "edge-proxy",
+						session_count: 7,
+					}),
+				],
+				degraded: [],
+			},
+		});
+		return <MeshPage />;
 	},
 };
 

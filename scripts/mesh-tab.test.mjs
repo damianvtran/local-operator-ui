@@ -47,6 +47,8 @@ const bundle = await build({
 		contents: `
 			export * from "./src/renderer/src/features/mesh/mesh-types";
 			export * from "./src/renderer/src/features/mesh/mesh-graph";
+			export * from "./src/renderer/src/features/mesh/mesh-reach";
+			export * from "./src/renderer/src/features/mesh/mesh-scope";
 			export * from "./src/renderer/src/features/mesh/mesh-positions";
 			export * from "./src/renderer/src/features/mesh/mesh-sessions";
 			export * from "./src/renderer/src/features/mesh/mesh-drop";
@@ -96,8 +98,6 @@ const {
 	meshGraph,
 	meshSummary,
 	deviceStatLine,
-	deviceNodeStatLine,
-	deviceStateWords,
 	meshNodeCount,
 	assignSlots,
 	meshGeometry,
@@ -106,7 +106,22 @@ const {
 	zoomAbout,
 	NODE_WIDTH,
 	NODE_HEIGHT,
+	NODE_BODY_HEIGHT,
+	NODE_CHIP_BAND,
+	DEVICE_HEIGHT,
+	MIN_FIT_SCALE,
 	ROW_GAP,
+	deviceReach,
+	reachWords,
+	reachSentence,
+	deviceActivity,
+	REACH_INK,
+	NOT_ATTEMPTED_SENTENCES,
+	parseEndpoint,
+	subnet24,
+	prefixGroups,
+	prefixWords,
+	declaredScope,
 	sessionRows,
 	transferReceipt,
 	meshRefusal,
@@ -129,6 +144,8 @@ const {
 const DEVICE_A = `d_${"a".repeat(32)}`;
 const DEVICE_B = `d_${"b".repeat(32)}`;
 const DEVICE_C = `d_${"c".repeat(32)}`;
+const DEVICE_D = `d_${"d".repeat(32)}`;
+const DEVICE_E = `d_${"e".repeat(32)}`;
 const NET_ONE = `n_${"1".repeat(24)}`;
 const NET_TWO = `n_${"2".repeat(24)}`;
 
@@ -143,6 +160,9 @@ const member = (device_id, overrides = {}) => ({
 	last_seen_at: null,
 	reachable: true,
 	reason: "",
+	// The operator's DECLARED scope, which no backend sends yet: `""` is the shipped
+	// state and the `declared` tier's only input (see `mesh-scope.ts`).
+	scope: "",
 	...overrides,
 });
 
@@ -450,10 +470,106 @@ test("an unreachable device carries the backend's own reason", () => {
 	 * THE WORD AT NODE WIDTH, THE REASON ON THE SURFACES THAT HAVE ROOM (design review
 	 * round 1, D6): the pinned 200 px node printed `unreachable (no route t…`, and the
 	 * parenthetical is the only thing that distinguishes one unreachable device from
-	 * another - so the stat line says the state and the reason lives where it fits.
+	 * another - so a short form says the state and the reason lives where it fits.
+	 *
+	 * THE SHORT FORM IS THE REACH WORD NOW, NOT `unreachable` (mesh redesign, D2/D3). A
+	 * device asked and silent is `no answer`; a device nobody dialled is `not asked`; and
+	 * the wire cannot tell the two apart without the sentences pinned below. This line is
+	 * the one place the OLD word survives in the test, as the failure it used to be.
 	 */
-	assert.equal(deviceStatLine(device, 1_700_000_100), "unreachable");
-	assert.equal(deviceStateWords(device), "unreachable (no route to it)");
+	assert.equal(deviceReach(device), "unanswered");
+	assert.equal(deviceStatLine(device, 1_700_000_100), "no answer");
+	assert.equal(reachWords(deviceReach(device)), "no answer");
+	assert.equal(
+		reachSentence(device),
+		"no answer — no route to it",
+		"and the reason is the backend's own sentence, verbatim, where there is room",
+	);
+});
+
+test("a device nobody dialled is `not asked`, and never `unreachable` (D2)", () => {
+	/*
+	 * THE HONESTY FIX THIS SLICE EXISTS FOR. The relay reports three different `false`
+	 * cases as one boolean plus a glossed sentence - nothing dialled, dialled and silent,
+	 * refused before the far device was involved - so the app could not tell "the listing
+	 * budget ran out before this member was probed" from "it did not answer", and the
+	 * shipped node painted the first one the amber of the second.
+	 *
+	 * BOTH PRODUCERS ARE FIXTURED HERE, because they are the whole of the closed list:
+	 * `relay.NOT_ATTEMPTED_REASON` through the member table, and
+	 * `server/utils/desktop_mesh.py`'s relay-down branch. The sentences are spelled the way
+	 * `resume.peer_reason_words` hands them over - a `stage: ` prefix loses the stage word
+	 * and keeps the sentence - and pinned by name in `mesh-reach.ts`.
+	 */
+	for (const [name, reason] of [
+		[
+			"the member table's budget",
+			"the listing budget ran out before this member was probed",
+		],
+		[
+			"the relay-down branch",
+			"the relay is not running, so no device was asked",
+		],
+	]) {
+		const graph = meshGraph({
+			topology: networkTopology({
+				networks: [
+					network(NET_ONE, [member(DEVICE_B, { reachable: false, reason })]),
+				],
+			}),
+			peers: peerList({}),
+		});
+		const device = graph.devices[0];
+		assert.equal(
+			deviceReach(device),
+			"not-attempted",
+			`${name}: the app's own limit is not the device's failure`,
+		);
+		assert.equal(reachWords(deviceReach(device)), "not asked");
+		assert.equal(
+			deviceStatLine(device, 1_700_000_100),
+			"not asked",
+			"and no surface below it says `unreachable` any more",
+		);
+		assert.equal(
+			meshSummary(graph),
+			"1 network · 1 device · 1 not asked",
+			"the sentence above the canvas counts it as its own thing (D3)",
+		);
+	}
+	/*
+	 * A SENTENCE NOBODY WROTE DOWN FALLS BACK TO `unanswered`, which is the reading that
+	 * blames the device least: an unreadable reason is likelier a refusal nobody spelled
+	 * than a new way of saying "we never asked". The list is closed on purpose - a
+	 * substring scan would read a real refusal as "we never asked" and take the blame for
+	 * a device that stayed silent.
+	 */
+	const other = meshGraph({
+		topology: networkTopology({
+			networks: [
+				network(NET_ONE, [
+					member(DEVICE_B, { reachable: false, reason: "the budget ran out" }),
+				]),
+			],
+		}),
+		peers: peerList({}),
+	});
+	assert.equal(deviceReach(other.devices[0]), "unanswered");
+	/*
+	 * AND THE LIST IS THE RELAY'S OWN SENTENCES, checked rather than trusted: these two
+	 * strings are the producers' vocabulary, so a rename upstream reddens this line
+	 * instead of quietly reclassifying every member of a budget-exhausted listing.
+	 */
+	assert.deepEqual([...NOT_ATTEMPTED_SENTENCES].sort(), [
+		"the listing budget ran out before this member was probed",
+		"the relay is not running, so no device was asked",
+	]);
+	assert.equal(
+		[...Object.entries(REACH_INK)].filter(([, ink]) => ink === "text-warning")
+			.length,
+		1,
+		"exactly one reach state spends the warning hue, and it is the one the relay answered",
+	);
 });
 
 test("a peer the reads disagree about is surfaced rather than silently dropped", () => {
@@ -478,7 +594,8 @@ test("the summary line is a sentence about this mesh, and this device", () => {
 	const graph = meshGraph({ topology, peers });
 	assert.equal(
 		meshSummary(graph),
-		"2 networks · 3 devices · 1 unreachable · this device is device …aaaaaa",
+		"2 networks · 3 devices · 1 no answer · this device is device …aaaaaa",
+		"counted by REACH (mesh redesign, D3), so an unanswered device is not filed as a failure it never was",
 	);
 	/*
 	 * A mesh with nothing to count and no self id: the summary claims only what the
@@ -513,8 +630,8 @@ test("a stat line never claims a heartbeat the wire did not send", () => {
 	assert.equal(deviceStatLine(self, 1_700_000_100), "this device");
 	assert.equal(
 		deviceStatLine(devon, 1_700_000_100),
-		"2 conversations · seen just now",
-		"the age comes from the stamp that IS there, and the unit is the feature's one noun",
+		"2 conversations · last status frame just now",
+		"THE AGE KEEPS THE WIRE'S OWN NOUN (mesh redesign, D4): `last_seen_at` is a rotation stamp, and `seen … ago` was a heartbeat's name on it",
 	);
 	assert.equal(
 		deviceStatLine(unknown, 1_700_000_100),
@@ -523,46 +640,46 @@ test("a stat line never claims a heartbeat the wire did not send", () => {
 	);
 });
 
-test("the node's stat line says what fits, and the full sentence stays one hover away (D12)", () => {
+test("the node draws a rail and a state line, and the sentence moved to its name (D4/D6)", () => {
 	/*
-	 * THE RENAME THAT COST THE VALUE (design review round 2, D12): "conversations" is five
-	 * characters longer than "chats", and on the canvas node's own 147 px stat line the part
-	 * that fell off the end was the freshness reading - every peer node with a stamp read
-	 * `6 conversations · seen …`. The sentence is still ONE builder; only the count's noun
-	 * differs, and only for the width that cannot hold it.
+	 * THE NODE'S OWN CONTRACT, pinned as source rather than as a rendered sentence, because
+	 * what changed is WHICH surface has a reader for the sentence rather than what the
+	 * sentence says. `deviceStatLine` is still the one builder (`mesh-graph.ts`), and the
+	 * canvas node no longer paints it: the node draws the metric rail - a monospace count at
+	 * a fixed x, which is the glance affordance a sentence cannot be - and the state line
+	 * under it, while the full sentence stays on the accessible name and the tooltip.
 	 */
-	const graph = meshGraph({
-		topology: networkTopology({
-			self_device_id: DEVICE_A,
-			networks: [network(NET_ONE, [member(DEVICE_A), member(DEVICE_B)])],
-		}),
-		peers: peerList({
-			peers: [
-				peer(DEVICE_B, { session_count: 2, last_seen_at: 1_700_000_060 }),
-			],
-		}),
-	});
-	const self = graph.devices.find((device) => device.id === DEVICE_A);
-	const peerDevice = graph.devices.find((device) => device.id === DEVICE_B);
-	assert.equal(
-		deviceStatLine(peerDevice, 1_700_000_100),
-		"2 conversations · seen just now",
-		"every surface with room for it keeps the feature's one noun (D5)",
+	const node = source("src/renderer/src/features/mesh/mesh-node.tsx");
+	assert.match(
+		node,
+		/w-3 shrink-0 font-mono text-body-sm text-ink tabular-nums/,
+		"the count is monospace in a fixed 12 px column, so comparing devices compares digits in the same place",
 	);
-	assert.equal(
-		deviceNodeStatLine(peerDevice, 1_700_000_100),
-		"2 conv · seen just now",
-		"and the node's own line abbreviates the count rather than dropping the age",
+	assert.match(
+		node,
+		/\{device\.sessionCount \?\? "–"\}/,
+		"and `null` renders an en dash, never a zero: the node's own page has carried `null` is not `0` since the join was written",
 	);
-	/*
-	 * THE SELF NODE, when the catalogue has not counted it: both forms say the one thing there
-	 * is to say. Its COUNTED form - `this device · 6 conv` at 147 px, against a full form that
-	 * measures 161.3 px and therefore truncates - is what the frames show and what the comment in
-	 * `mesh-graph.ts` carries; this fixture cannot produce it, because the self device's count
-	 * comes from the sessions read and not from the peer catalogue.
-	 */
-	assert.equal(deviceNodeStatLine(self, 1_700_000_100), "this device");
-	assert.equal(deviceStatLine(self, 1_700_000_100), "this device");
+	assert.match(
+		node,
+		/data-mesh-reach=\{reach\}/,
+		"the node states its reach where an evidence rig can read it, from the same value its stripe and its words use",
+	);
+	assert.match(
+		node,
+		/\{REACH_DOT\[reach\]\}/,
+		"and the dot is a second channel beside the word, so colour is never the only one",
+	);
+	assert.doesNotMatch(
+		node,
+		/\{emptyChipWords\(/,
+		"the empty chip band's sentence is gone (D6): it spent a whole text row of a 147 px box saying `nothing` beside a count that already said it, and the fact is in the rail above and in the node's accessible name",
+	);
+	assert.doesNotMatch(
+		node,
+		/deviceNodeStatLine/,
+		"there is no second, node-width rendering of the sentence left to drift from the first",
+	);
 });
 
 /* --------------------------------------------------------------- positions */
@@ -661,6 +778,67 @@ test("zoom keeps the world point under the pointer invariant", () => {
 	assert.equal(zoomAbout(start, pointer, 0.001).k, 0.25, "and at the bottom");
 });
 
+test("the taller node costs one device of `k = 1`, and the fit stops at legibility", () => {
+	/*
+	 * THE COST OF THE REDESIGN, MEASURED RATHER THAN DISCOVERED (design § 4). `NODE_WIDTH`
+	 * is untouched, so `COLUMN_GAP`, `PAD`, `keepNodeVisible`, the edge anchors and the slot
+	 * map are all unchanged; what moves is the node's height, and the only thing a height
+	 * changes is how many devices fit at full size.
+	 *
+	 * The viewport is the SHIPPED one rather than a round number: at 1380x900 the canvas well
+	 * measures 1284 x 691.3, and `fitTransform` spends 8 % of the smaller ratio as margin
+	 * (`* 0.92`), which is where the budget comes from.
+	 */
+	const viewport = { width: 1284, height: 691.3 };
+	const fitFor = (count) =>
+		fitTransform(
+			meshGeometry({
+				networks: new Map([["n1", 0]]),
+				devices: new Map(
+					Array.from({ length: count }, (_, index) => [`d${index}`, index]),
+				),
+			}).bounds,
+			viewport,
+		).k;
+	assert.equal(
+		DEVICE_HEIGHT,
+		NODE_BODY_HEIGHT + NODE_CHIP_BAND,
+		"the node's height is still the reservation, and the band is still inside it",
+	);
+	assert.equal(
+		DEVICE_HEIGHT,
+		96,
+		"200 x 96: width untouched, one body and one band",
+	);
+	for (const count of [1, 2, 4, 5])
+		assert.equal(
+			fitFor(count),
+			1,
+			`${count} devices still render at full size at the shipped window`,
+		);
+	const six = fitFor(6);
+	assert.ok(
+		six > 0.9 && six < 0.905,
+		`six devices measure ${six.toFixed(5)}, and the 12 px meta renders at ${(six * 12).toFixed(2)} px`,
+	);
+	/*
+	 * THE COST, stated where a future reader will find it: the `k = 1` guarantee moves from
+	 * <= 6 devices (72 px node) to <= 5 (96 px node). Six was already a shrink at 0.90344;
+	 * nine used to land at 0.61156, where the 12 px meta renders at 7.34 px - below the 10 px
+	 * floor `design-qa`'s `tiny-text` check fails on.
+	 */
+	assert.equal(
+		fitFor(9),
+		MIN_FIT_SCALE,
+		"nine devices stop at the legibility floor instead of shrinking to 0.61156, and the graph is panned to be read",
+	);
+	assert.equal(
+		MIN_FIT_SCALE,
+		0.8,
+		"where the meta is 9.6 px and the label 10.4 px",
+	);
+});
+
 test("fit centres the world in the viewport and never leaves the scale range", () => {
 	const bounds = { width: 464, height: 200 };
 	const fitted = fitTransform(bounds, { width: 1000, height: 600 });
@@ -670,8 +848,12 @@ test("fit centres the world in the viewport and never leaves the scale range", (
 	const tiny = fitTransform(bounds, { width: 10, height: 10 });
 	assert.equal(
 		tiny.k,
-		0.25,
-		"a viewport smaller than the world clamps rather than vanishing",
+		MIN_FIT_SCALE,
+		"a viewport smaller than the world stops at the LEGIBILITY floor rather than vanishing: a 7 px meta line is not readable, and the graph it cannot fit is pannable",
+	);
+	assert.ok(
+		tiny.k > 0.25,
+		"which is a different floor from the user's own zoom: a reader may still zoom out to 0.25 by hand",
 	);
 });
 
@@ -1194,7 +1376,7 @@ test("the fit never enlarges the world past its designed size (D2)", async () =>
 	);
 });
 
-test("this device is a ring, and the stripe carries status (D6)", () => {
+test("this device is a ring, and the stripe carries REACH (D6, mesh redesign D2)", () => {
 	const node = source("src/renderer/src/features/mesh/mesh-node.tsx");
 	assert.match(
 		node,
@@ -1203,8 +1385,13 @@ test("this device is a ring, and the stripe carries status (D6)", () => {
 	);
 	assert.match(
 		node,
-		/const STATE_STRIPE: Record<DeviceState, string> = \{\s*self: "border-l-hairline",/,
+		/const REACH_STRIPE: Record<DeviceReach, string> = \{\s*self: "border-l-hairline",/,
 		"and the self stripe is the neutral one a resting node wears, so a green bar cannot read as healthy in a misconfigured graph",
+	);
+	assert.match(
+		node,
+		/function nodeStripe\(device: MeshDevice\): string \{\s*return device\.suspect \? "border-l-danger" : REACH_STRIPE\[deviceReach\(device\)\];/,
+		"the stripe is keyed on REACH with the suspect overlay on top: a device nobody dialled wears the neutral stripe its words describe, not the amber of a device that stayed silent",
 	);
 	assert.doesNotMatch(
 		node,
@@ -2326,5 +2513,256 @@ test("a token path breaks between its segments, not inside a filename (D11)", ()
 		actions,
 		/break-all font-mono text-meta text-ink/,
 		"`break-all` is what split the filename; it is gone rather than joined by `<wbr>`",
+	);
+});
+
+/* ----------------------------------------- the canvas's second layer */
+
+/**
+ * THE SCOPE LAYER'S THREE TIERS, and the refusal that is easiest to get wrong.
+ *
+ * A device's published addresses are the only input, and they are weak evidence: two
+ * machines on two unrelated WireGuard tunnels share `10.88.0.0/24` while sharing no path
+ * at all. So the layer draws a SOLID boundary only where one side of the comparison is an
+ * interface this process runs on, a DASHED one where two peers merely agree, and NOTHING
+ * otherwise - and an address two devices claim contributes to no group, because that is a
+ * data anomaly (a copied config, a stale record) rather than a shared path.
+ */
+test("the scope layer draws three tiers, and refuses a duplicate address", () => {
+	const addresses = {
+		self: ["192.168.1.10:4097"],
+		wireguard: ["10.88.0.7:4097"],
+		wireguardPeer: ["10.88.0.4:4097"],
+		lanPeer: ["192.168.1.40:4097"],
+		colo: ["203.0.113.9:4097"],
+	};
+	const build = (overrides = {}) =>
+		meshGraph({
+			topology: networkTopology({
+				self_device_id: DEVICE_A,
+				networks: [
+					network(NET_ONE, [
+						member(DEVICE_A, {
+							endpoints: addresses.self,
+							...(overrides.self ?? {}),
+						}),
+						member(DEVICE_B, {
+							endpoints: addresses.wireguard,
+							...(overrides.b ?? {}),
+						}),
+						member(DEVICE_C, {
+							endpoints: addresses.wireguardPeer,
+							...(overrides.c ?? {}),
+						}),
+						member(DEVICE_D, {
+							endpoints: addresses.lanPeer,
+							...(overrides.d ?? {}),
+						}),
+						member(DEVICE_E, {
+							endpoints: addresses.colo,
+							...(overrides.e ?? {}),
+						}),
+					]),
+				],
+			}),
+			peers: peerList({ peers: [] }),
+		});
+	const graph = build();
+	const groups = prefixGroups(graph.devices, graph.selfDeviceId);
+	const byPrefix = new Map(groups.map((group) => [group.prefix, group]));
+	assert.deepEqual(
+		[...byPrefix.keys()].sort(),
+		["10.88.0", "192.168.1"],
+		"two prefixes, and the colo address groups with nothing",
+	);
+	assert.equal(
+		byPrefix.get("10.88.0").tier,
+		"probable",
+		"two peers agreeing is arithmetic on two published values, not a path",
+	);
+	assert.equal(byPrefix.get("192.168.1").tier, "shared");
+	assert.equal(
+		prefixWords(byPrefix.get("10.88.0")),
+		"10.88.0.x · same prefix",
+		"the label names the TEST, because `10.88.0.x` alone reads as a range the app looked up",
+	);
+	assert.equal(
+		prefixWords(byPrefix.get("192.168.1")),
+		"192.168.1.x · shared with this device",
+		"and the verified tier's claim is about the machine the reader is sitting at",
+	);
+	assert.ok(
+		groups.every((group) => !group.deviceIds.includes(DEVICE_A)),
+		"the self device is the reference rather than a member: it carries the ring, and boxing the reference point draws a boundary around the comparison",
+	);
+	/*
+	 * THE DUPLICATE-ADDRESS REFUSAL. Two devices publishing one address cannot both hold
+	 * it, so the address is dropped and the shared tier's ONLY evidence disappears with it:
+	 * the solid boundary is absent rather than drawn over a config that was copied.
+	 */
+	const doubled = prefixGroups(
+		build({
+			self: { endpoints: addresses.lanPeer },
+			c: { endpoints: addresses.lanPeer },
+		}).devices,
+		DEVICE_A,
+	);
+	assert.equal(
+		doubled.filter((group) => group.tier === "shared").length,
+		0,
+		"an address carried by two devices contributes to no group",
+	);
+	assert.ok(
+		doubled.every((group) => group.tier !== "probable"),
+		"and neither does the probable tier: `10.88.0.4` was claimed twice, so those two agree on nothing the app may draw",
+	);
+	/*
+	 * THE DECLARED TIER, built now and rendered never: the backend has no scope field, so
+	 * this is the client half only - and it takes the operator's own word rather than
+	 * guessing a boundary out of arithmetic.
+	 */
+	const declaredGraph = build({ c: { scope: "aws-vpn" } });
+	const declared = prefixGroups(declaredGraph.devices, DEVICE_A);
+	const tiers = declared.filter((group) => group.tier === "declared");
+	assert.equal(tiers.length, 1);
+	assert.equal(prefixWords(tiers[0]), "aws-vpn · declared");
+	assert.deepEqual(tiers[0].deviceIds, [DEVICE_C]);
+	assert.equal(
+		declaredScope(
+			declaredGraph.devices.find((device) => device.id === DEVICE_C),
+		),
+		"aws-vpn",
+		"a declared membership is read off the member record and off nothing else",
+	);
+	assert.equal(
+		declaredScope(
+			declaredGraph.devices.find((device) => device.id === DEVICE_B),
+		),
+		"",
+		"and a membership nobody declared contributes no declared boundary",
+	);
+});
+
+test("an endpoint parses only when it is an address this test can be applied to", () => {
+	assert.deepEqual(parseEndpoint("10.0.0.4:4097"), {
+		host: "10.0.0.4",
+		port: 4097,
+	});
+	assert.deepEqual(parseEndpoint(" 10.0.0.4 "), {
+		host: "10.0.0.4",
+		port: null,
+	});
+	/* A bracketed literal parses so its host is readable, and then groups with nothing. */
+	assert.deepEqual(parseEndpoint("[::1]:4097"), { host: "::1", port: 4097 });
+	assert.equal(subnet24("10.0.0.4"), "10.0.0");
+	assert.equal(subnet24("10.88.0.7"), "10.88.0");
+	assert.equal(
+		subnet24("10.0.0.4:4097"),
+		null,
+		"a port left attached would group addresses that share nothing: `4:4097` is not an octet",
+	);
+	assert.equal(subnet24("10.0.0.4.5"), null);
+	assert.equal(subnet24("10.0.0.999"), null);
+});
+
+test("activity is derived, and says nothing where no read named the device", () => {
+	const row = (live_state) => ({
+		id: `s_${live_state}`,
+		name: "",
+		mtime: 0,
+		locality: "remote",
+		owner_device: DEVICE_B,
+		owner_device_name: "cloud-node-1",
+		reachable: true,
+		unreachable_reason: "",
+		live_state,
+		archived: false,
+	});
+	const busy = deviceActivity({ sessionCount: 3 }, [row("idle"), row("busy")]);
+	assert.deepEqual(
+		busy,
+		{ activity: "working", source: "derived" },
+		"`busy` in the backend's own vocabulary is the one word that means work is in flight",
+	);
+	assert.deepEqual(deviceActivity({ sessionCount: 3 }, [row("attached")]), {
+		activity: "idle",
+		source: "derived",
+	});
+	assert.deepEqual(
+		deviceActivity({ sessionCount: null }, [row("busy")]),
+		{ activity: null, source: "none" },
+		"a device no read named gets NO state: `idle` there would be the same defect as `0 conversations`",
+	);
+});
+
+test("the ground is a sibling of the world, and its pitch is not a function of the zoom", () => {
+	const canvas = source("src/renderer/src/features/mesh/mesh-canvas.tsx");
+	const ground = canvas.indexOf('data-mesh-ground=""');
+	const world = canvas.indexOf('data-mesh-world=""');
+	assert.ok(
+		ground > -1 && world > -1 && ground < world,
+		"the ground precedes the world layer",
+	);
+	assert.match(
+		canvas,
+		/data-mesh-ground=""[\s\S]*?\/>\n\t*<div\n\t*data-mesh-world=""/,
+		"and it SELF-CLOSES, so it cannot be a parent of the world: a texture inside the transformed layer is scaled with the content",
+	);
+	assert.match(
+		canvas,
+		/backgroundPosition: `\$\{transform\.tx\}px \$\{transform\.ty\}px`/,
+		"it pans with the world, because a field that stayed put would read as content sliding under a sticker",
+	);
+	assert.ok(
+		canvas.indexOf("<MeshScopeLayer") < canvas.indexOf("<MeshEdgeLayer"),
+		"and the boundaries are mounted UNDER the edges, so a membership line crosses a frame rather than being clipped by it",
+	);
+	const css = source("src/renderer/src/styles/index.css");
+	assert.match(
+		css,
+		/\.mesh-ground \{[\s\S]*?background-size: 24px 24px;/,
+		"24 px is a viewport length, which is what keeps the pitch identical at every zoom",
+	);
+	assert.match(
+		css,
+		/\.mesh-ground \{[\s\S]*?var\(--lo-hairline-strong\)/,
+		"and the ink is the strong decorative role: on `hairline` the field measured 1.15-1.23:1 on three of the twelve themes",
+	);
+});
+
+test("the panel lists the addresses and labels the rotation stamp (D5, D4)", () => {
+	const panel = source("src/renderer/src/features/mesh/mesh-card.tsx");
+	/*
+	 * THE ADDRESSES WERE BEHIND A HOVER (design round's D5): `1 address` plus a tooltip is
+	 * reachable by pointer alone, so a keyboard or touch reader never saw one of the wire's
+	 * own strings - and the addresses are the only input to the canvas's boundaries, which
+	 * makes them the thing a reader needs to CHECK the drawing.
+	 */
+	assert.match(
+		panel,
+		/Network addresses[\s\S]*?font-mono text-body-sm text-ink[\s\S]*?advertised/,
+		"each published address is its own row, in the machine's own voice, and the side that published it is named",
+	);
+	assert.doesNotMatch(
+		panel,
+		/addresses"\}\s*<\/span>\s*<\/Tooltip>|content=\{device\.endpoints\.join/,
+		"and the count-plus-tooltip rendering is GONE rather than joined by the list",
+	);
+	/*
+	 * THE AGE APPEARS EXACTLY ONCE, UNDER THE NAME THE WIRE'S WRITER GIVES IT. The shipped
+	 * header read `3 conversations · seen 9m ago` - a rotation stamp under a heartbeat's
+	 * name, printed twice (the design's own frame caught the second copy) - so the header
+	 * speaks the reach model and the Status section carries the stamp under its own label.
+	 * `never` rather than a date computed from zero is what the `null` case says.
+	 */
+	assert.match(
+		panel,
+		/Last status frame[\s\S]*?device\.lastSeenAt === null[\s\S]*?"never"[\s\S]*?agoSentence\(/,
+		"the section names the stamp and prints `never` for a null rather than 1970",
+	);
+	assert.doesNotMatch(
+		panel,
+		/seen \$\{|\bseen just now\b/,
+		"and no surface says `seen …` any more: one stamp, one noun",
 	);
 });

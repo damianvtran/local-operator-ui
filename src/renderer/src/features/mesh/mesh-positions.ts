@@ -94,16 +94,33 @@ export const NODE_WIDTH = 200;
  */
 export const NETWORK_HEIGHT = 48;
 /**
- * A DEVICE NODE'S HEIGHT, chip band included WHETHER OR NOT IT HOLDS ANYTHING.
+ * The three rows a device node's own text occupies, with the node's own padding.
+ *
+ * 72 px is identity + the metric rail + the state line, measured on the redesign's
+ * frame (19.5, 17.4 and 15.7 px of line) plus the node's own padding. It is named
+ * apart from `DEVICE_HEIGHT` because "how tall is the node" and "how much room does
+ * its text have" are two questions, and the band answers only the first.
+ */
+export const NODE_BODY_HEIGHT = 72;
+/**
+ * The chip band, reserved WHETHER OR NOT IT HOLDS ANYTHING.
  *
  * THE BAND IS RESERVED, and that is the plan's "a node must not breathe on a poll"
  * applied to the second axis: a node that grew when its first conversation appeared
  * would move every node below it in the column at that moment - the reshuffle this
- * module exists to prevent - and it would do it under the reader's pointer. 48 px is
- * slice 1's node; the extra 24 px is the band (`NODE_CHIP_BAND`).
+ * module exists to prevent - and it would do it under the reader's pointer.
  */
 export const NODE_CHIP_BAND = 24;
-export const DEVICE_HEIGHT = 72;
+/**
+ * A DEVICE NODE'S HEIGHT: the body the text occupies, then the band.
+ *
+ * The expression is the reservation, kept as one so a later reader cannot move the
+ * band out of the box that reserves it. 48 px is slice 1's body and 72 px is the
+ * redesign's; 96 rather than 72 is the ONE geometry number this slice moves, and its
+ * cost is measured rather than argued: at the shipped 1380x900 the `k = 1` guarantee
+ * moves from six devices to FIVE (`MIN_FIT_SCALE` is the other half of that).
+ */
+export const DEVICE_HEIGHT = NODE_BODY_HEIGHT + NODE_CHIP_BAND;
 /**
  * The node height a caller means when it does not say, kept as the device's.
  *
@@ -235,11 +252,41 @@ export const MAX_SCALE = 3;
 export const MAX_FIT_SCALE = 1;
 
 /**
+ * The FIT's own floor: the canvas refuses to fit past the point of legibility.
+ *
+ * WHY A FLOOR RATHER THAN ONLY `MIN_SCALE`. The user's zoom clamps at 0.25, which is
+ * right - a reader may zoom out as far as they like to see the shape of a large mesh
+ * - but the AUTOMATIC fit is a decision the app makes FOR them, and at six devices
+ * that decision put the node's 12 px meta line at 10.8 px while at nine it put it at
+ * **7.34 px**, below the 10 px floor `design-qa`'s `tiny-text` check fails on. This is
+ * pre-existing (the 72 px node reached the same 7.34 px one device later); the taller
+ * node reaches it sooner, which is why the floor lands WITH the taller node rather
+ * than after it.
+ *
+ * 0.8 is where the node's own type stays readable at the shipped window size: the
+ * 12 px meta renders at 9.6 px and the 13 px label at 10.4 px.
+ *
+ * THE COST, STATED RATHER THAN DISCOVERED: a graph too large to fit at 0.8 now
+ * EXTENDS PAST THE VIEWPORT instead of being shrunk into it. That is the trade this
+ * constant makes deliberately - a graph that extends past the viewport is pannable
+ * and zoomable (the pan is the canvas's own gesture and its cursor says so), while a
+ * canvas whose text is 7 px at rest is not readable at all. At the shipped 1380x900
+ * the fit measures 1.0 up to five devices, 0.90344 at six, and the floor binds at
+ * nine, where the raw fit would have been 0.61156.
+ */
+export const MIN_FIT_SCALE = 0.8;
+
+/**
  * The transform that fits `bounds` inside a viewport, with a margin.
  *
  * Used by "fit" (double-click on empty ground, and the initial view) and NOT by a
  * poll: a poll never changes the viewport transform, which is the classic
  * refetch-resets-zoom defect. Pure, so the fit can be asserted without pixels.
+ *
+ * THE FLOOR IS `MIN_FIT_SCALE`, not `scaleRange.min`, and the two answer different
+ * questions: `scaleRange` is what a USER may zoom to, and the floor here is what
+ * this function may DECIDE. A fit that would land below the legibility floor stops
+ * at the floor and lets the graph extend past the viewport, where panning reaches it.
  */
 export function fitTransform(
 	bounds: MeshBounds,
@@ -253,6 +300,7 @@ export function fitTransform(
 		MAX_FIT_SCALE,
 		Math.max(
 			scaleRange.min,
+			MIN_FIT_SCALE,
 			Math.min(
 				viewport.width / Math.max(1, bounds.width),
 				viewport.height / Math.max(1, bounds.height),

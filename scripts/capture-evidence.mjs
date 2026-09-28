@@ -7455,6 +7455,19 @@ export const STORIES = [
 	["mesh-tab--single-device", 1380, 900],
 	["mesh-tab--two-devices", 1380, 900],
 	["mesh-tab--overlapping-networks", 1380, 900],
+	/*
+	 * THE REACH MODEL'S OWN FRAME (feat/mesh-canvas-redesign): five reach states and one
+	 * working device on one canvas, including the three the shipped set could not produce -
+	 * a budget-exhausted peer, a busy conversation, and a drawn device no read named. The
+	 * story carries the relay's own sentences rather than invented ones.
+	 */
+	["mesh-tab--reach-states", 1380, 900],
+	/*
+	 * THE SCOPE LAYER'S DRAWN TIERS, on addresses that make the collision real: two peers on
+	 * WireGuard's default subnet (dashed, `same prefix`), one on this device's own (solid,
+	 * `shared with this device`), and two that group with nothing.
+	 */
+	["mesh-tab--scopes", 1380, 900],
 	["mesh-tab--misconfigured", 1380, 900],
 	["mesh-tab--virgin-device", 1380, 900],
 	["mesh-tab--reads-failed", 1380, 900],
