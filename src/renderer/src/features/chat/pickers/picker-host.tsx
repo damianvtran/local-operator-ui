@@ -672,8 +672,14 @@ export const PickerRow: FC<PickerRowProps> = memo(
 				event.preventDefault();
 				onPick(option, index);
 			}}
+			/*
+			 * No cursor class, on purpose. This row is `role="option"`, so the base
+			 * layer's rule gives it the pointer; an explicit utility here would ALSO
+			 * beat that rule's disabled arm, and a disabled row (`aria-disabled`,
+			 * above) would then advertise a click it cannot take.
+			 */
 			className={cn(
-				"flex cursor-default items-start gap-3 rounded-sm px-2 py-1.5",
+				"flex items-start gap-3 rounded-sm px-2 py-1.5",
 				isActive && "bg-sunken",
 				isHovered && !isActive && "bg-accent-wash",
 				// The structural half of both marks; see the block comment above for
@@ -1650,10 +1656,16 @@ export function PickerSegment<T extends string>({
 							onChange={() => onChange(option.value)}
 							className="sr-only"
 						/>
+						{/*
+						 * The radio above is `sr-only`, so this label is the segmented
+						 * control's whole visible target. The base layer's pointer list is
+						 * semantic controls and a label is not one, so the pointer has to be
+						 * said here.
+						 */}
 						<label
 							htmlFor={id}
 							className={cn(
-								"block cursor-default rounded-sm px-3 py-1 text-body-sm",
+								"block cursor-pointer rounded-sm px-3 py-1 text-body-sm",
 								value === option.value
 									? "bg-surface text-ink"
 									: "text-ink-muted hover:text-ink",

@@ -284,6 +284,12 @@ const CHROME_LAUNCH_SITES = [
 		"measures the transcript's horizontal geometry from the live DOM",
 	),
 	guarded(
+		"scripts/cursor-audit.mjs",
+		"spawn",
+		1,
+		"walks every story measuring the pointer affordance - the computed cursor of every interactive element and its state - from the live DOM",
+	),
+	guarded(
 		"scripts/header-cluster-geometry.mjs",
 		"spawn",
 		1,
