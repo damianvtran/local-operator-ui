@@ -48,7 +48,7 @@ import {
 	type DesktopControlError,
 	desktopResult,
 } from "@shared/api/local-operator/desktop-api";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef } from "react";
 import { type MeshGraph, meshGraph } from "./mesh-graph";
 import { type MeshMembership, meshMembership } from "./mesh-membership";
@@ -58,16 +58,24 @@ import {
 	type SlotCandidate,
 	assignSlots,
 } from "./mesh-positions";
+import { type MeshedSessions, sessionsByDevice } from "./mesh-sessions";
 import {
+	type MeshRefusal,
+	type MeshSessionRow,
 	type NetworkTopology,
 	type PeerList,
+	type TransferReceipt,
+	meshRefusal,
 	networkTopology,
 	peerList,
+	sessionRows,
+	transferReceipt,
 } from "./mesh-types";
 
 export const meshKeys = {
 	peers: ["desktop", "mesh", "peers"] as const,
 	networks: ["desktop", "mesh", "networks"] as const,
+	sessions: ["desktop", "mesh", "sessions"] as const,
 };
 
 /** The catalogue's own safety cadence. See this file's header for the arithmetic. */
@@ -129,6 +137,55 @@ export function useMeshNetworks(
 export function useMeshMembership(enabled: boolean): MeshMembership {
 	const networks = useMeshNetworks(enabled, { poll: false });
 	return meshMembership({ enabled, networks: networks.data });
+}
+
+/**
+ * How many rows the tab asks the catalogue for.
+ *
+ * THE PAGE IS THE BOUND, and the number is a cost decision rather than a display
+ * one: `sessions.list` reads a transcript-tail preview PER ROW (the sidebar's own
+ * note on why its poll is not cheap), and the peer half of this read dials every
+ * peer's relay under a 12 s fan-out budget. 200 rows is enough to fill every chip
+ * row on a realistic mesh and to show a device with forty conversations as "+36
+ * more" rather than as four - while staying inside the catalogue's own 500-row
+ * ceiling with room for a second device's page to arrive in the same answer.
+ *
+ * THE TAB SAYS WHAT IT IS NOT SHOWING. A device whose `session_count` (the peer
+ * catalogue's count) exceeds the rows in hand renders "showing 4 of 37"; a count is
+ * a fact and a truncation nobody mentions is a wrong one.
+ */
+export const MESH_SESSION_PAGE = 200;
+
+/**
+ * `GET /v1/desktop/sessions?include_peers=true`, normalised.
+ *
+ * THE ONE PLACE IN THIS APP THAT ASKS FOR THE FEDERATED LIST, and it asks only
+ * while the Mesh tab is mounted: `include_peers` makes the backend fan out to every
+ * peer's relay (TTL-cached at 20 s) and decorates every row with the flat locality
+ * fields, which is exactly what the canvas needs and exactly what the sidebar's
+ * two-second poll must never carry. A machine in no network short-circuits to no
+ * call at all, so the flag costs an unpaired install nothing.
+ *
+ * `retry: false` and a 30 s cadence, matching the other two reads here: a failed
+ * listing leaves the last good rows painted, and a refused one is the backend's own
+ * sentence rather than a second attempt nobody asked for.
+ */
+export function useMeshSessions(enabled: boolean) {
+	return useQuery({
+		queryKey: meshKeys.sessions,
+		enabled,
+		queryFn: async () =>
+			sessionRows(
+				await desktopResult<unknown>({
+					op: "sessions.list",
+					limit: MESH_SESSION_PAGE,
+					include_peers: true,
+				}),
+			),
+		retry: false,
+		staleTime: 10_000,
+		refetchInterval: enabled ? MESH_POLL_MS : false,
+	});
 }
 
 /* ------------------------------------------------------------------ states */
@@ -287,4 +344,216 @@ export function useMeshSlots(graph: MeshGraph | null): MeshSlots {
 		pinned.current = next;
 		return next;
 	}, [key]);
+}
+
+/* ------------------------------------------------------------------ writes */
+
+/**
+ * What one move answered.
+ *
+ * A REFUSAL IS AN ANSWER, NOT AN ERROR, and the difference is what the surface
+ * does next: a rejected promise would land in react-query's error path, which
+ * retries, reports and forgets - while a refusal has to stay on screen beside the
+ * chip it belongs to (with the code, the route's own sentence and the action that
+ * fixes it). So this resolves for every outcome and the caller branches once.
+ *
+ * `kind: "unconfirmed"` IS ITS OWN ARM rather than a flag on `refused`, because the
+ * instruction is the opposite one: a 503 (or the app's own deadline, which carries
+ * `deadline_exceeded`) means the request WAS sent and this device never learned the
+ * outcome, so the row is re-read and the move is NEVER repeated - while a refusal
+ * means nothing changed and the id is still usable.
+ */
+export type MoveOutcome =
+	| { kind: "moved"; receipt: TransferReceipt }
+	| { kind: "refused"; refusal: MeshRefusal }
+	| { kind: "unconfirmed"; refusal: MeshRefusal };
+
+/** One move's request, as a caller states it. */
+export type MoveAsk = {
+	sessionId: string;
+	/** The device asked to take it, or `"local"` for a recall to this device. */
+	to: string;
+	/** `true` forks at the destination and leaves the source running. */
+	keep: boolean;
+	/**
+	 * How long the source may take to go idle before it refuses as `busy`.
+	 *
+	 * ZERO UNLESS THE USER ASKED TO WAIT, and that is the route's own default: a
+	 * drop that looked instant must not hold a request for minutes without saying so
+	 * (`wait_s` is a ceiling on waiting INSIDE the request). The `busy` refusal's own
+	 * remedy re-issues the same move with this raised.
+	 */
+	waitS?: number;
+};
+
+/**
+ * Ask for a move.
+ *
+ * `request_id` IS MINTED PER REQUEST AND SENT ALWAYS. The route journals an
+ * UNCONFIRMED move under `transfer:{session_id}:{request_id}`, so a retry of the
+ * same id replays the recorded outcome instead of starting a second move; a request
+ * that carries no id is a different request on purpose, which is why this is not a
+ * field the caller may set. React Query does not retry a mutation by default, so
+ * this id is not a retry key here - it is what makes the ROUTE's own at-most-once
+ * promise reachable if a future caller ever does retry.
+ *
+ * THE READS ARE INVALIDATED ON EVERY SETTLED OUTCOME, including a refusal: a
+ * refusal is still information about the world (a peer that is not answering, a
+ * session that is busy), and the next read is what makes the surface's claim
+ * current. Nothing is written optimistically - optimism belongs to the gesture, not
+ * to the ownership (`mesh-types.transferReceipt`).
+ */
+export function useMeshTransfer() {
+	const client = useQueryClient();
+	return useMutation({
+		mutationFn: async (ask: MoveAsk): Promise<MoveOutcome> => {
+			try {
+				const raw = await desktopResult<unknown>({
+					op: "sessions.transfer",
+					sessionId: ask.sessionId,
+					to: ask.to,
+					keep: ask.keep,
+					waitS: ask.waitS ?? 0,
+					requestId: crypto.randomUUID(),
+				});
+				const receipt = transferReceipt(raw);
+				if (receipt) return { kind: "moved", receipt };
+				/*
+				 * AN ANSWER NOBODY CAN ACT ON. A receipt without a session id would
+				 * move the wrong chip and one without `new_session_id` would open
+				 * nothing, and `transferReceipt` refuses both - so the honest reading
+				 * of a 2xx this shape is "this device does not know what happened",
+				 * which is exactly the unconfirmed arm rather than a success.
+				 */
+				return {
+					kind: "unconfirmed",
+					refusal: {
+						code: "unconfirmed",
+						sentence:
+							"The move answered, and this app could not read which session it moved. Read the list again before asking for another.",
+						status: 200,
+						unconfirmed: true,
+					},
+				};
+			} catch (error) {
+				const refusal = meshRefusal(error);
+				return refusal.unconfirmed
+					? { kind: "unconfirmed", refusal }
+					: { kind: "refused", refusal };
+			}
+		},
+		onSettled: () => {
+			// Both reads the answer can contradict: the catalogue (where the row now
+			// lives) and the peer counts (which device holds how many).
+			void client.invalidateQueries({ queryKey: meshKeys.sessions });
+			void client.invalidateQueries({ queryKey: meshKeys.peers });
+		},
+	});
+}
+
+/** The three roles an invite can grant, as the route's own `Literal` spells them. */
+export const INVITE_ROLES = ["read", "drive", "admin"] as const;
+export type InviteRole = (typeof INVITE_ROLES)[number];
+
+/** What a minted invite answered: the path the token was written to, never the token. */
+export type InviteReceipt = { token_path: string; expires_at: number | null };
+
+/**
+ * Mint an invite for a network.
+ *
+ * THE TOKEN NEVER CROSSES THIS API: the route writes it to a file only the machine
+ * that will redeem it can read and answers with the PATH, so what a user is told is
+ * "the token is at <path>, give it to that device" rather than a string this app
+ * ever holds. `device` BINDS the token to one device id when the caller names one,
+ * which is why the invite from a DEVICE node sends it: an invite minted for the
+ * device on screen should not be redeemable by a third one.
+ *
+ * NO MEMBERSHIP IS CREATED HERE, and the answer says so: admission is two-sided
+ * (the joining device proves the SAS), so the receipt is an invitation and the
+ * member appears once the other device redeems it.
+ */
+export function useNetworkInvite() {
+	return useMutation({
+		mutationFn: async (ask: {
+			networkId: string;
+			role: InviteRole;
+			deviceId?: string;
+		}): Promise<InviteReceipt> => {
+			const raw = await desktopResult<{
+				token_path?: unknown;
+				expires_at?: unknown;
+			}>({
+				op: "networks.invite",
+				networkId: ask.networkId,
+				role: ask.role,
+				deviceId: ask.deviceId,
+			});
+			return {
+				token_path: typeof raw?.token_path === "string" ? raw.token_path : "",
+				expires_at: typeof raw?.expires_at === "number" ? raw.expires_at : null,
+			};
+		},
+	});
+}
+
+/**
+ * Revoke a membership: the tombstone, the rotation and the epoch bump.
+ *
+ * `confirm` IS THE NETWORK'S NAME, typed by the user and compared exactly by the
+ * route. This is the one mesh act that changes OTHER devices' state - every peer is
+ * rekeyed and the removed device is locked out on its next handshake - so the
+ * dialog that produces this string is not a courtesy; it is the request's
+ * precondition. The caller passes the typed name through unchanged rather than
+ * trimming or case-folding it: a near miss is a refusal the user can read, and
+ * "helpfully" repairing it here would defeat the check the route performs.
+ */
+export function useNetworkMemberRemove() {
+	const client = useQueryClient();
+	return useMutation({
+		mutationFn: async (ask: {
+			networkId: string;
+			deviceId: string;
+			confirm: string;
+		}): Promise<{ removed: string; epoch: number }> => {
+			const raw = await desktopResult<{ removed?: unknown; epoch?: unknown }>({
+				op: "networks.member.remove",
+				networkId: ask.networkId,
+				deviceId: ask.deviceId,
+				confirm: ask.confirm,
+			});
+			return {
+				removed: typeof raw?.removed === "string" ? raw.removed : ask.deviceId,
+				epoch: typeof raw?.epoch === "number" ? raw.epoch : 0,
+			};
+		},
+		onSettled: () => {
+			void client.invalidateQueries({ queryKey: meshKeys.networks });
+			void client.invalidateQueries({ queryKey: meshKeys.peers });
+		},
+	});
+}
+
+/**
+ * The rows per device, joined and capped, for the canvas and the panel.
+ *
+ * A THIN WRAPPER OVER `mesh-sessions.ts`'s PURE JOIN, and it takes the graph rather
+ * than the reads so the drawn device set is the same one the layout used: a device
+ * the reads know and the canvas did not draw cannot have a chip row, and asking the
+ * graph is what keeps the two from disagreeing. `orphans` is passed through for the
+ * page to state - a remote row whose owner is not drawn is a real number the tab
+ * can see and cannot place.
+ */
+export function useMeshSessionsByDevice(
+	graph: MeshGraph | null,
+	rows: readonly MeshSessionRow[],
+	selfDeviceId: string | null,
+): MeshedSessions {
+	const deviceIds = useMemo(
+		() => (graph ? graph.devices.map((device) => device.id) : []),
+		[graph],
+	);
+	return useMemo(
+		() => sessionsByDevice(rows, selfDeviceId, deviceIds),
+		[rows, selfDeviceId, deviceIds],
+	);
 }
