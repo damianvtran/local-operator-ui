@@ -1710,6 +1710,17 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"mouseCursorRestampNote",
 	/*
+	 * AND THE PROJECTS CARD'S WHOLE-SURFACE TARGET - it belongs here for the
+	 * list's own reason: ITS SUBJECT IS THIS FILE'S BINDING. The card's root
+	 * role, click and keyboard activation move both trees (the component
+	 * under `src/`; the interaction pin and its lane entry under
+	 * `scripts/`), and no frame was re-taken - the pointer is not a pixel, so
+	 * the committed set renders identically and the PR's stills carry the
+	 * before/after a reader would want - so a reader is owed the two values
+	 * it binds and the reason the stills did not move.
+	 */
+	"projectsCardClickRestampNote",
+	/*
 	 * AND THE REGENERATED SCHEDULES BEFORE HALVES' OWN - it belongs here for the
 	 * list's own reason: THE NOTE STATES THIS FILE'S BINDING. The regeneration
 	 * moves `scripts/` (this note's registration) and no file under `src/` - the
@@ -1771,6 +1782,23 @@ const STAMP_BINDING_NOTES = [
 	 * this file ships rather than read as history.
 	 */
 	"foldOnto55dbaf6118Note",
+	/*
+	 * AND THIS FOLD'S OWN - `foldOnto1b1a52d5cfNote` states the pair the folded
+	 * tip binds, the single conflicted path it resolved (this branch's manifest
+	 * against main's, plus package.json's test list) and the union decisions
+	 * behind it; no frame was re-taken (main's delta is the projects card's
+	 * pointer behaviour, not a pixel), so it is held to the pair this file
+	 * ships rather than read as history.
+	 */
+	"foldOnto1b1a52d5cfNote",
+	/*
+	 * AND THE COMMENT FIX'S OWN - `agentsOfferDismissCommentRestampNote` states
+	 * the pair after round 1's nit (reviewer) and Q1 (QA) reworded the offer's
+	 * count-vs-names sentence: a comment-only move under `src/` with no frame
+	 * repainted, so a reader is owed the pair and the reason the set did not
+	 * move.
+	 */
+	"agentsOfferDismissCommentRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2636,6 +2664,17 @@ const BRANCH_RECORDS = [
 	 */
 	"mouseCursorRestampNote",
 	/*
+	 * AND THE PROJECTS CARD'S WHOLE-SURFACE TARGET - it belongs here for the
+	 * list's own reason: ITS SUBJECT IS THIS FILE'S BINDING. The card's root
+	 * role, click and keyboard activation move both trees (the component
+	 * under `src/`; the interaction pin and its lane entry under
+	 * `scripts/`), and no frame was re-taken - the pointer is not a pixel, so
+	 * the committed set renders identically and the PR's stills carry the
+	 * before/after a reader would want - so a reader is owed the two values
+	 * it binds and the reason the stills did not move.
+	 */
+	"projectsCardClickRestampNote",
+	/*
 	 * And this lane's own D1 fix rides beside them: the regenerated schedules
 	 * before halves write one top-level note, registered here for the same
 	 * completeness reason - a fold that started from main's copy would drop it
@@ -2755,6 +2794,14 @@ const BRANCH_RECORDS = [
 	 */
 	"interruptedRowsCaptureNote",
 	"foldOnto55dbaf6118Note",
+	/*
+	 * And this round's own records, registered with them: the second fold's
+	 * note (`foldOnto1b1a52d5cfNote`) and the comment fix's re-stamp note
+	 * (`agentsOfferDismissCommentRestampNote`); their texts are written by the
+	 * docs-only re-stamp commit this registration rides beside.
+	 */
+	"foldOnto1b1a52d5cfNote",
+	"agentsOfferDismissCommentRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
