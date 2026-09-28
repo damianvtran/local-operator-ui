@@ -893,7 +893,10 @@ text in the transcript — code, stdout and diffs share the treatment — opens
   measure is 900px again, on their own report against the 640px redesign** —
   whether a wide conversation reads better than a narrow one here is the
   operator's call on their own product, and this document records the override
-  rather than arguing it. The 640 measurement is KEPT, because it is what an
+  rather than arguing it. **A follow-up narrowed it one step, to 810px (exactly
+  10%), on the operator's "narrow the constraint a bit, maybe by around 10%";
+  the step's own measurement lives beside the value in `styles/index.css` and
+  in `docs/evidence/chat-measure/`.** The 640 measurement is KEPT, because it is what an
   override of the override would need: measured at the body step (14px SFNS, a
   700-character sample), 640 carries 101 characters per line on average and 104
   at worst, against 146/146 at 900; the board's own worst reference is 108
