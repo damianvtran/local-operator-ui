@@ -1,13 +1,13 @@
-[build] current: assets 2026-09-28T08:06:49.603Z >= sources 2026-09-28T07:58:33.149Z
+[build] current: assets 2026-09-28T08:51:22.621Z >= sources 2026-09-28T08:41:19.773Z
 [note] abandoned scratch trees
-        7 seen, 0 owned by a live pid (kept), 7 younger than 30m (kept), 0 removed
+        20 seen, 0 owned by a live pid (kept), 19 younger than 30m (kept), 1 removed: lo-renderer-driver-92201
 [note] csp for this run's backend
         already widened for http://127.0.0.1:18322
 local-operator-ui renderer driver
   repo          /Users/damian/local-operator-ui-worktrees/undo-toasts-0927-235510
-  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-78626
-  frames        /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/undo-toasts-r2-37574/rig2/frames-mine-dr-dark
-  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-78626/cwd   (scratch: the repo's .env is not read)
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-58758
+  frames        /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/undo-toasts-r2-37574/rig2/frames-mine4-dr-dark
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-58758/cwd   (scratch: the repo's .env is not read)
   backend url   http://127.0.0.1:18322   (--backend: a live isolated backend this run owns)
   electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/undo-toasts-0927-235510/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
   electron pin  44.3.0   (package.json optionalDependencies)
@@ -88,52 +88,52 @@ local-operator-ui renderer driver
 [PASS] the offer frames hold the offer, stable
 
 ---- app log (tail) ----
-04:15:41.235 › Update service initialized. Dev mode: true, NPX install: false
-04:15:41.238 › Unpackaged instance: no packaged install state to leave alone.
-04:15:41.240 › Periodic update checks scheduled (every 5 minutes)
-04:15:41.241 › macOS auto-update requires app signing
-04:15:41.243 › [webauthn] Touch ID passkeys are off: unpackaged — an unpackaged run has no signature to carry the entitlement, so there is no group to configure
-04:15:41.256 › [browser] denied a media permission request from (unknown origin)
-04:15:41.257 › [browser] denied a media permission request from (unknown origin)
-04:15:41.259 › [browser] denied a web-app-installation permission request from (unknown origin)
-04:15:41.260 › [browser] denied a geolocation permission request from (unknown origin)
-04:15:41.915 › [shell-path] /bin/zsh reports PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
-04:15:41.916 › Shell environment variables loaded successfully. PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
-04:15:41.987 › [browser] denied a media permission request from (unknown origin)
-04:15:41.988 › [browser] denied a media permission request from (unknown origin)
-04:15:41.989 › [browser] denied a web-app-installation permission request from (unknown origin)
-04:15:41.990 › [browser] denied a geolocation permission request from (unknown origin)
-04:15:42.008 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
-04:15:42.011 › [browser] host on 127.0.0.1:56091 (proto 1), profile /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-78626/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
-04:15:42.071 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
-04:15:42.072 › Checking for UI updates...
-04:15:42.073 › Skip checkForUpdates because application is not packed and dev update config is not forced
-04:15:42.337 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
-04:15:42.338 › Checking for UI updates...
-04:15:42.338 › Skip checkForUpdates because application is not packed and dev update config is not forced
-04:15:42.381 › [browser] tab 1 navigated to about:blank
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'browser-state': Error: No handler registered for 'browser-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'browser-webauthn-pending': Error: No handler registered for 'browser-webauthn-pending'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+04:55:09.580 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+04:55:09.580 › Checking for UI updates...
+04:55:09.581 › Skip checkForUpdates because application is not packed and dev update config is not forced
+Error occurred in handler for 'browser-state': Error: No handler registered for 'browser-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'console-state': Error: No handler registered for 'console-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'browser-webauthn-pending': Error: No handler registered for 'browser-webauthn-pending'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+04:55:09.637 › [shell-path] /bin/zsh reports PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
+04:55:09.638 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
+04:55:09.638 › Shell environment variables loaded successfully. PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
+04:55:09.639 › [browser] host on 127.0.0.1:64103 (proto 1), profile /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-58758/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+04:55:09.682 › [browser] tab 1 navigated to about:blank
 [window-mode] state: visible=false focused=false focusable=false size=1380x900 content=1380x900
-04:15:43.906 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
-04:15:43.907 › Checking for UI updates...
-04:15:43.907 › Skip checkForUpdates because application is not packed and dev update config is not forced
-04:15:44.243 › Checking for updates... (silent mode: true)
-04:15:44.244 › Skip checkForUpdates because application is not packed and dev update config is not forced
-04:15:44.244 › Checking for backend updates... (silent mode: true)
-04:15:44.245 › Skip backend update check in dev mode unless forced
-04:15:51.067 › Backend health check response status: 200
-04:15:52.118 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
-04:15:52.120 › Checking for UI updates...
-04:15:52.120 › Skip checkForUpdates because application is not packed and dev update config is not forced
-04:15:53.902 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
-04:15:53.903 › Checking for UI updates...
-04:15:53.904 › Skip checkForUpdates because application is not packed and dev update config is not forced
+04:55:11.166 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+04:55:11.167 › Checking for UI updates...
+04:55:11.167 › Skip checkForUpdates because application is not packed and dev update config is not forced
+04:55:11.770 › Checking for updates... (silent mode: true)
+04:55:11.771 › Skip checkForUpdates because application is not packed and dev update config is not forced
+04:55:11.771 › Checking for backend updates... (silent mode: true)
+04:55:11.772 › Skip backend update check in dev mode unless forced
+04:55:18.694 › Backend health check response status: 200
+04:55:18.907 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+04:55:18.907 › Checking for UI updates...
+04:55:18.907 › Skip checkForUpdates because application is not packed and dev update config is not forced
+04:55:20.669 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+04:55:20.669 › Checking for UI updates...
+04:55:20.669 › Skip checkForUpdates because application is not packed and dev update config is not forced
 
 [PASS] no process from this run outlived its boot
 
 frames: drafts-clear-disabled.png, drafts-cleared.png, drafts-deleted-open.png, drafts-deleted.png, drafts-hover.png, drafts-pending-disabled.png, drafts-relaunch.png, drafts-rest.png, drafts-undo-restored.png
-frames directory: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/undo-toasts-r2-37574/rig2/frames-mine-dr-dark
-app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-78626/app-scene.log
-scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-78626 (the frames are also in --out)
+frames directory: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/undo-toasts-r2-37574/rig2/frames-mine4-dr-dark
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-58758/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-58758 (the frames are also in --out)
 
 1 CHECK(S) FAILED
 driver rc=1
