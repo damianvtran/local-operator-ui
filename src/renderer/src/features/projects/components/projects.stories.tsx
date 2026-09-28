@@ -1311,6 +1311,20 @@ export const BoardColumnKeyboardMove: Story = {
 		const handle = document.querySelector<HTMLElement>(grip);
 		if (!handle) throw new Error("the QA column has no grip");
 		handle.focus();
+		/*
+		 * THE GRIP ANSWERS ITS OWN ACTIVATION KEYS (UX round 1, U3): Enter on a
+		 * handle has no action, so it answers with the route itself through the
+		 * board's live region - the same sentence the described-by hint carries
+		 * for a screen reader. Asserted here because "inert" was the finding.
+		 */
+		await userEvent.keyboard("{Enter}");
+		await poll(
+			() =>
+				(document.querySelector("[data-board-column-announcement]")
+					?.textContent ?? "") ===
+				"Drag the header, or press the arrow keys, to move this column.",
+			"the grip's Enter answer",
+		);
 		await userEvent.keyboard("{ArrowRight}");
 		await poll(
 			() =>
@@ -1373,9 +1387,88 @@ export const BoardColumnDropCommits: Story = {
 		);
 		if (!handle || !header || !done)
 			throw new Error("the active header or its drop target is missing");
+		const regionText = () =>
+			document.querySelector("[data-board-column-announcement]")?.textContent ??
+			"";
+		/*
+		 * (a) A NO-OP DROP (review round 1, R1-3; UX round 1, U5): press, pass the
+		 * arm threshold, release in the same slot. Nothing may be written - the
+		 * on-screen order equals the stored one here, so a write would rewrite
+		 * the store for a move nobody made and drop the rank of a dormant column
+		 * the user never touched - and nothing may be announced: the region's own
+		 * "Moving …" sentence is cleared, not left standing or replaced by a
+		 * "Moved" for a move that did not happen.
+		 */
+		const noopAt = handle.getBoundingClientRect();
+		await userEvent.pointer([
+			{ keys: "[MouseLeft>]", target: handle },
+			{
+				target: header,
+				coords: {
+					x: Math.round(noopAt.left + 30),
+					y: Math.round(noopAt.top + 12),
+				},
+			},
+			{
+				target: header,
+				coords: {
+					x: Math.round(noopAt.left + 34),
+					y: Math.round(noopAt.top + 12),
+				},
+			},
+			{ keys: "[/MouseLeft]", target: header },
+		]);
+		if (readOrder() !== "planning,active,qa,validation,done,paused") {
+			throw new Error(`the no-op drop moved a column: ${readOrder()}`);
+		}
+		const afterNoop = JSON.parse(
+			localStorage.getItem(PROJECTS_BOARD_ORDER_STORAGE_KEY) ?? "[]",
+		) as string[];
+		if (afterNoop.length !== 0) {
+			throw new Error(`the no-op drop wrote storage: ${afterNoop.join(",")}`);
+		}
+		if (regionText() !== "") {
+			throw new Error(`the no-op drop announced: ${regionText()}`);
+		}
+		/*
+		 * (b) A CANCEL (Escape; QA round 1, Q-2): the gesture abandons silently,
+		 * and the region says so instead of keeping "Moving …". The trailing
+		 * release is inert by design - the gesture is gone, so its pointerup
+		 * settles nothing - and it closes the synthetic pointer sequence.
+		 */
+		const cancelAt = handle.getBoundingClientRect();
+		await userEvent.pointer([
+			{ keys: "[MouseLeft>]", target: handle },
+			{
+				target: header,
+				coords: {
+					x: Math.round(cancelAt.left + 40),
+					y: Math.round(cancelAt.top + 12),
+				},
+			},
+		]);
+		await userEvent.keyboard("{Escape}");
+		await poll(() => regionText() === "Move cancelled.", "the cancel's copy");
+		if (readOrder() !== "planning,active,qa,validation,done,paused") {
+			throw new Error(`the cancel moved a column: ${readOrder()}`);
+		}
+		const afterCancel = JSON.parse(
+			localStorage.getItem(PROJECTS_BOARD_ORDER_STORAGE_KEY) ?? "[]",
+		) as string[];
+		if (afterCancel.length !== 0) {
+			throw new Error(`the cancel wrote storage: ${afterCancel.join(",")}`);
+		}
+		await userEvent.pointer([{ keys: "[/MouseLeft]", target: header }]);
 		const start = handle.getBoundingClientRect();
 		const landing = done.getBoundingClientRect();
-		const x = Math.round(landing.left + landing.width / 2);
+		/*
+		 * Aimed inside Done's LEFT half, deliberately: the midpoint boundary that
+		 * puts Active in the gap before Done is comfortably inside it, and the
+		 * landing stays clear of the strip's right auto-scroll zone - held in that
+		 * zone the strip scrolls under the pointer by design (UX round 1, U1)
+		 * and the committed index would be measuring the scroll, not the drop.
+		 */
+		const x = Math.round(landing.left + 40);
 		const y = Math.round(landing.top + 12);
 		await userEvent.pointer([
 			{ keys: "[MouseLeft>]", target: handle },

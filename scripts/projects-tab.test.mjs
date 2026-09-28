@@ -567,10 +567,14 @@ test("the column order's store is guarded, validated and deduped", () => {
 		removeItem: (name) => store.delete(name),
 	};
 	try {
-		/* A fresh store reads as the lifecycle default. */
+		/*
+		 * THE STORE'S OWN PARSING, asked before anything writes: with no session
+		 * copy in play a read is the store's answer alone. (Once a write lands,
+		 * the session copy leads the read - the case the next test pins - so
+		 * these assertions have to come first, which is also the order a fresh
+		 * session meets them in.)
+		 */
 		assert.deepEqual(model.readBoardColumnOrder(), []);
-		model.writeBoardColumnOrder(["done", "planning"]);
-		assert.deepEqual(model.readBoardColumnOrder(), ["done", "planning"]);
 		/* Anything unusable reads as ABSENT, never half-applied. */
 		store.set(key, "not json");
 		assert.deepEqual(model.readBoardColumnOrder(), []);
@@ -583,17 +587,43 @@ test("the column order's store is guarded, validated and deduped", () => {
 		/* One status must not rank twice: first position wins. */
 		store.set(key, JSON.stringify(["a", "a", "b"]));
 		assert.deepEqual(model.readBoardColumnOrder(), ["a", "b"]);
-		/* A locked store: reads default, and a failed write never throws. */
-		globalThis.localStorage = {
-			getItem: () => {
-				throw new Error("locked");
-			},
-			setItem: () => {
-				throw new Error("locked");
-			},
-		};
-		assert.deepEqual(model.readBoardColumnOrder(), []);
-		model.writeBoardColumnOrder(["x"]);
+		/* A write lands in the store. */
+		model.writeBoardColumnOrder(["done", "planning"]);
+		assert.equal(store.get(key), JSON.stringify(["done", "planning"]));
+	} finally {
+		globalThis.localStorage = original;
+	}
+});
+
+test("a blocked store cannot take the session's order away", () => {
+	/*
+	 * UX ROUND 1, U4. The promise was "the move stands for this session"
+	 * while a view switch re-ran the read; with only localStorage behind it,
+	 * a locked store made that false. The session copy leads the read, so the
+	 * two things a remount does - read again, write nothing - keep the order.
+	 *
+	 * Ordering note: this test runs after the store test above, and that one's
+	 * assertions do not depend on a missing session copy once it has written.
+	 */
+	const original = globalThis.localStorage;
+	globalThis.localStorage = {
+		getItem: () => {
+			throw new Error("locked");
+		},
+		setItem: () => {
+			throw new Error("locked");
+		},
+	};
+	try {
+		/* A failed write never throws, and the move is still the session's. */
+		model.writeBoardColumnOrder(["qa", "planning"]);
+		assert.deepEqual(model.readBoardColumnOrder(), ["qa", "planning"]);
+		/* The remount read (what a view switch performs) sees the same order. */
+		assert.deepEqual(model.readBoardColumnOrder(), ["qa", "planning"]);
+		/* The returned array is a copy: a caller cannot edit the session's. */
+		const copy = model.readBoardColumnOrder();
+		copy.push("done");
+		assert.deepEqual(model.readBoardColumnOrder(), ["qa", "planning"]);
 	} finally {
 		globalThis.localStorage = original;
 	}
