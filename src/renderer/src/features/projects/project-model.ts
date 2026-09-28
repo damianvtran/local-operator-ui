@@ -486,16 +486,33 @@ export const BOARD_SIDE_COLUMNS = ["paused", "archived"] as const;
 export const PROJECTS_BOARD_ORDER_STORAGE_KEY = "projects-board-column-order";
 
 /**
- * The stored column order, or `[]` (the lifecycle default) for anything
- * unusable.
+ * THE SESSION'S OWN COPY OF THE ORDER, ahead of the store (UX round 1, U4).
  *
- * VALIDATED, NOT TRUSTED: the value crosses sessions and app versions, so a
- * hand-edited array is read as ABSENT rather than half-applied — every entry
- * must be a non-empty string or the whole order is dropped. Duplicates keep
- * their first position (one status must not rank twice), and an empty list
- * means the same as no list at all.
+ * WHY IT EXISTS. The write path was best-effort by design - a failed write
+ * must not fail the move - but the read path had only `localStorage` to go
+ * on, so with the store blocked a move survived until the board remounted
+ * (a view switch re-runs `readBoardColumnOrder`) and then silently reverted,
+ * which is not what "the move stands for this session" promised. The memory
+ * below is that promise made true: every write records the order here as
+ * well, and a read prefers it over the store, so the session's own choice
+ * survives remounts whether or not the store accepted it. It is deliberately
+ * module-scoped rather than component state: the point is that it outlives
+ * the mount.
+ */
+let sessionOrder: string[] | null = null;
+
+/**
+ * The column order for this board: the session's own choice when it has one,
+ * else the stored order, else `[]` (the lifecycle default).
+ *
+ * VALIDATED, NOT TRUSTED: the stored value crosses sessions and app versions,
+ * so a hand-edited array is read as ABSENT rather than half-applied — every
+ * entry must be a non-empty string or the whole order is dropped. Duplicates
+ * keep their first position (one status must not rank twice), and an empty
+ * list means the same as no list at all.
  */
 export function readBoardColumnOrder(): string[] {
+	if (sessionOrder) return [...sessionOrder];
 	try {
 		const raw = localStorage.getItem(PROJECTS_BOARD_ORDER_STORAGE_KEY);
 		if (!raw) return [];
@@ -515,13 +532,17 @@ export function readBoardColumnOrder(): string[] {
 
 /** Persist the order; a failed write must not fail the move (see above). */
 export function writeBoardColumnOrder(order: string[]): void {
+	/* The session copy lands first and unconditionally: it is what keeps a
+	 * move alive when the store refuses it, and a stored value that later
+	 * fails to read still cannot lose the session its own choice. */
+	sessionOrder = [...order];
 	try {
 		localStorage.setItem(
 			PROJECTS_BOARD_ORDER_STORAGE_KEY,
 			JSON.stringify(order),
 		);
 	} catch {
-		/* storage unavailable: the move stands for this session */
+		/* storage unavailable: the session copy above is what keeps the move */
 	}
 }
 

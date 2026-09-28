@@ -62,7 +62,11 @@ import { cn } from "@shared/lib/utils";
  * choice and this is the one that keeps one name for one type.
  */
 import { GripVertical, MoreHorizontal } from "lucide-react";
-import type { FC, KeyboardEvent, PointerEvent as ReactPointerEvent } from "react";
+import type {
+	FC,
+	KeyboardEvent,
+	PointerEvent as ReactPointerEvent,
+} from "react";
 import {
 	useCallback,
 	useEffect,
@@ -147,6 +151,16 @@ export function useMoveFocusHandoff(): (projectId: string) => void {
 /** Pixels of travel before a press on a header becomes a drag (not a press). */
 const DRAG_ARM_DISTANCE = 4;
 
+/**
+ * The move's route, stated once and said in three places: the grip's tooltip,
+ * the described-by hint a screen reader reads on focus, and the live region's
+ * answer to Enter/Space (UX round 1, U3 - the route used to live only in the
+ * hover tooltip).
+ */
+const BOARD_MOVE_HINT =
+	"Drag the header, or press the arrow keys, to move this column.";
+const BOARD_MOVE_HINT_ID = "board-column-move-hint";
+
 /** The live gesture: which column is in the air, and where it would land. */
 type DragState = { status: string; over: number };
 
@@ -170,6 +184,10 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 	const [announcement, setAnnouncement] = useState("");
 	const stripRef = useRef<HTMLDivElement | null>(null);
 	const indicatorRef = useRef<HTMLDivElement | null>(null);
+	/** The pointer's last client x, read by the auto-scroll loop off-event. */
+	const pointerXRef = useRef<number | null>(null);
+	/** The auto-scroll loop's frame handle, null when it is not running. */
+	const autoScrollRef = useRef<number | null>(null);
 	const gesture = useRef<{
 		pointerId: number;
 		status: string;
@@ -229,6 +247,82 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 		return "in place";
 	};
 
+	/**
+	 * Adopt the landing a pointer x implies, if it changed. One function because
+	 * THREE things refresh it: the pointer moving, the strip scrolling under a
+	 * held pointer (edge auto-scroll and the wheel), and the frame loop that
+	 * watches for both.
+	 */
+	const applyOver = (
+		clientX: number,
+		live: NonNullable<typeof gesture.current>,
+	) => {
+		const over = dropIndexAt(clientX, live.status);
+		if (over === live.over) return;
+		live.over = over;
+		setDrag({ status: live.status, over });
+		/* Announce the landing, not every pixel of travel. */
+		setAnnouncement(
+			`Moving ${projectStatusMeta(live.status).label} column; it will drop ${dropPhrase(live.status, over)}.`,
+		);
+	};
+
+	const stopAutoScroll = () => {
+		if (autoScrollRef.current === null) return;
+		cancelAnimationFrame(autoScrollRef.current);
+		autoScrollRef.current = null;
+	};
+
+	/**
+	 * EDGE AUTO-SCROLL while a drag is armed (UX round 1, U1): at the app's own
+	 * default width two of six columns can sit beyond the strip's right edge,
+	 * and without this the end of the board is unreachable in one gesture - the
+	 * drag lands short of where it aimed. Holding the pointer in an edge zone
+	 * scrolls the strip; the landing is re-derived every frame from the live
+	 * rects, so the line and the announcement track the content as it moves
+	 * under the handless pointer (which is also what keeps a WHEEL scroll
+	 * mid-drag honest, since no pointer event fires for it).
+	 *
+	 * The loop is cheap by construction: it reads rects and calls setState only
+	 * when the landing actually changed, so it idles at ambient cost while the
+	 * pointer sits still.
+	 */
+	const AUTO_SCROLL_ZONE = 32; /* px from the strip's edge */
+	const AUTO_SCROLL_STEP = 12; /* px per frame at 60fps */
+	const runAutoScroll = () => {
+		autoScrollRef.current = null;
+		const live = gesture.current;
+		const strip = stripRef.current;
+		const x = pointerXRef.current;
+		if (!live?.armed || !strip || x === null) return;
+		const rect = strip.getBoundingClientRect();
+		const maxScroll = strip.scrollWidth - strip.clientWidth;
+		let dir = 0;
+		if (x - rect.left < AUTO_SCROLL_ZONE && strip.scrollLeft > 0) dir = -1;
+		else if (rect.right - x < AUTO_SCROLL_ZONE && strip.scrollLeft < maxScroll)
+			dir = 1;
+		if (dir !== 0) {
+			const before = strip.scrollLeft;
+			strip.scrollLeft = before + dir * AUTO_SCROLL_STEP;
+			if (strip.scrollLeft !== before) applyOver(x, live);
+		} else {
+			/* No scroll this frame; the content can still have moved (wheel). */
+			applyOver(x, live);
+		}
+		/* Re-pin: the clamp is content-space, so a moved strip must re-place it. */
+		placeIndicator(live.status, live.over);
+		autoScrollRef.current = requestAnimationFrame(runAutoScroll);
+	};
+
+	/* The loop follows the gesture, not the render: it ends with the drag. */
+	useEffect(
+		() => () => {
+			if (autoScrollRef.current !== null)
+				cancelAnimationFrame(autoScrollRef.current);
+		},
+		[],
+	);
+
 	const onHeaderPointerDown = (
 		event: ReactPointerEvent<HTMLElement>,
 		status: string,
@@ -253,11 +347,13 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 			armed: false,
 			over: columns.findIndex((column) => column.status === status),
 		};
+		pointerXRef.current = event.clientX;
 	};
 
 	const onHeaderPointerMove = (event: ReactPointerEvent<HTMLElement>) => {
 		const live = gesture.current;
 		if (!live || event.pointerId !== live.pointerId) return;
+		pointerXRef.current = event.clientX;
 		if (!live.armed) {
 			const travel = Math.hypot(
 				event.clientX - live.startX,
@@ -267,23 +363,41 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 			live.armed = true;
 			setDrag({ status: live.status, over: live.over });
 			setAnnouncement(`Moving ${projectStatusMeta(live.status).label} column.`);
+			if (autoScrollRef.current === null)
+				autoScrollRef.current = requestAnimationFrame(runAutoScroll);
 		}
-		const over = dropIndexAt(event.clientX, live.status);
-		if (over !== live.over) {
-			live.over = over;
-			setDrag({ status: live.status, over });
-			/* Announce the landing, not every pixel of travel. */
-			setAnnouncement(
-				`Moving ${projectStatusMeta(live.status).label} column; it will drop ${dropPhrase(live.status, over)}.`,
-			);
-		}
+		applyOver(event.clientX, live);
 	};
 
+	/**
+	 * End the gesture. Two no-op outcomes are stated rather than implied:
+	 *
+	 * - A CANCEL (Escape, pointercancel) says so, so "Moving …" does not linger
+	 *   in the live region (UX round 1, Q-2) - and only when the gesture had
+	 *   actually armed, because a sub-threshold press never announced anything.
+	 * - A DROP THAT LANDS WHERE IT STARTED skips the commit entirely (review
+	 *   round 1, R1-3): writing the on-screen order for a move nobody made
+	 *   would rewrite the store for nothing - and silently drop the stored
+	 *   rank of a dormant column the user never touched - and announcing a
+	 *   move for it would be a lie. The region is left empty, which is
+	 *   "nothing happened" (UX round 1, U5).
+	 */
 	const settleDrag = (commit: boolean) => {
 		const live = gesture.current;
 		gesture.current = null;
+		stopAutoScroll();
 		setDrag(null);
-		if (commit && live?.armed) commitMove(live.status, live.over);
+		if (!live?.armed) return;
+		if (!commit) {
+			setAnnouncement("Move cancelled.");
+			return;
+		}
+		const from = columns.findIndex((column) => column.status === live.status);
+		if (live.over === from) {
+			setAnnouncement("");
+			return;
+		}
+		commitMove(live.status, live.over);
 	};
 
 	const onHeaderPointerUp = (event: ReactPointerEvent<HTMLElement>) => {
@@ -324,31 +438,73 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 	 * must be the ones on screen): the line sits in the gap the column would
 	 * land in, half a strip gap off the neighbouring column's edge.
 	 */
-	useLayoutEffect(() => {
+	/**
+	 * Place the line in the gap the drag would land in. A plain function rather
+	 * than only an effect body because TWO clocks place it: the render that
+	 * moves the landing, and every frame of the auto-scroll loop - the clamp
+	 * pins the line to the visible edge in CONTENT coordinates, so a strip that
+	 * keeps scrolling under a settled landing would otherwise drift the line
+	 * away from the edge it was pinned to (measured while fixing UX round 1:
+	 * the line ended 109px left of the gap after the auto-scroll ran its course).
+	 */
+	const placeIndicator = useCallback((status: string, over: number) => {
 		const strip = stripRef.current;
 		const line = indicatorRef.current;
-		if (!strip || !line || !drag) return;
+		if (!strip || !line) return;
 		const stripRect = strip.getBoundingClientRect();
 		const others: DOMRect[] = [];
 		for (const section of strip.querySelectorAll<HTMLElement>(
 			"[data-board-column]",
 		)) {
-			if (section.dataset.boardColumn !== drag.status) {
+			if (section.dataset.boardColumn !== status) {
 				others.push(section.getBoundingClientRect());
 			}
 		}
 		const HALF_GAP = 6; /* half of the strip's `gap-3` (12px) */
 		const edge =
-			drag.over >= others.length
+			over >= others.length
 				? (others[others.length - 1]?.right ?? stripRect.left) + HALF_GAP
-				: (others[drag.over]?.left ?? stripRect.right) - HALF_GAP;
-		line.style.left = `${Math.round(edge - stripRect.left)}px`;
-	});
+				: (others[over]?.left ?? stripRect.right) - HALF_GAP;
+		/*
+		 * SCROLL-AWARE, AND CLAMPED TO THE VISIBLE STRIP. The line is a child of
+		 * the scroll container, so its `left` is in CONTENT coordinates while
+		 * `edge` is measured in client ones: without the scroll term the line sits
+		 * exactly `scrollLeft` px left of the gap it names (UX round 1, U2 - the
+		 * offset was subtracted twice). The clamp keeps a legal landing visible
+		 * when its gap lies outside the strip - the narrow-window case design
+		 * round 1 (D2) measured, where an unclamped line renders past the clip
+		 * and paints nothing at the moment the preview matters most.
+		 */
+		const scroll = strip.scrollLeft;
+		const LINE_WIDTH = 2; /* `w-0.5` */
+		const raw = edge - stripRect.left + scroll;
+		const minX = scroll + 1;
+		const maxX = scroll + stripRect.width - LINE_WIDTH - 1;
+		const clamped = Math.round(
+			Math.min(Math.max(raw, minX), Math.max(minX, maxX)),
+		);
+		line.style.left = `${clamped}px`;
+	}, []);
 
-	const onGripKeyDown = (
-		event: KeyboardEvent<HTMLElement>,
-		status: string,
-	) => {
+	/* The landing moves, the line moves with it; the loop below re-pins it while the strip itself moves. */
+	useLayoutEffect(() => {
+		if (!drag) return;
+		placeIndicator(drag.status, drag.over);
+	}, [drag, placeIndicator]);
+
+	const onGripKeyDown = (event: KeyboardEvent<HTMLElement>, status: string) => {
+		/*
+		 * ENTER/SPACE: the grip is a HANDLE, not a command, so its standard
+		 * activation has no action to run - and silently ignoring the keys a
+		 * focused button answers to is what UX round 1 (U3) flagged. The
+		 * response is the route itself, spoken through the board's live region;
+		 * the same sentence `aria-describedby` gives the screen reader on focus.
+		 */
+		if (event.key === "Enter" || event.key === " ") {
+			event.preventDefault();
+			setAnnouncement(BOARD_MOVE_HINT);
+			return;
+		}
 		if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
 		event.preventDefault();
 		const statuses = columns.map((column) => column.status);
@@ -356,7 +512,7 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 		const to = event.key === "ArrowLeft" ? from - 1 : from + 1;
 		if (to < 0 || to >= statuses.length) {
 			setAnnouncement(
-				`${projectStatusMeta(status).label} column is already ${to < 0 ? "first" : "last"}.`,
+				`${projectStatusMeta(status).label} column is already ${to < 0 ? "the first column" : "the last column"}.`,
 			);
 			return;
 		}
@@ -386,6 +542,15 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 			>
 				{announcement}
 			</output>
+			{/*
+			 * THE ROUTE, STATED WHERE FOCUS LANDS (UX round 1, U3): the grip's
+			 * `title` is hover-only, so the hint is also a described-by target - a
+			 * screen reader reads it when the grip takes focus, and the grip's
+			 * Enter/Space answer speaks the same sentence through the live region.
+			 */}
+			<span id={BOARD_MOVE_HINT_ID} className="sr-only">
+				{BOARD_MOVE_HINT}
+			</span>
 			<div
 				ref={stripRef}
 				className={cn(
@@ -425,7 +590,7 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 								onPointerCancel={onHeaderPointerCancel}
 								className={cn(
 									"flex shrink-0 cursor-grab items-center justify-between gap-2 border-b border-hairline px-3 py-2 active:cursor-grabbing",
-									drag?.status === column.status && "opacity-60",
+									drag?.status === column.status && "opacity-85",
 								)}
 							>
 								<span className="flex min-w-0 flex-1 items-center gap-1.5">
@@ -435,7 +600,8 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 										size="icon-sm"
 										data-board-column-grip={column.status}
 										aria-label={`Move ${meta.label} column`}
-										title="Drag the header, or press the arrow keys, to move this column"
+										aria-describedby={BOARD_MOVE_HINT_ID}
+										title={BOARD_MOVE_HINT}
 										className="-ml-1.5 cursor-grab text-ink-muted active:cursor-grabbing"
 										onKeyDown={(event) => onGripKeyDown(event, column.status)}
 									>

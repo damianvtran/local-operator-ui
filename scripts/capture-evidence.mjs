@@ -4469,6 +4469,14 @@ export const STORIES = [
 	 * while the gesture is armed. The gesture is the rig's own `drag` option
 	 * rather than the story's play for the mesh canvas's reason: a synthetic
 	 * sequence from a play resolves to the settled board before the shutter.
+	 *
+	 * The drag row settles before the shutter because the HELD pointer keeps
+	 * moving the state: `done`'s center sits inside the strip's right
+	 * auto-scroll zone at this width, so the strip scrolls toward its end while
+	 * the button stays down (UX round 1, U1 - the behaviour itself). 900ms is
+	 * past the clamp, so the frame is the state's own resting point: scrolled
+	 * to the end, the line pinned at the gap the region names, and that reading
+	 * is reproducible on the next capture.
 	 */
 	["projects-tab--board-column-order-stored", 1280, 900],
 	["projects-tab--board-column-keyboard-move", 1280, 900],
@@ -4481,6 +4489,7 @@ export const STORIES = [
 			drag: {
 				from: '[data-board-column-handle="active"]',
 				to: '[data-board-column="done"]',
+				settleMs: 900,
 			},
 			expectSentence: "Moving Active column",
 		},
@@ -7897,6 +7906,16 @@ const main = async () => {
 					);
 					await sleep(16);
 				}
+				/*
+				 * A HELD GESTURE CAN KEEP MOVING AFTER THE STEPS END (the board's edge
+				 * auto-scroll advances while the pointer rests in an edge zone), so a
+				 * shutter that fires the instant the last step lands photographs a
+				 * scroll position that depends on scheduling. The settle holds until the
+				 * state it can no longer change has settled - the scroll clamps at the
+				 * end - which is what makes the frame reproducible. Zero (the default)
+				 * leaves stories without such a mechanism untouched.
+				 */
+				if (options.drag.settleMs) await sleep(options.drag.settleMs);
 			}
 
 			/*
