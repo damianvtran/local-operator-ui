@@ -1664,6 +1664,16 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"sidebarBottomZoneRestampNote",
 	/*
+	 * AND THIS LANE'S OWN: the card-surfaces restyle. Its subject IS this file's
+	 * binding - the change moves BOTH trees (`src/` for the card, column, frame
+	 * and hub-card treatment across projects, schedules and agent hub,
+	 * `scripts/` for this registration and the note) and re-shoots the three
+	 * sets' frames (a narrowed run per set, recorded in `partialCapture`) - so a
+	 * reader is owed the pair and what the capture moved with it, the same case
+	 * `projectsBoardTimelineNote` is in the list for.
+	 */
+	"cardSurfacesRestyleNote",
+	/*
 	 * This branch's own: `aidaSidebarRestampNote` states THIS FILE's own pair for Aida's sidebar
 	 * slice (see its BRANCH_RECORDS entry for what moved), so it is held to that
 	 * pair rather than read as history - the same distinction
@@ -1680,6 +1690,15 @@ const STAMP_BINDING_NOTES = [
 	 * and the reason the stills did not move.
 	 */
 	"mouseCursorRestampNote",
+	/*
+	 * AND THE REGENERATED SCHEDULES BEFORE HALVES' OWN - it belongs here for the
+	 * list's own reason: THE NOTE STATES THIS FILE'S BINDING. The regeneration
+	 * moves `scripts/` (this note's registration) and no file under `src/` - the
+	 * frames it adds are re-captures of the merge-base's source, which is this
+	 * branch's base rather than a tree it moves - so a reader is owed the pair
+	 * the re-stamp derives and the reason no source file moved.
+	 */
+	"cardSurfacesBeforeHalvesNote",
 	/*
 	 * AND THE CHAT-MEASURE LANE'S FOLD: `foldOntoAc83ec7d92Note` states the pair
 	 * the folded tip binds AND the retarget the fold carries (the measure moves
@@ -1706,6 +1725,15 @@ const STAMP_BINDING_NOTES = [
 	 * than read as history.
 	 */
 	"foldOnto55d7b0a19bNote",
+	/*
+	 * AND THIS FOLD'S OWN - the fifth: `foldOntoA8ac7f673cNote` states the pair the
+	 * folded tip binds, the two conflicts it resolved (this file's and its
+	 * manifest's) as unions with no key dropped either side, and that no frame was
+	 * re-taken for the fold, so it is held to the pair this file ships rather than
+	 * read as history - beside `cardSurfacesBeforeHalvesNote` above, whose own
+	 * re-stamp rides the same re-derivation.
+	 */
+	"foldOntoA8ac7f673cNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2543,6 +2571,12 @@ const BRANCH_RECORDS = [
 	 */
 	"sidebarBottomZoneRestampNote",
 	/*
+	 * And this lane's own record rides beside it, registered for the same
+	 * completeness reason: a fold that started from main's copy would drop the
+	 * card-surfaces restyle's note first.
+	 */
+	"cardSurfacesRestyleNote",
+	/*
 	 * And AIDA'S SIDEBAR SLICE rides beside them: the change moves both trees this
 	 * file binds (the rail's row and its two gates, the composer's `/aida`, the two
 	 * desktop ops; the new desktop test and the updated pins) and takes no frame of
@@ -2555,6 +2589,13 @@ const BRANCH_RECORDS = [
 	 * writes one top-level note, registered here for the same completeness reason.
 	 */
 	"mouseCursorRestampNote",
+	/*
+	 * And this lane's own D1 fix rides beside them: the regenerated schedules
+	 * before halves write one top-level note, registered here for the same
+	 * completeness reason - a fold that started from main's copy would drop it
+	 * first.
+	 */
+	"cardSurfacesBeforeHalvesNote",
 
 	/*
 	 * AND THIS LANE'S OWN, the math-currency pass's record - written by
@@ -2642,6 +2683,12 @@ const BRANCH_RECORDS = [
 	 * rode in beside this lane's at the same point, kept whole.
 	 */
 	"canvasElevatedEighthFoldNote",
+	/*
+	 * And THIS fold's record rides beside them - the fifth fold writes one
+	 * top-level note, registered here for the same completeness reason: a fold
+	 * that started from main's copy would drop it first.
+	 */
+	"foldOntoA8ac7f673cNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
