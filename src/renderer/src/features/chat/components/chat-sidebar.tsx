@@ -5794,18 +5794,31 @@ export function ChatSidebar({
 							<PopoverContent
 								align="end"
 								/*
-								 * THE PANEL SCROLLS INSIDE THE WINDOW FLOOR (design direction D2,
-								 * 2026-09-28). The Time basis group pushed this panel past an 800x600
-								 * window: measured in the `popover-open-short` capture, the panel ran
-								 * off the bottom edge and the Teams row, and the hidden-sections
-								 * sentence below it, were unreachable. `--radix-popover-content-available-height`
-								 * is Radix's own measurement of the space it has before the viewport
-								 * edge, so the cap follows the window rather than a guessed `max-h`;
-								 * `overflow-y: auto` then keeps every group reachable by scrolling the
-								 * panel itself. The pair is a no-op in tall windows, where the content
-								 * is under the cap either way.
+								 * THE PANEL SCROLLS INSIDE THE WINDOW, WITH A VISIBLE BOTTOM EDGE (design
+								 * direction D2, 2026-09-28; the inset is D1 of round 1). The Time basis
+								 * group pushed this panel past an 800x600 window: measured in the
+								 * `popover-open-short` capture, the panel ran off the bottom edge and the
+								 * Teams row, and the hidden-sections sentence below it, were unreachable.
+								 * `--radix-popover-content-available-height` is Radix's own measurement
+								 * of the space it has before the viewport edge, so the cap follows the
+								 * window rather than a guessed `max-h`; `overflow-y: auto` then keeps
+								 * every group reachable by scrolling the panel itself.
+								 *
+								 * THE INSET RESERVES HALF A ROW BELOW THE PANEL. A capped box that ends
+								 * flush with the window edge hides that it is capped at all - macOS's
+								 * overlay scrollbars are invisible at rest, and a row cut by the window
+								 * edge reads as the end of the list - which is round 1's D1. Sixteen
+								 * pixels keeps the panel's own bottom edge (and rounded corner) in view
+								 * with a visible sliver of the clipped row above it, so the fold reads as
+								 * the panel's, not the window's.
+								 *
+								 * AND THE CAP BINDS AT THE APP'S DEFAULT SIZE TOO, not only at the floor
+								 * (round 1's Q-1: at 1380x900 the view trigger sits under the nav rail, so
+								 * the available height is 518 against 598 of content). The panel scrolls
+								 * there exactly as it does at 600 - only a window tall enough that the
+								 * available space clears the content never scrolls.
 								 */
-								className="max-h-[var(--radix-popover-content-available-height)] w-60 overflow-y-auto p-2"
+								className="max-h-[calc(var(--radix-popover-content-available-height)_-_16px)] w-60 overflow-y-auto p-2"
 								data-sidebar-view-panel
 							>
 								<ChatSidebarViewMenu
