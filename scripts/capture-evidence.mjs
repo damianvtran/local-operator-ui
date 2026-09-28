@@ -4442,6 +4442,16 @@ export const STORIES = [
 	 * answer (design round 2, D9; UX U9).
 	 */
 	["common-updatenotification--error-state-download", 1280, 900],
+	/*
+	 * The two U1 still-working lines, on the surface that owns each: the checking
+	 * card while its check is held open, and the offer panel while its download is
+	 * held open. Both stories render the shipped component and press its real
+	 * control; the delay is narrowed so the line is on screen in the frame, and
+	 * the download story mounts behind the same ready gate its siblings use, so its
+	 * subscription lands on the decorator's bridge (design D2, remediation round 2).
+	 */
+	["common-updatenotification--checking", 1280, 900],
+	["common-updatenotification--downloading", 1280, 900],
 	["common-updatenotification--update-available", 1280, 900],
 	// The state before an install commits: the bundle is downloaded and the footer
 	// that the install fix changed is on screen. It renders the component's own
