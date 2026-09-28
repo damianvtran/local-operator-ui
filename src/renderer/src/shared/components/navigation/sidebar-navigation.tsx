@@ -16,8 +16,10 @@ import {
 	paletteShortcutCaps,
 	paletteShortcutLabel,
 } from "@features/command-palette/palette-shortcut";
+import { useMeshMembership } from "@features/mesh/mesh-store";
 import {
 	desktopFeatureEnabled,
+	desktopFeatureState,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
@@ -39,6 +41,7 @@ import {
 	FolderKanban,
 	Globe,
 	MessageSquarePlus,
+	Network,
 	Search,
 	Settings,
 	Store,
@@ -156,6 +159,22 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 */
 	const browserApprovals = useAppWideApprovals();
 	/*
+	 * Whether this device is in a mesh AT ALL, and it takes TWO facts rather than one
+	 * (review round 1, R1-1). `features.peers` is a CAPABILITY: lop advertises it on
+	 * every install, "including on a machine in no network", because it answers "what can
+	 * this backend do" - so on the key alone every mesh-capable install would get a rail
+	 * item, including a device that is in no mesh, and this is the one piece of chrome
+	 * that is on screen everywhere. Membership is the catalogue's own emptiness; see
+	 * `useMeshMembership` for why that read is safe on a machine that has never joined a
+	 * network, and for why an UNKNOWN answer mounts nothing.
+	 *
+	 * The route itself stays on the capability, deliberately: see the note at the route
+	 * in `app.tsx` for why leaving your last network must not eject you from the tab.
+	 */
+	const meshPaired =
+		desktopFeatureState(capabilities.data, "peers") === "enabled";
+	const meshMembership = useMeshMembership(meshPaired);
+	/*
 	 * Whether this backend serves the Projects surface at all.
 	 *
 	 * FAIL-CLOSED MEANS NO ROW, the pins gate's rule: below the `projects`
@@ -218,6 +237,24 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			isActive: currentView === "agent-hub",
 			tourTag: "nav-item-agent-hub",
 		},
+		/*
+		 * The Mesh tab, ONLY for a device that is in a mesh: a rail item for a mesh the
+		 * user is not in would be a dead end on the one piece of chrome that is on screen
+		 * everywhere (R1-1). Placed after Agent hub and before the Settings row - it is a
+		 * view of THIS machine's infrastructure, which is nearer to Settings than to any
+		 * chat surface.
+		 */
+		...(meshMembership === "member"
+			? [
+					{
+						icon: Network,
+						label: "Mesh",
+						path: "/mesh",
+						isActive: currentView === "mesh",
+						tourTag: "nav-item-mesh",
+					},
+				]
+			: []),
 	];
 
 	/*
@@ -688,11 +725,24 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			</div>
 
 			{/*
-			 * THE BODY: the one chat list, one scroll region. `mt-2` completes the 16px
-			 * section tier with the group's own `pb-2` - the separation is space, not a
-			 * rule.
+			 * THE BODY: the one chat list, one scroll region.
+			 *
+			 * WHAT THE SPACE UNDER THE DESTINATIONS IS, measured rather than assumed
+			 * (operator report, 2026-09-27: "there's a bunch of extra space" between the
+			 * bottom-most nav row and the band). Three 8px steps were stacking on this
+			 * boundary - the group's own `pb-2`, the `mt-2` that used to sit here, and
+			 * the panel's top inset - and the rendered gap was 24px where the tier the
+			 * design names between the destinations and the list below them is 16px
+			 * (§B6). This column owns one of the three steps and the panel owns another,
+			 * so the `mt-2` is the one that goes: the tier now reads the group's 8px
+			 * bottom step against the panel's own 8px inset, and the band sits 16px
+			 * under the last destination.
+			 *
+			 * DO NOT PUT IT BACK without taking 8px out of the panel too: this boundary
+			 * is ONE tier, and three declarations of it were two more than the design
+			 * ever asked for.
 			 */}
-			<div className="mt-2 flex min-h-0 flex-1 flex-col">{listBody}</div>
+			<div className="flex min-h-0 flex-1 flex-col">{listBody}</div>
 
 			{/*
 			 * THE FOOT: the account row, whose own menu carries Settings and Sign

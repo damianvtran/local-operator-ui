@@ -12,6 +12,7 @@ import { useConsentAttentionLifetime } from "@features/browser/hooks/use-consent
 // ChatPage is the boot route (/ redirects to /chat), so it stays statically
 // imported: lazy-loading it would put a Suspense fallback on first paint.
 import { ChatPage } from "@features/chat/components/chat-page";
+import { useHeldDraftResolution } from "@features/chat/hooks/use-held-draft-resolution";
 import { shouldStartNewChat } from "@features/chat/new-chat-shortcut";
 import { PanelOutlet } from "@features/chat/pickers/panel-outlet";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
@@ -22,6 +23,7 @@ import { OnboardingProvider } from "@features/onboarding/components/onboarding-p
 import { ConnectProviderDialog } from "@features/providers/connect-provider-dialog";
 import {
 	desktopFeatureEnabled,
+	desktopFeatureState,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import {
@@ -77,6 +79,17 @@ const ProjectsPage = lazy(() =>
 const BrowserPage = lazy(() =>
 	import("@features/browser/components/browser-page").then((m) => ({
 		default: m.BrowserPage,
+	})),
+);
+/*
+ * The Mesh tab. Lazy like every other page, and ROUTED ONLY WHEN the backend
+ * advertises `features.peers` (see the gate below): a machine in no network never
+ * loads its chunk at all, which is the half of "ships dark" a chunk boundary can
+ * carry.
+ */
+const MeshPage = lazy(() =>
+	import("@features/mesh/mesh-page").then((m) => ({
+		default: m.MeshPage,
 	})),
 );
 const SettingsPage = lazy(() =>
@@ -180,6 +193,31 @@ const App: FC = () => {
 		"session_catalogue",
 		2,
 	);
+	/*
+	 * The Mesh tab's gate, read as the TRI-STATE and not as the boolean.
+	 *
+	 * `desktopFeatureEnabled` is this function's `=== "enabled"` projection, so the two
+	 * agree about what may mount - and that agreement is the point of reading the
+	 * tri-state at the site that decides it: `unpaired` (this app holds no credential
+	 * for the daemon), `below-version` (the daemon predates `peers`) and `unknown` (no
+	 * answer yet) are three different reasons a route is absent, and collapsing them
+	 * before the decision is how a surface comes to guess a cause it cannot see. The
+	 * route is mounted for `enabled` ONLY, which is `session_pins`' rule rather than a
+	 * convenience: a reserved destination that renders for a feature the user does not
+	 * have advertises something that cannot work, and a mesh the user has not joined
+	 * must leave this app's chrome exactly as it found it.
+	 *
+	 * THE ROUTE STAYS ON THE CAPABILITY AND THE RAIL ROW DOES NOT - a deliberate split,
+	 * not an oversight (review round 1, R1-1). MEMBERSHIP gates the row, because a rail
+	 * item is an invitation and one for a mesh the user is not in is a dead end. The
+	 * route stays mounted for every daemon that can serve it, for two reasons: a user who
+	 * leaves their last network WHILE ON THIS PAGE must not be ejected out from under
+	 * their pointer by a poll (they get the empty state, which is the honest answer, and
+	 * the row disappears on the next render), and mounting it on membership would make
+	 * the empty and the relay-unavailable states unreachable - the two states this tab
+	 * most needs to be able to say.
+	 */
+	const meshState = desktopFeatureState(capabilities.data, "peers");
 
 	const handleAgentCreated = (agentId: string) => {
 		navigate(`/chat/${agentId}`);
@@ -366,6 +404,12 @@ const App: FC = () => {
 	// named, and land on it" — the change that made the click come forward at all did
 	// not put a window call in the renderer.
 	useConsentAttentionLifetime();
+	/*
+	 * The held sends a reader has walked away from are settled once at launch
+	 * (`draft-resolution.ts` carries the why); the hook is idempotent per
+	 * process.
+	 */
+	useHeldDraftResolution();
 
 	useEffect(() => {
 		const unsubscribe = window.api?.browser?.onConsentAttention?.((payload) => {
@@ -677,6 +721,12 @@ const App: FC = () => {
 											element={<ProjectsPage />}
 										/>
 										<Route path="/browser" element={<BrowserPage />} />
+										{/* Mounted only with `features.peers`: without it `/mesh` falls through
+										    to the catch-all like any unknown path, rather than rendering a tab
+										    for a feature this backend does not have. */}
+										{meshState === "enabled" && (
+											<Route path="/mesh" element={<MeshPage />} />
+										)}
 										<Route path="*" element={<Navigate to="/chat" replace />} />
 									</Routes>
 								</Suspense>

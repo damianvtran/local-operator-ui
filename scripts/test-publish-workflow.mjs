@@ -908,3 +908,61 @@ test("each macOS pass builds ONLY its own architecture through the real target r
 		assert.deepEqual([...resolved.values()], [["dmg", "zip"]]);
 	}
 });
+
+// The AppImage update information, in its two halves. The embedded string has
+// to be inside the runtime the AppImage target prepends, so the toolset is
+// prepared BEFORE the build; the `.zsync` and the feed assertion happen after
+// it, before the upload. Order is the whole test: a prepare step after the
+// build embeds nothing, a finalize step before the upload but after nothing
+// else changes nothing, and the failure of either is silent until a user's
+// AppImageUpdate finds no update it can apply.
+test("the Linux build prepares the AppImage toolset before packaging and finalizes the zsync after", () => {
+	const names = steps("build-linux").map((step) => step.name);
+	const at = (name) => {
+		const index = names.indexOf(name);
+		assert.notEqual(index, -1, `build-linux has no \`${name}\` step`);
+		return index;
+	};
+	const tooling = step("build-linux", "Install AppImage update tooling");
+	const prepare = step(
+		"build-linux",
+		"Prepare the AppImage toolset with embedded update information",
+	);
+	const finalize = step(
+		"build-linux",
+		"Write the AppImage zsync and assert its update information",
+	);
+	// The packages the two halves need, installed by name so a rename of one
+	// package cannot silently drop the other from the runner image.
+	assert.match(tooling.run, /apt-get install -y -qq zsync p7zip-full/);
+	assert.ok(at(tooling.name) < at(prepare.name));
+	assert.ok(at(prepare.name) < at("Build Linux app"));
+	// The prepare step exports the toolset path for the build, and refuses a
+	// silent success (a prepare that ran nothing must not read as a pass).
+	assert.match(
+		prepare.run,
+		/require-report\.sh "AppImage toolset" node scripts\/appimage-update-info\.mjs prepare-toolset --dir "\$RUNNER_TEMP\/appimage-tools"/,
+	);
+	assert.match(
+		prepare.run,
+		/echo "APPIMAGE_TOOLS_PATH=\$RUNNER_TEMP\/appimage-tools" >> "\$GITHUB_ENV"/,
+	);
+	// The finalize step runs over the built artifact, after the packaged-closure
+	// check, and before anything is uploaded: the assertion and the zsync must
+	// see exactly the bytes the upload carries.
+	assert.ok(
+		at("Assert the packaged app carries its whole runtime closure") <
+			at(finalize.name),
+	);
+	assert.ok(at(finalize.name) < at("Upload Linux artifacts"));
+	assert.match(
+		finalize.run,
+		/require-report\.sh "AppImage update information" node scripts\/appimage-update-info\.mjs finalize --dist dist/,
+	);
+	// The upload carries the zsync next to the AppImage it describes; without
+	// the glob the finalize step would produce a file no release ever sees.
+	assert.match(
+		step("build-linux", "Upload Linux artifacts").with.path,
+		/dist\/\*\.AppImage\.zsync/,
+	);
+});
