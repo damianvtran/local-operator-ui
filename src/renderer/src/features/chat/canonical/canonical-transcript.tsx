@@ -701,7 +701,7 @@ const UserRow = memo(function UserRow({
 				 *
 				 * `data-undelivered` is the rig's address for the line
 				 * (`scripts/renderer-driver.mjs`'s `connection-drop` scene reads it), the
-				 * same structural-marker rule the archive lane follows.
+				 * same structural-marker rule the row's own archive press follows.
 				 */}
 				{undelivered !== null && (
 					<div
