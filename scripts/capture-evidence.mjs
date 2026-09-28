@@ -1200,11 +1200,19 @@ export const STORIES = [
 	// which is how both of round 6's majors stayed invisible.
 	["browser-tab-strip--worst-case", 1280, 140],
 	["browser-tab-strip--worst-case-widest", 1280, 140],
-	["browser-tab-strip--actions-expanded", 1280, 260],
+	/* The popout supersedes the in-band band the old comment sized these for (2026-09-28
+	   round 2, D3): the strip no longer grows, the panel HANGS below it, so the row is
+	   sized to the panel the story draws - the same rule the comment below states, now
+	   applied to the popout. MEASURED, NOT GUESSED: at 1280 the single-tab popout's
+	   bottom border sits at device y 302 on the 340-tall probe, so this height lands the
+	   frame's bottom 56 device px under it - exactly the slack the batch sibling has
+	   (its panel ends at 336 in a 392 frame). The pre-fix row (260) was still sized to
+	   the deleted band and clipped the panel's closing edge in the round-1 re-shoot. */
+	["browser-tab-strip--actions-expanded", 1280, 326],
 	/* The pin's band list and a row's band with the four bulk closes (design R4 fix 2,
 	   R5). `pinned-list` is declared taller by the list's own bounded height
-	   (`max-h-36` plus the header row), and `actions-expanded-batch` by the same row
-	   height the other expanded band uses. */
+	   (`max-h-36` plus the header row), and `actions-expanded-batch` by the panel its
+	   own popout draws (bottom border at device y 334-337 in this frame). */
 	["browser-tab-strip--actions-expanded-batch", 1280, 360],
 	/*
 	 * THE TWO EXPANDED BANDS ARE TALLER SINCE THE ROUND-2 RULING (D7): the band is a
