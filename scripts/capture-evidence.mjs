@@ -5006,6 +5006,28 @@ export const STORIES = [
 	["chat-phantom-compose-rows--after-turn-death", 1280, 800],
 	["chat-phantom-compose-rows--after-durable-twin", 1280, 800],
 	["chat-phantom-compose-rows--after-durable-twin-open", 1280, 800],
+	/*
+	 * THE INTERRUPTED-VS-FAILED ROWS. One call is shown in three projections -
+	 * a steering skip LIVE (the terminal compose frame's `not_run_kind:
+	 * "skipped"`), the SAME call after a reload (the durable synthetic result,
+	 * `details.__fault: "skipped"`), and a call the USER stopped from the end
+	 * event's own `aborted` marker with no client stop window standing - plus
+	 * the control (a genuine `execution` failure, which must not move) and a
+	 * closed turn whose fold chip and foot both count the skip. The production
+	 * reducer folds `scripts/fixtures/interrupted-rows.json` through
+	 * `interrupted-rows.stories.tsx`; the BEFORE half is the declared
+	 * supplementary `chat-interrupted-rows-before/`, the same stories against
+	 * the base tree's reducer.
+	 */
+	["chat-interrupted-rows--skip-live", 1280, 800],
+	["chat-interrupted-rows--skip-live-expanded", 1280, 800],
+	["chat-interrupted-rows--skip-durable", 1280, 800],
+	["chat-interrupted-rows--stop-mid-flight", 1280, 800],
+	["chat-interrupted-rows--stop-expanded", 1280, 800],
+	["chat-interrupted-rows--genuine-failure", 1280, 800],
+	["chat-interrupted-rows--turn-counts", 1280, 800],
+	["chat-interrupted-rows--skip-durable-narrow", 720, 800],
+	["chat-interrupted-rows--skip-durable-narrow-expanded", 720, 800],
 	/* The SAME CLASS while the turn is LIVE, which the pair above deliberately does
 	   not cover: its fixture is a finished turn (`streaming: false`), where a
 	   clockless frame that would create a row is refused. With a turn in flight

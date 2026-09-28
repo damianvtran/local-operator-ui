@@ -128,6 +128,7 @@ import { TranscriptPlaceholder } from "./transcript-placeholder";
 import {
 	type TranscriptRecord,
 	type TranscriptState,
+	isInterruptedFault,
 	streamDiagnostics,
 	withRecoveredOutcome,
 } from "./transcript-reducer";
@@ -1131,6 +1132,13 @@ const ToolRow = memo(function ToolRow({
 	// story) carries no `notRunReason` key at all, and `undefined !== null` would
 	// paint every one of them as a never-run verdict.
 	const notRun = Boolean(record.notRunReason);
+	/*
+	 * Which never-run rows are INTERRUPTS rather than failures (design round 1,
+	 * D1): the interrupted kinds read as the same class the row's status column
+	 * and the durable body already use, instead of the danger "Not run" a
+	 * planning fault earns.
+	 */
+	const interruptedNotRun = notRun && isInterruptedFault(record.notRunKind);
 	const summary = toolRecordSummary(record);
 	// When the arguments taught us nothing, the summary is the tool's own name,
 	// which the row then drops as a stutter and the object column goes empty.
@@ -1186,6 +1194,16 @@ const ToolRow = memo(function ToolRow({
 		 * LABELLED `Not run` rather than `Error`, which is the one difference from a
 		 * result body and the point of it: the call produced no error RESULT, it
 		 * produced no result at all.
+		 *
+		 * THE INTERRUPTED KINDS ARE NOT FAILURES HERE EITHER (design round 1, D1).
+		 * `notRun` is only "parked with a verdict"; WHICH verdict is
+		 * `record.notRunKind`, and for `skipped`/`aborted` the verdict is an
+		 * interrupt — steering redirected, or the turn was stopped — so the label
+		 * names the state (`Interrupted`, the word the row's own sr-only
+		 * announcement and the TUI use) in the neutral label ink, with the
+		 * harness's reason in body ink. The planning faults (`unknown_tool`,
+		 * `invalid_arguments`, ...) ARE the call's own failure and keep the danger
+		 * `Not run`, as does a legacy record that states no kind at all.
 		 */
 		<div
 			className={cn(
@@ -1195,9 +1213,21 @@ const ToolRow = memo(function ToolRow({
 			)}
 			data-detail-section="not-run"
 		>
-			<span className={cn("mb-1 block text-meta text-danger")}>Not run</span>
+			<span
+				className={cn(
+					"mb-1 block text-meta",
+					interruptedNotRun ? "text-ink-dim" : "text-danger",
+				)}
+			>
+				{interruptedNotRun ? "Interrupted" : "Not run"}
+			</span>
 			<div className={cn(DETAIL_SECTION_MAX, "overflow-auto")}>
-				<pre className={cn("whitespace-pre font-mono text-danger")}>
+				<pre
+					className={cn(
+						"whitespace-pre font-mono",
+						interruptedNotRun ? "text-ink" : "text-danger",
+					)}
+				>
 					{record.notRunReason}
 				</pre>
 			</div>
@@ -1209,6 +1239,13 @@ const ToolRow = memo(function ToolRow({
 			args={record.args}
 			output={record.output}
 			isError={record.isError}
+			/*
+			 * The durable interrupted row reaches `ToolDetail` (its verdict lives in
+			 * `output`, not `notRunReason`, so `notRun` is false for it) and must not
+			 * be labelled `Output` — the record's own `stopped` is the same fact the
+			 * live arm reads (design round 1, D1).
+			 */
+			interrupted={record.stopped === true}
 		/>
 	) : undefined;
 	/*
@@ -1271,7 +1308,14 @@ const ToolRow = memo(function ToolRow({
 				}
 				outcome={
 					notRun
-						? "not-run"
+						? /* The never-run verdict's own class decides which row this is: a
+						     steer-skip or a stop is an interrupt (the same two kinds the
+						     end events carry), and every other verdict is the failure it
+						     was. A record with no kind keeps the not-run state - the legacy
+						     and hand-built shape. */
+							isInterruptedFault(record.notRunKind)
+							? "interrupted"
+							: "not-run"
 						: running
 							? "running"
 							: record.isError
