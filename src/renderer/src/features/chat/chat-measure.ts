@@ -30,31 +30,31 @@
  * used to live there was removed from the user bubble too (operator report,
  * 2026-09-16: a card widened by a reply quote or an attachment left the prose a
  * centre-constrained column inside it), so a user turn is an aside by the
- * card's own `max-w-[75%]` inside this 820px measure, and agent output takes no
+ * card's own `max-w-[75%]` inside this 810px measure, and agent output takes no
  * cap at all — it shares the left edge and the width of the tool rows in the
  * same turn. `markdown.css`'s measure comment carries both reports and the
  * numbers.
  *
- * So this 820px is the whole width the agent's answer resolves against, and
+ * So this 810px is the whole width the agent's answer resolves against, and
  * the ledger resolves against it too. That is the alignment: one container
  * measure, two registers, one pair of edges.
  *
- * ## Why 820
+ * ## Why 810
  *
  * The redesign narrowed this token to 640px for readability (its own
  * 146-characters-per-line measurement against a 101-character target), and the
  * operator's verdict on the shipped result was that the conversation view is
  * "too narrow" and the constraint must come back (2026-09-26). It came back to
- * 900, together with its 750px threshold. The 2026-09-27 follow-up is the step
- * this file now carries: "narrow the constraint just a bit", which is 820 —
- * 80px back toward the measurement, well short of the reverted redesign, and
- * the value that takes the app's rendered line length from 132.4 to 117.7
+ * 900, together with its 750px threshold. The follow-up is the step this file
+ * now carries: "narrow the constraint a bit, maybe by around 10%" - which is
+ * 810, exactly 10% of the 900, well short of the reverted redesign, and the
+ * value that takes the app's rendered line length from 132.4 to 117.7
  * characters at the 14px body step (the measurement, its method, and why the
  * number is not 640 are all in `styles/index.css` beside the value).
  *
  * ## Why the number is a custom property and not a literal here
  *
- * `max-w-[820px]` in the class string below would be a SECOND copy of a number
+ * `max-w-[810px]` in the class string below would be a SECOND copy of a number
  * that already has a home (`styles/index.css`), and the one thing this module
  * exists to guarantee is that the transcript and the composer cannot drift
  * apart. A property name is also the only spelling a runtime change can reach:
@@ -80,7 +80,7 @@ export const CHAT_MEASURE_VAR = "--lo-chat-measure";
  * The shared content measure, and the column width at which it starts to bind.
  *
  * The width itself is `--lo-chat-measure`, declared once in `styles/index.css`
- * (820px, and the measurement behind that value is recorded there). It is
+ * (810px, and the measurement behind that value is recorded there). It is
  * consumed by the user block, prose, the trace AND the composer — the measure
  * narrows the shared container, never prose alone, because a cap on
  * `.lo-markdown` by itself puts a second left edge inside the row.
@@ -91,8 +91,8 @@ export const CHAT_MEASURE_VAR = "--lo-chat-measure";
  * centred, so the pane's own padding becomes the outer gutter. It is INERT at
  * the shipped width and that is fine — it describes an intent (a narrow column
  * gets the whole column, not a margin) rather than a second cap, and at a 750px
- * container the content box is 702px, so the 820px cap cannot bind below an
- * 868px container whether the gate is there or not.
+ * container the content box is 702px, so the 810px cap cannot bind below an
+ * 858px container whether the gate is there or not.
  */
 export const CHAT_MEASURE =
 	"w-full @min-[750px]/chatcol:max-w-[var(--lo-chat-measure)] @min-[750px]/chatcol:mx-auto";

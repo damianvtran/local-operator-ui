@@ -372,10 +372,10 @@
  * breaks, the same column carries 131 characters on an 832.6px line (measured at
  * 1024 on `chat-older-history-slot--in-transcript-idle`). That the figure is a
  * CEILING rather than a slope is what makes the trade acceptable: the content
- * measure is capped by `CHAT_MEASURE` (`chat-measure.ts`) - 820px today (900px,
- * the pre-redesign measure, narrowed on the operator's 2026-09-27 request to
- * "narrow the constraint just a bit"; 640px while the frames below were
- * taken) - the
+ * measure is capped by `CHAT_MEASURE` (`chat-measure.ts`) - 810px today (900px,
+ * the pre-redesign measure, narrowed a step further on the operator's
+ * follow-up request - "narrow the constraint a bit, maybe by around 10%";
+ * 640px while the frames below were taken) - the
  * measure, not the column, which is why the `p-4` above sits outside the number
  * rather than inside it - so the line length stops growing with the window and
  * 1920 reads exactly as 1024 does. The failure a
