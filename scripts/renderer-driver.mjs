@@ -27449,7 +27449,9 @@ async function sceneProjectDetail(cdp) {
 	check(
 		"the pointer send hands the keyboard back to the strip (UX round 1, U2)",
 		focusBack.ok,
-		focusBack.ok ? `focused after ${focusBack.waitedMs}ms` : `focus landed on ${landedOn}`,
+		focusBack.ok
+			? `focused after ${focusBack.waitedMs}ms`
+			: `focus landed on ${landedOn}`,
 	);
 	const pointerHistory = await fetchSessionHistory(linkedSession);
 	check(
