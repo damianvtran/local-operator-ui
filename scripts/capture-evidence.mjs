@@ -4437,7 +4437,18 @@ export const STORIES = [
 	 */
 	["projects-tab--board", 1280, 900],
 	["projects-tab--board-many", 1280, 948],
-	["projects-tab--board-statuses", 1280, 900],
+	/*
+	 * WIDER, AND FOR A MEASURED REASON (design round 1, D4a): the side states
+	 * (`paused`, `archived`) and the unknown-word column sit AFTER the five
+	 * pipeline phases, so at 1280 the frame stopped at `Done` and the columns
+	 * this state exists to photograph were only asserted in code. Eight
+	 * `w-64` columns with their gaps need 2156px inside the board's box, and
+	 * the shell's sidebar and the page's padding take the rest; 2048 is the
+	 * first comfortable width that draws all eight (measured: the last column
+	 * ends at 1913px at that width, so the frame carries the state without
+	 * padding the row with dead canvas).
+	 */
+	["projects-tab--board-statuses", 2048, 900],
 	/* The three board states design round 1, D8 named as the sweep's own gaps:
 	 * a column with no rows (the "No projects here." line), the sessions
 	 * popover open (the card's door, listing links), and the card menu open

@@ -34,8 +34,8 @@ import {
 	milestoneCountLabel,
 	progressAge,
 	progressAgePhrase,
-	projectStatusMeta,
 } from "../project-model";
+import { ProjectStatusBadge } from "./project-status-badge";
 
 type ProjectListProps = {
 	projects: DesktopProject[];
@@ -120,7 +120,6 @@ export const ProjectList: FC<ProjectListProps> = ({
 			</div>
 			<ul className="min-h-0 flex-1 divide-y divide-hairline overflow-y-auto">
 				{projects.map((project) => {
-					const status = projectStatusMeta(project.status);
 					const meta = new Map(
 						listRowMeta(
 							project,
@@ -153,7 +152,7 @@ export const ProjectList: FC<ProjectListProps> = ({
 									{project.name}
 								</span>
 								<span className={COLUMNS[1].className}>
-									<Badge variant={status.variant}>{status.label}</Badge>
+									<ProjectStatusBadge status={project.status} />
 								</span>
 								<span
 									className={cn(

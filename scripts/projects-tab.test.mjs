@@ -466,6 +466,22 @@ test("every status the lifecycle names has a chip, and an unknown one keeps its 
 	});
 });
 
+/*
+ * THE NON-COLOUR HALF OF THE DONE CHIP (design round 1, D1): `active` is
+ * accent and `done` is success, and in the brand palettes those read as all
+ * but one chip (ΔE00 2.22 light / 5.07 dark) while the Status column draws
+ * them side by side - so `done` carries a check beside its label and the
+ * difference survives any palette and any monochrome reading. The rule is the
+ * model's so this lane can hold it; only `done` gets the mark, and an unknown
+ * word (which renders itself neutrally) never guesses one.
+ */
+test("the done chip carries a check, and only the done chip", () => {
+	assert.equal(model.statusCarriesCheck("done"), true);
+	assert.equal(model.statusCarriesCheck("active"), false);
+	assert.equal(model.statusCarriesCheck("paused"), false);
+	assert.equal(model.statusCarriesCheck("shadowed"), false);
+});
+
 test("overdue is a passed target on unfinished work, on the store's UTC day", () => {
 	const at = (extra) =>
 		model.projectOverdue(

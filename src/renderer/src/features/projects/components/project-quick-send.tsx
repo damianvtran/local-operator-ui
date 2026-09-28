@@ -94,6 +94,16 @@ export const ProjectQuickSend: FC<ProjectQuickSendProps> = ({
 			if (delivered) setText("");
 		} finally {
 			setSending(false);
+			/*
+			 * THE PRESS HANDS THE KEYBOARD BACK TO THE BOX (UX round 1, U2). A
+			 * pointer press focuses the Send button, and the button then disables
+			 * while the send is in flight (`sending` true, the text gone), so the
+			 * browser drops focus to `<body>` - measured: a second message needed a
+			 * fresh click, while the Enter path kept the box focused. Refocusing
+			 * here makes both paths behave the same, and on a refusal the text is
+			 * already back in the box, so the caret belongs there too.
+			 */
+			inputRef.current?.focus();
 		}
 	};
 
