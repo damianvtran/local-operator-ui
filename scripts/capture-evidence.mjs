@@ -5013,10 +5013,14 @@ export const STORIES = [
 	 * the base tree's reducer.
 	 */
 	["chat-interrupted-rows--skip-live", 1280, 800],
+	["chat-interrupted-rows--skip-live-expanded", 1280, 800],
 	["chat-interrupted-rows--skip-durable", 1280, 800],
 	["chat-interrupted-rows--stop-mid-flight", 1280, 800],
+	["chat-interrupted-rows--stop-expanded", 1280, 800],
 	["chat-interrupted-rows--genuine-failure", 1280, 800],
 	["chat-interrupted-rows--turn-counts", 1280, 800],
+	["chat-interrupted-rows--skip-durable-narrow", 720, 800],
+	["chat-interrupted-rows--skip-durable-narrow-expanded", 720, 800],
 	/* The SAME CLASS while the turn is LIVE, which the pair above deliberately does
 	   not cover: its fixture is a finished turn (`streaming: false`), where a
 	   clockless frame that would create a row is refused. With a turn in flight
