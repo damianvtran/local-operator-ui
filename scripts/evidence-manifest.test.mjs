@@ -1587,6 +1587,11 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"foldOntoCc5a329040Note",
 	/*
+	 * AND THE CI-REDS FIX'S OWN: the notice cases' kill-switch scrub and the decision-wait moved
+	 * `scripts/` only, and this is the restamp that re-points the file's claims at the tree it ships in.
+	 */
+	"updateStallBoundCiFixRestampNote",
+	/*
 	 * AND THIS LANE'S OWN: the board/timeline pass. Its subject IS this file's
 	 * binding - the change moves BOTH trees (the projects feature's board,
 	 * timeline, switcher and their pins; the capture rows and this list) and
@@ -2425,6 +2430,10 @@ const BRANCH_RECORDS = [
 	 * And the ninth fold's record rides beside them - same reason, same check.
 	 */
 	"foldOntoCc5a329040Note",
+	/*
+	 * And the CI-reds fix's restamp rides beside them - same reason, same check.
+	 */
+	"updateStallBoundCiFixRestampNote",
 	/*
 	 * And this branch's own record, folded in beside it: the account-foot
 	 * refresh writes one top-level note, registered here for the same
