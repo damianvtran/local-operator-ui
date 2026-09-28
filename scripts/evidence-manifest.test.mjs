@@ -1664,6 +1664,13 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"sidebarBottomZoneRestampNote",
 	/*
+	 * This branch's own: `aidaSidebarRestampNote` states THIS FILE's own pair for Aida's sidebar
+	 * slice (see its BRANCH_RECORDS entry for what moved), so it is held to that
+	 * pair rather than read as history - the same distinction
+	 * `candidateMacArchRestampNote` is in the list for.
+	 */
+	"aidaSidebarRestampNote",
+	/*
 	 * AND THE POINTER-AFFORDANCE SWEEP'S OWN - it belongs here for the list's own
 	 * reason: ITS SUBJECT IS THIS FILE'S BINDING. The sweep moves BOTH trees (the
 	 * base-layer rule and the five click sites under `src/`; the audit that
@@ -2509,6 +2516,14 @@ const BRANCH_RECORDS = [
 	 * reason - a fold that started from main's copy would drop it first.
 	 */
 	"sidebarBottomZoneRestampNote",
+	/*
+	 * And AIDA'S SIDEBAR SLICE rides beside them: the change moves both trees this
+	 * file binds (the rail's row and its two gates, the composer's `/aida`, the two
+	 * desktop ops; the new desktop test and the updated pins) and takes no frame of
+	 * the sweep, so a reader is owed the two values it binds and the reason no
+	 * still was owed to `docs/evidence`.
+	 */
+	"aidaSidebarRestampNote",
 	/*
 	 * And this branch's own record rides beside it - the pointer-affordance sweep
 	 * writes one top-level note, registered here for the same completeness reason.
