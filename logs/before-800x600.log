@@ -1,0 +1,163 @@
+[build] current: assets 2026-09-28T05:54:40.404Z >= sources 2026-09-28T05:53:24.740Z
+[note] abandoned scratch trees
+        19 seen, 0 owned by a live pid (kept), 19 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8123
+  serve records 1 linked from /Users/damian/.local-operator/sessions/cec94d0bea42/scratchpad/backend/config/run/serve   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/settings-rail-bandwork
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-14472
+  frames        /Users/damian/.local-operator/sessions/cec94d0bea42/scratchpad/frames-before/-before-dark800
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-14472/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8123   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/settings-rail-bandwork/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8123","backend":"http://127.0.0.1:8123"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8123)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] the app is in the palette this run photographs (localOperatorDark)
+[PASS] the app is on /chat
+[note] the top of /chat
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"left":0,"width":800,"height":32},"laneDisplay":"block","laneStops":[{"colour":"rgb(43, 39, 33)","stop":56},{"colour":"rgb(34, 32, 28)","stop":56}],"band":null,"bandDisplay":null,"sidebar":null,"route":{"top":32,"left":56,"width":744,"height":568},"routeTag":"div","leadingColumn":null,"leadingColumnGround":null,"leadingColumnRule":null,"registeredColumn":null,"registeredRule":null,"markerValue":null,"markerGround":null,"surfaceGround":"rgb(43, 39, 33)","elevatedGround":"rgb(50, 45, 34)","canvasGround":"rgb(34, 32, 28)","hairlineGround":"rgb(64, 59, 44)","settingsRail":null,"settingsContent":null}
+[PASS] the app is on /settings
+[note] the top of /settings
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"left":0,"width":800,"height":32},"laneDisplay":"block","laneStops":[{"colour":"rgb(43, 39, 33)","stop":104},{"colour":"rgb(34, 32, 28)","stop":104}],"band":{"top":0,"left":0,"width":0,"height":0},"bandDisplay":"none","sidebar":null,"route":{"top":32,"left":56,"width":744,"height":568},"routeTag":"div","leadingColumn":{"top":32,"left":56,"width":47,"height":568},"leadingColumnGround":"rgb(43, 39, 33)","leadingColumnRule":"0px","registeredColumn":{"top":32,"left":56,"width":48,"height":568},"registeredRule":"1px","markerValue":"","markerGround":null,"surfaceGround":"rgb(43, 39, 33)","elevatedGround":"rgb(50, 45, 34)","canvasGround":"rgb(34, 32, 28)","hairlineGround":"rgb(64, 59, 44)","settingsRail":{"top":32,"left":56,"width":47,"height":568},"settingsContent":{"top":32,"left":104,"width":696,"height":568}}
+[PASS] the app is on /settings?section=integrations
+[note] the top of /settings?section=integrations
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"left":0,"width":800,"height":32},"laneDisplay":"block","laneStops":[{"colour":"rgb(43, 39, 33)","stop":104},{"colour":"rgb(34, 32, 28)","stop":104}],"band":{"top":0,"left":0,"width":0,"height":0},"bandDisplay":"none","sidebar":null,"route":{"top":32,"left":56,"width":744,"height":568},"routeTag":"div","leadingColumn":{"top":32,"left":56,"width":47,"height":568},"leadingColumnGround":"rgb(43, 39, 33)","leadingColumnRule":"0px","registeredColumn":{"top":32,"left":56,"width":48,"height":568},"registeredRule":"1px","markerValue":"","markerGround":null,"surfaceGround":"rgb(43, 39, 33)","elevatedGround":"rgb(50, 45, 34)","canvasGround":"rgb(34, 32, 28)","hairlineGround":"rgb(64, 59, 44)","settingsRail":{"top":32,"left":56,"width":47,"height":568},"settingsContent":{"top":32,"left":104,"width":696,"height":568}}
+[PASS] the app is on /agents
+[note] the top of /agents
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"left":0,"width":800,"height":32},"laneDisplay":"block","laneStops":[{"colour":"rgb(43, 39, 33)","stop":312},{"colour":"rgb(34, 32, 28)","stop":312}],"band":{"top":0,"left":0,"width":0,"height":0},"bandDisplay":"none","sidebar":null,"route":{"top":32,"left":56,"width":744,"height":568},"routeTag":"div","leadingColumn":{"top":32,"left":56,"width":256,"height":568},"leadingColumnGround":"rgb(43, 39, 33)","leadingColumnRule":"1px","registeredColumn":{"top":32,"left":56,"width":256,"height":568},"registeredRule":"1px","markerValue":"","markerGround":null,"surfaceGround":"rgb(43, 39, 33)","elevatedGround":"rgb(50, 45, 34)","canvasGround":"rgb(34, 32, 28)","hairlineGround":"rgb(64, 59, 44)","settingsRail":null,"settingsContent":null}
+[PASS] the app is on /agents/local-operator
+[note] the top of /agents/local-operator
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"left":0,"width":800,"height":32},"laneDisplay":"block","laneStops":[{"colour":"rgb(43, 39, 33)","stop":336},{"colour":"rgb(34, 32, 28)","stop":336}],"band":{"top":0,"left":0,"width":0,"height":0},"bandDisplay":"none","sidebar":null,"route":{"top":32,"left":56,"width":744,"height":568},"routeTag":"div","leadingColumn":{"top":32,"left":56,"width":280,"height":568},"leadingColumnGround":"rgb(43, 39, 33)","leadingColumnRule":"1px","registeredColumn":{"top":32,"left":56,"width":280,"height":568},"registeredRule":"0px","markerValue":"","markerGround":null,"surfaceGround":"rgb(43, 39, 33)","elevatedGround":"rgb(50, 45, 34)","canvasGround":"rgb(34, 32, 28)","hairlineGround":"rgb(64, 59, 44)","settingsRail":null,"settingsContent":null}
+[PASS] the app is on /agent-hub
+[note] the top of /agent-hub
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"left":0,"width":800,"height":32},"laneDisplay":"block","laneStops":[{"colour":"rgb(43, 39, 33)","stop":56},{"colour":"rgb(34, 32, 28)","stop":56}],"band":{"top":0,"left":0,"width":0,"height":0},"bandDisplay":"none","sidebar":null,"route":{"top":32,"left":56,"width":744,"height":568},"routeTag":"div","leadingColumn":null,"leadingColumnGround":null,"leadingColumnRule":null,"registeredColumn":null,"registeredRule":null,"markerValue":null,"markerGround":null,"surfaceGround":"rgb(43, 39, 33)","elevatedGround":"rgb(50, 45, 34)","canvasGround":"rgb(34, 32, 28)","hairlineGround":"rgb(64, 59, 44)","settingsRail":null,"settingsContent":null}
+[PASS] the app is on /schedules
+[note] the top of /schedules
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"left":0,"width":800,"height":32},"laneDisplay":"block","laneStops":[{"colour":"rgb(43, 39, 33)","stop":56},{"colour":"rgb(34, 32, 28)","stop":56}],"band":{"top":0,"left":0,"width":0,"height":0},"bandDisplay":"none","sidebar":null,"route":{"top":32,"left":56,"width":744,"height":568},"routeTag":"div","leadingColumn":null,"leadingColumnGround":null,"leadingColumnRule":null,"registeredColumn":null,"registeredRule":null,"markerValue":null,"markerGround":null,"surfaceGround":"rgb(43, 39, 33)","elevatedGround":"rgb(50, 45, 34)","canvasGround":"rgb(34, 32, 28)","hairlineGround":"rgb(64, 59, 44)","settingsRail":null,"settingsContent":null}
+[PASS] the app is on /projects
+[note] the top of /projects
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"left":0,"width":800,"height":32},"laneDisplay":"block","laneStops":[{"colour":"rgb(43, 39, 33)","stop":56},{"colour":"rgb(34, 32, 28)","stop":56}],"band":{"top":0,"left":0,"width":0,"height":0},"bandDisplay":"none","sidebar":null,"route":{"top":32,"left":56,"width":744,"height":568},"routeTag":"div","leadingColumn":null,"leadingColumnGround":null,"leadingColumnRule":null,"registeredColumn":null,"registeredRule":null,"markerValue":null,"markerGround":null,"surfaceGround":"rgb(43, 39, 33)","elevatedGround":"rgb(50, 45, 34)","canvasGround":"rgb(34, 32, 28)","hairlineGround":"rgb(64, 59, 44)","settingsRail":null,"settingsContent":null}
+[PASS] the app is on /browser
+[note] the top of /browser
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"left":0,"width":800,"height":32},"laneDisplay":"block","laneStops":[{"colour":"rgb(43, 39, 33)","stop":56},{"colour":"rgb(34, 32, 28)","stop":56}],"band":null,"bandDisplay":null,"sidebar":null,"route":{"top":32,"left":56,"width":744,"height":568},"routeTag":"div","leadingColumn":null,"leadingColumnGround":null,"leadingColumnRule":null,"registeredColumn":null,"registeredRule":null,"markerValue":null,"markerGround":null,"surfaceGround":"rgb(43, 39, 33)","elevatedGround":"rgb(50, 45, 34)","canvasGround":"rgb(34, 32, 28)","hairlineGround":"rgb(64, 59, 44)","settingsRail":null,"settingsContent":null}
+[PASS] /chat: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y (none), settings content y (none)
+[PASS] /settings: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y 32, settings content y 32
+[PASS] /settings?section=integrations: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y 32, settings content y 32
+[PASS] /agents: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y (none), settings content y (none)
+[PASS] /agents/local-operator: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y (none), settings content y (none)
+[PASS] /agent-hub: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y (none), settings content y (none)
+[PASS] /schedules: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y (none), settings content y (none)
+[PASS] /projects: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y (none), settings content y (none)
+[PASS] /browser: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y (none), settings content y (none)
+[PASS] /chat: no rule is painted in the lane
+[PASS] /settings: no rule is painted in the lane
+[PASS] /settings: the route's leading column is handed to the shell
+[FAIL] /settings: the shell is handed the rung the column is painted in
+        the marker says "" (null) against a column painted rgb(43, 39, 33)
+[FAIL] /settings: neither the column nor its hand-over draws a right rule
+        column border-right-width 0px, registered border-right-width 1px - a rule here can only begin at the lane's lower edge (y 32), not at y0
+[PASS] /settings: the lane carries the column's own ground across its width
+[PASS] /settings: the lane's canvas resumes at the column's right edge (103px)
+[PASS] /settings?section=integrations: no rule is painted in the lane
+[PASS] /settings?section=integrations: the route's leading column is handed to the shell
+[FAIL] /settings?section=integrations: the shell is handed the rung the column is painted in
+        the marker says "" (null) against a column painted rgb(43, 39, 33)
+[FAIL] /settings?section=integrations: neither the column nor its hand-over draws a right rule
+        column border-right-width 0px, registered border-right-width 1px - a rule here can only begin at the lane's lower edge (y 32), not at y0
+[PASS] /settings?section=integrations: the lane carries the column's own ground across its width
+[PASS] /settings?section=integrations: the lane's canvas resumes at the column's right edge (103px)
+[PASS] /agents: no rule is painted in the lane
+[PASS] /agents: the route's leading column is handed to the shell
+[FAIL] /agents: the shell is handed the rung the column is painted in
+        the marker says "" (null) against a column painted rgb(43, 39, 33)
+[FAIL] /agents: neither the column nor its hand-over draws a right rule
+        column border-right-width 1px, registered border-right-width 1px - a rule here can only begin at the lane's lower edge (y 32), not at y0
+[PASS] /agents: the lane carries the column's own ground across its width
+[PASS] /agents: the lane's canvas resumes at the column's right edge (312px)
+[PASS] /agents/local-operator: no rule is painted in the lane
+[PASS] /agents/local-operator: the route's leading column is handed to the shell
+[FAIL] /agents/local-operator: the shell is handed the rung the column is painted in
+        the marker says "" (null) against a column painted rgb(43, 39, 33)
+[FAIL] /agents/local-operator: neither the column nor its hand-over draws a right rule
+        column border-right-width 1px, registered border-right-width 0px - a rule here can only begin at the lane's lower edge (y 32), not at y0
+[PASS] /agents/local-operator: the lane carries the column's own ground across its width
+[PASS] /agents/local-operator: the lane's canvas resumes at the column's right edge (336px)
+[PASS] /agent-hub: no rule is painted in the lane
+[PASS] /schedules: no rule is painted in the lane
+[PASS] /projects: no rule is painted in the lane
+[PASS] /browser: no rule is painted in the lane
+[PASS] every capture is a frame the app held still for, with no toast on it
+[PASS] every capture wrote a PNG of the window's own size
+
+---- app log (tail) ----
+01:59:04.567 › [browser] denied a web-app-installation permission request from (unknown origin)
+01:59:04.568 › [browser] denied a geolocation permission request from (unknown origin)
+01:59:05.288 › [browser] denied a media permission request from (unknown origin)
+01:59:05.289 › [browser] denied a media permission request from (unknown origin)
+01:59:05.289 › [browser] denied a web-app-installation permission request from (unknown origin)
+01:59:05.289 › [browser] denied a geolocation permission request from (unknown origin)
+01:59:05.308 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+01:59:05.309 › Checking for UI updates...
+01:59:05.309 › Skip checkForUpdates because application is not packed and dev update config is not forced
+Error occurred in handler for 'browser-state': Error: No handler registered for 'browser-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'console-state': Error: No handler registered for 'console-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'browser-state': Error: No handler registered for 'browser-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'browser-state': Error: No handler registered for 'browser-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'browser-webauthn-pending': Error: No handler registered for 'browser-webauthn-pending'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+01:59:05.527 › [shell-path] /bin/zsh reports PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
+01:59:05.528 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
+01:59:05.529 › Shell environment variables loaded successfully. PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
+01:59:05.531 › [browser] host on 127.0.0.1:63179 (proto 1), profile /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-14472/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+01:59:05.794 › [browser] tab 1 navigated to about:blank
+01:59:05.834 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+01:59:05.835 › Checking for UI updates...
+01:59:05.835 › Skip checkForUpdates because application is not packed and dev update config is not forced
+[window-mode] state: visible=false focused=false focusable=false size=800x600 content=800x600
+01:59:07.562 › Checking for updates... (silent mode: true)
+01:59:07.563 › Skip checkForUpdates because application is not packed and dev update config is not forced
+01:59:07.563 › Checking for backend updates... (silent mode: true)
+01:59:07.563 › Skip backend update check in dev mode unless forced
+(node:14539) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 backend-status-changed listeners added to [IpcRenderer]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `Electron Helper (Renderer) --trace-warnings ...` to show where the warning was created)
+
+[PASS] no process from this run outlived its boot
+
+frames: route-tops-agent-hub-before-dark800.png, route-tops-agents-before-dark800.png, route-tops-agents-detail-before-dark800.png, route-tops-browser-before-dark800.png, route-tops-chat-before-dark800.png, route-tops-projects-before-dark800.png, route-tops-schedules-before-dark800.png, route-tops-settings-before-dark800.png, route-tops-settings-integrations-before-dark800.png
+frames directory: /Users/damian/.local-operator/sessions/cec94d0bea42/scratchpad/frames-before/-before-dark800
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-14472/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-14472 (the frames are also in --out)
+
+8 CHECK(S) FAILED
