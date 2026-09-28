@@ -1,6 +1,7 @@
 /**
  * The detail page's linked-sessions block: one row per linked session, the
- * unlink control, and the picker that links another.
+ * unlink and per-row message controls, the quick-send strip, and the pickers
+ * that link another session or start a new one.
  *
  * WHAT A ROW SAYS, from the composed view's own fields (never re-derived
  * here): the title (or the session id when no title was ever persisted, in the
@@ -15,6 +16,12 @@
  * GONE (`exists: false`) is not a link into anything — there is no
  * conversation to open — so it renders as a static row; the unlink control
  * beside it is the way it is cleared.
+ *
+ * THE ROW'S MESSAGE ACTION AND THE QUICK-SEND STRIP ARE ONE MECHANISM: the
+ * button writes the strip's target and hands it the keyboard (the focus tick),
+ * and the strip is where the message is typed and sent. Two send affordances
+ * would be two ways to do one thing; this is one composer with two doors, and
+ * the selection lives here because both doors write it.
  *
  * THE LINK PICKER REUSES THE SESSION CATALOGUE the sidebar shows (`sessions`
  * from the canonical store) rather than a second listing: the picker offers
@@ -31,16 +38,18 @@ import {
 import { Badge, Button, Label, SearchableSelect } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
-import { Link2, Unlink } from "lucide-react";
+import { Link2, MessageSquare, MessageSquarePlus, Unlink } from "lucide-react";
 import type { FC } from "react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { DesktopLinkedSession } from "../../../../../shared/desktop-control-contract";
 import {
+	defaultSendTarget,
 	linkStateMeta,
 	subagentChipLabel,
 	todoChipLabel,
 } from "../project-model";
+import { ProjectQuickSend } from "./project-quick-send";
 
 type ProjectLinksProps = {
 	projectKey: string;
@@ -48,6 +57,18 @@ type ProjectLinksProps = {
 	busy: boolean;
 	onUnlink: (sessionId: string) => void;
 	onLink: (sessionId: string) => void;
+	/**
+	 * Sends one message through the chat's own admission path; resolves `true`
+	 * when it is on its way. The detail screen owns the toasts, so the strip
+	 * and its doors stay about the act.
+	 */
+	onQuickSend: (
+		sessionId: string,
+		text: string,
+		mode: "prompt" | "steer",
+	) => Promise<boolean>;
+	/** Opens the start-session dialog (owned by the detail screen). */
+	onStartSession: () => void;
 };
 
 export const ProjectLinks: FC<ProjectLinksProps> = ({
@@ -55,10 +76,31 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 	busy,
 	onUnlink,
 	onLink,
+	onQuickSend,
+	onStartSession,
 }) => {
 	const navigate = useNavigate();
 	const sessions = useCanonicalSessionsStore((state) => state.sessions);
 	const [pickerOpen, setPickerOpen] = useState(false);
+	/*
+	 * The quick-send target and the focus tick live HERE because two controls
+	 * write them (the strip's select and each row's message button) and the
+	 * strip reads both. The tick, not a ref: the strip may mount just after the
+	 * press, and the effect it drives is the mount's own — see the strip's
+	 * note.
+	 */
+	const [sendTarget, setSendTarget] = useState<string | null>(null);
+	const [focusTick, setFocusTick] = useState(0);
+	/*
+	 * A chosen target that is still sendable wins; anything else falls back to
+	 * the default rule. Re-derived per render rather than stored, so an unlink
+	 * cannot leave the strip aimed at a session the project no longer links.
+	 */
+	const resolvedTarget =
+		sendTarget &&
+		links.some((link) => link.session_id === sendTarget && link.exists)
+			? sendTarget
+			: defaultSendTarget(links);
 
 	const options = useMemo(() => {
 		const linked = new Set(links.map((link) => link.session_id));
@@ -82,18 +124,30 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 
 	return (
 		<section className="flex flex-col gap-3">
-			<div className="flex items-center justify-between gap-3">
+			<div className="flex flex-wrap items-center justify-between gap-3">
 				<h2 className="text-title text-ink">Linked sessions</h2>
-				<Button
-					variant="secondary"
-					size="sm"
-					disabled={busy}
-					onClick={() => setPickerOpen(true)}
-					data-tour-tag="project-link-session"
-				>
-					<Link2 />
-					Link session
-				</Button>
+				<div className="flex items-center gap-2">
+					<Button
+						variant="secondary"
+						size="sm"
+						disabled={busy}
+						onClick={onStartSession}
+						data-tour-tag="project-start-session"
+					>
+						<MessageSquarePlus />
+						New session
+					</Button>
+					<Button
+						variant="secondary"
+						size="sm"
+						disabled={busy}
+						onClick={() => setPickerOpen(true)}
+						data-tour-tag="project-link-session"
+					>
+						<Link2 />
+						Link session
+					</Button>
+				</div>
 			</div>
 
 			{links.length === 0 ? (
@@ -102,7 +156,14 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 					this project so its progress stays with them.
 				</p>
 			) : (
-				<ul className="flex flex-col divide-y divide-hairline rounded-lg border border-hairline bg-surface">
+				/*
+				 * BORDERLESS ROWS (the chat page's chrome): hairlines between rows on
+				 * the page's own ground, no box around the group, and a 6px-radius
+				 * hover pill on the rows that open something. The previous
+				 * `rounded-lg border bg-surface` panel was a card drawn around a
+				 * list the chat's own lists never wear.
+				 */
+				<ul className="flex flex-col divide-y divide-hairline">
 					{links.map((link) => {
 						const meta = linkStateMeta(link);
 						const subagents = subagentChipLabel(link.subagents);
@@ -112,7 +173,10 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 						return (
 							<li
 								key={link.session_id}
-								className="flex items-center gap-2 px-3 py-2"
+								className={cn(
+									"flex items-center gap-2 rounded-sm px-2 py-2",
+									clickable && "hover:bg-row-hover",
+								)}
 							>
 								<button
 									type="button"
@@ -152,6 +216,21 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 									</span>
 								)}
 								<Badge variant={meta.variant}>{meta.label}</Badge>
+								{clickable && (
+									<Button
+										variant="ghost"
+										size="icon-sm"
+										disabled={busy}
+										aria-label={`Message ${title}`}
+										title={`Message ${title}`}
+										onClick={() => {
+											setSendTarget(link.session_id);
+											setFocusTick((tick) => tick + 1);
+										}}
+									>
+										<MessageSquare />
+									</Button>
+								)}
 								<Button
 									variant="ghost"
 									size="icon-sm"
@@ -165,6 +244,16 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 						);
 					})}
 				</ul>
+			)}
+
+			{links.length > 0 && (
+				<ProjectQuickSend
+					links={links}
+					target={resolvedTarget}
+					onTargetChange={setSendTarget}
+					onSend={onQuickSend}
+					focusTick={focusTick}
+				/>
 			)}
 
 			<BaseDialog

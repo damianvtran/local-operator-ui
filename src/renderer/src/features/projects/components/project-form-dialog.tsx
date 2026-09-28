@@ -4,10 +4,13 @@
  *
  * WHY ONE DIALOG FOR BOTH MODES, and why the field sets differ inside it: the
  * create route's body is the backend's frozen contract (`name`, `description`,
- * `status`, `tags`) — dates, the estimate and milestones are set afterwards via
- * PATCH — so the create mode does not RENDER controls the route cannot carry,
- * rather than rendering them disabled or letting them silently drop. Edit mode
- * carries every editable field the PATCH route accepts.
+ * `status`, `tags`) — the display title, the owner/team attributions, dates,
+ * the estimate and milestones are set afterwards via PATCH — so the create
+ * mode does not RENDER controls the route cannot carry, rather than rendering
+ * them disabled or letting them silently drop. Edit mode carries every
+ * editable field the PATCH route accepts, attributions included, and an
+ * emptied attribution CLEARS it there (the wire reads `""` as unset, unlike
+ * the estimate below).
  *
  * A REFUSAL STAYS IN THE DIALOG. The backend's own 409/422 sentence renders
  * under the fields (the `delete-conversation-dialog.tsx` rule) instead of a
@@ -55,11 +58,20 @@ import type {
 } from "../hooks/use-projects-queries";
 import { PROJECT_DAY_FIELD_PATTERN } from "../project-model";
 
-/** The status words, in the board's fixed order. */
+/**
+ * The status words, in the lifecycle's own order (the wire enum's order, which
+ * `PROJECT_STATUSES` writes once): planning -> active -> qa -> validation ->
+ * done, then the two side states. The menu reads in that order because the
+ * phases are a sequence — a menu that shuffled them would make the pipeline
+ * unreadable at the one place a user moves a project along it.
+ */
 const STATUS_OPTIONS: { value: DesktopProjectStatus; label: string }[] = [
+	{ value: "planning", label: "Planning" },
 	{ value: "active", label: "Active" },
-	{ value: "paused", label: "Paused" },
+	{ value: "qa", label: "QA" },
+	{ value: "validation", label: "Validation" },
 	{ value: "done", label: "Done" },
+	{ value: "paused", label: "Paused" },
 	{ value: "archived", label: "Archived" },
 ];
 
@@ -71,6 +83,9 @@ export type ProjectFormSubmit =
 export type ProjectFormInitial = {
 	key: string;
 	name: string;
+	title: string | null;
+	owner: string | null;
+	team: string | null;
 	description: string;
 	status: string;
 	tags: string[];
@@ -91,6 +106,9 @@ type ProjectFormDialogProps = {
 
 type FormState = {
 	name: string;
+	title: string;
+	owner: string;
+	team: string;
 	description: string;
 	status: string;
 	tags: string;
@@ -102,6 +120,9 @@ type FormState = {
 
 const EMPTY_FORM: FormState = {
 	name: "",
+	title: "",
+	owner: "",
+	team: "",
 	description: "",
 	status: "active",
 	tags: "",
@@ -128,6 +149,9 @@ function formFromInitial(
 	if (!initial) return EMPTY_FORM;
 	return {
 		name: initial.name,
+		title: initial.title ?? "",
+		owner: initial.owner ?? "",
+		team: initial.team ?? "",
 		description: initial.description,
 		status: initial.status,
 		tags: initial.tags.join(", "),
@@ -215,6 +239,18 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 				if (!Number.isFinite(estimate) || !(estimate > 0) || estimate > 1000)
 					next.estimate = "Estimates are greater than 0 and at most 1000.";
 			}
+			/*
+			 * The attributions' one local rule: the same 80-character ceiling the
+			 * wire enforces, said in the field rather than after a round trip.
+			 * Newlines are not checked — the wire trims and accepts short
+			 * single-line labels, and a stray newline in a label is a refusal the
+			 * backend's own sentence explains better than one invented here.
+			 */
+			for (const key of ["title", "owner", "team"] as const) {
+				if (values[key].trim().length > 80)
+					next[key] =
+						`${key === "title" ? "Titles" : key === "owner" ? "Owners" : "Teams"} are at most 80 characters.`;
+			}
 		}
 		return next;
 	};
@@ -246,6 +282,15 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 					fields: {
 						name: form.name.trim(),
 						description: form.description.trim(),
+						/*
+						 * The attributions travel as typed, EMPTY INCLUDED: `""` is the
+						 * wire's own spelling for "cleared" (`_short_text_or_none` reads it
+						 * as unset), which is the one way this dialog can return a field to
+						 * its unknown state.
+						 */
+						title: form.title.trim(),
+						owner: form.owner.trim(),
+						team: form.team.trim(),
 						status: form.status as DesktopProjectStatus,
 						tags,
 						start_date: form.startDate,
@@ -343,6 +388,27 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 					</div>
 				</div>
 
+				{mode === "edit" && (
+					<div className="flex flex-col gap-1.5">
+						<Label htmlFor={`${fieldId}-title`}>Display title</Label>
+						<Input
+							id={`${fieldId}-title`}
+							value={form.title}
+							onChange={(event) => set("title", event.target.value)}
+							placeholder="Payments migration"
+							aria-invalid={Boolean(errors.title)}
+						/>
+						{errors.title ? (
+							<p className="text-meta text-danger">{errors.title}</p>
+						) : (
+							<p className="text-meta text-ink-muted">
+								Shown instead of the name; the name stays the key everything is
+								addressed by.
+							</p>
+						)}
+					</div>
+				)}
+
 				<div className="flex flex-col gap-1.5">
 					<Label>Status</Label>
 					<Select
@@ -413,6 +479,35 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 								/>
 								{errors.targetDate && (
 									<p className="text-meta text-danger">{errors.targetDate}</p>
+								)}
+							</div>
+						</div>
+
+						<div className="grid grid-cols-2 gap-3">
+							<div className="flex flex-col gap-1.5">
+								<Label htmlFor={`${fieldId}-owner`}>Owner</Label>
+								<Input
+									id={`${fieldId}-owner`}
+									value={form.owner}
+									onChange={(event) => set("owner", event.target.value)}
+									placeholder="atlas"
+									aria-invalid={Boolean(errors.owner)}
+								/>
+								{errors.owner && (
+									<p className="text-meta text-danger">{errors.owner}</p>
+								)}
+							</div>
+							<div className="flex flex-col gap-1.5">
+								<Label htmlFor={`${fieldId}-team`}>Team</Label>
+								<Input
+									id={`${fieldId}-team`}
+									value={form.team}
+									onChange={(event) => set("team", event.target.value)}
+									placeholder="platform"
+									aria-invalid={Boolean(errors.team)}
+								/>
+								{errors.team && (
+									<p className="text-meta text-danger">{errors.team}</p>
 								)}
 							</div>
 						</div>

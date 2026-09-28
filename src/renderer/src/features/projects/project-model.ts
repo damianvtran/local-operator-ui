@@ -30,6 +30,7 @@ import type {
 	DesktopLinkedSession,
 	DesktopMilestoneStatus,
 	DesktopProject,
+	DesktopProjectUpdate,
 	DesktopProjectView,
 } from "../../../../shared/desktop-control-contract";
 
@@ -49,19 +50,27 @@ export type ChipMeta = { label: string; variant: ChipVariant };
 /**
  * The status vocabulary, one row per value the store's enum declares.
  *
- * `active` takes `accent` because it is the state that means "work is moving";
- * `done` is `success`; `paused` is deliberately NOT a warning — a paused
- * project is a choice the operator made, not a condition to fix — so it reads
- * neutral, and `archived` takes the quiet outline.
+ * THE PIPELINE TAKES THE COLOUR STEPS and the two side states stay quiet:
+ * `planning` is `info` (a phase of writing and research, not yet work in
+ * motion), `active` is `accent` (the state that means "work is moving"), `qa`
+ * is `attention` (the phase that waits on reviewers and designers rather than
+ * on the machine), `validation` is `warning` (deployed and watched — a state
+ * that asks to be looked at, not one that is wrong), and `done` is `success`.
+ * `paused` is deliberately NOT a warning — a paused project is a choice the
+ * operator made, not a condition to fix — so it reads neutral, and `archived`
+ * takes the quiet outline.
  *
  * An UNKNOWN status (a row written by a backend newer than this app) keeps its
  * raw word with neutral treatment: the honest rendering of a state this build
  * has never heard of is the word itself, not a guessed chip or a crash.
  */
 const PROJECT_STATUS_META: Record<string, ChipMeta> = {
+	planning: { label: "Planning", variant: "info" },
 	active: { label: "Active", variant: "accent" },
-	paused: { label: "Paused", variant: "neutral" },
+	qa: { label: "QA", variant: "attention" },
+	validation: { label: "Validation", variant: "warning" },
 	done: { label: "Done", variant: "success" },
+	paused: { label: "Paused", variant: "neutral" },
 	archived: { label: "Archived", variant: "outline" },
 };
 
@@ -438,11 +447,20 @@ export function parseIsoDay(value: string | null | undefined): number | null {
 /* ----------------------------------------------------------------- board -- */
 
 /**
- * Board columns in their fixed order; `archived` joins only when non-empty
- * (the design's rule, kept identical to the TUI board so the two agree).
+ * Board columns in their fixed order: the LIFECYCLE, fixed so an empty phase
+ * still reads as a phase; `paused` and `archived` are the SIDE states, which
+ * join only when they hold rows (a board of nothing but side states would
+ * read as a board of nothing). The backend's vocabulary lands with the same
+ * five-phase pipeline; the TUI board's fixed list moves with it.
  */
-export const BOARD_COLUMNS = ["active", "paused", "done"] as const;
-export const BOARD_EXTRA_COLUMN = "archived";
+export const BOARD_COLUMNS = [
+	"planning",
+	"active",
+	"qa",
+	"validation",
+	"done",
+] as const;
+export const BOARD_SIDE_COLUMNS = ["paused", "archived"] as const;
 
 /**
  * The board's columns: the fixed three, `archived` when it holds rows, then
@@ -468,13 +486,15 @@ export function boardColumns(
 		status: status as string,
 		projects: byStatus.get(status) ?? [],
 	}));
-	const archived = byStatus.get(BOARD_EXTRA_COLUMN) ?? [];
-	if (archived.length > 0) {
-		columns.push({ status: BOARD_EXTRA_COLUMN, projects: archived });
+	for (const side of BOARD_SIDE_COLUMNS) {
+		const rows = byStatus.get(side) ?? [];
+		if (rows.length > 0) columns.push({ status: side, projects: rows });
 	}
 	for (const [status, rows] of byStatus) {
 		if (
-			status !== BOARD_EXTRA_COLUMN &&
+			!BOARD_SIDE_COLUMNS.includes(
+				status as (typeof BOARD_SIDE_COLUMNS)[number],
+			) &&
 			!BOARD_COLUMNS.includes(status as (typeof BOARD_COLUMNS)[number])
 		) {
 			columns.push({ status, projects: rows });
@@ -498,8 +518,327 @@ export function projectOverdue(
 	todayMs: number,
 ): boolean {
 	if (project.status === "done" || project.status === "archived") return false;
+	/*
+	 * `validation` IS still overdue-eligible on purpose: a deployed build under
+	 * observation with a passed target is exactly the row the emphasis is for.
+	 */
 	if (project.completed_at) return false;
 	const target = parseIsoDay(project.target_date);
 	if (target === null) return false;
 	return target < todayMs;
+}
+
+/* ------------------------------------------------- slice 2: display naming -- */
+
+/**
+ * The name a reader sees: the display `title` when set, else the addressing
+ * `name`.
+ *
+ * THE BACKEND'S OWN PRECEDENCE (`local_operator.projects.display_name`),
+ * mirrored rather than re-decided: `name` stays the key every route and verb
+ * addresses a project by, while this decides only what is SEEN. A component
+ * that reads `title` alone would blank the heading on every row written before
+ * the field existed, which is the common case.
+ */
+export function projectDisplayName(project: {
+	title?: string | null;
+	name: string;
+}): string {
+	return project.title || project.name;
+}
+
+/**
+ * The "Managed by" value: the owner and the team, de-duplicated, joined with
+ * a middle dot (`atlas · platform`).
+ *
+ * `""` when neither is set — absent means UNKNOWN, and the component renders
+ * no line rather than "Managed by nobody". The two fields are separate facts
+ * (who owns the stream, which team manages it) that are often the same word;
+ * printing it twice would read as two different things.
+ */
+export function managedByLine(
+	owner: string | null | undefined,
+	team: string | null | undefined,
+): string {
+	const parts: string[] = [];
+	for (const value of [owner, team]) {
+		const text = value?.trim();
+		if (text && !parts.includes(text)) parts.push(text);
+	}
+	return parts.join(" · ");
+}
+
+/**
+ * A linked session's row name: its title, or the id in the machine voice.
+ *
+ * ONE RULE, THREE READERS (the links list, the to-dos rows and the quick-send
+ * target) — extracted so the fallback cannot drift between them, the same
+ * argument `progressAgePhrase` states for its own phrase.
+ */
+export function sessionLabel(
+	link: Pick<DesktopLinkedSession, "title" | "session_id">,
+): string {
+	return link.title || link.session_id;
+}
+
+/* ------------------------------------------------ slice 2: the updates log -- */
+
+/** The history, newest first: the wire keeps it newest-LAST (the log's order). */
+export function updatesNewestFirst(
+	updates: DesktopProjectUpdate[],
+): DesktopProjectUpdate[] {
+	return [...updates].reverse();
+}
+
+/** `1 update` / `12 updates`, or `""` for none — a count that says nothing is not drawn. */
+export function updatesCountLabel(count: number): string {
+	if (count <= 0) return "";
+	return count === 1 ? "1 update" : `${count} updates`;
+}
+
+const pad2 = (value: number) => String(value).padStart(2, "0");
+
+/** One LOCAL calendar day key, `YYYY-MM-DD`, from a Date. */
+function localDayKey(date: Date): string {
+	return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+/**
+ * One update's day-group key: the LOCAL calendar day of its `at` instant.
+ *
+ * LOCAL rather than UTC deliberately: the feed is read as a diary of the
+ * reader's own days, and an entry written at 23:30 groups under the day it was
+ * written in, not the UTC date that had hours yet to run. `at` carries its own
+ * `Z`, so this is a conversion, never a guess about the zone.
+ *
+ * `""` for an unparsable stamp — the empty string the wire defaults to — which
+ * groups such entries together at the oldest end rather than dropping them.
+ */
+export function updateDayKey(at: string): string {
+	const ms = Date.parse(at);
+	if (Number.isNaN(ms)) return "";
+	return localDayKey(new Date(ms));
+}
+
+/**
+ * A day key as a reader's heading: `Today`, `Yesterday`, or the date
+ * (`Sep 20`, with the year only outside the reader's own — the
+ * `formatProjectDay` rule, reused rather than restated).
+ *
+ * `""` in, `""` out: a group of unparsable stamps gets no heading rather than
+ * a made-up one.
+ */
+export function updateDayLabel(
+	dayKey: string,
+	locale?: string,
+	now: Date = new Date(),
+): string {
+	if (!dayKey) return "";
+	if (dayKey === localDayKey(now)) return "Today";
+	const yesterday = new Date(
+		now.getFullYear(),
+		now.getMonth(),
+		now.getDate() - 1,
+	);
+	if (dayKey === localDayKey(yesterday)) return "Yesterday";
+	return formatProjectDay(dayKey, locale, now);
+}
+
+/** One update's absolute clock time (`2:14 PM`), or `""` for an unparsable stamp. */
+export function updateTimeLabel(at: string, locale?: string): string {
+	const ms = Date.parse(at);
+	if (Number.isNaN(ms)) return "";
+	return new Date(ms).toLocaleTimeString(locale, {
+		hour: "numeric",
+		minute: "2-digit",
+	});
+}
+
+/**
+ * How long ago one update was written, as a phrase (`2h ago`, `just now`).
+ *
+ * The token arithmetic is `progressAge`'s — one rule for every age this
+ * feature prints — with the ISO stamp converted to the epoch seconds that
+ * function reads (`at` is ISO-8601 UTC with a `Z`, so `Date.parse` is exact).
+ */
+export function updateAgePhrase(at: string, nowMs: number): string {
+	const ms = Date.parse(at);
+	if (Number.isNaN(ms)) return "";
+	return progressAgePhrase(progressAge(ms / 1000, nowMs));
+}
+
+/**
+ * One entry's meta line, as tokens the component joins: who wrote it, when,
+ * and how long ago.
+ *
+ * The `listRowMeta` shape, for the same reason: each token can be individually
+ * absent (an unstamped or anonymous entry loses one fact, never the line) and
+ * each renders in its own ink. The author uses `progressReporterLabel`, so a
+ * raw session id is never printed bare and `"operator"` reads as the
+ * operator, exactly as the stale-progress line already spells it.
+ */
+export function updateMetaTokens(
+	update: Pick<DesktopProjectUpdate, "at" | "by">,
+	locale?: string,
+	nowMs: number = Date.now(),
+): { key: string; text: string }[] {
+	const rows: { key: string; text: string }[] = [];
+	const author = progressReporterLabel(update.by);
+	if (author) rows.push({ key: "author", text: author });
+	const time = updateTimeLabel(update.at, locale);
+	if (time) rows.push({ key: "time", text: time });
+	const age = updateAgePhrase(update.at, nowMs);
+	if (age) rows.push({ key: "age", text: age });
+	return rows;
+}
+
+/** One day group of the feed: the heading and its entries, newest first. */
+export type ProjectUpdateGroup = {
+	key: string;
+	label: string;
+	entries: DesktopProjectUpdate[];
+};
+
+/**
+ * The feed's day groups, in render order: newest entry first, consecutive
+ * entries of one local day under one heading.
+ *
+ * Consecutive grouping (not a map) because the log is already chronological:
+ * one pass both reverses it and slices it, and a day can never appear twice
+ * with a stale heading in between.
+ */
+export function groupUpdatesByDay(
+	updates: DesktopProjectUpdate[],
+	locale?: string,
+	now: Date = new Date(),
+): ProjectUpdateGroup[] {
+	const groups: ProjectUpdateGroup[] = [];
+	for (const update of updatesNewestFirst(updates)) {
+		const key = updateDayKey(update.at);
+		const last = groups[groups.length - 1];
+		if (last && last.key === key) {
+			last.entries.push(update);
+			continue;
+		}
+		groups.push({
+			key,
+			label: updateDayLabel(key, locale, now),
+			entries: [update],
+		});
+	}
+	return groups;
+}
+
+/**
+ * One attachment's size, as the backend prints it: `12 B`, `4.0 KB`, `5.2 MB`.
+ *
+ * ONE decimal for both scaled units, mirroring `file_size_text` rather than
+ * re-deciding the format: a file named in a toast by the tool and in a feed
+ * row here must not read as two different sizes for the same file. `""` for a
+ * nonsense value (a hand-edited row), so a card drops the size instead of
+ * printing `NaN B`.
+ */
+export function attachmentSizeText(bytes: number): string {
+	if (!Number.isFinite(bytes) || bytes < 0) return "";
+	if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+	if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+	return `${bytes} B`;
+}
+
+/* -------------------------------------------- slice 2: detail summaries ---- */
+
+/** The milestones header's count: `2 of 5 complete`, or `""` for none to count. */
+export function milestoneSummaryLabel(
+	completed: number,
+	total: number,
+): string {
+	if (total <= 0) return "";
+	return `${completed} of ${total} complete`;
+}
+
+/** The to-dos a linked session reported, or `null` when it never did. */
+export type TodosSummary = { open: number; total: number };
+
+/**
+ * The linked sessions' to-dos, summed.
+ *
+ * `null` for the aggregate of nothing KNOWN — a session with no persisted
+ * snapshot contributes no counts and is not a zero (the store's own rule for
+ * `todos`, restated by `subagentChipLabel`), so a project whose links are all
+ * unknown says so rather than reporting `0 open`. Sessions the summariser
+ * cannot see are simply absent from the figure, which is why the component
+ * renders the per-row counts beside it: the aggregate states its own coverage.
+ */
+export function todosAggregate(
+	links: Pick<DesktopLinkedSession, "todos">[],
+): TodosSummary | null {
+	let open = 0;
+	let total = 0;
+	let seen = false;
+	for (const link of links) {
+		if (!link.todos) continue;
+		seen = true;
+		open += link.todos.open;
+		total += link.todos.total;
+	}
+	return seen ? { open, total } : null;
+}
+
+/** `3 open of 7`, the one spelling for a row's and the aggregate's counts. */
+export function todosCountLabel(summary: TodosSummary): string {
+	return `${summary.open} open of ${summary.total}`;
+}
+
+/* ------------------------------------------------ slice 2: session actions -- */
+
+/**
+ * The quick-send target the composer strip starts on: the first LIVE linked
+ * session when there is one, else the first whose directory still exists.
+ *
+ * `null` when nothing is sendable — a project whose links are all gone — which
+ * is what disables the strip rather than aiming it at a ghost. The row-level
+ * "message this session" action writes the same selection, so the rule for
+ * "where does a message go by default" lives once.
+ */
+export function defaultSendTarget(
+	links: Pick<DesktopLinkedSession, "exists" | "session_id" | "runtime">[],
+): string | null {
+	const usable = links.filter((link) => link.exists);
+	const live = usable.find((link) => link.runtime?.state === "live");
+	return (live ?? usable[0])?.session_id ?? null;
+}
+
+/**
+ * The quick-send composer's default text for a start-session: the project's
+ * key and display name, its latest progress, and the ask.
+ *
+ * PRE-FILLED AND EDITABLE — the prompt is a draft in the new session's
+ * composer, never sent by the button that created the session, so the operator
+ * reads and adjusts what the agent will be told before anything runs. The
+ * three facts are the ones a reader of the current screen has: what this is
+ * (name + title), where it stands (the progress snippet, which IS the latest
+ * history entry's text server-side), and what happens next.
+ */
+export function startSessionPrompt(project: {
+	name: string;
+	title?: string | null;
+	progress: string;
+}): string {
+	const display = projectDisplayName(project);
+	const progress = project.progress.trim() || "not reported yet";
+	return [
+		`Continue work on project "${display}" (${project.name}).`,
+		`Latest progress: ${progress}`,
+		"Review the project details and continue or complete the work.",
+	].join("\n");
+}
+
+/** `team atlas` / `agent reviewer` / `""` for a plain session — toast copy for the starter. */
+export function sessionTargetLabel(
+	target: { kind: "agent" | "team"; name: string } | null,
+): string {
+	if (!target) return "";
+	return target.kind === "team"
+		? `team ${target.name}`
+		: `agent ${target.name}`;
 }

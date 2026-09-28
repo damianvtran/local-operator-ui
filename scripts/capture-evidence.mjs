@@ -4365,6 +4365,13 @@ export const STORIES = [
 	 * name typed), and the milestone toggle AFTER the press — whose value is that
 	 * the settled frame is a re-read of a real mutation rather than two adjacent
 	 * states.
+	 *
+	 * SLICE S6d re-takes `detail` itself (the fixtures now carry the history
+	 * log, the attributions and the display title) and adds five states: the
+	 * empty detail, the refused detail read, the quick-send strip holding a
+	 * typed message, its AFTER frame — the press that admits through the
+	 * chat's own path, whose value is the cleared composer — and the
+	 * start-session picker with its registry list open.
 	 */
 	["projects-tab--empty", 1280, 900],
 	["projects-tab--loading", 1280, 900],
@@ -4383,6 +4390,12 @@ export const STORIES = [
 	["projects-tab--edit-dialog", 1280, 900],
 	["projects-tab--delete-confirm", 1280, 900],
 	["projects-tab--milestone-toggle", 1280, 900],
+	["projects-tab--detail-empty", 1280, 900],
+	["projects-tab--detail-feed", 1280, 900],
+	["projects-tab--detail-load-error", 1280, 900],
+	["projects-tab--detail-quick-send", 1280, 900],
+	["projects-tab--detail-quick-send-sent", 1280, 900],
+	["projects-tab--start-session-dialog", 1280, 900],
 	/*
 	 * The board and the timeline (slice 6bc): the switcher's three views on the
 	 * same page. The board's states are the columns — archived joining only

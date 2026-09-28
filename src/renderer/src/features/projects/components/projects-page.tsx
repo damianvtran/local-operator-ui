@@ -323,6 +323,9 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 						? {
 								key: editing.id,
 								name: editing.name,
+								title: editing.title,
+								owner: editing.owner,
+								team: editing.team,
 								description: editing.description,
 								status: editing.status,
 								tags: editing.tags,
