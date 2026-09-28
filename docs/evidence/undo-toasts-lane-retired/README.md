@@ -83,7 +83,9 @@ collapsed sidebar and the other region doors.
 ## How these frames were taken
 
 `scripts/renderer-driver.mjs` on the tree built from this change (base
-`0f23c76de5`), one headless launch per palette, the app's own Electron and
+`0f23c76de5`; the branch was then folded onto `origin/main` = `8367cbfaee`,
+whose commits touch no geometry these frames are of), one headless launch per
+palette, the app's own Electron and
 `webContents.capturePage()`; each scene's committed scratch daemon answers the
 catalogue (and the `drafts` scene uses the installed runtime's
 `lop serve --hosting test --model mock` in an isolated config dir, per
