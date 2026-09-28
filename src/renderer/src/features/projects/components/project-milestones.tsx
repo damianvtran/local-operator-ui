@@ -75,7 +75,7 @@ export const ProjectMilestones: FC<ProjectMilestonesProps> = ({
 					planned around.
 				</p>
 			) : (
-				<ul className="flex flex-col divide-y divide-hairline rounded-lg border border-hairline bg-surface">
+				<ul className="flex flex-col divide-y divide-hairline rounded-md bg-surface">
 					{milestones.map((milestone) => {
 						const meta = milestoneStatusMeta(milestone.status);
 						const completed = milestone.completed_at !== null;
