@@ -1,9 +1,28 @@
-# Mesh tab (read-only slice, `features.peers`)
+# Mesh tab (interactive canvas, `features.peers` + `features.session_transfer`)
 
-The Mesh tab's states, in both brand palettes, at the app's own window size and at
-the narrow one. This is slice 1 of the Mesh build: the read surface, the tab that
-ships **dark** - mounted only when the backend advertises `features.peers` - with no
-mutation, no drag and no sidebar change.
+The Mesh tab's states, in both brand palettes, at the app's own window size and at the
+narrow one. The tab still ships **dark** - mounted only when the backend advertises
+`features.peers`, with no call at all on a machine in no mesh - and this set is slice 2's:
+the canvas became interactive (pan, zoom, hover, the device panel, the drag and its
+transient states, the two dialogs, the busy refusal, and the **receipt** the remedy
+produces), so the set grew from slice 1's nine states to the **nineteen** below.
+
+**The remedy's own row proves the move, because round 4 fixed the reason it could not**
+(design review rounds 3 D13 and 4 D18). `move-busy-waited` photographs the receipt *and* the world
+it claims: the play presses the remedy, asserts the re-issue carried the route's wait ceiling,
+waits for the re-read, and asserts the canvas agrees with the notice - the panel reads
+`Conversations (1)`, this device draws one conversation, and the peer draws the moved `Sweep 001`.
+Round 3's explanation for the pre-move frame was wrong (it blamed the capture's mount; the capture
+is on the same mount as the play), and the real cause was one line: the fixture hook that answers
+the post-move world had been wired into `MoveCopyWithUndo` instead of into this story. Both the
+code and this page now say that.
+
+**Re-captured, not carried forward (design review round 2, D9).** Slice 2's frames were
+re-shot at this branch's own head through the command below: the previous set still
+rendered `4 chats` - a string the renamed code can no longer produce - and contained no
+frame of any interactive state, while this README documented the command that writes
+them. A frame that contradicts the code reads as verified, which is worse than a missing
+one.
 
 ## Which surface produced these frames, and what they do not prove
 
@@ -29,7 +48,7 @@ node scripts/capture-evidence.mjs --only=mesh-tab \
   --themes=localOperatorLight,localOperatorDark --allow-backend
 ```
 
-18 frames, 9 states x 2 palettes, written through the repo's own sweep (a private
+38 frames, 19 states x 2 palettes, written through the repo's own sweep (a private
 headless Chrome, `Page.captureScreenshot` at deviceScaleFactor 2, `assertFramePaints`
 on every frame). `manifest.json` records this as a **partial** capture
 (`partialCapture`), which is what it is: the set is the tab's own states, not a
@@ -167,6 +186,16 @@ missing row proves nothing a reader could check.
 | `reads-failed/…` | both reads refused | the relay's own sentence, verbatim, and the control that asks again |
 | `loading/…` | the first paint | a skeleton, not a spinner over a blank world |
 | `list-view/…` | the same mesh in the list presentation | the sortable list, which is the other way in and the reason a graph is not the only presentation |
+| `device-panel/…` | a device's panel, open | the node's detail and its actions: memberships, the session list, and the two affordances the canvas cannot offer |
+| `device-panel-narrow/…` | the same panel at 1024x768 | the clicked node stays whole while the panel takes a third of the width - the clamp that keeps it visible solves against the canvas's *clip* box, so nothing sits under the border (round 3, Q-1) |
+| `cap-at-four/…` | four conversations on one peer | the cap's own case: two chips and the `+N` control, with the chip's label truncated from the LEFT so the end that distinguishes series-named conversations survives |
+| `move-confirm/…` | the confirm a destructive move raises | the dialog names what is lost, because the source copy is deleted once the peer has it |
+| `move-refused-busy/…` | a turn in flight refuses the move | the code, the route's own sentence, and the one remedy that changes anything: wait for the turn to finish |
+| `move-busy-waited/…` | the remedy executed | the receipt the re-issued move produces (`cloud-node-1 holds it now; the copy here is gone.`) **and the world it claims**: this device holds one conversation, and the peer draws the moved `Sweep 001` beside its own - see the note above |
+| `move-copy-with-undo/…` | a `--keep` copy, and its undo | the peer gains a copy under a new id, the original stays, and the undo is a recall that names its own loss |
+| `invite-receipt/…` | an invite, minted | admission is two-sided, so the affordance is a dialog rather than a drag: the token's path, and why this app never reads it |
+| `drag-to-device/…` | a session lifted over a valid target | the transient: the ghost under the pointer, the target's own edge, and the indicator naming the operation the drop would perform |
+| `drag-refused-over-network/…` | the same drag over a network lane | the one gesture the protocol refuses, refused prospectively - a conversation lives on a device, and the indicator says so before the drop |
 
 ## The numbers behind the frames
 
@@ -181,8 +210,10 @@ looked at; each is quoted in the source beside the decision it decides.
   1.23, "a border nobody can see"; re-measured with the repo's own `deltaE` it is
   **9.19 / 4.80**, so the hairline is visible and the edge was chosen for the ratio
   above. `scripts/contrast-contract.mjs` carries a `mesh device node` row asserting
-  that triple, and the gate reports 28,524 assertions across 59 themes with 0
-  consulted exceptions.
+  that triple, and the gate reports **29,293 assertions across 59 themes** with 0
+  consulted exceptions — re-derived at this head (design review round 3, D17: this
+  sentence said 28,524, which was true when it was written and moved as the contract
+  gained rows; the number is a reading, not a constant).
 - **Selection needs more than a fill.** `rowSelected` against this node's own
   `elevated` fill measures ΔE00 7.00 on the light brand palette but only 2.19 on the
   dark one - at the field floor, not above it - so a selected node takes the ink edge
