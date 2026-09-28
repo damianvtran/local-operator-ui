@@ -217,14 +217,14 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 
 			{list.isLoading && (
 				/*
-				 * The loading state wears the LIST's own frame — same border, same
-				 * ground, same radius — so the page does not jump when rows arrive, and
-				 * so the frame is a picture with an edge rather than a spinner on an
-				 * empty canvas (a ground with one small mark on it is the shape
-				 * `check-evidence`'s uniformity ceiling refuses, measured: 99.27% of a
-				 * 1280x900 frame was one colour without the panel).
+				 * The loading state wears the LIST's own frame — same ground, same
+				 * radius, no edge — so the page does not jump when rows arrive, and so
+				 * the frame is a picture rather than a spinner on an empty canvas (a
+				 * ground with one small mark on it is the shape `check-evidence`'s
+				 * uniformity ceiling refuses, measured: 99.27% of a 1280x900 frame was
+				 * one colour without the panel).
 				 */
-				<div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-hairline bg-surface">
+				<div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md bg-surface">
 					<div className="flex flex-1 items-center justify-center">
 						<Spinner label="Loading projects" />
 					</div>
@@ -265,7 +265,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 				 * frame instead. The first line also takes the heading step (D7), the
 				 * one the schedules page's empty state uses for the same slot.
 				 */
-				<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 overflow-hidden rounded-lg border border-hairline bg-surface">
+				<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 overflow-hidden rounded-md bg-surface">
 					<p className="text-heading text-ink">No projects yet.</p>
 					<p className="max-w-140 text-center text-body-sm text-ink-muted">
 						Create one here, or ask an agent to create one and link this
