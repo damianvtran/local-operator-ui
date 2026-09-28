@@ -63,6 +63,19 @@ script's environment, and the renderer built against the same URL, like every
 other `--backend` scene. Its two runs and their readings are committed as
 `docs/evidence/authoring-refresh/`.
 
+**`--scene project-detail` (`--project <key>` names the row) is the live half of
+the Projects tab's detail page.** It needs `--backend` — the isolated daemon the
+lane owns, hosted the way the note below requires — and a seeded project:
+`--project` names the row's key, and the scene fails loudly when the row (or its
+linked session) is absent rather than photographing an empty page. It exercises
+the two acts a Storybook state cannot: a message typed into the quick-send strip,
+admitted through the chat's own `admitChatDraft`, and read back from the
+daemon's `history` route — and the start-session picker creating a session,
+auto-linking it, and landing on that session's chat with a PRE-FILLED, unsent
+prompt. Its six frames per palette are committed under
+`docs/evidence/project-detail-live/`, whose README carries the seed script and
+the full command.
+
 **`--backend <url>` points the app at a live, ISOLATED backend this run owns.**
 Absent (the default) the app is aimed at a port the script verified dead, so a
 scene captures an app that cannot reach a backend and every frame is publishable
@@ -581,4 +594,6 @@ rule:
 `docs/evidence/renderer-driver/` holds the pair above with a README naming the
 command that produced them. They are live-app frames, not Storybook captures, so
 the Storybook sweep (`pnpm check-evidence`, which walks `.webp`) does not cover
-them — the same position as the other committed live-app PNG sets.
+them — the same position as the other committed live-app PNG sets, and the reason
+`docs/evidence/project-detail-live/` (the `project-detail` scene's frames, six per
+palette) is declared in the manifest's `supplementary` list with `frames: 0`.

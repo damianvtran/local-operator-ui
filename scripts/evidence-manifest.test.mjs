@@ -1606,6 +1606,16 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"projectsBoardTimelineNote",
 	/*
+	 * AND THIS LANE'S OWN: the project-detail pass (slice S6d-i). Its subject is
+	 * this file's binding too - the change moves BOTH trees (the detail sheet,
+	 * the updates feed, the quick-send strip, the start-session picker, the
+	 * model and the six new story states; the capture rows, the new live scene
+	 * and this registration) and re-shoots the whole projects-tab set at this
+	 * head (324 frames: six states added at twelve themes) - so a reader is owed
+	 * the pair and what the capture moved with it.
+	 */
+	"projectDetailFeedNote",
+	/*
 	 * AND THE REMEDIATION ROUND'S OWN: round 1's fix moves BOTH trees again -
 	 * `src/` for the one commission entry point (clear, cancel, invalidate)
 	 * with its generation guard and the account row's `min-w-0`, `scripts/`

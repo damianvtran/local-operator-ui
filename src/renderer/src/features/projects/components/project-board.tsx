@@ -51,7 +51,7 @@ import { openConversation } from "../../chat/open-conversation";
 import { useProjectDetail } from "../hooks/use-projects-queries";
 import {
 	BOARD_COLUMNS,
-	BOARD_EXTRA_COLUMN,
+	BOARD_SIDE_COLUMNS,
 	PROGRESS_STALE_LABEL,
 	boardColumns,
 	boardProgressText,
@@ -331,7 +331,7 @@ const BoardCard: FC<BoardCardProps> = ({
 									value={project.status}
 									onValueChange={onMove}
 								>
-									{[...BOARD_COLUMNS, BOARD_EXTRA_COLUMN].map((status) => (
+									{[...BOARD_COLUMNS, ...BOARD_SIDE_COLUMNS].map((status) => (
 										<DropdownMenuRadioItem key={status} value={status}>
 											{projectStatusMeta(status).label}
 										</DropdownMenuRadioItem>
