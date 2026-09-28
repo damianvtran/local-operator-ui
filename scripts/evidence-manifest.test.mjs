@@ -1606,6 +1606,16 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"projectsBoardTimelineNote",
 	/*
+	 * AND THIS LANE'S OWN: the project-detail pass (slice S6d-i). Its subject is
+	 * this file's binding too - the change moves BOTH trees (the detail sheet,
+	 * the updates feed, the quick-send strip, the start-session picker, the
+	 * model and the six new story states; the capture rows, the new live scene
+	 * and this registration) and re-shoots the whole projects-tab set at this
+	 * head (324 frames: six states added at twelve themes) - so a reader is owed
+	 * the pair and what the capture moved with it.
+	 */
+	"projectDetailFeedNote",
+	/*
 	 * AND THE REMEDIATION ROUND'S OWN: round 1's fix moves BOTH trees again -
 	 * `src/` for the one commission entry point (clear, cancel, invalidate)
 	 * with its generation guard and the account row's `min-w-0`, `scripts/`
@@ -1681,6 +1691,15 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"aidaSidebarRestampNote",
 	/*
+	 * And AIDA'S SECOND UI SLICE's own: `aidaBadgeRestampNote` states THIS FILE's
+	 * own pair for her rail row's marks - the missed-messages badge, the working
+	 * mark, the display-name fallback, and the strip's feed keeper (why the
+	 * collapsed rail paints both marks at all) - so it is held to that pair
+	 * rather than read as history, the same case `aidaSidebarRestampNote` is in
+	 * the list for.
+	 */
+	"aidaBadgeRestampNote",
+	/*
 	 * AND THE POINTER-AFFORDANCE SWEEP'S OWN - it belongs here for the list's own
 	 * reason: ITS SUBJECT IS THIS FILE'S BINDING. The sweep moves BOTH trees (the
 	 * base-layer rule and the five click sites under `src/`; the audit that
@@ -1743,6 +1762,14 @@ const STAMP_BINDING_NOTES = [
 	 * like every entry above it.
 	 */
 	"sidebarBinBasisRestampNote",
+	/*
+	 * AND THIS FOLD'S OWN (2026-09-28): `sidebarBinBasisFoldNote` is the fold onto
+	 * the moved `origin/main` `160faa5f9f`, the manifest conflict (the only one)
+	 * resolved as a union with both sides' records carried, and the pair re-derived
+	 * from the folded tip. It quotes that pair, so it is held to this file like
+	 * every entry above it.
+	 */
+	"sidebarBinBasisFoldNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2593,6 +2620,15 @@ const BRANCH_RECORDS = [
 	 * still was owed to `docs/evidence`.
 	 */
 	"aidaSidebarRestampNote",
+	/*
+	 * And AIDA'S MISSED-MESSAGES BADGE, WORKING MARK, DISPLAY-NAME FALLBACK AND
+	 * STRIP FEED KEEPER ride beside it: the change moves both trees this file
+	 * binds (the two selectors, the marks' per-row fields, the contract's
+	 * optional `name`, the keeper; the test and this note's registrations) and
+	 * takes no frame of the sweep, so a reader is owed the pair it binds and the
+	 * reason no still was owed to `docs/evidence`.
+	 */
+	"aidaBadgeRestampNote",
 	/*
 	 * And this branch's own record rides beside it - the pointer-affordance sweep
 	 * writes one top-level note, registered here for the same completeness reason.
