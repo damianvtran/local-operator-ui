@@ -227,7 +227,7 @@ export type ArchiveFact = {
 	 * round 2, R2-1): the retirement rule reads this fact first, so an OPTIMISTIC fact makes
 	 * the rule say "the conversation no longer holds the state the offer was taken from"
 	 * before anything has been refused. The offer is therefore retired at the press, the
-	 * lane is dismissed - and a refusal arriving in its place is raised on the id that was
+	 * message is dismissed - and a refusal arriving in its place is raised on the id that was
 	 * just dismissed, which sonner destroys inside its own unmount window. Undo, the
 	 * header's own restore control and `/unarchive` all write this route, so the gate belongs
 	 * to the fact rather than to any one caller.
@@ -251,11 +251,12 @@ export type ArchiveUndoOffer = {
 	/** The state the offer was taken from: what the press would take back. */
 	archived: boolean;
 	/**
-	 * The write stamp this offer was raised under, so the LANE can tell it apart from a
-	 * refusal by CURRENCY rather than by kind (agent review round 3, R3-1 = UX round 3, U7).
-	 * Without it the lane preferred the refusal unconditionally, and because `archiveFailure`
-	 * is only cleared for its own conversation, one refused archive meant every later
-	 * successful archive's offer was never drawn.
+	 * The write stamp this offer was raised under, so the toast surface can tell it
+	 * apart from a refusal by CURRENCY rather than by kind (agent review round 3,
+	 * R3-1 = UX round 3, U7). Without it the drawing preferred the refusal
+	 * unconditionally, and because `archiveFailure` is only cleared for its own
+	 * conversation, one refused archive meant every later successful archive's offer
+	 * was never drawn.
 	 */
 	at: number;
 };
@@ -272,14 +273,14 @@ export type ArchiveUndoOffer = {
  * action with no visible trace reads as a delete; conversation delete asks in a
  * dialog that names the thing). The offer is therefore built from the exact
  * entries the write is about to remove, kept in ONE value beside `drafts` so the
- * removal and its offer land in the same update — a split update would leave the
- * lane a window in which the offer stands for a state that has not moved yet.
+ * removal and its offer land in the same update — a split update would leave a
+ * window in which the offer stands for a state that has not moved yet.
  *
  * ONE SLOT, REPLACED RATHER THAN STACKED: a second discard overwrites this value,
- * so only the most recent removal is recoverable, exactly as the archive lane
- * keeps one pressable offer at a time. `restoreDraftsUndo` is the only consumer;
- * the retirement watch lives with the offer's own module
- * (`features/chat/drafts-undo.ts`).
+ * so only the most recent removal is recoverable, exactly as the archive keeps one
+ * pressable offer at a time. `restoreDraftsUndo` consumes it on the offer's Undo
+ * press; the toast that draws it (`components/undo-toasts.tsx`) clears the slot
+ * when the message ends.
  *
  * THE COMPOSER ROWS ARE PART OF THE SNAPSHOT rather than re-derived, because
  * `clearAll` drops the row outright and there is no third place the payload
@@ -354,8 +355,9 @@ export type ForgottenFact = {
 export type ArchiveFailure = {
 	sessionId: string;
 	/**
-	 * The write stamp the refusal was raised under (see `ArchiveUndoOffer.at`): the lane draws
-	 * whichever of its two messages is NEWER, and this is what says which that is.
+	 * The write stamp the refusal was raised under (see `ArchiveUndoOffer.at`): the toast
+	 * surface draws whichever of its two messages is NEWER, and this is what says which
+	 * that is.
 	 */
 	at: number;
 	/** The desired state that was refused, not the state on screen. */
@@ -3393,28 +3395,24 @@ type CanonicalSessionsState = {
 	/**
 	 * The last archive press the backend did not accept, or null.
 	 *
-	 * Rendered in the panel's own register - at the panel's root, in the notices cluster
-	 * above its regions - rather than in a toast
-	 * (the pin's own refusal went the same way): the sentence belongs where the
-	 * control is, and the control is on the row the user just pressed.
+	 * Drawn as an ordinary toast - with a Retry - by the always-mounted
+	 * `components/undo-toasts.tsx`, under the same id as the offer whose press it
+	 * answers: the sentence replaces the message the press was made on, in place.
 	 */
 	archiveFailure: ArchiveFailure | null;
 	/**
 	 * The undo offer a successful archive stands, or null.
 	 *
-	 * IN THE STORE, AND RENDERED IN THE PANEL, rather than in a toast, and the
-	 * reason is measurable rather than aesthetic (design round 2, D12). The offer is
-	 * a box with the word Undo in it, and the toast lane puts it over the composer:
-	 * measured in both palettes, the toast occupied x 1001..1360.5, y 789..842.5
-	 * while the Send control sits at x 1307..1339, y 803..835 - the offer's own
-	 * Undo box lands exactly where Send was, for the offer's whole life (up to
-	 * 15 s). Two constraints cannot both be met by a toast: an offer must NEVER
-	 * overlap the composer's interactive controls, and it must sit on the surface
-	 * that performed the action - and the archive is performed from the sidebar
-	 * (a row's control, the header's menu, a typed command), never from the
-	 * composer. A sidebar register satisfies both by construction: it is inside the
-	 * panel, so it cannot reach the composer, and it is drawn above both regions - the
-	 * one place every assembly mode renders.
+	 * IN THE STORE BECAUSE THE STORE IS WHAT SETTLES THE WRITE (design round 8,
+	 * D27): the accepted departure and this value land in one update. It is drawn
+	 * as an ordinary sonner toast (`components/undo-toasts.tsx`, mounted by
+	 * `main.tsx` beside the global container) since the operator's request of
+	 * 2026-09-27 - "we should probably just use the normal sonner toast" - with the
+	 * trade design round 2's D12 measured and the operator re-accepted: a
+	 * bottom-right toast can sit over the composer's Send control (x 1001..1360.5,
+	 * y 789..842.5 against Send at x 1307..1339, y 803..835), which is why the offer
+	 * lived in a sidebar register, and then a sidebar lane, between then and now;
+	 * both registers were retired in favour of the standard one.
 	 *
 	 * The RETIREMENT RULE is unchanged and lives with the offer
 	 * (`features/chat/archive-undo.ts`): the offer stands while the conversation
@@ -3424,10 +3422,21 @@ type CanonicalSessionsState = {
 	archiveUndo: ArchiveUndoOffer | null;
 	/**
 	 * The undo a discard stands, snapshot and all (`DraftsUndoOffer` above): the one
-	 * slot the sidebar's offer reads — `features/chat/drafts-undo.ts` owns its
-	 * lifetime — and `restoreDraftsUndo` consumes.
+	 * slot the app-level toast reads (`components/undo-toasts.tsx`; the copy helpers
+	 * are `features/chat/drafts-undo.ts`'s) and `restoreDraftsUndo` consumes.
 	 */
 	draftsUndo: DraftsUndoOffer | null;
+	/**
+	 * The freshly staged draft key a discard left the pane on, or null (UX round 2's U7).
+	 *
+	 * THE PANEL WRITES IT; THE TOAST READS IT (2026-09-27). It was a ref inside
+	 * `chat-sidebar.tsx`, back when the offer's Undo press lived in that file too;
+	 * the press now lives on the always-mounted toast surface
+	 * (`components/undo-toasts.tsx`), and this is the value that lets it re-open the
+	 * restored draft when the pane still shows the fresh one the discard staged -
+	 * the writer and the reader can no longer share one component's memory.
+	 */
+	stagedByDiscard: string | null;
 	/**
 	 * Record - or clear - the undo offer a successful archive stands.
 	 *
@@ -3437,8 +3446,9 @@ type CanonicalSessionsState = {
 	/**
 	 * Record — or clear — the undo offer a discard stands.
 	 *
-	 * The write only, matching `setArchiveUndo` above; WHEN it retires is
-	 * `features/chat/drafts-undo.ts`'s rule.
+	 * The write only, matching `setArchiveUndo` above; WHEN it retires is the
+	 * message's own end's business (`components/undo-toasts.tsx` clears the slot
+	 * when the toast ends, whichever way it ends).
 	 */
 	setDraftsUndo: (offer: DraftsUndoOffer | null) => void;
 	/**
@@ -3453,6 +3463,13 @@ type CanonicalSessionsState = {
 	 * was pressed.
 	 */
 	restoreDraftsUndo: () => void;
+	/**
+	 * Record — or clear — the key a discard staged in the pane's place.
+	 *
+	 * The write only, matching `setDraftsUndo` above: what consumes it is the undo
+	 * press (`components/undo-toasts.tsx`).
+	 */
+	setStagedByDiscard: (key: string | null) => void;
 	/**
 	 * Publish whether the daemon can page, so an unnamed catalogue read can size itself.
 	 *
@@ -3474,15 +3491,16 @@ type CanonicalSessionsState = {
 	 */
 	setDraftWarmable: (warmable: boolean) => void;
 	/**
-	 * Clear the refusal once its message's turn in the panel's lane is over.
+	 * Clear the refusal once its message's turn on the toast surface is over.
 	 *
 	 * THE WRITE ONLY, matching `setArchiveUndo` above rather than adding a third policy: the
-	 * panel owns the drawing decision (which message is the newest word, and so when an older
-	 * one has been superseded), and U10 is what happens when the VALUE outlives its message -
-	 * the refusal was re-printed every time a newer message retired, because the clock cleared
-	 * the drawing and not the value. Nothing else reads this field: what reverts the row is the
-	 * fact `setSessionArchived` already recorded, and what announces it is the control's own
-	 * flip, so clearing the sentence takes no affordance with it.
+	 * toast surface owns the drawing decision (which message is the newest word, and so when
+	 * an older one has been superseded), and U10 is what happens when the VALUE outlives its
+	 * message - the refusal was re-printed every time a newer message retired, because the
+	 * message's end cleared the drawing and not the value. Nothing else reads this field:
+	 * what reverts the row is the fact `setSessionArchived` already recorded, and what
+	 * announces it is the control's own flip, so clearing the sentence takes no affordance
+	 * with it.
 	 */
 	clearArchiveFailure: () => void;
 	/**
@@ -4602,6 +4620,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			archiveFailure: null,
 			archiveUndo: null,
 			draftsUndo: null,
+			stagedByDiscard: null,
 			deleteCandidate: null,
 			error: null,
 			cwd: "~",
@@ -5289,6 +5308,9 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			setDraftsUndo: (offer) => {
 				set({ draftsUndo: offer });
 			},
+			setStagedByDiscard: (key) => {
+				set({ stagedByDiscard: key });
+			},
 			restoreDraftsUndo: () =>
 				set((state) => {
 					const offer = state.draftsUndo;
@@ -5384,8 +5406,8 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				 * correction rather than a detail: the version that shipped cleared it here, and
 				 * the clear is what took the RETRY's own answer off the screen.
 				 *
-				 * The lane has ONE stable id for both of its messages (`ARCHIVE_TOAST_ID` in
-				 * `chat-sidebar.tsx`), so a refusal that follows a dismissal of that id within
+				 * The toast surface has ONE stable id for both of its messages (`ARCHIVE_TOAST_ID` in
+				 * `components/undo-toasts.tsx`), so a refusal that follows a dismissal of that id within
 				 * sonner's own unmount window is merged into the entry that is being removed and
 				 * destroyed with it - measured against the installed sonner 2.0.3 in jsdom
 				 * (2026-09-21): created on the dismissed id, the toast is painted at +50ms and
@@ -5417,21 +5439,22 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					 *
 					 * AND THE OFFER IS RAISED HERE TOO, IN THIS SAME UPDATE (design round 8, D27's second
 					 * clause). It used to be raised a microtask later by whichever caller pressed - the
-					 * row's `.then`, the header's, `/archive`'s - i.e. in a SECOND React commit, and the
-					 * commit between them is the one that measures `224.5` of content against a `248` box:
-					 * the departure on the success path took the extent negative, the browser clamped the
-					 * reader, and the band arrived too late to give the position back. Raised with the
-					 * settlement, the departure and its band are one commit, and their arithmetic runs the
-					 * other way (`band - rowHeight = 58 - 32 = +26px` of headroom), so the reader's place
-					 * is reachable on every accepted press. The guard is `archived === true`, which is
+					 * row's `.then`, the header's, `/archive`'s - i.e. in a SECOND React commit; the original
+					 * rationale was row space (the departure and the band that answered it had to be one
+					 * commit, and the commit between them is the one that measured `224.5` of content
+					 * against a `248` box, so the browser clamped the reader). The band was retired with the
+					 * lane (2026-09-27: the offer is an ordinary toast again), and the single-update
+					 * property is kept on its own footing: one act, one update - the same shape the
+					 * refusal's own replacement keeps below - so no commit the surface draws can hold a
+					 * settlement and the message it supersedes at once. The guard is `archived === true`, which is
 					 * also what keeps the unarchive path offerless: the row comes back into the list,
 					 * which is its own visible trace (UX round 1, U2).
 					 *
 					 * AND THE REFUSAL THIS CONVERSATION'S OWN LAST PRESS LEFT IS RETIRED IN THE SAME
-					 * UPDATE, for an archive as well as for an unarchive: the lane holds one message under
+					 * UPDATE, for an archive as well as for an unarchive: the toast holds one message under
 					 * one id, so raising the offer is what takes the refusal off the screen, and clearing it
 					 * in a second update would leave a window in which the store holds neither message and
-					 * the panel dismisses the lane - the create-then-destroy mechanism UX round 1, U3 is
+					 * the surface dismisses the toast - the create-then-destroy mechanism UX round 1, U3 is
 					 * about. `archive-undo.ts` raised the offer and cleared the refusal together for exactly
 					 * this reason; both are here now, and the offer's own retirement watch stays with its
 					 * module (`useArchiveUndoRetirement`).
@@ -5452,8 +5475,8 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 									},
 							/*
 							 * AN ACCEPTED ARCHIVE STANDS THE OFFER, an accepted unarchive clears it (it has no
-							 * successor action) - and a SUPERSEDED settlement touches the lane not at all,
-							 * because the newer press owns both the fact and the message about it.
+							 * successor action) - and a SUPERSEDED settlement touches neither message, because
+							 * the newer press owns both the fact and the message about it.
 							 */
 							archiveUndo: superseded
 								? state.archiveUndo
@@ -5542,11 +5565,11 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						return {
 							archiveFacts: superseded ? state.archiveFacts : facts,
 							/*
-							 * THE REFUSAL TAKES ITS OWN STAMP, AND THE COUNTER MOVES WITH IT. Both lane messages
+							 * THE REFUSAL TAKES ITS OWN STAMP, AND THE COUNTER MOVES WITH IT. Both archive messages
 							 * used to be stamped from the SAME counter (the refusal took `state.answerSeq` as it
 							 * stood), so a refusal landing in the answer that re-raised an offer TIED with it -
-							 * and a tie is exactly the state the lane's rule now resolves in the refusal's favour
-							 * (see the drawn-message rule and its comment in `chat-sidebar.tsx`). Advancing the
+							 * and a tie is exactly the state the drawing rule now resolves in the refusal's favour
+							 * (see the drawn-message rule and its comment in `components/undo-toasts.tsx`). Advancing the
 							 * counter here makes a refusal that lands LAST strictly newer, which is what its own
 							 * sentence says it is: the last press the daemon actually answered.
 							 */
@@ -5554,9 +5577,9 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							archiveFailure: {
 								sessionId,
 								/*
-								 * THE STAMP IS THE CURRENCY THE LANE READS (agent review round 3, R3-1). Taken from
+								 * THE STAMP IS THE CURRENCY THE TOAST SURFACE READS (agent review round 3, R3-1). Taken from
 								 * `answerSeq` at the landing: a later successful archive's offer carries a higher
-								 * one, which is what lets the lane draw the newer message instead of preferring
+								 * one, which is what lets the surface draw the newer message instead of preferring
 								 * the refusal forever.
 								 */
 								at: state.answerSeq + 1,
@@ -6306,7 +6329,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						drafts,
 						/*
 						 * THE OFFER IS RAISED IN THE SAME UPDATE AS THE REMOVAL (design round
-						 * 1, D1): a split update would leave a commit in which the lane offers
+						 * 1, D1): a split update would leave a commit in which the toast offers
 						 * an undo for a draft that is still there - or the row is gone with
 						 * nothing offering it back. `answerSeq` advances with the stamp so two
 						 * raises cannot share one (`DraftsUndoOffer.at`).

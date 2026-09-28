@@ -36,6 +36,13 @@ const code = (path) =>
 		.replace(/(^|[^:])\/\/.*$/gm, "$1");
 
 const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
+/**
+ * The surface the archive and discard messages are raised by since 2026-09-27: the
+ * always-mounted component beside the global container (`main.tsx`), which replaced
+ * the panel's own toast lane (operator request; `docs/design/sidebar-row-space.md`
+ * §10's supersession entry).
+ */
+const TOASTS = "src/renderer/src/features/chat/components/undo-toasts.tsx";
 const HEADER = "src/renderer/src/features/chat/components/chat-header.tsx";
 const CONTENT = "src/renderer/src/features/chat/components/chat-content.tsx";
 const DIALOG =
@@ -295,44 +302,27 @@ test("the list the panel draws is the page minus the archived rows, and the sear
 	);
 });
 
-test("a refused press is reported once, in the sidebar's own toast lane, with a retry", () => {
+test("a refused press is reported once, as an ordinary sonner toast, with a retry", () => {
 	/*
-	 * THE REFUSAL IS A TOAST IN THE PANEL'S OWN LANE NOW (design D11), and the register
-	 * it replaces is DELETED rather than kept beside it: measured, the register sat 8px
-	 * above the split line and 117px above the first row of the list it was about,
-	 * because the flex column positioned it rather than the list.
+	 * THE REGISTER + LANE THAT HELD THIS ARE DELETED (operator request, 2026-09-27,
+	 * verbatim: "instead of having a separate sidebar notification, we should probably
+	 * just use the normal sonner toast. These don't properly show up and look janky").
+	 * The refusal is an ordinary toast raised by `undo-toasts.tsx` - mounted beside the
+	 * global container by `main.tsx`, so it is drawn while the sidebar column is
+	 * collapsed and when the chat pane's own header menu or a typed `/archive` is the
+	 * surface that pressed - and the panel no longer draws it at all.
 	 *
-	 * The slice is the failure EFFECT, so what is asserted here is the shape the design
-	 * depends on and no module can hold: the refusal names the conversation, carries the
-	 * backend's own sentence when there is one, is routed to the panel's lane, and offers
-	 * the retry that re-sends the SAME desired state.
-	 */
-	/*
-	 * THE SLICE IS THE ONE LANE EFFECT (agent review round 2, R2-4): both messages are
-	 * settled by a single effect out of the store's two values, so the assertions below are
-	 * about ONE decision per commit rather than about two effects whose declaration order
-	 * would decide which message wins.
-	 */
-	/*
-	 * THE SLICE ENDS AT THE EFFECT'S DEPENDENCY ARRAY, which is the last line of the drawing
-	 * effect and therefore carries ALL THREE lane messages (the refusal, the offer and the
-	 * discard), and it is spelled here in the shaped `pnpm lint`/`biome format` gives it.
-	 *
-	 * IT MOVED AGAIN ON 2026-09-27 (the draft-clearing remediation): the effect took the discard
-	 * offer as a third message and three dependency entries, so both markers were re-pinned to
-	 * the array the effect actually ends with - the same rule, re-spelled.
-	 *
-	 * IT WAS `}, [archiveFailure, archiveUndo, setSessionArchived]);` UNTIL 2026-09-22, and that
-	 * marker stopped matching when the U10 fix added two entries - `between` then ran the slice
-	 * to the end of the FILE (1428 lines), so the assertions below were reading the whole
-	 * component and the `role="alert"` one found the CATALOGUE alert's own markup hundreds of
-	 * lines down: it had become a claim about the rest of the component. `between` now fails
-	 * loudly on a missing marker, which is what makes this spelling safe to pin.
+	 * The slice is the archive effect's drawing decision, so what is asserted here is
+	 * the shape the design depends on and no module can hold: the refusal names the
+	 * conversation, carries the backend's own sentence when there is one, keeps the
+	 * archive family's shared id (so an answer REPLACES the message it answers rather
+	 * than stacking under it), and offers the retry that re-sends the SAME desired
+	 * state.
 	 */
 	const failure = between(
-		SIDEBAR,
-		"if (!archiveFailure && !archiveUndo && !draftsUndo) {",
-		"\t\tsetArchiveUndo,\n\t\trestoreDraftsUndo,\n\t\tsetDraftsUndo,\n\t]);",
+		TOASTS,
+		"if (archiveFailure === null && archiveUndo === null) {",
+		"\t\tsetArchiveUndo,\n\t\tclearArchiveFailure,\n\t\tsetSessionArchived,\n\t]);",
 	);
 	assert.match(failure, /archiveFailure\.title/);
 	assert.match(failure, /archiveFailure\.detail/);
@@ -345,139 +335,97 @@ test("a refused press is reported once, in the sidebar's own toast lane, with a 
 	// did not move.
 	assert.match(failure, /showWarningToast\(/);
 	assert.match(failure, /id: ARCHIVE_TOAST_ID/);
-	assert.match(failure, /position: ARCHIVE_TOAST_LANE/);
 	assert.equal(
 		failure.includes('role="alert"'),
 		false,
 		"the sentence must not compete with the catalogue alert about a different failure",
 	);
-	// The refusal is the newest word: it is decided before the offer in the same effect.
 	/*
-	 * AND THE DECISION IS ONE OF CURRENCY (agent review round 3, R3-1 = UX round 3, U7). The
-	 * effect used to take the failure branch unconditionally, so after ONE refused archive every
-	 * later successful archive's offer was never painted. Both messages now carry the stamp of
-	 * the write that raised them and the NEWER one wins, which these assertions pin: the
-	 * comparison exists, and the failure branch is the one that comparison selects.
-	 */
-	/*
-	 * AND THE COMPARISON IS STRICT (repaired 2026-09-22, `cbfe27143` - "a refusal outranks an
-	 * offer on a tie, and carries its own stamp"). This assertion pinned `>=`, which is the
-	 * OLD contract: both messages are stamped from the same counter, and an undo whose
-	 * refusal lands in the answer that re-raises the offer puts them at the SAME stamp -
-	 * under `>=` the OFFER won that tie and the branch then cleared the refusal, so the lane
-	 * drew an offer for its eight seconds while the reader had just been refused. The src is
-	 * right and the test was behind it: a REFUSAL is a fact about a press that was ANSWERED,
-	 * an offer a fact about a write, and on a tie the refused press keeps its card.
+	 * ONE ID FOR BOTH MESSAGES, AND THE NEWEST OF THE TWO IS THE ONE DRAWN (agent review
+	 * round 3, R3-1 = UX round 3, U7). The branch used to prefer the failure
+	 * unconditionally, so after ONE refused archive every later successful archive's
+	 * offer was never painted. Currency is the write stamp's (`at`), and a tie keeps the
+	 * refusal - a refusal is a fact about a press that was ANSWERED.
 	 */
 	assert.match(failure, /archiveUndo\.at > archiveFailure\.at/);
-	assert.match(
-		failure,
-		/if \(newest === "failure" && archiveFailure\) \{[\s\S]*laneMessageRef\.current = "failure";[\s\S]*showWarningToast\(/,
-	);
 	/*
-	 * AND THE ONE DISMISSAL IS THE LANE GOING EMPTY (agent review round 1, R-1, and round 2,
-	 * R2-1/R2-4). What retires a message is the lane's own record of what it DREW, never the
-	 * store's other fact - `archiveFailure` outlives its message, and gating the offer's
-	 * retirement on it let one refused archive disable retirement for the rest of a session.
-	 * The refusal itself is retired by the store answering the write it describes: an
-	 * accepted unarchive clears it, an accepted archive supersedes it with the offer
-	 * `offerArchiveUndo` raises in the same update, and a press leaves it alone.
-	 *
-	 * NOTHING IS DISMISSED ON MOUNT, which is why the effect opens with the ref rather than
-	 * going straight to `dismissToast` (the jsdom the sidebar's own tests mount in): sonner's
-	 * `dismiss` reaches a bare `requestAnimationFrame` with no guard, so a dismiss on a mount
-	 * that never showed this toast is a call with no toast behind it - and in a DOM without
-	 * `requestAnimationFrame` at all it is a ReferenceError thrown from a passive effect.
+	 * AND THE ONE DISMISSAL IS BOTH SLOTS GOING EMPTY (agent review round 1, R-1;
+	 * round 2, R2-1/R2-4). What retires a message is the surface's own record of what it
+	 * DREW, never the store's other fact - `archiveFailure` outlives its message, and
+	 * gating the offer's retirement on it let one refused archive disable retirement for
+	 * the rest of a session. NOTHING IS DISMISSED ON MOUNT, which is why the empty
+	 * branch opens on the ref rather than going straight to `dismissToast` (sonner's
+	 * `dismiss` reaches a bare `requestAnimationFrame`; a dismiss on a mount that never
+	 * showed this toast is a call with no toast behind it).
 	 */
-	assert.match(failure, /if \(laneMessageRef\.current === null\) return;/);
+	assert.match(failure, /if \(archiveDrawnRef\.current === null\) return;/);
+	assert.equal(
+		failure.split("dismissToast(").length - 1,
+		1,
+		"the pressed paths must not dismiss: the message is held while its own write is out, and the answer settles it",
+	);
 	assert.match(failure, /dismissToast\(ARCHIVE_TOAST_ID\);/);
+	// A superseded message's VALUE is cleared as the newer one is drawn, so it cannot
+	// re-print when the newer one retires (U10; the refusal-after-offer half too).
+	assert.match(failure, /setArchiveUndo\(null\)/);
+	assert.match(failure, /clearArchiveFailure\(\)/);
 	/*
-	 * AND THE LIFE A RE-ASSERTION GETS IS A FULL ONE (agent review round 2 - the
-	 * re-assertion; the drafts offer joined as the third draw on 2026-09-27, the
-	 * remediation, and it is persistent for the same reason). All three draws are
-	 * PERSISTENT to sonner, because its per-toast life
-	 * resets only when the `duration` passed to an already-mounted entry CHANGES - so the
-	 * refusal a refused Retry put back inherited the clock of the message it replaced and
-	 * went seconds later, measured in `session-archive` as the lane empty 5068ms (dark) /
-	 * 5096ms (light) after the press with the store's refusal still standing. The panel
-	 * arms the life instead, per message, from the same two values the draw reads: no ref,
-	 * no declaration order, and every new assertion re-runs it with the full span.
+	 * LIFETIMES ARE SONNER'S, NOT A PANEL CLOCK (2026-09-27). The draws carry the
+	 * documented durations - the refusal's ten seconds, the offer's eight - and the
+	 * entry's life pauses while the reader holds it, which the `Infinity` + clock pair
+	 * could not do. The value is cleared when its MESSAGE ends, so nothing re-draws
+	 * later: both ending routes (timed end, the close button/swipe) call `settle`.
 	 */
-	assert.match(
-		code(SIDEBAR),
-		/const ARCHIVE_TOAST_PERSISTENT = Number\.POSITIVE_INFINITY;/,
+	assert.match(failure, /duration: ARCHIVE_FAILURE_TOAST_MS/);
+	assert.match(failure, /duration: ARCHIVE_UNDO_TOAST_MS/);
+	assert.doesNotMatch(
+		code(TOASTS),
+		/Number\.POSITIVE_INFINITY|ARCHIVE_TOAST_PERSISTENT/,
+		"no message may be drawn without a life sonner can end on its own",
 	);
+	assert.match(failure, /onAutoClose: settle\("failure", archiveFailure\.at\)/);
+	assert.match(failure, /onDismiss: settle\("failure", archiveFailure\.at\)/);
+	/*
+	 * AND NOTHING DISMISSES A MESSAGE IT IS ABOUT TO REPLACE (UX round 1, U3; agent
+	 * review round 2, R2-1). A `dismissToast(id)` at a press would take the message
+	 * down before its answer, and the answer's create lands on the id just dismissed -
+	 * merged into the dying entry and destroyed inside sonner's own unmount window.
+	 * Both actions therefore only send their write; the replacement is sonner's update.
+	 */
+	for (const label of ['label: "Retry"', 'label: "Undo"']) {
+		const at = failure.indexOf(label);
+		assert.notEqual(at, -1, `${label} is not in the archive effect`);
+		const press = failure.slice(at, failure.indexOf("setSessionArchived", at));
+		assert.equal(
+			press.includes("dismissToast"),
+			false,
+			`the press at ${label} must not take its own message down`,
+		);
+	}
 	assert.equal(
-		failure.split("duration: ARCHIVE_TOAST_PERSISTENT,").length - 1,
-		3,
-		"all three lane messages must be drawn without a life sonner could end on its own",
+		(failure.match(/event\.preventDefault\(\);/g) ?? []).length,
+		2,
+		"both presses hold their message with preventDefault while the write is unanswered",
 	);
-	assert.equal(
-		/duration: ARCHIVE_(FAILURE|UNDO)_TOAST_MS/.test(failure),
-		false,
-		"a draw that passes a finite duration keeps sonner's clock on the entry, which a re-assertion does not reset",
-	);
-	const clock = between(
-		SIDEBAR,
-		"const message = archiveFailure",
-		/*
-		 * THE MARKER IS THE CLOCK EFFECT'S OWN DEPENDENCY ARRAY, re-spelled 2026-09-22 and again
-		 * 2026-09-27 (the clock now gates on the drafts offer and takes its value as a dependency).
-		 * It used to be `}, [archiveFailure, archiveUndo]);` and the U10 fix grew it by
-		 * `clearArchiveFailure` and `setArchiveUndo` (both read in the expiry body). `between` now
-		 * fails on a missing marker rather than running the slice to the end of the file, which is
-		 * what makes this pin safe - before, this assertion had been reading the rest of the
-		 * component.
-		 */
-		"}, [\n\t\tarchiveFailure,\n\t\tarchiveUndo,\n\t\tdraftsUndo,\n\t\tclearArchiveFailure,\n\t\tsetArchiveUndo,\n\t]);",
-	);
-	assert.match(clock, /laneMessageRef\.current = null;/);
-	assert.match(clock, /dismissToast\(ARCHIVE_TOAST_ID\);/);
-	assert.match(
-		clock,
-		/message === "failure" \? ARCHIVE_FAILURE_TOAST_MS : ARCHIVE_UNDO_TOAST_MS/,
-	);
-	// Two effects, two "previous value" refs and a peer-fact test are all gone: the
-	// property above is now a consequence of one effect, not of two order-dependent ones.
-	assert.equal(
-		code(SIDEBAR).includes("previousFailureRef") ||
-			code(SIDEBAR).includes("previousUndoRef"),
-		false,
-		"the lane must be settled by one effect: two effects make U3's fix a matter of declaration order",
-	);
-	// The retry no longer dismisses its own message before re-sending (U3), and neither does
-	// the offer's Undo before ITS answer (R2-1): both send their write and nothing else.
-	const retry = failure.slice(failure.indexOf('label: "Retry"'));
-	assert.equal(
-		retry
-			.slice(0, retry.indexOf("setSessionArchived"))
-			.includes("dismissToast"),
-		false,
-		"a retry that takes its own message down loses the refusal its answer re-creates",
-	);
-	const offer = code(SIDEBAR).slice(code(SIDEBAR).indexOf('label: "Undo"'));
-	assert.equal(
-		offer
-			.slice(0, offer.indexOf("setSessionArchived"))
-			.includes("dismissToast"),
-		false,
-		"an undo that takes its own message down loses the refusal its answer re-creates (R2-1)",
-	);
+	/*
+	 * AND THE PANEL DRAWS NONE OF IT ANY MORE: the drawing, the clamp, the clock and
+	 * the lane constants are gone from `chat-sidebar.tsx`, and a raiser there would be a
+	 * second, unmountable copy of the failure class this change removes.
+	 */
+	assert.equal(code(SIDEBAR).includes("showInfoToast("), false);
+	assert.equal(code(SIDEBAR).includes("ARCHIVE_TOAST_ID"), false);
 });
 
 test("the offer's card truncates its NAME and can never truncate the verb (agent review round 2, R2-3)", () => {
 	/*
-	 * THE MARKER IS THE DRAWING EFFECT'S DEPENDENCY ARRAY, re-spelled 2026-09-22 in the shape the
-	 * formatter gives it: it used to be `}, [archiveFailure, archiveUndo, setSessionArchived]);`,
-	 * which the U10 fix grew by `clearArchiveFailure` and `setArchiveUndo` and `biome format`
-	 * wrapped across lines. Before `between` was hardened this slice silently ran to the end of
-	 * the file, so the assertions below were reading the whole component rather than the
-	 * offer's own message.
+	 * The slice is the offer's DRAW, from its branch to the archive effect's dependency
+	 * array (the branch sits after the failure arm, so the slice is the offer's own
+	 * message and nothing else).
 	 */
 	const offer = between(
-		SIDEBAR,
+		TOASTS,
 		"if (archiveUndo) {",
-		"\t\tclearArchiveFailure,\n\t\tsetArchiveUndo,\n\t]);",
+		"\t\tsetArchiveUndo,\n\t\tclearArchiveFailure,\n\t\tsetSessionArchived,\n\t]);",
 	);
 	// The name and the verb are two elements: a single string that overflows loses its
 	// TAIL, and the tail of `“<title>” archived.` is the verb.
@@ -489,72 +437,91 @@ test("the offer's card truncates its NAME and can never truncate the verb (agent
 		false,
 		"the sentence must not be one string, or a long title cuts the word that says what happened",
 	);
+	/*
+	 * AND THE FLEX CHAIN CAN SHRINK TO THE CARD WITHOUT THE LANE'S STYLESHEET: the rule
+	 * the lane carried (`min-width: 0` on sonner's `[data-content]`, measured there when
+	 * a long name refused to give and pushed the Undo out of the card) is passed as the
+	 * content box's own class now, because the app's stylesheet no longer names these
+	 * messages at all.
+	 */
+	assert.match(offer, /classNames: \{ content: "min-w-0" \}/);
 });
 
-test("the offer is drawn in the sidebar's own lane, mounted at the panel's root (design D11; agent review round 4, R4-1)", () => {
-	const source = code(SIDEBAR);
+test("the sidebar's own lane is deleted; the messages are raised by an always-mounted surface (operator request, 2026-09-27)", () => {
+	const sidebar = code(SIDEBAR);
 	/*
-	 * WHY THE HOME MATTERS, which is what round 4's R4-1 was about: the offer used to be
-	 * a direct child of the `<nav>` and the fold re-applied it inside the ENTITY region,
-	 * which the assembly drops in `chats-only` - so the offer and its Undo were drawn
-	 * exactly when the list they belong to was hidden. The lane inherits the register's
-	 * home and its reason: ONE container, mounted at the panel's root, so every assembly
-	 * mode carries it.
-	 *
-	 * WHAT IDENTIFIES THE OFFER NOW: sonner routes a toast to the container whose
-	 * `position` matches it, so the panel's lane declaring `bottom-left` is what puts
-	 * the offer in the sidebar and not in the viewport's corner. The register's own DOM
-	 * anchors (`data-session-archive-undo` / `-failure`) are gone with it, and the driver
-	 * reads the lane instead.
+	 * THE FAILURE CLASS THIS REMOVES, in the operator's own words ("these don't
+	 * properly show up"): the raise used to live in the panel, and the panel is the
+	 * EXPANDED half of the sidebar column - `sidebar-navigation.tsx` returns the 56px
+	 * strip, without it, when the column is collapsed - while the acts that raise the
+	 * messages are reachable from the chat pane (the header's menu, `/archive`) and the
+	 * composer (the send-failure notice's Clear). The drawing now lives on a surface
+	 * `main.tsx` mounts for the app's whole life.
 	 */
 	assert.equal(
-		(source.match(/<ThemedToastContainer/g) ?? []).length,
-		1,
-		"the panel must mount exactly one toast lane",
+		(sidebar.match(/<ThemedToastContainer/g) ?? []).length,
+		0,
+		"the panel must mount no toast container of its own",
 	);
-	const lane = between(SIDEBAR, "<ThemedToastContainer", "/>");
-	assert.match(lane, /position=\{ARCHIVE_TOAST_LANE\}/);
-	assert.match(lane, /style=\{ARCHIVE_TOAST_CONTAINER_STYLE\}/);
+	for (const gone of [
+		"ARCHIVE_TOAST_LANE",
+		"ARCHIVE_TOAST_CLASS",
+		"ARCHIVE_TOAST_BAND",
+		"ARCHIVE_OFFER_BAND_HEIGHT",
+		"ARCHIVE_TOAST_CONTAINER_STYLE",
+		"data-archive-toast-band",
+		"laneBandRef",
+		"laneMessageRef",
+		"laneDrawnRef",
+		"listYield",
+		"stagedByDiscardRef",
+	]) {
+		assert.equal(
+			sidebar.includes(gone),
+			false,
+			`${gone} must be deleted with the lane it served`,
+		);
+	}
+	// The app's stylesheet no longer carries a confinement policy keyed on the lane's class.
+	const css = code("src/renderer/src/styles/index.css");
+	assert.equal(css.includes("lo-archive-toast"), false);
+	assert.equal(css.includes("archive-toast"), false);
 	/*
-	 * AND THE LANE IS THE PANEL'S BOX, which since D10's cap and D14's band is the anchor
-	 * plus TWO boxes (repaired 2026-09-22, when the band landed): the nav's `relative` is
-	 * what the panel's column is confined by, the BAND is the positioned ancestor the card
-	 * resolves its `--width` and `max-height: 100%` against, and the CONTAINER is
-	 * deliberately `static` so sonner's own `position: fixed` cannot put the card back in
-	 * the viewport's corner. This assertion used to read `position: "absolute"` and
-	 * `ARCHIVE_TOAST_LANE_STYLE` because the container WAS the card's box; both moved with
-	 * the shape. The cap is the card's and lives on the band: `min(248px, 100%)`, i.e.
-	 * never wider than the lane it is drawn in (design round 3, D10) - not the old
-	 * `min(264px, 100% - 32px)` the container used to declare.
+	 * THE RAISE LIVES WHERE THE APP LIVES: `main.tsx` mounts the one container every
+	 * toast in the app uses, and the raising surface beside it - one of each, outside
+	 * every route.
 	 */
-	assert.match(
-		source,
-		/className="relative flex h-full min-h-0 flex-col bg-surface p-2 text-ink"/,
+	const main = code("src/renderer/src/main.tsx");
+	assert.equal((main.match(/<ThemedToastContainer \/>/g) ?? []).length, 1);
+	assert.equal((main.match(/<UndoToasts \/>/g) ?? []).length, 1);
+	/*
+	 * THE IDS: one stable id for the archive's offer and refusal, and a SEPARATE id for
+	 * the discard offer - a decision this change makes rather than inherits, because the
+	 * single id existed to fit one lane and ordinary toasts stack. Each id is defined
+	 * once and used by its raise and its dismissal.
+	 */
+	const toasts = code(TOASTS);
+	assert.match(toasts, /export const ARCHIVE_TOAST_ID = "archive";/);
+	assert.match(toasts, /export const DRAFTS_UNDO_TOAST_ID = "drafts-undo";/);
+	assert.equal(
+		(toasts.match(/DRAFTS_UNDO_TOAST_ID/g) ?? []).length,
+		3,
+		"the drafts id is defined once and used by its raise and its dismissal",
 	);
-	assert.match(source, /position: "relative"/);
-	assert.match(source, /position: "static"/);
-	assert.match(source, /"--width": "min\(248px, 100%\)"/);
-	// ONE FLOW, ONE SITE (2026-09-26): the three assembly branches are one
-	// scroller now, so the pin's failure line renders exactly once. The old
-	// "every assembly branch" shape cannot be kept by a count on one branch.
-	const pins = source.match(/\{pinFailureLine\}/g) ?? [];
+	/*
+	 * AND THE PANEL'S OTHER ROOT FACTS SURVIVE (the halves of this test that were about
+	 * the register's home): one merged assembly draws the pin's failure line once, and
+	 * the register itself stays deleted.
+	 */
+	const pins = sidebar.match(/\{pinFailureLine\}/g) ?? [];
 	assert.equal(
 		pins.length,
 		1,
 		`expected the pin's failure line once in the merged assembly, found ${pins.length}`,
 	);
-	assert.equal(
-		(source.match(/\{archiveRegister\}/g) ?? []).length,
-		0,
-		"the register must be deleted from the assembly, not left beside the toast",
-	);
-	assert.equal(
-		source.includes("const archiveRegister = ("),
-		false,
-		"the register's own JSX must be gone with its call sites",
-	);
-	// One provider for the panel, so the rows' flyouts share a delay and a skip.
-	assert.match(source, /<TooltipProvider>/);
+	assert.equal((sidebar.match(/\{archiveRegister\}/g) ?? []).length, 0);
+	assert.equal(sidebar.includes("const archiveRegister = ("), false);
+	assert.match(sidebar, /<TooltipProvider>/);
 });
 
 test("the press record expires on the pointer's own path", () => {

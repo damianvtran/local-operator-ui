@@ -1,0 +1,107 @@
+{
+ "scene": "row-space",
+ "theme": "localOperatorDark",
+ "viewport": {
+  "width": 1380,
+  "height": 900,
+  "devicePixelRatio": 2
+ },
+ "widths": [
+  240,
+  280,
+  320
+ ],
+ "panel": {
+  "left": 0,
+  "right": 280,
+  "top": 284,
+  "bottom": 843.1,
+  "width": 280,
+  "height": 559.1,
+  "centre": {
+   "x": 140,
+   "y": 563.55
+  }
+ },
+ "offer": {
+  "toast": {
+   "left": 1000,
+   "right": 1356,
+   "top": 826,
+   "bottom": 876,
+   "width": 356,
+   "height": 50,
+   "centre": {
+    "x": 1178,
+    "y": 851
+   }
+  },
+  "container": {
+   "left": 1000,
+   "right": 1356,
+   "top": 876,
+   "bottom": 876,
+   "width": 356,
+   "height": 0,
+   "centre": {
+    "x": 1178,
+    "y": 876
+   }
+  },
+  "text": "\u201cMigration checklist\u201darchived.Undo",
+  "toasts": {
+   "total": 1,
+   "painted": 1
+  },
+  "panel": {
+   "left": 0,
+   "right": 280,
+   "top": 284,
+   "bottom": 843.1,
+   "width": 280,
+   "height": 559.1,
+   "centre": {
+    "x": 140,
+    "y": 563.55
+   }
+  },
+  "firstListRow": {
+   "left": 12,
+   "right": 260,
+   "top": 551.5,
+   "bottom": 583.5,
+   "width": 248,
+   "height": 32,
+   "centre": {
+    "x": 136,
+    "y": 567.5
+   }
+  },
+  "composer": {
+   "send": {
+    "left": 1232,
+    "right": 1264,
+    "top": 836,
+    "bottom": 868,
+    "width": 32,
+    "height": 32,
+    "centre": {
+     "x": 1248,
+     "y": 852
+    }
+   },
+   "form": {
+    "left": 304,
+    "right": 1356,
+    "top": 774,
+    "bottom": 884,
+    "width": 1052,
+    "height": 110,
+    "centre": {
+     "x": 830,
+     "y": 829
+    }
+   }
+  }
+ }
+}
