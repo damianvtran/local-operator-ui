@@ -55,21 +55,24 @@ import { act } from "react";
 const bundle = await build({
 	stdin: {
 		contents: `
-			import { createElement } from "react";
+			import { createElement, useEffect } from "react";
 			import { renderToStaticMarkup } from "react-dom/server";
 			import { createRoot } from "react-dom/client";
 			import { MemoryRouter } from "react-router-dom";
 			import { QueryClientProvider } from "@tanstack/react-query";
 			import { SettingsPage } from "./src/renderer/src/features/settings/components/settings-page";
+			import { UserProfileSidebar } from "./src/renderer/src/shared/components/navigation/user-profile-sidebar";
 			import {
 				classifyRadientAccountFailure,
+				commissionAccountRead,
+				forgetAccountReadFailure,
 				radientUserKeys,
 				useRadientUserQuery,
 			} from "./src/renderer/src/shared/hooks/use-radient-user-query";
 			export { QueryClient } from "@tanstack/react-query";
 			export { configQueryKey } from "./src/renderer/src/shared/hooks/use-config";
 			export { desktopResult, DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
-			export { classifyRadientAccountFailure, radientUserKeys, useRadientUserQuery };
+			export { classifyRadientAccountFailure, commissionAccountRead, forgetAccountReadFailure, radientUserKeys, useRadientUserQuery };
 
 			export const renderSettings = (client) =>
 				renderToStaticMarkup(
@@ -85,6 +88,27 @@ const bundle = await build({
 				);
 
 			/*
+			 * The FOOT itself, the operator's own surface: the shipped
+			 * "UserProfileSidebar", resolved against a client the mounted probes have
+			 * already driven. A static render (like "renderSettings") reads the query
+			 * state and the recorded class synchronously, which is exactly the
+			 * reading the row paints - so the assertions about what the foot SAYS
+			 * are made against the component that says it, not a restatement.
+			 */
+			export const renderFoot = (client) =>
+				renderToStaticMarkup(
+					createElement(
+						QueryClientProvider,
+						{ client },
+						createElement(
+							MemoryRouter,
+							{ initialEntries: ["/chat"] },
+							createElement(UserProfileSidebar, { expanded: true }),
+						),
+					),
+				);
+
+			/*
 			 * The MOUNTED probe: the shipped hook, publishing its own reading on every
 			 * render so a test can read the classification the surfaces render from
 			 * without reaching into React. refreshUser is exposed as the control the
@@ -92,6 +116,15 @@ const bundle = await build({
 			 */
 			export const ReadProbe = () => {
 				const read = useRadientUserQuery();
+				/*
+				 * The no-remount counter the credential-landing case asserts through:
+				 * a mounting surface would increment it, so "the answer reached the
+				 * surfaces without a remount" is a counted fact rather than an
+				 * assumption about the harness.
+				 */
+				useEffect(() => {
+					globalThis.__accountReadMounts = (globalThis.__accountReadMounts ?? 0) + 1;
+				}, []);
 				globalThis.__accountReadProbe = {
 					accountRead: read.accountRead,
 					isLoading: Boolean(read.isLoading),
@@ -346,6 +379,17 @@ let accountBehaviour = "pending";
 let attemptsOnAccount = 0;
 
 /**
+ * Held chain reads, in the order they arrived, for the two chain modes below.
+ *
+ * A QUEUE rather than the single `releaseHeldOpenRead` slot, because the
+ * completion's own re-read is held BESIDE the pre-write attempt it replaced: a
+ * case has to settle the abandoned attempt's refusal and the fresh chain's
+ * answer one at a time, in arrival order, to tell "the write cancelled the old
+ * chain" apart from "the write joined it" (review round 1, M1).
+ */
+const heldChainedReads = [];
+
+/**
  * Releases the read the "pending" answer holds open, called from teardown.
  *
  * WHY THE RIG LETS GO AT ALL. The state under test is "the read has not answered
@@ -392,6 +436,43 @@ globalThis.window.api = {
 							resolve(ACCOUNT_ANSWERS[accountBehaviour]);
 					});
 				}
+				if (accountBehaviour === "landing") {
+					/*
+					 * THE CREDENTIAL HAS JUST LANDED, and this read is the completion
+					 * path's own re-commission, held open so the interim can be read as a
+					 * state rather than raced against the poll (the same technique the
+					 * evidence rigs' `complete.py` records). The release answers with
+					 * the account the new credential unlocks.
+					 */
+					return await new Promise((resolve) => {
+						releaseHeldOpenRead = () => resolve(ACCOUNT_ANSWERS.account);
+					});
+				}
+				if (
+					accountBehaviour === "refuse-then-chain" ||
+					accountBehaviour === "refuse-two-then-chain"
+				) {
+					/*
+					 * THE MID-CHAIN AND LAST-ATTEMPT STATES (review round 1, M1). The
+					 * first attempt settles as the refusal - the first TWO, for the
+					 * last-attempt state - and every attempt after that is held in the
+					 * queue below, so a case can settle the pre-write attempt and the
+					 * completion's re-read ONE AT A TIME in arrival order.
+					 */
+					attemptsOnAccount += 1;
+					const refusedSoFar = accountBehaviour === "refuse-then-chain" ? 1 : 2;
+					if (attemptsOnAccount <= refusedSoFar) {
+						return ACCOUNT_ANSWERS.refused;
+					}
+					return await new Promise((resolve) => {
+						heldChainedReads.push({ resolve });
+						releaseHeldOpenRead = () => {
+							for (const held of heldChainedReads.splice(0)) {
+								held.resolve(ACCOUNT_ANSWERS.account);
+							}
+						};
+					});
+				}
 				return ACCOUNT_ANSWERS[accountBehaviour];
 			}
 			if (request?.op === "capabilities") {
@@ -432,6 +513,9 @@ const {
 	desktopResult,
 	DesktopControlError,
 	renderSettings,
+	renderFoot,
+	commissionAccountRead,
+	forgetAccountReadFailure,
 	mountReadProbe,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
@@ -593,6 +677,13 @@ async function until(predicate, what, timeoutMs = 20_000) {
 async function mountAccountRead(behaviour) {
 	accountBehaviour = behaviour;
 	attemptsOnAccount = 0;
+	heldChainedReads.length = 0;
+	/*
+	 * The no-remount counter: reset per mount so the credential-landing case can
+	 * assert that the ANSWER reached the surface which rendered the refusal,
+	 * rather than a newly mounted one.
+	 */
+	globalThis.__accountReadMounts = 0;
 	const client = clientWithConfig({ gcTime: 0 });
 	const container = bootstrapDOM.window.document.createElement("div");
 	bootstrapDOM.window.document.body.appendChild(container);
@@ -670,6 +761,33 @@ async function mountAccountRead(behaviour) {
 			);
 			return { state: state(), snapshot: snapshot() };
 		},
+		/*
+		 * THE CREDENTIAL-WRITE COMPLETION, as the app's paths perform it: the
+		 * hook module's own `commissionAccountRead` - the clear, the CANCEL of any
+		 * pre-write chain, and the `radientUserKeys.all` invalidation, in that
+		 * order - which both `provider-detail.tsx` and
+		 * `use-radient-session-issue.ts` call. The call sites are pinned by source
+		 * in `scripts/picker-feedback.test.mjs`; this drives the shared function
+		 * so the behaviour is measured rather than asserted in prose.
+		 */
+		credentialWrite: async () => {
+			await act(async () => {
+				void commissionAccountRead(client);
+				await new Promise((resolve) => setTimeout(resolve, 0));
+			});
+		},
+		/*
+		 * Settle the OLDEST held chain read with the answer the case names. FIFO:
+		 * the abandoned pre-write attempt settles first, so a case can watch the
+		 * class NOT re-arm under it before the fresh chain's answer lands - the
+		 * reading that tells a cancelled chain from a joined one.
+		 */
+		releaseChainedRead: async (answerKey) => {
+			await act(async () => {
+				heldChainedReads.shift()?.resolve(ACCOUNT_ANSWERS[answerKey]);
+				await new Promise((resolve) => setTimeout(resolve, 0));
+			});
+		},
 		press: pressed,
 		/*
 		 * THE RIG LEAVES THE READ ANSWERED, AND ONLY THEN TEARS ANYTHING DOWN.
@@ -686,6 +804,14 @@ async function mountAccountRead(behaviour) {
 		 */
 		teardown: async () => {
 			accountBehaviour = "account";
+			/*
+			 * Drain the chain queue first: its holds resolve with the account, so a
+			 * chain left waiting by a case that ended early settles ANSWERED rather
+			 * than held (the same hygiene reason `releaseHeldOpenRead` exists).
+			 */
+			for (const held of heldChainedReads.splice(0)) {
+				held.resolve(ACCOUNT_ANSWERS.account);
+			}
 			releaseHeldOpenRead();
 			await pressed();
 			await until(
@@ -1027,6 +1153,237 @@ test("a failed account read survives the press that starts the next attempt", as
 			afterPress.isFetching,
 			true,
 			"the control's pending state must be reachable while its own re-read is out",
+		);
+	} finally {
+		await mounted.teardown();
+	}
+});
+
+/*
+ * THE CREDENTIAL LANDS: THE FOOT MOVES, AND THE ANSWER REACHES IT WITHOUT A
+ * REMOUNT.
+ *
+ * The operator's report, on the installed app: after a re-sign-in completed, the
+ * sidebar foot kept reading "Account unavailable" - no completion path had
+ * re-commissioned the account read, so it waited for something else to mount an
+ * observer on the failed query, and it healed only on a later Settings visit.
+ *
+ * Two halves are asserted here, both against the shipped hook and the shipped
+ * foot component (`renderFoot` mounts `UserProfileSidebar`, the row itself):
+ *
+ *  - the interim is LEGIBLE: a completed credential write clears the recorded
+ *    class, so the re-read under it reads as "Checking account…" instead of the
+ *    foot sitting unchanged on a class the write just made stale;
+ *  - the answer REACHES the mounted surfaces: the SAME `ReadProbe` instance
+ *    that rendered the refusal renders "ready", which is what "without a
+ *    remount" means, and the counter makes that a fact rather than an assumption.
+ *
+ * The bridge holds the re-read open while the interim is read: a read that
+ * answers as fast as the driver asks would make "the foot moved" a race against
+ * the poll, and completing before the capture is exactly how a frame gets
+ * mislabelled (the evidence rigs' `complete.py` records the same trap).
+ */
+test("a completed credential write moves the foot while the read is out, and the answer reaches it without a remount", async () => {
+	const mounted = await mountAccountRead("refused");
+	try {
+		const failed = await mounted.settleOnFailure();
+		assert.equal(failed.snapshot.accountRead, "refused");
+		assert.equal(
+			globalThis.__accountReadMounts,
+			1,
+			"the probe must be on its first mount before the credential lands",
+		);
+		const refusedFoot = text(renderFoot(mounted.client));
+		assert.ok(
+			refusedFoot.includes("Account unavailable"),
+			`the reference frame must be the stale foot the operator reported; it showed: ${refusedFoot.slice(0, 200)}`,
+		);
+
+		/* The credential lands, and the read it commissions is held open. */
+		accountBehaviour = "landing";
+		await mounted.credentialWrite();
+		const interim = await until(() => {
+			const page = mounted.snapshot();
+			const rail = mounted.snapshotB();
+			return page?.accountRead === "checking" &&
+				rail?.accountRead === "checking"
+				? { page, rail }
+				: null;
+		}, "both surfaces to move to `checking` while the completion's re-read is out");
+		assert.equal(
+			interim.page.isFetching,
+			true,
+			"the interim must be a read actually in flight, not a cleared class on its own",
+		);
+		const checkingFoot = text(renderFoot(mounted.client));
+		assert.ok(
+			checkingFoot.includes("Checking account…"),
+			`the foot did not move while the re-read was out; it still showed: ${checkingFoot.slice(0, 200)}`,
+		);
+
+		/* The answer lands, on the SAME probes, with no remount in between. */
+		releaseHeldOpenRead();
+		await until(
+			() => mounted.snapshot()?.accountRead === "ready",
+			"the completion's read to be answered and rendered",
+		);
+		assert.equal(
+			globalThis.__accountReadMounts,
+			1,
+			"the foot reached the account without a remount, so the no-remount claim is counted rather than assumed",
+		);
+		assert.equal(mounted.snapshot()?.hasAccount, true);
+		const readyFoot = text(renderFoot(mounted.client));
+		assert.ok(
+			readyFoot.includes("QA Settings Gate") &&
+				readyFoot.includes("qa-settings-gate@example.test"),
+			`the foot did not reach the account the credential unlocked; it showed: ${readyFoot.slice(0, 240)}`,
+		);
+	} finally {
+		await mounted.teardown();
+	}
+});
+
+/*
+ * THE WRITE LANDS WHILE A CHAIN IS STILL IN FLIGHT (review round 1, M1).
+ *
+ * The state: the refusal is recorded and the chain's NEXT attempt is asking -
+ * the window a `refetchOnWindowFocus` read around a returned-from-browser
+ * sign-in leaves open. Two traps live in it, both measured by the reviewer
+ * against the shipped hook: an invalidation alone JOINS that chain
+ * (`Query.fetch` continues it), so the write re-asks NOTHING; and the
+ * abandoned attempt's late refusal re-records the class the write just
+ * cleared, flipping the foot back to "Account unavailable" until the chain's
+ * own retry happens to heal it.
+ *
+ * What is asserted instead: the completion CANCELS the pre-write chain and
+ * commissions a fresh read (the attempt counter moves), the abandoned
+ * attempt's refusal cannot re-arm the class, and the fresh read answers on
+ * the same mount.
+ */
+test("a write mid-chain cancels the pre-write attempt, and its late refusal cannot re-arm the class", async () => {
+	const mounted = await mountAccountRead("refuse-then-chain");
+	try {
+		await until(() => {
+			const probe = mounted.snapshot();
+			return attemptsOnAccount >= 2 && probe?.accountRead === "refused"
+				? probe
+				: null;
+		}, "the recorded refusal with the chain's next attempt held open");
+		const beforeWrite = await mounted.read();
+		assert.equal(
+			beforeWrite?.isFetching,
+			true,
+			"the pre-write chain must actually be in flight, or this case measures a settled query",
+		);
+		assert.ok(
+			text(renderFoot(mounted.client)).includes("Account unavailable"),
+			"the reference frame must be the stale foot before the write",
+		);
+
+		await mounted.credentialWrite();
+
+		await until(
+			() => attemptsOnAccount === 3,
+			"the completion to commission a fresh read rather than join the held chain",
+		);
+		await until(
+			() => mounted.snapshot()?.accountRead === "checking",
+			"the fresh read's interim",
+		);
+
+		/*
+		 * The abandoned attempt settles refused AFTER the clear. The class must
+		 * stay cleared: the foot keeps reading "Checking account…".
+		 */
+		await mounted.releaseChainedRead("refused");
+		const underLateRefusal = await mounted.read();
+		assert.equal(
+			underLateRefusal?.accountRead,
+			"checking",
+			"the abandoned pre-write attempt's refusal re-armed the class the write cleared",
+		);
+
+		await mounted.releaseChainedRead("account");
+		await until(
+			() => mounted.snapshot()?.accountRead === "ready",
+			"the completion's own read to answer the account",
+		);
+		assert.equal(
+			globalThis.__accountReadMounts,
+			1,
+			"the foot reached the account without a remount",
+		);
+		assert.equal(
+			attemptsOnAccount,
+			3,
+			"exactly one completion read: a re-ask loop would raise the count",
+		);
+	} finally {
+		await mounted.teardown();
+	}
+});
+
+/*
+ * THE WRITE LANDS IN THE CHAIN'S LAST ATTEMPT (review round 1, M1, second
+ * repro): the attempt asking when the credential lands is the chain's THIRD,
+ * with no retry left behind it. An invalidation alone joins it; when the
+ * joined chain settles refused, everything is marked invalidated, no attempt
+ * remains to re-ask, and the foot waits for a later focus or mount - the
+ * operator's symptom surviving a remount-free window.
+ *
+ * What is asserted instead: the completion commissions the read nothing else
+ * would have, the abandoned last attempt cannot re-arm the class, and the
+ * fresh read answers on the same mount.
+ */
+test("a write during the chain's last attempt commissions the read nothing else would have", async () => {
+	const mounted = await mountAccountRead("refuse-two-then-chain");
+	try {
+		await until(
+			() => attemptsOnAccount === 3,
+			"the chain's last attempt to be in flight (two refusals, then the hold)",
+			8_000,
+		);
+		const lastAttempt = await mounted.read();
+		assert.equal(
+			lastAttempt?.accountRead,
+			"refused",
+			"the reference state: the recorded refusal while the LAST attempt is asking",
+		);
+
+		await mounted.credentialWrite();
+
+		await until(
+			() => attemptsOnAccount === 4,
+			"the completion to commission the fresh read (joining the held chain would re-ask nothing)",
+		);
+		await until(
+			() => mounted.snapshot()?.accountRead === "checking",
+			"the fresh read's interim",
+		);
+
+		await mounted.releaseChainedRead("refused");
+		const underLateRefusal = await mounted.read();
+		assert.equal(
+			underLateRefusal?.accountRead,
+			"checking",
+			"the abandoned LAST attempt's refusal re-armed the class the write cleared",
+		);
+
+		await mounted.releaseChainedRead("account");
+		await until(
+			() => mounted.snapshot()?.accountRead === "ready",
+			"the completion's own read to answer the account",
+		);
+		assert.equal(
+			globalThis.__accountReadMounts,
+			1,
+			"the foot reached the account without a remount",
+		);
+		assert.equal(
+			attemptsOnAccount,
+			4,
+			"exactly one completion read after the last attempt: a re-ask loop would raise the count",
 		);
 	} finally {
 		await mounted.teardown();

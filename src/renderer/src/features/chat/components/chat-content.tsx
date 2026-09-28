@@ -9,6 +9,7 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { BackendCompatibilityBanner } from "@shared/components/common/backend-compatibility-banner";
+import { PaneSlot } from "@shared/components/common/pane-slot";
 import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { TabPanel } from "@shared/components/ui";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
@@ -44,6 +45,7 @@ import {
 	goalCapability,
 	goalPresent,
 } from "../../../../../shared/desktop-session-contract";
+import { gateIsSecret } from "../ask-answer";
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
 import type { UndeliveredTurn } from "../canonical/canonical-transcript";
 import { canonicalTranscriptSpeaks } from "../canonical/transcript-pane";
@@ -342,6 +344,16 @@ type ChatContentProps = {
 		 * it rather than posted from the row that was clicked.
 		 */
 		onAnswer?: (label: string) => void;
+		/**
+		 * Answer the pending `secret` gate with the dock's typed value.
+		 *
+		 * The secret field's sibling of `onAnswer`, raised to the same panel for
+		 * the same reason: `SessionPanel` holds the send lock and the error
+		 * surface, so the value has to reach it rather than post from the field.
+		 * Absent where the surface cannot address an owner — the dock then
+		 * renders the field disabled.
+		 */
+		onAnswerSecret?: (value: string) => void;
 		/**
 		 * What `SessionPanel` knows about the gate it just answered. Passed through
 		 * untouched: the card's hold and its refusal sentence are decided where the
@@ -1547,6 +1559,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 									className={CHAT_MEASURE}
 									gate={canonical.view.frontend.pending_gate}
 									onAnswer={canonical.onAnswer}
+									/*
+									 * The secret field's own door, forwarded untouched like `onAnswer`:
+									 * the dock decides WHEN a secret is answered from its field, and the
+									 * panel owns the lock, the request and the report behind it.
+									 */
+									onAnswerSecret={canonical.onAnswerSecret}
 									// The composer's own in-flight flag, reused: one answer per
 									// question, whichever surface starts it.
 									answering={Boolean(canonical.admitting)}
@@ -1563,13 +1581,29 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * the conversation it ended: the transcript is the record of what was said, and
 						 * this is the pane's statement about the run.
 						 *
+						 * IT TAKES THE CONVERSATION'S SHARED MEASURE, and the wrapper is what declares
+						 * it: `CHAT_MEASURE`'s cap and centring are keyed to the named chatcol container
+						 * (`@min-[750px]/chatcol`), so a row with no named container anywhere above it
+						 * matches NEITHER variant - the line keeps `w-full` and paints at the column's
+						 * 24px inset while every surface that does declare one centres into the measure.
+						 * That is the operator's report of 2026-09-27: at a 1120px column the line sat at
+						 * x=284 (column + inset) against the composer box's x=370 (column + 110), 86px
+						 * apart. The dock above and the composer band below already declare the container
+						 * for the same reason; this row is a third consumer and declares it the same way.
+						 *
 						 * The retry RE-SENDS THE TURN through the same door the composer uses
 						 * (`onSendMessage` is the page's own `send`), so it carries the same admission,
 						 * the same echo and the same failure handling as a press on Enter — a second send
 						 * path would be the defect, not the fix.
 						 */}
 						{stoppedTurnAt !== null && (
-							<div className={cn(CHAT_COLUMN_INSET, "w-full shrink-0 pt-2")}>
+							<div
+								className={cn(
+									CHAT_COLUMN_CONTAINER,
+									CHAT_COLUMN_INSET,
+									"w-full shrink-0 pt-2",
+								)}
+							>
 								<p
 									data-stopped-turn
 									className={cn(
@@ -1727,6 +1761,20 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * on the user (UX round 2, U8).
 								 */
 								awaitingAnswer={Boolean(canonical?.view.frontend?.pending_gate)}
+								/*
+								 * AND WHETHER THAT QUESTION TAKES A SECRET: the composer refuses
+								 * input while one waits (`message-input.tsx` reads this as
+								 * `secretAnswer`), because a credential must never be typed into a
+								 * surface that cannot mask it — the answer belongs to the dock's own
+								 * field. Through `gateIsSecret`, the ONE predicate every consumer of
+								 * that reading shares (agent review round 1, NIT-1): the field arm,
+								 * the page's send refusal and the answer door read it too, so a
+								 * value the wire means as secret cannot be masked on one surface
+								 * while this one stays open — the mix that re-opened the exposure.
+								 */
+								secretAnswer={gateIsSecret(
+									canonical?.view.frontend?.pending_gate,
+								)}
 								// A conversation the backend says is gone is a KNOWN
 								// answer, so the composer refuses input rather than
 								// accepting a message that can only 404. The pane above
@@ -1818,11 +1866,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								label="Resize canvas"
 							/>
 						)}
-						<div
+						<PaneSlot
 							ref={canvasContainerRef}
-							/* Named for the geometry probe: the dock's measured width at
-							 * the default 1380x900 window is the U1 regression check. */
-							data-tour-tag="canvas-dock"
+							width={canvasWidth}
+							tourTag="canvas-dock"
 							/*
 							 * THE MODE AS A FACT ON THE ELEMENT, rather than something a reader has to
 							 * infer from a width. §I's two shapes - docked beside the chat, or over it
@@ -1831,43 +1878,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							 * a test gets subtly wrong.
 							 */
 							data-canvas-mode={canvasDocked ? "docked" : "overlay"}
-							style={{
-								/*
-								 * §I's width for the mode: docked it is `min(560, available - 480)`,
-								 * capped by the user's own preference; overlaying it is that preference,
-								 * capped by the pane it covers.
-								 */
-								width: canvasWidth,
-							}}
-							/*
-							 * No `minWidth`. A floor pinned at the dock's preferred width is what
-							 * made the grid's fourth column unreachable at the app's own default
-							 * window: the chat column has a floor of its own (§B1's 480 since §I; 220
-							 * before it), so 220 + 800 could not fit in an 880px row, the row's
-							 * `overflow-hidden` clipped the rest, and no scroll container in between
-							 * could reach it (measured at 1380x900: the dock ran to x=1520 in a 1380
-							 * window and 8 of 32 tiles had their right edge past it). With the floor
-							 * gone, flex shrinks the dock into the space that is actually available and
-							 * the grid reflows to the width it really has — which is the same rule the
-							 * grid's own `auto-fill` tracks already follow.
-							 *
-							 * THE FLOOR THAT REPLACED IT IS ON THE OTHER COLUMN, deliberately: the
-							 * chat column carries `min-w-[480px]` and the pane's width is derived from
-							 * it (`canvasDockWidth`), so the promise is kept on the pane the reader is
-							 * promised rather than by capping one of the things that may join the row.
-							 */
-							className={cn(
-								"relative h-full overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart",
-								/*
-								 * Docked: a flex item that shrinks. Overlay: lifted out of the flow at
-								 * the row's trailing edge, ABOVE the chat column (`z-20`), with the chat
-								 * still painted behind it and no scrim - §I's "full pane width, scrim
-								 * absent". The row is the positioning context (`relative` above), which
-								 * is also what keeps the pane aligned with the chat column's trailing
-								 * edge rather than the window's.
-								 */
-								canvasDocked ? "shrink" : "absolute inset-y-0 right-0 z-20",
-							)}
 						>
 							<Canvas
 								activeDocumentId={selectedTabId}
@@ -1920,7 +1930,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								onClose={handleCloseCanvas}
 								onCloseDocument={handleCloseDocument}
 							/>
-						</div>
+						</PaneSlot>
 					</>
 				)}
 
@@ -1957,38 +1967,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							onDoubleClick={handleRunPanelWidthReset}
 							label="Resize run details"
 						/>
-						<div
+						<PaneSlot
 							ref={runPanelRef}
-							data-tour-tag="run-panel-dock"
-							style={{
-								/*
-								 * The preference is the `width`, and there is NO floor: `minWidth: 0`
-								 * is what lets the flex item shrink below its own content minimum at
-								 * all, which is the whole of the fix below. Pinning the preference as
-								 * the floor is what put the pane's right edge - its close control and
-								 * its scrollbar - past the window at any window the row could not
-								 * host 420 in: measured 116px past at 1024x673 with the rail
-								 * expanded and 340px at the app's 800x600 floor, with the row's
-								 * `overflow-hidden` hiding the difference and no gesture that
-								 * reaches it. The canvas dock one slot up dropped its own pinned
-								 * floor for exactly this reason.
-								 *
-								 * A floor at the pane's own 320px contract minimum was measured too
-								 * and is NOT enough: it still leaves 16px of the pane past the
-								 * window at 1024x673 with the rail expanded (the close control's
-								 * right edge, off-screen) and 68px at 800x600 with the rail
-								 * collapsed, because the row's other floors - a 220px column and a
-								 * 280px chat list, under a 48px or 220px rail - do not leave 320.
-								 * With no floor the pane takes exactly the space the row has left,
-								 * and the budgets below follow that measured width, so a narrow
-								 * pane sheds and elides inside its own box instead of being cut by
-								 * the window. `RUN_PANEL_MIN_PX` stays the DIVIDER's floor: the
-								 * width the user may drag the preference down to.
-								 */
-								minWidth: 0,
-								width: effectiveRunPanelWidth,
-							}}
-							className="relative h-full shrink overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart"
+							width={effectiveRunPanelWidth}
+							tourTag="run-panel-dock"
 						>
 							<RunPanel
 								details={runDetails}
@@ -2013,7 +1995,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								onReaderChildChange={setReaderChildId}
 								onClose={() => setRunPanelOpen(false)}
 							/>
-						</div>
+						</PaneSlot>
 					</>
 				)}
 
@@ -2050,13 +2032,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							onDoubleClick={restoreDefaultBrowserPanelWidth}
 							label="Resize browser"
 						/>
-						<div
-							/* Named for the geometry probe: the pane's measured width as it opens
-							   is what shows the slot narrowed the conversation rather than
-							   overlaying it. */
-							data-tour-tag="browser-pane-slot"
-							style={{ width: effectiveBrowserPanelWidth }}
-							className="relative h-full overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart"
+						<PaneSlot
+							width={effectiveBrowserPanelWidth}
+							tourTag="browser-pane-slot"
 						>
 							{/*
 							 * The session id as a SCOPE rather than as a page: the pane renders the
@@ -2069,7 +2047,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								sessionId={sessionId ?? null}
 								onClose={() => setBrowserPaneOpen(false)}
 							/>
-						</div>
+						</PaneSlot>
 					</>
 				)}
 				{/*
@@ -2096,16 +2074,15 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							onDoubleClick={restoreDefaultConsolePanelWidth}
 							label="Resize console"
 						/>
-						<div
-							style={{ width: effectiveConsolePanelWidth }}
-							className="relative h-full overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart"
-							data-tour-tag="console-pane-slot"
+						<PaneSlot
+							width={effectiveConsolePanelWidth}
+							tourTag="console-pane-slot"
 						>
 							<ConsolePane
 								sessionId={sessionId ?? null}
 								onClose={() => setConsolePaneOpen(false)}
 							/>
-						</div>
+						</PaneSlot>
 					</>
 				)}
 			</div>

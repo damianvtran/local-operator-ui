@@ -68,6 +68,7 @@ export type PaletteIconName =
 	| "agents"
 	| "projects"
 	| "hub"
+	| "network"
 	| "schedules"
 	| "browser"
 	| "settings"

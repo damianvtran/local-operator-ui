@@ -441,3 +441,64 @@ function incidentTranscript(): TranscriptRecord[] {
 		cursor_missing: false,
 	}).records;
 }
+
+/**
+ * The provider-account failures the chat's own row can now answer with an
+ * ACTION: the runtime's incident for a Radient account out of credits, the one
+ * for a refused Radient credential, and an anthropic quota row as the
+ * non-Radient control.
+ *
+ * WHY A STORY BESIDE THE BIG SET. `session-incidents` carries the classifier's
+ * whole vocabulary at a size where the action sits among seventeen rows; these
+ * three are the reported case at a readable height. Their texts are GENERATED
+ * by the runtime's own formatter (`local_operator/incidents.py::
+ * format_incident_message`, called on the same raws the client relays), so the
+ * frames show the sentences the harness really writes rather than ones this
+ * file invented - and they cover all three classes the affordance distinguishes:
+ * a Radient quota failure (the provider surface, Radient preselected), a Radient
+ * credential failure ("Sign in to Radient"), and a non-Radient quota failure
+ * (the same action, without an account assumed).
+ */
+export const ProviderAccountActions: Story = {
+	render: () => <Frame records={providerAccountTranscript()} height={380} />,
+};
+
+/** The three persisted payloads, quoted from the formatter's own output. */
+const PROVIDER_HISTORY: DesktopHistoryPage["entries"] = [
+	custom(
+		"9d1f8c0a2f1e4b6f8a3d5c7e9b0a1f2d",
+		1789113544.47,
+		"session_incident",
+		{
+			text: "[session incident (radient/auto)] billing: HTTP 402: insufficient credits\nsuggested action: The provider account cannot pay for this request: report it and wait for the user.\nThis is why the previous turn ended. Take it into account before repeating the same request.",
+			raw: "HTTP 402: insufficient credits",
+		},
+	),
+	custom(
+		"0c2b4d6f8a0e2c4g6i8k0m2o4q6s8u0w",
+		1789113545.47,
+		"session_incident",
+		{
+			text: "[session incident (radient/auto)] auth: 401 Unauthorized: Sign in to Radient to access your account\nsuggested action: Credentials were rejected: tell the user which provider and suggest `local-operator login <provider>`. Do not retry the identical request.\nThis is why the previous turn ended. Take it into account before repeating the same request.",
+			raw: "401 Unauthorized: Sign in to Radient to access your account",
+		},
+	),
+	custom(
+		"1e3g5i7k9m1o3q5s7u9w1y3a5c7e9g1i",
+		1789113546.47,
+		"session_incident",
+		{
+			text: "[session incident (anthropic/claude-opus-5)] rate-limit: HTTP 429: rate limit or quota exceeded\nsuggested action: Back off and retry later; if it persists, tell the user which provider hit the limit — they may need to switch model or top up quota.\nThis is why the previous turn ended. Take it into account before repeating the same request.",
+			raw: "HTTP 429: rate limit or quota exceeded",
+		},
+	),
+];
+
+/** The rows the production reducer makes of the three payloads above. */
+function providerAccountTranscript(): TranscriptRecord[] {
+	return applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: PROVIDER_HISTORY,
+		has_more: false,
+		cursor_missing: false,
+	}).records;
+}

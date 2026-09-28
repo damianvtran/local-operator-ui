@@ -56,6 +56,7 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { radientSessionIssueKey, useRadientSessionIssue } from "./src/renderer/src/shared/hooks/use-radient-session-issue";
+			export { radientUserKeys } from "./src/renderer/src/shared/hooks/use-radient-user-query";
 			export { RadientSessionIssueCallout } from "./src/renderer/src/features/chat/components/radient-session-issue";
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 		`,
@@ -114,6 +115,7 @@ const {
 	QueryClientProvider,
 	RadientSessionIssueCallout,
 	radientSessionIssueKey,
+	radientUserKeys,
 	useRadientSessionIssue,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
@@ -452,6 +454,7 @@ async function mount(world = {}) {
 
 	return {
 		state,
+		client,
 		latest: () => latest,
 		text,
 		variant,
@@ -646,6 +649,16 @@ test("the action starts the documented flow, and the page is opened by MAIN", as
 test("a completed sign-in refetches the verdict, and never flashes the issue back", async () => {
 	const surface = await mount();
 	await surface.expectKind("needs-sign-in");
+	/*
+	 * A settled account read for the completion to commission, seeded before the
+	 * press: `invalidateQueries` on a key NO query stands under legitimately has
+	 * nothing to mark, so without this the assertion below would pass on a hook
+	 * that never asked for the account read at all - the empty-set version of
+	 * the coverage gap this case exists to close.
+	 */
+	surface.client.setQueryData(radientUserKeys.user(), {
+		account: { id: "seeded-before-the-sign-in" },
+	});
 	await surface.press("Sign in to Radient");
 	await surface.expectKind("signing-in");
 
@@ -672,6 +685,20 @@ test("a completed sign-in refetches the verdict, and never flashes the issue bac
 		surface.latest().issue.kind,
 		"signing-in",
 		"a stored credential must not re-raise the issue while the verdict catches up",
+	);
+	/*
+	 * AND THE ACCOUNT READ IS COMMISSIONED (operator report, 2026-09-27): this
+	 * branch is the composer callout's only completion path, and without the
+	 * re-ask the account surfaces keep whatever the failed read recorded - the
+	 * foot the operator reported sat on "Account unavailable" after a completed
+	 * re-sign-in. The call sites (this one and `provider-detail.tsx`'s
+	 * `refreshProviders`) are pinned by source in `picker-feedback.test.mjs`;
+	 * this asserts the shipped hook actually reaches the shipped key.
+	 */
+	assert.equal(
+		surface.client.getQueryState(radientUserKeys.user())?.isInvalidated,
+		true,
+		"the completed sign-in must commission the account read",
 	);
 
 	surface.state.hold = null;

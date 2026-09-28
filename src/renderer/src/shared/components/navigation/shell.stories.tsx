@@ -1,10 +1,24 @@
 import "../../../styles/index.css";
 import { AgentsPage } from "@features/agents/components/agents-page";
+import { Canvas } from "@features/chat/components/canvas";
+import { ChatHeader } from "@features/chat/components/chat-header";
+import {
+	deriveMcpServers,
+	deriveRunDetails,
+	mcpGrantInFlight,
+} from "@features/chat/components/run-details/run-detail-model";
+import * as runFixtures from "@features/chat/components/run-details/run-details.fixtures";
+import { RunPanel } from "@features/chat/components/run-details/run-panel";
+import type { McpRemedyControls } from "@features/chat/components/run-details/use-mcp-remedy";
+import type { CanvasDocument } from "@features/chat/types/canvas";
 import { SettingsPage } from "@features/settings/components/settings-page";
+import { ChatLayout } from "@shared/components/common/chat-layout";
+import { PaneSlot } from "@shared/components/common/pane-slot";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { apiConfig } from "@shared/config/api-config";
 import { cn } from "@shared/lib/utils";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
+import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { type FC, type ReactNode, useLayoutEffect } from "react";
@@ -481,4 +495,240 @@ export const AgentsEmpty: Story = {
  */
 export const RailCollapsed: Story = {
 	render: () => <AgentsShell agentId={AGENTS[0].id} collapsed />,
+};
+
+/* ------------------------------------------------------------------ *
+ * The dock, in the shell that decides its top edge
+ * ------------------------------------------------------------------ */
+
+/**
+ * WHY THESE TWO STORIES EXIST, AND WHY THEY LIVE HERE.
+ *
+ * The operator's report was that the canvas "hard cuts off", that its icon row
+ * sat on "a band whose background differs from the panel body beneath it", and
+ * that it should be "a similar borderless background with contrast to the left
+ * sidebar" and "go all the way up". The pane's own evidence set is
+ * `SplitFrame` - the dock beside a mock conversation - so it can show neither the
+ * rail it is compared against nor the 32px lane that decides where the dock's
+ * ground starts (design review round 1, D2). This file already mounts the REAL
+ * rail, so the dock's frames belong here beside it rather than in a second
+ * harness beside the first: `app.tsx` composes exactly this - `ChatLayout` with
+ * `SidebarNavigation` as its sidebar and `<main>` as its content - and these
+ * stories are that composition with a conversation stand-in in place of the one
+ * that needs a live session.
+ *
+ * REAL: the rail, `ChatLayout`'s lane and columns, `PaneSlot`, the `Canvas` and
+ * the `RunPanel`. STAND-IN: the conversation column, painted `bg-canvas` and
+ * carrying the paragraph the committed canvas frames already carry.
+ *
+ * NO RULE IS DRAWN AT EITHER BOUNDARY. The rail has none in the app either
+ * (`sidebar-navigation.tsx` states why the tonal step carries it), and the dock's
+ * leading `hairline` is what this change removed; frames captured through a
+ * harness that drew one showed a boundary the product no longer had (D1).
+ */
+
+const DOCK_CONVERSATION_ID = "shell-dock-conversation";
+const DOCK_MODIFIED_AT = 1_760_000_000_000;
+
+const DOCK_DOCUMENTS: CanvasDocument[] = [
+	{
+		id: "/Users/dana/work/reports/march-invoice-review.md",
+		title: "march-invoice-review.md",
+		path: "/Users/dana/work/reports/march-invoice-review.md",
+		content: "# Q1 invoice review\n",
+		type: "markdown",
+		readMtimeMs: DOCK_MODIFIED_AT,
+	},
+	{
+		id: "/Users/dana/work/reports/summary.md",
+		title: "summary.md",
+		path: "/Users/dana/work/reports/summary.md",
+		content: "The write-up is open in the canvas.\n",
+		type: "markdown",
+		readMtimeMs: DOCK_MODIFIED_AT,
+	},
+	{
+		id: "/Users/dana/work/invoices/february.csv",
+		title: "february.csv",
+		path: "/Users/dana/work/invoices/february.csv",
+		content: "id,total\n1,120.00\n",
+		type: "spreadsheet",
+		readMtimeMs: DOCK_MODIFIED_AT,
+	},
+];
+
+/**
+ * No-op MCP remedy controls. The run panel's MCP section is not this frame's
+ * subject - the dock's ground and its top edge are - and the fixtures carry no
+ * MCP servers, so every control here is the inert shape the panel requires
+ * rather than a behaviour this story claims.
+ */
+const INERT_REMEDY: McpRemedyControls = {
+	press: () => undefined,
+	pressKey: async () => true,
+	cancel: () => undefined,
+	reload: async () => true,
+	pendingName: null,
+	refusalFor: () => null,
+	failureFor: () => null,
+	clearFailure: () => undefined,
+};
+
+/**
+ * The conversation column: the production `ChatHeader` over a transcript at the
+ * app's own ground and inset.
+ *
+ * THE HEADER IS THE POINT OF PUTTING IT HERE. A lane-only composition was the
+ * first version of this frame, and the reading taken from it - "the window has one
+ * drag surface" - was wrong: with a conversation on screen the header is a second
+ * one, and its rect is the one a press aimed at the pane beside it has to survive
+ * (UX round 1, U1). A frame that does not contain the header cannot measure that,
+ * so the header is in every dock frame.
+ */
+const ConversationStandIn = ({
+	details,
+}: {
+	details: ReturnType<typeof deriveRunDetails>;
+}) => (
+	<div className="flex h-full min-h-0 min-w-[480px] grow flex-col overflow-hidden">
+		<ChatHeader
+			agentName="Core"
+			description="Invoices workspace · on this machine"
+			onOpenOptions={() => undefined}
+			runDetails={details}
+			mcpServers={deriveMcpServers([], {}, [])}
+			listOnScreen={false}
+			readerChildId={null}
+		/>
+		<div className="flex min-h-0 grow flex-col gap-4 overflow-hidden bg-canvas p-6">
+			<p className="text-body text-ink">
+				Three customers are outstanding: Northwind, Contoso and Fabrikam, for
+				$6,290 in total. The write-up is open in the canvas.
+			</p>
+		</div>
+	</div>
+);
+
+/**
+ * The chrome state the app would have on the operator's own platform.
+ *
+ * The lane is `display: none` until `styles/index.css`'s `[data-chrome-mode=
+ * "integrated"]` gate matches, and the attributes that gate it are set on the
+ * document element by the MAIN process from `platform-info` - which Storybook has
+ * no main process for, so without this the lane is absent and a frame cannot show
+ * the edge it decides (design review round 1, D2). The values are the app's own,
+ * measured on this machine and recorded in the lane's `app-facts.json`:
+ * `integrated`, `mac`, leading traffic lights, no trailing controls, which is the
+ * 32px strip the dock's ground has to be continuous with.
+ */
+const useMacChrome = () => {
+	useLayoutEffect(() => {
+		const root = document.documentElement;
+		root.dataset.chromeMode = "integrated";
+		root.dataset.chromePlatform = "mac";
+		root.dataset.chromeLeading = "true";
+		root.dataset.chromeTrailing = "false";
+		return () => {
+			delete root.dataset.chromeMode;
+			delete root.dataset.chromePlatform;
+			delete root.dataset.chromeLeading;
+			delete root.dataset.chromeTrailing;
+		};
+	}, []);
+};
+
+const ChatShellFrame: FC<{
+	children: ReactNode;
+	details: ReturnType<typeof deriveRunDetails>;
+}> = ({ children, details }) => {
+	useFixtureFetch();
+	useMacChrome();
+
+	/*
+	 * The app's own shell root, and it is load-bearing rather than tidy:
+	 * `app.tsx` wraps the layout in `relative flex h-screen flex-col
+	 * overflow-hidden`, and `ChatLayout`'s root is `flex-1` - a flex property,
+	 * which does nothing at all outside a flex parent. Without this wrapper the
+	 * story's columns fall back to their CONTENT height, the rail's `bg-surface`
+	 * stops mid-frame and the page's `canvas` shows underneath it, which is a
+	 * ground pair the app never draws.
+	 */
+	return (
+		<div className="relative flex h-screen flex-col overflow-hidden">
+			<ChatLayout
+				sidebar={<SidebarNavigation />}
+				content={
+					<main className="flex min-w-0 grow flex-col overflow-hidden">
+						<div className="flex h-full min-h-0 w-full overflow-hidden">
+							<ConversationStandIn details={details} />
+							{children}
+						</div>
+					</main>
+				}
+			/>
+		</div>
+	);
+};
+
+/** The dock in its Files view, at the shell's own default pane width. */
+export const ChatDockFiles: Story = {
+	render: () => {
+		useLayoutEffect(() => {
+			useCanvasStore.setState((state) => ({
+				conversations: {
+					...state.conversations,
+					[DOCK_CONVERSATION_ID]: {
+						isOpen: true,
+						files: DOCK_DOCUMENTS,
+						mentionedFiles: DOCK_DOCUMENTS,
+						openTabs: [],
+						selectedTabId: null,
+						viewMode: "files",
+						spreadsheetData: {},
+					},
+				},
+			}));
+		}, []);
+
+		return (
+			<ChatShellFrame details={deriveRunDetails(runFixtures.settled())}>
+				<PaneSlot width={560} tourTag="canvas-dock">
+					<Canvas
+						activeDocumentId={undefined}
+						initialDocuments={DOCK_DOCUMENTS}
+						conversationId={DOCK_CONVERSATION_ID}
+						agentId="shell-story-agent"
+						fileCount={DOCK_DOCUMENTS.length}
+						onChangeActiveDocument={() => undefined}
+						onClose={() => undefined}
+						onCloseDocument={() => undefined}
+					/>
+				</PaneSlot>
+			</ChatShellFrame>
+		);
+	},
+};
+
+/** The dock in its run-details sub-view - the other shape the report named. */
+export const ChatDockRunPanel: Story = {
+	render: () => (
+		<ChatShellFrame details={deriveRunDetails(runFixtures.bothInFlight())}>
+			<PaneSlot width={420} minWidth={420} tourTag="run-panel-dock">
+				<RunPanel
+					details={deriveRunDetails(runFixtures.bothInFlight())}
+					mcpServers={deriveMcpServers([], {}, [])}
+					mcpGrantRunning={mcpGrantInFlight([])}
+					mcpRemedy={INERT_REMEDY}
+					sessionId="a1b2c3d4e5f6"
+					pulses={{}}
+					childrenOpenable
+					paneWidth={420}
+					readerChildId={null}
+					previewPage={null}
+					onReaderChildChange={() => undefined}
+					onClose={() => undefined}
+				/>
+			</PaneSlot>
+		</ChatShellFrame>
+	),
 };
