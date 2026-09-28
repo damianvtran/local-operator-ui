@@ -324,7 +324,14 @@ const guardedMathText = (
 				 * AFTER it, so `a $x $ stays literal, and $w^2$ renders` keeps
 				 * its prose and still typesets `w^2` (QA's live row 10; rows 11
 				 * and 13 are the digit-right and tab-left spellings). Nothing
-				 * spans prose, and nothing reaches KaTeX that could fail.
+				 * spans prose. ONE RED-BOX CLASS REMAINS AND IS UPSTREAM'S OWN:
+				 * a closer whose immediate left is an escape-consumed `$` can end
+				 * a span on `<space>\`, which is invalid LaTeX - the minimal
+				 * `$a \$b` paints the same red box, with the same span value,
+				 * under `remark-math` and under the pre-fix module, so the
+				 * acceptance is upstream's own scan and is kept for parity
+				 * (round 2, R2-2; the class is pinned in
+				 * `scripts/currency-math.test.mjs`).
 				 */
 				if (
 					sizeOpen === 1 &&
@@ -423,8 +430,11 @@ function previous(this: TokenizeContext, code: Code): boolean {
  * pushed extension's `flow` IS this object, and its `[DOLLAR_SIGN]` entry IS
  * the package's own display construct (a module-level constant inside
  * `micromark-extension-math`, so every `math()` call shares it). The flow map
- * never reads `options` - `math()` returns the same map for every call - so
- * one shared instance is behaviour-preserving (agent review round 1, R1-3).
+ * never reads `options`, and every `math()` call builds a fresh map whose
+ * `[DOLLAR_SIGN]` entry is that module-level constant
+ * (`math().flow !== math().flow`, but `math().flow[36] === math().flow[36]`),
+ * so one shared instance is behaviour-preserving (agent review round 1, R1-3;
+ * wording corrected per round 2, R2-4).
  */
 export const upstreamMathFlow = math().flow;
 

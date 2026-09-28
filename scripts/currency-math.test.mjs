@@ -450,6 +450,34 @@ test("the rejected-closer class stays clean across its spellings", async () => {
 	}
 });
 
+test("the `\\$`-closer red box is upstream's, pinned as a boundary (round 2, R2-2)", async () => {
+	/*
+	 * The one red-box class the guards do NOT close, pinned as a boundary
+	 * rather than fixed: the guards accept a closer whose immediate left
+	 * neighbour is an escape-consumed `$`, so a span can end on `<space>\`,
+	 * which is invalid LaTeX. The minimal `$a \$b` renders the same
+	 * `inlineMath("a \\")` and the same red box under `remark-math` and under
+	 * the pre-fix module, so the acceptance is upstream's own scan - not this
+	 * file's - and it stays for parity. The fix only REVEALS it in shapes where
+	 * the old demote-and-continue hid it behind a longer `%`-masked span
+	 * (round 2's fuzz, 7/30,000 strings: `%` plus a `\$` plus a rejected
+	 * closer, e.g. `$u % $a \$b`). A future change that treats an
+	 * escape-consumed `$` as not a closer should update THIS test, not break it
+	 * silently.
+	 */
+	const core = "$a \\$b";
+	assert.deepEqual(bare(guarded(core)), bare(reference(core)), core);
+	const coreHtml = await renderWith(remarkGuardedMath, core);
+	assert.ok(coreHtml.includes("katex-error"), coreHtml);
+
+	const revealed = "$u % $a \\$b";
+	const maths = nodesOf(guarded(revealed), "inlineMath");
+	assert.equal(maths.length, 1, revealed);
+	assert.equal(maths[0].value, "a \\", revealed);
+	const revealedHtml = await renderWith(remarkGuardedMath, revealed);
+	assert.ok(revealedHtml.includes("katex-error"), revealedHtml);
+});
+
 /* ---------------------------------------------------------------------------
  * 5. The rendered HTML: the `$` is VISIBLE and KaTeX is not involved.
  * ---------------------------------------------------------------------------
