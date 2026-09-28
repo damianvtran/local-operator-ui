@@ -116,7 +116,7 @@ The Local Operator backend is bundled with the application and is installed auto
 | :---: | :---: |
 | <img src="./resources/readme/appearance-light.webp" alt="Light theme: the appearance picker showing the Local Operator themes as swatches." width="420"> | <img src="./resources/readme/appearance-dark.webp" alt="Dark theme: the appearance picker." width="420"> |
 
-<sub><code>appearance</code> — 59 colour themes ship with the app; the Local Operator light and dark palettes are the defaults.</sub>
+<sub><code>appearance</code> — 59 colour themes ship with the app; Local Operator Dark is the default.</sub>
 
 ## Features
 
@@ -139,7 +139,7 @@ The codebase is organized for modularity and code reuse:
 
 - Use `@shared/` for shared modules (e.g., `import { useAgents } from "@shared/hooks/use-agents"`).
 - Use `@features/` for feature-specific modules.
-- The old aliases (`@renderer`, `@components`, `@hooks`, etc.) have been removed in favor of this unified structure.
+- The build also resolves the older aliases (`@renderer`, `@components`, `@hooks`, etc.) for the files that still import them.
 
 For more details on building or contributing, see the [Contributing Guide](./CONTRIBUTING.md) and [BUILD.md](./docs/BUILD.md).
 
