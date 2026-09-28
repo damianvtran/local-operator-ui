@@ -45,7 +45,7 @@ import {
 	Textarea,
 } from "@shared/components/ui";
 import type { FC } from "react";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
 	PROJECT_DESCRIPTION_MAX_CHARS,
 	projectNameRule,
@@ -56,7 +56,7 @@ import type {
 	ProjectCreateFields,
 	ProjectEditFields,
 } from "../hooks/use-projects-queries";
-import { PROJECT_DAY_FIELD_PATTERN } from "../project-model";
+import { PROJECT_DAY_FIELD_PATTERN, refusalCopy } from "../project-model";
 
 /**
  * The status words, in the lifecycle's own order (the wire enum's order, which
@@ -178,6 +178,7 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 	>({});
 	/** The backend's own sentence when a submit is refused. */
 	const [refusal, setRefusal] = useState<string | null>(null);
+	const refusalRef = useRef<HTMLParagraphElement | null>(null);
 	const [submitting, setSubmitting] = useState(false);
 	const fieldId = useId();
 
@@ -196,6 +197,18 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 		setRefusal(null);
 		setSubmitting(false);
 	}, [open]);
+
+	/*
+	 * A refused save's sentence lands at the END of the dialog's scrolling body
+	 * (UX round 2, U3 measured it below the fold at the fresh-open position)
+	 * and this path raises no toast, so without this the reason for the refusal
+	 * the user just triggered sits off-screen until they scroll by hand.
+	 * `nearest` moves the body the minimum needed, and only when the paragraph
+	 * is actually out of view.
+	 */
+	useEffect(() => {
+		if (refusal) refusalRef.current?.scrollIntoView({ block: "nearest" });
+	}, [refusal]);
 
 	const set = <K extends keyof FormState>(key: K, value: FormState[K]) => {
 		setForm((prev) => ({ ...prev, [key]: value }));
@@ -305,11 +318,9 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 			}
 			onClose();
 		} catch (error) {
-			setRefusal(
-				error instanceof Error && error.message
-					? error.message
-					: "The project was not saved.",
-			);
+			const message =
+				error instanceof Error && error.message ? error.message : "";
+			setRefusal(refusalCopy(message) || "The project was not saved.");
 		} finally {
 			setSubmitting(false);
 		}
@@ -566,7 +577,11 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 					</>
 				)}
 
-				{refusal && <p className="text-body-sm text-danger">{refusal}</p>}
+				{refusal && (
+					<p ref={refusalRef} className="text-body-sm text-danger">
+						{refusal}
+					</p>
+				)}
 			</form>
 		</BaseDialog>
 	);
