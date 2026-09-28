@@ -423,6 +423,55 @@ test("canonical session operations preserve identity, arguments and main-owned a
 	assert.equal(seen.length, count);
 });
 
+test("Aida's control plane maps to its frozen route, and the action vocabulary is closed", async () => {
+	/*
+	 * The freeze this slice codes against (`design.md` § 4): ONE route pair, and
+	 * the ACTION travels in the route's own body field (`{"op": ...}`) — the one
+	 * place this envelope's `op` and the route's `op` are two different words.
+	 * Read as one and every control would go out as `{"op": "aida.control"}`, a
+	 * word the route does not serve, and the failure would look like a defect of
+	 * the user's press. Asserted through the REAL transport, so the mapping, the
+	 * method and the bearer are read off the wire rather than off the source.
+	 */
+	for (const action of ["open", "pause", "resume", "greet", "status"]) {
+		const response = await requestDesktop(
+			{ op: "aida.control", action },
+			url,
+			token,
+		);
+		assert.equal(response.status, 200);
+		const actual = seen.at(-1);
+		assert.equal(actual.path, "/v1/desktop/aida");
+		assert.equal(actual.method, "POST");
+		assert.equal(actual.authorization, `Bearer ${token}`);
+		assert.deepEqual(JSON.parse(actual.body), { op: action });
+	}
+	const read = await requestDesktop({ op: "aida.status" }, url, token);
+	assert.equal(read.status, 200);
+	const actual = seen.at(-1);
+	assert.equal(actual.path, "/v1/desktop/aida");
+	assert.equal(actual.method, "GET");
+	/*
+	 * And a word outside the vocabulary is refused HERE (422), before any socket
+	 * opens: the route's `op` enum is closed, so a renderer typo must not travel
+	 * as a request the backend answers with a refusal the user reads as their
+	 * own mistake.
+	 */
+	const before = seen.length;
+	for (const invalid of [
+		{ op: "aida.control", action: "toggle" },
+		{ op: "aida.control" },
+		{ op: "aida.control", action: "open", sessionId: "123456abcdef" },
+	]) {
+		assert.equal((await requestDesktop(invalid, url, token)).status, 422);
+	}
+	assert.equal(
+		seen.length,
+		before,
+		"a refused envelope never reaches the wire",
+	);
+});
+
 test("gated legacy reads travel the authenticated contract, not a bare fetch", async () => {
 	// These routes are gated in managed mode (agent inventory, cwd paths, job
 	// history and conversation content are the same tenant's data as the
