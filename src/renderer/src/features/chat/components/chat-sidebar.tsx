@@ -5808,9 +5808,15 @@ export function ChatSidebar({
 								 * flush with the window edge hides that it is capped at all - macOS's
 								 * overlay scrollbars are invisible at rest, and a row cut by the window
 								 * edge reads as the end of the list - which is round 1's D1. Sixteen
-								 * pixels keeps the panel's own bottom edge (and rounded corner) in view
-								 * with a visible sliver of the clipped row above it, so the fold reads as
-								 * the panel's, not the window's.
+								 * pixels keeps the panel's own bottom edge (and rounded corner) in
+								 * view, so the fold reads as the panel's edge rather than the window's.
+								 *
+								 * WHAT RENDERS ABOVE THE FOLD IS THE NEXT SECTION'S TOP PADDING, not a
+								 * sliver of its content: round 2 (D4) measured zero content pixels above
+								 * the fold in six themes, and the cut would have to land 8-12px lower to
+								 * cross the glyphs. The content-sliver cue is consciously not taken -
+								 * what this inset buys is the panel's own visible edge, and a frame
+								 * that shows it without a scrollbar has no other cue to give.
 								 *
 								 * AND THE CAP BINDS AT THE APP'S DEFAULT SIZE TOO, not only at the floor
 								 * (round 1's Q-1: at 1380x900 the view trigger sits under the nav rail, so

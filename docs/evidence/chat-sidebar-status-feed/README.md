@@ -26,10 +26,13 @@ unacknowledged completions.
   TODAY "1m" with its unread check. The still cannot carry the LATENCY the
   report is about; that is the live measurement below. ROUND 1 (design D2) fixed
   the story's own settle loop — it queried a `data-session-row` hook no element
-  carries and could never observe the refile — to use the file's `[data-chat-row]`
-  convention, found by title; no pixel changed, so the frame was not re-taken.
-  The empty-section rail rule of the same round is not in this state (its
-  subject is the row, not the panel).
+  carries and could never observe the refile — onto the file's `[data-chat-row]`
+  convention; ROUND 2 (R2-1) corrected the lookup's first form, which matched a
+  native `title` no session row has carried since the row-space change (design
+  D7), to the row's own TEXT (`scrollToRow` / `focusRow`'s shape), so the loop
+  can break on the refile it exists to observe. No pixel changed, so the frame
+  was not re-taken. The empty-section rail rule of the same round is not in this
+  state (its subject is the row, not the panel).
 
 ## The bin move, measured live
 
