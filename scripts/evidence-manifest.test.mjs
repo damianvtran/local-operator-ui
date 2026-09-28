@@ -1568,6 +1568,16 @@ const STAMP_BINDING_NOTES = [
 	 * re-captured - so a reader is owed the pair and the four frames it added.
 	 */
 	"traceToolLabelsRestampNote",
+	/*
+	 * AND THIS LANE'S OWN: the card-surfaces restyle. Its subject IS this file's
+	 * binding - the change moves BOTH trees (`src/` for the card, column, frame
+	 * and hub-card treatment across projects, schedules and agent hub,
+	 * `scripts/` for this registration and the note) and re-shoots the three
+	 * sets' frames (a narrowed run per set, recorded in `partialCapture`) - so a
+	 * reader is owed the pair and what the capture moved with it, the same case
+	 * `projectsBoardTimelineNote` is in the list for.
+	 */
+	"cardSurfacesRestyleNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2336,6 +2346,12 @@ const BRANCH_RECORDS = [
 	 * same reason this list exists.
 	 */
 	"traceToolLabelsRestampNote",
+	/*
+	 * And this lane's own record rides beside it, registered for the same
+	 * completeness reason: a fold that started from main's copy would drop the
+	 * card-surfaces restyle's note first.
+	 */
+	"cardSurfacesRestyleNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

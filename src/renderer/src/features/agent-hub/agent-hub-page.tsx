@@ -142,7 +142,7 @@ const PUBLIC_SCOPE = "public";
  * subject.
  */
 const AgentCardSkeleton: React.FC = () => (
-	<div className="flex h-full flex-col overflow-hidden rounded-lg border border-hairline bg-surface">
+	<div className="flex h-full flex-col overflow-hidden rounded-md bg-surface">
 		<div className="flex min-h-0 flex-1 flex-col gap-2 p-4">
 			<Skeleton className="h-5.5 w-2/3" />
 			<Skeleton className="h-3.5 w-full" />
@@ -996,7 +996,7 @@ export const AgentHubPage: React.FC = () => {
 								 */
 								<div
 									data-testid="agent-hub-empty"
-									className="col-span-full w-full max-w-2xl justify-self-center flex flex-col items-center gap-2 rounded-lg border border-hairline bg-surface px-6 py-10 text-center"
+									className="col-span-full w-full max-w-2xl justify-self-center flex flex-col items-center gap-2 rounded-md bg-surface px-6 py-10 text-center"
 								>
 									<p className="text-heading text-ink">
 										{orgScopeId
