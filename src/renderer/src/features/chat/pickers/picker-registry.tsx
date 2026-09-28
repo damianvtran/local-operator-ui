@@ -105,6 +105,26 @@ export type DestinationEntry =
 	 * reader).
 	 */
 	| ({ kind: "aside" } & ArgsBehavior)
+	/**
+	 * Aida's own conversation (`/aida`).
+	 *
+	 * A kind of its own because it is the one destination that addresses no
+	 * conversation and yet does not act on the machine: it OPENS her session —
+	 * resolved through the desktop route (`aida.open`'s handler in
+	 * `slash-dispatch.ts`, which owns the open-then-send order) — and its trailing
+	 * text becomes that conversation's next user message. That combination is why
+	 * it cannot ride an existing kind: a `direct` action has no session to open, a
+	 * `picker` has a component to mount (there is none), and every kind below
+	 * treats a pane-less or draft pane as a refusal, which this one must not.
+	 *
+	 * IT LIVES IN THIS TABLE, and not as a name check in the dispatcher, for the
+	 * reason the table's own header gives: `destinationNeedsSession` derives its
+	 * answer from here, and a destination outside the table answers "needs a
+	 * conversation" — which would have the composer promise a refusal ("Needs an
+	 * open conversation; start one first.") for a command that then runs, the
+	 * exact class of disagreement the predicate was centralised to prevent.
+	 */
+	| ({ kind: "aida" } & ArgsBehavior)
 	| ({
 			kind: "picker";
 			component: FC<PickerContext>;
@@ -208,6 +228,14 @@ const AgentPicker: FC<PickerContext> = (props) => (
 );
 
 export const DESTINATIONS: Record<string, DestinationEntry> = {
+	/*
+	 * Aida's row reaches her through the desktop route (`aida.status`/`aida.control`)
+	 * rather than through anything the pane holds, because her conversation is not
+	 * the pane's: `/aida` must open it from a conversation-less route as much as
+	 * from another chat. No component and no args behavior — the dispatcher's own
+	 * `kind === "aida"` arm owns the open-then-send order (see the kind's note).
+	 */
+	"aida.open": { kind: "aida" },
 	commands: { kind: "picker", component: HelpPalette },
 	"window.close": { kind: "direct", action: "exit" },
 	"transcript.clear": { kind: "direct", action: "clear" },
@@ -419,7 +447,17 @@ export function destinationNeedsSession(
 	destination: string | undefined,
 ): boolean {
 	if (!destination) return true;
-	return DESTINATIONS[destination]?.kind !== "machine-panel";
+	const kind = DESTINATIONS[destination]?.kind;
+	/*
+	 * TWO KINDS ARE EXEMPT, and both are exempt for the same reason: they
+	 * address no conversation. A machine panel describes the machine; `/aida`
+	 * (the `aida` kind) OPENS her conversation, so a pane without one is exactly
+	 * the state it is written for rather than the refusal these callers promise.
+	 * Keeping the answer on the table is what lets the dispatcher, the composer's
+	 * staged line, its Enter footer and the palette agree without a name list —
+	 * see the predicate's own header for the failure the centralisation prevents.
+	 */
+	return kind !== "machine-panel" && kind !== "aida";
 }
 
 /**
