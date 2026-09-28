@@ -1,6 +1,5 @@
 /**
- * The tab's Board view: one column per status, cards of facts — the desktop's
- * kanban, no drag-and-drop.
+ * The tab's Board view: one column per status, cards of facts.
  *
  * WHAT A CARD SAYS, from the feature's own derivations rather than inline
  * formatting: the name, the meta chips `listRowMeta` already produces for the
@@ -9,9 +8,20 @@
  * the progress age with the stale badge, and an OVERDUE chip for a target day
  * that has passed with the work unfinished (`projectOverdue`).
  *
- * NO DRAG: status moves are the card menu's `Set status` action, stated in the
- * design (§V2.B.1) and in the plan — a drag would add a dependency tree and a
- * second interaction model for one field.
+ * COLUMNS REORDER BY THEIR HEADER, AND NOTHING ELSE DRAGS: a card's status
+ * still moves through the card menu's `Set status` action, stated in the design
+ * (§V2.B.1) — the drag here is about the BOARD'S LAYOUT, which is a preference
+ * the user sets by dragging a column's header, or by focusing its grip and
+ * pressing the arrow keys. The order is kept between sessions under
+ * `projects-board-column-order` (the `projects-view` key style: guarded reads
+ * and writes, anything unusable reading as the lifecycle default). A drag arms
+ * only after a few pixels of travel and only from the header, so a press on a
+ * card can never reorder anything.
+ *
+ * THE REORDER SNAPS: no column animates to its new place (no FLIP, no
+ * transition), so there is no motion to reduce for `prefers-reduced-motion`;
+ * what the hand gets while dragging is the lifted column and the drop
+ * indicator line in the gap the column would land in.
  *
  * COLUMNS SCROLL IN THE PANEL; the strip scrolls horizontally when the window
  * is narrow (`overflow-x-auto` on the strip, `overflow-y-auto` per column), so
@@ -42,9 +52,28 @@ import {
 	PopoverTrigger,
 } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
-import { MoreHorizontal } from "lucide-react";
-import type { FC } from "react";
-import { useCallback, useEffect, useState } from "react";
+/*
+ * THE UNION OF TWO SIDES, both of which changed this import block: the card
+ * click target (`fix(projects): make the whole board card the click target`,
+ * #616) brings `KeyboardEvent` for its card handler, and this branch brings
+ * the grip, the pointer and layout-effect surface for the column reorder.
+ * `KeyboardEvent` stays the React alias both sides use, so the grip handler
+ * below reads it unaliased; aliasing it twice was the conflict's only real
+ * choice and this is the one that keeps one name for one type.
+ */
+import { GripVertical, MoreHorizontal } from "lucide-react";
+import type {
+	FC,
+	KeyboardEvent,
+	PointerEvent as ReactPointerEvent,
+} from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import type { DesktopProject } from "../../../../../shared/desktop-control-contract";
 import { openConversation } from "../../chat/open-conversation";
@@ -59,7 +88,10 @@ import {
 	progressAge,
 	projectOverdue,
 	projectStatusMeta,
+	readBoardColumnOrder,
+	reorderColumnOrder,
 	sessionsTriggerLabel,
+	writeBoardColumnOrder,
 } from "../project-model";
 import { todayUtcMs } from "../timeline-model";
 
@@ -116,6 +148,22 @@ export function useMoveFocusHandoff(): (projectId: string) => void {
 	return useCallback((projectId: string) => setPending(projectId), []);
 }
 
+/** Pixels of travel before a press on a header becomes a drag (not a press). */
+const DRAG_ARM_DISTANCE = 4;
+
+/**
+ * The move's route, stated once and said in three places: the grip's tooltip,
+ * the described-by hint a screen reader reads on focus, and the live region's
+ * answer to Enter/Space (UX round 1, U3 - the route used to live only in the
+ * hover tooltip).
+ */
+const BOARD_MOVE_HINT =
+	"Drag the header, or press the arrow keys, to move this column.";
+const BOARD_MOVE_HINT_ID = "board-column-move-hint";
+
+/** The live gesture: which column is in the air, and where it would land. */
+type DragState = { status: string; over: number };
+
 export const ProjectBoard: FC<ProjectBoardProps> = ({
 	projects,
 	nowMs,
@@ -125,8 +173,352 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 	onMove,
 	movingKeys = [],
 }) => {
-	const columns = boardColumns(projects);
+	/*
+	 * The order is board state, read once per mount from the guarded store the
+	 * view switcher also reads, and written on every move: a failed read or
+	 * write falls back to the lifecycle and never fails a reorder.
+	 */
+	const [order, setOrder] = useState<string[]>(readBoardColumnOrder);
+	const columns = boardColumns(projects, order);
+	const [drag, setDrag] = useState<DragState | null>(null);
+	const [announcement, setAnnouncement] = useState("");
+	const stripRef = useRef<HTMLDivElement | null>(null);
+	const indicatorRef = useRef<HTMLDivElement | null>(null);
+	/** The pointer's last client x, read by the auto-scroll loop off-event. */
+	const pointerXRef = useRef<number | null>(null);
+	/** The auto-scroll loop's frame handle, null when it is not running. */
+	const autoScrollRef = useRef<number | null>(null);
+	const gesture = useRef<{
+		pointerId: number;
+		status: string;
+		startX: number;
+		startY: number;
+		armed: boolean;
+		over: number;
+	} | null>(null);
 	const moving = new Set(movingKeys);
+
+	/**
+	 * Move a column and say so. The order written is the order of the columns on
+	 * SCREEN — a dormant stored rank is not preserved through a reorder (the
+	 * merge rule's other half, see `boardColumns`).
+	 */
+	const commitMove = (status: string, to: number) => {
+		const next = reorderColumnOrder(
+			columns.map((column) => column.status),
+			status,
+			to,
+		);
+		setOrder(next);
+		writeBoardColumnOrder(next);
+		setAnnouncement(
+			`Moved ${projectStatusMeta(status).label} column to position ${next.indexOf(status) + 1} of ${next.length}.`,
+		);
+	};
+
+	/*
+	 * THE DROP INDEX, from the pointer's x against the other columns' midpoints:
+	 * the count of columns (the one in the air aside) whose center lies left of
+	 * the pointer IS the insertion index among them. Read from live rects rather
+	 * than cached layout, because the strip scrolls horizontally.
+	 */
+	const dropIndexAt = (clientX: number, dragged: string): number => {
+		const strip = stripRef.current;
+		if (!strip) return 0;
+		let index = 0;
+		const sections = strip.querySelectorAll<HTMLElement>("[data-board-column]");
+		for (const section of sections) {
+			if (section.dataset.boardColumn === dragged) continue;
+			const rect = section.getBoundingClientRect();
+			if (clientX > (rect.left + rect.right) / 2) index += 1;
+		}
+		return index;
+	};
+
+	/** Where the drop would land, in words, for the live region. */
+	const dropPhrase = (dragged: string, over: number): string => {
+		const others = columns.filter((column) => column.status !== dragged);
+		const before = others[over - 1]?.status;
+		const after = others[over]?.status;
+		if (before && after)
+			return `between ${projectStatusMeta(before).label} and ${projectStatusMeta(after).label}`;
+		if (after) return `before ${projectStatusMeta(after).label}`;
+		if (before) return `after ${projectStatusMeta(before).label}`;
+		return "in place";
+	};
+
+	/**
+	 * Adopt the landing a pointer x implies, if it changed. One function because
+	 * THREE things refresh it: the pointer moving, the strip scrolling under a
+	 * held pointer (edge auto-scroll and the wheel), and the frame loop that
+	 * watches for both.
+	 */
+	const applyOver = (
+		clientX: number,
+		live: NonNullable<typeof gesture.current>,
+	) => {
+		const over = dropIndexAt(clientX, live.status);
+		if (over === live.over) return;
+		live.over = over;
+		setDrag({ status: live.status, over });
+		/* Announce the landing, not every pixel of travel. */
+		setAnnouncement(
+			`Moving ${projectStatusMeta(live.status).label} column; it will drop ${dropPhrase(live.status, over)}.`,
+		);
+	};
+
+	const stopAutoScroll = () => {
+		if (autoScrollRef.current === null) return;
+		cancelAnimationFrame(autoScrollRef.current);
+		autoScrollRef.current = null;
+	};
+
+	/**
+	 * EDGE AUTO-SCROLL while a drag is armed (UX round 1, U1): at the app's own
+	 * default width two of six columns can sit beyond the strip's right edge,
+	 * and without this the end of the board is unreachable in one gesture - the
+	 * drag lands short of where it aimed. Holding the pointer in an edge zone
+	 * scrolls the strip; the landing is re-derived every frame from the live
+	 * rects, so the line and the announcement track the content as it moves
+	 * under the handless pointer (which is also what keeps a WHEEL scroll
+	 * mid-drag honest, since no pointer event fires for it).
+	 *
+	 * The loop is cheap by construction: it reads rects and calls setState only
+	 * when the landing actually changed, so it idles at ambient cost while the
+	 * pointer sits still.
+	 */
+	const AUTO_SCROLL_ZONE = 32; /* px from the strip's edge */
+	const AUTO_SCROLL_STEP = 12; /* px per frame at 60fps */
+	const runAutoScroll = () => {
+		autoScrollRef.current = null;
+		const live = gesture.current;
+		const strip = stripRef.current;
+		const x = pointerXRef.current;
+		if (!live?.armed || !strip || x === null) return;
+		const rect = strip.getBoundingClientRect();
+		const maxScroll = strip.scrollWidth - strip.clientWidth;
+		let dir = 0;
+		if (x - rect.left < AUTO_SCROLL_ZONE && strip.scrollLeft > 0) dir = -1;
+		else if (rect.right - x < AUTO_SCROLL_ZONE && strip.scrollLeft < maxScroll)
+			dir = 1;
+		if (dir !== 0) {
+			const before = strip.scrollLeft;
+			strip.scrollLeft = before + dir * AUTO_SCROLL_STEP;
+			if (strip.scrollLeft !== before) applyOver(x, live);
+		} else {
+			/* No scroll this frame; the content can still have moved (wheel). */
+			applyOver(x, live);
+		}
+		/* Re-pin: the clamp is content-space, so a moved strip must re-place it. */
+		placeIndicator(live.status, live.over);
+		autoScrollRef.current = requestAnimationFrame(runAutoScroll);
+	};
+
+	/* The loop follows the gesture, not the render: it ends with the drag. */
+	useEffect(
+		() => () => {
+			if (autoScrollRef.current !== null)
+				cancelAnimationFrame(autoScrollRef.current);
+		},
+		[],
+	);
+
+	const onHeaderPointerDown = (
+		event: ReactPointerEvent<HTMLElement>,
+		status: string,
+	) => {
+		if (event.button !== 0) return;
+		/*
+		 * Pointer capture keeps every move aimed at this header even when the
+		 * pointer leaves it. Guarded because a synthetic pointer (a story's
+		 * `userEvent`) owns no active pointer and `setPointerCapture` throws
+		 * `InvalidPointerId` for one — the mesh canvas's rule.
+		 */
+		try {
+			event.currentTarget.setPointerCapture(event.pointerId);
+		} catch {
+			/* synthetic pointer: the dispatched moves still arrive here */
+		}
+		gesture.current = {
+			pointerId: event.pointerId,
+			status,
+			startX: event.clientX,
+			startY: event.clientY,
+			armed: false,
+			over: columns.findIndex((column) => column.status === status),
+		};
+		pointerXRef.current = event.clientX;
+	};
+
+	const onHeaderPointerMove = (event: ReactPointerEvent<HTMLElement>) => {
+		const live = gesture.current;
+		if (!live || event.pointerId !== live.pointerId) return;
+		pointerXRef.current = event.clientX;
+		if (!live.armed) {
+			const travel = Math.hypot(
+				event.clientX - live.startX,
+				event.clientY - live.startY,
+			);
+			if (travel < DRAG_ARM_DISTANCE) return;
+			live.armed = true;
+			setDrag({ status: live.status, over: live.over });
+			setAnnouncement(`Moving ${projectStatusMeta(live.status).label} column.`);
+			if (autoScrollRef.current === null)
+				autoScrollRef.current = requestAnimationFrame(runAutoScroll);
+		}
+		applyOver(event.clientX, live);
+	};
+
+	/**
+	 * End the gesture. Two no-op outcomes are stated rather than implied:
+	 *
+	 * - A CANCEL (Escape, pointercancel) says so, so "Moving …" does not linger
+	 *   in the live region (UX round 1, Q-2) - and only when the gesture had
+	 *   actually armed, because a sub-threshold press never announced anything.
+	 * - A DROP THAT LANDS WHERE IT STARTED skips the commit entirely (review
+	 *   round 1, R1-3): writing the on-screen order for a move nobody made
+	 *   would rewrite the store for nothing - and silently drop the stored
+	 *   rank of a dormant column the user never touched - and announcing a
+	 *   move for it would be a lie. The region is left empty, which is
+	 *   "nothing happened" (UX round 1, U5).
+	 */
+	const settleDrag = (commit: boolean) => {
+		const live = gesture.current;
+		gesture.current = null;
+		stopAutoScroll();
+		setDrag(null);
+		if (!live?.armed) return;
+		if (!commit) {
+			setAnnouncement("Move cancelled.");
+			return;
+		}
+		const from = columns.findIndex((column) => column.status === live.status);
+		if (live.over === from) {
+			setAnnouncement("");
+			return;
+		}
+		commitMove(live.status, live.over);
+	};
+
+	const onHeaderPointerUp = (event: ReactPointerEvent<HTMLElement>) => {
+		const live = gesture.current;
+		if (!live || event.pointerId !== live.pointerId) return;
+		settleDrag(true);
+	};
+
+	const onHeaderPointerCancel = () => {
+		/*
+		 * A cancelled pointer ENDS a drag, it does not settle it (the mesh
+		 * canvas's rule): the browser took the gesture away mid-air, and settling
+		 * a position nobody released would move a column the user did not drop.
+		 */
+		settleDrag(false);
+	};
+
+	/* Escape cancels, the one gesture state with no pointer of its own. */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: gated on the drag state, not on the per-render closures it calls.
+	useEffect(() => {
+		if (!drag) return;
+		/*
+		 * A WINDOW listener takes the DOM's own keydown type, not the React
+		 * alias this file imports for its JSX handlers: the union with #616
+		 * gave the plain name to React's synthetic event, so the global one is
+		 * named through `WindowEventMap` rather than shadowed twice.
+		 */
+		const onKeyDown = (event: WindowEventMap["keydown"]) => {
+			if (event.key !== "Escape") return;
+			settleDrag(false);
+		};
+		window.addEventListener("keydown", onKeyDown);
+		return () => window.removeEventListener("keydown", onKeyDown);
+	}, [drag !== null]);
+
+	/*
+	 * The indicator's x is measured AFTER the render that moves it (the rects
+	 * must be the ones on screen): the line sits in the gap the column would
+	 * land in, half a strip gap off the neighbouring column's edge.
+	 */
+	/**
+	 * Place the line in the gap the drag would land in. A plain function rather
+	 * than only an effect body because TWO clocks place it: the render that
+	 * moves the landing, and every frame of the auto-scroll loop - the clamp
+	 * pins the line to the visible edge in CONTENT coordinates, so a strip that
+	 * keeps scrolling under a settled landing would otherwise drift the line
+	 * away from the edge it was pinned to (measured while fixing UX round 1:
+	 * the line ended 109px left of the gap after the auto-scroll ran its course).
+	 */
+	const placeIndicator = useCallback((status: string, over: number) => {
+		const strip = stripRef.current;
+		const line = indicatorRef.current;
+		if (!strip || !line) return;
+		const stripRect = strip.getBoundingClientRect();
+		const others: DOMRect[] = [];
+		for (const section of strip.querySelectorAll<HTMLElement>(
+			"[data-board-column]",
+		)) {
+			if (section.dataset.boardColumn !== status) {
+				others.push(section.getBoundingClientRect());
+			}
+		}
+		const HALF_GAP = 6; /* half of the strip's `gap-3` (12px) */
+		const edge =
+			over >= others.length
+				? (others[others.length - 1]?.right ?? stripRect.left) + HALF_GAP
+				: (others[over]?.left ?? stripRect.right) - HALF_GAP;
+		/*
+		 * SCROLL-AWARE, AND CLAMPED TO THE VISIBLE STRIP. The line is a child of
+		 * the scroll container, so its `left` is in CONTENT coordinates while
+		 * `edge` is measured in client ones: without the scroll term the line sits
+		 * exactly `scrollLeft` px left of the gap it names (UX round 1, U2 - the
+		 * offset was subtracted twice). The clamp keeps a legal landing visible
+		 * when its gap lies outside the strip - the narrow-window case design
+		 * round 1 (D2) measured, where an unclamped line renders past the clip
+		 * and paints nothing at the moment the preview matters most.
+		 */
+		const scroll = strip.scrollLeft;
+		const LINE_WIDTH = 2; /* `w-0.5` */
+		const raw = edge - stripRect.left + scroll;
+		const minX = scroll + 1;
+		const maxX = scroll + stripRect.width - LINE_WIDTH - 1;
+		const clamped = Math.round(
+			Math.min(Math.max(raw, minX), Math.max(minX, maxX)),
+		);
+		line.style.left = `${clamped}px`;
+	}, []);
+
+	/* The landing moves, the line moves with it; the loop below re-pins it while the strip itself moves. */
+	useLayoutEffect(() => {
+		if (!drag) return;
+		placeIndicator(drag.status, drag.over);
+	}, [drag, placeIndicator]);
+
+	const onGripKeyDown = (event: KeyboardEvent<HTMLElement>, status: string) => {
+		/*
+		 * ENTER/SPACE: the grip is a HANDLE, not a command, so its standard
+		 * activation has no action to run - and silently ignoring the keys a
+		 * focused button answers to is what UX round 1 (U3) flagged. The
+		 * response is the route itself, spoken through the board's live region;
+		 * the same sentence `aria-describedby` gives the screen reader on focus.
+		 */
+		if (event.key === "Enter" || event.key === " ") {
+			event.preventDefault();
+			setAnnouncement(BOARD_MOVE_HINT);
+			return;
+		}
+		if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+		event.preventDefault();
+		const statuses = columns.map((column) => column.status);
+		const from = statuses.indexOf(status);
+		const to = event.key === "ArrowLeft" ? from - 1 : from + 1;
+		if (to < 0 || to >= statuses.length) {
+			setAnnouncement(
+				`${projectStatusMeta(status).label} column is already ${to < 0 ? "the first column" : "the last column"}.`,
+			);
+			return;
+		}
+		commitMove(status, to);
+	};
+
 	return (
 		<div
 			/*
@@ -138,7 +530,42 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 			className="@container flex min-h-0 flex-1 flex-col overflow-hidden rounded-md bg-surface"
 			data-testid="project-board"
 		>
-			<div className="flex min-h-0 flex-1 items-stretch gap-3 overflow-x-auto p-3">
+			{/*
+			 * THE MOVE IS ANNOUNCED HERE, the board's one live region: a reorder
+			 * changes pixels a screen reader cannot see, and the drag's would-be
+			 * landing is the part a pointer user reads off the indicator line.
+			 */}
+			<output
+				aria-live="polite"
+				className="sr-only"
+				data-board-column-announcement=""
+			>
+				{announcement}
+			</output>
+			{/*
+			 * THE ROUTE, STATED WHERE FOCUS LANDS (UX round 1, U3): the grip's
+			 * `title` is hover-only, so the hint is also a described-by target - a
+			 * screen reader reads it when the grip takes focus, and the grip's
+			 * Enter/Space answer speaks the same sentence through the live region.
+			 */}
+			<span id={BOARD_MOVE_HINT_ID} className="sr-only">
+				{BOARD_MOVE_HINT}
+			</span>
+			<div
+				ref={stripRef}
+				className={cn(
+					"relative flex min-h-0 flex-1 items-stretch gap-3 overflow-x-auto p-3",
+					drag && "cursor-grabbing select-none",
+				)}
+			>
+				{drag && (
+					<div
+						ref={indicatorRef}
+						aria-hidden="true"
+						data-board-drop-indicator=""
+						className="pointer-events-none absolute top-3 bottom-3 w-0.5 rounded-full bg-accent"
+					/>
+				)}
 				{columns.map((column) => {
 					const meta = projectStatusMeta(column.status);
 					return (
@@ -153,16 +580,43 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 							 */
 							className="flex w-64 shrink-0 flex-col overflow-hidden rounded-md bg-sunken"
 						>
-							<header className="flex shrink-0 items-center justify-between gap-2 border-b border-hairline px-3 py-2">
-								<span className="flex min-w-0 items-baseline gap-2">
-									<span className="truncate text-body-sm font-medium text-ink">
-										{meta.label}
-									</span>
-									{COLUMN_NOTE[column.status] && (
-										<span className="truncate text-meta text-ink-muted">
-											{COLUMN_NOTE[column.status]}
+							<header
+								data-board-column-handle={column.status}
+								onPointerDown={(event) =>
+									onHeaderPointerDown(event, column.status)
+								}
+								onPointerMove={onHeaderPointerMove}
+								onPointerUp={onHeaderPointerUp}
+								onPointerCancel={onHeaderPointerCancel}
+								className={cn(
+									"flex shrink-0 cursor-grab items-center justify-between gap-2 border-b border-hairline px-3 py-2 active:cursor-grabbing",
+									drag?.status === column.status && "opacity-85",
+								)}
+							>
+								<span className="flex min-w-0 flex-1 items-center gap-1.5">
+									<Button
+										type="button"
+										variant="ghost"
+										size="icon-sm"
+										data-board-column-grip={column.status}
+										aria-label={`Move ${meta.label} column`}
+										aria-describedby={BOARD_MOVE_HINT_ID}
+										title={BOARD_MOVE_HINT}
+										className="-ml-1.5 cursor-grab text-ink-muted active:cursor-grabbing"
+										onKeyDown={(event) => onGripKeyDown(event, column.status)}
+									>
+										<GripVertical aria-hidden="true" />
+									</Button>
+									<span className="flex min-w-0 items-baseline gap-2">
+										<span className="truncate text-body-sm font-medium text-ink">
+											{meta.label}
 										</span>
-									)}
+										{COLUMN_NOTE[column.status] && (
+											<span className="truncate text-meta text-ink-muted">
+												{COLUMN_NOTE[column.status]}
+											</span>
+										)}
+									</span>
 								</span>
 								<span className="text-meta text-ink-muted">
 									{column.projects.length}
@@ -224,9 +678,64 @@ const BoardCard: FC<BoardCardProps> = ({
 	);
 	const overdue = projectOverdue(project, todayUtcMs(nowMs));
 	const age = progressAge(project.progress_updated_at, nowMs);
+	/*
+	 * THE WHOLE CARD IS THE TARGET (operator report, 2026-09-28: "only the
+	 * title opens the details"). Before this, the name/description button was
+	 * the card's only door - the facts line, the chips and the progress row
+	 * were inert - so the pointer said "nothing here" over most of a surface
+	 * that reads as one object.
+	 *
+	 * WHY A ROOT HANDLER rather than wrapping everything in a button: the
+	 * card's menu and its sessions door are real buttons, and a button cannot
+	 * contain them. So the root carries the role and the handler, the title
+	 * becomes plain text inside it, and the two nested doors stop the bubble
+	 * at themselves (see the guards below) - which is also what keeps a
+	 * keyboard activation of EITHER door from navigating the card it sits in.
+	 */
+	const openFromCard = () => {
+		/* A selection is a deliberate drag across the card's own text, and the
+		 * click that ends it must not navigate; the card's text is selectable
+		 * (truncation is visual), so this guard is what keeps "select the due
+		 * date" from also opening the project. */
+		const selection = window.getSelection();
+		if (selection && !selection.isCollapsed) return;
+		onOpen();
+	};
+	const openFromKeyboard = (event: KeyboardEvent<HTMLDivElement>) => {
+		if (event.key !== "Enter" && event.key !== " ") return;
+		/* A focused child (the menu, the sessions door) owns its own keys; its
+		 * click is stopped above, and this keeps the same line for keys that
+		 * never become clicks. */
+		if (event.target !== event.currentTarget) return;
+		/* Space would scroll the column under the caret otherwise. */
+		event.preventDefault();
+		onOpen();
+	};
 	return (
 		<div
 			data-project-name={project.name}
+			// biome-ignore lint/a11y/useSemanticElements: a `<button>` element cannot contain the card's own menu and sessions buttons; the content-root guards below make the doors behave under the ROOT HANDLER this role needs. ARIA's presentational-children caveat is accepted deliberately and recorded in the block comment below.
+			/* The card navigates to the detail route - the same act the list
+			 * row's full-width button and the menu's `Open` item perform - and
+			 * the role is what makes that act reachable from the keyboard and
+			 * keeps the pointer affordance the base layer gives semantic
+			 * controls (`styles/index.css`).
+			 *
+			 * THE TRADE THIS ROLE MAKES, recorded honestly (review round 1, M2;
+			 * design round 1, D3): `button` has presentational children, so the
+			 * two door buttons are not exposed as independent controls by the
+			 * spec, and some AT flattens them. That is the cost of a card whose
+			 * whole surface is one control with its own actions inside - the
+			 * accepted pattern - and it is taken because the alternative (a
+			 * stretched-link layer) buys the doors their own exposure at the
+			 * price of a second interactive layer to keep in sync. The doors
+			 * keep their own names and focus stops for the pointer domain; an
+			 * AT pass is tracked as a follow-up, not assumed away here. */
+			role="button"
+			tabIndex={0}
+			aria-label={`Open ${project.name}`}
+			onClick={openFromCard}
+			onKeyDown={openFromKeyboard}
 			/*
 			 * 6px, no edge: the card is an ITEM inside the column's well, one step
 			 * below the column's 10 — the same 10/6 pair the view switcher's track
@@ -235,18 +744,20 @@ const BoardCard: FC<BoardCardProps> = ({
 			 * information, and this is the one boundary the system does not
 			 * delete (docs/branding.md § 2: "ask whether removing it entirely
 			 * would lose information").
+			 *
+			 * The hover step is the rows' own (`transition-colors duration-fast
+			 * ease-out-quart hover:bg-elevated`): while the title alone was the
+			 * target, only the title lifted; now that the whole card is the
+			 * target, the whole card answers the pointer.
 			 */
 			className={cn(
 				"group/card flex flex-col gap-2 rounded-sm bg-surface p-3",
+				"transition-colors duration-fast ease-out-quart hover:bg-elevated",
 				overdue && "border border-warning-border",
 			)}
 		>
 			<div className="flex items-start justify-between gap-2">
-				<button
-					type="button"
-					onClick={onOpen}
-					className="-mx-1 min-w-0 flex-1 rounded-sm px-1 text-left hover:bg-elevated"
-				>
+				<span className="min-w-0 flex-1">
 					<span className="block truncate text-body-sm font-medium text-ink">
 						{project.name}
 					</span>
@@ -255,7 +766,7 @@ const BoardCard: FC<BoardCardProps> = ({
 							{project.description}
 						</span>
 					)}
-				</button>
+				</span>
 				<DropdownMenu>
 					<DropdownMenuTrigger
 						/* The handoff's own hook, in the `data-project-name` family: the
@@ -264,14 +775,39 @@ const BoardCard: FC<BoardCardProps> = ({
 						data-project-menu={project.id}
 						aria-label={`Actions for ${project.name}`}
 						disabled={busy}
+						/* THE CARD'S HANDLER MUST NOT SEE THIS PRESS (mouse or
+						 * keyboard): the trigger acts, the card does not navigate. Radix
+						 * opens on pointerdown, and the click that follows would bubble
+						 * into `openFromCard`; this is where that bubble stops. */
+						onClick={(event) => event.stopPropagation()}
 						className={cn(
 							"shrink-0 rounded-sm p-1 text-ink-muted whitespace-nowrap",
-							"hover:bg-elevated hover:text-ink",
+							/* SUNKEN, NOT ELEVATED (design round 1, D2 / UX round 1, U2):
+							 * the card now paints `elevated` while hovered, so the doors'
+							 * old hover - the same token - had no readable step left on a
+							 * lit card. The ladder's next step DOWN reads against the
+							 * elevated card in both palettes and keeps the glyph's own
+							 * `text-ink` step. */
+							"hover:bg-sunken hover:text-ink",
 						)}
 					>
 						<MoreHorizontal className="size-4" />
 					</DropdownMenuTrigger>
-					<DropdownMenuContent align="end">
+					{/*
+					 * THE DOORS' CONTENT IS STILL THE CARD'S DESCENDANT IN THE REACT
+					 * TREE (review round 1, B1 / QA round 1, Q-1 / UX round 1, U1).
+					 * Radix portals the content to the body, but React keeps
+					 * propagating its events to REACT-tree ancestors - so without
+					 * this stop, a press on any item below runs `openFromCard` too:
+					 * measured on the shipped component, `Set status` moved the card
+					 * AND navigated to its detail, `Edit` opened no dialog and left
+					 * the board, and a sessions row's conversation was clobbered by
+					 * the project push. The trigger guards cover the triggers; this
+					 * covers the items. */}
+					<DropdownMenuContent
+						align="end"
+						onClick={(event) => event.stopPropagation()}
+					>
 						<DropdownMenuItem onSelect={onOpen}>Open</DropdownMenuItem>
 						<DropdownMenuSub>
 							<DropdownMenuSubTrigger>Set status</DropdownMenuSubTrigger>
@@ -352,6 +888,9 @@ const CardSessionsPopover: FC<{ project: DesktopProject }> = ({ project }) => {
 				 * family this card already uses. */
 				data-project-sessions={project.id}
 				aria-label={`Sessions linked to ${project.name}`}
+				/* The card's handler must not see this press either: the door
+				 * opens the popover, the card does not navigate. */
+				onClick={(event) => event.stopPropagation()}
 				className={cn(
 					/* `whitespace-nowrap` + the row's `shrink-0`: the door is a
 					 * label, not prose - "2 sessions · 2 live" wrapped mid-phrase
@@ -359,8 +898,8 @@ const CardSessionsPopover: FC<{ project: DesktopProject }> = ({ project }) => {
 					 * round 2, D9). The row's left half truncates instead. */
 					"rounded-sm px-1 text-meta whitespace-nowrap",
 					project.live_sessions > 0
-						? "text-success hover:bg-elevated"
-						: "text-ink-muted hover:bg-elevated",
+						? "text-success hover:bg-sunken"
+						: "text-ink-muted hover:bg-sunken",
 				)}
 			>
 				{linkLabel}
@@ -376,6 +915,11 @@ const CardSessionsPopover: FC<{ project: DesktopProject }> = ({ project }) => {
 				 * their own rings.
 				 */
 				className="w-64 p-2 outline-none"
+				/* The menu content's stop, for the same reason and the same
+				 * measured failure: a row's press (or `Try again`'s) bubbles in the
+				 * React tree to the card without it, and the card's own navigation
+				 * overwrites the row's. */
+				onClick={(event) => event.stopPropagation()}
 			>
 				{detail.isLoading ? (
 					<p className="px-1 py-2 text-meta text-ink-muted">

@@ -4139,6 +4139,13 @@ export const STORIES = [
 	 * app's empty right-hand side.
 	 */
 	["chat-sidebar-agents--empty-with-shortcut", 420, 760],
+	/*
+	 * The same offer AFTER the reader dismissed it: the whole empty-state block
+	 * leaves and the section is its heading and the create row. The dismissal is
+	 * a real click in the story's play, like the batch frames below, so the
+	 * frame is the component reacting rather than a prop that fakes the state.
+	 */
+	["chat-sidebar-agents--offer-dismissed", 420, 760],
 	["chat-sidebar-agents--empty-without-shortcut", 420, 760],
 	["chat-sidebar-agents--installed-with-builtins", 420, 760],
 	["chat-sidebar-agents--all-installed", 420, 760],
@@ -4458,6 +4465,42 @@ export const STORIES = [
 	["projects-tab--board-empty-columns", 1280, 900],
 	["projects-tab--board-sessions-popover", 1280, 900],
 	["projects-tab--board-card-menu", 1280, 900],
+	/*
+	 * The column reorder: the layer the drag writes. `board-column-order-stored`
+	 * is the reload half (a stored order applied at mount),
+	 * `board-column-keyboard-move` is the accessible half (a focused grip's
+	 * arrow key, with the write and the retained focus asserted inside the
+	 * play), and `board-column-drag` is the transient — the rig presses the
+	 * `active` header and HOLDS it over `done`, and the frame's claim is the
+	 * live region's "Moving Active column", which is in the document exactly
+	 * while the gesture is armed. The gesture is the rig's own `drag` option
+	 * rather than the story's play for the mesh canvas's reason: a synthetic
+	 * sequence from a play resolves to the settled board before the shutter.
+	 *
+	 * The drag row settles before the shutter because the HELD pointer keeps
+	 * moving the state: `done`'s center sits inside the strip's right
+	 * auto-scroll zone at this width, so the strip scrolls toward its end while
+	 * the button stays down (UX round 1, U1 - the behaviour itself). 900ms is
+	 * past the clamp, so the frame is the state's own resting point: scrolled
+	 * to the end, the line pinned at the gap the region names, and that reading
+	 * is reproducible on the next capture.
+	 */
+	["projects-tab--board-column-order-stored", 1280, 900],
+	["projects-tab--board-column-keyboard-move", 1280, 900],
+	["projects-tab--board-column-drop-commits", 1280, 900],
+	[
+		"projects-tab--board-column-drag",
+		1280,
+		900,
+		{
+			drag: {
+				from: '[data-board-column-handle="active"]',
+				to: '[data-board-column="done"]',
+				settleMs: 900,
+			},
+			expectSentence: "Moving Active column",
+		},
+	],
 	["projects-tab--timeline", 1280, 900],
 	["projects-tab--timeline-no-dates", 1280, 900],
 	["projects-tab--timeline-overdue", 1280, 900],
@@ -7983,6 +8026,16 @@ const main = async () => {
 					);
 					await sleep(16);
 				}
+				/*
+				 * A HELD GESTURE CAN KEEP MOVING AFTER THE STEPS END (the board's edge
+				 * auto-scroll advances while the pointer rests in an edge zone), so a
+				 * shutter that fires the instant the last step lands photographs a
+				 * scroll position that depends on scheduling. The settle holds until the
+				 * state it can no longer change has settled - the scroll clamps at the
+				 * end - which is what makes the frame reproducible. Zero (the default)
+				 * leaves stories without such a mechanism untouched.
+				 */
+				if (options.drag.settleMs) await sleep(options.drag.settleMs);
 			}
 
 			/*

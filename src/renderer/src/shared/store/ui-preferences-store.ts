@@ -487,6 +487,21 @@ type UiPreferencesState = {
 	chatSidebarView: SidebarView;
 
 	/**
+	 * The built-ins offer the reader dismissed, as the SIGNATURE of the offer
+	 * they dismissed — `features/agents/builtin-offer.ts` derives the value from
+	 * the names on offer and holds the read-side guard. `""` means nothing has
+	 * been dismissed.
+	 *
+	 * A SIGNATURE RATHER THAN A BOOLEAN, because dismissing is a statement about
+	 * the CURRENT state — the precedent `chat-status.ts` sets for the connection
+	 * strip's dismissal ("keyed on the state the reader dismissed rather than on
+	 * a boolean they set once"): a catalogue that gains a built-in is a new
+	 * offer and comes back, while the same catalogue stays dismissed across
+	 * restarts, which is exactly what this persists.
+	 */
+	dismissedBuiltinOfferSignature: string;
+
+	/**
 	 * Toggle the sidebar collapse state
 	 */
 	toggleSidebar: () => void;
@@ -557,6 +572,13 @@ type UiPreferencesState = {
 	 * `toggleSection`/`moveSection`, which each return a complete next view.
 	 */
 	setChatSidebarView: (view: SidebarView) => void;
+
+	/**
+	 * Record the built-ins offer's signature as dismissed. Takes the resolved
+	 * signature rather than the names, because the derivation is the module's
+	 * (`builtinOfferSignature`) and the control that presses this holds it.
+	 */
+	dismissBuiltinOffer: (signature: string) => void;
 
 	/**
 	 * Restore the canvas width to its default value
@@ -962,6 +984,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			chatSidebarView: DEFAULT_SIDEBAR_VIEW,
 			chatSidebarListHeight: null,
 			chatSidebarOrder: "entities-first",
+			dismissedBuiltinOfferSignature: "",
 			isCanvasOpen: false,
 			isRunPanelOpen: false,
 			isBrowserPaneOpen: false,
@@ -1205,6 +1228,12 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			setChatSidebarView: (view: SidebarView) => {
 				set({
 					chatSidebarView: view,
+				});
+			},
+
+			dismissBuiltinOffer: (signature: string) => {
+				set({
+					dismissedBuiltinOfferSignature: signature,
 				});
 			},
 
