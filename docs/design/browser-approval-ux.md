@@ -182,6 +182,38 @@ wherever the row can pay for it.
 
 ---
 
+## Addendum — 2026-09-28: the tab-actions menu is a registered popout
+
+THE §6 ROW-MENU RULING IS SUPERSEDED, on the operator's report of 2026-09-28 ("the
+ellipsis menu should be a popout instead of taking up space and shifting down like
+this"). The in-band row was chosen because an unregistered menu painting into the
+content rect is occluded by the native view; the cost it accepted — the strip grows, the
+page and the URL bar move down — is what the report is about. The overlay policy has
+since absorbed the mechanism that removes the trade: a menu whose panel reaches into the
+content rect registers (`browser-view-policy.ts`, revised 2026-09-28), the view hides
+while it is open, and the paused note shows behind the panel — the same mechanism every
+dialog in this app already uses.
+
+WHAT MOVED: §6's row-menu row (annotated in place); the strip's tab-actions markup (a
+`DropdownMenu` anchored to the ⋯ trigger, portaled, registering as
+`browser-tab-actions`); the paused note's copy, which now names menus. WHAT DID NOT: the
+pinned "All tabs" list stays a band row — a list to READ beside the page takes the
+in-flow trade (the dock's own), and the two mechanisms coexist per surface rather than
+one winning. §2's "two mechanisms it never needs" stands for the band's own surfaces; a
+floating panel is not one of them.
+
+WHAT PAYS FOR ITSELF, AND HOW IT IS MEASURED: the strip does not grow and the page's
+rectangle does not move while the menu is open; the menu paints over the paused content
+(suppression asserted from `data-suppressed-by`); Escape and item selection return focus
+to the trigger, and a close that removes its trigger keeps the strip's own caret path.
+All of it is measured in `scripts/browser-chrome-proof.mjs` (the `17-tab-actions-popout`
+section), and probe P11's flicker question is captured there as consecutive frames around
+open and close. OPEN QUESTIONS for the design round, listed rather than blocked on: the
+paused note's exact wording; the menu's item styling; and whether the pinned list should
+follow — default is keep in-band.
+
+---
+
 ## 0. The four asks, and what each actually requires
 
 The operator asked for four things across three messages. Stated as
@@ -695,7 +727,7 @@ belongs to.
 | Title | `truncate`, native `title` | keep | Truncation is recoverable with the pointer and the full text is in the DOM (D13, `:145-152`) |
 | Width policy | `basis-32 grow min-w-32 max-w-[50%]`, row scrolls | keep | D13's reviewed policy. Chrome shrinks tabs below 128px; this strip cannot, because the mark, the chips and the close button need the room, and a 60px tab would show no name at all. **A deliberate difference from Chrome**, stated so it is not "fixed" later |
 | Close | always rendered per tab | rendered for the active tab always; for an inactive tab on hover **or** focus-within; always available from the row's menu | A focusable but invisible control is a keyboard trap of its own; the menu's `Close tab` (`:237-239`) is the always-visible path. Reveal is a colour/opacity transition, never a layout shift |
-| Row menu | Radix `DropdownMenu` opening *downward* over the page area | **inline expansion inside the band** | The menu is anchored at the strip's bottom edge and paints downward into the content rect, where the native view occludes it: menus in the band are deliberately not registered (`browser-view-policy.ts:32-39`), and a `z-index` cannot beat a native sibling view. The row's actions expand *inside the band* (the strip grows ~28px, the page shrinks by the same 28px, no suppression). The same fix applies to the hand-over entry point, which lives in that menu (`:225-236`) |
+| Row menu | Radix `DropdownMenu` opening *downward* over the page area | **registered popout over the paused page** (revised 2026-09-28; the in-band ruling is superseded — see the addendum) | The menu is anchored to the ⋯ trigger and floats over the content rect, so it REGISTERS with the overlay policy while open (`useSuppressBrowserView(…, "browser-tab-actions")`): the view hides and the paused note shows behind the panel, exactly as for a dialog. The in-band row this replaces avoided suppression by growing the strip — up to 214px at its own designed worst case — and pushing the page and the URL bar down, which is the operator's report. The hand-over entry point still lives in this menu (`:225-236`) |
 | Waiting chip | `Waiting` | `Waiting <n>` | §5.2 |
 | Agent / Shared / Restored / Failed chips | as today | as today | The agent marker is the one thing that tells an agent tab from the user's, and its text is what a QA pass asserts on (`:155-165`); the other three are the only carriers of their state on a background tab. Restyle only if a frame shows them reading as buttons — and then as compact pills on the title row, never as new colours |
 | Activation scroll | — | the activated tab scrolls into view | With the width policy kept, a long strip scrolls; a tab activated from the dock or by attention must become visible or the click looks inert |
