@@ -2877,6 +2877,18 @@ const BRANCH_RECORDS = [
 	 */
 	"foldOnto1b1a52d5cfNote",
 	"agentsOfferDismissCommentRestampNote",
+	/*
+	 * AND THE TURN-COLLAPSE PASS'S OWN (`feat/collapsed-turn-summary`): the
+	 * single record of the pass that added `chat-turn-collapse/` (16 swept
+	 * frames) and its declared before half `chat-turn-collapse-before/` (16
+	 * frames, supplementary), re-derived both stamps and led both `countsMean`
+	 * cells. It is listed for the list's usual reason: a fold resolved from
+	 * main's copy would drop the only statement of which half is counted by
+	 * `frames` and which is declared, and of the `press` caveat a re-capturer
+	 * of the before half needs. It quotes no tree-hash pair (commit SHAs only),
+	 * so it joins `BRANCH_RECORDS` and not `STAMP_BINDING_NOTES`.
+	 */
+	"turnCollapseEvidenceNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
