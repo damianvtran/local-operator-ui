@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: the skip-list the retries are measured against is the shipped one
+ok 1 - the skip-list the retries are measured against is the shipped one
+  ---
+  duration_ms: 54.527833
+  type: 'test'
+  ...
+# Subtest: a stalled download is cancelled through the updater's token, and the cancel is reported
+ok 2 - a stalled download is cancelled through the updater's token, and the cancel is reported
+  ---
+  duration_ms: 115.346083
+  type: 'test'
+  ...
+# Subtest: download progress resets the stall watchdog
+ok 3 - download progress resets the stall watchdog
+  ---
+  duration_ms: 134.450584
+  type: 'test'
+  ...
+# Subtest: a feed that never answers is abandoned at the deadline, and a silent check stays silent
+ok 4 - a feed that never answers is abandoned at the deadline, and a silent check stays silent
+  ---
+  duration_ms: 129.738875
+  type: 'test'
+  ...
+# Subtest: a check the user asked for gets the deadline's failure, not a filtered 'up to date'
+ok 5 - a check the user asked for gets the deadline's failure, not a filtered 'up to date'
+  ---
+  duration_ms: 139.524458
+  type: 'test'
+  ...
+# Subtest: an expired sequence settling late cannot unpin or re-report a successor check
+ok 6 - an expired sequence settling late cannot unpin or re-report a successor check
+  ---
+  duration_ms: 1147.414708
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2572.311459

@@ -340,6 +340,40 @@ of the two concurrent per-arch packaging tasks finished first — an x64 build,
 emulated, for ARM64 users. Making the Windows feed architecture-aware is the
 precondition for dropping the union installer, not a packaging tweak.
 
+### Linux: the AppImage carries its update information, and ships its `.zsync`
+
+The AppImage is updated in place by AppImageUpdate (and by launchers built on
+it). Two things make that work, and both are produced at build time from one
+script, `scripts/appimage-update-info.mjs`:
+
+- **The update information is embedded before the build.** "Prepare the AppImage
+toolset with embedded update information" (in `publish.yml`'s `build-linux` job)
+runs `appimage-update-info.mjs prepare-toolset`: it downloads the pinned
+`appimage-12.0.1.7z` AppImage toolset (sha256 verified against the pin
+`app-builder-lib` 26.16.1 declares for it), unpacks it, and writes the update
+information string into `runtime-x64`'s `.upd_info` ELF section. The step then
+exports `APPIMAGE_TOOLS_PATH` to the job, which is what makes electron-builder
+build from THAT toolset instead of downloading its own copy — the runtime is
+prepended verbatim into the AppImage, so the built artifact carries the string
+by construction.
+- **The `.zsync` is written and the chain asserted after the build.** "Write the
+AppImage zsync and assert its update information" runs `finalize`: it asserts
+the built AppImage's `.upd_info`, runs `zsyncmake` to write
+`<file>.AppImage.zsync` beside it, checks the zsync's headers (`Filename`,
+`Length`, `SHA-1`, `URL`) against the file, and checks `latest-linux.yml`'s
+entry for the AppImage against the file's real sha512/size. The Linux upload
+glob carries `dist/*.AppImage.zsync` to the release.
+
+**Do not edit a built AppImage.** electron-builder appends an embedded blockmap
+and writes `latest-linux.yml` (sha512, size, blockMapSize) from the bytes as it
+builds them; a post-build edit — an in-place section write, an appimagetool
+repack — invalidates the blockmap and/or the yml, and the release then describes
+bytes nobody downloads. That is why the string goes into the toolset's runtime
+BEFORE packaging: electron-builder computes every hash afterwards, over the
+final file. The full argument, the section's offsets for the pinned runtime
+(`.upd_info` at 0x02ae68, size 0x400) and the rejected alternatives are in the
+script's header.
+
 ## Auto-Updates
 
 Local Operator UI supports automatic updates using [electron-updater](https://www.electron.build/auto-update.html).
@@ -356,6 +390,12 @@ The update configuration is defined in the `publish` section of the build config
 ```
 
 This configuration publishes updates to GitHub Releases, which users can automatically download and install.
+
+On Linux the channel file is `latest-linux.yml` and the updatable artifact is
+the AppImage: it carries AppImageUpdate's update information in its runtime's
+`.upd_info` section and ships its `.zsync` beside it on the release (see
+*Linux: the AppImage carries its update information* above for how both are
+built).
 
 ## Troubleshooting
 
