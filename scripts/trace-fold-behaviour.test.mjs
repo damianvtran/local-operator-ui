@@ -312,6 +312,34 @@ test("the reader's own press is the only close, in both directions", async (t) =
 	);
 });
 
+test("the section ending while the fold is open never closes it", async (t) => {
+	/*
+	 * THE TRANSITION THIS PINS: the section was LIVE and stops being so while the
+	 * reader watches. On the unfixed tree that transition armed and fired the
+	 * component's own condense (`!sectionLive && armed && live === null`) and shut
+	 * the reader's fold; the fixed component has no condense to fire. `sectionLive`
+	 * is not part of this component's contract any more - it rides along so THIS
+	 * case can drive the old trigger on the base tree in a before/after swap.
+	 */
+	const mounted = await mount(t, {
+		span: { startedAtMs: 1_000, endedAtMs: null, running: true },
+		live: LIVE,
+		sectionLive: true,
+	});
+	await click(mounted);
+	assert.equal(rows(mounted), 1, "the press is the one thing that opens it");
+	await mounted.render({
+		span: { startedAtMs: 1_000, endedAtMs: 23_000, running: false },
+		live: null,
+		sectionLive: false,
+	});
+	assert.equal(
+		rows(mounted),
+		1,
+		"a section ending under the reader never closes their fold",
+	);
+});
+
 test("a fold the reader opens after its section ended stays open", async (t) => {
 	// The restored-history shape, and the failed-row jump's: the fold has never
 	// been live in this mount, and nothing about its section's state changes
