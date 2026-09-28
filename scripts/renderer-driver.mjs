@@ -17765,6 +17765,281 @@ async function sceneDrafts(cdp) {
 	return frames;
 }
 
+/**
+ * THE TWO OFFERS, STANDING TOGETHER - the design round's D3, photographed.
+ *
+ * "Ordinary toasts stack" is a claim about TWO messages at once, and the lane
+ * could not show this state at all: one id and one seat meant the newest of the
+ * three won, so a discard and an archive could never stand side by side. The
+ * ordinary toaster has no seat to fight over, and this scene drives the app's
+ * own two acts to put both offers up - the sidebar's archive control on a
+ * conversation, then the drafts section's discard control on a seeded draft -
+ * and photographs them.
+ *
+ * It runs on the session-archive stub (live rows, an archive-capable backend:
+ * `b3f1a09c7d52`'s archive is the accepted one in that fixture) plus
+ * `seedDrafts`, whose reload is why the seeding happens FIRST - it is the only
+ * act here that would take a message down with it.
+ */
+async function sceneUndoToastsStacked(cdp) {
+	const hello = await verb(cdp, "hello");
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+	await verb(cdp, "navigate", "/chat");
+	if (THEME) {
+		await verb(cdp, "setTheme", THEME);
+	}
+	await seedDrafts(cdp);
+	await waitForBridge(cdp);
+	/*
+	 * The route is re-stated and the row is waited for rather than assumed: the
+	 * seeding above reloads the renderer, and the row this scene presses is the
+	 * one the session-archive scene reads at rest (`b3f1a09c7d52`), which is why
+	 * the two scenes can share the stub's fixture.
+	 */
+	await verb(cdp, "navigate", "/chat");
+	const stackedRow = '[data-session-row="b3f1a09c7d52"]';
+	await verb(cdp, "measure", stackedRow);
+	/*
+	 * The stub serves no agents list, so the app raises its own `List agents
+	 * request failed: 503` notice in the same corner during the first seconds
+	 * after boot. It auto-dismisses (this is the `waitForNoToasts` contract: the
+	 * scene never reaches into the app's toasts, it waits), and waiting it out
+	 * before the presses is what keeps the pair the frame is of the only pair on
+	 * screen.
+	 */
+	await waitForNoToasts(cdp, 20_000);
+	const state = await verb(cdp, "state");
+	check(
+		"the catalogue answered and the panel is drawing its rows",
+		state.sessionCount >= 4,
+		`sessionCount is ${state.sessionCount}`,
+	);
+
+	const frames = [];
+	/*
+	 * The messages are found by their OWN sentences rather than by toast count:
+	 * this stub serves no agents list, so an unrelated `503` toast can be on
+	 * screen beside the pair (the session-archive logs record the same), and a
+	 * count of "toasts" would count the rig's noise as well.
+	 */
+	const offerTexts = () =>
+		cdp.evaluate(`(() => {
+			const toasts = [...document.querySelectorAll(${JSON.stringify(ARCHIVE_TOAST)})];
+			return toasts.map((t) => t.textContent ?? "");
+		})()`);
+	const waitForOfferText = async (needle, label) => {
+		for (let attempt = 0; attempt < 80; attempt += 1) {
+			const texts = await offerTexts();
+			if (texts.some((text) => text.includes(needle))) return texts;
+			await wait(100);
+		}
+		throw new Error(
+			`the ${label} never drew (waited 8s): ${JSON.stringify(await offerTexts())}`,
+		);
+	};
+
+	/*
+	 * 1. The archive offer, by the row's own control - the act the session-archive
+	 *    scene photographs from this same fixture. The row first, then the control,
+	 *    for the reason that scene records: the acts are `display`-switched, and a
+	 *    press at a 0x0 box goes nowhere.
+	 */
+	await hoverOver(cdp, stackedRow);
+	await wait(300);
+	await hoverOver(cdp, `${stackedRow} [data-session-archive]`);
+	await wait(300);
+	await clickAt(cdp, `${stackedRow} [data-session-archive]`);
+	const afterArchive = await waitForOfferText("archived.", "archive offer");
+	check(
+		"the archive press raises its own offer",
+		afterArchive.some(
+			(text) => text.includes("archived.") && text.includes("Undo"),
+		),
+		JSON.stringify(afterArchive),
+	);
+
+	/*
+	 * 2. The discard offer, by the drafts section's own control: the row is
+	 *    hovered first, which is what a reader does anyway - the press needs the
+	 *    reveal up.
+	 */
+	await hoverOver(cdp, `[data-draft-row="${DRAFTS_TYPED}"]`);
+	await wait(160);
+	await clickAt(cdp, `[data-draft-discard="${DRAFTS_TYPED}"]`);
+	const both = await waitForOfferText("discarded.", "discard offer");
+	check(
+		"the discard press raises its own offer beside the archive's",
+		both.some((text) => text.includes("discarded.") && text.includes("Undo")),
+		JSON.stringify(both),
+	);
+
+	/*
+	 * 3. THE PAIR, measured: two messages, one container, no band, no lane class,
+	 *    neither inside the panel - and the standard stack, the newer message
+	 *    fully drawn with the older peeking behind it (the offsets are sonner's,
+	 *    not this scene's).
+	 */
+	await wait(500);
+	const stacked = await cdp.evaluate(`(() => {
+		const box = (el) => {
+			const r = el.getBoundingClientRect();
+			return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right) };
+		};
+		const toasts = [...document.querySelectorAll(${JSON.stringify(ARCHIVE_TOAST)})].map((t) => ({
+			text: t.textContent ?? "",
+			box: box(t),
+			inPanel: t.closest('nav[aria-label="Chats"]') !== null,
+		}));
+		return {
+			toasts,
+			containers: document.querySelectorAll("[data-sonner-toaster]").length,
+			band: document.querySelector("[data-archive-toast-band]") !== null,
+			laneClass: document.querySelectorAll(".lo-archive-toast").length,
+		};
+	})()`);
+	const archiveToast = stacked.toasts.find((t) => t.text.includes("archived."));
+	const discardToast = stacked.toasts.find((t) =>
+		t.text.includes("discarded."),
+	);
+	/*
+	 * The count is of the OFFERS, not of `[data-sonner-toast]`: this stub's 503
+	 * notice is the rig's own noise and may share the corner (the earlier run of
+	 * this scene recorded exactly that), and a scene that failed on the rig's
+	 * noise would be testing the stub rather than the change.
+	 */
+	const offerToasts = stacked.toasts.filter(
+		(t) => t.text.includes("archived.") || t.text.includes("discarded."),
+	);
+	check(
+		"two offers stand together as ordinary toasts: the archive's and the discard's, one container, no band and no lane",
+		archiveToast !== undefined &&
+			discardToast !== undefined &&
+			offerToasts.length === 2 &&
+			stacked.containers === 1 &&
+			stacked.band === false &&
+			stacked.laneClass === 0 &&
+			archiveToast.inPanel === false &&
+			discardToast.inPanel === false,
+		JSON.stringify(stacked),
+	);
+	check(
+		"the newer message is the fully drawn one and the older peeks behind it - sonner's own stack",
+		archiveToast !== undefined &&
+			discardToast !== undefined &&
+			discardToast.box.top >= archiveToast.box.top &&
+			discardToast.box.bottom > archiveToast.box.bottom,
+		JSON.stringify({ archive: archiveToast?.box, discard: discardToast?.box }),
+	);
+	note(
+		"the stack, as the two boxes",
+		JSON.stringify({
+			archive: archiveToast?.box ?? null,
+			discard: discardToast?.box ?? null,
+			containers: stacked.containers,
+		}),
+	);
+	const stackedFrame = await captureToastPair(
+		cdp,
+		`stacked-offers${RUN_LABEL}`,
+	);
+	check(
+		"the pair held still for the frame it kept",
+		stackedFrame.stable === true && stackedFrame.toastText !== null,
+		`stable=${stackedFrame.stable === true} toastText=${JSON.stringify(stackedFrame.toastText)}`,
+	);
+	frames.push(stackedFrame);
+
+	/*
+	 * 4. AND THE EXPANDED STACK. At rest the older message is only a peeking
+	 *    edge (its content sits at the library's `opacity: 0` until the region is
+	 *    hovered), so a photograph of the rest state alone would under-report what
+	 *    stands: the second frame is the SAME pair with the pointer on it - the
+	 *    state a reader reaches by pointing at the corner - where both messages
+	 *    are fully drawn and their boxes are disjoint.
+	 */
+	if (discardToast !== undefined) {
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: Math.round((discardToast.box.left + discardToast.box.right) / 2),
+			y: Math.round((discardToast.box.top + discardToast.box.bottom) / 2),
+			button: "none",
+			buttons: 0,
+		});
+	}
+	await wait(500);
+	const expandedReading = await cdp.evaluate(`(() => {
+		const box = (el) => {
+			const r = el.getBoundingClientRect();
+			return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right) };
+		};
+		const toaster = document.querySelector("[data-sonner-toaster]");
+		return {
+			toaster: toaster !== null,
+			toasts: [...document.querySelectorAll(${JSON.stringify(ARCHIVE_TOAST)})].map((t) => ({
+				text: t.textContent ?? "",
+				box: box(t),
+				/* The library's own expansion flag, per toast: its stylesheet keys the
+				   collapsed-but-behind state off [data-expanded=false][data-front=false],
+				   so the attribute on these elements is what "expanded" means. */
+				expanded: t.getAttribute("data-expanded"),
+			})),
+		};
+	})()`);
+	const expandedArchive = expandedReading.toasts.find((t) =>
+		t.text.includes("archived."),
+	);
+	const expandedDiscard = expandedReading.toasts.find((t) =>
+		t.text.includes("discarded."),
+	);
+	check(
+		"hovering the stack expands it: both offers report expanded, fully drawn and disjoint",
+		expandedArchive !== undefined &&
+			expandedDiscard !== undefined &&
+			expandedArchive.expanded === "true" &&
+			expandedDiscard.expanded === "true" &&
+			expandedArchive.box.bottom - expandedArchive.box.top > 40 &&
+			expandedDiscard.box.bottom - expandedDiscard.box.top > 40 &&
+			(expandedDiscard.box.top >= expandedArchive.box.bottom ||
+				expandedArchive.box.top >= expandedDiscard.box.bottom),
+		JSON.stringify(expandedReading),
+	);
+	note(
+		"the expanded stack, as the two boxes",
+		JSON.stringify({
+			archive: {
+				box: expandedArchive?.box ?? null,
+				expanded: expandedArchive?.expanded ?? null,
+			},
+			discard: {
+				box: expandedDiscard?.box ?? null,
+				expanded: expandedDiscard?.expanded ?? null,
+			},
+		}),
+	);
+	/*
+	 * The expanded pair is captured with the RETRYING helper rather than the
+	 * two-shot one: its expansion is an animation, the light-palette run measured
+	 * one shot pair landing mid-transition (`stable=false`), and the retries are
+	 * safe here because the pointer holds the region open - hover-pause keeps the
+	 * messages from expiring while the camera waits for it to settle.
+	 */
+	const expandedFrame = await captureWithToast(
+		cdp,
+		`stacked-expanded${RUN_LABEL}`,
+	);
+	check(
+		"the expanded pair held still for the frame it kept",
+		expandedFrame.stable === true && expandedFrame.toastText !== null,
+		`stable=${expandedFrame.stable === true} toastText=${JSON.stringify(expandedFrame.toastText)}`,
+	);
+	frames.push(expandedFrame);
+	return frames;
+}
+
 async function sceneNewChat(cdp) {
 	/*
 	 * Start anywhere but the chat route: `navigate("/chat")` is 80% of what this
@@ -27425,6 +27700,8 @@ async function main() {
 			else if (SCENE === "btw-aside") await sceneBtwAside(cdp);
 			else if (SCENE === "authoring-refresh") await sceneAuthoringRefresh(cdp);
 			else if (SCENE === "drafts") await sceneDrafts(cdp);
+			else if (SCENE === "undo-toasts-stacked")
+				await sceneUndoToastsStacked(cdp);
 			else if (SCENE === "settings-model") await sceneSettingsModel(cdp);
 			else if (SCENE === "settings-fields") await sceneSettingsFields(cdp);
 			else if (SCENE === "settings-gate") await sceneSettingsGate(cdp);

@@ -14,13 +14,13 @@
  "panel": {
   "left": 0,
   "right": 280,
-  "top": 284,
+  "top": 276,
   "bottom": 843.1,
   "width": 280,
-  "height": 559.1,
+  "height": 567.1,
   "centre": {
    "x": 140,
-   "y": 563.55
+   "y": 559.55
   }
  },
  "offer": {
@@ -56,25 +56,25 @@
   "panel": {
    "left": 0,
    "right": 280,
-   "top": 284,
+   "top": 276,
    "bottom": 843.1,
    "width": 280,
-   "height": 559.1,
+   "height": 567.1,
    "centre": {
     "x": 140,
-    "y": 563.55
+    "y": 559.55
    }
   },
   "firstListRow": {
    "left": 12,
    "right": 260,
-   "top": 551.5,
-   "bottom": 583.5,
+   "top": 543.5,
+   "bottom": 575.5,
    "width": 248,
    "height": 32,
    "centre": {
     "x": 136,
-    "y": 567.5
+    "y": 559.5
    }
   },
   "composer": {
