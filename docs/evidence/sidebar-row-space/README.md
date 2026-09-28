@@ -1,5 +1,16 @@
 # Sidebar row space - rendered evidence
 
+**SUPERSEDED IN PART (2026-09-27): the sidebar toast lane is retired.** The
+band the departure records and the `refusal-band-280` / `offer-toast-*` frames
+are about is deleted at the operator's request - the archive offer, its refusal
+and the discard offer are ordinary sonner toasts in the app's one bottom-right
+container again - so the LANE-side readings in this set (band heights, the
+list's yield, the offer's position against the panel) describe a shape that no
+longer exists. The row-space claims this set exists for (the resting budget,
+the reveal, the pan, the flyout) are untouched. The supersession, what survived
+and the operator's own words are in `docs/design/sidebar-row-space.md` §10; the
+new frames are under `docs/evidence/undo-toasts-lane-retired/`.
+
 The sidebar row's **horizontal budget**, photographed in the running app at the
 three panel widths the operator's report is about, with the pointer off the row
 and on it, plus the one frame of the archive offer in the state they reported.

@@ -489,22 +489,22 @@ export function installDevDriver(): string[] {
 				),
 				countsTotal: sessions.counts?.total ?? null,
 				/*
-				 * THE ARCHIVE LANE'S OWN FACTS, because a scene cannot read an in-place toast update
+				 * THE ARCHIVE MESSAGES' OWN FACTS, because a scene cannot read an in-place toast update
 				 * off the DOM (agent review round 2, R2-2).
 				 *
-				 * The lane draws both of its messages under ONE id, so the message that replaces
-				 * another is an UPDATE of the mounted element: the pixels, the text and the element
-				 * itself are identical whether the answer re-asserted the message or the previous
-				 * one simply stayed up. A check that says "the retry re-asserted the refusal"
-				 * therefore needs a fact only the new answer can move, and these are the two the
-				 * store holds: `archiveAttempts` is its write counter - each `setSessionArchived`
-				 * takes the next stamp, which is what makes a second press distinguishable from the
-				 * first - and `archiveFailure` is the refusal it is currently carrying.
+				 * Both messages are drawn under ONE id, so the message that replaces another is an
+				 * UPDATE of the mounted element: the pixels, the text and the element itself are
+				 * identical whether the answer re-asserted the message or the previous one simply
+				 * stayed up. A check that says "the retry re-asserted the refusal" therefore needs a
+				 * fact only the new answer can move, and these are the two the store holds:
+				 * `archiveAttempts` is its write counter - each `setSessionArchived` takes the next
+				 * stamp, which is what makes a second press distinguishable from the first - and
+				 * `archiveFailure` is the refusal it is currently carrying.
 				 *
 				 * Read as a pair with the DOM: the attempt must have ADVANCED across the press and
 				 * the refusal must name the conversation the scene pressed, while the painted toast
-				 * is what proves the lane drew it (and where). Neither half is sufficient alone and
-				 * the driver's checks say so.
+				 * is what proves the surface drew it (and where it landed). Neither half is
+				 * sufficient alone and the driver's checks say so.
 				 */
 				archiveAttempts: sessions.answerSeq,
 				archiveFailure: sessions.archiveFailure

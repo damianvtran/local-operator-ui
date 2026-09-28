@@ -1,0 +1,139 @@
+[build] current: assets 2026-09-28T08:51:22.621Z >= sources 2026-09-28T08:41:19.773Z
+[note] abandoned scratch trees
+        20 seen, 0 owned by a live pid (kept), 19 younger than 30m (kept), 1 removed: lo-renderer-driver-92201
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:18322
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/undo-toasts-0927-235510
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-58758
+  frames        /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/undo-toasts-r2-37574/rig2/frames-mine4-dr-dark
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-58758/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:18322   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/undo-toasts-0927-235510/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:18322","backend":"http://127.0.0.1:18322"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:18322)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[note] the seeded rows, as the section lists them
+        ["[redacted]","draft:7d7d7d7d-0003-4000-8000-000000000003","draft:6c6c6c6c-0002-4000-8000-000000000002","draft:5b5b5b5b-0001-4000-8000-000000000001"]
+[PASS] all four untargeted drafts are rows, the live hop included
+[PASS] the targeted draft is deliberately not a row
+[PASS] at rest the discard control exists but spends nothing (hidden)
+[note] the discard control under the pointer
+        {"display":"flex","width":24,"disabled":false,"ariaDisabled":"false"}
+[PASS] the pointer reveals the discard control
+[PASS] the reveal moves no row: the hovered row's height is the height at rest
+[note] the live hop's discard control
+        {"display":"flex","width":24,"disabled":false,"ariaDisabled":"true"}
+[PASS] the live hop's control is revealed and inapplicable (aria-disabled, not disabled)
+[PASS] a press on it moves nothing: the in-flight row is still there
+[note] the inapplicable control, probed
+        {"focused":true,"disabledAttr":false,"ariaDisabled":"true","why":"Sending - this draft can be discarded when the send settles"}
+[PASS] the inapplicable control can still take the caret
+[PASS] and says why, in the AT channel
+[PASS] the inapplicable control's ink does not move under the pointer
+[PASS] the press removes the row it names
+[PASS] the other rows stay, the live hop included
+[PASS] and the composer's own row for that key goes with it, so it cannot resurface
+[PASS] the caret lands on a row rather than the document
+[PASS] the discard stands an undo offer in the app's one toast container (the sidebar lane was retired 2026-09-27)
+[PASS] Undo puts the row back
+[PASS] and its composer row with it
+[PASS] and the offer itself retires
+[note] the composer after opening the draft
+        "This session seems to be wedged, can you check it"
+[PASS] opening the draft puts its text in the composer
+[PASS] the open draft's row goes
+[PASS] and the pane keeps a composer: no dead end
+[PASS] a fresh draft is staged in its place
+[PASS] Undo returns the text to its own key
+[PASS] Undo puts the pane back on the restored draft
+[PASS] and its text is in the composer again
+[PASS] the pane is open on the typed draft before the batch
+[PASS] Clear all removes every settled row and only those
+[PASS] the section stays open for the live hop
+[PASS] the targeted draft is NOT touched (it is not one of the listed rows)
+[PASS] and its composer row survives too
+[PASS] the batch offer names the count that moved
+[PASS] the batch keeps a composer: no dead end
+[PASS] and stages a fresh draft in its place
+[PASS] the batch's undo restores every settled row
+[PASS] and a multi-subject restore leaves the pane where it was
+[PASS] a relaunch does not resurrect the discarded drafts
+[PASS] the live-hop row was never discarded, so it is still there
+[PASS] and the offer does not outlive the app
+[note] the inapplicable Clear all, probed
+        {"disabledAttr":false,"ariaDisabled":"true","why":"Drafts are sending - they can be cleared when the sends settle"}
+[PASS] the inapplicable Clear all is aria-disabled, not disabled
+[PASS] and says why, in the AT channel
+[PASS] the inapplicable Clear all can take the caret
+[PASS] ArrowDown from the last draft row lands on the inapplicable control
+[FAIL] and the next step moves past it rather than sticking
+        {"onClear":true}
+[PASS] the inapplicable Clear all's ink does not move under the pointer
+[PASS] a press on the inapplicable control moves nothing
+[PASS] and raises no offer
+[PASS] every settled capture is a frame the app held still for, with no toast on it
+[PASS] the offer frames hold the offer, stable
+
+---- app log (tail) ----
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'browser-state': Error: No handler registered for 'browser-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'browser-webauthn-pending': Error: No handler registered for 'browser-webauthn-pending'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+04:55:09.580 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+04:55:09.580 › Checking for UI updates...
+04:55:09.581 › Skip checkForUpdates because application is not packed and dev update config is not forced
+Error occurred in handler for 'browser-state': Error: No handler registered for 'browser-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'console-state': Error: No handler registered for 'console-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'browser-webauthn-pending': Error: No handler registered for 'browser-webauthn-pending'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+04:55:09.637 › [shell-path] /bin/zsh reports PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
+04:55:09.638 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
+04:55:09.638 › Shell environment variables loaded successfully. PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
+04:55:09.639 › [browser] host on 127.0.0.1:64103 (proto 1), profile /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-58758/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+04:55:09.682 › [browser] tab 1 navigated to about:blank
+[window-mode] state: visible=false focused=false focusable=false size=1380x900 content=1380x900
+04:55:11.166 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+04:55:11.167 › Checking for UI updates...
+04:55:11.167 › Skip checkForUpdates because application is not packed and dev update config is not forced
+04:55:11.770 › Checking for updates... (silent mode: true)
+04:55:11.771 › Skip checkForUpdates because application is not packed and dev update config is not forced
+04:55:11.771 › Checking for backend updates... (silent mode: true)
+04:55:11.772 › Skip backend update check in dev mode unless forced
+04:55:18.694 › Backend health check response status: 200
+04:55:18.907 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+04:55:18.907 › Checking for UI updates...
+04:55:18.907 › Skip checkForUpdates because application is not packed and dev update config is not forced
+04:55:20.669 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+04:55:20.669 › Checking for UI updates...
+04:55:20.669 › Skip checkForUpdates because application is not packed and dev update config is not forced
+
+[PASS] no process from this run outlived its boot
+
+frames: drafts-clear-disabled.png, drafts-cleared.png, drafts-deleted-open.png, drafts-deleted.png, drafts-hover.png, drafts-pending-disabled.png, drafts-relaunch.png, drafts-rest.png, drafts-undo-restored.png
+frames directory: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/undo-toasts-r2-37574/rig2/frames-mine4-dr-dark
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-58758/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-58758 (the frames are also in --out)
+
+1 CHECK(S) FAILED
+driver rc=1
