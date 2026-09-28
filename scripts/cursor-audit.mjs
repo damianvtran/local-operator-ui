@@ -143,13 +143,53 @@ class Cdp {
 				msg.error ? reject(new Error(msg.error.message)) : resolve(msg.result);
 			}
 		});
+		/*
+		 * A closed socket must reject whatever is in flight. Measured on
+		 * 2026-09-28: when the page under the socket went away mid-walk, the
+		 * pending `send` promise never settled, nothing else held the event
+		 * loop open, and Node EXITED 0 with no summary and no JSON - a gate
+		 * that silently passed because the process drained. Rejecting here
+		 * turns exactly that into a loud, non-zero failure; the interval kept
+		 * alive in `main` is the belt to this pair of braces.
+		 */
+		ws.addEventListener("close", () =>
+			this.#failAll(new Error("the devtools socket closed")),
+		);
+		ws.addEventListener("error", () =>
+			this.#failAll(new Error("the devtools socket errored")),
+		);
+	}
+	#failAll(err) {
+		for (const { reject } of this.pending.values()) reject(err);
+		this.pending.clear();
 	}
 	send(method, params = {}) {
 		const id = ++this.next;
-		this.ws.send(JSON.stringify({ id, method, params }));
-		return new Promise((resolve, reject) =>
-			this.pending.set(id, { resolve, reject }),
-		);
+		return new Promise((resolve, reject) => {
+			/* Every call is bounded: a hung CDP request is otherwise
+			   indistinguishable from a slow story and stalls the walk. */
+			const timer = setTimeout(() => {
+				this.pending.delete(id);
+				reject(new Error(`CDP ${method} did not answer within 30s`));
+			}, 30_000);
+			this.pending.set(id, {
+				resolve: (value) => {
+					clearTimeout(timer);
+					resolve(value);
+				},
+				reject: (err) => {
+					clearTimeout(timer);
+					reject(err);
+				},
+			});
+			try {
+				this.ws.send(JSON.stringify({ id, method, params }));
+			} catch (err) {
+				this.pending.delete(id);
+				clearTimeout(timer);
+				reject(err);
+			}
+		});
 	}
 }
 
@@ -427,6 +467,24 @@ const main = async () => {
 	if (ids.length === 0) throw new Error("no stories matched");
 	console.log(`cursor audit: ${ids.length} stories against ${ORIGIN}`);
 
+	/*
+	 * The walk must never end by draining. Measured 2026-09-28: with the
+	 * socket closed mid-run and this interval absent, the process left with
+	 * exit 0 and wrote nothing - no summary, no JSON - which a caller would
+	 * read as a pass. The interval keeps the loop alive whenever work is in
+	 * flight, so a hung walk HANGS VISIBLY, and the watchdog turns that hang
+	 * into a non-zero failure naming the state instead of silence. Both are
+	 * cleared in the same finally that tears the browser down.
+	 */
+	keepAlive = setInterval(() => {}, 1000);
+	watchdog = setTimeout(() => {
+		console.error(
+			"cursor audit: no progress for 45 minutes - aborting rather than reporting a partial walk as a pass",
+		);
+		teardown();
+		process.exit(1);
+	}, 45 * 60_000);
+
 	dataDir = join(tmpdir(), `lo-cursor-audit-${process.pid}`);
 	mkdirSync(dataDir, { recursive: true });
 	chrome = spawn(
@@ -662,6 +720,11 @@ const main = async () => {
 	}
 
 	const elapsedS = Math.round((Date.now() - started) / 1000);
+	if (summary.stories !== ids.length) {
+		throw new Error(
+			`the walk recorded ${summary.stories} of ${ids.length} stories - refusing to report a truncated run`,
+		);
+	}
 	const report = {
 		origin: ORIGIN,
 		mode: RELOAD ? "reload" : "in-place",
@@ -722,9 +785,16 @@ const main = async () => {
 	}
 };
 
+let keepAlive = null;
+let watchdog = null;
+
 main()
 	.catch((err) => {
 		console.error(err);
 		process.exitCode = 1;
 	})
-	.finally(() => teardown());
+	.finally(() => {
+		clearInterval(keepAlive);
+		clearTimeout(watchdog);
+		teardown();
+	});
