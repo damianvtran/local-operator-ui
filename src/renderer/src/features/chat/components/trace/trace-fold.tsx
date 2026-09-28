@@ -12,14 +12,28 @@
  * two things a pure model cannot own: WHAT a reader's own press may change, and
  * WHEN a finished section condenses.
  *
- * ## Condensed by default, and the one event that condenses
+ * ## Condensed by default, and the reader is the only closer
  *
  * The fold opens on NOTHING but the reader's own press: a group must not arrive
  * open (operator report, 2026-09-26 - groups auto-opened for the newest turn and
- * then never closed, "which defeats the purpose"). It closes on exactly ONE
- * event, encoded below where it cannot be mistaken for a timer: the moment the
- * fold's section stops being the live one, and only while nothing inside it is
- * still running.
+ * then never closed, "which defeats the purpose").
+ *
+ * It closes on THE READER'S press and nothing else (operator report, 2026-09-27:
+ * "[expanded states] shouldn't be closed simply by state updates if they've been
+ * explicitly opened"). The condense this component used to own - one close, the
+ * moment the fold's section stopped being live, guarded by `!sectionLive &&
+ * live === null` - was written for the auto-open that no longer exists: with
+ * groups arriving condensed, its only client was the reader's OWN fold, and it
+ * closed that under them. The two failure modes it had were both reported or
+ * measured: a live turn whose section edge fires while the reader watches
+ * (the rig's fold rounds reproduce it at every turn end - `expanded true ->
+ * false` in the trace), and any frame where the working line is transiently
+ * absent mid-turn (a gate, a reconnect) closing a fold whose turn is still
+ * running. So the close is not here, and `open`/`onOpenChange` are REQUIRED
+ * rather than defaulted: the state lives in the transcript's own registry
+ * (`fold-open.ts`), which is what lets an explicit open survive the fold's
+ * React identity changing under a windowed run (see that module's header) and
+ * what resets it exactly once, on a conversation switch.
  *
  * ## What the condensed header says
  *
@@ -93,20 +107,22 @@ export type TraceFoldProps = {
 	/**
 	 * The call being watched (`foldLive`), or null when no call is EXECUTING.
 	 *
-	 * It names the header while the fold is collapsed. It is NOT the fold's
-	 * settle predicate on its own: the close is gated on `!sectionLive &&
-	 * live === null`, and a composing or queued call is unsettled yet unnamed -
-	 * those phases cannot coexist with `!sectionLive`, so the section guard is
-	 * what holds them, and the call executing as the section ends is the race
-	 * this value closes by itself (UX round 2, U2 narrowed it from "unsettled").
+	 * It names the header while the fold is collapsed, and it is the fold's
+	 * running clock while the fold is open - nothing else. The close it used to
+	 * gate left with the condense (see the state rule above): the reader's press
+	 * is the only closer now, so an executing call here can never hold a fold
+	 * open or close one.
 	 */
 	live: FoldLive | null;
 	/**
-	 * The fold's section is the live one: the newest turn, while that turn is in
-	 * flight. While this is true nothing the app does may touch an open fold; the
-	 * condense fires on the transition out of it.
+	 * Whether the reader has this fold open. Owned by the CALLER - the transcript's
+	 * registry (`fold-open.ts`) - not by this component: a fold's key changes when
+	 * the render window's edge walks through its run, and state held here would be
+	 * thrown away by the remount (see that module's header for the measured walk).
 	 */
-	sectionLive: boolean;
+	open: boolean;
+	/** The reader's press, reported upward for the registry to hold. */
+	onOpenChange: (open: boolean) => void;
 	/** The fold's own margin: the gap tier its first row arrived with (D8). */
 	className?: string;
 	/**
@@ -147,51 +163,24 @@ export const TraceFold = ({
 	failedCount,
 	span,
 	live,
-	sectionLive,
+	open,
+	onOpenChange,
 	className,
 	recordIds,
 	children,
 }: TraceFoldProps) => {
 	/*
-	 * THE CONDENSE RULE, in one place, because this is exactly the rule someone
-	 * will later "simplify" into a bug:
-	 *
-	 *   finished sections condense; the live section and anything the reader has
-	 *   open obey the reader.
-	 *
-	 * The fold opens on the reader's own press and on nothing else, and it closes
-	 * on ONE event: the moment its section stops being the live one. Two guards
-	 * keep that event honest:
-	 *
-	 * - it never fires while the section is STILL live, so a fold the reader
-	 *   opened mid-watch is never closed underneath them while they watch it;
-	 * - it never fires while a call in the run has not settled: the close reads
-	 *   `live === null` (nothing EXECUTING) AND the section having ended, so a
-	 *   call composing or queued - unsettled but unnamed - cannot slip past it
-	 *   while `!sectionLive`, because the turn working through such a call is
-	 *   exactly what `sectionLive` reports. The call executing as the section
-	 *   ends is the race the `live` half closes on its own (UX round 2, U2).
-	 *
-	 * `armed` is what makes this an EVENT rather than a state: it is set while the
-	 * section is live and cleared when the condense fires once, so a fold restored
-	 * already-finished - or one the reader opens AFTER its section ended, like the
-	 * failed-row jump does - stays open. Only the transition out of a live section
-	 * condenses. Do not turn this into a timer, a hover rule, or a
-	 * "close it if nobody is looking" heuristic: the section's own end is the only
-	 * event the reader has agreed to.
+	 * NO CONDENSE EVENT LIVES IN THIS COMPONENT, and that is now the whole of the
+	 * state rule (operator report, 2026-09-27): a fold is opened and closed by
+	 * the reader's own press, and the transcript's registry holds that across
+	 * remounts. The rule this replaces - "one close, when the section stops being
+	 * live" - belonged to the auto-open that no longer exists; its remaining
+	 * client was the reader's own fold, which it closed under them (the fold
+	 * rounds' trace: `expanded true -> false` at a turn end; and a working line
+	 * that blinks false mid-turn - a gate, a reconnect - closes it early). Do not
+	 * reintroduce an app-driven close here: an explicitly-opened fold is the
+	 * reader's until they close it or switch conversations.
 	 */
-	const [open, setOpen] = useState(false);
-	const [armed, setArmed] = useState(sectionLive);
-	useEffect(() => {
-		if (sectionLive) {
-			setArmed(true);
-			return;
-		}
-		if (armed && live === null) {
-			setArmed(false);
-			setOpen(false);
-		}
-	}, [sectionLive, armed, live]);
 
 	/*
 	 * The run's clock. `span.running` ticks it against now; a settled span freezes
@@ -219,7 +208,7 @@ export const TraceFold = ({
 				 * and the app's state disagreeing about whether the fold is open.
 				 */
 				open={open}
-				onOpenChange={setOpen}
+				onOpenChange={onOpenChange}
 				/*
 				 * The summary is the aggregate line, so the chevron is what carries "there are
 				 * rows in here" — the count alone would read as a statement of fact rather

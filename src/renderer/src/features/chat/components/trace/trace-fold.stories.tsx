@@ -37,7 +37,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
-import type { ReactNode } from "react";
+import { type ComponentProps, type ReactNode, useState } from "react";
 import "../../../../styles/index.css";
 import { foldSummary } from "../../canonical/trace-fold-model";
 import { ToolRow } from "./tool-row";
@@ -124,13 +124,38 @@ const FoldRows = ({ specs }: { specs: RowSpec[] }) => (
 	</>
 );
 
+/*
+ * THE CALLER'S HALF OF THE CONTRACT, for every story (fold rounds,
+ * 2026-09-27): the transcript owns the fold's open state (`fold-open.ts`, so an
+ * explicit open survives the remounts a windowed run causes) and hands it back
+ * as `open`. A story that rendered the fold bare would be imaging a caller that
+ * does not exist - and the press, which several sweeps rely on, is this host's
+ * `setOpen` exactly as it is the registry's. Hoisted to module scope, not
+ * defined inside `render`: a component constructed per render is a new TYPE,
+ * and React would remount the fold (and drop the state this exists to hold).
+ */
+const FoldHost = (props: ComponentProps<typeof TraceFold>) => {
+	const [open, setOpen] = useState(false);
+	// The spread's `open`/`onOpenChange` (the inert story defaults) are
+	// deliberately overridden: the host plays the registry, and the press must
+	// land in its state for the sweeps that click the trigger.
+	return <TraceFold {...props} open={open} onOpenChange={setOpen} />;
+};
+
 const meta = {
 	title: "chat/trace-fold",
 	component: TraceFold,
 	parameters: { layout: "fullscreen" },
+	/*
+	 * Completeness aid, not behaviour: `open`/`onOpenChange` are required props
+	 * (the transcript's registry owns them), so every story declares them - but
+	 * the HOST below is what actually drives them, exactly as the registry does.
+	 * These defaults are inert.
+	 */
+	args: { open: false, onOpenChange: () => {} },
 	render: (args) => (
 		<Sheet>
-			<TraceFold {...args} />
+			<FoldHost {...args} />
 		</Sheet>
 	),
 } satisfies Meta<typeof TraceFold>;
@@ -155,7 +180,6 @@ export const Live: Story = {
 	args: {
 		...foldProps(LIVE_ROWS),
 		span: { startedAtMs: 1_000, endedAtMs: 11_000, running: false },
-		sectionLive: true,
 		recordIds: ["s1", "s2", "s3", "s4"],
 		children: <FoldRows specs={LIVE_ROWS} />,
 	},
@@ -181,7 +205,6 @@ export const LongName: Story = {
 			return { ...foldProps(specs), children: <FoldRows specs={specs} /> };
 		})(),
 		span: { startedAtMs: 1_000, endedAtMs: 13_000, running: false },
-		sectionLive: true,
 		recordIds: ["s1", "s2", "s3", "s4"],
 	},
 };
@@ -198,7 +221,6 @@ export const MidRun: Story = {
 	args: {
 		...foldProps(MID_RUN_ROWS),
 		span: { startedAtMs: 1_000, endedAtMs: 34_000, running: false },
-		sectionLive: true,
 		recordIds: ["s1", "s2", "s3", "s4"],
 		children: <FoldRows specs={MID_RUN_ROWS} />,
 	},
@@ -218,7 +240,6 @@ export const Finished: Story = {
 		...foldProps(FINISHED_ROWS),
 		span: { startedAtMs: 1_000, endedAtMs: 73_000, running: false },
 		live: null,
-		sectionLive: false,
 		recordIds: ["s1", "s2", "s3", "s4", "s5"],
 		children: <FoldRows specs={FINISHED_ROWS} />,
 	},
@@ -245,7 +266,6 @@ export const Expanded: Story = {
 		...foldProps(KINDS_ROWS),
 		span: { startedAtMs: 1_000, endedAtMs: 73_000, running: false },
 		live: null,
-		sectionLive: false,
 		recordIds: ["s1", "s2", "s3", "s4"],
 		children: <FoldRows specs={KINDS_ROWS} />,
 	},
@@ -263,7 +283,6 @@ export const Restored: Story = {
 		...foldProps(RESTORED_ROWS),
 		span: null,
 		live: null,
-		sectionLive: false,
 		recordIds: ["h1"],
 		children: <FoldRows specs={RESTORED_ROWS} />,
 	},
@@ -307,7 +326,6 @@ export const AgentOps: Story = {
 		...foldProps(AGENT_OPS_ROWS),
 		span: { startedAtMs: 1_000, endedAtMs: 6_000, running: false },
 		live: null,
-		sectionLive: false,
 		recordIds: ["s1", "s2", "s3", "s4", "s5", "s6", "s7"],
 		children: <FoldRows specs={AGENT_OPS_ROWS} />,
 	},
