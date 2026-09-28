@@ -37,9 +37,12 @@ export const FileViewerState: FC<FileViewerStateProps> = ({
 	quiet = false,
 	children,
 }) => (
+	/* The state is the pane's own body, so it wears the PANE's ground
+	   (`canvas/index.tsx`) — the drawer's rung — rather than the conversation's
+	   `canvas`: it was the ambient body the pane's root was, one layer down. */
 	<div
 		className={cn(
-			"flex h-full flex-col items-center justify-center gap-2 bg-canvas p-6 text-center",
+			"flex h-full flex-col items-center justify-center gap-2 bg-elevated p-6 text-center",
 		)}
 	>
 		<p

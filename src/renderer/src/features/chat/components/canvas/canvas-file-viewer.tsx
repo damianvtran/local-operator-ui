@@ -806,17 +806,20 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 					 * implements, and § 9.2 names this list among the surfaces it binds.
 					 *
 					 * WHY THE PLANE IS THIS ELEMENT AND NOT THE PANE ROOT. The pane root
-					 * has to stay `canvas` - the operator's report made the whole dock the
-					 * page's ground so the window reads as chrome beside work rather than
-					 * as three stacked panels (`canvas/index.tsx`), and
-					 * `scripts/pane-slot-ground.test.mjs` reads that one expression and
-					 * refuses a pane rooted anywhere else. So the two directions land on a
+					 * cannot carry it: since the drawer's-rung pass the root stands at
+					 * the lane's LAST stop - `elevated` (`canvas/index.tsx`), the rung the
+					 * operator's report put the whole dock's ground at so the window reads as
+					 * chrome beside work rather than as three stacked panels - and
+					 * `scripts/pane-slot-ground.test.mjs` derives every pane root's rung
+					 * from the lane's own gradient rather than from a literal, refusing a
+					 * root painted anywhere else. So the two directions land on a
 					 * single element and the resolution is to SPLIT it rather than to
-					 * relax either: the root keeps `canvas`, and the list's own box - the
+					 * relax either: the root keeps the lane's stop (`elevated`), and the
+					 * list's own box - the
 					 * rows' painted ancestor, the panel's only scroll container and the
 					 * box whose width the rows query - carries the `surface` its rows were
 					 * authored against. The chrome bar and the search head above it stay
-					 * on the root's `canvas` and keep no ground of their own.
+					 * on the root's own rung and keep no ground of their own.
 					 *
 					 * WHY IT MATTERS, MEASURED (the repo's own `deltaE` over all 59
 					 * palettes): resolved off `canvas`, `rowSelected` falls under the 2.0

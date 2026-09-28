@@ -1680,6 +1680,32 @@ const STAMP_BINDING_NOTES = [
 	 * and the reason the stills did not move.
 	 */
 	"mouseCursorRestampNote",
+	/*
+	 * AND THE CHAT-MEASURE LANE'S FOLD: `foldOntoAc83ec7d92Note` states the pair
+	 * the folded tip binds AND the retarget the fold carries (the measure moves
+	 * to 810px - 900 minus exactly 10% - and the set's 12 frames were re-taken
+	 * at the folded tip), so it is held to the pair this file ships rather than
+	 * read as history.
+	 */
+	"foldOntoAc83ec7d92Note",
+	/*
+	 * AND THE SECOND FOLD'S: `foldOnto8367cbfaeeNote` states the pair the second
+	 * folded tip binds and that no frame moved for it, so it is held to the pair
+	 * this file ships rather than read as history.
+	 */
+	"foldOnto8367cbfaeeNote",
+	/*
+	 * AND THE THIRD FOLD'S: `foldOnto8320e52366Note` states the pair the third
+	 * folded tip binds and that no frame moved for it, so it is held to the pair
+	 * this file ships rather than read as history.
+	 */
+	"foldOnto8320e52366Note",
+	/*
+	 * AND THIS FOLD'S: `foldOnto55d7b0a19bNote` states the pair the fourth
+	 * folded tip binds, so it is held to the pair this file ships rather
+	 * than read as history.
+	 */
+	"foldOnto55d7b0a19bNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2538,6 +2564,84 @@ const BRANCH_RECORDS = [
 	 * for.
 	 */
 	"mathCurrencyCaptureNote",
+	/*
+	 * And the chat-measure lane's fold record rides beside it - registered here
+	 * for the same completeness reason: a fold that started from main's copy
+	 * would drop it first.
+	 */
+	"foldOntoAc83ec7d92Note",
+	/*
+	 * And the second fold's record rides beside them - registered here for the
+	 * same completeness reason.
+	 */
+	"foldOnto8367cbfaeeNote",
+	/*
+	 * And the third fold's record rides beside them - registered here for the
+	 * same completeness reason.
+	 */
+	"foldOnto8320e52366Note",
+	/*
+	 * And this fold's record rides beside them - registered here for the same
+	 * completeness reason.
+	 */
+	"foldOnto55d7b0a19bNote",
+	/*
+	 * And by THIS lane, whose five folded records report review round 1 (R5): the
+	 * drawer's-rung pass wrote them, their manifest entries survived the folds, and
+	 * this list - whose promise is that a fold resolved from main's copy would not
+	 * drop them - had not grown them, so a resolver could have dropped all five
+	 * without a word. Registered here rather than only noted, because naming them is
+	 * the one-line widening the precedent above set. The second fold, the
+	 * remediation round and its own stamp write join beside them for the same
+	 * reason; the remediation's registration is this commit and its stamp
+	 * re-derivation the docs-only commit that follows.
+	 */
+	"canvasElevatedPassNote",
+	"canvasElevatedStaleFramesNote",
+	"canvasElevatedBeforeNote",
+	"canvasElevatedFoldNote",
+	"canvasElevatedRestampNote",
+	"canvasElevatedSecondFoldNote",
+	"canvasElevatedRemediationPassNote",
+	"canvasElevatedRemediationRestampNote",
+	/*
+	 * And the THIRD fold's own, added with it: a fold that resolved this file by
+	 * key against a main that had moved 81 commits, and the record of what that
+	 * resolution kept from each side.
+	 */
+	"canvasElevatedThirdFoldNote",
+	/*
+	 * And the FOURTH fold's own, added with it: the fold onto `0f23c76de5`'s
+	 * successor `76ce9a7aac` (the 0.31.10 train), resolved the same by-key way
+	 * as its predecessor.
+	 */
+	"canvasElevatedFourthFoldNote",
+	/*
+	 * And the FIFTH fold's own, added with it: the fold onto `76ce9a7aac`'s
+	 * successor `ac83ec7d92`, resolved the same by-key way.
+	 */
+	"canvasElevatedFifthFoldNote",
+	/*
+	 * And the SIXTH fold's own, added with it: the fold onto `ac83ec7d92`'s
+	 * successor `8367cbfaee` (#591's agent-hub org-empty-state fix), resolved
+	 * the same by-key way.
+	 */
+	"canvasElevatedSixthFoldNote",
+	/*
+	 * And the SEVENTH fold's own, added with it: the fold onto `8367cbfaee`'s
+	 * successors through `55d7b0a19b` (#595's Aida rail row and composer door,
+	 * #607's 0.31.11 window, #596's pointer-cursor restore, #604's currency-math
+	 * pass), resolved the same by-key way. Main's three records above rode in
+	 * beside this lane's at the same point, kept whole.
+	 */
+	"canvasElevatedSeventhFoldNote",
+	/*
+	 * And the EIGHTH fold's own, added with it: the fold onto `55d7b0a19b`'s
+	 * successor `e2394f9ff1` (the measure-narrow lane's merge and its own
+	 * three folds), resolved the same by-key way. Main's four records above
+	 * rode in beside this lane's at the same point, kept whole.
+	 */
+	"canvasElevatedEighthFoldNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
