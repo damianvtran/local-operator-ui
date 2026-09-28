@@ -6240,21 +6240,19 @@ export const STORIES = [
 	 * round-2 review measured that nobody had pressed the button at all.
 	 */
 	/*
-	 * AND A NOTE ON WHAT THIS FRAME PROVES, because round 3 measured that it is less than the row's
-	 * name suggests (design review round 3, D13). The story's play drives the real path: it presses the
-	 * remedy, asserts the re-issue carried `waitS: 300`, waits for the re-read, and then asserts the
-	 * CANVAS agrees with the receipt — the panel reads `Conversations (1)` and the canvas draws exactly
-	 * one conversation on this device, checked synchronously against the DOM. What the FRAME shows is
-	 * the receipt (it carries `expectSentence` for that reason) over the world the capture's own mount
-	 * builds, which is the pre-move fixture: measured on this branch, the notice and the pre-move
-	 * canvas appear together while the play ends in the post-move world.
+	 * AND THIS FRAME NOW PROVES MORE THAN IT DID (design review round 3, D13; round 4, D18). The play
+	 * drives the whole path - it presses the remedy, asserts the re-issue carried `waitS: 300`, waits
+	 * for the re-read, and asserts the canvas agrees with the receipt (the panel reads
+	 * `Conversations (1)` and this device draws exactly one conversation) - and the story's fixture
+	 * ANSWERS that world (`afterTransfer`), so the picture beside the notice is the moved one: the
+	 * peer holds `Sweep 001`, this device holds `Resume the roadmap`, and the panel's count is 1.
 	 *
-	 * So the claim is narrowed to what the pixels carry — the receipt, its sentence and its Dismiss —
-	 * and the post-move state is pinned where it can be: the story's own assertions. A frame that
-	 * implied the canvas beside it shows a landed move would claim a world the shutter never took, which
-	 * is the drift this round exists to remove.
+	 * ROUND 3 NARROWED THIS ROW'S CLAIM BECAUSE THE FRAME SHOWED THE PRE-MOVE WORLD, and round 4 found
+	 * why the narrowing was unnecessary: the hook was wired into `MoveCopyWithUndo` rather than into
+	 * this story, so the re-read never changed anything. The claim is the receipt AND the world under
+	 * it; the `expectSentence` still guards the shutter.
 	 */
-	["mesh-tab--move-busy-waited", 1380, 900, { expectSentence: "holds it now" }],
+["mesh-tab--move-busy-waited", 1380, 900, { expectSentence: "holds it now" }],
 	/*
 	 * AND A NOTE FOR A LATER READER (design review round 1, D7): this row shows a 2 px
 	 * accent outline outside the dialog frame and `move-confirm` shows none, which is the
