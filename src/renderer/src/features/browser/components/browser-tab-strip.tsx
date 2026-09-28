@@ -429,6 +429,32 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	useSuppressBrowserView(actionsTabId !== null, "browser-tab-actions");
 
 	/**
+	 * A TAB THAT STOPS EXISTING TAKES ITS MENU WITH IT — AND RELEASES THE VIEW.
+	 *
+	 * The menu renders only inside its own row (`actionsTabId === tab.tabId`), so a tab
+	 * that leaves `tabs` WITHOUT a press on the menu — an agent tool closing it in main,
+	 * any close this strip did not initiate — unmounts the row and its portalled content
+	 * while `actionsTabId` still names it: the registration above would stay up (the
+	 * paused note painting "close it to bring the page back" with no menu to close), and
+	 * the close-focus effect's `actionsTabId !== null` gate would stay shut. The in-band
+	 * row carried exactly this guard ("A tab that is closed, or that stops existing, must
+	 * not leave an action row pointing at nothing"); it moves here with the menu. Review
+	 * round 1, M-1 — reproduced with the probe the reviewer attached.
+	 *
+	 * THE CARET: while the menu is open, focus is inside it (Radix's layer is modal, so
+	 * the only place the caret can be), and an unmount would drop it to `<body>`. Parking
+	 * on the scroller is the same move a batch close makes, for the same reason — the
+	 * strip is where the caret came from — and it cannot steal a caret that was
+	 * elsewhere, because while this menu is open there is nowhere else it could be.
+	 */
+	useEffect(() => {
+		if (actionsTabId === null) return;
+		if (tabs.some((tab) => tab.tabId === actionsTabId)) return;
+		setActionsTabId(null);
+		scrollerRef.current?.focus();
+	}, [actionsTabId, tabs]);
+
+	/**
 	 * Dismiss the pinned list and put the caret back where it came from.
 	 *
 	 * THE RETURN IS THE WHOLE REASON THE TRIGGER HAS A REF: every dismissal path
@@ -1310,6 +1336,18 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 											{actionsTabId === tab.tabId && (
 												<DropdownMenuContent
 													align="end"
+													/*
+													 * CLEAR OF THE APPROVALS PILL (design round 1, D2). The panel is end-anchored
+													 * to its trigger, so on the strip's rightmost tab its right edge lands at
+													 * CSS 1300-1301 in the operator's own worst case, over the pill whose
+													 * leading content starts at CSS 1281.5 — the pill read `pprovals`.
+													 * `collisionPadding` is stated against the WINDOW's right edge rather than
+													 * the pill's coordinates because the pill is right-anchored: 120 = the
+													 * pill's own inset (~98.5) plus a 20px gap, so a panel that would reach
+													 * into that corner shifts left to 1260 and one that fits is untouched.
+													 * The shift only engages when the panel would otherwise overlap.
+													 */
+													collisionPadding={{ right: 120 }}
 													className="min-w-56"
 													data-tour-tag="browser-tab-actions"
 												>

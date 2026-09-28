@@ -389,6 +389,16 @@ export function readSession(
  * itself in the same call, so no later `record()` or `flush()` can write the
  * content this function refused (review round 3, B2's MAJOR). A caller that asked
  * and then wrote anyway was the defect, so there is no longer such a caller.
+ *
+ * BOTH COUNTS ARE RESTORABLE ROWS (review round 1, m-2). `readSession` excludes
+ * the rows whose tab was showing a load failure at the capture, so the capture
+ * side has to exclude them too: otherwise a disk record with F flagged rows
+ * shifted the refusal boundary down by F while the capture side still counted
+ * those rows, and the corner the reviewer measured went the wrong way - record =
+ * 5 healthy + 1 flagged, quit-time capture = 4 healthy + 1 flagged was ACCEPTED
+ * (5 !< 6), losing one restorable tab's recovery, where the guard's own
+ * one-sided bias says refuse exactly there. The caller filters on the same mark
+ * the reader does, so the two sides count the same thing.
  */
 export function stopSnapshotDecision(
 	rows: number,
@@ -587,8 +597,11 @@ export class BrowserSessionStore {
 	 * rather than a note, and the test beside it drives the length condition
 	 * explicitly instead of a representative sequence. */
 	commitStopCapture(rows: PersistedTab[]): { write: boolean; reason: string } {
+		// RESTORABLE ROWS ON BOTH SIDES (review round 1, m-2): `readSession` drops the
+		// flagged rows, so the capture side drops them too - the counts have to describe
+		// the same population or the guard's threshold moves with the dead-tab count.
 		const decision = stopSnapshotDecision(
-			rows.length,
+			rows.filter((row) => row.lastLoadFailed !== true).length,
 			readSession(this.path, this.log).length,
 		);
 		if (decision.write) {

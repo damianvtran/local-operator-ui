@@ -810,6 +810,46 @@ test("a refused quit-time capture - shorter than the durable record - is not wri
 	);
 });
 
+test("a quit-time capture is compared restorable-row to restorable-row, so a flagged row cannot loosen the refusal (review round 1, m-2)", () => {
+	/*
+	 * THE CORNER THE REVIEWER MEASURED. The durable read drops the rows whose tab was
+	 * showing a load failure at the capture, so a record carrying flagged rows used to
+	 * move the refusal boundary while the capture side still counted those rows: record
+	 * = 5 healthy + 1 flagged (durable count 5), quit-time capture = 4 healthy + 1
+	 * flagged (raw count 5) was ACCEPTED, losing one restorable tab's recovery - which
+	 * is exactly what the guard's one-sided bias exists to prevent. Both sides now
+	 * count restorable rows, so 4 < 5 refuses.
+	 */
+	const dir = join(root, "session-stop-restorable-parity");
+	const store = new BrowserSessionStore({ dir, debounceMs: 20 });
+	const flagged = (row) => ({ ...row, lastLoadFailed: true });
+	const durable = [
+		...sessionRows(5, "kept"),
+		flagged(sessionRows(1, "dead")[0]),
+	];
+	store.record(durable);
+	store.flush();
+	assert.equal(
+		readSession(store.filePath).length,
+		5,
+		"five restorable rows durable; the flagged row is refused a restore",
+	);
+
+	const short = [...sessionRows(4, "live"), flagged(sessionRows(1, "dead")[0])];
+	const decision = store.commitStopCapture(short);
+	assert.equal(
+		decision.write,
+		false,
+		`four restorable < five restorable, so the record is kept: ${decision.reason}`,
+	);
+	store.flush();
+	assert.equal(
+		readSession(store.filePath).length,
+		5,
+		"and the refusal is binding on the flush that follows",
+	);
+});
+
 test("an accepted quit-time capture still lands, and the later teardown capture cannot replace it", () => {
 	const dir = join(root, "session-stop-accept");
 	const store = new BrowserSessionStore({ dir, debounceMs: 20 });

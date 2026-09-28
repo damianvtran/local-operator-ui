@@ -34,7 +34,7 @@ Storybook story cannot answer any of them (a fourth and a fifth arrive in the
 | `17b-actions-page-restored/localOperatorDark.webp` | the dismissal (2026-09-28 pass): after Escape the menu is gone, no suppression is left and the paused note has yielded; the user tab's page has no handle to composite, so the content area is chrome-only, as in `03` |
 | `18-approvals-dock/localOperatorDark.webp` | the dock open, the page still visible and narrowed, no suppression (D2, D9) |
 | `19-strip-marked-tab-at-rest/localOperatorDark.webp` | the strip at rest with a user and an agent-marked row, **and on this head the strip IS in the picture**: re-taken 2026-09-17 on the harness that calls `exposeStrip()` before every frame, the frame carries the strip's own row with the `Agent` chip legible on `Proof page two` beside the group label `proof-open 1` and the unmarked row `Proof page one` (see the D9 note below for what moved and what the DOM reading says). The no-daemon banner is still painted across the top of the window — the harness has no daemon by design — but the strip now sits BELOW it rather than under it, which is the difference between a frame that shows the subject and one that only shows where it would have been |
-| `20-strip-failed-and-agent-markers/localOperatorDark.webp` | the same surface with the band OPEN, and the same re-take: the strip's own row carries the pair at once — `Agent` and the `Failed` pill side by side on `127.0.0.1:52792/broken` — with the band's items (`Let an agent use "Proof page one"…`, `Close "Proof page one"`, `Close 1 other tab`, `Copy URL`) below it and the URL bar under those. This is the frame D11/D12 asked for: the closed actions block is gone and the band carries TWO counted closes, which are the band's only red — `Close "Proof page one"` and `Close 1 other tab` (the four-close count is the batch story's, in `browser-tab-strip/actions-expanded-batch`) |
+| `20-strip-failed-and-agent-markers/localOperatorDark.webp` | the same surface with **the band in its OLD in-band form** — OWED A RE-SHOOT at the 2026-09-28 pass (see the note below): the strip's own row carries the pair at once — `Agent` and the `Failed` pill side by side on `127.0.0.1:52792/broken` — with the band's items (`Let an agent use "Proof page one"…`, `Close "Proof page one"`, `Close 1 other tab`, `Copy URL`) below it and the URL bar under those. The MARKER claim is untouched by the 2026-09-28 pass (no diff line alters chip rendering) and still depicts this tree; the band's form does not |
 | `21-dead-tabs-in-strip/localOperatorDark.webp` | the mess, made deliberately (2026-09-28 pass): two tabs driven at the dead port, both marked `Failed` in the strip (`tabIds [13,14]`), the active one's failure panel behind them |
 | `22-close-failed-tabs/localOperatorDark.webp` | the counted cleanup (2026-09-28 pass): `Close 2 failed tabs` — the count IS the disclosure — offered from the dead tab itself, with the paused note behind the open menu |
 | `23-dead-tabs-cleared/localOperatorDark.webp` | the strip after ONE press (2026-09-28 pass): the failed set is gone (`failed tabs after the press: []`) |
@@ -188,8 +188,12 @@ state the old frame photographed no longer exists, and the name moved with it (s
 `12-restored-after-restart/`, `17b-actions-page-restored/`, `21-dead-tabs-in-strip/`,
 `22-close-failed-tabs/` and `23-dead-tabs-cleared/`. WHAT DID NOT MOVE:
 `03-surface-populated/`, `12-approvals-queue/`, `18-approvals-dock/`,
-`19-strip-marked-tab-at-rest/` and `20-strip-failed-and-agent-markers/` are not re-taken
-and keep the pixels of their own runs.
+`19-strip-marked-tab-at-rest/` are not re-taken and keep the pixels of their own runs.
+`20-strip-failed-and-agent-markers/` ALSO was not re-taken, and that is named here rather
+than left to read as current (remediation round 1, reviewer m-4 / designer D1): its band
+is the IN-BAND row this pass deleted, so the frame is owed a re-shoot — see the addendum
+at the end of this section — while its marker claim (the `Agent`/`Failed` pair on one row)
+is untouched by this pass's diff and still depicts this tree.
 
 WHAT EACH NEW FRAME PROVES, from the run's own assertions and transcript (this run
 reported `92 PASS / 0 FAIL / ALL CHECKS PASSED`):
