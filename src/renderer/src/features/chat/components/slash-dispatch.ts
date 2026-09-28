@@ -38,6 +38,7 @@
 import {
 	aidaControlFailureCopy,
 	aidaControlReceipt,
+	aidaMessageText,
 	aidaReservedAction,
 } from "@features/aida/aida-control";
 import {
@@ -54,10 +55,14 @@ import {
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
 import { useAsideStore } from "@shared/store/aside-store";
 import {
+	SEND_FAILURE_COPY,
 	admitChatDraft,
+	composerIdentityFor,
+	isRefusedBeforeAdmission,
 	paneDraftKey,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
+import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import {
 	PANEL_REQUEST_TTL_MS,
 	usePanelPresentationStore,
@@ -311,6 +316,32 @@ function closestCommands(
 }
 
 const PRESENT_DIRECTLY = new Set(["session.goal", "session.context"]);
+
+/**
+ * Put a `/aida <text>` where the user can press Enter on it again.
+ *
+ * The door consumes the composer line it was typed on (`consumed`) and the text
+ * is admitted against HER conversation rather than that one, so a press whose
+ * admission was refused has nothing on the transcript and nothing in the box it
+ * was typed in — the line is simply gone. The store's own boundary rule puts a
+ * refusal raised BEFORE the echo is painted with the COMPOSER (a post-paint one
+ * belongs to the row), so this writes through the composer's own return path
+ * (`returnPayload`, the same one a migrated claim uses) into the identity the
+ * pane about to mount reads (`composerIdentityFor`, so the identity rule stays
+ * in one place).
+ *
+ * `false` is `returnPayload`'s own refusal — the row it belongs to has a send in
+ * flight, which is the same fact that made `admitChatDraft` answer `null` — and
+ * it is REPORTED by the caller rather than swallowed here: a return that could
+ * not be placed must not look like one that was.
+ */
+function returnAidaText(key: string, target: string, text: string): boolean {
+	const store = useConversationInputStore.getState();
+	const identity = composerIdentityFor(key, target);
+	if (store.inputByConversation[identity]?.inFlight !== undefined) return false;
+	store.returnPayload(identity, { text, attachments: [], replies: [] });
+	return true;
+}
 
 export function useSlashDispatch({
 	sessionId,
@@ -581,9 +612,16 @@ export function useSlashDispatch({
 						.catch((error) => showErrorToast(aidaControlFailureCopy(error)));
 					return "consumed";
 				}
+				/*
+				 * The text she is sent, with the `=` escape resolved (`aidaMessageText`):
+				 * `/aida =pause` talks to her ABOUT the word rather than running the
+				 * control, and `/aida =pause now` sends "pause now" — the TUI's own
+				 * grammar, kept in one place rather than re-derived here.
+				 */
+				const message = aidaMessageText(argument);
 				void resolveAida(aida.data)
 					.then((target) => {
-						if (argument) {
+						if (message) {
 							/*
 							 * The PANE-derived key, so a send from here lands on the row a pane
 							 * would write (`send:<sessionId>` when no row owns the conversation)
@@ -601,16 +639,55 @@ export function useSlashDispatch({
 								void admitChatDraft(
 									key,
 									{
-										text: argument,
+										text: message,
 										attachments: [],
 										images: [],
 										mode: "prompt",
 										cwd: "",
 									},
 									target,
-								).catch((error) =>
-									showErrorToast(aidaControlFailureCopy(error)),
-								);
+								)
+									.then((admitted) => {
+										/*
+										 * `null` is `admitChatDraft`'s answer for "a send is
+										 * already in flight on this row". It is silent there by
+										 * design — the composer's own send lock says it in words
+										 * — and this door has no such lock, so it is stated
+										 * here rather than left as the silence the review round
+										 * found. The text goes back on the same best-effort
+										 * terms as a refusal: the press admitted nothing, so
+										 * the box is where it belongs; a row still busy refuses
+										 * the write and the sentence stands alone.
+										 */
+										if (admitted === null) {
+											returnAidaText(key, target, message);
+											showInfoToast(SEND_FAILURE_COPY.sendLock);
+										}
+									})
+									.catch((error) => {
+										/*
+										 * A refusal raised BEFORE the echo was painted (the read
+										 * window `openConversation` just committed, a
+										 * store-write refusal) belongs to the composer — the
+										 * store's own boundary rule — and the door has already
+										 * taken the line out of the box, so the text goes back
+										 * where the user is about to land. When the row that
+										 * text belongs to is mid-send the write is refused, and
+										 * the sentence says that too rather than dropping the
+										 * text under a toast. Every other failure keeps its own
+										 * sentence; the echo it painted is the transcript's.
+										 */
+										if (isRefusedBeforeAdmission(error)) {
+											const placed = returnAidaText(key, target, message);
+											showErrorToast(
+												placed
+													? aidaControlFailureCopy(error)
+													: `${SEND_FAILURE_COPY.sendLock} ${aidaControlFailureCopy(error)}`,
+											);
+											return;
+										}
+										showErrorToast(aidaControlFailureCopy(error));
+									});
 							}
 						}
 						/*

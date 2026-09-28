@@ -42,7 +42,17 @@ import { build } from "esbuild";
 
 const bundle = await build({
 	stdin: {
-		contents: 'export * from "./src/renderer/src/features/aida/aida-control";',
+		contents: [
+			'export * from "./src/renderer/src/features/aida/aida-control";',
+			/*
+			 * And the pieces the copy test CONSTRUCTS its cases from: the two error
+			 * classes whose identity decides what is copy, and the refusal tables the
+			 * pairing family is translated through. Exported from the same bundle so
+			 * the test builds the real classes rather than lookalikes.
+			 */
+			'export { DesktopControlError, UserFacingError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
+			'export { DESKTOP_REFUSAL_CODE, DESKTOP_REFUSAL_SENTENCE } from "./src/shared/desktop-contract";',
+		].join("\n"),
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -50,10 +60,18 @@ const bundle = await build({
 	platform: "node",
 	write: false,
 });
-const { aidaControlFailureCopy, aidaControlReceipt, aidaReservedAction } =
-	await import(
-		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-	);
+const {
+	aidaControlFailureCopy,
+	aidaControlReceipt,
+	aidaMessageText,
+	aidaReservedAction,
+	DesktopControlError,
+	DESKTOP_REFUSAL_CODE,
+	DESKTOP_REFUSAL_SENTENCE,
+	UserFacingError,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
 
 /* ------------------------------------------------------------------- the rule */
 
@@ -84,9 +102,50 @@ test("the reserved words are the WHOLE argument, case-insensitively", () => {
 	assert.equal(
 		aidaReservedAction("=pause"),
 		null,
-		"no escape grammar on this surface: the TUI's `=pause` spelling is not re-derived here",
+		"the `=` escape is resolved by `aidaReservedAction` itself; see the escape's own test",
 	);
 	assert.equal(aidaReservedAction("paused"), null);
+});
+
+test("the `=` escape is a message, never a control (cross-host grammar)", () => {
+	/*
+	 * The TUI's `=pause` spelling, mirrored on this host so both hosts of this one
+	 * command read the same grammar (agent review round 1, MINOR-3): the escape
+	 * turns the argument back into a message, and the `=` itself never reaches her
+	 * — `/aida =pause` is a message ABOUT the word, `/aida =pause now` is the
+	 * sentence "pause now", and one leading `=` is exactly what is stripped.
+	 */
+	assert.equal(
+		aidaReservedAction("=pause"),
+		null,
+		"an escaped word is never the control",
+	);
+	assert.equal(
+		aidaReservedAction("=pause now"),
+		null,
+		"nor is an escaped continuation",
+	);
+	assert.equal(aidaMessageText("=pause"), "pause");
+	assert.equal(aidaMessageText("=pause now"), "pause now");
+	assert.equal(
+		aidaMessageText("  =Status of my projects  "),
+		"Status of my projects",
+	);
+	assert.equal(
+		aidaMessageText("==pause"),
+		"=pause",
+		"ONE `=` is the escape; the rest is the message",
+	);
+	assert.equal(
+		aidaMessageText("="),
+		"",
+		"an escape with nothing behind it is the bare form",
+	);
+	assert.equal(
+		aidaMessageText("pause and think"),
+		"pause and think",
+		"unescaped text passes through unchanged",
+	);
 });
 
 test("receipts confirm the op; status only reports", () => {
@@ -115,14 +174,48 @@ test("receipts confirm the op; status only reports", () => {
 	});
 });
 
-test("a failure's sentence travels verbatim when it has one", () => {
+test("a failure's copy comes from the app's one copy path, never from the throw", () => {
+	/*
+	 * The routing the door depends on (agent review round 1, MINOR-1). A runtime
+	 * exception's `message` is a stack fragment and a pairing refusal's is the
+	 * DAEMON's prose about this app's ownership; neither is copy. EXECUTED here
+	 * rather than pinned as source, because the defect was in the answer itself —
+	 * the old function echoed `error.message` verbatim, which is the leak.
+	 */
 	assert.equal(
-		aidaControlFailureCopy(new Error("Aida is disabled on this backend.")),
-		"Aida is disabled on this backend.",
+		aidaControlFailureCopy(new Error("TypeError: fetch failed")),
+		"Aida's controls could not reach the backend.",
+		"a runtime exception is not copy; the app's own sentence is",
 	);
 	assert.equal(
 		aidaControlFailureCopy(undefined),
 		"Aida's controls could not reach the backend.",
+	);
+	assert.equal(
+		aidaControlFailureCopy(
+			new UserFacingError("Aida is disabled on this backend."),
+		),
+		"Aida is disabled on this backend.",
+		"an authored refusal travels as written",
+	);
+	assert.equal(
+		aidaControlFailureCopy(
+			new DesktopControlError(422, "Aida is disabled on this backend."),
+		),
+		"Aida is disabled on this backend.",
+		"the backend's authored `detail` travels too",
+	);
+	assert.equal(
+		aidaControlFailureCopy(
+			new DesktopControlError(
+				401,
+				"the daemon's own prose about who owns the desktop plane",
+				undefined,
+				DESKTOP_REFUSAL_CODE.refused,
+			),
+		),
+		DESKTOP_REFUSAL_SENTENCE[DESKTOP_REFUSAL_CODE.refused],
+		"a pairing refusal is answered in this app's words, never the daemon's",
 	);
 });
 
@@ -263,15 +356,32 @@ test("the dispatcher's aida branch: capability fail-closed, and the send before 
 		"the capability is asked before anything is called",
 	);
 	assert.ok(
-		branch.indexOf("needs a newer backend") <
-			branch.indexOf("aidaReservedAction"),
-		"and its refusal precedes every route call in the branch",
+		branch.indexOf("needs a newer backend") >= 0,
+		"the capability's refusal is still there to precede them",
+	);
+	/*
+	 * BOTH INDICES ARE REQUIRED TO EXIST before they are compared (agent review
+	 * round 1, MINOR-5): `-1 < n` passes, so a refusal whose text was emptied
+	 * would satisfy a bare comparison — the pin could not fail on the change it
+	 * exists to catch.
+	 */
+	const refusalAt = branch.indexOf("needs a newer backend");
+	const reservedAt = branch.indexOf("aidaReservedAction");
+	assert.ok(
+		refusalAt >= 0 && reservedAt >= 0 && refusalAt < reservedAt,
+		`the refusal must precede every route call in the branch (refusal@${refusalAt}, reserved@${reservedAt})`,
 	);
 	/*
 	 * The reserved words come from the pure module, so the rule is executed by
 	 * this suite rather than re-derived here.
 	 */
 	assert.match(branch, /aidaReservedAction\(argument\)/);
+	/*
+	 * And the `=` escape is resolved before the text is sent, in the one module
+	 * that defines it (cross-host grammar, MINOR-3) — a send of the raw argument
+	 * would deliver the escape character to her.
+	 */
+	assert.match(branch, /const message = aidaMessageText\(argument\);/);
 	/*
 	 * THE ORDER PIN, and the reason this file exists: the message is admitted
 	 * BEFORE the view moves onto her conversation. `openSession` commits a
@@ -292,6 +402,19 @@ test("the dispatcher's aida branch: capability fail-closed, and the send before 
 		/paneDraftKey\(/,
 		"the send lands on the row a pane would write, so the pane that mounts reads the same claim",
 	);
+	/*
+	 * AND A REFUSED TEXT IS NOT LOST (agent review round 1, MINOR-4). The door
+	 * consumed the composer line it was typed on, and the store's boundary rule
+	 * puts a refusal raised BEFORE the echo was painted with the COMPOSER — so it
+	 * must put the text back (through `returnAidaText`, i.e. the composer's own
+	 * `returnPayload`) and say what happened. The row-busy `null` is the same
+	 * obligation for a door that has no send lock: stated, and handed back on the
+	 * same terms, rather than the silence it was.
+	 */
+	assert.match(branch, /isRefusedBeforeAdmission\(error\)/);
+	assert.match(branch, /returnAidaText\(key, target, message\)/);
+	assert.match(branch, /if \(admitted === null\)/);
+	assert.match(branch, /SEND_FAILURE_COPY\.sendLock/);
 	/*
 	 * And the read the branch resolves through is gated on the capability: `UI
 	 * must not call the route below` (design § 3.4) is true of the READ too.
