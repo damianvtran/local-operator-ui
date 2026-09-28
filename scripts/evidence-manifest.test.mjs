@@ -1762,6 +1762,15 @@ const STAMP_BINDING_NOTES = [
 	 * is owed the pair and what the capture moved with it.
 	 */
 	"agentsOfferDismissNote",
+	/*
+	 * AND THIS FOLD'S OWN - `foldOnto55dbaf6118Note` states the pair the folded
+	 * tip binds, the single conflicted path it resolved (this branch's manifest
+	 * against main's), the union decisions the file's own `citationConvention`
+	 * group numbers name, and that no frame was re-taken because main's delta
+	 * touches none of the files this branch draws - so it is held to the pair
+	 * this file ships rather than read as history.
+	 */
+	"foldOnto55dbaf6118Note",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2736,6 +2745,16 @@ const BRANCH_RECORDS = [
 	 * that started from main's copy would drop it first.
 	 */
 	"agentsOfferDismissNote",
+	/*
+	 * And MAIN'S OWN records ride beside it, kept whole by the same fold: the
+	 * interrupted-rows change's capture note (its `captureOrigin.interruptedRowsPass`
+	 * record is not a top-level key, so it cannot be listed here) and this
+	 * fold's own note, both registered for the completeness reason this list
+	 * exists for - a fold that started from a copy without them would drop
+	 * records this branch's tree carries.
+	 */
+	"interruptedRowsCaptureNote",
+	"foldOnto55dbaf6118Note",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

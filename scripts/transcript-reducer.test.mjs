@@ -1525,6 +1525,224 @@ test("the live classification survives the reconcile that follows it", () => {
 });
 
 /* ---------------------------------------------------------------------- *
+ * `skipped` joins `aborted`: the interrupted class is TWO kinds (interrupted
+ * vs failed workstream, and the operator's own case).
+ *
+ * The steering skip stores a synthetic result marked `details.__fault:
+ * "skipped"` (`loop.py`'s `_synthetic_result(... details={FAULT_KEY:
+ * FAULT_SKIPPED})`), and the live compose path announces the same class as
+ * `not_run_kind` on the terminal never-run frame. Both readings share ONE rule
+ * (`isInterruptedFault`), and these cases pin the rule and its BOUNDARY: every
+ * other fault class - the tool's own `execution` failure and the model's
+ * planning faults - keeps the danger row, because those ARE failures.
+ * ---------------------------------------------------------------------- */
+
+test("a durable row the runtime marked skipped reads interrupted, not failed", () => {
+	// THE OPERATOR'S CASE, from the wire fact rather than from the words: before
+	// this half of the fix the row kept `isError`, painted the `failed` word and
+	// expanded under an `Error` label - what the report photographed.
+	const state = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([
+			durableToolEntry({
+				tool_call_id: "c-skipped",
+				content: [{ text: "Tool call skipped: interrupted by steering." }],
+				provider_payload: {
+					details: { __fault: "skipped", __synthetic: true },
+					duration_s: 0.5,
+				},
+			}),
+		]),
+	);
+	const row = ranRow(state, "c-skipped");
+	assert.equal(row.stopped, true, "an interrupt, not a result");
+	assert.equal(row.isError, false, "and the danger ink is cleared with it");
+	assert.equal(
+		row.durationS,
+		0.5,
+		"the backend's own measurement is kept, as for an abort",
+	);
+	assert.equal(
+		row.output,
+		"Tool call skipped: interrupted by steering.",
+		"the harness's words stay one expansion away",
+	);
+});
+
+test("only the two interrupted kinds flip: every other fault class keeps its danger", () => {
+	// The boundary is a CONSCIOUS LIST, not "any fault": pinned as a loop so an
+	// edit that widens `isInterruptedFault` moves this list rather than one
+	// example, and a future core's new value defaults to the failure treatment
+	// (the safe direction) until it is added here.
+	for (const fault of [
+		"execution",
+		"unknown_tool",
+		"invalid_arguments",
+		"duplicate_id",
+		"denied",
+		"gate_failed",
+	]) {
+		const state = applyHistoryPage(
+			EMPTY_TRANSCRIPT,
+			pageOf([
+				durableToolEntry({
+					tool_call_id: `c-${fault}`,
+					provider_payload: { details: { __fault: fault } },
+				}),
+			]),
+		);
+		const row = ranRow(state, `c-${fault}`);
+		assert.equal(row.stopped, false, `${fault} is not an interrupt`);
+		assert.equal(row.isError, true, `${fault} keeps the danger row`);
+	}
+});
+
+test("the end event's own fault marker classifies the row with no stop press", () => {
+	/*
+	 * THE WIRE'S OWN STATEMENT, for a viewer that never saw the press: the
+	 * runtime writes WHY the call ended into `result.details.__fault` - the same
+	 * marker the durable row reads - and `userStoppedAt` is null here, so the
+	 * client-side stop window is nowhere in this test. The duration the backend
+	 * measured is kept beside the classification.
+	 */
+	const endedWith = (callId, fault) =>
+		endFrame(callId, {
+			result: {
+				content: [{ type: "text", text: "aborted" }],
+				is_error: true,
+				details: { __fault: fault, __synthetic: true },
+			},
+		});
+	for (const fault of ["aborted", "skipped"]) {
+		let state = applyEvent(
+			EMPTY_TRANSCRIPT,
+			startedFrame(`c-wire-${fault}`),
+			ARRIVAL,
+		);
+		state = applyEvent(
+			state,
+			endedWith(`c-wire-${fault}`, fault),
+			ARRIVAL + 1_000,
+		);
+		const row = ranRow(state, `c-wire-${fault}`);
+		assert.equal(
+			row.stopped,
+			true,
+			`the end frame's \`${fault}\` marker is the verdict`,
+		);
+		assert.equal(row.isError, false, "and the danger ink yields to it");
+		assert.equal(row.durationS, 0.8, "the measured duration is kept");
+	}
+	// And a genuine execution fault is NOT: the danger row stays.
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		startedFrame("c-wire-fail"),
+		ARRIVAL,
+	);
+	state = applyEvent(
+		state,
+		endFrame("c-wire-fail", {
+			result: {
+				content: [{ type: "text", text: "boom" }],
+				is_error: true,
+				details: { __fault: "execution" },
+			},
+		}),
+		ARRIVAL + 1_000,
+	);
+	const failed = ranRow(state, "c-wire-fail");
+	assert.equal(failed.stopped, false);
+	assert.equal(failed.isError, true);
+});
+
+test("a compose verdict's kind rides the record, and an absent kind changes nothing", () => {
+	/*
+	 * THE NEW FIELD'S CONTRACT. The terminal never-run frame states the class
+	 * (`skipped`, the operator's case, or `aborted`); a frame from a core that
+	 * predates the field states nothing, and that has to mean TODAY'S not-run
+	 * row rather than a new class - the tolerance the UI ships both ways.
+	 */
+	const settle = (over) =>
+		applyEvent(
+			EMPTY_TRANSCRIPT,
+			{
+				type: "tool_call_compose",
+				tool_call_id: "c-kind",
+				tool_name: "bash",
+				argument_bytes: 64,
+				...over,
+			},
+			1,
+		);
+	const skipped = settle({
+		dictation_complete: true,
+		not_run_reason: "Tool call skipped: interrupted by steering.",
+		not_run_kind: "skipped",
+	});
+	assert.equal(ranRow(skipped, "c-kind").notRunKind, "skipped");
+	assert.equal(
+		ranRow(skipped, "c-kind").notRunReason,
+		"Tool call skipped: interrupted by steering.",
+		"the reason is still the harness's own words",
+	);
+	const abortedKind = settle({
+		dictation_complete: true,
+		not_run_reason: "The turn ended before this call ran.",
+		not_run_kind: "aborted",
+	});
+	assert.equal(ranRow(abortedKind, "c-kind").notRunKind, "aborted");
+	// A legacy producer states no kind at all, and a dictation frame never does.
+	const legacy = settle({
+		dictation_complete: true,
+		not_run_reason: "The turn ended before this call ran.",
+	});
+	assert.equal(ranRow(legacy, "c-kind").notRunKind, null);
+	assert.equal(
+		ranRow(legacy, "c-kind").notRunReason,
+		"The turn ended before this call ran.",
+	);
+	const dictating = settle({ dictation_complete: false });
+	assert.equal(ranRow(dictating, "c-kind").notRunKind, null);
+	assert.equal(ranRow(dictating, "c-kind").notRunReason, null);
+});
+
+test("a winning twin's start clears the kind with the reason", () => {
+	// The two-calls-one-id case: the parked row carried a verdict (here
+	// `skipped`), then the twin's start revives the same id. The execution
+	// retires the verdict, and the kind must go with it - a row that kept
+	// classifying as interrupted while a tool is visibly running would be the
+	// same two-readings-one-call defect the fix removes.
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_call_compose",
+			tool_call_id: "c-twin",
+			tool_name: "bash",
+			argument_bytes: 8,
+			dictation_complete: true,
+			not_run_reason: "Tool call skipped: interrupted by steering.",
+			not_run_kind: "skipped",
+		},
+		1,
+	);
+	assert.equal(ranRow(state, "c-twin").notRunKind, "skipped");
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "c-twin",
+			tool_name: "bash",
+			args: { command: "echo hi" },
+		},
+		2,
+	);
+	const row = ranRow(state, "c-twin");
+	assert.equal(row.phase, "running", "the twin's execution revives the row");
+	assert.equal(row.notRunReason, null, "and retires the verdict's reason");
+	assert.equal(row.notRunKind, null, "with its class");
+});
+
+/* ---------------------------------------------------------------------- *
  * The write/edit diff body.
  *
  * `details = {path, added, removed, diff}` is the producer's own payload
