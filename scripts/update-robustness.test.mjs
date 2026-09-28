@@ -2107,17 +2107,32 @@ function runWatchdog({ plan, binDir, env }) {
 		plan.hardTimeoutSeconds <= 25,
 		`a watchdog fixture plan must carry a small hardTimeoutSeconds (got ${plan.hardTimeoutSeconds}): the production default holds the whole test file open (CI freeze, 2026-09-28)`,
 	);
+	const childEnv = {
+		...process.env,
+		...plan.env,
+		// A case's extra environment (the notification kill switch's two
+		// directions) wins per key, exactly as a caller's `env` would.
+		...(env ?? {}),
+		PATH: `${binDir}:${process.env.PATH ?? ""}`,
+	};
+	/*
+	 * UNDEFINED VALUES SCRUB A KEY. The desktop runner sets the notification kill
+	 * switch for every child (scripts/notifications-off.mjs - by design: a suite
+	 * run must not banner on the operator's screen), so a case whose SUBJECT is
+	 * the notice being RAISED has to remove the inherited value rather than leave
+	 * it: `{ LOCAL_OPERATOR_NO_NOTIFICATIONS: undefined }` is how a case says
+	 * "the launch under test carried no switch". CI ran this family to completion
+	 * for the first time on 2026-09-28 (the freeze fix let it reach the tests) and
+	 * caught the inheritance as four failures; the same four reproduce locally
+	 * with the switch exported, and vanish with this scrub.
+	 */
+	for (const [key, value] of Object.entries(childEnv)) {
+		if (value === undefined) delete childEnv[key];
+	}
 	const child = spawn("/bin/sh", ["-c", plan.script], {
 		detached: true,
 		stdio: "ignore",
-		env: {
-			...process.env,
-			...plan.env,
-			// A case's extra environment (the notification kill switch's two
-			// directions) wins per key, exactly as a caller's `env` would.
-			...(env ?? {}),
-			PATH: `${binDir}:${process.env.PATH ?? ""}`,
-		},
+		env: childEnv,
 	});
 	/*
 	 * NO unref ON THIS CHILD, deliberately. Every case awaits `exit` - that is the
@@ -2661,7 +2676,14 @@ test("the watchdog holds while an install is loaded, says so, and starts the app
 		announceSeconds: 1,
 	});
 	const before = fixture.launches().length;
-	const watchdog = runWatchdog({ plan: held, binDir: fixture.binDir });
+	// The notice IS this case's subject, so the launch under test must carry NO
+	// switch: scrub the runner's own kill switch, which it sets for every child
+	// by design (see runWatchdog's undefined-scrub note).
+	const watchdog = runWatchdog({
+		plan: held,
+		binDir: fixture.binDir,
+		env: { LOCAL_OPERATOR_NO_NOTIFICATIONS: undefined },
+	});
 	app.kill();
 
 	/*
@@ -2859,11 +2881,30 @@ test("a failed notification does not change the watchdog's decision or its exit 
 		announceSeconds: 1,
 	});
 	const before = fixture.launches().length;
-	const watchdog = runWatchdog({ plan, binDir: fixture.binDir });
+	// The notice IS this case's subject, so the launch under test must carry NO
+	// switch: scrub the runner's own kill switch, which it sets for every child
+	// by design (see runWatchdog's undefined-scrub note).
+	const watchdog = runWatchdog({
+		plan,
+		binDir: fixture.binDir,
+		env: { LOCAL_OPERATOR_NO_NOTIFICATIONS: undefined },
+	});
 	app.kill();
-	// Past the announcement, and past the poll that follows it: the failing
-	// notifier has been called by now, and nothing has been decided by it.
-	await new Promise((resolve) => setTimeout(resolve, 2500));
+	/*
+	 * WAIT ON THE DECISION, NOT A CLOCK (the rule the hold case above already
+	 * states): the first notice lands after the script's own settle/appear/
+	 * announce stretch, which a loaded host or a slow runner carries past any
+	 * constant a test could pick - measured 2026-09-28: a fixed 2.5 s probe read
+	 * empty on both a Mac host and ubuntu-latest while the notice was merely
+	 * later, and this case failed on CI for that reason once the freeze fix let
+	 * the family run to completion. The deadline is the script's own hard
+	 * bound's neighbourhood, because a notice that never becomes observable is a
+	 * hang, not a slow machine.
+	 */
+	const noticeDeadline = Date.now() + 8000;
+	while (fixture.notifications().length === 0 && Date.now() < noticeDeadline) {
+		await new Promise((resolve) => setTimeout(resolve, 100));
+	}
 	assert.ok(
 		fixture.notifications().length > 0,
 		"the failing notifier was never called, so this proves nothing",
@@ -3015,7 +3056,15 @@ test("without the switch the watchdog's notice is still raised", async () => {
 		appearSeconds: 1,
 		announceSeconds: 1,
 	});
-	const watchdog = runWatchdog({ plan, binDir: fixture.binDir });
+	// THE LAUNCH THIS CASE MEANS IS UNFLAGGED: its absence of the switch is the
+	// subject, and the runner exports the switch to every child by design, so
+	// the absence has to be made rather than assumed (see runWatchdog's
+	// undefined-scrub note).
+	const watchdog = runWatchdog({
+		plan,
+		binDir: fixture.binDir,
+		env: { LOCAL_OPERATOR_NO_NOTIFICATIONS: undefined },
+	});
 	app.kill();
 	/*
 	 * A DEADLINE rather than one tick: the notice is best-effort and backgrounded,
@@ -3071,7 +3120,14 @@ test("the stay-closed notice follows a job that launchd submits late", async () 
 		announceSeconds: 2,
 	});
 	const before = fixture.launches().length;
-	const watchdog = runWatchdog({ plan, binDir: fixture.binDir });
+	// The notice IS this case's subject, so the launch under test must carry NO
+	// switch: scrub the runner's own kill switch, which it sets for every child
+	// by design (see runWatchdog's undefined-scrub note).
+	const watchdog = runWatchdog({
+		plan,
+		binDir: fixture.binDir,
+		env: { LOCAL_OPERATOR_NO_NOTIFICATIONS: undefined },
+	});
 	app.kill();
 	// The ordinary late submission: nothing is loaded when the announcement is
 	// due, and the job appears a second or two into the appear window.
