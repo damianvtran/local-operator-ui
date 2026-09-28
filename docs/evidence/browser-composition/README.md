@@ -137,7 +137,7 @@ border in fact begins 1 px below the second band. The reader is the harness's ow
 finder, and it now collects EVERY matching band and reports their union, with each notice
 named beside it, so a future regression at the strip's top border cannot pass it. Both
 frames carry the markers — `Agent` on `Proof page two` in `19-strip-marked-tab-at-rest/`, `Agent` and `Failed`
-together on `127.0.0.1:52792/broken` in `20-strip-failed-and-agent-markers/` — which is the claim these two names exist to
+together on `127.0.0.1:52706/broken` in `20-strip-failed-and-agent-markers/` — which is the claim these two names exist to
 carry.
 
 **WHY THESE FRAMES CARRY A BANNER, AND WHY THAT IS ABOUT THE MOMENT IN THE RUN RATHER THAN
