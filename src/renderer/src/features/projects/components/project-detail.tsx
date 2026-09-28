@@ -168,10 +168,7 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 					 * variant, not to the height. The list's own `Try again` keeps its
 					 * `sm` size: it stands alone there, with nothing to mismatch.
 					 */}
-					<Button
-						variant="secondary"
-						onClick={() => void detail.refetch()}
-					>
+					<Button variant="secondary" onClick={() => void detail.refetch()}>
 						Try again
 					</Button>
 					<Button
