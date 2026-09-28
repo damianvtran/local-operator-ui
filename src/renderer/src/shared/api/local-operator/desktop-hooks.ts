@@ -505,11 +505,13 @@ export type DesktopFeature =
 	 * in `docs/evidence/mesh-tab/` measure the TAB rather than that chrome - the chrome
 	 * claim is pinned in `scripts/mesh-tab.test.mjs` instead.
 	 *
-	 * SLICE 1 READS ONLY. `session_transfer` is deliberately NOT added here yet: it
-	 * gates the MOVE affordance (a chip's drag target and the table's `Move to…`
-	 * row), and a feature key with no surface behind it is a capability this app
-	 * advertises but cannot exercise. It lands with the drag layer, which is when a
-	 * backend that lacks it must start gating something.
+	 * SLICE 2 ADDS `session_transfer`, which is the surface this paragraph reserved
+	 * the key for: it gates the MOVE affordance (a chip's drop targets and the
+	 * panel's action). The two keys are deliberately separate, and the backend's own
+	 * register states why: a backend can show a peer's sessions and be unable to move
+	 * one, and on `peers` alone this app would draw its move control against a route
+	 * that 404s. Absent ⇒ the control is not mounted — not mounted-disabled — and
+	 * every drag outcome falls back to the read-only row.
 	 */
 	| "peers"
 	/*
@@ -524,6 +526,17 @@ export type DesktopFeature =
 	 * shipped before, rather than a tab that 404s on its first read.
 	 */
 	| "projects"
+	/**
+	 * Moving a conversation between devices: `POST /v1/desktop/sessions/{id}/transfer`.
+	 *
+	 * ITS OWN KEY rather than a version of `peers`, and the split is the backend's
+	 * (`routes/capabilities.py`): a backend can list a peer's sessions and be unable
+	 * to move one, so on `peers` alone the canvas would offer drop targets for a route
+	 * that 404s. Advertised unconditionally by the backend — the keys answer "what can
+	 * this backend do", not "is this machine in a mesh" — so the gate here is about
+	 * the BACKEND's age, not about the mesh's existence.
+	 */
+	| "session_transfer"
 	/*
 	 * AIDA'S CONTROL PLANE (`features.aida`): the read and the control op the
 	 * sidebar's row and the composer's `/aida` share. ITS OWN KEY rather than a
