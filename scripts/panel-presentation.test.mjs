@@ -91,8 +91,13 @@ test("destinationNeedsSession is defined once, on the table", () => {
 	 */
 	assert.match(
 		registry,
-		/return DESTINATIONS\[destination\]\?\.kind !== "machine-panel";/,
-		"the predicate must be `kind !== machine-panel`, with no session or route term",
+		/const kind = DESTINATIONS\[destination\]\?\.kind;/,
+		"the kind is read off the table, so a destination the table has no row for reads `undefined` rather than a name list",
+	);
+	assert.match(
+		registry,
+		/return kind !== "machine-panel" && kind !== "aida";/,
+		"the TWO kinds that address no conversation are exempt - a machine panel describes the machine, and `/aida` OPENS her conversation - and every other answer (an unknown destination's `undefined` included) stays `true`",
 	);
 });
 
