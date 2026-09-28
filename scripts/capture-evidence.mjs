@@ -4383,6 +4383,32 @@ export const STORIES = [
 	["projects-tab--edit-dialog", 1280, 900],
 	["projects-tab--delete-confirm", 1280, 900],
 	["projects-tab--milestone-toggle", 1280, 900],
+	/*
+	 * The board and the timeline (slice 6bc): the switcher's three views on the
+	 * same page. The board's states are the columns — archived joining only
+	 * when it holds rows, an out-of-vocabulary status kept in its own column
+	 * rather than dropped, and the many-cards scroll. The timeline's are the
+	 * axis with bars and all three milestone-mark states plus the today
+	 * marker, the honest no-dates empty axis, and a passed target with an
+	 * overdue milestone going to the trailing "no dates" section for the one
+	 * undated project. The timeline stories stub one `projects.get` per project
+	 * — the fan-out the view itself performs — from the same desktop-bridge
+	 * boundary every other frame in this set uses.
+	 */
+	["projects-tab--board", 1280, 900],
+	["projects-tab--board-many", 1280, 900],
+	["projects-tab--board-statuses", 1280, 900],
+	/* The three board states design round 1, D8 named as the sweep's own gaps:
+	 * a column with no rows (the "No projects here." line), the sessions
+	 * popover open (the card's door, listing links), and the card menu open
+	 * (the no-drag rule's only status door). All three are play-driven: the
+	 * first renders settled, the other two press their own control. */
+	["projects-tab--board-empty-columns", 1280, 900],
+	["projects-tab--board-sessions-popover", 1280, 900],
+	["projects-tab--board-card-menu", 1280, 900],
+	["projects-tab--timeline", 1280, 900],
+	["projects-tab--timeline-no-dates", 1280, 900],
+	["projects-tab--timeline-overdue", 1280, 900],
 	["common-confirmationmodal--dangerous", 1280, 900],
 	/* The operator's own alert, over the screen they were working on: their
 	   update-service.log holds this exact transport code at 09:03:12 on
@@ -4411,6 +4437,16 @@ export const STORIES = [
 	 * answer (design round 2, D9; UX U9).
 	 */
 	["common-updatenotification--error-state-download", 1280, 900],
+	/*
+	 * The two U1 still-working lines, on the surface that owns each: the checking
+	 * card while its check is held open, and the offer panel while its download is
+	 * held open. Both stories render the shipped component and press its real
+	 * control; the delay is narrowed so the line is on screen in the frame, and
+	 * the download story mounts behind the same ready gate its siblings use, so its
+	 * subscription lands on the decorator's bridge (design D2, remediation round 2).
+	 */
+	["common-updatenotification--checking", 1280, 900],
+	["common-updatenotification--downloading", 1280, 900],
 	["common-updatenotification--update-available", 1280, 900],
 	// The state before an install commits: the bundle is downloaded and the footer
 	// that the install fix changed is on screen. It renders the component's own
