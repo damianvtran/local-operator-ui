@@ -76,6 +76,12 @@ const project = (
 const THREE: DesktopProject[] = [
 	project("p1", "payments-migration", {
 		description: "Cut the payments API over to the new service",
+		/* The team fields ship since the backend slice (`title`/`owner`/`team`);
+		 * the three rows cover the three section outcomes — a named team, an
+		 * owner-only row (the fallback bucket) and the `No team` bucket — so
+		 * every frame of this fixture exercises the grouping rule. */
+		owner: "atlas",
+		team: "platform",
 		tags: ["q4", "payments"],
 		start_date: "2026-09-01",
 		target_date: "2026-10-15",
@@ -91,6 +97,9 @@ const THREE: DesktopProject[] = [
 	}),
 	project("p2", "q4-hardening", {
 		description: "Error budgets, retries and the load shed",
+		/* Owner only: no team on this row, so it files under its owner's name. */
+		owner: "atlas",
+		team: null,
 		status: "paused",
 		start_date: "2026-09-10",
 		target_date: "2026-12-01",
@@ -105,6 +114,9 @@ const THREE: DesktopProject[] = [
 	}),
 	project("p3", "docs-pass", {
 		description: "Rewrite the guides against the new CLI",
+		/* Neither field: the `No team` bucket. */
+		owner: null,
+		team: null,
 		status: "done",
 		completed_at: "2026-09-12",
 		milestones_completed: 1,
@@ -122,6 +134,11 @@ const MANY: DesktopProject[] = [
 	...Array.from({ length: 9 }, (_, index) =>
 		project(`m${index}`, `migration-batch-${index + 1}`, {
 			description: `Batch ${index + 1} of the storage migration`,
+			/* Cycled across the two teams and the bucket: the twelve-row list
+			 * overflows its scroller under three sections, which is the state
+			 * the sticky pass photographs. */
+			team: (["platform", "atlas", null] as const)[index % 3],
+			owner: "atlas",
 			target_date: `2026-11-0${(index % 9) + 1}`,
 			estimate: index + 1,
 			milestones_completed: index % 3,
@@ -130,6 +147,30 @@ const MANY: DesktopProject[] = [
 			live_sessions: index % 3,
 			progress_stale: index % 2 === 0,
 			progress_updated_at: FIXTURE_NOW_MS / 1000 - (index + 1) * HOUR_S,
+		}),
+	),
+];
+
+/**
+ * Twenty-four rows, for the sticky story alone: with twelve the whole list
+ * still fits a 1280x900 frame, so the one state that story exists for — the
+ * second section's header reaching the scroller's top — is unreachable, and
+ * the play would be asserting a pin that can never happen.
+ */
+const MANY_LONG: DesktopProject[] = [
+	...MANY,
+	...Array.from({ length: 12 }, (_, index) =>
+		project(`n${index}`, `hardening-batch-${index + 1}`, {
+			description: `Harden surface ${index + 1} against the new load`,
+			team: (["platform", "atlas", null] as const)[index % 3],
+			owner: "atlas",
+			estimate: index + 1,
+			milestones_completed: 0,
+			milestones_total: 2,
+			sessions: 0,
+			live_sessions: 0,
+			progress_stale: false,
+			progress_updated_at: FIXTURE_NOW_MS / 1000 - (index + 2) * HOUR_S,
 		}),
 	),
 ];
@@ -764,6 +805,50 @@ export const NarrowColumns: Story = { render: () => page({ projects: THREE }) };
 
 /** Twelve projects: the list under a scrollbar. */
 export const Many: Story = { render: () => page({ projects: MANY }) };
+
+/**
+ * The sticky team headers, mid-scroll: the second section's header pinned at
+ * the scroller's top with its rows passing under it and the first section's
+ * header pushed out behind it — a state the resting list can never show,
+ * because at rest every header sits in its own flow position.
+ *
+ * THE PLAY SCROLLS BY ITS OWN MEASUREMENT rather than a hard-coded offset:
+ * it brings the second header flush to the scroller's top and asserts it
+ * pinned there, so the frame is the pinned state whenever the row heights
+ * drift or a theme's metrics differ.
+ */
+export const ListTeamsSticky: Story = {
+	render: () => page({ projects: MANY_LONG }),
+	play: playOnce("list-teams-sticky", async () => {
+		const scroller = () =>
+			document.querySelector<HTMLElement>('[data-testid="project-list"] ul');
+		await poll(() => {
+			const element = scroller();
+			return (
+				element !== null && element.scrollHeight > element.clientHeight + 100
+			);
+		}, "the list to overflow its scroller");
+		const element = scroller();
+		if (!element) throw new Error("the list scroller never mounted");
+		const headers = document.querySelectorAll<HTMLElement>(
+			"[data-project-team]",
+		);
+		if (headers.length < 2) {
+			throw new Error(
+				`fewer than two team headers rendered (${headers.length})`,
+			);
+		}
+		const second = headers[1];
+		element.scrollTop +=
+			second.getBoundingClientRect().top - element.getBoundingClientRect().top;
+		await poll(() => {
+			const top =
+				second.getBoundingClientRect().top -
+				element.getBoundingClientRect().top;
+			return top >= -1 && top <= 2;
+		}, "the second header to pin");
+	}),
+};
 
 /** The one project's detail: progress, milestones in all three states, links. */
 export const Detail: Story = {
