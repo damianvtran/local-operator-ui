@@ -2336,6 +2336,25 @@ const BRANCH_RECORDS = [
 	 * same reason this list exists.
 	 */
 	"traceToolLabelsRestampNote",
+	/*
+	 * And by THIS lane, whose five folded records report review round 1 (R5): the
+	 * drawer's-rung pass wrote them, their manifest entries survived the folds, and
+	 * this list - whose promise is that a fold resolved from main's copy would not
+	 * drop them - had not grown them, so a resolver could have dropped all five
+	 * without a word. Registered here rather than only noted, because naming them is
+	 * the one-line widening the precedent above set. The second fold, the
+	 * remediation round and its own stamp write join beside them for the same
+	 * reason; the remediation's registration is this commit and its stamp
+	 * re-derivation the docs-only commit that follows.
+	 */
+	"canvasElevatedPassNote",
+	"canvasElevatedStaleFramesNote",
+	"canvasElevatedBeforeNote",
+	"canvasElevatedFoldNote",
+	"canvasElevatedRestampNote",
+	"canvasElevatedSecondFoldNote",
+	"canvasElevatedRemediationPassNote",
+	"canvasElevatedRemediationRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

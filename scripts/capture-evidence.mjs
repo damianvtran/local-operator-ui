@@ -1159,7 +1159,8 @@ export const STORIES = [
 	// being free (design round 2, D3 asked for this specimen by name).
 	["browser-url-bar--two-digits", 1280, 120],
 	/* The strip's grammar and its chips. Tight to the strip plus a slice of ground
-	   under it: the active tab's notch is the 1px of `canvas` that makes the tab
+	   under it: the active tab's notch is the 1px of the page's own ground
+	   (`elevated`) that makes the tab
 	   continuous with the page, and a frame that stopped at the strip's rule could
 	   not show it. `actions-expanded` is taller by exactly the row the strip grows
 	   when a row's actions open in the band. */
