@@ -1524,6 +1524,15 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"foldOntoA9f4b1d7f4Note",
 	/*
+	 * AND THIS LANE'S OWN: the board/timeline pass. Its subject IS this file's
+	 * binding - the change moves BOTH trees (the projects feature's board,
+	 * timeline, switcher and their pins; the capture rows and this list) and
+	 * re-shoots the whole projects-tab set (144 frames re-taken, 72 added) - so
+	 * a reader is owed the pair and what the capture moved with it, the same
+	 * case `headerRenameInlineRestampNote` is in the list for.
+	 */
+	"projectsBoardTimelineNote",
+	/*
 	 * AND THE REMEDIATION ROUND'S OWN: round 1's fix moves BOTH trees again -
 	 * `src/` for the one commission entry point (clear, cancel, invalidate)
 	 * with its generation guard and the account row's `min-w-0`, `scripts/`
