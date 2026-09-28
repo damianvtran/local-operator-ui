@@ -778,6 +778,17 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 				 * the app, and this is the one surface that owns those input events.
 				 */
 				"[touch-action:none]",
+				/*
+				 * THE PAN SURFACE SAYS IT CAN BE PANNED. `grab` at rest and `grabbing`
+				 * while the press is down - the same pair the mermaid canvas uses,
+				 * with `active:` standing in for that component's pointer-state hook
+				 * because this pan runs through refs and never re-renders. The
+				 * affordance belongs to the EMPTY GROUND and the middle button, which
+				 * is where the pan actually runs: a press that starts on a node does
+				 * not move the canvas, and the node's own button cursor (pointer, from
+				 * the base layer) is what the pointer reads there.
+				 */
+				"cursor-grab active:cursor-grabbing",
 				"focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-[-2px]",
 			)}
 		>

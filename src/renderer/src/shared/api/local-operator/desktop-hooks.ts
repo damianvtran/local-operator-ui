@@ -536,7 +536,16 @@ export type DesktopFeature =
 	 * this backend do", not "is this machine in a mesh" — so the gate here is about
 	 * the BACKEND's age, not about the mesh's existence.
 	 */
-	| "session_transfer";
+	| "session_transfer"
+	/*
+	 * AIDA'S CONTROL PLANE (`features.aida`): the read and the control op the
+	 * sidebar's row and the composer's `/aida` share. ITS OWN KEY rather than a
+	 * bump of anything, because a client that does not read it must keep working
+	 * unchanged: absent means "this backend has no Aida", which hides the row and
+	 * forbids her route (`design.md` § 3.4/§ 4), while every other surface serves
+	 * exactly as it did before.
+	 */
+	| "aida";
 
 /**
  * WHY a negotiated feature surface may not be offered.

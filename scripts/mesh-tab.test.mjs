@@ -942,9 +942,15 @@ test("the three mesh writes exist, and each is gated on the key that owns it", (
 		"src/renderer/src/shared/api/local-operator/desktop-hooks.ts",
 	);
 	assert.match(hooks, /\| "peers"/, "the mesh read's key");
+	/*
+	 * No trailing semicolon is asserted: this key WAS the union's last member until the fold onto
+	 * a main that adds `| "aida"` after it, so the pin now matches the member itself. The claim it
+	 * carries is unchanged - the transfer is a key of its own, not a version of `peers` - and a
+	 * deletion of the member still reddens this line.
+	 */
 	assert.match(
 		hooks,
-		/\| "session_transfer";/,
+		/\| "session_transfer"/,
 		"the transfer is its OWN key, so a backend that can list peers and cannot move one does not offer a control that 404s",
 	);
 	/*
