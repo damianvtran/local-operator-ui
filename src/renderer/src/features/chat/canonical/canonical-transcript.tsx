@@ -1661,6 +1661,38 @@ const atTraceTier = (row: Row): Row => {
 	return copy;
 };
 
+/*
+ * The GROUP-level twin of `atTraceTier`, for the one caller that passes
+ * groups instead of rows: a collapsed run's hidden groups mount inside the
+ * bar's disclosure, and the FIRST of them must arrive at the trace tier the
+ * way `TraceFold` demotes its first row — otherwise it keeps the turn-tier
+ * margin it earned as the turn's opener and the expansion re-introduces a
+ * 32px step between the bar and the row beneath it (design review round 1,
+ * D2: measured 36px box gap / Δ57px centers in the driven app, against the
+ * ledger's own 22px pitch). Same `WeakMap` reuse rule as the row helper: an
+ * untouched group keeps its identity so this adds no per-render copies.
+ */
+const traceTierGroups = new WeakMap<SectionGroup, SectionGroup>();
+const atTraceTierGroup = (group: SectionGroup): SectionGroup => {
+	if (group.kind === "row") {
+		const row = atTraceTier(group.row);
+		if (row === group.row) return group;
+		let copy = traceTierGroups.get(group);
+		if (!copy) {
+			copy = { ...group, row };
+			traceTierGroups.set(group, copy);
+		}
+		return copy;
+	}
+	if (group.gap === "trace") return group;
+	let copy = traceTierGroups.get(group);
+	if (!copy) {
+		copy = { ...group, gap: "trace" };
+		traceTierGroups.set(group, copy);
+	}
+	return copy;
+};
+
 const TranscriptRow = memo(function TranscriptRow({
 	row,
 	isSmallView,
@@ -2352,8 +2384,16 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * place still collapses while a later turn streams.
 	 */
 	const collapse = useMemo(
-		() => collapsePlan(visible, { live: working !== null }),
-		[visible, working],
+		/*
+		 * `live` is the newest run's UNSETTLEDNESS, and it has two halves here,
+		 * not one (design review round 1, D3): the working line covers a turn
+		 * being written, and the READER GATE covers a turn parked on a question —
+		 * the working line deliberately stands down while the question dock holds
+		 * the stage, so a rule that read only `working` condensed a parked turn
+		 * and un-condensed it when the call resumed, with no reader action.
+		 */
+		() => collapsePlan(visible, { live: working !== null || gate !== null }),
+		[visible, working, gate],
 	);
 
 	/*
@@ -2933,7 +2973,19 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 										open={openRuns.has(entry.plan.key)}
 										onOpenChange={(next) => setRunOpen(entry.plan.key, next)}
 									>
-										{entry.children.map((child) => renderGroup(child, true))}
+										{entry.children.map((child, index) =>
+											/*
+											 * The first hidden group drops to the trace tier, the way
+											 * `TraceFold` demotes its first row: the bar replaces the
+											 * group's slot, so the group cannot also keep the turn-tier
+											 * margin it earned as the turn's opener (D2). Every other
+											 * group keeps the gap the unfolded list gave it.
+											 */
+											renderGroup(
+												index === 0 ? atTraceTierGroup(child) : child,
+												true,
+											),
+										)}
 									</TurnSummary>
 								) : (
 									renderGroup(entry.group, entry.suppressClosingLine)

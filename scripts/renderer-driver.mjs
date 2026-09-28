@@ -8302,11 +8302,20 @@ async function sceneTurnCollapse(cdp) {
 	 * is `ask` in this config, so the bash call parks on the question dock and the
 	 * turn cannot finish without an answer; option 1 is Approve, typed and sent
 	 * through the composer's real key handler like the prompt itself. The PARKED
-	 * reading is kept as a note rather than asserted on - it is the state whose
-	 * collapse behaviour the design round will judge beside the others.
+	 * reading is ASSERTED now (design review round 1, D3): a turn waiting on the
+	 * gate is unsettled, so nothing may condense — and the frame carries the
+	 * moment (the question card docked above the composer, the run region with no
+	 * bar) for the design round that judged it.
 	 */
 	const parked = await readTranscript();
 	note("parked on the approval", JSON.stringify(parked));
+	check(
+		"parked: nothing condenses while the turn waits on the gate",
+		parked !== null && parked.bars === 0,
+		JSON.stringify(parked),
+	);
+	const parkedFrame = await captureSettled(cdp, "turn-collapse-parked");
+	note("frame", JSON.stringify(parkedFrame));
 	await clickAt(cdp, `${composerSelector} textarea`);
 	await cdp.evaluate(
 		`document.querySelector('${composerSelector} textarea').focus()`,
@@ -8394,6 +8403,32 @@ async function sceneTurnCollapse(cdp) {
 	);
 	const expandedFrame = await captureSettled(cdp, "turn-collapse-expanded");
 	note("frame", JSON.stringify(expandedFrame));
+	/*
+	 * D2'S OWN MEASUREMENT (design review round 1): the expansion must keep the
+	 * ledger's own step — the bar replaces the first hidden row's slot, and the
+	 * row below it is one trace step away, not a turn-tier margin plus the
+	 * disclosure body's own 8px (the measured regression: 36px box gap, Δ57px
+	 * centres). `<= 30` is what a 20px row + 4px body padding + 2px trace step
+	 * clears with rounding room; the exact delta is logged either way.
+	 */
+	const geometry = await cdp.evaluate(`(() => {
+		const bar = document.querySelector('[data-turn-summary]');
+		if (!bar) return null;
+		const rows = [...bar.querySelectorAll('[data-record-id]')];
+		if (rows.length === 0) return null;
+		const c = (el) => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; };
+		return { barCenter: c(bar), rowCenters: rows.map(c) };
+	})()`);
+	const barToRow1 =
+		geometry !== null
+			? Math.round((geometry.rowCenters[0] - geometry.barCenter) * 10) / 10
+			: null;
+	note("expanded geometry", JSON.stringify({ ...geometry, barToRow1 }));
+	check(
+		"the expansion keeps the ledger's own step (D2)",
+		barToRow1 !== null && barToRow1 <= 30,
+		`bar-to-row1 centre delta ${barToRow1}px`,
+	);
 
 	/* The reload half (§R1/§10.3): the durable re-read must arrive collapsed. */
 	await cdp.send("Page.reload", { ignoreCache: false });
@@ -8424,7 +8459,7 @@ async function sceneTurnCollapse(cdp) {
 	const reloadFrame = await captureSettled(cdp, "turn-collapse-reloaded");
 	note("frame", JSON.stringify(reloadFrame));
 
-	return [liveFrame, completedFrame, expandedFrame, reloadFrame];
+	return [parkedFrame, liveFrame, completedFrame, expandedFrame, reloadFrame];
 }
 
 /**

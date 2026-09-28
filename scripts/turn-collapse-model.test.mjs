@@ -25,7 +25,8 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export * from "./src/renderer/src/features/chat/canonical/turn-collapse-model";',
-			'export { runsOf, closingAnswerIds } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
+			'export { runsOf, closingAnswerIds, buildRows } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
+			'export { applyEvent, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
 		].join("\n"),
 		resolveDir: ROOT,
 	},
@@ -46,6 +47,9 @@ const {
 	runsOf,
 	staysVisibleWhileCollapsed,
 	closingAnswerIds,
+	buildRows,
+	applyEvent,
+	EMPTY_TRANSCRIPT,
 } = await import(moduleUrl);
 
 /* ------------------------------- fixtures ------------------------------- */
@@ -648,4 +652,141 @@ test("closingAnswerIds still adds one answer per turn and nothing else", () => {
 	];
 	const closing = closingAnswerIds(records.map((wrapped) => wrapped.record));
 	assert.deepEqual([...closing].sort(), ["a1", "a2"].sort());
+});
+
+/* ------------------ the partition's two edge shapes (R1-3) --------------- */
+
+/*
+ * Both shapes below run the REAL reducer and the REAL row builder — the
+ * accepted-trigger edge lives in the space between them (a settled assistant
+ * that paints nothing), which hand-built rows cannot express. Agent review
+ * round 1, R1-3.
+ */
+
+const userMessage = (id, text) => ({
+	id,
+	role: "user",
+	content: [{ type: "text", text }],
+	tool_calls: [],
+});
+const assistantMessage = (id, text) => ({
+	id,
+	role: "assistant",
+	content: text ? [{ type: "text", text }] : [],
+	tool_calls: [],
+});
+
+test("R1-3(a): a prose-free settled answer does not close the run — the next message folds in", () => {
+	/*
+	 * R2's "worse" direction, pinned as accepted: a turn whose final assistant
+	 * is tool-call-only is a real kept shape, invisible in row space, so the
+	 * partition's closure test cannot see it — the next user message folds in
+	 * as a steer. The design round states the accepted trigger set for this
+	 * fold-in; the test exists so the behaviour is a decision, not a surprise.
+	 */
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: userMessage("u1", "Which invoices?") },
+		TS,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "t1",
+			tool_name: "bash",
+			args: { command: "pnpm test" },
+		},
+		TS + 500,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "t1",
+			tool_name: "bash",
+			result: { content: [{ type: "text", text: "ok\n" }] },
+			is_error: false,
+			duration_s: 1,
+		},
+		TS + 1_500,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: assistantMessage("a1", "") },
+		TS + 2_000,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_end", message: assistantMessage("a1", "") },
+		TS + 2_500,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: userMessage("u2", "And the credits?") },
+		TS + 3_000,
+	);
+	const settled = state.records.find((record) => record.id === "a1");
+	assert.equal(
+		settled?.kind === "assistant" && settled.streaming,
+		false,
+		"the tool-call-only answer IS settled on the record list",
+	);
+	const rows = buildRows(state.records, []);
+	assert.equal(
+		rows.some((row) => row.record.id === "a1"),
+		false,
+		"but it paints no row — the partition cannot see the closure it made",
+	);
+	const runs = runsOf(rows);
+	assert.equal(runs.length, 1, "so u2 folds into u1's run as a steer");
+	assert.equal(runs[0].key, "u1");
+});
+
+test("R1-3(b): a steer landing after settled mid-turn prose opens its own run", () => {
+	/*
+	 * R2's "stray bubble" direction: the closure test reads the SETTLED prose
+	 * as an ending, so the steer opens a run of its own and the reader's
+	 * second message stands alone. Letter of the frozen predicate; pinned so a
+	 * future change to the closure must face this too.
+	 */
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: userMessage("u1", "Which invoices?") },
+		TS,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: assistantMessage("n1", "") },
+		TS + 1_000,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "message_update",
+			delta: "Checking",
+			message: assistantMessage("n1", ""),
+		},
+		TS + 1_500,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "message_end",
+			message: assistantMessage("n1", "Checking the ledger."),
+		},
+		TS + 2_000,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: userMessage("u2", "And the credits?") },
+		TS + 2_500,
+	);
+	const rows = buildRows(state.records, []);
+	const runs = runsOf(rows);
+	assert.deepEqual(
+		runs.map((run) => run.key),
+		["u1", "u2"],
+		"the steer opens a run: the settled prose counted as the ending",
+	);
 });

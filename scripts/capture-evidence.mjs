@@ -714,6 +714,16 @@ export const STORIES = [
 	["chat-turn-collapse--long-run", 1280, 900],
 	["chat-turn-collapse--restored", 1280, 900],
 	["chat-turn-collapse--running", 1280, 900],
+	/*
+	 * THE ROUND-1 CELLS (review round 1): `narration` answers design D4a (the
+	 * span-only sentence, §5 case 3), `pinned` answers design D4b / §11-R4 (a
+	 * pinned statement inside the span, on a frame), and `parked` answers
+	 * design D3 (a turn on the reader's gate must not condense - the same
+	 * moment the live rig's parked capture carries with its question card).
+	 */
+	["chat-turn-collapse--narration", 1280, 900],
+	["chat-turn-collapse--pinned", 1280, 900],
+	["chat-turn-collapse--parked", 1280, 900],
 
 	/*
 	 * A turn joined MID-STREAM, which is the one transcript surface whose evidence
