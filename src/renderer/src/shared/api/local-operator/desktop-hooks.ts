@@ -523,7 +523,16 @@ export type DesktopFeature =
 	 * file-only shape - an older backend renders EXACTLY the surface this app
 	 * shipped before, rather than a tab that 404s on its first read.
 	 */
-	| "projects";
+	| "projects"
+	/*
+	 * AIDA'S CONTROL PLANE (`features.aida`): the read and the control op the
+	 * sidebar's row and the composer's `/aida` share. ITS OWN KEY rather than a
+	 * bump of anything, because a client that does not read it must keep working
+	 * unchanged: absent means "this backend has no Aida", which hides the row and
+	 * forbids her route (`design.md` § 3.4/§ 4), while every other surface serves
+	 * exactly as it did before.
+	 */
+	| "aida";
 
 /**
  * WHY a negotiated feature surface may not be offered.

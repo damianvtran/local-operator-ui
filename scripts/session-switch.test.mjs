@@ -1159,6 +1159,19 @@ const ENTRANCE_FILES = {
 		"src/renderer/src/shared/components/navigation/sidebar-navigation.tsx",
 	"command-palette.tsx":
 		"src/renderer/src/features/command-palette/components/command-palette.tsx",
+	/*
+	 * AIDA'S OPEN IS AN ENTRANCE TOO, and it takes TWO entries because it is two
+	 * call sites: the rail's row resolves her id in `use-aida-target.ts` (the hook
+	 * the row calls) and the composer's `/aida` resolves it in `slash-dispatch.ts`
+	 * (its own branch), and both then call the shared rule. The pair is what makes
+	 * the claim true (agent review round 1, MINOR-2 corrected an earlier comment
+	 * that read the two as one call site): a `/chat/` URL is still built in one
+	 * module, and the file a future deferred write would HIDE in is named here —
+	 * which then fails this test rather than passing by construction.
+	 */
+	"use-aida-target.ts": "src/renderer/src/features/aida/use-aida-target.ts",
+	"slash-dispatch.ts":
+		"src/renderer/src/features/chat/components/slash-dispatch.ts",
 };
 const readSource = (path) =>
 	readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
@@ -1220,10 +1233,11 @@ test("every entrance writes the switch's URL with the commit, through one rule",
 		);
 	}
 	/*
-	 * One entrance lives in each of the three files now: the sidebar's rows, the
-	 * `/chat` rebind (which is still `chat-page.tsx`'s) and the palette's. The pair
-	 * that used to be counted in `chat-page` was the sidebar's row plus that rebind,
-	 * and the sidebar's row left with the sidebar.
+	 * One entrance per file: the sidebar's rows, the `/chat` rebind (still
+	 * `chat-page.tsx`'s), the palette's, and Aida's two — the rail's row reaching
+	 * through `use-aida-target.ts` and the composer's command through
+	 * `slash-dispatch.ts`. The pair that used to be counted in `chat-page` was the
+	 * sidebar's row plus that rebind, and the sidebar's row left with the sidebar.
 	 */
 	assert.equal(
 		readSource(ENTRANCE_FILES["chat-page.tsx"]).split("openConversation(")
@@ -1240,6 +1254,18 @@ test("every entrance writes the switch's URL with the commit, through one rule",
 		readSource(ENTRANCE_FILES["command-palette.tsx"]).split("openConversation(")
 			.length - 1,
 		1,
+	);
+	assert.equal(
+		readSource(ENTRANCE_FILES["use-aida-target.ts"]).split("openConversation(")
+			.length - 1,
+		1,
+		"the rail's row resolves her id through this module alone; a second call here is a second write rule",
+	);
+	assert.equal(
+		readSource(ENTRANCE_FILES["slash-dispatch.ts"]).split("openConversation(")
+			.length - 1,
+		1,
+		"the composer's `/aida` is the other entrance, and it is this file's one call of the rule",
 	);
 });
 
