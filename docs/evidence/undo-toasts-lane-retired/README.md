@@ -20,10 +20,14 @@ here would be a second home for the same reading:
 | the discard offer's Undo | [`chat-sidebar-drafts/after-drafts-undo-restored`](../chat-sidebar-drafts/after-drafts-undo-restored/localOperatorDark.png) | [`after-drafts-undo`](after-drafts-undo/localOperatorDark.webp) |
 | the offer against the composer | [`sidebar-row-space/after/offer-toast-280`](../sidebar-row-space/after/offer-toast-280/localOperatorDark.png) | [`after-offer-vs-send`](after-offer-vs-send/localOperatorDark.webp) |
 
-Each directory holds `localOperatorDark.webp` and `localOperatorLight.webp`
-(`cwebp -q 90` conversions of the runs' PNGs), and the runs' own logs are
-committed beside them: `*-before-run.log` is the same scene on `origin/main` =
-`0f23c76de5`, `*-after-run.log` is this change's tree.
+Each directory holds `localOperatorDark.webp` and, where the scene drives the
+app's theme switch, `localOperatorLight.webp` (`cwebp -q 90` conversions of the
+runs' PNGs) - the two `after-drafts-*` directories are **dark only**, because
+the `drafts` scene does not drive the theme switch (its own committed set carries
+`themes: 1`; the `--theme localOperatorLight` launch of this pass produced dark
+pixels and is not committed as light). The runs' own logs are committed beside
+them: `*-before-run.log` is the same scene on `origin/main` = `0f23c76de5`,
+`*-after-run.log` is this change's tree.
 
 ## The numbers the frames are of
 
@@ -65,7 +69,24 @@ failure is `and the next step moves past it rather than sticking` (the Arrow rin
 past the inapplicable `Clear all`, red on `origin/main` at this head too), and
 the `row-space` eight are the pin/width clauses (`at rest the unpinned title
 measures the widths the spec promises …` etc.), red on `origin/main` under this
-host's conditions in the same run. The `session-archive` difference — 70 checks
+host's conditions in the same run.
+
+**And the full `pnpm check-evidence` pixel pass names this tree's remaining
+failures too: they are all older than this set.** Run on this branch's head
+(2026-09-28, once a peer's machine lease freed), it reports the two
+`canvas-file-freshness` frames (`dominant colour #FFFFFF … not a picture of the
+app` in files named `localOperatorDark`), `run-panel-reveal`'s
+`press-800x600-after-fix/localOperatorLight` (dark pixels in a `Light` name), and
+two manifest sets that predate this branch (`browser-approval-badges` with
+`why`/`capturedAt` missing and 49 frames off disk, and
+`chat-header-identity/before-main` with only a `path`). Every one of them is
+present on `origin/main` unchanged: `git diff --name-only origin/main --
+docs/evidence/canvas-file-freshness docs/evidence/run-panel-reveal` is empty, and
+both manifest entries are byte-identical to main's. Every frame THIS set adds is
+clean under the same pass, which is what the `.webp` names and the drafts note
+above exist for.
+
+The `session-archive` difference — 70 checks
 before, 69 after — is this change's own scene edit: the superseded band-era
 clauses were replaced by the re-scoped ones this set's frames are of (the
 accepted-departure clause now reads the browser's end-of-list clamp, and the
