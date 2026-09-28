@@ -290,7 +290,12 @@ test("Aida is the FIRST destination, above Agents (R3)", () => {
 	);
 	assert.match(
 		nav,
-		/label: "Aida",/,
+		/const aidaName = aida\.data\?\.name \?\? "Aida";/,
+		"her display name is the payload's, with the shipped default for a backend that predates the field",
+	);
+	assert.match(
+		nav,
+		/label: aidaName,/,
 		"the row's own label; the collapsed strip's tooltip reads the same string via renderNavRow",
 	);
 });
