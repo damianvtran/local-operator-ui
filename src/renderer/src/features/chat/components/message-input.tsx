@@ -6358,6 +6358,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							isSmallView ? "gap-2 rounded-md p-2" : "gap-3 rounded-frame p-4",
 							CHAT_MEASURE,
 						)}
+						/*
+						 * The geometry rigs' handle on the composer's own MEASURE, on the
+						 * `data-lo-composer-band` / `data-lo-composer-tip` convention: this is the box
+						 * the band centres, i.e. the edge a surface sharing the conversation's measure
+						 * has to line up with, and the classes that produce it are not a selector (a
+						 * re-skin that moves the measure would move them with it).
+						 * `scripts/interrupt-esc-proof.mjs` reads its left edge against §G3's stopped
+						 * line's - the operator's report of 2026-09-27 measured the two apart.
+						 */
+						data-lo-composer-measure=""
 						data-tour-tag="chat-input-textarea"
 					>
 						{(replies.length > 0 || attachments.length > 0) && (
