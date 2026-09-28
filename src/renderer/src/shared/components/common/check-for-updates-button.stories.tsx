@@ -335,50 +335,49 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const ButtonDefault: Story = {
-	render: () => {
-		// Create a component that ensures no snackbar is shown initially
-		const DefaultComponent = () => {
-			const [checking, setChecking] = useState(false);
-
-			// Override the checkForUpdates function to simulate the flow
-			useEffect(() => {
-				// Replace with a function that simulates checking but doesn't show any snackbar
-				window.api.updater.checkForUpdates = async () => {
-					setChecking(true);
-
-					// Simulate a delay for checking
-					setTimeout(() => {
-						setChecking(false);
-					}, 500);
-
-					return Promise.resolve({
-						updateInfo: mockUpdateInfo,
-						cancellationToken: {},
-					});
-				};
-
-				return () => {
-					// No cleanup needed for the story
-				};
-			}, []);
-
-			return (
-				<div className="relative min-h-25">
-					<Button
-						variant="outline"
-						onClick={() => window.api.updater.checkForUpdates()}
-						disabled={checking}
-					>
-						{checking ? <Spinner size="sm" /> : null}
-						{checking ? "Checking..." : "Check for updates"}
-					</Button>
-				</div>
+/**
+ * The shipped button, held in its busy state.
+ *
+ * Renders the real component rather than a copy of its markup (review U16's
+ * rule): the check never answers, and the still-working line (UX U1) appears
+ * through the narrowed delay. The press is dispatched to the real control once
+ * it is mounted, and the held call lives on `checkForAllUpdates` because that
+ * is the request this component's own check makes.
+ */
+function HeldCheckButton() {
+	useEffect(() => {
+		/*
+		 * PRESS WHEN THE CONTROL EXISTS (design D5, remediation round 3): a single
+		 * one-shot timer assumed the button was already painted, and a cold load
+		 * found no control - which would silently photograph the idle button
+		 * instead of the held check. Retry on a short bounded loop; when the press
+		 * lands the render is identical to the one-shot's, because it is the same
+		 * click on the same button. The override is (re-)applied immediately before
+		 * the press (design D3): the decorator's `mockUpdaterApi()` re-assigns
+		 * `window.api.updater` in ITS effect, which runs after this story's, so an
+		 * override installed up front is gone by the time the click would call it.
+		 */
+		const deadline = Date.now() + 2000;
+		const timer = setInterval(() => {
+			const control = Array.from(document.querySelectorAll("button")).find(
+				(button) => button.textContent === "Check for updates",
 			);
-		};
+			if (control) {
+				window.api.updater.checkForAllUpdates = () =>
+					new Promise<never>(() => {});
+				control.click();
+				clearInterval(timer);
+				return;
+			}
+			if (Date.now() > deadline) clearInterval(timer);
+		}, 50);
+		return () => clearInterval(timer);
+	}, []);
+	return <CheckForUpdatesButton slowWaitHintMs={1} />;
+}
 
-		return <DefaultComponent />;
-	},
+export const ButtonDefault: Story = {
+	render: () => <HeldCheckButton />,
 };
 
 /**

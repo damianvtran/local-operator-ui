@@ -1,3 +1,5 @@
+import { aidaControlFailureCopy } from "@features/aida/aida-control";
+import { useAidaOpener, useAidaTarget } from "@features/aida/use-aida-target";
 import { useAppWideApprovals } from "@features/browser/hooks/use-app-wide-approvals";
 import { sidebarToggleCap } from "@features/chat/chat-sidebar-layout";
 import { ChatSidebar } from "@features/chat/components/chat-sidebar";
@@ -32,12 +34,14 @@ import { useCurrentView } from "@shared/hooks/use-route-params";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { showErrorToast } from "@shared/utils/toast-manager";
 import type { LucideIcon } from "lucide-react";
 import {
 	Bot,
 	CalendarDays,
 	ChevronLeft,
 	ChevronRight,
+	ChevronsUp,
 	FolderKanban,
 	Globe,
 	MessageSquarePlus,
@@ -123,6 +127,18 @@ type NavItem = {
 	 * is the honest rendering of an item with no badge.
 	 */
 	attention?: number;
+	/**
+	 * What a press does, when it is not "navigate to `path`".
+	 *
+	 * Aida's row is the one that needs it: her conversation is RESOLVED — through
+	 * the desktop route, ensuring her session on first use — rather than known as
+	 * a route, so there is no `path` that could name it up front
+	 * (`use-aida-target.ts` owns the resolution, and both this row and the
+	 * composer's `/aida` read it from there). The row still carries `path:
+	 * "/chat"`: it is the route the view lands on once the id resolves, and the
+	 * row's own key in the list.
+	 */
+	onSelect?: () => void;
 };
 
 /** A destination row: 30px, one line, 13px, and never a second line. */
@@ -188,8 +204,66 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		"projects",
 		1,
 	);
+	/*
+	 * AIDA'S ROW, and its TWO gates, which are two different facts.
+	 *
+	 * `features.aida` is the CAPABILITY: below it the backend predates the
+	 * surface and the UI must not call her route at all (`design.md` § 3.4) —
+	 * fail-closed, like Projects above.
+	 *
+	 * `enabled` is the INSTALL's own switch (R17/R18: `aida.enabled` /
+	 * `LOCAL_OPERATOR_NO_AIDA`). A harness-only install carries the endpoint and
+	 * answers `enabled: false` — a row there would open a conversation nothing
+	 * ever creates and whose every press answers `409 aida_disabled`, exactly the
+	 * dead control fail-closed means to omit. So the row waits for the read's own
+	 * `enabled === true`: absent, not-yet-answered and switched-off all render the
+	 * column that never heard of her, and the read is why the row can POP IN a
+	 * moment late on a normal install — the price of never showing it where it
+	 * must not be.
+	 */
+	const aidaEnabled = desktopFeatureEnabled(capabilities.data, "aida", 1);
+	const aida = useAidaTarget(aidaEnabled);
+	const aidaVisible = aidaEnabled && aida.data?.enabled === true;
+	const openAida = useAidaOpener();
+	/*
+	 * Her press: resolve her conversation (ensuring it on first use, through the
+	 * one module the composer's `/aida` also reads) and move the view onto it. The
+	 * failure sentence is the module's own — a 409 for a mid-session disable, or
+	 * the transport's words — and it lands on the toast lane because this row owns
+	 * no other surface to say it on.
+	 */
+	const selectAida = () => {
+		void openAida(navigate, aida.data).catch((error) =>
+			showErrorToast(aidaControlFailureCopy(error)),
+		);
+	};
 
 	const navItems: NavItem[] = [
+		/*
+		 * AIDA SITS ABOVE AGENTS (R3): she is the operator's chief of staff, and the
+		 * row is the first destination in the column when the backend offers her.
+		 * The row itself is the ordinary destination row — 30px, one line, the
+		 * same `renderNavItem` every neighbour uses — with one difference: its
+		 * press resolves rather than navigates (`onSelect`), because her id is not
+		 * known until the desktop route answers. Collapsed, it is the same
+		 * icon-only row with its tooltip (`renderNavRow`), which is why nothing here
+		 * has a second rendering.
+		 */
+		...(aidaVisible
+			? [
+					{
+						icon: ChevronsUp,
+						label: "Aida",
+						path: "/chat",
+						isActive:
+							currentView === "chat" &&
+							Boolean(aida.data?.session_id) &&
+							activeSessionId === aida.data?.session_id,
+						tourTag: "nav-item-aida",
+						onSelect: selectAida,
+					},
+				]
+			: []),
 		{
 			icon: Bot,
 			label: "Agents",
@@ -312,7 +386,9 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			>
 				<button
 					type="button"
-					onClick={() => navigate(item.path)}
+					onClick={() =>
+						item.onSelect ? item.onSelect() : navigate(item.path)
+					}
 					data-tour-tag={item.tourTag}
 					aria-current={item.isActive ? "page" : undefined}
 					/* Collapsed there is no text in the row, and the tooltip cannot
@@ -725,11 +801,24 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			</div>
 
 			{/*
-			 * THE BODY: the one chat list, one scroll region. `mt-2` completes the 16px
-			 * section tier with the group's own `pb-2` - the separation is space, not a
-			 * rule.
+			 * THE BODY: the one chat list, one scroll region.
+			 *
+			 * WHAT THE SPACE UNDER THE DESTINATIONS IS, measured rather than assumed
+			 * (operator report, 2026-09-27: "there's a bunch of extra space" between the
+			 * bottom-most nav row and the band). Three 8px steps were stacking on this
+			 * boundary - the group's own `pb-2`, the `mt-2` that used to sit here, and
+			 * the panel's top inset - and the rendered gap was 24px where the tier the
+			 * design names between the destinations and the list below them is 16px
+			 * (§B6). This column owns one of the three steps and the panel owns another,
+			 * so the `mt-2` is the one that goes: the tier now reads the group's 8px
+			 * bottom step against the panel's own 8px inset, and the band sits 16px
+			 * under the last destination.
+			 *
+			 * DO NOT PUT IT BACK without taking 8px out of the panel too: this boundary
+			 * is ONE tier, and three declarations of it were two more than the design
+			 * ever asked for.
 			 */}
-			<div className="mt-2 flex min-h-0 flex-1 flex-col">{listBody}</div>
+			<div className="flex min-h-0 flex-1 flex-col">{listBody}</div>
 
 			{/*
 			 * THE FOOT: the account row, whose own menu carries Settings and Sign
