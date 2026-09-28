@@ -565,6 +565,14 @@ test("failed counts genuine errors only: not aborts, not never-sent, not skips",
 			{ notRunReason: "invalid arguments" },
 			false,
 		],
+		/*
+		 * The class arm (the sibling's landed `not_run_kind` reading): a row that
+		 * states an interrupted class is an interrupt even if a producer set
+		 * neither `stopped` nor the reason pair - the same reading their reducer
+		 * and row ladder make, consumed here through `isInterruptedFault`.
+		 */
+		["a skipped call by class alone", { isError: true, notRunKind: "skipped" }, false],
+		["an aborted call by class alone", { isError: true, notRunKind: "aborted" }, false],
 		["a success", {}, false],
 	]) {
 		assert.equal(
