@@ -41,6 +41,12 @@
  *   `not-allowed` - the base layer's rule - or `default`, the withdrawal
  *   convention several components document for a control whose affordance is
  *   deliberately gone (the dead-directory chip, the removed-session link).
+ *   The `default` half is PINNED to explicit choices: the arm accepts it only
+ *   when the element's own class list names it (`cursor-default`, or a
+ *   variant like `disabled:cursor-default` / `aria-disabled:cursor-default`),
+ *   so a disabled control that keeps an arrow by inheritance or coincidence
+ *   is flagged instead of waved through - the property the convention's
+ *   "kept honest" claim depends on;
  *   What it must never compute is `pointer`: a disabled control advertising a
  *   click is the one contradiction this arm exists to catch;
  * - a text-entry element (`input` of a text-like type, `textarea`,
@@ -55,6 +61,13 @@
  *   must compute its own resize cursor (`col-resize` or `row-resize`), which
  *   is the convention `resizable-divider.tsx` already follows;
  * - an element that declares an HTML5 drag must compute `grab`/`grabbing`;
+ * - COVERAGE BOUNDARY, recorded rather than left implicit: pan surfaces (the
+ *   mesh canvas and the mermaid canvas it copies) carry `grab`/`active:
+ *   grabbing` by this repo's convention, and their values appear in
+ *   `byCursor.grab` in every report - but NO arm asserts them. They are
+ *   neither controls nor `[draggable="true"]`, and a cursor is unpaintable,
+ *   so a regression there shows as a shifted `grab` count rather than a
+ *   failing arm. Widen this before trusting that count to gate anything;
  * - anything ELSE that computes `pointer` without an interactive ancestor is
  *   reported as an "unattributed pointer" - a click affordance promised to
  *   the user that this audit cannot tie to a semantic control, so a human has
@@ -67,15 +80,25 @@
  * (`setCurrentStory`), which is what clicking the sidebar does - a full
  * navigation per story costs ~1.2s of preview boot for every one of the
  * thousand stories in `index.json`, and pays it twice over a before/after
- * pair. `storyRendered` on the same channel is the readiness signal, so a
- * story is never scanned mid-mount (a count-threshold gate alone measures the
- * preview shell as "drawn" about 17ms after navigation - measured, and the
- * reason the channel event is load-bearing here rather than decorative).
+ * pair. `storyRendered` on the same channel is the readiness signal, so the
+ * common case is never scanned mid-mount (a count-threshold gate alone
+ * measures the preview shell as "drawn" about 17ms after navigation -
+ * measured, and the reason the channel event is load-bearing here rather than
+ * decorative). The gate is not hermetic: the `agent-hub-page--*` family can
+ * mount its grid after the shell has already held two stable counts
+ * (measured: one story counted 8 / 64 / 64 interactive elements across
+ * runs), so that family's TOTALS drift run to run even though every
+ * wrong-cursor metric is exact. The wrong-cursor metrics are what the gate
+ * asserts; the totals are a reading of the tree at settle time, not a
+ * constant.
  * `--reload` forces a real navigation for every story instead: the fast path
  * and the reload path are regularly checked against each other on a story
  * slice (`--only=` plus `--reload`, diff the two JSON reports) because the
  * fast path is a claim that in-place switching and a fresh load agree about
- * every cursor value on the page.
+ * every cursor value on the page. `--only=` matches SUBSTRINGS of story ids,
+ * and one id can be a substring of another, so a selector or shard built from
+ * full ids can silently double-cover - verify the matched count against
+ * `index.json` (or use disjoint prefixes).
  *
  * Raw CDP against a private headless Chrome, deliberately the same approach
  * as `chat-alignment-geometry.mjs` and `capture-evidence.mjs` (fresh
@@ -310,8 +333,17 @@ const SCAN = `(() => {
 		if (disabled) {
 			/* default is allowed on purpose: it is the withdrawal convention
 			   for a disabled control whose affordance is deliberately gone (see
-			   the docstring). pointer is not - that is the contradiction. */
-			check(el, 'disabled-control', ['not-allowed', 'default'], (c) => c === 'not-allowed' || c === 'default');
+			   the docstring) - but only as an EXPLICIT choice. An element whose
+			   class list never names an explicit cursor-default is not withdrawing its
+			   affordance, it is keeping an arrow by inheritance or accident, and
+			   that silent case is exactly what the convention must not wave
+			   through. pointer is the other contradiction. */
+			check(el, 'disabled-control', ['not-allowed', 'default (explicit)'], (c) =>
+				c === 'not-allowed' ||
+				(c === 'default' &&
+					[...el.classList].some(
+						(t) => t === 'cursor-default' || t.endsWith(':cursor-default'),
+					)));
 			continue;
 		}
 		check(el, 'control', ['pointer'], (c) => c === 'pointer');
@@ -477,13 +509,21 @@ const main = async () => {
 	 * cleared in the same finally that tears the browser down.
 	 */
 	keepAlive = setInterval(() => {}, 1000);
-	watchdog = setTimeout(() => {
-		console.error(
-			"cursor audit: no progress for 45 minutes - aborting rather than reporting a partial walk as a pass",
-		);
-		teardown();
-		process.exit(1);
-	}, 45 * 60_000);
+	/* Re-armed on every COMPLETED story below, so a slow-but-progressing walk
+	   is never killed by the bound - only a walk that stops completing stories
+	   is. Wall-clock-from-start would be wrong here: at ~2 s/story under fleet
+	   load a healthy full walk is allowed to run ~40 minutes. */
+	const armWatchdog = () => {
+		clearTimeout(watchdog);
+		watchdog = setTimeout(() => {
+			console.error(
+				"cursor audit: no story completed for 45 minutes - aborting rather than reporting a partial walk as a pass",
+			);
+			teardown();
+			process.exit(1);
+		}, 45 * 60_000);
+	};
+	armWatchdog();
 
 	dataDir = join(tmpdir(), `lo-cursor-audit-${process.pid}`);
 	mkdirSync(dataDir, { recursive: true });
@@ -622,6 +662,7 @@ const main = async () => {
 			summary.unrendered.push({ id, probe });
 			summary.stories += 1;
 			console.log(`SKIP ${id} ${JSON.stringify(probe)}`);
+			armWatchdog();
 			continue;
 		}
 		await cdp.send("Runtime.evaluate", {
@@ -717,6 +758,7 @@ const main = async () => {
 		console.log(
 			`${mark}  ${id}  interactive=${interactive} wrong=${wrongCount} unattributed=${scan.unattributed.length}`,
 		);
+		armWatchdog();
 	}
 
 	const elapsedS = Math.round((Date.now() - started) / 1000);
