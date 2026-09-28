@@ -1,13 +1,13 @@
-[build] current: assets 2026-09-28T08:06:49.603Z >= sources 2026-09-28T07:58:33.149Z
+[build] current: assets 2026-09-28T08:51:22.621Z >= sources 2026-09-28T08:41:19.773Z
 [note] abandoned scratch trees
-        7 seen, 0 owned by a live pid (kept), 4 younger than 30m (kept), 3 removed: lo-renderer-driver-1436, lo-renderer-driver-2487, lo-renderer-driver-3377
+        21 seen, 0 owned by a live pid (kept), 19 younger than 30m (kept), 2 removed: lo-renderer-driver-96860, lo-renderer-driver-97604
 [note] csp for this run's backend
         already widened for http://127.0.0.1:18322
 local-operator-ui renderer driver
   repo          /Users/damian/local-operator-ui-worktrees/undo-toasts-0927-235510
-  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-73607
-  frames        /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/undo-toasts-r2-37574/rig2/frames-mine-rs-light
-  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-73607/cwd   (scratch: the repo's .env is not read)
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-62888
+  frames        /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/undo-toasts-r2-37574/rig2/frames-mine4-rs-light
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-62888/cwd   (scratch: the repo's .env is not read)
   backend url   http://127.0.0.1:18322   (--backend: a live isolated backend this run owns)
   electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/undo-toasts-0927-235510/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
   electron pin  44.3.0   (package.json optionalDependencies)
@@ -141,7 +141,7 @@ local-operator-ui renderer driver
         {"pressed":"true","pairDisplay":"flex","focusInsideRow":false,"activeTag":"BUTTON","delivered":{"pinKeydown":0,"pinKeypress":0,"pinClick":0,"anyClick":1},"verdict":"rig: the Enter chord never reached the pin (no keydown on it)"}
 [PASS] no press in this run wrote an archive for the conversation the U6 press was aimed at
 [note] geometry written
-        /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/undo-toasts-r2-37574/rig2/frames-mine-rs-light/row-space-geometry-localOperatorLight.json
+        /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/undo-toasts-r2-37574/rig2/frames-mine4-rs-light/row-space-geometry-localOperatorLight.json
   rest-240 b3f1a09c7d52: row 208 title 146.4 (overflows true, x null) tail 37.6 pair 0 pin 0- archive 0-
   rest-240 7c1b0f2a4d31: row 208 title 146.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
   rest-240 c4e17b90a2f6: row 208 title 118.4 (overflows true, x null) tail 65.6 pair 24 pin 24+ archive 0-
@@ -224,15 +224,6 @@ local-operator-ui renderer driver
   offer-long-280 2d5ad5da0025: row 248 title 186.4 (overflows false, x null) tail 37.6 pair 0 pin 0- archive 0-
 
 ---- app log (tail) ----
-Error occurred in handler for 'console-state': Error: No handler registered for 'console-state'
-    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
-    at Session.emit (node:events:514:28)
-04:12:35.575 › [browser] denied a media permission request from (unknown origin)
-04:12:35.575 › [browser] denied a media permission request from (unknown origin)
-04:12:35.575 › [browser] denied a web-app-installation permission request from (unknown origin)
-04:12:35.575 › [browser] denied a geolocation permission request from (unknown origin)
-Error occurred in handler for 'browser-state': Error: No handler registered for 'browser-state'
-    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
     at Session.emit (node:events:514:28)
 Error occurred in handler for 'browser-state': Error: No handler registered for 'browser-state'
     at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
@@ -240,36 +231,45 @@ Error occurred in handler for 'browser-state': Error: No handler registered for 
 Error occurred in handler for 'browser-webauthn-pending': Error: No handler registered for 'browser-webauthn-pending'
     at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
     at Session.emit (node:events:514:28)
-04:12:35.745 › [shell-path] /bin/zsh reports PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
-04:12:35.745 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
-04:12:35.745 › Shell environment variables loaded successfully. PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
-04:12:35.749 › [browser] host on 127.0.0.1:54627 (proto 1), profile /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-73607/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
-04:12:35.752 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
-04:12:35.752 › Checking for UI updates...
-04:12:35.752 › Skip checkForUpdates because application is not packed and dev update config is not forced
-04:12:35.887 › [browser] tab 1 navigated to about:blank
+04:57:11.785 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+04:57:11.786 › Checking for UI updates...
+04:57:11.786 › Skip checkForUpdates because application is not packed and dev update config is not forced
+Error occurred in handler for 'browser-state': Error: No handler registered for 'browser-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'console-state': Error: No handler registered for 'console-state'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'browser-webauthn-pending': Error: No handler registered for 'browser-webauthn-pending'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123930)
+    at Session.emit (node:events:514:28)
+04:57:11.821 › [shell-path] /bin/zsh reports PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
+04:57:11.821 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
+04:57:11.822 › Shell environment variables loaded successfully. PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin:/Users/damian/.cargo/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin
+04:57:11.825 › [browser] host on 127.0.0.1:49158 (proto 1), profile /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-62888/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+04:57:11.935 › [browser] tab 1 navigated to about:blank
 [window-mode] state: visible=false focused=false focusable=false size=1380x900 content=1380x900
-04:12:37.900 › Checking for updates... (silent mode: true)
-04:12:37.901 › Skip checkForUpdates because application is not packed and dev update config is not forced
-04:12:37.902 › Checking for backend updates... (silent mode: true)
-04:12:37.902 › Skip backend update check in dev mode unless forced
-04:12:38.892 › [window-chrome] applied themeId=localOperatorLight ground=#f2ede3 symbol=#4e4940
-04:12:44.813 › Backend health check response status: 200
-04:12:49.901 › The pre-split environment at /Users/damian/Library/Application Support/Local Operator/local-operator-venv is built on the interpreter inside /Applications/Local Operator.app; it is left exactly as it is, and this instance does not use it.
-04:12:54.813 › Backend health check response status: 200
-04:13:04.816 › Backend health check response status: 200
-04:13:14.818 › Backend health check response status: 200
-04:13:24.820 › Backend health check response status: 200
-04:13:34.820 › Backend health check response status: 200
-04:13:44.823 › Backend health check response status: 200
-04:13:54.825 › Backend health check response status: 200
+04:57:13.986 › Checking for updates... (silent mode: true)
+04:57:13.986 › Skip checkForUpdates because application is not packed and dev update config is not forced
+04:57:13.986 › Checking for backend updates... (silent mode: true)
+04:57:13.986 › Skip backend update check in dev mode unless forced
+04:57:14.931 › [window-chrome] applied themeId=localOperatorLight ground=#f2ede3 symbol=#4e4940
+04:57:20.894 › Backend health check response status: 200
+04:57:25.986 › The pre-split environment at /Users/damian/Library/Application Support/Local Operator/local-operator-venv is built on the interpreter inside /Applications/Local Operator.app; it is left exactly as it is, and this instance does not use it.
+04:57:30.894 › Backend health check response status: 200
+04:57:40.897 › Backend health check response status: 200
+04:57:50.898 › Backend health check response status: 200
+04:58:00.901 › Backend health check response status: 200
+04:58:10.903 › Backend health check response status: 200
+04:58:20.904 › Backend health check response status: 200
+04:58:30.905 › Backend health check response status: 200
 
 [PASS] no process from this run outlived its boot
 
 frames: hover-current-280.png, hover-long-240.png, hover-long-280.png, hover-long-320.png, hover-pinned-240.png, hover-pinned-280.png, hover-pinned-320.png, hover-short-280.png, offer-long-280.png, offer-toast-240.png, offer-toast-280.png, offer-toast-320.png, rest-240.png, rest-280.png, rest-320.png, settle-probe.png
-frames directory: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/undo-toasts-r2-37574/rig2/frames-mine-rs-light
-app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-73607/app-scene.log
-scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-73607 (the frames are also in --out)
+frames directory: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/undo-toasts-r2-37574/rig2/frames-mine4-rs-light
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-62888/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-62888 (the frames are also in --out)
 
 8 CHECK(S) FAILED
 driver rc=1

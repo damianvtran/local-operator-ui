@@ -79,14 +79,14 @@
   },
   "composer": {
    "send": {
-    "left": 1232,
-    "right": 1264,
+    "left": 1187,
+    "right": 1219,
     "top": 836,
     "bottom": 868,
     "width": 32,
     "height": 32,
     "centre": {
-     "x": 1248,
+     "x": 1203,
      "y": 852
     }
    },

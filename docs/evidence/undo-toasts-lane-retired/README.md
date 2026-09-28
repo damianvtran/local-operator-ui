@@ -18,13 +18,22 @@ destinations, and an 8px step below a collapsed section"*): it landed on the
 shared `origin/main` ref between this session's first after half (taken on
 `0f23c76de5` + the change) and its base run, so the pair as first published
 paired an `origin/main`-284 "after" with an `origin/main`-276 "before". This
-set's remedy is the clean one: **the before half is `origin/main` = `55d7b0a19b`
+set's remedy is the clean one: **the before half is `origin/main` = `8a03152c61`
 (the branch's fold base), the after half is that tree plus this change, and both
 were re-shot in one pass** — the same scenes, the same window size, one headless
 launch per palette — so the published pair is one generation and the boundary
-numbers agree by construction (both halves' runs read `panel top 276`).
+numbers agree by construction (both halves' runs read `panel top 276`). **And it
+was re-shot a SECOND time before this set shipped**: the branch was folded again
+while the remediation was in flight, and that fold moved the composer — #565's
+chat-measure narrowing (`--lo-chat-measure` 900px → 810px, `d7f62f3f79`,
+retargeted by `fe55cfde0e`) puts the composer's `Send` **45 CSS px further
+left** (`x 1222..1254` → `1177..1209` in the session-archive reading), so the
+before half was re-shot at the FINAL fold base and the after half at the final
+folded tip, one pass again. Every frame and both measurements come from the
+final pair; the two earlier shoots are recorded here and in the manifest's fold
+notes, not in the set.
 
-| state | before (`origin/main` 55d7b0a19b) | after (this change, folded) |
+| state | before (`origin/main` 8a03152c61) | after (this change, folded) |
 | --- | --- | --- |
 | archive offer | [`before-archive-offer`](before-archive-offer/localOperatorDark.webp) | [`after-archive-offer`](after-archive-offer/localOperatorDark.webp) |
 | archive refusal + Retry | [`before-archive-refusal`](before-archive-refusal/localOperatorDark.webp) | [`after-archive-refusal`](after-archive-refusal/localOperatorDark.webp) |
@@ -74,10 +83,11 @@ palettes), the offer raised at the 280 panel:
 - **the card**: `x 1000..1356, y 826..876` (356 × 50), anchored to the viewport's
   bottom-right, **outside the panel** (`panel x 0..280`), **no band element
   anywhere** (`band: false`);
-- **the D12 trade, measured rather than asserted**: Send is `x 1232..1264,
-  y 836..868` — inside the card's box. The scene asserts the boxes are *read*,
-  not disjoint (`overlapsSend`/`overlapsForm` echoed), per the operator's
-  direction;
+- **the D12 trade, measured rather than asserted**: Send is `x 1187..1219,
+  y 836..868` at the 280 panel (the session-archive pair's own reading is `x
+  1177..1209`, the same box at its 260-px panel) — inside the card's box. The
+  scene asserts the boxes are *read*, not disjoint (`overlapsSend`/`overlapsForm`
+  echoed), per the operator's direction;
 - **the stack** (from the `undo-toasts-stacked` runs; the two frames this set
   commits are of these reads, identical in both palettes): at rest the newer
   (discard) offer is `x 1000..1356, y 826..876` with the older (archive) behind
@@ -88,7 +98,7 @@ palettes), the offer raised at the 280 panel:
 
 ## What the runs reported
 
-| scene | before (`origin/main` `55d7b0a19b`) | after (this change, folded) |
+| scene | before (`origin/main` `8a03152c61`) | after (this change, folded) |
 | --- | --- | --- |
 | `session-archive` (dark, light) | 70 PASS / 0 FAIL | 69 PASS / 0 FAIL (one superseded clause pair merged) |
 | `drafts` | 54 PASS / 1 FAIL | 54 PASS / 1 FAIL |
@@ -112,7 +122,7 @@ catalogue (`docs/evidence/session-archive/harness/stub-daemon.mjs` for
 `docs/evidence/sidebar-row-space/harness/stub-daemon.mjs` for `row-space`, the
 installed runtime's `lop serve --hosting test --model mock` in an isolated
 config dir for `drafts`). The before half ran in a throwaway worktree at
-`55d7b0a19b` with a lockfile-identical `node_modules`; the after half in the
+`8a03152c61` with a lockfile-identical `node_modules`; the after half in the
 change's own worktree, both built at the same `VITE_LOCAL_OPERATOR_API_URL`.
 The runs' own logs are committed beside the frames, one per run —
 `session-archive-{before,after}-run-{dark,light}.log`,
