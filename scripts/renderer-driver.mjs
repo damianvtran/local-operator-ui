@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|drafts|none>
+ *   --scene <states|new-chat|first-send|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|drafts|none>
  *                          which built-in scene to run (default: states)
  *   --gate-state <label>   (with --scene settings-gate) what this run's backend
  *                          state is called in the frames and the log, so two
@@ -7612,6 +7612,341 @@ async function sceneRowSpace(cdp) {
 		}
 	}
 	return [...frames, ...offerFrames];
+}
+
+/**
+ * `--scene sidebar-bottom`: the sidebar column's bottom zone - the gap under the
+ * destinations, the band's own spacing, and the `Agents`/`Teams` headings' gap
+ * when the first is collapsed - read from the rendered DOM and photographed.
+ *
+ * THE OPERATOR'S REPORT (2026-09-27) is what the numbers are against: "there's a
+ * bunch of extra space" between the bottom-most nav row and the band (the chat
+ * view's control row: Search, View options, New agent or team), "maybe some
+ * reduction between the controls and the sections below them" to be more
+ * compact, and - asked twice - the wasted gap between the `Agents` and `Teams`
+ * headings when the first is collapsed.
+ *
+ * ## What it runs against
+ *
+ * `--backend` names the sidebar row-space set's own stand-in daemon
+ * (`docs/evidence/sidebar-row-space/harness/stub-daemon.mjs`), reused rather
+ * than copied: a session catalogue (the band and the entity sections both take
+ * the catalogue's gate), two agents, two teams and conversations, so the zone
+ * below the destinations is the app's own composition rather than a stage.
+ * The app is the real one: its catalogue read, its store, its sidebar, its
+ * disclosure state.
+ *
+ * ## The states, and what each one is for
+ *
+ * One palette per launch; the same steps run in both halves:
+ *
+ *   - `both-expanded`   both entity sections draw rows - the control case, where
+ *     the headings' gap must NOT move;
+ *   - `agents-collapsed`  `Agents` closed above `Teams` - the state the first
+ *     report named, where the gap must be the list's own 8px step;
+ *   - `both-collapsed`  both closed, the section-with-no-rows case;
+ *   - `strip`  the 56px column this change does not move, taken as the variant
+ *     a reviewer can see standing still rather than take on trust.
+ *
+ * The disclosure states are reached by PRESSING the headers - never by seeding -
+ * and each press is asserted against the `aria-expanded` it moved.
+ *
+ * ## The readings, and where they live
+ *
+ * One evaluate per state returns the boxes the gaps are subtractions over
+ * (`shell-evidence`'s own idiom), written to
+ * `sidebar-bottom-geometry-<theme>.json` beside the frames: the rhythm rows
+ * above the destinations, the destination list's own box, the band, both
+ * headings, the scroller and the foot - so every number quoted in the README is
+ * a subtraction over that file rather than a class name read aloud.
+ *
+ * ## The halves
+ *
+ * `--expect after` (the default) asserts the change's own claims - 16px under
+ * the destinations, and the conditional headings' gap - while the band's own gap
+ * to the first label is RECORDED at its unchanged 12px: the operator's second
+ * ask was a floated "maybe", and the only lever for it (the band's trailing
+ * margin or the scroll box's inset) moves the pixels of every committed sidebar
+ * frame by 4px, which is a re-capture pass of its own rather than part of this
+ * change. `--expect before` runs the same steps and records the same readings.
+ *
+ *   node scripts/renderer-driver.mjs --scene sidebar-bottom \
+ *     --backend http://127.0.0.1:18417 --backend-records <dir> \
+ *     --seed-onboarding-complete --theme localOperatorDark --out <dir>
+ */
+async function sceneSidebarBottom(cdp) {
+	const frames = [];
+	const expectAfter = START_EXPECT !== "before";
+	const states = {};
+
+	/*
+	 * THE CHANGE'S OWN CLAIMS, and the one place the two halves differ: `after`
+	 * asserts them, `before` records the same reading under a label that says
+	 * which half it is. The scene's own structural checks below run in both.
+	 */
+	const claim = (label, ok, detail) => {
+		if (expectAfter) check(label, ok, detail);
+		else note(`${label} (before half, not asserted)`, detail);
+	};
+
+	const hello = await verb(cdp, "hello");
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+	if (THEME) {
+		await verb(cdp, "setTheme", THEME);
+		const themed = await verb(cdp, "state");
+		check(
+			`the app is in the palette this run photographs (${THEME})`,
+			themed.theme === THEME,
+			`theme is ${themed.theme}`,
+		);
+	}
+
+	await verb(cdp, "navigate", "/chat");
+	/*
+	 * THE BAND IS THE WAIT THAT SAYS THE ZONE IS REAL: it takes the catalogue's
+	 * own gate (`showList`), so its presence is the app's own answer that the
+	 * catalogue mounted - and it is the control row the report is about.
+	 */
+	const band = await verb(cdp, "measure", {
+		selector: "[data-sidebar-band]",
+		timeoutMs: 15_000,
+	});
+	check(
+		"the band is drawn and hit-testable: the catalogue answered and the row the gap is measured to is the one on screen",
+		band.hitTest === true && band.inViewport === true && band.rect.height > 0,
+		JSON.stringify({
+			hitTest: band.hitTest,
+			inViewport: band.inViewport,
+			rect: band.rect,
+		}),
+	);
+	await verb(cdp, "measure", {
+		selector: '[data-chat-section="teams"]',
+		timeoutMs: 10_000,
+	});
+	await wait(300);
+
+	/*
+	 * The destinations list, addressed by the one row every build carries rather
+	 * than by a row the fixture may or may not draw (`Mesh` needs a mesh
+	 * membership this stand-in does not serve; the LAST row is whichever row the
+	 * build's bottom-most destination is, and the gap under the list is the
+	 * list's own bottom either way).
+	 */
+	const DESTINATIONS = 'ul:has(> li > button[data-tour-tag="nav-item-agents"])';
+
+	const readZone = async () =>
+		await cdp.evaluate(`(() => {
+			const info = (el) => {
+				if (!el) return null;
+				const r = el.getBoundingClientRect();
+				return {
+					x: Math.round(r.x),
+					y: Math.round(r.y),
+					width: Math.round(r.width),
+					height: Math.round(r.height),
+					bottom: Math.round(r.bottom),
+				};
+			};
+			const expanded = (el) => (el ? el.getAttribute("aria-expanded") : null);
+			const destinations = document.querySelector(${JSON.stringify(DESTINATIONS)});
+			const lastDestination = destinations
+				? destinations.lastElementChild.querySelector("button")
+				: null;
+			const band = document.querySelector("[data-sidebar-band]");
+			const agentsHeading = document.querySelector('[data-chat-section="agents"]');
+			const teamsHeading = document.querySelector('[data-chat-section="teams"]');
+			/*
+			 * THE TWO SECTION BOXES, not the two headings: between the headings sits the
+			 * open section's own rows, so a heading-to-heading subtraction measures the
+			 * section's content when it draws any - the margin this change is about only
+			 * exists between the BOXES, and a collapsed section's box IS its heading.
+			 */
+			const agentsSection = agentsHeading ? agentsHeading.closest("section") : null;
+			const teamsSection = teamsHeading ? teamsHeading.closest("section") : null;
+			const gear = document.querySelector('[data-tour-tag="nav-item-settings"]');
+			const foot = gear ? gear.parentElement : null;
+			const scroller = document.querySelector('[data-sidebar-region="scroller"]');
+			const strip = document.querySelector("[data-sidebar-strip]");
+			const boxes = {
+				newChat: info(document.querySelector("[data-new-chat-row]")),
+				searchRow: info(document.querySelector("[data-command-palette-trigger]")),
+				destinations: info(destinations),
+				lastDestination: info(lastDestination),
+				band: info(band),
+				agentsHeading: info(agentsHeading),
+				teamsHeading: info(teamsHeading),
+				agentsSection: info(agentsSection),
+				teamsSection: info(teamsSection),
+				scroller: info(scroller),
+				foot: info(foot),
+			};
+			const gap = (upper, lower) =>
+				upper && lower ? Math.round(lower.y - upper.bottom) : null;
+			return {
+				viewport: { w: innerWidth, h: innerHeight },
+				expanded: { agents: expanded(agentsHeading), teams: expanded(teamsHeading) },
+				boxes,
+				gaps: {
+					withinPrimary: gap(boxes.newChat, boxes.searchRow),
+					primaryToDestinations: gap(boxes.searchRow, boxes.destinations),
+					destinationsToBand: gap(boxes.destinations, boxes.band),
+					bandToFirstHeading: gap(boxes.band, boxes.agentsHeading),
+					agentsToTeams: gap(boxes.agentsSection, boxes.teamsSection),
+					scrollerToFoot: gap(boxes.scroller, boxes.foot),
+					footToViewportBottom: boxes.foot
+						? Math.round(innerHeight - boxes.foot.bottom)
+						: null,
+				},
+				strip: Boolean(strip),
+			};
+		})()`);
+
+	const readState = async (state) => {
+		const frame = await captureSettled(cdp, state);
+		frames.push(frame);
+		states[state] = await readZone();
+		return states[state];
+	};
+
+	/*
+	 * Press a section header until its `aria-expanded` reads `want`, and fail by
+	 * name if it will not - a scene that pressed nothing and measured anyway
+	 * would photograph the wrong state under the right label.
+	 */
+	const ensureExpanded = async (key, want) => {
+		const selector = `[data-chat-section="${key}"]`;
+		for (let attempt = 0; attempt < 3; attempt += 1) {
+			const now = await cdp.evaluate(
+				`document.querySelector('${selector}').getAttribute("aria-expanded")`,
+			);
+			if (now === want) return;
+			await verb(cdp, "press", selector);
+			await wait(300);
+		}
+		const now = await cdp.evaluate(
+			`document.querySelector('${selector}').getAttribute("aria-expanded")`,
+		);
+		throw new Error(
+			`${selector} did not reach aria-expanded=${want} (reads ${now})`,
+		);
+	};
+
+	await ensureExpanded("agents", "true");
+	await ensureExpanded("teams", "true");
+	// The entity rows load after the headings, and a frame of "Loading agents…"
+	// is not the state the gap is measured in.
+	await verb(cdp, "measure", { selector: "[data-entity]", timeoutMs: 10_000 });
+	const bothExpanded = await readState("both-expanded");
+	check(
+		"both sections are open for the control case",
+		bothExpanded.expanded.agents === "true" &&
+			bothExpanded.expanded.teams === "true",
+		JSON.stringify(bothExpanded.expanded),
+	);
+
+	await ensureExpanded("agents", "false");
+	const agentsCollapsed = await readState("agents-collapsed");
+	check(
+		"the press collapsed the agents section and left the teams section open",
+		agentsCollapsed.expanded.agents === "false" &&
+			agentsCollapsed.expanded.teams === "true",
+		JSON.stringify(agentsCollapsed.expanded),
+	);
+
+	await ensureExpanded("teams", "false");
+	const bothCollapsed = await readState("both-collapsed");
+	check(
+		"the second press collapsed the teams section",
+		bothCollapsed.expanded.agents === "false" &&
+			bothCollapsed.expanded.teams === "false",
+		JSON.stringify(bothCollapsed.expanded),
+	);
+
+	/*
+	 * The claims, over the readings above. `destinationsToBand` is the operator's
+	 * "bunch of extra space": 24px before this change (the group's 8px bottom
+	 * step + the body's 8px tier half + the panel's own 8px inset), 16px after
+	 * (§B6's one section tier, with the inset no longer stacked on top of it -
+	 * the edit's own comment in `sidebar-navigation.tsx` carries the arithmetic).
+	 * `bandToFirstHeading` is the weaker ask: 12px before (the band's 8px + the
+	 * scroller's 4px), 8px after. `agentsToTeams` is 16px whenever the section
+	 * above draws rows - the shared value a smaller constant would tighten
+	 * unasked - and the list's own 8px step when it draws none.
+	 */
+	claim(
+		"the gap under the destinations is the 16px section step",
+		agentsCollapsed.gaps.destinationsToBand === 16,
+		`${agentsCollapsed.gaps.destinationsToBand}px (expected 16)`,
+	);
+	claim(
+		"the band's own gap to the first section label is recorded at 12px, unchanged: the second ask was floated, and moving it costs every sidebar frame a re-capture",
+		agentsCollapsed.gaps.bandToFirstHeading === 12,
+		`${agentsCollapsed.gaps.bandToFirstHeading}px (12 on both halves)`,
+	);
+	claim(
+		"a collapsed section hands the heading below it the 8px step",
+		agentsCollapsed.gaps.agentsToTeams === 8 &&
+			bothCollapsed.gaps.agentsToTeams === 8,
+		`agents-collapsed ${agentsCollapsed.gaps.agentsToTeams}px, both-collapsed ${bothCollapsed.gaps.agentsToTeams}px (expected 8 in both)`,
+	);
+	claim(
+		"an expanded section keeps the full 16px tier: a shorter constant would tighten this unasked",
+		bothExpanded.gaps.agentsToTeams === 16,
+		`${bothExpanded.gaps.agentsToTeams}px (expected 16)`,
+	);
+
+	const geometryPath = join(
+		FRAMES,
+		`sidebar-bottom-geometry-${THEME ?? "default"}${RUN_LABEL}.json`,
+	);
+	writeFileSync(
+		geometryPath,
+		JSON.stringify(
+			{
+				scene: "sidebar-bottom",
+				theme: THEME ?? null,
+				expect: START_EXPECT,
+				runtime: electronRuntime(),
+				viewport: states["both-expanded"]?.viewport ?? null,
+				states,
+			},
+			null,
+			2,
+		),
+	);
+	note("geometry written", geometryPath);
+	for (const [state, reading] of Object.entries(states)) {
+		say(
+			`  ${state}: destinations->band ${reading.gaps.destinationsToBand ?? "-"}px, band->first label ${reading.gaps.bandToFirstHeading ?? "-"}px, agents->teams ${reading.gaps.agentsToTeams ?? "-"}px (agents ${reading.expanded.agents}, teams ${reading.expanded.teams})`,
+		);
+	}
+
+	/*
+	 * The strip, last: the collapse toggle narrows the column to 56px, the state a
+	 * reader keeps it in. Nothing in this change branches on it, and the frames
+	 * are here so that "it does not move" is a pair of pictures rather than a
+	 * sentence.
+	 */
+	await verb(cdp, "press", { selector: '[aria-label="Collapse sidebar"]' });
+	await verb(cdp, "measure", {
+		selector: "[data-sidebar-strip]",
+		timeoutMs: 8_000,
+	});
+	await wait(400);
+	frames.push(await captureSettled(cdp, "strip"));
+	states.strip = await readZone();
+	check(
+		"the column collapsed to the strip",
+		states.strip.strip === true,
+		JSON.stringify({ strip: states.strip.strip }),
+	);
+
+	return frames;
 }
 
 /**
@@ -27128,6 +27463,7 @@ async function main() {
 			if (SCENE === "session-archive") await sceneSessionArchive(cdp);
 			else if (SCENE === "connection-drop") await sceneConnectionDrop(cdp);
 			else if (SCENE === "row-space") await sceneRowSpace(cdp);
+			else if (SCENE === "sidebar-bottom") await sceneSidebarBottom(cdp);
 			else if (SCENE === "states") await sceneStates(cdp);
 			/*
 			 * §I's pane floors (the chat column's 480, the canvas's dock cap and its
