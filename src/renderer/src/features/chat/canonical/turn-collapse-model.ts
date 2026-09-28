@@ -27,7 +27,7 @@
  */
 
 import { type FoldableAction, foldSummary } from "./trace-fold-model";
-import type { TranscriptRecord } from "./transcript-reducer";
+import { isInterruptedFault, type TranscriptRecord } from "./transcript-reducer";
 import { type Row, type TurnRun, ledgerName, runsOf } from "./transcript-rows";
 
 /**
@@ -84,24 +84,33 @@ export function staysVisibleWhileCollapsed(record: TranscriptRecord): boolean {
  * The bar shows no "interrupted" wording in v1; the aborted answer's own
  * `Stopped before finishing` caption carries that fact where it already does.
  *
- * ONE LOCAL HELPER on purpose: the sibling's shared outcome predicate is not
- * exported yet, so this is the single place to swap when it is. Their
- * interrupted-vs-failed fix HAS LANDED (PR #613): a durable `skipped` row now
- * clears `isError` and sets `stopped`, and a live end event with
- * `__fault` in {skipped, aborted} does the same - so this helper's exclusions
- * read the settled state rather than working around it, and the count is
- * genuine `error` only. The planning-fault never-run kinds (`denied`,
- * `gate_failed`, ...) stay excluded here because the frozen contract excludes
- * every never-sent call; their rows keep their own failure treatment.
+ * ONE LOCAL HELPER on purpose: this is the single place the bar's count is
+ * read, so the switch to a shared exported predicate (if one is ever cut) is
+ * mechanical. It consumes the sibling's landed facts rather than re-deriving
+ * them (their interrupted-vs-failed fix, PR #613): `isInterruptedFault` is
+ * their exported class binding for the wire's `not_run_kind`, and the reducer
+ * sets `stopped` / clears `isError` from `__fault` in {skipped, aborted} on
+ * both the end and the durable arms - so an interrupted call is excluded by
+ * the wire's own state and this helper never re-sniffs a reason string. The
+ * never-sent exclusions stay even though the fold chip and foot count
+ * `isError` alone: the frozen contract keeps every never-sent call out of the
+ * SUMMARY counts (v1), and their rows keep their own failure treatment. The
+ * planning-fault kinds (`denied`, `gate_failed`, ...) therefore stay excluded
+ * here by the same never-sent contract when they arrive with a verdict.
  */
 export function isFailedCall(record: TranscriptRecord): boolean {
 	if (record.kind !== "tool") return false;
+	if (record.isError !== true) return false;
 	if (record.neverSent === true) return false;
 	if (record.notRunReason !== null && record.notRunReason !== undefined) {
 		return false;
 	}
 	if (record.stopped === true) return false;
-	return record.isError === true;
+	// The class arm: a never-run row that states an interrupted kind is an
+	// interrupt even where a producer set neither the stop window nor the
+	// reason pair - the same reading their reducer and row ladder make.
+	if (isInterruptedFault(record.notRunKind)) return false;
+	return true;
 }
 
 /**
