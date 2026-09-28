@@ -1734,6 +1734,15 @@ const STAMP_BINDING_NOTES = [
 	 * re-stamp rides the same re-derivation.
 	 */
 	"foldOntoA8ac7f673cNote",
+	/*
+	 * AND THE SIDEBAR'S TIME BASIS PASS'S OWN (2026-09-28):
+	 * `sidebarBinBasisRestampNote` quotes the pair its commit derives - the src
+	 * tree with the basis control and the completion's own refetch, the scripts
+	 * tree with the driver scene, the two suites and the rig's four new STORIES
+	 * rows - and is re-pointed by the docs-only amendment that follows, exactly
+	 * like every entry above it.
+	 */
+	"sidebarBinBasisRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {

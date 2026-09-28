@@ -107,6 +107,11 @@
  *                          against one that publishes none (the base-commit
  *                          runtime), where the row must stay off screen until
  *                          the app is remounted
+ *   --bin-expect <prompt|stale>  (with --scene sidebar-bin-promptness) which
+ *                          half of the bin pair this run records: `prompt`
+ *                          asserts an older session messaged today lands under
+ *                          `Today` within ~2 s of its completion; `stale`
+ *                          records the old bin it sits in instead
  *   --backend <url>        a live, ISOLATED backend this run owns: the app's own
  *                          transport is pointed at it, so a surface gated on a
  *                          capability can be driven at all. The renderer must have
@@ -406,6 +411,22 @@ const TUI_CONFIG = argValue("--tui-config", null);
  * question it does not ask.
  */
 const AUTHORING_EXPECT = argValue("--authoring-expect", "refresh");
+/**
+ * (with `--scene sidebar-bin-promptness`) which half of the bin pair this run
+ * records.
+ *
+ * `prompt` (the default) asserts the change's own claim: an older session
+ * messaged today lands under `Today` within the target window (~2 s) of its
+ * completion. `stale` is the same app, script, daemon and message WITHOUT the
+ * client half, and its claim is the operator's report: the row stays in its old
+ * bin. A still cannot carry a latency, so this flag exists to make the two
+ * readings one comparison rather than two anecdotes.
+ *
+ * A value the scene does not know is refused rather than defaulted, for the
+ * same reason `--authoring-expect` does: a typo would silently run the other
+ * half and read as the answer to a question it did not ask.
+ */
+const BIN_EXPECT = argValue("--bin-expect", "prompt");
 /**
  * WHICH HALF OF A BEFORE/AFTER PAIR THIS RUN IS (with --scene conversation-start).
  *
@@ -14947,6 +14968,504 @@ async function authoringWrite(path, body) {
 }
 
 /**
+ * One `sessions.list` read from this script's Node process.
+ *
+ * The bearer contract is `authoringWrite`'s - no `Origin` header, the run's own
+ * token - and it is its own helper because the scenes that watch the DAEMON's
+ * own truth, rather than the app's copy of it, read as well as write. The list
+ * is the catalogue in the same shape the app consumes it: `mtime` is the
+ * session's activity clock and `created_at` its birth, both read fresh per
+ * call (`server/session/catalog.py`'s `_row_stat_key` cache is keyed on the
+ * transcript's own stat, so a backdated file is re-read rather than served).
+ */
+async function daemonList() {
+	const response = await fetch(`${BACKEND}/v1/desktop/sessions?limit=50`, {
+		headers: {
+			authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+		},
+	});
+	if (!response.ok) {
+		return { ok: false, status: response.status, sessions: [] };
+	}
+	const answer = await response.json();
+	return {
+		ok: true,
+		status: response.status,
+		sessions: answer?.result?.sessions ?? [],
+	};
+}
+
+/**
+ * One POST to the daemon's desktop routes, from THIS script's Node process.
+ *
+ * Same contract as `authoringWrite`, kept beside `daemonList` so a scene that
+ * creates and messages sessions reads as the verbs it actually uses. The parsed
+ * body rides along because a create answers the new session's id; a body that
+ * is not JSON (a refusal can be HTML) leaves `json` null rather than failing the
+ * scene inside a parse.
+ */
+async function daemonPost(path, body) {
+	const response = await fetch(`${BACKEND}${path}`, {
+		method: "POST",
+		headers: {
+			"content-type": "application/json",
+			authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+		},
+		body: JSON.stringify(body),
+	});
+	const text = await response.text();
+	let json = null;
+	try {
+		json = JSON.parse(text);
+	} catch {
+		/* See the docstring: the caller reads `status` and `body` then. */
+	}
+	return { path, status: response.status, body: text.slice(0, 400), json };
+}
+
+/**
+ * The bin promptness, measured live - the operator's report, on the wire and on
+ * screen.
+ *
+ * WHY THIS SCENE EXISTS. The operator (2026-09-28): "even if I've asked an
+ * older session something today, once it completes I can't see it within the
+ * today bin". A row's bin is its `updated_at` (the transcript's activity
+ * clock, `chat-list-sections.ts`), and a completed turn advances that clock -
+ * but the client only learns the new value from a list read, and a completion
+ * is not a list read. So the subject here is an OLD session, messaged by this
+ * script while it is NOT the open pane, and the reading is when the sidebar's
+ * own `data-chat-section` attribute for its row changes to `today`.
+ *
+ * HOW THE SUBJECT IS MADE OLD. Born through the daemon's own create route and
+ * materialised with one real turn - so `created_at.json` and a transcript both
+ * exist - and then both clocks are rewritten backwards: the birth record and
+ * the transcript's mtime, to forty days before this run. The transcript's mtime
+ * IS the list's `mtime`, so this is the fixture the operator's "older session"
+ * is rather than a stub of one; the scene reads both values back from the
+ * daemon's list before it measures anything.
+ *
+ * THE COMPLETION REFERENCE. The daemon's machine-wide feed is subscribed by
+ * this scene's own Node process (`GET /v1/desktop/events`), and the subject's
+ * `attention` frame with a NEW completion token is the event the app itself
+ * receives; its node-side arrival time is the reference the DOM change is
+ * measured against, with the list's own token change polled beside it as a
+ * second, coarser reading. Both are reported.
+ *
+ * THE TWO HALVES. `--bin-expect prompt` (default) asserts the change's claim -
+ * the row lands under `Today` within `BIN_TARGET_MS` of that frame. `--bin-expect
+ * stale` asserts the operator's report on the tree without the client half: the
+ * row does NOT move within `BIN_STALE_MS` (eight seconds; the poll is the thing
+ * under test, so a move inside that window is a FAILURE of this run's own
+ * claim, not a pass). The stale half keeps watching to the 50 s budget anyway,
+ * because WHEN it finally moves is the reading the pair exists to compare.
+ *
+ * WHAT IT NEEDS: `--backend` and `--backend-records` for a daemon this run owns
+ * (`--backend-records` names that daemon's `<config>/run/serve`),
+ * `LOCAL_OPERATOR_DESKTOP_TOKEN` in this script's environment, a renderer built
+ * against `--backend`, and `--seed-onboarding-complete` (a fresh profile in
+ * front of a fresh daemon is a first-run user whose wizard is a modal over the
+ * window). It writes sessions into that daemon's store and backdates their
+ * files; it refuses a `--backend` whose record directory does not describe it.
+ */
+const BIN_TARGET_MS = 2_000;
+const BIN_STALE_MS = 8_000;
+async function sceneSidebarBinPromptness(cdp) {
+	const expect = BIN_EXPECT;
+	const stale = expect === "stale";
+	/*
+	 * THE DAEMON'S OWN ROOTS, from the record directory this run was handed:
+	 * `<config>/run/serve` -> `<config>`. Asserted before anything is written, so
+	 * a `--backend` naming somebody else's daemon fails here rather than creating
+	 * and backdating sessions in their store.
+	 */
+	const configRoot = resolve(BACKEND_RECORDS, "..", "..");
+	const sessionsDir = join(configRoot, "sessions");
+	const backendPort = Number(new URL(BACKEND).port);
+	if (backendPort === 1111) {
+		throw new Error(
+			"--scene sidebar-bin-promptness refuses 1111: that is the operator's own daemon, and this scene creates and backdates sessions",
+		);
+	}
+	const record = sceneConnectionDropRecords().find(
+		(entry) =>
+			entry.record.port === backendPort &&
+			["127.0.0.1", "localhost", "::1"].includes(entry.record.host),
+	);
+	if (record === undefined) {
+		throw new Error(
+			`no serve record for port ${backendPort} under ${BACKEND_RECORDS}: --backend-records must name the daemon's own <config>/run/serve, and this scene creates and backdates sessions in the store beside it`,
+		);
+	}
+	if (!existsSync(sessionsDir)) {
+		throw new Error(
+			`${sessionsDir} is missing under the record's own config root: the record directory does not sit at <config>/run/serve, so this scene cannot find the store it must backdate`,
+		);
+	}
+	note(
+		"the daemon this scene drives",
+		`pid ${record.record.pid} port ${backendPort} store ${sessionsDir}`,
+	);
+
+	/* A node-side poll, because `waitForCondition` reads the PAGE. */
+	const waitUntil = async (predicate, timeoutMs, everyMs = 100) => {
+		const started = Date.now();
+		for (;;) {
+			const value = await predicate();
+			if (value) return { ok: true, waitedMs: Date.now() - started, value };
+			if (Date.now() - started > timeoutMs) {
+				return { ok: false, waitedMs: Date.now() - started };
+			}
+			await wait(everyMs);
+		}
+	};
+
+	/*
+	 * WHERE THE SIDEBAR FILES ONE ROW, read from the DOM rather than from the
+	 * store (the store is not reachable from the page, and the drawn section is
+	 * the claim): the row's nearest `[data-chat-section]` ancestor - the section
+	 * element `chat-sidebar.tsx` draws - and the row's own time label.
+	 */
+	const rowBinExpr = (id) =>
+		`(() => { const row = document.querySelector(${JSON.stringify(`[data-session-row="${id}"]`)}); if (!row) return null; const section = row.closest("[data-chat-section]"); const time = row.querySelector("[data-session-time]"); return { section: section ? section.getAttribute("data-chat-section") : null, time: time ? time.textContent.trim() : null }; })()`;
+	const rowSectionIs = (id, section) =>
+		`(() => { const seen = ${rowBinExpr(id)}; return seen !== null && seen.section === ${JSON.stringify(section)}; })()`;
+
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", "localOperatorDark");
+	const route = await verb(cdp, "state");
+	check(
+		"the app is on the chat route with its sidebar drawn",
+		route.route === "/chat",
+		`route ${route.route}`,
+		`route ${route.route}`,
+	);
+
+	const work = join(resolve(configRoot, ".."), "bin-work");
+	mkdirSync(work, { recursive: true });
+
+	/*
+	 * THE SUBJECT, and its pane sibling. The subject is created, given one turn
+	 * (which materialises it: `created_at.json` is written by the first run, and
+	 * the transcript the clock lives on does not exist before it), acknowledged
+	 * so its completion mark is not what the frames are about, and THEN
+	 * backdated - the order matters, because the first turn's own frames are
+	 * what would otherwise re-read it at its living clock.
+	 */
+	const created = await daemonPost("/v1/desktop/sessions", {
+		request_id: randomUUID(),
+		cwd: work,
+	});
+	const subjectId = created.json?.result?.session_id ?? null;
+	check(
+		"the daemon created the subject session",
+		created.status === 200 &&
+			typeof subjectId === "string" &&
+			subjectId.length > 0,
+		JSON.stringify(created),
+		`session ${subjectId}`,
+	);
+
+	const firstTurn = await daemonPost(
+		`/v1/desktop/sessions/${subjectId}/messages`,
+		{
+			request_id: randomUUID(),
+			text: "Reply with one word: seeded.",
+		},
+	);
+	check(
+		"the subject's materialising turn was admitted",
+		firstTurn.status === 200,
+		JSON.stringify(firstTurn),
+		"admitted",
+	);
+
+	const materialised = await waitUntil(async () => {
+		const transcript = join(sessionsDir, subjectId, "transcript.jsonl");
+		if (!existsSync(transcript) || statSync(transcript).size < 64) return false;
+		const row = (await daemonList()).sessions.find(
+			(entry) => entry.id === subjectId,
+		);
+		return (
+			Boolean(row) &&
+			row.status?.code !== "busy" &&
+			Boolean(row.attention?.completion_token) &&
+			Number.isFinite(row.mtime)
+		);
+	}, 30_000);
+	check(
+		"the subject finished its first turn and carries both clocks",
+		materialised.ok,
+		`not materialised after ${materialised.waitedMs}ms`,
+		`finished after ${materialised.waitedMs}ms`,
+	);
+
+	/*
+	 * NO ACK. The completion mark from the first turn STANDS - the operator's own
+	 * store is full of unviewed completions, and a subject that carries one is the
+	 * adversarial case for the invalidation: the tiers before and after the
+	 * measured turn are BOTH the unseen-completion band, so the completion is
+	 * carried by its `attention` frame alone whenever the busy band was missed.
+	 */
+
+	const fortyDaysAgo = Math.floor(Date.now() / 1000) - 40 * 86_400;
+	const subjectDir = join(sessionsDir, subjectId);
+	writeFileSync(
+		join(subjectDir, "created_at.json"),
+		JSON.stringify(fortyDaysAgo),
+	);
+	const transcript = join(subjectDir, "transcript.jsonl");
+	const mint = new Date(fortyDaysAgo * 1000);
+	utimesSync(transcript, mint, mint);
+	const stamped = (await daemonList()).sessions.find(
+		(entry) => entry.id === subjectId,
+	);
+	check(
+		"the daemon now reports the subject as an older session",
+		stamped !== undefined &&
+			Math.abs(stamped.mtime - fortyDaysAgo) < 0.5 &&
+			Math.abs(stamped.created_at - fortyDaysAgo) < 0.5,
+		`list says mtime ${stamped?.mtime} created_at ${stamped?.created_at}, wanted ${fortyDaysAgo}`,
+		`mtime ${stamped?.mtime} created_at ${stamped?.created_at} (40 days back)`,
+	);
+
+	const createdPane = await daemonPost("/v1/desktop/sessions", {
+		request_id: randomUUID(),
+		cwd: work,
+	});
+	const paneId = createdPane.json?.result?.session_id ?? null;
+	check(
+		"the daemon created the pane session",
+		createdPane.status === 200 &&
+			typeof paneId === "string" &&
+			paneId.length > 0,
+		JSON.stringify(createdPane),
+		`session ${paneId}`,
+	);
+
+	/*
+	 * THE APP MUST SEE THE BACKDATED SUBJECT BEFORE THE MEASUREMENT. Creating
+	 * the pane moved the sessions directory, which is the catalogue doorbell -
+	 * so the sidebar re-reads, and only then is the subject's row on screen in
+	 * `older` with its stale label. The 45 s bound is the safety poll's own
+	 * order of magnitude on a daemon whose doorbell missed.
+	 */
+	const subjectShown = await waitForCondition(
+		cdp,
+		rowSectionIs(subjectId, "older"),
+		45_000,
+	);
+	check(
+		"the backdated subject is on screen under Older",
+		subjectShown.ok,
+		`waited ${subjectShown.waitedMs}ms for the row under Older`,
+		`rendered after ${subjectShown.waitedMs}ms`,
+	);
+
+	const pressed = await verb(
+		cdp,
+		"press",
+		`[data-session-row="${paneId}"] [data-chat-row]`,
+	);
+	await wait(1200);
+	const opened = await verb(cdp, "state");
+	check(
+		"the open pane is the pane session, so the subject is NOT the open pane",
+		opened.activeSessionId === paneId,
+		`active session is ${JSON.stringify(opened.activeSessionId)} after pressing ${JSON.stringify(pressed?.target ?? pressed)}`,
+		`active session ${opened.activeSessionId}`,
+	);
+
+	const baseline = await cdp.evaluate(rowBinExpr(subjectId));
+	note("the subject's row before the message", JSON.stringify(baseline));
+	const beforeFrame = await captureSettled(cdp, `bin-before-${expect}`);
+
+	/*
+	 * THIS SCENE'S OWN FEED SUBSCRIPTION, so the completion's frame has a
+	 * timestamp taken by the process that will read the DOM. The app has its own
+	 * subscription; this is a second reader, closed before the scene returns.
+	 */
+	const frames = [];
+	const watchAbort = new AbortController();
+	const watchDone = (async () => {
+		try {
+			const response = await fetch(`${BACKEND}/v1/desktop/events`, {
+				headers: {
+					authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+				},
+				signal: watchAbort.signal,
+			});
+			const reader = response.body.getReader();
+			const decoder = new TextDecoder();
+			let buffer = "";
+			for (;;) {
+				const { value, done } = await reader.read();
+				if (done) break;
+				buffer += decoder.decode(value, { stream: true });
+				let cut = buffer.indexOf("\n\n");
+				while (cut >= 0) {
+					const chunk = buffer.slice(0, cut);
+					buffer = buffer.slice(cut + 2);
+					const line = chunk
+						.split("\n")
+						.find((entry) => entry.startsWith("data: "));
+					if (line) {
+						try {
+							frames.push({ at: Date.now(), frame: JSON.parse(line.slice(6)) });
+						} catch {
+							/* A torn chunk is not this scene's subject; the next frame is. */
+						}
+					}
+					cut = buffer.indexOf("\n\n");
+				}
+			}
+		} catch (error) {
+			if (!watchAbort.signal.aborted) {
+				note("the feed watch ended early", String(error));
+			}
+		}
+	})();
+	const watchOpen = await waitUntil(
+		() => frames.some((entry) => entry.frame.type === "open"),
+		10_000,
+	);
+	check(
+		"this scene's own feed subscription is live",
+		watchOpen.ok,
+		`no open frame after ${watchOpen.waitedMs}ms`,
+		`open frame after ${watchOpen.waitedMs}ms`,
+	);
+
+	const beforeList = (await daemonList()).sessions.find(
+		(entry) => entry.id === subjectId,
+	);
+	const preToken = beforeList?.attention?.completion_token ?? null;
+	const sentAt = Date.now();
+	const sent = await daemonPost(`/v1/desktop/sessions/${subjectId}/messages`, {
+		request_id: randomUUID(),
+		text: "Reply with one word: bins.",
+	});
+	check(
+		"the daemon admitted the message",
+		sent.status === 200,
+		JSON.stringify(sent),
+		"admitted",
+	);
+
+	/*
+	 * THE MEASUREMENT LOOP: the list's token change and this scene's own
+	 * attention frame are the completion's two readings, and the DOM's section
+	 * attribute for the subject's row is the claim. Everything is timestamped
+	 * with `Date.now()` from one process, which is the only way the deltas mean
+	 * anything.
+	 */
+	const deadline = sentAt + (stale ? 50_000 : 15_000);
+	let completionAt = null;
+	let completionFrameAt = null;
+	let binAt = null;
+	const transitions = [];
+	let current = baseline;
+	while (Date.now() < deadline) {
+		const now = Date.now();
+		if (completionAt === null || completionFrameAt === null) {
+			const row = (await daemonList()).sessions.find(
+				(entry) => entry.id === subjectId,
+			);
+			const token = row?.attention?.completion_token ?? null;
+			if (completionAt === null && token && token !== preToken) {
+				completionAt = now;
+			}
+			if (completionFrameAt === null) {
+				const hit = frames.find(
+					(entry) =>
+						entry.frame.type === "attention" &&
+						entry.frame.session_id === subjectId &&
+						entry.frame.payload?.completion_token &&
+						entry.frame.payload.completion_token !== preToken,
+				);
+				if (hit) completionFrameAt = hit.at;
+			}
+		}
+		const seen = await cdp.evaluate(rowBinExpr(subjectId));
+		if (
+			seen !== null &&
+			(seen.section !== current?.section || seen.time !== current?.time)
+		) {
+			transitions.push({ at: now, ...seen });
+			current = seen;
+			if (binAt === null && seen.section === "today") binAt = now;
+		}
+		if (binAt !== null) break;
+		await wait(80);
+	}
+
+	watchAbort.abort();
+	await watchDone;
+
+	const catalogueAfter = frames
+		.filter((entry) => entry.frame.type === "catalogue" && entry.at >= sentAt)
+		.map((entry) => entry.at - sentAt);
+	const attentionAfter = frames
+		.filter(
+			(entry) => entry.frame.session_id === subjectId && entry.at >= sentAt,
+		)
+		.map((entry) => `${entry.frame.type}@${entry.at - sentAt}ms`);
+	const completion = completionFrameAt ?? completionAt;
+	const lagMs =
+		binAt !== null && completion !== null ? binAt - completion : null;
+	note(
+		"bin promptness readings",
+		JSON.stringify({
+			expect,
+			subjectId,
+			sentAt,
+			completionFrameAt:
+				completionFrameAt === null ? null : completionFrameAt - sentAt,
+			completionAt: completionAt === null ? null : completionAt - sentAt,
+			catalogueAfterMs: catalogueAfter,
+			subjectFrames: attentionAfter,
+			binAt: binAt === null ? null : binAt - sentAt,
+			lagMs,
+			transitions: transitions.map((entry) => ({
+				at: entry.at - sentAt,
+				section: entry.section,
+				time: entry.time,
+			})),
+		}),
+	);
+
+	const finalBin = await cdp.evaluate(rowBinExpr(subjectId));
+	const afterFrame = await captureSettled(cdp, `bin-after-${expect}`);
+
+	if (stale) {
+		check(
+			`the row does NOT land under Today within ${BIN_STALE_MS}ms of the completion (the defect this run records)`,
+			binAt === null ||
+				completion === null ||
+				binAt - completion > BIN_STALE_MS,
+			`the row was under Today ${binAt === null || completion === null ? "?" : `${binAt - completion}ms`} after the completion`,
+			binAt === null
+				? `still under ${JSON.stringify(finalBin?.section)} (${JSON.stringify(finalBin?.time)}) after ${Date.now() - sentAt}ms`
+				: `moved ${binAt - completion}ms after the completion (${binAt - sentAt}ms after the message)`,
+		);
+	} else {
+		check(
+			`the row lands under Today within ${BIN_TARGET_MS}ms of the completion`,
+			binAt !== null &&
+				completion !== null &&
+				binAt - completion <= BIN_TARGET_MS,
+			binAt === null
+				? `no move within ${deadline - sentAt}ms of the message (completion ${completionFrameAt === null ? (completionAt === null ? "never" : `${completionAt - sentAt}ms`) : `${completionFrameAt - sentAt}ms`} in)`
+				: `landed ${binAt - completion}ms after the completion`,
+			binAt !== null && completion !== null
+				? `${binAt - completion}ms after the completion (${binAt - sentAt}ms after the message), row now ${JSON.stringify(finalBin?.section)} ${JSON.stringify(finalBin?.time)}`
+				: `row now ${JSON.stringify(finalBin?.section)} ${JSON.stringify(finalBin?.time)}`,
+		);
+	}
+
+	return [beforeFrame, afterFrame];
+}
+
+/**
  * `/btw` — the aside, driven end to end in BOTH trees by one scene.
  *
  * WHY ONE SCENE AND NOT TWO. The change is a replacement of one surface by
@@ -27574,6 +28093,18 @@ async function main() {
 			"--scene pins takes --tui-python and --tui-config together: the terminal's store and the config root the daemon serves are one measurement, and half of it would look like it ran",
 		);
 	}
+	if (SCENE === "sidebar-bin-promptness") {
+		if (BACKEND === null || BACKEND_RECORDS === null) {
+			throw new Error(
+				"--scene sidebar-bin-promptness needs --backend and --backend-records: the subject is a session created and messaged over the daemon's own routes, and the record directory is how this script finds the store that session lives in",
+			);
+		}
+		if (BIN_EXPECT !== "prompt" && BIN_EXPECT !== "stale") {
+			throw new Error(
+				`--bin-expect takes prompt or stale (got ${JSON.stringify(BIN_EXPECT)}): the two are different claims about the same run, and a defaulted typo would silently answer the other one`,
+			);
+		}
+	}
 
 	if (GATE_CHECK) {
 		say(
@@ -27712,6 +28243,8 @@ async function main() {
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);
 			else if (SCENE === "btw-aside") await sceneBtwAside(cdp);
 			else if (SCENE === "authoring-refresh") await sceneAuthoringRefresh(cdp);
+			else if (SCENE === "sidebar-bin-promptness")
+				await sceneSidebarBinPromptness(cdp);
 			else if (SCENE === "drafts") await sceneDrafts(cdp);
 			else if (SCENE === "undo-toasts-stacked")
 				await sceneUndoToastsStacked(cdp);
