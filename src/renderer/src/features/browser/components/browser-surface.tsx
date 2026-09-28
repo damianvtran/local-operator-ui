@@ -478,7 +478,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 
 	if (!chrome.available) {
 		return (
-			<div className="flex h-full items-center justify-center bg-canvas p-6">
+			<div className="flex h-full items-center justify-center bg-elevated p-6">
 				<p className="text-body text-ink-muted">
 					The browser is only available in the desktop app.
 				</p>
@@ -487,8 +487,12 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	}
 
 	return (
+		/* The body's ground is the PANE's (`canvas/index.tsx`): this surface is the
+		   inside of the drawer, so it wears the drawer's rung rather than the
+		   conversation's, and the strip/client area above and below are continuous
+		   with it. */
 		<div
-			className="flex h-full min-h-0 flex-col bg-canvas"
+			className="flex h-full min-h-0 flex-col bg-elevated"
 			data-tour-tag={surfaceTag}
 		>
 			{/* THE STRIP CONSUMES THESE TWO HANDS, so they are passed through rather than
@@ -665,7 +669,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 					// also names is a PANE-layout decision, not this class's: in a pane narrower
 					// than ~520px the dock takes the whole width and the page is given none
 					// (spec §4.4), which is PR 2's layout to choose.
-					className="relative min-h-0 min-w-0 grow bg-canvas"
+					className="relative min-h-0 min-w-0 grow bg-elevated"
 					data-tour-tag="browser-content"
 					/* The suppression reason on the element that is always here, so a run — or a
 					   support session — reads WHY the page is hidden rather than inferring it

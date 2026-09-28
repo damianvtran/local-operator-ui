@@ -754,7 +754,15 @@ export const InlineEdit: FC<InlineEditProps> = ({
 					{/* Attach and dictate are the same two affordances the chat
 					    composer carries, so they read the same: neutral until you
 					    reach for them, with the accent left for the primary action.
-					    See the note at `message-input.tsx`'s action row. */}
+					    See the note at `message-input.tsx`'s action row.
+
+					    THEIR HOVER GOES DOWN, NOT UP (`surface`, where the chat
+					    composer's buttons use `elevated`): this row's own ground IS
+					    `elevated` — the floating box at the top of this file — so an
+					    `elevated` hover would measure ΔE00 0 against it. That
+					    collapse predates the pane's move (flagged in the
+					    canvas-elevated round, where it was listed as the pane's), and
+					    the step that survives every palette is the one below. */}
 					<div className={cn("flex items-center justify-between gap-2")}>
 						<div className={cn("flex items-center gap-2")}>
 							<Tooltip content="Add attachments">
@@ -763,7 +771,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 										variant="ghost"
 										size="icon-sm"
 										aria-label="Add attachments"
-										className="text-ink-dim hover:bg-elevated hover:text-ink"
+										className="text-ink-dim hover:bg-surface hover:text-ink"
 										onClick={handleAttachFile}
 										disabled={
 											isLoading ||
@@ -792,7 +800,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 											variant="ghost"
 											size="icon-sm"
 											aria-label="Start recording"
-											className="text-ink-dim hover:bg-elevated hover:text-ink"
+											className="text-ink-dim hover:bg-surface hover:text-ink"
 											onClick={handleStartRecording}
 											disabled={isLoading || !canEnableRecordingFeature}
 										>

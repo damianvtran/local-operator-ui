@@ -220,7 +220,12 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 				<div
 					className={cn(
 						"flex min-h-8 items-center gap-1 pr-1",
-						"transition-colors duration-fast ease-out-quart hover:bg-elevated",
+						/* The row's hover is a step DOWN from the pane's ground and not up to
+						   `elevated`: these rows have no plane of their own (they ride the pane,
+						   `canvas/index.tsx`), so an `elevated` hover now measures ΔE00 0 against
+						   the drawer's rung — the same reason the console's surface rows and the
+						   subagent rows hover on `surface`. */
+						"transition-colors duration-fast ease-out-quart hover:bg-surface",
 					)}
 				>
 					{/*
