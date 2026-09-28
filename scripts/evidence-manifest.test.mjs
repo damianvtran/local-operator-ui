@@ -1735,6 +1735,12 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"foldOnto8a03152c61Note",
 	/*
+	 * And THIS fold's record rides beside them - the third fold writes one
+	 * top-level note, registered here for the same completeness reason: a fold
+	 * that started from main's copy would drop it first.
+	 */
+	"foldOnto5ba0d0dc8aNote",
+	/*
 	 * AND THIS FOLD'S OWN - the fifth: `foldOntoA8ac7f673cNote` states the pair the
 	 * folded tip binds, the two conflicts it resolved (this file's and its
 	 * manifest's) as unions with no key dropped either side, and that no frame was
@@ -2700,6 +2706,12 @@ const BRANCH_RECORDS = [
 	 * And this fold's record rides beside them - registered here for the same completeness reason.
 	 */
 	"foldOnto8a03152c61Note",
+	/*
+	 * And THIS fold's record rides beside them - the third fold writes one
+	 * top-level note, registered here for the same completeness reason: a fold
+	 * that started from main's copy would drop it first.
+	 */
+	"foldOnto5ba0d0dc8aNote",
 	/*
 	 * And THIS fold's record rides beside them - the fifth fold writes one
 	 * top-level note, registered here for the same completeness reason: a fold
