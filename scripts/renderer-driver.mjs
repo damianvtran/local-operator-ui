@@ -8414,10 +8414,18 @@ async function sceneTurnCollapse(cdp) {
 	const geometry = await cdp.evaluate(`(() => {
 		const bar = document.querySelector('[data-turn-summary]');
 		if (!bar) return null;
+		/*
+		 * The bar's own ROW is the trigger, not the root: the root wraps the open
+		 * body too, and measuring its centre would measure the whole block (found
+		 * on this scene's first post-fix run: barToRow1 11.8 against a block, not
+		 * a row).
+		 */
+		const trigger = bar.querySelector('button[aria-expanded]');
+		if (!trigger) return null;
 		const rows = [...bar.querySelectorAll('[data-record-id]')];
 		if (rows.length === 0) return null;
 		const c = (el) => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; };
-		return { barCenter: c(bar), rowCenters: rows.map(c) };
+		return { barCenter: c(trigger), rowCenters: rows.map(c) };
 	})()`);
 	const barToRow1 =
 		geometry !== null
