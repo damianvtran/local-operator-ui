@@ -35,10 +35,12 @@ import { checkpointPendingIds } from "./checkpoint-model";
  * installed backend that predates `sessions.checkpoints` answers the 404/422
  * it answers for any unknown route, and this hook turns ANY initial load
  * failure into `state: "error"` — which renders nothing — plus ONE warn per
- * conversation. Logging once matters: without the latch a poll would repeat
- * the same failure every 1.5 s. The op has no capability key of its own,
- * deliberately: a missing key and an old backend are the same fact to this
- * hook, and the hook already has that fact when the request fails.
+ * failure class per conversation (the manifest read and a naming warm fail
+ * with different sentences because they are different facts, and the latch
+ * is per sentence). Logging once matters: without the latch a poll would
+ * repeat the same failure every 1.5 s. The op has no capability key of its
+ * own, deliberately: a missing key and an old backend are the same fact to
+ * this hook, and the hook already has that fact when the request fails.
  *
  * A failure AFTER a manifest exists is treated differently, and the difference
  * is what the reader is looking at: the last answer keeps painting and the
@@ -94,7 +96,16 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 	const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 	/** Stamped when a poll EPISODE is armed; cleared when it ends. */
 	const pollDeadline = useRef<number | null>(null);
-	const errorLogged = useRef(false);
+	/**
+	 * Warn lines this conversation has already printed, keyed by message.
+	 *
+	 * A latch per SENTENCE rather than one boolean, because the two failures
+	 * this hook can see are different facts: the manifest read failing hides
+	 * the rail, while a warm failing costs only a decoration — and a single
+	 * latch would either silence the second fact or let a poll repeat the
+	 * first every 1.5 s.
+	 */
+	const loggedMessages = useRef(new Set<string>());
 
 	const stopPoll = useCallback(() => {
 		if (pollTimer.current !== null) {
@@ -104,13 +115,10 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 		pollDeadline.current = null;
 	}, []);
 
-	const logOnce = useCallback((error: unknown) => {
-		if (errorLogged.current) return;
-		errorLogged.current = true;
-		console.warn(
-			"checkpoints are unavailable for this conversation; the rail stays hidden:",
-			error,
-		);
+	const logOnce = useCallback((message: string, error: unknown) => {
+		if (loggedMessages.current.has(message)) return;
+		loggedMessages.current.add(message);
+		console.warn(message, error);
 	}, []);
 
 	/*
@@ -149,7 +157,10 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 				if (pendingIds.current.size > 0) schedulePollRef.current(epoch);
 			} catch (error) {
 				if (epoch !== epochRef.current) return;
-				logOnce(error);
+				logOnce(
+					"checkpoints are unavailable for this conversation; the rail stays hidden:",
+					error,
+				);
 				stopPoll();
 				if (mode === "initial") {
 					setManifest(null);
@@ -234,7 +245,10 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 					if (pendingIds.current.size > 0) schedulePollRef.current(epoch);
 				} catch (error) {
 					if (epoch !== epochRef.current) return;
-					logOnce(error);
+					logOnce(
+						"checkpoint naming is unavailable; the cards keep their fallback text:",
+						error,
+					);
 				}
 			})();
 		},
@@ -248,7 +262,7 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 		inFlightEpoch.current = null;
 		pendingIds.current = new Set();
 		stopPoll();
-		errorLogged.current = false;
+		loggedMessages.current = new Set();
 		setManifest(null);
 		if (!sessionId) {
 			setState("idle");
