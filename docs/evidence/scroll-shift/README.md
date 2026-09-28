@@ -87,7 +87,7 @@ Two mechanisms closed a fold the reader had opened, both measured:
   row of its run, and only the newest 60 rows mount; every incoming row drops
   the window's oldest, so when that edge crosses a run (`[t1..t4] -> [t2..t4]`)
   React mounted a fresh fold and `useState` was gone. `before/fold-boundary.trace.json`,
-  frame 69: `expanded true -> false`, off screen (the fold's box sat 5,000px above
+  frame 67: `expanded true -> false`, off screen (the fold's box sat 5,000px above
   the viewport).
 
 The fixes: the condense is retired (the reader's press is the only close, in
@@ -107,7 +107,7 @@ did when a fold's body unmounted:
 | --- | --- | --- |
 | `fold-tail/` - expand, calls load, turn's end | the condense closes the fold AND every settled row moves `228.0px` down on that frame (`rows 6 moved 228.0..228.0`, `st 0`) | no collapse at the turn's end; `wl left` moves nothing |
 | `fold-away/` - the reader scrolled off the tail | the collapse moves every settled row `217.0px` in one frame (`max|delta row| = 217.0`), with Chrome adjusting `scrollTop` by 11px (its clamp), not the 228 the hold needs | the reader's own collapse lands `max|delta row| = 0.00px` - the correction writes `scrollTop -428 -> -200` in the same frame |
-| `fold-boundary/` - off screen, edge walks the run | `expanded true -> false` (frame 69) | `expanded true -> true` (frame 65) |
+| `fold-boundary/` - off screen, edge walks the run | `expanded true -> false` (frame 67) | `expanded true -> true` (frame 65) |
 | `fold-tail-manual/` - the reader collapses the newest group AT the tail | n/a | re-flushes the pinned column by the body's own `228px`; the residual below |
 
 **What re-anchors today, and what the update was missing.** The only
