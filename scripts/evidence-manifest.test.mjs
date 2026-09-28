@@ -1552,6 +1552,16 @@ const STAMP_BINDING_NOTES = [
 	 * re-captured - so a reader is owed the pair and the four frames it added.
 	 */
 	"traceToolLabelsRestampNote",
+	/*
+	 * AND THIS BRANCH'S OWN, the scroll-shift fix: it moves BOTH trees this file
+	 * binds - `src/` for the transcript's reserved foot row, `scripts/` for the rig
+	 * that measured the shift, the discriminator that pins it and this note's own
+	 * registration - so a reader is owed the two values it binds. It ADDS a set
+	 * rather than moving one (`scroll-shift`, ten frames), which is why the pair it
+	 * states matters more than usual: a fold that re-derived against a tree without
+	 * the rig would invalidate every number in that set's README.
+	 */
+	"scrollShiftRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
