@@ -491,6 +491,16 @@ export type DesktopProjectDetail = {
  */
 export type DesktopAidaState = {
 	enabled: boolean;
+	/**
+	 * Her display name, when the backend is new enough to carry one (the rename
+	 * slice, in flight): a string the user configured, defaulting to "Aida"
+	 * server-side. OPTIONAL on purpose - this build reads payloads from backends
+	 * that predate the field, and every display site falls back with
+	 * `aida.data?.name ?? "Aida"`, so absent, null and an older payload all
+	 * render the shipped default rather than an empty row. NOT the command key:
+	 * `/aida` stays stable whatever this says.
+	 */
+	name?: string | null;
 	/** Her single long conversation (R7), or null until first ensured. */
 	session_id: string | null;
 	/** Whether the proactive cadence is paused (R13); flipped by pause/resume. */
