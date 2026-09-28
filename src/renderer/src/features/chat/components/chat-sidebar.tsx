@@ -1,3 +1,7 @@
+import {
+	builtinOfferDismissed,
+	builtinOfferSignature,
+} from "@features/agents/builtin-offer";
 import { InstallBuiltinAgents } from "@features/agents/components/install-builtin-agents";
 import { compatibilityBannerShown } from "@shared/api/local-operator/backend-error";
 import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
@@ -916,12 +920,80 @@ export function ChatSidebar({
 	);
 	/*
 	 * Which of the agents section's two states is on screen. Named once because
-	 * the section below reads it three times and they have to agree: the empty
-	 * state is also what makes the batch's control a primary button rather than
-	 * the quiet row. See the section itself for why one reading matters (QA round
-	 * 1, Q1).
+	 * the section below reads it in more than one place and they have to agree:
+	 * the empty state is also what makes the batch's control a primary button
+	 * rather than the quiet row. See the section itself for why one reading
+	 * matters (QA round 1, Q1).
 	 */
 	const agentsEmpty = !profiles.isLoading && ownAgents.length === 0;
+	/*
+	 * THE BUILT-INS OFFER'S OWN STATE, one screen up from the section that draws
+	 * it, because two of these facts are also what the batch below reports into.
+	 *
+	 * The dismissal is keyed on the offer's SIGNATURE rather than stored as a
+	 * boolean (`features/agents/builtin-offer.ts` derives it and holds the
+	 * read-side guard): dismissing is a statement about the CURRENT state — the
+	 * precedent `chat-status.ts` states for the connection strip's pill — so a
+	 * catalogue that gains a built-in re-arms the offer, while the same
+	 * catalogue stays dismissed across restarts. Read through the module rather
+	 * than trusted from the store, because `localStorage` is not the setter's
+	 * path out (`parseSidebarView`'s rule, one field over).
+	 */
+	const dismissedBuiltinOffer = useUiPreferencesStore(
+		(state) => state.dismissedBuiltinOfferSignature,
+	);
+	const dismissBuiltinOffer = useUiPreferencesStore(
+		(state) => state.dismissBuiltinOffer,
+	);
+	const offerSignature = builtinOfferSignature(availableBuiltins);
+	const offerDismissed = builtinOfferDismissed(
+		dismissedBuiltinOffer,
+		offerSignature,
+	);
+	/*
+	 * The two readings the section's JSX takes from the facts above:
+	 *
+	 *  - `builtinOfferOnScreen` — the empty state, something to offer, and not
+	 *    already dismissed: the condition the dismiss control rides, with the
+	 *    batch's busy flag on top of it.
+	 *  - `emptyBlockDismissed` — the same offer, dismissed: the whole empty-state
+	 *    block leaves the section, which is what the reader's press asked for.
+	 */
+	const builtinOfferOnScreen =
+		agentsEmpty && availableBuiltins.length > 0 && !offerDismissed;
+	const emptyBlockDismissed =
+		agentsEmpty && availableBuiltins.length > 0 && offerDismissed;
+	/*
+	 * Whether the batch below is mid-flight or still holding its summary up.
+	 * Reported by `InstallBuiltinAgents` rather than derived here, because THAT
+	 * component owns the two states — and the dismiss control must not exist
+	 * while this is true, so a press can never take the progress or the summary
+	 * off screen (the protection QA round 1's Q1 and UX round 2's U11 are about).
+	 */
+	const [agentsOfferBusy, setAgentsOfferBusy] = useState(false);
+	/*
+	 * WHERE THE CARET GOES WHEN THE READER DISMISSES THE OFFER: the create row,
+	 * because it is the control that SURVIVES the dismissal — a focused element
+	 * that unmounts drops focus to `<body>` and the next Tab would restart at
+	 * the top of the window (U10's rule, one surface over: `install-builtin-agents.tsx`
+	 * hands focus back to the action that survives `Done`). The flag is set at
+	 * the PRESS rather than inferred from the block leaving, because the block
+	 * can also leave for reasons nobody pressed, and the move is only owed to
+	 * the reader who asked for it.
+	 */
+	const offerDismissedByPressRef = useRef(false);
+	const createAgentRowRef = useRef<HTMLButtonElement>(null);
+	/*
+	 * Read AFTER the re-render that hides the block — the commit that unmounts
+	 * the pressed control — which is the shape and the reason U10's focus move
+	 * has: the reader sees one commit leave, and the caret is already where the
+	 * next Tab or type should start.
+	 */
+	useEffect(() => {
+		if (!offerDismissedByPressRef.current || builtinOfferOnScreen) return;
+		offerDismissedByPressRef.current = false;
+		createAgentRowRef.current?.focus();
+	}, [builtinOfferOnScreen]);
 	const teams = useTeams(
 		ready && desktopFeatureEnabled(capabilities.data, "team_catalogue"),
 	);
@@ -4780,55 +4852,109 @@ export function ChatSidebar({
 								 * `install-builtin-agents.tsx`, for the same reason (U11): what the
 								 * user has to be able to read cannot be the thing that gets
 								 * replaced. DO NOT split this back into one call site per branch.
+								 *
+								 * AND A DISMISSED OFFER RENDERS NO BOX AT ALL. The reader's own
+								 * statement that they do not want this offer takes the whole empty
+								 * block with it, and the section is down to its heading and the
+								 * create row below. That state cannot collide with the batch this
+								 * element exists to keep alive: the dismiss control is absent
+								 * whenever the batch owns the section (its `onBusyChange` report),
+								 * so by the time a dismissal can be pressed there is no progress
+								 * and no summary on screen for it to destroy — and the swap this
+								 * comment is about is never raced by a dismissal.
 								 */}
-								<div
-									className={cn(
-										agentsEmpty ? "flex flex-col gap-2 px-3 py-2" : "contents",
-									)}
-									data-testid={agentsEmpty ? "agents-sidebar-empty" : undefined}
-								>
-									<div className="contents">
-										{agentsEmpty ? (
-											<>
-												<p className="text-body-sm text-ink">No agents yet</p>
-												{/*
-												 * The offer is CONDITIONAL on there being something to offer, and it
-												 * names what that is.
-												 *
-												 * It used to render unconditionally: on a backend with no packaged
-												 * profiles the section still said "Built-in agents are ready to
-												 * install" while offering nothing that installs one — the same
-												 * paragraph, pixel-identical, in a state whose whole point is that
-												 * there is nothing to install (design round 1, D3). And what it
-												 * promised was a list of activities rather than the roles on offer,
-												 * including a "research" role that is not among the packaged
-												 * profiles, with no count at all until the batch had started (UX
-												 * round 1, U6). Derived from the rows the backend sent, because
-												 * the catalogue is the authority on what can be installed and a
-												 * hand-written list can disagree with it.
-												 */}
-												{availableBuiltins.length > 0 && (
-													<p className="text-meta text-ink-muted">
-														{builtinOfferSentence(availableBuiltins)}
-													</p>
-												)}
-											</>
-										) : (
-											cappedRows(
-												"agents",
-												ownAgents.map((profile) =>
-													entity("agent", profile.name),
-												),
-											)
+								{!emptyBlockDismissed && (
+									<div
+										className={cn(
+											agentsEmpty
+												? "flex flex-col gap-2 px-3 py-2"
+												: "contents",
 										)}
+										data-testid={
+											agentsEmpty ? "agents-sidebar-empty" : undefined
+										}
+									>
+										<div className="contents">
+											{agentsEmpty ? (
+												<>
+													{/*
+													 * The dismiss control rides the "No agents yet" line's row, at its
+													 * end: that line is what the offer is FOR — the empty section — and
+													 * the row is the block's first line wherever the block starts.
+													 * `items-center` sits the glyph's centre on the paragraph's own
+													 * centre rather than a line-height below it.
+													 *
+													 * IT EXISTS ONLY WHILE THERE IS AN OFFER TO DISMISS AND THE BATCH IS
+													 * SHOWING NOTHING: `builtinOfferOnScreen` requires the empty state
+													 * and a non-empty, undismissed catalogue, and `agentsOfferBusy` is
+													 * the batch's own report — while it is true the control does not
+													 * exist, so a press can never take the progress or the summary off
+													 * screen (QA round 1's Q1 and UX round 2's U11 are the work this
+													 * protects). The control takes the sidebar's own icon-sm ghost step
+													 * (28px square, 14px glyph, the accessible name carrying the
+													 * sentence a bare glyph cannot), the same step the chats search's
+													 * clear control below takes.
+													 */}
+													<div className="flex items-center justify-between gap-2">
+														<p className="text-body-sm text-ink">
+															No agents yet
+														</p>
+														{builtinOfferOnScreen && !agentsOfferBusy && (
+															<Button
+																variant="ghost"
+																size="icon-sm"
+																data-testid="agents-offer-dismiss"
+																aria-label="Dismiss built-in agents suggestion"
+																onClick={() => {
+																	offerDismissedByPressRef.current = true;
+																	dismissBuiltinOffer(offerSignature);
+																}}
+															>
+																<X aria-hidden="true" />
+															</Button>
+														)}
+													</div>
+													{/*
+													 * The offer is CONDITIONAL on there being something to offer, and it
+													 * names what that is.
+													 *
+													 * It used to render unconditionally: on a backend with no packaged
+													 * profiles the section still said "Built-in agents are ready to
+													 * install" while offering nothing that installs one — the same
+													 * paragraph, pixel-identical, in a state whose whole point is that
+													 * there is nothing to install (design round 1, D3). And what it
+													 * promised was a list of activities rather than the roles on offer,
+													 * including a "research" role that is not among the packaged
+													 * profiles, with no count at all until the batch had started (UX
+													 * round 1, U6). Derived from the rows the backend sent, because
+													 * the catalogue is the authority on what can be installed and a
+													 * hand-written list can disagree with it.
+													 */}
+													{availableBuiltins.length > 0 && (
+														<p className="text-meta text-ink-muted">
+															{builtinOfferSentence(availableBuiltins)}
+														</p>
+													)}
+												</>
+											) : (
+												cappedRows(
+													"agents",
+													ownAgents.map((profile) =>
+														entity("agent", profile.name),
+													),
+												)
+											)}
+										</div>
+										{/* Renders nothing once every built-in is installed. */}
+										<InstallBuiltinAgents
+											builtins={availableBuiltins}
+											presentation={agentsEmpty ? "primary" : "row"}
+											onBusyChange={setAgentsOfferBusy}
+										/>
 									</div>
-									{/* Renders nothing once every built-in is installed. */}
-									<InstallBuiltinAgents
-										builtins={availableBuiltins}
-										presentation={agentsEmpty ? "primary" : "row"}
-									/>
-								</div>
+								)}
 								<button
+									ref={createAgentRowRef}
 									type="button"
 									className={cn(rowStyle, "w-full text-ink-muted")}
 									onClick={() => navigate("/agents?create=agent")}
