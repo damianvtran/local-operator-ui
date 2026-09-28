@@ -754,7 +754,29 @@ const projectName = z.string().regex(PROJECT_NAME_PATTERN, {
 	message: "Letters, digits, dot, underscore and dash; no spaces.",
 });
 /** The four statuses the store declares, in the board's fixed order. */
-const PROJECT_STATUSES = ["active", "paused", "done", "archived"] as const;
+/**
+ * The status vocabulary, in the store's lifecycle order.
+ *
+ * `planning` -> `active` -> `qa` -> `validation` -> `done` is the pipeline the
+ * operator named (RFC/research, implementation, review cycles, deployed and
+ * observed, fully validated); `paused` and `archived` are the two SIDE states
+ * that leave the pipeline without ending it. The order is the menu order —
+ * `STATUS_OPTIONS` and the board columns both read it — so it is written once
+ * here and mirrored there rather than spelled per list.
+ *
+ * A SERVER NEWER THAN THIS BUILD may send a word not in this list; every
+ * reader treats the vocabulary as open (`projectStatusMeta` keeps the raw
+ * word), and this enum only bounds what THIS UI may SEND.
+ */
+const PROJECT_STATUSES = [
+	"planning",
+	"active",
+	"qa",
+	"validation",
+	"done",
+	"paused",
+	"archived",
+] as const;
 const projectStatus = z.enum(PROJECT_STATUSES);
 /**
  * A planning date: ISO `YYYY-MM-DD`, or `""` to CLEAR the field.
@@ -2314,12 +2336,18 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			key: projectKey,
 			/*
 			 * Only the keys the caller includes travel; an omitted key leaves the
-			 * field alone, and `""` clears a date or the progress snippet (the
-			 * route forwards `model_fields_set`, and this client mirrors it).
+			 * field alone, and `""` clears a date, the progress snippet or an
+			 * attribution (the route forwards `model_fields_set`, and this client
+			 * mirrors it). The three attribution/title steps are bounded at 80 —
+			 * the store's `ATTRIBUTION_MAX`/`TITLE_MAX` — so a client cannot build
+			 * a body the route would refuse for length alone.
 			 */
 			fields: z
 				.object({
 					name: projectName.optional(),
+					title: z.string().max(80).optional(),
+					owner: z.string().max(80).optional(),
+					team: z.string().max(80).optional(),
 					description: z.string().max(PROJECT_DESCRIPTION_MAX_CHARS).optional(),
 					status: projectStatus.optional(),
 					progress: z.string().max(PROJECT_PROGRESS_MAX_CHARS).optional(),
