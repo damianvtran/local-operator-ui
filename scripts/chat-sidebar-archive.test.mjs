@@ -315,8 +315,12 @@ test("a refused press is reported once, in the sidebar's own toast lane, with a 
 	 */
 	/*
 	 * THE SLICE ENDS AT THE EFFECT'S DEPENDENCY ARRAY, which is the last line of the drawing
-	 * effect and therefore carries BOTH lane messages (the refusal and the offer), and it is
-	 * spelled here in the shaped `pnpm lint`/`biome format` gives it.
+	 * effect and therefore carries ALL THREE lane messages (the refusal, the offer and the
+	 * discard), and it is spelled here in the shaped `pnpm lint`/`biome format` gives it.
+	 *
+	 * IT MOVED AGAIN ON 2026-09-27 (the draft-clearing remediation): the effect took the discard
+	 * offer as a third message and three dependency entries, so both markers were re-pinned to
+	 * the array the effect actually ends with - the same rule, re-spelled.
 	 *
 	 * IT WAS `}, [archiveFailure, archiveUndo, setSessionArchived]);` UNTIL 2026-09-22, and that
 	 * marker stopped matching when the U10 fix added two entries - `between` then ran the slice
@@ -327,8 +331,8 @@ test("a refused press is reported once, in the sidebar's own toast lane, with a 
 	 */
 	const failure = between(
 		SIDEBAR,
-		"if (!archiveFailure && !archiveUndo) {",
-		"\t\tclearArchiveFailure,\n\t\tsetArchiveUndo,\n\t]);",
+		"if (!archiveFailure && !archiveUndo && !draftsUndo) {",
+		"\t\tsetArchiveUndo,\n\t\trestoreDraftsUndo,\n\t\tsetDraftsUndo,\n\t]);",
 	);
 	assert.match(failure, /archiveFailure\.title/);
 	assert.match(failure, /archiveFailure\.detail/);
@@ -389,7 +393,9 @@ test("a refused press is reported once, in the sidebar's own toast lane, with a 
 	assert.match(failure, /dismissToast\(ARCHIVE_TOAST_ID\);/);
 	/*
 	 * AND THE LIFE A RE-ASSERTION GETS IS A FULL ONE (agent review round 2 - the
-	 * re-assertion). Both draws are PERSISTENT to sonner, because its per-toast life
+	 * re-assertion; the drafts offer joined as the third draw on 2026-09-27, the
+	 * remediation, and it is persistent for the same reason). All three draws are
+	 * PERSISTENT to sonner, because its per-toast life
 	 * resets only when the `duration` passed to an already-mounted entry CHANGES - so the
 	 * refusal a refused Retry put back inherited the clock of the message it replaced and
 	 * went seconds later, measured in `session-archive` as the lane empty 5068ms (dark) /
@@ -403,8 +409,8 @@ test("a refused press is reported once, in the sidebar's own toast lane, with a 
 	);
 	assert.equal(
 		failure.split("duration: ARCHIVE_TOAST_PERSISTENT,").length - 1,
-		2,
-		"both lane messages must be drawn without a life sonner could end on its own",
+		3,
+		"all three lane messages must be drawn without a life sonner could end on its own",
 	);
 	assert.equal(
 		/duration: ARCHIVE_(FAILURE|UNDO)_TOAST_MS/.test(failure),
@@ -415,13 +421,15 @@ test("a refused press is reported once, in the sidebar's own toast lane, with a 
 		SIDEBAR,
 		"const message = archiveFailure",
 		/*
-		 * THE MARKER IS THE CLOCK EFFECT'S OWN DEPENDENCY ARRAY, re-spelled 2026-09-22: it used to
-		 * be `}, [archiveFailure, archiveUndo]);` and the U10 fix grew it by `clearArchiveFailure`
-		 * and `setArchiveUndo` (both read in the expiry body). `between` now fails on a missing
-		 * marker rather than running the slice to the end of the file, which is what makes this
-		 * pin safe - before, this assertion had been reading the rest of the component.
+		 * THE MARKER IS THE CLOCK EFFECT'S OWN DEPENDENCY ARRAY, re-spelled 2026-09-22 and again
+		 * 2026-09-27 (the clock now gates on the drafts offer and takes its value as a dependency).
+		 * It used to be `}, [archiveFailure, archiveUndo]);` and the U10 fix grew it by
+		 * `clearArchiveFailure` and `setArchiveUndo` (both read in the expiry body). `between` now
+		 * fails on a missing marker rather than running the slice to the end of the file, which is
+		 * what makes this pin safe - before, this assertion had been reading the rest of the
+		 * component.
 		 */
-		"}, [archiveFailure, archiveUndo, clearArchiveFailure, setArchiveUndo]);",
+		"}, [\n\t\tarchiveFailure,\n\t\tarchiveUndo,\n\t\tdraftsUndo,\n\t\tclearArchiveFailure,\n\t\tsetArchiveUndo,\n\t]);",
 	);
 	assert.match(clock, /laneMessageRef\.current = null;/);
 	assert.match(clock, /dismissToast\(ARCHIVE_TOAST_ID\);/);
