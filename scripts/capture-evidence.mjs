@@ -6252,7 +6252,7 @@ export const STORIES = [
 	 * this story, so the re-read never changed anything. The claim is the receipt AND the world under
 	 * it; the `expectSentence` still guards the shutter.
 	 */
-["mesh-tab--move-busy-waited", 1380, 900, { expectSentence: "holds it now" }],
+	["mesh-tab--move-busy-waited", 1380, 900, { expectSentence: "holds it now" }],
 	/*
 	 * AND A NOTE FOR A LATER READER (design review round 1, D7): this row shows a 2 px
 	 * accent outline outside the dialog frame and `move-confirm` shows none, which is the
