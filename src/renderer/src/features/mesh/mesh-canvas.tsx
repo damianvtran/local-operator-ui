@@ -57,6 +57,7 @@ import {
 	type NodeDropState,
 } from "./mesh-node";
 import {
+	KEEP_MARGIN_PX,
 	type MeshSlots,
 	fitTransform,
 	keepNodeVisible,
@@ -452,7 +453,32 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 		if (!selectedDeviceId) return;
 		const box = geometry.devices.get(selectedDeviceId);
 		if (!box) return;
-		setTransform((current) => keepNodeVisible(current, box, viewport));
+		setTransform((current) => {
+			/*
+			 * THE MARGIN IS SLACK, SO IT IS SPENT ONLY WHEN THERE IS SLACK (design review round
+			 * 2, D10). The clamp keeps the node the reader asked for whole by pushing whatever is
+			 * on the other side out of the canvas, and at 1024x768 with the panel open the world
+			 * (602 px) is wider than the canvas (591 px) - so something must be outside, and a
+			 * blanket 16 px margin spent 16 of those pixels on a NEIGHBOUR the reader did not ask
+			 * about: the network node lost ~23 px of itself, icon included. The 16 px is breathing
+			 * room around a node that FITS; where the world does not fit, the honest use of the
+			 * last pixels is the node under the pointer, and the remainder is the arithmetic's
+			 * rather than the margin's.
+			 */
+			const slack = Math.max(
+				0,
+				Math.min(
+					viewport.width - geometry.bounds.width * current.k,
+					viewport.height - geometry.bounds.height * current.k,
+				),
+			);
+			return keepNodeVisible(
+				current,
+				box,
+				viewport,
+				Math.min(KEEP_MARGIN_PX, slack),
+			);
+		});
 	}, [viewport, selectedDeviceId, geometry]);
 
 	/**
@@ -612,10 +638,22 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 			 * the same one the unmount teardown runs - so the canvas does not invent a
 			 * second way to end a gesture.  Nothing is sent: a drag is a request, and a
 			 * cancelled one was never made.
+			 *
+			 * AND THE CANCEL TAKES THE TRAILING CLICK WITH IT (UX review round 2, U8). A
+			 * travelled press retargets the browser's own `click` to the chip (pointer
+			 * capture), and the release path is where that click is suppressed - but the
+			 * release after an Escape sees `idle` and returns before it can suppress
+			 * anything, so a reader who pressed Escape and then let go got the panel they
+			 * had cancelled (measured: the panel opened and the canvas fell 1072 -> 736 px).
+			 * The suppression is therefore set HERE as well, on the same rule the release
+			 * uses - the press had travelled, so its click is an echo rather than an
+			 * activation - and it stays false for a press that never moved, which is still
+			 * a click and still opens the panel.
 			 */
 			case "Escape":
 				if (drag.kind !== "pressing" && drag.kind !== "dragging") return;
 				event.preventDefault();
+				if (drag.kind === "dragging") dragEndedAsDrag.current = true;
 				setDrag((current) => dragReducer(current, { kind: "cancel" }));
 				return;
 			case "0":
@@ -708,7 +746,13 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 				 * pointer for a system gesture or because the capture was lost, so there is no
 				 * position the user "let go" at - and any other reading of it invents a drop
 				 * nobody made.
+				 *
+				 * It also suppresses the trailing activation for the same reason Escape does
+				 * (UX review round 2, U8): the gesture was cancelled while the pointer was down,
+				 * so whatever click the browser retargets to the chip afterwards is an echo of a
+				 * drag the reader took back, not a request to open a panel.
 				 */
+				if (drag.kind === "dragging") dragEndedAsDrag.current = true;
 				setDrag((current) => dragReducer(current, { kind: "cancel" }));
 				endPan(event);
 			}}

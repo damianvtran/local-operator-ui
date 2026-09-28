@@ -96,6 +96,7 @@ const {
 	meshGraph,
 	meshSummary,
 	deviceStatLine,
+	deviceNodeStatLine,
 	deviceStateWords,
 	meshNodeCount,
 	assignSlots,
@@ -110,6 +111,7 @@ const {
 	transferReceipt,
 	meshRefusal,
 	CHIP_LIMIT,
+	sessionStripeKey,
 	sessionsByDevice,
 	ownerOf,
 	deviceSessionTotal,
@@ -519,6 +521,48 @@ test("a stat line never claims a heartbeat the wire did not send", () => {
 		"this device",
 		"and an absent stamp produces no time claim at all",
 	);
+});
+
+test("the node's stat line says what fits, and the full sentence stays one hover away (D12)", () => {
+	/*
+	 * THE RENAME THAT COST THE VALUE (design review round 2, D12): "conversations" is five
+	 * characters longer than "chats", and on the canvas node's own 147 px stat line the part
+	 * that fell off the end was the freshness reading - every peer node with a stamp read
+	 * `6 conversations · seen …`. The sentence is still ONE builder; only the count's noun
+	 * differs, and only for the width that cannot hold it.
+	 */
+	const graph = meshGraph({
+		topology: networkTopology({
+			self_device_id: DEVICE_A,
+			networks: [network(NET_ONE, [member(DEVICE_A), member(DEVICE_B)])],
+		}),
+		peers: peerList({
+			peers: [
+				peer(DEVICE_B, { session_count: 2, last_seen_at: 1_700_000_060 }),
+			],
+		}),
+	});
+	const self = graph.devices.find((device) => device.id === DEVICE_A);
+	const peerDevice = graph.devices.find((device) => device.id === DEVICE_B);
+	assert.equal(
+		deviceStatLine(peerDevice, 1_700_000_100),
+		"2 conversations · seen just now",
+		"every surface with room for it keeps the feature's one noun (D5)",
+	);
+	assert.equal(
+		deviceNodeStatLine(peerDevice, 1_700_000_100),
+		"2 conv · seen just now",
+		"and the node's own line abbreviates the count rather than dropping the age",
+	);
+	/*
+	 * THE SELF NODE, when the catalogue has not counted it: both forms say the one thing there
+	 * is to say. Its COUNTED form - `this device · 6 conv` at 147 px, against a full form that
+	 * measures 161.3 px and therefore truncates - is what the frames show and what the comment in
+	 * `mesh-graph.ts` carries; this fixture cannot produce it, because the self device's count
+	 * comes from the sessions read and not from the peer catalogue.
+	 */
+	assert.equal(deviceNodeStatLine(self, 1_700_000_100), "this device");
+	assert.equal(deviceStatLine(self, 1_700_000_100), "this device");
 });
 
 /* --------------------------------------------------------------- positions */
@@ -1162,6 +1206,45 @@ test("this device is a ring, and the stripe carries status (D6)", () => {
 		"the accent stripe is gone, not merely joined by a ring",
 	);
 });
+
+test("the stripe and the refusal read the SAME reachability, from the same copy (U9)", () => {
+	/*
+	 * TWO PREDICATES, ONE FACT (UX review round 2, U9): `sessionStripeKey` asked the session
+	 * ROW's `reachable` - the catalogue's copy - while `resolveDrop` refuses on the OWNER
+	 * DEVICE's `reachable`, the graph's copy. Where a row says `reachable: true` for a device
+	 * that stopped answering, the chip wore the resting hairline and then refused the drop the
+	 * reader had already committed to, which is the one thing a prospective channel must not do.
+	 * The predicate now takes the device's own fact, and this executes it - including the row
+	 * whose stale copy disagrees, which is the case that was wrong.
+	 */
+	const staleRow = session({ reachable: false, live_state: "idle" });
+	assert.equal(
+		sessionStripeKey(staleRow, true),
+		"resting",
+		"the row's own copy does not drive the stripe; the device's answer does",
+	);
+	assert.equal(
+		sessionStripeKey(session({ live_state: "idle" }), false),
+		"attention",
+		"an owner that is not answering gets the stripe the drag will act on",
+	);
+	assert.equal(
+		sessionStripeKey(session({ live_state: "busy" }), true),
+		"attention",
+		"and a turn in flight keeps its own state",
+	);
+	assert.equal(
+		sessionStripeKey(session({ live_state: "idle" }), true),
+		"resting",
+	);
+	const node = source("src/renderer/src/features/mesh/mesh-node.tsx");
+	assert.match(
+		node,
+		/CHIP_STRIPE\[sessionStripeKey\(session, ownerReachable\)\]/,
+		"the chip hands it the device's own fact rather than the row's",
+	);
+	assert.match(node, /ownerReachable=\{device\.reachable\}/);
+});
 /* --------------------------------------------------------------- slice 2: drops */
 
 /**
@@ -1440,6 +1523,65 @@ test("a busy session refuses rather than being interrupted, and offers the wait"
 	assert.match(hoverSentence(verdict), /^Drop will be refused: /);
 });
 
+test("the busy remedy is EXECUTED, not merely drawn (agent review round 2, F2)", () => {
+	/*
+	 * ROUND 1 FIXED THE INERT BUTTON AND ROUND 2 MEASURED THAT NOTHING PRESSED IT. The read
+	 * path that makes it work - `moveReport.plan` reaching `run(plan, WAIT_FOR_IDLE_S)` - had
+	 * no pin of any kind, and `MoveRefusedBusy`'s own play stops at `findByText` because
+	 * pressing the button replaces the notice that row's claim is about. Three things hold it
+	 * now: the guard, the notice's own decision to draw the button, and a story whose play
+	 * clicks it and asserts the request that went out.
+	 */
+	const page = source("src/renderer/src/features/mesh/mesh-page.tsx");
+	assert.match(
+		page,
+		/if \(moveReport\?\.kind !== "refused" \|\| !moveReport\.plan\) return;/,
+		"the handler refuses to re-issue a move it does not have",
+	);
+	assert.match(page, /run\(moveReport\.plan, WAIT_FOR_IDLE_S\)/);
+	assert.match(
+		page,
+		/canWait=\{\s*moveReport\.kind === "refused" &&\s*moveReport\.plan !== null\s*\}/,
+		"and the same fact is handed to the notice, so the button is drawn only when pressing it acts",
+	);
+	const actions = source("src/renderer/src/features/mesh/mesh-actions.tsx");
+	assert.match(
+		actions,
+		/refusal\?\.code === "busy" && canWait &&/,
+		"the notice owns the decision rather than the code being enough on its own",
+	);
+	/*
+	 * AND THE CLICK IS DRIVEN SOMEWHERE THAT RUNS. The story's play wraps the same bridge the
+	 * page uses, presses the button and throws unless exactly one transfer went out carrying
+	 * `waitS: 300` - the route's own ceiling. `expectSentence` on the capture row ties the
+	 * frame to that outcome, so a regression fails the capture rather than a still.
+	 */
+	const stories = source(
+		"src/renderer/src/features/mesh/mesh-page.stories.tsx",
+	);
+	assert.match(stories, /export const MoveBusyWaited: Story = \{/);
+	assert.match(
+		stories,
+		/if \(transfers\[0\]\.waitS !== 300\)/,
+		"the re-issue must carry the wait ceiling, not the gesture's default",
+	);
+	assert.match(
+		stories,
+		/the busy refusal sends nothing, and the remedy sends ONE move/,
+	);
+	const rig = source("scripts/capture-evidence.mjs");
+	assert.match(
+		rig,
+		/"mesh-tab--move-busy-waited",/,
+		"the executed remedy has its own row",
+	);
+	assert.match(
+		rig,
+		/\{ expectSentence: "holds it now" \}/,
+		"and that row carries a claim, so it cannot silently photograph the refusal again",
+	);
+});
+
 test("the renderer sizes its deadline from the REQUEST, and its give-up carries the move's code (F1)", () => {
 	const api = source(
 		"src/renderer/src/shared/api/local-operator/desktop-api.ts",
@@ -1470,8 +1612,18 @@ test("the renderer sizes its deadline from the REQUEST, and its give-up carries 
 	assert.match(api, /desktopRequestTimeoutMs\(request\)/);
 	assert.match(
 		api,
-		/desktopRequestDeadlineDetail\(\s*request\.op,\s*deadlineMs,?\s*\)/,
+		/const timeoutMs = desktopRequestTimeoutMs\(request\);/,
+		"the value the give-up names is the TIMEOUT the timer runs on (agent review round 2, NIT): named `deadlineMs` it read as the smaller deadline while holding the larger timeout",
+	);
+	assert.match(
+		api,
+		/desktopRequestDeadlineDetail\(\s*request\.op,\s*timeoutMs,?\s*\)/,
 		"the give-up takes the op's own code and sentence from the contract's one authority",
+	);
+	assert.match(
+		api,
+		/\}, timeoutMs\);/,
+		"ONE VALUE FOR BOTH: the timer that fires and the seconds the sentence quotes are the same variable, so the copy cannot drift from the wait by the deadline's margin",
 	);
 	assert.match(api, /detail\.code/);
 });
@@ -1852,6 +2004,61 @@ test("the chip row fits by construction, so both chips and the control are hitta
 	);
 });
 
+test("the cap's two chips stay legible, and two long titles still differ (D8/U10)", () => {
+	/*
+	 * THE CONTROL PAYS FOR THE CHIPS (design review round 2, D8). At the cap the row holds two
+	 * chips and the overflow control; the control's full `+4 more` label measured 59.4 px of the
+	 * row's 171 px content box, which left each chip 51.8 px - a 49 px text box showing seven
+	 * characters, and two truncations that read `Swe…` and `Res…`. `+4` costs 27.3 px and gives
+	 * each chip 67.8 px, which is what makes a real title fit whole.
+	 */
+	const node = source("src/renderer/src/features/mesh/mesh-node.tsx");
+	assert.match(
+		node,
+		/\+\{sessions\.hidden\}/,
+		"the control's visible label is the compact one",
+	);
+	assert.doesNotMatch(
+		node,
+		/\+\{sessions\.hidden\} more/,
+		"and the word that cost the chips 32 px is gone from the row",
+	);
+	assert.match(
+		node,
+		/aria-label=\{`Show all \$\{sessionTotal\} conversations`\}/,
+		"the affordance moves to the accessible name, which costs no width",
+	);
+	/*
+	 * AND THE CHIPS KEEP THE PART THAT DISTINGUISHES THEM (design review round 2, U10): the titles
+	 * this app holds are named in series, so the readable end is the END - and the browser is the
+	 * only thing that can measure how much of it fits. `direction: rtl` + `unicode-bidi: plaintext`
+	 * asks it for left-truncation while `plaintext` keeps every title's own glyph order and script
+	 * direction. A character budget was tried first and removed: eight characters measured between
+	 * 49 px and 62 px over the titles these stories use, against a 53 px text area, so any count
+	 * clips the tail on exactly the widest titles.
+	 */
+	assert.match(
+		node,
+		/\[direction:rtl\]/,
+		"the chip truncates from the left, where the distinguishing part is not",
+	);
+	assert.doesNotMatch(
+		node,
+		/unicode-bidi:plaintext/,
+		"and NOT `plaintext`, which makes the paragraph direction follow the text and sends the ellipsis back to the end - photographed on this branch's own cap frame before the fix",
+	);
+	assert.doesNotMatch(
+		node,
+		/chipDisplayLabel/,
+		"and no character count is guessing at what fits",
+	);
+	assert.match(
+		node,
+		/title=\{`\$\{chipLabel\(session\)\} · \$\{fact\}`\}/,
+		"the full title is still the tooltip, and the accessible name below it",
+	);
+});
+
 test("the menu refuses a destination the drag would, before the choice (U3)", () => {
 	const card = source("src/renderer/src/features/mesh/mesh-card.tsx");
 	// The annotation is the same resolver the drop uses, so menu and drag cannot disagree.
@@ -1889,6 +2096,24 @@ test("a drag's release does not open the panel, and Escape cancels a drag (U1/U5
 		canvas,
 		/dragReducer\(current, \{ kind: "cancel" \}\)/,
 		"Escape uses the reducer's own cancel rather than a second way to end a gesture",
+	);
+	/*
+	 * AND THE CANCEL TAKES THE TRAILING CLICK WITH IT (UX review round 2, U8). Round 1's fix
+	 * suppressed the click a RELEASE leaves, keyed to the `dragging -> release` transition - and
+	 * the cancel path never set it, so a reader who pressed Escape and then let go got the panel
+	 * they had cancelled (measured: the panel opened and the canvas fell 1072 -> 736 px, while
+	 * the same gesture without the Escape keystroke opened nothing). Both cancel paths now set
+	 * the same flag, and the flag stays false for a press that never travelled - which is still
+	 * a click and still opens the panel.
+	 */
+	assert.equal(
+		(
+			canvas.match(
+				/if \(drag\.kind === "dragging"\) dragEndedAsDrag\.current = true;/g,
+			) ?? []
+		).length,
+		2,
+		"both cancels - the Escape key and the browser's own pointercancel - suppress the echo",
 	);
 });
 
@@ -1953,5 +2178,66 @@ test("the rail's membership read does not poll: the always-mounted component fan
 		),
 		/const meshMembership = useMeshMembership\(meshPaired\);/,
 		"the rail reads membership through that hook, so the pin above is about the rail",
+	);
+});
+
+test("the keep-in-view margin is SLACK, so an overflowing world loses only what it must (D10)", () => {
+	/*
+	 * The clamp is right and the margin was spending a neighbour's pixels (design review round 2,
+	 * D10). At 1024x768 with the panel open the world is 602 px against a 591 px canvas, so
+	 * something must be outside - and the flat 16 px margin spent 16 of those pixels on a device
+	 * the reader had not asked about (measured: the network node lost ~23 px, icon included).
+	 * Executed here with both margins, so the arithmetic is a reading rather than a comment.
+	 */
+	const viewport = { width: 1024, height: 768 };
+	// A box that overflows the right edge at k=1, which is the state the panel opening creates.
+	const box = { x: 900, y: 100, height: 72 };
+	const flush = keepNodeVisible({ k: 1, tx: 0, ty: 0 }, box, viewport, 0);
+	assert.equal(
+		flush.tx + box.x + NODE_WIDTH * flush.k,
+		viewport.width,
+		"a zero margin lands the clicked node's right edge exactly on the canvas edge",
+	);
+	const breathing = keepNodeVisible({ k: 1, tx: 0, ty: 0 }, box, viewport, 16);
+	assert.equal(
+		breathing.tx + box.x + NODE_WIDTH * breathing.k,
+		viewport.width - 16,
+		"and the margin is what buys the gap, which is only affordable when there is slack",
+	);
+	const canvas = source("src/renderer/src/features/mesh/mesh-canvas.tsx");
+	assert.match(
+		canvas,
+		/const slack = Math\.max\(\s*0,\s*Math\.min\(\s*viewport\.width - geometry\.bounds\.width \* current\.k,\s*viewport\.height - geometry\.bounds\.height \* current\.k,\s*\),\s*\);/,
+		"the slack is measured from the world's own size at the current scale",
+	);
+	assert.match(
+		canvas,
+		/Math\.min\(KEEP_MARGIN_PX, slack\),/,
+		"and the clamp gets the smaller of the margin and the room that exists",
+	);
+});
+
+test("a token path breaks between its segments, not inside a filename (D11)", () => {
+	/*
+	 * Both palettes photographed `.../invites/devon-la` / `ptop.token` (design review round 2,
+	 * D11): a path split mid-word in the one line this dialog asks a reader to copy, which reads
+	 * as two different paths. The break opportunities now sit after the separators, and the
+	 * element keeps `break-words` as the fallback for a segment longer than the line.
+	 */
+	const actions = source("src/renderer/src/features/mesh/mesh-actions.tsx");
+	assert.match(actions, /\.split\("\/"\)\s*\.flatMap/);
+	assert.match(actions, /<wbr key=\{`path-break-\$\{start\}`\} \/>/);
+	/*
+	 * AND EACH SEGMENT IS UNBREAKABLE, which the `<wbr>`s alone were not enough for: shot on this
+	 * branch's own re-capture, the wrap still fell inside the name (`.../invites/devon-` /
+	 * `laptop.token`) because a hyphen is its own break opportunity. The span is what keeps a
+	 * file name whole; the `<wbr>` after each slash is what keeps the wrap at a separator.
+	 */
+	assert.match(actions, /className="whitespace-nowrap"/);
+	assert.match(actions, /break-words font-mono text-meta text-ink/);
+	assert.doesNotMatch(
+		actions,
+		/break-all font-mono text-meta text-ink/,
+		"`break-all` is what split the filename; it is gone rather than joined by `<wbr>`",
 	);
 });
