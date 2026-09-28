@@ -1690,6 +1690,15 @@ const STAMP_BINDING_NOTES = [
 	 * and the reason the stills did not move.
 	 */
 	"mouseCursorRestampNote",
+	/*
+	 * AND THE REGENERATED SCHEDULES BEFORE HALVES' OWN - it belongs here for the
+	 * list's own reason: THE NOTE STATES THIS FILE'S BINDING. The regeneration
+	 * moves `scripts/` (this note's registration) and no file under `src/` - the
+	 * frames it adds are re-captures of the merge-base's source, which is this
+	 * branch's base rather than a tree it moves - so a reader is owed the pair
+	 * the re-stamp derives and the reason no source file moved.
+	 */
+	"cardSurfacesBeforeHalvesNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2545,6 +2554,13 @@ const BRANCH_RECORDS = [
 	 * writes one top-level note, registered here for the same completeness reason.
 	 */
 	"mouseCursorRestampNote",
+	/*
+	 * And this lane's own D1 fix rides beside them: the regenerated schedules
+	 * before halves write one top-level note, registered here for the same
+	 * completeness reason - a fold that started from main's copy would drop it
+	 * first.
+	 */
+	"cardSurfacesBeforeHalvesNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
