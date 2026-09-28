@@ -1765,7 +1765,6 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"foldOntoA8ac7f673cNote",
 	/*
-	/*
 	 * AND THE SIDEBAR'S TIME BASIS PASS'S OWN (2026-09-28):
 	 * `sidebarBinBasisRestampNote` quotes the pair its commit derives - the src
 	 * tree with the basis control and the completion's own refetch, the scripts
@@ -1834,6 +1833,17 @@ const STAMP_BINDING_NOTES = [
 	 * pair, so it is held to this file like every entry above it.
 	 */
 	"foldOnto3d99ab8d92Note",
+	/*
+	 * AND THIS FOLD'S OWN (2026-09-28): `foldOnto525d464279Note` is the fold onto
+	 * the moved `origin/main` `525d464279` (#618, the board column order, over
+	 * #623) at merge time - the manifest conflicted this time while this file
+	 * auto-merged to the union of both note families (128 names, nothing dropped
+	 * either side, verified by set comparison against both parents), and the pair
+	 * and counts are re-derived from the folded tip by the docs-only commit that
+	 * follows. It quotes that pair, so it is held to this file like every entry
+	 * above it.
+	 */
+	"foldOnto525d464279Note",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
