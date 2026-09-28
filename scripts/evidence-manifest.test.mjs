@@ -2529,6 +2529,15 @@ const BRANCH_RECORDS = [
 	 * writes one top-level note, registered here for the same completeness reason.
 	 */
 	"mouseCursorRestampNote",
+
+	/*
+	 * AND THIS LANE'S OWN, the math-currency pass's record - written by
+	 * `fix/currency-math` beside `captureOrigin.mathCurrencyPass`: the note is
+	 * this branch's newest top-level record and the one a fold that started
+	 * from main's copy would drop first, which is exactly what this list is
+	 * for.
+	 */
+	"mathCurrencyCaptureNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

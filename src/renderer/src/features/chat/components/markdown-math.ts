@@ -6,11 +6,19 @@
  * R1-1). `containsLatex` lived beside the pipeline it gates, which was fine while
  * the only thing that could go wrong was a wasted KaTeX chunk. It is not fine
  * once the answer can DESTROY a citation: the citation transform runs as a remark
- * plugin, and `remark-math` registers a micromark SYNTAX extension, so the split
+ * plugin, and the math plugin registers a micromark SYNTAX extension, so the split
  * it performs happens at PARSE time - before any plugin in the list gets a tree.
  * The two features cannot both be argued about inside a React hook that no test
  * can drive, so the decision moved here, where it is a function of a string and
  * `scripts/credential-capture.test.mjs` can exhaust it.
+ *
+ * THE PARSER SIDE OF THE SAME RULE IS `markdown-math-guarded.ts` (2026-09-27).
+ * This module's digit exclusion above ("a lone `$` only counts when it is not
+ * followed by a digit") is a statement about the SAME case the guarded
+ * tokenizer now refuses at parse time - its guard (a) - so the gate and the
+ * parser agree instead of the gate waving through text the parser then mangles
+ * into a price-as-formula. The gate's own behaviour is unchanged: it still
+ * decides only whether to pay for the math pipeline.
  *
  * THE DEFECT IT FIXES, which shipped and was caught in review rather than by any
  * frame: `INLINE_MATH_REGEX` is `\$…\$`, and every citation the app writes carries
