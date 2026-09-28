@@ -2530,6 +2530,11 @@ const BRANCH_RECORDS = [
 	 * as its predecessor.
 	 */
 	"canvasElevatedFourthFoldNote",
+	/*
+	 * And the FIFTH fold's own, added with it: the fold onto `76ce9a7aac`'s
+	 * successor `ac83ec7d92`, resolved the same by-key way.
+	 */
+	"canvasElevatedFifthFoldNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

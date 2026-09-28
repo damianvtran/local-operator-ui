@@ -4395,9 +4395,14 @@ export const STORIES = [
 	 * undated project. The timeline stories stub one `projects.get` per project
 	 * — the fan-out the view itself performs — from the same desktop-bridge
 	 * boundary every other frame in this set uses.
+	 *
+	 * `board-many` is a shade taller than its siblings (948, not 900): at 900 the
+	 * Active column's last card clips mid-card, and a card cut by the frame edge
+	 * reads as a rendering fault rather than as a scroll (README refresh round 1,
+	 * D2).
 	 */
 	["projects-tab--board", 1280, 900],
-	["projects-tab--board-many", 1280, 900],
+	["projects-tab--board-many", 1280, 948],
 	["projects-tab--board-statuses", 1280, 900],
 	/* The three board states design round 1, D8 named as the sweep's own gaps:
 	 * a column with no rows (the "No projects here." line), the sessions

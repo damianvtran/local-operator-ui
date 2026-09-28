@@ -612,7 +612,7 @@ const ConversationStandIn = ({
 	<div className="w-0 min-w-[480px] flex-1 flex h-full min-h-0 flex-col overflow-hidden">
 		<ChatHeader
 			agentName="Core"
-			description="Invoices workspace \u00b7 on this machine"
+			description="Invoices workspace · on this machine"
 			onOpenOptions={() => undefined}
 			runDetails={details}
 			mcpServers={deriveMcpServers([], {}, [])}
