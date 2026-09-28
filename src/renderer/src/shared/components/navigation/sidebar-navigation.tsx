@@ -801,11 +801,24 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			</div>
 
 			{/*
-			 * THE BODY: the one chat list, one scroll region. `mt-2` completes the 16px
-			 * section tier with the group's own `pb-2` - the separation is space, not a
-			 * rule.
+			 * THE BODY: the one chat list, one scroll region.
+			 *
+			 * WHAT THE SPACE UNDER THE DESTINATIONS IS, measured rather than assumed
+			 * (operator report, 2026-09-27: "there's a bunch of extra space" between the
+			 * bottom-most nav row and the band). Three 8px steps were stacking on this
+			 * boundary - the group's own `pb-2`, the `mt-2` that used to sit here, and
+			 * the panel's top inset - and the rendered gap was 24px where the tier the
+			 * design names between the destinations and the list below them is 16px
+			 * (§B6). This column owns one of the three steps and the panel owns another,
+			 * so the `mt-2` is the one that goes: the tier now reads the group's 8px
+			 * bottom step against the panel's own 8px inset, and the band sits 16px
+			 * under the last destination.
+			 *
+			 * DO NOT PUT IT BACK without taking 8px out of the panel too: this boundary
+			 * is ONE tier, and three declarations of it were two more than the design
+			 * ever asked for.
 			 */}
-			<div className="mt-2 flex min-h-0 flex-1 flex-col">{listBody}</div>
+			<div className="flex min-h-0 flex-1 flex-col">{listBody}</div>
 
 			{/*
 			 * THE FOOT: the account row, whose own menu carries Settings and Sign
