@@ -1765,6 +1765,41 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"foldOntoA8ac7f673cNote",
 	/*
+	 * AND THIS BRANCH'S OWN, the agents offer's dismissal: its subject IS this
+	 * file's binding - the change moves BOTH trees (the offer module, the store
+	 * field, the sidebar control and its story fixture under `src/`; the capture
+	 * row, the new behavioural suite and this registration under `scripts/`)
+	 * AND adds one story's twelve frames while re-shooting the set - so a reader
+	 * is owed the pair and what the capture moved with it.
+	 */
+	"agentsOfferDismissNote",
+	/*
+	 * AND THIS FOLD'S OWN - `foldOnto55dbaf6118Note` states the pair the folded
+	 * tip binds, the single conflicted path it resolved (this branch's manifest
+	 * against main's), the union decisions the file's own `citationConvention`
+	 * group numbers name, and that no frame was re-taken because main's delta
+	 * touches none of the files this branch draws - so it is held to the pair
+	 * this file ships rather than read as history.
+	 */
+	"foldOnto55dbaf6118Note",
+	/*
+	 * AND THIS FOLD'S OWN - `foldOnto1b1a52d5cfNote` states the pair the folded
+	 * tip binds, the single conflicted path it resolved (this branch's manifest
+	 * against main's, plus package.json's test list) and the union decisions
+	 * behind it; no frame was re-taken (main's delta is the projects card's
+	 * pointer behaviour, not a pixel), so it is held to the pair this file
+	 * ships rather than read as history.
+	 */
+	"foldOnto1b1a52d5cfNote",
+	/*
+	 * AND THE COMMENT FIX'S OWN - `agentsOfferDismissCommentRestampNote` states
+	 * the pair after round 1's nit (reviewer) and Q1 (QA) reworded the offer's
+	 * count-vs-names sentence: a comment-only move under `src/` with no frame
+	 * repainted, so a reader is owed the pair and the reason the set did not
+	 * move.
+	 */
+	"agentsOfferDismissCommentRestampNote",
+	/*
 	 * Moved by the dead-tab and popout pass (2026-09-28): this note states the pair
 	 * it ships and the set the pass moves, so it is held to the same bar as every
 	 * other member - it quotes both stamps and the file it sits in ships them.
@@ -2761,6 +2796,34 @@ const BRANCH_RECORDS = [
 	 * that started from main's copy would drop it first.
 	 */
 	"foldOntoA8ac7f673cNote",
+	/*
+	 * And THIS lane's own, added with it: the agents offer's dismissal writes
+	 * one top-level note - it states the pair this change ships, moves both
+	 * trees (the offer module, the store field, the sidebar control and its
+	 * story fixture; the capture row, the new behavioural suite and both
+	 * registrations) and adds one story's twelve frames while re-shooting the
+	 * set - and it is registered here for the same completeness reason: a fold
+	 * that started from main's copy would drop it first.
+	 */
+	"agentsOfferDismissNote",
+	/*
+	 * And MAIN'S OWN records ride beside it, kept whole by the same fold: the
+	 * interrupted-rows change's capture note (its `captureOrigin.interruptedRowsPass`
+	 * record is not a top-level key, so it cannot be listed here) and this
+	 * fold's own note, both registered for the completeness reason this list
+	 * exists for - a fold that started from a copy without them would drop
+	 * records this branch's tree carries.
+	 */
+	"interruptedRowsCaptureNote",
+	"foldOnto55dbaf6118Note",
+	/*
+	 * And this round's own records, registered with them: the second fold's
+	 * note (`foldOnto1b1a52d5cfNote`) and the comment fix's re-stamp note
+	 * (`agentsOfferDismissCommentRestampNote`); their texts are written by the
+	 * docs-only re-stamp commit this registration rides beside.
+	 */
+	"foldOnto1b1a52d5cfNote",
+	"agentsOfferDismissCommentRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
