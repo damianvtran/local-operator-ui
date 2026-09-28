@@ -275,7 +275,7 @@ export function meshNodeCount(graph: MeshGraph): number {
 /**
  * How long ago, in words a node's stat line can carry: "seen 4m ago".
  *
- * The sentence is SHORT on purpose - the register is a 179 px stat line beside a
+ * The sentence is SHORT on purpose - the register is a 147 px stat line beside a
  * name, not a settings row - and coarse on purpose: the only claim is "this device
  * was heard from recently".
  *
@@ -298,16 +298,53 @@ export function seenSentence(seconds: number): string {
 	return `seen ${Math.floor(h / 24)}d ago`;
 }
 
-function chatsSentence(count: number): string {
-	return count === 1 ? "1 chat" : `${count} chats`;
+/**
+ * How many conversations a device holds, in the ONE noun this feature uses.
+ *
+ * "CONVERSATION" RATHER THAN "CHAT", everywhere on this surface (design review round 1,
+ * D5): the same row printed "4 chats" in one column and "4 conversations" in the next,
+ * which is two names for the unit a drag carries on a feature whose stated principle is
+ * the protocol's own vocabulary. Pluralised here rather than interpolated at the call
+ * site, because "1 conversations" is what a bare template produced.
+ */
+function conversationsSentence(count: number): string {
+	return count === 1 ? "1 conversation" : `${count} conversations`;
+}
+
+/**
+ * The same count, for the canvas node's own 147 px stat line: `6 conv`.
+ *
+ * AN ABBREVIATION IN ONE PLACE, AND FOR A MEASURED REASON (design review round 2,
+ * D12). The rename D5 asked for - the right one for the noun - made the resting
+ * sentence five characters longer than the line it has to fit on, and the value a
+ * reader came for (`seen 9m ago`) was the part that fell off the end: every peer node
+ * with a stamp read `6 conversations · seen …`.
+ *
+ * Measured in the shipped renderer at the pinned width, the stat line's box is 147 px
+ * and this app's 12 px system-ui makes the candidates:
+ *
+ *   `6 conversations · seen 1m ago` 170.9   over
+ *   `6 conversations · 9m ago`      142.6   fits at six, over at twelve (147.7)
+ *   `40 conv · seen just now`       133.5   fits - the worst case of the short form
+ *   `6 conv · seen 1m ago`          119.2   fits
+ *
+ * So the noun is shortened on THIS surface only, and the full word stays everywhere
+ * there is room for it: the list view's column, the panel's column, this node's own
+ * accessible name and its tooltip all still read "6 conversations" (they call
+ * `deviceStatLine`). Nothing here is a second name for the unit - it is the same name
+ * where a reader cannot see six more characters of it anyway.
+ */
+function conversationsAtNodeWidth(count: number): string {
+	return count === 1 ? "1 conv" : `${count} conv`;
 }
 
 /**
  * The node's ONE stat line, after its title: the fact a reader most needs about
  * this device, in the order they need it.
  *
- * The resting state is the ONE that reports work (`2 chats · seen 4m ago`,
- * `branding.md` § 2's `ink-dim` register for metadata); the three states that mean
+ * The resting state is the ONE that reports work (`6 conv · seen 4m ago` at node
+ * width, `6 conversations · seen 4m ago` where there is room — `branding.md` § 2's
+ * `ink-dim` register for metadata); the three states that mean
  * something say so in words and spend no line on counts. That is the plan's §5
  * node contract - "stat = '2 chats · seen 4m ago', or 'unreachable (<reason>)'" -
  * and it is also what keeps colour from being the only channel: a node whose state
@@ -316,8 +353,16 @@ function chatsSentence(count: number): string {
  * `nowSeconds` is INJECTED rather than read from the clock here, so a story or a
  * test gets the same sentence at any moment (the frames in `docs/evidence/mesh-tab/`
  * are captured from this same function).
+ *
+ * ONE BUILDER, TWO WIDTHS: the count's own sentence is the parameter, so the canvas
+ * node and the list view cannot drift into two descriptions of the same device - the
+ * difference is which noun fits, and that is a drawing decision rather than a fact.
  */
-export function deviceStatLine(device: MeshDevice, nowSeconds: number): string {
+function statLine(
+	device: MeshDevice,
+	nowSeconds: number,
+	countSentence: (count: number) => string,
+): string {
 	/*
 	 * REVOKED OUTRANKS THE REST, because it is not a link state at all: the device is
 	 * not a member of any network this app can name, and a burned device id is never
@@ -334,15 +379,24 @@ export function deviceStatLine(device: MeshDevice, nowSeconds: number): string {
 		case "self":
 			return device.sessionCount === null
 				? "this device"
-				: `this device · ${chatsSentence(device.sessionCount)}`;
+				: `this device · ${countSentence(device.sessionCount)}`;
 		case "suspect":
 			return "identity suspect";
 		case "unreachable":
-			return deviceStateWords(device);
+			/*
+			 * THE WORD AT NODE WIDTH, THE REASON WHERE THERE IS ROOM (design review round 1,
+			 * D6). Measured on `misconfigured` at the pinned width, the node printed
+			 * `unreachable (no route t…` - and the parenthetical is the ONLY thing that
+			 * distinguishes one unreachable device from another, so a cut version of it spends
+			 * the line and answers nothing. The stat line says the word; the panel's own column
+			 * (`deviceStateWords`), the node's accessible name and the hover tooltip carry the
+			 * reason in full.
+			 */
+			return "unreachable";
 		default: {
 			const parts: string[] = [];
 			if (device.sessionCount !== null)
-				parts.push(chatsSentence(device.sessionCount));
+				parts.push(countSentence(device.sessionCount));
 			if (device.lastSeenAt !== null)
 				parts.push(seenSentence(nowSeconds - device.lastSeenAt));
 			/*
@@ -353,6 +407,26 @@ export function deviceStatLine(device: MeshDevice, nowSeconds: number): string {
 			return parts.length ? parts.join(" · ") : "no sessions reported";
 		}
 	}
+}
+
+/** The full sentence, for every surface with room for it. */
+export function deviceStatLine(device: MeshDevice, nowSeconds: number): string {
+	return statLine(device, nowSeconds, conversationsSentence);
+}
+
+/**
+ * The same line in the canvas node's own 147 px: the noun shortened, nothing else.
+ *
+ * See `conversationsAtNodeWidth` for the measurements - this is the form the NODE
+ * paints, while its tooltip and its accessible name carry `deviceStatLine`'s full
+ * sentence (the node's `title` is what a reader gets for hovering, and it is the only
+ * place the full words are one gesture away).
+ */
+export function deviceNodeStatLine(
+	device: MeshDevice,
+	nowSeconds: number,
+): string {
+	return statLine(device, nowSeconds, conversationsAtNodeWidth);
 }
 
 /**

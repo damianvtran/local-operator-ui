@@ -79,8 +79,12 @@ const PdfPreviewComponent: FC<{ document: CanvasDocument }> = ({
 		sizeBytes: document.sizeBytes,
 	});
 
+	/* The letterbox wears the PANE's ground (`canvas/index.tsx`): it is the pane's
+	   body behind the document, so it takes the drawer's rung rather than the
+	   conversation's `canvas`, which would leave the pane's tone under a changed
+	   bar. */
 	return (
-		<div className={cn("flex h-full w-full flex-col bg-canvas")}>
+		<div className={cn("flex h-full w-full flex-col bg-elevated")}>
 			{/* Our chrome, and the only name on this surface: see the note above. */}
 			<ViewerChrome path={document.path} />
 

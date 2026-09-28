@@ -17,7 +17,10 @@ import {
 import { pressLandsOnOverlay } from "@features/chat/keyboard-scopes";
 import { Sheet, SheetContent, SheetTitle } from "@shared/components/ui/sheet";
 import { cn } from "@shared/lib/utils";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import {
+	resolveRightSlotWidth,
+	useUiPreferencesStore,
+} from "@shared/store/ui-preferences-store";
 import {
 	type FC,
 	type ReactNode,
@@ -31,6 +34,35 @@ import {
 	useState,
 } from "react";
 import { ResizableDivider } from "./resizable-divider";
+
+/**
+ * The measured box of one element - width and left edge - 0/0 until the first
+ * layout effect runs.
+ *
+ * The one-frame rule `chat-content.tsx` states for its own row measurement:
+ * 0 means NOT MEASURED YET, not zero pixels, and the caller has to answer for
+ * that frame rather than render from it (`resolveRightSlotWidth` returns the
+ * pane's preference there, and the lane's last stop collapses).
+ */
+function useMeasuredBox(ref: RefObject<HTMLElement | null>): {
+	width: number;
+	left: number;
+} {
+	const [box, setBox] = useState({ width: 0, left: 0 });
+	useLayoutEffect(() => {
+		const element = ref.current;
+		if (!element) return;
+		const measure = () => {
+			const rect = element.getBoundingClientRect();
+			setBox({ width: rect.width, left: rect.left });
+		};
+		measure();
+		const observer = new ResizeObserver(measure);
+		observer.observe(element);
+		return () => observer.disconnect();
+	}, [ref]);
+	return box;
+}
 
 /**
  * The app shell's sidebar column and the content beside it.
@@ -414,13 +446,61 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	 * THE LANE TAKES EACH COLUMN'S OWN GROUND (D10). It was one window-wide strip
 	 * on `canvas`, so over the sidebar's `surface` it read as a notch the sidebar
 	 * hung from. It is still ONE element spanning both columns - that is what keeps
-	 * the brand row and the conversation title on one line - but it paints the
-	 * sidebar's width in `surface` and the rest in `canvas` with a hard-stop
-	 * gradient, so each column's ground runs to y0 the way Codex and Cursor 3 draw
-	 * theirs. The stop is the column's own width, which is why it is a style.
+	 * the brand row and the conversation title on one line - but it paints each
+	 * column's ground with a hard-stop gradient: the band's width in `surface` (the
+	 * sidebar's own, or a leading column a route hands over - `laneEdge` below),
+	 * the conversation's in `canvas`, and - since the slot moved to the drawer's
+	 * rung (`canvas/index.tsx`) - THE SLOT'S WIDTH IN `elevated`, so the pane is
+	 * continuous from y0 down. A pane-only change would leave the pane's tone
+	 * meeting this band at y32: the hard horizontal cut this pass's predecessor
+	 * removed, one layer up.
+	 *
+	 * The stop is the pane's leading edge, from the content column's own measured
+	 * box (`useMeasuredBox` above states the arithmetic and the frame that caught a
+	 * first version of it 60px wide), and `slotWidth` is 0 when no pane is open - a
+	 * zero-width last stop, so the band is exactly the two-stop gradient it was.
+	 * The canvas's `overlay` mode needs no branch here and gets none: the pane
+	 * covers the row at the width the resolver measures, and the lane paints the
+	 * pane's own ground from that leading edge (see the resolver's note).
 	 */
 	const columnWidth =
 		layout.mode === "docked" ? layout.width : SIDEBAR_COLLAPSED_WIDTH;
+	/*
+	/*
+	 * THE SLOT'S LEADING EDGE, EXPOSED ONCE (design round, D3). `slotRowWidth` is
+	 * the row the pane shares with the conversation — the content column's own
+	 * width, measured rather than derived from the window, because the sidebar is
+	 * draggable and the strip is a different width from the dock — and `slotWidth`
+	 * is what the ONE resolver in `ui-preferences-store` answers for it. Both this
+	 * lane and `chat-content.tsx` call that resolver; a second derivation here is
+	 * the drift the resolver exists to prevent (`resolveRightSlotWidth` states
+	 * the whole argument, including the canvas's overlay mode).
+	 */
+	const contentColumnRef = useRef<HTMLDivElement | null>(null);
+	const contentBox = useMeasuredBox(contentColumnRef);
+	const slotWidth = useUiPreferencesStore((state) =>
+		resolveRightSlotWidth(contentBox.width, state),
+	);
+	/*
+	 * THE STOP IS THE PANE'S LEADING EDGE. The pane hugs the slot's trailing edge,
+	 * so its leading edge sits `slotWidth` px LEFT of the content column's right
+	 * edge - not `columnWidth + slotWidth` px from the window's left, which is
+	 * where a first cut of this stop landed, and a captured frame showed exactly
+	 * what that arithmetic costs: the lane's band changed ground 60px right of the
+	 * pane's own edge, a `canvas` sliver over an `elevated` pane - the y32 band
+	 * this pass exists to remove, reintroduced by a sum. `left` is the measured
+	 * box's own offset, so the sidebar's drag and the divider between the columns
+	 * are inside the number rather than assumed, and the app and the shell story
+	 * compute the same edge from the same measurement.
+	 *
+	 * No pane open answers 0 width, which puts the last stop pair on the content
+	 * column's right edge - a zero-width band, so the lane is the two-stop gradient
+	 * it was. Unmeasured (0/0) collapses the pair at the left, which is also a
+	 * zero-width band and never reaches a paint: the layout effect's re-render
+	 * flushes before the frame.
+	 */
+	const slotEdge =
+		contentBox.width > 0 ? contentBox.left + contentBox.width - slotWidth : 0;
 	/*
 	 * THE BAND'S OWN WIDTH, which is the sidebar's UNLESS the route beside it draws a
 	 * leading column of its own: settings has its rail, agents its list pane, and the
@@ -432,12 +512,19 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	 * a route column can only ever stand to the right of it, and with no marker the
 	 * number is exactly what it always was.
 	 *
-	 * THE COLUMN'S GROUND IS THE MARKER'S VALUE (2026-09-27), not an assumption of
-	 * `surface`: the settings rail stands on `elevated`, so the lane paints the
-	 * sidebar's width in `surface`, the column's rung across its width, then `canvas`.
-	 * A `surface` column keeps the old two-stop shape exactly (the band IS the column),
-	 * which is also what a route with no column gets. The sheet, the divider and the
-	 * drag handling are untouched by any of this.
+	 * THE TWO EDGES COMPOSE RATHER THAN COMPETE, which is why both are computed here
+	 * and neither replaces the other. THE FIRST PAIR - `laneEdge` - IS THE LEADING
+	 * COLUMN'S RUNG (the settings-rail edge, 2026-09-27) and is read off the marker
+	 * rather than assumed: the lane paints the sidebar's width in `surface`, the rung
+	 * the column NAMES across its width, then `canvas`. A `surface` column keeps the
+	 * old two-stop shape exactly (the band IS the column), which is also what a route
+	 * with no column gets. THE LAST PAIR - `slotEdge` - IS THE SLOT'S STOP (the
+	 * drawer's-rung pass): it repeats the conversation's token at the pane's leading
+	 * edge, so the slot's `elevated` begins exactly where the conversation's `canvas`
+	 * ends and the pane is continuous from y0 down. The chat route draws no leading
+	 * column, so there the first pair collapses onto the sidebar's own width and the
+	 * gradient is the one the drawer's-rung pass shipped. The sheet, the divider and
+	 * the drag handling are untouched by any of this.
 	 */
 	const leading = useLaneLeadingEdge(laneRef, leadingColumn, columnWidth);
 	const laneEdge = Math.max(columnWidth, leading?.edge ?? 0);
@@ -464,12 +551,16 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 				ref={laneRef}
 				data-titlebar-lane=""
 				data-titlebar-drag=""
+				/* The stop as a fact on the element, the same reason the canvas's mode is one,
+				   so a probe reads where the lane changes ground rather than reverse-engineering
+				   it from a gradient string. */
+				data-slot-edge={slotEdge}
 				className="h-8 shrink-0"
 				style={{
 					background:
 						laneGround === "surface"
-							? `linear-gradient(to right, var(--lo-surface) ${laneEdge}px, var(--lo-canvas) ${laneEdge}px)`
-							: `linear-gradient(to right, var(--lo-surface) ${columnWidth}px, var(--lo-${laneGround}) ${columnWidth}px, var(--lo-${laneGround}) ${laneEdge}px, var(--lo-canvas) ${laneEdge}px)`,
+							? `linear-gradient(to right, var(--lo-surface) ${laneEdge}px, var(--lo-canvas) ${laneEdge}px, var(--lo-canvas) ${slotEdge}px, var(--lo-elevated) ${slotEdge}px)`
+							: `linear-gradient(to right, var(--lo-surface) ${columnWidth}px, var(--lo-${laneGround}) ${columnWidth}px, var(--lo-${laneGround}) ${laneEdge}px, var(--lo-canvas) ${laneEdge}px, var(--lo-canvas) ${slotEdge}px, var(--lo-elevated) ${slotEdge}px)`,
 				}}
 			/>
 			<div className="flex min-h-0 flex-1 overflow-hidden">
@@ -522,7 +613,10 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 				 * flex row, where `align-items: stretch` gave it a definite height for free;
 				 * that is the property this wrapper has to reproduce, not replace.
 				 */}
-				<div className="flex h-full min-w-0 grow flex-col overflow-hidden">
+				<div
+					ref={contentColumnRef}
+					className="flex h-full min-w-0 grow flex-col overflow-hidden"
+				>
 					<LaneLeadingContext.Provider value={setLeadingColumn}>
 						{content}
 					</LaneLeadingContext.Provider>

@@ -1265,8 +1265,10 @@ const AGENTS_PAGE =
 const CANVAS_SECTION =
 	"src/renderer/src/features/chat/components/canvas/index.tsx";
 /* The list's own plane, and the file the canvas entry's ground is read from: the
- * pane root in CANVAS_SECTION has to stay `canvas`, so the row plane is split off
- * into this file rather than the pane being re-grounded. */
+ * pane root in CANVAS_SECTION takes the lane's last stop (`elevated` since the
+ * drawer's-rung pass; `pane-slot-ground.test.mjs` derives it from the gradient,
+ * not from a literal), so the row plane is split off into this file rather than
+ * the pane being re-grounded. */
 const CANVAS_FILE_VIEWER =
 	"src/renderer/src/features/chat/components/canvas/canvas-file-viewer.tsx";
 const FILE_ROW =
@@ -1440,10 +1442,11 @@ const ROW_STATE_GROUNDS = [
 		 * The canvas Files list. It is a `rowCurrent` call site like the other six,
 		 * and its rows' painted ancestor is the list's OWN plane - the scroller in
 		 * `canvas-file-viewer.tsx`, which wears `surface`. It is NOT the pane root:
-		 * the root has to stay `canvas` - the operator's report made the dock the
-		 * page's ground, and `scripts/pane-slot-ground.test.mjs` reads exactly that
-		 * expression - so the two directions were answered by SPLITTING the element
-		 * rather than by relaxing either of them. It is here because the completeness
+		 * the root stands at the lane's last stop - `elevated` since the drawer's-rung
+		 * pass, derived by `scripts/pane-slot-ground.test.mjs` from the lane's own
+		 * gradient rather than from a literal - so the two directions were answered by
+		 * SPLITTING the element rather than by relaxing either of them. It is here
+		 * because the completeness
 		 * assertion below is over the tree rather than over the list of surfaces the
 		 * direction happens to name, and a call site nobody enumerates is exactly how
 		 * the rail's ground went unmeasured.

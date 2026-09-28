@@ -1733,6 +1733,14 @@ const STAMP_BINDING_NOTES = [
 	 * lines - so a later fold that started from main's copy would drop it first.
 	 */
 	"foldOntoE2394f9ff1Note",
+	/*
+	 * And THIS FOLD's own, beside the two above: it states the union the fold onto
+	 * `8a03152c61` resolved - main's records carried whole, this branch's kept, the
+	 * key sets diffed against the merged file rather than against a diff of added
+	 * lines, and the composed lane band the one path that authors new behaviour -
+	 * so a later fold that started from main's copy would drop it first.
+	 */
+	"foldOnto8a03152c61Note",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2613,6 +2621,63 @@ const BRANCH_RECORDS = [
 	 */
 	"foldOnto55d7b0a19bNote",
 	/*
+	 * And by THIS lane, whose five folded records report review round 1 (R5): the
+	 * drawer's-rung pass wrote them, their manifest entries survived the folds, and
+	 * this list - whose promise is that a fold resolved from main's copy would not
+	 * drop them - had not grown them, so a resolver could have dropped all five
+	 * without a word. Registered here rather than only noted, because naming them is
+	 * the one-line widening the precedent above set. The second fold, the
+	 * remediation round and its own stamp write join beside them for the same
+	 * reason; the remediation's registration is this commit and its stamp
+	 * re-derivation the docs-only commit that follows.
+	 */
+	"canvasElevatedPassNote",
+	"canvasElevatedStaleFramesNote",
+	"canvasElevatedBeforeNote",
+	"canvasElevatedFoldNote",
+	"canvasElevatedRestampNote",
+	"canvasElevatedSecondFoldNote",
+	"canvasElevatedRemediationPassNote",
+	"canvasElevatedRemediationRestampNote",
+	/*
+	 * And the THIRD fold's own, added with it: a fold that resolved this file by
+	 * key against a main that had moved 81 commits, and the record of what that
+	 * resolution kept from each side.
+	 */
+	"canvasElevatedThirdFoldNote",
+	/*
+	 * And the FOURTH fold's own, added with it: the fold onto `0f23c76de5`'s
+	 * successor `76ce9a7aac` (the 0.31.10 train), resolved the same by-key way
+	 * as its predecessor.
+	 */
+	"canvasElevatedFourthFoldNote",
+	/*
+	 * And the FIFTH fold's own, added with it: the fold onto `76ce9a7aac`'s
+	 * successor `ac83ec7d92`, resolved the same by-key way.
+	 */
+	"canvasElevatedFifthFoldNote",
+	/*
+	 * And the SIXTH fold's own, added with it: the fold onto `ac83ec7d92`'s
+	 * successor `8367cbfaee` (#591's agent-hub org-empty-state fix), resolved
+	 * the same by-key way.
+	 */
+	"canvasElevatedSixthFoldNote",
+	/*
+	 * And the SEVENTH fold's own, added with it: the fold onto `8367cbfaee`'s
+	 * successors through `55d7b0a19b` (#595's Aida rail row and composer door,
+	 * #607's 0.31.11 window, #596's pointer-cursor restore, #604's currency-math
+	 * pass), resolved the same by-key way. Main's three records above rode in
+	 * beside this lane's at the same point, kept whole.
+	 */
+	"canvasElevatedSeventhFoldNote",
+	/*
+	 * And the EIGHTH fold's own, added with it: the fold onto `55d7b0a19b`'s
+	 * successor `e2394f9ff1` (the measure-narrow lane's merge and its own
+	 * three folds), resolved the same by-key way. Main's four records above
+	 * rode in beside this lane's at the same point, kept whole.
+	 */
+	"canvasElevatedEighthFoldNote",
+	/*
 	 * And by THIS lane, whose note is the newest top-level record on the branch:
 	 * it states the pair this change ships - both trees moved (the rail's rung,
 	 * the lane's stop list and the three right rules in `src/`; the scene's two
@@ -2635,6 +2700,15 @@ const BRANCH_RECORDS = [
 	 * registered for the reason the list exists.
 	 */
 	"foldOntoE2394f9ff1Note",
+	/*
+	 * And THIS FOLD's own, beside them: it states the union the fold onto
+	 * `8a03152c61` resolved - main's records carried whole, this branch's kept,
+	 * the key sets diffed against the merged file rather than against a diff of
+	 * added lines, and the composed lane band the one path that authors new
+	 * behaviour - so a later fold that started from main's copy would drop it
+	 * first, the same reason this list exists.
+	 */
+	"foldOnto8a03152c61Note",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
