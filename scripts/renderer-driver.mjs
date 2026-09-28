@@ -27265,13 +27265,53 @@ async function sceneProjectDetail(cdp) {
 		`Boolean(document.querySelector('${inputSelector}'))`,
 		30_000,
 	);
-	await clickAt(cdp, inputSelector);
-	const messageText = "Rig check: report your current blocker.";
-	await cdp.send("Input.insertText", { text: messageText });
-	await wait(150);
-	const typed = await cdp.evaluate(
-		`document.querySelector('${inputSelector}').value`,
-	);
+	/*
+	 * THE MESSAGE IS UNIQUE PER RUN, AND THE TYPING IS VERIFIED RATHER THAN
+	 * ASSUMED. Two facts measured at the fold: a re-run against the same daemon
+	 * already holds the previous run's sentence in the linked session's
+	 * transcript, so a fixed text would let the delivery check pass on a stale
+	 * row; and a click landing while the sheet re-renders leaves nothing focused,
+	 * so `Input.insertText` goes nowhere and the strip stays empty - which the
+	 * next check would then "confirm", because an empty strip is a clear one.
+	 */
+	const messageText = `Rig check: report your current blocker. [${Date.now().toString(36)}]`;
+	let typed = "";
+	for (let attempt = 1; attempt <= 3 && typed !== messageText; attempt += 1) {
+		/*
+		 * SCROLLED INTO VIEW FIRST: the sheet grows with the project's links (a
+		 * daemon reused across runs holds several), and a click aimed at an
+		 * element below the fold lands on whatever is at those coordinates
+		 * instead - measured at the fold, where four linked sessions pushed the
+		 * strip past the viewport and every keystroke went nowhere.
+		 */
+		await cdp.evaluate(
+			`document.querySelector('${inputSelector}').scrollIntoView({ block: "center" })`,
+		);
+		await wait(150);
+		await clickAt(cdp, inputSelector);
+		await wait(150);
+		await cdp.send("Input.insertText", { text: messageText });
+		await wait(200);
+		typed = await cdp.evaluate(
+			`document.querySelector('${inputSelector}').value`,
+		);
+		if (typed === messageText) break;
+		/*
+		 * Clear through the NATIVE value setter before the next attempt: React's
+		 * own tracker compares against the property it shims, so a plain
+		 * `el.value = ""` would leave the component's state holding the partial
+		 * text and the retry would append to it.
+		 */
+		await cdp.evaluate(
+			`(() => {
+				const el = document.querySelector('${inputSelector}');
+				const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+				setter.call(el, "");
+				el.dispatchEvent(new Event("input", { bubbles: true }));
+			})()`,
+		);
+		await wait(120);
+	}
 	check(
 		"the strip holds the typed message",
 		typed === messageText,
@@ -27353,6 +27393,10 @@ async function sceneProjectDetail(cdp) {
 		`Boolean(document.querySelector('[data-tour-tag="project-start-session"]'))`,
 		30_000,
 	);
+	await cdp.evaluate(
+		`document.querySelector('[data-tour-tag="project-start-session"]').scrollIntoView({ block: "center" })`,
+	);
+	await wait(150);
 	await clickAt(cdp, '[data-tour-tag="project-start-session"]');
 	await waitForCondition(
 		cdp,
