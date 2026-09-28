@@ -225,15 +225,15 @@ export const SkipLive: Story = {
  * A durable page never carries a composing row, so the reload half is the
  * loop's synthetic result - `is_error: true` with `details.__fault:
  * "skipped"` - and this frame opens it, because the label on the expansion is
- * half the report: `Error` before, over the reason in danger ink; `Output`
- * after, over the same words.
+ * half the report: `Error` before, over the reason in danger ink;
+ * `Interrupted` after, over the same words.
  */
 export const SkipDurable: Story = {
 	render: () => (
 		<Frame
 			waiting={false}
 			openRows={true}
-			caption="The same skip after a reload: the durable row, opened. Before: `failed` beside an `Error` expansion. After: interrupted, and the harness's own words under `Output`."
+			caption="The same skip after a reload: the durable row, opened. Before: `failed` beside an `Error` expansion. After: interrupted, and the harness's own words under `Interrupted`."
 			transcript={withPage(SKIP_PAGE)}
 		/>
 	),

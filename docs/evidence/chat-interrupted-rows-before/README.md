@@ -10,12 +10,19 @@ ever met and on calls a person stopped.
 ## How this set was captured
 
 `scripts/capture-evidence.mjs` run against a throwaway checkout of the base this
-branch folds onto — `origin/main` = `b897ebeb93` — so every frame is the BASE
-tree's own reducer, transcript and detail pane, i.e. the shipped pre-fix
-classification a sweep of the current tree can no longer photograph:
+branch folds onto — `origin/main`, read whole at the first fold (`b897ebeb93`)
+and re-read for one story at the second (`160faa5f9f`) — so every frame is the
+BASE tree's own reducer, transcript and detail pane, i.e. the shipped pre-fix
+classification a sweep of the current tree can no longer photograph. Review
+round 2 re-read the `skip-durable` pair (its caption had kept the
+pre-remediation wording); the two bases differ in no file under
+`src/renderer/src/features/chat` (`git diff b897ebeb93..160faa5f9f --` there is
+empty), so the eighteen frames are pictures of one story:
 
 ```sh
-# in a throwaway checkout of b897ebeb93, with this branch's story file and
+# in a throwaway checkout of the fold base (b897ebeb93; the skip-durable pair
+# re-read at 160faa5f9f with --only=chat-interrupted-rows-before--skip-durable),
+# with this branch's story file and
 # fixture copied in, the story's title temporarily suffixed `before`, and the
 # nine matching rows temporarily present in the STORIES table of
 # capture-evidence.mjs (all restored to the committed head afterwards):

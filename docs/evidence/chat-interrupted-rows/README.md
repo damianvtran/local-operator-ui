@@ -40,7 +40,7 @@ pair is 576,000 px = 720×800):
 | --- | --- | --- |
 | `skip-live` | 2,993 | 2,285 |
 | `skip-live-expanded` | 15,211 | 11,955 |
-| `skip-durable` | 42,097 | 38,958 |
+| `skip-durable` | 42,975 | 41,295 |
 | `stop-mid-flight` | 21,342 | 21,940 |
 | `stop-expanded` | 35,389 | 31,736 |
 | `genuine-failure` | 141 | **0** |
@@ -65,9 +65,17 @@ change does not touch; the control pair is what shows the bound, and the diff
 images concentrate on the rows, the labels and the counters the change is
 about.
 
+The `skip-durable` pair was re-read at this branch's second fold onto
+`origin/main` (`160faa5f9f`): review round 2 caught its caption still saying
+`Output` where the frame shows `Interrupted`, and both halves were re-taken so
+the pair stays matched. Every other pair was last read at the first fold
+(`b897ebeb93`), and the two bases differ in no file under
+`src/renderer/src/features/chat` (`git diff b897ebeb93..160faa5f9f --` there is
+empty).
+
 ## The design round's findings, as shipped
 
-- **D1 (the body label), fixed in `4035660bb4`.** For the interrupted kinds the
+- **D1 (the body label), fixed in `e52f357555`.** For the interrupted kinds the
   expanded body is labelled `Interrupted` in the neutral label ink with its
   reason in ordinary ink, on BOTH paths — the durable pane (`ToolDetail`'s
   `interrupted` prop) and the live never-run body (which reads `notRunKind`
