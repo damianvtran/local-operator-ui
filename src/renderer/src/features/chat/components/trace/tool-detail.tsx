@@ -134,6 +134,18 @@ export type ToolDetailProps = {
 	output: string | null;
 	/** The call failed, so its result is ink`danger` and labelled `Error`. */
 	isError: boolean;
+	/**
+	 * The call was INTERRUPTED rather than run to a verdict (design round 1,
+	 * D1): a steering skip, a cancelled call, or the user's stop, as the record's
+	 * own `stopped` says. The section keeps the output treatment's geometry but
+	 * stops calling a verdict-less body `Output` - it produced no output, it was
+	 * stopped - so it is labelled `Interrupted`, the word the row's own sr-only
+	 * announcement and the TUI use, in the neutral label ink with the body in
+	 * ordinary ink. An interruption never reaches here with `isError` set (the
+	 * reducer clears it), and the belt-and-braces conditions below keep the
+	 * danger treatment for any state that somehow did.
+	 */
+	interrupted?: boolean;
 };
 
 /**
@@ -310,7 +322,12 @@ const Remainder: FC<{ lines: number; overflowing: boolean }> = ({
 		</span>
 	) : null;
 
-export const ToolDetail: FC<ToolDetailProps> = ({ args, output, isError }) => {
+export const ToolDetail: FC<ToolDetailProps> = ({
+	args,
+	output,
+	isError,
+	interrupted = false,
+}) => {
 	const input = argumentLines(args);
 	const structured = resultLines(output);
 	const inputRef = useRef<HTMLDivElement>(null);
@@ -364,10 +381,10 @@ export const ToolDetail: FC<ToolDetailProps> = ({ args, output, isError }) => {
 					<span
 						className={cn(
 							"mb-1 block text-meta",
-							isError ? "text-danger" : "text-ink-dim",
+							isError && !interrupted ? "text-danger" : "text-ink-dim",
 						)}
 					>
-						{isError ? "Error" : "Output"}
+						{interrupted ? "Interrupted" : isError ? "Error" : "Output"}
 					</span>
 					<div ref={outputRef} className={cn(SECTION_MAX, "overflow-auto")}>
 						{structured ? (
@@ -380,7 +397,7 @@ export const ToolDetail: FC<ToolDetailProps> = ({ args, output, isError }) => {
 							<pre
 								className={cn(
 									"whitespace-pre font-mono",
-									isError ? "text-danger" : "text-ink",
+									isError && !interrupted ? "text-danger" : "text-ink",
 								)}
 							>
 								{output}
