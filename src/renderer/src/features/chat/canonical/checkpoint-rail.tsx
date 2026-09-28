@@ -399,6 +399,27 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 						// re-open the NEXT tick's card on the way back.
 						onOpenAutoFocus={(event) => event.preventDefault()}
 						onCloseAutoFocus={(event) => event.preventDefault()}
+						/*
+						 * Radix dismisses a non-modal popover when focus moves outside its
+						 * layer — but the ticks ARE this popover's trigger surface (there is no
+						 * Radix trigger; the anchor is virtual), so tabbing from one tick to
+						 * the next is not "leaving". Without this the dismissal fires AFTER the
+						 * next tick's focus handler has opened its card and closes it again,
+						 * so a keyboard reader could open the first tick's card and nothing
+						 * after it. Escape and outside presses are untouched: both keep
+						 * reaching `onOpenChange`.
+						 */
+						onFocusOutside={(event) => {
+							const target = (
+								event.detail as { originalEvent?: FocusEvent } | undefined
+							)?.originalEvent?.target;
+							if (
+								target instanceof Element &&
+								target.closest("[data-lo-checkpoint-rail]")
+							) {
+								event.preventDefault();
+							}
+						}}
 						// Moving the pointer into the card keeps it open so the user
 						// text can be scrolled; leaving or blurring schedules the same
 						// close the tick's own leave would.
