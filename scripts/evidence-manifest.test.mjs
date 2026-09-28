@@ -1552,6 +1552,16 @@ const STAMP_BINDING_NOTES = [
 	 * re-captured - so a reader is owed the pair and the four frames it added.
 	 */
 	"traceToolLabelsRestampNote",
+	/*
+	 * AND THE POINTER-AFFORDANCE SWEEP'S OWN - it belongs here for the list's own
+	 * reason: ITS SUBJECT IS THIS FILE'S BINDING. The sweep moves BOTH trees (the
+	 * base-layer rule and the five click sites under `src/`; the audit that
+	 * measures them under `scripts/`) and re-shoots no frame - a cursor is not a
+	 * pixel, so the committed set renders identically and the audit's measured
+	 * report is the PR's evidence - so a reader is owed the two values it binds
+	 * and the reason the stills did not move.
+	 */
+	"mouseCursorRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2314,6 +2324,11 @@ const BRANCH_RECORDS = [
 	 * same reason this list exists.
 	 */
 	"traceToolLabelsRestampNote",
+	/*
+	 * And this branch's own record rides beside it - the pointer-affordance sweep
+	 * writes one top-level note, registered here for the same completeness reason.
+	 */
+	"mouseCursorRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
