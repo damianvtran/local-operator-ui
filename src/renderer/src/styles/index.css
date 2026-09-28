@@ -454,6 +454,61 @@
 }
 
 /*
+ * The chat column's shipped content measure.
+ *
+ * THIS IS THE ONLY PLACE THE NUMBER IS WRITTEN. `CHAT_MEASURE` in
+ * `features/chat/chat-measure.ts` reads the property rather than restating the
+ * value, so the transcript, the composer band and every story that renders
+ * them resolve against one number and cannot drift apart.
+ *
+ * It is a custom property rather than a Tailwind `max-w-[810px]` literal in the
+ * class string because a class can only carry a literal: the value has to be
+ * addressable by name for a runtime change to reach the transcript and the
+ * composer together, and a second copy of the number in a class string is the
+ * drift this file's sibling comment (in `chat-measure.ts`) exists to prevent.
+ *
+ * ## Why 810, and not 640
+ *
+ * The `-90` (10%) from the 900 the column carried is the whole change, and the
+ * reasoning is a measurement rather than a taste margin. Measured on the
+ * rendered app (`scripts/chat-measure-evidence.mjs`, `Chat/Measure`), over a
+ * 1,059-character sample of answer prose at the 14px body step, where the
+ * characters-per-line figure is the sample's character count divided by the
+ * number of rendered line boxes - which INCLUDES the short last line, so it is
+ * a lower bound on the full-line figure rather than an average of full lines:
+ *
+ *  - 900px: 8 lines, 132.4 characters per line, widest line 891.0px.
+ *  - 810px: 9 lines, 117.7 characters per line, widest line 809.7px.
+ *
+ * So the step buys 14.7 characters a line - 11% - for 90px of column.
+ *
+ * ## The figure this replaces, and the one it sits beside
+ *
+ * Two quantities live in `markdown.css`'s measure comment and this file must not
+ * conflate them. The 98.1 it has carried since #106 is a `ch` reading, not a
+ * count of characters, and that file says so explicitly: `ch` is the width of
+ * the glyph `0`, which is roughly half again as wide as an average character of
+ * prose at this font. The character figure it derives from the rendered breaks
+ * is 131 characters on an 832.6px line, and the measurement above is the same
+ * method on a different sample: 132.4 at the 900px column, 117.7 at 810px. The
+ * two agree, which is what makes either usable.
+ *
+ * 640 - what the redesign carried and what the owner reverted on 2026-09-26 - is
+ * inside the design board's comparator range. The brief for this change is
+ * explicitly "narrow the constraint just a bit", so the step is deliberately
+ * well above 640 and does not re-open the redesign.
+ *
+ * The class still gates the cap behind `@min-[750px]/chatcol:`, and the two do
+ * not fight: at a 750px container the content box is 750 - 48 = 702px, so a
+ * 810px cap can only bind above an 858px container. The gate is therefore inert
+ * at every width the product renders, and it is kept because it states the
+ * intent (a narrow column takes the full width) that the number alone does not.
+ */
+:root {
+	--lo-chat-measure: 810px;
+}
+
+/*
  * The single token source for everything already ported to Tailwind.
  *
  * Colour comes in as `var(--lo-*)`, defined per theme in themes.generated.css

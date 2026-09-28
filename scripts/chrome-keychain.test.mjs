@@ -284,6 +284,12 @@ const CHROME_LAUNCH_SITES = [
 		"measures the transcript's horizontal geometry from the live DOM",
 	),
 	guarded(
+		"scripts/chat-measure-evidence.mjs",
+		"spawn",
+		1,
+		"photographs the chat column's shared measure at the shipped value and at the value it carried before, and reads the line length back from the rendered DOM - the frame pair a sweep cannot take, because the previous value is not in the tree at any later head",
+	),
+	guarded(
 		"scripts/cursor-audit.mjs",
 		"spawn",
 		1,
