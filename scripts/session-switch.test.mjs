@@ -1159,6 +1159,15 @@ const ENTRANCE_FILES = {
 		"src/renderer/src/shared/components/navigation/sidebar-navigation.tsx",
 	"command-palette.tsx":
 		"src/renderer/src/features/command-palette/components/command-palette.tsx",
+	/*
+	 * AIDA'S OPEN IS AN ENTRANCE TOO, and it is named here although it builds no
+	 * `/chat/` URL of its own: `/aida` resolves her id through the desktop route
+	 * and then calls the same rule, so the two surfaces that reach her (the rail's
+	 * row and the composer's command) are one call site kept in one module. An
+	 * entrance that delegates rather than spells is still an entrance - and this
+	 * is the file a second, deferred write would be written into.
+	 */
+	"use-aida-target.ts": "src/renderer/src/features/aida/use-aida-target.ts",
 };
 const readSource = (path) =>
 	readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
@@ -1221,9 +1230,11 @@ test("every entrance writes the switch's URL with the commit, through one rule",
 	}
 	/*
 	 * One entrance lives in each of the three files now: the sidebar's rows, the
-	 * `/chat` rebind (which is still `chat-page.tsx`'s) and the palette's. The pair
-	 * that used to be counted in `chat-page` was the sidebar's row plus that rebind,
-	 * and the sidebar's row left with the sidebar.
+	 * `/chat` rebind (which is still `chat-page.tsx`'s) and the palette's - plus
+	 * Aida's, which is the sidebar's and the composer's shared resolution
+	 * (`use-aida-target.ts`; see its entry above). The pair that used to be counted
+	 * in `chat-page` was the sidebar's row plus that rebind, and the sidebar's row
+	 * left with the sidebar.
 	 */
 	assert.equal(
 		readSource(ENTRANCE_FILES["chat-page.tsx"]).split("openConversation(")
@@ -1240,6 +1251,12 @@ test("every entrance writes the switch's URL with the commit, through one rule",
 		readSource(ENTRANCE_FILES["command-palette.tsx"]).split("openConversation(")
 			.length - 1,
 		1,
+	);
+	assert.equal(
+		readSource(ENTRANCE_FILES["use-aida-target.ts"]).split("openConversation(")
+			.length - 1,
+		1,
+		"Aida's resolution is the one call site for both of her surfaces; a second one is a second write rule",
 	);
 });
 
