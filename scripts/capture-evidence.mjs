@@ -6184,6 +6184,109 @@ export const STORIES = [
 	["chat-backend-compatibility-banner--unanswered-probe", 860, 240],
 	["chat-backend-compatibility-banner--update-failed", 860, 240],
 	["chat-backend-compatibility-banner--double-control", 860, 240],
+	/*
+	 * SLICE 2'S FRAMES, and the two that matter most are the TRANSIENT ones. A drag
+	 * photographed at its endpoints proves nothing about the state the user actually
+	 * meets: the ghost, the drop indicator and the target's own edge exist only while
+	 * the pointer is in the air, and a first frame that differs from the settled one
+	 * is a reflow the user reads as motion.
+	 */
+	["mesh-tab--device-panel", 1380, 900],
+	/*
+	 * THE CAP ITSELF, in a frame (design review round 2, D8): four conversations on one peer,
+	 * named in series so the chip's own truncation is what the frame is about. Nothing in the
+	 * story set put three or more rows on one device before this row existed, which is why
+	 * round 1's cap shipped having been judged only from the two-row case.
+	 */
+	["mesh-tab--cap-at-four", 1380, 900],
+	/*
+	 * THE TWO TRANSIENT FRAMES CARRY A CLAIM, AND THE CLAIM IS CHECKED AT THE SHUTTER.
+	 * `expectSentence` is what this rig already has for a state that exists only inside a
+	 * gesture: it waits up to 2 s for the sentence in the DOM immediately before the
+	 * frame, and throws if it is not there — which is the difference between a frame that
+	 * SHOWS the transient and a frame that merely follows one. Without it the shutter can
+	 * land after the gesture state has gone (measured on this branch: an unguarded run at
+	 * `settleMs` 120 and again at 0 produced the SETTLED canvas, because `play` resolves
+	 * on the indicator's first appearance and the state is not held past it), and a
+	 * settled still under a transient's name is the failure this row's comment exists to
+	 * prevent.
+	 */
+	[
+		"mesh-tab--drag-to-device",
+		1380,
+		900,
+		{
+			drag: {
+				from: `[data-mesh-session="0123456789ab"]`,
+				to: `[data-mesh-device="d_${"b".repeat(32)}"]`,
+			},
+			expectSentence: "Move to cloud-node-1",
+		},
+	],
+	[
+		"mesh-tab--drag-refused-over-network",
+		1380,
+		900,
+		{
+			drag: {
+				from: `[data-mesh-session="0123456789ab"]`,
+				to: `[data-mesh-network="n_${"1".repeat(24)}"]`,
+			},
+			expectSentence: "Drop will be refused",
+		},
+	],
+	/*
+	 * THE THREE DIALOG/REFUSAL ROWS CARRY CLAIMS TOO, for the reason the two drag rows do
+	 * (design review round 1, D3): these states are reached BY `play`, so without a claim
+	 * the shutter can land one click short - and it did. `invite-receipt` photographed the
+	 * PRE-MINT dialog in both palettes ("Admission is two-sided", `Cancel` + `Mint the
+	 * token`) while the receipt branch renders different content and a `Close` footer, and
+	 * `move-refused-busy` photographed the confirm dialog with no refusal anywhere. Both
+	 * claims below are the sentences the story's own `play` waits for, which is what makes
+	 * the frame's name true rather than aspirational.
+	 */
+	["mesh-tab--move-confirm", 1380, 900],
+	[
+		"mesh-tab--move-refused-busy",
+		1380,
+		900,
+		{ expectSentence: "Wait for the turn to finish" },
+	],
+	["mesh-tab--move-copy-with-undo", 1380, 900],
+	/*
+	 * THE REMEDY, EXECUTED, AND ITS CLAIM IS THE OUTCOME (agent review round 2, F2).
+	 * This row is the only one that presses `Wait for the turn to finish`: the story's play
+	 * re-issues the refused move and asserts the request carried `waitS: 300`, and the
+	 * sentence below is the receipt that replaces the notice when that request lands. The
+	 * claim is what ties the FRAME to the assertion - a still of the refusal under a name
+	 * that says "waited" would be the same class of defect as the two rows above, and the
+	 * round-2 review measured that nobody had pressed the button at all.
+	 */
+	/*
+	 * AND THIS FRAME NOW PROVES MORE THAN IT DID (design review round 3, D13; round 4, D18). The play
+	 * drives the whole path - it presses the remedy, asserts the re-issue carried `waitS: 300`, waits
+	 * for the re-read, and asserts the canvas agrees with the receipt (the panel reads
+	 * `Conversations (1)` and this device draws exactly one conversation) - and the story's fixture
+	 * ANSWERS that world (`afterTransfer`), so the picture beside the notice is the moved one: the
+	 * peer holds `Sweep 001`, this device holds `Resume the roadmap`, and the panel's count is 1.
+	 *
+	 * ROUND 3 NARROWED THIS ROW'S CLAIM BECAUSE THE FRAME SHOWED THE PRE-MOVE WORLD, and round 4 found
+	 * why the narrowing was unnecessary: the hook was wired into `MoveCopyWithUndo` rather than into
+	 * this story, so the re-read never changed anything. The claim is the receipt AND the world under
+	 * it; the `expectSentence` still guards the shutter.
+	 */
+	["mesh-tab--move-busy-waited", 1380, 900, { expectSentence: "holds it now" }],
+	/*
+	 * AND A NOTE FOR A LATER READER (design review round 1, D7): this row shows a 2 px
+	 * accent outline outside the dialog frame and `move-confirm` shows none, which is the
+	 * HEADLESS MODE's focus behaviour - the repo's own AGENTS.md lists focus-dependent
+	 * rendering among the things a `headless` capture differs on - rather than a design
+	 * difference between two instances of one component.
+	 */
+	["mesh-tab--invite-receipt", 1380, 900, { expectSentence: "Invited" }],
+	// The narrow case, with the panel open: the column and the canvas have to fit
+	// together at the width the app's own sidebar clamps for.
+	["mesh-tab--device-panel", 1024, 768, { dir: "device-panel-narrow" }],
 ];
 
 /**
@@ -7654,6 +7757,73 @@ const main = async () => {
 				await cdp.send("Input.insertText", { text: options.insertText });
 				if (options?.insertTextSettleMs)
 					await sleep(options.insertTextSettleMs);
+			}
+
+			/*
+			 * A REAL DRAG, FOR THE STATE A `play` FUNCTION CANNOT HOLD.
+			 *
+			 * The same rule this file already applies to `:active` (see the `hold` arm above)
+			 * reaches further here: the drag's transient - the lifted chip, the ghost, the
+			 * indicator naming the operation - is held by a POINTER THAT IS DOWN, and a
+			 * synthetic `PointerEvent` cannot be that pointer. Measured on the Mesh tab's
+			 * own rows: the story's `play` dispatches a real-looking `pointerdown` and
+			 * `pointermove` and resolves, the sweep takes its frame, and the frame is the
+			 * SETTLED canvas - `expectSentence` then reports the claimed sentence absent,
+			 * which is how this was found rather than assumed. The rig's own input pipeline
+			 * does lift the chip (`Input.dispatchMouseEvent` is what the bench drives the
+			 * shipped app with, and its "chip lifted" assertion passes), so the gesture is
+			 * driven from here: move to `from`, press, interpolate to `to` with the button
+			 * HELD, and leave it down for the guard and the shutter.
+			 *
+			 * Nothing leaks past the story: every capture navigates for its theme and each
+			 * navigation is preceded by `about:blank`, so no page inherits Chromium's input
+			 * state - the same argument the `hold` arm states.
+			 */
+			if (options?.drag) {
+				const point = async (selector) => {
+					for (let i = 0; i < 100; i++) {
+						const { result } = await cdp.send("Runtime.evaluate", {
+							returnByValue: true,
+							expression: `(() => {
+								const el = document.querySelector(${JSON.stringify(selector)});
+								if (!el) return null;
+								const r = el.getBoundingClientRect();
+								if (r.width === 0 || r.height === 0) return null;
+								return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+							})()`,
+						});
+						if (result.value) return result.value;
+						await sleep(150);
+					}
+					throw new Error(
+						`${story} @ ${theme}: the drag selector \`${selector}\` never appeared (15s) - a drag that finds nothing must fail rather than photograph the settled state`,
+					);
+				};
+				const from = await point(options.drag.from);
+				const to = await point(options.drag.to);
+				const mouse = (type, x, y, buttons) =>
+					cdp.send("Input.dispatchMouseEvent", {
+						type,
+						x,
+						y,
+						button: buttons === 0 ? "none" : "left",
+						buttons,
+						clickCount: type === "mousePressed" ? 1 : 0,
+						modifiers: 0,
+						pointerType: "mouse",
+					});
+				await mouse("mouseMoved", from.x, from.y, 0);
+				await mouse("mousePressed", from.x, from.y, 1);
+				const steps = options.drag.steps ?? 12;
+				for (let i = 1; i <= steps; i += 1) {
+					await mouse(
+						"mouseMoved",
+						Math.round(from.x + ((to.x - from.x) * i) / steps),
+						Math.round(from.y + ((to.y - from.y) * i) / steps),
+						1,
+					);
+					await sleep(16);
+				}
 			}
 
 			/*
