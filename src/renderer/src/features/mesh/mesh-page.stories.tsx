@@ -815,6 +815,44 @@ export const MoveBusyWaited: Story = {
 					owner_device_name: "cloud-node-1",
 				}),
 			],
+			/*
+			 * AND THE WORLD IT ANSWERS AFTERWARDS AGREES WITH ITS OWN RECEIPT (design review round 3,
+			 * D13 - wired into THIS story in round 4, D18, because round 3's edit landed in
+			 * `MoveCopyWithUndo` and left the story the hook was written for unwired, so the frame kept
+			 * showing the pre-move canvas while the play's own waits waited for this). The receipt says
+			 * "the copy here is gone"; the page re-reads both lists on success, so this is what those
+			 * reads must return - this device holds one conversation and the peer holds two - or the
+			 * frame contradicts itself in three places at once (the canvas, the panel and the peer's
+			 * own count).
+			 */
+			afterTransfer: (world) => {
+				world.sessions = [
+					sessionRow("0123456789cd", "Resume the roadmap", {
+						live_state: "attached",
+					}),
+					sessionRow("0123456789ef", "Rewrite the importer", {
+						locality: "remote",
+						owner_device: DEVICE_PEER,
+						owner_device_name: "cloud-node-1",
+					}),
+					sessionRow("0123456789ab", "Sweep 001", {
+						locality: "remote",
+						owner_device: DEVICE_PEER,
+						owner_device_name: "cloud-node-1",
+					}),
+				];
+				world.peers = {
+					self_device_id: DEVICE_SELF,
+					peers: [
+						peer(DEVICE_PEER, {
+							name: "cloud-node-1",
+							last_seen_at: seenMinutesAgo(9),
+							session_count: 2,
+						}),
+					],
+					degraded: [],
+				};
+			},
 			transfer: {
 				locality: "remote",
 				owner_device: DEVICE_PEER,
@@ -908,42 +946,6 @@ export const MoveCopyWithUndo: Story = {
 	render: () => {
 		installBridge({
 			...actionFixture(),
-			/*
-			 * AND THE WORLD IT ANSWERS AFTERWARDS AGREES WITH ITS OWN RECEIPT (design review round 3,
-			 * D13). The receipt says "the copy here is gone"; the page re-reads both lists on success,
-			 * so this is what those reads must return - this device holds one conversation and the peer
-			 * holds two - or the frame contradicts itself in three places at once (the canvas, the panel
-			 * and the peer's own count). A static fixture cannot do that, which is why `afterTransfer`
-			 * exists.
-			 */
-			afterTransfer: (world) => {
-				world.sessions = [
-					sessionRow("0123456789cd", "Resume the roadmap", {
-						live_state: "attached",
-					}),
-					sessionRow("0123456789ef", "Rewrite the importer", {
-						locality: "remote",
-						owner_device: DEVICE_PEER,
-						owner_device_name: "cloud-node-1",
-					}),
-					sessionRow("0123456789ab", "Sweep 001", {
-						locality: "remote",
-						owner_device: DEVICE_PEER,
-						owner_device_name: "cloud-node-1",
-					}),
-				];
-				world.peers = {
-					self_device_id: DEVICE_SELF,
-					peers: [
-						peer(DEVICE_PEER, {
-							name: "cloud-node-1",
-							last_seen_at: seenMinutesAgo(9),
-							session_count: 2,
-						}),
-					],
-					degraded: [],
-				};
-			},
 			transfer: {
 				locality: "remote",
 				owner_device: DEVICE_PEER,
