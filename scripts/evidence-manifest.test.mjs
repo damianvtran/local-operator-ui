@@ -1681,6 +1681,19 @@ const BRANCH_RECORDS = [
 	 */
 	"task17RestampNote",
 	/*
+	 * AND THE DESKTOP-STEP DIAGNOSTICS' OWN (2026-09-29): `desktopStepDiagnosticsRestampNote`
+	 * is the record for the CI step that makes a red desktop suite name the failing
+	 * test - the errexit-independent capture, the TAP summary, the `::error::`
+	 * annotations and the A17b/A17c driven pins. It moves `scripts/` only and takes
+	 * no frame (nothing in it is user-visible; the evidence is the step body
+	 * extracted and driven under `bash -e` with a stub `pnpm` against five
+	 * synthetic logs, plus the mutation table). The fold onto the stamp-discipline
+	 * train (#566) spells the note's pair bare: the convention that held new notes
+	 * to the pair is retired. A fold that started from main's copy would drop it
+	 * first, the same reason this list exists.
+	 */
+	"desktopStepDiagnosticsRestampNote",
+	/*
 
 	 * And by this lane, whose note is now the newest top-level record on the
 	 * branch: it states the pair the inline-rename fix ships - both trees
