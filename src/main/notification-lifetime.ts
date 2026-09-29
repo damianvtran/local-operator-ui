@@ -91,9 +91,20 @@ export class NotificationLifetime {
 	 * retain would reproduce the defect with every test green, so this is the
 	 * only supported way to attach the click. The callback runs first and the
 	 * release runs in a `finally`, so a routing path that throws still settles
-	 * the entry instead of holding a dead handler until the bound reaps it.
+	 * the entry instead of holding a dead handler until the bound reaps it. A
+	 * notification that is already live is left exactly as it is (F1): see the
+	 * guard below for the two ways a double retain would misbehave.
 	 */
 	retain(notification: LifetimeNotification, onClick: () => void): void {
+		/*
+		 * A RE-RETAIN IS A NO-OP (review round 1, F1). Attaching a second
+		 * `once("click")` to the same notification would fire the callback twice
+		 * on one click, and re-adding an entry that is already live could move
+		 * it to the newest position in the FIFO, so the bound would evict the
+		 * wrong banner. The first retain wins; a later caller cannot re-wire or
+		 * re-order a lifetime that is already running.
+		 */
+		if (this.live.has(notification)) return;
 		this.live.add(notification);
 		const release = () => {
 			this.live.delete(notification);
