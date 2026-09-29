@@ -1912,6 +1912,19 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"sttDictationRestampNote",
 	/*
+	 * AND THE SEAM'S OWN (2026-09-29): `pttKeymapRestampNote` is the follow-up
+	 * that makes the STT stream CONSUME the registry row `keymap.push_to_talk`
+	 * (local-operator #1750 landed while #633 was in review): the renderer reads
+	 * the persisted value per registration instead of hard-coding the platform
+	 * pair. Both trees move - `src/` for the resolver's read path + token table,
+	 * `scripts/` for the resolution suite, the rig's session F and its
+	 * capability-following claims. No frames change; the pair is re-derived from
+	 * the tip by the docs commit that follows and every list member above is
+	 * re-pointed with it. It quotes that pair, so it is held to this file like
+	 * every entry above it.
+	 */
+	"pttKeymapRestampNote",
+	/*
 	 * AND THE QUICK-SEND PASS'S OWN: `quickSendRestampNote` is the global
 	 * hotkey / mini composer change's record. It moves BOTH trees — `src/` for
 	 * the mini view, its registrar, the config watch, the desktop-plane
