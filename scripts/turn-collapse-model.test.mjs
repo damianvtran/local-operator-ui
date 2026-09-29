@@ -944,8 +944,8 @@ test("hidden cross-session rows never reach the bar: counts equal the visible sp
 	 * UPSTREAM of this model - the plan is handed
 	 * `collapsePlan(buildRows(visibleRecords(records, hide)))` - so the assertions
 	 * worth making are compositional: a hidden `send` must not be in the
-	 * partition, must not be counted among the bar's actions, and the peer pin
-	 * must still hold with the option off.
+	 * partition, must not be counted among the bar's actions, and the model's
+	 * own pin list must be what decides the receipt's fate with the option off.
 	 *
 	 * The unfiltered plan is computed too, because "no count leak" is only
 	 * pinned by showing the raw count WOULD have included the send: the defect
@@ -1004,7 +1004,7 @@ test("hidden cross-session rows never reach the bar: counts equal the visible sp
 		(record) => record.kind === "tool" && record.toolName === "send",
 	).id;
 
-	/* Off: the bare reference, the same plan, the peer still pinned. */
+	/* Off: the bare reference, the same plan, the model's own pin list. */
 	assert.equal(visibleRecords(records, false), records);
 	const planOff = planOf(buildRows(visibleRecords(records, false), []));
 	assert.deepEqual(planOff, planOf(buildRows(records, [])));
@@ -1012,10 +1012,19 @@ test("hidden cross-session rows never reach the bar: counts equal the visible sp
 		planOff.runs[0].recordIds.includes(sendId),
 		"with the option off the send row is part of the run",
 	);
+	/*
+	 * The receipt follows the MODEL's pin list rather than this test's memory
+	 * of it: #634 dropped `peer`/`wake` from the pins (issue #5 - inside a
+	 * completed turn the delivery receipts are the bulk of the visual weight),
+	 * so with the option off the peer sits in the run and among the collapsed
+	 * rows. What the filter owns is the list it hands over - the bare reference
+	 * above - and the on-half below pins that it cannot leave a count or an id
+	 * behind for either row.
+	 */
 	assert.ok(
 		planOff.runs[0].recordIds.includes("p1") &&
-			!planOff.runs[0].hidden.some((row) => row.record.id === "p1"),
-		"the peer receipt is pinned visible while collapsed",
+			planOff.runs[0].hidden.some((row) => row.record.id === "p1"),
+		"with the option off the peer receipt is in the run and collapses with the work",
 	);
 
 	/* On: neither row reaches the partition, and the count drops by the send. */
