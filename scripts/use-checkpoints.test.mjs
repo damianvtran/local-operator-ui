@@ -433,3 +433,61 @@ test("switching conversations drops the previous poll with the session", async (
 		await rail.close();
 	}
 });
+
+test("a read resolving after unmount neither applies nor re-arms a poll", async (t) => {
+	/*
+	 * Review round 1, M1: the cleanup stopped the loop but never invalidated the
+	 * epoch, so an in-flight read resolving after unmount fell through its
+	 * guard unchanged, applied its answer, and the re-arm started a fresh poll
+	 * episode for a conversation no longer on screen (up to the 45 s ceiling).
+	 *
+	 * The held promise is the reproduction: the SECOND manifest read — the
+	 * poll's — stays pending while the component unmounts, and is then resolved
+	 * with an answer that still names `c1` pending. With the latch in place the
+	 * continuation must drop at its guard; without it, requests grow again
+	 * within two intervals. The count is the assertion because it is the only
+	 * observable the defect has.
+	 */
+	t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+	let releaseHeld = null;
+	let reads = 0;
+	const requests = backend((request) => {
+		if (request.op === "sessions.checkpoints.warm") {
+			return { accepted: ["c1"], pending: ["c1"] };
+		}
+		reads += 1;
+		if (reads === 1) return manifest([completion()]);
+		return new Promise((resolve) => {
+			releaseHeld = () => {
+				resolve(manifest([completion()]));
+			};
+		});
+	});
+	const rail = await mountHook("s1");
+	try {
+		await act(async () => {
+			rail.latest().warm(["c1"]);
+		});
+		await rail.flush();
+		/* One interval in, the poll's read goes out and is held. */
+		t.mock.timers.tick(CHECKPOINT_POLL_INTERVAL_MS);
+		await rail.flush();
+		assert.ok(releaseHeld, "the poll's read is in flight");
+		/* The pane unmounts while that read is still pending... */
+		await rail.close();
+		/* ...and the read lands anyway. */
+		await act(async () => {
+			releaseHeld();
+		});
+		const settled = requests.length;
+		t.mock.timers.tick(CHECKPOINT_POLL_INTERVAL_MS * 3);
+		await rail.flush();
+		assert.equal(
+			requests.length,
+			settled,
+			"a post-unmount read must not re-arm a poll episode",
+		);
+	} finally {
+		await rail.close().catch(() => {});
+	}
+});
