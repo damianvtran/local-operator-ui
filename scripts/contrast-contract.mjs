@@ -1562,6 +1562,26 @@ const GRAPHICS = [
 		on: ["surface"],
 		fg: "inkDim",
 	},
+	{
+		/*
+		 * The checkpoint rail's ticks (`checkpoint-rail.tsx`; design D5).
+		 *
+		 * A mark that is ALSO a control: each tick is a 3px bar inside a 24x12
+		 * invisible hit target, and it has to be findable at a glance — the rail
+		 * is the transcript's whole checkpoint navigation — while carrying no
+		 * label of its own, so there is no ink-on-fill pair for a `CONTROLS` row
+		 * and no edge to assert either. `inkDim` clears the graphic floor on
+		 * `canvas`, and the hover/focus step to `ink` needs no second row: it is a
+		 * role on a ground, one of the INKS x GROUNDS pairs asserted above. The
+		 * row is here because the role a mark PAINTS is the thing no palette
+		 * assertion can see — the "usage unmeasured mark" precedent directly
+		 * above: that mark shipped in the floor-exempt `inkDisabled` while sitting
+		 * under a green run.
+		 */
+		name: "checkpoint rail tick",
+		on: ["canvas"],
+		fg: "inkDim",
+	},
 	/*
 	 * The panel share meter's fill, drawn inside the same `border-control` track
 	 * `/usage` uses (its geometry is a port of that meter, one primitive instead
@@ -1990,6 +2010,29 @@ const PERCEPTIBLE = [
 		pairedWith: "canvas",
 		maxWeightChange: 2.0,
 		against: "canvas",
+	},
+	{
+		/*
+		 * The checkpoint jump's landing wash (`reveal-record.ts` and the
+		 * `[data-jump-highlight]` rules in `styles/index.css`, design §D7): the
+		 * row a tick jump landed on holds a transient `accentWash` ground for
+		 * ~1.4 s. Here rather than in `CONTROLS` because it is not a control -
+		 * no border, no interaction, a state of the reader's own view - and its
+		 * question is this table's: the wash must be SEEN against the ground a
+		 * transcript row sits on (`canvas`), or the flash is a no-op - worst of
+		 * all for a reduced-motion reader, whom the stylesheet deliberately
+		 * keeps on the static wash and nothing else.
+		 *
+		 * The pair is one this file already measures (the reading buttons' hover
+		 * row above: `accentWash` against `canvas` is ΔE00 13.33 dark / 6.75
+		 * light); the floor is the wide "a human can tell these apart" reading
+		 * (2.0), and the row exists so a component that now DEPENDS on the pair
+		 * keeps it asserted rather than borrowing it silently.
+		 */
+		name: "checkpoint jump landing wash",
+		role: "accentWash",
+		on: ["canvas"],
+		minDeltaE: 2.0,
 	},
 ];
 
@@ -2710,6 +2753,22 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/shared/components/common/backend-compatibility-banner.tsx",
 		must: 'variant="primary"',
 		why: "the banner's band draws the same washes as the strip's; an outlined or secondary primary control collapses into them below the 3:1 floor, and the palette rows cannot see which variant the component renders",
+	},
+	{
+		/*
+		 * The checkpoint rail tick's fill, at its call site.
+		 *
+		 * The GRAPHICS row of the same name proves `inkDim` clears the floor on
+		 * `canvas`; only this pin can see the edit that repaints the 3px bar in a
+		 * role nothing floors — `inkDisabled` (exempt from every floor by `§ 6`,
+		 * the role the usage mark above actually shipped in) or `hairline` (capped
+		 * below 2:1 by design). Either edit keeps every palette assertion green
+		 * while the rail's ticks stop being findable.
+		 */
+		what: "checkpoint rail tick fill",
+		file: "src/renderer/src/features/chat/canonical/checkpoint-rail.tsx",
+		must: "bg-ink-dim",
+		why: "the tick's fill is its whole visible affordance — a mark with no label and no edge — so repainting it to a floor-exempt role erases the rail's navigation with no palette assertion able to see it",
 	},
 ];
 
