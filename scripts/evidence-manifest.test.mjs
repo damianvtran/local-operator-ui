@@ -792,12 +792,16 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
  * branch at once, so the repair is its own job. This ledger is the boundary - the
  * notes below may still quote the pair, the set may SHRINK freely as each is
  * rewritten (drop a name once its note is clean; that is the repair path), and a
- * note not named here may never quote one. It is keyed by LEAF name because a
- * `supplementary` set's index is not stable across folds and one of the quoting
- * values lives under one; every name below is unique in the manifest, so a leaf
- * name identifies its note. A fold that RENAMES one of these notes carries the
- * new name into the ledger in the same commit, since a rename that dropped the
- * name would make the note a fresh violation.
+ * note not named here may never quote one. It is keyed by MANIFEST PATH, because
+ * leaf names are not unique: `headNote`'s name is also carried by two bare
+ * `previousTopLevel` snapshots, and a name-keyed exemption covers them silently.
+ * Seven carried values live below the top level - six under `partialCapture`,
+ * one under a `supplementary` set - so their paths are spelled out; the
+ * `supplementary` set's index is not stable across folds (it moved 13 -> 14 in
+ * one window), so that entry's key elides it: `supplementary/closePassNote`.
+ * A fold that RENAMES one of these notes carries the new key into the ledger in
+ * the same commit, since a rename that dropped the key would make the note a
+ * fresh violation.
  */
 const LEGACY_STAMP_QUOTING_NOTES = new Set(
 	`
@@ -812,14 +816,14 @@ const LEGACY_STAMP_QUOTING_NOTES = new Set(
 		chatSidebarSectionsRestampNote
 		childReaderScrollControlRestampNote
 		childWorkingLineFoldRestampNote
-		closePassNote
+		supplementary/closePassNote
 		composerNoticeRemediationNote
 		consolePaneFitFoldRestampNote
 		consoleWiringRestampNote
 		cwdChipCapRestampNote
 		daemonObservationTickWaitRestampNote
 		delegatingSidebarRestampNote
-		deliveryGateRestampNote
+		partialCapture/deliveryGateRestampNote
 		firstPaintHoldFoldRestampNote
 		firstPaintHoldRestampNote
 		firstPaintHoldRound4RestampNote
@@ -880,18 +884,18 @@ const LEGACY_STAMP_QUOTING_NOTES = new Set(
 		openPaintFirstRestampNote
 		overlayDragZonesRestampNote
 		pairingRediscoversRestampNote
-		pendingSendRestampNote
-		pendingSendRoundTwoRestampNote
+		partialCapture/pendingSendRestampNote
+		partialCapture/pendingSendRoundTwoRestampNote
 		pipxShimArmRestampNote
 		pipxShimMergeRestampNote
 		qaRoundTwoRecastRestampNote
 		readReceiptRestampNote
-		rebaseRestampNote14
+		partialCapture/rebaseRestampNote14
 		refusalMarkRestampNote
 		reloadReanchorRestampNote
 		remediationRound4EvidenceNote
 		removeCredentialsRestampNote
-		rigLogDirRestampNote
+		partialCapture/rigLogDirRestampNote
 		rigScanReceiversRestampNote
 		round1LabelGapRestampNote
 		round2LabelGapRestampNote
@@ -912,7 +916,7 @@ const LEGACY_STAMP_QUOTING_NOTES = new Set(
 		settingsGateRestampNote
 		shellPathRestampNote
 		shellRegressionsRestampNote
-		socketPlaneFoldRestampNote
+		partialCapture/socketPlaneFoldRestampNote
 		streamGapHeldReadingsRestampNote
 		streamRedeliveryRestampNote
 		subagentResultInlineRestampNote
@@ -938,8 +942,8 @@ const LEGACY_STAMP_QUOTING_NOTES = new Set(
 /**
  * Every string the manifest holds, as `[path, leafName, value]`.
  *
- * The walk is the point: the notes a fold writes are not all top-level. Seven
- * live under `partialCapture` and a `supplementary` set carries its own - so a
+ * The walk is the point: the notes a fold writes are not all top-level. Six
+ * live under `partialCapture` and a `supplementary` set carries the seventh - so a
  * predicate that read only the manifest's own keys would let the next fold
  * rebind a nested note in a file whose top level stayed clean.
  */
@@ -957,18 +961,50 @@ const stringLeaves = (value, path = "", out = []) => {
 /** The form a note uses when it names a stamp: a backticked key, a SHA. */
 const STAMP_QUOTE = /`(srcTree|scriptsTree)`\s*`[0-9a-f]{7,40}`/;
 
+/**
+ * The key a leaf is exempted under: its manifest path, with the
+ * `supplementary` set's unstable index elided (see the ledger's preamble - the
+ * set's index moved 13 to 14 in one window). Every other key is the path as
+ * written; a top-level note's key is its name, so only a TOP-LEVEL `headNote`
+ * matches it and the two `previousTopLevel` copies do not.
+ */
+const ledgerKey = (path) =>
+	path.replace(/^supplementary\/\d+\//, "supplementary/");
+
 test("a note must not bind itself to a tree stamp", () => {
 	const manifest = JSON.parse(
 		readFileSync("docs/evidence/manifest.json", "utf8"),
 	);
 	const binding = stringLeaves(manifest)
 		.filter(([, , value]) => STAMP_QUOTE.test(value))
-		.filter(([, leaf]) => !LEGACY_STAMP_QUOTING_NOTES.has(leaf))
+		.filter(([path]) => !LEGACY_STAMP_QUOTING_NOTES.has(ledgerKey(path)))
 		.map(([path]) => path);
 	assert.deepEqual(
 		binding,
 		[],
 		"docs/evidence/manifest.json holds values that quote `srcTree`/`scriptsTree`. A note must not bind itself to a tree stamp: name the commit SHAs the pass read (`git rev-parse HEAD:src`) instead, which do not move when a sibling branch lands. The notes that already do are carried in LEGACY_STAMP_QUOTING_NOTES and repaired in their own change - a NEW name here is the defect this test exists for.",
+	);
+});
+
+/**
+ * The reason the ledger is keyed by path: the pass records' `previousTopLevel`
+ * snapshots copy top-level fields, and `headNote` occurs at two of them - a
+ * name-keyed exemption covered those copies silently. They are bare today;
+ * this pins that, so a fold cannot ship a stale pair inside a snapshot under a
+ * name the ledger knows.
+ */
+test("the `previousTopLevel` snapshots carry no stamp token", () => {
+	const manifest = JSON.parse(
+		readFileSync("docs/evidence/manifest.json", "utf8"),
+	);
+	const quoting = stringLeaves(manifest)
+		.filter(([path]) => path.includes("/previousTopLevel/"))
+		.filter(([, , value]) => STAMP_QUOTE.test(value))
+		.map(([path]) => path);
+	assert.deepEqual(
+		quoting,
+		[],
+		"a `previousTopLevel` snapshot carries a value that quotes `srcTree`/`scriptsTree`. These snapshots copy top-level fields - `headNote` occurs at two of them - and a stale copy must not read as a binding of the tree this file ships.",
 	);
 });
 
