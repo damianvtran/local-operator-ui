@@ -204,6 +204,39 @@ const wakeOf = (
 	fired_count: 0,
 });
 
+/**
+ * One ARMED monitor in the wire's shape — the spec's identity joined with the
+ * health counters, exactly what the scheduler's `index_rows()` publishes.
+ *
+ * `next_due_at` is epoch MILLISECONDS like the wake's, and `null` is a real
+ * wire state: a monitor whose next tick is not known (or that the ladder has
+ * parked) has no due slot, and the pane's row states the fact instead.
+ */
+const monitorOf = (
+	id: string,
+	name: string,
+	dueInMinutes: number | null,
+	extra: Record<string, unknown> = {},
+): Record<string, unknown> => ({
+	id,
+	name,
+	tool: "bash",
+	arguments: {},
+	every_ms: 60_000,
+	until_at: null,
+	description: "",
+	created_at: WAKE_NOW_MS - 3_600_000,
+	next_due_at:
+		dueInMinutes === null ? null : WAKE_NOW_MS + dueInMinutes * 60_000,
+	last_check_at: WAKE_NOW_MS - 60_000,
+	checks: 1,
+	deliveries: 0,
+	consecutive_failures: 0,
+	disabled: false,
+	disabled_reason: "",
+	...extra,
+});
+
 /** One schedule: the wake chip alone, at the row's start. */
 const WAKES_ONLY: RunDetails = deriveRunDetails({
 	jobs: [],
@@ -252,6 +285,72 @@ const ALL_FIVE: RunDetails = deriveRunDetails({
 	wakes: [
 		wakeOf("w1", "Stand-up reminder", 12),
 		wakeOf("w2", "Sweep the ingest queue", 90, 90),
+	],
+	nowMs: WAKE_NOW_MS,
+});
+
+/**
+ * All six chips at once: goal, plan, wakes, monitors, subagents and jobs — the
+ * row's widest state, one standing-fact chip past `ALL_FIVE`.
+ *
+ * The pair with `ALL_FIVE` is the difference the fifth count chip makes to the
+ * wrap regime, which `MonitorWidths` measures at the four widths.
+ */
+const ALL_SIX: RunDetails = deriveRunDetails({
+	jobs: [
+		wireJob("c1", "task", "running", "Audit the March invoices"),
+		wireJob("s1", "bash", "running", "bash: sleep 150 ; echo child-done"),
+	],
+	todos: planOf(["pending"]),
+	wakes: [
+		wakeOf("w1", "Stand-up reminder", 12),
+		wakeOf("w2", "Sweep the ingest queue", 90, 90),
+	],
+	monitors: [monitorOf("m1", "loom-pr-1710", 1)],
+	nowMs: WAKE_NOW_MS,
+});
+
+/** One watch and nothing else: the monitor chip alone, at the row's start. */
+const MONITORS_ONLY: RunDetails = deriveRunDetails({
+	jobs: [],
+	todos: [],
+	monitors: [monitorOf("m1", "loom-pr-1710", 1)],
+	nowMs: WAKE_NOW_MS,
+});
+
+/**
+ * Wakes and watches together: the two standing-fact chips in one gutter, the
+ * wakes first — the order the TUI band renders its two row groups in.
+ */
+const MONITORS_AND_WAKES: RunDetails = deriveRunDetails({
+	jobs: [],
+	todos: [],
+	wakes: [wakeOf("w1", "Stand-up reminder", 12)],
+	monitors: [
+		monitorOf("m1", "loom-pr-1710", 1),
+		monitorOf("m2", "slack-thread-42", 2),
+		monitorOf("m3", "ingest-queue", 3),
+	],
+	nowMs: WAKE_NOW_MS,
+});
+
+/**
+ * Health that belongs to the pane's ROWS and not to this chip's count.
+ *
+ * One mid-ladder watch and one the ladder parked, and the chip above them is
+ * the same `3 monitors armed` a healthy trio prints — a chip is a count, and
+ * the state ink is the section's, not its own.
+ */
+const MONITORS_UNHEALTHY: RunDetails = deriveRunDetails({
+	jobs: [],
+	todos: [],
+	monitors: [
+		monitorOf("m1", "loom-pr-1710", 1),
+		monitorOf("m2", "ingest-queue", 2, { consecutive_failures: 3 }),
+		monitorOf("m3", "staging-pings", null, {
+			disabled: true,
+			disabled_reason: "connection refused",
+		}),
 	],
 	nowMs: WAKE_NOW_MS,
 });
@@ -1070,6 +1169,98 @@ export const WakeWidths: Story = {
 					label="172 (the app's real floor): the row stacks, and the chips follow the goal"
 					frontend={frontend(SHORT_GOAL)}
 					runDetails={ALL_FIVE}
+				/>
+			</RowFacts>
+		</div>
+	),
+};
+
+/**
+ * The MONITOR chip: the session's armed watches, after the wakes.
+ *
+ * The chip's facts are the wake chip's own (a count off the model's list, spelled
+ * by the same clause the pane's Monitors section prints), and the one thing this
+ * set adds is the pair's ORDER: the wakes lead and the watches follow, so a
+ * session with only watches puts this chip at the row's start and a session with
+ * both reads `1 wake armed 3 monitors armed` in one gutter.
+ *
+ * The health band is the chip's own claim: a chip is a COUNT, and a monitor's
+ * health lives on the pane's ROWS — so the mid-ladder and disabled watches in
+ * that band do not change this row at all.
+ */
+export const MonitorChip: Story = {
+	render: () => (
+		<div className={cn("flex flex-col gap-4")}>
+			<Band
+				label="Monitors alone: one watch, no goal and no plan, so the chip is at the row's start"
+				frontend={frontend("")}
+				runDetails={MONITORS_ONLY}
+			/>
+			<Band
+				label="The wakes and the watches: two count chips in one gutter, the wakes first"
+				frontend={frontend("")}
+				runDetails={MONITORS_AND_WAKES}
+			/>
+			<Band
+				label="Health on the pane's rows only: a disabled and a mid-ladder watch leave this chip stating the same count"
+				frontend={frontend("")}
+				runDetails={MONITORS_UNHEALTHY}
+			/>
+			<Band
+				label="The control: the same wakes with no monitors — the wake chip alone"
+				frontend={frontend("")}
+				runDetails={WAKES_ONLY}
+			/>
+			<Band
+				label="All six at 900: goal, plan, wakes, monitors, subagents and jobs on one line"
+				frontend={frontend(SHORT_GOAL)}
+				runDetails={ALL_SIX}
+			/>
+		</div>
+	),
+};
+
+/**
+ * The row's width story with the FIFTH count chip, at `WakeWidths`' four widths.
+ *
+ * The claim to read at all four is the same one `WakeWidths` measures —
+ * `overflowX 0`, the group wrapping inside its column rather than past it — with
+ * one more chip in the group and one more clause to wrap. The numbers are printed
+ * into each frame rather than asserted beside it.
+ */
+export const MonitorWidths: Story = {
+	render: () => (
+		<div className={cn("flex flex-col gap-4")}>
+			<RowFacts>
+				<Band
+					width={900}
+					label="900: all six chips on one line beside the goal"
+					frontend={frontend(SHORT_GOAL)}
+					runDetails={ALL_SIX}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					width={240}
+					label="240 (CHAT_CHIP_ICON_ONLY_PX): the chips take the line under the goal"
+					frontend={frontend(SHORT_GOAL)}
+					runDetails={ALL_SIX}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					width={220}
+					label="220 (the specified column floor): the same group, one line lower"
+					frontend={frontend(SHORT_GOAL)}
+					runDetails={ALL_SIX}
+				/>
+			</RowFacts>
+			<RowFacts>
+				<Band
+					width={FLOOR_COLUMN_PX}
+					label="172 (the app's real floor): the row stacks, and the chips follow the goal"
+					frontend={frontend(SHORT_GOAL)}
+					runDetails={ALL_SIX}
 				/>
 			</RowFacts>
 		</div>
