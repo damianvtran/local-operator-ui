@@ -1995,6 +1995,29 @@ const PERCEPTIBLE = [
 		maxWeightChange: 2.0,
 		against: "canvas",
 	},
+	{
+		/*
+		 * The checkpoint jump's landing wash (`reveal-record.ts` and the
+		 * `[data-jump-highlight]` rules in `styles/index.css`, design §D7): the
+		 * row a tick jump landed on holds a transient `accentWash` ground for
+		 * ~1.4 s. Here rather than in `CONTROLS` because it is not a control -
+		 * no border, no interaction, a state of the reader's own view - and its
+		 * question is this table's: the wash must be SEEN against the ground a
+		 * transcript row sits on (`canvas`), or the flash is a no-op - worst of
+		 * all for a reduced-motion reader, whom the stylesheet deliberately
+		 * keeps on the static wash and nothing else.
+		 *
+		 * The pair is one this file already measures (the reading buttons' hover
+		 * row above: `accentWash` against `canvas` is ΔE00 13.33 dark / 6.75
+		 * light); the floor is the wide "a human can tell these apart" reading
+		 * (2.0), and the row exists so a component that now DEPENDS on the pair
+		 * keeps it asserted rather than borrowing it silently.
+		 */
+		name: "checkpoint jump landing wash",
+		role: "accentWash",
+		on: ["canvas"],
+		minDeltaE: 2.0,
+	},
 ];
 
 /**
