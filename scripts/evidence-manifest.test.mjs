@@ -2260,6 +2260,13 @@ const BRANCH_RECORDS = [
 	 * copy would drop first, for the same reason.
 	 */
 	"installerPanelRailRemediationNote",
+	/*
+	 * And this LANE'S newest: the round-2 remediation, which fixed the working
+	 * ring's token, re-shot the surface whole again, and added the motion pair
+	 * the turn had no frame of. It states the trees the pass read as bare SHAs,
+	 * so it adds no name to the quoting ledger.
+	 */
+	"installerPanelRailRoundTwoNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
