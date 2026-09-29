@@ -2261,14 +2261,14 @@ const BRANCH_RECORDS = [
 	 */
 	"monitorsControlsPass",
 	/*
-	 * And the fold record of that pass's rebase onto `origin/main` = `38c8ad9254`,
+	 * And the fold record of that pass's rebase onto `origin/main` = `0738fa7eb3`,
 	 * listed for the list's own reason: a fold resolved from main's manifest copy
 	 * would drop the only statement of how the two conflicting paths (this
 	 * manifest and `package.json`'s test list) were resolved key by key, and of
 	 * which capture's head/capturedAt the merged block keeps. It quotes no
 	 * tree-hash pair, so `BRANCH_RECORDS` is where it belongs.
 	 */
-	"foldOnto38c8ad9254Note",
+	"foldOnto0738fa7eb3Note",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
