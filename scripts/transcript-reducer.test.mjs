@@ -3093,6 +3093,57 @@ test("the live path and the durable page produce the same receipt", () => {
 	assert.equal(again, durable);
 });
 
+test("a send tool call projects to a tool row the filter can name by its tool", () => {
+	/*
+	 * `cross-session-visibility.ts` keys its hidden set on the RECORD fields the
+	 * reducer mints, so both halves of that key are pinned here — the filter's
+	 * literal cannot drift from its producer:
+	 *
+	 *  - a durable page entry whose `tool_name` is `send` (role "tool") reads
+	 *    back as `kind: "tool"` with `toolName` exactly `send`;
+	 *  - the live `tool_execution_start` for the same call mints the same
+	 *    fields.
+	 *
+	 * `send` is the registry's own literal (`local_operator/tools/registry.py`),
+	 * and the desktop side spells it outside the filter in exactly one place
+	 * besides this test: the TUI/mobile contract carries the identical string.
+	 */
+	const durable = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([
+			{
+				id: "t1",
+				ts: 20,
+				type: "message",
+				payload: {
+					kind: "message",
+					role: "tool",
+					tool_call_id: "c-send",
+					tool_name: "send",
+					content: [{ type: "text", text: "delivered" }],
+				},
+			},
+		]),
+	);
+	const [record] = durable.records;
+	assert.equal(record.kind, "tool");
+	assert.equal(record.toolName, "send");
+
+	const live = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "c-send",
+			tool_name: "send",
+			args: { conversation: "other" },
+		},
+		21,
+	);
+	const liveRecord = live.records.find((row) => row.kind === "tool");
+	assert.ok(liveRecord, "the live start mints a tool row");
+	assert.equal(liveRecord.toolName, "send");
+});
+
 test("a wake delivery is a receipt, and the catch-up is not one", () => {
 	const delivery =
 		'(alarm) Scheduled wake w-9 (1, every 6h) — cancel with wake({op:"cancel",id:"w-9"})\n\ncheck the deploy';

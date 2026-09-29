@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { unlink, writeFile } from "node:fs/promises";
 import { after, test } from "node:test";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import { createElement as h } from "react";
@@ -153,7 +154,15 @@ const bundle = await build({
 		".png": "dataurl",
 		".webp": "dataurl",
 	},
-	external: ["react", "react-dom", "react-dom/client", "react/jsx-runtime"],
+	external: [
+		"react",
+		"react-dom",
+		"react-dom/client",
+		"react/jsx-runtime",
+		/* One copy with the provider the mount wraps in; the hook inside the
+		 * bundle must find the client. */
+		"@tanstack/react-query",
+	],
 });
 const bundlePath = new URL(
 	`./_turn-timestamp-${process.pid}.mjs`,
@@ -571,25 +580,37 @@ const mount = (records, over = {}) => {
 	const container = document.createElement("div");
 	document.body.appendChild(container);
 	const root = createRoot(container);
+	/*
+	 * The transcript reads its cross-session visibility through react-query now;
+	 * unseeded is the fail-closed path (nothing hidden), which is the rendering
+	 * these placement claims are made against.
+	 */
+	const queryClient = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
 	const render = (next) => {
 		act(() => {
 			root.render(
-				h(CanonicalTranscript, {
-					transcript: transcriptOf(next),
-					gate: null,
-					// The working line at the foot of the transcript: the state the
-					// operator's report was taken in, and the only way to photograph a
-					// stamp that used to land beneath it.
-					waiting: over.waiting ?? false,
-					loadingOlder: false,
-					onLoadOlder: async () => true,
-					containerRef: { current: container },
-					isSmallView: false,
-					status: "live",
-					failure: null,
-					awaitingHydration: false,
-					onReconnect: () => {},
-				}),
+				h(
+					QueryClientProvider,
+					{ client: queryClient },
+					h(CanonicalTranscript, {
+						transcript: transcriptOf(next),
+						gate: null,
+						// The working line at the foot of the transcript: the state the
+						// operator's report was taken in, and the only way to photograph a
+						// stamp that used to land beneath it.
+						waiting: over.waiting ?? false,
+						loadingOlder: false,
+						onLoadOlder: async () => true,
+						containerRef: { current: container },
+						isSmallView: false,
+						status: "live",
+						failure: null,
+						awaitingHydration: false,
+						onReconnect: () => {},
+					}),
+				),
 			);
 		});
 	};

@@ -21,6 +21,7 @@ import {
 } from "@renderer/features/chat/canonical/transcript-reducer";
 import { applyThemeToDocument } from "@shared/themes";
 import type { ThemeName } from "@shared/themes";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 /* The harness's own stylesheet entry: the app's CSS plus the explicit
@@ -185,4 +186,16 @@ function App() {
 	return <Frame records={transcript} />;
 }
 
-createRoot(document.getElementById("root") as HTMLElement).render(<App />);
+/*
+ * The transcript reads its cross-session visibility through react-query
+ * (`useCrossSessionHidden`); unseeded is the fail-closed path, so this frame
+ * hides nothing.
+ */
+const queryClient = new QueryClient({
+	defaultOptions: { queries: { retry: false } },
+});
+createRoot(document.getElementById("root") as HTMLElement).render(
+	<QueryClientProvider client={queryClient}>
+		<App />
+	</QueryClientProvider>,
+);
