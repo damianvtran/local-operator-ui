@@ -150,6 +150,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import {
+	appendFileSync,
 	existsSync,
 	lstatSync,
 	mkdirSync,
@@ -374,6 +375,7 @@ const THEME = argValue("--theme", null);
  * fails the run rather than moving the goalposts with it.
  */
 const LAZY_CASE = argValue("--scoped-case", "paged");
+const RAIL_CASE = argValue("--scoped-case", "full");
 /*
  * THE HOLD FILE the `loading` arm releases (round 2, D12). The stand-in holds every
  * scoped answer while this file is absent, so the arm photographs a wait that is
@@ -9709,7 +9711,7 @@ async function sceneFloors(cdp) {
  * cases, and the 320-turn one carries the refusal, whose oldest tick is beyond
  * the near path's 12-page budget from a fresh read.
  *
- * THE CASES, all on the one conversation:
+ * THE CASES, on four fixture conversations (the writer names them):
  *   - density: 402 ticks over the scroller (v1 allows overlap at this size,
  *     and "must not look broken" is what the frame is for);
  *   - both hover cards: a user card (the message text) and a completion card
@@ -9718,13 +9720,28 @@ async function sceneFloors(cdp) {
  *     and the card says so by construction;
  *   - the near-path jump into a COLLAPSED run: turn 120 is steered, its run is
  *     one the collapse folds into a bar, and the jump walks ensure-loaded ->
- *     expand-first reveal -> centre -> wash, landing on the hidden `s0120` row;
+ *     expand-first reveal -> centre -> wash, landing on the hidden `s0120` row.
+ *     Every jump check asserts the VISUAL landing too - the highlight row's
+ *     rect inside the scroller's, and a `scrollTop` that moved - because
+ *     design round 1's D1 measured the attribute passing while the view never
+ *     moved (the centre step's clamp assumed a normal scroller; this one is
+ *     `flex-col-reverse`, and the fix names the axis at the call site);
+ *   - the PHYSICAL POINTER PRESS at density: a scanned mid-rail point, the
+ *     real pointer, asserting the same landing - the gesture a reader makes,
+ *     where the README once recorded one that fired nothing;
  *   - the refusal: the deep conversation's oldest tick is beyond the 12-page
  *     budget from a fresh read (the first clean pass proved the 200-turn
  *     conversation's own oldest row is reachable by then - the jump simply
  *     lands there), and the sentence it raises is photographed;
  *   - reduced motion: the media preference emulated through CDP, and the wash
  *     read back as the STATIC ground it must be (`animationName: none`);
+ *   - the SPARSE rail (12 discrete ticks, asserted spaced), the bounded card
+ *     (a ~2,000-character message; the internal scroll asserted), and the
+ *     outcome row (the error turn's card, its label read off the shipped
+ *     constants) - design round 1's D5 states;
+ *   - the BUILDING mark: the ~200k-row conversation's index refresh exceeds
+ *     the backend's first-paint wait, and the leg makes the index stale itself
+ *     (append one row) before each capture, so the state is not a race;
  *   - REAL timings, taken driver-side around the press: press -> the
  *     `data-jump-highlight` attribute appearing (cold through the loader, warm
  *     on a loaded row). The numbers ride in the check details, which is what
@@ -9733,7 +9750,202 @@ async function sceneFloors(cdp) {
  * The full command line (daemon, token, flags) is in
  * `docs/evidence/transcript-rail/README.md`.
  */
+async function railPressProbe(cdp) {
+	const SESSION = "be1a9fef0001";
+	const rail = "[data-lo-checkpoint-rail]";
+	const evaluate = (expression) => cdp.evaluate(expression);
+	const sample = () =>
+		evaluate(`(() => {
+			const toast = document.querySelector("[data-sonner-toast]");
+			const active = document.activeElement;
+			const hl = document.querySelector("[data-jump-highlight]");
+			return {
+				highlight: hl ? hl.getAttribute("data-record-id") : null,
+				toast: toast ? toast.textContent : null,
+				active: active && active.getAttribute ? active.getAttribute("data-checkpoint-id") : null,
+				card: document.querySelector("[role=dialog]") ? "open" : null,
+			};
+		})()`);
+	const poll = async (label, seconds) => {
+		const series = [];
+		let last = "";
+		for (let i = 0; i < seconds * 5; i += 1) {
+			const text = JSON.stringify(await sample());
+			if (text !== last) {
+				series.push(text);
+				last = text;
+			}
+			await wait(200);
+		}
+		note(label, series.join(" -> "));
+	};
+	await verb(cdp, "setTheme", "localOperatorDark");
+	await verb(cdp, "navigate", "/chat");
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-tour-tag="chat-input-textarea"]'))`,
+		30_000,
+	);
+	await verb(cdp, "press", {
+		selector: `[data-session-row="${SESSION}"] [data-chat-row]`,
+	});
+	await waitForCondition(
+		cdp,
+		`document.querySelectorAll('${rail} [data-checkpoint-id]').length >= 267`,
+		30_000,
+	);
+	await waitForCondition(
+		cdp,
+		`document.querySelectorAll("[data-record-id]").length > 0`,
+		15_000,
+	);
+	if (RAIL_CASE !== "press-probe") {
+		/*
+		 * THE SCENE'S OWN PRELUDE, reproduced: a cold keyboard jump to the steer
+		 * row, then the warm jump to the tail - the state the scene's press leg
+		 * fires from, where the press stopped arriving. The difference between
+		 * this and the plain probe is the whole question.
+		 */
+		const jump = async (id) => {
+			await evaluate(
+				`(() => { const el = document.querySelector('[data-checkpoint-id="${id}"]'); if (el) el.focus(); return Boolean(el); })()`,
+			);
+			await pressChord(cdp, {
+				key: "Enter",
+				code: "Enter",
+				virtualKeyCode: 13,
+			});
+			const hit = await waitForCondition(
+				cdp,
+				`Boolean(document.querySelector("[data-jump-highlight]"))`,
+				20_000,
+				25,
+			);
+			note(`prelude jump ${id}`, `hit=${hit.ok}`);
+			await waitForCondition(
+				cdp,
+				`!document.querySelector("[data-jump-highlight]")`,
+				6_000,
+				25,
+			);
+		};
+		await jump("s0120");
+		await wait(400);
+		await jump("n0200");
+		await wait(400);
+		if (RAIL_CASE === "press-probe-hovers") {
+			/*
+			 * THE HOVER LEGS, the last difference between this probe and the
+			 * scene's press: a real pointer over a user tick, its card, the park,
+			 * and the same for a completion tick - each with its capture.
+			 */
+			const hoverLeg = async (id) => {
+				const box = await verb(cdp, "measure", `[data-checkpoint-id="${id}"]`);
+				await movePointer(cdp, box.centre.x, box.centre.y);
+				const card = await waitForCondition(
+					cdp,
+					`Boolean(document.querySelector("[role=dialog]"))`,
+					4_000,
+					25,
+				);
+				note(`hover ${id}`, `card=${card.ok}`);
+				await capture(cdp, `probe-hover-${id}-dark`, { assertPalette: false });
+				await movePointer(cdp, 2, 2);
+				await wait(360);
+			};
+			await hoverLeg("u0200");
+			await hoverLeg("n0200");
+		}
+		if (
+			RAIL_CASE === "press-probe-captures" ||
+			RAIL_CASE === "press-probe-hovers"
+		) {
+			/*
+			 * AND THE SCENE'S CAPTURES, the remaining difference between this
+			 * probe and the scene's press: five frames are taken before the press
+			 * there (density, both hovers, jump-before, jump-after).
+			 */
+			for (const label of [
+				"probe-capture-1-dark",
+				"probe-capture-2-dark",
+				"probe-capture-3-dark",
+				"probe-capture-4-dark",
+				"probe-capture-5-dark",
+			]) {
+				await capture(cdp, label, { assertPalette: false });
+			}
+		}
+	}
+	const spot = await evaluate(`(() => {
+		const rail = document.querySelector('${rail}');
+		if (!rail) return null;
+		const rect = rail.getBoundingClientRect();
+		const cx = rect.left + rect.width / 2;
+		const start = Math.ceil(rect.top + 2 + (rect.height - 4) * 0.45);
+		for (let y = start; y < rect.bottom - 2; y += 2) {
+			const el = document.elementFromPoint(cx, y);
+			if (!el || !el.closest) continue;
+			const tick = el.closest("[data-checkpoint-id]");
+			if (!tick) continue;
+			const id = tick.getAttribute("data-checkpoint-id") || "";
+			if (id.startsWith("n")) return { x: cx, y, id };
+		}
+		return null;
+	})()`);
+	note("scanned spot", JSON.stringify(spot));
+	if (spot === null) return;
+	note("before the press", JSON.stringify(await sample()));
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseMoved",
+		x: spot.x,
+		y: spot.y,
+		button: "none",
+		buttons: 0,
+	});
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mousePressed",
+		x: spot.x,
+		y: spot.y,
+		button: "left",
+		buttons: 1,
+		clickCount: 1,
+	});
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseReleased",
+		x: spot.x,
+		y: spot.y,
+		button: "left",
+		buttons: 0,
+		clickCount: 1,
+	});
+	await poll("after the REAL POINTER press", 6);
+	await evaluate(
+		`(() => { const el = document.querySelector('[data-checkpoint-id="${spot.id}"]'); if (el) el.click(); return Boolean(el); })()`,
+	);
+	await poll("after the DOM click on the same tick", 6);
+	await verb(cdp, "press", { selector: `[data-checkpoint-id="${spot.id}"]` });
+	await poll("after the SYNTHETIC press on the same tick", 6);
+}
+
 async function sceneTranscriptRail(cdp) {
+	/*
+	 * A FAST DIAGNOSTIC PATH for the physical pointer press at density, because
+	 * the full scene takes ~15 minutes per iteration and this question does not
+	 * need the rest of the checks to answer: it opens the 200-turn
+	 * conversation, scans a mid-rail tick, presses it with the real pointer,
+	 * and samples what the page did after each of three activation routes (the
+	 * real pointer, the DOM's own click, the driver's synthetic press). Run
+	 * with `--scoped-case press-probe`.
+	 */
+	if (
+		RAIL_CASE === "press-probe" ||
+		RAIL_CASE === "press-probe-prelude" ||
+		RAIL_CASE === "press-probe-captures" ||
+		RAIL_CASE === "press-probe-hovers"
+	) {
+		await railPressProbe(cdp);
+		return;
+	}
 	const facts = await factsOf(cdp);
 	check(
 		"window mode is headless and the window is never shown or focused",
@@ -9747,6 +9959,20 @@ async function sceneTranscriptRail(cdp) {
 	 * the near path's 12-page budget from a fresh read. Its ids carry a `d`
 	 * prefix (scripts/transcript-rail-fixture.mjs). */
 	const SESSION_DEEP = "be1a9fef0002";
+	/* The sparse rail + the bounded/outcome cards live on the 6-turn fixture;
+	 * the building state on the ~200k-row one (ids `q*` and `k*`). */
+	const SESSION_SPARSE = "be1a9fef0003";
+	const SESSION_BULK = "be1a9fef0004";
+	/* The bulk session's journal, so the building leg can make its index STALE
+	 * (append one row) before each capture - deterministic on a warm cache. */
+	const BULK_JOURNAL = resolve(
+		BACKEND_RECORDS,
+		"..",
+		"..",
+		"sessions",
+		SESSION_BULK,
+		"transcript.jsonl",
+	);
 	let currentFixture = SESSION;
 	const rail = "[data-lo-checkpoint-rail]";
 	const steerTick = "s0120";
@@ -9771,13 +9997,14 @@ async function sceneTranscriptRail(cdp) {
 	 * press would land somewhere else. Scanning POINTS finds the place a press
 	 * actually reaches that tick, which is what the hover below needs.
 	 */
-	const tickSpot = (prefix) =>
+	const tickSpot = (prefix, fromFraction = 0) =>
 		evaluate(`(() => {
 			const rail = document.querySelector('${rail}');
 			if (!rail) return null;
 			const rect = rail.getBoundingClientRect();
 			const cx = rect.left + rect.width / 2;
-			for (let y = Math.ceil(rect.top + 2); y < rect.bottom - 2; y += 2) {
+			const start = Math.ceil(rect.top + 2 + (rect.height - 4) * ${fromFraction});
+			for (let y = start; y < rect.bottom - 2; y += 2) {
 				const el = document.elementFromPoint(cx, y);
 				if (!el || !el.closest) continue;
 				const tick = el.closest("[data-checkpoint-id]");
@@ -9815,40 +10042,73 @@ async function sceneTranscriptRail(cdp) {
 		await wait(400);
 		return ready.ok;
 	};
+	/**
+	 * The landing's VISUAL reading (design round 1, D1): the highlight attribute
+	 * alone proved nothing - the frames showed the wash painted off-screen over
+	 * pixel-identical bubble positions - so every jump check below also asserts
+	 * where the landed row is relative to the scroller and what its `scrollTop`
+	 * did. `[role="log"]` is the transcript's own `flex-col-reverse` scroller.
+	 */
+	const landedView = () =>
+		evaluate(`(() => {
+			const sc = document.querySelector('[role="log"]');
+			const row = document.querySelector("[data-jump-highlight]");
+			if (!sc || !row) return null;
+			const sr = sc.getBoundingClientRect();
+			const rr = row.getBoundingClientRect();
+			const overlap = Math.min(rr.bottom, sr.bottom) - Math.max(rr.top, sr.top);
+			return {
+				landed: row.getAttribute("data-record-id"),
+				scrollTop: Math.round(sc.scrollTop),
+				rowH: Math.round(rr.height),
+				overlap: Math.round(overlap),
+			};
+		})()`);
+	/**
+	 * Open the bulk conversation and wait for the rail's BUILDING mark. The leg
+	 * appends a row to its journal first (making the cached index stale), so
+	 * each capture gets a fresh refresh and the state is not a race.
+	 */
+	const openFixtureBuilding = async (id) => {
+		appendFileSync(
+			BULK_JOURNAL,
+			`${JSON.stringify({
+				id: `kz${Date.now()}`,
+				ts: Math.floor(Date.now() / 1000),
+				type: "message",
+				payload: {
+					kind: "message",
+					role: "user",
+					content: [{ text: "stale-maker" }],
+				},
+			})}\n`,
+		);
+		if (currentFixture !== id) {
+			await verb(cdp, "press", {
+				selector: `[data-session-row="${id}"] [data-chat-row]`,
+			});
+			currentFixture = id;
+		}
+		const ready = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector('${rail} [data-rail-building]'))`,
+			20_000,
+			25,
+		);
+		return ready.ok;
+	};
 	const focusTick = (id) =>
 		evaluate(
 			`(() => { const el = document.querySelector('[data-checkpoint-id="${id}"]'); if (!el) return false; el.focus(); return document.activeElement === el; })()`,
 		);
-	/**
-	 * A press at exact coordinates, in `clickAt`'s sequence (move, press,
-	 * release) but for a point rather than a selector - the overlapping ticks
-	 * are only honestly pressable at the point that hit-tested to them.
+	/*
+	 * The press helper is the module-level `clickPoint(cdp, x, y)` - a scene-local
+	 * copy shadowed it in the first round-2 run, and its call sites passed the
+	 * module's `(cdp, x, y)` shape into the copy's `(x, y)`, so the dispatched
+	 * point was the client object put into `x` and the scan's x put into `y`:
+	 * the press landed nowhere while the hit test said the tick was topmost.
+	 * One helper, one signature.
 	 */
-	const clickPoint = async (x, y) => {
-		await cdp.send("Input.dispatchMouseEvent", {
-			type: "mouseMoved",
-			x,
-			y,
-			button: "none",
-			buttons: 0,
-		});
-		await cdp.send("Input.dispatchMouseEvent", {
-			type: "mousePressed",
-			x,
-			y,
-			button: "left",
-			buttons: 1,
-			clickCount: 1,
-		});
-		await cdp.send("Input.dispatchMouseEvent", {
-			type: "mouseReleased",
-			x,
-			y,
-			button: "left",
-			buttons: 0,
-			clickCount: 1,
-		});
-	};
 	/**
 	 * One keyboard jump: focus the exact tick, Enter, then the wall clock from
 	 * the press to the highlight's attribute appearing, and where it landed.
@@ -9869,7 +10129,8 @@ async function sceneTranscriptRail(cdp) {
 		const landed = await evaluate(
 			`(() => { const el = document.querySelector("[data-jump-highlight]"); return el ? el.getAttribute("data-record-id") : null; })()`,
 		);
-		return { focused, ms, hit: hit.ok, landed };
+		const view = await landedView();
+		return { focused, ms, hit: hit.ok, landed, view };
 	};
 	const washGone = () =>
 		waitForCondition(
@@ -10046,9 +10307,13 @@ async function sceneTranscriptRail(cdp) {
 		const rowsAfter = await rowsMounted();
 		await capture(cdp, `transcript-rail-jump-after-${suffix}`);
 		check(
-			`the cold jump lands the wash on the hidden steer row (${theme})`,
-			cold.hit && cold.landed === steerTick,
-			`${coldDetail}, focus=${cold.focused}, landed=${cold.landed}, rows ${rowsBefore}->${rowsAfter}`,
+			`the cold jump lands the wash on the hidden steer row, in view (${theme})`,
+			cold.hit &&
+				cold.landed === steerTick &&
+				cold.view !== null &&
+				cold.view.overlap >= cold.view.rowH - 2 &&
+				Math.abs(cold.view.scrollTop) >= 100,
+			`${coldDetail}, focus=${cold.focused}, landed=${cold.landed}, view=${JSON.stringify(cold.view)}, rows ${rowsBefore}->${rowsAfter}`,
 		);
 		await washGone();
 
@@ -10056,11 +10321,95 @@ async function sceneTranscriptRail(cdp) {
 		await wait(400);
 		const warm = await jumpVia(nearTick);
 		check(
-			`the warm jump lands the wash on a loaded row (${theme})`,
-			warm.hit && warm.landed === nearTick,
-			`press->highlight ${warm.ms}ms, landed=${warm.landed}`,
+			`the warm jump lands the wash on a loaded row, in view (${theme})`,
+			warm.hit &&
+				warm.landed === nearTick &&
+				warm.view !== null &&
+				warm.view.overlap >= warm.view.rowH - 2,
+			`press->highlight ${warm.ms}ms, landed=${warm.landed}, view=${JSON.stringify(warm.view)}`,
 		);
 		await washGone();
+		/*
+		 * THE PHYSICAL POINTER PRESS AT DENSITY (design round 1, D3): the README
+		 * recorded a real pointer press that "fired nothing" - a reading taken
+		 * before the D1 fix, when the jump ran but the view never moved. This leg
+		 * now has to LAND the gesture a reader at density actually makes, through
+		 * the full reveal -> centre -> wash path, from a point scanned because
+		 * only a point whose topmost element is the tick is pressable at 402
+		 * ticks. It doubles as the second cold target: the scanned tick is an
+		 * early completion whose row the store has not loaded.
+		 */
+		const pressSpot = await tickSpot("n", 0.45);
+		if (pressSpot) {
+			const activeBefore = await evaluate(
+				`(() => { const el = document.activeElement; return el && el.getAttribute ? el.getAttribute("data-checkpoint-id") : null; })()`,
+			);
+			await clickPoint(cdp, pressSpot.x, pressSpot.y);
+			const pressed = await waitForCondition(
+				cdp,
+				`Boolean(document.querySelector("[data-jump-highlight]"))`,
+				12_000,
+				25,
+			);
+			const pressedView = await landedView();
+			/*
+			 * THE PRESS'S OWN RECORD, on failure: what focus did (did the press
+			 * arrive at all), and a short series of what the page showed. The
+			 * probe (`--scoped-case press-probe*`) lands this same press on this
+			 * same tick reproducibly; when the scene's copy of it fails, the
+			 * difference has to be read off the state rather than guessed.
+			 */
+			let pressSeries = null;
+			if (!pressed.ok) {
+				/*
+				 * WHAT IS AT THE POINT, asked of the hit test itself: the scan said
+				 * the tick was topmost moments earlier, and the mousedown still did
+				 * not reach it - so the fresh stack (every element at the point,
+				 * topmost first) is the reading that names what changed.
+				 */
+				const atPoint = await evaluate(`(() => {
+					const els = document.elementsFromPoint(${pressSpot.x}, ${pressSpot.y});
+					return els.slice(0, 6).map((el) => {
+						const id = el.getAttribute("data-checkpoint-id") || "";
+						const role = el.getAttribute("role") || "";
+						const cls = (el.className || "").toString().slice(0, 70);
+						return el.tagName + "|" + id + "|" + role + "|" + cls;
+					});
+				})()`);
+				pressSeries = ["AT-POINT", ...atPoint].join(" || ");
+				const seen = [];
+				let last = "";
+				for (let i = 0; i < 20; i += 1) {
+					const now = await evaluate(`(() => {
+						const t = document.querySelector("[data-sonner-toast]");
+						const hl = document.querySelector("[data-jump-highlight]");
+						const el = document.activeElement;
+						return JSON.stringify({
+							hl: hl ? hl.getAttribute("data-record-id") : null,
+							toast: t ? t.textContent : null,
+							active: el && el.getAttribute ? el.getAttribute("data-checkpoint-id") : null,
+						});
+					})()`);
+					if (now !== last) {
+						seen.push(now);
+						last = now;
+					}
+					await wait(200);
+				}
+				pressSeries = `${pressSeries} || SERIES ${seen.join(" -> ")}`;
+			}
+			check(
+				`the physical pointer press at density lands its jump (${theme})`,
+				pressed.ok &&
+					pressedView !== null &&
+					pressedView.landed === pressSpot.id &&
+					pressedView.overlap >= pressedView.rowH - 2 &&
+					Math.abs(pressedView.scrollTop) >= 100,
+				`id=${pressSpot.id} activeBefore=${activeBefore} view=${JSON.stringify(pressedView)} series=${JSON.stringify(pressSeries)}`,
+			);
+			await capture(cdp, `transcript-rail-press-density-${suffix}`);
+			await washGone();
+		}
 
 		/* Reduced motion: the wash as the static ground, emulated through CDP. */
 		await cdp.send("Emulation.setEmulatedMedia", {
@@ -10073,9 +10422,13 @@ async function sceneTranscriptRail(cdp) {
 			`(() => { const el = document.querySelector("[data-jump-highlight]"); if (!el) return null; const cs = getComputedStyle(el); return { bg: cs.backgroundColor, anim: cs.animationName }; })()`,
 		);
 		check(
-			`under prefers-reduced-motion the wash lands static, never animated (${theme})`,
-			reduced.hit && wash !== null && wash.anim === "none",
-			`press->highlight ${reduced.ms}ms, animationName=${wash?.anim}, background=${wash?.bg}`,
+			`under prefers-reduced-motion the wash lands static, never animated, in view (${theme})`,
+			reduced.hit &&
+				wash !== null &&
+				wash.anim === "none" &&
+				reduced.view !== null &&
+				reduced.view.overlap >= reduced.view.rowH - 2,
+			`press->highlight ${reduced.ms}ms, animationName=${wash?.anim}, background=${wash?.bg}, view=${JSON.stringify(reduced.view)}`,
 		);
 		await cdp.send("Emulation.setEmulatedMedia", { features: [] });
 		await washGone();
@@ -10189,6 +10542,110 @@ async function sceneTranscriptRail(cdp) {
 				100,
 			);
 		}
+		await parkPointer(cdp);
+	}
+
+	/*
+	 * THE SPARSE RAIL AND THE CARDS (design round 1, D5), in their own loop:
+	 * the 6-turn conversation is where ticks are DISCRETE marks rather than a
+	 * line, and it hosts the two card states the density conversation cannot
+	 * frame deterministically - the bounded long-message card (the scene
+	 * asserts the internal scroll really exists) and the outcome row on the
+	 * error turn (the card's word for it, read off the shipped label).
+	 */
+	for (const theme of themes) {
+		const suffix = theme === "localOperatorDark" ? "dark" : "light";
+		await verb(cdp, "setTheme", theme);
+		check(
+			`the sparse fixture conversation is open (${theme})`,
+			await openFixture(SESSION_SPARSE, "qu0001", 12),
+			`ticks=${await evaluate(`document.querySelectorAll("${rail} [data-checkpoint-id]").length`)}`,
+		);
+		await parkPointer(cdp);
+		const sparse = await evaluate(`(() => {
+			const tops = [...document.querySelectorAll("${rail} [data-checkpoint-id]")]
+				.map((el) => el.getBoundingClientRect().top)
+				.sort((a, b) => a - b);
+			let minGap = Number.POSITIVE_INFINITY;
+			for (let i = 1; i < tops.length; i += 1) minGap = Math.min(minGap, tops[i] - tops[i - 1]);
+			return { count: tops.length, minGap: Math.round(minGap * 10) / 10 };
+		})()`);
+		check(
+			`the sparse rail is twelve discrete ticks, not a line (${theme})`,
+			sparse.count === 12 && sparse.minGap > 6,
+			JSON.stringify(sparse),
+		);
+		await capture(cdp, `transcript-rail-sparse-${suffix}`);
+
+		/* The bounded card: turn 2's user row is ~2,000 characters. */
+		const longBox = await verb(cdp, "measure", '[data-checkpoint-id="qu0002"]');
+		await movePointer(cdp, longBox.centre.x, longBox.centre.y);
+		const longCard = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector("[role=dialog] [data-checkpoint-card-text]"))`,
+			4_000,
+			25,
+		);
+		const bound = await evaluate(`(() => {
+			const el = document.querySelector("[data-checkpoint-card-text]");
+			return el ? { scrollH: el.scrollHeight, clientH: el.clientHeight } : null;
+		})()`);
+		check(
+			`the long user card is bounded and scrolls internally (${theme})`,
+			longCard.ok && bound !== null && bound.scrollH > bound.clientH,
+			JSON.stringify(bound),
+		);
+		await capture(cdp, `transcript-rail-card-bounded-${suffix}`);
+		await movePointer(cdp, 2, 2);
+		await wait(360);
+
+		/* The outcome row: turn 3 carries an error outcome in the manifest, and
+		 * the completion checkpoint's id is the ANSWER row's (`qn0003`), not the
+		 * marker's - the manifest's own shape, read off the density session's
+		 * first/last (`u0001`/`n0200`). */
+		const outcomeBox = await verb(
+			cdp,
+			"measure",
+			'[data-checkpoint-id="qn0003"]',
+		);
+		await movePointer(cdp, outcomeBox.centre.x, outcomeBox.centre.y);
+		const outcomeCard = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector("[role=dialog]"))`,
+			4_000,
+			25,
+		);
+		const outcomeText = await evaluate(
+			`(() => { const el = document.querySelector("[role=dialog]"); return el ? el.textContent : null; })()`,
+		);
+		check(
+			`the outcome card names the error outcome (${theme})`,
+			outcomeCard.ok && /Error/.test(outcomeText || ""),
+			`card=${JSON.stringify((outcomeText || "").slice(0, 120))}`,
+		);
+		await capture(cdp, `transcript-rail-card-outcome-${suffix}`);
+		await movePointer(cdp, 2, 2);
+		await wait(360);
+	}
+
+	/*
+	 * THE BUILDING MARK (design round 1, D5): the ~200k-row conversation's
+	 * index build exceeds the backend's first-paint wait, so a stale read
+	 * answers `building` while the refresh runs - and the leg makes the index
+	 * stale itself (append one row) before each capture, so it holds on a warm
+	 * cache too. The rail keeps painting the stale manifest's ticks and adds
+	 * the one top mark; the frame is the state a reader sees on a conversation
+	 * whose index has just gone stale.
+	 */
+	for (const theme of themes) {
+		const suffix = theme === "localOperatorDark" ? "dark" : "light";
+		await verb(cdp, "setTheme", theme);
+		check(
+			`the bulk conversation answers building with its mark up (${theme})`,
+			await openFixtureBuilding(SESSION_BULK),
+			`building-mark=${await evaluate(`Boolean(document.querySelector("${rail} [data-rail-building]"))`)}`,
+		);
+		await capture(cdp, `transcript-rail-building-${suffix}`);
 		await parkPointer(cdp);
 	}
 }
