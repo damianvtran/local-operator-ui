@@ -1307,8 +1307,9 @@ export const GroupBoundTen: Story = {
 };
 
 /**
- * The same team after ONE press: twenty-five drawn, the foot naming the step to
- * fifty (`Show 25 more chats · 25 of 41`).
+ * The same team after ONE press: twenty-five drawn, and the foot states what
+ * the next press will ADD rather than the ladder's nominal step - sixteen
+ * remain of the forty-one held, so it reads `Show 16 more chats · 25 of 41`.
  *
  * DRIVEN, not seeded: the press is a real click on the control the previous
  * frame draws, which is what makes this a frame of the ladder rather than of a
@@ -1372,7 +1373,10 @@ export const GroupBoundAfterTwo: Story = {
  * the foot reads `11 of 41`, because eleven is what the reader is looking at.
  * The `CURRENT CHAT` label above it is `sectionLabel`'s own, the same wording
  * the chats list uses for its lifted row, so the out-of-order row is explained
- * rather than left to read as a broken sort.
+ * rather than left to read as a broken sort. The row itself wears the panel's
+ * `rowCurrent` fill and weight too - WHICH row is current and WHY it leads are
+ * both stated - and the render seeds the store below so the mark the shipped
+ * app paints is the mark the frame photographs (design round 1, D1).
  */
 export const GroupBoundCurrentLifted: Story = {
 	render: () => {
@@ -1383,7 +1387,96 @@ export const GroupBoundCurrentLifted: Story = {
 		teamsList = [TEAM, "content"];
 		openTeam();
 		roster = teamRoster();
+		/*
+		 * THE STORE MUST AGREE WITH THE PROP, or the row is lifted but NOT MARKED.
+		 * The sidebar paints the current row's ground on `selectedConversation ===
+		 * row.session_id && !activeDraftKey` (`chat-sidebar.tsx`), and the canonical
+		 * store seeds an `activeDraftKey` when nothing is active - so a story that
+		 * passes only the prop renders the label over a row wearing nothing (design
+		 * round 1, D1: 0 px of `row-selected` anywhere in the 360px sidebar).
+		 * Clearing the key and naming the session is the state the app reaches by
+		 * opening the conversation; without the pair, this story misrepresents the
+		 * shipped row.
+		 */
+		useCanonicalSessionsStore.setState({
+			activeDraftKey: null,
+			activeSessionId: "team-0034",
+		});
 		return <Page selectedConversation="team-0034" />;
+	},
+	play: async () => {
+		await waitFor(() => groupRowsDrawn() === 11);
+		await settled();
+		await sleep(350);
+	},
+};
+
+/**
+ * The OTHER END of `current-lifted`'s movement, and the pair D6 asked for: two
+ * stills are what "consecutive frames" can be here.
+ *
+ * DRIVEN, not seeded: two real presses on the foot the frames above draw (ten
+ * rows to twenty-five, then to fifty against forty-one held), after which the
+ * ladder has drawn past the viewed row - so the lift and its `CURRENT CHAT`
+ * label are gone and `team-0034` settles where the catalogue sorts it.
+ */
+export const GroupBoundCurrentSettled: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		teamsList = [TEAM, "content"];
+		openTeam();
+		roster = teamRoster();
+		useCanonicalSessionsStore.setState({
+			activeDraftKey: null,
+			activeSessionId: "team-0034",
+		});
+		return <Page selectedConversation="team-0034" />;
+	},
+	play: async () => {
+		await waitFor(() => groupRowsDrawn() === 11);
+		await press(groupFootSelector);
+		await waitFor(() => groupRowsDrawn() === 26);
+		await press(groupFootSelector);
+		await waitFor(() => groupRowsDrawn() === TEAM_ROWS);
+		/* The lift is gone: the viewed row is inside the drawn prefix now. */
+		await waitFor(
+			() =>
+				!(
+					document.querySelector('[data-sidebar-region="entities"]')
+						?.textContent ?? ""
+				).includes("Current chat"),
+		);
+		await settled();
+		await sleep(350);
+	},
+};
+
+/**
+ * The running-row exemption, framed: `team-0034` - the row the bound withholds
+ * in `ten` and lifts in `current-lifted` - is BUSY, and a live row costs no
+ * quota (`entityRows`' exemption), so eleven rows are drawn: the ten-row prefix
+ * plus the busy one, kept in catalogue order. The foot counts it (`· 11 of 41`
+ * where the plain case reads `· 10 of 41`), which is the pair the safety rule
+ * needs a frame for - the bound may never hide live work, and the count has to
+ * stay truthful when the bound steps aside (design round 1, D4).
+ */
+export const GroupBoundRunningExempt: Story = {
+	render: () => {
+		resetFixtures();
+		bridge();
+		split();
+		view();
+		teamsList = [TEAM, "content"];
+		openTeam();
+		roster = teamRoster().map((entry) =>
+			entry.id === "team-0034"
+				? { ...entry, status: { code: "busy", label: "Working" } }
+				: entry,
+		);
+		return <Page />;
 	},
 	play: async () => {
 		await waitFor(() => groupRowsDrawn() === 11);

@@ -2260,6 +2260,18 @@ const BRANCH_RECORDS = [
 	 * its identity as bare SHAs, so it adds no name to the quoting ledger.
 	 */
 	"monitorsPass",
+	/*
+	 * AND THE SIDEBAR BOUND'S OWN (2026-09-29): `sidebarLoadMoreFoldNote` and
+	 * `sidebarLoadMoreFoldTwoNote` are the folds `feat/sidebar-load-more` made
+	 * while open - the second folded a #557 that had already folded itself onto
+	 * the same base as the first. The notes name each manifest resolution and
+	 * re-derivation, including the one semantic conflict (both lanes fixing the
+	 * collapsed-section gap in parallel, resolved to one tested mechanism).
+	 * Registered here because a third fold is exactly where a resolver starting
+	 * from main's copy would drop them uncaught.
+	 */
+	"sidebarLoadMoreFoldNote",
+	"sidebarLoadMoreFoldTwoNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

@@ -4424,6 +4424,31 @@ export const STORIES = [
 		900,
 		{ dir: "group-bound/current-lifted" },
 	],
+	/* The lift gone again: after two real presses the ladder has drawn past the viewed row, which settles in its catalogue place. */
+	[
+		"chat-sidebar-view-menu--group-bound-current-settled",
+		741,
+		900,
+		{ dir: "group-bound/current-settled" },
+	],
+	/* A busy row below the bound is drawn anyway (it costs no quota), and the foot counts it. */
+	[
+		"chat-sidebar-view-menu--group-bound-running-exempt",
+		741,
+		900,
+		{ dir: "group-bound/running-exempt" },
+	],
+	/* The foot under a real pointer: the idle -> hover ink step, with `:hover` asserted before the shutter. */
+	[
+		"chat-sidebar-view-menu--group-bound-ten",
+		741,
+		900,
+		{
+			hover: '[data-entity-more="team:minervadev"]',
+			hoverSettleMs: 900,
+			dir: "group-bound/foot-hover",
+		},
+	],
 	/*
 	 * WITHDRAWN — `group-bound/search-finds-unloaded` HAS NO FRAME, deliberately.
 	 *

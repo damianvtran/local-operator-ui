@@ -464,7 +464,13 @@ export function entityMore(args: {
 	const position = `${args.drawn} of ${args.total}`;
 	return {
 		label: `${label} · ${position}`,
-		aria: `${label}, ${position} shown`,
+		/*
+		 * WCAG 2.5.3 (round 1, U4): the accessible name must contain the visible
+		 * label, so the name reuses the label's own ` · ` joining rather than a
+		 * comma - the visible string is then a prefix of the name, and
+		 * `chat-sidebar.tsx` appends only the group's name (`… shown in minervadev`).
+		 */
+		aria: `${label} · ${position} shown`,
 	};
 }
 
