@@ -5607,6 +5607,25 @@ test("a cursor_missing page re-anchors the load cursor to its own oldest row", (
 			{ cursor: null, failed: true },
 			"a miss with nothing to anchor at fails immediately",
 		);
+		/*
+		 * AGENT REVIEW ROUND 2, MINOR-1: the table must kill a guard-dropped
+		 * mutation, so it pins both directions of the equals-anchor refusal and
+		 * the retry guard on a page that COULD have been re-anchored.
+		 */
+		assert.deepEqual(
+			loadOlderStep(
+				{ cursor_missing: true, entries: [{ id: "row:120" }] },
+				"row:120",
+				false,
+			),
+			{ cursor: null, failed: true },
+			"a moved tail whose oldest row IS the anchor fails on the first answer (nothing to re-anchor to)",
+		);
+		assert.deepEqual(
+			loadOlderStep(tail, "row:999", true),
+			{ cursor: null, failed: true },
+			"a re-anchorable page is still a failure once already retried: the guard is the retry, not the page",
+		);
 	});
 	assert.equal(reanchorAfterCursorMiss(tail, "row:90"), null);
 });

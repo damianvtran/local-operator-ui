@@ -689,8 +689,9 @@ export const STORIES = [
 	 * press is the HARNESS's, because the claim is that the bar's own control is
 	 * what opens it), a steered run (the second question folds inside rather
 	 * than starting a turn), an interrupted turn (the bar states no outcome in
-	 * v1 - the sibling session owns that wording), a genuinely failed call (the
-	 * failure control survives the collapse), the count clause at its long form,
+	 * v1 - the sibling session owns that wording), a genuinely failed call (no
+	 * tally on the bar; the red rows are one press away, and `failed-expanded`
+	 * photographs the reveal), the count clause at its long form,
 	 * the same turn read from history (durable rows, no live frames - reload's
 	 * state, and the span must still read the same), and the live control
 	 * (nothing condenses while a turn runs).
@@ -722,6 +723,19 @@ export const STORIES = [
 	["chat-turn-collapse--steering", 1280, 900],
 	["chat-turn-collapse--interrupted", 1280, 900],
 	["chat-turn-collapse--failed", 1280, 900],
+	/*
+	 * DESIGN ROUND 1, D1: the failure BEHIND the press — the bar without a
+	 * tally, and the red row one expansion away, on a frame.
+	 */
+	[
+		"chat-turn-collapse--failed",
+		1280,
+		900,
+		{
+			press: '[data-turn-summary] button[aria-expanded="false"]',
+			dir: "failed-expanded",
+		},
+	],
 	["chat-turn-collapse--long-run", 1280, 900],
 	["chat-turn-collapse--restored", 1280, 900],
 	["chat-turn-collapse--running", 1280, 900],

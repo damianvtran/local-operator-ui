@@ -3,17 +3,18 @@
  * standing in for a completed turn's pre-answer rows.
  *
  * The operator's reference is dsh's `Took 1m 19s` line, deliberately improved
- * on in three app-native ways: the counts and the failure control survive the
- * collapse (the failure control is the foot's U14 jump, generalised to open
- * this bar first), the turn's one timestamp re-homes here from the foot it
- * suppresses (`turn-timestamp.tsx`'s contract: one stamp per turn), and the
- * gesture is the app's single disclosure idiom, so the bar opens the way every
- * tool row already taught.
+ * on in three app-native ways: the counts survive the collapse (the span and
+ * the action count — the failure TALLY was retired on the operator's own call,
+ * 2026-09-29: a completed run's failure count is noise at a glance, and the
+ * red rows are one press away), the turn's one timestamp re-homes here from
+ * the foot it suppresses (`turn-timestamp.tsx`'s contract: one stamp per
+ * turn), and the gesture is the app's single disclosure idiom, so the bar
+ * opens the way every tool row already taught.
  *
  * WHAT THIS COMPONENT OWNS, and what it does not. The copy, the numbers, the
  * span and the hidden/pinned partition are `turn-collapse-model.ts` (pure and
- * unit-tested). This file owns the row, the disclosure, the stamp's placement,
- * and the failure control's press. The OPEN STATE is the caller's — the
+ * unit-tested). This file owns the row, the disclosure and the stamp's
+ * placement. The OPEN STATE is the caller's — the
  * transcript keeps the reader's expansion per conversation for the renderer's
  * lifetime (`shared/store/turn-collapse-open.ts`) — so the component is
  * controlled in the React sense, exactly like `TraceFold`.
@@ -115,8 +116,8 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 			 * having disappeared. It is the app-wide separator idiom (`border-hairline`,
 			 * no new ink), spans the block's content box with no inset, and sits at the
 			 * block's own bottom so it mounts and moves with the collapse — decorative,
-			 * never a hover surface, no animation, and none of the bar's numbers, stamp,
-			 * chevron or failure control change.
+			 * never a hover surface, no animation, and none of the bar's numbers, stamp
+			 * or chevron change.
 			 */
 			className={cn("border-b border-hairline", className)}
 			data-turn-summary=""

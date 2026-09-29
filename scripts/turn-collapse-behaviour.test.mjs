@@ -574,10 +574,20 @@ test("the snap's fetch half runs when the head is cut off, and is bounded", asyn
 	await flushFrames();
 	const afterRender2 = fetches;
 	assert.ok(afterMount >= 1, "the cut head is asked for");
-	assert.equal(
-		afterRender2,
-		afterRender1,
-		`the asks stop (mount=${afterMount} r1=${afterRender1} r2=${afterRender2}; the bound is pinned by construction in the model suite, whose reading a strict-mode remount cannot muddle)`,
+	/*
+	 * AGENT REVIEW ROUND 2, MINOR-2: an "asks stop" equality could not see a
+	 * dropped bound (a mutated run counted 5 -> 7 -> 7 and passed). The DELTA
+	 * is the property a dropped bound breaks — each re-render may add at most
+	 * one align ask — while the bound's exact arithmetic stays in the model
+	 * suite, where a strict-mode remount cannot muddle the reading.
+	 */
+	assert.ok(
+		afterRender1 - afterMount <= 1,
+		`one re-render adds at most one align ask (mount=${afterMount} r1=${afterRender1})`,
+	);
+	assert.ok(
+		afterRender2 - afterRender1 <= 1,
+		`and so does the next (r1=${afterRender1} r2=${afterRender2})`,
 	);
 
 	/* The control: the enclosing run's head IS loaded, so the effect stands down. */
