@@ -702,6 +702,17 @@ export const STORIES = [
 	 * pre-change tree, so the pair differs by the collapse and nothing else.
 	 */
 	["chat-turn-collapse--collapsed", 1280, 900],
+	/*
+	 * THE HOVER CELL (design spec for the below-rule, 2026-09-28): the bar's own
+	 * hover ground painting above an unaltered hairline — the D4 state a still of
+	 * the resting bar cannot show.
+	 */
+	[
+		"chat-turn-collapse--collapsed",
+		1280,
+		900,
+		{ hover: "[data-turn-summary] button", dir: "collapsed-hover" },
+	],
 	[
 		"chat-turn-collapse--expanded",
 		1280,
