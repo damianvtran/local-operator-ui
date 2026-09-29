@@ -4529,6 +4529,14 @@ export const STORIES = [
 	 * photographed, rather than the unshed full-width page. */
 	["projects-tab--narrow-columns", 560, 600],
 	["projects-tab--many", 1280, 900],
+	/* The sticky team headers, mid-scroll (slice 3): the one state a resting
+	 * frame cannot hold, because at rest every header is in its flow
+	 * position. The play brings the second header flush to the scroller's
+	 * top and asserts the pin, so the frame is a measurement. Sized shorter
+	 * than the default so the twenty-four-row list actually overflows its
+	 * scroller — at 900 tall the first two sections fit whole and the pin is
+	 * unreachable. */
+	["projects-tab--list-teams-sticky", 1280, 620],
 	["projects-tab--detail", 1280, 900],
 	["projects-tab--stale-progress", 1280, 900],
 	["projects-tab--create-dialog", 1280, 900],
@@ -4578,6 +4586,10 @@ export const STORIES = [
 	 * (the no-drag rule's only status door). All three are play-driven: the
 	 * first renders settled, the other two press their own control. */
 	["projects-tab--board-empty-columns", 1280, 900],
+	/* The board's sticky mechanics (design round 1, D2): the play asserts the
+	 * 44px header, the straps' `top-11` offset and the push-out before the
+	 * shutter — the state the round-1 finding (Q1/U1) was measured against. */
+	["projects-tab--board-sticky", 1280, 900],
 	["projects-tab--board-sessions-popover", 1280, 900],
 	["projects-tab--board-card-menu", 1280, 900],
 	/*
