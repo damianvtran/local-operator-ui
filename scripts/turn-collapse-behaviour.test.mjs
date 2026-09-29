@@ -15,7 +15,7 @@ import { createElement as h } from "react";
  * unmounted; that the reader's press opens it and puts it back; that the
  * expansion survives a remount (the property the per-session store exists for)
  * and follows the CONVERSATION rather than the component; that the failure
- * control is one press from the failed row, across the bar and the fold; and
+ * failure tally never renders and the failed row stays one press away; and
  * that a live run, and a run the window has cut, render exactly as they did
  * before the feature.
  *
@@ -221,6 +221,29 @@ const answerRecord = (id, over = {}) => ({
 	error: false,
 	...over,
 });
+/** A peer message receipt: collapsed with the work since 2026-09-29 (issue #5). */
+const peerRecord = (id, over = {}) => ({
+	kind: "peer",
+	id,
+	ts: TS + 2_000,
+	body: "window-collect: 140 records staged for the next batch.",
+	sender: {
+		pid: "",
+		conversationName: "ingest-rail",
+		cwd: "",
+		sessionId: "",
+		modelLabel: "",
+	},
+	...over,
+});
+/** A wake delivery receipt, the same narrowing. */
+const wakeRecord = (id, over = {}) => ({
+	kind: "wake",
+	id,
+	ts: TS + 4_000,
+	text: "(alarm) Scheduled wake w-9\n\nCollect the staged records.",
+	...over,
+});
 /** A statement the collapse pins in place (a completion marker). */
 const noticeRecord = (id, over = {}) => ({
 	kind: "notice",
@@ -229,15 +252,6 @@ const noticeRecord = (id, over = {}) => ({
 	text: "Interrupted",
 	level: "warning",
 	complete: true,
-	...over,
-});
-/** An inbound cross-session receipt — the record `kind: "peer"` projects. */
-const peerRecord = (id, over = {}) => ({
-	kind: "peer",
-	id,
-	ts: TS,
-	body: "From the other session.",
-	sender: { pid: "42", conversationName: "other", cwd: "" },
 	...over,
 });
 
@@ -279,11 +293,14 @@ const mount = async (t, records, over = {}) => {
 					{ client },
 					h(CanonicalTranscript, {
 						frontend: nextOver.frontend ?? null,
-						transcript: transcriptOf(next),
+						transcript: {
+							...transcriptOf(next),
+							hasMore: nextOver.hasMore ?? false,
+						},
 						gate: nextOver.gate ?? null,
 						waiting: nextOver.waiting ?? false,
 						loadingOlder: false,
-						onLoadOlder: async () => true,
+						onLoadOlder: nextOver.onLoadOlder ?? (async () => true),
 						containerRef: { current: mounted.container },
 						isSmallView: false,
 						status: "live",
@@ -450,73 +467,49 @@ test("the expansion follows the conversation, survives a remount, and resets wit
 	);
 });
 
-test("the failure control is one press from the failed row: bar, fold, disclosure, scroll", async (t) => {
+test("no failure tally renders: the bar stands in for the failing run, the row is one press away", async (t) => {
+	/*
+	 * OPERATOR ISSUE #6 (2026-09-29): the failure tally is retired from every
+	 * summary - "a completed action's failure count is noise at a glance; if a
+	 * user needs the failures they can review them by expanding". This pins
+	 * both halves: the bar carries no clause and no control, and the red row
+	 * is what still states the failure, behind the press.
+	 */
 	__resetTurnCollapseOpen();
-	scrollCalls.length = 0;
 	const mounted = await mount(t, [
 		userRecord("user:1"),
+		/*
+		 * ONE call, so the span renders as a plain row rather than an inner
+		 * fold: with the failure control gone there is no jump to open a fold
+		 * on the reader's behalf, and the assertion below is about the row
+		 * itself being the surface that keeps stating the failure.
+		 */
 		toolRecord("tool:1", {
 			isError: true,
 			output: "Error: command failed with exit code 1",
 		}),
-		toolRecord("tool:2", { args: { command: "git status --short" } }),
-		toolRecord("tool:3", { args: { command: "git push origin fix" } }),
 		answerRecord("answer:1"),
 	]);
 	const summary = bar(mounted);
-	assert.match(summary.textContent, /1 failed/, "the failure is stated");
-	/*
-	 * THE CONTROL IS A REAL BUTTON, OUTSIDE THE TRIGGER (UX round 1, U1): a
-	 * keyboard reader gets the foot's own route — focus it, press it — instead
-	 * of a capture belt on the toggle. `closest("button") === it` is the
-	 * markup claim (never nested); `not the trigger's descendant` is the reach
-	 * claim; and a native button's Enter/Space activation is the browser's own
-	 * default action (jsdom has no default actions, so the press below is the
-	 * click that activation produces).
-	 */
-	const failedControl = summary.querySelector("[data-failed-clause]");
-	assert.ok(failedControl, "the failure control exists");
-	assert.equal(failedControl.tagName, "BUTTON", "a real button");
+	assert.ok(summary, "the run collapsed");
+	assert.doesNotMatch(
+		summary.textContent ?? "",
+		/failed/i,
+		"the tally is gone from the bar",
+	);
 	assert.equal(
-		failedControl.closest("button"),
-		failedControl,
-		"not nested inside another button",
+		summary.querySelector("[data-failed-clause]"),
+		null,
+		"and with it the failure control",
 	);
-	assert.ok(
-		!barTrigger(mounted).contains(failedControl),
-		"outside the trigger, so it is separately focusable",
-	);
-	await click(failedControl);
+	await click(barTrigger(mounted));
 	await flushFrames();
-
-	assert.ok(rowBox(mounted, "tool:1"), "the bar opened");
-	assert.equal(
-		barTrigger(mounted).getAttribute("aria-expanded"),
-		"true",
-		"and stays open",
-	);
-	const fold = [...mounted.container.querySelectorAll("[data-fold-ids]")].find(
-		(node) => (node.getAttribute("data-fold-ids") ?? "").includes("tool:1"),
-	);
-	assert.ok(fold, "the fold holding the failed row is mounted");
-	assert.equal(
-		fold.querySelector("button[aria-expanded]")?.getAttribute("aria-expanded"),
-		"true",
-		"the fold opened too",
-	);
 	const failedRow = rowBox(mounted, "tool:1");
-	assert.equal(
-		failedRow
-			?.querySelector("button[aria-expanded]")
-			?.getAttribute("aria-expanded"),
-		"true",
-		"and the failed row's own detail is open",
-	);
-	assert.ok(
-		scrollCalls.some(
-			(call) => call.element === failedRow && call.options?.block === "center",
-		),
-		"the walk ends where the foot's jump does: the failed row at the centre",
+	assert.ok(failedRow, "the failed row mounts on the press");
+	assert.match(
+		failedRow.textContent ?? "",
+		/failed/i,
+		"the row itself still carries the state",
 	);
 });
 
@@ -552,18 +545,134 @@ test("a live run renders as today, and the finished run above it still condenses
 	);
 });
 
-test("a run the window has cut renders as today: no bar, and the foot as it was", async (t) => {
+test("a run the window edge cut only at its opening row aligns and condenses on open", async (t) => {
 	__resetTurnCollapseOpen();
 	/*
-	 * 61 rows, one over the mount window: the leading edge cuts the first row,
-	 * the opening user message, so the single run that survives is headless —
-	 * and a summary may only ever describe rows that are on hand (§5 case 12).
+	 * 61 rows, one over the mount window: the raw leading edge would cut the
+	 * first row, the opening user message. THE ON-LOAD FIX (operator report,
+	 * 2026-09-28): the window's top edge snaps onto the run boundary it lands
+	 * in, so the opening row is inside the list the plan sees, the run is whole,
+	 * and it condenses on the first paint — the reader no longer has to scroll
+	 * the head in before a bar appears.
 	 */
 	const records = [
 		userRecord("user:1"),
 		...Array.from({ length: 59 }, (_, index) =>
 			toolRecord(`tool:${index + 1}`, { ts: TS + 1_000 + index }),
 		),
+		answerRecord("answer:1", { ts: TS + 70_000, settledAt: TS + 70_000 }),
+	];
+	const mounted = await mount(t, records);
+	assert.notEqual(
+		bar(mounted),
+		null,
+		"the aligned window holds the opening row, so the run condenses",
+	);
+	assert.doesNotMatch(
+		mounted.container.textContent,
+		/Worked/,
+		"the bar replaces the foot line, as on any completed run",
+	);
+});
+
+test("the snap's fetch half runs when the head is cut off, and is bounded", async (t) => {
+	/*
+	 * AGENT REVIEW ROUND 1, F2: the window snap's LOAD half — the bounded
+	 * follow-up fetch (`ALIGN_FETCH_MAX` pages) — had no test at any level.
+	 * This drives the real effect against a row list that starts mid-run (the
+	 * head is not loaded at all, so no snap can align), and against the
+	 * control: a list whose enclosing run opens with its own user row asks
+	 * for nothing. The bound is asserted AFTER further renders, because the
+	 * bound is the property — the harness's own settle can account for the
+	 * first two asks on its own.
+	 */
+	__resetTurnCollapseOpen();
+	let fetches = 0;
+	const load = async () => {
+		fetches += 1;
+		return true;
+	};
+	const records = Array.from({ length: 420 }, (_, index) =>
+		toolRecord(`tool:${index + 1}`, { ts: TS + 1_000 + index }),
+	);
+	const mounted = await mount(t, records, {
+		hasMore: true,
+		onLoadOlder: load,
+	});
+	await flushFrames();
+	const afterMount = fetches;
+	await mounted.render(records, { hasMore: true, onLoadOlder: load });
+	await flushFrames();
+	const afterRender1 = fetches;
+	await mounted.render(records, { hasMore: true, onLoadOlder: load });
+	await flushFrames();
+	const afterRender2 = fetches;
+	assert.ok(afterMount >= 1, "the cut head is asked for");
+	/*
+	 * AGENT REVIEW ROUND 2, MINOR-2: an "asks stop" equality could not see a
+	 * dropped bound (a mutated run counted 5 -> 7 -> 7 and passed). The DELTA
+	 * is the property a dropped bound breaks — each re-render may add at most
+	 * one align ask — while the bound's exact arithmetic stays in the model
+	 * suite, where a strict-mode remount cannot muddle the reading.
+	 */
+	assert.ok(
+		afterRender1 - afterMount <= 1,
+		`one re-render adds at most one align ask (mount=${afterMount} r1=${afterRender1})`,
+	);
+	assert.ok(
+		afterRender2 - afterRender1 <= 1,
+		`and so does the next (r1=${afterRender1} r2=${afterRender2})`,
+	);
+
+	/* The control: the enclosing run's head IS loaded, so the effect stands down. */
+	let idleFetches = 0;
+	const headed = [
+		userRecord("user:1"),
+		...Array.from({ length: 419 }, (_, index) =>
+			toolRecord(`headed:${index + 1}`, { ts: TS + 1_000 + index }),
+		),
+	];
+	const idle = await mount(t, headed, {
+		hasMore: true,
+		onLoadOlder: async () => {
+			idleFetches += 1;
+			return true;
+		},
+	});
+	await flushFrames();
+	await idle.render(headed, {
+		hasMore: true,
+		onLoadOlder: async () => {
+			idleFetches += 1;
+			return true;
+		},
+	});
+	await flushFrames();
+	/*
+	 * The control's own count is a baseline, not zero: the scroll-paging arm
+	 * makes its own demand (jsdom geometry puts the region at its top edge).
+	 * What discriminates is the DIRECTION — the cut spends the align asks on
+	 * top of that baseline; the head-loaded list never does. The exact bound
+	 * is pinned by construction in the model suite, where a strict-mode
+	 * remount cannot muddle the reading.
+	 */
+	assert.ok(
+		afterRender2 > idleFetches,
+		`the cut asks more than the head-loaded control (cut=${afterRender2} control=${idleFetches})`,
+	);
+});
+
+test("a run whose head the LOADED rows cut off renders as today: no bar, foot as it was", async (t) => {
+	__resetTurnCollapseOpen();
+	/*
+	 * The other half of §5 case 12: the row list itself starts mid-run (the
+	 * leading tool rows), so no window can be snapped to a boundary that is not
+	 * loaded — a summary may only ever describe rows that are on hand, and the
+	 * foot line stands as it always did.
+	 */
+	const records = [
+		toolRecord("tool:0", { ts: TS + 500 }),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
 		answerRecord("answer:1", { ts: TS + 70_000, settledAt: TS + 70_000 }),
 	];
 	const mounted = await mount(t, records);
@@ -657,6 +766,39 @@ test("pinned statements never hide: the notice stays mounted, after the bar", as
 		order(summary, notice),
 		"the pinned row keeps its place relative to the bar when expanded",
 	);
+});
+
+test("in-turn receipts collapse with the work (operator feedback, 2026-09-29)", async (t) => {
+	/*
+	 * ISSUE #5. The pin list dropped `peer`/`wake`: in a completed turn the
+	 * delivery receipts are the bulk of the visual weight, and the reader who
+	 * wants them has the bar's own expansion. Pinned in both directions - the
+	 * collapsed run must not mount them, the press must put them back in their
+	 * places.
+	 */
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		peerRecord("peer:1"),
+		toolRecord("tool:1"),
+		wakeRecord("wake:1"),
+		answerRecord("answer:1", { settledAt: TS + 70_000 }),
+	]);
+	assert.ok(bar(mounted), "the run collapsed");
+	assert.equal(
+		rowBox(mounted, "peer:1"),
+		null,
+		"the peer receipt hides while collapsed",
+	);
+	assert.equal(
+		rowBox(mounted, "wake:1"),
+		null,
+		"the wake receipt hides while collapsed",
+	);
+	await click(barTrigger(mounted));
+	await flushFrames();
+	assert.ok(rowBox(mounted, "peer:1"), "the peer receipt mounts on the press");
+	assert.ok(rowBox(mounted, "wake:1"), "the wake receipt mounts on the press");
 });
 
 test("a parked turn does not condense: the gate is half of the liveness", async (t) => {

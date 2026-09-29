@@ -120,9 +120,19 @@ export const KEY_TIER: Record<string, SettingTier> = {
 	"display.hide_cross_session": "advanced",
 	"tui.sidebar_visible": "advanced",
 	"tui.sidebar_position": "advanced",
-	// keymap (2)
+	// keymap (3)
 	"keymap.new_session": "advanced",
 	"keymap.resume": "advanced",
+	/*
+	 * `core`, and the authoring rule is why rather than the feature being new:
+	 * the label states the choice on its own — one chord, this app's own, a
+	 * control over the surface the user is looking at — while the two bindings
+	 * above are the terminal's keys, which a reader of the DESKTOP settings page
+	 * has no way to press from there. The drift test fails until this row exists
+	 * the moment the fixture carries the key (the fixture is the detector); this
+	 * line is the decision it is detecting.
+	 */
+	"keymap.quick_send": "core",
 	// approvals (1)
 	tool_approval_mode: "core",
 	// session (6)
