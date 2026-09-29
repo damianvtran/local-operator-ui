@@ -114,6 +114,7 @@ import { MISSING_SESSION_NOTICE_ID } from "../missing-session-notice";
 import { CanvasPaneProvider } from "../utils/canvas-pane";
 import { parseReplies } from "../utils/reply-utils";
 import { CanonicalImage } from "./canonical-image";
+import { visibleRecords } from "./cross-session-visibility";
 import { jumpToFailedRow } from "./failed-row-jump";
 import { LinkToolkit } from "./link-toolkit";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
@@ -154,6 +155,7 @@ import {
 } from "./transcript-rows";
 import { type RunCollapsePlan, collapsePlan } from "./turn-collapse-model";
 import type { AttachmentScope } from "./use-attachment-url";
+import { useCrossSessionHidden } from "./use-cross-session-hidden";
 import { useLinkSubject } from "./use-link-subject";
 import { useScrollPaging } from "./use-scroll-paging";
 import {
@@ -1909,6 +1911,24 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			),
 		[transcript, frontend?.attention, frontend?.streaming],
 	);
+	/*
+	 * THE CROSS-SESSION FILTER: the single seam where the records a reader may
+	 * SEE become the records this pane builds from. `hide` is the backend's
+	 * `display.hide_cross_session`; default off means `visibleRecords` drops
+	 * nothing and hands back the bare reference, so every downstream memo keeps
+	 * its identity. Both consumers of the records read `shownRecords`: the row
+	 * builder below, and the working line further down - that line derives from
+	 * RECORDS (unlike the TUI's card-derived line), so an unfiltered list would
+	 * still name a running `send`. The raw `transcript.records.length` gates
+	 * below stay RAW on purpose: they answer "does this pane hold data", not
+	 * "what does it paint", and a session whose only rows are hidden must not
+	 * flip the pane's empty state.
+	 */
+	const hide = useCrossSessionHidden();
+	const shownRecords = useMemo(
+		() => visibleRecords(painted.records, hide),
+		[painted.records, hide],
+	);
 	// `loadingOlder` is deliberately NOT part of this gate any more.
 	//
 	// The acknowledgement asks one question: can the reader actually see the
@@ -1927,10 +1947,10 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	useCompletionView(frontend, status === "live" && !waiting, containerRef);
 	const previousRows = useRef<Row[]>([]);
 	const rows = useMemo(() => {
-		const next = buildRows(painted.records, previousRows.current);
+		const next = buildRows(shownRecords, previousRows.current);
 		previousRows.current = next;
 		return next;
-	}, [painted.records]);
+	}, [shownRecords]);
 	// Windowing: newest rows first. The window widens when the reader nears the
 	// top, and resets when the transcript is replaced (session switch/clear).
 	//
@@ -2334,7 +2354,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						missing,
 						stale,
 					}),
-					records: transcript.records,
+					records: shownRecords,
 				}),
 			),
 		[
@@ -2361,7 +2381,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			// and a memo that missed them would keep a claim the pane has withdrawn.
 			missing,
 			stale,
-			transcript.records,
+			shownRecords,
 		],
 	);
 
