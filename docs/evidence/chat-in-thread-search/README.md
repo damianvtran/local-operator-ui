@@ -13,13 +13,17 @@ rather than a clicked path.
 
 **What this set does NOT show, so absence is not read as coverage:**
 
-- The panel composed **over a live transcript**, and a hit's far-back jump
-  (the seek that pages an older record into the window). Both are the wiring
-  phase's subject — the overlay mounts with the transcript in the same change,
-  and its frames land there. The reveal that IS built rides the shared jump
-  (`failed-row-jump.ts`, #622): a target inside a collapsed turn opens the bar,
-  the fold, and the row's own disclosure on the way to it, and a target outside
-  the rendered window comes back as `not-mounted` rather than pretending.
+- The panel composed **over a live transcript**, and a live capture of a
+  far-back jump's motion. The pieces are built and wired — the overlay mounts
+  with the transcript in the same change, and a click hands the hit to the
+  transcript's own near path (`ensureReachable`: load pages, mount the window,
+  then `jumpToEntry`'s reveal, centre and flash) — but a headless capture of
+  that motion through the real app belongs to the wiring phase's scene, and
+  these frames show the panel's own states, not the transcript it floats over.
+  The reveal a hit takes: a target inside a collapsed turn opens the bar, the
+  fold and the row's own disclosure on the way to it (`revealRecord`), a target
+  within the near path's budgets is paged in and centred, and one further back
+  than 12 pages / 1200 rows earns the honest sentence rather than silence.
 - The chord itself, which is keyboard state rather than a resting render.
   `scripts/thread-search-overlay.test.mjs` drives the real key events
   (`⌘F` opens from the four chat regions only, a dialog keeps its own, Escape
@@ -67,14 +71,16 @@ replies); every story here renders from fixture props and calls nothing.
 `--theme-settle-ms` is the loaded-machine budget the flag exists for.
 
 **Rebase and re-stamp.** The branch was rebased onto
-`feat/transcript-checkpoint-rail`'s rebased head `200b5c341a` (post-#622
-main), which is why the reveal rides `jumpToFailedRow` rather than the copy
-this branch first carried. The manifest was re-derived at the rebased code
-head `8861d61ce7` (`srcTree`/`scriptsTree` from `git rev-parse HEAD:src` /
-`HEAD:scripts`, `frames` and the `countsMean` readings from the walk, every
-backticked stamp claim in the binding notes re-pointed), and this file rides
-the `docs/`-only commit that follows it — a commit that moves neither tree,
-so the stamps keep describing the tree they ship in.
+`feat/transcript-checkpoint-rail`'s head `2d1d600cfa` (post-#622 main, with
+the rail mounted, its jump wired and its Phase-2 markers retired), and the reveal now rides THAT lane's
+`reveal-record.ts` — `jumpToEntry` for the reveal/centre/flash leg and
+`ensureReachable` for the transcript's paging — rather than any copy of its
+own. The manifest is re-derived at the rebased code head (`srcTree`/
+`scriptsTree` from `git rev-parse HEAD:src` / `HEAD:scripts`, `frames` and the
+`countsMean` readings from the walk, every backticked stamp claim in the
+binding notes re-pointed), and this file rides the `docs/`-only commit that
+follows it — a commit that moves neither tree, so the stamps keep describing
+the tree they ship in.
 
 ## The endpoint, measured against the real backend
 
