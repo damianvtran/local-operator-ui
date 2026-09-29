@@ -2225,6 +2225,12 @@ const BRANCH_RECORDS = [
 	 * name to the quoting ledger.
 	 */
 	"condensedTurnMediaNote",
+	/*
+	 * And the re-stamp that lands the pair over the frames tip, registered with
+	 * it for the same reason: a fold resolved from main's copy would drop the
+	 * statement that the walk at `3723d39830` is this file's own derivation.
+	 */
+	"condensedTurnMediaRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
