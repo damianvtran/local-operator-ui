@@ -454,6 +454,58 @@
 }
 
 /*
+ * The search jump's landed message: the row a `sessions.find` hit navigated
+ * to, marked so the reader can see where they arrived. The attribute is set by
+ * `thread-search-reveal.ts` (`data-lo-search-landed`) and removed by the same
+ * module's timer, `THREAD_SEARCH_LANDED_MS` — which is the `3000ms` below, and
+ * the two must move together (a test pins the pair, because neither file can
+ * import the other).
+ *
+ * WHY THE FADE IS ANIMATED AS OPACITY OVER A STATIC WASH. The resting state
+ * of this element is *no mark at all*, and the mark appears, holds, and goes —
+ * a timed animation is the honest shape. The trap is that this app's global
+ * reduced-motion cap sets every `animation-duration` to `0.01ms` rather than
+ * cancelling the animation, so a reduce-motion reader would land on the END
+ * keyframe, i.e. on nothing, at the one moment the mark is the whole point.
+ * The reduce branch below therefore keeps the wash STATIC (no fade, no
+ * animation) and the timer still takes the attribute away, so the fact
+ * survives for a reader who asked for less motion — the same shape
+ * `chat-row-title.tsx` records for its pan.
+ *
+ * WHY THE WASH AND NOT A RING. The row is full width and the app's focus ring
+ * is an accent `outline`; a ring here would read as focus, and focus stays in
+ * the search box. `accentWash` is the app's own find-match tint (the editor's
+ * find highlight carries the same fill), it is asserted against `ink` on this
+ * exact pairing by the theme contract, and it fades to nothing, which is what
+ * a transient mark needs.
+ */
+[data-lo-search-landed] {
+	background-color: var(--color-accent-wash);
+	animation: search-land-fade 3000ms var(--ease-out-quart) both;
+}
+
+@keyframes search-land-fade {
+	0% {
+		opacity: 0;
+	}
+	5% {
+		opacity: 1;
+	}
+	85% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	[data-lo-search-landed] {
+		animation: none;
+	}
+}
+
+/*
  * The chat column's shipped content measure.
  *
  * THIS IS THE ONLY PLACE THE NUMBER IS WRITTEN. `CHAT_MEASURE` in
