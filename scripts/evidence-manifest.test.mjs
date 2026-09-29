@@ -1875,6 +1875,28 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"foldOntod11a15febfNote",
 	/*
+	/*
+	 * AND THE NOTIFICATION LIFETIME'S OWN (2026-09-28): `notificationLifetimeRestampNote`
+	 * is the re-stamp for the fix that keeps a shown notification reachable until
+	 * it can serve no further click — both trees move (`src/` for the lifetime
+	 * module and the two banner sites, `scripts/` for the GC probe, the lifetime
+	 * suite and the fixtures), no frame was re-taken, and the pair is re-derived
+	 * from the tree the re-stamp commit ships. It quotes that pair, so it is held
+	 * to this file like every entry above it.
+	 */
+	"notificationLifetimeRestampNote",
+	/*
+	 * AND THE FOLD'S OWN (2026-09-28): `foldOnto20c3a207d7Note` is the fold onto
+	 * the moved `origin/main` `20c3a207d7` (the 0.31.14 release, #622's
+	 * collapsed-turn branch and the 0.31.15 bump) over this branch's
+	 * notification lifetime fix and its round-1 guard - main's whole manifest
+	 * taken as the base with this branch's records re-laid on top, the pair
+	 * re-derived from the folded tip by the docs-only commit that follows, and
+	 * every list member above re-pointed with it. It quotes that pair, so it is
+	 * held to this file like every entry above it.
+	 */
+	"foldOnto20c3a207d7Note",
+	/*
 	 * THE CHECKPOINT RAIL'S PHASE-2 INTEGRATION re-derived both stamps: the src tree
 	 * with the rail's own files and the transcript's mount/jump/warm wiring, and the
 	 * scripts tree with the four rail suites' registration in test:desktop (authored
