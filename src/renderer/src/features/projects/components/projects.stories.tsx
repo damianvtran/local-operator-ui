@@ -1236,8 +1236,27 @@ export const CreateSheetOverLimit: Story = {
 			"the description textarea",
 		);
 		const textarea = need<HTMLTextAreaElement>("[data-project-description]");
-		await userEvent.clear(textarea);
-		await userEvent.type(textarea, "x".repeat(245));
+		/*
+		 * Filled through the paste path, not `userEvent.type`: 245 controlled
+		 * keystrokes outlived the capture's 60s prepare budget on the loaded
+		 * fleet, and `userEvent.clear` proved unreliable over the seeded
+		 * template (measured: 275 characters landed, template included). A
+		 * single `paste` event with `text/html` is the app's own insertion
+		 * path — the same one the paste story drives — and lands atomically.
+		 */
+		const filler = "x".repeat(245);
+		const clipboard = new DataTransfer();
+		clipboard.setData("text/html", `<p>${filler}</p>`);
+		clipboard.setData("text/plain", filler);
+		const paste = new Event("paste", { bubbles: true, cancelable: true });
+		Object.defineProperty(paste, "clipboardData", { value: clipboard });
+		textarea.focus();
+		textarea.setSelectionRange(0, textarea.value.length);
+		textarea.dispatchEvent(paste);
+		await poll(
+			() => textarea.value.length === 245,
+			"the over-limit text to land",
+		);
 		await poll(() => {
 			const counter = [...document.querySelectorAll("p")].find(
 				(node) => node.textContent?.trim() === "245/240",
@@ -1304,7 +1323,20 @@ export const CreateSheetFollowUpRefusal: Story = {
 export const CreateSheetSubmit: Story = {
 	render: () => page({ projects: THREE }),
 	play: playOnce("create-sheet-submit", async () => {
-		await clickWhen('[data-tour-tag="create-project-button"]');
+		/*
+		 * Poll for the button before pressing it (the delete confirm's
+		 * `waitForDetail` already does this): a `userEvent` click on a missing
+		 * element throws instead of waiting.
+		 */
+		await poll(
+			() =>
+				document.querySelector('[data-tour-tag="create-project-button"]') !==
+				null,
+			"the create button",
+		);
+		await userEvent.click(
+			need<HTMLElement>('[data-tour-tag="create-project-button"]'),
+		);
 		await poll(
 			() => document.querySelector("[data-project-title]") !== null,
 			"the title input",
@@ -1382,7 +1414,13 @@ export const DeleteConfirm: Story = {
 	),
 	play: playOnce("delete-confirm", async () => {
 		await waitForDetail();
-		await clickWhen('[data-tour-tag="project-delete"]');
+		/*
+		 * Open through `userEvent` so the trigger actually takes focus before
+		 * the dialog captures its opener — see the Escape cycle below.
+		 */
+		await userEvent.click(
+			need<HTMLElement>('[data-tour-tag="project-delete"]'),
+		);
 		await poll(
 			() =>
 				document.querySelector('[data-tour-tag="project-delete-dialog"]') !==
@@ -1393,6 +1431,11 @@ export const DeleteConfirm: Story = {
 		 * FOCUS RETURNS TO THE OPENER (UX round 1, U2), verified on this dialog
 		 * too: Escape closes, focus must be back on the trigger, and the story
 		 * reopens so the frame still shows the typed confirm the copy needs.
+		 *
+		 * The REOPEN is `userEvent`'s, not `.click()`: a programmatic click
+		 * never moves focus, so the dialog would capture `body` as the opener
+		 * and the assertion would test the rig, not the app — the realistic
+		 * pointer sequence is what a person produces.
 		 */
 		await userEvent.keyboard("{Escape}");
 		await poll(
@@ -1405,7 +1448,9 @@ export const DeleteConfirm: Story = {
 				document.querySelector('[data-tour-tag="project-delete"]'),
 			"focus back on the delete trigger",
 		);
-		await clickWhen('[data-tour-tag="project-delete"]');
+		await userEvent.click(
+			need<HTMLElement>('[data-tour-tag="project-delete"]'),
+		);
 		await poll(
 			() =>
 				document.querySelector('[data-tour-tag="project-delete-dialog"]') !==
