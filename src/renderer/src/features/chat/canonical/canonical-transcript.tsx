@@ -1954,7 +1954,7 @@ type SectionGroup =
 			 * and its height exactly what they were.
 			 */
 			images: TranscriptImage[];
-		})
+	  })
 	| Extract<FoldGroup, { kind: "row" }>;
 
 export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
