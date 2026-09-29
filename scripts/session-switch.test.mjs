@@ -43,6 +43,7 @@ globalThis.__switchRequest = async (request) => {
 const bundle = await build({
 	stdin: {
 		contents: `export * from "./src/renderer/src/shared/store/canonical-sessions-store";
+export { hasPendingSend, retainsPendingSend } from "@shared/hooks/use-canonical-session";
 export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";`,
 		resolveDir: process.cwd(),
 	},
@@ -89,10 +90,51 @@ export const desktopResult = request => globalThis.__switchRequest(request);`,
 					() => ({ path: "echo", namespace: "echo-fixture" }),
 				);
 				builder.onLoad({ filter: /.*/, namespace: "echo-fixture" }, () => ({
-					contents: `export const echoPendingUser = () => {};
+					/*
+					 * A REAL little registry, not a recorder (agent review round 2, R2-2):
+					 * the refusal case below reads what the send wrote - entry retained,
+					 * entry SETTLED - and a no-op stub cannot tell "kept to paint the row"
+					 * from "still going out", which is the distinction the fix turns on.
+					 * Same shape `composer-send-failure` carries, including the settled
+					 * skip, so the two fixtures stand for one rule.
+					 */
+					contents: `const registry = new Map();
+globalThis.__pendingSendRegistry = registry;
+export const echoPendingUser = () => {};
 export const retractPendingUser = () => {};
 export const retractLocalEcho = () => "retracted";
 export const peekLocalEcho = () => "unseen";
+export const paintPendingSend = (identity, send) => {
+	let entries = registry.get(identity);
+	if (!entries) { entries = new Map(); registry.set(identity, entries); }
+	entries.set(send.id, { identity, id: send.id, text: send.text, images: send.images, settled: send.settled });
+};
+export const movePendingSendIdentity = (from, to) => {
+	if (from === to) return;
+	const entries = registry.get(from);
+	if (!entries) return;
+	registry.delete(from);
+	const destination = registry.get(to) ?? new Map();
+	for (const [id, entry] of entries) { entry.identity = to; destination.set(id, entry); }
+	registry.set(to, destination);
+};
+export const replacePendingSendText = (identity, id, text) => {
+	const entry = registry.get(identity)?.get(id);
+	if (entry) entry.text = text;
+};
+export const discardPendingSends = (identity) => registry.delete(identity);
+export const pendingSendForView = (identity) => {
+	const entries = registry.get(identity);
+	if (!entries) return null;
+	const first = [...entries.values()].find((entry) => entry.settled !== true);
+	return first ?? null;
+};
+export const settlePendingSend = (identity, id) => {
+	const entry = registry.get(identity)?.get(id);
+	if (entry) entry.settled = true;
+};
+export const hasPendingSend = (identity, id) => Boolean(registry.get(identity)?.has(id));
+export const retainsPendingSend = (identity) => Boolean(registry.get(identity)?.size);
 export const discardPendingEchoes = () => {};`,
 					loader: "js",
 					resolveDir: process.cwd(),
@@ -106,6 +148,9 @@ const {
 	useCanonicalSessionsStore: store,
 	admitChatDraft,
 	draftIdentityFor,
+	paneDraftKey,
+	hasPendingSend,
+	retainsPendingSend,
 	SESSION_UNVALIDATED_CODE,
 	DesktopControlError,
 } = await import(
@@ -135,6 +180,12 @@ function refusedByReadWindow(error) {
 }
 
 function reset({ draft = null } = {}) {
+	/*
+	 * The registry is MODULE state and outlives a store reset: without this,
+	 * a case reads entries the previous one left behind (`echo-delivery`'s own
+	 * `reset` clears it the same way).
+	 */
+	globalThis.__pendingSendRegistry?.clear?.();
 	calls.length = 0;
 	answer = async () => ({});
 	store.setState({
@@ -610,6 +661,13 @@ test("a session-less draft owes no page, so the pane makes no claim at all", () 
  *
  * The matrix is asserted COMPLETE as well as correct - all 32 combinations, once
  * each - so dropping a row fails here even when every remaining row agrees.
+ *
+ * AND A SIXTH AXIS SITS BESIDE IT: `stale`, the cache's own flag. It is not a
+ * column of THIS table because it changes nothing for the rows here - every one
+ * of them passes no `stale`, which is the "not the cache's" row - and doubling a
+ * 64-row table to say one extra thing is how the extra thing gets skimmed. The
+ * cached combinations have their own table below, with the same two shipped
+ * functions and the completeness check that makes a missing row a failure.
  */
 const STATUSES = ["connecting", "live", "reconnecting", "unavailable"];
 /** Any non-null notice: the rule reads its presence, not its prose. */
@@ -763,6 +821,182 @@ test("the pane's single claim, over every combination of the rule's inputs", asy
 	}
 });
 
+test("the pane paints nothing of a CACHED conversation until its page lands", async (t) => {
+	/*
+	 * The sixth axis, and the operator's report that made it one: opening a
+	 * conversation this window had already seen painted the cached rows in the
+	 * click's own frame, the readings strip ~67 ms later and the caption's removal
+	 * with it - "things seem to load at different times ... everything should load
+	 * in one solid paint instead of incrementally". Rows that are the cache's while
+	 * a page is owed are therefore held, not painted:
+	 *
+	 * - the hold is TRUE for a quiet pane at any status, owed, with cached rows;
+	 * - it is FALSE the moment the page lands (no page owed), which is when the
+	 *   rows, the readings and the caption-less transcript arrive in ONE commit;
+	 * - it is FALSE while the pane has a send of its own admitted (the wait line
+	 *   outranks it) or a statement of its own (the notice, the reconnecting
+	 *   line) - the same two exclusions every other row of the matrix has;
+	 * - and a pane with records never collapses out of the layout, so the band
+	 *   cannot take the free height for a greeting while anything is held.
+	 *
+	 * `stale` with no page owed is a store-unreachable pair (the page's own commit
+	 * clears the flag, `use-canonical-session.ts:3128`) and is asserted anyway, for
+	 * the same reason the failure rows are: the decision is total. It must paint
+	 * the rows - a pane that has an answer and still holds would be a spinner over
+	 * content nobody is waiting for.
+	 */
+	const CACHED = [
+		// status, owed, admitted, hold
+		["connecting", true, false, true],
+		["connecting", true, true, false],
+		["connecting", false, false, false],
+		["connecting", false, true, false],
+		["live", true, false, true],
+		["live", true, true, false],
+		["live", false, false, false],
+		["live", false, true, false],
+		["reconnecting", true, false, false],
+		["reconnecting", true, true, false],
+		["reconnecting", false, false, false],
+		["reconnecting", false, true, false],
+		["unavailable", true, false, true],
+		["unavailable", true, true, false],
+		["unavailable", false, false, false],
+		["unavailable", false, true, false],
+	];
+	assert.equal(
+		CACHED.length,
+		16,
+		"a cached combination is missing from the table",
+	);
+	for (const status of STATUSES)
+		for (const owed of [true, false])
+			for (const admitted of [false, true])
+				assert.ok(
+					CACHED.some(
+						(row) =>
+							row[0] === status && row[1] === owed && row[2] === admitted,
+					),
+					`${status}|cached|${owed ? "owed" : "settled"}|${admitted ? "admitted" : "quiet"} is not in the table`,
+				);
+
+	for (const [status, owed, admitted, hold] of CACHED) {
+		await t.test(
+			`${status}|cached|${owed ? "owed" : "settled"}|${admitted ? "admitted" : "quiet"} -> ${hold ? "placeholder" : "rows"}`,
+			() => {
+				const view = {
+					status,
+					failure: null,
+					awaitingHydration: owed,
+					recordCount: 2,
+					admittedSend: admitted,
+					stale: true,
+				};
+				assert.equal(holdsPlaceholder(view), hold, "the cached hold");
+				assert.equal(
+					collapses(view),
+					false,
+					"a pane with cached records never collapses out of the layout",
+				);
+				// The invariant the matrix above states, on this axis too: the
+				// placeholder never accompanies the pane's own STATEMENT. (The stale
+				// caption is not a statement for this rule - it is the flag the hold
+				// reads - which is why `speaks` is not the term here.)
+				if (hold)
+					assert.ok(
+						status !== "reconnecting" && !view.missing,
+						"a placeholder beside the pane's own statement",
+					);
+			},
+		);
+	}
+});
+
+test("the cached paint's rows and caption are withheld in the component, not only in the rule", () => {
+	// Two facts, one file: the rule above decides, and these two gates are what
+	// makes the decision paint nothing. Both are single expressions at the sites
+	// the comment above each names, so a later edit that drops the hold from one of
+	// them fails HERE - the rule tests would stay green while the pane went back to
+	// painting its guess under a caption.
+	const transcript = readFileSync(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		"utf8",
+	);
+	assert.match(
+		transcript,
+		/\{stale && !holdPlaceholder && \(/,
+		"the stale caption must stand down while the pane holds",
+	);
+	assert.match(
+		transcript,
+		/\{!missing && !holdPlaceholder && \(/,
+		"the rows must be suppressed while the pane holds",
+	);
+	// And the stop stays keyed on the painted rows, which is what the cached case
+	// needs on top of the record count.
+	assert.match(
+		transcript,
+		/transcript\.records\.length === 0 \|\| holdPlaceholder \? -1 : 0/,
+		"the scroller's stop is keyed on the painted rows",
+	);
+});
+
+test("a switch re-windows in the same render, and never from an effect again", () => {
+	/*
+	 * The operator's report named this stagger too: "things seem to load at
+	 * different times". As an effect the window reset landed one commit AFTER the
+	 * new transcript's first paint - measured on the cached-switch sequence, the
+	 * first painted frame held all 106 fetched rows and the next commit trimmed it
+	 * (scroller extent 8,315.6 -> 4,864.2 px, all of it above the fold). The reset
+	 * is a render-phase adjustment now; both halves are pinned here so the effect
+	 * shape cannot come back green - the render-phase one has to exist, and the
+	 * `useEffect(..., [sessionId])` reset has to stay gone.
+	 */
+	const transcript = readFileSync(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		"utf8",
+	);
+	assert.match(
+		transcript,
+		/if \(windowSession !== sessionId\) \{[\s\S]{0,160}setWindowSize\(WINDOW\)/,
+		"the window reset is decided during render, in the switch's own commit",
+	);
+	assert.doesNotMatch(
+		transcript,
+		/useEffect\(\(\) => \{\s*setWindowSize\(WINDOW\);\s*\}, \[sessionId\]\)/,
+		"the reset must not move back into an effect on sessionId",
+	);
+});
+
+test("the loading indicator stays one small quiet mark", () => {
+	// The operator's shape for this state (2026-09-26): "a small loading indicator
+	// that is non-intrusive". Three pulse bars were the old shape and a regression
+	// to a skeleton would pass every behavioural test in this file, so the shape
+	// has a cheap structural pin too: no `Skeleton` bars, and exactly ONE
+	// indeterminate element (branding.md's "one such element per surface").
+	const placeholder = readFileSync(
+		"src/renderer/src/features/chat/canonical/transcript-placeholder.tsx",
+		"utf8",
+	);
+	assert.ok(
+		!placeholder.includes("<Skeleton"),
+		"the placeholder is a mark and a sentence, not a content sketch",
+	);
+	assert.equal(
+		// On the class strings rather than the bare token: the docstring names the
+		// keyframes in prose, and a count over the whole file would be counting the
+		// argument for the rule instead of the element it governs.
+		(placeholder.match(/className="[^"]*animate-pulse-visible/g) ?? []).length,
+		1,
+		"one indeterminate element per surface",
+	);
+	assert.match(
+		placeholder,
+		/aria-label="Loading conversation"/,
+		"the live region keeps its name",
+	);
+});
+
 /*
  * WHERE EVERY CHAT URL IN THE RENDERER IS BUILT, AND WHO COMMITS A SWITCH.
  *
@@ -841,6 +1075,10 @@ const CHAT_URL_BUILDERS = {
 		count: 1,
 		why: "the Schedules row's own `Open conversation`, which is also the cancel toast's path back to the conversation the confirm just promised stays",
 	},
+	"src/renderer/src/features/projects/components/project-links.tsx": {
+		count: 1,
+		why: "the Projects detail's linked-session row, which opens the conversation a project links to - the Schedules row's own case, one surface over: the session the row names may never have been opened in this window, so the row that names it has to be able to reach it",
+	},
 };
 
 /** The files that commit a switch, and why each is allowed to. */
@@ -856,6 +1094,10 @@ const OPEN_SESSION_CALLERS = {
 	"src/renderer/src/features/schedules/components/schedules-page.tsx": {
 		count: 1,
 		why: "the Schedules row's own `Open conversation`, through the same rule - a wake's conversation is one the user may never have opened, so the row that names it has to be able to reach it",
+	},
+	"src/renderer/src/features/projects/components/project-links.tsx": {
+		count: 1,
+		why: "the Projects detail's linked-session row, through the same rule - a project's linked conversation is one the user may never have opened, so the row that names it has to be able to reach it",
 	},
 };
 
@@ -917,6 +1159,19 @@ const ENTRANCE_FILES = {
 		"src/renderer/src/shared/components/navigation/sidebar-navigation.tsx",
 	"command-palette.tsx":
 		"src/renderer/src/features/command-palette/components/command-palette.tsx",
+	/*
+	 * AIDA'S OPEN IS AN ENTRANCE TOO, and it takes TWO entries because it is two
+	 * call sites: the rail's row resolves her id in `use-aida-target.ts` (the hook
+	 * the row calls) and the composer's `/aida` resolves it in `slash-dispatch.ts`
+	 * (its own branch), and both then call the shared rule. The pair is what makes
+	 * the claim true (agent review round 1, MINOR-2 corrected an earlier comment
+	 * that read the two as one call site): a `/chat/` URL is still built in one
+	 * module, and the file a future deferred write would HIDE in is named here —
+	 * which then fails this test rather than passing by construction.
+	 */
+	"use-aida-target.ts": "src/renderer/src/features/aida/use-aida-target.ts",
+	"slash-dispatch.ts":
+		"src/renderer/src/features/chat/components/slash-dispatch.ts",
 };
 const readSource = (path) =>
 	readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
@@ -978,10 +1233,11 @@ test("every entrance writes the switch's URL with the commit, through one rule",
 		);
 	}
 	/*
-	 * One entrance lives in each of the three files now: the sidebar's rows, the
-	 * `/chat` rebind (which is still `chat-page.tsx`'s) and the palette's. The pair
-	 * that used to be counted in `chat-page` was the sidebar's row plus that rebind,
-	 * and the sidebar's row left with the sidebar.
+	 * One entrance per file: the sidebar's rows, the `/chat` rebind (still
+	 * `chat-page.tsx`'s), the palette's, and Aida's two — the rail's row reaching
+	 * through `use-aida-target.ts` and the composer's command through
+	 * `slash-dispatch.ts`. The pair that used to be counted in `chat-page` was the
+	 * sidebar's row plus that rebind, and the sidebar's row left with the sidebar.
 	 */
 	assert.equal(
 		readSource(ENTRANCE_FILES["chat-page.tsx"]).split("openConversation(")
@@ -998,5 +1254,129 @@ test("every entrance writes the switch's URL with the commit, through one rule",
 		readSource(ENTRANCE_FILES["command-palette.tsx"]).split("openConversation(")
 			.length - 1,
 		1,
+	);
+	assert.equal(
+		readSource(ENTRANCE_FILES["use-aida-target.ts"]).split("openConversation(")
+			.length - 1,
+		1,
+		"the rail's row resolves her id through this module alone; a second call here is a second write rule",
+	);
+	assert.equal(
+		readSource(ENTRANCE_FILES["slash-dispatch.ts"]).split("openConversation(")
+			.length - 1,
+		1,
+		"the composer's `/aida` is the other entrance, and it is this file's one call of the rule",
+	);
+});
+
+test("U5: a pane reached by the session's own route resolves the staged draft's row", () => {
+	reset();
+	/*
+	 * THE SHAPE UX ROUND 2's U5 MET: a refused FIRST send of a New chat. The draft
+	 * row keeps its staged key (the create's answer patches only `sessionId`), and
+	 * the pane the user returns to - the session's own route, so
+	 * `activeDraftKey` is null - derives `send:<sessionId>`. That key names a row
+	 * nothing wrote, which is how the failure's sentence and both of its controls
+	 * disappeared while the row itself stayed on screen.
+	 *
+	 * The resolver and the expression it replaces are asserted BOTH ways, so the
+	 * case fails on the revision that only ever answered `send:<sessionId>`.
+	 */
+	const drafts = {
+		[DRAFT]: {
+			key: DRAFT,
+			createRequestId: "create",
+			admissionRequestId: "admit",
+			sessionId: TARGET,
+			submittedText: "Review this",
+			error: "Couldn't confirm your message was sent.",
+			errorRetry: true,
+		},
+	};
+	assert.equal(paneDraftKey(null, TARGET, drafts), DRAFT);
+	/* What the pane used to read: a miss, which is the defect. */
+	assert.equal(drafts[draftIdentityFor(null, TARGET)], undefined);
+	/* A live send that never staged a draft keeps the derived fallback. */
+	assert.equal(paneDraftKey(null, TARGET, {}), draftIdentityFor(null, TARGET));
+	/* And a staged pane still answers its own key, unchanged. */
+	assert.equal(paneDraftKey(DRAFT, TARGET, drafts), DRAFT);
+});
+
+test("U5: a refused send stops claiming in flight the moment its row states it", async () => {
+	reset();
+	/*
+	 * The refusal is a POST-PAINT failure on a live session (the general boundary
+	 * rule's arm): the row is written, and the registry entry - the pane's "a send
+	 * is still going out" - must be SETTLED with it, because the store's own
+	 * vocabulary already says so (`pending: false` in the same write). Until this
+	 * round it waited for a server read that may be incomplete or slow, and a
+	 * switch-away inside that window came back reading `waiting for the agent Ns`
+	 * for a send that was not alive (UX round 2, U5).
+	 */
+	await store.getState().openSession(TARGET);
+	store.getState().confirmSessionLive(TARGET);
+	const draftKey = `draft:${crypto.randomUUID()}`;
+	store.setState((state) => ({
+		drafts: {
+			...state.drafts,
+			[draftKey]: {
+				key: draftKey,
+				createRequestId: crypto.randomUUID(),
+				admissionRequestId: crypto.randomUUID(),
+				/*
+				 * The patch the create's answer writes (`updateDraft(key, { sessionId })`):
+				 * the row is how a pane reached by the session's own route finds it, and
+				 * it is what makes this the staged-draft shape rather than a bare one.
+				 */
+				sessionId: TARGET,
+			},
+		},
+	}));
+	answer = async () => {
+		throw new Error("runtime_unreachable");
+	};
+	await assert.rejects(admitChatDraft(draftKey, SEND, TARGET));
+
+	const drafts = store.getState().drafts;
+	assert.notEqual(drafts[draftKey].error, undefined);
+	/* The row is found by the route's own pane - the same resolution as above. */
+	assert.equal(paneDraftKey(null, TARGET, drafts), draftKey);
+	const entries = globalThis.__pendingSendRegistry.get(TARGET);
+	const entry = entries ? [...entries.values()][0] : null;
+	assert.ok(entry, "the entry is RETAINED - it is the row's home");
+	/*
+	 * AND THE PANE'S OWN QUESTION STILL ANSWERS YES (membership, not liveness):
+	 * `chat-page`'s failure arm asks the registry whether this send painted a row
+	 * before it lets the ROW be the one statement of the failure - a liveness
+	 * predicate here would answer null for every post-paint failure and put the
+	 * composer's alert back over the row (measured on the re-shoot's first run).
+	 * The id is the row's own, exactly as the pane reads it off `drafts[key]`.
+	 */
+	const advertisedId = store.getState().drafts[draftKey]?.admissionRequestId;
+	assert.equal(typeof advertisedId, "string");
+	assert.equal(
+		hasPendingSend(TARGET, advertisedId),
+		true,
+		"the pane's painted predicate answers on membership after the settle",
+	);
+	/*
+	 * AND THE COMPOSER'S GATE READS THE SAME DISTINCTION (the re-shoot's J4 arm):
+	 * `retainsPendingSend` says a ROW exists, so the composer keeps its mouth shut
+	 * while `pendingSendForView` - liveness - rightly says the claim is answered.
+	 */
+	assert.equal(retainsPendingSend(TARGET), true);
+	assert.equal(
+		entries
+			? [...entries.values()].filter((e) => e.settled !== true).length
+			: 0,
+		0,
+	);
+	assert.equal(entry.settled, true, "and SETTLED - the send is not alive");
+	assert.equal(
+		entries
+			? [...entries.values()].filter((e) => e.settled !== true).length
+			: 0,
+		0,
+		"no entry still answers `still going out`",
 	);
 });

@@ -27,18 +27,29 @@
  * READINGS TAKEN WITH THIS RIG (this machine, node 26, jsdom, one flush per
  * 4-char delta; two runs per cell, the fleet was busy so treat them as a band):
  *
+ * Both variants stream the SAME corpus cell (the committed BASE is 984 chars,
+ * so `4 3` and `4 6` stream 2,952 / 5,904 chars as 738 / 1,476 flushes), and
+ * each cell was run twice in sequence on this host (node 26, fleet load moving
+ * 20..114 across the runs; the metric is React's own elapsed `actualDuration`,
+ * so load inflates the absolute numbers — check `uptime` before quoting a cell):
+ *
  *   full (shipped: whole-message re-parse per flush)
- *     3,012 chars / 753 flushes:  total 3,236-3,581 ms  mean 4.29-4.75 ms  worst 70-116 ms
- *     6,024 chars / 1,506 flushes: total 10,660-12,168 ms  mean 7.07-8.07 ms  worst 45-184 ms
+ *     2,952 chars /  738 flushes:  total  5,466-10,334 ms  mean  7.41-14.00 ms  worst 270-292 ms
+ *     5,904 chars / 1,476 flushes: total 23,319-35,186 ms  mean 15.80-23.84 ms  worst 359-370 ms
  *   incremental (closed blocks memoised, open block painted as text)
- *     3,012 chars / 753 flushes:  total 259-468 ms  mean 0.34-0.62 ms  worst 14-137 ms
- *     6,024 chars / 1,506 flushes: total 311-380 ms  mean 0.21-0.25 ms  worst 16-25 ms
+ *     2,952 chars /  738 flushes:  total    708-1,033 ms  mean  0.96-1.40 ms   worst  91-136 ms
+ *     5,904 chars / 1,476 flushes: total  1,299-1,377 ms  mean  0.88-0.93 ms   worst 105-121 ms
  *
  * WHAT THE NUMBERS SAY: the shipped path's per-flush cost GROWS with the message
- * (mean 4.3 -> 7.1 ms as 3 KB -> 6 KB, spikes past the frame budget), while the
- * incremental path's does not — it is proportional to what arrived. That is
- * `markdown-blocks.ts`'s stated property, now measured on the canonical row's
- * own components.
+ * (mean 7.4-14 ms at 3 KB, 15.8-23.8 ms at 6 KB — over the 16.7 ms frame budget
+ * at half the cells, with worst commits of 270-370 ms), while the incremental
+ * path's does not: 0.96-1.40 ms at 3 KB and 0.88-0.93 ms at 6 KB, i.e. roughly
+ * flat and even resilient to the load swing that nearly doubled the full path's
+ * cells between the two runs. That is `markdown-blocks.ts`'s stated property
+ * ("cost per frame is proportional to the newly arrived text"), measured on the
+ * canonical row's own components. The DIRECTION is the finding; the exact cells
+ * are load-dependent, and a reviewer's independent runs on this same rig landed
+ * in the same bands (full mean 7.38/7.54/20.3 ms at 984/2,952/5,904 chars).
  *
  * WHAT THIS RIG CANNOT SEE, stated so the number is not asked to carry it:
  * jsdom has no layout engine, no paint and no compositor, so this is main-thread
@@ -264,11 +275,19 @@ for (let i = 1; i < deltas.length; i++) {
 	});
 }
 const wallMs = performance.now() - startedAt;
-
-// The row's settle: the whole message through the full renderer.
+/*
+ * The row's settle — the handover to the whole-message renderer — is not part of
+ * the stream's budget (review round 1, R6): its one commit would otherwise ride
+ * in `totalMs` while the docstring above calls that number the stream's.
+ */
+const streamed = { ...stats };
+stats.total = 0;
+stats.worst = 0;
+stats.commits = 0;
 await act(async () => {
 	root.render(render(MESSAGE, false));
 });
+const settleMs = Number(stats.total.toFixed(1));
 
 console.log(
 	JSON.stringify(
@@ -278,13 +297,14 @@ console.log(
 			repeats: REPEATS,
 			deltas: deltas.length,
 			chars: MESSAGE.length,
-			totalMs: Number(stats.total.toFixed(1)),
-			worstMs: Number(stats.worst.toFixed(1)),
-			commits: stats.commits,
+			totalMs: Number(streamed.total.toFixed(1)),
+			worstMs: Number(streamed.worst.toFixed(1)),
+			commits: streamed.commits,
 			wallMs: Number(wallMs.toFixed(1)),
 			meanMsPerFlush: Number(
-				(stats.total / Math.max(1, stats.commits)).toFixed(2),
+				(streamed.total / Math.max(1, streamed.commits)).toFixed(2),
 			),
+			settleMs,
 		},
 		null,
 		2,

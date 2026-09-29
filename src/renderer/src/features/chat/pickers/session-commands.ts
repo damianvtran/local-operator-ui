@@ -54,6 +54,55 @@ export const LOOP_COMMAND = "loop";
 /** The value `goal` takes to unset the standing goal (`/goal clear`). */
 export const GOAL_CLEAR_ARGS = "clear";
 
+/**
+ * The values `goal` takes to MARK IT DONE (`/goal --done`) and to dismiss a done
+ * chip (`/goal --dismiss`).
+ *
+ * BARE VERBS, like `clear` above and for the reason its own docblock records: the
+ * desktop's controls are BUTTONS, not a typed command line, and a UI may only send
+ * what every installed backend understands. `--done`/`--dismiss` are the flags the
+ * backend also accepts; `done`/`dismiss` are the whole-argument aliases, and the
+ * backend treats a bare word that is not an alias as goal TEXT (so `/goal done the
+ * report` stays a goal body). Sending the alias is what lets one control work on
+ * both spellings.
+ *
+ * THESE ARGUMENTS SHIP WITH THE WIRE FIELDS, which is why every caller must gate on
+ * `goalCapability` first: an older backend does not know the word, reads it as a
+ * goal body, and stores the literal `done` as the user's standing goal.
+ */
+export const GOAL_DONE_ARGS = "done";
+
+/** The value `goal` takes to dismiss the settled chip (`/goal dismiss`). */
+export const GOAL_DISMISS_ARGS = "dismiss";
+
+/**
+ * The judge's live state as ONE word, from the wire's two goal fields.
+ *
+ * IT LIVES HERE, with `loopIsRunning`, because more than one surface reads it: the
+ * chip puts the word in its accessible name, and the `/goal` picker prints it on the
+ * row. A second mapping beside the first is how the chip comes to say `working`
+ * while the dialog says `judging` about one state.
+ *
+ * `judging` and `continuing` both become `working` because that is what the user can
+ * observe — a turn streaming — and `waiting` becomes `""` because the relation
+ * between "a goal is active" and "no judge tick is in flight" is the goal's own
+ * state, which the active chip already says. A surface that must print something in
+ * the resting state picks its own word for `""` (the picker prints `waiting`).
+ *
+ * AN UNKNOWN MEMBER (a newer writer) FALLS THROUGH TO `""`: the chip shows what it
+ * knows and claims nothing it cannot vouch for, which is the closed-vocabulary /
+ * open-reader rule the contract states.
+ */
+export const goalStateWord = (
+	goalStatus: string | undefined,
+	judgeState: string | undefined,
+): string => {
+	if (goalStatus === "done") return "done";
+	if (judgeState === "stalled") return "stalled";
+	if (judgeState === "judging" || judgeState === "continuing") return "working";
+	return "";
+};
+
 /** The value `loop` takes to cancel the running loop (`/loop stop`). */
 export const LOOP_STOP_ARGS = "stop";
 

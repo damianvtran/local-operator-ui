@@ -200,6 +200,24 @@ export class BackendInstaller {
 	 */
 	private settleUserDecision: ((ok: boolean) => void) | null = null;
 
+	/**
+	 * What to tell the app when THIS window's question cancels a running quit.
+	 *
+	 * WHY THE INSTALLER CARRIES IT AND `index.ts` OWNS IT (round-1 review,
+	 * F-1). The declined "Quit without setup?" - `cancelId: 0`, the default -
+	 * lets a quit abort and leaves the process serving, which means any quit
+	 * that was in flight is now CANCELLED and the app must stop claiming
+	 * otherwise: without a release, `index.ts`'s quit state stays set and every
+	 * later second launch and Dock click is refused for the process's life
+	 * although the app is running normally. The dialog is the ONE cancellation
+	 * a running quit has (see `../quit-state` for the sweep); this module never
+	 * reaches for the app's state itself, so the installer stays drivable in a
+	 * test and the single release site stays greppable. Optional because the
+	 * harness constructs installers with no app around them, and a release that
+	 * fires where no quit exists clears an already-false state.
+	 */
+	private readonly onQuitCancelled: (() => void) | undefined;
+
 	/*
 	 * The last phase announced to the setup window, and whether a failure is
 	 * currently on screen with nobody's answer yet.
@@ -325,8 +343,14 @@ export class BackendInstaller {
 
 	/**
 	 * Constructor
+	 *
+	 * `options.onQuitCancelled` is `index.ts`'s one release for the app's quit
+	 * state (see the field's own note); it is handed in rather than imported so
+	 * this module never depends on the app's lifecycle and its test can drive
+	 * the declined answer with a spy.
 	 */
-	constructor() {
+	constructor(options: { onQuitCancelled?: () => void } = {}) {
+		this.onQuitCancelled = options.onQuitCancelled;
 		// The app-managed venv for THIS instance. A packaged install and an
 		// unpackaged one must not share it: the venv is created by whatever
 		// interpreter the instance resolves, so a shared one puts the installed
@@ -1346,6 +1370,18 @@ export class BackendInstaller {
 				"Setup quit declined from the setup window",
 				LogFileType.INSTALLER,
 			);
+			/*
+			 * THE QUIT THIS CLOSE INTERRUPTED IS RELEASED (round-1 review, F-1).
+			 * "Keep setting up" is the answer that leaves the run exactly where it
+			 * was - which means a quit that was in flight just aborted (Electron
+			 * cancels a quit when a window refuses its close) and the app has to
+			 * let go of the state that refusal was recorded for; left set, it
+			 * refuses every later second launch and Dock click for the process's
+			 * life. NOT in the accept path below: "Quit without setup" exits the
+			 * process, and a quit that PROCEEDS must keep claiming one - see
+			 * `scripts/window-mode.test.mjs` for the pins over both halves.
+			 */
+			this.onQuitCancelled?.();
 			return;
 		}
 		this.attemptCancelled = inFlight;

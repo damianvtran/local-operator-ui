@@ -26,6 +26,8 @@ const {
 	EMPTY_TRANSCRIPT,
 	applyEvent,
 	applyHistoryPage,
+	loadOlderStep,
+	reanchorAfterCursorMiss,
 	applyLiveSeed,
 	streamDiagnostics,
 	clearTranscript,
@@ -35,6 +37,7 @@ const {
 	seedCallsMissingLabels,
 	withRecoveredOutcome,
 	appendPendingUser,
+	appendLocalNote,
 	removeRecord,
 } = reducer;
 
@@ -115,6 +118,192 @@ test("message_end is authoritative over accumulated deltas", () => {
 	const a1 = state.records.find((r) => r.id === "a1");
 	assert.equal(a1.text, "Hello!");
 	assert.equal(a1.streaming, false);
+});
+
+test("a live settle carries the same completion mark the durable read writes", () => {
+	/*
+	 * The receipt's anchor gate asks for `data-completion-complete`, which the
+	 * view renders from `record.complete`; the durable `history` arm sets it for
+	 * a text-bearing answer, and the live `message_end` is the same fact by the
+	 * other path. Without it a completion that arrived while its conversation
+	 * was open could not be acknowledged until a re-read replaced the record
+	 * (QA round 1, Q1; measured in `docs/evidence/chat-sidebar-ack-and-selection/`).
+	 */
+	let live = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: assistant("a1", "") },
+		1,
+	);
+	live = applyEvent(
+		live,
+		{ type: "message_update", delta: "Hel", message: assistant("a1", "") },
+		2,
+	);
+	assert.equal(
+		live.records[0].complete,
+		undefined,
+		"a streaming row states no completion",
+	);
+	live = applyEvent(
+		live,
+		{ type: "message_end", message: assistant("a1", "Hello!") },
+		3,
+	);
+	assert.equal(
+		live.records[0].complete,
+		true,
+		"the settled answer is complete",
+	);
+	// The mark a replay carries is the same one, not a restamp.
+	assert.equal(
+		applyEvent(
+			live,
+			{ type: "message_end", message: assistant("a1", "Hello!") },
+			9,
+		).records[0].complete,
+		true,
+	);
+	/*
+	 * A turn whose only output was tool calls states no completion, on either
+	 * path: its answer is the paired tool rows, not prose (the durable arm's own
+	 * rule, mirrored here so the two cannot drift).
+	 */
+	const toolOnly = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "message_end",
+			message: {
+				role: "assistant",
+				content: [],
+				tool_calls: [{ id: "t1" }],
+				id: "a2",
+			},
+		},
+		4,
+	);
+	assert.equal(
+		toolOnly.records.find((r) => r.id === "a2").complete,
+		undefined,
+		"a tool-call-only end is not a completion",
+	);
+});
+
+test("a settled assistant is stamped with the instant it settled, once", () => {
+	/*
+	 * `settledAt` is the live half of a wall-clock span: a live assistant record's
+	 * `ts` is its stream START, so a `Took` built from `ts` would read short by
+	 * the answer's whole streaming time and jump when the reconcile swaps in the
+	 * durable twin. The stamp is written when the record SETTLES and kept on a
+	 * replay — a restamped completion would move a span the reader is watching.
+	 */
+	let state = EMPTY_TRANSCRIPT;
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: assistant("a1", "") },
+		1,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_update", delta: "Hel", message: assistant("a1", "") },
+		2,
+	);
+	assert.equal(
+		state.records[0].settledAt,
+		undefined,
+		"a streaming row has not settled and states no completion",
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_end", message: assistant("a1", "Hello!") },
+		3,
+	);
+	assert.equal(state.records[0].settledAt, 3, "stamped at the settle frame");
+
+	// A replayed `message_end` (receipt replay, a flush from a dead stream) must
+	// not restamp it, and its text (the authoritative whole) still lands.
+	const replayed = applyEvent(
+		state,
+		{ type: "message_end", message: assistant("a1", "Hello!") },
+		9,
+	);
+	assert.equal(
+		replayed.records[0].settledAt,
+		3,
+		"the first settle instant wins",
+	);
+	assert.equal(replayed.records[0].text, "Hello!");
+});
+
+test("the turn end stamps whatever it settles, aborted or not", () => {
+	// The sweep that clears `streaming` at `agent_end` is the one that catches a
+	// stream whose `message_end` never came — an abort, and a lost end event on a
+	// clean turn. Both settle at the turn end's own frame.
+	const stream = () => {
+		let state = applyEvent(
+			EMPTY_TRANSCRIPT,
+			{ type: "message_start", message: assistant("a1", "") },
+			1,
+		);
+		state = applyEvent(
+			state,
+			{ type: "message_update", delta: "half", message: assistant("a1", "") },
+			2,
+		);
+		return state;
+	};
+	const aborted = applyEvent(stream(), { type: "agent_end", aborted: true }, 5);
+	assert.equal(aborted.records[0].streaming, false);
+	assert.equal(aborted.records[0].stopReason, "aborted");
+	assert.equal(aborted.records[0].settledAt, 5);
+	assert.equal(
+		applyEvent(stream(), { type: "agent_end", aborted: false }, 7).records[0]
+			.settledAt,
+		7,
+		"a clean end that lost its `message_end` settles the same way",
+	);
+});
+
+test("durable rows carry no settle stamp: their `ts` is the commit", () => {
+	// A page states a completion it did not witness, so it must not stamp one;
+	// and when the durable row replaces a live stamped one, the page wins with
+	// its own `ts` — the same rule `ts` already followed.
+	const page = {
+		entries: [
+			{
+				id: "a1",
+				ts: 11,
+				type: "message",
+				payload: { kind: "message", ...assistant("a1", "the whole answer") },
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	};
+	const durable = applyHistoryPage(EMPTY_TRANSCRIPT, page);
+	assert.equal(durable.records[0].settledAt, undefined);
+	assert.equal(
+		applyHistoryPage(durable, page),
+		durable,
+		"and a replay stays a no-op",
+	);
+
+	let live = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: assistant("a1", "") },
+		1,
+	);
+	live = applyEvent(
+		live,
+		{ type: "message_end", message: assistant("a1", "the whole answer") },
+		3,
+	);
+	assert.equal(live.records[0].settledAt, 3);
+	const reconciled = applyHistoryPage(live, page);
+	assert.equal(
+		reconciled.records[0].settledAt,
+		undefined,
+		"the durable twin has no stamp; its commit `ts` is the end instant",
+	);
 });
 
 test("durable history wins over live projections and replay never regresses it", () => {
@@ -1016,6 +1205,69 @@ test("a running row with no stated start carries the clock its duration cannot",
 	const done = settled.records.find((r) => r.kind === "tool");
 	assert.equal(done.startedAt, null, "the row stops counting");
 	assert.equal(done.durationS, 60.2, "and reports what the backend measured");
+	assert.equal(
+		done.endedAt,
+		61_200,
+		"and keeps the completion the fold's span is built from",
+	);
+});
+
+test("a settled row dates its completion in the producer's own clock", () => {
+	/*
+	 * The fold's span (first start to last completion) is built from the two
+	 * stamps this asserts, and the completion is `startedAt + duration_s` — the
+	 * producer's own numbers — rather than this viewer's arrival instant: a seed
+	 * replayed to a viewer that was away would otherwise date a completion that
+	 * never happened then, stretching a run's span by however long they were
+	 * gone. The arrival below is deliberately far from the true completion so
+	 * the two cannot be confused.
+	 */
+	const started = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "c-span",
+			tool_name: "bash",
+			args: { command: "true" },
+			started_at_epoch: 5,
+		},
+		5_000,
+	);
+	const running = started.records.find((r) => r.kind === "tool");
+	assert.equal(running.startedAt, 5_000);
+	assert.equal(running.endedAt, null, "nothing completed yet");
+
+	const settled = applyEvent(
+		started,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-span",
+			tool_name: "bash",
+			result: { content: [{ type: "text", text: "ok" }], details: {} },
+			duration_s: 3,
+		},
+		999_999,
+	);
+	const done = settled.records.find((r) => r.kind === "tool");
+	assert.equal(
+		done.endedAt,
+		8_000,
+		"5s + 3s in the producer's clock, not the arriving frame's instant",
+	);
+
+	// An end frame that states no duration leaves NO completion: the fold's span
+	// renders nothing for a run it cannot date rather than a `0s` claim.
+	const quiet = applyEvent(
+		started,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-span",
+			tool_name: "bash",
+			result: { content: [] },
+		},
+		999_999,
+	);
+	assert.equal(quiet.records.find((r) => r.kind === "tool").endedAt, null);
 });
 
 /*
@@ -1458,6 +1710,224 @@ test("the live classification survives the reconcile that follows it", () => {
 		"the page must not re-accuse the stopped call",
 	);
 	assert.equal(row.isError, false);
+});
+
+/* ---------------------------------------------------------------------- *
+ * `skipped` joins `aborted`: the interrupted class is TWO kinds (interrupted
+ * vs failed workstream, and the operator's own case).
+ *
+ * The steering skip stores a synthetic result marked `details.__fault:
+ * "skipped"` (`loop.py`'s `_synthetic_result(... details={FAULT_KEY:
+ * FAULT_SKIPPED})`), and the live compose path announces the same class as
+ * `not_run_kind` on the terminal never-run frame. Both readings share ONE rule
+ * (`isInterruptedFault`), and these cases pin the rule and its BOUNDARY: every
+ * other fault class - the tool's own `execution` failure and the model's
+ * planning faults - keeps the danger row, because those ARE failures.
+ * ---------------------------------------------------------------------- */
+
+test("a durable row the runtime marked skipped reads interrupted, not failed", () => {
+	// THE OPERATOR'S CASE, from the wire fact rather than from the words: before
+	// this half of the fix the row kept `isError`, painted the `failed` word and
+	// expanded under an `Error` label - what the report photographed.
+	const state = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([
+			durableToolEntry({
+				tool_call_id: "c-skipped",
+				content: [{ text: "Tool call skipped: interrupted by steering." }],
+				provider_payload: {
+					details: { __fault: "skipped", __synthetic: true },
+					duration_s: 0.5,
+				},
+			}),
+		]),
+	);
+	const row = ranRow(state, "c-skipped");
+	assert.equal(row.stopped, true, "an interrupt, not a result");
+	assert.equal(row.isError, false, "and the danger ink is cleared with it");
+	assert.equal(
+		row.durationS,
+		0.5,
+		"the backend's own measurement is kept, as for an abort",
+	);
+	assert.equal(
+		row.output,
+		"Tool call skipped: interrupted by steering.",
+		"the harness's words stay one expansion away",
+	);
+});
+
+test("only the two interrupted kinds flip: every other fault class keeps its danger", () => {
+	// The boundary is a CONSCIOUS LIST, not "any fault": pinned as a loop so an
+	// edit that widens `isInterruptedFault` moves this list rather than one
+	// example, and a future core's new value defaults to the failure treatment
+	// (the safe direction) until it is added here.
+	for (const fault of [
+		"execution",
+		"unknown_tool",
+		"invalid_arguments",
+		"duplicate_id",
+		"denied",
+		"gate_failed",
+	]) {
+		const state = applyHistoryPage(
+			EMPTY_TRANSCRIPT,
+			pageOf([
+				durableToolEntry({
+					tool_call_id: `c-${fault}`,
+					provider_payload: { details: { __fault: fault } },
+				}),
+			]),
+		);
+		const row = ranRow(state, `c-${fault}`);
+		assert.equal(row.stopped, false, `${fault} is not an interrupt`);
+		assert.equal(row.isError, true, `${fault} keeps the danger row`);
+	}
+});
+
+test("the end event's own fault marker classifies the row with no stop press", () => {
+	/*
+	 * THE WIRE'S OWN STATEMENT, for a viewer that never saw the press: the
+	 * runtime writes WHY the call ended into `result.details.__fault` - the same
+	 * marker the durable row reads - and `userStoppedAt` is null here, so the
+	 * client-side stop window is nowhere in this test. The duration the backend
+	 * measured is kept beside the classification.
+	 */
+	const endedWith = (callId, fault) =>
+		endFrame(callId, {
+			result: {
+				content: [{ type: "text", text: "aborted" }],
+				is_error: true,
+				details: { __fault: fault, __synthetic: true },
+			},
+		});
+	for (const fault of ["aborted", "skipped"]) {
+		let state = applyEvent(
+			EMPTY_TRANSCRIPT,
+			startedFrame(`c-wire-${fault}`),
+			ARRIVAL,
+		);
+		state = applyEvent(
+			state,
+			endedWith(`c-wire-${fault}`, fault),
+			ARRIVAL + 1_000,
+		);
+		const row = ranRow(state, `c-wire-${fault}`);
+		assert.equal(
+			row.stopped,
+			true,
+			`the end frame's \`${fault}\` marker is the verdict`,
+		);
+		assert.equal(row.isError, false, "and the danger ink yields to it");
+		assert.equal(row.durationS, 0.8, "the measured duration is kept");
+	}
+	// And a genuine execution fault is NOT: the danger row stays.
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		startedFrame("c-wire-fail"),
+		ARRIVAL,
+	);
+	state = applyEvent(
+		state,
+		endFrame("c-wire-fail", {
+			result: {
+				content: [{ type: "text", text: "boom" }],
+				is_error: true,
+				details: { __fault: "execution" },
+			},
+		}),
+		ARRIVAL + 1_000,
+	);
+	const failed = ranRow(state, "c-wire-fail");
+	assert.equal(failed.stopped, false);
+	assert.equal(failed.isError, true);
+});
+
+test("a compose verdict's kind rides the record, and an absent kind changes nothing", () => {
+	/*
+	 * THE NEW FIELD'S CONTRACT. The terminal never-run frame states the class
+	 * (`skipped`, the operator's case, or `aborted`); a frame from a core that
+	 * predates the field states nothing, and that has to mean TODAY'S not-run
+	 * row rather than a new class - the tolerance the UI ships both ways.
+	 */
+	const settle = (over) =>
+		applyEvent(
+			EMPTY_TRANSCRIPT,
+			{
+				type: "tool_call_compose",
+				tool_call_id: "c-kind",
+				tool_name: "bash",
+				argument_bytes: 64,
+				...over,
+			},
+			1,
+		);
+	const skipped = settle({
+		dictation_complete: true,
+		not_run_reason: "Tool call skipped: interrupted by steering.",
+		not_run_kind: "skipped",
+	});
+	assert.equal(ranRow(skipped, "c-kind").notRunKind, "skipped");
+	assert.equal(
+		ranRow(skipped, "c-kind").notRunReason,
+		"Tool call skipped: interrupted by steering.",
+		"the reason is still the harness's own words",
+	);
+	const abortedKind = settle({
+		dictation_complete: true,
+		not_run_reason: "The turn ended before this call ran.",
+		not_run_kind: "aborted",
+	});
+	assert.equal(ranRow(abortedKind, "c-kind").notRunKind, "aborted");
+	// A legacy producer states no kind at all, and a dictation frame never does.
+	const legacy = settle({
+		dictation_complete: true,
+		not_run_reason: "The turn ended before this call ran.",
+	});
+	assert.equal(ranRow(legacy, "c-kind").notRunKind, null);
+	assert.equal(
+		ranRow(legacy, "c-kind").notRunReason,
+		"The turn ended before this call ran.",
+	);
+	const dictating = settle({ dictation_complete: false });
+	assert.equal(ranRow(dictating, "c-kind").notRunKind, null);
+	assert.equal(ranRow(dictating, "c-kind").notRunReason, null);
+});
+
+test("a winning twin's start clears the kind with the reason", () => {
+	// The two-calls-one-id case: the parked row carried a verdict (here
+	// `skipped`), then the twin's start revives the same id. The execution
+	// retires the verdict, and the kind must go with it - a row that kept
+	// classifying as interrupted while a tool is visibly running would be the
+	// same two-readings-one-call defect the fix removes.
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_call_compose",
+			tool_call_id: "c-twin",
+			tool_name: "bash",
+			argument_bytes: 8,
+			dictation_complete: true,
+			not_run_reason: "Tool call skipped: interrupted by steering.",
+			not_run_kind: "skipped",
+		},
+		1,
+	);
+	assert.equal(ranRow(state, "c-twin").notRunKind, "skipped");
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "c-twin",
+			tool_name: "bash",
+			args: { command: "echo hi" },
+		},
+		2,
+	);
+	const row = ranRow(state, "c-twin");
+	assert.equal(row.phase, "running", "the twin's execution revives the row");
+	assert.equal(row.notRunReason, null, "and retires the verdict's reason");
+	assert.equal(row.notRunKind, null, "with its class");
 });
 
 /* ---------------------------------------------------------------------- *
@@ -2038,6 +2508,433 @@ test("removeRecord retracts exactly the echo it names", () => {
 	assert.equal(pruned.index.get("req-2"), 0);
 });
 
+/* ------------------------------- a pending echo against the load window */
+
+/*
+ * The operator's report (2026-09-26): "sometimes after sending a message,
+ * additional messages will load and my message ends up out of order", caught
+ * in a screenshot as the just-sent bubble ABOVE assistant content that
+ * preceded it.
+ *
+ * #534's `monotonicStamp` bounds an echo against rows painted AT STAMP TIME.
+ * These pin the residual the load window adds: the page (or seed) is still
+ * OWED when the message is sent — over nothing, over a painted cache, over a
+ * notice-only transcript alike — and it lands AFTER the echo carrying rows
+ * whose stamps sit ahead of the echo's. #534's own comment names that clock
+ * ("a remote owner, or any client whose clock trails"); what it cannot bound
+ * is a row that arrives after the stamp and states a later time while
+ * chronologically preceding the send.
+ *
+ * The rule these pin, and the reason it is the right one (review round 1, F1
+ * through F3): while the owner has stated no position for the row, no client
+ * clock comparison can decide it — the two stamps come from different clocks,
+ * and a row landing later can exceed any cap the echo borrowed. So EVERY
+ * echo holds the tail position it was admitted at (admission is not "empty
+ * transcript": a few cached rows or a notice-only transcript state no owner
+ * time either), rows admitted while it holds keep its tail block, and only
+ * an owner-stamped row naming the id — the durable page row, not a live
+ * `message_start` merely restating the message — ends the hold and returns
+ * the row to the canonical order.
+ */
+const CLIENT_NOW = 1_790_000_000_000;
+// The owner's clock, ahead of the client's: the skew condition itself.
+const OWNER_AHEAD_MS = 20_000;
+
+/** One durable page entry, stamped on the owner's clock. */
+const aheadEntry = (id, tsMs, text) => ({
+	id,
+	ts: tsMs / 1000,
+	type: "message",
+	payload: { kind: "message", ...assistant(id, text) },
+});
+
+/** One durable page entry for a USER row, stamped on the owner's clock. */
+const aheadUserEntry = (id, tsMs, text) => ({
+	id,
+	ts: tsMs / 1000,
+	type: "message",
+	payload: { kind: "message", ...user(id, text) },
+});
+
+test("a locally stamped echo cannot be displaced by a page that lands after the send", () => {
+	const requestId = "b2b1f0d4-0a3a-4b1e-9c1d-7f5a2e6c9a10";
+	// The send happens while the page is still owed, so the echo is stamped
+	// with the client's own clock and nothing else is painted.
+	let state = appendPendingUser(
+		state0(),
+		requestId,
+		"first message",
+		[],
+		CLIENT_NOW,
+	);
+	// The owed page lands: a row the owner stamps ahead of the client's clock,
+	// written before the send.
+	state = applyHistoryPage(state, {
+		entries: [aheadEntry("a1", CLIENT_NOW + OWNER_AHEAD_MS, "an older answer")],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["a1", requestId],
+		"the echo stays after the row that preceded it",
+	);
+	// And the reconcile page that follows must not move it either.
+	state = applyHistoryPage(state, {
+		entries: [aheadEntry("a2", CLIENT_NOW + OWNER_AHEAD_MS * 2, "later still")],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["a1", "a2", requestId],
+		"no page that lands later can place the echo above rows it followed",
+	);
+});
+
+test("a locally stamped echo cannot be displaced by a snapshot seed that lands after the send", () => {
+	const requestId = "0c9f1e2a-6d4b-4a7e-8f3c-2b5d9e1a4c70";
+	let state = appendPendingUser(
+		state0(),
+		requestId,
+		"sent while loading",
+		[],
+		CLIENT_NOW,
+	);
+	// The snapshot's seed lands after the echo and states a clock for a call
+	// the turn in flight had already made — stamped on the owner's ahead clock.
+	state = applyLiveSeed(
+		state,
+		{
+			streaming: true,
+			generation: 1,
+			live_events: [
+				{
+					type: "tool_execution_start",
+					tool_call_id: "c-seed",
+					started_at_epoch: (CLIENT_NOW + OWNER_AHEAD_MS) / 1000,
+				},
+			],
+		},
+		CLIENT_NOW + 10_000,
+	);
+	const ids = state.records.map((r) => r.id);
+	assert.equal(
+		ids.at(-1),
+		requestId,
+		"the echo is the last row, not placed above content the seed dates ahead of it",
+	);
+	assert.equal(
+		ids.filter((id) => id === "tool:c-seed").length,
+		1,
+		"the seeded row painted once",
+	);
+});
+
+test("a restating message_start does not end the hold; the durable row returns the echo to order", () => {
+	const requestId = "7f3a2c1e-8b5d-4e6f-9a0b-1c2d3e4f5a6b";
+	let state = appendPendingUser(
+		state0(),
+		requestId,
+		"first message",
+		[],
+		CLIENT_NOW,
+	);
+	state = applyHistoryPage(state, {
+		entries: [aheadEntry("a1", CLIENT_NOW + OWNER_AHEAD_MS, "an older answer")],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["a1", requestId],
+	);
+	/*
+	 * The owner echoes the message back on its own stream (a reconnect's
+	 * replay folds these frames BEFORE the snapshot's page - review round 1,
+	 * F2). Delivery is now the owner's, so `local` clears - that flag is the
+	 * store's own delivered read (`peekLocalEcho`) - but the POSITION is
+	 * still unstated: the swap must not re-stamp the row onto the client
+	 * clock and must not end the hold, or the page that follows would sort
+	 * the echo above its pre-send rows (the retired case asserted exactly
+	 * that lifted order as correct).
+	 */
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: user(requestId, "first message") },
+		CLIENT_NOW + 3_000,
+	);
+	const restated = state.records.find((r) => r.id === requestId);
+	assert.equal(
+		restated.local,
+		undefined,
+		"the live echo is the owner's for delivery",
+	);
+	assert.equal(
+		restated.provisional,
+		true,
+		"but its position is still the owner's to state",
+	);
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["a1", requestId],
+		"the restating frame does not lift the echo onto the client clock",
+	);
+	state = applyHistoryPage(state, {
+		entries: [aheadEntry("a2", CLIENT_NOW + OWNER_AHEAD_MS * 2, "later still")],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["a1", "a2", requestId],
+		"rows that land after the send never displace it",
+	);
+	// The owner states the position in the end: the durable row carries its
+	// own stamp (between a1's and a2's) and replaces the echo, which sorts
+	// there like any canonical row.
+	state = applyHistoryPage(state, {
+		entries: [
+			aheadUserEntry(
+				requestId,
+				CLIENT_NOW + OWNER_AHEAD_MS + 5_000,
+				"first message",
+			),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["a1", requestId, "a2"],
+		"the durable row returns it to the canonical order",
+	);
+});
+
+test("two echoes admitted in the load window both hold, in arrival order", () => {
+	let state = appendPendingUser(state0(), "req-A", "first", [], CLIENT_NOW);
+	state = appendPendingUser(state, "req-B", "second", [], CLIENT_NOW + 500);
+	state = applyHistoryPage(state, {
+		entries: [aheadEntry("a1", CLIENT_NOW + OWNER_AHEAD_MS, "older")],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["a1", "req-A", "req-B"],
+		"no later row may place either echo above a row that preceded it",
+	);
+	state = applyHistoryPage(state, {
+		entries: [aheadEntry("a2", CLIENT_NOW + OWNER_AHEAD_MS * 2, "later")],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["a1", "a2", "req-A", "req-B"],
+		"and the second page cannot either",
+	);
+});
+
+test("an echo admitted over a painted cache is held against the owed page (+2s)", () => {
+	// The QA cell-2 residual: the cache gives the echo a borrowed slot, but
+	// the owed page's row is journaled before the send and dated past any cap
+	// the echo could take — a cap cannot bound a row that lands after it
+	// (review round 1, F1) — so the echo holds instead.
+	let state = applyHistoryPage(state0(), {
+		entries: [aheadEntry("c1", CLIENT_NOW - 300_000, "cached")],
+		has_more: false,
+		cursor_missing: false,
+	});
+	state = appendPendingUser(state, "req-cache", "hello", [], CLIENT_NOW);
+	state = applyHistoryPage(state, {
+		entries: [
+			aheadEntry("o1", CLIENT_NOW + 2_000, "row journaled before the send"),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["c1", "o1", "req-cache"],
+		"the owed row holds above the echo, not below it",
+	);
+	// And the merges after it must not show the correction jump QA cell 2
+	// logged: the live echo states delivery only, and the next page keeps
+	// the order.
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: user("req-cache", "hello") },
+		CLIENT_NOW + 3_000,
+	);
+	state = applyHistoryPage(state, {
+		entries: [aheadEntry("n1", CLIENT_NOW - 500, "a later landing row")],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["c1", "n1", "o1", "req-cache"],
+		"no correction jump: the echo was never above the owed row",
+	);
+});
+
+test("an echo admitted over a painted cache is held against the owed page (+40s)", () => {
+	let state = applyHistoryPage(state0(), {
+		entries: [aheadEntry("c1", CLIENT_NOW - 300_000, "cached")],
+		has_more: false,
+		cursor_missing: false,
+	});
+	state = appendPendingUser(state, "req-cache2", "hello", [], CLIENT_NOW);
+	state = applyHistoryPage(state, {
+		entries: [
+			aheadEntry("o1", CLIENT_NOW + 40_000, "row journaled before the send"),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["c1", "o1", "req-cache2"],
+		"the wider the skew, the further past any borrowed cap the owed row sits",
+	);
+});
+
+test("a seed that dates a call cannot displace an echo admitted over a painted cache", () => {
+	let state = applyHistoryPage(state0(), {
+		entries: [aheadEntry("c1", CLIENT_NOW - 300_000, "cached")],
+		has_more: false,
+		cursor_missing: false,
+	});
+	state = appendPendingUser(state, "req-cache3", "hello", [], CLIENT_NOW);
+	state = applyLiveSeed(
+		state,
+		{
+			streaming: true,
+			generation: 1,
+			live_events: [
+				{
+					type: "tool_execution_start",
+					tool_call_id: "c-seed",
+					started_at_epoch: (CLIENT_NOW + OWNER_AHEAD_MS) / 1000,
+				},
+			],
+		},
+		CLIENT_NOW + 1_000,
+	);
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["c1", "tool:c-seed", "req-cache3"],
+		"the seeded call was journaled before the send; it holds above the echo",
+	);
+});
+
+test("a notice-only transcript does not anchor the owner clock, so the echo still holds", () => {
+	// A renderer-local notice (a move receipt, a recovery line) is minted from
+	// the CLIENT clock: it is non-empty, but it states no owner time for a
+	// later page to sort against (review round 1, F3).
+	let state = appendLocalNote(
+		state0(),
+		"a first local notice",
+		"info",
+		CLIENT_NOW,
+	);
+	const noticeId = state.records[0].id;
+	state = appendPendingUser(state, "req-7", "hello", [], CLIENT_NOW + 1);
+	state = applyHistoryPage(state, {
+		entries: [
+			aheadEntry("g1", CLIENT_NOW + 15_000, "row journaled before the send"),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		[noticeId, "g1", "req-7"],
+		"the owed row holds above the echo",
+	);
+});
+
+test("a live answer arriving while the echo holds does not land above it", () => {
+	// The symmetric arm of review round 1's F2: a genuinely post-send row
+	// admitted while the echo is unresolved must stay under it (base's
+	// [req-1, ans-1] may not regress to [ans-1, req-1]), and the page that
+	// follows keeps it there: [...pre-send, req, ans].
+	let state = appendPendingUser(state0(), "req-1", "sent now", [], CLIENT_NOW);
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: assistant("ans-1", "") },
+		CLIENT_NOW + 3_000,
+	);
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["req-1", "ans-1"],
+		"the answer arrives under the question",
+	);
+	state = applyHistoryPage(state, {
+		entries: [
+			aheadEntry("a-old", CLIENT_NOW + OWNER_AHEAD_MS, "an older answer"),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["a-old", "req-1", "ans-1"],
+		"pre-send rows hold above the echo, and the answer holds under it",
+	);
+});
+
+test("a page that carries the echo's own row settles it into the canonical order", () => {
+	let state = appendPendingUser(
+		state0(),
+		"req-9",
+		"first message",
+		[],
+		CLIENT_NOW,
+	);
+	state = applyHistoryPage(state, {
+		entries: [aheadEntry("a1", CLIENT_NOW + OWNER_AHEAD_MS, "older")],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["a1", "req-9"],
+	);
+	state = applyHistoryPage(state, {
+		entries: [aheadEntry("a2", CLIENT_NOW + OWNER_AHEAD_MS * 2, "later still")],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["a1", "a2", "req-9"],
+	);
+	// The owner's own row for the echo arrives: it replaces the record (no
+	// duplication) and takes its place by its own stamp, between the rows the
+	// pages brought.
+	state = applyHistoryPage(state, {
+		entries: [
+			aheadUserEntry(
+				"req-9",
+				CLIENT_NOW + OWNER_AHEAD_MS + 5_000,
+				"first message",
+			),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["a1", "req-9", "a2"],
+		"the echo's own durable row settles it where the owner put it",
+	);
+	const settled = state.records.find((r) => r.id === "req-9");
+	assert.equal(settled.local, undefined);
+	assert.equal(settled.provisional, undefined);
+});
+
 /* ------------------------------------------------------- receipt rows */
 
 /*
@@ -2194,6 +3091,57 @@ test("the live path and the durable page produce the same receipt", () => {
 		pageOf([messageEntry("p1", 5, { kind: "custom", ...row })]),
 	);
 	assert.equal(again, durable);
+});
+
+test("a send tool call projects to a tool row the filter can name by its tool", () => {
+	/*
+	 * `cross-session-visibility.ts` keys its hidden set on the RECORD fields the
+	 * reducer mints, so both halves of that key are pinned here — the filter's
+	 * literal cannot drift from its producer:
+	 *
+	 *  - a durable page entry whose `tool_name` is `send` (role "tool") reads
+	 *    back as `kind: "tool"` with `toolName` exactly `send`;
+	 *  - the live `tool_execution_start` for the same call mints the same
+	 *    fields.
+	 *
+	 * `send` is the registry's own literal (`local_operator/tools/registry.py`),
+	 * and the desktop side spells it outside the filter in exactly one place
+	 * besides this test: the TUI/mobile contract carries the identical string.
+	 */
+	const durable = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		pageOf([
+			{
+				id: "t1",
+				ts: 20,
+				type: "message",
+				payload: {
+					kind: "message",
+					role: "tool",
+					tool_call_id: "c-send",
+					tool_name: "send",
+					content: [{ type: "text", text: "delivered" }],
+				},
+			},
+		]),
+	);
+	const [record] = durable.records;
+	assert.equal(record.kind, "tool");
+	assert.equal(record.toolName, "send");
+
+	const live = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "c-send",
+			tool_name: "send",
+			args: { conversation: "other" },
+		},
+		21,
+	);
+	const liveRecord = live.records.find((row) => row.kind === "tool");
+	assert.ok(liveRecord, "the live start mints a tool row");
+	assert.equal(liveRecord.toolName, "send");
 });
 
 test("a wake delivery is a receipt, and the catch-up is not one", () => {
@@ -4176,4 +5124,627 @@ test("a gap marks a row it cannot vouch for, and leaves a joined row's own claim
 		!rowOf("a3").truncated,
 		"a settled row is whole, and the gap marks nothing on it",
 	);
+});
+
+test("a locally stamped echo cannot sort above a row already on screen", () => {
+	/*
+	 * THE OPERATOR'S REPORT (2026-09-26): "when sending a user message, it seems
+	 * to end up in an inconsistent place within the conversation history - it
+	 * shows up above an older message and then corrects after some time to its
+	 * proper position, and this only happened in this design release".
+	 *
+	 * The mechanism, pinned here with both clocks KNOWN rather than hoped for:
+	 * `appendPendingUser` stamps the echo with the CLIENT's `Date.now()`, and
+	 * every merge re-sorts the whole list by `ts` through `withTimeOrder`. A
+	 * session whose owner stamps from a clock even a second AHEAD of the
+	 * client's therefore sorts the fresh echo BEFORE the newest row - above an
+	 * older message - until the owner's durable row (the same id, its own,
+	 * server-stamped ts) replaces it: the visible "corrects after some time".
+	 *
+	 * THE TWO CLOCKS ARE IN THE SAME UNITS, and that is checked rather than
+	 * assumed: the page's `ts` arrive in SECONDS and the reducer converts them
+	 * (`Math.round(entry.ts * 1000)`), while `appendPendingUser` consumes `now`
+	 * in MILLISECONDS - so `clientNow` here is `(serverNow - 1) * 1_000`, a
+	 * client one second behind the owner on a real epoch. The first version of
+	 * this fixture was ms-as-small-numbers, which pinned the echo about three
+	 * orders of magnitude below every row it ordered against, not the one
+	 * second behind the docstring claims (agent review round 1, R6; re-run at
+	 * this scale, the pre-fix code still fails and the fix still passes).
+	 *
+	 * The echo goes through the real entry point and the re-sort is provoked by
+	 * the next merge, which is the sequence the live path runs.
+	 */
+	const serverNow = 1_760_000_000; // seconds, the wire's unit - a real epoch
+	const clientNow = serverNow * 1_000 - 1_000; // ms, one second behind
+	let state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "u1",
+				ts: serverNow - 5,
+				type: "message",
+				payload: { kind: "message", ...user("u1", "older") },
+			},
+			{
+				id: "a1",
+				ts: serverNow,
+				type: "message",
+				payload: { kind: "message", ...assistant("a1", "older answer") },
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	state = appendPendingUser(state, "req-1", "sent now", [], clientNow);
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["u1", "a1", "req-1"],
+		"the echo is appended at the tail before any merge runs",
+	);
+	/*
+	 * THE FIRST HALF, IN ONE ASSERTION: the echo's stamp is the MAXIMUM already
+	 * painted (a tie with `a1`, kept after it by insertion order), not the raw
+	 * client stamp - so no merge can sort the echo above a painted row. The
+	 * SECOND half moved with review round 1 (F1): a row that lands AFTER the
+	 * stamp is exactly what the cap cannot bound - `a2` here is dated past the
+	 * cap, and so is any row written within the skew window before the send -
+	 * so `a2` holds above the echo and the durable row below returns it to
+	 * canonical order. What this case pins (the echo never sorts above the
+	 * newest painted row; the owner's row lands canonically) is unchanged.
+	 */
+	assert.equal(
+		state.records.find((r) => r.id === "req-1").ts,
+		serverNow * 1_000,
+		"the echo takes the newest painted stamp, not the raw client clock",
+	);
+	const merged = applyHistoryPage(state, {
+		entries: [
+			{
+				id: "a2",
+				ts: serverNow + 1,
+				type: "message",
+				payload: { kind: "message", ...assistant("a2", "next") },
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		merged.records.map((r) => r.id),
+		["u1", "a1", "a2", "req-1"],
+		"a client clock behind the server's must not sort the echo above the newest painted row, and a row landing after it takes its place above the hold",
+	);
+	/*
+	 * AND THE DURABLE ROW STAYS AUTHORITATIVE WHERE IT LANDS: the owner's own
+	 * row for the same id arrives with its real stamp - here STRICTLY between
+	 * the client's clock and the stamp the echo took (`serverNow - 0.5` seconds
+	 * is `serverNow * 1_000 - 500` ms, inside
+	 * (1_759_999_999_000, 1_760_000_000_000), which no whole second can land
+	 * in) - and it replaces the echo AND takes its own canonical place: after
+	 * `u1`, before `a1`, BELOW the position the capped echo was sitting at.
+	 * The cap must never outrank the owner (agent review round 1, R6).
+	 */
+	const replaced = applyHistoryPage(merged, {
+		entries: [
+			{
+				id: "req-1",
+				ts: serverNow - 0.5,
+				type: "message",
+				payload: { kind: "message", ...user("req-1", "sent now") },
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(
+		replaced.records.map((r) => r.id),
+		["u1", "req-1", "a1", "a2"],
+		"the durable row replaces the echo and sorts to its own stamp",
+	);
+});
+
+test("a local notice is stamped monotonic too, and never sorts above a painted row", () => {
+	/*
+	 * `monotonicStamp` is shared with `appendLocalNote`, and the notice path had
+	 * no test when the echo's fix landed (agent review round 1, R6): a
+	 * renderer-local notice - a refused send's sentence, "Interrupted" - is
+	 * minted from the CLIENT's clock too, so on an owner whose clock runs ahead
+	 * it could open a conversation ABOVE every painted row. Same clamp, same
+	 * claim.
+	 */
+	let state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "u1",
+				ts: 1_760_000_000 - 5,
+				type: "message",
+				payload: { kind: "message", ...user("u1", "older") },
+			},
+			{
+				id: "a1",
+				ts: 1_760_000_000,
+				type: "message",
+				payload: { kind: "message", ...assistant("a1", "older answer") },
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	state = appendLocalNote(
+		state,
+		"a local notice",
+		"info",
+		1_760_000_000 * 1_000 - 1_000,
+	);
+	const notice = state.records.find((r) => r.kind === "notice");
+	assert.ok(notice, "the notice is painted");
+	assert.equal(
+		notice.ts,
+		1_760_000_000 * 1_000,
+		"the notice takes the newest painted stamp, not the raw client clock",
+	);
+	assert.deepEqual(
+		state.records.map((r) => r.id),
+		["u1", "a1", notice.id],
+		"the notice sits at the tail, not above the rows already on screen",
+	);
+	/*
+	 * AND THE CLAMP ONLY EVER RAISES: a caller whose clock is AHEAD keeps its
+	 * own stamp - the function is `max(now, painted)`, not "the newest painted".
+	 */
+	const ahead = appendLocalNote(
+		state,
+		"a notice from a clock ahead",
+		"info",
+		1_760_000_000 * 1_000 + 5_000,
+	);
+	assert.ok(
+		ahead.records.some(
+			(r) => r.kind === "notice" && r.ts === 1_760_000_005_000,
+		),
+		"a clock ahead of the painted rows keeps its own stamp",
+	);
+});
+
+/*
+ * The re-delivery class, pinned on the wire's own cursor.
+ *
+ * WHY THE CURSOR IS THE RULE, rather than a content comparison: deltas are
+ * fragments of a token stream, and a legitimate stream repeats short runs
+ * freely ("the the", a doubled word, a quoted prompt), so "does this text
+ * already appear" has no right answer from content alone — the append path
+ * documents that and refuses content dedupe. The frame's `(epoch, seq)` is
+ * assigned once at publish, and a re-delivery (a receipt replay after a
+ * reconnect, a flush from a dead stream interleaved with its successor's)
+ * carries the ORIGINAL cursor — so a row that recorded the last frame it
+ * folded can refuse a frame at or behind it without guessing. Rows painted
+ * without a frame in hand (a seed folded with no snapshot cursor, a direct
+ * caller) keep the old behaviour unchanged.
+ */
+test("a re-delivered frame is refused: the text is the deltas in order, once", () => {
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: assistant("a1", "") },
+		1,
+		{ frame: { epoch: "e1", seq: 1 } },
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_update", delta: "abc", message: assistant("a1", "") },
+		2,
+		{ frame: { epoch: "e1", seq: 2 } },
+	);
+	const dropped = streamDiagnostics?.staleUpdateFrameDropped ?? 0;
+	// The stale frame: the same window re-sent, an earlier offset on the wire.
+	state = applyEvent(
+		state,
+		{ type: "message_update", delta: "b", message: assistant("a1", "") },
+		3,
+		{ frame: { epoch: "e1", seq: 2 } },
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_update", delta: "def", message: assistant("a1", "") },
+		4,
+		{ frame: { epoch: "e1", seq: 3 } },
+	);
+	const row = state.records.find((record) => record.id === "a1");
+	assert.equal(row.text, "abcdef", "each delta lands once, in order");
+	assert.equal(
+		streamDiagnostics?.staleUpdateFrameDropped,
+		dropped + 1,
+		"the refusal is counted",
+	);
+});
+
+test("a replayed window leaves the painted text untouched, and the stream continues after it", () => {
+	const chunks = ["The lane ", "has dia", "gnosed"];
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: assistant("a1", "") },
+		1,
+		{ frame: { epoch: "e1", seq: 1 } },
+	);
+	for (let i = 0; i < chunks.length; i++) {
+		state = applyEvent(
+			state,
+			{
+				type: "message_update",
+				delta: chunks[i],
+				message: assistant("a1", ""),
+			},
+			2 + i,
+			{ frame: { epoch: "e1", seq: 2 + i } },
+		);
+	}
+	// A reconnect replays the same window over the painted row. Old code
+	// appended every re-sent fragment a second time — the operator's "chunks
+	// are not in the proper overlap/order".
+	let replayed = state;
+	for (let i = 0; i < chunks.length; i++) {
+		replayed = applyEvent(
+			replayed,
+			{
+				type: "message_update",
+				delta: chunks[i],
+				message: assistant("a1", ""),
+			},
+			10 + i,
+			{ frame: { epoch: "e1", seq: 2 + i } },
+		);
+	}
+	let row = replayed.records.find((record) => record.id === "a1");
+	assert.equal(
+		row.text,
+		"The lane has diagnosed",
+		"a replayed window does not double the text",
+	);
+	// The live stream continues from the frame after the window.
+	const live = applyEvent(
+		replayed,
+		{
+			type: "message_update",
+			delta: " item ten",
+			message: assistant("a1", ""),
+		},
+		20,
+		{ frame: { epoch: "e1", seq: 5 } },
+	);
+	row = live.records.find((record) => record.id === "a1");
+	assert.equal(row.text, "The lane has diagnosed item ten");
+});
+
+test("a new message identity starts from zero while the previous buffer stays put", () => {
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: assistant("m1", "") },
+		1,
+		{ frame: { epoch: "e1", seq: 1 } },
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_update", delta: "diagn", message: assistant("m1", "") },
+		2,
+		{ frame: { epoch: "e1", seq: 2 } },
+	);
+	// The stream moves on under a new id.
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: assistant("m2", "") },
+		3,
+		{ frame: { epoch: "e1", seq: 3 } },
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "message_update",
+			delta: "The lane has ",
+			message: assistant("m2", ""),
+		},
+		4,
+		{ frame: { epoch: "e1", seq: 4 } },
+	);
+	// A late re-delivery for the FIRST message must be refused rather than
+	// appended to a buffer that never reset.
+	state = applyEvent(
+		state,
+		{ type: "message_update", delta: "gnosed", message: assistant("m1", "") },
+		5,
+		{ frame: { epoch: "e1", seq: 2 } },
+	);
+	const m1 = state.records.find((record) => record.id === "m1");
+	const m2 = state.records.find((record) => record.id === "m2");
+	assert.equal(m1.text, "diagn", "the old buffer did not grow");
+	assert.equal(m2.text, "The lane has ", "the new identity starts from zero");
+});
+
+test("a row the seed painted carries the snapshot's cursor; an older replay is refused", () => {
+	let state = applyLiveSeed(
+		EMPTY_TRANSCRIPT,
+		{
+			streaming: true,
+			generation: "1",
+			live_events: [
+				{ type: "message_start", message: assistant("a1", "") },
+				{
+					type: "message_update",
+					delta: "chunk two",
+					message: assistant("a1", ""),
+				},
+			],
+		},
+		10,
+		{ epoch: "e1", seq: 7 },
+	);
+	// A replay frame the snapshot already covers is refused.
+	state = applyEvent(
+		state,
+		{ type: "message_update", delta: "one ", message: assistant("a1", "") },
+		11,
+		{ frame: { epoch: "e1", seq: 5 } },
+	);
+	let row = state.records.find((record) => record.id === "a1");
+	assert.equal(row.text, "chunk two", "the older replay is not appended");
+	// The live stream after the snapshot still appends.
+	state = applyEvent(
+		state,
+		{
+			type: "message_update",
+			delta: " and three",
+			message: assistant("a1", ""),
+		},
+		12,
+		{ frame: { epoch: "e1", seq: 8 } },
+	);
+	row = state.records.find((record) => record.id === "a1");
+	assert.equal(row.text, "chunk two and three");
+});
+
+test("re-applying an identical seed at a settled claim keeps the row and the state", () => {
+	const frontend = {
+		streaming: true,
+		generation: "1",
+		live_events: [
+			{ type: "message_start", message: assistant("a1", "") },
+			{
+				type: "message_update",
+				delta: "chunk two",
+				message: assistant("a1", ""),
+			},
+		],
+	};
+	// The first seed mints the row; the second re-applies it, settling the claim
+	// at "interrupted" (a text-bearing seed delta may have a chunk withheld -
+	// pre-existing behavior, identical on origin/main). THAT state is the steady
+	// one a degraded reconnect re-delivers roughly every 0.5 s, and it must
+	// re-apply as a no-op: the frame stamp had made each re-apply replace the
+	// record and the state, because every fold builds a fresh cursor object
+	// (agent review round 1, finding 2).
+	let state = applyLiveSeed(EMPTY_TRANSCRIPT, frontend, 10, {
+		epoch: "e1",
+		seq: 7,
+	});
+	state = applyLiveSeed(state, frontend, 11, { epoch: "e1", seq: 7 });
+	const settled = state;
+	const settledRow = state.records[0];
+	state = applyLiveSeed(state, frontend, 12, { epoch: "e1", seq: 7 });
+	assert.equal(
+		state,
+		settled,
+		"an identical seed re-applied is a no-op, not a state replacement",
+	);
+	assert.equal(
+		state.records[0],
+		settledRow,
+		"and the row's identity survives it",
+	);
+});
+
+test("a frame from a new epoch is applied even though its numbering restarts", () => {
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: assistant("a1", "") },
+		1,
+		{ frame: { epoch: "e1", seq: 40 } },
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "message_update",
+			delta: "after the owner was replaced",
+			message: assistant("a1", ""),
+		},
+		2,
+		{ frame: { epoch: "e2", seq: 1 } },
+	);
+	const row = state.records.find((record) => record.id === "a1");
+	assert.equal(row.text, "after the owner was replaced");
+});
+
+/* ---------------------------------------------------------------- */
+/* Harness chrome on a user row                                      */
+/* ---------------------------------------------------------------- */
+
+/*
+ * The marker the harness stamps on a row it minted itself, read on BOTH desktop
+ * paths. `provider_payload.harness_injected` is `RENDERED_INJECTION_KEY` on the
+ * Python side (`local_operator/compaction/cutpoint.py`) and its docblock states the
+ * contract: a row carrying it was never typed by a person, so no human-facing
+ * surface may paint it as their words. The desktop was the surface that did.
+ *
+ * Both branches are asserted because they are separate code paths over separate
+ * payload shapes, and a session reopened from history reads its turns through the
+ * durable one: suppressing only the live path would leave the harness's prompt in
+ * the transcript of every reloaded conversation.
+ */
+const injected = (id, text) => ({
+	...user(id, text),
+	provider_payload: { harness_injected: true },
+});
+
+const durablePage = (entry) => ({
+	entries: [entry],
+	has_more: false,
+	cursor_missing: false,
+});
+
+test("a harness-minted row is not painted as the user's words, on the live path", () => {
+	const state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "message_start",
+			message: injected("u9", "Continue toward: ship it"),
+		},
+		1,
+	);
+	assert.deepEqual(
+		state.records,
+		[],
+		"a row the harness minted is chrome, and chrome is not the person's own message",
+	);
+});
+
+test("...and on the durable path, where a reloaded session reads it back", () => {
+	const state = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		durablePage({
+			id: "u9",
+			ts: 10,
+			type: "message",
+			payload: {
+				kind: "message",
+				...injected("u9", "Continue toward: ship it"),
+			},
+		}),
+	);
+	assert.deepEqual(state.records, []);
+});
+
+test("a row a person typed is untouched, marker or no marker", () => {
+	const typed = user("u1", "hi");
+	const live = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: typed },
+		1,
+	);
+	assert.equal(live.records.length, 1);
+	assert.equal(live.records[0].text, "hi");
+	/*
+	 * AND THE MARKER'S OTHER VALUES ARE READ AS ABSENT. The producer writes a JSON
+	 * boolean, so `false`, a string and a missing field all mean "someone typed
+	 * this": the test fails safe in that direction on purpose, because hiding a row
+	 * a person really typed is a worse failure than showing one they did not.
+	 */
+	for (const marker of [false, "true", 0, null, undefined]) {
+		const each = applyEvent(
+			EMPTY_TRANSCRIPT,
+			{
+				type: "message_start",
+				message: {
+					...user("u2", "typed"),
+					provider_payload: { harness_injected: marker },
+				},
+			},
+			1,
+		);
+		assert.equal(
+			each.records.length,
+			1,
+			`harness_injected: ${String(marker)} must be read as not-injected`,
+		);
+	}
+	/*
+	 * A payload with the marker on SOMEBODY ELSE'S key is not a match either: this
+	 * is a field read, not a search of the row for the word.
+	 */
+	const elsewhere = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "message_start",
+			message: {
+				...user("u3", "typed"),
+				provider_payload: { injected_by: "harness" },
+			},
+		},
+		1,
+	);
+	assert.equal(elsewhere.records.length, 1);
+});
+
+test("a cursor_missing page re-anchors the load cursor to its own oldest row", () => {
+	/*
+	 * The operator report (2026-09-28): after a /compact replaced the journal
+	 * under a loaded conversation, "Load earlier messages" loaded nothing,
+	 * forever. The backend answers a cursor it cannot locate with the current
+	 * tail plus `cursor_missing` (read_transcript_page) so a reader can dedupe
+	 * and MOVE; the load path kept the stale id, so every click re-fetched a
+	 * page it already had. The move is the page's own oldest id — a row this
+	 * journal just served, so the next request can locate it.
+	 */
+	const tail = {
+		entries: [{ id: "row:90" }, { id: "row:91" }],
+		has_more: true,
+		cursor_missing: true,
+	};
+	assert.equal(reanchorAfterCursorMiss(tail, "row:pre-compaction"), "row:90");
+	// A normal page needs no move, an empty one offers nowhere to move, and a
+	// page whose oldest IS the anchor would repeat the same request.
+	assert.equal(
+		reanchorAfterCursorMiss({ ...tail, cursor_missing: false }, "x"),
+		null,
+	);
+	assert.equal(reanchorAfterCursorMiss({ ...tail, entries: [] }, "x"), null);
+
+	test("a second cursor_missing is the failed state, not another retry", () => {
+		/*
+		 * AGENT REVIEW ROUND 1, F1. The reviewer's finding: the retried page was
+		 * applied and the call resolved true, so a click that loaded nothing in
+		 * the second-miss corner still looked like success. This pins the whole
+		 * decision table: one re-anchored retry, a failure on the second miss,
+		 * and an immediate failure when there is no row to re-anchor at.
+		 */
+		const tail = {
+			cursor_missing: true,
+			entries: [{ id: "row:120" }, { id: "row:121" }],
+		};
+		assert.deepEqual(
+			loadOlderStep(tail, "row:pre-compaction", false),
+			{ cursor: "row:120", failed: false },
+			"the first miss re-anchors to the page's own oldest row",
+		);
+		assert.deepEqual(
+			loadOlderStep(tail, "row:120", true),
+			{ cursor: null, failed: true },
+			"the second miss is the failed state",
+		);
+		assert.deepEqual(
+			loadOlderStep({ cursor_missing: false, entries: [] }, "row:120", false),
+			{ cursor: null, failed: false },
+			"a healthy page is a success",
+		);
+		assert.deepEqual(
+			loadOlderStep({ cursor_missing: true, entries: [] }, "row:120", false),
+			{ cursor: null, failed: true },
+			"a miss with nothing to anchor at fails immediately",
+		);
+		/*
+		 * AGENT REVIEW ROUND 2, MINOR-1: the table must kill a guard-dropped
+		 * mutation, so it pins both directions of the equals-anchor refusal and
+		 * the retry guard on a page that COULD have been re-anchored.
+		 */
+		assert.deepEqual(
+			loadOlderStep(
+				{ cursor_missing: true, entries: [{ id: "row:120" }] },
+				"row:120",
+				false,
+			),
+			{ cursor: null, failed: true },
+			"a moved tail whose oldest row IS the anchor fails on the first answer (nothing to re-anchor to)",
+		);
+		assert.deepEqual(
+			loadOlderStep(tail, "row:999", true),
+			{ cursor: null, failed: true },
+			"a re-anchorable page is still a failure once already retried: the guard is the retry, not the page",
+		);
+	});
+	assert.equal(reanchorAfterCursorMiss(tail, "row:90"), null);
 });

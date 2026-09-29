@@ -59,9 +59,8 @@ import {
 	displayName,
 	formatDuration,
 	formatSettledDuration,
-	isBareToolName,
 	toolCategory,
-	toolVerb,
+	toolRowLabel,
 } from "./tool-row-model";
 
 export type ToolRowOutcome =
@@ -178,6 +177,13 @@ const ROW_HEIGHT = "min-h-5 py-0";
 export type ToolRowProps = {
 	/** Wire name. Drives the glyph and the category ink; displayed via `displayName`. */
 	toolName: string;
+	/**
+	 * The call's operation token (`toolOp`), for the meta tools whose name alone
+	 * cannot say what the call did (`agent`, `team`, `hub`, and the rest of the
+	 * op tier in `tool-row-model.ts`). Empty when the arguments are not in hand
+	 * yet - a composing row - which takes the generic verb rather than guessing.
+	 */
+	op?: string;
 	/** Pre-derived argument summary (`summaryFromArgs`). */
 	summary: string;
 	/**
@@ -412,15 +418,22 @@ const DiffCounters = ({
 			)}
 		>
 			{/*
-			 * QUIET, both of them (D8). `+5` in `success` and `-2` in `danger` made
-			 * every edit row a two-colour badge and put the ledger's danger ink on a
-			 * count that is not a failure - the only loud status in a trace is a
-			 * FAILED call's. The counts still differ by sign, which is the channel
-			 * that carries their meaning, and they keep `tabular-nums` so a column of
-			 * them stays a column.
+			 * COLOURED AGAIN (operator report on PR #534, 2026-09-26): `+N` in
+			 * `text-success`, `-N` in `text-danger` - the pair is meant to be
+			 * scannable at a glance.
+			 *
+			 * D8 dimmed both (`ink-dim`) on the argument that the ledger states a
+			 * state once. That argument was about the OUTCOME column, and these
+			 * counters answer a DIFFERENT question: which side of the diff a count is,
+			 * additions or deletions. The `+`/`-` glyphs carry that meaning and stay
+			 * the primary channel, so the colour is reinforcement rather than the only
+			 * signal - and `danger` on a deletion count is not the ledger claiming a
+			 * failure (the only loud status in a trace is a FAILED call, and its word
+			 * lives in the status column). `tabular-nums` keeps a column of them a
+			 * column.
 			 */}
-			{added > 0 && <span className={cn("text-ink-dim")}>+{added}</span>}
-			{removed > 0 && <span className={cn("text-ink-dim")}>-{removed}</span>}
+			{added > 0 && <span className={cn("text-success")}>+{added}</span>}
+			{removed > 0 && <span className={cn("text-danger")}>-{removed}</span>}
 		</span>
 	);
 };
@@ -523,8 +536,12 @@ const StatusCluster = ({
 	 * `interrupted` only: a settled success draws nothing and a settled failure
 	 * draws the WORD in `danger` beside this slot. The three-arm expression that
 	 * used to live here mapped success to `text-success` and failure to
-	 * `text-danger` - two more places the ledger repeated a state it now states
-	 * once, in the word, at the edge the reader is already looking at.
+	 * `text-danger`; those inks are retired HERE, where the word states the
+	 * outcome once at the edge the reader is already looking at - and NOT from
+	 * the row: `DiffCounters` above spends the same two roles on the diff's own
+	 * sides, a different question from this column's (operator report on PR #534,
+	 * 2026-09-26). Do not dim the counters back to restore "consistency" - the
+	 * pair is meant to be scannable at a glance.
 	 */
 	const glyphInk = "text-ink-dim";
 	/*
@@ -590,6 +607,7 @@ const StatusCluster = ({
 
 export const ToolRow = ({
 	toolName,
+	op = "",
 	summary,
 	summaryFallback = null,
 	summaryHold = false,
@@ -616,18 +634,21 @@ export const ToolRow = ({
 	 * wire name is the GLYPH's job now. A tool the verb table does not know keeps
 	 * its display name at the head of the object, so an MCP call still says
 	 * which call it was.
+	 *
+	 * The composition lives in `toolRowLabel` (`tool-row-model.ts`) because the
+	 * trace fold's condensed header names a running call with the SAME words —
+	 * the row paints it, the fold lifts it. The two columns keep their names
+	 * here: `seed-label-gap.test.mjs` pins the held cell's own expressions
+	 * (`summaryHold ? undefined : summaryText`), and those are wiring, not
+	 * naming.
 	 */
-	const verb = toolVerb(toolName);
-	const verbText = running ? verb.running : verb.settled;
-	// The one expression the summary cell both prints and titles, so the tooltip
-	// cannot drift from the text it stands for — including the dropped-stutter
-	// fallback below.
-	const bareSummary = isBareToolName(summary, toolName)
-		? (summaryFallback ?? "")
-		: summary;
-	const summaryText = toolVerb(toolName).named
-		? bareSummary
-		: [displayName(toolName), bareSummary].filter(Boolean).join(" ");
+	const { verb: verbText, object: summaryText } = toolRowLabel(
+		toolName,
+		summary,
+		summaryFallback,
+		running,
+		op,
+	);
 
 	const row = (
 		<span className={cn("flex min-w-0 flex-1 items-center gap-2")}>

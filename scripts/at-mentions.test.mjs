@@ -70,7 +70,11 @@ const {
 	atRowId,
 	atCandidateKey,
 	atChipSpans,
+	atRegionPlan,
+	atSectionRuns,
+	atProjectName,
 	AT_ROW_PITCH,
+	AT_SECTION_HEADER_PITCH,
 	AT_UNAVAILABLE_REASON,
 } = contract;
 
@@ -295,6 +299,7 @@ const row = (path, directory = false) => {
 		name,
 		parent: cut === -1 ? "./" : path.slice(0, cut + 1),
 		directory,
+		section: "file",
 	};
 };
 
@@ -425,6 +430,7 @@ test("descendRows lists a matched directory's children under its own path", () =
 			name: "button.tsx",
 			parent: "src/components/",
 			directory: false,
+			section: "file",
 		},
 	]);
 });
@@ -452,6 +458,95 @@ test("interleaveDescend puts children after the row that matched", () => {
 		interleaveDescend(ranked, children).map((entry) => entry.path),
 		["components", "components/button.tsx", "app.py"],
 	);
+});
+
+/* ---------------------------------------------------------------- projects -- */
+
+/*
+ * The projects section: the `@project:<name>` rows, the query rules that offer
+ * them, and the merge that puts them first. These pin the INDEX-SPACE contract
+ * the picker's key handling depends on — the merged list is the selectable set,
+ * and the section only ever prepends rows to it.
+ */
+
+const PROJECTS = [
+	{ name: "payments-migration", description: "Cut over the API" },
+	{ name: "q4-hardening", description: "" },
+	{ name: "docs-pass", description: null },
+];
+
+const projectRows = rank.projectAtRows(PROJECTS);
+
+/*
+ * `projectAtRows` and `projectSectionRows` are reached through the namespace
+ * object, because the bundle's export list is fixed (the modules are bundled
+ * through `export * as rank`). The destructure above cannot gain a name that
+ * did not exist when this file was written without editing the bundle input —
+ * which is fine here: `rank.projectAtRows` IS the shipped export.
+ */
+const { projectAtRows, projectSectionRows, mergeProjectRows } = rank;
+
+test("a project row writes the namespaced token, not a path", () => {
+	assert.deepEqual(
+		projectAtRows([{ name: "payments-migration", description: "Cut over" }]),
+		[
+			{
+				path: "project:payments-migration",
+				name: "payments-migration",
+				parent: "",
+				directory: false,
+				section: "project",
+				detail: "Cut over",
+			},
+		],
+	);
+	// The acceptance path the picker runs: `atReference` on a project row.
+	assert.equal(
+		atReference({ path: "project:payments-migration", directory: false }),
+		"@project:payments-migration ",
+	);
+});
+
+test("the projects section is offered when the query wants projects", () => {
+	// A bare `@` is what the section is for.
+	assert.equal(projectSectionRows(projectRows, "").length, 3);
+	// The namespace itself, whole or half-typed, narrows within the section.
+	for (const query of ["p", "pr", "proj", "project", "project:"]) {
+		assert.equal(projectSectionRows(projectRows, query).length, 3, query);
+	}
+	assert.deepEqual(
+		projectSectionRows(projectRows, "project:q4").map((r) => r.name),
+		["q4-hardening"],
+	);
+	// A name match is a name match, with the same fuzzy bands files use.
+	assert.deepEqual(
+		projectSectionRows(projectRows, "payments").map((r) => r.name),
+		["payments-migration"],
+	);
+	assert.deepEqual(
+		projectSectionRows(projectRows, "q4").map((r) => r.name),
+		["q4-hardening"],
+	);
+	// Nothing matching contributes no rows, never a section of near-misses.
+	assert.deepEqual(projectSectionRows(projectRows, "zzz"), []);
+	// And an empty store offers no section however the query reads.
+	assert.deepEqual(projectSectionRows([], "project:"), []);
+});
+
+test("the merged list is projects first and keeps the file order", () => {
+	const files = rankAtRows(LISTING, "");
+	const merged = mergeProjectRows(projectRows, files);
+	assert.deepEqual(
+		merged.slice(0, projectRows.length).map((r) => r.section),
+		["project", "project", "project"],
+	);
+	assert.deepEqual(
+		merged.slice(projectRows.length).map((r) => r.path),
+		files.map((r) => r.path),
+	);
+	// No projects: the file list is returned exactly, the byte-identical shape an
+	// older backend and an empty store both get.
+	assert.deepEqual(mergeProjectRows([], files), files);
 });
 
 /* ---------------------------------------------------------------- contract -- */
@@ -551,6 +646,73 @@ test("the row budget is measured, clamped, and a whole number of rows", () => {
 	assert.equal(AT_ROW_PITCH, 35.5);
 });
 
+test("the region walks the listing and always ends on a whole row", () => {
+	// No sections: the plan is exactly the arithmetic the cap always was, and the
+	// rows drawn are the budget's worth.
+	assert.deepEqual(atRegionPlan(20, 8, []), {
+		shown: 8,
+		cap: 8 * AT_ROW_PITCH,
+	});
+	// A short listing is bounded by its own length, not the budget.
+	assert.deepEqual(atRegionPlan(3, 8, []), {
+		shown: 3,
+		cap: 8 * AT_ROW_PITCH,
+	});
+	// A merged listing whose runs BOTH fit: the two headers (design round 1, D1
+	// measured them at 29px each) come out of the cap and the region ends on a
+	// whole row — 29px + 3 rows, twice, is 271px of the 284px room, "6 of 14".
+	const merged = atRegionPlan(6, 8, [3, 3]);
+	assert.equal(merged.shown, 6);
+	assert.equal(merged.cap, 2 * AT_SECTION_HEADER_PITCH + 6 * AT_ROW_PITCH);
+	// THE FULL FIRST PAGE (QA round 2's Q-3, measured on the built app twice):
+	// twelve projects put ONE header inside the window, so the previous fix —
+	// which charged every header of the LISTING — left 25.6px of the eighth row
+	// drawn under a 271px cap. The walk stops at 29 + 7 rows = 277.5px, a whole
+	// row's bottom edge, and the count is "7 of 15".
+	const heavy = atRegionPlan(15, 8, [12, 3]);
+	assert.equal(heavy.shown, 7);
+	assert.equal(heavy.cap, AT_SECTION_HEADER_PITCH + 7 * AT_ROW_PITCH);
+	// Entering a run costs its header AND at least one row: a window that could
+	// take a header alone would end on a section name with nothing under it, so
+	// the Files run is not entered here at all.
+	const lone = atRegionPlan(4, 3, [3, 1]);
+	assert.deepEqual(lone, {
+		shown: 2,
+		cap: AT_SECTION_HEADER_PITCH + 2 * AT_ROW_PITCH,
+	});
+	// The header pitch is a measured constant, pinned like the row pitch so an
+	// edit to it is a decision.
+	assert.equal(AT_SECTION_HEADER_PITCH, 29);
+	// `rows` is the ceiling on both paths (review round 3's R3-3): a runs list
+	// that over-counts the listing is clipped to the rows the listing holds, and
+	// the window still ends on a row — the next run's header is not charged for
+	// rows the ceiling refuses.
+	assert.deepEqual(atRegionPlan(2, 8, [2, 2]), {
+		shown: 2,
+		cap: AT_SECTION_HEADER_PITCH + 2 * AT_ROW_PITCH,
+	});
+	// The runs the plan walks: consecutive rows of one section are a run, and a
+	// missing section value is a run of its own (the file half).
+	assert.deepEqual(
+		atSectionRuns(["project", "project", undefined, undefined]),
+		[2, 2],
+	);
+	assert.deepEqual(atSectionRuns([undefined, undefined, undefined]), [3]);
+	assert.deepEqual(atSectionRuns([]), []);
+});
+
+test("a project namespace names a project, and only after the colon", () => {
+	assert.equal(atProjectName("project:docs-sweep"), "docs-sweep");
+	assert.equal(atProjectName("project:Docs-Sweep"), "Docs-Sweep");
+	// Mid-typing is not a reference to an empty name.
+	assert.equal(atProjectName("project:"), null);
+	assert.equal(atProjectName("project"), null);
+	// A path that merely contains the word is a path.
+	assert.equal(atProjectName("src/project:payments"), null);
+	assert.equal(atProjectName("src/app.py"), null);
+	assert.equal(atProjectName(undefined), null);
+});
+
 test("the footer reads off the active row", () => {
 	// "Enter"/"Esc" name KEYS, and the slash popup in the same slot capitalises
 	// them too (design round 1, D5).
@@ -642,6 +804,21 @@ test("the four empty facts get four different sentences", () => {
 			scope: "./",
 		}),
 		'No files match "zz" in ./.',
+	);
+	// THE MERGED LISTING SPEAKS FOR BOTH SOURCES (UX round 1, U2): with the
+	// projects section consulted, the sentence names neither file nor project
+	// and says "nothing here matches" — while a file-only popup keeps the exact
+	// sentence above, which is what its frames show.
+	assert.equal(
+		atEmptyCopy({
+			loading: false,
+			entries: 12,
+			matched: 0,
+			query: "zz",
+			scope: "./",
+			projects: true,
+		}),
+		'Nothing here matches "zz" in ./.',
 	);
 	assert.equal(
 		atEmptyCopy({

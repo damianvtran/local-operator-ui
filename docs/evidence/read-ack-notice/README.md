@@ -66,11 +66,13 @@ committed rig at this head:
 
 - sonner DOES receive the request and renders it — the lane's three copies of the
   composed sentence are in the DOM, and the probe prints them verbatim;
-- the copies inside this panel's own lane are hidden on purpose —
-  `styles/index.css` declares
-  `nav[aria-label="Chats"] [data-sonner-toaster] [data-sonner-toast]:not(.lo-archive-toast) { display: none; }`,
-  which is the rule that keeps a receipt's message out of the archive lane, and the
-  probe measures exactly that (`disp=none`);
+- the copies inside this panel's own lane are hidden on purpose — `styles/index.css`
+  used to declare
+  `nav[aria-label="Chats"] [data-sonner-toaster] [data-sonner-toast]:not(.lo-archive-toast) { display: none; }`
+  (retired 2026-09-27 with the lane itself: the sidebar mounts no container any
+  more, see `docs/design/sidebar-row-space.md` §10), which is the rule that kept a
+  receipt's message out of the archive lane, and the probe measures exactly that
+  (`disp=none`);
 - and the two containers outside that nav sit at **`op=0` with a `0x0` `<ol>`** while
   `data-mounted`, `data-visible` and `data-styled` are all true — a container with no
   box, so no capture of this set could have carried a card whatever the timing. Give

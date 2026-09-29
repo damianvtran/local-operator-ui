@@ -78,6 +78,15 @@ export const SelectTrigger = forwardRef<
 ));
 SelectTrigger.displayName = "SelectTrigger";
 
+/*
+ * The scroll affordances keep an EXPLICIT pointer: Radix renders both as
+ * aria-hidden divs (no button tag, no role), so the base layer's semantic
+ * selector list cannot reach them - and the vendored shadcn class this file
+ * shipped, `cursor-default`, left a hover-to-autoscroll click target reading
+ * as inert. A cursor a shared rule cannot give belongs where the element is
+ * built. (Dormant in today's selects: the scroll buttons only mount when a
+ * select's content overflows, and the largest in-tree list is ~8 items.)
+ */
 const SelectScrollUpButton = forwardRef<
 	ElementRef<typeof SelectPrimitive.ScrollUpButton>,
 	ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollUpButton>
@@ -85,7 +94,7 @@ const SelectScrollUpButton = forwardRef<
 	<SelectPrimitive.ScrollUpButton
 		ref={ref}
 		className={cn(
-			"flex cursor-default items-center justify-center py-1 text-ink-dim",
+			"flex cursor-pointer items-center justify-center py-1 text-ink-dim",
 			className,
 		)}
 		{...props}
@@ -102,7 +111,7 @@ const SelectScrollDownButton = forwardRef<
 	<SelectPrimitive.ScrollDownButton
 		ref={ref}
 		className={cn(
-			"flex cursor-default items-center justify-center py-1 text-ink-dim",
+			"flex cursor-pointer items-center justify-center py-1 text-ink-dim",
 			className,
 		)}
 		{...props}
@@ -119,6 +128,12 @@ export const SelectContent = forwardRef<
 	<SelectPrimitive.Portal>
 		<SelectPrimitive.Content
 			ref={ref}
+			/*
+			 * Not a drag surface; see the marker's note in `dialog.tsx` and the rule it is
+			 * read by in `styles/index.css`. A select opened near the top of the window
+			 * can flip its list over the chrome strip, and every row in it is a control.
+			 */
+			data-titlebar-no-drag=""
 			position={position}
 			className={cn(
 				"relative z-50 max-h-96 min-w-32 overflow-hidden rounded-md",

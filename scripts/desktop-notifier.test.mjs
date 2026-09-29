@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { beforeEach, test } from "node:test";
 import { build } from "esbuild";
+import { collectGarbage } from "./gc-probe.mjs";
 
 /**
  * Delivery-sink tests for the main-process notifier.
@@ -41,7 +42,21 @@ const bundle = await build({
 				static isSupported() { return globalThis.__notifySupported; }
 				constructor(options) { this.options = options; globalThis.__toasts.push(options); }
 				on(event, handler) { this.handlers ??= {}; this.handlers[event] = handler; }
-				show() { globalThis.__shown.push(this); }
+				once(event, handler) {
+					const wrapper = (...args) => { this.off(event, wrapper); handler(...args); };
+					this.on(event, wrapper);
+				}
+				off(event, handler) {
+					if (this.handlers?.[event] === handler) delete this.handlers[event];
+				}
+				emit(event, ...args) { this.handlers?.[event]?.(...args); }
+				show() {
+					if (globalThis.__captureWeakRefs) {
+						(globalThis.__weakRefs ??= []).push(new WeakRef(this));
+						return;
+					}
+					globalThis.__shown.push(this);
+				}
 			}
 		`,
 					loader: "js",
@@ -241,6 +256,13 @@ beforeEach(() => {
 	globalThis.__toasts = [];
 	globalThis.__shown = [];
 	globalThis.__notifySupported = true;
+	/*
+	 * The lifetime probes opt INTO weak capture per test, because a strong
+	 * `__shown` entry is exactly the reference production did not have. Every
+	 * other test keeps the strong record it clicks through.
+	 */
+	globalThis.__captureWeakRefs = false;
+	globalThis.__weakRefs = [];
 });
 
 // T-U1
@@ -1464,6 +1486,78 @@ test("the feed's frame and the bridge's frame with one dedupe_key raise one bann
 		requests.filter((r) => r?.op === "sessions.notified").length,
 		1,
 		"one delivery claim",
+	);
+});
+
+/*
+ * T-U20 AND T-U21: THE BANNER'S LIFETIME, which is what makes every click test
+ * above conditional in production.
+ *
+ * Electron destroys a main-process Notification's JS wrapper when V8 collects
+ * it, and the destructor nulls the native delegate
+ * (`shell/browser/api/electron_api_notification.cc`, `~Notification`), so a
+ * collected banner still sits in Notification Center while its click emits
+ * nothing: upstream electron/electron#16922 ("the event listener will execute
+ * only if click/close/reply happens shortly after the notification is
+ * created") and #12690 (waiting ~1 minute breaks it). That is the operator's
+ * "clicking a notification often does not open the conversation", and no test
+ * above this line can see it: they all hold the banner through
+ * `globalThis.__shown`, which is exactly the strong reference production did
+ * not have.
+ *
+ * So these two probes run with the capture OFF (`__captureWeakRefs`) and assert
+ * reachability after a REAL collection (`gc-probe.mjs`): the first fails on a
+ * tree that shows a banner and forgets it, and the second pins the other end —
+ * a click settles the entry so the registry cannot grow without bound.
+ */
+test("an un-clicked banner stays reachable through a garbage collection", async () => {
+	globalThis.__captureWeakRefs = true;
+	const { notifier } = harness({ contract: 1 });
+	notifier.observe(SESSION, completionFrame({ focus_policy: "always" }));
+	await settle(50);
+	assert.equal(globalThis.__weakRefs.length, 1, "one banner was shown");
+	await collectGarbage();
+	assert.ok(
+		globalThis.__weakRefs[0].deref(),
+		"a delivered banner must stay reachable until it settles: a collected wrapper's click never runs (electron/electron#16922)",
+	);
+});
+
+test("a clicked banner is released, and its click still routes", async () => {
+	globalThis.__captureWeakRefs = true;
+	const reopened = [];
+	const notifier = new DesktopNotifier(
+		() => null,
+		async () => ({ status: 200, body: { result: { claimed: true } } }),
+		"focus",
+		{
+			windowAlive: () => true,
+			noteDisplayed: () => undefined,
+			reopen: (sessionId) => reopened.push(sessionId),
+		},
+	);
+	notifier.observe(SESSION, completionFrame({ focus_policy: "always" }));
+	await settle(50);
+	/*
+	 * `let` and the null assignment are not tidiness: a local binding is a GC
+	 * root, and one left standing here would keep the banner alive through the
+	 * collection the release half is asserting. The probe has to end the way a
+	 * real click does — the last strong reference goes out of scope with it.
+	 */
+	let banner = globalThis.__weakRefs.at(-1)?.deref();
+	assert.ok(banner, "the banner is alive before the click");
+	banner.emit("click");
+	banner = null;
+	assert.deepEqual(
+		reopened,
+		[SESSION],
+		"the click still asks for the window to open the conversation",
+	);
+	await collectGarbage();
+	assert.equal(
+		globalThis.__weakRefs.at(-1).deref(),
+		undefined,
+		"a clicked banner is released so the registry cannot grow without bound",
 	);
 });
 

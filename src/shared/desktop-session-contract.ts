@@ -42,6 +42,20 @@ export type SessionCatalogueRow = {
 	id: CanonicalSessionId;
 	name: string;
 	mtime: number;
+	/**
+	 * When the conversation was BORN, in epoch SECONDS - the backend's
+	 * `session_created_at`: the canonical `created_at.json` record, or the
+	 * directory's birth time when that record is absent, and `0.0` when neither
+	 * can be read.
+	 *
+	 * The second clock on this row, beside `mtime` (the activity clock the
+	 * sidebar's bins read by default): the "Created" basis reads THIS one, and it
+	 * is optional because a backend that predates the field simply does not send
+	 * it - absent and a non-positive value are the same answer to the same
+	 * question ("no birth time"), which is why the reader refuses `<= 0` rather
+	 * than printing 1970 (`rowTimeMs` in `chat-list-sections.ts`).
+	 */
+	created_at?: number | null;
 	preview: string;
 	live_state: string;
 	pending: string | null;
@@ -126,6 +140,34 @@ export type SessionCatalogueRow = {
 	 */
 	subagents_running?: number | null;
 	subagents_queued?: number | null;
+	/**
+	 * -- THE MESH'S FLAT LOCALITY FIELDS, on every row of a listing that asked for
+	 * them (`include_peers`, gated on `features.peers`).
+	 *
+	 * `locality` is the only field that answers which device holds this row, and the
+	 * backend's own model says so: `peer` (the nested block) is `null` on every row
+	 * this shape describes, "so a reader must take `peer: null` as 'this row carries
+	 * no nested block' and never as 'this row is local'". `locality` is therefore
+	 * always present with a value - `"local"` for a row on this device, `"remote"`
+	 * for one another device holds - while the rest are `""`/`true` on a local row,
+	 * present-with-a-value rather than omitted, which is the same "an absent key is
+	 * not a claim" rule `pinned` states above: a row that MOVED home must be able to
+	 * SETTLE its stale `remote` mark rather than keep it forever.
+	 *
+	 * OPTIONAL HERE AND REQUIRED ON THE WIRE, deliberately: they arrive only from a
+	 * listing that asked for peers (and only from a backend new enough to know them),
+	 * so a reader of this type must treat absence as "not asked / not answered" and
+	 * never as "remote" or "unreachable". The Mesh tab is the one reader, and it
+	 * normalises rather than casts (`features/mesh/mesh-types.ts`).
+	 */
+	locality?: "local" | "remote";
+	/** The device that holds it; `""` on a local row's own catalogue entry. */
+	owner_device?: string;
+	owner_device_name?: string;
+	/** Whether the owning device answered the poll that produced this row. */
+	reachable?: boolean;
+	/** One sentence when `reachable` is false, in the backend's own words. */
+	unreachable_reason?: string;
 };
 /**
  * One hit from `sessions.search`, returned by the `session_search` capability
@@ -443,7 +485,9 @@ export type PendingDesktopGate = {
 	 *
 	 * ADDITIVE and OPTIONAL for the same version-skew reason as `recommended`.
 	 * Carried here so the type matches the wire; the secret answer path is the
-	 * composer's masked input, which does not branch on this yet.
+	 * docked card's masked field (`trace/question-dock.tsx`'s `SecretAnswer`,
+	 * posted through `ask-answer.ts`'s `answerGateSecret`), which does not
+	 * branch on this yet.
 	 */
 	persist?: boolean;
 	/**
@@ -644,6 +688,46 @@ export function epochMsFromSeconds(value: unknown): number | null {
 		: null;
 }
 
+/**
+ * The live judge state a judged goal carries, as `FrontendSessionState.goal_judge`
+ * publishes it.
+ *
+ * A CLOSED VOCABULARY WITH AN OPEN READER. Every member of `state` is a word some
+ * surface may render, and a reader must tolerate a member it does not know: the
+ * writer is a newer backend than this build, and the alternative to tolerating it
+ * is a surface that paints nothing (or, worse, crashes) on a state that is
+ * perfectly real. `verdict` is typed the same way for the same reason.
+ *
+ * `run` is the count of consecutive auto-continuations admitted for the goal. It
+ * is NOT a progress bar — the design record refuses printing it on the chip
+ * because nothing on the row can act on it — but it is read by the pane and the
+ * picker where a goal has room to say how far a judge has driven it.
+ */
+export type CanonicalGoalJudge = {
+	state: string;
+	run?: number;
+	verdict?: string;
+	reason?: string;
+};
+
+/**
+ * One settled goal, as `FrontendSessionState.goal_history` publishes it.
+ *
+ * `status` is the WIRE's word and is printed as the wire spells it (the loop
+ * chip's own rule for a status word), so the receipt and the pane cannot describe
+ * one goal differently. `id` is stable and is what a future delete-by-id would
+ * address; nothing consumes it yet — the pane's omission of a delete control is
+ * deliberate, because no command deletes a history row.
+ */
+export type CanonicalGoalHistoryEntry = {
+	id: string;
+	text: string;
+	status: string;
+	created_at?: string;
+	settled_at?: string;
+	reason?: string;
+};
+
 export type CanonicalFrontendState = {
 	attention?: CompletionAttention;
 	state_version: number;
@@ -655,6 +739,21 @@ export type CanonicalFrontendState = {
 	conversation_title_user_set: boolean;
 	conversation_title_forked: boolean;
 	goal: string;
+	/**
+	 * `""` (no goal) | `"active"` | `"done"`. Optional, and the optionality is
+	 * LOAD-BEARING rather than incidental: this field, `goal_judge`, `goal_history`
+	 * and `goal_history_truncated` all ship in ONE backend change, so their presence
+	 * on the snapshot is the only capability signal a released-vs-current backend
+	 * gives a renderer. A typed non-optional field here would let a control be
+	 * written that sends a new argument to a backend that would store it as the goal
+	 * text (`goal --clear` did exactly that on a released build, measured in
+	 * `docs/composer-status-tabs.md` §12.4). Read them through `goalCapability`
+	 * below; never assume they are there.
+	 */
+	goal_status?: string;
+	goal_judge?: CanonicalGoalJudge | null;
+	goal_history?: CanonicalGoalHistoryEntry[];
+	goal_history_truncated?: boolean;
 	active_agent: string;
 	active_team: string;
 	selected_model: CanonicalModel | null;
@@ -773,6 +872,51 @@ export type CanonicalFrontendState = {
 	// than throwing away newer owner's accounting/roster data on reconnect.
 	[key: string]: unknown;
 };
+/**
+ * Whether this snapshot came from a backend that understands the goal lifecycle
+ * arguments (`done`, `dismiss`, `history`).
+ *
+ * ONE PREDICATE, READ BY EVERY NEW CONTROL. The gate is not a nicety: a backend
+ * that predates these fields does not have `--done`/`done` in its flag vocabulary,
+ * so it treats the bare word as goal TEXT and stores the literal `done` as the
+ * user's standing goal — silent data loss from one click, measured for the sibling
+ * `--clear` footgun in `docs/composer-status-tabs.md` §12.4. The fields and the
+ * flags ship in one backend change, so "is the field there" is exactly "does the
+ * flag exist".
+ *
+ * `goal_status` is the field that decides it because it is the one every new
+ * control depends on (the done paint, the `Dismiss` swap, the pane's rows) — and it
+ * is checked with `in`/`typeof` rather than truthiness, because `""` and `false` are
+ * legitimate VALUES of this capability and only absence means "old".
+ *
+ * A `null` frontend (a pane with no snapshot yet) is NOT capable: nothing new may
+ * be sent before a snapshot has said the backend knows it.
+ */
+export const goalCapability = (
+	frontend: CanonicalFrontendState | null | undefined,
+): boolean => typeof frontend?.goal_status === "string";
+/**
+ * Whether this snapshot carries a goal AT ALL — set and in flight, or already
+ * settled.
+ *
+ * THE ONE PRESENCE RULE the surfaces that speak about "a goal" share (design
+ * review round 2, D2). The wire's `goal` is a REQUIRED string whose empty value
+ * means no goal, and a whitespace-only goal is none — the rule the composer chip
+ * already gates on (`frontend?.goal?.trim()` in `composer-status-row.tsx`) and
+ * that the `/goal` picker's `Judge` row reuses for the same reason (`hasGoal`).
+ * It is exported so the canvas pane's empty state can ask THIS question instead
+ * of the one it was asking — *has anything SETTLED* — which told a user with a
+ * goal in flight "No goal set — /goal <text> to set one." while the composer
+ * chip two panes away displayed that goal, in one screen.
+ *
+ * DISTINCT FROM `goalCapability` ON PURPOSE: capability is "does this backend
+ * publish the lifecycle at all", presence is "is there a goal on it". A new
+ * backend with no goal is capable and carries none; a backend that predates the
+ * fields is neither capable nor, on any surface here, able to have one.
+ */
+export const goalPresent = (
+	frontend: CanonicalFrontendState | null | undefined,
+): boolean => (frontend?.goal ?? "").trim().length > 0;
 export type CanonicalFrontendSync = {
 	state_version: number;
 	epoch: string;

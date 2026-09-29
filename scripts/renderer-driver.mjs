@@ -89,8 +89,11 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|connection-drop|sidebar-sections|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|project-detail|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|none>
  *                          which built-in scene to run (default: states)
+ *   --project <key>        (with --scene project-detail) the seeded project the
+ *                          detail scene drives; the seed decides the name and a
+ *                          default would photograph whatever it happened to use
  *   --gate-state <label>   (with --scene settings-gate) what this run's backend
  *                          state is called in the frames and the log, so two
  *                          runs against two backends can be told apart
@@ -107,6 +110,19 @@
  *                          against one that publishes none (the base-commit
  *                          runtime), where the row must stay off screen until
  *                          the app is remounted
+ *   --bin-expect <prompt|stale>  (with --scene sidebar-bin-promptness) which
+ *                          half of the bin pair this run records: `prompt`
+ *                          asserts an older session messaged today lands under
+ *                          `Today` within ~2 s of its completion; `stale`
+ *                          records the old bin it sits in instead
+ *   --slash-expect <open|refused>  (with --scene sessionless-slash) which claim
+ *                          this run is in: `open` (the default) asserts that
+ *                          `/help`, `/theme`, `/login`, `/logout` and
+ *                          `/resume` typed on a new chat each mount their
+ *                          picker with no refusal sentence; `refused` asserts
+ *                          the dispatcher's own sentence for each and no
+ *                          picker - the base tree's half of the pair (issue
+ *                          #625)
  *   --backend <url>        a live, ISOLATED backend this run owns: the app's own
  *                          transport is pointed at it, so a surface gated on a
  *                          capability can be driven at all. The renderer must have
@@ -142,6 +158,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import {
+	appendFileSync,
 	existsSync,
 	lstatSync,
 	mkdirSync,
@@ -303,6 +320,13 @@ const BACKEND = argValue("--backend", null);
  */
 const BACKEND_RECORDS = argValue("--backend-records", null);
 /**
+ * The project key `--scene project-detail` drives (the lane's seed writes it).
+ *
+ * An ARGUMENT rather than a constant: the seed decides the name, and a scene
+ * that guessed would photograph whatever the seed happened to call its row.
+ */
+const PROJECT = argValue("--project", null);
+/**
  * The command that starts a fresh daemon on the `--backend` address, for
  * `--scene connection-drop`'s reconnect half.
  *
@@ -359,6 +383,7 @@ const THEME = argValue("--theme", null);
  * fails the run rather than moving the goalposts with it.
  */
 const LAZY_CASE = argValue("--scoped-case", "paged");
+const RAIL_CASE = argValue("--scoped-case", "full");
 /*
  * THE HOLD FILE the `loading` arm releases (round 2, D12). The stand-in holds every
  * scoped answer while this file is absent, so the arm photographs a wait that is
@@ -406,6 +431,58 @@ const TUI_CONFIG = argValue("--tui-config", null);
  * question it does not ask.
  */
 const AUTHORING_EXPECT = argValue("--authoring-expect", "refresh");
+/**
+ * (with `--scene sidebar-bin-promptness`) which half of the bin pair this run
+ * records.
+ *
+ * `prompt` (the default) asserts the change's own claim: an older session
+ * messaged today lands under `Today` within the target window (~2 s) of its
+ * completion. `stale` is the same app, script, daemon and message WITHOUT the
+ * client half, and its claim is the operator's report: the row stays in its old
+ * bin. A still cannot carry a latency, so this flag exists to make the two
+ * readings one comparison rather than two anecdotes.
+ *
+ * A value the scene does not know is refused rather than defaulted, for the
+ * same reason `--authoring-expect` does: a typo would silently run the other
+ * half and read as the answer to a question it did not ask.
+ */
+const BIN_EXPECT = argValue("--bin-expect", "prompt");
+/**
+ * WHICH CLAIM A `--scene sessionless-slash` RUN IS IN (issue #625).
+ *
+ * `open` (the default) is the head tree: `/help`, `/theme`, `/login`,
+ * `/logout` and `/resume` typed on a pane with no conversation each mount
+ * their picker, and the transcript carries no refusal sentence. `refused` is
+ * the base tree: the same five gestures each get the dispatcher's own sentence
+ * ("<word> needs an open conversation. Start one first.") and no picker
+ * mounts. One scene, both halves, the same bytes - the pair is only readable
+ * if the same code produced both, which is why the flag names a claim rather
+ * than a tree.
+ *
+ * A value the scene does not know is refused rather than defaulted, for the
+ * same reason `--authoring-expect` and `--bin-expect` are.
+ */
+const SLASH_EXPECT = argValue("--slash-expect", "open");
+/**
+ * WHICH HALF OF A BEFORE/AFTER PAIR THIS RUN IS (with --scene conversation-start).
+ *
+ * `after` (the default) asserts the change's own claims; `before` runs the same
+ * steps against a tree without it and RECORDS the same moments, because those
+ * claims are the change and failing on them there would only restate that the
+ * old build is the old build. One scene, both halves, the same taps.
+ */
+const START_EXPECT = argValue("--expect", "after");
+/**
+ * THE CREATE TAP'S CONTROL DOOR (with --scene conversation-start).
+ *
+ * The tap (`docs/evidence/conversation-start/harness/create-tap.mjs`) is what
+ * makes the press frame reachable, and its second job is the failure arm: the
+ * scene tells it to fail the NEXT message POST with the owner's captured
+ * `runtime_unreachable` body, so the post-paint failure is raised by the wire
+ * rather than staged in the DOM. The scene skips that step when this is absent
+ * and says so.
+ */
+const TAP_CONTROL = argValue("--tap-control", null);
 
 /**
  * (with `--scene settings-integrations`) the stdio MCP server that scene adds
@@ -1715,17 +1792,19 @@ async function capture(cdp, label, { assertPalette = true } = {}) {
 const TOAST_SELECTOR = "[data-sonner-toast]";
 
 /**
- * The PANEL'S OWN toast lane (design D11 of `docs/design/sidebar-row-space.md`).
+ * THE ARCHIVE FAMILY'S MESSAGE, AS THE DOM SHOWS IT (2026-09-27).
  *
- * Two things make this selector precise, and both are needed. Sonner marks the
- * container's position on the element it renders toasts into, and the panel's lane
- * declares `bottom-left` - but the GLOBAL container also renders an `<ol>` for that
- * position, because every mounted Toaster keeps a copy of every toast (measured; the
- * app's stylesheet is what narrows that to the toast the reader sees). So the lane is
- * addressed through the panel's own landmark rather than by position alone.
+ * It is an ordinary sonner toast again - the operator's own request, "instead of having
+ * a separate sidebar notification, we should probably just use the normal sonner toast.
+ * These don't properly show up and look janky" - so there is no marker class to address
+ * it by: no `className`, no lane, no second container. The scenes that read it are
+ * SINGLE-MESSAGE scenes by construction (each waits for the surface to be toast-free,
+ * raises exactly one archive or discard message, and reads or presses it), so the
+ * honest selector is "a toast on screen", and every place it is used ships a check
+ * that the message is the one the scene raised (its action's own label - `Undo` for an
+ * offer, `Retry` for a refusal - or the store's own stamp).
  */
-const SIDEBAR_TOAST =
-	'nav[aria-label="Chats"] [data-sonner-toaster] [data-sonner-toast].lo-archive-toast';
+const ARCHIVE_TOAST = "[data-sonner-toast]";
 
 /**
  * The fixture row the stub REFUSES to write: a conversation a running session holds
@@ -1741,7 +1820,8 @@ const REFUSED_ID = "7c1b0f2a4d31";
  * The fixture row whose UNARCHIVE is refused once (`refuse_unarchive_once` in the stub).
  *
  * Its archive is accepted, so it is the row whose offer can be pressed into a refusal -
- * the lane's Undo path, which is where agent review round 2's R2-1 lived.
+ * the offer's Undo path, which is where agent review round 2's R2-1 lived (its
+ * dismiss/create window is the one the lane's retirement re-asked about, 2026-09-27).
  */
 const REFUSED_UNDO_ID = "b3f1a09c7d52";
 
@@ -1888,7 +1968,8 @@ async function drawnSelector(cdp, selector) {
 
 /**
  * Wait for a selector that was on screen to go, which is how the archive OFFER is
- * read: it is a toast in the panel's own lane (design D11 of
+ * read: it is a toast in the app's one container (the sidebar's own lane was
+ * retired on 2026-09-27 - D11's supersession entry in
  * `docs/design/sidebar-row-space.md`), and what has to be waited for - rather than
  * sampled - is that it RETIRES.
  *
@@ -1926,13 +2007,17 @@ async function waitForGone(cdp, selector, timeoutMs = 15_000) {
  * the scene checks both, because a frame the app never held still for, or one
  * with a transient banner on it, is not evidence.
  */
-async function captureSettled(cdp, label, { attempts = 8, gapMs = 150 } = {}) {
+async function captureSettled(
+	cdp,
+	label,
+	{ attempts = 8, gapMs = 150, toastWaitMs = 15_000 } = {},
+) {
 	let previous = null;
 	let frame = null;
-	let toastWaitMs = 0;
+	let waitedForToastsMs = 0;
 	for (let attempt = 1; attempt <= attempts; attempt += 1) {
-		const clearance = await waitForNoToasts(cdp);
-		toastWaitMs += clearance.waitedMs;
+		const clearance = await waitForNoToasts(cdp, toastWaitMs);
+		waitedForToastsMs += clearance.waitedMs;
 		/*
 		 * The palette is asserted BELOW, on the frame this helper KEEPS rather than on
 		 * each attempt: a retry is the same screen captured again, so eight identical
@@ -1964,7 +2049,7 @@ async function captureSettled(cdp, label, { attempts = 8, gapMs = 150 } = {}) {
 				attempts: attempt,
 				stable: true,
 				toastFree,
-				toastWaitMs,
+				toastWaitMs: waitedForToastsMs,
 			});
 		}
 		previous = bytes;
@@ -1975,7 +2060,7 @@ async function captureSettled(cdp, label, { attempts = 8, gapMs = 150 } = {}) {
 		attempts,
 		stable: false,
 		toastFree: false,
-		toastWaitMs,
+		toastWaitMs: waitedForToastsMs,
 	});
 }
 
@@ -2272,13 +2357,15 @@ async function clickAt(cdp, selector) {
  * this change that had no frame at all and one a frame the design round asked for
  * to settle a finding: the open conversation archived, with the header's pill and
  * its restore control (D2); the delete REFUSED through the dialog that asked, with
- * the keyboard back on the safe action (D3, UX U3); the archive refused, in the
- * panel's own toast lane (D3, and design D11 of `docs/design/sidebar-row-space.md`
- * for the lane); and the row's own hover with the pointer on the title rather than
- * on the control (D5). The undo offer a successful archive makes (D7) is
- * photographed too - in its own frame, with its own assertion, because it is a
- * TOAST and every other capture here asserts `toastFree`. The REFUSED archive's two
- * frames are in that same list for the same reason: the refusal is a toast now.
+ * the keyboard back on the safe action (D3, UX U3); the archive refused, as an
+ * ordinary sonner toast in the app's one container (D3; the sidebar lane it was
+ * moved into in 2026-09 was retired by the operator's own request, see design
+ * D11's supersession in `docs/design/sidebar-row-space.md` §10); and the row's own
+ * hover with the pointer on the title rather than on the control (D5). The undo
+ * offer a successful archive makes (D7) is photographed too - in its own frame,
+ * with its own assertion, because it is a TOAST and every other capture here
+ * asserts `toastFree`. The REFUSED archive's two frames are in that same list for
+ * the same reason: the refusal is a toast now.
  *
  * ## What it runs against
  *
@@ -2300,13 +2387,14 @@ async function clickAt(cdp, selector) {
 /**
  * THE LIST'S OWN BOX, ITS SCROLL AND EVERY ROW'S OFFSET, in one reading.
  *
- * WHY THIS EXISTS (QA round 3, Q-3 = design round 4, D20): D14 promised that the band's height
- * comes out of the list - "the list yields its bottom ... `scrollTop` is never written" - and the
- * committed assembly did not do it: the list is `flex: 0 0 auto` in the two-region shape, so the
- * column paid the band out of the ENTITY region above, whose height IS the list's top, and every
- * row rode up by the band's height (measured: -150 at the settled refusal, -34/-58 mid-entrance,
- * -144 at the short window, the list's own height never changing). The promise is a claim about
- * THIS box and THESE offsets, so it is read rather than restated.
+ * WHY THIS EXISTS (QA round 3, Q-3 = design round 4, D20): the band that used to answer an
+ * archive message had to take its height out of the list's own bottom, with every row's top
+ * byte-equal - the list yields its bottom, `scrollTop` is never written. THE BAND IS GONE
+ * with the operator's request of 2026-09-27 (the message is an ordinary sonner toast again,
+ * and a toast takes no layout space at all), so what this reading is used for now is the
+ * STRONGER form of the same claim: with a message standing, the list's box, its scroll
+ * extent, both scrollTops and every row's top are byte-identical to the message-free
+ * reading, because nothing in the panel reserves space for a toast.
  */
 async function listAndRowOffsets(cdp) {
 	return cdp.evaluate(`(() => {
@@ -2339,11 +2427,9 @@ async function listAndRowOffsets(cdp) {
 				})),
 			};
 		};
-		const band = document.querySelector("[data-archive-toast-band]");
 		return {
-			list: region('[data-sidebar-region="chats"]', "[data-session-row]", "chats"),
+			list: region('[data-sidebar-region="scroller"]', "[data-session-row]", "chats"),
 			entities: region('[data-sidebar-region="entities"]', "[data-entity]", "entities"),
-			band: band === null ? 0 : Math.round(band.getBoundingClientRect().height),
 			rows: Array.from(
 				document.querySelectorAll(
 					'[data-sidebar-region="chats"] [data-session-row], [data-sidebar-region="entities"] [data-session-row]',
@@ -2400,8 +2486,8 @@ function rowsUnmoved(before, after) {
  * does not produce on its own) and stops as soon as two consecutive readings agree: two screenshots
  * in the ordinary case, six in the worst - 6 x 120ms, about 0.7s. THAT BOUND IS THE POINT. An
  * earlier version of this used twelve attempts and cost ~26s across the two places it ran, which is
- * LONGER THAN THE LANE'S OWN MESSAGE LIFE: the loop outlived the card it was waiting for, read
- * `{band: {height: 0}, card: null}` and the step lost the message its frames photograph. A settle
+ * LONGER THAN THE MESSAGE'S OWN LIFE: the loop outlived the card it was waiting for, read
+ * `{card: null}` and the step lost the message its frames photograph. A settle
  * that can outlive its subject is worse than the clock wait it replaces.
  */
 async function awaitCardSettled(cdp, { attempts = 6, gapMs = 120 } = {}) {
@@ -2409,7 +2495,7 @@ async function awaitCardSettled(cdp, { attempts = 6, gapMs = 120 } = {}) {
 	let reading = null;
 	for (let attempt = 1; attempt <= attempts; attempt += 1) {
 		await capture(cdp, "settle-probe").catch(() => null);
-		reading = await verb(cdp, "measure", SIDEBAR_TOAST).catch(() => null);
+		reading = await verb(cdp, "measure", ARCHIVE_TOAST).catch(() => null);
 		const key = reading === null ? null : JSON.stringify(reading.rect);
 		if (key !== null && key === previous) return { reading, attempts: attempt };
 		previous = key;
@@ -2467,10 +2553,9 @@ async function scrolledArrival(
 	 * instrument's own output when one has been armed.
 	 */
 	const stateScript = `(() => {
-		const list = document.querySelector('[data-sidebar-region="chats"]');
+		const list = document.querySelector('[data-sidebar-region="scroller"]');
 		if (list === null) return { ok: false, why: "no list region" };
-		const bandNode = document.querySelector("[data-archive-toast-band]");
-		const card = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)});
+		const card = document.querySelector(${JSON.stringify(ARCHIVE_TOAST)});
 		const entities = document.querySelector('[data-sidebar-region="entities"]');
 		const box = list.getBoundingClientRect();
 		const clipTop = box.top + list.clientTop;
@@ -2530,7 +2615,6 @@ async function scrolledArrival(
 				scrollHeight: list.scrollHeight,
 			},
 			clip: { top: Math.round(clip.top), bottom: Math.round(clip.bottom) },
-			band: bandNode === null ? 0 : Math.round(bandNode.getBoundingClientRect().height),
 			card: card === null ? null : Math.round(card.getBoundingClientRect().height),
 			entities:
 				entities === null
@@ -2547,6 +2631,19 @@ async function scrolledArrival(
 				top: activeRect === null ? null : Math.round(activeRect.top),
 				bottom: activeRect === null ? null : Math.round(activeRect.bottom),
 				visibility: activeRect === null ? "no-row-focused" : visibilityOf(activeRect),
+				/*
+				 * AND THE REGION THE CARET IS IN, named rather than inferred (UX round 2, U1). The defect
+				 * this reading exists for is a caret in the ENTITY region while the reader was working in
+				 * the list, and a reading that said only "some chat row is focused" could not tell that
+				 * state from the right one: both regions' rows carry that attribute, so the attribute
+				 * says nothing about WHICH region the keyboard is in.
+				 */
+				region:
+					active instanceof HTMLElement
+						? (active
+								.closest("[data-sidebar-region]")
+								?.getAttribute("data-sidebar-region") ?? null)
+						: null,
 			},
 			focusedIndex,
 			activeIsChatRow: activeRect !== null,
@@ -2562,37 +2659,37 @@ async function scrolledArrival(
 		}
 	};
 	/*
-	 * THE ARRIVAL STARTS FROM NO BAND, and the wait is a precondition rather than tidiness: the rig's
-	 * cap is applied below and the app measures its OWN band-0 box (`listBase`) on the next commit,
-	 * so a band standing then would leave the base measured from a box the band had already taken
-	 * height off - and the yield clause would be asserting arithmetic about this probe. The lane's
-	 * message retires on its own clock, so this waits it out.
+	 * THE ARRIVAL STARTS FROM NO MESSAGE (2026-09-27). It used to wait for the band's own height
+	 * to read 0 before capping the column - because the app measured its band-0 box on the next
+	 * commit and a band standing then would have poisoned the arithmetic. There is no band any
+	 * more: a message reserves no space, so a standing toast is not a precondition this probe
+	 * needs to wait out, and the reading below its press is the stronger one - the box, the
+	 * extent, both scrollTops and every row's top are byte-equal with the message up.
 	 */
-	let bandNow = null;
-	for (let attempt = 0; attempt < 60; attempt += 1) {
-		bandNow = await cdp
-			.evaluate(`(() => {
-				const band = document.querySelector("[data-archive-toast-band]");
-				return band === null ? 0 : Math.round(band.getBoundingClientRect().height);
-			})()`)
-			.catch(() => null);
-		if (bandNow === 0) break;
-		await wait(500);
-	}
 	/*
 	 * THE RULE IS BUILT HERE, IN THE DRIVER'S OWN CODE, and the page only assigns it: a nested
 	 * template literal inside the page script would terminate the script string it lives in, and
 	 * building the rule by concatenation is what `pnpm lint` refuses.
 	 */
-	const capRule = `[data-sidebar-region="chats"] { max-height: ${cap} !important; }`;
+	const capRule = `[data-q9-cap-host] { max-height: ${cap} !important; }`;
 	const capped = await cdp.evaluate(`(() => {
-		const list = document.querySelector('[data-sidebar-region="chats"]');
+		const list = document.querySelector('[data-sidebar-region="scroller"]');
 		if (list === null) return { ok: false, why: "no list region" };
 		/*
 		 * THE CAP IS THE RIG'S ONLY EDIT, and it is the one thing the app's own layout cannot be
-		 * driven to: the region's maxHeight comes from the split, and it is measured from the list's
-		 * own content - so the box is content-sized at rest, it does not overflow, and a scroll
+		 * driven to: the scroller is content-sized at rest, so it does not overflow, and a scroll
 		 * written on it would be clamped away (measured: 241 against 241, scrollTop 0).
+		 *
+		 * AND IT CAPS THE COLUMN THE BAND LIVES IN, NOT THE LIST ITSELF (QA round 2, Q1). A cap on
+		 * the list pins the very box the band is meant to yield: measured at this head, a max-height
+		 * of 200px on the merged scroller left it 200 -> 200 while a declared 58px offer band arrived,
+		 * with the extent dipping 292 -> 260 - so the band's own arithmetic (design round 8's D27
+		 * pairing and design round 9's D30 yield) was being read off the rig instead of off the app,
+		 * and the coupling it exists to prove read RED on a tree that does it right (the panel's own
+		 * box 96 -> 38 for the same 58 band on origin/main). The app's own mechanism is the flex
+		 * column's: the band is the panel's last child and the scroller is the flexible one left of
+		 * it, so capping the COLUMN is what leaves the list short of its content - the state a reader
+		 * scrolls in - while the band still takes its height off the box.
 		 *
 		 * IT IS A STYLESHEET RULE, AND THAT IS NOT DECORATION. Two measured attempts to hold this
 		 * inline failed: a plain value was overwritten by the split's own recompute in the resize
@@ -2605,12 +2702,18 @@ async function scrolledArrival(
 		 * Everything after this line is the app's: the press is the app's control, the card is the
 		 * app's message, and the commit that gives the band its height is the app's own.
 		 */
+		const host = list.parentElement ?? list;
+		host.setAttribute("data-q9-cap-host", "1");
 		const sheet = document.createElement("style");
 		sheet.setAttribute("data-q9-cap", "1");
 		sheet.textContent = ${JSON.stringify(capRule)};
 		document.head.appendChild(sheet);
-		const applied = getComputedStyle(list).maxHeight;
-		return { ok: true, bandAtSeed: ${JSON.stringify(bandNow)}, appliedMaxHeight: applied };
+		const applied = getComputedStyle(host).maxHeight;
+		return {
+			ok: true,
+			appliedMaxHeight: applied,
+			cappedHost: host.tagName.toLowerCase(),
+		};
 	})()`);
 	if (capped?.ok !== true) return { label, capped };
 	/*
@@ -2650,13 +2753,22 @@ async function scrolledArrival(
 	 * the band's own height given back off the box's bottom puts its top below the new edge.
 	 */
 	const placed = await cdp.evaluate(`(() => {
-		const list = document.querySelector('[data-sidebar-region="chats"]');
+		const list = document.querySelector('[data-sidebar-region="scroller"]');
 		if (list === null) return { ok: false, why: "no list region" };
 		const clipOf = () => {
 			const rect = list.getBoundingClientRect();
 			const top = rect.top + list.clientTop;
 			return { top, bottom: top + list.clientHeight };
 		};
+		/*
+		 * THE WALK'S OWN STEP: one row of the reader's list, measured rather than assumed, so the
+		 * loop below cannot drift from the rows it is looking for.
+		 */
+		const rowStep = (() => {
+			const button = list.querySelector("[data-session-row] [data-chat-row]");
+			const height = button ? Math.round(button.getBoundingClientRect().height) : 0;
+			return height > 0 ? height : 32;
+		})();
 		const pickFocus = () => {
 			/*
 			 * THE CURSOR THE CALLER NAMED, when it named one (agent review round 5): the departure's own
@@ -2678,26 +2790,145 @@ async function scrolledArrival(
 			});
 			return inside[inside.length - 1] ?? null;
 		};
+		/*
+		 * THE READER'S OWN POSITION IS APPLIED BEFORE THE CURSOR IS PICKED (QA round 2, Q1), and the
+		 * order is the merged panel's. In the split, the chats list WAS the scroller: a reader at 20
+		 * had session rows in the clip, so picking first found one. In the one-scroll panel the
+		 * scroller carries the ENTITY region above the chats, so those 20px scroll the entity region
+		 * into the clip and leave the first session row just BELOW its lower edge - measured here as
+		 * "no session row starts inside the clip", which returned an arrival with no before-reading,
+		 * no samples and no press, and made the whole leg read null rather than red (the vacuous pass
+		 * this clause exists to prevent). So the position goes on first and the cursor is the last row
+		 * that starts inside the clip from where the reader actually is.
+		 *
+		 * AND THE STATE MUST BE ONE A READER COULD BE IN (QA round 3, Q-1). This instrument's subject
+		 * is a reader standing in a scrolled list, so BOTH rows the press is about have to start inside
+		 * the clip: the CURSOR row, which is the one a correction is possible for, and - when the press
+		 * targets a row's own control - the PRESSED row, because a reader presses a row they can see.
+		 * The named-cursor path used to skip the clip condition entirely (it returned the row it was
+		 * given, however far below the fold it lay), so the clause claiming "the pressed row is on
+		 * screen" printed a reading with BOTH rows below the clip: prose and reading disagreeing, which
+		 * is the class this round exists to close. The walk below carries the reader down until both
+		 * start inside and reports both, and the clause's own stateOk reads that report.
+		 */
+		const startsInside = (row) => {
+			if (row === null) return false;
+			const button = row.querySelector("[data-chat-row]");
+			if (button === null) return false;
+			const rect = button.getBoundingClientRect();
+			const clip = clipOf();
+			return rect.top >= clip.top && rect.top < clip.bottom;
+		};
+		const pressSelector = ${JSON.stringify(press?.selector ?? null)};
+		/*
+		 * The pressed row is the row the press's own control sits in. A press whose control is outside
+		 * every row (the offer's Retry, a header action) has none, and then there is nothing to place -
+		 * pressedInside reports true for that press rather than a failure it cannot have caused.
+		 */
+		const pressedRow =
+			pressSelector === null
+				? null
+				: (list.querySelector(pressSelector)?.closest("[data-session-row]") ?? null);
+		list.scrollTop = ${JSON.stringify(scroll)};
 		let chosen = pickFocus();
-		if (chosen === null) return { ok: false, why: "no session row starts inside the clip" };
-		chosen.querySelector("[data-chat-row]").focus();
-		list.scrollTop = ${JSON.stringify(scroll)};
-		chosen = pickFocus() ?? chosen;
+		let walked = 0;
+		const placement = () => ({
+			cursorInside: startsInside(chosen),
+			pressedInside: pressedRow === null || startsInside(pressedRow),
+		});
+		let placed = placement();
+		/*
+		 * AND WHEN THE READER'S OWN POSITION LEAVES EITHER ROW OUTSIDE THE CLIP, THE WALK CARRIES THEM
+		 * DOWN to the first position that puts both inside - one row of their own list at a time,
+		 * bounded by the content's own end (scrollTop stops moving once the extent is spent). This is
+		 * the state the clauses are about, not a number being tuned: a session row has to start in the
+		 * clip for the band's arrival to be able to push it out at all (the geometryOk clause reads
+		 * exactly that), and the position reached is reported back and asserted (scrollAtPress > 0).
+		 */
+		while (
+			(chosen === null || !placed.cursorInside || !placed.pressedInside) &&
+			walked < 60
+		) {
+			const before = list.scrollTop;
+			list.scrollTop = before + rowStep;
+			if (list.scrollTop === before) break;
+			walked += 1;
+			chosen = pickFocus();
+			placed = placement();
+		}
+		if (chosen === null)
+			return {
+				ok: false,
+				why: "no session row starts inside the clip, even at the end of the reader's own walk",
+			};
 		const button = chosen.querySelector("[data-chat-row]");
+		/*
+		 * THE POSITION REACHED IS PUT BACK AFTER THE FOCUS, because focus() scrolls its element into
+		 * view itself: the state under test is a reader who put the list where they wanted with a
+		 * cursor inside it, and a probe whose scroll was the browser's focus scroll would be measuring
+		 * that instead.
+		 */
+		const reached = Math.round(list.scrollTop);
 		button.focus();
-		list.scrollTop = ${JSON.stringify(scroll)};
+		list.scrollTop = reached;
+		/*
+		 * AND THE ROW THAT TAKES THE PRESSED ROW'S PLACE, computed by the RULE the hand-off implements
+		 * rather than by re-stating its result: the pressed row's position among the rows the hand-off
+		 * may pick from - the list's own region when the press is inside it, the panel's order when it
+		 * is not - then the next one, or the last one before it when the pressed row was the list's
+		 * last. Read BEFORE the press, which is the order the hand-off's own snapshot is taken in.
+		 *
+		 * WHY THE CLAUSE NEEDS THIS TO BE ABLE TO FAIL (UX round 2, U2): the accepted leg presses the
+		 * list's LAST row, where "the row above" and the list's first row are the same element, so a
+		 * clause asking only for "a conversation row of the chats region" passes on a successor rule
+		 * that never ran. The rule's own output is asserted against the caret's row instead.
+		 */
+		const handOffRows = (() => {
+			const scoped = Array.from(
+				document.querySelectorAll(
+					'[data-sidebar-region="chats"] [data-chat-row]',
+				),
+			);
+			if (
+				pressedRow !== null &&
+				scoped.some((candidate) => pressedRow.contains(candidate))
+			)
+				return scoped;
+			return Array.from(document.querySelectorAll("[data-chat-row]"));
+		})();
+		const pressedPosition =
+			pressedRow === null
+				? -1
+				: handOffRows.findIndex((candidate) => pressedRow.contains(candidate));
+		const successorRow =
+			pressedPosition === -1
+				? null
+				: (handOffRows[pressedPosition + 1] ??
+						handOffRows[pressedPosition - 1] ??
+						null)
+						?.closest("[data-session-row]")
+						?.getAttribute("data-session-row") ?? null;
 		return {
 			ok: true,
 			focusedId: chosen.getAttribute("data-session-row"),
 			focusHeld: document.activeElement === button,
 			scrollTop: list.scrollTop,
+			readerAt: ${JSON.stringify(scroll)},
+			walked,
+			rowStep,
+			cursorInside: placed.cursorInside,
+			pressedInside: placed.pressedInside,
+			pressedRow: pressedRow?.getAttribute("data-session-row") ?? null,
+			pressedPosition,
+			handOffRowCount: handOffRows.length,
+			successorRow,
 		};
 	})()`);
 	if (placed?.ok !== true) return { label, capped, placed };
 	const before = await readState("before");
 	const pressSelector = press.selector;
 	const armed = await cdp.evaluate(`(() => {
-		const list = document.querySelector('[data-sidebar-region="chats"]');
+		const list = document.querySelector('[data-sidebar-region="scroller"]');
 		if (list === null) return { ok: false };
 		/*
 		 * THE SETTER IS TAKEN FROM THE DESCRIPTOR ALREADY ON THE ELEMENT when one is - the walk's own
@@ -2725,7 +2956,7 @@ async function scrolledArrival(
 		});
 		let frames = 0;
 		const tick = () => {
-			const named = document.querySelector('[data-sidebar-region="chats"]');
+			const named = document.querySelector('[data-sidebar-region="scroller"]');
 			const sample = {
 				t: Math.round(performance.now() - window.__q9.t0),
 				scrollTop: list.scrollTop,
@@ -2803,7 +3034,7 @@ async function scrolledArrival(
 	}
 	await cdp.evaluate("window.__q9.writes.length = 0").catch(() => null);
 	const atPress = await cdp.evaluate(`(() => {
-		const list = document.querySelector('[data-sidebar-region="chats"]');
+		const list = document.querySelector('[data-sidebar-region="scroller"]');
 		const selector = ${JSON.stringify(pressSelector ?? "")};
 		/*
 		 * AN EMPTY SELECTOR IS A READING, NOT A THROW: 'querySelector("")' raises, and a probe that
@@ -2817,10 +3048,6 @@ async function scrolledArrival(
 			box: list === null ? null : list.clientHeight,
 			/* The extent at the press, which the samples are compared against (D27 item 4). */
 			scrollHeight: list === null ? null : list.scrollHeight,
-			band: (() => {
-				const band = document.querySelector("[data-archive-toast-band]");
-				return band === null ? 0 : Math.round(band.getBoundingClientRect().height);
-			})(),
 		};
 		if (control === null) return { clicked: false, reading, selector, rowId: null };
 		/*
@@ -2857,14 +3084,15 @@ async function scrolledArrival(
 }
 
 /**
- * The clauses the designer's ruling states for a scrolled arrival, read off `scrolledArrival`'s two
- * readings: the reader's scroll, the rows' offsets, the yield, and the trap.
+ * The clauses a scrolled arrival is read for, off `scrolledArrival`'s two readings: the reader's
+ * scroll, the rows' offsets, the box, and the trap.
  *
- * `base` is the list's band-0 box, PASSED IN because an arrival's own before-reading may already
- * have a band up: the second arrival starts with the first one's message standing, so its box is
- * already short of the base by that band. The yield the ruling states is the base less the band.
+ * THERE IS NO `base` ANY MORE (2026-09-27): it was the list's band-0 box, passed in so the yield
+ * clause could assert `box = base - band`. The band is gone with the operator's request and a
+ * toast takes no layout space, so the claim inverted - the box must be byte-equal across the
+ * press - and nothing needs a pre-message base to say it.
  */
-function arrivalReading(arrival, base, expect = "none") {
+function arrivalReading(arrival, expect = "none") {
 	const before = arrival.before ?? {};
 	const atPress = arrival.atPress ?? {};
 	const after = arrival.after ?? {};
@@ -2896,43 +3124,16 @@ function arrivalReading(arrival, base, expect = "none") {
 		gone[0].id === atPress.rowId &&
 		deltas.every((delta) => delta === 0);
 	/*
-	 * THE TWO DEPARTURE CLAUSES (design round 9, D30), read from the samples the probe took every frame:
-	 *
-	 * `extentPairedWithBox` - THE EXTENT MAY SHRINK ONLY IN A SAMPLE THAT ALSO SHRINKS THE BOX. A list whose
-	 * content loses a row while its box is unchanged is a list whose maximum scroll just fell under the
-	 * reader: `scrollHeight - clientHeight` is what a clamp acts on, and nothing gives the position back
-	 * afterwards. This is the clause that has to hold on the ACCEPTED press, where the pressed row's own
-	 * height leaves the list.
-	 *
-	 * `rangeHeld` - AND THE READER'S POSITION IS REACHABLE IN EVERY SAMPLE, which is the same claim stated
-	 * arithmetically: `scrollTop <= scrollHeight - clientHeight` throughout. A sample that violated it is a
-	 * sample in which the browser had already clamped, so this reads the mechanism where `framesHeld` reads
-	 * the symptom.
+	 * THE BOX NEVER MOVES (2026-09-27): with the band gone, a message takes no layout space at
+	 * all, so the list's own box is byte-equal across the press on BOTH arrivals - the refusal,
+	 * where nothing departs, and the ACCEPTED one, where a row's height leaves the CONTENT and
+	 * the box is untouched. That is the whole replacement for the yield clauses the band needed
+	 * (extent-paired-with-box, range-reachable, band = card + gap): there is nothing to yield.
 	 */
 	const scrollTopAtPress = atPress.reading?.scrollTop ?? null;
 	const extentAtPress = atPress.reading?.scrollHeight ?? null;
 	const samples = after.instrument?.samples ?? [];
-	const shrunkExtent = [];
-	const unreachable = [];
-	for (let i = 0; i < samples.length; i += 1) {
-		const sample = samples[i];
-		const previous = i === 0 ? null : samples[i - 1];
-		if (
-			previous !== null &&
-			sample.scrollHeight < previous.scrollHeight &&
-			sample.box >= previous.box
-		)
-			shrunkExtent.push({ previous, sample });
-		if (
-			scrollTopAtPress !== null &&
-			typeof sample.scrollHeight === "number" &&
-			typeof sample.box === "number" &&
-			sample.scrollHeight - sample.box < scrollTopAtPress
-		)
-			unreachable.push(sample);
-	}
-	const extentPairedWithBox = shrunkExtent.length === 0;
-	const rangeHeld = unreachable.length === 0;
+	const boxHeld = after.box?.height === atPress.reading?.box;
 	/*
 	 * THE POSITION IS HELD IN EVERY FRAME, not only at the two ends the walk reads (design D27's item 3): the
 	 * clamp this clause is about is instantaneous, so a pair that agreed could still have hidden a frame in which
@@ -2950,12 +3151,10 @@ function arrivalReading(arrival, base, expect = "none") {
 	 */
 	/*
 	 * AND THE EXTENT IS BYTE-EQUAL ONLY WHERE NOTHING MAY DEPART (agent review round 5, D30's instrument
-	 * half): a press the daemon ACCEPTS shortens the content by the row's own height, and the band that
-	 * answers it can only be measured a commit later - so demanding a byte-equal extent of a departure
-	 * asks for something the app is not supposed to do. Where a row departs, the clause is the PAIRING
-	 * (`extentPairedWithBox`: the extent shrinks only in a sample that also shrinks the box) plus the
-	 * RANGE (`rangeHeld`: the reader's position is reachable in every sample), and both are computed
-	 * above from the very samples this branches on.
+	 * half): a press the daemon ACCEPTS shortens the content by the row's own height, so demanding a
+	 * byte-equal extent of a departure asks for something the app is not supposed to do. Where a row
+	 * departs, the clause reads the BOX instead (`boxHeld`, above): with no band there is nothing for
+	 * the departure's arithmetic to race, so the box is byte-equal there too.
 	 */
 	const extentHeld =
 		expect === "none"
@@ -2964,26 +3163,105 @@ function arrivalReading(arrival, base, expect = "none") {
 				after.box?.scrollHeight === extentAtPress &&
 				samples.every((sample) => sample.scrollHeight === extentAtPress)
 			: true;
+	/*
+	 * THE ACCEPTED DEPARTURE'S OWN ARITHMETIC (2026-09-27, the lane's deletion). With no band to take
+	 * the row's height off the box in the same commit, a press the daemon accepts shortens the CONTENT
+	 * by the departed row's height while the box stays exactly where it was - so a reader standing
+	 * within that height of the end of the list is carried by the browser's own end-of-list clamp, and
+	 * by nothing else. The clause this replaces - "the reader's position is reachable in every sample"
+	 * (`rangeHeld`) - was the BAND's promise: the band took the same height off the box in the sample
+	 * it was raised, which kept the range valid. It is retired with the band rather than asserted about
+	 * a tree that does not have one, and what replaces it is the exact arithmetic of the only movement
+	 * that is left: at every sample the reader stands where they were or at `min(their position, extent
+	 * - box)`, and the settled position is that minimum.
+	 */
+	const clampAt = (sample) =>
+		scrollTopAtPress === null ||
+		typeof sample.scrollHeight !== "number" ||
+		typeof sample.box !== "number"
+			? null
+			: Math.min(scrollTopAtPress, sample.scrollHeight - sample.box);
+	const framesOnlyClamp = samples.every((sample) => {
+		if (scrollTopAtPress === null) return false;
+		const clamp = clampAt(sample);
+		return (
+			Math.abs(sample.scrollTop - scrollTopAtPress) <= 1 ||
+			(clamp !== null && Math.abs(sample.scrollTop - clamp) <= 1)
+		);
+	});
+	const clampedHeld =
+		expect === "the pressed row"
+			? scrollTopAtPress !== null &&
+				typeof after.scrollTop === "number" &&
+				typeof after.box?.scrollHeight === "number" &&
+				typeof after.box?.height === "number" &&
+				Math.abs(
+					after.scrollTop -
+						Math.min(
+							scrollTopAtPress,
+							after.box.scrollHeight - after.box.height,
+						),
+				) <= 1
+			: true;
+	/*
+	 * AND THE ROWS MOVE ONLY BY THAT CLAMP: every surviving row's document top shifts by exactly the
+	 * reader's own movement (integer-rounded), which is the same fact seen from the rows' side - and
+	 * the one row that left is the row the reader pressed.
+	 */
+	const scrollDelta = (after.scrollTop ?? 0) - (scrollTopAtPress ?? 0);
+	const rowsHeldByClamp =
+		expect === "the pressed row" &&
+		gone.length === 1 &&
+		atPress.rowId !== null &&
+		atPress.rowId !== undefined &&
+		gone[0].id === atPress.rowId &&
+		deltas.every((delta) => Math.abs(delta + scrollDelta) <= 1);
+	/*
+	 * The entity region above the list is part of the same scroller CONTENT, so it moves with the
+	 * clamp the way the rows do: its box and its own scroll are held, and its top shifts by the
+	 * reader's movement and nothing more.
+	 */
+	const entitiesHeldByClamp =
+		before.entities != null &&
+		after.entities != null &&
+		before.entities.height === after.entities.height &&
+		before.entities.scrollTop === after.entities.scrollTop &&
+		Math.abs(
+			(after.entities.top ?? 0) - (before.entities.top ?? 0) + scrollDelta,
+		) <= 1;
 	return {
 		label: arrival.label,
+		/*
+		 * `cursorInside`/`pressedInside` are the placement's own report that BOTH rows the press is
+		 * about start inside the clip (QA round 3, Q-1). They belong here rather than in a comment: the
+		 * clause that names the state a reader could be in is this boolean, so a future drift that
+		 * leaves the pressed row below the fold reads RED instead of disagreeing with its own prose.
+		 */
 		stateOk:
 			arrival.capped?.ok === true &&
 			arrival.placed?.ok === true &&
 			arrival.placed?.focusHeld === true &&
+			arrival.placed?.cursorInside === true &&
+			arrival.placed?.pressedInside === true &&
 			arrival.armed?.ok === true &&
 			before.ok === true &&
 			before.overflowAtRest === true &&
 			atPress.clicked === true &&
 			atPress.reading?.scrollTop > 0 &&
 			before.focused.visibility !== "no-row-focused" &&
-			after.band > 0 &&
 			after.card !== null,
 		state: {
 			overflowAtRest: before.overflowAtRest,
 			scrollAtPress: atPress.reading?.scrollTop,
-			bandAtSeed: arrival.seeded?.bandAtSeed,
-			bandAtPress: atPress.reading?.band,
-			bandAfter: after.band,
+			/*
+			 * WHERE THE READER'S OWN POSITION PUT THE CURSOR, and how far the walk below carried
+			 * them past it: the merged scroller's first content is the entity region, so a shallow
+			 * scroll need not leave a session row inside the clip (see `scrolledArrival`).
+			 */
+			readerAt: arrival.placed?.readerAt ?? null,
+			walked: arrival.placed?.walked ?? null,
+			rowStep: arrival.placed?.rowStep ?? null,
+			cappedHost: arrival.capped?.cappedHost ?? null,
 			card: after.card,
 			focusedBefore: focusedBefore,
 			focusedAfter,
@@ -2995,19 +3273,16 @@ function arrivalReading(arrival, base, expect = "none") {
 			},
 		},
 		/*
-		 * THE GEOMETRY THE PRE-FIX GATE READ AS A ROW LEAVING, read rather than asserted by
-		 * construction: the cursor's row was on screen before the press and is outside the panel
-		 * after it, and the panel's box got shorter doing it. That is what makes the empty trap
-		 * beside this a statement about the code rather than a state in which nothing could have
-		 * written.
+		 * THE GEOMETRY THAT MOVED WHEN THE BAND ARRIVED, inverted for the assembly with no band
+		 * (2026-09-27): the cursor's row went `inside/partly` -> `outside` because the band took
+		 * its height off the box; a toast takes none, so the cursor stays exactly where it was on
+		 * a REFUSED press, and a press the daemon ACCEPTS moves the caret by the hand-off rule
+		 * (asserted separately, further down) rather than by any reflow. What this reads is the
+		 * stronger fact: the box itself is byte-equal across the press.
 		 */
 		geometryOk:
-			(focusedBefore.visibility === "inside" ||
-				focusedBefore.visibility === "partly") &&
-			focusedAfter.visibility === "outside" &&
-			typeof atPress.reading?.box === "number" &&
-			typeof after.box?.height === "number" &&
-			after.box.height < atPress.reading.box,
+			after.box?.height === atPress.reading?.box &&
+			typeof atPress.reading?.box === "number",
 		geometry: {
 			focusedBefore,
 			focusedAfter,
@@ -3018,10 +3293,7 @@ function arrivalReading(arrival, base, expect = "none") {
 			after.scrollTop === atPress.reading?.scrollTop &&
 			framesHeld &&
 			extentHeld,
-		extentPairedWithBox,
-		rangeHeld,
-		shrunkExtent: shrunkExtent.slice(0, 6),
-		unreachable: unreachable.slice(0, 6),
+		boxHeld,
 		scroll: {
 			before: atPress.reading?.scrollTop,
 			after: after.scrollTop,
@@ -3056,24 +3328,19 @@ function arrivalReading(arrival, base, expect = "none") {
 		},
 		rowsHeld,
 		rowsHeldLeaving,
+		clampedHeld,
+		framesOnlyClamp,
+		rowsHeldByClamp,
+		entitiesHeldByClamp,
+		scrollDelta,
 		expect,
 		rows: { kept: kept.length, gone, deltas },
-		yieldExact: base !== null && after.box?.height === base - after.band,
 		entitiesHeld:
 			before.entities != null &&
 			after.entities != null &&
 			before.entities.top === after.entities.top &&
 			before.entities.height === after.entities.height &&
 			before.entities.scrollTop === after.entities.scrollTop,
-		yield: {
-			base,
-			band: after.band,
-			boxAtPress: atPress.reading?.box,
-			boxAfter: after.box,
-			expected: base === null ? null : base - after.band,
-			entitiesBefore: before.entities,
-			entitiesAfter: after.entities,
-		},
 	};
 }
 
@@ -3467,11 +3734,12 @@ async function sceneSessionArchive(cdp) {
 	await wait(300);
 
 	/*
-	 * 7. The archive REFUSED. A refused press reports in the panel's own toast lane
+	 * 7. The archive REFUSED. A refused press reports as an ordinary sonner toast
 	 *    rather than in a dialog it never opened, with the Retry that re-sends the
-	 *    DESIRED state (design round 1, D3; the lane is design D11 of
-	 *    `docs/design/sidebar-row-space.md`, which moved this sentence out of the
-	 *    in-panel register the operator reported as "a weird awkward spot").
+	 *    DESIRED state (design round 1, D3; the sidebar lane D11 of
+	 *    `docs/design/sidebar-row-space.md` held this sentence until the operator's
+	 *    request of 2026-09-27 retired it - see §10's supersession - and the placement
+	 *    this step now asserts is the app's one bottom-right container).
 	 */
 	await parkPointer(cdp);
 	/*
@@ -3491,7 +3759,7 @@ async function sceneSessionArchive(cdp) {
 	 * THE ROW FIRST, THEN ITS CONTROL. The acts are `display`-switched (D3), so a
 	 * control addressed at rest has a 0x0 box: the pointer lands on the padding edge,
 	 * the press goes nowhere and - measured 2026-09-21 - NO archive request reaches the
-	 * stub at all, so the lane has no refusal to draw and this step fails two checks
+	 * stub at all, so the surface has no refusal to draw and this step fails two checks
 	 * later for a reason that is three steps back. `:has()` finds the row by the
 	 * control's own label, so the two cannot drift apart.
 	 */
@@ -3503,50 +3771,26 @@ async function sceneSessionArchive(cdp) {
 		JSON.stringify(await rowForensics(cdp, REFUSED_ID)),
 	);
 	/*
-	 * THE ROWS' OFFSETS BEFORE THE BAND EXISTS (QA round 3, Q-3), read here because the press
-	 * below is what raises the message: the band is 0 at rest, so this is the "before" half of the
-	 * one comparison D14's promise is about - the rows must keep these offsets when the band takes
-	 * its height off the list's own bottom.
+	 * THE ROWS' OFFSETS BEFORE A MESSAGE STANDS (QA round 3, Q-3), read here because the press
+	 * below is what raises the message: this is the "before" half of the comparison that used to
+	 * be about the band yielding the list's bottom and is now the stronger fact - a toast takes no
+	 * layout space, so the whole column must be byte-equal to THIS reading while a message stands.
 	 */
 	const offsetsBeforeBand = await listAndRowOffsets(cdp);
 	note(
-		"the list and its rows BEFORE the band (Q-3)",
+		"the list and its rows with no message standing",
 		JSON.stringify(offsetsBeforeBand),
 	);
 	/*
-	 * WHO WRITES THE READER'S SCROLL AS THE BAND ARRIVES (QA round 4, Q-9). The committed note said
-	 * `list.scrollTop = list.scrollHeight` gave 0 - it was read on a list whose band-0 box was 289
-	 * against 288 of content, where nothing CAN scroll - and QA's scene reads 142 on the same head
-	 * once the band's own box (147) is what overflows. The clause both readings serve is the
-	 * designer's: NEITHER `scrollTop` IS WRITTEN. So the writes themselves are trapped here, on the
-	 * element, with the stack of whatever made them: a value written on the arrival is a finding even
-	 * when it happens to equal what was already there, which is why this is a trap rather than a
-	 * comparison of two readings.
+	 * THE SCROLL-WRITE TRAP THAT STOOD HERE IS RETIRED (2026-09-27): it existed to name the
+	 * writer of the list's `scrollTop` while the BAND's own height arrived, and there is no band
+	 * to arrive. The claim it served - neither `scrollTop` is written as the message lands - is
+	 * kept, on a scroller whose reader position is asserted byte-equal in every sampled frame by
+	 * the arrival walk further down this scene (`framesHeld`), and the writer trap lives there.
 	 */
-	const trapInstalled = await cdp
-		.evaluate(`(() => {
-			const el = document.querySelector('[data-sidebar-region="chats"]');
-			if (el === null) return false;
-			const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollTop');
-			window.__scrollWrites = [];
-			Object.defineProperty(el, 'scrollTop', {
-				configurable: true,
-				get() { return descriptor.get.call(this); },
-				set(value) {
-					window.__scrollWrites.push({
-						value,
-						from: descriptor.get.call(this),
-						stack: (new Error().stack || '').split('\\n').slice(0, 8).join(' <- '),
-					});
-					descriptor.set.call(this, value);
-				},
-			});
-			return true;
-		})()`)
-		.catch(() => false);
 	await clickAt(cdp, claimedRow);
 	await wait(600);
-	const archiveFailure = await verb(cdp, "measure", SIDEBAR_TOAST);
+	const archiveFailure = await verb(cdp, "measure", ARCHIVE_TOAST);
 	/*
 	 * WHEN THE REFUSAL WENT UP, kept for the retry below: a lane message's life is
 	 * measured from its own assertion, so a check about a RE-ASSERTION has to know how
@@ -3555,9 +3799,41 @@ async function sceneSessionArchive(cdp) {
 	 */
 	const refusalRaisedAt = Date.now();
 	check(
-		"a refused archive is reported in the panel's own toast lane, with its retry",
+		"a refused archive is reported as an ordinary sonner toast, with its retry",
 		archiveFailure.inViewport === true,
 		JSON.stringify(archiveFailure),
+	);
+	/*
+	 * THE PLACEMENT, AND THE LANE'S ABSENCE, READ AS THE NEW SHAPE (2026-09-27): one container in
+	 * the app (the panel mounts none of its own), the message outside the sidebar's own tree, and
+	 * the container declaring the bottom-right corner the operator re-accepted when D12's measured
+	 * Send overlap came with it (design §10's supersession entry). And no band element anywhere:
+	 * the whole mechanism the previous assembly hung between the card and the panel is deleted.
+	 */
+	const placement = await cdp.evaluate(`(() => {
+		const toast = document.querySelector(${JSON.stringify(ARCHIVE_TOAST)});
+		const containers = document.querySelectorAll("[data-sonner-toaster]");
+		const ol = toast === null ? null : toast.closest("ol[data-sonner-toaster], [data-sonner-toaster]");
+		return {
+			toasts: document.querySelectorAll(${JSON.stringify(ARCHIVE_TOAST)}).length,
+			containers: containers.length,
+			inPanel: toast !== null && toast.closest('nav[aria-label="Chats"]') !== null,
+			panelContainers: document.querySelectorAll('nav[aria-label="Chats"] [data-sonner-toaster]').length,
+			xPosition: ol === null ? null : ol.getAttribute("data-x-position"),
+			yPosition: ol === null ? null : ol.getAttribute("data-y-position"),
+			band: document.querySelector("[data-archive-toast-band]") !== null,
+		};
+	})()`);
+	check(
+		"and the message is the app's one container's, bottom-right, outside the panel - with no band element anywhere",
+		placement.toasts === 1 &&
+			placement.containers === 1 &&
+			placement.inPanel === false &&
+			placement.panelContainers === 0 &&
+			placement.xPosition === "right" &&
+			placement.yPosition === "bottom" &&
+			placement.band === false,
+		JSON.stringify(placement),
 	);
 	/*
 	 * A TOAST CANNOT BE PHOTOGRAPHED BY `captureSettled`, whose contract is a frame
@@ -3568,25 +3844,25 @@ async function sceneSessionArchive(cdp) {
 	 * WHAT THE CARD DOES TO THE ROWS UNDER IT (C: Q-1, R4-1, D11, U9 - four independent streams on
 	 * one selector).
 	 *
-	 * The lane sits over the list and the card's BODY passes presses through - but the rules that
-	 * say so were scoped `[data-type="info"]`, which is sonner's stamp of `toast.info`. This refusal
-	 * is raised by `showWarningToast` -> `toast.warning`, so `data-type="warning"`, and it matched
-	 * none of them: it kept `pointer-events: auto` and QA measured its band covering the acts zone
-	 * of every other row in the fixture - a press loop skipping all three ("a lane card covers its
-	 * acts"), so NO conversation could be archived from a row for the card's whole life. This is
-	 * the reading that has to fail if that ever comes back: for each row the card overlaps, hover it
-	 * so its acts exist, hit-test the archive control's own centre, and require the card's body not
-	 * to be what a press there reaches.
+	 * The lane this check was written for sat OVER the list, and the card's body had to pass presses
+	 * through - the rules that say so were scoped `[data-type="info"]` while this refusal is raised
+	 * by `showWarningToast` -> `toast.warning`, so the card's body swallowed them and QA measured it
+	 * covering the acts zone of every row in the fixture ("a lane card covers its acts"), skipping
+	 * all three press loops. THE LANE IS RETIRED (2026-09-27) and the card is at the app's own
+	 * corner, so the scan below must find NO overlapped row at all: that is the assertion now. The
+	 * per-row loop stays as the belt-and-braces half - if a future placement ever covers a row, the
+	 * reading names the control a press there would reach, which is the shape Q-1 and Q-2 were both
+	 * found in.
 	 *
 	 * THE ASSERTION IS DELIBERATELY NARROWER THAN "the row's control receives it". A card BUTTON
 	 * that happens to sit over a covered row's acts is the other half of the same defect (QA round
 	 * 2, Q-2) and is NOT fixed here; the note below prints which control answered, so that overlap
 	 * is visible evidence rather than a silent pass.
 	 */
-	const cardBox = await verb(cdp, "measure", SIDEBAR_TOAST);
+	const cardBox = await verb(cdp, "measure", ARCHIVE_TOAST);
 	const rowsUnderCard = await cdp.evaluate(
 		`(() => {
-			const card = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)}).getBoundingClientRect();
+			const card = document.querySelector(${JSON.stringify(ARCHIVE_TOAST)}).getBoundingClientRect();
 			/*
 			 * CLIPPED TO THE LIST'S OWN CLIENT BOX, which is what "under the card" means for a reader
 			 * (measured 2026-09-22, QA round 3): a row inside the scroller below its client edge is
@@ -3594,7 +3870,7 @@ async function sceneSessionArchive(cdp) {
 			 * rect-only test flagged two rows the moment the settled band grew to its real 142 and the
 			 * list gave part of its height back. A row counts here only where it is DRAWN.
 			 */
-			const list = document.querySelector('[data-sidebar-region="chats"]').getBoundingClientRect();
+			const list = document.querySelector('[data-sidebar-region="scroller"]').getBoundingClientRect();
 			return Array.from(document.querySelectorAll("[data-session-row]"))
 				.filter((row) => {
 					const r = row.getBoundingClientRect();
@@ -3639,24 +3915,17 @@ async function sceneSessionArchive(cdp) {
 	}
 	await parkPointer(cdp);
 	/*
-	 * THE CARD IS A BAND, SO THE ACCEPTANCE READING IS THE EMPTY SET (design round 4, D14), and
-	 * that replaces the narrower rule this check used to carry. The history it answers: as an
-	 * overlay the card covered the acts zone of every row in the fixture - QA's press loop skipped
-	 * all three - and the rules that passed presses through were scoped `[data-type="info"]` while
-	 * this refusal is `toast.warning`, so the card's body swallowed them; four streams landed on
-	 * that one selector, and the designer's ruling settled it as geometry rather than as an offset:
-	 * the acts column is the row's last 52px and the card is 8px wider than the row, so there is no
-	 * position that clears a covered control.
-	 *
-	 * THE BAND: height 0 at rest, `card + 8` while a message stands, taken out of the panel column
-	 * with the ROWS UNMOVED (the list yields its bottom; `scrollTop` is never written) - AND THAT IS
-	 * READ, not restated, because the assembly this ruled on did not do it (QA round 3, Q-3): the
-	 * offsets are compared before and after the band appears by the check below. So the
-	 * reading the ruling asks for is exactly this scan, and it must be EMPTY. The per-row loop
-	 * below stays as the belt-and-braces half rather than as the assertion: if a row ever IS
-	 * covered again, the reading names the control a press there would reach, which is the shape
-	 * Q-1 and Q-2 were both found in, and the second check says so without pretending an empty
-	 * loop proves anything.
+	 * THE READING IS THE EMPTY SET, and the empty set is now STRUCTURAL rather than a designed
+	 * arrangement. The history this scan answers: while the message was an in-panel overlay and
+	 * then an in-panel band, the card covered the acts zone of rows in the fixture - QA's press
+	 * loop skipped all three - and four review streams landed on the one selector that was supposed
+	 * to pass presses through. THE LANE AND ITS BAND ARE DELETED (2026-09-27, the operator's own
+	 * request): the message is an ordinary sonner toast in the app's corner, the panel's rows are
+	 * nowhere near it, and this scan must therefore be empty BY GEOMETRY - if it ever is not, a
+	 * future change has put the message back over the panel and this check is what fails. The
+	 * per-row loop below stays as the belt-and-braces half: if a row ever IS covered again, the
+	 * reading names the control a press there would reach, which is the shape Q-1 and Q-2 were both
+	 * found in, and the second check says so without pretending an empty loop proves anything.
 	 */
 	check(
 		"no row's box is covered by the card (design round 4, D14): the covered-row scan returns the empty set",
@@ -3669,37 +3938,24 @@ async function sceneSessionArchive(cdp) {
 		JSON.stringify({ reach }),
 	);
 	/*
-	 * AND THE BAND PAYS EXACTLY THE CARD'S HEIGHT PLUS THE GAP, measured against the drawn card
-	 * rather than against the offer's constant: the offer is one line at every width, the refusal
-	 * is not, and a band sized for one of them would either clip the other or spend its rows. The
-	 * tolerance is a pixel for the rounding of two device-pixel ratios, not a range.
-	 */
-	const bandBox = await verb(cdp, "measure", "[data-archive-toast-band]").catch(
-		null,
-	);
-	/*
-	 * BOTH BOXES ARE RE-READ AFTER THE CARD SETTLES, and this head's measurements say what that
+	 * THE CARD'S OWN BOX IS RE-READ AFTER IT SETTLES, and this head's measurements say what that
 	 * settle can and cannot buy. Sonner animates the card's own height (`transition: ... height
-	 * .4s`), so a band read immediately after the message arrives describes a card that is still
-	 * growing - the first full dark walk of this head read `band 34, card 34` there against a
-	 * refusal that settles at 142 and a band at 150. THE CLOCK WAIT IS GONE (QA round 3, Q-6, and this paragraph was
-	 * its own remedy). The pair is now POLLED with a rendering update driven per attempt
-	 * (`settleBandReading`, whose frame driver is the same `Page.captureScreenshot` the capture
-	 * helpers use), so the check stops on the invariant it asserts - band = card + gap - rather than
-	 * on elapsed time. That is not a tidy-up: the old shape's PASS depended on whatever screenshot
-	 * loop happened to precede it, and on a run where nothing drove a frame the pair was still
-	 * `34 / 34` after the wait, which is a SPURIOUS FAIL of a check whose subject is fine. The app
-	 * also sizes the band from the card's SETTLED height now (`--initial-height`, QA round 3's Q-4),
-	 * so the loop exits on its first attempt in the ordinary case.
+	 * .4s`), so a box read - or a frame taken - immediately after the message arrives describes a
+	 * card that is still growing (the dark `refusal-band-280` frame was captured at 58 tall
+	 * against a settled 142). The pair is POLLED with a rendering update driven per attempt
+	 * (`awaitCardSettled`), so the reading stops on the invariant it asserts rather than on
+	 * elapsed time.
 	 *
-	 * The PAIRING is the whole assertion (D14: the band is the card's height plus the gap), so the
-	 * two numbers have to describe the same moment.
+	 * THE BAND THE PAIRING WAS WRITTEN FOR IS GONE (2026-09-27): the check that compared the band
+	 * to the card's height plus the gap is deleted with the band itself, and what the settled
+	 * reading is kept for is the card's own frame - the picture and the number beside it describe
+	 * the same moment.
 	 */
 	/*
 	 * THE CLOCK WAIT STANDS, AND Q-6 IS OWED RATHER THAN HALF-DONE (measured 2026-09-22, this
 	 * pass): an invariant-driven loop was tried here - poll the pair, drive a frame per attempt -
 	 * and it cost up to 12 screenshots with a 120ms gap, about 26s across the two places it ran.
-	 * That is longer than the lane's own message life, so the loop outlived the card it was
+	 * That is longer than the message's own life, so the loop outlived the card it was
 	 * waiting for: the second call read `{"band":{"height":0},"card":null}` and the step's own
 	 * frames lost their message (`nothing matches ... [data-toast] [data-button] after 10000ms`).
 	 * The settle must be bounded by the faster of the two clocks - the card's animation (~400ms)
@@ -3707,11 +3963,6 @@ async function sceneSessionArchive(cdp) {
 	 * wait stays with its known spurious-FAIL mode and the fix is recorded as owed on the PR.
 	 */
 	const settled = await awaitCardSettled(cdp);
-	const settledBand = await verb(
-		cdp,
-		"measure",
-		"[data-archive-toast-band]",
-	).catch(() => null);
 	const settledCard = settled.reading;
 	/*
 	 * AND THE CARD'S OWN OVERFLOW, WHICH IS D19's READING rather than a box: a scrollbar on a toast is
@@ -3724,7 +3975,7 @@ async function sceneSessionArchive(cdp) {
 	 */
 	const cardOverflow = await cdp
 		.evaluate(`(() => {
-			const node = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)});
+			const node = document.querySelector(${JSON.stringify(ARCHIVE_TOAST)});
 			if (node === null) return null;
 			const style = getComputedStyle(node);
 			return {
@@ -3740,31 +3991,14 @@ async function sceneSessionArchive(cdp) {
 	 * THE PANEL THE CARD IS MEASURED IN, read once here because D15's question is a box in a box:
 	 * a card height without the panel it was measured at is the figure the document already had.
 	 */
-	const refusalPanel = (await verb(cdp, "measure", 'nav[aria-label="Chats"]'))
-		.rect;
-	check(
-		"the band's height is the card's plus the gap, so the list gives up exactly what the message spends (design round 4, D14)",
-		settledBand !== null &&
-			settledCard !== null &&
-			settledCard.rect.width > 0 &&
-			Math.abs(settledBand.rect.height - (settledCard.rect.height + 8)) <= 1,
+	const refusalViewport = await cdp.evaluate(
+		"({ w: window.innerWidth, h: window.innerHeight })",
+	);
+	note(
+		"the refusal's settled card, in the app's own corner (the band it used to be paired with is gone)",
 		JSON.stringify({
-			band: settledBand?.rect ?? null,
 			card: settledCard?.rect ?? null,
-		}),
-		/*
-		 * AND THE SAME TWO BOXES ON THE PASS SIDE, WITH THE PANEL THEY SIT IN (design round 4,
-		 * D15): the design round's ruling sizes the band by the card's MEASURED height, and until
-		 * this reading existed its only figures for the tallest card - the refusal - were the
-		 * document's `216x170` and `216x206`, both stale in x once D10's `min(248px, 100%)` widened
-		 * the refusal from 216 to 248 at this panel. So the refusal's box is a reading a green run
-		 * prints, beside the panel it is drawn in, and not only a failure's explanation.
-		 */
-		JSON.stringify({
-			band: settledBand?.rect ?? null,
-			card: settledCard?.rect ?? null,
-			gap: 8,
-			panel: refusalPanel,
+			viewport: refusalViewport,
 		}),
 	);
 	/*
@@ -3778,37 +4012,21 @@ async function sceneSessionArchive(cdp) {
 		label: `archive-refused${RUN_LABEL}`,
 		...(await captureWithToast(cdp, `archive-refused${RUN_LABEL}`)),
 		settleAttempts: settled.attempts,
-		toastOnScreen: (await drawnSelector(cdp, SIDEBAR_TOAST)) === true,
+		toastOnScreen: (await drawnSelector(cdp, ARCHIVE_TOAST)) === true,
 	});
-	const scrollWrites = await cdp
-		.evaluate("(() => window.__scrollWrites || [])()")
-		.catch(() => []);
-	note(
-		"who writes the list's scroll while the band arrives (QA round 4, Q-9)",
-		JSON.stringify({ trapInstalled, writes: scrollWrites }),
-	);
-	check(
-		"and the band's arrival does not write the reader's scroll: the list's own `scrollTop` is never set as the message lands (design round 6's Q-3 ruling; QA round 4, Q-9)",
-		trapInstalled === true &&
-			Array.isArray(scrollWrites) &&
-			scrollWrites.length === 0,
-		JSON.stringify({ trapInstalled, writes: scrollWrites }),
-	);
 	/*
-	 * AND THE YIELD IS READ AS THE COMPARISON IT IS (QA round 3, Q-3 = design round 4, D20), which
-	 * is the half D14 never measured: the check above pins the band's SIZE, this one pins WHERE the
-	 * height comes from. The promise is that the band is taken off the LIST's own bottom with the
-	 * rows unmoved and `scrollTop` never written; the committed assembly gave it back out of the
-	 * entity region ABOVE instead, whose height IS the list's top, so every row rode up by the
-	 * band's height (measured: -150 at the settled refusal, -34/-58 mid-entrance, -144 at the short
-	 * window, the list's own height never changing). Two readings - one before the message existed,
-	 * one now: same rows at the same offsets, the same scroll, and, when the list was at its cap,
-	 * exactly the band's height less box. A list that was NOT capped has nothing to give and keeps
-	 * its height; what it may never do is move its rows.
+	 * AND NOTHING RESERVES SPACE (QA round 3, Q-3's comparison, inverted by the lane's deletion on
+	 * 2026-09-27). The check this replaces pinned WHERE a band's height came from (the list's own
+	 * bottom, rows unmoved, `scrollTop` never written - the committed assembly it ruled on gave it
+	 * out of the entity region instead and every row rode up, measured -150 at the settled
+	 * refusal). A toast takes no layout space at all now, so the stronger reading is available and
+	 * is what is asserted: WITH THE MESSAGE STANDING, the whole column is byte-equal to the
+	 * message-free reading - every row's top in both regions, both `scrollTop`s, the entity
+	 * region's box, and the list's own height.
 	 */
 	const offsetsAfterBand = await listAndRowOffsets(cdp);
 	note(
-		"the list and its rows AFTER the band (Q-3)",
+		"the list and its rows with the message standing",
 		JSON.stringify(offsetsAfterBand),
 	);
 	const rowsHeld = sameTops(
@@ -3816,13 +4034,11 @@ async function sceneSessionArchive(cdp) {
 		offsetsAfterBand.rows.map((r) => ({ id: `row:${r.id}`, top: r.top })),
 	);
 	/*
-	 * THE ACCEPTANCE READING IS THE DESIGNER'S OWN SENTENCE (design round 6's Q-3 ruling, shape
-	 * (b)), and it is deliberately about the WHOLE COLUMN rather than about the list: every row's
-	 * top in BOTH regions byte-equal to the band-0 frame, both `scrollTop`s untouched, the entity
-	 * region's box unchanged, and the list's own height down by EXACTLY the band. The last two are
-	 * what separate the yield from the defect QA round 3 measured: a list translated up with its
-	 * height unchanged passes a rows-only reading in the short list, and an entity region that paid
-	 * the band passes it too while every row rides up.
+	 * THE READING IS ABOUT THE WHOLE COLUMN rather than about the list, because the defect this
+	 * class was found in passed a rows-only reading while the wrong region paid: a list translated
+	 * up with its height unchanged looks locally fine. Every row's top in BOTH regions, both
+	 * `scrollTop`s, the entity region's box and the list's own height are compared - and with no
+	 * band they must all be EQUAL, not "equal less the band".
 	 */
 	const entityBoxHeld =
 		offsetsBeforeBand.entities !== null &&
@@ -3837,104 +4053,37 @@ async function sceneSessionArchive(cdp) {
 		offsetsAfterBand.list.scrollTop === offsetsBeforeBand.list.scrollTop &&
 		(offsetsBeforeBand.entities?.scrollTop ?? 0) ===
 			(offsetsAfterBand.entities?.scrollTop ?? 0);
-	const yieldExact =
-		offsetsAfterBand.list.height ===
-		Math.max(0, offsetsBeforeBand.list.height - offsetsAfterBand.band);
+	const listBoxHeld =
+		offsetsAfterBand.list.height === offsetsBeforeBand.list.height;
 	check(
-		"the band comes out of the LIST's own box, the column's bottom-most region here: every row in both regions keeps its top, both scrollTops are untouched, the entity region keeps its box to the pixel, and the list's own height loses exactly the band (design round 6's Q-3 ruling, shape (b))",
-		rowsHeld &&
-			entityBoxHeld &&
-			entityRowsHeld &&
-			scrollHeld &&
-			yieldExact &&
-			offsetsAfterBand.band > 0,
+		"a standing message reserves NO space: every row in both regions keeps its top, both scrollTops are untouched, the entity region keeps its box to the pixel, and the list's own height is unchanged",
+		rowsHeld && entityBoxHeld && entityRowsHeld && scrollHeld && listBoxHeld,
 		JSON.stringify({
 			rowsHeld,
 			entityBoxHeld,
 			entityRowsHeld,
 			scrollHeld,
-			yieldExact,
+			listBoxHeld,
 			before: offsetsBeforeBand,
 			after: offsetsAfterBand,
 		}),
 	);
 	/*
-	 * AND THE SAME LIST SCROLLED TO ITS BOTTOM, WHICH IS THE OVERFLOWING CASE AND THE ONE THIS FIX
-	 * IS FOR (design round 6's Q-3 ruling; QA round 4 closed the reading this check used to owe).
-	 *
-	 * The committed note here claimed `list.scrollTop = list.scrollHeight` returned 0 and left the
-	 * case unasserted. It was read on a list whose band-0 box is 289 against 288 of content, where
-	 * nothing can scroll; once the band's own box (147) is what overflows, the same assignment gives
-	 * 142 - measured at this head, verbatim `{"scrolledBy":142,"setBottom":142}` with the rows moving
-	 * by exactly that (688 -> 546, 764 -> 622, 796 -> 654, 828 -> 686) while the entity region holds
-	 * its box and its scroll. So the region IS the scroller, and this is the check the note owes: the
-	 * list takes the scroll, the region above it does not move, and the band is unchanged.
+	 * THE "LIST AT ITS BOTTOM" CLAUSE THIS WALK USED TO ASSERT IS RETIRED (QA round 2, Q1), and the
+	 * second retirement is the simpler one: the band is gone entirely (2026-09-27), so there is no
+	 * box of its own for the scroller to overflow with, and nothing the reader scrolls into while a
+	 * message arrives. The state the clause built - `scrollTop = scrollHeight` with the band's own
+	 * box inside the list - cannot arise in this assembly. WHAT REPLACES IT: the arrival pair below,
+	 * which drives the state where the app CAN be put (the rig caps the column, the reader is
+	 * scrolled, a message arrives at the app's corner) and reads the position, the extent, the rows'
+	 * own tops and the write trap from there; and the check above, for the whole column's box with
+	 * the rows unmoved.
 	 */
-	const bottomBefore = await listAndRowOffsets(cdp);
-	const setBottom = await cdp
-		.evaluate(`(() => {
-			const list = document.querySelector('[data-sidebar-region="chats"]');
-			list.scrollTop = list.scrollHeight;
-			return Math.round(list.scrollTop);
-		})()`)
-		.catch(() => null);
-	const bottomAfter = await listAndRowOffsets(cdp);
-	const scrolledBy = bottomAfter.list.scrollTop - bottomBefore.list.scrollTop;
-	const heldWhileScrolled =
-		bottomAfter.band === bottomBefore.band &&
-		bottomAfter.list.height === bottomBefore.list.height &&
-		(bottomAfter.entities?.top ?? null) ===
-			(bottomBefore.entities?.top ?? null) &&
-		(bottomAfter.entities?.height ?? null) ===
-			(bottomBefore.entities?.height ?? null) &&
-		(bottomAfter.entities?.scrollTop ?? 0) ===
-			(bottomBefore.entities?.scrollTop ?? 0);
-	const rowsFollowTheScroll =
-		scrolledBy > 0 &&
-		bottomBefore.rows.every((row) => {
-			const now = bottomAfter.rows.find((r) => r.id === row.id);
-			return now === undefined || Math.abs(row.top - now.top - scrolledBy) <= 1;
-		});
-	check(
-		"and with the overflowing list scrolled to its bottom only the LIST moves: the entity region's box and scroll are byte-equal, the list's own box and the band are unchanged, and its rows move by exactly the scroll (design round 6's Q-3 ruling, the overflowing case)",
-		heldWhileScrolled && rowsFollowTheScroll,
-		JSON.stringify({
-			scrolledBy,
-			setBottom,
-			heldWhileScrolled,
-			rowsFollowTheScroll,
-			before: {
-				list: bottomBefore.list,
-				entities: bottomBefore.entities,
-				band: bottomBefore.band,
-			},
-			after: {
-				list: bottomAfter.list,
-				entities: bottomAfter.entities,
-				band: bottomAfter.band,
-			},
-		}),
-	);
-	/*
-	 * THE BAND'S LARGEST CASE, MEASURED RATHER THAN QUOTED (design round 4, D15). The band's
-	 * height is the card's own plus the gap, and the tallest card this lane can draw is the
-	 * refusal - so this pair IS the number the ruling needs. The EARLY box is kept beside it
-	 * because the two are different readings rather than one: what is measured before the settle
-	 * is a card mid-transition (this head's first dark walk read `band 34, card 34` there), and
-	 * quoting that as the refusal's height is the mistake the settle exists to prevent.
-	 */
-	note(
-		"the refusal in the panel's lane: the early box, and the pair once both settled (design round 4, D15)",
-		JSON.stringify({
-			early: bandBox?.rect ?? null,
-			settled: {
-				band: settledBand?.rect ?? null,
-				card: settledCard?.rect ?? null,
-				gap: 8,
-				panel: refusalPanel,
-			},
-		}),
-	);
+	/* THE BAND'S LARGEST CASE IS A CARD READING NOW (2026-09-27): the tallest card this surface
+	   can draw is still the refusal, and its settled box in the app's own corner is the number a
+	   reviewer needs - recorded in `docs/evidence/sidebar-row-space/` beside the frames. There is
+	   no band to pair it with, and the early box stays a reading rather than the figure, because a
+	   card mid-transition is not its height (the settle exists for exactly that). */
 	note(
 		"what a press at each covered row's archive control reaches",
 		JSON.stringify(reach),
@@ -3943,7 +4092,7 @@ async function sceneSessionArchive(cdp) {
 	 * AND THE REFUSAL'S OWN RETRY RE-ASSERTS IT (UX report round 1, U3), which it did NOT:
 	 * the action fired, the message went away, and nothing replaced it - the lane empty at
 	 * +4.2s with the row still un-archived and the write still refused, in three runs and
-	 * both palettes. The cause was the lane's stable id plus a dismissal: the retry took
+	 * both palettes. The cause was the stable id plus a dismissal: the retry took
 	 * its own message down, the answer arrived in 2-4ms, and a create landing inside
 	 * sonner's unmount window is destroyed with the entry being removed (measured in the
 	 * running app, in the installed sonner 2.0.3, and in the store - the mechanism is
@@ -3954,7 +4103,7 @@ async function sceneSessionArchive(cdp) {
 	 *
 	 * AND THE PAINTED TOAST ALONE CANNOT SAY THAT (agent review round 2, R2-2), which is why
 	 * the reading below is in two halves. The retry's message is the SAME message the press
-	 * started from - same id, same sentence, same action - and the lane draws a replacement
+	 * started from - same id, same sentence, same action - and the surface draws a replacement
 	 * as an UPDATE of the mounted element, so a build where the answer never reached the
 	 * lane is pixel-identical to the fixed one as long as the old refusal is still up (and
 	 * by design it is: `chat-sidebar.tsx` holds it while the retry is in flight). A DOM-only
@@ -3968,7 +4117,7 @@ async function sceneSessionArchive(cdp) {
 	 */
 	const beforeRetry = await verb(cdp, "state");
 	const retryPressedAt = Date.now();
-	await clickAt(cdp, `${SIDEBAR_TOAST} [data-button]`);
+	await clickAt(cdp, `${ARCHIVE_TOAST} [data-button]`);
 	/*
 	 * THE TRANSITION IS SAMPLED AT 60ms, NOT INFERRED FROM THE WINDOW'S END (agent review
 	 * round 2 - the retry's disappearance). A dismissal and a container teardown read
@@ -3977,7 +4126,7 @@ async function sceneSessionArchive(cdp) {
 	 * installed 2.0.3) before it leaves the DOM, and a teardown takes the
 	 * `<section data-sonner-toaster>` itself with it - sonner renders that section whenever
 	 * its Toaster is MOUNTED, so its absence is a React unmount rather than an empty store.
-	 * The sampler keeps every sample, the LAST one that still held the lane's node, the
+	 * The sampler keeps every sample, the LAST one that still held the message's node, the
 	 * FIRST that did not, and whether `data-removed` was ever seen.
 	 */
 	const samples = [];
@@ -3990,13 +4139,13 @@ async function sceneSessionArchive(cdp) {
 	let sampleIndex = 0;
 	while (Date.now() < windowEndsAt) {
 		const sample = await cdp.evaluate(`(() => {
-			const laneToaster = document.querySelector('nav[aria-label="Chats"] [data-sonner-toaster]');
-			const toast = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)});
+			const panelToaster = document.querySelector('nav[aria-label="Chats"] [data-sonner-toaster]');
+			const toast = document.querySelector(${JSON.stringify(ARCHIVE_TOAST)});
 			const button = toast ? toast.querySelector("[data-button]") : null;
 			const box = toast ? toast.getBoundingClientRect() : null;
 			const action = button ? button.getBoundingClientRect() : null;
 			return {
-				laneToaster: laneToaster !== null,
+				panelToaster: panelToaster !== null,
 				toasters: document.querySelectorAll("[data-sonner-toaster]").length,
 				nodes: document.querySelectorAll("[data-sonner-toast]").length,
 				removed: document.querySelectorAll('[data-sonner-toast][data-removed="true"]').length,
@@ -4038,7 +4187,7 @@ async function sceneSessionArchive(cdp) {
 	retried.samples = samples.length;
 	retried.removedSeen = removedSeen;
 	/*
-	 * SUMMARISED, NOT KEPT BY REFERENCE: the last sample that still held the lane is often
+	 * SUMMARISED, NOT KEPT BY REFERENCE: the last sample that still held the message is often
 	 * the very object the verdict reports, and a back-reference to it is a circular structure
 	 * the check's own `JSON.stringify` refuses (measured: `property 'lastWithLane' closes the
 	 * circle`). The fields below are the ones a reader needs - when, what the DOM held, and
@@ -4050,7 +4199,7 @@ async function sceneSessionArchive(cdp) {
 			: {
 					at: sample.at,
 					painted: sample.painted,
-					laneToaster: sample.laneToaster,
+					panelToaster: sample.panelToaster,
 					toasters: sample.toasters,
 					nodes: sample.nodes,
 					removed: sample.removed,
@@ -4082,17 +4231,18 @@ async function sceneSessionArchive(cdp) {
 				? "an offer for this row"
 				: "neither shape";
 	check(
-		"a refused retry puts the refusal back in the lane, with its Retry still pressable, and the store answered a NEW press with a refusal for this row (UX round 1, U3; freshness from agent review round 2, R2-2)",
+		"a refused retry puts the refusal back on screen, with its Retry still pressable, and the store answered a NEW press with a refusal for this row (UX round 1, U3; freshness from agent review round 2, R2-2)",
 		retried?.painted === true &&
 			retried?.action === "Retry" &&
 			retried?.hitTest === true &&
 			retried?.answeredAgain === true &&
-			retried?.answer === "another refusal for this row",
+			retried?.answer === "another refusal for this row" &&
+			retried?.panelToaster === false,
 		`${Date.now() - retryPressedAt}ms after the retry (refusal raised ${retryPressedAt - refusalRaisedAt}ms before the press): ${JSON.stringify(retried)}`,
 	);
 
 	/*
-	 * THE TRANSITION, BESIDE THE VERDICT: the last 60ms sample that still held the lane's node
+	 * THE TRANSITION, BESIDE THE VERDICT: the last 60ms sample that still held the message's node
 	 * and the first that did not, with the container counts each saw. A dismissal shows
 	 * `removed > 0` on the way out and leaves the toaster's own section mounted; a teardown
 	 * shows `toasters: 0`, which neither a dismissal nor an empty store can produce (sonner
@@ -4110,14 +4260,14 @@ async function sceneSessionArchive(cdp) {
 	 * U10, THE SEQUENCE THAT FAILED (UX round 3), AND THE ASSERTION IS ABOUT WHAT DOES *NOT*
 	 * COME BACK. A refusal stands for the refused conversation; a NEWER message then takes the
 	 * lane (a second conversation's archive raises its offer); the reader presses that offer's
-	 * own Undo; the lane goes empty. The defect was what happened next: the SUPERSEDED refusal,
+	 * own Undo; the surface goes empty. The defect was what happened next: the SUPERSEDED refusal,
 	 * whose value was still in the store, was drawn again - lane empty at +450ms in the light
 	 * palette, the refusal back at +1.75s dark / +450ms light - because the currency rule chose
 	 * the newest word per commit while the clock cleared only the DRAWING, never the value.
 	 *
 	 * THE FIX IS READ IN TWO PLACES, and the first is the mechanism rather than the symptom: the
 	 * moment the offer supersedes the refusal, the refusal's value must be gone (that is what
-	 * makes it un-re-printable), and then the lane must stay empty through both of the moments the
+	 * makes it un-re-printable), and then the surface must stay empty through both of the moments the
 	 * return was measured at. A red run here with the first clause green is the old defect back:
 	 * the value outliving its message.
 	 *
@@ -4126,9 +4276,9 @@ async function sceneSessionArchive(cdp) {
 	 */
 	const refusedStanding = await verb(cdp, "state");
 	check(
-		"U10 precondition: the refused conversation's refusal is what the lane is showing",
+		"U10 precondition: the refused conversation's refusal is what the surface is showing",
 		refusedStanding.archiveFailure?.sessionId === REFUSED_ID &&
-			(await drawnSelector(cdp, SIDEBAR_TOAST)) === true,
+			(await drawnSelector(cdp, ARCHIVE_TOAST)) === true,
 		JSON.stringify({
 			failure: refusedStanding.archiveFailure ?? null,
 			undo: refusedStanding.archiveUndo ?? null,
@@ -4243,7 +4393,7 @@ async function sceneSessionArchive(cdp) {
 		}),
 	);
 	check(
-		"U10: the newer offer takes the lane AND the refusal it superseded is cleared with it, so it cannot be re-printed",
+		"U10: the newer offer takes the screen AND the refusal it superseded is cleared with it, so it cannot be re-printed",
 		superseded.archiveUndo !== null && superseded.archiveFailure === null,
 		JSON.stringify({
 			undo: superseded.archiveUndo
@@ -4252,42 +4402,41 @@ async function sceneSessionArchive(cdp) {
 			failure: superseded.archiveFailure ?? null,
 		}),
 	);
-	await clickAt(cdp, `${SIDEBAR_TOAST} [data-button]`);
+	await clickAt(cdp, `${ARCHIVE_TOAST} [data-button]`);
 	const afterRetire = [];
 	for (const at of [450, 1750]) {
 		await wait(at === 450 ? 450 : 1300);
 		const lane = await verb(cdp, "state");
 		afterRetire.push({
 			at: `+${at}ms`,
-			drawn: (await drawnSelector(cdp, SIDEBAR_TOAST)) === true,
+			drawn: (await drawnSelector(cdp, ARCHIVE_TOAST)) === true,
 			/*
-			 * THE BAND GIVES THE ROWS BACK, which is the other half of D14's own reading: height
-			 * 0 once the message is gone, so an empty lane costs the list nothing at all.
+			 * NO BAND ELEMENT EXISTS, EVER (2026-09-27): the whole mechanism is deleted, so the
+			 * assertion is absence rather than height 0 - and with the message gone the list was
+			 * never spending anything in the first place.
 			 */
-			bandHeight: Math.round(
-				(
-					await verb(cdp, "measure", "[data-archive-toast-band]").catch(
-						() => null,
-					)
-				)?.rect.height ?? -1,
-			),
+			noBand: await cdp
+				.evaluate(
+					`document.querySelector("[data-archive-toast-band]") === null`,
+				)
+				.catch(() => false),
 			failure: lane.archiveFailure ?? null,
 			undo: lane.archiveUndo ?? null,
 		});
 	}
 	check(
-		"U10: after the offer's own Undo the lane stays EMPTY - the refusal is not re-printed at +450ms or +1.75s, and the band gives the list back its height, in this palette",
+		"U10: after the offer's own Undo the surface stays EMPTY - the refusal is not re-printed at +450ms or +1.75s, and no band element exists anywhere, in this palette",
 		afterRetire.every(
 			(reading) =>
 				reading.drawn === false &&
-				reading.bandHeight === 0 &&
+				reading.noBand === true &&
 				reading.failure === null &&
 				reading.undo === null,
 		),
 		JSON.stringify(afterRetire),
 	);
 	note(
-		"U10 the lane after the newer message retires",
+		"U10 the surface after the newer message retires",
 		JSON.stringify(afterRetire),
 	);
 
@@ -4311,121 +4460,51 @@ async function sceneSessionArchive(cdp) {
 	check(
 		"U10: the refusal this walk is about is standing again, so the steps after it read the state they were written against",
 		refusalBack.archiveFailure?.sessionId === REFUSED_ID &&
-			(await drawnSelector(cdp, SIDEBAR_TOAST)) === true,
+			(await drawnSelector(cdp, ARCHIVE_TOAST)) === true,
 		JSON.stringify({
 			failure: refusalBack.archiveFailure?.sessionId ?? null,
 			undo: refusalBack.archiveUndo ?? null,
 		}),
 	);
 	/*
-	 * AND IT IS REACHABLE WITH THE ENTITY REGION GONE (agent review round 4, R4-1).
-	 * This is the mode the REGISTER was absent from at `3e650f5f0`: it had been
-	 * re-parented into the entities region, and the assembly renders only the list
-	 * region in `chats-only`, so the sentence and its Retry vanished in exactly the
-	 * layout where the user is acting on chat rows. The lane cannot inherit that
-	 * defect - it is mounted by the panel's root, above both regions - and this step
-	 * is what keeps the claim a measurement rather than a reading of the JSX. The
-	 * assertion is on the DRAWN node.
+	 * AND THE MESSAGE CANNOT BE TAKEN BY A REGION (agent review round 4, R4-1;
+	 * re-shaped twice: the merge in round 1, and the lane's retirement on 2026-09-27).
+	 *
+	 * THE RECORD: at `3e650f5f0` the register had been re-parented INTO the entities
+	 * region, and the assembly of the day rendered only the list region in its
+	 * `chats-only` mode - so the sentence and its Retry vanished in exactly the
+	 * layout where the user is acting on chat rows. The repair mounted the lane at
+	 * the panel's root, above both regions, and the step that guarded it drove the
+	 * panel's own collapse control and asserted the sentence still drew with the
+	 * entity region unmounted.
+	 *
+	 * THE MERGE REMOVED THE MODE, AND THE RETIREMENT REMOVED THE PANEL ITSELF. The
+	 * boundary, the collapse cluster and the restore row went with the split
+	 * (`fix(chat): one scroll in the sidebar`), so no control can unmount a region
+	 * any more; and the raise now lives on an always-mounted surface outside the
+	 * panel entirely (`undo-toasts.tsx`, the operator's request of 2026-09-27), so
+	 * the region-unmount defect class is not merely unreachable - the message is not
+	 * a descendant of ANY sidebar node. What this asserts on the drawn node is the
+	 * stronger placement: the message is not inside the sidebar's landmark at all.
+	 * It is falsifiable: re-parent a container into the panel (or the entities
+	 * region) and this check fails exactly as the old one did.
 	 */
-	/*
-	 * AND IT IS REACHABLE WITH THE ENTITY REGION GONE. The mode comes from the
-	 * panel's OWN collapse control, not from `setSplitPreferences`: that helper
-	 * writes localStorage and RELOADS the page, which would clear the in-memory
-	 * refusal this step is about (a refusal is not persisted). The control lives on
-	 * the cluster, which is inert until the pointer reveals it - so the pointer is
-	 * moved there first and the press goes to the control's own box, the idiom the
-	 * split scene uses for the same control.
-	 *
-	 * THE MODE IS ASSERTED, NOT ASSUMED: a non-empty query forces `both` regions
-	 * (`sidebar-split.ts`), so a step that merely hid nothing would pass this check
-	 * while proving nothing. `[data-sidebar-region="entities"]` must be UNMOUNTED
-	 * while the refusal is drawn - which is exactly the state the fold broke.
-	 */
-	/*
-	 * THE PLATE IS REVEALED BEFORE THE PRESS, AND THE WARM-UP IS WHAT REVEALS IT (measured
-	 * 2026-09-22). The control lives on the plate, which straddles the boundary's ZERO-HEIGHT
-	 * band (`absolute -translate-y-1/2` inside `h-0`), and the band reveals that plate from its
-	 * own `onPointerEnter`. A pointer that is already inside the 16px strip therefore fires NO
-	 * enter when the walk moves it a few pixels onto the control's own centre, and the plate
-	 * stays `pointer-events-none` - so the press passes through it and the region never
-	 * unmounts, which is what this check then reads as `entitiesUnmounted:false`.
-	 *
-	 * THE PROBE THAT SETTLED IT (this run, then removed): the boundary's boxes read band
-	 * `{y:421,height:0}`, strip `{top:413,bottom:429,height:16}`, separator `{top:416,bottom:426,
-	 * height:10}`, control `{x:404,y:421,top:407,bottom:435,width:28}` - i.e. the control's own
-	 * centre is ON the line - and EVERY sampled point (the line, +-3px, +-6px, at the band's
-	 * centre and at the control's own x) revealed the plate, with `waitedMs` 250-340 and a hit
-	 * test naming the separator at the middle three. So the aim is not what fails and the
-	 * geometry is not what decides it: ARRIVING FROM OUTSIDE IS. `parkPointer` puts the pointer
-	 * where it hovers nothing, and the move that follows is a real entry into the strip - the
-	 * strip is 16px tall and the separator is the hit target over its own 10px, so the aim lands
-	 * on the boundary by construction rather than by luck.
-	 *
-	 * THE REVEAL IS WAITED FOR AND THEN REQUIRED, so a future tip of this fails here, naming the
-	 * reveal, rather than at the state check it would otherwise silently explain. The press
-	 * still goes to the control's own box, which is interactive only once that reveal happened.
-	 *
-	 * THREE ATTEMPTS, the shape the row work above uses for the same class of question (hover,
-	 * bounded wait, break when it is drawn - then the claim made exactly as written). It is not
-	 * belt and braces: the boundary MOVES UNDER A SETTLING LAYOUT, because the lane's band below
-	 * it changes height as the refusal arrives (measured on the same head: the band check read
-	 * 34px - the offer's one-line card - where the settled refusal is 150), and an aim that was
-	 * inside the strip when it was taken can be outside it a frame later, which is a
-	 * `pointerleave` and a disarm rather than a reveal. Each attempt re-parks, because a real
-	 * entry needs the pointer to come from outside the strip, and re-measures.
-	 */
-	const clusterRevealed = { ok: false, waitedMs: 0 };
-	for (let attempt = 0; attempt < 3; attempt += 1) {
-		await parkPointer(cdp);
-		const boundary = await splitBox(cdp, SPLIT_SEPARATOR);
-		require("the boundary this cluster hangs on is drawn", boundary !==
-			null, "no separator: the split needs both regions");
-		await movePointer(cdp, boundary.x, boundary.y);
-		const read = await waitForCondition(
-			cdp,
-			`document.querySelector(${JSON.stringify(SPLIT_CLUSTER_REVEALED)}) !== null`,
-			700,
-			40,
-		);
-		clusterRevealed.ok = read.ok;
-		clusterRevealed.waitedMs += read.waitedMs;
-		if (read.ok === true) break;
-	}
-	require("the cluster's plate is revealed before its control is pressed", clusterRevealed.ok ===
-		true, `the plate never revealed in ${clusterRevealed.waitedMs}ms after three attempts: the pointer did not enter the boundary`);
-	const hideEntities = await splitBox(cdp, '[data-sidebar-hide="entities"]');
-	require("the cluster's hide control is reachable", hideEntities !==
-		null, "no [data-sidebar-hide=entities]");
-	await pressPointerStationary(cdp, hideEntities.x, hideEntities.y);
-	await wait(500);
-	const entitiesUnmounted = await cdp.evaluate(
-		`document.querySelector('[data-sidebar-region="entities"]') === null`,
-	);
-	const refusalChatsOnly = await verb(cdp, "measure", SIDEBAR_TOAST);
-	const retryChatsOnly = await verb(
+	const refusalReachable = await verb(cdp, "measure", ARCHIVE_TOAST);
+	const retryReachable = await verb(
 		cdp,
 		"measure",
-		`${SIDEBAR_TOAST} [data-button]`,
+		`${ARCHIVE_TOAST} [data-button]`,
+	);
+	const messageOutsidePanel = await cdp.evaluate(
+		`(() => { const message = document.querySelector(${JSON.stringify(ARCHIVE_TOAST)}); return message !== null && message.closest('nav[aria-label="Chats"]') === null; })()`,
 	);
 	check(
-		"the entity region is unmounted, and the refused archive with its Retry is still reachable",
-		entitiesUnmounted === true &&
-			refusalChatsOnly.inViewport === true &&
-			retryChatsOnly.inViewport === true,
-		JSON.stringify({ entitiesUnmounted, refusalChatsOnly, retryChatsOnly }),
+		"the refused archive with its Retry is reachable, and the message sits outside the sidebar's tree entirely",
+		refusalReachable.inViewport === true &&
+			retryReachable.inViewport === true &&
+			messageOutsidePanel === true,
+		JSON.stringify({ refusalReachable, retryReachable, messageOutsidePanel }),
 	);
-	offerFrames.push({
-		label: `archive-refused-chats-only${RUN_LABEL}`,
-		...(await captureWithToast(cdp, `archive-refused-chats-only${RUN_LABEL}`)),
-		toastOnScreen: (await drawnSelector(cdp, SIDEBAR_TOAST)) === true,
-	});
-	const showEntities = await splitBox(cdp, '[data-sidebar-restore="entities"]');
-	require("the restore row is drawn", showEntities !==
-		null, "no restore row for the entity region");
-	await movePointer(cdp, showEntities.x, showEntities.y);
-	await wait(320);
-	await pressPointerStationary(cdp, showEntities.x, showEntities.y);
-	await wait(500);
 
 	/*
 	 * 8. The row's own hover with the pointer on the TITLE (design round 1, D5):
@@ -4472,8 +4551,8 @@ async function sceneSessionArchive(cdp) {
 	 * THE OFFER'S CLOCK STARTS HERE, at the press that raises it, and the check below
 	 * measures from this instant rather than from whenever it gets around to waiting.
 	 * Sonner's duration starts when the toast MOUNTS, which is this press; the steps in
-	 * between (hiding the entity region, reading the offer there, restoring it) spend
-	 * ~2s of the 8s, so a wait that started after them could only ever see the tail and
+	 * between (the pill's read, the offer's own read and the settle waits) spend part
+	 * of the 8s, so a wait that started after them could only ever see the tail and
 	 * a `>=6000ms` claim against the tail is a claim about the scene's own timings.
 	 */
 	const offerRaisedAt = Date.now();
@@ -4486,47 +4565,30 @@ async function sceneSessionArchive(cdp) {
 		`${JSON.stringify(pill)} activeSessionId=${openAfter.activeSessionId}`,
 	);
 	/*
-	 * THE OFFER IS THE PANEL'S OWN TOAST NOW, IN THE PANEL'S OWN LANE (design D11),
-	 * so its clearance is read there. The retirement rule is unchanged and so is the
-	 * property this check is about: the offer outlives the catalogue answers that
-	 * mention the row and is retired by its own ceiling, not by the first answer to
-	 * arrive. The wait below is the same wait; what changed is the element it waits
-	 * on - and with it, the fact that the lane is mounted by the panel's root, so
-	 * there is no assembly mode in which the offer is not drawn.
+	 * THE OFFER IS AN ORDINARY TOAST NOW, IN THE APP'S ONE CONTAINER (2026-09-27), so its
+	 * clearance is read there. The retirement rule is unchanged and so is the property
+	 * this check is about: the offer outlives the catalogue answers that mention the row
+	 * and is retired by its own duration (sonner's clock - the lane's app-armed clocks
+	 * went with the lane), not by the first answer to arrive. The wait below is the same
+	 * wait, on the message the app draws.
 	 */
 	/*
-	 * THE OFFER IS REACHABLE THERE TOO (R4-1's other half): it used to be the same
-	 * register and it was absent for the same reason. Asserted while it is still up,
-	 * before the retirement wait below - and WITHOUT a frame, because the refusal's
-	 * chats-only frame above already carries the placement.
+	 * THE OFFER IS REACHABLE WHILE IT STANDS, and that is the whole of this half: the
+	 * placement is asserted once, at the refusal step above.
 	 */
-	const hideForOffer = await splitBox(cdp, '[data-sidebar-hide="entities"]');
-	require("the cluster's hide control is reachable", hideForOffer !==
-		null, "no [data-sidebar-hide=entities]");
-	await movePointer(cdp, hideForOffer.x, hideForOffer.y);
-	await wait(320);
-	await pressPointerStationary(cdp, hideForOffer.x, hideForOffer.y);
-	await wait(500);
-	const offerChatsOnly = await verb(cdp, "measure", SIDEBAR_TOAST);
+	const offerReachable = await verb(cdp, "measure", ARCHIVE_TOAST);
 	check(
-		"the archive offer is reachable in chats-only",
-		offerChatsOnly.inViewport === true,
-		JSON.stringify(offerChatsOnly),
+		"the archive offer is reachable while it is up (the placement is asserted at the refusal step above)",
+		offerReachable.inViewport === true,
+		JSON.stringify(offerReachable),
 	);
-	const showForOffer = await splitBox(cdp, '[data-sidebar-restore="entities"]');
-	require("the restore row is drawn", showForOffer !==
-		null, "no restore row for the entity region");
-	await movePointer(cdp, showForOffer.x, showForOffer.y);
-	await wait(320);
-	await pressPointerStationary(cdp, showForOffer.x, showForOffer.y);
-	await wait(500);
-	const clearance = await waitForGone(cdp, SIDEBAR_TOAST, 20_000);
+	const clearance = await waitForGone(cdp, ARCHIVE_TOAST, 20_000);
 	/*
 	 * WHAT "GONE" MEANS, read rather than assumed, because `waitForGone` answers
-	 * `box.width > 0`: a toast that is still MOUNTED but not painted (hidden by the
-	 * lane's own rule, say) is reported as retired, and those two facts have different
-	 * owners. The reading below separates them, and it is the difference between
-	 * "the offer was taken down" and "the offer stopped being drawn".
+	 * `box.width > 0`: a toast that is still MOUNTED but not painted is reported as
+	 * retired, and those two facts have different owners. The reading below separates
+	 * them, and it is the difference between "the offer was taken down" and "the offer
+	 * stopped being drawn".
 	 */
 	const laneAfter = await cdp.evaluate(`(() => {
 		const all = Array.from(document.querySelectorAll(${JSON.stringify(TOAST_SELECTOR)}));
@@ -4545,9 +4607,9 @@ async function sceneSessionArchive(cdp) {
 		});
 	})()`);
 	check(
-		"the archive offer outlives the catalogue answers and is taken down by the lane's own duration",
+		"the archive offer outlives the catalogue answers and is taken down by sonner's own duration (the offer's 8s)",
 		clearance.timedOut === false && Date.now() - offerRaisedAt >= 6_000,
-		`the offer lived ${Date.now() - offerRaisedAt}ms from the press (the answers that mention the row arrive in 0.4-1.6s, the lane's duration is ${8_000}ms, and the wait for it to go began ${clearance.waitedMs}ms before it did); lane now ${JSON.stringify(laneAfter)} `,
+		`the offer lived ${Date.now() - offerRaisedAt}ms from the press (the answers that mention the row arrive in 0.4-1.6s, the offer's duration is ${8_000}ms, and the wait for it to go began ${clearance.waitedMs}ms before it did); the surface now holds ${JSON.stringify(laneAfter)} `,
 	);
 	/*
 	 * AND THE OTHER ARM OF THE SAME RULE, WHICH THE BRANCH HAD STOPPED OBSERVING (agent
@@ -4572,7 +4634,7 @@ async function sceneSessionArchive(cdp) {
 	await wait(300);
 	await clickAt(cdp, "[data-session-archive-action]");
 	await wait(700);
-	const raisedAgain = await verb(cdp, "measure", SIDEBAR_TOAST);
+	const raisedAgain = await verb(cdp, "measure", ARCHIVE_TOAST);
 	check(
 		"the second archive of the open conversation raises the offer again",
 		raisedAgain.inViewport === true,
@@ -4592,7 +4654,7 @@ async function sceneSessionArchive(cdp) {
 		 * `Retry`. The claim below is about the OFFER's retirement, so it asks that question.
 		 */
 		goneByStateChange = await cdp.evaluate(`(() => {
-			const toast = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)});
+			const toast = document.querySelector(${JSON.stringify(ARCHIVE_TOAST)});
 			if (!toast) return { painted: false, action: null };
 			const r = toast.getBoundingClientRect();
 			const button = toast.querySelector("[data-button]");
@@ -4638,41 +4700,90 @@ async function sceneSessionArchive(cdp) {
 	await hoverOver(cdp, `[data-session-row]:has(${offeredRow})`);
 	await wait(300);
 	await hoverOver(cdp, offeredRow);
+	/*
+	 * THE PAIR THIS CLAUSE IS ABOUT, read BEFORE the press: which row the press is on, and which row
+	 * takes its place - by the same rule the hand-off implements (the next live row in the list's
+	 * order, or the last one before it when the pressed row was the list's last). Recording the
+	 * pressed row beside the landed one is what makes the pair checkable from the log alone, instead
+	 * of a reader having to reconstruct the press from this step's own source (QA round 4, Q-3).
+	 *
+	 * COMPUTING THE SUCCESSOR RATHER THAN DESCRIBING IT is what makes this clause able to fail on the
+	 * defect it names (UX round 2, U2): this row sits in the MIDDLE of its list, so the successor and
+	 * the list's first row are different elements - which is exactly the difference a rule that fell
+	 * through to `live[0]` cannot produce.
+	 */
+	const handOffExpectation = await cdp.evaluate(`(() => {
+		const control = document.querySelector(${JSON.stringify(offeredRow)});
+		const row = control?.closest("[data-session-row]") ?? null;
+		if (row === null) return null;
+		const rows = Array.from(
+			document.querySelectorAll('[data-sidebar-region="chats"] [data-chat-row]'),
+		);
+		const position = rows.findIndex((candidate) => row.contains(candidate));
+		const successor =
+			position === -1 ? null : (rows[position + 1] ?? rows[position - 1] ?? null);
+		const idOf = (node) =>
+			node?.closest("[data-session-row]")?.getAttribute("data-session-row") ?? null;
+		return {
+			pressedRow: row.getAttribute("data-session-row"),
+			position,
+			rowCount: rows.length,
+			firstRow: idOf(rows[0]),
+			successorRow: idOf(successor),
+		};
+	})()`);
 	await clickAt(cdp, offeredRow);
 	await wait(500);
 	const successor = await verb(cdp, "measure", "[data-chat-row]:focus").catch(
 		null,
 	);
 	/*
-	 * THE SCOPE THIS SELECTOR LACKS IS THE FINDING, AND IT IS NOW ASSERTED RATHER THAN RECORDED
-	 * (nit, round 2; re-baselined this pass from the reading below).
+	 * AND WHERE IT LANDS IS A CONVERSATION ROW OF THE LIST'S OWN REGION (UX round 2, U1) - which is
+	 * what this check always WANTED and could not have.
 	 *
-	 * `[data-chat-row]` names the catalogue's SECTION HEADINGS as well as its rows, so
-	 * `[data-chat-row]:focus` answers "a chat-row-shaped element holds the keyboard" - a question
-	 * a heading satisfies. The reading this pass produced, in both palettes, is verbatim
-	 * `{"selector":"[data-chat-row]:focus","target":"button \"Agents\"","focused":true}`: what the
-	 * keyboard lands on after a row is clicked is the `Agents` HEADING, not a row. The row-scoped
-	 * form, `[data-session-row] [data-chat-row]:focus`, is the assertion this check WANTS and
-	 * cannot have - it matches NOTHING here (measured, both palettes: ten seconds of waiting and
-	 * then the run threw), i.e. the focused element is not inside a session row.
-	 *
-	 * So the check states what actually lands: a catalogue element that is NOT the row which was
-	 * clicked and NOT the document, with the row-scoped miss read beside it. Landing the scoped
-	 * form as the assertion would be a red walk over a fact about the app's focus rules rather
-	 * than about this change; writing the unscoped form as if it were about a row is what this
-	 * re-baseline removes.
+	 * `[data-chat-row]` names the ENTITY region's group rows as well as the conversations, and the
+	 * merged panel's document order begins with the entity region, so the unscoped hand-off landed on
+	 * the `Agents` HEADING: this pass recorded it verbatim as `{"target":"button \"Agents\"",
+	 * "focused":true}`, with the row-scoped form matching NOTHING (ten seconds of waiting and then the
+	 * run threw), i.e. the focused element was not inside any session row. The hand-off is scoped now,
+	 * so the row-scoped form is the ASSERTION rather than the miss: the caret is inside a SESSION ROW,
+	 * and it is not the row that left.
 	 */
 	const successorScoped = await verb(cdp, "measure", {
 		selector: "[data-session-row] [data-chat-row]:focus",
 		timeoutMs: 400,
 	}).catch(() => null);
+	/*
+	 * AND WHICH REGION IT IS IN, named rather than inferred: the reading below is what distinguishes
+	 * "a chat-row-shaped element" (which an entity row satisfies) from the region the reader is
+	 * working in, and it is the field the hand-off's own finding was stated in.
+	 */
+	const successorRegion = await cdp.evaluate(`(() => {
+		const active = document.activeElement;
+		if (!(active instanceof HTMLElement)) return null;
+		return {
+			tag: active.tagName.toLowerCase(),
+			id: active.closest("[data-session-row]")?.getAttribute("data-session-row") ?? null,
+			region: active.closest("[data-sidebar-region]")?.getAttribute("data-sidebar-region") ?? null,
+			label: active.getAttribute("aria-label"),
+		};
+	})()`);
 	check(
-		"the keyboard lands on a catalogue element rather than back on the document, and NOT inside a session row: the row-scoped form of the selector matches nothing (nit, round 2)",
+		"the keyboard lands on the row that took the place of the one that left - a conversation row of the CHATS region, not the list's first row, not an entity row above the list, and not back on the document (UX round 2, U1/U2; UX round 1, U5)",
 		successor !== null &&
 			successor.focused === true &&
-			successorScoped === null &&
+			successorScoped !== null &&
+			successorScoped.focused === true &&
+			successorRegion?.region === "chats" &&
+			successorRegion?.id === handOffExpectation?.successorRow &&
+			successorRegion?.id !== handOffExpectation?.pressedRow &&
 			!/Release notes for 0\.29/.test(successor.target ?? ""),
-		JSON.stringify({ successor, successorScoped }),
+		JSON.stringify({
+			successor,
+			successorScoped,
+			successorRegion,
+			handOff: handOffExpectation,
+		}),
 	);
 	/*
 	 * WHAT IT LANDED ON, RECORDED BESIDE THE ASSERTION: the check above can only say "not a row
@@ -4680,21 +4791,34 @@ async function sceneSessionArchive(cdp) {
 	 * some other chat-row-shaped surface - so both readings are printed rather than summarised.
 	 */
 	note(
-		"what holds the keyboard after a row is clicked",
-		JSON.stringify({ unscoped: successor, rowScoped: successorScoped }),
+		"what holds the keyboard after a row is clicked, against the row that took the pressed row's place",
+		JSON.stringify({
+			pressedRow: handOffExpectation?.pressedRow ?? null,
+			successorRow: handOffExpectation?.successorRow ?? null,
+			landedRow: successorRegion?.id ?? null,
+			landedRegion: successorRegion?.region ?? null,
+			firstRow: handOffExpectation?.firstRow ?? null,
+			rowCount: handOffExpectation?.rowCount ?? null,
+			unscoped: successor,
+			rowScoped: successorScoped,
+		}),
 	);
 	/*
-	 * THE OFFER, AND THE CONSTRAINT THAT MOVED IT OUT OF THE CORNER (design round 2,
-	 * D12, answered in design D11).
+	 * THE OFFER'S POSITION, AND THE TRADE THE OPERATOR RE-ACCEPTED (design round 2's D12,
+	 * superseded by the operator's own request of 2026-09-27).
 	 *
-	 * It has to satisfy two things at once: it must sit on the surface that performed
-	 * the action, and it must never be able to sit over the composer's interactive
-	 * controls. As a viewport-corner toast it failed the second - measured in both
-	 * palettes the toast box (x 1001..1360.5, y 789..842.5) covered the Send control
-	 * (x 1307..1339, y 803..835), so the offer's own Undo box landed where Send had
-	 * been. It is a toast again, but in the PANEL'S OWN LANE: both properties are
-	 * asserted here rather than described, and the second is now structural - the
-	 * lane is inside the panel's box, and the composer is in another column.
+	 * D12 measured this offer as a viewport-corner toast: the box (x 1001..1360.5, y
+	 * 789..842.5) covered the composer's Send control (x 1307..1339, y 803..835), so the
+	 * offer's own Undo box landed where Send had been. That measurement moved the offer
+	 * into the panel's own registers - first the split's bottom row, then the sidebar's
+	 * toast lane - and the operator retired both on 2026-09-27 ("instead of having a
+	 * separate sidebar notification, we should probably just use the normal sonner
+	 * toast"), because the in-panel shapes were the ones that did not properly show up.
+	 * The corner is what "the normal sonner toast" means in this app, so the overlap
+	 * D12 measured is a trade the operator chose knowingly, and this reading records its
+	 * live geometry instead of hiding it: the offer must be the app's standard toast
+	 * (the one container, outside the panel) and the Send-overlap numbers are printed
+	 * beside the frames in `docs/evidence/`.
 	 */
 	const offerBoxes = await cdp.evaluate(`(() => {
 		const box = (el) => {
@@ -4702,27 +4826,40 @@ async function sceneSessionArchive(cdp) {
 			const r = el.getBoundingClientRect();
 			return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height };
 		};
+		const toast = document.querySelector(${JSON.stringify(ARCHIVE_TOAST)});
 		return {
-			offer: box(document.querySelector(${JSON.stringify(SIDEBAR_TOAST)})),
+			offer: box(toast),
+			inPanel: toast !== null && toast.closest('nav[aria-label="Chats"]') !== null,
+			containers: document.querySelectorAll("[data-sonner-toaster]").length,
 			panel: box(document.querySelector('[aria-label="Chats"]')),
 			send: box(document.querySelector('[aria-label="Send message"]')),
 		};
 	})()`);
 	const disjoint = disjointBoxes;
 	check(
-		"a successful archive offers an Undo on the surface that performed it",
-		offerBoxes.offer !== null && offerBoxes.panel !== null,
+		"a successful archive offers an Undo, as the app's ordinary bottom-right toast",
+		offerBoxes.offer !== null &&
+			offerBoxes.inPanel === false &&
+			offerBoxes.containers === 1,
 		JSON.stringify(offerBoxes),
 	);
 	check(
-		"and the offer is inside the panel, never over the composer's Send control",
+		"and the offer is NOT inside the panel any more (the lane is retired): the D12 Send overlap is the trade the operator re-accepted, recorded by the note below",
 		offerBoxes.offer !== null &&
-			offerBoxes.offer.left >= offerBoxes.panel.left &&
-			offerBoxes.offer.right <= offerBoxes.panel.right &&
-			disjoint(offerBoxes.offer, offerBoxes.send) === true,
+			offerBoxes.send !== null &&
+			offerBoxes.inPanel === false,
 		JSON.stringify(offerBoxes),
 	);
-	note("the undo offer's box, and the composer's", JSON.stringify(offerBoxes));
+	note(
+		"the undo offer's box, the composer's Send, and their overlap - the D12 trade the operator re-accepted (2026-09-27)",
+		JSON.stringify({
+			...offerBoxes,
+			overlapsSend:
+				offerBoxes.offer !== null &&
+				offerBoxes.send !== null &&
+				!disjoint(offerBoxes.offer, offerBoxes.send),
+		}),
+	);
 	const offerFirst = await capture(cdp, `undo-offer${RUN_LABEL}`);
 	await wait(200);
 	const offerSecond = await capture(cdp, `undo-offer${RUN_LABEL}`);
@@ -4731,7 +4868,7 @@ async function sceneSessionArchive(cdp) {
 		stable: readFileSync(offerFirst.path).equals(
 			readFileSync(offerSecond.path),
 		),
-		toastOnScreen: (await drawnSelector(cdp, SIDEBAR_TOAST)) === true,
+		toastOnScreen: (await drawnSelector(cdp, ARCHIVE_TOAST)) === true,
 	});
 
 	/*
@@ -4910,16 +5047,16 @@ async function sceneSessionArchive(cdp) {
 	 * the dwell plus the pan's own ceiling, exactly as the `row-space` scene waits.
 	 */
 	/*
-	 * AND THE LANE IS CLEARED FIRST (this scene's own triage, 2026-09-21). An earlier step
-	 * leaves a refusal standing at the panel's bottom-left, and the row under it is not
-	 * hoverable at all: Chromium gives `:hover` to the TOPMOST element, so the pointer lands
-	 * on the toast and the row paints no ground and reveals no acts - measured as
-	 * `{"rows":2,"painted":[]}` and `pair false, pin false, archive false`, with the row's
-	 * own controls never drawn. Waiting for the message to retire (the panel's clock, <= 10s
-	 * from its last assertion) puts the pointer back on the row, which is what these two
-	 * checks are about; nothing about their claims changes.
+	 * AND THE SURFACE IS CLEARED FIRST (this scene's own triage, 2026-09-21). An earlier step
+	 * leaves a refusal standing; while it was up, a press aimed at a row could land on the toast
+	 * instead (Chromium gives `:hover` to the TOPMOST element - the old reading was
+	 * `{"rows":2,"painted":[]}` with the row's own controls never drawn). The message is now
+	 * at the app's bottom-right corner, where it cannot sit over the panel's rows at all, so
+	 * this wait is belt-and-braces rather than the necessity it was; waiting it out (sonner's
+	 * duration - the refusal's 10s - or its own retirement) puts the pointer back on the row,
+	 * which is what these two checks are about; nothing about their claims changes.
 	 */
-	await waitForGone(cdp, SIDEBAR_TOAST, 12_000);
+	await waitForGone(cdp, ARCHIVE_TOAST, 12_000);
 	/*
 	 * THE POINTER IS PLACED AND THEN VERIFIED, because a re-laid-out panel can leave a single
 	 * `mouseMoved` landing nowhere: the width round-trip above (280 -> 240 -> 280) moves the
@@ -5032,17 +5169,17 @@ async function sceneSessionArchive(cdp) {
 	await wait(300);
 
 	/*
-	 * AND THE LANE'S OTHER CONTROL, INTO A REFUSAL (agent review round 2, R2-1). The Retry
+	 * AND THE OFFER'S OWN CONTROL, INTO A REFUSAL (agent review round 2, R2-1). The Retry
 	 * is walked above; this is its twin on the OFFER, and it is the one that still carried
 	 * the defect: pressing Undo writes the desired state immediately, the optimistic fact
 	 * made the retirement rule read false, the offer was therefore retired AT the press and
-	 * the lane was dismissed - and a REFUSED unarchive then raised its refusal on the id
+	 * the message was dismissed - and a REFUSED unarchive then raised its refusal on the id
 	 * that had just been dismissed, which sonner destroys inside its own unmount window.
 	 * The reader saw the offer vanish, the row stay archived, and no message.
 	 *
 	 * The walk is a whole sequence because the offer must exist before its Undo can be
 	 * pressed: archive the row (accepted - the stub refuses only its unarchive), press the
-	 * offer's own Undo (refused once), then require A MESSAGE TO STILL BE IN THE LANE - the
+	 * offer's own Undo (refused once), then require A MESSAGE TO STILL BE ON SCREEN - the
 	 * refusal this time - with its Retry hit-testable and the row still archived, because a
 	 * refused write moves nothing. The freshness half is read the way the retry's is (`state`
 	 * rather than the pixels): the refusal has to name THIS row, since an in-place
@@ -5156,10 +5293,11 @@ async function sceneSessionArchive(cdp) {
 	);
 	/*
 	 * WHAT IS ACTUALLY ON TOP AT THOSE COORDINATES (manager's lead, pass 4). The press that
-	 * WORKS in this same run happens with NO lane card up; this one happens while the refusal
-	 * card is - and the card overlays the list's lower rows, which is U8's subject. If something
-	 * is intercepting, the only way to see it is to ask the document what the point resolves to
-	 * rather than to assume the control is the hit target.
+	 * WORKS in this same run happens with NO card up; this one happens while the refusal card
+	 * is - and the card used to overlay the list's lower rows, which is U8's subject. The card
+	 * is at the app's corner now and cannot cover the list, so the probe is kept as the reading
+	 * that would name an interceptor if one ever appears: ask the document what the point
+	 * resolves to rather than assume the control is the hit target.
 	 */
 	const hitAtPress = await cdp.evaluate(`(() => {
 		const el = document.elementFromPoint(${boxAfter.centre.x}, ${boxAfter.centre.y});
@@ -5170,7 +5308,6 @@ async function sceneSessionArchive(cdp) {
 				n.tagName.toLowerCase() +
 					(n.getAttribute("data-session-archive") !== null ? "[data-session-archive]" : "") +
 					(n.hasAttribute("data-button") ? "[data-button]" : "") +
-					(n.classList.contains("lo-archive-toast") ? ".lo-archive-toast" : "") +
 					(n.hasAttribute("data-content") ? "[data-content]" : "") +
 					(n.hasAttribute("data-sonner-toast") ? "[data-sonner-toast]" : "") +
 					(n.hasAttribute("data-session-row") ? "[data-session-row]" : ""),
@@ -5200,58 +5337,58 @@ async function sceneSessionArchive(cdp) {
 	);
 	await wait(500);
 	/*
-	 * AND IT PRESSES ITS OWN MESSAGE (this walk's triage, 2026-09-21). The lane keeps one
-	 * message at a time and an earlier step's refusal is still standing in the store; the walk
-	 * used to press `[data-button]` on whatever the lane showed, so it pressed THAT refusal's
+	 * AND IT PRESSES ITS OWN MESSAGE (this walk's triage, 2026-09-21). The archive family
+	 * holds one message at a time and an earlier step's refusal is still standing in the store;
+	 * the walk used to press `[data-button]` on whatever was on screen, so it pressed THAT refusal's
 	 * Retry and then asserted about the row it had not touched (`refusalNames:
 	 * "7c1b0f2a4d31"` - the earlier row - while the walk's own row was `b3f1a09c7d52`). The
 	 * offer is the message whose action reads `Undo`, so the walk waits for it before
 	 * pressing; every claim below is unchanged, including the precondition's.
 	 */
 	for (let attempt = 0; attempt < 40; attempt += 1) {
-		const laneAction = await cdp.evaluate(`(() => {
-			const toast = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)});
+		const toastAction = await cdp.evaluate(`(() => {
+			const toast = document.querySelector(${JSON.stringify(ARCHIVE_TOAST)});
 			const button = toast ? toast.querySelector("[data-button]") : null;
 			return button ? (button.textContent || "").trim() : null;
 		})()`);
-		if (laneAction === "Undo") break;
+		if (toastAction === "Undo") break;
 		await wait(250);
 	}
-	const offerUp = await verb(cdp, "measure", SIDEBAR_TOAST);
+	const offerUp = await verb(cdp, "measure", ARCHIVE_TOAST);
 	const offerState = await verb(cdp, "state");
-	const offerLane = await cdp.evaluate(`(() => {
-		const toast = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)});
+	const offerToast = await cdp.evaluate(`(() => {
+		const toast = document.querySelector(${JSON.stringify(ARCHIVE_TOAST)});
 		const button = toast ? toast.querySelector("[data-button]") : null;
 		return { action: button ? (button.textContent || "").trim() : null };
 	})()`);
 	/*
-	 * THE CLAIM IS "THE OFFER IS THE LANE'S MESSAGE", NOT "THE STORE IS CLEAN" (this walk's own
+	 * THE CLAIM IS "THE OFFER IS THE ARCHIVE FAMILY'S MESSAGE", NOT "THE STORE IS CLEAN" (this walk's own
 	 * triage, 2026-09-21). The clause this replaces asked for `archiveFailure == null`, which the
 	 * app never reaches in this scene: the retry step above refuses a write for a LIVE_CLAIM row,
 	 * and the store keeps a refusal until an accepted unarchive of that same row or a new offer
 	 * for it - neither of which is reachable for a row whose route always 409s. It read
 	 * `{"offer":false,"failure":{"sessionId":"7c1b0f2a4d31"}}` on every run: a fabricated
-	 * precondition failing a walk whose subject it is not. What the walk needs is that the lane
-	 * is carrying THE OFFER IT JUST RAISED (its action reads `Undo`; a refusal's reads `Retry`),
-	 * and that is what is asserted here - a strictly stronger statement about identity than
-	 * "a toast is in the viewport". The store's refusal is still reported, for the record.
+	 * precondition failing a walk whose subject it is not. What the walk needs is that the
+	 * surface carries THE OFFER IT JUST RAISED (its action reads `Undo`; a refusal's reads
+	 * `Retry`), and that is what is asserted here - a strictly stronger statement about identity
+	 * than "a toast is in the viewport". The store's refusal is still reported, for the record.
 	 */
 	check(
-		"the offer this walk starts from is up, and it is the lane's own message",
-		offerUp.inViewport === true && offerLane.action === "Undo",
+		"the offer this walk starts from is up, and it is the archive family's own message",
+		offerUp.inViewport === true && offerToast.action === "Undo",
 		JSON.stringify({
 			offer: offerUp.inViewport,
-			action: offerLane.action,
+			action: offerToast.action,
 			failure: offerState.archiveFailure ?? null,
 		}),
 	);
 	const undoAt = Date.now();
-	await clickAt(cdp, `${SIDEBAR_TOAST} [data-button]`);
+	await clickAt(cdp, `${ARCHIVE_TOAST} [data-button]`);
 	let undoRefused = null;
 	for (let attempt = 0; attempt < 20; attempt += 1) {
 		await wait(250);
 		undoRefused = await cdp.evaluate(`(() => {
-			const toast = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)});
+			const toast = document.querySelector(${JSON.stringify(ARCHIVE_TOAST)});
 			if (!toast) return { painted: false };
 			const r = toast.getBoundingClientRect();
 			const button = toast.querySelector("[data-button]");
@@ -5303,7 +5440,7 @@ async function sceneSessionArchive(cdp) {
 			break;
 	}
 	check(
-		"a REFUSED undo leaves a message in the lane, and it is the refusal for the row that was pressed: Retry hit-testable, the row still archived, the offer never left the lane empty (agent review round 2, R2-1)",
+		"a REFUSED undo leaves a message on screen, and it is the refusal for the row that was pressed: Retry hit-testable, the row still archived, the offer never left the app without a message (agent review round 2, R2-1; the lane that round was named for was retired 2026-09-27)",
 		undoRefused?.painted === true &&
 			undoRefused?.action === "Retry" &&
 			undoRefused?.hitTest === true &&
@@ -5340,7 +5477,7 @@ async function sceneSessionArchive(cdp) {
 		let previous = null;
 		for (let attempt = 0; attempt < 12; attempt += 1) {
 			const box = await verb(cdp, "measure", {
-				selector: `${SIDEBAR_TOAST} [data-button]`,
+				selector: `${ARCHIVE_TOAST} [data-button]`,
 				timeoutMs: 2_000,
 			});
 			if (
@@ -5363,7 +5500,7 @@ async function sceneSessionArchive(cdp) {
 	await wait(400);
 	const attemptsAfterRetry =
 		(await verb(cdp, "state"))?.archiveAttempts ?? null;
-	const undoCleared = await waitForGone(cdp, SIDEBAR_TOAST, 8_000);
+	const undoCleared = await waitForGone(cdp, ARCHIVE_TOAST, 8_000);
 	const restoredLabel = await labelOf(`${undoRow} [data-session-archive]`);
 	/*
 	 * THE STORE AND THE CARD AT THIS CHECK'S EDGE (the contradiction this fixes, stated exactly):
@@ -5378,7 +5515,7 @@ async function sceneSessionArchive(cdp) {
 	 */
 	const laneAtEdge = await verb(cdp, "state").catch(() => null);
 	const cardAtEdge = await cdp.evaluate(`(() => {
-		const toast = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)});
+		const toast = document.querySelector(${JSON.stringify(ARCHIVE_TOAST)});
 		if (!toast) return null;
 		const action = toast.querySelector("[data-button]");
 		return {
@@ -5430,7 +5567,7 @@ async function sceneSessionArchive(cdp) {
 		press: { selector: claimedRow },
 	});
 	note(
-		"the band's arrival on a scrolled list, with the writer trapped (QA round 4, Q-9)",
+		"the message's arrival on a scrolled list, with the writer trapped (QA round 4, Q-9; the band this reading was built around is gone, superseded 2026-09-27)",
 		JSON.stringify(scrolledArrivalReading),
 	);
 	/*
@@ -5448,30 +5585,27 @@ async function sceneSessionArchive(cdp) {
 	 * replaces and passes with it - paired with the same re-file under an unchanged box, which is
 	 * followed on both heads (U1).
 	 *
-	 * WHAT THIS ARRIVAL DOES SHOW, and it is the state the ruling names: a list that OVERFLOWS AT
-	 * REST, the reader wheeled off the top, a cursor row that reads `partly` before the press and
-	 * `outside` after it - because the band took its height off the box, the exact geometry the
-	 * pre-fix gate read as "the row left" - and the reader's `scrollTop` byte-equal across it IN
-	 * EVERY SAMPLED FRAME, no write on the container, the list's extent byte-equal as well, every
-	 * row at the same top with nothing taken out, and the yield exact (design round 8, D27's
-	 * acceptance reading).
+	 * WHAT THIS ARRIVAL DOES SHOW, and it is the STRONGER form of the state the ruling names: a
+	 * list that OVERFLOWS AT REST, the reader wheeled off the top, a raised message (now an
+	 * ordinary toast that takes no layout space at all, 2026-09-27), the reader's `scrollTop`
+	 * byte-equal across it IN EVERY SAMPLED FRAME, no write on the container, the list's extent
+	 * byte-equal as well, every row at the same top with nothing taken out, and the BOX byte-equal
+	 * - which is what the band used to move (design round 8, D27's reading, inverted for an
+	 * assembly with nothing to yield).
 	 */
-	const arrivalReadingNow = arrivalReading(
-		scrolledArrivalReading,
-		scrolledArrivalReading.before?.box?.height ?? null,
-	);
+	const arrivalReadingNow = arrivalReading(scrolledArrivalReading);
 	check(
 		"the scrolled arrival is set up in QA's own state: the list overflows at rest, the reader's scroll is off the top, a row that starts inside holds focus, and the press raises the card",
 		arrivalReadingNow.stateOk,
 		JSON.stringify(arrivalReadingNow.state),
 	);
 	check(
-		"and the band's arrival is the geometry QA measured: the cursor's row sits `partly` in the panel before the press and `outside` after it, because the band's height came off the box rather than off the rows",
+		"and the box never moves: the list's own box is byte-equal across the press, where the band used to take its height off it (the geometry the pre-fix gate read as 'the row left' cannot arise from a toast)",
 		arrivalReadingNow.geometryOk,
 		JSON.stringify(arrivalReadingNow.geometry),
 	);
 	check(
-		"and the band's arrival leaves the reader's scroll where they put it: scrollTop is byte-equal across it, at the ends AND in every sampled frame (QA round 4, Q-9's clause; design round 8, D27's reading)",
+		"and the message's arrival leaves the reader's scroll where they put it: scrollTop is byte-equal across it, at the ends AND in every sampled frame (QA round 4, Q-9's clause; design round 8, D27's reading)",
 		arrivalReadingNow.scrollHeld,
 		JSON.stringify(arrivalReadingNow.scroll),
 	);
@@ -5486,7 +5620,7 @@ async function sceneSessionArchive(cdp) {
 		JSON.stringify(arrivalReadingNow.extent),
 	);
 	check(
-		"and nothing writes the list's own scrollTop as the band arrives: the trap is empty across the press, so the writer is named rather than inferred",
+		"and nothing writes the list's own scrollTop as the message arrives: the trap is empty across the press, so the writer is named rather than inferred",
 		arrivalReadingNow.trapped && arrivalReadingNow.writes.length === 0,
 		JSON.stringify({
 			trapped: arrivalReadingNow.trapped,
@@ -5496,14 +5630,24 @@ async function sceneSessionArchive(cdp) {
 		}),
 	);
 	check(
-		"and every row on screen at the press is at the same top after it, with nothing taken out of the list at all: the band's arrival translates nothing and the press changes no membership (design round 8, D27)",
+		"and every row on screen at the press is at the same top after it, with nothing taken out of the list at all: the message's arrival translates nothing and the press changes no membership (design round 8, D27)",
 		arrivalReadingNow.rowsHeld,
 		JSON.stringify(arrivalReadingNow.rows),
 	);
 	check(
-		"and the yield is still exact: the list's box is its band-0 box less the band, and the entity region above holds its box and its scroll",
-		arrivalReadingNow.yieldExact && arrivalReadingNow.entitiesHeld,
-		JSON.stringify(arrivalReadingNow.yield),
+		"and the box is byte-equal and the entity region above holds its box and its scroll - a toast reserves no space in the panel at all",
+		arrivalReadingNow.boxHeld && arrivalReadingNow.entitiesHeld,
+		JSON.stringify({
+			boxHeld: arrivalReadingNow.boxHeld,
+			box: {
+				atPress: arrivalReadingNow.scroll.boxBefore,
+				after: arrivalReadingNow.scroll.boxAfter,
+			},
+			entities: {
+				before: scrolledArrivalReading.before?.entities ?? null,
+				after: scrolledArrivalReading.after?.entities ?? null,
+			},
+		}),
 	);
 	await cdp.send("Emulation.clearDeviceMetricsOverride").catch(() => null);
 	await wait(300);
@@ -5533,11 +5677,15 @@ async function sceneSessionArchive(cdp) {
 	 * `refuse_unarchive_once` row, archive accepted, first unarchive refused - the row the refusal step presses
 	 * is the `live_claim` one, which refuses every write).
 	 *
-	 * WHAT THE CLAUSE ASKS, in the round's own words: the extent may shrink only in the sample that also shrinks
-	 * the box. The band's HEIGHT is panel state written by an observer that runs after sonner mounts the card,
-	 * so at the settlement commit the row's own height is gone from the extent while the box is still the
-	 * band-0 one - and whether that leaves a range under the reader's position is exactly what this reading
-	 * decides, rather than a note that claims it.
+	 * WHAT THE CLAUSE ASKS, IN THE TREE WITH NO BAND (re-scoped 2026-09-27). The round's own words were
+	 * "the extent may shrink only in the sample that also shrinks the box", because the BAND's height was
+	 * panel state written by an observer that ran after sonner mounted the card, so at the settlement
+	 * commit the row's own height was gone from the extent while the box was still the band-0 one. The
+	 * band is gone with the lane, so there is no single commit in which an observer's arithmetic can
+	 * disagree with the departure: the only movement left is the browser's own end-of-list clamp, and
+	 * what this reading decides is that the clamp is the ONLY thing that moves the reader - the box is
+	 * byte-equal, no sample holds a third position, every surviving row shifts by exactly the clamp, and
+	 * nothing writes the container.
 	 */
 	const acceptedRow = "[aria-label='Archive “Quarterly retention sweep”']";
 	const acceptedArrivalReading = await scrolledArrival(cdp, {
@@ -5565,47 +5713,161 @@ async function sceneSessionArchive(cdp) {
 		"the accepted press on a scrolled list, with the writer trapped (design round 9, D30)",
 		JSON.stringify(acceptedArrivalReading),
 	);
-	const acceptedNow = arrivalReading(
-		acceptedArrivalReading,
-		acceptedArrivalReading.before?.box?.height ?? null,
-		"the pressed row",
-	);
+	const acceptedNow = arrivalReading(acceptedArrivalReading, "the pressed row");
 	check(
 		"the accepted press is set up in the same state: the list overflows at rest, the reader's scroll is off the top, the pressed row is on screen and it is the row the daemon takes",
 		acceptedNow.stateOk,
-		JSON.stringify({ state: acceptedNow.state, rows: acceptedNow.rows }),
-	);
-	check(
-		"and the accepted departure does not take the reader with it: scrollTop is byte-equal in every sampled frame (design round 9, D30's reading)",
-		acceptedNow.scrollHeld,
-		JSON.stringify(acceptedNow.scroll),
-	);
-	check(
-		"and the extent shrinks only in a sample that also shrinks the box, so the list's own maximum scroll never falls under the reader: the clause exactly as the round states it",
-		acceptedNow.extentPairedWithBox && acceptedNow.rangeHeld,
 		JSON.stringify({
-			extent: acceptedNow.extent,
-			shrunk: acceptedNow.shrunkExtent,
-			unreachable: acceptedNow.unreachable,
-			frames: acceptedNow.frames,
+			state: acceptedNow.state,
+			rows: acceptedNow.rows,
+			placed: acceptedArrivalReading.placed,
 		}),
 	);
 	check(
-		"and the one row that departs is the row the reader pressed, with every surviving row keeping its top and nothing writing the container",
+		"and an accepted departure is answered by the browser's own end-of-list clamp and nothing else: the container is never written, and in every sampled frame the reader stands where they were or at min(their position, extent - box) (design round 9, D30's clause, re-scoped for the tree with no band, 2026-09-27)",
+		acceptedNow.clampedHeld &&
+			acceptedNow.framesOnlyClamp &&
+			acceptedNow.trapped &&
+			acceptedNow.writes.length === 0,
+		JSON.stringify({
+			clampedHeld: acceptedNow.clampedHeld,
+			framesOnlyClamp: acceptedNow.framesOnlyClamp,
+			scroll: acceptedNow.scroll,
+			writes: acceptedNow.writes,
+		}),
+	);
+	check(
+		"and the accepted departure moves nothing but the row's own height: the box is byte-equal across the press, every surviving row shifts only by the reader's own clamp, the one row that departs is the row the reader pressed, and the container is never written",
+		acceptedNow.boxHeld &&
+			acceptedNow.rowsHeldByClamp &&
+			acceptedNow.trapped &&
+			acceptedNow.writes.length === 0,
+		JSON.stringify({
+			boxHeld: acceptedNow.boxHeld,
+			box: {
+				atPress: acceptedNow.scroll.boxBefore,
+				after: acceptedNow.scroll.boxAfter,
+			},
+			rows: acceptedNow.rows,
+			scrollDelta: acceptedNow.scrollDelta,
+			writes: acceptedNow.writes,
+		}),
+	);
+	check(
+		"and the one row that departs is the row the reader pressed, with every surviving row shifting only by the reader's own clamp and nothing writing the container",
 		acceptedNow.stateOk &&
-			acceptedNow.rowsHeldLeaving &&
+			acceptedNow.rowsHeldByClamp &&
 			acceptedNow.trapped &&
 			acceptedNow.writes.length === 0,
 		JSON.stringify({
 			rows: acceptedNow.rows,
+			scrollDelta: acceptedNow.scrollDelta,
 			writes: acceptedNow.writes,
 			mutations: acceptedNow.scroll.mutations,
 		}),
 	);
+	/*
+	 * WHERE THE CARET WENT, AND WHERE THE NEXT DOWN-ARROW GOES FROM THERE (UX round 2, U1 and U2).
+	 *
+	 * The hand-off this arrival drives is the one a reader feels after an ACCEPTED archive. The
+	 * readings above it say only that SOME chat row is focused in the panel's tree - and the ENTITY
+	 * region's `Agents` disclosure cleared that bar while sitting roughly 500px above the row that was
+	 * pressed. Both regions' rows carry `data-chat-row`, so the attribute cannot tell them apart; the
+	 * clause below reads the REGION, which is the defect.
+	 *
+	 * U2 is the same node seen one keystroke later: the arrow walk's ring is the panel's own document
+	 * order, and it resumes from the node the caret is on, so a caret in the group region makes the
+	 * next DOWN-ARROW visit the group rows before any conversation. The probe drives the key through
+	 * Chromium's input pipeline rather than as a page-built `KeyboardEvent`, for the reason `pressChord`
+	 * states, and it reports the stops it reached rather than only their shape. It also reports the
+	 * ring's own length, because a list with a single conversation row cannot demonstrate a step: the
+	 * clause would otherwise pass on a keystroke that never arrived.
+	 */
+	/*
+	 * WHERE THE CARET WENT, AND WHERE THE NEXT DOWN-ARROW GOES FROM THERE (UX round 2, U1 and U2).
+	 *
+	 * The hand-off this arrival drives is the one a reader feels after an ACCEPTED archive. The clause
+	 * asserts the ROW, not just the region: it reads the placement's own computation of the successor
+	 * (the rule the hand-off implements, evaluated on the same pre-press order the hand-off snapshots)
+	 * and requires the caret to be on that row. The region alone was the over-claim UX round 2, U2
+	 * named - both regions' rows carry `data-chat-row`, so "a conversation row of the chats region"
+	 * passes on a rule that never ran.
+	 *
+	 * THIS LEG IS STILL NOT THE DISCRIMINATING ONE, and that is stated rather than hidden: it presses
+	 * the list's LAST row, where the successor and the list's first row are the same element, so a
+	 * rule that fell through to `live[0]` would satisfy it. The discriminating witness is the row
+	 * press in step 10, whose row sits in the MIDDLE of its list - the successor there is a different
+	 * element from `live[0]`, which is why its clause is the one that FAILS when the rule is reverted.
+	 */
 	check(
-		"and the yield is exact after an accepted press too: the list's box is its band-0 box less the band the card settled at",
-		acceptedNow.yieldExact && acceptedNow.entitiesHeld,
-		JSON.stringify(acceptedNow.yield),
+		"and the accepted departure hands the caret to the row that took the pressed row's place - a conversation row of the CHATS region, not an entity row above the list and not the list's first row (UX round 2, U1 and U2)",
+		acceptedNow.stateOk &&
+			acceptedNow.state.focusedAfter?.region === "chats" &&
+			acceptedNow.state.focusedAfter?.id ===
+				acceptedArrivalReading.placed?.successorRow &&
+			acceptedNow.state.focusedAfter?.id !==
+				acceptedArrivalReading.placed?.pressedRow,
+		JSON.stringify({
+			focused: acceptedNow.state.focusedAfter,
+			pressedRow: acceptedArrivalReading.placed?.pressedRow ?? null,
+			successorRow: acceptedArrivalReading.placed?.successorRow ?? null,
+			pressedPosition: acceptedArrivalReading.placed?.pressedPosition ?? null,
+			handOffRowCount: acceptedArrivalReading.placed?.handOffRowCount ?? null,
+		}),
+	);
+	const readCaret = () =>
+		cdp.evaluate(`(() => {
+			const active = document.activeElement;
+			if (!(active instanceof HTMLElement))
+				return { tag: null, id: null, region: null, label: null };
+			return {
+				tag: active.tagName.toLowerCase(),
+				id: active.closest("[data-session-row]")?.getAttribute("data-session-row") ?? null,
+				region: active.closest("[data-sidebar-region]")?.getAttribute("data-sidebar-region") ?? null,
+				label: active.getAttribute("aria-label"),
+			};
+		})()`);
+	const caretStops = [await readCaret()];
+	for (let step = 0; step < 3; step += 1) {
+		const from = caretStops[caretStops.length - 1];
+		await pressChord(cdp, {
+			key: "ArrowDown",
+			code: "ArrowDown",
+			virtualKeyCode: 40,
+		});
+		let stop = from;
+		for (
+			let attempt = 0;
+			attempt < 6 && (stop.id ?? stop.label) === (from.id ?? from.label);
+			attempt += 1
+		) {
+			await wait(120);
+			stop = await readCaret();
+		}
+		caretStops.push(stop);
+	}
+	const chatRing = await cdp.evaluate(
+		`document.querySelectorAll('[data-sidebar-region="chats"] [data-chat-row]').length`,
+	);
+	check(
+		"and every stop the next down-arrows reach from that caret is a conversation row of the CHATS region, not a group row above the list (UX round 2, U2)",
+		caretStops.every((stop) => stop.id !== null && stop.region === "chats"),
+		JSON.stringify({ stops: caretStops, ring: chatRing }),
+	);
+	check(
+		"and the box is byte-equal after an accepted press too, and the entity region holds its box and its scroll and shifts only by the reader's own clamp: a toast reserves no space in either direction",
+		acceptedNow.boxHeld && acceptedNow.entitiesHeldByClamp,
+		JSON.stringify({
+			boxHeld: acceptedNow.boxHeld,
+			box: {
+				atPress: acceptedNow.scroll.boxBefore,
+				after: acceptedNow.scroll.boxAfter,
+			},
+			entities: {
+				before: acceptedArrivalReading.before?.entities ?? null,
+				after: acceptedArrivalReading.after?.entities ?? null,
+			},
+		}),
 	);
 	await cdp.send("Emulation.clearDeviceMetricsOverride").catch(() => null);
 	await wait(300);
@@ -5615,9 +5877,16 @@ async function sceneSessionArchive(cdp) {
 		frames.every((frame) => frame.stable === true && frame.toastFree === true),
 		frames.map((frame) => `${frame.label}: stable=${frame.stable}`).join(" | "),
 	);
+	/*
+	 * THE COUNT FOLLOWS THE SCENE'S OWN CAPTURES: it was three while
+	 * `archive-refused-chats-only` existed, and the push site left with the mode at round 1
+	 * of this fix (Q3/R4-1 - the merged panel cannot unmount a region), so the pin is the
+	 * two the scene still takes. A count left at three would be a stale expectation, not a
+	 * stricter check.
+	 */
 	check(
 		"every frame of a toast is a held-still picture of one that was really there",
-		offerFrames.length === 3 &&
+		offerFrames.length === 2 &&
 			offerFrames.every(
 				(frame) => frame.stable === true && frame.toastOnScreen === true,
 			),
@@ -5739,18 +6008,19 @@ function rowSpaceGeometry(cdp, ids) {
 		});
 		const panel = document.querySelector('nav[aria-label="Chats"]');
 		/*
-		 * THE OFFER, AS THE LANE DRAWS IT NOW (design D11): the panel mounts its own sonner
-		 * container, and sonner marks which lane a container is with data-x-position -
-		 * the global one is right, this one left. The register's own anchors
-		 * (data-session-archive-undo / -failure) went with the register.
+		 * WHICH CONTAINER THE OFFER IS IN (2026-09-27): the sidebar's own lane is retired, so
+		 * there is one container again and it is anchored bottom-right - the operator's own
+		 * request (use the normal sonner toast) and §10's supersession entry in the
+		 * sidebar-row-space design doc. The register's own anchors
+		 * (data-session-archive-undo / -failure) went with the register that preceded the lane.
 		 */
-		const lane = document.querySelector('[data-sonner-toaster][data-x-position="left"][data-y-position="bottom"]');
-		const toast = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)});
+		const container = document.querySelector('[data-sonner-toaster][data-x-position="right"][data-y-position="bottom"]');
+		const toast = document.querySelector(${JSON.stringify(ARCHIVE_TOAST)});
 		return {
 			viewport: { width: window.innerWidth, height: window.innerHeight, devicePixelRatio: window.devicePixelRatio },
 			/*
 			 * HOW MANY TOASTS EXIST AND HOW MANY ARE DRAWN, which is the only way to state
-			 * the lane's claim honestly: sonner 2.0.3 draws every mounted container's copy
+			 * the claim honestly: sonner 2.0.3 draws every mounted container's copy
 			 * of every toast, so the app's stylesheet narrows that down to the one the
 			 * reader sees, and painted (a box with pixels in it) is the reading that
 			 * discriminates a drawn toast from a suppressed duplicate.
@@ -5790,17 +6060,19 @@ function rowSpaceGeometry(cdp, ids) {
 				};
 			})(),
 			offer: {
-				lane: box(lane),
+				container: box(container),
 				toast: box(toast),
 				text: toast ? toast.textContent.replace(/\\s+/g, " ").trim() : null,
+				inPanel: toast !== null && toast.closest('nav[aria-label="Chats"]') !== null,
+				band: document.querySelector("[data-archive-toast-band]") !== null,
 			},
-			split: box(document.querySelector("[data-sidebar-split]")),
 			/*
 			 * THE COMPOSER, because the offer's own frames are also the evidence for where it
-			 * must NOT go: design round 2's D12 moved this offer out of the toast lane because
-			 * a bottom-right toast covered the composer's Send control, and the lane's whole
-			 * argument is that it cannot. Any claim about that has to state the clearance in
-			 * pixels rather than in prose.
+			 * sits relative to the composer: design round 2's D12 moved this offer out of the
+			 * bottom-right corner because the toast covered the composer's Send control, and the
+			 * operator re-accepted exactly that overlap on 2026-09-27 when the in-panel shapes
+			 * were retired ("we should probably just use the normal sonner toast"). The numbers
+			 * are stated here rather than in prose so the trade is a reading, not a memory.
 			 */
 			composer: (() => {
 				const send = document.querySelector('[aria-label="Send message"]');
@@ -5819,7 +6091,7 @@ function rowSpaceGeometry(cdp, ids) {
 			 * machine where it was zero.
 			 */
 			list: (() => {
-				const region = document.querySelector('[data-sidebar-region="chats"]');
+				const region = document.querySelector('[data-sidebar-region="scroller"]');
 				if (!region) return null;
 				const style = getComputedStyle(region);
 				return {
@@ -5931,11 +6203,12 @@ const rowSpaceBudget = (reading) =>
  * `offer-toast-280` is of the archive offer, in the state the operator reported: it is
  * taken after a REAL press on a row's archive control, with the pointer parked off the
  * row afterwards, because the offer is a statement about the LIST rather than about the
- * pointer. The offer is the panel's own toast lane now (design D11), so the frame is
- * also the evidence for where it must NOT go: the scene asserts the toast's box is
- * inside the panel's own box and disjoint from the composer's form and its Send
- * control, which is the constraint design round 2's D12 turned on and the reason the
- * offer left the register in the first place.
+ * pointer. The offer is an ordinary sonner toast again (2026-09-27, the operator's own
+ * request), drawn by the app's ONE container at the bottom-right corner - so the frame
+ * is also the evidence for the position the operator re-accepted: the scene asserts the
+ * offer is the app's standard toast (one container, outside the panel, no band element),
+ * and the composer is on screen in the same frame so the D12 Send overlap the operator
+ * chose is a number a reader can check rather than a claim in a document.
  *
  * The row is put back through the offer's own Undo before the scene ends, so a second
  * palette's run photographs the list the fixture describes rather than a list the first
@@ -6490,6 +6763,17 @@ async function sceneRowSpace(cdp) {
 		/archived/.test(geometry["offer-toast-280"].offer.text ?? ""),
 		JSON.stringify(geometry["offer-toast-280"].offer),
 	);
+	check(
+		"and the offer is the app's standard bottom-right toast: one container, outside the panel, with no band element anywhere (the operator's re-accepted shape, 2026-09-27)",
+		geometry["offer-toast-280"].offer.container !== null &&
+			geometry["offer-toast-280"].offer.inPanel === false &&
+			geometry["offer-toast-280"].offer.band === false &&
+			geometry["offer-toast-280"].toasts.painted === 1,
+		JSON.stringify({
+			offer: geometry["offer-toast-280"].offer,
+			toasts: geometry["offer-toast-280"].toasts,
+		}),
+	);
 
 	/*
 	 * The press is MEASURED with a short timeout first, so a miss NAMES ITSELF rather
@@ -6497,14 +6781,14 @@ async function sceneRowSpace(cdp) {
 	 * "the lane is not drawing it any more" is the diagnosis a reader needs.
 	 */
 	await verb(cdp, "measure", {
-		selector: `${SIDEBAR_TOAST} [data-button]`,
+		selector: `${ARCHIVE_TOAST} [data-button]`,
 		timeoutMs: 2_000,
 	}).catch(() => {
 		throw new Error(
-			`the offer's Undo is not on screen: the lane draws ${JSON.stringify(geometry["offer-toast-280"]?.toasts ?? null)} and the frame carried ${JSON.stringify(offerFrame.toastText)}`,
+			`the offer's Undo is not on screen: the surface holds ${JSON.stringify(geometry["offer-toast-280"]?.toasts ?? null)} and the frame carried ${JSON.stringify(offerFrame.toastText)}`,
 		);
 	});
-	await clickAt(cdp, `${SIDEBAR_TOAST} [data-button]`);
+	await clickAt(cdp, `${ARCHIVE_TOAST} [data-button]`);
 	await wait(700);
 	await parkPointer(cdp);
 	await waitForNoToasts(cdp, 5_000);
@@ -6516,18 +6800,13 @@ async function sceneRowSpace(cdp) {
 	);
 
 	/*
-	 * AND THE SAME OFFER AT THE 240 CLAMP MINIMUM, WHICH IS THE FRAME THAT SETTLES D10. The
-	 * card's width was a literal 248px - the lane's width at the 280 panel - while the lane is
-	 * `min(264px, 100% - 32px)` of the panel: at 240 the lane is 208, so the card was 40px wider
-	 * than its own lane and about 32px past the sidebar's right edge, with nothing clipping it
-	 * (design round 3, D10). It was 176 there before the lane took the icon's width out. A frame
-	 * is the only way to see that and there was none at this width, so this is the capture the
-	 * design round named as the thing that settles it - in both palettes, because the lane's
-	 * numbers do not move with the theme.
-	 *
-	 * The press is the reader's own sequence again, and the two assertions are the numbers a
-	 * still cannot carry: the card is no wider than the lane it is drawn in, and its right edge
-	 * is inside the panel's own box.
+	 * AND THE SAME OFFER AT THE 240 CLAMP MINIMUM, kept as history's control (design round 3,
+	 * D10 settled what the card does when the PANEL narrows; there is nothing left of the card
+	 * that narrows with it). With the lane retired (2026-09-27) the card is anchored to the
+	 * VIEWPORT's corner and its width is the library's `--width` (356), so the reading this step
+	 * now carries is the INVARIANCE: the same card box at 240 as at 280, and still the app's one
+	 * container outside the panel. The frame stays because it documents that the panel's width
+	 * no longer reaches the offer at all.
 	 */
 	await verb(cdp, "setSidebarWidth", { width: 240 });
 	await wait(400);
@@ -6546,16 +6825,20 @@ async function sceneRowSpace(cdp) {
 	});
 	const offer240Reading = geometry["offer-toast-240"].offer;
 	check(
-		"at the 240 clamp minimum the offer card is no wider than the lane it is drawn in, and inside the panel's own box (design round 3, D10)",
+		"at the 240 clamp minimum the offer is UNCHANGED - the same viewport-anchored card as at 280, still outside the panel (the panel's width no longer reaches it since the lane was retired, 2026-09-27)",
 		offer240Reading.toast !== null &&
-			offer240Reading.lane !== null &&
-			offer240Reading.toast.width <= offer240Reading.lane.width + 0.5 &&
-			offer240Reading.toast.right <=
-				geometry["offer-toast-240"].panel.right + 0.5,
+			offer240Reading.container !== null &&
+			offer240Reading.inPanel === false &&
+			geometry["offer-toast-240"].toasts.painted === 1 &&
+			Math.abs(
+				offer240Reading.toast.width -
+					(geometry["offer-toast-280"].offer.toast?.width ?? -1),
+			) <= 0.5,
 		JSON.stringify({
 			panelWidth: geometry["offer-toast-240"].panel.width,
-			lane: offer240Reading.lane,
+			container: offer240Reading.container,
 			toast: offer240Reading.toast,
+			widthAt280: geometry["offer-toast-280"].offer.toast?.width ?? null,
 		}),
 	);
 	check(
@@ -6563,7 +6846,7 @@ async function sceneRowSpace(cdp) {
 		/archived/.test(offer240Reading.text ?? ""),
 		JSON.stringify(offer240Reading),
 	);
-	await clickAt(cdp, `${SIDEBAR_TOAST} [data-button]`);
+	await clickAt(cdp, `${ARCHIVE_TOAST} [data-button]`);
 	await wait(700);
 	await parkPointer(cdp);
 	await waitForNoToasts(cdp, 5_000);
@@ -6597,10 +6880,10 @@ async function sceneRowSpace(cdp) {
 		toastOnScreen: offer320.toastText !== null,
 	});
 	note(
-		"the 320 card's x, and the lane and panel it sits in (design round 4, D16)",
+		"the 320 card's x, and the container and panel it sits in (the lane's old D16 question, kept as a reading now that the card is viewport-anchored)",
 		JSON.stringify({
 			panel: geometry["offer-toast-320"].panel,
-			lane: geometry["offer-toast-320"].offer.lane,
+			container: geometry["offer-toast-320"].offer.container,
 			card: geometry["offer-toast-320"].offer.toast,
 			text: geometry["offer-toast-320"].offer.text,
 		}),
@@ -6609,7 +6892,7 @@ async function sceneRowSpace(cdp) {
 	 * AND THE ROW IS PUT BACK, so the fixture this step found is the fixture it hands on - the
 	 * same sequence the 280 and 240 steps above end with.
 	 */
-	await clickAt(cdp, `${SIDEBAR_TOAST} [data-button]`);
+	await clickAt(cdp, `${ARCHIVE_TOAST} [data-button]`);
 	await wait(700);
 	await parkPointer(cdp);
 	await waitForNoToasts(cdp, 5_000);
@@ -6617,7 +6900,7 @@ async function sceneRowSpace(cdp) {
 	await wait(300);
 
 	/*
-	 * THE LONG NAME IN THE LANE (design round 3, D13). The D7 acceptance claim is that the card
+	 * THE LONG NAME IN THE CARD (design round 3, D13). The D7 acceptance claim is that the card
 	 * spends its width on the name rather than on chrome, and the claim was carried by frames of
 	 * the SHORT row's title, which fits at every width here - so nothing photographed the case the
 	 * fix is about. This is that case: the offer is raised on the row whose title is long enough
@@ -6646,7 +6929,7 @@ async function sceneRowSpace(cdp) {
 	 * one and not the other still answers.
 	 */
 	const offerName = await cdp.evaluate(`(() => {
-		const toast = document.querySelector(${JSON.stringify(SIDEBAR_TOAST)});
+		const toast = document.querySelector(${JSON.stringify(ARCHIVE_TOAST)});
 		if (!toast) return null;
 		const spans = Array.from(toast.querySelectorAll("[data-content] span"));
 		/*
@@ -6670,25 +6953,25 @@ async function sceneRowSpace(cdp) {
 	})()`);
 	const offerLongReading = geometry["offer-long-280"].offer;
 	check(
-		"the long name reaches the lane whole and the card is inside its own lane (design round 3, D7/D13)",
+		"the long name reaches the card whole and the card is inside the app's one container (design round 3, D7/D13; the lane the wording named was retired 2026-09-27)",
 		offerLongReading.toast !== null &&
-			offerLongReading.lane !== null &&
-			offerLongReading.toast.width <= offerLongReading.lane.width + 0.5 &&
+			offerLongReading.container !== null &&
+			offerLongReading.toast.width <= offerLongReading.container.width + 0.5 &&
 			offerName !== null &&
 			(offerName.text ?? "").includes(
 				"Quarterly retention sweep and the transcripts it dropped",
 			),
 		JSON.stringify({
-			lane: offerLongReading.lane,
+			container: offerLongReading.container,
 			toast: offerLongReading.toast,
 			name: offerName,
 		}),
 	);
 	note(
-		"the long name in the lane, as a box (D7's acceptance reading)",
+		"the long name in the card, as a box (D7's acceptance reading)",
 		JSON.stringify(offerName),
 	);
-	await clickAt(cdp, `${SIDEBAR_TOAST} [data-button]`);
+	await clickAt(cdp, `${ARCHIVE_TOAST} [data-button]`);
 	await wait(700);
 	await parkPointer(cdp);
 	await waitForNoToasts(cdp, 5_000);
@@ -6969,30 +7252,37 @@ async function sceneRowSpace(cdp) {
 		JSON.stringify(rowIn("hover-short-280", SHORT)),
 	);
 	/*
-	 * THE OFFER, IN THE PANEL'S OWN LANE: one toast painted, inside the panel's box, and
-	 * clear of the composer. The painted count is what makes this a claim about the app
-	 * rather than about the mechanism - sonner draws every mounted container's copy of
-	 * every toast, and the stylesheet narrows that to the one the reader sees.
+	 * THE COMPOSER'S OWN NUMBERS, KEPT AS THE RECORD OF THE TRADE (2026-09-27). With the lane
+	 * retired the offer is the app's standard bottom-right toast, and design round 2's D12
+	 * finding - that card over the composer's Send control - is the overlap the OPERATOR
+	 * re-accepted when asking for the standard toast. The pair is MEASURED on the offer's own
+	 * frame and echoed here rather than asserted against disjointness: the card's box and the
+	 * composer's are both functions of the window, and a constraint on their overlap would be
+	 * a constraint the operator's own instruction retired. What must stay true is that both
+	 * boxes are on the frame and the painted count is one - a claim about the app rather than
+	 * about the mechanism, since sonner draws every mounted container's copy of every toast.
 	 */
 	const offer = geometry["offer-toast-280"];
 	check(
-		"the offer is drawn exactly once, and inside the panel's own column",
+		"the offer is drawn exactly once in the app's one container, and the Send-vs-offer boxes are both on the frame - the overlap D12 measured is the operator's re-accepted trade",
 		offer.offer.toast !== null &&
 			offer.toasts.painted === 1 &&
-			offer.offer.toast.left >= offer.panel.left &&
-			offer.offer.toast.right <= offer.panel.right,
+			offer.offer.inPanel === false &&
+			offer.composer !== null &&
+			offer.composer.send !== null,
 		JSON.stringify({
 			toast: offer.offer.toast,
 			panel: offer.panel,
-			toasts: offer.toasts,
+			send: offer.composer.send,
+			overlapsSend:
+				offer.composer.send === null
+					? null
+					: disjointBoxes(offer.offer.toast, offer.composer.send) === false,
+			overlapsForm:
+				offer.composer.form === null
+					? null
+					: disjointBoxes(offer.offer.toast, offer.composer.form) === false,
 		}),
-	);
-	check(
-		"and it is disjoint from the composer's form and its Send control - the constraint design round 2's D12 turned on",
-		offer.composer !== null &&
-			disjointBoxes(offer.offer.toast, offer.composer.form) === true &&
-			disjointBoxes(offer.offer.toast, offer.composer.send) === true,
-		JSON.stringify({ toast: offer.offer.toast, composer: offer.composer }),
 	);
 	check(
 		"every settled capture is a frame the app held still for, with no toast on it",
@@ -7300,11 +7590,10 @@ async function sceneRowSpace(cdp) {
 				boxes: geometry,
 				offer: {
 					toast: geometry["offer-toast-280"]?.offer.toast ?? null,
-					lane: geometry["offer-toast-280"]?.offer.lane ?? null,
+					container: geometry["offer-toast-280"]?.offer.container ?? null,
 					text: geometry["offer-toast-280"]?.offer.text ?? null,
 					toasts: geometry["offer-toast-280"]?.toasts ?? null,
 					panel: geometry["offer-toast-280"]?.panel ?? null,
-					split: geometry["offer-toast-280"]?.split ?? null,
 					firstListRow: geometry["offer-toast-280"]?.firstListRow ?? null,
 					composer: geometry["offer-toast-280"]?.composer ?? null,
 				},
@@ -7322,6 +7611,341 @@ async function sceneRowSpace(cdp) {
 		}
 	}
 	return [...frames, ...offerFrames];
+}
+
+/**
+ * `--scene sidebar-bottom`: the sidebar column's bottom zone - the gap under the
+ * destinations, the band's own spacing, and the `Agents`/`Teams` headings' gap
+ * when the first is collapsed - read from the rendered DOM and photographed.
+ *
+ * THE OPERATOR'S REPORT (2026-09-27) is what the numbers are against: "there's a
+ * bunch of extra space" between the bottom-most nav row and the band (the chat
+ * view's control row: Search, View options, New agent or team), "maybe some
+ * reduction between the controls and the sections below them" to be more
+ * compact, and - asked twice - the wasted gap between the `Agents` and `Teams`
+ * headings when the first is collapsed.
+ *
+ * ## What it runs against
+ *
+ * `--backend` names the sidebar row-space set's own stand-in daemon
+ * (`docs/evidence/sidebar-row-space/harness/stub-daemon.mjs`), reused rather
+ * than copied: a session catalogue (the band and the entity sections both take
+ * the catalogue's gate), two agents, two teams and conversations, so the zone
+ * below the destinations is the app's own composition rather than a stage.
+ * The app is the real one: its catalogue read, its store, its sidebar, its
+ * disclosure state.
+ *
+ * ## The states, and what each one is for
+ *
+ * One palette per launch; the same steps run in both halves:
+ *
+ *   - `both-expanded`   both entity sections draw rows - the control case, where
+ *     the headings' gap must NOT move;
+ *   - `agents-collapsed`  `Agents` closed above `Teams` - the state the first
+ *     report named, where the gap must be the list's own 8px step;
+ *   - `both-collapsed`  both closed, the section-with-no-rows case;
+ *   - `strip`  the 56px column this change does not move, taken as the variant
+ *     a reviewer can see standing still rather than take on trust.
+ *
+ * The disclosure states are reached by PRESSING the headers - never by seeding -
+ * and each press is asserted against the `aria-expanded` it moved.
+ *
+ * ## The readings, and where they live
+ *
+ * One evaluate per state returns the boxes the gaps are subtractions over
+ * (`shell-evidence`'s own idiom), written to
+ * `sidebar-bottom-geometry-<theme>.json` beside the frames: the rhythm rows
+ * above the destinations, the destination list's own box, the band, both
+ * headings, the scroller and the foot - so every number quoted in the README is
+ * a subtraction over that file rather than a class name read aloud.
+ *
+ * ## The halves
+ *
+ * `--expect after` (the default) asserts the change's own claims - 16px under
+ * the destinations, and the conditional headings' gap - while the band's own gap
+ * to the first label is RECORDED at its unchanged 12px: the operator's second
+ * ask was a floated "maybe", and the only lever for it (the band's trailing
+ * margin or the scroll box's inset) moves the pixels of every committed sidebar
+ * frame by 4px, which is a re-capture pass of its own rather than part of this
+ * change. `--expect before` runs the same steps and records the same readings.
+ *
+ *   node scripts/renderer-driver.mjs --scene sidebar-bottom \
+ *     --backend http://127.0.0.1:18417 --backend-records <dir> \
+ *     --seed-onboarding-complete --theme localOperatorDark --out <dir>
+ */
+async function sceneSidebarBottom(cdp) {
+	const frames = [];
+	const expectAfter = START_EXPECT !== "before";
+	const states = {};
+
+	/*
+	 * THE CHANGE'S OWN CLAIMS, and the one place the two halves differ: `after`
+	 * asserts them, `before` records the same reading under a label that says
+	 * which half it is. The scene's own structural checks below run in both.
+	 */
+	const claim = (label, ok, detail) => {
+		if (expectAfter) check(label, ok, detail);
+		else note(`${label} (before half, not asserted)`, detail);
+	};
+
+	const hello = await verb(cdp, "hello");
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+	if (THEME) {
+		await verb(cdp, "setTheme", THEME);
+		const themed = await verb(cdp, "state");
+		check(
+			`the app is in the palette this run photographs (${THEME})`,
+			themed.theme === THEME,
+			`theme is ${themed.theme}`,
+		);
+	}
+
+	await verb(cdp, "navigate", "/chat");
+	/*
+	 * THE BAND IS THE WAIT THAT SAYS THE ZONE IS REAL: it takes the catalogue's
+	 * own gate (`showList`), so its presence is the app's own answer that the
+	 * catalogue mounted - and it is the control row the report is about.
+	 */
+	const band = await verb(cdp, "measure", {
+		selector: "[data-sidebar-band]",
+		timeoutMs: 15_000,
+	});
+	check(
+		"the band is drawn and hit-testable: the catalogue answered and the row the gap is measured to is the one on screen",
+		band.hitTest === true && band.inViewport === true && band.rect.height > 0,
+		JSON.stringify({
+			hitTest: band.hitTest,
+			inViewport: band.inViewport,
+			rect: band.rect,
+		}),
+	);
+	await verb(cdp, "measure", {
+		selector: '[data-chat-section="teams"]',
+		timeoutMs: 10_000,
+	});
+	await wait(300);
+
+	/*
+	 * The destinations list, addressed by the one row every build carries rather
+	 * than by a row the fixture may or may not draw (`Mesh` needs a mesh
+	 * membership this stand-in does not serve; the LAST row is whichever row the
+	 * build's bottom-most destination is, and the gap under the list is the
+	 * list's own bottom either way).
+	 */
+	const DESTINATIONS = 'ul:has(> li > button[data-tour-tag="nav-item-agents"])';
+
+	const readZone = async () =>
+		await cdp.evaluate(`(() => {
+			const info = (el) => {
+				if (!el) return null;
+				const r = el.getBoundingClientRect();
+				return {
+					x: Math.round(r.x),
+					y: Math.round(r.y),
+					width: Math.round(r.width),
+					height: Math.round(r.height),
+					bottom: Math.round(r.bottom),
+				};
+			};
+			const expanded = (el) => (el ? el.getAttribute("aria-expanded") : null);
+			const destinations = document.querySelector(${JSON.stringify(DESTINATIONS)});
+			const lastDestination = destinations
+				? destinations.lastElementChild.querySelector("button")
+				: null;
+			const band = document.querySelector("[data-sidebar-band]");
+			const agentsHeading = document.querySelector('[data-chat-section="agents"]');
+			const teamsHeading = document.querySelector('[data-chat-section="teams"]');
+			/*
+			 * THE TWO SECTION BOXES, not the two headings: between the headings sits the
+			 * open section's own rows, so a heading-to-heading subtraction measures the
+			 * section's content when it draws any - the margin this change is about only
+			 * exists between the BOXES, and a collapsed section's box IS its heading.
+			 */
+			const agentsSection = agentsHeading ? agentsHeading.closest("section") : null;
+			const teamsSection = teamsHeading ? teamsHeading.closest("section") : null;
+			const gear = document.querySelector('[data-tour-tag="nav-item-settings"]');
+			const foot = gear ? gear.parentElement : null;
+			const scroller = document.querySelector('[data-sidebar-region="scroller"]');
+			const strip = document.querySelector("[data-sidebar-strip]");
+			const boxes = {
+				newChat: info(document.querySelector("[data-new-chat-row]")),
+				searchRow: info(document.querySelector("[data-command-palette-trigger]")),
+				destinations: info(destinations),
+				lastDestination: info(lastDestination),
+				band: info(band),
+				agentsHeading: info(agentsHeading),
+				teamsHeading: info(teamsHeading),
+				agentsSection: info(agentsSection),
+				teamsSection: info(teamsSection),
+				scroller: info(scroller),
+				foot: info(foot),
+			};
+			const gap = (upper, lower) =>
+				upper && lower ? Math.round(lower.y - upper.bottom) : null;
+			return {
+				viewport: { w: innerWidth, h: innerHeight },
+				expanded: { agents: expanded(agentsHeading), teams: expanded(teamsHeading) },
+				boxes,
+				gaps: {
+					withinPrimary: gap(boxes.newChat, boxes.searchRow),
+					primaryToDestinations: gap(boxes.searchRow, boxes.destinations),
+					destinationsToBand: gap(boxes.destinations, boxes.band),
+					bandToFirstHeading: gap(boxes.band, boxes.agentsHeading),
+					agentsToTeams: gap(boxes.agentsSection, boxes.teamsSection),
+					scrollerToFoot: gap(boxes.scroller, boxes.foot),
+					footToViewportBottom: boxes.foot
+						? Math.round(innerHeight - boxes.foot.bottom)
+						: null,
+				},
+				strip: Boolean(strip),
+			};
+		})()`);
+
+	const readState = async (state) => {
+		const frame = await captureSettled(cdp, state);
+		frames.push(frame);
+		states[state] = await readZone();
+		return states[state];
+	};
+
+	/*
+	 * Press a section header until its `aria-expanded` reads `want`, and fail by
+	 * name if it will not - a scene that pressed nothing and measured anyway
+	 * would photograph the wrong state under the right label.
+	 */
+	const ensureExpanded = async (key, want) => {
+		const selector = `[data-chat-section="${key}"]`;
+		for (let attempt = 0; attempt < 3; attempt += 1) {
+			const now = await cdp.evaluate(
+				`document.querySelector('${selector}').getAttribute("aria-expanded")`,
+			);
+			if (now === want) return;
+			await verb(cdp, "press", selector);
+			await wait(300);
+		}
+		const now = await cdp.evaluate(
+			`document.querySelector('${selector}').getAttribute("aria-expanded")`,
+		);
+		throw new Error(
+			`${selector} did not reach aria-expanded=${want} (reads ${now})`,
+		);
+	};
+
+	await ensureExpanded("agents", "true");
+	await ensureExpanded("teams", "true");
+	// The entity rows load after the headings, and a frame of "Loading agents…"
+	// is not the state the gap is measured in.
+	await verb(cdp, "measure", { selector: "[data-entity]", timeoutMs: 10_000 });
+	const bothExpanded = await readState("both-expanded");
+	check(
+		"both sections are open for the control case",
+		bothExpanded.expanded.agents === "true" &&
+			bothExpanded.expanded.teams === "true",
+		JSON.stringify(bothExpanded.expanded),
+	);
+
+	await ensureExpanded("agents", "false");
+	const agentsCollapsed = await readState("agents-collapsed");
+	check(
+		"the press collapsed the agents section and left the teams section open",
+		agentsCollapsed.expanded.agents === "false" &&
+			agentsCollapsed.expanded.teams === "true",
+		JSON.stringify(agentsCollapsed.expanded),
+	);
+
+	await ensureExpanded("teams", "false");
+	const bothCollapsed = await readState("both-collapsed");
+	check(
+		"the second press collapsed the teams section",
+		bothCollapsed.expanded.agents === "false" &&
+			bothCollapsed.expanded.teams === "false",
+		JSON.stringify(bothCollapsed.expanded),
+	);
+
+	/*
+	 * The claims, over the readings above. `destinationsToBand` is the operator's
+	 * "bunch of extra space": 24px before this change (the group's 8px bottom
+	 * step + the body's 8px tier half + the panel's own 8px inset), 16px after
+	 * (§B6's one section tier, with the inset no longer stacked on top of it -
+	 * the edit's own comment in `sidebar-navigation.tsx` carries the arithmetic).
+	 * `bandToFirstHeading` is the weaker ask: 12px before (the band's 8px + the
+	 * scroller's 4px), 8px after. `agentsToTeams` is 16px whenever the section
+	 * above draws rows - the shared value a smaller constant would tighten
+	 * unasked - and the list's own 8px step when it draws none.
+	 */
+	claim(
+		"the gap under the destinations is the 16px section step",
+		agentsCollapsed.gaps.destinationsToBand === 16,
+		`${agentsCollapsed.gaps.destinationsToBand}px (expected 16)`,
+	);
+	claim(
+		"the band's own gap to the first section label is recorded at 12px, unchanged: the second ask was floated, and moving it costs every sidebar frame a re-capture",
+		agentsCollapsed.gaps.bandToFirstHeading === 12,
+		`${agentsCollapsed.gaps.bandToFirstHeading}px (12 on both halves)`,
+	);
+	claim(
+		"a collapsed section hands the heading below it the 8px step",
+		agentsCollapsed.gaps.agentsToTeams === 8 &&
+			bothCollapsed.gaps.agentsToTeams === 8,
+		`agents-collapsed ${agentsCollapsed.gaps.agentsToTeams}px, both-collapsed ${bothCollapsed.gaps.agentsToTeams}px (expected 8 in both)`,
+	);
+	claim(
+		"an expanded section keeps the full 16px tier: a shorter constant would tighten this unasked",
+		bothExpanded.gaps.agentsToTeams === 16,
+		`${bothExpanded.gaps.agentsToTeams}px (expected 16)`,
+	);
+
+	const geometryPath = join(
+		FRAMES,
+		`sidebar-bottom-geometry-${THEME ?? "default"}${RUN_LABEL}.json`,
+	);
+	writeFileSync(
+		geometryPath,
+		JSON.stringify(
+			{
+				scene: "sidebar-bottom",
+				theme: THEME ?? null,
+				expect: START_EXPECT,
+				runtime: electronRuntime(),
+				viewport: states["both-expanded"]?.viewport ?? null,
+				states,
+			},
+			null,
+			2,
+		),
+	);
+	note("geometry written", geometryPath);
+	for (const [state, reading] of Object.entries(states)) {
+		say(
+			`  ${state}: destinations->band ${reading.gaps.destinationsToBand ?? "-"}px, band->first label ${reading.gaps.bandToFirstHeading ?? "-"}px, agents->teams ${reading.gaps.agentsToTeams ?? "-"}px (agents ${reading.expanded.agents}, teams ${reading.expanded.teams})`,
+		);
+	}
+
+	/*
+	 * The strip, last: the collapse toggle narrows the column to 56px, the state a
+	 * reader keeps it in. Nothing in this change branches on it, and the frames
+	 * are here so that "it does not move" is a pair of pictures rather than a
+	 * sentence.
+	 */
+	await verb(cdp, "press", { selector: '[aria-label="Collapse sidebar"]' });
+	await verb(cdp, "measure", {
+		selector: "[data-sidebar-strip]",
+		timeoutMs: 8_000,
+	});
+	await wait(400);
+	frames.push(await captureSettled(cdp, "strip"));
+	states.strip = await readZone();
+	check(
+		"the column collapsed to the strip",
+		states.strip.strip === true,
+		JSON.stringify({ strip: states.strip.strip }),
+	);
+
+	return frames;
 }
 
 /**
@@ -7411,6 +8035,84 @@ async function sceneFirstSend(cdp) {
 	note("frame", JSON.stringify(sentFrame));
 	const after = (await verb(cdp, "measure", composerSelector)).rect;
 	/*
+	 * AND WHERE A SHORT TRANSCRIPT PUTS ITS CONTENT (the layout half of
+	 * conversation-start): the top of the pane, not the foot.
+	 *
+	 * The reading is the user row's own top against (a) the transcript region's
+	 * box, (b) the region's `p-4` inset and (c) the fixed 44px
+	 * "Start of conversation" slot that is the column's first child - the three
+	 * numbers that tell a top anchor from the bottom-packed layout this scene
+	 * existed for, without pinning a class name: the mechanism is `mb-auto` on the
+	 * content column, and a source-text assertion would pass on a build where the
+	 * margin never resolved.
+	 *
+	 * The row is found by its text and climbed to the content column's direct
+	 * child, so the box measured is the ROW's, whatever wrapper the cell gained.
+	 * Both assertions below fail on the pre-change tree (content packed to the
+	 * bottom origin sits at the region's foot).
+	 */
+	const anchored = await cdp.evaluate(`(() => {
+		const log = document.querySelector('[role="log"]');
+		const content = log && log.querySelector('[data-lo-transcript-content]');
+		if (!log || !content) return null;
+		const climb = (el) => {
+			let row = el;
+			while (row.parentElement && row.parentElement !== content) row = row.parentElement;
+			return row.parentElement === content ? row : null;
+		};
+		const tree = [...content.querySelectorAll('*')];
+		const holds = (el) => el.textContent.includes("Summarise yesterday");
+		const leaf = tree.find((el) => holds(el) && ![...el.children].some(holds)) ?? null;
+		const row = leaf ? climb(leaf) : null;
+		const slotLeaf = tree.find((el) => el.children.length === 0 && el.textContent.trim() === "Start of conversation") ?? null;
+		const slot = slotLeaf ? climb(slotLeaf) : null;
+		const rect = (el) => {
+			const r = el.getBoundingClientRect();
+			return { top: Math.round(r.top), bottom: Math.round(r.bottom), height: Math.round(r.height) };
+		};
+		return {
+			region: rect(log),
+			content: rect(content),
+			row: row ? rect(row) : null,
+			slot: slot ? rect(slot) : null,
+			overflow: log.scrollHeight - log.clientHeight,
+			scrollTop: log.scrollTop,
+		};
+	})()`);
+	note("anchor", JSON.stringify(anchored));
+	check(
+		"a short transcript is anchored to the TOP of the pane: the row sits in the region's upper half",
+		anchored !== null &&
+			anchored.row !== null &&
+			anchored.row.top - anchored.region.top <
+				(anchored.region.bottom - anchored.region.top) / 2,
+		`row ${JSON.stringify(anchored?.row)} in region ${JSON.stringify(anchored?.region)}`,
+		`row ${JSON.stringify(anchored?.row)} in region ${JSON.stringify(anchored?.region)}`,
+	);
+	/*
+	 * THE THIRD TERM WAS A FLUSH PAIR WHEN THIS CHECK WAS FIRST WRITTEN (<=2px
+	 * between the row's top and the slot's bottom), and the layout has never
+	 * PRODUCED one on any run whose numbers survive: the column is `flex flex-col`
+	 * with no gap class, and the FIRST ROW carries the transcript's own top gap
+	 * (16px in every conversation-start frame this scene has taken). The claim the
+	 * check exists for - the row is top-anchored just under the slot rather than
+	 * parked at the foot - is "at or below the slot, within one row-gap of it, and
+	 * inside the region's top band", so it is written that way and the numbers stay
+	 * in the log.
+	 */
+	check(
+		"the row sits just under the region's top inset, below the start-of-conversation slot",
+		anchored !== null &&
+			anchored.row !== null &&
+			anchored.row.top - anchored.region.top >= 16 &&
+			anchored.row.top - anchored.region.top <= 160 &&
+			(anchored.slot === null ||
+				(anchored.row.top >= anchored.slot.bottom &&
+					anchored.row.top - anchored.slot.bottom <= 24)),
+		`row.top ${anchored?.row?.top} region.top ${anchored?.region?.top} slot ${JSON.stringify(anchored?.slot)}`,
+		`row.top ${anchored?.row?.top} region.top ${anchored?.region?.top} slot ${JSON.stringify(anchored?.slot)}`,
+	);
+	/*
 	 * AND ONCE THE TURN HAS SETTLED: the mock provider answers, and the session's
 	 * readings (the model, the context) arrive with its first frames. Read so a
 	 * transient that only exists while the session is starting is told apart from a
@@ -7455,6 +8157,343 @@ async function sceneFirstSend(cdp) {
 	 * mock provider (a configured user, which is the state the claim is about).
 	 */
 	return [emptyFrame, sentFrame, settledFrame];
+}
+
+/**
+ * THE COLLAPSED TURN, driven end to end in the built app: the interaction half
+ * of the turn-collapse design's evidence plan (§10.3), which a still cannot
+ * state.
+ *
+ * WHY THIS SCENE EXISTS. The story set photographs the states; only a real turn
+ * shows the TRANSITION the feature is made of: a run while it is live (every
+ * row its own, no bar), the same run the moment its answer settles (the bar
+ * replaces the in-between rows), the reader's press (the rows come back, the
+ * bar stays as the toggle), and a reload (the durable re-read arrives collapsed
+ * again, with the same run and the same action count). The daemon's mock
+ * answers a `[bash:N]` prompt with one call that sleeps N seconds and then a
+ * text answer (`providers/clients.py`), which is a completed turn with exactly
+ * one in-between row (§5 case 2) - and the sleep is what makes the mid-run
+ * window wide enough to photograph. The call parks on the approval card first
+ * (this config's `tool_approval_mode` is `ask`), which the scene answers the
+ * way a reader does - option `1` typed into the composer and sent - so the
+ * running and completed states below are reached through the real gate.
+ *
+ * WHAT IT ASSERTS, and why each claim is a check rather than a frame: "no bar
+ * while live", "exactly one bar and one stamp when finished", "the press
+ * reveals the row behind it", "the reload comes back collapsed with the same
+ * run and the same action count". The duration clause is NOTED, not asserted
+ * equal across the reload: live it is the settle frame's clock (`settledAt`)
+ * and durable it is the producer's commit `ts`, and the pair of readings in the
+ * log is what says whether the two agree on this run (§R1).
+ *
+ * Requires `--backend` like first-send: with no backend the chat route draws
+ * its refusal surface and no composer mounts, so there is nothing to send.
+ */
+async function sceneTurnCollapse(cdp) {
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	const composerSelector = '[data-tour-tag="chat-input-textarea"]';
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+	await verb(cdp, "navigate", "/chat");
+	const mounted = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${composerSelector}') && document.querySelector('[data-lo-empty-mark]'))`,
+		30_000,
+	);
+	check(
+		"the chat route shows the empty state with a composer",
+		mounted.ok,
+		`composer + empty mark present: ${JSON.stringify(mounted.last)}`,
+	);
+
+	/*
+	 * The readings, scoped to the transcript region: the sidebar carries its own
+	 * clocks and rows, and a whole-document query would fold them into every
+	 * count below.
+	 */
+	const readTranscript = () =>
+		cdp.evaluate(`(() => {
+			const log = document.querySelector('[role="log"]');
+			if (!log) return null;
+			const bar = log.querySelector('[data-turn-summary]');
+			return {
+				bars: log.querySelectorAll('[data-turn-summary]').length,
+				runIds: bar ? bar.getAttribute('data-run-ids') : null,
+				barText: bar ? bar.textContent : null,
+				barOpen: bar
+					? bar.querySelector('button[aria-expanded]')?.getAttribute('aria-expanded')
+					: null,
+				toolRows: log.querySelectorAll('[data-record-kind="tool"]').length,
+				stamps: log.querySelectorAll('[data-stamp]').length,
+				foot: log.textContent.includes('Worked'),
+			};
+		})()`);
+
+	/*
+	 * READY BEFORE TYPING. A send pressed while the pane is still resolving its
+	 * model goes nowhere at all - measured on this scene's second run: the
+	 * composer took the text and the Enter produced NO session, NO message POST
+	 * at the daemon and no row, while the same press a minute later worked. The
+	 * model chip in the composer's footer is the reading that the transport has
+	 * resolved (it is what the pane paints once the backend answers), so the send
+	 * waits for it rather than for a sleep.
+	 */
+	const ready = await waitForCondition(
+		cdp,
+		`document.body.textContent.includes("mock-model")`,
+		90_000,
+	);
+	check(
+		"the composer resolves the daemon's model before the send",
+		ready.ok,
+		`after ${ready.waitedMs ?? "?"}ms: ${JSON.stringify(ready.last)}`,
+	);
+
+	/* The turn: one call that takes measurable time, then the mock's answer. */
+	const typePrompt = async () => {
+		await clickAt(cdp, `${composerSelector} textarea`);
+		await cdp.evaluate(
+			`document.querySelector('${composerSelector} textarea').focus()`,
+		);
+		await wait(150);
+		await cdp.send("Input.insertText", { text: "Run the checks [bash:12]" });
+		await wait(150);
+		const value = await cdp.evaluate(
+			`document.querySelector('${composerSelector} textarea').value`,
+		);
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		return value;
+	};
+	const typed = await typePrompt();
+	check(
+		"the prompt reached the composer",
+		typeof typed === "string" && typed.includes("Run the checks"),
+		JSON.stringify(typed),
+	);
+	const painted = () =>
+		waitForCondition(
+			cdp,
+			`(() => {
+				const log = document.querySelector('[role="log"]');
+				return Boolean(
+					log &&
+						log.querySelector('[data-record-kind="user"]') &&
+						log.textContent.includes("Run the checks"),
+				);
+			})()`,
+			20_000,
+		);
+	let sent = await painted();
+	if (!sent.ok) {
+		/*
+		 * The press is repeated rather than the prompt retyped: an Enter over an
+		 * empty composer is the app's own no-op, so a second press cannot double
+		 * a message that did land.
+		 */
+		note(
+			"the first press was dropped; repeating the Enter",
+			JSON.stringify(sent.last),
+		);
+		await clickAt(cdp, `${composerSelector} textarea`);
+		await cdp.evaluate(
+			`document.querySelector('${composerSelector} textarea').focus()`,
+		);
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		sent = await painted();
+	}
+	check(
+		"the sent message reached the transcript",
+		sent.ok,
+		`after ${sent.waitedMs ?? "?"}ms: ${JSON.stringify(sent.last)}`,
+	);
+	const asked = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-lo-question-dock]'))`,
+		120_000,
+	);
+	check(
+		"the call parks on the approval card",
+		asked.ok,
+		`after ${asked.waitedMs ?? "?"}ms: ${JSON.stringify(asked.last)}`,
+	);
+	/*
+	 * THE RIG'S OWN GATE, ANSWERED THE WAY A READER ANSWERS IT. `tool_approval_mode`
+	 * is `ask` in this config, so the bash call parks on the question dock and the
+	 * turn cannot finish without an answer; option 1 is Approve, typed and sent
+	 * through the composer's real key handler like the prompt itself. The PARKED
+	 * reading is ASSERTED now (design review round 1, D3): a turn waiting on the
+	 * gate is unsettled, so nothing may condense — and the frame carries the
+	 * moment (the question card docked above the composer, the run region with no
+	 * bar) for the design round that judged it.
+	 */
+	const parked = await readTranscript();
+	note("parked on the approval", JSON.stringify(parked));
+	check(
+		"parked: nothing condenses while the turn waits on the gate",
+		parked !== null && parked.bars === 0,
+		JSON.stringify(parked),
+	);
+	const parkedFrame = await captureSettled(cdp, "turn-collapse-parked");
+	note("frame", JSON.stringify(parkedFrame));
+	await clickAt(cdp, `${composerSelector} textarea`);
+	await cdp.evaluate(
+		`document.querySelector('${composerSelector} textarea').focus()`,
+	);
+	await wait(150);
+	await cdp.send("Input.insertText", { text: "1" });
+	await wait(150);
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	const cleared = () =>
+		waitForCondition(
+			cdp,
+			`!document.querySelector('[data-lo-question-dock]')`,
+			30_000,
+		);
+	let approved = await cleared();
+	if (!approved.ok) {
+		note(
+			"the approval press was dropped; repeating the Enter",
+			JSON.stringify(approved.last),
+		);
+		await clickAt(cdp, `${composerSelector} textarea`);
+		await cdp.evaluate(
+			`document.querySelector('${composerSelector} textarea').focus()`,
+		);
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		approved = await cleared();
+	}
+	check(
+		"the approval clears the card and the call starts running",
+		approved.ok,
+		`after ${approved.waitedMs ?? "?"}ms: ${JSON.stringify(approved.last)}`,
+	);
+	await wait(400);
+	const live = await readTranscript();
+	note("mid-run, after the approval", JSON.stringify(live));
+	check(
+		"mid-run: nothing has collapsed - the turn is live and every row is its own",
+		live !== null && live.bars === 0 && live.toolRows >= 1,
+		JSON.stringify(live),
+	);
+	const liveFrame = await captureSettled(cdp, "turn-collapse-live-no-bar");
+	note("frame", JSON.stringify(liveFrame));
+
+	const answered = await waitForCondition(
+		cdp,
+		`(() => {
+			const log = document.querySelector('[role="log"]');
+			return Boolean(log && log.textContent.includes("from the mock provider"));
+		})()`,
+		60_000,
+	);
+	check(
+		"the mock's answer arrived and the turn completed",
+		answered.ok,
+		`after ${answered.waitedMs ?? "?"}ms: ${JSON.stringify(answered.last)}`,
+	);
+	await wait(1_000);
+	const finished = await readTranscript();
+	note("completed", JSON.stringify(finished));
+	check(
+		"completed: the finished turn condenses to exactly one bar",
+		finished !== null &&
+			finished.bars === 1 &&
+			(finished.runIds ?? "").split(" ").length >= 3,
+		JSON.stringify(finished),
+	);
+	check(
+		"completed: the bar carries the turn's one stamp and the foot stands down",
+		finished !== null && finished.stamps === 1 && finished.foot === false,
+		JSON.stringify(finished),
+	);
+	const completedFrame = await captureSettled(cdp, "turn-collapse-completed");
+	note("frame", JSON.stringify(completedFrame));
+
+	await verb(cdp, "press", {
+		selector: "[data-turn-summary] button[aria-expanded]",
+	});
+	await wait(500);
+	const opened = await readTranscript();
+	note("expanded", JSON.stringify(opened));
+	check(
+		"the press reveals the work behind the bar, and the bar stays as the toggle",
+		opened !== null && opened.barOpen === "true" && opened.toolRows >= 1,
+		JSON.stringify(opened),
+	);
+	const expandedFrame = await captureSettled(cdp, "turn-collapse-expanded");
+	note("frame", JSON.stringify(expandedFrame));
+	/*
+	 * D2'S OWN MEASUREMENT (design review round 1): the expansion must keep the
+	 * ledger's own step — the bar replaces the first hidden row's slot, and the
+	 * row below it is one trace step away, not a turn-tier margin plus the
+	 * disclosure body's own 8px (the measured regression: 36px box gap, Δ57px
+	 * centres). `<= 30` is what a 20px row + 4px body padding + 2px trace step
+	 * clears with rounding room; the exact delta is logged either way.
+	 */
+	const geometry = await cdp.evaluate(`(() => {
+		const bar = document.querySelector('[data-turn-summary]');
+		if (!bar) return null;
+		/*
+		 * The bar's own ROW is the trigger, not the root: the root wraps the open
+		 * body too, and measuring its centre would measure the whole block (found
+		 * on this scene's first post-fix run: barToRow1 11.8 against a block, not
+		 * a row).
+		 */
+		const trigger = bar.querySelector('button[aria-expanded]');
+		if (!trigger) return null;
+		const rows = [...bar.querySelectorAll('[data-record-id]')];
+		if (rows.length === 0) return null;
+		const c = (el) => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; };
+		return { barCenter: c(trigger), rowCenters: rows.map(c) };
+	})()`);
+	const barToRow1 =
+		geometry !== null
+			? Math.round((geometry.rowCenters[0] - geometry.barCenter) * 10) / 10
+			: null;
+	note("expanded geometry", JSON.stringify({ ...geometry, barToRow1 }));
+	check(
+		"the expansion keeps the ledger's own step (D2)",
+		barToRow1 !== null && barToRow1 <= 30,
+		`bar-to-row1 centre delta ${barToRow1}px`,
+	);
+
+	/* The reload half (§R1/§10.3): the durable re-read must arrive collapsed. */
+	await cdp.send("Page.reload", { ignoreCache: false });
+	const back = await waitForCondition(
+		cdp,
+		`(() => {
+			const log = document.querySelector('[role="log"]');
+			return Boolean(log && log.querySelector('[data-turn-summary]'));
+		})()`,
+		30_000,
+	);
+	await wait(800);
+	const reloaded = await readTranscript();
+	note(
+		"reloaded",
+		JSON.stringify({ read: reloaded, back: back.ok, before: finished }),
+	);
+	check(
+		"reload: the turn comes back collapsed, with the same run and the same action count",
+		back.ok === true &&
+			reloaded !== null &&
+			reloaded.barOpen === "false" &&
+			reloaded.runIds === finished.runIds &&
+			/\b1 action\b/.test(reloaded.barText ?? "") ===
+				/\b1 action\b/.test(finished.barText ?? ""),
+		JSON.stringify({ reloaded, finished }),
+	);
+	const reloadFrame = await captureSettled(cdp, "turn-collapse-reloaded");
+	note("frame", JSON.stringify(reloadFrame));
+
+	return [parkedFrame, liveFrame, completedFrame, expandedFrame, reloadFrame];
 }
 
 /**
@@ -8669,6 +9708,1150 @@ async function sceneFloors(cdp) {
 		);
 		await verb(cdp, "openCanvasDocument", { path: document_ });
 	}
+}
+
+/**
+ * The v0.31.0 shell-regression evidence: the sidebar's scrollable LAYERS
+ * counted rather than eyeballed, and the account foot's geometry, read from the
+ * rendered DOM with the settled frame beside them (the still shows the symptom,
+ * the numbers show the cause).
+ *
+ * No backend: every surface it measures is shell chrome that mounts on every
+ * route. What needs a catalogue answer the transcript's measure and a fold of
+ * tool rows, and this scene names that gap instead of photographing a refusal
+ * surface and calling it the transcript.
+ */
+/**
+ * THE CHECKPOINT RAIL, DRIVEN AGAINST A REAL MANIFEST (UI-A's evidence).
+ *
+ * WHAT IS REAL HERE, because that difference is the whole reason an earlier
+ * round deferred this scene: every tick on screen is the daemon's own
+ * derivation from a transcript journal. Nothing is stubbed. TWO fixture
+ * conversations are written into the run's ISOLATED config root before its
+ * daemon starts - `scripts/transcript-rail-fixture.mjs`, in the journal's own
+ * row format - and the app's `--backend` is that daemon: the 200-turn
+ * conversation (402 checkpoints, one steered turn at 120, two non-complete
+ * outcomes, ~1,400 rows) carries the density, hover, jump and reduced-motion
+ * cases, and the 320-turn one carries the refusal, whose oldest tick is beyond
+ * the near path's 12-page budget from a fresh read.
+ *
+ * THE CASES, on four fixture conversations (the writer names them):
+ *   - density: 402 ticks over the scroller (v1 allows overlap at this size,
+ *     and "must not look broken" is what the frame is for);
+ *   - both hover cards: a user card (the message text) and a completion card
+ *     (fallback name + Turn N of M + outcome). Naming is BE-2's and is not on
+ *     the backend this runs against, so the fallback text IS the honest state,
+ *     and the card says so by construction;
+ *   - the near-path jump into a COLLAPSED run: turn 120 is steered, its run is
+ *     one the collapse folds into a bar, and the jump walks ensure-loaded ->
+ *     expand-first reveal -> centre -> wash, landing on the hidden `s0120` row.
+ *     Every jump check asserts the VISUAL landing too - the highlight row's
+ *     rect inside the scroller's, and a `scrollTop` that moved - because
+ *     design round 1's D1 measured the attribute passing while the view never
+ *     moved (the centre step's clamp assumed a normal scroller; this one is
+ *     `flex-col-reverse`, and the fix names the axis at the call site);
+ *   - the PHYSICAL POINTER PRESS at density: a scanned mid-rail point, the
+ *     real pointer, asserting the same landing - the gesture a reader makes,
+ *     where the README once recorded one that fired nothing;
+ *   - the refusal: the deep conversation's oldest tick is beyond the 12-page
+ *     budget from a fresh read (the first clean pass proved the 200-turn
+ *     conversation's own oldest row is reachable by then - the jump simply
+ *     lands there), and the sentence it raises is photographed;
+ *   - reduced motion: the media preference emulated through CDP, and the wash
+ *     read back as the STATIC ground it must be (`animationName: none`);
+ *   - the SPARSE rail (12 discrete ticks, asserted spaced), the bounded card
+ *     (a ~2,000-character message; the internal scroll asserted), and the
+ *     outcome row (the error turn's card, its label read off the shipped
+ *     constants) - design round 1's D5 states;
+ *   - the BUILDING mark: the ~200k-row conversation's index refresh exceeds
+ *     the backend's first-paint wait, and the leg makes the index stale itself
+ *     (append one row) before each capture, so the state is not a race;
+ *   - REAL timings, taken driver-side around the press: press -> the
+ *     `data-jump-highlight` attribute appearing (cold through the loader, warm
+ *     on a loaded row). The numbers ride in the check details, which is what
+ *     the PR quotes.
+ *
+ * The full command line (daemon, token, flags) is in
+ * `docs/evidence/transcript-rail/README.md`.
+ */
+async function railPressProbe(cdp) {
+	const SESSION = "be1a9fef0001";
+	const rail = "[data-lo-checkpoint-rail]";
+	const evaluate = (expression) => cdp.evaluate(expression);
+	const sample = () =>
+		evaluate(`(() => {
+			const toast = document.querySelector("[data-sonner-toast]");
+			const active = document.activeElement;
+			const hl = document.querySelector("[data-jump-highlight]");
+			return {
+				highlight: hl ? hl.getAttribute("data-record-id") : null,
+				toast: toast ? toast.textContent : null,
+				active: active && active.getAttribute ? active.getAttribute("data-checkpoint-id") : null,
+				card: document.querySelector("[role=dialog]") ? "open" : null,
+			};
+		})()`);
+	const poll = async (label, seconds) => {
+		const series = [];
+		let last = "";
+		for (let i = 0; i < seconds * 5; i += 1) {
+			const text = JSON.stringify(await sample());
+			if (text !== last) {
+				series.push(text);
+				last = text;
+			}
+			await wait(200);
+		}
+		note(label, series.join(" -> "));
+	};
+	await verb(cdp, "setTheme", "localOperatorDark");
+	await verb(cdp, "navigate", "/chat");
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-tour-tag="chat-input-textarea"]'))`,
+		30_000,
+	);
+	await verb(cdp, "press", {
+		selector: `[data-session-row="${SESSION}"] [data-chat-row]`,
+	});
+	await waitForCondition(
+		cdp,
+		`document.querySelectorAll('${rail} [data-checkpoint-id]').length >= 267`,
+		30_000,
+	);
+	await waitForCondition(
+		cdp,
+		`document.querySelectorAll("[data-record-id]").length > 0`,
+		15_000,
+	);
+	if (RAIL_CASE !== "press-probe") {
+		/*
+		 * THE SCENE'S OWN PRELUDE, reproduced: a cold keyboard jump to the steer
+		 * row, then the warm jump to the tail - the state the scene's press leg
+		 * fires from, where the press stopped arriving. The difference between
+		 * this and the plain probe is the whole question.
+		 */
+		const jump = async (id) => {
+			await evaluate(
+				`(() => { const el = document.querySelector('[data-checkpoint-id="${id}"]'); if (el) el.focus(); return Boolean(el); })()`,
+			);
+			await pressChord(cdp, {
+				key: "Enter",
+				code: "Enter",
+				virtualKeyCode: 13,
+			});
+			const hit = await waitForCondition(
+				cdp,
+				`Boolean(document.querySelector("[data-jump-highlight]"))`,
+				20_000,
+				25,
+			);
+			note(`prelude jump ${id}`, `hit=${hit.ok}`);
+			await waitForCondition(
+				cdp,
+				`!document.querySelector("[data-jump-highlight]")`,
+				6_000,
+				25,
+			);
+		};
+		await jump("s0120");
+		await wait(400);
+		await jump("n0200");
+		await wait(400);
+		if (RAIL_CASE === "press-probe-hovers") {
+			/*
+			 * THE HOVER LEGS, the last difference between this probe and the
+			 * scene's press: a real pointer over a user tick, its card, the park,
+			 * and the same for a completion tick - each with its capture.
+			 */
+			const hoverLeg = async (id) => {
+				const box = await verb(cdp, "measure", `[data-checkpoint-id="${id}"]`);
+				await movePointer(cdp, box.centre.x, box.centre.y);
+				const card = await waitForCondition(
+					cdp,
+					`Boolean(document.querySelector("[role=dialog]"))`,
+					4_000,
+					25,
+				);
+				note(`hover ${id}`, `card=${card.ok}`);
+				await capture(cdp, `probe-hover-${id}-dark`, { assertPalette: false });
+				await movePointer(cdp, 2, 2);
+				await wait(360);
+			};
+			await hoverLeg("u0200");
+			await hoverLeg("n0200");
+		}
+		if (
+			RAIL_CASE === "press-probe-captures" ||
+			RAIL_CASE === "press-probe-hovers"
+		) {
+			/*
+			 * AND THE SCENE'S CAPTURES, the remaining difference between this
+			 * probe and the scene's press: five frames are taken before the press
+			 * there (density, both hovers, jump-before, jump-after).
+			 */
+			for (const label of [
+				"probe-capture-1-dark",
+				"probe-capture-2-dark",
+				"probe-capture-3-dark",
+				"probe-capture-4-dark",
+				"probe-capture-5-dark",
+			]) {
+				await capture(cdp, label, { assertPalette: false });
+			}
+		}
+	}
+	const spot = await evaluate(`(() => {
+		const rail = document.querySelector('${rail}');
+		if (!rail) return null;
+		const rect = rail.getBoundingClientRect();
+		const cx = rect.left + rect.width / 2;
+		const start = Math.ceil(rect.top + 2 + (rect.height - 4) * 0.45);
+		for (let y = start; y < rect.bottom - 2; y += 2) {
+			const el = document.elementFromPoint(cx, y);
+			if (!el || !el.closest) continue;
+			const tick = el.closest("[data-checkpoint-id]");
+			if (!tick) continue;
+			const id = tick.getAttribute("data-checkpoint-id") || "";
+			if (id.startsWith("n")) return { x: cx, y, id };
+		}
+		return null;
+	})()`);
+	note("scanned spot", JSON.stringify(spot));
+	if (spot === null) return;
+	note("before the press", JSON.stringify(await sample()));
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseMoved",
+		x: spot.x,
+		y: spot.y,
+		button: "none",
+		buttons: 0,
+	});
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mousePressed",
+		x: spot.x,
+		y: spot.y,
+		button: "left",
+		buttons: 1,
+		clickCount: 1,
+	});
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseReleased",
+		x: spot.x,
+		y: spot.y,
+		button: "left",
+		buttons: 0,
+		clickCount: 1,
+	});
+	await poll("after the REAL POINTER press", 6);
+	await evaluate(
+		`(() => { const el = document.querySelector('[data-checkpoint-id="${spot.id}"]'); if (el) el.click(); return Boolean(el); })()`,
+	);
+	await poll("after the DOM click on the same tick", 6);
+	await verb(cdp, "press", { selector: `[data-checkpoint-id="${spot.id}"]` });
+	await poll("after the SYNTHETIC press on the same tick", 6);
+}
+
+async function sceneTranscriptRail(cdp) {
+	/*
+	 * A FAST DIAGNOSTIC PATH for the physical pointer press at density, because
+	 * the full scene takes ~15 minutes per iteration and this question does not
+	 * need the rest of the checks to answer: it opens the 200-turn
+	 * conversation, scans a mid-rail tick, presses it with the real pointer,
+	 * and samples what the page did after each of three activation routes (the
+	 * real pointer, the DOM's own click, the driver's synthetic press). Run
+	 * with `--scoped-case press-probe`.
+	 */
+	if (
+		RAIL_CASE === "press-probe" ||
+		RAIL_CASE === "press-probe-prelude" ||
+		RAIL_CASE === "press-probe-captures" ||
+		RAIL_CASE === "press-probe-hovers"
+	) {
+		await railPressProbe(cdp);
+		return;
+	}
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	const SESSION = "be1a9fef0001";
+	/* The refusal's own conversation: 320 turns, so its oldest tick is beyond
+	 * the near path's 12-page budget from a fresh read. Its ids carry a `d`
+	 * prefix (scripts/transcript-rail-fixture.mjs). */
+	const SESSION_DEEP = "be1a9fef0002";
+	/* The sparse rail + the bounded/outcome cards live on the 6-turn fixture;
+	 * the building state on the ~200k-row one (ids `q*` and `k*`). */
+	const SESSION_SPARSE = "be1a9fef0003";
+	const SESSION_BULK = "be1a9fef0004";
+	/* The bulk session's journal, so the building leg can make its index STALE
+	 * (append one row) before each capture - deterministic on a warm cache. */
+	const BULK_JOURNAL = resolve(
+		BACKEND_RECORDS,
+		"..",
+		"..",
+		"sessions",
+		SESSION_BULK,
+		"transcript.jsonl",
+	);
+	let currentFixture = SESSION;
+	const rail = "[data-lo-checkpoint-rail]";
+	const steerTick = "s0120";
+	const nearTick = "n0200";
+	const midTick = "n0198";
+	/* The refusal is read off the toast, and the sentence is the shipped one. */
+	const REFUSAL_TOAST = `(() => { const t = document.querySelector("[data-sonner-toast]"); return Boolean(t) && t.textContent.includes("further back than the loaded history"); })()`;
+	const evaluate = (expression) => cdp.evaluate(expression);
+	const rowsMounted = () =>
+		evaluate('document.querySelectorAll("[data-record-id]").length');
+	/**
+	 * The first tick of `prefix` whose OWN centre hit-tests to itself. Overlap is
+	 * allowed at this density, so "the tick I aimed at" is a lie unless the DOM
+	 * agrees: a tick another one covers is not pressable, and these cases need
+	 * presses that land on the tick the check names.
+	 */
+	/**
+	 * The first POINT in the rail's tick column whose topmost element is a tick
+	 * of `prefix`. A tick's own centre is the wrong probe at this density — with
+	 * 402 ticks an early tick's centre is covered by the later ticks stacked over
+	 * it, so `elementFromPoint` at its centre answers with its neighbour and the
+	 * press would land somewhere else. Scanning POINTS finds the place a press
+	 * actually reaches that tick, which is what the hover below needs.
+	 */
+	const tickSpot = (prefix, fromFraction = 0) =>
+		evaluate(`(() => {
+			const rail = document.querySelector('${rail}');
+			if (!rail) return null;
+			const rect = rail.getBoundingClientRect();
+			const cx = rect.left + rect.width / 2;
+			const start = Math.ceil(rect.top + 2 + (rect.height - 4) * ${fromFraction});
+			for (let y = start; y < rect.bottom - 2; y += 2) {
+				const el = document.elementFromPoint(cx, y);
+				if (!el || !el.closest) continue;
+				const tick = el.closest("[data-checkpoint-id]");
+				if (!tick) continue;
+				const id = tick.getAttribute("data-checkpoint-id") || "";
+				if (id.startsWith(${JSON.stringify(prefix)})) return { x: cx, y, id };
+			}
+			return null;
+		})()`);
+	/** Open one fixture conversation (only when it is not the open one). */
+	const openFixture = async (id, firstTick, minTicks) => {
+		if (currentFixture !== id) {
+			await verb(cdp, "press", {
+				selector: `[data-session-row="${id}"] [data-chat-row]`,
+			});
+			currentFixture = id;
+		}
+		const ready = await waitForCondition(
+			cdp,
+			`(() => { const rail = document.querySelector('${rail}'); return Boolean(rail) && Boolean(document.querySelector('[data-checkpoint-id="${firstTick}"]')) && document.querySelectorAll("[data-checkpoint-id]").length >= ${minTicks}; })()`,
+			30_000,
+		);
+		/*
+		 * AND THE TRANSCRIPT ITSELF, not just the rail: the rail renders from
+		 * the manifest and can be up while the reopened session's tail read is
+		 * still in flight - a jump fired into that window loads nothing (the
+		 * load guard) and reads as a flake. Seen in the light pass's first
+		 * clean run (cold 20019ms, rows unchanged).
+		 */
+		await waitForCondition(
+			cdp,
+			`document.querySelectorAll("[data-record-id]").length > 0`,
+			15_000,
+		);
+		await wait(400);
+		return ready.ok;
+	};
+	/**
+	 * The landing's VISUAL reading (design round 1, D1): the highlight attribute
+	 * alone proved nothing - the frames showed the wash painted off-screen over
+	 * pixel-identical bubble positions - so every jump check below also asserts
+	 * where the landed row is relative to the scroller and what its `scrollTop`
+	 * did. `[role="log"]` is the transcript's own `flex-col-reverse` scroller.
+	 */
+	const landedView = () =>
+		evaluate(`(() => {
+			const sc = document.querySelector('[role="log"]');
+			const row = document.querySelector("[data-jump-highlight]");
+			if (!sc || !row) return null;
+			const sr = sc.getBoundingClientRect();
+			const rr = row.getBoundingClientRect();
+			const overlap = Math.min(rr.bottom, sr.bottom) - Math.max(rr.top, sr.top);
+			return {
+				landed: row.getAttribute("data-record-id"),
+				scrollTop: Math.round(sc.scrollTop),
+				rowH: Math.round(rr.height),
+				overlap: Math.round(overlap),
+			};
+		})()`);
+	/**
+	 * Open the bulk conversation and wait for the rail's BUILDING mark. The leg
+	 * appends a row to its journal first (making the cached index stale), so
+	 * each capture gets a fresh refresh and the state is not a race.
+	 */
+	const openFixtureBuilding = async (id) => {
+		appendFileSync(
+			BULK_JOURNAL,
+			`${JSON.stringify({
+				id: `kz${Date.now()}`,
+				ts: Math.floor(Date.now() / 1000),
+				type: "message",
+				payload: {
+					kind: "message",
+					role: "user",
+					content: [{ text: "stale-maker" }],
+				},
+			})}\n`,
+		);
+		if (currentFixture !== id) {
+			await verb(cdp, "press", {
+				selector: `[data-session-row="${id}"] [data-chat-row]`,
+			});
+			currentFixture = id;
+		}
+		const ready = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector('${rail} [data-rail-building]'))`,
+			20_000,
+			25,
+		);
+		return ready.ok;
+	};
+	const focusTick = (id) =>
+		evaluate(
+			`(() => { const el = document.querySelector('[data-checkpoint-id="${id}"]'); if (!el) return false; el.focus(); return document.activeElement === el; })()`,
+		);
+	/*
+	 * The press helper is the module-level `clickPoint(cdp, x, y)` - a scene-local
+	 * copy shadowed it in the first round-2 run, and its call sites passed the
+	 * module's `(cdp, x, y)` shape into the copy's `(x, y)`, so the dispatched
+	 * point was the client object put into `x` and the scan's x put into `y`:
+	 * the press landed nowhere while the hit test said the tick was topmost.
+	 * One helper, one signature.
+	 */
+	/**
+	 * One keyboard jump: focus the exact tick, Enter, then the wall clock from
+	 * the press to the highlight's attribute appearing, and where it landed.
+	 * The keyboard route is also the only deterministic one at this density — a
+	 * focused tick cannot be covered by its neighbours.
+	 */
+	const jumpVia = async (id) => {
+		const focused = await focusTick(id);
+		const t0 = Date.now();
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		const hit = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector("[data-jump-highlight]"))`,
+			20_000,
+			15,
+		);
+		const ms = Date.now() - t0;
+		const landed = await evaluate(
+			`(() => { const el = document.querySelector("[data-jump-highlight]"); return el ? el.getAttribute("data-record-id") : null; })()`,
+		);
+		const view = await landedView();
+		return { focused, ms, hit: hit.ok, landed, view };
+	};
+	const washGone = () =>
+		waitForCondition(
+			cdp,
+			`!document.querySelector("[data-jump-highlight]")`,
+			6_000,
+			25,
+		);
+
+	await verb(cdp, "navigate", "/chat");
+	/*
+	 * THE ROUTE IS SETTLED BEFORE THE CONVERSATION IS PICKED, and that is not
+	 * ceremony: the first attempt at this scene navigated once at boot and lost
+	 * the race to the app's own initial route, so every frame below photographed
+	 * /settings with a sidebar that CONTAINED the fixture row - the "listed"
+	 * reading passed while nothing it was about was on screen. `waitForRoute`
+	 * plus the composer are the two facts that say the pane is the chat's.
+	 */
+	const route = await waitForRoute(cdp, "/chat");
+	if (route.route !== "/chat") {
+		/* A real race, not a hypothetical: the retry is the lost one's fix. */
+		await verb(cdp, "navigate", "/chat");
+	}
+	const settled = await waitForRoute(cdp, "/chat");
+	check(
+		"the scene is on the chat route",
+		settled.route === "/chat",
+		JSON.stringify(settled),
+	);
+	const composer = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-tour-tag="chat-input-textarea"]'))`,
+		30_000,
+	);
+	check(
+		"the chat route's composer is mounted",
+		composer.ok,
+		JSON.stringify(composer.last),
+	);
+	const listed = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-session-row="${SESSION}"] [data-chat-row]'))`,
+		30_000,
+	);
+	check(
+		"the fixture conversation is listed by the daemon the app is pointed at",
+		listed.ok,
+		JSON.stringify(listed.last),
+	);
+	/* The row's press: the synthetic-press verb, the path `browser-composition`
+	 * opens a conversation with - a real pointer press measures and clicks, and
+	 * the measured box moved under the sidebar's own re-render the first time. */
+	await verb(cdp, "press", {
+		selector: `[data-session-row="${SESSION}"] [data-chat-row]`,
+	});
+	const opened = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector("[data-record-id]"))`,
+		30_000,
+	);
+	const state = await verb(cdp, "state");
+	check(
+		"the fixture conversation is the one open on the pane",
+		opened.ok && state.activeSessionId === SESSION,
+		`rows=${opened.ok} active=${state.activeSessionId}`,
+	);
+	const dense = await waitForCondition(
+		cdp,
+		`document.querySelectorAll('${rail} [data-checkpoint-id]').length >= 267`,
+		30_000,
+	);
+	const tickCount = await evaluate(
+		`document.querySelectorAll('${rail} [data-checkpoint-id]').length`,
+	);
+	check(
+		"the rail renders the daemon's own manifest at density",
+		dense.ok && tickCount >= 267,
+		`ticks=${tickCount}`,
+	);
+
+	const themes = sceneThemes();
+	for (const theme of themes) {
+		check(
+			`the fixture conversation is open before the ${theme} pass`,
+			await openFixture(SESSION, "u0001", 267),
+			`ticks=${await evaluate(`document.querySelectorAll("${rail} [data-checkpoint-id]").length`)}`,
+		);
+		const applied = await verb(cdp, "setTheme", theme);
+		check(
+			`the theme change to ${theme} settled before any frame`,
+			applied.settleTimedOut === false,
+			JSON.stringify(applied),
+		);
+		const suffix = theme === "localOperatorDark" ? "dark" : "light";
+		await parkPointer(cdp);
+		await capture(cdp, `transcript-rail-density-${suffix}`);
+
+		/* The user card: message text, bounded. */
+		const userSpot = await tickSpot("u");
+		check(
+			`a user tick's own centre hit-tests to itself (${theme})`,
+			userSpot !== null,
+			JSON.stringify(userSpot),
+		);
+		if (userSpot) {
+			await movePointer(cdp, userSpot.x, userSpot.y);
+			const cardUp = await waitForCondition(
+				cdp,
+				`Boolean(document.querySelector("[role=dialog]"))`,
+				4_000,
+				25,
+			);
+			const cardText = await evaluate(
+				`(() => { const el = document.querySelector("[role=dialog]"); return el ? el.textContent : null; })()`,
+			);
+			check(
+				`the user card shows the message text (${theme})`,
+				cardUp.ok && /\(turn \d+\)/.test(cardText || ""),
+				`id=${userSpot.id} card=${JSON.stringify((cardText || "").slice(0, 120))}`,
+			);
+			await capture(cdp, `transcript-rail-hover-user-${suffix}`);
+		}
+		await movePointer(cdp, 2, 2);
+		await wait(360);
+
+		/* The completion card: fallback name, turn count, outcome. */
+		const completionSpot = await tickSpot("n");
+		check(
+			`a completion tick's own centre hit-tests to itself (${theme})`,
+			completionSpot !== null,
+			JSON.stringify(completionSpot),
+		);
+		if (completionSpot) {
+			await movePointer(cdp, completionSpot.x, completionSpot.y);
+			const cardUp = await waitForCondition(
+				cdp,
+				`Boolean(document.querySelector("[role=dialog]"))`,
+				4_000,
+				25,
+			);
+			const cardText = await evaluate(
+				`(() => { const el = document.querySelector("[role=dialog]"); return el ? el.textContent : null; })()`,
+			);
+			const text = cardText || "";
+			check(
+				`the completion card shows the fallback name and turn count, with its pending or outcome line (${theme})`,
+				cardUp.ok &&
+					/Turn \d+ of \d+/.test(text) &&
+					/(Generating name…|Complete|Failed|Interrupted|Open)/.test(text),
+				`id=${completionSpot.id} card=${JSON.stringify(text.slice(0, 140))}`,
+			);
+			await capture(cdp, `transcript-rail-hover-completion-${suffix}`);
+		}
+		await movePointer(cdp, 2, 2);
+		await wait(360);
+
+		/* The jump into a collapsed run: before, the press, the landing, the wash. */
+		const rowsBefore = await rowsMounted();
+		await capture(cdp, `transcript-rail-jump-before-${suffix}`);
+		let cold = await jumpVia(steerTick);
+		let coldDetail = `attempt 1: ${cold.ms}ms`;
+		if (!cold.hit) {
+			/*
+			 * One retry, and it carries its own evidence: if the first attempt
+			 * did not land, the page is asked what it said instead (the refusal
+			 * toast is the one answer the near path gives).
+			 */
+			await wait(1200);
+			const missToast = await toastText(cdp).catch(() => null);
+			coldDetail += ` miss-toast=${JSON.stringify(missToast)}`;
+			cold = await jumpVia(steerTick);
+			coldDetail += `; attempt 2: ${cold.ms}ms`;
+		}
+		const rowsAfter = await rowsMounted();
+		await capture(cdp, `transcript-rail-jump-after-${suffix}`);
+		check(
+			`the cold jump lands the wash on the hidden steer row, in view (${theme})`,
+			cold.hit &&
+				cold.landed === steerTick &&
+				cold.view !== null &&
+				cold.view.overlap >= cold.view.rowH - 2 &&
+				Math.abs(cold.view.scrollTop) >= 100,
+			`${coldDetail}, focus=${cold.focused}, landed=${cold.landed}, view=${JSON.stringify(cold.view)}, rows ${rowsBefore}->${rowsAfter}`,
+		);
+		await washGone();
+
+		/* The warm jump: a row that is already loaded, so the reveal alone lands it. */
+		await wait(400);
+		const warm = await jumpVia(nearTick);
+		check(
+			`the warm jump lands the wash on a loaded row, in view (${theme})`,
+			warm.hit &&
+				warm.landed === nearTick &&
+				warm.view !== null &&
+				warm.view.overlap >= warm.view.rowH - 2,
+			`press->highlight ${warm.ms}ms, landed=${warm.landed}, view=${JSON.stringify(warm.view)}`,
+		);
+		await washGone();
+		/*
+		 * THE PHYSICAL POINTER PRESS AT DENSITY (design round 1, D3): the README
+		 * recorded a real pointer press that "fired nothing" - a reading taken
+		 * before the D1 fix, when the jump ran but the view never moved. This leg
+		 * now has to LAND the gesture a reader at density actually makes, through
+		 * the full reveal -> centre -> wash path, from a point scanned because
+		 * only a point whose topmost element is the tick is pressable at 402
+		 * ticks. It doubles as the second cold target: the scanned tick is an
+		 * early completion whose row the store has not loaded.
+		 */
+		const pressSpot = await tickSpot("n", 0.45);
+		if (pressSpot) {
+			const activeBefore = await evaluate(
+				`(() => { const el = document.activeElement; return el && el.getAttribute ? el.getAttribute("data-checkpoint-id") : null; })()`,
+			);
+			await clickPoint(cdp, pressSpot.x, pressSpot.y);
+			const pressed = await waitForCondition(
+				cdp,
+				`Boolean(document.querySelector("[data-jump-highlight]"))`,
+				12_000,
+				25,
+			);
+			const pressedView = await landedView();
+			/*
+			 * THE PRESS'S OWN RECORD, on failure: what focus did (did the press
+			 * arrive at all), and a short series of what the page showed. The
+			 * probe (`--scoped-case press-probe*`) lands this same press on this
+			 * same tick reproducibly; when the scene's copy of it fails, the
+			 * difference has to be read off the state rather than guessed.
+			 */
+			let pressSeries = null;
+			if (!pressed.ok) {
+				/*
+				 * WHAT IS AT THE POINT, asked of the hit test itself: the scan said
+				 * the tick was topmost moments earlier, and the mousedown still did
+				 * not reach it - so the fresh stack (every element at the point,
+				 * topmost first) is the reading that names what changed.
+				 */
+				const atPoint = await evaluate(`(() => {
+					const els = document.elementsFromPoint(${pressSpot.x}, ${pressSpot.y});
+					return els.slice(0, 6).map((el) => {
+						const id = el.getAttribute("data-checkpoint-id") || "";
+						const role = el.getAttribute("role") || "";
+						const cls = (el.className || "").toString().slice(0, 70);
+						return el.tagName + "|" + id + "|" + role + "|" + cls;
+					});
+				})()`);
+				pressSeries = ["AT-POINT", ...atPoint].join(" || ");
+				const seen = [];
+				let last = "";
+				for (let i = 0; i < 20; i += 1) {
+					const now = await evaluate(`(() => {
+						const t = document.querySelector("[data-sonner-toast]");
+						const hl = document.querySelector("[data-jump-highlight]");
+						const el = document.activeElement;
+						return JSON.stringify({
+							hl: hl ? hl.getAttribute("data-record-id") : null,
+							toast: t ? t.textContent : null,
+							active: el && el.getAttribute ? el.getAttribute("data-checkpoint-id") : null,
+						});
+					})()`);
+					if (now !== last) {
+						seen.push(now);
+						last = now;
+					}
+					await wait(200);
+				}
+				pressSeries = `${pressSeries} || SERIES ${seen.join(" -> ")}`;
+			}
+			check(
+				`the physical pointer press at density lands its jump (${theme})`,
+				pressed.ok &&
+					pressedView !== null &&
+					pressedView.landed === pressSpot.id &&
+					pressedView.overlap >= pressedView.rowH - 2 &&
+					Math.abs(pressedView.scrollTop) >= 100,
+				`id=${pressSpot.id} activeBefore=${activeBefore} view=${JSON.stringify(pressedView)} series=${JSON.stringify(pressSeries)}`,
+			);
+			await capture(cdp, `transcript-rail-press-density-${suffix}`);
+			await washGone();
+		}
+
+		/* Reduced motion: the wash as the static ground, emulated through CDP. */
+		await cdp.send("Emulation.setEmulatedMedia", {
+			features: [{ name: "prefers-reduced-motion", value: "reduce" }],
+		});
+		await wait(250);
+		const reduced = await jumpVia(midTick);
+		await capture(cdp, `transcript-rail-reduced-motion-${suffix}`);
+		const wash = await evaluate(
+			`(() => { const el = document.querySelector("[data-jump-highlight]"); if (!el) return null; const cs = getComputedStyle(el); return { bg: cs.backgroundColor, anim: cs.animationName }; })()`,
+		);
+		check(
+			`under prefers-reduced-motion the wash lands static, never animated, in view (${theme})`,
+			reduced.hit &&
+				wash !== null &&
+				wash.anim === "none" &&
+				reduced.view !== null &&
+				reduced.view.overlap >= reduced.view.rowH - 2,
+			`press->highlight ${reduced.ms}ms, animationName=${wash?.anim}, background=${wash?.bg}, view=${JSON.stringify(reduced.view)}`,
+		);
+		await cdp.send("Emulation.setEmulatedMedia", { features: [] });
+		await washGone();
+		await parkPointer(cdp);
+
+		/*
+		 * THE ROVING RAIL (UX round 1, U1 + U3). The reviewer's walk measured
+		 * the block as 402 consecutive tab stops with no in-rail movement
+		 * (ArrowDown was a no-op) and `railAria: null`; these legs assert the
+		 * fix on the real bundle - one tabbable tick, the arrows/Home/End walk
+		 * with the card following focus, Escape keeping focus on the tick, the
+		 * group's name, and crossing the block costing ONE press either way.
+		 * The ids are read from the page, so the legs hold for any manifest.
+		 */
+		const activeTick = () =>
+			evaluate(
+				`(() => { const el = document.activeElement; return el && el.getAttribute ? el.getAttribute("data-checkpoint-id") : null; })()`,
+			);
+		/*
+		 * The roving stop is the reader's MEMORY of their last tick, so the leg
+		 * reads where focus already is before touching anything: the reduced-motion
+		 * jump above focused its tick, and the group must still be parked there.
+		 */
+		const lastFocused = await activeTick();
+		await evaluate(
+			"(() => { const el = document.activeElement; if (el && el.blur) el.blur(); return true; })()",
+		);
+		const railIds = await evaluate(
+			`[...document.querySelectorAll('${rail} [data-checkpoint-id]')].map((el) => el.getAttribute("data-checkpoint-id"))`,
+		);
+		const railA11y = await evaluate(`(() => {
+			const root = document.querySelector('${rail}');
+			if (!root) return null;
+			const tabbable = [...root.querySelectorAll("[data-checkpoint-id]")].filter((el) => el.tabIndex === 0);
+			return {
+				role: root.getAttribute("role"),
+				orientation: root.getAttribute("aria-orientation"),
+				label: root.getAttribute("aria-label"),
+				tabs: tabbable.length,
+				tabbable: tabbable.map((el) => el.getAttribute("data-checkpoint-id")),
+			};
+		})()`);
+		check(
+			`the rail is one named tab stop, vertical (${theme})`,
+			railA11y !== null &&
+				railA11y.role === "toolbar" &&
+				railA11y.orientation === "vertical" &&
+				railA11y.label === "Turn checkpoints" &&
+				railA11y.tabs === 1 &&
+				railA11y.tabbable[0] === lastFocused,
+			`${JSON.stringify(railA11y)} lastFocused=${lastFocused}`,
+		);
+		await focusTick(railIds[0]);
+		await pressChord(cdp, {
+			key: "ArrowDown",
+			code: "ArrowDown",
+			virtualKeyCode: 40,
+		});
+		const walkDown1 = await activeTick();
+		await pressChord(cdp, {
+			key: "ArrowDown",
+			code: "ArrowDown",
+			virtualKeyCode: 40,
+		});
+		const walkDown2 = await activeTick();
+		await pressChord(cdp, {
+			key: "ArrowUp",
+			code: "ArrowUp",
+			virtualKeyCode: 38,
+		});
+		const walkUp = await activeTick();
+		await pressChord(cdp, { key: "End", code: "End", virtualKeyCode: 35 });
+		const walkEnd = await activeTick();
+		await pressChord(cdp, { key: "Home", code: "Home", virtualKeyCode: 36 });
+		const walkHome = await activeTick();
+		check(
+			`the arrows and Home/End walk the ticks (${theme})`,
+			walkDown1 === railIds[1] &&
+				walkDown2 === railIds[2] &&
+				walkUp === railIds[1] &&
+				walkEnd === railIds.at(-1) &&
+				walkHome === railIds[0],
+			JSON.stringify({
+				walkDown1,
+				walkDown2,
+				walkUp,
+				walkEnd,
+				walkHome,
+				first: railIds[0],
+				second: railIds[1],
+				last: railIds.at(-1),
+			}),
+		);
+		const cardBeforeEscape = await evaluate(
+			`Boolean(document.querySelector("[role=dialog]"))`,
+		);
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		const cardAfterEscape = await evaluate(
+			`Boolean(document.querySelector("[role=dialog]"))`,
+		);
+		const focusAfterEscape = await activeTick();
+		check(
+			`Escape closes the card and keeps the tick focused (${theme})`,
+			cardBeforeEscape && !cardAfterEscape && focusAfterEscape === railIds[0],
+			`before=${cardBeforeEscape} after=${cardAfterEscape} focus=${focusAfterEscape}`,
+		);
+		await pressChord(cdp, { key: "Tab", code: "Tab", virtualKeyCode: 9 });
+		const afterTab = await activeTick();
+		await pressChord(cdp, {
+			key: "Tab",
+			code: "Tab",
+			virtualKeyCode: 9,
+			modifiers: 8,
+		});
+		const afterShiftTab = await activeTick();
+		check(
+			`crossing the rail costs one Tab from either side (${theme})`,
+			afterTab === null && afterShiftTab === railIds[0],
+			`afterTab=${afterTab} afterShiftTab=${afterShiftTab}`,
+		);
+
+		note(
+			`jump timings (${theme})`,
+			JSON.stringify({
+				coldMs: cold.ms,
+				warmMs: warm.ms,
+				reducedMs: reduced.ms,
+				rows: `${rowsBefore}->${rowsAfter}`,
+			}),
+		);
+	}
+
+	/*
+	 * THE REFUSALS, in their own loop over the themes, AFTER the other legs:
+	 * the deep conversation's oldest tick is beyond the near path's page budget
+	 * from a fresh read (the first iteration) and beyond its mount budget once
+	 * its own walk has loaded rows (the second) - both arms of D7's refusal,
+	 * photographed. Deliberately not at each theme's tail beside the other
+	 * legs: the first clean runs measured that reopening the 200-turn
+	 * conversation after a deep walk can leave its paging unresponsive for a
+	 * spell (the light pass's cold jump stalled twice, no page request leaving
+	 * the app), so the two conversations do not interleave inside one theme.
+	 */
+	for (const theme of themes) {
+		const suffix = theme === "localOperatorDark" ? "dark" : "light";
+		check(
+			`the deep fixture conversation is open (${theme})`,
+			await openFixture(SESSION_DEEP, "du0001", 600),
+			`ticks=${await evaluate(`document.querySelectorAll("${rail} [data-checkpoint-id]").length`)}`,
+		);
+		await verb(cdp, "setTheme", theme);
+		await parkPointer(cdp);
+		/*
+		 * The refusal: the DEEP fixture's oldest tick, beyond the near path's
+		 * 12-page budget from a fresh read (320 turns; scripts/transcript-
+		 * rail-fixture.mjs). Not the 200-turn conversation: by this point its
+		 * store has loaded enough that its oldest row is inside the budget,
+		 * and the first clean pass proved the jump simply LANDS there - the
+		 * assertion this leg makes is about the budget's refusal, so it needs
+		 * a target the budget genuinely cannot reach.
+		 *
+		 * The press is LAYERED and the detail names the route that raised the
+		 * sentence: the DOM's own `click()` first, then the real pointer, the
+		 * driver's synthetic `press`, the keyboard - so a null result is
+		 * diagnosable rather than mysterious.
+		 */
+		check(
+			`the deep fixture conversation is open (${theme})`,
+			await openFixture(SESSION_DEEP, "du0001", 600),
+			`ticks=${await evaluate(`document.querySelectorAll("${rail} [data-checkpoint-id]").length`)}`,
+		);
+		const oldSpot = await tickSpot("du");
+		if (oldSpot) {
+			const refusalStart = Date.now();
+			const rowsBeforeMounted = await rowsMounted();
+			await evaluate(
+				`(() => { const el = document.querySelector('[data-checkpoint-id="${oldSpot.id}"]'); if (el) el.click(); return Boolean(el); })()`,
+			);
+			let route = "dom click";
+			let refused = await waitForCondition(cdp, REFUSAL_TOAST, 8_000, 40);
+			const rowsAfterFirst = await rowsMounted();
+			if (!refused.ok) {
+				route = "pointer";
+				await clickPoint(cdp, oldSpot.x, oldSpot.y);
+				refused = await waitForCondition(cdp, REFUSAL_TOAST, 8_000, 40);
+			}
+			if (!refused.ok) {
+				route = "synthetic press";
+				await verb(cdp, "press", {
+					selector: `[data-checkpoint-id="${oldSpot.id}"]`,
+				});
+				refused = await waitForCondition(cdp, REFUSAL_TOAST, 8_000, 40);
+			}
+			if (!refused.ok) {
+				route = "keyboard";
+				await focusTick(oldSpot.id);
+				await pressChord(cdp, {
+					key: "Enter",
+					code: "Enter",
+					virtualKeyCode: 13,
+				});
+				refused = await waitForCondition(cdp, REFUSAL_TOAST, 8_000, 40);
+			}
+			const refusalMs = Date.now() - refusalStart;
+			await captureWithToast(cdp, `transcript-rail-refusal-${suffix}`);
+			const toastNow = await toastText(cdp).catch(() => null);
+			const pressed = await evaluate(
+				`(() => { const el = document.activeElement; return el && el.getAttribute ? el.getAttribute("data-checkpoint-id") : null; })()`,
+			);
+			/* sonner v2 renders no element at all until a toast exists, so the
+			 * Toaster's own markup is read from the section that is always
+			 * there when the container is mounted. */
+			const toaster = await evaluate(
+				`Boolean(document.querySelector('section[aria-label*="Notifications"]'))`,
+			);
+			const rowsEnd = await rowsMounted();
+			check(
+				`the deep fixture's oldest tick refuses with the shipped sentence (${theme})`,
+				refused.ok &&
+					(toastNow || "").includes("further back than the loaded history"),
+				`id=${oldSpot.id} route=${route} press->toast ${refusalMs}ms focused=${pressed} toaster=${toaster} rows=${rowsBeforeMounted}->${rowsAfterFirst}->${rowsEnd} toast=${JSON.stringify(toastNow)}`,
+			);
+			await waitForCondition(
+				cdp,
+				`!document.querySelector("[data-sonner-toast]")`,
+				12_000,
+				100,
+			);
+		}
+		await parkPointer(cdp);
+	}
+
+	/*
+	 * THE SPARSE RAIL AND THE CARDS (design round 1, D5), in their own loop:
+	 * the 6-turn conversation is where ticks are DISCRETE marks rather than a
+	 * line, and it hosts the two card states the density conversation cannot
+	 * frame deterministically - the bounded long-message card (the scene
+	 * asserts the internal scroll really exists) and the outcome row on the
+	 * error turn (the card's word for it, read off the shipped label).
+	 */
+	for (const theme of themes) {
+		const suffix = theme === "localOperatorDark" ? "dark" : "light";
+		await verb(cdp, "setTheme", theme);
+		check(
+			`the sparse fixture conversation is open (${theme})`,
+			await openFixture(SESSION_SPARSE, "qu0001", 12),
+			`ticks=${await evaluate(`document.querySelectorAll("${rail} [data-checkpoint-id]").length`)}`,
+		);
+		await parkPointer(cdp);
+		const sparse = await evaluate(`(() => {
+			const tops = [...document.querySelectorAll("${rail} [data-checkpoint-id]")]
+				.map((el) => el.getBoundingClientRect().top)
+				.sort((a, b) => a - b);
+			let minGap = Number.POSITIVE_INFINITY;
+			for (let i = 1; i < tops.length; i += 1) minGap = Math.min(minGap, tops[i] - tops[i - 1]);
+			return { count: tops.length, minGap: Math.round(minGap * 10) / 10 };
+		})()`);
+		check(
+			`the sparse rail is twelve discrete ticks, not a line (${theme})`,
+			sparse.count === 12 && sparse.minGap > 6,
+			JSON.stringify(sparse),
+		);
+		await capture(cdp, `transcript-rail-sparse-${suffix}`);
+
+		/* The bounded card: turn 2's user row is ~2,000 characters. */
+		const longBox = await verb(cdp, "measure", '[data-checkpoint-id="qu0002"]');
+		await movePointer(cdp, longBox.centre.x, longBox.centre.y);
+		const longCard = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector("[role=dialog] [data-checkpoint-card-text]"))`,
+			4_000,
+			25,
+		);
+		const bound = await evaluate(`(() => {
+			const el = document.querySelector("[data-checkpoint-card-text]");
+			return el ? { scrollH: el.scrollHeight, clientH: el.clientHeight } : null;
+		})()`);
+		check(
+			`the long user card is bounded and scrolls internally (${theme})`,
+			longCard.ok && bound !== null && bound.scrollH > bound.clientH,
+			JSON.stringify(bound),
+		);
+		await capture(cdp, `transcript-rail-card-bounded-${suffix}`);
+		await movePointer(cdp, 2, 2);
+		await wait(360);
+
+		/* The outcome row: turn 3 carries an error outcome in the manifest, and
+		 * the completion checkpoint's id is the ANSWER row's (`qn0003`), not the
+		 * marker's - the manifest's own shape, read off the density session's
+		 * first/last (`u0001`/`n0200`). */
+		const outcomeBox = await verb(
+			cdp,
+			"measure",
+			'[data-checkpoint-id="qn0003"]',
+		);
+		await movePointer(cdp, outcomeBox.centre.x, outcomeBox.centre.y);
+		const outcomeCard = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector("[role=dialog]"))`,
+			4_000,
+			25,
+		);
+		const outcomeText = await evaluate(
+			`(() => { const el = document.querySelector("[role=dialog]"); return el ? el.textContent : null; })()`,
+		);
+		check(
+			`the outcome card names the error outcome (${theme})`,
+			outcomeCard.ok && /Error/.test(outcomeText || ""),
+			`card=${JSON.stringify((outcomeText || "").slice(0, 120))}`,
+		);
+		await capture(cdp, `transcript-rail-card-outcome-${suffix}`);
+		await movePointer(cdp, 2, 2);
+		await wait(360);
+	}
+
+	/*
+	 * THE BUILDING MARK (design round 1, D5): the ~200k-row conversation's
+	 * index build exceeds the backend's first-paint wait, so a stale read
+	 * answers `building` while the refresh runs - and the leg makes the index
+	 * stale itself (append one row) before each capture, so it holds on a warm
+	 * cache too. The rail keeps painting the stale manifest's ticks and adds
+	 * the one top mark; the frame is the state a reader sees on a conversation
+	 * whose index has just gone stale.
+	 */
+	for (const theme of themes) {
+		const suffix = theme === "localOperatorDark" ? "dark" : "light";
+		await verb(cdp, "setTheme", theme);
+		check(
+			`the bulk conversation answers building with its mark up (${theme})`,
+			await openFixtureBuilding(SESSION_BULK),
+			`building-mark=${await evaluate(`Boolean(document.querySelector("${rail} [data-rail-building]"))`)}`,
+		);
+		await capture(cdp, `transcript-rail-building-${suffix}`);
+		await parkPointer(cdp);
+	}
+}
+
+async function sceneShellEvidence(cdp) {
+	const hello = await verb(cdp, "hello");
+	note("hello", JSON.stringify(hello, null, 2));
+	const facts = await factsOf(cdp);
+	note("facts", JSON.stringify(facts, null, 2));
+	await verb(cdp, "navigate", "/chat");
+	await wait(600);
+	const frame = await captureSettled(cdp, "shell-default");
+	note("frame", JSON.stringify(frame, null, 2));
+	const read = await cdp.evaluate(`(() => {
+		const info = (el) => {
+			if (!el) return null;
+			const cs = getComputedStyle(el);
+			const r = el.getBoundingClientRect();
+			return {
+				rect: { x: Math.round(r.x * 10) / 10, y: Math.round(r.y * 10) / 10, w: Math.round(r.width * 10) / 10, h: Math.round(r.height * 10) / 10, bottom: Math.round(r.bottom * 10) / 10 },
+				overflowY: cs.overflowY,
+				overflowX: cs.overflowX,
+				scrollHeight: el.scrollHeight,
+				clientHeight: el.clientHeight,
+				scrollbarWidth: el.offsetWidth - el.clientWidth,
+				scrolls: el.scrollHeight > el.clientHeight + 1,
+			};
+		};
+		const layers = [];
+		for (const el of document.querySelectorAll("*")) {
+			const cs = getComputedStyle(el);
+			if (cs.overflowY === "auto" || cs.overflowY === "scroll") {
+				layers.push({
+					tag: el.tagName.toLowerCase(),
+					region: el.getAttribute("data-sidebar-region"),
+					cls: typeof el.className === "string" ? el.className.split(/\\s+/).slice(0, 4).join(" ") : "",
+					...info(el),
+				});
+			}
+		}
+		const gear = document.querySelector('[data-tour-tag="nav-item-settings"]');
+		const foot = gear ? gear.parentElement : null;
+		const account = foot ? foot.firstElementChild : null;
+		const nav = document.querySelector('[aria-label="Chats"]');
+		const marks = [];
+		for (const el of document.querySelectorAll("[data-tour-tag]")) {
+			if (marks.length >= 14) break;
+			marks.push({ tag: el.getAttribute("data-tour-tag"), ...info(el) });
+		}
+		return {
+			viewport: { w: innerWidth, h: innerHeight },
+			layerCount: layers.length,
+			layers,
+			sidebar: info(nav),
+			foot: info(foot),
+			account: info(account),
+			avatar: info(account ? account.firstElementChild : null),
+			gear: info(gear),
+			marks,
+		};
+	})()`);
+	note("shell-geometry", JSON.stringify(read, null, 2));
 }
 
 async function sceneStates(cdp) {
@@ -14231,6 +16414,559 @@ async function authoringWrite(path, body) {
 }
 
 /**
+ * One `sessions.list` read from this script's Node process.
+ *
+ * The bearer contract is `authoringWrite`'s - no `Origin` header, the run's own
+ * token - and it is its own helper because the scenes that watch the DAEMON's
+ * own truth, rather than the app's copy of it, read as well as write. The list
+ * is the catalogue in the same shape the app consumes it: `mtime` is the
+ * session's activity clock and `created_at` its birth, both read fresh per
+ * call (`server/session/catalog.py`'s `_row_stat_key` cache is keyed on the
+ * transcript's own stat, so a backdated file is re-read rather than served).
+ */
+async function daemonList() {
+	const response = await fetch(`${BACKEND}/v1/desktop/sessions?limit=50`, {
+		headers: {
+			authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+		},
+	});
+	if (!response.ok) {
+		return { ok: false, status: response.status, sessions: [] };
+	}
+	const answer = await response.json();
+	return {
+		ok: true,
+		status: response.status,
+		sessions: answer?.result?.sessions ?? [],
+	};
+}
+
+/**
+ * One POST to the daemon's desktop routes, from THIS script's Node process.
+ *
+ * Same contract as `authoringWrite`, kept beside `daemonList` so a scene that
+ * creates and messages sessions reads as the verbs it actually uses. The parsed
+ * body rides along because a create answers the new session's id; a body that
+ * is not JSON (a refusal can be HTML) leaves `json` null rather than failing the
+ * scene inside a parse.
+ */
+async function daemonPost(path, body) {
+	const response = await fetch(`${BACKEND}${path}`, {
+		method: "POST",
+		headers: {
+			"content-type": "application/json",
+			authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+		},
+		body: JSON.stringify(body),
+	});
+	const text = await response.text();
+	let json = null;
+	try {
+		json = JSON.parse(text);
+	} catch {
+		/* See the docstring: the caller reads `status` and `body` then. */
+	}
+	return { path, status: response.status, body: text.slice(0, 400), json };
+}
+
+/**
+ * One GET of the daemon's desktop routes, from THIS script's Node process.
+ *
+ * The read half's own helper, beside `daemonList` and `daemonPost`, for the
+ * scenes that watch the daemon's own truth rather than the app's copy of it —
+ * `--scene mini-view` reads the chief-of-staff conversation back through this
+ * to prove the composer's send was admitted, not merely painted.
+ */
+async function daemonGet(path) {
+	const response = await fetch(`${BACKEND}${path}`, {
+		headers: {
+			authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+		},
+	});
+	const text = await response.text();
+	let json = null;
+	try {
+		json = JSON.parse(text);
+	} catch {
+		/* See daemonPost: the caller reads `status` and `body` then. */
+	}
+	return { path, status: response.status, body: text.slice(0, 400), json };
+}
+
+/**
+ * The pids of the daemon `--backend` names, read from the serve records the run
+ * linked — the same read `--scene connection-drop` does, with the same three
+ * guards (the run's port, a loopback host, and never 1111), because this scene
+ * HOLDS that process for one frame (SIGSTOP/SIGCONT) where connection-drop
+ * kills it. Signalling the operator's own daemon is the thing both guards
+ * exist to make impossible.
+ */
+function runDaemonPids() {
+	if (BACKEND === null) return [];
+	const backendPort = Number(new URL(BACKEND).port);
+	if (backendPort === 1111) {
+		throw new Error(
+			"--scene mini-view refuses a backend on 1111: that is the operator's own daemon, and this scene pauses a run-owned one",
+		);
+	}
+	const pids = [];
+	for (const { record } of sceneConnectionDropRecords()) {
+		const pid = record?.pid;
+		if (typeof pid !== "number" || pid <= 0) continue;
+		if (Number(record.port) !== backendPort) continue;
+		if (
+			typeof record.host === "string" &&
+			!["127.0.0.1", "localhost", "::1"].includes(record.host)
+		)
+			continue;
+		pids.push(pid);
+	}
+	return pids;
+}
+
+/**
+ * The bin promptness, measured live - the operator's report, on the wire and on
+ * screen.
+ *
+ * WHY THIS SCENE EXISTS. The operator (2026-09-28): "even if I've asked an
+ * older session something today, once it completes I can't see it within the
+ * today bin". A row's bin is its `updated_at` (the transcript's activity
+ * clock, `chat-list-sections.ts`), and a completed turn advances that clock -
+ * but the client only learns the new value from a list read, and a completion
+ * is not a list read. So the subject here is an OLD session, messaged by this
+ * script while it is NOT the open pane, and the reading is when the sidebar's
+ * own `data-chat-section` attribute for its row changes to `today`.
+ *
+ * HOW THE SUBJECT IS MADE OLD. Born through the daemon's own create route and
+ * materialised with one real turn - so `created_at.json` and a transcript both
+ * exist - and then both clocks are rewritten backwards: the birth record and
+ * the transcript's mtime, to forty days before this run. The transcript's mtime
+ * IS the list's `mtime`, so this is the fixture the operator's "older session"
+ * is rather than a stub of one; the scene reads both values back from the
+ * daemon's list before it measures anything.
+ *
+ * THE COMPLETION REFERENCE. The daemon's machine-wide feed is subscribed by
+ * this scene's own Node process (`GET /v1/desktop/events`), and the subject's
+ * `attention` frame with a NEW completion token is the event the app itself
+ * receives; its node-side arrival time is the reference the DOM change is
+ * measured against, with the list's own token change polled beside it as a
+ * second, coarser reading. Both are reported.
+ *
+ * THE TWO HALVES. `--bin-expect prompt` (default) asserts the change's claim -
+ * the row lands under `Today` within `BIN_TARGET_MS` of that frame. `--bin-expect
+ * stale` asserts the operator's report on the tree without the client half: the
+ * row does NOT move within `BIN_STALE_MS` (eight seconds; the poll is the thing
+ * under test, so a move inside that window is a FAILURE of this run's own
+ * claim, not a pass). The stale half keeps watching to the 50 s budget anyway,
+ * because WHEN it finally moves is the reading the pair exists to compare.
+ *
+ * WHAT IT NEEDS: `--backend` and `--backend-records` for a daemon this run owns
+ * (`--backend-records` names that daemon's `<config>/run/serve`),
+ * `LOCAL_OPERATOR_DESKTOP_TOKEN` in this script's environment, a renderer built
+ * against `--backend`, and `--seed-onboarding-complete` (a fresh profile in
+ * front of a fresh daemon is a first-run user whose wizard is a modal over the
+ * window). It writes sessions into that daemon's store and backdates their
+ * files; it refuses a `--backend` whose record directory does not describe it.
+ */
+const BIN_TARGET_MS = 2_000;
+const BIN_STALE_MS = 8_000;
+async function sceneSidebarBinPromptness(cdp) {
+	const expect = BIN_EXPECT;
+	const stale = expect === "stale";
+	/*
+	 * THE DAEMON'S OWN ROOTS, from the record directory this run was handed:
+	 * `<config>/run/serve` -> `<config>`. Asserted before anything is written, so
+	 * a `--backend` naming somebody else's daemon fails here rather than creating
+	 * and backdating sessions in their store.
+	 */
+	const configRoot = resolve(BACKEND_RECORDS, "..", "..");
+	const sessionsDir = join(configRoot, "sessions");
+	const backendPort = Number(new URL(BACKEND).port);
+	if (backendPort === 1111) {
+		throw new Error(
+			"--scene sidebar-bin-promptness refuses 1111: that is the operator's own daemon, and this scene creates and backdates sessions",
+		);
+	}
+	const record = sceneConnectionDropRecords().find(
+		(entry) =>
+			entry.record.port === backendPort &&
+			["127.0.0.1", "localhost", "::1"].includes(entry.record.host),
+	);
+	if (record === undefined) {
+		throw new Error(
+			`no serve record for port ${backendPort} under ${BACKEND_RECORDS}: --backend-records must name the daemon's own <config>/run/serve, and this scene creates and backdates sessions in the store beside it`,
+		);
+	}
+	if (!existsSync(sessionsDir)) {
+		throw new Error(
+			`${sessionsDir} is missing under the record's own config root: the record directory does not sit at <config>/run/serve, so this scene cannot find the store it must backdate`,
+		);
+	}
+	note(
+		"the daemon this scene drives",
+		`pid ${record.record.pid} port ${backendPort} store ${sessionsDir}`,
+	);
+
+	/* A node-side poll, because `waitForCondition` reads the PAGE. */
+	const waitUntil = async (predicate, timeoutMs, everyMs = 100) => {
+		const started = Date.now();
+		for (;;) {
+			const value = await predicate();
+			if (value) return { ok: true, waitedMs: Date.now() - started, value };
+			if (Date.now() - started > timeoutMs) {
+				return { ok: false, waitedMs: Date.now() - started };
+			}
+			await wait(everyMs);
+		}
+	};
+
+	/*
+	 * WHERE THE SIDEBAR FILES ONE ROW, read from the DOM rather than from the
+	 * store (the store is not reachable from the page, and the drawn section is
+	 * the claim): the row's nearest `[data-chat-section]` ancestor - the section
+	 * element `chat-sidebar.tsx` draws - and the row's own time label.
+	 */
+	const rowBinExpr = (id) =>
+		`(() => { const row = document.querySelector(${JSON.stringify(`[data-session-row="${id}"]`)}); if (!row) return null; const section = row.closest("[data-chat-section]"); const time = row.querySelector("[data-session-time]"); return { section: section ? section.getAttribute("data-chat-section") : null, time: time ? time.textContent.trim() : null }; })()`;
+	const rowSectionIs = (id, section) =>
+		`(() => { const seen = ${rowBinExpr(id)}; return seen !== null && seen.section === ${JSON.stringify(section)}; })()`;
+
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", "localOperatorDark");
+	const route = await verb(cdp, "state");
+	check(
+		"the app is on the chat route with its sidebar drawn",
+		route.route === "/chat",
+		`route ${route.route}`,
+		`route ${route.route}`,
+	);
+
+	const work = join(resolve(configRoot, ".."), "bin-work");
+	mkdirSync(work, { recursive: true });
+
+	/*
+	 * THE SUBJECT, and its pane sibling. The subject is created, given one turn
+	 * (which materialises it: `created_at.json` is written by the first run, and
+	 * the transcript the clock lives on does not exist before it), acknowledged
+	 * so its completion mark is not what the frames are about, and THEN
+	 * backdated - the order matters, because the first turn's own frames are
+	 * what would otherwise re-read it at its living clock.
+	 */
+	const created = await daemonPost("/v1/desktop/sessions", {
+		request_id: randomUUID(),
+		cwd: work,
+	});
+	const subjectId = created.json?.result?.session_id ?? null;
+	check(
+		"the daemon created the subject session",
+		created.status === 200 &&
+			typeof subjectId === "string" &&
+			subjectId.length > 0,
+		JSON.stringify(created),
+		`session ${subjectId}`,
+	);
+
+	const firstTurn = await daemonPost(
+		`/v1/desktop/sessions/${subjectId}/messages`,
+		{
+			request_id: randomUUID(),
+			text: "Reply with one word: seeded.",
+		},
+	);
+	check(
+		"the subject's materialising turn was admitted",
+		firstTurn.status === 200,
+		JSON.stringify(firstTurn),
+		"admitted",
+	);
+
+	const materialised = await waitUntil(async () => {
+		const transcript = join(sessionsDir, subjectId, "transcript.jsonl");
+		if (!existsSync(transcript) || statSync(transcript).size < 64) return false;
+		const row = (await daemonList()).sessions.find(
+			(entry) => entry.id === subjectId,
+		);
+		return (
+			Boolean(row) &&
+			row.status?.code !== "busy" &&
+			Boolean(row.attention?.completion_token) &&
+			Number.isFinite(row.mtime)
+		);
+	}, 30_000);
+	check(
+		"the subject finished its first turn and carries both clocks",
+		materialised.ok,
+		`not materialised after ${materialised.waitedMs}ms`,
+		`finished after ${materialised.waitedMs}ms`,
+	);
+
+	/*
+	 * NO ACK. The completion mark from the first turn STANDS - the operator's own
+	 * store is full of unviewed completions, and a subject that carries one is the
+	 * adversarial case for the invalidation: the tiers before and after the
+	 * measured turn are BOTH the unseen-completion band, so the completion is
+	 * carried by its `attention` frame alone whenever the busy band was missed.
+	 */
+
+	const fortyDaysAgo = Math.floor(Date.now() / 1000) - 40 * 86_400;
+	const subjectDir = join(sessionsDir, subjectId);
+	writeFileSync(
+		join(subjectDir, "created_at.json"),
+		JSON.stringify(fortyDaysAgo),
+	);
+	const transcript = join(subjectDir, "transcript.jsonl");
+	const mint = new Date(fortyDaysAgo * 1000);
+	utimesSync(transcript, mint, mint);
+	const stamped = (await daemonList()).sessions.find(
+		(entry) => entry.id === subjectId,
+	);
+	check(
+		"the daemon now reports the subject as an older session",
+		stamped !== undefined &&
+			Math.abs(stamped.mtime - fortyDaysAgo) < 0.5 &&
+			Math.abs(stamped.created_at - fortyDaysAgo) < 0.5,
+		`list says mtime ${stamped?.mtime} created_at ${stamped?.created_at}, wanted ${fortyDaysAgo}`,
+		`mtime ${stamped?.mtime} created_at ${stamped?.created_at} (40 days back)`,
+	);
+
+	const createdPane = await daemonPost("/v1/desktop/sessions", {
+		request_id: randomUUID(),
+		cwd: work,
+	});
+	const paneId = createdPane.json?.result?.session_id ?? null;
+	check(
+		"the daemon created the pane session",
+		createdPane.status === 200 &&
+			typeof paneId === "string" &&
+			paneId.length > 0,
+		JSON.stringify(createdPane),
+		`session ${paneId}`,
+	);
+
+	/*
+	 * THE APP MUST SEE THE BACKDATED SUBJECT BEFORE THE MEASUREMENT. Creating
+	 * the pane moved the sessions directory, which is the catalogue doorbell -
+	 * so the sidebar re-reads, and only then is the subject's row on screen in
+	 * `older` with its stale label. The 45 s bound is the safety poll's own
+	 * order of magnitude on a daemon whose doorbell missed.
+	 */
+	const subjectShown = await waitForCondition(
+		cdp,
+		rowSectionIs(subjectId, "older"),
+		45_000,
+	);
+	check(
+		"the backdated subject is on screen under Older",
+		subjectShown.ok,
+		`waited ${subjectShown.waitedMs}ms for the row under Older`,
+		`rendered after ${subjectShown.waitedMs}ms`,
+	);
+
+	const pressed = await verb(
+		cdp,
+		"press",
+		`[data-session-row="${paneId}"] [data-chat-row]`,
+	);
+	await wait(1200);
+	const opened = await verb(cdp, "state");
+	check(
+		"the open pane is the pane session, so the subject is NOT the open pane",
+		opened.activeSessionId === paneId,
+		`active session is ${JSON.stringify(opened.activeSessionId)} after pressing ${JSON.stringify(pressed?.target ?? pressed)}`,
+		`active session ${opened.activeSessionId}`,
+	);
+
+	const baseline = await cdp.evaluate(rowBinExpr(subjectId));
+	note("the subject's row before the message", JSON.stringify(baseline));
+	const beforeFrame = await captureSettled(cdp, `bin-before-${expect}`);
+
+	/*
+	 * THIS SCENE'S OWN FEED SUBSCRIPTION, so the completion's frame has a
+	 * timestamp taken by the process that will read the DOM. The app has its own
+	 * subscription; this is a second reader, closed before the scene returns.
+	 */
+	const frames = [];
+	const watchAbort = new AbortController();
+	const watchDone = (async () => {
+		try {
+			const response = await fetch(`${BACKEND}/v1/desktop/events`, {
+				headers: {
+					authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+				},
+				signal: watchAbort.signal,
+			});
+			const reader = response.body.getReader();
+			const decoder = new TextDecoder();
+			let buffer = "";
+			for (;;) {
+				const { value, done } = await reader.read();
+				if (done) break;
+				buffer += decoder.decode(value, { stream: true });
+				let cut = buffer.indexOf("\n\n");
+				while (cut >= 0) {
+					const chunk = buffer.slice(0, cut);
+					buffer = buffer.slice(cut + 2);
+					const line = chunk
+						.split("\n")
+						.find((entry) => entry.startsWith("data: "));
+					if (line) {
+						try {
+							frames.push({ at: Date.now(), frame: JSON.parse(line.slice(6)) });
+						} catch {
+							/* A torn chunk is not this scene's subject; the next frame is. */
+						}
+					}
+					cut = buffer.indexOf("\n\n");
+				}
+			}
+		} catch (error) {
+			if (!watchAbort.signal.aborted) {
+				note("the feed watch ended early", String(error));
+			}
+		}
+	})();
+	const watchOpen = await waitUntil(
+		() => frames.some((entry) => entry.frame.type === "open"),
+		10_000,
+	);
+	check(
+		"this scene's own feed subscription is live",
+		watchOpen.ok,
+		`no open frame after ${watchOpen.waitedMs}ms`,
+		`open frame after ${watchOpen.waitedMs}ms`,
+	);
+
+	const beforeList = (await daemonList()).sessions.find(
+		(entry) => entry.id === subjectId,
+	);
+	const preToken = beforeList?.attention?.completion_token ?? null;
+	const sentAt = Date.now();
+	const sent = await daemonPost(`/v1/desktop/sessions/${subjectId}/messages`, {
+		request_id: randomUUID(),
+		text: "Reply with one word: bins.",
+	});
+	check(
+		"the daemon admitted the message",
+		sent.status === 200,
+		JSON.stringify(sent),
+		"admitted",
+	);
+
+	/*
+	 * THE MEASUREMENT LOOP: the list's token change and this scene's own
+	 * attention frame are the completion's two readings, and the DOM's section
+	 * attribute for the subject's row is the claim. Everything is timestamped
+	 * with `Date.now()` from one process, which is the only way the deltas mean
+	 * anything.
+	 */
+	const deadline = sentAt + (stale ? 50_000 : 15_000);
+	let completionAt = null;
+	let completionFrameAt = null;
+	let binAt = null;
+	const transitions = [];
+	let current = baseline;
+	while (Date.now() < deadline) {
+		const now = Date.now();
+		if (completionAt === null || completionFrameAt === null) {
+			const row = (await daemonList()).sessions.find(
+				(entry) => entry.id === subjectId,
+			);
+			const token = row?.attention?.completion_token ?? null;
+			if (completionAt === null && token && token !== preToken) {
+				completionAt = now;
+			}
+			if (completionFrameAt === null) {
+				const hit = frames.find(
+					(entry) =>
+						entry.frame.type === "attention" &&
+						entry.frame.session_id === subjectId &&
+						entry.frame.payload?.completion_token &&
+						entry.frame.payload.completion_token !== preToken,
+				);
+				if (hit) completionFrameAt = hit.at;
+			}
+		}
+		const seen = await cdp.evaluate(rowBinExpr(subjectId));
+		if (
+			seen !== null &&
+			(seen.section !== current?.section || seen.time !== current?.time)
+		) {
+			transitions.push({ at: now, ...seen });
+			current = seen;
+			if (binAt === null && seen.section === "today") binAt = now;
+		}
+		if (binAt !== null) break;
+		await wait(80);
+	}
+
+	watchAbort.abort();
+	await watchDone;
+
+	const catalogueAfter = frames
+		.filter((entry) => entry.frame.type === "catalogue" && entry.at >= sentAt)
+		.map((entry) => entry.at - sentAt);
+	const attentionAfter = frames
+		.filter(
+			(entry) => entry.frame.session_id === subjectId && entry.at >= sentAt,
+		)
+		.map((entry) => `${entry.frame.type}@${entry.at - sentAt}ms`);
+	const completion = completionFrameAt ?? completionAt;
+	const lagMs =
+		binAt !== null && completion !== null ? binAt - completion : null;
+	note(
+		"bin promptness readings",
+		JSON.stringify({
+			expect,
+			subjectId,
+			sentAt,
+			completionFrameAt:
+				completionFrameAt === null ? null : completionFrameAt - sentAt,
+			completionAt: completionAt === null ? null : completionAt - sentAt,
+			catalogueAfterMs: catalogueAfter,
+			subjectFrames: attentionAfter,
+			binAt: binAt === null ? null : binAt - sentAt,
+			lagMs,
+			transitions: transitions.map((entry) => ({
+				at: entry.at - sentAt,
+				section: entry.section,
+				time: entry.time,
+			})),
+		}),
+	);
+
+	const finalBin = await cdp.evaluate(rowBinExpr(subjectId));
+	const afterFrame = await captureSettled(cdp, `bin-after-${expect}`);
+
+	if (stale) {
+		check(
+			`the row does NOT land under Today within ${BIN_STALE_MS}ms of the completion (the defect this run records)`,
+			binAt === null ||
+				completion === null ||
+				binAt - completion > BIN_STALE_MS,
+			`the row was under Today ${binAt === null || completion === null ? "?" : `${binAt - completion}ms`} after the completion`,
+			binAt === null
+				? `still under ${JSON.stringify(finalBin?.section)} (${JSON.stringify(finalBin?.time)}) after ${Date.now() - sentAt}ms`
+				: `moved ${binAt - completion}ms after the completion (${binAt - sentAt}ms after the message)`,
+		);
+	} else {
+		check(
+			`the row lands under Today within ${BIN_TARGET_MS}ms of the completion`,
+			binAt !== null &&
+				completion !== null &&
+				binAt - completion <= BIN_TARGET_MS,
+			binAt === null
+				? `no move within ${deadline - sentAt}ms of the message (completion ${completionFrameAt === null ? (completionAt === null ? "never" : `${completionAt - sentAt}ms`) : `${completionFrameAt - sentAt}ms`} in)`
+				: `landed ${binAt - completion}ms after the completion`,
+			binAt !== null && completion !== null
+				? `${binAt - completion}ms after the completion (${binAt - sentAt}ms after the message), row now ${JSON.stringify(finalBin?.section)} ${JSON.stringify(finalBin?.time)}`
+				: `row now ${JSON.stringify(finalBin?.section)} ${JSON.stringify(finalBin?.time)}`,
+		);
+	}
+
+	return [beforeFrame, afterFrame];
+}
+
+/**
  * `/btw` — the aside, driven end to end in BOTH trees by one scene.
  *
  * WHY ONE SCENE AND NOT TWO. The change is a replacement of one surface by
@@ -14369,11 +17105,24 @@ async function sceneBtwAside(cdp) {
 					 * that element - it is inset by the box's own padding - and comparing
 					 * the panel against it reported a 17px misalignment that does not
 					 * exist on screen.
+					 *
+					 * Matched on the container-query PREFIX (chatcol:max-w-) rather than
+					 * on the value, because the value is no longer in the class: the
+					 * measure resolves the --lo-chat-measure property, so that one number
+					 * serves the transcript and the composer together, and this selector used to
+					 * spell max-w-[900px]. It stopped matching when the value moved into
+					 * the property, which read as "the composer has no frame" - the two
+					 * readings this block exists to compare would both have been null and
+					 * the misalignment check would have passed over nothing. The prefix is
+					 * stable across a value change, which is the property a rig wants.
+					 *
+					 * NO BACKTICKS ABOVE, and that is not a style choice: this block is
+					 * inside the template literal the rig sends to the page, so a backtick here
+					 * ends the string and the file stops parsing - which is exactly what the
+					 * first version of this comment did.
 					 */
 					const shared = Array.from(
-						document.querySelectorAll(
-							'[class*="@min-[750px]/chatcol:max-w-[900px]"]',
-						),
+						document.querySelectorAll('[class*="chatcol:max-w-"]'),
 					);
 					const frame = field
 						? shared.find((el) => el.contains(field))
@@ -14478,7 +17227,7 @@ async function sceneBtwAside(cdp) {
 	const rested = await readBand();
 	if (rested.field === null) {
 		throw new Error(
-			"no composer on screen for the session this scene created: check that the backend is on a port the PAGE allows (8080 here — `src/renderer/index.html` pins connect-src to 1111/8080, and 1111 is the operator's own backend) and that the renderer was built with VITE_LOCAL_OPERATOR_API_URL set to that same URL",
+			"no composer on screen for the session this scene created: check that the backend is UP (this run owns it) and that the renderer was built with VITE_LOCAL_OPERATOR_API_URL set to the same URL `--backend` names. The PORT IS NOT THE DISCRIMINATOR, and this message used to say it was: `--scene session-archive` measured 69 PASS / 0 FAIL at `127.0.0.1:8123` on 2026-09-27, a port `src/renderer/index.html`'s `connect-src` does not name. The app's transport is MAIN's (the renderer's `apiBaseUrl` is read over IPC, not fetched) and the driver widens `frame-src`/`media-src` in the gitignored build output, so a rig on any free port is reachable; only `1111` is special, and only because it is the operator's own daemon.",
 		);
 	}
 	note("the band at rest", JSON.stringify(rested));
@@ -15055,6 +17804,2275 @@ async function sceneBtwAside(cdp) {
 	return { tree: TREE, frames };
 }
 
+/**
+ * THE CONVERSATION'S FIRST FRAMES (conversation-start): the press, the flip, a
+ * post-paint failure, a reload mid-failure, and a switch away and back.
+ *
+ * WHY A SCENE AND NOT A STORY. The behaviour this change is for lives in time:
+ * a create that takes a second, a composer whose box must be empty while the row
+ * is on screen, a failure the owner raises after the row was painted, a pane that
+ * unmounts and comes back. None of those is a still; `capturePage` on the built
+ * app is the instrument that sees the sequence, and the readings it takes are the
+ * J1-J6 claims in numbers rather than a vibe.
+ *
+ * THE TAP. `POST /v1/desktop/sessions` is delayed in front of the app
+ * (`docs/evidence/conversation-start/harness/create-tap.mjs`), so the press frame
+ * is taken while the create is genuinely in flight and the flip frame is the same
+ * run's later moment - the design's frames 2 and 3 from one press, not two staged
+ * stills.
+ *
+ * BOTH HALVES, ONE SCENE. `--expect=before` runs these same steps against a tree
+ * without the change and RECORDS the same moments - the after-only claims are
+ * notes there, because they are the change and failing on them would only say the
+ * old build is the old build. The before half is what makes each after reading a
+ * difference rather than a coincidence.
+ */
+/*
+ * THE CREATE THAT DIES INSIDE THE PRESS WINDOW (UX round 1, U2).
+ *
+ * The tap's `kill-creates` arm destroys the socket the create went out on, so
+ * the request leaves and no answer ever comes: the shape the round measured as
+ * "the message has no home at all - no row, no wait line, no sidebar row - and
+ * only a reload recovers it". The checks are the round's own ask: the row, the
+ * statement with its controls, the sidebar presence, and the reload that must
+ * bring the row back.
+ *
+ * Usage:
+ *   TAP_TARGET=<backend> TAP_PORT=<tap> node docs/evidence/conversation-start/harness/create-tap.mjs
+ *   node scripts/renderer-driver.mjs --scene conversation-start-create-failure \
+ *     --backend http://127.0.0.1:<tap> --tap-control http://127.0.0.1:<tap> --out <dir> --clean
+ */
+async function sceneConversationStartCreateFailure(cdp) {
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	const composerSelector = '[data-tour-tag="chat-input-textarea"]';
+	const size = `${WINDOW_WIDTH}x${WINDOW_HEIGHT}`;
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+	check(
+		"the kill arm needs the tap's control door",
+		TAP_CONTROL !== null,
+		TAP_CONTROL ?? "pass --tap-control http://127.0.0.1:<tap>",
+	);
+	if (!TAP_CONTROL) return;
+	const armed = await fetch(`${TAP_CONTROL}/__tap/kill-creates`, {
+		method: "POST",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({ count: 1 }),
+	});
+	note("tap kill", `${armed.status} ${await armed.text()}`);
+
+	const reads = () =>
+		cdp.evaluate(`(() => {
+			const log = document.querySelector('[role="log"]');
+			const rows = log ? [...log.querySelectorAll('[data-record-id]')] : [];
+			const composer = document.querySelector('${composerSelector} textarea');
+			const undelivered = document.querySelector('[data-undelivered]');
+			const region = document.querySelector('[data-sidebar-region="chats"]');
+			const draft = region ? region.querySelector('[data-draft-row]') : null;
+			return {
+				rows: rows.length,
+				rowIds: rows.map((row) => row.getAttribute('data-record-id')),
+				composer: composer ? composer.value : null,
+				controls: log ? [...log.querySelectorAll('button')].map((b) => b.textContent.trim()) : [],
+				undelivered: undelivered ? undelivered.textContent.trim() : null,
+				draftRow: draft ? draft.getAttribute('data-draft-row') : null,
+			};
+		})()`);
+
+	await verb(cdp, "navigate", "/chat");
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${composerSelector}') && document.querySelector('[data-lo-empty-mark]'))`,
+		30_000,
+	);
+	await clickAt(cdp, `${composerSelector} textarea`);
+	await cdp.send("Input.insertText", { text: "Summarise yesterday's QA run." });
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	// The killed socket rejects quickly; the row and its statement are what the
+	// window is judged by, so the read comes after the failure arm can have run.
+	await wait(2500);
+	const dead = await reads();
+	note("after the dead create", JSON.stringify(dead));
+	check(
+		"U2: the message keeps its row when the create dies in the press window",
+		dead.rows === 1,
+		`rows=${dead.rows} ids=${JSON.stringify(dead.rowIds)}`,
+	);
+	check(
+		"U2: the row states the failure, with both controls",
+		dead.undelivered !== null &&
+			dead.controls.includes("Send again") &&
+			dead.controls.includes("Edit"),
+		`undelivered=${JSON.stringify(dead.undelivered)} controls=${JSON.stringify(dead.controls)}`,
+	);
+	check(
+		"U2: and the composer stays empty - the row is the message's home",
+		dead.composer === "",
+		`composer=${JSON.stringify(dead.composer)}`,
+	);
+	check(
+		"U2: the sidebar still lists the chat, so a switch-away can come back to it",
+		dead.draftRow !== null,
+		`draftRow=${JSON.stringify(dead.draftRow)}`,
+	);
+	const deadFrame = await captureSettled(
+		cdp,
+		`conversation-start-${size}-dead-create`,
+	);
+	note("frame", JSON.stringify(deadFrame));
+
+	/* The reload: the failure shape is the one S6's adapter re-paints. */
+	await cdp.send("Page.reload", { ignoreCache: false });
+	const back = await waitForCondition(
+		cdp,
+		`(() => {
+			const log = document.querySelector('[role="log"]');
+			return Boolean(document.querySelector('${composerSelector}') && log && log.textContent.includes("Send again"));
+		})()`,
+		30_000,
+	);
+	const reloaded = await reads();
+	note("reload", JSON.stringify({ read: reloaded, back: back.ok }));
+	check(
+		"U2/T6: after a reload the row is back and still states its failure",
+		back.ok === true &&
+			reloaded.rows === 1 &&
+			reloaded.controls.includes("Send again"),
+		`rows=${reloaded.rows} controls=${JSON.stringify(reloaded.controls)}`,
+	);
+	const reloadFrame = await captureSettled(
+		cdp,
+		`conversation-start-${size}-dead-create-reload`,
+	);
+	note("frame", JSON.stringify(reloadFrame));
+}
+
+/**
+ * A NEW CHAT'S FIRST SEND REFUSED, THEN AWAY AND BACK (UX round 2, U5).
+ *
+ * WHY A SCENE OF ITS OWN. The main scene's failure arm presses a LIVE
+ * conversation - its first message is delivered, the turn answers, the receipt
+ * retires the staged draft - so its row is keyed `send:<sessionId>`, exactly the
+ * key a pane derives when it is reached by the session's own route; that shape
+ * passes by construction. U5 is the OTHER shape, and it is the one the design's
+ * "switch-away mid-failure" target names: the refusal lands on the staged
+ * draft's own row (`draft:<uuid>`, which the create's answer patches but never
+ * re-keys) while the pane that comes back derives `send:<sessionId>` and finds
+ * nothing - the failure's sentence and both its controls gone, and the retained
+ * claim still answering "in flight" for a send that is not alive.
+ *
+ * So this scene stages exactly that: one refusal on a new chat's FIRST message
+ * (the tap's captured `runtime_unreachable` body), the row up, then a click to
+ * another conversation and straight back - and it reads the store's own draft
+ * map beside the DOM, because "the row exists under a name the pane never asks
+ * for" is invisible in the rendered frame.
+ */
+async function sceneConversationStartAwayFailure(cdp) {
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	const composerSelector = '[data-tour-tag="chat-input-textarea"]';
+	const size = `${WINDOW_WIDTH}x${WINDOW_HEIGHT}`;
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+	check(
+		"the refusal needs the tap's control door",
+		TAP_CONTROL !== null,
+		TAP_CONTROL ?? "pass --tap-control http://127.0.0.1:<tap>",
+	);
+	if (!TAP_CONTROL) return;
+
+	const reads = () =>
+		cdp.evaluate(`(() => {
+			const log = document.querySelector('[role="log"]');
+			const rows = log ? [...log.querySelectorAll('[data-record-id]')] : [];
+			const composer = document.querySelector('${composerSelector} textarea');
+			const undelivered = document.querySelector('[data-undelivered]');
+			return {
+				rows: rows.length,
+				rowIds: rows.map((row) => row.getAttribute('data-record-id')),
+				composer: composer ? composer.value : null,
+				controls: log ? [...log.querySelectorAll('button')].map((b) => b.textContent.trim()) : [],
+				undelivered: undelivered ? undelivered.textContent.trim() : null,
+			};
+		})()`);
+	const waitLine = () =>
+		cdp.evaluate(`(() => {
+			const match = document.body.innerText.match(/(starting the session|waiting for the agent)(?:\\s+(\\d+)s)?/);
+			return match ? { phase: match[1], seconds: match[2] ? Number(match[2]) : null } : null;
+		})()`);
+	const draftState = () =>
+		verb(cdp, "state").then((state) => ({
+			route: state.route,
+			activeSessionId: state.activeSessionId,
+			activeDraftKey: state.activeDraftKey,
+			drafts: state.drafts,
+		}));
+
+	/* A second conversation to leave to, and the run must see its sidebar row. */
+	const second = await createBackendSession();
+	const secondId = second?.id ?? second?.session_id ?? null;
+	note("second conversation", JSON.stringify(second));
+
+	await verb(cdp, "navigate", "/chat");
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${composerSelector}') && document.querySelector('[data-lo-empty-mark]'))`,
+		30_000,
+	);
+	if (secondId) {
+		await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector('[data-sidebar-region="chats"] [data-session-row="${secondId}"]'))`,
+			20_000,
+		);
+	}
+	const armed = await fetch(`${TAP_CONTROL}/__tap/fail-messages`, {
+		method: "POST",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({ count: 1 }),
+	});
+	note("tap control", `${armed.status} ${await armed.text()}`);
+
+	const rowsBefore = (await reads()).rowIds;
+	const refusalWait = `(() => {
+		const log = document.querySelector('[role="log"]');
+		if (!log) return false;
+		const ids = [...log.querySelectorAll('[data-record-id]')].map((r) => r.getAttribute('data-record-id'));
+		const previous = ${JSON.stringify(rowsBefore)};
+		const minted = ids.some((id) => !previous.includes(id));
+		return minted && Boolean(log.querySelector('[data-undelivered]'));
+	})()`;
+	await clickAt(cdp, `${composerSelector} textarea`);
+	await cdp.send("Input.insertText", { text: "Summarise yesterday's QA run." });
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	let refusal = await waitForCondition(cdp, refusalWait, 20_000);
+	if (!refusal.ok) {
+		/* One retry, the same shape the main scene's arm explains. */
+		await pressChord(cdp, {
+			key: "a",
+			code: "KeyA",
+			virtualKeyCode: 65,
+			modifiers: MODIFIER.meta,
+			commands: ["selectAll"],
+		});
+		await pressChord(cdp, {
+			key: "Backspace",
+			code: "Backspace",
+			virtualKeyCode: 8,
+		});
+		await clickAt(cdp, `${composerSelector} textarea`);
+		await cdp.send("Input.insertText", {
+			text: "Summarise yesterday's QA run.",
+		});
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		refusal = await waitForCondition(cdp, refusalWait, 20_000);
+	}
+	await wait(600);
+	const atRefusalFrame = await captureSettled(
+		cdp,
+		`conversation-start-${size}-away-failure-refusal`,
+		{ toastWaitMs: 500 },
+	);
+	note("frame", JSON.stringify(atRefusalFrame));
+	const atRefusal = {
+		read: await reads(),
+		line: await waitLine(),
+		state: await draftState(),
+	};
+	note("at refusal", JSON.stringify(atRefusal));
+	check(
+		"U5: the refusal is up on the row, with both controls",
+		atRefusal.read.undelivered !== null &&
+			atRefusal.read.controls.includes("Send again") &&
+			atRefusal.read.controls.includes("Edit"),
+		`undelivered=${JSON.stringify(atRefusal.read.undelivered)} controls=${JSON.stringify(atRefusal.read.controls)}`,
+	);
+
+	/*
+	 * WHICH conversation just failed. NOT from the route: a refusal means no
+	 * receipt, and the app navigates `/chat/<id>` only on the receipt - so the
+	 * route is still the bare `/chat` while the staged draft's row carries the
+	 * session the create made. The state is the answer; the route would be null.
+	 *
+	 * THE FALLBACK EXISTS FOR THE BEFORE HALF, which is the unmodified base and
+	 * whose dev driver has no `drafts` field to read (the after half's does): the
+	 * chat is found in the sidebar instead, as the session row that is not the
+	 * scene's own second conversation. Same fact, one layer out.
+	 */
+	const refusalSidebar = await cdp.evaluate(`(() => {
+		const region = document.querySelector('[data-sidebar-region="chats"]');
+		if (!region) return { region: false };
+		return {
+			region: true,
+			draftRows: [...region.querySelectorAll('[data-draft-row]')].map((r) => r.getAttribute('data-draft-row')),
+			draftLabels: [...region.querySelectorAll('[data-draft-row]')].map((r) => (r.textContent || '').trim().slice(0, 60)),
+			sessionRowIds: [...region.querySelectorAll('[data-session-row]')].map((r) => r.getAttribute('data-session-row')).slice(0, 8),
+		};
+	})()`);
+	note("sidebar at refusal", JSON.stringify(refusalSidebar));
+	const failedId =
+		(atRefusal.state.activeDraftKey &&
+			atRefusal.state.drafts?.[atRefusal.state.activeDraftKey]?.sessionId) ||
+		(await cdp.evaluate(`(function (second) {
+			var rows = [...document.querySelectorAll('[data-sidebar-region="chats"] [data-session-row]')];
+			for (var row of rows) {
+				var id = row.getAttribute('data-session-row');
+				if (id && id !== second) return id;
+			}
+			return null;
+		})(${JSON.stringify(secondId)})`));
+	note("failed conversation", JSON.stringify(failedId));
+	if (!failedId) {
+		note(
+			"on return",
+			"skipped: no failed conversation could be named (the state carried none and the sidebar painted none)",
+		);
+		return;
+	}
+	/*
+	 * THE ROWS ARE WAITED FOR, AND THE AWAY TARGET IS A VISIBLE ROW (found while
+	 * re-shooting: clicking a row the catalogue has not painted threw and took
+	 * every later capture with it). The failed chat's own row arrives with a
+	 * catalogue refresh - the create's answer issues one, the poll is the backstop -
+	 * and the conversation to leave to is whichever other row the sidebar is
+	 * ACTUALLY drawing, read from the DOM rather than assumed.
+	 */
+	const rowUp = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-sidebar-region="chats"] [data-session-row="${failedId}"]'))`,
+		45_000,
+	);
+	const awayRow = rowUp.ok
+		? await cdp.evaluate(`(function (failed) {
+				var rows = [...document.querySelectorAll('[data-sidebar-region="chats"] [data-session-row]')];
+				for (var row of rows) {
+					var id = row.getAttribute('data-session-row');
+					if (id && id !== failed) return id;
+				}
+				return null;
+			})(${JSON.stringify(failedId)})`)
+		: null;
+	note("away rows", JSON.stringify({ failedRowUp: rowUp.ok, awayRow }));
+	/*
+	 * THE WALK, WITH THE ROUTE AS THE FALLBACK (measured need: the sidebar's
+	 * catalogue lagged the create by more than the wait on some runs, and the U5
+	 * checks must run either way). The sidebar press is the shape U5 is about; if
+	 * its row is not painted yet, the return is taken through the session's own
+	 * route instead - the same pane resolution by identity is what the fix turns
+	 * on - and the note says which one this run took, so a frame is never captioned
+	 * as a walk it did not make.
+	 */
+	let returnVia = "the sidebar's row";
+	if (rowUp.ok && awayRow) {
+		await clickAt(
+			cdp,
+			`[data-sidebar-region="chats"] [data-session-row="${awayRow}"]`,
+		);
+		await wait(2000);
+		await clickAt(
+			cdp,
+			`[data-sidebar-region="chats"] [data-session-row="${failedId}"]`,
+		);
+	} else {
+		returnVia = "the session's own route (the sidebar had not painted the row)";
+		await verb(cdp, "navigate", `/chat/${failedId}`);
+	}
+	note("return via", returnVia);
+	const back = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${composerSelector} textarea'))`,
+		20_000,
+	);
+	/*
+	 * Long enough for the return's own read to land: the check is "what the pane
+	 * says after everything that CAN arrive has", not "what it said first".
+	 */
+	await wait(1500);
+	const returnFrame = await captureSettled(
+		cdp,
+		`conversation-start-${size}-away-failure-return`,
+		{ toastWaitMs: 500 },
+	);
+	note("frame", JSON.stringify(returnFrame));
+	const onReturn = {
+		read: await reads(),
+		line: await waitLine(),
+		state: await draftState(),
+		back: back.ok,
+	};
+	note("on return", JSON.stringify(onReturn));
+	check(
+		"U5: the refusal's row, sentence and both controls survive a switch-away and back",
+		onReturn.read.undelivered !== null &&
+			onReturn.read.controls.includes("Send again") &&
+			onReturn.read.controls.includes("Edit"),
+		`undelivered=${JSON.stringify(onReturn.read.undelivered)} controls=${JSON.stringify(onReturn.read.controls)}`,
+	);
+	check(
+		"U5: and no wait claim is drawn for a send that is not alive",
+		onReturn.line === null,
+		`line=${JSON.stringify(onReturn.line)}`,
+	);
+}
+
+async function sceneConversationStart(cdp) {
+	const expectAfter = START_EXPECT !== "before";
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	const composerSelector = '[data-tour-tag="chat-input-textarea"]';
+	const theme = THEME ?? "localOperatorDark";
+	await verb(cdp, "setTheme", theme);
+	const size = `${WINDOW_WIDTH}x${WINDOW_HEIGHT}`;
+
+	/*
+	 * The measurement every frame is read through, taken as ONE evaluate so a
+	 * frame's numbers cannot straddle two renders: the painted rows (count and
+	 * ids), the scroller's scrollTop and overflow, the composer's box, whatever
+	 * alert is speaking, and the row's own controls.
+	 */
+	/*
+	 * TYPE AND SEND, with the focus question answered rather than assumed.
+	 *
+	 * `Input.insertText` delivers to whatever holds focus and `Input.dispatchKeyEvent`
+	 * to whatever holds it an instant later; between a session's answer streaming
+	 * and a press, a commit can move the caret out from under a chord, and a chord
+	 * that reaches the body is a press the app never sees (measured on this scene's
+	 * first runs: the text went in, the Enter did not, and no request followed).
+	 * So the helper checks `document.activeElement` BEFORE the chord, logs it, and
+	 * the caller may retry once - clearing the box first, because a retry that
+	 * appends is a different message.
+	 */
+	const typeIntoComposer = async (text, clear = false) => {
+		await clickAt(cdp, `${composerSelector} textarea`);
+		if (clear) {
+			await pressChord(cdp, {
+				key: "a",
+				code: "KeyA",
+				virtualKeyCode: 65,
+				modifiers: MODIFIER.meta,
+				commands: ["selectAll"],
+			});
+			await pressChord(cdp, {
+				key: "Backspace",
+				code: "Backspace",
+				virtualKeyCode: 8,
+			});
+		}
+		await cdp.send("Input.insertText", { text });
+		const focus = await cdp.evaluate(`(() => {
+			const el = document.activeElement;
+			return el ? { tag: el.tagName, editable: el.closest('[data-tour-tag="chat-input-textarea"]') !== null } : null;
+		})()`);
+		note("focus at the press", JSON.stringify(focus));
+		await pressChord(cdp, {
+			key: "Enter",
+			code: "Enter",
+			virtualKeyCode: 13,
+		});
+	};
+	const reads = () =>
+		cdp.evaluate(`(() => {
+			const log = document.querySelector('[role="log"]');
+			const rows = log ? [...log.querySelectorAll('[data-record-id]')] : [];
+			const composer = document.querySelector('${composerSelector} textarea');
+			const undelivered = document.querySelector('[data-undelivered]');
+			return {
+				rows: rows.length,
+				rowIds: rows.map((row) => row.getAttribute('data-record-id')),
+				rowTops: rows.map((row) => Math.round(row.getBoundingClientRect().top)),
+				scrollTop: log ? log.scrollTop : null,
+				overflow: log ? log.scrollHeight - log.clientHeight : null,
+				composer: composer ? composer.value : null,
+				alert: [...document.querySelectorAll('[role="alert"]')]
+					.map((el) => el.textContent.trim())
+					.join(' | '),
+				controls: log ? [...log.querySelectorAll('button')].map((b) => b.textContent.trim()) : [],
+				undelivered: undelivered ? undelivered.textContent.trim() : null,
+			};
+		})()`);
+	const waitLine = () =>
+		cdp.evaluate(`(() => {
+			const match = document.body.innerText.match(/(starting the session|waiting for the agent)(?:\\s+(\\d+)s)?/);
+			return match ? { phase: match[1], seconds: match[2] ? Number(match[2]) : null } : null;
+		})()`);
+	/*
+	 * AND THE FLIP PAIR CAPTURES RAW (D5's own ask). `captureSettled` waits for
+	 * the frame to hold still, and the owner's answer landed inside that window on
+	 * the round-1 re-shoot - both flip frames caught the post-answer moment and
+	 * T2/J5's wait line was not in a frame at all. The instant the flip is
+	 * observed is the moment these frames are for, so this capture does not wait
+	 * for anything but the shot.
+	 */
+	const captureRawWithLine = async (label) => {
+		const lineBefore = await waitLine();
+		const frame = await assertKeptFrame(
+			cdp,
+			await capture(cdp, label, { assertPalette: false }),
+		);
+		const lineAfter = await waitLine();
+		return { ...frame, lineBefore, lineAfter };
+	};
+	/*
+	 * The sidebar's own answer about the chat under test (design review round 1,
+	 * D3): the draft row the press's chat is listed under while no session exists,
+	 * and the session rows beside it - so "the chat is in the list" is read from
+	 * the list rather than inferred from the pane.
+	 */
+	const sidebarState = () =>
+		cdp.evaluate(`(() => {
+			const region = document.querySelector('[data-sidebar-region="chats"]');
+			if (!region) return null;
+			const draft = region.querySelector('[data-draft-row]');
+			return {
+				draftRow: draft ? draft.getAttribute('data-draft-row') : null,
+				draftLabel: draft ? (draft.textContent || '').trim().slice(0, 80) : null,
+				sessionRows: region.querySelectorAll('[data-session-row]').length,
+			};
+		})()`);
+
+	/*
+	 * A SECOND CONVERSATION exists before the first frame so the switch step has
+	 * somewhere to go, and so the app's catalogue read at mount already lists it.
+	 */
+	const second = await createBackendSession();
+	const secondId = second?.id ?? second?.session_id ?? null;
+	note("second conversation", JSON.stringify(second));
+
+	await verb(cdp, "navigate", "/chat");
+	const mounted = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${composerSelector}') && document.querySelector('[data-lo-empty-mark]'))`,
+		30_000,
+	);
+	check(
+		"the chat route shows the empty state with a composer",
+		mounted.ok,
+		`composer + empty mark present: ${JSON.stringify(mounted.last)}`,
+	);
+
+	/* ---------------------------------------------------------------- PRESS */
+
+	await typeIntoComposer("Summarise yesterday's QA run.");
+	// Inside the tap's hold: the create is in flight, and this is the frame the
+	// whole change is for.
+	await wait(350);
+	/*
+	 * AND THE PRESS FRAME CAPTURES RAW TOO, for the same reading's sake: settled,
+	 * the clock ticked from 0s to 2s across the eight attempts the stable wait
+	 * spent on a frame that never stops changing (the seconds are its content),
+	 * so no caption could say what the pixels carried. Raw, the reads around it
+	 * agree on one number.
+	 */
+	const pressFrame = await captureRawWithLine(
+		`conversation-start-${size}-press`,
+	);
+	note("frame", JSON.stringify(pressFrame));
+	const press = {
+		read: await reads(),
+		line: await waitLine(),
+		sidebar: await sidebarState(),
+	};
+	note("press", JSON.stringify(press));
+	if (expectAfter) {
+		check(
+			"J1: the row is painted BEFORE the session exists - one row, and it is the press",
+			press.read.rows === 1,
+			`rows=${press.read.rows} ids=${JSON.stringify(press.read.rowIds)}`,
+		);
+		check(
+			"the composer is empty at the press: the row is the message's home",
+			press.read.composer === "",
+			`composer=${JSON.stringify(press.read.composer)}`,
+		);
+		check(
+			"the wait line reads 'starting the session' with the clock running",
+			press.line?.phase === "starting the session",
+			`line=${JSON.stringify(press.line)}`,
+		);
+		check(
+			"and no alert speaks over the row for a send that has not failed",
+			press.read.alert === "",
+			`alert=${JSON.stringify(press.read.alert)}`,
+		);
+		/*
+		 * DESIGN REVIEW ROUND 1, D3: the composer clears at the press, and the
+		 * sidebar's draft row used to clear with it - the chat was in neither list
+		 * for the whole create hop. The row reads the composer OR the claim's own
+		 * `submittedText`, so it must still be here, named by the message.
+		 */
+		check(
+			"D3: the sidebar keeps the chat's own row through the create hop",
+			press.sidebar !== null &&
+				press.sidebar.draftRow !== null &&
+				(press.sidebar.draftLabel ?? "").includes("Summarise"),
+			`sidebar=${JSON.stringify(press.sidebar)}`,
+		);
+	} else {
+		note(
+			"before-arm",
+			"the press frame on the pre-change tree: the text is still the composer's and there is no row (the state the change removes)",
+		);
+	}
+
+	/* ----------------------------------------------------------------- FLIP */
+
+	const flipped = await waitForCondition(
+		cdp,
+		`document.body.innerText.includes("waiting for the agent")`,
+		25_000,
+	);
+	/*
+	 * THE READINGS COME FIRST, AT THE INSTANT THE FLIP IS OBSERVED. `captureSettled`
+	 * waits for the frame to hold still, and the owner's answer may land inside
+	 * that window - measured on this scene's fourth run, where the flip's frames
+	 * were fine but the READ a second later had already lost the wait line and
+	 * gained the answer's row.
+	 */
+	const flipRead = await reads();
+	const flipLine = await waitLine();
+	const flipSidebar = await sidebarState();
+	const flipFrame = await captureRawWithLine(`conversation-start-${size}-flip`);
+	note("frame", JSON.stringify(flipFrame));
+	await wait(1000);
+	const plusOneFrame = await captureRawWithLine(
+		`conversation-start-${size}-flip-plus-1s`,
+	);
+	note("frame", JSON.stringify(plusOneFrame));
+	const flip = {
+		read: flipRead,
+		line: flipLine,
+		sidebar: flipSidebar,
+		flipped: flipped.ok,
+	};
+	note("flip", JSON.stringify(flip));
+	if (expectAfter) {
+		/*
+		 * J1/J2 ARE READ ON THE ROW THE PRESS PAINTED, by id. The transcript is
+		 * allowed to gain the owner's rows beside it (it usually does, because the
+		 * mock answers quickly); what may not happen is a SECOND copy of the pressed
+		 * row, a different id wearing it, or the row's own top moving.
+		 */
+		const pressedId = press.read.rowIds[0];
+		const flipAt = flip.read.rowIds.indexOf(pressedId);
+		check(
+			"J1: one row across the flip - the SAME id the press painted, once",
+			flipAt !== -1 &&
+				flip.read.rowIds.filter((id) => id === pressedId).length === 1,
+			`press=${JSON.stringify(press.read.rowIds)} flip=${JSON.stringify(flip.read.rowIds)}`,
+		);
+		check(
+			"J2: no position jump across the flip - the row's top is within 1px",
+			flipAt !== -1 &&
+				Math.abs(flip.read.rowTops[flipAt] - press.read.rowTops[0]) <= 1,
+			`press=${JSON.stringify(press.read.rowTops)} flip=${JSON.stringify(flip.read.rowTops)}`,
+		);
+		check(
+			"J3: no scroll jump across the flip - the scroller stays at its origin",
+			flip.read.scrollTop === 0,
+			`scrollTop=${flip.read.scrollTop} overflow=${flip.read.overflow}`,
+		);
+		check(
+			"J5: the clock does not restart - the flip's seconds are >= the press's",
+			/*
+			 * `typeof` rather than `!== null`, and the difference is a thrown run:
+			 * `press.line?.seconds` is `undefined` when the whole line is absent -
+			 * the BEFORE half's press has no line at all - and `undefined !== null`
+			 * is true, so the old guard fell through to `flip.line.seconds` on a
+			 * null line and this check took the scene to its `[the run threw]` arm,
+			 * leaving every capture after it unshot.
+			 */
+			flip.line?.phase === "waiting for the agent" &&
+				typeof press.line?.seconds === "number" &&
+				typeof flip.line?.seconds === "number" &&
+				flip.line.seconds >= press.line.seconds,
+			`press=${JSON.stringify(press.line)} flip=${JSON.stringify(flip.line)}`,
+		);
+		check(
+			"the composer's box stays empty after the flip - one home for the message",
+			flip.read.composer === "",
+			`composer=${JSON.stringify(flip.read.composer)}`,
+		);
+		/*
+		 * D3's second half: the draft row may disappear the moment `sessionId`
+		 * patches, but the chat must be in ONE of the two lists throughout - the S5
+		 * refresh is what puts the session row in place as the draft row leaves.
+		 */
+		check(
+			"D3: at the flip the chat is still in the sidebar, as a draft or a session",
+			flip.sidebar !== null &&
+				(flip.sidebar.draftRow !== null || flip.sidebar.sessionRows >= 1),
+			`sidebar=${JSON.stringify(flip.sidebar)}`,
+		);
+	} else {
+		note(
+			"before-arm",
+			"the flip frame on the pre-change tree: any row here arrived only with the create's answer, and the composer's own copy of the text went with it",
+		);
+	}
+
+	/* -------------------------------------------------------------- FAILURE */
+
+	/*
+	 * A REAL post-paint failure, raised at the wire: the tap is told to fail the
+	 * NEXT message POST with the owner's captured `runtime_unreachable` body (the
+	 * unknown class), so the row keeps the message and states the refusal under the
+	 * boundary rule. The scene waits for the row to carry its controls rather than
+	 * for a sentence, because the sentence is the classification table's and the
+	 * table is not this run's subject.
+	 */
+	if (TAP_CONTROL === null) {
+		note(
+			"failure arm",
+			"skipped: no --tap-control was given, and the refusal this step raises is the tap's",
+		);
+	} else {
+		const armed = await fetch(`${TAP_CONTROL}/__tap/fail-messages`, {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify({ count: 1 }),
+		});
+		note("tap control", `${armed.status} ${await armed.text()}`);
+	}
+	/*
+	 * Q-2 (QA round 2, the scene's own arm): WAIT FOR THE FIRST TURN TO SETTLE
+	 * BEFORE ARMING THE REFUSAL. The arm's presses are only accepted once the
+	 * first message's turn has settled; on a loaded host that settle is ~10-16 s,
+	 * and in the window before it the presses do not post at all - the refusal
+	 * check then reads the PREVIOUS row's controls (it scans the whole log for
+	 * `Send again`) and the run misstates the app. Two guards, because both
+	 * failures were seen: wait on the composer's own settle notice, and scope the
+	 * refusal to the row THIS press minted.
+	 */
+	const firstTurnSettled = await waitForCondition(
+		cdp,
+		`(() => {
+			const body = document.body.innerText;
+			return !/still sending/i.test(body) && !/(starting the session|waiting for the agent)/.test(body);
+		})()`,
+		30_000,
+	);
+	note("first turn settled", JSON.stringify(firstTurnSettled));
+	/*
+	 * The log's last row BEFORE this press: the refusal must attach to a row that
+	 * is not it. `reads()` keeps the ids in DOM order, so the minted echo is the
+	 * one that differs.
+	 */
+	const rowsBeforeRefusal = (await reads()).rowIds;
+	const refusalWait = `(() => {
+			const log = document.querySelector('[role=\"log\"]');
+			if (!log) return false;
+			const ids = [...log.querySelectorAll('[data-record-id]')].map((r) => r.getAttribute('data-record-id'));
+			const previous = ${JSON.stringify(rowsBeforeRefusal)};
+			const minted = ids.some((id) => !previous.includes(id));
+			return minted && Boolean(log.querySelector('[data-undelivered]')) &&
+				[...log.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Send again');
+		})()`;
+	await typeIntoComposer("A refusal the owner raises after the paint.");
+	let refused = await waitForCondition(cdp, refusalWait, 8_000);
+	if (!refused.ok) {
+		/*
+		 * ONE RETRY, and the wire says whether it was needed: a press that never
+		 * left is the only thing this retries (the failure row would already be up
+		 * otherwise), and the box is cleared first so the retry is the same message
+		 * rather than a second copy of it. The frame before the retry is kept: it
+		 * is what says whether the first press was on screen at all.
+		 */
+		const beforeRetryFrame = await captureSettled(
+			cdp,
+			`conversation-start-${size}-failure-before-retry`,
+			{ toastWaitMs: 500 },
+		);
+		note("frame", JSON.stringify(beforeRetryFrame));
+		note(
+			"failure retry",
+			"no refusal after 8s; clearing the box and pressing once more",
+		);
+		await typeIntoComposer("A refusal the owner raises after the paint.", true);
+		refused = await waitForCondition(cdp, refusalWait, 12_000);
+	}
+	const failureFrame = await captureSettled(
+		cdp,
+		`conversation-start-${size}-failure`,
+		{ toastWaitMs: 500 },
+	);
+	note("frame", JSON.stringify(failureFrame));
+	const failure = { read: await reads(), refused: refused.ok };
+	const failedId = failure.read.rowIds.at(-1) ?? null;
+	note("failure", JSON.stringify(failure));
+	if (expectAfter) {
+		check(
+			"a post-paint refusal keeps its row, with the class's two controls",
+			failure.read.refused !== false &&
+				failure.read.controls.includes("Send again") &&
+				failure.read.controls.includes("Edit"),
+			`controls=${JSON.stringify(failure.read.controls)}`,
+		);
+		check(
+			"and the payload does NOT come back to the composer (one home, the row)",
+			failure.read.composer === "",
+			`composer=${JSON.stringify(failure.read.composer)}`,
+		);
+		check(
+			"no composer alert speaks over a failure the row states",
+			failure.read.alert === "",
+			`alert=${JSON.stringify(failure.read.alert)}`,
+		);
+	} else {
+		note(
+			"before-arm",
+			"the failure frame on the pre-change tree: the payload comes back to the composer (the #495 decision this change supersedes for post-paint failures)",
+		);
+	}
+
+	/* -------------------------------- SWITCH-AWAY MID-FAILURE (UX round 2, U5) */
+
+	/*
+	 * THE DESIGN'S "switch-away mid-failure" TARGET, which had no check: the
+	 * refusal is up on the row and NOTHING has resolved it yet (resolution needs a
+	 * server read, and none has happened since the refusal), and the user leaves
+	 * the conversation and comes straight back. What the return must present is
+	 * the state the user last saw - the row with its sentence and both controls -
+	 * and NEVER a wait claim: the send is not alive, and the wire records that no
+	 * second POST goes out on this trip.
+	 */
+	const failedConversationId = await cdp.evaluate(`(function () {
+		var parts = (window.location.hash + "/" + window.location.pathname).split("/");
+		var at = parts.indexOf("chat");
+		var id = at !== -1 ? parts[at + 1] : null;
+		return id && new RegExp("^[0-9a-f]{8,}$").test(id) ? id : null;
+	})()`);
+	note("failed conversation", JSON.stringify(failedConversationId));
+	/*
+	 * THE ROW'S OWN ADDRESS, from the dev driver rather than inferred: which draft
+	 * key is active and which keys carry a row (presence only; the driver's
+	 * `state` verb returns no text). This is the fact U5 turns on - the pane
+	 * derives `send:<sessionId>` on a return while the row may sit under
+	 * `draft:<uuid>` - and it is invisible in the DOM.
+	 */
+	const draftState = () =>
+		verb(cdp, "state").then((state) => ({
+			route: state.route,
+			activeSessionId: state.activeSessionId,
+			activeDraftKey: state.activeDraftKey,
+			drafts: state.drafts,
+		}));
+	let midFailure = null;
+	if (failedConversationId) {
+		note("state at refusal", JSON.stringify(await draftState()));
+		/*
+		 * THE ROWS ARE WAITED FOR, AND THE AWAY TARGET IS A VISIBLE ROW (found while
+		 * re-shooting: a row the catalogue has not painted yet made this step throw
+		 * and took every later capture with it). The failed conversation's own row
+		 * arrives with a catalogue refresh - the create's answer issues one and the
+		 * poll is the backstop - and the conversation to leave to is whichever
+		 * other row the sidebar is ACTUALLY drawing, read from the DOM rather than
+		 * assumed from an id the scene created out of band (an empty session's row
+		 * is the catalogue's to paint, not the scene's to count on).
+		 */
+		const failedRowUp = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector('[data-sidebar-region="chats"] [data-session-row="${failedConversationId}"]'))`,
+			45_000,
+		);
+		const awayRow = failedRowUp.ok
+			? await cdp.evaluate(`(function (failed) {
+					var rows = [...document.querySelectorAll('[data-sidebar-region="chats"] [data-session-row]')];
+					for (var row of rows) {
+						var id = row.getAttribute('data-session-row');
+						if (id && id !== failed) return id;
+					}
+					return null;
+				})(${JSON.stringify(failedConversationId)})`)
+			: null;
+		note("away rows", JSON.stringify({ failedRowUp: failedRowUp.ok, awayRow }));
+		if (failedRowUp.ok && awayRow) {
+			await clickAt(
+				cdp,
+				`[data-sidebar-region="chats"] [data-session-row="${awayRow}"]`,
+			);
+			await wait(2000);
+			await clickAt(
+				cdp,
+				`[data-sidebar-region="chats"] [data-session-row="${failedConversationId}"]`,
+			);
+			const midBack = await waitForCondition(
+				cdp,
+				`Boolean(document.querySelector('${composerSelector} textarea'))`,
+				20_000,
+			);
+			/*
+			 * Long enough for the return's read to land: if the resolution runs it must
+			 * have run, because the check below is precisely "what the pane says after
+			 * everything that CAN arrive has".
+			 */
+			await wait(1500);
+			const midFailureFrame = await captureSettled(
+				cdp,
+				`conversation-start-${size}-away-mid-failure`,
+				{ toastWaitMs: 500 },
+			);
+			note("frame", JSON.stringify(midFailureFrame));
+			midFailure = {
+				read: await reads(),
+				line: await waitLine(),
+				back: midBack.ok,
+			};
+			note("away mid-failure", JSON.stringify(midFailure));
+			note("state on return", JSON.stringify(await draftState()));
+			if (expectAfter) {
+				check(
+					"U5: the refusal's row and controls survive a switch-away and back",
+					midFailure.read.controls.includes("Send again") &&
+						midFailure.read.controls.includes("Edit"),
+					`controls=${JSON.stringify(midFailure.read.controls)}`,
+				);
+				check(
+					"U5: and no wait claim appears for a send that is not alive",
+					midFailure.line === null,
+					`line=${JSON.stringify(midFailure.line)}`,
+				);
+			} else {
+				note(
+					"before-arm",
+					"the switch-away mid-failure state on the pre-change tree: the message is not in the transcript at all, so there is no row to come back to",
+				);
+			}
+		} else {
+			note(
+				"away mid-failure",
+				"skipped: the sidebar had not painted the rows this round trip needs (its own catalogue lag, recorded rather than thrown)",
+			);
+		}
+	}
+
+	/* --------------------------------------------------------------- RELOAD */
+
+	await cdp.send("Page.reload", { ignoreCache: false });
+	const reloaded = await waitForCondition(
+		cdp,
+		`(() => {
+			const composer = document.querySelector('${composerSelector} textarea');
+			const log = document.querySelector('[role="log"]');
+			return Boolean(composer && log && log.textContent.includes("Send again"));
+		})()`,
+		30_000,
+	);
+	const reloadFrame = await captureSettled(
+		cdp,
+		`conversation-start-${size}-reload`,
+		{ toastWaitMs: 500 },
+	);
+	note("frame", JSON.stringify(reloadFrame));
+	const reload = {
+		read: await reads(),
+		back: reloaded.ok,
+		line: await waitLine(),
+	};
+	note("reload", JSON.stringify(reload));
+	if (expectAfter) {
+		check(
+			"T6: the failed row is back after a reload, under the id the durable row would carry",
+			reload.back === true &&
+				failedId !== null &&
+				reload.read.rowIds.includes(failedId) &&
+				reload.read.controls.includes("Send again"),
+			`failedId=${failedId} rows=${JSON.stringify(reload.read.rowIds)} controls=${JSON.stringify(reload.read.controls)}`,
+		);
+		/*
+		 * DESIGN REVIEW ROUND 1, D1, IN ITS OWN READING: the reload is where the
+		 * resolved claim used to keep waiting - the server's read clears `error`,
+		 * the rung re-armed, and the frame showed `Not delivered` with `waiting for
+		 * the agent 3s` underneath it. One message cannot be both, and with the
+		 * resolved shape among the enders the line must be gone while the row's own
+		 * statement stays.
+		 */
+		check(
+			"D1: the resolved claim stops waiting - no line under a `Not delivered` row",
+			reload.read.undelivered !== null && reload.line === null,
+			`undelivered=${JSON.stringify(reload.read.undelivered)} line=${JSON.stringify(reload.line)}`,
+		);
+	} else {
+		note(
+			"before-arm",
+			"the reload frame on the pre-change tree: the message is not in the transcript at all",
+		);
+	}
+
+	/* -------------------------------------------------------------- SWITCH */
+
+	if (secondId) {
+		/*
+		 * THE AWAY CASE, on a live conversation: the message POST is held by the tap
+		 * so the send is genuinely in flight, the row is on screen, and the run
+		 * LEAVES the pane and comes back - the switch-out continuity S5 is about.
+		 * The conversation pressed in is read from the backend's own answer: the id
+		 * that is not the one this run seeded.
+		 */
+		/*
+		 * THE CONVERSATION THE RUN IS ON, read from the app's own location: the pane
+		 * renders the session it is showing, and a handle parsed from the route is
+		 * the app's answer rather than the script's guess.
+		 */
+		const firstId = await cdp.evaluate(
+			/* The second id rides in as a JSON literal so the filter can exclude it. */
+			`(function (secondId) {
+				var isId = function (value) {
+					return typeof value === "string" && new RegExp("^[0-9a-f]{8,}$").test(value);
+				};
+				var parts = (window.location.hash + "/" + window.location.pathname).split("/");
+				var at = parts.indexOf("chat");
+				if (at !== -1 && isId(parts[at + 1])) return parts[at + 1];
+				/*
+				 * The route may not carry the session id (the pre-change tree can sit
+				 * on a bare /chat while a draft is active), so the sidebar is the
+				 * fallback - the SAME rows the return click uses, which is why an id
+				 * found here is one the click can find again.
+				 */
+				var rows = Array.prototype.slice
+					.call(document.querySelectorAll('[data-sidebar-region="chats"] [data-session-row]'))
+					.map(function (el) {
+						return el.getAttribute("data-session-row");
+					})
+					.filter(function (id) {
+						return isId(id) && id !== secondId;
+					});
+				return rows.length ? rows[0] : null;
+			})(${JSON.stringify(secondId)})`,
+		);
+		note("first conversation", JSON.stringify(firstId));
+		if (TAP_CONTROL) {
+			/*
+			 * SIXTY SECONDS, not the twelve the first cut armed. A completed turn now
+			 * raises an unseen-completion toast (the fold's catalogue work), and
+			 * `captureSettled` waits a frame out of any toast it finds - measured at
+			 * ~10 s per capture on the away and return frames - so the scene's own
+			 * steps easily outlasted a 12 s hold, the mock answered the away message
+			 * and the return read a FINISHED turn: no wait line, T5 red for the right
+			 * reason (a response the scene never meant to allow). The hold must outlive
+			 * the scene's own waits, so it does.
+			 */
+			const armed = await fetch(`${TAP_CONTROL}/__tap/hold-messages`, {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ count: 1, ms: 60000 }),
+			});
+			note("tap hold", `${armed.status} ${await armed.text()}`);
+		}
+		await typeIntoComposer("A second message, in flight while the run leaves.");
+		await wait(400);
+		/*
+		 * THE TOAST WAIT IS BOUNDED FOR THESE THREE, AND THE SAME BOUND IS ON THE
+		 * SCENE'S OWN SIX (the press, flip, flip-plus-1s, failure-before-retry,
+		 * failure and reload captures; found while re-shooting on the
+		 * folded tree): a completed turn raises a completion toast, and the default
+		 * 15 s clearance would sit out the toast's whole lifetime before each frame -
+		 * measured ~10 s per capture - so the run's own steps outlasted the app's
+		 * 25 s send deadline, the tap's hold was cut short by the app recording
+		 * `Couldn't confirm`, and the return read a FINISHED send instead of the
+		 * in-flight one T5 is about. Half a second is enough for a toast already
+		 * fading, and a toast that is still up is part of the moment these frames
+		 * photograph (the README says so).
+		 */
+		/*
+		 * RAW, for the reason the flip pair is (and one of the re-shoot's own): the
+		 * away trip has to finish inside the app's 25 s send deadline - the held
+		 * POST is the point - and a settled capture's eight attempts spend up to a
+		 * dozen seconds on a frame whose clock never holds still. Measured: the
+		 * trip's frames took longer than the deadline and the return read a
+		 * FINISHED send (`line: null`) instead of the in-flight one T5 is about.
+		 */
+		const awayPressFrame = await captureRawWithLine(
+			`conversation-start-${size}-away-press`,
+		);
+		note("frame", JSON.stringify(awayPressFrame));
+		const awayPress = await reads();
+		note("away press", JSON.stringify(awayPress));
+		/*
+		 * LEAVE: the other conversation's own pane replaces this one, pressed the
+		 * way a user leaves - the sidebar row, not a route change. The target is
+		 * read from the DOM (any visible row that is not this conversation) and
+		 * waited for, found while re-shooting: a row the catalogue has not painted
+		 * yet threw here and took every later capture with it. When no other row is
+		 * up, the step records the skip rather than ending the run.
+		 */
+		const awayRowTarget = await waitForCondition(
+			cdp,
+			`(function (keep) {
+				var rows = [...document.querySelectorAll('[data-sidebar-region="chats"] [data-session-row]')];
+				for (var row of rows) {
+					var id = row.getAttribute('data-session-row');
+					if (id && id !== keep) return id;
+				}
+				return null;
+			})(${JSON.stringify(firstId ?? "")})`,
+			45_000,
+		);
+		note("away row", JSON.stringify(awayRowTarget));
+		if (!awayRowTarget.ok) {
+			note(
+				"switch",
+				"skipped: the sidebar had not painted a second row to leave to (its own catalogue lag, recorded rather than thrown)",
+			);
+		} else {
+			await clickAt(
+				cdp,
+				`[data-sidebar-region="chats"] [data-session-row="${awayRowTarget.last}"]`,
+			);
+			await wait(2000);
+			const sidebar = await cdp.evaluate(`(() => {
+				const region = document.querySelector('[data-sidebar-region="chats"]');
+				if (!region) return null;
+				const rows = [...region.querySelectorAll('[data-session-row], button[data-chat-row]')];
+				return { rows: rows.length, text: region.innerText.slice(0, 400) };
+			})()`);
+			note("sidebar (away)", JSON.stringify(sidebar));
+			// The same bounded toast wait the away-press capture explains.
+			const awayFrame = await captureRawWithLine(
+				`conversation-start-${size}-away`,
+			);
+			note("frame", JSON.stringify(awayFrame));
+			/*
+			 * COME BACK, pressed from the sidebar the way a user returns - and if
+			 * the chat's own row has not been painted, the return is recorded as
+			 * skipped rather than thrown (same reason as the leaving click).
+			 */
+			/*
+			 * A BEAT BEFORE COMING BACK (measured need): the raw captures made the
+			 * whole trip ~2 s long, so the return's clock read 2 s - true, but too
+			 * short to distinguish a continuing number from one that restarted at
+			 * the return (a restart always reads 0-1 s, whenever the click happens,
+			 * which is why the wait sits BEFORE it). Three seconds puts the
+			 * continuing number at ~5 s, still far inside the app's 25 s deadline.
+			 */
+			await wait(3000);
+			const backRow = firstId
+				? await waitForCondition(
+						cdp,
+						`Boolean(document.querySelector('[data-sidebar-region="chats"] [data-session-row="${firstId}"]'))`,
+						45_000,
+					)
+				: { ok: false };
+			if (backRow.ok && firstId) {
+				await clickAt(
+					cdp,
+					`[data-sidebar-region="chats"] [data-session-row="${firstId}"]`,
+				);
+				await wait(600);
+				const backFrame = await captureRawWithLine(
+					`conversation-start-${size}-return`,
+				);
+				note("frame", JSON.stringify(backFrame));
+				const returned = { read: await reads(), line: await waitLine() };
+				note("return", JSON.stringify(returned));
+				if (expectAfter) {
+					check(
+						"T5: on return the row and its wait line are present, and the composer is empty",
+						returned.read.rows >= 1 &&
+							returned.read.composer === "" &&
+							returned.line !== null,
+						`rows=${returned.read.rows} line=${JSON.stringify(returned.line)} composer=${JSON.stringify(returned.read.composer)}`,
+					);
+					check(
+						"T5: the elapsed number is the true one - it does not restart at the return",
+						returned.line?.seconds !== null &&
+							returned.line?.seconds !== undefined &&
+							returned.line.seconds >= 3,
+						`line=${JSON.stringify(returned.line)}`,
+					);
+				} else {
+					note(
+						"before-arm",
+						"the return frame on the pre-change tree: recorded as-is (no pre-session row existed to return to)",
+					);
+				}
+			} else {
+				note(
+					"switch",
+					"skipped the return: the chat's own row was not in the painted list (its catalogue lag, recorded rather than thrown)",
+				);
+			}
+		}
+	} else {
+		note("switch", "no second conversation id: the switch step is skipped");
+	}
+}
+
+/**
+ * `drafts`: the sidebar's DRAFTS section - the rows, the per-row discard act the
+ * pointer reveals, and the `Clear all` foot.
+ *
+ * WHY THIS SCENE EXISTS (operator, 2026-09-26: "Each one should have a deletion
+ * on hover and also a subtle clear all UX", beside the report that sent drafts
+ * were resurfacing). Three of the claims are about PIXELS and pointer state that
+ * no unit test can hold: that a row spends nothing on the reveal at rest, that
+ * the REAL pointer (not a dispatched `mouseover`) reveals the control, and that
+ * pressing either control removes exactly the rows it names. The fourth is the
+ * relaunch: a discarded draft must not come back after a reload, which is why
+ * `discardDraft` clears the composer's own row as well (`drafts-clear-on-send.test.mjs`
+ * carries the store half).
+ *
+ * NO BACKEND IS NEEDED OR WANTED: drafts are LOCAL state, so the run seeds the
+ * two stores' own `localStorage` values and reloads - the exact shape a user is
+ * in after a relaunch - rather than admitting anything on a wire. The seed is
+ * written from the harness and released by a reload, like `seedOnboardingComplete`.
+ *
+ * WRITTEN TO RUN ON BOTH TREES. Against the tree BEFORE this change the discard
+ * control does not exist: the hover frame photographs the row with nothing
+ * revealed, the presses are recorded as skipped rather than driven, and the
+ * checks that fail are the ones the change exists to turn green (the convention
+ * `conversation-start` states).
+ */
+const DRAFTS_TYPED = "draft:5b5b5b5b-0001-4000-8000-000000000001";
+const DRAFTS_STALE = "draft:6c6c6c6c-0002-4000-8000-000000000002";
+const DRAFTS_CLAIM = "draft:7d7d7d7d-0003-4000-8000-000000000003";
+const DRAFTS_TARGETED = "draft:agent:coder";
+/**
+ * A row whose send hop is LIVE (`pending: true`): the shape UX round 1's U2
+ * reproduced - with the create held, the trash used to remove the row while the
+ * message went on to land. The control is disabled for this row, and the scene
+ * presses it to show that nothing moves.
+ */
+const DRAFTS_FLIGHT = "[redacted]";
+
+/**
+ * Seed the drafts store and the composer store, then release the seed by
+ * reloading.
+ *
+ * The rows are the three shapes the section draws: a draft with typed text, one
+ * whose text came from the store's own row, and a CLAIM whose message the client
+ * never confirmed (the operator's own `deadline_exceeded` shape, which is the
+ * row that lingers longest). The targeted draft is seeded to prove `Clear all`
+ * does NOT touch it: targeted drafts are reachable by their entity row and are
+ * deliberately never listed here.
+ */
+async function seedDrafts(cdp, { pendingAll = false } = {}) {
+	const seeded = {
+		drafts: {
+			[DRAFTS_TYPED]: {
+				key: DRAFTS_TYPED,
+				createRequestId: "req-typed-0001",
+			},
+			[DRAFTS_STALE]: {
+				key: DRAFTS_STALE,
+				createRequestId: "req-stale-0002",
+			},
+			[DRAFTS_CLAIM]: {
+				key: DRAFTS_CLAIM,
+				createRequestId: "req-claim-0003",
+				admissionRequestId: "req-admit-0003",
+				sessionId: "ad10bf7245e4",
+				admissionAttempted: true,
+				pending: false,
+				submittedText: "Can you check our google drive and tell me what moved",
+				submittedRendered:
+					"Can you check our google drive and tell me what moved",
+				errorCode: "deadline_exceeded",
+				errorRetry: true,
+				error: "Couldn't confirm your message was sent.",
+			},
+			[DRAFTS_TARGETED]: {
+				key: DRAFTS_TARGETED,
+				target: { kind: "agent", name: "coder" },
+				createRequestId: "req-targeted-0004",
+			},
+			[DRAFTS_FLIGHT]: {
+				key: DRAFTS_FLIGHT,
+				createRequestId: "req-flight-0005",
+				admissionRequestId: "req-deliver-0005",
+				admissionAttempted: true,
+				pending: true,
+				submittedText: "and the alert one too",
+			},
+		},
+		inputRows: {
+			[DRAFTS_TYPED]: {
+				currentInput: "This session seems to be wedged, can you check it",
+				submittedMessages: [],
+				currentHistoryIndex: null,
+				replies: [],
+				attachments: [],
+			},
+			[DRAFTS_STALE]: {
+				currentInput: "Continue",
+				submittedMessages: [],
+				currentHistoryIndex: null,
+				replies: [],
+				attachments: [],
+			},
+			[DRAFTS_TARGETED]: {
+				currentInput: "A draft for an agent, which this section must not list",
+				submittedMessages: [],
+				currentHistoryIndex: null,
+				replies: [],
+				attachments: [],
+			},
+		},
+	};
+	if (pendingAll) {
+		/*
+		 * EVERY LISTED ROW MID-HOP (agent review round 2's R7): the one state in which
+		 * `Clear all` is inapplicable, planted so the scene can walk onto it. A pending
+		 * row states its claim (`admissionAttempted` + text) the way the store's own
+		 * admission does; the typed rows' text lives in their composer rows.
+		 */
+		for (const key of [DRAFTS_TYPED, DRAFTS_STALE, DRAFTS_CLAIM]) {
+			seeded.drafts[key].pending = true;
+			seeded.drafts[key].admissionAttempted = true;
+			seeded.drafts[key].submittedText ??= "typed, never sent";
+		}
+	}
+	await cdp.evaluate(`(() => {
+		const seeded = ${JSON.stringify(seeded)};
+		const read = (key) => { try { return JSON.parse(localStorage.getItem(key) || "null") || {}; } catch { return {}; } };
+		const canonical = read("canonical-sessions-storage");
+		canonical.state = { ...(canonical.state || {}), activeDraftKey: null, activeSessionId: null };
+		canonical.state.drafts = { ...(canonical.state.drafts || {}), ...seeded.drafts };
+		localStorage.setItem("canonical-sessions-storage", JSON.stringify(canonical));
+		const input = read("conversation-input-store");
+		input.state = { ...(input.state || {}) };
+		input.state.inputByConversation = { ...(input.state.inputByConversation || {}), ...seeded.inputRows };
+		localStorage.setItem("conversation-input-store", JSON.stringify(input));
+		return { drafts: Object.keys(canonical.state.drafts).length };
+	})()`);
+	await cdp.send("Page.reload", { ignoreCache: false });
+	await wait(1500);
+}
+
+async function sceneDrafts(cdp) {
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", "localOperatorDark");
+	await seedDrafts(cdp);
+	await waitForBridge(cdp);
+	await verb(cdp, "measure", '[data-chat-section="drafts"]');
+
+	const readDraftRows = () =>
+		cdp.evaluate(
+			'[...document.querySelectorAll("[data-draft-row]")].map((element) => element.getAttribute("data-draft-row"))',
+		);
+	const controlState = (attribute, key) =>
+		cdp.evaluate(
+			`(() => {
+				const element = document.querySelector(${JSON.stringify(`[${attribute}="${key}"]`)});
+				if (element === null) return null;
+				const style = getComputedStyle(element);
+				return { display: style.display, width: Math.round(element.getBoundingClientRect().width), disabled: element.disabled === true, ariaDisabled: element.getAttribute("aria-disabled") };
+			})()`,
+		);
+	const composerRowExists = (key) =>
+		cdp.evaluate(
+			`(() => { try { const state = JSON.parse(localStorage.getItem("conversation-input-store") || "null"); return state?.state?.inputByConversation?.[${JSON.stringify(key)}] !== undefined; } catch { return null; } })()`,
+		);
+	const storedDraftExists = (key) =>
+		cdp.evaluate(
+			`(() => { try { const state = JSON.parse(localStorage.getItem("canonical-sessions-storage") || "null"); return state?.state?.drafts?.[${JSON.stringify(key)}] !== undefined; } catch { return null; } })()`,
+		);
+	const activeDraftKey = () =>
+		cdp.evaluate(
+			'(() => { try { return JSON.parse(localStorage.getItem("canonical-sessions-storage") || "null")?.state?.activeDraftKey ?? null; } catch { return null; } })()',
+		);
+	const composerText = () =>
+		cdp.evaluate(
+			"(() => { const box = document.querySelector('[data-tour-tag=\"chat-input-textarea\"] textarea'); return box === null ? null : box.value; })()",
+		);
+
+	const restRows = await readDraftRows();
+	note("the seeded rows, as the section lists them", JSON.stringify(restRows));
+	check(
+		"all four untargeted drafts are rows, the live hop included",
+		[DRAFTS_TYPED, DRAFTS_STALE, DRAFTS_CLAIM, DRAFTS_FLIGHT].every((key) =>
+			restRows.includes(key),
+		),
+		JSON.stringify(restRows),
+	);
+	check(
+		"the targeted draft is deliberately not a row",
+		!restRows.includes(DRAFTS_TARGETED),
+		JSON.stringify(restRows),
+	);
+	const restAct = await controlState("data-draft-discard", DRAFTS_TYPED);
+	check(
+		"at rest the discard control exists but spends nothing (hidden)",
+		restAct === null || restAct.display === "none",
+		JSON.stringify(restAct),
+	);
+	const restFrame = await captureSettled(cdp, "drafts-rest");
+
+	/*
+	 * The reveal is compositor state (`:hover` on the row's own box), so it can
+	 * only be produced by the REAL pointer through the input pipeline; `hoverOver`
+	 * answers where the row IS and leaves the pointer there.
+	 */
+	const rowBox = await hoverOver(cdp, `[data-draft-row="${DRAFTS_TYPED}"]`);
+	await wait(160);
+	const hoverAct = await controlState("data-draft-discard", DRAFTS_TYPED);
+	note("the discard control under the pointer", JSON.stringify(hoverAct));
+	check(
+		"the pointer reveals the discard control",
+		hoverAct !== null && hoverAct.display === "flex" && hoverAct.width > 0,
+		JSON.stringify(hoverAct),
+	);
+	check(
+		"the reveal moves no row: the hovered row's height is the height at rest",
+		restRows.length === (await readDraftRows()).length,
+		`rows ${JSON.stringify(restRows)} -> ${JSON.stringify(await readDraftRows())}`,
+	);
+	const hoverFrame = await captureSettled(cdp, "drafts-hover");
+
+	/*
+	 * THE LIVE HOP'S ACT IS REVEALED BUT INAPPLICABLE (UX round 1's U2,
+	 * remediation): the seeded `pending: true` row is a send still on the wire, and
+	 * the control is INAPPLICABLE from the row's own marker - `aria-disabled`, never
+	 * `disabled` (agent review round 2's R7: a disabled control cannot hold focus) -
+	 * so a press moves nothing, and a discard can never be followed by a silent
+	 * send. On a tree without the control the checks fail as the change's own
+	 * claims, the convention this scene already follows.
+	 */
+	await hoverOver(cdp, `[data-draft-row="${DRAFTS_FLIGHT}"]`);
+	await wait(160);
+	const flightAct = await controlState("data-draft-discard", DRAFTS_FLIGHT);
+	note("the live hop's discard control", JSON.stringify(flightAct));
+	check(
+		"the live hop's control is revealed and inapplicable (aria-disabled, not disabled)",
+		flightAct !== null &&
+			flightAct.display === "flex" &&
+			flightAct.disabled === false &&
+			flightAct.ariaDisabled === "true",
+		JSON.stringify(flightAct),
+	);
+	if (flightAct !== null) {
+		await clickAt(cdp, `[data-draft-discard="${DRAFTS_FLIGHT}"]`);
+		await wait(200);
+		check(
+			"a press on it moves nothing: the in-flight row is still there",
+			(await readDraftRows()).includes(DRAFTS_FLIGHT),
+			JSON.stringify(await readDraftRows()),
+		);
+	}
+	/*
+	 * GUARDED LIKE EVERY PROBE THAT NEEDS THE ACT: main's build has no discard
+	 * control to probe, and the colour read would throw on its missing element.
+	 */
+	if (flightAct !== null) {
+		/*
+		 * AND IT TAKES THE CARET ANYWAY, AND SAYS WHY (agent review round 2's R7, design
+		 * round 2's D7). The whole reason the act is `aria-disabled` rather than
+		 * `disabled` is that a disabled control cannot hold focus - the arrow walk's step
+		 * onto it dead-stopped, and its why was unannounceable. The claims are the
+		 * browser's own, and the ink is the design round's: the measured disabled read
+		 * darkened `ink-muted` -> `ink` under the pointer at 45% opacity (D5).
+		 */
+		const flightProbe = await cdp.evaluate(`(() => {
+		const el = document.querySelector(${JSON.stringify(`[data-draft-discard="${DRAFTS_FLIGHT}"]`)});
+		if (el === null) return null;
+		el.focus();
+		const whyId = el.getAttribute("aria-describedby");
+		const why = whyId === null ? null : document.getElementById(whyId);
+		return { focused: document.activeElement === el, disabledAttr: el.disabled === true, ariaDisabled: el.getAttribute("aria-disabled"), why: why === null ? null : (why.textContent ?? "").trim() };
+	})()`);
+		note("the inapplicable control, probed", JSON.stringify(flightProbe));
+		check(
+			"the inapplicable control can still take the caret",
+			flightProbe !== null &&
+				flightProbe.focused === true &&
+				flightProbe.disabledAttr === false,
+			JSON.stringify(flightProbe),
+		);
+		check(
+			"and says why, in the AT channel",
+			typeof flightProbe?.why === "string" && flightProbe.why.length > 0,
+			JSON.stringify(flightProbe),
+		);
+		const flightColour = () =>
+			cdp.evaluate(
+				`(() => { const el = document.querySelector(${JSON.stringify(`[data-draft-discard="${DRAFTS_FLIGHT}"]`)}); return el === null ? null : getComputedStyle(el).color; })()`,
+			);
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: 2,
+			y: 2,
+			button: "none",
+			buttons: 0,
+		});
+		await wait(160);
+		const flightColourOff = await flightColour();
+		await hoverOver(cdp, `[data-draft-row="${DRAFTS_FLIGHT}"]`);
+		await wait(160);
+		const flightColourOn = await flightColour();
+		check(
+			"the inapplicable control's ink does not move under the pointer",
+			flightColourOff !== null && flightColourOn === flightColourOff,
+			`${JSON.stringify(flightColourOff)} vs ${JSON.stringify(flightColourOn)}`,
+		);
+	}
+	const pendingFrame = await captureSettled(cdp, "drafts-pending-disabled");
+
+	/*
+	 * THE PRESS, through the real pointer: `clickAt` moves the pointer (so the
+	 * reveal is up) and then clicks. Skipped, not driven, on a tree with no
+	 * control - the before half of this pair.
+	 */
+	if (hoverAct === null) {
+		note(
+			"discard press",
+			"no discard control exists on this tree - the press is skipped, not driven",
+		);
+	} else {
+		/*
+		 * The pointer is parked on the live hop's row from the block above, and a
+		 * `hidden` control measures at zero - so the row is hovered first, which is
+		 * what a reader does anyway (the press needs the reveal up).
+		 */
+		await hoverOver(cdp, `[data-draft-row="${DRAFTS_TYPED}"]`);
+		await wait(160);
+		await clickAt(cdp, `[data-draft-discard="${DRAFTS_TYPED}"]`);
+		await wait(200);
+		const afterPress = await readDraftRows();
+		check(
+			"the press removes the row it names",
+			!afterPress.includes(DRAFTS_TYPED),
+			JSON.stringify(afterPress),
+		);
+		check(
+			"the other rows stay, the live hop included",
+			afterPress.includes(DRAFTS_STALE) &&
+				afterPress.includes(DRAFTS_CLAIM) &&
+				afterPress.includes(DRAFTS_FLIGHT),
+			JSON.stringify(afterPress),
+		);
+		check(
+			"and the composer's own row for that key goes with it, so it cannot resurface",
+			(await composerRowExists(DRAFTS_TYPED)) === false,
+			`inputByConversation[${DRAFTS_TYPED}] present=${await composerRowExists(DRAFTS_TYPED)}`,
+		);
+		check(
+			"the caret lands on a row rather than the document",
+			await cdp.evaluate(
+				'document.activeElement !== null && document.activeElement.closest("[data-chat-row]") !== null',
+			),
+		);
+		/*
+		 * AND THE OFFER STANDS IN THE LANE (design round 1's D1): the one-line
+		 * `Draft discarded.` with its Undo, the archive offer's own register. The
+		 * sentence is built as two spans (name, verb), so the two halves are read
+		 * separately rather than as one string.
+		 */
+		const offer = await toastText(cdp);
+		check(
+			"the discard stands an undo offer in the app's one toast container (the sidebar lane was retired 2026-09-27)",
+			typeof offer === "string" &&
+				offer.includes("Draft") &&
+				offer.includes("discarded.") &&
+				offer.includes("Undo"),
+			JSON.stringify(offer),
+		);
+	}
+	const deletedFrame = await captureWithToast(cdp, "drafts-deleted");
+
+	/*
+	 * AND THE OFFER'S OWN PRESS (design round 1's D1): the snapshot goes back -
+	 * the draft entry and the composer row - in the one write, and the offer
+	 * retires with the press.
+	 */
+	if (hoverAct === null) {
+		note("undo press", "no offer exists on this tree - the press is skipped");
+	} else {
+		await clickAt(cdp, `${ARCHIVE_TOAST} [data-button]`);
+		await wait(250);
+		const afterUndo = await readDraftRows();
+		check(
+			"Undo puts the row back",
+			afterUndo.includes(DRAFTS_TYPED),
+			JSON.stringify(afterUndo),
+		);
+		check(
+			"and its composer row with it",
+			(await composerRowExists(DRAFTS_TYPED)) === true,
+		);
+		check(
+			"and the offer itself retires",
+			(await toastsOnScreen(cdp)) === 0,
+			`toasts=${await toastsOnScreen(cdp)}`,
+		);
+	}
+	const restoredFrame = await captureSettled(cdp, "drafts-undo-restored");
+
+	/*
+	 * THE OPEN DRAFT'S DISCARD (UX round 1's U1, remediation). Both trees open the
+	 * draft - the press is a plain row click - and only the after tree has a
+	 * control to press afterwards: with the draft open, the sidebar's discard used
+	 * to strand the pane (no composer, a bare `New chat`). The press now stages a
+	 * fresh draft, the New chat row's own pair, so the composer is still there.
+	 */
+	await clickAt(cdp, `[data-draft-row="${DRAFTS_TYPED}"]`);
+	await wait(250);
+	note(
+		"the composer after opening the draft",
+		JSON.stringify(await composerText()),
+	);
+	if (hoverAct !== null) {
+		check(
+			"opening the draft puts its text in the composer",
+			(await composerText())?.includes("This session seems to be wedged") ===
+				true,
+			JSON.stringify(await composerText()),
+		);
+		await clickAt(cdp, `[data-draft-discard="${DRAFTS_TYPED}"]`);
+		await wait(250);
+		const afterOpenDelete = await readDraftRows();
+		check(
+			"the open draft's row goes",
+			!afterOpenDelete.includes(DRAFTS_TYPED),
+			JSON.stringify(afterOpenDelete),
+		);
+		check(
+			"and the pane keeps a composer: no dead end",
+			(await composerText()) !== null,
+			JSON.stringify(await composerText()),
+		);
+		const nowOpen = await activeDraftKey();
+		check(
+			"a fresh draft is staged in its place",
+			typeof nowOpen === "string" && nowOpen !== DRAFTS_TYPED,
+			`activeDraftKey ${JSON.stringify(nowOpen)}`,
+		);
+	} else {
+		note(
+			"open-draft discard",
+			"no discard control exists on this tree - the press is skipped, and the frame is the opened draft",
+		);
+	}
+	const openDeletedFrame = await captureWithToast(cdp, "drafts-deleted-open");
+	if (hoverAct !== null) {
+		await clickAt(cdp, `${ARCHIVE_TOAST} [data-button]`);
+		await wait(250);
+		check(
+			"Undo returns the text to its own key",
+			(await composerRowExists(DRAFTS_TYPED)) === true,
+		);
+		/*
+		 * AND THE PANE GOES BACK TO IT (UX round 2's U7): the discard staged a fresh
+		 * draft, and the offer's press re-opens the ONE key it restored - the text is in
+		 * the box rather than behind a click on the returned row.
+		 */
+		check(
+			"Undo puts the pane back on the restored draft",
+			(await activeDraftKey()) === DRAFTS_TYPED,
+			`activeDraftKey ${JSON.stringify(await activeDraftKey())}`,
+		);
+		check(
+			"and its text is in the composer again",
+			(await composerText())?.includes("This session seems to be wedged") ===
+				true,
+			JSON.stringify(await composerText()),
+		);
+	}
+
+	/*
+	 * AND THE BATCH TAKES THE OPEN DRAFT, TOO (agent review round 2's R8): the pane is
+	 * opened on the typed draft so `Clear all` really does take the pane's own key -
+	 * the fresh-staging branch the static pin could not prove. Both trees open it; only
+	 * the after tree has the act.
+	 */
+	await clickAt(cdp, `[data-draft-row="${DRAFTS_TYPED}"]`);
+	await wait(250);
+	check(
+		"the pane is open on the typed draft before the batch",
+		(await activeDraftKey()) === DRAFTS_TYPED,
+		`activeDraftKey ${JSON.stringify(await activeDraftKey())}`,
+	);
+
+	/*
+	 * Clear all. Its gate is the section's own (`clearableDraftRows.length > 0`),
+	 * so on a tree with no control the frame simply records that.
+	 */
+	const clearControl = await cdp.evaluate(
+		'(() => { const element = document.querySelector("[data-drafts-clear-all]"); if (element === null) return null; const style = getComputedStyle(element); return { display: style.display, width: Math.round(element.getBoundingClientRect().width) }; })()',
+	);
+	if (clearControl === null) {
+		note(
+			"clear-all press",
+			"no Clear all control exists on this tree - the press is skipped, not driven",
+		);
+	} else {
+		await clickAt(cdp, "[data-drafts-clear-all]");
+		await wait(250);
+		const afterClear = await readDraftRows();
+		check(
+			"Clear all removes every settled row and only those",
+			afterClear.length === 1 && afterClear[0] === DRAFTS_FLIGHT,
+			JSON.stringify(afterClear),
+		);
+		check(
+			"the section stays open for the live hop",
+			await cdp.evaluate(
+				"Boolean(document.querySelector('[data-chat-section=\"drafts\"]'))",
+			),
+		);
+		check(
+			"the targeted draft is NOT touched (it is not one of the listed rows)",
+			(await storedDraftExists(DRAFTS_TARGETED)) === true,
+		);
+		check(
+			"and its composer row survives too",
+			(await composerRowExists(DRAFTS_TARGETED)) === true,
+		);
+		const offer = await toastText(cdp);
+		check(
+			"the batch offer names the count that moved",
+			typeof offer === "string" &&
+				offer.includes("3 drafts") &&
+				offer.includes("discarded.") &&
+				offer.includes("Undo"),
+			JSON.stringify(offer),
+		);
+		/*
+		 * THE BATCH'S OWN FRESH-STAGING BRANCH (agent review round 2's R8): it took the
+		 * pane's key, so the no-dead-pane rule must stage a fresh draft and the composer
+		 * must survive.
+		 */
+		check(
+			"the batch keeps a composer: no dead end",
+			(await composerText()) !== null,
+			JSON.stringify(await composerText()),
+		);
+		const batchFresh = await activeDraftKey();
+		check(
+			"and stages a fresh draft in its place",
+			typeof batchFresh === "string" && batchFresh !== DRAFTS_TYPED,
+			`activeDraftKey ${JSON.stringify(batchFresh)}`,
+		);
+	}
+	const clearedFrame = await captureWithToast(cdp, "drafts-cleared");
+	if (hoverAct !== null) {
+		/*
+		 * AND THE BATCH'S OWN UNDO (UX round 2's U7): a multi-subject restore puts the
+		 * rows back but leaves the pane alone - the re-open is single-key only.
+		 */
+		const paneBefore = await activeDraftKey();
+		await clickAt(cdp, `${ARCHIVE_TOAST} [data-button]`);
+		await wait(250);
+		const afterBatchUndo = await readDraftRows();
+		check(
+			"the batch's undo restores every settled row",
+			[DRAFTS_TYPED, DRAFTS_STALE, DRAFTS_CLAIM].every((key) =>
+				afterBatchUndo.includes(key),
+			),
+			JSON.stringify(afterBatchUndo),
+		);
+		check(
+			"and a multi-subject restore leaves the pane where it was",
+			(await activeDraftKey()) === paneBefore,
+			`activeDraftKey ${JSON.stringify(paneBefore)} -> ${JSON.stringify(await activeDraftKey())}`,
+		);
+		/* Clear all once more, so the relaunch is from a fully discarded state. */
+		await clickAt(cdp, "[data-drafts-clear-all]");
+		await wait(250);
+	}
+
+	/*
+	 * THE RELAUNCH: the frames' captions are about a state that must survive the
+	 * app restarting, because the operator's report was exactly about what comes
+	 * back after one. A reload rehydrates both stores from `localStorage`, and the
+	 * deleted keys must not be in it - while the live-hop row, which was never
+	 * discarded, is still there. The offer is transient by construction (the store
+	 * field is not persisted), so it does not outlive the app either.
+	 */
+	await cdp.send("Page.reload", { ignoreCache: false });
+	await wait(1500);
+	await waitForBridge(cdp);
+	const relaunchRows = await readDraftRows();
+	check(
+		"a relaunch does not resurrect the discarded drafts",
+		!relaunchRows.includes(DRAFTS_TYPED) &&
+			!relaunchRows.includes(DRAFTS_STALE) &&
+			!relaunchRows.includes(DRAFTS_CLAIM),
+		JSON.stringify(relaunchRows),
+	);
+	check(
+		"the live-hop row was never discarded, so it is still there",
+		relaunchRows.includes(DRAFTS_FLIGHT),
+		JSON.stringify(relaunchRows),
+	);
+	check(
+		"and the offer does not outlive the app",
+		(await toastsOnScreen(cdp)) === 0,
+		`toasts=${await toastsOnScreen(cdp)}`,
+	);
+	const relaunchFrame = await captureSettled(cdp, "drafts-relaunch");
+
+	/*
+	 * THE INAPPLICABLE `Clear all` (agent review round 2's R7, design round 2's D5/D7):
+	 * every listed row mid-hop is its one inapplicable state, and a second seed plants
+	 * it. The claims are the browser's and the walk's own: the control is
+	 * `aria-disabled` (not `disabled`), it TAKES the caret, it explains itself, a real
+	 * press moves nothing, the ink it paints does not shift under the pointer, and the
+	 * arrow walk lands on it and moves past rather than dead-stopping.
+	 */
+	await seedDrafts(cdp, { pendingAll: true });
+	await waitForBridge(cdp);
+	const clearAllActExists = await cdp.evaluate(
+		'Boolean(document.querySelector("[data-drafts-clear-all]"))',
+	);
+	if (!clearAllActExists) {
+		note(
+			"the inapplicable Clear all",
+			"no such control exists on this tree - the probes are skipped, and the frame records the seeded rows",
+		);
+	} else {
+		const disabledProbe = await cdp.evaluate(`(() => {
+			const el = document.querySelector("[data-drafts-clear-all]");
+			const whyId = el.getAttribute("aria-describedby");
+			const why = whyId === null ? null : document.getElementById(whyId);
+			return { disabledAttr: el.disabled === true, ariaDisabled: el.getAttribute("aria-disabled"), why: why === null ? null : (why.textContent ?? "").trim() };
+		})()`);
+		note("the inapplicable Clear all, probed", JSON.stringify(disabledProbe));
+		check(
+			"the inapplicable Clear all is aria-disabled, not disabled",
+			disabledProbe.disabledAttr === false &&
+				disabledProbe.ariaDisabled === "true",
+			JSON.stringify(disabledProbe),
+		);
+		check(
+			"and says why, in the AT channel",
+			typeof disabledProbe.why === "string" && disabledProbe.why.length > 0,
+			JSON.stringify(disabledProbe),
+		);
+		const clearFocusable = await cdp.evaluate(
+			'(() => { const el = document.querySelector("[data-drafts-clear-all]"); if (el === null) return null; el.focus(); return document.activeElement === el; })()',
+		);
+		check(
+			"the inapplicable Clear all can take the caret",
+			clearFocusable === true,
+			JSON.stringify(clearFocusable),
+		);
+		/*
+		 * AND THE WALK PASSES THROUGH IT (R7): from the last draft row, ArrowDown lands
+		 * on the inapplicable control - a focusable step, not a dead stop - and the next
+		 * ArrowDown moves past it instead of sticking.
+		 */
+		await cdp.evaluate(
+			'(() => { const rows = [...document.querySelectorAll("[data-draft-row]")]; rows[rows.length - 1]?.focus(); })()',
+		);
+		await pressChord(cdp, {
+			key: "ArrowDown",
+			code: "ArrowDown",
+			virtualKeyCode: 40,
+			modifiers: 0,
+		});
+		const afterWalk = await cdp.evaluate(
+			'(() => { const el = document.activeElement; return { onClear: el === document.querySelector("[data-drafts-clear-all]"), hasAttr: el === null ? null : el.hasAttribute("data-drafts-clear-all") }; })()',
+		);
+		check(
+			"ArrowDown from the last draft row lands on the inapplicable control",
+			afterWalk.onClear === true,
+			JSON.stringify(afterWalk),
+		);
+		await pressChord(cdp, {
+			key: "ArrowDown",
+			code: "ArrowDown",
+			virtualKeyCode: 40,
+			modifiers: 0,
+		});
+		const walkedPast = await cdp.evaluate(
+			'(() => { const el = document.activeElement; return { onClear: el === document.querySelector("[data-drafts-clear-all]") }; })()',
+		);
+		check(
+			"and the next step moves past it rather than sticking",
+			walkedPast.onClear === false,
+			JSON.stringify(walkedPast),
+		);
+		const clearColour = () =>
+			cdp.evaluate(
+				'(() => { const el = document.querySelector("[data-drafts-clear-all]"); return el === null ? null : getComputedStyle(el).color; })()',
+			);
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: 2,
+			y: 2,
+			button: "none",
+			buttons: 0,
+		});
+		await wait(160);
+		const clearColourOff = await clearColour();
+		await hoverOver(cdp, "[data-drafts-clear-all]");
+		await wait(160);
+		const clearColourOn = await clearColour();
+		check(
+			"the inapplicable Clear all's ink does not move under the pointer",
+			clearColourOff !== null && clearColourOn === clearColourOff,
+			`${JSON.stringify(clearColourOff)} vs ${JSON.stringify(clearColourOn)}`,
+		);
+		const rowsBeforePress = await readDraftRows();
+		await clickAt(cdp, "[data-drafts-clear-all]");
+		await wait(200);
+		check(
+			"a press on the inapplicable control moves nothing",
+			(await readDraftRows()).length === rowsBeforePress.length,
+			`${JSON.stringify(rowsBeforePress)} -> ${JSON.stringify(await readDraftRows())}`,
+		);
+		check(
+			"and raises no offer",
+			(await toastsOnScreen(cdp)) === 0,
+			`toasts=${await toastsOnScreen(cdp)}`,
+		);
+	}
+	const clearDisabledFrame = await captureSettled(cdp, "drafts-clear-disabled");
+
+	const frames = [
+		restFrame,
+		hoverFrame,
+		pendingFrame,
+		deletedFrame,
+		restoredFrame,
+		openDeletedFrame,
+		clearedFrame,
+		relaunchFrame,
+		clearDisabledFrame,
+	];
+	check(
+		"every settled capture is a frame the app held still for, with no toast on it",
+		[
+			restFrame,
+			hoverFrame,
+			pendingFrame,
+			restoredFrame,
+			relaunchFrame,
+			clearDisabledFrame,
+		].every((frame) => frame.stable === true && frame.toastFree === true),
+		[
+			restFrame,
+			hoverFrame,
+			pendingFrame,
+			restoredFrame,
+			relaunchFrame,
+			clearDisabledFrame,
+		]
+			.map(
+				(frame) =>
+					`${frame.label}: stable=${frame.stable === true} toastFree=${frame.toastFree === true}`,
+			)
+			.join(" | "),
+	);
+	/*
+	 * AND THE OFFER FRAMES CARRY THE OFFER: `captureWithToast` records the message's
+	 * own sentence on the frame it keeps, so a frame of the offer is known to hold
+	 * the message its caption quotes. On a tree without the offer these frames
+	 * read `toastText: null` and the check fails as the change's claim.
+	 */
+	check(
+		"the offer frames hold the offer, stable",
+		[deletedFrame, openDeletedFrame, clearedFrame].every(
+			(frame) =>
+				frame.stable === true &&
+				typeof frame.toastText === "string" &&
+				frame.toastText.includes("discarded.") &&
+				frame.toastText.includes("Undo"),
+		),
+		[deletedFrame, openDeletedFrame, clearedFrame]
+			.map(
+				(frame) =>
+					`${frame.label}: stable=${frame.stable === true} toastText=${JSON.stringify(frame.toastText)}`,
+			)
+			.join(" | "),
+	);
+	return frames;
+}
+
+/**
+ * THE TWO OFFERS, STANDING TOGETHER - the design round's D3, photographed.
+ *
+ * "Ordinary toasts stack" is a claim about TWO messages at once, and the lane
+ * could not show this state at all: one id and one seat meant the newest of the
+ * three won, so a discard and an archive could never stand side by side. The
+ * ordinary toaster has no seat to fight over, and this scene drives the app's
+ * own two acts to put both offers up - the sidebar's archive control on a
+ * conversation, then the drafts section's discard control on a seeded draft -
+ * and photographs them.
+ *
+ * It runs on the session-archive stub (live rows, an archive-capable backend:
+ * `b3f1a09c7d52`'s archive is the accepted one in that fixture) plus
+ * `seedDrafts`, whose reload is why the seeding happens FIRST - it is the only
+ * act here that would take a message down with it.
+ */
+async function sceneUndoToastsStacked(cdp) {
+	const hello = await verb(cdp, "hello");
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+	await verb(cdp, "navigate", "/chat");
+	if (THEME) {
+		await verb(cdp, "setTheme", THEME);
+	}
+	await seedDrafts(cdp);
+	await waitForBridge(cdp);
+	/*
+	 * The route is re-stated and the row is waited for rather than assumed: the
+	 * seeding above reloads the renderer, and the row this scene presses is the
+	 * one the session-archive scene reads at rest (`b3f1a09c7d52`), which is why
+	 * the two scenes can share the stub's fixture.
+	 */
+	await verb(cdp, "navigate", "/chat");
+	const stackedRow = '[data-session-row="b3f1a09c7d52"]';
+	await verb(cdp, "measure", stackedRow);
+	/*
+	 * The stub serves no agents list, so the app raises its own `List agents
+	 * request failed: 503` notice in the same corner during the first seconds
+	 * after boot. It auto-dismisses (this is the `waitForNoToasts` contract: the
+	 * scene never reaches into the app's toasts, it waits), and waiting it out
+	 * before the presses is what keeps the pair the frame is of the only pair on
+	 * screen.
+	 */
+	await waitForNoToasts(cdp, 20_000);
+	const state = await verb(cdp, "state");
+	check(
+		"the catalogue answered and the panel is drawing its rows",
+		state.sessionCount >= 4,
+		`sessionCount is ${state.sessionCount}`,
+	);
+
+	const frames = [];
+	/*
+	 * The messages are found by their OWN sentences rather than by toast count:
+	 * this stub serves no agents list, so an unrelated `503` toast can be on
+	 * screen beside the pair (the session-archive logs record the same), and a
+	 * count of "toasts" would count the rig's noise as well.
+	 */
+	const offerTexts = () =>
+		cdp.evaluate(`(() => {
+			const toasts = [...document.querySelectorAll(${JSON.stringify(ARCHIVE_TOAST)})];
+			return toasts.map((t) => t.textContent ?? "");
+		})()`);
+	const waitForOfferText = async (needle, label) => {
+		for (let attempt = 0; attempt < 80; attempt += 1) {
+			const texts = await offerTexts();
+			if (texts.some((text) => text.includes(needle))) return texts;
+			await wait(100);
+		}
+		throw new Error(
+			`the ${label} never drew (waited 8s): ${JSON.stringify(await offerTexts())}`,
+		);
+	};
+
+	/*
+	 * 1. The archive offer, by the row's own control - the act the session-archive
+	 *    scene photographs from this same fixture. The row first, then the control,
+	 *    for the reason that scene records: the acts are `display`-switched, and a
+	 *    press at a 0x0 box goes nowhere.
+	 */
+	await hoverOver(cdp, stackedRow);
+	await wait(300);
+	await hoverOver(cdp, `${stackedRow} [data-session-archive]`);
+	await wait(300);
+	await clickAt(cdp, `${stackedRow} [data-session-archive]`);
+	const afterArchive = await waitForOfferText("archived.", "archive offer");
+	check(
+		"the archive press raises its own offer",
+		afterArchive.some(
+			(text) => text.includes("archived.") && text.includes("Undo"),
+		),
+		JSON.stringify(afterArchive),
+	);
+
+	/*
+	 * 2. The discard offer, by the drafts section's own control: the row is
+	 *    hovered first, which is what a reader does anyway - the press needs the
+	 *    reveal up.
+	 */
+	await hoverOver(cdp, `[data-draft-row="${DRAFTS_TYPED}"]`);
+	await wait(160);
+	await clickAt(cdp, `[data-draft-discard="${DRAFTS_TYPED}"]`);
+	const both = await waitForOfferText("discarded.", "discard offer");
+	check(
+		"the discard press raises its own offer beside the archive's",
+		both.some((text) => text.includes("discarded.") && text.includes("Undo")),
+		JSON.stringify(both),
+	);
+
+	/*
+	 * 3. THE PAIR, measured: two messages, one container, no band, no lane class,
+	 *    neither inside the panel - and the standard stack, the newer message
+	 *    fully drawn with the older peeking behind it (the offsets are sonner's,
+	 *    not this scene's).
+	 */
+	await wait(500);
+	const stacked = await cdp.evaluate(`(() => {
+		const box = (el) => {
+			const r = el.getBoundingClientRect();
+			return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right) };
+		};
+		const toasts = [...document.querySelectorAll(${JSON.stringify(ARCHIVE_TOAST)})].map((t) => ({
+			text: t.textContent ?? "",
+			box: box(t),
+			inPanel: t.closest('nav[aria-label="Chats"]') !== null,
+		}));
+		return {
+			toasts,
+			containers: document.querySelectorAll("[data-sonner-toaster]").length,
+			band: document.querySelector("[data-archive-toast-band]") !== null,
+			laneClass: document.querySelectorAll(".lo-archive-toast").length,
+		};
+	})()`);
+	const archiveToast = stacked.toasts.find((t) => t.text.includes("archived."));
+	const discardToast = stacked.toasts.find((t) =>
+		t.text.includes("discarded."),
+	);
+	/*
+	 * The count is of the OFFERS, not of `[data-sonner-toast]`: this stub's 503
+	 * notice is the rig's own noise and may share the corner (the earlier run of
+	 * this scene recorded exactly that), and a scene that failed on the rig's
+	 * noise would be testing the stub rather than the change.
+	 */
+	const offerToasts = stacked.toasts.filter(
+		(t) => t.text.includes("archived.") || t.text.includes("discarded."),
+	);
+	check(
+		"two offers stand together as ordinary toasts: the archive's and the discard's, one container, no band and no lane",
+		archiveToast !== undefined &&
+			discardToast !== undefined &&
+			offerToasts.length === 2 &&
+			stacked.containers === 1 &&
+			stacked.band === false &&
+			stacked.laneClass === 0 &&
+			archiveToast.inPanel === false &&
+			discardToast.inPanel === false,
+		JSON.stringify(stacked),
+	);
+	check(
+		"the newer message is the fully drawn one and the older peeks behind it - sonner's own stack",
+		archiveToast !== undefined &&
+			discardToast !== undefined &&
+			discardToast.box.top >= archiveToast.box.top &&
+			discardToast.box.bottom > archiveToast.box.bottom,
+		JSON.stringify({ archive: archiveToast?.box, discard: discardToast?.box }),
+	);
+	note(
+		"the stack, as the two boxes",
+		JSON.stringify({
+			archive: archiveToast?.box ?? null,
+			discard: discardToast?.box ?? null,
+			containers: stacked.containers,
+		}),
+	);
+	const stackedFrame = await captureToastPair(
+		cdp,
+		`stacked-offers${RUN_LABEL}`,
+	);
+	check(
+		"the pair held still for the frame it kept",
+		stackedFrame.stable === true && stackedFrame.toastText !== null,
+		`stable=${stackedFrame.stable === true} toastText=${JSON.stringify(stackedFrame.toastText)}`,
+	);
+	frames.push(stackedFrame);
+
+	/*
+	 * 4. AND THE EXPANDED STACK. At rest the older message is only a peeking
+	 *    edge (its content sits at the library's `opacity: 0` until the region is
+	 *    hovered), so a photograph of the rest state alone would under-report what
+	 *    stands: the second frame is the SAME pair with the pointer on it - the
+	 *    state a reader reaches by pointing at the corner - where both messages
+	 *    are fully drawn and their boxes are disjoint.
+	 */
+	if (discardToast !== undefined) {
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: Math.round((discardToast.box.left + discardToast.box.right) / 2),
+			y: Math.round((discardToast.box.top + discardToast.box.bottom) / 2),
+			button: "none",
+			buttons: 0,
+		});
+	}
+	await wait(500);
+	const expandedReading = await cdp.evaluate(`(() => {
+		const box = (el) => {
+			const r = el.getBoundingClientRect();
+			return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right) };
+		};
+		const toaster = document.querySelector("[data-sonner-toaster]");
+		return {
+			toaster: toaster !== null,
+			toasts: [...document.querySelectorAll(${JSON.stringify(ARCHIVE_TOAST)})].map((t) => ({
+				text: t.textContent ?? "",
+				box: box(t),
+				/* The library's own expansion flag, per toast: its stylesheet keys the
+				   collapsed-but-behind state off [data-expanded=false][data-front=false],
+				   so the attribute on these elements is what "expanded" means. */
+				expanded: t.getAttribute("data-expanded"),
+			})),
+		};
+	})()`);
+	const expandedArchive = expandedReading.toasts.find((t) =>
+		t.text.includes("archived."),
+	);
+	const expandedDiscard = expandedReading.toasts.find((t) =>
+		t.text.includes("discarded."),
+	);
+	check(
+		"hovering the stack expands it: both offers report expanded, fully drawn and disjoint",
+		expandedArchive !== undefined &&
+			expandedDiscard !== undefined &&
+			expandedArchive.expanded === "true" &&
+			expandedDiscard.expanded === "true" &&
+			expandedArchive.box.bottom - expandedArchive.box.top > 40 &&
+			expandedDiscard.box.bottom - expandedDiscard.box.top > 40 &&
+			(expandedDiscard.box.top >= expandedArchive.box.bottom ||
+				expandedArchive.box.top >= expandedDiscard.box.bottom),
+		JSON.stringify(expandedReading),
+	);
+	note(
+		"the expanded stack, as the two boxes",
+		JSON.stringify({
+			archive: {
+				box: expandedArchive?.box ?? null,
+				expanded: expandedArchive?.expanded ?? null,
+			},
+			discard: {
+				box: expandedDiscard?.box ?? null,
+				expanded: expandedDiscard?.expanded ?? null,
+			},
+		}),
+	);
+	/*
+	 * The expanded pair is captured with the RETRYING helper rather than the
+	 * two-shot one: its expansion is an animation, the light-palette run measured
+	 * one shot pair landing mid-transition (`stable=false`), and the retries are
+	 * safe here because the pointer holds the region open - hover-pause keeps the
+	 * messages from expiring while the camera waits for it to settle.
+	 */
+	const expandedFrame = await captureWithToast(
+		cdp,
+		`stacked-expanded${RUN_LABEL}`,
+	);
+	check(
+		"the expanded pair held still for the frame it kept",
+		expandedFrame.stable === true && expandedFrame.toastText !== null,
+		`stable=${expandedFrame.stable === true} toastText=${JSON.stringify(expandedFrame.toastText)}`,
+	);
+	frames.push(expandedFrame);
+	return frames;
+}
+
 async function sceneNewChat(cdp) {
 	/*
 	 * Start anywhere but the chat route: `navigate("/chat")` is 80% of what this
@@ -15181,6 +20199,350 @@ async function sceneNewChat(cdp) {
 		frames
 			.map(
 				(f) => `${f.label}: ${f.pixels.width}x${f.pixels.height}, ${f.bytes}B`,
+			)
+			.join(" | "),
+	);
+	return frames;
+}
+
+/**
+ * `sessionless-slash` (issue #625): `/help`, `/theme`, `/login`, `/logout` and
+ * `/resume` typed on a pane with no conversation.
+ *
+ * WHAT IT MEASURES, AND WHY ONE SCENE RUNS UNDER BOTH EXPECTATIONS.
+ * `--slash-expect open` is the head tree: every one of the five mounts its
+ * picker over the new chat with `sessionId: ""` and no `sessions.command`
+ * POST. `--slash-expect refused` is the base tree: the same five gestures each
+ * get the dispatcher's own sentence in the transcript and no picker. One
+ * scene, both halves, the same bytes.
+ *
+ * ONE THEME PER LAUNCH (see `--theme`), so the harness runs this twice per
+ * tree. The live half runs under `open` only: after the five gestures a message
+ * is sent and answered, and `/theme` on THAT conversation must still present
+ * the picker - the session-ful path the change must not move. On the base tree
+ * the same steps would prove nothing this pair is about.
+ *
+ * THE NEW CHAT IS THE OPERATOR'S OWN GESTURE, not a route the scene invented:
+ * the app-wide Cmd-N stages a fresh draft exactly as the New chat row does
+ * (`sceneNewChat` is the scene that proves that press, and this one reuses
+ * its chord rather than a selector), and the composer the five commands are
+ * typed into is the one that press mounts.
+ *
+ * THE PRESS IS A SHORT SEQUENCE, NOT A SINGLE ENTER, because one destination
+ * completes rather than runs: `/theme` opens an INLINE list, so its first Enter
+ * writes the completed value into the box and leaves the popup open (measured
+ * in this pass's first take: the frame showed `/theme localOperatorDark` in the
+ * box with the Themes list open and no dialog). The scene closes the popup with
+ * Escape - the box keeps the completed value - and submits it with the next
+ * Enter, which is the path the registry's own note describes ("an unambiguous
+ * Enter completes the id and the next Enter runs the command the user already
+ * had"). It attempts up to three presses and the checks record which produced
+ * the state, so a destination that needs a different dance fails by name rather
+ * than by timeout.
+ */
+async function sceneSessionlessSlash(cdp) {
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	const theme = THEME ?? "localOperatorDark";
+	const suffix = theme === "localOperatorLight" ? "light" : "dark";
+	await verb(cdp, "setTheme", theme);
+	const themed = await verb(cdp, "state");
+	check(
+		"the app is in the palette this run photographs",
+		themed.theme === theme,
+		`theme is ${themed.theme}`,
+	);
+
+	/*
+	 * The new chat: from a route that is not chat, through the same chord the
+	 * New chat row's shortcut takes, so the pane these gestures are typed into
+	 * is staged the way a user stages one.
+	 */
+	await verb(cdp, "navigate", "/agent-hub");
+	await pressChord(cdp, {
+		key: "n",
+		code: "KeyN",
+		virtualKeyCode: 78,
+		modifiers: MODIFIER.meta,
+	});
+	const landed = await waitForRoute(cdp, "/chat");
+	const draft = await stagedDraft(cdp);
+	check(
+		"Cmd-N staged a fresh draft on the chat route - the new chat these gestures are about",
+		landed.route === "/chat" &&
+			typeof draft === "string" &&
+			draft.startsWith("draft:"),
+		`route ${landed.route}, activeDraftKey ${JSON.stringify(draft)}`,
+	);
+	const COMPOSER = '[data-tour-tag="chat-input-textarea"]';
+	const mounted = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${COMPOSER}'))`,
+		30_000,
+	);
+	check(
+		"the draft pane mounts a composer",
+		mounted.ok,
+		`after ${mounted.waitedMs}ms: ${JSON.stringify(mounted.last)}`,
+	);
+
+	const open = SLASH_EXPECT === "open";
+	const COMMANDS = [
+		{ word: "/help", label: "help", title: "Commands" },
+		{ word: "/theme", label: "theme", title: "Theme" },
+		{ word: "/login", label: "login", title: "Sign in to a provider" },
+		{ word: "/logout", label: "logout", title: "Sign out" },
+		{ word: "/resume", label: "resume", title: "Resume a conversation" },
+	];
+
+	/*
+	 * The slash popup's own listbox, by its own labels (`slash-commands.tsx`):
+	 * "Slash commands" in the command phase, "Command arguments" once a row with
+	 * an inline list has been completed. Asked before the Escape step so a
+	 * destination that needed no completing is never sent a stray key.
+	 */
+	const SLASH_POPUP =
+		'[role="listbox"][aria-label="Command arguments"], [role="listbox"][aria-label="Slash commands"]';
+	const pressEnter = () =>
+		pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+
+	const frames = [];
+	for (const command of COMMANDS) {
+		const refusal = `${command.word} needs an open conversation. Start one first.`;
+		const arrives = `Boolean(document.querySelector('[role="dialog"]')) || document.body.innerText.includes(${JSON.stringify(refusal)})`;
+		await clickAt(cdp, `${COMPOSER} textarea`);
+		/*
+		 * A CLEAN BOX BEFORE EACH GESTURE, asserted: a completing row leaves its
+		 * completed value behind until the command actually runs, and the next
+		 * gesture typed onto that tail would be a different gesture than the one
+		 * this frame claims. Meta+A through Chromium's own editing command (a bare
+		 * chord performs no edit), then Backspace.
+		 */
+		let box = await cdp.evaluate(
+			`document.querySelector('${COMPOSER} textarea').value`,
+		);
+		if (box !== "") {
+			await pressChord(cdp, {
+				key: "a",
+				code: "KeyA",
+				virtualKeyCode: 65,
+				modifiers: MODIFIER.meta,
+				commands: ["selectAll"],
+			});
+			await pressChord(cdp, {
+				key: "Backspace",
+				code: "Backspace",
+				virtualKeyCode: 8,
+			});
+			box = await cdp.evaluate(
+				`document.querySelector('${COMPOSER} textarea').value`,
+			);
+		}
+		check(
+			`the composer is empty before ${command.word} is typed`,
+			box === "",
+			`the box held ${JSON.stringify(box)} after the clear`,
+		);
+		await cdp.send("Input.insertText", { text: command.word });
+		await wait(400);
+		await pressEnter();
+		let produced = await waitForCondition(cdp, arrives, 5_000);
+		let presses = 1;
+		if (!produced.ok) {
+			const popup = await cdp.evaluate(
+				`Boolean(document.querySelector('${SLASH_POPUP}'))`,
+			);
+			if (popup) {
+				await pressChord(cdp, {
+					key: "Escape",
+					code: "Escape",
+					virtualKeyCode: 27,
+				});
+				await wait(300);
+			}
+			await pressEnter();
+			presses = 2;
+			produced = await waitForCondition(cdp, arrives, 5_000);
+		}
+		if (!produced.ok) {
+			await pressEnter();
+			presses = 3;
+			produced = await waitForCondition(cdp, arrives, 8_000);
+		}
+		const read = await cdp.evaluate(`(() => {
+			const dialog = document.querySelector('[role="dialog"]');
+			const title = dialog ? dialog.querySelector('h2') : null;
+			return {
+				picker: title ? title.textContent.trim() : null,
+				refusal: document.body.innerText.includes(${JSON.stringify(refusal)})
+					? ${JSON.stringify(refusal)}
+					: null,
+			};
+		})()`);
+		const frame = await captureSettled(
+			cdp,
+			`sessionless-${command.label}-${suffix}`,
+		);
+		frames.push(frame);
+		if (open) {
+			check(
+				`${command.word} opens its picker on a pane with no conversation`,
+				read.picker === command.title,
+				`dialog title ${JSON.stringify(read.picker)}, expected ${JSON.stringify(command.title)} (settled after ${produced.waitedMs}ms on press ${presses})`,
+			);
+			check(
+				`${command.word} prints no refusal sentence`,
+				read.refusal === null,
+				JSON.stringify(read.refusal),
+			);
+		} else {
+			check(
+				`${command.word} is refused with the dispatcher's own sentence`,
+				read.refusal === refusal && read.picker === null,
+				`refusal ${JSON.stringify(read.refusal)}, picker ${JSON.stringify(read.picker)} (settled after ${produced.waitedMs}ms on press ${presses})`,
+			);
+		}
+		if (read.picker !== null) {
+			/*
+			 * The picker is a modal: it owns the keyboard, and the next gesture
+			 * needs the composer. Escape is the app's own close, so the scene
+			 * closes it the way a user does rather than by reaching into stores.
+			 */
+			await pressChord(cdp, {
+				key: "Escape",
+				code: "Escape",
+				virtualKeyCode: 27,
+			});
+			const closed = await waitForCondition(
+				cdp,
+				`!document.querySelector('[role="dialog"]')`,
+				5_000,
+			);
+			check(
+				`${command.word}'s picker closes on Escape`,
+				closed.ok,
+				`after ${closed.waitedMs}ms`,
+			);
+		}
+	}
+
+	/*
+	 * THE LIVE HALF (open only): a message is sent and answered, and `/theme` on
+	 * the conversation it creates must still present the picker - the
+	 * session-ful path this change must not move.
+	 */
+	if (open) {
+		await clickAt(cdp, `${COMPOSER} textarea`);
+		await cdp.send("Input.insertText", {
+			text: "Sessionless slash commands: live-conversation sanity check.",
+		});
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		const sent = await waitForCondition(
+			cdp,
+			`(() => {
+				const log = document.querySelector('[role="log"]');
+				return Boolean(log && log.textContent.includes("live-conversation sanity check")) && !document.querySelector('[data-lo-empty-mark]');
+			})()`,
+			60_000,
+		);
+		check(
+			"the sanity message reached the transcript and the empty state is gone",
+			sent.ok,
+			`after ${sent.waitedMs}ms: ${JSON.stringify(sent.last)}`,
+		);
+		const answered = await waitForCondition(
+			cdp,
+			`(() => {
+				const log = document.querySelector('[role="log"]');
+				return Boolean(log && log.textContent.includes("from the mock provider"));
+			})()`,
+			60_000,
+		);
+		check(
+			"the mock provider answered, so the pane is on a live conversation",
+			answered.ok,
+			`after ${answered.waitedMs}ms`,
+		);
+		const liveState = await verb(cdp, "state");
+		check(
+			"the pane now addresses a real session",
+			typeof liveState.activeSessionId === "string" &&
+				liveState.activeSessionId.length > 0,
+			`activeSessionId ${JSON.stringify(liveState.activeSessionId)}`,
+		);
+		await clickAt(cdp, `${COMPOSER} textarea`);
+		await cdp.send("Input.insertText", { text: "/theme" });
+		await wait(400);
+		await pressEnter();
+		let livePicker = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector('[role="dialog"]'))`,
+			8_000,
+		);
+		if (!livePicker.ok) {
+			const popup = await cdp.evaluate(
+				`Boolean(document.querySelector('${SLASH_POPUP}'))`,
+			);
+			if (popup) {
+				await pressChord(cdp, {
+					key: "Escape",
+					code: "Escape",
+					virtualKeyCode: 27,
+				});
+				await wait(300);
+			}
+			await pressEnter();
+			livePicker = await waitForCondition(
+				cdp,
+				`Boolean(document.querySelector('[role="dialog"]'))`,
+				8_000,
+			);
+		}
+		if (!livePicker.ok) {
+			await pressEnter();
+			livePicker = await waitForCondition(
+				cdp,
+				`Boolean(document.querySelector('[role="dialog"]'))`,
+				10_000,
+			);
+		}
+		await wait(500);
+		const liveRead = await cdp.evaluate(`(() => {
+			const dialog = document.querySelector('[role="dialog"]');
+			const title = dialog ? dialog.querySelector('h2') : null;
+			return { picker: title ? title.textContent.trim() : null };
+		})()`);
+		const liveFrame = await captureSettled(
+			cdp,
+			`sessionless-theme-live-${suffix}`,
+		);
+		frames.push(liveFrame);
+		check(
+			"/theme on a live conversation still presents the same picker",
+			livePicker.ok && liveRead.picker === "Theme",
+			`dialog ${JSON.stringify(liveRead.picker)} after ${livePicker.waitedMs}ms`,
+		);
+	} else {
+		note(
+			"live half skipped",
+			"--slash-expect refused: the base tree's half of this pair is the five refusals, and the session-ful steps would spend a send and an answer on a claim this run is not making",
+		);
+	}
+
+	check(
+		"every capture is a frame the app held still for, with no toast on it",
+		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: ${frame.stable === true ? `held still after ${frame.attempts} capture(s)` : `never held still in ${frame.attempts} capture(s)`}, toast-free ${frame.toastFree === true}`,
 			)
 			.join(" | "),
 	);
@@ -17458,51 +22820,27 @@ async function scenePalette(cdp) {
  * round-3 rows were green at 8080 and the port was the only difference). So run the
  * proxy on an allowed port (8080 is what QA used for the green run) and build the
  * renderer with `VITE_LOCAL_OPERATOR_API_URL` set to that same URL.
+ *
+ * THAT PORT CLAIM IS NOT WHAT GENERALISES, and it is corrected here rather than left as advice a
+ * reader would act on. The app's transport is MAIN's - the renderer's `apiBaseUrl` is read over IPC
+ * and never fetched - and the driver widens `frame-src`/`media-src` in the gitignored build output,
+ * so a rig on a port the policy does not name is reachable. MEASURED 2026-09-27: `--scene
+ * session-archive` reads 69 PASS / 0 FAIL at `127.0.0.1:8123`, and the port was the only difference
+ * between the two runs of this scene above. What the CSP line quoted here records is a PAGE-side
+ * fetch of `/v1/credentials`, so it is a signal to check WHICH surface was refused rather than
+ * proof that the port must be allowlisted: read the message beside it before moving the rig. Two
+ * further facts this pass cost, for the next reader: a `-c`-cloned `node_modules` needs
+ * `node_modules/@babel/plugin-transform-arrow-functions` linked out of `.pnpm/node_modules` or
+ * `electron-vite build` dies in its bytecode step, and `pnpm run <script>` in such a tree starts a
+ * full install (it emptied `.bin` mid-run when interrupted) - call the bundler and `node --test`
+ * from `./node_modules/.bin` directly.
  */
-/* ----------------------------------------------------- the sidebar split ---- */
-
-/** The four nodes this scene is about, and the store it writes through. */
-const SPLIT_ENTITIES = '[data-sidebar-region="entities"]';
-const SPLIT_CHATS = '[data-sidebar-region="chats"]';
-const SPLIT_SEPARATOR = '[data-sidebar-split] [role="separator"]';
-const SPLIT_CLUSTER = "[data-sidebar-cluster]";
-const SPLIT_CLUSTER_REVEALED =
-	"[data-sidebar-cluster][data-sidebar-cluster-revealed]";
-const SPLIT_STORE = "ui-preferences-storage";
-
-/** The first element matching `selector`, with the numbers a gesture needs. */
-async function splitBox(cdp, selector) {
-	return cdp.evaluate(`(() => {
-		const node = document.querySelector(${JSON.stringify(selector)});
-		if (node === null) return null;
-		const box = node.getBoundingClientRect();
-		return {
-			x: box.x + box.width / 2,
-			y: box.y + box.height / 2,
-			top: box.top,
-			bottom: box.bottom,
-			left: box.left,
-			right: box.right,
-			width: box.width,
-			height: box.height,
-		};
-	})()`);
-}
-
-/** What is under a point, named the way a hit-test can be read back. */
-async function splitHit(cdp, x, y) {
-	return cdp.evaluate(`(() => {
-		const node = document.elementFromPoint(${x}, ${y});
-		if (node === null) return null;
-		return {
-			tag: node.tagName,
-			role: node.getAttribute("role"),
-			label: node.getAttribute("aria-label") ?? node.getAttribute("data-tour-tag") ?? null,
-			inSeparator: Boolean(node.closest(${JSON.stringify(SPLIT_SEPARATOR)})),
-			inCluster: Boolean(node.closest(${JSON.stringify(SPLIT_CLUSTER)})),
-		};
-	})()`);
-}
+/**
+ * The key the UI preferences store is persisted under - the sidebar's width and
+ * view write here, which is why the lazy-chats scene drives the store through
+ * `splitPreferences`/`setSplitPreferences` rather than through the page.
+ */
+const SPLIT_STORE = "[redacted]";
 
 /** The sidebar's persisted preferences, exactly as the page holds them. */
 async function splitPreferences(cdp) {
@@ -17537,42 +22875,1021 @@ async function setSplitPreferences(cdp, patch) {
 	await wait(500);
 }
 
+/* ------------------------------- hit-zones ------------------------------- */
+
 /**
- * One drag: press at `(x, y)`, travel `dy` in steps, release.
+ * The control set the drag vocabulary is about.
  *
- * The moves carry `buttons: 1`, which is what makes this a drag rather than a
- * hover followed by a click - `movePointer` beside it sends `buttons: 0`, and a
- * handler that read the button state would see the difference.
+ * The same vocabulary `styles/index.css` gives `no-drag` to inside a drag row,
+ * plus the explicit opt-out - read as the page's own instead of a per-surface
+ * selector list, because a list written here would go stale the first time a
+ * panel gains a control, and the failure it would hide is exactly the one this
+ * scene exists for.
  */
-async function dragSplit(cdp, x, y, dy, { steps = 6, hold = null } = {}) {
-	await cdp.send("Input.dispatchMouseEvent", {
-		type: "mousePressed",
-		x,
-		y,
-		button: "left",
-		buttons: 1,
-		clickCount: 1,
-	});
-	for (let step = 1; step <= steps; step += 1) {
-		await cdp.send("Input.dispatchMouseEvent", {
-			type: "mouseMoved",
-			x,
-			y: y + (dy * step) / steps,
-			button: "left",
-			buttons: 1,
-		});
-		await wait(25);
+const HIT_ZONE_CONTROLS = [
+	"button",
+	"a",
+	"input",
+	"textarea",
+	"select",
+	"label",
+	'[role="button"]',
+	'[role="menuitem"]',
+	'[contenteditable="true"]',
+	"[data-titlebar-no-drag]",
+].join(", ");
+
+/**
+ * The window drag region, and what every control of one overlay meets of it.
+ *
+ * WHY THIS IS A REGION READ AND NOT A CLICK. The failure it measures is silent
+ * by construction: a pointer event swallowed by the window's drag region is
+ * indistinguishable, from the user's seat, from a dead handler. Electron's own
+ * hit test is `region->contains(point)` (`WebContentsView::NonClientHitTest`),
+ * so the predicate to read is the region - "did anything happen when I clicked"
+ * cannot separate a swallowed event from a handler that ran and did nothing, and
+ * `elementFromPoint` alone cannot either: it answers what is PAINTED on top,
+ * which stays the button even when the region is eating its clicks.
+ *
+ * HOW THE REGION IS REPRODUCED, and why a page can do it faithfully. Chromium
+ * builds it in `LocalFrameView::CollectDraggableRegions`: a pre-order walk where
+ * a box whose computed `app-region` is `drag` unions its border box into the
+ * region, and one whose value is `no-drag` subtracts its own
+ * (`LayoutObject::AddDraggableRegions`). The value is INHERITED - which is why
+ * one marker on a dialog subtracts everything inside it - and the walk never
+ * sees paint order or the top layer. That is the whole defect class: a modal
+ * painted over the top strip does not stop being inside it by painting.
+ *
+ * So the same three facts are read here: `getComputedStyle` is the computed
+ * value Blink sees, `getBoundingClientRect` is the same border box (its own
+ * transform included), document order is the walk's order, and applying the
+ * entries in order makes `inRegion` the predicate the OS-level hit test runs.
+ * The read also returns the drag entries' count and bounds, which is what
+ * Electron's own debugger prints (`ELECTRON_DEBUG_DRAGGABLE_REGIONS` build) - a
+ * cross-check from the other side of the same computation.
+ *
+ * Every control is sampled at five points rather than one: a button whose top
+ * half is inside the region and whose bottom half is not is exactly the shape
+ * the operator's report has ("only worked on its left half", in the sibling
+ * report this read was written from), and a centre-only sample would call it
+ * healthy.
+ */
+function readHitZones(cdp, spec) {
+	return cdp.evaluate(`(() => {
+		const appRegion = (el) => {
+			const style = getComputedStyle(el);
+			return (
+				style.getPropertyValue("-webkit-app-region") ||
+				style.getPropertyValue("app-region") ||
+				""
+			).trim();
+		};
+		const describe = (el) => {
+			if (!el) return null;
+			const label = el.getAttribute("aria-label") ?? el.textContent ?? "";
+			const role = el.getAttribute("role");
+			return el.tagName.toLowerCase() + (role ? "[role=" + role + "]" : "") +
+				' "' + label.trim().replace(/\\s+/g, " ").slice(0, 48) + '"';
+		};
+		/*
+		 * Whether the element can receive a pointer: both properties are computed
+		 * values, which is the truth for THIS box - a modal library sets
+		 * pointer-events none on the body and auto on its content, so an ancestor
+		 * walk would call every dialog control unclickable, while the inherited
+		 * value on a control inside a hidden cluster is none without an ancestor
+		 * walk needed. The sidebar's hover-revealed cluster is the case this exists
+		 * for: unrevealed, its buttons compute pointer-events none with opacity 0,
+		 * and sampling them reported the separator underneath as an occlusion the
+		 * app does not have.
+		 */
+		const canTakePointer = (el) => {
+			const style = getComputedStyle(el);
+			if (style.pointerEvents === "none") return false;
+			if (style.visibility === "hidden" || style.visibility === "collapse") return false;
+			return true;
+		};
+		const entries = [];
+		for (const el of document.querySelectorAll("*")) {
+			const mode = appRegion(el);
+			if (mode !== "drag" && mode !== "no-drag") continue;
+			const style = getComputedStyle(el);
+			if (style.visibility !== "visible") continue;
+			if (style.display === "inline" || style.display === "contents") continue;
+			const rect = el.getBoundingClientRect();
+			if (rect.width <= 0 || rect.height <= 0) continue;
+			entries.push({
+				mode,
+				l: rect.left,
+				t: rect.top,
+				r: rect.right,
+				b: rect.bottom,
+				el: describe(el),
+				node: el,
+			});
+		}
+		const inRegionOver = (x, y, consider) => {
+			let inside = false;
+			let cover = null;
+			for (const entry of entries) {
+				if (!consider(entry)) continue;
+				if (x >= entry.l && x < entry.r && y >= entry.t && y < entry.b) {
+					inside = entry.mode === "drag";
+					cover = entry;
+				}
+			}
+			return { inside, cover: cover === null ? null : cover.mode + " " + cover.el };
+		};
+		const root = document.querySelector(${JSON.stringify(spec.root)});
+		if (root === null) {
+			return {
+				surface: ${JSON.stringify(spec.surface)},
+				missing: true,
+				region: { entries: entries.length },
+			};
+		}
+		const inRegion = (x, y) => inRegionOver(x, y, () => true);
+		/*
+		 * THE SAME POINT WITHOUT THIS SURFACE'S OWN OPT-OUT, which is the before
+		 * reading every run gets for free: the region as it stood before the marker
+		 * this surface contributes existed. That is every no-drag entry in the
+		 * subtree, NOT every entry in it - chat-header-title is a surface whose own
+		 * subtree contributes the DRAG surface itself (the header row), and taking
+		 * that out would erase the pre-fix verdict this reconstruction exists to
+		 * state. For the portalled overlays the two forms coincide, because everything
+		 * a panel's marker contributes is no-drag (the value inherits, and
+		 * pre-marker those descendants computed none), so their readings are
+		 * unchanged: the close button that failed with 5/5 samples swallowed reads
+		 * swallowed false / swallowedBefore true on the fixed tree.
+		 */
+		const inRegionBefore = (x, y) =>
+			inRegionOver(
+				x,
+				y,
+				(entry) => !(root.contains(entry.node) && entry.mode === "no-drag"),
+			);
+		const rootRect = root.getBoundingClientRect();
+		const inViewport = (rect) =>
+			rect.left >= -1 && rect.top >= -1 &&
+			rect.right <= window.innerWidth + 1 &&
+			rect.bottom <= window.innerHeight + 1;
+		const insideRoot = (rect) =>
+			rect.left >= rootRect.left - 1 && rect.right <= rootRect.right + 1 &&
+			rect.top >= rootRect.top - 1 && rect.bottom <= rootRect.bottom + 1;
+		const controls = [];
+		const skipped = { disabled: [], clipped: [], unpaintable: [] };
+		for (const el of root.querySelectorAll(${JSON.stringify(spec.controls)})) {
+			const rect = el.getBoundingClientRect();
+			if (rect.width <= 0 || rect.height <= 0) continue;
+			/*
+			 * A control a user cannot aim at is not a click target, and sampling one
+			 * produces a false finding: the picker host's segments pair a 1x1
+			 * "sr-only" radio with the label that paints in its place, and
+			 * elementFromPoint at the input's centre answers the label - which is
+			 * the element the click is really for. The label is in the sampled set
+			 * for exactly this reason.
+			 */
+			if (rect.width < 2 || rect.height < 2) {
+				skipped.unpaintable.push(describe(el));
+				continue;
+			}
+			if (!canTakePointer(el)) {
+				skipped.unpaintable.push(describe(el));
+				continue;
+			}
+			/*
+			 * A disabled control is not a click target; a control outside the
+			 * visible box is not one either (a scrolled-away table row's buttons
+			 * would otherwise be sampled against whatever paints where they are
+			 * laid out). Both are reported, not silently dropped.
+			 */
+			const disabled =
+				(el instanceof HTMLButtonElement && el.disabled) ||
+				el.getAttribute("aria-disabled") === "true";
+			if (disabled) {
+				skipped.disabled.push(describe(el));
+				continue;
+			}
+			if (!insideRoot(rect) || !inViewport(rect)) {
+				skipped.clipped.push(describe(el));
+				continue;
+			}
+			const samples = [];
+			for (const point of [
+				["centre", rect.left + rect.width / 2, rect.top + rect.height / 2],
+				["top-left", rect.left + rect.width * 0.25, rect.top + rect.height * 0.25],
+				["top-right", rect.right - rect.width * 0.25, rect.top + rect.height * 0.25],
+				["bottom-left", rect.left + rect.width * 0.25, rect.bottom - rect.height * 0.25],
+				["bottom-right", rect.right - rect.width * 0.25, rect.bottom - rect.height * 0.25],
+			]) {
+				const region = inRegion(point[1], point[2]);
+				const before = inRegionBefore(point[1], point[2]);
+				const top = document.elementFromPoint(point[1], point[2]);
+				samples.push({
+					name: point[0],
+					x: Math.round(point[1] * 10) / 10,
+					y: Math.round(point[2] * 10) / 10,
+					swallowed: region.inside,
+					cover: region.cover,
+					swallowedBefore: before.inside,
+					beforeCover: before.cover,
+					top: describe(top),
+					topIsControl: top !== null && (top === el || el.contains(top)),
+				});
+			}
+			controls.push({
+				name: describe(el),
+				rect: {
+					x: Math.round(rect.x),
+					y: Math.round(rect.y),
+					w: Math.round(rect.width),
+					h: Math.round(rect.height),
+				},
+				region: appRegion(el),
+				samples,
+			});
+		}
+		/*
+		 * THE PRESERVATION POINTS: the lane to either side of the overlay's own box.
+		 * They must stay in the region after a fix - the window is still moved by
+		 * the strip around a modal - which is what a fix that marked a full-screen
+		 * scrim would silently break.
+		 */
+		const preserved = [];
+		for (const point of [
+			["lane left of the overlay", Math.max(4, rootRect.left - 40), 16],
+			["lane right of the overlay", Math.min(window.innerWidth - 4, rootRect.right + 40), 16],
+		]) {
+			const region = inRegion(point[1], point[2]);
+			preserved.push({
+				name: point[0],
+				x: Math.round(point[1]),
+				y: Math.round(point[2]),
+				insideOverlay:
+					point[1] >= rootRect.left && point[1] < rootRect.right &&
+					point[2] >= rootRect.top && point[2] < rootRect.bottom,
+				inside: region.inside,
+				cover: region.cover,
+			});
+		}
+		/*
+		 * A BESPOKE PRESERVATION POINT, for the surface whose subject is a control
+		 * being carved OUT of a drag surface that must otherwise keep dragging
+		 * (chat-header-title). The lane points above sit at y=16 - the window's own
+		 * lane - so they say nothing about the ROW a fix touches; this one lands
+		 * dx from the named anchor (8px left of the title text is inside the row's
+		 * padding, beside the title) and must read INSIDE the region on every tree.
+		 * It is not part of preserved because those are skipped when they fall
+		 * inside the surface's own box, and this point is deliberately inside it.
+		 */
+		let stillDrags = null;
+		const wanted = ${JSON.stringify(spec.stillDrags ?? null)};
+		if (wanted !== null) {
+			const anchorEl = root.querySelector(wanted.anchor);
+			if (anchorEl === null) {
+				stillDrags = {
+					name: wanted.name ?? "beside " + wanted.anchor,
+					missing: true,
+				};
+			} else {
+				const box = anchorEl.getBoundingClientRect();
+				const x = box.left + (wanted.dx ?? -8);
+				const y = box.top + box.height / 2;
+				const region = inRegion(x, y);
+				stillDrags = {
+					name: wanted.name ?? "beside " + wanted.anchor,
+					x: Math.round(x * 10) / 10,
+					y: Math.round(y * 10) / 10,
+					inside: region.inside,
+					cover: region.cover,
+				};
+			}
+		}
+		const dragEntries = entries.filter((entry) => entry.mode === "drag");
+		const noDragEntries = entries.filter((entry) => entry.mode === "no-drag");
+		/*
+		 * THE DRAG ENTRIES' UNION, explicitly not "the region": the region the
+		 * window is hit-tested against is what the point reads compute - drag rects
+		 * minus the no-drag rects - and a bounding box over the drag entries alone
+		 * can include area an overlay has subtracted (QA/review round 1, R5).
+		 * Electron's own region line - its sent-entry counts, 'renderer sent N
+		 * region(s) (X drag, Y no-drag)' - is the like-for-like for the counts
+		 * below; its computed rect line is its own reading and is quoted as such
+		 * in the evidence README.
+		 */
+		const dragEntryBounds = dragEntries.reduce(
+			(acc, entry) => ({
+				l: Math.min(acc.l, entry.l),
+				t: Math.min(acc.t, entry.t),
+				r: Math.max(acc.r, entry.r),
+				b: Math.max(acc.b, entry.b),
+			}),
+			{ l: Infinity, t: Infinity, r: -Infinity, b: -Infinity },
+		);
+		return {
+			surface: ${JSON.stringify(spec.surface)},
+			missing: false,
+			region: {
+				entries: entries.length,
+				dragEntries: dragEntries.length,
+				noDragEntries: noDragEntries.length,
+				dragEntryBounds: dragEntries.length === 0 ? null : {
+					x: Math.round(dragEntryBounds.l),
+					y: Math.round(dragEntryBounds.t),
+					w: Math.round(dragEntryBounds.r - dragEntryBounds.l),
+					h: Math.round(dragEntryBounds.b - dragEntryBounds.t),
+				},
+			},
+			root: {
+				x: Math.round(rootRect.x),
+				y: Math.round(rootRect.y),
+				w: Math.round(rootRect.width),
+				h: Math.round(rootRect.height),
+			},
+			controls,
+			skipped,
+			preserved,
+			stillDrags,
+		};
+	})()`);
+}
+
+/** One surface's read, checked: no swallowed sample, no occlusion, strip intact. */
+function checkHitZones(surface, report) {
+	check(
+		`[${surface}] the overlay is in the document`,
+		report.missing === false,
+		"the surface root was not found",
+		`${report.controls.length} control(s) sampled, region ${report.region.entries} entr(ies)`,
+	);
+	if (report.missing) return report;
+	const swallowed = [];
+	const occluded = [];
+	for (const control of report.controls) {
+		for (const sample of control.samples) {
+			if (sample.swallowed) {
+				swallowed.push(
+					`${control.name} at ${sample.name} (${sample.x}, ${sample.y}) - held by ${sample.cover}`,
+				);
+			}
+			if (!sample.topIsControl) {
+				occluded.push(
+					`${control.name} at ${sample.name} (${sample.x}, ${sample.y}) - top element is ${sample.top}`,
+				);
+			}
+		}
 	}
-	if (hold !== null) await hold();
-	await cdp.send("Input.dispatchMouseEvent", {
-		type: "mouseReleased",
-		x,
-		y: y + dy,
-		button: "left",
-		buttons: 0,
-		clickCount: 1,
+	const before = report.controls.reduce(
+		(total, control) =>
+			total + control.samples.filter((sample) => sample.swallowedBefore).length,
+		0,
+	);
+	check(
+		`[${surface}] every sampled point of every control is OUTSIDE the window drag region`,
+		swallowed.length === 0,
+		`${swallowed.join("\n        ")}\n        (region: ${report.region.entries} entr(ies) (${report.region.dragEntries} drag, ${report.region.noDragEntries} no-drag), drag-entry union ${JSON.stringify(report.region.dragEntryBounds)}; overlay box ${JSON.stringify(report.root)})`,
+		`${report.controls.length} control(s) x 5 samples in region ${report.region.entries} entr(ies); ${swallowed.length} swallowed now, ${before} would be without this surface's own opt-out; ${report.skipped.disabled.length} disabled, ${report.skipped.unpaintable.length} unpaintable and ${report.skipped.clipped.length} outside the visible box were not sampled`,
+	);
+	check(
+		`[${surface}] every sampled point's top element is the control it belongs to`,
+		occluded.length === 0,
+		occluded.join("\n        "),
+		`${report.controls.length} control(s) x 5 samples`,
+	);
+	const notDragging = report.preserved.filter(
+		(point) => !point.insideOverlay && point.inside !== true,
+	);
+	check(
+		`[${surface}] the lane outside the overlay still drags`,
+		notDragging.length === 0,
+		notDragging
+			.map(
+				(point) =>
+					`${point.name} (${point.x}, ${point.y}) is outside the region; last cover: ${point.cover}`,
+			)
+			.join("\n        "),
+		report.preserved
+			.map(
+				(point) =>
+					`${point.name} (${point.x}, ${point.y}): ${point.insideOverlay ? "the overlay covers it" : `inside=${point.inside}`}`,
+			)
+			.join(" | "),
+	);
+	/*
+	 * THE GUTTER BESIDE A CARVED-OUT CONTROL, for the surface whose fix adds an
+	 * opt-out INSIDE a drag surface that must keep dragging elsewhere
+	 * (`chat-header-title`). The lane checks above are about the strip outside the
+	 * surface; this one is about the ROW the new marker sits in, which no lane
+	 * point covers.
+	 */
+	const still = report.stillDrags;
+	if (still !== undefined && still !== null) {
+		check(
+			`[${surface}] ${still.name} still drags`,
+			still.missing !== true && still.inside === true,
+			still.missing === true
+				? `the anchor ${still.name} is measured from was not found`
+				: `${still.name} (${still.x}, ${still.y}) is outside the region; last cover: ${still.cover}`,
+			still.missing === true
+				? "anchor missing"
+				: `${still.name} (${still.x}, ${still.y}): inside=${still.inside}${
+						still.cover ? ` (cover ${still.cover})` : ""
+					}`,
+		);
+	}
+	return report;
+}
+
+/** Put a composer on screen, through the app's own New chat staging. */
+async function ensureComposer(cdp) {
+	const composer = '[data-tour-tag="chat-input-textarea"]';
+	const present = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${composer}'))`,
+		2_000,
+	);
+	if (present.ok) return true;
+	/*
+	 * `⌘N` is the app's own staging (`stageDraft` + navigate to `/chat`), and the
+	 * one path that works at every window width: the docked sidebar's New chat row
+	 * has no counterpart in the strip a narrow window draws.
+	 */
+	await pressChord(cdp, {
+		key: "n",
+		code: "KeyN",
+		virtualKeyCode: 78,
+		modifiers: MODIFIER.meta,
 	});
-	await wait(200);
+	const staged = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${composer}'))`,
+		20_000,
+	);
+	return staged.ok;
+}
+
+/** Type a slash command into the composer and dispatch it, the way a user does. */
+async function runSlashCommand(cdp, command) {
+	check(
+		`[${command}] the composer mounted`,
+		await ensureComposer(cdp),
+		"no composer appeared, so nothing could be typed",
+	);
+	await clickAt(cdp, '[data-tour-tag="chat-input-textarea"] textarea');
+	await cdp.send("Input.insertText", { text: command });
+	await wait(300);
+	/*
+	 * TWO Enters, each through CDP's own key pipeline (`pressChord` carries each
+	 * key's character - see `keyText`): the first accepts the row the slash popup
+	 * offers, the second dispatches the command. A DOM `KeyboardEvent` built inside
+	 * the page would skip the half of the claim this presses to reach, which is why
+	 * the composer is driven this way everywhere in this file.
+	 */
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	await wait(700);
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+}
+
+/**
+ * `hit-zones`: the window drag region against the overlays painted over it.
+ *
+ * WHY THIS SCENE EXISTS. The operator's report - the Analytics panel's corner
+ * `×` seeming unclickable, "roughly level with where the seamless window chrome's
+ * draggable strip now sits" - is one instance of a class, and the class is silent.
+ * Chromium builds the window's draggable region from element RECTS
+ * (`readHitZones` reproduces the walk); a region is not a paint order, so an
+ * overlay drawn over the top strip does not carve itself out of it by painting,
+ * and Electron's hit test then hands the click to the window manager instead of
+ * the page. The fix is not a moved button: it is the overlay declaring `no-drag`,
+ * which subtracts its own rect - and the point of this scene is that the
+ * subtraction is measured, not assumed.
+ *
+ * WHAT IT ASSERTS, per surface: every sample point of every control is outside
+ * the region; the top element at each point is the control (so a literal
+ * occlusion would fail here rather than hide inside the region's answer); and the
+ * lane to either side of the overlay still drags. A FAILING run is the before
+ * frame of the pair: on the tree this scene was written against, the Analytics
+ * panel's `×` is inside the chat header row's drag band and its top sample is
+ * held by that row.
+ *
+ * WHAT IT NEEDS: `--backend` (the machine panels are opened by a slash command
+ * whose catalogue is the backend's) and, for every surface but the wizard,
+ * `--seed-onboarding-complete` - a first-run profile is a modal over the window,
+ * and the scene probes the wizard instead and says so.
+ *
+ * SURFACES IT CANNOT REACH, named rather than implied: a parked approval gate,
+ * the browser approvals dock, the update notification (an update must be
+ * available) and the app-wide toast container. None of them is opened by a gesture
+ * this harness can make; the audit that accompanies the fix lists them as
+ * exercised by hand or not exercised, and this note is so a reader does not read
+ * the list of probed surfaces as the list of all surfaces.
+ */
+async function sceneHitZones(cdp) {
+	const hello = await verb(cdp, "hello");
+	note("hello", JSON.stringify(hello, null, 2));
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	if (BACKEND === null) {
+		throw new Error(
+			"--scene hit-zones needs --backend <url> with the renderer built against the same URL: the machine panels are opened by a slash command, and the catalogue that resolves it is the backend's",
+		);
+	}
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", "localOperatorDark");
+
+	/*
+	 * The chrome state, asserted rather than assumed: on anything but the mac
+	 * integrated chrome there is no 32px lane, and every number below would be
+	 * about a different window than the one this scene describes.
+	 */
+	const chrome = await cdp.evaluate(`(() => {
+		const lane = document.querySelector('[data-titlebar-lane]');
+		const rect = lane ? lane.getBoundingClientRect() : null;
+		const valueOf = (selector) => {
+			const el = document.querySelector(selector);
+			if (!el) return null;
+			const style = getComputedStyle(el);
+			return (
+				style.getPropertyValue("-webkit-app-region") ||
+				style.getPropertyValue("app-region") ||
+				""
+			).trim();
+		};
+		const bodyStyle = getComputedStyle(document.body);
+		return {
+			mode: document.documentElement.dataset.chromeMode,
+			platform: document.documentElement.dataset.chromePlatform,
+			viewport: { width: window.innerWidth, height: window.innerHeight },
+			lane: rect === null ? null : {
+				x: Math.round(rect.x),
+				y: Math.round(rect.y),
+				w: Math.round(rect.width),
+				h: Math.round(rect.height),
+				display: getComputedStyle(lane).display,
+			},
+			vocabulary: {
+				drag: valueOf("[data-titlebar-drag]"),
+				noDrag: valueOf("[data-titlebar-drag] button"),
+				plain:
+					bodyStyle.getPropertyValue("-webkit-app-region").trim() ||
+					bodyStyle.getPropertyValue("app-region").trim(),
+			},
+		};
+	})()`);
+	note("window chrome", JSON.stringify(chrome));
+	check(
+		"the window is the integrated chrome with the mac lane drawn",
+		chrome.mode === "integrated" &&
+			chrome.platform === "mac" &&
+			chrome.lane !== null &&
+			chrome.lane.h === 32 &&
+			chrome.lane.display === "block",
+		`mode=${chrome.mode} platform=${chrome.platform} lane=${JSON.stringify(chrome.lane)}`,
+	);
+	check(
+		"the computed app-region vocabulary is the one this read filters on",
+		chrome.vocabulary.drag === "drag" && chrome.vocabulary.noDrag === "no-drag",
+		JSON.stringify(chrome.vocabulary),
+	);
+
+	/*
+	 * A first-run profile is the wizard and nothing else. Probe it where it is up,
+	 * and say plainly that the rest of the surfaces need the seed flag - a run that
+	 * silently probed nothing must not read as a run that found nothing.
+	 */
+	if (
+		!SEED_ONBOARDING_COMPLETE &&
+		(await drawnSelector(cdp, '[role="dialog"]'))
+	) {
+		const wizardFrame = await captureSettled(cdp, "hit-zones-onboarding-dark");
+		note("frame onboarding-wizard", JSON.stringify(wizardFrame));
+		checkHitZones(
+			"onboarding-wizard",
+			await readHitZones(cdp, {
+				surface: "onboarding-wizard",
+				root: '[role="dialog"]',
+				controls: HIT_ZONE_CONTROLS,
+			}),
+		);
+		note(
+			"surfaces not exercised",
+			"a first-run profile shows the wizard and nothing else; the panels, the palette and the sheet need --seed-onboarding-complete",
+		);
+		return;
+	}
+
+	const surfaces = [];
+
+	/*
+	 * The three machine panels. `/analytics` is the operator's own case; `/usage`
+	 * and `/info` are the same shell and different bodies, which is what makes the
+	 * shell's fix measurable on more than one screen.
+	 */
+	for (const panel of [
+		{
+			command: "/analytics",
+			surface: "analytics-panel",
+			frame: "hit-zones-analytics-dark",
+		},
+		{
+			command: "/usage",
+			surface: "usage-panel",
+			frame: "hit-zones-usage-dark",
+		},
+		{ command: "/info", surface: "info-panel", frame: "hit-zones-info-dark" },
+	]) {
+		await runSlashCommand(cdp, panel.command);
+		const up = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector('[role="dialog"][data-state="open"]'))`,
+			20_000,
+		);
+		check(
+			`[${panel.surface}] the panel opened`,
+			up.ok,
+			`after ${up.waitedMs}ms the dialog was still absent (composer holds ${JSON.stringify(up.last)})`,
+		);
+		if (!up.ok) continue;
+		await wait(700);
+		const frame = await captureSettled(cdp, panel.frame);
+		note(`frame ${panel.surface}`, JSON.stringify(frame));
+		surfaces.push(
+			checkHitZones(
+				panel.surface,
+				await readHitZones(cdp, {
+					surface: panel.surface,
+					root: '[role="dialog"][data-state="open"]',
+					controls: HIT_ZONE_CONTROLS,
+				}),
+			),
+		);
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		await waitForCondition(
+			cdp,
+			`!document.querySelector('[role="dialog"][data-state="open"]')`,
+			10_000,
+		);
+	}
+
+	/* The command palette: the other modal shell the app draws. */
+	await verb(cdp, "press", "[data-command-palette-trigger]");
+	const paletteUp = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-tour-tag="command-palette-dialog"]'))`,
+		15_000,
+	);
+	check(
+		"[command-palette] the palette opened",
+		paletteUp.ok,
+		`after ${paletteUp.waitedMs}ms`,
+	);
+	if (paletteUp.ok) {
+		const frame = await captureSettled(cdp, "hit-zones-palette-dark");
+		note("frame command-palette", JSON.stringify(frame));
+		surfaces.push(
+			checkHitZones(
+				"command-palette",
+				await readHitZones(cdp, {
+					surface: "command-palette",
+					root: '[data-tour-tag="command-palette-dialog"]',
+					controls: HIT_ZONE_CONTROLS,
+				}),
+			),
+		);
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		await waitForCondition(
+			cdp,
+			`!document.querySelector('[data-tour-tag="command-palette-dialog"]')`,
+			10_000,
+		);
+	}
+
+	/*
+	 * The sidebar sheet, where the window is narrow enough for the sidebar to BE
+	 * the sheet (`SIDEBAR_DOCK_MIN_PX`). `⌘B` opens it through the app's own
+	 * handler - the same control the strip's expand button calls - so no selector
+	 * here guesses at a button whose label changes with state.
+	 */
+	if (await cdp.evaluate("window.innerWidth < 1024")) {
+		await pressChord(cdp, {
+			key: "b",
+			code: "KeyB",
+			virtualKeyCode: 66,
+			modifiers: MODIFIER.meta,
+		});
+		const sheetUp = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector('[data-sidebar-sheet]'))`,
+			10_000,
+		);
+		check(
+			"[sidebar-sheet] the sidebar toggle opened the sheet",
+			sheetUp.ok,
+			`after ${sheetUp.waitedMs}ms`,
+		);
+		if (sheetUp.ok) {
+			const frame = await captureSettled(cdp, "hit-zones-sidebar-sheet-dark");
+			note("frame sidebar-sheet", JSON.stringify(frame));
+			surfaces.push(
+				checkHitZones(
+					"sidebar-sheet",
+					await readHitZones(cdp, {
+						surface: "sidebar-sheet",
+						root: "[data-sidebar-sheet]",
+						controls: HIT_ZONE_CONTROLS,
+					}),
+				),
+			);
+			await pressChord(cdp, {
+				key: "Escape",
+				code: "Escape",
+				virtualKeyCode: 27,
+			});
+			await waitForCondition(
+				cdp,
+				`!document.querySelector('[data-sidebar-sheet]')`,
+				10_000,
+			);
+		}
+	} else {
+		note(
+			"sidebar-sheet not exercised",
+			`the sidebar is docked above SIDEBAR_DOCK_MIN_PX (1024) at this width (${chrome.viewport.width}), so there is no sheet here to probe - run this scene at a narrower --window-size for it`,
+		);
+	}
+
+	/*
+	 * The non-chat routes' drag band, on /settings — and its two jobs are per
+	 * platform since #535. On Windows and Linux with the captions trailing the
+	 * band IS the route's drag surface (there is no lane above the columns),
+	 * drawn at `env(titlebar-area-height)`; on macOS and leading layouts the band
+	 * stands down (`display: none` — a zero-height drag region would still
+	 * swallow a press along the window's top edge) and the shell's own lane is
+	 * the drag surface, so the check that matters is that the route's controls
+	 * clear it. The branch this window is in is asserted, not assumed, and the
+	 * note under the checks names the branch this host exercised: only the mac
+	 * one runs here, and the win/linux assertions are written for the runners
+	 * that render them.
+	 */
+	await verb(cdp, "navigate", "/settings");
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-chrome-route-band]'))`,
+		10_000,
+	);
+	await wait(800);
+	const bandRead = await cdp.evaluate(`(() => {
+		const appRegion = (el) => {
+			const style = getComputedStyle(el);
+			return (
+				style.getPropertyValue("-webkit-app-region") ||
+				style.getPropertyValue("app-region") ||
+				""
+			).trim();
+		};
+		/* The same walk the control samples use: drag unions, no-drag subtracts. */
+		const entries = [];
+		for (const el of document.querySelectorAll("*")) {
+			const mode = appRegion(el);
+			if (mode !== "drag" && mode !== "no-drag") continue;
+			const style = getComputedStyle(el);
+			if (style.visibility !== "visible") continue;
+			if (style.display === "inline" || style.display === "contents") continue;
+			const rect = el.getBoundingClientRect();
+			if (rect.width <= 0 || rect.height <= 0) continue;
+			entries.push({ mode, l: rect.left, t: rect.top, r: rect.right, b: rect.bottom });
+		}
+		const inRegion = (x, y) => {
+			let inside = false;
+			for (const entry of entries) {
+				if (x >= entry.l && x < entry.r && y >= entry.t && y < entry.b) {
+					inside = entry.mode === "drag";
+				}
+			}
+			return inside;
+		};
+		const boxOf = (el) => {
+			const rect = el.getBoundingClientRect();
+			return {
+				x: Math.round(rect.x),
+				y: Math.round(rect.y),
+				w: Math.round(rect.width),
+				h: Math.round(rect.height),
+			};
+		};
+		/*
+		 * env(titlebar-area-height) as the document resolves it: on the trailing
+		 * platforms the band's own height IS this value, so the drawn branch below
+		 * compares against a measurement rather than a constant.
+		 */
+		const probe = document.createElement("div");
+		probe.style.cssText =
+			"position:absolute;top:-100px;left:0;width:0;height:env(titlebar-area-height, -1px)";
+		document.body.appendChild(probe);
+		const captionHeight = Math.round(probe.getBoundingClientRect().height * 10) / 10;
+		probe.remove();
+		const overlapping = (rect) => {
+			const hits = [];
+			for (const el of document.querySelectorAll(
+				"main button, main a, main input, main select, main textarea, main [role=button], main [data-titlebar-no-drag]",
+			)) {
+				const box = el.getBoundingClientRect();
+				if (box.width <= 0 || box.height <= 0) continue;
+				if (
+					box.left < rect.x + rect.w && box.right > rect.x &&
+					box.top < rect.y + rect.h && box.bottom > rect.y
+				) {
+					const label = el.getAttribute("aria-label") ?? el.textContent ?? "";
+					hits.push(label.trim().replace(/\\s+/g, " ").slice(0, 48));
+				}
+			}
+			return hits;
+		};
+		const band = document.querySelector('[data-chrome-route-band]');
+		const lane = document.querySelector('[data-titlebar-lane]');
+		const bandRect = boxOf(band);
+		const laneRect = lane === null ? null : boxOf(lane);
+		return {
+			leading: document.documentElement.dataset.chromeLeading ?? null,
+			band: { display: getComputedStyle(band).display, rect: bandRect },
+			lane: laneRect === null ? null : { display: getComputedStyle(lane).display, rect: laneRect },
+			captionHeight,
+			bandCentreInside: inRegion(bandRect.x + bandRect.w / 2, bandRect.y + bandRect.h / 2),
+			laneCentreInside:
+				laneRect === null ? null : inRegion(laneRect.x + laneRect.w / 2, laneRect.y + laneRect.h / 2),
+			overlappingBand: overlapping(bandRect),
+			overlappingLane: laneRect === null ? [] : overlapping(laneRect),
+		};
+	})()`);
+	const bandStoodDown = bandRead.band.display === "none";
+	if (bandStoodDown) {
+		/*
+		 * THIS HOST'S BRANCH (macOS is a constant leading layout, and the lane is
+		 * drawn above both columns): the band must be out of the flow entirely,
+		 * the lane must be the drag surface this route's strip still is, and no
+		 * control the route draws may reach into the lane's strip — #535's own
+		 * subject, asserted rather than assumed.
+		 */
+		check(
+			"[settings-route-band] the band stands down where the lane is drawn",
+			bandRead.band.rect.h === 0 && bandRead.band.rect.w === 0,
+			JSON.stringify(bandRead.band),
+			`display=${bandRead.band.display} rect=${JSON.stringify(bandRead.band.rect)} while /settings is up`,
+		);
+		check(
+			"[settings-route-band] the lane is drawn as this route's drag surface",
+			bandRead.lane !== null &&
+				bandRead.lane.display === "block" &&
+				bandRead.lane.rect.y === 0 &&
+				bandRead.lane.rect.h > 0,
+			JSON.stringify(bandRead.lane),
+			`lane ${JSON.stringify(bandRead.lane)}`,
+		);
+		check(
+			"[settings-route-band] the lane's own centre is a drag region",
+			bandRead.laneCentreInside === true,
+			JSON.stringify(bandRead.laneCentreInside),
+			`lane centre inside=${bandRead.laneCentreInside}`,
+		);
+		check(
+			"[settings-route-band] no route control reaches into the lane's strip",
+			bandRead.overlappingLane.length === 0,
+			JSON.stringify(bandRead.overlappingLane),
+			`${bandRead.overlappingLane.length} control(s) in the ${bandRead.lane?.rect.h}px lane strip`,
+		);
+	} else {
+		check(
+			"[settings-route-band] the band is drawn at the caption height",
+			bandRead.band.rect.h >= 30 &&
+				Math.abs(bandRead.band.rect.h - bandRead.captionHeight) <= 1,
+			`band h=${bandRead.band.rect.h} captionHeight=${bandRead.captionHeight}`,
+			`band ${JSON.stringify(bandRead.band.rect)} at captionHeight ${bandRead.captionHeight}`,
+		);
+		check(
+			"[settings-route-band] the band's own centre is a drag region",
+			bandRead.bandCentreInside === true,
+			JSON.stringify(bandRead.bandCentreInside),
+			`band centre inside=${bandRead.bandCentreInside}`,
+		);
+		check(
+			"[settings-route-band] no control of the route overlaps the band",
+			bandRead.overlappingBand.length === 0,
+			JSON.stringify(bandRead.overlappingBand),
+			`${bandRead.band.rect.w}px band, ${bandRead.overlappingBand.length} overlapping control(s)`,
+		);
+	}
+	note(
+		"route-band platform scope",
+		`leading=${bandRead.leading} -> asserted the ${
+			bandStoodDown
+				? "leading branch (the lane is the drag surface)"
+				: "caption-trailing branch (the band is the drag surface)"
+		} ; only the host's own branch runs here — the other platform's assertions ride the runners that render it`,
+	);
+
+	/*
+	 * THE CHAT HEADER'S TITLE BLOCK, the surface the operator's rename report
+	 * (2026-09-26) is about: hovering the title did nothing while hovering the
+	 * pencil beside it worked, because the header row is a drag region and the
+	 * title text had no opt-out - every point over it was a window drag, so the
+	 * renderer never saw the pointer. The title rides this surface's CONTROLS,
+	 * deliberately, so the five-point walk applies to it: on the tree before the
+	 * fix those points are swallowed with the header's own drag rect as their
+	 * cover, and the `swallowedBefore` reconstruction cannot launder that, because
+	 * the fix adds only no-drag entries. The `stillDrags` point beside the title
+	 * is the other half of the same claim: carving the title out must not take the
+	 * row with it.
+	 *
+	 * A session is created on this run's own backend and opened the way a user
+	 * opens one - the sidebar's list, then the row, the path `sceneBrowserPane`
+	 * drives - because the title block and its pencil exist on a conversation.
+	 */
+	await verb(cdp, "navigate", "/chat");
+	const headerCreated = await createBackendSession();
+	note(
+		"a conversation for the chat-header surface",
+		JSON.stringify(headerCreated),
+	);
+	check(
+		"[chat-header-title] a conversation exists on this run's own backend",
+		Boolean(headerCreated.id),
+		JSON.stringify(headerCreated),
+	);
+	if (headerCreated.id) {
+		if (
+			await cdp.evaluate(
+				`Boolean(document.querySelector('[data-tour-tag="chat-all-chats"]'))`,
+			)
+		) {
+			await verb(cdp, "press", {
+				selector: '[data-tour-tag="chat-all-chats"]',
+			});
+		}
+		const headerRowSelector = '[data-tour-tag="chat-session-row"]';
+		let headerRowPressed = false;
+		const headerDeadline = Date.now() + 20_000;
+		while (Date.now() < headerDeadline) {
+			if (await drawnSelector(cdp, headerRowSelector)) {
+				await verb(cdp, "press", { selector: headerRowSelector });
+				headerRowPressed = true;
+				break;
+			}
+			await wait(500);
+		}
+		check(
+			"[chat-header-title] the conversation row painted and was opened",
+			headerRowPressed,
+			`${headerRowSelector} never appeared within 20s`,
+		);
+		await wait(600);
+	}
+	const headerFrame = await captureSettled(cdp, "hit-zones-chat-header-dark");
+	note("frame chat-header-title", JSON.stringify(headerFrame));
+	surfaces.push(
+		checkHitZones(
+			"chat-header-title",
+			await readHitZones(cdp, {
+				surface: "chat-header-title",
+				root: '[data-chat-region="header"]',
+				controls: `${HIT_ZONE_CONTROLS}, [data-header-title]`,
+				stillDrags: {
+					anchor: "[data-header-title]",
+					dx: -8,
+					name: "the row 8px left of the title text",
+				},
+			}),
+		),
+	);
+
+	note(
+		"surfaces probed",
+		surfaces
+			.map((report) => {
+				const count = (pick) =>
+					report.controls.reduce(
+						(total, control) => total + control.samples.filter(pick).length,
+						0,
+					);
+				const swallowed = count((sample) => sample.swallowed);
+				const swallowedBefore = count((sample) => sample.swallowedBefore);
+				return `${report.surface}: ${report.controls.length} control(s), ${swallowed} swallowed sample(s) now, ${swallowedBefore} without this surface's own opt-out, overlay ${JSON.stringify(report.root)}, region ${report.region.entries} entr(ies) (${report.region.dragEntries} drag, ${report.region.noDragEntries} no-drag)`;
+			})
+			.join("\n        "),
+	);
 }
 
 /**
@@ -17835,14 +24152,14 @@ async function sceneSidebarLazyChats(cdp) {
 		 * draws no rows. The box is measured here rather than guessed.
 		 */
 		const regionBox = await cdp.evaluate(`(() => {
-			const region = document.querySelector('[data-sidebar-region="chats"]');
+			const region = document.querySelector('[data-sidebar-region="scroller"]');
 			if (region === null) return null;
 			const box = region.getBoundingClientRect();
 			return { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) };
 		})()`);
 		note("the chats region's centre", JSON.stringify(regionBox));
 		await cdp.evaluate(
-			`(() => { const region = document.querySelector('[data-sidebar-region="chats"]'); if (region) region.scrollTop = region.scrollHeight; return true; })()`,
+			`(() => { const region = document.querySelector('[data-sidebar-region="scroller"]'); if (region) region.scrollTop = region.scrollHeight; return true; })()`,
 		);
 		await cdp.send("Input.dispatchMouseEvent", {
 			type: "mouseWheel",
@@ -17859,7 +24176,7 @@ async function sceneSidebarLazyChats(cdp) {
 		 * numbers separate them.
 		 */
 		const flatGeo = await cdp.evaluate(`(() => {
-			const region = document.querySelector('[data-sidebar-region="chats"]');
+			const region = document.querySelector('[data-sidebar-region="scroller"]');
 			return {
 				region: region !== null,
 				scrollTop: region === null ? null : Math.round(region.scrollTop),
@@ -17960,11 +24277,11 @@ async function sceneSidebarLazyChats(cdp) {
 			 * is the whole point of this arm.
 			 */
 			await cdp.evaluate(
-				`(() => { const region = document.querySelector('[data-sidebar-region="chats"]'); if (region) region.scrollTop = region.scrollHeight; return true; })()`,
+				`(() => { const region = document.querySelector('[data-sidebar-region="scroller"]'); if (region) region.scrollTop = region.scrollHeight; return true; })()`,
 			);
 			await wait(500);
 			const flatEnd = await cdp.evaluate(`(() => {
-				const region = document.querySelector('[data-sidebar-region="chats"]');
+				const region = document.querySelector('[data-sidebar-region="scroller"]');
 				if (region === null) return null;
 				return {
 					atEnd: region.scrollTop + region.clientHeight >= region.scrollHeight - 1,
@@ -18281,7 +24598,7 @@ async function sceneSidebarLazyChats(cdp) {
 		 * press that lands on nothing, which is what the first attempt measured.
 		 */
 		const wideWidth = await cdp.evaluate(
-			`document.querySelector('[data-sidebar-region="chats"]')?.offsetWidth ?? null`,
+			`document.querySelector('[data-sidebar-region="scroller"]')?.offsetWidth ?? null`,
 		);
 		/*
 		 * AND THE PREFERENCE ITSELF, because the two are not the same number (round 4, D20):
@@ -18297,7 +24614,7 @@ async function sceneSidebarLazyChats(cdp) {
 		await setSplitPreferences(cdp, { chatSidebarWidth: 240 });
 		await wait(LAZY_SETTLE_MS);
 		const narrowWidth = await cdp.evaluate(
-			`document.querySelector('[data-sidebar-region="chats"]')?.offsetWidth ?? null`,
+			`document.querySelector('[data-sidebar-region="scroller"]')?.offsetWidth ?? null`,
 		);
 		check(
 			"the narrow frame is NARROWER: the panel is at its own drag floor, not at the window's size",
@@ -18322,7 +24639,7 @@ async function sceneSidebarLazyChats(cdp) {
 				typeof preferenceWidth === "number" ? preferenceWidth : undefined,
 		});
 		const restoredWidth = await cdp.evaluate(
-			`document.querySelector('[data-sidebar-region="chats"]')?.offsetWidth ?? null`,
+			`document.querySelector('[data-sidebar-region="scroller"]')?.offsetWidth ?? null`,
 		);
 		check(
 			"the post-press frames are back at this run's OWN width, preference for preference",
@@ -18496,13 +24813,13 @@ async function sceneSidebarLazyChats(cdp) {
 		 * being trusted at the width where it was written.
 		 */
 		const settledDefaultWidth = await cdp.evaluate(
-			`document.querySelector('[data-sidebar-region="chats"]')?.offsetWidth ?? null`,
+			`document.querySelector('[data-sidebar-region="scroller"]')?.offsetWidth ?? null`,
 		);
 		await setSplitPreferences(cdp, { chatSidebarWidth: 240 });
 		await wait(LAZY_SETTLE_MS);
 		const settledFloor = await lazyGroupFacts(cdp, LAZY_GROUP);
 		const settledFloorWidth = await cdp.evaluate(
-			`document.querySelector('[data-sidebar-region="chats"]')?.offsetWidth ?? null`,
+			`document.querySelector('[data-sidebar-region="scroller"]')?.offsetWidth ?? null`,
 		);
 		check(
 			"the settled sentence is whole at the panel's own floor, not clipped by the clamp",
@@ -18793,1366 +25110,6 @@ async function waitForSessionCount(cdp, atLeast, timeoutMs = 15_000) {
 	return last;
 }
 
-async function sceneSidebarSplit(cdp, handle) {
-	/* The live connection, which becomes a NEW one after the restart below. */
-	let link = cdp;
-	const wide = { chatSidebarWidth: 360, themeName: "localOperatorDark" };
-	const narrow = { chatSidebarWidth: 240, themeName: "localOperatorDark" };
-	const light = { chatSidebarWidth: 360, themeName: "localOperatorLight" };
-
-	// --- 1. the panel at rest, both regions, nothing revealed ---------------
-	await setSplitPreferences(cdp, { ...wide, chatSidebarRegions: "both" });
-	await parkPointer(cdp);
-	await capture(cdp, "split-rest-360-dark");
-	const atRest = await splitPreferences(cdp);
-	note("preferences at rest", JSON.stringify(atRest.state));
-
-	// --- 2. the centre of the band, and what a gesture there finds ----------
-	const separator = await splitBox(cdp, SPLIT_SEPARATOR);
-	require("the boundary is drawn at rest", separator !==
-		null, "no separator: the split needs both regions and a backend that advertises the catalogue");
-	const centre = await splitHit(cdp, separator.x, separator.y);
-	note("the element at the band's centre", JSON.stringify(centre));
-	check(
-		"the band's CENTRE is the separator rather than a control",
-		centre !== null &&
-			centre.inSeparator === true &&
-			centre.inCluster === false,
-		JSON.stringify(centre),
-	);
-
-	// --- 3. the reveal, inside the intent window and after it ---------------
-	/*
-	 * THE TIMING IS READ, NOT PHOTOGRAPHED, and that is the honest instrument for
-	 * it: `Page.captureScreenshot` takes longer than the intent window, so a frame
-	 * taken "inside" it can show the plate already up - which is what the first
-	 * version of this scene did, and it reported the opposite of the truth on one
-	 * run and the truth on the next. Two reads of the same DOM attribute, one the
-	 * moment the pointer arrives and one after the window has passed, settle it
-	 * deterministically; the frames below are then a pair of the fade itself.
-	 *
-	 * The claim being checked is review round 1's M-1: the plate and the line are
-	 * revealed by ONE intent, so the controls cannot appear a beat before the line
-	 * that says the boundary is live.
-	 */
-	await movePointer(cdp, separator.x, separator.y);
-	const arrivedCluster = await cdp.evaluate(
-		`document.querySelector(${JSON.stringify(SPLIT_CLUSTER_REVEALED)}) !== null`,
-	);
-	check(
-		"the cluster is NOT revealed the moment the pointer arrives",
-		arrivedCluster === false,
-		`cluster revealed=${arrivedCluster}`,
-	);
-	await wait(120);
-	const insideCluster = await cdp.evaluate(
-		`document.querySelector(${JSON.stringify(SPLIT_CLUSTER_REVEALED)}) !== null`,
-	);
-	check(
-		"120ms in - inside the intent window - it is still hidden",
-		insideCluster === false,
-		`cluster revealed=${insideCluster}`,
-	);
-	await wait(140);
-	const early = await capture(cdp, "split-reveal-early-dark");
-	note("the first reveal frame, one frame into the fade", early.path);
-	await wait(320);
-	await captureSettled(cdp, "split-reveal-settled-dark");
-	const settledCluster = await cdp.evaluate(
-		`document.querySelector(${JSON.stringify(SPLIT_CLUSTER_REVEALED)}) !== null`,
-	);
-	check(
-		"after the intent, the cluster IS revealed",
-		settledCluster === true,
-		`cluster revealed=${settledCluster}`,
-	);
-
-	// --- 4. a tooltip, which is the only naming a sighted user gets ---------
-	const orderControl = await splitBox(cdp, "[data-sidebar-order]");
-	if (orderControl !== null) {
-		await movePointer(cdp, orderControl.x, orderControl.y);
-		await wait(900);
-		await capture(cdp, "split-tooltip-dark");
-	}
-
-	// --- 5. the drag, and the line it paints while it runs ------------------
-	await parkPointer(cdp);
-	const before = await splitPreferences(cdp);
-	await movePointer(cdp, separator.x, separator.y);
-	await dragSplit(cdp, separator.x, separator.y, 90, {
-		hold: async () => {
-			await capture(cdp, "split-drag-line-dark");
-		},
-	});
-	const afterDrag = await splitPreferences(cdp);
-	note(
-		"stored height before the drag",
-		String(before.state?.chatSidebarListHeight),
-	);
-	note(
-		"stored height after the drag",
-		String(afterDrag.state?.chatSidebarListHeight),
-	);
-	check(
-		"a drag at the band's centre WRITES a height",
-		typeof afterDrag.state?.chatSidebarListHeight === "number" &&
-			afterDrag.state.chatSidebarListHeight !==
-				before.state?.chatSidebarListHeight,
-		`${before.state?.chatSidebarListHeight} -> ${afterDrag.state?.chatSidebarListHeight}`,
-	);
-	await captureSettled(cdp, "split-dragged-dark");
-	const drawn = await splitBox(cdp, SPLIT_CHATS);
-	const announced = await cdp.evaluate(
-		`(() => {
-			const node = document.querySelector(${JSON.stringify(SPLIT_SEPARATOR)});
-			return node === null ? null : node.getAttribute("aria-valuenow");
-		})()`,
-	);
-	check(
-		"the separator announces the height the region is drawn at",
-		drawn !== null &&
-			announced !== null &&
-			Math.abs(Number(announced) - drawn.height) <= 1,
-		`aria-valuenow ${announced} against a drawn ${drawn?.height}`,
-	);
-
-	// --- 6. the collapse, its persistence, and the way back -----------------
-	const hide = await splitBox(cdp, '[data-sidebar-hide="chats"]');
-	require("the hide control is on the revealed cluster", hide !==
-		null, "no [data-sidebar-hide=chats] control");
-	await movePointer(cdp, hide.x, hide.y);
-	await wait(320);
-	await pressPointerStationary(cdp, hide.x, hide.y);
-	await wait(320);
-	const collapsed = await splitPreferences(cdp);
-	check(
-		"the collapse is PERSISTED",
-		collapsed.state?.chatSidebarRegions === "entities",
-		String(collapsed.state?.chatSidebarRegions),
-	);
-	const chatsGone = await cdp.evaluate(
-		`document.querySelector(${JSON.stringify(SPLIT_CHATS)}) === null`,
-	);
-	check(
-		"the collapsed region is UNMOUNTED",
-		chatsGone === true,
-		`unmounted=${chatsGone}`,
-	);
-	await captureSettled(cdp, "split-collapsed-dark");
-
-	const restore = await splitBox(cdp, "[data-sidebar-restore]");
-	require("the restore row is drawn", restore !==
-		null, "no [data-sidebar-restore] row");
-	const restoreText = await cdp.evaluate(
-		`document.querySelector("[data-sidebar-restore]").textContent.trim()`,
-	);
-	note("the restore row reads", restoreText);
-	await pressPointerStationary(cdp, restore.x, restore.y);
-	await wait(320);
-	const restored = await splitPreferences(cdp);
-	check(
-		"the restore row brings the region back and persists it",
-		restored.state?.chatSidebarRegions === "both",
-		String(restored.state?.chatSidebarRegions),
-	);
-	await captureSettled(cdp, "split-restored-dark");
-
-	// --- 7. U1's SECOND LIMB, asserted: a press that travels does not act ----
-	/*
-	 * The click-cancel is half of what U1 asked for and was asserted nowhere:
-	 * `CONTROL_PRESS_SLOP_PX` appeared once in the tree, at its definition, so a
-	 * regression that deleted the whole mechanism (leaving only the trailing-end
-	 * placement) would have kept every committed check green while a drag starting
-	 * on the plate collapsed a region again (agent review round 2, m-3). The
-	 * gesture below is the one a user makes when they reach for the divider and
-	 * land on a control: press, travel 20px, release.
-	 */
-	const travelFrom = await splitBox(cdp, '[data-sidebar-hide="chats"]');
-	require("the travel probe has a control to press", travelFrom !==
-		null, "no [data-sidebar-hide=chats] control to press");
-	const regionsBeforeTravel = (await splitPreferences(cdp)).state
-		?.chatSidebarRegions;
-	await movePointer(cdp, travelFrom.x, travelFrom.y);
-	await wait(320);
-	await cdp.send("Input.dispatchMouseEvent", {
-		type: "mousePressed",
-		x: travelFrom.x,
-		y: travelFrom.y,
-		button: "left",
-		buttons: 1,
-		clickCount: 1,
-	});
-	for (const travelled of [4, 8, 12, 16, 20]) {
-		await cdp.send("Input.dispatchMouseEvent", {
-			type: "mouseMoved",
-			x: travelFrom.x + travelled,
-			y: travelFrom.y + travelled,
-			button: "left",
-			buttons: 1,
-		});
-		await wait(20);
-	}
-	await cdp.send("Input.dispatchMouseEvent", {
-		type: "mouseReleased",
-		x: travelFrom.x + 20,
-		y: travelFrom.y + 20,
-		button: "left",
-		buttons: 0,
-		clickCount: 1,
-	});
-	await wait(320);
-	const afterTravel = (await splitPreferences(cdp)).state?.chatSidebarRegions;
-	check(
-		"a press that travels 20px off a boundary control does not act",
-		afterTravel === regionsBeforeTravel,
-		`regions ${regionsBeforeTravel} -> ${afterTravel} (the click-cancel is what makes this safe)`,
-	);
-	const regionsDrawn = await cdp.evaluate(
-		`document.querySelectorAll("[data-sidebar-region]").length`,
-	);
-	check(
-		"and both regions are still drawn",
-		regionsDrawn === 2,
-		`regions drawn: ${regionsDrawn}`,
-	);
-
-	// --- 8. the keyboard path: focus, Home, and the write it makes ----------
-	await cdp.evaluate(
-		`document.querySelector(${JSON.stringify(SPLIT_SEPARATOR)}).focus(); true`,
-	);
-	const focused = await cdp.evaluate(
-		`document.activeElement === document.querySelector(${JSON.stringify(SPLIT_SEPARATOR)})`,
-	);
-	check("the separator can take focus", focused === true, `focused=${focused}`);
-	await pressChord(cdp, { key: "Home", code: "Home", virtualKeyCode: 36 });
-	await wait(250);
-	await captureSettled(cdp, "split-keyboard-home-dark");
-	const afterHome = await splitPreferences(cdp);
-	note(
-		"stored height after Home",
-		String(afterHome.state?.chatSidebarListHeight),
-	);
-
-	// --- 9. the swap, and the two scroll positions it must not lose ---------
-	/*
-	 * TWO readings, because the swap can lose two different things and only one of
-	 * them is always measurable.
-	 *
-	 * The mechanism review round 1 (U2) found is NODE IDENTITY: unkeyed, React
-	 * reconciles the two positions in place, so the element that was the entity
-	 * region becomes the chats region and inherits its content. That is measurable
-	 * whatever the content is, so each node is tagged before the swap and asked
-	 * again after it.
-	 *
-	 * The user-visible consequence is the scroll position, and that one is only
-	 * measurable when BOTH regions overflow - a region given more height than its
-	 * content simply clamps to 0 at any scrollTop, which is a true reading of a
-	 * layout with nothing to scroll rather than a lost position. This run's backend
-	 * has six conversations and no agents, so the chats region is the one that
-	 * overflows; the entity region's reading is reported either way.
-	 */
-	const beforeSwap = await cdp.evaluate(`(() => {
-		const entities = document.querySelector(${JSON.stringify(SPLIT_ENTITIES)});
-		const chats = document.querySelector(${JSON.stringify(SPLIT_CHATS)});
-		if (entities) {
-			entities.dataset.splitProbe = "entities-node";
-			entities.scrollTop = 24;
-		}
-		if (chats) {
-			chats.dataset.splitProbe = "chats-node";
-			chats.scrollTop = 12;
-		}
-		return {
-			probe: {
-				entities: entities?.dataset.splitProbe ?? null,
-				chats: chats?.dataset.splitProbe ?? null,
-			},
-			scroll: { entities: entities?.scrollTop ?? null, chats: chats?.scrollTop ?? null },
-			overflow: {
-				entities: entities ? entities.scrollHeight > entities.clientHeight : null,
-				chats: chats ? chats.scrollHeight > chats.clientHeight : null,
-			},
-		};
-	})()`);
-	const swap = await splitBox(cdp, "[data-sidebar-order]");
-	require("the order control is on the cluster", swap !==
-		null, "no [data-sidebar-order]");
-	await movePointer(cdp, swap.x, swap.y);
-	await wait(320);
-	await pressPointerStationary(cdp, swap.x, swap.y);
-	await wait(400);
-	const swapped = await splitPreferences(cdp);
-	check(
-		"the swap is PERSISTED",
-		swapped.state?.chatSidebarOrder === "chats-first",
-		String(swapped.state?.chatSidebarOrder),
-	);
-	const order = await cdp.evaluate(`(() => {
-		const regions = [...document.querySelectorAll("[data-sidebar-region]")];
-		return regions.map((node) => node.dataset.sidebarRegion);
-	})()`);
-	check(
-		"the chats region is drawn FIRST after the swap",
-		Array.isArray(order) && order[0] === "chats" && order[1] === "entities",
-		JSON.stringify(order),
-	);
-	const afterSwap = await cdp.evaluate(`(() => {
-		const entities = document.querySelector(${JSON.stringify(SPLIT_ENTITIES)});
-		const chats = document.querySelector(${JSON.stringify(SPLIT_CHATS)});
-		return {
-			probe: {
-				entities: entities?.dataset.splitProbe ?? null,
-				chats: chats?.dataset.splitProbe ?? null,
-			},
-			scroll: { entities: entities?.scrollTop ?? null, chats: chats?.scrollTop ?? null },
-			overflow: {
-				entities: entities ? entities.scrollHeight > entities.clientHeight : null,
-				chats: chats ? chats.scrollHeight > chats.clientHeight : null,
-			},
-		};
-	})()`);
-	note(
-		"node identity across the swap",
-		`${JSON.stringify(beforeSwap.probe)} -> ${JSON.stringify(afterSwap.probe)}`,
-	);
-	check(
-		"each region keeps its OWN DOM node across the swap",
-		afterSwap.probe.entities === "entities-node" &&
-			afterSwap.probe.chats === "chats-node",
-		`${JSON.stringify(beforeSwap.probe)} -> ${JSON.stringify(afterSwap.probe)}`,
-	);
-	note(
-		"scroll positions across the swap",
-		`${JSON.stringify(beforeSwap.scroll)} -> ${JSON.stringify(afterSwap.scroll)} (overflowing: ${JSON.stringify(beforeSwap.overflow)})`,
-	);
-	/*
-	 * PER REGION, and conditioned on the region still overflowing: a region given
-	 * more height than its content holds is not a lost position, it is a clamp - it
-	 * has nowhere left to scroll. The first version of this check asserted the
-	 * CHATS region's number alone, which passed because that region is the one with
-	 * a single row's worth of content; the reading it threw away
-	 * (`entities: 24 -> 0` with the entity region overflowing before the swap) is
-	 * the one that says whether a real position was lost, so it is read on both
-	 * sides now.
-	 */
-	for (const region of ["entities", "chats"]) {
-		const stillOverflows =
-			beforeSwap.overflow[region] === true &&
-			afterSwap.overflow[region] === true;
-		check(
-			`a ${region} region that still overflows keeps its scroll position`,
-			!stillOverflows || afterSwap.scroll[region] === beforeSwap.scroll[region],
-			`${region} ${beforeSwap.scroll[region]} -> ${afterSwap.scroll[region]}, ` +
-				`overflow ${beforeSwap.overflow[region]} -> ${afterSwap.overflow[region]}`,
-		);
-	}
-	await captureSettled(cdp, "split-swapped-dark");
-	/*
-	 * Back to the SHIPPED ORDER as well as the wide width, because the frames that
-	 * follow are captioned as the default layout: left swapped, they would be
-	 * photographs of `chats-first` under an `entities-first` caption, which is the
-	 * evidence defect this whole directory exists to avoid.
-	 */
-	await setSplitPreferences(cdp, {
-		...wide,
-		chatSidebarRegions: "both",
-		chatSidebarOrder: "entities-first",
-	});
-
-	// --- 10. the panel at its width clamp -----------------------------------
-	await setSplitPreferences(cdp, {
-		...narrow,
-		chatSidebarRegions: "both",
-		chatSidebarOrder: "entities-first",
-		/*
-		 * AUTO, not the extreme the keyboard step above left: this pair's claim is
-		 * about WIDTH and the room the plate has at it, and a state inherited from a
-		 * `Home` press is neither (design round 2, D9).
-		 */
-		chatSidebarListHeight: null,
-	});
-	await parkPointer(cdp);
-	await captureSettled(cdp, "split-rest-240-dark");
-	const narrowSeparator = await splitBox(cdp, SPLIT_SEPARATOR);
-	if (narrowSeparator !== null) {
-		await movePointer(cdp, narrowSeparator.x, narrowSeparator.y);
-		await wait(420);
-		await captureSettled(cdp, "split-reveal-240-dark");
-	}
-
-	// --- 11. the second brand palette ---------------------------------------
-	await setSplitPreferences(cdp, {
-		...light,
-		chatSidebarRegions: "both",
-		chatSidebarOrder: "entities-first",
-		/*
-		 * AUTO, so this pair is the RESTING state its captions claim.
-		 *
-		 * Taken as the runs before it left the split, the light frames photographed
-		 * the clamped top-of-range state the drag and the `Home` press had just
-		 * written - a region at its 72px floor while the captions said "the resting
-		 * state in the second brand palette" (design round 2, D9). The state is
-		 * reset rather than the caption weakened, because the palette half of D1
-		 * needs the two palettes photographed in the SAME state to be comparable at
-		 * all.
-		 */
-		chatSidebarListHeight: null,
-	});
-	await parkPointer(cdp);
-	await captureSettled(cdp, "split-rest-360-light");
-	const lightSeparator = await splitBox(cdp, SPLIT_SEPARATOR);
-	if (lightSeparator !== null) {
-		await movePointer(cdp, lightSeparator.x, lightSeparator.y);
-		await wait(420);
-		await captureSettled(cdp, "split-reveal-settled-light");
-	}
-
-	// --- 12. the restart: a stored height and a collapse that SURVIVE -------
-	await setSplitPreferences(cdp, {
-		...wide,
-		chatSidebarRegions: "both",
-		chatSidebarOrder: "entities-first",
-	});
-	const heightBefore = await splitPreferences(cdp);
-	await movePointer(
-		cdp,
-		(await splitBox(cdp, SPLIT_SEPARATOR)).x,
-		(await splitBox(cdp, SPLIT_SEPARATOR)).y,
-	);
-	await dragSplit(
-		cdp,
-		(await splitBox(cdp, SPLIT_SEPARATOR)).x,
-		(await splitBox(cdp, SPLIT_SEPARATOR)).y,
-		64,
-	);
-	const hideAgain = await splitBox(cdp, '[data-sidebar-hide="chats"]');
-	if (hideAgain !== null) {
-		await movePointer(cdp, hideAgain.x, hideAgain.y);
-		await wait(320);
-		await pressPointerStationary(cdp, hideAgain.x, hideAgain.y);
-		await wait(320);
-	}
-	const beforeRestart = await splitPreferences(cdp);
-	note("before the restart", JSON.stringify(beforeRestart.state));
-
-	/*
-	 * The second boot, in the SAME scratch profile. `launchApp` reuses the run's
-	 * profile and home by construction, and the earlier handle is stopped by exact
-	 * pid first - a restart is two processes, and the second must be the one this
-	 * run owns.
-	 */
-	const firstPid = handle.pid;
-	await stopApp(handle);
-	/*
-	 * THE SAME TAG, and therefore the same `--user-data-dir`: `launchApp` builds the
-	 * profile as `${USER_DATA}-${tag}`, so a restart under a new tag is a restart
-	 * into a NEW profile - which is what the first version of this scene did, and it
-	 * read an empty store on the second boot and failed its own claim. The tag is
-	 * what pins the profile, and the single-instance lock it also carries is free
-	 * because the first boot has been stopped, by exact pid, one line above.
-	 */
-	const profile = `${USER_DATA}-scene`;
-	const again = await launchApp({
-		armed: true,
-		logName: "app-scene-restart.log",
-		tag: "scene",
-	});
-	/*
-	 * The module-level handle moves to the SECOND boot, because that is the
-	 * process this run must reap: the first was stopped by exact pid just above,
-	 * and the teardown's own check is "nothing is left carrying this run's tag".
-	 * `link` is a local rather than a reassignment of the parameter, which the
-	 * repo's lint refuses and which would also leave the caller's variable stale.
-	 */
-	app = again;
-	await waitForDevtools(again);
-	link.close();
-	link = await CdpClient.attach(again.port, "out/renderer/index.html");
-	await waitForBridge(link);
-	await wait(900);
-	await parkPointer(link);
-	const afterRestart = await splitPreferences(link);
-	note("the restart's profile, unchanged by construction", profile);
-	note("the restart's pid", `${firstPid} -> ${again.pid}`);
-	note("after the restart", JSON.stringify(afterRestart.state));
-	check(
-		"the restart is a different process",
-		again.pid !== firstPid,
-		`${firstPid} -> ${again.pid}`,
-	);
-	check(
-		"the stored height survives the restart",
-		afterRestart.state?.chatSidebarListHeight ===
-			beforeRestart.state?.chatSidebarListHeight,
-		`${beforeRestart.state?.chatSidebarListHeight} -> ${afterRestart.state?.chatSidebarListHeight}`,
-	);
-	check(
-		"the collapse survives the restart",
-		afterRestart.state?.chatSidebarRegions === "entities",
-		String(afterRestart.state?.chatSidebarRegions),
-	);
-	const stillCollapsed = await link.evaluate(
-		`document.querySelector(${JSON.stringify(SPLIT_ENTITIES)}) !== null && document.querySelector(${JSON.stringify(SPLIT_CHATS)}) === null`,
-	);
-	check(
-		"the restarted app DRAWS the collapsed state",
-		stillCollapsed === true,
-		`collapsed again drawn=${stillCollapsed}`,
-	);
-	await captureSettled(link, "split-restart-restored-dark");
-	return link;
-}
-
-/**
- * The one sidebar's TWO SECTIONS and the boundary between them, as the operator
- * asked for them on the preview (2026-09-24): Agents + Teams and Chats both
- * VISIBLE, sized RELATIVE to each other by a drag, the size PERSISTED - plus the
- * bubbled brand mark at the three places it leads a surface.
- *
- * WHY A SCENE BESIDE `sidebar-split` RATHER THAN MORE STEPS IN IT. That scene
- * walks the boundary's own controls (the intent-gated plate, collapse, restore,
- * swap) from a column it FORCES to "both"; the claim here is about the column
- * nobody has touched, so this scene deliberately writes NOTHING to the regions
- * before its first frame - the default is the subject. Its frames are the evidence
- * for the default, the two drag positions, the floors, the keyboard and the
- * relaunch, in both brand palettes.
- *
- * It seeds the backend with an agent, a team and a handful of chats first, because
- * both sections have to have rows for "visible sections" to mean anything - an empty
- * catalogue would photograph two headings.
- */
-/**
- * THE SIDEBAR'S ONE SCROLLER, measured rather than argued.
- *
- * WHY THIS EXISTS. The operator caught three scrollbars in one column on the running
- * app - one on the sidebar's outer edge spanning its whole height, one inside the
- * Agents section and one inside the chats section - and the cause was a CSS trap
- * rather than a layout intent: `overflow-x-hidden` on the column's own div computes
- * `overflow-y: auto` (CSS 2.1 §11.1.1), so the column became a scroller wrapping the
- * two its sections carry. A wheel event then has no unambiguous target, and the fixed
- * chrome can be scrolled out from under the pointer.
- *
- * WHAT IT REPORTS: the column's own scroll box, every ancestor's, every scroller in
- * the sidebar subtree by name, the document's, the y of each fixed chrome row, and -
- * per region - whether a point inside it has exactly one scrollable ancestor. The
- * assertions are the driver's, so a later edit that re-introduces an outer scroller
- * fails a check rather than being read off a frame.
- */
-const sidebarScrollFacts = (cdp) =>
-	cdp.evaluate(`(() => {
-		const box = (el) => { const r = el.getBoundingClientRect(); return { y: Math.round(r.y), h: Math.round(r.height) }; };
-		const scroller = (el) => { const s = getComputedStyle(el); return (s.overflowY === "auto" || s.overflowY === "scroll") && el.scrollHeight > el.clientHeight + 1; };
-		const name = (el) => el.getAttribute("data-sidebar-region") || el.getAttribute("data-sidebar-shell") !== null && "shell" || el.id || el.tagName + "." + String(el.className || "").split(" ").slice(0, 3).join(".").slice(0, 40);
-		const shell = document.querySelector("[data-sidebar-shell]");
-		const nav = document.querySelector('nav[aria-label="Chats"]');
-		const strip = document.querySelector("[data-sidebar-strip]");
-		const root = shell ?? strip ?? null;
-		const inner = [];
-		if (root) {
-			root.querySelectorAll("*").forEach((el) => { if (scroller(el)) inner.push(name(el)); });
-			if (scroller(root)) inner.push(name(root));
-		}
-		const chain = [];
-		for (let el = root; el && el !== document.body; el = el.parentElement) {
-			const s = getComputedStyle(el);
-			chain.push({ tag: el.tagName, oy: s.overflowY, client: el.clientHeight, scroll: el.scrollHeight, scrollable: scroller(el) });
-		}
-		/*
-		 * POINTWISE: how many scrollable elements the point at the centre of each
-		 * region sits inside. One means the wheel has one target; two is the defect
-		 * this check exists for; nought means the pane cannot be scrolled at all.
-		 */
-		const at = (el) => {
-			if (!el) return null;
-			const r = el.getBoundingClientRect();
-			const x = Math.round(r.x + r.width / 2);
-			const y = Math.round(r.y + Math.min(r.height / 2, 80));
-			const under = document.elementsFromPoint(x, y).filter(scroller).map(name);
-			return { x, y, scrollableUnder: under, scrollTop: Math.round(el.scrollTop) };
-		};
-		const scrollTop = (sel) => { const el = document.querySelector(sel); return el === null ? null : Math.round(el.scrollTop); };
-		return {
-			shell: shell ? { oy: getComputedStyle(shell).overflowY, client: shell.clientHeight, scroll: shell.scrollHeight, scrollTop: Math.round(shell.scrollTop) } : null,
-			strip: strip ? { oy: getComputedStyle(strip).overflowY, client: strip.clientHeight, scroll: strip.scrollHeight, scrollTop: Math.round(strip.scrollTop) } : null,
-			nav: nav ? { client: nav.clientHeight, scroll: nav.scrollHeight, oy: getComputedStyle(nav).overflowY, scrollTop: Math.round(nav.scrollTop) } : null,
-			inner,
-			chain,
-			document: { client: document.scrollingElement.clientHeight, scroll: document.scrollingElement.scrollHeight, scrollTop: Math.round(document.scrollingElement.scrollTop) },
-			chrome: {
-				brand: (() => { const n = document.querySelector("[data-brand-mark]"); return n === null ? null : box(n); })(),
-				newChat: (() => { const n = document.querySelector("[data-new-chat-row]"); return n === null ? null : box(n); })(),
-				search: (() => { const n = document.querySelector("[data-command-palette-trigger]"); return n === null ? null : box(n); })(),
-				destinations: (() => { const n = document.querySelector('[data-tour-tag="nav-item-browser"]'); return n === null ? null : box(n); })(),
-			},
-			entities: at(document.querySelector('[data-sidebar-region="entities"]')),
-			chats: at(document.querySelector('[data-sidebar-region="chats"]')),
-			/*
-			 * THE BOX TREE, for the case where an element reports more content than it
-			 * has box: scrollHeight alone says an ancestor overflows, and only the
-			 * children's own heights say WHICH one. Cheap enough to carry always, and
-			 * the note is what a reader needs when a check fails at 3am.
-			 */
-			boxes: (() => {
-				const detail = (el) => {
-					if (el === null) return null;
-					const r = el.getBoundingClientRect();
-					const st = getComputedStyle(el);
-					return {
-						name: name(el),
-						top: Math.round(r.top),
-						h: Math.round(r.height),
-						client: el.clientHeight,
-						scroll: el.scrollHeight,
-						css: st.height + "/" + st.minHeight + "/" + st.maxHeight + "/" + st.flex,
-					};
-				};
-				const nodes = [];
-				if (nav) {
-					nodes.push(detail(nav));
-					for (const child of nav.children) nodes.push(detail(child));
-					const split = nav.querySelector("div[data-sidebar-split]")?.parentElement ?? null;
-					if (split) { nodes.push(detail(split)); for (const child of split.children) nodes.push(detail(child)); }
-				}
-				return nodes;
-			})(),
-			/*
-			 * WHAT LEAKS OUT OF THE PANEL. scrollHeight on an ancestor says SOMETHING
-			 * pokes past it and this says which element: every descendant whose box
-			 * crosses the panel's own bottom edge and which is not clipped by a
-			 * scrollable ancestor in between (those are contained by their scroller and
-			 * are not the leak). The list is short by construction - a leak is a defect -
-			 * so it is printed whole.
-			 */
-			leaks: (() => {
-				if (!nav) return [];
-				const navBox = nav.getBoundingClientRect();
-				const clipped = (el) => {
-					for (let p = el.parentElement; p && p !== nav; p = p.parentElement) {
-						const s = getComputedStyle(p);
-						if (s.overflowY !== "visible") return true;
-					}
-					return false;
-				};
-				const out = [];
-				for (const el of nav.querySelectorAll("*")) {
-					if (out.length > 12) break;
-					const r = el.getBoundingClientRect();
-					if (r.height === 0) continue;
-					if (r.bottom <= navBox.bottom + 1) continue;
-					if (clipped(el)) continue;
-					out.push({ name: name(el), top: Math.round(r.top), bottom: Math.round(r.bottom), h: Math.round(r.height), over: Math.round(r.bottom - navBox.bottom) });
-				}
-				return out;
-			})(),
-		};
-	})()`);
-
-/**
- * WHICH CHILD OWNS THE PANEL'S OVERFLOW, when the panel reports any.
- *
- * A number that is too big says something pokes out; it does not say what. This
- * hides each of the panel's own children in turn (and, one level down, the
- * boundary container's) and reports what the panel's scrollHeight does without it,
- * restoring the DOM between probes - so the answer is a delta rather than a guess,
- * and the DOM is exactly as it was when the frame is taken.
- */
-const diagnoseSidebarOverflow = (cdp) =>
-	cdp.evaluate(`(() => {
-		const nav = document.querySelector('nav[aria-label="Chats"]');
-		if (!nav) return null;
-		const describe = (el) => el.tagName + "." + String(el.className || "").split(" ").slice(0, 3).join(".").slice(0, 44);
-		/*
-		 * Follow the drop down the tree: at each level hide each child in turn and
-		 * keep the one whose absence shrinks the PANEL, then descend into it. Three
-		 * levels is enough to reach a region's own scroll box, and the chain is what
-		 * a reader needs - the element that owns the overflow is on it.
-		 */
-		const chain = [];
-		let container = nav;
-		for (let depth = 0; depth < 4; depth += 1) {
-			const target = nav.scrollHeight;
-			let found = null;
-			for (const child of container.children) {
-				const shown = child.style.display;
-				child.style.display = "none";
-				const without = nav.scrollHeight;
-				child.style.display = shown;
-				const drop = target - without;
-				if (drop <= 0) continue;
-				const entry = {
-					depth,
-					name: describe(child),
-					drop,
-					h: Math.round(child.getBoundingClientRect().height),
-					client: child.clientHeight,
-					scroll: child.scrollHeight,
-					overflow: getComputedStyle(child).overflowY,
-					position: getComputedStyle(child).position,
-				};
-				chain.push(entry);
-				if (found === null || drop > found.drop) found = { drop, child };
-			}
-			if (found === null) break;
-			container = found.child;
-		}
-		/*
-		 * AND WHAT WOULD CONTAIN IT. The panes are scroll containers, yet their scrolled
-		 * content still inflates the PANEL's scrollHeight in this Chromium - so this
-		 * measures the panel under each candidate containment rule and restores the DOM
-		 * between probes. The answer decides the fix rather than a theory of the
-		 * browser deciding it.
-		 */
-		const shell = document.querySelector("[data-sidebar-shell]");
-		const panes = [...nav.querySelectorAll('[data-sidebar-region]')];
-		const candidates = [
-			["panes: position relative", () => panes.forEach((el) => { el.style.position = "relative"; })],
-			["panes: contain paint", () => panes.forEach((el) => { el.style.contain = "paint"; })],
-			["panes: overflow hidden", () => panes.forEach((el) => { el.style.overflow = "hidden"; })],
-			["nav: position relative (already)", () => {}],
-			["shell: overflow clip", () => { if (shell) shell.style.overflow = "clip"; }],
-			["shell: contain paint", () => { if (shell) shell.style.contain = "paint"; }],
-		];
-		const probe = [];
-		for (const [label, apply] of candidates) {
-			const before = [nav.scrollHeight, shell ? shell.scrollHeight : null];
-			apply();
-			probe.push({ label, nav: nav.scrollHeight, shell: shell ? shell.scrollHeight : null, before });
-			// Restore: the inline styles this probe wrote are the only ones removed.
-			panes.forEach((el) => { el.style.position = ""; el.style.contain = ""; el.style.overflow = ""; });
-			if (shell) shell.style.overflow = ""; if (shell) shell.style.contain = "";
-		}
-		return { nav: nav.clientHeight + "/" + nav.scrollHeight, chain, probe };
-	})()`);
-
-/** One wheel notch at a point, through CDP's own input pipeline. */
-async function wheelAt(cdp, x, y, deltaY) {
-	await cdp.send("Input.dispatchMouseEvent", {
-		type: "mouseWheel",
-		x,
-		y,
-		deltaX: 0,
-		deltaY,
-		buttons: 0,
-	});
-	await wait(260);
-}
-
-/**
- * The scroll contract for ONE state, asserted: the column never scrolls, the panes
- * below the boundary are the only scrollers, each point has at most one scrollable
- * element over it, and a wheel over a pane moves THAT pane and nothing else - never
- * the chrome, never the other pane, never the column.
- */
-async function checkSidebarScroll(cdp, state) {
-	const facts = await sidebarScrollFacts(cdp);
-	note(`scroll facts, ${state}`, JSON.stringify(facts));
-	const root = facts.shell ?? facts.strip;
-	const chromeBefore = facts.chrome;
-	check(
-		`${state}: neither the sidebar's container nor its panel scrolls`,
-		root !== null &&
-			root.scroll === root.client &&
-			(facts.nav === null || facts.nav.scroll === facts.nav.client) &&
-			facts.document.scroll === facts.document.client,
-		JSON.stringify({
-			shell: facts.shell,
-			strip: facts.strip,
-			nav: facts.nav,
-			document: facts.document,
-		}),
-	);
-	if (
-		(root !== null && root.scroll !== root.client) ||
-		(facts.nav !== null && facts.nav.scroll !== facts.nav.client)
-	) {
-		note(
-			`overflow diagnosis, ${state}`,
-			JSON.stringify(await diagnoseSidebarOverflow(cdp)),
-		);
-	}
-	check(
-		`${state}: no ancestor of the sidebar is a scroller`,
-		facts.chain.every((el) => !el.scrollable),
-		JSON.stringify(facts.chain.filter((el) => el.scrollable)),
-	);
-	check(
-		`${state}: at most one scrollable element under a point in either pane`,
-		(facts.entities?.scrollableUnder.length ?? 0) <= 1 &&
-			(facts.chats?.scrollableUnder.length ?? 0) <= 1,
-		JSON.stringify({
-			entities: facts.entities?.scrollableUnder,
-			chats: facts.chats?.scrollableUnder,
-		}),
-	);
-
-	/*
-	 * THE WHEEL, over each pane in turn. Where a pane's own content overflows this
-	 * asserts it MOVED and nothing else did; where it fits, it asserts nothing moved
-	 * at all - which is the state the operator's "if a section's content fits, it has
-	 * no scrollbar" asks for.
-	 */
-	for (const [pane, point, selector] of [
-		["chats", facts.chats, SPLIT_CHATS],
-		["entities", facts.entities, SPLIT_ENTITIES],
-	]) {
-		if (point === null) continue;
-		const before = await sidebarScrollFacts(cdp);
-		const beforeTop = await cdp.evaluate(
-			`(() => { const el = document.querySelector(${JSON.stringify(selector)}); return el === null ? null : Math.round(el.scrollTop); })()`,
-		);
-		await wheelAt(cdp, point.x, point.y, 240);
-		const after = await sidebarScrollFacts(cdp);
-		const afterTop = await cdp.evaluate(
-			`(() => { const el = document.querySelector(${JSON.stringify(selector)}); return el === null ? null : Math.round(el.scrollTop); })()`,
-		);
-		const others = [
-			["entities", SPLIT_ENTITIES],
-			["chats", SPLIT_CHATS],
-		].filter(([, sel]) => sel !== selector);
-		const otherTops = [];
-		for (const [otherName, otherSel] of others) {
-			otherTops.push([
-				otherName,
-				await cdp.evaluate(
-					`(() => { const el = document.querySelector(${JSON.stringify(otherSel)}); return el === null ? null : Math.round(el.scrollTop); })()`,
-				),
-			]);
-		}
-		const chromeHeld =
-			JSON.stringify(after.chrome) === JSON.stringify(chromeBefore);
-		check(
-			`${state}: a wheel over the ${pane} pane moves that pane, or nothing when it fits`,
-			(afterTop !== beforeTop && afterTop > beforeTop) ||
-				(afterTop === beforeTop && point.scrollableUnder.length === 0),
-			JSON.stringify({
-				beforeTop,
-				afterTop,
-				scrollableUnder: point.scrollableUnder,
-			}),
-		);
-		check(
-			`${state}: a wheel over the ${pane} pane leaves the chrome and the other pane where they were`,
-			chromeHeld &&
-				after.shell?.scrollTop === 0 &&
-				(after.strip === null || after.strip.scrollTop === 0) &&
-				after.document.scrollTop === 0,
-			JSON.stringify({ chromeHeld, shell: after.shell?.scrollTop, otherTops }),
-		);
-		// Where the pane scrolled, put it back so the next frame is the same state.
-		if (afterTop !== beforeTop) {
-			await cdp.evaluate(
-				`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (el) el.scrollTop = ${beforeTop ?? 0}; return true; })()`,
-			);
-			await wait(120);
-		}
-		await parkPointer(cdp);
-	}
-	return facts;
-}
-
-async function sceneSidebarSections(cdp, handle) {
-	let link = cdp;
-	const seeded = [];
-	/*
-	 * Twenty rather than a handful: the auto rule is a CAP over the list's content,
-	 * so a list shorter than the cap draws only its own height and the frame cannot
-	 * show the share the cap grants. Twenty rows overflow the cap at both window
-	 * sizes this scene is run at (336 at 1380x900), which is what makes the drawn
-	 * box the cap rather than the content.
-	 */
-	for (let index = 0; index < 20; index += 1) {
-		seeded.push((await createBackendSession()).status);
-	}
-	const authored = [
-		await authoringWrite("/v1/desktop/profiles", {
-			request_id: randomUUID(),
-			name: "docs-writer",
-			kind: "role",
-			description: "Keeps AGENTS.md and the guides current.",
-			instructions: "Write for the next reader.",
-		}),
-		await authoringWrite("/v1/desktop/profiles", {
-			request_id: randomUUID(),
-			name: "release-owner",
-			kind: "role",
-			description: "Cuts releases and posts the refs.",
-			instructions: "Own one release window at a time.",
-		}),
-		await authoringWrite("/v1/desktop/teams", {
-			request_id: randomUUID(),
-			name: "chat-redesign",
-			description: "Designer, coder, reviewer and QA on the chat surface.",
-		}),
-	];
-	note(
-		"seeded",
-		JSON.stringify({
-			sessions: seeded,
-			authored: authored.map((a) => a.status),
-		}),
-	);
-
-	const ready = async (c) =>
-		waitForCondition(
-			c,
-			`Boolean(document.querySelector(${JSON.stringify(SPLIT_ENTITIES)}) && document.querySelector(${JSON.stringify(SPLIT_CHATS)}) && document.querySelector(${JSON.stringify(SPLIT_SEPARATOR)}) && document.querySelector('[data-entity]') && document.querySelector('[data-session-row]'))`,
-			30_000,
-		);
-	const geometry = (c) =>
-		c.evaluate(`(() => {
-			const box = (s) => { const n = document.querySelector(s); if (!n) return null; const r = n.getBoundingClientRect(); return { y: Math.round(r.y), h: Math.round(r.height) }; };
-			const sep = document.querySelector(${JSON.stringify(SPLIT_SEPARATOR)});
-			return {
-				entities: box(${JSON.stringify(SPLIT_ENTITIES)}),
-				chats: box(${JSON.stringify(SPLIT_CHATS)}),
-				separator: sep ? { now: Number(sep.getAttribute("aria-valuenow")), min: Number(sep.getAttribute("aria-valuemin")), max: Number(sep.getAttribute("aria-valuemax")), tabIndex: sep.tabIndex, label: sep.getAttribute("aria-label") } : null,
-				agentsChevron: document.querySelector('[aria-label="Show the agent list"], [aria-label="Hide the agent list"]') !== null,
-				// The two numbers \`chat-sidebar-sections.test.mjs\` pins as the real panel:
-				// the box the sections share, and the nav's content box (\`p-2\` = 16).
-				capacity: (() => { const e = document.querySelector(${JSON.stringify(SPLIT_ENTITIES)}); const c = document.querySelector(${JSON.stringify(SPLIT_CHATS)}); return e && c ? Math.round(e.getBoundingClientRect().height + c.getBoundingClientRect().height) : null; })(),
-				panel: (() => { const n = document.querySelector('nav[aria-label="Chats"]'); return n ? n.clientHeight - 16 : null; })(),
-				// The cap the auto rule computed, read from the region's own inline
-				// max-height rather than recomputed here - so the check compares the
-				// DRAWN box with the number the shipped module handed the render.
-				listMax: (() => { const c = document.querySelector(${JSON.stringify(SPLIT_CHATS)}); if (!c) return null; const v = getComputedStyle(c).maxHeight; return v && v.endsWith("px") ? Math.round(Number.parseFloat(v)) : null; })(),
-			};
-		})()`);
-
-	// --- 1. the untouched column: nothing written to the regions first ----
-	await verb(link, "setTheme", "localOperatorDark");
-	await verb(link, "navigate", "/chat");
-	const first = await ready(link);
-	check(
-		"an untouched column draws BOTH sections and the boundary",
-		first.ok,
-		JSON.stringify(first.last),
-	);
-	const stored0 = await splitPreferences(link);
-	note(
-		"regions as stored before any press",
-		String(stored0.state?.chatSidebarRegions),
-	);
-	/*
-	 * BOTH SECTIONS HAVE ROWS BEFORE THE FRAME IS TAKEN, and that is a wait rather
-	 * than a nicety: the auto rule is a CAP over the list's own content, so a list
-	 * read that has not landed yet drew ~97px of one row in a run where the frame
-	 * is supposed to show two populated sections - and the check below, written
-	 * against the drawn boxes, failed on the RACE rather than on the layout.
-	 */
-	const populated = await waitForCondition(
-		link,
-		`document.querySelectorAll("[data-session-row]").length >= 14 && document.querySelectorAll("[data-entity]").length >= 2`,
-		20_000,
-	);
-	check(
-		"both sections carry rows before the first frame",
-		populated.ok,
-		JSON.stringify(populated.last),
-	);
-	const rest = await geometry(link);
-	note("default geometry", JSON.stringify(rest));
-	check(
-		"the Agents row carries no disclosure chevron any more",
-		rest.agentsChevron === false,
-		String(rest.agentsChevron),
-	);
-	/*
-	 * THE AUTO RULE'S OWN CONTRACT, rather than a comparison of two drawn boxes: the
-	 * chats are CAPPED at the panel's own share with the section above keeping its
-	 * floor, and a list long enough to reach the cap draws at it. A short list draws
-	 * its content, which is the rule working rather than a layout that changed - the
-	 * distinction the race above cost a run to learn.
-	 */
-	const cap = rest.listMax;
-	check(
-		"the chats draw at the auto cap, which is larger than the section above",
-		rest.chats !== null &&
-			cap !== null &&
-			Math.abs(rest.chats.h - cap) <= 2 &&
-			cap > rest.capacity - cap &&
-			rest.capacity - rest.separator.max === 72,
-		JSON.stringify({
-			chats: rest.chats?.h,
-			cap,
-			agents: rest.entities?.h,
-			agentsFloor: rest.capacity - rest.separator.max,
-		}),
-	);
-	await parkPointer(link);
-	await captureSettled(link, "sections-default-dark");
-	/*
-	 * THE ONE-SCROLLER CONTRACT, on the state the operator photographed: both panes
-	 * overflowing, so both carry a bar - and the column must still carry none.
-	 */
-	await checkSidebarScroll(link, "both sections overflowing (dark)");
-	/*
-	 * AND THE BOUNDARY SURVIVES THE SCROLL. The divider is a sibling of the panes, not
-	 * inside one, so scrolling a pane to its end must leave it where it was and still
-	 * draggable - the half of the operator's rule that is about the handle rather than
-	 * the bars.
-	 */
-	await link.evaluate(
-		`(() => { const el = document.querySelector(${JSON.stringify(SPLIT_CHATS)}); if (el) el.scrollTop = el.scrollHeight; const e2 = document.querySelector(${JSON.stringify(SPLIT_ENTITIES)}); if (e2) e2.scrollTop = e2.scrollHeight; return true; })()`,
-	);
-	await wait(250);
-	const sepScrolled = await splitBox(link, SPLIT_SEPARATOR);
-	const storedScrolled = (await splitPreferences(link)).state
-		?.chatSidebarListHeight;
-	check(
-		"the boundary is still on screen while both panes are scrolled to their ends",
-		sepScrolled !== null &&
-			sepScrolled.top > 0 &&
-			sepScrolled.bottom < WINDOW_HEIGHT &&
-			sepScrolled.height > 0,
-		JSON.stringify(sepScrolled),
-	);
-	const sepPoint = await splitBox(link, SPLIT_SEPARATOR);
-	await movePointer(link, sepPoint.x, sepPoint.y);
-	await dragSplit(link, sepPoint.x, sepPoint.y, -30);
-	await parkPointer(link);
-	const storedAfterScrolledDrag = (await splitPreferences(link)).state
-		?.chatSidebarListHeight;
-	check(
-		"and it still resizes with the panes scrolled",
-		typeof storedAfterScrolledDrag === "number" &&
-			storedAfterScrolledDrag !== storedScrolled,
-		`${storedScrolled} -> ${storedAfterScrolledDrag}`,
-	);
-	await link.evaluate(
-		`(() => { for (const sel of [${JSON.stringify(SPLIT_CHATS)}, ${JSON.stringify(SPLIT_ENTITIES)}]) { const el = document.querySelector(sel); if (el) el.scrollTop = 0; } return true; })()`,
-	);
-	await setSplitPreferences(link, { chatSidebarListHeight: null });
-	await ready(link);
-	await verb(link, "setTheme", "localOperatorLight");
-	await wait(300);
-	await parkPointer(link);
-	await captureSettled(link, "sections-default-light");
-	await checkSidebarScroll(link, "both sections overflowing (light)");
-
-	// --- 2. two drag positions, each written and drawn -------------------
-	/*
-	 * IN THE PALETTE THE FRAMES ARE NAMED FOR. The four frames below are `-dark`,
-	 * and before this line the scene was still in the light palette set for
-	 * `sections-default-light` two sections up - which is design round 2's D20 in one
-	 * line: every drag and floor frame was shot light and named dark. The rule this
-	 * block now follows, and the capture path asserts: a `captureSettled` whose label
-	 * names a palette is preceded by the `setTheme` for that palette.
-	 */
-	await verb(link, "setTheme", "localOperatorDark");
-	await wait(300);
-	const dragTo = async (dy, label) => {
-		const sep = await splitBox(link, SPLIT_SEPARATOR);
-		await movePointer(link, sep.x, sep.y);
-		await dragSplit(link, sep.x, sep.y, dy);
-		await parkPointer(link);
-		const prefs = await splitPreferences(link);
-		const geo = await geometry(link);
-		note(
-			`after a ${dy}px drag`,
-			JSON.stringify({ stored: prefs.state?.chatSidebarListHeight, geo }),
-		);
-		check(
-			`a ${dy}px drag writes the chats height it draws`,
-			typeof prefs.state?.chatSidebarListHeight === "number" &&
-				geo.chats !== null &&
-				Math.abs(geo.chats.h - geo.separator.now) <= 1,
-			JSON.stringify({
-				stored: prefs.state?.chatSidebarListHeight,
-				drawn: geo.chats?.h,
-				announced: geo.separator?.now,
-			}),
-		);
-		await captureSettled(link, label);
-		return { stored: prefs.state?.chatSidebarListHeight, geo };
-	};
-	const up = await dragTo(-120, "sections-dragged-up-dark");
-	const down = await dragTo(220, "sections-dragged-down-dark");
-	check(
-		"the two drag positions are different sizes",
-		up.stored !== down.stored,
-		`${up.stored} vs ${down.stored}`,
-	);
-
-	// --- 3. the floors: drag far past each end ---------------------------
-	const toTop = await dragTo(-2000, "sections-floor-agents-dark");
-	check(
-		"dragging to the top leaves Agents + Teams at its 72px floor",
-		toTop.geo.entities !== null && toTop.geo.entities.h >= 72 - 1,
-		JSON.stringify(toTop.geo.entities),
-	);
-	const toBottom = await dragTo(2000, "sections-floor-chats-dark");
-	check(
-		"dragging to the bottom leaves Chats at its 72px floor",
-		toBottom.geo.chats !== null &&
-			Math.round(toBottom.geo.chats.h) === 72 &&
-			toBottom.geo.separator.min === 72,
-		JSON.stringify(toBottom.geo),
-	);
-
-	// --- 4. the keyboard: Tab-reachable, and the arrows resize ------------
-	const reachable = await link.evaluate(
-		`document.querySelector(${JSON.stringify(SPLIT_SEPARATOR)}).tabIndex === 0`,
-	);
-	check(
-		"the boundary is in the Tab order",
-		reachable === true,
-		String(reachable),
-	);
-	await link.evaluate(
-		`document.querySelector(${JSON.stringify(SPLIT_SEPARATOR)}).focus(); true`,
-	);
-	const beforeKey = (await geometry(link)).separator.now;
-	for (let press = 0; press < 5; press += 1) {
-		await pressChord(link, {
-			key: "ArrowUp",
-			code: "ArrowUp",
-			virtualKeyCode: 38,
-		});
-		await wait(60);
-	}
-	await wait(250);
-	const afterKey = await geometry(link);
-	const keyed = (await splitPreferences(link)).state?.chatSidebarListHeight;
-	note(
-		"keyboard",
-		JSON.stringify({
-			before: beforeKey,
-			after: afterKey.separator.now,
-			stored: keyed,
-		}),
-	);
-	check(
-		"ArrowUp on the focused boundary resizes and persists",
-		afterKey.separator.now !== beforeKey && keyed === afterKey.separator.now,
-		`${beforeKey} -> ${afterKey.separator.now}, stored ${keyed}`,
-	);
-
-	// --- 5. a middle position, then the second palette in the same state --
-	await setSplitPreferences(link, { chatSidebarListHeight: 300 });
-	await ready(link);
-	await parkPointer(link);
-	await captureSettled(link, "sections-300-dark");
-	await verb(link, "setTheme", "localOperatorLight");
-	await wait(300);
-	await captureSettled(link, "sections-300-light");
-	await setSplitPreferences(link, { chatSidebarListHeight: null });
-	await ready(link);
-	await parkPointer(link);
-	await captureSettled(link, "sections-default-light");
-
-	/*
-	 * --- 5b. ONE SECTION EMPTY, and one pane alone ------------------------
-	 *
-	 * Two of the states the operator's rule has to hold in, and neither is the same
-	 * as "both overflowing": a query that matches nothing leaves the chats pane with
-	 * a sentence and no rows (so it must gain NO scrollbar, and a wheel over it must
-	 * move nothing at all), and hiding the agents section leaves one pane in the
-	 * column with the restore row above it.
-	 */
-	await setSplitPreferences(link, { chatSidebarListHeight: null });
-	await ready(link);
-	/*
-	 * The column's search field is drawn only WHILE filtering - typing into the list
-	 * is what opens it (the panel's own `keyDown` turns a printable key into the
-	 * query) - so the query is typed the way a reader types it: focus the list and
-	 * send the keys, rather than reaching for an input that is not on screen yet.
-	 */
-	/*
-	 * `[data-chat-row]`, not `[data-session-row]`: the panel's own handler opens the
-	 * field only for a key whose TARGET carries that attribute, and the row's inner
-	 * control is where a keyboard reader's focus actually sits. Measured: focusing the
-	 * row element itself typed nothing and the field never appeared.
-	 */
-	const focusedRow = await link.evaluate(
-		`(() => { const row = document.querySelector("[data-chat-row]"); if (!row) return false; row.focus(); return document.activeElement === row; })()`,
-	);
-	check(
-		"a row can hold focus for the query",
-		focusedRow === true,
-		String(focusedRow),
-	);
-	for (const letter of "zzzznomatch") {
-		await pressChord(link, {
-			key: letter,
-			code: `Key${letter.toUpperCase()}`,
-			virtualKeyCode: letter.toUpperCase().charCodeAt(0),
-		});
-	}
-	await wait(500);
-	await parkPointer(link);
-	const emptied = await waitForCondition(
-		link,
-		`document.querySelectorAll('[data-sidebar-region="chats"] [data-session-row]').length === 0 && document.querySelector('input[aria-label="Search chats and agents"]') !== null`,
-		10_000,
-	);
-	check(
-		"a query matching nothing leaves the chats pane without rows",
-		emptied.ok,
-		JSON.stringify(emptied.last),
-	);
-	await captureSettled(link, "sections-chats-empty-light");
-	await checkSidebarScroll(link, "the chats pane empty (light)");
-	await verb(link, "setTheme", "localOperatorDark");
-	await wait(300);
-	await captureSettled(link, "sections-chats-empty-dark");
-	await checkSidebarScroll(link, "the chats pane empty (dark)");
-	/*
-	 * And clear it, through the field's own control: a query left on screen would
-	 * make every later state in this scene a filtered one.
-	 */
-	const clear = await splitBox(link, '[aria-label="Clear search"]');
-	if (clear !== null) await pressPointerStationary(link, clear.x, clear.y);
-	await wait(500);
-	/*
-	 * DARK, because the next frame is `sections-agents-hidden-dark`. This line used to
-	 * set LIGHT - which is how the pair below ended up byte-identical, both palettes
-	 * photographed as one (design round 2, D20).
-	 */
-	await verb(link, "setTheme", "localOperatorDark");
-	await wait(250);
-	await ready(link);
-	/*
-	 * The hidden section's way back is the restore row, and hiding it is a press on
-	 * the boundary's own cluster - reached by focus and Enter rather than by a
-	 * pointer, because the cluster is intent-gated and a press at its coordinates
-	 * would land on whatever is over it.
-	 */
-	const hideAgents = await link.evaluate(
-		`(() => { const el = document.querySelector('[data-sidebar-hide="entities"]'); if (!el) return false; el.focus(); return true; })()`,
-	);
-	if (hideAgents) {
-		await pressChord(link, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
-		await wait(400);
-		const solo = await waitForCondition(
-			link,
-			`document.querySelector(${JSON.stringify(SPLIT_ENTITIES)}) === null && document.querySelector('[data-sidebar-restore="entities"]') !== null`,
-			10_000,
-		);
-		check(
-			"hiding the agents section leaves the chats pane alone with its way back",
-			solo.ok,
-			JSON.stringify(solo.last),
-		);
-		await parkPointer(link);
-		await captureSettled(link, "sections-agents-hidden-dark");
-		await checkSidebarScroll(link, "one section (dark)");
-		await verb(link, "setTheme", "localOperatorLight");
-		await wait(300);
-		await captureSettled(link, "sections-agents-hidden-light");
-		await checkSidebarScroll(link, "one section (light)");
-		// Back to both, the way the restore row itself does it.
-		const restore = await splitBox(link, '[data-sidebar-restore="entities"]');
-		if (restore !== null) {
-			await pressPointerStationary(link, restore.x, restore.y);
-			await wait(400);
-		}
-	}
-
-	// --- 6. the 56px strip's mark, both palettes --------------------------
-	await setSplitPreferences(link, { isSidebarCollapsed: true });
-	await waitForCondition(
-		link,
-		`Boolean(document.querySelector("[data-sidebar-strip] [data-brand-mark]"))`,
-		10_000,
-	);
-	await parkPointer(link);
-	/*
-	 * EACH STRIP FRAME NAMES ITS OWN PALETTE (design round 2, D20). These two captures
-	 * used to inherit whatever the block above left live - and that block's `setTheme`
-	 * runs only when the agents section was hidden, so the palette here depended on a
-	 * BRANCH. That is why `strip-mark-light` was shot dark in the shipped set.
-	 */
-	await verb(link, "setTheme", "localOperatorLight");
-	await wait(300);
-	await captureSettled(link, "strip-mark-light");
-	await verb(link, "setTheme", "localOperatorDark");
-	await wait(300);
-	await captureSettled(link, "strip-mark-dark");
-	await checkSidebarScroll(link, "the collapsed 56px strip (dark)");
-	await setSplitPreferences(link, { isSidebarCollapsed: false });
-
-	// --- 7. the relaunch: a dragged size SURVIVES a new process -----------
-	await ready(link);
-	const sep = await splitBox(link, SPLIT_SEPARATOR);
-	await movePointer(link, sep.x, sep.y);
-	await dragSplit(link, sep.x, sep.y, -90);
-	await parkPointer(link);
-	const beforeRestart = await splitPreferences(link);
-	const drawnBefore = await geometry(link);
-	note(
-		"before the relaunch",
-		JSON.stringify({
-			stored: beforeRestart.state?.chatSidebarListHeight,
-			drawn: drawnBefore.chats,
-		}),
-	);
-	await captureSettled(link, "sections-before-relaunch-dark");
-	const firstPid = handle.pid;
-	await stopApp(handle);
-	const again = await launchApp({
-		armed: true,
-		logName: "app-scene-restart.log",
-		tag: "scene",
-	});
-	app = again;
-	await waitForDevtools(again);
-	link.close();
-	link = await CdpClient.attach(again.port, "out/renderer/index.html");
-	await waitForBridge(link);
-	await verb(link, "navigate", "/chat");
-	await ready(link);
-	await wait(600);
-	await parkPointer(link);
-	const afterRestart = await splitPreferences(link);
-	const drawnAfter = await geometry(link);
-	note(
-		"after the relaunch",
-		JSON.stringify({
-			pid: `${firstPid} -> ${again.pid}`,
-			stored: afterRestart.state?.chatSidebarListHeight,
-			drawn: drawnAfter.chats,
-		}),
-	);
-	check(
-		"the relaunch is a different process",
-		again.pid !== firstPid,
-		`${firstPid} -> ${again.pid}`,
-	);
-	check(
-		"the dragged size survives the relaunch, stored and drawn",
-		afterRestart.state?.chatSidebarListHeight ===
-			beforeRestart.state?.chatSidebarListHeight &&
-			drawnAfter.chats?.h === drawnBefore.chats?.h,
-		`stored ${beforeRestart.state?.chatSidebarListHeight} -> ${afterRestart.state?.chatSidebarListHeight}, drawn ${drawnBefore.chats?.h} -> ${drawnAfter.chats?.h}`,
-	);
-	await captureSettled(link, "sections-after-relaunch-dark");
-
-	// --- 8. the empty state's mark, both palettes -------------------------
-	const newChat = await splitBox(link, "[data-new-chat-row]");
-	if (newChat !== null)
-		await pressPointerStationary(link, newChat.x, newChat.y);
-	const empty = await waitForCondition(
-		link,
-		`Boolean(document.querySelector("[data-lo-empty-mark] [data-brand-mark]"))`,
-		15_000,
-	);
-	check(
-		"the empty state draws the bubbled mark",
-		empty.ok,
-		JSON.stringify(empty.last),
-	);
-	await parkPointer(link);
-	/* Named for a palette, so it sets it: see the strip's block above for why a frame
-	 * never inherits one from whatever ran before it (design round 2, D20). */
-	await verb(link, "setTheme", "localOperatorDark");
-	await wait(300);
-	await captureSettled(link, "empty-mark-dark");
-	await verb(link, "setTheme", "localOperatorLight");
-	await wait(300);
-	await captureSettled(link, "empty-mark-light");
-	return link;
-}
-
 async function sceneMentions(cdp) {
 	const hello = await verb(cdp, "hello");
 	note("hello", JSON.stringify(hello, null, 2));
@@ -20237,14 +25194,15 @@ async function sceneMentions(cdp) {
 				"(`--backend <url>` plus `--seed-onboarding-complete`, per docs/agent-driver.md), " +
 				"because a session (and with it the composer) is the backend's to create. " +
 				"Without one the chat route paints its offline card and there is nothing to drive. " +
-				"IF THE BACKEND IS IN FACT UP, check the port against the page's own origin " +
-				"allowlist before anything else (QA round 3, Q-6): `src/renderer/index.html` pins " +
-				"`connect-src` to `1111` and `8080` plus three vendor origins and nothing computes " +
-				"it at runtime, so a rig on any other loopback port is refused BY THE PAGE and looks " +
-				"exactly like this (`/v1/credentials ... violates the following Content Security " +
-				"Policy` in the app's own log). Serve the proxy on an allowed port - 8080 is the one " +
-				"QA round 3's green run used - and build the renderer with " +
-				"`VITE_LOCAL_OPERATOR_API_URL` set to that same URL.",
+				"IF THE BACKEND IS IN FACT UP, read the message beside this refusal before anything " +
+				"else: a port the page's `connect-src` does not name is NOT by itself the cause. The " +
+				"app's transport is MAIN's (the renderer's `apiBaseUrl` is read over IPC, never fetched) " +
+				"and the driver widens `frame-src`/`media-src` in the gitignored build output, so a rig " +
+				"on any free port is reachable - MEASURED 2026-09-27: `--scene session-archive` reads " +
+				"69 PASS / 0 FAIL at `127.0.0.1:8123`, a port the policy does not name. A CSP line in " +
+				"the app's log names a PAGE-side fetch (`/v1/credentials`), so check WHICH surface was " +
+				"refused. Build the renderer with `VITE_LOCAL_OPERATOR_API_URL` set to the same URL the " +
+				"proxy is on, whatever port that is.",
 		);
 	}
 	check(
@@ -20285,7 +25243,7 @@ async function sceneMentions(cdp) {
 		throw new Error(
 			`the backend does not advertise \`features.references\` in /v1/capabilities (read: ${JSON.stringify(
 				references,
-			)}), so the composer withholds the whole \`@\` affordance by design and there is no list to drive. This is a statement about the harness, not a defect in this scene: NO released harness carries the key. TO RUN IT, present the capability - a loopback proxy in front of a live daemon this run owns that injects \`result.features.references = 1\` into /v1/capabilities and forwards every other byte (SSE included) unchanged, then pass the PROXY's URL to --backend and build the renderer with VITE_LOCAL_OPERATOR_API_URL set to the same URL. That is the rig QA round 2 ran, and the proxy has to be on a port the PAGE allows (1111 or 8080, per src/renderer/index.html's connect-src) or the composer never mounts and the refusal above is the one you get instead (QA round 3, Q-6).`,
+			)}), so the composer withholds the whole \`@\` affordance by design and there is no list to drive. This is a statement about the harness, not a defect in this scene: NO released harness carries the key. TO RUN IT, present the capability - a loopback proxy in front of a live daemon this run owns that injects \`result.features.references = 1\` into /v1/capabilities and forwards every other byte (SSE included) unchanged, then pass the PROXY's URL to --backend and build the renderer with VITE_LOCAL_OPERATOR_API_URL set to the same URL. That is the rig QA round 2 ran. The proxy does NOT have to sit on a port the page's connect-src names - the app's transport is MAIN's and the driver widens frame-src/media-src in the gitignored build output, measured with the archive walk green at 127.0.0.1:8123 (a port the policy does not name) - but the renderer MUST be built with VITE_LOCAL_OPERATOR_API_URL set to the same URL, or it talks to a backend this run does not own and the refusal above is the one you get instead.`,
 		);
 	}
 
@@ -20388,10 +25346,21 @@ async function sceneMentions(cdp) {
 		cdp.evaluate(`(() => {
 		const list = document.querySelector('[role="listbox"][aria-label="Files"]');
 		const rows = list ? [...list.querySelectorAll('[role="option"]')] : [];
+		/*
+		 * THE FILE ROWS ARE READ BY SECTION (QA round 1, Q-2). Since the popup
+		 * can carry a projects section above the listing, "the first 8 options"
+		 * is no longer a statement about the file listing: a store with twelve
+		 * projects put twelve project rows first and this check read them as if
+		 * they were the directory. The data-section attribute is what the picker
+		 * paints for exactly this reader; an app build without it reads as
+		 * file-only, which is the honest default for the rows that predate it.
+		 */
+		const fileRows = rows.filter((row) => row.dataset.section !== "project");
 		return {
 			list: Boolean(list),
 			rows: rows.length,
-			names: rows.slice(0, 8).map((row) => row.textContent),
+			projectRows: rows.length - fileRows.length,
+			names: fileRows.slice(0, 8).map((row) => row.textContent),
 			header: list?.firstElementChild?.textContent ?? null,
 			footer: list?.lastElementChild?.textContent ?? null,
 			controls: document.querySelector(${JSON.stringify(FIELD)})?.getAttribute("aria-controls") ?? null,
@@ -20412,9 +25381,16 @@ async function sceneMentions(cdp) {
 	check(
 		"the list is populated from the working directory over the real IPC",
 		opened.rows > 0 &&
+			/*
+			 * The rows this check is about are the FILE rows: the projects section
+			 * is asserted on its own below, and mixing the two made this scene a
+			 * false FAIL against a store with a full first page of projects
+			 * (QA round 1, Q-2 — 31 PASS / 2 FAIL with twelve projects seeded, 33/33
+			 * with the store emptied).
+			 */
 			opened.names.some((name) => name.includes("README.md")) &&
 			opened.names.some((name) => name.includes("src")),
-		JSON.stringify(opened.names),
+		JSON.stringify({ names: opened.names, projectRows: opened.projectRows }),
 	);
 	check(
 		"the listbox is named by the field it belongs to, with aria-controls and aria-expanded",
@@ -20643,6 +25619,93 @@ async function sceneMentions(cdp) {
 	 */
 	await verb(cdp, "setTheme", "localOperatorLight");
 	const pairLight = await captureSettled(cdp, "mentions-pair-light");
+
+	/*
+	 * A PROJECT REFERENCE, when the backend has one (UX round 1, U1's pin).
+	 *
+	 * The `@project:` namespace resolves against the STORE rather than the path
+	 * probe, and the composer's chip is this app's one signal that a reference
+	 * resolves — an accepted project token used to paint nothing and read as a
+	 * typo. This block accepts a project row from the picker and reads the chip
+	 * layer back: the value must be exactly the namespaced token, and the fill
+	 * must paint. A backend whose store is empty offers no project row, and
+	 * that case is NOTED rather than failed — this scene seeds nothing, and QA
+	 * runs it against a seeded store for the positive case (Q-2's run).
+	 */
+	await cdp.send("Input.insertText", { text: "\n@project:" });
+	const readProjectOffer = () =>
+		cdp.evaluate(`(() => {
+		const list = document.querySelector('[role="listbox"][aria-label="Files"]');
+		const rows = list ? [...list.querySelectorAll('[role="option"]')] : [];
+		const projects = rows.filter((row) => row.dataset.section === "project");
+		return {
+			list: Boolean(list),
+			offers: projects.length,
+			names: projects.map((row) => row.querySelector("span")?.textContent ?? ""),
+		};
+	})()`);
+	let offer = await readProjectOffer();
+	for (let attempt = 0; attempt < 40 && offer.offers === 0; attempt++) {
+		await wait(100);
+		offer = await readProjectOffer();
+	}
+	note("the projects offer for @project:", JSON.stringify(offer));
+	if (offer.offers > 0) {
+		const projectName = offer.names[0];
+		const readAccepted = () =>
+			cdp.evaluate(`(() => {
+			const field = document.querySelector(${JSON.stringify(FIELD)});
+			return {
+				value: field?.value ?? null,
+				chips: [...document.querySelectorAll("[data-mention-chip]")].map((el) => el.dataset.mentionChip),
+			};
+		})()`);
+		/*
+		 * THE FIELD ALREADY HOLDS FILE CHIPS, so the chip count is read BEFORE the
+		 * accept and the check is the count INCREASING. A bare `chips.length >= 1`
+		 * passed on this scene's own earlier `@README.md` chips, and the wait loop
+		 * returned on its first read without ever giving a project chip the chance
+		 * to paint (review round 2's R2-1).
+		 */
+		const chipsBefore = (await readAccepted()).chips.length;
+		for (const type of ["keyDown", "keyUp"]) {
+			await cdp.send("Input.dispatchKeyEvent", {
+				type,
+				key: "Enter",
+				code: "Enter",
+				windowsVirtualKeyCode: 13,
+				nativeVirtualKeyCode: 13,
+			});
+		}
+		let accepted = await readAccepted();
+		for (
+			let attempt = 0;
+			attempt < 40 && accepted.chips.length <= chipsBefore;
+			attempt++
+		) {
+			await wait(100);
+			accepted = await readAccepted();
+		}
+		note(
+			"the accepted project token",
+			JSON.stringify({ ...accepted, chipsBefore }),
+		);
+		check(
+			"accepting a project row writes the namespaced token",
+			typeof accepted.value === "string" &&
+				accepted.value.endsWith(`@project:${projectName} `),
+			JSON.stringify(accepted.value),
+		);
+		check(
+			"a project reference the store resolves paints its chip",
+			accepted.chips.length > chipsBefore,
+			JSON.stringify({ before: chipsBefore, after: accepted.chips }),
+		);
+	} else {
+		note(
+			"no projects in the store; the project chip checks are skipped in this run",
+		);
+	}
 
 	const frames = [openFrame, noMatchFrame, chipFrame, pairFrame, pairLight];
 	check(
@@ -24312,6 +29375,1648 @@ async function assertBuildIsCurrent() {
 	);
 }
 
+/**
+ * `route-tops`: the top of every route the shell draws, and where its first box lands.
+ *
+ * WHY THIS SCENE EXISTS. The operator's report of 2026-09-26 - "for sub-views like the
+ * settings page, the sidebar and view doesn't go all the way to the top" - is a claim
+ * about ONE y coordinate on every route the shell draws: where a column's own first box
+ * begins. The chat surface keeps the macOS controls' lane clear (`data-titlebar-lane`,
+ * above both columns), and the non-chat routes carried a SECOND band
+ * (`data-chrome-route-band`) whose two jobs - a drag surface for a frameless window, and
+ * clearance for OS controls drawn INTO the client area - the lane already does wherever
+ * it is drawn. On macOS that second band put /settings' rail and content on 64 against
+ * the chat header's 32.
+ *
+ * WHAT IT MEASURES. Per route: `main`'s first element that is not the band (the route's
+ * own root - on settings that is the box both the rail and the content sit in, and it is
+ * the box the report is about), plus the lane, the band, the app sidebar, and the
+ * settings rail and content where those exist. The frames are captures of the same
+ * state, so the claim can be read as numbers and looked at as pixels.
+ *
+ * THE ASSERTION IS macOS' AND SAYS SO. On Windows and Linux with the buttons trailing
+ * there IS no lane above the columns, so the band there is a route's only drag surface
+ * and its caption clearance, and a route's first box legitimately starts at the caption
+ * height; on a host that is not a macOS integrated window the scene prints the readings
+ * and asserts only the mechanics rather than the macOS answer.
+ *
+ * RUN TWICE PER TREE, like every before/after pair: once at 1380x900 and once at
+ * 800x600, with `--run-label` keeping the frame names apart in one directory.
+ */
+async function sceneRouteTops(cdp) {
+	const ROUTES = [
+		["chat", "/chat"],
+		["settings", "/settings"],
+		["settings-integrations", "/settings?section=integrations"],
+		["agents", "/agents"],
+		/*
+		 * The saved-agent route draws the SAME 280px roster as `/agents` does, and it
+		 * is here because a sweep that covers only the route the operator screenshotted
+		 * is how this defect came back once already: the two are separate components
+		 * (`legacy-agents-page.tsx` and `agents-page.tsx`), so a fix carried by one is
+		 * not carried by the other. The id is arbitrary on purpose - the roster pane is
+		 * unconditional and renders without an agent to show, which is what this route
+		 * needs a reading of.
+		 */
+		["agents-detail", "/agents/local-operator"],
+		["agent-hub", "/agent-hub"],
+		["schedules", "/schedules"],
+		/*
+		 * THE TWO ROUTES THE OPERATOR NAMED AS MUST-NOT-MOVE THAT THE FIRST SWEEP LEFT
+		 * OUT (review round 1, M1). Neither draws a leading column: the projects page's
+		 * root is a vertical flex column with no ground of its own, and the browser
+		 * surface roots on `canvas` behind its own toolbar - so what their readings carry
+		 * is the floor half of the band claim (no column: the band must stop exactly at
+		 * the app sidebar's own edge) plus the route-top assertion every route gets.
+		 */
+		["projects", "/projects"],
+		["browser", "/browser"],
+	];
+	const frames = [];
+	const readings = [];
+	/*
+	 * One evaluate for every box this scene wants, so the reading is a snapshot of
+	 * ONE layout rather than several: two evaluates could straddle a settle (a pane
+	 * opening, a read landing) and describe two different screens.
+	 */
+	const readTops = () =>
+		cdp.evaluate(`(() => {
+			const box = (el) => {
+				if (!el) return null;
+				const rect = el.getBoundingClientRect();
+				return {
+					top: Math.round(rect.top * 100) / 100,
+					left: Math.round(rect.left * 100) / 100,
+					width: Math.round(rect.width * 100) / 100,
+					height: Math.round(rect.height * 100) / 100,
+				};
+			};
+			const main = document.querySelector("main");
+			/*
+			 * A ROLE RESOLVED RATHER THAN GUESSED. --lo-surface is the token the
+			 * lane's band is asked for, and a one-off element is how its computed
+			 * value is read without a second copy of the palette: the marker's
+			 * contract is that a leading column stands on this ground, and that is
+			 * what this reading is for.
+			 */
+			const roleGround = (token) => {
+				const probe = document.createElement("div");
+				probe.style.backgroundColor = "var(" + token + ")";
+				document.body.appendChild(probe);
+				const ground = getComputedStyle(probe).backgroundColor;
+				probe.remove();
+				return ground;
+			};
+			let ownRoot = null;
+			if (main) {
+				for (const child of main.children) {
+					if (child.hasAttribute("data-chrome-route-band")) continue;
+					ownRoot = child;
+					break;
+				}
+			}
+			const lane = document.querySelector("[data-titlebar-lane]");
+			const band = document.querySelector("[data-chrome-route-band]");
+			/*
+			 * THE LANE'S BAND, read back the way it is painted rather than the way it was
+			 * asked for: the stop is the first length in the RESOLVED gradient (the
+			 * inline style spells it as a custom property, so only the computed form
+			 * proves the variable resolved), and the ground is that gradient's first
+			 * colour. The leading column is whatever a route handed the shell; when there
+			 * is none, the band must be exactly the app sidebar's own width.
+			 */
+			const surfaceGround = roleGround("--lo-surface");
+			/*
+			 * THE ROUTE'S OWN LEADING COLUMN, DERIVED FROM THE LAYOUT RATHER THAN
+			 * LOOKED UP BY THE HANDLE THE FIX ADDED. A rig that asks for the marker
+			 * cannot see the defect it is meant to catch: on the tree where the band
+			 * stops short, the marker does not exist, every reading comes back null,
+			 * and the guard passes by having nothing to check (measured on the base
+			 * tree, 2026-09-27). What is derived instead is the rule itself - a
+			 * full-height column standing on the surface role at the route's own left
+			 * edge - which holds on both trees, and which a route added later is
+			 * subject to without anybody remembering to mark it.
+			 *
+			 * Two levels, and those two conditions, because anything deeper is a card
+			 * rather than a column: schedules' own surface panels are neither
+			 * full-height nor at the route's left edge, and they must not be read as
+			 * columns here.
+			 */
+			const columnAt = (el) => {
+				if (!el) return null;
+				const route = box(ownRoot);
+				const bounds = box(el);
+				if (!route || !bounds) return null;
+				if (Math.abs(bounds.left - route.left) > 0.5) return null;
+				if (bounds.height < route.height - 0.5) return null;
+				return el;
+			};
+			const leading = (() => {
+				if (!ownRoot) return null;
+				if (getComputedStyle(ownRoot).backgroundColor === surfaceGround) {
+					return columnAt(ownRoot);
+				}
+				const first = ownRoot.firstElementChild;
+				if (!first) return null;
+				if (getComputedStyle(first).backgroundColor === surfaceGround) {
+					return columnAt(first);
+				}
+				for (const inner of first.children) {
+					if (getComputedStyle(inner).backgroundColor === surfaceGround) {
+						return columnAt(inner);
+					}
+				}
+				return null;
+			})();
+			const registered = document.querySelector("[data-lane-leading-column]");
+			const laneStyle = lane ? getComputedStyle(lane) : null;
+			const gradient = laneStyle ? laneStyle.backgroundImage : "";
+			const stop = /([0-9.]+)px/.exec(gradient);
+			const rgbAt = gradient.indexOf("rgb");
+			const ground =
+				rgbAt >= 0
+					? gradient.slice(rgbAt, gradient.indexOf(")", rgbAt) + 1)
+					: null;
+			return {
+				platform: document.documentElement.getAttribute("data-chrome-platform"),
+				mode: document.documentElement.getAttribute("data-chrome-mode"),
+				viewport: { width: window.innerWidth, height: window.innerHeight },
+				lane: box(lane),
+				laneDisplay: lane ? getComputedStyle(lane).display : null,
+				laneBandStop: stop ? Number(stop[1]) : null,
+				laneBandGround: ground,
+				band: box(band),
+				bandDisplay: band ? getComputedStyle(band).display : null,
+				sidebar: box(document.querySelector("[data-sidebar-shell]")),
+				route: box(ownRoot),
+				routeTag: ownRoot ? ownRoot.tagName.toLowerCase() : null,
+				leadingColumn: box(leading),
+				registeredColumn: box(registered),
+				surfaceGround: surfaceGround,
+				settingsRail: box(
+					document.querySelector('nav[aria-label="Settings sections"]'),
+				),
+				settingsContent: box(document.querySelector("[data-settings-content]")),
+			};
+		})()`);
+
+	for (const [slug, path] of ROUTES) {
+		await verb(cdp, "navigate", path);
+		const landed = await waitForRoute(cdp, path);
+		check(
+			`the app is on ${path}`,
+			landed.route === path,
+			`the app is on ${landed.route} after ${landed.waited}ms`,
+		);
+		/*
+		 * The route's own reads (config, profiles, schedules) land behind its first
+		 * paint. `captureSettled` below is what makes the frame a frame of the route
+		 * AT REST; the reading is taken after it for the same reason - a number read
+		 * before the frame would describe a moment the frame does not show.
+		 */
+		await wait(600);
+		frames.push(await captureSettled(cdp, `route-tops-${slug}${RUN_LABEL}`));
+		const reading = await readTops();
+		readings.push([slug, path, reading]);
+		note(`the top of ${path}`, JSON.stringify(reading));
+	}
+
+	/*
+	 * THE macOS CLAIM, in the one place the lane's bottom edge is known. `lane ===
+	 * null` and a `display: none` lane are the two shapes of "this window draws no
+	 * lane", and they are answered together rather than branched on separately:
+	 * both mean the window's chrome reserves no band at the top of the client area.
+	 * The CONTROL route supplies the lane's geometry - /chat is a route this change
+	 * does not touch, which is exactly why its reading is the reference.
+	 */
+	const control = readings.find(([slug]) => slug === "chat")?.[2] ?? null;
+	const laneDrawn =
+		control !== null && control.lane !== null && control.laneDisplay !== "none";
+	const laneBottom = laneDrawn ? control.lane.top + control.lane.height : 0;
+	const macIntegrated =
+		control !== null &&
+		control.platform === "mac" &&
+		control.mode === "integrated" &&
+		laneDrawn;
+
+	if (macIntegrated) {
+		for (const [, path, reading] of readings) {
+			check(
+				`${path}: the route's own first box starts on the lane's bottom edge (${laneBottom}px)`,
+				reading.route !== null &&
+					Math.abs(reading.route.top - laneBottom) < 0.5,
+				`the route's first box is at y ${reading.route === null ? "(absent)" : reading.route.top} against a lane that ends at ${laneBottom}`,
+				`route y ${reading.route === null ? "(absent)" : reading.route.top}, sidebar y ${reading.sidebar === null ? "(none)" : reading.sidebar.top}, settings rail y ${reading.settingsRail === null ? "(none)" : reading.settingsRail.top}, settings content y ${reading.settingsContent === null ? "(none)" : reading.settingsContent.top}`,
+			);
+		}
+		/*
+		 * THE BAND REACHES EVERY GROUND BESIDE IT, which is the other half of the same
+		 * claim and the one the operator reported twice (2026-09-26, and again
+		 * 2026-09-27 as still true). A column of a route's own - the settings rail, the
+		 * agents list pane - stands on the `surface` ground, but it is INSIDE the
+		 * clipped content column and cannot paint above its own top edge: the lane's
+		 * band is the only thing that can carry its ground to y0, which is why the
+		 * shell has to be told about the column.
+		 *
+		 * THE SUBJECT IS DERIVED, NOT LOOKED UP BY THE HANDLE THE FIX ADDS. Asking the
+		 * page for the marker would make this guard pass on the unfixed tree - the
+		 * marker is not there, every reading comes back null, and a check with nothing
+		 * to check is a check that cannot fail (measured on the base tree: all six
+		 * routes "passed" as routes with no leading column). The rule is derived
+		 * instead, from the layout on both trees: a full-height column on the surface
+		 * role at the route's own left edge. The registration is then asked for
+		 * separately, so a column nobody handed over fails by name rather than quietly
+		 * becoming "no column here".
+		 *
+		 * The control is the routes that draw no such column (chat, schedules, agent
+		 * hub, projects, browser): there the band stays exactly the app sidebar's width,
+		 * which is what keeps this from being a rule that quietly widens every route's
+		 * band.
+		 */
+		for (const [, path, reading] of readings) {
+			if (!reading.lane || reading.laneDisplay === "none") continue;
+			const laneLeft = reading.lane.left;
+			if (reading.leadingColumn) {
+				const column = reading.leadingColumn;
+				const edge = column.left + column.width;
+				check(
+					`${path}: the route's leading column is handed to the shell`,
+					reading.registeredColumn !== null &&
+						Math.abs(reading.registeredColumn.left - column.left) < 0.5,
+					`the column at x ${column.left} is ${reading.registeredColumn === null ? "not registered at all" : `registered at x ${reading.registeredColumn.left}`}`,
+				);
+				check(
+					`${path}: the lane's band reaches the leading column's right edge (${edge}px)`,
+					reading.laneBandStop !== null &&
+						reading.laneBandStop >= edge - laneLeft - 0.5,
+					`the band stops at ${reading.laneBandStop} against a column ending at ${edge}`,
+				);
+				check(
+					`${path}: the band is painted in the surface role the column stands on`,
+					reading.laneBandGround !== null &&
+						reading.laneBandGround === reading.surfaceGround,
+					`the band paints ${reading.laneBandGround} against the surface role's ${reading.surfaceGround}`,
+				);
+			} else if (reading.sidebar) {
+				const edge = reading.sidebar.left + reading.sidebar.width;
+				check(
+					`${path}: with no leading column the band stops at the app sidebar's own edge (${edge}px)`,
+					reading.laneBandStop !== null &&
+						Math.abs(reading.laneBandStop - (edge - laneLeft)) < 0.5,
+					`the band stops at ${reading.laneBandStop} against a sidebar ending at ${edge}`,
+				);
+			}
+		}
+		/*
+		 * The app sidebar is the control for the same number, WHERE IT EXISTS to be
+		 * read: `[data-sidebar-shell]` is the docked column's marker, so at 800 - where
+		 * the dock collapses to the 56px strip - the filter below skips this check rather
+		 * than comparing a box that is not there. On every route at 1380 the sidebar's
+		 * first row sat on the lane's bottom before the report and must still, or the fix
+		 * moved the one column that was never wrong.
+		 */
+		for (const [, path, reading] of readings.filter(([, , r]) => r.sidebar)) {
+			check(
+				`${path}: the app sidebar still starts on the lane's bottom edge (${laneBottom}px)`,
+				Math.abs(reading.sidebar.top - laneBottom) < 0.5,
+				`the sidebar's own top is ${reading.sidebar.top}`,
+			);
+		}
+	} else {
+		note(
+			"the macOS lane claim did not run",
+			`platform ${control?.platform}, mode ${control?.mode}, lane ${control?.laneDisplay} - the band is load-bearing wherever no lane is drawn, so its readings are printed rather than asserted`,
+		);
+	}
+
+	check(
+		"every capture is a frame the app held still for, with no toast on it",
+		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: ${frame.stable === true ? `held still after ${frame.attempts} capture(s)` : `never held still in ${frame.attempts} capture(s)`}, toast-free ${frame.toastFree === true}`,
+			)
+			.join(" | "),
+	);
+	check(
+		"every capture wrote a PNG of the window's own size",
+		frames.every(
+			(frame) =>
+				frame.bytes > 1000 &&
+				frame.pixels.width ===
+					frame.viewport.width * frame.viewport.devicePixelRatio &&
+				frame.pixels.height ===
+					frame.viewport.height * frame.viewport.devicePixelRatio,
+		),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: ${frame.pixels.width}x${frame.pixels.height} at dpr ${frame.viewport.devicePixelRatio} for a ${frame.viewport.width}x${frame.viewport.height} viewport`,
+			)
+			.join(" | "),
+	);
+	return frames;
+}
+
+/**
+ * One project's detail View and one session's transcript page, as the daemon
+ * answers `projects.get` and `history`, for a scene's own assertions.
+ *
+ * The scene reads the daemon BACK for what a frame cannot prove on its own - a
+ * link the create promised, the id of the session quick-send aimed at, a
+ * message that is IN a transcript rather than painted on one - the same way
+ * `createBackendSession` reads the create it made. The bearer is this run's
+ * own token and never argv.
+ */
+async function fetchProjectView(key) {
+	const response = await fetch(
+		`${BACKEND}/v1/desktop/projects/${encodeURIComponent(key)}`,
+		{
+			headers: {
+				authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+			},
+		},
+	);
+	const body = await response.json().catch(() => null);
+	return { status: response.status, body };
+}
+
+/**
+ * One session's transcript page, for the delivery assertion `fetchProjectView`
+ * exists beside: the daemon's own record of what was admitted.
+ */
+async function fetchSessionHistory(sessionId) {
+	const response = await fetch(
+		`${BACKEND}/v1/desktop/sessions/${encodeURIComponent(sessionId)}/history`,
+		{
+			headers: {
+				authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+			},
+		},
+	);
+	const body = await response.json().catch(() => null);
+	return { status: response.status, body };
+}
+
+/**
+ * THE PROJECT DETAIL PAGE (slice S6d), on the real app against the isolated
+ * backend this run owns.
+ *
+ * WHAT THIS SCENE IS FOR: the Stories set photographs the detail's states, but
+ * a story stubs the bridge at its boundary. This scene drives the same screen
+ * against a live daemon and exercises the two acts a still cannot claim - the
+ * quick-send strip delivering a message into a linked session through the
+ * chat's own send path, and the start-session picker creating a session,
+ * linking it, and landing on that session's chat with a PRE-FILLED (never
+ * auto-sent) prompt. Both claims are read back from state the daemon keeps:
+ * the message from the session's transcript, the link from `projects.get`.
+ *
+ * THE SEEDED ROW is the lane's own script (`seed.py`): one project named by
+ * `--project`, with a title, owner/team, a progress line and one linked
+ * session. The scene refuses to guess any of it - a missing project is a
+ * refused precondition, not a photographed empty page.
+ */
+async function sceneProjectDetail(cdp) {
+	if (PROJECT === null) {
+		throw new Error(
+			"--scene project-detail needs --project <key>: the detail page is reached by the project's own key, and a default would drive whatever the lane's seed happened to call its row",
+		);
+	}
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+	const size = `${WINDOW_WIDTH}x${WINDOW_HEIGHT}`;
+	// Frame labels are lowercase-only (the capture verb refuses anything else).
+	const theme = (THEME ?? "localOperatorDark")
+		.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
+		.replace(/^-/, "");
+
+	/*
+	 * The seeded row, read straight off the daemon: the key the route needs and
+	 * the id of the linked session quick-send will aim at. Neither is guessed.
+	 */
+	const seeded = await fetchProjectView(PROJECT);
+	const linkedSession = seeded.body?.result?.links?.[0]?.session_id ?? null;
+	check(
+		"the seeded project exists on this run's daemon, with one linked session",
+		seeded.status === 200 && typeof linkedSession === "string",
+		`status=${seeded.status} links=${JSON.stringify(seeded.body?.result?.links)}`,
+	);
+
+	/*
+	 * 1. THE SHEET. The heading is the DISPLAY name (`title`), and the key rides
+	 * under it in the machine voice; the checks name the facts a reader would
+	 * hunt for: the attribution line, the milestone and the seeded history entry.
+	 */
+	await verb(cdp, "navigate", `/projects/${PROJECT}`);
+	const sheet = await waitForCondition(
+		cdp,
+		`(() => {
+			const h = document.querySelector("h1");
+			if (!h || h.textContent.trim() !== "Rig detail") return null;
+			return document.body.textContent;
+		})()`,
+		30_000,
+	);
+	const sheetText = String(sheet.last ?? "");
+	check(
+		"the sheet draws the seeded project: title, key, managed-by, milestone and feed",
+		sheet.ok &&
+			sheetText.includes(PROJECT) &&
+			sheetText.includes("Managed by atlas · platform") &&
+			sheetText.includes("rig milestone") &&
+			sheetText.includes("Seeded by the evidence rig"),
+		`after ${sheet.waitedMs}ms`,
+	);
+	note("detail route", `${await verb(cdp, "state")}`);
+	await captureSettled(cdp, `project-detail-${size}-${theme}-sheet`);
+
+	/*
+	 * 2. QUICK-SEND. The composer's own path: type, press Enter, and the strip
+	 * must clear - which is the admission receipt, because `admitChatDraft`
+	 * only clears on the way out.
+	 */
+	const inputSelector = '[aria-label="Message the selected session"]';
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${inputSelector}'))`,
+		30_000,
+	);
+	/*
+	 * THE MESSAGE IS UNIQUE PER RUN, AND THE TYPING IS VERIFIED RATHER THAN
+	 * ASSUMED. Two facts measured at the fold: a re-run against the same daemon
+	 * already holds the previous run's sentence in the linked session's
+	 * transcript, so a fixed text would let the delivery check pass on a stale
+	 * row; and a click landing while the sheet re-renders leaves nothing focused,
+	 * so `Input.insertText` goes nowhere and the strip stays empty - which the
+	 * next check would then "confirm", because an empty strip is a clear one.
+	 */
+	const messageText = `Rig check: report your current blocker. [${Date.now().toString(36)}]`;
+	let typed = "";
+	for (let attempt = 1; attempt <= 3 && typed !== messageText; attempt += 1) {
+		/*
+		 * SCROLLED INTO VIEW FIRST: the sheet grows with the project's links (a
+		 * daemon reused across runs holds several), and a click aimed at an
+		 * element below the fold lands on whatever is at those coordinates
+		 * instead - measured at the fold, where four linked sessions pushed the
+		 * strip past the viewport and every keystroke went nowhere.
+		 */
+		await cdp.evaluate(
+			`document.querySelector('${inputSelector}').scrollIntoView({ block: "center" })`,
+		);
+		await wait(150);
+		await clickAt(cdp, inputSelector);
+		await wait(150);
+		await cdp.send("Input.insertText", { text: messageText });
+		await wait(200);
+		typed = await cdp.evaluate(
+			`document.querySelector('${inputSelector}').value`,
+		);
+		if (typed === messageText) break;
+		/*
+		 * Clear through the NATIVE value setter before the next attempt: React's
+		 * own tracker compares against the property it shims, so a plain
+		 * `el.value = ""` would leave the component's state holding the partial
+		 * text and the retry would append to it.
+		 */
+		await cdp.evaluate(
+			`(() => {
+				const el = document.querySelector('${inputSelector}');
+				const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+				setter.call(el, "");
+				el.dispatchEvent(new Event("input", { bubbles: true }));
+			})()`,
+		);
+		await wait(120);
+	}
+	check(
+		"the strip holds the typed message",
+		typed === messageText,
+		JSON.stringify(typed),
+	);
+	await captureSettled(cdp, `project-detail-${size}-${theme}-quick-send`);
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	/*
+	 * ONE REFUSAL HERE IS THE APP BEING RIGHT, and the scene tells it apart from
+	 * a strip that silently did nothing. `admitChatDraft` refuses a send that
+	 * names a session whose own stream has not answered yet (its validation
+	 * window, opened by whatever committed a view of it - the shell restoring
+	 * the profile's last conversation, typically): the composer keeps the text
+	 * and shows the sentence rather than sending. So the read is: cleared
+	 * (admitted), or the sentence on screen (refused before admission, text
+	 * kept) - and on the refusal the scene waits the window out and presses once
+	 * more, which is the operator's own move. A strip that did NEITHER is the
+	 * failure this check exists for.
+	 */
+	const REFUSAL = "not ready for messages yet";
+	const outcome = await waitForCondition(
+		cdp,
+		`(() => {
+			const input = document.querySelector('${inputSelector}');
+			if (input.value === "") return "admitted";
+			return document.body.textContent.includes(${JSON.stringify(REFUSAL)}) ? "refused" : null;
+		})()`,
+		30_000,
+	);
+	const firstOutcome = String(outcome.last ?? "none");
+	if (firstOutcome === "refused") {
+		await waitForCondition(
+			cdp,
+			`(() => !document.body.textContent.includes(${JSON.stringify(REFUSAL)}))()`,
+			60_000,
+		);
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	}
+	const cleared = await waitForCondition(
+		cdp,
+		`document.querySelector('${inputSelector}').value === ""`,
+		60_000,
+	);
+	/*
+	 * A STILL-HOLDING STRIP IS NAMED WITH ITS OWN REASON: the send path reports a
+	 * refusal as a toast and hands the text BACK to the box (the composer keeps
+	 * what was not sent), so the toast is read here and put in the failure
+	 * line - a check that only said "did not clear" would leave the reader to
+	 * re-run the whole rig to learn why.
+	 */
+	const stripToast = cleared.ok ? null : await toastText(cdp).catch(() => null);
+	check(
+		"pressing Enter admits the message (a pre-admission refusal is waited out and re-pressed)",
+		cleared.ok,
+		cleared.ok
+			? `first outcome=${firstOutcome}, cleared after ${cleared.waitedMs}ms`
+			: `first outcome=${firstOutcome}, still holding after ${cleared.waitedMs}ms; toast: ${stripToast ?? "none"}`,
+	);
+
+	/*
+	 * 3. THE PROOF, from the daemon's own transcript: the delivery claim is read
+	 * back off the server (`history`), not off the page - a painted optimistic
+	 * echo also puts the text on screen, so the DOM alone cannot tell an admitted
+	 * message from a row that may still be replaced. The frame is the UI half:
+	 * the same sentence rendering in the conversation it was sent to.
+	 */
+	const history = await fetchSessionHistory(linkedSession);
+	check(
+		"the message is admitted into the linked session's transcript (daemon read)",
+		history.status === 200 &&
+			JSON.stringify(history.body?.result?.entries ?? []).includes(messageText),
+		`status=${history.status} entries=${JSON.stringify(history.body?.result?.entries ?? []).slice(0, 200)}`,
+	);
+	await verb(cdp, "navigate", `/chat/${linkedSession}`);
+	const delivered = await waitForCondition(
+		cdp,
+		`document.body.textContent.includes(${JSON.stringify(messageText)})`,
+		60_000,
+	);
+	check(
+		"the message renders in the linked session's conversation",
+		delivered.ok,
+		`after ${delivered.waitedMs}ms`,
+	);
+	await captureSettled(cdp, `project-detail-${size}-${theme}-delivered`);
+
+	/*
+	 * 3b. THE POINTER SEND, AND WHERE THE KEYBOARD LANDS (UX round 1, U2): the
+	 * same strip, a second message, and a REAL press of the Send control - the
+	 * gesture the finding measured, where the click focuses the button, the
+	 * button disables while the send is in flight, and the browser drops focus
+	 * to `<body>` unless the strip hands the keyboard back. Three checks: the
+	 * strip clears, the daemon holds the second text, and `document.activeElement`
+	 * IS the input again - the last one is the one that fails if the refocus
+	 * regresses, and it is measured with a trusted pointer for exactly that
+	 * reason: a programmatic click would not have moved focus in the first
+	 * place, so a synthetic press could not have failed.
+	 */
+	await verb(cdp, "navigate", `/projects/${PROJECT}`);
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${inputSelector}'))`,
+		60_000,
+	);
+	const pointerText = `Pointer press leg. [${Date.now().toString(36)}]`;
+	await cdp.evaluate(
+		`document.querySelector('${inputSelector}').scrollIntoView({ block: "center" })`,
+	);
+	await wait(150);
+	await clickAt(cdp, inputSelector);
+	await wait(150);
+	await cdp.send("Input.insertText", { text: pointerText });
+	await wait(200);
+	await clickAt(cdp, '[data-tour-tag="project-quick-send"]');
+	const pointerCleared = await waitForCondition(
+		cdp,
+		`document.querySelector('${inputSelector}').value === ""`,
+		60_000,
+	);
+	check(
+		"a pointer press of Send admits the second message (the strip clears)",
+		pointerCleared.ok,
+		pointerCleared.ok
+			? `cleared after ${pointerCleared.waitedMs}ms`
+			: `still holding after ${pointerCleared.waitedMs}ms`,
+	);
+	const focusBack = await waitForCondition(
+		cdp,
+		`document.activeElement === document.querySelector('${inputSelector}')`,
+		10_000,
+	);
+	const landedOn = await cdp.evaluate(
+		`document.activeElement ? (document.activeElement.getAttribute("aria-label") || document.activeElement.tagName) : "none"`,
+	);
+	check(
+		"the pointer send hands the keyboard back to the strip (UX round 1, U2)",
+		focusBack.ok,
+		focusBack.ok
+			? `focused after ${focusBack.waitedMs}ms`
+			: `focus landed on ${landedOn}`,
+	);
+	const pointerHistory = await fetchSessionHistory(linkedSession);
+	check(
+		"the second message is admitted into the transcript too (daemon read)",
+		pointerHistory.status === 200 &&
+			JSON.stringify(pointerHistory.body?.result?.entries ?? []).includes(
+				pointerText,
+			),
+		`status=${pointerHistory.status}`,
+	);
+
+	/*
+	 * 4. START SESSION. The picker opens on the detail; pressing Start creates a
+	 * PLAIN session on this backend (the isolated config root has no teams or
+	 * agents to offer, and the dialog says so), links it, and lands on the
+	 * session's chat with the prompt pre-filled in the composer - the textarea
+	 * is READ rather than acted on, which is what "never auto-sent" means.
+	 */
+	await verb(cdp, "navigate", `/projects/${PROJECT}`);
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-tour-tag="project-start-session"]'))`,
+		30_000,
+	);
+	await cdp.evaluate(
+		`document.querySelector('[data-tour-tag="project-start-session"]').scrollIntoView({ block: "center" })`,
+	);
+	await wait(150);
+	await clickAt(cdp, '[data-tour-tag="project-start-session"]');
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-tour-tag="project-start-session-dialog"]'))`,
+		30_000,
+	);
+	await captureSettled(cdp, `project-detail-${size}-${theme}-start-session`);
+	/*
+	 * The dialog's own primary action, found by its WORD rather than by its
+	 * position: the actions row is a sibling of the scrollable body the tour tag
+	 * names, so a tag-scoped selector would miss it. One evaluate, one click -
+	 * the same element a person presses.
+	 */
+	const pressed = await cdp.evaluate(
+		`(() => {
+			const button = [...document.querySelectorAll("button")].find(
+				(el) => el.textContent.trim() === "Start session",
+			);
+			if (!button) return "missing";
+			button.click();
+			return "clicked";
+		})()`,
+	);
+	check(
+		"the picker's Start session control is on screen and was pressed",
+		pressed === "clicked",
+		String(pressed),
+	);
+	const composer = await waitForCondition(
+		cdp,
+		`document.querySelector('[data-tour-tag="chat-input-textarea"] textarea')?.value ?? null`,
+		60_000,
+	);
+	const composerText = String(composer.last ?? "");
+	check(
+		"the started session lands on its chat with the prompt PRE-FILLED and unsent",
+		composer.ok &&
+			composerText.includes(
+				`Continue work on project "Rig detail" (${PROJECT}).`,
+			) &&
+			composerText.includes(
+				"Review the project details and continue or complete the work.",
+			),
+		`after ${composer.waitedMs}ms: ${composerText.slice(0, 80)}`,
+	);
+	await captureSettled(cdp, `project-detail-${size}-${theme}-composer`);
+
+	/*
+	 * 5. THE LINK, from the daemon and from the page: the create promised a link,
+	 * and both readers must agree it exists.
+	 */
+	const after = await fetchProjectView(PROJECT);
+	/*
+	 * THE DELTA, not a fixed 2: a scene that runs twice against one seeded
+	 * daemon (the dark pass and the light one) would otherwise fail its own
+	 * second run for the link the first one made, and a check that only passes
+	 * on a virgin daemon is a check nobody can re-run.
+	 */
+	const linksBefore = seeded.body?.result?.links?.length ?? 0;
+	check(
+		"the daemon holds one more linked session than before the create",
+		(after.body?.result?.links?.length ?? 0) === linksBefore + 1,
+		`status=${after.status} links=${JSON.stringify(after.body?.result?.links)}`,
+	);
+	await verb(cdp, "navigate", `/projects/${PROJECT}`);
+	const rows = await waitForCondition(
+		cdp,
+		`document.querySelectorAll('button[aria-label^="Unlink"]').length`,
+		30_000,
+	);
+	check(
+		"the linked-sessions list draws a row for the new link too",
+		rows.ok && Number(rows.last) === linksBefore + 1,
+		`after ${rows.waitedMs}ms: ${rows.last} (linksBefore=${linksBefore})`,
+	);
+	await captureSettled(cdp, `project-detail-${size}-${theme}-linked`);
+}
+
+/**
+ * The fake recorder the mini view's dictating frame is driven with.
+ *
+ * WHAT IT IS FOR. `getUserMedia` cannot be exercised in a headless run — a
+ * permission prompt nobody can answer is the whole reason it is a human QA
+ * item — but the SURFACE's recording state is layout, and a still of it is
+ * worth a review. So the two primitives the mini dictation controller reads
+ * are replaced inside the page before it boots (installed with
+ * `Page.addScriptToEvaluateOnNewDocument`, then a reload): a stream whose
+ * tracks stop harmlessly, and a recorder that changes state. Nothing here is a
+ * claim about a real microphone; the PR says so beside the frame.
+ *
+ * `isTypeSupported` is included because the real class has it and a controller
+ * that asked for it would otherwise fail into the error arm — the fake must be
+ * a superset of every member the seam may touch, or it silently changes which
+ * state is being captured.
+ */
+const MINI_FAKE_RECORDER_SOURCE = [
+	"(() => {",
+	"\tconst stream = { getTracks: () => [{ stop() {} }] };",
+	"\tif (navigator.mediaDevices) {",
+	"\t\tnavigator.mediaDevices.getUserMedia = async () => stream;",
+	"\t}",
+	"\tclass FakeMediaRecorder {",
+	"\t\tstatic isTypeSupported() {",
+	"\t\t\treturn true;",
+	"\t\t}",
+	"\t\tconstructor(captured) {",
+	"\t\t\tthis.stream = captured;",
+	"\t\t\tthis.state = 'inactive';",
+	"\t\t\tthis.ondataavailable = null;",
+	"\t\t\tthis.onstop = null;",
+	"\t\t\tthis.onerror = null;",
+	"\t\t}",
+	"\t\tstart() {",
+	"\t\t\tthis.state = 'recording';",
+	"\t\t}",
+	"\t\tstop() {",
+	"\t\t\tthis.state = 'inactive';",
+	"\t\t\tif (typeof this.onstop === 'function') this.onstop();",
+	"\t\t}",
+	"\t}",
+	"\twindow.MediaRecorder = FakeMediaRecorder;",
+	"})();",
+].join("\n");
+
+/**
+ * THE QUICK-SEND MINI VIEW (design §I.3): its states, at actual size, captured
+ * from MAIN, out of a window that is never shown.
+ *
+ * WHAT A STILL CAN AND CANNOT PROVE. The mini view is user-visible and has no
+ * surface of its own inside the app: it is a second renderer document that
+ * appears only as the answer to a global hotkey. The one thing a frame proves
+ * is what the operator would see — and since the dev-driver exerciser (M-B1),
+ * the window is the APP'S OWN: the armed headless launch creates it
+ * (`headlessExerciserAllowed`), this scene finds it, sends the real summon
+ * channel into it, drives the composer through its DOM, and captures each
+ * state from the MAIN process with `capturePage`. The scene deliberately does
+ * NOT use the dev driver's `capture` verb the other scenes share: the mini
+ * document does not mount the dev driver at all (design §D.1), which is the
+ * point of the second document. A run without the exerciser window refuses by
+ * name rather than photographing a substitute the desktop plane would refuse.
+ *
+ * THE WINDOW IS NEVER SHOWN. It is created `show: false` by the app and
+ * nothing here calls show or focus — the recursive scan in
+ * `window-mode.test.mjs` covers this file too, and a scene that presented its
+ * window would be the leak it exists to disprove. `capturePage` works on a
+ * hidden window, with the console rig's lesson applied: the FIRST capture of a
+ * hidden window can come back blank, so every capture retries and the
+ * assertion is on the PNG's dimensions, not on the promise having resolved.
+ * Every capture also SETTLES first (design round 1, D6): the stills used to be
+ * photographed mid-transition, so their colours were a phase of a 120 ms fade
+ * rather than the surface's paint.
+ *
+ * THE LIVE SEND, AND THE TWO AIDS THAT MAKE ITS STILLS POSSIBLE (M-B1).
+ * Because the window is the app's own, its requests pass the desktop plane's
+ * frame gate, and with `--backend` the whole send path is real: the daemon is
+ * the run's own, the message it admits is read back from its history route,
+ * and the two transient states are photographed with disclosed harness aids —
+ * the daemon's process is PAUSED by exact pid for the `sending` frame and
+ * resumed in a `finally` (the same request then completes), and the composer's
+ * own 600 ms flash timer is stretched in the page for the `sent` frame. Both
+ * aids are page/process-level, neither changes shipped code, and the README
+ * names them beside the frames. Without `--backend` the send ends in the
+ * transport refusal — the error state with the draft kept — and the `sending`
+ * / `sent` frames are simply not taken.
+ *
+ * WHAT THIS SCENE CANNOT PROVE, said here so no report implies otherwise: that
+ * a real ⌘⌥⇧Space reaches the registrar (no synthetic OS chord crosses a
+ * headless run honestly — the registration half is unit-tested and the one
+ * live press is a human step), focus returning to the operator's previous app,
+ * anything about the microphone permission prompt (the dictating frame is
+ * driven by a fake recorder: `MINI_FAKE_RECORDER_SOURCE`), and the real
+ * OS-level conflicts macOS does not report (QA round 1, Q2).
+ */
+async function sceneMiniView(app, cdp) {
+	/*
+	 * Declarations are read as TEXT, for the same reason every sentence below is:
+	 * a still is only evidence about the shipped surface if it is a still OF that
+	 * surface, and a driver that restated a size, a channel or a duration could
+	 * quietly keep going after the app changed one. A moved declaration THROWS
+	 * here rather than being skipped or defaulted.
+	 */
+	const declaredNumberIn = (file, name) => {
+		const source = readFileSync(file, "utf8");
+		const prefix = `export const ${name} = `;
+		const line = source
+			.split("\n")
+			.find((candidate) => candidate.startsWith(prefix));
+		if (line === undefined) {
+			throw new Error(
+				`${file} no longer declares ${name}; the mini-view scene reads it, so update this reader with the declaration`,
+			);
+		}
+		const value = Number.parseInt(line.slice(prefix.length), 10);
+		if (!Number.isInteger(value) || value <= 0) {
+			throw new Error(`${name} is not a literal integer: ${line}`);
+		}
+		return value;
+	};
+	const declaredStringIn = (file, name) => {
+		const source = readFileSync(file, "utf8");
+		const prefix = `export const ${name} = "`;
+		const line = source
+			.split("\n")
+			.find((candidate) => candidate.startsWith(prefix));
+		if (line === undefined) {
+			throw new Error(
+				`${file} no longer declares ${name} as a string literal; the mini-view scene reads it, so update this reader with the declaration`,
+			);
+		}
+		const end = line.indexOf('"', prefix.length);
+		if (end === -1) throw new Error(`${name} has no closing quote: ${line}`);
+		return line.slice(prefix.length, end);
+	};
+	const width = declaredNumberIn("src/shared/mini-view.ts", "MINI_VIEW_WIDTH");
+	const height = declaredNumberIn(
+		"src/shared/mini-view.ts",
+		"MINI_VIEW_HEIGHT",
+	);
+
+	/*
+	 * The sentences the assertions read are read from the copy module for the
+	 * same reason the size is read from its declaration: a report that hardcoded
+	 * "Sent" would go on passing after the sentence changed, and the still would
+	 * be of a state the assertion no longer describes.
+	 */
+	const copySource = readFileSync(
+		"src/renderer/src/mini-view/mini-copy.ts",
+		"utf8",
+	);
+	const copySentence = (key) => {
+		const marker = `${key}: "`;
+		const start = copySource.indexOf(marker);
+		if (start === -1) throw new Error(`mini-copy.ts no longer declares ${key}`);
+		const from = start + marker.length;
+		const end = copySource.indexOf('"', from);
+		if (end === -1)
+			throw new Error(`mini-copy.ts's ${key} has no closing quote`);
+		return copySource.slice(from, end);
+	};
+	const hintSentence = copySentence("hint");
+	const recordingSentence = copySentence("recording");
+	const dictationStopSentence = copySentence("dictationStop");
+	const dictationStartSentence = copySentence("dictationStart");
+	const sentSentence = copySentence("sent");
+	/*
+	 * The invalid-state sentence is the registrationCopy arm the toast probe
+	 * asserts; it is a `case` return rather than a `key: "…"` entry, so it gets
+	 * its own read of the same source.
+	 */
+	const copyCaseSentence = (status) => {
+		const match = copySource.match(
+			new RegExp(`case "${status}":\\s*return "([^"]+)"`),
+		);
+		if (!match) {
+			throw new Error(
+				`mini-copy.ts's registrationCopy has no ${status} sentence; update this reader with the declaration`,
+			);
+		}
+		return match[1];
+	};
+	const invalidSentence = copyCaseSentence("invalid");
+
+	/*
+	 * THE SUMMON CHANNEL AND THE FLASH LENGTH, read from their declarations for
+	 * the same reason every sentence above is: the scene sends the message the
+	 * app's own presentation sends (there is no OS key to press in a headless
+	 * run), and the flash it holds open long enough to photograph is the
+	 * constant the composer ships — a scene that restated either would keep
+	 * passing after a rename or a retune.
+	 */
+	const summonChannel = declaredStringIn(
+		"src/shared/mini-view.ts",
+		"MINI_VIEW_SUMMONED",
+	);
+	const registrationChannel = declaredStringIn(
+		"src/shared/mini-view.ts",
+		"MINI_VIEW_REGISTRATION",
+	);
+	const quickSendDefault = declaredStringIn(
+		"src/shared/mini-view.ts",
+		"DEFAULT_QUICK_SEND_VALUE",
+	);
+	const sentFlashMs = declaredNumberIn(
+		"src/renderer/src/mini-view/mini-composer.tsx",
+		"SENT_FLASH_MS",
+	);
+
+	/*
+	 * THE APP'S OWN MINI WINDOW, FOUND RATHER THAN BUILT (M-B1). The dev-driver
+	 * exerciser creates it in a headless armed launch — one gate, in
+	 * `src/main/index.ts` via `headlessExerciserAllowed` — so this scene drives
+	 * a window the app owns, which is what the desktop plane admits
+	 * (`desktop-ipc.ts` admits by FRAME) and what makes the live send path
+	 * reachable at all. A run where the window is absent refuses by name rather
+	 * than photographing a hand-built substitute: that substitute cannot pass
+	 * the gate, so its frames would be stills of a window the app does not
+	 * ship.
+	 *
+	 * Read from MAIN, not from the page: a never-shown window's
+	 * `document.visibilityState` is not an honest instrument for it (the first
+	 * run of this scene read it and was refused by its own check while the
+	 * window was in fact hidden), and main can answer the real question
+	 * directly.
+	 */
+	const main = await CdpClient.attachNode(app.inspectPort);
+	const owned = await main.evaluate(
+		[
+			"(() => {",
+			'\tconst electron = process.mainModule?.require("electron") ?? globalThis.require?.("electron");',
+			"\tif (!electron) return { problem: 'main cannot require its own modules' };",
+			"\tconst windows = electron.BrowserWindow.getAllWindows();",
+			"\tconst miniWindow = windows.find((candidate) => (candidate.webContents.getURL() || '').endsWith('mini.html'));",
+			"\tif (!miniWindow) return { problem: 'the app created no mini window', windows: windows.map((window) => ({ title: window.getTitle(), url: window.webContents.getURL() })) };",
+			"\tglobalThis.__lopMiniSceneWindow = miniWindow;",
+			"\treturn {",
+			"\t\twindows: windows.map((window) => ({ title: window.getTitle(), visible: window.isVisible(), focused: window.isFocused() })),",
+			"\t\tmini: { title: miniWindow.getTitle(), visible: miniWindow.isVisible(), focused: miniWindow.isFocused(), bounds: miniWindow.getContentBounds(), url: miniWindow.webContents.getURL() },",
+			"\t};",
+			"})()",
+		].join("\n"),
+	);
+	if (owned?.mini === undefined) {
+		throw new Error(
+			`the app created no mini window, so there is nothing for this scene to drive (${JSON.stringify(owned)}). This scene requires a headless launch with the dev driver armed — the exerciser headlessExerciserAllowed() creates — because the desktop plane admits by frame and a window this scene builds by hand is refused: see docs/agent-driver.md's mini-view section`,
+		);
+	}
+	check(
+		"the app's own mini view exists, hidden and unfocused (the dev-driver exerciser)",
+		owned?.mini?.visible === false && owned?.mini?.focused === false,
+		JSON.stringify(owned?.mini),
+	);
+	check(
+		"the app's own creation used the design's fixed content size",
+		owned?.mini?.bounds?.width === width &&
+			owned?.mini?.bounds?.height === height,
+		JSON.stringify(owned?.mini?.bounds),
+	);
+	check(
+		"every window of this run is off screen, and the mini view is the only extra one",
+		Array.isArray(owned?.windows) &&
+			owned.windows.length === 2 &&
+			owned.windows.every((window) => window.visible === false),
+		JSON.stringify(owned?.windows),
+	);
+	/*
+	 * THE EXERCISER'S CONTRACT, read from the app's own log: it says it created
+	 * the window, and the registration line still says this mode registers
+	 * NOTHING — the half that must never ride the exerciser.
+	 */
+	const bootLog = await readAppLog(app);
+	check(
+		"the exerciser announced itself and registration stayed normal-only",
+		bootLog.includes("mini-view: exerciser window created") &&
+			bootLog.includes("mini-view: not registered (window mode headless)"),
+		bootLog
+			.split("\n")
+			.filter((line) => line.includes("mini-view:"))
+			.join(" / "),
+	);
+	let mini = null;
+
+	try {
+		mini = await CdpClient.attach(app.port, "out/renderer/mini.html");
+
+		const select = (tag) =>
+			`document.querySelector('[data-tour-tag="${tag}"]')`;
+		const pageState = await mini.evaluate(
+			`({ width: window.innerWidth, height: window.innerHeight, dpr: window.devicePixelRatio, theme: document.documentElement.dataset.theme ?? null, dismissBridge: typeof window.api?.miniView?.dismiss === "function", placeholder: ${select("mini-composer-input")}?.placeholder ?? null, sendDisabled: ${select("mini-composer-send")}?.disabled ?? null })`,
+		);
+		check(
+			"the mini document rendered at the app's fixed viewport",
+			pageState?.width === width && pageState?.height === height,
+			JSON.stringify(pageState),
+		);
+		check(
+			"the mini document mounted the app's palette",
+			typeof pageState?.theme === "string" && pageState.theme.length > 0,
+			`data-theme = ${JSON.stringify(pageState?.theme)}`,
+		);
+		check(
+			"the mini document has the preload's bridge",
+			pageState?.dismissBridge === true,
+			`window.api.miniView.dismiss is ${pageState?.dismissBridge === true ? "present" : "missing"}`,
+		);
+		check(
+			"the resting state invites a message and offers nothing to press",
+			typeof pageState?.placeholder === "string" &&
+				pageState.placeholder.length > 0 &&
+				pageState.sendDisabled === true,
+			`placeholder=${JSON.stringify(pageState?.placeholder)} sendDisabled=${pageState?.sendDisabled}`,
+		);
+
+		const captureMini = async (label) => {
+			await settleMini();
+			const record = await main.evaluate(
+				[
+					"(async () => {",
+					'\tconst fs = process.mainModule?.require("node:fs") ?? globalThis.require?.("node:fs");',
+					'\tconst path = process.mainModule?.require("node:path") ?? globalThis.require?.("node:path");',
+					"\tconst window = globalThis.__lopMiniSceneWindow;",
+					"\tif (!fs || !path || !window || window.isDestroyed()) return { ok: false, detail: 'the mini window is gone' };",
+					/*
+					 * A HIDDEN WINDOW'S FIRST CAPTURE IS NOT RELIABLE, in two ways this
+					 * loop covers: it can come back BLANK, and under load it can THROW
+					 * (`UnknownVizError` from a compositor that is not ready yet — measured
+					 * on this scene's second run under a load average above 70). The blank
+					 * test is the repo's own definition rather than a byte floor (the
+					 * byte floor was withdrawn in the console rig: it measured how much
+					 * text a program printed, not whether the capture worked): a frame
+					 * with fewer than 8 distinct colours or fewer than 32 pixels off its
+					 * first pixel's ground is not a screenshot of anything, and the first
+					 * version of this loop accepted exactly such a white frame once
+					 * (`mini-view-empty.png` came back 2,348 bytes of uniform white).
+					 * Three attempts with a growing wait; the failure record names which
+					 * way it failed rather than reading as a torn-down window.
+					 */
+					"\tconst looksBlank = (candidate) => {",
+					"\t\tconst bitmap = candidate.toBitmap();",
+					"\t\tconst ground = [bitmap[0], bitmap[1], bitmap[2]];",
+					"\t\tconst colours = new Set();",
+					"\t\tlet offGround = 0;",
+					"\t\tfor (let i = 0; i + 3 < bitmap.length; i += 4) {",
+					"\t\t\tcolours.add(bitmap[i] + ',' + bitmap[i + 1] + ',' + bitmap[i + 2]);",
+					"\t\t\tif (bitmap[i] !== ground[0] || bitmap[i + 1] !== ground[1] || bitmap[i + 2] !== ground[2]) offGround += 1;",
+					"\t\t}",
+					"\t\treturn colours.size < 8 || offGround < 32;",
+					"\t};",
+					"\tlet image = null;",
+					"\tlet problem = null;",
+					/*
+					 * INVALIDATE BEFORE EVERY ATTEMPT. A hidden window's compositor can
+					 * serve a frame older than the DOM (measured: the error state's frame
+					 * came back as the post-reload EMPTY surface, byte-identical with the
+					 * empty capture, while the DOM checks for the error state had all
+					 * passed). `invalidate()` schedules the repaint the capture then reads,
+					 * and it is a paint hint only — nothing about presentation.
+					 */
+					"\tconst captureOnce = async () => {",
+					"\t\twindow.webContents.invalidate();",
+					"\t\tawait new Promise((resolve) => setTimeout(resolve, 200));",
+					"\t\treturn window.webContents.capturePage();",
+					"\t};",
+					"\tfor (let attempt = 1; attempt <= 3; attempt += 1) {",
+					"\t\ttry {",
+					"\t\t\timage = await captureOnce();",
+					"\t\t\tif (!image.isEmpty() && !looksBlank(image)) break;",
+					"\t\t\tproblem = 'the capture came back blank (the hidden window had not painted yet)';",
+					"\t\t} catch (error) {",
+					"\t\t\timage = null;",
+					"\t\t\tproblem = String(error);",
+					"\t\t}",
+					"\t\tawait new Promise((resolve) => setTimeout(resolve, 250 * attempt));",
+					"\t}",
+					"\tif (!image || image.isEmpty() || looksBlank(image)) return { ok: false, detail: 'capture failed after three attempts: ' + problem };",
+					"\tconst png = image.toPNG();",
+					`\tfs.writeFileSync(path.join(${JSON.stringify(FRAMES)}, ${JSON.stringify(label)} + ".png"), png);`,
+					"\tconst size = image.getSize();",
+					'\tconst viewport = await window.webContents.executeJavaScript("({ width: window.innerWidth, height: window.innerHeight, dpr: window.devicePixelRatio })", true);',
+					"\treturn { ok: png.length > 0, bytes: png.length, pixels: { width: size.width, height: size.height }, viewport, visible: window.isVisible(), focused: window.isFocused(), bounds: window.getContentBounds() };",
+					"})()",
+				].join("\n"),
+			);
+			const dpr = record?.viewport?.dpr ?? 1;
+			check(
+				`the ${label} frame was captured at actual size`,
+				record?.ok === true &&
+					record?.pixels?.width === width * dpr &&
+					record?.pixels?.height === height * dpr,
+				JSON.stringify(record),
+			);
+			/*
+			 * The headless property, asserted PER FRAME rather than once at the end:
+			 * a presentation that slipped into any one state would be caught on the
+			 * state that slipped, not only if the window happened to still be up.
+			 */
+			check(
+				`the ${label} frame was captured with the window never visible`,
+				record?.visible === false && record?.focused === false,
+				`visible=${record?.visible} focused=${record?.focused} bounds=${JSON.stringify(record?.bounds)}`,
+			);
+			note(
+				`frame ${label}`,
+				`${record?.pixels?.width}x${record?.pixels?.height}px, ${record?.bytes} bytes`,
+			);
+			return record;
+		};
+
+		const pollMini = async (
+			expression,
+			ready,
+			description,
+			timeoutMs = 20_000,
+		) => {
+			const started = Date.now();
+			let value = null;
+			for (;;) {
+				value = await mini.evaluate(expression).catch(() => null);
+				if (value !== null && ready(value)) return { ok: true, value };
+				if (Date.now() - started > timeoutMs) return { ok: false, value };
+				await wait(120);
+			}
+		};
+
+		/*
+		 * SETTLE BEFORE EVERY CAPTURE (design round 1, D6). The textarea's
+		 * `transition-colors` (120 ms `duration-fast`) and the Send button's own
+		 * fade meant the posted `typing` and `error` stills were photographed
+		 * MID-ANIMATION, so their ring and fill measured a phase of a transition
+		 * (#addcb3, #3a6641) rather than the surface's settled paint. This polls
+		 * the computed outline/fill pairs until two consecutive reads agree (or
+		 * 1.5 s passes, under load) and every capture runs it first, so the
+		 * frames are colour evidence instead of animation evidence. The pairs
+		 * read are the ones the design round measured: the field's ring and the
+		 * Send button's fill and label, which are the two animated surfaces.
+		 */
+		const settleMini = async () => {
+			const record = await mini.evaluate(`(async () => {
+				const box = ${select("mini-composer-input")};
+				const send = ${select("mini-composer-send")};
+				const read = () =>
+					box && send
+						? [
+								getComputedStyle(box).outlineColor,
+								getComputedStyle(box).backgroundColor,
+								getComputedStyle(send).backgroundColor,
+								getComputedStyle(send).color,
+							].join("|")
+						: "";
+				let last = null;
+				let stable = 0;
+				let waited = 0;
+				let current = read();
+				while (waited < 1500) {
+					if (current === last) stable += 1;
+					else {
+						stable = 0;
+						last = current;
+					}
+					if (stable >= 2) return { settledAfterMs: waited };
+					await new Promise((resolve) => setTimeout(resolve, 60));
+					waited += 60;
+					current = read();
+				}
+				return { settledAfterMs: waited, settled: false };
+			})()`);
+			return record;
+		};
+
+		const type = async (text) => {
+			await mini.evaluate(`${select("mini-composer-input")}.focus(); true`);
+			await mini.send("Input.insertText", { text });
+			return mini.evaluate(`${select("mini-composer-input")}.value`);
+		};
+
+		/* ---- the resting state ------------------------------------------------- */
+		await captureMini("mini-view-empty");
+
+		/* ---- a draft ----------------------------------------------------------- */
+		const draft = "Lunch at one tomorrow? Book the room if it is free.";
+		const typed = await type(draft);
+		check("the draft reached the box", typed === draft, JSON.stringify(typed));
+		const sendDisabled = await mini.evaluate(
+			`${select("mini-composer-send")}.disabled`,
+		);
+		check(
+			"Send became available once there was a draft",
+			sendDisabled === false,
+			`disabled=${sendDisabled}`,
+		);
+		await captureMini("mini-view-typing");
+
+		/* ---- a long draft ------------------------------------------------------ */
+		const longDraft = [
+			"Three things before the standup tomorrow:",
+			"1. The Pergamon enrichment backlog — two batches are still queued; ask for an ETA.",
+			"2. The support digest needs the churn numbers, which I have not pulled yet.",
+			"3. The quick-send review — I would like your read on the copy.",
+			"If the order should be different, say so and I will re-plan the morning.",
+		].join("\n");
+		await type(longDraft);
+		const growth = await mini.evaluate(
+			`(() => { const box = ${select("mini-composer-input")}; const frame = document.body.getBoundingClientRect(); return { scrolls: box.scrollHeight > box.clientHeight, bodyWidth: Math.round(frame.width), bodyHeight: Math.round(frame.height) }; })()`,
+		);
+		check(
+			"a long draft scrolls inside the fixed box rather than growing the window",
+			growth?.scrolls === true &&
+				growth?.bodyWidth === width &&
+				growth?.bodyHeight === height,
+			JSON.stringify(growth),
+		);
+		await captureMini("mini-view-long");
+
+		/* ---- dictating (a fake recorder; see the constant) --------------------- */
+		await mini.send("Page.addScriptToEvaluateOnNewDocument", {
+			source: MINI_FAKE_RECORDER_SOURCE,
+		});
+		await mini.send("Page.reload");
+		const remounted = await pollMini(
+			`Boolean(${select("mini-composer-input")})`,
+			(value) => value === true,
+			"the composer remounted",
+		);
+		check(
+			"the composer remounted after the reload",
+			remounted.ok,
+			JSON.stringify(remounted.value),
+		);
+		/*
+		 * A DRAFT BEFORE THE MIC (UX round 1, U2's other half): with words in the
+		 * box, an Enter that wrongly sent would file a message missing the spoken
+		 * words — so the walk below presses exactly that key and asserts the draft
+		 * stayed.
+		 */
+		const recordingDraft = "Draft kept while dictating";
+		const draftBeforeMic = await type(recordingDraft);
+		check(
+			"the box holds a draft while the recording starts",
+			draftBeforeMic === recordingDraft,
+			JSON.stringify(draftBeforeMic),
+		);
+		await mini.evaluate(`${select("mini-composer-mic")}.click(); true`);
+		const recordingState = await pollMini(
+			`${select("mini-composer-status")}.textContent`,
+			(text) => text === recordingSentence,
+			"the recording state",
+		);
+		check(
+			"the mic press put the surface into recording",
+			recordingState.ok,
+			JSON.stringify(recordingState.value),
+		);
+		const stopLabel = await mini.evaluate(
+			`${select("mini-composer-mic")}.getAttribute("aria-label")`,
+		);
+		check(
+			"the mic control now offers to stop",
+			stopLabel === dictationStopSentence,
+			`aria-label=${JSON.stringify(stopLabel)}`,
+		);
+		await captureMini("mini-view-dictating");
+		/*
+		 * ENTER CONFIRMS A RECORDING (UX round 1, U2). While the mic is live,
+		 * Enter must not send: it stops the recording (stop → transcribe →
+		 * append), and no send path may hide the window while a recording is
+		 * live. The pre-press reading is the new guard — Send disabled while
+		 * recording — and the post-press reading is that no in-flight state
+		 * ever appeared: the textarea is never disabled by a send and the
+		 * draft is byte-identical.
+		 */
+		const beforeEnter = await mini.evaluate(
+			`({ sendDisabled: ${select("mini-composer-send")}.disabled, mic: ${select("mini-composer-mic")}.getAttribute("aria-label") })`,
+		);
+		check(
+			"Send is disabled while a recording is live",
+			beforeEnter?.sendDisabled === true &&
+				beforeEnter?.mic === dictationStopSentence,
+			JSON.stringify(beforeEnter),
+		);
+		await mini.send("Input.dispatchKeyEvent", {
+			type: "keyDown",
+			key: "Enter",
+			code: "Enter",
+			windowsVirtualKeyCode: 13,
+		});
+		await mini.send("Input.dispatchKeyEvent", {
+			type: "keyUp",
+			key: "Enter",
+			code: "Enter",
+			windowsVirtualKeyCode: 13,
+		});
+		const recordingEnded = await pollMini(
+			`${select("mini-composer-mic")}.getAttribute("aria-label")`,
+			(value) => value === dictationStartSentence,
+			"the recording to end via Enter",
+			8_000,
+		);
+		const afterEnter = await mini.evaluate(
+			`({ text: ${select("mini-composer-input")}.value, disabled: ${select("mini-composer-input")}.disabled, status: ${select("mini-composer-status")}.textContent })`,
+		);
+		check(
+			"Enter confirmed the recording instead of sending",
+			recordingEnded.ok &&
+				afterEnter?.text === recordingDraft &&
+				afterEnter?.status !== sentSentence,
+			JSON.stringify({ ended: recordingEnded.value, ...afterEnter }),
+		);
+
+		/* ---- sending / sent, or the refusal the no-backend run shows ----------- */
+		await mini.send("Page.reload");
+		await pollMini(
+			`Boolean(${select("mini-composer-input")})`,
+			(value) => value === true,
+			"the composer remounted",
+		);
+		const message = "Lunch at one tomorrow? Book the room if it is free.";
+		const held = await type(message);
+		check(
+			"the box holds the message being sent",
+			held === message,
+			JSON.stringify(held),
+		);
+
+		/*
+		 * THE SEND, walked on the app's OWN window — which is what makes both
+		 * arms honest now that the exerciser exists (M-B1). The window this
+		 * scene drives was created by the app, so the desktop plane's gate
+		 * (`desktop-ipc.ts`, admits by frame) ADMITS its requests; where the
+		 * request then goes is the run's own backend or, without one, the dead
+		 * port — and the surface shows the outcome the machine can produce.
+		 *
+		 * WITH `--backend`, the live pair. The `sending` frame needs the
+		 * in-flight state to outlive a loopback round trip, so the harness
+		 * pauses the run's OWN daemon process (SIGSTOP, exact pid from the serve
+		 * record the run linked, resumed in a `finally`) for the frame's
+		 * duration and resumes it before the same request completes: the request
+		 * is a real one, the `sent` frame is its admission, and the history
+		 * read-back below is the daemon's own receipt. The 600 ms flash is held
+		 * open long enough to photograph by stretching the composer's OWN timer
+		 * (`SENT_FLASH_MS`, read from its declaration) in this window's page — a
+		 * harness aid, disclosed here and in the README, not a shipped change.
+		 *
+		 * WITHOUT one, the fail-closed arm: the transport refusal, draft kept —
+		 * the frame the PR's error state has always been.
+		 */
+		if (BACKEND) {
+			await mini.evaluate(
+				`(() => { const original = window.setTimeout; window.setTimeout = (fn, ms, ...rest) => original(fn, ms === ${sentFlashMs} ? 5000 : ms, ...rest); return true; })()`,
+			);
+			const daemonPids = runDaemonPids();
+			let paused = 0;
+			try {
+				for (const pid of daemonPids) {
+					try {
+						process.kill(pid, "SIGSTOP");
+						paused += 1;
+					} catch {
+						/* Already gone: nothing to hold, and the send will show it. */
+					}
+				}
+				check(
+					"the run's own daemon was paused for the sending frame",
+					paused > 0,
+					`paused ${paused} of ${JSON.stringify(daemonPids)}`,
+				);
+				await wait(150);
+				await mini.evaluate(`${select("mini-composer-send")}.click(); true`);
+				const inFlight = await pollMini(
+					`({ editable: !${select("mini-composer-input")}.disabled, sendDisabled: ${select("mini-composer-send")}.disabled })`,
+					(value) => value?.editable === false,
+					"the in-flight state",
+					6_000,
+				);
+				check(
+					"the send is in flight while the daemon holds the answer",
+					inFlight.ok,
+					JSON.stringify(inFlight.value),
+				);
+				await captureMini("mini-view-sending");
+			} finally {
+				for (const pid of daemonPids) {
+					try {
+						process.kill(pid, "SIGCONT");
+					} catch {
+						/* A pid that died while paused has nothing to resume. */
+					}
+				}
+			}
+			const admitted = await pollMini(
+				`${select("mini-composer-status")}.textContent`,
+				(text) => text === sentSentence,
+				"the Sent flash",
+				20_000,
+			);
+			check(
+				"admission painted the Sent flash",
+				admitted.ok,
+				JSON.stringify(admitted.value),
+			);
+			await captureMini("mini-view-sent");
+
+			/* THE DAEMON'S OWN TRUTH, read back over its own routes: the message is
+			   in the chief-of-staff conversation, not only on the surface. */
+			const aidaState = await daemonPost("/v1/desktop/aida", { op: "status" });
+			const seatSession = aidaState?.json?.result?.session_id ?? null;
+			check(
+				"the daemon reports a chief-of-staff conversation",
+				typeof seatSession === "string" && seatSession.length > 0,
+				JSON.stringify({
+					status: aidaState?.status,
+					body: aidaState?.body,
+				}).slice(0, 300),
+			);
+			const history = seatSession
+				? await daemonGet(
+						`/v1/desktop/sessions/${seatSession}/history?limit=20`,
+					)
+				: null;
+			const entries = history?.json?.result?.entries ?? [];
+			check(
+				"the daemon's own history carries the message the composer sent",
+				Array.isArray(entries) &&
+					entries.some((entry) => JSON.stringify(entry).includes(message)),
+				JSON.stringify({ status: history?.status, body: history?.body }).slice(
+					0,
+					300,
+				),
+			);
+		} else {
+			await mini.evaluate(`${select("mini-composer-send")}.click(); true`);
+			const refused = await pollMini(
+				`${select("mini-composer-status")}.textContent`,
+				(text) =>
+					typeof text === "string" && text !== "" && text !== hintSentence,
+				"the refusal sentence",
+			);
+			check(
+				"the send was refused with a sentence rather than silence",
+				refused.ok,
+				JSON.stringify(refused.value),
+			);
+			const after = await mini.evaluate(
+				`({ text: ${select("mini-composer-input")}.value, retry: Boolean(${select("mini-composer-retry")}), sendDisabled: ${select("mini-composer-send")}.disabled })`,
+			);
+			check(
+				"the refusal kept the draft: nothing was lost to the failure",
+				after?.text === message,
+				JSON.stringify(after),
+			);
+			note("the refusal state", JSON.stringify(after));
+			await captureMini("mini-view-error");
+		}
+
+		/*
+		 * THE SUMMON WALK, over the real channel — LAST, deliberately. A headless
+		 * run has no OS chord to press, so the scene delivers the message the
+		 * app's own presentation sends (the channel read from its declaration
+		 * above) from MAIN to the app's OWN mini window: the window, the preload
+		 * and the renderer handler are the shipped ones, so what runs is the
+		 * renderer half of a real summon (focus, theme, flash reset, seat
+		 * re-resolution). It runs AFTER the state walk because a summon also
+		 * RESOLVES the seat, and on a machine with no backend that resolution
+		 * fails by design and disables Send — a state the earlier frames must not
+		 * inherit. The blur first makes the focus assertion about the summon rather
+		 * than about whatever the send walk left focused.
+		 */
+		await mini.evaluate("document.activeElement?.blur?.(); true");
+		await main.evaluate(
+			`(() => { const window = globalThis.__lopMiniSceneWindow; window.webContents.send(${JSON.stringify(summonChannel)}, { at: Date.now() }); return true; })()`,
+		);
+		const summonedFocus = await pollMini(
+			"document.activeElement?.dataset?.tourTag ?? null",
+			(value) => value === "mini-composer-input",
+			"the summon focused the composer",
+		);
+		check(
+			"the summon moved focus into the composer",
+			summonedFocus.ok,
+			JSON.stringify(summonedFocus.value),
+		);
+
+		/*
+		 * THE GATE'S OWN ANSWER, ASSERTED rather than apologised for: the window
+		 * is the app's own now, so a "cannot use desktop controls" line in the
+		 * app log would be a real defect — the exerciser's whole purpose is that
+		 * this window passes the frame gate.
+		 */
+		const appLog = await readAppLog(app);
+		check(
+			"the desktop plane admitted the app's own mini window",
+			!appLog.includes("This window cannot use desktop controls."),
+			appLog
+				.split("\n")
+				.filter((line) => line.includes("desktop controls"))
+				.join(" / ") || "no refusal line",
+		);
+
+		/*
+		 * THE REGISTRATION TOAST (UX round 1, U1), walked on the app's own main
+		 * window: a transition into a FAILED status must raise one toast through
+		 * the app's sonner path. The pushes below go over the real channel to
+		 * every window exactly as `index.ts`'s onState does; the contract skips
+		 * the launch-time state (whichever source delivers it first), so TWO
+		 * pushes are sent and the second — a different failure — is the one
+		 * asserted: deterministic whichever source set the baseline.
+		 */
+		const toastBefore = await cdp
+			.evaluate('document.querySelectorAll("[data-sonner-toast]").length')
+			.catch(() => null);
+		const pushRegistration = async (status) => {
+			await main.evaluate(
+				[
+					"(() => {",
+					'\tconst electron = process.mainModule?.require("electron") ?? globalThis.require?.("electron");',
+					"\tif (!electron) return false;",
+					`\tconst state = { value: ${JSON.stringify(quickSendDefault)}, accelerator: "CommandOrControl+Alt+Shift+Space", status: ${JSON.stringify(status)} };`,
+					"\tfor (const window of electron.BrowserWindow.getAllWindows()) {",
+					"\t\tif (window.isDestroyed()) continue;",
+					`\t\twindow.webContents.send(${JSON.stringify(registrationChannel)}, state);`,
+					"\t}",
+					"\treturn true;",
+					"})()",
+				].join("\n"),
+			);
+		};
+		await pushRegistration("taken");
+		await pushRegistration("invalid");
+		const toasted = await (async () => {
+			const started = Date.now();
+			for (;;) {
+				const text = await cdp
+					.evaluate('document.body.textContent ?? ""')
+					.catch(() => "");
+				if (typeof text === "string" && text.includes(invalidSentence)) {
+					return { ok: true, text };
+				}
+				if (Date.now() - started > 8_000) return { ok: false, text };
+				await wait(150);
+			}
+		})();
+		check(
+			"a failed-transition toast reached the app's own container (U1)",
+			toasted.ok,
+			`toasts before the transition=${toastBefore}; the container never carried ${JSON.stringify(invalidSentence)}`,
+		);
+
+		/*
+		 * The run's closing survey: every window this app has, and none of them on
+		 * screen. It is the scene's own claim about itself, in the same shape the
+		 * driver's leftover-process probe is a claim about the processes.
+		 */
+		const windows = await main.evaluate(
+			'(() => { const electron = process.mainModule?.require("electron") ?? globalThis.require?.("electron"); if (!electron) return null; return electron.BrowserWindow.getAllWindows().map((window) => ({ title: window.getTitle(), visible: window.isVisible(), focused: window.isFocused() })); })()',
+		);
+		check(
+			"no window of this run is visible, and the only extra one is the mini view",
+			Array.isArray(windows) &&
+				windows.length === 2 &&
+				windows.every((window) => window.visible === false),
+			JSON.stringify(windows),
+		);
+		const memory = await main.evaluate(
+			'(() => { const electron = process.mainModule?.require("electron") ?? globalThis.require?.("electron"); const window = globalThis.__lopMiniSceneWindow; if (!electron || !window || window.isDestroyed()) return null; const pid = window.webContents.getOSProcessId(); const metric = electron.app.getAppMetrics().find((entry) => entry.pid === pid); return metric ? { pid, type: metric.type, workingSetKb: metric.memory?.workingSetSize, peakWorkingSetKb: metric.memory?.peakWorkingSetSize, privateKb: metric.memory?.privateBytes } : null; })()',
+		);
+		note(
+			"the hidden mini window's renderer memory (risk K6)",
+			JSON.stringify(memory),
+		);
+	} finally {
+		if (mini !== null) mini.close();
+		main.close();
+	}
+}
+
 async function main() {
 	await assertBuildIsCurrent();
 	/*
@@ -24435,7 +31140,7 @@ async function main() {
 	 * The scenes' own preconditions, checked BEFORE anything is launched.
 	 *
 	 * They used to sit inside the run loop, after the app had booted: a
-	 * `--scene sidebar-split` with no `--backend` started a real Electron, logged
+	 * `--scene connection-drop` with no `--backend` started a real Electron, logged
 	 * its startup, and only then refused - a refusal that fails closed (the throw
 	 * reaches the reaping path and the app is killed by exact pid) but is not free
 	 * (agent review round 2, NIT-2). Reading argv and refusing costs nothing, and
@@ -24451,19 +31156,9 @@ async function main() {
 			"--scene connection-drop needs --backend-records: the record is where the daemon's pid lives, and killing a guessed pid is what this argument exists to prevent",
 		);
 	}
-	if (SCENE === "sidebar-sections" && BACKEND === null) {
-		throw new Error(
-			"--scene sidebar-sections needs --backend: both sections are gated on the catalogue a live backend advertises, and the scene seeds an agent, a team and chats through that backend's own routes",
-		);
-	}
 	if (SCENE === "btw-aside" && BACKEND === null) {
 		throw new Error(
 			"--scene btw-aside needs --backend: the aside is answered by the daemon (sessions.aside) and its answer streams over the session's own SSE frames, so a run with no backend photographs an app that can never be asked anything",
-		);
-	}
-	if (SCENE === "sidebar-split" && BACKEND === null) {
-		throw new Error(
-			"--scene sidebar-split needs --backend: the boundary only exists while both regions do, and the list region is gated on the catalogue a live backend advertises",
 		);
 	}
 	if (SCENE === "pins-scroll" && BACKEND === null) {
@@ -24479,6 +31174,22 @@ async function main() {
 	if (SCENE === "first-send" && BACKEND === null) {
 		throw new Error(
 			"--scene first-send needs --backend: with no backend the chat route draws its refusal surface and no composer mounts, so there is nothing to send from",
+		);
+	}
+	if (SCENE === "turn-collapse" && BACKEND === null) {
+		throw new Error(
+			"--scene turn-collapse needs --backend: the bar collapses a turn the daemon has to actually run, and with no backend the chat route draws its refusal surface and no composer mounts",
+		);
+	}
+	if (SCENE === "conversation-start-away-failure" && BACKEND === null) {
+		console.error(
+			"the conversation-start-away-failure scene needs --backend <url>: it drives a real refusal through the tap",
+		);
+		process.exit(2);
+	}
+	if (SCENE === "conversation-start" && BACKEND === null) {
+		throw new Error(
+			"--scene conversation-start needs --backend: every frame is a real send against a live owner (and the switch needs a second conversation), so a run with no backend has nothing to photograph",
 		);
 	}
 	if (SCENE === "radient-issue" && BACKEND === null) {
@@ -24515,6 +31226,35 @@ async function main() {
 			`--authoring-expect takes refresh or stale (got ${JSON.stringify(AUTHORING_EXPECT)}): the two are different claims about the same run, and a defaulted typo would silently answer the other one`,
 		);
 	}
+	if (SCENE === "sessionless-slash" && BACKEND === null) {
+		throw new Error(
+			"--scene sessionless-slash needs --backend: the composer only exists behind the session catalogue a live backend advertises, and four of the five pickers read routes on it (`/resume` its session list, `/login` and `/logout` the accounts, `/help` the catalogue itself)",
+		);
+	}
+	if (
+		SCENE === "sessionless-slash" &&
+		SLASH_EXPECT !== "open" &&
+		SLASH_EXPECT !== "refused"
+	) {
+		throw new Error(
+			`--slash-expect takes open or refused (got ${JSON.stringify(SLASH_EXPECT)}): the two are different claims about the same gestures, and a defaulted typo would silently answer the other one`,
+		);
+	}
+	if (SCENE === "route-tops" && BACKEND === null) {
+		throw new Error(
+			"--scene route-tops needs --backend: settings, agents, projects, hub and schedules are gated on the catalogue a live backend advertises, and the macOS lane assertion is read over every one of them",
+		);
+	}
+	if (SCENE === "project-detail" && BACKEND === null) {
+		throw new Error(
+			"--scene project-detail needs --backend: the seeded row, quick-send's message and the picker's create are all real requests to the daemon this run owns, so a run with none would photograph three refusals",
+		);
+	}
+	if (SCENE === "mini-view" && BACKEND !== null && BACKEND_RECORDS === null) {
+		throw new Error(
+			"--scene mini-view with --backend needs --backend-records: the app admits only a daemon a serve record describes, and the sending frame is held by pausing that daemon's own process, whose pid the record carries",
+		);
+	}
 	if (SCENE === "pins-search" && (TUI_PYTHON === null || TUI_CONFIG === null)) {
 		throw new Error(
 			"--scene pins-search needs --tui-python and --tui-config: the third surface it asserts is the store the terminal reads",
@@ -24524,6 +31264,18 @@ async function main() {
 		throw new Error(
 			"--scene pins takes --tui-python and --tui-config together: the terminal's store and the config root the daemon serves are one measurement, and half of it would look like it ran",
 		);
+	}
+	if (SCENE === "sidebar-bin-promptness") {
+		if (BACKEND === null || BACKEND_RECORDS === null) {
+			throw new Error(
+				"--scene sidebar-bin-promptness needs --backend and --backend-records: the subject is a session created and messaged over the daemon's own routes, and the record directory is how this script finds the store that session lives in",
+			);
+		}
+		if (BIN_EXPECT !== "prompt" && BIN_EXPECT !== "stale") {
+			throw new Error(
+				`--bin-expect takes prompt or stale (got ${JSON.stringify(BIN_EXPECT)}): the two are different claims about the same run, and a defaulted typo would silently answer the other one`,
+			);
+		}
 	}
 
 	if (GATE_CHECK) {
@@ -24644,6 +31396,7 @@ async function main() {
 			if (SCENE === "session-archive") await sceneSessionArchive(cdp);
 			else if (SCENE === "connection-drop") await sceneConnectionDrop(cdp);
 			else if (SCENE === "row-space") await sceneRowSpace(cdp);
+			else if (SCENE === "sidebar-bottom") await sceneSidebarBottom(cdp);
 			else if (SCENE === "states") await sceneStates(cdp);
 			/*
 			 * §I's pane floors (the chat column's 480, the canvas's dock cap and its
@@ -24651,30 +31404,45 @@ async function main() {
 			 * widths it is written about.
 			 */ else if (SCENE === "floors") await sceneFloors(cdp);
 			else if (SCENE === "first-send") await sceneFirstSend(cdp);
+			else if (SCENE === "turn-collapse") await sceneTurnCollapse(cdp);
+			else if (SCENE === "conversation-start")
+				await sceneConversationStart(cdp);
+			else if (SCENE === "conversation-start-away-failure")
+				await sceneConversationStartAwayFailure(cdp);
+			else if (SCENE === "conversation-start-create-failure")
+				await sceneConversationStartCreateFailure(cdp);
 			else if (SCENE === "question-dock") await sceneQuestionDock(cdp);
 			else if (SCENE === "radient-issue") await sceneRadientIssue(cdp);
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);
 			else if (SCENE === "btw-aside") await sceneBtwAside(cdp);
+			else if (SCENE === "sessionless-slash") await sceneSessionlessSlash(cdp);
 			else if (SCENE === "authoring-refresh") await sceneAuthoringRefresh(cdp);
+			else if (SCENE === "sidebar-bin-promptness")
+				await sceneSidebarBinPromptness(cdp);
+			else if (SCENE === "drafts") await sceneDrafts(cdp);
+			else if (SCENE === "undo-toasts-stacked")
+				await sceneUndoToastsStacked(cdp);
 			else if (SCENE === "settings-model") await sceneSettingsModel(cdp);
 			else if (SCENE === "settings-fields") await sceneSettingsFields(cdp);
 			else if (SCENE === "settings-gate") await sceneSettingsGate(cdp);
 			else if (SCENE === "settings-integrations")
 				await sceneSettingsIntegrations(cdp);
+			else if (SCENE === "route-tops") await sceneRouteTops(cdp);
+			else if (SCENE === "project-detail") await sceneProjectDetail(cdp);
 			else if (SCENE === "palette") await scenePalette(cdp);
+			else if (SCENE === "hit-zones") await sceneHitZones(cdp);
 			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);
 			else if (SCENE === "approval-badges") await sceneApprovalBadges(cdp);
 			else if (SCENE === "pins") await scenePins(cdp);
 			else if (SCENE === "pins-scroll") await scenePinsScrolled(cdp);
 			else if (SCENE === "pins-search") await scenePinsSearch(cdp);
 			else if (SCENE === "mentions") await sceneMentions(cdp);
-			else if (SCENE === "sidebar-split")
-				cdp = await sceneSidebarSplit(cdp, app);
-			else if (SCENE === "sidebar-sections")
-				cdp = await sceneSidebarSections(cdp, app);
+			else if (SCENE === "shell-evidence") await sceneShellEvidence(cdp);
+			else if (SCENE === "transcript-rail") await sceneTranscriptRail(cdp);
 			else if (SCENE === "canvas-freshness")
 				await sceneCanvasFreshness(cdp, app);
 			else if (SCENE === "sidebar-lazy-chats") await sceneSidebarLazyChats(cdp);
+			else if (SCENE === "mini-view") await sceneMiniView(app, cdp);
 			else if (SCENE !== "none") throw new Error(`unknown scene "${SCENE}"`);
 			for (const line of cdp.console.slice(-20)) say(`  [renderer] ${line}`);
 		} finally {

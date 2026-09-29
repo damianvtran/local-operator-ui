@@ -50,6 +50,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { test } from "node:test";
 import { pathToFileURL } from "node:url";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
@@ -66,7 +67,7 @@ globalThis.sessionStorage = bootstrap.window.sessionStorage;
 const { createRoot } = await import("react-dom/client");
 
 /* React stays out of the bundle so the mounted tree shares THIS React instance. */
-const EXTERNAL = /^(react|react-dom)(\/.*)?$/;
+const EXTERNAL = /^(react|react-dom|@tanstack\/react-query)(\/.*)?$/;
 const BARE_SPECIFIER = /^[^./]/;
 const CACHE = resolve(
 	ROOT,
@@ -81,7 +82,7 @@ const bundle = await build({
 			export { MarkdownRenderer, StreamingMarkdown } from "./src/renderer/src/features/chat/components/markdown-renderer";
 			export { createBlockScanner, scanMarkdownBlocks, trimmedEndLength } from "./src/renderer/src/features/chat/utils/markdown-blocks";
 			export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";
-			export { applyEvent, applyHistoryPage, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
+			export { applyEvent, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 		`,
 		resolveDir: ROOT,
 	},
@@ -124,7 +125,6 @@ const {
 	trimmedEndLength,
 	CanonicalTranscript,
 	applyEvent,
-	applyHistoryPage,
 	EMPTY_TRANSCRIPT,
 } = await import(pathToFileURL(bundlePath).href);
 
@@ -557,43 +557,29 @@ test("a closed block is linkified and the open tail stays prose", async () => {
 });
 
 /* ------------------- 7. the ROW wires the split, and settles to the full parse */
-
-test("the transcript row renders incrementally while streaming and whole once settled", async () => {
+test("the transcript row renders incrementally while streaming and whole once settled, corpus-wide", async () => {
 	/*
 	 * The components above are only half of the change: `canonical-transcript.tsx`
 	 * is what chooses between them on `record.streaming`. This mounts the REAL
-	 * transcript with one assistant record, streams it (an open paragraph), then
-	 * settles it by folding `message_end` — the same event production sends — and
-	 * asserts both halves of the wiring: the streaming row must be the incremental
-	 * one (its tail marker), and the settled row must be byte-identical to a fresh
-	 * whole-message render. Without this, a later edit could flip the condition and
-	 * every component-level test would stay green while the row silently went back
-	 * to re-parsing per token.
+	 * transcript for EVERY corpus item plus the inline-markdown case, streams
+	 * each, settles it by folding `message_end` — the same event production sends —
+	 * and asserts both halves of the wiring per item: while streaming the row
+	 * paints the incremental path (and for the raw-source cases that paint DIFFERS
+	 * from the whole-message render, which is what fails if the condition is ever
+	 * flipped), and once settled the row's markdown is byte-identical to a fresh
+	 * whole-message render.
+	 *
+	 * Review round 1 (R1): the settle-equality check lives HERE, on the row, so it
+	 * is the PRODUCTION handover the corpus sentence is held to — the
+	 * component-level settled test above pins "no residue across the switch" (it
+	 * renders both of its sides itself), not the handover.
 	 */
 	const dom = mountDom();
 	try {
 		const container = dom.window.document.getElementById("root");
 		const root = createRoot(container);
-		const openText = "The retry budget is now per-route, and **bold** is open";
-		let transcript = applyEvent(
-			EMPTY_TRANSCRIPT,
-			{
-				type: "message_start",
-				message: { id: "a1", role: "assistant", content: [], tool_calls: [] },
-			},
-			1,
-		);
-		transcript = applyEvent(
+		const props = (transcript, conversationId) => ({
 			transcript,
-			{
-				type: "message_update",
-				delta: openText,
-				message: { id: "a1", role: "assistant", content: [], tool_calls: [] },
-			},
-			2,
-		);
-		const props = (t) => ({
-			transcript: t,
 			frontend: null,
 			gate: null,
 			waiting: false,
@@ -605,59 +591,194 @@ test("the transcript row renders incrementally while streaming and whole once se
 			status: "live",
 			failure: null,
 			awaitingHydration: false,
-			conversationId: "streaming-parity-test",
+			conversationId,
 			onReconnect: () => {},
 		});
-		await act(async () => {
-			root.render(createElement(CanonicalTranscript, props(transcript)));
-		});
-		const row = container.querySelector('[data-record-id="a1"]');
-		assert.ok(row, "the streaming row is on screen");
-		assert.ok(
-			row.querySelector(".lo-stream-tail"),
-			"a streaming row is rendered by the incremental path",
-		);
-		// Settle the row the way production does.
-		const settled = applyEvent(
-			transcript,
+		const items = [
+			...CORPUS,
 			{
-				type: "message_end",
-				message: {
-					id: "a1",
-					role: "assistant",
-					content: [{ type: "text", text: openText }],
-					tool_calls: [],
-				},
+				name: "inline-open",
+				text: "The retry budget is now per-route, and **bold** is open",
 			},
-			3,
-		);
-		await act(async () => {
-			root.render(createElement(CanonicalTranscript, props(settled)));
+		];
+		/*
+		 * The transcript reads its cross-session visibility through react-query
+		 * (`useCrossSessionHidden`); unseeded is the fail-closed path, so these
+		 * frames hide nothing.
+		 */
+		const client = new QueryClient({
+			defaultOptions: { queries: { retry: false } },
 		});
-		const settledRow = container.querySelector('[data-record-id="a1"]');
+		const mountRow = (transcript, conversationId) =>
+			createElement(
+				QueryClientProvider,
+				{ client },
+				createElement(CanonicalTranscript, props(transcript, conversationId)),
+			);
+		let differsFromFull = 0;
+		for (const [index, item] of items.entries()) {
+			const id = `a${index}`;
+			let transcript = applyEvent(
+				EMPTY_TRANSCRIPT,
+				{
+					type: "message_start",
+					message: { id, role: "assistant", content: [], tool_calls: [] },
+				},
+				1,
+			);
+			transcript = applyEvent(
+				transcript,
+				{
+					type: "message_update",
+					delta: item.text,
+					message: { id, role: "assistant", content: [], tool_calls: [] },
+				},
+				2,
+			);
+			await act(async () => {
+				root.render(mountRow(transcript, `streaming-parity-${index}`));
+			});
+			const row = container.querySelector(`[data-record-id="${id}"]`);
+			assert.ok(row, `${item.name}: the streaming row is on screen`);
+			if (item.text.trim() !== "") {
+				assert.ok(
+					row.querySelector(".lo-stream-tail"),
+					`${item.name}: a streaming row is rendered by the incremental path`,
+				);
+			}
+			// The same inputs the row hands its settled renderer: settled content,
+			// linkify on, and the row's own style props (isSmallView is false here).
+			const reference = dom.window.document.createElement("div");
+			dom.window.document.body.appendChild(reference);
+			const refRoot = createRoot(reference);
+			await act(async () => {
+				refRoot.render(
+					createElement(MarkdownRenderer, {
+						content: item.text,
+						linkify: true,
+						styleProps: { fontSize: "var(--text-body)", lineHeight: 1.6 },
+					}),
+				);
+			});
+			const streamedMarkdown = row.querySelector(".lo-markdown");
+			if (streamedMarkdown.innerHTML !== reference.firstChild.innerHTML) {
+				differsFromFull += 1;
+			}
+			const settled = applyEvent(
+				transcript,
+				{
+					type: "message_end",
+					message: {
+						id,
+						role: "assistant",
+						content: [{ type: "text", text: item.text }],
+						tool_calls: [],
+					},
+				},
+				3,
+			);
+			await act(async () => {
+				root.render(mountRow(settled, `streaming-parity-${index}`));
+			});
+			const settledRow = container.querySelector(`[data-record-id="${id}"]`);
+			assert.ok(
+				!settledRow.querySelector(".lo-stream-tail"),
+				`${item.name}: a settled row leaves the incremental path`,
+			);
+			const settledMarkdown = settledRow.querySelector(".lo-markdown");
+			assert.equal(
+				settledMarkdown.outerHTML,
+				reference.firstChild.outerHTML,
+				`${item.name}: the settled row's markdown is not the whole-message render, byte for byte`,
+			);
+			await act(async () => refRoot.unmount());
+		}
 		assert.ok(
-			!settledRow.querySelector(".lo-stream-tail"),
-			"a settled row leaves the incremental path",
+			differsFromFull >= 1,
+			"not one corpus item's in-flight paint differed from the whole-message render — the incremental path did not engage",
 		);
-		// The same inputs the row hands it: settled content, linkify on, and the
-		// row's own style props (isSmallView is false here).
-		const expected = createElement(MarkdownRenderer, {
-			content: openText,
-			linkify: true,
-			styleProps: { fontSize: "var(--text-body)", lineHeight: 1.6 },
-		});
-		const reference = dom.window.document.createElement("div");
-		dom.window.document.body.appendChild(reference);
-		const refRoot = createRoot(reference);
-		await act(async () => refRoot.render(expected));
-		const settledMarkdown = settledRow.querySelector(".lo-markdown");
-		assert.equal(
-			settledMarkdown.outerHTML,
-			reference.firstChild.outerHTML,
-			`the settled row's markdown is the whole-message render, byte for byte\nrow:       ${settledMarkdown.outerHTML}\nreference: ${reference.firstChild.outerHTML}`,
+	} finally {
+		dom.restore();
+	}
+});
+
+/* ---------------- 7. the ask contract of the incremental path, by spelling */
+
+test("a closed block asks once per spelling; the open tail and every delta ask nothing", async () => {
+	/*
+	 * Review round 1 (R2), at the component the streaming row actually renders:
+	 * a CLOSED block is scanned - its source can never change again, so its
+	 * ambiguous path is a finished path and the disk is asked about it once,
+	 * through the shared probe cache - while the OPEN tail is painted and never
+	 * scanned, and a growing tail issues no further asks. The first attempt at
+	 * this pin mounted the whole ROW; the row does not paint a streaming record
+	 * in that suite's harness on current main (it paints empty, which is not
+	 * this diff's behaviour and is recorded on the PR), so the pin lives here,
+	 * where the behaviour under test is the behaviour that runs.
+	 */
+	const dom = mountDom();
+	const asked = [];
+	dom.window.api = {
+		probeFiles: async (paths) => {
+			asked.push(...paths);
+			return paths.map((input) => ({
+				input,
+				resolved: input,
+				exists: true,
+				isFile: true,
+				sizeBytes: 1,
+				mtimeMs: 1,
+			}));
+		},
+	};
+	try {
+		const container = dom.window.document.getElementById("root");
+		const root = createRoot(container);
+		const CLOSED = "/Users/reviewer/delta";
+		const TAIL = "/Users/reviewer/half-written";
+		/*
+		 * The tail carries a SECOND, unterminated line: the scanner closes the
+		 * first paragraph only when a later line is complete, so without it the
+		 * whole document would be one open block and there would be nothing
+		 * closed to ask about.
+		 */
+		const streamed = `Saved it to ${CLOSED} first.\n\nWhile the rest settles, the tail names ${TAIL} and keeps going\nso this second tail line is unterminated`;
+		const render = async (content) => {
+			await act(async () => {
+				root.render(createElement(StreamingMarkdown, { content }));
+			});
+		};
+		await render(streamed);
+		assert.deepEqual(
+			asked,
+			[CLOSED],
+			"the closed block asks once for its spelling; the open tail asks for nothing",
 		);
-		await act(async () => root.unmount());
-		await act(async () => refRoot.unmount());
+		const anchored = [...container.querySelectorAll("a")].map((a) =>
+			a.getAttribute("href"),
+		);
+		assert.ok(
+			anchored.includes(CLOSED),
+			"the answer that landed makes the closed block's path a link",
+		);
+		assert.ok(
+			!anchored.includes(TAIL),
+			"and the open tail's path is still prose",
+		);
+		await render(`${streamed} and grew by two words`);
+		assert.deepEqual(
+			asked,
+			[CLOSED],
+			"a growing tail issues no further asks for the closed block",
+		);
+		// A blank line ARMS the break; the terminated line after it closes the
+		// tail's block, which is the only thing that scans it.
+		await render(`${streamed} and grew.\n\nmore text\n`);
+		assert.deepEqual(
+			asked,
+			[CLOSED, TAIL],
+			"when the tail's own block closes it is scanned once, like any closed block",
+		);
 	} finally {
 		dom.restore();
 	}

@@ -38,7 +38,7 @@ const bundle = await build({
 	platform: "node",
 	write: false,
 });
-const { scrollRegionToTop } = await import(
+const { scrollRegionToTop, scrollRegionToCenter } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
@@ -119,4 +119,135 @@ test("a target already flush with the content top is a no-op", () => {
 	const region = regionStub({ scroll: 186, top: 100, clientTop: 1 });
 	scrollRegionToTop(region, targetStub(101));
 	assert.equal(region.scrollTop, 186);
+});
+
+/*
+ * ---- the centre sibling -------------------------------------------------
+ *
+ * `scrollRegionToCenter` (the checkpoint rail's jump, design §D7 stage 3)
+ * shares the walk and gains one term:
+ *
+ *   offset = region.scrollTop + target.top - region.top - region.clientTop
+ *            - (region.clientHeight - target.height) / 2
+ *
+ * Each new term gets a case that fails if that term alone is removed, the
+ * same property the cases above hold themselves to. The stubs grow the two
+ * fields the extra term reads (`clientHeight`, `height`) and nothing else;
+ * jsdom has no layout, so this is the whole geometry the helper can see.
+ */
+
+/** The same region stub, with the scrollport height the centre term reads. */
+const regionCentreStub = ({
+	scroll = 0,
+	top = 0,
+	clientTop = 0,
+	clientHeight,
+}) => ({
+	scrollTop: scroll,
+	clientTop,
+	clientHeight,
+	getBoundingClientRect: () => ({ top, left: 0 }),
+});
+
+/** The same target stub, with the height the centre term reads. */
+const targetCentreStub = (top, height) => ({
+	getBoundingClientRect: () => ({ top, left: 0, height }),
+});
+
+test("a target is brought to the region's middle, not its top", () => {
+	// 439 is the top-aligned offset (40 + 500 - 100 - 1); centring a 100px target
+	// in a 600px scrollport takes off (600 - 100) / 2 = 250 -> 189.
+	const region = regionCentreStub({
+		scroll: 40,
+		top: 100,
+		clientTop: 1,
+		clientHeight: 600,
+	});
+	scrollRegionToCenter(region, targetCentreStub(500, 100));
+	assert.equal(region.scrollTop, 189);
+});
+
+test("the region's own border is subtracted here too", () => {
+	// Same geometry with no border: 40 + 500 - 100 = 440, less 250 -> 190. A
+	// helper that dropped `clientTop` cannot answer both this and the case above.
+	const region = regionCentreStub({
+		scroll: 40,
+		top: 100,
+		clientTop: 0,
+		clientHeight: 600,
+	});
+	scrollRegionToCenter(region, targetCentreStub(500, 100));
+	assert.equal(region.scrollTop, 190);
+});
+
+test("the centre term reads BOTH heights", () => {
+	// 500 - (300 - 40) / 2 = 370. Dropping the target's half yields 500 - 150 =
+	// 350; dropping the region's yields 500 + 20 = 520. One number, both terms.
+	const region = regionCentreStub({
+		scroll: 0,
+		top: 0,
+		clientTop: 0,
+		clientHeight: 300,
+	});
+	scrollRegionToCenter(region, targetCentreStub(500, 40));
+	assert.equal(region.scrollTop, 370);
+});
+
+test("a target already at the region's middle is a no-op", () => {
+	// The target's viewport top is exactly the centre term below the region's
+	// padding-box top (351 - 100 - 1 = 250), while the region is scrolled to
+	// that offset: the assignment is ABSOLUTE, like the top sibling's no-op.
+	const region = regionCentreStub({
+		scroll: 186,
+		top: 100,
+		clientTop: 1,
+		clientHeight: 600,
+	});
+	scrollRegionToCenter(region, targetCentreStub(351, 100));
+	assert.equal(region.scrollTop, 186);
+});
+
+test("a target above the middle clamps at zero rather than going negative", () => {
+	// 40 + 20 - 100 - 0 - 250 = -290, which is a `scrollTop` no box can hold.
+	const region = regionCentreStub({
+		scroll: 40,
+		top: 100,
+		clientTop: 0,
+		clientHeight: 600,
+	});
+	scrollRegionToCenter(region, targetCentreStub(20, 100));
+	assert.equal(region.scrollTop, 0);
+});
+
+test("the reversed axis takes the same offset and lets it go negative", () => {
+	// D1's own geometry on the transcript's axis: identical numbers to the
+	// normal-axis clamp case above (40 + 20 - 100 - 0 - 250 = -290), but on a
+	// `flex-col-reverse` box -290 is a value the box CAN hold (0 at the newest
+	// row, a negative bound at the oldest), so the assignment must land it
+	// rather than clamping to zero. That clamp was the defect design round 1
+	// measured: the landing frames showed the wash painted off-screen over
+	// pixel-identical bubble positions while the scene's attribute check
+	// passed honestly.
+	const region = regionCentreStub({
+		scroll: 40,
+		top: 100,
+		clientTop: 0,
+		clientHeight: 600,
+	});
+	scrollRegionToCenter(region, targetCentreStub(20, 100), "reversed");
+	assert.equal(region.scrollTop, -290);
+});
+
+test("the reversed axis clamps up at zero for a target toward the newest row", () => {
+	// -100 + 500 - 100 - 0 - 250 = 50; on this axis the legal value nearest it
+	// is 0 (the newest-row origin), exactly as the browser's own bound would
+	// hold it - not a value the caller invents.
+	const region = regionCentreStub({
+		scroll: -100,
+		top: 100,
+		clientTop: 0,
+		clientHeight: 600,
+	});
+	scrollRegionToCenter(region, targetCentreStub(500, 100), "reversed");
+	assert.equal(region.scrollTop, 0);
 });

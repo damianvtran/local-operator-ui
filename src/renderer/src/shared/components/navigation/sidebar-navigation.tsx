@@ -1,3 +1,7 @@
+import { aidaControlFailureCopy } from "@features/aida/aida-control";
+import { useAidaMissedMessages } from "@features/aida/use-aida-missed-messages";
+import { useAidaOpener, useAidaTarget } from "@features/aida/use-aida-target";
+import { useAidaWorking } from "@features/aida/use-aida-working";
 import { useAppWideApprovals } from "@features/browser/hooks/use-app-wide-approvals";
 import { sidebarToggleCap } from "@features/chat/chat-sidebar-layout";
 import { ChatSidebar } from "@features/chat/components/chat-sidebar";
@@ -16,8 +20,10 @@ import {
 	paletteShortcutCaps,
 	paletteShortcutLabel,
 } from "@features/command-palette/palette-shortcut";
+import { useMeshMembership } from "@features/mesh/mesh-store";
 import {
 	desktopFeatureEnabled,
+	desktopFeatureState,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
@@ -26,23 +32,34 @@ import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { CollapsibleAppLogo } from "@shared/components/navigation/collapsible-app-logo";
 import { UserProfileSidebar } from "@shared/components/navigation/user-profile-sidebar";
 import { Badge, Button, Tooltip } from "@shared/components/ui";
+import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { useCurrentView } from "@shared/hooks/use-route-params";
 import { cn } from "@shared/lib/utils";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	CATALOGUE_HEAD_PAGE,
+	LEGACY_CATALOGUE_PAGE,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { showErrorToast } from "@shared/utils/toast-manager";
 import type { LucideIcon } from "lucide-react";
 import {
 	Bot,
 	CalendarDays,
 	ChevronLeft,
 	ChevronRight,
+	ChevronsUp,
+	FolderKanban,
 	Globe,
+	LoaderCircle,
 	MessageSquarePlus,
+	Network,
 	Search,
 	Settings,
 	Store,
 	X,
 } from "lucide-react";
+import { useCallback, useEffect } from "react";
 import type { FC, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -113,12 +130,134 @@ type NavItem = {
 	isActive: boolean;
 	tourTag: string;
 	/**
-	 * How many browser approvals are waiting on the user, ACROSS EVERY
-	 * CONVERSATION (operator ask, 2026-09-23). Zero draws nothing at all - a
-	 * badge reading `0` would be a mark that says nothing is being asked, which
-	 * is the honest rendering of an item with no badge.
+	 * How many things are waiting on the user and are not this column's to count,
+	 * one field for the two rows that carry one: browser approvals across every
+	 * conversation (operator ask, 2026-09-23) and her unread completion receipts
+	 * (operator ask, 2026-09-28). Zero draws nothing at all - a badge reading `0`
+	 * would be a mark that says nothing is being asked, which is the honest
+	 * rendering of an item with no badge.
 	 */
 	attention?: number;
+	/**
+	 * The badge's own handle, one per ROW that draws one: the approvals badge and
+	 * the missed-messages badge are different controls made of one primitive, so
+	 * the tag cannot be spelled beside the primitive - both would answer to one
+	 * address (`nav-browser-badge` / `nav-aida-badge`).
+	 */
+	attentionTag?: string;
+	/**
+	 * WHAT THE NUMBER IS, in the control's name (see the name-carries-the-number
+	 * rule at `renderNavItem`): the row's own sentence for its count, because
+	 * "waiting" is what an approval does and a completion receipt is a missed
+	 * message. Set beside `attention` on every row that draws a badge; a row
+	 * without one would draw a badge its name could not state.
+	 */
+	attentionName?: (count: number) => string;
+	/**
+	 * Whether the row's thing is working RIGHT NOW - a turn in flight, the user's
+	 * or a proactive wake's. It draws the app's busy mark (the sidebar's spinning
+	 * `LoaderCircle`, the same accent ink and `motion-safe:animate-spin`) in the
+	 * same trailing slot as a badge, and the two cannot coexist on one row: a busy
+	 * row draws no unread mark (the store's one predicate), so the slot shows one
+	 * fact at a time (operator ask, 2026-09-28).
+	 */
+	working?: boolean;
+	/**
+	 * WHAT THE WORKING MARK IS, in the control's name, the same
+	 * name-carries-the-mark rule `attentionName` follows: the row's own sentence
+	 * for its state, because a spinner is a visual convenience over "a turn is in
+	 * flight" and the name has to state it (`Aida, working`).
+	 */
+	workingName?: string;
+	/**
+	 * What a press does, when it is not "navigate to `path`".
+	 *
+	 * Aida's row is the one that needs it: her conversation is RESOLVED — through
+	 * the desktop route, ensuring her session on first use — rather than known as
+	 * a route, so there is no `path` that could name it up front
+	 * (`use-aida-target.ts` owns the resolution, and both this row and the
+	 * composer's `/aida` read it from there). The row still carries `path:
+	 * "/chat"`: it is the route the view lands on once the id resolves, and the
+	 * row's own key in the list.
+	 */
+	onSelect?: () => void;
+};
+
+/**
+ * THE STRIP KEEPS THE FEED ALIVE (the collapsed-rail requirement).
+ *
+ * `useDesktopFeed` is not only a status reporter: its subscription is what
+ * MERGES `attention` and `session_status` frames into the sessions store, and
+ * its consumer for the CATALOGUE was `ChatSidebar` - which the strip does not
+ * render ("THE LIST IS NOT DRAWN HERE"). (Authoring lists mount the hook
+ * wherever they render - the chat header, the agents page - so this is not the
+ * app's only feed listener; those merges are revision-guarded and idempotent.
+ * What IS exclusive is keeper-versus-list: an either/or in this column.) So
+ * with the rail collapsed nothing kept the CATALOGUE current: her marks, both
+ * sourced from the store, went stale until the rail expanded again, while the
+ * browser row's approvals badge (fed by the browser bridge's own projection)
+ * stayed live at every width. Measured on the marks rig: the expanded run
+ * painted a receipt within seconds, and the strip run never did - 30 s of
+ * polling at 50 ms - with no other catalogue-side consumer in the tree.
+ *
+ * FIVE THINGS HERE, each one a thing the list did that the strip otherwise
+ * lost with it (review round 1, F1/F2):
+ *
+ * - the subscription itself (mounting the hook);
+ * - the PAGEABILITY PUBLISH: the store sizes every UNNAMED catalogue read from
+ *   this flag (`cataloguePageDefault`), and its only publisher was the list -
+ *   so a launch (or a sub-1024px window) that STARTS collapsed read the legacy
+ *   500-row page the paging work exists to remove;
+ * - the mount read, gated on the catalogue capability (`ready`) exactly as the
+ *   list gates it, because a frame can only merge into a row that exists;
+ * - the INVALIDATION trigger: `feed.catalogueRevision` advances when the
+ *   backend says the catalogue changed (a row added, renamed or archived
+ *   elsewhere, or a frame missed), and re-running the read is how the strip
+ *   reconciles that without waiting for an expand;
+ * - nothing else. The list's feed-less safety poll is deliberately NOT
+ *   mirrored: without a feed the marks do not move either - they arrive on
+ *   this same subscription - so the poll would re-read a catalogue whose
+ *   changes the strip cannot paint anyway. The reduced case belongs to the
+ *   docked list, not to a second poll in a 56px column.
+ */
+const StripFeedKeeper: FC = () => {
+	const feed = useDesktopFeed();
+	const capabilities = useDesktopCapabilities();
+	const setCataloguePageable = useCanonicalSessionsStore(
+		(store) => store.setCataloguePageable,
+	);
+	const fetchSessions = useCanonicalSessionsStore(
+		(store) => store.fetchSessions,
+	);
+	const pageable = desktopFeatureEnabled(
+		capabilities.data,
+		"session_catalogue_page",
+	);
+	useEffect(() => {
+		setCataloguePageable(pageable);
+	}, [pageable, setCataloguePageable]);
+	/*
+	 * The gate, spelled as the list spells it: the desktop plane available AND
+	 * the backend advertising `session_catalogue` v2. Below it no read is sent -
+	 * the same answer the list gives, not a second opinion.
+	 */
+	const ready =
+		desktopFeatureState(capabilities.data, "session_catalogue", 2) ===
+		"enabled";
+	const refreshCatalogue = useCallback(
+		() =>
+			fetchSessions(
+				pageable ? CATALOGUE_HEAD_PAGE : LEGACY_CATALOGUE_PAGE,
+				pageable,
+			),
+		[fetchSessions, pageable],
+	);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: catalogueRevision is a trigger, not a read
+	useEffect(() => {
+		if (!ready) return;
+		void refreshCatalogue();
+	}, [ready, refreshCatalogue, feed.catalogueRevision]);
+	return null;
 };
 
 /** A destination row: 30px, one line, 13px, and never a second line. */
@@ -154,8 +293,139 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * chat header's count.
 	 */
 	const browserApprovals = useAppWideApprovals();
+	/*
+	 * Whether this device is in a mesh AT ALL, and it takes TWO facts rather than one
+	 * (review round 1, R1-1). `features.peers` is a CAPABILITY: lop advertises it on
+	 * every install, "including on a machine in no network", because it answers "what can
+	 * this backend do" - so on the key alone every mesh-capable install would get a rail
+	 * item, including a device that is in no mesh, and this is the one piece of chrome
+	 * that is on screen everywhere. Membership is the catalogue's own emptiness; see
+	 * `useMeshMembership` for why that read is safe on a machine that has never joined a
+	 * network, and for why an UNKNOWN answer mounts nothing.
+	 *
+	 * The route itself stays on the capability, deliberately: see the note at the route
+	 * in `app.tsx` for why leaving your last network must not eject you from the tab.
+	 */
+	const meshPaired =
+		desktopFeatureState(capabilities.data, "peers") === "enabled";
+	const meshMembership = useMeshMembership(meshPaired);
+	/*
+	 * Whether this backend serves the Projects surface at all.
+	 *
+	 * FAIL-CLOSED MEANS NO ROW, the pins gate's rule: below the `projects`
+	 * version (or on a plane this app holds no credential for) the column renders
+	 * byte-for-byte the one that never heard of Projects — no row, no disabled
+	 * row, nothing to click into a 404. The route itself repeats the gate for a
+	 * URL typed by hand; see `projects-page.tsx`.
+	 */
+	const projectsEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"projects",
+		1,
+	);
+	/*
+	 * AIDA'S ROW, and its TWO gates, which are two different facts.
+	 *
+	 * `features.aida` is the CAPABILITY: below it the backend predates the
+	 * surface and the UI must not call her route at all (`design.md` § 3.4) —
+	 * fail-closed, like Projects above.
+	 *
+	 * `enabled` is the INSTALL's own switch (R17/R18: `aida.enabled` /
+	 * `LOCAL_OPERATOR_NO_AIDA`). A harness-only install carries the endpoint and
+	 * answers `enabled: false` — a row there would open a conversation nothing
+	 * ever creates and whose every press answers `409 aida_disabled`, exactly the
+	 * dead control fail-closed means to omit. So the row waits for the read's own
+	 * `enabled === true`: absent, not-yet-answered and switched-off all render the
+	 * column that never heard of her, and the read is why the row can POP IN a
+	 * moment late on a normal install — the price of never showing it where it
+	 * must not be.
+	 */
+	const aidaEnabled = desktopFeatureEnabled(capabilities.data, "aida", 1);
+	const aida = useAidaTarget(aidaEnabled);
+	const aidaVisible = aidaEnabled && aida.data?.enabled === true;
+	/*
+	 * HER DISPLAY NAME (rename slice, in flight): the desktop read's `name`,
+	 * falling back to the shipped default for every backend that predates the
+	 * field - absent, null and an older payload all render "Aida" rather than an
+	 * empty row. The COMMAND KEY is not affected: `/aida` stays stable whatever
+	 * she is called (`use-aida-target.ts` owns the pair).
+	 */
+	const aidaName = aida.data?.name ?? "Aida";
+	const openAida = useAidaOpener();
+	/*
+	 * HER BADGE'S NUMBER (operator ask, 2026-09-28): unread completion receipts
+	 * for HER conversation - "missed messages" in the operator's words, and the
+	 * browser row's approvals badge was the model. `use-aida-missed-messages.ts`
+	 * owns the count's two narrowings and the store subscription that keeps it
+	 * live: the feed raises it when she completes a turn, and viewing her
+	 * conversation receipts it away.
+	 */
+	const aidaMissed = useAidaMissedMessages(aida.data?.session_id);
+	/*
+	 * HER WORKING MARK (operator ask, 2026-09-28): the state the chat sidebar
+	 * draws for her row - a turn in flight, the user's or a proactive wake's -
+	 * read from her catalogue row's status so it is true while her conversation is
+	 * CLOSED, which is exactly when a wake runs. `use-aida-working.ts` owns the
+	 * one code that counts as working and the subscription that keeps it live.
+	 */
+	const aidaWorking = useAidaWorking(aida.data?.session_id);
+	/*
+	 * Her press: resolve her conversation (ensuring it on first use, through the
+	 * one module the composer's `/aida` also reads) and move the view onto it. The
+	 * failure sentence is the module's own — a 409 for a mid-session disable, or
+	 * the transport's words — and it lands on the toast lane because this row owns
+	 * no other surface to say it on.
+	 */
+	const selectAida = () => {
+		void openAida(navigate, aida.data).catch((error) =>
+			showErrorToast(aidaControlFailureCopy(error)),
+		);
+	};
 
 	const navItems: NavItem[] = [
+		/*
+		 * AIDA SITS ABOVE AGENTS (R3): she is the operator's chief of staff, and the
+		 * row is the first destination in the column when the backend offers her.
+		 * The row itself is the ordinary destination row — 30px, one line, the
+		 * same `renderNavItem` every neighbour uses — with one difference: its
+		 * press resolves rather than navigates (`onSelect`), because her id is not
+		 * known until the desktop route answers. Collapsed, it is the same
+		 * icon-only row with its tooltip (`renderNavRow`), which is why nothing here
+		 * has a second rendering.
+		 */
+		...(aidaVisible
+			? [
+					{
+						icon: ChevronsUp,
+						label: aidaName,
+						path: "/chat",
+						isActive:
+							currentView === "chat" &&
+							Boolean(aida.data?.session_id) &&
+							activeSessionId === aida.data?.session_id,
+						tourTag: "nav-item-aida",
+						onSelect: selectAida,
+						/*
+						 * Her count (operator ask, 2026-09-28): the missed-messages badge,
+						 * the same primitive as the Browser row's approvals pill - zero
+						 * draws nothing. `use-aida-missed-messages.ts` says what one receipt
+						 * counts; `renderNavItem` the name/badge rules these three fields
+						 * inherit.
+						 */
+						attention: aidaMissed,
+						attentionTag: "nav-aida-badge",
+						attentionName: (count: number) =>
+							`${aidaName}, ${count} missed message${count === 1 ? "" : "s"}`,
+						/*
+						 * Her working mark: the same two facts the badge carries, for the state
+						 * that is true while she is mid-turn (see `use-aida-working.ts`), with
+						 * the row's own sentence for the name.
+						 */
+						working: aidaWorking,
+						workingName: `${aidaName}, working`,
+					},
+				]
+			: []),
 		{
 			icon: Bot,
 			label: "Agents",
@@ -163,6 +433,21 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			isActive: currentView === "agents",
 			tourTag: "nav-item-agents",
 		},
+		/*
+		 * Projects sits beside Agents — the two are the "things I own" pair — but
+		 * only on a backend that carries the surface; see `projectsEnabled` above.
+		 */
+		...(projectsEnabled
+			? [
+					{
+						icon: FolderKanban,
+						label: "Projects",
+						path: "/projects",
+						isActive: currentView === "projects",
+						tourTag: "nav-item-projects",
+					},
+				]
+			: []),
 		{
 			icon: CalendarDays,
 			label: "Schedules",
@@ -180,6 +465,13 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			isActive: currentView === "browser",
 			tourTag: "nav-item-browser",
 			attention: browserApprovals,
+			/*
+			 * This row's badge words and handle, beside the count they serve (see
+			 * `NavItem.attentionTag` / `attentionName`): the name states the count
+			 * whenever the badge is drawn, in BOTH widths.
+			 */
+			attentionTag: "nav-browser-badge",
+			attentionName: (count) => `Browser, ${count} waiting`,
 		},
 		{
 			icon: Store,
@@ -188,6 +480,24 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			isActive: currentView === "agent-hub",
 			tourTag: "nav-item-agent-hub",
 		},
+		/*
+		 * The Mesh tab, ONLY for a device that is in a mesh: a rail item for a mesh the
+		 * user is not in would be a dead end on the one piece of chrome that is on screen
+		 * everywhere (R1-1). Placed after Agent hub and before the Settings row - it is a
+		 * view of THIS machine's infrastructure, which is nearer to Settings than to any
+		 * chat surface.
+		 */
+		...(meshMembership === "member"
+			? [
+					{
+						icon: Network,
+						label: "Mesh",
+						path: "/mesh",
+						isActive: currentView === "mesh",
+						tourTag: "nav-item-mesh",
+					},
+				]
+			: []),
 	];
 
 	/*
@@ -222,15 +532,23 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		 */
 		const attention = item.attention ?? 0;
 		/*
-		 * THE NAME CARRIES THE NUMBER (operator ask, 2026-09-23): a badge is a visual
+		 * THE NAME CARRIES THE MARK (operator ask, 2026-09-23): a badge is a visual
 		 * convenience over a fact the control has to STATE, and a screen reader that
 		 * found only the word "Browser" would be told there was nothing to answer
 		 * while an agent sat blocked on a prompt. Set in BOTH widths so the name does
-		 * not change with the column's width - and only when a badge is drawn, so a
-		 * quiet column keeps the plain label it has always had.
+		 * not change with the column's width - and only when a mark is drawn, so a
+		 * quiet column keeps the plain label it has always had. The words are the
+		 * ROW's own (`attentionName` / `workingName`): an approval waits, a completion
+		 * receipt is a missed message, a turn in flight is working - one fact, one
+		 * sentence, per row. The working mark wins the name where both might obtain;
+		 * on her row they cannot, because a busy code draws no unread mark.
 		 */
 		const attentionLabel =
-			attention > 0 ? `${item.label}, ${attention} waiting` : item.label;
+			attention > 0 && item.attentionName
+				? item.attentionName(attention)
+				: item.label;
+		const markLabel =
+			item.working && item.workingName ? item.workingName : attentionLabel;
 		const rowState = item.isActive
 			? rowCurrent
 			: "text-ink-muted hover:bg-row-hover hover:text-ink";
@@ -245,13 +563,17 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			>
 				<button
 					type="button"
-					onClick={() => navigate(item.path)}
+					onClick={() =>
+						item.onSelect ? item.onSelect() : navigate(item.path)
+					}
 					data-tour-tag={item.tourTag}
 					aria-current={item.isActive ? "page" : undefined}
 					/* Collapsed there is no text in the row, and the tooltip cannot
 					   supply the name: Radix's `Trigger` adds `aria-describedby`, and
 					   only while open. */
-					aria-label={expanded && attention === 0 ? undefined : attentionLabel}
+					aria-label={
+						expanded && markLabel === item.label ? undefined : markLabel
+					}
 					className={cn(
 						"flex h-full min-w-0 flex-1 items-center gap-2 rounded-md",
 						expanded ? "px-2" : "justify-center px-0",
@@ -276,10 +598,28 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 								variant="attention"
 								shape="pill"
 								size="count"
-								data-tour-tag="nav-browser-badge"
+								data-tour-tag={item.attentionTag}
 							>
 								{attention}
 							</Badge>
+						</span>
+					)}
+					{item.working && (
+						/*
+						 * THE BUSY MARK, at rail scale: the sidebar row's own working glyph -
+						 * `LoaderCircle`, the accent ink, and `motion-safe:animate-spin`, so a
+						 * reduced-motion user keeps the STATIC glyph this app already renders
+						 * for the state rather than a second animation. Same trailing slot as
+						 * the badge, in flow for the same reason (a 16px mark inside a 30px
+						 * row moves neither the label's start nor the row's height); the two
+						 * cannot coexist, because a busy row draws no unread mark.
+						 */
+						<span className={cn(expanded && "ml-auto", "inline-flex")}>
+							<LoaderCircle
+								size={16}
+								aria-hidden="true"
+								className="text-accent motion-safe:animate-spin"
+							/>
 						</span>
 					)}
 				</button>
@@ -559,6 +899,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				data-sidebar-strip=""
 				className="group/sidebar flex h-full min-h-0 flex-col items-center bg-surface"
 			>
+				<StripFeedKeeper />
 				<div className="flex h-10 shrink-0 items-center justify-center">
 					<CollapsibleAppLogo expanded={false} />
 				</div>
@@ -658,17 +999,38 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			</div>
 
 			{/*
-			 * THE BODY: the one chat list, one scroll region. `mt-2` completes the 16px
-			 * section tier with the group's own `pb-2` - the separation is space, not a
-			 * rule.
+			 * THE BODY: the one chat list, one scroll region.
+			 *
+			 * WHAT THE SPACE UNDER THE DESTINATIONS IS, measured rather than assumed
+			 * (operator report, 2026-09-27: "there's a bunch of extra space" between the
+			 * bottom-most nav row and the band). Three 8px steps were stacking on this
+			 * boundary - the group's own `pb-2`, the `mt-2` that used to sit here, and
+			 * the panel's top inset - and the rendered gap was 24px where the tier the
+			 * design names between the destinations and the list below them is 16px
+			 * (§B6). This column owns one of the three steps and the panel owns another,
+			 * so the `mt-2` is the one that goes: the tier now reads the group's 8px
+			 * bottom step against the panel's own 8px inset, and the band sits 16px
+			 * under the last destination.
+			 *
+			 * DO NOT PUT IT BACK without taking 8px out of the panel too: this boundary
+			 * is ONE tier, and three declarations of it were two more than the design
+			 * ever asked for.
 			 */}
-			<div className="mt-2 flex min-h-0 flex-1 flex-col">{listBody}</div>
+			<div className="flex min-h-0 flex-1 flex-col">{listBody}</div>
 
 			{/*
-			 * THE FOOT, 40px: the account row, whose own menu carries Settings and
-			 * Sign out, and the gear that goes straight to Settings.
+			 * THE FOOT: the account row, whose own menu carries Settings and Sign
+			 * out, and the gear that goes straight to Settings.
+			 *
+			 * `pb-2` is the column's own bottom pad, and it is the same step the
+			 * strip's foot carries - the operator's report of 2026-09-26 was that
+			 * this row sat flush against the window's bottom edge with "no
+			 * padding against the bottom of the screen". `min-h-10` keeps the
+			 * foot at its 40px row height and lets the padding extend the box to
+			 * 48, so the row is not squeezed (a fixed `h-10` with `pb-2` would
+			 * leave a 32px content box and a 40px row overflowing it).
 			 */}
-			<div className="flex h-10 shrink-0 items-center justify-between gap-1 px-2">
+			<div className="flex min-h-10 shrink-0 items-center justify-between gap-1 px-2 pb-2">
 				<UserProfileSidebar expanded />
 				{settingsGear}
 			</div>

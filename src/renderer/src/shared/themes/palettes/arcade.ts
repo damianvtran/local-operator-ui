@@ -98,6 +98,11 @@ export const arcade: ThemeDefinition = {
 		// contract's 1.03.
 		sunken: "#1A1A1A",
 
+		// The user block's fill: ΔE00 4.08 off the canvas, where `surface` alone
+		// measures 2.65 - a step toward `elevated` to clear the role's 4.0 floor,
+		// which the block carries because the fill IS its boundary.
+		messageSurface: "#2b2b2f",
+
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
 		 * step of THIS palette's own panel at the panel's own hue; they used to be

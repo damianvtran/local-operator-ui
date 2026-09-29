@@ -49,6 +49,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { after, afterEach, beforeEach, test } from "node:test";
 import { pathToFileURL } from "node:url";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
@@ -73,8 +74,13 @@ after(() => {
 	}
 });
 
-/* React stays out of the bundle so the mounted tree shares THIS React instance. */
-const EXTERNAL = /^(react|react-dom)(\/.*)?$/;
+/*
+ * React stays out of the bundle so the mounted tree shares THIS React instance,
+ * and `@tanstack/react-query` follows it: the provider this file mounts and the
+ * `useQuery` inside the bundle must resolve to one copy, or the hook reads a
+ * different context and finds no client.
+ */
+const EXTERNAL = /^(react|react-dom|@tanstack\/react-query)(\/.*)?$/;
 const BARE_SPECIFIER = /^[^./]/;
 const CACHE = join(ROOT, "node_modules", ".cache", "chat-link-affordances");
 const bundle = await build({
@@ -813,7 +819,11 @@ test("with no probe bridge the ambiguous tokens stay prose and nothing throws", 
 test("a streaming row scans and asks nothing at all", async () => {
 	/*
 	 * `linkify` false is the streaming path, and its contract is the strongest of
-	 * the three: NO pre-scan, NO ask, NO anchor. A row re-renders per delta, so a
+	 * the three: NO pre-scan, NO ask, NO anchor. Review round 1 (R2): the
+	 * transcript's streaming ROW no longer uses this prop path - it renders
+	 * `StreamingMarkdown`, whose ask contract is pinned in
+	 * `scripts/streaming-markdown-parity.test.mjs` - but the path is still live
+	 * for the aside panel (`linkify: stream.settled`), so this assertion stays. A row re-renders per delta, so a
 	 * probe per render would be a stat storm on main's own event loop - the shape
 	 * `use-mentioned-files` documents for the same reason - and this is the one
 	 * assertion that fails loudly if the evidence effect stops reading its own
@@ -859,23 +869,35 @@ async function mountTranscript(options = {}) {
 	 */
 	stubLayout(frame.window);
 	const containerRef = React.createRef();
+	/*
+	 * The transcript reads its cross-session visibility through react-query
+	 * (`useCrossSessionHidden`); unseeded is the fail-closed path, so these
+	 * frames hide nothing.
+	 */
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
 	await frame.render(
-		React.createElement(CanonicalTranscript, {
-			transcript,
-			frontend: null,
-			gate: null,
-			waiting: false,
-			starting: false,
-			loadingOlder: false,
-			onLoadOlder: async () => true,
-			containerRef,
-			isSmallView: false,
-			status: "live",
-			failure: null,
-			awaitingHydration: false,
-			conversationId: "links-test",
-			onReconnect: () => {},
-		}),
+		React.createElement(
+			QueryClientProvider,
+			{ client },
+			React.createElement(CanonicalTranscript, {
+				transcript,
+				frontend: null,
+				gate: null,
+				waiting: false,
+				starting: false,
+				loadingOlder: false,
+				onLoadOlder: async () => true,
+				containerRef,
+				isSmallView: false,
+				status: "live",
+				failure: null,
+				awaitingHydration: false,
+				conversationId: "links-test",
+				onReconnect: () => {},
+			}),
+		),
 	);
 	/* The pane (which the placement clamps inside) and the row's own box. */
 	const pane = frame.document.querySelector("[data-lo-canonical-transcript]");

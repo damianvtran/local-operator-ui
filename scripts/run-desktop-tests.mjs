@@ -41,6 +41,36 @@ import { withNotificationsOff } from "./notifications-off.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
 
 /**
+ * The shared-inode write guard, preloaded into every test-file process.
+ *
+ * THIS LINE IS THE WHOLE PROTECTION AND IT BELONGS HERE RATHER THAN IN THE
+ * FILES. On 2026-09-18 a suite in this list replaced the uv-managed interpreter
+ * every 3.12 venv on this host hardlinks (23 names then, 27 now) with a 12-byte
+ * text file, and the offending suite was never reduced — so there is no call
+ * site to fix, only a class of write to refuse. Arming it from the one wrapper
+ * `pnpm test:desktop` goes through means a test file cannot forget it, and the
+ * `--import` form is required rather than stylistic: the guard patches the CJS
+ * exports object, and it has to be in place BEFORE a test module's
+ * `import { writeFileSync } from "node:fs"` snapshots that binding. See
+ * `no-hardlink-write.mjs` and `no-hardlink-write.test.mjs`.
+ *
+ * WHAT THIS DOES NOT COVER, stated because the flag is per-process: a node
+ * process a test file SPAWNS does not inherit `--import` and is not guarded.
+ * Those children are the product's own — they hardlink an interpreter while
+ * staging a runtime — and arming them with a `NODE_OPTIONS` preload was measured
+ * to add refusals and no protection. The defensible claim is that a desktop
+ * TEST-FILE process cannot write through a shared inode, which is what the guard
+ * and the PR that added it both say.
+ */
+/** Set to `1` to run the suite without the guard; the runner announces it. */
+const STAND_DOWN_ENV = "LOCAL_OPERATOR_UI_NO_HARDLINK_GUARD";
+
+const GUARD_PRELOAD = new URL(
+	"./no-hardlink-write-preload.mjs",
+	import.meta.url,
+);
+
+/**
  * Node's test runner exports this into every test-file process. An inherited
  * copy makes a nested `node --test` treat itself as recursive: it warns
  * (`node:test run() is being called recursively within a test file. skipping
@@ -118,7 +148,32 @@ if (explicitFlag === undefined) {
 		`desktop tests: ${fileCount} file${fileCount === 1 ? "" : "s"}, concurrency ${value} (explicit ${explicitFlag} in argv; governor bypassed)`,
 	);
 }
+nodeArgs.push(`--import=${GUARD_PRELOAD.href}`);
 nodeArgs.push(...args);
+
+/*
+ * A stood-down guard is announced HERE, on this process's own stderr, because
+ * this is the only layer of the two where stderr is still observable.
+ *
+ * The preload announces it too, and that line is the one a direct child shows on
+ * stderr correctly. Under this runner it cannot be: `--test` consumes the test
+ * child's descriptor and re-emits what the child wrote as TAP DIAGNOSTICS ON
+ * STDOUT. Measured through this runner, one `STANDING DOWN`: stdout 1, stderr 0.
+ * Every route out of the child was tried and measured with the same result —
+ * `process.stderr.write`, `writeSync(2, …)`, `writeSync(openSync("/dev/stderr"))`
+ * and `writeFileSync("/dev/stderr", …)` each produced stdout 0 / stderr 0 for a
+ * write made during a test, because the runner drops it outright.
+ *
+ * Reporting it from the runner is what makes "this run is UNGUARDED" survive on
+ * stderr, where a consumer reading the suite's stdout cannot lose it among the
+ * test output — and a notice nobody reads is the false green the guard exists to
+ * prevent.
+ */
+if (process.env[STAND_DOWN_ENV] === "1") {
+	console.error(
+		`desktop tests: WARNING — the shared-inode write guard is STANDING DOWN (${STAND_DOWN_ENV}=1); a test file writing through a shared inode will NOT be refused`,
+	);
+}
 
 /*
  * The suite's children get the notification kill switch set, alongside the one
