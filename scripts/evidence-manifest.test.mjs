@@ -2320,6 +2320,11 @@ const BRANCH_RECORDS = [
 	 */
 	"condensedPicturesFoldTwoNote",
 	/*
+	 * And the lane's THIRD fold, onto the rail's end-tick fix (#666): this file was its one
+	 * conflict, and it quotes no tree-hash pair.
+	 */
+	"condensedPicturesFoldThreeNote",
+	/*
 	 * AND THIS FIX'S OWN (2026-09-29): `browserOauthPopupsRestampNote` is the
 	 * re-stamp for the driven-page OAuth popups (the operator's console Microsoft
 	 * sign-in repro - MSAL `loginPopup` denied by the driven views' deny-all
