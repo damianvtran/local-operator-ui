@@ -662,7 +662,7 @@ export function MiniComposer() {
 				 * other chord in the app rides `KeyboardShortcut`, whose caps carry the
 				 * measured ink role at the mono ramp. The tokens are joined with "+"
 				 * because the component splits its prop on it — the macOS sentence
-				 * spelling (⌘⌥Space, no separators) cannot be split back.
+				 * spelling (⌘⌥⇧Space, no separators) cannot be split back.
 				 */}
 				<KeyboardShortcut
 					shortcut={formatQuickSendTokens(shortcut, platform).join("+")}
