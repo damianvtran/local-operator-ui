@@ -126,9 +126,14 @@ function phaseState(
  * used to be a 1px stroke on an 8px disc, and it measured 2.76:1 at its darkest
  * pixel in the light themes: a token that computes 3.51:1 rendered almost
  * entirely as antialiased edge, on what is now the only progress object on the
- * screen (review 2, design D4). It is drawn at 2px - the same weight as the
- * running ring, because the two are told apart by colour and by motion, not by
- * weight - and at 12px, so the token's contrast survives to the eye. The
+ * screen (review 2, design D4). It is drawn at 2px, in `control` - the same
+ * weight AND the same stroke the running ring carries on its three quiet sides
+ * - because the two are told apart by colour and by motion and by nothing else:
+ * under `hairline` the running ring measured 1.22:1 against this ring's
+ * 3.13-3.42:1 on the committed frames, so the mark that says "working" was the
+ * faintest object in the column while the mark that says "not yet" was the
+ * loudest (design round 2, D7) - and at 12px, so the token's contrast survives
+ * to the eye. The
  * finished dot is a 10px fill for the reason the earlier round found: a small
  * disc bounded by the faintest line weight is a dot nobody can see.
  *
@@ -140,12 +145,15 @@ function phaseState(
  * gestures (the old spinner arc, the old travelling segment) with one
  * non-directional one, on the one mark whose whole job is to say "working".
  *
- * So this is the app's own indeterminate grammar - `Spinner`'s hairline ring
- * with a single `accent` quadrant, where the gap is what makes a rotation
- * legible - at a slower cadence, because this mark turns for minutes rather than
- * for a request. Rotation spends no contrast at all: the ring is at full accent
- * in every phase of the turn, so the running mark is never dimmer than the
- * waiting ones.
+ * So this is the app's own indeterminate grammar - `Spinner`'s ring with a
+ * single `accent` quadrant, where the gap is what makes a rotation legible - at
+ * a slower cadence, because this mark turns for minutes rather than for a
+ * request, and in `control` rather than `Spinner`'s `hairline`: this ring is the
+ * only progress object on its screen, where `Spinner` annotates a busy one
+ * (design round 2, D7). Rotation spends no contrast at all: the accent quadrant
+ * is at full strength in every phase of the turn, and the ring's other three
+ * sides are the same `control` the waiting rings carry, so the running mark is
+ * never dimmer than the waiting ones.
  *
  * WHY THERE IS STILL NO CHECK ON A FINISHED STEP. A finished step used to carry
  * a `success` Check beside a bar filled in `accent`: two colours, two objects,
@@ -159,7 +167,7 @@ function phaseState(
  * Nothing here is spin-in-place decoration: it is the state a waiting user reads
  * as "working", on the one screen where the alternative is deciding the app has
  * hung. Under `prefers-reduced-motion` the duration cap freezes the turn and the
- * ring rests at its first frame - hairline ring, accent quadrant at the top, at
+ * ring rests at its first frame - `control` ring, accent quadrant at the top, at
  * full opacity - the same resting-state discipline `Spinner` documents.
  */
 const PhaseMarker: React.FC<{ state: PhaseState }> = ({ state }) => {
@@ -169,7 +177,7 @@ const PhaseMarker: React.FC<{ state: PhaseState }> = ({ state }) => {
 		return (
 			<span
 				aria-hidden="true"
-				className="size-3 animate-install-turn rounded-full border-2 border-hairline border-t-accent"
+				className="size-3 animate-install-turn rounded-full border-2 border-control border-t-accent"
 			/>
 		);
 	if (state === "done")
@@ -363,7 +371,7 @@ const StageRail: React.FC<{
 					 */
 					<span
 						aria-hidden="true"
-						className="animate-install-turn absolute -top-2.5 left-0.5 size-3 rounded-full border-2 border-hairline border-t-accent"
+						className="animate-install-turn absolute -top-2.5 left-0.5 size-3 rounded-full border-2 border-control border-t-accent"
 					/>
 				)}
 				{INSTALL_PHASES.map((entry, index) => (
@@ -381,6 +389,14 @@ const StageRail: React.FC<{
 					 * The rule that reaches the terminus is drawn HERE rather than by the
 					 * fourth row (`last`), so the two cannot disagree: the glyph and the rule
 					 * that arrives at it are the same state, in the same frame.
+					 *
+					 * THE COLUMN'S ONE `success`, and the two roles are deliberate (design
+					 * round 2, D8): everything that says WHERE the run is - the walked
+					 * connectors, the finished dots, the turning quadrant - is `accent`, and
+					 * the single glyph that says the run ENDED WELL is the app's outcome
+					 * role. On the two brand palettes the roles sit ~14 units apart; on the
+					 * others they diverge, and that divergence is the grammar rather than a
+					 * defect: progress is not an outcome.
 					 */}
 					<span
 						aria-hidden="true"

@@ -1401,6 +1401,35 @@ const CONTROLS = [
 		border: "borderControl",
 		ink: "ink",
 	},
+	{
+		/*
+		 * THE SETUP WINDOW'S RAIL, and the row is here because the surface was
+		 * unlisted when it mattered (design round 2, D7): the palette half of the
+		 * working ring's stroke was always legal, while the CLASS picked the faintest
+		 * token in the system - and "green output on an unlisted component is not
+		 * evidence about that component" is this file's own warning.
+		 *
+		 * The rail's three ring markers - the waiting ring, the running step's
+		 * marker, and the head mark, the last two being one object - are strokes
+		 * with no fill, so their boundary IS the token this row asserts:
+		 * `borderControl` against `canvas`, measured 3.13-3.42:1 light /
+		 * 3.49-4.00:1 dark on the committed frames. The working marks shipped in
+		 * `hairline` and measured 1.22-1.50:1 there - ~2.8x below the rings that
+		 * mean "not yet", the faintest object in the column - which is the pair
+		 * this row would have failed; the class strings are pinned beside it in
+		 * `STRUCTURAL_CALL_SITES` so the token the component picks cannot regress
+		 * silently either.
+		 *
+		 * `ink` is the rail's label (`text-ink` on `canvas`); the markers paint no
+		 * text themselves. The accent quadrant and the finished dot spend `accent`
+		 * on this ground, the same fill pair the `primary button` row asserts.
+		 */
+		name: "installer rail ring markers",
+		on: ["canvas"],
+		fill: null,
+		border: "borderControl",
+		ink: "ink",
+	},
 ];
 
 /**
@@ -2830,6 +2859,27 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/features/chat/canonical/thread-search-overlay.tsx",
 		must: "bg-accent-wash font-medium text-ink underline decoration-accent decoration-2 underline-offset-2",
 		why: "the match mark is the one place the query's own characters are shown, and a wash-only mark is invisible on the panel's own ground in the themes the neighbour pin lists; the accent underline is the non-luminance half and the weight covers the row states that share the wash",
+	},
+	{
+		/*
+		 * The setup rail's two working marks - one pin per site, because a substring
+		 * check cannot see WHICH occurrence of a shared class string survived and a
+		 * single pin would stay green while the other site regressed (design round
+		 * 2, D7). Under `hairline` the two measured 1.22-1.50:1 against the waiting
+		 * rings' 3.13-3.42:1: the mark that says "working" was the faintest object
+		 * in the column, and no palette row can see which token the class picked.
+		 * The palette half of the pair is the `installer rail ring markers` row.
+		 */
+		what: "the installer rail's running mark stroke",
+		file: "src/renderer/src/features/installer/components/installer-panel.tsx",
+		must: "size-3 animate-install-turn rounded-full border-2 border-control border-t-accent",
+		why: "the running mark is a stroke with no fill, so this token is its only boundary; `hairline` here was 1.22:1 against the waiting rings' 3.13-3.42:1, and only this pin sees the class edit the palette row cannot",
+	},
+	{
+		what: "the installer rail's head mark stroke",
+		file: "src/renderer/src/features/installer/components/installer-panel.tsx",
+		must: "animate-install-turn absolute -top-2.5 left-0.5 size-3 rounded-full border-2 border-control border-t-accent",
+		why: "the head mark is the running mark at the rail's head - the same object in the same stroke - and a single pin would stay green while this site regressed",
 	},
 ];
 
