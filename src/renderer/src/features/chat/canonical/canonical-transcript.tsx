@@ -2359,8 +2359,15 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	const paneWorking = useMemo(
 		() =>
 			// One input builder for this claim's two readers - this rung and the
-			// composer's hint - so the two cannot be handed different facts
-			// (`workingLineInputFor`, `working-line-model.ts`).
+			// composer's hint (`workingLineInputFor`, `working-line-model.ts`).
+			// The builder is shared; the record lists handed to it are not: this
+			// rung reads the cross-session filter's `shownRecords`, while the
+			// composer's hint still reads the raw records (`chat-content.tsx`).
+			// No divergence is reachable today - `waiting` is answered by the
+			// ladder's fallback on either list, and the one predicate that could
+			// flip on dropped rows (`ownerAnswered`) is decided over RAW records
+			// in `chat-page` before either reader is built. If that normalization
+			// ever moves off raw records, this seam moves with it.
 			deriveWorkingLine(
 				workingLineInputFor({
 					waiting,

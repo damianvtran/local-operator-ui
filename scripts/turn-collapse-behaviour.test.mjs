@@ -947,3 +947,48 @@ test("hiding cross-session rows: the receipt and the send row leave, the bar's i
 		"the run is whole again",
 	);
 });
+
+test("settings enabled but WITHOUT the key hide nothing: the absent-key fallback", async (t) => {
+	/*
+	 * The frozen contract's absent-key skew (an old backend behind a new app),
+	 * at the seam that reads it: capabilities answer `settings: 1` while the
+	 * registry carries no `display.hide_cross_session`. `setting?.value ===
+	 * true` is the whole read, so absence resolves false - nothing is hidden,
+	 * and no row is dropped by a key the backend never sent. Pinned because
+	 * this is the one fallback direction the seeded toggle test cannot reach.
+	 */
+	__resetTurnCollapseOpen();
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	client.setQueryData(desktopKeys.capabilities, {
+		desktop_available: true,
+		features: { settings: 1 },
+	});
+	client.setQueryData(backendSettingsKeys.all, {
+		sections: [],
+		settings: [{ key: "display.shimmer", value: true }],
+	});
+	const mounted = await mount(
+		t,
+		[
+			userRecord("user:1"),
+			peerRecord("peer:1"),
+			toolRecord("tool:1"),
+			toolRecord("tool:2", {
+				toolName: "send",
+				args: { conversation: "other" },
+			}),
+			answerRecord("answer:1"),
+		],
+		{ client },
+	);
+	assert.equal(
+		bar(mounted)?.getAttribute("data-run-ids"),
+		"user:1 peer:1 tool:1 tool:2 answer:1",
+		"the bar's ids keep every row the run holds",
+	);
+	await click(barTrigger(mounted));
+	assert.ok(rowBox(mounted, "peer:1"), "the receipt mounts with the run");
+	assert.ok(rowBox(mounted, "tool:2"), "the send row mounts with the run");
+});
