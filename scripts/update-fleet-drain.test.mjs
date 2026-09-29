@@ -883,6 +883,68 @@ test("a runtime still resident at the grace is reported, not passed over as noth
 	);
 });
 
+test("a retirement inside the final gap is displaced, and not counted as still resident", async () => {
+	/*
+	 * THE RETIREMENT THE FINAL READ EXISTS FOR (review round 2, NIT-1; QA's
+	 * scenario). The displaced diff and the still-resident count both come from
+	 * the FINAL read (`stillLiveAtEnd = stillLiveIn(finalRead) ?? stillLive`), so
+	 * a retirement that lands between the loop's last read and that read is
+	 * displaced-and-engaged rather than left behind - the two outputs partition
+	 * the snapshot instead of one naming a session the other has just put back.
+	 * b2 retires exactly there: every read the loop takes sees it live, and the
+	 * read the waiter takes on the way out does not. QA's scenario: displaced
+	 * [b2], engaged [b2], one pre-swap runtime still resident ([a1]).
+	 *
+	 * WHY THE RETIREMENT IS MODELLED ON THE READ SEQUENCE: with the injected
+	 * clock the loop's last read and the final read share the grace instant, so
+	 * no `time.now()` condition can separate them. What separates them is the
+	 * call: the priming read plus one per poll (12 at 5 s within the 60 s grace)
+	 * is the loop's last, and the read after it is the waiter's last word.
+	 */
+	const time = clock();
+	const before = fleetRosterFromSessions(
+		body([row("aaaaaaaaaaa1", "idle"), row("bbbbbbbbbbb2", "idle")]),
+	);
+	assert.ok(before);
+	const loopReads = 1 + 60_000 / 5_000;
+	let reads = 0;
+	const result = await reengageDisplacedSessions({
+		before,
+		readRoster: async () => {
+			reads += 1;
+			return fleetRosterFromSessions(
+				body(
+					reads <= loopReads
+						? [row("aaaaaaaaaaa1", "idle"), row("bbbbbbbbbbb2", "idle")]
+						: [row("aaaaaaaaaaa1", "idle")],
+				),
+			);
+		},
+		engage: async () => true,
+		sleep: time.sleep,
+		now: time.now,
+		graceMs: 60_000,
+		settleMs: 30_000,
+		retirePollMs: 5_000,
+		log: () => {},
+	});
+	assert.deepEqual(
+		result.displaced.map((entry) => entry.sessionId),
+		["bbbbbbbbbbb2"],
+	);
+	assert.deepEqual(result.engaged, ["bbbbbbbbbbb2"]);
+	/*
+	 * WITHOUT THE REFRESH THIS READS ["aaaaaaaaaaa1", "bbbbbbbbbbb2"]: the loop's
+	 * last set still holds b2, so a count built from it would name a session the
+	 * same run has just re-engaged. The refresh is what makes the outputs agree
+	 * about the one retirement this case exists for.
+	 */
+	assert.deepEqual(
+		result.stillResident.map((entry) => entry.sessionId),
+		["aaaaaaaaaaa1"],
+	);
+});
+
 test("the refusal's credentials reading is the one that produced the verdict", async () => {
 	/*
 	 * ONE READING, ONE REFUSAL (review round 2, R2-n1). `readUnreadableReason` answers
