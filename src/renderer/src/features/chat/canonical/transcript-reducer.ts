@@ -1430,12 +1430,14 @@ const CLOSED_OUTCOME_TEXT = "Completed — runtime retired/disposed";
  * The retire-for-build row's sentence (core kind `retired`, 2026-09-29; seed
  * 7e797aaaf6e7): a bound-expired build drain cut a live turn, so the row stays
  * TRUTHFUL — the turn was cut — but reads in WARNING ink, never danger: the
- * update was routine. Byte-identical to the core's
+ * update was routine. The kept-output clause (design round 2, D1) is the one
+ * fact a user who lost work needs, so it rides in both repos' constants.
+ * Byte-identical to the core's
  * `harness/rows.py::RETIRED_NOTICE_TEXT`, so both repos print the same words
  * for the same record (the discipline `CLOSED_OUTCOME_TEXT` above states).
  */
 const RETIRED_OUTCOME_TEXT =
-	"Retired for an update — a turn was in flight and was cut";
+	"Retired for an update — a turn was in flight and was cut; its earlier output is kept";
 const WAKE_PROMPT_CUSTOM_TYPE = "wake_prompt";
 /**
  * The harness's MCP-unavailable warning, which takes its own arm in `customRow`.
