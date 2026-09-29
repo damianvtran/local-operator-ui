@@ -369,7 +369,11 @@ export function stoppedAfterAdmission(
 				// The v2 neutral closure (2026-09-29): a disposed runtime ends the
 				// wait the same way an incident does — leaving the line up would
 				// claim work in flight beside a receipt that says it stopped.
-				attention.kind === "closed"),
+				attention.kind === "closed" ||
+				// The retire-for-build kind (2026-09-29): the drain is leaving and
+				// the turn was cut, so a spinner beside "Retired for an update …"
+				// is the same contradiction as the closure's.
+				attention.kind === "retired"),
 	);
 }
 

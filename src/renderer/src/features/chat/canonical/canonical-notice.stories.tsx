@@ -226,9 +226,13 @@ export const NoticeLengths: Story = {
  * change: "render post-completion disposals neutrally"), painted here by the
  * production reducer from the persisted payload shape — `type: "custom"` with
  * details under `payload`, exactly as the frozen 664a transcript carries it —
- * so the frame judges the row the app is actually given. What to look for: an
- * info-ink receipt reading "Completed — runtime retired/disposed", carrying
- * the `complete` marker that also retires the working line's wait, because a
+ * so the frame judges the row the app is actually given. The fixture shows the
+ * ORDERING the change is about (a delivered answer, then the receipt): the
+ * user and assistant rows use the `content: [{ text }]` block shape the reducer
+ * reads (design round 1, D1 — a `message:` field painted nothing, so the frame
+ * showed a receipt with nothing above it). What to look for: an info-ink
+ * receipt reading "Completed — runtime retired/disposed", carrying the
+ * `complete` marker that also retires the working line's wait, because a
  * runtime that has been disposed is not still working.
  */
 export const ClosedOutcomeNotice: Story = {
@@ -241,7 +245,26 @@ export const ClosedOutcomeNotice: Story = {
 							id: "u-closed",
 							ts: 1_760_000_000,
 							type: "message",
-							payload: { role: "user", message: "carry the release" },
+							payload: {
+								kind: "message",
+								role: "user",
+								content: [{ text: "carry the release" }],
+							},
+						},
+						{
+							id: "a-closed",
+							ts: 1_760_000_030,
+							type: "message",
+							payload: {
+								kind: "message",
+								role: "assistant",
+								content: [
+									{
+										text: "The release is carried — the tag is pushed and the notes are up.",
+									},
+								],
+								stop_reason: "stop",
+							},
 						},
 						{
 							id: "marker-closed-23fc",
@@ -257,6 +280,77 @@ export const ClosedOutcomeNotice: Story = {
 									cause: "disposed",
 									reason: "",
 									notify: false,
+								},
+							},
+						},
+					],
+					has_more: false,
+					cursor_missing: false,
+				}).records
+			}
+		/>
+	),
+};
+
+/**
+ * The retire-for-build row (2026-09-29; core kind `retired`): a bound-expired
+ * build drain cut a live turn, so the desktop reads "Retired for an update — a
+ * turn was in flight and was cut" in WARNING ink — truthful, never danger.
+ *
+ * Same production path and fixture shape as the closure above; the one
+ * difference that matters visually is the tier (`warning` — never the
+ * closure's `info` whisper and never the failure's `error`) and the copy,
+ * byte-identical to the core's `harness/rows.py::RETIRED_NOTICE_TEXT`. What to
+ * look for: an amber-ink receipt with no red anywhere, no action button, and
+ * the same `complete` marker retiring the working-line wait — the runtime is
+ * leaving, so nothing is still in flight beside it.
+ */
+export const RetiredOutcomeNotice: Story = {
+	render: () => (
+		<Frame
+			records={
+				applyHistoryPage(EMPTY_TRANSCRIPT, {
+					entries: [
+						{
+							id: "u-retired",
+							ts: 1_760_000_000,
+							type: "message",
+							payload: {
+								kind: "message",
+								role: "user",
+								content: [{ text: "verify the migration before I sign off" }],
+							},
+						},
+						{
+							id: "a-retired",
+							ts: 1_760_000_030,
+							type: "message",
+							payload: {
+								kind: "message",
+								role: "assistant",
+								content: [
+									{
+										text: "Halfway through the check — the row counts agree so far; the backfill is next.",
+									},
+								],
+								stop_reason: "stop",
+							},
+						},
+						{
+							id: "marker-retired-7e79",
+							ts: 1_760_000_060,
+							type: "custom",
+							payload: {
+								custom_type: "completion_attention",
+								details: {
+									conversation_id: "session/7e797aaaf6e7",
+									token: "t3",
+									anchor: "completion-7e797aaaf6e7-0000-4000-8000-0000000000cd",
+									kind: "retired",
+									cause: "runtime-retired",
+									reason:
+										"the runtime retired so the next engage would run a newer build",
+									notify: true,
 								},
 							},
 						},

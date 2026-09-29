@@ -240,7 +240,7 @@ export type CompletionAttention = {
 	conversation_id: string;
 	completion_token: string | null;
 	anchor_id: string | null;
-	kind: "complete" | "error" | "interrupted" | "closed" | null;
+	kind: "complete" | "error" | "interrupted" | "closed" | "retired" | null;
 	unseen: boolean;
 	revision: [number, number];
 	/** False for a live owner that has not negotiated completion receipts. */

@@ -2487,7 +2487,10 @@ test("frame-only stopped outcomes retire only the send they follow", () => {
 	// The v2 neutral closure (2026-09-29) retires the wait too: the runtime was
 	// disposed, and a fence-less spinner beside a "Completed — runtime
 	// retired/disposed" receipt is the Q4 contradiction this gate exists for.
-	for (const kind of ["error", "interrupted", "closed"]) {
+	// The retire-for-build kind joins for the same reason: the drain is leaving
+	// and the turn was cut, so a spinner beside "Retired for an update …" would
+	// be that contradiction again.
+	for (const kind of ["error", "interrupted", "closed", "retired"]) {
 		const attention = { anchor_id: "completion-new", kind, unseen: true };
 		assert.equal(stoppedAfterAdmission(attention, null), true);
 		assert.equal(stoppedAfterAdmission(attention, "completion-old"), true);
