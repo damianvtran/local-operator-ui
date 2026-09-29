@@ -18,10 +18,14 @@
  *   answer it, and main has already swallowed the press by the time it sends.
  *   Since issue #659 it opens the palette SEEDED to its conversations source
  *   (`CONVERSATION_SWITCHER_SEED`) — the quick switcher, not a second copy of
- *   Cmd/Ctrl+K. The subscription lives here rather than beside the palette's
- *   mount because main's half keeps working whether or not anything listens — a
- *   dropped subscription is a chord that does nothing and says nothing (round
- *   1, R-1).
+ *   Cmd/Ctrl+K — and since review round 2 (U5) it MOVES an already-open
+ *   palette to that view rather than closing it: "switcher" muscle memory
+ *   expects the scope to change, and a close would cost the chord two presses
+ *   to do the one thing it exists to do. Closing stays a press away (Escape,
+ *   Cmd/Ctrl+K, a click out). The subscription lives here rather than beside
+ *   the palette's mount because main's half keeps working whether or not
+ *   anything listens — a dropped subscription is a chord that does nothing and
+ *   says nothing (round 1, R-1).
  *
  * The K listener is registered once and toggles through the store rather than
  * closing over `isCommandPaletteOpen`, so a keypress never sees a stale flag and
@@ -68,8 +72,20 @@ export function useCommandPaletteShortcut(): void {
 	 * would otherwise toggle twice per press and the palette would never open.
 	 */
 	useEffect(() => {
-		const openConversationSwitcher = () =>
-			toggleCommandPalette(CONVERSATION_SWITCHER_SEED);
+		const openConversationSwitcher = () => {
+			/*
+			 * WHILE THE PALETTE IS ALREADY OPEN, the switcher key moves it to the
+			 * conversations view instead of closing it (review/UX round 1, U5),
+			 * re-applying the seed exactly the way the toggle applies it — so a
+			 * palette already showing `#retention` returns to all chats. Read
+			 * through `getState()` for the same reason the K handler toggles
+			 * through the store: a press must never see a stale flag.
+			 */
+			const state = useUiPreferencesStore.getState();
+			if (state.isCommandPaletteOpen)
+				state.setCommandPaletteQuery(CONVERSATION_SWITCHER_SEED);
+			else state.toggleCommandPalette(CONVERSATION_SWITCHER_SEED);
+		};
 		const unsubscribe = window.electron.ipcRenderer.on(
 			"toggle-command-palette",
 			openConversationSwitcher,
@@ -77,5 +93,5 @@ export function useCommandPaletteShortcut(): void {
 		return () => {
 			unsubscribe?.();
 		};
-	}, [toggleCommandPalette]);
+	}, []);
 }

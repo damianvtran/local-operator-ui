@@ -15,7 +15,7 @@ without noticing.
 | Gesture | Owner | Why |
 | --- | --- | --- |
 | `Cmd/Ctrl+K` | the **renderer** (`palette-shortcut.ts`) | Two surfaces in the canvas already own this chord — the code editor's AI edit and the Markdown editor's link insert, which is what `Cmd+K` means in every editor a user has met. The decision reads `defaultPrevented`, so the editor that got there first keeps it. A `before-input-event` hook in main fires before the renderer sees the key at all and cannot ask. |
-| `Cmd/Ctrl+P` | the **main process** (`src/main/index.ts`) | The palette's original chord, kept for everyone who learned it from the app's own onboarding tour — and since #659 with a job of its own: it opens the surface seeded to its conversations source, which makes it the conversation quick switcher rather than a second copy of `Cmd/Ctrl+K`. It still works wherever the window has focus. |
+| `Cmd/Ctrl+P` | the **main process** (`src/main/index.ts`) | The palette's original chord, kept for everyone who learned it from the app's own onboarding tour — and since #659 with a job of its own: it opens the surface seeded to its conversations source, which makes it the conversation quick switcher rather than a second copy of `Cmd/Ctrl+K`. Pressing it while the palette is already OPEN moves it to the chats view rather than closing it (review round 2, U5): a switcher's muscle memory expects the scope to change, and closing stays a press away (Escape, `Cmd/Ctrl+K`, a click out). It still works wherever the window has focus. |
 
 One keystroke, one owner, both decided in one place each. A press that both
 answered would toggle twice and open nothing.
@@ -25,7 +25,10 @@ answered would toggle twice and open nothing.
 field shows the glyph, the browse list under it is conversation rows, and terms
 search conversations the way the sidebar does, so the switcher is a starting
 point rather than a mode: backspacing the glyph widens the surface back to
-everything, and a word typed inside it searches chats alone.
+everything, and a word typed inside it searches chats alone. While the palette
+is open the scope names itself beside the field (a `# Chats` chip built from the
+same legend table the footer draws), because a bare glyph stops explaining
+itself the moment rows arrive.
 
 The **rail row** is the third door, and it exists because the chord is invisible:
 a user who never learns `Cmd+K` would use the palette once, if at all. The row is

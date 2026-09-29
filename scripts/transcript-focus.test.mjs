@@ -47,6 +47,7 @@ const blank = {
 	modalOpen: false,
 	pressHadSelection: false,
 	selectionNotCollapsed: false,
+	shiftExtends: false,
 	dragged: false,
 	scrolledRecently: false,
 };
@@ -69,6 +70,12 @@ test("each guard answers by name, one fact at a time", () => {
 		transcriptClickVerdict({ ...blank, selectionNotCollapsed: true }),
 		"selection",
 	);
+	/* A click carrying Shift answers the selection guard even with no selection
+	 * readable yet: it IS the extension gesture (design round 2, U1). */
+	assert.equal(
+		transcriptClickVerdict({ ...blank, shiftExtends: true }),
+		"selection",
+	);
 	assert.equal(transcriptClickVerdict({ ...blank, dragged: true }), "drag");
 	assert.equal(
 		transcriptClickVerdict({ ...blank, scrolledRecently: true }),
@@ -86,6 +93,7 @@ test("the control's own press outranks every other guard", () => {
 			modalOpen: true,
 			pressHadSelection: true,
 			selectionNotCollapsed: true,
+			shiftExtends: true,
 			dragged: true,
 			scrolledRecently: true,
 		}),

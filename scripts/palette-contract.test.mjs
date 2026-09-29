@@ -101,18 +101,30 @@ test("something in the renderer subscribes to the channel main sends on", () => 
 		"the hook must subscribe on the bridge that can carry this channel, naming the channel main sends on AND a handler the file defines",
 	);
 	/*
-	 * The handler must reach the store's toggle WITH the seed, not with a bare
-	 * call and not as a direct reference (issue #659). A bare call would answer
-	 * `Cmd+P` with the same unseeded palette as `Cmd+K` - the split undone -
-	 * and a direct reference would seed the query with the IPC EVENT object,
-	 * because `ipcRenderer.on` hands its listener the event first.
+	 * The handler must reach the store WITH the seed, not with a bare call and
+	 * not as a direct reference (issue #659) — and, since review round 2 (U5),
+	 * not as a bare toggle either: a press while the palette is OPEN moves it
+	 * to the conversations view (`setCommandPaletteQuery` behind the live
+	 * `isCommandPaletteOpen` read), and only a CLOSED palette toggles open. A
+	 * bare call would answer `Cmd+P` with the same unseeded palette as `Cmd+K`
+	 * — the split undone — and a direct reference would seed the query with the
+	 * IPC EVENT object, because `ipcRenderer.on` hands its listener the event
+	 * first.
 	 */
 	assert.match(
 		HOOK,
-		new RegExp(
-			`const ${subscribed[1]}\\s*=\\s*\\(\\s*\\)\\s*=>\\s*toggleCommandPalette\\(\\s*CONVERSATION_SWITCHER_SEED\\s*\\)`,
-		),
-		"the subscription's handler must open the palette through the store's seeded door",
+		new RegExp(`const ${subscribed[1]}\\s*=\\s*\\(\\s*\\)\\s*=>\\s*\\{`),
+		"the subscription's handler must be a block that reads the live flag, not a one-liner",
+	);
+	assert.match(
+		HOOK,
+		/isCommandPaletteOpen[\s\S]{0,240}?setCommandPaletteQuery\(\s*CONVERSATION_SWITCHER_SEED\s*\)/,
+		"an already-open palette must MOVE to the chats view (U5) rather than close",
+	);
+	assert.match(
+		HOOK,
+		/else\s+[\w$.]*toggleCommandPalette\(\s*CONVERSATION_SWITCHER_SEED\s*\)/,
+		"a closed palette must open through the store's seeded door",
 	);
 	assert.doesNotMatch(
 		HOOK,

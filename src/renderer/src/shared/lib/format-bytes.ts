@@ -20,7 +20,8 @@
  *
  * PRECISION BEYOND ONE DECIMAL IS NOISE in a sentence whose job is "roughly
  * this much", and an exact count belongs where a reader who wants one goes:
- * the download row's tooltip and the installer's logs.
+ * the download row's tooltip (grouped, so the digits are readable; review
+ * round 1, D6/U6) and the installer's logs.
  *
  * A leaf module with no imports on purpose: the message-budget suite bundles
  * it (`scripts/desktop-renderer-transport.test.mjs`) and the storybook builds
@@ -40,6 +41,16 @@
  * same rule rather than inventing a second one: 999.5 MB rounds to "1000 MB"
  * without it, and #660's bundles are tens of megabytes today with GB-sized
  * artefacts one rung away.
+ *
+ * GB IS THE TOP RUNG, and that is a decision rather than an oversight (review
+ * round 1, R-3): there is no TB rung, so a value large enough to round to
+ * "1000.0 GB" - 999_950_000_000 and up - prints exactly that rather than
+ * escalating to a unit no sentence in this app names. The never-print-1000
+ * rule exists so one size does not get TWO spellings; with no successor there
+ * is no second spelling, so the rule has nothing to resolve. (Nothing that
+ * reaches this formatter is within three orders of magnitude of it: the
+ * largest readouts are update artefacts in the tens of megabytes, next to
+ * budgets smaller still.)
  */
 export function formatByteSize(bytes: number): string {
 	if (bytes >= 999_500_000) return `${(bytes / 1_000_000_000).toFixed(1)} GB`;

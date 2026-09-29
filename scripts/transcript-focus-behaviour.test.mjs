@@ -305,7 +305,7 @@ const parkFocus = () => {
  */
 const clickThrough = async (
 	element,
-	{ downAt = { x: 0, y: 0 }, clickAt = downAt, between } = {},
+	{ downAt = { x: 0, y: 0 }, clickAt = downAt, between, shift = false } = {},
 ) => {
 	const send = (type, { x, y }) =>
 		element.dispatchEvent(
@@ -315,6 +315,7 @@ const clickThrough = async (
 				button: 0,
 				clientX: x,
 				clientY: y,
+				shiftKey: shift,
 			}),
 		);
 	await act(async () => {
@@ -435,6 +436,27 @@ test("a drag suppresses; a wobble inside the slop does not", async (t) => {
 		document.activeElement,
 		composer,
 		"a 2px wobble is still a click and still focuses",
+	);
+});
+
+test("a shift-click keeps the browser's selection extension", async (t) => {
+	const mounted = await mount(t, blankRecords());
+	parkFocus();
+	/* Shift is the selection-EXTENDING modifier (design round 2, U1): the click
+	 * must reach the browser unbroken rather than moving the caret. */
+	await clickThrough(mounted.scroller, { shift: true });
+	assert.notEqual(
+		document.activeElement,
+		composer,
+		"a shift-click is an extension gesture, not a caret request",
+	);
+	/* The same spot without Shift still hands the caret over, so the cell is
+	 * about the modifier rather than about where the pointer landed. */
+	await clickThrough(mounted.scroller);
+	assert.equal(
+		document.activeElement,
+		composer,
+		"the same click without Shift still focuses the composer",
 	);
 });
 
