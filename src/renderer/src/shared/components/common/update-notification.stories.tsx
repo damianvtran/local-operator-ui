@@ -126,22 +126,6 @@ const DRAIN_REFUSAL_UNREADABLE_MESSAGE = [
 ].join("\n\n");
 
 /**
- * The refusal's OTHER arm: the same wait, on a press whose install has landed.
- *
- * WHY THIS IS A STORY RATHER THAN A PAGE PATCH (design round 2, D6). Both
- * restart-leg refusals happen after the build is on disk and only the bounce was
- * held back, so their heading is not "The update didn't start" - the producer
- * states the fact and the panel keys on it. The design round had to inject this
- * payload into the shipped component from a CDP pre-document script to judge it,
- * which is not a state the repo's own rig can re-photograph; declared here, the
- * landed arm is captured the ordinary way.
- */
-const DRAIN_REFUSAL_LANDED_MESSAGE = [
-	"4 sessions are still running a turn on this machine: canonical-chat, refactor-tui, support-replies and 1 more.",
-	"The app waited 10 minutes for them to finish and then stopped rather than cut a turn short. The install itself has landed, and the server keeps running the build it loaded until it can restart onto it; the app will offer this update again.",
-].join("\n\n");
-
-/**
  * The wait the draining frame shows, as a fixture the entry's claim asserts.
  *
  * 12 s rather than a round ten minutes: the reading is the claim (design round 2,
@@ -151,7 +135,17 @@ const DRAIN_REFUSAL_LANDED_MESSAGE = [
  */
 const DRAIN_WAITED_MS = 12_000;
 
-const DRAIN_REFUSAL_COMMAND = "uv tool upgrade local-operator";
+/**
+ * THE COMMAND THE ONE REACHABLE REFUSAL SENDS (review round 1, U1): the
+ * restart-leg drains went with the operator's directive, so the press that can
+ * still be refused is the rebuild install leg - and its remedy is the plan's own
+ * `lop-update` (`update-install.ts`'s `sourceRebuildRoute ? "lop-update" : ...`),
+ * the command that rebuilds the checkout this install came from. It used to name
+ * `uv tool upgrade local-operator`, which no reachable arm of this state emits
+ * (for this install class it is a *failing* remedy, per `update-install.ts`) - a
+ * frame of the design round would have shown a command the product cannot send.
+ */
+const DRAIN_REFUSAL_COMMAND = "lop-update";
 const DRAIN_REFUSAL_LOG_PATH =
 	"/Users/operator/Library/Application Support/Local Operator/logs/update-service.log";
 
@@ -164,6 +158,20 @@ const ORPHANED_UPDATER_OUTPUT = [
 
 const SOURCE_BUILD_REMEDY =
 	"Rebuilds this checkout with `lop-update`. The app waits for the turns running on this machine to finish first, and the rebuild then reinstalls this install in place - so a turn started while it runs can still be interrupted - and it can take up to half an hour. This install keeps reporting the checkout's version, not the release the app offered.";
+
+/**
+ * THE MANAGED OFFER'S OWN COST SENTENCE, verbatim from the producer (UX U2).
+ *
+ * `resolveBackendUpdatePlan` composes it for the app-owned managed arm
+ * (`update-service.ts`), and `managedCostSentence` renders it as the paragraph
+ * above `Update server`; the story cannot import a main-process module, so the
+ * literal is transcribed here and the claim in `capture-evidence.mjs`
+ * (`...--backend-update-offer-app-owned`) pins its lead. It is the sentence the
+ * operator's own press reads before the press, and it no longer prices a wait -
+ * the idle switch replaced the wait on 2026-09-29.
+ */
+const MANAGED_OFFER_REMEDY =
+	"The app publishes the new build beside the one the server is using and then moves the server onto it, so nothing in flight is cut off. Sessions that are still working move onto the new build when they next stop or go idle. This can take a minute or two.";
 
 const OFFER_DETAIL =
 	"local-operator resolves to /Users/operator/.local/bin/local-operator (/Users/operator/.local/share/uv/tools/local-operator/bin/local-operator), classified as uv-tool. source build of this machine's checkout; an in-place rebuild.";
@@ -343,19 +351,15 @@ const mockUpdaterApi = () => {
 			 */
 			if (
 				window.triggerBackendUpdateRefusedBusy ||
-				window.triggerBackendUpdateRefusedUnreadable ||
-				window.triggerBackendUpdateRefusedLanded
+				window.triggerBackendUpdateRefusedUnreadable
 			) {
 				const unreadable =
 					window.triggerBackendUpdateRefusedUnreadable === true;
-				const landed = window.triggerBackendUpdateRefusedLanded === true;
 				for (const listener of [...backendUpdateErrorListeners]) {
 					listener({
 						message: unreadable
 							? DRAIN_REFUSAL_UNREADABLE_MESSAGE
-							: landed
-								? DRAIN_REFUSAL_LANDED_MESSAGE
-								: DRAIN_REFUSAL_BUSY_MESSAGE,
+							: DRAIN_REFUSAL_BUSY_MESSAGE,
 						phase: "update",
 						logPath: DRAIN_REFUSAL_LOG_PATH,
 						refusal: {
@@ -369,12 +373,6 @@ const mockUpdaterApi = () => {
 							waitedMs: 600_000,
 							command: DRAIN_REFUSAL_COMMAND,
 							credentialsRefused: unreadable,
-							/*
-							 * WHICH REFUSAL THIS IS (design round 2, D6): the install-less arm for the
-							 * busy and unreadable stories, the after-the-install arm for the landed one -
-							 * the panel's heading is keyed on it.
-							 */
-							installLanded: landed,
 						},
 					});
 				}
@@ -485,6 +483,26 @@ const mockUpdaterApi = () => {
 					remedy: SOURCE_BUILD_REMEDY,
 					detail: OFFER_DETAIL,
 					sourceBuild: true,
+				});
+			}
+			/*
+			 * AND THE APP-OWNED MANAGED OFFER, standing (review round 1, U2): the
+			 * install is the app's own managed environment, the app started the daemon,
+			 * and the paragraph is the plan's own managed `remedy` verbatim - the sentence
+			 * no fixture carried, so the one press that publishes a generation and
+			 * restarts the daemon had no photograph anywhere.
+			 */
+			if (window.triggerBackendUpdateOfferAppOwned) {
+				callback({
+					currentVersion: "0.56.10",
+					latestVersion: "0.56.12",
+					updateCommand: "pip install --upgrade local-operator",
+					canManageUpdate: true,
+					startupMode: "APP_BUNDLED_VENV",
+					restartable: true,
+					remedy: MANAGED_OFFER_REMEDY,
+					detail: "The app started this server itself (APP_BUNDLED_VENV).",
+					sourceBuild: false,
 				});
 			}
 			if (window.triggerBackendUpdateNonManaged) {
@@ -1074,7 +1092,6 @@ declare global {
 		triggerBackendUpdateFailedOrphan?: boolean;
 		triggerBackendUpdateRefusedBusy?: boolean;
 		triggerBackendUpdateRefusedUnreadable?: boolean;
-		triggerBackendUpdateRefusedLanded?: boolean;
 		triggerBackendUpdateSourceBuild?: boolean;
 		triggerBackendUpdateSourceBuildAdopted?: boolean;
 		triggerBackendUpdateSourceBuildInFlight?: boolean;
@@ -1119,6 +1136,14 @@ declare global {
 			restartable?: boolean;
 			appOwnedEnvironment?: boolean;
 			serverDidNotComeBack?: boolean;
+			/**
+			 * The completion's fleet count (2026-09-29): sessions still on the old build
+			 * when the attempt finished, `null` when the producer could not measure it.
+			 * The success toast's second line is derived from it, and its absence reads
+			 * as null, so the stories that drive the completion carry the field the
+			 * shipped payload carries.
+			 */
+			sessionsOnOldBuild?: number | null;
 		};
 		triggerBackendUpdateCompleted?: boolean;
 		triggerBackendUpdateError?: boolean;
@@ -1146,6 +1171,16 @@ declare global {
 		triggerBackendUpdateWithNotes?: boolean;
 		/** The same offer with a summary AT the producer's budget, shot at the floor. */
 		triggerBackendUpdateWithLongNotes?: boolean;
+		/**
+		 * Raise the app-owned managed offer, standing (review round 1, U2).
+		 *
+		 * Its own flag for the reason the notes flags above have theirs: the press
+		 * stories render the fallback sentence for the ~20 ms before their automatic
+		 * click, so only a STANDING offer can be photographed - and no other fixture
+		 * carries this arm's managed `remedy`, the sentence the operator's own press
+		 * reads.
+		 */
+		triggerBackendUpdateOfferAppOwned?: boolean;
 		triggerUpdateInstallBlocked?: boolean;
 		triggerUpdateInstallBlockedAtStartup?: boolean;
 		triggerUpdateInstallBlockedCannotLaunch?: boolean;
@@ -1624,7 +1659,8 @@ type UpdaterTriggerFlag =
 	| "triggerBackendUpdateFailedOrphan"
 	| "triggerBackendUpdateManualRequiredAppOwned"
 	| "triggerBackendUpdateWithNotes"
-	| "triggerBackendUpdateWithLongNotes";
+	| "triggerBackendUpdateWithLongNotes"
+	| "triggerBackendUpdateOfferAppOwned";
 
 /**
  * Mount the real component with one of its event triggers already set.
@@ -1937,6 +1973,69 @@ export const ServerBehindAppOwnedServerDown: Story = {
 };
 
 /**
+ * THE COMPLETION'S FLEET LINE, in the four readings the producer can send (design
+ * §2a/§4a, 2026-09-29): the operator's instruction - "we can just communicate in
+ * the popup that N sessions are still running old versions but will get the
+ * updates when they next stop or idle" - rendered where the completion already
+ * lands. These states exist only as a COMPLETION, so the stories drive the
+ * producer's own payload (`restarted: true` with `sessionsOnOldBuild`), the same
+ * pattern `ServerBehindAppOwnedAfterRestart` uses above.
+ *
+ * A shutter must land inside the toast's own window: it self-closes at 6 s, or
+ * 8 s once it carries the second line (`update-notification.tsx`). The frames are
+ * the design round's to take, declared in `capture-evidence.mjs` with the claims
+ * they are evidence for.
+ */
+const BackendUpdateCompletedWithCount = ({
+	sessionsOnOldBuild,
+}: { sessionsOnOldBuild: number | null }) => {
+	const [ready, setReady] = useState(false);
+	useLayoutEffect(() => {
+		window.backendSkewCompletion = {
+			installVersion: "0.56.12",
+			runningVersion: "0.56.12",
+			restarted: true,
+			sessionsOnOldBuild,
+		};
+		window.triggerBackendUpdateCompleted = true;
+		setReady(true);
+	}, [sessionsOnOldBuild]);
+	return ready ? <UpdateNotification autoCheck={false} /> : null;
+};
+
+/** The plain success the press earns when nothing is left behind (N = 0). */
+export const BackendUpdateCompleted: Story = {
+	args: { autoCheck: false },
+	render: () => <BackendUpdateCompletedWithCount sessionsOnOldBuild={0} />,
+};
+
+/** One session is still on the old build; the notice names it in the singular. */
+export const BackendUpdateCompletedOneSession: Story = {
+	args: { autoCheck: false },
+	render: () => <BackendUpdateCompletedWithCount sessionsOnOldBuild={1} />,
+};
+
+/**
+ * Three sessions still on the old build - the operator's arm: the notice's second
+ * line says so, and that they will move onto the new build when they next stop or
+ * go idle.
+ */
+export const BackendUpdateCompletedSessionsBehind: Story = {
+	args: { autoCheck: false },
+	render: () => <BackendUpdateCompletedWithCount sessionsOnOldBuild={3} />,
+};
+
+/**
+ * The degraded arm: the count could not be measured (no readable fleet snapshot),
+ * so the notice keeps the mechanic and drops the number rather than inventing a
+ * zero; `null` is what an absent field reads as too.
+ */
+export const BackendUpdateCompletedCountUnreadable: Story = {
+	args: { autoCheck: false },
+	render: () => <BackendUpdateCompletedWithCount sessionsOnOldBuild={null} />,
+};
+
+/**
  * The panel driven the way the user drives it: raise the offer, press its own
  * "Update server", and let the main process answer.
  *
@@ -1960,16 +2059,12 @@ const PressUpdateServer = ({
 	 * sentence and provenance line while the state - a press, and the panel that answers it - is
 	 * the same one; `orphan` is the default offer whose failure is the timeout that left something
 	 * running, so the state differs only in the sentence the main process sends;
-	 * `refused-unreadable` is the refusal arm where nothing could be read at all and
-	 * `refused-landed` the one where the install had already landed (the default refusal is
-	 * the measured busy fleet, before anything was installed).
+	 * `refused-unreadable` is the refusal arm where nothing could be read at all (the default
+	 * refusal is the measured busy fleet, before anything was installed, which is the only
+	 * refusal the shipped producer can still send - the after-the-install arm went with the
+	 * restart-leg drains, 2026-09-29).
 	 */
-	variant?:
-		| "default"
-		| "source-build"
-		| "orphan"
-		| "refused-unreadable"
-		| "refused-landed";
+	variant?: "default" | "source-build" | "orphan" | "refused-unreadable";
 	/**
 	 * The phase the in-flight panel is opened on, when the story is about WHICH
 	 * sentence the reader reads while the update runs (UX U6). Null is the
@@ -2002,9 +2097,7 @@ const PressUpdateServer = ({
 			window.triggerBackendUpdateAvailable = true;
 			window.triggerBackendUpdateRefusedUnreadable =
 				variant === "refused-unreadable";
-			window.triggerBackendUpdateRefusedBusy =
-				variant !== "refused-unreadable" && variant !== "refused-landed";
-			window.triggerBackendUpdateRefusedLanded = variant === "refused-landed";
+			window.triggerBackendUpdateRefusedBusy = variant !== "refused-unreadable";
 		} else {
 			window.triggerBackendUpdateAvailable = true;
 			window.triggerBackendUpdateInFlight = outcome === "inflight";
@@ -2022,13 +2115,12 @@ const PressUpdateServer = ({
 				? "Updating server"
 				: outcome === "refused"
 					? /*
-						 * THE HEADING IS THE ARM (design round 2, D6): the refusal's two arms are two
-						 * different events about the same ten-minute wait, so the story waits for the
-						 * heading it is a story about rather than for one arm's.
+						 * THE HEADING IS FIXED (design round 2, D6; simplified 2026-09-29). It used to
+						 * wait on the arm's heading - the after-the-install refusal said "The update
+						 * didn't finish restarting" - and that arm went with the restart-leg drains,
+						 * so there is one refusal heading to wait for now.
 						 */
-						variant === "refused-landed"
-						? "The update didn't finish restarting"
-						: "The update didn't start"
+						"The update didn't start"
 					: "The server update didn't finish";
 		const settle = async () => {
 			/* The offer is raised by the mount effect, so the control exists only
@@ -2060,16 +2152,13 @@ const PressUpdateServer = ({
 			delete document.documentElement.dataset.capturePending;
 		};
 		/*
-		 * `variant` IS A DEPENDENCY BECAUSE THE EFFECT READS IT (round 4). The D6 arm
-		 * above made `expected` depend on which refusal arm this story is, and the deps
-		 * list still named only `ready`/`outcome` - so the hook read a value it did not
-		 * declare, which is exactly what `lint/correctness/useExhaustiveDependencies`
-		 * reports. Nothing local could see it: `pnpm lint` is red on this branch and on
-		 * `main` for an unrelated pre-existing error, and the CI job that reports the
-		 * exit code never ran, because GitHub creates no workflow run for a conflicting
-		 * head. Caught on the first run the rebase made possible.
+		 * `variant` WAS A DEPENDENCY BECAUSE THE EFFECT READ IT (round 4): the D6 arm made
+		 * `expected` depend on which refusal arm this story is. That arm went with the
+		 * restart-leg drains (2026-09-29) and the effect reads only `ready`/`outcome`
+		 * now, so the surplus dependency - itself a `useExhaustiveDependencies` error -
+		 * came off with it rather than being declared for a value nothing reads.
 		 */
-	}, [ready, outcome, variant]);
+	}, [ready, outcome]);
 	return ready ? <UpdateNotification autoCheck={false} /> : null;
 };
 
@@ -2226,6 +2315,18 @@ export const BackendUpdateOfferSourceBuildAdopted: Story = {
 };
 
 /**
+ * THE APP-OWNED MANAGED OFFER (review round 1, U2): the install is the app's own
+ * managed environment, the app started the daemon, so this press is the one that
+ * publishes a generation and restarts it - and the paragraph above `Update
+ * server` is the plan's own managed sentence, which no fixture carried before
+ * this round. Standing, so a shutter can land on it.
+ */
+export const BackendUpdateOfferAppOwned: Story = {
+	args: { autoCheck: false },
+	render: () => <Triggered flag="triggerBackendUpdateOfferAppOwned" />,
+};
+
+/**
  * The updater stopped on its budget while something it started was still alive - the one
  * sentence this branch added to a shipped panel, and the reason the verdict is taken on the
  * timer rather than on `close`.
@@ -2260,24 +2361,6 @@ export const BackendUpdateRefusedUnreadableFleet: Story = {
 	args: { autoCheck: false },
 	render: () => (
 		<PressUpdateServer outcome="refused" variant="refused-unreadable" />
-	),
-};
-
-/**
- * The refusal's third arm, and the one whose heading the round-2 design review had
- * to inject into the shipped component from outside the app: the press reached the
- * restart with the build already published, the fleet did not drain, and what was
- * held back is the BOUNCE rather than the install.
- *
- * The wait, the count and the sessions are the busy arm's; the fact this story exists
- * for is that "The update didn't start" is false here, and the sentence above the
- * heading says so in its own words - which is exactly the contradiction the frame
- * carried before the producer started sending the fact (design round 2, D6).
- */
-export const BackendUpdateRefusedLandedInstall: Story = {
-	args: { autoCheck: false },
-	render: () => (
-		<PressUpdateServer outcome="refused" variant="refused-landed" />
 	),
 };
 

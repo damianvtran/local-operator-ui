@@ -1067,11 +1067,60 @@ export function useSlashDispatch({
 			};
 
 			/*
+			 * Present a sessionless PICKER row directly — `/help`, `/theme`,
+			 * `/login`, `/logout`, `/resume` (issue #625; the rows design § 12.5 set
+			 * aside as "one table row each when they are wanted").
+			 *
+			 * A SIBLING of `presentMachinePanel` rather than a generalisation of it,
+			 * because the two mount different contracts: a machine panel's context
+			 * drops the pane's handles and reads `sessionId` to decide whether its
+			 * conversation half exists, while these rows mount the pane's own
+			 * `PickerContext` adapters — measured as reading no session (§ 12.5; the
+			 * `sessionless` field's note on the table carries it) — with `""`, which
+			 * is also the honest id: there is no conversation in front of the user.
+			 *
+			 * NO `sessions.command` POST, for the reason the machine-panel presenter
+			 * above documents: its path needs a session id this pane does not have,
+			 * so the round trip cannot happen at all — and the adapters it would end
+			 * in are the ones mounted below, so nothing on screen depends on it.
+			 * Nothing is posted to a session that does not exist.
+			 */
+			const presentSessionlessPicker = (
+				spec: SlashCommandMeta,
+				commandArgs: string,
+			) => {
+				invoker.current =
+					document.activeElement instanceof HTMLElement
+						? document.activeElement
+						: null;
+				setPicker({
+					action: {
+						kind: "native_action",
+						destination: spec.destination,
+						// Empty, not a session: these rows read none, and there is no
+						// conversation for the picker to address.
+						session_id: "",
+						args: commandArgs,
+						fields: [],
+						data: {},
+					},
+					spec: draftPickerSpec(spec.destination, commandsQuery.data),
+					sessionId: "",
+					canonical,
+					commands,
+					onClose: closePicker,
+					note,
+					dispatch: (invocation) => void dispatch(invocation),
+					rebind,
+				});
+			};
+
+			/*
 			 * A destination that addresses no conversation cannot be refused for
 			 * lacking one (design § 3.1). The predicate is exported from the
 			 * destination table rather than written here because the composer quotes
 			 * this same refusal before the keypress (`stagedNote`), and two copies of
-			 * it disagree the moment one of them learns about a machine panel.
+			 * it disagree the moment one of them learns about a session-free row.
 			 *
 			 * Written as a nested test rather than `!sessionId && …` deliberately:
 			 * everything BELOW this point was written under the invariant that the
@@ -1085,6 +1134,19 @@ export function useSlashDispatch({
 						`/${spec.name} needs an open conversation. Start one first.`,
 						true,
 					);
+					return "consumed";
+				}
+				/*
+				 * Two kinds reach here, and each presents by its own agreement rather
+				 * than through the owner round trip below: the machine panels
+				 * (`/info`, `/usage`, `/analytics`) and the `sessionless` picker rows
+				 * (issue #625; `/help`, `/theme`, `/login`, `/logout`, `/resume`).
+				 * The kinds are read here because the predicate's answer above is the
+				 * whole of the test — everything it exempts is presentable on a pane
+				 * with none, and nothing else passes the refusal.
+				 */
+				if (entry?.kind === "picker") {
+					presentSessionlessPicker(spec, args);
 					return "consumed";
 				}
 				presentMachinePanel(spec, args, "");

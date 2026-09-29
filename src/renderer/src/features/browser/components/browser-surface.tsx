@@ -767,8 +767,8 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 								{state.title || activeTab?.title || "This page"}
 							</p>
 							<p className="text-body-sm text-ink-muted">
-								Paused while a dialog or panel is open — close it to bring the
-								page back.
+								Paused while a dialog, menu or panel is open — close it to bring
+								the page back.
 							</p>
 						</output>
 					)}

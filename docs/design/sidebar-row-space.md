@@ -438,7 +438,7 @@ container-query test both read text that will no longer exist).
   (`display: none`), which is the honest state: on an unpinned row there is no
   pin control to announce. A pinned row announces its pressed pin at rest.
 
-## 10. The archive offer becomes a sidebar-lane toast (D11)
+## 10. The archive offer becomes a sidebar-lane toast (D11 - superseded 2026-09-27; see the end of this section)
 
 The operator: the confirmation "shows up in a weird awkward spot in the sidebar
 with a gap below it … Maybe just a toast makes sense using the standard sonner
@@ -606,6 +606,65 @@ D12's finding is not ignored; it is answered, and its conclusion is superseded:
   same class of in-panel line and could move to the same lane; it belongs to the
   pin feature and is left alone here rather than changed in passing.
 
+### Superseded, 2026-09-27: the lane is deleted; the messages are ordinary sonner toasts again
+
+The operator: "Can you fix the local-operator-ui chat sidebar notifications,
+instead of having a separate sidebar notification, we should probably just use
+the normal sonner toast. These don't properly show up and look janky" - with a
+screenshot of the in-sidebar card reading «Draft discarded. [Undo] ×».
+
+**What is deleted.** The whole lane: the band wrapper and its height
+(`ARCHIVE_TOAST_BAND_GAP`/`ARCHIVE_OFFER_BAND_HEIGHT`/`ARCHIVE_TOAST_BAND_STYLE`),
+the second `ThemedToastContainer` and its inline position/style, the
+`lo-archive-toast` marker class and the confinement block in
+`styles/index.css`, the band-height observers and the list's yield
+(`listYield`), the wheel forwarding, the app-armed clocks
+(`ARCHIVE_TOAST_PERSISTENT` plus the 8s/10s dismiss effects), and
+`ARCHIVE_UNDO_CEILING_MS`/`DRAFTS_UNDO_CEILING_MS` with them.
+
+**What replaces it.** `<UndoToasts />` in `src/renderer/src/main.tsx`, mounted
+beside the app's ONE container for the app's whole life: the archive offer and
+its refusal, and the draft-discard offer, are raised by the app's ordinary
+`showInfoToast`/`showWarningToast`/`dismissToast` into the bottom-right
+container, at sonner's standard width, with the icon, the close button,
+hover-pause restored, and their lifetimes as sonner's own `duration` (offer 8s,
+refusal 10s). The bottom-right position is what D12 measured as an obstacle and
+the operator has now re-accepted: the flag this section raised against it - "a
+toast confined to the sidebar's column cannot touch Send" - is no longer a
+constraint anyone is holding, and the live geometry of the overlap is recorded
+with the frames under `docs/evidence/undo-toasts-lane-retired/`. Because the
+raise lives on an always-mounted surface rather than in the panel, the failure
+class the operator named ("these don't properly show up") goes with it: the
+panel is the expanded half of the sidebar column and the acts that raise the
+messages are reachable while it is not mounted (the chat pane's header menu, a
+typed `/archive`, the composer's own Clear all).
+
+**What survives, stated because it is the load-bearing part.** The archive offer
+and its refusal keep ONE stable id (`ARCHIVE_TOAST_ID`) so an answer REPLACES
+the message it answers in place rather than stacking; the store still raises the
+offer in the update that settles the archive write (D27); the retirement rule is
+still `undoOfferStands`'s, watched by `useArchiveUndoRetirement` while the
+surface carries the offer, and the unanswered-fact guard is kept; action presses
+still `preventDefault()`, still send the desired state, and still settle only on
+their own answer; the drafts offer keeps "N key snapshot + Undo restores the
+store AND the pane" (the staged key moved from a panel ref to the store's
+`stagedByDiscard`, because the press now lives one surface over).
+
+**One decision this section makes rather than inherits:** the draft-discard
+offer gets its own id (`DRAFTS_UNDO_TOAST_ID = "drafts-undo"`). The single id
+existed to fit one lane holding one message; ordinary toasts stack, a discard is
+not an archive, and cross-feature replacement would be a lie about the newer
+message. The store's single slot still means a second discard replaces the
+first, and each offer retires on its own terms.
+
+**Consequences to the record and the rigs.** The `session-archive` and
+`row-space` driver scenes now assert the new placement (one container, bottom-
+right, outside the panel, no band element anywhere) and that a standing message
+reserves no space (every row's top, both scrollTops and the list's own box are
+byte-equal to the message-free reading); the old band-yield assertions and the
+covered-rows loop's expectation are superseded, and the Drafts/drafts-ack
+evidence sets' lane-era frames are marked as such in their READMEs.
+
 ## 11. The list region's scrollbar (D12)
 
 `docs/evidence/sidebar-row-space/` was taken on overlay scrollbars, where the
@@ -650,7 +709,7 @@ none is being quietly abandoned:
 | "The pin's state must read WITHOUT hovering" (a pinned row's glyph is filled `text-ink`) | **Kept, and now true at every width (D4).** Measured broken at 240 today (D1). |
 | "Nothing lifts, scales or translates on hover" (`branding.md` § 5) | **Extended by the operator's own instruction, and bounded.** The pan translates the title's *text* by up to the overflow, one way, after a dwell, stopping at the end; the row, its controls, its box and its ground do not translate, lift or scale. The one property that moves is `transform`, which § 5 admits "for entrances" - this is a marquee rather than an entrance, and it is stated here as the deliberate exception, with reduced motion as its off switch. |
 | The narrow band swaps the pair for one shared 24px menu "because the pair's cost is not payable at the clamp minimum" (`ROW_CONTROLS_PAIR_SHED`, D15, D10) | **Deleted (D9).** The cost it guarded was a rest cost and there is no rest cost. |
-| The archive offer is a panel register, not a toast (D12) | **Replaced (D11)**, with both of D12's constraints met structurally rather than by a numeric offset. |
+| The archive offer is a panel register, not a toast (D12) | **Replaced (D11)**, with both of D12's constraints met structurally rather than by a numeric offset. **Then superseded again (2026-09-27):** the lane D11 chose is deleted at the operator's request and the messages are ordinary bottom-right sonner toasts; see §10's supersession entry for what survives and why the D12 overlap is now an accepted trade. |
 | The row's `title` attribute carries the pointer's copy of the row's facts | **Replaced (D7)** by the app's own tooltip, carrying the same content, so there is one pointer surface rather than two. |
 
 ## 13. What the coder must also touch
