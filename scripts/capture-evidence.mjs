@@ -749,6 +749,15 @@ export const STORIES = [
 	["chat-turn-collapse--narration", 1280, 900],
 	["chat-turn-collapse--pinned", 1280, 900],
 	/*
+	 * THE OPERATOR'S OWN STATE (2026-09-29): "the condensed row ('Context
+	 * compacted') hugs the summary row's rule too closely ... the chevron ('>')
+	 * doesn't reach the right end of the rule". `pinned` photographs a completion
+	 * marker; this cell is the pin list's first member - the memory statement -
+	 * kept below the bar while the work collapses, which is the row the report
+	 * and the fix's before/after pair are about.
+	 */
+	["chat-turn-collapse--pinned-compaction", 1280, 900],
+	/*
 	 * ISSUE #5'S PAIR (operator feedback, 2026-09-29): peer and wake receipts
 	 * collapse with the work. The second row presses the same story open so the
 	 * design round can judge the reveal.

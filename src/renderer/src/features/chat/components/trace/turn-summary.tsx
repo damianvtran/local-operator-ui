@@ -136,7 +136,21 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 				chevron="trailing"
 				rowClassName={ROW_HEIGHT}
 				triggerClassName={cn("-mx-2 rounded-sm px-2", "hover:bg-row-hover")}
-				chevronClassName={cn("text-ink-muted")}
+				/*
+				 * THE CHEVRON IS THIS ROW'S RIGHT EDGE, SO IT RECLAIMS THE TRIGGER'S
+				 * RIGHT SHORTFALL. The trigger is `w-full` inside the `-mx-2 px-2`
+				 * box, which bleeds on the left only and ends 16px short of the row on
+				 * the right - the disclosure's documented geometry, the one the tool
+				 * stamps' `mr-4` insets line up with. This bar's rule spans the block's
+				 * whole content box, so `-mr-4` pulls the slot right by exactly that
+				 * shortfall and the row's right edge lands on the rule's end (operator
+				 * report, 2026-09-29: "the chevron ('>') doesn't reach the right end of
+				 * the rule"). The summary span and the stamp ride with it, so the
+				 * stamp keeps the row's own `gap-1.5` from the chevron; the glyph's
+				 * ~5px right bearing is the same optical inset every lucide mark in the
+				 * app carries.
+				 */
+				chevronClassName={cn("-mr-4", "text-ink-muted")}
 				summary={
 					/*
 					 * FOUR FLEX ITEMS AND THE GAP THAT SPACES THEM, not one truncating
