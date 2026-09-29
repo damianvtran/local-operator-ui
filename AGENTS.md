@@ -1219,7 +1219,7 @@ managed runtime outside the bundle, and the bytecode guards described above.
 The tree is `Contents/Resources/python-runtime-seed/<arch>` — one architecture per
 artifact (`arm64` or `x64`, matching the `-<arch>.zip`/`-<arch>.dmg` filename, and
 asserted against it), carrying the *complete* runtime (`bin/python3` and
-`lib/python3.12/encodings`, not just the executable), no `.pyc` anywhere, no
+`lib/python3.14/encodings`, not just the executable), no `.pyc` anywhere, no
 absolute or escaping symlinks, no hardlinks or special files. `python-runtime-seed`
 is a **namespace, not a name**: nothing may read or execute it in place, and the
 point of the name is that an incumbent venv cannot reach it by accident between
