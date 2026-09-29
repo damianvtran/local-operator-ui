@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|project-detail|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|project-detail|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|none>
  *                          which built-in scene to run (default: states)
  *   --project <key>        (with --scene project-detail) the seeded project the
  *                          detail scene drives; the seed decides the name and a
@@ -8131,6 +8131,343 @@ async function sceneFirstSend(cdp) {
 	 * mock provider (a configured user, which is the state the claim is about).
 	 */
 	return [emptyFrame, sentFrame, settledFrame];
+}
+
+/**
+ * THE COLLAPSED TURN, driven end to end in the built app: the interaction half
+ * of the turn-collapse design's evidence plan (§10.3), which a still cannot
+ * state.
+ *
+ * WHY THIS SCENE EXISTS. The story set photographs the states; only a real turn
+ * shows the TRANSITION the feature is made of: a run while it is live (every
+ * row its own, no bar), the same run the moment its answer settles (the bar
+ * replaces the in-between rows), the reader's press (the rows come back, the
+ * bar stays as the toggle), and a reload (the durable re-read arrives collapsed
+ * again, with the same run and the same action count). The daemon's mock
+ * answers a `[bash:N]` prompt with one call that sleeps N seconds and then a
+ * text answer (`providers/clients.py`), which is a completed turn with exactly
+ * one in-between row (§5 case 2) - and the sleep is what makes the mid-run
+ * window wide enough to photograph. The call parks on the approval card first
+ * (this config's `tool_approval_mode` is `ask`), which the scene answers the
+ * way a reader does - option `1` typed into the composer and sent - so the
+ * running and completed states below are reached through the real gate.
+ *
+ * WHAT IT ASSERTS, and why each claim is a check rather than a frame: "no bar
+ * while live", "exactly one bar and one stamp when finished", "the press
+ * reveals the row behind it", "the reload comes back collapsed with the same
+ * run and the same action count". The duration clause is NOTED, not asserted
+ * equal across the reload: live it is the settle frame's clock (`settledAt`)
+ * and durable it is the producer's commit `ts`, and the pair of readings in the
+ * log is what says whether the two agree on this run (§R1).
+ *
+ * Requires `--backend` like first-send: with no backend the chat route draws
+ * its refusal surface and no composer mounts, so there is nothing to send.
+ */
+async function sceneTurnCollapse(cdp) {
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	const composerSelector = '[data-tour-tag="chat-input-textarea"]';
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+	await verb(cdp, "navigate", "/chat");
+	const mounted = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${composerSelector}') && document.querySelector('[data-lo-empty-mark]'))`,
+		30_000,
+	);
+	check(
+		"the chat route shows the empty state with a composer",
+		mounted.ok,
+		`composer + empty mark present: ${JSON.stringify(mounted.last)}`,
+	);
+
+	/*
+	 * The readings, scoped to the transcript region: the sidebar carries its own
+	 * clocks and rows, and a whole-document query would fold them into every
+	 * count below.
+	 */
+	const readTranscript = () =>
+		cdp.evaluate(`(() => {
+			const log = document.querySelector('[role="log"]');
+			if (!log) return null;
+			const bar = log.querySelector('[data-turn-summary]');
+			return {
+				bars: log.querySelectorAll('[data-turn-summary]').length,
+				runIds: bar ? bar.getAttribute('data-run-ids') : null,
+				barText: bar ? bar.textContent : null,
+				barOpen: bar
+					? bar.querySelector('button[aria-expanded]')?.getAttribute('aria-expanded')
+					: null,
+				toolRows: log.querySelectorAll('[data-record-kind="tool"]').length,
+				stamps: log.querySelectorAll('[data-stamp]').length,
+				foot: log.textContent.includes('Worked'),
+			};
+		})()`);
+
+	/*
+	 * READY BEFORE TYPING. A send pressed while the pane is still resolving its
+	 * model goes nowhere at all - measured on this scene's second run: the
+	 * composer took the text and the Enter produced NO session, NO message POST
+	 * at the daemon and no row, while the same press a minute later worked. The
+	 * model chip in the composer's footer is the reading that the transport has
+	 * resolved (it is what the pane paints once the backend answers), so the send
+	 * waits for it rather than for a sleep.
+	 */
+	const ready = await waitForCondition(
+		cdp,
+		`document.body.textContent.includes("mock-model")`,
+		90_000,
+	);
+	check(
+		"the composer resolves the daemon's model before the send",
+		ready.ok,
+		`after ${ready.waitedMs ?? "?"}ms: ${JSON.stringify(ready.last)}`,
+	);
+
+	/* The turn: one call that takes measurable time, then the mock's answer. */
+	const typePrompt = async () => {
+		await clickAt(cdp, `${composerSelector} textarea`);
+		await cdp.evaluate(
+			`document.querySelector('${composerSelector} textarea').focus()`,
+		);
+		await wait(150);
+		await cdp.send("Input.insertText", { text: "Run the checks [bash:12]" });
+		await wait(150);
+		const value = await cdp.evaluate(
+			`document.querySelector('${composerSelector} textarea').value`,
+		);
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		return value;
+	};
+	const typed = await typePrompt();
+	check(
+		"the prompt reached the composer",
+		typeof typed === "string" && typed.includes("Run the checks"),
+		JSON.stringify(typed),
+	);
+	const painted = () =>
+		waitForCondition(
+			cdp,
+			`(() => {
+				const log = document.querySelector('[role="log"]');
+				return Boolean(
+					log &&
+						log.querySelector('[data-record-kind="user"]') &&
+						log.textContent.includes("Run the checks"),
+				);
+			})()`,
+			20_000,
+		);
+	let sent = await painted();
+	if (!sent.ok) {
+		/*
+		 * The press is repeated rather than the prompt retyped: an Enter over an
+		 * empty composer is the app's own no-op, so a second press cannot double
+		 * a message that did land.
+		 */
+		note(
+			"the first press was dropped; repeating the Enter",
+			JSON.stringify(sent.last),
+		);
+		await clickAt(cdp, `${composerSelector} textarea`);
+		await cdp.evaluate(
+			`document.querySelector('${composerSelector} textarea').focus()`,
+		);
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		sent = await painted();
+	}
+	check(
+		"the sent message reached the transcript",
+		sent.ok,
+		`after ${sent.waitedMs ?? "?"}ms: ${JSON.stringify(sent.last)}`,
+	);
+	const asked = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-lo-question-dock]'))`,
+		120_000,
+	);
+	check(
+		"the call parks on the approval card",
+		asked.ok,
+		`after ${asked.waitedMs ?? "?"}ms: ${JSON.stringify(asked.last)}`,
+	);
+	/*
+	 * THE RIG'S OWN GATE, ANSWERED THE WAY A READER ANSWERS IT. `tool_approval_mode`
+	 * is `ask` in this config, so the bash call parks on the question dock and the
+	 * turn cannot finish without an answer; option 1 is Approve, typed and sent
+	 * through the composer's real key handler like the prompt itself. The PARKED
+	 * reading is ASSERTED now (design review round 1, D3): a turn waiting on the
+	 * gate is unsettled, so nothing may condense — and the frame carries the
+	 * moment (the question card docked above the composer, the run region with no
+	 * bar) for the design round that judged it.
+	 */
+	const parked = await readTranscript();
+	note("parked on the approval", JSON.stringify(parked));
+	check(
+		"parked: nothing condenses while the turn waits on the gate",
+		parked !== null && parked.bars === 0,
+		JSON.stringify(parked),
+	);
+	const parkedFrame = await captureSettled(cdp, "turn-collapse-parked");
+	note("frame", JSON.stringify(parkedFrame));
+	await clickAt(cdp, `${composerSelector} textarea`);
+	await cdp.evaluate(
+		`document.querySelector('${composerSelector} textarea').focus()`,
+	);
+	await wait(150);
+	await cdp.send("Input.insertText", { text: "1" });
+	await wait(150);
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	const cleared = () =>
+		waitForCondition(
+			cdp,
+			`!document.querySelector('[data-lo-question-dock]')`,
+			30_000,
+		);
+	let approved = await cleared();
+	if (!approved.ok) {
+		note(
+			"the approval press was dropped; repeating the Enter",
+			JSON.stringify(approved.last),
+		);
+		await clickAt(cdp, `${composerSelector} textarea`);
+		await cdp.evaluate(
+			`document.querySelector('${composerSelector} textarea').focus()`,
+		);
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		approved = await cleared();
+	}
+	check(
+		"the approval clears the card and the call starts running",
+		approved.ok,
+		`after ${approved.waitedMs ?? "?"}ms: ${JSON.stringify(approved.last)}`,
+	);
+	await wait(400);
+	const live = await readTranscript();
+	note("mid-run, after the approval", JSON.stringify(live));
+	check(
+		"mid-run: nothing has collapsed - the turn is live and every row is its own",
+		live !== null && live.bars === 0 && live.toolRows >= 1,
+		JSON.stringify(live),
+	);
+	const liveFrame = await captureSettled(cdp, "turn-collapse-live-no-bar");
+	note("frame", JSON.stringify(liveFrame));
+
+	const answered = await waitForCondition(
+		cdp,
+		`(() => {
+			const log = document.querySelector('[role="log"]');
+			return Boolean(log && log.textContent.includes("from the mock provider"));
+		})()`,
+		60_000,
+	);
+	check(
+		"the mock's answer arrived and the turn completed",
+		answered.ok,
+		`after ${answered.waitedMs ?? "?"}ms: ${JSON.stringify(answered.last)}`,
+	);
+	await wait(1_000);
+	const finished = await readTranscript();
+	note("completed", JSON.stringify(finished));
+	check(
+		"completed: the finished turn condenses to exactly one bar",
+		finished !== null &&
+			finished.bars === 1 &&
+			(finished.runIds ?? "").split(" ").length >= 3,
+		JSON.stringify(finished),
+	);
+	check(
+		"completed: the bar carries the turn's one stamp and the foot stands down",
+		finished !== null && finished.stamps === 1 && finished.foot === false,
+		JSON.stringify(finished),
+	);
+	const completedFrame = await captureSettled(cdp, "turn-collapse-completed");
+	note("frame", JSON.stringify(completedFrame));
+
+	await verb(cdp, "press", {
+		selector: "[data-turn-summary] button[aria-expanded]",
+	});
+	await wait(500);
+	const opened = await readTranscript();
+	note("expanded", JSON.stringify(opened));
+	check(
+		"the press reveals the work behind the bar, and the bar stays as the toggle",
+		opened !== null && opened.barOpen === "true" && opened.toolRows >= 1,
+		JSON.stringify(opened),
+	);
+	const expandedFrame = await captureSettled(cdp, "turn-collapse-expanded");
+	note("frame", JSON.stringify(expandedFrame));
+	/*
+	 * D2'S OWN MEASUREMENT (design review round 1): the expansion must keep the
+	 * ledger's own step — the bar replaces the first hidden row's slot, and the
+	 * row below it is one trace step away, not a turn-tier margin plus the
+	 * disclosure body's own 8px (the measured regression: 36px box gap, Δ57px
+	 * centres). `<= 30` is what a 20px row + 4px body padding + 2px trace step
+	 * clears with rounding room; the exact delta is logged either way.
+	 */
+	const geometry = await cdp.evaluate(`(() => {
+		const bar = document.querySelector('[data-turn-summary]');
+		if (!bar) return null;
+		/*
+		 * The bar's own ROW is the trigger, not the root: the root wraps the open
+		 * body too, and measuring its centre would measure the whole block (found
+		 * on this scene's first post-fix run: barToRow1 11.8 against a block, not
+		 * a row).
+		 */
+		const trigger = bar.querySelector('button[aria-expanded]');
+		if (!trigger) return null;
+		const rows = [...bar.querySelectorAll('[data-record-id]')];
+		if (rows.length === 0) return null;
+		const c = (el) => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; };
+		return { barCenter: c(trigger), rowCenters: rows.map(c) };
+	})()`);
+	const barToRow1 =
+		geometry !== null
+			? Math.round((geometry.rowCenters[0] - geometry.barCenter) * 10) / 10
+			: null;
+	note("expanded geometry", JSON.stringify({ ...geometry, barToRow1 }));
+	check(
+		"the expansion keeps the ledger's own step (D2)",
+		barToRow1 !== null && barToRow1 <= 30,
+		`bar-to-row1 centre delta ${barToRow1}px`,
+	);
+
+	/* The reload half (§R1/§10.3): the durable re-read must arrive collapsed. */
+	await cdp.send("Page.reload", { ignoreCache: false });
+	const back = await waitForCondition(
+		cdp,
+		`(() => {
+			const log = document.querySelector('[role="log"]');
+			return Boolean(log && log.querySelector('[data-turn-summary]'));
+		})()`,
+		30_000,
+	);
+	await wait(800);
+	const reloaded = await readTranscript();
+	note(
+		"reloaded",
+		JSON.stringify({ read: reloaded, back: back.ok, before: finished }),
+	);
+	check(
+		"reload: the turn comes back collapsed, with the same run and the same action count",
+		back.ok === true &&
+			reloaded !== null &&
+			reloaded.barOpen === "false" &&
+			reloaded.runIds === finished.runIds &&
+			/\b1 action\b/.test(reloaded.barText ?? "") ===
+				/\b1 action\b/.test(finished.barText ?? ""),
+		JSON.stringify({ reloaded, finished }),
+	);
+	const reloadFrame = await captureSettled(cdp, "turn-collapse-reloaded");
+	note("frame", JSON.stringify(reloadFrame));
+
+	return [parkedFrame, liveFrame, completedFrame, expandedFrame, reloadFrame];
 }
 
 /**
@@ -29062,6 +29399,11 @@ async function main() {
 			"--scene first-send needs --backend: with no backend the chat route draws its refusal surface and no composer mounts, so there is nothing to send from",
 		);
 	}
+	if (SCENE === "turn-collapse" && BACKEND === null) {
+		throw new Error(
+			"--scene turn-collapse needs --backend: the bar collapses a turn the daemon has to actually run, and with no backend the chat route draws its refusal surface and no composer mounts",
+		);
+	}
 	if (SCENE === "conversation-start-away-failure" && BACKEND === null) {
 		console.error(
 			"the conversation-start-away-failure scene needs --backend <url>: it drives a real refusal through the tap",
@@ -29266,6 +29608,7 @@ async function main() {
 			 * widths it is written about.
 			 */ else if (SCENE === "floors") await sceneFloors(cdp);
 			else if (SCENE === "first-send") await sceneFirstSend(cdp);
+			else if (SCENE === "turn-collapse") await sceneTurnCollapse(cdp);
 			else if (SCENE === "conversation-start")
 				await sceneConversationStart(cdp);
 			else if (SCENE === "conversation-start-away-failure")

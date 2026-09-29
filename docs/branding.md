@@ -843,8 +843,14 @@ equally important**, and the interface must not present them as though they are.
   pnpm vitest run`) beside its counts and its wall-clock span. It condenses
   itself once and only when its section ends — finished sections condense; the
   live section and anything the reader opened obey the reader, and nothing
-  condenses while a call in it is still running. A finished turn also carries
-  one turn-foot line (`Worked for 1m 12s · 8 actions · 1 failed`). The fold is a
+  condenses while a call in it is still running, nor while the turn waits on
+  the reader's own gate (an approval or question parks the turn; a parked turn
+  is unsettled, so nothing condenses). A finished turn also carries
+  one turn-foot line (`Worked for 1m 12s · 8 actions · 1 failed`) — EXCEPT a
+  turn that has condensed to its own summary bar: there the foot stands down
+  and the bar IS the line (its own stamp replaces the foot's, one stamp per
+  turn), so the agent-output tier reads as two levels — the turn's single bar,
+  then the runs' folds inside it once opened. The fold is a
   VIEW: it hides rows and never reorders them, so the placement rule a few lines
   down and its `applyLiveSeed`/`withTimeOrder` guard are untouched. Without this
   tier a 40-step turn is 40 lines, which is the "every internal step at equal
