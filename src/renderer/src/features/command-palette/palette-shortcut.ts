@@ -23,9 +23,11 @@
  * the palette opens everywhere else, and inside a canvas editor the shortcut
  * keeps meaning what the editor says it means.
  *
- * Cmd/Ctrl+P is deliberately left as it was — owned by the main process — for
- * the people who learned it from the app's own tour. Two gestures, two owners,
- * no keystroke claimed twice.
+ * Cmd/Ctrl+P stays owned by the main process, and since issue #659 it has a job
+ * of its own rather than being a second door to this same list: it opens the
+ * palette SEEDED to its conversations source, the quick switcher (the seed
+ * itself is `palette-search.ts`'s `CONVERSATION_SWITCHER_SEED`). Two gestures,
+ * one surface, two owners, no keystroke claimed twice.
  */
 
 /** What a keystroke asks the palette to do. */
@@ -83,4 +85,15 @@ export function paletteShortcutLabel(isMac: boolean): string {
 /** The same gesture as `KeyboardShortcut` prop text, which splits on `+`. */
 export function paletteShortcutCaps(isMac: boolean): string {
 	return isMac ? "⌘+K" : "Ctrl+K";
+}
+
+/**
+ * The Cmd/Ctrl+P door (issue #659), as the app writes it.
+ *
+ * One spelling for the same reason the caps above share one: the tour's prose
+ * names this chord, and a later rebinding cannot then leave a stale `⌘P` in
+ * user-facing copy.
+ */
+export function switcherShortcutLabel(isMac: boolean): string {
+	return isMac ? "⌘P" : "Ctrl+P";
 }

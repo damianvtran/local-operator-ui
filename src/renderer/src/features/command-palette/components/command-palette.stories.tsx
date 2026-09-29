@@ -1,6 +1,9 @@
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { CONVERSATION_SWITCHER_SEED } from "../palette-search";
 /* Also imported by the Storybook preview; kept here so the file is honest
    about what it needs to render, and so it renders if run in isolation. */
 import "../../../styles/index.css";
@@ -25,13 +28,19 @@ import { CommandPalette } from "./command-palette";
  *
  * ## What these stories cannot show
  *
- * There is no backend here, so the two sources that need one are absent: the
- * agent roster and the conversation search. What remains is the whole of the
- * local half — destinations, actions, the settings rail and its sections — which
- * is what the browse state is made of, and enough to judge the row rhythm, the
- * section headings, the active row, the key legend and the scope prefixes.
+ * There is no backend here, so the roster and the conversation SEARCH are
+ * absent: a term typed into the field cannot reach `sessions.search`, and the
+ * agent roster cannot be read at all. What CAN be shown, and is (the three
+ * chats-scope stories below), is the conversations CATALOGUE — the rows the
+ * browse list draws. Those come from the canonical session store, which is
+ * local state the app fills from the backend, and priming it renders the same
+ * list a live backend produces: same rows, same browse cap, same footer. The
+ * IPC half of the Cmd/Ctrl+P chord (main's `before-input-event`, which cannot
+ * fire in a gallery) is the running app's evidence — `docs/evidence/` and QA's
+ * live pass — and what these stories add is the state that pass had no
+ * conversations for: populated, empty and cold-open rows, judged as pixels.
  *
- * The conversation and registry stories therefore live in the app's own
+ * The conversation and registry stories otherwise live in the app's own
  * evidence rather than here: `docs/evidence/command-palette-commandpalette/` is
  * the Storybook set, and the frames taken from the running app are what show a
  * chat matched by its body.
@@ -74,6 +83,94 @@ const meta: Meta<StoryArgs> = {
 	render: ({ query }) => <PaletteFrame query={query} />,
 };
 
+/*
+ * Eight conversations, newest first: the order the browse list renders. Eight
+ * against the browse cap of five is what makes the clip visible — five rows,
+ * the rest reachable by typing. The footer of a browse shows the legend, not a
+ * count line; the count renders only for a typed search, so the frame's footer
+ * is the legend either way (R2-1). Titles are ordinary reading — the frame
+ * exists to be judged for hierarchy and density, and a fixture does not need
+ * the content to mean anything.
+ */
+const CATALOGUE_ROWS: CanonicalSessionRow[] = [
+	"Retention policy for audit logs",
+	"Quarterly planning notes",
+	"Enrichment pipeline review",
+	"Customer sync debugging",
+	"Docs: onboarding rewrite",
+	"Pricing page copy edits",
+	"Incident 2026-09-24 postmortem",
+	"Data agent catalogue spike",
+].map((title, index) => ({
+	session_id: `rig-switcher-${index + 1}`,
+	title,
+	updated_at: 1_760_000_000 - index * 3_600,
+}));
+
+/**
+ * The seeded door's own frame: `toggleCommandPalette` with the switcher seed —
+ * the exact call the Cmd/Ctrl+P subscription makes — over a primed catalogue.
+ *
+ * WHY THE PRIMED CATALOGUE IS FAIR (review round 2, D1): the switcher's rows
+ * render from the canonical session store, and a story that primes it shows
+ * the list a live backend produces — same rows, same cap, same footer. The
+ * one thing a story cannot photograph is the IPC half of the chord, and that
+ * half is the app's own evidence; these frames exist because the design round
+ * could not judge hierarchy, row density or the footer from an empty fixture.
+ * The previous chats story opened via `openCommandPalette` + a query arg,
+ * which was a second answer to "where does the palette open from" — this
+ * frame uses the store's own door so the story and the app cannot drift.
+ */
+const SwitcherFrame = ({
+	state,
+}: {
+	state: "populated" | "empty" | "loading";
+}) => {
+	const [ready, setReady] = useState(false);
+	useEffect(() => {
+		/*
+		 * TWO THINGS THIS EFFECT HAS TO GET RIGHT, both measured rather than
+		 * reasoned:
+		 *
+		 * 1. `isCommandPaletteOpen` is PERSISTED (`persistedUiPreferences` keeps
+		 *    it), so a gallery reload after any earlier open rehydrates the store
+		 *    OPEN — and the real door's TOGGLE would then CLOSE the palette. The
+		 *    story's first frames were blank for exactly this reason (the effect
+		 *    logged `isCommandPaletteOpen true` at setup on a fresh iframe load);
+		 *    the close first makes the start state deterministic.
+		 * 2. The palette must not MOUNT until the catalogue is primed. Child
+		 *    effects run before the parent's, and against a persisted-open store
+		 *    the palette's once-per-open catalogue fetch fired before this
+		 *    effect's prime landed — the failed fetch settled `loading` back to
+		 *    false and the loading frame rendered the settled-empty copy instead
+		 *    (measured in the round-2 captures). `ready` defers the mount by one
+		 *    commit, so the component's first render already sees the fixture.
+		 */
+		useUiPreferencesStore.getState().closeCommandPalette();
+		const sessions = useCanonicalSessionsStore.getState();
+		const originalSessions = sessions.sessions;
+		const originalLoading = sessions.loading;
+		useCanonicalSessionsStore.setState({
+			sessions: state === "populated" ? CATALOGUE_ROWS : [],
+			loading: state === "loading",
+		});
+		useUiPreferencesStore
+			.getState()
+			.toggleCommandPalette(CONVERSATION_SWITCHER_SEED);
+		setReady(true);
+		return () => {
+			useUiPreferencesStore.getState().closeCommandPalette();
+			useCanonicalSessionsStore.setState({
+				sessions: originalSessions,
+				loading: originalLoading,
+			});
+		};
+	}, [state]);
+
+	if (!ready) return null;
+	return <CommandPalette />;
+};
+
 export default meta;
 type Story = StoryObj<StoryArgs>;
 
@@ -102,6 +199,36 @@ export const SettingsScope: Story = { args: { query: ",theme" } };
  * themselves are covered by the ranking tests and the live-app QA pass.
  */
 export const CommandsScope: Story = { args: { query: ">" } };
+
+/**
+ * The chats scope with NO conversations: the empty state the switcher settles
+ * into once the catalogue has answered (and the frame design round 2 asked for
+ * alongside the populated one). The `# Chats` chip beside the field names the
+ * scope whenever one is applied; the footer's legend draws in its own states —
+ * every browse, empty or full — and teaches the other prefixes (R2-1).
+ */
+export const ChatsScope: Story = {
+	render: () => <SwitcherFrame state="empty" />,
+};
+
+/**
+ * The switcher POPULATED: eight conversations against the browse cap of five,
+ * so the five-row clip and the row rhythm — the states the design round could
+ * not judge from an empty fixture — are the frame. Its footer is the legend,
+ * not a count line: the count renders only for a typed search (R2-1).
+ */
+export const ChatsScopePopulated: Story = {
+	render: () => <SwitcherFrame state="populated" />,
+};
+
+/**
+ * Cold open: the catalogue request is out and unanswered. This is the frame
+ * that proves the loading copy — the state the old empty-state sentence used
+ * to misstate as "nothing to show" before the fetch answered.
+ */
+export const ChatsScopeLoading: Story = {
+	render: () => <SwitcherFrame state="loading" />,
+};
 
 /**
  * The no-results state, which has to say what to try next — and, in the app,
