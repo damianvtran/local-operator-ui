@@ -9774,6 +9774,125 @@ async function sceneFloors(cdp) {
  * The full command line (daemon, token, flags) is in
  * `docs/evidence/transcript-rail/README.md`.
  */
+/**
+ * THE HOVER TRACE: what a pointer sweep over the rail costs, in frames.
+ *
+ * WHY A TRACE AND NOT A STOPWATCH. The operator's report was "laggy", which is
+ * a claim about FRAME PACING under a gesture - not about how long one card
+ * takes to open. What this records is the renderer's own rAF timeline while a
+ * deterministic pointer walks the rail in two legs: a DWELL leg (six stations,
+ * long enough at each for the intent-delayed card to open and close - the
+ * open/close churn the report was about) and a SWEEP leg (forty steps at ~12ms,
+ * continuous movement over the marks). Per-frame deltas plus whether a card was
+ * up that frame are read back and reduced to p50/p95/max and long-frame counts.
+ *
+ * BOTH THE BEFORE AND THE AFTER HALF RUN THIS FUNCTION, from this same file,
+ * with only `process.cwd()` (the tree under test) differing - the identity is
+ * the measurement's bytes, not a re-implementation.
+ *
+ * WHY HEADLESS IS STILL A FAIR PLACE FOR IT: `window-mode.ts` turns
+ * `backgroundThrottling` OFF in both non-normal window modes, so a never-shown
+ * renderer keeps its frame cadence instead of dropping to a background 1 fps
+ * tick. What this does NOT measure: compositor/GPU cost of a shown window, the
+ * OS pointer path, or anything under `prefers-reduced-motion` (the trace runs
+ * the default motion arm). It is main-thread frame pacing under a gesture, and
+ * the note says so.
+ */
+async function railHoverTrace(cdp) {
+	const SESSION = "be1a9fef0001";
+	const rail = "[data-lo-checkpoint-rail]";
+	await verb(cdp, "press", {
+		selector: `[data-session-row="${SESSION}"] [data-chat-row]`,
+	});
+	const ready = await waitForCondition(
+		cdp,
+		`(() => { const rail = document.querySelector('${rail}'); return Boolean(rail) && document.querySelectorAll("[data-checkpoint-id]").length >= 300; })()`,
+		30_000,
+	);
+	check("the density rail is up before the trace", ready.ok, JSON.stringify(ready));
+	await parkPointer(cdp);
+	const geometry = await cdp.evaluate(`(() => {
+		const rail = document.querySelector('${rail}');
+		if (!rail) return null;
+		const trace = { on: true, frames: [], startedAt: 0 };
+		window.__railHoverTrace = trace;
+		let last = performance.now();
+		const tick = (now) => {
+			const card = document.querySelector("[data-checkpoint-card]");
+			trace.frames.push([Math.round((now - last) * 100) / 100, card ? 1 : 0]);
+			last = now;
+			if (trace.on) requestAnimationFrame(tick);
+		};
+		requestAnimationFrame(tick);
+		trace.startedAt = performance.now();
+		const rect = rail.getBoundingClientRect();
+		return {
+			cx: Math.round(rect.left + rect.width / 2),
+			top: Math.round(rect.top + 6),
+			bottom: Math.round(rect.bottom - 6),
+			ticks: document.querySelectorAll("[data-checkpoint-id]").length,
+		};
+	})()`);
+	if (!geometry) {
+		check("the rail is measurable for the trace", false, "no rail element");
+		return;
+	}
+	const leg = async (label, stations, dwellMs) => {
+		const start = Date.now();
+		for (let i = 0; i < stations; i += 1) {
+			const y = Math.round(
+				geometry.top + ((geometry.bottom - geometry.top) * i) / (stations - 1 || 1),
+			);
+			await movePointer(cdp, geometry.cx, y);
+			await wait(dwellMs);
+		}
+		note(`hover trace leg ${label}`, `stations=${stations} dwellMs=${dwellMs} wallMs=${Date.now() - start}`);
+	};
+	/* The DWELL leg: long enough at each station for the card's intent delay. */
+	await leg("dwell", 6, 240);
+	/* The SWEEP leg: continuous movement, the gesture the report was about. */
+	await leg("sweep", 40, 12);
+	await parkPointer(cdp);
+	const trace = await cdp.evaluate(`(() => {
+		const trace = window.__railHoverTrace;
+		if (!trace) return null;
+		trace.on = false;
+		const startedAt = trace.startedAt;
+		const openFrames = trace.frames.filter(([, open]) => open === 1).length;
+		let firstOpen = null;
+		let t = 0;
+		let firstAt = startedAt;
+		for (const [dt, open] of trace.frames) {
+			firstAt += dt;
+			if (open === 1 && firstOpen === null) firstOpen = Math.round(firstAt - startedAt);
+		}
+		return { frames: trace.frames.map(([dt]) => dt), openFrames, firstOpenMs: firstOpen };
+	})()`);
+	if (!trace || trace.frames.length === 0) {
+		check("the hover trace collected frames", false, JSON.stringify(trace));
+		return;
+	}
+	const sorted = [...trace.frames].sort((a, b) => a - b);
+	const at = (q) => sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * q))];
+	const stats = {
+		frames: sorted.length,
+		ticks: geometry.ticks,
+		p50: Math.round(at(0.5) * 100) / 100,
+		p95: Math.round(at(0.95) * 100) / 100,
+		max: Math.round(sorted[sorted.length - 1] * 100) / 100,
+		over25ms: sorted.filter((dt) => dt > 25).length,
+		over50ms: sorted.filter((dt) => dt > 50).length,
+		cardUpFrames: trace.openFrames,
+		firstOpenMs: trace.firstOpenMs,
+	};
+	check(
+		"the hover trace collected a usable timeline",
+		stats.frames >= 60 && stats.over50ms >= 0,
+		JSON.stringify(stats),
+	);
+	note("rail hover trace", JSON.stringify(stats));
+}
+
 async function railPressProbe(cdp) {
 	const SESSION = "be1a9fef0001";
 	const rail = "[data-lo-checkpoint-rail]";
@@ -9968,6 +10087,10 @@ async function sceneTranscriptRail(cdp) {
 		RAIL_CASE === "press-probe-hovers"
 	) {
 		await railPressProbe(cdp);
+		return;
+	}
+	if (RAIL_CASE === "hover-trace") {
+		await railHoverTrace(cdp);
 		return;
 	}
 	const facts = await factsOf(cdp);
