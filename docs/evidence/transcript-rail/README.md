@@ -2,9 +2,12 @@
 
 Twenty-four frames (twelve states, two palettes) of the REAL app on an isolated
 daemon, from the repository's own driver scene `--scene transcript-rail`
-(`scripts/renderer-driver.mjs`). RE-SHOT for the rail rework (the dsh geometry,
-the tooltip card, and the jump's loader-backed walk) at head `86e4539dd7`;
-ALL CHECKS PASSED (81) on the re-shoot. Nothing on screen is stubbed: every tick is
+(`scripts/renderer-driver.mjs`). RE-SHOT AGAIN for the round-1 remediation
+(D1: the frame's own scrollbar hidden; D2/U1: the state ladder wired from the
+reader's own position with the track following it; the U3 order fix's `z-10`)
+at head `7ebcc07ac4`; ALL CHECKS PASSED (81) on this re-shoot - the same count
+as the first re-shoot, which rode the rail rework (the dsh geometry, the
+tooltip card, and the jump's loader-backed walk) at `86e4539dd7`. Nothing on screen is stubbed: every tick is
 the daemon's own derivation (`sessions.checkpoints`, BE-1) from transcript
 journals written into the run's config root before its daemon started, in the
 journal's own row format — `scripts/transcript-rail-fixture.mjs`, in the shapes
@@ -17,7 +20,7 @@ and the error outcome card; and a ~200k-row conversation for the building mark.
 
 | file | state | what it shows |
 | --- | --- | --- |
-| `transcript-rail-density-{dark,light}.png` | the rail at 402 ticks | the density case: short HORIZONTAL dashes (20x2 px) on a fixed 10px pitch, right-aligned in the 28px frame over the scroller's reserved gutter; overlap is impossible by construction and the track scrolls internally past its band, so the frame is the "must not look broken" reading |
+| `transcript-rail-density-{dark,light}.png` | the rail at 402 ticks | the density case: short HORIZONTAL dashes (20x2 px) on a fixed 10px pitch, right-aligned in the 28px frame over the scroller's reserved gutter; overlap is impossible by construction and the track scrolls internally past its band, so the frame is the "must not look broken" reading. The ladder now PAINTS (round 1, D2/U1): the turns outside the resident window wear the 40%-scale arm at 75% opacity, the loaded ones sit at rest, and the reading position's mark is at full scale with the track scrolled to it, and the frame's own scrollbar is gone (round 1, D1 - the mask's fades say "more above/below"; the wide pill at the app's right edge is the transcript scroller's own, not this band's) |
 | `transcript-rail-hover-user-{dark,light}.png` | a user tick's card | the press-free hover card, anchored side-left, `role=tooltip` and pointer-events-none: the message text, clamped to three lines |
 | `transcript-rail-hover-completion-{dark,light}.png` | a completion tick's card | fallback name (`Turn N`) + the outcome row + `Turn N of M` + the naming line. Naming is BE-2's and is not on this backend, so `Generating name…` is the honest state the card shows |
 | `transcript-rail-jump-before-{dark,light}.png` | before the jump | the newest view, the target ~560 rows back and not loaded |
@@ -42,16 +45,19 @@ values:
   model_name: mock-model
 YAML
 # the local-operator checkout that serves the manifest: a worktree of the
-# operator's checkout at the ref the re-shoot used,
-# a5007c8e64455fd07134037e639afde0ccb189b3 (its first-parent line carries
-# BE-1's #1712 and #1718; #1721's naming op is NOT on this line - which is why
-# the hover cards show their fallback text and the hook logs its 404 warn)
+# operator's checkout at the ref the round-1 re-shoot used,
+# 12663daa283801244735f4e106c46ebcee42845a - the a5007c8e64455fd07134037e639afde0ccb189b3
+# ref's own line plus two CI-hardening commits (a tui/session load fix and a
+# test pin; no desktop route moves), whose first-parent carries BE-1's #1712
+# and #1718. #1721's naming op is NOT on this line - which is why the hover
+# cards show their fallback text and the hook logs its 404 warn.
 LO_WORKTREE="$RIG/lo"
 # an isolated daemon this run owns, from that ref (BE-1:
 # `sessions.checkpoints`), a bearer of this run's own choosing. The port is a
-# flag on all three lines below; the final re-shoot used 8081 because 8080
-# was held by the operator's live daemon (left untouched).
-PORT=8081
+# flag on all three lines below; the round-1 re-shoot used 8087 (the first
+# re-shoot used 8081 because 8080 was held by the operator's live daemon,
+# left untouched).
+PORT=8087
 LOCAL_OPERATOR_DESKTOP_TOKEN="$(cat "$RIG/token")" \
   HOME="$RIG/home" LOCAL_OPERATOR_CONFIG_DIR="$RIG/config" \
   "$LO_WORKTREE/.venv/bin/local-operator" serve \
@@ -74,16 +80,36 @@ LOCAL_OPERATOR_DESKTOP_TOKEN="$(cat "$RIG/token")" \
 ## What the run measured
 
 The scene's own log: **ALL CHECKS PASSED, 81 checks**, 24 frames
-(the re-shoot at `86e4539dd7`). Press
+(the round-1 re-shoot at `7ebcc07ac4`; the first re-shoot, also 81 checks,
+rode the rework at `86e4539dd7`). Press
 -> the `data-jump-highlight` attribute appearing, taken driver-side around the
 press (the scene's `[note] jump timings` lines):
 
-- `localOperatorDark` — cold **319 ms** (the loader's pages + the mount, from a
-  small window; 36 -> 257 mounted rows), warm **25 ms** (a loaded row: reveal +
-  scroll alone), reduced-motion arm **4 ms**;
-- `localOperatorLight` — cold **5 ms**, warm **7 ms**, reduced arm **4 ms**: the
+- `localOperatorDark` — cold **291 ms** (the loader's pages + the mount, from a
+  small window; 36 -> 257 mounted rows), warm **3 ms** (a loaded row: reveal +
+  scroll alone), reduced-motion arm **3 ms**;
+- `localOperatorLight` — cold **3 ms**, warm **4 ms**, reduced arm **3 ms**: the
   second pass runs on the store the first already walked, so its cold arm is a
   warm re-jump and is labelled as such rather than read as a cold number.
+
+### What the round-1 remediation changed in these frames
+
+- **Round-1 D1** — the 28px frame's own 8px scrollbar is gone
+  (`[&::-webkit-scrollbar]:hidden`): it crossed the dash ends and its
+  mask-dimmed strip sat at the band's bottom. Before/after: the earlier frame
+  carried the thumb over the top ~4 marks; this set does not.
+- **Round-1 D2/U1 (the ladder, wired)** — `loadedIds`/`activeId` arrive from
+  the reader (`canonical-transcript.tsx`: the store's record ids, plus an
+  rAF-throttled reading position), the track follows the active mark, and the
+  unloaded arm composites at 75%: rest 0.6 / preview 0.9 / active 1.0 /
+  unloaded 0.4 at 75%, worst light theme 3.17:1 (rosePineDawn; computed
+  against `themes.generated.css` and calibrated on the review's own
+  2.42/2.46 at 60%).
+- **Round-1 U3 and its z** — the rail is the column's first tab stop; moving
+  it first needed `z-10` (the scroller below it is `relative` +
+  `translateZ(0)`, so tree order handed it every pointer), and the scene's
+  hover/press legs are what caught the absence (they went dead until it
+  carried z).
 
 ### The hover trace (before / after)
 
