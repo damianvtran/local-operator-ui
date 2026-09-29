@@ -139,6 +139,37 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 	};
 
 	/**
+	 * The width the pane can SHOW for the column: the content box of the
+	 * transcript's scroll container, which the column is `w-full` of and which
+	 * the render clamps the cap against (see `releasedChatMeasureWidth`, which
+	 * asks this same question before writing).
+	 *
+	 * READ FROM THE SCROLLER, NOT RE-DERIVED FROM CONSTANTS. The window between
+	 * the pane and the column is HOST-DEPENDENT: measured, the story host gives
+	 * its scroller overlay scrollbars, the gutter reservation is zero, and the
+	 * window is 32px (the `p-4` alone) - while a host with classic scrollbars
+	 * reserves the 8px gutter on each edge on top, so the same pane leaves 48px.
+	 * `clientWidth` minus the scroller's own computed paddings answers with the
+	 * host's real numbers for both, which no fixed inset could.
+	 *
+	 * `null` when the host cannot answer - no scroller, no layout, no computed
+	 * styles (a jsdom render) - and the release then falls back to committing,
+	 * the behaviour this feature shipped with: a travelled width is only ever
+	 * refused when the render is KNOWN to be unable to show it.
+	 */
+	const paneWidthPx = (): number | null => {
+		if (typeof getComputedStyle !== "function") return null;
+		const scroller = rootRef.current?.closest("[data-lo-canonical-transcript]");
+		if (!scroller) return null;
+		const style = getComputedStyle(scroller);
+		const left = Number.parseFloat(style.paddingLeft);
+		const right = Number.parseFloat(style.paddingRight);
+		if (!Number.isFinite(left) || !Number.isFinite(right)) return null;
+		const pane = scroller.clientWidth - left - right;
+		return pane > 0 ? pane : null;
+	};
+
+	/**
 	 * Put the pointer's own Y on the handle, so the cue lands under the hand.
 	 *
 	 * The property is written on the strip's WRAPPER rather than on the separator
@@ -266,18 +297,31 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 			window.removeEventListener("blur", onMouseUp);
 			document.documentElement.removeEventListener("mouseleave", onMouseUp);
 
+			/*
+			 * THE RENDER CONSULTATION, before the write (UX round 2's U4; agent round
+			 * 2's R2-1): the release rule refuses a width the pane cannot show, so
+			 * the pane is read HERE, at the release - not captured at the press,
+			 * because the question is what the render can show NOW. See
+			 * `releasedChatMeasureWidth` for the rule and `paneWidthPx` for the
+			 * reading; a host that cannot answer falls back to the pane that cannot
+			 * clamp, which commits the travelled width as before.
+			 */
 			const committed = releasedChatMeasureWidth({
 				startWidth,
 				deltaX: lastClientX - startX,
 				edge,
+				panePx: paneWidthPx() ?? Number.POSITIVE_INFINITY,
 			});
 			if (committed === null) {
 				/*
-				 * A press that did not travel. NOTHING is committed, and that is
-				 * the point: committing here is what turns a double-click into a
-				 * permanent narrowing, because the value a gesture starts from is
-				 * the width the PANE allows on a small window. The preview is put
-				 * back so the column does not keep a width nobody chose.
+				 * NOTHING is committed, for one of two reasons - and both put the
+				 * preview back so the column does not keep a width nobody chose:
+				 * the press did not travel (committing here is what turns a
+				 * double-click into a permanent narrowing, because the value a
+				 * gesture starts from is the width the PANE allows on a small
+				 * window), or the travelled width renders exactly the column already
+				 * on screen (the render consultation above: no pixel would move, so
+				 * the store may not move either).
 				 */
 				if (prior === "") preview(null);
 				else preview(Number.parseFloat(prior));
@@ -338,7 +382,12 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 				 * scrollbar gutter the app reserves at that edge (UX round 1's U3):
 				 * with no side room there is no other 10px on that edge that is not
 				 * over text, so the share is a bounded consequence of the flush case
-				 * rather than a separate choice.
+				 * rather than a separate choice. WHAT A READER MEETS IN THAT 10px,
+				 * stated so this record stands on its own (UX round 2's U5): a press
+				 * there starts a measure drag rather than reaching the scrollbar
+				 * underneath, while SCROLLING IS UNTOUCHED - the wheel and the
+				 * keyboard are not pointer presses, so the strip cannot intercept
+				 * either.
 				 */
 				edge === "left" ? "-left-[34px]" : "-right-[34px]",
 			)}

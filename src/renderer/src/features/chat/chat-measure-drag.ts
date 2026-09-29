@@ -30,7 +30,10 @@
  *    width the column takes the pane, and the drag affordance can only ever
  *    narrow it further. That is the same seat the shipped cap is in, so the
  *    override does not fight the layout - it is the layout's ceiling, lowered
- *    or raised.
+ *    or raised. And because the pane can hold the render still through most
+ *    of a gesture there, a release whose width the pane is already showing
+ *    commits NOTHING rather than writing a change no reader can see -
+ *    `releasedChatMeasureWidth` asks the render before it writes.
  *
  * An override that instead pinned a fixed width would fight the layout exactly
  * where the app is narrowest, which is why it is not what this does.
@@ -112,6 +115,23 @@ export const draggedChatMeasureWidth = ({
 	);
 
 /**
+ * The width the column PAINTS at, given the cap a measure asks for and the
+ * width the pane can show for it.
+ *
+ * This is `CHAT_MEASURE`'s rule stated as arithmetic, once: the column is
+ * `w-full` (it cannot exceed the pane's content box) and capped at
+ * `max-width: var(--lo-chat-measure)` (it cannot exceed the reader's number),
+ * so what is drawn is the smaller of the two. It exists so the release below
+ * can ask THE RENDER'S OWN QUESTION rather than a second copy of it - two
+ * spellings of this clamp are how the commit and the pixels drift apart, which
+ * is the U4 defect itself.
+ */
+export const renderedChatMeasureWidth = (
+	capPx: number,
+	panePx: number,
+): number => Math.min(capPx, panePx);
+
+/**
  * What a released gesture should store, or `null` when it should store nothing.
  *
  * `null` is a first-class answer here rather than a quiet "keep what you had":
@@ -119,16 +139,48 @@ export const draggedChatMeasureWidth = ({
  * already holds would still be a write, and a write is what would let a
  * press-only gesture outlive a wider preference through some later path that
  * reads the store instead of the preference.
+ *
+ * TWO REFUSALS LIVE HERE, and the second is the render consultation (UX round
+ * 2's U4; agent round 2's R2-1 - "the commit path asks the render"):
+ *
+ *  - **A gesture that did not travel is not an instruction.** The travel guard
+ *    below, unchanged.
+ *  - **A gesture the render cannot show is not a change.** On a pane narrower
+ *    than the cap the RENDER clamps the column to the pane
+ *    (`renderedChatMeasureWidth`), so travel can move the preview - and, before
+ *    this rule, the store - while every pixel stays put: UX round 2 measured
+ *    stored 1100 -> 1060 at a pane rendering 968 with `aria-valuenow` and
+ *    `max-width` following and nothing on screen moving. A release whose width
+ *    would paint exactly the column already on screen therefore writes
+ *    NOTHING: the store may not change while no pixel does.
+ *
+ * `panePx` is the width the pane can SHOW for the column - the column's own
+ * bound where the cap does not bind - read by the caller from the scroll
+ * container the column is `w-full` of. It is REQUIRED rather than optional: a
+ * release rule that can be called without asking the render is the defect the
+ * parameter exists to refuse.
  */
 export const releasedChatMeasureWidth = ({
 	startWidth,
 	deltaX,
 	edge,
+	panePx,
 }: {
 	startWidth: number;
 	deltaX: number;
 	edge: "left" | "right";
-}): number | null =>
-	Math.abs(deltaX) < DRAG_TRAVEL_PX
+	panePx: number;
+}): number | null => {
+	if (Math.abs(deltaX) < DRAG_TRAVEL_PX) return null;
+	const width = draggedChatMeasureWidth({ startWidth, deltaX, edge });
+	/*
+	 * The equality is EXACT, deliberately: anything that is not the same number
+	 * is treated as a change and commits. A tolerance would be a second guess
+	 * about what the eye can see, and the one thing this rule may never do is
+	 * swallow a width a reader asked for and the pane could show.
+	 */
+	return renderedChatMeasureWidth(width, panePx) ===
+		renderedChatMeasureWidth(startWidth, panePx)
 		? null
-		: draggedChatMeasureWidth({ startWidth, deltaX, edge });
+		: width;
+};
