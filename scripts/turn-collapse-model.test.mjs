@@ -408,9 +408,10 @@ test("the live run does not collapse; finished runs above it still do", () => {
 	);
 });
 
-test("pinned rows inside the span stay visible, in their own order", () => {
-	// §5 case 15, and the pin list's reason: these rows are messages the reader
-	// is owed, not steps of the work.
+test("in-turn receipts hide with the work; the pinned kinds keep their place", () => {
+	// §5 case 15, NARROWED for the operator's feedback (2026-09-29, issue #5):
+	// peer and wake receipts collapse with the work, and the rows that remain
+	// pinned are the ones a collapsed turn cannot be read without.
 	const plan = planOf([
 		user("u1"),
 		{
@@ -424,13 +425,33 @@ test("pinned rows inside the span stay visible, in their own order", () => {
 			gap: "turn",
 			closesTurn: false,
 		},
+		{
+			record: { kind: "wake", id: "r2", ts: TS + 1, text: "a wake delivery" },
+			gap: "item",
+			closesTurn: false,
+		},
 		tool("t1", {}, "trace"),
 		answer("a1"),
 	]);
 	assert.deepEqual(
 		plan.runs[0].hidden.map((hidden) => hidden.record.id),
+		["r1", "r2", "t1"],
+		"the receipts hide with the work",
+	);
+	const withMemory = planOf([
+		user("u1"),
+		{
+			record: { kind: "compaction", id: "c9", ts: TS + 2, text: "compacted" },
+			gap: "turn",
+			closesTurn: false,
+		},
+		tool("t1", {}, "trace"),
+		answer("a1"),
+	]);
+	assert.deepEqual(
+		withMemory.runs[0].hidden.map((hidden) => hidden.record.id),
 		["t1"],
-		"the peer message is not hidden",
+		"the memory statement stays on screen",
 	);
 });
 
@@ -475,11 +496,24 @@ test("a receipt after the answer is not part of the collapsed span", () => {
 /* -------------------------------- pins ---------------------------------- */
 
 test("the pin list is one predicate, and every kind is decided by it", () => {
-	for (const kind of ["peer", "wake", "compaction"]) {
+	for (const kind of ["compaction"]) {
 		assert.equal(
 			staysVisibleWhileCollapsed({ kind, id: "x", ts: TS }),
 			true,
 			kind,
+		);
+	}
+	/*
+	 * ISSUE #5 (operator feedback, 2026-09-29): the receipts collapse with the
+	 * work. The v1 pins argued "a message the reader never saw"; real turns
+	 * showed they are in-turn evidence and the visual weight the collapse
+	 * exists for.
+	 */
+	for (const kind of ["peer", "wake"]) {
+		assert.equal(
+			staysVisibleWhileCollapsed({ kind, id: "x", ts: TS }),
+			false,
+			`${kind} receipts collapse with the work`,
 		);
 	}
 	assert.equal(

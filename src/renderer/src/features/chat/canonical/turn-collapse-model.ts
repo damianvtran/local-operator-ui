@@ -38,15 +38,8 @@ import { type Row, type TurnRun, ledgerName, runsOf } from "./transcript-rows";
  *
  * THE PIN LIST, deliberately in ONE function: the design round can flip any
  * single member without touching the partition, the counts or the render pass.
- * Each member is a message the reader is owed rather than a step of the work:
+ * Each member is a row a collapsed turn cannot be read without:
  *
- * - `peer` — a message from another session, addressed to the reader. The fold
- *   tier already refuses to hide receipts for this reason ("a receipt hidden
- *   inside a summary of work would be a message the reader never saw",
- *   `canonical-transcript.tsx`'s fold comment), and a collapse is a bigger
- *   summary than a fold.
- * - `wake` — a scheduled-wake delivery receipt, the same argument one kind
- *   over (`transcript-rows.ts`'s `isStatementRow` counts it as a statement).
  * - `compaction` — the conversation's memory statement: rare, and the §E3
  *   precedent already pins it as a statement so `[user][answer][compaction]`
  *   keeps its caption.
@@ -58,14 +51,24 @@ import { type Row, type TurnRun, ledgerName, runsOf } from "./transcript-rows";
  *   died. The row that says why the thing below the bar stopped must not be
  *   one more hidden row.
  *
+ * NARROWED FOR THE OPERATOR'S FEEDBACK (2026-09-29, issue #5): `peer` and
+ * `wake` delivery receipts were pinned in v1 under the fold tier's argument
+ * ("a receipt hidden inside a summary of work would be a message the reader
+ * never saw", `canonical-transcript.tsx`'s fold comment). Real use overrides
+ * it: inside a completed turn these receipts are the bulk of the visual weight
+ * — "the sends and receives within these periods ... stick out and take up
+ * space/distract visually" — and they are IN-TURN evidence of the work rather
+ * than a message between turns; the reader who wants them is one press away on
+ * the bar's own expansion. The pin list now keeps only the rows a collapsed
+ * turn cannot be read without: the memory statement, the death markers and the
+ * incident reason.
+ *
  * Everything else inside the span hides: tool rows, in-between assistant
- * prose, info-level `custom` receipts (including `job_result`), info notices,
- * subagent-end lines.
+ * prose, peer and wake receipts, info-level `custom` receipts (including
+ * `job_result`), info notices, subagent-end lines.
  */
 export function staysVisibleWhileCollapsed(record: TranscriptRecord): boolean {
 	switch (record.kind) {
-		case "peer":
-		case "wake":
 		case "compaction":
 			return true;
 		case "notice":
