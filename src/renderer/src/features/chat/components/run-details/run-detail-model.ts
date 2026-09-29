@@ -235,6 +235,19 @@ export const TODO_ITEM_CAP = 10;
 export const WAKE_ROW_CAP = 16;
 
 /**
+ * Monitor rows the Monitors section shows before its overflow marker.
+ *
+ * The number is the arm path's own ceiling, `values.monitor.maxMonitors`
+ * (`monitor/settings.py::DEFAULT_MAX_MONITORS = 8`) — the same "the wire's own
+ * limit" rule `WAKE_ROW_CAP` states for wakes, and it carries the same caveat:
+ * it is a ceiling on the TOOL path, not a guarantee about the payload.
+ * `build_monitor_spec` refuses past it, while the setting is per-session
+ * config a hand-edit can raise — so the reader does not assume the bound and
+ * the marker below the list stays reachable by design.
+ */
+export const MONITOR_ROW_CAP = 8;
+
+/**
  * The seam between two facts on one line. The same ` · ` the TUI's row and the
  * app's own stats runs use (`STATS_SEAM`), so a numbers run punctuates the way
  * every other run of numbers in the app does.
@@ -611,7 +624,85 @@ export type WakeRow = {
 	cadence: string;
 };
 
-/** One to-do item, pass-through from the wire plus the state's own word. */
+/**
+ * One ARMED monitor, as the pane and the composer's chip read it.
+ *
+ * One row per MONITOR rather than per check, the rule `WakeRow` states for
+ * schedules: a monitor that checks every 60s is one row carrying one next-due
+ * instant and one health word, not a row per tick.
+ *
+ * The row ports the TUI band's monitor tuple
+ * (`tui/widgets/wake_panel.py::_monitor_fingerprint`), because the two surfaces
+ * read the same list and must not disagree about a monitor's state:
+ *
+ * - `whenLabel` is the band's due-or-state SLOT — `disabled` when the failure
+ *   ladder parked it, else the local due label, else `waiting` — one slot
+ *   because a pane row cannot afford a health column of its own, exactly as
+ *   the band's own comment says;
+ * - `healthLabel` is the band's health TAIL — the disabled reason, or `3
+ *   failed` while the ladder walks — and `alerting` is the band's ink rule
+ *   (`warning` for a disabled monitor or one mid-ladder);
+ * - `interval` is the band's `every {duration}` with its `once` fallback.
+ *
+ * Two fields are the DESKTOP row's own, and each is argued rather than
+ * inherited:
+ *
+ * - `lastCheckLabel` — the CLI's `last check …` fact, which the band has no
+ *   room for. It is stated as an ABSOLUTE local instant (`last check 9:25 AM
+ *   EDT`), not the CLI's relative `2m ago`: this pane does not tick (see
+ *   `run-detail-wakes.tsx`'s own "Nothing here ticks" note), and a relative age
+ *   would silently age with nothing on screen to say so. An absolute instant
+ *   stays true for as long as it is shown.
+ * - `description` — the authored `What to watch for` line, kept VERBATIM like
+ *   `WakeRow.message` and for its reason: the pane's rule for a variable-length
+ *   authored string is CSS clamping with the whole text in a `title` and an
+ *   `sr-only` twin, and a flattening here would destroy the author's own line
+ *   breaks in the one home that keeps them.
+ *
+ * The figures (`nextDueAt`, `everyMs`, `lastCheckAt`, `checks`, `failures`,
+ * `disabled`) ride beside the labels for `WakeRow`'s own reason: the figures are
+ * facts about the watch that a re-measure or a test can read, and the labels are
+ * what a row draws.
+ *
+ * `nextDueAt` and `lastCheckAt` are epoch MILLISECONDS, like a wake's due
+ * instant and unlike every second-stamped clock this model reads. `lastCheckAt`
+ * is `null` until the first check, and `nextDueAt` is `null` for a disabled
+ * monitor or one whose next tick is not yet known — both are real wire states
+ * that render as stated absences, not errors.
+ */
+export type MonitorRow = {
+	id: string;
+	/** The short label, e.g. `loom-pr-1710`. Never empty on a kept row. */
+	name: string;
+	/** `What to watch for`, verbatim; `""` when the arm carried none. */
+	description: string;
+	/**
+	 * The due-or-state slot: a local due label, `disabled`, or `waiting`.
+	 * Nothing else reaches a kept row — a monitor with no due slot and no
+	 * disabled state reads `waiting`, the band's own word for it.
+	 */
+	whenLabel: string;
+	/** The interval as a reader reads it: `every 60s`, or `once` (the band's fallback). */
+	interval: string;
+	/** `last check 9:25 AM EDT`, or `""` before the first check. */
+	lastCheckLabel: string;
+	/** The health tail: `3 failed`, the disabled reason, or `""`. */
+	healthLabel: string;
+	/** Whether the row takes the warning ink (`disabled` or mid-ladder). */
+	alerting: boolean;
+	/** The next check instant, epoch MILLISECONDS, or `null` while unknown. */
+	nextDueAt: number | null;
+	/** The check interval in milliseconds, or `null` when unreadable. */
+	everyMs: number | null;
+	/** The last check instant, epoch MILLISECONDS, or `null` before the first. */
+	lastCheckAt: number | null;
+	/** Checks run so far. */
+	checks: number;
+	/** Consecutive failures; non-zero is the row's `failing` state. */
+	failures: number;
+	/** Whether the failure ladder auto-disabled this monitor. */
+	disabled: boolean;
+};
 export type TodoItemView = {
 	text: string;
 	status: TodoItemStatus;
@@ -690,6 +781,14 @@ export type RunDetails = {
 	 * definition, so a parallel number could only ever disagree with the list.
 	 */
 	wakes: WakeRow[];
+	/**
+	 * The session's ARMED MONITORS, soonest check first — `wakes`' sibling, and
+	 * the same one-list rule: the list itself is the gate for both surfaces that
+	 * read it (the composer's monitor chip and the pane's Monitors section), so
+	 * "there is at least one" is spelled `monitors.length` and not a second
+	 * count field.
+	 */
+	monitors: MonitorRow[];
 	/** Children that have not settled: running or queued (`§3.3`). */
 	openChildren: number;
 	/**
@@ -1106,6 +1205,15 @@ export type RunDetailsInput = {
 	 * state absence is rendered as.
 	 */
 	wakes?: Array<Record<string, unknown>>;
+	/**
+	 * The session's armed monitors, off the canonical frontend.
+	 *
+	 * Optional for the reason `wakes` states for itself: absent and empty are
+	 * the same state — the state a session with no monitors is in and the
+	 * state absence is rendered as — and a backend predating the field omits it
+	 * entirely.
+	 */
+	monitors?: Array<Record<string, unknown>>;
 	/**
 	 * Epoch milliseconds to measure a RUNNING child against.
 	 *
@@ -1560,6 +1668,25 @@ export const wakeClause = (count: number): string =>
 	count === 1 ? "1 wake armed" : `${count} wakes armed`;
 
 /**
+ * The count clause: `1 monitor armed` / `2 monitors armed`.
+ *
+ * ONE spelling, used by the composer's chip and by the Monitors section's
+ * trailing tally — the rule `wakeClause` states for wakes, and the failure it
+ * prevents is the same (`1 monitor armeds` reaching a user on whichever of the
+ * two surfaces was written second).
+ *
+ * `armed` is the design contract's own word for this state ("render armed
+ * monitors with health"; `Armed monitor 'loom-pr-1710' (m1)`), and it keeps
+ * the composer row's one grammar: beside `2 wakes armed`, a reader reads both
+ * counts as "how many X are set up". The TUI band's heading says `N watching`
+ * of the same list, which is that surface's word for a header its rows sit
+ * directly under; the divergence is stated rather than shared, matching
+ * `wakeClause`'s own note about the band's `N scheduled`.
+ */
+export const monitorClause = (count: number): string =>
+	count === 1 ? "1 monitor armed" : `${count} monitors armed`;
+
+/**
  * One wire schedule as a row, or `null` when the record carries nothing a user
  * could recognise.
  *
@@ -1699,6 +1826,120 @@ export const visibleWakes = (
 	return { rows: rows.slice(0, cap), hidden: rows.length - cap };
 };
 
+/**
+ * One wire monitor as a row, or `null` when the record carries nothing a user
+ * could recognise.
+ *
+ * The survival rule is `deriveWake`'s test with the monitor's own identity
+ * field: a row with NEITHER a name NOR a readable due instant has nothing to
+ * recognise it by — no label to read and no time to watch — so it could only
+ * render as a blank line the section counts. Everything else is kept, including
+ * a disabled monitor (the state the design's § 11.3 says must not be invisible
+ * on any surface) and a monitor that has not checked yet (its slot reads
+ * `waiting`). A missing `id` falls back to the row's POSITION in the wire list,
+ * which is the row's React key and the only thing such a row genuinely has.
+ *
+ * Health follows the band's precedence exactly (`_monitor_fingerprint`), stated
+ * once because the pane and the terminal are two readers of one list:
+ * `disabled` wins over everything — the ladder parked it, so a failure count
+ * would point the reader at the wrong remedy — then the failure count the
+ * ladder is walking, else nothing, because an armed monitor that is simply due
+ * needs no state word. The reason is whitespace-normalised to one line (the
+ * band's own `" ".join(reason.split())`), because it is written from a check's
+ * last error and this is a row, not a transcript.
+ */
+const deriveMonitor = (
+	record: Record<string, unknown>,
+	index: number,
+	nowMs: number,
+): MonitorRow | null => {
+	const name = wireText(record.name);
+	const nextDueAt = wireNumber(record.next_due_at);
+	if (name === "" && nextDueAt === null) return null;
+	const everyRaw = wireNumber(record.every_ms);
+	const everyMs = everyRaw !== null && everyRaw > 0 ? everyRaw : null;
+	const disabled = record.disabled === true;
+	const failuresRaw = wireNumber(record.consecutive_failures);
+	const failures =
+		failuresRaw !== null && failuresRaw > 0 ? Math.floor(failuresRaw) : 0;
+	const failing = failures > 0;
+	const lastRaw = wireNumber(record.last_check_at);
+	const lastCheckAt = lastRaw !== null && lastRaw > 0 ? lastRaw : null;
+	const checksRaw = wireNumber(record.checks);
+	const checks =
+		checksRaw !== null && checksRaw > 0 ? Math.floor(checksRaw) : 0;
+	return {
+		id: wireText(record.id) || `monitor-${index}`,
+		name,
+		description: wireText(record.description),
+		whenLabel: disabled
+			? "disabled"
+			: nextDueAt === null
+				? "waiting"
+				: formatWakeDue(nextDueAt, nowMs),
+		interval:
+			everyMs === null ? "once" : `every ${formatWakeDuration(everyMs)}`,
+		lastCheckLabel:
+			lastCheckAt === null
+				? ""
+				: `last check ${formatWakeDue(lastCheckAt, nowMs)}`,
+		healthLabel: disabled
+			? oneLine(wireText(record.disabled_reason))
+			: failing
+				? `${failures} failed`
+				: "",
+		alerting: disabled || failing,
+		nextDueAt,
+		everyMs,
+		lastCheckAt,
+		checks,
+		failures,
+		disabled,
+	};
+};
+
+/**
+ * The session's armed monitors, soonest check first.
+ *
+ * Ordering is by the DUE INSTANT — the rule `deriveWakes` states for schedules,
+ * and the one the CLI's own listing applies to monitors
+ * (`cli.py::_monitor_rows`: "Soonest first; a monitor with no due time …
+ * trails") — so the desktop list and `lop monitor status` cannot disagree about
+ * which watch is next. A row with no readable instant sorts LAST rather than
+ * first: it is a disabled or not-yet-due monitor, and treating an unknown
+ * instant as epoch 0 would put the row a reader cannot date at the top of a
+ * soonest-first list. `Array.sort` is stable, so those rows keep the wire's
+ * order among themselves.
+ */
+export const deriveMonitors = (
+	monitors: Array<Record<string, unknown>>,
+	nowMs: number,
+): MonitorRow[] =>
+	monitors
+		.map((record, index) => deriveMonitor(record, index, nowMs))
+		.filter((row): row is MonitorRow => row !== null)
+		.sort(
+			(a, b) =>
+				(a.nextDueAt ?? Number.POSITIVE_INFINITY) -
+				(b.nextDueAt ?? Number.POSITIVE_INFINITY),
+		);
+
+/**
+ * The rows the Monitors section shows, and how many it hid.
+ *
+ * `visibleWakes`' rule: the slice is the model's, so the section renders `rows`
+ * and its overflow marker counts `hidden` from one slice. There is no priority
+ * carve-out — no row of this list is asking for anything — so the honest slice
+ * is the first `cap` in check order.
+ */
+export const visibleMonitors = (
+	rows: readonly MonitorRow[],
+	cap: number = MONITOR_ROW_CAP,
+): { rows: MonitorRow[]; hidden: number } => {
+	if (rows.length <= cap) return { rows: [...rows], hidden: 0 };
+	return { rows: rows.slice(0, cap), hidden: rows.length - cap };
+};
+
 export function deriveRunDetails(input: RunDetailsInput): RunDetails {
 	const jobs = toWireList(input?.jobs);
 	const rawTodos = Array.isArray(input?.todos) ? input.todos : [];
@@ -1819,6 +2060,7 @@ export function deriveRunDetails(input: RunDetailsInput): RunDetails {
 		jobs: jobRows,
 		todos,
 		wakes: deriveWakes(toWireList(input?.wakes), nowMs),
+		monitors: deriveMonitors(toWireList(input?.monitors), nowMs),
 		openChildren: roster.filter(isOpenRow).length,
 		openJobs: jobRows.filter(isOpenRow).length,
 		failedChildIds: roster
