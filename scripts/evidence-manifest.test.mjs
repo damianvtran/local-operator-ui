@@ -1931,6 +1931,22 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"transcriptRailRestampNote",
 	/*
+	 * AND THE FOLD'S OWN (2026-09-29): `sttDictationRestampNote` is the SECOND
+	 * fold over this branch's speech-to-text overhaul - onto the moved
+	 * `origin/main` `f3ce13cee7` (the projects-chrome-teams train), superseding
+	 * the first fold's note (onto `ff34fb8ecc`). Main's whole manifest is taken
+	 * as the base with this branch's record re-laid on top, the two supplementary
+	 * sets it declares ('stt-dictation', 'stt-dictation-baseline') re-laid
+	 * unchanged, the pair re-derived from the folded tip by the docs-only amend
+	 * that follows, and every list member above re-pointed with it. Both trees
+	 * move: `src/` for the composer's recording treatment, the hold-action
+	 * dispatcher, the in-flight dictation un-gate, the `input_mode` carriage and
+	 * the round-1 review fixes, and `scripts/` for the rig that proves them, its
+	 * spawn-site guard entry and the boundary-rule pin. It quotes that pair, so
+	 * it is held to this file like every entry above it.
+	 */
+	"sttDictationRestampNote",
+	/*
 	 * AND THE QUICK-SEND PASS'S OWN: `quickSendRestampNote` is the global
 	 * hotkey / mini composer change's record. It moves BOTH trees — `src/` for
 	 * the mini view, its registrar, the config watch, the desktop-plane
