@@ -19,10 +19,11 @@
  * EVERY RAISE NAMES ITS TRIGGER, and reports one line through the caller's
  * logger. This file used to log nothing, which is why the operator's report —
  * "the app steals my focus whenever a chat completes" — was unanswerable on the
- * machine where it happened: six causes raise a window here, from an ordinary
+ * machine where it happened: seven causes raise a window here, from an ordinary
  * launch and a macOS Dock click to a second instance sharing the profile, a
- * clicked banner, the viewer's focus endpoint and a conversation delivered to a
- * window, and nothing recorded which one had just taken the focus. The trigger is
+ * clicked banner, the viewer's focus endpoint, a conversation delivered to a
+ * window and the global hotkey's mini composer, and nothing recorded which one
+ * had just taken the focus. The trigger is
  * a required part of the call
  * so a new raise cannot be added anonymously, and `never` — the path that raises
  * nothing — is deliberately silent: a headless run's whole value is that it leaves
@@ -634,8 +635,11 @@ export function reportParksAtQuit(
 }
 
 /**
- * A request was REFUSED because this process is quitting: a window it created or
- * raised now would die with the shutdown.
+ * A request was REFUSED because this process is quitting: a window it created now
+ * would die with the shutdown. The refusal answers from the two request sites (a
+ * second launch and a Dock click) AND from the window-CREATE path itself — a
+ * banner click, the consent toast's reopen, the viewer's recreate verbs — so one
+ * line shape covers every source, carrying the source's own `trigger`.
  *
  * WHY THIS IS A LINE AND NOT SILENCE. The reported shape: Cmd+Q closes the window
  * while the process keeps tearing down — the session-cookie hold, then the
@@ -825,7 +829,9 @@ export interface SecondLaunchTarget {
 	 */
 	openWindow?: ((request: SecondLaunchRequest) => void) | null;
 	/**
-	 * True when this process has already begun quitting.
+	 * True when this process has already begun quitting and the quit has NOT been
+	 * cancelled since (see `quit-state.ts`; `index.ts` reads it per request, so a
+	 * cancelled quit answers normally again).
 	 *
 	 * WHY THE TARGET CARRIES IT. A window created or raised during teardown is a
 	 * window that dies with the shutdown — and the operator sees exactly that: the
