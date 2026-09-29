@@ -126,6 +126,7 @@ import {
 import { isQuotable } from "./quote-model";
 import { QuoteToolkit } from "./quote-toolkit";
 import { ensureReachable, jumpToEntry } from "./reveal-record";
+import { ThreadSearchOverlay } from "./thread-search-overlay";
 import {
 	type FoldGroup,
 	type TurnFoot,
@@ -2659,10 +2660,20 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		 * collapses with it so a collapsed pane cannot leave the caption behind as
 		 * a row of its own.
 		 */
+		/*
+		 * `relative` is what the floating search overlay positions against: its slot
+		 * is this column's top-right corner (`thread-search-overlay.tsx`), and an
+		 * absolutely positioned child resolves against the nearest positioned
+		 * ancestor — which this box was not, so the panel would have been placed
+		 * against the page and floated over the chat header. The class is inert for
+		 * every other reader of this column (no offsets, no z-index, same box).
+		 */
 		<div
 			className={cn(
 				CHAT_COLUMN_CONTAINER,
-				collapsed ? "h-0 grow-0 overflow-hidden" : "flex min-h-0 grow flex-col",
+				collapsed
+					? "relative h-0 grow-0 overflow-hidden"
+					: "relative flex min-h-0 grow flex-col",
 			)}
 		>
 			{stale && !holdPlaceholder && (
@@ -3146,6 +3157,24 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					onHover={handleCheckpointHover}
 				/>
 			</div>
+			{/*
+			 * The in-thread search overlay (`⌘F`), mounted HERE rather than in the
+			 * scroller: it floats over the transcript and must not scroll with it,
+			 * and it must not be clipped by the scroller's own `overflow: auto` — a
+			 * sibling of the scroller inside the (now `relative`) column is both.
+			 *
+			 * It takes the scroller's own ref as its reveal root, so a hit navigates
+			 * THIS transcript: a second transcript on the same screen (the run panel's
+			 * child reader) is a different mount with a different ref, and it renders
+			 * no overlay of its own — `sessionId` is null on a draft, so the chord
+			 * has nothing to search and the panel is absent rather than empty.
+			 */}
+			{sessionId !== null && (
+				<ThreadSearchOverlay
+					sessionId={sessionId}
+					containerRef={containerRef}
+				/>
+			)}
 		</div>
 	);
 };
