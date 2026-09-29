@@ -43,6 +43,7 @@ const {
 	DEV_DRIVER_WORLD_KEY,
 	describeDevDriverArming,
 	devDriverArgument,
+	headlessExerciserAllowed,
 	readDevDriverArgument,
 	resolveDevDriverArming,
 } = await import(
@@ -153,6 +154,43 @@ test("headless and inactive arm, and the banner names the frames directory", () 
 			);
 		}
 	}
+});
+
+test("the mini-view exerciser is the armed headless launch and nothing else", () => {
+	/*
+	 * M-B1's gate (quick-send design §I.3): the app's OWN mini window exists in a
+	 * headless run only when the dev driver is armed, so a rig can exercise the
+	 * send path the desktop plane's frame gate otherwise refuses. Every other
+	 * combination — a normal launch, an unarmed run, or an armed `inactive` run
+	 * (visible by design) — must not create one, and nothing here can register a
+	 * chord: registration stays `hotkeysAllowed`'s, asserted in window-mode's
+	 * suite.
+	 */
+	const armed = resolveDevDriverArming({
+		env: { [DEV_DRIVER_ENV]: "1", [DEV_DRIVER_OUT_ENV]: OUT },
+		windowMode: "headless",
+	});
+	assert.ok(armed.armed);
+	assert.equal(
+		headlessExerciserAllowed({ arming: armed, windowMode: "headless" }),
+		true,
+	);
+	assert.equal(
+		headlessExerciserAllowed({ arming: armed, windowMode: "inactive" }),
+		false,
+		"an inactive launch is visible by design; no exerciser window may ride it",
+	);
+	assert.equal(
+		headlessExerciserAllowed({ arming: armed, windowMode: "normal" }),
+		false,
+	);
+	const unarmed = resolveDevDriverArming({ env: {}, windowMode: "headless" });
+	assert.equal(unarmed.armed, false);
+	assert.equal(
+		headlessExerciserAllowed({ arming: unarmed, windowMode: "headless" }),
+		false,
+		"no opt-in, no window: an ordinary rig-shaped run stays the app it was",
+	);
 });
 
 test("the preload's argument round-trips, and unintelligible is the same as absent", () => {
