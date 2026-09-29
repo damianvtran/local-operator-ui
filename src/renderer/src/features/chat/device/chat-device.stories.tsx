@@ -256,6 +256,12 @@ type MountProps = {
 	 * state. Distinct from `chipOnly` (a DRAFT pane, which still has the control) -
 	 * conflating the two is how a "before" frame ends up showing the feature.
 	 */
+	/**
+	 * THE CHANGE ABSENT, which is what a `before` half has to be: `deviceSlot` is
+	 * omitted, so the header renders exactly as it does on `origin/main` for this
+	 * state. Distinct from `chipOnly` (a DRAFT pane, which still has the control) -
+	 * conflating the two is how a "before" frame ends up showing the feature.
+	 */
 	withoutDevice?: boolean;
 };
 

@@ -337,6 +337,43 @@ test("a row whose send hop is live cannot be discarded", () => {
 	assert.match(control, /setStagedByDiscard\(/);
 });
 
+test("the why a control prints is rendered only while that control is inapplicable", () => {
+	/*
+	 * QA round 2, Q2-3, measured on the built app: after a refused create the row still
+	 * carried "Sending - this draft can be discarded when the send settles". An
+	 * `sr-only` sentence is IN the accessibility tree - it is not `aria-hidden` - so it
+	 * stood beside an ENABLED Discard whose `title` said the discard was available: two
+	 * surfaces, one send, opposite claims, and the reader who cannot see the button is
+	 * the one who cannot check. The batch foot's why had the same shape.
+	 *
+	 * Both are gated on the SAME predicate the press, the `aria-disabled` and the
+	 * `aria-describedby` read, so the four cannot disagree - and the ungated form is
+	 * asserted absent, because that is the shape that shipped.
+	 */
+	const section = DRAFTS_SECTION();
+	/*
+	 * The gate is read as "what stands immediately before the sentence", not as a
+	 * pattern the sentence could satisfy on its own: the span is on its own line inside
+	 * the guard either way, so only the character before it can tell the two apart.
+	 */
+	const rowWhy = section.indexOf("<span id={draftWhyId(row.key)}");
+	assert.notEqual(rowWhy, -1, "the row's why span is gone");
+	assert.ok(
+		section.slice(0, rowWhy).trimEnd().endsWith("{row.pending && ("),
+		"the row's why must be gated on the same predicate its Discard reads",
+	);
+	const foot = section.slice(section.indexOf("data-drafts-clear-all"));
+	const batchWhy = foot.indexOf("<span id={CLEAR_ALL_WHY_ID}");
+	assert.notEqual(batchWhy, -1, "the batch why span is gone");
+	assert.ok(
+		foot
+			.slice(0, batchWhy)
+			.trimEnd()
+			.endsWith("{clearableDraftRows.length === 0 && ("),
+		"the batch why must be gated on the same predicate its control reads",
+	);
+});
+
 test("the discard offer is its own toast: one id, one slot, an Undo that restores", () => {
 	const source = code(TOASTS);
 	const at = source.indexOf("if (draftsUndo === null) {");
