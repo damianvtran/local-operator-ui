@@ -509,18 +509,47 @@ test("a live run renders as today, and the finished run above it still condenses
 	);
 });
 
-test("a run the window has cut renders as today: no bar, and the foot as it was", async (t) => {
+test("a run the window edge cut only at its opening row aligns and condenses on open", async (t) => {
 	__resetTurnCollapseOpen();
 	/*
-	 * 61 rows, one over the mount window: the leading edge cuts the first row,
-	 * the opening user message, so the single run that survives is headless —
-	 * and a summary may only ever describe rows that are on hand (§5 case 12).
+	 * 61 rows, one over the mount window: the raw leading edge would cut the
+	 * first row, the opening user message. THE ON-LOAD FIX (operator report,
+	 * 2026-09-28): the window's top edge snaps onto the run boundary it lands
+	 * in, so the opening row is inside the list the plan sees, the run is whole,
+	 * and it condenses on the first paint — the reader no longer has to scroll
+	 * the head in before a bar appears.
 	 */
 	const records = [
 		userRecord("user:1"),
 		...Array.from({ length: 59 }, (_, index) =>
 			toolRecord(`tool:${index + 1}`, { ts: TS + 1_000 + index }),
 		),
+		answerRecord("answer:1", { ts: TS + 70_000, settledAt: TS + 70_000 }),
+	];
+	const mounted = await mount(t, records);
+	assert.notEqual(
+		bar(mounted),
+		null,
+		"the aligned window holds the opening row, so the run condenses",
+	);
+	assert.doesNotMatch(
+		mounted.container.textContent,
+		/Worked/,
+		"the bar replaces the foot line, as on any completed run",
+	);
+});
+
+test("a run whose head the LOADED rows cut off renders as today: no bar, foot as it was", async (t) => {
+	__resetTurnCollapseOpen();
+	/*
+	 * The other half of §5 case 12: the row list itself starts mid-run (the
+	 * leading tool rows), so no window can be snapped to a boundary that is not
+	 * loaded — a summary may only ever describe rows that are on hand, and the
+	 * foot line stands as it always did.
+	 */
+	const records = [
+		toolRecord("tool:0", { ts: TS + 500 }),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
 		answerRecord("answer:1", { ts: TS + 70_000, settledAt: TS + 70_000 }),
 	];
 	const mounted = await mount(t, records);

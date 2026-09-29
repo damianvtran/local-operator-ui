@@ -45,7 +45,9 @@ const {
 	collapsePlan,
 	isFailedCall,
 	runsOf,
+	snapWindowToRunBoundary,
 	staysVisibleWhileCollapsed,
+	windowTopRunIsHeadCut,
 	closingAnswerIds,
 	buildRows,
 	applyEvent,
@@ -281,6 +283,59 @@ test("an interrupted run keeps its marker and its answer in place", () => {
 		"the marker is pinned, the work hides",
 	);
 	assert.equal(run.stampTs, null, "no answer, no stamp — the foot's own rule");
+});
+
+/*
+ * ------------------- on-load window alignment (operator report) ------------
+ *
+ * The operator's report (2026-09-28): opening a long conversation showed
+ * in-between rows on completed turns, and the bars only appeared after
+ * scrolling the run's head into view. The window's top edge is the cause: a
+ * raw row count lands mid-run, and a cut run cannot collapse. These tests pin
+ * the two halves of the fix — the snap that moves the edge onto a boundary it
+ * can see, and the head-cut predicate the load path fetches against.
+ */
+
+const LONG = [
+	user("u1"), tool("t1"), tool("t2"), answer("a1"),
+	user("u2"), tool("t3"), tool("t4"), tool("t5"), answer("a2"),
+	user("u3"), tool("t6"), answer("a3"),
+];
+
+test("the window edge snaps up to the run boundary it lands in", () => {
+	// Size 5 lands the top at index 7, inside run 2 (which opens at 4): the
+	// snap adds the three rows that close the run, so the list starts whole.
+	assert.equal(snapWindowToRunBoundary(LONG, 5, 300), 8);
+	const windowed = LONG.slice(LONG.length - 8);
+	assert.deepEqual(
+		runsOf(windowed).map((run) => run.opensWithUserRow),
+		[true, true],
+	);
+});
+
+test("a snap beyond the bound stands down, and the edge already on a boundary does not move", () => {
+	assert.equal(snapWindowToRunBoundary(LONG, 5, 2), 5);
+	// Size 3 lands the top exactly on `u2` — a boundary already.
+	assert.equal(snapWindowToRunBoundary(LONG, 3, 300), 3);
+	// A window wider than the transcript has no edge to move.
+	assert.equal(snapWindowToRunBoundary(LONG, 60, 300), 60);
+});
+
+test("an edge inside a head-cut run cannot snap — that is the load path's case", () => {
+	// The fetched list starts mid-run: no opening row exists to snap to.
+	const cut = [tool("t0"), tool("t1"), answer("a1"), user("u2"), tool("t2"), answer("a2")];
+	assert.equal(snapWindowToRunBoundary(cut, 4, 300), 4);
+	assert.equal(windowTopRunIsHeadCut(cut, 4), true);
+	// Once the head is loaded the same window snaps and stops asking.
+	const whole = [user("u1"), ...cut];
+	assert.equal(windowTopRunIsHeadCut(whole, 4), false);
+	assert.equal(snapWindowToRunBoundary(whole, 4, 300), 7);
+});
+
+test("the head-cut predicate is false when the edge lands in a whole run", () => {
+	assert.equal(windowTopRunIsHeadCut(LONG, 5), false);
+	assert.equal(windowTopRunIsHeadCut(LONG, 9), false);
+	assert.equal(windowTopRunIsHeadCut(LONG, 60), false);
 });
 
 test("a dead run with no settled row collapses to the bar alone", () => {
