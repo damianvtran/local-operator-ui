@@ -324,10 +324,12 @@ const open = (target: string, deadlineMs = 30_000) =>
 	 * Back to the landing, so the next click is a real move onto a fresh pane.
 	 *
 	 * `cold` also empties the in-memory paint cache (`paint-cache.ts`): with it,
-	 * a repeat open paints this window's memory of the conversation in its first
-	 * frame, which is a real and good path but not the one the operator's "open a
-	 * conversation" is - so the driver defaults to cold, and every open paints
-	 * from the wire.
+	 * a repeat open keeps this window's memory of the conversation in the cache
+	 * for a later frame, but this head holds stale rows back while a page is
+	 * owed, so the cached rows are revealed at the page's commit rather than in
+	 * the mount's first frames (QA round 1, cell 4) - a real and good path, but
+	 * not the one the operator's "open a conversation" is - so the driver
+	 * defaults to cold, and every open paints from the wire.
 	 */
 	home: (cold = true) => {
 		if (cold) __resetPaintCache();

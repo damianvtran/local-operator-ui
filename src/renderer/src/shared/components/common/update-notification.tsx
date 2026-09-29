@@ -1,6 +1,7 @@
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import { FloatingAlert } from "@shared/components/common/floating-alert";
 import { Button, Progress } from "@shared/components/ui";
+import { useElapsedSince } from "@shared/hooks/use-elapsed-since";
 import { cn } from "@shared/lib/utils";
 import {
 	UpdateType,
@@ -16,6 +17,7 @@ import {
 	installPhaseCopy,
 	installSucceededCopy,
 } from "@shared/utils/update-install-copy";
+import { SLOW_WAIT_HINT_MS } from "@shared/utils/update-slow-wait";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import parse from "html-react-parser";
 import { AlertTriangle, Check, Copy } from "lucide-react";
@@ -83,29 +85,38 @@ const skewKey = (notice: {
 const RESTART_OUTAGE_BOUND = "usually a few seconds, up to half a minute";
 
 /**
- * The cost of the restart for a server that is UP and behind the install: this
- * press is what takes it offline, and the wait is what it costs.
+ * The bound the DRAINING phase states: the rebuild install leg is the one press
+ * that still waits for the fleet, and this fragment is how long it may wait.
  *
- * IT NO LONGER PRICES DROPPED WORK. The press drains the fleet first
- * (`backend/fleet-drain.ts`), so what a reader gives up is the time the running
- * turns take to finish - stated, because a panel that promises a prompt restart
- * and then holds the button for minutes is the silence this component keeps
- * removing - and nothing in flight is cut off.
- *
- * AND IT NOW STATES THE BOUND THE PRESS IMPOSES (design D3). The offer used to
- * price the wait without saying how long it could be, so the ten-minute wait -
- * and the refusal that can follow it - appeared only AFTER the press, one batch
- * later, when neither could be withdrawn. `RESTART_DRAIN_BOUND` is the same
- * sentence fragment the draining phase carries, so the promise before the press
- * and the promise during it cannot drift into two numbers.
- *
- * AND THE SUBJECT IS NAMED (design D4). "It waits for the turns..." followed
- * three clauses about the server and read as the SERVER waiting; "The restart
- * waits" is the actor the press actually starts.
+ * IT USED TO BOUND THE SKEW PRESS'S OWN WAIT TOO (design D3), stated before the
+ * press; the operator's directive of 2026-09-29 removed the restart-leg drains
+ * ("we don't need to wait for all sessions to drain and turn over... on idle they
+ * should switch over"), so the one frame this fragment now feeds is the draining
+ * phase itself - `Waiting for the turns running on this machine to finish. The
+ * app waits up to ten minutes for them...` - which the rebuild route reaches.
+ * The number is still the gate's own `FLEET_DRAIN_BUDGET_MS`, and
+ * `scripts/update-fleet-drain.test.mjs` still holds this copy to it.
  */
 const RESTART_DRAIN_BOUND =
-	"The app waits up to ten minutes for the turns running on this machine to finish, then stops rather than cutting a turn short, so nothing in flight is cut off";
-const RESTART_COST_SENTENCE = `Restarting puts the server offline while it comes back - ${RESTART_OUTAGE_BOUND}. ${RESTART_DRAIN_BOUND}.`;
+	"The app waits up to ten minutes for them, then stops rather than cutting a turn short, so nothing in flight is cut off";
+
+/**
+ * The cost of the restart for a server that is UP and behind the install: this
+ * press is what takes it offline, and the outage is what it costs.
+ *
+ * IT NO LONGER PRICES DROPPED WORK, AND NO LONGER PRICES A WAIT. It priced
+ * dropped work before the fleet gate existed, then the ten-minute drain bound
+ * once the gate did; the operator's directive of 2026-09-29 removed the wait
+ * from the restart legs - a daemon bounce cuts no turns, because runtimes are
+ * detached and converge onto the new build at their own next idle - so what is
+ * left to state is the outage, the promise that nothing in flight is cut off
+ * (still the harness truth for a bounce), and the fleet effect this press does
+ * have: sessions that are still working move onto the new build when they next
+ * stop or go idle. The sentence is asserted in `update-affirmation.test.mjs` as
+ * the same one the restart phase's sibling carries, so the two cannot drift
+ * apart.
+ */
+const RESTART_COST_SENTENCE = `Restarting puts the server offline while it comes back - ${RESTART_OUTAGE_BOUND}. Nothing in flight is cut off, and sessions that are still working move onto the new build when they next stop or go idle.`;
 
 /**
  * The cost of the SAME press on a server that is not running (design D13): the
@@ -113,8 +124,10 @@ const RESTART_COST_SENTENCE = `Restarting puts the server offline while it comes
  * come back - which is the half the two arms share.
  *
  * IT DOES NOT CLAIM DROPPED WORK. It used to, and the claim is not available any
- * more: the press drains the fleet before it restarts anything, so a server in this
- * state went offline over an idle machine.
+ * more: a daemon bounce cuts no turns (runtimes are detached, each in its own
+ * process group, and converge onto the new build at their own next idle), which
+ * is also why the operator's directive of 2026-09-29 removed the restart-leg
+ * drains - there is no wait left to price here either.
  */
 const RESTART_COST_SENTENCE_SERVER_DOWN = `The server is already offline, so the only cost left is the wait for it to come back - ${RESTART_OUTAGE_BOUND}.`;
 
@@ -767,7 +780,10 @@ const serverRestartsWithInstall = (
  * `restartsServer` beside it) and says what happens to the server the reader is
  * talking to:
  *
- * - app-owned: the wait and the restart, before the press (review U3).
+ * - app-owned: the restart, before the press (review U3; the wait left this arm
+ *   with the restart-leg drains, 2026-09-29, so the sentence now names the
+ *   idle-switch instead - sessions still working move onto the new build when
+ *   they next stop or go idle).
  * - adopted: the install moves, the server keeps serving the old build until it
  *   restarts on its own, and nothing in flight is dropped.
  * - unstated (an older main process sends no reading): see
@@ -782,8 +798,33 @@ const managedCostSentence = (info: {
 	}
 	return (
 		info.remedy ??
-		"The app updates this install, waits for the turns running on this machine to finish, and then restarts the server it started, so nothing in flight is cut off."
+		"The app updates this install and then restarts the server it started, so nothing in flight is cut off. Sessions that are still working move onto the new build when they next stop or go idle."
 	);
+};
+
+/**
+ * The success notice's second line, when it has one (design §2a, 2026-09-29).
+ *
+ * The operator's own sentence, in the family's idle-switch voice: sessions still
+ * on the old build move onto the new build when they next stop or go idle. N >= 2
+ * reads "N sessions ... they will", N = 1 reads "1 session ... it will", and
+ * N = 0 draws NOTHING - the notice stays exactly today's. A null count is "not
+ * measured" (the producer had no readable fleet snapshot, or the re-engage never
+ * ran) and draws the numberless sentence, which cannot be false; an absent field
+ * reads as null for the same reason, so an older producer keeps a true sentence
+ * rather than an invented zero.
+ */
+const completionSessionsLine = (
+	count: number | null | undefined,
+): string | null => {
+	if (typeof count !== "number") {
+		return "Sessions that are still running the old build will move onto the new build when they next stop or go idle.";
+	}
+	if (count === 0) return null;
+	if (count === 1) {
+		return "1 session is still running the old build; it will move onto the new build when it next stops or goes idle.";
+	}
+	return `${count} sessions are still running the old build; they will move onto the new build when they next stop or go idle.`;
 };
 
 const backendVersionSentence = ({
@@ -875,6 +916,14 @@ export const ProgressContainer = ({
 type UpdateNotificationProps = {
 	/** Whether to automatically check for updates on mount */
 	autoCheck?: boolean;
+	/**
+	 * How long a wait may run before its surface adds a status line (UX U1).
+	 *
+	 * The pair with the settings button's own prop: the app omits both, so the
+	 * shipped delay is `SLOW_WAIT_HINT_MS`, and a test or story narrows it to
+	 * milliseconds rather than sitting through twelve seconds to see the line.
+	 */
+	slowWaitHintMs?: number;
 };
 
 /**
@@ -882,6 +931,7 @@ type UpdateNotificationProps = {
  */
 export const UpdateNotification = ({
 	autoCheck = true,
+	slowWaitHintMs,
 }: UpdateNotificationProps) => {
 	// State for frontend update status
 	const [checking, setChecking] = useState(false);
@@ -896,6 +946,19 @@ export const UpdateNotification = ({
 	const [error, setError] = useState<string | null>(null);
 	const [snackbarOpen, setSnackbarOpen] = useState(false);
 	const [appVersion, setAppVersion] = useState<string>("unknown");
+	/*
+	 * The two long waits this panel can show (UX U1): the check ladder and the
+	 * download stage. Called before every early return below, because the hooks
+	 * order must not depend on which state renders.
+	 */
+	const slowCheck = useElapsedSince(
+		checking,
+		slowWaitHintMs ?? SLOW_WAIT_HINT_MS,
+	);
+	const slowDownload = useElapsedSince(
+		downloading,
+		slowWaitHintMs ?? SLOW_WAIT_HINT_MS,
+	);
 
 	// State for backend update status
 	/**
@@ -939,22 +1002,25 @@ export const UpdateNotification = ({
 			waitedMs: number;
 			command: string | null;
 			credentialsRefused: boolean;
-			/**
-			 * Whether the install had already landed when the refusal was composed.
-			 *
-			 * The restart-leg refusals happen after the build is on disk and only the
-			 * bounce was held back, so the heading keys on this rather than claiming the
-			 * update never started (design round 2, D6). Optional, so an older producer's
-			 * report still renders - as the install-less arm, which is the arm whose
-			 * sentence an absent field has always accompanied.
-			 */
-			installLanded?: boolean;
 		};
 	} | null>(null);
 	const [backendUpdateAvailable, setBackendUpdateAvailable] = useState(false);
 	const [backendUpdateInfo, setBackendUpdateInfo] =
 		useState<BackendUpdateInfo | null>(null);
 	const [backendUpdateCompleted, setBackendUpdateCompleted] = useState(false);
+	/**
+	 * How many sessions were still on the old build when the last success
+	 * completion landed, or null when the producer could not measure it (design
+	 * §2d, 2026-09-29).
+	 *
+	 * Read from the completion payload's `sessionsOnOldBuild` when the success
+	 * notice paints: >= 1 draws the second line, 0 draws none, and null - or a
+	 * producer too old to send the field - draws the numberless sentence
+	 * (`completionSessionsLine`). Kept beside the completion flag because the
+	 * notice is the only surface that reads it.
+	 */
+	const [backendUpdateSessionsOnOldBuild, setBackendUpdateSessionsOnOldBuild] =
+		useState<number | null>(null);
 	/**
 	 * The two readings a finished - or refused - update left behind.
 	 *
@@ -1935,12 +2001,29 @@ export const UpdateNotification = ({
 					return;
 				}
 
+				/*
+				 * THE FLEET COUNT RIDES THE TOAST (design §2d, 2026-09-29): the producer
+				 * samples it at the re-engage window's end, and the notice draws the
+				 * counted line when it says 1 or more, nothing at a measured zero, and
+				 * the numberless sentence when it could not measure (or an older producer
+				 * never sent it). The duration follows the line count: an arm that carries
+				 * the second line holds for 8 s - the app's own affirmation-toast
+				 * duration, not a new number - and N = 0 keeps today's 6 s (design §2e).
+				 */
+				const sessionsOnOldBuild =
+					typeof completion?.sessionsOnOldBuild === "number"
+						? completion.sessionsOnOldBuild
+						: null;
+				setBackendUpdateSessionsOnOldBuild(sessionsOnOldBuild);
 				setBackendUpdateCompleted(true);
 				setSnackbarOpen(true);
 
-				setTimeout(() => {
-					setBackendUpdateCompleted(false);
-				}, 6000);
+				setTimeout(
+					() => {
+						setBackendUpdateCompleted(false);
+					},
+					completionSessionsLine(sessionsOnOldBuild) === null ? 6000 : 8000,
+				);
 			});
 
 		/**
@@ -2323,7 +2406,7 @@ export const UpdateNotification = ({
 									 * its number; the repair says it is running, which is what the reader
 									 * watching a static panel needs to know.
 									 */
-									"The new build has landed. Nothing in flight was cut off - the app waited for the turns running on this machine to finish first - and the server is restarting onto the new build now, so it is offline while it comes back: usually a few seconds, up to half a minute. After that the app starts a runtime again for any session the restart left without one, which can take up to a minute."
+									"The new build has landed. Nothing in flight was cut off - the turns running on this machine kept running - and the server is restarting onto the new build now, so it is offline while it comes back: usually a few seconds, up to half a minute. After that the app starts a runtime again for any session the restart left without one, which can take up to a minute."
 								: backendUpdatePhase === "draining"
 									? /*
 										 * WHO DECIDES AND WHAT THEY CHOSE (design D4). The sentence used to read
@@ -2332,12 +2415,24 @@ export const UpdateNotification = ({
 										 * two siblings carry (design D3), so the one phase whose length the reader
 										 * cannot see was the only one that did not say whether it could be stopped.
 										 */
-										"Waiting for the turns running on this machine to finish. The app waits up to ten minutes for them, then stops rather than cutting a turn short, so nothing in flight is cut off - and the update can't be interrupted while it waits."
+										`Waiting for the turns running on this machine to finish. ${RESTART_DRAIN_BOUND} - and the update can't be interrupted while it waits.`
 									: serverRestartsWithInstall(backendUpdateInfo)
 										? "Please wait while the server is being updated. The server will temporarily go offline while it restarts to apply the update. The update can't be interrupted once it has started."
 										: "Please wait while the server is being updated. The update can't be interrupted once it has started."
 						: "Please wait while we check for available updates..."}
 				</p>
+				{/*
+				 * THE STILL-WORKING LINE (UX U1). The ladder can run ~94 s and this frame
+				 * is otherwise one image for all of it; the line appears only once the
+				 * wait has outlasted the delay, and it offers no control - the
+				 * no-dismiss / no-cancel decisions above stand.
+				 */}
+				{slowCheck && !updatingBackend && (
+					<p className="mt-1 text-body-sm text-ink-muted">
+						Still checking. A slow or stalled connection can hold this for about
+						a minute and a half - the app stops waiting on its own.
+					</p>
+				)}
 				{/*
 				 * THE ELAPSED READING (design D3). The wait can run to ten minutes and the
 				 * rest of this frame does not move: without this line a working wait and a
@@ -2554,6 +2649,23 @@ export const UpdateNotification = ({
 					</ProgressContainer>
 				)}
 
+				{/*
+				 * THE STILL-WORKING LINE (UX U1), same rule as the checking card's: one
+				 * copy addition once the wait has outlasted the delay. The offer panel
+				 * hides both controls while a download runs, so without this its whole
+				 * state is two static lines until the watchdog reports.
+				 *
+				 * The subject is the DOWNLOAD (design D4, remediation round 2): what the
+				 * watchdog cancels is the download's progress, not the connection - a
+				 * connection is what the transport failure copy says on the check side.
+				 */}
+				{slowDownload && (
+					<p className="mb-2 text-body-sm text-ink-muted">
+						Still downloading. A download that stops making progress is
+						cancelled after about 90 seconds.
+					</p>
+				)}
+
 				<UpdateActions>
 					{!downloading && (
 						<>
@@ -2737,27 +2849,26 @@ export const UpdateNotification = ({
 			return withErrorToast(
 				<UpdateContainer>
 					{/*
-					 * THE HEADING SAYS WHICH REFUSAL THIS IS (design round 2, D6). Two of the
-					 * three refusal sites happen AFTER the build landed - the restart was held
-					 * back, the install was not - and the sentence under this heading says so in
-					 * its own words, so a fixed "The update didn't start" made the frame
-					 * contradict itself in one paragraph. The producer knows which arm it is and
-					 * travels the fact as a field rather than leaving the renderer to infer it.
+					 * ONE HEADING, BECAUSE ONE REFUSAL REMAINS (design round 2, D6;
+					 * simplified 2026-09-29). It used to key on `installLanded`, because two
+					 * of the three refusal sites happened AFTER the build had landed - the
+					 * restart was held back, the install was not - and a fixed "The update
+					 * didn't start" contradicted the sentence under it. The operator's
+					 * directive removed the restart-leg drains, so the only refusal left is
+					 * the install-less one (the rebuild install leg's) and the heading is
+					 * fixed; "The update didn't finish restarting" went with its arm.
 					 *
-					 * CONTRACTED, LIKE THE SIBLINGS ON THIS PANEL (design round 3, D2). These two
-					 * strings shipped un-contracted beside "The server update didn't finish" and
-					 * "The update wasn't installed" - the failure headings on this same surface,
-					 * and the two a reader meets a scroll apart. The file mixes both spellings
-					 * ("The server did not come back after the restart" is un-contracted), so this
-					 * is a consistency call rather than a correctness one, decided the way the
-					 * refusal's own neighbours are: one voice per panel. The story's own wait and
-					 * the capturer's claim both name this literal, so the three move together.
+					 * CONTRACTED, LIKE THE SIBLINGS ON THIS PANEL (design round 3, D2). It
+					 * shipped un-contracted beside "The server update didn't finish" and
+					 * "The update wasn't installed" - the failure headings on this same
+					 * surface, and the two a reader meets a scroll apart. The file mixes
+					 * both spellings ("The server did not come back after the restart" is
+					 * un-contracted), so this is a consistency call rather than a
+					 * correctness one, decided the way the refusal's own neighbours are:
+					 * one voice per panel. The stories' own waits and the capturer's claims
+					 * name this literal, so they move together.
 					 */}
-					<UpdateHeading>
-						{refusal.installLanded
-							? "The update didn't finish restarting"
-							: "The update didn't start"}
-					</UpdateHeading>
+					<UpdateHeading>The update didn't start</UpdateHeading>
 					{/*
 					 * THE LEAD LINE IS THE ACTIONABLE FACT (design D5): how many sessions are
 					 * still working, and which. It used to sit in parentheses halfway down a
@@ -3136,6 +3247,18 @@ export const UpdateNotification = ({
 
 	// If a backend update has been completed
 	if (backendUpdateCompleted) {
+		/*
+		 * THE FLEET NEWS RIDES THIS NOTICE (design §2b, 2026-09-29). The completion
+		 * is the popup's one moment with nothing else on screen, and the count is a
+		 * reading the attempt took - N sessions still on the old build, on their way
+		 * onto it when they next stop or go idle. N = 0 is today's toast; N >= 1 adds
+		 * the second line; an unmeasured count draws the numberless sentence (see
+		 * `completionSessionsLine`). The duration follows: a frame carrying the
+		 * second line holds for 8 s (design §2e), N = 0 keeps 6 s.
+		 */
+		const sessionsLine = completionSessionsLine(
+			backendUpdateSessionsOnOldBuild,
+		);
 		return withErrorToast(
 			null,
 			/*
@@ -3145,11 +3268,14 @@ export const UpdateNotification = ({
 			 */
 			<FloatingAlert
 				open={true}
-				autoHideDuration={6000}
+				autoHideDuration={sessionsLine === null ? 6000 : 8000}
 				onClose={() => setBackendUpdateCompleted(false)}
 				variant="success"
 			>
 				Server update completed successfully
+				{sessionsLine === null ? null : (
+					<p className="text-body-sm text-ink">{sessionsLine}</p>
+				)}
 			</FloatingAlert>,
 		);
 	}

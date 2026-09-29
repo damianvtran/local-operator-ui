@@ -110,7 +110,15 @@ import {
 	showErrorToast,
 	showInfoToast,
 } from "@shared/utils/toast-manager";
-import { AlarmClock, Check, CircleCheck, Info, Repeat, X } from "lucide-react";
+import {
+	AlarmClock,
+	Check,
+	CircleCheck,
+	Info,
+	Repeat,
+	ScanEye,
+	X,
+} from "lucide-react";
 import {
 	type ReactNode,
 	useEffect,
@@ -148,6 +156,7 @@ import {
 	busiestClause,
 	childClause,
 	jobClause,
+	monitorClause,
 	todoClause,
 	wakeClause,
 } from "./run-details";
@@ -187,6 +196,16 @@ const JOB_ACTION = "Open the jobs in run details";
  * than disclosing something in place.
  */
 const WAKE_ACTION = "Open the wakes in run details";
+
+/**
+ * The monitor chip's action, the wake chip's rule one count over.
+ *
+ * The plural is the SECTION's own heading in the pane (`Monitors`), so the chip
+ * names the destination in the word the destination is labelled with — and
+ * `Open` rather than `Show` for the plan chip's own reason: this moves the
+ * reader to a region rather than disclosing something in place.
+ */
+const MONITOR_ACTION = "Open the monitors in run details";
 
 /**
  * The LOOP chip's visible label, on the goal chip's own rule: the row's chips that
@@ -868,6 +887,18 @@ export const wakeChipLabel = (armed: number): string =>
 	`${WAKE_ACTION}${LABEL_SEAM}${wakeClause(armed)}`;
 
 /**
+ * The monitor chip's tooltip and accessible name: ONE derived string, for
+ * `wakeChipLabel`'s reason.
+ *
+ * The count is `monitorClause`'s spelling and the same function the Monitors
+ * section's trailing tally prints, so the chip and the section it opens cannot
+ * state one number two ways — including the singular, which is the one a
+ * hand-written plural gets wrong.
+ */
+export const monitorsChipLabel = (armed: number): string =>
+	`${MONITOR_ACTION}${LABEL_SEAM}${monitorClause(armed)}`;
+
+/**
  * The goal dismiss's tooltip and accessible name: ONE derived string for both, on
  * the rule the four chips above it are named under.
  *
@@ -1276,6 +1307,23 @@ export const ComposerStatusRow = ({
 	const wakes = runDetails?.wakes ?? [];
 	const showWakes = wakes.length > 0;
 	/*
+	 * The monitor chip's gate: at least one ARMED monitor, off the model's own
+	 * list — the wake chip's gate and its two arguments exactly.
+	 *
+	 * The list itself is the gate: a count derived here would be a second opinion
+	 * about a list the pane is also reading, and `monitorClause` would then have
+	 * two callers that could disagree about it. And it is a COUNT gate rather than
+	 * the plan's "0 still renders" rule, because `frontend.monitors` is empty on
+	 * every session that has never armed one — virtually every session in the app
+	 * — so a zero would be chrome above nearly every composer.
+	 *
+	 * The other half is `runDetails` non-null, the plan chip's gate one clause up:
+	 * a legacy non-canonical chat has no pane model at all, so the chip would
+	 * point at a destination that cannot open.
+	 */
+	const monitors = runDetails?.monitors ?? [];
+	const showMonitors = monitors.length > 0;
+	/*
 	 * The LOOP chip's gate: a state that is not `idle`, off the one wire field that
 	 * carries it (`frontend.loop`, `DesktopLoopState`).
 	 *
@@ -1600,12 +1648,21 @@ export const ComposerStatusRow = ({
 		return () => observer.disconnect();
 	}, [itemFits, loopClauseText]);
 
-	if (!showGoal && !showLoop && !showPlan && !showWakes && !children && !jobs)
+	if (
+		!showGoal &&
+		!showLoop &&
+		!showPlan &&
+		!showWakes &&
+		!showMonitors &&
+		!children &&
+		!jobs
+	)
 		return null;
 
 	const goalLabel = goalDisclosureLabel(goal, goalOpen, goalState);
 	const planLabel = runDetails ? planChipLabel(runDetails) : "";
 	const wakeLabel = showWakes ? wakeChipLabel(wakes.length) : "";
+	const monitorLabel = showMonitors ? monitorsChipLabel(monitors.length) : "";
 	const subagentLabel = children ? subagentChipLabel(children) : "";
 	const jobLabel = jobs ? jobChipLabel(jobs) : "";
 	/*
@@ -1654,16 +1711,26 @@ export const ComposerStatusRow = ({
 	 * after the activity chips reads live work before the thing driving it, which is the
 	 * wake chip's refused alternative over again, and placed after the wakes puts the
 	 * one field whose value can be `running` behind two counts that describe a plan.
+	 *
+	 * The MONITOR chip follows the wakes, before the two activity chips, and the
+	 * pair's own order is the TUI band's: the band renders "wake rows first, then a
+	 * monitor section" (`wake_panel.py`, design § 12), so the wakes lead the watches
+	 * on that surface and on this one. Both are standing facts — what the session is
+	 * set up to do — which is why they sit together ahead of the work in flight, and
+	 * the monitor chip inherits the wake chip's refused alternatives rather than
+	 * re-arguing them.
 	 */
 	const loopFirst = !showGoal;
 	const groupIsFirst = !showGoal && !showLoop;
 	const wakesFirst = groupIsFirst && !showPlan;
-	const subagentsFirst = wakesFirst && !showWakes;
+	const monitorsFirst = wakesFirst && !showWakes;
+	const subagentsFirst = monitorsFirst && !showMonitors;
 	/*
-	 * ...and the jobs chip is first only when NEITHER of the three ahead of it
+	 * ...and the jobs chip is first only when NONE of the chips ahead of it
 	 * rendered, which is a different question from "the subagents chip is not the
-	 * first": with no goal, no plan and no wakes, a session holding only tool jobs
-	 * puts the jobs chip on the row's content edge and its siblings nowhere.
+	 * first": with no goal, no plan, no wakes and no monitors, a session holding
+	 * only tool jobs puts the jobs chip on the row's content edge and its siblings
+	 * nowhere.
 	 */
 	const jobsFirst = subagentsFirst && !children;
 
@@ -2356,7 +2423,7 @@ export const ComposerStatusRow = ({
 			 * it — and the group's flex-basis being its content is what makes the ROW
 			 * wrap it below the goal when the column cannot hold both.
 			 */}
-			{(showPlan || showWakes || children || jobs) && (
+			{(showPlan || showWakes || showMonitors || children || jobs) && (
 				<div
 					className={cn(
 						"flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5",
@@ -2473,6 +2540,57 @@ export const ComposerStatusRow = ({
 									className={cn("size-3.5 shrink-0")}
 								/>
 								{wakeClause(wakes.length)}
+							</button>
+						</Tooltip>
+					)}
+
+					{/*
+					 * The MONITOR chip: the session's armed watches, after the wakes and
+					 * before the two activity chips (`monitorsFirst` above), because the
+					 * TUI band renders wake rows first and the monitor section after them — the
+					 * two are the session's standing facts and this pair's order is that
+					 * surface's.
+					 *
+					 * The same control box, the same reveal, the same absence of
+					 * `aria-pressed`, all for the wake chip's own reasons.
+					 *
+					 * `ScanEye` is a MARK and not a state, which is why it does not change
+					 * with health: the health ink belongs to the ROW (the pane's section spends
+					 * the warning role on a disabled monitor or one mid-ladder), and a chip that
+					 * colour-shifted with a monitor's health would put a state on the composer
+					 * that no press can act on. The alternatives, and why each was rejected:
+					 *
+					 * - `Eye`: the providers page already draws it for "reveal this key", and one
+					 *   glyph in this app means one thing.
+					 * - `Monitor`: the console TOOL's glyph (`trace/tool-glyphs.ts`), and one glyph
+					 *   in this app means one thing.
+					 * - `Radar` / `Telescope`: detection hardware rather than watching, and the
+					 *   watch is the plain noun.
+					 * - `AlarmClock`: the wake chip's, and the two chips sit on one line.
+					 * - no mark: the `Info` alternative's rejection on the plan chip —
+					 *   `docs/composer-status-tabs.md` § 6.1's D1.
+					 *
+					 * The Monitors SECTION rows wear this same glyph as their mark, so it means
+					 * "monitor" on both surfaces rather than "press me" on one and "a watch
+					 * row" on the other.
+					 */}
+					{showMonitors && (
+						<Tooltip content={monitorLabel} side="top">
+							<button
+								type="button"
+								data-status-monitors=""
+								aria-label={monitorLabel}
+								onClick={() => revealPlan("monitors")}
+								className={cn(
+									CHIP_CONTROL,
+									monitorsFirst ? FIRST_CHIP : undefined,
+								)}
+							>
+								<ScanEye
+									aria-hidden={true}
+									className={cn("size-3.5 shrink-0")}
+								/>
+								{monitorClause(monitors.length)}
 							</button>
 						</Tooltip>
 					)}

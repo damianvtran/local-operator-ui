@@ -12,33 +12,31 @@ globalThis.localStorage = {
 };
 
 /*
- * BLOCKER-1 (review round 1): does the optimistic echo actually REACH a
- * transcript on the New-chat path?
+ * THE PENDING-SEND REGISTRY, and the claims about delivery it has to carry.
  *
- * Why this file exists beside `canonical-chat.test.mjs` rather than inside it:
- * that harness aliases the echo seam to a recorder that always records, which
- * is exactly what hid this defect. It proves the store CALLS `echoPendingUser`
- * with the right arguments — it does — and is structurally incapable of
- * observing that nothing was listening. So this file stubs the opposite side:
- * the REAL registry and the REAL `admitChatDraft` are both under test, and only
- * the network and React's scheduler are substituted.
+ * The registry's one structural rule: a paint is delivered SYNCHRONOUSLY when a
+ * transcript for the identity is mounted, RETAINED when none is, and drained by
+ * whichever registers first - and it is then KEPT, because the three claims
+ * below are about remounts (the identity flip, a switch away and back, a
+ * reload) and a consumed entry cannot survive any of them. Resolution is what
+ * drops an entry: a pane observing the owner's durable row, or the user
+ * resolving a failure.
  *
  * The timing model is the point. On the draft path the session id does not
- * exist until `createSession` returns, and the store patches that id and fires
- * the echo in ONE synchronous block — before React has committed the render
- * that mounts the panel, let alone flushed the passive effect that registers
- * its transcript. Registration is therefore modelled as a passive effect on a
- * macrotask (`setTimeout(0)`), which is strictly MORE generous than React's
- * actual commit timing: if the echo survives here it survives in the app.
- *
- * Pre-fix, this file reports the reviewer's measurement: draft send 0 landed /
- * 1 dropped / 0 painted, existing-session send 1/0/1.
+ * exist until `createSession` returns, and the store patches that id and
+ * re-keys the entry in ONE synchronous block - before React has committed the
+ * render that mounts the replacement panel, let alone flushed the passive
+ * effect that registers its transcript. Registration is therefore modelled as a
+ * passive effect on a macrotask (`setTimeout(0)`), which is strictly MORE
+ * generous than React's actual commit timing: if the row survives here it
+ * survives in the app. What changed with retention is what the NEXT mount sees:
+ * the same row, seeded from the same entry, rather than nothing.
  */
 const bundle = await build({
 	stdin: {
 		contents: `
 			export { admitChatDraft, useCanonicalSessionsStore, draftIdentityFor, isRefusedBeforeAdmission } from "./src/renderer/src/shared/store/canonical-sessions-store";
-			export { echoPendingUser, retractPendingUser, discardPendingEchoes, __registerEchoTarget, seedPendingEchoes } from "./src/renderer/src/shared/hooks/use-canonical-session";
+			export { paintPendingSend, seedPendingSends, movePendingSendIdentity, replacePendingSendText, resolvePendingSend, resolveObservedPendingSends, hasPendingSend, settlePendingSend, pendingSendForView, discardPendingSends, retractPendingUser, __registerEchoTarget, streamChangeKeepsTranscript } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { useMessageInput, COMPOSER_PLACEHOLDER, composerPlaceholder, clearSubmittedText, stagedPayloadOf } from "./src/renderer/src/shared/hooks/use-message-input";
 			export { useConversationInputStore, mergeReturnedText, mergeReturnedPayload } from "./src/renderer/src/shared/store/conversation-input-store";
 			export { EMPTY_TRANSCRIPT, applyEvent } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
@@ -118,11 +116,18 @@ const {
 	draftIdentityFor,
 	isRefusedBeforeAdmission,
 	useCanonicalSessionsStore: store,
-	echoPendingUser,
+	paintPendingSend,
+	seedPendingSends,
+	movePendingSendIdentity,
+	replacePendingSendText,
+	resolvePendingSend,
+	resolveObservedPendingSends,
+	settlePendingSend,
+	pendingSendForView,
+	discardPendingSends,
 	retractPendingUser,
-	discardPendingEchoes,
 	__registerEchoTarget,
-	seedPendingEchoes,
+	streamChangeKeepsTranscript,
 	useMessageInput,
 	COMPOSER_PLACEHOLDER,
 	composerPlaceholder,
@@ -174,13 +179,13 @@ function mountTranscript(sessionId) {
 
 function reset() {
 	/*
-	 * The echo buffer is MODULE state, so it outlives a store reset. Clearing it
+	 * The registry is MODULE state, so it outlives a store reset. Clearing it
 	 * here keeps each test independent: without this, the bound tests below
-	 * leave up to 16 buffered sessions behind and the next test's session can be
-	 * evicted before it ever runs, which makes results depend on file order.
+	 * leave retained entries behind and the next test's identity can be evicted
+	 * before it ever runs, which makes results depend on file order.
 	 */
 	for (const id of [SESSION_ID, "999999999999", ...SCRATCH_SESSIONS])
-		discardPendingEchoes(id);
+		discardPendingSends(id);
 	store.setState({
 		sessions: [],
 		activeSessionId: null,
@@ -192,20 +197,106 @@ function reset() {
 	});
 }
 
+test("a New-chat send paints at the PRESS, before the create answers", async () => {
+	reset();
+	/*
+	 * AC2, IN ONE READING: the row appears and the box empties in the same
+	 * commit, before the session exists.
+	 *
+	 * The draft pane is mounted and registered under its OWN key - which is what
+	 * `SessionPanel` does from the first keystroke (the hook's registration is
+	 * keyed by the pane's identity, not by the stream id), so the paint at the
+	 * press has somewhere to land synchronously. The create is HELD inside the
+	 * request: while it is in flight the row must already be on the pane, and the
+	 * composer must already have been told (`onEchoPainted` fires with the paint,
+	 * in the same synchronous block) - the whole of the old dead-air window.
+	 */
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	const draftPane = await mountTranscript(key);
+	let rowsWhileCreating = null;
+	const paintedAt = [];
+	let releaseCreate;
+	const held = new Promise((resolve) => {
+		releaseCreate = resolve;
+	});
+	globalThis.__echoRequest = async (request) => {
+		if (request.op === "sessions.create") {
+			// The create is in flight: read what the user would be looking at.
+			rowsWhileCreating = draftPane.rows();
+			await held;
+			return { session_id: SESSION_ID, binding: null };
+		}
+		return { status: "admitted" };
+	};
+	const admission = admitChatDraft(key, input, undefined, () => {
+		paintedAt.push("painted");
+	});
+	// `admitChatDraft` runs synchronously up to its first await - the create -
+	// and the request fixture above ran before yielding, so both readings are
+	// settled here without a tick of slack.
+	assert.deepEqual(
+		rowsWhileCreating,
+		["Review this"],
+		"the row is on the DRAFT pane while the create is still in flight",
+	);
+	assert.deepEqual(
+		paintedAt,
+		["painted"],
+		"the composer is told at the press, so its text leaves with the paint",
+	);
+	releaseCreate();
+	assert.equal(await admission, SESSION_ID);
+
+	// THE FLIP: the row must survive the remount. The replacement panel's first
+	// frame comes from the seed - the drain arrives one passive effect later -
+	// and the entry was re-keyed to the session instead of being consumed.
+	const flip = seedPendingSends(SESSION_ID, EMPTY_TRANSCRIPT);
+	assert.deepEqual(
+		flip.records.map((record) => record.text),
+		["Review this"],
+		"the flip's first frame already holds the row it was showing",
+	);
+	assert.ok(
+		pendingSendForView(SESSION_ID) !== null,
+		"and the claim is still open until the owner's row is observed",
+	);
+	const sessionPane = await mountTranscript(SESSION_ID);
+	assert.deepEqual(
+		sessionPane.rows(),
+		["Review this"],
+		"never zero, never two",
+	);
+	draftPane.unregister();
+	sessionPane.unregister();
+});
+
 test("a New-chat send paints into the transcript that mounts after the session exists", async () => {
 	reset();
 	/*
-	 * THE HEADLINE CASE: New chat, type, Enter. No panel is mounted for this
-	 * session when the echo fires, because the session did not exist a moment
-	 * ago. Pre-fix this was measured at 0 painted; the composer had already
-	 * cleared, so the user saw an empty box and an empty transcript for the
-	 * whole ~1.15s engage.
+	 * THE HEADLINE CASE: New chat, type, Enter. No panel is mounted for the
+	 * session when the session is created, because it did not exist a moment
+	 * ago - the press's paint was retained under the draft key and is re-keyed to
+	 * the session in the store's own synchronous block. Pre-fix this was
+	 * measured at 0 painted; the composer had already cleared, so the user saw an
+	 * empty box and an empty transcript for the whole ~1.15s engage.
 	 */
 	let mounted = null;
+	let entryAtPress = null;
+	let rowAtPress = null;
 	globalThis.__echoRequest = async (request) => {
 		if (request.op === "sessions.create") {
+			/*
+			 * R3-4: read BOTH carriers at the press, while the create is in
+			 * flight - the row is the fallback and the entry is what survives
+			 * the receipt's row deletion, so the anchor must be on each. A paint
+			 * that dropped `submittedAt` would blank the clock again after a
+			 * remount while every other suite stayed green: this is the write's
+			 * own pin, taken where `admitChatDraft` makes it.
+			 */
+			entryAtPress = pendingSendForView(key)?.submittedAt ?? null;
+			rowAtPress = store.getState().drafts[key]?.submittedAt ?? null;
 			// The panel for this session begins mounting as a consequence of the
-			// store patching the id - i.e. strictly after the echo has been fired.
+			// store patching the id.
 			mounted = mountTranscript(SESSION_ID);
 			return { session_id: SESSION_ID, binding: null };
 		}
@@ -214,12 +305,27 @@ test("a New-chat send paints into the transcript that mounts after the session e
 	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
 	const requestId = store.getState().drafts[key].admissionRequestId;
 	await admitChatDraft(key, input);
+	assert.equal(
+		typeof entryAtPress,
+		"number",
+		"the press writes its clock anchor onto the painted entry (R3-4)",
+	);
+	assert.equal(
+		rowAtPress,
+		entryAtPress,
+		"the row and the entry carry the same press",
+	);
+	assert.equal(
+		pendingSendForView(SESSION_ID)?.submittedAt,
+		entryAtPress,
+		"and the identity re-key carries the same anchor to the id the remount reads",
+	);
 
 	const transcript = await mounted;
 	assert.deepEqual(
 		transcript.rows(),
 		["Review this"],
-		"the user's message must be painted once the transcript mounts - a dropped echo leaves a cleared composer over an empty transcript, which is worse than the lag it replaced",
+		"the user's message must be painted once the transcript mounts - a dropped row leaves a cleared composer over an empty transcript, which is worse than the lag it replaced",
 	);
 	transcript.unregister();
 	// And it is keyed by the admission request id, so the owner's durable row
@@ -227,10 +333,10 @@ test("a New-chat send paints into the transcript that mounts after the session e
 	assert.ok(requestId);
 });
 
-test("an existing-session send still paints immediately, with nothing queued", async () => {
+test("an existing-session send still paints immediately, with nothing retained", async () => {
 	reset();
-	// The path that already worked. It must keep working through the buffer:
-	// a target registered BEFORE the echo is applied synchronously, never
+	// The path that already worked. It must keep working through the registry: a
+	// target registered BEFORE the paint receives it synchronously, never
 	// deferred, because deferring would make a warm send flicker.
 	const transcript = await mountTranscript(SESSION_ID);
 	globalThis.__echoRequest = async () => ({ status: "admitted" });
@@ -240,14 +346,20 @@ test("an existing-session send still paints immediately, with nothing queued", a
 	transcript.unregister();
 });
 
-test("a pre-admission refusal retracts the echo even when it was queued", async () => {
+test("a refusal the daemon states keeps the message on its row (S4: no return)", async () => {
 	reset();
 	/*
-	 * The retraction has the same delivery problem as the paint it undoes: a 413
-	 * or 422 resolves before the panel mounts, so an unqueued retraction would
-	 * be dropped while the queued paint survived - leaving the transcript
-	 * showing a message the backend provably never admitted, with the composer
-	 * already restored. The user would see it in both places.
+	 * THE BOUNDARY RULE, ON THE CLASS THAT MOST NEEDED IT. A 413 is a refusal the
+	 * daemon STATES - the message was not admitted - and the old contract handed
+	 * the whole payload back to the composer: one message in two homes, and the
+	 * box's copy was the one that could be sent twice. S4 keeps it where the user
+	 * can see it, on the row, with the class's sentence and remedies (the README
+	 * for `docs/evidence/conversation-start/` carries the frame).
+	 *
+	 * So the half this case used to assert the OPPOSITE of is the row's survival:
+	 * a retraction here would empty the transcript of a message the user still has
+	 * to act on. The refusal is the row's statement to make, and the payload basis
+	 * (`submittedText`) stays with it for `Send again`/`Edit`.
 	 */
 	let mounted = null;
 	globalThis.__echoRequest = async (request) => {
@@ -263,23 +375,47 @@ test("a pre-admission refusal retracts the echo even when it was queued", async 
 	const transcript = await mounted;
 	assert.deepEqual(
 		transcript.rows(),
-		[],
-		"paint and retraction must be delivered in order, so a refused message does not survive in the transcript",
+		["Review this"],
+		"the message stays on its row: the refusal is the row's statement to make, and the payload basis rides with it",
 	);
 	transcript.unregister();
+	/*
+	 * AND NOTHING CAME HOME. The store no longer owns a path that could write the
+	 * payload into a composer row (`returnPayloadToComposer` is gone with it), so
+	 * no spelling of "where the text could be" holds it: not the box's own input,
+	 * not the handed-back text.
+	 */
+	const composerRow =
+		useConversationInputStore.getState().inputByConversation[SESSION_ID];
+	assert.equal(
+		composerRow?.pendingText ?? "",
+		"",
+		"no returned text for this failure - there is no return path any more",
+	);
+	assert.equal(
+		composerRow?.currentInput ?? "",
+		"",
+		"and nothing typed into the box either",
+	);
+	const draft = store.getState().drafts[key];
+	assert.equal(
+		draft.submittedText,
+		"Review this",
+		"while the payload basis stays on the draft, where Send again and Edit read it",
+	);
 });
 
 test("INV-C1: an ambiguous failure keeps its own echo, and the owner's row takes its place", async () => {
 	reset();
 	/*
 	 * WHAT CHANGED, AND WHAT INV-C1 BECOMES (§F3's restore, agent review round 4's
-	 * R17). The rule this case pins is the RESTORED one: an unconfirmed send keeps
-	 * the message on screen - the row wears `Not delivered · Send again · Edit`
-	 * until the server's own answer resolves the claim - while the failure ALSO
-	 * hands the whole payload back to the composer, which is the copy the user acts
-	 * on (Retry replays it under the same request id; see
-	 * `composer-send-failure.test.mjs`). The two are not mutually exclusive: the
-	 * row is the MESSAGE's record of its fate, the box is the user's editable copy.
+	 * R17; S4). The rule this case pins is the RESTORED one: an unconfirmed send
+	 * keeps the message on screen - the row wears the class's sentence and its
+	 * remedies until the server's own answer resolves the claim. Since S4 the row
+	 * is the message's ONLY home: the failure no longer hands the payload back to
+	 * the composer, because one message in two homes is one message too many, and
+	 * the box's copy was the one that could be sent twice (see the 413 case
+	 * above).
 	 *
 	 * The second half is the coalescing the old case was protecting, and it is
 	 * pinned here rather than assumed: the row is keyed by the admission request
@@ -336,75 +472,131 @@ test("INV-C1: an ambiguous failure keeps its own echo, and the owner's row takes
 	transcript.unregister();
 });
 
-test("a queued echo is delivered once, not replayed onto a later mount", async () => {
+test("a retained row is seeded to every later mount, and resolution is what ends it", async () => {
 	reset();
-	// The buffer must be drained destructively. A retraction replayed after its
-	// own paint had coalesced with the owner's durable row would delete a real
-	// message, which is why the drain takes and deletes before applying.
-	echoPendingUser(SESSION_ID, "req-queued", "queued once", []);
+	/*
+	 * RETENTION, THE FLIP SIDE OF THE OLD TAKE-AND-DELETE RULE.
+	 *
+	 * The buffer this replaced consumed its entry at the first drain, which was
+	 * right while the composer held the text: a remount - the identity flip, a
+	 * switch away and back, a reload - would have re-painted a message the user
+	 * had already watched leave. It is not right any more. The box empties at
+	 * the PRESS, so a consumed entry would leave the message represented only by
+	 * one pane's local state, and the next mount would show a conversation that
+	 * never received it. The entry is therefore kept until it is RESOLVED, and
+	 * the resolution signal is the owner's own row arriving in the pane: a
+	 * NON-local user record under the same id (what `appendPendingUser`'s
+	 * `local` flag distinguishes).
+	 */
+	paintPendingSend(SESSION_ID, {
+		id: "req-retained",
+		text: "retained once",
+		images: [],
+	});
 	const first = await mountTranscript(SESSION_ID);
-	assert.deepEqual(first.rows(), ["queued once"]);
+	assert.deepEqual(first.rows(), ["retained once"]);
 	first.unregister();
 
 	const second = await mountTranscript(SESSION_ID);
 	assert.deepEqual(
 		second.rows(),
-		[],
-		"a remount must not repaint an echo the previous mount already consumed",
+		["retained once"],
+		"a remount seeds the same row - the switch-away/back and reload cases depend on it",
+	);
+
+	// The owner's durable row for the id is the resolution.
+	const resumed = applyEvent(
+		second.state(),
+		{
+			type: "message_start",
+			message: {
+				id: "req-retained",
+				role: "user",
+				content: [{ type: "text", text: "retained once" }],
+				tool_calls: [],
+			},
+		},
+		1_760_000_000_000,
+	);
+	resolveObservedPendingSends(SESSION_ID, resumed);
+	assert.equal(
+		pendingSendForView(SESSION_ID),
+		null,
+		"the owner's row ends the claim",
 	);
 	second.unregister();
+
+	const third = await mountTranscript(SESSION_ID);
+	assert.deepEqual(
+		third.rows(),
+		[],
+		"after resolution nothing is re-painted: the durable row is history's to deliver",
+	);
+	third.unregister();
 });
 
-test("an echo for a session nobody ever mounts does not leak into another", async () => {
+test("a retained row for a session nobody ever mounts does not leak into another", async () => {
 	reset();
-	// Addressing is still per session: the buffer is a delivery mechanism, not a
-	// broadcast. A queued echo for an abandoned draft must never appear in the
+	// Addressing is per identity: the registry is a delivery mechanism, not a
+	// broadcast. A retained row for an abandoned draft must never appear in the
 	// next conversation the user opens.
-	echoPendingUser("999999999999", "req-orphan", "orphaned", []);
+	paintPendingSend("999999999999", {
+		id: "req-orphan",
+		text: "orphaned",
+		images: [],
+	});
 	const transcript = await mountTranscript(SESSION_ID);
 	assert.deepEqual(transcript.rows(), []);
 	transcript.unregister();
 	retractPendingUser("999999999999", "req-orphan");
 });
 
-test("the buffer bounds what it retains per session", async () => {
+test("the registry bounds what it retains per identity", async () => {
 	reset();
 	/*
-	 * A RETENTION bound, not tidiness: each queued mutation closes over the
-	 * message text and its images as base64, so an unbounded buffer keeps a
-	 * user's content in renderer memory for the window's lifetime when a session
-	 * never mounts. Oldest-first, because the newest paint is the one the user
-	 * is waiting to see.
+	 * A RETENTION bound, not tidiness: each entry holds the message text and its
+	 * images as base64, and retention means that content outlives delivery, so
+	 * an unbounded map keeps a user's content in renderer memory for the
+	 * window's lifetime when a panel never mounts. Oldest-first, because the
+	 * newest paint is the one the user is waiting to see.
 	 */
 	for (let i = 0; i < 10; i++)
-		echoPendingUser(SESSION_ID, `req-${i}`, `message ${i}`, []);
+		paintPendingSend(SESSION_ID, {
+			id: `req-${i}`,
+			text: `message ${i}`,
+			images: [],
+		});
 	const transcript = await mountTranscript(SESSION_ID);
 	const rows = transcript.rows();
 	assert.ok(
 		rows.length <= 4,
-		`the per-session buffer must be bounded, got ${rows.length} rows`,
+		`the per-identity bound must hold, got ${rows.length} rows`,
 	);
 	assert.deepEqual(
 		rows,
 		["message 6", "message 7", "message 8", "message 9"],
-		"the newest echoes survive - the oldest are the ones the user has stopped waiting for",
+		"the newest rows survive - the oldest are the ones the user has stopped waiting for",
 	);
 	transcript.unregister();
 });
 
-test("the buffer bounds how many un-mounted sessions it holds", async () => {
+test("the registry bounds how many identities it holds", async () => {
 	reset();
 	// The other unbounded dimension: a user can stage drafts faster than panels
-	// mount. Eviction is by insertion order, so the oldest un-mounted session -
-	// the one least likely to ever be looked at - goes first.
+	// mount. Eviction is by insertion order, so the oldest identity - the one
+	// least likely to ever be looked at - goes first.
 	for (let i = 0; i < 40; i++)
-		echoPendingUser(`session-${i}`, `req-${i}`, `text ${i}`, []);
-	// The first session buffered must have been evicted by now.
+		paintPendingSend(`session-${i}`, {
+			id: `req-${i}`,
+			text: `text ${i}`,
+			images: [],
+		});
+	// The first identity painted must have been evicted by now.
 	const evicted = await mountTranscript("session-0");
 	assert.deepEqual(
 		evicted.rows(),
 		[],
-		"the oldest un-mounted session must not still be retained after 40 others",
+		"the oldest identity must not still be retained after 40 others",
 	);
 	evicted.unregister();
 	// The most recent one is still there, which is what keeps the bound useful
@@ -414,7 +606,7 @@ test("the buffer bounds how many un-mounted sessions it holds", async () => {
 	kept.unregister();
 });
 
-test("abandoning a draft drops whatever was buffered for it", async () => {
+test("abandoning a draft drops whatever was retained for it", async () => {
 	reset();
 	/*
 	 * The user's deletion honoured in memory, not just in the store. A discarded
@@ -422,8 +614,10 @@ test("abandoning a draft drops whatever was buffered for it", async () => {
 	 * the abandoned text and its attachments would outlive the row the user
 	 * thinks they threw away.
 	 *
-	 * The DRAFT path: keyed `draft:<uuid>`, and the row learns its session id
-	 * mid-send, so the id is on the row.
+	 * The DRAFT path, BOTH HOMES: the entry lives under the draft key while the
+	 * create is in flight and under the session id after the re-key
+	 * (`movePendingSendIdentity`), and a discard can land on either side of that
+	 * hop - so both are painted here and both must go.
 	 */
 	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
 	store.setState((state) => ({
@@ -432,14 +626,26 @@ test("abandoning a draft drops whatever was buffered for it", async () => {
 			[key]: { ...state.drafts[key], sessionId: SESSION_ID },
 		},
 	}));
-	echoPendingUser(SESSION_ID, "req-abandoned", "abandoned text", []);
+	paintPendingSend(key, {
+		id: "req-abandoned-draft",
+		text: "abandoned draft text",
+		images: [],
+	});
+	paintPendingSend(SESSION_ID, {
+		id: "req-abandoned",
+		text: "abandoned text",
+		images: [],
+	});
 	store.getState().discardDraft(key);
 
+	const draftPane = await mountTranscript(key);
+	assert.deepEqual(draftPane.rows(), [], "the pre-create home is dropped too");
+	draftPane.unregister();
 	const transcript = await mountTranscript(SESSION_ID);
 	assert.deepEqual(
 		transcript.rows(),
 		[],
-		"an abandoned draft's echo must not be retained until some later mount",
+		"an abandoned draft's row must not be retained until some later mount",
 	);
 	transcript.unregister();
 });
@@ -472,7 +678,11 @@ test("abandoning a send from an existing conversation also drops its echo", asyn
 		undefined,
 		"a send draft genuinely carries no session id - this is why reading the row alone failed",
 	);
-	echoPendingUser(SESSION_ID, "req-send-abandoned", "abandoned send", []);
+	paintPendingSend(SESSION_ID, {
+		id: "req-send-abandoned",
+		text: "abandoned send",
+		images: [],
+	});
 	store.getState().discardDraft(key);
 
 	const transcript = await mountTranscript(SESSION_ID);
@@ -487,11 +697,129 @@ test("abandoning a send from an existing conversation also drops its echo", asyn
 test("discarding echoes for one session leaves another untouched", async () => {
 	reset();
 	// The eviction is addressed, like the delivery it undoes.
-	echoPendingUser(SESSION_ID, "req-keep", "keep me", []);
-	discardPendingEchoes("999999999999");
+	paintPendingSend(SESSION_ID, {
+		id: "req-keep",
+		text: "keep me",
+		images: [],
+	});
+	discardPendingSends("999999999999");
 	const transcript = await mountTranscript(SESSION_ID);
 	assert.deepEqual(transcript.rows(), ["keep me"]);
 	transcript.unregister();
+});
+
+test("the mint's bridge id landing on a draft pane keeps the transcript the press painted", () => {
+	reset();
+	/*
+	 * UX ROUND 1, U1, as the RULE that carries it: a draft pane's stream id moves
+	 * `undefined` -> the id `sessions.draft` minted when the mint answers, and
+	 * that swap used to read as "a different session" by
+	 * `useCanonicalSessionStream`'s reset effect - which replaced the transcript
+	 * with the new id's cache (a draft bridge has none) and took the press's row
+	 * with it. Measured on the installed 0.63.2 daemon (`session_draft_warm`
+	 * advertised) as the press reading `rows:0` with the row returning only at the
+	 * flip: Enter beats the mint's answer by ~50-300 ms, which is the ordinary
+	 * type-then-Enter cadence.
+	 *
+	 * The rule is exercised here rather than through a renderer because it is a
+	 * pure function of the two ids and the bridge flag
+	 * (`streamChangeKeepsTranscript`); the driver scene holds the end-to-end half
+	 * on a warm-capable daemon.
+	 */
+	assert.equal(
+		streamChangeKeepsTranscript(undefined, "7f5d0a3e-warm", false),
+		true,
+		"the mint's answer is not a session change: the row must survive it",
+	);
+	assert.equal(
+		streamChangeKeepsTranscript("7f5d0a3e-warm", "7f5d0a3e-warm", false),
+		true,
+		"an unchanged id keeps the transcript trivially",
+	);
+	assert.equal(
+		streamChangeKeepsTranscript(undefined, SESSION_ID, true),
+		false,
+		"a REAL session id still replaces the transcript - the rule's other arm",
+	);
+	assert.equal(
+		streamChangeKeepsTranscript("7f5d0a3e-warm", undefined, false),
+		true,
+		"and a bridge id going away (a drop) keeps it for the same reason",
+	);
+});
+
+test("the re-key runs before anything can await: from inside the seam, the session id already answers", async () => {
+	reset();
+	/*
+	 * DESIGN section 8, R2, pinned where it can fail. The re-key must ride the
+	 * patch's SYNCHRONOUS block: moved after an await - the seam below is the one
+	 * the comment names - the replacement panel's first frame would be seeded from
+	 * an empty registry and receive the row one passive effect later, which is the
+	 * flash J1/J2 forbid. Nothing pinned that ordering before this case: a mutant
+	 * that relocated `movePendingSendIdentity` past the seam kept every other test
+	 * green (agent review round 1, MINOR).
+	 *
+	 * The reading is taken FROM INSIDE `beforeAdmission`, which runs after the
+	 * create and before the wire: if the move slipped past this point the registry
+	 * would still answer under the draft key here and this fails.
+	 */
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	const requestId = store.getState().drafts[key].admissionRequestId;
+	let seenInsideSeam = null;
+	globalThis.__echoRequest = async (request) => {
+		if (request.op === "sessions.create")
+			return { session_id: SESSION_ID, binding: null };
+		return { status: "admitted" };
+	};
+	await admitChatDraft(key, input, undefined, undefined, async (sessionId) => {
+		seenInsideSeam = pendingSendForView(sessionId)?.id ?? null;
+		return undefined;
+	});
+	assert.equal(
+		seenInsideSeam,
+		requestId,
+		"the move rides the sessionId patch's synchronous block: the registry already answers under the session id when the seam runs",
+	);
+});
+
+test("a post-seed splice updates the row's text, and a re-seed replays the spliced text", async () => {
+	reset();
+	/*
+	 * THE SEAM'S SPLICE, EXERCISED AGAINST THE REAL MODULE (agent review round 1,
+	 * MINOR). `replacePendingSendText` is what rewrites the row after the
+	 * credential seam - the same row, same id, corrected text - and
+	 * `replaceLocalRecordText` is its only writer. `canonical-chat.test.mjs`
+	 * records the call; nothing drove the real registry's splice. Both halves are
+	 * pinned here: the mounted transcript updates in place, and a later mount
+	 * re-seeds the SPLICED text rather than the pre-splice paint.
+	 */
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	const pane = await mountTranscript(key);
+	paintPendingSend(key, {
+		id: "req-splice",
+		text: "raw [Credential #1, 19 chars]",
+		images: [],
+	});
+	assert.deepEqual(pane.rows(), ["raw [Credential #1, 19 chars]"]);
+	replacePendingSendText(key, "req-splice", "raw [stored secret]");
+	assert.deepEqual(
+		pane.rows(),
+		["raw [stored secret]"],
+		"the mounted row is spliced in place, not repainted",
+	);
+	assert.equal(
+		pendingSendForView(key)?.text,
+		"raw [stored secret]",
+		"and the entry carries the spliced text, because every later seed reads it",
+	);
+	const remount = await mountTranscript(key);
+	assert.deepEqual(
+		remount.rows(),
+		["raw [stored secret]"],
+		"a re-seed replays the spliced text identically",
+	);
+	pane.unregister();
+	remount.unregister();
 });
 
 /* ===================================================================== composer */
@@ -716,14 +1044,18 @@ test("U2: a failed send hands the message back through the store, under the user
 	 * to restore the text itself, into an EMPTY box only - a rule that could not
 	 * survive the New-chat identity flip, because the composer that pressed Enter is
 	 * unmounted by the time the failure lands and the restore was a `setState` on a
-	 * component that no longer exists (UX round 3, U14). The failure now returns the
-	 * payload through the store (`returnPayloadToComposer`, which is exactly this
-	 * `returnInFlight` call), and the composer TAKES it here (`pendingText` -> the
-	 * hook's adoption effect), merging rather than overwriting.
+	 * component that no longer exists (UX round 3, U14). The write moved through the
+	 * store (`returnInFlight`, which is exactly this call), and the composer TAKES it
+	 * here (`pendingText` -> the hook's adoption effect), merging rather than
+	 * overwriting.
 	 *
-	 * So the hook's own half of the rule is what this case pins: the box adopts a
-	 * return that the STORE wrote, and what the user typed during the flight is kept
-	 * - after the returned message, because theirs came second.
+	 * WHO WRITES IT NOW (S4): nothing in the FAILURE arm. A post-paint failure is
+	 * stated by its row, so no failure hands a payload home - the writers left are
+	 * the user's own `Edit` on such a row (`returnPayload`), the flip's residual move
+	 * for a released app's claim, and this adoption path. The rule pinned here is
+	 * unchanged, and it is the reason the adoption path outlived the return: the box
+	 * adopts a return that the STORE wrote, and what the user typed during the flight
+	 * is kept - after the returned message, because theirs came second.
 	 */
 	const quiet = await driveComposer({
 		onSubmit: ({ onEchoPainted }) => {
@@ -809,23 +1141,27 @@ test("D1/U5: an unconfirmed send hands its text back to the box, and keeps nothi
 	);
 });
 
-test("U3: a panel mounted over a buffered echo paints it in its first state", async () => {
+test("U3: a panel mounted over a retained row paints it in its first state", async () => {
 	reset();
-	echoPendingUser(SESSION_ID, "req-seed", "seeded message", []);
+	paintPendingSend(SESSION_ID, {
+		id: "req-seed",
+		text: "seeded message",
+		images: [],
+	});
 	/*
 	 * What React reads for the panel's initial state. The remount on the New-chat
 	 * path is the only moment this is needed and the only one it can be checked
 	 * without a renderer: the drain below arrives one passive effect later, so a
 	 * transcript seeded only by the drain had a first frame with nothing in it.
 	 */
-	const seeded = seedPendingEchoes(SESSION_ID, EMPTY_TRANSCRIPT);
+	const seeded = seedPendingSends(SESSION_ID, EMPTY_TRANSCRIPT);
 	assert.deepEqual(
 		seeded.records.map((record) => record.text),
 		["seeded message"],
 	);
 	// The drain replays the same mutation over that state; it must land on the
 	// SAME transcript rather than painting the message a second time.
-	assert.equal(seedPendingEchoes(SESSION_ID, seeded).records.length, 1);
+	assert.equal(seedPendingSends(SESSION_ID, seeded).records.length, 1);
 	const transcript = await mountTranscript(SESSION_ID);
 	assert.deepEqual(transcript.rows(), ["seeded message"]);
 	transcript.unregister();
@@ -835,8 +1171,8 @@ test("a send threads its paint callback through `admitChatDraft`", async () => {
 	reset();
 	// The glue between the composer and the seam, and the only part of U1 that is
 	// neither the seam's nor the composer's: `send` hands the callback to
-	// `admitChatDraft`, which hands it to `echoPendingUser`. Verified with a
-	// transcript already mounted, i.e. the path where the echo is applied
+	// `admitChatDraft`, which hands it to `paintPendingSend`. Verified with a
+	// transcript already mounted, i.e. the path where the row is applied
 	// synchronously and so the caller can clear in the same commit.
 	const transcript = await mountTranscript(SESSION_ID);
 	globalThis.__echoRequest = async () => ({ status: "admitted" });
@@ -867,11 +1203,16 @@ test("a send threads its paint callback through `admitChatDraft`", async () => {
 	assert.equal(isRefusedBeforeAdmission(new Error("fetch failed")), false);
 });
 
-test("the echo's paint callback fires with the paint, on both delivery paths", async () => {
+test("the row's paint callback fires with the paint, on both delivery paths, and only once", async () => {
 	reset();
 	let drained = 0;
-	echoPendingUser(SESSION_ID, "req-queued", "queued", [], () => {
-		drained += 1;
+	paintPendingSend(SESSION_ID, {
+		id: "req-queued",
+		text: "queued",
+		images: [],
+		onPainted: () => {
+			drained += 1;
+		},
 	});
 	assert.equal(
 		drained,
@@ -883,12 +1224,17 @@ test("the echo's paint callback fires with the paint, on both delivery paths", a
 	assert.equal(
 		drained,
 		1,
-		"the composer is told at the moment a transcript receives the echo, from the drain",
+		"the composer is told at the moment a transcript receives the row, from the drain",
 	);
 
 	let direct = 0;
-	echoPendingUser(SESSION_ID, "req-direct", "immediate", [], () => {
-		direct += 1;
+	paintPendingSend(SESSION_ID, {
+		id: "req-direct",
+		text: "immediate",
+		images: [],
+		onPainted: () => {
+			direct += 1;
+		},
 	});
 	assert.equal(
 		direct,
@@ -896,6 +1242,16 @@ test("the echo's paint callback fires with the paint, on both delivery paths", a
 		"and synchronously when a transcript is already mounted, so both updates share a commit",
 	);
 	transcript.unregister();
+
+	// RETENTION RE-SEEDS, IT DOES NOT RE-FIRE. A later mount paints the same
+	// rows again (the flip, a switch back, a reload), and the composer that asked
+	// must not be told a second time: the callback is the one moment taking the
+	// text out of the box was free, and it has passed.
+	const later = await mountTranscript(SESSION_ID);
+	assert.deepEqual(later.rows(), ["queued", "immediate"]);
+	assert.equal(drained, 1, "a re-seeded row must not re-fire the callback");
+	assert.equal(direct, 1, "on either delivery path");
+	later.unregister();
 });
 
 /* =========================================== one payload, one moment (R1-R3) */
@@ -934,10 +1290,11 @@ const STAGED = { chip: "/tmp/a.png", reply: "quoted turn" };
 
 /*
  * What a failed send does to the composer, called from a case the way the store
- * calls it: `returnInFlight` is the ONE path a failure takes back
- * (`returnPayloadToComposer` is this call with the store's identity in front of
- * it), so a case that drives the hook with a custom `onSubmit` reproduces the
- * real route rather than a stand-in for it.
+ * calls it: `returnInFlight` is the one WRITE a payload coming home has left
+ * (S4's failure arm returns nothing; the live writers are the user's `Edit` on a
+ * failed row and the released app's flip move, and both reach the box through
+ * this call), so a case that drives the hook with a custom `onSubmit` reproduces
+ * the real route rather than a stand-in for it.
  */
 function returnInFlight(conversationId = COMPOSER_ID) {
 	useConversationInputStore
@@ -1561,5 +1918,56 @@ test("F6 x R1: a refused off-record ask keeps the staged halves it carried", asy
 		settled.storedDraft,
 		"",
 		"and the persisted draft is retired as for any accepted press",
+	);
+});
+
+test("R2-2/U5: a settled claim stops answering for the send that follows", async () => {
+	reset();
+	/*
+	 * THE DISTINCTION THE ROUND-2 RE-SHOOT MEASURED, pinned (agent review round 2,
+	 * R2-2): a resolution keeps the entry - it is the row's home - and marks it
+	 * SETTLED, and `pendingSendForView` skips settled entries so a claim the
+	 * server already answered can never be the "still going out" answer for the
+	 * NEXT message on that conversation. Without the skip the resolved entry,
+	 * being the oldest, was the one the pane's latch anchored to and the next
+	 * send flew with no wait line at all.
+	 */
+	paintPendingSend(SESSION_ID, { id: "older", text: "First", images: [] });
+	paintPendingSend(SESSION_ID, {
+		id: "newer",
+		text: "Second",
+		images: [],
+		/* The press's clock anchor rides the entry (agent review round 2, R2-5). */
+		submittedAt: 1234,
+	});
+	assert.equal(pendingSendForView(SESSION_ID)?.id, "older");
+	assert.equal(
+		pendingSendForView(SESSION_ID)?.submittedAt,
+		undefined,
+		"an entry painted without an anchor has none - the field is the press's",
+	);
+	settlePendingSend(SESSION_ID, "older");
+	assert.equal(
+		pendingSendForView(SESSION_ID)?.id,
+		"newer",
+		"the settled entry must not answer over the one that is still alive",
+	);
+	assert.equal(
+		pendingSendForView(SESSION_ID)?.submittedAt,
+		1234,
+		"and the anchor survives to the entry the pane's remount reads",
+	);
+	/* A settled entry is a row, not a claim: it still paints on the next mount. */
+	assert.equal(
+		seedPendingSends(SESSION_ID, EMPTY_TRANSCRIPT).records.some(
+			(record) => record.id === "older",
+		),
+		true,
+	);
+	settlePendingSend(SESSION_ID, "newer");
+	assert.equal(
+		pendingSendForView(SESSION_ID),
+		null,
+		"with every claim answered, nothing answers `still going out`",
 	);
 });

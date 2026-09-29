@@ -1,0 +1,95 @@
+[build] current: assets 2026-09-29T04:29:12.650Z >= sources 2026-09-29T04:12:00.287Z
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/.local-operator/sessions/93eb81c815b9/scratchpad/ev-backend/config/run/serve   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/slash625-0929-c27f
+  scratch       /Users/damian/.local-operator/sessions/93eb81c815b9/scratchpad/ev-backend/tmp/lo-renderer-driver-35337
+  frames        /Users/damian/.local-operator/sessions/93eb81c815b9/scratchpad/frames/after-light
+  app cwd       /Users/damian/.local-operator/sessions/93eb81c815b9/scratchpad/ev-backend/tmp/lo-renderer-driver-35337/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/slash625-0929-c27f/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[note] facts (from main)
+        {
+  "windowMode": "headless",
+  "appVersion": "0.31.16",
+  "platform": "darwin",
+  "title": "Local Operator",
+  "windowSize": {
+    "width": 1380,
+    "height": 900
+  },
+  "contentBounds": {
+    "width": 1380,
+    "height": 900
+  },
+  "visible": false,
+  "focused": false,
+  "minimized": false,
+  "frames": [],
+  "outDir": "/Users/damian/.local-operator/sessions/93eb81c815b9/scratchpad/frames/after-light"
+}
+[PASS] window mode is headless and the window is never shown or focused
+[PASS] the app is in the palette this run photographs
+[PASS] Cmd-N staged a fresh draft on the chat route - the new chat these gestures are about
+[PASS] the draft pane mounts a composer
+[PASS] the composer is empty before /help is typed
+[PASS] sessionless-help-light draws the light palette its name claims
+        DOM localOperatorLight #f2ede3; mean luma 185.4 vs 237.3 own / 32.1 other
+[PASS] /help opens its picker on a pane with no conversation
+[PASS] /help prints no refusal sentence
+[PASS] /help's picker closes on Escape
+[PASS] the composer is empty before /theme is typed
+[PASS] sessionless-theme-light draws the light palette its name claims
+        DOM localOperatorLight #f2ede3; mean luma 184.4 vs 237.3 own / 32.1 other
+[PASS] /theme opens its picker on a pane with no conversation
+[PASS] /theme prints no refusal sentence
+[PASS] /theme's picker closes on Escape
+[PASS] the composer is empty before /login is typed
+[PASS] sessionless-login-light draws the light palette its name claims
+        DOM localOperatorLight #f2ede3; mean luma 185.3 vs 237.3 own / 32.1 other
+[PASS] /login opens its picker on a pane with no conversation
+[PASS] /login prints no refusal sentence
+[PASS] /login's picker closes on Escape
+[PASS] the composer is empty before /logout is typed
+[PASS] sessionless-logout-light draws the light palette its name claims
+        DOM localOperatorLight #f2ede3; mean luma 170.5 vs 237.3 own / 32.1 other
+[PASS] /logout opens its picker on a pane with no conversation
+[PASS] /logout prints no refusal sentence
+[PASS] /logout's picker closes on Escape
+[PASS] the composer is empty before /resume is typed
+[PASS] sessionless-resume-light draws the light palette its name claims
+        DOM localOperatorLight #f2ede3; mean luma 175.8 vs 237.3 own / 32.1 other
+[PASS] /resume opens its picker on a pane with no conversation
+[PASS] /resume prints no refusal sentence
+[PASS] /resume's picker closes on Escape
+[PASS] the sanity message reached the transcript and the empty state is gone
+[PASS] the mock provider answered, so the pane is on a live conversation
+[PASS] the pane now addresses a real session
+[PASS] sessionless-theme-live-light draws the light palette its name claims
+        DOM localOperatorLight #f2ede3; mean luma 184.5 vs 237.3 own / 32.1 other
+[PASS] /theme on a live conversation still presents the same picker
+[PASS] every capture is a frame the app held still for, with no toast on it
+[PASS] no process from this run outlived its boot
+
+frames: sessionless-help-light.png, sessionless-login-light.png, sessionless-logout-light.png, sessionless-resume-light.png, sessionless-theme-light.png, sessionless-theme-live-light.png
+frames directory: /Users/damian/.local-operator/sessions/93eb81c815b9/scratchpad/frames/after-light
+app log: /Users/damian/.local-operator/sessions/93eb81c815b9/scratchpad/ev-backend/tmp/lo-renderer-driver-35337/app-scene.log
+scratch removed (--clean)
+
+ALL CHECKS PASSED
