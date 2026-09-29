@@ -121,9 +121,22 @@ const MonitorRowView = ({ row }: { row: MonitorRow }) => {
 			</span>
 			<div className={cn("flex min-w-0 flex-1 flex-col")}>
 				<div className={cn("flex items-baseline gap-1.5")}>
+					{/*
+					 * The due SLOT yields; the STATE WORD does not. A row with no due
+					 * instant carries a word in its place (`disabled`, `waiting`), and
+					 * that word is the row's verdict rather than a label: a clipped due
+					 * label is recoverable context (the whole text rides `title`), while
+					 * a clipped `disabl…` beside a free-text reason reads as a defect —
+					 * measured in the first capture of `monitors-health`, where both
+					 * shrinkable slots split the overflow and the reason's own length
+					 * decided how much of the state survived. `nextDueAt === null` is
+					 * exactly the state-word condition the model owns, so the branch
+					 * reads it rather than re-deriving it from the label's text.
+					 */}
 					<span
 						className={cn(
-							"min-w-0 truncate text-meta",
+							"truncate text-meta",
+							row.nextDueAt === null ? "shrink-0" : "min-w-0",
 							row.alerting ? "text-warning" : "text-ink-muted",
 						)}
 						title={row.whenLabel}
