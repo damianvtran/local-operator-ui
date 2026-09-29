@@ -166,6 +166,15 @@ export const BrokenAttachment = ({
 			 */
 			role="img"
 			aria-label={`${name} ${detail}`}
+			/*
+			 * The title is the SAME sentence for the pointer reader: at 66px there is no
+			 * room for it as prose and the glyph alone reads as "still loading", so the
+			 * tooltip is the only way to reach the reason without a screen reader (UX
+			 * round 1, U5). The count clause still counts this picture - the run DID
+			 * produce it; what failed is this reader's copy, and that is what the
+			 * sentence says.
+			 */
+			title={`${name} ${detail}`}
 		>
 			<ImageOff className="size-4 shrink-0 text-ink-dim" aria-hidden={true} />
 		</div>

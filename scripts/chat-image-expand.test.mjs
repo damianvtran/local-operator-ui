@@ -282,7 +282,7 @@ const FILE_ACTIONS_WRAPPER = ".file-actions-menu";
 const UNTABBABLE_REVEAL = /\binvisible\b|group-hover:visible/;
 /** The store's own failure sentence, which the digest-backed row must say. */
 const STORE_COPY_RE =
-	/Screenshot could not be displayed\. Its stored copy is not available to this reader\./;
+	/Image could not be displayed\. Its stored copy is not available to this reader\./;
 
 /* ------------------------------------------------------------------ harness */
 
@@ -542,7 +542,7 @@ test("a canonical image — the row that had no click at all — expands too", a
 			React.createElement(CanonicalImage, {
 				image: transcriptImage,
 				scope: transcriptScope,
-				label: "Screenshot",
+				label: "Image",
 			}),
 		);
 		const picture = pictureButton(api.document);
@@ -556,7 +556,7 @@ test("a canonical image — the row that had no click at all — expands too", a
 		assert.equal(
 			api.document.getElementById(dialog.getAttribute("aria-labelledby"))
 				.textContent,
-			"Screenshot",
+			"Image",
 			"the row's own label names the overlay, not the blob's UUID",
 		);
 	});
@@ -872,7 +872,7 @@ test("a canonical picture with no bytes is a failure row, not an untappable pict
 					mimeType: "image/png",
 				},
 				scope: transcriptScope,
-				label: "Screenshot",
+				label: "Image",
 			}),
 		);
 		await api.settle(
@@ -942,6 +942,7 @@ test("a condensed group's pictures are named, expandable thumbnails", async () =
 			React.createElement(FoldMedia, {
 				images: [transcriptImage, second],
 				scope: transcriptScope,
+				onRevealMore: () => {},
 			}),
 		);
 
@@ -964,8 +965,8 @@ test("a condensed group's pictures are named, expandable thumbnails", async () =
 		];
 		assert.deepEqual(
 			controls.map((control) => control.getAttribute("aria-label")),
-			["Expand Screenshot 1", "Expand Screenshot 2"],
-			"each picture's name says WHICH one it is",
+			["Expand Image 1", "Expand Image 2"],
+			"each picture's name says WHICH one it is, in the same noun as the clause",
 		);
 		const pictures = [
 			...api.document.querySelectorAll("[data-fold-media] img"),
@@ -1003,7 +1004,7 @@ test("a condensed group's pictures are named, expandable thumbnails", async () =
 			api.document.getElementById(
 				api.document.querySelector(DIALOG).getAttribute("aria-labelledby"),
 			).textContent,
-			"Screenshot 2",
+			"Image 2",
 			"and the overlay is named for the picture that was pressed",
 		);
 	});
@@ -1015,6 +1016,7 @@ test("one picture in a group is named as one picture", async () => {
 			React.createElement(FoldMedia, {
 				images: [transcriptImage],
 				scope: transcriptScope,
+				onRevealMore: () => {},
 			}),
 		);
 		assert.equal(
@@ -1025,8 +1027,8 @@ test("one picture in a group is named as one picture", async () => {
 		);
 		assert.equal(
 			pictureButton(api.document).getAttribute("aria-label"),
-			"Expand Screenshot",
-			'a lone picture is not "Screenshot 1"',
+			"Expand Image",
+			'a lone picture is not "Image 1"',
 		);
 	});
 });
@@ -1098,8 +1100,15 @@ test("the strip is capped at one row, and says how many it is not showing", asyn
 			attachment: null,
 			mimeType: "image/png",
 		}));
+		let revealed = 0;
 		await api.render(
-			React.createElement(FoldMedia, { images: many, scope: transcriptScope }),
+			React.createElement(FoldMedia, {
+				images: many,
+				scope: transcriptScope,
+				onRevealMore: () => {
+					revealed += 1;
+				},
+			}),
 		);
 		const items = [...api.document.querySelectorAll("[data-fold-media] li")];
 		assert.equal(items.length, 5, "one row of slots, whatever the count");
@@ -1108,11 +1117,20 @@ test("the strip is capped at one row, and says how many it is not showing", asyn
 			4,
 			"four pictures, because the fifth slot is the count",
 		);
+		/*
+		 * U1: past the cap this slot is the only route to the pictures the row did
+		 * not draw, so it is a real button - the fold's own toggle, in the app - and
+		 * not inert text a reader can do nothing with.
+		 */
+		const more = items.at(-1).querySelector("button");
+		assert.ok(more, "the count slot is a control, not text");
 		assert.equal(
-			items.at(-1).textContent,
-			"+4 more",
-			"and the reader is told how many they are not seeing, in words",
+			more.textContent,
+			"+4 more images",
+			"and it says how many, and of what",
 		);
+		await api.click(more);
+		assert.equal(revealed, 1, "pressing it asks the fold's owner to open");
 	});
 });
 
@@ -1148,6 +1166,7 @@ test("a tile whose bytes are still coming reserves its box rather than calling t
 			React.createElement(FoldMedia, {
 				images: [durableImage("image-expand:durable:1", "b")],
 				scope: transcriptScope,
+				onRevealMore: () => {},
 			}),
 		);
 		const reserved = api.document.querySelector("[data-attachment-reserved]");
@@ -1184,6 +1203,7 @@ test("a tile whose bytes never came shows the receipt, bounded to the tile", asy
 			React.createElement(FoldMedia, {
 				images: [durableImage("image-expand:durable:2", "c")],
 				scope: transcriptScope,
+				onRevealMore: () => {},
 			}),
 		);
 		await api.settle(
@@ -1208,6 +1228,16 @@ test("a tile whose bytes never came shows the receipt, bounded to the tile", asy
 			/could not be displayed/,
 			"named rather than a silent icon: a reader is told which attachment failed, and why",
 		);
+		/*
+		 * U5: the same sentence reaches the pointer reader as the tile's tooltip -
+		 * at 66px there is no room for it as prose, and the glyph alone reads as
+		 * "still loading".
+		 */
+		assert.match(
+			receipt.getAttribute("title") ?? "",
+			/could not be displayed/,
+			"and the tile says why on hover, not only to a screen reader",
+		);
 	});
 });
 
@@ -1229,10 +1259,12 @@ test("the real <img> survives the live-to-settled transition without remounting"
 				foldElement({
 					...props,
 					mediaCount: images.length,
-					condensedMedia: React.createElement(FoldMedia, {
-						images,
-						scope: transcriptScope,
-					}),
+					condensedMedia: (expand) =>
+						React.createElement(FoldMedia, {
+							images,
+							scope: transcriptScope,
+							onRevealMore: expand,
+						}),
 				}),
 			);
 		await render({
@@ -1256,6 +1288,53 @@ test("the real <img> survives the live-to-settled transition without remounting"
 			api.document.querySelector("[data-fold-media] img"),
 			picture,
 			"and so does the picture's - nothing remounts, so nothing re-decodes or flickers",
+		);
+	});
+});
+
+test("the count slot opens the fold it belongs to (U1)", async () => {
+	await mount(async (api) => {
+		/*
+		 * UX round 1, U1: past the cap the count slot is the only route to the
+		 * pictures the row did not draw, and it was inert text. It is a button now
+		 * whose press is the FOLD'S OWN toggle, so pressing it must open the fold -
+		 * the strip unmounts and the rows it stood for mount, exactly as the
+		 * header's own press does. Mounted on the real `TraceFold` because the
+		 * toggle is the fold's to hand over, and the wiring is what is under test.
+		 */
+		const many = Array.from({ length: 8 }, (_, index) => ({
+			id: `image-expand:more:${index}`,
+			data: PNG_BASE64,
+			attachment: null,
+			mimeType: "image/png",
+		}));
+		await api.render(
+			foldElement({
+				sectionLive: false,
+				mediaCount: many.length,
+				condensedMedia: (expand) =>
+					React.createElement(FoldMedia, {
+						images: many,
+						scope: transcriptScope,
+						onRevealMore: expand,
+					}),
+			}),
+		);
+		const strip = api.document.querySelector("[data-fold-media]");
+		assert.ok(strip, "the strip is on screen while condensed");
+		const more = [...strip.querySelectorAll("button")].find((control) =>
+			/more images?/.test(control.textContent ?? ""),
+		);
+		assert.ok(more, "the count slot is a real button");
+		await api.click(more);
+		assert.equal(
+			api.document.querySelector("[data-fold-media]"),
+			null,
+			"pressing it opens the fold: the strip hands over to the rows",
+		);
+		assert.ok(
+			api.document.querySelector('[data-testid="fold-row"]'),
+			"and the rows it stood for are mounted",
 		);
 	});
 });

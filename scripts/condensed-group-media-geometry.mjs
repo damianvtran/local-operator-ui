@@ -23,8 +23,11 @@
  *  - the thumbnail is at the frame's own 64px floor, never at the row's 240px
  *    ceiling, which is the ceiling the EXPANDED state draws its picture at — so
  *    the two heights either side of the reader's press are both in the table;
- *  - eight pictures are where the row wraps, and the height then grows by a
- *    row of tiles rather than by a figure per picture.
+ *  - eight pictures are one capped row like any other: the fifth slot is the
+ *    `+N more` count rather than a fifth picture (`FOLD_MEDIA_LIMIT`), so the
+ *    height does not grow with the count - the earlier claim here ("where the
+ *    row wraps") described the pre-cap strip, and the rig's `tileRows` reading
+ *    is what refused it.
  *
  * Raw CDP against a private headless Chrome, deliberately the same approach as
  * `capture-evidence.mjs` and `chat-alignment-geometry.mjs` (fresh user-data-dir
@@ -84,7 +87,9 @@ const STORIES = [
 	["chat-trace-fold--image-tones", 1280, 200],
 	["chat-trace-fold--image-unavailable", 1280, 200],
 	/* The narrow column, where the CAP is the thing that has to hold: six tiles
-	   and five gaps are 638px, which is what the limit is derived from. */
+	   and their five 8px gutters are 628px (not the 638px the pre-`gap-2`
+	   arithmetic said), past this rig's own 576px narrow column - that is the
+	   sum the limit is derived from. */
 	["chat-trace-fold--images-many", 640, 200],
 	["chat-trace-fold--images-three", 640, 200],
 	[

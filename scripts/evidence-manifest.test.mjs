@@ -2282,6 +2282,7 @@ const BRANCH_RECORDS = [
 	 */
 	"condensedTurnMediaRestampNote",
 	"condensedGroupMediaFoldTwoNote",
+	"condensedPicturesRoundOneRemediationNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

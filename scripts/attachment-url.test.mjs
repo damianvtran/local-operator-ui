@@ -308,12 +308,52 @@ test("a warm mount does not ratchet the refcount (R1)", async () => {
 	// must drop the count to zero and revoke. Before the fix the initializer had
 	// added one ref per warm mount (refs=6) and this blob lived forever.
 	holder.unmount();
+	// The revoke is deferred to the end of the task now (rule 3) so a handover
+	// can cancel it; one tick is past that point.
+	await tick();
 	assert.equal(
 		blobs.live.size,
 		0,
 		"five warm cycles net zero — the pre-fix code stranded this blob at refs=5",
 	);
 	assert.equal(blobs.revoked, 1, "the blob is actually revoked");
+});
+
+test("a handover inside one task re-reads nothing and creates nothing (M1/Q1)", async () => {
+	reset();
+	const digest = digestFor(6);
+	/*
+	 * The fold swap, in miniature: the outgoing holder unmounts and the next one
+	 * mounts before the task yields, which is one React commit's effect flush
+	 * (`trace-fold.tsx` / `turn-summary.tsx` hand the strip to the rows in
+	 * exactly this order). The deferred release must cancel and hand the blob
+	 * over - one read, one blob - where the synchronous revoke it replaces
+	 * meant a second IPC read of bytes that were on screen a moment ago
+	 * (agent review round 1, M1; QA's Q1: one digest, three reads across
+	 * condense -> open -> close).
+	 */
+	const first = mountImage(durable(digest));
+	settleLast();
+	await tick();
+	assert.equal(requests.length, 0, "the first holder's read is done");
+	const url = first.value.url;
+
+	first.unmount();
+	const second = mountImage(durable(digest));
+	assert.equal(
+		second.value.url,
+		url,
+		"the next holder paints the SAME blob on its first frame",
+	);
+	await tick();
+	assert.equal(requests.length, 0, "the handover re-read nothing");
+	assert.equal(blobs.created, 1, "and created no second blob");
+	assert.equal(blobs.revoked, 0, "nothing was revoked in the handover");
+
+	second.unmount();
+	await tick();
+	assert.equal(blobs.revoked, 1, "and the last holder leaving still revokes");
+	assert.equal(blobs.live.size, 0, "with no blob left behind");
 });
 
 test("StrictMode's double-invoked initializer takes no reference (R1)", async () => {
@@ -340,6 +380,7 @@ test("StrictMode's double-invoked initializer takes no reference (R1)", async ()
 	);
 
 	holder.unmount();
+	await tick();
 	assert.equal(blobs.live.size, 0, "no blob outlives its last holder");
 });
 
@@ -383,6 +424,7 @@ test("a requester that stays gets its bytes even when others leave (R2)", async 
 	assert.ok(c.value.url?.startsWith("blob:"), "the survivor is handed its URL");
 	assert.equal(blobs.live.size, 1, "the blob it is showing is alive");
 	c.unmount();
+	await tick();
 	assert.equal(blobs.live.size, 0, "and dies with it");
 });
 
@@ -424,6 +466,7 @@ test("a departed row does not starve one still waiting on the same digest (R1/r2
 		"and they are not revoked out from under it",
 	);
 	waiting.unmount();
+	await tick();
 	assert.equal(blobs.live.size, 0, "the last holder leaving still revokes");
 });
 

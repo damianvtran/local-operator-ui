@@ -208,7 +208,7 @@ test("a condensed run keeps the pictures its rows would have drawn", async (t) =
 		span: null,
 		live: null,
 		sectionLive: false,
-		condensedMedia: mediaStrip(),
+		condensedMedia: () => mediaStrip(),
 	});
 	assert.equal(rows(mounted), 0, "the group arrives condensed");
 	assert.ok(
@@ -262,7 +262,7 @@ test("the picture does not flicker at the settle transition", async (t) => {
 		span: { startedAtMs: 1_000, endedAtMs: 11_000, running: true },
 		live: LIVE,
 		sectionLive: true,
-		condensedMedia: mediaStrip(),
+		condensedMedia: () => mediaStrip(),
 	});
 	const liveNode = mounted.container.querySelector(
 		'[data-testid="fold-media"]',
@@ -274,7 +274,7 @@ test("the picture does not flicker at the settle transition", async (t) => {
 		span: { startedAtMs: 1_000, endedAtMs: 23_000, running: false },
 		live: null,
 		sectionLive: false,
-		condensedMedia: mediaStrip(),
+		condensedMedia: () => mediaStrip(),
 	});
 	assert.equal(
 		mounted.container.querySelector('[data-testid="fold-media"]'),

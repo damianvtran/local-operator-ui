@@ -96,13 +96,15 @@ export type TurnSummaryProps = {
 	 * condensing exists to remove - `TraceFold`'s `condensedMedia` states the
 	 * same rule one fold down. The caller composes the node
 	 * (`canonical-transcript.tsx` builds a `FoldMedia` from the hidden rows'
-	 * images), because the transcript is what knows a record's images.
+	 * images), because the transcript is what knows a record's images; the fold
+	 * hands it THIS bar's own toggle so the strip's `+N more images` slot can
+	 * open the fold rather than be a dead end (UX round 1, U1).
 	 *
 	 * Render it ONLY while collapsed: open, every row draws its own media
 	 * (`TranscriptRow`'s `media`) and a strip here as well would put one
 	 * picture on screen twice.
 	 */
-	condensedMedia?: ReactNode;
+	condensedMedia?: (expand: () => void) => ReactNode;
 	/**
 	 * How many pictures `condensedMedia` stands for, for the summary's own
 	 * clause. A number beside the node rather than something read out of it,
@@ -240,8 +242,20 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 			 * has to trade against; the block's rule still closes the whole block.
 			 * Only while condensed: open, every row draws its own media and rendering
 			 * both would show one picture twice.
+			 *
+			 * The 8px of bottom padding is what the strip's own top gap measures: with
+			 * the tiles sitting straight on the block's rule (1px), they read as
+			 * standing ON the line rather than inside the bar whose pictures they are
+			 * (design round 1, D1 - the same strip in the expanded state clears the
+			 * rule by 5-6px, so the rule follows the strip here rather than the old
+			 * bar height). A run with no pictures passes no node, so this wrapper
+			 * does not exist for it and the no-picture bar stays byte-identical.
 			 */}
-			{!open && condensedMedia}
+			{!open && condensedMedia && (
+				<div className={cn("pb-2")}>
+					{condensedMedia(() => onOpenChange(true))}
+				</div>
+			)}
 		</div>
 	);
 };
