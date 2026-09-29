@@ -62,6 +62,7 @@ const {
 	chosenByHandSurvives,
 	completionFor,
 	clickFooter,
+	commandRowSlot,
 	enterFooter,
 	extensionFor,
 	FLAG_LIST_SOURCES,
@@ -2690,4 +2691,76 @@ test("the pre-flight refresh line is keyed on the POSTED argument (U2/D3)", () =
 			false,
 			`"${posted}" is a title, so nothing is spent`,
 		);
+});
+
+/*
+ * The COMMAND row's right-edge slot — the operator's `/fast` report.
+ *
+ * `value?` used to trail every optional command: parser jargon rendered in a
+ * control's clothing, describing what the parser ACCEPTS rather than anything
+ * the user needs. The class is gone — optional and parameterless rows show
+ * nothing — a REQUIRED row keeps its one line, and `/fast` shows its live dial
+ * (`on`/`off` off the spec in force; nothing when the model reports no tier).
+ */
+test("the command row's slot is the dial's state, a requirement, or nothing", () => {
+	const command = (over) => ({
+		name: "fast",
+		description: "",
+		aliases: [],
+		arguments: "optional",
+		echo: false,
+		consumes_prompt: false,
+		destination: "session.fast",
+		execution: "owner",
+		...over,
+	});
+	// The dial row answers the spec's own tri-state: on, off, and NOTHING (not
+	// an `off`) for a model that reports no fast tier.
+	assert.equal(commandRowSlot(command({}), "on"), "on");
+	assert.equal(commandRowSlot(command({}), "off"), "off");
+	assert.equal(commandRowSlot(command({}), null), null);
+	assert.equal(commandRowSlot(command({}), undefined), null);
+	// The class the report is about: an optional command with no dial of its
+	// own shows no slot — and a stray state handed to one paints nothing.
+	assert.equal(
+		commandRowSlot(
+			command({ name: "team", destination: "session.team" }),
+			null,
+		),
+		null,
+	);
+	assert.equal(
+		commandRowSlot(
+			command({ name: "team", destination: "session.team" }),
+			"on",
+		),
+		null,
+	);
+	// A REQUIRED command keeps its requirement line (the one case where the
+	// user must supply something), and a parameterless command shows nothing.
+	assert.equal(
+		commandRowSlot(
+			command({ arguments: "required", destination: "session.rename" }),
+			null,
+		),
+		"needs a value",
+	);
+	assert.equal(
+		commandRowSlot(
+			command({ arguments: "none", destination: "providers" }),
+			"on",
+		),
+		null,
+	);
+	// And the literal cannot ride back in beside the decision: the row renders
+	// `commandRowSlot`'s answer, so the old placeholder arm is gone from the
+	// file. (The arm's exact shape is named, not the bare word — the comments
+	// beside the fix quote it on purpose.)
+	assert.doesNotMatch(
+		readFileSync(
+			"src/renderer/src/features/chat/components/slash-commands.tsx",
+			"utf8",
+		),
+		/command\.arguments === "required" \? "needs a value" : "value\?"/,
+	);
 });
