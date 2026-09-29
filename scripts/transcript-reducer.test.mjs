@@ -541,6 +541,60 @@ test("throughput: 5000 deltas over a 400-row transcript stays sub-millisecond pe
 	assert.equal(state.records.at(-1).text.length, n);
 });
 
+test("a durable completion marker paints error, interrupted and closed rows", () => {
+	// The OTHER producer of outcome rows: a `completion_attention` entry
+	// replayed from the journal (the shape the core actually writes — `type:
+	// "custom"`, details under `payload`, checked against the frozen 664a
+	// transcript). v2 (2026-09-29) adds the neutral `closed` closure beside the
+	// two incident kinds, and a `complete` marker must still project to nothing.
+	const marker = (kind) => ({
+		id: `m-${kind}`,
+		ts: 2,
+		type: "custom",
+		payload: {
+			custom_type: "completion_attention",
+			details: {
+				conversation_id: "session/123456abcdef",
+				token: "t1",
+				anchor: `completion-${kind}-anchor`,
+				kind,
+			},
+		},
+	});
+	const records = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			marker("error"),
+			marker("interrupted"),
+			marker("closed"),
+			marker("complete"),
+		],
+		has_more: false,
+		cursor_missing: false,
+	}).records;
+	const byId = new Map(records.map((record) => [record.id, record]));
+	assert.equal(
+		byId.get("completion-error-anchor").text,
+		"Stopped with an error",
+	);
+	assert.equal(byId.get("completion-error-anchor").level, "error");
+	assert.equal(byId.get("completion-interrupted-anchor").text, "Interrupted");
+	assert.equal(byId.get("completion-interrupted-anchor").level, "warning");
+	const closed = byId.get("completion-closed-anchor");
+	assert.equal(closed.kind, "notice");
+	assert.equal(closed.text, "Completed — runtime retired/disposed");
+	assert.equal(closed.level, "info", "the closure never wears danger ink");
+	assert.equal(
+		closed.complete,
+		true,
+		"the marker retires the working-line wait",
+	);
+	assert.equal(
+		byId.get("completion-complete-anchor"),
+		undefined,
+		"a completion marker projects to nothing",
+	);
+});
+
 // --- crash-recovered outcomes -------------------------------------------------
 //
 // `withRecoveredOutcome` is the only producer of the row for an outcome that
@@ -590,6 +644,81 @@ test("a crash-recovered outcome is rendered at its own anchor, and is ackable", 
 		).text,
 		"Stopped with an error",
 	);
+});
+
+test("a closed outcome synthesizes as an info receipt and retires like a stop", () => {
+	// v2 (2026-09-29): a disposal that caught a zero-work run publishes
+	// `closed`. The desktop must paint the receipt — never "Stopped with an
+	// error" — and the row keeps `complete` so the working-line ladder ends a
+	// wait for a runtime that has been disposed.
+	const state = withRecoveredOutcome(
+		seeded(),
+		attention({ kind: "closed" }),
+		false,
+		new Set(),
+	);
+	const row = rowFor(state);
+	assert.equal(row.kind, "notice");
+	assert.equal(row.text, "Completed — runtime retired/disposed");
+	assert.equal(row.level, "info");
+	assert.equal(row.complete, true);
+});
+
+test("a durable retired marker paints the warning row", () => {
+	// The retire-for-build arm (2026-09-29; core kind `retired`, seed
+	// 7e797aaaf6e7): the same durable shape as the closure cell above, one tier
+	// apart — warning, never danger — and `complete: true` so the working-line
+	// wait retires beside the row.
+	const records = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "m-retired",
+				ts: 2,
+				type: "custom",
+				payload: {
+					custom_type: "completion_attention",
+					details: {
+						conversation_id: "session/7e797aaaf6e7",
+						token: "t3",
+						anchor: "completion-retired-anchor",
+						kind: "retired",
+						cause: "runtime-retired",
+						reason:
+							"the runtime retired so the next engage would run a newer build",
+					},
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	}).records;
+	assert.equal(records.length, 1);
+	assert.equal(records[0].kind, "notice");
+	assert.equal(
+		records[0].text,
+		"Retired for an update — a turn was in flight and was cut; its earlier output is kept",
+	);
+	assert.equal(records[0].level, "warning", "a cut for an update is warning");
+	assert.equal(records[0].complete, true, "the marker retires the wait");
+});
+
+test("a retired outcome synthesizes as a warning receipt", () => {
+	// Same synthesis path as the closure cell above; the retired arm must paint
+	// the warning tier — never danger, never the closure's info whisper.
+	const state = withRecoveredOutcome(
+		seeded(),
+		attention({ kind: "retired" }),
+		false,
+		new Set(),
+	);
+	const row = rowFor(state);
+	assert.equal(row.kind, "notice");
+	assert.equal(
+		row.text,
+		"Retired for an update — a turn was in flight and was cut; its earlier output is kept",
+	);
+	assert.equal(row.level, "warning");
+	assert.equal(row.complete, true);
 });
 
 test("the recovered row survives its own acknowledgement", () => {
@@ -660,7 +789,11 @@ test("synthesis is idempotent and never overwrites a real durable row", () => {
 	);
 });
 
-test("only error and interrupted outcomes are synthesized", () => {
+test("only error, interrupted and closed outcomes are synthesized", () => {
+	// `closed` joined the synthesizable set in v2 (2026-09-29): a disposal's
+	// neutral closure is an outcome the transcript keeps a row for, exactly as
+	// it keeps one for an incident. `complete` still synthesizes nothing — a
+	// finished turn has its own rows.
 	for (const kind of ["complete", null, undefined, "weird"]) {
 		assert.equal(
 			rowFor(

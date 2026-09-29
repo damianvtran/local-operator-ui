@@ -1435,6 +1435,26 @@ function collapseRecords(state: TranscriptState): TranscriptState {
  * names the harness writes (`session/peer.py`, `harness/wake.py`).
  */
 const PEER_MESSAGE_CUSTOM_TYPE = "peer_message";
+/**
+ * The core's neutral closure copy (v2, 2026-09-29). A `closed` completion is a
+ * disposal that caught a run which spent no provider round-trip: a receipt,
+ * not a verdict. Byte-identical to `harness/rows.py::CLOSED_NOTICE_TEXT` in
+ * local-operator — the two repos render the same sentence for the same record,
+ * and drift between them is the divergence this feature exists to remove.
+ */
+const CLOSED_OUTCOME_TEXT = "Completed — runtime retired/disposed";
+/*
+ * The retire-for-build row's sentence (core kind `retired`, 2026-09-29; seed
+ * 7e797aaaf6e7): a bound-expired build drain cut a live turn, so the row stays
+ * TRUTHFUL — the turn was cut — but reads in WARNING ink, never danger: the
+ * update was routine. The kept-output clause (design round 2, D1) is the one
+ * fact a user who lost work needs, so it rides in both repos' constants.
+ * Byte-identical to the core's
+ * `harness/rows.py::RETIRED_NOTICE_TEXT`, so both repos print the same words
+ * for the same record (the discipline `CLOSED_OUTCOME_TEXT` above states).
+ */
+const RETIRED_OUTCOME_TEXT =
+	"Retired for an update — a turn was in flight and was cut; its earlier output is kept";
 const WAKE_PROMPT_CUSTOM_TYPE = "wake_prompt";
 /**
  * The harness's MCP-unavailable warning, which takes its own arm in `customRow`.
@@ -2069,21 +2089,49 @@ function durableRecord(
 		payload.custom_type === "completion_attention"
 	) {
 		const details = (payload.details ?? {}) as Record<string, unknown>;
-		if (
-			typeof details.anchor === "string" &&
-			(details.kind === "error" || details.kind === "interrupted")
-		) {
-			// Preserve the marker's durable position. Appending an old failure at
-			// the current retry tail would misrepresent which outcome was viewed.
-			return {
-				kind: "notice",
-				id: details.anchor,
-				ts,
-				complete: true,
-				text:
-					details.kind === "error" ? "Stopped with an error" : "Interrupted",
-				level: details.kind === "error" ? "error" : "warning",
-			};
+		if (typeof details.anchor === "string") {
+			if (details.kind === "closed") {
+				// THE NEUTRAL CLOSURE (v2, 2026-09-29): the disposal caught a run
+				// that spent no provider round-trip, so the record is a receipt —
+				// info ink, never danger. It keeps `complete: true` so the
+				// working-line ladder retires the wait the same way an incident
+				// does: a runtime that has been disposed is not still working.
+				return {
+					kind: "notice",
+					id: details.anchor,
+					ts,
+					complete: true,
+					text: CLOSED_OUTCOME_TEXT,
+					level: "info",
+				};
+			}
+			if (details.kind === "retired") {
+				// THE RETIRE-FOR-BUILD ROW (2026-09-29): a cut for an update is
+				// warning, never danger, and it keeps `complete: true` for the
+				// closure's own reason above — the runtime is quitting, so the
+				// working-line wait must retire beside the row.
+				return {
+					kind: "notice",
+					id: details.anchor,
+					ts,
+					complete: true,
+					text: RETIRED_OUTCOME_TEXT,
+					level: "warning",
+				};
+			}
+			if (details.kind === "error" || details.kind === "interrupted") {
+				// Preserve the marker's durable position. Appending an old failure at
+				// the current retry tail would misrepresent which outcome was viewed.
+				return {
+					kind: "notice",
+					id: details.anchor,
+					ts,
+					complete: true,
+					text:
+						details.kind === "error" ? "Stopped with an error" : "Interrupted",
+					level: details.kind === "error" ? "error" : "warning",
+				};
+			}
 		}
 	}
 	if (entry.type !== "message") return null;
@@ -5038,7 +5086,10 @@ export function withRecoveredOutcome(
 	const kind = attention?.kind;
 	if (
 		!anchor ||
-		(kind !== "error" && kind !== "interrupted") ||
+		(kind !== "error" &&
+			kind !== "interrupted" &&
+			kind !== "closed" &&
+			kind !== "retired") ||
 		// Mirrors the TUI's retry guard: a historical failure must not be
 		// inserted at the tail of a retry that is already running.
 		streaming ||
@@ -5056,7 +5107,21 @@ export function withRecoveredOutcome(
 		// tail where the durable rows it follows already are.
 		ts: state.records.at(-1)?.ts ?? Date.now(),
 		complete: true,
-		text: kind === "error" ? "Stopped with an error" : "Interrupted",
-		level: kind === "error" ? "error" : "warning",
+		text:
+			kind === "closed"
+				? CLOSED_OUTCOME_TEXT
+				: kind === "retired"
+					? RETIRED_OUTCOME_TEXT
+					: kind === "error"
+						? "Stopped with an error"
+						: "Interrupted",
+		level:
+			kind === "closed"
+				? "info"
+				: kind === "retired"
+					? "warning"
+					: kind === "error"
+						? "error"
+						: "warning",
 	});
 }
