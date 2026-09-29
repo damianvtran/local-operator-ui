@@ -70,8 +70,9 @@ import {
  * rest `scaleX(0.6)` in `ink-dim`; preview `scaleX(0.9)` in `ink-muted`;
  * active `scaleX(1)` in `ink` (the reading-position mark); unloaded
  * `scaleX(0.4)` at 60% - the turn is not in the resident window yet, so the
- * jump will have to load first. Transitions are 140ms on transform+colour and
- * off under reduced motion. The building state keeps its one pulsing mark at
+ * jump will have to load first. Transitions are the `duration-fast` token's
+ * 120 ms (the rendered value, D3) on transform+colour and off under reduced
+ * motion. The building state keeps its one pulsing mark at
  * the list's head (the index is refreshing), and the rail renders nothing for
  * loading/empty/error as before.
  *
@@ -288,6 +289,7 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 	const [previewId, setPreviewId] = useState<string | null>(null);
 	const [openCardId, setOpenCardId] = useState<string | null>(null);
 	const tickElements = useRef(new Map<string, HTMLButtonElement>());
+	const trackRef = useRef<HTMLDivElement | null>(null);
 	const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -346,6 +348,30 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 		setPreviewId(null);
 		setOpenCardId(null);
 	}, [sessionId, clearTimers]);
+
+	/*
+	 * Reading-position follow (design round 1, D2/U1): with the active mark
+	 * now arriving from the reader's own position, the track must keep it in
+	 * its port - a 402-mark conversation scrolls the frame internally, and an
+	 * active mark below the fold is a rung the reader cannot see. The scroll is
+	 * written to the track's own `scrollTop` rather than `scrollIntoView`: the
+	 * latter walks every scrollable ancestor, which would scroll the transcript
+	 * out from under the reader. The 12px pad keeps the mark off the mask fades.
+	 */
+	useEffect(() => {
+		if (activeId === null) return;
+		const track = trackRef.current;
+		const element = tickElements.current.get(activeId);
+		if (track === null || element === undefined) return;
+		const top = element.offsetTop - track.offsetTop;
+		const bottom = top + element.offsetHeight;
+		const pad = 12;
+		if (top < track.scrollTop + pad) {
+			track.scrollTop = Math.max(0, top - pad);
+		} else if (bottom > track.scrollTop + track.clientHeight - pad) {
+			track.scrollTop = bottom - track.clientHeight + pad;
+		}
+	}, [activeId]);
 
 	// Timers outliving the component would setState into nothing. One cleanup.
 	useEffect(() => () => clearTimers(), [clearTimers]);
@@ -530,8 +556,18 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 			 */}
 			<div
 				data-rail-frame=""
+				ref={trackRef}
 				className={cn(
 					"max-h-[min(calc(100%-4rem),420px)] w-7 overflow-y-auto overscroll-contain",
+					/*
+					 * THE FRAME'S OWN SCROLLBAR IS CHROME INSIDE THE BAND (design
+					 * round 1, D1, measured): the app's 8px overlay thumb rendered
+					 * inside this 28px frame - its strip crossing the dash ends and
+					 * the mask dimming the last marks - so the frame keeps the
+					 * scroll but reads as a bare track; the mask's 24px fades
+					 * already say "more above/below".
+					 */
+					"[&::-webkit-scrollbar]:hidden",
 					"[mask-image:linear-gradient(to_bottom,transparent_0,#000_24px,#000_calc(100%-24px),transparent_100%)]",
 				)}
 			>

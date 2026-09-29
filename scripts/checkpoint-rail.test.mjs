@@ -378,6 +378,11 @@ test("ticks render from the manifest, in order, at the model's fractions", async
 		);
 		await rail.render({ checkpoints: dense });
 		assert.equal(rail.ticks().length, 267);
+		assert.deepEqual(
+			rail.ticks().map((tick) => tick.getAttribute("data-checkpoint-id")),
+			dense.map((entry) => entry.id),
+			"DOM order is manifest order, so the dense rail reads top to bottom",
+		);
 		/* Fixed pitch: every row is the same height, so order is DOM order. */
 		for (const tick of rail.ticks()) {
 			assert.ok(tick.className.includes("h-2.5"));

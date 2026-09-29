@@ -45,7 +45,8 @@ export type CheckpointMarkState = "rest" | "preview" | "active" | "unloaded";
  * `bg-ink-dim` appears on the rest and unloaded rows on purpose: it is the
  * role the contrast contract floors on canvas (`checkpoint rail tick`), so a
  * repaint that would erase the affordance fails a gate rather than shipping.
- * The transforms are the dsh ladder; the 140ms transition and the
+ * The transforms are the dsh ladder; the `duration-fast` token's transition
+ * (120 ms - the rendered value, D3) and the
  * reduce-motion off-switch live on the caller (`motion-reduce:transition-none`
  * plus the media query in `styles/index.css`) rather than here, because this
  * module is deliberately DOM-free.
@@ -54,7 +55,14 @@ export const CHECKPOINT_MARK_CLASS: Record<CheckpointMarkState, string> = {
 	rest: "scale-x-60 bg-ink-dim",
 	preview: "scale-x-90 bg-ink-muted",
 	active: "scale-x-100 bg-ink",
-	unloaded: "scale-x-40 bg-ink-dim opacity-60",
+	/*
+	 * 75% is the measured floor: the composite is ink-dim over canvas, and at
+	 * 60% the light themes fell to 2.42:1 (rosePineDawn) / 2.46:1
+	 * (localOperatorLight) - under the 3:1 non-text floor. At 75% every theme
+	 * in themes.generated.css clears it (rosePineDawn 3.17:1, worst case), so
+	 * the "not loaded" arm stays quiet without going under.
+	 */
+	unloaded: "scale-x-40 bg-ink-dim opacity-75",
 };
 
 /**
@@ -89,38 +97,6 @@ export function checkpointMarkState(options: {
  * journal ordinals grow monotonically, so the fraction is in [0, 1] by
  * construction and needs no clamp.
  */
-export type CheckpointTickPlacement = {
-	id: string;
-	/** 0 = track top, 1 = track bottom. */
-	fraction: number;
-};
-
-/**
- * Place every checkpoint on the rail.
- *
- * The degenerate case is ONE distinct seq (a single checkpoint, or a manifest
- * whose checkpoints all carry the same ordinal): the ratio is 0/0, and the
- * honest reading of "one mark" is the middle of the rail, not the top edge —
- * which is also where a tick would sit half-clipped. `0.5` is therefore the
- * rule, not a guard.
- */
-export function checkpointTickPlacement(
-	checkpoints: readonly Checkpoint[],
-): CheckpointTickPlacement[] {
-	if (checkpoints.length === 0) return [];
-	let minSeq = Number.POSITIVE_INFINITY;
-	let maxSeq = Number.NEGATIVE_INFINITY;
-	for (const checkpoint of checkpoints) {
-		if (checkpoint.seq < minSeq) minSeq = checkpoint.seq;
-		if (checkpoint.seq > maxSeq) maxSeq = checkpoint.seq;
-	}
-	const span = maxSeq - minSeq;
-	return checkpoints.map((checkpoint) => ({
-		id: checkpoint.id,
-		fraction: span > 0 ? (checkpoint.seq - minSeq) / span : 0.5,
-	}));
-}
-
 /**
  * The completion checkpoint's fallback title: its name, or `Turn N`.
  *

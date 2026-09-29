@@ -100,7 +100,7 @@ rAF timeline and the rail subtree's DOM mutations sampled in-page.
 | frame p50 / p95 / max (ms) | 8.3 / 9.9 / 23.8 | 8.3 / 9.9 / 16.2 |
 | frames over 25 / 50 ms | 0 / 0 | 0 / 0 |
 | card-up frames | 145 | 115 |
-| first open after the sweep began (ms) | 141 | 388 |
+| first open after the trace began (ms) | 141 | 388 |
 | rail-subtree DOM mutations, dwell / sweep | 30 / 0 | 24 / 96 |
 
 WHAT THIS DOES AND DOES NOT SAY. At the density case (402 ticks on a 10px

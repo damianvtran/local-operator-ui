@@ -2,8 +2,8 @@
  * The shared backward loader: one home for the fetch-until-resident policy
  * that three callers used to each carry a copy of — the reader's own paging,
  * the align path's fetch, and the jump's `ensureReachable` — plus the
- * whole-session turn OUTLINE the collapse's condensation and the rail both
- * read.
+ * whole-session turn OUTLINE the condensation lane's model-side fix consumes
+ * (the rail's rungs come from the store's own rows, not from here).
  *
  * WHY IT EXISTS. The transcript is newest-anchored and lazy: a row the reader
  * jumps to may be pages behind the loaded window, and before this module the
@@ -49,8 +49,8 @@ import { runsOf } from "./transcript-rows";
  * a commit after the promise resolves. Six frames (~100 ms) is generous for a
  * commit and still bounds a walk whose row will never appear; the loop re-reads
  * its state after each wait, so a slow frame costs latency, never correctness.
- * (`reveal-record.ts` carries the same number for the same reason; the two are
- * pinned together by the loader's suite.)
+ * (`reveal-record.ts` derives its number from this constant, so the two cannot
+ * drift.)
  */
 export const LOADER_SETTLE_FRAMES = 6;
 
