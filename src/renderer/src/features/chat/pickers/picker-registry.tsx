@@ -129,6 +129,23 @@ export type DestinationEntry =
 			kind: "picker";
 			component: FC<PickerContext>;
 			inline?: InlineArgumentSource;
+			/**
+			 * This picker addresses no conversation; presentable on a pane with
+			 * none (issue #625).
+			 *
+			 * The rows carrying it are the five `docs/design/panels-without-session.md`
+			 * § 12.5 measured as session-free and set aside as "one table row each
+			 * when they are wanted" — `/help`, `/theme`, `/login`, `/logout` and
+			 * `/resume`; #625 is that wanting. It is a per-ROW opt-in rather than a
+			 * widening of the whole kind because not every neighbour is
+			 * session-free: `/skills`, `/mcp` and `/reload` read `sessionId`
+			 * themselves, and this flag is a claim — "this one does not" — that
+			 * only the measured rows may make. `destinationNeedsSession` below is
+			 * its one reader, which is what keeps the dispatcher's gate, the
+			 * composer's staged line, its Enter footer and the palette in
+			 * agreement.
+			 */
+			sessionless?: true;
 	  } & ArgsBehavior)
 	| ({
 			kind: "machine-panel";
@@ -236,13 +253,28 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 	 * `kind === "aida"` arm owns the open-then-send order (see the kind's note).
 	 */
 	"aida.open": { kind: "aida" },
-	commands: { kind: "picker", component: HelpPalette },
+	/*
+	 * `/help` on a sessionless pane (issue #625): it reads the command
+	 * catalogue and nothing else, so the pane it was typed on is not an input —
+	 * the palette IS the read.
+	 */
+	commands: { kind: "picker", component: HelpPalette, sessionless: true },
 	"window.close": { kind: "direct", action: "exit" },
 	"transcript.clear": { kind: "direct", action: "clear" },
 	"transcript.copy": { kind: "picker", component: CopyPicker },
 	"sessions.new": { kind: "picker", component: NewSessionPicker },
 	"sessions.reload": { kind: "picker", component: ReloadPicker },
-	"sessions.resume": { kind: "picker", component: ResumePicker },
+	/*
+	 * `/resume` on a sessionless pane (issue #625): it lists every canonical
+	 * session and reads the pane's id only to mark the CURRENT row — a pane
+	 * with no conversation has no current row, and the pick is the very act of
+	 * choosing one.
+	 */
+	"sessions.resume": {
+		kind: "picker",
+		component: ResumePicker,
+		sessionless: true,
+	},
 	"sessions.stop": { kind: "picker", component: StopPicker },
 	"session.rename": {
 		kind: "picker",
@@ -362,6 +394,11 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 		kind: "picker",
 		component: ThemePicker,
 		/*
+		 * `/theme` on a sessionless pane (issue #625): the component reads
+		 * `onClose` and `action` and never the pane.
+		 */
+		sessionless: true,
+		/*
 		 * `runs: false` on purpose, unlike the other five. `/theme`'s destination
 		 * resolves to a DIALOG, and a dialog opened by an inline pick is exactly
 		 * the pattern rejected for `/model` (DESIGN §5.2): a modal that closes
@@ -389,8 +426,12 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 	skills: { kind: "picker", component: SkillsPicker },
 	usage: { kind: "machine-panel", component: UsageView },
 	analytics: { kind: "machine-panel", component: AnalyticsView },
-	"auth.login": { kind: "picker", component: LoginPicker },
-	"auth.logout": { kind: "picker", component: LogoutPicker },
+	/*
+	 * `/login` and `/logout` on a sessionless pane (issue #625): they read the
+	 * provider grid and the stored accounts, never the conversation.
+	 */
+	"auth.login": { kind: "picker", component: LoginPicker, sessionless: true },
+	"auth.logout": { kind: "picker", component: LogoutPicker, sessionless: true },
 	// Existing surfaces: navigate, never duplicate.
 	settings: {
 		kind: "navigate",
@@ -432,12 +473,13 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 /**
  * Whether this destination addresses a conversation at all.
  *
- * ONE derivation, because two surfaces quote the same refusal: the dispatcher's
- * `!sessionId` gate and the composer's staged line, which prints the dispatcher's
- * own sentence as a promise about the next Enter. Two copies of this predicate
- * disagree the moment one of them learns about a machine panel — the composer
- * would promise a refusal the dispatcher no longer gives, or print one for a
- * command that then runs.
+ * ONE derivation, because several surfaces quote the same refusal: the
+ * dispatcher's `!sessionId` gate, the composer's staged line (which prints the
+ * dispatcher's own sentence as a promise about the next Enter), its Enter
+ * footer, and the palette's routing. Two copies of this predicate disagree the
+ * moment one of them learns about a session-free row — the composer would
+ * promise a refusal the dispatcher no longer gives, or print one for a command
+ * that then runs.
  *
  * `undefined` (and any destination the catalogue has no row for) answers `true`:
  * an unknown destination is refused for the same reason the dispatcher's gate
@@ -447,17 +489,22 @@ export function destinationNeedsSession(
 	destination: string | undefined,
 ): boolean {
 	if (!destination) return true;
-	const kind = DESTINATIONS[destination]?.kind;
+	const entry = DESTINATIONS[destination];
+	if (!entry) return true;
 	/*
-	 * TWO KINDS ARE EXEMPT, and both are exempt for the same reason: they
-	 * address no conversation. A machine panel describes the machine; `/aida`
-	 * (the `aida` kind) OPENS her conversation, so a pane without one is exactly
-	 * the state it is written for rather than the refusal these callers promise.
-	 * Keeping the answer on the table is what lets the dispatcher, the composer's
-	 * staged line, its Enter footer and the palette agree without a name list —
-	 * see the predicate's own header for the failure the centralisation prevents.
+	 * THREE EXEMPTIONS, and each is exempt for the same reason: it addresses no
+	 * conversation. TWO KINDS — a machine panel describes the machine, and
+	 * `/aida` (the `aida` kind) OPENS her conversation, so a pane without one is
+	 * exactly the state it is written for rather than the refusal these callers
+	 * promise — plus the `picker` rows carrying the per-row `sessionless`
+	 * opt-in (issue #625): those were measured as reading no session and
+	 * present with `""` on a pane with none. Keeping the answer on the table is
+	 * what lets the dispatcher, the composer's two copy sites and the palette
+	 * agree without a name list — see the predicate's own header for the failure
+	 * the centralisation prevents.
 	 */
-	return kind !== "machine-panel" && kind !== "aida";
+	if (entry.kind === "machine-panel" || entry.kind === "aida") return false;
+	return !(entry.kind === "picker" && entry.sessionless === true);
 }
 
 /**
