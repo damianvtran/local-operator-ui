@@ -96,25 +96,52 @@ export type ReachOptions = {
 	mount: (distance: number) => void;
 	/** Fetch one older page; `false` when none was applied. */
 	loadOlder: () => Promise<boolean>;
+	/**
+	 * When the row is in the store: whether the store already holds the margin
+	 * above it (older rows) that a CENTRED landing needs. The mount can only
+	 * include rows the store has, so a target that is the store's oldest row —
+	 * the leading row of every fetched page — mounts with nothing above it and
+	 * centres clamped at the content's top (QA Q-2, measured −254 px, the first
+	 * ~8 rows of every page). The loop fetches another page while this is
+	 * false, inside `JUMP_MAX_PAGES`; optional, and `true` is the default for a
+	 * caller with no margin requirement.
+	 */
+	hasHeadroom?: () => boolean;
 };
 
 /**
  * Bring the row within the DOM's reach, or report that it cannot be reached.
  *
  * The loop is D7's near path with the render window added: load pages until
- * the row is in the model, then mount the window far enough to include it,
- * then wait for the commit. The budget is refused in both currencies the
+ * the row is in the model, fetch the margin's page while the store ends at
+ * the row (see `hasHeadroom`), then mount the window far enough to include
+ * it, then wait for the commit. The budget is refused in both currencies the
  * design names — pages fetched and rows mounted — and a refusal is a `false`
  * for the caller's one-line notice, never a throw.
  */
 export async function ensureReachable(options: ReachOptions): Promise<boolean> {
 	const { isReachable, rowDistance, mount, loadOlder } = options;
+	const hasHeadroom = options.hasHeadroom ?? (() => true);
 	let pages = 0;
 	while (true) {
 		if (isReachable()) return true;
 		const distance = rowDistance();
 		if (distance !== null) {
 			if (distance > JUMP_MAX_MOUNTED_ROWS) return false;
+			if (!hasHeadroom() && pages < JUMP_MAX_PAGES) {
+				pages += 1;
+				/*
+				 * A page that cannot be applied means the margin cannot grow —
+				 * either the history ends here or the fetch was raced — so fall
+				 * through to the mount rather than refusing a row the store
+				 * already holds: the landing is clamped at the content's top,
+				 * which at the start of history is where the row IS.
+				 */
+				if (await loadOlder()) {
+					await settleFrames(() => isReachable() || rowDistance() !== null);
+					continue;
+				}
+			}
 			mount(distance);
 			await settleFrames(isReachable);
 			return isReachable();
