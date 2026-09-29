@@ -12,6 +12,7 @@ import { config, telemetryEnabled } from "@shared/config";
 import type { PostHogConfig } from "posthog-js";
 import App from "./app";
 import { installDevDriver } from "./dev-driver/install";
+import { RegistrationToasts } from "./mini-view/registration-toasts";
 import { queryClient } from "./shared/api/query-client";
 import { ErrorBoundary } from "./shared/components/common/error-boundary";
 import { GlobalScrollbarStyles } from "./shared/components/common/global-scrollbar-styles";
@@ -112,6 +113,15 @@ document.addEventListener("DOMContentLoaded", () => {
 						 * the ONE global container above, where every other toast goes.
 						 */}
 						<UndoToasts />
+						{/*
+						 * THE QUICK-SEND REGISTRATION TOASTS (design §G.3; UX round 1, U1),
+						 * mounted here for the same reason `UndoToasts` is: this surface
+						 * lives for the app's whole life, and what it raises lands in the ONE
+						 * global container above rather than in a lane of its own. A
+						 * registration failure is otherwise visible only to a reader already
+						 * on Settings → Hotkeys.
+						 */}
+						<RegistrationToasts />
 						{/* React Query DevTools - only in development (positioned at bottom left) */}
 						{isDevelopmentMode() && (
 							<ReactQueryDevtools

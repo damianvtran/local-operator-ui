@@ -75,7 +75,10 @@
  * rejected wordings out, so a later editor does not re-add one: no `!` shell
  * prefix and no `esc`/interrupt line (the TUI's key handling, withheld here);
  * no `Cmd+N`/`Cmd+K` or any other hotkey the desktop does not bind, and no
- * hotkey remapping; no fork-placement settings; and no `/mobile` — phone
+ * remapping line beyond the one chord the settings actually remap (quick send
+ * is that chord — the rule used to read "no hotkey remapping", which the
+ * quick-send feature made false, so it now names the exception instead); no
+ * fork-placement settings; and no `/mobile` — phone
  * provisioning is TUI-only in this product, which is why the pool asks the
  * AGENT for phone access rather than offering the command.
  *

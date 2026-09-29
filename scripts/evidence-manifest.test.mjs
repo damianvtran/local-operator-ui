@@ -1896,18 +1896,17 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"foldOnto20c3a207d7Note",
 	/*
-	 * AND THIS FIX'S OWN (2026-09-29): `relaunchDuringQuitRestampNote` is the
-	 * re-stamp for the quit-in-progress gate (issue #636 - a relaunch inside the
-	 * teardown was answered by the dying instance with a window that died with it,
-	 * "the relaunched app opens onto the app still shutting down"). Both trees move
-	 * - `src/` for the state, its two answer sites and the new refusal reporter,
-	 * `scripts/` for the proof rig, the two suites that pin the gate and this
-	 * list's own registration - and no swept frame was taken: the change's evidence
-	 * is a new set of a PNG frame and run transcripts that no supplementary set
-	 * declares, so the reader is owed the pair this file ships and the reason no
-	 * still was.
+	 * AND THE QUICK-SEND PASS'S OWN: `quickSendRestampNote` is the global
+	 * hotkey / mini composer change's record. It moves BOTH trees — `src/` for
+	 * the mini view, its registrar, the config watch, the desktop-plane
+	 * admission and the settings row, `scripts/` for the registrar suite, the
+	 * rig stub, the extended gates and the driver's `mini-view` scene — and
+	 * re-shoots nothing (the evidence lives on the PR's own branch, not in this
+	 * tree), so the pair is re-derived from the tree the re-stamp commit ships
+	 * and every list member above is re-pointed with it. It quotes that pair,
+	 * so it is held to this file like every entry above it.
 	 */
-	"relaunchDuringQuitRestampNote",
+	"quickSendRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2934,6 +2933,26 @@ const BRANCH_RECORDS = [
 	 * pair, `BRANCH_RECORDS` is where it belongs.
 	 */
 	"dirtyWorkingTreeNote",
+	/*
+	 * And the quick-send pass's own record (`quickSendRestampNote`), listed for
+	 * the list's usual reason: the note is this branch's statement of what moved
+	 * and what did not (no frame was committed by it), and a fold resolved from
+	 * main's copy would drop it.
+	 */
+	"quickSendRestampNote",
+	/*
+	 * AND THIS FIX'S OWN (2026-09-29): `relaunchDuringQuitRestampNote` is the
+	 * re-stamp for the quit-in-progress gate (issue #636 - a relaunch inside the
+	 * teardown was answered by the dying instance with a window that died with it,
+	 * "the relaunched app opens onto the app still shutting down"), folded late
+	 * onto main's quick-send and projects lineages. Both trees move - `src/` for
+	 * the state, its two answer sites and the new refusal reporter, `scripts/` for
+	 * the proof rig, the suites that pin the gate and this list's own registration
+	 * - and no swept frame was taken: the change's evidence is a new set of a PNG
+	 * frame and run transcripts that no supplementary set declares, so the reader
+	 * is owed the pair this file ships and the reason no still was.
+	 */
+	"relaunchDuringQuitRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
