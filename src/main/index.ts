@@ -3430,6 +3430,11 @@ app
 					// the screen, and re-deciding it there would be a second policy beside
 					// `window-mode.ts`.
 					windowShow: windowLaunch.show,
+					// The other half of the plan the browser host forwards to a popup's
+					// `webPreferences`: a hidden popup must render like a shown one, so the
+					// mode's own answer travels with the mode rather than being re-derived
+					// (docs/design/browser-oauth-popups.md 2.5).
+					backgroundThrottling: windowLaunch.backgroundThrottling,
 					// A consent banner's click comes forward through the app's own raise policy,
 					// and this is where its one line goes — the same logger every other raise
 					// reports to, so `trigger=banner-click` is greppable beside them.
