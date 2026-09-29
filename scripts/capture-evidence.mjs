@@ -682,6 +682,50 @@ export const STORIES = [
 	],
 
 	/*
+	 * THE COLLAPSED TURN'S OWN STATES (`turn-collapse.stories.tsx`): a completed
+	 * turn's pre-answer rows rendered as one bar, in the shapes the §5 case
+	 * matrix names. Eight rows because the states are eight: the finished turn
+	 * (collapsed), the same turn after the reader's own press (`Expanded` - the
+	 * press is the HARNESS's, because the claim is that the bar's own control is
+	 * what opens it), a steered run (the second question folds inside rather
+	 * than starting a turn), an interrupted turn (the bar states no outcome in
+	 * v1 - the sibling session owns that wording), a genuinely failed call (the
+	 * failure control survives the collapse), the count clause at its long form,
+	 * the same turn read from history (durable rows, no live frames - reload's
+	 * state, and the span must still read the same), and the live control
+	 * (nothing condenses while a turn runs).
+	 *
+	 * TWO THEMES, NOT TWELVE, because the claim is a ROW - its ink roles, its
+	 * alignment, its clauses - and the two `localOperator` palettes are where
+	 * the danger ink and the muted summary are judged; the before half
+	 * (`../chat-turn-collapse-before/`) is the same eight stories on the
+	 * pre-change tree, so the pair differs by the collapse and nothing else.
+	 */
+	["chat-turn-collapse--collapsed", 1280, 900],
+	[
+		"chat-turn-collapse--expanded",
+		1280,
+		900,
+		{ press: '[data-turn-summary] button[aria-expanded="false"]' },
+	],
+	["chat-turn-collapse--steering", 1280, 900],
+	["chat-turn-collapse--interrupted", 1280, 900],
+	["chat-turn-collapse--failed", 1280, 900],
+	["chat-turn-collapse--long-run", 1280, 900],
+	["chat-turn-collapse--restored", 1280, 900],
+	["chat-turn-collapse--running", 1280, 900],
+	/*
+	 * THE ROUND-1 CELLS (review round 1): `narration` answers design D4a (the
+	 * span-only sentence, §5 case 3), `pinned` answers design D4b / §11-R4 (a
+	 * pinned statement inside the span, on a frame), and `parked` answers
+	 * design D3 (a turn on the reader's gate must not condense - the same
+	 * moment the live rig's parked capture carries with its question card).
+	 */
+	["chat-turn-collapse--narration", 1280, 900],
+	["chat-turn-collapse--pinned", 1280, 900],
+	["chat-turn-collapse--parked", 1280, 900],
+
+	/*
 	 * A turn joined MID-STREAM, which is the one transcript surface whose evidence
 	 * is a SENTENCE rather than a row: the reducer marks a row whose text is real
 	 * but not whole, and the mark is the whole change on screen. `before-join` is

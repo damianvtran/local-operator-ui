@@ -76,6 +76,7 @@ import { useAsideStore } from "@shared/store/aside-store";
  */
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { dropPaint, readPaint, writePaint } from "@shared/store/paint-cache";
+import { forgetTurnCollapseOpen } from "@shared/store/turn-collapse-open";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { desktopRequestTimeoutMs } from "../../../../shared/desktop-contract";
 import {
@@ -3925,8 +3926,14 @@ export function useCanonicalSessionStream(
 						if (event.kind === "error" && event.status === 404) {
 							// Its paint goes with it: a later click on the same id would
 							// otherwise paint rows for a transcript that no longer exists,
-							// with nothing to tell the reader they are fiction.
-							if (sessionId) dropPaint(sessionId);
+							// with nothing to tell the reader they are fiction. Its expansions
+							// go too (agent review round 1, R1-2): `forgetTurnCollapseOpen` is
+							// the same sibling of `dropPaint` the store's own doc names, and an
+							// id this host does not have should not keep a remembered set.
+							if (sessionId) {
+								dropPaint(sessionId);
+								forgetTurnCollapseOpen(sessionId);
+							}
 							commitView((current) => ({
 								...current,
 								subscriptionId: null,
