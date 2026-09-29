@@ -326,3 +326,33 @@ node scripts/capture-evidence.mjs http://localhost:6051 \
 **One cost the frames carry rather than hide.** The reserved action column narrows each row's first line by about 54px, so the health tail truncates one clause earlier than in the base frames (the first row of `monitors-health` reads `3 fa…` where it read `3 failed`). That is the row's established degradation — the full string stays in the element's `title` and its screen-reader twin, the pair the section's own comment records for long reasons — and the alternative (an overlay that appears only on hover) would move a pointer target while the pointer is on it, which is why the action column lives in the layout.
 
 **A still cannot carry the write path, so the PR's e2e transcript does.** The cancel was exercised end to end against a locally booted isolated daemon of core main: arm/list/cancel through the app's own `desktopEndpoint` mapping, plus the 404 already-gone, the 422 malformed handle and the 503 owner-present refusals, and the on-disk transcript and index states.
+
+## Re-taken for the monitor controls' round-1 remediation
+
+**The cancel flow's first review round moved the interaction itself (agent review F1; UX review U2-U6, U8), and four of the six cancel states plus all six at-rest states were re-shot.** What changed, in the order the findings landed:
+
+- The `Cancel monitor` control now shows **at rest** (it was hover/focus-revealed) in a 24px box (`h-6`, overriding `size="sm"`'s 28px) — U6: with the stopgap footer retired, at rest nothing signalled cancellability, and the revealed control measured 51.6x20 px, under the hit floor. Every at-rest frame of the section was re-shot for this alone, because the control is in every one of them.
+- The confirmation's confirm reads **`Stop monitor`** (U7 — `Cancel` was doing both jobs) and pends while the write is in flight: disabled + `aria-busy` + the spinner + the `Cancelling…` label, with every close path (Escape, outside click, the corner X) refused for that window — U3, one request per press against an answering writer. The `confirm` frame was re-shot; the `refused` frame was re-shot too (same dialog, same backend sentence, new label).
+- A receipt now acknowledges itself on the row — `Cancelled`, the control disabled in place — and a dismissed refusal leaves its record — `Cancel refused` beside the live control, the whole sentence on `title` — U4/U8. These are the two NEW surfaces: `monitor-cancel-cancelled`, `monitor-cancel-refusal-record`.
+- The retry policy no longer re-sends against an ANSWER (U3/F1): it is kept for a request nothing answered, and for the one 503 the core itself calls retryable (the contended lock). That is a fact about requests, not pixels — see the test note below.
+
+**Two narrowed, append-mode runs against a Storybook of this tree at its folded tip** (warm — the first attempts hit the preview's cold compile under the day's fleet load and a 10 s theme settle; `--theme-settle-ms=120000` is the budget the committed runs used, and the frames a failed attempt had already written were re-taken by the run that ships):
+
+```
+node scripts/capture-evidence.mjs http://localhost:6211 \
+  --only=monitor-cancel \
+  --themes=localOperatorDark,localOperatorLight --allow-backend --theme-settle-ms=120000
+
+node scripts/capture-evidence.mjs http://localhost:6211 \
+  --only=monitor \
+  --dirs=monitors-only,monitors-health,monitors-many,monitor-long-description,monitors-and-wakes,monitors-floor-320 \
+  --themes=localOperatorDark,localOperatorLight --allow-backend --theme-settle-ms=120000
+```
+
+**Twenty-four frames: two new surfaces and ten re-shot states.** Added: `monitor-cancel-cancelled` (the two-press flow against an `ok` receipt — the row's control itself, disabled, reading `Cancelled`) and `monitor-cancel-refusal-record` (the flow's three presses — control, confirm, Keep — leaving the record beside the live control). Re-shot: the four earlier cancel states (`hover`, `focus`, `confirm`, `refused`) and the six at-rest states, because the control's at-rest visibility and 24px box move all ten.
+
+**One cost the new record carries rather than hides:** while `Cancel refused` stands, the action column is ~90px wider, so the refused row's first line yields one clause earlier (the first row of `monitor-cancel-refusal-record` reads `6. …` where `monitors-health` reads `6:27 AM EDT`), with the whole sentence on the record's `title`. It is the row's established yield order and it is transient — the next attempt against that row clears the record (U8).
+
+**The write's own facts are pinned by a DOM harness, not by a still.** `scripts/monitor-cancel-dialog.test.mjs` mounts the shipped pane body in jsdom and drives the real controls: the refusal surviving the list churn and its sentence still on screen (U2), one request per press with both buttons pended while it is in flight (U3), the immediate `Cancelled` mark and its ending at the re-read (U4), the clean reopen (U5), the record + the focus return + the session reset (U8). The retry discrimination is pinned in `scripts/monitor-controls.test.mjs` (retried: no answer at all, or the core's retryable contention 503; never an answered 503 — F1/U3).
+
+**The before half is this same diff**, as in the section above: the ten re-shot directories' frames at the base commit are replaced in place, so the pair ships as the change's own diff; the two new directories have no before because the marks did not exist.

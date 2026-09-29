@@ -1059,6 +1059,12 @@ export const RunPanel = ({
 						mcpGrantRunning={mcpGrantRunning}
 						mcpRemedy={mcpRemedy}
 						monitorControls={monitorControls}
+						/*
+						 * The monitors cancel interaction resets on a session change - the
+						 * pane threads its own identity down for that one reader
+						 * (`run-details-panel.tsx`'s `sessionId` note).
+						 */
+						sessionId={sessionId}
 						childrenOpenable={childrenOpenable}
 						onOpenChild={openChild}
 						rosterExpanded={rosterExpanded}

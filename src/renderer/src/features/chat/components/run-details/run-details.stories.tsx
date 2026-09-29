@@ -1530,6 +1530,74 @@ export const MonitorCancelRefused: Story = {
 };
 
 /**
+ * The receipt's acknowledgement, before the canonical re-read catches up: a
+ * cancel that LANDED closes the dialog and the row's control reads `Cancelled`
+ * at once (disabled, in place) - where the row used to linger 2.5-13 s with no
+ * acknowledgement at all (UX review round 1, U4). The walk is the confirm's own
+ * two presses, against controls whose cancel answers `ok`.
+ */
+const MonitorCancelCancelledGround = () => {
+	usePressFlow(
+		[
+			{ waitFor: MONITOR_CANCEL_SELECTOR, press: MONITOR_CANCEL_SELECTOR },
+			{ waitFor: '[role="dialog"]', press: "[data-confirm-action]" },
+		],
+		() =>
+			document.querySelector('[data-monitor-cancel-state="cancelled"]') !==
+			null,
+	);
+	return (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.monitorsHealth())}
+			openPanel={true}
+		/>
+	);
+};
+
+export const MonitorCancelCancelled: Story = {
+	render: () => <MonitorCancelCancelledGround />,
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * A refused attempt, DISMISSED: the row keeps the record - `Cancel refused`,
+ * with the whole sentence on `title` - beside the live control that is the next
+ * attempt which clears it (UX review round 1, U8). The walk is the flow's three
+ * real presses: the row's control, the confirm, then Keep (waited for until the
+ * refusal's own danger paragraph exists, so the dismissal cannot race the
+ * write's window).
+ */
+const MonitorCancelRefusalRecordGround = () => {
+	usePressFlow(
+		[
+			{ waitFor: MONITOR_CANCEL_SELECTOR, press: MONITOR_CANCEL_SELECTOR },
+			{ waitFor: '[role="dialog"]', press: "[data-confirm-action]" },
+			{
+				waitFor: '[role="dialog"] p.text-danger',
+				press: "[data-cancel-action]",
+			},
+		],
+		() =>
+			document.querySelector('[data-monitor-cancel-state="refused"]') !==
+				null && document.querySelector('[role="dialog"]') === null,
+	);
+	return (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.monitorsHealth())}
+			openPanel={true}
+			controls={monitorControls({
+				cancel: async () => ({ ok: false, detail: MONITOR_OWNER_REFUSAL }),
+			})}
+		/>
+	);
+};
+
+export const MonitorCancelRefusalRecord: Story = {
+	render: () => <MonitorCancelRefusalRecordGround />,
+	decorators: [withCanvasClosed],
+};
+
+/**
  * The trigger's activity blip: the pane is CLOSED and a child is running, so the
  * dot is drawn in `info` (`docs/composer-activity-chips.md` § 5).
  *
