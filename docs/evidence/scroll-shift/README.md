@@ -96,6 +96,29 @@ both directions), and the state is held by the CONVERSATION, not the component
 it as ids churn, and resets only on a conversation switch. `after/fold-tail`
 and `after/fold-boundary` show the same two transitions with `true -> true`.
 
+**What the FOLDED head changed about how the arms run and what they show
+(re-captured 2026-09-29; QA round 2, Q-R2-1).** On main's transcript a finished
+turn's rows sit under its summary bar (`turn-summary.tsx`), so the fixture's run
+fold now arrives INSIDE that bar, collapsed with it - the boot gate could not
+see it and no fold arm could run at all. The rig now presses the bar's own
+disclosure once at boot (a reader's gesture, the same disclosure every tool row
+taught) so the fold is on screen, the state the arms photograph; and when the
+live turn's settle lets the turn re-condense - Q-R2-2's reader-visible
+contraction, now recorded in the traces - the driver presses the bar again to
+reach the fold, whose state survived. With those two presses the arms run as
+before and the transitions read: `after/fold-tail` holds the reader's fold
+`expanded true` through every live call (ids `4 -> 10`, rows `4 -> 10` at each
+arrival) and finds it restored `expanded true, rows 10` after the settle took
+it off screen - the registry's survival, now also across an unmount.
+`after/fold-boundary`'s in-place re-key has no counterpart on this head: the
+window's edge lands on run boundaries and the run is atomic (its bar groups
+it), so the edge takes the run whole - the trace records the walk it does
+instead (the front, bar and fold together, leaves the mounted span as the live
+rows arrive; nothing re-keys, no `true -> false` anywhere). The traces spell
+the bar's own row `<id>#bar`: the bar carries its anchor's `data-record-id`
+while the anchor's row still renders, and the suffix keeps the trace's id map
+one-to-one (the element pair otherwise reads as a 26px move on every frame).
+
 ### 2. The anchored view, when the height change is a collapse
 
 The property is the foot row's (`tall/`, `handover/`), restated: *while the
@@ -105,10 +128,10 @@ did when a fold's body unmounted:
 
 | run | before | after |
 | --- | --- | --- |
-| `fold-tail/` - expand, calls load, turn's end | the condense closes the fold AND every settled row moves `228.0px` down on that frame (`rows 6 moved 228.0..228.0`, `st 0`) | no collapse at the turn's end; `wl left` moves nothing |
-| `fold-away/` - the reader scrolled off the tail | the collapse moves every settled row `217.0px` in one frame (`max|delta row| = 217.0`), with Chrome adjusting `scrollTop` by 11px (its clamp), not the 228 the hold needs | the reader's own collapse lands `max|delta row| = 0.00px` - the correction writes `scrollTop -428 -> -200` in the same frame |
-| `fold-boundary/` - off screen, edge walks the run | `expanded true -> false` (frame 67) | `expanded true -> true` (frame 65) |
-| `fold-tail-manual/` - the reader collapses the newest group AT the tail | n/a | re-flushes the pinned column by the body's own `228px`; the residual below |
+| `fold-tail/` - expand, calls load, turn's end | the condense closes the fold AND every settled row moves `228.0px` down on that frame (`rows 6 moved 228.0..228.0`, `st 0`) | the fold survives every update (`expanded true`, ids `4 -> 10`); at the turn's end the TURN re-condenses (Q-R2-2): older rows yield `328.6px` in that frame with the leading edge inside `4.0px`, `st 0` - and re-opening the bar restores the fold `expanded true, rows 10` |
+| `fold-away/` - the reader scrolled off the tail | the collapse moves every settled row `217.0px` in one frame (`max|delta row| = 217.0`), with Chrome adjusting `scrollTop` by 11px (its clamp), not the 228 the hold needs | the reader's own collapse lands `max|delta row| = 0.00px` - the correction writes `scrollTop -428 -> -200` in the same frame; six notches then move the view exactly `60px` each and it stays where the gesture left it |
+| `fold-boundary/` - off screen, edge walks the run | `expanded true -> false` (frame 67) | no re-key to record: the edge takes the run's own bar (fold inside) out whole (`rows 63 -> 54` in the frame), the live calls load into a second fold that is never opened, and no `true -> false` occurs |
+| `fold-tail-manual/` - the reader collapses the newest group AT the tail | n/a | re-flushes the pinned column by the body's own `228px` (`rows 7 moved 228.0..228.0`, `st 0`); the residual below |
 
 **What re-anchors today, and what the update was missing.** The only
 correction path before this change was the reveal's hold (`holdAnchor`): it
@@ -133,8 +156,10 @@ missed) plus the ResizeObserver, so the write lands in the change's own frame.
 toward the pinned tail, so a collapse of a group at the bottom moves settled
 content by `max(0, body - distance)` - the collapsed body's height less the
 reader's distance from the tail, floored at zero: `228.0` at the tail with a
-228px body (`fold-tail-manual`: `rows 6 moved 228.0`), `53.0` at 240px from the
-tail with a 294px body, `0.00` once the distance exceeds the body. Inside
+228px body (`fold-tail-manual`, re-captured: `rows 7 moved 228.0..228.0`),
+`53.0` at 240px from the tail with a 294px body, `0.00` once the distance
+exceeds the body (the re-captured `fold-away` collapse, at 428px from the
+tail). Inside
 `TAIL_EPS_PX` the correction stands down by design: at the tail the newest
 content is pinned, and holding the reader there through a collapse would open
 the void between the content and the composer - the 'lifted' look this same
@@ -179,6 +204,12 @@ presses the same fold shut once the turn ends, and `--scroll-probe` performs the
 reader's notches the repair-path reading above quotes. Every fold transition is
 detected and photographed from `window.__shift.foldStates()`, and the per-frame
 `folds` column of the trace is the record of them.
+
+On the folded head these command lines are still the whole interface: the
+page's boot presses the turn's summary bar once so the fixture's run fold is on
+screen (see "What the FOLDED head changed" above), and the driver presses the
+bar again after a settle re-condenses the turn - before the collapse probe or
+the settled frame would otherwise act on a bar instead of the fold.
 
 The page is served by `scripts/scroll-shift-evidence.vite.mjs` (vite +
 `scripts/scroll-shift-evidence.html` + `scripts/scroll-shift-bridge.ts`); run
