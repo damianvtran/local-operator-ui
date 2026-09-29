@@ -23,15 +23,20 @@ import { JSDOM } from "jsdom";
  *      credential probe is a host prop (`recordingProbe`), and the remaining
  *      reads degrade to their off state through `useOptionalQueryClient`, so the
  *      composer mounts with NO provider and nothing fetches. Case 1 is that
- *      property end to end; it fails on the pre-lift tree by construction.
+ *      property end to end, and its per-op counts are the half that can go
+ *      quiet: case 1b forces the fallback to report `provided: true` and shows
+ *      the SAME instrument reading non-zero (review round 1, MINOR 1 - the
+ *      first cut asserted a mount and a band, which stayed green while that
+ *      forced fallback fired 28 capability fetches).
  *   2. The chat page's own wiring. Case 6 pins the chat host to the new seams,
  *      because a seam the page silently stops passing is a mount that throws in
  *      the next document even though every case here is green.
  *
  * The remaining cases are the other three bootstrap items the lift owed: the
  * explicit density prop, the dictation-state callback, the host placeholder
- * override - plus the transcript-props default (`messages: []` renders the
- * standalone composer) which is case 1's mount itself.
+ * override - plus the transcript props a standalone host passes (`messages: []`
+ * renders the composer alone; the props are UNCHANGED by the lift, so nothing
+ * here is a new default), which is case 1's mount itself.
  *
  * WHAT THIS IS NOT: layout evidence (jsdom has no layout engine), or proof of a
  * real browser's key handling. The dictation case drives the SHARED manager's
@@ -197,7 +202,14 @@ window.electron = {
  * manager's registration reads `settings.list` on its own (no query involved);
  * everything else the mount asks - the `config.get` the connectivity gate reads
  * on every render, the capability census - is answered with the inert truth.
+ *
+ * EVERY OP IS ALSO RECORDED, because "the providerless mount fetches nothing"
+ * is only a claim while there is an instrument that could have seen it fetch:
+ * case 1 asserts zero calls per op from this list, and case 1b shows the same
+ * list reporting non-zero once the provider gate is forced open (review round
+ * 1, MINOR 1).
  */
+const transportOps = [];
 globalThis.fetch = async (url, init) => {
 	let request = {};
 	try {
@@ -205,6 +217,7 @@ globalThis.fetch = async (url, init) => {
 	} catch {
 		request = {};
 	}
+	transportOps.push(request.op);
 	const answer = (result) => ({
 		ok: true,
 		status: 200,
@@ -354,23 +367,146 @@ after(async () => {
 /* 1. The mount blocker: no QueryClient provider, no throw              */
 /* ------------------------------------------------------------------ */
 
-test("the composer mounts in a document with no QueryClient, on the transcript defaults", async () => {
+test("the composer mounts in a document with no QueryClient, on the props a standalone host passes", async () => {
 	/*
 	 * THE REGRESSION: on the pre-lift tree this mount throws "No QueryClient
 	 * set, useQueryClient to set one" - from `useQueryClient()` first, and from
 	 * the credential probe and the slash/at/radient reads behind it once that
 	 * one is gone. `messages: []` is the standalone consumer's value (the mini
-	 * has no transcript), so this case is also the transcript-props default.
+	 * has no transcript), passed by the HOST: the lift adds no default and moves
+	 * no props.
 	 */
+	transportOps.length = 0;
 	const frame = await mount({ messages: [] });
 	assert.ok(frame.textarea(), "the composer's field is mounted");
 	assert.ok(
 		frame.band() !== null,
-		"the composer band is mounted (the standalone default renders)",
+		"the composer band is mounted (the standalone props render)",
+	);
+
+	/*
+	 * AND NOTHING FETCHED ON ITS BEHALF (review round 1, MINOR 1). The mount
+	 * being PAINTED is not the claim; the claim is that the provider gate
+	 * (`enabled: provided` on every host-gated read) leaves them off - and a
+	 * fallback answering `provided: true` fired the census from a client nobody
+	 * reads while every assertion above stayed green. Per-op counts, so a
+	 * passing case names exactly what it refuses: the four ops the composer's
+	 * subtree asks for as queries. `config.get`/`settings.list` may appear -
+	 * they are read OUTSIDE react-query, and their presence is what says this
+	 * instrument was consulted at all.
+	 */
+	const countOf = (op) => transportOps.filter((entry) => entry === op).length;
+	for (const op of [
+		"capabilities",
+		"commands.list",
+		"accounts.list",
+		"commands.entities",
+	]) {
+		assert.equal(countOf(op), 0, `the providerless mount must not fetch ${op}`);
+	}
+	assert.ok(
+		transportOps.length > 0,
+		"the transport was consulted at all, so the zeros above are readings rather than silence",
 	);
 
 	await act(async () => {
 		root.unmount();
+	});
+});
+
+/* ------------------------------------------------------------------ */
+/* 1b. The negative control: the same instrument, gate forced open      */
+/* ------------------------------------------------------------------ */
+
+test("forcing the fallback to report provided:true fires the ops case 1 refuses", async () => {
+	/*
+	 * THE CONTROL THAT MAKES CASE 1's ZEROS READINGS RATHER THAN SILENCE. The
+	 * reviewer's reproduction (review round 1, MINOR 1): with the seam answering
+	 * `provided: true`, this mount fires the capability census and the host-gated
+	 * lists - 28 fetches in that reproduction - while every other assertion
+	 * stayed green. This case builds ONE more bundle whose only difference is
+	 * that stub (the most specific alias wins over `@shared`), mounts it exactly
+	 * the way the rig mounts, and reads the SAME instrument: non-zero here is
+	 * what makes case 1's zeros the gate's rather than a broken recorder.
+	 */
+	const forcedStub = new URL(
+		`./_shared-composer-forced-stub-${process.pid}.mjs`,
+		import.meta.url,
+	);
+	await writeFile(
+		forcedStub,
+		[
+			`import { useOptionalQueryClient as real } from ${JSON.stringify(`${worktree}/src/renderer/src/shared/hooks/use-optional-query-client`)};`,
+			"export const useOptionalQueryClient = () => ({ ...real(), provided: true });",
+		].join("\n"),
+	);
+	const forced = await build({
+		stdin: {
+			contents:
+				'export { MessageInput } from "./src/renderer/src/shared/components/composer/message-input";',
+			resolveDir: worktree,
+			loader: "tsx",
+		},
+		bundle: true,
+		format: "esm",
+		platform: "node",
+		external: ["react", "react-dom", "react-dom/client", "react/jsx-runtime"],
+		jsx: "automatic",
+		alias: {
+			/*
+			 * Redirect the seam alone; everything else resolves exactly as the main
+			 * bundle resolves. `useOptionalQueryClient` is the ONLY module this stub
+			 * replaces, so the mount under test is the shipped composer.
+			 */
+			"@shared/hooks/use-optional-query-client": forcedStub.pathname,
+			"@shared": `${worktree}/src/renderer/src/shared`,
+			"@features": `${worktree}/src/renderer/src/features`,
+			"@assets": `${worktree}/src/renderer/src/assets`,
+		},
+		loader: {
+			".css": "empty",
+			".svg": "text",
+			".png": "dataurl",
+			".webp": "dataurl",
+		},
+		define: { "import.meta.env": "{}" },
+		banner: {
+			js: 'import { createRequire } from "node:module"; const require = createRequire(import.meta.url);',
+		},
+		write: false,
+	});
+	const forcedBundlePath = new URL(
+		`./_shared-composer-forced-${process.pid}.mjs`,
+		import.meta.url,
+	);
+	await writeFile(forcedBundlePath, forced.outputFiles[0].text);
+	const { MessageInput: ForcedMessageInput } = await import(
+		forcedBundlePath.href
+	);
+	await unlink(forcedBundlePath);
+	await unlink(forcedStub);
+
+	transportOps.length = 0;
+	const container = window.document.createElement("div");
+	window.document.body.appendChild(container);
+	const forcedRoot = createRoot(container);
+	await act(async () => {
+		forcedRoot.render(
+			h(ForcedMessageInput, {
+				conversationId: `shared-composer-forced-${++mountSeq}`,
+				messages: [],
+				isLoading: false,
+				onSendMessage: async () => ({ ok: true }),
+			}),
+		);
+	});
+	await settle();
+	assert.ok(
+		transportOps.filter((op) => op === "capabilities").length > 0,
+		"the capability census fires once the gate is forced open - the same instrument case 1 reads as zero",
+	);
+	await act(async () => {
+		forcedRoot.unmount();
 	});
 });
 
