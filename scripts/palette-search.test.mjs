@@ -31,6 +31,7 @@ const {
 	buildPanelItems,
 	buildSettingKeyItems,
 	buildSettingsSectionItems,
+	CONVERSATION_SWITCHER_SEED,
 	matchQuality,
 	normalizeText,
 	PALETTE_GROUP_ORDER,
@@ -403,6 +404,40 @@ test("a scope narrows which sources answer at all", () => {
 	// An agents scope admits the agent group and nothing else; this fixture has
 	// no agents, so it is empty rather than falling back to everything.
 	assert.deepEqual(groups(searchPalette({ items, raw: "@ada" })), []);
+});
+
+test("the conversation switcher's seed opens on the chats scope", () => {
+	/*
+	 * `Cmd/Ctrl+P` opens the palette with `CONVERSATION_SWITCHER_SEED` (issue
+	 * #659), so this pins what that seed MEANS rather than how it is spelled
+	 * somewhere else: the chat scope with no terms, i.e. the conversations
+	 * source and nothing else. A drift in either direction is silent - the
+	 * door would become a second copy of Cmd/Ctrl+K, or a scope that admits
+	 * rows from groups the switcher has no answer for.
+	 */
+	assert.equal(CONVERSATION_SWITCHER_SEED, "#");
+	assert.deepEqual(parsePaletteQuery(CONVERSATION_SWITCHER_SEED), {
+		scope: "chat",
+		terms: "",
+	});
+	/*
+	 * At the list level that is the conversations source alone. The fixture's
+	 * chat rows are made `featured` here because the browse layout is built
+	 * from featured rows and the app's own source marks them so when no terms
+	 * are present (`use-palette-sources.ts`) - a story the fixture has no
+	 * reason to relitigate.
+	 */
+	const outcome = searchPalette({
+		items: items.map((item) =>
+			item.group === "chats" ? { ...item, featured: true } : item,
+		),
+		raw: CONVERSATION_SWITCHER_SEED,
+	});
+	assert.deepEqual(groups(outcome), ["chats"]);
+	assert.ok(
+		names(outcome).length > 0,
+		"the scope shows conversations, not nothing",
+	);
 });
 
 test("aliases are how the app's vocabulary meets the user's", () => {
