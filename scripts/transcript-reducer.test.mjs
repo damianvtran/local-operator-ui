@@ -663,6 +663,63 @@ test("a closed outcome synthesizes as an info receipt and retires like a stop", 
 	assert.equal(row.complete, true);
 });
 
+test("a durable retired marker paints the warning row", () => {
+	// The retire-for-build arm (2026-09-29; core kind `retired`, seed
+	// 7e797aaaf6e7): the same durable shape as the closure cell above, one tier
+	// apart — warning, never danger — and `complete: true` so the working-line
+	// wait retires beside the row.
+	const records = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "m-retired",
+				ts: 2,
+				type: "custom",
+				payload: {
+					custom_type: "completion_attention",
+					details: {
+						conversation_id: "session/7e797aaaf6e7",
+						token: "t3",
+						anchor: "completion-retired-anchor",
+						kind: "retired",
+						cause: "runtime-retired",
+						reason:
+							"the runtime retired so the next engage would run a newer build",
+					},
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	}).records;
+	assert.equal(records.length, 1);
+	assert.equal(records[0].kind, "notice");
+	assert.equal(
+		records[0].text,
+		"Retired for an update — a turn was in flight and was cut",
+	);
+	assert.equal(records[0].level, "warning", "a cut for an update is warning");
+	assert.equal(records[0].complete, true, "the marker retires the wait");
+});
+
+test("a retired outcome synthesizes as a warning receipt", () => {
+	// Same synthesis path as the closure cell above; the retired arm must paint
+	// the warning tier — never danger, never the closure's info whisper.
+	const state = withRecoveredOutcome(
+		seeded(),
+		attention({ kind: "retired" }),
+		false,
+		new Set(),
+	);
+	const row = rowFor(state);
+	assert.equal(row.kind, "notice");
+	assert.equal(
+		row.text,
+		"Retired for an update — a turn was in flight and was cut",
+	);
+	assert.equal(row.level, "warning");
+	assert.equal(row.complete, true);
+});
+
 test("the recovered row survives its own acknowledgement", () => {
 	// The row is ackable, so it acknowledges itself within ~500 ms, and the
 	// receipt writes only to the store -- no durable row ever replaces it.
