@@ -70,13 +70,11 @@ on 1111 and the guard refuses a capture that could be photographing its
 replies); every story here renders from fixture props and calls nothing.
 `--theme-settle-ms` is the loaded-machine budget the flag exists for.
 
-**Rebase and re-stamp.** The branch was rebased onto
-`feat/transcript-checkpoint-rail`'s head `818aafdcf2` (post-#622 main; the rail
-mounted, its jump wired, its Phase-2 markers retired, and its round-1 fixes
-plus the transcript-rail driver scene appended), and the reveal now rides THAT lane's
-`reveal-record.ts` — `jumpToEntry` for the reveal/centre/flash leg and
-`ensureReachable` for the transcript's paging — rather than any copy of its
-own. The manifest is re-derived at the rebased code head (`srcTree`/
+**Fold and re-stamp.** The branch now folds `origin/main` = `bc09a6d698`
+(#630, the checkpoint-rail merge; the rail's files and its jump are upstream
+rather than sibling), and the reveal rides that lane's `reveal-record.ts` —
+`jumpToEntry` for the reveal/centre/flash leg and `ensureReachable` for the
+transcript's paging — rather than any copy of its own. The manifest is re-derived at the rebased code head (`srcTree`/
 `scriptsTree` from `git rev-parse HEAD:src` / `HEAD:scripts`, `frames` and the
 `countsMean` readings from the walk, every backticked stamp claim in the
 binding notes re-pointed), and this file rides the `docs/`-only commit that
