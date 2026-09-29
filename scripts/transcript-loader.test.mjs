@@ -164,6 +164,30 @@ test("a held row without headroom fetches the margin before mounting (QA Q-2)", 
 	assert.deepEqual(fake.calls.mounts, [40]);
 });
 
+test("a margin history cannot supply mounts clamped rather than spinning (R-MINOR-2)", async () => {
+	/*
+	 * The margin ask's refusal fall-through: history ends AT the row, so the
+	 * extra page applies nothing. The walk must take the clamped mount (the
+	 * Q-2 landing) rather than treating the failed page as an exhausted walk -
+	 * the row IS held, and the refusal here is about the margin, not the row.
+	 */
+	const fake = pager({
+		perPage: 100,
+		tail: 40,
+		headroom: false,
+		historyEnd: 40,
+	});
+	const walk = loader.createBackwardLoader(fake.walkFor(40));
+	const outcome = await walk.loadThrough({ maxPages: 4 });
+	assert.equal(outcome, "landed");
+	assert.equal(fake.calls.loads, 1, "the single margin ask");
+	assert.deepEqual(
+		fake.calls.mounts,
+		[40],
+		"the fall-through is the mount, clamped at content top",
+	);
+});
+
 test("one in-flight fetch serves concurrent callers", async () => {
 	const fake = pager({ perPage: 100 });
 	const walk = loader.createBackwardLoader(fake.walkFor(500));

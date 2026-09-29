@@ -1883,10 +1883,13 @@ const OPEN_TRACE_MS = 60_000;
  *
  * The noun is the UI's own: the cards and tick labels say "Turn N", and
  * "checkpoint" is this design's internal word - it appears nowhere a reader
- * can see it (design round 1, D4).
+ * can see it (design round 1, D4). The sentence ends with the STEP (UX round
+ * 1, U2): the transcript's own gesture - scroll up for older pages - is what
+ * changes the answer, and a refusal without it is a dead end. The search
+ * jump's copy carries the same tail.
  */
 const CHECKPOINT_JUMP_MISS_COPY =
-	"Could not reach that turn. It is further back than the loaded history.";
+	"Could not reach that turn. It is further back than the loaded history — scroll up in the transcript to load more.";
 
 /**
  * A fold group as the aggregation pass hands it on: a run group carries the
@@ -2070,6 +2073,72 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		[rows, total, alignSize],
 	);
 	const hidden = total - visible.length;
+	/*
+	 * The rail's two reader-side rungs (design round 1, D2 + U1): the ladder
+	 * shipped with `loadedIds`/`activeId` passed by nobody, so 402/402 marks
+	 * rendered at rest and the top arms could not paint. Derived HERE because
+	 * this is where the store and the marks meet: `loadedIds` is the record ids
+	 * this store holds (everything else in the manifest wears the light
+	 * "unloaded" arm), and `activeId` is the checkpoint the reader is LOOKING
+	 * AT - the last loaded checkpoint above the scroller's top edge - so the
+	 * ladder's top arm tracks the reading position instead of a counter.
+	 *
+	 * The position read is viewport-based (rects, not scrollTop) so it holds
+	 * under either scroll direction, and it is rAF-throttled: a scroll frame
+	 * asks the DOM for the loaded checkpoints' tops (bounded by the mounted
+	 * window, not by the manifest) and sets state only when the answer CHANGES.
+	 */
+	const [activeCheckpointId, setActiveCheckpointId] = useState<string | null>(
+		null,
+	);
+	const loadedCheckpointIds = useMemo(
+		() => new Set(rows.map((row) => row.record.id)),
+		[rows],
+	);
+	const loadedCheckpoints = useMemo(
+		() =>
+			checkpoints.checkpoints.filter((checkpoint) =>
+				loadedCheckpointIds.has(checkpoint.id),
+			),
+		[checkpoints.checkpoints, loadedCheckpointIds],
+	);
+	const syncActiveCheckpoint = useCallback(() => {
+		const region = containerRef.current;
+		if (region === null) return;
+		const top = region.getBoundingClientRect().top;
+		let best: string | null = null;
+		let bestTop = Number.NEGATIVE_INFINITY;
+		for (const checkpoint of loadedCheckpoints) {
+			const element = region.querySelector(
+				`[data-record-id="${CSS.escape(checkpoint.id)}"]`,
+			);
+			if (element === null) continue;
+			const elementTop = element.getBoundingClientRect().top;
+			if (elementTop <= top + 1 && elementTop > bestTop) {
+				bestTop = elementTop;
+				best = checkpoint.id;
+			}
+		}
+		setActiveCheckpointId((previous) => (previous === best ? previous : best));
+	}, [containerRef, loadedCheckpoints]);
+	useEffect(() => {
+		const region = containerRef.current;
+		if (region === null) return;
+		let frame = 0;
+		const onScroll = () => {
+			if (frame !== 0) return;
+			frame = window.requestAnimationFrame(() => {
+				frame = 0;
+				syncActiveCheckpoint();
+			});
+		};
+		region.addEventListener("scroll", onScroll, { passive: true });
+		syncActiveCheckpoint();
+		return () => {
+			region.removeEventListener("scroll", onScroll);
+			if (frame !== 0) window.cancelAnimationFrame(frame);
+		};
+	}, [containerRef, syncActiveCheckpoint]);
 	/*
 	 * ONE in-flight page for the walk-side consumers — the align fetch below
 	 * and the jump walk — while the READER's own scroll path keeps the pager's
@@ -2834,6 +2903,29 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 * the bottom anchor all behave exactly as before.
 			 */}
 			<div className={cn("relative flex min-h-0 grow flex-col")}>
+				{/*
+				 * THE RAIL COMES FIRST IN THE DOM (UX round 1, U3): it is the
+				 * transcript's navigation affordance, and it used to sit after
+				 * the scroller, so reaching its ticks meant tabbing through
+				 * every focusable row (46 Tabs from the composer, measured).
+				 * The rail is absolutely positioned, so DOM order costs no
+				 * pixels - the column's first tab stop is the rail now. Its
+				 * props carry the one fact the component owns and the hook
+				 * does not - which conversation, so a session switch drops any
+				 * open card - plus the two callbacks; `building` is the hook's
+				 * index state, not the rail's to derive.
+				 */}
+				<CheckpointRail
+					sessionId={sessionId ?? ""}
+					checkpoints={checkpoints.checkpoints}
+					building={checkpoints.building}
+					loadedIds={loadedCheckpointIds}
+					activeId={activeCheckpointId}
+					onJump={(id) => {
+						void jumpToCheckpoint(id);
+					}}
+					onHover={handleCheckpointHover}
+				/>
 				<div
 					ref={containerRef}
 					data-lo-canonical-transcript={true}
@@ -3259,21 +3351,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				    one only described the situation. */}
 					</div>
 				</div>
-				{/*
-				 * The rail itself. Its props carry the one fact the component owns
-				 * and the hook does not — which conversation, so a session switch
-				 * drops any open card — plus the two callbacks; `building` is the
-				 * hook's index state, not the rail's to derive.
-				 */}
-				<CheckpointRail
-					sessionId={sessionId ?? ""}
-					checkpoints={checkpoints.checkpoints}
-					building={checkpoints.building}
-					onJump={(id) => {
-						void jumpToCheckpoint(id);
-					}}
-					onHover={handleCheckpointHover}
-				/>
 			</div>
 			{/*
 			 * The in-thread search overlay (`⌘F`), mounted HERE rather than in the
