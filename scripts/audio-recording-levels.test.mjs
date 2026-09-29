@@ -78,11 +78,18 @@ test("quiet speech renders visibly, not as a sliver", () => {
 	 * midpoint. The old linear map drew ~3% of the lane for this; the
 	 * normalization must hold it at a readable fraction (the reference floor is
 	 * what pins it there) and must never exceed the lane.
+	 *
+	 * The upper bound is TIGHT on purpose (reviewer round 1, F2): at `<= 1`
+	 * this end was vacuous, and a mutation of the reference floor to 0.001 -
+	 * which the file's seven checks did not notice - sends quiet speech to
+	 * ~0.87, i.e. the quiet end of the lane reading as full voice. The band is
+	 * where a steady-state quiet passage must land: above the visible minimum,
+	 * below the loud half.
 	 */
 	const { levels } = run(Array.from({ length: 40 }, () => 0.03));
 	assert.ok(
-		levels.every((level) => level >= 0.35 && level <= 1),
-		`quiet speech must stay visible and bounded, got ${JSON.stringify(levels.slice(0, 6))}`,
+		levels.every((level) => level >= 0.35 && level <= 0.55),
+		`quiet speech must stay visible and quiet, got ${JSON.stringify(levels.slice(0, 6))}`,
 	);
 });
 
@@ -99,6 +106,25 @@ test("loud input is bounded well below the lane's ceiling", () => {
 	const over = run(Array.from({ length: 5 }, () => 2.5));
 	assert.ok(over.levels.every((level) => level <= BOUNDED_LEVEL + 1e-9));
 	assert.equal(run([Number.NaN]).levels[0], 0);
+});
+
+test("a full-scale input settles inside the lane's headroom band", () => {
+	/*
+	 * The bound as ABSOLUTE numbers (reviewer round 1, F2). The test above
+	 * derives its expectation from `AUDIO_HEADROOM` itself, so a mutation of
+	 * that constant carries the expectation along with it and the suite stays
+	 * green - measured: `headroom` 1.25 -> 1.0 and -> 1.05 both passed. The
+	 * band pins the margin the constant buys: full scale must land clearly
+	 * below the lane's ceiling (a 1.0 headroom would draw at 1.0, a 1.05 at
+	 * ~0.97) while staying a full-height reading rather than a squashed one
+	 * (1.5 would drop it to ~0.78).
+	 */
+	const { levels } = run(Array.from({ length: 40 }, () => 1));
+	const plateau = levels.at(-1);
+	assert.ok(
+		plateau >= 0.82 && plateau <= 0.92,
+		`a full-scale input must settle inside the headroom band, got ${plateau.toFixed(3)}`,
+	);
 });
 
 test("dynamics stay visible between a quiet and a loud passage", () => {

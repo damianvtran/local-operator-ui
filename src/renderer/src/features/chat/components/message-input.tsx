@@ -7088,15 +7088,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							/>
 						</div>
 						{/*
-						 * THE RECORDING STATE, as one line under the field it belongs to.
-						 *
-						 * Minimal on purpose (the operator's report, and the research's
-						 * `minimal indicator`): the waveform is bounded, nothing is washed or
-						 * bordered, nothing is centred across the measure, and the row's own
-						 * height is one line's. The controls stay in the cluster below,
-						 * where `Confirm recording`/`Cancel recording` already hold the
-						 * boxes the interrupt-slot geometry reserves; this strip carries a
-						 * status and no control, so the pointer map does not move.
+						 * THE RECORDING STATE, as a full-width block under the field it belongs
+						 * to (operator feedback via Aida, 2026-09-29): the lane spans the
+						 * field's own content column, its label row sits over it, and nothing
+						 * is washed or bordered - it reads as composer chrome, on the same
+						 * step of ground the box itself uses. The controls stay in the
+						 * cluster below, where `Confirm recording`/`Cancel recording` already
+						 * hold the boxes the interrupt-slot geometry reserves; this block
+						 * carries a status and no control, so the pointer map does not move.
 						 */}
 						{isRecording && (
 							<AudioRecordingIndicator isRecording={isRecording} />
