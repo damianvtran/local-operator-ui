@@ -1875,6 +1875,7 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"foldOntod11a15febfNote",
 	/*
+	/*
 	 * AND THE NOTIFICATION LIFETIME'S OWN (2026-09-28): `notificationLifetimeRestampNote`
 	 * is the re-stamp for the fix that keeps a shown notification reachable until
 	 * it can serve no further click — both trees move (`src/` for the lifetime
@@ -1895,6 +1896,40 @@ const STAMP_BINDING_NOTES = [
 	 * held to this file like every entry above it.
 	 */
 	"foldOnto20c3a207d7Note",
+	/*
+	 * THE CHECKPOINT RAIL'S PHASE-2 INTEGRATION re-derived both stamps: the src tree
+	 * with the rail's own files and the transcript's mount/jump/warm wiring, and the
+	 * scripts tree with the four rail suites' registration in test:desktop (authored
+	 * unregistered earlier in this branch - all four are new here - so CI had never
+	 * run them), the reveal/centre suites, the contrast row and this note's own
+	 * registration. It re-shoots the
+	 * `transcript-rail` scene's frames against the merged `sessions.checkpoints`
+	 * (14 frames, 7 states, two palettes, declared in `supplementary`). It quotes this file's pair,
+	 * so it is held to it like every entry above it.
+	 */
+	/*
+	 * AND ROUND 2'S RE-DERIVATION (2026-09-29): the D1 landing fix and the
+	 * scene that now asserts it, on the fold onto the moved `origin/main`
+	 * `f3ce13cee7` (#626's projects chrome/teams). The src tree moves with the
+	 * axis-named centre step (`scrollRegionToCenter`'s `"reversed"` clamp and
+	 * its call site), the refusal copy, and the card's bounded-text measurement
+	 * hook; the scripts tree with the driver's visual landing assertions, the
+	 * physical pointer-press leg, D5's sparse / bounded-card / outcome /
+	 * building states, the fixture's outcome-shape corrections
+	 * (`details.kind`; `attention_started` before its user row) and the deleted
+	 * shadowing `clickPoint`. It re-shoots the scene at 24 frames / 12 states.
+	 * It quotes the folded tip's pair, so it is held to this file like every
+	 * entry above it.
+	 */
+	/*
+	 * AND THE UX ROUND'S OWN (2026-09-29): the roving rail - U1's one-tab-stop
+	 * group with the arrow/Home/End walk and U3's named toolbar root - moves the
+	 * src tree with `checkpoint-rail.tsx` and the scripts tree with its three
+	 * unit cases and the scene's keyboard legs. The frames are re-copied from
+	 * the run that asserts them (81 checks, 24 frames, no new states). It
+	 * quotes the pair below, so it is held to this file like every entry above.
+	 */
+	"transcriptRailRestampNote",
 	/*
 	 * AND THE FOLD'S OWN (2026-09-29): `sttDictationRestampNote` is the SECOND
 	 * fold over this branch's speech-to-text overhaul - onto the moved
@@ -2015,6 +2050,16 @@ const STAMP_BINDING_NOTES = [
 	 * pair, so it is held to the pair this file ships.
 	 */
 	"readmeVisualsFoldTwoNote",
+	/*
+	 * AND THE THIRD FOLD'S OWN (2026-09-29): `readmeVisualsFoldThreeNote` is the
+	 * fold onto the moved `origin/main` `bc09a6d698` (#630's
+	 * transcript-checkpoint-rail merge) - the single conflicted path was the
+	 * manifest, resolved with main's records whole and this branch's laid back
+	 * on top, and both stamps re-derived from the MERGED tree by the docs-only
+	 * amendment under the merge. It quotes that pair, so it is held to the pair
+	 * this file ships.
+	 */
+	"readmeVisualsFoldThreeNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -3111,6 +3156,13 @@ const BRANCH_RECORDS = [
 	 * fold that started from main's copy would drop it first.
 	 */
 	"readmeVisualsFoldTwoNote",
+	/*
+	 * Grown by the third fold, this branch's newest top-level record: the merge
+	 * onto `origin/main` `bc09a6d698` re-derived the pair from the merged tree,
+	 * and the note it wrote is listed for the reason the list exists - a fold
+	 * that started from main's copy would drop it first.
+	 */
+	"readmeVisualsFoldThreeNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
