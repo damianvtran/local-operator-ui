@@ -74,12 +74,12 @@ const settleFrames = async (done: () => boolean): Promise<void> => {
  */
 export type LoaderPager = {
 	/** The row's element is in the DOM (the caller's own reachability test). */
-	reachable: (id: string) => boolean;
+	reachable: () => boolean;
 	/**
-	 * How many rows from the tail the id sits, i.e. the window width that
+	 * How many rows from the tail the row sits, i.e. the window width that
 	 * would include it. `null` when the model does not hold it (yet).
 	 */
-	rowDistance: (id: string) => number | null;
+	rowDistance: () => number | null;
 	/** Mount the window `distance` rows wide (newest-anchored). */
 	mount: (distance: number) => void;
 	/** Fetch one older page; `false` when nothing was applied. */
@@ -90,8 +90,15 @@ export type LoaderPager = {
 	 * default for a caller with no margin requirement, and the walk fetches
 	 * while it is false, inside the page budget.
 	 */
-	hasHeadroom?: (id: string) => boolean;
+	hasHeadroom?: () => boolean;
 };
+
+/*
+ * The pager's functions take no row id: every caller closes over the row it is
+ * asking about (the jump's target lives in the component that called it), so an
+ * id parameter no implementation could fill would be ceremony. A future caller
+ * that holds ids shapes its own closures around this type.
+ */
 
 export type LoadThroughBudget = {
 	/** Pages this walk may fetch. */
@@ -142,32 +149,31 @@ export const createBackwardLoader = (pager: LoaderPager) => {
 	 * the row IS. The walk then mounts instead of refusing a row the model
 	 * already holds.
 	 */
-	const settleOnModel = (id: string): Promise<void> =>
-		settleFrames(() => pager.reachable(id) || pager.rowDistance(id) !== null);
+	const settleOnModel = (): Promise<void> =>
+		settleFrames(() => pager.reachable() || pager.rowDistance() !== null);
 
 	const loadThrough = async (
-		id: string,
 		budget: LoadThroughBudget,
 	): Promise<LoadThroughOutcome> => {
 		const hasHeadroom = pager.hasHeadroom ?? (() => true);
 		let pages = 0;
 		while (true) {
-			if (pager.reachable(id)) return "landed";
-			const distance = pager.rowDistance(id);
+			if (pager.reachable()) return "landed";
+			const distance = pager.rowDistance();
 			if (distance !== null) {
 				if (budget.maxRows !== undefined && distance > budget.maxRows) {
 					return "over-budget";
 				}
-				if (!hasHeadroom(id) && pages < budget.maxPages) {
+				if (!hasHeadroom() && pages < budget.maxPages) {
 					pages += 1;
 					if (await loadOne()) {
-						await settleOnModel(id);
+						await settleOnModel();
 						continue;
 					}
 				}
 				pager.mount(distance);
-				await settleFrames(() => pager.reachable(id));
-				return pager.reachable(id) ? "landed" : "exhausted";
+				await settleFrames(() => pager.reachable());
+				return pager.reachable() ? "landed" : "exhausted";
 			}
 			if (pages >= budget.maxPages) return "exhausted";
 			pages += 1;
@@ -178,7 +184,7 @@ export const createBackwardLoader = (pager: LoaderPager) => {
 			 * what stops a fast loop from spending its whole page budget in one
 			 * task).
 			 */
-			await settleOnModel(id);
+			await settleOnModel();
 		}
 	};
 

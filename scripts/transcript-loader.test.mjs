@@ -69,38 +69,41 @@ const pager = ({
 	windowAt = 0,
 } = {}) => {
 	const calls = { loads: 0, mounts: [] };
-	/* `held` is the store's depth from the tail; `window` is the render
-	 * window's width, widened only by `mount`. Reachable needs both. */
 	const state = { held: tail, window: windowAt };
-	const api = {
-		calls,
-		reachable: (id) => state.held >= id && id <= state.window,
-		rowDistance: (id) => (state.held >= id ? id : null),
-		mount: (distance) => {
-			calls.mounts.push(distance);
-			state.window = distance;
-		},
-		loadOlder: async () => {
-			calls.loads += 1;
-			if (state.held >= historyEnd) return false;
-			state.held = Math.min(state.held + perPage, historyEnd);
-			return true;
-		},
-	};
 	/*
-	 * `headroom: false` means the store ends AT the target until a page
-	 * arrives: the QA Q-2 shape, where the landing would clamp at the top.
+	 * `walkFor(distance)` closes over the row, mirroring the real callers: the
+	 * row is `distance` from the tail, held once `held` reaches it, reachable
+	 * once the render window is wide enough.
 	 */
-	if (headroom === false) {
-		api.hasHeadroom = () => state.held > tail;
-	}
-	return api;
+	return {
+		calls,
+		walkFor: (distance) => ({
+			reachable: () => state.held >= distance && distance <= state.window,
+			rowDistance: () => (state.held >= distance ? distance : null),
+			mount: (width) => {
+				calls.mounts.push(width);
+				state.window = width;
+			},
+			loadOlder: async () => {
+				calls.loads += 1;
+				if (state.held >= historyEnd) return false;
+				state.held = Math.min(state.held + perPage, historyEnd);
+				return true;
+			},
+			/*
+			 * `headroom: false` means the store ends AT the target until a
+			 * page arrives: the QA Q-2 shape, where the landing would clamp
+			 * at the content's top.
+			 */
+			...(headroom === false ? { hasHeadroom: () => state.held > tail } : {}),
+		}),
+	};
 };
 
 test("a row the model already shows is landed without a fetch or a mount", async () => {
 	const fake = pager({ tail: 500, windowAt: 500 });
-	const walk = loader.createBackwardLoader(fake);
-	const outcome = await walk.loadThrough(10, { maxPages: 4 });
+	const walk = loader.createBackwardLoader(fake.walkFor(10));
+	const outcome = await walk.loadThrough({ maxPages: 4 });
 	assert.equal(outcome, "landed");
 	assert.equal(fake.calls.loads, 0);
 	assert.deepEqual(fake.calls.mounts, []);
@@ -108,8 +111,8 @@ test("a row the model already shows is landed without a fetch or a mount", async
 
 test("the walk loads until the row is held, then mounts it and lands", async () => {
 	const fake = pager({ perPage: 100, tail: 0 });
-	const walk = loader.createBackwardLoader(fake);
-	const outcome = await walk.loadThrough(350, { maxPages: 8 });
+	const walk = loader.createBackwardLoader(fake.walkFor(350));
+	const outcome = await walk.loadThrough({ maxPages: 8 });
 	assert.equal(outcome, "landed");
 	assert.equal(fake.calls.loads, 4, "four pages bring 350 within held rows");
 	assert.deepEqual(
@@ -121,8 +124,8 @@ test("the walk loads until the row is held, then mounts it and lands", async () 
 
 test("history that ends before the row is an exhausted walk, not a spin", async () => {
 	const fake = pager({ perPage: 100, historyEnd: 200 });
-	const walk = loader.createBackwardLoader(fake);
-	const outcome = await walk.loadThrough(350, { maxPages: 8 });
+	const walk = loader.createBackwardLoader(fake.walkFor(350));
+	const outcome = await walk.loadThrough({ maxPages: 8 });
 	assert.equal(outcome, "exhausted");
 	assert.equal(
 		fake.calls.loads,
@@ -138,24 +141,24 @@ test("history that ends before the row is an exhausted walk, not a spin", async 
 
 test("a held row beyond the row budget is refused as over-budget", async () => {
 	const fake = pager({ perPage: 2000 });
-	const walk = loader.createBackwardLoader(fake);
-	const outcome = await walk.loadThrough(1500, { maxPages: 4, maxRows: 1200 });
+	const walk = loader.createBackwardLoader(fake.walkFor(1500));
+	const outcome = await walk.loadThrough({ maxPages: 4, maxRows: 1200 });
 	assert.equal(outcome, "over-budget");
 	assert.deepEqual(fake.calls.mounts, [], "a refused row is never mounted");
 });
 
 test("pages are spent at most once past the budget", async () => {
 	const fake = pager({ perPage: 10 });
-	const walk = loader.createBackwardLoader(fake);
-	const outcome = await walk.loadThrough(10000, { maxPages: 3 });
+	const walk = loader.createBackwardLoader(fake.walkFor(10000));
+	const outcome = await walk.loadThrough({ maxPages: 3 });
 	assert.equal(outcome, "exhausted");
 	assert.equal(fake.calls.loads, 3, "exactly the budget, never one more");
 });
 
 test("a held row without headroom fetches the margin before mounting (QA Q-2)", async () => {
 	const fake = pager({ perPage: 100, tail: 40, headroom: false });
-	const walk = loader.createBackwardLoader(fake);
-	const outcome = await walk.loadThrough(40, { maxPages: 4 });
+	const walk = loader.createBackwardLoader(fake.walkFor(40));
+	const outcome = await walk.loadThrough({ maxPages: 4 });
 	assert.equal(outcome, "landed");
 	assert.equal(fake.calls.loads, 1, "the margin page");
 	assert.deepEqual(fake.calls.mounts, [40]);
@@ -163,7 +166,7 @@ test("a held row without headroom fetches the margin before mounting (QA Q-2)", 
 
 test("one in-flight fetch serves concurrent callers", async () => {
 	const fake = pager({ perPage: 100 });
-	const walk = loader.createBackwardLoader(fake);
+	const walk = loader.createBackwardLoader(fake.walkFor(500));
 	const [a, b] = await Promise.all([walk.loadOne(), walk.loadOne()]);
 	assert.equal(a, true);
 	assert.equal(b, true);
