@@ -2261,6 +2261,44 @@ const BRANCH_RECORDS = [
 	 */
 	"monitorsPass",
 	/*
+	 * AND THIS FIX'S OWN (2026-09-29): `browserOauthPopupsRestampNote` is the
+	 * re-stamp for the driven-page OAuth popups (the operator's console Microsoft
+	 * sign-in repro - MSAL `loginPopup` denied by the driven views' deny-all
+	 * `setWindowOpenHandler`), folded onto a seven-times-moving main as it landed
+	 * (the thread-search overlay, the README-visuals remediation, the sidebar-ack
+	 * fix, the hide-cross-session-transcript filter, the head-cut condensation
+	 * pass, the evidence-stamp-discipline pass, then the monitor-ui-render pass),
+	 * with the two tree fields re-derived over each folded tree - and, under the
+	 * discipline the sixth of those passes landed, no note binding itself to them
+	 * any more.
+	 * Both trees move - `src/` for the popup policy, its presentation gate and the
+	 * renderer/preload deletions, `scripts/` for the proof rewrite, the policy
+	 * matrix and the trigger/guard cases - and no swept frame was taken by the
+	 * change itself: its evidence is a new set of PNG frames and run transcripts
+	 * that no supplementary set declares (`docs/evidence/browser-oauth-popups/`),
+	 * plus one app-chrome WebP added in round 1's D2
+	 * (`band-without-notice/localOperatorDark.webp`, which is why the counts are
+	 * re-derived with the folds), so the reader is owed the pair this file
+	 * ships and the reason no still was. It quotes no tree-hash pair (read the
+	 * pair off the two top-level fields), so it joins `BRANCH_RECORDS` and not
+	 * the legacy-quoter ledger (`LEGACY_STAMP_QUOTING_NOTES`).
+	 */
+	"browserOauthPopupsRestampNote",
+	/*
+	 * AND THIS LANE'S OWN: the bundled-interpreter refresh. `python314RefreshRestampNote`
+	 * is the pass that takes the bundled CPython from 3.12.14 to 3.14.7;
+	 * `python314RefreshFoldNote` and `python314RefreshSecondFoldNote` are its folds
+	 * onto the moved `origin/main` (`eca30754b7`, `865da9ce78`), and the fold onto
+	 * `0738fa7eb3` re-registered all three here as the retired `STAMP_BINDING_NOTES`
+	 * registrations came into this list. Listed for the reason this list exists: a
+	 * fold resolved from main's copy would drop them first, and nothing else would
+	 * say so. The notes spell their pair as bare SHAs, so no name is added to the
+	 * quoting ledger above.
+	 */
+	"python314RefreshRestampNote",
+	"python314RefreshFoldNote",
+	"python314RefreshSecondFoldNote",
+	/*
 	 * And by THIS branch, whose records the merge of `origin/main` = `0738fa7eb3` had to keep: its
 	 * own fold records (the first fold's, kept whole; the two whose SHA-named keys main's own lanes
 	 * had already coined, renamed with this branch's `MeasureDrag` suffix - main's kept the plain
