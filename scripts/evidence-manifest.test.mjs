@@ -2342,6 +2342,31 @@ const BRANCH_RECORDS = [
 	 * `BRANCH_RECORDS` is where it belongs.
 	 */
 	"foldOnto7ba0ddce94Note",
+	/*
+	 * AND THIS LANE'S OWN: the bundled-interpreter refresh. `python314RefreshRestampNote`
+	 * is the pass that takes the bundled CPython from 3.12.14 to 3.14.7;
+	 * `python314RefreshFoldNote` and `python314RefreshSecondFoldNote` are its folds
+	 * onto the moved `origin/main` (`eca30754b7`, `865da9ce78`), and the fold onto
+	 * `0738fa7eb3` re-registered all three here as the retired `STAMP_BINDING_NOTES`
+	 * registrations came into this list. Listed for the reason this list exists: a
+	 * fold resolved from main's copy would drop them first, and nothing else would
+	 * say so. The notes spell their pair as bare SHAs, so no name is added to the
+	 * quoting ledger above.
+	 */
+	"python314RefreshRestampNote",
+	"python314RefreshFoldNote",
+	"python314RefreshSecondFoldNote",
+	/*
+	 * And the fold onto `origin/main` = `f9dbf8b455` (the rail-bottom-active lane
+	 * riding the bundled-interpreter refresh), listed for the list's own reason:
+	 * the fold resolved two evidence files by hand and had to prove the merged
+	 * changes paint no monitor surface (the rail is canonical-transcript-only and
+	 * the stories draw `TranscriptGround`). A later fold started from main's copy
+	 * would drop the only record of that resolution. It quotes no tree-hash pair -
+	 * the pair is re-derived over the staged tree in the fold commit itself - so
+	 * `BRANCH_RECORDS` is where it belongs.
+	 */
+	"foldOntof9dbf8b455Note",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
