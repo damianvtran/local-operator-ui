@@ -2335,6 +2335,12 @@ const BRANCH_RECORDS = [
 	 */
 	"condensedPicturesFoldFiveNote",
 	/*
+	 * And the lane's CONVERGENCE fold (`condensedPicturesFoldSixNote`), onto the condense-bar
+	 * spacing sibling (#653): three paths conflicted - this record, the transcript's entry union
+	 * and the behaviour suite's helpers - all resolved as unions, and it quotes no tree-hash pair.
+	 */
+	"condensedPicturesFoldSixNote",
+	/*
 	 * AND THIS FIX'S OWN (2026-09-29): `browserOauthPopupsRestampNote` is the
 	 * re-stamp for the driven-page OAuth popups (the operator's console Microsoft
 	 * sign-in repro - MSAL `loginPopup` denied by the driven views' deny-all
