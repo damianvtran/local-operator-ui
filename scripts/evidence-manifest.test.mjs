@@ -1953,8 +1953,9 @@ const STAMP_BINDING_NOTES = [
 	 * dropped): onto `d1fe9eb01e` (the quick-send / mini-view branch, #630s),
 	 * onto `3de40b0fc9` (the turn-collapse train), onto `7c9c98ecc7` (the #633
 	 * stt-overhaul merge), onto `46d0bba0de` (the #573 view-settings merge),
-	 * onto `8dc87ea84c` (the #642 sessionless-slash merge) and onto
-	 * `bc09a6d698` (the #643 ptt-keymap and #630 transcript-checkpoint merges).
+	 * onto `8dc87ea84c` (the #642 sessionless-slash merge), onto
+	 * `bc09a6d698` (the #643 ptt-keymap and #630 transcript-checkpoint merges)
+	 * and onto `dd51156839` (the #644 mini-view shared-dictation merge).
 	 * This branch's own record, `readReceiptForegroundRestampNote`, states the
 	 * receipt pass and its round-1 remediation; the change moves `src/` (the
 	 * completion-view hook and the transcript reducer's live-settle arm) and
@@ -2033,6 +2034,19 @@ const STAMP_BINDING_NOTES = [
 	 * quotes that pair, so it is held to this file like every entry above it.
 	 */
 	"sessionlessSlashFourthFoldNote",
+	/*
+	 * AND THE MINI DICTATION SWAP'S OWN: `miniDictRestampNote` is the change
+	 * that puts the mini composer's dictation onto the shared speech manager
+	 * and stamps its sends. It moves BOTH trees — `src/` for the mini view's
+	 * controller, composer and state, `scripts/` for the new dictation suite,
+	 * the extended contract test and the `test:desktop` list — and re-shoots
+	 * nothing (the run's stills and records live on the PR's own
+	 * `evidence/mini-dict-0929` branch, not in this tree), so the pair is
+	 * re-derived from the tree the re-stamp commit ships and every list member
+	 * above is re-pointed with it. It quotes that pair, so it is held to this
+	 * file like every entry above it.
+	 */
+	"miniDictRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -3098,6 +3112,13 @@ const BRANCH_RECORDS = [
 	 * did not; a fold that started from main's copy would drop it.
 	 */
 	"sessionlessSlashFourthFoldNote",
+	/*
+	 * And the mini dictation swap's own record (`miniDictRestampNote`), listed
+	 * for the list's usual reason: the note is this branch's statement of what
+	 * moved and what did not (no frame was committed by it), and a fold resolved
+	 * from main's copy would drop it.
+	 */
+	"miniDictRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
