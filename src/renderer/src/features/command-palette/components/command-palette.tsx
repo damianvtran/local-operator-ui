@@ -43,6 +43,7 @@ import {
 	type PaletteItem,
 	type PaletteMatch,
 	SCOPE_LEGEND,
+	paletteEmptyStateCopy,
 	searchPalette,
 } from "../palette-search";
 import { usePaletteItems } from "../use-palette-sources";
@@ -77,10 +78,11 @@ const KIND_VERBS: Record<PaletteItem["kind"], string> = {
  * re-mounts it, the tour and the Storybook stories drive it — and the write-back
  * is what keeps that copy current while the palette is open. It is deliberately
  * NOT a value that survives the surface: `closeCommandPalette` clears it and
- * `toggleCommandPalette` clears it on the way in, so reopening always starts from
- * an empty box, which is what a palette's users expect (UX round 1, U5 — this
+ * `toggleCommandPalette` clears it on the way in — after which the Cmd/Ctrl+P
+ * door writes its own seed — so every door that opens unseeded starts from an
+ * empty box, which is what a palette's users expect (UX round 1, U5 — this
  * comment used to promise persistence the store does not provide, and the code
- * was right).
+ * was right; the seeded exception came with issue #659, review round 1, R-2).
  */
 const QUERY_WRITE_BACK_MS = 200;
 
@@ -240,6 +242,24 @@ export const CommandPalette: FC = () => {
 	const activeMatch = matches[selectedIndex];
 	const hasTerms = outcome.terms.length > 0;
 	const hasResults = matchCount > 0;
+
+	/*
+	 * The scope's legend row, looked up once, and the empty state's sentences
+	 * (design round 2, D3 + D2/U4): the chip beside the field and the hint
+	 * under it both read the same table the parser does, so a scope cannot
+	 * describe itself one way in the legend and another in the field.
+	 */
+	const scopeLegend =
+		outcome.scope === null
+			? null
+			: (SCOPE_LEGEND.find((entry) => entry.scope === outcome.scope) ?? null);
+	const emptyCopy = paletteEmptyStateCopy({
+		scope: outcome.scope,
+		hasTerms,
+		terms: outcome.terms,
+		awaiting: chats.awaiting,
+		catalogue: chats.catalogue,
+	});
 
 	/* ---------------------------------------------------------------- actions */
 
@@ -707,7 +727,22 @@ export const CommandPalette: FC = () => {
 					 */
 					onOpenAutoFocus={(event) => {
 						event.preventDefault();
-						document.getElementById(INPUT_ID)?.focus();
+						const field = document.getElementById(INPUT_ID);
+						if (field instanceof HTMLInputElement) {
+							field.focus();
+							/*
+							 * The caret seats EXPLICITLY after whatever the door left in
+							 * the field (design round 2, D4): the seeded flow is "type and
+							 * let the terms append" (`#retention`), and that property was
+							 * the browser's default for a programmatic focus rather than
+							 * anything this component owned — a default measured under
+							 * Chrome, not a contract. Seating it here also survives a
+							 * re-open onto a retained query, and a future focus change
+							 * cannot silently leave it at 0, where the first keypress would
+							 * render `r#` and drop the scope.
+							 */
+							field.setSelectionRange(field.value.length, field.value.length);
+						}
 					}}
 					/*
 					 * Radix's modal dialog finishes by focusing its TRIGGER, and this
@@ -771,6 +806,26 @@ export const CommandPalette: FC = () => {
 							 */
 							className="min-w-0 flex-1 bg-transparent text-body text-ink outline-none! placeholder:text-ink-dim"
 						/>
+						{scopeLegend && (
+							/*
+							 * The scope chip (design round 2, D3/U3; this prose corrected in the
+							 * round-2 disposal, R2-1/D2-2): a bare `#` needs a word beside it once
+							 * the reader is inside a scope, and the chip draws whenever a scope IS
+							 * applied (`scope !== null`) — the same states the field shows the
+							 * glyph in. The footer's legend is a separate teaching surface with
+							 * its own swap rule (`showScopeLegend = !hasTerms || !hasResults`): it
+							 * draws on every browse, alongside this chip, and steps aside only for
+							 * a typed search that found rows — so it cannot be the word this slot
+							 * relies on. Built from `SCOPE_LEGEND`, the table the parser and the
+							 * legend already share — `gap-0` for the same reason the legend uses
+							 * it: these are typed prefixes, and the glyph reads as the head of
+							 * its own token rather than as stray punctuation.
+							 */
+							<span className="flex shrink-0 items-center gap-0 text-ink-dim text-meta">
+								<KeyboardShortcut shortcut={scopeLegend.glyph} />
+								{scopeLegend.label}
+							</span>
+						)}
 						{localQuery && (
 							<Button
 								variant="ghost"
@@ -861,20 +916,19 @@ export const CommandPalette: FC = () => {
 						 * claim to know more than it does: while the conversation
 						 * search is still out, "no matches" is a statement the palette
 						 * cannot yet make, so it says what it is doing instead.
+						 *
+						 * WHAT IT SAYS is a TABLE (`paletteEmptyStateCopy`, design
+						 * round 2, D2/U4), not a JSX condition: the sentences depend on
+						 * the scope, whether terms remain, and what the catalogue is
+						 * doing — and a rule like "inside a chats scope name
+						 * conversations, not agents and settings" is worth a unit test
+						 * rather than a branch no test can reach.
 						 */
 						<div className="flex flex-col items-center gap-1 px-6 py-10 text-center">
-							<p className="text-body-sm text-ink">
-								{chats.awaiting
-									? "Searching conversations…"
-									: hasTerms
-										? `No matches for “${outcome.terms}”`
-										: "Nothing to show yet"}
-							</p>
-							<p className="text-ink-dim text-meta">
-								{hasTerms
-									? "Try another word, or narrow the search with a prefix below."
-									: "Search for a chat, an agent by name, a setting, or a page such as Schedules."}
-							</p>
+							<p className="text-body-sm text-ink">{emptyCopy.line}</p>
+							{emptyCopy.hint !== null && (
+								<p className="text-ink-dim text-meta">{emptyCopy.hint}</p>
+							)}
 						</div>
 					)}
 
@@ -909,9 +963,12 @@ export const CommandPalette: FC = () => {
 
 					{/*
 					 * The legend bar. What it teaches swaps with the state, because the
-					 * two states need different things: an empty box is where the
-					 * prefixes are worth saying out loud, and a list with rows in it is
-					 * where the keys are.
+					 * two states need different things: a query that names no terms —
+					 * the browse, whether its list is empty or full — is where the
+					 * prefixes are worth saying out loud, and a TYPED search that found
+					 * rows is where the keys are (`showScopeLegend = !hasTerms ||
+					 * !hasResults`; a typed search that found nothing keeps the
+					 * prefixes, which is the state that needs them most).
 					 */}
 					<div className="flex shrink-0 items-center gap-4 border-hairline border-t px-4 py-2 text-ink-dim text-meta">
 						{showScopeLegend ? (
@@ -952,7 +1009,20 @@ export const CommandPalette: FC = () => {
 								</span>
 								<span className="flex items-center gap-1.5">
 									{outcome.clipped && (
-										<span>{`showing the best ${matchCount} of ${outcome.total} matches`}</span>
+										/*
+										 * "Best" and "matches" are the SEARCH's words (review round 1,
+										 * D1): they hold under terms, where the list is ranked and every
+										 * row answered the query, and both are wrong for a browse list,
+										 * which is the store's own unranked order — a switcher's five
+										 * visible rows out of forty are not "the best" five of
+										 * anything, they are the newest five. The scoped count keeps
+										 * the noun; the browse count states the rows it dropped.
+										 */
+										<span>
+											{hasTerms
+												? `showing the best ${matchCount} of ${outcome.total} matches`
+												: `showing ${matchCount} of ${outcome.total}`}
+										</span>
 									)}
 								</span>
 								{/*

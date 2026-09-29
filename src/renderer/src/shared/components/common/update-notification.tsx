@@ -2,6 +2,7 @@ import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import { FloatingAlert } from "@shared/components/common/floating-alert";
 import { Button, Progress } from "@shared/components/ui";
 import { useElapsedSince } from "@shared/hooks/use-elapsed-since";
+import { formatByteSize } from "@shared/lib/format-bytes";
 import { cn } from "@shared/lib/utils";
 import {
 	UpdateType,
@@ -2642,9 +2643,22 @@ export const UpdateNotification = ({
 							Downloading: {Math.round(downloadProgress.percent)}%
 						</p>
 						<Progress value={downloadProgress.percent} className="mt-2" />
-						<p className="mt-1 text-mono-sm text-ink-dim">
-							{Math.round(downloadProgress.transferred / 1024)} KB of{" "}
-							{Math.round(downloadProgress.total / 1024)} KB
+						<p
+							className="mt-1 text-mono-sm text-ink-dim"
+							/*
+							 * The exact byte counts live here rather than in the sentence (issue
+							 * #660): the line states the size a person reads (`21.5 MB of 45.1 MB`,
+							 * the same spelling the budget refusals use), and a reader who wants
+							 * the precise numbers - a bug report, a size comparison against a
+							 * release page - hovers for them. GROUPED, also for that reader
+							 * (review round 1, D6/U6): `524288 of 1048576` is a digit wall where
+							 * `524,288 of 1,048,576` is scannable, and an exact count that the
+							 * eye cannot hold is not the offer this tooltip makes.
+							 */
+							title={`${downloadProgress.transferred.toLocaleString()} of ${downloadProgress.total.toLocaleString()} bytes`}
+						>
+							{formatByteSize(downloadProgress.transferred)} of{" "}
+							{formatByteSize(downloadProgress.total)}
 						</p>
 					</ProgressContainer>
 				)}
