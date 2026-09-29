@@ -3066,11 +3066,31 @@ export function applyEvent(
 			 */
 			const previous =
 				position === undefined ? undefined : state.records[position];
+			/*
+			 * THE SAME COMPLETION MARK THE DURABLE READ GIVES THE SAME FACT.
+			 *
+			 * The `history` arm marks a text-bearing assistant answer `complete` and
+			 * leaves a tool-call-only turn unmarked; a live `message_end` is the very
+			 * same fact (this answer is finished) delivered by the other path, so it
+			 * carries the very same mark. It is load-bearing beyond bookkeeping:
+			 * `canonical-transcript.tsx` renders `data-completion-complete` from it,
+			 * and the read receipt's anchor gate asks for exactly that attribute
+			 * before it will acknowledge a completion (`use-completion-view.ts`).
+			 * Settling without it made a completion that arrived while its
+			 * conversation was open unacknowledgeable until some later re-read
+			 * replaced the record with a durable one - the operator-visible "cannot
+			 * be cleared until you switch away and back" (QA round 1, Q1; measured
+			 * in `docs/evidence/chat-sidebar-ack-and-selection/`).
+			 */
+			const toolCalls = Array.isArray(message.tool_calls)
+				? message.tool_calls
+				: [];
 			const settled: TranscriptRecord = {
 				kind: "assistant",
 				id: message.id,
 				ts: position === undefined ? now : state.records[position].ts,
 				text,
+				...(text || toolCalls.length === 0 ? { complete: true } : {}),
 				streaming: false,
 				settledAt:
 					previous?.kind === "assistant" && previous.settledAt !== undefined
