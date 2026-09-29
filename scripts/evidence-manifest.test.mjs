@@ -2188,6 +2188,16 @@ const BRANCH_RECORDS = [
 	 */
 	"headCutCondensationRestampNote",
 	/*
+	 * Grown by the monitors read-out pass (2026-09-29), this branch's newest
+	 * top-level record: it states what the pass ADDED (sixteen frames over two
+	 * surfaces - six `Chat/Run panel` monitor states and two `Chat/Composer
+	 * status row` chip states) and what it did not (no live-app set yet, and
+	 * why), and it is the record that makes the new frames' provenance
+	 * readable without walking the manifest's partialCapture block. It spells
+	 * its identity as bare SHAs, so it adds no name to the quoting ledger.
+	 */
+	"monitorsPass",
+	/*
 	 * AND THE CONDENSED BAR'S SPACING PASS'S OWN (operator report, 2026-09-29):
 	 * `condensedBarRestampNote` is the pass that lands the row under a collapsed
 	 * bar on the item step and the bar's chevron on the rule's end, over the
@@ -2209,6 +2219,12 @@ const BRANCH_RECORDS = [
 	"condensedBarFoldThreeNote",
 	"condensedBarFoldFourNote",
 	"condensedBarHoverGroundNote",
+	/*
+	 * And this fold's own record (`condensedBarFoldFiveNote`), for the same
+	 * reason one entry up: its text is written by the docs-only amendment this
+	 * registration rides beside.
+	 */
+	"condensedBarFoldFiveNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
