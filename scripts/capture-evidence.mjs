@@ -4720,6 +4720,18 @@ export const STORIES = [
 	["projects-tab--stale-progress", 1280, 900],
 	["projects-tab--create-dialog", 1280, 900],
 	["projects-tab--edit-dialog", 1280, 900],
+	/* The sheet's own interactions (S6d-ii part 2): the description editor's
+	 * preview arm, the clipboard-markdown paste (a `paste` event carrying
+	 * `text/html`), and the two-phase create driven to submit — each asserts
+	 * its state before the shutter, so the frames photograph a state the play
+	 * proved, not a coincidence. */
+	["projects-tab--create-sheet-preview", 1280, 900],
+	["projects-tab--create-sheet-paste", 1280, 900],
+	["projects-tab--create-sheet-submit", 1280, 900],
+	/* Round-1 additions: the over-limit counter (D1) and the follow-up
+	 * refusal (R1-5) — the two states review caught without a frame. */
+	["projects-tab--create-sheet-over-limit", 1280, 900],
+	["projects-tab--create-sheet-follow-up-refusal", 1280, 900],
 	["projects-tab--delete-confirm", 1280, 900],
 	["projects-tab--milestone-toggle", 1280, 900],
 	["projects-tab--detail-empty", 1280, 900],
@@ -10077,6 +10089,17 @@ const main = async () => {
 				 */
 				...(supplementary.length > 0 ? { supplementary } : {}),
 			};
+	/*
+	 * TWO SPACES, MATCHING THE FILE AND ITS SIBLINGS (review round 2, R2-1;
+	 * supersedes round 1's R1-3). Round 1 read the whole-file re-indent as a
+	 * writer/tree mismatch and made this line write tabs — but the tree's
+	 * convention is two spaces: main's own writer writes `null, 2`, main's
+	 * manifest was re-serialised to two spaces, and every sibling evidence
+	 * writer above does the same. What the manifest cannot survive is a
+	 * writer that disagrees with the bytes on disk: whichever style the tree
+	 * settles on, this line has to match it, so a capture never re-indents a
+	 * 9k-line file as a side effect of stamping it.
+	 */
 	writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
 	console.log(`Captured ${captured} frames into ${OUT} at ${head.slice(0, 9)}`);
