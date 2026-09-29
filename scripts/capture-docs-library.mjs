@@ -16,11 +16,18 @@
  * both READMEs, which want the hero's own format - a 1280x900 viewport at
  * `deviceScaleFactor: 2`, i.e. a 2560x1800 png - for every scene. The
  * mechanics are the same ones that tool proved: a PRIVATE headless Chrome
- * (fresh `--user-data-dir`, `--use-mock-keychain`, a port Chrome picks), raw
- * CDP over Node's built-in WebSocket, `data-capture-pending` as the shutter
+ * (fresh `--user-data-dir`, the mock-keychain switch applied by the shared
+ * `withMockKeychain` helper, a port Chrome picks), raw CDP over Node's
+ * built-in WebSocket, `data-capture-pending` as the shutter
  * hold, `document.fonts.status` as the webfont gate, and an
  * `animation: none` freeze before the shot so a frame is a function of its
  * story rather than of the instant it was taken.
+ *
+ * THE README WEBPS. The committed `resources/readme/*.webp` pairs are these
+ * pngs converted with `cwebp -q 88 -m 6 -resize 1280 900 <scene>-<theme>.png
+ * -o <scene>-<theme>.webp` (cwebp writes nothing without a destination) - a
+ * spelling verified to reproduce every committed byte; refresh the webps with
+ * that command rather than re-shooting frames that did not change.
  *
  * THE THEME ARG IS THE ONLY SOURCE OF THEME. `.storybook/preview.tsx` reads
  * `args.theme` and moves MUI context, `data-theme` and the preferences store
@@ -44,6 +51,9 @@ const DEBUG_PORT_LINE = /DevTools listening on (ws:\/\/[^\s]+)/;
 
 /** Scene name (used in file names) -> story id. */
 const SCENES = [
+	/* `hero` resolves into the sibling `docs-hero` story, which this repo does
+	   not carry: a default run reports its two frames as failed and exits 1, so
+	   scope an ordinary run with `--only=...` until that story lands beside it. */
 	["hero", "docs-app-hero--scene"],
 	["conversation-tools", "docs-library--conversation-tools"],
 	["subagents", "docs-library--subagents"],

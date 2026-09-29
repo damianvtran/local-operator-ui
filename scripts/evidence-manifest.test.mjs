@@ -1744,6 +1744,13 @@ const STAMP_BINDING_NOTES = [
 	 * re-stamp rides the same re-derivation.
 	 */
 	"foldOntoA8ac7f673cNote",
+	/*
+	 * AND THE README-VISUALS REMEDIATION'S OWN: `readmeVisualsRestampNote` states
+	 * the pair this branch's change binds - the story under `src/` and the two
+	 * rigs under `scripts/` moved both stamped trees, and no sweep frame moved -
+	 * so it is held to the pair this file ships rather than read as history.
+	 */
+	"readmeVisualsRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2699,6 +2706,15 @@ const BRANCH_RECORDS = [
 	 * that started from main's copy would drop it first.
 	 */
 	"foldOntoA8ac7f673cNote",
+	/*
+	 * Grown by the README-visuals remediation, this branch's newest top-level
+	 * record and the one that re-derived both stamps: the story under `src/` and
+	 * the two rigs under `scripts/` moved both trees, and no sweep frame moved.
+	 * It is listed for the reason the list exists: a fold that started from
+	 * main's manifest would drop it (and with it the note that says which two
+	 * tree hashes this branch's delta moved) without a word.
+	 */
+	"readmeVisualsRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
