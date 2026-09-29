@@ -778,6 +778,23 @@
 			margin-left: 100%;
 		}
 	}
+
+	/*
+	 * The checkpoint jump's landing wash (`reveal-record.ts`, design §D7).
+	 *
+	 * The row the reader asked for is flashed for JUMP_HIGHLIGHT_MS (1.4 s),
+	 * then the attribute the module set is removed and the wash is gone. The
+	 * fade runs wash -> transparent on the keyframe so the removal lands on a
+	 * row already back at its own ground.
+	 */
+	@keyframes jump-highlight {
+		from {
+			background-color: var(--color-accent-wash);
+		}
+		to {
+			background-color: transparent;
+		}
+	}
 }
 
 @layer base {
@@ -817,6 +834,36 @@
 	@media (prefers-reduced-motion: no-preference) {
 		.lo-install-sweep {
 			animation: install-sweep 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+		}
+	}
+
+	/*
+	 * The checkpoint jump's landing wash (`reveal-record.ts`, design §D7): the
+	 * row the reader jumped to holds a transient `accentWash` ground for
+	 * `JUMP_HIGHLIGHT_MS`, so "the row you asked for" is not left to the scroll
+	 * position alone on a surface where every row looks alike.
+	 *
+	 * WHY THE ANIMATION IS GATED ON `no-preference` AND A STATIC WASH SITS
+	 * OUTSIDE IT - the split `.lo-install-sweep` above documents, one state
+	 * over. The global cap truncates an animation to 0.01 ms and lands it on
+	 * the END keyframe, so a reduced-motion reader of a fade-to-nothing would
+	 * get no cue AT ALL; here the state that must survive is the wash itself,
+	 * so reduced motion holds it still for the attribute's lifetime and the
+	 * module's timer clears it either way.
+	 *
+	 * A GROUND, not an outline: the row boxes on this surface are transparent
+	 * wrappers whose children (bubbles, cards) draw their own edges, and an
+	 * outline on the wrapper would ring outside the bubble it is about. A wash
+	 * the children paint over is the one property that shows without inventing
+	 * geometry. `both` fill so the wash does not vanish a frame before the
+	 * removal lands.
+	 */
+	[data-jump-highlight] {
+		background-color: var(--color-accent-wash);
+	}
+	@media (prefers-reduced-motion: no-preference) {
+		[data-jump-highlight] {
+			animation: jump-highlight 1.4s ease-out 1 both;
 		}
 	}
 	/*

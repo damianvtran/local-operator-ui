@@ -11,7 +11,10 @@
  * composer's state machine, whose transitions are driven here in process — the
  * discipline its own docstring promises, and where the re-summon semantics
  * (review round 1, Q1: a standing retryable refusal survives re-resolution) are
- * named rather than inferred from a scene.
+ * named rather than inferred from a scene — and the input-mode stamp's
+ * derivation (`wireInputMode`, the mapping behind `typed`/`dictated`/`mixed`),
+ * whose wire half — the field's absence and its exact values — is proven at
+ * the desktop contract's own body builder in `mini-view-dictation.test.mjs`.
  *
  * WHAT THEY ARE NOT: proof that the app renders these states (`--scene
  * mini-view` photographs them) or that a chord registers (the registrar suite
@@ -174,7 +177,13 @@ test("the display tokens are one entry per cap, and the sentence joins them", ()
  * The composer's state machine
  * ------------------------------------------------------------------ */
 
-const { MINI_INITIAL_STATE, canSend, isEditable, miniTransitions } = miniView;
+const {
+	MINI_INITIAL_STATE,
+	canSend,
+	isEditable,
+	miniTransitions,
+	wireInputMode,
+} = miniView;
 
 const at = (overrides) => ({ ...MINI_INITIAL_STATE, ...overrides });
 
@@ -285,4 +294,36 @@ test("Retry re-opens the gate without erasing the sentence that explains it", ()
 	const cleared = miniTransitions.clearNotice(refused);
 	assert.equal(cleared.notice, null);
 	assert.equal(cleared.retryable, false);
+});
+
+/* ------------------------------------------------------------------ *
+ * The input-mode stamp's derivation
+ * ------------------------------------------------------------------ */
+
+test("the stamp follows the composer's rule: typed | dictated | mixed", () => {
+	/*
+	 * The mapping is the reference's own (`inputModeForSend`,
+	 * `message-input.tsx`): `dictated` only when a transcript put the content
+	 * there, `mixed` when both doors did, `typed` when only the keyboard did.
+	 * The caller owns "since the box last emptied" — its reset refs — and
+	 * passes the gate's own answer in.
+	 */
+	assert.equal(wireInputMode(true, false, false), "typed", "keyboard only");
+	assert.equal(wireInputMode(true, false, true), "dictated", "transcript only");
+	assert.equal(wireInputMode(true, true, true), "mixed", "both doors");
+	assert.equal(
+		wireInputMode(true, true, false),
+		"typed",
+		"typing alone is still typed, however much was typed",
+	);
+});
+
+test("feature off stamps nothing: the legacy body is the field's absence", () => {
+	/*
+	 * `features.input_mode` off must produce `undefined` — which is what makes
+	 * the wire drop the key entirely rather than carry a present-but-empty one
+	 * (an older harness validates the message body with `extra="forbid"`).
+	 */
+	assert.equal(wireInputMode(false, false, false), undefined);
+	assert.equal(wireInputMode(false, true, true), undefined);
 });

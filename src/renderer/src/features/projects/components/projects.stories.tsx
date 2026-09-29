@@ -424,6 +424,8 @@ type StubState = {
 	failList: string | null;
 	/** The listing read never settles: the loading frame's only honest shape. */
 	hang: boolean;
+	/** `projects.update` fails with this sentence (the follow-up-refusal arm). */
+	failPatch: string | null;
 };
 
 let stub: StubState = {
@@ -432,7 +434,16 @@ let stub: StubState = {
 	details: null,
 	failList: null,
 	hang: false,
+	failPatch: null,
 };
+
+/**
+ * Every create/update the bridge answered, in order, for this render. The
+ * submit story asserts the two-phase create (route then follow-up patch)
+ * against this record rather than against pixels: a closed dialog proves
+ * neither op ran, and a toast is not in the tree.
+ */
+let bridgeOps: { op: string; request: Record<string, unknown> }[] = [];
 
 const answer = (request: {
 	op: string;
@@ -493,6 +504,7 @@ const answer = (request: {
 			return { status: 200, body: { result: projectView } };
 		}
 		case "projects.create": {
+			bridgeOps.push({ op: request.op, request });
 			const name = String(request.name ?? "");
 			const created = project(`created-${stub.projects.length}`, name, {
 				description: String(request.description ?? ""),
@@ -501,6 +513,9 @@ const answer = (request: {
 			return { status: 200, body: { result: created } };
 		}
 		case "projects.update":
+			bridgeOps.push({ op: request.op, request });
+			if (stub.failPatch)
+				return { status: 422, body: { detail: stub.failPatch } };
 			return { status: 200, body: { result: stub.projects[0] ?? null } };
 		case "projects.delete":
 			return { status: 200, body: { result: { deleted: true } } };
@@ -685,6 +700,17 @@ const clickWhen = async (selector: string) => {
 };
 
 /**
+ * One element, or the play fails with its own sentence — the `clickWhen`
+ * contract for elements a play types into rather than clicks (a missing field
+ * must read as a missing field, not as a non-null-assertion crash).
+ */
+const need = <T extends Element>(selector: string): T => {
+	const element = document.querySelector<T>(selector);
+	if (!element) throw new Error(`the story's element is missing: ${selector}`);
+	return element;
+};
+
+/**
  * Wait for the DETAIL screen the route-based stories navigate to.
  *
  * The plays race `RouteTo`'s navigation: the story's first render is the
@@ -753,8 +779,10 @@ const page = (
 		details: null,
 		failList: null,
 		hang: false,
+		failPatch: null,
 		...state,
 	};
+	bridgeOps = [];
 	/*
 	 * The view choice is PERSISTED (the app's layout-choice rule), so each
 	 * story states it explicitly and clears it otherwise: without the clear, a
@@ -1108,6 +1136,270 @@ export const EditDialog: Story = {
 };
 
 /**
+ * The preview arm of the description editor: the same sheet with `Preview`
+ * pressed, so the frame shows the template RENDERED (the `ProjectMarkdown`
+ * treatment) rather than the textarea. The play asserts an `h2` inside the
+ * preview because a toggle that showed prose it did not parse is exactly the
+ * failure this story exists to catch.
+ */
+export const CreateSheetPreview: Story = {
+	render: () => page({ projects: THREE }),
+	play: playOnce("create-sheet-preview", async () => {
+		await clickWhen('[data-tour-tag="create-project-button"]');
+		await poll(
+			() =>
+				document.querySelector('[data-project-description-mode="preview"]') !==
+				null,
+			"the description mode toggle",
+		);
+		/*
+		 * THE PARITY MEASUREMENT (design round 1, D2): the write textarea and
+		 * the preview box must be the same height, so toggling Write|Preview
+		 * re-centres nothing. Measured before the toggle, asserted after it —
+		 * class names alone cannot promise a rendered box.
+		 */
+		const writeHeight = need<HTMLTextAreaElement>(
+			"[data-project-description]",
+		).getBoundingClientRect().height;
+		await clickWhen('[data-project-description-mode="preview"]');
+		await poll(
+			() =>
+				document.querySelector("[data-project-description-preview] h2") !==
+				null,
+			"the rendered description heading",
+		);
+		const previewHeight = need<HTMLElement>(
+			"[data-project-description-preview]",
+		).getBoundingClientRect().height;
+		if (Math.abs(writeHeight - previewHeight) > 1) {
+			throw new Error(
+				`write ${writeHeight}px vs preview ${previewHeight}px — the toggle re-centres`,
+			);
+		}
+	}),
+};
+
+/**
+ * The paste path, exercised the way a clipboard actually delivers it: a
+ * `paste` event carrying `text/html` (and its `text/plain` twin) is dispatched
+ * at the textarea, and the play asserts the field now holds the CONVERTED
+ * markdown — the one thing a plain paste could not produce.
+ */
+export const CreateSheetPaste: Story = {
+	render: () => page({ projects: THREE }),
+	play: playOnce("create-sheet-paste", async () => {
+		await clickWhen('[data-tour-tag="create-project-button"]');
+		await poll(
+			() =>
+				document.querySelector<HTMLTextAreaElement>(
+					'[data-tour-tag="project-create-dialog"] textarea',
+				) !== null,
+			"the description textarea",
+		);
+		const textarea = document.querySelector<HTMLTextAreaElement>(
+			'[data-tour-tag="project-create-dialog"] textarea',
+		);
+		if (!textarea) throw new Error("the description textarea never mounted");
+		textarea.focus();
+		/* Replace-all, so the frame shows exactly the converted payload. */
+		textarea.setSelectionRange(0, textarea.value.length);
+		const clipboard = new DataTransfer();
+		clipboard.setData(
+			"text/html",
+			"<h2>Imported</h2><ul><li>One</li><li>Two</li></ul>",
+		);
+		clipboard.setData("text/plain", "Imported\nOne\nTwo");
+		const paste = new Event("paste", { bubbles: true, cancelable: true });
+		Object.defineProperty(paste, "clipboardData", { value: clipboard });
+		textarea.dispatchEvent(paste);
+		await poll(
+			() =>
+				textarea.value.includes("## Imported") &&
+				textarea.value.includes("- One") &&
+				textarea.value.includes("- Two"),
+			"the converted paste in the description",
+		);
+	}),
+};
+
+/**
+ * The over-limit description (design round 1, D1): the counter turns danger and
+ * the field reads invalid WHILE the text is being written — the first cut
+ * stayed muted until the submit bounced.
+ */
+export const CreateSheetOverLimit: Story = {
+	render: () => page({ projects: THREE }),
+	play: playOnce("create-sheet-over-limit", async () => {
+		await clickWhen('[data-tour-tag="create-project-button"]');
+		await poll(
+			() => document.querySelector("[data-project-description]") !== null,
+			"the description textarea",
+		);
+		const textarea = need<HTMLTextAreaElement>("[data-project-description]");
+		/*
+		 * Filled through the paste path, not `userEvent.type`: 245 controlled
+		 * keystrokes outlived the capture's 60s prepare budget on the loaded
+		 * fleet, and `userEvent.clear` proved unreliable over the seeded
+		 * template (measured: 275 characters landed, template included). A
+		 * single `paste` event with `text/html` is the app's own insertion
+		 * path — the same one the paste story drives — and lands atomically.
+		 */
+		const filler = "x".repeat(245);
+		const clipboard = new DataTransfer();
+		clipboard.setData("text/html", `<p>${filler}</p>`);
+		clipboard.setData("text/plain", filler);
+		const paste = new Event("paste", { bubbles: true, cancelable: true });
+		Object.defineProperty(paste, "clipboardData", { value: clipboard });
+		textarea.focus();
+		textarea.setSelectionRange(0, textarea.value.length);
+		textarea.dispatchEvent(paste);
+		await poll(
+			() => textarea.value.length === 245,
+			"the over-limit text to land",
+		);
+		await poll(() => {
+			const counter = [...document.querySelectorAll("p")].find(
+				(node) => node.textContent?.trim() === "245/240",
+			);
+			return (
+				counter?.className.includes("text-danger") === true &&
+				textarea.getAttribute("aria-invalid") === "true"
+			);
+		}, "the danger counter and the invalid field");
+	}),
+};
+
+/**
+ * The follow-up refusal (review round 1, R1-5): the create SUCCEEDS and the
+ * PATCH for the extra fields is refused — the project exists, and the toast
+ * says exactly that plus the way back in. The play asserts the toast text and
+ * the closed dialog; the frame shows both surfaces.
+ */
+export const CreateSheetFollowUpRefusal: Story = {
+	render: () =>
+		page({ projects: THREE, failPatch: "The target date must be a real day." }),
+	play: playOnce("create-sheet-follow-up-refusal", async () => {
+		await clickWhen('[data-tour-tag="create-project-button"]');
+		await poll(
+			() => document.querySelector("[data-project-title]") !== null,
+			"the title input",
+		);
+		await userEvent.type(
+			need<HTMLInputElement>("[data-project-title]"),
+			"Refused extras",
+		);
+		await userEvent.type(
+			need<HTMLInputElement>("[data-project-owner]"),
+			"atlas",
+		);
+		await clickWhen("[data-project-submit]");
+		await poll(
+			() =>
+				document
+					.querySelector("[data-sonner-toaster]")
+					?.textContent?.includes(
+						"was created, but the extra fields were not saved",
+					) ?? false,
+			"the follow-up refusal toast",
+		);
+		await poll(
+			() =>
+				document.querySelector('[data-tour-tag="project-create-dialog"]') ===
+				null,
+			"the dialog to close",
+		);
+	}),
+};
+
+/**
+ * The two-phase create, driven end to end: the create route carries the four
+ * fields the backend's frozen contract accepts (`name`, `description`,
+ * `status`, `tags`) and the follow-up patch carries the rest (title, owner,
+ * target date). The play types a TITLE first (so the key derivation runs on
+ * the real form), then asserts BOTH ops reached the bridge — the create with
+ * the derived key, the patch with the follow-up fields — plus the closed
+ * dialog. A frame alone cannot prove any of that.
+ */
+export const CreateSheetSubmit: Story = {
+	render: () => page({ projects: THREE }),
+	play: playOnce("create-sheet-submit", async () => {
+		/*
+		 * Poll for the button before pressing it (the delete confirm's
+		 * `waitForDetail` already does this): a `userEvent` click on a missing
+		 * element throws instead of waiting.
+		 */
+		await poll(
+			() =>
+				document.querySelector('[data-tour-tag="create-project-button"]') !==
+				null,
+			"the create button",
+		);
+		await userEvent.click(
+			need<HTMLElement>('[data-tour-tag="create-project-button"]'),
+		);
+		await poll(
+			() => document.querySelector("[data-project-title]") !== null,
+			"the title input",
+		);
+		await userEvent.type(
+			need<HTMLInputElement>("[data-project-title]"),
+			"Incident follow-ups",
+		);
+		/* The key derived while the field was untouched is the form's promise. */
+		await poll(
+			() =>
+				document.querySelector<HTMLInputElement>("[data-project-key]")
+					?.value === "incident-follow-ups",
+			"the derived key",
+		);
+		await userEvent.type(
+			need<HTMLInputElement>("[data-project-owner]"),
+			"atlas",
+		);
+		await userEvent.type(
+			need<HTMLInputElement>("[data-project-target]"),
+			"2026-11-01",
+		);
+		await clickWhen("[data-project-submit]");
+		await poll(
+			() => bridgeOps.some((entry) => entry.op === "projects.update"),
+			"the follow-up patch",
+		);
+		const created = bridgeOps.find((entry) => entry.op === "projects.create");
+		const patched = bridgeOps.find((entry) => entry.op === "projects.update");
+		if (created?.request.name !== "incident-follow-ups") {
+			throw new Error(
+				`the create carried: ${JSON.stringify(created?.request)}`,
+			);
+		}
+		const fields = (patched?.request.fields ?? {}) as Record<string, unknown>;
+		if (
+			fields.title !== "Incident follow-ups" ||
+			fields.owner !== "atlas" ||
+			fields.target_date !== "2026-11-01"
+		) {
+			throw new Error(`the patch carried: ${JSON.stringify(fields)}`);
+		}
+		await poll(
+			() =>
+				document.querySelector('[data-tour-tag="project-create-dialog"]') ===
+				null,
+			"the dialog to close",
+		);
+		/*
+		 * FOCUS RETURNS TO THE OPENER (UX round 1, U2) — asserted on the sheet;
+		 * the delete confirm's play carries the same check.
+		 */
+		await poll(
+			() =>
+				document.activeElement ===
+				document.querySelector('[data-tour-tag="create-project-button"]'),
+			"focus back on the create button",
+		);
+	}),
+};
+
+/**
  * The delete confirm, with the name TYPED.
  *
  * The typed text is the state: the route's contract compares the body against
@@ -1122,12 +1414,48 @@ export const DeleteConfirm: Story = {
 	),
 	play: playOnce("delete-confirm", async () => {
 		await waitForDetail();
-		await clickWhen('[data-tour-tag="project-delete"]');
+		/*
+		 * Open through `userEvent` so the trigger actually takes focus before
+		 * the dialog captures its opener — see the Escape cycle below.
+		 */
+		await userEvent.click(
+			need<HTMLElement>('[data-tour-tag="project-delete"]'),
+		);
 		await poll(
 			() =>
 				document.querySelector('[data-tour-tag="project-delete-dialog"]') !==
 				null,
 			"the delete dialog",
+		);
+		/*
+		 * FOCUS RETURNS TO THE OPENER (UX round 1, U2), verified on this dialog
+		 * too: Escape closes, focus must be back on the trigger, and the story
+		 * reopens so the frame still shows the typed confirm the copy needs.
+		 *
+		 * The REOPEN is `userEvent`'s, not `.click()`: a programmatic click
+		 * never moves focus, so the dialog would capture `body` as the opener
+		 * and the assertion would test the rig, not the app — the realistic
+		 * pointer sequence is what a person produces.
+		 */
+		await userEvent.keyboard("{Escape}");
+		await poll(
+			() => document.querySelector('[role="dialog"]') === null,
+			"the delete dialog to close on Escape",
+		);
+		await poll(
+			() =>
+				document.activeElement ===
+				document.querySelector('[data-tour-tag="project-delete"]'),
+			"focus back on the delete trigger",
+		);
+		await userEvent.click(
+			need<HTMLElement>('[data-tour-tag="project-delete"]'),
+		);
+		await poll(
+			() =>
+				document.querySelector('[data-tour-tag="project-delete-dialog"]') !==
+				null,
+			"the delete dialog again",
 		);
 		const input = document.querySelector<HTMLInputElement>(
 			'[data-tour-tag="project-delete-dialog"] input',

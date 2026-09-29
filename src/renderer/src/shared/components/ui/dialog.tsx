@@ -55,6 +55,17 @@ export type DialogContentProps = ComponentPropsWithoutRef<
 	/** Show the corner close button. */
 	showClose?: boolean;
 	/**
+	 * Refuse the corner close button (UX round 2, U7).
+	 *
+	 * WHY IT IS A PROP RATHER THAN A CALLER-SIDE CHECK: the close button is
+	 * `DialogPrimitive.Close`, which closes the dialog through Radix's own
+	 * path — a caller cannot intercept it the way it can `onEscapeKeyDown`.
+	 * A surface with a PENDING WRITE therefore states the policy here, and
+	 * the button goes disabled (the same look Cancel wears while a save is
+	 * in flight), so every close path obeys one rule.
+	 */
+	closeDisabled?: boolean;
+	/**
 	 * The scrim's own classes.
 	 *
 	 * The default scrim is `z-50`, which dims the app but not a surface that
@@ -73,7 +84,14 @@ export const DialogContent = forwardRef<
 	DialogContentProps
 >(
 	(
-		{ className, children, showClose = true, overlayClassName, ...props },
+		{
+			className,
+			children,
+			showClose = true,
+			closeDisabled = false,
+			overlayClassName,
+			...props
+		},
 		ref,
 	) => (
 		<DialogPortal>
@@ -106,6 +124,7 @@ export const DialogContent = forwardRef<
 							size="icon-sm"
 							className="absolute top-4 right-4"
 							aria-label="Close"
+							disabled={closeDisabled}
 						>
 							<X aria-hidden="true" />
 						</Button>

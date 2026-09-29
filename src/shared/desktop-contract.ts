@@ -114,6 +114,17 @@ export const SESSION_SEARCH_MAX_CHARS = 256;
 export const SESSION_SEARCH_DEFAULT_LIMIT = 100;
 
 /**
+ * How many checkpoint ids one `sessions.checkpoints.warm` call may carry.
+ *
+ * The op is a user-gesture-driven spend (one model call per turn named), so
+ * the wire bound and the client's own slice read the same number: the hover
+ * arm sends one id, the rail-open arm sends none and lets the backend select
+ * its own default, and a caller that ever sends a set is clamped here rather
+ * than refused by the schema for a count it computed itself.
+ */
+export const CHECKPOINT_WARM_MAX_IDS = 16;
+
+/**
  * Longest `systemPrompt` the agent system-prompt op accepts, in JS CHARACTERS.
  *
  * Declared here beside `DESKTOP_MESSAGE_MAX_CHARS` and referenced by the schema
@@ -1153,6 +1164,44 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			sessionId,
 			beforeId: id.optional(),
 			limit: z.number().int().min(1).max(500).optional(),
+		})
+		.strict(),
+	/*
+	 * The transcript checkpoint rail's manifest (design D1/D9): every material
+	 * checkpoint of one LOCAL conversation — the reader's own messages and each
+	 * completed turn — with the seq-proportional ordinal the rail places a tick
+	 * by, and a completion's optional generated name.
+	 *
+	 * The answer is deliberately cheap and never blocks on a scan: a cold or
+	 * stale index answers `state: "building"` while a refresh runs in the
+	 * background (the backend measures 22 s for this machine's 272 MB journal),
+	 * so the rail's first paint is immediate and the hook polls while anything
+	 * it asked for is still pending. A remote/peer conversation answers
+	 * `state: "unsupported"` — a fact about where the bytes are, not a failure
+	 * — and the rail hides, the same degradation as an empty manifest.
+	 */
+	z
+		.object({ op: z.literal("sessions.checkpoints"), sessionId })
+		.strict(),
+	/*
+	 * Buy names for checkpoints (design D2/D9): idempotent, bounded, and never
+	 * blocking on the model call itself — the backend schedules one
+	 * `complete_once` per turn (15 s budget, single attempt, a 10-minute
+	 * cooldown after a failure) and answers accepted/pending immediately.
+	 *
+	 * `ids` is the hover gesture's arm (a bounded set of explicit checkpoint
+	 * ids); omitting it is the rail-open arm, where the backend selects the
+	 * most recent checkpoints missing names under its own default. Both fields
+	 * are optional, and an older backend that predates the op answers the same
+	 * 404/422 a missing route always does — the hook treats any failure as "no
+	 * rail here", never as a user-facing error.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.checkpoints.warm"),
+			sessionId,
+			ids: z.array(id).max(CHECKPOINT_WARM_MAX_IDS).optional(),
+			limit: z.number().int().min(1).max(CHECKPOINT_WARM_MAX_IDS).optional(),
 		})
 		.strict(),
 	/*
@@ -2854,6 +2903,107 @@ export type DesktopWakeCreateResponse = {
 };
 
 /**
+ * What a checkpoint MARKS: the reader's own message, or a finished turn.
+ */
+export type CheckpointKind = "user" | "completion";
+
+/**
+ * A settled turn's ending, when the journal can prove one.
+ *
+ * `open` is the live tail: no marker resolves it and no newer settled run
+ * followed it, so the rail draws an in-progress dot rather than staying
+ * silent about the turn the reader is sitting in.
+ */
+export type CheckpointOutcome = "complete" | "error" | "interrupted" | "open";
+
+/**
+ * How far a completion checkpoint's naming has got.
+ *
+ * `unavailable` is a FAILED call inside its cooldown (the marker is
+ * persisted), not a pending one: the card shows the fallback text with no
+ * "Generating…" line, because nothing is generating.
+ */
+export type CheckpointNamingState = "ready" | "pending" | "unavailable";
+
+export type CheckpointNaming = {
+	state: CheckpointNamingState;
+	/** The model's name, or `null` while pending/unavailable. */
+	name: string | null;
+	/** One sentence, or `null`; `""` is a ready name that carries no summary. */
+	summary: string | null;
+};
+
+/**
+ * One checkpoint of the `sessions.checkpoints` manifest (design D9).
+ *
+ * The manifest deliberately omits fields rather than nulling them, and this
+ * type keeps that: `outcome` is absent on checkpoints no attention marker
+ * resolved (markers only exist from partway through a session's life, so
+ * pre-mechanism turns have no outcome to show), and `naming` is present only
+ * on COMPLETION checkpoints, because a name is attached to a finished turn.
+ * A required field would force the renderer to invent a value the wire never
+ * claimed.
+ */
+export type Checkpoint = {
+	/** The journal entry id — the jump target and the warm's handle. */
+	id: string;
+	kind: CheckpointKind;
+	/** 1-based turn ordinal, assigned structurally by the backend. */
+	turn: number;
+	/**
+	 * Epoch SECONDS — the journal's own unit, not milliseconds. Converted once,
+	 * where a label is formatted (`checkpointClockLabel`), the same way the
+	 * transcript reducer converts a durable `entry.ts`.
+	 */
+	ts: number;
+	/** The journal ordinal the tick's position is proportional to. */
+	seq: number;
+	/** User text, or the turn's closing answer text (flattened, capped). */
+	text: string;
+	outcome?: CheckpointOutcome;
+	naming?: CheckpointNaming;
+};
+
+/**
+ * The index's own state, as the manifest reports it.
+ *
+ * `building` and `stale` both mean "a scan is in flight over a previous
+ * answer" — the rail renders whatever checkpoints arrived and pulses its top
+ * mark, rather than hiding. `unsupported` is a REMOTE conversation, whose
+ * journal is not on this machine; the backend answers it in place of an
+ * error because it is a fact about where the bytes are, and the rail hides —
+ * the same honest degradation as an empty manifest.
+ */
+export type CheckpointIndexState =
+	| "ready"
+	| "building"
+	| "stale"
+	| "error"
+	| "unsupported";
+
+/** The `sessions.checkpoints` 200 body (design D9). */
+export type CheckpointManifest = {
+	session_id: string;
+	index: {
+		state: CheckpointIndexState;
+		/** The cache file's mtime, epoch seconds; absent on a cold answer. */
+		built_at?: number;
+	};
+	checkpoints: Checkpoint[];
+};
+
+/**
+ * The `sessions.checkpoints.warm` 200 body (design D9): ids this call took
+ * ownership of, and the subset still waiting on a name. An id already named
+ * (same digest) or inside its failure cooldown is accepted but not pending —
+ * the rail's poll has nothing left to wait for on it.
+ */
+export type CheckpointWarmAnswer = {
+	accepted: string[];
+	pending: string[];
+};
+
+/**
  * How many bytes of serialized JSON body one desktop operation may carry.
  *
  * These live here, beside the schemas they bound, because the two were allowed
@@ -3258,6 +3408,7 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"profiles.list",
 	"providers.list",
 	"sessions.aside.get",
+	"sessions.checkpoints",
 	"sessions.failovers",
 	"sessions.get",
 	"sessions.history",
@@ -4215,6 +4366,26 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "GET",
 			};
 		}
+		case "sessions.checkpoints":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/checkpoints`,
+				method: "GET",
+			};
+		case "sessions.checkpoints.warm":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/checkpoints/warm`,
+				method: "POST",
+				/*
+				 * Omitted, not zeroed: an absent `ids` IS the rail-open arm (the backend
+				 * selects its own default), and an absent `limit` leaves that selection
+				 * its own number — sending 8 here would be a second copy of the
+				 * backend's `DEFAULT_WARM_LIMIT` that could drift from it.
+				 */
+				body: {
+					...(request.ids ? { ids: request.ids } : {}),
+					...(request.limit !== undefined ? { limit: request.limit } : {}),
+				},
+			};
 		case "subagents.transcript": {
 			const query = new URLSearchParams({
 				limit: String(request.limit ?? 100),
