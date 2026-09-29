@@ -1,0 +1,406 @@
+/**
+ * The collapsed-turn-summary model: one bar over a completed turn's
+ * pre-answer rows (the frozen design's §4, "Option C").
+ *
+ * WHY A VIEW TIER AND NOT A RECORD. A collapsed run keeps every record id,
+ * order and gap tier it had; the bar is a collapsed VIEW of a contiguous
+ * slice, exactly as `TraceFold` is a collapsed view of a run of calls
+ * (`trace-fold-model.ts:26-34`'s doctrine). So this module is pure — rows in,
+ * plan out — and the reducer, the wire and the canonical model are untouched.
+ *
+ * THE UNIT IS A RUN (`runsOf`), NOT A RECORD OR A FOLD: the rows between the
+ * turn's opening user message and the answer it worked towards, with a user
+ * message that arrived mid-turn folded in as a steer. That is the same unit
+ * the caption rule and the foot line use, which is what stops a steered turn's
+ * bar from disagreeing with its own foot (F5 in the design).
+ *
+ * WHAT COLLAPSES, in one sentence: a run whose head is in the list, that is
+ * not the live one, and that has at least one row the reader is not already
+ * owed (a hidden row — see `staysVisibleWhileCollapsed` for the pinned ones).
+ * A run the window has cut (its opening user row is not loaded) renders as
+ * today: a summary may only ever describe rows that are actually on hand.
+ *
+ * EVERYTHING ELSE — counts, failure classification, the hover sentence — is
+ * reused from the shipped fold vocabulary (`foldSummary`, `ledgerName`) or
+ * stated in ONE function (`isFailedCall`) whose body swaps to the sibling
+ * session's shared outcome predicate the day it lands.
+ */
+
+import { type FoldableAction, foldSummary } from "./trace-fold-model";
+import {
+	type TranscriptRecord,
+	isInterruptedFault,
+} from "./transcript-reducer";
+import { type Row, type TurnRun, ledgerName, runsOf } from "./transcript-rows";
+
+/**
+ * Whether a record stays on screen while its run is collapsed.
+ *
+ * THE PIN LIST, deliberately in ONE function: the design round can flip any
+ * single member without touching the partition, the counts or the render pass.
+ * Each member is a row a collapsed turn cannot be read without:
+ *
+ * - `compaction` — the conversation's memory statement: rare, and the §E3
+ *   precedent already pins it as a statement so `[user][answer][compaction]`
+ *   keeps its caption.
+ * - a `notice` with `complete === true` — "Stopped with an error" /
+ *   "Interrupted", the transcript's own "this turn is over" records
+ *   (`working-line-model.ts`'s two marker texts). These are HOW the interrupted
+ *   cases (§5 cases 6-8) stay legible on a collapsed turn.
+ * - a `custom` at `level === "error"` — `session_incident`, the reason a turn
+ *   died. The row that says why the thing below the bar stopped must not be
+ *   one more hidden row.
+ *
+ * NARROWED FOR THE OPERATOR'S FEEDBACK (2026-09-29, issue #5): `peer` and
+ * `wake` delivery receipts were pinned in v1 under the fold tier's argument
+ * ("a receipt hidden inside a summary of work would be a message the reader
+ * never saw", `canonical-transcript.tsx`'s fold comment). Real use overrides
+ * it: inside a completed turn these receipts are the bulk of the visual weight
+ * — "the sends and receives within these periods ... stick out and take up
+ * space/distract visually" — and they are IN-TURN evidence of the work rather
+ * than a message between turns; the reader who wants them is one press away on
+ * the bar's own expansion. The pin list now keeps only the rows a collapsed
+ * turn cannot be read without: the memory statement, the death markers and the
+ * incident reason.
+ *
+ * Everything else inside the span hides: tool rows, in-between assistant
+ * prose, peer and wake receipts, info-level `custom` receipts (including
+ * `job_result`), info notices, subagent-end lines.
+ */
+export function staysVisibleWhileCollapsed(record: TranscriptRecord): boolean {
+	switch (record.kind) {
+		case "compaction":
+			return true;
+		case "notice":
+			return record.complete === true;
+		case "custom":
+			return record.level === "error";
+		default:
+			return false;
+	}
+}
+
+/**
+ * Is this tool row a genuine FAILURE?
+ *
+ * THE SIBLING CONTRACT (session 3d5d52c85ba2 owns interrupted-vs-failed): the
+ * bar counts ONLY `error`, and aborted (`stopped`), never-sent
+ * (`neverSent`/`notRunReason`) and skipped calls are excluded — a call the
+ * user stopped did not fail, and a call no tool ever received has no outcome.
+ * The bar shows no "interrupted" wording in v1; the aborted answer's own
+ * `Stopped before finishing` caption carries that fact where it already does.
+ *
+ * ONE LOCAL HELPER on purpose: this is the single place the bar's count is
+ * read, so the switch to a shared exported predicate (if one is ever cut) is
+ * mechanical. It consumes the sibling's landed facts rather than re-deriving
+ * them (their interrupted-vs-failed fix, PR #613): `isInterruptedFault` is
+ * their exported class binding for the wire's `not_run_kind`, and the reducer
+ * sets `stopped` / clears `isError` from `__fault` in {skipped, aborted} on
+ * both the end and the durable arms - so an interrupted call is excluded by
+ * the wire's own state and this helper never re-sniffs a reason string. The
+ * never-sent exclusions stay even though the fold chip and foot count
+ * `isError` alone: the frozen contract keeps every never-sent call out of the
+ * SUMMARY counts (v1), and their rows keep their own failure treatment. The
+ * planning-fault kinds (`denied`, `gate_failed`, ...) therefore stay excluded
+ * here by the same never-sent contract when they arrive with a verdict.
+ */
+export function isFailedCall(record: TranscriptRecord): boolean {
+	if (record.kind !== "tool") return false;
+	if (record.isError !== true) return false;
+	if (record.neverSent === true) return false;
+	if (record.notRunReason !== null && record.notRunReason !== undefined) {
+		return false;
+	}
+	if (record.stopped === true) return false;
+	// The class arm: a never-run row that states an interrupted kind is an
+	// interrupt even where a producer set neither the stop window nor the
+	// reason pair - the same reading their reducer and row ladder make.
+	if (isInterruptedFault(record.notRunKind)) return false;
+	return true;
+}
+
+/**
+ * The bar's facts, in the order a reader needs them.
+ *
+ * `durationS` is the WALL span (§4.4): opening user row to the latest end
+ * instant in the run, null when the span is under a second or the clocks
+ * disagree. It is deliberately NOT the foot's quantity — the foot SUMS tool
+ * seconds and excludes model time, while "Took" is wall clock — and only one
+ * of the two is ever on screen for a run (the bar suppresses the foot).
+ */
+export type TurnSummaryFacts = {
+	durationS: number | null;
+	/** Tool rows in the run: the same unit as the fold's summary and the foot. */
+	actions: number;
+	/** Tool rows whose outcome is a genuine error (see `isFailedCall`). */
+	failed: number;
+	/** The first failed row, for the failure control's jump. */
+	firstFailedId: string | null;
+	/** The fold-style class sentence (`foldSummary`), or null with no actions. */
+	title: string | null;
+};
+
+/**
+ * The latest instant a row states, for the run's span (§4.4).
+ *
+ * Assistant → its `settledAt` (stamped by the reducer when the record
+ * settles), falling back to `ts`; durable rows have no `settledAt` and their
+ * `ts` IS the completion commit. Tool → `endedAt`, falling back to `ts`
+ * (durable tool rows carry `duration_s` and no stamps, so their commit instant
+ * is the honest end). Anything else → its `ts`.
+ */
+function endInstant(record: TranscriptRecord): number {
+	switch (record.kind) {
+		case "assistant":
+			return record.settledAt ?? record.ts;
+		case "tool":
+			return record.endedAt ?? record.ts;
+		default:
+			return record.ts;
+	}
+}
+
+/**
+ * One run's plan: what the bar says, and what it hides.
+ */
+export type RunCollapsePlan = {
+	/** The run's stable identity: its opening user row's record id. */
+	key: string;
+	/** The partition span, in `visible`-row indices. */
+	run: TurnRun;
+	/** Whether the bar renders for this run. */
+	collapses: boolean;
+	/** Every row of the run, in order (the bar's `data-run-ids`). */
+	recordIds: string[];
+	/** The rows the bar hides, in order. Empty when nothing is hidden. */
+	hidden: Row[];
+	/** The bar's margin tier: the FIRST hidden row's gap (the fold's own rule). */
+	gap: Row["gap"];
+	facts: TurnSummaryFacts;
+	/** The closing answer's instant, for the bar's stamp; null when none. */
+	stampTs: number | null;
+};
+
+export type CollapsePlan = {
+	runs: RunCollapsePlan[];
+};
+
+/**
+ * Plan the collapse over a visible row list.
+ *
+ * PENDING QUESTION IS NOT A SETTLED TURN (design review round 1, D3). `live`
+ * is the newest run's UNSETTLEDNESS, and the caller composes it from both
+ * halves of that fact: the working line's predicate (a turn being written) and
+ * the reader gate (a turn PARKED on a question). The gate half exists because
+ * the working line stands down while a question is pending — that stand-down is
+ * deliberate (`WorkingLine` yields to the dock) — so a rule that read only the
+ * working line condensed a parked turn, then un-condensed it when the call
+ * resumed: a bar appearing and vanishing with no reader action, stating `Took`
+ * and counts of a turn that had handed over no answer (the live rig's
+ * `parked on the approval` note).
+ *
+ * The tail — rows the bar must NOT hide — is the run's closing answer and
+ * everything after it: the collapse summarises the PREFIX of the turn, and the
+ * row the reader is being handed stays where it is. Hidden rows are everything
+ * between the opening user row and that tail that is not pinned.
+ */
+export function collapsePlan(
+	rows: Row[],
+	options: { live: boolean },
+): CollapsePlan {
+	/*
+	 * Only the NEWEST run can be the one in flight, and only while the pane says
+	 * the turn is unsettled (`live`): every earlier run is a finished turn and
+	 * behaves like one even when a later turn is streaming above the reader's
+	 * place (§4.5's live rule, which `TraceFold`'s `sectionLive` states for
+	 * folds as "a run in an OLDER turn must not open itself because a LATER turn
+	 * happens to be running").
+	 */
+	const runs = runsOf(rows);
+	return {
+		runs: runs.map((run, index) =>
+			planRun(rows, run, index === runs.length - 1 && options.live),
+		),
+	};
+}
+
+/*
+ * THE ON-LOAD ALIGNMENT (operator report, 2026-09-28: "the messages don't seem
+ * to be collapsed on previous collapsible segments immediately on load ...").
+ *
+ * The render window is a raw row count, and a raw count lands wherever it
+ * lands — often inside a completed run. A run cut by the window's top edge has
+ * no opening user row in the list, so it cannot collapse (the window-cut rule
+ * above), and the reader who opened a long conversation saw in-between rows
+ * until they scrolled the head in. These two helpers let the consumer move the
+ * window's edge ONTO a run boundary, and — when the boundary is not loaded at
+ * all — say so, so the load path can fetch it. Both are pure functions of the
+ * row list, so the window stays a derivation rather than state that can race
+ * the first paint.
+ *
+ * Both read only the row list and the window size — no liveness — because they
+ * are consumed ABOVE the point where this component derives whether the newest
+ * run is live; a window edge inside the newest run is aligned like any other,
+ * which at worst mounts the turn the reader is already watching stream.
+ */
+
+/**
+ * The window's top edge, snapped UP to the opening of the run it lands in.
+ *
+ * Returns the size unchanged when the edge already sits on a boundary, when
+ * the enclosing run's head is cut (nothing to snap to — the load path's
+ * `windowTopRunIsHeadCut` case), or when the snap would add more than
+ * `maxExtra` rows (a run taller than the bound keeps the shipped cut
+ * behaviour rather than mounting itself unbounded).
+ *
+ * A snapped window top is a run boundary BY CONSTRUCTION, so every run the
+ * list hands to `runsOf` opens with its own user row and every completed one
+ * collapses on the first paint — the operator's "fill the screen with user
+ * messages, final agent responses, and collapsed sections".
+ */
+export function snapWindowToRunBoundary(
+	rows: Row[],
+	windowSize: number,
+	maxExtra: number,
+): number {
+	const total = rows.length;
+	if (total <= windowSize) return windowSize;
+	const top = total - windowSize;
+	const runs = runsOf(rows);
+	const enclosing = runs.find(
+		(run) => run.openingIndex <= top && top <= run.endIndex,
+	);
+	if (enclosing === undefined) return windowSize;
+	if (!enclosing.opensWithUserRow) return windowSize;
+	const extra = top - enclosing.openingIndex;
+	if (extra <= 0 || extra > maxExtra) return windowSize;
+	return windowSize + extra;
+}
+
+/**
+ * Whether the run the window's top edge lands in has its head cut off the
+ * LOADED rows — the case a fetch can fix and a snap cannot.
+ *
+ * True only when the row list itself starts mid-run (the first run of the
+ * fetched set, `openingUserIndex === null`) and the window edge is inside it;
+ * the consumer pairs this with `hasMore` to fetch the missing head.
+ */
+export function windowTopRunIsHeadCut(
+	rows: Row[],
+	windowSize: number,
+): boolean {
+	const total = rows.length;
+	if (total <= windowSize) return false;
+	const top = total - windowSize;
+	const runs = runsOf(rows);
+	const enclosing = runs.find(
+		(run) => run.openingIndex <= top && top <= run.endIndex,
+	);
+	if (enclosing === undefined) return false;
+	return !enclosing.opensWithUserRow;
+}
+
+/**
+ * The alignment effect's whole decision, as a pure step: spend another page or
+ * not, and the counter it leaves behind.
+ *
+ * WHY IT IS A FUNCTION AND NOT FOUR GUARDS IN AN EFFECT (agent review round 1,
+ * F2): the bound (`ALIGN_FETCH_MAX` pages per conversation) is the property
+ * that keeps an open from walking an unbounded conversation into memory, and
+ * inside an effect it could only be observed by re-mounting a component — a
+ * harness whose own double-mount made the reading ambiguous (measured: the
+ * per-instance cap of two read as three across a strict-mode remount, and the
+ * counts stop either way). Here the table is decided by construction.
+ */
+export function alignFetchDecision(
+	spent: number,
+	hasMore: boolean,
+	loadingOlder: boolean,
+	headCut: boolean,
+	max: number,
+): { fetch: boolean; spent: number } {
+	if (spent >= max || loadingOlder || !hasMore || !headCut) {
+		return { fetch: false, spent };
+	}
+	return { fetch: true, spent: spent + 1 };
+}
+
+function planRun(rows: Row[], run: TurnRun, live: boolean): RunCollapsePlan {
+	const runRows = rows.slice(run.openingIndex, run.endIndex + 1);
+	/*
+	 * Where the tail starts: the closing answer and everything after it stays put
+	 * (the collapse summarises the PREFIX of the turn, not its hand-over). A run
+	 * with no closing answer — the interrupted/dead residual cases — has no tail,
+	 * so every non-pinned row after the opening one is eligible to hide.
+	 */
+	let tailFrom = run.endIndex + 1;
+	if (run.closingAnswerId !== null) {
+		const at = runRows.findIndex(
+			(row) => row.record.id === run.closingAnswerId,
+		);
+		if (at !== -1) tailFrom = run.openingIndex + at;
+	}
+	const hidden: Row[] = [];
+	/*
+	 * The span starts just after the opening USER row — or at the list's own
+	 * beginning for a run whose head is cut off, where the first row is simply
+	 * the oldest one loaded and nothing before it is knowable. (That run never
+	 * collapses anyway; this keeps `hidden` describing the same span the bar
+	 * would take.)
+	 */
+	const spanFrom = run.opensWithUserRow
+		? run.openingIndex + 1
+		: run.openingIndex;
+	for (let index = spanFrom; index <= run.endIndex; index += 1) {
+		if (index >= tailFrom) break;
+		const row = rows[index];
+		if (staysVisibleWhileCollapsed(row.record)) continue;
+		hidden.push(row);
+	}
+
+	const actions: FoldableAction[] = [];
+	let failed = 0;
+	let firstFailedId: string | null = null;
+	for (const row of runRows) {
+		if (row.record.kind !== "tool") continue;
+		const failedHere = isFailedCall(row.record);
+		actions.push({ name: ledgerName(row.record), failed: failedHere });
+		if (failedHere) {
+			failed += 1;
+			firstFailedId ??= row.record.id;
+		}
+	}
+
+	const start = rows[run.openingIndex].record.ts;
+	let end = start;
+	for (const row of runRows) end = Math.max(end, endInstant(row.record));
+	const span = end - start;
+
+	const closingRow =
+		run.closingAnswerId === null
+			? null
+			: (runRows.find((row) => row.record.id === run.closingAnswerId) ?? null);
+
+	return {
+		key: run.key,
+		run,
+		/*
+		 * The bar exists iff there is something to hide, the head of the run is
+		 * loaded, and this is not the run a live turn is being written in.
+		 */
+		collapses: hidden.length > 0 && run.opensWithUserRow && !live,
+		recordIds: runRows.map((row) => row.record.id),
+		hidden,
+		/* The fold's placement rule: the bar takes the first hidden row's slot+gap. */
+		gap: hidden[0]?.gap ?? "item",
+		facts: {
+			/* Shown iff the span is at least a second — never a `0s` claim (§4.4). */
+			durationS: span >= 1000 ? span / 1000 : null,
+			actions: actions.length,
+			failed,
+			firstFailedId,
+			title: actions.length > 0 ? foldSummary(actions) : null,
+		},
+		stampTs: closingRow?.record.ts ?? null,
+	};
+}

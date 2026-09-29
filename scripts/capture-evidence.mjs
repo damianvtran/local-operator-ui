@@ -682,6 +682,90 @@ export const STORIES = [
 	],
 
 	/*
+	 * THE COLLAPSED TURN'S OWN STATES (`turn-collapse.stories.tsx`): a completed
+	 * turn's pre-answer rows rendered as one bar, in the shapes the §5 case
+	 * matrix names. Eight rows because the states are eight: the finished turn
+	 * (collapsed), the same turn after the reader's own press (`Expanded` - the
+	 * press is the HARNESS's, because the claim is that the bar's own control is
+	 * what opens it), a steered run (the second question folds inside rather
+	 * than starting a turn), an interrupted turn (the bar states no outcome in
+	 * v1 - the sibling session owns that wording), a genuinely failed call (no
+	 * tally on the bar; the red rows are one press away, and `failed-expanded`
+	 * photographs the reveal), the count clause at its long form,
+	 * the same turn read from history (durable rows, no live frames - reload's
+	 * state, and the span must still read the same), and the live control
+	 * (nothing condenses while a turn runs).
+	 *
+	 * TWO THEMES, NOT TWELVE, because the claim is a ROW - its ink roles, its
+	 * alignment, its clauses - and the two `localOperator` palettes are where
+	 * the danger ink and the muted summary are judged; the before half
+	 * (`../chat-turn-collapse-before/`) is the same eight stories on the
+	 * pre-change tree, so the pair differs by the collapse and nothing else.
+	 */
+	["chat-turn-collapse--collapsed", 1280, 900],
+	/*
+	 * THE HOVER CELL (design spec for the below-rule, 2026-09-28): the bar's own
+	 * hover ground painting above an unaltered hairline — the D4 state a still of
+	 * the resting bar cannot show.
+	 */
+	[
+		"chat-turn-collapse--collapsed",
+		1280,
+		900,
+		{ hover: "[data-turn-summary] button", dir: "collapsed-hover" },
+	],
+	[
+		"chat-turn-collapse--expanded",
+		1280,
+		900,
+		{ press: '[data-turn-summary] button[aria-expanded="false"]' },
+	],
+	["chat-turn-collapse--steering", 1280, 900],
+	["chat-turn-collapse--interrupted", 1280, 900],
+	["chat-turn-collapse--failed", 1280, 900],
+	/*
+	 * DESIGN ROUND 1, D1: the failure BEHIND the press — the bar without a
+	 * tally, and the red row one expansion away, on a frame.
+	 */
+	[
+		"chat-turn-collapse--failed",
+		1280,
+		900,
+		{
+			press: '[data-turn-summary] button[aria-expanded="false"]',
+			dir: "failed-expanded",
+		},
+	],
+	["chat-turn-collapse--long-run", 1280, 900],
+	["chat-turn-collapse--restored", 1280, 900],
+	["chat-turn-collapse--running", 1280, 900],
+	/*
+	 * THE ROUND-1 CELLS (review round 1): `narration` answers design D4a (the
+	 * span-only sentence, §5 case 3), `pinned` answers design D4b / §11-R4 (a
+	 * pinned statement inside the span, on a frame), and `parked` answers
+	 * design D3 (a turn on the reader's gate must not condense - the same
+	 * moment the live rig's parked capture carries with its question card).
+	 */
+	["chat-turn-collapse--narration", 1280, 900],
+	["chat-turn-collapse--pinned", 1280, 900],
+	/*
+	 * ISSUE #5'S PAIR (operator feedback, 2026-09-29): peer and wake receipts
+	 * collapse with the work. The second row presses the same story open so the
+	 * design round can judge the reveal.
+	 */
+	["chat-turn-collapse--receipts", 1280, 900],
+	[
+		"chat-turn-collapse--receipts",
+		1280,
+		900,
+		{
+			press: '[data-turn-summary] button[aria-expanded="false"]',
+			dir: "receipts-expanded",
+		},
+	],
+	["chat-turn-collapse--parked", 1280, 900],
+
+	/*
 	 * A turn joined MID-STREAM, which is the one transcript surface whose evidence
 	 * is a SENTENCE rather than a row: the reducer marks a row whose text is real
 	 * but not whole, and the mark is the whole change on screen. `before-join` is
@@ -1200,11 +1284,19 @@ export const STORIES = [
 	// which is how both of round 6's majors stayed invisible.
 	["browser-tab-strip--worst-case", 1280, 140],
 	["browser-tab-strip--worst-case-widest", 1280, 140],
-	["browser-tab-strip--actions-expanded", 1280, 260],
+	/* The popout supersedes the in-band band the old comment sized these for (2026-09-28
+	   round 2, D3): the strip no longer grows, the panel HANGS below it, so the row is
+	   sized to the panel the story draws - the same rule the comment below states, now
+	   applied to the popout. MEASURED, NOT GUESSED: at 1280 the single-tab popout's
+	   bottom border sits at device y 302 on the 340-tall probe, so this height lands the
+	   frame's bottom 56 device px under it - exactly the slack the batch sibling has
+	   (its panel ends at 336 in a 392 frame). The pre-fix row (260) was still sized to
+	   the deleted band and clipped the panel's closing edge in the round-1 re-shoot. */
+	["browser-tab-strip--actions-expanded", 1280, 326],
 	/* The pin's band list and a row's band with the four bulk closes (design R4 fix 2,
 	   R5). `pinned-list` is declared taller by the list's own bounded height
-	   (`max-h-36` plus the header row), and `actions-expanded-batch` by the same row
-	   height the other expanded band uses. */
+	   (`max-h-36` plus the header row), and `actions-expanded-batch` by the panel its
+	   own popout draws (bottom border at device y 334-337 in this frame). */
 	["browser-tab-strip--actions-expanded-batch", 1280, 360],
 	/*
 	 * THE TWO EXPANDED BANDS ARE TALLER SINCE THE ROUND-2 RULING (D7): the band is a
@@ -2588,6 +2680,12 @@ export const STORIES = [
 	 */
 	["chat-sidebar-status-feed--completion-in-place", 780, 660],
 	["chat-sidebar-status-feed--completion-reordered", 780, 660],
+	/*
+	 * The completion that moves the row's TIME BIN: same shape as the two above,
+	 * with the frames a finished turn always publishes and no `catalogue` frame
+	 * at all - the half the base tree's client could not act on.
+	 */
+	["chat-sidebar-status-feed--completion-moves-bin", 780, 660],
 	["chat-sidebar-status-feed--completion-second-in-band", 780, 660],
 	["chat-sidebar-status-feed--completion-acknowledged", 780, 660],
 	["chat-sidebar-status-feed--completion-reordered-offscreen", 780, 660],
@@ -4139,6 +4237,13 @@ export const STORIES = [
 	 * app's empty right-hand side.
 	 */
 	["chat-sidebar-agents--empty-with-shortcut", 420, 760],
+	/*
+	 * The same offer AFTER the reader dismissed it: the whole empty-state block
+	 * leaves and the section is its heading and the create row. The dismissal is
+	 * a real click in the story's play, like the batch frames below, so the
+	 * frame is the component reacting rather than a prop that fakes the state.
+	 */
+	["chat-sidebar-agents--offer-dismissed", 420, 760],
 	["chat-sidebar-agents--empty-without-shortcut", 420, 760],
 	["chat-sidebar-agents--installed-with-builtins", 420, 760],
 	["chat-sidebar-agents--all-installed", 420, 760],
@@ -4203,6 +4308,23 @@ export const STORIES = [
 	["chat-sidebar-view-menu--popover-open", 741, 760],
 	["chat-sidebar-view-menu--popover-hidden-section", 741, 760],
 	["chat-sidebar-view-menu--popover-reordered-pair", 741, 760],
+	/*
+	 * THE TIME BASIS PAIR (2026-09-28): one roster, both clocks, so the frames
+	 * differ only in the pressed row and what the sections below read - and the
+	 * rail's own state, where the pair this fix removes would have stood.
+	 */
+	["chat-sidebar-view-menu--popover-basis-last-active", 741, 760],
+	["chat-sidebar-view-menu--popover-basis-created", 741, 760],
+	["chat-sidebar-view-menu--reorder-edges", 741, 760],
+	/* The design direction's D2 capture: the same panel in the window floor. */
+	["chat-sidebar-view-menu--popover-open-short", 800, 600],
+	/*
+	 * The same state in the shape the APP can reach with a short window (round
+	 * 1's Q-2): the popover does not exist below ~1024px because the rail
+	 * collapses, so a docked width and a short height is the honest worst case
+	 * the reader can drive.
+	 */
+	["chat-sidebar-view-menu--popover-open-narrow", 1100, 600],
 	[
 		/*
 		 * The first rung needs no scroll: the rig proved it by refusing - at ten
@@ -4282,6 +4404,185 @@ export const STORIES = [
 		},
 	],
 	["chat-sidebar-view-menu--off-route-voice", 741, 760],
+
+	/* ------------------------------------------------------------------ *
+	 * THE VIEW-SETTINGS AUDIT (operator, 2026-09-27): one frame per control the
+	 * panel promises, driven by that control's own press, with the caption
+	 * printing both sides of the claim - what the panel's switches say and what
+	 * the two regions actually draw.
+	 *
+	 * `audit-entity-hidden` is the reported bug and the pair's other half is
+	 * `audit-entity-restored`: the same switch pressed off, then back on. Both
+	 * are captured from `origin/main` as well, in the supplementary set
+	 * `docs/evidence/view-settings-audit-baseline/`, because the claim is a
+	 * DELTA - on the base commit the caption's last line reads `DISAGREE` with
+	 * the `Agents` row still drawn, which is the operator's own screenshot.
+	 *
+	 * The ORDER pair is one control over two frames on purpose: `Most recent`
+	 * and `Active first` must produce different lists, not merely different
+	 * ticks, so the two captions' row orders are read against each other (the
+	 * live turn is the oldest conversation in the fixture and so sits past the
+	 * ten-row page under one order and leads the list under the other).
+	 * ------------------------------------------------------------------ */
+	/*
+	 * EACH ENTRY CLAIMS ITS OUTCOME, and the rig checks it against the live DOM
+	 * immediately before the shutter (`expectAttribute`/`expectGone`/
+	 * `expectPresent`): a frame that says "the section is hidden" while the
+	 * region still draws it fails the CAPTURE rather than being filed. That is
+	 * the operator's report, so it is asserted in the direction it was reported.
+	 *
+	 * `audit-group-flat` asserts the two pinned rows BY NAME for the second
+	 * defect this pass fixed: a grouping dropped them when it took the page
+	 * alone, so those two ids are the difference between `In one list` arranging
+	 * the column and filtering it.
+	 */
+	[
+		"chat-sidebar-view-menu--audit-entity-hidden",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-section="agents"]',
+				name: "aria-checked",
+				equals: "false",
+			},
+
+			expectGone:
+				'[data-sidebar-region="entities"] [data-chat-section="agents"]',
+			expectPresent:
+				'[data-sidebar-region="entities"] [data-chat-section="teams"]',
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-entity-restored",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-section="agents"]',
+				name: "aria-checked",
+				equals: "true",
+			},
+			expectPresent:
+				'[data-sidebar-region="entities"] [data-chat-section="agents"]',
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-chat-section-hidden",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-section="week"]',
+				name: "aria-checked",
+				equals: "false",
+			},
+			expectGone: '[data-sidebar-region="chats"] [data-chat-section="week"]',
+			expectPresent:
+				'[data-sidebar-region="chats"] [data-chat-section="older"]',
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-pinned-hidden",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-section="pinned"]',
+				name: "aria-checked",
+				equals: "false",
+			},
+			expectGone: [
+				'[data-sidebar-region="chats"] [data-chat-section="pinned"]',
+				'[data-session-row="audit-pinned-new"]',
+			],
+			expectPresent:
+				'[data-sidebar-region="chats"] [data-chat-section="running"]',
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-teams-hidden",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-section="teams"]',
+				name: "aria-checked",
+				equals: "false",
+			},
+			expectGone:
+				'[data-sidebar-region="entities"] [data-chat-section="teams"]',
+			expectPresent:
+				'[data-sidebar-region="entities"] [data-chat-section="agents"]',
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-group-agent",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-choice="agent"]',
+				name: "aria-checked",
+				equals: "true",
+			},
+			expectGone: [
+				'[data-sidebar-region="chats"] [data-chat-section="running"]',
+				'[data-sidebar-region="chats"] [data-chat-section="older"]',
+			],
+			expectPresent: [
+				'[data-sidebar-region="chats"] [data-chat-section="coder"]',
+				'[data-sidebar-region="chats"] [data-chat-section="ungrouped"]',
+			],
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-group-flat",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-choice="flat"]',
+				name: "aria-checked",
+				equals: "true",
+			},
+			expectGone: [
+				'[data-sidebar-region="chats"] [data-chat-section="running"]',
+				'[data-sidebar-region="chats"] [data-chat-section="coder"]',
+			],
+			expectPresent: [
+				'[data-sidebar-region="chats"] [data-chat-section="all"]',
+				'[data-session-row="audit-pinned-new"]',
+				'[data-session-row="audit-pinned-old"]',
+			],
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-order-most-recent",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-choice="recent"]',
+				name: "aria-checked",
+				equals: "true",
+			},
+			expectGone: '[data-session-row="audit-busy-old"]',
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-order-active-first",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-choice="active-first"]',
+				name: "aria-checked",
+				equals: "true",
+			},
+			expectPresent: '[data-session-row="audit-busy-old"]',
+		},
+	],
 
 	/*
 	 * The publish dialog, in every state its rewrite introduced (agent-hub
@@ -4407,6 +4708,14 @@ export const STORIES = [
 	 * photographed, rather than the unshed full-width page. */
 	["projects-tab--narrow-columns", 560, 600],
 	["projects-tab--many", 1280, 900],
+	/* The sticky team headers, mid-scroll (slice 3): the one state a resting
+	 * frame cannot hold, because at rest every header is in its flow
+	 * position. The play brings the second header flush to the scroller's
+	 * top and asserts the pin, so the frame is a measurement. Sized shorter
+	 * than the default so the twenty-four-row list actually overflows its
+	 * scroller — at 900 tall the first two sections fit whole and the pin is
+	 * unreachable. */
+	["projects-tab--list-teams-sticky", 1280, 620],
 	["projects-tab--detail", 1280, 900],
 	["projects-tab--stale-progress", 1280, 900],
 	["projects-tab--create-dialog", 1280, 900],
@@ -4456,8 +4765,48 @@ export const STORIES = [
 	 * (the no-drag rule's only status door). All three are play-driven: the
 	 * first renders settled, the other two press their own control. */
 	["projects-tab--board-empty-columns", 1280, 900],
+	/* The board's sticky mechanics (design round 1, D2): the play asserts the
+	 * 44px header, the straps' `top-11` offset and the push-out before the
+	 * shutter — the state the round-1 finding (Q1/U1) was measured against. */
+	["projects-tab--board-sticky", 1280, 900],
 	["projects-tab--board-sessions-popover", 1280, 900],
 	["projects-tab--board-card-menu", 1280, 900],
+	/*
+	 * The column reorder: the layer the drag writes. `board-column-order-stored`
+	 * is the reload half (a stored order applied at mount),
+	 * `board-column-keyboard-move` is the accessible half (a focused grip's
+	 * arrow key, with the write and the retained focus asserted inside the
+	 * play), and `board-column-drag` is the transient — the rig presses the
+	 * `active` header and HOLDS it over `done`, and the frame's claim is the
+	 * live region's "Moving Active column", which is in the document exactly
+	 * while the gesture is armed. The gesture is the rig's own `drag` option
+	 * rather than the story's play for the mesh canvas's reason: a synthetic
+	 * sequence from a play resolves to the settled board before the shutter.
+	 *
+	 * The drag row settles before the shutter because the HELD pointer keeps
+	 * moving the state: `done`'s center sits inside the strip's right
+	 * auto-scroll zone at this width, so the strip scrolls toward its end while
+	 * the button stays down (UX round 1, U1 - the behaviour itself). 900ms is
+	 * past the clamp, so the frame is the state's own resting point: scrolled
+	 * to the end, the line pinned at the gap the region names, and that reading
+	 * is reproducible on the next capture.
+	 */
+	["projects-tab--board-column-order-stored", 1280, 900],
+	["projects-tab--board-column-keyboard-move", 1280, 900],
+	["projects-tab--board-column-drop-commits", 1280, 900],
+	[
+		"projects-tab--board-column-drag",
+		1280,
+		900,
+		{
+			drag: {
+				from: '[data-board-column-handle="active"]',
+				to: '[data-board-column="done"]',
+				settleMs: 900,
+			},
+			expectSentence: "Moving Active column",
+		},
+	],
 	["projects-tab--timeline", 1280, 900],
 	["projects-tab--timeline-no-dates", 1280, 900],
 	["projects-tab--timeline-overdue", 1280, 900],
@@ -4999,6 +5348,28 @@ export const STORIES = [
 	["chat-phantom-compose-rows--after-turn-death", 1280, 800],
 	["chat-phantom-compose-rows--after-durable-twin", 1280, 800],
 	["chat-phantom-compose-rows--after-durable-twin-open", 1280, 800],
+	/*
+	 * THE INTERRUPTED-VS-FAILED ROWS. One call is shown in three projections -
+	 * a steering skip LIVE (the terminal compose frame's `not_run_kind:
+	 * "skipped"`), the SAME call after a reload (the durable synthetic result,
+	 * `details.__fault: "skipped"`), and a call the USER stopped from the end
+	 * event's own `aborted` marker with no client stop window standing - plus
+	 * the control (a genuine `execution` failure, which must not move) and a
+	 * closed turn whose fold chip and foot both count the skip. The production
+	 * reducer folds `scripts/fixtures/interrupted-rows.json` through
+	 * `interrupted-rows.stories.tsx`; the BEFORE half is the declared
+	 * supplementary `chat-interrupted-rows-before/`, the same stories against
+	 * the base tree's reducer.
+	 */
+	["chat-interrupted-rows--skip-live", 1280, 800],
+	["chat-interrupted-rows--skip-live-expanded", 1280, 800],
+	["chat-interrupted-rows--skip-durable", 1280, 800],
+	["chat-interrupted-rows--stop-mid-flight", 1280, 800],
+	["chat-interrupted-rows--stop-expanded", 1280, 800],
+	["chat-interrupted-rows--genuine-failure", 1280, 800],
+	["chat-interrupted-rows--turn-counts", 1280, 800],
+	["chat-interrupted-rows--skip-durable-narrow", 720, 800],
+	["chat-interrupted-rows--skip-durable-narrow-expanded", 720, 800],
 	/* The SAME CLASS while the turn is LIVE, which the pair above deliberately does
 	   not cover: its fixture is a finished turn (`streaming: false`), where a
 	   clockless frame that would create a row is refused. With a turn in flight
@@ -7848,6 +8219,16 @@ const main = async () => {
 					);
 					await sleep(16);
 				}
+				/*
+				 * A HELD GESTURE CAN KEEP MOVING AFTER THE STEPS END (the board's edge
+				 * auto-scroll advances while the pointer rests in an edge zone), so a
+				 * shutter that fires the instant the last step lands photographs a
+				 * scroll position that depends on scheduling. The settle holds until the
+				 * state it can no longer change has settled - the scroll clamps at the
+				 * end - which is what makes the frame reproducible. Zero (the default)
+				 * leaves stories without such a mechanism untouched.
+				 */
+				if (options.drag.settleMs) await sleep(options.drag.settleMs);
 			}
 
 			/*

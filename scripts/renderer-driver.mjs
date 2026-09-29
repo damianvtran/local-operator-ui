@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|project-detail|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|drafts|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|project-detail|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|none>
  *                          which built-in scene to run (default: states)
  *   --project <key>        (with --scene project-detail) the seeded project the
  *                          detail scene drives; the seed decides the name and a
@@ -110,6 +110,19 @@
  *                          against one that publishes none (the base-commit
  *                          runtime), where the row must stay off screen until
  *                          the app is remounted
+ *   --bin-expect <prompt|stale>  (with --scene sidebar-bin-promptness) which
+ *                          half of the bin pair this run records: `prompt`
+ *                          asserts an older session messaged today lands under
+ *                          `Today` within ~2 s of its completion; `stale`
+ *                          records the old bin it sits in instead
+ *   --slash-expect <open|refused>  (with --scene sessionless-slash) which claim
+ *                          this run is in: `open` (the default) asserts that
+ *                          `/help`, `/theme`, `/login`, `/logout` and
+ *                          `/resume` typed on a new chat each mount their
+ *                          picker with no refusal sentence; `refused` asserts
+ *                          the dispatcher's own sentence for each and no
+ *                          picker - the base tree's half of the pair (issue
+ *                          #625)
  *   --backend <url>        a live, ISOLATED backend this run owns: the app's own
  *                          transport is pointed at it, so a surface gated on a
  *                          capability can be driven at all. The renderer must have
@@ -416,6 +429,38 @@ const TUI_CONFIG = argValue("--tui-config", null);
  * question it does not ask.
  */
 const AUTHORING_EXPECT = argValue("--authoring-expect", "refresh");
+/**
+ * (with `--scene sidebar-bin-promptness`) which half of the bin pair this run
+ * records.
+ *
+ * `prompt` (the default) asserts the change's own claim: an older session
+ * messaged today lands under `Today` within the target window (~2 s) of its
+ * completion. `stale` is the same app, script, daemon and message WITHOUT the
+ * client half, and its claim is the operator's report: the row stays in its old
+ * bin. A still cannot carry a latency, so this flag exists to make the two
+ * readings one comparison rather than two anecdotes.
+ *
+ * A value the scene does not know is refused rather than defaulted, for the
+ * same reason `--authoring-expect` does: a typo would silently run the other
+ * half and read as the answer to a question it did not ask.
+ */
+const BIN_EXPECT = argValue("--bin-expect", "prompt");
+/**
+ * WHICH CLAIM A `--scene sessionless-slash` RUN IS IN (issue #625).
+ *
+ * `open` (the default) is the head tree: `/help`, `/theme`, `/login`,
+ * `/logout` and `/resume` typed on a pane with no conversation each mount
+ * their picker, and the transcript carries no refusal sentence. `refused` is
+ * the base tree: the same five gestures each get the dispatcher's own sentence
+ * ("<word> needs an open conversation. Start one first.") and no picker
+ * mounts. One scene, both halves, the same bytes - the pair is only readable
+ * if the same code produced both, which is why the flag names a claim rather
+ * than a tree.
+ *
+ * A value the scene does not know is refused rather than defaulted, for the
+ * same reason `--authoring-expect` and `--bin-expect` are.
+ */
+const SLASH_EXPECT = argValue("--slash-expect", "open");
 /**
  * WHICH HALF OF A BEFORE/AFTER PAIR THIS RUN IS (with --scene conversation-start).
  *
@@ -8113,6 +8158,343 @@ async function sceneFirstSend(cdp) {
 }
 
 /**
+ * THE COLLAPSED TURN, driven end to end in the built app: the interaction half
+ * of the turn-collapse design's evidence plan (§10.3), which a still cannot
+ * state.
+ *
+ * WHY THIS SCENE EXISTS. The story set photographs the states; only a real turn
+ * shows the TRANSITION the feature is made of: a run while it is live (every
+ * row its own, no bar), the same run the moment its answer settles (the bar
+ * replaces the in-between rows), the reader's press (the rows come back, the
+ * bar stays as the toggle), and a reload (the durable re-read arrives collapsed
+ * again, with the same run and the same action count). The daemon's mock
+ * answers a `[bash:N]` prompt with one call that sleeps N seconds and then a
+ * text answer (`providers/clients.py`), which is a completed turn with exactly
+ * one in-between row (§5 case 2) - and the sleep is what makes the mid-run
+ * window wide enough to photograph. The call parks on the approval card first
+ * (this config's `tool_approval_mode` is `ask`), which the scene answers the
+ * way a reader does - option `1` typed into the composer and sent - so the
+ * running and completed states below are reached through the real gate.
+ *
+ * WHAT IT ASSERTS, and why each claim is a check rather than a frame: "no bar
+ * while live", "exactly one bar and one stamp when finished", "the press
+ * reveals the row behind it", "the reload comes back collapsed with the same
+ * run and the same action count". The duration clause is NOTED, not asserted
+ * equal across the reload: live it is the settle frame's clock (`settledAt`)
+ * and durable it is the producer's commit `ts`, and the pair of readings in the
+ * log is what says whether the two agree on this run (§R1).
+ *
+ * Requires `--backend` like first-send: with no backend the chat route draws
+ * its refusal surface and no composer mounts, so there is nothing to send.
+ */
+async function sceneTurnCollapse(cdp) {
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	const composerSelector = '[data-tour-tag="chat-input-textarea"]';
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+	await verb(cdp, "navigate", "/chat");
+	const mounted = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${composerSelector}') && document.querySelector('[data-lo-empty-mark]'))`,
+		30_000,
+	);
+	check(
+		"the chat route shows the empty state with a composer",
+		mounted.ok,
+		`composer + empty mark present: ${JSON.stringify(mounted.last)}`,
+	);
+
+	/*
+	 * The readings, scoped to the transcript region: the sidebar carries its own
+	 * clocks and rows, and a whole-document query would fold them into every
+	 * count below.
+	 */
+	const readTranscript = () =>
+		cdp.evaluate(`(() => {
+			const log = document.querySelector('[role="log"]');
+			if (!log) return null;
+			const bar = log.querySelector('[data-turn-summary]');
+			return {
+				bars: log.querySelectorAll('[data-turn-summary]').length,
+				runIds: bar ? bar.getAttribute('data-run-ids') : null,
+				barText: bar ? bar.textContent : null,
+				barOpen: bar
+					? bar.querySelector('button[aria-expanded]')?.getAttribute('aria-expanded')
+					: null,
+				toolRows: log.querySelectorAll('[data-record-kind="tool"]').length,
+				stamps: log.querySelectorAll('[data-stamp]').length,
+				foot: log.textContent.includes('Worked'),
+			};
+		})()`);
+
+	/*
+	 * READY BEFORE TYPING. A send pressed while the pane is still resolving its
+	 * model goes nowhere at all - measured on this scene's second run: the
+	 * composer took the text and the Enter produced NO session, NO message POST
+	 * at the daemon and no row, while the same press a minute later worked. The
+	 * model chip in the composer's footer is the reading that the transport has
+	 * resolved (it is what the pane paints once the backend answers), so the send
+	 * waits for it rather than for a sleep.
+	 */
+	const ready = await waitForCondition(
+		cdp,
+		`document.body.textContent.includes("mock-model")`,
+		90_000,
+	);
+	check(
+		"the composer resolves the daemon's model before the send",
+		ready.ok,
+		`after ${ready.waitedMs ?? "?"}ms: ${JSON.stringify(ready.last)}`,
+	);
+
+	/* The turn: one call that takes measurable time, then the mock's answer. */
+	const typePrompt = async () => {
+		await clickAt(cdp, `${composerSelector} textarea`);
+		await cdp.evaluate(
+			`document.querySelector('${composerSelector} textarea').focus()`,
+		);
+		await wait(150);
+		await cdp.send("Input.insertText", { text: "Run the checks [bash:12]" });
+		await wait(150);
+		const value = await cdp.evaluate(
+			`document.querySelector('${composerSelector} textarea').value`,
+		);
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		return value;
+	};
+	const typed = await typePrompt();
+	check(
+		"the prompt reached the composer",
+		typeof typed === "string" && typed.includes("Run the checks"),
+		JSON.stringify(typed),
+	);
+	const painted = () =>
+		waitForCondition(
+			cdp,
+			`(() => {
+				const log = document.querySelector('[role="log"]');
+				return Boolean(
+					log &&
+						log.querySelector('[data-record-kind="user"]') &&
+						log.textContent.includes("Run the checks"),
+				);
+			})()`,
+			20_000,
+		);
+	let sent = await painted();
+	if (!sent.ok) {
+		/*
+		 * The press is repeated rather than the prompt retyped: an Enter over an
+		 * empty composer is the app's own no-op, so a second press cannot double
+		 * a message that did land.
+		 */
+		note(
+			"the first press was dropped; repeating the Enter",
+			JSON.stringify(sent.last),
+		);
+		await clickAt(cdp, `${composerSelector} textarea`);
+		await cdp.evaluate(
+			`document.querySelector('${composerSelector} textarea').focus()`,
+		);
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		sent = await painted();
+	}
+	check(
+		"the sent message reached the transcript",
+		sent.ok,
+		`after ${sent.waitedMs ?? "?"}ms: ${JSON.stringify(sent.last)}`,
+	);
+	const asked = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-lo-question-dock]'))`,
+		120_000,
+	);
+	check(
+		"the call parks on the approval card",
+		asked.ok,
+		`after ${asked.waitedMs ?? "?"}ms: ${JSON.stringify(asked.last)}`,
+	);
+	/*
+	 * THE RIG'S OWN GATE, ANSWERED THE WAY A READER ANSWERS IT. `tool_approval_mode`
+	 * is `ask` in this config, so the bash call parks on the question dock and the
+	 * turn cannot finish without an answer; option 1 is Approve, typed and sent
+	 * through the composer's real key handler like the prompt itself. The PARKED
+	 * reading is ASSERTED now (design review round 1, D3): a turn waiting on the
+	 * gate is unsettled, so nothing may condense — and the frame carries the
+	 * moment (the question card docked above the composer, the run region with no
+	 * bar) for the design round that judged it.
+	 */
+	const parked = await readTranscript();
+	note("parked on the approval", JSON.stringify(parked));
+	check(
+		"parked: nothing condenses while the turn waits on the gate",
+		parked !== null && parked.bars === 0,
+		JSON.stringify(parked),
+	);
+	const parkedFrame = await captureSettled(cdp, "turn-collapse-parked");
+	note("frame", JSON.stringify(parkedFrame));
+	await clickAt(cdp, `${composerSelector} textarea`);
+	await cdp.evaluate(
+		`document.querySelector('${composerSelector} textarea').focus()`,
+	);
+	await wait(150);
+	await cdp.send("Input.insertText", { text: "1" });
+	await wait(150);
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	const cleared = () =>
+		waitForCondition(
+			cdp,
+			`!document.querySelector('[data-lo-question-dock]')`,
+			30_000,
+		);
+	let approved = await cleared();
+	if (!approved.ok) {
+		note(
+			"the approval press was dropped; repeating the Enter",
+			JSON.stringify(approved.last),
+		);
+		await clickAt(cdp, `${composerSelector} textarea`);
+		await cdp.evaluate(
+			`document.querySelector('${composerSelector} textarea').focus()`,
+		);
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		approved = await cleared();
+	}
+	check(
+		"the approval clears the card and the call starts running",
+		approved.ok,
+		`after ${approved.waitedMs ?? "?"}ms: ${JSON.stringify(approved.last)}`,
+	);
+	await wait(400);
+	const live = await readTranscript();
+	note("mid-run, after the approval", JSON.stringify(live));
+	check(
+		"mid-run: nothing has collapsed - the turn is live and every row is its own",
+		live !== null && live.bars === 0 && live.toolRows >= 1,
+		JSON.stringify(live),
+	);
+	const liveFrame = await captureSettled(cdp, "turn-collapse-live-no-bar");
+	note("frame", JSON.stringify(liveFrame));
+
+	const answered = await waitForCondition(
+		cdp,
+		`(() => {
+			const log = document.querySelector('[role="log"]');
+			return Boolean(log && log.textContent.includes("from the mock provider"));
+		})()`,
+		60_000,
+	);
+	check(
+		"the mock's answer arrived and the turn completed",
+		answered.ok,
+		`after ${answered.waitedMs ?? "?"}ms: ${JSON.stringify(answered.last)}`,
+	);
+	await wait(1_000);
+	const finished = await readTranscript();
+	note("completed", JSON.stringify(finished));
+	check(
+		"completed: the finished turn condenses to exactly one bar",
+		finished !== null &&
+			finished.bars === 1 &&
+			(finished.runIds ?? "").split(" ").length >= 3,
+		JSON.stringify(finished),
+	);
+	check(
+		"completed: the bar carries the turn's one stamp and the foot stands down",
+		finished !== null && finished.stamps === 1 && finished.foot === false,
+		JSON.stringify(finished),
+	);
+	const completedFrame = await captureSettled(cdp, "turn-collapse-completed");
+	note("frame", JSON.stringify(completedFrame));
+
+	await verb(cdp, "press", {
+		selector: "[data-turn-summary] button[aria-expanded]",
+	});
+	await wait(500);
+	const opened = await readTranscript();
+	note("expanded", JSON.stringify(opened));
+	check(
+		"the press reveals the work behind the bar, and the bar stays as the toggle",
+		opened !== null && opened.barOpen === "true" && opened.toolRows >= 1,
+		JSON.stringify(opened),
+	);
+	const expandedFrame = await captureSettled(cdp, "turn-collapse-expanded");
+	note("frame", JSON.stringify(expandedFrame));
+	/*
+	 * D2'S OWN MEASUREMENT (design review round 1): the expansion must keep the
+	 * ledger's own step — the bar replaces the first hidden row's slot, and the
+	 * row below it is one trace step away, not a turn-tier margin plus the
+	 * disclosure body's own 8px (the measured regression: 36px box gap, Δ57px
+	 * centres). `<= 30` is what a 20px row + 4px body padding + 2px trace step
+	 * clears with rounding room; the exact delta is logged either way.
+	 */
+	const geometry = await cdp.evaluate(`(() => {
+		const bar = document.querySelector('[data-turn-summary]');
+		if (!bar) return null;
+		/*
+		 * The bar's own ROW is the trigger, not the root: the root wraps the open
+		 * body too, and measuring its centre would measure the whole block (found
+		 * on this scene's first post-fix run: barToRow1 11.8 against a block, not
+		 * a row).
+		 */
+		const trigger = bar.querySelector('button[aria-expanded]');
+		if (!trigger) return null;
+		const rows = [...bar.querySelectorAll('[data-record-id]')];
+		if (rows.length === 0) return null;
+		const c = (el) => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; };
+		return { barCenter: c(trigger), rowCenters: rows.map(c) };
+	})()`);
+	const barToRow1 =
+		geometry !== null
+			? Math.round((geometry.rowCenters[0] - geometry.barCenter) * 10) / 10
+			: null;
+	note("expanded geometry", JSON.stringify({ ...geometry, barToRow1 }));
+	check(
+		"the expansion keeps the ledger's own step (D2)",
+		barToRow1 !== null && barToRow1 <= 30,
+		`bar-to-row1 centre delta ${barToRow1}px`,
+	);
+
+	/* The reload half (§R1/§10.3): the durable re-read must arrive collapsed. */
+	await cdp.send("Page.reload", { ignoreCache: false });
+	const back = await waitForCondition(
+		cdp,
+		`(() => {
+			const log = document.querySelector('[role="log"]');
+			return Boolean(log && log.querySelector('[data-turn-summary]'));
+		})()`,
+		30_000,
+	);
+	await wait(800);
+	const reloaded = await readTranscript();
+	note(
+		"reloaded",
+		JSON.stringify({ read: reloaded, back: back.ok, before: finished }),
+	);
+	check(
+		"reload: the turn comes back collapsed, with the same run and the same action count",
+		back.ok === true &&
+			reloaded !== null &&
+			reloaded.barOpen === "false" &&
+			reloaded.runIds === finished.runIds &&
+			/\b1 action\b/.test(reloaded.barText ?? "") ===
+				/\b1 action\b/.test(finished.barText ?? ""),
+		JSON.stringify({ reloaded, finished }),
+	);
+	const reloadFrame = await captureSettled(cdp, "turn-collapse-reloaded");
+	note("frame", JSON.stringify(reloadFrame));
+
+	return [parkedFrame, liveFrame, completedFrame, expandedFrame, reloadFrame];
+}
+
+/**
  * THE DAEMON-KILL WALKER: the connection surfaces with the daemon gone, MID-RUN.
  *
  * WHY THIS SCENE EXISTS. Every connection-surface finding on the redesign was
@@ -14957,6 +15339,559 @@ async function authoringWrite(path, body) {
 }
 
 /**
+ * One `sessions.list` read from this script's Node process.
+ *
+ * The bearer contract is `authoringWrite`'s - no `Origin` header, the run's own
+ * token - and it is its own helper because the scenes that watch the DAEMON's
+ * own truth, rather than the app's copy of it, read as well as write. The list
+ * is the catalogue in the same shape the app consumes it: `mtime` is the
+ * session's activity clock and `created_at` its birth, both read fresh per
+ * call (`server/session/catalog.py`'s `_row_stat_key` cache is keyed on the
+ * transcript's own stat, so a backdated file is re-read rather than served).
+ */
+async function daemonList() {
+	const response = await fetch(`${BACKEND}/v1/desktop/sessions?limit=50`, {
+		headers: {
+			authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+		},
+	});
+	if (!response.ok) {
+		return { ok: false, status: response.status, sessions: [] };
+	}
+	const answer = await response.json();
+	return {
+		ok: true,
+		status: response.status,
+		sessions: answer?.result?.sessions ?? [],
+	};
+}
+
+/**
+ * One POST to the daemon's desktop routes, from THIS script's Node process.
+ *
+ * Same contract as `authoringWrite`, kept beside `daemonList` so a scene that
+ * creates and messages sessions reads as the verbs it actually uses. The parsed
+ * body rides along because a create answers the new session's id; a body that
+ * is not JSON (a refusal can be HTML) leaves `json` null rather than failing the
+ * scene inside a parse.
+ */
+async function daemonPost(path, body) {
+	const response = await fetch(`${BACKEND}${path}`, {
+		method: "POST",
+		headers: {
+			"content-type": "application/json",
+			authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+		},
+		body: JSON.stringify(body),
+	});
+	const text = await response.text();
+	let json = null;
+	try {
+		json = JSON.parse(text);
+	} catch {
+		/* See the docstring: the caller reads `status` and `body` then. */
+	}
+	return { path, status: response.status, body: text.slice(0, 400), json };
+}
+
+/**
+ * One GET of the daemon's desktop routes, from THIS script's Node process.
+ *
+ * The read half's own helper, beside `daemonList` and `daemonPost`, for the
+ * scenes that watch the daemon's own truth rather than the app's copy of it —
+ * `--scene mini-view` reads the chief-of-staff conversation back through this
+ * to prove the composer's send was admitted, not merely painted.
+ */
+async function daemonGet(path) {
+	const response = await fetch(`${BACKEND}${path}`, {
+		headers: {
+			authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+		},
+	});
+	const text = await response.text();
+	let json = null;
+	try {
+		json = JSON.parse(text);
+	} catch {
+		/* See daemonPost: the caller reads `status` and `body` then. */
+	}
+	return { path, status: response.status, body: text.slice(0, 400), json };
+}
+
+/**
+ * The pids of the daemon `--backend` names, read from the serve records the run
+ * linked — the same read `--scene connection-drop` does, with the same three
+ * guards (the run's port, a loopback host, and never 1111), because this scene
+ * HOLDS that process for one frame (SIGSTOP/SIGCONT) where connection-drop
+ * kills it. Signalling the operator's own daemon is the thing both guards
+ * exist to make impossible.
+ */
+function runDaemonPids() {
+	if (BACKEND === null) return [];
+	const backendPort = Number(new URL(BACKEND).port);
+	if (backendPort === 1111) {
+		throw new Error(
+			"--scene mini-view refuses a backend on 1111: that is the operator's own daemon, and this scene pauses a run-owned one",
+		);
+	}
+	const pids = [];
+	for (const { record } of sceneConnectionDropRecords()) {
+		const pid = record?.pid;
+		if (typeof pid !== "number" || pid <= 0) continue;
+		if (Number(record.port) !== backendPort) continue;
+		if (
+			typeof record.host === "string" &&
+			!["127.0.0.1", "localhost", "::1"].includes(record.host)
+		)
+			continue;
+		pids.push(pid);
+	}
+	return pids;
+}
+
+/**
+ * The bin promptness, measured live - the operator's report, on the wire and on
+ * screen.
+ *
+ * WHY THIS SCENE EXISTS. The operator (2026-09-28): "even if I've asked an
+ * older session something today, once it completes I can't see it within the
+ * today bin". A row's bin is its `updated_at` (the transcript's activity
+ * clock, `chat-list-sections.ts`), and a completed turn advances that clock -
+ * but the client only learns the new value from a list read, and a completion
+ * is not a list read. So the subject here is an OLD session, messaged by this
+ * script while it is NOT the open pane, and the reading is when the sidebar's
+ * own `data-chat-section` attribute for its row changes to `today`.
+ *
+ * HOW THE SUBJECT IS MADE OLD. Born through the daemon's own create route and
+ * materialised with one real turn - so `created_at.json` and a transcript both
+ * exist - and then both clocks are rewritten backwards: the birth record and
+ * the transcript's mtime, to forty days before this run. The transcript's mtime
+ * IS the list's `mtime`, so this is the fixture the operator's "older session"
+ * is rather than a stub of one; the scene reads both values back from the
+ * daemon's list before it measures anything.
+ *
+ * THE COMPLETION REFERENCE. The daemon's machine-wide feed is subscribed by
+ * this scene's own Node process (`GET /v1/desktop/events`), and the subject's
+ * `attention` frame with a NEW completion token is the event the app itself
+ * receives; its node-side arrival time is the reference the DOM change is
+ * measured against, with the list's own token change polled beside it as a
+ * second, coarser reading. Both are reported.
+ *
+ * THE TWO HALVES. `--bin-expect prompt` (default) asserts the change's claim -
+ * the row lands under `Today` within `BIN_TARGET_MS` of that frame. `--bin-expect
+ * stale` asserts the operator's report on the tree without the client half: the
+ * row does NOT move within `BIN_STALE_MS` (eight seconds; the poll is the thing
+ * under test, so a move inside that window is a FAILURE of this run's own
+ * claim, not a pass). The stale half keeps watching to the 50 s budget anyway,
+ * because WHEN it finally moves is the reading the pair exists to compare.
+ *
+ * WHAT IT NEEDS: `--backend` and `--backend-records` for a daemon this run owns
+ * (`--backend-records` names that daemon's `<config>/run/serve`),
+ * `LOCAL_OPERATOR_DESKTOP_TOKEN` in this script's environment, a renderer built
+ * against `--backend`, and `--seed-onboarding-complete` (a fresh profile in
+ * front of a fresh daemon is a first-run user whose wizard is a modal over the
+ * window). It writes sessions into that daemon's store and backdates their
+ * files; it refuses a `--backend` whose record directory does not describe it.
+ */
+const BIN_TARGET_MS = 2_000;
+const BIN_STALE_MS = 8_000;
+async function sceneSidebarBinPromptness(cdp) {
+	const expect = BIN_EXPECT;
+	const stale = expect === "stale";
+	/*
+	 * THE DAEMON'S OWN ROOTS, from the record directory this run was handed:
+	 * `<config>/run/serve` -> `<config>`. Asserted before anything is written, so
+	 * a `--backend` naming somebody else's daemon fails here rather than creating
+	 * and backdating sessions in their store.
+	 */
+	const configRoot = resolve(BACKEND_RECORDS, "..", "..");
+	const sessionsDir = join(configRoot, "sessions");
+	const backendPort = Number(new URL(BACKEND).port);
+	if (backendPort === 1111) {
+		throw new Error(
+			"--scene sidebar-bin-promptness refuses 1111: that is the operator's own daemon, and this scene creates and backdates sessions",
+		);
+	}
+	const record = sceneConnectionDropRecords().find(
+		(entry) =>
+			entry.record.port === backendPort &&
+			["127.0.0.1", "localhost", "::1"].includes(entry.record.host),
+	);
+	if (record === undefined) {
+		throw new Error(
+			`no serve record for port ${backendPort} under ${BACKEND_RECORDS}: --backend-records must name the daemon's own <config>/run/serve, and this scene creates and backdates sessions in the store beside it`,
+		);
+	}
+	if (!existsSync(sessionsDir)) {
+		throw new Error(
+			`${sessionsDir} is missing under the record's own config root: the record directory does not sit at <config>/run/serve, so this scene cannot find the store it must backdate`,
+		);
+	}
+	note(
+		"the daemon this scene drives",
+		`pid ${record.record.pid} port ${backendPort} store ${sessionsDir}`,
+	);
+
+	/* A node-side poll, because `waitForCondition` reads the PAGE. */
+	const waitUntil = async (predicate, timeoutMs, everyMs = 100) => {
+		const started = Date.now();
+		for (;;) {
+			const value = await predicate();
+			if (value) return { ok: true, waitedMs: Date.now() - started, value };
+			if (Date.now() - started > timeoutMs) {
+				return { ok: false, waitedMs: Date.now() - started };
+			}
+			await wait(everyMs);
+		}
+	};
+
+	/*
+	 * WHERE THE SIDEBAR FILES ONE ROW, read from the DOM rather than from the
+	 * store (the store is not reachable from the page, and the drawn section is
+	 * the claim): the row's nearest `[data-chat-section]` ancestor - the section
+	 * element `chat-sidebar.tsx` draws - and the row's own time label.
+	 */
+	const rowBinExpr = (id) =>
+		`(() => { const row = document.querySelector(${JSON.stringify(`[data-session-row="${id}"]`)}); if (!row) return null; const section = row.closest("[data-chat-section]"); const time = row.querySelector("[data-session-time]"); return { section: section ? section.getAttribute("data-chat-section") : null, time: time ? time.textContent.trim() : null }; })()`;
+	const rowSectionIs = (id, section) =>
+		`(() => { const seen = ${rowBinExpr(id)}; return seen !== null && seen.section === ${JSON.stringify(section)}; })()`;
+
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", "localOperatorDark");
+	const route = await verb(cdp, "state");
+	check(
+		"the app is on the chat route with its sidebar drawn",
+		route.route === "/chat",
+		`route ${route.route}`,
+		`route ${route.route}`,
+	);
+
+	const work = join(resolve(configRoot, ".."), "bin-work");
+	mkdirSync(work, { recursive: true });
+
+	/*
+	 * THE SUBJECT, and its pane sibling. The subject is created, given one turn
+	 * (which materialises it: `created_at.json` is written by the first run, and
+	 * the transcript the clock lives on does not exist before it), acknowledged
+	 * so its completion mark is not what the frames are about, and THEN
+	 * backdated - the order matters, because the first turn's own frames are
+	 * what would otherwise re-read it at its living clock.
+	 */
+	const created = await daemonPost("/v1/desktop/sessions", {
+		request_id: randomUUID(),
+		cwd: work,
+	});
+	const subjectId = created.json?.result?.session_id ?? null;
+	check(
+		"the daemon created the subject session",
+		created.status === 200 &&
+			typeof subjectId === "string" &&
+			subjectId.length > 0,
+		JSON.stringify(created),
+		`session ${subjectId}`,
+	);
+
+	const firstTurn = await daemonPost(
+		`/v1/desktop/sessions/${subjectId}/messages`,
+		{
+			request_id: randomUUID(),
+			text: "Reply with one word: seeded.",
+		},
+	);
+	check(
+		"the subject's materialising turn was admitted",
+		firstTurn.status === 200,
+		JSON.stringify(firstTurn),
+		"admitted",
+	);
+
+	const materialised = await waitUntil(async () => {
+		const transcript = join(sessionsDir, subjectId, "transcript.jsonl");
+		if (!existsSync(transcript) || statSync(transcript).size < 64) return false;
+		const row = (await daemonList()).sessions.find(
+			(entry) => entry.id === subjectId,
+		);
+		return (
+			Boolean(row) &&
+			row.status?.code !== "busy" &&
+			Boolean(row.attention?.completion_token) &&
+			Number.isFinite(row.mtime)
+		);
+	}, 30_000);
+	check(
+		"the subject finished its first turn and carries both clocks",
+		materialised.ok,
+		`not materialised after ${materialised.waitedMs}ms`,
+		`finished after ${materialised.waitedMs}ms`,
+	);
+
+	/*
+	 * NO ACK. The completion mark from the first turn STANDS - the operator's own
+	 * store is full of unviewed completions, and a subject that carries one is the
+	 * adversarial case for the invalidation: the tiers before and after the
+	 * measured turn are BOTH the unseen-completion band, so the completion is
+	 * carried by its `attention` frame alone whenever the busy band was missed.
+	 */
+
+	const fortyDaysAgo = Math.floor(Date.now() / 1000) - 40 * 86_400;
+	const subjectDir = join(sessionsDir, subjectId);
+	writeFileSync(
+		join(subjectDir, "created_at.json"),
+		JSON.stringify(fortyDaysAgo),
+	);
+	const transcript = join(subjectDir, "transcript.jsonl");
+	const mint = new Date(fortyDaysAgo * 1000);
+	utimesSync(transcript, mint, mint);
+	const stamped = (await daemonList()).sessions.find(
+		(entry) => entry.id === subjectId,
+	);
+	check(
+		"the daemon now reports the subject as an older session",
+		stamped !== undefined &&
+			Math.abs(stamped.mtime - fortyDaysAgo) < 0.5 &&
+			Math.abs(stamped.created_at - fortyDaysAgo) < 0.5,
+		`list says mtime ${stamped?.mtime} created_at ${stamped?.created_at}, wanted ${fortyDaysAgo}`,
+		`mtime ${stamped?.mtime} created_at ${stamped?.created_at} (40 days back)`,
+	);
+
+	const createdPane = await daemonPost("/v1/desktop/sessions", {
+		request_id: randomUUID(),
+		cwd: work,
+	});
+	const paneId = createdPane.json?.result?.session_id ?? null;
+	check(
+		"the daemon created the pane session",
+		createdPane.status === 200 &&
+			typeof paneId === "string" &&
+			paneId.length > 0,
+		JSON.stringify(createdPane),
+		`session ${paneId}`,
+	);
+
+	/*
+	 * THE APP MUST SEE THE BACKDATED SUBJECT BEFORE THE MEASUREMENT. Creating
+	 * the pane moved the sessions directory, which is the catalogue doorbell -
+	 * so the sidebar re-reads, and only then is the subject's row on screen in
+	 * `older` with its stale label. The 45 s bound is the safety poll's own
+	 * order of magnitude on a daemon whose doorbell missed.
+	 */
+	const subjectShown = await waitForCondition(
+		cdp,
+		rowSectionIs(subjectId, "older"),
+		45_000,
+	);
+	check(
+		"the backdated subject is on screen under Older",
+		subjectShown.ok,
+		`waited ${subjectShown.waitedMs}ms for the row under Older`,
+		`rendered after ${subjectShown.waitedMs}ms`,
+	);
+
+	const pressed = await verb(
+		cdp,
+		"press",
+		`[data-session-row="${paneId}"] [data-chat-row]`,
+	);
+	await wait(1200);
+	const opened = await verb(cdp, "state");
+	check(
+		"the open pane is the pane session, so the subject is NOT the open pane",
+		opened.activeSessionId === paneId,
+		`active session is ${JSON.stringify(opened.activeSessionId)} after pressing ${JSON.stringify(pressed?.target ?? pressed)}`,
+		`active session ${opened.activeSessionId}`,
+	);
+
+	const baseline = await cdp.evaluate(rowBinExpr(subjectId));
+	note("the subject's row before the message", JSON.stringify(baseline));
+	const beforeFrame = await captureSettled(cdp, `bin-before-${expect}`);
+
+	/*
+	 * THIS SCENE'S OWN FEED SUBSCRIPTION, so the completion's frame has a
+	 * timestamp taken by the process that will read the DOM. The app has its own
+	 * subscription; this is a second reader, closed before the scene returns.
+	 */
+	const frames = [];
+	const watchAbort = new AbortController();
+	const watchDone = (async () => {
+		try {
+			const response = await fetch(`${BACKEND}/v1/desktop/events`, {
+				headers: {
+					authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+				},
+				signal: watchAbort.signal,
+			});
+			const reader = response.body.getReader();
+			const decoder = new TextDecoder();
+			let buffer = "";
+			for (;;) {
+				const { value, done } = await reader.read();
+				if (done) break;
+				buffer += decoder.decode(value, { stream: true });
+				let cut = buffer.indexOf("\n\n");
+				while (cut >= 0) {
+					const chunk = buffer.slice(0, cut);
+					buffer = buffer.slice(cut + 2);
+					const line = chunk
+						.split("\n")
+						.find((entry) => entry.startsWith("data: "));
+					if (line) {
+						try {
+							frames.push({ at: Date.now(), frame: JSON.parse(line.slice(6)) });
+						} catch {
+							/* A torn chunk is not this scene's subject; the next frame is. */
+						}
+					}
+					cut = buffer.indexOf("\n\n");
+				}
+			}
+		} catch (error) {
+			if (!watchAbort.signal.aborted) {
+				note("the feed watch ended early", String(error));
+			}
+		}
+	})();
+	const watchOpen = await waitUntil(
+		() => frames.some((entry) => entry.frame.type === "open"),
+		10_000,
+	);
+	check(
+		"this scene's own feed subscription is live",
+		watchOpen.ok,
+		`no open frame after ${watchOpen.waitedMs}ms`,
+		`open frame after ${watchOpen.waitedMs}ms`,
+	);
+
+	const beforeList = (await daemonList()).sessions.find(
+		(entry) => entry.id === subjectId,
+	);
+	const preToken = beforeList?.attention?.completion_token ?? null;
+	const sentAt = Date.now();
+	const sent = await daemonPost(`/v1/desktop/sessions/${subjectId}/messages`, {
+		request_id: randomUUID(),
+		text: "Reply with one word: bins.",
+	});
+	check(
+		"the daemon admitted the message",
+		sent.status === 200,
+		JSON.stringify(sent),
+		"admitted",
+	);
+
+	/*
+	 * THE MEASUREMENT LOOP: the list's token change and this scene's own
+	 * attention frame are the completion's two readings, and the DOM's section
+	 * attribute for the subject's row is the claim. Everything is timestamped
+	 * with `Date.now()` from one process, which is the only way the deltas mean
+	 * anything.
+	 */
+	const deadline = sentAt + (stale ? 50_000 : 15_000);
+	let completionAt = null;
+	let completionFrameAt = null;
+	let binAt = null;
+	const transitions = [];
+	let current = baseline;
+	while (Date.now() < deadline) {
+		const now = Date.now();
+		if (completionAt === null || completionFrameAt === null) {
+			const row = (await daemonList()).sessions.find(
+				(entry) => entry.id === subjectId,
+			);
+			const token = row?.attention?.completion_token ?? null;
+			if (completionAt === null && token && token !== preToken) {
+				completionAt = now;
+			}
+			if (completionFrameAt === null) {
+				const hit = frames.find(
+					(entry) =>
+						entry.frame.type === "attention" &&
+						entry.frame.session_id === subjectId &&
+						entry.frame.payload?.completion_token &&
+						entry.frame.payload.completion_token !== preToken,
+				);
+				if (hit) completionFrameAt = hit.at;
+			}
+		}
+		const seen = await cdp.evaluate(rowBinExpr(subjectId));
+		if (
+			seen !== null &&
+			(seen.section !== current?.section || seen.time !== current?.time)
+		) {
+			transitions.push({ at: now, ...seen });
+			current = seen;
+			if (binAt === null && seen.section === "today") binAt = now;
+		}
+		if (binAt !== null) break;
+		await wait(80);
+	}
+
+	watchAbort.abort();
+	await watchDone;
+
+	const catalogueAfter = frames
+		.filter((entry) => entry.frame.type === "catalogue" && entry.at >= sentAt)
+		.map((entry) => entry.at - sentAt);
+	const attentionAfter = frames
+		.filter(
+			(entry) => entry.frame.session_id === subjectId && entry.at >= sentAt,
+		)
+		.map((entry) => `${entry.frame.type}@${entry.at - sentAt}ms`);
+	const completion = completionFrameAt ?? completionAt;
+	const lagMs =
+		binAt !== null && completion !== null ? binAt - completion : null;
+	note(
+		"bin promptness readings",
+		JSON.stringify({
+			expect,
+			subjectId,
+			sentAt,
+			completionFrameAt:
+				completionFrameAt === null ? null : completionFrameAt - sentAt,
+			completionAt: completionAt === null ? null : completionAt - sentAt,
+			catalogueAfterMs: catalogueAfter,
+			subjectFrames: attentionAfter,
+			binAt: binAt === null ? null : binAt - sentAt,
+			lagMs,
+			transitions: transitions.map((entry) => ({
+				at: entry.at - sentAt,
+				section: entry.section,
+				time: entry.time,
+			})),
+		}),
+	);
+
+	const finalBin = await cdp.evaluate(rowBinExpr(subjectId));
+	const afterFrame = await captureSettled(cdp, `bin-after-${expect}`);
+
+	if (stale) {
+		check(
+			`the row does NOT land under Today within ${BIN_STALE_MS}ms of the completion (the defect this run records)`,
+			binAt === null ||
+				completion === null ||
+				binAt - completion > BIN_STALE_MS,
+			`the row was under Today ${binAt === null || completion === null ? "?" : `${binAt - completion}ms`} after the completion`,
+			binAt === null
+				? `still under ${JSON.stringify(finalBin?.section)} (${JSON.stringify(finalBin?.time)}) after ${Date.now() - sentAt}ms`
+				: `moved ${binAt - completion}ms after the completion (${binAt - sentAt}ms after the message)`,
+		);
+	} else {
+		check(
+			`the row lands under Today within ${BIN_TARGET_MS}ms of the completion`,
+			binAt !== null &&
+				completion !== null &&
+				binAt - completion <= BIN_TARGET_MS,
+			binAt === null
+				? `no move within ${deadline - sentAt}ms of the message (completion ${completionFrameAt === null ? (completionAt === null ? "never" : `${completionAt - sentAt}ms`) : `${completionFrameAt - sentAt}ms`} in)`
+				: `landed ${binAt - completion}ms after the completion`,
+			binAt !== null && completion !== null
+				? `${binAt - completion}ms after the completion (${binAt - sentAt}ms after the message), row now ${JSON.stringify(finalBin?.section)} ${JSON.stringify(finalBin?.time)}`
+				: `row now ${JSON.stringify(finalBin?.section)} ${JSON.stringify(finalBin?.time)}`,
+		);
+	}
+
+	return [beforeFrame, afterFrame];
+}
+
+/**
  * `/btw` — the aside, driven end to end in BOTH trees by one scene.
  *
  * WHY ONE SCENE AND NOT TWO. The change is a replacement of one surface by
@@ -18189,6 +19124,350 @@ async function sceneNewChat(cdp) {
 		frames
 			.map(
 				(f) => `${f.label}: ${f.pixels.width}x${f.pixels.height}, ${f.bytes}B`,
+			)
+			.join(" | "),
+	);
+	return frames;
+}
+
+/**
+ * `sessionless-slash` (issue #625): `/help`, `/theme`, `/login`, `/logout` and
+ * `/resume` typed on a pane with no conversation.
+ *
+ * WHAT IT MEASURES, AND WHY ONE SCENE RUNS UNDER BOTH EXPECTATIONS.
+ * `--slash-expect open` is the head tree: every one of the five mounts its
+ * picker over the new chat with `sessionId: ""` and no `sessions.command`
+ * POST. `--slash-expect refused` is the base tree: the same five gestures each
+ * get the dispatcher's own sentence in the transcript and no picker. One
+ * scene, both halves, the same bytes.
+ *
+ * ONE THEME PER LAUNCH (see `--theme`), so the harness runs this twice per
+ * tree. The live half runs under `open` only: after the five gestures a message
+ * is sent and answered, and `/theme` on THAT conversation must still present
+ * the picker - the session-ful path the change must not move. On the base tree
+ * the same steps would prove nothing this pair is about.
+ *
+ * THE NEW CHAT IS THE OPERATOR'S OWN GESTURE, not a route the scene invented:
+ * the app-wide Cmd-N stages a fresh draft exactly as the New chat row does
+ * (`sceneNewChat` is the scene that proves that press, and this one reuses
+ * its chord rather than a selector), and the composer the five commands are
+ * typed into is the one that press mounts.
+ *
+ * THE PRESS IS A SHORT SEQUENCE, NOT A SINGLE ENTER, because one destination
+ * completes rather than runs: `/theme` opens an INLINE list, so its first Enter
+ * writes the completed value into the box and leaves the popup open (measured
+ * in this pass's first take: the frame showed `/theme localOperatorDark` in the
+ * box with the Themes list open and no dialog). The scene closes the popup with
+ * Escape - the box keeps the completed value - and submits it with the next
+ * Enter, which is the path the registry's own note describes ("an unambiguous
+ * Enter completes the id and the next Enter runs the command the user already
+ * had"). It attempts up to three presses and the checks record which produced
+ * the state, so a destination that needs a different dance fails by name rather
+ * than by timeout.
+ */
+async function sceneSessionlessSlash(cdp) {
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	const theme = THEME ?? "localOperatorDark";
+	const suffix = theme === "localOperatorLight" ? "light" : "dark";
+	await verb(cdp, "setTheme", theme);
+	const themed = await verb(cdp, "state");
+	check(
+		"the app is in the palette this run photographs",
+		themed.theme === theme,
+		`theme is ${themed.theme}`,
+	);
+
+	/*
+	 * The new chat: from a route that is not chat, through the same chord the
+	 * New chat row's shortcut takes, so the pane these gestures are typed into
+	 * is staged the way a user stages one.
+	 */
+	await verb(cdp, "navigate", "/agent-hub");
+	await pressChord(cdp, {
+		key: "n",
+		code: "KeyN",
+		virtualKeyCode: 78,
+		modifiers: MODIFIER.meta,
+	});
+	const landed = await waitForRoute(cdp, "/chat");
+	const draft = await stagedDraft(cdp);
+	check(
+		"Cmd-N staged a fresh draft on the chat route - the new chat these gestures are about",
+		landed.route === "/chat" &&
+			typeof draft === "string" &&
+			draft.startsWith("draft:"),
+		`route ${landed.route}, activeDraftKey ${JSON.stringify(draft)}`,
+	);
+	const COMPOSER = '[data-tour-tag="chat-input-textarea"]';
+	const mounted = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${COMPOSER}'))`,
+		30_000,
+	);
+	check(
+		"the draft pane mounts a composer",
+		mounted.ok,
+		`after ${mounted.waitedMs}ms: ${JSON.stringify(mounted.last)}`,
+	);
+
+	const open = SLASH_EXPECT === "open";
+	const COMMANDS = [
+		{ word: "/help", label: "help", title: "Commands" },
+		{ word: "/theme", label: "theme", title: "Theme" },
+		{ word: "/login", label: "login", title: "Sign in to a provider" },
+		{ word: "/logout", label: "logout", title: "Sign out" },
+		{ word: "/resume", label: "resume", title: "Resume a conversation" },
+	];
+
+	/*
+	 * The slash popup's own listbox, by its own labels (`slash-commands.tsx`):
+	 * "Slash commands" in the command phase, "Command arguments" once a row with
+	 * an inline list has been completed. Asked before the Escape step so a
+	 * destination that needed no completing is never sent a stray key.
+	 */
+	const SLASH_POPUP =
+		'[role="listbox"][aria-label="Command arguments"], [role="listbox"][aria-label="Slash commands"]';
+	const pressEnter = () =>
+		pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+
+	const frames = [];
+	for (const command of COMMANDS) {
+		const refusal = `${command.word} needs an open conversation. Start one first.`;
+		const arrives = `Boolean(document.querySelector('[role="dialog"]')) || document.body.innerText.includes(${JSON.stringify(refusal)})`;
+		await clickAt(cdp, `${COMPOSER} textarea`);
+		/*
+		 * A CLEAN BOX BEFORE EACH GESTURE, asserted: a completing row leaves its
+		 * completed value behind until the command actually runs, and the next
+		 * gesture typed onto that tail would be a different gesture than the one
+		 * this frame claims. Meta+A through Chromium's own editing command (a bare
+		 * chord performs no edit), then Backspace.
+		 */
+		let box = await cdp.evaluate(
+			`document.querySelector('${COMPOSER} textarea').value`,
+		);
+		if (box !== "") {
+			await pressChord(cdp, {
+				key: "a",
+				code: "KeyA",
+				virtualKeyCode: 65,
+				modifiers: MODIFIER.meta,
+				commands: ["selectAll"],
+			});
+			await pressChord(cdp, {
+				key: "Backspace",
+				code: "Backspace",
+				virtualKeyCode: 8,
+			});
+			box = await cdp.evaluate(
+				`document.querySelector('${COMPOSER} textarea').value`,
+			);
+		}
+		check(
+			`the composer is empty before ${command.word} is typed`,
+			box === "",
+			`the box held ${JSON.stringify(box)} after the clear`,
+		);
+		await cdp.send("Input.insertText", { text: command.word });
+		await wait(400);
+		await pressEnter();
+		let produced = await waitForCondition(cdp, arrives, 5_000);
+		let presses = 1;
+		if (!produced.ok) {
+			const popup = await cdp.evaluate(
+				`Boolean(document.querySelector('${SLASH_POPUP}'))`,
+			);
+			if (popup) {
+				await pressChord(cdp, {
+					key: "Escape",
+					code: "Escape",
+					virtualKeyCode: 27,
+				});
+				await wait(300);
+			}
+			await pressEnter();
+			presses = 2;
+			produced = await waitForCondition(cdp, arrives, 5_000);
+		}
+		if (!produced.ok) {
+			await pressEnter();
+			presses = 3;
+			produced = await waitForCondition(cdp, arrives, 8_000);
+		}
+		const read = await cdp.evaluate(`(() => {
+			const dialog = document.querySelector('[role="dialog"]');
+			const title = dialog ? dialog.querySelector('h2') : null;
+			return {
+				picker: title ? title.textContent.trim() : null,
+				refusal: document.body.innerText.includes(${JSON.stringify(refusal)})
+					? ${JSON.stringify(refusal)}
+					: null,
+			};
+		})()`);
+		const frame = await captureSettled(
+			cdp,
+			`sessionless-${command.label}-${suffix}`,
+		);
+		frames.push(frame);
+		if (open) {
+			check(
+				`${command.word} opens its picker on a pane with no conversation`,
+				read.picker === command.title,
+				`dialog title ${JSON.stringify(read.picker)}, expected ${JSON.stringify(command.title)} (settled after ${produced.waitedMs}ms on press ${presses})`,
+			);
+			check(
+				`${command.word} prints no refusal sentence`,
+				read.refusal === null,
+				JSON.stringify(read.refusal),
+			);
+		} else {
+			check(
+				`${command.word} is refused with the dispatcher's own sentence`,
+				read.refusal === refusal && read.picker === null,
+				`refusal ${JSON.stringify(read.refusal)}, picker ${JSON.stringify(read.picker)} (settled after ${produced.waitedMs}ms on press ${presses})`,
+			);
+		}
+		if (read.picker !== null) {
+			/*
+			 * The picker is a modal: it owns the keyboard, and the next gesture
+			 * needs the composer. Escape is the app's own close, so the scene
+			 * closes it the way a user does rather than by reaching into stores.
+			 */
+			await pressChord(cdp, {
+				key: "Escape",
+				code: "Escape",
+				virtualKeyCode: 27,
+			});
+			const closed = await waitForCondition(
+				cdp,
+				`!document.querySelector('[role="dialog"]')`,
+				5_000,
+			);
+			check(
+				`${command.word}'s picker closes on Escape`,
+				closed.ok,
+				`after ${closed.waitedMs}ms`,
+			);
+		}
+	}
+
+	/*
+	 * THE LIVE HALF (open only): a message is sent and answered, and `/theme` on
+	 * the conversation it creates must still present the picker - the
+	 * session-ful path this change must not move.
+	 */
+	if (open) {
+		await clickAt(cdp, `${COMPOSER} textarea`);
+		await cdp.send("Input.insertText", {
+			text: "Sessionless slash commands: live-conversation sanity check.",
+		});
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		const sent = await waitForCondition(
+			cdp,
+			`(() => {
+				const log = document.querySelector('[role="log"]');
+				return Boolean(log && log.textContent.includes("live-conversation sanity check")) && !document.querySelector('[data-lo-empty-mark]');
+			})()`,
+			60_000,
+		);
+		check(
+			"the sanity message reached the transcript and the empty state is gone",
+			sent.ok,
+			`after ${sent.waitedMs}ms: ${JSON.stringify(sent.last)}`,
+		);
+		const answered = await waitForCondition(
+			cdp,
+			`(() => {
+				const log = document.querySelector('[role="log"]');
+				return Boolean(log && log.textContent.includes("from the mock provider"));
+			})()`,
+			60_000,
+		);
+		check(
+			"the mock provider answered, so the pane is on a live conversation",
+			answered.ok,
+			`after ${answered.waitedMs}ms`,
+		);
+		const liveState = await verb(cdp, "state");
+		check(
+			"the pane now addresses a real session",
+			typeof liveState.activeSessionId === "string" &&
+				liveState.activeSessionId.length > 0,
+			`activeSessionId ${JSON.stringify(liveState.activeSessionId)}`,
+		);
+		await clickAt(cdp, `${COMPOSER} textarea`);
+		await cdp.send("Input.insertText", { text: "/theme" });
+		await wait(400);
+		await pressEnter();
+		let livePicker = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector('[role="dialog"]'))`,
+			8_000,
+		);
+		if (!livePicker.ok) {
+			const popup = await cdp.evaluate(
+				`Boolean(document.querySelector('${SLASH_POPUP}'))`,
+			);
+			if (popup) {
+				await pressChord(cdp, {
+					key: "Escape",
+					code: "Escape",
+					virtualKeyCode: 27,
+				});
+				await wait(300);
+			}
+			await pressEnter();
+			livePicker = await waitForCondition(
+				cdp,
+				`Boolean(document.querySelector('[role="dialog"]'))`,
+				8_000,
+			);
+		}
+		if (!livePicker.ok) {
+			await pressEnter();
+			livePicker = await waitForCondition(
+				cdp,
+				`Boolean(document.querySelector('[role="dialog"]'))`,
+				10_000,
+			);
+		}
+		await wait(500);
+		const liveRead = await cdp.evaluate(`(() => {
+			const dialog = document.querySelector('[role="dialog"]');
+			const title = dialog ? dialog.querySelector('h2') : null;
+			return { picker: title ? title.textContent.trim() : null };
+		})()`);
+		const liveFrame = await captureSettled(
+			cdp,
+			`sessionless-theme-live-${suffix}`,
+		);
+		frames.push(liveFrame);
+		check(
+			"/theme on a live conversation still presents the same picker",
+			livePicker.ok && liveRead.picker === "Theme",
+			`dialog ${JSON.stringify(liveRead.picker)} after ${livePicker.waitedMs}ms`,
+		);
+	} else {
+		note(
+			"live half skipped",
+			"--slash-expect refused: the base tree's half of this pair is the five refusals, and the session-ful steps would spend a send and an answer on a claim this run is not making",
+		);
+	}
+
+	check(
+		"every capture is a frame the app held still for, with no toast on it",
+		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: ${frame.stable === true ? `held still after ${frame.attempts} capture(s)` : `never held still in ${frame.attempts} capture(s)`}, toast-free ${frame.toastFree === true}`,
 			)
 			.join(" | "),
 	);
@@ -27788,6 +29067,881 @@ async function sceneProjectDetail(cdp) {
 	await captureSettled(cdp, `project-detail-${size}-${theme}-linked`);
 }
 
+/**
+ * The fake recorder the mini view's dictating frame is driven with.
+ *
+ * WHAT IT IS FOR. `getUserMedia` cannot be exercised in a headless run — a
+ * permission prompt nobody can answer is the whole reason it is a human QA
+ * item — but the SURFACE's recording state is layout, and a still of it is
+ * worth a review. So the two primitives the mini dictation controller reads
+ * are replaced inside the page before it boots (installed with
+ * `Page.addScriptToEvaluateOnNewDocument`, then a reload): a stream whose
+ * tracks stop harmlessly, and a recorder that changes state. Nothing here is a
+ * claim about a real microphone; the PR says so beside the frame.
+ *
+ * `isTypeSupported` is included because the real class has it and a controller
+ * that asked for it would otherwise fail into the error arm — the fake must be
+ * a superset of every member the seam may touch, or it silently changes which
+ * state is being captured.
+ */
+const MINI_FAKE_RECORDER_SOURCE = [
+	"(() => {",
+	"\tconst stream = { getTracks: () => [{ stop() {} }] };",
+	"\tif (navigator.mediaDevices) {",
+	"\t\tnavigator.mediaDevices.getUserMedia = async () => stream;",
+	"\t}",
+	"\tclass FakeMediaRecorder {",
+	"\t\tstatic isTypeSupported() {",
+	"\t\t\treturn true;",
+	"\t\t}",
+	"\t\tconstructor(captured) {",
+	"\t\t\tthis.stream = captured;",
+	"\t\t\tthis.state = 'inactive';",
+	"\t\t\tthis.ondataavailable = null;",
+	"\t\t\tthis.onstop = null;",
+	"\t\t\tthis.onerror = null;",
+	"\t\t}",
+	"\t\tstart() {",
+	"\t\t\tthis.state = 'recording';",
+	"\t\t}",
+	"\t\tstop() {",
+	"\t\t\tthis.state = 'inactive';",
+	"\t\t\tif (typeof this.onstop === 'function') this.onstop();",
+	"\t\t}",
+	"\t}",
+	"\twindow.MediaRecorder = FakeMediaRecorder;",
+	"})();",
+].join("\n");
+
+/**
+ * THE QUICK-SEND MINI VIEW (design §I.3): its states, at actual size, captured
+ * from MAIN, out of a window that is never shown.
+ *
+ * WHAT A STILL CAN AND CANNOT PROVE. The mini view is user-visible and has no
+ * surface of its own inside the app: it is a second renderer document that
+ * appears only as the answer to a global hotkey. The one thing a frame proves
+ * is what the operator would see — and since the dev-driver exerciser (M-B1),
+ * the window is the APP'S OWN: the armed headless launch creates it
+ * (`headlessExerciserAllowed`), this scene finds it, sends the real summon
+ * channel into it, drives the composer through its DOM, and captures each
+ * state from the MAIN process with `capturePage`. The scene deliberately does
+ * NOT use the dev driver's `capture` verb the other scenes share: the mini
+ * document does not mount the dev driver at all (design §D.1), which is the
+ * point of the second document. A run without the exerciser window refuses by
+ * name rather than photographing a substitute the desktop plane would refuse.
+ *
+ * THE WINDOW IS NEVER SHOWN. It is created `show: false` by the app and
+ * nothing here calls show or focus — the recursive scan in
+ * `window-mode.test.mjs` covers this file too, and a scene that presented its
+ * window would be the leak it exists to disprove. `capturePage` works on a
+ * hidden window, with the console rig's lesson applied: the FIRST capture of a
+ * hidden window can come back blank, so every capture retries and the
+ * assertion is on the PNG's dimensions, not on the promise having resolved.
+ * Every capture also SETTLES first (design round 1, D6): the stills used to be
+ * photographed mid-transition, so their colours were a phase of a 120 ms fade
+ * rather than the surface's paint.
+ *
+ * THE LIVE SEND, AND THE TWO AIDS THAT MAKE ITS STILLS POSSIBLE (M-B1).
+ * Because the window is the app's own, its requests pass the desktop plane's
+ * frame gate, and with `--backend` the whole send path is real: the daemon is
+ * the run's own, the message it admits is read back from its history route,
+ * and the two transient states are photographed with disclosed harness aids —
+ * the daemon's process is PAUSED by exact pid for the `sending` frame and
+ * resumed in a `finally` (the same request then completes), and the composer's
+ * own 600 ms flash timer is stretched in the page for the `sent` frame. Both
+ * aids are page/process-level, neither changes shipped code, and the README
+ * names them beside the frames. Without `--backend` the send ends in the
+ * transport refusal — the error state with the draft kept — and the `sending`
+ * / `sent` frames are simply not taken.
+ *
+ * WHAT THIS SCENE CANNOT PROVE, said here so no report implies otherwise: that
+ * a real ⌘⌥Space reaches the registrar (no synthetic OS chord crosses a
+ * headless run honestly — the registration half is unit-tested and the one
+ * live press is a human step), focus returning to the operator's previous app,
+ * anything about the microphone permission prompt (the dictating frame is
+ * driven by a fake recorder: `MINI_FAKE_RECORDER_SOURCE`), and the real
+ * OS-level conflicts macOS does not report (QA round 1, Q2).
+ */
+async function sceneMiniView(app, cdp) {
+	/*
+	 * Declarations are read as TEXT, for the same reason every sentence below is:
+	 * a still is only evidence about the shipped surface if it is a still OF that
+	 * surface, and a driver that restated a size, a channel or a duration could
+	 * quietly keep going after the app changed one. A moved declaration THROWS
+	 * here rather than being skipped or defaulted.
+	 */
+	const declaredNumberIn = (file, name) => {
+		const source = readFileSync(file, "utf8");
+		const prefix = `export const ${name} = `;
+		const line = source
+			.split("\n")
+			.find((candidate) => candidate.startsWith(prefix));
+		if (line === undefined) {
+			throw new Error(
+				`${file} no longer declares ${name}; the mini-view scene reads it, so update this reader with the declaration`,
+			);
+		}
+		const value = Number.parseInt(line.slice(prefix.length), 10);
+		if (!Number.isInteger(value) || value <= 0) {
+			throw new Error(`${name} is not a literal integer: ${line}`);
+		}
+		return value;
+	};
+	const declaredStringIn = (file, name) => {
+		const source = readFileSync(file, "utf8");
+		const prefix = `export const ${name} = "`;
+		const line = source
+			.split("\n")
+			.find((candidate) => candidate.startsWith(prefix));
+		if (line === undefined) {
+			throw new Error(
+				`${file} no longer declares ${name} as a string literal; the mini-view scene reads it, so update this reader with the declaration`,
+			);
+		}
+		const end = line.indexOf('"', prefix.length);
+		if (end === -1) throw new Error(`${name} has no closing quote: ${line}`);
+		return line.slice(prefix.length, end);
+	};
+	const width = declaredNumberIn("src/shared/mini-view.ts", "MINI_VIEW_WIDTH");
+	const height = declaredNumberIn(
+		"src/shared/mini-view.ts",
+		"MINI_VIEW_HEIGHT",
+	);
+
+	/*
+	 * The sentences the assertions read are read from the copy module for the
+	 * same reason the size is read from its declaration: a report that hardcoded
+	 * "Sent" would go on passing after the sentence changed, and the still would
+	 * be of a state the assertion no longer describes.
+	 */
+	const copySource = readFileSync(
+		"src/renderer/src/mini-view/mini-copy.ts",
+		"utf8",
+	);
+	const copySentence = (key) => {
+		const marker = `${key}: "`;
+		const start = copySource.indexOf(marker);
+		if (start === -1) throw new Error(`mini-copy.ts no longer declares ${key}`);
+		const from = start + marker.length;
+		const end = copySource.indexOf('"', from);
+		if (end === -1)
+			throw new Error(`mini-copy.ts's ${key} has no closing quote`);
+		return copySource.slice(from, end);
+	};
+	const hintSentence = copySentence("hint");
+	const recordingSentence = copySentence("recording");
+	const dictationStopSentence = copySentence("dictationStop");
+	const dictationStartSentence = copySentence("dictationStart");
+	const sentSentence = copySentence("sent");
+	/*
+	 * The invalid-state sentence is the registrationCopy arm the toast probe
+	 * asserts; it is a `case` return rather than a `key: "…"` entry, so it gets
+	 * its own read of the same source.
+	 */
+	const copyCaseSentence = (status) => {
+		const match = copySource.match(
+			new RegExp(`case "${status}":\\s*return "([^"]+)"`),
+		);
+		if (!match) {
+			throw new Error(
+				`mini-copy.ts's registrationCopy has no ${status} sentence; update this reader with the declaration`,
+			);
+		}
+		return match[1];
+	};
+	const invalidSentence = copyCaseSentence("invalid");
+
+	/*
+	 * THE SUMMON CHANNEL AND THE FLASH LENGTH, read from their declarations for
+	 * the same reason every sentence above is: the scene sends the message the
+	 * app's own presentation sends (there is no OS key to press in a headless
+	 * run), and the flash it holds open long enough to photograph is the
+	 * constant the composer ships — a scene that restated either would keep
+	 * passing after a rename or a retune.
+	 */
+	const summonChannel = declaredStringIn(
+		"src/shared/mini-view.ts",
+		"MINI_VIEW_SUMMONED",
+	);
+	const registrationChannel = declaredStringIn(
+		"src/shared/mini-view.ts",
+		"MINI_VIEW_REGISTRATION",
+	);
+	const quickSendDefault = declaredStringIn(
+		"src/shared/mini-view.ts",
+		"DEFAULT_QUICK_SEND_VALUE",
+	);
+	const sentFlashMs = declaredNumberIn(
+		"src/renderer/src/mini-view/mini-composer.tsx",
+		"SENT_FLASH_MS",
+	);
+
+	/*
+	 * THE APP'S OWN MINI WINDOW, FOUND RATHER THAN BUILT (M-B1). The dev-driver
+	 * exerciser creates it in a headless armed launch — one gate, in
+	 * `src/main/index.ts` via `headlessExerciserAllowed` — so this scene drives
+	 * a window the app owns, which is what the desktop plane admits
+	 * (`desktop-ipc.ts` admits by FRAME) and what makes the live send path
+	 * reachable at all. A run where the window is absent refuses by name rather
+	 * than photographing a hand-built substitute: that substitute cannot pass
+	 * the gate, so its frames would be stills of a window the app does not
+	 * ship.
+	 *
+	 * Read from MAIN, not from the page: a never-shown window's
+	 * `document.visibilityState` is not an honest instrument for it (the first
+	 * run of this scene read it and was refused by its own check while the
+	 * window was in fact hidden), and main can answer the real question
+	 * directly.
+	 */
+	const main = await CdpClient.attachNode(app.inspectPort);
+	const owned = await main.evaluate(
+		[
+			"(() => {",
+			'\tconst electron = process.mainModule?.require("electron") ?? globalThis.require?.("electron");',
+			"\tif (!electron) return { problem: 'main cannot require its own modules' };",
+			"\tconst windows = electron.BrowserWindow.getAllWindows();",
+			"\tconst miniWindow = windows.find((candidate) => (candidate.webContents.getURL() || '').endsWith('mini.html'));",
+			"\tif (!miniWindow) return { problem: 'the app created no mini window', windows: windows.map((window) => ({ title: window.getTitle(), url: window.webContents.getURL() })) };",
+			"\tglobalThis.__lopMiniSceneWindow = miniWindow;",
+			"\treturn {",
+			"\t\twindows: windows.map((window) => ({ title: window.getTitle(), visible: window.isVisible(), focused: window.isFocused() })),",
+			"\t\tmini: { title: miniWindow.getTitle(), visible: miniWindow.isVisible(), focused: miniWindow.isFocused(), bounds: miniWindow.getContentBounds(), url: miniWindow.webContents.getURL() },",
+			"\t};",
+			"})()",
+		].join("\n"),
+	);
+	if (owned?.mini === undefined) {
+		throw new Error(
+			`the app created no mini window, so there is nothing for this scene to drive (${JSON.stringify(owned)}). This scene requires a headless launch with the dev driver armed — the exerciser headlessExerciserAllowed() creates — because the desktop plane admits by frame and a window this scene builds by hand is refused: see docs/agent-driver.md's mini-view section`,
+		);
+	}
+	check(
+		"the app's own mini view exists, hidden and unfocused (the dev-driver exerciser)",
+		owned?.mini?.visible === false && owned?.mini?.focused === false,
+		JSON.stringify(owned?.mini),
+	);
+	check(
+		"the app's own creation used the design's fixed content size",
+		owned?.mini?.bounds?.width === width &&
+			owned?.mini?.bounds?.height === height,
+		JSON.stringify(owned?.mini?.bounds),
+	);
+	check(
+		"every window of this run is off screen, and the mini view is the only extra one",
+		Array.isArray(owned?.windows) &&
+			owned.windows.length === 2 &&
+			owned.windows.every((window) => window.visible === false),
+		JSON.stringify(owned?.windows),
+	);
+	/*
+	 * THE EXERCISER'S CONTRACT, read from the app's own log: it says it created
+	 * the window, and the registration line still says this mode registers
+	 * NOTHING — the half that must never ride the exerciser.
+	 */
+	const bootLog = await readAppLog(app);
+	check(
+		"the exerciser announced itself and registration stayed normal-only",
+		bootLog.includes("mini-view: exerciser window created") &&
+			bootLog.includes("mini-view: not registered (window mode headless)"),
+		bootLog
+			.split("\n")
+			.filter((line) => line.includes("mini-view:"))
+			.join(" / "),
+	);
+	let mini = null;
+
+	try {
+		mini = await CdpClient.attach(app.port, "out/renderer/mini.html");
+
+		const select = (tag) =>
+			`document.querySelector('[data-tour-tag="${tag}"]')`;
+		const pageState = await mini.evaluate(
+			`({ width: window.innerWidth, height: window.innerHeight, dpr: window.devicePixelRatio, theme: document.documentElement.dataset.theme ?? null, dismissBridge: typeof window.api?.miniView?.dismiss === "function", placeholder: ${select("mini-composer-input")}?.placeholder ?? null, sendDisabled: ${select("mini-composer-send")}?.disabled ?? null })`,
+		);
+		check(
+			"the mini document rendered at the app's fixed viewport",
+			pageState?.width === width && pageState?.height === height,
+			JSON.stringify(pageState),
+		);
+		check(
+			"the mini document mounted the app's palette",
+			typeof pageState?.theme === "string" && pageState.theme.length > 0,
+			`data-theme = ${JSON.stringify(pageState?.theme)}`,
+		);
+		check(
+			"the mini document has the preload's bridge",
+			pageState?.dismissBridge === true,
+			`window.api.miniView.dismiss is ${pageState?.dismissBridge === true ? "present" : "missing"}`,
+		);
+		check(
+			"the resting state invites a message and offers nothing to press",
+			typeof pageState?.placeholder === "string" &&
+				pageState.placeholder.length > 0 &&
+				pageState.sendDisabled === true,
+			`placeholder=${JSON.stringify(pageState?.placeholder)} sendDisabled=${pageState?.sendDisabled}`,
+		);
+
+		const captureMini = async (label) => {
+			await settleMini();
+			const record = await main.evaluate(
+				[
+					"(async () => {",
+					'\tconst fs = process.mainModule?.require("node:fs") ?? globalThis.require?.("node:fs");',
+					'\tconst path = process.mainModule?.require("node:path") ?? globalThis.require?.("node:path");',
+					"\tconst window = globalThis.__lopMiniSceneWindow;",
+					"\tif (!fs || !path || !window || window.isDestroyed()) return { ok: false, detail: 'the mini window is gone' };",
+					/*
+					 * A HIDDEN WINDOW'S FIRST CAPTURE IS NOT RELIABLE, in two ways this
+					 * loop covers: it can come back BLANK, and under load it can THROW
+					 * (`UnknownVizError` from a compositor that is not ready yet — measured
+					 * on this scene's second run under a load average above 70). The blank
+					 * test is the repo's own definition rather than a byte floor (the
+					 * byte floor was withdrawn in the console rig: it measured how much
+					 * text a program printed, not whether the capture worked): a frame
+					 * with fewer than 8 distinct colours or fewer than 32 pixels off its
+					 * first pixel's ground is not a screenshot of anything, and the first
+					 * version of this loop accepted exactly such a white frame once
+					 * (`mini-view-empty.png` came back 2,348 bytes of uniform white).
+					 * Three attempts with a growing wait; the failure record names which
+					 * way it failed rather than reading as a torn-down window.
+					 */
+					"\tconst looksBlank = (candidate) => {",
+					"\t\tconst bitmap = candidate.toBitmap();",
+					"\t\tconst ground = [bitmap[0], bitmap[1], bitmap[2]];",
+					"\t\tconst colours = new Set();",
+					"\t\tlet offGround = 0;",
+					"\t\tfor (let i = 0; i + 3 < bitmap.length; i += 4) {",
+					"\t\t\tcolours.add(bitmap[i] + ',' + bitmap[i + 1] + ',' + bitmap[i + 2]);",
+					"\t\t\tif (bitmap[i] !== ground[0] || bitmap[i + 1] !== ground[1] || bitmap[i + 2] !== ground[2]) offGround += 1;",
+					"\t\t}",
+					"\t\treturn colours.size < 8 || offGround < 32;",
+					"\t};",
+					"\tlet image = null;",
+					"\tlet problem = null;",
+					/*
+					 * INVALIDATE BEFORE EVERY ATTEMPT. A hidden window's compositor can
+					 * serve a frame older than the DOM (measured: the error state's frame
+					 * came back as the post-reload EMPTY surface, byte-identical with the
+					 * empty capture, while the DOM checks for the error state had all
+					 * passed). `invalidate()` schedules the repaint the capture then reads,
+					 * and it is a paint hint only — nothing about presentation.
+					 */
+					"\tconst captureOnce = async () => {",
+					"\t\twindow.webContents.invalidate();",
+					"\t\tawait new Promise((resolve) => setTimeout(resolve, 200));",
+					"\t\treturn window.webContents.capturePage();",
+					"\t};",
+					"\tfor (let attempt = 1; attempt <= 3; attempt += 1) {",
+					"\t\ttry {",
+					"\t\t\timage = await captureOnce();",
+					"\t\t\tif (!image.isEmpty() && !looksBlank(image)) break;",
+					"\t\t\tproblem = 'the capture came back blank (the hidden window had not painted yet)';",
+					"\t\t} catch (error) {",
+					"\t\t\timage = null;",
+					"\t\t\tproblem = String(error);",
+					"\t\t}",
+					"\t\tawait new Promise((resolve) => setTimeout(resolve, 250 * attempt));",
+					"\t}",
+					"\tif (!image || image.isEmpty() || looksBlank(image)) return { ok: false, detail: 'capture failed after three attempts: ' + problem };",
+					"\tconst png = image.toPNG();",
+					`\tfs.writeFileSync(path.join(${JSON.stringify(FRAMES)}, ${JSON.stringify(label)} + ".png"), png);`,
+					"\tconst size = image.getSize();",
+					'\tconst viewport = await window.webContents.executeJavaScript("({ width: window.innerWidth, height: window.innerHeight, dpr: window.devicePixelRatio })", true);',
+					"\treturn { ok: png.length > 0, bytes: png.length, pixels: { width: size.width, height: size.height }, viewport, visible: window.isVisible(), focused: window.isFocused(), bounds: window.getContentBounds() };",
+					"})()",
+				].join("\n"),
+			);
+			const dpr = record?.viewport?.dpr ?? 1;
+			check(
+				`the ${label} frame was captured at actual size`,
+				record?.ok === true &&
+					record?.pixels?.width === width * dpr &&
+					record?.pixels?.height === height * dpr,
+				JSON.stringify(record),
+			);
+			/*
+			 * The headless property, asserted PER FRAME rather than once at the end:
+			 * a presentation that slipped into any one state would be caught on the
+			 * state that slipped, not only if the window happened to still be up.
+			 */
+			check(
+				`the ${label} frame was captured with the window never visible`,
+				record?.visible === false && record?.focused === false,
+				`visible=${record?.visible} focused=${record?.focused} bounds=${JSON.stringify(record?.bounds)}`,
+			);
+			note(
+				`frame ${label}`,
+				`${record?.pixels?.width}x${record?.pixels?.height}px, ${record?.bytes} bytes`,
+			);
+			return record;
+		};
+
+		const pollMini = async (
+			expression,
+			ready,
+			description,
+			timeoutMs = 20_000,
+		) => {
+			const started = Date.now();
+			let value = null;
+			for (;;) {
+				value = await mini.evaluate(expression).catch(() => null);
+				if (value !== null && ready(value)) return { ok: true, value };
+				if (Date.now() - started > timeoutMs) return { ok: false, value };
+				await wait(120);
+			}
+		};
+
+		/*
+		 * SETTLE BEFORE EVERY CAPTURE (design round 1, D6). The textarea's
+		 * `transition-colors` (120 ms `duration-fast`) and the Send button's own
+		 * fade meant the posted `typing` and `error` stills were photographed
+		 * MID-ANIMATION, so their ring and fill measured a phase of a transition
+		 * (#addcb3, #3a6641) rather than the surface's settled paint. This polls
+		 * the computed outline/fill pairs until two consecutive reads agree (or
+		 * 1.5 s passes, under load) and every capture runs it first, so the
+		 * frames are colour evidence instead of animation evidence. The pairs
+		 * read are the ones the design round measured: the field's ring and the
+		 * Send button's fill and label, which are the two animated surfaces.
+		 */
+		const settleMini = async () => {
+			const record = await mini.evaluate(`(async () => {
+				const box = ${select("mini-composer-input")};
+				const send = ${select("mini-composer-send")};
+				const read = () =>
+					box && send
+						? [
+								getComputedStyle(box).outlineColor,
+								getComputedStyle(box).backgroundColor,
+								getComputedStyle(send).backgroundColor,
+								getComputedStyle(send).color,
+							].join("|")
+						: "";
+				let last = null;
+				let stable = 0;
+				let waited = 0;
+				let current = read();
+				while (waited < 1500) {
+					if (current === last) stable += 1;
+					else {
+						stable = 0;
+						last = current;
+					}
+					if (stable >= 2) return { settledAfterMs: waited };
+					await new Promise((resolve) => setTimeout(resolve, 60));
+					waited += 60;
+					current = read();
+				}
+				return { settledAfterMs: waited, settled: false };
+			})()`);
+			return record;
+		};
+
+		const type = async (text) => {
+			await mini.evaluate(`${select("mini-composer-input")}.focus(); true`);
+			await mini.send("Input.insertText", { text });
+			return mini.evaluate(`${select("mini-composer-input")}.value`);
+		};
+
+		/* ---- the resting state ------------------------------------------------- */
+		await captureMini("mini-view-empty");
+
+		/* ---- a draft ----------------------------------------------------------- */
+		const draft = "Lunch at one tomorrow? Book the room if it is free.";
+		const typed = await type(draft);
+		check("the draft reached the box", typed === draft, JSON.stringify(typed));
+		const sendDisabled = await mini.evaluate(
+			`${select("mini-composer-send")}.disabled`,
+		);
+		check(
+			"Send became available once there was a draft",
+			sendDisabled === false,
+			`disabled=${sendDisabled}`,
+		);
+		await captureMini("mini-view-typing");
+
+		/* ---- a long draft ------------------------------------------------------ */
+		const longDraft = [
+			"Three things before the standup tomorrow:",
+			"1. The Pergamon enrichment backlog — two batches are still queued; ask for an ETA.",
+			"2. The support digest needs the churn numbers, which I have not pulled yet.",
+			"3. The quick-send review — I would like your read on the copy.",
+			"If the order should be different, say so and I will re-plan the morning.",
+		].join("\n");
+		await type(longDraft);
+		const growth = await mini.evaluate(
+			`(() => { const box = ${select("mini-composer-input")}; const frame = document.body.getBoundingClientRect(); return { scrolls: box.scrollHeight > box.clientHeight, bodyWidth: Math.round(frame.width), bodyHeight: Math.round(frame.height) }; })()`,
+		);
+		check(
+			"a long draft scrolls inside the fixed box rather than growing the window",
+			growth?.scrolls === true &&
+				growth?.bodyWidth === width &&
+				growth?.bodyHeight === height,
+			JSON.stringify(growth),
+		);
+		await captureMini("mini-view-long");
+
+		/* ---- dictating (a fake recorder; see the constant) --------------------- */
+		await mini.send("Page.addScriptToEvaluateOnNewDocument", {
+			source: MINI_FAKE_RECORDER_SOURCE,
+		});
+		await mini.send("Page.reload");
+		const remounted = await pollMini(
+			`Boolean(${select("mini-composer-input")})`,
+			(value) => value === true,
+			"the composer remounted",
+		);
+		check(
+			"the composer remounted after the reload",
+			remounted.ok,
+			JSON.stringify(remounted.value),
+		);
+		/*
+		 * A DRAFT BEFORE THE MIC (UX round 1, U2's other half): with words in the
+		 * box, an Enter that wrongly sent would file a message missing the spoken
+		 * words — so the walk below presses exactly that key and asserts the draft
+		 * stayed.
+		 */
+		const recordingDraft = "Draft kept while dictating";
+		const draftBeforeMic = await type(recordingDraft);
+		check(
+			"the box holds a draft while the recording starts",
+			draftBeforeMic === recordingDraft,
+			JSON.stringify(draftBeforeMic),
+		);
+		await mini.evaluate(`${select("mini-composer-mic")}.click(); true`);
+		const recordingState = await pollMini(
+			`${select("mini-composer-status")}.textContent`,
+			(text) => text === recordingSentence,
+			"the recording state",
+		);
+		check(
+			"the mic press put the surface into recording",
+			recordingState.ok,
+			JSON.stringify(recordingState.value),
+		);
+		const stopLabel = await mini.evaluate(
+			`${select("mini-composer-mic")}.getAttribute("aria-label")`,
+		);
+		check(
+			"the mic control now offers to stop",
+			stopLabel === dictationStopSentence,
+			`aria-label=${JSON.stringify(stopLabel)}`,
+		);
+		await captureMini("mini-view-dictating");
+		/*
+		 * ENTER CONFIRMS A RECORDING (UX round 1, U2). While the mic is live,
+		 * Enter must not send: it stops the recording (stop → transcribe →
+		 * append), and no send path may hide the window while a recording is
+		 * live. The pre-press reading is the new guard — Send disabled while
+		 * recording — and the post-press reading is that no in-flight state
+		 * ever appeared: the textarea is never disabled by a send and the
+		 * draft is byte-identical.
+		 */
+		const beforeEnter = await mini.evaluate(
+			`({ sendDisabled: ${select("mini-composer-send")}.disabled, mic: ${select("mini-composer-mic")}.getAttribute("aria-label") })`,
+		);
+		check(
+			"Send is disabled while a recording is live",
+			beforeEnter?.sendDisabled === true &&
+				beforeEnter?.mic === dictationStopSentence,
+			JSON.stringify(beforeEnter),
+		);
+		await mini.send("Input.dispatchKeyEvent", {
+			type: "keyDown",
+			key: "Enter",
+			code: "Enter",
+			windowsVirtualKeyCode: 13,
+		});
+		await mini.send("Input.dispatchKeyEvent", {
+			type: "keyUp",
+			key: "Enter",
+			code: "Enter",
+			windowsVirtualKeyCode: 13,
+		});
+		const recordingEnded = await pollMini(
+			`${select("mini-composer-mic")}.getAttribute("aria-label")`,
+			(value) => value === dictationStartSentence,
+			"the recording to end via Enter",
+			8_000,
+		);
+		const afterEnter = await mini.evaluate(
+			`({ text: ${select("mini-composer-input")}.value, disabled: ${select("mini-composer-input")}.disabled, status: ${select("mini-composer-status")}.textContent })`,
+		);
+		check(
+			"Enter confirmed the recording instead of sending",
+			recordingEnded.ok &&
+				afterEnter?.text === recordingDraft &&
+				afterEnter?.status !== sentSentence,
+			JSON.stringify({ ended: recordingEnded.value, ...afterEnter }),
+		);
+
+		/* ---- sending / sent, or the refusal the no-backend run shows ----------- */
+		await mini.send("Page.reload");
+		await pollMini(
+			`Boolean(${select("mini-composer-input")})`,
+			(value) => value === true,
+			"the composer remounted",
+		);
+		const message = "Lunch at one tomorrow? Book the room if it is free.";
+		const held = await type(message);
+		check(
+			"the box holds the message being sent",
+			held === message,
+			JSON.stringify(held),
+		);
+
+		/*
+		 * THE SEND, walked on the app's OWN window — which is what makes both
+		 * arms honest now that the exerciser exists (M-B1). The window this
+		 * scene drives was created by the app, so the desktop plane's gate
+		 * (`desktop-ipc.ts`, admits by frame) ADMITS its requests; where the
+		 * request then goes is the run's own backend or, without one, the dead
+		 * port — and the surface shows the outcome the machine can produce.
+		 *
+		 * WITH `--backend`, the live pair. The `sending` frame needs the
+		 * in-flight state to outlive a loopback round trip, so the harness
+		 * pauses the run's OWN daemon process (SIGSTOP, exact pid from the serve
+		 * record the run linked, resumed in a `finally`) for the frame's
+		 * duration and resumes it before the same request completes: the request
+		 * is a real one, the `sent` frame is its admission, and the history
+		 * read-back below is the daemon's own receipt. The 600 ms flash is held
+		 * open long enough to photograph by stretching the composer's OWN timer
+		 * (`SENT_FLASH_MS`, read from its declaration) in this window's page — a
+		 * harness aid, disclosed here and in the README, not a shipped change.
+		 *
+		 * WITHOUT one, the fail-closed arm: the transport refusal, draft kept —
+		 * the frame the PR's error state has always been.
+		 */
+		if (BACKEND) {
+			await mini.evaluate(
+				`(() => { const original = window.setTimeout; window.setTimeout = (fn, ms, ...rest) => original(fn, ms === ${sentFlashMs} ? 5000 : ms, ...rest); return true; })()`,
+			);
+			const daemonPids = runDaemonPids();
+			let paused = 0;
+			try {
+				for (const pid of daemonPids) {
+					try {
+						process.kill(pid, "SIGSTOP");
+						paused += 1;
+					} catch {
+						/* Already gone: nothing to hold, and the send will show it. */
+					}
+				}
+				check(
+					"the run's own daemon was paused for the sending frame",
+					paused > 0,
+					`paused ${paused} of ${JSON.stringify(daemonPids)}`,
+				);
+				await wait(150);
+				await mini.evaluate(`${select("mini-composer-send")}.click(); true`);
+				const inFlight = await pollMini(
+					`({ editable: !${select("mini-composer-input")}.disabled, sendDisabled: ${select("mini-composer-send")}.disabled })`,
+					(value) => value?.editable === false,
+					"the in-flight state",
+					6_000,
+				);
+				check(
+					"the send is in flight while the daemon holds the answer",
+					inFlight.ok,
+					JSON.stringify(inFlight.value),
+				);
+				await captureMini("mini-view-sending");
+			} finally {
+				for (const pid of daemonPids) {
+					try {
+						process.kill(pid, "SIGCONT");
+					} catch {
+						/* A pid that died while paused has nothing to resume. */
+					}
+				}
+			}
+			const admitted = await pollMini(
+				`${select("mini-composer-status")}.textContent`,
+				(text) => text === sentSentence,
+				"the Sent flash",
+				20_000,
+			);
+			check(
+				"admission painted the Sent flash",
+				admitted.ok,
+				JSON.stringify(admitted.value),
+			);
+			await captureMini("mini-view-sent");
+
+			/* THE DAEMON'S OWN TRUTH, read back over its own routes: the message is
+			   in the chief-of-staff conversation, not only on the surface. */
+			const aidaState = await daemonPost("/v1/desktop/aida", { op: "status" });
+			const seatSession = aidaState?.json?.result?.session_id ?? null;
+			check(
+				"the daemon reports a chief-of-staff conversation",
+				typeof seatSession === "string" && seatSession.length > 0,
+				JSON.stringify({
+					status: aidaState?.status,
+					body: aidaState?.body,
+				}).slice(0, 300),
+			);
+			const history = seatSession
+				? await daemonGet(
+						`/v1/desktop/sessions/${seatSession}/history?limit=20`,
+					)
+				: null;
+			const entries = history?.json?.result?.entries ?? [];
+			check(
+				"the daemon's own history carries the message the composer sent",
+				Array.isArray(entries) &&
+					entries.some((entry) => JSON.stringify(entry).includes(message)),
+				JSON.stringify({ status: history?.status, body: history?.body }).slice(
+					0,
+					300,
+				),
+			);
+		} else {
+			await mini.evaluate(`${select("mini-composer-send")}.click(); true`);
+			const refused = await pollMini(
+				`${select("mini-composer-status")}.textContent`,
+				(text) =>
+					typeof text === "string" && text !== "" && text !== hintSentence,
+				"the refusal sentence",
+			);
+			check(
+				"the send was refused with a sentence rather than silence",
+				refused.ok,
+				JSON.stringify(refused.value),
+			);
+			const after = await mini.evaluate(
+				`({ text: ${select("mini-composer-input")}.value, retry: Boolean(${select("mini-composer-retry")}), sendDisabled: ${select("mini-composer-send")}.disabled })`,
+			);
+			check(
+				"the refusal kept the draft: nothing was lost to the failure",
+				after?.text === message,
+				JSON.stringify(after),
+			);
+			note("the refusal state", JSON.stringify(after));
+			await captureMini("mini-view-error");
+		}
+
+		/*
+		 * THE SUMMON WALK, over the real channel — LAST, deliberately. A headless
+		 * run has no OS chord to press, so the scene delivers the message the
+		 * app's own presentation sends (the channel read from its declaration
+		 * above) from MAIN to the app's OWN mini window: the window, the preload
+		 * and the renderer handler are the shipped ones, so what runs is the
+		 * renderer half of a real summon (focus, theme, flash reset, seat
+		 * re-resolution). It runs AFTER the state walk because a summon also
+		 * RESOLVES the seat, and on a machine with no backend that resolution
+		 * fails by design and disables Send — a state the earlier frames must not
+		 * inherit. The blur first makes the focus assertion about the summon rather
+		 * than about whatever the send walk left focused.
+		 */
+		await mini.evaluate("document.activeElement?.blur?.(); true");
+		await main.evaluate(
+			`(() => { const window = globalThis.__lopMiniSceneWindow; window.webContents.send(${JSON.stringify(summonChannel)}, { at: Date.now() }); return true; })()`,
+		);
+		const summonedFocus = await pollMini(
+			"document.activeElement?.dataset?.tourTag ?? null",
+			(value) => value === "mini-composer-input",
+			"the summon focused the composer",
+		);
+		check(
+			"the summon moved focus into the composer",
+			summonedFocus.ok,
+			JSON.stringify(summonedFocus.value),
+		);
+
+		/*
+		 * THE GATE'S OWN ANSWER, ASSERTED rather than apologised for: the window
+		 * is the app's own now, so a "cannot use desktop controls" line in the
+		 * app log would be a real defect — the exerciser's whole purpose is that
+		 * this window passes the frame gate.
+		 */
+		const appLog = await readAppLog(app);
+		check(
+			"the desktop plane admitted the app's own mini window",
+			!appLog.includes("This window cannot use desktop controls."),
+			appLog
+				.split("\n")
+				.filter((line) => line.includes("desktop controls"))
+				.join(" / ") || "no refusal line",
+		);
+
+		/*
+		 * THE REGISTRATION TOAST (UX round 1, U1), walked on the app's own main
+		 * window: a transition into a FAILED status must raise one toast through
+		 * the app's sonner path. The pushes below go over the real channel to
+		 * every window exactly as `index.ts`'s onState does; the contract skips
+		 * the launch-time state (whichever source delivers it first), so TWO
+		 * pushes are sent and the second — a different failure — is the one
+		 * asserted: deterministic whichever source set the baseline.
+		 */
+		const toastBefore = await cdp
+			.evaluate('document.querySelectorAll("[data-sonner-toast]").length')
+			.catch(() => null);
+		const pushRegistration = async (status) => {
+			await main.evaluate(
+				[
+					"(() => {",
+					'\tconst electron = process.mainModule?.require("electron") ?? globalThis.require?.("electron");',
+					"\tif (!electron) return false;",
+					`\tconst state = { value: ${JSON.stringify(quickSendDefault)}, accelerator: "CommandOrControl+Alt+Space", status: ${JSON.stringify(status)} };`,
+					"\tfor (const window of electron.BrowserWindow.getAllWindows()) {",
+					"\t\tif (window.isDestroyed()) continue;",
+					`\t\twindow.webContents.send(${JSON.stringify(registrationChannel)}, state);`,
+					"\t}",
+					"\treturn true;",
+					"})()",
+				].join("\n"),
+			);
+		};
+		await pushRegistration("taken");
+		await pushRegistration("invalid");
+		const toasted = await (async () => {
+			const started = Date.now();
+			for (;;) {
+				const text = await cdp
+					.evaluate('document.body.textContent ?? ""')
+					.catch(() => "");
+				if (typeof text === "string" && text.includes(invalidSentence)) {
+					return { ok: true, text };
+				}
+				if (Date.now() - started > 8_000) return { ok: false, text };
+				await wait(150);
+			}
+		})();
+		check(
+			"a failed-transition toast reached the app's own container (U1)",
+			toasted.ok,
+			`toasts before the transition=${toastBefore}; the container never carried ${JSON.stringify(invalidSentence)}`,
+		);
+
+		/*
+		 * The run's closing survey: every window this app has, and none of them on
+		 * screen. It is the scene's own claim about itself, in the same shape the
+		 * driver's leftover-process probe is a claim about the processes.
+		 */
+		const windows = await main.evaluate(
+			'(() => { const electron = process.mainModule?.require("electron") ?? globalThis.require?.("electron"); if (!electron) return null; return electron.BrowserWindow.getAllWindows().map((window) => ({ title: window.getTitle(), visible: window.isVisible(), focused: window.isFocused() })); })()',
+		);
+		check(
+			"no window of this run is visible, and the only extra one is the mini view",
+			Array.isArray(windows) &&
+				windows.length === 2 &&
+				windows.every((window) => window.visible === false),
+			JSON.stringify(windows),
+		);
+		const memory = await main.evaluate(
+			'(() => { const electron = process.mainModule?.require("electron") ?? globalThis.require?.("electron"); const window = globalThis.__lopMiniSceneWindow; if (!electron || !window || window.isDestroyed()) return null; const pid = window.webContents.getOSProcessId(); const metric = electron.app.getAppMetrics().find((entry) => entry.pid === pid); return metric ? { pid, type: metric.type, workingSetKb: metric.memory?.workingSetSize, peakWorkingSetKb: metric.memory?.peakWorkingSetSize, privateKb: metric.memory?.privateBytes } : null; })()',
+		);
+		note(
+			"the hidden mini window's renderer memory (risk K6)",
+			JSON.stringify(memory),
+		);
+	} finally {
+		if (mini !== null) mini.close();
+		main.close();
+	}
+}
+
 async function main() {
 	await assertBuildIsCurrent();
 	/*
@@ -27947,6 +30101,11 @@ async function main() {
 			"--scene first-send needs --backend: with no backend the chat route draws its refusal surface and no composer mounts, so there is nothing to send from",
 		);
 	}
+	if (SCENE === "turn-collapse" && BACKEND === null) {
+		throw new Error(
+			"--scene turn-collapse needs --backend: the bar collapses a turn the daemon has to actually run, and with no backend the chat route draws its refusal surface and no composer mounts",
+		);
+	}
 	if (SCENE === "conversation-start-away-failure" && BACKEND === null) {
 		console.error(
 			"the conversation-start-away-failure scene needs --backend <url>: it drives a real refusal through the tap",
@@ -27992,6 +30151,20 @@ async function main() {
 			`--authoring-expect takes refresh or stale (got ${JSON.stringify(AUTHORING_EXPECT)}): the two are different claims about the same run, and a defaulted typo would silently answer the other one`,
 		);
 	}
+	if (SCENE === "sessionless-slash" && BACKEND === null) {
+		throw new Error(
+			"--scene sessionless-slash needs --backend: the composer only exists behind the session catalogue a live backend advertises, and four of the five pickers read routes on it (`/resume` its session list, `/login` and `/logout` the accounts, `/help` the catalogue itself)",
+		);
+	}
+	if (
+		SCENE === "sessionless-slash" &&
+		SLASH_EXPECT !== "open" &&
+		SLASH_EXPECT !== "refused"
+	) {
+		throw new Error(
+			`--slash-expect takes open or refused (got ${JSON.stringify(SLASH_EXPECT)}): the two are different claims about the same gestures, and a defaulted typo would silently answer the other one`,
+		);
+	}
 	if (SCENE === "route-tops" && BACKEND === null) {
 		throw new Error(
 			"--scene route-tops needs --backend: settings, agents, projects, hub and schedules are gated on the catalogue a live backend advertises, and the macOS lane assertion is read over every one of them",
@@ -28000,6 +30173,11 @@ async function main() {
 	if (SCENE === "project-detail" && BACKEND === null) {
 		throw new Error(
 			"--scene project-detail needs --backend: the seeded row, quick-send's message and the picker's create are all real requests to the daemon this run owns, so a run with none would photograph three refusals",
+		);
+	}
+	if (SCENE === "mini-view" && BACKEND !== null && BACKEND_RECORDS === null) {
+		throw new Error(
+			"--scene mini-view with --backend needs --backend-records: the app admits only a daemon a serve record describes, and the sending frame is held by pausing that daemon's own process, whose pid the record carries",
 		);
 	}
 	if (SCENE === "pins-search" && (TUI_PYTHON === null || TUI_CONFIG === null)) {
@@ -28011,6 +30189,18 @@ async function main() {
 		throw new Error(
 			"--scene pins takes --tui-python and --tui-config together: the terminal's store and the config root the daemon serves are one measurement, and half of it would look like it ran",
 		);
+	}
+	if (SCENE === "sidebar-bin-promptness") {
+		if (BACKEND === null || BACKEND_RECORDS === null) {
+			throw new Error(
+				"--scene sidebar-bin-promptness needs --backend and --backend-records: the subject is a session created and messaged over the daemon's own routes, and the record directory is how this script finds the store that session lives in",
+			);
+		}
+		if (BIN_EXPECT !== "prompt" && BIN_EXPECT !== "stale") {
+			throw new Error(
+				`--bin-expect takes prompt or stale (got ${JSON.stringify(BIN_EXPECT)}): the two are different claims about the same run, and a defaulted typo would silently answer the other one`,
+			);
+		}
 	}
 
 	if (GATE_CHECK) {
@@ -28139,6 +30329,7 @@ async function main() {
 			 * widths it is written about.
 			 */ else if (SCENE === "floors") await sceneFloors(cdp);
 			else if (SCENE === "first-send") await sceneFirstSend(cdp);
+			else if (SCENE === "turn-collapse") await sceneTurnCollapse(cdp);
 			else if (SCENE === "conversation-start")
 				await sceneConversationStart(cdp);
 			else if (SCENE === "conversation-start-away-failure")
@@ -28149,7 +30340,10 @@ async function main() {
 			else if (SCENE === "radient-issue") await sceneRadientIssue(cdp);
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);
 			else if (SCENE === "btw-aside") await sceneBtwAside(cdp);
+			else if (SCENE === "sessionless-slash") await sceneSessionlessSlash(cdp);
 			else if (SCENE === "authoring-refresh") await sceneAuthoringRefresh(cdp);
+			else if (SCENE === "sidebar-bin-promptness")
+				await sceneSidebarBinPromptness(cdp);
 			else if (SCENE === "drafts") await sceneDrafts(cdp);
 			else if (SCENE === "undo-toasts-stacked")
 				await sceneUndoToastsStacked(cdp);
@@ -28172,6 +30366,7 @@ async function main() {
 			else if (SCENE === "canvas-freshness")
 				await sceneCanvasFreshness(cdp, app);
 			else if (SCENE === "sidebar-lazy-chats") await sceneSidebarLazyChats(cdp);
+			else if (SCENE === "mini-view") await sceneMiniView(app, cdp);
 			else if (SCENE !== "none") throw new Error(`unknown scene "${SCENE}"`);
 			for (const line of cdp.console.slice(-20)) say(`  [renderer] ${line}`);
 		} finally {

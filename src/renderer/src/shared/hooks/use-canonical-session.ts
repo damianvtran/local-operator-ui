@@ -46,6 +46,7 @@ import {
 	labelGapCandidates,
 	labelTargetsBehind,
 	labelTargetsBehindIds,
+	loadOlderStep,
 	markLiveRecordsTruncated,
 	pageLabels,
 	pageOpensTurn,
@@ -76,6 +77,7 @@ import { useAsideStore } from "@shared/store/aside-store";
  */
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { dropPaint, readPaint, writePaint } from "@shared/store/paint-cache";
+import { forgetTurnCollapseOpen } from "@shared/store/turn-collapse-open";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { desktopRequestTimeoutMs } from "../../../../shared/desktop-contract";
 import {
@@ -3925,8 +3927,14 @@ export function useCanonicalSessionStream(
 						if (event.kind === "error" && event.status === 404) {
 							// Its paint goes with it: a later click on the same id would
 							// otherwise paint rows for a transcript that no longer exists,
-							// with nothing to tell the reader they are fiction.
-							if (sessionId) dropPaint(sessionId);
+							// with nothing to tell the reader they are fiction. Its expansions
+							// go too (agent review round 1, R1-2): `forgetTurnCollapseOpen` is
+							// the same sibling of `dropPaint` the store's own doc names, and an
+							// id this host does not have should not keep a remembered set.
+							if (sessionId) {
+								dropPaint(sessionId);
+								forgetTurnCollapseOpen(sessionId);
+							}
 							commitView((current) => ({
 								...current,
 								subscriptionId: null,
@@ -4533,6 +4541,37 @@ export function useCanonicalSessionStream(
 	sessionRef.current = sessionId;
 
 	const loadingOlderRef = useRef(false);
+	/*
+	 * The cursor `loadOlder` asks from, when it is NOT the transcript's own oldest
+	 * row.
+	 *
+	 * WHY THIS EXISTS (operator report, 2026-09-28: "when I click manually to
+	 * load more, nothing loads"): a `/compact` REPLACES the journal file. When it
+	 * does so while a conversation is open, the transcript's oldest loaded row is
+	 * an id the new file no longer contains — and the backend answers a
+	 * `before_id` it cannot locate with THE CURRENT TAIL plus `cursor_missing`
+	 * (`read_transcript_page`'s documented reconcile), precisely so a reader can
+	 * dedupe and move on. This path did not move on: the tail it got back was
+	 * already loaded, so nothing applied, `oldestId` never advanced, and every
+	 * later click asked for the same missing row — a button that loads nothing,
+	 * forever, with nothing said. The override is the move: it re-anchors to the
+	 * page's own oldest id, which the journal just SERVED and can therefore
+	 * locate, so the retry in the same call fetches the rows genuinely below it.
+	 */
+	const historyCursorRef = useRef<{
+		session: string | null;
+		cursor: string | null;
+	}>({
+		session: null,
+		cursor: null,
+	});
+	// A different conversation inherits nothing (clause H's reasoning: the
+	// cursor is state ABOUT a journal, and it is not this journal's). Keyed by
+	// session INSIDE the ref because `sessionRef` is refreshed on every render,
+	// so a comparison against it could never see the change.
+	if (historyCursorRef.current.session !== sessionId) {
+		historyCursorRef.current = { session: sessionId ?? null, cursor: null };
+	}
 	const loadOlder = useCallback(async (): Promise<boolean> => {
 		if (!sessionId || loadingOlderRef.current) return false;
 		const { transcript } = viewRef.current;
@@ -4547,12 +4586,41 @@ export function useCanonicalSessionStream(
 		loadingOlderRef.current = true;
 		commitView((current) => ({ ...current, loadingOlder: true }));
 		try {
-			const page = await desktopResult<DesktopHistoryPage>({
-				op: "sessions.history",
-				sessionId: requested,
-				beforeId: transcript.oldestId,
-				limit: 100,
-			});
+			const readPage = (beforeId: string) =>
+				desktopResult<DesktopHistoryPage>({
+					op: "sessions.history",
+					sessionId: requested,
+					beforeId,
+					limit: 100,
+				});
+			const anchor = historyCursorRef.current.cursor ?? transcript.oldestId;
+			let page = await readPage(anchor);
+			/*
+			 * ONE re-anchored retry, in the click's own turn (`loadOlderStep`):
+			 * a cursor the journal can no longer locate comes back as the tail
+			 * it already holds, and asking once more from the row that tail
+			 * itself begins at is what turns the silent no-op into the page the
+			 * reader asked for. A SECOND `cursor_missing` is the failed state —
+			 * never another retry, and never a success for a click that loaded
+			 * nothing (agent review round 1, F1).
+			 */
+			let step = loadOlderStep(page, anchor, false);
+			if (step.cursor !== null) {
+				historyCursorRef.current = { session: requested, cursor: step.cursor };
+				page = await readPage(step.cursor);
+				step = loadOlderStep(page, step.cursor, true);
+			}
+			historyCursorRef.current = { session: requested, cursor: step.cursor };
+			if (step.failed) {
+				/*
+				 * No splice and no success: the tail the retry returned is not
+				 * the rows the reader asked for, and the slot's own failed state
+				 * is the report. Cleared here for BOTH session states — a switch
+				 * mid-request must not leave the OLD session's spinner disabled.
+				 */
+				commitView((current) => ({ ...current, loadingOlder: false }));
+				return false;
+			}
 			if (sessionRef.current !== requested) {
 				// Clear the flag before standing down. The rows are not spliced (a
 				// foreign page must never reach this transcript), but `loadingOlder`

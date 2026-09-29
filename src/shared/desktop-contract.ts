@@ -1171,6 +1171,18 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			text: z.string().max(DESKTOP_MESSAGE_MAX_CHARS),
 			images: z.array(sessionImage).max(8).optional(),
 			mode: z.enum(["prompt", "steer"]).optional(),
+			/*
+			 * HOW THE MESSAGE WAS PRODUCED (arch §4.2), and the harness gate is what
+			 * keeps this `optional`: `features.input_mode`. Absent means a legacy
+			 * body (and is what every older build sends), so an older harness's own
+			 * `.strict()` schema never sees the key at all.
+			 *
+			 * `inputPath` is RESERVED (§4.2a): the route cascade owns its
+			 * vocabulary and no caller sets it yet; it is accepted here - bounded -
+			 * so the first caller that does does not also need a contract change.
+			 */
+			inputMode: z.enum(["typed", "dictated", "mixed"]).optional(),
+			inputPath: z.string().max(1024).optional(),
 		})
 		.strict(),
 	z
@@ -3831,6 +3843,17 @@ export type BackendSetting = {
 	 * of a feature that is switched off renders disabled and says which switch.
 	 */
 	gated_by?: string | null;
+	/**
+	 * A FIFTH additive field, and the reason the four above are no longer "the
+	 * four": which SURFACE a `hotkey` row's value belongs to — `"app"` (a
+	 * binding inside the terminal UI) or `"desktop"` (a global shortcut this app
+	 * owns). Absent means `"app"`, which is exactly today's behaviour for every
+	 * hotkey row an older server serves, so a client that ignores the field
+	 * stays correct: the field's arrival changes nothing until a surface reads
+	 * it, and this one is read only to switch the capture rules of the quick-send
+	 * row (see `setting-control.tsx`).
+	 */
+	hotkey_scope?: "app" | "desktop" | null;
 };
 export type BackendSettings = {
 	sections: {
@@ -4182,6 +4205,17 @@ export function desktopEndpoint(request: DesktopRequest): {
 					text: request.text,
 					images: request.images ?? [],
 					mode: request.mode ?? "prompt",
+					/*
+					 * ABSENT, not empty, when the app has nothing to say: an older harness
+					 * validates this body with `extra="forbid"`, so a key present-but-null
+					 * would be refused where a missing one is simply a legacy body. That is
+					 * why these are conditional spreads rather than `?? undefined` values
+					 * (which `JSON.stringify` would drop anyway - stated so a reader does
+					 * not "simplify" them into a shape whose behaviour depends on the
+					 * serializer).
+					 */
+					...(request.inputMode ? { input_mode: request.inputMode } : {}),
+					...(request.inputPath ? { input_path: request.inputPath } : {}),
 				},
 			};
 		case "sessions.command":

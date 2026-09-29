@@ -1,3 +1,7 @@
+import {
+	builtinOfferDismissed,
+	builtinOfferSignature,
+} from "@features/agents/builtin-offer";
 import { InstallBuiltinAgents } from "@features/agents/components/install-builtin-agents";
 import { compatibilityBannerShown } from "@shared/api/local-operator/backend-error";
 import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
@@ -916,12 +920,80 @@ export function ChatSidebar({
 	);
 	/*
 	 * Which of the agents section's two states is on screen. Named once because
-	 * the section below reads it three times and they have to agree: the empty
-	 * state is also what makes the batch's control a primary button rather than
-	 * the quiet row. See the section itself for why one reading matters (QA round
-	 * 1, Q1).
+	 * the section below reads it in more than one place and they have to agree:
+	 * the empty state is also what makes the batch's control a primary button
+	 * rather than the quiet row. See the section itself for why one reading
+	 * matters (QA round 1, Q1).
 	 */
 	const agentsEmpty = !profiles.isLoading && ownAgents.length === 0;
+	/*
+	 * THE BUILT-INS OFFER'S OWN STATE, one screen up from the section that draws
+	 * it, because two of these facts are also what the batch below reports into.
+	 *
+	 * The dismissal is keyed on the offer's SIGNATURE rather than stored as a
+	 * boolean (`features/agents/builtin-offer.ts` derives it and holds the
+	 * read-side guard): dismissing is a statement about the CURRENT state — the
+	 * precedent `chat-status.ts` states for the connection strip's pill — so a
+	 * catalogue that gains a built-in re-arms the offer, while the same
+	 * catalogue stays dismissed across restarts. Read through the module rather
+	 * than trusted from the store, because `localStorage` is not the setter's
+	 * path out (`parseSidebarView`'s rule, one field over).
+	 */
+	const dismissedBuiltinOffer = useUiPreferencesStore(
+		(state) => state.dismissedBuiltinOfferSignature,
+	);
+	const dismissBuiltinOffer = useUiPreferencesStore(
+		(state) => state.dismissBuiltinOffer,
+	);
+	const offerSignature = builtinOfferSignature(availableBuiltins);
+	const offerDismissed = builtinOfferDismissed(
+		dismissedBuiltinOffer,
+		offerSignature,
+	);
+	/*
+	 * The two readings the section's JSX takes from the facts above:
+	 *
+	 *  - `builtinOfferOnScreen` — the empty state, something to offer, and not
+	 *    already dismissed: the condition the dismiss control rides, with the
+	 *    batch's busy flag on top of it.
+	 *  - `emptyBlockDismissed` — the same offer, dismissed: the whole empty-state
+	 *    block leaves the section, which is what the reader's press asked for.
+	 */
+	const builtinOfferOnScreen =
+		agentsEmpty && availableBuiltins.length > 0 && !offerDismissed;
+	const emptyBlockDismissed =
+		agentsEmpty && availableBuiltins.length > 0 && offerDismissed;
+	/*
+	 * Whether the batch below is mid-flight or still holding its summary up.
+	 * Reported by `InstallBuiltinAgents` rather than derived here, because THAT
+	 * component owns the two states — and the dismiss control must not exist
+	 * while this is true, so a press can never take the progress or the summary
+	 * off screen (the protection QA round 1's Q1 and UX round 2's U11 are about).
+	 */
+	const [agentsOfferBusy, setAgentsOfferBusy] = useState(false);
+	/*
+	 * WHERE THE CARET GOES WHEN THE READER DISMISSES THE OFFER: the create row,
+	 * because it is the control that SURVIVES the dismissal — a focused element
+	 * that unmounts drops focus to `<body>` and the next Tab would restart at
+	 * the top of the window (U10's rule, one surface over: `install-builtin-agents.tsx`
+	 * hands focus back to the action that survives `Done`). The flag is set at
+	 * the PRESS rather than inferred from the block leaving, because the block
+	 * can also leave for reasons nobody pressed, and the move is only owed to
+	 * the reader who asked for it.
+	 */
+	const offerDismissedByPressRef = useRef(false);
+	const createAgentRowRef = useRef<HTMLButtonElement>(null);
+	/*
+	 * Read AFTER the re-render that hides the block — the commit that unmounts
+	 * the pressed control — which is the shape and the reason U10's focus move
+	 * has: the reader sees one commit leave, and the caret is already where the
+	 * next Tab or type should start.
+	 */
+	useEffect(() => {
+		if (!offerDismissedByPressRef.current || builtinOfferOnScreen) return;
+		offerDismissedByPressRef.current = false;
+		createAgentRowRef.current?.focus();
+	}, [builtinOfferOnScreen]);
 	const teams = useTeams(
 		ready && desktopFeatureEnabled(capabilities.data, "team_catalogue"),
 	);
@@ -1598,12 +1670,21 @@ export function ChatSidebar({
 			window.clearInterval(timer);
 			window.removeEventListener("focus", onFocus);
 		};
-		// `feed.catalogueRevision` is a DEPENDENCY so each invalidation re-runs this
-		// effect body once — exactly one refetch per `catalogue` frame, with the
-		// safety timer restarted from the event rather than from a clock. It is
-		// deliberately not READ in the body: the revision's only job is to be the
-		// trigger, which is what the suppression on the hook itself covers.
-	}, [ready, refreshCatalogue, feed.available, feed.catalogueRevision]);
+		// `feed.catalogueRevision` and `feed.activityRevision` are DEPENDENCIES so each
+		// invalidation re-runs this effect body once — exactly one refetch per
+		// `catalogue` frame and per completion edge, with the safety timer restarted
+		// from the event rather than from a clock. Neither is READ in the body: their
+		// only job is to be the trigger, which is what the suppression on the hook
+		// itself covers. The second trigger exists because a completion that moves no
+		// order key publishes no `catalogue` frame while still advancing the clock
+		// the bins read (see `activityRevision` in `use-desktop-feed.ts`).
+	}, [
+		ready,
+		refreshCatalogue,
+		feed.available,
+		feed.catalogueRevision,
+		feed.activityRevision,
+	]);
 	/*
 	 * A GROUP'S OWN READ, on the expansion that asks for it.
 	 *
@@ -2403,6 +2484,7 @@ export function ChatSidebar({
 	 */
 	const viewIsCustom =
 		view.groupBy !== DEFAULT_SIDEBAR_VIEW.groupBy ||
+		view.basis !== DEFAULT_SIDEBAR_VIEW.basis ||
 		view.orderBy !== DEFAULT_SIDEBAR_VIEW.orderBy ||
 		view.hidden.length > 0 ||
 		view.loads > 0 ||
@@ -2411,9 +2493,10 @@ export function ChatSidebar({
 	 * §C1's sections over the loaded page (`chat-list-sections.ts` carries the
 	 * rules), the sections the popover has switched OFF removed, and the rest in
 	 * the reader's own order - `shownSections` is that order, and it is the same
-	 * one the region boundary's arrows write to.
+	 * one the region boundary's arrows write to. The basis is the view's, so the
+	 * bins, the row labels and the popover's counts below all read one clock.
 	 */
-	const sectioned = sectionRows(pagedRows, listNow);
+	const sectioned = sectionRows(pagedRows, listNow, view.basis);
 	const drawnSections = shownSections(view).filter(
 		(key): key is ChatListSection => key !== "pinned" && !isEntitySection(key),
 	);
@@ -3087,17 +3170,17 @@ export function ChatSidebar({
 				 * read after the title, so the row's name stays `state — title` with the
 				 * time as its tail (U21).
 				 */}
-				{!isRunningRow(row) && relativeTime(row, listNow) && (
+				{!isRunningRow(row) && relativeTime(row, listNow, view.basis) && (
 					<>
 						<span
 							aria-hidden="true"
 							data-session-time
 							className="ml-auto shrink-0 pl-2 font-mono text-ink-dim text-mono-sm tabular-nums group-focus-within:hidden group-hover:hidden"
 						>
-							{relativeTime(row, listNow)}
+							{relativeTime(row, listNow, view.basis)}
 						</span>
 						<span className="sr-only">
-							, {relativeTimeSentence(row, listNow)}
+							, {relativeTimeSentence(row, listNow, view.basis)}
 						</span>
 					</>
 				)}
@@ -4735,110 +4818,186 @@ export function ChatSidebar({
 			 */}
 			{showList && (
 				<div className="pb-2">
-					<section>
-						{heading("agents", "Agents", true, undefined, Bot)}
-						{(query || isOpen("agents", true)) && (
-							<>
-								{profiles.isLoading && (
-									<p aria-live="polite" className="text-meta text-ink-dim">
-										Loading agents…
-									</p>
-								)}
-								{/*
-								    A user with no agents of their own gets the shortcut as the
-								    next step rather than as a quiet line: on a fresh install this
-								    section previously showed six rows the user had not installed
-								    and no way to tell them from their own. `profiles.data` being
-								    empty is the degenerate case of the same state — nothing to
-								    list, and nothing to install either, so only the create row
-								    remains.
-								*/}
-								{/*
-								 * ONE element across both states, and the batch's own control is the
-								 * same child at the same index in each, because the two states differ
-								 * in a way the batch itself causes.
-								 *
-								 * The completion summary is owned by `InstallBuiltinAgents`, and the
-								 * batch's last act is to invalidate `profiles`: the six installs land
-								 * as the user's own agents, `ownAgents` stops being empty, and this
-								 * block used to swap a `div` for a fragment in place. React unmounts
-								 * a subtree whose element type changes, so the summary was destroyed
-								 * ~89ms after it was painted: on the built app against the real
-								 * backend the section went straight from the shortcut to the six-row
-								 * list, and `"6 installed. Done"` was caught in the DOM once by a
-								 * MutationObserver and never seen again. The collision arm's "5
-								 * installed, 1 skipped. Skipped 1: you already have an agent called
-								 * `coder`." is the sentence a user actually needs, and it was
-								 * unreadable by construction (QA round 1, Q1).
-								 *
-								 * So the state lives somewhere that does not move: the outer element
-								 * is the empty state's padded box in one case and `display: contents`
-								 * in the other, which contributes no box at all, so the rows and the
-								 * batch's control lay out exactly as they did as bare children; the
-								 * variable content sits in its own `contents` child so the batch is
-								 * at index 1 either way. Same treatment as the live region in
-								 * `install-builtin-agents.tsx`, for the same reason (U11): what the
-								 * user has to be able to read cannot be the thing that gets
-								 * replaced. DO NOT split this back into one call site per branch.
-								 */}
-								<div
-									className={cn(
-										agentsEmpty ? "flex flex-col gap-2 px-3 py-2" : "contents",
+					{/*
+					 * THE ENTITY ROWS ARE THE POPOVER'S SWITCHES TOO.
+					 *
+					 * `isSectionShown` is the ONE spelling of "this section is drawn",
+					 * and it is the same call the chat sections' own gate makes a few
+					 * hundred lines below (`drawnSections`). Before this the two entity
+					 * rows were drawn unconditionally, so unchecking `Agents` in the view
+					 * popover wrote `view.hidden` - the panel's tick went out and its own
+					 * "1 section hidden" sentence appeared - while the region below kept
+					 * drawing the row: the operator's 2026-09-27 report, and the strongest
+					 * form of it, because both halves of one frame disagreed.
+					 *
+					 * IT IS NOT EXTENDED TO THE DISCLOSURE. The row's own chevron stays
+					 * (`expanded`, `localStorage['chat-sidebar-disclosures']`) and keeps
+					 * governing the row's CHILDREN: "the section is drawn" and "the
+					 * section's children are drawn" are two axes, and the popover's switch
+					 * speaks only to the first. Reading the disclosure here instead would
+					 * leave the panel's tick, its "hidden" sentence and the region's
+					 * presence governed by a per-window record the store cannot see.
+					 */}
+					{isSectionShown(view, "agents") && (
+						<section>
+							{heading("agents", "Agents", true, undefined, Bot)}
+							{(query || isOpen("agents", true)) && (
+								<>
+									{profiles.isLoading && (
+										<p aria-live="polite" className="text-meta text-ink-dim">
+											Loading agents…
+										</p>
 									)}
-									data-testid={agentsEmpty ? "agents-sidebar-empty" : undefined}
-								>
-									<div className="contents">
-										{agentsEmpty ? (
-											<>
-												<p className="text-body-sm text-ink">No agents yet</p>
-												{/*
-												 * The offer is CONDITIONAL on there being something to offer, and it
-												 * names what that is.
-												 *
-												 * It used to render unconditionally: on a backend with no packaged
-												 * profiles the section still said "Built-in agents are ready to
-												 * install" while offering nothing that installs one — the same
-												 * paragraph, pixel-identical, in a state whose whole point is that
-												 * there is nothing to install (design round 1, D3). And what it
-												 * promised was a list of activities rather than the roles on offer,
-												 * including a "research" role that is not among the packaged
-												 * profiles, with no count at all until the batch had started (UX
-												 * round 1, U6). Derived from the rows the backend sent, because
-												 * the catalogue is the authority on what can be installed and a
-												 * hand-written list can disagree with it.
-												 */}
-												{availableBuiltins.length > 0 && (
-													<p className="text-meta text-ink-muted">
-														{builtinOfferSentence(availableBuiltins)}
-													</p>
+									{/*
+									    A user with no agents of their own gets the shortcut as the
+									    next step rather than as a quiet line: on a fresh install this
+									    section previously showed six rows the user had not installed
+									    and no way to tell them from their own. `profiles.data` being
+									    empty is the degenerate case of the same state — nothing to
+									    list, and nothing to install either, so only the create row
+									    remains.
+									*/}
+									{/*
+									 * ONE element across both states, and the batch's own control is the
+									 * same child at the same index in each, because the two states differ
+									 * in a way the batch itself causes.
+									 *
+									 * The completion summary is owned by `InstallBuiltinAgents`, and the
+									 * batch's last act is to invalidate `profiles`: the six installs land
+									 * as the user's own agents, `ownAgents` stops being empty, and this
+									 * block used to swap a `div` for a fragment in place. React unmounts
+									 * a subtree whose element type changes, so the summary was destroyed
+									 * ~89ms after it was painted: on the built app against the real
+									 * backend the section went straight from the shortcut to the six-row
+									 * list, and `"6 installed. Done"` was caught in the DOM once by a
+									 * MutationObserver and never seen again. The collision arm's "5
+									 * installed, 1 skipped. Skipped 1: you already have an agent called
+									 * `coder`." is the sentence a user actually needs, and it was
+									 * unreadable by construction (QA round 1, Q1).
+									 *
+									 * So the state lives somewhere that does not move: the outer element
+									 * is the empty state's padded box in one case and `display: contents`
+									 * in the other, which contributes no box at all, so the rows and the
+									 * batch's control lay out exactly as they did as bare children; the
+									 * variable content sits in its own `contents` child so the batch is
+									 * at index 1 either way. Same treatment as the live region in
+									 * `install-builtin-agents.tsx`, for the same reason (U11): what the
+									 * user has to be able to read cannot be the thing that gets
+									 * replaced. DO NOT split this back into one call site per branch.
+									 *
+									 * AND A DISMISSED OFFER RENDERS NO BOX AT ALL. The reader's own
+									 * statement that they do not want this offer takes the whole empty
+									 * block with it, and the section is down to its heading and the
+									 * create row below. That state cannot collide with the batch this
+									 * element exists to keep alive: the dismiss control is absent
+									 * whenever the batch owns the section (its `onBusyChange` report),
+									 * so by the time a dismissal can be pressed there is no progress
+									 * and no summary on screen for it to destroy — and the swap this
+									 * comment is about is never raced by a dismissal.
+									 */}
+									{!emptyBlockDismissed && (
+										<div
+											className={cn(
+												agentsEmpty
+													? "flex flex-col gap-2 px-3 py-2"
+													: "contents",
+											)}
+											data-testid={
+												agentsEmpty ? "agents-sidebar-empty" : undefined
+											}
+										>
+											<div className="contents">
+												{agentsEmpty ? (
+													<>
+														{/*
+														 * The dismiss control rides the "No agents yet" line's row, at its
+														 * end: that line is what the offer is FOR — the empty section — and
+														 * the row is the block's first line wherever the block starts.
+														 * `items-center` sits the glyph's centre on the paragraph's own
+														 * centre rather than a line-height below it.
+														 *
+														 * IT EXISTS ONLY WHILE THERE IS AN OFFER TO DISMISS AND THE BATCH IS
+														 * SHOWING NOTHING: `builtinOfferOnScreen` requires the empty state
+														 * and a non-empty, undismissed catalogue, and `agentsOfferBusy` is
+														 * the batch's own report — while it is true the control does not
+														 * exist, so a press can never take the progress or the summary off
+														 * screen (QA round 1's Q1 and UX round 2's U11 are the work this
+														 * protects). The control takes the sidebar's own icon-sm ghost step
+														 * (28px square, 14px glyph, the accessible name carrying the
+														 * sentence a bare glyph cannot), the same step the chats search's
+														 * clear control below takes.
+														 */}
+														<div className="flex items-center justify-between gap-2">
+															<p className="text-body-sm text-ink">
+																No agents yet
+															</p>
+															{builtinOfferOnScreen && !agentsOfferBusy && (
+																<Button
+																	variant="ghost"
+																	size="icon-sm"
+																	data-testid="agents-offer-dismiss"
+																	aria-label="Dismiss built-in agents suggestion"
+																	onClick={() => {
+																		offerDismissedByPressRef.current = true;
+																		dismissBuiltinOffer(offerSignature);
+																	}}
+																>
+																	<X aria-hidden="true" />
+																</Button>
+															)}
+														</div>
+														{/*
+														 * The offer is CONDITIONAL on there being something to offer, and it
+														 * names what that is.
+														 *
+														 * It used to render unconditionally: on a backend with no packaged
+														 * profiles the section still said "Built-in agents are ready to
+														 * install" while offering nothing that installs one — the same
+														 * paragraph, pixel-identical, in a state whose whole point is that
+														 * there is nothing to install (design round 1, D3). And what it
+														 * promised was a list of activities rather than the roles on offer,
+														 * including a "research" role that is not among the packaged
+														 * profiles, with no count at all until the batch had started (UX
+														 * round 1, U6). Derived from the rows the backend sent, because
+														 * the catalogue is the authority on what can be installed and a
+														 * hand-written list can disagree with it.
+														 */}
+														{availableBuiltins.length > 0 && (
+															<p className="text-meta text-ink-muted">
+																{builtinOfferSentence(availableBuiltins)}
+															</p>
+														)}
+													</>
+												) : (
+													cappedRows(
+														"agents",
+														ownAgents.map((profile) =>
+															entity("agent", profile.name),
+														),
+													)
 												)}
-											</>
-										) : (
-											cappedRows(
-												"agents",
-												ownAgents.map((profile) =>
-													entity("agent", profile.name),
-												),
-											)
-										)}
-									</div>
-									{/* Renders nothing once every built-in is installed. */}
-									<InstallBuiltinAgents
-										builtins={availableBuiltins}
-										presentation={agentsEmpty ? "primary" : "row"}
-									/>
-								</div>
-								<button
-									type="button"
-									className={cn(rowStyle, "w-full text-ink-muted")}
-									onClick={() => navigate("/agents?create=agent")}
-								>
-									<Plus className="size-4" />
-									Create agent
-								</button>
-							</>
-						)}
-					</section>
+											</div>
+											{/* Renders nothing once every built-in is installed. */}
+											<InstallBuiltinAgents
+												builtins={availableBuiltins}
+												presentation={agentsEmpty ? "primary" : "row"}
+												onBusyChange={setAgentsOfferBusy}
+											/>
+										</div>
+									)}
+									<button
+										ref={createAgentRowRef}
+										type="button"
+										className={cn(rowStyle, "w-full text-ink-muted")}
+										onClick={() => navigate("/agents?create=agent")}
+									>
+										<Plus className="size-4" />
+										Create agent
+									</button>
+								</>
+							)}
+						</section>
+					)}
 					{/*
 					 * THE GAP BETWEEN THE TWO SECTIONS IS CONDITIONAL, and it is not a smaller
 					 * constant. Measured at 360px: the 16px between these sections is SHARED
@@ -4855,34 +5014,48 @@ export function ChatSidebar({
 					 * separate - stated inline because this is the one site that takes the
 					 * conditional, and a query force-opens the section, which is the same
 					 * condition the rows' own gate reads.
+					 *
+					 * AND THE CONDITION'S OTHER HALF IS THE VIEW GATE ITSELF (design round
+					 * 1, D1): `Agents` switched off in the popover leaves NO section above
+					 * Teams, and without `isSectionShown(view, "agents")` this margin still
+					 * took the 16px tier for a section that is not drawn - a hidden first
+					 * block keeping the between-sections lead (first ink y=72 against the
+					 * first block's y=57, the same gap in all twelve themes). A hidden first
+					 * section hands its slot over here the way a hidden chats section does in
+					 * the list below: nothing drawn above, nothing to separate.
 					 */}
-					<section
-						className={cn(query || isOpen("agents", true) ? "mt-4" : "mt-2")}
-					>
-						{heading("teams", "Teams", true, undefined, Users)}
-						{(query || isOpen("teams", true)) && (
-							<>
-								{teams.isLoading && (
-									<p aria-live="polite" className="text-meta text-ink-dim">
-										Loading teams…
-									</p>
-								)}
-								{teams.data &&
-									cappedRows(
-										"teams",
-										teams.data.map((team) => entity("team", team.name)),
+					{isSectionShown(view, "teams") && (
+						<section
+							className={cn(
+								isSectionShown(view, "agents") &&
+									(query || isOpen("agents", true) ? "mt-4" : "mt-2"),
+							)}
+						>
+							{heading("teams", "Teams", true, undefined, Users)}
+							{(query || isOpen("teams", true)) && (
+								<>
+									{teams.isLoading && (
+										<p aria-live="polite" className="text-meta text-ink-dim">
+											Loading teams…
+										</p>
 									)}
-								<button
-									type="button"
-									className={cn(rowStyle, "w-full text-ink-muted")}
-									onClick={() => navigate("/agents?create=team")}
-								>
-									<Plus className="size-4" />
-									Create team
-								</button>
-							</>
-						)}
-					</section>
+									{teams.data &&
+										cappedRows(
+											"teams",
+											teams.data.map((team) => entity("team", team.name)),
+										)}
+									<button
+										type="button"
+										className={cn(rowStyle, "w-full text-ink-muted")}
+										onClick={() => navigate("/agents?create=team")}
+									>
+										<Plus className="size-4" />
+										Create team
+									</button>
+								</>
+							)}
+						</section>
+					)}
 				</div>
 			)}
 		</div>
@@ -5424,13 +5597,28 @@ export function ChatSidebar({
 			 * over the SAME page, so switching the grouping cannot change which rows
 			 * are loaded - only how they are arranged.
 			 */}
+			{/*
+			 * THE PINNED ROWS RIDE IN THE GROUPED LIST, and this is `groupBy`'s half of
+			 * the same rule the section arrangement keeps: a grouping changes the
+			 * ARRANGEMENT, never which conversations are drawn. The `Pinned` section is
+			 * only drawn under `section` (the block below), so grouping by agent or
+			 * flattening and handing `pagedRows` alone to `groupRows` silently dropped
+			 * every pinned chat - a layout preference acting as a filter, which is the
+			 * failure `groupRows`'s own "an ungrouped chat is a real group" note rejects
+			 * one axis over. `pinned` leads because a pin is the reader's own "keep this
+			 * at the top", and `unpinnedRows` has already removed these rows from the
+			 * page, so no conversation is drawn twice (operator's view-settings audit,
+			 * 2026-09-27: "Group by ... each must actually regroup the list").
+			 */}
 			{view.groupBy !== "section" &&
-				(groupRows(pagedRows, view.groupBy) ?? []).map((entry) => (
-					<section key={entry.key} data-chat-section={entry.key}>
-						{entry.label ? sectionLabel(entry.label) : null}
-						{entry.rows.map((row) => sessionRow(row))}
-					</section>
-				))}
+				(groupRows([...pinned, ...pagedRows], view.groupBy) ?? []).map(
+					(entry) => (
+						<section key={entry.key} data-chat-section={entry.key}>
+							{entry.label ? sectionLabel(entry.label) : null}
+							{entry.rows.map((row) => sessionRow(row))}
+						</section>
+					),
+				)}
 			{pinnedShown && view.groupBy === "section" && pinned.length > 0 && (
 				<section>
 					{sectionLabel("Pinned")}
@@ -5782,7 +5970,38 @@ export function ChatSidebar({
 							</Tooltip>
 							<PopoverContent
 								align="end"
-								className="w-60 p-2"
+								/*
+								 * THE PANEL SCROLLS INSIDE THE WINDOW, WITH A VISIBLE BOTTOM EDGE (design
+								 * direction D2, 2026-09-28; the inset is D1 of round 1). The Time basis
+								 * group pushed this panel past an 800x600 window: measured in the
+								 * `popover-open-short` capture, the panel ran off the bottom edge and the
+								 * Teams row, and the hidden-sections sentence below it, were unreachable.
+								 * `--radix-popover-content-available-height` is Radix's own measurement
+								 * of the space it has before the viewport edge, so the cap follows the
+								 * window rather than a guessed `max-h`; `overflow-y: auto` then keeps
+								 * every group reachable by scrolling the panel itself.
+								 *
+								 * THE INSET RESERVES HALF A ROW BELOW THE PANEL. A capped box that ends
+								 * flush with the window edge hides that it is capped at all - macOS's
+								 * overlay scrollbars are invisible at rest, and a row cut by the window
+								 * edge reads as the end of the list - which is round 1's D1. Sixteen
+								 * pixels keeps the panel's own bottom edge (and rounded corner) in
+								 * view, so the fold reads as the panel's edge rather than the window's.
+								 *
+								 * WHAT RENDERS ABOVE THE FOLD IS THE NEXT SECTION'S TOP PADDING, not a
+								 * sliver of its content: round 2 (D4) measured zero content pixels above
+								 * the fold in six themes, and the cut would have to land 8-12px lower to
+								 * cross the glyphs. The content-sliver cue is consciously not taken -
+								 * what this inset buys is the panel's own visible edge, and a frame
+								 * that shows it without a scrollbar has no other cue to give.
+								 *
+								 * AND THE CAP BINDS AT THE APP'S DEFAULT SIZE TOO, not only at the floor
+								 * (round 1's Q-1: at 1380x900 the view trigger sits under the nav rail, so
+								 * the available height is 518 against 598 of content). The panel scrolls
+								 * there exactly as it does at 600 - only a window tall enough that the
+								 * available space clears the content never scrolls.
+								 */
+								className="max-h-[calc(var(--radix-popover-content-available-height)_-_16px)] w-60 overflow-y-auto p-2"
 								data-sidebar-view-panel
 							>
 								<ChatSidebarViewMenu
