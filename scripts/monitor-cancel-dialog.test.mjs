@@ -379,11 +379,13 @@ test("a dismissed refusal leaves its record on the row; the next open is clean a
 test("the write's window holds one request and both buttons, and a receipt marks the row", async () => {
 	/*
 	 * U3 + U4: from the press, both footer buttons pend, the confirm swaps to
-	 * `Cancelling…`, and a re-press reaches nothing - the count asserted below
-	 * is what pins it, so the disabled attributes and the handler's `busy`
-	 * guard are pinned as ONE behaviour rather than two. On the receipt the
-	 * dialog closes and the row acknowledges IMMEDIATELY (U4's settling mark),
-	 * reconciled by the re-read that drops the row.
+	 * `Stopping…` (design round 1, D3: the busy label keeps the confirm's own
+	 * verb - `Stopping…` under `Stop monitor` - rather than turning into a
+	 * different act mid-press), and a re-press reaches nothing - the count
+	 * asserted below is what pins it, so the disabled attributes and the
+	 * handler's `busy` guard are pinned as ONE behaviour rather than two. On the
+	 * receipt the dialog closes and the row acknowledges IMMEDIATELY (U4's
+	 * settling mark), reconciled by the re-read that drops the row.
 	 */
 	const calls = [];
 	const gate = deferred();
@@ -413,7 +415,7 @@ test("the write's window holds one request and both buttons, and a receipt marks
 		),
 		"both buttons pend while the write is in flight",
 	);
-	assert.equal(confirmButton().textContent.trim(), "Cancelling…");
+	assert.equal(confirmButton().textContent.trim(), "Stopping…");
 	assert.equal(confirmButton().getAttribute("aria-busy"), "true");
 
 	await press(confirmButton());

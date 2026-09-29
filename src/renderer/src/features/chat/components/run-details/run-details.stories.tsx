@@ -1598,6 +1598,44 @@ export const MonitorCancelRefusalRecord: Story = {
 };
 
 /**
+ * A dismissed refusal at the pane's 320px floor: the state design round 1's D1
+ * collision was worst in, because the `Cancel refused` mark widens the action
+ * column by a further ~90px on top of the plain floor's squeeze. The walk is the
+ * refusal-record flow's own three presses, at the same 320 width the floor story
+ * uses, so the pair reads as the floor with and without the record.
+ */
+const MonitorsFloor320RefusalRecordGround = () => {
+	usePressFlow(
+		[
+			{ waitFor: MONITOR_CANCEL_SELECTOR, press: MONITOR_CANCEL_SELECTOR },
+			{ waitFor: '[role="dialog"]', press: "[data-confirm-action]" },
+			{
+				waitFor: '[role="dialog"] p.text-danger',
+				press: "[data-cancel-action]",
+			},
+		],
+		() =>
+			document.querySelector('[data-monitor-cancel-state="refused"]') !==
+				null && document.querySelector('[role="dialog"]') === null,
+	);
+	return (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.monitorsHealth())}
+			width={320}
+			openPanel={true}
+			controls={monitorControls({
+				cancel: async () => ({ ok: false, detail: MONITOR_OWNER_REFUSAL }),
+			})}
+		/>
+	);
+};
+
+export const monitorsFloor320RefusalRecord: Story = {
+	render: () => <MonitorsFloor320RefusalRecordGround />,
+	decorators: [withCanvasClosed],
+};
+
+/**
  * The trigger's activity blip: the pane is CLOSED and a child is running, so the
  * dot is drawn in `info` (`docs/composer-activity-chips.md` § 5).
  *
