@@ -1,6 +1,6 @@
 import { Button } from "@shared/components/ui";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import type { FC } from "react";
+import { type FC, useEffect, useRef } from "react";
 
 /**
  * The hub grid's page footer.
@@ -32,6 +32,13 @@ import type { FC } from "react";
  *   the grid a second time (design round 1, D1). Change one, change both.
  * - Absent at one page, for `CompactPagination`'s reason: "Page 1 of 1" between
  *   two dead buttons can only report that it has nothing to do.
+ * - FOCUS SURVIVES A BOUNDARY (UX round 1, U1; QA round 1, Q2). Pressing Next on
+ *   the second-to-last page disables the very button that holds focus, and the
+ *   browser answers that by dropping focus on `<body>`: the next Tab restarts at
+ *   the top of the window, about thirty stops from the pager. The press records
+ *   which control it is about to disable and the effect below hands focus to the
+ *   surviving sibling once the new page has committed - the same read-the-DOM-
+ *   after-the-render hand-off the page's retry and clear-filter paths use.
  * - The accessible names stay "Previous page" / "Next page": the stories' plays
  *   and assistive tech address the buttons by them, and each contains its visible
  *   word, so speech control ("click Next") still finds them.
@@ -41,6 +48,18 @@ export const HubPager: FC<{
 	count: number;
 	onChange: (page: number) => void;
 }> = ({ page, count, onChange }) => {
+	const previousRef = useRef<HTMLButtonElement>(null);
+	const nextRef = useRef<HTMLButtonElement>(null);
+	/** The sibling that should take focus once the pressed button has disabled. */
+	const handOffRef = useRef<"previous" | "next" | null>(null);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `page` is the trigger - the hand-off is read AFTER the page that disabled the button has rendered.
+	useEffect(() => {
+		const target = handOffRef.current;
+		handOffRef.current = null;
+		if (target === "previous") previousRef.current?.focus();
+		if (target === "next") nextRef.current?.focus();
+	}, [page]);
+
 	if (count <= 1) return null;
 	return (
 		<nav
@@ -55,7 +74,11 @@ export const HubPager: FC<{
 				<Button
 					variant="secondary"
 					size="sm"
-					onClick={() => onChange(page - 1)}
+					ref={previousRef}
+					onClick={() => {
+						if (page - 1 <= 1) handOffRef.current = "next";
+						onChange(page - 1);
+					}}
 					disabled={page <= 1}
 					aria-label="Previous page"
 				>
@@ -65,7 +88,11 @@ export const HubPager: FC<{
 				<Button
 					variant="secondary"
 					size="sm"
-					onClick={() => onChange(page + 1)}
+					ref={nextRef}
+					onClick={() => {
+						if (page + 1 >= count) handOffRef.current = "previous";
+						onChange(page + 1);
+					}}
 					disabled={page >= count}
 					aria-label="Next page"
 				>
