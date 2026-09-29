@@ -39,16 +39,18 @@ import {
  *
  * ## The loading ladder
  *
- * `idle` (empty box, or closed) → `loading` (the debounce is running, or a
- * request is in flight) → `ready` / `building` / `unsupported` / `error` (the
- * wire's own state, mapped by the model). The list KEEPS the previous answer's
- * hits while the next request runs — the sidebar's `keepPreviousData`, in
- * miniature — because a list that blanks on every keystroke reads as slower
- * than it is; the answer that lands replaces it wholesale, and the cursor
- * resets to the best-ranked row because rank order is the reason row one
- * exists. An empty box is the one transition that drops the answer
- * IMMEDIATELY rather than a debounce later: results for a question the reader
- * deleted must not sit under an empty field.
+ * `idle` (empty box, or closed) → `loading` (a request is IN FLIGHT — the
+ * debounce's own window is still `idle`, since nothing has been asked yet) →
+ * `ready` / `building` / `unsupported` / `error` (the wire's own state, mapped
+ * by the model). The list KEEPS the previous answer's hits while the next
+ * request runs — the sidebar's `keepPreviousData`, in miniature — because a
+ * list that blanks on every keystroke reads as slower than it is; the answer
+ * that lands replaces it wholesale, and the cursor resets to the best-ranked
+ * row because rank order is the reason row one exists. WHOSE rows a retained
+ * list is showing is the panel's to say, not this hook's: `state` is `loading`
+ * and the panel marks the list stale (UX U1). An empty box is the one
+ * transition that drops the answer IMMEDIATELY rather than a debounce later:
+ * results for a question the reader deleted must not sit under an empty field.
  *
  * ## The building follow-up, and why it is exactly one
  *

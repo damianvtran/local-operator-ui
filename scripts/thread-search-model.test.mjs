@@ -174,13 +174,27 @@ test("a soft hit's empty ranges are one unmarked run, and malformed ranges canno
 	assert.deepEqual(model.splitThreadSearchRanges("", [[0, 0]]), []);
 });
 
-test("counts pluralise, truncation names the cut, and only building earns a follow-up", () => {
-	assert.equal(model.threadSearchCountLabel(1), "1 match");
-	assert.equal(model.threadSearchCountLabel(7), "7 matches");
+test("counts pluralise and split by tier, the cut rides the same line, and only building earns a follow-up", () => {
+	const exact = (n) => Array.from({ length: n }, () => ({ tier: "exact" }));
+	const soft = (n) => Array.from({ length: n }, () => ({ tier: "soft" }));
+	assert.equal(model.threadSearchCountLabel(exact(1)), "1 match");
+	assert.equal(model.threadSearchCountLabel(exact(7)), "7 matches");
+	assert.equal(model.threadSearchCountLabel(soft(1)), "1 related match");
+	assert.equal(model.threadSearchCountLabel(soft(2)), "2 related matches");
+	/*
+	 * The split case is UX U3's: a bare total hid that one row was exact and
+	 * ninety-nine were the soft tier's.
+	 */
 	assert.equal(
-		model.threadSearchTruncatedLabel(100),
-		"Showing the first 100 matches.",
+		model.threadSearchCountLabel([...exact(1), ...soft(99)]),
+		"1 exact · 99 related",
 	);
+	/*
+	 * And the truncation is a SUFFIX on that line, not a second sentence: the
+	 * design finding was "100 matches Showing the first 100 matches."
+	 */
+	assert.equal(model.threadSearchTruncatedLabel(100), "(first 100 shown)");
+	assert.equal(model.threadSearchTruncatedLabel(1), "(the first match shown)");
 	assert.equal(model.threadSearchWantsFollowUp({ state: "building" }), true);
 	for (const state of ["ready", "unsupported", "error"]) {
 		assert.equal(model.threadSearchWantsFollowUp({ state }), false);
@@ -190,6 +204,21 @@ test("counts pluralise, truncation names the cut, and only building earns a foll
 test("the wire's roles and tiers read as the list's own words", () => {
 	assert.equal(model.THREAD_SEARCH_ROLE_LABELS.user, "You");
 	assert.equal(model.THREAD_SEARCH_ROLE_LABELS.agent, "Agent");
-	assert.equal(model.THREAD_SEARCH_TIER_HINT, "related");
+	assert.equal(model.THREAD_SEARCH_TIER_HINT, "related match");
 	assert.equal(model.THREAD_SEARCH_PLACEHOLDER, "Search this conversation");
+});
+
+test("the stale list and the far seek each say their own piece", () => {
+	/*
+	 * UX U1: the in-flight list is the previous search's, and the line says so
+	 * rather than restating a total that no longer answers the box.
+	 */
+	assert.match(model.THREAD_SEARCH_STALE_COPY, /previous search/);
+	/*
+	 * UX U2: the refusal names the step that changes the answer — the
+	 * transcript's own scroll-up for older pages — not only the wall.
+	 */
+	assert.match(model.THREAD_SEARCH_JUMP_MISS_COPY, /scroll up/);
+	/* UX U4: the far seek reports itself while it runs. */
+	assert.match(model.THREAD_SEARCH_JUMPING_COPY, /Going to that message/);
 });

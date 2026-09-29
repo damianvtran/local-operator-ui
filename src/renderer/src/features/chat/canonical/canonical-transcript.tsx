@@ -188,6 +188,23 @@ const WINDOW = 60;
 const WINDOW_STEP = 60;
 
 /**
+ * Rows of headroom above a jump's target, so "centred" is true at the top of
+ * the reach as well as below it.
+ *
+ * QA round 1 (Q-1) measured the far jump landing top-clamped: with the window
+ * widened to exactly the target's distance, the row is the OLDEST mounted one,
+ * `scrollRegionToCenter` runs out of content above it and clamps — 254 px short
+ * at the scene's size — while a warm re-jump of the same row measures 0 px,
+ * which is how the mechanism was confirmed. Half a viewport of rows clears it
+ * with margin at both the scene's row height (~20 px) and an ordinary one, and
+ * the rows above the target ARE the extra ones: the window is newest-anchored
+ * (`slice(total - windowSize)`), so a wider window reaches further back and
+ * never forward. The cost is mounting those rows — the same write the reader's
+ * own scroll makes.
+ */
+const JUMP_MOUNT_HEADROOM_ROWS = 16;
+
+/**
  * How far the render window may be extended to land its top edge on a run
  * boundary (the on-load fix, operator report 2026-09-28).
  *
@@ -2370,9 +2387,16 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					return index === -1 ? null : rowsRef.current.length - index;
 				},
 				mount: (distance) => {
-					setWindowSize((current) =>
-						current >= distance ? current : distance,
-					);
+					/*
+					 * The row PLUS headroom above it, or the far jump lands clamped at the
+					 * content's top rather than centred (see
+					 * `JUMP_MOUNT_HEADROOM_ROWS`), which the rail's ticks share: this is
+					 * one loop for both callers.
+					 */
+					setWindowSize((current) => {
+						const wanted = distance + JUMP_MOUNT_HEADROOM_ROWS;
+						return current >= wanted ? current : wanted;
+					});
 				},
 				loadOlder: onLoadOlder,
 			});
@@ -2395,7 +2419,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		[jumpTo],
 	);
 	const jumpToSearchHit = useCallback(
-		(id: string) => void jumpTo(id, THREAD_SEARCH_JUMP_MISS_COPY),
+		(id: string) => jumpTo(id, THREAD_SEARCH_JUMP_MISS_COPY),
 		[jumpTo],
 	);
 	/*

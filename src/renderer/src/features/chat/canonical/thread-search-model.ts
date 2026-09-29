@@ -199,7 +199,7 @@ export const THREAD_SEARCH_ROLE_LABELS: Record<ThreadFindHit["role"], string> =
 	};
 
 /** The mark a soft hit carries instead of a highlighted range (D3/D9). */
-export const THREAD_SEARCH_TIER_HINT = "related";
+export const THREAD_SEARCH_TIER_HINT = "related match";
 
 export const THREAD_SEARCH_PLACEHOLDER = "Search this conversation";
 export const THREAD_SEARCH_LIST_LABEL = "Search results";
@@ -209,9 +209,24 @@ export const THREAD_SEARCH_CLOSE_LABEL = "Close search";
  * The count line's spelling, off the hit list rather than a total the wire
  * does not carry: the backend ranks and truncates, so `hits.length` is what
  * this panel can promise.
+ *
+ * TIER-AWARE, and it is the only line allowed to carry the split: the soft
+ * tier is why a near-miss can be here at all, and a bare "100 matches" hid
+ * that 99 of them were `related` (design D2 + UX U3). The line states the
+ * split when there IS one, stays a plain count when there is not, and the
+ * truncation rides it as a suffix rather than a second sentence — the old
+ * "100 matches Showing the first 100 matches." said the same thing twice.
  */
-export function threadSearchCountLabel(count: number): string {
-	return count === 1 ? "1 match" : `${count} matches`;
+export function threadSearchCountLabel(hits: readonly ThreadFindHit[]): string {
+	const exact = hits.filter((hit) => hit.tier === "exact").length;
+	const soft = hits.length - exact;
+	if (soft === 0) {
+		return hits.length === 1 ? "1 match" : `${hits.length} matches`;
+	}
+	if (exact === 0) {
+		return soft === 1 ? "1 related match" : `${soft} related matches`;
+	}
+	return `${exact} exact · ${soft} related`;
 }
 
 /**
@@ -238,14 +253,41 @@ export const THREAD_SEARCH_RECHECK_LABEL = "Check again";
  * `ensureReachable`'s budgets (12 pages, 1200 rows from the tail) are the
  * near path's; a message further back than that is refused honestly rather
  * than stalling the pane. The sentence names the reason rather than the
- * budget, because a reader cannot do arithmetic on the window anyway.
+ * budget, and then names the STEP (UX U2): "could not reach" without "here is
+ * what would reach it" left the reader with a dead end, and the transcript's
+ * own gesture — scroll up for older pages — is the one that changes the
+ * answer.
  */
 export const THREAD_SEARCH_JUMP_MISS_COPY =
-	"Could not reach that message. It is further back than the loaded history.";
+	"Could not reach that message. It is further back than the loaded history — scroll up in the transcript to load more.";
+
+/**
+ * The stale-list marker: a new ask is in flight behind a retained list.
+ *
+ * The list is KEPT while the answer runs (a list that blanks per keystroke
+ * reads as slower than it is), so the line has to say whose rows those are
+ * (UX U1): the count line used to keep stating the previous query's total as
+ * if it answered the box, and Enter on those rows was "acting on the previous
+ * list" the finding names. The rows stay actionable — they are visibly the
+ * previous search's, and the highlight is the row about to open — but the
+ * panel now says so instead of letting the reader assume.
+ */
+export const THREAD_SEARCH_STALE_COPY =
+	"Updating — the list below is the previous search's.";
+
+/**
+ * What the panel says while a revealed hit is being sought in the transcript.
+ *
+ * The near path can spend seconds on a far row (UX U4: measured 2.2 s for a
+ * 640-row reach, 4.4 s to the refusal), and the panel used to say nothing at
+ * all until the row landed or the toast spoke. The line is the panel's own
+ * report; the landing belongs to the transcript.
+ */
+export const THREAD_SEARCH_JUMPING_COPY = "Going to that message…";
 
 /** The line a truncated list carries, so a floor is never read as a total. */
 export function threadSearchTruncatedLabel(count: number): string {
-	return `Showing the first ${count} matches.`;
+	return count === 1 ? "(the first match shown)" : `(first ${count} shown)`;
 }
 
 /**

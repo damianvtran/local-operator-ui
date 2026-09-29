@@ -498,16 +498,23 @@ test("every state renders its own sentence, and the recoverable ones their own c
 	}
 });
 
-test("a truncated list says so, and only a truncated, non-empty one does", async () => {
+test("the count line splits by tier, and the cut rides it as a suffix", async () => {
 	const panel = await mountPanel({
 		query: "ledger",
 		state: "ready",
-		hits: [hit("m1"), hit("m2")],
+		hits: [hit("m1"), hit("m2", { tier: "soft" })],
 		cursor: 0,
 		truncated: true,
 	});
 	try {
-		assert.match(panel.panel().textContent, /Showing the first 2 matches\./);
+		/*
+		 * One line, both facts (design D2 + UX U3): the split the old count hid,
+		 * and the cut as a suffix rather than "2 matches Showing the first 2
+		 * matches." saying it twice.
+		 */
+		const line = panel.panel().textContent;
+		assert.match(line, /1 exact · 1 related/);
+		assert.match(line, /\(first 2 shown\)/);
 		await panel.render({
 			query: "ledger",
 			state: "ready",
@@ -515,9 +522,38 @@ test("a truncated list says so, and only a truncated, non-empty one does", async
 			cursor: 0,
 			truncated: false,
 		});
+		assert.equal(panel.panel().textContent.includes("(first"), false);
+	} finally {
+		await panel.close();
+	}
+});
+
+test("an in-flight ask keeps the previous rows and says whose they are", async () => {
+	const panel = await mountPanel({
+		query: "turn 19970",
+		state: "loading",
+		hits: [hit("m1", { snippet: "turn 19998" })],
+		cursor: 0,
+	});
+	try {
+		/*
+		 * UX U1, as the reviewer measured it: the box said one thing and the list
+		 * another, with no cue which was being answered. The list keeps its rows
+		 * (a blank per keystroke reads as slower than it is) and gains the stale
+		 * marker, `aria-busy`, and the dim; Enter still opens the visibly
+		 * highlighted row - the list is what it says it is.
+		 */
+		assert.match(panel.panel().textContent, /previous search's/);
+		assert.match(panel.panel().textContent, /turn 19998/);
 		assert.equal(
-			panel.panel().textContent.includes("Showing the first"),
-			false,
+			panel.panel().querySelector("[role='listbox']").getAttribute("aria-busy"),
+			"true",
+		);
+		await panel.press("Enter");
+		assert.deepEqual(
+			panel.calls.navigations,
+			["m1"],
+			"Enter opens the row the list shows, stale or not",
 		);
 	} finally {
 		await panel.close();
@@ -824,6 +860,55 @@ test("a host's own jump is what a click calls when one is supplied", async (t) =
 				.hasAttribute(JUMP_HIGHLIGHT_ATTR),
 			false,
 			"the local fallback does not also run: one reveal path per click",
+		);
+	} finally {
+		await view.close();
+	}
+});
+
+test("the far seek reports itself while it is in flight, and clears when it lands", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	let release = null;
+	const seen = [];
+	const view = await mountController({
+		onReveal: (id) => {
+			seen.push(id);
+			return new Promise((resolve) => {
+				release = resolve;
+			});
+		},
+	});
+	try {
+		const { window } = view;
+		const transcript = window.document.getElementById("transcript");
+		transcript.focus();
+		await pressAct(window, transcript, "f", { metaKey: true });
+		await act(async () => {
+			typeInto(window, view.input(), "ledger");
+		});
+		await act(async () => {
+			t.mock.timers.tick(200);
+		});
+		await act(async () => {});
+		const option = window.document.querySelector("[role='option']");
+		await act(async () => {
+			option.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+		});
+		/*
+		 * UX U4, as the reviewer measured it: the far path can spend seconds on
+		 * a row (2.2 s for 640 rows, 4.4 s to the refusal) and the panel used to
+		 * say nothing until it landed. The host's promise is awaited, so the
+		 * panel can say so for exactly as long as the reach lasts.
+		 */
+		assert.deepEqual(seen, ["m1"]);
+		assert.match(view.overlay().textContent, /Going to that message/);
+		await act(async () => {
+			release();
+		});
+		assert.equal(
+			view.overlay().textContent.includes("Going to that message"),
+			false,
+			"the line ends with the reach, not with the panel",
 		);
 	} finally {
 		await view.close();
