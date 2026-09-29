@@ -28,7 +28,8 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { ThreadSearchPanel, ThreadSearchOverlay } from "./src/renderer/src/features/chat/canonical/thread-search-overlay";
-			export { THREAD_SEARCH_LANDED_MS, THREAD_SEARCH_LANDED_ATTR, revealThreadSearchHit, clearThreadSearchLanding } from "./src/renderer/src/features/chat/canonical/thread-search-reveal";
+			export { revealThreadSearchHit } from "./src/renderer/src/features/chat/canonical/thread-search-reveal";
+			export { JUMP_HIGHLIGHT_ATTR, JUMP_HIGHLIGHT_MS } from "./src/renderer/src/features/chat/canonical/reveal-record";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -92,10 +93,9 @@ globalThis.document = bootstrap.window.document;
 const {
 	ThreadSearchPanel,
 	ThreadSearchOverlay,
-	THREAD_SEARCH_LANDED_MS,
-	THREAD_SEARCH_LANDED_ATTR,
 	revealThreadSearchHit,
-	clearThreadSearchLanding,
+	JUMP_HIGHLIGHT_ATTR,
+	JUMP_HIGHLIGHT_MS,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 const { createRoot } = await import("react-dom/client");
@@ -526,17 +526,14 @@ test("a truncated list says so, and only a truncated, non-empty one does", async
 
 /* -------------------------------------------------------------- the reveal */
 
-/** One frame of the fixture's own clock, for the walk's staged frames. */
-const nextFrame = () =>
-	new Promise((resolve) => requestAnimationFrame(() => resolve()));
-
-/** The frames `jumpToFailedRow` itself waits: two layers is two rAFs. */
-const walkFrames = async () => {
-	for (let frame = 0; frame < 3; frame += 1) await nextFrame();
-};
-
-test("a mounted row is marked at once and scrolled to the centre by the shared walk, and the mark moves and times out", async (t) => {
-	t.mock.timers.enable({ apis: ["setTimeout"] });
+/**
+ * The reveal is an adapter over the shared machinery (`reveal-record.ts`): the
+ * walk, the scroll and the flash are pinned in that module's own suite, and
+ * what is left to this file is the CONTRACT — which outcome a mounted row and
+ * a windowed-out message produce, and that a host's own jump wins when one is
+ * supplied.
+ */
+test("a mounted row lands and is flashed by the shared machinery; the timer takes the flash away", async () => {
 	const env = installDom(
 		"<div id='scroller'><div data-record-id='m1'>one</div><div data-record-id='m2'>two</div></div>",
 	);
@@ -544,38 +541,41 @@ test("a mounted row is marked at once and scrolled to the centre by the shared w
 		const scroller = env.document.getElementById("scroller");
 		const first = env.document.querySelector("[data-record-id='m1']");
 		const second = env.document.querySelector("[data-record-id='m2']");
-		assert.equal(await revealThreadSearchHit(scroller, "m1"), "revealed");
-		assert.equal(
-			first.hasAttribute(THREAD_SEARCH_LANDED_ATTR),
-			true,
-			"a row already in the DOM is marked without waiting for the walk",
-		);
+		/*
+		 * The flash's timer belongs to `reveal-record.ts` and reads
+		 * `window.setTimeout`; node's mocked clock is not that function, so the
+		 * window's own is stubbed for the test's span (the rail's suite stubs
+		 * the same pair).
+		 */
+		const timers = [];
+		const realSetTimeout = env.window.setTimeout;
+		env.window.setTimeout = (fn, ms) => {
+			timers.push({ fn, ms });
+			return timers.length;
+		};
+		try {
+			assert.equal(await revealThreadSearchHit(scroller, "m1"), "revealed");
+			assert.equal(
+				first.hasAttribute(JUMP_HIGHLIGHT_ATTR),
+				true,
+				"the landed row carries the shared jump's flash",
+			);
+			assert.equal(timers.length, 1);
+			assert.equal(timers[0].ms, JUMP_HIGHLIGHT_MS);
 
-		/* The SCROLL is the shared walk's: `jumpToFailedRow` centres the row two
-		   of its own frames later, after the two layers it may have to open. */
-		await walkFrames();
-		assert.deepEqual(env.scrolls.at(-1).options, {
-			block: "center",
-			behavior: "smooth",
-		});
-		assert.equal(env.scrolls.at(-1).element, first);
-
-		/* The mark MOVES rather than stacking: the old row loses it. */
-		assert.equal(await revealThreadSearchHit(scroller, "m2"), "revealed");
-		assert.equal(first.hasAttribute(THREAD_SEARCH_LANDED_ATTR), false);
-		assert.equal(second.hasAttribute(THREAD_SEARCH_LANDED_ATTR), true);
-		await walkFrames();
-		assert.equal(env.scrolls.at(-1).element, second);
-
-		/* And the timer, not only the next jump, takes it away. */
-		t.mock.timers.tick(THREAD_SEARCH_LANDED_MS);
-		assert.equal(second.hasAttribute(THREAD_SEARCH_LANDED_ATTR), false);
-
-		/* The overlay's own close clears it eagerly. */
-		await revealThreadSearchHit(scroller, "m1");
-		assert.equal(first.hasAttribute(THREAD_SEARCH_LANDED_ATTR), true);
-		clearThreadSearchLanding();
-		assert.equal(first.hasAttribute(THREAD_SEARCH_LANDED_ATTR), false);
+			/* A second landing lights ITS row; the first keeps its own flash
+			   until its own timer ends (`paintJumpHighlight` is per element). */
+			assert.equal(await revealThreadSearchHit(scroller, "m2"), "revealed");
+			assert.equal(second.hasAttribute(JUMP_HIGHLIGHT_ATTR), true);
+			assert.equal(first.hasAttribute(JUMP_HIGHLIGHT_ATTR), true);
+			timers[0].fn();
+			assert.equal(first.hasAttribute(JUMP_HIGHLIGHT_ATTR), false);
+			assert.equal(second.hasAttribute(JUMP_HIGHLIGHT_ATTR), true);
+			timers[1].fn();
+			assert.equal(second.hasAttribute(JUMP_HIGHLIGHT_ATTR), false);
+		} finally {
+			env.window.setTimeout = realSetTimeout;
+		}
 	} finally {
 		await env.close();
 	}
@@ -620,7 +620,7 @@ test("a collapsed turn is opened once, then the row is found; a bar that is not 
 	}
 });
 
-test("a message outside the rendered window reports not-mounted without a click", async () => {
+test("a message outside the rendered window reports not-mounted, without a click and without a flash", async () => {
 	const env = installDom(
 		"<div id='scroller'><div data-run-ids='m1 m2'><button aria-expanded='true'></button></div></div>",
 	);
@@ -640,29 +640,14 @@ test("a message outside the rendered window reports not-mounted without a click"
 			"the walk only ever opens; an open bar is left as it is",
 		);
 		assert.equal(await revealThreadSearchHit(null, "m1"), "not-mounted");
+		assert.equal(
+			env.document.querySelector(`[${JUMP_HIGHLIGHT_ATTR}]`),
+			null,
+			"a miss is never flashed",
+		);
 	} finally {
 		await env.close();
 	}
-});
-
-test("the landed mark's timer and the stylesheet's animation are one number", () => {
-	assert.equal(THREAD_SEARCH_LANDED_MS, 3000);
-	const styles = readFileSync("src/renderer/src/styles/index.css", "utf8");
-	assert.match(
-		styles,
-		/search-land-fade\s+3000ms/,
-		"the stylesheet's animation duration is the timer's own span; a change to either is a change to the pair",
-	);
-	assert.match(
-		styles,
-		/\[data-lo-search-landed\]\s*\{\s*background-color: var\(--color-accent-wash\)/,
-		"the mark paints the app's find-match wash",
-	);
-	assert.match(
-		styles,
-		/prefers-reduced-motion: reduce[\s\S]{0,400}\[data-lo-search-landed\]\s*\{\s*animation: none;/,
-		"reduced motion keeps the wash statically instead of landing on the animation's transparent end frame",
-	);
 });
 
 /* ------------------------------------------------------------ the chord */
@@ -673,7 +658,7 @@ test("the landed mark's timer and the stylesheet's animation are one number", ()
  * containerRef points at the scroller, exactly as `canonical-transcript.tsx`
  * hands it over.
  */
-async function mountController() {
+async function mountController(options = {}) {
 	const env = installDom(
 		`<div data-chat-region="transcript" tabindex="0" id="transcript">
 			<div id="scroller"><div data-record-id="m1" id="row-m1">one</div></div>
@@ -707,6 +692,7 @@ async function mountController() {
 			React.createElement(ThreadSearchOverlay, {
 				sessionId: SESSION,
 				containerRef: { current: scroller },
+				...(options.onReveal ? { onReveal: options.onReveal } : {}),
 			}),
 		);
 	});
@@ -798,9 +784,46 @@ test("typing asks the conversation, and a click lands on the row in the scroller
 		});
 		const row = window.document.getElementById("row-m1");
 		assert.equal(
-			row.hasAttribute(THREAD_SEARCH_LANDED_ATTR),
+			row.hasAttribute(JUMP_HIGHLIGHT_ATTR),
 			true,
-			"the hit's message is marked in place",
+			"the hit's message carries the shared jump's flash",
+		);
+	} finally {
+		await view.close();
+	}
+});
+
+test("a host's own jump is what a click calls when one is supplied", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const seen = [];
+	const view = await mountController({ onReveal: (id) => seen.push(id) });
+	try {
+		const { window } = view;
+		const transcript = window.document.getElementById("transcript");
+		transcript.focus();
+		await pressAct(window, transcript, "f", { metaKey: true });
+		await act(async () => {
+			typeInto(window, view.input(), "ledger");
+		});
+		await act(async () => {
+			t.mock.timers.tick(200);
+		});
+		await act(async () => {});
+		const option = window.document.querySelector("[role='option']");
+		await act(async () => {
+			option.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+		});
+		assert.deepEqual(
+			seen,
+			["m1"],
+			"the transcript's own jump is the path a click takes when it is mounted with one",
+		);
+		assert.equal(
+			window.document
+				.getElementById("row-m1")
+				.hasAttribute(JUMP_HIGHLIGHT_ATTR),
+			false,
+			"the local fallback does not also run: one reveal path per click",
 		);
 	} finally {
 		await view.close();

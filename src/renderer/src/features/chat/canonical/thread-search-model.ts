@@ -232,6 +232,17 @@ export const THREAD_SEARCH_RETRY_LABEL = "Try again";
 /** The building state's control: a re-check, not a retry — nothing failed. */
 export const THREAD_SEARCH_RECHECK_LABEL = "Check again";
 
+/**
+ * What the reader is told when a hit cannot be reached at all.
+ *
+ * `ensureReachable`'s budgets (12 pages, 1200 rows from the tail) are the
+ * near path's; a message further back than that is refused honestly rather
+ * than stalling the pane. The sentence names the reason rather than the
+ * budget, because a reader cannot do arithmetic on the window anyway.
+ */
+export const THREAD_SEARCH_JUMP_MISS_COPY =
+	"Could not reach that message. It is further back than the loaded history.";
+
 /** The line a truncated list carries, so a floor is never read as a total. */
 export function threadSearchTruncatedLabel(count: number): string {
 	return `Showing the first ${count} matches.`;

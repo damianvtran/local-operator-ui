@@ -37,10 +37,7 @@ import {
 	threadSearchCountLabel,
 	threadSearchTruncatedLabel,
 } from "./thread-search-model";
-import {
-	clearThreadSearchLanding,
-	revealThreadSearchHit,
-} from "./thread-search-reveal";
+import { revealThreadSearchHit } from "./thread-search-reveal";
 import { useThreadSearch } from "./use-thread-search";
 
 /**
@@ -418,11 +415,20 @@ export type ThreadSearchOverlayProps = {
 	 * transcript on the same screen) can never be the one a hit navigates.
 	 */
 	containerRef: RefObject<HTMLDivElement | null>;
+	/**
+	 * The host's own jump, when there is one: the transcript passes
+	 * `jumpToSearchHit`, whose near path pages an older message into the window
+	 * before revealing it (`ensureReachable` in `reveal-record.ts`). Absent in
+	 * the stories and the panel's own suites, where the row is already mounted
+	 * and `revealThreadSearchHit`'s walk-plus-flash is the whole job.
+	 */
+	onReveal?: (id: string) => void;
 };
 
 export const ThreadSearchOverlay: FC<ThreadSearchOverlayProps> = ({
 	sessionId,
 	containerRef,
+	onReveal,
 }) => {
 	const [open, setOpen] = useState(false);
 	const panelRef = useRef<HTMLDivElement | null>(null);
@@ -437,7 +443,12 @@ export const ThreadSearchOverlay: FC<ThreadSearchOverlayProps> = ({
 
 	const closePanel = useCallback(() => {
 		setOpen(false);
-		clearThreadSearchLanding();
+		/*
+		 * The landing flash is deliberately NOT cancelled here. It belongs to the
+		 * row the reader just arrived at (`paintJumpHighlight`'s own timer ends it
+		 * in 1.4 s, the same one the rail's jumps light), so closing the panel
+		 * does not take back the answer to "where did I land".
+		 */
 		const previous = restoreFocus.current;
 		restoreFocus.current = null;
 		if (previous?.isConnected) previous.focus();
@@ -480,21 +491,22 @@ export const ThreadSearchOverlay: FC<ThreadSearchOverlayProps> = ({
 		return () => document.removeEventListener("keydown", onKeyDown);
 	}, [open, openPanel]);
 
-	// A mark belongs to the panel that made it.
-	useEffect(() => () => clearThreadSearchLanding(), []);
-
 	const navigate = useCallback(
 		(hit: ThreadFindHit) => {
 			/*
-			 * TODO(thread-search-integration): a `not-mounted` outcome means the
-			 * message is older than the rendered window — the seek that pages it in
-			 * is the transcript's own machinery (`loadOlder`'s window), and THIS
-			 * callback is where it lands. Today the reader simply stays where they
-			 * are and the panel keeps its list.
+			 * The host's jump when there is one: it is the only path that can PAGE a
+			 * message older than the rendered window into it, because it holds the
+			 * row model and the window state (`ensureReachable`'s callbacks). The
+			 * local adapter otherwise, for a surface with no transcript around it,
+			 * which answers the same outcome for an already-mounted row.
 			 */
+			if (onReveal) {
+				onReveal(hit.id);
+				return;
+			}
 			void revealThreadSearchHit(containerRef.current, hit.id);
 		},
-		[containerRef],
+		[containerRef, onReveal],
 	);
 
 	if (!open) return null;
