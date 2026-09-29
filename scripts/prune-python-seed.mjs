@@ -515,7 +515,7 @@ export function pruneSeed(root, { log = console.log } = {}) {
 	}
 	const missing = PRUNED_SEED_PATHS.filter(
 		// `lstat`, not `exists`: a dangling symlink is content the bundle must not
-		// carry either, and the list contains links (`bin/2to3`).
+		// carry either, and the list contains links (`bin/idle3`).
 		(relative) => !lstatSync(join(root, relative), { throwIfNoEntry: false }),
 	);
 	if (missing.length > 0) {
