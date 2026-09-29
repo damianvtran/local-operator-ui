@@ -831,9 +831,9 @@ equally important**, and the interface must not present them as though they are.
   opens on the reader's own press and on nothing else, so a collapsed run still
   answers "what is it doing right now?" by naming the call in flight (`Running
   pnpm vitest run`) beside its counts and its wall-clock span. It condenses
-  itself once and only when its section ends — finished sections condense; the
-  live section and anything the reader opened obey the reader, and nothing
-  condenses while a call in it is still running. A finished turn also carries
+  the same way — the reader's press is the only close; no state update closes
+  a fold — and nothing condenses while a call in it is still running. A
+  finished turn also carries
   one turn-foot line (`Worked for 1m 12s · 8 actions · 1 failed`). The fold is a
   VIEW: it hides rows and never reorders them, so the placement rule a few lines
   down and its `applyLiveSeed`/`withTimeOrder` guard are untouched. Without this

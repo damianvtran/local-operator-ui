@@ -129,14 +129,17 @@ away from the tail, and the correction runs on EVERY commit (the collapse is a
 commit that changes no row count, which is what the old `rowCount`-keyed effect
 missed) plus the ResizeObserver, so the write lands in the change's own frame.
 
-**The residual, stated rather than hidden.** Inside `TAIL_EPS_PX` the
-correction stands down by design: at the tail the newest content is pinned, and
-holding the reader there through a collapse would open the void between the
-content and the composer - the 'lifted' look this same report is about. So the
-reader's own collapse of the NEWEST group at the tail re-flushes the pinned
-column by the body's own height (`fold-tail-manual`: `rows 6 moved 228.0`),
-which is the pinned edge holding and the older content yielding; a scroll back
-into the open conversation is the only case where the full invariant applies.
+**The residual, stated rather than hidden.** The correction can only re-flush
+toward the pinned tail, so a collapse of a group at the bottom moves settled
+content by `max(0, body - distance)` - the collapsed body's height less the
+reader's distance from the tail, floored at zero: `228.0` at the tail with a
+228px body (`fold-tail-manual`: `rows 6 moved 228.0`), `53.0` at 240px from the
+tail with a 294px body, `0.00` once the distance exceeds the body. Inside
+`TAIL_EPS_PX` the correction stands down by design: at the tail the newest
+content is pinned, and holding the reader there through a collapse would open
+the void between the content and the composer - the 'lifted' look this same
+report is about. What remains is the pinned edge holding and the older content
+yielding; beyond the body's own height, the full invariant applies.
 
 ## The bisect
 
