@@ -221,6 +221,82 @@ export function collapsePlan(
 	};
 }
 
+/*
+ * THE ON-LOAD ALIGNMENT (operator report, 2026-09-28: "the messages don't seem
+ * to be collapsed on previous collapsible segments immediately on load ...").
+ *
+ * The render window is a raw row count, and a raw count lands wherever it
+ * lands — often inside a completed run. A run cut by the window's top edge has
+ * no opening user row in the list, so it cannot collapse (the window-cut rule
+ * above), and the reader who opened a long conversation saw in-between rows
+ * until they scrolled the head in. These two helpers let the consumer move the
+ * window's edge ONTO a run boundary, and — when the boundary is not loaded at
+ * all — say so, so the load path can fetch it. Both are pure functions of the
+ * row list, so the window stays a derivation rather than state that can race
+ * the first paint.
+ *
+ * Both read only the row list and the window size — no liveness — because they
+ * are consumed ABOVE the point where this component derives whether the newest
+ * run is live; a window edge inside the newest run is aligned like any other,
+ * which at worst mounts the turn the reader is already watching stream.
+ */
+
+/**
+ * The window's top edge, snapped UP to the opening of the run it lands in.
+ *
+ * Returns the size unchanged when the edge already sits on a boundary, when
+ * the enclosing run's head is cut (nothing to snap to — the load path's
+ * `windowTopRunIsHeadCut` case), or when the snap would add more than
+ * `maxExtra` rows (a run taller than the bound keeps the shipped cut
+ * behaviour rather than mounting itself unbounded).
+ *
+ * A snapped window top is a run boundary BY CONSTRUCTION, so every run the
+ * list hands to `runsOf` opens with its own user row and every completed one
+ * collapses on the first paint — the operator's "fill the screen with user
+ * messages, final agent responses, and collapsed sections".
+ */
+export function snapWindowToRunBoundary(
+	rows: Row[],
+	windowSize: number,
+	maxExtra: number,
+): number {
+	const total = rows.length;
+	if (total <= windowSize) return windowSize;
+	const top = total - windowSize;
+	const runs = runsOf(rows);
+	const enclosing = runs.find(
+		(run) => run.openingIndex <= top && top <= run.endIndex,
+	);
+	if (enclosing === undefined) return windowSize;
+	if (!enclosing.opensWithUserRow) return windowSize;
+	const extra = top - enclosing.openingIndex;
+	if (extra <= 0 || extra > maxExtra) return windowSize;
+	return windowSize + extra;
+}
+
+/**
+ * Whether the run the window's top edge lands in has its head cut off the
+ * LOADED rows — the case a fetch can fix and a snap cannot.
+ *
+ * True only when the row list itself starts mid-run (the first run of the
+ * fetched set, `openingUserIndex === null`) and the window edge is inside it;
+ * the consumer pairs this with `hasMore` to fetch the missing head.
+ */
+export function windowTopRunIsHeadCut(
+	rows: Row[],
+	windowSize: number,
+): boolean {
+	const total = rows.length;
+	if (total <= windowSize) return false;
+	const top = total - windowSize;
+	const runs = runsOf(rows);
+	const enclosing = runs.find(
+		(run) => run.openingIndex <= top && top <= run.endIndex,
+	);
+	if (enclosing === undefined) return false;
+	return !enclosing.opensWithUserRow;
+}
+
 function planRun(rows: Row[], run: TurnRun, live: boolean): RunCollapsePlan {
 	const runRows = rows.slice(run.openingIndex, run.endIndex + 1);
 	/*
