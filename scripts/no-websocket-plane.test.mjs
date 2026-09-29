@@ -59,8 +59,13 @@ const REMOVED_MODULES = [
 	"features/chat/components/message-item/streaming-message",
 ];
 
+// Same default-buffer trap the whole-tree scans hit tonight (`ENOBUFS` at
+// Node's 1 MiB spawnSync default); scoped today, closed here with them.
 const tracked = (pattern) =>
-	execFileSync("git", ["ls-files", "-z", "--", pattern], { encoding: "utf8" })
+	execFileSync("git", ["ls-files", "-z", "--", pattern], {
+		encoding: "utf8",
+		maxBuffer: 64 * 1024 * 1024,
+	})
 		.split("\0")
 		.filter(Boolean);
 
