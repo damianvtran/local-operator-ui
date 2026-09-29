@@ -297,6 +297,14 @@ const APP_SPAWN_SITES = [
 		/const env = withNotificationsOff\(\{/,
 	),
 	guarded(
+		"scripts/relaunch-during-quit-proof.mjs",
+		"spawn",
+		1,
+		/env:\s*makeEnv\(\),/,
+		"boots the built app THREE times over one quit - the dying instance, the relaunch answered by it, and the relaunch after it - three chances to banner, on a rig whose whole subject is a teardown that must not be disturbed",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/mentioned-files-app-proof.mjs",
 		"spawn",
 		1,
