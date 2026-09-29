@@ -20,6 +20,11 @@
  * keeps the draft, states the sentence, and — for pre-admission refusals only
  * — offers Retry. A post-admission failure may already be in the conversation,
  * so it points at the conversation instead (§E.5).
+ *
+ * THE DICTATION now rides the app's shared speech layer (#633): this component
+ * registers the mini's controller with the shared `SpeechToTextManager` and its
+ * recording participates in the shared dictation-active coordination — one
+ * dictation stack across surfaces (§F), not a private one beside it.
  */
 
 import { AIDA_DISABLED_SENTENCE } from "@features/aida/aida-control";
@@ -28,6 +33,11 @@ import { desktopFeatureEnabled } from "@shared/api/local-operator/desktop-hooks"
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui";
+import {
+	SpeechToTextPriority,
+	setDictationActive,
+	useSpeechToTextManager,
+} from "@shared/hooks/use-speech-to-text-manager";
 import { cn } from "@shared/lib/utils";
 import {
 	SEND_FAILURE_COPY,
@@ -71,6 +81,7 @@ import {
 	canSend,
 	isEditable,
 	miniTransitions,
+	wireInputMode,
 } from "./mini-state";
 import { rendererPlatform } from "./renderer-platform";
 
@@ -134,6 +145,42 @@ export function MiniComposer() {
 		}
 	}, []);
 
+	/*
+	 * HOW THE DRAFT WAS PRODUCED (arch §4.2's `input_mode`, the composer's own
+	 * rule): `dictated` for a message only a transcript put there, `typed` for
+	 * one only the keyboard did, `mixed` for both — over "since the box last
+	 * emptied", because the empties (an accepted send's clear, a select-and-
+	 * delete) are the delimiters that start the next message's provenance over.
+	 * A refused send hands its text back still wearing its flags, so a retry
+	 * replays the same provenance.
+	 */
+	const sawTypingRef = useRef(false);
+	const sawDictationRef = useRef(false);
+
+	/*
+	 * The last capability answer, kept for the send gate: `features.input_mode`
+	 * decides whether a stamp may ride the wire at all, because an older harness
+	 * validates the message body with `extra="forbid"`. It is written by every
+	 * seat resolution — the same reads that decide `features.aida` — and read at
+	 * the press, so the gate and the seat it gates never come from two different
+	 * answers, and a failed read leaves both on the fail-closed side.
+	 */
+	const capabilitiesRef = useRef<DesktopCapabilities | null>(null);
+
+	/*
+	 * When the box is empty there is nothing left to attribute: the next
+	 * message's provenance starts over. This fires on ANY empty — the send's own
+	 * clear included — and `beginSend` also clears the flags at the accepted
+	 * send itself, because a transcript landing between that clear and this
+	 * effect must not inherit the sent message's provenance.
+	 */
+	useEffect(() => {
+		if (text === "") {
+			sawTypingRef.current = false;
+			sawDictationRef.current = false;
+		}
+	}, [text]);
+
 	/**
 	 * Resolve the seat: capability gate, read, open-if-needed (§E.1).
 	 *
@@ -161,12 +208,18 @@ export function MiniComposer() {
 			 * headless or offline machine must not read as a build without the
 			 * seat, which is the different fact a user would act on differently.
 			 */
+			capabilitiesRef.current = null;
 			seatRef.current = null;
 			update((current) =>
 				miniTransitions.seatBlocked(current, MINI_COPY.seatUnreachable),
 			);
 			return null;
 		}
+		/*
+		 * The capability answer is KEPT for the send gate: `features.input_mode`
+		 * rides the same map, so one resolution answers both questions.
+		 */
+		capabilitiesRef.current = capabilities;
 		if (!desktopFeatureEnabled(capabilities, "aida", 1)) {
 			seatRef.current = null;
 			update((current) =>
@@ -259,6 +312,20 @@ export function MiniComposer() {
 			window.clearTimeout(sentTimerRef.current);
 			sentTimerRef.current = null;
 		}
+		/*
+		 * HOW THIS MESSAGE WAS PRODUCED, read at the press (arch §4.2): the
+		 * vocabulary is the composer's own (`typed`/`dictated`/`mixed`), the gate
+		 * is `features.input_mode` (an older harness validates the message body
+		 * with `extra="forbid"` and would refuse a body carrying it), and
+		 * `undefined` keeps the legacy body. The reference implementation is
+		 * `message-input.tsx`'s `inputModeForSend`, sent through the page's
+		 * `send`; this surface is its own page, so it owns both halves.
+		 */
+		const inputMode = wireInputMode(
+			desktopFeatureEnabled(capabilitiesRef.current, "input_mode"),
+			sawTypingRef.current,
+			sawDictationRef.current,
+		);
 		update((current) => miniTransitions.sendStarted(current));
 		try {
 			const target = seatRef.current ?? (await ensureSeat());
@@ -290,6 +357,7 @@ export function MiniComposer() {
 					images: [],
 					mode: "prompt",
 					cwd: "",
+					inputMode,
 				},
 				target,
 			);
@@ -310,6 +378,14 @@ export function MiniComposer() {
 			}
 			setText("");
 			textRef.current = "";
+			/*
+			 * THE PROVENANCE DIES WITH THE MESSAGE IT DESCRIBED (the composer's own
+			 * rule): the empty-box reset above would catch this clear only on the
+			 * next render, and a transcript landing in between would otherwise
+			 * inherit the sent message's flags.
+			 */
+			sawTypingRef.current = false;
+			sawDictationRef.current = false;
 			update((current) => miniTransitions.sendSucceeded(current));
 			sentTimerRef.current = window.setTimeout(() => {
 				sentTimerRef.current = null;
@@ -351,11 +427,13 @@ export function MiniComposer() {
 			},
 			onResult: (transcript) => {
 				/*
-				 * The §F silent-dictation flag arrives as this callback's second
-				 * argument when the shared speech layer lands; until then the
-				 * mini sends without it — the seam is this call site and the
-				 * `admitChatDraft` argument object beside it.
+				 * A TRANSCRIPT PUT WORDS IN THIS BOX (arch §4.2): the flag behind
+				 * `dictated`/`mixed`, set at this one door — the audio path — and
+				 * never for the keyboard's own edits, which arrive through the
+				 * textarea's `onChange`. The value becomes the wire's `input_mode`
+				 * at the next send, read at the press (`wireInputMode`).
 				 */
+				sawDictationRef.current = true;
 				setText((current) => {
 					const next =
 						current.length === 0
@@ -376,17 +454,54 @@ export function MiniComposer() {
 		};
 	}, []);
 
+	/*
+	 * THE DICTATION-ACTIVE COORDINATION (the shared stack's own presence set):
+	 * while this surface records, the app's dictation is "active" here exactly
+	 * as it is in the main window, so every reader gets one answer rather than
+	 * each surface's private phase.
+	 */
+	useEffect(() => {
+		setDictationActive("mini-view", dictation === "recording");
+		return () => setDictationActive("mini-view", false);
+	}, [dictation]);
+
+	/*
+	 * The mic's own door and the shared manager's registration pair. The pair is
+	 * the frozen `{start, stop}` contract (the registrant owns release
+	 * semantics): the manager dispatches `start` on engage and `stop(reason)` on
+	 * release or abort, and the controller owns what each reason means. The gate
+	 * is the controls' own disabled state — a transcribing take or a send in
+	 * flight closes dictation — so the registered pair and the pointer door can
+	 * never disagree about when this surface accepts a take.
+	 */
+	const startTake = useCallback((): void => {
+		setDictationNotice(null);
+		void dictationRef.current?.start();
+	}, []);
+
+	const stopTake = useCallback((reason?: "release" | "abort"): void => {
+		dictationRef.current?.stop(reason ?? "release");
+	}, []);
+
 	const toggleDictation = useCallback((): void => {
-		const controller = dictationRef.current;
-		if (controller === null) return;
+		if (dictationRef.current === null) return;
 		if (dictationPhaseRef.current === "recording") {
-			controller.stop();
+			stopTake("release");
 			return;
 		}
 		if (dictationPhaseRef.current === "transcribing") return;
-		setDictationNotice(null);
-		void controller.start();
-	}, []);
+		startTake();
+	}, [startTake, stopTake]);
+
+	useSpeechToTextManager(
+		"mini-view",
+		SpeechToTextPriority.MESSAGE_INPUT,
+		{ start: startTake, stop: stopTake },
+		() =>
+			dictationPhaseRef.current !== "recording" &&
+			dictationPhaseRef.current !== "transcribing" &&
+			stateRef.current.send !== "sending",
+	);
 
 	/* -- the hotkey's own events ------------------------------------------- */
 
@@ -552,6 +667,14 @@ export function MiniComposer() {
 				placeholder={MINI_COPY.placeholder}
 				aria-label={MINI_COPY.placeholder}
 				onChange={(event) => {
+					/*
+					 * THE KEYBOARD TOUCHED THIS BOX (arch §4.2): the flag behind
+					 * `typed`/`mixed`. This handler is the one door every human edit
+					 * arrives through, and it does not fire for the transcript's own
+					 * programmatic write (a controlled value change is not an input
+					 * event) — which is exactly the distinction the stamp records.
+					 */
+					sawTypingRef.current = true;
 					setDictationNotice(null);
 					setText(event.target.value);
 				}}
