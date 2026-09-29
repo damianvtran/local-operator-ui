@@ -33,6 +33,7 @@ import type { DriveableView } from "./electron-types";
 import { BrowserHost, isReportableLoadFailure } from "./host";
 import { registerBrowserIpc, unregisterBrowserIpc } from "./ipc";
 import { startLogCapture, stopLogCapture } from "./log-capture";
+import { paneNavigationDirection } from "./navigation-chord";
 import { OwnershipLedger } from "./ownership";
 import { decidePopup, effectivePresentation } from "./popups";
 import {
@@ -969,6 +970,31 @@ export async function startBrowserHost(
 		};
 		contents.on("will-navigate", onWillNavigate);
 		contents.on("will-redirect", onWillNavigate);
+
+		/*
+		 * THE NAVIGATION CHORDS (issue #675), answered for the PANE's own history
+		 * while THIS view's webContents has focus. The window-level half — the
+		 * app's router — is renderer-owned (`@shared/navigation-gesture`), because
+		 * a run-details reader and canvas editors may already claim Cmd/Ctrl+[;
+		 * this hook fires before the driven page sees the key at all, so the pane
+		 * is the page's single owner, the way a browser answers the chord with
+		 * its own history (the same movement as its toolbar's back/forward,
+		 * `host.historyActive`).
+		 *
+		 * MOUSE side-buttons are deliberately NOT wired here: Electron's only mouse
+		 * input event carries left/middle/right (`MouseInputEvent`), so a
+		 * side-button press over a driven page has no event to answer; where
+		 * Chromium itself claims those buttons it walks this webContents' stack,
+		 * and otherwise the driven page receives them as DOM events we do not own
+		 * by design (no preload). The app's own windows answer them in the
+		 * renderer.
+		 */
+		contents.on("before-input-event", (event, input) => {
+			const direction = paneNavigationDirection(input);
+			if (!direction) return;
+			event.preventDefault();
+			host.historyActive(direction);
+		});
 
 		// THE CHROME'S OWN FEEDBACK, and the reason it is wired per view rather than
 		// read on demand: the URL bar shows the tab's LIVE url, "updated from
