@@ -208,9 +208,6 @@ declare global {
 						requesterSessionId: string | null;
 					}) => void,
 				) => () => void;
-				onPopupBlocked: (
-					callback: (payload: { tabId: number; url: string }) => void,
-				) => () => void;
 			};
 			/**
 			 * The console feature's controls, and its one push channel.
