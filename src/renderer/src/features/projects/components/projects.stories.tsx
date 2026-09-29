@@ -2040,9 +2040,13 @@ export const BoardSticky: Story = {
 			);
 		}
 		/*
-		 * ALL CELLS OF A BAND ARE THE BAND'S TALLEST (the operator's item 1 in
-		 * its banded form): measured per cell, the readout the design round
-		 * asks for rather than an eyeball.
+		 * THE WELL IS ONE RECTANGLE, CAPPED AT ONE SCREEN (operator refinement):
+		 * every cell of the band is the same height (the well's cross-stretch),
+		 * every cell is at most one screen minus the pinned row and this band's
+		 * header, and a column whose queue does not fit scrolls INSIDE its cell —
+		 * asserted per cell rather than eyeballed. The chain itself (wheel over a
+		 * non-scrollable column reaching the board) is the two scroll-chain
+		 * stories' subject; this is the geometry underneath it.
 		 */
 		const section = bands[1].closest("section");
 		const cells = [
@@ -2055,6 +2059,23 @@ export const BoardSticky: Story = {
 		if (tallest < 100 || tallest - shortest > 0.5) {
 			throw new Error(
 				`the band's cells are not equal height: shortest ${shortest.toFixed(2)}, tallest ${tallest.toFixed(2)}`,
+			);
+		}
+		const cap = strip.clientHeight - 92 + 1;
+		if (tallest > cap) {
+			throw new Error(
+				`the band is ${tallest.toFixed(2)} tall, past the one-screen cap ${cap.toFixed(2)}`,
+			);
+		}
+		const scrollable = cells.filter(
+			(cell) => cell.scrollHeight > cell.clientHeight + 1,
+		);
+		const quiet = cells.filter(
+			(cell) => cell.scrollHeight <= cell.clientHeight + 1,
+		);
+		if (scrollable.length === 0 || quiet.length === 0) {
+			throw new Error(
+				`expected both scrollable and quiet cells (scrollable ${scrollable.length}, quiet ${quiet.length})`,
 			);
 		}
 		/*
@@ -2079,18 +2100,79 @@ export const BoardSticky: Story = {
 	}),
 };
 
-/** The timeline: bars, milestone diamonds in all three states, today marker. */
+/**
+ * THE SCROLL CHAIN, case 1: the wheel sits over a column that CANNOT scroll
+ * (its queue fits) and the board must take the gesture — the next team comes
+ * into view instead of the wheel being swallowed by the column. The gesture is
+ * the rig's `wheel` option (trusted CDP input, the only kind that moves a
+ * scroll container); the entry's `expect` asserts the strip advanced before
+ * the shutter, so a trapped wheel fails the capture rather than photographing
+ * the settled board.
+ */
+export const BoardScrollChain: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_LONG,
+			details: detailsFor(BOARD_LONG),
+		}),
+};
+
+/**
+ * THE SCROLL CHAIN, case 2: the wheel sits over a column that CAN scroll; the
+ * cell takes the input until its own edge, then the board continues. The
+ * entry's `expect` asserts both readings — the cell at its end AND the strip
+ * advanced — before the shutter.
+ */
+export const BoardScrollEdge: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_LONG,
+			details: detailsFor(BOARD_LONG),
+		}),
+};
+
+/**
+ * The timeline: bars, milestone diamonds in all three states, today marker.
+ *
+ * ONE ROW CARRIES A TITLE (agent review R1-1): the titled copy is story-local
+ * — no other surface's fixture or frame moves with it — and the play asserts
+ * the row reads the title while `data-project-name` keeps the key, the same
+ * split the board and the list assert on their own titled fixtures.
+ */
 export const Timeline: Story = {
 	render: () => (
 		<>
 			<HoldUntilPresent text="without dates" />
 			{page({
 				view: "timeline",
-				projects: THREE,
+				projects: [
+					{ ...THREE[0], title: "Payments migration" },
+					THREE[1],
+					THREE[2],
+				],
 				details: detailsFor(THREE),
 			})}
 		</>
 	),
+	play: playOnce("timeline", async () => {
+		await poll(
+			() => document.querySelector('[data-project-name="p1"]') !== null,
+			"the titled timeline row",
+		);
+		const row = document.querySelector<HTMLElement>('[data-project-name="p1"]');
+		if (!row || !row.textContent.includes("Payments migration")) {
+			throw new Error(
+				"the timeline's titled row does not show its title (R1-1's case)",
+			);
+		}
+		if (row.dataset.projectName !== "p1") {
+			throw new Error(
+				"the timeline row's data-project-name is not the key anymore",
+			);
+		}
+	}),
 };
 
 /** No project carries a date: the honest empty axis, not fabricated rows. */

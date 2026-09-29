@@ -548,7 +548,7 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 			 * the operator's re-skin retires. The columns keep the canvas behind
 			 * them, so the well→card step is the ground ladder a board needs.
 			 */
-			className="@container flex min-h-0 flex-1 flex-col"
+			className="[container-type:size] flex min-h-0 flex-1 flex-col"
 			data-testid="project-board"
 		>
 			{/*
@@ -577,10 +577,10 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 				data-board-strip=""
 				className={cn(
 					/*
-					 * ONE SCROLLER, BOTH AXES (slice 3): a column that overflows is
-					 * reached by scrolling the strip, not by a bar of its own, and a
-					 * column shorter than its neighbours keeps its own height
-					 * (`items-start`) instead of stretching to the tallest.
+					 * ONE SCROLLER FOR THE BOARD, BOTH AXES: the strip is the surface's own
+					 * scroller (horizontal always, vertical over the sections); the columns
+					 * inside a section get their own bounded vertical scrollers under the
+					 * operator's section cap, not the board's.
 					 *
 					 * NO TOP PADDING (round 1, Q2/U2): the column header pins at
 					 * `top-0`, and with `pt-3` the scrollport's own top edge sat 12px
@@ -589,7 +589,7 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 					 * was live at rel 2.7). The strip's padding now starts at its sides
 					 * and bottom, and the header pins flush to the edge it pins to.
 					 */
-					"relative flex min-h-0 flex-1 items-start gap-3 overflow-auto px-3 pb-3",
+					"relative flex min-h-0 flex-1 overflow-auto px-3 pb-3",
 					drag && "cursor-grabbing select-none",
 				)}
 			>
@@ -685,60 +685,87 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 							 * continuous: bands are stacked flush, so the outgoing header
 							 * leaves exactly as the incoming one docks.
 							 *
-							 * The name sticks LEFT while the band is h-scrolled (the board is
-							 * the app's `@container`, so `cqw` is the scrollport): the team
-							 * stays readable without ever clipping at the window edge.
+							 * NAME AND COUNT ARE ONE STICKY UNIT (design round 1, D1): the count
+							 * rides INSIDE the stuck span so h-scrolling cannot strand it
+							 * off-viewport, and with a clamped long name the clamp's right edge
+							 * falls after the count instead of on top of the name's glyphs.
+							 * The span sticks LEFT while the band is h-scrolled (the board root
+							 * is a SIZE container — `cqw`/`cqh` are the scrollport's own
+							 * dimensions): the team stays readable without clipping at the
+							 * window edge.
 							 */}
 							<div
 								data-board-team={band.team ?? ""}
-								className="sticky top-11 z-20 flex h-8 items-center gap-2 bg-canvas px-3 text-meta"
+								className="sticky top-11 z-20 flex h-8 items-center bg-canvas px-3 text-meta"
 							>
-								<span className="sticky left-3 max-w-[calc(100cqw-1.5rem)] truncate text-ink">
-									{band.team ?? NO_TEAM_LABEL}
-								</span>
-								<span className="shrink-0 text-ink-muted">
-									{band.items.length}
+								<span className="sticky left-3 flex min-w-0 max-w-[calc(100cqw-1.5rem)] items-center gap-2">
+									<span className="truncate text-ink">
+										{band.team ?? NO_TEAM_LABEL}
+									</span>
+									<span className="shrink-0 text-ink-muted">
+										{band.items.length}
+									</span>
 								</span>
 							</div>
 							{/*
-							 * THE WELL: one cell per column, and every cell stretches to the
-							 * band's tallest (the flex row's default cross-stretch) — the
-							 * banded form of "every column is the height of its queue". No
-							 * `overflow: hidden` anywhere on the way down: a clipped
-							 * ancestor freezes the sticky band header mid-scroll.
+							 * AN EMPTY BAND IS A FLAT LINE (operator refinement): no
+							 * strip of empty column space — the header stands and a
+							 * hairline marks where its content would begin. `groupByTeam`
+							 * omits empty groups by its own rule, so this is the guard
+							 * for the state rather than a case live data produces today;
+							 * it keeps the shape honest if a team source ever admits a
+							 * roster the projects do not.
+							 *
+							 * THE WELL IS CAPPED AT ONE SCREEN (operator refinement):
+							 * the section never grows past the board viewport — every
+							 * CELL is its own bounded vertical scroller (`max-h` = one
+							 * screen minus the pinned row and this band's header,
+							 * `100cqh - 92`), so a long queue scrolls inside its column
+							 * while a short one shrinks to content (a max, not a
+							 * height). Cells still cross-stretch to the well's tallest,
+							 * so the band stays one rectangle. NOTHING TRAPS THE WHEEL:
+							 * no `overscroll-behavior` anywhere on this path and no
+							 * `overflow: hidden` between the cells and the strip — a
+							 * wheel over a column that cannot scroll (or has hit its
+							 * edge) chains to the board's own scroller, which is how
+							 * the next team comes into view.
 							 */}
-							<div className="flex gap-3 rounded-md bg-sunken py-2">
-								{columns.map((column) => {
-									const cards = band.items.filter(
-										(project) => project.status === column.status,
-									);
-									return (
-										<div
-											key={column.status}
-											data-board-cell={column.status}
-											className="flex w-64 shrink-0 flex-col gap-2 px-2"
-										>
-											{cards.length > 0 && (
-												<ul className="flex flex-col gap-2">
-													{cards.map((project) => (
-														<li key={project.id}>
-															<BoardCard
-																project={project}
-																nowMs={nowMs}
-																busy={moving.has(project.id)}
-																onOpen={() => onOpen(project)}
-																onEdit={() => onEdit(project)}
-																onDelete={() => onDelete(project)}
-																onMove={(status) => onMove(project, status)}
-															/>
-														</li>
-													))}
-												</ul>
-											)}
-										</div>
-									);
-								})}
-							</div>
+							{band.items.length === 0 ? (
+								<div className="mt-0.5 h-px bg-hairline" />
+							) : (
+								<div className="flex gap-3 rounded-md bg-sunken py-2">
+									{columns.map((column) => {
+										const cards = band.items.filter(
+											(project) => project.status === column.status,
+										);
+										return (
+											<div
+												key={column.status}
+												data-board-cell={column.status}
+												className="flex max-h-[calc(100cqh-92px)] w-64 shrink-0 flex-col gap-2 overflow-y-auto px-2"
+											>
+												{cards.length > 0 && (
+													<ul className="flex flex-col gap-2">
+														{cards.map((project) => (
+															<li key={project.id}>
+																<BoardCard
+																	project={project}
+																	nowMs={nowMs}
+																	busy={moving.has(project.id)}
+																	onOpen={() => onOpen(project)}
+																	onEdit={() => onEdit(project)}
+																	onDelete={() => onDelete(project)}
+																	onMove={(status) => onMove(project, status)}
+																/>
+															</li>
+														))}
+													</ul>
+												)}
+											</div>
+										);
+									})}
+								</div>
+							)}
 						</section>
 					))}
 				</div>
