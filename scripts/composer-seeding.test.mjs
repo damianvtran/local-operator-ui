@@ -53,7 +53,7 @@ const HOOK = "src/renderer/src/shared/hooks/use-message-input.ts";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export { joinTranscript, retireDraftApplies, shouldReinitialiseComposer } from "./src/renderer/src/shared/hooks/use-message-input";',
+			'export { historyRecallEngages, joinTranscript, retireDraftApplies, shouldReinitialiseComposer } from "./src/renderer/src/shared/hooks/use-message-input";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -73,8 +73,12 @@ const bundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { joinTranscript, retireDraftApplies, shouldReinitialiseComposer } =
-	await import(bundlePath.href);
+const {
+	historyRecallEngages,
+	joinTranscript,
+	retireDraftApplies,
+	shouldReinitialiseComposer,
+} = await import(bundlePath.href);
 await unlink(bundlePath);
 
 test("a composer seeds for a conversation it has not seeded for", () => {
@@ -252,5 +256,63 @@ test("the seeding effect is GATED on the rule, not merely accompanied by it", ()
 		source.split("lastInitialisedRef.current = conversationId;").length - 1,
 		1,
 		"the gate's memory has exactly one writer, and it is the gated effect",
+	);
+});
+
+/* ------------------------------------------------------------------ */
+/* The history walk's engagement rule (issue #673)                     */
+/* ------------------------------------------------------------------ */
+
+/*
+ * THE FIRST-LINE TEST WAS NOT AN EMPTY-BOX TEST. `isCursorAtFirstLine()` is a
+ * row count (`line === 1`), so any caret on the draft's first line took the
+ * recall branch: `preventDefault` ate the native caret move, the draft was
+ * swapped for a recalled message, and recovering the sentence meant a full
+ * history round trip - the misfire that reads as data loss (issue #673).
+ *
+ * The rule is pure and exported so it is asserted here without a DOM (the
+ * shape `retireDraftApplies` above takes), and the arm is pinned to it by a
+ * source scan because a rule nothing consults is a comment. The BEHAVIOUR -
+ * which key the composer captures, what the box holds and what the draft store
+ * keeps - is driven through the shipped component in
+ * `scripts/credential-composer.test.mjs`, whose jsdom harness is the only one
+ * in this tree that mounts it.
+ */
+
+test("only an empty composer engages the history walk", () => {
+	assert.equal(historyRecallEngages(""), true);
+});
+
+test("a draft never engages it, at any caret position", () => {
+	/*
+	 * The rule reads the CONTENT, so there is no caret argument to pass: a
+	 * single-line draft with the caret at column 0 and a multi-line draft with
+	 * the caret on its first line are the same input to it - the two caret
+	 * positions the old first-line gate misfired on because the arms were the
+	 * same. Whiteness is content: a stray space is the user's text.
+	 */
+	assert.equal(historyRecallEngages("draft"), false);
+	assert.equal(historyRecallEngages("one\ntwo"), false);
+	assert.equal(historyRecallEngages(" "), false);
+});
+
+test("the ArrowUp arm consults the rule before it captures the key", () => {
+	const hook = code(HOOK);
+	/*
+	 * The old gate - a bare first-line test on the ArrowUp arm - is exactly what
+	 * the issue files, so its absence is asserted, not assumed. The first-line
+	 * test survives below the engagement as the WALK's gate (`historyIndex !==
+	 * null`), which is why it is not banished entirely: a rule that must keep
+	 * walking from the first line cannot drop the test that defines "first".
+	 */
+	assert.doesNotMatch(
+		hook,
+		/e\.key === "ArrowUp" && isCursorAtFirstLine\(\)/,
+		"the caret's line must not decide engagement",
+	);
+	assert.match(
+		hook,
+		/historyRecallEngages\(inputValue\)/,
+		"the exported rule is what the arm consults to initiate",
 	);
 });
