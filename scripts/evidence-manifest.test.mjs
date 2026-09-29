@@ -2260,6 +2260,15 @@ const BRANCH_RECORDS = [
 	 * its identity as bare SHAs, so it adds no name to the quoting ledger.
 	 */
 	"monitorsPass",
+	/*
+	 * Grown by the recording-display pass (2026-09-29), this branch's newest
+	 * top-level record: it states what the pass ADDED (four frames - the
+	 * composer's two recording states, empty field and with draft, in both the
+	 * before and the after half) and the two commands that produced the halves,
+	 * and it spells its identity as bare SHAs, so it adds no name to the
+	 * quoting ledger.
+	 */
+	"sttRecordingDisplayPass",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
