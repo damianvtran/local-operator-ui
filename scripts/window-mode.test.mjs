@@ -2319,8 +2319,8 @@ test("the mini view's window module raises nothing on its own", () => {
 		"mini-view.ts must reach presentation only through window-raise.ts, where the launch mode's gate lives",
 	);
 	assert.ok(
-		source.includes("presentMiniView"),
-		"mini-view.ts presents through `presentMiniView`; without it the module has no way to show the window and the assertion above would be vacuous",
+		blankComments(source).includes("presentMiniView("),
+		"mini-view.ts presents through the `presentMiniView(...)` call; without the call the module has no way to show the window and the assertion above would be vacuous",
 	);
 });
 
@@ -2349,8 +2349,8 @@ test("the popup windows' module raises nothing on its own", () => {
 		"browser/index.ts must reach presentation only through window-raise.ts, where the launch mode's gate lives",
 	);
 	assert.ok(
-		source.includes("presentPopupWindow"),
-		"browser/index.ts presents popups through `presentPopupWindow`; without it the module has no way to show one and the assertion above would be vacuous",
+		blankComments(source).includes("presentPopupWindow("),
+		"browser/index.ts presents popups through the `presentPopupWindow(...)` call; without the call the module has no way to show one and the assertion above would be vacuous",
 	);
 });
 

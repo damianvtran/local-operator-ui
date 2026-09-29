@@ -1208,8 +1208,8 @@ const CONTROLS = [
 		 * loop would then assert every ink on it including the two that fail.
 		 *
 		 * `on` names every ground rather than one, and that is the measured fact rather
-		 * than caution: the row is a sibling of the consent band and the popup notice in
-		 * the same strip, and the ground behind the strip is whichever one the route
+		 * than caution: the row is a sibling of the consent band in the same strip, and
+		 * the ground behind the strip is whichever one the route
 		 * paints (the pane draws `canvas`, the surface draws `surface`), so the wash is
 		 * asserted against all four.
 		 */

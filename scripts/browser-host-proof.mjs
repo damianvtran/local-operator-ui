@@ -1633,9 +1633,19 @@ async function main() {
 	const finalLogPath = app.logPath;
 	await stopApp();
 	const logAfter = readFileSync(finalLogPath, "utf8");
-	const browserLines = (logAfter + logBefore)
-		.split("\n")
-		.filter((line) => line.includes("[browser]"));
+	/*
+	 * TWO READINGS OF ONE STREAM, and the split is load-bearing: the checks about
+	 * denials and decisions read `browserLines` (the `[browser]`-tagged lines),
+	 * while the presentation checks below read every line — the raise-family
+	 * tokens are `[window-raise] …` and can never appear in a `[browser]`-filtered
+	 * stream, so a fallback check run against the filtered array would be
+	 * vacuously true (review round 1, finding 1). The live rig scans the
+	 * unfiltered stream for the same reason.
+	 */
+	const combinedLines = (logAfter + logBefore).split("\n");
+	const browserLines = combinedLines.filter((line) =>
+		line.includes("[browser]"),
+	);
 	check(
 		"the host logged its denials and its decisions",
 		browserLines.some((line) => line.includes("denied a geolocation")),
@@ -1676,9 +1686,9 @@ async function main() {
 	// names, asserted absent rather than assumed.
 	check(
 		"no presentation fallback fired: no popup under the never plan ever read visible",
-		!browserLines.some((line) => line.includes("fallback=fired")) &&
-			!browserLines.some((line) => line.includes("[window-raise]")),
-		browserLines
+		!combinedLines.some((line) => line.includes("fallback=fired")) &&
+			!combinedLines.some((line) => line.includes("[window-raise]")),
+		combinedLines
 			.filter(
 				(line) => line.includes("fallback") || line.includes("window-raise"),
 			)
