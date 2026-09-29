@@ -251,6 +251,29 @@ export function bandReadings(
 	return { identity: pendingModel ?? inForce, effort: inForce };
 }
 
+/** The fast dial's three states; `null` is "nothing to report" (not OFF). */
+export type FastModeState = "on" | "off" | null;
+
+/**
+ * The fast dial, read off ONE spec for every surface that shows it: the
+ * strip's badge and the `/fast` row's right-edge slot both come from here, so
+ * the chip and the palette row cannot disagree about a session's dial.
+ *
+ * Mirrors `_fast_label` (`tui/widgets/status_line.py`): a model that does not
+ * report the tier (`supports_fast_mode !== true`) gets NOTHING — the segment's
+ * presence is the message there, and an `off` would claim a dial the model does
+ * not have. Only a model that HAS the tier can be on or off, and "not on" is
+ * the same fact from the spec's `false` and from a frame that omits the flag
+ * (the backend clamps `fast_mode` to `supports_fast_mode` — `providers/
+ * failover.py:2715` — so it is never true where the tier is absent).
+ */
+export function fastModeState(
+	model: CanonicalModel | null | undefined,
+): FastModeState {
+	if (model?.supports_fast_mode !== true) return null;
+	return model.fast_mode === true ? "on" : "off";
+}
+
 /**
  * The rungs a spec carries, in the spec's own order, or an empty list when it
  * carries none.
