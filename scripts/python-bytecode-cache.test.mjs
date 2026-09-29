@@ -2238,7 +2238,7 @@ const SPAWN_SITES = [
 		"src/main/backend/owned-serve-launch.ts",
 		"spawn",
 		1,
-		"the bounded interpreter probe: `command` is a candidate the resolution admitted and `env` is its caller's. `ownedServeLaunch` has exactly one caller - `backend-service.ts`, which hands it the environment `backendSpawnEnv()` built, asserted by the row above - so this site never decides the environment it runs a probe under",
+		"the bounded interpreter probe: `command` is a candidate the resolution admitted and `env` is its caller's. It has two callers, and BOTH hand it a guarded environment: `ownedServeLaunch`, whose one caller - `backend-service.ts` - passes the environment `backendSpawnEnv()` built (asserted by the row above), and `probeGlobalLauncher`, whose caller hands `withPythonBytecodeCache(process.env, appDataPath)` because the launcher's interpreter imports `local_operator` too. The site itself never decides the environment it runs a probe under, which is what keeps those two guards the visible ones",
 	),
 	runsCommand(
 		"src/main/backend/discovery.ts",

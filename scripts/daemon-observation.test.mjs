@@ -50,6 +50,7 @@ import {
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
+	readFileSync,
 	readdirSync,
 	rmSync,
 	writeFileSync,
@@ -1403,6 +1404,152 @@ test("the install is named without a shell, and the decision agrees with the spa
 				"a launcher inside the app's own former environment must not be adopted as the operator's install",
 			);
 		}
+	} finally {
+		process.env.PATH = savedPath;
+		process.env.HOME = savedHome;
+		if (savedPythonPath === undefined) {
+			Reflect.deleteProperty(process.env, "PYTHONPATH");
+		} else {
+			process.env.PYTHONPATH = savedPythonPath;
+		}
+		rmSync(binDir, { recursive: true, force: true });
+		await manager.stop(false).catch(() => {});
+	}
+});
+
+/*
+ * THE PROBE'S TWO FAILURE DIRECTIONS, driven against the real module: the retry
+ * that keeps a loaded machine from reading as a broken install, and the release
+ * that keeps ONE bad reading from deciding both of the startup's call sites for
+ * the session.
+ *
+ * Both are the review round's R1-1; the reason a doubled timeout carries is its
+ * R1-4.
+ */
+
+/**
+ * A backend whose `--version` run is slow the way a loaded machine makes one
+ * slow, so the retry can be driven without a loaded machine.
+ *
+ * `sleepingRuns` is the number of invocations that sleep before answering: 1
+ * makes the FIRST attempt time out and the RETRY answer - the case the retry
+ * exists for - and a large number keeps every attempt at its ceiling, which is
+ * the case the bound exists for. Every invocation appends a line to `attemptLog`
+ * BEFORE it sleeps, so the log's line count is the number of runs: evidence
+ * about the probe rather than about the clock.
+ */
+const slowLauncherBackend = (dir, attemptLog, sleepingRuns) => {
+	const pkg = join(dir, "fixture-slow-launcher");
+	mkdirSync(join(pkg, "local_operator"), { recursive: true });
+	writeFileSync(join(pkg, "local_operator", "__init__.py"), "");
+	writeFileSync(
+		join(pkg, "local_operator", "cli.py"),
+		[
+			"import os, time",
+			"def main():",
+			`    log = ${JSON.stringify(attemptLog)}`,
+			"    ran = len(open(log).readlines()) if os.path.exists(log) else 0",
+			'    open(log, "a").write("ran\\n")',
+			`    if ran < ${sleepingRuns}:`,
+			"        time.sleep(30)",
+			'    print("v9.9.9")',
+			"",
+		].join("\n"),
+	);
+	return pkg;
+};
+
+test("a launcher probe that times out is retried once, and the retry can answer (R1-1)", async () => {
+	const root = mkdtempSync(join(tmpdir(), "launcher-probe-retry-"));
+	try {
+		const attemptLog = join(root, "attempts.log");
+		const pkg = slowLauncherBackend(root, attemptLog, 1);
+		const shim = join(root, "local-operator");
+		writeLauncher(shim, fixtureInterpreter);
+		const verdict = await probeGlobalLauncher(
+			shim,
+			pythonChildEnv({ extra: { PYTHONPATH: pkg } }),
+			process.platform,
+			5000,
+		);
+		assert.equal(
+			verdict.usable,
+			true,
+			"the second attempt answered: one timeout on a loaded machine is not a verdict",
+		);
+		assert.equal(verdict.version, "v9.9.9");
+		assert.equal(
+			readFileSync(attemptLog, "utf8").trim().split("\n").length,
+			2,
+			"the launcher ran exactly twice - the timeout and its single retry, not a loop",
+		);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test("a launcher that never answers is reported after its one retry, naming the run that did not answer (R1-1, R1-4)", async () => {
+	const root = mkdtempSync(join(tmpdir(), "launcher-probe-bound-"));
+	try {
+		const attemptLog = join(root, "attempts.log");
+		const pkg = slowLauncherBackend(root, attemptLog, 1_000_000);
+		const shim = join(root, "local-operator");
+		writeLauncher(shim, fixtureInterpreter);
+		const verdict = await probeGlobalLauncher(
+			shim,
+			pythonChildEnv({ extra: { PYTHONPATH: pkg } }),
+			process.platform,
+			2000,
+		);
+		assert.equal(verdict.usable, false);
+		assert.match(
+			verdict.reason,
+			/did not answer a --version probe within 2000 ms/,
+			"the reason names the operation that actually ran - a --version run - not the serve path's identity probe",
+		);
+		assert.doesNotMatch(verdict.reason, /identity probe/);
+		assert.equal(
+			readFileSync(attemptLog, "utf8").trim().split("\n").length,
+			2,
+			"a second timeout is the verdict: the retry is one attempt, not a loop",
+		);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test("a negative launcher verdict does not outlive the moment it measured (R1-1)", async () => {
+	const savedPath = process.env.PATH;
+	const savedHome = process.env.HOME;
+	const savedPythonPath = process.env.PYTHONPATH;
+	process.env.PATH = LAUNCHD_PATH;
+	process.env.HOME = HOME;
+	const binDir = join(HOME, ".local", "bin");
+	const shim = join(binDir, "local-operator");
+	const manager = new BackendServiceManager();
+	managers.add(manager);
+	try {
+		mkdirSync(binDir, { recursive: true });
+		writeLauncher(shim, fixtureInterpreter);
+		/*
+		 * The launcher's own bytes do not change across the two checks - the shim
+		 * is written once and never touched again - so a verdict reused across
+		 * them can only be the CACHED negative. That is the state the review asks
+		 * to remove: it is what serves "can not be used" to both call sites for
+		 * the whole session off one bad moment.
+		 */
+		process.env.PYTHONPATH = join(binDir, "fixture-not-installed-yet");
+		assert.equal(
+			await manager.checkLocalOperatorExists(),
+			false,
+			"a launcher whose package cannot import is not an install",
+		);
+		process.env.PYTHONPATH = standInBackend(binDir);
+		assert.equal(
+			await manager.checkLocalOperatorExists(),
+			true,
+			"the same launcher, a moment later, must be probed again - a negative held for the session is how a working install sits unused",
+		);
 	} finally {
 		process.env.PATH = savedPath;
 		process.env.HOME = savedHome;

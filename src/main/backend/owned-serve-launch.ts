@@ -668,15 +668,34 @@ export function consoleInterpreter(consolePath: string): string {
  * middle: measured on this fleet-loaded host, the operator's own
  * `~/.local/bin/local-operator --version` answers in 1.96 s warm-cold (0.33 s on
  * an idle box), so the ceiling is ~7x the slowest reading and still short enough
- * that a launcher which never answers is reported rather than waited on.
+ * that a launcher which never answers is reported rather than waited on. A
+ * timeout is not the verdict on its own - it is retried once, below - because a
+ * loaded machine is not a broken install.
  */
 export const LAUNCHER_PROBE_TIMEOUT_MS = 15_000;
 
 /**
+ * How many `--version` runs a timeout waits through before it is the verdict.
+ *
+ * ONE retry, and it is the same judgement `probeWithin` makes for its probes -
+ * "a slow first run is not a broken installation": the failure a second attempt
+ * turns around is LOAD, not breakage. It cannot lean on the first attempt
+ * leaving anything warm the way `probeWithin`'s retry can - the app hands this
+ * spawn `withPythonBytecodeCache`, so the attempt that timed out wrote no
+ * bytecode to reuse - and what it buys instead is a second window on a machine
+ * whose load has passed. When it has not, the SECOND timeout is the verdict,
+ * which is the number `LAUNCHER_PROBE_WORST_MS` below accounts for (review
+ * round 1, R1-1).
+ */
+const LAUNCHER_PROBE_ATTEMPTS = 2;
+
+/**
  * Worst-case wall time for one launcher-usability probe.
  *
- * The ceiling plus the escalation that follows it when the child ignores
- * signals - SIGTERM, `graceMs`, SIGKILL, `slackMs` - which is the same shape
+ * ONE ATTEMPT is the ceiling plus the escalation that follows it when the child
+ * ignores signals - SIGTERM, `graceMs`, SIGKILL, `slackMs`, up to 19 s - and the
+ * probe is retried once (see `LAUNCHER_PROBE_ATTEMPTS` above), so a launcher that
+ * never answers is reported no later than 2 x 19 s = 38 s. Same shape
  * `INTERPRETER_RESOLUTION_WORST_MS` uses and for the same reason: the quit path's
  * failsafe derives from these numbers rather than restating them, and this probe
  * sits on that path (a quit can land while `startOwned` is inside it, and `stop()`
@@ -685,7 +704,8 @@ export const LAUNCHER_PROBE_TIMEOUT_MS = 15_000;
  * term comes back with a name rather than as prose (review round 3, F12).
  */
 export const LAUNCHER_PROBE_WORST_MS =
-	LAUNCHER_PROBE_TIMEOUT_MS + DEFAULT_BUDGET.graceMs + DEFAULT_BUDGET.slackMs;
+	LAUNCHER_PROBE_ATTEMPTS *
+	(LAUNCHER_PROBE_TIMEOUT_MS + DEFAULT_BUDGET.graceMs + DEFAULT_BUDGET.slackMs);
 
 /**
  * What a resolved global launcher turned out to be once something ran it.
@@ -704,6 +724,14 @@ export const LAUNCHER_PROBE_WORST_MS =
  * comparison. An old-but-working install is the operator's own choice and the
  * update path's subject (`classifyGlobalInstall`, `backend-version-drift`), and
  * disowning one here would be this probe deciding something it cannot see.
+ *
+ * A POSITIVE IS A PRECHECK, NOT THE GATE: it is what lets this app skip
+ * provisioning and pin a spawn to the global install, but the spawn that follows
+ * re-proves the interpreter with the serve path's own identity probe
+ * (`ownedServeLaunch`), which is a strict superset - it also proves that the base
+ * executable a venv redirector names is the process that would serve. A refusal
+ * there is a start failure with its own words; nothing falls back to the managed
+ * environment from it, which is why this probe still runs everything it can.
  *
  * `interpreter` is null on Windows, where there is no shebang to read and the
  * shim is a PE launcher rather than a script; the Windows interpreter claims are
@@ -724,6 +752,13 @@ export type LauncherUsability =
  * Never throws: a caller about to decide whether to prepare a whole managed
  * environment cannot be left holding a rejection for a question with an obvious
  * negative answer.
+ *
+ * A `ProbeTimeout` is given ONE retry (`LAUNCHER_PROBE_ATTEMPTS`) before it is
+ * reported, because the failure a retry turns around is load, not breakage; the
+ * reason a twice-timed-out run finally reports names the operation that did not
+ * answer (`--version`), because that is the operation that actually ran - the
+ * identity-probe wording belongs to the serve path's own probes (review round 1,
+ * R1-4).
  */
 export async function probeGlobalLauncher(
 	consolePath: string,
@@ -750,14 +785,31 @@ export async function probeGlobalLauncher(
 			};
 		}
 	}
-	try {
-		const stdout = await runBounded(consolePath, ["--version"], env, {
-			...DEFAULT_BUDGET,
-			timeoutMs,
-		});
-		const first = stdout.trim().split(NEWLINES)[0]?.trim() ?? "";
-		return { usable: true, interpreter, version: first || null };
-	} catch (error) {
-		return { usable: false, interpreter, reason: describe(error) };
+	for (let attempt = 1; ; attempt++) {
+		try {
+			const stdout = await runBounded(consolePath, ["--version"], env, {
+				...DEFAULT_BUDGET,
+				timeoutMs,
+			});
+			const first = stdout.trim().split(NEWLINES)[0]?.trim() ?? "";
+			return { usable: true, interpreter, version: first || null };
+		} catch (error) {
+			if (error instanceof ProbeTimeout) {
+				/*
+				 * The one failure a second attempt plausibly turns around is a
+				 * timeout: the launcher was scheduled slowly, not broken. After the
+				 * last attempt the reason has to name what actually ran - an "identity
+				 * probe" here described a `--version` run the user's log then quoted
+				 * (review round 1, R1-4).
+				 */
+				if (attempt < LAUNCHER_PROBE_ATTEMPTS) continue;
+				return {
+					usable: false,
+					interpreter,
+					reason: `${consolePath} did not answer a --version probe within ${timeoutMs} ms`,
+				};
+			}
+			return { usable: false, interpreter, reason: describe(error) };
+		}
 	}
 }
