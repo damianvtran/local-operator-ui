@@ -808,15 +808,18 @@ export const CommandPalette: FC = () => {
 						/>
 						{scopeLegend && (
 							/*
-							 * The scope chip (design round 2, D3/U3): a bare `#` and the
-							 * footer's legend both stop explaining themselves once rows
-							 * arrive (the legend only draws on an empty list), so the one
-							 * element that keeps naming the active scope while the list
-							 * shows rows is this chip beside the field. Built from
-							 * `SCOPE_LEGEND`, the table the parser and the legend already
-							 * share — `gap-0` for the same reason the legend uses it:
-							 * these are typed prefixes, and the glyph reads as the head
-							 * of its own token rather than as stray punctuation.
+							 * The scope chip (design round 2, D3/U3; this prose corrected in the
+							 * round-2 disposal, R2-1/D2-2): a bare `#` needs a word beside it once
+							 * the reader is inside a scope, and the chip draws whenever a scope IS
+							 * applied (`scope !== null`) — the same states the field shows the
+							 * glyph in. The footer's legend is a separate teaching surface with
+							 * its own swap rule (`showScopeLegend = !hasTerms || !hasResults`): it
+							 * draws on every browse, alongside this chip, and steps aside only for
+							 * a typed search that found rows — so it cannot be the word this slot
+							 * relies on. Built from `SCOPE_LEGEND`, the table the parser and the
+							 * legend already share — `gap-0` for the same reason the legend uses
+							 * it: these are typed prefixes, and the glyph reads as the head of
+							 * its own token rather than as stray punctuation.
 							 */
 							<span className="flex shrink-0 items-center gap-0 text-ink-dim text-meta">
 								<KeyboardShortcut shortcut={scopeLegend.glyph} />
@@ -960,9 +963,12 @@ export const CommandPalette: FC = () => {
 
 					{/*
 					 * The legend bar. What it teaches swaps with the state, because the
-					 * two states need different things: an empty box is where the
-					 * prefixes are worth saying out loud, and a list with rows in it is
-					 * where the keys are.
+					 * two states need different things: a query that names no terms —
+					 * the browse, whether its list is empty or full — is where the
+					 * prefixes are worth saying out loud, and a TYPED search that found
+					 * rows is where the keys are (`showScopeLegend = !hasTerms ||
+					 * !hasResults`; a typed search that found nothing keeps the
+					 * prefixes, which is the state that needs them most).
 					 */}
 					<div className="flex shrink-0 items-center gap-4 border-hairline border-t px-4 py-2 text-ink-dim text-meta">
 						{showScopeLegend ? (
