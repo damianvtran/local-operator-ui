@@ -1507,10 +1507,31 @@ export const STORIES = [
 		},
 	],
 	/*
-	 * The fold the controls accept at the operator's own title length (design
-	 * D3's boundary frame): 49 characters at the 560 band, where the identity
-	 * line sits on the clipped second line. The frame is the decision, not a
-	 * defect - the title outranks the path and the identity by construction.
+	 * UX round 1's U2, as a claim that can fail rather than a frame alone: the
+	 * operator's own 49-character title at the 560 band, and a real press
+	 * thrown at the AGENT chip's own centre must open its panel. The entry
+	 * records the fold this story used to show - the identity wrapped onto the
+	 * clipped second line, the chip present but not painted, so
+	 * `elementFromPoint` at its centre hit the band and the press opened
+	 * nothing - and it would have failed before the block stopped wrapping
+	 * while the controls are its second half (`chat-header.tsx`).
+	 */
+	[
+		"chat-header-identity--narrow-fold",
+		560,
+		220,
+		{
+			press: '[data-header-identity="agent"]',
+			expectPresent: '[data-header-identity-menu="agent"]',
+			dir: "narrow-fold-agent-menu-open",
+		},
+	],
+	/*
+	 * The boundary frame itself (design D3): the same 49 characters at the 560
+	 * band. It photographed the fold as a decision until U2 measured its
+	 * pointer cost; the block no longer wraps for the controls, so the frame
+	 * now shows them ON the painted line with the title truncated - and the
+	 * press entry above is what keeps that claim honest.
 	 */
 	["chat-header-identity--narrow-fold", 560, 84],
 	/*

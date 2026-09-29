@@ -32,9 +32,9 @@ every story here answers `desktop.request` from its own bridge (`teams.list`,
 | frame | what it is |
 | --- | --- |
 | `team-bound` | The operator's own case: team bound, no `/agent`, so the agent control reads the team's manager. The band at 560. |
-| `team-menu-open` | The team menu after a real press: rows `lopdev` / `minerva`, the current row marked with the authored 8px dot. The entry asserts the menu's own hook at shutter time - a closed menu fails the run. |
+| `team-menu-open` | The team menu after a real press: the search field, rows `lopdev` / `minerva` as the app's own two-line picker rows, the current row carrying the `Check` (the authored dot is gone). The entry asserts the menu's own hook at shutter time - a closed menu fails the run. |
 | `agent-menu-open` | The agent menu, same terms, from the agent trigger. |
-| `team-menu-keyboard-highlight` | One `ArrowDown` after a pointer-open: Radix's roving focus on the first row, `[data-highlighted]` asserted present. |
+| `team-menu-keyboard-highlight` | One `ArrowDown` after a pointer-open: the arrows keep focus in the field and move `aria-activedescendant`, so the active row is the one carrying `aria-selected` - `[role="option"][aria-selected="true"]` is asserted present (Radix's roving focus, `data-highlighted`, is what a menu would set and this listbox does not). |
 | `team-trigger-hover` | The team trigger under the rig's real pointer (asserted `:hover`), the pre-click state. |
 | `team-trigger-focus` | The same trigger reached by real Tab presses, `:focus-visible` (a programmatic `.focus()` would not match - which is why the entry walks). |
 | `pencil-focus` | The pencil revealed by `group-focus-within` on the title block, reached by Tab. |
@@ -45,9 +45,10 @@ every story here answers `desktop.request` from its own bridge (`teams.list`,
 | `agent-and-team` | Both bound, agent first - the order the joined string had. |
 | `before` | Today's plain string, rendered by the same story on this tree (the pair's third check: it must be byte-comparable to main's). |
 | `wide` | The same arrangement at 1380, the width the operator's screenshot was taken at. |
-| `narrow-fold` | The operator's own 49-character title at the 560 band: the identity line sits on the clipped second line. The D3 boundary frame - the fold is the trade, photographed. |
+| `narrow-fold` | The operator's own 49-character title at the 560 band: the chips sit ON the painted line with the title truncated around them (UX round 1's U2 - the block no longer wraps while the controls are its second half; the frame used to record the fold as a decision). |
+| `narrow-fold-agent-menu-open` | The same band, a real press at the agent chip's own centre: the panel opens. U2's fix as an `expectPresent` claim - a press that lands on the band (the old wrap-clip) opens nothing and fails the run. |
 | `team-menu-empty` | The catalogue answering with no rows: `No teams are registered.` |
-| `team-menu-refused` | The registry's refusal in its own words (`The profile registry is unavailable`). The story holds the rig's `capturePending` latch until `[data-header-identity-error]` is in the DOM, and the entry asserts that row - the first capture of this frame raced the query's retry window and photographed `Loading teams…` (design D1). |
+| `team-menu-refused` | The registry's refusal in its own words (`The profile registry is unavailable.`). The story holds the rig's `capturePending` latch until `[data-header-identity-error]` is in the DOM, and the entry asserts that row - the first capture of this frame raced the query's retry window and photographed `Loading teams…` (design D1). |
 
 ## What the measurements behind the frames say
 
@@ -60,11 +61,17 @@ launch shape the rig uses), reading live geometry:
   pane-open width, and 800; the title's `y` stays `10` throughout. Before the
   fix the block scrolled 0->3 at rest and 22px at the fold, and blur never
   restored it.
-- **The fold's arithmetic** (design D3): at the 49-character title, the
-  identity line's top sits 21.7px below the block's top - the clipped second
-  line - at 560 and at 220, while the title and its pencil stay on line one.
-  The one-line clip band is 20px, which is why a 24px control cannot live in
-  it (see the PR's Judgement calls on design D5).
+- **The controls stay on the painted line** (UX round 1's U2; design D3's boundary
+  is `narrow-fold`): at the operator's 49-character title both chips sit on line
+  one at every width the review named - 560 / 480 / 400 / 320 / 220 -
+  `elementFromPoint` at each chip's own centre hits the chip, and a real press
+  opens its panel, with the title truncating around them (262.4px at 560; it
+  yields entirely at the app's own narrowest 220, where the chips keep their
+  room). Before the fix the identity line's top sat 21.7px below the block's top
+  (the clipped second line) at 560 and at 220: every chip off the paint, the
+  band the topmost element at its centre, and a press opening nothing. The
+  one-line clip band is 20px, which is why a 24px control cannot live in it
+  (see the PR's Judgement calls on design D5).
 - **The current-row dot** (design D2): 8x8 CSS px after the `size-2`
   carve-out; 15-16px before it.
 - **The first-click swap** (UX U4): one press on the sibling trigger leaves
@@ -87,7 +94,7 @@ What they show, and why they are the frames to open first:
 | --- | --- |
 | `long-roster-agent-open` | The 150-name roster as main draws it: one flat menu, no bound, no filter, no grouping - and its last name, `tui-designer`, half off the foot of a 640px window. This is the failure the 352px ceiling and the search field answer. |
 | `long-roster-short-window` | The same list at 560x220, where main has no answer at all: the menu runs past the window and the window keeps nothing. |
-| `menu-near-window-bottom` | The band pinned to the bottom of the viewport: main's menu is drawn off the screen rather than flipped above it. |
+| `menu-near-window-bottom` | The band pinned to the bottom of the viewport: main's menu is drawn ABOVE the chip with its head clipped at the window's top edge - main has no bound, so `shift` slid an unbounded menu up; the flip and the ceiling are this branch's answer. |
 
 One working-tree-only edit was needed to take these, and it is worth recording
 because it is the honest difference between the two halves: the arms assert

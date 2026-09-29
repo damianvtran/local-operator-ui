@@ -201,7 +201,7 @@ const installBridge = ({
 				if (entities === "refused") {
 					return {
 						status: 503,
-						body: { detail: "The profile registry is unavailable" },
+						body: { detail: "The profile registry is unavailable." },
 					};
 				}
 				return ok({
@@ -495,13 +495,17 @@ export const TeamMenuBusy: Story = {
 };
 
 /**
- * The fold the controls accept, at the operator's own title length.
+ * The operator's own title length at the 560 band - the frame UX round 1's U2
+ * was measured on.
  *
- * Design round 1's D3 asked for the boundary frame: 49 characters at the 560
- * band is the operator's own title (their screenshot), and the identity line
- * wraps onto the clipped second line there - the controls are PRESENT but not
- * visible, and the command surface remains their keyboard path. Photographed
- * rather than only recorded so the trade reads as a decision.
+ * Design round 1's D3 asked for this boundary frame, and it used to record the
+ * fold: the identity line wrapped onto the clipped second line there - the
+ * controls PRESENT but not visible, the keyboard their only path. U2 then
+ * measured what that cost the pointer (`elementFromPoint` at the chip's own
+ * centre hit the band and a press opened nothing - a control that is not
+ * painted cannot be pressed), so the block no longer wraps while the controls
+ * are its second half (see `chat-header.tsx`): the title yields and truncates,
+ * the chip keeps its room, and this frame shows the chips ON the painted line.
  */
 export const NarrowFold: Story = {
 	render: () => {
