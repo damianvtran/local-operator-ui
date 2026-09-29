@@ -21,6 +21,18 @@
  *   THIS WEEK  within the last seven days, and not today.
  *   OLDER      everything else, including a row with no time at all.
  *
+ * THE TIME BASIS (2026-09-28, the operator's report). The sections and the row
+ * labels read ONE clock, and which clock is the reader's choice: `active` (the
+ * default) is the transcript's activity time - the wire's `mtime`, this row's
+ * `updated_at` - and `created` is the conversation's birth, the wire's
+ * `created_at`. Every other rule is the basis's to change ONLY through that one
+ * read (`rowTimeMs`): running first, calendar days, and "no time is OLDER, never
+ * a date" hold on both, and the label cannot disagree with the bin because both
+ * come through the same function. The operator's report - "even if I've asked an
+ * older session something today, once it completes I can't see it within the
+ * today bin" - is why the basis is configurable at all; the promptness half of
+ * the fix lives in the sidebar's refresh, not here.
+ *
  * WHAT IT DELIBERATELY DOES NOT DO: re-sort. The catalogue owns the order
  * (`desktop-session-contract.ts`: "the backend owns status precedence ... and
  * order"), and a partition that preserved it inside each section is the TUI's
@@ -31,6 +43,19 @@
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 
 export type ChatListSection = "running" | "today" | "week" | "older";
+
+/**
+ * Which clock the sections and the row labels read.
+ *
+ * `active` is the transcript's activity clock (`updated_at`, the wire's
+ * `mtime`); `created` is the conversation's birth (`created_at`, the backend's
+ * `session_created_at`). Both are epoch SECONDS on the wire and are converted
+ * in one place (`rowTimeMs`).
+ */
+export type SidebarBasis = "active" | "created";
+
+/** The bases, in the order the popover draws them. */
+export const SIDEBAR_BASES: readonly SidebarBasis[] = ["active", "created"];
 
 /** The sections in the order they are drawn. */
 export const CHAT_LIST_SECTIONS: readonly ChatListSection[] = [
@@ -88,24 +113,42 @@ const startOfDay = (now: number): number => {
 };
 
 /**
+ * The instant the chosen basis reads, in MILLISECONDS, or null for "no time".
+ *
+ * ONE DOOR FOR BOTH CLOCKS, because the sections, the label and (through them)
+ * the popover's counts must never disagree about a row's time: `sectionOf` and
+ * `relativeTime` both come through here.
+ *
  * `updated_at` is SECONDS: the wire's `mtime` is the backend's Python float
  * (`SessionCatalogueRow.mtime`), mapped straight into the row
- * (`canonical-sessions-store.ts`), and `scheduled-task-dialog.tsx` reads the same
- * field the same way. A missing or non-finite value is "no time", never zero -
- * zero is 1970 and would land every such row at the bottom with a date on it.
+ * (`canonical-sessions-store.ts`), and `scheduled-task-dialog.tsx` reads the
+ * same field the same way. `created_at` is SECONDS on the same rule. A missing
+ * or non-finite value is "no time", never zero - zero is 1970 and would land
+ * every such row at the bottom with a date on it.
+ *
+ * `created_at <= 0` is the backend's own "unknown" (`session_created_at`
+ * answers `0.0` when the directory cannot be read), so on the Created basis
+ * zero is refused rather than printed as 1970. `updated_at` keeps the older
+ * finiteness-only rule: an mtime of zero is not a state the backend produces,
+ * and a row that somehow carried one is better off sorted than hidden.
  */
-export function rowTimeMs(row: CanonicalSessionRow): number | null {
-	const seconds = row.updated_at;
+export function rowTimeMs(
+	row: CanonicalSessionRow,
+	basis: SidebarBasis,
+): number | null {
+	const seconds = basis === "created" ? row.created_at : row.updated_at;
 	if (typeof seconds !== "number" || !Number.isFinite(seconds)) return null;
+	if (basis === "created" && seconds <= 0) return null;
 	return seconds * 1000;
 }
 
 export function sectionOf(
 	row: CanonicalSessionRow,
 	now: number,
+	basis: SidebarBasis,
 ): ChatListSection {
 	if (isRunningRow(row)) return "running";
-	const at = rowTimeMs(row);
+	const at = rowTimeMs(row, basis);
 	if (at === null) return "older";
 	const today = startOfDay(now);
 	if (at >= today) return "today";
@@ -117,6 +160,7 @@ export function sectionOf(
 export function sectionRows(
 	rows: readonly CanonicalSessionRow[],
 	now: number,
+	basis: SidebarBasis,
 ): Record<ChatListSection, CanonicalSessionRow[]> {
 	const out: Record<ChatListSection, CanonicalSessionRow[]> = {
 		running: [],
@@ -124,7 +168,7 @@ export function sectionRows(
 		week: [],
 		older: [],
 	};
-	for (const row of rows) out[sectionOf(row, now)].push(row);
+	for (const row of rows) out[sectionOf(row, now, basis)].push(row);
 	return out;
 }
 
@@ -138,8 +182,12 @@ export function sectionRows(
  * A future time (a clock skewed ahead of the backend's) reads `now` rather than a
  * negative number. No time at all prints nothing.
  */
-export function relativeTime(row: CanonicalSessionRow, now: number): string {
-	const at = rowTimeMs(row);
+export function relativeTime(
+	row: CanonicalSessionRow,
+	now: number,
+	basis: SidebarBasis,
+): string {
+	const at = rowTimeMs(row, basis);
 	if (at === null) return "";
 	const minutes = Math.floor(Math.max(0, now - at) / 60_000);
 	if (minutes < 1) return "now";
@@ -153,14 +201,26 @@ export function relativeTime(row: CanonicalSessionRow, now: number): string {
 	return `${Math.floor(days / 365)}y`;
 }
 
-/** The whole-sentence form, for the row's accessible name and its flyout. */
+/**
+ * The whole-sentence form, for the row's accessible name and its flyout, NAMING
+ * THE BASIS the number came from.
+ *
+ * WHY THE BASIS IS ANNOUNCED (design direction, 2026-09-28): a switched basis
+ * changes what `3w` MEANS - three weeks since it last moved, or three weeks
+ * since it was created - and the terse visible label cannot say which. The
+ * sentence is the channel that can, so a reader is never guessing what the
+ * number beside the title measures: ", last active 3 weeks ago" against
+ * ", created 3 weeks ago". Sentence case, and never the word "bin".
+ */
 export function relativeTimeSentence(
 	row: CanonicalSessionRow,
 	now: number,
+	basis: SidebarBasis,
 ): string {
-	const short = relativeTime(row, now);
+	const short = relativeTime(row, now, basis);
 	if (!short) return "";
-	if (short === "now") return "just now";
+	const prefix = basis === "created" ? "created" : "last active";
+	if (short === "now") return `${prefix} just now`;
 	const unit: Record<string, string> = {
 		m: "minute",
 		h: "hour",
@@ -170,5 +230,5 @@ export function relativeTimeSentence(
 	};
 	const count = Number.parseInt(short, 10);
 	const word = unit[short.slice(-1)];
-	return `${count} ${word}${count === 1 ? "" : "s"} ago`;
+	return `${prefix} ${count} ${word}${count === 1 ? "" : "s"} ago`;
 }

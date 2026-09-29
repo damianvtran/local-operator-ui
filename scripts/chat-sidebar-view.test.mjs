@@ -61,6 +61,7 @@ const {
 	SIDEBAR_SECTION_LABEL,
 	isEntitySection,
 	isSectionShown,
+	canMoveSection,
 	moveSection,
 	pageLimit,
 	pageMoreLabel,
@@ -285,7 +286,7 @@ test("the section grouping is the list's own, not a second partition", () => {
 	);
 	// The arrangement the null defers to, driven through the module that owns it,
 	// so the deferral is a fact about the shipped code and not about a stub.
-	const sectioned = sectionRows(rows, NOW);
+	const sectioned = sectionRows(rows, NOW, "active");
 	assert.deepEqual(
 		sectioned.running.map((entry) => entry.session_id),
 		["busy"],
@@ -416,11 +417,125 @@ test("an unreadable or tampered view draws the column nobody has configured", ()
 	);
 	assert.deepEqual(DEFAULT_SIDEBAR_VIEW.hidden, []);
 	assert.equal(DEFAULT_SIDEBAR_VIEW.groupBy, "section");
+	assert.equal(DEFAULT_SIDEBAR_VIEW.basis, "active");
 	assert.equal(DEFAULT_SIDEBAR_VIEW.orderBy, "active-first");
 	assert.equal(DEFAULT_SIDEBAR_VIEW.loads, 0);
 });
 
-test("the component draws the band's controls and the popover's three groups", () => {
+test("the time basis parses like the other two choices: stored, validated, defaulted", () => {
+	assert.equal(parseSidebarView({ basis: "created" }).basis, "created");
+	assert.equal(
+		parseSidebarView({ basis: "modified" }).basis,
+		"active",
+		"a basis this build cannot name falls back to the default rather than emptying the field",
+	);
+	assert.equal(parseSidebarView({ basis: 7 }).basis, "active");
+});
+
+test("a reorder pair is offered only where a press can land (D1)", () => {
+	/*
+	 * The defect this pins, measured on the operator's panel: Pinned draws first
+	 * whatever the stored order says, and the entity region draws in fixed source
+	 * order, so a pair on either moved the stored order and the popover while the
+	 * column it describes stood still. The pair is drawn on the chat sections
+	 * alone, and enabled only when the adjacent SHOWN section in that direction is
+	 * another chat section.
+	 */
+	for (const key of ["pinned", "agents", "teams"]) {
+		assert.equal(
+			canMoveSection(DEFAULT_SIDEBAR_VIEW, key, -1),
+			false,
+			`${key} must offer no up`,
+		);
+		assert.equal(
+			canMoveSection(DEFAULT_SIDEBAR_VIEW, key, 1),
+			false,
+			`${key} must offer no down`,
+		);
+	}
+	// The default order's interior chat neighbours: running/down, today/both, week/up.
+	assert.equal(canMoveSection(DEFAULT_SIDEBAR_VIEW, "running", 1), true);
+	assert.equal(canMoveSection(DEFAULT_SIDEBAR_VIEW, "today", -1), true);
+	assert.equal(canMoveSection(DEFAULT_SIDEBAR_VIEW, "today", 1), true);
+	assert.equal(canMoveSection(DEFAULT_SIDEBAR_VIEW, "week", -1), true);
+	// The edges: Pinned above running, the entity region below Older.
+	assert.equal(canMoveSection(DEFAULT_SIDEBAR_VIEW, "running", -1), false);
+	assert.equal(canMoveSection(DEFAULT_SIDEBAR_VIEW, "older", 1), false);
+});
+
+test("an empty section cannot move, and nothing moves against one (round 1's m1/U1)", () => {
+	/*
+	 * THE DEFECT THIS PINS, driven end to end in round 1: with a store whose only
+	 * row sits in Today, `This week` is shown but draws no rows (an empty chat
+	 * section contributes no label), and `Move Today down` was enabled - pressing
+	 * it rewrote the stored order and the panel's own list while the column the
+	 * reader was watching stood still. The mirror is an empty SOURCE: pressing an
+	 * empty section's own arrow at a drawn neighbour is equally invisible, because
+	 * the section being moved contributed nothing to the drawn sequence either
+	 * way. So the predicate asks BOTH ends - the section being moved and the
+	 * adjacent shown section in that direction must both draw - and with no
+	 * predicate (a caller with no rows to point at) the geometric rule stands.
+	 */
+	const draws = (drawn) => (key) => drawn.includes(key);
+	assert.equal(
+		canMoveSection(
+			DEFAULT_SIDEBAR_VIEW,
+			"today",
+			1,
+			draws(["running", "today"]),
+		),
+		false,
+		"today cannot move against an empty week",
+	);
+	assert.equal(
+		canMoveSection(
+			DEFAULT_SIDEBAR_VIEW,
+			"running",
+			1,
+			draws(["today", "week"]),
+		),
+		false,
+		"an empty section cannot move at all",
+	);
+	assert.equal(
+		canMoveSection(
+			DEFAULT_SIDEBAR_VIEW,
+			"today",
+			1,
+			draws(["running", "today", "week"]),
+		),
+		true,
+		"both ends drawn: the press is real",
+	);
+	assert.equal(
+		canMoveSection(DEFAULT_SIDEBAR_VIEW, "today", 1),
+		true,
+		"no predicate: the geometric rule alone",
+	);
+});
+
+test("a hidden section cannot move, and a hidden neighbour makes a new one adjacent", () => {
+	const hidden = toggleSection(DEFAULT_SIDEBAR_VIEW, "today");
+	assert.equal(
+		canMoveSection(hidden, "today", -1),
+		false,
+		"a section that is not drawn has no up",
+	);
+	// With today hidden, running's shown down-neighbour is week - still a chat section.
+	assert.equal(canMoveSection(hidden, "running", 1), true);
+	const shuffled = {
+		...DEFAULT_SIDEBAR_VIEW,
+		order: ["pinned", "running", "agents", "today", "week", "older", "teams"],
+	};
+	assert.equal(
+		canMoveSection(shuffled, "today", -1),
+		false,
+		"its shown up-neighbour is an entity row",
+	);
+	assert.equal(canMoveSection(shuffled, "today", 1), true);
+});
+
+test("the component draws the band's controls and the popover's four groups", () => {
 	// The markup assertions this suite can make about a component it cannot
 	// render: the three icon-only buttons exist, each is named for a screen
 	// reader, and each of the popover's groups is drawn. A control that lost its
@@ -446,7 +561,7 @@ test("the component draws the band's controls and the popover's three groups", (
 	]) {
 		assert.ok(source.includes(hook), `${hook} is not drawn`);
 	}
-	for (const label of ["Group by", "Order by", "Sections"]) {
+	for (const label of ["Group by", "Time basis", "Order by", "Sections"]) {
 		assert.ok(
 			menu.includes(`"${label}"`) || menu.includes(`>${label}<`),
 			`the view popover draws no ${label} group`,
@@ -454,11 +569,16 @@ test("the component draws the band's controls and the popover's three groups", (
 	}
 	for (const hook of [
 		"data-sidebar-view-choice",
+		"data-sidebar-view-basis",
 		"data-sidebar-view-section",
 		"data-sidebar-view-move",
 	]) {
 		assert.ok(menu.includes(hook), `${hook} is not drawn`);
 	}
+	assert.ok(
+		menu.includes("basis: option.key"),
+		"the Time basis rows do not write the view's basis on press",
+	);
 	assert.ok(
 		source.includes('navigate("/agents?create=agent")') &&
 			source.includes('navigate("/agents?create=team")'),

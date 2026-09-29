@@ -1,6 +1,7 @@
 /**
  * The sidebar's VIEW: which sections it draws, in what order, grouped and
- * ordered how, and how much of the list is loaded.
+ * ordered how, WHICH CLOCK the time sections read, and how much of the list is
+ * loaded.
  *
  * WHY A MODULE, and it is the reason `chat-list-sections.ts` and
  * `sidebar-split.ts` beside it give: this repository's `node:test` suite cannot
@@ -34,7 +35,11 @@
  */
 
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
-import { isRunningRow } from "./chat-list-sections";
+import {
+	SIDEBAR_BASES,
+	type SidebarBasis,
+	isRunningRow,
+} from "./chat-list-sections";
 
 /** Every section the sidebar can draw, in the order a fresh column draws them. */
 export type SidebarSectionKey =
@@ -127,6 +132,14 @@ export type SidebarView = {
 	/** The user's order: a permutation of `SIDEBAR_SECTIONS`. */
 	order: SidebarSectionKey[];
 	groupBy: SidebarGroupBy;
+	/**
+	 * Which clock the time sections and the row labels read.
+	 *
+	 * Declared beside `groupBy`/`orderBy` because it is a third, independent axis
+	 * of the same panel: it changes NEITHER the grouping nor the order - it changes
+	 * what the numbers measure (`chat-list-sections.ts` carries the semantics).
+	 */
+	basis: SidebarBasis;
 	orderBy: SidebarOrderBy;
 	/** How many times "Load more" has been pressed. 0 is the first page. */
 	loads: number;
@@ -136,6 +149,7 @@ export const DEFAULT_SIDEBAR_VIEW: SidebarView = {
 	hidden: [],
 	order: [...SIDEBAR_SECTIONS],
 	groupBy: "section",
+	basis: "active",
 	orderBy: "active-first",
 	loads: 0,
 };
@@ -398,6 +412,73 @@ export function moveSection(
 	return { ...view, order };
 }
 
+/**
+ * The four sections the CHATS region draws, in the order a fresh column draws
+ * them.
+ *
+ * Pinned is not one of them, and neither are the two entity sections: Pinned
+ * renders as its own partition above the chats list and always first, and the
+ * entity region draws Agents and Teams in fixed source order. See
+ * `canMoveSection` for what that costs a reorder press.
+ */
+export const CHAT_SECTION_KEYS: readonly SidebarSectionKey[] = [
+	"running",
+	"today",
+	"week",
+	"older",
+];
+
+export function isChatSection(key: SidebarSectionKey): boolean {
+	return CHAT_SECTION_KEYS.includes(key);
+}
+
+/**
+ * Whether a section's move arrow can do what its label says (2026-09-28, D1;
+ * tightened the same day for the empty-section case).
+ *
+ * THE DEFECT IT ANSWERS, measured on the operator's own panel by pressing the
+ * arrows: the pair used to be offered on every non-entity row and enabled by
+ * "is there a shown section above/below", so a press could (a) sit on Pinned,
+ * whose row the column always draws first - the press rewrote the popover's own
+ * list and moved nothing on screen - or (b) swap a chat section with an entity
+ * key, which the column cannot honour either, because the entity region draws
+ * below the chats list in fixed order. In both cases the popover then disagreed
+ * with the column it was describing.
+ *
+ * THE RULE: a chat section's arrow is enabled only when the move would change
+ * what the reader is looking at - the section being moved AND the adjacent
+ * SHOWN section in that direction must both be sections the column DRAWS.
+ * Pinned and the entity rows draw no pair at all (the menu's own rule); a
+ * hidden section cannot move - it is not drawn, so "up" has no meaning for it;
+ * and an EMPTY chat section draws nothing either (`chat-sidebar.tsx`: "An empty
+ * section contributes no label"), so a swap with one rewrites the stored order
+ * while the column stands still - round 1's m1/U1, whose repro was Today's
+ * down-arrow enabled against an empty `week`, and whose mirror is an empty
+ * `running` as the source of an equally invisible down-press.
+ *
+ * WHAT DRAWABILITY IS NOT THIS MODULE'S TO KNOW: it is a fact about the loaded
+ * rows, which the renderer holds and this pure model does not. So the caller
+ * passes the predicate it can answer - the sidebar's own per-section counts,
+ * the same numbers the section headers draw - and an absent predicate keeps
+ * the geometric rule only, which is what a caller with no rows to point at
+ * can honestly answer.
+ */
+export function canMoveSection(
+	view: SidebarView,
+	key: SidebarSectionKey,
+	direction: -1 | 1,
+	draws?: (key: SidebarSectionKey) => boolean,
+): boolean {
+	if (!isChatSection(key)) return false;
+	if (draws && !draws(key)) return false;
+	const shown = shownSections(view);
+	const at = shown.indexOf(key);
+	if (at < 0) return false;
+	const target = shown[at + direction];
+	if (target === undefined || !isChatSection(target)) return false;
+	return draws ? draws(target) : true;
+}
+
 const GROUP_BY: readonly SidebarGroupBy[] = ["section", "agent", "flat"];
 const ORDER_BY: readonly SidebarOrderBy[] = ["active-first", "recent"];
 
@@ -407,12 +488,12 @@ const ORDER_BY: readonly SidebarOrderBy[] = ["active-first", "recent"];
  * ONE UNION AND NO PARTIAL STATE, which is the same rule `parseSidebarRegions`
  * states and for the same reason: a sidebar that cannot read its own preference
  * must look like a sidebar nobody has configured. So an unknown `groupBy`
- * contributes the default rather than dropping the whole view, `order` is
- * NORMALISED against `SIDEBAR_SECTIONS` - unknown keys dropped, missing ones
- * appended in canonical order, duplicates removed - and a `hidden` entry that is
- * not a section is discarded. The alternative, trusting the blob, is a column
- * that draws six of seven sections and has no control that could name the
- * missing one.
+ * (or `orderBy`, or `basis`) contributes the default rather than dropping the
+ * whole view, `order` is NORMALISED against `SIDEBAR_SECTIONS` - unknown keys
+ * dropped, missing ones appended in canonical order, duplicates removed - and a
+ * `hidden` entry that is not a section is discarded. The alternative, trusting
+ * the blob, is a column that draws six of seven sections and has no control
+ * that could name the missing one.
  *
  * `loads` is clamped rather than rejected: it is a click counter, and a
  * tampered `1e9` would ask the list for a page larger than the catalogue it is
@@ -445,6 +526,9 @@ export function parseSidebarView(value: unknown): SidebarView {
 	const groupBy = GROUP_BY.includes(raw.groupBy as SidebarGroupBy)
 		? (raw.groupBy as SidebarGroupBy)
 		: DEFAULT_SIDEBAR_VIEW.groupBy;
+	const basis = SIDEBAR_BASES.includes(raw.basis as SidebarBasis)
+		? (raw.basis as SidebarBasis)
+		: DEFAULT_SIDEBAR_VIEW.basis;
 	const orderBy = ORDER_BY.includes(raw.orderBy as SidebarOrderBy)
 		? (raw.orderBy as SidebarOrderBy)
 		: DEFAULT_SIDEBAR_VIEW.orderBy;
@@ -452,5 +536,5 @@ export function parseSidebarView(value: unknown): SidebarView {
 		typeof raw.loads === "number" && Number.isFinite(raw.loads) && raw.loads > 0
 			? Math.min(CHAT_PAGE_MAX, Math.floor(raw.loads))
 			: 0;
-	return { hidden, order, groupBy, orderBy, loads };
+	return { hidden, order, groupBy, basis, orderBy, loads };
 }
