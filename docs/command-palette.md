@@ -26,9 +26,9 @@ field shows the glyph, the browse list under it is conversation rows, and terms
 search conversations the way the sidebar does, so the switcher is a starting
 point rather than a mode: backspacing the glyph widens the surface back to
 everything, and a word typed inside it searches chats alone. While the palette
-is open the scope names itself beside the field (a `# Chats` chip built from the
-same legend table the footer draws), because a bare glyph stops explaining
-itself the moment rows arrive.
+is open the scope names itself beside the field — a `# Chats` chip built from the
+same legend table the footer draws, shown whenever a scope is applied — because
+a bare glyph stops explaining itself once the reader is inside a scope.
 
 The **rail row** is the third door, and it exists because the chord is invisible:
 a user who never learns `Cmd+K` would use the palette once, if at all. The row is
@@ -114,8 +114,9 @@ meaning in the composer (its slash-command menu), and a palette where `/` means
 settings would teach two answers to one gesture. `,` is VS Code's settings
 prefix, which is the convention most users have met.
 
-The scope legend is rendered in the palette's footer whenever the query is empty
-or found nothing — the two states where a hint is worth its pixels.
+The scope legend is rendered in the palette's footer for a browse — a query that
+names no terms, its list empty or full — and for a typed search that found
+nothing: the states where a hint is worth its pixels.
 
 ## What it searches
 
@@ -203,7 +204,8 @@ a network round trip:
   the settings page; the conversation search is debounced by the module that owns
   it (150 ms) and is skipped entirely when the scope excludes chats;
 - the rendered list is capped (6 per group, 24 for a scoped group, 48 total) and
-  the legend says when the answer was clipped.
+  the footer's count line says when a TYPED search's answer was clipped — a
+  browse is clipped silently (the count renders only beside the key legend).
 
 ## Focus
 

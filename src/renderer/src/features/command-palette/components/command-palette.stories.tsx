@@ -84,11 +84,13 @@ const meta: Meta<StoryArgs> = {
 };
 
 /*
- * Eight conversations, newest first: the order the browse list renders, and
- * one more than the browse cap, so the footer's count line is part of the
- * frame. Titles are ordinary reading — the frame exists to be judged for
- * hierarchy and density, and a fixture does not need the content to mean
- * anything.
+ * Eight conversations, newest first: the order the browse list renders. Eight
+ * against the browse cap of five is what makes the clip visible — five rows,
+ * the rest reachable by typing. The footer of a browse shows the legend, not a
+ * count line; the count renders only for a typed search, so the frame's footer
+ * is the legend either way (R2-1). Titles are ordinary reading — the frame
+ * exists to be judged for hierarchy and density, and a fixture does not need
+ * the content to mean anything.
  */
 const CATALOGUE_ROWS: CanonicalSessionRow[] = [
 	"Retention policy for audit logs",
@@ -201,18 +203,19 @@ export const CommandsScope: Story = { args: { query: ">" } };
 /**
  * The chats scope with NO conversations: the empty state the switcher settles
  * into once the catalogue has answered (and the frame design round 2 asked for
- * alongside the populated one). The `# Chats` chip beside the field is the
- * scope naming itself — the footer's legend alone only draws while the list is
- * empty.
+ * alongside the populated one). The `# Chats` chip beside the field names the
+ * scope whenever one is applied; the footer's legend draws in its own states —
+ * every browse, empty or full — and teaches the other prefixes (R2-1).
  */
 export const ChatsScope: Story = {
 	render: () => <SwitcherFrame state="empty" />,
 };
 
 /**
- * The switcher POPULATED: eight conversations against the browse cap of five.
- * The footer's count line and the row rhythm are the two things the design
- * round could not judge from an empty fixture.
+ * The switcher POPULATED: eight conversations against the browse cap of five,
+ * so the five-row clip and the row rhythm — the states the design round could
+ * not judge from an empty fixture — are the frame. Its footer is the legend,
+ * not a count line: the count renders only for a typed search (R2-1).
  */
 export const ChatsScopePopulated: Story = {
 	render: () => <SwitcherFrame state="populated" />,
