@@ -1,88 +1,4 @@
 import {
-	DesktopControlError,
-	desktopRequestTimeoutMs,
-	desktopResult,
-} from "@shared/api/local-operator/desktop-api";
-import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
-import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
-import {
-	EMPTY_TRANSCRIPTION_MESSAGE,
-	transcriptionFailureMessage,
-} from "@shared/api/local-operator/transcription-failure";
-import type { AgentDetails } from "@shared/api/local-operator/types";
-import { ErrorBoundary } from "@shared/components/common/error-boundary";
-import { Button, Tooltip } from "@shared/components/ui";
-import { apiConfig } from "@shared/config/api-config";
-import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
-import {
-	COMPOSER_PLACEHOLDER,
-	type SendOutcome,
-	composerPlaceholder,
-	isOffRecordAsk,
-	settleOffRecordPayload,
-	useMessageInput,
-} from "@shared/hooks/use-message-input";
-import { useRadientSessionIssue } from "@shared/hooks/use-radient-session-issue";
-import {
-	SpeechToTextPriority,
-	resolvePushToTalkBinding,
-	setDictationActive,
-	useSpeechToTextManager,
-} from "@shared/hooks/use-speech-to-text-manager";
-import { cn } from "@shared/lib/utils";
-import { useAsideStore } from "@shared/store/aside-store";
-import {
-	CLEAR_LABEL,
-	RETRY_LABEL,
-	SEND_FAILURE_COPY,
-	buildSendPayload,
-} from "@shared/store/canonical-sessions-store";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
-import {
-	type Attachment,
-	type Reply,
-	useConversationInputStore,
-} from "@shared/store/conversation-input-store";
-import { normalizePath } from "@shared/utils/path-utils";
-import {
-	dismissToast,
-	showErrorToast,
-	showInfoToast,
-	showSuccessToast,
-	showWarningToast,
-} from "@shared/utils/toast-manager";
-import { useQueryClient } from "@tanstack/react-query";
-import {
-	Check,
-	CircleAlert,
-	Mic,
-	Paperclip,
-	Send,
-	Square,
-	X,
-} from "lucide-react";
-import {
-	forwardRef,
-	useCallback,
-	useEffect,
-	useImperativeHandle,
-	useLayoutEffect,
-	useMemo,
-	useRef,
-	useState,
-} from "react";
-import type {
-	ClipboardEvent,
-	FormEvent,
-	KeyboardEvent,
-	PointerEvent,
-} from "react";
-import { v4 as uuidv4 } from "uuid";
-import type {
-	CanonicalFrontendState,
-	CanonicalModel,
-} from "../../../../../shared/desktop-session-contract";
-import {
 	type AsideAdoptArm,
 	adoptAside,
 	asideAdoptChord,
@@ -90,39 +6,22 @@ import {
 	asideAdoptConfirm,
 	asideAdoptReady,
 	closeAside,
-} from "../aside";
+} from "@features/chat/aside";
 import {
 	approvalAnswerValue,
 	composerFocusIsOurs,
 	shouldTabIntoAnswerOptions,
-} from "../ask-answer";
-import { sendUnsettledForSession } from "../canonical/working-line-model";
+} from "@features/chat/ask-answer";
+import { sendUnsettledForSession } from "@features/chat/canonical/working-line-model";
 import {
 	CHAT_COLUMN_CONTAINER,
 	CHAT_COLUMN_INSET,
 	CHAT_MEASURE,
-} from "../chat-measure";
-import { CHAT_REGION_LABEL } from "../chat-regions";
-import {
-	COMPOSER_TEXTAREA_SELECTOR,
-	registerComposerFocus,
-} from "../composer-field";
-import type {
-	DraftPickerDestination,
-	DraftResolution,
-} from "../draft-selection";
-import { useInterruptSlotHold } from "../hooks/use-interrupt-slot-hold";
-import { MISSING_SESSION_NOTICE_ID } from "../missing-session-notice";
-import { MOVE_UNAVAILABLE_REASON } from "../move-session";
-import {
-	DESTINATIONS,
-	destinationNeedsSession,
-} from "../pickers/picker-registry";
-import { SessionStatusStrip } from "../session-status/session-status-strip";
-import type { Message } from "../types/message";
-import { AttachmentsPreview } from "./attachments-preview";
-import { AudioRecordingIndicator } from "./audio-recording-indicator";
-import { ComposerStatusRow } from "./composer-status-row";
+} from "@features/chat/chat-measure";
+import { CHAT_REGION_LABEL } from "@features/chat/chat-regions";
+import { AttachmentsPreview } from "@features/chat/components/attachments-preview";
+import { AudioRecordingIndicator } from "@features/chat/components/audio-recording-indicator";
+import { ComposerStatusRow } from "@features/chat/components/composer-status-row";
 /*
  * The composer's inline credential capture (design §1-§9). The pure module owns
  * every rule the gesture rests on — the arm predicate, the mask, the positional
@@ -172,7 +71,105 @@ import {
 	unredactedNotice,
 	unredactedOverBuffer,
 	unstoredNotice,
-} from "./credential-capture";
+} from "@features/chat/components/credential-capture";
+import {
+	COMPOSER_TEXTAREA_SELECTOR,
+	registerComposerFocus,
+} from "@features/chat/composer-field";
+import type {
+	DraftPickerDestination,
+	DraftResolution,
+} from "@features/chat/draft-selection";
+import { useInterruptSlotHold } from "@features/chat/hooks/use-interrupt-slot-hold";
+import { MISSING_SESSION_NOTICE_ID } from "@features/chat/missing-session-notice";
+import { MOVE_UNAVAILABLE_REASON } from "@features/chat/move-session";
+import {
+	DESTINATIONS,
+	destinationNeedsSession,
+} from "@features/chat/pickers/picker-registry";
+import { SessionStatusStrip } from "@features/chat/session-status/session-status-strip";
+import type { Message } from "@features/chat/types/message";
+import {
+	DesktopControlError,
+	desktopRequestTimeoutMs,
+	desktopResult,
+} from "@shared/api/local-operator/desktop-api";
+import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
+import {
+	EMPTY_TRANSCRIPTION_MESSAGE,
+	transcriptionFailureMessage,
+} from "@shared/api/local-operator/transcription-failure";
+import type { AgentDetails } from "@shared/api/local-operator/types";
+import { ErrorBoundary } from "@shared/components/common/error-boundary";
+import { Button, Tooltip } from "@shared/components/ui";
+import { apiConfig } from "@shared/config/api-config";
+import {
+	COMPOSER_PLACEHOLDER,
+	type SendOutcome,
+	composerPlaceholder,
+	isOffRecordAsk,
+	settleOffRecordPayload,
+	useMessageInput,
+} from "@shared/hooks/use-message-input";
+import { useRadientSessionIssue } from "@shared/hooks/use-radient-session-issue";
+import {
+	SpeechToTextPriority,
+	resolvePushToTalkBinding,
+	setDictationActive,
+	useSpeechToTextManager,
+} from "@shared/hooks/use-speech-to-text-manager";
+import { cn } from "@shared/lib/utils";
+import { useAsideStore } from "@shared/store/aside-store";
+import {
+	CLEAR_LABEL,
+	RETRY_LABEL,
+	SEND_FAILURE_COPY,
+	buildSendPayload,
+} from "@shared/store/canonical-sessions-store";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	type Attachment,
+	type Reply,
+	useConversationInputStore,
+} from "@shared/store/conversation-input-store";
+import { normalizePath } from "@shared/utils/path-utils";
+import {
+	dismissToast,
+	showErrorToast,
+	showInfoToast,
+	showSuccessToast,
+	showWarningToast,
+} from "@shared/utils/toast-manager";
+import {
+	Check,
+	CircleAlert,
+	Mic,
+	Paperclip,
+	Send,
+	Square,
+	X,
+} from "lucide-react";
+import {
+	forwardRef,
+	useCallback,
+	useEffect,
+	useImperativeHandle,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import type {
+	ClipboardEvent,
+	FormEvent,
+	KeyboardEvent,
+	PointerEvent,
+} from "react";
+import { v4 as uuidv4 } from "uuid";
+import type {
+	CanonicalFrontendState,
+	CanonicalModel,
+} from "../../../../../shared/desktop-session-contract";
 
 /**
  * The capture's words, in the shape the planner takes them.
@@ -252,6 +249,13 @@ const MENTION_OUTSIDE_NOTICE_ID = "composer-mention-outside-notice";
  * while the line it speaks about is on screen.
  */
 const DELIVERY_REMEDIES_HINT_ID = "composer-delivery-remedies-hint";
+import { sampleSuggestions } from "@features/chat/components/composer-suggestions";
+import { ComposerTipRow } from "@features/chat/components/composer-tip";
+import { CredentialChipLayer } from "@features/chat/components/credential-chip-layer";
+import {
+	CredentialOverlay,
+	composerTextBox,
+} from "@features/chat/components/credential-overlay";
 import {
 	ConnectProviderCard,
 	NoProviderLine,
@@ -260,18 +264,8 @@ import {
 	NO_PROVIDER_NOTICE,
 	useConnectProviderStore,
 } from "@features/providers/connect-provider-store";
-import { sampleSuggestions } from "./composer-suggestions";
-import { ComposerTipRow } from "./composer-tip";
-import { CredentialChipLayer } from "./credential-chip-layer";
-import { CredentialOverlay, composerTextBox } from "./credential-overlay";
 
-import { BrandMark } from "@shared/components/common/brand-mark";
-import { useAtResolution } from "../hooks/use-at-resolution";
-import {
-	activeModelForDefault,
-	writeModelDefaultSettings,
-} from "../pickers/model-default-settings";
-import { AsidePanel } from "./aside-panel";
+import { AsidePanel } from "@features/chat/components/aside-panel";
 /*
  * The `@` mention layer: the tokenizer, the list over the field, and the chip
  * layer that draws behind the field's own glyphs. Three modules rather than one
@@ -280,30 +274,37 @@ import { AsidePanel } from "./aside-panel";
  * the ranking are bundled and executed by `scripts/at-mentions.test.mjs`, which a
  * component module cannot be.
  */
-import { atDeleteSpan } from "./at-contract";
-import { AtMentionOverlay } from "./at-mention-overlay";
-import { AtSuggestionsPopup, handleAtKeyDown, useAtPicker } from "./at-picker";
-import type { AtRow } from "./at-rank";
-import { atPickerToken, atReference } from "./at-token";
-import { ComposerHighlight, highlightPaints } from "./composer-highlight";
+import { atDeleteSpan } from "@features/chat/components/at-contract";
+import { AtMentionOverlay } from "@features/chat/components/at-mention-overlay";
+import {
+	AtSuggestionsPopup,
+	handleAtKeyDown,
+	useAtPicker,
+} from "@features/chat/components/at-picker";
+import type { AtRow } from "@features/chat/components/at-rank";
+import { atPickerToken, atReference } from "@features/chat/components/at-token";
+import {
+	ComposerHighlight,
+	highlightPaints,
+} from "@features/chat/components/composer-highlight";
 import {
 	DirectoryIndicator,
 	type DirectoryIndicatorHandle,
 	type DirectoryWritePath,
-} from "./directory-indicator";
-import { MeasuredSuggestionStack } from "./measured-suggestion-stack";
-import { RadientSessionIssueCallout } from "./radient-session-issue";
-import { ReplyPreview } from "./reply-preview";
-import type { RunDetails } from "./run-details";
-import { ScrollToBottomButton } from "./scroll-to-bottom-button";
-import { shouldRunArgumentAction } from "./slash-argument-rows";
+} from "@features/chat/components/directory-indicator";
+import { MeasuredSuggestionStack } from "@features/chat/components/measured-suggestion-stack";
+import { RadientSessionIssueCallout } from "@features/chat/components/radient-session-issue";
+import { ReplyPreview } from "@features/chat/components/reply-preview";
+import type { RunDetails } from "@features/chat/components/run-details";
+import { ScrollToBottomButton } from "@features/chat/components/scroll-to-bottom-button";
+import { shouldRunArgumentAction } from "@features/chat/components/slash-argument-rows";
 import {
 	type CompletionRow,
 	SlashSuggestionsPopup,
 	handleSlashKeyDown,
 	useSlashCompletion,
-} from "./slash-commands";
-import { completionFor } from "./slash-completion";
+} from "@features/chat/components/slash-commands";
+import { completionFor } from "@features/chat/components/slash-completion";
 /*
  * `extensionFor` comes from the CONTRACT module rather than from the popup
  * component: the ambiguous Enter's splice is a pure function of the draft, the
@@ -318,20 +319,26 @@ import {
 	pointerPickRuns,
 	reassembledNote,
 	stagedNote,
-} from "./slash-contract";
+} from "@features/chat/components/slash-contract";
 /*
  * `SlashDispatchOutcome` is imported as a TYPE only: the composer hands a
  * spliced command line to the page's dispatcher and must know whether it ran to
  * decide what the box holds afterwards, but it must not own any part of how the
  * command runs.
  */
-import type { SlashDispatchOutcome } from "./slash-dispatch";
-import { runsMatchingPlan, slashHighlightRuns } from "./slash-highlight";
-import { planSlashArming, planSlashSubmission } from "./slash-submit";
+import type { SlashDispatchOutcome } from "@features/chat/components/slash-dispatch";
+import {
+	runsMatchingPlan,
+	slashHighlightRuns,
+} from "@features/chat/components/slash-highlight";
+import {
+	planSlashArming,
+	planSlashSubmission,
+} from "@features/chat/components/slash-submit";
 import type {
 	SlashCommandInvocation,
 	SlashSubmissionPlan,
-} from "./slash-submit";
+} from "@features/chat/components/slash-submit";
 /*
  * `replaceSpan` is the ONE splice this app performs on a token, and the atomic
  * mention delete uses it rather than writing a second one: its separator rule is
@@ -339,8 +346,14 @@ import type {
  * it is what keeps the inline slash gesture and the mention delete from
  * disagreeing about what "remove a token" means.
  */
-import { replaceSpan } from "./slash-token";
-import { WaveformAnimation } from "./waveform-animation";
+import { replaceSpan } from "@features/chat/components/slash-token";
+import { WaveformAnimation } from "@features/chat/components/waveform-animation";
+import { useAtResolution } from "@features/chat/hooks/use-at-resolution";
+import {
+	activeModelForDefault,
+	writeModelDefaultSettings,
+} from "@features/chat/pickers/model-default-settings";
+import { BrandMark } from "@shared/components/common/brand-mark";
 
 /**
  * A send that did not land, described for the composer that owns its text.
@@ -402,9 +415,20 @@ export type ComposerSendError = {
 };
 
 /**
+ * The absent `recordingProbe`, as the state it reads: no key, and not because
+ * the probe could not be asked. One instance rather than a fresh object, so the
+ * default cannot churn an identity; the fail-closed direction is stated once
+ * (see `recordingProbe` on the props).
+ */
+const EMPTY_RECORDING_PROBE: {
+	hasRadientApiKey: boolean;
+	isUnavailable: boolean;
+} = { hasRadientApiKey: false, isUnavailable: false };
+
+/**
  * Props for the MessageInput component
  */
-type MessageInputProps = {
+export type MessageInputProps = {
 	onSendMessage: (
 		content: string,
 		attachments: string[],
@@ -836,6 +860,57 @@ type MessageInputProps = {
 	 * session, which is also what keeps the status row off a legacy pane.
 	 */
 	runDetails?: RunDetails | null;
+	/**
+	 * The credential-store seam: called after credentials cited in a send have
+	 * been stored, with the session they were stored against.
+	 *
+	 * The composer used to repair the picker's own cache here, through
+	 * `useQueryClient()` — which made a QueryClient provider a MOUNT requirement
+	 * for every host, and the mini view's document mounts none. The repair is the
+	 * HOST's now: the chat page invalidates `desktopKeys.credentials(sessionId)`
+	 * (the same key the picker reads), and a host with no cache simply omits
+	 * this. Nothing is called when nothing stored: a refusal already has its own
+	 * notice, and an empty store must not make a picker re-ask for an empty
+	 * list.
+	 */
+	onCredentialsStored?: (sessionId: string) => void | Promise<void>;
+	/**
+	 * The credential probe's answer, for the voice-input gate: whether this
+	 * document has a Radient API key, and whether the probe could be read at all
+	 * (`isUnavailable` — offline is a different sentence from unconfigured).
+	 *
+	 * The composer cannot ask this itself any more, for the mount reason
+	 * `onCredentialsStored` states: the probe is a react-query read
+	 * (`useRadientCredentialProbe` -> `useCredentials`). The chat reads it in
+	 * `chat-content.tsx` and passes the answer; a host with no such probe leaves
+	 * the default, which reads as "no key" and carries the app's existing
+	 * sentence for that state — the fail-closed direction, matching
+	 * `mentionsEnabled`.
+	 */
+	recordingProbe?: { hasRadientApiKey: boolean; isUnavailable: boolean };
+	/**
+	 * Fired on every change of this composer's take state (the same fact
+	 * `setDictationActive` writes to the shared manager), so a host's own guards
+	 * — the mini frame's blur and Esc — can defer to a live recording.
+	 *
+	 * A callback rather than only the module read because a React host keeps it
+	 * as state; a host that needs the answer synchronously at event time can
+	 * call `isDictationActive()` from
+	 * `@shared/hooks/use-speech-to-text-manager` instead, which is current by
+	 * construction. Fires once with `false` when the composer mounts, and is NOT
+	 * fired on unmount (the surface that owned the take is gone).
+	 */
+	onDictationStateChange?: (active: boolean) => void;
+	/**
+	 * The host's own sentence for the box's INVITATION slot, in place of the
+	 * app's `idle` line ("Ask anything. @ adds files, / runs commands") — the
+	 * mini view's copy.
+	 *
+	 * Only the invitation: every state sentence (refusals, the recording line,
+	 * gates, the sending line) still outranks it through `composerPlaceholder`,
+	 * because those describe facts about the box that a host's copy cannot.
+	 */
+	placeholderOverride?: string;
 };
 
 /**
@@ -1340,6 +1415,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			onSlashNote,
 			paneHasSession: propPaneHasSession,
 			runDetails,
+			recordingProbe = EMPTY_RECORDING_PROBE,
+			onCredentialsStored,
+			onDictationStateChange,
+			placeholderOverride,
 		},
 		ref,
 	) => {
@@ -1436,12 +1515,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				[conversationId],
 			),
 		);
-		/*
-		 * The cache the credential list lives in, read through the provider rather than
-		 * the module singleton so a harness can watch the invalidation happen: the store
-		 * seam below invalidates the picker's own key after a store (QA round 1, Q-5).
-		 */
-		const queryClient = useQueryClient();
+		const onCredentialsStoredRef = useRef(onCredentialsStored);
+		useEffect(() => {
+			onCredentialsStoredRef.current = onCredentialsStored;
+		});
 		const [isRecording, setIsRecording] = useState(false);
 		const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
 		const [isTranscribing, setIsTranscribing] = useState(false);
@@ -1494,7 +1571,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * nothing left here to keep.
 		 */
 
-		const { hasRadientApiKey, isUnavailable } = useRadientCredentialProbe();
+		/*
+		 * THE PROBE IS THE HOST'S READ NOW (see `recordingProbe` on the props): it
+		 * used to be `useRadientCredentialProbe()` here, a react-query read that
+		 * made a provider a mount requirement for every document. The chat reads
+		 * it in `chat-content.tsx`; the absent case reads as "no key".
+		 */
+		const { hasRadientApiKey, isUnavailable } = recordingProbe;
 		const canEnableRecordingFeature = hasRadientApiKey && !isUnavailable;
 
 		// The probe cannot tell "no key" apart from "could not ask", so the
@@ -1979,7 +2062,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * model cannot use (`substitute_credentials`).
 				 */
 				/*
-				 * THE LIST THE USER IS ABOUT TO LOOK AT IS THE CACHED ONE (QA round 1, Q-5).
+				 * THE LIST THE USER IS ABOUT TO LOOK AT IS THE CACHED ONE (QA round 1, Q-5),
+				 * and the cache belongs to the HOST.
 				 *
 				 * A store that lands here used to leave `sessions.credential`'s list entry
 				 * fresh for the rest of its five-minute `staleTime`, so `/credential` then
@@ -1987,15 +2071,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * rendering "No credentials stored yet." while the same route answered with the
 				 * name that had just been stored, which takes the row the user opened the
 				 * picker for off its own screen. The key is `desktopKeys.credentials` — the
-				 * SAME one the picker reads — so this invalidation cannot drift from the read
-				 * it repairs. Nothing is invalidated when nothing stored: a refusal already
-				 * has its own notice, and an empty store must not make the picker re-ask for
-				 * the same empty list.
+				 * SAME one the picker reads — so the invalidation cannot drift from the read
+				 * it repairs; it just happens in the host now, through
+				 * `onCredentialsStored` (the chat page's callback), because the provider this
+				 * used to reach for is a mount requirement the mini view's document cannot
+				 * meet. Nothing is said when nothing stored: a refusal already has its own
+				 * notice, and an empty store must not make the picker re-ask for the same
+				 * empty list.
 				 */
 				if (stored.length > 0 && sessionId)
-					await queryClient.invalidateQueries({
-						queryKey: desktopKeys.credentials(sessionId),
-					});
+					await onCredentialsStoredRef.current?.(sessionId);
 				/** The stored names behind one fate, for the two notices below. */
 				const namesWith = (matches: (fate: CredentialFate) => boolean) =>
 					[...fates.entries()]
@@ -2012,7 +2097,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					unconfirmed: namesWith((fate) => fate === "unconfirmed"),
 				};
 			},
-			[credentialSessionId, queryClient],
+			[credentialSessionId],
 		);
 
 		/*
@@ -5136,8 +5221,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const MIN_DICTATION_CLIP_MS = 250;
 
+		/*
+		 * The take's own broadcast, in two directions: the shared manager's presence
+		 * set (the Escape ladder's rung 4 reads it from the page above) and the
+		 * host's callback (the mini frame's own blur/Esc guards defer to a live
+		 * take). The callback rides a ref so an inline host closure cannot re-run
+		 * this effect; the ref assignment is declared FIRST, so it is current before
+		 * the effect below runs on the same commit.
+		 */
+		const onDictationStateChangeRef = useRef(onDictationStateChange);
+		useEffect(() => {
+			onDictationStateChangeRef.current = onDictationStateChange;
+		});
 		useEffect(() => {
 			setDictationActive("message-input", isRecording);
+			onDictationStateChangeRef.current?.(isRecording);
 			return () => setDictationActive("message-input", false);
 		}, [isRecording]);
 
@@ -6772,6 +6870,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 													// provider is connected, so the invitation is a lie
 													// (design audit section 6).
 													noProvider,
+													/*
+													 * The host's own sentence for the invitation slot, when
+													 * it has one (the mini view's copy); every sentence
+													 * above still outranks it, and absent means the app's
+													 * own idle line.
+													 */
+													idle: placeholderOverride,
 												})
 									}
 									value={newMessage}

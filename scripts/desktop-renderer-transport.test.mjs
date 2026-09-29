@@ -1249,7 +1249,7 @@ test("a refused slash command reports RETAINED, so the composer keeps the draft"
 	// retires the token; anything else puts the ORIGINAL draft back, so a refused
 	// command still leaves the paste to shorten and retry.
 	const composer = await readFile(
-		"src/renderer/src/features/chat/components/message-input.tsx",
+		"src/renderer/src/shared/components/composer/message-input.tsx",
 		"utf8",
 	);
 	const composerTail = composer.slice(

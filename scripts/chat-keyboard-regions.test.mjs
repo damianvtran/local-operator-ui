@@ -32,7 +32,8 @@ import { build } from "esbuild";
 const ROOT = process.cwd();
 const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
 const HEADER = "src/renderer/src/features/chat/components/chat-header.tsx";
-const COMPOSER = "src/renderer/src/features/chat/components/message-input.tsx";
+const COMPOSER =
+	"src/renderer/src/shared/components/composer/message-input.tsx";
 const TRANSCRIPT =
 	"src/renderer/src/features/chat/canonical/canonical-transcript.tsx";
 
