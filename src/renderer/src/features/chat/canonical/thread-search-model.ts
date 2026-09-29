@@ -23,8 +23,9 @@ import type {
  * Whether this is the in-thread find press: `⌘F` on macOS, `Ctrl+F` elsewhere.
  *
  * WHY `F` IS FREE TO TAKE. Nothing in the app bound it: the main process's
- * `before-input-event` ladder covers zoom, `⌘P` (the command palette) and
- * `⌘⇧S`, and no `findInPage` call site exists anywhere in `src` — so this chord
+ * `before-input-event` ladder covers zoom, `⌘P` (the palette's
+ * conversation-switcher door, issue #659) and `⌘⇧S`, and no `findInPage` call
+ * site exists anywhere in `src` — so this chord
  * takes nothing away from a reader, which is the test every new binding here
  * has to pass (`canvas-shortcut.ts` states it for `⌘⇧C`).
  *
