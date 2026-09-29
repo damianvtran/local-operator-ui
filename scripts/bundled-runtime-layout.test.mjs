@@ -354,11 +354,21 @@ test("each install script installs with uv and keeps the pip path it had", () =>
 				script.indexOf("Uv") < script.indexOf("pip install --upgrade pip"),
 			`${path}: the pip upgrade must sit on the fallback path, after the uv decision - the uv path skips it deliberately`,
 		);
-		// pip stays in the venv: the app's backend-update path runs
-		// `pip install --upgrade local-operator` inside this environment, and
-		// `uv venv` would produce one with no pip at all. Comments are stripped
-		// first, because the scripts explain this choice by naming the command they
-		// deliberately do not use.
+		/*
+		 * pip stays in the venv: the app's backend-update path runs
+		 * `pip install --upgrade local-operator` inside this environment, so BOTH
+		 * creation paths have to leave a pip behind - and the claims to hold them to
+		 * it are the ones this guard exists to pin.
+		 *
+		 * The comment that used to stand here stated the constraint backwards: the
+		 * BARE `uv venv` is what produces an environment with no pip, while the
+		 * SEEDED form (`uv venv --seed`) installs one - so a guard that passed on
+		 * `uv_run venv --seed` by an underscore's width would have hidden the very
+		 * change that made the comment false. What is forbidden is the UNSEEDED
+		 * form, not uv itself (an earlier review round's finding 6). Comments are
+		 * stripped first, because the scripts explain this choice by naming, in
+		 * prose, the command they deliberately do not use.
+		 */
 		const commands = script
 			.split("\n")
 			.filter((line) => !line.trimStart().startsWith("#"))
@@ -368,10 +378,35 @@ test("each install script installs with uv and keeps the pip path it had", () =>
 			/-m venv/,
 			`${path}: the venv must keep being created with the interpreter's own venv module`,
 		);
-		assert.doesNotMatch(
+		for (const line of commands.split("\n")) {
+			if (!/\buv[_a-z]*\s+venv\b/.test(line)) continue;
+			assert.match(
+				line,
+				/--seed/,
+				`${path}: uv may create the environment only seeded (\`uv venv --seed\`); a bare \`uv venv\` produces one with no pip, which the app's backend-update path needs`,
+			);
+		}
+		/*
+		 * And each script has to hold the result: macOS and Linux check `bin/pip`
+		 * after creation, and Windows - whose venv pip is reached as a module of the
+		 * venv's activated interpreter - runs `python -m pip`, which the fallback
+		 * assertion above pins to the pip path. A creation path that stopped leaving
+		 * pip behind fails on its own line rather than passing on the other path's
+		 * claim.
+		 */
+		const pipHeld = {
+			"src/main/backend/scripts/macos-install-script.sh": /bin\/pip/,
+			"src/main/backend/scripts/linux-install-script.sh": /bin\/pip/,
+			"src/main/backend/scripts/windows-install-script.ps1": /python -m pip/,
+		}[path];
+		assert.ok(
+			pipHeld,
+			`${path}: no pip expectation is defined for this script`,
+		);
+		assert.match(
 			commands,
-			/\buv\s+venv\b/,
-			`${path}: the venv must not be created with uv; it would carry no pip, which the app's backend-update path needs`,
+			pipHeld,
+			`${path}: nothing holds pip in the created environment, so a creation path that lost it would pass`,
 		);
 	}
 });

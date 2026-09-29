@@ -477,13 +477,24 @@ uv_is_usable() {
 # is the same setting spelled as a flag in the bundled uv 0.12.17.
 #
 # WHY: on a network that inspects TLS the root lives in the platform store (here,
-# `/etc/ssl/certs`), and neither client on this path would otherwise see it - uv
-# would fail the handshake against the roots compiled into it, and the pip
-# fallback resolves against certifi, which is the same Mozilla bundle under
-# another name. uv names this remedy itself when it fails: "Consider enabling use
-# of system TLS certificates with the `--system-certs` command-line flag".
-# Nothing here passed it, so both paths failed and the user was told to check a
-# network that was working for every other application on the machine.
+# `/etc/ssl/certs`), and uv does not read that store by default - it fails the
+# handshake against the roots compiled into it. uv names this remedy itself when
+# it fails: "Consider enabling use of system TLS certificates with the
+# `--system-certs` command-line flag". Nothing here passed it, so the failure
+# went to the fallback and the user was told to check a network that was working
+# for every other application on the machine.
+#
+# AND WHY THE PIP FALLBACK IS HANDED NO CA SETTING: pip 24.2 and newer read the
+# platform store by default, in addition to the Mozilla bundle they ship
+# (`truststore`, "always on since 24.2"), and every pip these installs produce
+# is newer than that - uv's own seed and the bundled interpreter's ensurepip
+# alike - so a root added to `/etc/ssl/certs` is trusted by BOTH clients and no
+# `PIP_CERT`/`SSL_CERT_FILE` is needed. The note this replaces claimed the
+# opposite (the fallback "resolves against certifi"; "neither client" would see
+# the store), which was true only of pip before 24.2; corrected rather than
+# deleted so it is not restored (review round 1, R1-2). The one shape it does
+# not cover is a dev checkout on a system python old enough to predate
+# truststore.
 #
 # IT CANNOT MAKE THINGS WORSE: every uv call below is already followed by the pip
 # fallback on a non-zero exit, so a platform store that cannot be read costs one
