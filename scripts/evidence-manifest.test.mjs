@@ -2305,6 +2305,15 @@ const BRANCH_RECORDS = [
 	 */
 	"condensedPicturesRoundTwoRemediationNote",
 	/*
+	 * And the pictures lane's fold onto the 0.31.21 release window
+	 * (`condensedPicturesFoldNote`): this file and the list above were the
+	 * fold's only conflicts, both resolved with main's records whole and
+	 * this branch's re-laid. Registered for the list's usual reason - a
+	 * fold resolved from main's copy would drop the only statement of what
+	 * the fold moved and what it did not - and it quotes no tree-hash pair.
+	 */
+	"condensedPicturesFoldNote",
+	/*
 	 * AND THIS FIX'S OWN (2026-09-29): `browserOauthPopupsRestampNote` is the
 	 * re-stamp for the driven-page OAuth popups (the operator's console Microsoft
 	 * sign-in repro - MSAL `loginPopup` denied by the driven views' deny-all
