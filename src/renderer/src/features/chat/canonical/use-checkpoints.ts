@@ -47,11 +47,10 @@ import { checkpointPendingIds } from "./checkpoint-model";
  * poll stops. Flipping to `error` there would blank a rail the reader is
  * using, and a poll failure is transient by construction.
  *
- * TODO(ui-A-phase2): the parent (`canonical-transcript.tsx`) mounts
- * `CheckpointRail` with this hook's `checkpoints`/`building` and wires the
- * rail's `onJump` to the jump primitive; that integration — and the driver
- * scenes and frames that go with it — ships in Phase 2, after the collapse
- * lane's `revealRecord` export lands.
+ * Wired where the transcript mounts it: `canonical-transcript.tsx` gives the
+ * rail this hook's `checkpoints`/`building`, wires `onJump` to the jump
+ * primitive (`reveal-record.ts`) and `onHover` to `warm` — one id per card
+ * open, the intent delay having already filtered fly-overs.
  */
 
 /** One poll interval and the ceiling a poll episode may not outlive (D2). */
