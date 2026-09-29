@@ -39,10 +39,14 @@ const bundle = await build({
 
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`;
 const {
+	FOLD_MEDIA_LIMIT,
 	FOLD_MIN_ACTIONS,
 	actionClass,
 	foldCounts,
+	foldImages,
 	foldLive,
+	foldMediaClause,
+	foldMediaSlots,
 	foldRuns,
 	foldSpan,
 	foldSummary,
@@ -580,4 +584,132 @@ test("a turn's foot counts its own actions, and names its first failure", () => 
 		{ actions: 3, failed: 2, durationS: null, firstFailedId: "t2" },
 		"the jump names the FIRST failure, which is the row a reader wants opened",
 	);
+});
+
+/* --------------------------- the run's pictures --------------------------- */
+
+/**
+ * A row as `foldImages` reads it: the record's kind is what decides, and the
+ * image list is the record's own.
+ */
+const imageRow = (id, images) => ({
+	record: { id, kind: "tool", images },
+	gap: "trace",
+	closesTurn: false,
+});
+
+const picture = (id) => ({
+	id,
+	data: null,
+	attachment: `digest-${id}`,
+	mimeType: "image/png",
+});
+
+test("a run's images are its actions' images, in row order", () => {
+	/*
+	 * The condensed group carries these because it unmounts the rows that would
+	 * draw them, so the order is a claim about the group and not an accident of
+	 * iteration: a run that wrote two screenshots shows them in the order they
+	 * were written, which is the order the expanded rows show.
+	 */
+	const rows = [
+		imageRow("t1", [picture("t1:0")]),
+		{ record: { id: "n1", kind: "notice" }, gap: "trace", closesTurn: false },
+		imageRow("t2", [picture("t2:0"), picture("t2:1")]),
+	];
+	assert.deepEqual(
+		foldImages(rows).map((image) => image.id),
+		["t1:0", "t2:0", "t2:1"],
+	);
+});
+
+test("a run with no pictures yields none, and a user row never contributes", () => {
+	/*
+	 * `images` is a field on user records too — attachments the reader pasted
+	 * into their prompt are not the agent's output, and a run that happened to
+	 * sit below one must not adopt them.
+	 */
+	const rows = [
+		imageRow("t1", []),
+		{
+			record: { id: "u1", kind: "user", images: [picture("u1:0")] },
+			gap: "turn",
+			closesTurn: false,
+		},
+		imageRow("t2", []),
+	];
+	assert.deepEqual(foldImages(rows), []);
+});
+
+test("the strip's slots are one row, and past the cap the last of them is the count", () => {
+	/*
+	 * Design review round 1, D3: height grew with the count and had no cap, so
+	 * 25-30 pictures put a CONDENSED group past the height of the expanded one it
+	 * replaces. The cap is the row the strip can hold at the narrowest column it
+	 * renders in - the rig measured that column at 576px in a 640px window, and the
+	 * committed eight-picture frame puts five slots at 472px end to end (four 98px
+	 * tiles, three 8px gutters, the 8px gap before the count and its 48px of ink) -
+	 * and past it the last slot is `+N more`.
+	 */
+	assert.deepEqual(foldMediaSlots(0), { shown: 0, more: 0 });
+	assert.deepEqual(foldMediaSlots(1), { shown: 1, more: 0 });
+	assert.deepEqual(foldMediaSlots(FOLD_MEDIA_LIMIT), {
+		shown: FOLD_MEDIA_LIMIT,
+		more: 0,
+	});
+	// The boundary: the first count that needs the count slot.
+	assert.deepEqual(foldMediaSlots(FOLD_MEDIA_LIMIT + 1), {
+		shown: FOLD_MEDIA_LIMIT - 1,
+		more: 2,
+	});
+	assert.deepEqual(foldMediaSlots(8), { shown: 4, more: 4 });
+	assert.deepEqual(foldMediaSlots(30), { shown: 4, more: 26 });
+	/*
+	 * U8's uncapped case: the spanning bar's sole image-bearing group shows ALL
+	 * of its set (the reader's press on the bar's count asked for it), and the
+	 * slot arithmetic must then report every picture and no count slot.
+	 */
+	assert.deepEqual(foldMediaSlots(8, { uncapped: true }), {
+		shown: 8,
+		more: 0,
+	});
+	assert.deepEqual(foldMediaSlots(30, { uncapped: true }), {
+		shown: 30,
+		more: 0,
+	});
+	assert.deepEqual(foldMediaSlots(0, { uncapped: true }), {
+		shown: 0,
+		more: 0,
+	});
+	// Whatever the count, the slots never exceed the row.
+	for (const count of [0, 1, 6, 7, 8, 30]) {
+		const { shown, more } = foldMediaSlots(count);
+		assert.ok(
+			shown <= FOLD_MEDIA_LIMIT,
+			`${count} pictures must not draw more than one row of slots`,
+		);
+		assert.equal(shown + more, count, "and no picture is lost from the count");
+	}
+});
+
+test("the header's image clause names the count, and a run with none has no clause", () => {
+	/*
+	 * D3's other half: the strip's accessible name carried the number while the
+	 * visible header said nothing, so a sighted reader got less than a
+	 * screen-reader user. A run with no pictures gets `null` rather than an empty
+	 * clause, which is what keeps that header byte-identical.
+	 */
+	assert.equal(foldMediaClause(0), null, "no pictures, no clause");
+	assert.equal(
+		foldMediaClause(-1),
+		null,
+		"and a nonsense count is not a claim",
+	);
+	assert.equal(
+		foldMediaClause(1),
+		"1 image",
+		'one is an image, not "1 images"',
+	);
+	assert.equal(foldMediaClause(2), "2 images");
+	assert.equal(foldMediaClause(30), "30 images");
 });
