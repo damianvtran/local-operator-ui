@@ -589,6 +589,12 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 				{activeCheckpoint && (
 					<PopoverContent
 						id={cardElementId}
+						/*
+						 * A stable handle for the driven scene: `role` is a
+						 * semantic that may change with the design, and the
+						 * scene should photograph the card, not a role name.
+						 */
+						data-checkpoint-card=""
 						side="left"
 						align="center"
 						sideOffset={10}
