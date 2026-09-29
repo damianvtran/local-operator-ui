@@ -573,8 +573,15 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 					 * reached by scrolling the strip, not by a bar of its own, and a
 					 * column shorter than its neighbours keeps its own height
 					 * (`items-start`) instead of stretching to the tallest.
+					 *
+					 * NO TOP PADDING (round 1, Q2/U2): the column header pins at
+					 * `top-0`, and with `pt-3` the scrollport's own top edge sat 12px
+					 * above it — a live band where passing cards slid above the pinned
+					 * header (the QA hit-test read the header at rel 12 while a card
+					 * was live at rel 2.7). The strip's padding now starts at its sides
+					 * and bottom, and the header pins flush to the edge it pins to.
 					 */
-					"relative flex min-h-0 flex-1 items-start gap-3 overflow-auto p-3",
+					"relative flex min-h-0 flex-1 items-start gap-3 overflow-auto px-3 pb-3",
 					drag && "cursor-grabbing select-none",
 				)}
 			>
