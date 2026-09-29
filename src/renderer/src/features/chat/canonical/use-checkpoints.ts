@@ -19,12 +19,20 @@ import { checkpointPendingIds } from "./checkpoint-model";
  *   or stale index answers `building` in well under a second (the scan runs in
  *   the backend's background), so the hook never waits on a scan and the rail
  *   paints ticks from whatever the last answer held.
- * - `warm` is the user gesture's spend — hover names one tick, the rail-open
- *   arm names the backend's default selection (the request omits `ids`/`limit`
- *   so the backend's own bound is the only copy of that number; sending a
- *   limit here would be a second copy that drifts). It is fire-and-forget: a
- *   failure is decoration lost, never a user-facing error (D2: "every failure
- *   resolves to None").
+ * - `warm` is the user gesture's spend - hover names the ONE tick the reader
+ *   looked at (`onHover` fires on the card's intent-delayed open, so a
+ *   fly-over costs nothing). The rail deliberately does NOT spend on
+ *   conversation selection: design round 1's ruling (D2) - this rail is
+ *   permanently visible, names render only inside the card, and a rail-open
+ *   batch would buy up to the backend's default bound per conversation
+ *   visited for cards that may never open. The ids-OMITTED request form (the
+ *   backend's own default selection; sending a `limit` here would be a second
+ *   copy of that bound, which drifts) stays supported and documented as the
+ *   dormant wire seam for a future surface that renders names as content (a
+ *   picker, the anchored window), with `use-checkpoints.test.mjs` pinning it
+ *   so it cannot rot. The request is fire-and-forget either way: a failure is
+ *   decoration lost, never a user-facing error (D2: "every failure resolves
+ *   to None").
  * - The poll runs ONLY while something the reader asked for is still pending,
  *   at 1.5 s for ~45 s, and then the fallback text stands (D2's ceiling is
  *   about how long a card may say "Generating name…", not a retry policy).

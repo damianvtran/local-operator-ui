@@ -76,6 +76,22 @@ prompt. Its six frames per palette are committed under
 `docs/evidence/project-detail-live/`, whose README carries the seed script and
 the full command.
 
+**`--scene sessionless-slash` (issue #625) types five commands — `/help`,
+`/theme`, `/login`, `/logout`, `/resume` — into a NEW chat (`⌘N`, the press
+`--scene new-chat` proves), one theme per launch like every stateful scene.
+`--slash-expect open` (the default) asserts each mounts its picker on the
+sessionless pane; `--slash-expect refused` asserts the dispatcher's refusal
+sentence instead, so the base tree's half of a before/after pair runs the SAME
+bytes as the head's. Under `open` the scene then sends a turn, waits for the
+mock provider's answer, and asserts `/theme` on that live conversation still
+presents the picker — the session-ful path the change must not move. It needs
+`--backend`, the daemon's serve record (`--backend-records`), and
+`--seed-onboarding-complete`, like every `--backend` scene. Its frames are
+committed under `docs/evidence/sessionless-slash/`, the base tree's under
+`sessionless-slash-baseline/`.**
+
+**`--scene mini-view` photographs the Quick send composer — the second renderer document a global hotkey summons (design §I.3).** Since the dev-driver exerciser (M-B1) the scene drives the app's OWN mini window: an armed launch in `headless` mode creates it (`headlessExerciserAllowed` in `src/main/dev-driver.ts`), registration stays normal-only (`hotkeysAllowed`), and it is never shown — presentation still runs through `presentMiniView`, which a headless plan refuses. The scene finds that window, sends the real `mini-view:summoned` channel into it from MAIN (a headless run has no OS chord to press), drives the composer through CDP's own input pipeline, and captures each state from MAIN's `capturePage` on the hidden window, with the console rig's rule applied (the first capture of a hidden window can come back blank, so every capture retries) and a settle poll before every capture (the stills used to be taken mid-transition, so their colours were a phase of a 120 ms fade — design round 1, D6). A run where the window is absent refuses by name rather than photographing a hand-built substitute: a substitute cannot pass the desktop plane's frame gate (`desktop-ipc.ts`), which is exactly why the live send needed the app's own window. The draft is typed through CDP's `Input.insertText`, the mic frame is driven by a fake `getUserMedia`/`MediaRecorder` installed before boot, and the run closes with every window of the app surveyed (`none visible`), an asserted absence of any `cannot use desktop controls` refusal in the app log, and the hidden window's renderer memory, which is risk K6's number. **With `--backend` (plus `--backend-records`, which the app needs anyway to admit the daemon) the whole send path is real**: the message goes to the chief-of-staff conversation and is read back from the daemon's own `/v1/desktop/sessions/<id>/history` route. Two harness aids make the transient stills possible, both disclosed here and in the run output, neither in shipped code: the run's own daemon process is SIGSTOPped by exact pid — from the linked serve record, loopback-only and never 1111, guarded like `--scene connection-drop`'s kill — for the `sending` frame and SIGCONTinued in a `finally` before the same request completes (so the `sent` frame is that request's real admission), and the composer's own 600 ms flash timer (`SENT_FLASH_MS`, read from its declaration) is stretched in the page for the `sent` frame. Without `--backend` the send's end is the transport refusal (`error` — the fail-closed state with the draft kept) and no sending/sent frames are taken. It cannot prove a real OS chord reaching the registrar, focus returning to the previous app, the microphone permission prompt, or the OS-level conflicts macOS does not report (QA round 1, Q2) — those are human steps and platform facts, and the PR says so beside the frames.
+
 **`--backend <url>` points the app at a live, ISOLATED backend this run owns.**
 Absent (the default) the app is aimed at a port the script verified dead, so a
 scene captures an app that cannot reach a backend and every frame is publishable

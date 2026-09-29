@@ -1907,7 +1907,115 @@ const STAMP_BINDING_NOTES = [
 	 * (14 frames, 7 states, two palettes, declared in `supplementary`). It quotes this file's pair,
 	 * so it is held to it like every entry above it.
 	 */
+	/*
+	 * AND ROUND 2'S RE-DERIVATION (2026-09-29): the D1 landing fix and the
+	 * scene that now asserts it, on the fold onto the moved `origin/main`
+	 * `f3ce13cee7` (#626's projects chrome/teams). The src tree moves with the
+	 * axis-named centre step (`scrollRegionToCenter`'s `"reversed"` clamp and
+	 * its call site), the refusal copy, and the card's bounded-text measurement
+	 * hook; the scripts tree with the driver's visual landing assertions, the
+	 * physical pointer-press leg, D5's sparse / bounded-card / outcome /
+	 * building states, the fixture's outcome-shape corrections
+	 * (`details.kind`; `attention_started` before its user row) and the deleted
+	 * shadowing `clickPoint`. It re-shoots the scene at 24 frames / 12 states.
+	 * It quotes the folded tip's pair, so it is held to this file like every
+	 * entry above it.
+	 */
+	/*
+	 * AND THE UX ROUND'S OWN (2026-09-29): the roving rail - U1's one-tab-stop
+	 * group with the arrow/Home/End walk and U3's named toolbar root - moves the
+	 * src tree with `checkpoint-rail.tsx` and the scripts tree with its three
+	 * unit cases and the scene's keyboard legs. The frames are re-copied from
+	 * the run that asserts them (81 checks, 24 frames, no new states). It
+	 * quotes the pair below, so it is held to this file like every entry above.
+	 */
 	"transcriptRailRestampNote",
+	/*
+	 * AND THE FOLD'S OWN (2026-09-29): `sttDictationRestampNote` is the SECOND
+	 * fold over this branch's speech-to-text overhaul - onto the moved
+	 * `origin/main` `f3ce13cee7` (the projects-chrome-teams train), superseding
+	 * the first fold's note (onto `ff34fb8ecc`). Main's whole manifest is taken
+	 * as the base with this branch's record re-laid on top, the two supplementary
+	 * sets it declares ('stt-dictation', 'stt-dictation-baseline') re-laid
+	 * unchanged, the pair re-derived from the folded tip by the docs-only amend
+	 * that follows, and every list member above re-pointed with it. Both trees
+	 * move: `src/` for the composer's recording treatment, the hold-action
+	 * dispatcher, the in-flight dictation un-gate, the `input_mode` carriage and
+	 * the round-1 review fixes, and `scripts/` for the rig that proves them, its
+	 * spawn-site guard entry and the boundary-rule pin. It quotes that pair, so
+	 * it is held to this file like every entry above it.
+	 */
+	"sttDictationRestampNote",
+	/*
+	 * AND THE SEAM'S OWN (2026-09-29): `pttKeymapRestampNote` is the follow-up
+	 * that makes the STT stream CONSUME the registry row `keymap.push_to_talk`
+	 * (local-operator #1750 landed while #633 was in review): the renderer reads
+	 * the persisted value per registration instead of hard-coding the platform
+	 * pair. Both trees move - `src/` for the resolver's read path + token table,
+	 * `scripts/` for the resolution suite, the rig's session F and its
+	 * capability-following claims. No frames change; the pair is re-derived from
+	 * the tip and every list member above is re-pointed with it. It quotes that
+	 * pair, so it is held to this file like every entry above it.
+	 */
+	"pttKeymapRestampNote",
+
+	/*
+	 * The sessionless-slash pass (issue #625), this branch's newest record: it
+	 * re-derived both stamps for the branch's own change and quotes the pair it
+	 * ships, so it is held to this file like every entry above it.
+	 */
+	"sessionlessSlashRestampNote",
+	/*
+	 * AND THE QUICK-SEND PASS'S OWN: `quickSendRestampNote` is the global
+	 * hotkey / mini composer change's record. It moves BOTH trees — `src/` for
+	 * the mini view, its registrar, the config watch, the desktop-plane
+	 * admission and the settings row, `scripts/` for the registrar suite, the
+	 * rig stub, the extended gates and the driver's `mini-view` scene — and
+	 * re-shoots nothing (the evidence lives on the PR's own branch, not in this
+	 * tree), so the pair is re-derived from the tree the re-stamp commit ships
+	 * and every list member above is re-pointed with it. It quotes that pair,
+	 * so it is held to this file like every entry above it.
+	 */
+	"quickSendRestampNote",
+	/*
+	 * AND THE FOLD'S OWN (2026-09-29): `sessionlessSlashFoldNote` is the fold
+	 * onto the moved `origin/main` `2907f807b0` (release 0.31.17, #631's
+	 * quick-send train and #626's projects-chrome-teams) — main's manifest taken
+	 * as the base with this branch's records re-laid on top, the pair re-derived
+	 * from the resolved index and every list member above re-pointed with it. It
+	 * quotes that pair, so it is held to this file like every entry above it.
+	 */
+	"sessionlessSlashFoldNote",
+	/*
+	 * AND THE SECOND FOLD'S OWN (2026-09-29): `sessionlessSlashSecondFoldNote`
+	 * is the fold onto the moved `origin/main` `3de40b0fc9` (#634's
+	 * collapse-onload-more-below train) — the same union, the pair re-derived
+	 * from the resolved index again and every list member above re-pointed with
+	 * it. It quotes that pair, so it is held to this file like every entry
+	 * above it.
+	 */
+	"sessionlessSlashSecondFoldNote",
+	/*
+	 * AND THE THIRD FOLD'S OWN (2026-09-29): `sessionlessSlashThirdFoldNote` is
+	 * the fold onto the moved `origin/main` `7c9c98ecc7` (#633's speech-to-text
+	 * overhaul) - TWO paths conflicted this time (this file and the manifest)
+	 * and both are resolved as the same union; the pair is re-derived from the
+	 * resolved index again and every list member above re-pointed with it. It
+	 * quotes that pair, so it is held to this file like every entry above it -
+	 * and the note's composer audit is why it exists: #633 rewrites
+	 * `message-input.tsx`, and the note names which of its hunks touch the paths
+	 * this branch relies on and which do not.
+	 */
+	"sessionlessSlashThirdFoldNote",
+	/*
+	 * AND THE FOURTH FOLD'S OWN (2026-09-29): `sessionlessSlashFourthFoldNote`
+	 * is the fold onto the moved `origin/main` `46d0bba0de` (#573's
+	 * view-settings audit) — ONE conflict this time (this file's sibling, the
+	 * manifest), resolved as the same union; the pair is re-derived from the
+	 * resolved index again and every list member above re-pointed with it. It
+	 * quotes that pair, so it is held to this file like every entry above it.
+	 */
+	"sessionlessSlashFourthFoldNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2934,6 +3042,45 @@ const BRANCH_RECORDS = [
 	 * pair, `BRANCH_RECORDS` is where it belongs.
 	 */
 	"dirtyWorkingTreeNote",
+	/*
+	 * And the sessionless-slash pass's own newest top-level record, which
+	 * re-derived both stamps for this branch's change (issue #625) and quotes
+	 * the pair it ships. Listed here for the reason the list exists: a fold
+	 * that started from main's manifest would drop it.
+	 */
+	"sessionlessSlashRestampNote",
+	/*
+	 * And the quick-send pass's own record (`quickSendRestampNote`), listed for
+	 * the list's usual reason: the note is this branch's statement of what moved
+	 * and what did not (no frame was committed by it), and a fold resolved from
+	 * main's copy would drop it.
+	 */
+	"quickSendRestampNote",
+	/*
+	 * And the fold's own (`sessionlessSlashFoldNote`), listed for the list's
+	 * usual reason: the note states what the fold moved and what it did not, and
+	 * a fold that started from main's copy would drop it.
+	 */
+	"sessionlessSlashFoldNote",
+	/*
+	 * And the second fold's own (`sessionlessSlashSecondFoldNote`), listed for
+	 * the list's usual reason: the note states what the fold moved and what it
+	 * did not, and a fold that started from main's copy would drop it.
+	 */
+	"sessionlessSlashSecondFoldNote",
+	/*
+	 * And the third fold's own (`sessionlessSlashThirdFoldNote`), listed for the
+	 * list's usual reason: the note states what the fold moved, what it did not,
+	 * and audits the composer's slash-adjacent paths across #633's rewrite; a
+	 * fold that started from main's copy would drop it.
+	 */
+	"sessionlessSlashThirdFoldNote",
+	/*
+	 * And the fourth fold's own (`sessionlessSlashFourthFoldNote`), listed for
+	 * the list's usual reason: the note states what the fold moved and what it
+	 * did not; a fold that started from main's copy would drop it.
+	 */
+	"sessionlessSlashFourthFoldNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

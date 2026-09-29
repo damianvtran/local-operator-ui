@@ -689,8 +689,9 @@ export const STORIES = [
 	 * press is the HARNESS's, because the claim is that the bar's own control is
 	 * what opens it), a steered run (the second question folds inside rather
 	 * than starting a turn), an interrupted turn (the bar states no outcome in
-	 * v1 - the sibling session owns that wording), a genuinely failed call (the
-	 * failure control survives the collapse), the count clause at its long form,
+	 * v1 - the sibling session owns that wording), a genuinely failed call (no
+	 * tally on the bar; the red rows are one press away, and `failed-expanded`
+	 * photographs the reveal), the count clause at its long form,
 	 * the same turn read from history (durable rows, no live frames - reload's
 	 * state, and the span must still read the same), and the live control
 	 * (nothing condenses while a turn runs).
@@ -702,6 +703,17 @@ export const STORIES = [
 	 * pre-change tree, so the pair differs by the collapse and nothing else.
 	 */
 	["chat-turn-collapse--collapsed", 1280, 900],
+	/*
+	 * THE HOVER CELL (design spec for the below-rule, 2026-09-28): the bar's own
+	 * hover ground painting above an unaltered hairline — the D4 state a still of
+	 * the resting bar cannot show.
+	 */
+	[
+		"chat-turn-collapse--collapsed",
+		1280,
+		900,
+		{ hover: "[data-turn-summary] button", dir: "collapsed-hover" },
+	],
 	[
 		"chat-turn-collapse--expanded",
 		1280,
@@ -711,6 +723,19 @@ export const STORIES = [
 	["chat-turn-collapse--steering", 1280, 900],
 	["chat-turn-collapse--interrupted", 1280, 900],
 	["chat-turn-collapse--failed", 1280, 900],
+	/*
+	 * DESIGN ROUND 1, D1: the failure BEHIND the press — the bar without a
+	 * tally, and the red row one expansion away, on a frame.
+	 */
+	[
+		"chat-turn-collapse--failed",
+		1280,
+		900,
+		{
+			press: '[data-turn-summary] button[aria-expanded="false"]',
+			dir: "failed-expanded",
+		},
+	],
 	["chat-turn-collapse--long-run", 1280, 900],
 	["chat-turn-collapse--restored", 1280, 900],
 	["chat-turn-collapse--running", 1280, 900],
@@ -723,6 +748,21 @@ export const STORIES = [
 	 */
 	["chat-turn-collapse--narration", 1280, 900],
 	["chat-turn-collapse--pinned", 1280, 900],
+	/*
+	 * ISSUE #5'S PAIR (operator feedback, 2026-09-29): peer and wake receipts
+	 * collapse with the work. The second row presses the same story open so the
+	 * design round can judge the reveal.
+	 */
+	["chat-turn-collapse--receipts", 1280, 900],
+	[
+		"chat-turn-collapse--receipts",
+		1280,
+		900,
+		{
+			press: '[data-turn-summary] button[aria-expanded="false"]',
+			dir: "receipts-expanded",
+		},
+	],
 	["chat-turn-collapse--parked", 1280, 900],
 
 	/*
@@ -4365,6 +4405,185 @@ export const STORIES = [
 	],
 	["chat-sidebar-view-menu--off-route-voice", 741, 760],
 
+	/* ------------------------------------------------------------------ *
+	 * THE VIEW-SETTINGS AUDIT (operator, 2026-09-27): one frame per control the
+	 * panel promises, driven by that control's own press, with the caption
+	 * printing both sides of the claim - what the panel's switches say and what
+	 * the two regions actually draw.
+	 *
+	 * `audit-entity-hidden` is the reported bug and the pair's other half is
+	 * `audit-entity-restored`: the same switch pressed off, then back on. Both
+	 * are captured from `origin/main` as well, in the supplementary set
+	 * `docs/evidence/view-settings-audit-baseline/`, because the claim is a
+	 * DELTA - on the base commit the caption's last line reads `DISAGREE` with
+	 * the `Agents` row still drawn, which is the operator's own screenshot.
+	 *
+	 * The ORDER pair is one control over two frames on purpose: `Most recent`
+	 * and `Active first` must produce different lists, not merely different
+	 * ticks, so the two captions' row orders are read against each other (the
+	 * live turn is the oldest conversation in the fixture and so sits past the
+	 * ten-row page under one order and leads the list under the other).
+	 * ------------------------------------------------------------------ */
+	/*
+	 * EACH ENTRY CLAIMS ITS OUTCOME, and the rig checks it against the live DOM
+	 * immediately before the shutter (`expectAttribute`/`expectGone`/
+	 * `expectPresent`): a frame that says "the section is hidden" while the
+	 * region still draws it fails the CAPTURE rather than being filed. That is
+	 * the operator's report, so it is asserted in the direction it was reported.
+	 *
+	 * `audit-group-flat` asserts the two pinned rows BY NAME for the second
+	 * defect this pass fixed: a grouping dropped them when it took the page
+	 * alone, so those two ids are the difference between `In one list` arranging
+	 * the column and filtering it.
+	 */
+	[
+		"chat-sidebar-view-menu--audit-entity-hidden",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-section="agents"]',
+				name: "aria-checked",
+				equals: "false",
+			},
+
+			expectGone:
+				'[data-sidebar-region="entities"] [data-chat-section="agents"]',
+			expectPresent:
+				'[data-sidebar-region="entities"] [data-chat-section="teams"]',
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-entity-restored",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-section="agents"]',
+				name: "aria-checked",
+				equals: "true",
+			},
+			expectPresent:
+				'[data-sidebar-region="entities"] [data-chat-section="agents"]',
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-chat-section-hidden",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-section="week"]',
+				name: "aria-checked",
+				equals: "false",
+			},
+			expectGone: '[data-sidebar-region="chats"] [data-chat-section="week"]',
+			expectPresent:
+				'[data-sidebar-region="chats"] [data-chat-section="older"]',
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-pinned-hidden",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-section="pinned"]',
+				name: "aria-checked",
+				equals: "false",
+			},
+			expectGone: [
+				'[data-sidebar-region="chats"] [data-chat-section="pinned"]',
+				'[data-session-row="audit-pinned-new"]',
+			],
+			expectPresent:
+				'[data-sidebar-region="chats"] [data-chat-section="running"]',
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-teams-hidden",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-section="teams"]',
+				name: "aria-checked",
+				equals: "false",
+			},
+			expectGone:
+				'[data-sidebar-region="entities"] [data-chat-section="teams"]',
+			expectPresent:
+				'[data-sidebar-region="entities"] [data-chat-section="agents"]',
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-group-agent",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-choice="agent"]',
+				name: "aria-checked",
+				equals: "true",
+			},
+			expectGone: [
+				'[data-sidebar-region="chats"] [data-chat-section="running"]',
+				'[data-sidebar-region="chats"] [data-chat-section="older"]',
+			],
+			expectPresent: [
+				'[data-sidebar-region="chats"] [data-chat-section="coder"]',
+				'[data-sidebar-region="chats"] [data-chat-section="ungrouped"]',
+			],
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-group-flat",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-choice="flat"]',
+				name: "aria-checked",
+				equals: "true",
+			},
+			expectGone: [
+				'[data-sidebar-region="chats"] [data-chat-section="running"]',
+				'[data-sidebar-region="chats"] [data-chat-section="coder"]',
+			],
+			expectPresent: [
+				'[data-sidebar-region="chats"] [data-chat-section="all"]',
+				'[data-session-row="audit-pinned-new"]',
+				'[data-session-row="audit-pinned-old"]',
+			],
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-order-most-recent",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-choice="recent"]',
+				name: "aria-checked",
+				equals: "true",
+			},
+			expectGone: '[data-session-row="audit-busy-old"]',
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-order-active-first",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-choice="active-first"]',
+				name: "aria-checked",
+				equals: "true",
+			},
+			expectPresent: '[data-session-row="audit-busy-old"]',
+		},
+	],
+
 	/*
 	 * The publish dialog, in every state its rewrite introduced (agent-hub
 	 * contract §6.2/§6.3): the consent copy that now says what is published, the
@@ -4489,6 +4708,14 @@ export const STORIES = [
 	 * photographed, rather than the unshed full-width page. */
 	["projects-tab--narrow-columns", 560, 600],
 	["projects-tab--many", 1280, 900],
+	/* The sticky team headers, mid-scroll (slice 3): the one state a resting
+	 * frame cannot hold, because at rest every header is in its flow
+	 * position. The play brings the second header flush to the scroller's
+	 * top and asserts the pin, so the frame is a measurement. Sized shorter
+	 * than the default so the twenty-four-row list actually overflows its
+	 * scroller — at 900 tall the first two sections fit whole and the pin is
+	 * unreachable. */
+	["projects-tab--list-teams-sticky", 1280, 620],
 	["projects-tab--detail", 1280, 900],
 	["projects-tab--stale-progress", 1280, 900],
 	["projects-tab--create-dialog", 1280, 900],
@@ -4538,6 +4765,10 @@ export const STORIES = [
 	 * (the no-drag rule's only status door). All three are play-driven: the
 	 * first renders settled, the other two press their own control. */
 	["projects-tab--board-empty-columns", 1280, 900],
+	/* The board's sticky mechanics (design round 1, D2): the play asserts the
+	 * 44px header, the straps' `top-11` offset and the push-out before the
+	 * shutter — the state the round-1 finding (Q1/U1) was measured against. */
+	["projects-tab--board-sticky", 1280, 900],
 	["projects-tab--board-sessions-popover", 1280, 900],
 	["projects-tab--board-card-menu", 1280, 900],
 	/*

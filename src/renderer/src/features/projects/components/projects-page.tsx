@@ -29,7 +29,7 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { PageHeader } from "@shared/components/common/page-header";
 import { Spinner } from "@shared/components/common/spinner";
-import { Alert, Button } from "@shared/components/ui";
+import { Alert, Button, Skeleton } from "@shared/components/ui";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import { FolderKanban, Plus, RefreshCw } from "lucide-react";
 import type { FC } from "react";
@@ -47,6 +47,13 @@ import {
 	useUpdateProject,
 } from "../hooks/use-projects-queries";
 import { projectStatusMeta } from "../project-model";
+
+/**
+ * The loading skeleton's row keys. A literal list rather than `Array.from`:
+ * an index used as a key is exactly what `noArrayIndexKey` exists to refuse,
+ * and the skeleton is six identical rows whose only identity is their slot.
+ */
+const LOADING_SKELETON_ROWS = ["r1", "r2", "r3", "r4", "r5", "r6"] as const;
 import { ProjectBoard, useMoveFocusHandoff } from "./project-board";
 import { ProjectDeleteDialog } from "./project-delete-dialog";
 import { ProjectDetailScreen } from "./project-detail";
@@ -217,17 +224,32 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 
 			{list.isLoading && (
 				/*
-				 * The loading state wears the LIST's own frame — same ground, same
-				 * radius, no edge — so the page does not jump when rows arrive, and so
-				 * the frame is a picture rather than a spinner on an empty canvas (a
-				 * ground with one small mark on it is the shape `check-evidence`'s
-				 * uniformity ceiling refuses, measured: 99.27% of a 1280x900 frame was
-				 * one colour without the panel).
+				 * THE LOADING STATE WEARS THE LIST'S OWN GEOMETRY (design round 1, D1):
+				 * skeleton rows in the list's column plan over the canvas - the panel
+				 * the spinner sat in retired with the views' (slice 3), and a spinner
+				 * cannot promise the height a row can, so the frame does not jump when
+				 * rows arrive. `<output>` is the semantic status region (the mesh
+				 * page's own rule), and the bars take `elevated` because on canvas the
+				 * skeleton is the raised stand-in for content, not a recessed well.
 				 */
-				<div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md bg-surface">
-					<div className="flex flex-1 items-center justify-center">
-						<Spinner label="Loading projects" />
-					</div>
+				<div className="flex min-h-0 flex-1 flex-col">
+					<output className="px-3 py-2 text-meta text-ink-dim">
+						Loading projects…
+					</output>
+					{LOADING_SKELETON_ROWS.map((key) => (
+						<div
+							key={key}
+							className="flex items-center gap-3 px-3 py-2"
+							aria-hidden="true"
+						>
+							<Skeleton className="h-4 min-w-0 flex-1 bg-elevated" />
+							<Skeleton className="h-4 w-20 shrink-0 bg-elevated" />
+							<Skeleton className="h-4 w-32 shrink-0 bg-elevated" />
+							<Skeleton className="h-4 w-16 shrink-0 bg-elevated" />
+							<Skeleton className="h-4 w-20 shrink-0 bg-elevated" />
+							<Skeleton className="h-4 w-40 shrink-0 bg-elevated" />
+						</div>
+					))}
 				</div>
 			)}
 
@@ -257,15 +279,13 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 
 			{list.isSuccess && list.data.length === 0 && (
 				/*
-				 * THE EMPTY STATE WEARS THE LIST'S FRAME TOO (design round 1, D3): the
-				 * panel collapsed from 876 to 350 on the arrival of an empty store —
-				 * every first run — while the loading frame it replaced had already
-				 * promised no move. The panel is the page's one body and its height is
-				 * not a fact about how many rows are in it; the content centres in the
-				 * frame instead. The first line also takes the heading step (D7), the
-				 * one the schedules page's empty state uses for the same slot.
+				 * THE EMPTY STATE IS A MESSAGE BLOCK ON THE CANVAS (design round 1, D1):
+				 * the panel retired with the views' - an empty store should not keep a
+				 * framed ground forever while every populated state is borderless. The
+				 * height promise D3 set stays: this container is still the page's one
+				 * body (`flex-1`), so nothing collapses under the message.
 				 */
-				<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 overflow-hidden rounded-md bg-surface">
+				<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
 					<p className="text-heading text-ink">No projects yet.</p>
 					<p className="max-w-140 text-center text-body-sm text-ink-muted">
 						Create one here, or ask an agent to create one and link this

@@ -923,6 +923,22 @@ const CONTROLS = [
 	},
 	{
 		/*
+		 * The mini composer's field (quick-send design §D; design round 1, D5):
+		 * an `elevated` box with a 1px `border-control` edge on the summoned
+		 * window's `canvas`, whose ink is the base role. A new component with its
+		 * own fill and edge has to be LISTED — by this table's own first rule,
+		 * green output about surfaces nobody named is not evidence about this one.
+		 * The same triple rides under "ask option button (hover)", but that row's
+		 * grounds are the pane's, and a summoned window draws on its own canvas.
+		 */
+		name: "mini composer field",
+		on: ["canvas"],
+		fill: "elevated",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
 		 * The browser tab strip's agent marker: the one element that distinguishes a
 		 * tab an AGENT opened from one the user opened (design 6.1/11.8).
 		 *
