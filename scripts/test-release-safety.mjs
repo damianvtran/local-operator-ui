@@ -475,8 +475,14 @@ const INSTALLERS = [
 	"app.rpm",
 ];
 const METADATA = ["latest-mac.yml", "latest.yml", "latest-linux.yml"];
+// The AppImage's update channel rides with the artifact: the update information
+// embedded in it names this file, and AppImageUpdate fetches it by name. A
+// fixture that left it out would call a release complete while the Linux
+// AppImage it just shipped cannot be updated in place - the half-state v0.31.5
+// shipped and AppImage/appimage.github.io#4905 reported.
+const APPIMAGE_ZSYNC = ["app.AppImage.zsync"];
 const uploaded = (names) => names.map((name) => ({ name, state: "uploaded" }));
-const COMPLETE = uploaded([...INSTALLERS, ...METADATA]);
+const COMPLETE = uploaded([...INSTALLERS, ...METADATA, ...APPIMAGE_ZSYNC]);
 // A DMG whose upload did not finish: listed on the release, with no bytes
 // behind it. The mac channel has nothing else, so it cannot be offered.
 const INTERRUPTED = uploaded([
@@ -690,6 +696,28 @@ test("writeup: a repair is never blocked by an old Release's body", () => {
 	assert.equal(run.result.reason, "manual dispatch");
 });
 
+test("a repair of a pre-change release is never refused for the missing .zsync", () => {
+	// The reason the zsync check is conditional AND behind the stand-down: every
+	// release published before the AppImage work carries an AppImage and no
+	// `.zsync`, and a repair - the one path that attaches assets to exactly
+	// those old releases - must keep working. Both window jobs stand down before
+	// the asset check when IS_MANUAL_DISPATCH is set.
+	const reattachable = uploaded([...INSTALLERS, ...METADATA]);
+	const open = windowRun(openReleaseWindow, {
+		isManual: true,
+		assets: reattachable,
+	});
+	assert.deepEqual(open.writes, []);
+	assert.equal(open.result.reason, "manual dispatch");
+	const attach = windowRun(finalizeRelease, {
+		isManual: true,
+		assets: reattachable,
+		prerelease: true,
+	});
+	assert.deepEqual(attach.writes, []);
+	assert.equal(attach.result.reason, "manual dispatch");
+});
+
 test("writeup: a re-run of a complete release is not re-judged", () => {
 	// Deliberate, and the only exemption on the release path: a release that already
 	// carries every installer is a repeat of a run that succeeded, nothing is being
@@ -714,6 +742,47 @@ test("missing assets are named, so a refusal says what was absent", () => {
 		"linux update metadata",
 	]);
 	assert.deepEqual(missingAssets(COMPLETE), []);
+});
+
+test("missing assets: an AppImage without its .zsync is named", () => {
+	// The AppImage's update channel is published beside it, and nothing else on
+	// the release stands in for it: without the `.zsync`, AppImageUpdate reads
+	// the update information, resolves this release's asset names, and offers
+	// the user nothing - the state v0.31.5 shipped in.
+	assert.deepEqual(missingAssets(uploaded(["app.AppImage"])), [
+		"macos installer",
+		"macos update metadata",
+		"windows installer",
+		"windows update metadata",
+		"linux update metadata",
+		"linux appimage zsync",
+	]);
+	// Everything but the AppImage's channel file: the half-state a release is
+	// in when the finalize step was skipped or its upload was lost.
+	assert.deepEqual(missingAssets(uploaded([...INSTALLERS, ...METADATA])), [
+		"linux appimage zsync",
+	]);
+	// No AppImage on the release: the check says nothing, rather than demanding
+	// a `.zsync` for a release that predates the AppImage work.
+	assert.deepEqual(missingAssets(uploaded(["app.deb", "latest-linux.yml"])), [
+		"macos installer",
+		"macos update metadata",
+		"windows installer",
+		"windows update metadata",
+	]);
+});
+
+test("open: an AppImage missing its .zsync is held, so the completeness claim stays true of it", () => {
+	// The fast path below prints "already carries every installer and its update
+	// metadata"; this release carries an installer set and every channel file,
+	// and the message must still not print, because it would now be false of
+	// the AppImage's update channel.
+	const run = windowRun(openReleaseWindow, {
+		assets: uploaded([...INSTALLERS, ...METADATA]),
+	});
+	assert.deepEqual(run.writes, [HOLD]);
+	assert.equal(run.result.action, "held");
+	assert.deepEqual(run.result.missing, ["linux appimage zsync"]);
 });
 
 for (const [label, options, writes, action] of [
@@ -764,6 +833,14 @@ for (const [label, assets, error] of [
 		"any update metadata at all",
 		uploaded(INSTALLERS),
 		/missing macos update metadata/,
+	],
+	[
+		// The AppImage's channel file is the one asset the update information
+		// embedded in the artifact points at; without it the release offers no
+		// update to the very users the feature was built for.
+		"an AppImage without its .zsync",
+		uploaded([...INSTALLERS, ...METADATA]),
+		/missing linux appimage zsync/,
 	],
 	[
 		// Metadata is asserted per platform. One platform's channel file used to

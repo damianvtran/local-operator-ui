@@ -1,3 +1,32 @@
+## Re-captured after the provider list replaced the card grid
+
+The section below is #436's own record of this set's FIRST capture, and it
+describes the three-column card grid. PR #494 replaced that grid with the grouped
+list this surface renders today, and until this pass `in-dialog@1280` still
+depicted the retired screen, "Step 1 of 6" and its Next button included. The
+frames in this directory were re-taken so they show the screen the app draws:
+
+- **When and how.** 2026-09-27, from `feat/provider-setup`'s tree, with
+  `node scripts/capture-evidence.mjs --only=onboarding-providersetup
+  --themes=localOperatorDark,localOperatorLight` against a Storybook dev server:
+  the two `localOperator*` palettes, the same two #436 used. `check-themes` covers
+  the other ten.
+- **Two states are new, and they are the reason for the re-capture.**
+  `more-providers-open` and `more-providers-open-query`
+  (`onboarding-providersetup--in-dialog-more-open` and
+  `--in-dialog-more-open-query`) open the disclosure with a real press on the
+  trigger. The expanded state had no frame in any palette before this pass, which
+  is how a defect the expansion carried -- the four suggested rows listed a
+  second time inside their own groups, 22 rows for 18 providers -- survived
+  #494's review rounds unseen.
+- **`in-dialog-scrolled` now belongs to the EXPANDED step.** The collapsed list
+  fits the dialog body without scrolling (`body 638x380`, overflow 0), so the
+  entry's `scrollToEnd` had nothing to scroll; the expanded panel overflows by
+  about 645px, which is where "the field scrolls away with the content" is still
+  visible.
+- **`in-dialog@800` is the app's own minimum window**, 800x600, so the floor is
+  photographed rather than argued.
+
 # Connecting a provider: the onboarding step, wider, searchable, Radient first
 
 The owner's brief was four things about onboarding step 1, the screen a brand-new

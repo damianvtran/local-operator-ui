@@ -7,7 +7,7 @@ import {
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
-import { AlertTriangle, Globe, X } from "lucide-react";
+import { Globe, X } from "lucide-react";
 import type { FC } from "react";
 import {
 	useCallback,
@@ -45,7 +45,8 @@ import { BrowserUrlBar } from "./browser-url-bar";
  * The browser surface: everything that exists once per host.
  * Design: docs/design/ui-browser-tab.md 11.1 (one `WebContentsView` per tab),
  * 11.2 (who owns the rectangle), 11.3 (the layering consequence), 11.4 (focus),
- * 11.6 (popups are offered, not opened), 11.8 (human takeover), 11.9 (a route now,
+ * 11.6 (popups — amended by docs/design/browser-oauth-popups.md), 11.8 (human
+ * takeover), 11.9 (a route now,
  * a panel later); docs/design/browser-approval-ux.md 2 (the band is the
  * interactive surface), 4 (the surfaces), 7.1 (one implementation, two hosts).
  *
@@ -53,7 +54,7 @@ import { BrowserUrlBar } from "./browser-url-bar";
  * agent in THIS conversation doing") is conversational, not global, so the feature
  * is going to be hosted twice: the route the rail points at, and a pane inside a
  * conversation (PR 2). Everything that is once per host lives here — the rect
- * reporter, the view-visibility policy, the popup/error notices, the tray, the
+ * reporter, the view-visibility policy, the error notice, the tray, the
  * dock, the tab strip and URL bar wiring — and the only thing a host chooses is
  * its two scopes, its evidence tags, and its header wording. Re-implementing the
  * strip and the tray per host is rejected for the same reason `branding.md`
@@ -239,10 +240,6 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
 	const [handOverTab, setHandOverTab] = useState<BrowserTabView | null>(null);
 	const [busy, setBusy] = useState(false);
-	const [blockedPopup, setBlockedPopup] = useState<{
-		tabId: number;
-		url: string;
-	} | null>(null);
 
 	/**
 	 * The scope, held by IDENTITY as well as by value.
@@ -335,16 +332,6 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	useEffect(() => {
 		chrome.setViewVisible(!suppressed);
 	}, [chrome.setViewVisible, suppressed]);
-
-	// ---- popups: offered, never opened --------------------------------------
-	// `setWindowOpenHandler` denies every `window.open` in main; http(s) ones are
-	// offered to the user here instead of being auto-opened (design 11.6), because
-	// an unexpected window is the one popup behaviour a user cannot undo.
-	useEffect(() => {
-		const api = window.api?.browser;
-		if (!api) return;
-		return api.onPopupBlocked((payload) => setBlockedPopup(payload));
-	}, []);
 
 	// A banner click names the pending request; the band is already rendering it,
 	// so the only job here is to make sure this surface is showing current state.
@@ -478,7 +465,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 
 	if (!chrome.available) {
 		return (
-			<div className="flex h-full items-center justify-center bg-canvas p-6">
+			<div className="flex h-full items-center justify-center bg-elevated p-6">
 				<p className="text-body text-ink-muted">
 					The browser is only available in the desktop app.
 				</p>
@@ -487,8 +474,12 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	}
 
 	return (
+		/* The body's ground is the PANE's (`canvas/index.tsx`): this surface is the
+		   inside of the drawer, so it wears the drawer's rung rather than the
+		   conversation's, and the strip/client area above and below are continuous
+		   with it. */
 		<div
-			className="flex h-full min-h-0 flex-col bg-canvas"
+			className="flex h-full min-h-0 flex-col bg-elevated"
 			data-tour-tag={surfaceTag}
 		>
 			{/* THE STRIP CONSUMES THESE TWO HANDS, so they are passed through rather than
@@ -536,8 +527,8 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				downloadsRecent={chrome.state?.transfers?.recent ?? null}
 				onOpenDownloads={() => void chrome.revealDownloads()}
 			/>
-			{/* The transfer row sits in the SAME strip as the consent band and the popup
-			    notice, and ABOVE the band deliberately: a refusal is the case a human has
+			{/* The transfer row sits in the SAME strip as the consent band, and ABOVE
+			    the band deliberately: a refusal is the case a human has
 			    to see, and the band's own visibility is driven by a pending approval, which
 			    a transfer usually does not have. Rendering it as the band's child would
 			    make the row invisible in exactly the common case (§16.4). It is scoped to
@@ -586,44 +577,6 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 					/>
 				</div>
 			)}
-			{blockedPopup && (
-				<div
-					className="flex items-center gap-2 border-control border-b bg-surface px-3 py-1.5"
-					data-tour-tag="browser-popup-notice"
-				>
-					<AlertTriangle
-						aria-hidden
-						className="size-4 shrink-0 text-ink-muted"
-					/>
-					<p className="min-w-0 grow truncate text-body-sm text-ink-muted">
-						A popup to{" "}
-						<span className="font-mono text-mono-sm">{blockedPopup.url}</span>{" "}
-						was blocked.
-					</p>
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={() => {
-							const url = blockedPopup.url;
-							setBlockedPopup(null);
-							void runBusy(async () => {
-								await chrome.newTab(hostSessionId);
-								await chrome.navigate(url);
-							});
-						}}
-					>
-						Open in a new tab
-					</Button>
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						aria-label="Dismiss"
-						onClick={() => setBlockedPopup(null)}
-					>
-						<X aria-hidden className="size-3.5" />
-					</Button>
-				</div>
-			)}
 			{chrome.error && (
 				<output
 					className="flex items-center gap-2 border-control border-b bg-danger-wash px-3 py-1.5"
@@ -665,7 +618,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 					// also names is a PANE-layout decision, not this class's: in a pane narrower
 					// than ~520px the dock takes the whole width and the page is given none
 					// (spec §4.4), which is PR 2's layout to choose.
-					className="relative min-h-0 min-w-0 grow bg-canvas"
+					className="relative min-h-0 min-w-0 grow bg-elevated"
 					data-tour-tag="browser-content"
 					/* The suppression reason on the element that is always here, so a run — or a
 					   support session — reads WHY the page is hidden rather than inferring it
@@ -763,8 +716,8 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 								{state.title || activeTab?.title || "This page"}
 							</p>
 							<p className="text-body-sm text-ink-muted">
-								Paused while a dialog or panel is open — close it to bring the
-								page back.
+								Paused while a dialog, menu or panel is open — close it to bring
+								the page back.
 							</p>
 						</output>
 					)}

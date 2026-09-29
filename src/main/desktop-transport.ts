@@ -101,12 +101,19 @@ export async function requestDesktopOutcome(
 	 */
 	let answered = false;
 	/*
-	 * This op's own budget, from the contract that declares the schemas - not one
-	 * literal for every op. A ledger read's cost follows the ledger, and the 20 s
+	 * This request's own budget, from the contract that declares the schemas - not
+	 * one literal for every op. A ledger read's cost follows the ledger, and the 20 s
 	 * control budget was cutting those reads off mid-scan and reporting it as a
 	 * dead backend; see `desktopRequestDeadlineMs` for the measurements.
+	 *
+	 * THE WHOLE REQUEST, not `request.op`, because one op's budget depends on the
+	 * request's own shape: a transfer may legitimately hold for minutes, and how many
+	 * is decided by whether it is an offload, a `keep` copy or a recall and by its
+	 * own `wait_s` (`moveClientBoundMs`). A caller that passed the op string would
+	 * still compile and would still get a number - the 20 s control budget - which is
+	 * the exact defect this signature exists to make impossible.
 	 */
-	const deadlineMs = desktopRequestDeadlineMs(request.op);
+	const deadlineMs = desktopRequestDeadlineMs(request);
 	try {
 		const body =
 			target.body === undefined ? undefined : JSON.stringify(target.body);

@@ -1,3 +1,4 @@
+import { UndoToasts } from "@features/chat/components/undo-toasts";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { PostHogProvider } from "posthog-js/react";
@@ -11,6 +12,7 @@ import { config, telemetryEnabled } from "@shared/config";
 import type { PostHogConfig } from "posthog-js";
 import App from "./app";
 import { installDevDriver } from "./dev-driver/install";
+import { RegistrationToasts } from "./mini-view/registration-toasts";
 import { queryClient } from "./shared/api/query-client";
 import { ErrorBoundary } from "./shared/components/common/error-boundary";
 import { GlobalScrollbarStyles } from "./shared/components/common/global-scrollbar-styles";
@@ -101,6 +103,25 @@ document.addEventListener("DOMContentLoaded", () => {
 							</HashRouter>
 						</ErrorBoundary>
 						<ThemedToastContainer />
+						{/*
+						 * THE UNDO OFFERS AND THE ARCHIVE REFUSAL ARE RAISED FROM HERE (2026-09-27).
+						 * They used to be drawn by the chat sidebar, into a lane of its own; the
+						 * sidebar collapses to a 56px strip (unmounting the panel) while the acts
+						 * that raise the messages stay reachable from the chat pane, the composer and
+						 * the slash command - so a surface that lives for the app's whole life owns
+						 * them now, and this is that surface. It renders nothing: the messages land in
+						 * the ONE global container above, where every other toast goes.
+						 */}
+						<UndoToasts />
+						{/*
+						 * THE QUICK-SEND REGISTRATION TOASTS (design §G.3; UX round 1, U1),
+						 * mounted here for the same reason `UndoToasts` is: this surface
+						 * lives for the app's whole life, and what it raises lands in the ONE
+						 * global container above rather than in a lane of its own. A
+						 * registration failure is otherwise visible only to a reader already
+						 * on Settings → Hotkeys.
+						 */}
+						<RegistrationToasts />
 						{/* React Query DevTools - only in development (positioned at bottom left) */}
 						{isDevelopmentMode() && (
 							<ReactQueryDevtools

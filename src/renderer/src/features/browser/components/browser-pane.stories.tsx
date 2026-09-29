@@ -1,5 +1,6 @@
 import { ChatHeader } from "@features/chat/components/chat-header";
 import { deriveRunDetails } from "@features/chat/components/run-details/run-detail-model";
+import { PaneSlot } from "@shared/components/common/pane-slot";
 import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -220,7 +221,6 @@ function installBridge(state: BrowserChromeState): void {
 		revokeAllApprovals: noop,
 		forgetSite: noop,
 		clearData: noop,
-		onPopupBlocked: () => () => {},
 		onConsentAttention: () => () => {},
 	};
 	(window as unknown as { api: unknown }).api = { browser };
@@ -384,16 +384,12 @@ const CompositionGround: FC<{
 							side="left"
 							label="Resize browser"
 						/>
-						<div
-							data-tour-tag="browser-pane-slot"
-							style={{ width: panelWidth }}
-							className="relative h-full overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart"
-						>
+						<PaneSlot width={panelWidth} tourTag="browser-pane-slot">
 							<BrowserPane
 								sessionId={THIS_CONVERSATION}
 								onClose={() => undefined}
 							/>
-						</div>
+						</PaneSlot>
 					</>
 				)}
 			</div>

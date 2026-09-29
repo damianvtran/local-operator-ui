@@ -1,0 +1,361 @@
+{
+	"capturedFrom": "CONSTRUCTED, from the wire contract settled for the interrupted-vs-failed workstream (verified 2026-09-28 against local-operator origin/main 11fc505e4 and this repository's origin/main 3a46e6c987). No daemon session was read: every frame here is built from the shapes the published contract names, so the fixture is stable across captures of both trees.",
+	"note": "The two evidence states the operator reported: a steering skip (the batch tail the harness drops when steering redirects, `Tool call skipped: interrupted by steering.`) and a call the user stopped mid-flight. `skip.live` is the live path (an announcement the viewer watched, then the terminal frame); `skip.durable` is what a reload paints for the same call (the synthetic result the loop stores, `details.__fault: \"skipped\"`); `stop` is the end-event shape of an abort (`details.__fault: \"aborted\"`, the marker `loop.py:3979`'s backfill carries once the core half lands); `failure` is the control - a call that really ran and failed (`details.__fault: \"execution\"`), unchanged by this change in both trees. `turnCounts` reuses the skipped call's durable row inside a three-call turn, so the fold header and the turn foot can be read on one frame. The `not_run_kind: \"skipped\"` field on `skip.live.verdict` is the new wire field (core PR); every other frame uses only fields that ship today, and `skip.live.announcement` deliberately carries no kind and no reason - dictation frames never do.",
+	"epoch": "Every `ts` here is epoch SECONDS, the unit the desktop history contract states; the live frames carry `started_at_epoch` in seconds as the wire does.",
+	"baseTs": 1789900000,
+	"pages": {
+		"plain": {
+			"entries": [
+				{
+					"id": "ir-plain-u1",
+					"ts": 1789900000,
+					"type": "message",
+					"payload": {
+						"kind": "message",
+						"role": "user",
+						"id": "ir-plain-u1",
+						"content": [
+							{
+								"type": "text",
+								"text": "Kick off the smoke run, then wait for it before we bump anything."
+							}
+						],
+						"tool_calls": []
+					}
+				},
+				{
+					"id": "ir-plain-a1",
+					"ts": 1789900016,
+					"type": "message",
+					"payload": {
+						"kind": "message",
+						"role": "assistant",
+						"id": "ir-plain-a1",
+						"content": [
+							{
+								"type": "text",
+								"text": "Starting the smoke run now."
+							}
+						],
+						"tool_calls": []
+					}
+				}
+			]
+		},
+		"turnCounts": {
+			"entries": [
+				{
+					"id": "ir-turn-u1",
+					"ts": 1789900000,
+					"type": "message",
+					"payload": {
+						"kind": "message",
+						"role": "user",
+						"id": "ir-turn-u1",
+						"content": [
+							{
+								"type": "text",
+								"text": "Run the release checklist: smoke test, changelog bump, then the artifact checklist."
+							}
+						],
+						"tool_calls": []
+					}
+				},
+				{
+					"id": "ir-turn-t1",
+					"ts": 1789900005,
+					"type": "message",
+					"payload": {
+						"kind": "message",
+						"role": "tool",
+						"id": "ir-turn-t1",
+						"tool_call_id": "call_00_InterruptedRowsSkipA1",
+						"tool_name": "bash",
+						"is_error": true,
+						"content": [
+							{
+								"type": "text",
+								"text": "Tool call skipped: interrupted by steering."
+							}
+						],
+						"provider_payload": {
+							"details": { "__fault": "skipped", "__synthetic": true }
+						}
+					}
+				},
+				{
+					"id": "ir-turn-t2",
+					"ts": 1789900009,
+					"type": "message",
+					"payload": {
+						"kind": "message",
+						"role": "tool",
+						"id": "ir-turn-t2",
+						"tool_call_id": "call_00_InterruptedRowsOk0001",
+						"tool_name": "bash",
+						"is_error": false,
+						"content": [
+							{
+								"type": "text",
+								"text": "exit code: 0\nsmoke suite green: 42 passed, 0 failed"
+							}
+						],
+						"provider_payload": { "duration_s": 12.4 }
+					}
+				},
+				{
+					"id": "ir-turn-t3",
+					"ts": 1789900012,
+					"type": "message",
+					"payload": {
+						"kind": "message",
+						"role": "tool",
+						"id": "ir-turn-t3",
+						"tool_call_id": "call_00_InterruptedRowsOk0002",
+						"tool_name": "read",
+						"is_error": false,
+						"content": [
+							{
+								"type": "text",
+								"text": "## Unreleased\n\n### Fixed\n- tool rows say interrupted when a call was stopped, not failed"
+							}
+						],
+						"provider_payload": { "duration_s": 0.06 }
+					}
+				},
+				{
+					"id": "ir-turn-a1",
+					"ts": 1789900016,
+					"type": "message",
+					"payload": {
+						"kind": "message",
+						"role": "assistant",
+						"id": "ir-turn-a1",
+						"content": [
+							{
+								"type": "text",
+								"text": "Smoke test is green and the changelog is bumped. The skipped call was replaced by steering - it never reached a tool."
+							}
+						],
+						"tool_calls": []
+					}
+				},
+				{
+					"id": "ir-turn-u2",
+					"ts": 1789900040,
+					"type": "message",
+					"payload": {
+						"kind": "message",
+						"role": "user",
+						"id": "ir-turn-u2",
+						"content": [
+							{
+								"type": "text",
+								"text": "Good - carry on with the artifact checklist."
+							}
+						],
+						"tool_calls": []
+					}
+				},
+				{
+					"id": "ir-turn-a2",
+					"ts": 1789900045,
+					"type": "message",
+					"payload": {
+						"kind": "message",
+						"role": "assistant",
+						"id": "ir-turn-a2",
+						"content": [
+							{
+								"type": "text",
+								"text": "Starting the artifact checklist now."
+							}
+						],
+						"tool_calls": []
+					}
+				}
+			]
+		},
+		"skipOnly": {
+			"entries": [
+				{
+					"id": "ir-skip-u1",
+					"ts": 1789900000,
+					"type": "message",
+					"payload": {
+						"kind": "message",
+						"role": "user",
+						"id": "ir-skip-u1",
+						"content": [
+							{
+								"type": "text",
+								"text": "Run the release checklist: smoke test, changelog bump, then the artifact checklist."
+							}
+						],
+						"tool_calls": []
+					}
+				},
+				{
+					"id": "ir-skip-t1",
+					"ts": 1789900005,
+					"type": "message",
+					"payload": {
+						"kind": "message",
+						"role": "tool",
+						"id": "ir-skip-t1",
+						"tool_call_id": "call_00_InterruptedRowsSkipA1",
+						"tool_name": "bash",
+						"is_error": true,
+						"content": [
+							{
+								"type": "text",
+								"text": "Tool call skipped: interrupted by steering."
+							}
+						],
+						"provider_payload": {
+							"details": { "__fault": "skipped", "__synthetic": true }
+						}
+					}
+				},
+				{
+					"id": "ir-skip-a1",
+					"ts": 1789900016,
+					"type": "message",
+					"payload": {
+						"kind": "message",
+						"role": "assistant",
+						"id": "ir-skip-a1",
+						"content": [
+							{
+								"type": "text",
+								"text": "Checklist done - the skipped call was replaced by steering. Continuing."
+							}
+						],
+						"tool_calls": []
+					}
+				}
+			]
+		},
+		"failureOnly": {
+			"entries": [
+				{
+					"id": "ir-fail-u1",
+					"ts": 1789900000,
+					"type": "message",
+					"payload": {
+						"kind": "message",
+						"role": "user",
+						"id": "ir-fail-u1",
+						"content": [
+							{
+								"type": "text",
+								"text": "Run the release checklist: smoke test, changelog bump, then the artifact checklist."
+							}
+						],
+						"tool_calls": []
+					}
+				},
+				{
+					"id": "ir-fail-t1",
+					"ts": 1789900005,
+					"type": "message",
+					"payload": {
+						"kind": "message",
+						"role": "tool",
+						"id": "ir-fail-t1",
+						"tool_call_id": "call_00_InterruptedRowsFail001",
+						"tool_name": "bash",
+						"is_error": true,
+						"content": [
+							{
+								"type": "text",
+								"text": "exit status 1\nnpm ERR! Missing script: \"smoke\""
+							}
+						],
+						"provider_payload": {
+							"duration_s": 0.8,
+							"details": { "__fault": "execution" }
+						}
+					}
+				},
+				{
+					"id": "ir-fail-a1",
+					"ts": 1789900016,
+					"type": "message",
+					"payload": {
+						"kind": "message",
+						"role": "assistant",
+						"id": "ir-fail-a1",
+						"content": [
+							{
+								"type": "text",
+								"text": "The smoke script is not defined in this project - the call failed rather than being interrupted."
+							}
+						],
+						"tool_calls": []
+					}
+				}
+			]
+		}
+	},
+	"skip": {
+		"live": {
+			"announcement": {
+				"type": "tool_call_compose",
+				"tool_call_id": "call_00_InterruptedRowsSkipA1",
+				"tool_name": "bash",
+				"argument_bytes": 2048,
+				"intent": "Running the smoke suite before the bump",
+				"supersedes_tool_call_id": null,
+				"dictation_complete": false,
+				"not_run_reason": null
+			},
+			"verdict": {
+				"type": "tool_call_compose",
+				"tool_call_id": "call_00_InterruptedRowsSkipA1",
+				"tool_name": "bash",
+				"argument_bytes": 2048,
+				"intent": "Running the smoke suite before the bump",
+				"supersedes_tool_call_id": null,
+				"dictation_complete": true,
+				"not_run_reason": "Tool call skipped: interrupted by steering.",
+				"not_run_kind": "skipped"
+			}
+		}
+	},
+	"stop": {
+		"announcement": {
+			"type": "tool_call_compose",
+			"tool_call_id": "call_00_InterruptedRowsStopB2",
+			"tool_name": "bash",
+			"argument_bytes": 45,
+			"intent": "Waiting out the smoke run",
+			"supersedes_tool_call_id": null,
+			"dictation_complete": true,
+			"not_run_reason": null
+		},
+		"start": {
+			"type": "tool_execution_start",
+			"tool_call_id": "call_00_InterruptedRowsStopB2",
+			"tool_name": "bash",
+			"args": {
+				"command": "pnpm test:smoke",
+				"i": "Waiting out the smoke run"
+			},
+			"intent": "Waiting out the smoke run",
+			"started_at_epoch": 1789900798.5
+		},
+		"end": {
+			"type": "tool_execution_end",
+			"tool_call_id": "call_00_InterruptedRowsStopB2",
+			"tool_name": "bash",
+			"result": {
+				"content": [{ "type": "text", "text": "aborted" }],
+				"is_error": true,
+				"details": { "__fault": "aborted", "__synthetic": true }
+			},
+			"is_error": true,
+			"duration_s": 0.51
+		}
+	}
+}

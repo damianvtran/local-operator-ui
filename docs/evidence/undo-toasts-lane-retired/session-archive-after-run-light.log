@@ -1,0 +1,147 @@
+[build] current: assets 2026-09-28T08:51:22.621Z >= sources 2026-09-28T08:41:19.773Z
+[note] abandoned scratch trees
+        22 seen, 0 owned by a live pid (kept), 19 younger than 30m (kept), 3 removed: lo-renderer-driver-88712, lo-renderer-driver-89451, lo-renderer-driver-91420
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:18322
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/undo-toasts-0927-235510
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-54895
+  frames        /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/undo-toasts-r2-37574/rig2/frames-mine4-sa-light
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-54895/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:18322   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/undo-toasts-0927-235510/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:18322","backend":"http://127.0.0.1:18322"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:18322)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] the renderer reports this run's frames directory
+[PASS] the app is in the palette this run photographs (localOperatorLight)
+[PASS] the catalogue answered and the panel is drawing its rows
+[note] row
+        {"selector":"[data-chat-row]","target":"button \"Agents\"","centre":{"x":126,"y":338},"rect":{"x":12,"y":324,"width":228,"height":28},"hitTest":true,"focused":false,"inViewport":true}
+[PASS] the archive control exists at rest and the pointer is over it
+[note] title width cost
+        the archive control is 24x24 under the pointer, and nothing is reserved at rest; the first [data-chat-row] box is 228px of a 1380px window (that box is a section heading, not a session row)
+[PASS] the row's ground survives the pointer moving onto its control
+[note] the ground under the pointer, on a control
+        {"rows":4,"painted":[{"id":"b3f1a09c7d52","width":228,"background":"rgb(237, 236, 231)"}]}
+[PASS] the query landed in the search field
+[PASS] the archived conversation is NOT in the list while Include archived is off
+[PASS] turning the control on puts the archived conversation in the list, marked
+[PASS] the delete confirmation is open on the conversation the menu was opened on
+[PASS] closing the delete dialog hands the keyboard back to the control that opened it
+[PASS] and cancelling clears the staged candidate, so no dialog waits on the next route
+[PASS] the refused delete stays in the dialog that asked it
+[PASS] and the refusal leaves the keyboard on the SAFE action, not the destructive one
+[note] row forensics, refusal step (the press that WORKS)
+        {"sessionId":"7c1b0f2a4d31","dom":{"row":true,"rowAttrs":{"data-session-row":"7c1b0f2a4d31","data-state":"closed"},"control":{"label":"","aria":"Archive “Migration checklist”","box":{"w":24,"h":24},"attrs":{"data-session-archive":"true","aria-label":"Archive “Migration checklist”"},"disabled":false}},"store":{"activeSessionId":"7c1b0f2a4d31","sessionCount":5,"archiveAttempts":9,"archiveFailure":null}}
+[note] the list and its rows with no message standing
+        {"list":{"top":320,"height":515,"scrollTop":0,"scrollHeight":515,"rows":[{"id":"2d5ad5da0025","region":"chats","top":544},{"id":"e059761608ae","region":"chats","top":576},{"id":"7c1b0f2a4d31","region":"chats","top":608},{"id":"b3f1a09c7d52","region":"chats","top":640}]},"entities":{"top":324,"height":180,"scrollTop":0,"scrollHeight":180,"rows":[]},"rows":[{"id":"2d5ad5da0025","top":544},{"id":"e059761608ae","top":576},{"id":"7c1b0f2a4d31","top":608},{"id":"b3f1a09c7d52","top":640}]}
+[PASS] a refused archive is reported as an ordinary sonner toast, with its retry
+[PASS] and the message is the app's one container's, bottom-right, outside the panel - with no band element anywhere
+[PASS] no row's box is covered by the card (design round 4, D14): the covered-row scan returns the empty set
+[PASS] and if one ever were: the card's own body does not swallow a press aimed at it (C: Q-1, R4-1, D11, U9)
+[note] the card's own overflow (D19)
+        {"overflowX":"visible","scrollWidth":361,"clientWidth":354,"horizontalStrip":2}
+[note] the refusal's settled card, in the app's own corner (the band it used to be paired with is gone)
+        {"card":{"x":1000,"y":796,"width":356,"height":80},"viewport":{"w":1380,"h":900}}
+[note] the list and its rows with the message standing
+        {"list":{"top":320,"height":515,"scrollTop":0,"scrollHeight":515,"rows":[{"id":"2d5ad5da0025","region":"chats","top":544},{"id":"e059761608ae","region":"chats","top":576},{"id":"7c1b0f2a4d31","region":"chats","top":608},{"id":"b3f1a09c7d52","region":"chats","top":640}]},"entities":{"top":324,"height":180,"scrollTop":0,"scrollHeight":180,"rows":[]},"rows":[{"id":"2d5ad5da0025","top":544},{"id":"e059761608ae","top":576},{"id":"7c1b0f2a4d31","top":608},{"id":"b3f1a09c7d52","top":640}]}
+[PASS] a standing message reserves NO space: every row in both regions keeps its top, both scrollTops are untouched, the entity region keeps its box to the pixel, and the list's own height is unchanged
+[note] what a press at each covered row's archive control reaches
+        []
+[PASS] a refused retry puts the refusal back on screen, with its Retry still pressable, and the store answered a NEW press with a refusal for this row (UX round 1, U3; freshness from agent review round 2, R2-2)
+[note] retry transition
+        {"samples":1,"removedSeen":false,"lastWithLane":{"at":9,"painted":true,"panelToaster":false,"toasters":1,"nodes":1,"removed":0,"action":"Retry","panel":true,"root":false},"firstVanished":null}
+[PASS] U10 precondition: the refused conversation's refusal is what the surface is showing
+[PASS] the superseding row's archive control is revealed before the press (a press at a 0x0 box reaches nothing - the light-palette miss)
+[note] U10 the aim at the superseding archive control, and the answer it produced
+        {"viewport":{"w":1380,"h":900},"row":{"x":12,"y":576,"w":228,"h":32,"top":576,"bottom":608},"control":{"x":188,"y":580,"w":24,"h":24,"top":580,"bottom":604},"centre":{"x":200,"y":592},"hit":"path row:e059761608ae","undo":true,"failure":null}
+[PASS] U10: the newer offer takes the screen AND the refusal it superseded is cleared with it, so it cannot be re-printed
+[PASS] U10: after the offer's own Undo the surface stays EMPTY - the refusal is not re-printed at +450ms or +1.75s, and no band element exists anywhere, in this palette
+[note] U10 the surface after the newer message retires
+        [{"at":"+450ms","drawn":false,"noBand":true,"failure":null,"undo":null},{"at":"+1750ms","drawn":false,"noBand":true,"failure":null,"undo":null}]
+[PASS] U10: the refusal this walk is about is standing again, so the steps after it read the state they were written against
+[PASS] the refused archive with its Retry is reachable, and the message sits outside the sidebar's tree entirely
+[PASS] archiving the OPEN conversation adds the pill and leaves the pane open on it
+[PASS] the archive offer is reachable while it is up (the placement is asserted at the refusal step above)
+[PASS] the archive offer outlives the catalogue answers and is taken down by sonner's own duration (the offer's 8s)
+[PASS] the second archive of the open conversation raises the offer again
+[PASS] the offer is retired by the STATE CHANGE rather than by its ceiling: restoring the conversation takes it down well inside the offer's own 8s (R-1)
+[PASS] the keyboard lands on the row that took the place of the one that left - a conversation row of the CHATS region, not the list's first row, not an entity row above the list, and not back on the document (UX round 2, U1/U2; UX round 1, U5)
+[note] what holds the keyboard after a row is clicked, against the row that took the pressed row's place
+        {"pressedRow":"e059761608ae","successorRow":"7c1b0f2a4d31","landedRow":"7c1b0f2a4d31","landedRegion":"chats","firstRow":"2d5ad5da0025","rowCount":4,"unscoped":{"selector":"[data-chat-row]:focus","target":"button \"RecentMigration checklist56y, 56 years ago\"","centre":{"x":98,"y":592},"rect":{"x":12,"y":576,"width":172,"height":32},"hitTest":true,"focused":true,"inViewport":true},"rowScoped":{"selector":"[data-session-row] [data-chat-row]:focus","target":"button \"RecentMigration checklist56y, 56 years ago\"","centre":{"x":98,"y":592},"rect":{"x":12,"y":576,"width":172,"height":32},"hitTest":true,"focused":true,"inViewport":true}}
+[PASS] a successful archive offers an Undo, as the app's ordinary bottom-right toast
+[PASS] and the offer is NOT inside the panel any more (the lane is retired): the D12 Send overlap is the trade the operator re-accepted, recorded by the note below
+[note] the undo offer's box, the composer's Send, and their overlap - the D12 trade the operator re-accepted (2026-09-27)
+        {"offer":{"top":826,"bottom":876,"left":1000,"right":1356,"width":356,"height":50},"inPanel":false,"containers":1,"panel":{"top":276,"bottom":843.1015625,"left":0,"right":260,"width":260,"height":567.1015625},"send":{"top":836,"bottom":868,"left":1177,"right":1209,"width":32,"height":32},"overlapsSend":true}
+[PASS] deleting the open conversation lands the pane on its EXISTING missing-session notice
+[PASS] the unread mark is DRAWN on this row, and nowhere else in the list
+[note] the unread mark
+        {"drawn":true,"width":16,"height":16,"display":"block","visibility":"visible","opacity":1,"elsewhere":0}
+[PASS] at rest the row reserves nothing: neither act is drawn, and the pair's own box is empty
+[PASS] and the narrow band's shared control is not in the document at all
+[note] title width, pair (280px panel)
+        status row 186px, unread row 186px; pin 0x0, archive 0x0
+[PASS] the ROW BOX paints the hover ground, and no other row does
+[note] the row's own ground
+        {"rows":2,"painted":[{"id":"b3f1a09c7d52","width":248,"background":"rgb(237, 236, 231)"}]}
+[PASS] and under the pointer BOTH acts are drawn, at the panel's default width
+[PASS] at the clamp minimum the pair is drawn like every other width, and no shared control exists
+[note] title width, pair (240px panel)
+        status row 146px, unread row 146px; pin 0x0, archive 0x0
+[PASS] the control this walk presses is drawn at a non-zero, stable box before the press
+[note] row forensics, walk (the press that does NOTHING)
+        {"sessionId":"b3f1a09c7d52","dom":{"row":true,"rowAttrs":{"data-session-row":"b3f1a09c7d52","data-state":"delayed-open","aria-describedby":"radix-:r1q:","data-radix-popper-side":"right","data-radix-popper-align":"start"},"control":{"label":"","aria":"Archive “Quarterly retention sweep”","box":{"w":24,"h":24},"attrs":{"data-session-archive":"true","aria-label":"Archive “Quarterly retention sweep”"},"disabled":false}},"store":{"activeSessionId":"2d5ad5da0025","sessionCount":4,"archiveAttempts":37,"archiveFailure":null}}
+[note] the hit target at the walk's press point
+        {"tag":"path","chain":"path < svg < button[data-session-archive] < div < div[data-session-row] < section","pe":"auto"}
+[note] the walk's press, seen by the store
+        {"attemptsBefore":37,"attemptsAfter":38,"advanced":true}
+[PASS] the offer this walk starts from is up, and it is the archive family's own message
+[PASS] a REFUSED undo leaves a message on screen, and it is the refusal for the row that was pressed: Retry hit-testable, the row still archived, the offer never left the app without a message (agent review round 2, R2-1; the lane that round was named for was retired 2026-09-27)
+[note] the lane at the finishing check's edge: what the store holds, and what the card says
+        {"store":{"failure":null,"failureArchived":null,"undo":false,"attempts":41},"card":null}
+[note] the message's arrival on a scrolled list, with the writer trapped (QA round 4, Q-9; the band this reading was built around is gone, superseded 2026-09-27)
+        {"label":"the refusal's band arrives on a list the reader is standing in","capped":{"ok":true,"appliedMaxHeight":"200px","cappedHost":"nav"},"placed":{"ok":true,"focusedId":"7c1b0f2a4d31","focusHeld":true,"scrollTop":84,"readerAt":20,"walked":2,"rowStep":32,"cursorInside":true,"pressedInside":true,"pressedRow":"7c1b0f2a4d31","pressedPosition":0,"handOffRowCount":2,"successorRow":"b3f1a09c7d52"},"armed":{"ok":true},"before":{"ok":true,"overflowAtRest":true,"scrollTop":84,"box":{"top":320,"height":148,"scrollHeight":292},"clip":{"top":320,"bottom":468},"card":null,"entities":{"top":240,"height":180,"scrollTop":0},"rows":[{"id":"7c1b0f2a4d31","top":460,"height":32,"action":"Archive"},{"id":"b3f1a09c7d52","top":492,"height":32,"action":"Archive"}],"focused":{"id":"7c1b0f2a4d31","index":2,"top":460,"bottom":492,"visibility":"partly","region":"chats"},"focusedIndex":0,"activeIsChatRow":true,"instrument":null,"why":"before"},"pressSelector":"[aria-label='Archive “Migration checklist”']","atPress":{"clicked":true,"reading":{"scrollTop":84,"box":148,"scrollHeight":292},"selector":"[aria-label='Archive “Migration checklist”']","rowId":"7c1b0f2a4d31"},"settledAttempts":5,"after":{"ok":true,"overflowAtRest":true,"scrollTop":84,"box":{"top":320,"height":148,"scrollHeight":292},"clip":{"top":320,"bottom":468},"card":80,"entities":{"top":240,"height":180,"scrollTop":0},"rows":[{"id":"7c1b0f2a4d31","top":460,"height":32,"action":"Archive"},{"id":"b3f1a09c7d52","top":492,"height":32,"action":"Archive"}],"focused":{"id":"7c1b0f2a4d31","index":2,"top":460,"bottom":492,"visibility":"partly","region":"chats"},"focusedIndex":0,"activeIsChatRow":true,"instrument":{"writes":[],"samples":[{"t":9,"scrollTop":84,"box":148,"scrollHeight":292,"connected":true,"sameNode":true}],"sampleCount":1,"mutations":[],"mutationCount":0},"why":"after"}}
+[PASS] the scrolled arrival is set up in QA's own state: the list overflows at rest, the reader's scroll is off the top, a row that starts inside holds focus, and the press raises the card
+[PASS] and the box never moves: the list's own box is byte-equal across the press, where the band used to take its height off it (the geometry the pre-fix gate read as 'the row left' cannot arise from a toast)
+[PASS] and the message's arrival leaves the reader's scroll where they put it: scrollTop is byte-equal across it, at the ends AND in every sampled frame (QA round 4, Q-9's clause; design round 8, D27's reading)
+[PASS] and the position is held in EVERY frame the probe sampled, not only in the two the walk reads: the clamp this clause is about is instantaneous, so a pair that agreed could hide a frame that took it and gave it back
+[PASS] and the list's extent is byte-equal across the press: nothing takes `scrollHeight` below the box, so the browser's clamp has nothing to act on
+[PASS] and nothing writes the list's own scrollTop as the message arrives: the trap is empty across the press, so the writer is named rather than inferred
+[PASS] and every row on screen at the press is at the same top after it, with nothing taken out of the list at all: the message's arrival translates nothing and the press changes no membership (design round 8, D27)
+[PASS] and the box is byte-equal and the entity region above holds its box and its scroll - a toast reserves no space in the panel at all
+[PASS] and the walk leaves the list as the fixture describes it: the refusal's own Retry lands the unarchive, so no row is left archived by this sequence
+        the Retry was pressed at {"x":1316,"y":827} (two reads 150ms apart agreed on that box) and the store's write counter went 40 -> 41; lane cleared in 410ms, label now "Archive “Quarterly retention sweep”"
+[note] the accepted press on a scrolled list, with the writer trapped (design round 9, D30)
+        {"label":"the accepted press departs from a list the reader is standing in","capped":{"ok":true,"appliedMaxHeight":"200px","cappedHost":"nav"},"placed":{"ok":true,"focusedId":"7c1b0f2a4d31","focusHeld":true,"scrollTop":116,"readerAt":20,"walked":3,"rowStep":32,"cursorInside":true,"pressedInside":true,"pressedRow":"b3f1a09c7d52","pressedPosition":1,"handOffRowCount":2,"successorRow":"7c1b0f2a4d31"},"armed":{"ok":true},"before":{"ok":true,"overflowAtRest":true,"scrollTop":116,"box":{"top":320,"height":148,"scrollHeight":292},"clip":{"top":320,"bottom":468},"card":80,"entities":{"top":208,"height":180,"scrollTop":0},"rows":[{"id":"7c1b0f2a4d31","top":428,"height":32,"action":"Archive"},{"id":"b3f1a09c7d52","top":460,"height":32,"action":"Archive"}],"focused":{"id":"7c1b0f2a4d31","index":2,"top":428,"bottom":460,"visibility":"inside","region":"chats"},"focusedIndex":0,"activeIsChatRow":true,"instrument":{"writes":[{"value":20,"from":84,"at":2762,"stack":"    at HTMLDivElement.set (<anonymous>:23:14) <-     at <anonymous>:78:18 <-     at <anonymous>:172:4"},{"value":52,"from":20,"at":2762,"stack":"    at HTMLDivElement.set (<anonymous>:23:14) <-     at <anonymous>:99:19 <-     at <anonymous>:172:4"},{"value":84,"from":52,"at":2763,"stack":"    at HTMLDivElement.set (<anonymous>:23:14) <-     at <anonymous>:99:19 <-     at <anonymous>:172:4"},{"value":116,"from":84,"at":2763,"stack":"    at HTMLDivElement.set (<anonymous>:23:14) <-     at <anonymous>:99:19 <-     at <anonymous>:172:4"},{"value":116,"from":116,"at":2763,"stack":"    at HTMLDivElement.set (<anonymous>:23:14) <-     at <anonymous>:119:18 <-     at <anonymous>:172:4"}],"samples":[{"t":9,"scrollTop":84,"box":148,"scrollHeight":292,"connected":true,"sameNode":true}],"sampleCount":1,"mutations":[],"mutationCount":0},"why":"before"},"pressSelector":"[aria-label='Archive “Quarterly retention sweep”']","atPress":{"clicked":true,"reading":{"scrollTop":116,"box":148,"scrollHeight":292},"selector":"[aria-label='Archive “Quarterly retention sweep”']","rowId":"b3f1a09c7d52"},"settledAttempts":2,"after":{"ok":true,"overflowAtRest":true,"scrollTop":111.5,"box":{"top":320,"height":148,"scrollHeight":260},"clip":{"top":320,"bottom":468},"card":50,"entities":{"top":213,"height":180,"scrollTop":0},"rows":[{"id":"7c1b0f2a4d31","top":432,"height":32,"action":"Archive"}],"focused":{"id":"7c1b0f2a4d31","index":2,"top":432,"bottom":464,"visibility":"inside","region":"chats"},"focusedIndex":0,"activeIsChatRow":true,"instrument":{"writes":[],"samples":[{"t":8,"scrollTop":116,"box":148,"scrollHeight":292,"connected":true,"sameNode":true},{"t":628,"scrollTop":111.5,"box":148,"scrollHeight":260,"connected":true,"sameNode":true}],"sampleCount":2,"mutations":[{"t":626,"added":[],"removed":["row:b3f1a09c7d52"]}],"mutationCount":1},"why":"after"}}
+[PASS] the accepted press is set up in the same state: the list overflows at rest, the reader's scroll is off the top, the pressed row is on screen and it is the row the daemon takes
+[PASS] and an accepted departure is answered by the browser's own end-of-list clamp and nothing else: the container is never written, and in every sampled frame the reader stands where they were or at min(their position, extent - box) (design round 9, D30's clause, re-scoped for the tree with no band, 2026-09-27)
+[PASS] and the accepted departure moves nothing but the row's own height: the box is byte-equal across the press, every surviving row shifts only by the reader's own clamp, the one row that departs is the row the reader pressed, and the container is never written
+[PASS] and the one row that departs is the row the reader pressed, with every surviving row shifting only by the reader's own clamp and nothing writing the container
+[PASS] and the accepted departure hands the caret to the row that took the pressed row's place - a conversation row of the CHATS region, not an entity row above the list and not the list's first row (UX round 2, U1 and U2)
+[PASS] and every stop the next down-arrows reach from that caret is a conversation row of the CHATS region, not a group row above the list (UX round 2, U2)
+[PASS] and the box is byte-equal after an accepted press too, and the entity region holds its box and its scroll and shifts only by the reader's own clamp: a toast reserves no space in either direction
+[PASS] every capture is a frame the app held still for, with no toast on it
+[PASS] every frame of a toast is a held-still picture of one that was really there
+[PASS] every capture wrote a PNG of the requested size
+[PASS] no process from this run outlived its boot
+
+frames: archive-refused.png, at-rest.png, delete-dialog.png, delete-refused.png, deleted-open.png, header-archived.png, pair-narrow.png, pair-pin.png, pair-rest.png, pair-wide.png, row-hover-body.png, row-hover.png, search-off.png, search-on.png, settle-probe.png, undo-offer.png
+frames directory: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/undo-toasts-r2-37574/rig2/frames-mine4-sa-light
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-54895/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-54895 (the frames are also in --out)
+
+ALL CHECKS PASSED
+driver rc=0

@@ -67,9 +67,15 @@ export const BrowserLoadFailure: FC<BrowserLoadFailureProps> = ({
 		>
 			<AlertTriangle aria-hidden className="size-6 text-warning" />
 			<p className="text-title text-ink">Couldn't load this page</p>
+			{/* THE SKIP IS THE PRODUCT'S RULE, SO THE PRODUCT SAYS IT (UX round 1, U2):
+			    a tab that is still failed at quit is not restored next launch, and until
+			    this line the only record of that rule was a `[browser]` log line. It sits
+			    on the panel that owns the moment the user meets the failure, phrased as
+			    the state it describes. */}
 			<p className="max-w-lg text-body-sm text-ink-muted">
 				{loadFailureSentence(failure.description)} Try again, or correct the
-				address in the bar above — it is still yours to edit.
+				address in the bar above — it is still yours to edit. A tab still
+				showing this when the app quits is not restored next time.
 			</p>
 			{/* The raw refusal, in machine voice and on its own line: it is what a bug
 			    report needs, and it is the one part of this panel that is not a
