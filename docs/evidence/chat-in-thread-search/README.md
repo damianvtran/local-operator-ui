@@ -71,8 +71,9 @@ replies); every story here renders from fixture props and calls nothing.
 `--theme-settle-ms` is the loaded-machine budget the flag exists for.
 
 **Rebase and re-stamp.** The branch was rebased onto
-`feat/transcript-checkpoint-rail`'s head `2d1d600cfa` (post-#622 main, with
-the rail mounted, its jump wired and its Phase-2 markers retired), and the reveal now rides THAT lane's
+`feat/transcript-checkpoint-rail`'s head `818aafdcf2` (post-#622 main; the rail
+mounted, its jump wired, its Phase-2 markers retired, and its round-1 fixes
+plus the transcript-rail driver scene appended), and the reveal now rides THAT lane's
 `reveal-record.ts` — `jumpToEntry` for the reveal/centre/flash leg and
 `ensureReachable` for the transcript's paging — rather than any copy of its
 own. The manifest is re-derived at the rebased code head (`srcTree`/
