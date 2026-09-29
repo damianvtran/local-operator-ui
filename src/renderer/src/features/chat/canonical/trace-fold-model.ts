@@ -691,16 +691,29 @@ export const FOLD_MEDIA_LIMIT = 5;
  * from a clipped row. The count is also in the condensed header
  * (`foldMediaClause`) and in the strip's own accessible name, so no reader - with
  * or without a pointer - has to count tiles to learn it.
+ *
+ * `uncapped` is the U8 escape: the spanning bar's sole image-bearing group
+ * shows its whole set, because the `+N more images` press that opened the bar
+ * has already asked for it - see the option's own comment.
  */
 export const foldMediaSlots = (
 	count: number,
+	{ uncapped = false } = {},
 ): { shown: number; more: number } =>
-	count <= FOLD_MEDIA_LIMIT
-		? { shown: Math.max(count, 0), more: 0 }
-		: {
-				shown: FOLD_MEDIA_LIMIT - 1,
-				more: count - (FOLD_MEDIA_LIMIT - 1),
-			};
+	uncapped
+		? /* The caller asked for every picture (U8): the bar's own children's case
+		   when the group IS the span's whole image story - the reader pressed
+		   `+N more images` on the bar, and making them press a second time for a
+		   group that holds the same set is the dead end the round-2 UX pass
+		   found. The cap still bounds every strip the reader has NOT asked to
+		   expand. */
+			{ shown: Math.max(count, 0), more: 0 }
+		: count <= FOLD_MEDIA_LIMIT
+			? { shown: Math.max(count, 0), more: 0 }
+			: {
+					shown: FOLD_MEDIA_LIMIT - 1,
+					more: count - (FOLD_MEDIA_LIMIT - 1),
+				};
 
 /**
  * The condensed header's clause for the media a run produced, or `null` for a run

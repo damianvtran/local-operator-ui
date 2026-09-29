@@ -885,13 +885,15 @@ export const Images: Story = {
 
 /**
  * The overflow case, on a frame: eight pictures cost one capped row of four
- * tiles and a `+4 more` count, the same strip the group fold draws.
+ * tiles and the `+4 more images` control, the same strip the group fold draws.
+ * The capture's press row is the control's one-press reveal (U8): the bar opens
+ * onto its sole group, whose strip shows the whole set.
  */
 export const ImagesMany: Story = {
 	render: () => (
 		<Frame
 			transcript={finishedTurn(MANY_IMAGE_CALLS)}
-			caption="A span that produced eight pictures — the strip caps at four tiles and a count."
+			caption="A span that produced eight pictures — four tiles and the count control."
 		/>
 	),
 };

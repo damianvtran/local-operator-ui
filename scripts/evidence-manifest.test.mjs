@@ -2283,6 +2283,14 @@ const BRANCH_RECORDS = [
 	"condensedTurnMediaRestampNote",
 	"condensedGroupMediaFoldTwoNote",
 	"condensedPicturesRoundOneRemediationNote",
+	/*
+	 * The round-2 mini-pass (F1/F2, U8/U9) re-shot the count control's cells and
+	 * added the press cell its own note names. Registered for the list's usual
+	 * reason: a fold resolved from main's copy would drop the only statement of
+	 * what the pass moved and of the uncap's one-press claim the new cell
+	 * photographs.
+	 */
+	"condensedPicturesRoundTwoRemediationNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

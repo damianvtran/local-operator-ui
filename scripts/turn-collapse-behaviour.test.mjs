@@ -1130,6 +1130,119 @@ test("the strip caps at four tiles and counts the rest", async (t) => {
 	);
 });
 
+test("the group's clause drops only when it repeats the bar's number (D3/U6)", async (t) => {
+	/*
+	 * The drop branch of `soleImageGroup`, pinned rather than left to the
+	 * re-shot frame alone: a span whose ONLY image-bearing run is the whole
+	 * story (its count equals the bar's) does not print the same number twice
+	 * one line apart - the bar keeps the aggregate, the group row omits the
+	 * duplicate.
+	 */
+	__resetTurnCollapseOpen();
+	const images = Array.from({ length: 3 }, (_, index) =>
+		shotImage("tool:1", index),
+	);
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", { images }),
+		toolRecord("tool:2"),
+		toolRecord("tool:3"),
+		answerRecord("answer:1", { settledAt: TS + 70_000 }),
+	]);
+	await click(barTrigger(mounted));
+	const group = bar(mounted)?.querySelector("[data-fold-ids]");
+	assert.ok(group, "the run's own fold mounts under the bar");
+	assert.match(
+		bar(mounted)?.textContent ?? "",
+		/3 images/,
+		"the bar states the span's count",
+	);
+	assert.doesNotMatch(
+		group.textContent ?? "",
+		/\d+ images?/,
+		"and the group does not repeat the same number one line below",
+	);
+});
+
+test("a group holding only part of the span keeps its own clause (D3/U6, keep branch)", async (t) => {
+	/*
+	 * The keep branch: two image-bearing folds under one bar, neither carrying
+	 * the whole set - the numbers differ, so both levels state their own and
+	 * the suppression must NOT fire. The notice between the two runs is what
+	 * splits them (`foldRuns`: a non-call row breaks a run).
+	 */
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", {
+			images: [shotImage("tool:1", 0), shotImage("tool:1", 1)],
+		}),
+		toolRecord("tool:2"),
+		toolRecord("tool:3"),
+		noticeRecord("notice:1"),
+		toolRecord("tool:4"),
+		toolRecord("tool:5", {
+			images: [shotImage("tool:5", 0), shotImage("tool:5", 1)],
+		}),
+		toolRecord("tool:6"),
+		answerRecord("answer:1", { settledAt: TS + 70_000 }),
+	]);
+	await click(barTrigger(mounted));
+	const groups = [...(bar(mounted)?.querySelectorAll("[data-fold-ids]") ?? [])];
+	assert.equal(groups.length, 2, "two runs sit under the bar");
+	assert.deepEqual(
+		groups.map((node) => (node.textContent ?? "").match(/\d+ images?/)?.[0]),
+		["2 images", "2 images"],
+		"each group keeps its own count: neither repeats the bar's 4",
+	);
+});
+
+test("one press on the bar's count reaches the whole set (U8)", async (t) => {
+	/*
+	 * The round-2 UX finding: pressing `+N more images` on the bar opened the
+	 * bar, but the sole run inside drew the SAME capped strip, so pictures 5-8
+	 * cost a second press. The group that IS the span's whole image story now
+	 * renders `uncapped`, so the one press the reader made reaches every
+	 * picture - and no second count control is left to press.
+	 */
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", {
+			images: Array.from({ length: 4 }, (_, index) =>
+				shotImage("tool:1", index),
+			),
+		}),
+		toolRecord("tool:2", {
+			images: Array.from({ length: 4 }, (_, index) =>
+				shotImage("tool:2", index),
+			),
+		}),
+		toolRecord("tool:3"),
+		answerRecord("answer:1", { settledAt: TS + 70_000 }),
+	]);
+	const strip = bar(mounted)?.querySelector("[data-fold-media]");
+	const more = [...(strip?.querySelectorAll("button") ?? [])].find((control) =>
+		/more images?/.test(control.textContent ?? ""),
+	);
+	assert.ok(more, "the collapsed bar shows four tiles and the count control");
+	await click(more);
+	const groupStrip = bar(mounted)?.querySelector("[data-fold-media]");
+	assert.ok(groupStrip, "the press opened the bar onto its group's strip");
+	assert.equal(
+		groupStrip.querySelectorAll("li").length,
+		8,
+		"and the group shows its WHOLE set: one press reached the rest",
+	);
+	assert.equal(
+		[...groupStrip.querySelectorAll("button")].filter((control) =>
+			/more images?/.test(control.textContent ?? ""),
+		).length,
+		0,
+		"with no second count control left to press",
+	);
+});
+
 test("a parked turn does not condense: the gate is half of the liveness", async (t) => {
 	/*
 	 * DESIGN ROUND 1, D3. The working line deliberately stands down while a

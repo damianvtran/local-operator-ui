@@ -117,15 +117,27 @@ export type FoldMediaProps = {
 	 * the file header.
 	 */
 	indent?: "content" | "flush";
+	/**
+	 * Whether the strip may exceed its cap: show every picture the run holds.
+	 *
+	 * TRUE only for the spanning bar's sole image-bearing group (U8): the press
+	 * that opened the bar was the reader asking for `the rest`, and a group that
+	 * holds the same set must not charge a second press for it - so the cap
+	 * comes off THERE and nowhere else. The cap still bounds every strip whose
+	 * cost the reader has not explicitly asked to pay, which is why this is a
+	 * caller's fact rather than a number this component reads for itself.
+	 */
+	uncapped?: boolean;
 };
 
 export const FoldMedia = ({
 	images,
 	scope,
 	onRevealMore,
+	uncapped = false,
 	indent = "content",
 }: FoldMediaProps) => {
-	const { shown, more } = foldMediaSlots(images.length);
+	const { shown, more } = foldMediaSlots(images.length, { uncapped });
 	return (
 		/*
 		 * A LIST, because that is what it is: the run's pictures are N of one
@@ -200,15 +212,17 @@ export const FoldMedia = ({
 				 * rather than sitting as text a reader cannot act on (UX round 1, U1);
 				 * the fold then draws the remainder itself. The shared `Button` rather
 				 * than hand-rolled classes: hover, pressed and the focus ring are the
-				 * app's own, and it is keyboard-reachable by construction. The noun
-				 * joins the count, so `+4 more images` cannot read as more actions or
-				 * lines.
+				 * app's own. `secondary`, not `ghost`: at rest a ghost reads as a
+				 * caption, and this is a control - the border-and-fill is the same
+				 * resting cue every other small button in this surface carries (UX
+				 * round 2, U9). The noun joins the count, so `+4 more images` cannot
+				 * read as more actions or lines.
 				 */
 				<li
 					key="fold-media-more"
 					className={cn("flex h-16 items-center leading-none")}
 				>
-					<Button variant="ghost" size="sm" onClick={onRevealMore}>
+					<Button variant="secondary" size="sm" onClick={onRevealMore}>
 						{`+${more} more image${more === 1 ? "" : "s"}`}
 					</Button>
 				</li>

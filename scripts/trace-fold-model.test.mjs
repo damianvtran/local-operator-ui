@@ -664,6 +664,23 @@ test("the strip's slots are one row, and past the cap the last of them is the co
 	});
 	assert.deepEqual(foldMediaSlots(8), { shown: 4, more: 4 });
 	assert.deepEqual(foldMediaSlots(30), { shown: 4, more: 26 });
+	/*
+	 * U8's uncapped case: the spanning bar's sole image-bearing group shows ALL
+	 * of its set (the reader's press on the bar's count asked for it), and the
+	 * slot arithmetic must then report every picture and no count slot.
+	 */
+	assert.deepEqual(foldMediaSlots(8, { uncapped: true }), {
+		shown: 8,
+		more: 0,
+	});
+	assert.deepEqual(foldMediaSlots(30, { uncapped: true }), {
+		shown: 30,
+		more: 0,
+	});
+	assert.deepEqual(foldMediaSlots(0, { uncapped: true }), {
+		shown: 0,
+		more: 0,
+	});
 	// Whatever the count, the slots never exceed the row.
 	for (const count of [0, 1, 6, 7, 8, 30]) {
 		const { shown, more } = foldMediaSlots(count);
