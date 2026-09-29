@@ -61,7 +61,8 @@ chip naming the holder, the notice, and the picker with the holder `current` and
 
 **Where those two came from, and what they do not prove.** The built app, driven in `headless`
 window mode by `harness/drive.mjs` (its own scratch HOME, profile and config; the `CMUX_*`/`LOP_*`
-families stripped; `--use-mock-keychain`; every process reaped by exact pid), with the endpoint
+families stripped; the mock-keychain switch taken from `scripts/chrome-keychain.mjs`'s own
+constant, which is the one place it may be spelled; every process reaped by exact pid), with the endpoint
 that answers its three mesh reads and its transfer route in `harness/server.mjs` - a fixture in
 the wire's own shape, because the installed daemon predates the `peer` admission and refuses the
 path before anything can be measured. The app's transport, picker, confirmation and receipt
