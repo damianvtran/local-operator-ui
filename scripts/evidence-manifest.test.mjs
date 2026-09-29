@@ -1896,6 +1896,22 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"foldOnto20c3a207d7Note",
 	/*
+	 * AND THE FOLD'S OWN (2026-09-29): `sttDictationRestampNote` is the SECOND
+	 * fold over this branch's speech-to-text overhaul - onto the moved
+	 * `origin/main` `f3ce13cee7` (the projects-chrome-teams train), superseding
+	 * the first fold's note (onto `ff34fb8ecc`). Main's whole manifest is taken
+	 * as the base with this branch's record re-laid on top, the two supplementary
+	 * sets it declares ('stt-dictation', 'stt-dictation-baseline') re-laid
+	 * unchanged, the pair re-derived from the folded tip by the docs-only amend
+	 * that follows, and every list member above re-pointed with it. Both trees
+	 * move: `src/` for the composer's recording treatment, the hold-action
+	 * dispatcher, the in-flight dictation un-gate, the `input_mode` carriage and
+	 * the round-1 review fixes, and `scripts/` for the rig that proves them, its
+	 * spawn-site guard entry and the boundary-rule pin. It quotes that pair, so
+	 * it is held to this file like every entry above it.
+	 */
+	"sttDictationRestampNote",
+	/*
 	 * The sessionless-slash pass (issue #625), this branch's newest record: it
 	 * re-derived both stamps for the branch's own change and quotes the pair it
 	 * ships, so it is held to this file like every entry above it.
@@ -1931,6 +1947,18 @@ const STAMP_BINDING_NOTES = [
 	 * above it.
 	 */
 	"sessionlessSlashSecondFoldNote",
+	/*
+	 * AND THE THIRD FOLD'S OWN (2026-09-29): `sessionlessSlashThirdFoldNote` is
+	 * the fold onto the moved `origin/main` `7c9c98ecc7` (#633's speech-to-text
+	 * overhaul) - TWO paths conflicted this time (this file and the manifest)
+	 * and both are resolved as the same union; the pair is re-derived from the
+	 * resolved index again and every list member above re-pointed with it. It
+	 * quotes that pair, so it is held to this file like every entry above it -
+	 * and the note's composer audit is why it exists: #633 rewrites
+	 * `message-input.tsx`, and the note names which of its hunks touch the paths
+	 * this branch relies on and which do not.
+	 */
+	"sessionlessSlashThirdFoldNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2983,6 +3011,13 @@ const BRANCH_RECORDS = [
 	 * did not, and a fold that started from main's copy would drop it.
 	 */
 	"sessionlessSlashSecondFoldNote",
+	/*
+	 * And the third fold's own (`sessionlessSlashThirdFoldNote`), listed for the
+	 * list's usual reason: the note states what the fold moved, what it did not,
+	 * and audits the composer's slash-adjacent paths across #633's rewrite; a
+	 * fold that started from main's copy would drop it.
+	 */
+	"sessionlessSlashThirdFoldNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
