@@ -2178,6 +2178,17 @@ const STAMP_BINDING_NOTES = [
 	 * that pair, so it is held to the pair this file ships.
 	 */
 	"condensedBarFoldTwoNote",
+	/*
+	 * AND THE THIRD FOLD'S OWN (2026-09-29): `condensedBarFoldThreeNote` is the
+	 * fold onto the moved `origin/main` `036e501fdf` (#638, the
+	 * hide-cross-session-transcript merge) - three paths conflicted this time:
+	 * the manifest (main's records whole, this branch's laid back on top), this
+	 * list (union, no key dropped) and `turn-collapse-behaviour.test.mjs` (the
+	 * union of main's cross-session case and this branch's spacing case,
+	 * re-run at 16/16). It quotes that pair, so it is held to the pair this
+	 * file ships.
+	 */
+	"condensedBarFoldThreeNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {

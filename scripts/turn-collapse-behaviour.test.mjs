@@ -125,7 +125,7 @@ const bundle = await build({
 			 * either key would pass here while the product read another cache entry.
 			 */
 			'export { backendSettingsKeys } from "./src/renderer/src/features/settings/components/backend-settings-section";',
-			'export { desktopKeys } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";'
+			'export { desktopKeys } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
