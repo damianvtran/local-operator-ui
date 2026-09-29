@@ -115,14 +115,16 @@ test("the box a route hands over is painted in the ground it names", () => {
 	 * built app and a backend. What a text sweep can resolve is the FILE the box
 	 * is painted in, named per entry above, and the class is read there in its
 	 * className form so a box's own ground is what is asserted: the rail's
-	 * `bg-elevated` root, the rosters' `bg-surface` boxes. A file that loses the
+	 * `bg-elevated` root, the rosters' `bg-surface` boxes. The token is exact
+	 * (review round 2's nit): a slash form (`bg-elevated/50`) is a wash OF the
+	 * rung, not the rung, and the lookahead refuses it. A file that loses the
 	 * class, or a value the file never paints, fails on this line instead of on a
 	 * review of two files that were each moved alone.
 	 */
 	for (const { path, ground, paintedBy } of LEADING_COLUMN_ROUTES) {
 		assert.match(
 			readSource(paintedBy),
-			new RegExp(`className="[^"]*(?<![:\\w-])bg-${ground}(?![\\w-])[^"]*"`),
+			new RegExp(`className="[^"]*(?<![:\\w-])bg-${ground}(?![\\w/-])[^"]*"`),
 			`${paintedBy} no longer paints the ground ${path} hands over ("${ground}") as a box's own className: the value and the paint are one decision, and a re-grounding that moves only one of them paints the wrong rung from y0 down - the same drift this list exists to catch`,
 		);
 	}

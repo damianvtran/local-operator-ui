@@ -2283,7 +2283,7 @@ const BRANCH_RECORDS = [
 	 * pair off the two top-level fields), so it joins `BRANCH_RECORDS` and not
 	 * the legacy-quoter ledger (`LEGACY_STAMP_QUOTING_NOTES`).
 	 */
-		"browserOauthPopupsRestampNote",
+	"browserOauthPopupsRestampNote",
 	/*
 	 * And by the SETTINGS-RAIL lane's folds onto `origin/main` = `0738fa7eb3`,
 	 * `49491865ca` and `7ba0ddce94` (2026-09-29): that pass re-laid its records
