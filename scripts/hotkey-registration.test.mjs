@@ -11,7 +11,7 @@
  *
  * WHAT THEY ARE NOT: proof that a chord registers with the operating system.
  * The fake answers `register()` the way Electron is documented to; whether
- * macOS grants ⌘⌥Space on a real machine is the one thing only a live app can
+ * macOS grants ⌘⌥⇧Space on a real machine is the one thing only a live app can
  * say, and the design says so in its own words (the OS is the authority on
  * conflicts). `--scene mini-view` and QA cover the rest.
  *
@@ -131,7 +131,7 @@ test("the default maps to Electron's CommandOrControl on every platform", () => 
 	for (const platform of ["darwin", "win32", "linux"]) {
 		assert.equal(
 			resolveAccelerator(DEFAULT_QUICK_SEND_VALUE, platform),
-			"CommandOrControl+Alt+Space",
+			"CommandOrControl+Alt+Shift+Space",
 			platform,
 		);
 	}
@@ -177,8 +177,8 @@ test("the alternates and the aliases map per platform", () => {
 	);
 	assert.equal(resolveAccelerator("primary+0", "linux"), "CommandOrControl+0");
 	assert.equal(
-		resolveAccelerator("Primary+Alt+Space", "darwin"),
-		"CommandOrControl+Alt+Space",
+		resolveAccelerator("Primary+Alt+Shift+Space", "darwin"),
+		"CommandOrControl+Alt+Shift+Space",
 		"case-insensitive, because a hand edit is the only writer that can vary it",
 	);
 	/*
@@ -221,7 +221,7 @@ test("the structural refusals are refusals, not guesses", () => {
 		"primary+space+space",
 		"ctrl+ctrl+space",
 		"primary+alt",
-		"primary+alt+space+f8",
+		"primary+alt+shift+space+f8",
 	];
 	for (const value of refusals) {
 		assert.equal(
@@ -238,7 +238,7 @@ test("the structural refusals are refusals, not guesses", () => {
 });
 
 test("isRegistrable refuses strings the mapping would not produce", () => {
-	assert.ok(isRegistrable("CommandOrControl+Alt+Space"));
+	assert.ok(isRegistrable("CommandOrControl+Alt+Shift+Space"));
 	assert.ok(isRegistrable("Super+Space"));
 	assert.ok(!isRegistrable(""));
 	assert.ok(!isRegistrable("Whatever+Space"));
@@ -295,12 +295,12 @@ const registrarFor = (shortcut, overrides = {}) => {
 test("apply registers the chord and a press reaches the trigger", () => {
 	const shortcut = fakeShortcut();
 	const { registrar, states } = registrarFor(shortcut);
-	const state = registrar.apply("primary+alt+space");
+	const state = registrar.apply("primary+alt+shift+space");
 	assert.equal(state.status, "registered");
-	assert.equal(state.accelerator, "CommandOrControl+Alt+Space");
-	assert.ok(shortcut.isRegistered("CommandOrControl+Alt+Space"));
+	assert.equal(state.accelerator, "CommandOrControl+Alt+Shift+Space");
+	assert.ok(shortcut.isRegistered("CommandOrControl+Alt+Shift+Space"));
 	assert.equal(states.length, 1, "one state push for one registration");
-	shortcut.press("CommandOrControl+Alt+Space");
+	shortcut.press("CommandOrControl+Alt+Shift+Space");
 	registrar.dispose();
 });
 
@@ -325,9 +325,9 @@ test("a bare function key registers where the old refusal used to dead-end", () 
 test("an unchanged value is a no-op; a changed one re-registers in order", () => {
 	const shortcut = fakeShortcut();
 	const { registrar, states } = registrarFor(shortcut);
-	registrar.apply("primary+alt+space");
+	registrar.apply("primary+alt+shift+space");
 	const afterFirst = shortcut.calls.length;
-	registrar.apply("primary+alt+space");
+	registrar.apply("primary+alt+shift+space");
 	assert.equal(
 		shortcut.calls.length,
 		afterFirst,
@@ -337,10 +337,10 @@ test("an unchanged value is a no-op; a changed one re-registers in order", () =>
 
 	registrar.apply("primary+shift+space");
 	assert.deepEqual(shortcut.calls.slice(afterFirst), [
-		"unregister:CommandOrControl+Alt+Space",
+		"unregister:CommandOrControl+Alt+Shift+Space",
 		"register:CommandOrControl+Shift+Space",
 	]);
-	assert.ok(!shortcut.isRegistered("CommandOrControl+Alt+Space"));
+	assert.ok(!shortcut.isRegistered("CommandOrControl+Alt+Shift+Space"));
 	assert.equal(states.at(-1).status, "registered");
 	registrar.dispose();
 });
@@ -353,16 +353,16 @@ test("a taken chord is reported, and the old one is released first", () => {
 	other.register("CommandOrControl+Shift+Space", () => {});
 	shortcut.held.set("CommandOrControl+Shift+Space", () => {});
 	const { registrar, states } = registrarFor(shortcut);
-	registrar.apply("primary+alt+space");
+	registrar.apply("primary+alt+shift+space");
 	const before = shortcut.calls.length;
 	const state = registrar.apply("primary+shift+space");
 	assert.equal(state.status, "taken");
 	assert.deepEqual(shortcut.calls.slice(before), [
-		"unregister:CommandOrControl+Alt+Space",
+		"unregister:CommandOrControl+Alt+Shift+Space",
 		"register:CommandOrControl+Shift+Space",
 	]);
 	assert.ok(
-		!shortcut.isRegistered("CommandOrControl+Alt+Space"),
+		!shortcut.isRegistered("CommandOrControl+Alt+Shift+Space"),
 		"a failed re-registration must not leave the old chord live while the file says otherwise",
 	);
 	assert.equal(states.at(-1).status, "taken");
@@ -384,7 +384,7 @@ test("a Wayland session reports unavailable and never calls register", () => {
 	const { registrar } = registrarFor(shortcut, {
 		env: { XDG_SESSION_TYPE: "wayland" },
 	});
-	const state = registrar.apply("primary+alt+space");
+	const state = registrar.apply("primary+alt+shift+space");
 	assert.equal(state.status, "unavailable");
 	assert.equal(shortcut.calls.length, 0);
 	registrar.dispose();
@@ -393,10 +393,10 @@ test("a Wayland session reports unavailable and never calls register", () => {
 test("dispose releases the chord and a later apply cannot resurrect it", () => {
 	const shortcut = fakeShortcut();
 	const { registrar } = registrarFor(shortcut);
-	registrar.apply("primary+alt+space");
+	registrar.apply("primary+alt+shift+space");
 	const before = registrar.getState();
 	registrar.dispose();
-	assert.ok(!shortcut.isRegistered("CommandOrControl+Alt+Space"));
+	assert.ok(!shortcut.isRegistered("CommandOrControl+Alt+Shift+Space"));
 	const calls = shortcut.calls.length;
 	const state = registrar.apply("primary+shift+space");
 	assert.equal(calls, shortcut.calls.length, "disposed means no registration");
@@ -412,14 +412,14 @@ test("two registrars over one shortcut: the second reports taken", () => {
 	const shortcut = fakeShortcut();
 	const first = registrarFor(shortcut).registrar;
 	const second = registrarFor(shortcut).registrar;
-	assert.equal(first.apply("primary+alt+space").status, "registered");
+	assert.equal(first.apply("primary+alt+shift+space").status, "registered");
 	assert.equal(
-		second.apply("primary+alt+space").status,
+		second.apply("primary+alt+shift+space").status,
 		"taken",
 		"the conflict simulation the design names: register() === false is the taken path",
 	);
 	assert.ok(
-		shortcut.isRegistered("CommandOrControl+Alt+Space"),
+		shortcut.isRegistered("CommandOrControl+Alt+Shift+Space"),
 		"the first registrar keeps the chord it registered",
 	);
 	first.dispose();
@@ -555,16 +555,16 @@ test("importing the window module registers nothing and raises nothing", () => {
 
 test("the display mapping reads per platform", () => {
 	assert.equal(
-		shared.formatQuickSendDisplay("primary+alt+space", "mac"),
-		"⌘⌥Space",
+		shared.formatQuickSendDisplay("primary+alt+shift+space", "mac"),
+		"⌘⌥⇧Space",
 	);
 	assert.equal(
-		shared.formatQuickSendDisplay("primary+alt+space", "win"),
-		"Ctrl+Alt+Space",
+		shared.formatQuickSendDisplay("primary+alt+shift+space", "win"),
+		"Ctrl+Alt+Shift+Space",
 	);
 	assert.equal(
-		shared.formatQuickSendDisplay("primary+alt+space", "linux"),
-		"Ctrl+Alt+Space",
+		shared.formatQuickSendDisplay("primary+alt+shift+space", "linux"),
+		"Ctrl+Alt+Shift+Space",
 	);
 	assert.equal(shared.formatQuickSendDisplay("meta+f8", "win"), "Win+F8");
 	assert.equal(
