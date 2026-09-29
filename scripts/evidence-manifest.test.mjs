@@ -2165,6 +2165,15 @@ const BRANCH_RECORDS = [
 	 * exists - a fold that started from main's copy would drop it first.
 	 */
 	"readmeVisualsFoldSevenNote",
+	/*
+	 * And the cross-session visibility filter's own record
+	 * (`crossSessionVisibilityRestampNote`), the same reason one note over: it is
+	 * this side's statement of what moved and what did not - both trees, no frame
+	 * - and a fold resolved from main's copy would drop it. Registered here with
+	 * the fold that carried quick-send's entry in, so the next one cannot drop
+	 * either silently.
+	 */
+	"crossSessionVisibilityRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
