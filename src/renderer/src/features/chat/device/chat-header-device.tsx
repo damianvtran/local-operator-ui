@@ -39,12 +39,16 @@ import {
 	type ComponentPropsWithoutRef,
 	type ReactNode,
 	forwardRef,
+	useState,
 } from "react";
+import { MoveConfirmDialog } from "../../mesh/mesh-actions";
+import type { MovePlan } from "../../mesh/mesh-drop";
 import {
 	type DevicePickerModel,
 	type DevicePlacement,
 	type DeviceRow,
 	devices,
+	movePair,
 	placementLabel,
 	placementSentence,
 } from "./chat-device-model";
@@ -54,6 +58,19 @@ const STATE_DOT = {
 	quiet: "bg-ink-muted",
 	warning: "bg-warning",
 } as const;
+
+/**
+ * The dialog's closed shape. Nothing in it can be reached while it is shut, and
+ * the Mesh tab's own confirmation is mounted the same way (`mesh-page.tsx`).
+ */
+const EMPTY_PLAN: MovePlan = {
+	sessionId: "",
+	to: "",
+	keep: false,
+	verb: "",
+	waitS: 0,
+	lost: null,
+};
 
 /**
  * The reachability dot, drawn only where there is a reachability fact to state.
@@ -72,13 +89,12 @@ const StateDot = ({ tone }: { tone: keyof typeof STATE_DOT }) => (
 
 /** `warning` when the placement is a device that did not answer; otherwise quiet. */
 const dotTone = (placement: DevicePlacement): keyof typeof STATE_DOT | null => {
-	if (placement.kind === "remote")
+	if (placement.kind === "remote" || placement.kind === "gone")
 		return placement.reachable === null
 			? null
 			: placement.reachable
 				? "quiet"
 				: "warning";
-	if (placement.kind === "gone") return "quiet";
 	return null;
 };
 
@@ -153,24 +169,56 @@ ChipButton.displayName = "ChipButton";
 /** One row of the picker, candidate and ineligible alike. */
 const PickerRow = ({
 	row,
+	busy,
 	onPick,
-}: { row: DeviceRow; onPick: (row: DeviceRow) => void }) => {
+}: {
+	row: DeviceRow;
+	/** A move this pane issued is in flight: every row stands down. */
+	busy: boolean;
+	onPick: (row: DeviceRow) => void;
+}) => {
 	const ineligible = row.state === "ineligible";
+	const standsDown = ineligible || busy;
 	return (
 		<DropdownMenuItem
 			data-device-row={row.state}
-			disabled={ineligible}
-			onSelect={() => onPick(row)}
+			data-device-row-busy={busy ? "" : undefined}
+			/*
+			 * `aria-disabled` RATHER THAN RADIX'S `disabled` (agent review R1-7, UX U5).
+			 * The primitive's `disabled` does emit `aria-disabled`, but it also keeps
+			 * `data-[disabled]:pointer-events-none` (verified in the class merge) - so the
+			 * `not-allowed` cursor this design names as one of the row's four carriers
+			 * could never appear - and Radix filters disabled items out of its focus
+			 * candidates, so a keyboard user could not land on the row whose whole job is
+			 * to be read. This app's own convention is the opposite and documented three
+			 * times (`session-status-strip.tsx`, `older-history-slot.tsx`): the element
+			 * stays focusable and the press is ignored instead.
+			 */
+			aria-disabled={standsDown || undefined}
+			onSelect={() => {
+				if (standsDown) return;
+				onPick(row);
+			}}
 			/*
 			 * INELIGIBILITY IS CARRIED BY THE REASON LINE, NOT BY DIMMING THE NAME. The
 			 * primitive's own `data-[disabled]:text-ink-disabled` measures 1.99:1 on the
 			 * dark palette and 2.96:1 on the light one - below AA, on the row whose whole
 			 * job is to be read ("cannot receive a move"). The name therefore stays
 			 * `ink-muted` (7.24:1 / 8.78:1, re-measured off this branch's own frames) and
-			 * ineligibility keeps its three other carriers: `aria-disabled` through the
-			 * primitive, the reason line, and no hover wash.
+			 * ineligibility keeps its three other carriers: `aria-disabled`, the reason
+			 * line, and no hover wash.
 			 */
-			className="flex-col items-start gap-0.5 py-1.5 data-[disabled]:text-ink-muted"
+			className={cn(
+				"flex-col items-start gap-0.5 py-1.5",
+				/*
+				 * THE HOVER WASH AND THE CURSOR ARE THE ROW'S OWN, now that the primitive's
+				 * disabled styles are not what stands it down: a row that cannot be picked
+				 * does not light up under the pointer and says so with the cursor, which is
+				 * the fourth carrier the design asked for and could not get.
+				 */
+				standsDown &&
+					"cursor-not-allowed data-[highlighted]:bg-transparent data-[highlighted]:text-ink-muted",
+			)}
 		>
 			<span className="flex w-full items-center gap-2">
 				<Monitor
@@ -233,6 +281,7 @@ const DevicePicker = ({
 			align="start"
 			side="bottom"
 			data-device-picker=""
+			data-device-picker-busy={busy ? "" : undefined}
 			className="flex max-h-[26rem] w-80 flex-col overflow-hidden"
 		>
 			<div
@@ -242,7 +291,7 @@ const DevicePicker = ({
 				<DropdownMenuLabel className="text-meta text-ink-dim">
 					{model.heading}
 				</DropdownMenuLabel>
-				<PickerRow row={model.self} onPick={onPick} />
+				<PickerRow row={model.self} busy={busy} onPick={onPick} />
 				{model.sections.map((section) => (
 					<div key={section.key}>
 						<DropdownMenuSeparator />
@@ -251,7 +300,12 @@ const DevicePicker = ({
 							<span>{devices(section.count)}</span>
 						</DropdownMenuLabel>
 						{section.rows.map((row) => (
-							<PickerRow key={row.deviceId} row={row} onPick={onPick} />
+							<PickerRow
+								key={row.deviceId}
+								row={row}
+								busy={busy}
+								onPick={onPick}
+							/>
 						))}
 					</div>
 				))}
@@ -259,7 +313,9 @@ const DevicePicker = ({
 					/*
 					 * A DEVICE IN NO NETWORK. The Mesh tab's rail row is gated on membership
 					 * and network creation is CLI-only, so the honest instruction names the
-					 * command that exists rather than a button that does not.
+					 * command that exists rather than a button that does not. Drawn only for an
+					 * ANSWERED read: see `model.readFailure` below, which is what an empty list
+					 * means when nobody answered.
 					 */
 					<p
 						data-device-guidance=""
@@ -269,11 +325,33 @@ const DevicePicker = ({
 					</p>
 				) : null}
 			</div>
-			{model.footer || model.offerCheckAgain ? (
+			{model.footer ||
+			model.readFailure ||
+			model.inFlight ||
+			model.offerCheckAgain ? (
 				<>
 					<DropdownMenuSeparator />
 					<div className="flex shrink-0 items-center gap-2 px-2 py-1.5">
-						{model.footer ? (
+						{/*
+						 * ONE BAND, FOUR SENTENCES, IN THE ORDER THAT MATTERS: a move in flight
+						 * outranks everything (nothing here can be pressed anyway), then the read's
+						 * own failure, then the consequence of the default pick.
+						 */}
+						{model.inFlight ? (
+							<span
+								data-device-in-flight=""
+								className="min-w-0 flex-1 text-meta text-ink"
+							>
+								{model.inFlight}
+							</span>
+						) : model.readFailure ? (
+							<span
+								data-device-read-failure=""
+								className="min-w-0 flex-1 text-meta text-warning"
+							>
+								{model.readFailure}
+							</span>
+						) : model.footer ? (
 							<span
 								data-device-footer=""
 								className="min-w-0 flex-1 text-meta text-ink-dim"
@@ -286,8 +364,11 @@ const DevicePicker = ({
 						{model.offerCheckAgain ? (
 							<DropdownMenuItem
 								data-device-recheck=""
-								disabled={busy}
-								onSelect={onCheckAgain}
+								aria-disabled={busy || undefined}
+								onSelect={() => {
+									if (busy) return;
+									onCheckAgain();
+								}}
 								className="shrink-0 px-1 py-0 text-meta"
 							>
 								Check again
@@ -300,28 +381,104 @@ const DevicePicker = ({
 	</DropdownMenu>
 );
 
+/**
+ * The control, and the one question a destructive pick has to ask.
+ *
+ * THE DIALOG IS THE CONFIRMATION for the default pick, because the default pick
+ * DELETES A COPY - see `movePair` in `chat-device-model.ts` for what was wrong
+ * with firing the transfer straight from the row, and for why the verbs are the
+ * Mesh tab's own. A DRAFT never opens it: nothing exists to delete, the pick is a
+ * setting, and the design says so ("in (a) the choice is free and reversible").
+ */
 export const ChatHeaderDevice = ({
 	placement,
 	model,
+	sessionId,
 	busy,
 	onPick,
 	onCheckAgain,
 }: {
 	placement: DevicePlacement;
 	model: DevicePickerModel;
+	/** The live session a pick would MOVE; absent on a new chat. */
+	sessionId?: string;
 	/** A move this pane issued is in flight: the picker's own actions stand down. */
 	busy: boolean;
-	onPick: (deviceId: string | null) => void;
+	/** `keep` is the confirmation's own answer: false deletes the source copy. */
+	onPick: (deviceId: string | null, keep: boolean) => void;
 	onCheckAgain: () => void;
-}) => (
-	<DevicePicker
-		model={model}
-		busy={busy}
-		onCheckAgain={onCheckAgain}
-		onPick={(row) =>
-			onPick(row.deviceId === model.self.deviceId ? null : row.deviceId)
+}) => {
+	/*
+	 * WHERE THE CONVERSATION IS NOW, for the recall's loss sentence. A pick on a
+	 * `gone` pane is a recall too - the copy the dialog names is the one on the peer
+	 * that holds it - which is why both arms are here.
+	 */
+	const source =
+		placement.kind === "remote" || placement.kind === "gone"
+			? placement.name
+			: null;
+	const [ask, setAsk] = useState<{
+		plan: MovePlan;
+		alternatives: MovePlan[];
+		risky: boolean;
+	} | null>(null);
+
+	const choose = (row: DeviceRow) => {
+		const recall = row.deviceId === model.self.deviceId;
+		/*
+		 * A NEW CHAT'S PICK IS A SETTING, answered on the first send: there is nothing
+		 * to confirm and nothing is deleted.
+		 */
+		if (!sessionId) {
+			onPick(recall ? null : row.deviceId, false);
+			return;
 		}
-	>
-		<ChipButton placement={placement} />
-	</DevicePicker>
-);
+		const pair = movePair({
+			sessionId,
+			recall,
+			destination: row.name,
+			source,
+		});
+		setAsk({
+			...pair,
+			/*
+			 * RISK IS WHERE THE RUNTIME IS, and the dialog's own warning sentence is
+			 * written from that end: "it is open elsewhere right now" is true of a
+			 * conversation living on a peer (which is exactly the pick that ends in a
+			 * recall) and false of one running in the pane the user is looking at.
+			 */
+			risky: source !== null,
+		});
+	};
+
+	return (
+		<>
+			<DevicePicker
+				model={model}
+				busy={busy}
+				onCheckAgain={onCheckAgain}
+				onPick={choose}
+			>
+				<ChipButton placement={placement} />
+			</DevicePicker>
+			{/*
+			 * ALWAYS MOUNTED, so the dialog's own exit transition is the dialog's (Radix
+			 * animates on close, and a component that unmounted on close would cut it
+			 * off). The closed shape reaches nothing: no button inside it is reachable
+			 * while it is shut. The Mesh tab mounts its confirmation the same way.
+			 */}
+			<MoveConfirmDialog
+				open={ask !== null}
+				plan={ask?.plan ?? EMPTY_PLAN}
+				alternatives={ask?.alternatives ?? []}
+				risky={ask?.risky ?? false}
+				busy={busy}
+				onCancel={() => setAsk(null)}
+				onChoose={(plan) => {
+					setAsk(null);
+					onPick(plan.to === "local" ? null : plan.to, plan.keep);
+				}}
+			/>
+		</>
+	);
+};

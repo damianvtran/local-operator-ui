@@ -21,6 +21,8 @@
  * below, which renders the cold sentence whenever nobody told us otherwise.
  */
 
+import type { MovePlan } from "../../mesh/mesh-drop";
+import { lossSentence } from "../../mesh/mesh-drop";
 import type { NetworkSummary, PeerRow } from "../../mesh/mesh-types";
 import type { DeviceMove } from "./chat-device-store";
 
@@ -54,8 +56,21 @@ export type DevicePlacement =
 			reachable: boolean | null;
 			reason: string;
 	  }
-	/** This device's copy is gone because the conversation moved away. */
-	| { kind: "gone"; deviceId: string; name: string }
+	/**
+	 * This device's copy is gone because the conversation moved away.
+	 *
+	 * `reachable` IS THE SAME TRI-STATE `remote` CARRIES, and it is here for the same
+	 * reason: the conversation now lives on a machine that can stop answering, and
+	 * that is exactly the moment a reader most needs to know it (design review round
+	 * 1, D4 - the arm had no reachability at all, so the dot the design names could
+	 * never be louder than the calm one).
+	 */
+	| {
+			kind: "gone";
+			deviceId: string;
+			name: string;
+			reachable: boolean | null;
+	  }
 	/** A move this pane issued is in flight. */
 	| { kind: "moving"; deviceId: string; name: string };
 
@@ -120,35 +135,42 @@ export function placementSentence(placement: DevicePlacement): string {
 				? `New conversations are created on ${placement.name}. Click to choose a different device.`
 				: "New conversations are created on this device. Click to choose a different device.";
 		case "local":
-			return "This conversation runs on this device. Click to move it to another device.";
+			/*
+			 * `OR RECALL IT LATER` IS THE SECOND HALF OF THE AFFORDANCE (agent review round
+			 * 1, R1-N4): the sentence names both directions a live local conversation can
+			 * take from this control, which is the design's own reading of it, because the
+			 * chip's five visible words cannot say either one.
+			 */
+			return "This conversation runs on this device. Click to move it to another device or recall it later.";
 		case "remote":
-			return placement.reachable
-				? `This conversation runs on ${placement.name}. Click to recall it here or move it on.`
-				: `This conversation runs on ${placement.name}, which did not answer the last read (${placement.reason}).`;
+			/*
+			 * `reachable` IS TRI-STATE AND THE THIRD VALUE IS NOT A FAILURE (agent review
+			 * round 1, R1-2). `null` means no read has made a claim about that device since
+			 * this window moved the conversation, so the sentence carries the placement and
+			 * the affordance and says nothing about reachability - reading `null` as `false`
+			 * announced a failed read nobody had made, with an EMPTY parenthetical, as this
+			 * chip's accessible name and its tooltip. The reason is rendered only when the
+			 * wire gave one, so the sentence can never end in `()`.
+			 */
+			if (placement.reachable === false) {
+				const because = placement.reason ? ` (${placement.reason})` : "";
+				return `This conversation runs on ${placement.name}, which did not answer the last read${because}.`;
+			}
+			return `This conversation runs on ${placement.name}. Click to recall it here or move it on.`;
 		case "gone":
-			return `This conversation moved to ${placement.name}. The copy that was here was deleted. Click to open it there.`;
+			/*
+			 * THE TOMBSTONE NAMES AN ACTION THIS CONTROL CAN TAKE. It used to end "Click to
+			 * open it there", and there is no such place: pressing the chip opens this
+			 * picker, and the app cannot open a peer's conversation in its chat view (the
+			 * notice's own comment says so). The recall - this device's row, which is the
+			 * picker's first - is the one thing here that exists, so it is what the
+			 * sentence promises (QA Q-2, UX U6). Where it went stays in the first two
+			 * clauses, which is the pair of facts the tombstone owes a reader.
+			 */
+			return `This conversation moved to ${placement.name}. The copy that was here was deleted. Click to bring it back here.`;
 		case "moving":
 			return `Moving this conversation to ${placement.name}.`;
 	}
-}
-
-/**
- * Whether the chip draws a reachability dot, and in which tone.
- *
- * THE DOT APPEARS ONLY WHERE THERE IS A REACHABILITY FACT TO STATE, which is
- * why it never needs a legend: this device is here by definition and a draft has
- * nothing to be reachable yet, so neither draws one. `quiet` is the ordinary
- * live remote; `warning` is a device that did not answer the last read - never
- * `success` and never `accent`, because nothing has gone wrong and nothing is
- * being asked for.
- */
-export function placementDot(
-	placement: DevicePlacement,
-): "none" | "quiet" | "warning" {
-	if (placement.kind === "remote")
-		return placement.reachable ? "quiet" : "warning";
-	if (placement.kind === "gone") return "quiet";
-	return "none";
 }
 
 /* --------------------------------------------------------------- the picker */
@@ -184,14 +206,34 @@ export type DevicePickerModel = {
 	 * The consequence line, PINNED below the scrolling list in the move states
 	 * only: a fact that can be scrolled out of sight is not stated, and in a new
 	 * chat the choice is free and reversible so there is nothing to warn about.
+	 *
+	 * IT NAMES THE COPY THIS PICK ACTUALLY DELETES, which is why it is not one
+	 * constant any more: an offload deletes the copy HERE and a recall deletes the
+	 * copy THERE, and a single sentence written from one end is wrong half the
+	 * time - the mistake `lossSentence` exists for in the Mesh tab's dialog.
 	 */
 	footer: string | null;
 	/** The pairing sentence for a device in no network, or `null`. */
 	guidance: string | null;
 	/**
-	 * The membership exists and NOTHING in it answered: the list keeps its rows
-	 * and their reasons, and this is the one offer left - a re-read, because
-	 * reachability is a fact only a read can settle.
+	 * The membership COULD NOT BE READ and this is not a fact about the network: an
+	 * unanswered read must not be published as "this device is in no network", and
+	 * it must not hand the user a remedy for a state they are not in (QA Q-4).
+	 * Rendered in the pinned band with the re-read beside it, because a re-read is
+	 * the only thing that settles it.
+	 */
+	readFailure: string | null;
+	/**
+	 * A move this pane issued is in flight: every row stands down, and this sentence
+	 * says why rather than leaving rows that look pickable (agent review R1-5, QA
+	 * Q-8, UX U4).
+	 */
+	inFlight: string | null;
+	/**
+	 * The membership exists and NOTHING in it answered, or a row's reachability is
+	 * the thing standing a row down: the list keeps its rows and their reasons, and
+	 * this is the one offer left - a re-read, because reachability is a fact only a
+	 * read can settle.
 	 */
 	offerCheckAgain: boolean;
 };
@@ -201,6 +243,16 @@ export const MOVE_FOOTER =
 	"The copy on this device is deleted when the move commits.";
 
 /**
+ * What this device's row says when no read has named it.
+ *
+ * NOT `deviceName()`'s id tail: the tail of a device id is machine voice with
+ * nothing to act on, and on the row the app is most sure about - the machine it is
+ * running on - the plain word is both shorter and true. The `this device` fact is
+ * dropped in the same case so the row does not say it twice.
+ */
+export const THIS_DEVICE_LABEL = "This device";
+
+/**
  * The pairing line for a device in no network.
  *
  * WHY IT IS A TERMINAL COMMAND: the Mesh tab's rail row is gated on membership
@@ -208,9 +260,47 @@ export const MOVE_FOOTER =
  * dead end - `app.tsx` says so), and network CREATION is CLI-only. There is no
  * desktop "pair a device" surface to send them to, so the honest instruction is
  * the command that exists rather than a button that does not.
+ *
+ * IT IS ONLY TRUE OF AN ANSWERED READ. `networks.data?.networks ?? []` reads the
+ * same for "no memberships" and "the read did not answer", so the model only
+ * draws this line when the read came back (`PickerInput.meshRead`); the failure
+ * has its own sentence below.
  */
 export const PAIRING_GUIDANCE =
 	"This device is in no network. Create one with `lop network init`, or join one with `lop network join <token>`.";
+
+/**
+ * What a read that did not answer may be called.
+ *
+ * THE OTHER HALF OF THE PAIRING LINE'S RULE, and the case the design's four gates
+ * (§3.5) did not name: the device list is empty because nobody answered, which is
+ * not a membership fact about this device and has a different remedy.
+ */
+export const MESH_READ_FAILURE =
+	"The device list could not be read, so this is what the last answer holds.";
+
+/**
+ * The sentence a pick in flight puts in the picker's pinned band.
+ *
+ * THE SAME SENTENCE THE COMPOSER HOLDS WITH (SPEC §2.4): the runtime is retired
+ * during the handoff, so a second pick would race the first and anything typed here
+ * would be delivered nowhere. One state, one wording, two surfaces.
+ */
+export function moveHoldSentence(name: string): string {
+	return `This conversation is moving to ${name}. It continues there; nothing sent from here would be delivered.`;
+}
+
+/**
+ * The in-flight notice's detail line, which must not describe a busy turn.
+ *
+ * The design's own draft line read `handing off · the turn in flight finishes
+ * first`, and the accepted path cannot be in that state: a session with a turn in
+ * flight is REFUSED with `busy` (SPEC §2.5), so the sentence named a state this
+ * branch never reaches (agent review R1-N1). What is true meanwhile is which side
+ * the conversation belongs to and that the app cannot call it back.
+ */
+export const MOVE_HOLD_DETAIL =
+	"handing off · it continues there; this cannot be stopped from here";
 
 /** `1 conversation` / `3 conversations`. */
 function conversations(n: number): string {
@@ -269,6 +359,21 @@ export type PickerInput = {
 	 * sentence, rather than a row that 404s when pressed.
 	 */
 	canTransfer: boolean;
+	/**
+	 * What the two mesh reads answered, as three states rather than one empty list.
+	 *
+	 * `pending` is not decoration: the first frames of every window are pending, and
+	 * a model that reads `networks.data ?? []` publishes "this device is in no
+	 * network" - with a `lop network init` instruction - before anything has
+	 * answered. `failed` is the same defect from the other end: an error is not a
+	 * membership fact (QA Q-4).
+	 */
+	meshRead: "pending" | "ok" | "failed";
+	/**
+	 * A move this pane issued is in flight, from the pane's own store rather than
+	 * from anything the reads can say.
+	 */
+	busy: boolean;
 };
 
 /**
@@ -291,12 +396,38 @@ export function panePlacement(input: {
 	}
 	if (move?.kind === "moved") {
 		/*
+		 * A MOVE THAT CAME HOME IS LOCAL, and this arm is the whole of agent review
+		 * R1-1 / QA Q-1 / UX U2-U3 / design D1. The route answers a recall with
+		 * `locality: "local"`, so the pane is exactly where it started: the same chip,
+		 * the same sentences, the same picker as a conversation that never left. Keying
+		 * on `source_retired` alone (true in BOTH directions) put a recall into the
+		 * `remote` arm with `deviceId: "local"`, and this device was then rendered as a
+		 * peer - the accessible name claimed this machine "did not answer the last
+		 * read", the arrival notice told the user to open the conversation "on that
+		 * device" (the machine they are sitting at), and the picker re-offered a move
+		 * that had already happened, under a destructive footer.
+		 *
+		 * THE RECEIPT DECIDES, not the ask: `move.deviceId === "local"` is what this
+		 * window requested, and a receipt is the only thing that may move a chip. Both
+		 * are checked because an older refusal path can settle a move without one.
+		 */
+		if (move.receipt.locality === "local" || move.deviceId === "local") {
+			return { kind: "local" };
+		}
+		/*
 		 * A MOVE THAT RETIRED THE SOURCE leaves this device with nothing to say "this
 		 * device" about: the chip names where the conversation went, which is the one
-		 * fact a reader of a window still open on the old id needs.
+		 * fact a reader of a window still open on the old id needs - and it carries the
+		 * destination's reachability, because a machine that has stopped answering is
+		 * the fact most worth stating here (design D4).
 		 */
-		if (move.receipt.source_retired && move.receipt.locality === "remote") {
-			return { kind: "gone", deviceId: move.deviceId, name: move.name };
+		if (move.receipt.source_retired) {
+			return {
+				kind: "gone",
+				deviceId: move.deviceId,
+				name: move.name,
+				reachable: reachableFor(move.deviceId),
+			};
 		}
 		return {
 			kind: "remote",
@@ -337,16 +468,54 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
 	const { placement, selfDeviceId, networks, peers } = input;
 	/*
 	 * The SAME predicate decides the heading, the reason lines and the footer, so
-	 * the three cannot disagree about whether a move is being planned: `gone` is
-	 * not a move (the conversation is already elsewhere, and this device's row is
-	 * a candidate to bring it BACK, which the route calls a recall).
+	 * the three cannot disagree about whether the pick DELETES A COPY.
+	 *
+	 * `gone` IS A MOVE SURFACE (agent review R1-5 is not this - design D3 and QA Q-3
+	 * are): the pane whose conversation moved away is exactly the pane whose first
+	 * row is a move BACK, and leaving it out flipped the panel to the create
+	 * vocabulary ("Start the conversation on"), dropped the pinned consequence line
+	 * for the pick that does delete a copy - the peer's - and marked no row
+	 * ineligible in the one state where the user is most likely to act.
 	 */
-	const moving = placement.kind === "local" || placement.kind === "remote";
+	const moving =
+		placement.kind === "local" ||
+		placement.kind === "remote" ||
+		placement.kind === "gone" ||
+		/*
+		 * AND `moving` IS NOT A DRAFT EITHER (QA Q-8, UX U4): a pane whose move is in
+		 * flight looked at through its picker is a conversation that exists, so its
+		 * panel keeps the move's heading and the move's consequence line while every row
+		 * stands down under the in-flight sentence.
+		 */
+		placement.kind === "moving";
+	/*
+	 * WHERE THE CONVERSATION IS, for the row that must be marked `current`. A draft's
+	 * destination is where it WILL be created; a live conversation's is where it is.
+	 */
 	const destination =
-		placement.kind === "remote" || placement.kind === "draft"
+		placement.kind === "remote" ||
+		placement.kind === "draft" ||
+		placement.kind === "gone"
 			? placement.deviceId
 			: null;
+	/*
+	 * THIS DEVICE IS THE CURRENT ROW ONLY WHERE IT IS ACTUALLY HERE. A draft aimed at a
+	 * peer has TWO rows that match the destination otherwise (the peer's, and this
+	 * device's, whose `draft` arm used to mark itself current unconditionally), and a
+	 * list with two current rows cannot tell a reader which machine the chip is naming.
+	 */
+	const selfIsHere =
+		placement.kind === "local" ||
+		(placement.kind === "draft" && placement.deviceId === null);
 	const byDeviceId = new Map(peers.map((peer) => [peer.device_id, peer]));
+	/*
+	 * THE SELF ROW'S NAME COMES FROM THE MEMBERSHIP, AND ITS ABSENCE IS NOT A FACT
+	 * ABOUT THIS MACHINE. When neither read answered (or the topology named no self
+	 * device) there is no name to print, and an empty name cell is the deformation QA
+	 * measured; the app's own word is true in every one of those cases, so it is what
+	 * the row says - and the redundant `this device` fact is dropped with it.
+	 */
+	const selfName = input.selfName.trim();
 
 	/*
 	 * THIS DEVICE'S ROW IS ALSO THE RECALL ROW. There is no second control and no
@@ -356,18 +525,17 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
 	 */
 	const self: DeviceRow = {
 		deviceId: selfDeviceId,
-		name: input.selfName,
-		facts: [conversations(input.selfConversations), "this device"],
-		state:
-			placement.kind === "local" || placement.kind === "draft"
-				? "current"
-				: input.canTransfer
-					? "candidate"
-					: "ineligible",
+		name: selfName || THIS_DEVICE_LABEL,
+		facts: selfName
+			? [conversations(input.selfConversations), "this device"]
+			: [conversations(input.selfConversations)],
+		state: selfIsHere
+			? "current"
+			: input.canTransfer
+				? "candidate"
+				: "ineligible",
 		why:
-			placement.kind === "local" ||
-			placement.kind === "draft" ||
-			input.canTransfer
+			selfIsHere || input.canTransfer
 				? undefined
 				: ineligibleReason({ canTransfer: false, reachable: true }),
 	};
@@ -430,14 +598,53 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
 			(member) => member.device_id !== selfDeviceId && member.reachable,
 		),
 	);
+	/*
+	 * A ROW STOOD DOWN FOR REACHABILITY IS A REASON TO OFFER THE RE-READ, and it is
+	 * the row's own remedy: nothing else in this panel can tell the user whether a
+	 * device that did not answer the last read is there now (UX U5).
+	 */
+	const unreachableRow = networks.some((network) =>
+		network.members.some(
+			(member) =>
+				member.device_id !== selfDeviceId &&
+				input.canTransfer &&
+				!member.reachable,
+		),
+	);
+	const failed = input.meshRead === "failed";
 
 	return {
 		heading: moving ? "Move this conversation to" : "Start the conversation on",
 		self,
 		sections,
-		footer: moving ? MOVE_FOOTER : null,
-		guidance: networks.length === 0 ? PAIRING_GUIDANCE : null,
-		offerCheckAgain: networks.length > 0 && !answered,
+		/*
+		 * THE FOOTER NAMES THE COPY THIS PICK DELETES, from whichever end it is on: an
+		 * offload deletes the copy here, a recall deletes the copy on the peer. A single
+		 * sentence written from this side was wrong for every recall (design D3).
+		 */
+		footer:
+			placement.kind === "local" ||
+			placement.kind === "remote" ||
+			placement.kind === "moving"
+				? MOVE_FOOTER
+				: placement.kind === "gone"
+					? lossSentence(placement.name, "this device")
+					: null,
+		/*
+		 * THE PAIRING LINE IS ONLY TRUE OF AN ANSWERED READ. `pending` gets neither
+		 * sentence: the panel is still reading, and "this device is in no network" is
+		 * the one claim a reader would act on.
+		 */
+		guidance:
+			input.meshRead === "ok" && networks.length === 0
+				? PAIRING_GUIDANCE
+				: null,
+		readFailure: failed ? MESH_READ_FAILURE : null,
+		inFlight: input.busy
+			? moveHoldSentence(placementDeviceName(placement) || "another device")
+			: null,
+		offerCheckAgain:
+			failed || (networks.length > 0 && (!answered || unreachableRow)),
 	};
 }
 
@@ -462,13 +669,43 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
  * (or the row) publishes the fact, every arrival renders the sentence that is
  * true for every peer that predates `engage_on_arrival` - cold.
  */
-export function arrivalCopy(input: { engaged: boolean | null; name: string }): {
+export function arrivalCopy(input: {
+	engaged: boolean | null;
+	name: string;
+	/**
+	 * The device the conversation came FROM, when the move brought it back here.
+	 *
+	 * NON-NULL IS THE RECALL ARM, and it is a different sentence from the pair
+	 * below: a recall's destination is the machine the user is looking at, so
+	 * "nothing is running THERE yet, open it ON THAT DEVICE" is an instruction about
+	 * their own desk, and "the copy here is deleted" is the opposite of what
+	 * happened - the copy here is the one that just came back (UX U2, QA Q-1).
+	 */
+	from: string | null;
+	/** Whether the receipt said the source copy was retired. */
+	sourceRetired: boolean;
+}): {
 	verb: string;
 	detail: string;
 	/** Non-null only for the cold arrival; the surface must render it when set. */
 	second: string | null;
 } {
-	const { engaged, name } = input;
+	const { engaged, name, from, sourceRetired } = input;
+	if (from !== null) {
+		return {
+			verb: "Moved back to this device",
+			detail: sourceRetired
+				? `the conversation is here now; the copy on ${from} was deleted`
+				: "the conversation is here now",
+			/*
+			 * NO SECOND LINE, and it is the cold arrival's own condition that says why:
+			 * the mandatory line exists to stop a reader waiting for output on a machine
+			 * they are not sitting at. A recall put the conversation back under their
+			 * hands, where the pane they are typing in is the answer to it.
+			 */
+			second: null,
+		};
+	}
 	if (engaged === true) {
 		return {
 			verb: `Moved to ${name}`,
@@ -498,4 +735,74 @@ export const SOURCE_RETIRED_DETAIL =
 export function deviceName(name: string, deviceId: string): string {
 	const trimmed = name.trim();
 	return trimmed || deviceId.slice(-8);
+}
+
+/* ------------------------------------------------------- the one decision */
+
+/**
+ * The pair a destructive pick is confirmed with: the move, and the copy.
+ *
+ * WHY THE PICK DOES NOT FIRE FROM THE ROW ANY MORE (agent review R1-3, QA Q-6).
+ * A pick on a live conversation DELETES the local copy (`keep: false`), and the
+ * Mesh tab's own dialog is documented as *the* confirmation for exactly that -
+ * "THE DIALOG IS THE CONFIRMATION for every destructive move ... The alternative
+ * is always present, because the decision is the user's" (`mesh-actions.tsx`).
+ * The picker used to fire the mutation straight from `onSelect`, so one press
+ * deleted a copy with nothing asked and no path to `keep` from this control at
+ * all. It now hands the same dialog the same pair, and the VERBS ARE THE MESH
+ * TAB'S OWN STRINGS (`mesh-drop.ts`), because two surfaces that name one
+ * operation differently teach a user two operations.
+ *
+ * `waitS: 0` IS THE SHIPPED ASK, and it stays: the design's refusal path is the
+ * `busy` refusal, whose remedy re-issues THIS plan with the route's own ceiling
+ * (see `chat-device-notice.tsx`).
+ */
+export function movePair(input: {
+	sessionId: string;
+	/** True when the pick brings the conversation back to this device. */
+	recall: boolean;
+	/** The destination device's name; ignored for a recall. */
+	destination: string;
+	/** Where the conversation is now, when that is a device other than this one. */
+	source: string | null;
+}): { plan: MovePlan; alternatives: MovePlan[] } {
+	const common = { sessionId: input.sessionId, waitS: 0 };
+	if (input.recall) {
+		return {
+			plan: {
+				...common,
+				to: "local",
+				keep: false,
+				verb: "Recall to this device",
+				lost: lossSentence(input.source ?? "the other device", "this device"),
+			},
+			alternatives: [
+				{
+					...common,
+					to: "local",
+					keep: true,
+					verb: "Copy here, leave it there",
+					lost: null,
+				},
+			],
+		};
+	}
+	return {
+		plan: {
+			...common,
+			to: input.destination,
+			keep: false,
+			verb: `Move to ${input.destination}`,
+			lost: lossSentence("this device", input.destination),
+		},
+		alternatives: [
+			{
+				...common,
+				to: input.destination,
+				keep: true,
+				verb: `Copy to ${input.destination}`,
+				lost: null,
+			},
+		],
+	};
 }

@@ -409,6 +409,7 @@ export const LiveRemoteMoved: Story = {
 				kind: "moved",
 				deviceId: PEER_BUILD,
 				name: "build-box",
+				from: null,
 				receipt: receipt(),
 				engaged: null,
 			}}
@@ -426,6 +427,7 @@ export const LiveRemoteUnreachable: Story = {
 				kind: "moved",
 				deviceId: PEER_GRADIENT,
 				name: "gradient-m-4h",
+				from: null,
 				receipt: receipt({ owner_device: PEER_GRADIENT }),
 				engaged: null,
 			}}
@@ -439,7 +441,40 @@ export const Moving: Story = {
 	render: () => (
 		<Mount
 			title="Nightly sweep review"
-			move={{ kind: "moving", deviceId: PEER_BUILD, name: "build-box" }}
+			move={{
+				kind: "moving",
+				deviceId: PEER_BUILD,
+				name: "build-box",
+				from: null,
+			}}
+			notice={true}
+		/>
+	),
+};
+
+/**
+ * THE RECALL'S ARRIVAL: the conversation came back to this device, and the copy
+ * that was deleted is the one on the peer.
+ *
+ * This is the state the recall path used to get wrong in every channel at once
+ * (agent review R1-1's root, QA Q-1, UX U2): the chip was right and the sentence
+ * was not, the notice told the user to open the conversation "on that device" -
+ * the machine they are sitting at - and it claimed a deletion here that had not
+ * happened. It is a story rather than a fixture because it is a first-class
+ * designed action and needs a frame of its own.
+ */
+export const Recalled: Story = {
+	render: () => (
+		<Mount
+			title="Nightly sweep review"
+			move={{
+				kind: "moved",
+				deviceId: "local",
+				name: "this device",
+				from: "build-box",
+				receipt: receipt({ locality: "local", owner_device: "local" }),
+				engaged: null,
+			}}
 			notice={true}
 		/>
 	),
@@ -455,6 +490,7 @@ export const ArrivedCold: Story = {
 				kind: "moved",
 				deviceId: PEER_BUILD,
 				name: "build-box",
+				from: null,
 				receipt: receipt(),
 				engaged: null,
 			}}
@@ -473,6 +509,7 @@ export const ArrivedLive: Story = {
 				kind: "moved",
 				deviceId: PEER_BUILD,
 				name: "build-box",
+				from: null,
 				receipt: receipt(),
 				engaged: true,
 			}}
@@ -491,6 +528,21 @@ export const RefusedBusy: Story = {
 				kind: "refused",
 				name: "build-box",
 				canWait: true,
+				/*
+				 * THE MOVE THE REFUSAL IS ABOUT, which is what makes `Wait for the turn to
+				 * finish` a remedy rather than a label (agent review R1-4, QA Q-7).
+				 */
+				plan: {
+					sessionId: SESSION,
+					to: PEER_BUILD,
+					keep: false,
+					verb: "Move to build-box",
+					waitS: 0,
+					lost: "The copy on this device is deleted once build-box has it.",
+				},
+				to: PEER_BUILD,
+				from: null,
+				keep: false,
 				refusal: {
 					code: "busy",
 					sentence:

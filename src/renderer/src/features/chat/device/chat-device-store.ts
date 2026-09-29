@@ -15,6 +15,7 @@
  */
 
 import { create } from "zustand";
+import type { MovePlan } from "../../mesh/mesh-drop";
 import type { MeshRefusal, TransferReceipt } from "../../mesh/mesh-types";
 
 /**
@@ -28,11 +29,17 @@ import type { MeshRefusal, TransferReceipt } from "../../mesh/mesh-types";
  * that may move a chip.
  */
 export type DeviceMove =
-	| { kind: "moving"; deviceId: string; name: string }
+	| { kind: "moving"; deviceId: string; name: string; from: string | null }
 	| {
 			kind: "moved";
 			deviceId: string;
 			name: string;
+			/**
+			 * The device the conversation came FROM, or `null` when it did not come from a
+			 * peer (a recall sets it, and it is what makes the arrival pair a different
+			 * sentence: see `arrivalCopy`).
+			 */
+			from: string | null;
 			receipt: TransferReceipt;
 			/**
 			 * Whether the destination STARTED the conversation, when the wire said
@@ -43,19 +50,42 @@ export type DeviceMove =
 			 */
 			engaged: boolean | null;
 	  }
-	| { kind: "refused"; refusal: MeshRefusal; name: string; canWait: boolean };
+	| {
+			kind: "refused";
+			refusal: MeshRefusal;
+			name: string;
+			canWait: boolean;
+			/**
+			 * The move the refusal is ABOUT, so `Wait for the turn to finish` has
+			 * something to re-issue.
+			 *
+			 * A `busy` refusal is not a failure of the request; it is the route saying
+			 * "not while a turn is in flight", and its remedy is the same request with
+			 * the route's own ceiling (`wait_s ≤ 300`). Without the plan the button
+			 * could only dismiss - which is what both review and QA measured it doing
+			 * (agent review R1-4, QA Q-7).
+			 */
+			plan: MovePlan | null;
+			/** The device it was moving to, for the re-issue's chip and notice. */
+			to: string;
+			from: string | null;
+			keep: boolean;
+	  };
 
 type ChatDeviceState = {
 	/** Keyed by the pane: the session id, or the draft key before one exists. */
 	moves: Record<string, DeviceMove>;
-	beginMove: (key: string, move: { deviceId: string; name: string }) => void;
+	beginMove: (
+		key: string,
+		move: { deviceId: string; name: string; from: string | null },
+	) => void;
 	settleMove: (
 		key: string,
 		move: Extract<DeviceMove, { kind: "moved" }>,
 	) => void;
 	refuseMove: (
 		key: string,
-		move: { refusal: MeshRefusal; name: string; canWait: boolean },
+		move: Omit<Extract<DeviceMove, { kind: "refused" }>, "kind">,
 	) => void;
 	dismissMove: (key: string) => void;
 };
