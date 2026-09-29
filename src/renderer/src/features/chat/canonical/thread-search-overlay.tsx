@@ -22,12 +22,14 @@ import {
 	THREAD_SEARCH_CLOSE_LABEL,
 	THREAD_SEARCH_EMPTY_COPY,
 	THREAD_SEARCH_ERROR_COPY,
+	THREAD_SEARCH_JUMPING_COPY,
 	THREAD_SEARCH_LIST_LABEL,
 	THREAD_SEARCH_PARTIAL_COPY,
 	THREAD_SEARCH_PLACEHOLDER,
 	THREAD_SEARCH_RECHECK_LABEL,
 	THREAD_SEARCH_RETRY_LABEL,
 	THREAD_SEARCH_ROLE_LABELS,
+	THREAD_SEARCH_STALE_COPY,
 	THREAD_SEARCH_TIER_HINT,
 	THREAD_SEARCH_UNSUPPORTED_COPY,
 	type ThreadSearchState,
@@ -97,6 +99,12 @@ export type ThreadSearchPanelProps = {
 	onRetry: () => void;
 	onClose: () => void;
 	isMac: boolean;
+	/**
+	 * The far seek is in flight: the panel adds its own line for the wait
+	 * (UX U4). The overlay owns the state, the panel owns the pixels — the
+	 * same split as every other prop here.
+	 */
+	jumping?: boolean;
 };
 
 /**
@@ -206,6 +214,7 @@ export const ThreadSearchPanel: FC<ThreadSearchPanelProps> = ({
 	onRetry,
 	onClose,
 	isMac,
+	jumping = false,
 }) => {
 	const baseId = useId();
 	const listId = `${baseId}-list`;
@@ -325,10 +334,10 @@ export const ThreadSearchPanel: FC<ThreadSearchPanelProps> = ({
 			<div className="flex items-start gap-2 px-3 pb-2">
 				<p className="min-w-0 flex-1 text-ink-muted text-meta">
 					{state === "loading" &&
-						(showList ? threadSearchCountLabel(hits.length) : "Searching…")}
+						(showList ? THREAD_SEARCH_STALE_COPY : "Searching…")}
 					{state === "ready" &&
 						(hits.length > 0
-							? threadSearchCountLabel(hits.length)
+							? threadSearchCountLabel(hits)
 							: THREAD_SEARCH_EMPTY_COPY)}
 					{state === "building" &&
 						(partial
@@ -370,7 +379,18 @@ export const ThreadSearchPanel: FC<ThreadSearchPanelProps> = ({
 					// biome-ignore lint/a11y/useSemanticElements: a find-results list is a listbox, not a native select.
 					role="listbox"
 					aria-label={THREAD_SEARCH_LIST_LABEL}
-					className="max-h-80 overflow-y-auto border-t border-hairline py-1"
+					/*
+					 * The in-flight list is the PREVIOUS search's: dimmed so the eye reads
+					 * it as a placeholder, `aria-busy` so a screen reader is told the same
+					 * (UX U1). The rows stay actionable — the stale line above says whose
+					 * they are — because a click on a visible row that refused to open
+					 * would be the worse contract.
+					 */
+					aria-busy={state === "loading"}
+					className={cn(
+						"max-h-80 overflow-y-auto border-t border-hairline py-1",
+						state === "loading" && "opacity-60",
+					)}
 				>
 					{hits.map((hit, index) => (
 						<ResultRow
@@ -382,6 +402,20 @@ export const ThreadSearchPanel: FC<ThreadSearchPanelProps> = ({
 						/>
 					))}
 				</ul>
+			)}
+
+			{jumping && (
+				/*
+				 * The far seek's own line (UX U4): a reach can spend seconds before
+				 * anything moves, and the panel used to say nothing until it landed
+				 * or the transcript's toast refused. `<output>` rather than a `p`
+				 * with `role="status"`: the element IS the status role
+				 * (`lint/a11y/useSemanticElements`), so the wait is announced by the
+				 * element a reader is told to expect it in.
+				 */
+				<output className="block border-t border-hairline px-3 py-1.5 text-ink-muted text-meta">
+					{THREAD_SEARCH_JUMPING_COPY}
+				</output>
 			)}
 
 			<div className="flex items-center gap-3 border-t border-hairline px-3 py-1.5">
@@ -421,8 +455,12 @@ export type ThreadSearchOverlayProps = {
 	 * before revealing it (`ensureReachable` in `reveal-record.ts`). Absent in
 	 * the stories and the panel's own suites, where the row is already mounted
 	 * and `revealThreadSearchHit`'s walk-plus-flash is the whole job.
+	 *
+	 * It may return a promise, and the panel AWAITS it for the in-flight line:
+	 * the far path is seconds long, and the panel's own report of the wait is
+	 * the only thing on screen until the row lands or the host's toast refuses.
 	 */
-	onReveal?: (id: string) => void;
+	onReveal?: (id: string) => void | Promise<void>;
 };
 
 export const ThreadSearchOverlay: FC<ThreadSearchOverlayProps> = ({
@@ -431,6 +469,7 @@ export const ThreadSearchOverlay: FC<ThreadSearchOverlayProps> = ({
 	onReveal,
 }) => {
 	const [open, setOpen] = useState(false);
+	const [jumping, setJumping] = useState(false);
 	const panelRef = useRef<HTMLDivElement | null>(null);
 	const restoreFocus = useRef<HTMLElement | null>(null);
 	const search = useThreadSearch({ sessionId, enabled: open });
@@ -492,19 +531,27 @@ export const ThreadSearchOverlay: FC<ThreadSearchOverlayProps> = ({
 	}, [open, openPanel]);
 
 	const navigate = useCallback(
-		(hit: ThreadFindHit) => {
+		async (hit: ThreadFindHit) => {
 			/*
 			 * The host's jump when there is one: it is the only path that can PAGE a
 			 * message older than the rendered window into it, because it holds the
 			 * row model and the window state (`ensureReachable`'s callbacks). The
 			 * local adapter otherwise, for a surface with no transcript around it,
 			 * which answers the same outcome for an already-mounted row.
+			 *
+			 * `jumping` wraps BOTH paths and covers the whole reach — the panel's
+			 * report of a wait it cannot otherwise show (UX U4).
 			 */
-			if (onReveal) {
-				onReveal(hit.id);
-				return;
+			setJumping(true);
+			try {
+				if (onReveal) {
+					await onReveal(hit.id);
+					return;
+				}
+				await revealThreadSearchHit(containerRef.current, hit.id);
+			} finally {
+				setJumping(false);
 			}
-			void revealThreadSearchHit(containerRef.current, hit.id);
 		},
 		[containerRef, onReveal],
 	);
@@ -516,10 +563,15 @@ export const ThreadSearchOverlay: FC<ThreadSearchOverlayProps> = ({
 		 * the panel inside it floats over the scroller's top-right corner the way
 		 * a browser's find bar sits over its page. `pointer-events-none` on the
 		 * wrapper so the slot itself never eats a press outside the panel.
+		 *
+		 * `right-6` (24px), not `right-3`: at 12px the panel covered the checkpoint
+		 * rail's ticks for most of a three-result list (design D1 measured 13 of 26
+		 * ticks covered at 600/1499 on a 1500-row conversation, each keeping a 12px
+		 * sliver). 24px clears the rail exactly and matches the toast inset.
 		 */
 		<div
 			ref={panelRef}
-			className="pointer-events-none absolute top-3 right-3 z-20 max-w-[calc(100%-1.5rem)]"
+			className="pointer-events-none absolute top-3 right-6 z-20 max-w-[calc(100%-1.5rem)]"
 		>
 			<ThreadSearchPanel
 				query={search.query}
@@ -534,6 +586,7 @@ export const ThreadSearchOverlay: FC<ThreadSearchOverlayProps> = ({
 				onRetry={search.refresh}
 				onClose={closePanel}
 				isMac={threadSearchIsMac()}
+				jumping={jumping}
 			/>
 		</div>
 	);
