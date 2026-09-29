@@ -176,6 +176,7 @@ import { createRequire } from "node:module";
 import { connect, createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve, sep } from "node:path";
+import sharp from "sharp";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 /*
@@ -10152,6 +10153,37 @@ async function railCueProbe(cdp) {
 		return value;
 	};
 	const settle = () => wait(1200);
+	/**
+	 * A tick's centre as a pixel to sample, and its luma in a captured frame.
+	 *
+	 * The mask dims a dash without touching its computed styles, so the
+	 * end-tick acceptance is a PIXEL reading: the dash's own centre in the PNG
+	 * the capture wrote, scaled from the PNG's width against the viewport's,
+	 * averaged over a 3x3 patch so a sub-pixel offset cannot decide it.
+	 */
+	const tickPoint = async (id) =>
+		evaluate(
+			`(() => { const el = document.querySelector('[data-checkpoint-id="${id}"]'); if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`,
+		);
+	const luma = async (label, point) => {
+		const file = join(FRAMES, `${label}.png`);
+		const meta = await sharp(file).metadata();
+		const scale = (meta.width ?? 0) / (await evaluate("window.innerWidth"));
+		const { data } = await sharp(file)
+			.extract({
+				left: Math.max(0, Math.round(point.x * scale) - 1),
+				top: Math.max(0, Math.round(point.y * scale) - 1),
+				width: 3,
+				height: 3,
+			})
+			.raw()
+			.toBuffer({ resolveWithObject: true });
+		let sum = 0;
+		for (let i = 0; i < data.length; i += 3) {
+			sum += 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+		}
+		return Math.round(sum / (data.length / 3));
+	};
 	await verb(cdp, "setTheme", "localOperatorDark");
 	await verb(cdp, "navigate", "/chat");
 	await waitForCondition(
@@ -10174,20 +10206,29 @@ async function railCueProbe(cdp) {
 		15_000,
 	);
 	await settle();
-	await read("sparse-bottom");
+	const sparseBottom = await read("sparse-bottom");
 	await capture(cdp, "rail-cue-sparse-bottom");
+	const bottomPoints = {
+		end: await tickPoint("qn0006"),
+		rest: await tickPoint("qu0006"),
+	};
 	await evaluate(
 		`(() => { const r = document.querySelector("[data-lo-canonical-transcript]"); r.scrollTop = -(r.scrollHeight - r.clientHeight); return r.scrollTop; })()`,
 	);
 	await settle();
-	await read("sparse-top");
+	const sparseTop = await read("sparse-top");
 	await capture(cdp, "rail-cue-sparse-top");
+	const topPoints = {
+		first: await tickPoint("qu0001"),
+		rest: await tickPoint("qn0001"),
+	};
 	await evaluate(
 		`(() => { const r = document.querySelector("[data-lo-canonical-transcript]"); r.scrollTop = -Math.round((r.scrollHeight - r.clientHeight) / 2); return r.scrollTop; })()`,
 	);
 	await settle();
-	await read("sparse-mid");
+	const sparseMid = await read("sparse-mid");
 	await capture(cdp, "rail-cue-sparse-mid");
+	const midPoints = { active: await tickPoint("qu0002") };
 	await evaluate(
 		`(() => { const r = document.querySelector("[data-lo-canonical-transcript]"); r.scrollTop = 0; return r.scrollTop; })()`,
 	);
@@ -10208,8 +10249,81 @@ async function railCueProbe(cdp) {
 		15_000,
 	);
 	await settle();
-	await read("density-bottom");
+	const densityBottom = await read("density-bottom");
 	await capture(cdp, "rail-cue-density-bottom");
+	const densityPoints = {
+		end: await tickPoint("n0200"),
+		rest: await tickPoint("u0200"),
+	};
+	/*
+	 * The arms' own checks (review round 1): one per state, so the run's
+	 * ALL CHECKS PASSED counts them rather than standing on nothing.
+	 */
+	check(
+		"the bottom tick is active at the bottom (6-turn fixture)",
+		sparseBottom.active === sparseBottom.lastTick,
+		`active=${sparseBottom.active} last=${sparseBottom.lastTick}`,
+	);
+	check(
+		"the first tick is active at the top (6-turn fixture)",
+		sparseTop.active === sparseTop.firstTicks[0].id,
+		`active=${sparseTop.active} first=${sparseTop.firstTicks[0].id}`,
+	);
+	check(
+		"mid-scroll keeps the line rule (6-turn fixture)",
+		sparseMid.active === "qu0002",
+		`active=${sparseMid.active}`,
+	);
+	check(
+		"the bottom tick is active at the bottom (402-mark fixture)",
+		densityBottom.active === densityBottom.lastTick,
+		`active=${densityBottom.active} last=${densityBottom.lastTick}`,
+	);
+	/*
+	 * THE END DASHES' LUMA (design round 2, D1's acceptance): with the track's
+	 * block padding, an end tick's dash must read at the ACTIVE luma - not the
+	 * dim of the mask's fade. The reference is the interior active mark in the
+	 * mid capture (same theme, one frame over) and a rest neighbour gives the
+	 * separation term; before the padding the end dash measured 77 against
+	 * 238, dimmer than its own rest neighbours.
+	 */
+	const activeRef = await luma("rail-cue-sparse-mid", midPoints.active);
+	const endBottom = await luma("rail-cue-sparse-bottom", bottomPoints.end);
+	const restBottom = await luma("rail-cue-sparse-bottom", bottomPoints.rest);
+	const firstTop = await luma("rail-cue-sparse-top", topPoints.first);
+	const endDensity = await luma("rail-cue-density-bottom", densityPoints.end);
+	const restDensity = await luma("rail-cue-density-bottom", densityPoints.rest);
+	note(
+		"luma",
+		JSON.stringify({
+			activeRef,
+			endBottom,
+			restBottom,
+			firstTop,
+			endDensity,
+			restDensity,
+		}),
+	);
+	check(
+		"the end dash at the bottom reads at the active luma (6-turn fixture)",
+		Math.abs(endBottom - activeRef) <= 16,
+		`end=${endBottom} active=${activeRef}`,
+	);
+	check(
+		"the first dash at the top reads at the active luma (6-turn fixture)",
+		Math.abs(firstTop - activeRef) <= 16,
+		`first=${firstTop} active=${activeRef}`,
+	);
+	check(
+		"the end dash at the bottom reads at the active luma (402-mark fixture)",
+		Math.abs(endDensity - activeRef) <= 16,
+		`end=${endDensity} active=${activeRef}`,
+	);
+	check(
+		"the end dashes read clear of their rest neighbours",
+		endBottom > restBottom + 40 && endDensity > restDensity + 40,
+		`end=${endBottom}/${endDensity} rest=${restBottom}/${restDensity}`,
+	);
 }
 
 async function sceneTranscriptRail(cdp) {
