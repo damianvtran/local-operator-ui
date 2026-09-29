@@ -10108,6 +10108,110 @@ async function railPressProbe(cdp) {
 	await poll("after the SYNTHETIC press on the same tick", 6);
 }
 
+/**
+ * The reading cue's own probe: the matrix the bottom-tick fix is measured
+ * against, over the two fixtures whose tails differ in the one way that
+ * matters - the 6-turn one, whose last checkpoint sits INSIDE the final
+ * viewport (the state the operator hit), and the 200-turn one, whose tail
+ * exceeds a viewport (the control that already read correct).
+ *
+ * Run with `--scoped-case rail-cue-probe`. Every reading prints the active
+ * mark, the scroller's own numbers and the row at the reading line, so each
+ * frame carries the geometry that produced it.
+ */
+async function railCueProbe(cdp) {
+	const evaluate = (expression) => cdp.evaluate(expression);
+	const read = async (label) => {
+		const value = await evaluate(`(() => {
+			const region = document.querySelector("[data-lo-canonical-transcript]");
+			if (!region) return { error: "no region" };
+			const rect = region.getBoundingClientRect();
+			const active = document.querySelector('[data-mark-state="active"]');
+			const ticks = Array.from(document.querySelectorAll("[data-checkpoint-id]"));
+			const tick = (el) => ({ id: el.getAttribute("data-checkpoint-id"), state: el.getAttribute("data-mark-state") });
+			const rows = Array.from(region.querySelectorAll("[data-record-id]")).map((el) => ({ id: el.getAttribute("data-record-id"), top: Math.round((el.getBoundingClientRect().top - rect.top) * 100) / 100, bottom: Math.round((el.getBoundingClientRect().bottom - rect.top) * 100) / 100 }));
+			const atLine = rows.filter((r) => r.top <= 1).pop() || null;
+			return {
+				active: active ? active.getAttribute("data-checkpoint-id") : null,
+				activeState: active ? active.getAttribute("data-mark-state") : null,
+				lastTick: ticks.length ? ticks[ticks.length - 1].getAttribute("data-checkpoint-id") : null,
+				ticks: ticks.length,
+				lastTicks: ticks.slice(-6).map(tick),
+				firstTicks: ticks.slice(0, 2).map(tick),
+				scrollTop: Math.round(region.scrollTop * 100) / 100,
+				scrollHeight: region.scrollHeight,
+				clientHeight: region.clientHeight,
+				max: region.scrollHeight - region.clientHeight,
+				regionBottom: Math.round(rect.bottom),
+				lastRow: rows[rows.length - 1] || null,
+				readingRow: atLine,
+				topRow: rows[0] || null,
+			};
+		})()`);
+		note(`read ${label}`, JSON.stringify(value));
+		return value;
+	};
+	const settle = () => wait(1200);
+	await verb(cdp, "setTheme", "localOperatorDark");
+	await verb(cdp, "navigate", "/chat");
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[data-tour-tag="chat-input-textarea"]'))`,
+		30_000,
+	);
+	/* The sparse fixture first: its last checkpoint is inside the final viewport. */
+	await verb(cdp, "press", {
+		selector: `[data-session-row="be1a9fef0003"] [data-chat-row]`,
+	});
+	await waitForCondition(
+		cdp,
+		`document.querySelectorAll('[data-lo-checkpoint-rail] [data-checkpoint-id]').length >= 12`,
+		30_000,
+	);
+	await waitForCondition(
+		cdp,
+		`document.querySelectorAll("[data-record-id]").length > 0`,
+		15_000,
+	);
+	await settle();
+	await read("sparse-bottom");
+	await capture(cdp, "rail-cue-sparse-bottom");
+	await evaluate(
+		`(() => { const r = document.querySelector("[data-lo-canonical-transcript]"); r.scrollTop = -(r.scrollHeight - r.clientHeight); return r.scrollTop; })()`,
+	);
+	await settle();
+	await read("sparse-top");
+	await capture(cdp, "rail-cue-sparse-top");
+	await evaluate(
+		`(() => { const r = document.querySelector("[data-lo-canonical-transcript]"); r.scrollTop = -Math.round((r.scrollHeight - r.clientHeight) / 2); return r.scrollTop; })()`,
+	);
+	await settle();
+	await read("sparse-mid");
+	await capture(cdp, "rail-cue-sparse-mid");
+	await evaluate(
+		`(() => { const r = document.querySelector("[data-lo-canonical-transcript]"); r.scrollTop = 0; return r.scrollTop; })()`,
+	);
+	await settle();
+	await read("sparse-bottom-again");
+	/* The density control: the same readings where the tail exceeds a viewport. */
+	await verb(cdp, "press", {
+		selector: `[data-session-row="be1a9fef0001"] [data-chat-row]`,
+	});
+	await waitForCondition(
+		cdp,
+		`document.querySelectorAll('[data-lo-checkpoint-rail] [data-checkpoint-id]').length >= 267`,
+		30_000,
+	);
+	await waitForCondition(
+		cdp,
+		`document.querySelectorAll("[data-record-id]").length > 0`,
+		15_000,
+	);
+	await settle();
+	await read("density-bottom");
+	await capture(cdp, "rail-cue-density-bottom");
+}
+
 async function sceneTranscriptRail(cdp) {
 	/*
 	 * A FAST DIAGNOSTIC PATH for the physical pointer press at density, because
@@ -10129,6 +10233,10 @@ async function sceneTranscriptRail(cdp) {
 	}
 	if (RAIL_CASE === "hover-trace") {
 		await railHoverTrace(cdp);
+		return;
+	}
+	if (RAIL_CASE === "rail-cue-probe") {
+		await railCueProbe(cdp);
 		return;
 	}
 	const facts = await factsOf(cdp);
