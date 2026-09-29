@@ -19,7 +19,9 @@ import { createElement as h } from "react";
  * it did before the feature; that a run whose head the FETCHED rows cut off
  * condenses from its loaded span (the end-loaded rule, operator report
  * 2026-09-29) with no fabricated `Took`; that a settle does not fold the row
- * the reader's focus is in; and that a bar's appearance is stated politely.
+ * the reader's focus is in; that a bar's appearance is stated politely — and
+ * that a WIDEN's revealed bars are not, because a reveal is not a settle
+ * (review round 1, MAJOR-1).
  *
  * WHY A MOUNT AND NOT A FRAME. A frame says what the collapsed and expanded
  * states look like; it cannot say that the collapsed state unmounts the rows
@@ -734,6 +736,48 @@ test("a settle does not fold the run out from under the reader's focus", async (
 		trigger.blur();
 	});
 	assert.ok(bar(mounted), "once the focus leaves, the run folds");
+});
+
+test("a widen announces nothing: a reveal is not a settle", async (t) => {
+	__resetTurnCollapseOpen();
+	/*
+	 * AGENT REVIEW ROUND 1, MAJOR-1. The window only ever GROWS, so a widen
+	 * (the reader's scroll-up, the open's snap, a jump's mount) presents bars
+	 * for runs the previous pass never held. The pre-fix effect — a
+	 * set-difference against the previous pass's collapsed keys — announced
+	 * every one of them: measured on this fixture, ten "Turn condensed"
+	 * sentences on a widen and zero settles (the reviewer's
+	 * `probe-widen-announce.test.mjs`). Nothing was unmounted out from under
+	 * the reader — those runs were folded before the reader ever saw them
+	 * unfold — so the fix requires an utterance to ALSO find the run present
+	 * in the previous pass (sharing a row with it), which window-entered bars
+	 * fail.
+	 */
+	const records = [];
+	for (let i = 1; i <= 30; i += 1) {
+		records.push(userRecord(`user:${i}`, { ts: TS + i * 60_000 }));
+		records.push(toolRecord(`tool:${i}`, { ts: TS + i * 60_000 + 1_000 }));
+		records.push(answerRecord(`answer:${i}`, { ts: TS + i * 60_000 + 5_000 }));
+	}
+	const mounted = await mount(t, records, { hasMore: false });
+	const region = () =>
+		mounted.container.querySelector("[data-condense-announcement]")
+			?.textContent ?? "";
+	const bars = () =>
+		mounted.container.querySelectorAll("[data-turn-summary]").length;
+	assert.ok(bars() > 0, "the loaded window arrives folded");
+	assert.equal(region(), "", "a load announces nothing");
+	const before = bars();
+	await flushFrames();
+	assert.ok(
+		bars() > before,
+		`the frames widened the window (before=${before} after=${bars()})`,
+	);
+	assert.equal(
+		region(),
+		"",
+		"the revealed bars are window-entered, not settled",
+	);
 });
 
 test("a settle announces the new bar politely, in the bar's own words", async (t) => {
