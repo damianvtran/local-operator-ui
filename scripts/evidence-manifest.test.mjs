@@ -2247,6 +2247,28 @@ const BRANCH_RECORDS = [
 	 * its identity as bare SHAs, so it adds no name to the quoting ledger.
 	 */
 	"monitorsPass",
+	/*
+	 * Grown by the monitors CONTROLS pass (2026-09-29, slice 4b-ui B), this
+	 * branch's newest top-level record and the sibling of the entry above: it
+	 * states what the pass ADDED (four cancel-affordance surfaces, eight
+	 * frames) and RE-SHOT (the six at-rest states, twelve frames - the footer
+	 * sentence's retirement and the reserved action column move every one of
+	 * them), the two narrowed commands, the before half (the base commit's own
+	 * frames), and the one cost the frames carry rather than hide (the first
+	 * line's earlier truncation). It spells its identity as bare SHAs, so it
+	 * adds no name to the quoting ledger - the rule the two entries beside it
+	 * follow.
+	 */
+	"monitorsControlsPass",
+	/*
+	 * And the fold record of that pass's rebase onto `origin/main` = `38c8ad9254`,
+	 * listed for the list's own reason: a fold resolved from main's manifest copy
+	 * would drop the only statement of how the two conflicting paths (this
+	 * manifest and `package.json`'s test list) were resolved key by key, and of
+	 * which capture's head/capturedAt the merged block keeps. It quotes no
+	 * tree-hash pair, so `BRANCH_RECORDS` is where it belongs.
+	 */
+	"foldOnto38c8ad9254Note",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

@@ -91,6 +91,7 @@ import {
 import { RawInfoView } from "./raw-info-view";
 import { type McpServerRow, type RunDetails, RunPanel } from "./run-details";
 import type { McpRemedyControls } from "./run-details/use-mcp-remedy";
+import type { MonitorControls } from "./run-details/use-monitor-controls";
 import type { SlashDispatchOutcome } from "./slash-dispatch";
 import type { SlashCommandInvocation } from "./slash-submit";
 import { QuestionDock } from "./trace/question-dock";
@@ -400,6 +401,13 @@ type ChatContentProps = {
 	 */
 	mcpRemedy: McpRemedyControls;
 	/**
+	 * The pane's monitor write controls (`use-monitor-controls.ts`), the same
+	 * threading as `mcpRemedy`: the Monitors section's confirmation and refusal
+	 * live in the section, and the write belongs to the level that owns the
+	 * session identity.
+	 */
+	monitorControls: MonitorControls;
+	/**
 	 * Whether a child's row can be opened: the `subagent_transcript` capability
 	 * (`§ 10.2`). False leaves the roster visible and quiet rather than lit and
 	 * inert.
@@ -576,6 +584,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		mcpServers = [],
 		mcpGrantRunning = false,
 		mcpRemedy,
+		monitorControls,
 		childrenOpenable = false,
 		/*
 		 * The composer's `@` affordance, folded by the page that owns both halves of
@@ -1952,6 +1961,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								mcpServers={mcpServers}
 								mcpGrantRunning={mcpGrantRunning}
 								mcpRemedy={mcpRemedy}
+								monitorControls={monitorControls}
 								sessionId={canonical?.view.frontend?.session_id ?? null}
 								pulses={pulses ?? EMPTY_PULSES}
 								childrenOpenable={childrenOpenable}

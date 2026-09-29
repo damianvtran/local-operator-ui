@@ -137,6 +137,7 @@ import {
 	deriveRunDetails,
 	mcpErrorTexts,
 	useMcpRemedy,
+	useMonitorControls,
 	useRunPanelMcpServers,
 } from "./run-details";
 import { useSlashDispatch } from "./slash-dispatch";
@@ -823,6 +824,13 @@ function SessionPanel({
 	 * read. The section receives them as props and stays presentational.
 	 */
 	const mcpRemedy = useMcpRemedy({ sessionId });
+	/*
+	 * The pane's monitor cancel, taken HERE beside the MCP remedies for their
+	 * reason: this component owns the session identity, and the Monitors
+	 * section's confirmation and refusal stay presentational props. The hook owns
+	 * the retry policy and the canonical re-read (`use-monitor-controls.ts`).
+	 */
+	const monitorControls = useMonitorControls({ sessionId });
 	const capabilities = useDesktopCapabilities();
 	/*
 	 * The child reader is the one part of the panel that needs a route an older
@@ -3606,6 +3614,7 @@ function SessionPanel({
 					mcpServers={mcpServers}
 					mcpGrantRunning={mcpGrantRunning}
 					mcpRemedy={mcpRemedy}
+					monitorControls={monitorControls}
 					childrenOpenable={childrenOpenable}
 					mentionsEnabled={mentionsEnabled}
 					mentionsUnsupported={mentionsUnsupported}

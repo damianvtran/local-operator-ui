@@ -29,6 +29,7 @@ import { RunDetailTodos } from "./run-detail-todos";
 import { RunDetailWakes } from "./run-detail-wakes";
 import { useRunDetailsClock } from "./run-details-clock";
 import type { McpRemedyControls } from "./use-mcp-remedy";
+import type { MonitorControls } from "./use-monitor-controls";
 
 export type RunDetailsPanelProps = HTMLAttributes<HTMLDivElement> & {
 	details: RunDetails;
@@ -93,6 +94,13 @@ export type RunDetailsPanelProps = HTMLAttributes<HTMLDivElement> & {
 	 * resolves the request through whichever ref that section owns.
 	 */
 	monitorsSectionRef?: Ref<HTMLElement>;
+	/**
+	 * The pane's monitor write controls (`use-monitor-controls.ts`), threaded from
+	 * the page exactly as `mcpRemedy` is: the confirmation and the refusal live in
+	 * the Monitors section, and the write itself belongs to the level that owns
+	 * the session identity.
+	 */
+	monitorControls: MonitorControls;
 };
 
 export const RunDetailsPanel = ({
@@ -110,6 +118,7 @@ export const RunDetailsPanel = ({
 	jobsSectionRef,
 	wakesSectionRef,
 	monitorsSectionRef,
+	monitorControls,
 	className,
 	...props
 }: RunDetailsPanelProps) => {
@@ -254,7 +263,11 @@ export const RunDetailsPanel = ({
 		sections.push({
 			key: "monitors",
 			body: (
-				<RunDetailMonitors details={details} sectionRef={monitorsSectionRef} />
+				<RunDetailMonitors
+					details={details}
+					sectionRef={monitorsSectionRef}
+					controls={monitorControls}
+				/>
 			),
 		});
 	}

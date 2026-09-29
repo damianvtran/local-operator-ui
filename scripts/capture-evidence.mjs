@@ -2376,6 +2376,25 @@ export const STORIES = [
 	["chat-run-panel--monitor-long-description", 1280, 700],
 	["chat-run-panel--monitors-and-wakes", 1280, 820],
 	["chat-run-panel--monitors-floor-320", 1280, 700],
+	/*
+	 * The cancel affordance's own states (the design's cancel paragraph, Unit B):
+	 * the row control under the pointer, the control holding the point's
+	 * `:focus-visible` ring, the confirmation the press opens, and the
+	 * confirmation after a refusal - the state where the dialog must stay open
+	 * with the backend's own sentence. The hover goes through the rig's real
+	 * pointer (the reveal is a real transition, hence `hoverSettleMs`); the
+	 * refused frame performs its two presses itself and holds the shutter until
+	 * the sentence paints.
+	 */
+	[
+		"chat-run-panel--monitor-cancel-hover",
+		1280,
+		820,
+		{ hover: '[data-monitor-cancel="m1"]', hoverSettleMs: 400 },
+	],
+	["chat-run-panel--monitor-cancel-focus", 1280, 820],
+	["chat-run-panel--monitor-cancel-confirm", 1280, 820],
+	["chat-run-panel--monitor-cancel-refused", 1280, 820],
 	/* The trigger's activity blip: the pane is CLOSED and a child is running, so
 	   the dot is drawn in `info`. Read against `trigger-idle` (nothing to say) and
 	   `panel-empty` (pane open, no activity ink) — the ink switch is the whole claim
