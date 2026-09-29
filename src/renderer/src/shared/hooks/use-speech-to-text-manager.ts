@@ -99,8 +99,13 @@ type SpeechToTextHandler = {
 /**
  * Global registry for speech-to-text handlers
  * This ensures only one handler receives the event at a time
+ *
+ * Exported so a node-level test can drive the capture-phase contract without
+ * mounting React (`scripts/hold-escape-claim.test.mjs`): the registration hook
+ * below is the only production entry point, and it still owns the one
+ * singleton this module installs.
  */
-class SpeechToTextManager {
+export class SpeechToTextManager {
 	private handlers = new Map<string, SpeechToTextHandler>();
 	private isListening = false;
 	/**
@@ -245,7 +250,26 @@ class SpeechToTextManager {
 			 * combination (the user is typing Alt-something, not talking), and a
 			 * hold that is part of a combination was never a hold. Aborted, so
 			 * whatever the press captured is discarded rather than transcribed.
+			 *
+			 * AND WHEN THAT KEY IS ESCAPE, THE HOLD CLAIMS THE PRESS (QA round 1,
+			 * Q-1). Rung 4's promise - "Esc during a recording cancels the
+			 * recording and never the turn" - must hold on the PTT door too, and
+			 * on that door this branch runs in the CAPTURE phase, AHEAD of the
+			 * turn interrupt's own guard. Settling here re-renders, and the
+			 * re-render's passive effects detach the composer's own Escape
+			 * listener and clear the live recording presence before any bubble
+			 * listener runs - so the guard, whose read comes later in the same
+			 * dispatch, found "no recording" and killed the turn (measured 3/3 on
+			 * this door while the mic-button door passed, whose settle happens
+			 * after the guard's read). `preventDefault` is a property of the
+			 * EVENT and is set NOW, ahead of all of that churn: the guard's
+			 * predicate and its microtask both read it, whenever they run.
+			 *
+			 * Other second keys keep their defaults: only Escape is the rung-4
+			 * key, and swallowing an arbitrary combination here would claim keys
+			 * this module has no business claiming.
 			 */
+			if (event.key === "Escape") event.preventDefault();
 			this.releaseHold("abort");
 			return;
 		}

@@ -199,6 +199,26 @@ export const clearSubmittedText = (
 ): string => (current === submitted ? "" : current);
 
 /**
+ * WHETHER A SEND'S SETTLE MAY RETIRE THE PERSISTED DRAFT (QA round 1, Q-2).
+ *
+ * The settle runs seconds after the echo, and every write since - keystrokes,
+ * a landing transcript - lives in the SAME persisted register (`handleChange`
+ * pushes each one). The unconditional clear wiped that newer copy while the
+ * box kept it on screen, and the next landing then appended against the
+ * emptied register and REPLACED the visible text ("send -> dictate -> dictate",
+ * measured in 3 of 4 QA runs). A settle that finds the register already empty,
+ * or still holding exactly the payload it sent, retires it; anything else is
+ * the user's and not this send's to clear.
+ *
+ * Pure and exported so the rule is asserted at node level (the shape
+ * `shouldReinitialiseComposer` takes in the same file).
+ */
+export const retireDraftApplies = (
+	persisted: string,
+	submitted: string,
+): boolean => persisted === "" || persisted === submitted;
+
+/**
  * The boundary between a draft and a transcript that lands on it (design round
  * 1, D2; UX round 1, U2). Plain concatenation glued "overhaul" to "dictated"
  * on the exact landing path this change re-publishes, and the joined word
@@ -1017,6 +1037,18 @@ export const useMessageInput = ({
 		 * it, or a refusal is about to put it back.
 		 */
 		const retireDraft = () => {
+			/*
+			 * ONLY THE COPY THE SEND ACTUALLY RETIRED (QA round 1, Q-2; the rule and
+			 * its reasoning live on `retireDraftApplies`). A register holding
+			 * something newer than this send - typed or dictated since the press -
+			 * is the user's, and clearing it both lost the persisted copy and made
+			 * the next landing REPLACE the box's visible text.
+			 */
+			if (
+				conversationId &&
+				!retireDraftApplies(getCurrentInput(conversationId), submitted)
+			)
+				return;
 			lastPushedRef.current = "";
 			setCurrentInput(conversationId, "");
 			resetCurrentHistoryIndex(conversationId);
