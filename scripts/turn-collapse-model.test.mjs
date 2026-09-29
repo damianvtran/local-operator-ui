@@ -27,6 +27,7 @@ const bundle = await build({
 			'export * from "./src/renderer/src/features/chat/canonical/turn-collapse-model";',
 			'export { runsOf, closingAnswerIds, buildRows } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
 			'export { applyEvent, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
+			'export { visibleRecords } from "./src/renderer/src/features/chat/canonical/cross-session-visibility";',
 		].join("\n"),
 		resolveDir: ROOT,
 	},
@@ -53,6 +54,7 @@ const {
 	buildRows,
 	applyEvent,
 	EMPTY_TRANSCRIPT,
+	visibleRecords,
 } = await import(moduleUrl);
 
 /* ------------------------------- fixtures ------------------------------- */
@@ -931,5 +933,119 @@ test("R1-3(b): a steer landing after settled mid-turn prose opens its own run", 
 		runs.map((run) => run.key),
 		["u1", "u2"],
 		"the steer opens a run: the settled prose counted as the ending",
+	);
+});
+
+/* --------------- the cross-session filter, upstream of the plan ----------- */
+
+test("hidden cross-session rows never reach the bar: counts equal the visible span", () => {
+	/*
+	 * The filter's seam (`canonical-transcript.tsx`'s `shownRecords`) sits
+	 * UPSTREAM of this model - the plan is handed
+	 * `collapsePlan(buildRows(visibleRecords(records, hide)))` - so the assertions
+	 * worth making are compositional: a hidden `send` must not be in the
+	 * partition, must not be counted among the bar's actions, and the model's
+	 * own pin list must be what decides the receipt's fate with the option off.
+	 *
+	 * The unfiltered plan is computed too, because "no count leak" is only
+	 * pinned by showing the raw count WOULD have included the send: the defect
+	 * this guards is a filter applied to paint but not to the accounting.
+	 */
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: userMessage("u1", "go") },
+		TS,
+	);
+	for (const [callId, name, at] of [
+		["c-send", "send", 100],
+		["c-bash", "bash", 300],
+	]) {
+		state = applyEvent(
+			state,
+			{
+				type: "tool_execution_start",
+				tool_call_id: callId,
+				tool_name: name,
+				args: {},
+			},
+			TS + at,
+		);
+		state = applyEvent(
+			state,
+			{
+				type: "tool_execution_end",
+				tool_call_id: callId,
+				tool_name: name,
+				result: { content: [{ type: "text", text: "ok" }] },
+				is_error: false,
+				duration_s: 1,
+			},
+			TS + at + 50,
+		);
+	}
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: assistantMessage("a1", "done") },
+		TS + 500,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_end", message: assistantMessage("a1", "done") },
+		TS + 600,
+	);
+	const [opening, ...rest] = state.records;
+	/* The peer receipt inside the span, in the pinned-row test's own shape. */
+	const records = [
+		opening,
+		{ kind: "peer", id: "p1", ts: TS + 50, body: "from a peer", sender: {} },
+		...rest,
+	];
+	const sendId = records.find(
+		(record) => record.kind === "tool" && record.toolName === "send",
+	).id;
+
+	/* Off: the bare reference, the same plan, the model's own pin list. */
+	assert.equal(visibleRecords(records, false), records);
+	const planOff = planOf(buildRows(visibleRecords(records, false), []));
+	assert.deepEqual(planOff, planOf(buildRows(records, [])));
+	assert.ok(
+		planOff.runs[0].recordIds.includes(sendId),
+		"with the option off the send row is part of the run",
+	);
+	/*
+	 * The receipt follows the MODEL's pin list rather than this test's memory
+	 * of it: #634 dropped `peer`/`wake` from the pins (issue #5 - inside a
+	 * completed turn the delivery receipts are the bulk of the visual weight),
+	 * so with the option off the peer sits in the run and among the collapsed
+	 * rows. What the filter owns is the list it hands over - the bare reference
+	 * above - and the on-half below pins that it cannot leave a count or an id
+	 * behind for either row.
+	 */
+	assert.ok(
+		planOff.runs[0].recordIds.includes("p1") &&
+			planOff.runs[0].hidden.some((row) => row.record.id === "p1"),
+		"with the option off the peer receipt is in the run and collapses with the work",
+	);
+
+	/* On: neither row reaches the partition, and the count drops by the send. */
+	const planOn = planOf(buildRows(visibleRecords(records, true), []));
+	assert.equal(
+		planOn.runs[0].facts.actions,
+		1,
+		"only the bash row is counted - no residual count for the hidden send",
+	);
+	assert.equal(
+		planOf(buildRows(records, [])).runs[0].facts.actions,
+		2,
+		"unfiltered the send WOULD be counted, so the filter is what removed it",
+	);
+	assert.ok(
+		!planOn.runs[0].recordIds.includes(sendId) &&
+			!planOn.runs[0].recordIds.includes("p1"),
+		"neither hidden row is in the bar's ids",
+	);
+	assert.ok(
+		!String(planOn.runs[0].facts.title).toLowerCase().includes("send"),
+		"the bar's sentence names no hidden tool",
 	);
 });

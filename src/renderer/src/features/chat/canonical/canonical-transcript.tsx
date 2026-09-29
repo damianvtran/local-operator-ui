@@ -116,6 +116,7 @@ import { CanvasPaneProvider } from "../utils/canvas-pane";
 import { parseReplies } from "../utils/reply-utils";
 import { CanonicalImage } from "./canonical-image";
 import { CheckpointRail } from "./checkpoint-rail";
+import { visibleRecords } from "./cross-session-visibility";
 import { isRecordReachable } from "./failed-row-jump";
 import { LinkToolkit } from "./link-toolkit";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
@@ -166,6 +167,7 @@ import {
 } from "./turn-collapse-model";
 import type { AttachmentScope } from "./use-attachment-url";
 import { useCheckpoints } from "./use-checkpoints";
+import { useCrossSessionHidden } from "./use-cross-session-hidden";
 import { useLinkSubject } from "./use-link-subject";
 import { useScrollPaging } from "./use-scroll-paging";
 import {
@@ -1957,6 +1959,24 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			),
 		[transcript, frontend?.attention, frontend?.streaming],
 	);
+	/*
+	 * THE CROSS-SESSION FILTER: the single seam where the records a reader may
+	 * SEE become the records this pane builds from. `hide` is the backend's
+	 * `display.hide_cross_session`; default off means `visibleRecords` drops
+	 * nothing and hands back the bare reference, so every downstream memo keeps
+	 * its identity. Both consumers of the records read `shownRecords`: the row
+	 * builder below, and the working line further down - that line derives from
+	 * RECORDS (unlike the TUI's card-derived line), so an unfiltered list would
+	 * still name a running `send`. The raw `transcript.records.length` gates
+	 * below stay RAW on purpose: they answer "does this pane hold data", not
+	 * "what does it paint", and a session whose only rows are hidden must not
+	 * flip the pane's empty state.
+	 */
+	const hide = useCrossSessionHidden();
+	const shownRecords = useMemo(
+		() => visibleRecords(painted.records, hide),
+		[painted.records, hide],
+	);
 	// `loadingOlder` is deliberately NOT part of this gate any more.
 	//
 	// The acknowledgement asks one question: can the reader actually see the
@@ -1986,10 +2006,10 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	const checkpoints = useCheckpoints(sessionId ?? "");
 	const previousRows = useRef<Row[]>([]);
 	const rows = useMemo(() => {
-		const next = buildRows(painted.records, previousRows.current);
+		const next = buildRows(shownRecords, previousRows.current);
 		previousRows.current = next;
 		return next;
-	}, [painted.records]);
+	}, [shownRecords]);
 	/*
 	 * The jump's read of the row model BETWEEN awaits. `ensureReachable`'s
 	 * callbacks run after frame waits and page loads, so they must see the
@@ -2487,8 +2507,15 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	const paneWorking = useMemo(
 		() =>
 			// One input builder for this claim's two readers - this rung and the
-			// composer's hint - so the two cannot be handed different facts
-			// (`workingLineInputFor`, `working-line-model.ts`).
+			// composer's hint (`workingLineInputFor`, `working-line-model.ts`).
+			// The builder is shared; the record lists handed to it are not: this
+			// rung reads the cross-session filter's `shownRecords`, while the
+			// composer's hint still reads the raw records (`chat-content.tsx`).
+			// No divergence is reachable today - `waiting` is answered by the
+			// ladder's fallback on either list, and the one predicate that could
+			// flip on dropped rows (`ownerAnswered`) is decided over RAW records
+			// in `chat-page` before either reader is built. If that normalization
+			// ever moves off raw records, this seam moves with it.
 			deriveWorkingLine(
 				workingLineInputFor({
 					waiting,
@@ -2528,7 +2555,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						missing,
 						stale,
 					}),
-					records: transcript.records,
+					records: shownRecords,
 				}),
 			),
 		[
@@ -2555,7 +2582,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			// and a memo that missed them would keep a claim the pane has withdrawn.
 			missing,
 			stale,
-			transcript.records,
+			shownRecords,
 		],
 	);
 
