@@ -81,6 +81,25 @@ import { OnboardingModal } from "./onboarding-modal";
  */
 const SEARCH_LABEL = "Search providers";
 
+/**
+ * The "More providers" trigger, by the name it renders.
+ *
+ * A constant rather than a literal in each `play`, for the same reason as the
+ * label above: `tabTo`-style selectors and accessible-name matches are the
+ * things that rot silently when a label moves.
+ */
+const MORE_PROVIDERS_LABEL = /More providers/;
+
+/**
+ * The panel's sentence when every match is in the shortcut block above.
+ *
+ * Spelled here ON PURPOSE, as the assertion rather than as a restatement: the
+ * `play` below fails if the product's copy stops saying this, which is what a
+ * reword should cost. Its sibling in the component is
+ * `MATCHES_ABOVE_SENTENCE` in `provider-grid.tsx`.
+ */
+const MATCHES_ABOVE = "The matching providers are in the suggested rows above.";
+
 /* --------------------------------------------------------------- bridge */
 
 type BridgeRequest = { op: string };
@@ -776,7 +795,17 @@ export const SearchActive: Story = {
 	play: async () => {
 		const field = await screen.findByLabelText(SEARCH_LABEL);
 		await userEvent.type(field, "cloud");
-		await screen.findByText("QwenCloud Token Plan");
+		/*
+		 * BY THE BRAND, which is what the row prints. This waited for
+		 * "QwenCloud Token Plan" -- the registry's full label, which the list stops
+		 * printing the moment #494 renders `brandOf(provider)` instead, so the play
+		 * threw on every run while the frame still painted (design round 1 D1's own
+		 * class: an assertion nobody can see fail). "cloud" narrows the census to
+		 * the two rows whose names carry it, and `findAllByText` is required because
+		 * QwenCloud's own meta line names the account too.
+		 */
+		await screen.findByText("Alibaba Cloud");
+		await screen.findAllByText("QwenCloud");
 	},
 };
 
@@ -907,8 +936,82 @@ export const InDialog: Story = {
 			<Readout probes={DIALOG_PROBES} />
 		</Census>
 	),
+	/*
+	 * The COLLAPSED state's own claim: the trigger a reader presses is here and
+	 * carries its name.
+	 *
+	 * This play used to wait for the search field, which lives INSIDE the
+	 * disclosure and therefore is not mounted until the trigger is pressed --
+	 * `Disclosure` mounts its content on open (shared/components/ui/disclosure.tsx).
+	 * It threw `TestingLibraryElementError: Unable to find a label with the text of:
+	 * Search providers` on every run while the story still painted, so the frame
+	 * looked right and the assertion was dead (design round 1 D1, QA-3). The
+	 * expanded state has its own story below, which is where that field belongs.
+	 */
 	play: async () => {
+		await screen.findByRole("button", { name: MORE_PROVIDERS_LABEL });
+	},
+};
+
+/**
+ * Step 1 with "More providers" OPEN -- the state this surface had no picture of.
+ *
+ * WHY THIS STORY EXISTS (design round 1, D1). The disclosure and
+ * `addRowsByGroup` both arrived with #494, and all eight stories before this one
+ * photographed the COLLAPSED step. So when the disclosure repeated the four
+ * suggested rows inside their own groups -- 22 rows for 18 providers -- no
+ * capture could see it, and it survived #494's own review rounds. The lesson is
+ * the story's reason for being: a block nobody renders is a block nobody
+ * reviews.
+ *
+ * It opens the disclosure the way a reader does, with a real press on the
+ * trigger, rather than by passing `focusGroup` to the grid: `defaultOpen` is the
+ * production prop the app sets for a deep link, and using it here would
+ * photograph a state reached by a path this story does not exercise.
+ */
+export const InDialogMoreOpen: Story = {
+	render: () => (
+		<Census>
+			<OnboardingDialogFrame />
+			<Readout probes={DIALOG_PROBES} />
+		</Census>
+	),
+	play: async () => {
+		const trigger = await screen.findByRole("button", {
+			name: MORE_PROVIDERS_LABEL,
+		});
+		await userEvent.click(trigger);
+		// The field mounts with the content, so waiting for it is waiting for the
+		// opened state rather than for a flag the story set.
 		await screen.findByLabelText(SEARCH_LABEL);
+	},
+};
+
+/**
+ * The same state with a query whose every match is in the shortcut block.
+ *
+ * WHY THIS EXISTS. `rad` narrows the suggested block to Radient and leaves the
+ * groups with nothing in them, so the panel's body is empty in a way that means
+ * something different from "no provider matches": the reader's query DID match,
+ * one line above. It used to render as a search field over blank space (code
+ * round 1, P2 / QA-1), and a state nobody renders is a state nobody reviews --
+ * which is the lesson this file's `in-dialog-more-open` story exists to record.
+ */
+export const InDialogMoreOpenQuery: Story = {
+	render: () => (
+		<Census>
+			<OnboardingDialogFrame />
+			<Readout probes={DIALOG_PROBES} />
+		</Census>
+	),
+	play: async () => {
+		const trigger = await screen.findByRole("button", {
+			name: MORE_PROVIDERS_LABEL,
+		});
+		await userEvent.click(trigger);
+		const field = await screen.findByLabelText(SEARCH_LABEL);
+		await userEvent.type(field, "rad");
+		await screen.findByText(MATCHES_ABOVE);
 	},
 };
 

@@ -661,3 +661,52 @@ incomplete. The text above is left as it was written; these entries govern.
    diagnosis: Settings now renders the pairing table's sentence for the cause main
    published, and withholds its control where no act exists - by the same predicate
    the banner and the pane call.
+
+---
+
+## 13. Post-implementation: the notice-band pass (2026-09-26)
+
+§ 12 above is the design's own record of its review rounds; this section records
+what the SHIPPED pass did to the design's claims, so a later reader can read the
+code against the design without re-deriving either.
+
+1. **The strip states `credential-refused` only when main's CAUSE says so.** Both
+   the strip's row 1 and this design's S1 banner row were reachable from
+   `pairing.available === false`, which is true of five causes (S1, S2, S3, S5 and
+   the refusal). That made the strip paint the refusal's own copy over a successor,
+   a governed plane, an older install and an unpaired daemon - the operator's
+   report is the S1 case: a red "refused this app's credential" three pixels above
+   an amber "replaced while this app was running", one incident, two sentences,
+   two severities. The strip's gate is `pairing.cause === "credential-refused"`
+   AND the daemon's presence (`server.state !== "detached"`, UX round 1's U1:
+   a live refusal reports `wedged`, so a refusal outlived its dead daemon — the
+   strip kept saying "The daemon is running." over a killed process, and a
+   dismissed strip stayed muted — until absence moved it to the `unreachable`
+   row and re-armed the key) - see `chat-status.ts`.
+
+2. **S1/S2/S3/S5 are banner-only rows, and the strip is silent for them in the
+   states they occur in.** The copy gate alone was not enough: the strip's
+   connection rows still fire whenever no server is reachable, and the governed
+   scene this file's evidence committed
+   (`docs/evidence/any-daemon-attach/after-frames-other-principal.json`) is
+   measured as `detached` beside `governed-elsewhere` - so the unreachable row
+   retired alongside row 1 for every cause other than the refusal, and those four
+   causes render exactly one band wherever the banner can speak. The two WARNING
+   rows keep firing beside a pairing cause (a degraded connection and an offline
+   machine are facts the banner cannot state).
+
+3. **D29's yield is retained and generalised.** The banner yields where the strip
+   states the fact, and "where" grew one arm: `cause === null && !answered` with an
+   outage-shaped probe result - the case where the strip's `unreachable` row is
+   one element above the banner's "did not answer" sentence. The rule is one
+   predicate (`bannerYieldsToStrip`) called after `kind` is computed, pinned by
+   `scripts/backend-error-surfaces.test.mjs`.
+
+4. **One band grammar on both surfaces.** The strip and the banner draw the same
+   `Alert` wearing `NOTICE_BAND` (14px mark, `px-3 py-2`, inset under the pane's
+   24px gutter) - the strip's old inset wash-only band and the banner's old
+   full-bleed squared band were two shapes for one family. Severity is carried by
+   hue, glyph and copy only; `credential-refused` is `danger` on both surfaces,
+   everything else is `warning`. The band's content column also GROWS so the
+   action sits on the trailing edge in every state (agent review round 1's
+   MINOR-2; scoped in `notice-band.ts`, not in `alert.tsx`).

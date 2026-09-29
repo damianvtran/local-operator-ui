@@ -108,6 +108,9 @@ const {
 	TabRegistry,
 	MAX_AGENT_TABS,
 	captureTabs,
+	readSession,
+	SESSION_FILENAME,
+	MAX_RESTORED_TABS,
 	surfaceToken,
 	parseSurface,
 	redactToken,
@@ -1325,6 +1328,7 @@ test("one banner per count change, not one per pending request", () => {
 		onAttention: () => {},
 		createNotification: (options) => ({
 			on: () => {},
+			once: () => {},
 			show: () => raised.push(options),
 		}),
 	});
@@ -1375,7 +1379,10 @@ test("the click on a banner names the OLDEST live request, and who asked for it"
 		show: "focus",
 		onAttention: (entryId, requester) => attended.push([entryId, requester]),
 		createNotification: () => ({
-			on: (event, listener) => {
+			on: () => {},
+			// The click is attached through the notification lifetime's `retain`, which
+			// registers it with `once` — see `notification-lifetime.ts`.
+			once: (event, listener) => {
 				if (event === "click") click = listener;
 			},
 			show: () => {},
@@ -1610,6 +1617,7 @@ test("no banner is raised when the launch plan would not have focused the window
 		onAttention: () => {},
 		createNotification: (options) => ({
 			on: () => {},
+			once: () => {},
 			show: () => raised.push(options),
 		}),
 	});
@@ -4317,7 +4325,11 @@ test("the change capture a restore fires already carries every tab, before a pag
 		() => {},
 		() =>
 			snapshots.push(
-				captureTabs(registry.list(), registry.activeTab?.tabId ?? null),
+				captureTabs(
+					registry.list(),
+					registry.activeTab?.tabId ?? null,
+					new Set(),
+				),
 			),
 	);
 	const { host } = makeHost({ registry });
@@ -4443,6 +4455,169 @@ test("a refused load is reported only when it is one a user can act on", () => {
 	);
 	assert.equal(isReportableLoadFailure(-324), true);
 	assert.equal(isReportableLoadFailure(-105), true);
+});
+
+// ---- a tab that is dead when you quit is not restored (2026-09-28) ----------
+
+/*
+ * The operator's accumulation, at the layer it is mechanical on: `captureTabs` writes
+ * a row for a tab whose page refused to load (marked `lastLoadFailed`), and
+ * `readSession` SKIPS a flagged row - so the dead tab is not re-created, and not
+ * re-persisted, on every launch after the one it died on. The mark is written only
+ * while the host has a recorded failure for the tab, so a later successful load
+ * clears it, and the skip runs BEFORE the cap, so a dead row does not consume one of
+ * `MAX_RESTORED_TABS` slots.
+ */
+
+test("a capture marks only the failed tabs, and a later success clears the mark", () => {
+	const { registry } = makeRegistry();
+	const row = (url) => ({
+		owner: "user",
+		active: false,
+		entries: [{ url, title: url }],
+		activeIndex: 0,
+	});
+	const dead = registry.create({
+		owner: "user",
+		restored: true,
+		restoreRow: row("http://127.0.0.1:9/"),
+	});
+	const alive = registry.create({
+		owner: "user",
+		restored: true,
+		restoreRow: row("https://example.com/"),
+	});
+
+	const captured = captureTabs(
+		registry.list(),
+		alive.tabId,
+		new Set([dead.tabId]),
+	);
+	assert.equal(captured[0].lastLoadFailed, true, "the failed tab is marked");
+	assert.deepEqual(
+		captured[1],
+		{
+			owner: "user",
+			active: true,
+			entries: [{ url: "https://example.com/", title: "https://example.com/" }],
+			activeIndex: 0,
+		},
+		"an unflagged row is written exactly as it always was - the mark is additive and omitted when absent",
+	);
+
+	// The set the host hands in is its live `loadFailures`: once the tab's next
+	// navigation retires the failure, the next capture omits the mark.
+	assert.equal(
+		"lastLoadFailed" in captureTabs(registry.list(), alive.tabId, new Set())[0],
+		false,
+		"a successful load clears the mark",
+	);
+});
+
+test("the host publishes the failed ids the capture reads, and a close retires them", () => {
+	const { host, registry } = makeHost();
+	const first = registry.create({ owner: "user" });
+	const second = registry.create({ owner: "user" });
+	assert.equal(
+		host.failedTabIds().size,
+		0,
+		"nothing failed, nothing published",
+	);
+
+	host.recordLoadFailure(second.tabId, {
+		code: -324,
+		description: "ERR_EMPTY_RESPONSE",
+		url: "http://127.0.0.1:9/",
+	});
+	assert.deepEqual([...host.failedTabIds()], [second.tabId]);
+
+	host.clearLoadFailure(second.tabId);
+	assert.equal(host.failedTabIds().size, 0, "the next navigation retires it");
+
+	host.recordLoadFailure(first.tabId, {
+		code: -105,
+		description: "ERR_NAME_NOT_RESOLVED",
+		url: "http://nope.invalid/",
+	});
+	host.closeTab(first.tabId);
+	assert.equal(
+		host.failedTabIds().size,
+		0,
+		"and a closed tab cannot leave a failure behind for its id",
+	);
+});
+
+test("readSession skips a flagged row, names the count in the log, and does not let it eat a cap slot", () => {
+	const dir = mkdtempSync(join(root, "session-restore-"));
+	const path = join(dir, SESSION_FILENAME);
+	const rows = (n, from = 0) =>
+		Array.from({ length: n }, (_, i) => ({
+			owner: "user",
+			active: false,
+			entries: [{ url: `https://example.com/${from + i}`, title: "page" }],
+			activeIndex: 0,
+		}));
+
+	// The plain skip, with the count in the log: A unflagged, B flagged, C unflagged.
+	writeFileSync(
+		path,
+		JSON.stringify({
+			version: 1,
+			tabs: [
+				...rows(1),
+				{ ...rows(1, 1)[0], lastLoadFailed: true },
+				...rows(1, 2),
+			],
+		}),
+	);
+	const messages = [];
+	const kept = readSession(path, (message) => messages.push(message));
+	assert.deepEqual(
+		kept.map((tab) => tab.entries[0].url),
+		["https://example.com/0", "https://example.com/2"],
+		"the flagged row is not restored, and the healthy rows keep their order",
+	);
+	assert.ok(
+		messages.some((message) =>
+			message.includes(
+				"1 recorded tab(s) were showing a load failure when the session ended; not restored",
+			),
+		),
+		`the skip says what it did: ${JSON.stringify(messages)}`,
+	);
+
+	// THE CAP COUNTS RESTORABLE ROWS: MAX + 1 healthy rows plus a flagged one - and
+	// the flagged row is ACTIVE, which is the row the cap would otherwise be sure to
+	// keep. The dead row must neither restore nor displace a healthy one.
+	writeFileSync(
+		path,
+		JSON.stringify({
+			version: 1,
+			tabs: [
+				{ ...rows(1)[0], active: true, lastLoadFailed: true },
+				...rows(MAX_RESTORED_TABS + 1, 1),
+			],
+		}),
+	);
+	messages.length = 0;
+	const bounded = readSession(path, (message) => messages.push(message));
+	assert.equal(
+		bounded.length,
+		MAX_RESTORED_TABS,
+		"the cap keeps its full complement of restorable rows",
+	);
+	assert.ok(
+		bounded.every((tab) => tab.lastLoadFailed !== true),
+		"and the dead row is not among them even though it was active",
+	);
+	assert.ok(
+		messages.some((message) =>
+			message.includes(
+				`restoring ${MAX_RESTORED_TABS} of ${MAX_RESTORED_TABS + 1} recorded tabs`,
+			),
+		),
+		`the cap arithmetic counts only restorable rows: ${JSON.stringify(messages)}`,
+	);
 });
 
 // ---- who is asking travels as an id and nothing else (D2) -------------------

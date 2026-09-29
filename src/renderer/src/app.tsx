@@ -12,6 +12,7 @@ import { useConsentAttentionLifetime } from "@features/browser/hooks/use-consent
 // ChatPage is the boot route (/ redirects to /chat), so it stays statically
 // imported: lazy-loading it would put a Suspense fallback on first paint.
 import { ChatPage } from "@features/chat/components/chat-page";
+import { useHeldDraftResolution } from "@features/chat/hooks/use-held-draft-resolution";
 import { shouldStartNewChat } from "@features/chat/new-chat-shortcut";
 import { PanelOutlet } from "@features/chat/pickers/panel-outlet";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
@@ -22,6 +23,7 @@ import { OnboardingProvider } from "@features/onboarding/components/onboarding-p
 import { ConnectProviderDialog } from "@features/providers/connect-provider-dialog";
 import {
 	desktopFeatureEnabled,
+	desktopFeatureState,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import {
@@ -69,9 +71,25 @@ const SchedulesPage = lazy(() =>
 		default: m.SchedulesPage,
 	})),
 );
+const ProjectsPage = lazy(() =>
+	import("@features/projects/components/projects-page").then((m) => ({
+		default: m.ProjectsPage,
+	})),
+);
 const BrowserPage = lazy(() =>
 	import("@features/browser/components/browser-page").then((m) => ({
 		default: m.BrowserPage,
+	})),
+);
+/*
+ * The Mesh tab. Lazy like every other page, and ROUTED ONLY WHEN the backend
+ * advertises `features.peers` (see the gate below): a machine in no network never
+ * loads its chunk at all, which is the half of "ships dark" a chunk boundary can
+ * carry.
+ */
+const MeshPage = lazy(() =>
+	import("@features/mesh/mesh-page").then((m) => ({
+		default: m.MeshPage,
 	})),
 );
 const SettingsPage = lazy(() =>
@@ -175,6 +193,31 @@ const App: FC = () => {
 		"session_catalogue",
 		2,
 	);
+	/*
+	 * The Mesh tab's gate, read as the TRI-STATE and not as the boolean.
+	 *
+	 * `desktopFeatureEnabled` is this function's `=== "enabled"` projection, so the two
+	 * agree about what may mount - and that agreement is the point of reading the
+	 * tri-state at the site that decides it: `unpaired` (this app holds no credential
+	 * for the daemon), `below-version` (the daemon predates `peers`) and `unknown` (no
+	 * answer yet) are three different reasons a route is absent, and collapsing them
+	 * before the decision is how a surface comes to guess a cause it cannot see. The
+	 * route is mounted for `enabled` ONLY, which is `session_pins`' rule rather than a
+	 * convenience: a reserved destination that renders for a feature the user does not
+	 * have advertises something that cannot work, and a mesh the user has not joined
+	 * must leave this app's chrome exactly as it found it.
+	 *
+	 * THE ROUTE STAYS ON THE CAPABILITY AND THE RAIL ROW DOES NOT - a deliberate split,
+	 * not an oversight (review round 1, R1-1). MEMBERSHIP gates the row, because a rail
+	 * item is an invitation and one for a mesh the user is not in is a dead end. The
+	 * route stays mounted for every daemon that can serve it, for two reasons: a user who
+	 * leaves their last network WHILE ON THIS PAGE must not be ejected out from under
+	 * their pointer by a poll (they get the empty state, which is the honest answer, and
+	 * the row disappears on the next render), and mounting it on membership would make
+	 * the empty and the relay-unavailable states unreachable - the two states this tab
+	 * most needs to be able to say.
+	 */
+	const meshState = desktopFeatureState(capabilities.data, "peers");
 
 	const handleAgentCreated = (agentId: string) => {
 		navigate(`/chat/${agentId}`);
@@ -361,6 +404,12 @@ const App: FC = () => {
 	// named, and land on it" — the change that made the click come forward at all did
 	// not put a window call in the renderer.
 	useConsentAttentionLifetime();
+	/*
+	 * The held sends a reader has walked away from are settled once at launch
+	 * (`draft-resolution.ts` carries the why); the hook is idempotent per
+	 * process.
+	 */
+	useHeldDraftResolution();
 
 	useEffect(() => {
 		const unsubscribe = window.api?.browser?.onConsentAttention?.((payload) => {
@@ -615,21 +664,33 @@ const App: FC = () => {
 						content={
 							<main className="flex grow flex-col overflow-hidden">
 								{/*
-								 * THE NON-CHAT ROUTES' DRAG BAND, and it is `--chrome-strip-h` tall on
-								 * macOS (32) and the caption height on Windows and Linux (40).
+								 * THE NON-CHAT ROUTES' DRAG BAND, WHERE THE LANE IS NOT.
 								 *
-								 * Those routes have no 40px toolbar row of their own, so on a platform
-								 * where the app hides the OS frame they would have no drag surface above
-								 * the page's own top padding at all - and a frameless window with no drag
-								 * surface cannot be moved. On Windows and Linux it is also where the
-								 * caption buttons sit, which is why the band is the caption's height there
-								 * rather than the strip's (which is 0): the page's own heading then starts
-								 * BELOW the buttons rather than under them.
+								 * Settings, agents, agent hub and schedules have no 40px toolbar row of
+								 * their own. On Windows and Linux - where the OS draws its caption
+								 * buttons INTO the client area and nothing is drawn above the columns -
+								 * the band is the drag surface a frameless window needs and the caption
+								 * clearance the page's heading needs. The rules in `styles/index.css`
+								 * gate it to exactly those two platforms with the buttons NOT leading,
+								 * in the SELECTORS rather than by cascade order, so which of the band
+								 * and the lane is drawn cannot change when either rule moves.
+								 *
+								 * macOS IS NOT IN THAT GATE, and that is the fix this element carries:
+								 * `ChatLayout` already draws the 32px lane above BOTH columns there -
+								 * the same drag surface and the same clearance - and a band on top of
+								 * it was a SECOND inset that put the settings rail and its content
+								 * 32px below the chat header ("for sub-views like the settings page,
+								 * the sidebar and view doesn't go all the way to the top",
+								 * 2026-09-26). The element stays in the tree, rendered as nothing
+								 * there, so "where the OS draws" is decided in one place - the
+								 * `data-chrome-*` attributes on the document element, the same ones
+								 * the lane is gated on - rather than by a second JS platform read
+								 * that could drift from it.
 								 *
 								 * `/chat` is excluded because `ChatLayout` already draws the lane above
-								 * both of its columns, and the band would double it. `/browser` is
-								 * excluded because the browser pane brings its own 40px toolbar, which is
-								 * the row the controls sit over on that route.
+								 * both of its columns.
+								 * `/browser` is excluded because the browser pane brings its own 40px
+								 * toolbar, which is the row the controls sit over on that route.
 								 */}
 								{routeHasOwnChromeRow ? null : (
 									<div data-chrome-route-band="" />
@@ -654,7 +715,18 @@ const App: FC = () => {
 											element={<AgentDetailsPage />}
 										/>
 										<Route path="/schedules" element={<SchedulesPage />} />
+										<Route path="/projects" element={<ProjectsPage />} />
+										<Route
+											path="/projects/:projectId"
+											element={<ProjectsPage />}
+										/>
 										<Route path="/browser" element={<BrowserPage />} />
+										{/* Mounted only with `features.peers`: without it `/mesh` falls through
+										    to the catch-all like any unknown path, rather than rendering a tab
+										    for a feature this backend does not have. */}
+										{meshState === "enabled" && (
+											<Route path="/mesh" element={<MeshPage />} />
+										)}
 										<Route path="*" element={<Navigate to="/chat" replace />} />
 									</Routes>
 								</Suspense>

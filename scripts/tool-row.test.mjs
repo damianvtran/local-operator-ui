@@ -27,6 +27,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export * from "./src/renderer/src/features/chat/components/trace/tool-row-model";',
+			'export * from "./src/renderer/src/features/chat/components/trace/tool-glyphs";',
 			'export { requestDesktopMedia } from "./src/main/desktop-media";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -57,6 +58,9 @@ const {
 	stripDiffHeader,
 	summaryFromArgs,
 	toolCategory,
+	toolIcon,
+	toolOp,
+	toolRowLabel,
 	toolVerb,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -85,7 +89,29 @@ test("the summary is the identity arguments, not the payload", () => {
 		"core Bug",
 	);
 	// Non-scalars are dropped rather than stringified into `[object Object]`.
-	assert.equal(summaryFromArgs("todo", { items: ["a"], op: "add" }), "add");
+	assert.equal(summaryFromArgs("todo", { items: ["a"] }), "todo");
+	// The OPERATION SELECTOR is not an object once a verb table reads it: `op`
+	// is the word the row's verb is about to say, and `{items:["a"], op:"add"}`
+	// used to resolve to `add` - which is how the row came to read `Updated
+	// todos add` and, for `agent`, `Delegated list` (operator report,
+	// 2026-09-27). For a tool with no op table the scalars are untouched.
+	assert.equal(summaryFromArgs("todo", { items: ["a"], op: "add" }), "todo");
+	assert.equal(summaryFromArgs("agent", { op: "list" }), "agent");
+	assert.equal(
+		summaryFromArgs("agent", { op: "show", name: "designer" }),
+		"designer",
+	);
+	assert.equal(
+		summaryFromArgs("browser", { action: "type", text: "hi" }),
+		"type hi",
+	);
+	assert.equal(
+		summaryFromArgs("mcp__linear_create_issue", {
+			action: "list",
+			team: "core",
+		}),
+		"list core",
+	);
 	// Nothing usable at all: the tool's own name, never an empty row.
 	assert.equal(summaryFromArgs("eval", {}), "eval");
 	assert.equal(summaryFromArgs("eval", null), "eval");
@@ -203,6 +229,316 @@ test("a row opens with a verb in the user's terms, never the wire name (D5)", ()
 		running: "Calling",
 		named: false,
 	});
+});
+
+test("a meta tool's row names its operation, never the family's one word (operator report, 2026-09-27)", () => {
+	/*
+	 * `agent`, `team` and `hub` are one tool each that does many jobs, and their
+	 * name-only verbs said `Delegated` for all of them: the operator's
+	 * screenshot showed `Delegated list` and `Delegated designer` for profile
+	 * READS that delegated nothing. The verb is chosen from the arguments'
+	 * operation (`toolOp`), and the object never echoes the selector back
+	 * (`summaryFromArgs` drops it for the tools whose verb table reads it).
+	 */
+	const row = (name, args) =>
+		toolRowLabel(name, summaryFromArgs(name, args), null, false, toolOp(args));
+
+	// The two rows the operator reported, as labels.
+	assert.deepEqual(row("agent", { op: "list" }), {
+		verb: "Listed agents",
+		object: "",
+	});
+	assert.deepEqual(row("agent", { op: "show", name: "designer" }), {
+		verb: "Viewed agent",
+		object: "designer",
+	});
+	// A write op beside them, so the table is asserted in both directions.
+	assert.equal(
+		row("agent", { op: "create", name: "docs-writer" }).verb,
+		"Created agent",
+	);
+	assert.deepEqual(row("team", { op: "list" }), {
+		verb: "Listed teams",
+		object: "",
+	});
+	assert.deepEqual(row("hub", { op: "peek", to: ["9860"] }), {
+		verb: "Peeked at",
+		object: "",
+	});
+	// The object's own precedence is untouched: `hub send` still leads with the
+	// message it carries, not the target.
+	assert.deepEqual(row("hub", { op: "send", to: ["9860"], message: "ping" }), {
+		verb: "Messaged",
+		object: "ping",
+	});
+	// `task` is the call that IS delegation, and it keeps the word.
+	assert.equal(row("task", { agent: "designer" }).verb, "Delegated");
+	// An operation this build does not know takes the GENERIC verb, and the
+	// selector token does not leak into the object - a claim the table cannot
+	// make is not made.
+	assert.deepEqual(row("agent", { op: "frobnicate" }), {
+		verb: "Called",
+		object: "agent",
+	});
+	assert.deepEqual(row("agent", null), { verb: "Called", object: "agent" });
+	// A COMPOSING row (no arguments in hand yet) takes the same generic verb,
+	// never the old family word: nothing is delegated at that moment.
+	assert.deepEqual(toolRowLabel("agent", "composing · 22 B", null, true), {
+		verb: "Calling",
+		object: "agent composing · 22 B",
+	});
+});
+
+test("the builtins the row table once missed name their call, and their operation when it matters", () => {
+	// The unmapped half of the audit (operator report, 2026-09-27): every tool
+	// the running build can emit has a word. A static one where the name says it
+	// all; an operation's where one name spans materially different calls.
+	assert.equal(toolVerb("web_read").settled, "Read");
+	assert.equal(toolVerb("wait").settled, "Waited for jobs");
+	assert.equal(toolVerb("team_delete").settled, "Deleted team");
+	assert.equal(toolVerb("project_delete").settled, "Deleted project");
+
+	const opRow = (name, op) => toolVerb(name, op);
+	assert.equal(opRow("secret", "retrieve").settled, "Retrieved secret");
+	assert.equal(opRow("secret", "delete").settled, "Deleted secret");
+	assert.equal(opRow("project", "link").settled, "Linked session to");
+	assert.equal(opRow("project", "milestone").settled, "Updated milestone");
+	assert.equal(opRow("todo", "view").settled, "Read todos");
+	assert.equal(opRow("todo", "done").settled, "Updated todos");
+	assert.equal(opRow("wake", "list").settled, "Listed wakes");
+	assert.equal(opRow("jobs", "cancel").settled, "Cancelled job");
+	assert.equal(opRow("network", "status").settled, "Checked network status");
+	assert.equal(opRow("network", "join").settled, "Joined network");
+	assert.equal(opRow("console", "create").settled, "Opened console");
+	assert.equal(opRow("console", "keys").settled, "Sent keys");
+	assert.equal(opRow("lsp", "definitions").settled, "Found definition");
+	assert.equal(opRow("lsp", "rename_preview").settled, "Previewed rename");
+	// The running half is the present participle, as everywhere else.
+	assert.equal(opRow("agent", "sync").running, "Syncing agents");
+	assert.equal(opRow("hub", "resume").running, "Resuming");
+	// And an op-aware tool with no known op is generic, never a neighbouring
+	// claim - the same discipline an unknown NAME takes.
+	assert.deepEqual(toolVerb("secret"), {
+		settled: "Called",
+		running: "Calling",
+		named: false,
+	});
+});
+
+test("the project family names every operation, and the milestone flag decides add or remove (operator report follow-up, 2026-09-27)", () => {
+	/*
+	 * The second report: a project VIEW rendered `Called project
+	 * ui-update-account-robustness` under the generic wrench. `project` has
+	 * seven ops in the running build's schema (`project_tool.py`: list, show,
+	 * create, update, link, unlink, milestone) and NO `remove` op - the removal
+	 * is the `milestone` op's `remove` flag, which is why the row's token is
+	 * composed from the flag as well as the op.
+	 */
+	const row = (name, args) =>
+		toolRowLabel(name, summaryFromArgs(name, args), null, false, toolOp(args));
+
+	// The row the operator's screenshot showed.
+	assert.deepEqual(
+		row("project", { op: "show", name: "ui-update-account-robustness" }),
+		{
+			verb: "Viewed project",
+			object: "ui-update-account-robustness",
+		},
+	);
+	// A listing has no subject, and the selector never echoes into the object.
+	assert.deepEqual(row("project", { op: "list" }), {
+		verb: "Listed projects",
+		object: "",
+	});
+	// The milestone op goes both ways; the row says which.
+	assert.deepEqual(row("project", { op: "milestone", milestone: "ship-v2" }), {
+		verb: "Updated milestone",
+		object: "ship-v2",
+	});
+	assert.deepEqual(
+		row("project", { op: "milestone", milestone: "ship-v2", remove: true }),
+		{ verb: "Removed milestone", object: "ship-v2" },
+	);
+	// Every op the installed build accepts names its call: `Called` is what a
+	// row says when it does NOT know, and none of these are that. The four
+	// meta tools whose ops the tables key on are all covered EXHAUSTIVELY here
+	// (review round 1, R1-2): a typo or a dropped entry in any of them used to
+	// fall to `Called` with nothing failing.
+	for (const [tool, ops] of Object.entries({
+		agent: [
+			"list",
+			"show",
+			"search",
+			"install",
+			"reset",
+			"create",
+			"update",
+			"sync",
+		],
+		team: ["list", "show", "create", "update"],
+		hub: ["list", "peek", "send", "ask", "steer", "pause", "cancel", "resume"],
+		project: [
+			"list",
+			"show",
+			"create",
+			"update",
+			"link",
+			"unlink",
+			"milestone",
+		],
+	})) {
+		for (const op of ops) {
+			assert.notEqual(
+				toolVerb(tool, op).settled,
+				"Called",
+				`${tool} op \`${op}\` must name its operation`,
+			);
+		}
+	}
+	// The remove flag's SPELLINGS are the full set the tool itself accepts, not
+	// only the bare boolean: pydantic 2.13.5 coerces `true`, `1` and - any case -
+	// `"true" | "yes" | "y" | "t" | "on" | "1"` to True before the milestone op
+	// runs, and `"yes"` removes in the wild (review round 2, QA Q1a), so every
+	// one of them must compose the removal and must not read as an update.
+	for (const spelling of [
+		true,
+		1,
+		"true",
+		"TRUE",
+		"Yes",
+		"y",
+		"T",
+		"on",
+		"1",
+	]) {
+		assert.deepEqual(
+			row("project", {
+				op: "milestone",
+				milestone: "ship-v2",
+				remove: spelling,
+			}),
+			{ verb: "Removed milestone", object: "ship-v2" },
+			`remove: ${JSON.stringify(spelling)} removes`,
+		);
+	}
+	// The falsy set keeps the update verb, and so do spellings the tool REJECTS:
+	// `" true "` (with whitespace) is a validation error, not a spelling - the
+	// comparison lowercases but never trims - and `2` is no boolean at all.
+	// Neither removed anything, which is the one thing the row must not claim.
+	for (const spelling of [
+		false,
+		0,
+		"false",
+		"FALSE",
+		"No",
+		"off",
+		"n",
+		"F",
+		"0",
+		" true ",
+		2,
+	]) {
+		assert.equal(
+			row("project", {
+				op: "milestone",
+				milestone: "ship-v2",
+				remove: spelling,
+			}).verb,
+			"Updated milestone",
+			`remove: ${JSON.stringify(spelling)} updates`,
+		);
+	}
+	// The separate delete tool, whose name alone could not say it.
+	assert.deepEqual(
+		row("project_delete", { name: "ui-update-account-robustness" }),
+		{ verb: "Deleted project", object: "ui-update-account-robustness" },
+	);
+	// The count noun for hub's peek steps (design round 1, D1): `Peeked at 3`
+	// cannot say what 3 counts; jobs' peek carries no such count and keeps its
+	// scalar.
+	assert.deepEqual(row("hub", { op: "peek", to: ["9f2a"], steps: 3 }), {
+		verb: "Peeked at",
+		object: "3 steps",
+	});
+	assert.deepEqual(row("hub", { op: "peek", to: ["9f2a"], steps: 1 }), {
+		verb: "Peeked at",
+		object: "1 step",
+	});
+	assert.deepEqual(row("jobs", { op: "peek", job_id: "9360", since: "1h" }), {
+		verb: "Peeked at",
+		object: "9360 1h",
+	});
+	// The wait timeout spells its unit (design round 1, D5): two bare numbers
+	// beside each other read as two ids.
+	assert.deepEqual(row("wait", { job_id: "9360", wait_ms: 600_000 }), {
+		verb: "Waited for jobs",
+		object: "9360 · 10m",
+	});
+	assert.deepEqual(row("wait", { job_id: "9360", wait_ms: 3_600_000 }), {
+		verb: "Waited for jobs",
+		object: "9360 · 1h",
+	});
+	// The tools' lax ints accept the STRING spellings of the same counts and
+	// execute them (`"3"` arrives 16 times in 36 h of transcripts - review
+	// round 2, QA Q1b), so the renderers coerce numeric strings and keep the
+	// unit; a non-numeric string is not a number and stays untouched.
+	assert.deepEqual(row("hub", { op: "peek", to: ["9f2a"], steps: "3" }), {
+		verb: "Peeked at",
+		object: "3 steps",
+	});
+	assert.deepEqual(row("hub", { op: "peek", to: ["9f2a"], steps: "1" }), {
+		verb: "Peeked at",
+		object: "1 step",
+	});
+	assert.deepEqual(row("wait", { job_id: "9360", wait_ms: "600000" }), {
+		verb: "Waited for jobs",
+		object: "9360 · 10m",
+	});
+	assert.deepEqual(row("hub", { op: "peek", to: ["9f2a"], steps: "many" }), {
+		verb: "Peeked at",
+		object: "many",
+	});
+});
+
+test("toolOp reads the three selector spellings, in their order, and never invents one", () => {
+	// `op` is the meta tools' own word, `network` spells it `action` and
+	// `console` `method`. Pinned directly because the extraction is what every
+	// op-aware label stands on (review round 1, R1-2).
+	assert.equal(toolOp({ op: "send" }), "send");
+	assert.equal(toolOp({ action: "status" }), "status");
+	assert.equal(toolOp({ method: "create" }), "create");
+	// Model-written, so trimmed and case-folded.
+	assert.equal(toolOp({ action: "  STATUS " }), "status");
+	assert.equal(toolOp({ method: "Keys" }), "keys");
+	// `op` wins where several appear; a selector that is not a non-empty string
+	// is skipped rather than coerced.
+	assert.equal(
+		toolOp({ op: "send", action: "status", method: "create" }),
+		"send",
+	);
+	assert.equal(toolOp({ action: "status", method: "create" }), "status");
+	assert.equal(toolOp({ op: "  ", action: "status" }), "status");
+	assert.equal(toolOp({ op: 7, action: "status" }), "status");
+	// Nothing selectable is nothing - the generic verb's territory, never a
+	// guessed token.
+	assert.equal(toolOp(null), "");
+	assert.equal(toolOp({}), "");
+	assert.equal(toolOp({ command: "pnpm test" }), "");
+});
+
+test("the project pair carries its glyphs, and the two fallbacks stay distinct", () => {
+	// A project row under the generic wrench is indistinguishable from a tool
+	// nobody knows (operator report follow-up, 2026-09-27). The pair mirrors
+	// the TUI's own marks (sibling branch `feat/tui-project-line-15c4`, commit
+	// `4ce339597`; review round 1, D2/D4 - the first cut took FolderKanban
+	// alone, which is a folder-family mark the sibling's rationale retired):
+	// `Columns3` for the workstream, `Trash2` for the irreversible removal.
+	assert.equal(toolIcon("project").displayName, "Columns3");
+	// Case-insensitive, because a tool name is model-controlled.
+	assert.equal(toolIcon("Project").displayName, "Columns3");
+	assert.equal(toolIcon("project_delete").displayName, "Trash2");
+	assert.equal(toolIcon("some_custom_tool").displayName, "Wrench");
+	assert.equal(toolIcon("mcp__linear_create_issue").displayName, "Plug");
 });
 
 /* ------------------------------------------------------- the media relay */
@@ -2119,7 +2455,8 @@ test("a wake receipt is the headline, and its prompt is the part behind the enve
 const workingLineBundle = await build({
 	stdin: {
 		contents:
-			'export { deriveWorkingLine, ADMITTED_SEND_ACTIVITY, COMPACTING_ACTIVITY, admittedSendFor, ownerAnswered, turnStopped, stoppedAfterAdmission, workingLineClaimed, workingLineInputFor } from "./src/renderer/src/features/chat/canonical/working-line-model";',
+			'export { deriveWorkingLine, ADMITTED_SEND_ACTIVITY, STARTING_SESSION_ACTIVITY, COMPACTING_ACTIVITY, sendUnsettledForSession, ownerAnswered, turnStopped, stoppedAfterAdmission, workingLineClaimed, workingLineInputFor } from "./src/renderer/src/features/chat/canonical/working-line-model";\n' +
+			'export { visibleRecords } from "./src/renderer/src/features/chat/canonical/cross-session-visibility";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -2130,13 +2467,15 @@ const workingLineBundle = await build({
 const {
 	deriveWorkingLine,
 	ADMITTED_SEND_ACTIVITY,
+	STARTING_SESSION_ACTIVITY,
 	COMPACTING_ACTIVITY,
-	admittedSendFor,
+	sendUnsettledForSession,
 	ownerAnswered,
 	turnStopped,
 	stoppedAfterAdmission,
 	workingLineClaimed,
 	workingLineInputFor,
+	visibleRecords,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(workingLineBundle.outputFiles[0].text).toString("base64")}`
 );
@@ -2350,46 +2689,143 @@ test("the rung only shows when nothing the owner drove has taken over", () => {
 	);
 });
 
-/* ------------------------------------------- which send is "admitted" */
+/* ---------------------------------- which send is "unsettled" (the box's claim) */
 
 /*
- * The one rule that decides whether the rung appears at all (`chat-page.tsx`).
+ * The rule that decides whether the composer says the message is still going
+ * out (`sendUnsettledForSession`), asserted over the draft rows it reads, with
+ * no store and no React - the way `draftIdentityFor` is.
  *
- * It is a derivation over the store's draft row, so it is asserted here the way
- * `draftIdentityFor` and `panelIdentityFor` are: swapping it for the composer's
- * local `admitting` state, or dropping the `sessionId` conjunct, restores the
- * operator's dead-air report while every other test stays green. The row's own
- * lifetime is pinned against the real store in `canonical-chat.test.mjs`.
+ * The old rule at this site was `admittedSendFor(sessionId, row)`, and two of
+ * its three terms are gone. The session-id conjunct was the dead-air window
+ * itself: before `sessions.create` answers there is no session id, so the claim
+ * was false for the whole create hop - the row is now painted at the press
+ * (see `pendingSendForView` in `use-canonical-session`), and the pane's claim
+ * comes from the registry instead. `admissionAttempted` was the receipt's
+ * latch: it is written after the create hop, so requiring it withheld the box's
+ * sentence for exactly the window this reader gained.
+ *
+ * What is left is the row's own `pending`, read by whichever name this
+ * conversation's send can have under: the session id (a row the create
+ * patched), a `send:<id>` key (the live path), and the DRAFT key (a remounted
+ * boom whose create is still in flight). Its lifetime - written at the press,
+ * cleared by the failure arms - is pinned against the real store in
+ * `canonical-chat.test.mjs`.
  */
-test("a send is admitted only when the request was actually issued", () => {
+test("a send is unsettled while its row is pending, under any of its names", () => {
 	const row = {
+		key: "send:111111111111",
 		pending: true,
 		admissionAttempted: true,
 		admissionRequestId: ECHO,
 	};
-	assert.deepEqual(admittedSendFor("111111111111", row), { requestId: ECHO });
+	assert.equal(
+		sendUnsettledForSession({ "send:111111111111": row }, "111111111111"),
+		true,
+	);
 
-	// Before admission there is nothing to wait on: the composer still holds
-	// the user's text, and the store has not issued a request it cannot take
-	// back. On that hop the pane is legitimately empty.
+	// The create hop: pending and NOT yet attempted. This is the window the old
+	// `admissionAttempted` conjunct went silent in, and the sentence a remounted
+	// composer must still find when its create is in flight.
 	assert.equal(
-		admittedSendFor("111111111111", { ...row, admissionAttempted: false }),
-		null,
+		sendUnsettledForSession(
+			{
+				"draft:d1": {
+					key: "draft:d1",
+					pending: true,
+					admissionRequestId: ECHO,
+				},
+			},
+			"draft:d1",
+		),
+		true,
 	);
-	// A settled or failed send: the request is no longer in flight.
+	// The same row found by the session the create patched onto it.
 	assert.equal(
-		admittedSendFor("111111111111", { ...row, pending: false }),
-		null,
+		sendUnsettledForSession(
+			{
+				"draft:d1": {
+					key: "draft:d1",
+					sessionId: "111111111111",
+					pending: true,
+					admissionRequestId: ECHO,
+				},
+			},
+			"111111111111",
+		),
+		true,
 	);
-	// No session yet: the New-chat hop, where the create has not returned and
-	// the owner has no conversation to answer on.
-	assert.equal(admittedSendFor(undefined, row), null);
-	// A row with no identity cannot anchor a clear, so it cannot carry a rung.
+
+	// A settled or failed send: the request is no longer in flight, and the row's
+	// own sentence (or the transcript's) says what happened instead.
 	assert.equal(
-		admittedSendFor("111111111111", { ...row, admissionRequestId: undefined }),
-		null,
+		sendUnsettledForSession(
+			{ "send:111111111111": { ...row, pending: false } },
+			"111111111111",
+		),
+		false,
 	);
-	assert.equal(admittedSendFor("111111111111", undefined), null);
+	// Nothing of this conversation's in flight at all.
+	assert.equal(sendUnsettledForSession({}, "111111111111"), false);
+	assert.equal(sendUnsettledForSession({}, undefined), false);
+});
+
+/* ---------------------------------------------- the create hop's own label */
+
+test("the wait line reads `starting the session` until the session exists", () => {
+	const before = deriveWorkingLine({
+		waiting: false,
+		compacting: false,
+		starting: true,
+		startingAfterId: ECHO,
+		startingSession: true,
+		startingSince: 1_760_000_000_000,
+		gate: false,
+		unavailable: false,
+		records: [],
+	});
+	assert.deepEqual(before, {
+		activity: STARTING_SESSION_ACTIVITY,
+		phase: "thinking",
+		startedAt: 1_760_000_000_000,
+	});
+
+	// The create answered: same wait, same clock, the other label. The PHASES are
+	// equal, which is the whole clock rule - a second phase would restart the
+	// elapsed number at the create's answer.
+	const after = deriveWorkingLine({
+		waiting: false,
+		compacting: false,
+		starting: true,
+		startingAfterId: ECHO,
+		startingSession: false,
+		startingSince: 1_760_000_000_000,
+		gate: false,
+		unavailable: false,
+		records: [],
+	});
+	assert.deepEqual(after, {
+		activity: ADMITTED_SEND_ACTIVITY,
+		phase: "thinking",
+		startedAt: 1_760_000_000_000,
+	});
+	assert.equal(before.phase, after.phase);
+
+	// A caller that knows neither fact derives EXACTLY what it always did,
+	// including the absent anchor: no `startedAt` key, so every deep comparison
+	// in the suites that predate this label keeps its old shape.
+	assert.deepEqual(
+		deriveWorkingLine({
+			waiting: false,
+			compacting: false,
+			starting: true,
+			startingAfterId: ECHO,
+			gate: false,
+			unavailable: false,
+			records: [],
+		}),
+		{ activity: ADMITTED_SEND_ACTIVITY, phase: "thinking" },
+	);
 });
 
 test("the anchored clear is the transcript's own predicate, swept", () => {
@@ -2554,6 +2990,47 @@ test("the composer's hint is the rung's own derivation, not a second condition",
 		),
 		false,
 	);
+});
+
+test("a running send is absent from the working line once filtered", () => {
+	/*
+	 * The desktop working line reads RECORDS, not mounted cards (unlike the TUI's
+	 * card-derived line), so the transcript feeds it the FILTERED list - without
+	 * that, a pane hiding cross-session traffic would still say `running send`
+	 * beside rows that no longer include it. Both directions are pinned: the
+	 * unfiltered list names the card (the leak the seam removes), the filtered
+	 * one falls to the ladder's generic arm.
+	 */
+	const pane = (records) =>
+		workingLineInputFor({
+			waiting: true,
+			compacting: false,
+			starting: false,
+			gate: false,
+			unavailable: false,
+			records,
+		});
+	const records = [
+		userRow("u1", "go"),
+		{ ...runningToolRow("t1"), toolName: "send" },
+	];
+	assert.deepEqual(deriveWorkingLine(pane(records)), {
+		activity: "running send",
+		phase: "running",
+		startedAt: 1,
+	});
+	const shown = visibleRecords(records, true);
+	assert.deepEqual(
+		deriveWorkingLine(pane(shown)),
+		{
+			activity: "thinking",
+			phase: "thinking",
+		},
+		"the hidden card is not named; the rung falls to its generic arm",
+	);
+	// And the default hands back the bare reference, so nothing about the line
+	// changes with the option off.
+	assert.equal(visibleRecords(records, false), records);
 });
 
 test("a notice's body is partitioned between its row and its disclosure", () => {
@@ -2804,17 +3281,23 @@ const glyphAndName = (markup) => {
 	return { glyph: spans[glyphIndex], name: spans[nameIndex] };
 };
 
-test("a tool's category is the TUI's own map, looked up case-insensitively", () => {
-	// `_TOOL_CATEGORY` (tool_card.py:218-238), category for category. The axis is
-	// what the call did to the machine, so what is asserted is the SET each tool
-	// lands in and not the spelling of the table.
+test("a tool's category is the ledger's own map, looked up case-insensitively", () => {
+	// `_TOOL_CATEGORY` (tool_card.py:218-238) is the BASE of the map; the entries
+	// the trace-label change added for names the TUI does not carry (`web_read`,
+	// `lsp`, `console`, `team`, `wait`, `jobs`, `secret`, `network`,
+	// `team_delete`) are UI-side decisions stated as such in the source, not
+	// parity claims (review round 1, R1-5). The axis is what the call did to the
+	// machine, so what is asserted is the SET each tool lands in and not the
+	// spelling of the table.
 	for (const name of [
 		"read",
 		"glob",
 		"grep",
 		"web_fetch",
+		"web_read",
 		"web_search",
 		"browser",
+		"lsp",
 		"list_variables",
 		"read_variable",
 	]) {
@@ -2823,10 +3306,28 @@ test("a tool's category is the TUI's own map, looked up case-insensitively", () 
 	for (const name of ["write", "edit"]) {
 		assert.equal(toolCategory(name), "mutate", `${name} mutates`);
 	}
-	for (const name of ["bash", "eval"]) {
+	// `console` is the app's own terminal in a frame, which is why it takes the
+	// exec ink the TUI gives `bash`/`eval` rather than the wrench's neutral.
+	for (const name of ["bash", "eval", "console"]) {
 		assert.equal(toolCategory(name), "exec", `${name} executes`);
 	}
-	for (const name of ["task", "agent", "hub", "todo", "send", "wake", "ask"]) {
+	for (const name of [
+		"task",
+		"agent",
+		"team",
+		"hub",
+		"todo",
+		"send",
+		"wake",
+		"ask",
+		"wait",
+		"jobs",
+		"secret",
+		"network",
+		"project",
+		"team_delete",
+		"project_delete",
+	]) {
 		assert.equal(toolCategory(name), "meta", `${name} is meta`);
 	}
 
@@ -2844,7 +3345,6 @@ test("a tool's category is the TUI's own map, looked up case-insensitively", () 
 		"mcp__linear_create_issue",
 		"mcp__",
 		"peer",
-		"team",
 		"a_builtin_that_does_not_exist_yet",
 		"",
 	]) {
@@ -2896,7 +3396,11 @@ test("the glyph takes identity ink, the name takes state ink, and they agree on 
 		["bash", "success", "text-ink-muted"],
 		["eval", "success", "text-ink-muted"],
 		["task", "success", "text-accent-alt"],
+		["team", "success", "text-accent-alt"],
 		["hub", "success", "text-accent-alt"],
+		["secret", "success", "text-accent-alt"],
+		["console", "success", "text-ink-muted"],
+		["lsp", "success", "text-info"],
 		// Unclassified, and a receipt whose name is not a tool: the neutral.
 		["mcp__linear_create_issue", "success", "text-ink-muted"],
 		["peer", "receipt", "text-ink-muted"],

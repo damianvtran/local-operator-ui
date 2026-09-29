@@ -623,6 +623,19 @@ export class BrowserHost implements BrowserActionContext {
 		this.onChanged();
 	}
 
+	/**
+	 * The ids of tabs with a recorded load failure, for the session capture.
+	 *
+	 * A copy rather than a live view: `captureTabs` reads the set while it walks
+	 * the registry, and a collection that could change underneath the walk would
+	 * make "was this row marked" a race. The marks are what stop a dead tab from
+	 * being restored on the next launch (`session-store.ts`, `readSession`), so
+	 * the set is taken once per capture rather than consulted per row.
+	 */
+	failedTabIds(): ReadonlySet<number> {
+		return new Set(this.loadFailures.keys());
+	}
+
 	/** The failure the chrome shows for the ACTIVE tab, or null. */
 	private activeLoadFailure(activeTabId: number | null): LoadFailure | null {
 		if (activeTabId === null) return null;

@@ -46,6 +46,26 @@ export type AtRow = {
 	/** Where the row lives, relative to the LISTING being shown (`./` for itself). */
 	parent: string;
 	directory: boolean;
+	/**
+	 * Which section of the picker this row belongs to.
+	 *
+	 * A PROJECT row is one whose accepted token is the namespaced
+	 * `@project:<name>` reference rather than a path (`path` carries the same
+	 * string the token writes, so `atReference` needs no special case). FILE rows
+	 * are everything the directory listing produced, including descended
+	 * children. The section drives the interleaved headers the picker draws; it
+	 * does NOT enter the ranking, so the index space `atKeyIntent` walks is the
+	 * same list either way.
+	 */
+	section: "project" | "file";
+	/**
+	 * A project row's secondary line — its description — for the picker's middle
+	 * column, where a file row carries its `parent` instead.
+	 *
+	 * Optional because a description-less project has nothing to say there; the
+	 * column renders empty rather than inventing a placeholder.
+	 */
+	detail?: string;
 };
 
 /**
@@ -180,6 +200,7 @@ export function rowsFromListing(
 			name: entry.name,
 			parent: cut === -1 ? "./" : `${path.slice(0, cut + 1)}`,
 			directory: entry.directory,
+			section: "file" as const,
 		};
 	});
 }
@@ -249,4 +270,82 @@ export function interleaveDescend(
 		if (nested) out.push(...nested);
 	}
 	return out.slice(0, AT_ROW_LIMIT);
+}
+
+/**
+ * The project rows of one picker, from the store's listing.
+ *
+ * `path` is the TOKEN the row writes — `project:<name>` — which is exactly
+ * what `atReference` turns into `@project:<name> ` with no special case, and
+ * what `atRowId` turns into a legal, stable DOM id (`:` is outside its
+ * id-safe set, so it paints `at-project_payments`). `parent` is `""` because
+ * a project does not live in the directory being listed; the picker's middle
+ * column shows `detail` (the description) for these rows instead.
+ *
+ * The rows keep the ORDER the store answered with — status rank, then most
+ * recently updated — which is the listing's own reading order; re-sorting
+ * here would be a second opinion about a listing the page already shows.
+ */
+export function projectAtRows(
+	projects: readonly { name: string; description?: string | null }[],
+): AtRow[] {
+	return projects.map((project) => ({
+		path: `project:${project.name}`,
+		name: project.name,
+		parent: "",
+		directory: false,
+		section: "project" as const,
+		detail: project.description ?? undefined,
+	}));
+}
+
+/**
+ * The project rows a query offers, by the same ethos the TUI arm states:
+ * the section is for reaching PROJECTS, so it appears when the query is empty,
+ * when it is a prefix of the `project:` namespace itself, or when it matches a
+ * project's name (the same fuzzy bands the file rows use).
+ *
+ * A query that matches no project contributes no rows rather than a section of
+ * near-misses: the picker's rows are things the user can take, and a section
+ * header over nothing would hold open a list the query had already emptied.
+ *
+ * Deliberately NOT scored through `compareAtRows`: that comparator's
+ * directories-first chain describes the file listing, and the store's own
+ * order is the right one here (the same order the tab's list shows).
+ */
+export function projectSectionRows(
+	rows: readonly AtRow[],
+	query: string,
+): AtRow[] {
+	if (rows.length === 0) return [];
+	if (!query) return [...rows];
+	// Typing the namespace itself (`project`, `project:p`...) narrows within the
+	// section rather than across it, so every project stays reachable. The bare
+	// namespace with nothing after the colon offers all of them.
+	if (query.startsWith("project:")) {
+		const rest = query.slice("project:".length);
+		if (!rest) return [...rows];
+		return rows.filter((row) => scoreCommandTextMatch(rest, row.name) > 0);
+	}
+	if ("project:".startsWith(query)) return [...rows];
+	return rows.filter((row) => scoreCommandTextMatch(query, row.name) > 0);
+}
+
+/**
+ * The picker's final list: the projects section first, then the file rows.
+ *
+ * The merge lives here (rather than in the component) so the ORDER and the
+ * bound are testable as the two properties they are: project rows keep the
+ * section's own order and sit above every file row, and the combined list is
+ * bounded by the same `AT_ROW_LIMIT` the file ranking uses — one bound over
+ * the candidate set however it was composed. With the section's rows at the
+ * head, the bound can only clip file rows in a listing that was already at
+ * the cap.
+ */
+export function mergeProjectRows(
+	projectRows: readonly AtRow[],
+	fileRows: readonly AtRow[],
+): AtRow[] {
+	if (projectRows.length === 0) return [...fileRows];
+	return [...projectRows, ...fileRows].slice(0, AT_ROW_LIMIT);
 }

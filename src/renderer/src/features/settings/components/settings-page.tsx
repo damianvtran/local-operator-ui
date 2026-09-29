@@ -3,10 +3,10 @@ import { useOnboardingTour } from "@features/onboarding/hooks/use-onboarding-tou
 import { ProviderGrid } from "@features/providers/provider-grid";
 import { pairingCardCopy } from "@shared/api/local-operator/backend-error";
 import type { ConfigUpdate } from "@shared/api/local-operator/types";
+import { useLaneLeadingColumn } from "@shared/components/common/chat-layout";
 import { EditableField } from "@shared/components/common/editable-field";
 import { PageHeader } from "@shared/components/common/page-header";
 import { RadientMark } from "@shared/components/common/radient-mark";
-import { SliderSetting } from "@shared/components/common/slider-setting";
 import { Spinner } from "@shared/components/common/spinner";
 import { ToggleSetting } from "@shared/components/common/toggle-setting";
 import { HostingSelect } from "@shared/components/hosting/hosting-select";
@@ -39,12 +39,8 @@ import {
 	CirclePlus,
 	Contrast,
 	CreditCard,
-	Database,
 	ExternalLink,
-	History,
 	Info,
-	List,
-	MessagesSquare,
 	Plug,
 	Settings,
 	SlidersHorizontal,
@@ -275,6 +271,7 @@ const RadientSectionTitle: FC = () => (
 );
 
 export const SettingsPage: FC = () => {
+	const laneLeadingColumn = useLaneLeadingColumn();
 	const showAgentReasoning = useUiPreferencesStore(
 		(state) => state.showAgentReasoning,
 	);
@@ -895,7 +892,22 @@ export const SettingsPage: FC = () => {
 			 * to render whole, so anything between 48 and 220 buys a few pixels of
 			 * content in exchange for an ellipsis on a destination's name.
 			 */}
-			<div className="w-12 shrink-0 overflow-y-auto border-r border-hairline min-[1040px]:w-55">
+			<div
+				/*
+				 * The shell puts this rail's ground behind the window's top strip: the
+				 * rail is a leading column on the default `surface` ground, and without
+				 * being handed over here the lane above the two shell columns paints
+				 * the CONTENT ground across this rail's width, so the rail's own panel
+				 * begins below the strip and the band over it is a different tone (the
+				 * operator's report of 2026-09-26, and again of 2026-09-27).
+				 *
+				 * The width is NOT restated there: the shell measures this element, which
+				 * is what keeps the two-width rule below (48px under 1040, 220 at and
+				 * above it) a single decision. `chat-layout.tsx` states the contract.
+				 */
+				ref={laneLeadingColumn}
+				className="w-12 shrink-0 overflow-y-auto border-r border-hairline min-[1040px]:w-55"
+			>
 				<SettingsSidebar
 					activeSection={activeSection}
 					onSelectSection={handleSelectSection}
@@ -1160,61 +1172,6 @@ export const SettingsPage: FC = () => {
 							</SettingsSection>
 
 							<SystemPrompt />
-
-							<SettingsSection
-								title="History settings"
-								icon={History}
-								description="Configure how much conversation history is retained and displayed. These are tools to help balance cost and performance by controlling the amount of data used by the agents."
-							>
-								<div className="flex flex-col gap-4">
-									<SliderSetting
-										value={config.values.conversation_length}
-										label="Maximum conversation history"
-										description="Number of messages to keep in conversation history for context. More messages will make the agents have longer memory but more expensive to run. Recommended: 100"
-										min={10}
-										max={500}
-										step={10}
-										unit="msgs"
-										// `MessagesSquare`, not `History`: the section heading is
-										// the history, this slider is a count of messages. Its two
-										// siblings keep `List` and `Database`, so the label column
-										// stays even.
-										icon={MessagesSquare}
-										isSaving={savingField === "conversation_length"}
-										onChange={(value) =>
-											handleUpdateField("conversation_length", value)
-										}
-									/>
-									<SliderSetting
-										value={config.values.detail_length}
-										label="Detail view length"
-										description="Maximum number of messages to show in the detailed conversation view. Messages beyond this limit will be summarized. Shortening this will decrease costs but some important details could get lost from earlier messages. Recommended: 15"
-										min={10}
-										max={500}
-										step={5}
-										unit="msgs"
-										icon={List}
-										isSaving={savingField === "detail_length"}
-										onChange={(value) =>
-											handleUpdateField("detail_length", value)
-										}
-									/>
-									<SliderSetting
-										value={config.values.max_learnings_history}
-										label="Maximum learnings history"
-										description="Agents note down specific insights and key learnings in memory which persist beyond the maximum conversation history and summarization. This setting controls the maximum number of learning items to retain. More items will make the agents acquire a longer history of knowledge from your conversations but more expensive to run. Recommended: 50"
-										min={10}
-										max={200}
-										step={10}
-										unit="notes"
-										icon={Database}
-										isSaving={savingField === "max_learnings_history"}
-										onChange={(value) =>
-											handleUpdateField("max_learnings_history", value)
-										}
-									/>
-								</div>
-							</SettingsSection>
 
 							<SettingsSection
 								title="Configuration information"

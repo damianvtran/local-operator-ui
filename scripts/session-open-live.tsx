@@ -34,6 +34,8 @@
 import "./session-switch.css";
 import "@renderer/assets/fonts/fonts.css";
 import { ChatPage } from "@features/chat/components/chat-page";
+import { ChatLayout } from "@shared/components/common/chat-layout";
+import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { __resetPaintCache } from "@shared/store/paint-cache";
@@ -322,10 +324,12 @@ const open = (target: string, deadlineMs = 30_000) =>
 	 * Back to the landing, so the next click is a real move onto a fresh pane.
 	 *
 	 * `cold` also empties the in-memory paint cache (`paint-cache.ts`): with it,
-	 * a repeat open paints this window's memory of the conversation in its first
-	 * frame, which is a real and good path but not the one the operator's "open a
-	 * conversation" is - so the driver defaults to cold, and every open paints
-	 * from the wire.
+	 * a repeat open keeps this window's memory of the conversation in the cache
+	 * for a later frame, but this head holds stale rows back while a page is
+	 * owed, so the cached rows are revealed at the page's commit rather than in
+	 * the mount's first frames (QA round 1, cell 4) - a real and good path, but
+	 * not the one the operator's "open a conversation" is - so the driver
+	 * defaults to cold, and every open paints from the wire.
 	 */
 	home: (cold = true) => {
 		if (cold) __resetPaintCache();
@@ -340,8 +344,19 @@ const open = (target: string, deadlineMs = 30_000) =>
 			painted: transcriptHasContent(),
 			/*
 			 * What the pane and the header SAY, for the stuck-open repro (design
-			 * round 1, D1/D2): the transcript container's text with rows excluded,
-			 * and the header's second line (empty while it is a skeleton).
+			 * round 1, D1/D2) and for the identity guard the frames path runs: the
+			 * transcript container's text with rows excluded, and the header's
+			 * identity slot.
+			 *
+			 * THE SLOT, NOT THE TITLE'S SIBLING. `h2`'s next element was the identity
+			 * line until #542 moved the header; after that fold the next element is the
+			 * icon-only rename button, whose text is "" in every state - so the guard
+			 * comparing first paint with settle compared "" with "" and could never
+			 * fire (QA round 2, Q1). The slot the header renders now is
+			 * `[data-header-path]` for a conversation without team/agent menus and
+			 * `[data-header-identity-controls]` for one with them; `null` while the
+			 * skeleton holds the slot, which is what makes an unresolved reading
+			 * distinguishable from a resolved-but-empty one.
 			 */
 			paneText: (() => {
 				const content = document.querySelector("[data-lo-transcript-content]");
@@ -351,8 +366,12 @@ const open = (target: string, deadlineMs = 30_000) =>
 					row.remove();
 				return (copy.textContent ?? "").trim().slice(0, 200);
 			})(),
-			headerLine:
-				document.querySelector("h2")?.nextElementSibling?.textContent ?? null,
+			headerLine: (() => {
+				const slot =
+					document.querySelector("[data-header-path]") ??
+					document.querySelector("[data-header-identity-controls]");
+				return slot ? (slot.textContent ?? "").trim() : null;
+			})(),
 			composerAlert:
 				document
 					.querySelector("textarea")
@@ -371,13 +390,27 @@ const queryClient = new QueryClient({
 createRoot(document.getElementById("app") as HTMLElement).render(
 	<QueryClientProvider client={queryClient}>
 		<HashRouter>
+			{/*
+			 * THE ONE SIDEBAR, MOUNTED THE WAY THE APP MOUNTS IT. The chat redesign
+			 * moved the conversation list out of the chat route and into the shell
+			 * (`SidebarNavigation` beside the route), so a page that mounted the route
+			 * alone painted no rows at all and `rows()` came back empty - the driver
+			 * then stopped at "the page never listed every session". `ChatLayout` +
+			 * `SidebarNavigation` is `app.tsx`'s own arrangement, so the row this page
+			 * clicks is the row the app renders.
+			 */}
 			<div className={cn("flex h-screen overflow-hidden bg-canvas")}>
-				<main className="flex min-w-0 grow flex-col overflow-hidden">
-					<Routes>
-						<Route path="/chat" element={<ChatPage />} />
-						<Route path="/chat/:agentId" element={<ChatPage />} />
-					</Routes>
-				</main>
+				<ChatLayout
+					sidebar={<SidebarNavigation />}
+					content={
+						<main className="flex min-w-0 grow flex-col overflow-hidden">
+							<Routes>
+								<Route path="/chat" element={<ChatPage />} />
+								<Route path="/chat/:agentId" element={<ChatPage />} />
+							</Routes>
+						</main>
+					}
+				/>
 			</div>
 		</HashRouter>
 	</QueryClientProvider>,

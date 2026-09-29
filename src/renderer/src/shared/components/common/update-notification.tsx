@@ -1,6 +1,7 @@
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import { FloatingAlert } from "@shared/components/common/floating-alert";
 import { Button, Progress } from "@shared/components/ui";
+import { useElapsedSince } from "@shared/hooks/use-elapsed-since";
 import { cn } from "@shared/lib/utils";
 import {
 	UpdateType,
@@ -16,6 +17,7 @@ import {
 	installPhaseCopy,
 	installSucceededCopy,
 } from "@shared/utils/update-install-copy";
+import { SLOW_WAIT_HINT_MS } from "@shared/utils/update-slow-wait";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import parse from "html-react-parser";
 import { AlertTriangle, Check, Copy } from "lucide-react";
@@ -412,6 +414,16 @@ const INSTALL_BLOCK_HEADINGS: Record<string, string> = {
  * in-flight install panel is the one state where the pause is the cost, so it
  * asks to be announced assertively without borrowing the failure marker it is
  * deliberately not carrying (review D3).
+ *
+ * AND IT IS NOT A DRAG SURFACE, WHEREVER IT PAINTS. Pinned at `top-4`, its top
+ * row sits inside the window's drag strip wherever one is drawn (the shell's
+ * lane on macOS, the caption band on win/linux), and it reaches the top layer
+ * through no portal - the region walk is built from element rects and never
+ * sees paint order - so without the opt-out a press on that row is eaten as a
+ * window drag. That is why it carries the marker below, and why
+ * `scripts/overlay-drag-zones.test.mjs` names this file in F-4: its portal scan
+ * cannot see a surface that renders no portal, so this one is a named entry
+ * rather than a derived one. Keep the marker and that entry together.
  */
 export const UpdateContainer = ({
 	className,
@@ -448,6 +460,8 @@ export const UpdateContainer = ({
 	useSuppressBrowserView(true, "update-notice");
 	return (
 		<div
+			/* The drag-strip opt-out; see the note above. */
+			data-titlebar-no-drag=""
 			role={role ?? (tone === "failed" ? "alert" : "status")}
 			className={cn(
 				"fixed top-4 right-4 z-50 w-100 max-w-[calc(100vw-2rem)]",
@@ -863,6 +877,14 @@ export const ProgressContainer = ({
 type UpdateNotificationProps = {
 	/** Whether to automatically check for updates on mount */
 	autoCheck?: boolean;
+	/**
+	 * How long a wait may run before its surface adds a status line (UX U1).
+	 *
+	 * The pair with the settings button's own prop: the app omits both, so the
+	 * shipped delay is `SLOW_WAIT_HINT_MS`, and a test or story narrows it to
+	 * milliseconds rather than sitting through twelve seconds to see the line.
+	 */
+	slowWaitHintMs?: number;
 };
 
 /**
@@ -870,6 +892,7 @@ type UpdateNotificationProps = {
  */
 export const UpdateNotification = ({
 	autoCheck = true,
+	slowWaitHintMs,
 }: UpdateNotificationProps) => {
 	// State for frontend update status
 	const [checking, setChecking] = useState(false);
@@ -884,6 +907,19 @@ export const UpdateNotification = ({
 	const [error, setError] = useState<string | null>(null);
 	const [snackbarOpen, setSnackbarOpen] = useState(false);
 	const [appVersion, setAppVersion] = useState<string>("unknown");
+	/*
+	 * The two long waits this panel can show (UX U1): the check ladder and the
+	 * download stage. Called before every early return below, because the hooks
+	 * order must not depend on which state renders.
+	 */
+	const slowCheck = useElapsedSince(
+		checking,
+		slowWaitHintMs ?? SLOW_WAIT_HINT_MS,
+	);
+	const slowDownload = useElapsedSince(
+		downloading,
+		slowWaitHintMs ?? SLOW_WAIT_HINT_MS,
+	);
 
 	// State for backend update status
 	/**
@@ -2327,6 +2363,18 @@ export const UpdateNotification = ({
 						: "Please wait while we check for available updates..."}
 				</p>
 				{/*
+				 * THE STILL-WORKING LINE (UX U1). The ladder can run ~94 s and this frame
+				 * is otherwise one image for all of it; the line appears only once the
+				 * wait has outlasted the delay, and it offers no control - the
+				 * no-dismiss / no-cancel decisions above stand.
+				 */}
+				{slowCheck && !updatingBackend && (
+					<p className="mt-1 text-body-sm text-ink-muted">
+						Still checking. A slow or stalled connection can hold this for about
+						a minute and a half - the app stops waiting on its own.
+					</p>
+				)}
+				{/*
 				 * THE ELAPSED READING (design D3). The wait can run to ten minutes and the
 				 * rest of this frame does not move: without this line a working wait and a
 				 * hung app are the same pixels, and the main process has the number already
@@ -2540,6 +2588,23 @@ export const UpdateNotification = ({
 							{Math.round(downloadProgress.total / 1024)} KB
 						</p>
 					</ProgressContainer>
+				)}
+
+				{/*
+				 * THE STILL-WORKING LINE (UX U1), same rule as the checking card's: one
+				 * copy addition once the wait has outlasted the delay. The offer panel
+				 * hides both controls while a download runs, so without this its whole
+				 * state is two static lines until the watchdog reports.
+				 *
+				 * The subject is the DOWNLOAD (design D4, remediation round 2): what the
+				 * watchdog cancels is the download's progress, not the connection - a
+				 * connection is what the transport failure copy says on the check side.
+				 */}
+				{slowDownload && (
+					<p className="mb-2 text-body-sm text-ink-muted">
+						Still downloading. A download that stops making progress is
+						cancelled after about 90 seconds.
+					</p>
 				)}
 
 				<UpdateActions>

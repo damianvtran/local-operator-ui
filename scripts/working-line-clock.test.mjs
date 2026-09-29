@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
 import { after, test } from "node:test";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
@@ -57,6 +58,7 @@ const bundle = await build({
 				deriveWorkingLine,
 				workingLineInputFor,
 				ADMITTED_SEND_ACTIVITY,
+				STARTING_SESSION_ACTIVITY,
 			} from "./${canonical}working-line-model";
 		`,
 		loader: "tsx",
@@ -94,6 +96,7 @@ const {
 	deriveWorkingLine,
 	workingLineInputFor,
 	ADMITTED_SEND_ACTIVITY,
+	STARTING_SESSION_ACTIVITY,
 } = workingLineModule;
 
 /*
@@ -138,6 +141,9 @@ const transcriptBundle = await build({
 		"react-dom/client",
 		"react-dom/server",
 		"react/jsx-runtime",
+		/* One copy with the provider below; the hook inside the bundle must find
+		 * the client this file mounts it under. */
+		"@tanstack/react-query",
 	],
 	/*
 	 * BOTH of these exist because the bundle runs outside Vite, and each was a
@@ -197,6 +203,9 @@ const h = React.createElement;
 
 /** The producer's stamp, in the epoch SECONDS the wire states it in. */
 const PHASE_STARTED_EPOCH = 1_700_000_000;
+
+/** The press's own instant, as the draft row's `submittedAt` persists it. */
+const PRESS_AT = 1_760_000_000_000;
 const PHASE_STARTED_MS = PHASE_STARTED_EPOCH * 1000;
 
 /** A running tool record, with the row's own clock where the reducer put it. */
@@ -368,20 +377,24 @@ test("a fold that disagrees with the derived phase is withheld, never substitute
 	}
 });
 
-test("the admitted send keeps its own zero, and the fold cannot reach it", () => {
+test("the admitted send is anchored on the press, and the fold cannot reach it", () => {
 	/*
-	 * This expression began when THIS app sent, so the app is the clock's own
-	 * producer and there is nothing older to resume. Seeding it from the
-	 * runtime's `thinking` edge would be a second answer to a question this
-	 * branch already has the first answer to — and the two are not the same
-	 * instant: the runtime's model call starts after the harness has the
-	 * request.
+	 * This expression began when THIS app pressed Enter, so the app is the
+	 * clock's own producer and there is nothing older to resume - and the anchor
+	 * is now a FACT rather than a local zero: `submittedAt` is persisted on the
+	 * draft row, which is what lets the number survive the identity flip and a
+	 * switch away and back (the row outlives every pane that renders the line).
+	 * Seeding it from the runtime's `thinking` edge would be a second answer to
+	 * a question this branch already has the first answer to - and the two are
+	 * not the same instant: the runtime's model call starts after the harness
+	 * has the request.
 	 */
 	const admitted = ladder({
 		waiting: false,
 		compacting: false,
 		starting: true,
 		startingAfterId: "echo-1",
+		startingSince: PRESS_AT,
 		gate: false,
 		unavailable: false,
 		records: [],
@@ -391,7 +404,48 @@ test("the admitted send keeps its own zero, and the fold cannot reach it", () =>
 	assert.deepEqual(admitted, {
 		activity: ADMITTED_SEND_ACTIVITY,
 		phase: "thinking",
+		startedAt: PRESS_AT,
 	});
+});
+
+test("the create hop and the wait are ONE clock across the label change", () => {
+	/*
+	 * The two rungs of one wait: `starting the session` while the create is
+	 * literally in flight (there is no session yet) and `waiting for the agent`
+	 * once it answers - both under `phase: "thinking"`, both anchored on the
+	 * press's own instant. A separate phase for the first rung, or an anchor
+	 * re-based at the label change, restarts the number the user is watching at
+	 * the exact moment the app got further along; the phases being EQUAL is what
+	 * makes the restart impossible, so it is asserted directly.
+	 */
+	const base = {
+		waiting: false,
+		compacting: false,
+		starting: true,
+		startingAfterId: "echo-1",
+		startingSince: PRESS_AT,
+		gate: false,
+		unavailable: false,
+		records: [],
+	};
+	const creating = ladder({ ...base, startingSession: true });
+	const waiting = ladder({ ...base, startingSession: false });
+	assert.deepEqual(creating, {
+		activity: STARTING_SESSION_ACTIVITY,
+		phase: "thinking",
+		startedAt: PRESS_AT,
+	});
+	assert.deepEqual(waiting, {
+		activity: ADMITTED_SEND_ACTIVITY,
+		phase: "thinking",
+		startedAt: PRESS_AT,
+	});
+	assert.equal(
+		creating.phase,
+		waiting.phase,
+		"one phase: the row's clock is keyed to it and must not restart at the create's answer",
+	);
+	assert.equal(creating.startedAt, waiting.startedAt, "and one anchor");
 });
 
 test("a pane with no new fields derives exactly the object it always did", () => {
@@ -816,6 +870,15 @@ async function paneFixture(now, run) {
 	};
 
 	const root = createRoot(window.document.getElementById("root"));
+	/*
+	 * The transcript's cross-session hook reads react-query, so this mount needs
+	 * a client. Nothing seeds it, which is the fail-closed path this band renders
+	 * under here: no capabilities answer, so the hook answers false and nothing
+	 * is hidden.
+	 */
+	const queryClient = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
 	const api = {
 		/** The band's clock slot: the second of its two agent-hidden spans. */
 		label: () =>
@@ -823,7 +886,13 @@ async function paneFixture(now, run) {
 				?.textContent,
 		render: async (frontend) => {
 			await act(() =>
-				root.render(h(CanonicalTranscript, { ...paneProps, frontend })),
+				root.render(
+					h(
+						QueryClientProvider,
+						{ client: queryClient },
+						h(CanonicalTranscript, { ...paneProps, frontend }),
+					),
+				),
 			);
 		},
 	};
@@ -933,4 +1002,31 @@ test("the pane's rung memo READS the fold and DEPENDS on it", () => {
 			`${field} is exactly one entry of exactly one dependency array`,
 		);
 	}
+});
+
+test("R2-5: the wait clock's anchor survives a remount, through the retained entry", () => {
+	/*
+	 * The per-mount latch was the only holder after a switch-away inside the
+	 * receipt-to-owner gap (the receipt deletes the draft row), so the remounted
+	 * pane blanked the seconds - measured as the residual on agent review round
+	 * 2's R2-5. The press's `submittedAt` now rides the registry entry, and the
+	 * pane's read names it between the row and the latch. Both are read at the
+	 * call site, the shape this suite already uses for call-site facts.
+	 */
+	const chatPage = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	)
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+	assert.match(
+		chatPage,
+		/startingSince:\s*\n\s*draft\?\.submittedAt \?\?\s*\n\s*pendingNow\?\.submittedAt \?\?\s*\n\s*admitted\.current\?\.submittedAt \?\?\s*\n\s*null,/,
+		"the pane reads the entry before the per-mount latch",
+	);
+	assert.match(
+		chatPage,
+		/submittedAt: pendingNow\.submittedAt \?\? draft\?\.submittedAt,/,
+		"and the latch's own snapshot prefers the entry's copy",
+	);
 });

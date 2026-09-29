@@ -49,7 +49,14 @@ const itemClasses = [
 	// Disabled is a colour change. `pointer-events-none` keeps the row from
 	// swallowing a click meant for the panel behind it.
 	"data-[disabled]:pointer-events-none data-[disabled]:text-ink-disabled",
-	"[&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+	// The `:not(.size-2)` carve-out is deliberate (design round 1, D2): the
+	// radio indicator's dot authors its own `size-2` because it is a status
+	// dot, and the blanket rule won that fight on specificity - every dot
+	// painted at 16px while the primitive's source said 8, a dead authorial
+	// intent a reader could not see without measuring. Carving the class out
+	// leaves ONE spelling of the dot's size, where a reader looks for it, and
+	// every other icon in a row still takes the 16px step.
+	"[&_svg]:pointer-events-none [&_svg:not(.size-2)]:size-4 [&_svg]:shrink-0",
 ];
 
 export const DropdownMenuSubTrigger = forwardRef<
@@ -80,6 +87,13 @@ export const DropdownMenuSubContent = forwardRef<
 >(({ className, ...props }, ref) => (
 	<DropdownMenuPrimitive.SubContent
 		ref={ref}
+		/*
+		 * Not a drag surface; see the marker's note in `dialog.tsx` and the rule it is
+		 * read by in `styles/index.css`. A menu that opens near the top of the window
+		 * can overlap the chrome strip, and a row inside the window's draggable
+		 * region is a row that cannot be clicked.
+		 */
+		data-titlebar-no-drag=""
 		className={cn(panelClasses, className)}
 		{...props}
 	/>
@@ -93,6 +107,7 @@ export const DropdownMenuContent = forwardRef<
 	<DropdownMenuPrimitive.Portal>
 		<DropdownMenuPrimitive.Content
 			ref={ref}
+			data-titlebar-no-drag=""
 			sideOffset={sideOffset}
 			className={cn(panelClasses, className)}
 			{...props}

@@ -1,0 +1,18 @@
+/*
+ * Stylesheet entry for the child reader's scroll harness.
+ *
+ * `@import` is the app's own stylesheet — the same one the app and Storybook
+ * load — so no palette or type-ramp value can differ between this surface and
+ * the shipped one.
+ *
+ * `@source` is the part that fails SILENTLY when it is left out: Tailwind v4
+ * scans for candidate class names relative to the VITE ROOT, and this harness's
+ * root is `scripts/`, so the renderer's own utilities would compile as ABSENT
+ * and the pane would render with no role colours and no spacing scale. That is
+ * the trap `diff-body-evidence.css` records in the same words, and it matters
+ * more here than there: the reader's layout is what these frames are read for,
+ * and a missing `flex-1`/`min-h-0` changes the scroll geometry itself.
+ */
+@import "../src/renderer/src/styles/index.css";
+
+@source "../src/renderer/src";

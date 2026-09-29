@@ -30,45 +30,35 @@
  * used to live there was removed from the user bubble too (operator report,
  * 2026-09-16: a card widened by a reply quote or an attachment left the prose a
  * centre-constrained column inside it), so a user turn is an aside by the
- * card's own `max-w-[75%]` inside this 640px measure, and agent output takes no
+ * card's own `max-w-[75%]` inside this 810px measure, and agent output takes no
  * cap at all — it shares the left edge and the width of the tool rows in the
  * same turn. `markdown.css`'s measure comment carries both reports and the
  * numbers.
  *
- * So this 640px is the whole width the agent's answer resolves against, and
+ * So this 810px is the whole width the agent's answer resolves against, and
  * the ledger resolves against it too. That is the alignment: one container
  * measure, two registers, one pair of edges.
  *
- * ## Why 640 and not 900
+ * ## Why 810
  *
- * The 900 this token used to carry was measured, and the measurement is the
- * argument against it: wrapped word-by-word in SFNS at 14px over a
- * 700-character sample of real answer prose, a 900px line runs **146
- * characters** average and the longest line observed is the same 146. On the
- * 640 below it the same sample runs **101 average with a 104 worst line**. The
- * reference set the design board measured tops out at 108 (`Cursor 3`) and the
- * chat-first products sit at 62–87, so 900 was outside every comparator and 640
- * is inside the range while still being the widest column that is:
+ * The redesign narrowed this token to 640px for readability (its own
+ * 146-characters-per-line measurement against a 101-character target), and the
+ * operator's verdict on the shipped result was that the conversation view is
+ * "too narrow" and the constraint must come back (2026-09-26). It came back to
+ * 900, together with its 750px threshold. The follow-up is the step this file
+ * now carries: "narrow the constraint a bit, maybe by around 10%" - which is
+ * 810, exactly 10% of the 900, well short of the reverted redesign, and the
+ * value that takes the app's rendered line length from 132.4 to 117.7
+ * characters at the 14px body step (the measurement, its method, and why the
+ * number is not 640 are all in `styles/index.css` beside the value).
  *
- *  - 680 lands exactly ON the board's worst case (107 average, 110 worst) and
- *    720 and above exceed it, so 640 is the widest column with headroom rather
- *    than a taste margin;
- *  - it is the widest column that still fits at 800x600 with the collapsed
- *    56px strip: 800 − 56 − 2x24 of gutter = 696, i.e. the column plus 28px of
- *    slack each side. That is the binding constraint that makes 680 unsafe
- *    (16px of slack, which the first scrollbar or resize handle eats);
- *  - it holds the app's real content: the widest code line in the baseline
- *    frames is 57 Geist Mono characters at 13px = 445px + 32 padding = 477, and
- *    the transcript's three-column table fits at 640 with the middle column the
- *    only one that wraps. At 560 the table's first and third columns start
- *    wrapping too, which is how a measure becomes a defect.
+ * ## Why the number is a custom property and not a literal here
  *
- * The cost, stated rather than hidden: 101 characters is still wider than
- * Claude.ai (76) and Zed (87), which carry no tables and no diffs in the
- * answer. If the frames show the table wrapping badly, the amendment moves this
- * token to 680 — one line here — and never narrows `.lo-markdown` alone, which
- * is the failure the branding contract pre-names (a cap on prose alone puts a
- * second left edge inside the row).
+ * `max-w-[810px]` in the class string below would be a SECOND copy of a number
+ * that already has a home (`styles/index.css`), and the one thing this module
+ * exists to guarantee is that the transcript and the composer cannot drift
+ * apart. A property name is also the only spelling a runtime change can reach:
+ * a class literal can be read by Tailwind at build time and by nothing else.
  */
 
 /**
@@ -78,43 +68,48 @@
 export const CHAT_COLUMN_CONTAINER = "@container/chatcol";
 
 /**
+ * The custom property `CHAT_MEASURE` resolves against.
+ *
+ * Exported by name so the one other reader of the value - a control that
+ * changes it at runtime - writes the property this class reads rather than a
+ * second spelling of it.
+ */
+export const CHAT_MEASURE_VAR = "--lo-chat-measure";
+
+/**
  * The shared content measure, and the column width at which it starts to bind.
  *
- * 640px is the reading measure: the file's own docstring carries the
- * characters-per-line measurement that picks it. It is consumed by the user
- * block, prose, the trace AND the composer — the measure narrows the shared
- * container, never prose alone, because a cap on `.lo-markdown` by itself
- * puts a second left edge inside the row.
+ * The width itself is `--lo-chat-measure`, declared once in `styles/index.css`
+ * (810px, and the measurement behind that value is recorded there). It is
+ * consumed by the user block, prose, the trace AND the composer — the measure
+ * narrows the shared container, never prose alone, because a cap on
+ * `.lo-markdown` by itself puts a second left edge inside the row.
  *
- * 688 is the threshold, and it is arithmetic rather than taste: 640 + 2x24 of
- * column gutter, the minimum inset the system states for a pane. Below a 688px
- * container the content takes the full width rather than a percentage, since a
- * percentage of an already-narrow column just adds margins to something that
- * has no room to spare — and above it the column is centred, so the pane's own
- * padding becomes the outer gutter (52px a side at the 800x600 floor).
- *
- * The threshold moved with the measure and not separately: at the old 750 a
- * 800x600 window (chat pane 744 after the collapsed 56px strip) would have
- * rendered a full-width 696px line and quietly broken the claim the measure
- * exists to make. One number, one moment.
+ * 750 is the pre-redesign threshold, restored with the measure: the two moved
+ * as a pair to 688/640 in the redesign, and they move back as a pair. Below a
+ * 750px container the content takes the full width; above it the column is
+ * centred, so the pane's own padding becomes the outer gutter. It is INERT at
+ * the shipped width and that is fine — it describes an intent (a narrow column
+ * gets the whole column, not a margin) rather than a second cap, and at a 750px
+ * container the content box is 702px, so the 810px cap cannot bind below an
+ * 858px container whether the gate is there or not.
  */
 export const CHAT_MEASURE =
-	"w-full @min-[688px]/chatcol:max-w-[640px] @min-[688px]/chatcol:mx-auto";
+	"w-full @min-[750px]/chatcol:max-w-[var(--lo-chat-measure)] @min-[750px]/chatcol:mx-auto";
 
 /**
  * The column width at which the composer's row stops being one line: above it
  * the session readings sit inline between the working-directory chip and the
  * controls, below it they take the row's own first line.
  *
- * 750 is the COMPOSER ROW's own measurement and it is deliberately no longer
- * `CHAT_MEASURE`'s threshold: the two used to describe one moment only because
- * the measure's threshold happened to equal this number, and with the measure
- * at 640 and its threshold at 688 that coincidence is gone. Naming the measure
- * here instead would move the composer's row shape at 688-750px of column —
- * where the readings currently take the row's first line and fit doing it — as
- * a side effect of a typographic decision. The two will decouple properly when
- * the composer takes its one 32px control row at every width; until then this
- * number stays where the composer's own chips were measured.
+ * 750 is the COMPOSER ROW's own measurement, and it again equals
+ * `CHAT_MEASURE`'s threshold after the 2026-09-26 restore — the two described
+ * one moment originally and describe it again, but they are still named
+ * separately because they are separate decisions that merely coincide: this
+ * number is where the composer's own chips were measured, and the measure's
+ * threshold is where a container starts to bind. The two decouple properly
+ * when the composer takes its one 32px control row at every width; until then
+ * this number stays where the composer's own chips were measured.
  */
 export const CHAT_ROW_INLINE_PX = 750;
 

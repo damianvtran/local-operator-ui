@@ -1,16 +1,29 @@
 import assert from "node:assert/strict";
 import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { build } from "esbuild";
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+
+/*
+ * The transcript reads its cross-session visibility through react-query
+ * (`useCrossSessionHidden`), so even a server render needs a client in scope.
+ * Nothing is seeded: in SSR the hooks resolve to their loading state, whose
+ * fail-closed answer is "show everything" - the same answer an old backend
+ * gets.
+ */
+const queryClient = new QueryClient({
+	defaultOptions: { queries: { retry: false } },
+});
 
 // This is a separate file from the transport tests: bundling the transcript
 // is asynchronous and must finish before any tests or HTTP teardown can run.
 const bundle = await build({
 	stdin: {
 		contents: `export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";
- export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";`,
+ export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
+ export { MemoryRouter } from "react-router-dom";`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -32,14 +45,25 @@ const bundle = await build({
 		".png": "dataurl",
 		".webp": "dataurl",
 	},
-	external: ["react", "react-dom", "react-dom/server", "react/jsx-runtime"],
+	external: [
+		"react",
+		"react-dom",
+		"react-dom/server",
+		"react/jsx-runtime",
+		/* One copy with the provider below; the hook inside the bundle must find
+		 * the client the renders provide. */
+		"@tanstack/react-query",
+	],
 });
 const bundlePath = new URL("./_canonical-notice.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 let CanonicalTranscript;
 let EMPTY_TRANSCRIPT;
+let MemoryRouter;
 try {
-	({ CanonicalTranscript, EMPTY_TRANSCRIPT } = await import(bundlePath.href));
+	({ CanonicalTranscript, EMPTY_TRANSCRIPT, MemoryRouter } = await import(
+		bundlePath.href
+	));
 } finally {
 	await unlink(bundlePath);
 }
@@ -63,36 +87,40 @@ for (const [name, headline, detail] of [
 ]) {
 	test(`job result preserves label, glyph and full message: ${name}`, () => {
 		const markup = renderToStaticMarkup(
-			h(CanonicalTranscript, {
-				transcript: {
-					...EMPTY_TRANSCRIPT,
-					records: [
-						{
-							kind: "custom",
-							id: "job-regression",
-							ts: 1_760_000_000_000,
-							customType: "job_result",
-							level: "info",
-							category: null,
-							provider: null,
-							headline,
-							text: [headline, detail].filter(Boolean).join("\n"),
-							attribution: "system",
-							detail,
-						},
-					],
-				},
-				gate: null,
-				waiting: false,
-				loadingOlder: false,
-				onLoadOlder: async () => true,
-				containerRef: { current: null },
-				isSmallView: false,
-				status: "live",
-				failure: null,
-				hydrated: true,
-				onReconnect: () => {},
-			}),
+			h(
+				QueryClientProvider,
+				{ client: queryClient },
+				h(CanonicalTranscript, {
+					transcript: {
+						...EMPTY_TRANSCRIPT,
+						records: [
+							{
+								kind: "custom",
+								id: "job-regression",
+								ts: 1_760_000_000_000,
+								customType: "job_result",
+								level: "info",
+								category: null,
+								provider: null,
+								headline,
+								text: [headline, detail].filter(Boolean).join("\n"),
+								attribution: "system",
+								detail,
+							},
+						],
+					},
+					gate: null,
+					waiting: false,
+					loadingOlder: false,
+					onLoadOlder: async () => true,
+					containerRef: { current: null },
+					isSmallView: false,
+					status: "live",
+					failure: null,
+					hydrated: true,
+					onReconnect: () => {},
+				}),
+			),
 		);
 		const text = markup.replace(/<[^>]*>/g, "").replaceAll("&#x27;", "'");
 		assert.ok(
@@ -110,3 +138,136 @@ for (const [name, headline, detail] of [
 		);
 	});
 }
+
+/*
+ * THE PROVIDER-FAILURE AFFORDANCE, RENDERED — the half the matcher's own suite
+ * cannot see: that `NoticeRow` calls `providerErrorGuidance` at all, and that
+ * what it renders is a real link to the settings surface.
+ *
+ * WHAT THIS DEFENDS. The decision suite
+ * (`scripts/provider-error-guidance.test.mjs`) pins the classification; a
+ * component that never called it would leave every one of those cases green.
+ * The pair here is therefore the call site: the row draws the action, and the
+ * route it points at is the two-literal deep link the settings page resolves
+ * (`scripts/settings-section-routes.test.mjs` binds the section id).
+ *
+ * `MemoryRouter` is required because the action is a router `Link`; a link
+ * outside a router is not a test-lightness question, it throws.
+ */
+
+/** A transcript rendering one record under the router the action links need. */
+function renderRecord(record) {
+	return renderToStaticMarkup(
+		h(
+			MemoryRouter,
+			{},
+			h(
+				QueryClientProvider,
+				{ client: queryClient },
+				h(CanonicalTranscript, {
+					transcript: { ...EMPTY_TRANSCRIPT, records: [record] },
+					gate: null,
+					waiting: false,
+					loadingOlder: false,
+					onLoadOlder: async () => true,
+					containerRef: { current: null },
+					isSmallView: false,
+					status: "live",
+					failure: null,
+					hydrated: true,
+					onReconnect: () => {},
+				}),
+			),
+		),
+	);
+}
+
+/** A session incident, as the reducer builds one. */
+const incident = (overrides) => ({
+	kind: "custom",
+	id: "incident-provider-failure",
+	ts: 1_760_000_000_000,
+	customType: "session_incident",
+	level: "error",
+	category: null,
+	provider: null,
+	headline:
+		"402: insufficient credits. Add credits to keep using Radient models.",
+	text: "402: insufficient credits. Add credits to keep using Radient models.",
+	attribution: "system",
+	detail: null,
+	...overrides,
+});
+
+test("a Radient billing incident carries the action, pointed at the account section", () => {
+	const markup = renderRecord(
+		incident({ category: "billing", provider: "radient/sonar-pro" }),
+	);
+	assert.ok(
+		markup.includes("Open Radient account"),
+		"the incident's remedy must be on the row, and named for where it lands",
+	);
+	assert.ok(
+		markup.includes('href="/settings?section=radient"'),
+		"the billing class must open the account section, where the balance and billing entry live (UX round 1, U3)",
+	);
+});
+
+test("a refused credential asks the reader to sign in again", () => {
+	const markup = renderRecord(
+		incident({
+			category: "auth",
+			provider: "radient/auto",
+			headline: "Radient refused the credential this machine holds.",
+			text: "Radient refused the credential this machine holds.",
+		}),
+	);
+	assert.ok(markup.includes("Sign in to Radient"));
+	assert.ok(
+		markup.includes('href="/settings?section=providers&amp;provider=radient"'),
+	);
+});
+
+test("a non-Radient auth failure names the surface, not an account", () => {
+	const markup = renderRecord(
+		incident({
+			category: "auth",
+			provider: "anthropic/claude-opus-5",
+			headline: "All OAuth credentials for provider 'anthropic' were refused.",
+			text: "All OAuth credentials for provider 'anthropic' were refused.",
+		}),
+	);
+	assert.ok(markup.includes("Open provider settings"));
+	assert.ok(
+		!markup.includes("Sign in to Radient"),
+		"only a Radient failure may name Radient's sign-in",
+	);
+	assert.ok(markup.includes('href="/settings?section=providers"'));
+});
+
+test("a known category outside the set earns no affordance, whatever its payload quotes", () => {
+	const markup = renderRecord(
+		incident({
+			category: "network",
+			provider: null,
+			headline: "connection reset while relaying: insufficient credits",
+			text: "connection reset while relaying: insufficient credits",
+		}),
+	);
+	assert.ok(
+		!markup.includes("Open provider settings"),
+		"the classifier's own answer must beat the prose it quotes",
+	);
+});
+
+test("a notice with no classification falls back to the text families", () => {
+	const markup = renderRecord({
+		kind: "notice",
+		id: "notice-quota",
+		ts: 1_760_000_000_000,
+		text: "The provider refused: insufficient credits. Top up the account or switch provider.",
+		level: "error",
+	});
+	assert.ok(markup.includes("Open provider settings"));
+	assert.ok(markup.includes('href="/settings?section=providers"'));
+});

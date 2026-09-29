@@ -53,6 +53,11 @@ export const everforestLight: ThemeDefinition = {
 		elevated: "#FDF6E3",
 		sunken: "#DCD7BC",
 
+		// The user block's fill: ΔE00 4.11 off the canvas, where `surface` alone
+		// measures 2.38 - a step toward `elevated` to clear the role's 4.0 floor,
+		// which the block carries because the fill IS its boundary.
+		messageSurface: "#f9f2dd",
+
 		/*
 		 * ROW STATES, and `highlight` retired in the same change. Both roles are a
 		 * step of THIS palette's own panel at the panel's own hue; they used to be
