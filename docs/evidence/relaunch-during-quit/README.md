@@ -14,7 +14,7 @@ skipped on a profile with no keychain) and then in `will-quit` (the owned
 backend's stop — the seconds in the readings below). The single-instance lock is
 held for the whole of it.
 
-So between "the window vanished" (+~230 ms after `app.quit()`) and "the process
+So between "the window vanished" (+~210 ms after `app.quit()`) and "the process
 exited" (+~5.1 s in these runs) there is a real window in which the instance is
 still quitting. A relaunch inside it loses the lock and forwards its request to
 the dying instance, and before this fix that instance answered the request with
@@ -38,13 +38,22 @@ process takes it away seconds later.
 ## What the fix does
 
 `before-quit`'s first entry sets a quit-in-progress state (ahead of the
-session-cookie hold, which can wait), and both answer sites consult it:
+session-cookie hold, which can wait), and every site that would answer a request
+with a window consults it:
 
 - the `second-instance` path refuses the request **whole** — nothing created,
   nothing raised, nothing parked — and reports it as
   `applied=skipped+quitting` (`window-raise.ts::reportSkippedWhileQuitting`);
 - the macOS `activate` handler (a Dock click on a windowless app) refuses the
-  same way.
+  same way;
+- the window-CREATE path itself refuses the same way
+  (`setupMainWindowWithUpdateService`, plus the pre-park guard in
+  `openSessionInWindow`), so a banner click, the consent toast's reopen and the
+  viewer's recreate verbs cannot open a window the shutdown would take down —
+  each refusal carries its own `trigger`;
+- and a quit that is CANCELLED lets go of the state beside its own
+  cancellation — the setup window's declined "Quit without setup?" is the one
+  cancellation a running quit has — so a cancelled quit refuses nothing later.
 
 The next launch — the one that finds the process gone — opens normally, which
 the rig's third instance measures.
@@ -77,23 +86,31 @@ request through the same code path. A `headless` B would be a different request
 | A's window for B's request | created, `visible: true`, and dies with A | none (`[]`) |
 | A's raise line for B | `applied=showInactive` | `applied=skipped+quitting` |
 | the next relaunch (C) | opens and shows its window | opens and shows its window |
-| A's own teardown | exit 0, +5228 ms | exit 0, +5136 ms |
+| A's own teardown | exit 0, +5228 ms | exit 0, +5069 ms |
 
 The raw runs are [`transcript-before.txt`](transcript-before.txt) and
 [`transcript-after.txt`](transcript-after.txt); the before run is the failing
 one (2 failing checks — the window, and the missing refusal line), the after run
-is `OK: 0 failing check(s)`.
+is `OK: 0 failing check(s)`. The before transcript predates the
+working-directory move described above, which is why its `cwd=` names the
+checkout while the after run's names the run's scratch tree.
 
 ```
 node scripts/relaunch-during-quit-proof.mjs
 ```
 
-The rig needs a BUILT tree (`pnpm build`), is run from the repository root, and
+The rig needs a BUILT tree (`pnpm build`) and is run from that tree's root; it
 writes everything scratch to a `mktemp -d` tree it removes on exit (HOME,
 config, logs and the Electron profile all redirected; the notification and
 telemetry switches applied; `--keep` keeps the tree, `--label`/`--record` name
-its artifacts). It never shows or focuses a window — the profile frame is
-`capturePage()` from the app itself.
+its artifacts). The app itself is booted with its WORKING DIRECTORY inside that
+scratch tree and an absolute app path — `src/main/backend/config.ts` folds a
+`.env` from the process's working directory over the launch environment
+(`override: true`), so a checkout's own `.env` would otherwise override the
+rig's free-port assignment (round-1 QA's Q1) — and a missing
+`out/main/index.js` is refused by name before anything is launched. It never
+shows or focuses a window — the profile frame is `capturePage()` from the app
+itself.
 
 ## What this does not show
 
