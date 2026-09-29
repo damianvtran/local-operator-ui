@@ -281,6 +281,31 @@ if (CALLS > 0) {
 		await sleep(40);
 	}
 	/*
+	 * THE TURN RE-CONDENSES AT ITS OWN SETTLE (QA round 2, Q-R2-2, recorded for
+	 * the design lane: main's reader-visible contraction at a settle). The live
+	 * turn finishing collapses its rows back under a turn-summary bar, which
+	 * UNMOUNTS the fold the reader had open - their state survives in the
+	 * conversation's registry, but the fold itself leaves the DOM, so anything
+	 * after this point (the collapse probe, the settled frame) would act on a
+	 * bar instead of the fold if it were left as-is. The reader's way back is
+	 * the bar's own press, exactly what `pressSummaryBar` performs, so the arm
+	 * takes that press and the state-survival is what the rest of the run - and
+	 * the trace's fold column - records. Polled briefly because the
+	 * re-condensation can land a beat after the turn's last delta.
+	 */
+	for (let attempt = 0; attempt < 6; attempt += 1) {
+		await sleep(400);
+		if ((await evaluate("window.__shift.foldStates().length")) > 0) continue;
+		if (await evaluate("window.__shift.pressSummaryBar()")) {
+			await sleep(500);
+			await evaluate("window.__shift.mark('bar-reopened'); 'ok'");
+			console.log(
+				`the settle re-condensed the turn; bar re-opened: ${await evaluate("JSON.stringify(window.__shift.foldStates())")}`,
+			);
+		}
+		break;
+	}
+	/*
 	 * THE READER'S OWN COLLAPSE, measured where the fix must hold: with the fold
 	 * expanded and the turn finished, the same press that opened it closes it,
 	 * and the settled content around it must not move (while the reader is away

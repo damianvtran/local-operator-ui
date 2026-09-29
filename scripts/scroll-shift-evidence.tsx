@@ -92,6 +92,17 @@ type ShiftProbe = {
 	playToolTurn: (script: ToolTurnScript) => Promise<void>;
 	/** Click the Nth fold's trigger (the last one when out of range). */
 	expandFold: (index: number) => void;
+	/**
+	 * Press the first COLLAPSED turn-summary bar's own trigger, when one is up.
+	 * On this head a finished turn's pre-answer rows live under main's
+	 * `TurnSummary` bar (`data-turn-summary`), and the fixture's run fold is one
+	 * of those rows - so the bar's disclosure is how the fold is reached. The
+	 * boot presses it once for a fixture that holds a run (see
+	 * `pressCollapsedTurnBar`), and the driver presses it again when a turn's
+	 * own settle re-condenses the bar with the reader's fold inside (QA round 2,
+	 * Q-R2-2). Returns whether it found one to press.
+	 */
+	pressSummaryBar: () => boolean;
 	/** Every fold's state right now, in DOM order. */
 	foldStates: () => FoldState[];
 	emitted: unknown;
@@ -183,6 +194,43 @@ const readFolds = (scroller: HTMLElement): FoldState[] => {
 	return folds;
 };
 
+/*
+ * THE TURN SUMMARY BAR, and the two places this rig touches it. Main's
+ * `TurnSummary` collapses a finished turn's pre-answer rows behind one
+ * disclosure (`data-turn-summary`, the bar a reader reads as `Took 2s · 4
+ * actions`), and the fixture's run fold lives INSIDE that bar - so with the
+ * bar collapsed the fold is not in the DOM at all, and the boot gate below
+ * (whose fold term stands in for the body a condensed fold hides) stalls short
+ * of `expectedRows` and never turns `ready` (QA round 2, Q-R2-1: `records=6,
+ * folds=0` at the deadline). The bar's own trigger is the shipped way in - a
+ * real reader's press, the same gesture every tool row taught - rather than a
+ * bypass, so this rig presses it: once during boot, for a fixture that holds a
+ * run, and once more from the driver when a turn's own settle re-condenses the
+ * bar around the fold the reader had opened (Q-R2-2's measured re-condensation;
+ * the fold's own state survives in the conversation's registry and the press
+ * brings it back). Returns whether it found a collapsed bar to press.
+ */
+const pressCollapsedTurnBar = (): boolean => {
+	const bar = document.querySelector<HTMLElement>("[data-turn-summary]");
+	if (!bar) return false;
+	/*
+	 * THE BAR'S OWN trigger, not "any collapsed button inside it": when the bar
+	 * is open its body can hold a CONDENSED fold whose trigger also reads
+	 * `aria-expanded='false'`, and a bare descendant query would press the fold
+	 * instead of the bar (measured while re-probing the boundary arm, where an
+	 * open bar plus a closed fold inside it is the post-reopen state). The
+	 * bar's trigger is the only one NOT inside a fold's own subtree.
+	 */
+	const trigger = [
+		...bar.querySelectorAll<HTMLElement>("button[aria-expanded]"),
+	].find((button) => !button.closest("[data-fold-ids]"));
+	if (!trigger || trigger.getAttribute("aria-expanded") !== "false") {
+		return false;
+	}
+	trigger.click();
+	return true;
+};
+
 const sampleOnce = () => {
 	const scroller = document.querySelector<HTMLElement>(
 		"[data-lo-canonical-transcript]",
@@ -197,19 +245,38 @@ const sampleOnce = () => {
 				})()
 			: null;
 	const rows: Array<[string, number]> = [];
+	const rowCounts = new Map<string, number>();
+	let lastEl: HTMLElement | null = null;
 	for (const row of scroller.querySelectorAll<HTMLElement>(
 		"[data-record-id]",
 	)) {
-		const id = row.dataset.recordId;
-		if (!id) continue;
+		const base = row.dataset.recordId;
+		if (!base) continue;
+		/*
+		 * ONE ID, TWO ELEMENTS on this head: main's `TurnSummary` carries its
+		 * anchor's `data-record-id` (the failure-jump contract) while the anchor's
+		 * own row keeps rendering beneath it, so the newest settled ids each
+		 * appear twice. The trace keys rows by id and the notable-frames report
+		 * diffs them through one map, so an unsuffixed pair reads as a phantom
+		 * 26px move between the bar and its row on EVERY frame - noise in the row
+		 * column and in `max|ΔrowTop|` (measured on the first re-capture; both
+		 * artifacts are what this suffix removes). The bar takes a `#bar` suffix -
+		 * it is settled content the arms measure, so it stays, never dropped -
+		 * and any other duplicate takes `#N`; the leading-edge element is tracked
+		 * as an element rather than re-queried by id so the suffix cannot break
+		 * it (the old by-id re-query resolved to the bar, not the row).
+		 */
+		let id = base;
+		if (row.hasAttribute("data-turn-summary")) {
+			id = `${base}#bar`;
+		} else {
+			const n = (rowCounts.get(base) ?? 0) + 1;
+			rowCounts.set(base, n);
+			if (n > 1) id = `${base}#${n}`;
+		}
 		rows.push([id, round(row.getBoundingClientRect().top - sr.top)]);
+		lastEl = row;
 	}
-	const last = rows.at(-1);
-	const lastEl = last
-		? scroller.querySelector<HTMLElement>(
-				`[data-record-id="${CSS.escape(last[0])}"]`,
-			)
-		: null;
 	const content = scroller.querySelector<HTMLElement>(
 		"[data-lo-transcript-content]",
 	);
@@ -260,6 +327,7 @@ const probe: ShiftProbe = {
 		const trigger = el?.querySelector("button");
 		if (trigger instanceof HTMLElement) trigger.click();
 	},
+	pressSummaryBar: () => pressCollapsedTurnBar(),
 	foldStates: () => {
 		const scroller = document.querySelector<HTMLElement>(
 			"[data-lo-canonical-transcript]",
@@ -320,6 +388,16 @@ createRoot(document.getElementById("app") as HTMLElement).render(
 const bootUntilPainted = async () => {
 	const deadline = performance.now() + 15_000;
 	await useCanonicalSessionsStore.getState().openSession(SESSION_ID);
+	/*
+	 * A fixture that holds a run arrives with its fold inside the turn's summary
+	 * bar, and the bar arrives COLLAPSED (see `pressCollapsedTurnBar`). One
+	 * press - the reader's own gesture - puts the fold on screen, which is the
+	 * state these arms photograph; without it the gate below counts `folds=0`
+	 * and never reaches `expectedRows`. Pressed only once per boot, and only for
+	 * a run-holding fixture: the prose fixtures have no bar and must not have
+	 * their scene touched.
+	 */
+	let pressedBar = false;
 	for (;;) {
 		if (performance.now() > deadline) {
 			console.error("[scroll-shift] the fixture never painted");
@@ -350,6 +428,7 @@ const bootUntilPainted = async () => {
 		 * 60 rows, so a gate comparing against the full count would wait forever.
 		 */
 		if (painted + folded >= Math.min(expectedRows, 60)) break;
+		if (TOOLS > 0 && !pressedBar) pressedBar = pressCollapsedTurnBar();
 		await new Promise((r) => setTimeout(r, 50));
 	}
 	probe.ready = true;
