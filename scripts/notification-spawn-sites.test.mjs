@@ -320,6 +320,14 @@ const APP_SPAWN_SITES = [
 		"drives the composer's interrupt end to end in the real app, against a real backend turn - a stopped turn is exactly the state a notification is posted from, so a missing switch here banners the operator about a stop they just made themselves",
 		/const spawnEnv = withNotificationsOff\(\{/,
 	),
+	guarded(
+		"scripts/stt-dictation-proof.mjs",
+		"spawn",
+		1,
+		/env:\s*spawnEnv,/,
+		"drives the composer's dictation end to end in the real app - a hold, a transcript, a mid-turn send - and a transcript landing is exactly the state a notification is posted from, so a missing switch here banners the operator about words they just dictated",
+		/const spawnEnv = withNotificationsOff\(\{/,
+	),
 	exempt(
 		"scripts/session-cookie-electron.test.mjs",
 		"spawn",
