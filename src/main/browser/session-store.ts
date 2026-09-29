@@ -127,7 +127,11 @@ export interface PersistedEntry {
  * - THE HAND-OVER EXCEPTION: a USER tab sitting under hand-over at the quit is
  *   `owner: "agent"` in the registry (`registry.handOver`), so `captureTabs`
  *   writes such a row as `user` - otherwise the skip would lose the user's own
- *   tab. The row records who owns the TAB, not who held its handle.
+ *   tab. The row records who owns the TAB, not who held its handle, and "who
+ *   owns the tab" is the owner pinned BEFORE the hand-over (`TabRecord.handed-
+ *   From`), not `handedTo`: an AGENT tab re-handed to a second session also
+ *   carries `handedTo`, and writing that one as the user's would launder agent
+ *   cruft past the sweep (round-1 m-2).
  * - THE LAUNDERING BOUNDARY: only a row written by a quit that still saw the
  *   tab as agent-owned can be caught. A restored tab is created `user`-owned,
  *   so one capture after a restore rewrites the row as `user` and it is
@@ -537,14 +541,21 @@ export function captureTabs(
 		const mark = failedTabIds.has(record.tabId)
 			? { lastLoadFailed: true as const }
 			: {};
-		// THE OWNER THE ROW RECORDS IS THE TAB'S, NOT ITS HANDLE'S (2026-09-29): a
-		// user tab sitting under hand-over at the quit is `owner: "agent"` in the
-		// registry (`registry.handOver`), and `readSession` now skips agent rows
-		// that were not active - so writing the registry's owner verbatim would
-		// LOSE THE USER'S OWN TAB at the next restore. A hand-over is a live
-		// capability (nonce + session) that a restore deliberately never carries
-		// (design 7.3), so the row records the tab as the user's.
-		const owner: TabOwner = record.handedTo !== null ? "user" : record.owner;
+		// THE OWNER THE ROW RECORDS IS THE TAB'S, NOT ITS HANDLE'S — AND "THE
+		// TAB'S" IS WHAT IT WAS BEFORE THE HAND-OVER (2026-09-29; key corrected in
+		// round 1, m-2): a user tab sitting under hand-over at the quit is
+		// `owner: "agent"` in the registry (`registry.handOver`), and `readSession`
+		// skips agent rows that were not active — so writing the registry's owner
+		// verbatim would LOSE THE USER'S OWN TAB at the next restore. The key is
+		// `handedFrom`, the owner pinned at the first hand-over; `handedTo` alone
+		// cannot stand in for it, because `handOver` also accepts an AGENT tab
+		// (re-handed to a second session), and writing THAT one as the user's would
+		// launder agent cruft past the sweep (round 1, m-2 — reproduced from the
+		// review's own mutation). A hand-over is a live capability (nonce + session)
+		// that a restore deliberately never carries (design 7.3), so the row records
+		// the user's tab as the user's.
+		const owner: TabOwner =
+			record.handedFrom === "user" ? "user" : record.owner;
 		if (entries.some(restorable)) {
 			captured.push({
 				owner,
