@@ -457,12 +457,46 @@ test("an abort discards: the second key, and the cancel door", async () => {
 	await flush();
 	await flush();
 	await sleep(300);
-	first.keydown(keyEvent("Escape", "Escape"));
+	/*
+	 * ESCAPE IS THE ONE SECOND KEY THE MANAGER CLAIMS: it preventDefaults the
+	 * press (its QA-round-1 rung-4 contract), and that flag is exactly what the
+	 * mini composer consults before its own Escape handling — so this assertion
+	 * is the manager's half of the review-round-1 M2 fix, driven on the real
+	 * dispatcher.
+	 */
+	const escClaim = keyEvent("Escape", "Escape");
+	first.keydown(escClaim);
+	assert.equal(
+		escClaim.defaultPrevented,
+		true,
+		"the manager claims an Escape that aborts a hold",
+	);
 	await flush();
 	await flush();
 	assert.equal(a.controller.state, "idle");
 	assert.equal(transcriptionCalls.length, 0);
 	assert.equal(a.events.results.length, 0);
+
+	/*
+	 * A NON-ESCAPE second key aborts WITHOUT claiming: the bare modifier grew
+	 * into a combination, and only the rung-4 key is held back from the layers
+	 * below (the composer's own Escape handling must still see an unclaimed
+	 * press when the key is not Escape — covered by the source pin's siblings,
+	 * and here for the abort itself).
+	 */
+	const c = createTake();
+	mic.next = async () => fakeStream();
+	const third = newManager(pairFor(c.controller));
+	third.keydown(keyEvent("Alt", ptt.code));
+	await flush();
+	await flush();
+	await sleep(300);
+	const other = keyEvent("j", "KeyJ");
+	third.keydown(other);
+	await flush();
+	assert.equal(c.controller.state, "idle");
+	assert.equal(other.defaultPrevented, false);
+	assert.equal(transcriptionCalls.length, 0);
 
 	/* And the controller's own abort door behaves identically. */
 	const b = createTake();
