@@ -2285,6 +2285,20 @@ const BRANCH_RECORDS = [
 	 */
 	"browserOauthPopupsRestampNote",
 	/*
+	 * AND THIS LANE'S OWN: the bundled-interpreter refresh. `python314RefreshRestampNote`
+	 * is the pass that takes the bundled CPython from 3.12.14 to 3.14.7;
+	 * `python314RefreshFoldNote` and `python314RefreshSecondFoldNote` are its folds
+	 * onto the moved `origin/main` (`eca30754b7`, `865da9ce78`), and the fold onto
+	 * `0738fa7eb3` re-registered all three here as the retired `STAMP_BINDING_NOTES`
+	 * registrations came into this list. Listed for the reason this list exists: a
+	 * fold resolved from main's copy would drop them first, and nothing else would
+	 * say so. The notes spell their pair as bare SHAs, so no name is added to the
+	 * quoting ledger above.
+	 */
+	"python314RefreshRestampNote",
+	"python314RefreshFoldNote",
+	"python314RefreshSecondFoldNote",
+	/*
 	 * AND THE CONDENSED BAR'S SPACING PASS'S OWN (operator report, 2026-09-29):
 	 * `condensedBarRestampNote` is the pass that lands the row under a collapsed
 	 * bar on the item step and the bar's chevron on the rule's end, over the
@@ -2337,6 +2351,12 @@ const BRANCH_RECORDS = [
 	 * registration rides beside.
 	 */
 	"condensedBarFoldEightNote",
+	/*
+	 * And this fold's own record (`condensedBarFoldNineNote`), for the same
+	 * reason one entry up: its text is written by the docs-only amendment this
+	 * registration rides beside.
+	 */
+	"condensedBarFoldNineNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
