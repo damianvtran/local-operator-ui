@@ -37,18 +37,19 @@ import { cn } from "@shared/lib/utils";
 import { type KeyboardEvent, useEffect, useMemo, useState } from "react";
 import {
 	DEFAULT_QUICK_SEND_VALUE,
-	type MiniViewPlatform,
 	type MiniViewRegistrationState,
 	formatQuickSendDisplay,
 	isFunctionKeyToken,
 } from "../../../../../shared/mini-view";
 import {
 	DESKTOP_HOTKEY_NEEDS_MODIFIER_COPY,
+	MACOS_DETECTION_BOUNDARY_COPY,
 	QUICK_SEND_SCOPE_COPY,
 	alternatesCopy,
 	priorArtCopy,
 	registrationCopy,
 } from "../../../mini-view/mini-copy";
+import { rendererPlatform } from "../../../mini-view/renderer-platform";
 import { settingComboSource } from "../backend-setting-combos";
 import { CASCADE_SENTINEL, serialize } from "./backend-settings-drafts";
 import { SettingCombobox } from "./setting-combobox";
@@ -164,21 +165,6 @@ function desktopChordAllowed(binding: string): boolean {
 }
 
 /**
- * The platform, as the display mapping and the prior-art table spell it.
- *
- * Read from the same synchronous chrome facts every renderer uses; a window
- * that predates the facts falls back to `linux`, which is that argument's own
- * default (`DEFAULT_WINDOW_CHROME_FACTS`) rather than a second guess.
- */
-function rendererPlatform(): MiniViewPlatform {
-	try {
-		return window.api?.windowChrome?.facts?.().platform ?? "linux";
-	} catch {
-		return "linux";
-	}
-}
-
-/**
  * The desktop-scope extras under a hotkey field (design §H.2): the scope line,
  * the live registration state and the alternates sentence.
  *
@@ -239,6 +225,19 @@ const DesktopHotkeyDetails = () => {
 				>
 					{registrationCopy(registration.status, display)}
 				</output>
+			) : null}
+			{/*
+			 * THE macOS HONESTY LINE (QA round 1, Q2): `register()` answers true
+			 * for a chord another app or the system owns on macOS, so a silent
+			 * dead key can sit behind a "Registered" badge. The row states the
+			 * practical path instead of promising a detection the platform
+			 * cannot deliver; Windows and Linux refuse such a chord and surface
+			 * it through the taken state, so the line is macOS-only.
+			 */}
+			{platform === "mac" && registration?.status === "registered" ? (
+				<span className="text-meta text-ink-dim">
+					{MACOS_DETECTION_BOUNDARY_COPY}
+				</span>
 			) : null}
 			<span className="text-meta text-ink-dim">{alternatesCopy(platform)}</span>
 		</span>
