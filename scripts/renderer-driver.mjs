@@ -10651,16 +10651,22 @@ async function sceneTranscriptRail(cdp) {
 			);
 			const jump = await jumpVia(id);
 			/*
-			 * The settle's own window, then the reading: the anchor re-measures
-			 * for up to the loader's settle plus two frames (issue #680), so a read
-			 * taken earlier would be a read of the race, not of the landing.
+			 * The wash is up NOW (jumpVia waits on its attribute), and its 1400ms
+			 * timer clears it - so the frame is captured and the first read taken
+			 * before the wait, while the highlight is guaranteed in the picture;
+			 * the settled read after the anchor's window is the landing number.
+			 * A slow cold jump's wash can expire before the settled read, which is
+			 * why the check falls back to the earlier one rather than reading
+			 * null on a landing that happened.
 			 */
-			await wait(700);
-			const view = await anchorView();
+			const atWash = await anchorView();
 			await capture(cdp, `rail-jump-${name}`);
+			await wait(700);
+			const settled = await anchorView();
+			const view = settled ?? atWash;
 			note(
 				`landing ${name}`,
-				`id=${id} ms=${jump.ms} landed=${view?.landed ?? "none"} offset=${view?.offset ?? "none"} scrollTop=${view?.scrollTop ?? "none"} max=${view?.maxNeg ?? "none"} rowH=${view?.rowH ?? "none"} rows=${rowsBefore}->${view?.rows ?? "none"}`,
+				`id=${id} ms=${jump.ms} landed=${view?.landed ?? "none"} offset=${view?.offset ?? "none"} atWash=${atWash ? atWash.offset : "none"} scrollTop=${view?.scrollTop ?? "none"} max=${view?.maxNeg ?? "none"} rowH=${view?.rowH ?? "none"} viewport=${view?.viewport ?? "none"} rows=${rowsBefore}->${view?.rows ?? "none"}`,
 			);
 			check(
 				`the ${name} jump lands the target's top at the scrollport's top (issue #680)`,
