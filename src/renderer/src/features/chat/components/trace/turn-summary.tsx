@@ -118,8 +118,26 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 			 * block's own bottom so it mounts and moves with the collapse — decorative,
 			 * never a hover surface, no animation, and none of the bar's numbers, stamp
 			 * or chevron change.
+			 *
+			 * THE RULE'S TWO SIDES ARE A DELIBERATE PAIR (operator report, 2026-09-29,
+			 * second round: "needs proper breathing room on both sides, not just the
+			 * row's internal padding"). `pb-3` is the bar block's own 12px of air below
+			 * its row — the SAME step the row below it sits at, so the rule divides 12px
+			 * of box either side. The ink air, measured on the rendered frames in the
+			 * pair's stated convention (INK-EDGE TO RULE-EDGE, text register: the bar
+			 * text's ink bottom to the rule's first pixel above; the rule's last pixel to
+			 * the row's cap/ascender ink top below), reads 17px above against 15px below
+			 * at this size in both palettes — inside the 2-3px spread the three readings
+			 * of this geometry produced (design's icon register 14-17, QA's text-register
+			 * 19, this pair's 15). The round first shipped 16px, which read 21 above
+			 * against 15 below and was the imbalance design r2 flagged; 12px is the
+			 * balanced value. Before the round the above side was 5px, all of it the
+			 * label's line-box leading. The below side is the walk's re-tier: every
+			 * visible group after a bar takes the item step (`canonical-transcript.tsx`).
+			 * A pair whose two halves are the same step is the one this file can
+			 * defend: box 12/12, ink 17/15.
 			 */
-			className={cn("border-b border-hairline", className)}
+			className={cn("border-b border-hairline pb-3", className)}
 			data-turn-summary=""
 			data-run-ids={recordIds.join(" ")}
 			data-record-id={anchorRecordId}
@@ -135,8 +153,42 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 				onOpenChange={onOpenChange}
 				chevron="trailing"
 				rowClassName={ROW_HEIGHT}
-				triggerClassName={cn("-mx-2 rounded-sm px-2", "hover:bg-row-hover")}
-				chevronClassName={cn("text-ink-muted")}
+				triggerClassName={cn(
+					/*
+					 * THE HOVER GROUND COVERS THE CHEVRON'S BOX (design round 1 D1, then the
+					 * second round's D2/MINOR-1). The `-mx-2` ground paints the trigger's
+					 * border box: D1 extended it 8px to the rule's end, and the leading-edge
+					 * datum then pushed the slot 8px further right, leaving the glyph's
+					 * trailing 2-4px on unwashed ground — the same class D1 named. The width
+					 * and the right padding move as a PAIR again (+0.5rem each, to `pr-6`),
+					 * so the border box grows to the slot's own right edge: the ground is
+					 * flush with the glyph's layout box and the rule's end sits 8px inside
+					 * it, while the CONTENT box — which the summary, the stamp and the
+					 * slot's pull are laid out from — stays exactly where it was; either
+					 * half alone would move the chevron 8px.
+					 */
+					"-ml-2 -mr-2 w-[calc(100%+1rem)] rounded-sm pl-2 pr-6",
+					"hover:bg-row-hover",
+				)}
+				/*
+				 * THE CHEVRON'S LEADING EDGE IS THE RULE'S ENDPOINT (operator report,
+				 * 2026-09-29, second round: "the chevron's leading edge must align with
+				 * the end of the line — treat the rule's endpoint as the alignment datum,
+				 * and the time reads to its left"). Round 1 landed the glyph's TRAILING
+				 * edge on the rule's end; the datum moved to the leading edge. The
+				 * trigger is `w-full` inside the `-mx-2 px-2` box, which bleeds on the
+				 * left only and ends 16px short of the row on the right - the
+				 * disclosure's documented geometry, the one the tool stamps' `mr-4`
+				 * insets line up with - so the slot's pull is measured from there:
+				 * `-mr-6` (24px) puts the slot's box right at the rule's end + 8px, and
+				 * the glyph's ink starts 9.33px inside the slot's right edge (the lucide
+				 * path's bbox at this size), landing the visible leading edge on the
+				 * rule's last pixel (1043.7 against 1044 at the 1280 column) — within a
+				 * third of a pixel of the terminus. The summary span and the stamp ride
+				 * with the slot, so the stamp keeps the row's own `gap-1.5` from the
+				 * chevron and still reads to its left.
+				 */
+				chevronClassName={cn("-mr-6", "text-ink-muted")}
 				summary={
 					/*
 					 * FOUR FLEX ITEMS AND THE GAP THAT SPACES THEM, not one truncating
