@@ -136,6 +136,7 @@ import {
 	foldRuns,
 	turnFeet,
 } from "./trace-fold-model";
+import { shareInFlight } from "./transcript-loader";
 import {
 	type CanonicalTranscriptStatus,
 	canonicalTranscriptSpeaks,
@@ -166,6 +167,7 @@ import {
 	snapWindowToRunBoundary,
 	windowTopRunIsHeadCut,
 } from "./turn-collapse-model";
+import { useActiveCheckpoint } from "./use-active-checkpoint";
 import type { AttachmentScope } from "./use-attachment-url";
 import { useCheckpoints } from "./use-checkpoints";
 import { useCrossSessionHidden } from "./use-cross-session-hidden";
@@ -1923,10 +1925,13 @@ const OPEN_TRACE_MS = 60_000;
  *
  * The noun is the UI's own: the cards and tick labels say "Turn N", and
  * "checkpoint" is this design's internal word - it appears nowhere a reader
- * can see it (design round 1, D4).
+ * can see it (design round 1, D4). The sentence ends with the STEP (UX round
+ * 1, U2): the transcript's own gesture - scroll up for older pages - is what
+ * changes the answer, and a refusal without it is a dead end. The search
+ * jump's copy carries the same tail.
  */
 const CHECKPOINT_JUMP_MISS_COPY =
-	"Could not reach that turn. It is further back than the loaded history.";
+	"Could not reach that turn. It is further back than the loaded history — scroll up in the transcript to load more.";
 
 /**
  * A fold group as the aggregation pass hands it on: a run group carries the
@@ -2138,6 +2143,31 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	);
 	const hidden = total - visible.length;
 	/*
+	 * The rail's reader-side cue (design round 1, D2 + U1; the settle re-read
+	 * is UX round 1, N1): one derivation of both halves the rail consumes,
+	 * owned and unit-pinned in `use-active-checkpoint.ts` beside this file.
+	 * `loadedIds` is the record ids this store holds; `activeId` is the
+	 * checkpoint at the reading position.
+	 */
+	const { activeId: activeCheckpointId, loadedIds: loadedCheckpointIds } =
+		useActiveCheckpoint(containerRef, rows, checkpoints.checkpoints);
+	/*
+	 * ONE in-flight page for the walk-side consumers — the align fetch below
+	 * and the jump walk — while the READER's own scroll path keeps the pager's
+	 * raw refusal semantics (`onLoadOlder` straight through).
+	 *
+	 * WHY THE SPLIT: the pager answers a concurrent ask with `false`, and for a
+	 * scroll that is right (no double-apply). But a walk reads `false` as
+	 * "history ends here", so a jump colliding with an align page used to fall
+	 * through to a clamped mount instead of awaiting the page already on its
+	 * way. Sharing the promise here makes that collision a wait for the two
+	 * consumers that walk; the scroll path's semantics are untouched.
+	 */
+	const walkLoadOlder = useMemo(
+		() => shareInFlight(onLoadOlder),
+		[onLoadOlder],
+	);
+	/*
 	 * The alignment's load half: when the edge sits inside a run whose head the
 	 * FETCHED rows cut off, the snap has no boundary to land on. Fetch the head
 	 * — bounded (ALIGN_FETCH_MAX pages per conversation), only while a page is
@@ -2160,8 +2190,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		);
 		if (!decision.fetch) return;
 		alignFetches.current = decision.spent;
-		void onLoadOlder();
-	}, [rows, alignSize, loadingOlder, transcript.hasMore, onLoadOlder]);
+		void walkLoadOlder();
+	}, [rows, alignSize, loadingOlder, transcript.hasMore, walkLoadOlder]);
 	/*
 	 * §E2's aggregation tier, and §E3's foot lines, computed over the SAME visible
 	 * rows the list renders. Both are pure (`trace-fold-model.ts`) because both are
@@ -2485,7 +2515,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						return current >= wanted ? current : wanted;
 					});
 				},
-				loadOlder: onLoadOlder,
+				loadOlder: walkLoadOlder,
 			});
 			if (!reachable) {
 				showInfoToast(missCopy);
@@ -2494,7 +2524,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			const outcome = await jumpToEntry(root, region, id);
 			if (outcome === "missing") showInfoToast(missCopy);
 		},
-		[containerRef, onLoadOlder],
+		[containerRef, walkLoadOlder],
 	);
 	/*
 	 * The rail's ticks and the search overlay both land through this near path
@@ -3000,6 +3030,34 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 * the bottom anchor all behave exactly as before.
 			 */}
 			<div className={cn("relative flex min-h-0 grow flex-col")}>
+				{/*
+				 * THE RAIL COMES FIRST IN THE DOM (UX round 1, U3): it is the
+				 * transcript's navigation affordance, and it used to sit after
+				 * the scroller, so reaching its ticks meant tabbing through
+				 * every focusable row (46 Tabs from the composer, measured).
+				 * The rail is absolutely positioned, so DOM order costs no
+				 * pixels - the column's first tab stop is the rail now. It DOES
+				 * cost paint order, which the rail's own wrapper answers: the rail
+				 * carries `z-10` because the scroller below it is positioned too
+				 * (`relative` + `translateZ(0)`), and without it the scroller's box
+				 * would take every pointer aimed at a tick (the scene's hover legs
+				 * went dead on this change until the rail carried z; measured). Its
+				 * props carry the one fact the component owns and the hook
+				 * does not - which conversation, so a session switch drops any
+				 * open card - plus the two callbacks; `building` is the hook's
+				 * index state, not the rail's to derive.
+				 */}
+				<CheckpointRail
+					sessionId={sessionId ?? ""}
+					checkpoints={checkpoints.checkpoints}
+					building={checkpoints.building}
+					loadedIds={loadedCheckpointIds}
+					activeId={activeCheckpointId}
+					onJump={(id) => {
+						void jumpToCheckpoint(id);
+					}}
+					onHover={handleCheckpointHover}
+				/>
 				<div
 					ref={containerRef}
 					data-lo-canonical-transcript={true}
@@ -3450,21 +3508,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				    one only described the situation. */}
 					</div>
 				</div>
-				{/*
-				 * The rail itself. Its props carry the one fact the component owns
-				 * and the hook does not — which conversation, so a session switch
-				 * drops any open card — plus the two callbacks; `building` is the
-				 * hook's index state, not the rail's to derive.
-				 */}
-				<CheckpointRail
-					sessionId={sessionId ?? ""}
-					checkpoints={checkpoints.checkpoints}
-					building={checkpoints.building}
-					onJump={(id) => {
-						void jumpToCheckpoint(id);
-					}}
-					onHover={handleCheckpointHover}
-				/>
 			</div>
 			{/*
 			 * The in-thread search overlay (`⌘F`), mounted HERE rather than in the
