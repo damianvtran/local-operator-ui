@@ -60,6 +60,32 @@ export function isEditable(state: MiniViewState): boolean {
 	return state.send !== "sending";
 }
 
+/**
+ * HOW A MESSAGE WAS PRODUCED (arch §4.2), the mini's half of the composer's
+ * `input_mode`: `dictated` for a message only a transcript put there, `typed`
+ * for one only the keyboard did, `mixed` for both — since the box last
+ * emptied. `undefined` when the harness has not advertised
+ * `features.input_mode`: the wire drops the field entirely, which is the
+ * legacy body an older harness validates with `extra="forbid"`.
+ *
+ * Pure, and here rather than in the component so the derivation is driven
+ * without a DOM (the same discipline as the transitions above): the composer
+ * reads the two booleans off its refs at the press and passes the gate's own
+ * answer in — `features.input_mode`, resolved from the capability map the
+ * seat resolution already read.
+ */
+export type MiniInputMode = "typed" | "dictated" | "mixed";
+
+export function wireInputMode(
+	enabled: boolean,
+	sawTyping: boolean,
+	sawDictation: boolean,
+): MiniInputMode | undefined {
+	if (!enabled) return undefined;
+	if (!sawDictation) return "typed";
+	return sawTyping ? "mixed" : "dictated";
+}
+
 export const miniTransitions = {
 	/**
 	 * A seat resolution answered with a usable conversation.
