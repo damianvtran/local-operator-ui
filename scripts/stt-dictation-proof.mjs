@@ -61,6 +61,9 @@ import { join } from "node:path";
 import { withNotificationsOff } from "./notifications-off.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
 
+/* The frame suffix the sweep walks by; hoisted so the pattern is compiled once (useTopLevelRegex). */
+const WEBP_SUFFIX = /\.webp$/;
+
 const OUT = process.argv[2] ?? join(tmpdir(), "lo-stt-proof");
 const BACKEND = process.env.LO_PROOF_BACKEND ?? "http://127.0.0.1:1131";
 const TOKEN = process.env.LO_PROOF_TOKEN ?? "";
@@ -508,9 +511,22 @@ class Cdp {
 	}
 	async shot(name) {
 		const { data } = await this.send("Page.captureScreenshot", {
-			format: "png",
+			format: "webp",
+			quality: 88,
 		});
-		writeFileSync(join(OUT, name), Buffer.from(data, "base64"));
+		/*
+		 * The sweep derives the theme from the FRAME'S OWN basename, so a flat
+		 * `<stem>.webp` fails `no palette named <stem>` however the set is
+		 * declared (see `paletteStemRenameNote`). Write the canonical
+		 * `<stem>/<theme>.webp` shape; the app under this rig runs the brand
+		 * dark theme, which is also what the committed frames measure.
+		 */
+		const stem = name.replace(WEBP_SUFFIX, "");
+		mkdirSync(join(OUT, stem), { recursive: true });
+		writeFileSync(
+			join(OUT, stem, "localOperatorDark.webp"),
+			Buffer.from(data, "base64"),
+		);
 	}
 }
 
@@ -922,7 +938,7 @@ try {
 	const draftText = "review the stt overhaul";
 	const typedA = await typeIntoComposer(draftText);
 	verify("sessionA.draftTyped", typedA === draftText, { draft: typedA });
-	await cdp.shot("01-idle-draft.png");
+	await cdp.shot("01-idle-draft.webp");
 	record("sessionA.idle", await composerBox());
 	/*
 	 * THE TOOLTIP NAMES THE BINDING (design round 1, D1). Hovered through the
@@ -948,7 +964,7 @@ try {
 			y: micHover.y,
 		});
 		await sleep(1400);
-		await cdp.shot("14-mic-tooltip.png");
+		await cdp.shot("14-mic-tooltip.webp");
 		record("sessionA.micTooltip", {
 			text: await cdp.evaluate(
 				`(() => document.body.innerText.match(/Start recording[^\\n]*/) ?? "")()`,
@@ -1052,13 +1068,13 @@ try {
 		 * a pass that FLIPPED.
 		 */
 		await sleep(450);
-		await cdp.shot("02-recording-combo.png");
+		await cdp.shot("02-recording-combo.webp");
 		record("sessionA.recordingTreatment", await composerBox());
 		// The release is what stops it; the transcription then leaves, is held on
 		// screen by the upstream delay, and lands in the composer.
 		await releaseHold(ALT_RIGHT);
 		const transcribing = await awaitTranscriptLanding("sessionA.combo");
-		if (transcribing) await cdp.shot("03-transcribing.png");
+		if (transcribing) await cdp.shot("03-transcribing.webp");
 		const landed = await waitForDraft(
 			(d) => d.includes("fake upstream"),
 			20_000,
@@ -1067,7 +1083,7 @@ try {
 			transcribingSeen: transcribing,
 			draft: landed,
 		});
-		await cdp.shot("04-dictated-landed.png");
+		await cdp.shot("04-dictated-landed.webp");
 	} else {
 		await releaseHold(ALT_RIGHT, { holdExtraMs: 0 });
 		note(
@@ -1093,17 +1109,17 @@ try {
 	if (space.detail.flipped) {
 		// Same settled-lane wait as the combo frame above (design round 1, D4).
 		await sleep(450);
-		await cdp.shot("05-recording-space.png");
+		await cdp.shot("05-recording-space.webp");
 		record("sessionA.recordingTreatmentSpace", await composerBox());
 		await releaseHold(SPACE);
 		await awaitTranscriptLanding("sessionA.space");
-		await cdp.shot("06-transcribing-space.png");
+		await cdp.shot("06-transcribing-space.webp");
 		const landed = await waitForDraft(
 			(d) => d.includes("fake upstream"),
 			20_000,
 		);
 		record("sessionA.transcriptLandedSpace", { draft: landed });
-		await cdp.shot("07-dictated-landed-space.png");
+		await cdp.shot("07-dictated-landed-space.webp");
 	} else {
 		await releaseHold(SPACE, { holdExtraMs: 0 });
 	}
@@ -1131,7 +1147,7 @@ try {
 		`document.body.innerText.includes("review the stt overhaul")`,
 		10_000,
 	);
-	await cdp.shot("08-mixed-row.png");
+	await cdp.shot("08-mixed-row.webp");
 
 	/* ---------------------------------- session B: mid-turn dictation + steer */
 
@@ -1188,7 +1204,7 @@ try {
 		),
 	});
 	record("sessionB.streamingSamples", { samples: streamingSamples });
-	await cdp.shot("09-typed-row-mid-turn.png");
+	await cdp.shot("09-typed-row-mid-turn.webp");
 
 	// The steady mid-turn state: the turn IS streaming, the transcript shows the
 	// bash row. WAITED FOR rather than assumed - the sampling above measured the
@@ -1245,7 +1261,7 @@ try {
 		attempts: midAttempts,
 	});
 	if (mid.detail.flipped) {
-		await cdp.shot("10-dictating-mid-turn.png");
+		await cdp.shot("10-dictating-mid-turn.webp");
 		await releaseHold(ALT_RIGHT);
 		const transcribing = await awaitTranscriptLanding("sessionB.midTurn");
 		record("sessionB.midTurnTranscribing", { transcribing });
@@ -1254,7 +1270,7 @@ try {
 			20_000,
 		);
 		record("sessionB.midTurnTranscriptLanded", { draft: landed });
-		await cdp.shot("11-dictated-mid-turn.png");
+		await cdp.shot("11-dictated-mid-turn.webp");
 		const rowShape = async (needle) =>
 			JSON.parse(
 				await cdp.evaluate(`(() => {
@@ -1324,7 +1340,7 @@ try {
 			`document.body.innerText.includes(${JSON.stringify("dictated steer probe from the fake upstream.")})`,
 			5000,
 		);
-		await cdp.shot("12-sent-mid-turn-steer.png");
+		await cdp.shot("12-sent-mid-turn-steer.webp");
 		/*
 		 * THE ROW-IDENTITY COMPARISON, SAMPLED HERE WHERE THE TEXT IS PROVEN
 		 * PRESENT - the `waitFor` above just found it in `document.body.innerText`.
@@ -1643,7 +1659,7 @@ try {
 	note(
 		"session C could not land inside the ~8 ms press-to-echo window this rig measures (its release plumbing costs ~17 ms); the transcript rode the fresh-append path, asserted above, and the composed-clear path is covered by reading, not by this run",
 	);
-	await cdp.shot("13-transcript-in-echo-window.png");
+	await cdp.shot("13-transcript-in-echo-window.webp");
 
 	/* -------------- session D: the resolve-window takes (review round 1) */
 
@@ -1743,7 +1759,7 @@ try {
 		{ draft: landedD },
 	);
 	record("sessionD.joinedDraft", { draft: landedD });
-	await cdp.shot("15-edge-takes-settled.png");
+	await cdp.shot("15-edge-takes-settled.webp");
 
 	/* -------------- session E: Esc on the PTT door claims the take, not the turn */
 
@@ -1814,7 +1830,7 @@ try {
 		transcribing: boxE.transcribing,
 		draft: boxE.draft,
 	});
-	await cdp.shot("16-esc-ptt-cancels-take-not-turn.png");
+	await cdp.shot("16-esc-ptt-cancels-take-not-turn.webp");
 	// The hold's key still has to come up cleanly even though the abort already
 	// ended the take; the release is a no-op then (the manager cleared `engaged`).
 	await key("keyUp", ALT_RIGHT);
