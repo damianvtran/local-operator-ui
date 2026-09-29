@@ -118,6 +118,124 @@ test("message_end is authoritative over accumulated deltas", () => {
 	assert.equal(a1.streaming, false);
 });
 
+test("a settled assistant is stamped with the instant it settled, once", () => {
+	/*
+	 * `settledAt` is the live half of a wall-clock span: a live assistant record's
+	 * `ts` is its stream START, so a `Took` built from `ts` would read short by
+	 * the answer's whole streaming time and jump when the reconcile swaps in the
+	 * durable twin. The stamp is written when the record SETTLES and kept on a
+	 * replay — a restamped completion would move a span the reader is watching.
+	 */
+	let state = EMPTY_TRANSCRIPT;
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: assistant("a1", "") },
+		1,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_update", delta: "Hel", message: assistant("a1", "") },
+		2,
+	);
+	assert.equal(
+		state.records[0].settledAt,
+		undefined,
+		"a streaming row has not settled and states no completion",
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_end", message: assistant("a1", "Hello!") },
+		3,
+	);
+	assert.equal(state.records[0].settledAt, 3, "stamped at the settle frame");
+
+	// A replayed `message_end` (receipt replay, a flush from a dead stream) must
+	// not restamp it, and its text (the authoritative whole) still lands.
+	const replayed = applyEvent(
+		state,
+		{ type: "message_end", message: assistant("a1", "Hello!") },
+		9,
+	);
+	assert.equal(
+		replayed.records[0].settledAt,
+		3,
+		"the first settle instant wins",
+	);
+	assert.equal(replayed.records[0].text, "Hello!");
+});
+
+test("the turn end stamps whatever it settles, aborted or not", () => {
+	// The sweep that clears `streaming` at `agent_end` is the one that catches a
+	// stream whose `message_end` never came — an abort, and a lost end event on a
+	// clean turn. Both settle at the turn end's own frame.
+	const stream = () => {
+		let state = applyEvent(
+			EMPTY_TRANSCRIPT,
+			{ type: "message_start", message: assistant("a1", "") },
+			1,
+		);
+		state = applyEvent(
+			state,
+			{ type: "message_update", delta: "half", message: assistant("a1", "") },
+			2,
+		);
+		return state;
+	};
+	const aborted = applyEvent(stream(), { type: "agent_end", aborted: true }, 5);
+	assert.equal(aborted.records[0].streaming, false);
+	assert.equal(aborted.records[0].stopReason, "aborted");
+	assert.equal(aborted.records[0].settledAt, 5);
+	assert.equal(
+		applyEvent(stream(), { type: "agent_end", aborted: false }, 7).records[0]
+			.settledAt,
+		7,
+		"a clean end that lost its `message_end` settles the same way",
+	);
+});
+
+test("durable rows carry no settle stamp: their `ts` is the commit", () => {
+	// A page states a completion it did not witness, so it must not stamp one;
+	// and when the durable row replaces a live stamped one, the page wins with
+	// its own `ts` — the same rule `ts` already followed.
+	const page = {
+		entries: [
+			{
+				id: "a1",
+				ts: 11,
+				type: "message",
+				payload: { kind: "message", ...assistant("a1", "the whole answer") },
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	};
+	const durable = applyHistoryPage(EMPTY_TRANSCRIPT, page);
+	assert.equal(durable.records[0].settledAt, undefined);
+	assert.equal(
+		applyHistoryPage(durable, page),
+		durable,
+		"and a replay stays a no-op",
+	);
+
+	let live = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: assistant("a1", "") },
+		1,
+	);
+	live = applyEvent(
+		live,
+		{ type: "message_end", message: assistant("a1", "the whole answer") },
+		3,
+	);
+	assert.equal(live.records[0].settledAt, 3);
+	const reconciled = applyHistoryPage(live, page);
+	assert.equal(
+		reconciled.records[0].settledAt,
+		undefined,
+		"the durable twin has no stamp; its commit `ts` is the end instant",
+	);
+});
+
 test("durable history wins over live projections and replay never regresses it", () => {
 	let state = EMPTY_TRANSCRIPT;
 	// Live projection from an old replay (partial text).
