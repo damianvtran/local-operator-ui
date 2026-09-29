@@ -2299,14 +2299,32 @@ const BRANCH_RECORDS = [
 	"python314RefreshFoldNote",
 	"python314RefreshSecondFoldNote",
 	/*
-	 * And by THIS branch, whose records the merge of `origin/main` = `f9dbf8b455` had to keep: its
+	 * And by the SETTINGS-RAIL lane's folds onto `origin/main` = `0738fa7eb3`,
+	 * `49491865ca`, `7ba0ddce94` and `f9dbf8b455` (2026-09-29): that pass re-laid its records
+	 * onto this file - its ground restamp note and its fold records, one
+	 * re-keyed to `foldOntoA8ac7f673cSettingsRailNote` because main's copy
+	 * already ships notes under both of its old names - and wrote a note per
+	 * fold. They are listed for the reason this list exists: a fold that
+	 * started from main's copy would drop them first, and with them the only
+	 * statements of which trees each pass moved.
+	 */
+	"settingsRailGroundRestampNote",
+	"foldOnto8320e52366SettingsRailNote",
+	"foldOntoE2394f9ff1Note",
+	"foldOntoA8ac7f673cSettingsRailNote",
+	"foldOnto0738fa7eb3Note",
+	"foldOnto49491865caNote",
+	"foldOnto7ba0ddce94Note",
+	"foldOnto6f284060Note",
+	/*
+	 * And by THIS branch, whose records the merge of `origin/main` = `a7b4f88a18` had to keep: its
 	 * own fold records (the first fold's, kept whole; the two whose SHA-named keys main's own lanes
 	 * had already coined, renamed with this branch's `MeasureDrag` suffix - main's kept the plain
 	 * names, both records coexisting; and the fold this commit's own merge writes). A fold that
 	 * resolved this file from main's copy would drop them first, which is the failure this list
 	 * exists to make loud.
 	 */
-	"foldOnto49491865caNote",
+	"foldOnto49491865caMeasureDragNote",
 	"foldOnto5ba0d0dc8aMeasureDragNote",
 	"foldOnto6f28406010Note",
 	"foldOnto8a03152c61MeasureDragNote",
