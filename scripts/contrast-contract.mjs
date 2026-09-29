@@ -1208,8 +1208,8 @@ const CONTROLS = [
 		 * loop would then assert every ink on it including the two that fail.
 		 *
 		 * `on` names every ground rather than one, and that is the measured fact rather
-		 * than caution: the row is a sibling of the consent band and the popup notice in
-		 * the same strip, and the ground behind the strip is whichever one the route
+		 * than caution: the row is a sibling of the consent band in the same strip, and
+		 * the ground behind the strip is whichever one the route
 		 * paints (the pane draws `canvas`, the surface draws `surface`), so the wash is
 		 * asserted against all four.
 		 */
@@ -2627,7 +2627,8 @@ const STRUCTURAL_CALL_SITES = [
 	{
 		/*
 		 * The settings rail's current row, which was the same defect on the same
-		 * ground: the rail's root is `bg-surface` (`settings-sidebar.tsx`) and it
+		 * ground: the rows read against `surface`, which the rail's group lists
+		 * carry (the root moved to `bg-elevated` on 2026-09-27), and it
 		 * marked its current section with `accent-wash` — ΔE00 1.05 in tokyoNight
 		 * (`#262B3F` on `#24283B`), a row with no ground at all, identifiable only by
 		 * its accent glyph and weight. It is here rather than in a set of its own
