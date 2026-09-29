@@ -1947,6 +1947,29 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"sttDictationRestampNote",
 	/*
+	 * THE FOLDS OF THE READ-RECEIPT BRANCH, each stated where it happened and
+	 * each kept by every later fold (union by key - no key from either side is
+	 * dropped): onto `d1fe9eb01e` (the quick-send / mini-view branch, #630s),
+	 * onto `3de40b0fc9` (the turn-collapse train), onto `7c9c98ecc7` (the #633
+	 * stt-overhaul merge), onto `46d0bba0de` (the #573 view-settings merge),
+	 * onto `8dc87ea84c` (the #642 sessionless-slash merge), onto
+	 * `bc09a6d698` (the #643 ptt-keymap and #630 transcript-checkpoint merges)
+	 * and onto `dd51156839` (the #644 mini-view shared-dictation merge),
+	 * then onto `0a2c8e7a30` (the #647 release train and #641 project-create-sheet),
+	 * and onto `654c58f5f6` (the #648/#649 merges),
+	 * then onto `91617c21ec` (the #646 quick-send default-chord merge),
+	 * and onto `a0cdaa759f` (the #629 thread-search overlay merge),
+	 * then onto `682f531120` (the #617 readme-visuals merge).
+	 * This branch's own record, `readReceiptForegroundRestampNote`, states the
+	 * receipt pass and its round-1 remediation; the change moves `src/` (the
+	 * completion-view hook and the transcript reducer's live-settle arm) and
+	 * `scripts/` (the receipt suite's new cases, the reducer suite's case, and
+	 * their registration), and takes no frame of its own - its evidence is the
+	 * committed before/after half under
+	 * `docs/evidence/chat-sidebar-ack-and-selection/`.
+	 */
+	"readReceiptForegroundRestampNote",
+	/*
 	 * AND THE SEAM'S OWN (2026-09-29): `pttKeymapRestampNote` is the follow-up
 	 * that makes the STT stream CONSUME the registry row `keymap.push_to_talk`
 	 * (local-operator #1750 landed while #633 was in review): the renderer reads
@@ -1958,7 +1981,6 @@ const STAMP_BINDING_NOTES = [
 	 * pair, so it is held to this file like every entry above it.
 	 */
 	"pttKeymapRestampNote",
-
 	/*
 	 * The sessionless-slash pass (issue #625), this branch's newest record: it
 	 * re-derived both stamps for the branch's own change and quotes the pair it
@@ -1967,10 +1989,10 @@ const STAMP_BINDING_NOTES = [
 	"sessionlessSlashRestampNote",
 	/*
 	 * AND THE QUICK-SEND PASS'S OWN: `quickSendRestampNote` is the global
-	 * hotkey / mini composer change's record. It moves BOTH trees — `src/` for
+	 * hotkey / mini composer change's record. It moves BOTH trees - `src/` for
 	 * the mini view, its registrar, the config watch, the desktop-plane
 	 * admission and the settings row, `scripts/` for the registrar suite, the
-	 * rig stub, the extended gates and the driver's `mini-view` scene — and
+	 * rig stub, the extended gates and the driver's `mini-view` scene - and
 	 * re-shoots nothing (the evidence lives on the PR's own branch, not in this
 	 * tree), so the pair is re-derived from the tree the re-stamp commit ships
 	 * and every list member above is re-pointed with it. It quotes that pair,
@@ -2030,6 +2052,98 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"miniDictRestampNote",
 	/*
+	 * AND THE README-VISUALS REMEDIATION'S OWN: `readmeVisualsRestampNote` states
+	 * the pair this branch's change binds - the story under `src/` and the two
+	 * rigs under `scripts/` moved both stamped trees, and no sweep frame moved -
+	 * so it is held to the pair this file ships rather than read as history.
+	 */
+	"readmeVisualsRestampNote",
+	/*
+	 * AND THE FOLD'S OWN (2026-09-29): `readmeVisualsFoldNote` is the fold onto
+	 * the moved `origin/main` `8dc87ea84c` (#642 over #573's view-settings
+	 * re-capture) while round 1 was being answered - the two conflicted paths
+	 * were the manifest and this list, both resolved as unions with no key
+	 * dropped from either side, and both stamps re-derived from the MERGED tree
+	 * by the docs-only amendment under the merge. It quotes that pair, so it is
+	 * held to the pair this file ships.
+	 */
+	"readmeVisualsFoldNote",
+	/*
+	 * AND THE ROUND-2 FIX'S OWN (2026-09-29): `readmeVisualsRoundTwoRestampNote`
+	 * states the pair its fix binds - the helper's required field and the scene's
+	 * store reset under `src/`, and its own registration here - and quotes that
+	 * pair, so it is held to the pair this file ships.
+	 */
+	"readmeVisualsRoundTwoRestampNote",
+	/*
+	 * AND THE SECOND FOLD'S OWN (2026-09-29): `readmeVisualsFoldTwoNote` is the
+	 * fold onto the moved `origin/main` `b23f789c10` (#643's keymap-consume
+	 * merge, whose branch re-stamped the evidence itself) - the single
+	 * conflicted path was the manifest, resolved with main's records whole and
+	 * this branch's laid back on top, and both stamps re-derived from the
+	 * MERGED tree by the docs-only amendment under the merge. It quotes that
+	 * pair, so it is held to the pair this file ships.
+	 */
+	"readmeVisualsFoldTwoNote",
+	/*
+	 * AND THE THIRD FOLD'S OWN (2026-09-29): `readmeVisualsFoldThreeNote` is the
+	 * fold onto the moved `origin/main` `bc09a6d698` (#630's
+	 * transcript-checkpoint-rail merge) - the single conflicted path was the
+	 * manifest, resolved with main's records whole and this branch's laid back
+	 * on top, and both stamps re-derived from the MERGED tree by the docs-only
+	 * amendment under the merge. It quotes that pair, so it is held to the pair
+	 * this file ships.
+	 */
+	"readmeVisualsFoldThreeNote",
+	/*
+	 * AND THE FOURTH FOLD'S OWN (2026-09-29): `readmeVisualsFoldFourNote` is the
+	 * fold onto the moved `origin/main` `dd51156839` (#644's
+	 * mini-view-shared-dictation merge) - both evidence files conflicted this
+	 * time and both were resolved as unions with no key dropped, and both stamps
+	 * re-derived from the MERGED tree by the docs-only amendment under the
+	 * merge. It quotes that pair, so it is held to the pair this file ships.
+	 */
+	"readmeVisualsFoldFourNote",
+	/*
+	 * AND THE FIFTH FOLD'S OWN (2026-09-29): `readmeVisualsFoldFiveNote` is the
+	 * fold onto the moved `origin/main` `0a2c8e7a30` (#647's release bump, with
+	 * #641 and #610 behind it) - the single conflicted path was the manifest,
+	 * resolved with main's records whole and this branch's laid back on top,
+	 * and both stamps re-derived from the MERGED tree by the docs-only
+	 * amendment under the merge. It quotes that pair, so it is held to the pair
+	 * this file ships.
+	 */
+	"readmeVisualsFoldFiveNote",
+	/*
+	 * AND THE SIXTH FOLD'S OWN (2026-09-29): `readmeVisualsFoldSixNote` is the
+	 * fold onto the moved `origin/main` `654c58f5f672` (#639's
+	 * relaunch-during-shutdown fix) - both evidence files conflicted and both
+	 * were resolved as unions with no key dropped, and both stamps re-derived
+	 * from the MERGED tree by the docs-only amendment under the merge. It
+	 * quotes that pair, so it is held to the pair this file ships.
+	 */
+	"readmeVisualsFoldSixNote",
+	/*
+	 * AND THE SEVENTH FOLD'S OWN (2026-09-29): `readmeVisualsFoldSevenNote` is
+	 * the fold onto the moved `origin/main` `a0cdaa759f5a` (#629's
+	 * thread-search-overlay merge) - the single conflicted path was the
+	 * manifest, resolved with main's records whole and this branch's laid back
+	 * on top, and both stamps re-derived from the MERGED tree by the docs-only
+	 * amendment under the merge. It quotes that pair, so it is held to the pair
+	 * this file ships.
+	 */
+	"readmeVisualsFoldSevenNote",
+	/*
+	 * AND THE CROSS-SESSION VISIBILITY FILTER'S OWN (2026-09-29): both trees this
+	 * file binds move - `src/` for the renderer-side records filter, its
+	 * settings-query hook and the canonical transcript's seam; `scripts/` for the
+	 * filter's suite, the query providers every transcript harness gained, and the
+	 * `test:desktop` registration - while no frame is added or re-taken, because
+	 * this change's desktop captures are the PR's own rather than entries here. It
+	 * quotes the pair, so it is held to this file like every entry above it.
+	 */
+	"crossSessionVisibilityRestampNote",
+	/*
 	 * AND THE UPDATE DRAIN'S OWN (2026-09-29): `updateDrainIdleSwitchRestampNote`
 	 * is the record for the update drain → idle-switch change - the operator's
 	 * directive removed the fleet-drain gate from the two RESTART legs, the
@@ -2051,6 +2165,15 @@ const STAMP_BINDING_NOTES = [
 	 * quotes that pair, so it is held to this file like every entry above it.
 	 */
 	"updateDrainRemediationRestampNote",
+	/*
+	 * AND THIS FOLD'S OWN (2026-09-29): `updateDrainFoldNote` is the fold onto the
+	 * moved `origin/main` `036e501fdf` (#638's hide-cross-session-transcript merge
+	 * over the release train) - both evidence files conflicted, both were resolved
+	 * as unions with no key dropped from either side, and both stamps re-derived
+	 * from the MERGED tree by the docs-only amendment under the merge. It quotes
+	 * that pair, so it is held to the pair this file ships.
+	 */
+	"updateDrainFoldNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -3168,6 +3291,81 @@ const BRANCH_RECORDS = [
 	 */
 	"relaunchDuringQuitRestampNote",
 	/*
+	 * Grown by the README-visuals remediation, this branch's newest top-level
+	 * record and the one that re-derived both stamps: the story under `src/` and
+	 * the two rigs under `scripts/` moved both trees, and no sweep frame moved.
+	 * It is listed for the reason the list exists: a fold that started from
+	 * main's manifest would drop it (and with it the note that says which two
+	 * tree hashes this branch's delta moved) without a word.
+	 */
+	"readmeVisualsRestampNote",
+	/*
+	 * Grown by the README-visuals fold, this branch's newest top-level record:
+	 * the merge onto `origin/main` `8dc87ea84c` resolved both evidence files as
+	 * unions and re-derived the pair from the merged tree, and the note it wrote
+	 * is listed for the reason the list exists - a fold that started from main's
+	 * copy would drop it first.
+	 */
+	"readmeVisualsFoldNote",
+	/*
+	 * Grown by the round-2 fix, this branch's newest top-level record: its
+	 * `notRunKind` and width-reset edits moved the src tree, and the note is
+	 * listed for the reason the list exists - a fold that started from main's
+	 * copy would drop it first.
+	 */
+	"readmeVisualsRoundTwoRestampNote",
+	/*
+	 * Grown by the second fold, this branch's newest top-level record: the
+	 * merge onto `origin/main` `b23f789c10` re-derived the pair from the merged
+	 * tree, and the note it wrote is listed for the reason the list exists - a
+	 * fold that started from main's copy would drop it first.
+	 */
+	"readmeVisualsFoldTwoNote",
+	/*
+	 * Grown by the third fold, this branch's newest top-level record: the merge
+	 * onto `origin/main` `bc09a6d698` re-derived the pair from the merged tree,
+	 * and the note it wrote is listed for the reason the list exists - a fold
+	 * that started from main's copy would drop it first.
+	 */
+	"readmeVisualsFoldThreeNote",
+	/*
+	 * Grown by the fourth fold, this branch's newest top-level record: the
+	 * merge onto `origin/main` `dd51156839` re-derived the pair from the merged
+	 * tree, and the note it wrote is listed for the reason the list exists - a
+	 * fold that started from main's copy would drop it first.
+	 */
+	"readmeVisualsFoldFourNote",
+	/*
+	 * Grown by the fifth fold, this branch's newest top-level record: the
+	 * merge onto `origin/main` `0a2c8e7a30` re-derived the pair from the merged
+	 * tree, and the note it wrote is listed for the reason the list exists - a
+	 * fold that started from main's copy would drop it first.
+	 */
+	"readmeVisualsFoldFiveNote",
+	/*
+	 * Grown by the sixth fold, this branch's newest top-level record: the
+	 * merge onto `origin/main` `654c58f5f672` re-derived the pair from the
+	 * merged tree, and the note it wrote is listed for the reason the list
+	 * exists - a fold that started from main's copy would drop it first.
+	 */
+	"readmeVisualsFoldSixNote",
+	/*
+	 * Grown by the seventh fold, this branch's newest top-level record: the
+	 * merge onto `origin/main` `a0cdaa759f5a` re-derived the pair from the
+	 * merged tree, and the note it wrote is listed for the reason the list
+	 * exists - a fold that started from main's copy would drop it first.
+	 */
+	"readmeVisualsFoldSevenNote",
+	/*
+	 * And the cross-session visibility filter's own record
+	 * (`crossSessionVisibilityRestampNote`), the same reason one note over: it is
+	 * this side's statement of what moved and what did not - both trees, no frame
+	 * - and a fold resolved from main's copy would drop it. Registered here with
+	 * the fold that carried quick-send's entry in, so the next one cannot drop
+	 * either silently.
+	 */
+	"crossSessionVisibilityRestampNote",
+	/*
 	 * AND THIS PASS'S OWN (2026-09-29): `updateDrainIdleSwitchRestampNote` is the
 	 * record for the update drain → idle-switch change (the operator's directive
 	 * removed the fleet-drain gate from the two RESTART legs; the rebuild route's
@@ -3188,6 +3386,15 @@ const BRANCH_RECORDS = [
 	 * this list exists.
 	 */
 	"updateDrainRemediationRestampNote",
+	/*
+	 * AND THIS FOLD'S OWN (2026-09-29): `updateDrainFoldNote` is the fold onto the
+	 * moved `origin/main` `036e501fdf` (#638's hide-cross-session-transcript merge
+	 * over the release train) - both evidence files conflicted, both were resolved
+	 * as unions with no key dropped from either side, and both stamps re-derived
+	 * from the MERGED tree by the docs-only amendment under the merge. It quotes
+	 * that pair, so it is held to the pair this file ships.
+	 */
+	"updateDrainFoldNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

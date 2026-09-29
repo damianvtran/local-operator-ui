@@ -21,6 +21,7 @@
  */
 import { RunChildReader } from "@features/chat/components/run-details/run-child-reader";
 import type { SubagentRow } from "@features/chat/components/run-details/run-detail-model";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./child-reader-scroll-evidence.css";
@@ -684,7 +685,22 @@ if (theme) document.documentElement.dataset.theme = theme;
 document.documentElement.style.height = "100%";
 document.body.style.height = "100%";
 
-createRoot(document.getElementById("root") as HTMLElement).render(<App />);
+/*
+ * The reader's pane now goes through `CanonicalTranscript`, whose
+ * cross-session visibility reads react-query (`useCrossSessionHidden`), so the
+ * page needs a provider the way the app gives it one - without it the first
+ * populated render throws `No QueryClient set`. Unseeded is the fail-closed
+ * path, so this rig frames nothing hidden and the measured pane is the
+ * unfiltered one its claims are about.
+ */
+const queryClient = new QueryClient({
+	defaultOptions: { queries: { retry: false } },
+});
+createRoot(document.getElementById("root") as HTMLElement).render(
+	<QueryClientProvider client={queryClient}>
+		<App />
+	</QueryClientProvider>,
+);
 requestAnimationFrame(() =>
 	requestAnimationFrame(() => {
 		(window as unknown as { __childScrollReady?: boolean }).__childScrollReady =
