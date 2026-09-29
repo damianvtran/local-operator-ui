@@ -2299,6 +2299,24 @@ const BRANCH_RECORDS = [
 	"python314RefreshFoldNote",
 	"python314RefreshSecondFoldNote",
 	/*
+	 * And by the SETTINGS-RAIL lane's folds onto `origin/main` = `0738fa7eb3`,
+	 * `49491865ca`, `7ba0ddce94` and `f9dbf8b455` (2026-09-29): that pass re-laid its records
+	 * onto this file - its ground restamp note and its fold records, one
+	 * re-keyed to `foldOntoA8ac7f673cSettingsRailNote` because main's copy
+	 * already ships notes under both of its old names - and wrote a note per
+	 * fold. They are listed for the reason this list exists: a fold that
+	 * started from main's copy would drop them first, and with them the only
+	 * statements of which trees each pass moved.
+	 */
+	"settingsRailGroundRestampNote",
+	"foldOnto8320e52366SettingsRailNote",
+	"foldOntoE2394f9ff1Note",
+	"foldOntoA8ac7f673cSettingsRailNote",
+	"foldOnto0738fa7eb3Note",
+	"foldOnto49491865caNote",
+	"foldOnto7ba0ddce94Note",
+	"foldOnto6f284060Note",
+	/*
 	 * AND THIS PASS'S OWN (`installProvisioningRestampNote`), re-laid by this fold
 	 * (origin/main `0738fa7eb3` over this branch's `1e4653b7ea`): its subject IS the
 	 * binding this file once held - the install path is not something the evidence
@@ -2318,20 +2336,20 @@ const BRANCH_RECORDS = [
 	 */
 	"installProvisioningRemediationRestampNote",
 	/*
-	 * And THIS fold's own, beside them (`foldOnto0738fa7eb3Note`): the merge onto
+	 * And THIS fold's own, beside them (`foldOnto0738fa7eb3InstallProvisioningNote`, re-keyed at the fifth fold - main already ships a note under the old name): the merge onto
 	 * `origin/main` `0738fa7eb3` resolved both evidence files as unions and re-derived the
 	 * stamps from the merged tree; it is registered for the list's usual reason - a fold
 	 * that started from main's copy would drop it first.
 	 */
-	"foldOnto0738fa7eb3Note",
+	"foldOnto0738fa7eb3InstallProvisioningNote",
 	/*
-	 * And the SECOND fold's own, beside them (`foldOnto49491865caNote`): main moved six
+	 * And the SECOND fold's own, beside them (`foldOnto49491865caInstallProvisioningNote`, re-keyed at the fifth fold - main already ships a note under the old name): main moved six
 	 * commits (the desktop-tests diagnostics train, #557) while the first fold was being
 	 * verified, this file conflicted alone, and a conflicting head produces no
 	 * pull-request runs - so the fold is repeated, and its record is registered for the
 	 * list's usual reason.
 	 */
-	"foldOnto49491865caNote",
+	"foldOnto49491865caInstallProvisioningNote",
 	/*
 	 * And the THIRD fold's own, beside them (`foldOnto6f28406010Note`): main moved again -
 	 * the v0.31.21 release, #652's driven-page OAuth popups and #568's CPython 3.14
@@ -2348,6 +2366,13 @@ const BRANCH_RECORDS = [
 	 * Registered for the list's usual reason.
 	 */
 	"foldOntoF9dbf8b455Note",
+	/*
+	 * And the FIFTH fold's own, beside them (`foldOntoA7b4f88a18Note`): main moved once more -
+	 * the settings-rail-edge fix (#609) - and this fold resolved both evidence files as
+	 * unions, re-keying this lane's two collided fold records as it re-laid them. Registered
+	 * for the list's usual reason: a fold that started from main's copy would drop it first.
+	 */
+	"foldOntoA7b4f88a18Note",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
