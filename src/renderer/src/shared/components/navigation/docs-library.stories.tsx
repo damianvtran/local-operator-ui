@@ -811,7 +811,9 @@ const ExpandReceipt = ({ marker }: { marker: string }) => {
 };
 
 /**
- * Hold the shutter until the hub's scope switch (its `play`) has landed; a
+ * Hold the shutter until the hub's scope switch (its `play`) has landed - an org
+ * badge on screen is the proof, since the Teams roster is a tab now and is no
+ * longer rendered under the grid; a
  * play that failed shows no error display, so the timeout leaves
  * `data-capture-failed` for the rig to refuse on.
  */
@@ -820,7 +822,7 @@ const HubHold = () => {
 		document.documentElement.dataset.capturePending = "1";
 		const started = Date.now();
 		const timer = window.setInterval(() => {
-			if (document.querySelector('[data-testid="org-teams"]')) {
+			if (document.querySelector('[data-testid="agent-org-badge"]')) {
 				document.documentElement.removeAttribute("data-capture-pending");
 				window.clearInterval(timer);
 			} else if (Date.now() - started > 20_000) {
@@ -1585,12 +1587,10 @@ export const AgentHub: Story = {
 	},
 	play: async () => {
 		await screen.findByTestId("agent-hub-status");
-		await userEvent.click(await screen.findByTestId("agent-hub-scope"));
 		await userEvent.click(
-			await screen.findByRole("option", { name: "Aster Labs" }),
+			await screen.findByRole("button", { name: "Aster Labs" }),
 		);
-		await screen.findByTestId("agent-org-badge");
-		await screen.findByTestId("org-teams");
+		await screen.findAllByTestId("agent-org-badge");
 	},
 };
 

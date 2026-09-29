@@ -191,6 +191,8 @@ type BridgeBehaviour = {
 		version: string;
 		members: { role: string; kind: string; count: number }[];
 	}[];
+	/** Never settle the teams read, so the Teams view stays in its loading state. */
+	holdTeams?: boolean;
 	/** Fail the memberships read, so the picker's "could not be read" line shows. */
 	failMemberships?: boolean;
 	/**
@@ -220,6 +222,7 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 		orgAgents = 0,
 		orgRefusal,
 		teams = [],
+		holdTeams = false,
 		failMemberships = false,
 		orgCapability = true,
 	} = behaviour;
@@ -358,6 +361,9 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 					});
 				}
 				case "org_teams.list": {
+					// Like `holdList`: a read that never settles is how the loading
+					// state is photographed without a timer.
+					if (holdTeams) return await new Promise(() => {});
 					/*
 					 * The roster is refused with the SAME code the workspace was, because the
 					 * server gates both on the same membership and plan (§4.5) — a fixture that
@@ -505,6 +511,31 @@ const meta: Meta = {
 export default meta;
 
 type Story = StoryObj;
+
+const CARD_DETAILS_NAME = /^View details for /;
+
+/**
+ * Switch the scope the way a person does: press the organization's chip.
+ *
+ * The scope used to be a select (trigger, then option); it is a row of visible
+ * chips now, so one press. The chip is found by role and name rather than by
+ * test id so the play reads as the reader's own action.
+ */
+const chooseScope = async (name: string) => {
+	await screen.findByTestId("agent-hub-status");
+	await userEvent.click(await screen.findByRole("button", { name }));
+};
+
+/** Press the Teams tab, and wait until it is the selected one. */
+const openTeamsTab = async () => {
+	await userEvent.click(await screen.findByTestId("agent-hub-view-teams"));
+	await waitFor(() =>
+		expect(screen.getByTestId("agent-hub-view-teams")).toHaveAttribute(
+			"aria-selected",
+			"true",
+		),
+	);
+};
 
 /** The populated grid beside the category rail, signed out. */
 export const Grid: Story = {
@@ -738,6 +769,38 @@ export const NarrowColumns: Story = {
 	},
 };
 
+/**
+ * The pager footer, photographed where a captured viewport can hold it.
+ *
+ * Four records keep the grid to one row, so the footer lands inside 900px
+ * (twelve cards push it below the fold of the capture, and the page's scroll is
+ * an INNER column the rig's document scroll does not reach). The list still
+ * reports three pages, so this is page 1 of 3: "Previous" disabled, "Next" live.
+ * It is the frame for the operator's pager report (2026-09-29): the footer runs
+ * the column's width under a hairline, with the position at the start and the two
+ * steps grouped at the end.
+ */
+export const PagerFooter: Story = {
+	render: () => {
+		installBridge({ records: 4 });
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-pager");
+	},
+};
+
+/** The same footer at the narrowest supported width, where it used to sit off-centre. */
+export const PagerFooterNarrow: Story = {
+	render: () => {
+		installBridge({ records: 4, longCounts: true });
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-pager");
+	},
+};
+
 /* ------------------------------------------------- organizations (§8.4) */
 
 /**
@@ -807,25 +870,47 @@ const TEAMS = [
  * option — and the shutter is released only once an org badge is on screen, so
  * the frame cannot be of the public hub with an org label pasted on it.
  */
+const ORG_AGENT_COUNT = 6;
+
 export const OrgScopeSelected: Story = {
 	render: () => {
 		installBridge({
 			records: 12,
 			signedIn: true,
 			orgs: ORGS,
-			orgAgents: 6,
+			orgAgents: ORG_AGENT_COUNT,
 			teams: TEAMS,
 		});
 		return <AgentHubPage />;
 	},
 	play: async () => {
-		await screen.findByTestId("agent-hub-status");
-		await userEvent.click(await screen.findByTestId("agent-hub-scope"));
-		await userEvent.click(
-			await screen.findByRole("option", { name: "Minerva" }),
+		await chooseScope("Minerva");
+		/*
+		 * `findAll`, not `find`: every org card carries a badge and the six cards
+		 * mount in ONE React commit (probe-verified: 0 -> 6 inside a single poll
+		 * step, no window with exactly one), so `findByTestId` threw "Found multiple
+		 * elements" and aborted the capture sweep's console play-gate. The claim is
+		 * unchanged - the org-scoped grid is on screen and EVERY card in it names its
+		 * organization - and it is stated as an equality against the rendered cards
+		 * (the fixture's `orgAgents`) rather than as "at least one", so a grid that
+		 * mixed public cards into an org scope fails here.
+		 */
+		const badges = await screen.findAllByTestId("agent-org-badge");
+		await waitFor(() =>
+			expect(screen.getAllByTestId("agent-org-badge")).toHaveLength(
+				badges.length,
+			),
 		);
-		await screen.findByTestId("agent-org-badge");
-		await screen.findByTestId("org-teams");
+		expect(badges).toHaveLength(ORG_AGENT_COUNT);
+		expect(
+			screen.getAllByRole("button", { name: CARD_DETAILS_NAME }),
+		).toHaveLength(ORG_AGENT_COUNT);
+		/* The Teams tab already carries its count: the split is legible unopened. */
+		await waitFor(() =>
+			expect(screen.getByTestId("agent-hub-view-teams")).toHaveTextContent(
+				`Teams${TEAMS.length}`,
+			),
+		);
 	},
 };
 
@@ -844,11 +929,7 @@ export const OrgEmpty: Story = {
 		return <AgentHubPage />;
 	},
 	play: async () => {
-		await screen.findByTestId("agent-hub-status");
-		await userEvent.click(await screen.findByTestId("agent-hub-scope"));
-		await userEvent.click(
-			await screen.findByRole("option", { name: "Minerva" }),
-		);
+		await chooseScope("Minerva");
 		await screen.findByText("This organization has no shared agents yet.");
 	},
 };
@@ -874,11 +955,7 @@ export const OrgPlanLapsed: Story = {
 		return <AgentHubPage />;
 	},
 	play: async () => {
-		await screen.findByTestId("agent-hub-status");
-		await userEvent.click(await screen.findByTestId("agent-hub-scope"));
-		await userEvent.click(
-			await screen.findByRole("option", { name: "Minerva" }),
-		);
+		await chooseScope("Minerva");
 		await screen.findByTestId("agent-hub-org-no-access");
 	},
 };
@@ -903,28 +980,22 @@ export const OrgAccessRevoked: Story = {
 		return <AgentHubPage />;
 	},
 	play: async () => {
-		await screen.findByTestId("agent-hub-status");
-		await userEvent.click(await screen.findByTestId("agent-hub-scope"));
-		await userEvent.click(
-			await screen.findByRole("option", { name: "Minerva" }),
-		);
+		await chooseScope("Minerva");
 		await screen.findByTestId("agent-hub-org-no-access");
 	},
 };
 
 /**
- * The org roster, with its pull action, photographed in a viewport that HOLDS it.
+ * The Teams view in an organization: the roster the hub used to bury under the
+ * agent grid and its pager, promoted to a tab that is on screen from the first
+ * paint.
  *
- * The grid above it is deliberately empty of agents, and that is the fixture's
- * one concession: a populated grid (six cards) pushes the roster below the fold
- * of a captured viewport, and the page's scroll container is an INNER column, so
- * neither the capture rig's document scroll nor a `scrollIntoView` in this play
- * reaches it — measured, twice: the frame came back pixel-identical to the grid
- * story's, which is a frame that would have claimed a roster nobody could see.
- * Teams shared with no agents shared is a real state of an organization (§8.4's
- * roster is a separate document family), and it is the one that photographs the
- * claim this story exists for: the list, the count line, the slot summary and the
- * Pull control.
+ * The grid behind it is POPULATED (six org agents), which the old story could not
+ * afford: the roster sat below the fold of a captured viewport and neither the
+ * capture rig nor a `scrollIntoView` reached the page's inner scroll column, so
+ * that frame had to empty the grid to photograph the roster at all. The tab makes
+ * the fixture honest - the agents exist, the reader chose Teams - and the Agents
+ * tab still carries its own count beside it.
  */
 export const OrgTeams: Story = {
 	render: () => {
@@ -932,18 +1003,120 @@ export const OrgTeams: Story = {
 			records: 12,
 			signedIn: true,
 			orgs: ORGS,
-			orgAgents: 0,
+			orgAgents: ORG_AGENT_COUNT,
+			teams: TEAMS,
+		});
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await chooseScope("Minerva");
+		await openTeamsTab();
+		await screen.findByTestId("org-teams");
+		await waitFor(() =>
+			expect(screen.getByTestId("agent-hub-status")).toHaveTextContent(
+				"2 teams shared with Minerva",
+			),
+		);
+	},
+};
+
+/** An organization that has shared no teams: the Teams view's empty sentence. */
+export const OrgTeamsEmpty: Story = {
+	render: () => {
+		installBridge({
+			records: 12,
+			signedIn: true,
+			orgs: ORGS,
+			orgAgents: ORG_AGENT_COUNT,
+			teams: [],
+		});
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await chooseScope("Minerva");
+		await openTeamsTab();
+		await screen.findByTestId("org-teams-empty");
+		await waitFor(() =>
+			expect(screen.getByTestId("agent-hub-status")).toHaveTextContent(
+				"0 teams shared with Minerva",
+			),
+		);
+	},
+};
+
+/** The Teams view while `org_teams.list` is in flight: skeleton, sr-only sentence, no count on the tab. */
+export const OrgTeamsLoading: Story = {
+	render: () => {
+		installBridge({
+			records: 12,
+			signedIn: true,
+			orgs: ORGS,
+			orgAgents: ORG_AGENT_COUNT,
+			holdTeams: true,
+		});
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await chooseScope("Minerva");
+		await openTeamsTab();
+		await screen.findByTestId("org-teams-loading");
+	},
+};
+
+/**
+ * The plan lapsed, read from the Teams view: the roster's own refusal (a warning
+ * with the remedy), beside the Agents tab whose read was refused the same way.
+ */
+export const OrgTeamsPlanLapsed: Story = {
+	render: () => {
+		installBridge({
+			records: 12,
+			signedIn: true,
+			orgs: ORGS,
+			orgRefusal: "plan",
+		});
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await chooseScope("Minerva");
+		await openTeamsTab();
+		await screen.findByTestId("org-teams-error");
+	},
+};
+
+/**
+ * Teams in the PUBLIC scope: there is no public team read (teams are shared
+ * inside organizations, §11 O-7), so the view explains that and hands the reader
+ * the organizations they can look inside. No list, and no invented "0 teams".
+ */
+export const TeamsPublicScope: Story = {
+	render: () => {
+		installBridge({
+			records: 12,
+			signedIn: true,
+			orgs: ORGS,
+			orgAgents: ORG_AGENT_COUNT,
 			teams: TEAMS,
 		});
 		return <AgentHubPage />;
 	},
 	play: async () => {
 		await screen.findByTestId("agent-hub-status");
-		await userEvent.click(await screen.findByTestId("agent-hub-scope"));
-		await userEvent.click(
-			await screen.findByRole("option", { name: "Minerva" }),
-		);
-		await screen.findByTestId("org-teams-count");
+		await openTeamsTab();
+		await screen.findByTestId("agent-hub-teams-public");
+	},
+};
+
+/** Teams while signed out: the sentence, and the settings page where the sign-in lives. */
+export const TeamsSignedOut: Story = {
+	render: () => {
+		installBridge({ records: 12 });
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-status");
+		await openTeamsTab();
+		await screen.findByRole("button", { name: "Open settings" });
 	},
 };
 

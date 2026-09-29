@@ -4231,6 +4231,23 @@ export const STORIES = [
 	["agent-hub-page--org-plan-lapsed", 1280, 900],
 	["agent-hub-page--org-access-revoked", 1280, 900],
 	/*
+	 * The hub's browse bar and Teams view (operator report, 2026-09-29: teams were
+	 * a roster under the grid, the scope a select, the pager an off-centre box).
+	 * `org-teams` is the same id as before and now photographs the promoted Teams
+	 * tab over a POPULATED grid; the rest are new states of the same surface:
+	 * the roster's empty and loading arms, the plan refusal read from the Teams
+	 * view, the PUBLIC-scope explanation (teams are organization-only, so it is a
+	 * state and not a list) in its signed-in and signed-out shapes, and the pager
+	 * footer at both widths - one row of cards keeps it inside the frame.
+	 */
+	["agent-hub-page--org-teams-empty", 1280, 900],
+	["agent-hub-page--org-teams-loading", 1280, 900],
+	["agent-hub-page--org-teams-plan-lapsed", 1280, 900],
+	["agent-hub-page--teams-public-scope", 1280, 900],
+	["agent-hub-page--teams-signed-out", 1280, 900],
+	["agent-hub-page--pager-footer", 1280, 900],
+	["agent-hub-page--pager-footer-narrow", 920, 900],
+	/*
 	 * The chat sidebar's Agents section, at the width that column actually is:
 	 * the frame is the 360px panel inside a little ground, because the section is
 	 * three rows and an action, and a 1280px frame of it would be a picture of the
