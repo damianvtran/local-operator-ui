@@ -1955,7 +1955,8 @@ const STAMP_BINDING_NOTES = [
 	 * stt-overhaul merge), onto `46d0bba0de` (the #573 view-settings merge),
 	 * onto `8dc87ea84c` (the #642 sessionless-slash merge), onto
 	 * `bc09a6d698` (the #643 ptt-keymap and #630 transcript-checkpoint merges)
-	 * and onto `dd51156839` (the #644 mini-view shared-dictation merge).
+	 * and onto `dd51156839` (the #644 mini-view shared-dictation merge),
+	 * then onto `0a2c8e7a30` (the #647 release train and #641 project-create-sheet).
 	 * This branch's own record, `readReceiptForegroundRestampNote`, states the
 	 * receipt pass and its round-1 remediation; the change moves `src/` (the
 	 * completion-view hook and the transcript reducer's live-settle arm) and
