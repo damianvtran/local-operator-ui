@@ -1837,13 +1837,43 @@ const STAMP_BINDING_NOTES = [
 	 * AND THIS FOLD'S OWN (2026-09-28): `foldOnto525d464279Note` is the fold onto
 	 * the moved `origin/main` `525d464279` (#618, the board column order, over
 	 * #623) at merge time - the manifest conflicted this time while this file
-	 * auto-merged to the union of both note families (128 names, nothing dropped
-	 * either side, verified by set comparison against both parents), and the pair
-	 * and counts are re-derived from the folded tip by the docs-only commit that
-	 * follows. It quotes that pair, so it is held to this file like every entry
-	 * above it.
+	 * auto-merged to the union of both note families, and the pair and counts are
+	 * re-derived from the folded tip by the docs-only commit that follows. It
+	 * quotes that pair, so it is held to this file like every entry above it.
 	 */
 	"foldOnto525d464279Note",
+	/*
+	 * Moved by the dead-tab and popout pass (2026-09-28): this note states the pair
+	 * it ships and the set the pass moves, so it is held to the same bar as every
+	 * other member - it quotes both stamps and the file it sits in ships them.
+	 */
+	"browserTabLifecycleNote",
+	/*
+	 * AND THE SAME PASS'S ROUND-1 REMEDIATION: `browserTabCleanupRoundOnePass`
+	 * states the pair it ships, the frames it re-shot (the two strip stories and
+	 * the load-failure trio), the runs as they ran and the one frame set it NAMES
+	 * as owed, so it is held to the pair this file ships rather than read as
+	 * history - the same bar as the note above it, which this fold re-points too.
+	 */
+	"browserTabCleanupRoundOnePass",
+	/*
+	 * AND ITS ROUND-2 ANSWERS: `browserTabCleanupRoundTwoPass` states the pair it
+	 * ships, the two owed photographs it pays (composition `20` re-encoded and `22`
+	 * re-encoded with the clearance the same run measured), the D3 re-capture with
+	 * its measured slack, and the run's own verdict — so it is held to the pair this
+	 * file ships rather than read as history, on the same bar as its two neighbours.
+	 */
+	"browserTabCleanupRoundTwoPass",
+	/*
+	 * AND THIS FOLD'S OWN (2026-09-28): `foldOntod11a15febfNote` is the fold onto
+	 * the moved `origin/main` `d11a15febf` (#624, the dead-tab and popout cleanup,
+	 * over #618) at merge time - both this file and its manifest conflicted,
+	 * resolved as unions (both note families kept whole here; main's records whole
+	 * with this branch's laid on top there), and the pair re-derived from the
+	 * folded tip by the docs-only commit that follows. It quotes that pair, so it
+	 * is held to this file like every entry above it.
+	 */
+	"foldOntod11a15febfNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
