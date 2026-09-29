@@ -2487,7 +2487,6 @@ const BRANCH_RECORDS = [
 	 * so it adds no name to the quoting ledger.
 	 */
 	"installerPanelRailRoundTwoNote",
-
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
