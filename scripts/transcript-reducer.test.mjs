@@ -26,6 +26,7 @@ const {
 	EMPTY_TRANSCRIPT,
 	applyEvent,
 	applyHistoryPage,
+	reanchorAfterCursorMiss,
 	applyLiveSeed,
 	streamDiagnostics,
 	clearTranscript,
@@ -5547,4 +5548,30 @@ test("a row a person typed is untouched, marker or no marker", () => {
 		1,
 	);
 	assert.equal(elsewhere.records.length, 1);
+});
+
+test("a cursor_missing page re-anchors the load cursor to its own oldest row", () => {
+	/*
+	 * The operator report (2026-09-28): after a /compact replaced the journal
+	 * under a loaded conversation, "Load earlier messages" loaded nothing,
+	 * forever. The backend answers a cursor it cannot locate with the current
+	 * tail plus `cursor_missing` (read_transcript_page) so a reader can dedupe
+	 * and MOVE; the load path kept the stale id, so every click re-fetched a
+	 * page it already had. The move is the page's own oldest id — a row this
+	 * journal just served, so the next request can locate it.
+	 */
+	const tail = {
+		entries: [{ id: "row:90" }, { id: "row:91" }],
+		has_more: true,
+		cursor_missing: true,
+	};
+	assert.equal(reanchorAfterCursorMiss(tail, "row:pre-compaction"), "row:90");
+	// A normal page needs no move, an empty one offers nowhere to move, and a
+	// page whose oldest IS the anchor would repeat the same request.
+	assert.equal(
+		reanchorAfterCursorMiss({ ...tail, cursor_missing: false }, "x"),
+		null,
+	);
+	assert.equal(reanchorAfterCursorMiss({ ...tail, entries: [] }, "x"), null);
+	assert.equal(reanchorAfterCursorMiss(tail, "row:90"), null);
 });

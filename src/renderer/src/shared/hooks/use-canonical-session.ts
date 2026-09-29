@@ -52,6 +52,7 @@ import {
 	pageOrphanResultInstants,
 	pageOrphanResults,
 	pagePassedOldestStart,
+	reanchorAfterCursorMiss,
 	reconcileLimit,
 	reconcileWalkDone,
 	removeRecord,
@@ -4540,6 +4541,37 @@ export function useCanonicalSessionStream(
 	sessionRef.current = sessionId;
 
 	const loadingOlderRef = useRef(false);
+	/*
+	 * The cursor `loadOlder` asks from, when it is NOT the transcript's own oldest
+	 * row.
+	 *
+	 * WHY THIS EXISTS (operator report, 2026-09-28: "when I click manually to
+	 * load more, nothing loads"): a `/compact` REPLACES the journal file. When it
+	 * does so while a conversation is open, the transcript's oldest loaded row is
+	 * an id the new file no longer contains — and the backend answers a
+	 * `before_id` it cannot locate with THE CURRENT TAIL plus `cursor_missing`
+	 * (`read_transcript_page`'s documented reconcile), precisely so a reader can
+	 * dedupe and move on. This path did not move on: the tail it got back was
+	 * already loaded, so nothing applied, `oldestId` never advanced, and every
+	 * later click asked for the same missing row — a button that loads nothing,
+	 * forever, with nothing said. The override is the move: it re-anchors to the
+	 * page's own oldest id, which the journal just SERVED and can therefore
+	 * locate, so the retry in the same call fetches the rows genuinely below it.
+	 */
+	const historyCursorRef = useRef<{
+		session: string | null;
+		cursor: string | null;
+	}>({
+		session: null,
+		cursor: null,
+	});
+	// A different conversation inherits nothing (clause H's reasoning: the
+	// cursor is state ABOUT a journal, and it is not this journal's). Keyed by
+	// session INSIDE the ref because `sessionRef` is refreshed on every render,
+	// so a comparison against it could never see the change.
+	if (historyCursorRef.current.session !== sessionId) {
+		historyCursorRef.current = { session: sessionId ?? null, cursor: null };
+	}
 	const loadOlder = useCallback(async (): Promise<boolean> => {
 		if (!sessionId || loadingOlderRef.current) return false;
 		const { transcript } = viewRef.current;
@@ -4554,12 +4586,31 @@ export function useCanonicalSessionStream(
 		loadingOlderRef.current = true;
 		commitView((current) => ({ ...current, loadingOlder: true }));
 		try {
-			const page = await desktopResult<DesktopHistoryPage>({
-				op: "sessions.history",
-				sessionId: requested,
-				beforeId: transcript.oldestId,
-				limit: 100,
-			});
+			const readPage = (beforeId: string) =>
+				desktopResult<DesktopHistoryPage>({
+					op: "sessions.history",
+					sessionId: requested,
+					beforeId,
+					limit: 100,
+				});
+			const anchor = historyCursorRef.current.cursor ?? transcript.oldestId;
+			let page = await readPage(anchor);
+			/*
+			 * ONE re-anchored retry, in the click's own turn: a cursor the journal
+			 * can no longer locate comes back as the tail it already holds, and
+			 * asking once more from the row that tail itself begins at is what
+			 * turns the silent no-op into the page the reader asked for. A second
+			 * `cursor_missing` answer is not retried — it means the file cannot
+			 * serve this depth at all, and the failed state below is the honest
+			 * report rather than a loop.
+			 */
+			const reanchored = reanchorAfterCursorMiss(page, anchor);
+			if (reanchored !== null) {
+				historyCursorRef.current = { session: requested, cursor: reanchored };
+				page = await readPage(reanchored);
+			}
+			if (!page.cursor_missing)
+				historyCursorRef.current = { session: requested, cursor: null };
 			if (sessionRef.current !== requested) {
 				// Clear the flag before standing down. The rows are not spliced (a
 				// foreign page must never reach this transcript), but `loadingOlder`

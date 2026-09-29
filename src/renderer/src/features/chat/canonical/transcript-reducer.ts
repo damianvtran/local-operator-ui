@@ -2304,6 +2304,32 @@ function durableRecord(
  * the same id; the page's own order is preserved and it is placed by
  * timestamp relative to what is already painted (older pages prepend).
  */
+/*
+ * The cursor to re-anchor to after a page came back `cursor_missing`, or null
+ * when the page needs no re-anchor.
+ *
+ * The backend's documented reconcile (`read_transcript_page`): a `before_id`
+ * the journal cannot locate — a `/compact` replaced the file under a loaded
+ * conversation — is answered with THE CURRENT TAIL plus `cursor_missing`, "so a
+ * reader can dedupe by stable ID instead of getting stuck on a stale cursor".
+ * The load path must then MOVE: the tail it received is already loaded, so a
+ * reader that keeps the stale id asks forever for a row that is gone and the
+ * affordance loads nothing, silently (operator report, 2026-09-28). The row to
+ * anchor at is the page's own OLDEST — a row this journal just served, so the
+ * next request can locate it and page genuinely below it. Null means "ask
+ * again from where you already are", and equals-anchor guards the degenerate
+ * case where re-anchoring would repeat the same request.
+ */
+export function reanchorAfterCursorMiss(
+	page: Pick<DesktopHistoryPage, "cursor_missing" | "entries">,
+	anchor: string,
+): string | null {
+	if (!page.cursor_missing || page.entries.length === 0) return null;
+	const oldest = page.entries[0]?.id;
+	if (typeof oldest !== "string" || oldest === anchor) return null;
+	return oldest;
+}
+
 export function applyHistoryPage(
 	state: TranscriptState,
 	page: DesktopHistoryPage,
