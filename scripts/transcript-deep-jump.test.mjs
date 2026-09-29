@@ -14,7 +14,7 @@ import { build } from "esbuild";
  * `be1a9fef00a1` - the same shape their `condense-rig` seeds, where the deep
  * clicks below are ~4,096 rows in the journal. Their fix is MODEL-side
  * (end-loaded fold eligibility, keyed on the closing answer; PR #651,
- * `feat/transcript-collapse-unloaded-head`), so the raw-rows/open-condensation
+ * `fix/condense-unloaded-ea851b`, MERGED at `7461d814ae`), so the raw-rows/open-condensation
  * case is theirs and NOT pinned here. What this file pins is the JUMP side,
  * which rides `transcript-loader.ts` and its adapter in `reveal-record.ts`:
  * press a deep row, load through the pages between, land.
