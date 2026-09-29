@@ -2254,7 +2254,7 @@ app
 				 * this feature's slice for a value that is a launch fact (argv, the
 				 * launch env, the persisted file) and cannot differ between the two
 				 * calls. The mini view's visible consumer of it is the platform
-				 * half: the header's keycap spells ⌘⌥Space against Ctrl+Alt+Space
+				 * half: the header's keycap spells ⌘⌥⇧Space against Ctrl+Alt+Shift+Space
 				 * from exactly this entry.
 				 */
 				chromeMode: resolveLaunchWindowChrome({
