@@ -1065,6 +1065,105 @@ export const CompletionReordered: Story = {
 	},
 };
 
+/* ---------------------------------------- a completion that moves the TIME BIN */
+
+/** `mtime` fixtures for the bin story are relative to the capture's own clock. */
+const binNowSeconds = () => Math.floor(Date.now() / 1000);
+
+/**
+ * The three rows the bin story starts from, in the order the backend sends
+ * them: a TODAY row, the SUBJECT five days back (THIS WEEK, "5d") and one old
+ * row - so all three time sections are on screen and the move is visible
+ * against its neighbours.
+ */
+const binBefore = (): WireRow[] => {
+	const now = binNowSeconds();
+	return [
+		wireRow(QUARTERLY, "Quarterly revenue model", now - 3_600, IDLE, 1),
+		wireRow(MIGRATE, "Migrate the deploy script", now - 5 * 86_400, IDLE, 1),
+		wireRow(AUDIT, "Audit the vendor list", now - 20 * 86_400, IDLE, 1),
+	];
+};
+
+/**
+ * The same three rows as the next `sessions.list` answers AFTER the turn: the
+ * subject's activity clock is now, and every other field is byte-identical, so
+ * this story isolates the BIN the way `CompletionReordered` isolates POSITION.
+ */
+const binAfter = (): WireRow[] => {
+	const now = binNowSeconds();
+	return [
+		wireRow(QUARTERLY, "Quarterly revenue model", now - 3_600, IDLE, 1),
+		wireRow(MIGRATE, "Migrate the deploy script", now - 60, IDLE, 1),
+		wireRow(AUDIT, "Audit the vendor list", now - 20 * 86_400, IDLE, 1),
+	];
+};
+
+/**
+ * THE TIME BINS UNDER A COMPLETION (2026-09-28): the operator's own report, as
+ * a feed story.
+ *
+ * The report: "even if I've asked an older session something today, once it
+ * completes I can't see it within the today bin". The bins and the row labels
+ * read the transcript's ACTIVITY clock (`updated_at`, the wire's `mtime`), and
+ * a finished turn advances that clock - but no frame carries it: only a
+ * `sessions.list` read does. The backend publishes a `catalogue` invalidation
+ * when a completion moves the row's ORDER KEY, which covers the common case;
+ * it CANNOT fire for one that moves no key (the subject already in its
+ * completion band with the busy band missed), and there the row sat in its old
+ * bin until the 30 s safety poll - measured live, 26.3 s after the completion,
+ * on the installed runtime (this directory's README carries the readings).
+ *
+ * So the frames a finished turn ALWAYS publishes - the status edge and the
+ * attention mark - are the ones this story delivers, and NO `catalogue` frame
+ * is delivered at all: the next `sessions.list` answer is arranged BEFORE the
+ * frames, the order the real system runs in. On this branch the sidebar
+ * re-reads on the completion's own frames and the row lands under TODAY "now";
+ * on the tree this branch was cut from the same frames leave it under THIS WEEK
+ * "5d" until the poll - that half is what the live readings measure, since a
+ * still cannot carry a latency.
+ */
+export const CompletionMovesBin: Story = {
+	render: () => {
+		roster = binBefore();
+		return <Page />;
+	},
+	play: async () => {
+		holdShutter();
+		await catalogueSettled(3);
+		// The turn as the feed reports it: busy first, then the completion and its
+		// mark. Neither is a `catalogue` frame, which is the point of the story.
+		deliver(statusFrame(MIGRATE, BUSY, 4, 91));
+		await sleep(200);
+		roster = binAfter();
+		deliver(statusFrame(MIGRATE, COMPLETE, 5, 92));
+		deliver(attentionFrame(MIGRATE, true, 93));
+		// Settle on the refile where the branch produces one, without failing the
+		// capture where it does not: the base tree's frame is the defect state.
+		//
+		// BY THE FILE'S OWN ROW CONVENTION (design round 1, D2; corrected round 2,
+		// R2-1): rows carry `[data-chat-row]` - a marker, not an id - and the
+		// subject is found by its TEXT, the shape `scrollToRow` / `focusRow` use. The
+		// first form of this lookup matched on a native `title`, which no session row
+		// has carried since the row-space change (design D7), so it could never
+		// break early and would not have noticed a regressed refile - the one thing
+		// this story exists to observe.
+		const sectionOfSubject = () =>
+			[...document.querySelectorAll("[data-chat-row]")]
+				.find((row) =>
+					(row.textContent ?? "").trim().includes("Migrate the deploy script"),
+				)
+				?.closest("[data-chat-section]")
+				?.getAttribute("data-chat-section") ?? null;
+		for (let waited = 0; waited < 2_000; waited += 50) {
+			if (sectionOfSubject() === "today") break;
+			await sleep(50);
+		}
+		await sleep(200);
+		releaseShutter();
+	},
+};
+
 /**
  * The same resort with a completed block that is already TWO rows deep.
  *

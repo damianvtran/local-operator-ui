@@ -1200,11 +1200,19 @@ export const STORIES = [
 	// which is how both of round 6's majors stayed invisible.
 	["browser-tab-strip--worst-case", 1280, 140],
 	["browser-tab-strip--worst-case-widest", 1280, 140],
-	["browser-tab-strip--actions-expanded", 1280, 260],
+	/* The popout supersedes the in-band band the old comment sized these for (2026-09-28
+	   round 2, D3): the strip no longer grows, the panel HANGS below it, so the row is
+	   sized to the panel the story draws - the same rule the comment below states, now
+	   applied to the popout. MEASURED, NOT GUESSED: at 1280 the single-tab popout's
+	   bottom border sits at device y 302 on the 340-tall probe, so this height lands the
+	   frame's bottom 56 device px under it - exactly the slack the batch sibling has
+	   (its panel ends at 336 in a 392 frame). The pre-fix row (260) was still sized to
+	   the deleted band and clipped the panel's closing edge in the round-1 re-shoot. */
+	["browser-tab-strip--actions-expanded", 1280, 326],
 	/* The pin's band list and a row's band with the four bulk closes (design R4 fix 2,
 	   R5). `pinned-list` is declared taller by the list's own bounded height
-	   (`max-h-36` plus the header row), and `actions-expanded-batch` by the same row
-	   height the other expanded band uses. */
+	   (`max-h-36` plus the header row), and `actions-expanded-batch` by the panel its
+	   own popout draws (bottom border at device y 334-337 in this frame). */
 	["browser-tab-strip--actions-expanded-batch", 1280, 360],
 	/*
 	 * THE TWO EXPANDED BANDS ARE TALLER SINCE THE ROUND-2 RULING (D7): the band is a
@@ -2588,6 +2596,12 @@ export const STORIES = [
 	 */
 	["chat-sidebar-status-feed--completion-in-place", 780, 660],
 	["chat-sidebar-status-feed--completion-reordered", 780, 660],
+	/*
+	 * The completion that moves the row's TIME BIN: same shape as the two above,
+	 * with the frames a finished turn always publishes and no `catalogue` frame
+	 * at all - the half the base tree's client could not act on.
+	 */
+	["chat-sidebar-status-feed--completion-moves-bin", 780, 660],
 	["chat-sidebar-status-feed--completion-second-in-band", 780, 660],
 	["chat-sidebar-status-feed--completion-acknowledged", 780, 660],
 	["chat-sidebar-status-feed--completion-reordered-offscreen", 780, 660],
@@ -4210,6 +4224,23 @@ export const STORIES = [
 	["chat-sidebar-view-menu--popover-open", 741, 760],
 	["chat-sidebar-view-menu--popover-hidden-section", 741, 760],
 	["chat-sidebar-view-menu--popover-reordered-pair", 741, 760],
+	/*
+	 * THE TIME BASIS PAIR (2026-09-28): one roster, both clocks, so the frames
+	 * differ only in the pressed row and what the sections below read - and the
+	 * rail's own state, where the pair this fix removes would have stood.
+	 */
+	["chat-sidebar-view-menu--popover-basis-last-active", 741, 760],
+	["chat-sidebar-view-menu--popover-basis-created", 741, 760],
+	["chat-sidebar-view-menu--reorder-edges", 741, 760],
+	/* The design direction's D2 capture: the same panel in the window floor. */
+	["chat-sidebar-view-menu--popover-open-short", 800, 600],
+	/*
+	 * The same state in the shape the APP can reach with a short window (round
+	 * 1's Q-2): the popover does not exist below ~1024px because the rail
+	 * collapses, so a docked width and a short height is the honest worst case
+	 * the reader can drive.
+	 */
+	["chat-sidebar-view-menu--popover-open-narrow", 1100, 600],
 	[
 		/*
 		 * The first rung needs no scroll: the rig proved it by refusing - at ten
