@@ -105,10 +105,10 @@ export interface MiniViewOptions {
 	 * The launch's chrome mode, for the synchronous argv facts the preload reads.
 	 *
 	 * The mini document needs them for one visible thing: the header's keycap
-	 * spells the chord per platform (`⌘⌥Space` against `Ctrl+Alt+Space`), and
+	 * spells the chord per platform (`⌘⌥⇧Space` against `Ctrl+Alt+Shift+Space`), and
 	 * that spelling comes from `windowChrome.facts().platform`. Without the
 	 * argument the preload falls back to its `linux` default and every platform
-	 * reads `Ctrl+Alt+Space` — which is what the first evidence run of the
+	 * reads `Ctrl+Alt+Shift+Space` — which is what the first evidence run of the
 	 * `mini-view` scene showed (design §I.3).
 	 */
 	chromeMode: WindowChromeMode;
@@ -158,8 +158,8 @@ export function createMiniView(options: MiniViewOptions): MiniView {
 			backgroundThrottling: false,
 			/*
 			 * The argv the preload reads SYNCHRONOUSLY, and both entries are
-			 * deliberate: the chrome facts because the keycap's spelling (⌘⌥
-			 * against Ctrl+Alt) is a first-frame fact with no IPC round trip to
+			 * deliberate: the chrome facts because the keycap's spelling (⌘⌥⇧
+			 * against Ctrl+Alt+Shift) is a first-frame fact with no IPC round trip to
 			 * wait for — the main window composes the same entry through
 			 * `windowChromeArgumentFor` — and an EXPLICIT telemetry `off` because
 			 * this window mounts no telemetry surface at all (§D.1), and the
