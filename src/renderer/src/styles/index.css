@@ -746,8 +746,8 @@
 	 *
 	 * `turn` is the panel's two working marks - the rail's head mark, and the
 	 * running step's own marker - and it is the APP'S OWN indeterminate grammar
-	 * (`Spinner`: a hairline ring with a single `accent` quadrant, where the gap is
-	 * what makes a rotation legible) rather than a cadence invented here. Three
+	 * (`Spinner`'s ring with a single `accent` quadrant, where the gap is what
+	 * makes a rotation legible) rather than a cadence invented here. Three
 	 * properties of it are deliberate and load-bearing:
 	 *
 	 *   - 1.8s per turn, not `Spinner`'s 1s. This mark turns for the minutes an
@@ -758,9 +758,12 @@
 	 *   - it animates `transform` ALONE. An opacity breath spends contrast, and in
 	 *     the light themes its trough took the running ring below the waiting rings
 	 *     it has to be told apart from (design D3, measured at 2.88:1 against
-	 *     3.51:1). A turn is at full accent in every phase, so the mark that says
-	 *     "working" is never the faintest thing in the column - and `transform`,
-	 *     unlike a width, cannot move a sibling.
+	 *     3.51:1). A turn spends no contrast: the accent quadrant is at full
+	 *     strength in every phase and the ring's other three sides are the `control`
+	 *     the waiting rings carry (design round 2, D7 - under `hairline` the
+	 *     running ring measured 1.22:1 against their 3.13-3.42:1), so the mark that
+	 *     says "working" is never the faintest thing in the column - and
+	 *     `transform`, unlike a width, cannot move a sibling.
 	 *
 	 * THERE IS NO SWEEP KEYFRAME HERE ANY MORE, deliberately. A travelling segment
 	 * used to carry the state where no step has been announced, and that state's own
