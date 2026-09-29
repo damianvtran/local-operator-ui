@@ -114,6 +114,45 @@ export const SESSION_SEARCH_MAX_CHARS = 256;
 export const SESSION_SEARCH_DEFAULT_LIMIT = 100;
 
 /**
+ * How many checkpoint ids one `sessions.checkpoints.warm` call may carry.
+ *
+ * The op is a user-gesture-driven spend (one model call per turn named), so
+ * the wire bound and the client's own slice read the same number: the hover
+ * arm sends one id, the rail-open arm sends none and lets the backend select
+ * its own default, and a caller that ever sends a set is clamped here rather
+ * than refused by the schema for a count it computed itself.
+ */
+export const CHECKPOINT_WARM_MAX_IDS = 16;
+
+/**
+ * Longest in-thread find query the `sessions.find` op accepts, in CHARACTERS.
+ *
+ * The backend bounds `q` at the same number (`routes/desktop_sessions.py`),
+ * and it matches `SESSION_SEARCH_MAX_CHARS` because both are "a sentence a user
+ * typed": the overlay's input carries `maxLength` at this number, so a paste
+ * cannot exceed it either, and the schema refuses an over-long query BY NAME
+ * rather than projecting it into every doc comparison of the session's index.
+ */
+export const THREAD_FIND_MAX_CHARS = 256;
+
+/**
+ * How many in-thread hits one find may return.
+ *
+ * The backend's own route default (`limit: int = Query(default=100, ge=1,
+ * le=200)`), sent explicitly by the client so the request the app makes does
+ * not depend on a route default that could move: find is a navigation surface,
+ * not an export, and the panel renders a screenful at a time.
+ */
+export const THREAD_FIND_DEFAULT_LIMIT = 100;
+
+/**
+ * The route's ceiling, mirrored so a client cannot compute its own refusal:
+ * `sessions.find` refuses `limit > 200` here rather than letting the backend's
+ * generic "invalid fields" 422 answer a request this app built itself.
+ */
+export const THREAD_FIND_MAX_LIMIT = 200;
+
+/**
  * Longest `systemPrompt` the agent system-prompt op accepts, in JS CHARACTERS.
  *
  * Declared here beside `DESKTOP_MESSAGE_MAX_CHARS` and referenced by the schema
@@ -754,7 +793,29 @@ const projectName = z.string().regex(PROJECT_NAME_PATTERN, {
 	message: "Letters, digits, dot, underscore and dash; no spaces.",
 });
 /** The four statuses the store declares, in the board's fixed order. */
-const PROJECT_STATUSES = ["active", "paused", "done", "archived"] as const;
+/**
+ * The status vocabulary, in the store's lifecycle order.
+ *
+ * `planning` -> `active` -> `qa` -> `validation` -> `done` is the pipeline the
+ * operator named (RFC/research, implementation, review cycles, deployed and
+ * observed, fully validated); `paused` and `archived` are the two SIDE states
+ * that leave the pipeline without ending it. The order is the menu order —
+ * `STATUS_OPTIONS` and the board columns both read it — so it is written once
+ * here and mirrored there rather than spelled per list.
+ *
+ * A SERVER NEWER THAN THIS BUILD may send a word not in this list; every
+ * reader treats the vocabulary as open (`projectStatusMeta` keeps the raw
+ * word), and this enum only bounds what THIS UI may SEND.
+ */
+const PROJECT_STATUSES = [
+	"planning",
+	"active",
+	"qa",
+	"validation",
+	"done",
+	"paused",
+	"archived",
+] as const;
 const projectStatus = z.enum(PROJECT_STATUSES);
 /**
  * A planning date: ISO `YYYY-MM-DD`, or `""` to CLEAR the field.
@@ -1119,6 +1180,70 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	/*
+	 * The transcript checkpoint rail's manifest (design D1/D9): every material
+	 * checkpoint of one LOCAL conversation — the reader's own messages and each
+	 * completed turn — with the seq-proportional ordinal the rail places a tick
+	 * by, and a completion's optional generated name.
+	 *
+	 * The answer is deliberately cheap and never blocks on a scan: a cold or
+	 * stale index answers `state: "building"` while a refresh runs in the
+	 * background (the backend measures 22 s for this machine's 272 MB journal),
+	 * so the rail's first paint is immediate and the hook polls while anything
+	 * it asked for is still pending. A remote/peer conversation answers
+	 * `state: "unsupported"` — a fact about where the bytes are, not a failure
+	 * — and the rail hides, the same degradation as an empty manifest.
+	 */
+	z
+		.object({ op: z.literal("sessions.checkpoints"), sessionId })
+		.strict(),
+	/*
+	 * Buy names for checkpoints (design D2/D9): idempotent, bounded, and never
+	 * blocking on the model call itself — the backend schedules one
+	 * `complete_once` per turn (15 s budget, single attempt, a 10-minute
+	 * cooldown after a failure) and answers accepted/pending immediately.
+	 *
+	 * `ids` is the hover gesture's arm (a bounded set of explicit checkpoint
+	 * ids); omitting it is the rail-open arm, where the backend selects the
+	 * most recent checkpoints missing names under its own default. Both fields
+	 * are optional, and an older backend that predates the op answers the same
+	 * 404/422 a missing route always does — the hook treats any failure as "no
+	 * rail here", never as a user-facing error.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.checkpoints.warm"),
+			sessionId,
+			ids: z.array(id).max(CHECKPOINT_WARM_MAX_IDS).optional(),
+			limit: z.number().int().min(1).max(CHECKPOINT_WARM_MAX_IDS).optional(),
+		})
+		.strict(),
+	/*
+	 * In-thread find (D9): messages of ONE conversation matching `q`, best
+	 * first, served from the per-session transcript index.
+	 *
+	 * A READ like `history` and `checkpoints` beside it. The answer's `state` is
+	 * the checkpoint manifest's own ladder: a cold or stale index answers
+	 * `building` inside the first-paint budget (with hits ranked from the
+	 * previous scan marked `partial`) while the background refresh runs, so the
+	 * overlay's first paint is immediate; `unsupported` is a peer conversation
+	 * whose journal is not on this device; `error` is a failed refresh inside
+	 * its cooldown. The overlay renders both tiers (`exact`/`soft`) and treats
+	 * `ranges` as snippet-relative — empty on a soft hit, which has no literal
+	 * occurrence of the query by construction.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.find"),
+			sessionId,
+			// `.min(1)`: an empty query is not a search. The overlay's client never
+			// sends one — it answers an empty query locally, without a request — so
+			// refusing it by name keeps the vocabulary closed rather than paying a
+			// round trip for an answer the box already knows.
+			q: z.string().min(1).max(THREAD_FIND_MAX_CHARS),
+			limit: z.number().int().min(1).max(THREAD_FIND_MAX_LIMIT).optional(),
+		})
+		.strict(),
+	/*
 	 * One child's durable transcript, for the run panel's reader
 	 * (`docs/run-sidebar.md` § 10.1, § 10.3).
 	 *
@@ -1149,6 +1274,18 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			text: z.string().max(DESKTOP_MESSAGE_MAX_CHARS),
 			images: z.array(sessionImage).max(8).optional(),
 			mode: z.enum(["prompt", "steer"]).optional(),
+			/*
+			 * HOW THE MESSAGE WAS PRODUCED (arch §4.2), and the harness gate is what
+			 * keeps this `optional`: `features.input_mode`. Absent means a legacy
+			 * body (and is what every older build sends), so an older harness's own
+			 * `.strict()` schema never sees the key at all.
+			 *
+			 * `inputPath` is RESERVED (§4.2a): the route cascade owns its
+			 * vocabulary and no caller sets it yet; it is accepted here - bounded -
+			 * so the first caller that does does not also need a contract change.
+			 */
+			inputMode: z.enum(["typed", "dictated", "mixed"]).optional(),
+			inputPath: z.string().max(1024).optional(),
 		})
 		.strict(),
 	z
@@ -2299,12 +2436,18 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			key: projectKey,
 			/*
 			 * Only the keys the caller includes travel; an omitted key leaves the
-			 * field alone, and `""` clears a date or the progress snippet (the
-			 * route forwards `model_fields_set`, and this client mirrors it).
+			 * field alone, and `""` clears a date, the progress snippet or an
+			 * attribution (the route forwards `model_fields_set`, and this client
+			 * mirrors it). The three attribution/title steps are bounded at 80 —
+			 * the store's `ATTRIBUTION_MAX`/`TITLE_MAX` — so a client cannot build
+			 * a body the route would refuse for length alone.
 			 */
 			fields: z
 				.object({
 					name: projectName.optional(),
+					title: z.string().max(80).optional(),
+					owner: z.string().max(80).optional(),
+					team: z.string().max(80).optional(),
 					description: z.string().max(PROJECT_DESCRIPTION_MAX_CHARS).optional(),
 					status: projectStatus.optional(),
 					progress: z.string().max(PROJECT_PROGRESS_MAX_CHARS).optional(),
@@ -2799,6 +2942,165 @@ export type DesktopWakeCreateResponse = {
 };
 
 /**
+ * What a checkpoint MARKS: the reader's own message, or a finished turn.
+ */
+export type CheckpointKind = "user" | "completion";
+
+/**
+ * A settled turn's ending, when the journal can prove one.
+ *
+ * `open` is the live tail: no marker resolves it and no newer settled run
+ * followed it, so the rail draws an in-progress dot rather than staying
+ * silent about the turn the reader is sitting in.
+ */
+export type CheckpointOutcome = "complete" | "error" | "interrupted" | "open";
+
+/**
+ * How far a completion checkpoint's naming has got.
+ *
+ * `unavailable` is a FAILED call inside its cooldown (the marker is
+ * persisted), not a pending one: the card shows the fallback text with no
+ * "Generating…" line, because nothing is generating.
+ */
+export type CheckpointNamingState = "ready" | "pending" | "unavailable";
+
+export type CheckpointNaming = {
+	state: CheckpointNamingState;
+	/** The model's name, or `null` while pending/unavailable. */
+	name: string | null;
+	/** One sentence, or `null`; `""` is a ready name that carries no summary. */
+	summary: string | null;
+};
+
+/**
+ * One checkpoint of the `sessions.checkpoints` manifest (design D9).
+ *
+ * The manifest deliberately omits fields rather than nulling them, and this
+ * type keeps that: `outcome` is absent on checkpoints no attention marker
+ * resolved (markers only exist from partway through a session's life, so
+ * pre-mechanism turns have no outcome to show), and `naming` is present only
+ * on COMPLETION checkpoints, because a name is attached to a finished turn.
+ * A required field would force the renderer to invent a value the wire never
+ * claimed.
+ */
+export type Checkpoint = {
+	/** The journal entry id — the jump target and the warm's handle. */
+	id: string;
+	kind: CheckpointKind;
+	/** 1-based turn ordinal, assigned structurally by the backend. */
+	turn: number;
+	/**
+	 * Epoch SECONDS — the journal's own unit, not milliseconds. Converted once,
+	 * where a label is formatted (`checkpointClockLabel`), the same way the
+	 * transcript reducer converts a durable `entry.ts`.
+	 */
+	ts: number;
+	/** The journal ordinal the tick's position is proportional to. */
+	seq: number;
+	/** User text, or the turn's closing answer text (flattened, capped). */
+	text: string;
+	outcome?: CheckpointOutcome;
+	naming?: CheckpointNaming;
+};
+
+/**
+ * The index's own state, as the manifest reports it.
+ *
+ * `building` and `stale` both mean "a scan is in flight over a previous
+ * answer" — the rail renders whatever checkpoints arrived and pulses its top
+ * mark, rather than hiding. `unsupported` is a REMOTE conversation, whose
+ * journal is not on this machine; the backend answers it in place of an
+ * error because it is a fact about where the bytes are, and the rail hides —
+ * the same honest degradation as an empty manifest.
+ */
+export type CheckpointIndexState =
+	| "ready"
+	| "building"
+	| "stale"
+	| "error"
+	| "unsupported";
+
+/** The `sessions.checkpoints` 200 body (design D9). */
+export type CheckpointManifest = {
+	session_id: string;
+	index: {
+		state: CheckpointIndexState;
+		/** The cache file's mtime, epoch seconds; absent on a cold answer. */
+		built_at?: number;
+	};
+	checkpoints: Checkpoint[];
+};
+
+/**
+ * The `sessions.checkpoints.warm` 200 body (design D9): ids this call took
+ * ownership of, and the subset still waiting on a name. An id already named
+ * (same digest) or inside its failure cooldown is accepted but not pending —
+ * the rail's poll has nothing left to wait for on it.
+ */
+export type CheckpointWarmAnswer = {
+	accepted: string[];
+	pending: string[];
+};
+
+/**
+ * What one find hit matched (D3/D9): a casefolded literal substring of what was
+ * said (`exact`), or the bounded soft tier (`soft` — prefix, token-AND, or edit
+ * distance <= 2 on 4+ character tokens).
+ *
+ * The tiers are the backend's and are rendered differently rather than
+ * re-derived here: a client that guessed which hits were literal would differ
+ * from the index exactly where the index's ranking is subtlest.
+ */
+export type ThreadFindTier = "exact" | "soft";
+
+/**
+ * The find answer's lifecycle state (D9); see the op's own comment for what
+ * each one means and how the overlay degrades.
+ */
+export type ThreadFindState = "ready" | "building" | "error" | "unsupported";
+
+/**
+ * One message the query matched, with the snippet the results list renders.
+ *
+ * `ranges` are match offsets RELATIVE TO `snippet` (non-overlapping, oldest
+ * first, at most five), so the client marks `snippet[start:end]` without
+ * knowing the window offset into the message. They are always present — empty
+ * for a soft hit, which has no literal occurrence of the query. `role` is the
+ * wire vocabulary (`user`/`agent`); the backend translates the stored docs'
+ * `assistant` so both clients read the same word.
+ *
+ * `ts` is the journal's own epoch SECONDS, not milliseconds — the same unit
+ * every durable transcript entry carries; a caller that shows a clock converts
+ * once, where it formats (the rail's `checkpointClockLabel` is the precedent).
+ */
+export type ThreadFindHit = {
+	id: string;
+	role: "user" | "agent";
+	ts: number;
+	snippet: string;
+	ranges: [number, number][];
+	tier: ThreadFindTier;
+};
+
+/**
+ * The `sessions.find` 200 body (D9).
+ *
+ * `query` is echoed rather than assumed: the overlay debounces its input, so
+ * responses can arrive out of order and it must be able to tell which of its
+ * queries this answers. `partial` is true exactly when `hits` were ranked from
+ * an index that does not reflect the journal's current tail (`building`),
+ * never as a substitute for `truncated`, which reports the hit list itself
+ * being cut at `limit`.
+ */
+export type ThreadFindAnswer = {
+	query: string;
+	state: ThreadFindState;
+	partial: boolean;
+	hits: ThreadFindHit[];
+	truncated: boolean;
+};
+
+/**
  * How many bytes of serialized JSON body one desktop operation may carry.
  *
  * These live here, beside the schemas they bound, because the two were allowed
@@ -3203,7 +3505,9 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"profiles.list",
 	"providers.list",
 	"sessions.aside.get",
+	"sessions.checkpoints",
 	"sessions.failovers",
+	"sessions.find",
 	"sessions.get",
 	"sessions.history",
 	"sessions.list",
@@ -3803,6 +4107,17 @@ export type BackendSetting = {
 	 * of a feature that is switched off renders disabled and says which switch.
 	 */
 	gated_by?: string | null;
+	/**
+	 * A FIFTH additive field, and the reason the four above are no longer "the
+	 * four": which SURFACE a `hotkey` row's value belongs to — `"app"` (a
+	 * binding inside the terminal UI) or `"desktop"` (a global shortcut this app
+	 * owns). Absent means `"app"`, which is exactly today's behaviour for every
+	 * hotkey row an older server serves, so a client that ignores the field
+	 * stays correct: the field's arrival changes nothing until a surface reads
+	 * it, and this one is read only to switch the capture rules of the quick-send
+	 * row (see `setting-control.tsx`).
+	 */
+	hotkey_scope?: "app" | "desktop" | null;
 };
 export type BackendSettings = {
 	sections: {
@@ -4135,6 +4450,42 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "GET",
 			};
 		}
+		case "sessions.checkpoints":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/checkpoints`,
+				method: "GET",
+			};
+		case "sessions.checkpoints.warm":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/checkpoints/warm`,
+				method: "POST",
+				/*
+				 * Omitted, not zeroed: an absent `ids` IS the rail-open arm (the backend
+				 * selects its own default), and an absent `limit` leaves that selection
+				 * its own number — sending 8 here would be a second copy of the
+				 * backend's `DEFAULT_WARM_LIMIT` that could drift from it.
+				 */
+				body: {
+					...(request.ids ? { ids: request.ids } : {}),
+					...(request.limit !== undefined ? { limit: request.limit } : {}),
+				},
+			};
+		case "sessions.find": {
+			// `encodeURIComponent` rather than interpolation, for `sessions.search`'s
+			// reason: a query is whatever the user typed, and `&`, `#` or a space in
+			// it would otherwise change the request's meaning (or truncate it)
+			// instead of being searched for. `limit` is ALWAYS sent (the route's
+			// default is a second authority, and `truncated` on the answer is a fact
+			// about the list the caller actually asked for).
+			const query = new URLSearchParams({
+				q: request.q,
+				limit: String(request.limit ?? THREAD_FIND_DEFAULT_LIMIT),
+			});
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/find?${query}`,
+				method: "GET",
+			};
+		}
 		case "subagents.transcript": {
 			const query = new URLSearchParams({
 				limit: String(request.limit ?? 100),
@@ -4154,6 +4505,17 @@ export function desktopEndpoint(request: DesktopRequest): {
 					text: request.text,
 					images: request.images ?? [],
 					mode: request.mode ?? "prompt",
+					/*
+					 * ABSENT, not empty, when the app has nothing to say: an older harness
+					 * validates this body with `extra="forbid"`, so a key present-but-null
+					 * would be refused where a missing one is simply a legacy body. That is
+					 * why these are conditional spreads rather than `?? undefined` values
+					 * (which `JSON.stringify` would drop anyway - stated so a reader does
+					 * not "simplify" them into a shape whose behaviour depends on the
+					 * serializer).
+					 */
+					...(request.inputMode ? { input_mode: request.inputMode } : {}),
+					...(request.inputPath ? { input_path: request.inputPath } : {}),
 				},
 			};
 		case "sessions.command":

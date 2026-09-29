@@ -32,6 +32,8 @@ import {
 
 type ProjectMilestonesProps = {
 	milestones: DesktopProjectMilestone[];
+	/** The header's count (`2 of 5 complete`), derived by the detail screen. */
+	summary?: string;
 	/** A write is in flight; every control that would start another is disabled. */
 	busy: boolean;
 	onToggle: (name: string, completed: boolean) => void;
@@ -41,6 +43,7 @@ type ProjectMilestonesProps = {
 
 export const ProjectMilestones: FC<ProjectMilestonesProps> = ({
 	milestones,
+	summary,
 	busy,
 	onToggle,
 	onRemove,
@@ -68,13 +71,24 @@ export const ProjectMilestones: FC<ProjectMilestonesProps> = ({
 
 	return (
 		<section className="flex flex-col gap-3">
-			<h2 className="text-title text-ink">Milestones</h2>
+			<div className="flex items-baseline justify-between gap-3">
+				<h2 className="text-title text-ink">Milestones</h2>
+				{summary && milestones.length > 0 && (
+					<span className="text-meta text-ink-muted tabular-nums">
+						{summary}
+					</span>
+				)}
+			</div>
 			{milestones.length === 0 ? (
 				<p className="text-body-sm text-ink-muted">
 					No milestones yet. Add one below to mark the dates this project is
 					planned around.
 				</p>
 			) : (
+				/*
+				 * Borderless group, main's card restyle (#608): surface ground, stepped
+				 * radius, no border.
+				 */
 				<ul className="flex flex-col divide-y divide-hairline rounded-md bg-surface">
 					{milestones.map((milestone) => {
 						const meta = milestoneStatusMeta(milestone.status);
@@ -82,7 +96,7 @@ export const ProjectMilestones: FC<ProjectMilestonesProps> = ({
 						return (
 							<li
 								key={milestone.name}
-								className="flex items-center gap-3 px-3 py-2"
+								className="flex items-center gap-3 rounded-sm px-2 py-2"
 							>
 								<Checkbox
 									checked={completed}

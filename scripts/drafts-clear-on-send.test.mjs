@@ -64,7 +64,7 @@ globalThis.__canonicalEcho = (event) => {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {DesktopControlError} from "@shared/api/local-operator/desktop-api"; export {desktopRequestSchema} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {mergeReturnedText, mergeReturnedPayload} from "./src/renderer/src/shared/store/conversation-input-store";export { sendUnsettledForSession } from "./src/renderer/src/features/chat/canonical/working-line-model"; export { composerIdentityFor, panelIdentityFor as composerPanelIdentity } from "./src/renderer/src/shared/store/canonical-sessions-store"; export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store"; export { rehydrateInputRows } from "./src/renderer/src/shared/store/conversation-input-store"; export { heldSendClaimsBySession, resolveHeldSendsFromServer } from "./src/renderer/src/features/chat/draft-resolution"; export { discardSuccessorIndex, untargetedDraftRows } from "./src/renderer/src/features/chat/draft-rows"; export { DRAFTS_UNDO_CEILING_MS } from "./src/renderer/src/features/chat/drafts-undo"; export { ARCHIVE_UNDO_TOAST_MS } from "./src/renderer/src/features/chat/archive-undo";',
+			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {DesktopControlError} from "@shared/api/local-operator/desktop-api"; export {desktopRequestSchema} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {mergeReturnedText, mergeReturnedPayload} from "./src/renderer/src/shared/store/conversation-input-store";export { sendUnsettledForSession } from "./src/renderer/src/features/chat/canonical/working-line-model"; export { composerIdentityFor, panelIdentityFor as composerPanelIdentity } from "./src/renderer/src/shared/store/canonical-sessions-store"; export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store"; export { rehydrateInputRows } from "./src/renderer/src/shared/store/conversation-input-store"; export { heldSendClaimsBySession, resolveHeldSendsFromServer } from "./src/renderer/src/features/chat/draft-resolution"; export { discardSuccessorIndex, untargetedDraftRows } from "./src/renderer/src/features/chat/draft-rows"; export { ARCHIVE_UNDO_TOAST_MS } from "./src/renderer/src/features/chat/archive-undo";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -206,7 +206,6 @@ const {
 	resolveHeldSendsFromServer,
 	discardSuccessorIndex,
 	untargetedDraftRows,
-	DRAFTS_UNDO_CEILING_MS,
 	ARCHIVE_UNDO_TOAST_MS,
 } = module;
 function reset() {
@@ -827,14 +826,27 @@ test("the caret successor is read by key, from the list as it stood before the w
 	assert.equal(discardSuccessorIndex(["a", "b"], "missing"), 0);
 });
 
-test("the discard offer's life is the lane's own card life, not a second number", () => {
+test("the discard offer's life has one home, sonner's duration of the archive family", () => {
 	/*
-	 * DESIGN ROUND 2'S D6: the drafts offer measured 15.2 s of card against the lane's
-	 * recorded eight, because it had reached for `ARCHIVE_UNDO_CEILING_MS` - the
-	 * retirement SUBSCRIPTION's safety bound (a number nobody sees) - instead of the
-	 * display life both offers share. One number, one home (`archive-undo.ts`), and
-	 * this comparison is what keeps a future edit from re-splitting them.
+	 * DESIGN ROUND 2'S D6 measured the drafts offer living 15.2 s of card against a
+	 * recorded eight, because it had reached for a retirement SUBSCRIPTION's bound (a
+	 * number nobody sees) instead of a display life. The fix that followed made the
+	 * offer's own module export a second eight-second clock; the clock is gone with the
+	 * lane (2026-09-27: the offer is an ordinary sonner toast whose life is the
+	 * library's own `duration`, pausable while the reader holds it). What survives is
+	 * the rule that motivated D6: ONE number for both offers, `ARCHIVE_UNDO_TOAST_MS`,
+	 * with no second clock beside it.
 	 */
-	assert.equal(DRAFTS_UNDO_CEILING_MS, ARCHIVE_UNDO_TOAST_MS);
-	assert.equal(DRAFTS_UNDO_CEILING_MS, 8_000);
+	const draftsUndo = readFileSync(
+		"src/renderer/src/features/chat/drafts-undo.ts",
+		"utf8",
+	)
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/(^|[^:])\/\/.*$/gm, "$1");
+	assert.equal(
+		/(_MS\b|CEILING)/.test(draftsUndo),
+		false,
+		"the offer's life must not grow a second clock: sonner's duration is it, imported from archive-undo.ts",
+	);
+	assert.equal(ARCHIVE_UNDO_TOAST_MS, 8_000);
 });

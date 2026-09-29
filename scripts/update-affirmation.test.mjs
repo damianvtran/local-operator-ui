@@ -1639,18 +1639,20 @@ test("readings that agree raise no skew notice, and readings that differ do", ()
 	 * withdrawn. The sentence is asserted as the same one the restart phase uses, so
 	 * the two cannot drift apart.
 	 *
-	 * AND THE COST IS NO LONGER DROPPED WORK (2026-09-18): the press drains the fleet
-	 * before it restarts anything, so the sentence prices the WAIT and promises that
-	 * nothing in flight is cut off. The assertion is the promise, because a later
-	 * reader who "restores" the old clause would be promising work loss the app no
-	 * longer inflicts.
+	 * AND THE COST IS NO LONGER DROPPED WORK (2026-09-18), AND NO LONGER A WAIT
+	 * (2026-09-29): the sentence prices the outage, and it promises that nothing in
+	 * flight is cut off - the harness truth for a daemon bounce, whose runtimes are
+	 * detached and converge onto the new build at their own next idle. The restart
+	 * legs used to drain the fleet first and say so; the operator's directive
+	 * removed those waits, so a reader who "restores" the old wait clause here
+	 * would be pricing a wait this press no longer pays.
 	 */
 	assert.ok(
 		copy.some(
 			(text) =>
 				/offline while it comes back - usually a few seconds, up to half a minute/.test(
 					text,
-				) && /nothing in flight is cut off/.test(text),
+				) && /Nothing in flight is cut off/.test(text),
 		),
 		`the cost of the press must be stated before it: ${JSON.stringify(copy)}`,
 	);
@@ -2081,12 +2083,13 @@ test("a restart that came back on the new build is still the success toast", () 
  * app's own completion notice. The event now carries `restartable`, and this case
  * pins both directions off the SAME payload: only the ownership reading differs.
  *
- * WHAT THE PLAN'S OWN SENTENCE PROMISES CHANGED WITH THE FLEET GATE. It used to
- * promise a dropped turn ("...so a turn that is in flight is dropped while the
- * server comes back"); a restart now waits for the running turns to finish first,
- * so no surface may describe one as dropping work in flight - and the sentence
- * below is the plan's own, kept verbatim because that is the whole subject of this
- * case.
+ * WHAT THE PLAN'S OWN SENTENCE PROMISES CHANGED WITH THE FLEET GATE, and again
+ * with the operator's directive: it used to promise a dropped turn ("...so a turn
+ * that is in flight is dropped while the server comes back"), then priced a wait
+ * once the gate existed, and the 2026-09-29 directive removed the restart-leg
+ * waits - so no surface may describe one as dropping work in flight OR as waiting
+ * on it. The sentence below is the plan's own, kept verbatim because that is the
+ * whole subject of this case.
  */
 test("the offer names the restart cost only where the app may restart the server", () => {
 	// The plan's own managed sentence, verbatim from `resolveGlobalInstallPlan`.

@@ -5,7 +5,13 @@ import { cn } from "@shared/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { Check, Layers } from "lucide-react";
 import type { FC } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import {
 	type InstallSummary,
 	installBuiltins,
@@ -49,12 +55,24 @@ export type InstallBuiltinAgentsProps = {
 	 */
 	presentation?: "row" | "primary";
 	className?: string;
+	/**
+	 * Reports whether this component is showing work the reader must not lose:
+	 * a batch in flight, or its summary still up (`running || summary !== null`).
+	 *
+	 * The caller stores it and keeps controls that could HIDE the progress or the
+	 * summary out of reach while it is true — the chat sidebar's dismiss control
+	 * is the first, and the rule it protects is that a press can never take the
+	 * batch's own report off screen. Optional, because a mount point without such
+	 * a control has nothing to gate.
+	 */
+	onBusyChange?: (busy: boolean) => void;
 };
 
 export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 	builtins,
 	presentation = "row",
 	className,
+	onBusyChange,
 }) => {
 	const queryClient = useQueryClient();
 	const [running, setRunning] = useState(false);
@@ -108,6 +126,28 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 		dismissedRef.current = false;
 		actionRef.current?.focus();
 	}, [summary]);
+
+	/*
+	 * THE CALLER'S READING OF THE TWO STATES IT MUST RESPECT, and why it is a
+	 * LAYOUT effect rather than a passive one: what the caller does with it is
+	 * hide a control that could otherwise take this component's report off
+	 * screen, and a passive effect runs AFTER the paint — so there would be a
+	 * painted frame in which the progress is up and the caller still holds the
+	 * old reading, which is the one frame a press could hide the run behind. The
+	 * report itself is one state write in a caller that has opted in.
+	 */
+	const busy = running || summary !== null;
+	useLayoutEffect(() => {
+		onBusyChange?.(busy);
+	}, [onBusyChange, busy]);
+	/*
+	 * AND THE CALLER IS RELEASED ON UNMOUNT, because a caller still holding `true`
+	 * would keep its control hidden forever: an unmounted component has no
+	 * progress and no summary left to protect. The section's own collapse is how
+	 * this happens — the batch UI goes with it, and the caller's next view of the
+	 * section is a freshly mounted one.
+	 */
+	useLayoutEffect(() => () => onBusyChange?.(false), [onBusyChange]);
 
 	const run = useCallback(async () => {
 		if (running || builtins.length === 0) return;

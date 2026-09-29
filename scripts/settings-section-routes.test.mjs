@@ -34,9 +34,12 @@ const root = process.cwd();
 
 /** The tracked files under `src/`, so scratch trees and node_modules are out. */
 function sourceFiles() {
+	// Same default-buffer trap the whole-tree scans hit tonight (`ENOBUFS` at
+	// Node's 1 MiB spawnSync default); scoped today, closed here with them.
 	return execFileSync("git", ["ls-files", "-z", "src"], {
 		cwd: root,
 		encoding: "utf8",
+		maxBuffer: 64 * 1024 * 1024,
 	})
 		.split("\0")
 		.filter((file) => /\.(ts|tsx)$/.test(file));
