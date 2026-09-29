@@ -219,6 +219,28 @@ export const retireDraftApplies = (
 ): boolean => persisted === "" || persisted === submitted;
 
 /**
+ * WHETHER THE HISTORY WALK MAY ENGAGE FROM THIS COMPOSER'S CONTENT (issue #673).
+ *
+ * The Slack/Discord convention this box means to follow: the arrow reaches for
+ * history only from an EMPTY composer. What shipped instead gated the recall on
+ * the CARET's line, so any caret on line 1 mid-edit took the branch - `prevent`
+ * ate the native caret move, the draft was swapped for a recalled message, and
+ * recovering the sentence meant a full walk round trip, which is why the
+ * misfire read as data loss.
+ *
+ * With ANY content the arrow is the textarea's own caret movement, at every
+ * caret position: this predicate reads the CONTENT alone, so there is no caret
+ * argument for a caller to get subtly wrong. The walk, once engaged, is a
+ * different question and is asked elsewhere: the box then HOLDS a recalled
+ * message (non-empty by construction), so a rule reading the content would
+ * block the very walk it exists to protect.
+ *
+ * Pure and exported so the rule is asserted without a DOM, in the shape
+ * `retireDraftApplies` above takes.
+ */
+export const historyRecallEngages = (value: string): boolean => value === "";
+
+/**
  * The boundary between a draft and a transcript that lands on it (design round
  * 1, D2; UX round 1, U2). Plain concatenation glued "overhaul" to "dictated"
  * on the exact landing path this change re-publishes, and the joined word
@@ -1198,7 +1220,21 @@ export const useMessageInput = ({
 				return;
 			}
 			if (!submittedMessages.length) return;
-			if (e.key === "ArrowUp" && isCursorAtFirstLine()) {
+			if (e.key === "ArrowUp") {
+				/*
+				 * THE ENGAGEMENT RULE IS THE CONTENT'S, NOT THE CARET'S (issue #673).
+				 * A recall INITIATES only from an empty composer; a draft never takes it,
+				 * at any caret position, so `preventDefault` cannot eat a caret move or
+				 * swap the user's sentence out (the rule and its reasoning live on
+				 * `historyRecallEngages`). The first-line test below is the WALK's, not
+				 * the engagement's: once engaged the box holds recalled text, and the
+				 * arrow keeps walking from the first line exactly as it always has.
+				 */
+				if (historyIndex === null) {
+					if (!historyRecallEngages(inputValue)) return;
+				} else if (!isCursorAtFirstLine()) {
+					return;
+				}
 				e.preventDefault();
 				if (historyIndex === null) {
 					draftMessageRef.current = inputValue;

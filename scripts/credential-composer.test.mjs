@@ -759,6 +759,32 @@ const undoKey = async (frame) => {
 	await settle();
 	return claimed;
 };
+/*
+ * An arrow press that reports whether the composer CLAIMED it.
+ *
+ * `key` above is silent about that, and #673's whole point is which keys a
+ * recall captures: on a draft the arrow must stay the textarea's own, so this
+ * rig reads the one fact a value assertion cannot see. jsdom implements no
+ * native navigation, so "not claimed" is the composer DELEGATING the movement,
+ * not the movement itself — what a real caret does with it is the browser's own
+ * behaviour, exercised by QA.
+ */
+const arrowKey = async (frame, name) => {
+	const field = frame.textarea();
+	let claimed = false;
+	await act(async () => {
+		const event = new window.KeyboardEvent("keydown", {
+			key: name,
+			bubbles: true,
+			cancelable: true,
+		});
+		field.dispatchEvent(event);
+		claimed = event.defaultPrevented;
+	});
+	await settle();
+	return claimed;
+};
+
 const enter = (frame) => key(frame, { key: "Enter" });
 
 const clickSend = async (frame) => {
@@ -907,7 +933,23 @@ test("Escape mid-prose on an empty span types correctly too", async () => {
 /* B1 — a whole-buffer replacement ends a live capture                  */
 /* ------------------------------------------------------------------ */
 
-test("a history recall ends a live capture instead of masking into it", async () => {
+test("ArrowUp on a live capture never replaces the buffer, and the capture survives", async () => {
+	/*
+	 * ISSUE #673 FLIPPED THIS TEST. Its round-10 finding was that a history
+	 * recall REPLACED the whole buffer while a masked capture was live — the
+	 * capture was dropped with the buffer and the recalled prompt was what
+	 * survived. The recall cannot fire here any more: a capture is a non-empty
+	 * draft, and the engagement rule (issue #673) leaves the arrow to the
+	 * textarea in exactly that state, so the replacement this test used to
+	 * drive is now IMPOSSIBLE through this door. What it pins instead is the
+	 * new contract, which is the half a user feels: the arrow is not captured
+	 * (`arrowKey`), the captured buffer is intact, and the NEXT keystroke is
+	 * still masked rather than plain text.
+	 *
+	 * The whole-buffer-replacement teardown itself keeps its coverage where a
+	 * replacement is still reachable — `a conversation switch ends a live
+	 * capture` below drives the same effect through an external writer.
+	 */
 	const frame = await mount();
 	useConversationInputStore
 		.getState()
@@ -919,21 +961,22 @@ test("a history recall ends a live capture instead of masking into it", async ()
 	await type(frame, "/credential ");
 	await type(frame, "hunter2");
 	assert.match(frame.notice(), /masked as you type/);
+	const masked = (text) => `/credential ${"•".repeat(text.length)}`;
+	assert.equal(frame.value(), masked("hunter2"));
 
-	await key(frame, { key: "ArrowUp", text: undefined });
+	assert.equal(
+		await arrowKey(frame, "ArrowUp"),
+		false,
+		"the arrow stays the textarea's — a capture is not a recall gesture",
+	);
 
-	// The recalled prompt is in the box, the capture is GONE, and the next
-	// keystroke is plain text rather than a mask cell.
-	assert.equal(frame.value(), "run the migration again please");
-	assert.equal(frame.notice(), "", "the capture was dropped with the buffer");
+	// The captured buffer is intact, the capture is still live, and the next
+	// keystroke is a mask cell rather than plain text.
+	assert.equal(frame.value(), masked("hunter2"));
+	assert.match(frame.notice(), /masked as you type/);
 	await type(frame, "!");
-	assert.equal(frame.value(), "run the migration again please!");
-	await enter(frame);
-	// Enter SENT the recalled prompt — it did not mint a pill over it. The
-	// message the page received is the operator's own sentence, byte for byte.
-	assert.equal(frame.sent.length, 1);
-	assert.equal(frame.sent[0][0], "run the migration again please!");
-	assert.equal(frame.value(), "", "the box retired the message it sent");
+	assert.equal(frame.value(), masked("hunter2!"));
+	assert.match(frame.notice(), /masked as you type/);
 });
 
 test("a conversation switch ends a live capture", async () => {
@@ -967,6 +1010,108 @@ test("a conversation switch ends a live capture", async () => {
 		!frame.value().includes("•"),
 		`the incoming conversation's draft is not masked: ${frame.value()}`,
 	);
+});
+
+/* ------------------------------------------------------------------ */
+/* The history walk's engagement (issue #673)                          */
+/* ------------------------------------------------------------------ */
+
+/*
+ * THE OLD GATE WAS THE CARET'S LINE, NOT THE BOX'S CONTENT. Any caret on line 1
+ * mid-draft took the recall branch: `preventDefault` ate the native move, the
+ * draft was swapped for a recalled message, and recovering the sentence meant a
+ * full walk round trip — the misfire that reads as data loss.
+ *
+ * The composer this file mounts is the only one in the tree, so the rule's
+ * BEHAVIOUR is driven here: which handler claims the arrow, what the box holds
+ * afterwards and whether the persisted draft survived are React-state facts
+ * with no DOM-free substitute. The rule itself is asserted pure in
+ * `scripts/composer-seeding.test.mjs`.
+ */
+
+test("an empty composer recalls, walks, and ArrowDown restores past the newest", async () => {
+	const frame = await mount();
+	const store = useConversationInputStore.getState();
+	store.addSubmittedMessage(frame.conversationId, "the older entry");
+	store.addSubmittedMessage(frame.conversationId, "the newer entry");
+	await settle();
+
+	assert.equal(
+		await arrowKey(frame, "ArrowUp"),
+		true,
+		"the recall captures the arrow",
+	);
+	assert.equal(
+		frame.value(),
+		"the newer entry",
+		"the newest entry recalls first",
+	);
+	assert.equal(await arrowKey(frame, "ArrowUp"), true);
+	assert.equal(
+		frame.value(),
+		"the older entry",
+		"and the walk reaches older ones",
+	);
+	assert.equal(await arrowKey(frame, "ArrowDown"), true);
+	assert.equal(
+		frame.value(),
+		"the newer entry",
+		"ArrowDown returns down the walk",
+	);
+	assert.equal(await arrowKey(frame, "ArrowDown"), true);
+	assert.equal(frame.value(), "", "and past the newest restores the draft");
+	await arrowKey(frame, "ArrowDown");
+	assert.equal(
+		frame.value(),
+		"",
+		"further downs are a no-op, not a corruption",
+	);
+});
+
+test("a single-line draft at column 0 is never recalled over", async () => {
+	const frame = await mount();
+	useConversationInputStore
+		.getState()
+		.addSubmittedMessage(frame.conversationId, "the sent entry");
+	await settle();
+	await type(frame, "draft");
+	// The caret position the old first-line gate misfired on, at its loudest:
+	// column 0 of the only line, with the draft the user is editing.
+	await placeCaret(frame, 0);
+
+	assert.equal(
+		await arrowKey(frame, "ArrowUp"),
+		false,
+		"the arrow stays the textarea's",
+	);
+	assert.equal(frame.value(), "draft", "the draft is not swapped for a recall");
+	assert.equal(
+		frame.draft(),
+		"draft",
+		"and the persisted draft is not stash-swapped either",
+	);
+});
+
+test("a multi-line draft is never recalled over, caret on line 1 included", async () => {
+	const frame = await mount();
+	useConversationInputStore
+		.getState()
+		.addSubmittedMessage(frame.conversationId, "the sent entry");
+	await settle();
+	await type(frame, "one\ntwo");
+	// The exact misfire of #673 — the caret on the draft's FIRST line, where
+	// `line === 1` took the recall branch — plus a caret on line 2, so the
+	// "anywhere" in the issue is exercised at both ends.
+	for (const at of [0, 1, 4]) {
+		await placeCaret(frame, at);
+		assert.equal(
+			await arrowKey(frame, "ArrowUp"),
+			false,
+			`a draft caret at offset ${at} does not capture the arrow`,
+		);
+		assert.equal(frame.value(), "one\ntwo", `draft intact with caret at ${at}`);
+	}
+	assert.equal(frame.draft(), "one\ntwo");
 });
 
 test("the submit's own clear ends a live capture", async () => {
