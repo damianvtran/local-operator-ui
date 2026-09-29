@@ -470,14 +470,15 @@ export type SlashCompletionArgs = {
 	/** The active session model, used only to describe `/model default`. */
 	activeModel?: { provider?: unknown; model_id?: unknown } | null;
 	/**
-	 * The spec in force for this session — the same `effective_model ??
-	 * selected_model` the model chip's label reads, from the same canonical
-	 * snapshot — which is where a command row's live state comes from: `/fast`'s
-	 * right-edge slot mirrors the dial the command would flip, so the row and
-	 * the chip cannot disagree about the session's state. Deliberately NOT
-	 * `activeModel` above: that one is NARROWED to provider/model_id at the call
-	 * site (it feeds the `/model default` action row), and the fast flags would
-	 * vanish with the narrowing.
+	 * The spec in force for this session (`effective_model ?? selected_model`
+	 * from the canonical snapshot) — which is where a command row's live state
+	 * comes from: `/fast`'s right-edge slot mirrors the dial the command would
+	 * flip. The chip's own path additionally considers a PENDING selection
+	 * (`session-model.ts` `bandReadings`), so inside an unconfirmed switch the
+	 * two describe different specs — each truthful — and outside it they read
+	 * the same fields. Deliberately NOT `activeModel` above: that one is
+	 * NARROWED to provider/model_id at the call site (it feeds the `/model
+	 * default` action row), and the fast flags would vanish with the narrowing.
 	 */
 	activeSpec?: CanonicalModel | null;
 	/**

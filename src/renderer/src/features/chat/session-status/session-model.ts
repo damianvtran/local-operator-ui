@@ -256,11 +256,16 @@ export type FastModeState = "on" | "off" | null;
 
 /**
  * The fast dial, read off ONE spec for every surface that shows it: the
- * strip's badge and the `/fast` row's right-edge slot both come from here, so
- * the chip and the palette row cannot disagree about a session's dial.
+ * strip's badge and the `/fast` row's right-edge slot both call this. The
+ * CALLER picks the spec, and the two call sites pick differently inside an
+ * unconfirmed model switch — the chip's path passes `pendingModel ?? inForce`
+ * (`bandReadings` above), the row the spec in force — so in that window the
+ * two describe different specs, each truthful; outside it they read the same
+ * fields.
  *
- * Mirrors `_fast_label` (`tui/widgets/status_line.py`): a model that does not
- * report the tier (`supports_fast_mode !== true`) gets NOTHING — the segment's
+ * Mirrors `_fast_label` (defined in `local_operator/tui/app.py`; its word is
+ * what `tui/widgets/status_line.py`'s `fast` segment paints): a model that does
+ * not report the tier (`supports_fast_mode !== true`) gets NOTHING — the segment's
  * presence is the message there, and an `off` would claim a dial the model does
  * not have. Only a model that HAS the tier can be on or off, and "not on" is
  * the same fact from the spec's `false` and from a frame that omits the flag

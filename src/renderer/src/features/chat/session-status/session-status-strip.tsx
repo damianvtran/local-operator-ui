@@ -827,8 +827,10 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	 * sits beside — the badge qualifies the model the chip is naming, including
 	 * the pending paint's window, where the pick's spec reports no tier and the
 	 * badge correctly hides until the owner's frame lands. The tri-state comes
-	 * from `fastModeState` so this chip and the `/fast` row's slot answer
-	 * identically (operator report, 2026-09-29).
+	 * from `fastModeState` so this chip and the `/fast` row's slot share ONE
+	 * rule — the chip passes the spec it names (this one, pending window
+	 * included), the row the spec in force; outside an unconfirmed switch those
+	 * are the same fields (operator report, 2026-09-29).
 	 */
 	const fastOn = fastModeState(model) === "on";
 	const effort = reconcileEffort(effortState(readings.effort), effortEntities);
@@ -1057,10 +1059,13 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					// truncates. `min-w-0` is what lets the span inside it shrink at
 					// all -- a flex item's automatic floor is its content.
 					//
-					// `min-w-14` (56px) is the floor: about eight monospace glyphs, so a
-					// truncated name still names something rather than becoming an
-					// ellipsis with no subject. It cannot force a wrap at 750px, where
-					// the row's arithmetic leaves 56px of slack for exactly this item.
+					// `min-w-14` (56px) is the floor: about eight monospace glyphs
+					// when the badge is absent, 24px of name (the bolt's 14px and the
+					// 6px gap come off the same floor) when it shows — still a name
+					// rather than an ellipsis with no subject, and
+					// `LongModelName`'s fast-on frame is the picture. It cannot
+					// force a wrap at 750px, where the row's arithmetic leaves 56px
+					// of slack for exactly this item.
 					//
 					// `text-ink-dim` while pending: a colour step, never opacity (the
 					// branding contract's rule for a control that is not yet live), so a

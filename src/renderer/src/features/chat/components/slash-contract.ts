@@ -344,10 +344,14 @@ export function slashDestructive(
  *
  * What remains, in order:
  *
- *  - `/fast`'s live dial — `on`/`off`, off the spec in force (`fastModeState`,
- *    `session-model.ts`): the row states the session's own dial, which is the
- *    one fact a user reads before flipping it. `null` when the model reports
- *    no fast tier, because a model without the dial has no state to state.
+ *  - `/fast`'s live dial — `currently on`/`currently off`, off the spec in
+ *    force (`fastModeState`, `session-model.ts`): the row states the session's
+ *    own dial, which is the one fact a user reads before flipping it. The
+ *    words are qualified because a bare `on`/`off` beside the row's own
+ *    "Enter runs /fast." footer reads as the RESULT of pressing it rather
+ *    than as the state it starts from (design D1 / UX U1): the slot states
+ *    possession, not outcome. `null` when the model reports no fast tier,
+ *    because a model without the dial has no state to state.
  *  - `needs a value` on a REQUIRED command — the one case where the user must
  *    supply something before the command can run.
  *
@@ -363,7 +367,7 @@ export function commandRowSlot(
 	fastState: FastModeState | undefined,
 ): string | null {
 	if (command.destination === "session.fast" && fastState != null)
-		return fastState;
+		return fastState === "on" ? "currently on" : "currently off";
 	if (command.arguments === "required") return "needs a value";
 	return null;
 }

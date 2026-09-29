@@ -463,7 +463,9 @@ export const EffortStates: Story = {
 };
 
 /**
- * A model name long enough to overrun the row, at two widths.
+ * A model name long enough to overrun the row, at three widths — one of them
+ * with the fast bolt showing, so the truncated-name floor is photographed with
+ * and without the badge (design D2, round 1).
  *
  * An aggregator id with no curated name is the real source of these: the model
  * chip falls back to `model_id`, which is a full slug.
@@ -496,6 +498,25 @@ export const LongModelName: Story = {
 					<SessionStatusStrip
 						frontend={state({
 							effective_model: long,
+							context_tokens: 210_000,
+							context_window: 400_000,
+							cumulative_parent_cost: 1.84,
+							cost_knowledge: "exact",
+						})}
+						onCommand={() => undefined}
+					/>
+				</Frame>
+				<Frame
+					width={380}
+					label="Narrower, fast on: the bolt rides the truncated name"
+				>
+					<SessionStatusStrip
+						frontend={state({
+							effective_model: {
+								...long,
+								supports_fast_mode: true,
+								fast_mode: true,
+							},
 							context_tokens: 210_000,
 							context_window: 400_000,
 							cumulative_parent_cost: 1.84,
@@ -540,6 +561,28 @@ export const CollapsedColumn: Story = {
 							...GPT_5,
 							display_name: "",
 							model_id: "moonshotai/kimi-k2-instruct-0905",
+						},
+						context_tokens: 352_000,
+						context_window: 400_000,
+						context_is_estimate: true,
+						cumulative_parent_cost: 4.02,
+						cost_knowledge: "exact",
+					})}
+					onCommand={() => undefined}
+				/>
+			</Frame>
+			<Frame
+				width={220}
+				label="220px, long model name, fast on: the bolt at the floor"
+			>
+				<SessionStatusStrip
+					frontend={state({
+						effective_model: {
+							...GPT_5,
+							display_name: "",
+							model_id: "moonshotai/kimi-k2-instruct-0905",
+							supports_fast_mode: true,
+							fast_mode: true,
 						},
 						context_tokens: 352_000,
 						context_window: 400_000,

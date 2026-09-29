@@ -2428,8 +2428,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			/*
 			 * THE SPEC IN FORCE, whole rather than narrowed (`activeModel` above
 			 * keeps only the two fields `/model default` writes) — the source of
-			 * the `/fast` row's live slot, read from the SAME snapshot fields the
-			 * model chip labels itself from, so row and chip cannot disagree.
+			 * the `/fast` row's live slot. Same snapshot fields the model chip
+			 * labels itself from once no switch is pending: the chip's own path
+			 * also considers `pendingModel`, so during an unconfirmed switch the
+			 * two describe different specs (each truthful); outside it they agree.
 			 */
 			activeSpec:
 				sessionStatus?.frontend?.effective_model ??
