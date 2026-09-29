@@ -61,6 +61,22 @@ export const PUBLICATION_ERROR_CODES = [
 	"hub_unauthorized",
 	/** This machine failed before the hub was asked anything. */
 	"local_failure",
+	/*
+	 * The organization family (§2.2/§4.4/§4.5). The hub answers these on every
+	 * org-scoped route and the local server carries them through with their 403
+	 * rather than folding them into the credential refusal, because each needs a
+	 * DIFFERENT next step: ask an admin, get invited, or activate the plan. They
+	 * belong in this closed set rather than being read as prose for exactly that
+	 * reason — a publish into an org whose plan lapsed must say so.
+	 */
+	/** The caller holds no membership (or none that is active) of that org. */
+	"not_a_member",
+	/** The membership's rank is too low for the action (`details.required`). */
+	"insufficient_role",
+	/** The org's plan does not entitle org features (§3.2). */
+	"team_plan_required",
+	/** The team being read or pulled does not exist, or was delisted (§4.5). */
+	"team_not_found",
 ] as const;
 
 export type PublicationErrorCode = (typeof PUBLICATION_ERROR_CODES)[number];
@@ -125,6 +141,13 @@ export type PublicationDetails = {
 	prompt_version?: string;
 	/** `moderation_unavailable`: how many attempts the retry budget spent. */
 	attempts?: number;
+	/**
+	 * `insufficient_role`: the rank the action needed, as the hub names it
+	 * (`admin`/`owner`). Carried rather than restated, so this app's sentence can
+	 * name the authority the user has to ask for instead of a generic "higher
+	 * role".
+	 */
+	required?: string;
 };
 
 /**

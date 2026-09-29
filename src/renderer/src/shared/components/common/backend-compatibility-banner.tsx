@@ -17,10 +17,23 @@
  *
  * There is no unauthenticated fallback behind this banner; the surfaces it
  * describes stay gated on `desktopFeatureEnabled` individually.
+ *
+ * ONE BAND GRAMMAR, SHARED WITH THE PANE'S STATUS STRIP (design note § 3). This
+ * surface draws `Alert` wearing `NOTICE_BAND` inside the same `shrink-0 px-6
+ * py-1` gutter the strip uses, so one incident's two bands read as one family
+ * rather than two systems - the operator's report is exactly that stack - and
+ * severity is then carried by hue, glyph and copy ONLY, never by a different
+ * shape. The banner's severity follows the CAUSE (`credential-refused` is
+ * `danger`: one fact may not carry two severities depending on which surface
+ * shows it; everything else here is a transition, a feature limit or an
+ * environment fact, which is `warning`), and it has NO dismiss - it is a setup
+ * state present from first paint, and the collapse-to-pill contract is the
+ * strip's alone (§ 3, A9).
  */
 
 import { useChatStatusStripPresent } from "@features/chat/chat-status-presence";
 import {
+	type BackendErrorKind,
 	REQUIRED_BACKEND_FEATURES,
 	backendCompatibilityMessage,
 	backendErrorKind,
@@ -31,7 +44,8 @@ import {
 	desktopKeys,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
-import { Alert, AlertDescription, Button } from "@shared/components/ui";
+import { NOTICE_BAND } from "@shared/components/common/notice-band";
+import { Alert, Button } from "@shared/components/ui";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import {
 	serverUpdateFailureReason,
@@ -39,6 +53,7 @@ import {
 } from "@shared/utils/update-error-copy";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
+import type { DaemonPairingCause } from "../../../../../shared/backend-status";
 
 const REQUIRED_FEATURES = REQUIRED_BACKEND_FEATURES;
 
@@ -50,9 +65,139 @@ const REQUIRED_FEATURES = REQUIRED_BACKEND_FEATURES;
  * backstop for an answer that arrived without one. It names the next step because
  * that is what the banner is for: the buttons beside it re-probe, and the failure
  * is recorded in the app's own update log (design D4, review R1-5).
+ *
+ * EXPORTED so the story that photographs the update-failed suffix renders the
+ * SAME string the container sets, rather than a second copy of it drifting in a
+ * story file (`backend-compatibility-banner.stories.tsx`, `UpdateFailed`).
  */
-const BACKEND_UPDATE_UNEXPLAINED =
+export const BACKEND_UPDATE_UNEXPLAINED =
 	"The backend update could not start. Retry, or update from Settings, under Application updates.";
+
+export type BackendCompatibilityBannerViewProps = {
+	message: string;
+	severity: "danger" | "warning";
+	offerUpdate: boolean;
+	offerRetry: boolean;
+	updating: boolean;
+	updateError: string | null;
+	onRetry: () => void;
+	onUpdate: () => void;
+};
+
+/**
+ * The band, split from its readings so each state is a story.
+ *
+ * WHY THE SPLIT (design note § 5.1; the `ChatStatusStripView` precedent): the
+ * banner's states are conditions of a running daemon, so a frame cannot arrange
+ * them through the hooks - but they are exactly the states the operator's
+ * report and this fix are about. The container keeps the hooks and the
+ * suppression; this takes props and renders.
+ *
+ * THE ONE BAND GRAMMAR applies here as it does in the strip: `Alert` wearing
+ * `NOTICE_BAND` inside the pane's own `shrink-0 px-6 py-1` gutter. The old
+ * shape - full-bleed, squared, a bottom rule only - read as a second system
+ * stacked under the strip's inset rounded band. No `role` and no dismiss: this
+ * is a callout present from first paint, and the pill contract is the strip's
+ * alone (design note § 3, A9).
+ *
+ * AT MOST ONE `primary` PER BAND: where both acts are offered, `Update backend`
+ * is the remedy the state calls for and `Retry` renders `ghost`; where
+ * re-claiming is the only act, `Retry` is the primary itself (design note § 3,
+ * F4). A `secondary` control here had no boundary that clears the file's own
+ * 3:1 floor on either wash (measured: 2.09:1 worst on `warningWash`, 2.98:1 on
+ * `dangerWash`), which is why the remedy is a filled control and any second
+ * control is text-only.
+ */
+export const BackendCompatibilityBannerView = ({
+	message,
+	severity,
+	offerUpdate,
+	offerRetry,
+	updating,
+	updateError,
+	onRetry,
+	onUpdate,
+}: BackendCompatibilityBannerViewProps) => (
+	<div className="shrink-0 px-6 py-1">
+		<Alert variant={severity} className={NOTICE_BAND}>
+			<div className="flex w-full min-w-0 items-center gap-2">
+				<span className="min-w-0 flex-1 text-body-sm text-ink">
+					{message}
+					{updateError ? ` ${updateError}` : null}
+				</span>
+				{(offerUpdate || offerRetry) && (
+					<span className="flex shrink-0 items-center gap-2">
+						{offerUpdate && (
+							<Button
+								variant="primary"
+								size="sm"
+								onClick={onUpdate}
+								disabled={updating}
+							>
+								{updating ? "Updating" : "Update backend"}
+							</Button>
+						)}
+						{offerRetry && (
+							<Button
+								variant={offerUpdate ? "ghost" : "primary"}
+								size="sm"
+								onClick={onRetry}
+							>
+								Retry
+							</Button>
+						)}
+					</span>
+				)}
+			</div>
+		</Alert>
+	</div>
+);
+
+/**
+ * Whether the compatibility banner yields this state to the pane's status strip.
+ *
+ * ONE VOICE PER FACT (design note § 2.3, where D29's arm is kept verbatim and
+ * the `!answered` arm is added). The strip owns the facts it already states; the
+ * banner keeps every fact it alone owns:
+ *
+ * - `credential-refused` - the strip's row states the refusal in the pane, and
+ *   the banner speaks only where the strip is NOT mounted (its presence is the
+ *   input, so that is one comparison rather than a route table);
+ * - `cause === null && !answered` with an outage-shaped kind - no pairing cause
+ *   and no capabilities payload: the strip's `unreachable` row states it one
+ *   element up, and this banner's "did not answer" sentence would be a second
+ *   band for the same outage. `unauthorized` is deliberately NOT included: a
+ *   401 is a refusal fact the strip has no row for unless main publishes the
+ *   cause, and suppressing it would recreate the sidebar's old failure in
+ *   reverse - the fix for two voices producing zero voices;
+ * - everything else: no suppression. A pairing cause the strip never states
+ *   (successor etc.) is banner-only by construction after the strip's row-1
+ *   cause gate.
+ *
+ * PURE AND EXPORTED SO IT CAN BE DRIVEN DIRECTLY. A static render
+ * (`renderToStaticMarkup` - the desktop suite's renderer) reads
+ * `useSyncExternalStore`'s SERVER snapshot for `stripPresent`, which is
+ * deliberately `false` (see `chat-status-presence.ts`), so a rendered banner
+ * cannot observe the presence store at all: a test that set it and rendered
+ * would pass or fail with the input stuck false whatever it did. This function
+ * is the half that CAN be driven; the banner's own call site is pinned to it by
+ * source, after `kind` is computed, in `scripts/backend-error-surfaces.test.mjs`.
+ */
+export function bannerYieldsToStrip(input: {
+	stripPresent: boolean;
+	cause: DaemonPairingCause | null;
+	answered: boolean;
+	kind: BackendErrorKind;
+}): boolean {
+	const { stripPresent, cause, answered, kind } = input;
+	return (
+		stripPresent &&
+		(cause === "credential-refused" ||
+			(cause === null &&
+				!answered &&
+				(kind === "unreachable" || kind === "deadline" || kind === "unknown")))
+	);
+}
 
 export const BackendCompatibilityBanner = () => {
 	const capabilities = useDesktopCapabilities();
@@ -78,17 +223,17 @@ export const BackendCompatibilityBanner = () => {
 			? (snapshot.pairing.cause ?? "unpaired")
 			: null;
 	/*
-	 * THE STRIP OWNS `credential-refused` (design round 3, D29).
-	 *
-	 * In that one state the strip and this banner state the same refusal, one row
-	 * apart, with two sentences and two controls labelled `Retry` - round 1's D3
-	 * shape kept alive because the credential cause is reachable while the server
-	 * ANSWERS, so the strip's presence is unrelated to `online` and nothing yielded.
-	 * §F2's rule is one root cause, one voice, and the strip is the voice: it is the
-	 * pane's own live region, its Retry is the same `backend.reconnect` verb this
-	 * banner's is, and the sidebar's three paragraphs already stand down to it. So
-	 * this banner yields for exactly this cause, and only while the strip is on
-	 * screen - wherever the strip is not mounted, the banner keeps speaking.
+	 * WHETHER THE STRIP IS ON SCREEN (design round 3, D29, generalised by the
+	 * design note's § 2.3). In the refusal state the strip and this banner state
+	 * the same fact one row apart, with two sentences and two controls labelled
+	 * `Retry` - and the credential cause is reachable while the server ANSWERS,
+	 * so the strip's presence is unrelated to `online` and cannot be inferred
+	 * from the connection state. The strip is the voice where it is mounted: it
+	 * is the pane's own live region, its Retry is the same `backend.reconnect`
+	 * verb this banner's is, and the sidebar's three paragraphs already stand
+	 * down to it. The full rule - this arm plus the `!answered` outage arm - is
+	 * the exported `bannerYieldsToStrip` below, so the render path reads it once
+	 * and a test can drive it directly.
 	 */
 	const stripPresent = useChatStatusStripPresent();
 	/*
@@ -191,7 +336,6 @@ export const BackendCompatibilityBanner = () => {
 		: [...REQUIRED_FEATURES];
 	const unpaired = Boolean(data) && !data?.desktop_available;
 	if (!compatibilityBannerShown(data, cause)) return null;
-	if (cause === "credential-refused" && stripPresent) return null;
 
 	// The probe's HTTP status is what separates "old" from "not running" from
 	// "cannot authenticate", and the providers grid reads the same field to reach
@@ -200,6 +344,14 @@ export const BackendCompatibilityBanner = () => {
 	// to send a 401 user to a backend install this banner deliberately withholds.
 	const kind = backendErrorKind(capabilities.error);
 	const answered = Boolean(data);
+	/*
+	 * THE YIELD, WHERE THE NOTE PUTS IT: `compatibilityBannerShown` above decided
+	 * whether the banner may speak AT ALL; this decides whether the pane's strip
+	 * is already speaking for the same fact. It reads AFTER `kind` is computed so
+	 * the outage-shaped kinds can be told from `unauthorized`, and it calls the
+	 * one exported predicate rather than restating the rule in the render path.
+	 */
+	if (bannerYieldsToStrip({ stripPresent, cause, answered, kind })) return null;
 
 	const canUpdate = Boolean(window.api?.updater?.updateBackend);
 	const message = backendCompatibilityMessage({
@@ -235,44 +387,24 @@ export const BackendCompatibilityBanner = () => {
 		 * pinned to y 0 OVERLAP rather than stack - so the case that decided the shape
 		 * (`docs/evidence/band-occlusion/before/before-two-bands.png`) could not even
 		 * be photographed as two bands before this change. `app.tsx` carries the full
-		 * rationale.
+		 * rationale. The band itself is `BackendCompatibilityBannerView` now; this
+		 * call is the container's whole render path.
 		 */
-		<div className="w-full">
-			<Alert
-				variant="warning"
-				// Setup state, not an interruption: it is present from first paint
-				// so it does not need the assertive announcement the connectivity
-				// banner uses.
-				className="items-center rounded-none border-x-0 border-t-0"
-			>
-				<div className="flex w-full items-center justify-between gap-4">
-					<AlertDescription>
-						{message}
-						{updateError ? ` ${updateError}` : null}
-					</AlertDescription>
-					<div className="flex shrink-0 items-center gap-2">
-						{offerUpdate && (
-							<Button
-								variant="primary"
-								size="sm"
-								onClick={() => void update()}
-								disabled={updating}
-							>
-								{updating ? "Updating" : "Update backend"}
-							</Button>
-						)}
-						{offerRetry && (
-							<Button
-								variant="secondary"
-								size="sm"
-								onClick={() => void retry()}
-							>
-								Retry
-							</Button>
-						)}
-					</div>
-				</div>
-			</Alert>
-		</div>
+		<BackendCompatibilityBannerView
+			message={message}
+			/*
+			 * ONE FACT, ONE SEVERITY (design note § 0.2): `credential-refused` is the
+			 * same refusal the strip paints `danger`, so this banner paints it danger
+			 * too; every other state here is a transition, a feature limit or an
+			 * environment fact, which is the doctrine's `warning`.
+			 */
+			severity={cause === "credential-refused" ? "danger" : "warning"}
+			offerUpdate={offerUpdate}
+			offerRetry={offerRetry}
+			updating={updating}
+			updateError={updateError}
+			onRetry={() => void retry()}
+			onUpdate={() => void update()}
+		/>
 	);
 };

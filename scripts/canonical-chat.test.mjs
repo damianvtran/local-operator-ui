@@ -65,11 +65,13 @@ const bundle = await build({
 				);
 				/*
 				 * The composer's own store is now a REAL dependency of the send path:
-				 * a failure returns the payload there (`returnPayloadToComposer`), and
-				 * that is the one route this suite has to see. Resolved to the same
-				 * absolute file the bundle's own export names, so the instance the
-				 * assertions read is the instance the store wrote to - a stubbed copy
-				 * would be a second store and would prove nothing.
+				 * the payload the USER asks back for (an `Edit` on a failed row, and the
+				 * released app's flip move) is written there - S4's failure arm returns
+				 * nothing, so this is the one route a payload home has left - and that
+				 * is the route this suite has to see. Resolved to the same absolute
+				 * file the bundle's own export names, so the instance the assertions
+				 * read is the instance the store wrote to - a stubbed copy would be a
+				 * second store and would prove nothing.
 				 */
 				builder.onResolve(
 					{ filter: /^@shared\/store\/conversation-input-store$/ },
@@ -104,8 +106,18 @@ const bundle = await build({
 					loader: "js",
 				}));
 				builder.onLoad({ filter: /.*/, namespace: "echo-fixture" }, () => ({
-					contents: `export const echoPendingUser = (sessionId, id, text, images) =>
-	globalThis.__canonicalEcho({ kind: "echo", sessionId, id, text, images });
+					contents: `export const paintPendingSend = (identity, send) =>
+	globalThis.__canonicalEcho({ kind: "echo", identity, sessionId: identity, id: send.id, text: send.text, images: send.images });
+export const movePendingSendIdentity = (from, to) =>
+	globalThis.__canonicalEcho({ kind: "move", from, to });
+export const replacePendingSendText = (identity, id, text) =>
+	globalThis.__canonicalEcho({ kind: "replace", identity, id, text });
+export const discardPendingSends = (identity) =>
+	globalThis.__canonicalEcho({ kind: "discard", sessionId: identity });
+export const pendingSendForView = () => null;
+export const settlePendingSend = (identity, id) =>
+	globalThis.__canonicalEcho({ kind: "settle", identity, id });
+export const hasPendingSend = () => false;
 export const retractPendingUser = (sessionId, id) =>
 	globalThis.__canonicalEcho({ kind: "retract", sessionId, id });
 /*
@@ -126,7 +138,7 @@ export const peekLocalEcho = (sessionId, id) => {
 	return globalThis.__canonicalRowIsLocal?.(id) === false ? "owner" : "local";
 };
 // Recorded like the other two so a store change that stops evicting an
-// abandoned draft's buffered echo is visible here as well; the buffer's own
+// abandoned draft's retained row is visible here as well; the registry's own
 // bounds are asserted against the real registry in echo-delivery.test.mjs.
 export const discardPendingEchoes = (sessionId) =>
 	globalThis.__canonicalEcho({ kind: "discard", sessionId });`,
@@ -488,6 +500,10 @@ test("create success plus admission failure retries exact same session and paylo
 				session_id: "222222222222",
 				binding: { agent: "reviewer", team: null },
 			};
+		// The catalogue read the create's answer now issues (S5) is answered and
+		// does not count as a send attempt.
+		if (request.op === "sessions.list")
+			return { sessions: [], truncated: false };
 		if (++attempts === 1) throw new Error("provider unavailable");
 		return { status: "admitted" };
 	};
@@ -521,6 +537,10 @@ test("the admission seam stores against the session the send created, and its an
 				session_id: "222222222222",
 				binding: { agent: "reviewer", team: null },
 			};
+		// The catalogue read the create's answer now issues (S5); it is not a send
+		// and must not enter the order this test reads.
+		if (request.op === "sessions.list")
+			return { sessions: [], truncated: false };
 		order.push("send");
 		return { status: "admitted" };
 	};
@@ -693,6 +713,10 @@ test("an issued admission pins the payload for replay, and a discard always free
 		calls.push(request);
 		if (request.op === "sessions.create")
 			return { session_id: "222222222222", binding: null };
+		// The catalogue read the create's answer now issues (S5) must not consume
+		// the single refusal this test arms.
+		if (request.op === "sessions.list")
+			return { sessions: [], truncated: false };
 		if (failNext) {
 			failNext = false;
 			throw new Error("provider unavailable");
@@ -2020,7 +2044,7 @@ test("the notice is ONE sentence from ONE place, and the composer renders it rat
  * goes out. The two old halves that still matter are kept: the row records the
  * refusal verbatim, and dismissing the sentence does not touch the message.
  */
-test("a store refusal hands the payload back, and the remedy its sentence names goes out", async () => {
+test("a store refusal keeps the payload on its row, and the remedy's press still goes out", async () => {
 	reset();
 	useConversationInputStore.setState({ inputByConversation: {} });
 	const stored =
@@ -2088,18 +2112,28 @@ test("a store refusal hands the payload back, and the remedy its sentence names 
 	);
 
 	/*
-	 * And the payload is where the user can act on it: the composer's own row, for
-	 * the identity the press was made under - text and file together. This is the
-	 * half that used to sit behind `Restore message`.
+	 * And the payload is where the user can act on it: ON THE ROW (S4), with the
+	 * class's sentence - not in the composer, which the boundary rule keeps empty
+	 * for every post-paint failure. The payload basis rides on the draft row, and
+	 * the line's `Edit` is the control that brings it home when the user wants it.
 	 */
 	const identity = composerIdentityFor(key, session);
 	const row = () =>
 		useConversationInputStore.getState().inputByConversation[identity];
-	assert.equal(row()?.pendingText, text, "the text came back to the composer");
+	assert.equal(
+		row()?.pendingText ?? "",
+		"",
+		"nothing came home: the row in the conversation is the message's home now",
+	);
+	assert.equal(
+		failed.submittedText,
+		text,
+		"the wording stays on the draft row",
+	);
 	assert.deepEqual(
-		(row()?.attachments ?? []).map((chip) => chip.path),
+		failed.submittedAttachments,
 		[file],
-		"and the file with it, so the next press sends the message the user can see",
+		"and the file with it, so Edit and Send again replay the whole message",
 	);
 
 	/*
@@ -2130,9 +2164,9 @@ test("a store refusal hands the payload back, and the remedy its sentence names 
 	);
 
 	/*
-	 * Dismissing the sentence is not abandoning the message. `onDismiss` clears the
-	 * row's `error`/`errorCode`; the composer's own copy is a different store, and
-	 * it must be untouched by a keystroke in the alert.
+	 * Dismissing the sentence is not abandoning the message. `onDismiss` clears
+	 * the row's `error`/`errorCode`; the payload basis and the transcript's own
+	 * record are untouched by a keystroke in the alert.
 	 */
 	const composerAfter = useConversationInputStore.getState().clearComposer;
 	store.getState().updateDraft(key, { error: undefined, errorCode: undefined });
@@ -2214,30 +2248,53 @@ test("a failed send's file comes back with its text, and the next Send carries b
 		(error) => error.code === STORE_OUT_OF_SPACE_CODE,
 	);
 
-	// The press's file is back in the composer's own row, and it never left the
-	// text: both halves arrive together, through one store write.
+	/*
+	 * S4: the failure keeps BOTH halves on the draft row - `submittedText` and
+	 * `submittedAttachments` - and hands the composer nothing. The row-line's
+	 * `Edit` restores them to the box with one call (`returnPayload`), and the pair
+	 * cannot part company on the way home because there is no way home except
+	 * through the one write that carries both.
+	 */
+	const failed = store.getState().drafts[key];
+	assert.equal(failed.submittedText, text, "the wording stays on the row");
+	assert.deepEqual(
+		failed.submittedAttachments,
+		[file],
+		"and the file rides with it - the half a restored draft used to lose in silence (Q-2, R17)",
+	);
 	const restored =
 		useConversationInputStore.getState().inputByConversation[identity];
-	assert.equal(restored?.pendingText, text, "the text is back");
+	assert.equal(
+		restored?.pendingText ?? "",
+		"",
+		"the composer got nothing back",
+	);
 	assert.deepEqual(
 		(restored?.attachments ?? []).map((chip) => chip.path),
-		[file],
-		"and so is the file the send was carrying",
+		[],
+		"and no chips either",
 	);
 
-	// THE REGRESSION, on the wire: the next Send carries BOTH halves. Pre-fix this
-	// request had the wording and no image, which is a silent partial send.
+	/*
+	 * THE REGRESSION, on the wire: the press that follows the user's `Edit` carries
+	 * BOTH halves, because the list it carries is the row's own basis - which is
+	 * what `Edit` restores. Pre-fix this request had the wording and no image, a
+	 * silent partial send.
+	 */
 	globalThis.__canonicalRequest = async (request) => {
 		calls.push(request);
 		return {};
 	};
-	const saved = Object.values(
-		useConversationInputStore.getState().inputByConversation,
-	);
-	const chips = saved.flatMap((entry) =>
-		(entry.attachments ?? []).map((chip) => chip.path),
-	);
-	assert.deepEqual(chips, [file], "the composer's row is what the press reads");
+	useConversationInputStore.getState().returnPayload(identity, {
+		text: failed.submittedText,
+		attachments: [...failed.submittedAttachments],
+		replies: [],
+	});
+	const chips = (
+		useConversationInputStore.getState().inputByConversation[identity]
+			?.attachments ?? []
+	).map((chip) => chip.path);
+	assert.deepEqual(chips, [file], "Edit restored the file to the box");
 	const before = calls.length;
 	await admitChatDraft(
 		key,
@@ -2362,9 +2419,11 @@ test("one rule decides what the same message means, and the composer keeps no se
  * (UX round 3 U14, QA round 3 Q7).
  *
  * So the assertion is not "the draft is retained" - it was, and that is exactly
- * what made the loss look cosmetic. It is that the store hands the composer the
- * text AGAIN, through the one derivation the page reads, and that the composer's
- * own box rule then puts it back.
+ * what made the loss look cosmetic. Under S4 the MESSAGE does not come home at
+ * all (a post-paint failure belongs to its row), so what this case pins is the
+ * flip itself: the user's OWN content - here, a line typed into the pressed
+ * composer during the create hop - crosses to the identity the send minted, and
+ * nothing is stranded under the identity no pane will show again.
  */
 test("a leading-slash refusal on the created-session arm hands the payload to the identity the send minted", async () => {
 	reset();
@@ -2403,6 +2462,11 @@ test("a leading-slash refusal on the created-session arm hands the payload to th
 	useConversationInputStore
 		.getState()
 		.beginInFlight(pressed, { text, attachments: [], replies: [] }, true);
+	// The user's own line, typed into the pressed composer while the create is in
+	// flight: the thing that must not be stranded by the flip.
+	useConversationInputStore
+		.getState()
+		.setCurrentInput(pressed, "typed while the create ran");
 	await assert.rejects(admitChatDraft(key, { ...input, text }), (error) => {
 		assert.ok(error instanceof DesktopControlError);
 		assert.equal(error.code, LEADING_SLASH_CODE);
@@ -2414,7 +2478,11 @@ test("a leading-slash refusal on the created-session arm hands the payload to th
 	// The session was created inside the send, and the request that carried the
 	// text is the one that was refused.
 	assert.deepEqual(
-		[...new Set(calls.map((request) => request.op))],
+		// The catalogue read (S5) is the create's answer's own follower and not part
+		// of the send path this assertion is about.
+		[...new Set(calls.map((request) => request.op))].filter(
+			(op) => op !== "sessions.list",
+		),
 		["sessions.create", "sessions.message"],
 	);
 	assert.equal(draft.sessionId, "222222222222");
@@ -2436,11 +2504,25 @@ test("a leading-slash refusal on the created-session arm hands the payload to th
 		pressed,
 		"the identity the send minted is not the one the composer pressed under - this is the arm the case is about",
 	);
-	const row = useConversationInputStore.getState().inputByConversation[minted];
+	assert.equal(draft.submittedText, text, "the message stays on its row");
+	/*
+	 * The composer that replaces the pressed one is handed no MESSAGE - the row is
+	 * the message's home - but the user's OWN line, typed into the pressed composer
+	 * while the create ran, crosses with the identity. It lands in `pendingText`,
+	 * the field the composer adopts into its box on mount: that move is the U14/Q7
+	 * one (the leftovers fold `returnInFlight` still performs), and what this arm
+	 * pins is that it survives S4's boundary rule.
+	 */
 	assert.equal(
-		row?.pendingText,
+		useConversationInputStore.getState().inputByConversation[minted]
+			?.pendingText,
+		"typed while the create ran",
+	);
+	assert.notEqual(
+		useConversationInputStore.getState().inputByConversation[minted]
+			?.pendingText,
 		text,
-		"the text is in the composer that will render it",
+		"and what crossed is the user's own line, not the message",
 	);
 	assert.equal(
 		useConversationInputStore.getState().inputByConversation[pressed],
@@ -2452,11 +2534,13 @@ test("a leading-slash refusal on the created-session arm hands the payload to th
 
 /*
  * The two arms, side by side, on the one thing the user experiences: what the
- * composer is given to put back. The named-session arm never re-keys, so its
- * local restore has always worked; the created-session arm has to be handed the
- * same text by the store. One rule, one field, both arms.
+ * composer is left holding after a refusal. Under S4 the answer is the same on
+ * both - NOTHING, because the boundary rule is about the failure's timing and
+ * knows nothing about which identity the flip left behind - and the symmetric
+ * fact is the payload BASIS, on each arm's own draft row, where the row-line's
+ * controls read it. One rule, both arms.
  */
-test("a refusal hands the composer the same payload on both arms", async () => {
+test("a refusal hands the composer nothing on both arms, and the basis stays on each row", async () => {
 	reset();
 	useConversationInputStore.setState({ inputByConversation: {} });
 	globalThis.__canonicalRequest = async (request) => {
@@ -2515,24 +2599,19 @@ test("a refusal hands the composer the same payload on both arms", async () => {
 		"333333333333",
 	);
 	assert.equal(
-		named.row?.pendingText,
-		"/usage\nnamed-session arm line two",
-		"the arm that never flips hands the text back under its own identity",
+		named.row?.pendingText ?? "",
+		"",
+		"the arm that never flips hands nothing back",
 	);
 	assert.equal(
-		created.row?.pendingText,
-		"/usage\ncreated arm line two",
-		"and the arm that flips hands it to the identity the send minted",
+		created.row?.pendingText ?? "",
+		"",
+		"and neither does the arm that flips: the row in the transcript is the home",
 	);
-	/*
-	 * Same refusal shape on both: the arms differ in identity, not in what the user
-	 * is owed - and the payload arrives in the SAME store under the SAME field, which
-	 * is what "one rule for both arms" means now that there is one return path.
-	 */
 	for (const { draft } of [named, created])
 		assert.equal(draft.admissionAttempted, false);
-	assert.equal(named.row?.pendingText !== undefined, true);
-	assert.equal(created.row?.pendingText !== undefined, true);
+	assert.equal(named.draft.submittedText, "/usage\nnamed-session arm line two");
+	assert.equal(created.draft.submittedText, "/usage\ncreated arm line two");
 });
 
 /*
@@ -2606,28 +2685,45 @@ test("a restored draft still carries an attachment, not just the text", async ()
 		/./,
 	);
 	const draft = store.getState().drafts[key];
-	// The composer that mounts after the flip reads its chips under the id this send
-	// minted, and has never seen these files.
+	/*
+	 * S4: the files stay on the DRAFT ROW with the text - both halves of the basis
+	 * (Q-2/R17's property, kept where the row-line's `Edit` restores from) - and the
+	 * composer that mounts after the flip is handed nothing.
+	 */
 	const minted = composerIdentityFor(key, draft.sessionId);
 	assert.equal(minted, "555555555555");
+	assert.equal(draft.submittedText, text, "the text half is on the row");
+	assert.deepEqual(
+		draft.submittedAttachments,
+		attachments,
+		"and the files ride with it - the half a restored draft used to lose in silence",
+	);
 	const row = useConversationInputStore.getState().inputByConversation[minted];
-	assert.equal(row?.pendingText, text, "the text half is there");
+	assert.equal(row?.pendingText ?? "", "", "the composer got nothing back");
 	assert.deepEqual(
 		(row?.attachments ?? []).map((chip) => chip.path),
-		attachments,
-		"and the files came with it - the half a restored draft used to lose in silence",
+		[],
+		"and no chips",
 	);
 
 	/*
-	 * THE REGRESSION, on the wire: the payload the NEXT Send carries is the row the
-	 * composer is showing. Pre-fix this read `[]` - the message went out with the
-	 * wording and without the files.
+	 * THE REGRESSION, on the wire: the route back is the row-line's `Edit`, and the
+	 * list it restores is the basis's own. Pre-fix the next Send read `[]` - the
+	 * message went out with the wording and without the files.
 	 */
 	globalThis.__canonicalRequest = async (request) => {
 		calls.push(request);
 		return {};
 	};
-	const chips = (row?.attachments ?? []).map((chip) => chip.path);
+	useConversationInputStore.getState().returnPayload(minted, {
+		text: draft.submittedText,
+		attachments: [...draft.submittedAttachments],
+		replies: [],
+	});
+	const chips = (
+		useConversationInputStore.getState().inputByConversation[minted]
+			?.attachments ?? []
+	).map((chip) => chip.path);
 	const before = calls.length;
 	await admitChatDraft(
 		key,
@@ -2661,9 +2757,11 @@ test("a restored draft still carries an attachment, not just the text", async ()
  * carrying one half of a refused payload looked exactly like one carrying both.
  *
  * There is no withholding now, and that is the point: the return is ONE write
- * (`returnInFlight` -> `mergeReturnedPayload` + `mergeReturnedText`) that puts the
- * text back first, unions the chips by path and the quotes by id, and drops
- * nothing. So the property to assert is the one the split notice existed to
+ * (`returnPayload` -> `foldReturn`) that puts the text back first, unions the
+ * chips by path and drops nothing. (Quotes: the payload's own travel inside its
+ * text as `<reply-to>` markup - see `buildSendPayload` - so the return carries
+ * them already and does not restore chips for them; the user's own quotes are
+ * kept as chips when the leftovers cross the flip.) So the property to assert is the one the split notice existed to
  * explain away: in EVERY state a composer can be in when a send fails, both halves
  * end up in the draft, and no state produces a message the user cannot send.
  *
@@ -2682,14 +2780,19 @@ test("a return puts both halves back in every composer state, and withholds noth
 			row: { currentInput: "", attachments: [], replies: [] },
 			expectText: text,
 			expectPaths: attachments,
-			expectReplies: ["r1"],
+			// The payload's quotes are not restored as CHIPS: `buildSendPayload`
+			// inlines them into the text as `<reply-to>` markup, and the message
+			// text that comes back already carries them - restoring the chips
+			// would prefix the same markup twice on the next send (that
+			// function's own note). What survives is the user's own quotes.
+			expectReplies: [],
 		},
 		{
 			name: "text typed while the send was in flight",
 			row: { currentInput: "a line I typed", attachments: [], replies: [] },
 			expectText: `${text}\n\na line I typed`,
 			expectPaths: attachments,
-			expectReplies: ["r1"],
+			expectReplies: [],
 		},
 		{
 			name: "a file attached while the send was in flight",
@@ -2700,7 +2803,7 @@ test("a return puts both halves back in every composer state, and withholds noth
 			},
 			expectText: text,
 			expectPaths: [...attachments, "/tmp/mine.png"],
-			expectReplies: ["r1"],
+			expectReplies: [],
 		},
 		{
 			name: "a quote staged while the send was in flight",
@@ -2711,7 +2814,7 @@ test("a return puts both halves back in every composer state, and withholds noth
 			},
 			expectText: text,
 			expectPaths: attachments,
-			expectReplies: ["r1", "mine"],
+			expectReplies: ["mine"],
 		},
 	];
 	for (const state of states) {
@@ -2755,9 +2858,25 @@ test("a return puts both halves back in every composer state, and withholds noth
 			true,
 		);
 		await assert.rejects(
-			admitChatDraft(key, { ...input, text, attachments }, session),
+			// The app's own shape for a draft press: no session id yet - it is created
+			// INSIDE this call, which is what makes the flip (and the move) real.
+			admitChatDraft(key, { ...input, text, attachments }, undefined),
 			/./,
 		);
+		/*
+		 * S4: the failure itself returns nothing. The matrix drives the user's own
+		 * `Edit` - the store write the line's control performs - and asserts the merge
+		 * rules unchanged: the returned message goes first, the user's own content is
+		 * kept, and nothing is withheld.
+		 */
+		const failed = store.getState().drafts[key];
+		useConversationInputStore
+			.getState()
+			.returnPayload(composerIdentityFor(key, session), {
+				text: failed.submittedText,
+				attachments: [...failed.submittedAttachments],
+				replies: [],
+			});
 		/*
 		 * The identity the composer renders NEXT - the session id, once the send has
 		 * created or addressed one. The row keyed by the draft key is deleted by the
@@ -2781,7 +2900,7 @@ test("a return puts both halves back in every composer state, and withholds noth
 		assert.deepEqual(
 			(row?.replies ?? []).map((kept) => kept.id),
 			state.expectReplies,
-			`${state.name}: and the quotes are a union by id`,
+			`${state.name}: the user's own quotes survive; the payload's own travel inside its text`,
 		);
 		// Nothing to explain away: the returned half is never held back, so the state
 		// that needed a "part of your message could not come back" sentence cannot
@@ -3519,13 +3638,17 @@ test("the owner's own refusals latch nothing, and their payload still replays un
 			normalizeSendText(input.text),
 			"the payload stays as the comparison basis, so the re-send is an idempotent replay rather than a new message",
 		);
-		const retracted = echoes.filter((e) => e.kind === "retract");
+		/*
+		 * AND THE ECHO STAYS (S4). The refusal is provable, but it was raised after
+		 * the paint, so the row is where it is stated - a retraction would empty the
+		 * transcript of a message the user still has to act on, and under this
+		 * change the row's own line carries the sentence and the two controls.
+		 */
 		assert.equal(
-			retracted.length,
-			1,
-			"the echo must go with the refusal: a retraction is the same predicate's other consumer",
+			echoes.filter((e) => e.kind === "retract").length,
+			0,
+			"refused before admission, kept after the paint: the row states the refusal",
 		);
-		assert.equal(retracted[0].id, requestId);
 		assert.equal(
 			withholdsRetryHint(arm.code),
 			arm.withholdsHint,
@@ -3698,8 +3821,8 @@ test("a failure that establishes nothing about admission is still unknowable - a
 	);
 	assert.equal(
 		echoes.filter((e) => e.kind === "retract").length,
-		1,
-		"and the echo goes with it: the message provably does not exist on the owner",
+		0,
+		"and the row stays: the refusal is stated where the message is (S4), not by emptying the transcript",
 	);
 	assert.equal(refused.error, "The store could not be read.");
 	assert.equal(withholdsRetryHint(refused.errorCode), true);
@@ -3718,6 +3841,10 @@ test("a busy owner is retried under the same identity before the composer ever s
 		calls.push(request);
 		if (request.op === "sessions.create")
 			return { session_id: "222222222222", binding: null };
+		// The catalogue read (S5) is not a send attempt; counting it would eat one
+		// of the two refusals this test arms.
+		if (request.op === "sessions.list")
+			return { sessions: [], truncated: false };
 		if (attempt < waits.length)
 			throw new DesktopControlError(
 				503,
@@ -4416,8 +4543,23 @@ test("the echo is painted before the message request, under the admission reques
 		requestId,
 		"the echo id MUST be the admission request UUID - the owner gives the durable row that same id, so any other key paints the message twice forever",
 	);
-	assert.equal(sawEchoAtRequest.sessionId, "222222222222");
+	/*
+	 * AND IT IS ADDESSED BY THE PANE'S OWN KEY, because the paint happened at
+	 * the press - before the create that mints the session id. This assertion
+	 * used to pin the session id itself, which was the defect: the row could not
+	 * exist until `sessions.create` returned, so the whole create hop was
+	 * represented by nothing. The re-key to the session is asserted separately,
+	 * as a fact of the patch rather than of the paint.
+	 */
+	assert.equal(sawEchoAtRequest.sessionId, key);
 	assert.equal(sawEchoAtRequest.text, "Review this");
+	// The identity flip's re-key: exactly one move, from the draft key to the
+	// session the create minted, ordered before the message request (the move
+	// rides the same synchronous block as the `sessionId` patch).
+	assert.deepEqual(
+		echoes.filter((e) => e.kind === "move").map((move) => [move.from, move.to]),
+		[[key, "222222222222"]],
+	);
 	// The id that went to the wire is the id that was echoed: one value.
 	const sent = calls.filter((c) => c.op === "sessions.message").at(-1);
 	assert.equal(sent.requestId, requestId);
@@ -4479,22 +4621,27 @@ test("an ambiguous failure keeps the echo, and only a pre-admission refusal retr
 
 	for (const status of [413, 422, 409]) {
 		const { key, requestId } = await send(status);
-		const retracted = echoes.filter((e) => e.kind === "retract");
+		/*
+		 * S4 FLIPS THIS LOOP'S EXPECTATION, and the split it used to draw has moved:
+		 * both halves now keep their row (the boundary is paint-time, not
+		 * admission-time), so what these statuses pin is the LATCH - the fact the
+		 * failure arms still write differently (a stated refusal is not an unknown
+		 * outcome) and the thing the composer reads - not the echo's fate.
+		 */
 		assert.equal(
-			retracted.length,
-			1,
-			`a ${status} is refused before admission, so the echo must be retracted`,
+			echoes.filter((e) => e.kind === "retract").length,
+			0,
+			`a ${status} keeps its row: the row states the refusal`,
 		);
-		assert.equal(retracted[0].id, requestId, "it retracts the id it painted");
 		assert.equal(
-			retracted[0].sessionId,
-			"222222222222",
-			"addressed by the session this call CREATED - reading the pre-send draft snapshot would leave it unretractable",
+			echoes.filter((e) => e.kind === "echo").at(-1).id,
+			requestId,
+			"the painted row is the one the refusal lands on",
 		);
 		assert.equal(
 			store.getState().drafts[key].admissionAttempted,
 			false,
-			"one predicate, two consumers: the un-latch and the retraction cannot disagree",
+			"and the un-latch still records that no admission was issued: there is no outcome to be unsure about",
 		);
 	}
 });
@@ -4536,13 +4683,17 @@ test("clearing the composer before admission leaves the guard's basis the typed 
 	assert.equal(store.getState().drafts[key], undefined, "the retry landed");
 });
 
-test("a refused send with an emptied composer still has a payload to Restore", async () => {
+test("a refused send with an emptied composer still has its payload basis", async () => {
 	reset();
-	// R9: the early clear makes "box empty, text held" the COMMON state rather
-	// than an edge case, so the escape has to hold there. `heldText` is what the
-	// composer's Restore writes back; with an empty box `heldInBox` is false and
-	// the alert must offer Restore rather than "Send it again", which would name
-	// an action the user cannot perform blind.
+	/*
+	 * R9's SHAPE, KEPT BECAUSE THE INVARIANT OUTLIVED THE AFFORDANCE. The early
+	 * clear makes "box empty, text held" the COMMON state rather than an edge case,
+	 * so the thing that must survive a refusal is the claim a replay is compared
+	 * against - and under S4 the control that reads it is the row's own `Edit`/`Send
+	 * again` rather than the alert's `Restore message`, which no longer renders over
+	 * a post-paint failure at all (the boundary rule: one failure, one sentence, and
+	 * the row is where it lives).
+	 */
 	globalThis.__canonicalRequest = async (request) => {
 		calls.push(request);
 		throw new DesktopControlError(413, "This message is too large to send.");
@@ -4554,20 +4705,25 @@ test("a refused send with an emptied composer still has a payload to Restore", a
 		admitChatDraft(key, { ...input, text: payload }, "222222222222"),
 	);
 	const held = store.getState().drafts[key].submittedText;
-	assert.equal(held, payload, "the held claim survives for Restore to offer");
-	// The composer's own basis with an EMPTY box, which is the post-clear state.
-	const boxPayload = buildSendPayload("", replies);
-	assert.notEqual(
-		boxPayload,
+	assert.equal(
 		held,
-		"an empty box is not the held payload, so heldInBox is false and Restore stays offered",
+		payload,
+		"the held claim survives for Edit and Send again",
 	);
-	// And Restore is still not a loop: the restored payload re-assembled with
-	// its chips consumed is byte-identical, so the guard admits it.
+	/*
+	 * And the route back is not a loop: the payload restored and re-assembled with
+	 * its chips consumed is byte-identical, so the unchanged-payload guard admits
+	 * the retry as a replay of the same message.
+	 */
 	assert.equal(buildSendPayload(held, []), held);
-	// The echo was retracted (413 is pre-admission), so the transcript does not
-	// keep a bubble for a message that is back in the user's hands.
-	assert.equal(echoes.filter((e) => e.kind === "retract").length, 1);
+	/*
+	 * THE ECHO STAYS (S4). A 413 is refused before admission, but it is refused
+	 * AFTER the paint, and the row is where the refusal is stated - retracting it
+	 * would empty the transcript of the message the user still has to act on. The
+	 * composer shows no sentence for it; the row shows the class's.
+	 */
+	assert.equal(echoes.filter((e) => e.kind === "retract").length, 0);
+	assert.equal(echoes.filter((e) => e.kind === "echo").length, 1);
 });
 
 test("the draft send remounts the panel exactly once, before the message POST", () => {
@@ -4747,6 +4903,59 @@ test("the draft send remounts the panel exactly once, before the message POST", 
 		undefined,
 		"no session and no draft is no panel",
 	);
+});
+
+/*
+ * S5's other half: the catalogue read rides the CREATE'S answer, not the send's.
+ *
+ * The sidebar's draft row drops the moment `sessionId` is patched on the row,
+ * and the session row only arrives with a catalogue answer; the pane's own
+ * post-send read is skipped when the user has switched away, so without a read
+ * at the create the conversation lives in neither list until the 30 s poll.
+ * This pins the read while the message POST is still hanging, which is the
+ * property - the exact ordering inside one tick is deliberately not hoisted
+ * into an assertion.
+ */
+test("the create's answer re-reads the catalogue while the message POST is still in flight", async () => {
+	reset();
+	useConversationInputStore.setState({ inputByConversation: {} });
+	let releaseMessage;
+	const ops = [];
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		ops.push(request.op);
+		if (request.op === "sessions.create")
+			return { session_id: "222222222222", binding: null };
+		if (request.op === "sessions.list")
+			return { sessions: [], truncated: false };
+		if (request.op === "sessions.message") {
+			await new Promise((resolve) => {
+				releaseMessage = resolve;
+			});
+			return { status: "admitted" };
+		}
+		return { status: "admitted" };
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	// The app's own shape for a draft press: no session id yet.
+	const pending = admitChatDraft(key, input, undefined);
+	await new Promise((resolve) => setTimeout(resolve, 25));
+	assert.ok(
+		ops.includes("sessions.message"),
+		"the arm is real: the message POST has been issued and is hanging",
+	);
+	assert.ok(
+		ops.includes("sessions.list"),
+		"the catalogue was re-read on the create's answer, while the message POST was still in flight",
+	);
+	const create = ops.indexOf("sessions.create");
+	const list = ops.indexOf("sessions.list");
+	assert.ok(
+		create < list,
+		"and it is the create's answer it rides, not something earlier",
+	);
+	releaseMessage();
+	await pending;
 });
 
 test("the palette's close-time comparison reads the pane's own identity, on every door", () => {
@@ -5017,9 +5226,11 @@ test("the composer clears no payload half of its own, so the echo is the only tr
  * exactly what a panel mounting mid-send does.
  *
  * The composer now derives the fact from that row (`sendUnsettledForSession` over
- * `draftRowForSession`, the same predicate the pane's `starting` latch reads for
- * the transcript's line), and this drives the REAL store through a New-chat send:
- * create -> the flip -> the seam -> the echo -> the held POST -> the receipt.
+ * `draftRowForSession`, found by whichever name the conversation's send has),
+ * while the pane's wait line reads the same send as a PAINTED row
+ * (`pendingSendForView`); this drives the REAL store through a New-chat send:
+ * the press -> the create hop -> the flip -> the seam -> the held POST -> the
+ * receipt.
  *
  * WHAT THIS TEST CANNOT SEE, stated so it is not read as wider than it is: it
  * asserts the ROW, not the composer's drawing of it. The drawing is asserted in
@@ -5030,14 +5241,17 @@ test("the composer clears no payload half of its own, so the echo is the only tr
  * seeded - measured while writing this, not assumed. The guard below keeps a
  * regression from walking back in through the prop door.
  */
-test("R2-1: the unsettled-send fact is the STORE's row, live across the New-chat flip and gone at the receipt", async () => {
+test("R2-1: the unsettled-send fact is the STORE's row, live from the press through the flip and gone at the receipt", async () => {
 	reset();
 	const sessionId = "222222222222";
 	let release = null;
+	let releaseCreate = null;
 	globalThis.__canonicalRequest = async (request) => {
 		calls.push(request);
 		if (request.op === "sessions.create")
-			return { session_id: sessionId, binding: null };
+			return new Promise((resolve) => {
+				releaseCreate = () => resolve({ session_id: sessionId, binding: null });
+			});
 		if (request.op === "sessions.message")
 			return new Promise((resolve) => {
 				release = () => resolve({ status: "admitted" });
@@ -5053,6 +5267,32 @@ test("R2-1: the unsettled-send fact is the STORE's row, live across the New-chat
 		"nothing is in flight at the press, so the box must not claim a send",
 	);
 	const send = admitChatDraft(key, { ...input, text: "Review this" });
+	for (let i = 0; i < 200 && releaseCreate === null; i += 1)
+		await new Promise((resolve) => setTimeout(resolve, 5));
+	assert.notEqual(releaseCreate, null, "the create never left the store");
+	/*
+	 * THE CREATE HOP ITSELF, which is the window this change added a claim for.
+	 * No session id exists yet, so the row is findable only under the DRAFT key -
+	 * the pane's own identity for the whole hop - and `submittedAt` is already
+	 * written, because the claim and its clock are one store update. This is
+	 * what a composer remounting mid-create reads: without the draft-key
+	 * spelling it found no row and said nothing at all.
+	 */
+	assert.equal(
+		sendUnsettledForSession(store.getState().drafts, key),
+		true,
+		"within the create hop the draft key answers: the box says the message is going out",
+	);
+	assert.equal(
+		fact(),
+		false,
+		"and the session it will become has no row yet - which is why the lookup is by identity, not by session id alone",
+	);
+	assert.ok(
+		store.getState().drafts[key]?.submittedAt,
+		"the hop is the clock's anchor too: `submittedAt` is written with the claim",
+	);
+	releaseCreate();
 	for (let i = 0; i < 200 && release === null; i += 1)
 		await new Promise((resolve) => setTimeout(resolve, 5));
 	assert.notEqual(release, null, "the message POST never left the store");
@@ -5077,6 +5317,34 @@ test("R2-1: the unsettled-send fact is the STORE's row, live across the New-chat
 		fact(),
 		false,
 		"the receipt deletes the row (`finishDraft`), so the box has nothing left to claim but the owner's answer",
+	);
+});
+
+test("S3: the pane's wait-line latch reads the PAINTED send, not a pane-local state", () => {
+	/*
+	 * The latch's SOURCE, pinned where this file's other source guards live (and
+	 * with the same honest limit: a regex over comment-stripped source notices the
+	 * door being reopened, it does not cover the fact). `starting` is read by the
+	 * band, the pane's collapse and the working line, so "where does it come from"
+	 * is again a question about a fact that must outlive the panel: the draft
+	 * pane paints at the press and the identity flip remounts the panel that
+	 * pressed, so a `useState`/`useRef` fed from this component's own lifetime is
+	 * silent on exactly the New-chat path (MAJOR-1's class). It reads the
+	 * registry - `pendingSendForView` - addressed by the pane's own identity,
+	 * which is the value the paint and the re-key used.
+	 */
+	const page = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	assert.match(
+		page,
+		/pendingSendForView\(identity\)/,
+		"the latch must read the pending-send registry by the pane's identity: anything addressed by this panel's own lifetime is false on the replacement panel",
+	);
+	assert.ok(
+		!/admittedSendFor\(/.test(page),
+		"and must not fall back to the row-shape helper this change removed: `admissionAttempted` is written after the create hop, and requiring it withholds the claim for the whole window this change added",
 	);
 });
 

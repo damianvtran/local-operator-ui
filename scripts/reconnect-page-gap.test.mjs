@@ -116,6 +116,7 @@ const bundle = await build({
 			export { admitChatDraft, useCanonicalSessionsStore, draftIdentityFor } from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 			export { __resetPaintCache } from "./src/renderer/src/shared/store/paint-cache";
+			export { __resetPendingSends } from "./src/renderer/src/shared/hooks/use-canonical-session";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -165,6 +166,7 @@ const {
 	admitChatDraft,
 	useCanonicalSessionsStore,
 	__resetPaintCache,
+	__resetPendingSends,
 } = hook;
 
 const SESSION_A = "aaaaaaaaaaaa";
@@ -464,6 +466,15 @@ function reset({ transcript, historyFaults = [] }) {
 	 * the state its own cases share.
 	 */
 	__resetPaintCache();
+	/*
+	 * The SEND registry is module state for the same reason, and one case in
+	 * this file stages a steer through `admitChatDraft`. Left alone, that row is
+	 * retained (the owner never paints its id in these fixtures) and the next
+	 * case's mount drains it into a transcript whose assertions are about THIS
+	 * file's rows. The registry ships its own reset for the same reason the
+	 * cache does.
+	 */
+	__resetPendingSends();
 	subscriptions.length = 0;
 	requests.length = 0;
 	rafQueue = [];
