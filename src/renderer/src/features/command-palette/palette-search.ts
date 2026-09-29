@@ -290,6 +290,21 @@ export const SCOPE_LEGEND: {
 ];
 
 /**
+ * The query the Cmd/Ctrl+P door opens the palette with (issue #659): the
+ * conversations scope, seeded, so that chord is a conversation quick switcher
+ * rather than a second copy of Cmd/Ctrl+K. The browse list under it is
+ * conversation rows and a term searches chats the way the sidebar does.
+ *
+ * Spelled as the glyph the scope IS rather than as a mode flag: the field then
+ * shows the reader why the list is conversations, and backspacing it widens
+ * the surface back to everything instead of trapping the gesture in a state it
+ * cannot leave. `scripts/palette-search.test.mjs` pins the binding - the seed
+ * parses to the chat scope - so the constant can never drift from the table
+ * above it.
+ */
+export const CONVERSATION_SWITCHER_SEED = "#";
+
+/**
  * Read a raw query into its scope and its terms.
  *
  * The glyph form is only recognised at the very start (it is a prefix), and the

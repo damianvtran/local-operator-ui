@@ -1,8 +1,10 @@
 # The command palette
 
-One surface, opened with `Cmd+K` (`Ctrl+K` off macOS) or by pressing **Search**
-at the foot of the app rail, that searches and runs everything the app can do
-from one field.
+One surface with two chords: `Cmd+K` (`Ctrl+K` off macOS) opens it as it always
+has — every source, the browse list that teaches the prefixes — `Cmd+P`
+(`Ctrl+P`) opens it seeded to your chats as the conversation quick switcher, and
+**Search** at the foot of the app rail is the pointer's door. One field searches
+and runs everything the app can do.
 
 This document is the contract, not the tutorial: what the palette reads, what it
 opens, and which decisions are deliberate so a later change does not undo them
@@ -13,10 +15,17 @@ without noticing.
 | Gesture | Owner | Why |
 | --- | --- | --- |
 | `Cmd/Ctrl+K` | the **renderer** (`palette-shortcut.ts`) | Two surfaces in the canvas already own this chord — the code editor's AI edit and the Markdown editor's link insert, which is what `Cmd+K` means in every editor a user has met. The decision reads `defaultPrevented`, so the editor that got there first keeps it. A `before-input-event` hook in main fires before the renderer sees the key at all and cannot ask. |
-| `Cmd/Ctrl+P` | the **main process** (`src/main/index.ts`) | The palette's original chord, kept for everyone who learned it from the app's own onboarding tour. It predates the palette's own shortcuts and still works wherever the window has focus. |
+| `Cmd/Ctrl+P` | the **main process** (`src/main/index.ts`) | The palette's original chord, kept for everyone who learned it from the app's own onboarding tour — and since #659 with a job of its own: it opens the surface seeded to its conversations source, which makes it the conversation quick switcher rather than a second copy of `Cmd/Ctrl+K`. It still works wherever the window has focus. |
 
 One keystroke, one owner, both decided in one place each. A press that both
 answered would toggle twice and open nothing.
+
+**`Cmd/Ctrl+P` opens on the chats scope** — the seed is
+`CONVERSATION_SWITCHER_SEED` in `palette-search.ts`, the `#` glyph itself. The
+field shows the glyph, the browse list under it is conversation rows, and terms
+search conversations the way the sidebar does, so the switcher is a starting
+point rather than a mode: backspacing the glyph widens the surface back to
+everything, and a word typed inside it searches chats alone.
 
 The **rail row** is the third door, and it exists because the chord is invisible:
 a user who never learns `Cmd+K` would use the palette once, if at all. The row is
@@ -195,7 +204,7 @@ a network round trip:
 
 ## Focus
 
-- The query field takes focus on open, from every door — the chord, the rail row,
+- The query field takes focus on open, from every door — either chord, the rail row,
   and the onboarding tour driving the store.
 - Focus stays there for the dialog's whole life: the list is walked with
   `aria-activedescendant`, so every keystroke still reaches the field.

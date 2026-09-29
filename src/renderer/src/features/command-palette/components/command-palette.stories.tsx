@@ -104,6 +104,21 @@ export const SettingsScope: Story = { args: { query: ",theme" } };
 export const CommandsScope: Story = { args: { query: ">" } };
 
 /**
+ * The chats scope on its own: `#` is the conversation quick switcher's seed
+ * (issue #659 — `Cmd/Ctrl+P` opens the palette with it), so this story is the
+ * state that chord lands in: the field carries the glyph and the list is the
+ * conversations scope.
+ *
+ * The Chats group is EMPTY in the gallery, and that is the fixture rather than
+ * the feature: conversation rows come from the canonical session store and the
+ * backend's search, and a story has neither (see the note at the top of this
+ * file). What this story is for is the scoped ground, the legend and the glyph;
+ * the populated list is the running app's evidence, the same division the
+ * filtered stories above already live under.
+ */
+export const ChatsScope: Story = { args: { query: "#" } };
+
+/**
  * The no-results state, which has to say what to try next — and, in the app,
  * must not claim it while the conversation search is still out.
  */
