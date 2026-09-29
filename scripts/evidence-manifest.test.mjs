@@ -2330,6 +2330,11 @@ const BRANCH_RECORDS = [
 	 */
 	"condensedPicturesFoldFourNote",
 	/*
+	 * And the lane's FIFTH fold, onto the closed-dispose/ben-trio train: this file was its one
+	 * conflict, and it quotes no tree-hash pair.
+	 */
+	"condensedPicturesFoldFiveNote",
+	/*
 	 * AND THIS FIX'S OWN (2026-09-29): `browserOauthPopupsRestampNote` is the
 	 * re-stamp for the driven-page OAuth popups (the operator's console Microsoft
 	 * sign-in repro - MSAL `loginPopup` denied by the driven views' deny-all
