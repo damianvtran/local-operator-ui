@@ -42,6 +42,7 @@ const {
 	WINDOW_MODE_ENV,
 	WINDOW_SIZE_ENV,
 	describeWindowLaunch,
+	hotkeysAllowed,
 	parseWindowMode,
 	parseWindowSize,
 	readWindowIntent,
@@ -1785,6 +1786,49 @@ test("no file but window-raise.ts raises or focuses a window", () => {
 		scanned.some((file) => file.includes(sep)),
 		`the scan reached subdirectories (scanned ${scanned.length} modules)`,
 	);
+});
+
+test("the mini view's window module raises nothing on its own", () => {
+	/*
+	 * THE NAMED REGRESSION TARGET for the scan above, written as its own case
+	 * rather than left to the recursive walk (quick-send design §D.5): the scan
+	 * covers `src/main` by construction, and this file is the one the design's
+	 * D7 hand-review asks about by name. Two assertions, because two different
+	 * deletions would satisfy each alone: the module contains no raise-family
+	 * call, AND it still presents — through `presentMiniView`, the one function
+	 * in `window-raise.ts` whose gate refuses unless the launch resolved
+	 * `focus`. A module that had simply lost its summon path would pass a
+	 * scan-only check.
+	 */
+	const source = readFileSync("src/main/mini-view.ts", "utf8");
+	const offSite = source
+		.split("\n")
+		.map((line, index) => ({ line, number: index + 1 }))
+		.filter(({ line }) =>
+			/\.(show|showInactive|focus|maximize)\(\)/.test(line),
+		);
+	assert.deepEqual(
+		offSite,
+		[],
+		"mini-view.ts must reach presentation only through window-raise.ts, where the launch mode's gate lives",
+	);
+	assert.ok(
+		source.includes("presentMiniView"),
+		"mini-view.ts presents through `presentMiniView`; without it the module has no way to show the window and the assertion above would be vacuous",
+	);
+});
+
+test("hotkeys are registered only by a normal launch", () => {
+	/*
+	 * The one comparison the quick-send feature rests on (design §D.5/§C.4):
+	 * "an agent run never answers the operator's global hotkey" is
+	 * `hotkeysAllowed(windowLaunch.mode)`, and the negative arms are the point —
+	 * `headless` renders a run nobody watches and `inactive` promises never to
+	 * activate, while a global shortcut's handler activates the app by design.
+	 */
+	assert.equal(hotkeysAllowed("normal"), true);
+	assert.equal(hotkeysAllowed("inactive"), false);
+	assert.equal(hotkeysAllowed("headless"), false);
 });
 
 test("no rig script asks the operating system for window focus", () => {
