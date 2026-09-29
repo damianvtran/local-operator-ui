@@ -1449,6 +1449,26 @@
 			"redacted": false
 		},
 		{
+			"key": "keymap.quick_send",
+			"section": "keymap",
+			"label": "Quick send",
+			"kind": "hotkey",
+			"help": "Opens a small composer over other apps; messages the chief of staff.",
+			"value": "primary+alt+space",
+			"default": "primary+alt+space",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"hotkey_scope": "desktop"
+		},
+		{
 			"key": "tool_approval_mode",
 			"section": "approvals",
 			"label": "Tool approval mode",
