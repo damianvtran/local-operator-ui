@@ -689,6 +689,73 @@ export function managedByLine(
 	return parts.join(" · ");
 }
 
+/* --------------------------------------------- slice 3: team grouping -- */
+
+/** The bucket a project with no team or owner files under. */
+export const NO_TEAM_LABEL = "No team";
+
+/**
+ * The team a project groups under: `team` first, `owner` as the fallback, and
+ * `null` for the bucket.
+ *
+ * WHY OWNER FALLS IN: both fields name who carries the stream, and rows in
+ * the store routinely carry one or the other rather than both — a row with
+ * only an owner would land in "No team" beside its own team's section, which
+ * reads as a missing project rather than as a different fact. Trimmed blanks
+ * count as absent: the fields have accepted `""` since they existed, and an
+ * empty section header is not a section.
+ */
+export function projectTeamName(project: {
+	team?: string | null;
+	owner?: string | null;
+}): string | null {
+	const team = project.team?.trim();
+	if (team) return team;
+	const owner = project.owner?.trim();
+	if (owner) return owner;
+	return null;
+}
+
+/** One group of items under a team header; `team: null` is the `No team` bucket. */
+export type TeamGroup<T> = {
+	team: string | null;
+	items: T[];
+};
+
+/**
+ * Group items under their teams by the same rule for the list, the timeline
+ * and every board column — one helper so the three surfaces cannot drift.
+ *
+ * ORDER IS A RULE, NOT AN ACCIDENT: named teams sort case-insensitively, and
+ * the `No team` bucket always renders LAST — a bucket is not a team, and a
+ * section that moves with the alphabet would read as one. Within a group the
+ * input order is kept (the store's own; the views do not re-sort what they
+ * were handed). Empty groups are omitted: a header with nothing under it is a
+ * promise the surface does not keep.
+ */
+export function groupByTeam<T>(
+	items: T[],
+	teamOf: (item: T) => string | null,
+): TeamGroup<T>[] {
+	const named = new Map<string, T[]>();
+	const bucket: T[] = [];
+	for (const item of items) {
+		const team = teamOf(item);
+		if (team === null) {
+			bucket.push(item);
+			continue;
+		}
+		const list = named.get(team);
+		if (list) list.push(item);
+		else named.set(team, [item]);
+	}
+	const groups: TeamGroup<T>[] = [...named.entries()]
+		.sort(([a], [b]) => a.localeCompare(b, undefined, { sensitivity: "base" }))
+		.map(([team, list]) => ({ team, items: list }));
+	if (bucket.length > 0) groups.push({ team: null, items: bucket });
+	return groups;
+}
+
 /**
  * A linked session's row name: its title, or the id in the machine voice.
  *

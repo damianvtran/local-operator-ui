@@ -264,6 +264,23 @@ export function parseWindowMode(value: string | undefined): WindowMode | null {
 }
 
 /**
+ * Whether a launch in this mode may register GLOBAL hotkeys (design §D.5/§G.1).
+ *
+ * `normal` is the only mode where the answer is yes, and the reasoning is the
+ * mode table's own promise read back: `headless` renders a run nobody is
+ * watching, and `inactive` promises "visible but never activated" — while a
+ * global hotkey whose handler activates the app is the opposite promise. A
+ * global shortcut is also PROCESS-WIDE: registering one in a rig-shaped run
+ * would let a chord pressed on the operator's own keyboard open a window in a
+ * run they cannot see, which is the same class of intrusion the modes exist to
+ * remove. So "an agent run never answers the hotkey" is one comparison, kept
+ * here where the mode vocabulary lives rather than spelled at the call site.
+ */
+export function hotkeysAllowed(mode: WindowMode): boolean {
+	return mode === "normal";
+}
+
+/**
  * `1380x900` (either case, `x` or `×`), or null. Values outside the floor and
  * ceiling are not rejected here — they are clamped in `resolveWindowLaunchPlan`
  * so the returned plan always describes the window that will exist, and so the
