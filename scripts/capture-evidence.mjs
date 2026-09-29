@@ -824,6 +824,28 @@ export const STORIES = [
 			dir: "receipts-expanded",
 		},
 	],
+	/*
+	 * THE PICTURES UNDER THE BAR (operator report, 2026-09-29): a condensed
+	 * span that produced pictures keeps them visible. `images` is the after
+	 * cell (three pictures - one landscape, one portrait, one plot - in one
+	 * capped row of tiles), its `press` row is the expanded state whose price
+	 * the strip replaces, and `images-many` is the overflow count's own frame
+	 * (eight pictures, four tiles and a `+4 more`). The before half is the
+	 * first cell's capture on the base tree, declared in
+	 * `docs/evidence/chat-turn-collapse-images-before/` - the same story cell
+	 * on the pre-change components, where the bar carries metadata only.
+	 */
+	["chat-turn-collapse--images", 1280, 900],
+	[
+		"chat-turn-collapse--images",
+		1280,
+		900,
+		{
+			press: '[data-turn-summary] button[aria-expanded="false"]',
+			dir: "images-expanded",
+		},
+	],
+	["chat-turn-collapse--images-many", 1280, 900],
 	["chat-turn-collapse--parked", 1280, 900],
 
 	/*
