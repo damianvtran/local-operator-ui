@@ -46,13 +46,13 @@ import {
 	labelGapCandidates,
 	labelTargetsBehind,
 	labelTargetsBehindIds,
+	loadOlderStep,
 	markLiveRecordsTruncated,
 	pageLabels,
 	pageOpensTurn,
 	pageOrphanResultInstants,
 	pageOrphanResults,
 	pagePassedOldestStart,
-	reanchorAfterCursorMiss,
 	reconcileLimit,
 	reconcileWalkDone,
 	removeRecord,
@@ -4596,21 +4596,31 @@ export function useCanonicalSessionStream(
 			const anchor = historyCursorRef.current.cursor ?? transcript.oldestId;
 			let page = await readPage(anchor);
 			/*
-			 * ONE re-anchored retry, in the click's own turn: a cursor the journal
-			 * can no longer locate comes back as the tail it already holds, and
-			 * asking once more from the row that tail itself begins at is what
-			 * turns the silent no-op into the page the reader asked for. A second
-			 * `cursor_missing` answer is not retried — it means the file cannot
-			 * serve this depth at all, and the failed state below is the honest
-			 * report rather than a loop.
+			 * ONE re-anchored retry, in the click's own turn (`loadOlderStep`):
+			 * a cursor the journal can no longer locate comes back as the tail
+			 * it already holds, and asking once more from the row that tail
+			 * itself begins at is what turns the silent no-op into the page the
+			 * reader asked for. A SECOND `cursor_missing` is the failed state —
+			 * never another retry, and never a success for a click that loaded
+			 * nothing (agent review round 1, F1).
 			 */
-			const reanchored = reanchorAfterCursorMiss(page, anchor);
-			if (reanchored !== null) {
-				historyCursorRef.current = { session: requested, cursor: reanchored };
-				page = await readPage(reanchored);
+			let step = loadOlderStep(page, anchor, false);
+			if (step.cursor !== null) {
+				historyCursorRef.current = { session: requested, cursor: step.cursor };
+				page = await readPage(step.cursor);
+				step = loadOlderStep(page, step.cursor, true);
 			}
-			if (!page.cursor_missing)
-				historyCursorRef.current = { session: requested, cursor: null };
+			historyCursorRef.current = { session: requested, cursor: step.cursor };
+			if (step.failed) {
+				/*
+				 * No splice and no success: the tail the retry returned is not
+				 * the rows the reader asked for, and the slot's own failed state
+				 * is the report. Cleared here for BOTH session states — a switch
+				 * mid-request must not leave the OLD session's spinner disabled.
+				 */
+				commitView((current) => ({ ...current, loadingOlder: false }));
+				return false;
+			}
 			if (sessionRef.current !== requested) {
 				// Clear the flag before standing down. The rows are not spliced (a
 				// foreign page must never reach this transcript), but `loadingOlder`

@@ -26,6 +26,7 @@ const {
 	EMPTY_TRANSCRIPT,
 	applyEvent,
 	applyHistoryPage,
+	loadOlderStep,
 	reanchorAfterCursorMiss,
 	applyLiveSeed,
 	streamDiagnostics,
@@ -5573,5 +5574,39 @@ test("a cursor_missing page re-anchors the load cursor to its own oldest row", (
 		null,
 	);
 	assert.equal(reanchorAfterCursorMiss({ ...tail, entries: [] }, "x"), null);
+
+	test("a second cursor_missing is the failed state, not another retry", () => {
+		/*
+		 * AGENT REVIEW ROUND 1, F1. The reviewer's finding: the retried page was
+		 * applied and the call resolved true, so a click that loaded nothing in
+		 * the second-miss corner still looked like success. This pins the whole
+		 * decision table: one re-anchored retry, a failure on the second miss,
+		 * and an immediate failure when there is no row to re-anchor at.
+		 */
+		const tail = {
+			cursor_missing: true,
+			entries: [{ id: "row:120" }, { id: "row:121" }],
+		};
+		assert.deepEqual(
+			loadOlderStep(tail, "row:pre-compaction", false),
+			{ cursor: "row:120", failed: false },
+			"the first miss re-anchors to the page's own oldest row",
+		);
+		assert.deepEqual(
+			loadOlderStep(tail, "row:120", true),
+			{ cursor: null, failed: true },
+			"the second miss is the failed state",
+		);
+		assert.deepEqual(
+			loadOlderStep({ cursor_missing: false, entries: [] }, "row:120", false),
+			{ cursor: null, failed: false },
+			"a healthy page is a success",
+		);
+		assert.deepEqual(
+			loadOlderStep({ cursor_missing: true, entries: [] }, "row:120", false),
+			{ cursor: null, failed: true },
+			"a miss with nothing to anchor at fails immediately",
+		);
+	});
 	assert.equal(reanchorAfterCursorMiss(tail, "row:90"), null);
 });

@@ -260,11 +260,14 @@ const mount = async (t, records, over = {}) => {
 			mounted.root.render(
 				h(CanonicalTranscript, {
 					frontend: nextOver.frontend ?? null,
-					transcript: transcriptOf(next),
+					transcript: {
+						...transcriptOf(next),
+						hasMore: nextOver.hasMore ?? false,
+					},
 					gate: nextOver.gate ?? null,
 					waiting: nextOver.waiting ?? false,
 					loadingOlder: false,
-					onLoadOlder: async () => true,
+					onLoadOlder: nextOver.onLoadOlder ?? (async () => true),
 					containerRef: { current: mounted.container },
 					isSmallView: false,
 					status: "live",
@@ -535,6 +538,83 @@ test("a run the window edge cut only at its opening row aligns and condenses on 
 		mounted.container.textContent,
 		/Worked/,
 		"the bar replaces the foot line, as on any completed run",
+	);
+});
+
+test("the snap's fetch half runs when the head is cut off, and is bounded", async (t) => {
+	/*
+	 * AGENT REVIEW ROUND 1, F2: the window snap's LOAD half — the bounded
+	 * follow-up fetch (`ALIGN_FETCH_MAX` pages) — had no test at any level.
+	 * This drives the real effect against a row list that starts mid-run (the
+	 * head is not loaded at all, so no snap can align), and against the
+	 * control: a list whose enclosing run opens with its own user row asks
+	 * for nothing. The bound is asserted AFTER further renders, because the
+	 * bound is the property — the harness's own settle can account for the
+	 * first two asks on its own.
+	 */
+	__resetTurnCollapseOpen();
+	let fetches = 0;
+	const load = async () => {
+		fetches += 1;
+		return true;
+	};
+	const records = Array.from({ length: 420 }, (_, index) =>
+		toolRecord(`tool:${index + 1}`, { ts: TS + 1_000 + index }),
+	);
+	const mounted = await mount(t, records, {
+		hasMore: true,
+		onLoadOlder: load,
+	});
+	await flushFrames();
+	const afterMount = fetches;
+	await mounted.render(records, { hasMore: true, onLoadOlder: load });
+	await flushFrames();
+	const afterRender1 = fetches;
+	await mounted.render(records, { hasMore: true, onLoadOlder: load });
+	await flushFrames();
+	const afterRender2 = fetches;
+	assert.ok(afterMount >= 1, "the cut head is asked for");
+	assert.equal(
+		afterRender2,
+		afterRender1,
+		`the asks stop (mount=${afterMount} r1=${afterRender1} r2=${afterRender2}; the bound is pinned by construction in the model suite, whose reading a strict-mode remount cannot muddle)`,
+	);
+
+	/* The control: the enclosing run's head IS loaded, so the effect stands down. */
+	let idleFetches = 0;
+	const headed = [
+		userRecord("user:1"),
+		...Array.from({ length: 419 }, (_, index) =>
+			toolRecord(`headed:${index + 1}`, { ts: TS + 1_000 + index }),
+		),
+	];
+	const idle = await mount(t, headed, {
+		hasMore: true,
+		onLoadOlder: async () => {
+			idleFetches += 1;
+			return true;
+		},
+	});
+	await flushFrames();
+	await idle.render(headed, {
+		hasMore: true,
+		onLoadOlder: async () => {
+			idleFetches += 1;
+			return true;
+		},
+	});
+	await flushFrames();
+	/*
+	 * The control's own count is a baseline, not zero: the scroll-paging arm
+	 * makes its own demand (jsdom geometry puts the region at its top edge).
+	 * What discriminates is the DIRECTION — the cut spends the align asks on
+	 * top of that baseline; the head-loaded list never does. The exact bound
+	 * is pinned by construction in the model suite, where a strict-mode
+	 * remount cannot muddle the reading.
+	 */
+	assert.ok(
+		afterRender2 > idleFetches,
+		`the cut asks more than the head-loaded control (cut=${afterRender2} control=${idleFetches})`,
 	);
 });
 

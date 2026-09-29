@@ -153,6 +153,7 @@ import {
 } from "./transcript-rows";
 import {
 	type RunCollapsePlan,
+	alignFetchDecision,
 	collapsePlan,
 	snapWindowToRunBoundary,
 	windowTopRunIsHeadCut,
@@ -2019,10 +2020,15 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * unbounded conversation into memory.
 	 */
 	useEffect(() => {
-		if (alignFetches.current >= ALIGN_FETCH_MAX) return;
-		if (loadingOlder || !transcript.hasMore) return;
-		if (!windowTopRunIsHeadCut(rows, alignSize)) return;
-		alignFetches.current += 1;
+		const decision = alignFetchDecision(
+			alignFetches.current,
+			transcript.hasMore,
+			loadingOlder,
+			windowTopRunIsHeadCut(rows, alignSize),
+			ALIGN_FETCH_MAX,
+		);
+		if (!decision.fetch) return;
+		alignFetches.current = decision.spent;
 		void onLoadOlder();
 	}, [rows, alignSize, loadingOlder, transcript.hasMore, onLoadOlder]);
 	/*
