@@ -1,0 +1,102 @@
+{
+  "out": "/Users/damian/.local-operator/sessions/4bc0c6ff9c3a/scratchpad/mini-dict/run-esc",
+  "proxyRequests": 26,
+  "claims": [],
+  "steps": [
+    {
+      "step": "rig.radientUpstream",
+      "port": 8799,
+      "delayMs": 600
+    },
+    {
+      "step": "rig.proxy",
+      "port": 8080
+    },
+    {
+      "step": "rig.capabilities",
+      "input_mode": null,
+      "aida": 1
+    },
+    {
+      "step": "the backend carries the seat this run needs, and the carriage the half expects",
+      "ok": true,
+      "half": "off",
+      "input_mode": null,
+      "aida": 1
+    },
+    {
+      "step": "the placeholder Radient key is seeded (the transcription relay reads it)",
+      "ok": true,
+      "status": 200
+    },
+    {
+      "step": "the app's own mini window exists, hidden",
+      "ok": true,
+      "visible": false,
+      "focused": false,
+      "url": "file:///Users/damian/local-operator-ui-worktrees/mini-dict-0929-4bc0/out/renderer/mini.html"
+    },
+    {
+      "step": "app.bootLines",
+      "mini": [
+        "06:08:05.612 › mini-view: exerciser window created (dev driver armed; no registration in this mode)",
+        "mini-view: exerciser window created (dev driver armed; no registration in this mode)",
+        "06:08:05.613 › mini-view: not registered (window mode headless)",
+        "mini-view: not registered (window mode headless)"
+      ]
+    },
+    {
+      "step": "the summoned mini window stayed hidden (headless presentation refuses)",
+      "ok": true,
+      "visible": false
+    },
+    {
+      "step": "rig.appConnected",
+      "proxyRequests": 8
+    },
+    {
+      "step": "the dismiss channel is instrumented in main (recorded, then the same hide)",
+      "ok": true
+    },
+    {
+      "step": "esc.holdEngaged",
+      "state": "Stop dictation|Recording. Press the stop button when you're done.",
+      "transcriptionCalls": 0
+    },
+    {
+      "step": "the claimed Escape aborted the take and did NOT call the dismiss channel (one act)",
+      "ok": true,
+      "dismissCalls": [],
+      "hideEvents": 0,
+      "visible": false
+    },
+    {
+      "step": "nothing transcribed the aborted take",
+      "ok": true,
+      "transcriptionCalls": 0,
+      "radientTail": []
+    },
+    {
+      "step": "a plain Escape still dismisses (reason recorded in main)",
+      "ok": true,
+      "calls": [
+        {
+          "at": 1790676487424,
+          "reason": "escape"
+        }
+      ]
+    },
+    {
+      "step": "esc.normalEscape",
+      "calls": [
+        {
+          "at": 1790676487424,
+          "reason": "escape"
+        }
+      ]
+    }
+  ],
+  "notes": [],
+  "wire": [],
+  "history": null
+}

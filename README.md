@@ -66,3 +66,18 @@ must be free (`LO_MINI_RADIENT_PORT` moves the upstream).
 - The OS hotkey chord is a main-process key this rig never presses; it drives
   the same `mini-view:summoned` channel the chord's handler sends.
 - The transcripts are the fake upstream's fixtures, by construction.
+
+## The Escape-claim cell (review round 1, M2)
+
+`run-esc/mini-dict-proof.json` — `LO_MINI_SCENARIO=esc` on the built app at the
+remediation head (`5f615e0f88`), a fourth headless run of the same rig. The
+manager-dispatched hold engaged on the keydown alone
+(`Stop dictation|Recording. Press the stop button when you're done.`); Escape
+then aborted the take with ZERO calls to the dismiss channel and zero hide
+events (the dismiss handler is re-registered in main with a recorder in front of
+the same hide, the app's own idempotent-registration pattern); nothing was
+transcribed from the aborted take; and a plain Escape (no hold) still dismissed
+(`{"reason":"escape"}` recorded in main). ALL CLAIMS HELD. This cell exercises no
+send, so the carriage half is off (`LO_MINI_HALF=off`) and the serve is the
+installed v0.64.1, which does not advertise `features.input_mode` — the two
+carriage runs above were captured against the worktree builds that do.

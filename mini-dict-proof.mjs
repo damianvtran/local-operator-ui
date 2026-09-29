@@ -410,6 +410,82 @@ try {
 		}
 	};
 
+	/*
+	 * TWO SCENARIOS: the default dictation/send drive (the pass's shipped
+	 * evidence) and the review-round-1 M2 cell, `LO_MINI_SCENARIO=esc` - an
+	 * Escape that aborts a manager-dispatched hold must be ONE act: the take
+	 * aborted, and no dismissal of the window.
+	 */
+	const scenario = process.env.LO_MINI_SCENARIO ?? "dictation";
+	if (scenario === "esc") {
+		/*
+		 * THE M2 CELL. The manager's capture listener claims an Escape that
+		 * aborts a hold (preventDefault) and settles the take; the composer must
+		 * consult that claim rather than falling through to the hide. The act
+		 * under test is the renderer's call to the dismiss channel, so MAIN's
+		 * handler for it is re-registered with a recorder in front of the same
+		 * hide - the app's own idempotent-registration pattern.
+		 */
+		const dismissChannel = (() => {
+			const shared = readFileSync(join(APP_ROOT, "src/shared/mini-view.ts"), "utf8");
+			const match = shared.match(/MINI_VIEW_DISMISS\s*=\s*"([^"]+)"/);
+			if (!match) throw new Error("src/shared/mini-view.ts has no MINI_VIEW_DISMISS");
+			return match[1];
+		})();
+		const instrumented = await main.evaluate([
+			"(() => {",
+			"\tconst electron = process.mainModule?.require(\"electron\") ?? globalThis.require?.(\"electron\");",
+			"\tconst { ipcMain } = electron;",
+			"\tglobalThis.__miniDismissCalls = [];",
+			"\tglobalThis.__miniHideEvents = 0;",
+			"\tconst window = globalThis.__miniWindow;",
+			"\twindow.on(\"hide\", () => { globalThis.__miniHideEvents += 1; });",
+			`\tipcMain.removeHandler(${JSON.stringify(dismissChannel)});`,
+			`\tipcMain.handle(${JSON.stringify(dismissChannel)}, (_event, reason) => {`,
+			"\t\tglobalThis.__miniDismissCalls.push({ at: Date.now(), reason });",
+			"\t\twindow.hide();",
+			"\t});",
+			"\treturn { ok: true };",
+			"})()",
+		].join("\n"));
+		verify("the dismiss channel is instrumented in main (recorded, then the same hide)", instrumented?.ok === true, instrumented);
+
+		const ALT_RIGHT = { key: "Alt", code: "AltRight", windowsVirtualKeyCode: 18, nativeVirtualKeyCode: 61, modifiers: 1, location: 2 };
+		const ESCAPE = { key: "Escape", code: "Escape", windowsVirtualKeyCode: 27, nativeVirtualKeyCode: 53, modifiers: 0, location: 0 };
+		const key = (type, spec) => mini.send("Input.dispatchKeyEvent", { type, ...spec });
+		const transcriptionCalls = () => radientCalls.filter((call) => call.url?.endsWith("/tools/transcriptions")).length;
+		const micLabel = `(${select("mini-composer-mic")}?.getAttribute('aria-label') ?? '') + '|' + (${select("mini-composer-status")}?.textContent ?? '')`;
+
+		// The hold engages on the keydown alone (immediate, no timer).
+		await key("keyDown", ALT_RIGHT);
+		const held = await waitFor(micLabel, (v) => typeof v === "string" && v.startsWith(dictationStop), "the recording state after the hold engaged");
+		record("esc.holdEngaged", { state: held, transcriptionCalls: transcriptionCalls() });
+
+		// Escape: the manager claims the press and aborts the take.
+		await key("keyDown", ESCAPE);
+		await key("keyUp", ESCAPE);
+		await key("keyUp", ALT_RIGHT);
+		await waitFor(micLabel, (v) => typeof v === "string" && !v.startsWith(dictationStop), "the take to settle after the claimed Escape");
+		await sleep(1200);
+		const aftermath = await main.evaluate("({ dismissCalls: globalThis.__miniDismissCalls, hideEvents: globalThis.__miniHideEvents, visible: globalThis.__miniWindow.isVisible() })");
+		verify("the claimed Escape aborted the take and did NOT call the dismiss channel (one act)", aftermath.dismissCalls.length === 0, aftermath);
+		verify("nothing transcribed the aborted take", transcriptionCalls() === 0, { transcriptionCalls: transcriptionCalls(), radientTail: radientCalls.slice(-3) });
+
+		// And the normal act still works: a plain Escape (no hold) dismisses.
+		await key("keyDown", ESCAPE);
+		await key("keyUp", ESCAPE);
+		{
+			const started = Date.now();
+			let calls = [];
+			for (;;) {
+				calls = await main.evaluate("globalThis.__miniDismissCalls");
+				if (calls.length > 0 || Date.now() - started > 20_000) break;
+				await sleep(250);
+			}
+			verify("a plain Escape still dismisses (reason recorded in main)", calls.length === 1 && calls[0].reason === "escape", { calls });
+			record("esc.normalEscape", { calls });
+		}
+	} else {
 	// 1. Mic on.
 	await clickAt("mini-composer-mic");
 	const recordingState = await waitFor(
@@ -497,6 +573,7 @@ try {
 	record("rig.radientCalls", { count: radientCalls.length, calls: radientCalls.slice(0, 3) });
 	note(`send pressed at ${sentAt}; wire record at ${wire.at} (delta ${wire.at - sentAt} ms)`);
 	note("synthetic microphone (Chromium fake device): macOS TCC is not in this path.");
+	}
 } catch (error) {
 	report.error = String(error);
 	note(`run failed: ${String(error)}`);
