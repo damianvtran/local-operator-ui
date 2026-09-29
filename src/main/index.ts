@@ -71,6 +71,7 @@ import { DesktopNotifier } from "./desktop-notifier";
 import {
 	describeDevDriverArming,
 	devDriverArgument,
+	headlessExerciserAllowed,
 	resolveDevDriverArming,
 } from "./dev-driver";
 import { registerDevDriverIPC } from "./dev-driver-ipc";
@@ -2157,11 +2158,18 @@ app
 		 * window, the registrar over Electron's own `globalShortcut`, the config
 		 * watch, and the registration state pushed to every renderer.
 		 *
-		 * NORMAL LAUNCHES ONLY, and that is the design's §C.4 rule read from the
-		 * same launch plan every window is built from: a rig-shaped run gets no
-		 * window, no registration and one startup line saying so, so "an agent
-		 * run never answers the operator's keyboard" is a property of the launch
-		 * rather than of the code paths inside.
+		 * NORMAL LAUNCHES, PLUS THE DEV DRIVER'S HEADLESS EXERCISER (M-B1). The
+		 * design's §C.4 rule reads from the same launch plan every window is built
+		 * from: an ordinary rig-shaped run gets no window and no registration —
+		 * "an agent run never answers the operator's keyboard" is a property of
+		 * the launch rather than of the code paths inside. The one exception is
+		 * the armed dev driver in a `headless` run, where a window the app OWNS is
+		 * what lets a rig exercise the send path at all (the desktop plane admits
+		 * by frame, `desktop-ipc.ts`; a scene-built window is refused before any
+		 * request leaves the app). It registers NOTHING — `hotkeysAllowed` gates
+		 * the registrar and the watcher below — and it is never shown:
+		 * presentation stays `presentMiniView`'s gate, which a headless plan
+		 * refuses.
 		 *
 		 * PLACED BEFORE `registerDesktopIPC` because that registration carries
 		 * this feature's write-through tap: a `keymap.*` write arriving over
@@ -2171,11 +2179,23 @@ app
 		 *
 		 * WHY THE WINDOW IS CREATED AT READY RATHER THAN ON FIRST PRESS: the
 		 * hotkey must answer on the first press, and a window created at that
-		 * moment would pay its renderer's whole boot inside the interaction. The
-		 * cost — one hidden renderer for the app's life — is measured in the
-		 * PR's evidence (risk K6).
+		 * moment would pay its renderer's whole boot inside the interaction.
+		 *
+		 * K6, DECIDED (manager, remediation round 1): the hidden renderer stays
+		 * for the app's life. Measured cost: ≈160–172 MB working set for the mini
+		 * renderer in this branch's evidence runs (QA round 1 re-measured
+		 * 173–195 MB under fleet load) against the design's advisory ">150 MB ⇒
+		 * switch to destroy-after-idle". The acceptance criterion that outranks
+		 * the advisory is the first press: a window created on demand pays the
+		 * renderer's whole boot inside the interaction the hotkey exists to make
+		 * instant. If memory is ever flagged, the follow-up is lazily-created —
+		 * not a lighter always-on window.
 		 */
-		if (hotkeysAllowed(windowLaunch.mode)) {
+		const miniViewExerciser = headlessExerciserAllowed({
+			arming: devDriverArming,
+			windowMode: windowLaunch.mode,
+		});
+		if (hotkeysAllowed(windowLaunch.mode) || miniViewExerciser) {
 			miniView = createMiniView({
 				url: miniViewUrlFor(rendererUrl),
 				preloadPath: join(__dirname, "../preload/index.js"),
@@ -2198,6 +2218,8 @@ app
 				}).mode,
 				report: reportRaise,
 			});
+		}
+		if (hotkeysAllowed(windowLaunch.mode)) {
 			const initial = readQuickSendValue();
 			miniViewRegistrar = createRegistrar({
 				shortcut: globalShortcut,
@@ -2253,6 +2275,12 @@ app
 				baseline: initial.present ? initial.value : undefined,
 			});
 		} else {
+			if (miniViewExerciser) {
+				const line =
+					"mini-view: exerciser window created (dev driver armed; no registration in this mode)";
+				logger.info(line, LogFileType.BACKEND);
+				console.log(line);
+			}
 			const line = `mini-view: not registered (window mode ${windowLaunch.mode})`;
 			logger.info(line, LogFileType.BACKEND);
 			console.log(line);
