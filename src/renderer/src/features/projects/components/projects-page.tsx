@@ -30,7 +30,7 @@ import {
 import { PageHeader } from "@shared/components/common/page-header";
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Button, Skeleton } from "@shared/components/ui";
-import { showSuccessToast } from "@shared/utils/toast-manager";
+import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { FolderKanban, Plus, RefreshCw } from "lucide-react";
 import type { FC } from "react";
 import { useState } from "react";
@@ -46,7 +46,7 @@ import {
 	useProjectsList,
 	useUpdateProject,
 } from "../hooks/use-projects-queries";
-import { projectStatusMeta } from "../project-model";
+import { projectStatusMeta, refusalCopy } from "../project-model";
 
 /**
  * The loading skeleton's row keys. A literal list rather than `Array.from`:
@@ -389,8 +389,38 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 				onClose={() => setCreateOpen(false)}
 				onSubmit={async (payload) => {
 					if (payload.mode !== "create") return;
-					await create.mutateAsync(payload.fields);
-					showSuccessToast(`Project ${payload.fields.name} created`);
+					const created = await create.mutateAsync(payload.fields);
+					/*
+					 * The toasts name the TITLE when the author gave one (UX round 1,
+					 * U4): the machine key is the route's identity, not the author's —
+					 * "Project S6d-ii part 2 created" reads back what was typed.
+					 */
+					const label = payload.followUp?.title ?? payload.fields.name;
+					/*
+					 * The follow-up patch carries what the create route cannot (title,
+					 * owner/team, the dates, the estimate). It runs ONLY after the create
+					 * landed, and a refusal here means the project EXISTS and only the
+					 * extras were lost — so it leaves as an error toast naming exactly
+					 * that and the way back in (UX round 1, U6), rather than the
+					 * dialog's in-place sentence, which would read as "the create
+					 * failed" while a resubmit would name-conflict.
+					 */
+					if (payload.followUp) {
+						try {
+							await update.mutateAsync({
+								key: created.id,
+								fields: payload.followUp,
+							});
+						} catch (error) {
+							const message =
+								error instanceof Error && error.message ? error.message : "";
+							showErrorToast(
+								`Project ${label} was created, but the extra fields were not saved: ${refusalCopy(message) || "the server refused them."} Open the project and use Edit to set them.`,
+							);
+							return;
+						}
+					}
+					showSuccessToast(`Project ${label} created`);
 				}}
 			/>
 		</div>
