@@ -1912,6 +1912,19 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"sttDictationRestampNote",
 	/*
+	 * AND THE SEAM'S OWN (2026-09-29): `pttKeymapRestampNote` is the follow-up
+	 * that makes the STT stream CONSUME the registry row `keymap.push_to_talk`
+	 * (local-operator #1750 landed while #633 was in review): the renderer reads
+	 * the persisted value per registration instead of hard-coding the platform
+	 * pair. Both trees move - `src/` for the resolver's read path + token table,
+	 * `scripts/` for the resolution suite, the rig's session F and its
+	 * capability-following claims. No frames change; the pair is re-derived from
+	 * the tip and every list member above is re-pointed with it. It quotes that
+	 * pair, so it is held to this file like every entry above it.
+	 */
+	"pttKeymapRestampNote",
+
+	/*
 	 * The sessionless-slash pass (issue #625), this branch's newest record: it
 	 * re-derived both stamps for the branch's own change and quotes the pair it
 	 * ships, so it is held to this file like every entry above it.
@@ -1992,6 +2005,16 @@ const STAMP_BINDING_NOTES = [
 	 * pair, so it is held to the pair this file ships.
 	 */
 	"readmeVisualsRoundTwoRestampNote",
+	/*
+	 * AND THE SECOND FOLD'S OWN (2026-09-29): `readmeVisualsFoldTwoNote` is the
+	 * fold onto the moved `origin/main` `b23f789c10` (#643's keymap-consume
+	 * merge, whose branch re-stamped the evidence itself) - the single
+	 * conflicted path was the manifest, resolved with main's records whole and
+	 * this branch's laid back on top, and both stamps re-derived from the
+	 * MERGED tree by the docs-only amendment under the merge. It quotes that
+	 * pair, so it is held to the pair this file ships.
+	 */
+	"readmeVisualsFoldTwoNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -3081,6 +3104,13 @@ const BRANCH_RECORDS = [
 	 * copy would drop it first.
 	 */
 	"readmeVisualsRoundTwoRestampNote",
+	/*
+	 * Grown by the second fold, this branch's newest top-level record: the
+	 * merge onto `origin/main` `b23f789c10` re-derived the pair from the merged
+	 * tree, and the note it wrote is listed for the reason the list exists - a
+	 * fold that started from main's copy would drop it first.
+	 */
+	"readmeVisualsFoldTwoNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
