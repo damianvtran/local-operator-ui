@@ -199,6 +199,11 @@ const withoutComments = (text) =>
 const RAISE_TRIGGERS = [
 	"initial-present",
 	"second-instance",
+	// The Dock click, distinct from the launch since #636's gate: nothing raises
+	// under this verb but this process's own window, and its row in
+	// `REFUSABLE_DELIVERY` is `never` for that reason (there is no delivery to
+	// park).
+	"activate",
 	"banner-click",
 	"viewer-focus",
 	"viewer-resume",

@@ -200,8 +200,11 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	};
 
 	return (
+		/* The bar's ground is the PANE's (`canvas/index.tsx`): it is the first row of
+		   the drawer's body, so it wears the drawer's rung and is continuous with the
+		   content area below it, with the strip's own rule the only line above. */
 		<div
-			className="flex items-center gap-1 border-control border-b bg-canvas px-2 py-1"
+			className="flex items-center gap-1 border-control border-b bg-elevated px-2 py-1"
 			data-tour-tag="browser-url-bar"
 		>
 			<Tooltip content="Back">

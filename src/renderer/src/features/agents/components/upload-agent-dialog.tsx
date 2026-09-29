@@ -31,11 +31,21 @@
  * never opacity" exists to expose.
  */
 
+import { useMembershipsQuery } from "@features/agent-hub/hooks/use-memberships-query";
+import { planBlockedOrgs, usableOrgs } from "@features/agent-hub/org-access";
+import {
+	orgSurfaceNotice,
+	orgSurfaceReady,
+} from "@features/agent-hub/org-surface-gate";
 import type {
 	PublicationDocumentOverride,
 	PublishedListing,
 } from "@shared/api/local-operator/agents-api";
 import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
+import {
+	desktopFeatureState,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { useProfiles } from "@shared/api/local-operator/profile-hooks";
 import { isPublicationError } from "@shared/api/local-operator/publication-errors";
 import { RadientAuthButtons } from "@shared/components/auth/radient-auth-buttons";
@@ -51,8 +61,14 @@ import {
 	Checkbox,
 	Input,
 	Label,
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
 } from "@shared/components/ui";
 import { useAgentSystemPrompt } from "@shared/hooks/use-agent-system-prompt";
+import { usePairingCause } from "@shared/hooks/use-pairing-cause";
 import { cn } from "@shared/lib/utils";
 import {
 	usePublishedListing,
@@ -71,6 +87,7 @@ import { useNavigate } from "react-router-dom";
 import { useAgentNameAvailability } from "../hooks/use-agent-name-availability";
 import { usePublishAgent } from "../hooks/use-publish-agent";
 import {
+	PUBLICATION_ACTION_LABEL,
 	type PublicationAction,
 	type PublicationFailure,
 	publicationTreatment,
@@ -116,7 +133,19 @@ type PublishedOutcome = {
 	name: string;
 	hubAgentId: string | null;
 	republished: boolean;
+	/**
+	 * The organization it landed in, or `null` for the public hub.
+	 *
+	 * Carried into the receipt because the success panel is the only place that says
+	 * where the document went: a receipt that said "on the hub" for a publication
+	 * no reader outside one organization can see would overstate its reach, which is
+	 * exactly the thing the intro paragraph takes care to state.
+	 */
+	orgName: string | null;
 };
+
+/** The picker's value for the public hub — the one value no tenant id can be. */
+const PUBLIC_TARGET = "public";
 
 export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 	open,
@@ -139,6 +168,45 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 	const navigate = useNavigate();
 	const publish = usePublishAgent();
 	const listing = usePublishedListing(agent?.id ?? null);
+
+	/*
+	 * WHERE THE PUBLICATION GOES (design §8.4): the public hub, or one organization
+	 * the viewer may publish into.
+	 *
+	 * The memberships read is enabled only while this dialog is OPEN and the viewer
+	 * is signed in — the dialog is mounted by three surfaces that stay mounted when
+	 * it is closed, so an unconditional read would ask about organizations for a
+	 * dialog nobody opened.
+	 */
+	/*
+	 * WHETHER THE ORG TARGET MAY BE OFFERED AT ALL (agent review round 1, M2).
+	 *
+	 * The capability gates the read itself: a backend without `radient_org` answers
+	 * these operations with a masked 422, and attempting one would produce a
+	 * sentence about a malformed call. `orgSurfaceReady` is the same predicate the
+	 * hub page uses, and the sentence below the picker comes from the same module —
+	 * one condition, one statement.
+	 */
+	const capabilities = useDesktopCapabilities();
+	const pairingCause = usePairingCause();
+	const orgState = desktopFeatureState(capabilities.data, "radient_org");
+	const orgReady = orgSurfaceReady(orgState);
+	const orgNotice = isAuthenticated
+		? orgSurfaceNotice(orgState, pairingCause)
+		: null;
+	const { memberships, isError: membershipsFailed } = useMembershipsQuery({
+		enabled: open && isAuthenticated && orgReady,
+	});
+	const publishTargets = useMemo(() => usableOrgs(memberships), [memberships]);
+	const blockedTargets = useMemo(
+		() => planBlockedOrgs(memberships),
+		[memberships],
+	);
+	const [targetTenant, setTargetTenant] = useState<string>(PUBLIC_TARGET);
+	const targetIsOrg = targetTenant !== PUBLIC_TARGET;
+	const targetDisplayName =
+		publishTargets.find((org) => org.tenant_id === targetTenant)?.tenant_name ||
+		"this organization";
 
 	// Generated rather than a literal: three surfaces mount this dialog and two
 	// can be in the tree at once, so a fixed id would make one label toggle the
@@ -166,6 +234,13 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 			setFailure(null);
 			setPublished(null);
 			setReauthenticating(false);
+			/*
+			 * The target resets with everything else. It is not a preference: it is a
+			 * decision about THIS publication, and carrying "Minerva" into the next
+			 * dialog would make the second press of a memorised button publish somewhere
+			 * the user did not choose this time.
+			 */
+			setTargetTenant(PUBLIC_TARGET);
 		}
 	}, [open]);
 
@@ -233,9 +308,19 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 	const submit = async (options?: { asNewListing?: boolean }) => {
 		if (!agent || submitting || issues.length > 0) return;
 		setFailure(null);
-		const hubAgentId = options?.asNewListing
-			? null
-			: (listing?.hubAgentId ?? null);
+		/*
+		 * AN ORG TARGET NEVER REPUBLISHES, and that is why the remembered listing is
+		 * dropped here rather than passed through: the id in the store is a PUBLIC
+		 * listing's, so sending it to an organization's workspace would address a row
+		 * in the wrong namespace (§8.2 — org content has no public name claim to
+		 * update). The org namespace is keyed by the org, so a second publication of
+		 * the same agent into it is a new document rather than an update of the one
+		 * this app happens to remember.
+		 */
+		const hubAgentId =
+			options?.asNewListing || targetIsOrg
+				? null
+				: (listing?.hubAgentId ?? null);
 		/*
 		 * Captured BEFORE the request. The accepted-publication path writes the
 		 * store on the way back, so a receipt that read it afterwards would report
@@ -255,12 +340,16 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 				agentId: agent.id,
 				document,
 				hubAgentId,
+				target: targetIsOrg
+					? { visibility: "org", tenantId: targetTenant }
+					: undefined,
 			});
 			const result = response.result;
 			const outcome: PublishedOutcome = {
 				name: result?.name ?? name.trim(),
 				hubAgentId: result?.agent_id ?? null,
 				republished: republishing,
+				orgName: targetIsOrg ? targetDisplayName : null,
 			};
 			setPublished(outcome);
 			// Only when the hub returned a listing to point at: there is nothing to
@@ -378,12 +467,16 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 	 * apart from their own frames.
 	 */
 	const title = published
-		? published.republished
-			? `Updated the Agent hub listing for "${agentName}"`
-			: `Published "${agentName}" to the Agent hub`
-		: listing
-			? `Update the Agent hub listing for "${agentName}"?`
-			: `Publish "${agentName}" to the Agent hub?`;
+		? published.orgName
+			? `Published "${agentName}" to ${published.orgName}`
+			: published.republished
+				? `Updated the Agent hub listing for "${agentName}"`
+				: `Published "${agentName}" to the Agent hub`
+		: targetIsOrg
+			? `Publish "${agentName}" to ${targetDisplayName}?`
+			: listing
+				? `Update the Agent hub listing for "${agentName}"?`
+				: `Publish "${agentName}" to the Agent hub?`;
 
 	/*
 	 * Where focus goes when a RESULT renders, and why it goes to a SINK.
@@ -465,7 +558,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 						onClick={() => runAction(action)}
 						disabled={submitting}
 					>
-						{ACTION_LABEL[action]}
+						{PUBLICATION_ACTION_LABEL[action]}
 					</PrimaryButton>
 				) : (
 					<SecondaryButton
@@ -473,7 +566,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 						onClick={() => runAction(action)}
 						disabled={submitting}
 					>
-						{ACTION_LABEL[action]}
+						{PUBLICATION_ACTION_LABEL[action]}
 					</SecondaryButton>
 				),
 			)}
@@ -513,7 +606,18 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 						!agreedToTerms || issues.length > 0 || !name.trim() || submitting
 					}
 				>
-					{submitting ? "Publishing…" : listing ? "Update listing" : "Publish"}
+					{/*
+					 * `listing && !targetIsOrg`: a remembered public listing never becomes an
+					 * update of an org target, because an org publication is always a NEW
+					 * document (the remembered id is a public listing's, and the submit path
+					 * drops it — see `submit`). A label promising an update on a press that
+					 * creates would be the receipt's own defect, one control earlier.
+					 */}
+					{submitting
+						? "Publishing…"
+						: listing && !targetIsOrg
+							? "Update listing"
+							: "Publish"}
 				</PrimaryButton>
 			)}
 		</>
@@ -586,14 +690,18 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 					 */
 					<Alert variant="success" aria-live="polite">
 						<AlertTitle>
-							{published.republished
-								? "Listing updated"
-								: "Published to the hub"}
+							{published.orgName
+								? `Published to ${published.orgName}`
+								: published.republished
+									? "Listing updated"
+									: "Published to the hub"}
 						</AlertTitle>
 						<AlertDescription>
-							{published.republished
-								? `The hub now holds the current instruction set of "${published.name}".`
-								: `"${published.name}" is on the hub as an instruction set. Anyone can read and install it.`}
+							{published.orgName
+								? `"${published.name}" is in ${published.orgName}'s shared agents as an instruction set. Its members can read and install it; nobody outside the organization can.`
+								: published.republished
+									? `The hub now holds the current instruction set of "${published.name}".`
+									: `"${published.name}" is on the hub as an instruction set. Anyone can read and install it.`}
 						</AlertDescription>
 						<AlertDescription className="text-ink-muted">
 							Nothing else left this machine: no conversation, no execution
@@ -646,8 +754,9 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 				{!published && !treatment && (
 					<>
 						<p className="text-body text-ink">
-							You are about to publish this agent's instruction set to the
-							public Agent hub. What is published is what describes the agent:
+							{targetIsOrg
+								? `You are about to publish this agent's instruction set into ${targetDisplayName}, where only its members can read and install it. What is published is what describes the agent:`
+								: "You are about to publish this agent's instruction set to the public Agent hub. What is published is what describes the agent:"}
 						</p>
 						<ul className="list-disc space-y-1 pl-5 text-body text-ink-muted">
 							<li>Its name and description</li>
@@ -655,10 +764,97 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 							<li>Its tool surface, effort and delegation, when it has them</li>
 						</ul>
 						<p className="text-body text-ink">
-							Nothing else leaves this machine: no conversation, no execution
-							history, no memory or learnings, no plan, and no machine-specific
-							configuration. Anyone can read and install what you publish.
+							{targetIsOrg
+								? `Nothing else leaves this machine: no conversation, no execution history, no memory or learnings, no plan, and no machine-specific configuration. ${targetDisplayName}'s members can read and install what you publish; nobody outside it can.`
+								: "Nothing else leaves this machine: no conversation, no execution history, no memory or learnings, no plan, and no machine-specific configuration. Anyone can read and install what you publish."}
 						</p>
+
+						{/*
+						 * THE PUBLICATION TARGET (design §8.4).
+						 *
+						 * Rendered only when the viewer has SOME organization relationship to show —
+						 * one they may publish into, or one whose plan blocks it. A viewer with
+						 * neither sees no new control at all: a picker holding one option is a
+						 * control that cannot change anything, and the public hub is what the dialog
+						 * published to before this change.
+						 *
+						 * A BLOCKED organization is shown DISABLED rather than omitted, with the
+						 * upgrade hint beside the control. Omitting it would leave a member whose
+						 * team plan lapsed with no sign the organization exists at all — the state
+						 * §8.4 names — and a member whose organization is simply absent from a list
+						 * cannot tell that from an organization they were never in.
+						 *
+						 * THE TWO SENTENCES BESIDE NO PICKER exist because "no pointer" and "the read
+						 * failed" are different facts (agent review round 1, m1): `membershipsFailed`
+						 * with no cached rows used to render the picker's own failure line NOWHERE,
+						 * because that line lived inside this gate. The capability absence is the
+						 * third (M2) and it comes first: a backend that predates the org operations
+						 * cannot be retried into answering them.
+						 */}
+						{publishTargets.length > 0 || blockedTargets.length > 0 ? (
+							<div className="flex flex-col gap-1.5">
+								<Label htmlFor={`${termsCheckboxId}-target`}>Publish to</Label>
+								<Select value={targetTenant} onValueChange={setTargetTenant}>
+									<SelectTrigger
+										id={`${termsCheckboxId}-target`}
+										className="w-full"
+										data-testid="publish-target"
+									>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value={PUBLIC_TARGET}>Public hub</SelectItem>
+										{publishTargets.map((org) => (
+											<SelectItem key={org.tenant_id} value={org.tenant_id}>
+												{org.tenant_name || "Organization"}
+											</SelectItem>
+										))}
+										{blockedTargets.map((org) => (
+											/*
+											 * The reason rides the ITEM's label rather than a tooltip: a Radix
+											 * disabled item takes no pointer events, so a tooltip on it would be
+											 * unreachable by exactly the reader it is for.
+											 */
+											<SelectItem
+												key={org.tenant_id}
+												value={org.tenant_id}
+												disabled
+											>
+												{org.tenant_name || "Organization"} (upgrade needed)
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+								<p
+									className="text-meta text-ink-muted"
+									data-testid="publish-target-hint"
+								>
+									{blockedTargets.length > 0
+										? `Sharing agents inside an organization is part of the Team plan. An owner of ${
+												blockedTargets.length === 1
+													? blockedTargets[0].tenant_name || "this organization"
+													: "any of the organizations marked above"
+											} can activate it in the Radient console.`
+										: "Public hub publications are readable by anyone. An organization's agents are readable by its members only."}
+								</p>
+							</div>
+						) : orgNotice ? (
+							<p
+								className="text-meta text-ink-muted"
+								data-testid="publish-target-unavailable"
+							>
+								{orgNotice}
+							</p>
+						) : membershipsFailed ? (
+							<p
+								className="text-meta text-ink-muted"
+								data-testid="publish-target-failed"
+							>
+								Your organizations could not be read, so this publishes to the
+								public hub. Try again in a moment to publish into an
+								organization.
+							</p>
+						) : null}
 
 						{issues.length > 0 && (
 							// The one boundary inside the dialog: this list has to read as a
@@ -701,7 +897,15 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 								 */}
 								No "/", "\" or ":". Up to 128 characters.
 							</p>
-							{availabilityLine(availability)}
+							{/*
+							 * SUPPRESSED FOR AN ORG TARGET, and the reason is a namespace fact
+							 * rather than a layout one: the availability route the hook calls is the
+							 * hub's PUBLIC name check (§4.4's org check is per-tenant), so its answer is
+							 * about names held on the public hub. Rendering "that name is taken" under a
+							 * picker set to an organization would refuse a name the organization is free
+							 * to use — a courtesy check stating a rule that does not apply.
+							 */}
+							{!targetIsOrg && availabilityLine(availability)}
 						</div>
 
 						<div className="flex gap-3">
@@ -815,19 +1019,6 @@ const availabilityLine = (availability: {
 			// fine.
 			return null;
 	}
-};
-
-/** The label each treatment action carries (contract §6.2). */
-const ACTION_LABEL: Record<PublicationAction, string> = {
-	"focus-name": "Choose another name",
-	"update-listing": "Update the existing listing",
-	"install-builtin": "Install the built-in instead",
-	retry: "Try again",
-	"edit-instructions": "Edit the instructions",
-	"edit-agent": "Edit the agent",
-	"publish-as-new": "Publish as a new listing",
-	"sign-in": "Sign in again",
-	"refresh-hub": "Refresh the hub",
 };
 
 /** Re-exported so a story can build the same dialog with mocked inputs. */

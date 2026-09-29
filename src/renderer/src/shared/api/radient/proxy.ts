@@ -50,7 +50,24 @@ export type RadientOperation =
 	| "comments.create"
 	| "comments.update"
 	| "comments.delete"
-	| "account.agents";
+	| "account.agents"
+	/*
+	 * The organization operations (design §4.7/§8.4): the org selector's own
+	 * membership list, the org workspace's agent list, and the two team reads.
+	 * They are ADDITIVE in the same way `agents.statuses` is — an older backend
+	 * refuses an unknown operation at the `Literal` it validates against, so a
+	 * renderer newer than its backend loses the org surface rather than
+	 * mis-serving it — and each spends the account's stored bearer on the BACKEND
+	 * side, exactly like every op above: the renderer still never holds one.
+	 *
+	 * The names are a three-way contract with `desktop_radient.py`'s
+	 * `RadientRequest` Literal and its `endpoint()` mapping (local-operator PR G,
+	 * merged); a rename on either side is a cross-repository break.
+	 */
+	| "memberships.list"
+	| "org_agents.list"
+	| "org_team.get"
+	| "org_teams.list";
 
 export type RadientProxyArgs = {
 	operation: RadientOperation;
@@ -58,6 +75,12 @@ export type RadientProxyArgs = {
 	accountId?: string;
 	agentId?: string;
 	commentId?: string;
+	/**
+	 * The published TEAM document an `org_team.get` pull names (design §4.5): a
+	 * hub id, not a local registry row's id, because the pull addresses the
+	 * document that was published.
+	 */
+	teamId?: string;
 	query?: Record<string, string | number>;
 	payload?: Record<string, unknown>;
 	/** Mutations need a stable request id, reused across retries. */
@@ -75,6 +98,7 @@ function control(args: RadientProxyArgs) {
 		...(args.accountId ? { account_id: args.accountId } : {}),
 		...(args.agentId ? { agent_id: args.agentId } : {}),
 		...(args.commentId ? { comment_id: args.commentId } : {}),
+		...(args.teamId ? { team_id: args.teamId } : {}),
 		...(args.query ? { query: args.query } : {}),
 		...(args.payload ? { payload: args.payload } : {}),
 		...(args.requestId ? { request_id: args.requestId } : {}),

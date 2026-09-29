@@ -297,6 +297,14 @@ const APP_SPAWN_SITES = [
 		/const env = withNotificationsOff\(\{/,
 	),
 	guarded(
+		"scripts/relaunch-during-quit-proof.mjs",
+		"spawn",
+		1,
+		/env:\s*makeEnv\(\),/,
+		"boots the built app THREE times over one quit - the dying instance, the relaunch answered by it, and the relaunch after it - three chances to banner, on a rig whose whole subject is a teardown that must not be disturbed",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/mentioned-files-app-proof.mjs",
 		"spawn",
 		1,
@@ -318,6 +326,14 @@ const APP_SPAWN_SITES = [
 		1,
 		/env:\s*spawnEnv,/,
 		"drives the composer's interrupt end to end in the real app, against a real backend turn - a stopped turn is exactly the state a notification is posted from, so a missing switch here banners the operator about a stop they just made themselves",
+		/const spawnEnv = withNotificationsOff\(\{/,
+	),
+	guarded(
+		"scripts/stt-dictation-proof.mjs",
+		"spawn",
+		1,
+		/env:\s*spawnEnv,/,
+		"drives the composer's dictation end to end in the real app - a hold, a transcript, a mid-turn send - and a transcript landing is exactly the state a notification is posted from, so a missing switch here banners the operator about words they just dictated",
 		/const spawnEnv = withNotificationsOff\(\{/,
 	),
 	exempt(
