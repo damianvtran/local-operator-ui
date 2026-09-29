@@ -15371,6 +15371,61 @@ async function daemonPost(path, body) {
 }
 
 /**
+ * One GET of the daemon's desktop routes, from THIS script's Node process.
+ *
+ * The read half's own helper, beside `daemonList` and `daemonPost`, for the
+ * scenes that watch the daemon's own truth rather than the app's copy of it —
+ * `--scene mini-view` reads the chief-of-staff conversation back through this
+ * to prove the composer's send was admitted, not merely painted.
+ */
+async function daemonGet(path) {
+	const response = await fetch(`${BACKEND}${path}`, {
+		headers: {
+			authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+		},
+	});
+	const text = await response.text();
+	let json = null;
+	try {
+		json = JSON.parse(text);
+	} catch {
+		/* See daemonPost: the caller reads `status` and `body` then. */
+	}
+	return { path, status: response.status, body: text.slice(0, 400), json };
+}
+
+/**
+ * The pids of the daemon `--backend` names, read from the serve records the run
+ * linked — the same read `--scene connection-drop` does, with the same three
+ * guards (the run's port, a loopback host, and never 1111), because this scene
+ * HOLDS that process for one frame (SIGSTOP/SIGCONT) where connection-drop
+ * kills it. Signalling the operator's own daemon is the thing both guards
+ * exist to make impossible.
+ */
+function runDaemonPids() {
+	if (BACKEND === null) return [];
+	const backendPort = Number(new URL(BACKEND).port);
+	if (backendPort === 1111) {
+		throw new Error(
+			"--scene mini-view refuses a backend on 1111: that is the operator's own daemon, and this scene pauses a run-owned one",
+		);
+	}
+	const pids = [];
+	for (const { record } of sceneConnectionDropRecords()) {
+		const pid = record?.pid;
+		if (typeof pid !== "number" || pid <= 0) continue;
+		if (Number(record.port) !== backendPort) continue;
+		if (
+			typeof record.host === "string" &&
+			!["127.0.0.1", "localhost", "::1"].includes(record.host)
+		)
+			continue;
+		pids.push(pid);
+	}
+	return pids;
+}
+
+/**
  * The bin promptness, measured live - the operator's report, on the wire and on
  * screen.
  *
@@ -28697,55 +28752,65 @@ const MINI_FAKE_RECORDER_SOURCE = [
  * WHAT A STILL CAN AND CANNOT PROVE. The mini view is user-visible and has no
  * surface of its own inside the app: it is a second renderer document that
  * appears only as the answer to a global hotkey. The one thing a frame proves
- * is what the operator would see, so this scene builds the window the shipped
- * app builds (same size, same preload, same `webPreferences`), drives the
- * composer through its DOM, and captures each state from the MAIN process with
- * `capturePage`. It deliberately does NOT use the dev driver's `capture` verb
- * the other scenes share: the mini document does not mount the dev driver at
- * all (design §D.1), which is the point of the second document.
+ * is what the operator would see — and since the dev-driver exerciser (M-B1),
+ * the window is the APP'S OWN: the armed headless launch creates it
+ * (`headlessExerciserAllowed`), this scene finds it, sends the real summon
+ * channel into it, drives the composer through its DOM, and captures each
+ * state from the MAIN process with `capturePage`. The scene deliberately does
+ * NOT use the dev driver's `capture` verb the other scenes share: the mini
+ * document does not mount the dev driver at all (design §D.1), which is the
+ * point of the second document. A run without the exerciser window refuses by
+ * name rather than photographing a substitute the desktop plane would refuse.
  *
- * THE WINDOW IS NEVER SHOWN. It is created `show: false` and nothing here
- * calls show or focus — the recursive scan in `window-mode.test.mjs` covers
- * this file too, and a scene that presented its own window would be the leak
- * it exists to disprove. `capturePage` works on a hidden window, with the
- * console rig's lesson applied: the FIRST capture of a hidden window can come
- * back blank, so every capture retries once and the assertion is on the PNG's
- * dimensions, not on the promise having resolved.
+ * THE WINDOW IS NEVER SHOWN. It is created `show: false` by the app and
+ * nothing here calls show or focus — the recursive scan in
+ * `window-mode.test.mjs` covers this file too, and a scene that presented its
+ * window would be the leak it exists to disprove. `capturePage` works on a
+ * hidden window, with the console rig's lesson applied: the FIRST capture of a
+ * hidden window can come back blank, so every capture retries and the
+ * assertion is on the PNG's dimensions, not on the promise having resolved.
+ * Every capture also SETTLES first (design round 1, D6): the stills used to be
+ * photographed mid-transition, so their colours were a phase of a 120 ms fade
+ * rather than the surface's paint.
+ *
+ * THE LIVE SEND, AND THE TWO AIDS THAT MAKE ITS STILLS POSSIBLE (M-B1).
+ * Because the window is the app's own, its requests pass the desktop plane's
+ * frame gate, and with `--backend` the whole send path is real: the daemon is
+ * the run's own, the message it admits is read back from its history route,
+ * and the two transient states are photographed with disclosed harness aids —
+ * the daemon's process is PAUSED by exact pid for the `sending` frame and
+ * resumed in a `finally` (the same request then completes), and the composer's
+ * own 600 ms flash timer is stretched in the page for the `sent` frame. Both
+ * aids are page/process-level, neither changes shipped code, and the README
+ * names them beside the frames. Without `--backend` the send ends in the
+ * transport refusal — the error state with the draft kept — and the `sending`
+ * / `sent` frames are simply not taken.
  *
  * WHAT THIS SCENE CANNOT PROVE, said here so no report implies otherwise: that
  * a real ⌘⌥Space reaches the registrar (no synthetic OS chord crosses a
  * headless run honestly — the registration half is unit-tested and the one
  * live press is a human step), focus returning to the operator's previous app,
- * and anything about the microphone permission prompt (the dictating frame is
- * driven by a fake recorder: `MINI_FAKE_RECORDER_SOURCE`).
- *
- * THE REFUSAL IS WHERE THIS RIG STOPS, and why is stated rather than implied.
- * The send path runs through the desktop plane, whose gate admits by FRAME: the
- * window this scene builds is not one the app created — a `headless` launch
- * creates no mini view at all — so its requests are refused inside the app
- * before any HTTP leaves it, `--backend` or not. The frames here are therefore
- * empty, typing, long, dictating and error; the live "sending"/"sent" pair (and
- * the daemon's own history read-back) belongs to the QA pass against the app's
- * own window, and an earlier version of this scene that tried to stage them by
- * stopping the run's daemon was removed rather than kept as a branch that
- * cannot pass.
+ * anything about the microphone permission prompt (the dictating frame is
+ * driven by a fake recorder: `MINI_FAKE_RECORDER_SOURCE`), and the real
+ * OS-level conflicts macOS does not report (QA round 1, Q2).
  */
-async function sceneMiniView(app) {
+async function sceneMiniView(app, cdp) {
 	/*
-	 * The size comes from the app's own constant, read as text: a still is only
-	 * evidence about the shipped surface if it is a still OF that surface, and a
-	 * driver that restated 640x168 could quietly keep capturing a window the app
-	 * no longer builds. A moved declaration THROWS here rather than being skipped.
+	 * Declarations are read as TEXT, for the same reason every sentence below is:
+	 * a still is only evidence about the shipped surface if it is a still OF that
+	 * surface, and a driver that restated a size, a channel or a duration could
+	 * quietly keep going after the app changed one. A moved declaration THROWS
+	 * here rather than being skipped or defaulted.
 	 */
-	const sharedSource = readFileSync("src/shared/mini-view.ts", "utf8");
-	const declaredNumber = (name) => {
+	const declaredNumberIn = (file, name) => {
+		const source = readFileSync(file, "utf8");
 		const prefix = `export const ${name} = `;
-		const line = sharedSource
+		const line = source
 			.split("\n")
 			.find((candidate) => candidate.startsWith(prefix));
 		if (line === undefined) {
 			throw new Error(
-				`src/shared/mini-view.ts no longer declares ${name}; the mini-view scene sizes its window from that constant, so update this reader with the declaration`,
+				`${file} no longer declares ${name}; the mini-view scene reads it, so update this reader with the declaration`,
 			);
 		}
 		const value = Number.parseInt(line.slice(prefix.length), 10);
@@ -28754,8 +28819,26 @@ async function sceneMiniView(app) {
 		}
 		return value;
 	};
-	const width = declaredNumber("MINI_VIEW_WIDTH");
-	const height = declaredNumber("MINI_VIEW_HEIGHT");
+	const declaredStringIn = (file, name) => {
+		const source = readFileSync(file, "utf8");
+		const prefix = `export const ${name} = "`;
+		const line = source
+			.split("\n")
+			.find((candidate) => candidate.startsWith(prefix));
+		if (line === undefined) {
+			throw new Error(
+				`${file} no longer declares ${name} as a string literal; the mini-view scene reads it, so update this reader with the declaration`,
+			);
+		}
+		const end = line.indexOf('"', prefix.length);
+		if (end === -1) throw new Error(`${name} has no closing quote: ${line}`);
+		return line.slice(prefix.length, end);
+	};
+	const width = declaredNumberIn("src/shared/mini-view.ts", "MINI_VIEW_WIDTH");
+	const height = declaredNumberIn(
+		"src/shared/mini-view.ts",
+		"MINI_VIEW_HEIGHT",
+	);
 
 	/*
 	 * The sentences the assertions read are read from the copy module for the
@@ -28780,102 +28863,126 @@ async function sceneMiniView(app) {
 	const hintSentence = copySentence("hint");
 	const recordingSentence = copySentence("recording");
 	const dictationStopSentence = copySentence("dictationStop");
-
-	const miniDocument = resolve(process.cwd(), "out", "renderer", "mini.html");
-	if (!existsSync(miniDocument)) {
-		throw new Error(
-			`${miniDocument} does not exist: this scene captures the BUILT app's document, so run it against a built tree`,
+	const dictationStartSentence = copySentence("dictationStart");
+	const sentSentence = copySentence("sent");
+	/*
+	 * The invalid-state sentence is the registrationCopy arm the toast probe
+	 * asserts; it is a `case` return rather than a `key: "…"` entry, so it gets
+	 * its own read of the same source.
+	 */
+	const copyCaseSentence = (status) => {
+		const match = copySource.match(
+			new RegExp(`case "${status}":\\s*return "([^"]+)"`),
 		);
-	}
-	const preloadPath = resolve(process.cwd(), "out", "preload", "index.js");
+		if (!match) {
+			throw new Error(
+				`mini-copy.ts's registrationCopy has no ${status} sentence; update this reader with the declaration`,
+			);
+		}
+		return match[1];
+	};
+	const invalidSentence = copyCaseSentence("invalid");
 
 	/*
-	 * Recorded before anything is created, and it is a precondition rather than
-	 * a formality: the app booted with `--window-mode=headless`, so the window
-	 * main already made is off screen and any later frame is a frame of the
-	 * mini view and nothing else. Read from MAIN, not from the page: a
-	 * never-shown window's `document.visibilityState` is not an honest
-	 * instrument for it (the first run of this scene read it and was refused by
-	 * its own check while the window was in fact hidden), and main can answer
-	 * the real question directly.
+	 * THE SUMMON CHANNEL AND THE FLASH LENGTH, read from their declarations for
+	 * the same reason every sentence above is: the scene sends the message the
+	 * app's own presentation sends (there is no OS key to press in a headless
+	 * run), and the flash it holds open long enough to photograph is the
+	 * constant the composer ships — a scene that restated either would keep
+	 * passing after a rename or a retune.
+	 */
+	const summonChannel = declaredStringIn(
+		"src/shared/mini-view.ts",
+		"MINI_VIEW_SUMMONED",
+	);
+	const registrationChannel = declaredStringIn(
+		"src/shared/mini-view.ts",
+		"MINI_VIEW_REGISTRATION",
+	);
+	const quickSendDefault = declaredStringIn(
+		"src/shared/mini-view.ts",
+		"DEFAULT_QUICK_SEND_VALUE",
+	);
+	const sentFlashMs = declaredNumberIn(
+		"src/renderer/src/mini-view/mini-composer.tsx",
+		"SENT_FLASH_MS",
+	);
+
+	/*
+	 * THE APP'S OWN MINI WINDOW, FOUND RATHER THAN BUILT (M-B1). The dev-driver
+	 * exerciser creates it in a headless armed launch — one gate, in
+	 * `src/main/index.ts` via `headlessExerciserAllowed` — so this scene drives
+	 * a window the app owns, which is what the desktop plane admits
+	 * (`desktop-ipc.ts` admits by FRAME) and what makes the live send path
+	 * reachable at all. A run where the window is absent refuses by name rather
+	 * than photographing a hand-built substitute: that substitute cannot pass
+	 * the gate, so its frames would be stills of a window the app does not
+	 * ship.
+	 *
+	 * Read from MAIN, not from the page: a never-shown window's
+	 * `document.visibilityState` is not an honest instrument for it (the first
+	 * run of this scene read it and was refused by its own check while the
+	 * window was in fact hidden), and main can answer the real question
+	 * directly.
 	 */
 	const main = await CdpClient.attachNode(app.inspectPort);
-	const existingWindows = await main.evaluate(
-		'(() => { const electron = process.mainModule?.require("electron") ?? globalThis.require?.("electron"); if (!electron) return null; return electron.BrowserWindow.getAllWindows().map((window) => ({ title: window.getTitle(), visible: window.isVisible() })); })()',
+	const owned = await main.evaluate(
+		[
+			"(() => {",
+			'\tconst electron = process.mainModule?.require("electron") ?? globalThis.require?.("electron");',
+			"\tif (!electron) return { problem: 'main cannot require its own modules' };",
+			"\tconst windows = electron.BrowserWindow.getAllWindows();",
+			"\tconst miniWindow = windows.find((candidate) => (candidate.webContents.getURL() || '').endsWith('mini.html'));",
+			"\tif (!miniWindow) return { problem: 'the app created no mini window', windows: windows.map((window) => ({ title: window.getTitle(), url: window.webContents.getURL() })) };",
+			"\tglobalThis.__lopMiniSceneWindow = miniWindow;",
+			"\treturn {",
+			"\t\twindows: windows.map((window) => ({ title: window.getTitle(), visible: window.isVisible(), focused: window.isFocused() })),",
+			"\t\tmini: { title: miniWindow.getTitle(), visible: miniWindow.isVisible(), focused: miniWindow.isFocused(), bounds: miniWindow.getContentBounds(), url: miniWindow.webContents.getURL() },",
+			"\t};",
+			"})()",
+		].join("\n"),
+	);
+	if (owned?.mini === undefined) {
+		throw new Error(
+			`the app created no mini window, so there is nothing for this scene to drive (${JSON.stringify(owned)}). This scene requires a headless launch with the dev driver armed — the exerciser headlessExerciserAllowed() creates — because the desktop plane admits by frame and a window this scene builds by hand is refused: see docs/agent-driver.md's mini-view section`,
+		);
+	}
+	check(
+		"the app's own mini view exists, hidden and unfocused (the dev-driver exerciser)",
+		owned?.mini?.visible === false && owned?.mini?.focused === false,
+		JSON.stringify(owned?.mini),
 	);
 	check(
-		"the app's own window was off screen before the mini view existed",
-		Array.isArray(existingWindows) &&
-			existingWindows.length === 1 &&
-			existingWindows[0].visible === false,
-		JSON.stringify(existingWindows),
+		"the app's own creation used the design's fixed content size",
+		owned?.mini?.bounds?.width === width &&
+			owned?.mini?.bounds?.height === height,
+		JSON.stringify(owned?.mini?.bounds),
+	);
+	check(
+		"every window of this run is off screen, and the mini view is the only extra one",
+		Array.isArray(owned?.windows) &&
+			owned.windows.length === 2 &&
+			owned.windows.every((window) => window.visible === false),
+		JSON.stringify(owned?.windows),
+	);
+	/*
+	 * THE EXERCISER'S CONTRACT, read from the app's own log: it says it created
+	 * the window, and the registration line still says this mode registers
+	 * NOTHING — the half that must never ride the exerciser.
+	 */
+	const bootLog = await readAppLog(app);
+	check(
+		"the exerciser announced itself and registration stayed normal-only",
+		bootLog.includes("mini-view: exerciser window created") &&
+			bootLog.includes("mini-view: not registered (window mode headless)"),
+		bootLog
+			.split("\n")
+			.filter((line) => line.includes("mini-view:"))
+			.join(" / "),
 	);
 	let mini = null;
 
 	try {
-		const chromePlatform =
-			process.platform === "darwin"
-				? "mac"
-				: process.platform === "win32"
-					? "win"
-					: "linux";
-		/*
-		 * The ARGUMENT'S platform spelling, which is NOT node's: the encoding
-		 * validates against `CHROME_PLATFORMS` ["mac", "win", "linux"], so a
-		 * scene that wrote `darwin` would be silently ignored and every frame
-		 * would carry the preload's `linux` fallback on the keycap — which is
-		 * exactly what the first run of this scene measured.
-		 */
-		const chromeArgument = `--lo-window-chrome=${chromePlatform}:native`;
-		const created = await main.evaluate(
-			[
-				"(async () => {",
-				'\tconst electron = process.mainModule?.require("electron") ?? globalThis.require?.("electron");',
-				'\tconst path = process.mainModule?.require("node:path") ?? globalThis.require?.("node:path");',
-				'\tconst url = process.mainModule?.require("node:url") ?? globalThis.require?.("node:url");',
-				"\tif (!electron || !path || !url) return { problem: 'main cannot require its own modules' };",
-				"\tconst window = new electron.BrowserWindow({",
-				`\t\twidth: ${width},`,
-				`\t\theight: ${height},`,
-				"\t\tuseContentSize: true,",
-				"\t\tshow: false,",
-				"\t\tframe: false,",
-				"\t\tresizable: false,",
-				"\t\tminimizable: false,",
-				"\t\tmaximizable: false,",
-				"\t\tfullscreenable: false,",
-				'\t\ttitle: "Quick send",',
-				"\t\twebPreferences: {",
-				`\t\t\tpreload: ${JSON.stringify(preloadPath)},`,
-				"\t\t\tsandbox: false,",
-				"\t\t\tcontextIsolation: true,",
-				"\t\t\tnodeIntegration: false,",
-				"\t\t\tbackgroundThrottling: false,",
-				`\t\t\tadditionalArguments: [${JSON.stringify(chromeArgument)}, "--lo-telemetry=off"],`,
-				"\t\t},",
-				"\t});",
-				"\tglobalThis.__lopMiniSceneWindow = window;",
-				`\tawait window.loadURL(url.pathToFileURL(${JSON.stringify(miniDocument)}).href);`,
-				"\treturn {",
-				"\t\tvisible: window.isVisible(),",
-				"\t\tfocused: window.isFocused(),",
-				"\t\tbounds: window.getContentBounds(),",
-				"\t\ttitle: window.getTitle(),",
-				"\t};",
-				"})()",
-			].join("\n"),
-		);
-		check(
-			"the mini window was created hidden and unfocused",
-			created?.visible === false && created?.focused === false,
-			JSON.stringify(created),
-		);
-		check(
-			"the mini window's content box is the design's fixed size",
-			created?.bounds?.width === width && created?.bounds?.height === height,
-			JSON.stringify(created?.bounds),
-		);
-
 		mini = await CdpClient.attach(app.port, "out/renderer/mini.html");
 
 		const select = (tag) =>
@@ -28907,6 +29014,7 @@ async function sceneMiniView(app) {
 		);
 
 		const captureMini = async (label) => {
+			await settleMini();
 			const record = await main.evaluate(
 				[
 					"(async () => {",
@@ -29016,6 +29124,51 @@ async function sceneMiniView(app) {
 			}
 		};
 
+		/*
+		 * SETTLE BEFORE EVERY CAPTURE (design round 1, D6). The textarea's
+		 * `transition-colors` (120 ms `duration-fast`) and the Send button's own
+		 * fade meant the posted `typing` and `error` stills were photographed
+		 * MID-ANIMATION, so their ring and fill measured a phase of a transition
+		 * (#addcb3, #3a6641) rather than the surface's settled paint. This polls
+		 * the computed outline/fill pairs until two consecutive reads agree (or
+		 * 1.5 s passes, under load) and every capture runs it first, so the
+		 * frames are colour evidence instead of animation evidence. The pairs
+		 * read are the ones the design round measured: the field's ring and the
+		 * Send button's fill and label, which are the two animated surfaces.
+		 */
+		const settleMini = async () => {
+			const record = await mini.evaluate(`(async () => {
+				const box = ${select("mini-composer-input")};
+				const send = ${select("mini-composer-send")};
+				const read = () =>
+					box && send
+						? [
+								getComputedStyle(box).outlineColor,
+								getComputedStyle(box).backgroundColor,
+								getComputedStyle(send).backgroundColor,
+								getComputedStyle(send).color,
+							].join("|")
+						: "";
+				let last = null;
+				let stable = 0;
+				let waited = 0;
+				let current = read();
+				while (waited < 1500) {
+					if (current === last) stable += 1;
+					else {
+						stable = 0;
+						last = current;
+					}
+					if (stable >= 2) return { settledAfterMs: waited };
+					await new Promise((resolve) => setTimeout(resolve, 60));
+					waited += 60;
+					current = read();
+				}
+				return { settledAfterMs: waited, settled: false };
+			})()`);
+			return record;
+		};
+
 		const type = async (text) => {
 			await mini.evaluate(`${select("mini-composer-input")}.focus(); true`);
 			await mini.send("Input.insertText", { text });
@@ -29075,6 +29228,19 @@ async function sceneMiniView(app) {
 			remounted.ok,
 			JSON.stringify(remounted.value),
 		);
+		/*
+		 * A DRAFT BEFORE THE MIC (UX round 1, U2's other half): with words in the
+		 * box, an Enter that wrongly sent would file a message missing the spoken
+		 * words — so the walk below presses exactly that key and asserts the draft
+		 * stayed.
+		 */
+		const recordingDraft = "Draft kept while dictating";
+		const draftBeforeMic = await type(recordingDraft);
+		check(
+			"the box holds a draft while the recording starts",
+			draftBeforeMic === recordingDraft,
+			JSON.stringify(draftBeforeMic),
+		);
 		await mini.evaluate(`${select("mini-composer-mic")}.click(); true`);
 		const recordingState = await pollMini(
 			`${select("mini-composer-status")}.textContent`,
@@ -29095,7 +29261,52 @@ async function sceneMiniView(app) {
 			`aria-label=${JSON.stringify(stopLabel)}`,
 		);
 		await captureMini("mini-view-dictating");
-		await mini.evaluate(`${select("mini-composer-mic")}.click(); true`);
+		/*
+		 * ENTER CONFIRMS A RECORDING (UX round 1, U2). While the mic is live,
+		 * Enter must not send: it stops the recording (stop → transcribe →
+		 * append), and no send path may hide the window while a recording is
+		 * live. The pre-press reading is the new guard — Send disabled while
+		 * recording — and the post-press reading is that no in-flight state
+		 * ever appeared: the textarea is never disabled by a send and the
+		 * draft is byte-identical.
+		 */
+		const beforeEnter = await mini.evaluate(
+			`({ sendDisabled: ${select("mini-composer-send")}.disabled, mic: ${select("mini-composer-mic")}.getAttribute("aria-label") })`,
+		);
+		check(
+			"Send is disabled while a recording is live",
+			beforeEnter?.sendDisabled === true &&
+				beforeEnter?.mic === dictationStopSentence,
+			JSON.stringify(beforeEnter),
+		);
+		await mini.send("Input.dispatchKeyEvent", {
+			type: "keyDown",
+			key: "Enter",
+			code: "Enter",
+			windowsVirtualKeyCode: 13,
+		});
+		await mini.send("Input.dispatchKeyEvent", {
+			type: "keyUp",
+			key: "Enter",
+			code: "Enter",
+			windowsVirtualKeyCode: 13,
+		});
+		const recordingEnded = await pollMini(
+			`${select("mini-composer-mic")}.getAttribute("aria-label")`,
+			(value) => value === dictationStartSentence,
+			"the recording to end via Enter",
+			8_000,
+		);
+		const afterEnter = await mini.evaluate(
+			`({ text: ${select("mini-composer-input")}.value, disabled: ${select("mini-composer-input")}.disabled, status: ${select("mini-composer-status")}.textContent })`,
+		);
+		check(
+			"Enter confirmed the recording instead of sending",
+			recordingEnded.ok &&
+				afterEnter?.text === recordingDraft &&
+				afterEnter?.status !== sentSentence,
+			JSON.stringify({ ended: recordingEnded.value, ...afterEnter }),
+		);
 
 		/* ---- sending / sent, or the refusal the no-backend run shows ----------- */
 		await mini.send("Page.reload");
@@ -29113,64 +29324,226 @@ async function sceneMiniView(app) {
 		);
 
 		/*
-		 * THE REFUSAL, and why there is no `--backend` arm beside it. The send path
-		 * this surface owns runs through the desktop plane, and that plane's gate
-		 * (`desktop-ipc.ts`) admits by FRAME: the window this scene builds is not
-		 * one the app created — a `headless` launch creates no mini view at all, by
-		 * design — so its requests are refused inside the app before any HTTP
-		 * leaves it, whatever `--backend` names. A stall-the-daemon arm was written
-		 * for this scene and then REMOVED rather than kept as a branch that cannot
-		 * pass: it would have "captured" a sending state no daemon ever saw, and a
-		 * dead instrument that returns a reading is worse than one that refuses.
-		 * The live send ("sending", "sent", and the read-back from the daemon's
-		 * own history route) therefore belongs to the QA pass against the app's own
-		 * window; what stays here is the surface's failure state, from the same
-		 * press a user makes, with the draft kept.
+		 * THE SEND, walked on the app's OWN window — which is what makes both
+		 * arms honest now that the exerciser exists (M-B1). The window this
+		 * scene drives was created by the app, so the desktop plane's gate
+		 * (`desktop-ipc.ts`, admits by frame) ADMITS its requests; where the
+		 * request then goes is the run's own backend or, without one, the dead
+		 * port — and the surface shows the outcome the machine can produce.
+		 *
+		 * WITH `--backend`, the live pair. The `sending` frame needs the
+		 * in-flight state to outlive a loopback round trip, so the harness
+		 * pauses the run's OWN daemon process (SIGSTOP, exact pid from the serve
+		 * record the run linked, resumed in a `finally`) for the frame's
+		 * duration and resumes it before the same request completes: the request
+		 * is a real one, the `sent` frame is its admission, and the history
+		 * read-back below is the daemon's own receipt. The 600 ms flash is held
+		 * open long enough to photograph by stretching the composer's OWN timer
+		 * (`SENT_FLASH_MS`, read from its declaration) in this window's page — a
+		 * harness aid, disclosed here and in the README, not a shipped change.
+		 *
+		 * WITHOUT one, the fail-closed arm: the transport refusal, draft kept —
+		 * the frame the PR's error state has always been.
 		 */
-		await mini.evaluate(`${select("mini-composer-send")}.click(); true`);
-		const refused = await pollMini(
-			`${select("mini-composer-status")}.textContent`,
-			(text) =>
-				typeof text === "string" && text !== "" && text !== hintSentence,
-			"the refusal sentence",
-		);
-		check(
-			"the send was refused with a sentence rather than silence",
-			refused.ok,
-			JSON.stringify(refused.value),
-		);
-		const after = await mini.evaluate(
-			`({ text: ${select("mini-composer-input")}.value, retry: Boolean(${select("mini-composer-retry")}), sendDisabled: ${select("mini-composer-send")}.disabled })`,
-		);
-		check(
-			"the refusal kept the draft: nothing was lost to the failure",
-			after?.text === message,
-			JSON.stringify(after),
-		);
-		note("the refusal state", JSON.stringify(after));
-		await captureMini("mini-view-error");
+		if (BACKEND) {
+			await mini.evaluate(
+				`(() => { const original = window.setTimeout; window.setTimeout = (fn, ms, ...rest) => original(fn, ms === ${sentFlashMs} ? 5000 : ms, ...rest); return true; })()`,
+			);
+			const daemonPids = runDaemonPids();
+			let paused = 0;
+			try {
+				for (const pid of daemonPids) {
+					try {
+						process.kill(pid, "SIGSTOP");
+						paused += 1;
+					} catch {
+						/* Already gone: nothing to hold, and the send will show it. */
+					}
+				}
+				check(
+					"the run's own daemon was paused for the sending frame",
+					paused > 0,
+					`paused ${paused} of ${JSON.stringify(daemonPids)}`,
+				);
+				await wait(150);
+				await mini.evaluate(`${select("mini-composer-send")}.click(); true`);
+				const inFlight = await pollMini(
+					`({ editable: !${select("mini-composer-input")}.disabled, sendDisabled: ${select("mini-composer-send")}.disabled })`,
+					(value) => value?.editable === false,
+					"the in-flight state",
+					6_000,
+				);
+				check(
+					"the send is in flight while the daemon holds the answer",
+					inFlight.ok,
+					JSON.stringify(inFlight.value),
+				);
+				await captureMini("mini-view-sending");
+			} finally {
+				for (const pid of daemonPids) {
+					try {
+						process.kill(pid, "SIGCONT");
+					} catch {
+						/* A pid that died while paused has nothing to resume. */
+					}
+				}
+			}
+			const admitted = await pollMini(
+				`${select("mini-composer-status")}.textContent`,
+				(text) => text === sentSentence,
+				"the Sent flash",
+				20_000,
+			);
+			check(
+				"admission painted the Sent flash",
+				admitted.ok,
+				JSON.stringify(admitted.value),
+			);
+			await captureMini("mini-view-sent");
+
+			/* THE DAEMON'S OWN TRUTH, read back over its own routes: the message is
+			   in the chief-of-staff conversation, not only on the surface. */
+			const aidaState = await daemonPost("/v1/desktop/aida", { op: "status" });
+			const seatSession = aidaState?.json?.result?.session_id ?? null;
+			check(
+				"the daemon reports a chief-of-staff conversation",
+				typeof seatSession === "string" && seatSession.length > 0,
+				JSON.stringify({
+					status: aidaState?.status,
+					body: aidaState?.body,
+				}).slice(0, 300),
+			);
+			const history = seatSession
+				? await daemonGet(
+						`/v1/desktop/sessions/${seatSession}/history?limit=20`,
+					)
+				: null;
+			const entries = history?.json?.result?.entries ?? [];
+			check(
+				"the daemon's own history carries the message the composer sent",
+				Array.isArray(entries) &&
+					entries.some((entry) => JSON.stringify(entry).includes(message)),
+				JSON.stringify({ status: history?.status, body: history?.body }).slice(
+					0,
+					300,
+				),
+			);
+		} else {
+			await mini.evaluate(`${select("mini-composer-send")}.click(); true`);
+			const refused = await pollMini(
+				`${select("mini-composer-status")}.textContent`,
+				(text) =>
+					typeof text === "string" && text !== "" && text !== hintSentence,
+				"the refusal sentence",
+			);
+			check(
+				"the send was refused with a sentence rather than silence",
+				refused.ok,
+				JSON.stringify(refused.value),
+			);
+			const after = await mini.evaluate(
+				`({ text: ${select("mini-composer-input")}.value, retry: Boolean(${select("mini-composer-retry")}), sendDisabled: ${select("mini-composer-send")}.disabled })`,
+			);
+			check(
+				"the refusal kept the draft: nothing was lost to the failure",
+				after?.text === message,
+				JSON.stringify(after),
+			);
+			note("the refusal state", JSON.stringify(after));
+			await captureMini("mini-view-error");
+		}
 
 		/*
-		 * THE GATE'S OWN READING, recorded rather than asserted, and the reason is
-		 * worth stating because it is a boundary of this rig rather than of the
-		 * feature. The window this scene builds is NOT the window the app builds:
-		 * a `headless` launch never creates a mini view at all (`hotkeysAllowed`
-		 * is false there by design), so the app's own gate — whose admission list
-		 * `index.ts` fills from its live `miniView` — cannot know this window, and
-		 * correctly refuses its requests. The refusal reaches the surface as an
-		 * unreachable seat, which is the same sentence a refused transport shows,
-		 * so the stills above are still stills of the surface's failure state.
-		 * The app-side admission itself is proved where it can be: `desktop-ipc`
-		 * unit tests drive `registerDesktopIPC` with a second window and assert
-		 * that it passes, that a window admitted on the wrong URL does not, and
-		 * that an unlisted window does not.
+		 * THE SUMMON WALK, over the real channel — LAST, deliberately. A headless
+		 * run has no OS chord to press, so the scene delivers the message the
+		 * app's own presentation sends (the channel read from its declaration
+		 * above) from MAIN to the app's OWN mini window: the window, the preload
+		 * and the renderer handler are the shipped ones, so what runs is the
+		 * renderer half of a real summon (focus, theme, flash reset, seat
+		 * re-resolution). It runs AFTER the state walk because a summon also
+		 * RESOLVES the seat, and on a machine with no backend that resolution
+		 * fails by design and disables Send — a state the earlier frames must not
+		 * inherit. The blur first makes the focus assertion about the summon rather
+		 * than about whatever the send walk left focused.
+		 */
+		await mini.evaluate("document.activeElement?.blur?.(); true");
+		await main.evaluate(
+			`(() => { const window = globalThis.__lopMiniSceneWindow; window.webContents.send(${JSON.stringify(summonChannel)}, { at: Date.now() }); return true; })()`,
+		);
+		const summonedFocus = await pollMini(
+			"document.activeElement?.dataset?.tourTag ?? null",
+			(value) => value === "mini-composer-input",
+			"the summon focused the composer",
+		);
+		check(
+			"the summon moved focus into the composer",
+			summonedFocus.ok,
+			JSON.stringify(summonedFocus.value),
+		);
+
+		/*
+		 * THE GATE'S OWN ANSWER, ASSERTED rather than apologised for: the window
+		 * is the app's own now, so a "cannot use desktop controls" line in the
+		 * app log would be a real defect — the exerciser's whole purpose is that
+		 * this window passes the frame gate.
 		 */
 		const appLog = await readAppLog(app);
-		note(
-			"the desktop gate's answer for this rig-built window",
-			appLog.includes("This window cannot use desktop controls.")
-				? "refused, as expected for a window the app did not create"
-				: "no refusal line — the window was admitted, which this rig does not expect",
+		check(
+			"the desktop plane admitted the app's own mini window",
+			!appLog.includes("This window cannot use desktop controls."),
+			appLog
+				.split("\n")
+				.filter((line) => line.includes("desktop controls"))
+				.join(" / ") || "no refusal line",
+		);
+
+		/*
+		 * THE REGISTRATION TOAST (UX round 1, U1), walked on the app's own main
+		 * window: a transition into a FAILED status must raise one toast through
+		 * the app's sonner path. The pushes below go over the real channel to
+		 * every window exactly as `index.ts`'s onState does; the contract skips
+		 * the launch-time state (whichever source delivers it first), so TWO
+		 * pushes are sent and the second — a different failure — is the one
+		 * asserted: deterministic whichever source set the baseline.
+		 */
+		const toastBefore = await cdp
+			.evaluate('document.querySelectorAll("[data-sonner-toast]").length')
+			.catch(() => null);
+		const pushRegistration = async (status) => {
+			await main.evaluate(
+				[
+					"(() => {",
+					'\tconst electron = process.mainModule?.require("electron") ?? globalThis.require?.("electron");',
+					"\tif (!electron) return false;",
+					`\tconst state = { value: ${JSON.stringify(quickSendDefault)}, accelerator: "CommandOrControl+Alt+Space", status: ${JSON.stringify(status)} };`,
+					"\tfor (const window of electron.BrowserWindow.getAllWindows()) {",
+					"\t\tif (window.isDestroyed()) continue;",
+					`\t\twindow.webContents.send(${JSON.stringify(registrationChannel)}, state);`,
+					"\t}",
+					"\treturn true;",
+					"})()",
+				].join("\n"),
+			);
+		};
+		await pushRegistration("taken");
+		await pushRegistration("invalid");
+		const toasted = await (async () => {
+			const started = Date.now();
+			for (;;) {
+				const text = await cdp
+					.evaluate('document.body.textContent ?? ""')
+					.catch(() => "");
+				if (typeof text === "string" && text.includes(invalidSentence)) {
+					return { ok: true, text };
+				}
+				if (Date.now() - started > 8_000) return { ok: false, text };
+				await wait(150);
+			}
+		})();
+		check(
+			"a failed-transition toast reached the app's own container (U1)",
+			toasted.ok,
+			`toasts before the transition=${toastBefore}; the container never carried ${JSON.stringify(invalidSentence)}`,
 		);
 
 		/*
@@ -29420,6 +29793,11 @@ async function main() {
 			"--scene project-detail needs --backend: the seeded row, quick-send's message and the picker's create are all real requests to the daemon this run owns, so a run with none would photograph three refusals",
 		);
 	}
+	if (SCENE === "mini-view" && BACKEND !== null && BACKEND_RECORDS === null) {
+		throw new Error(
+			"--scene mini-view with --backend needs --backend-records: the app admits only a daemon a serve record describes, and the sending frame is held by pausing that daemon's own process, whose pid the record carries",
+		);
+	}
 	if (SCENE === "pins-search" && (TUI_PYTHON === null || TUI_CONFIG === null)) {
 		throw new Error(
 			"--scene pins-search needs --tui-python and --tui-config: the third surface it asserts is the store the terminal reads",
@@ -29605,7 +29983,7 @@ async function main() {
 			else if (SCENE === "canvas-freshness")
 				await sceneCanvasFreshness(cdp, app);
 			else if (SCENE === "sidebar-lazy-chats") await sceneSidebarLazyChats(cdp);
-			else if (SCENE === "mini-view") await sceneMiniView(app);
+			else if (SCENE === "mini-view") await sceneMiniView(app, cdp);
 			else if (SCENE !== "none") throw new Error(`unknown scene "${SCENE}"`);
 			for (const line of cdp.console.slice(-20)) say(`  [renderer] ${line}`);
 		} finally {

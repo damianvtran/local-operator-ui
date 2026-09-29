@@ -1831,6 +1831,37 @@ test("hotkeys are registered only by a normal launch", () => {
 	assert.equal(hotkeysAllowed("headless"), false);
 });
 
+test("the mini view is created only for a normal launch or the headless dev-driver exerciser", () => {
+	/*
+	 * THE EXERCISER'S GATE AT THE CALL SITE (M-B1). The window may be created for
+	 * a normal launch (the feature) or for the armed dev driver in a headless run
+	 * (the rigs' exerciser, so a scene can drive a window the app OWNS — the
+	 * desktop plane admits by frame, `desktop-ipc.ts`), and for nothing else.
+	 *
+	 * The REGISTRATION half is not this condition's and is asserted above: it
+	 * stays `hotkeysAllowed`'s alone, so a rig run may hold a hidden window and
+	 * still answer no keyboard. The helper's own arms are driven in
+	 * `dev-driver-gate.test.mjs`; what this case pins is that `index.ts` uses
+	 * it, alongside nothing else, and that exactly one registrar exists.
+	 */
+	const source = readFileSync("src/main/index.ts", "utf8");
+	assert.match(
+		source,
+		/hotkeysAllowed\(windowLaunch\.mode\) \|\| miniViewExerciser/,
+		"the mini view's creation condition must be `hotkeysAllowed(...) || miniViewExerciser`",
+	);
+	assert.match(
+		source,
+		/const miniViewExerciser = headlessExerciserAllowed\(\{\s*arming: devDriverArming,\s*windowMode: windowLaunch\.mode,\s*\}\)/,
+		"the exerciser must be the dev-driver helper, so its headless-only truth has one definition",
+	);
+	assert.equal(
+		source.split("createRegistrar(").length - 1,
+		1,
+		"one registrar, under the normal-only gate; a second would be a second opinion on the chord",
+	);
+});
+
 test("no rig script asks the operating system for window focus", () => {
 	/*
 	 * The RIG-side half of the scan above, and the half that was missing while
