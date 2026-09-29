@@ -75,6 +75,7 @@ const {
 	identityMenuBands,
 	identityMenuFooter,
 	identityMenuHeadings,
+	identityMenuShowsList,
 	pushProfileRecent,
 	store,
 	persistedUiPreferences,
@@ -172,6 +173,68 @@ test("a remembered name the catalogue no longer offers is dropped", () => {
 	assert.equal(allGone.bands.length, 1);
 	assert.equal(allGone.bands[0].heading, null);
 	assert.deepEqual(values(allGone.bands[0].rows), values(ROWS));
+});
+
+test("a ring that covers the whole catalogue adds no band (design D1)", () => {
+	// The operator's own team roster shape: two teams, both remembered. The
+	// band would repeat the entire list verbatim under a second heading, which
+	// is where "two groups" degrades into "a repeated list with headings" -
+	// so the list is what renders, unheaded, exactly as if the ring were empty.
+	const teams = [
+		{ value: "lopdev", label: "lopdev" },
+		{ value: "minerva", label: "minerva" },
+	];
+	const view = identityMenuBands({
+		rows: teams,
+		matches: teams,
+		recents: ["lopdev", "minerva"],
+		kind: "team",
+		query: "",
+	});
+	assert.equal(view.bands.length, 1);
+	assert.equal(view.bands[0].heading, null);
+	assert.deepEqual(values(view.bands[0].rows), ["lopdev", "minerva"]);
+	assert.equal(view.total, 2);
+
+	// One row short of covering it, the band is a shortcut again - the rule is
+	// "adds no row", not "adds few".
+	const three = [...teams, { value: "pergamon", label: "pergamon" }];
+	const partial = identityMenuBands({
+		rows: three,
+		matches: three,
+		recents: ["lopdev", "minerva"],
+		kind: "team",
+		query: "",
+	});
+	assert.deepEqual(
+		partial.bands.map((band) => band.heading),
+		["Recent teams", "All teams"],
+	);
+});
+
+test("the listbox gate is one rule for the panel and both references (U4)", () => {
+	assert.equal(
+		identityMenuShowsList({ loading: false, loadError: null, rowCount: 3 }),
+		true,
+	);
+	// Each of the three non-list states hides the box, and a stale row count
+	// must not reopen the gate while the refusal is what the panel says.
+	assert.equal(
+		identityMenuShowsList({ loading: true, loadError: null, rowCount: 3 }),
+		false,
+	);
+	assert.equal(
+		identityMenuShowsList({ loading: false, loadError: null, rowCount: 0 }),
+		false,
+	);
+	assert.equal(
+		identityMenuShowsList({
+			loading: false,
+			loadError: "The profile registry is unavailable.",
+			rowCount: 3,
+		}),
+		false,
+	);
 });
 
 test("a query flattens the bands: the list is a result, not a browse", () => {

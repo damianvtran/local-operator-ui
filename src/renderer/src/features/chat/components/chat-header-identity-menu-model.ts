@@ -111,6 +111,25 @@ export function identityMenuHeadings(kind: ProfileRecencyKind): {
 }
 
 /**
+ * Whether the panel is showing its LIST.
+ *
+ * The panel's other branch is the three non-list states (loading, refused, an
+ * empty roster), and both of the things that ask about the listbox use THIS
+ * answer: the panel's own render gate, and the two `aria-controls` references
+ * (the control's and the field's), which may name the list only while it
+ * exists - a dangling `aria-controls` points a screen reader at nothing (UX
+ * round 1, U4). One function rather than two conditions, so the reference and
+ * the box it names cannot drift.
+ */
+export function identityMenuShowsList(input: {
+	loading: boolean;
+	loadError: string | null;
+	rowCount: number;
+}): boolean {
+	return !input.loading && input.loadError === null && input.rowCount > 0;
+}
+
+/**
  * The bands, in render order.
  *
  * `rows` is the whole catalogue (unfiltered) and `matches` is the same list after
@@ -122,7 +141,7 @@ export function identityMenuHeadings(kind: ProfileRecencyKind): {
  * function never states a second search rule - it only decides which band a row
  * lands in.
  *
- * THREE CASES, and each is a state the operator named:
+ * FOUR CASES, and each is a state the operator named:
  *
  * - a query is active: ONE band, no heading. The bands are a browsing
  *   affordance, and a search is not browsing - showing "Recent teams" above a
@@ -138,6 +157,13 @@ export function identityMenuHeadings(kind: ProfileRecencyKind): {
  *   different questions ("what do I switch between" / "what exists") and a
  *   picker that hid a row from "all" to avoid repeating it would be the
  *   truncation this whole change is against.
+ * - no query, and the ring covers the WHOLE catalogue - the operator's own team
+ *   roster shape (two teams, both remembered): ONE band, no heading, the list
+ *   in catalogue order. Every row the band would hold is the entire list
+ *   already, so the band adds nothing a reader cannot see one line below; two
+ *   headings over a verbatim repeat is what "two groups" degrades into
+ *   (design round 1, D1). A ring that leaves even one row out is the third
+ *   case and keeps its band.
  *
  * A remembered name the catalogue no longer offers is dropped rather than
  * rendered: the row a switch would send does not exist, so a row for it would be
@@ -168,7 +194,7 @@ export function identityMenuBands(input: {
 		.map((name) => rows.find((row) => row.value === name))
 		.filter((row): row is PickerOption => row !== undefined);
 
-	if (remembered.length === 0) {
+	if (remembered.length === 0 || remembered.length === rows.length) {
 		return {
 			bands: [{ heading: null, rows }],
 			matches: matches.length,

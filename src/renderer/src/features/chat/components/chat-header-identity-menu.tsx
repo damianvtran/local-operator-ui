@@ -37,7 +37,9 @@
  *   must exist to be switched to, there is no free-text path here, and the panel
  *   says so in words rather than accepting a name the owner would reject.
  * - Escape closes and Radix returns focus to the chip. Tab leaves the panel and
- *   dismisses it. Neither leaves focus inside a closed surface.
+ *   dismisses it too (the field claims the key before Radix's focus scope can
+ *   loop it back - see `onClose`). Neither leaves focus inside a closed
+ *   surface.
  * - The pointer's own action is the click (`PickerRow` picks on `mousedown`), so
  *   hovering a row and pressing Enter still picks the ACTIVE row - the keyboard's,
  *   not the pointer's. That is `picker-host`'s rule, kept here so the two surfaces
@@ -86,6 +88,7 @@ import {
 	IDENTITY_MENU_MAX_HEIGHT_CLASS,
 	identityMenuBands,
 	identityMenuFooter,
+	identityMenuShowsList,
 } from "./chat-header-identity-menu-model";
 
 export type IdentityMenuProps = {
@@ -118,6 +121,16 @@ export type IdentityMenuProps = {
 	busy: boolean;
 	onPick: (value: string) => void;
 	/**
+	 * The TAB path (UX round 1, U1): the field claims Tab and asks the control
+	 * to dismiss, because Radix's non-modal `PopoverContent` still passes
+	 * `loop: true` to its `FocusScope` and this panel's only tabbable is the
+	 * field - so the scope would swallow Tab/Shift+Tab and Escape would be the
+	 * only exit, against this component's contract. The control dismisses AND
+	 * hands focus to its chip, and suppresses Radix's own close-autofocus for
+	 * that closure, so the browser's default advance continues from the chip.
+	 */
+	onClose: () => void;
+	/**
 	 * Radix's close-autofocus, forwarded from the pair's swap guard - the panel
 	 * does not own that decision, `ChatHeaderIdentity` does (see its note).
 	 */
@@ -138,6 +151,7 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 	emptyText,
 	busy,
 	onPick,
+	onClose,
 	onCloseAutoFocus,
 }) => {
 	const [query, setQuery] = useState("");
@@ -147,7 +161,11 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 	const inputRef = useRef<HTMLInputElement>(null);
 	const scrollerRef = useRef<HTMLDivElement>(null);
 
-	const showsList = !loading && !loadError && options.length > 0;
+	const showsList = identityMenuShowsList({
+		loading,
+		loadError,
+		rowCount: options.length,
+	});
 
 	/*
 	 * The filter is the APP'S one rule (`filterPickerOptions`), not a second one
@@ -288,6 +306,22 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 
 	const onKeyDown = useCallback(
 		(event: KeyboardEvent<HTMLInputElement>) => {
+			/* The sibling `picker-host`'s first line, and its reason: an IME's Enter
+			 * that commits a candidate is still the composition's key, and without
+			 * this guard it calls `onPick` on the active row - switching the profile
+			 * with a fresh filter (UX round 1, U3, reproduced on Chromium; an arrow
+			 * walking candidates moves rows the same way). */
+			if (event.nativeEvent.isComposing) return;
+			if (event.key === "Tab") {
+				/* See `onClose`: Tab must leave the panel, where Radix's focus scope
+				 * would loop it back into the field. `stopPropagation` keeps the
+				 * scope's own handler from running for this key, and the default is
+				 * NOT prevented - the advance is the browser's own, taken from the
+				 * chip the control put focus on. */
+				event.stopPropagation();
+				onClose();
+				return;
+			}
 			if (event.key === "ArrowDown") {
 				event.preventDefault();
 				move(1);
@@ -318,7 +352,7 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 			}
 			/* Escape is Radix's: it closes the panel and returns focus to the chip. */
 		},
-		[active, busy, flat, move, onPick],
+		[active, busy, flat, move, onClose, onPick],
 	);
 
 	const noun = kind === "team" ? "teams" : "agents";
@@ -339,7 +373,10 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 				ref={inputRef}
 				role="combobox"
 				aria-expanded={true}
-				aria-controls={listId}
+				/* The reference names the listbox only while it exists: the non-list
+				 * branch below renders no list, and a dangling `aria-controls` points
+				 * a screen reader at nothing (UX round 1, U4). */
+				aria-controls={showsList ? listId : undefined}
 				aria-activedescendant={activeId}
 				aria-autocomplete="list"
 				aria-label={`Search ${noun}`}
@@ -515,7 +552,14 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 						 * typed); it names the roster's full size, so "there is more below"
 						 * is a stated fact rather than a scrollbar's hint.
 						 */
-						<div className="border-hairline border-t px-2 py-1.5 text-ink-dim text-meta">
+						<div
+							/* The count line is the only place a filter's effect is stated, and it
+							 * was sighted-only: a polite live region announces the sentence as it
+							 * changes on each keystroke (UX round 1, U5; the register
+							 * `settings-filter-bar`'s count line carries). */
+							aria-live="polite"
+							className="border-hairline border-t px-2 py-1.5 text-ink-dim text-meta"
+						>
 							{footer}
 						</div>
 					)}

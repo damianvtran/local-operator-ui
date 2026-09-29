@@ -13,13 +13,18 @@
  *
  * WHERE IT SITS, AND THE GEOMETRY CONTRACT THAT DECIDES IT. Both controls live
  * inside the header's one-line text block (`chat-header.tsx`'s wrap-and-clip
- * row), in the slot the description string occupied. That is deliberate: the
- * block's overflow behaviour (the chip wraps onto a clipped second line when
- * the row cannot hold it) is inherited unchanged, so the header's fixed-part
+ * row), in the slot the description string occupied, so the header's fixed-part
  * arithmetic - the floor the title keeps at the app's 800px minimum - is not
- * moved by this change. A control that had to live as a row-level sibling
- * would have to join the cluster's shed order or break that floor; clipping
- * like the chip did is the conservative trade.
+ * moved by this change. What the block does NOT do is wrap while these controls
+ * are what the slot holds (UX round 1, U2): a wrapped control lands on the
+ * clipped second line, which is a control that is not painted and cannot be
+ * pressed - and no tooltip or keyboard note can stand in for one - so the line
+ * does not wrap and the TITLE yields instead (it truncates, bounded by the
+ * block's own floor). The wrap-and-clip is kept for the path and skeleton
+ * halves, where the second line is decoration being dropped. A control that had
+ * to live as a row-level sibling would have to join the cluster's shed order or
+ * break that floor; keeping it in the block, on the painted line, is the
+ * conservative trade.
  *
  * WHY PLAIN `<button>`s, NOT the `Button` primitive. `Button`'s size ramp is
  * 28/32/36px (its own docblock says off-ramp heights propagate), and this row
@@ -76,6 +81,7 @@ import { useEntities } from "../pickers/destination-pickers";
 import type { PickerOption } from "../pickers/picker-host";
 import { errorText, useSessionCommand } from "../pickers/use-picker-backend";
 import { IdentityMenu } from "./chat-header-identity-menu";
+import { identityMenuShowsList } from "./chat-header-identity-menu-model";
 import { resolveHeaderIdentity } from "./chat-header-identity-model";
 
 /** The identity fields the header passes through; all optional but the session. */
@@ -221,6 +227,36 @@ const IdentityControl: FC<IdentityControlProps> = ({
 	 * scrolls its active row by `getElementById`.
 	 */
 	const listId = `header-identity-${kind}-list`;
+	/*
+	 * The chip element itself: the Tab contract's other half (UX round 1, U1)
+	 * needs to put focus back on it the moment the field asks to dismiss, and
+	 * the close guard below uses it to suppress the focus-return for that same
+	 * closure.
+	 */
+	const triggerRef = useRef<HTMLButtonElement>(null);
+	/*
+	 * The Tab path's mark (UX round 1, U1), consumed by `onCloseAutoFocus`
+	 * below exactly as the pair's swap mark is: the close the field's Tab
+	 * starts has ALREADY handed focus to this chip, and Radix's close-autofocus
+	 * - which fires from a passive cleanup a few ms after the commit (the
+	 * timing the pair's note records) - would pull focus back out of the
+	 * advance the Tab began.
+	 */
+	const skipReturnRef = useRef(false);
+	/*
+	 * Whether the listbox is mounted, for the trigger's `aria-controls` (UX
+	 * round 1, U4): the reference may name the list only while it exists, and
+	 * the loading, refused and empty states render no list to point at. The
+	 * same rule the panel itself gates on, from one function, so the two cannot
+	 * drift.
+	 */
+	const listMounted =
+		open &&
+		identityMenuShowsList({
+			loading: rows.isLoading,
+			loadError: rows.isError ? errorText(rows.error) : null,
+			rowCount: items.length,
+		});
 
 	/*
 	 * The rows the panel lists, in the shape the app's one option row reads
@@ -267,6 +303,7 @@ const IdentityControl: FC<IdentityControlProps> = ({
 		<Popover open={open} onOpenChange={onOpenChange} modal={false}>
 			<PopoverTrigger asChild>
 				<button
+					ref={triggerRef}
 					type="button"
 					data-header-identity={kind}
 					className={cn(TRIGGER_BOX, !assigned && "text-ink-dim")}
@@ -275,10 +312,13 @@ const IdentityControl: FC<IdentityControlProps> = ({
 					 * `listbox`, not the `dialog` a Radix popover trigger announces by
 					 * default: what the press opens is a filterable list of profiles, and
 					 * the field inside it declares `aria-controls` on this same id. The
-					 * override wins because a Slot's own child props are spread last.
+					 * override wins because a Slot's own child props are spread last -
+					 * and it is named only while the listbox is mounted (`listMounted`),
+					 * so a loading, refused or empty panel does not point at a list that
+					 * is not there (UX round 1, U4).
 					 */
 					aria-haspopup="listbox"
-					aria-controls={listId}
+					aria-controls={listMounted ? listId : undefined}
 					/* The swap guard's mark: every press on either trigger records
 					 * that the closure about to run is a SWAP, not a dismissal - see
 					 * `onCloseAutoFocus` on the menu below, and the pair's own note
@@ -354,6 +394,20 @@ const IdentityControl: FC<IdentityControlProps> = ({
 					onPick(value);
 				}}
 				/*
+				 * The TAB path (UX round 1, U1). The field claims Tab (Radix's
+				 * non-modal focus scope would otherwise loop it back into the field,
+				 * whose only tabbable it is) and asks this control to dismiss: focus
+				 * lands on the chip BEFORE the panel unmounts, so the browser's own
+				 * default Tab advance continues from the chip; and the close is marked
+				 * so Radix's focus-return skips it - that return would fire a few ms
+				 * later and pull focus back out of the same advance.
+				 */
+				onClose={() => {
+					triggerRef.current?.focus();
+					skipReturnRef.current = true;
+					onOpenChange(false);
+				}}
+				/*
 				 * THE SWAP GUARD (UX round 1, U4 - see the note under
 				 * `ChatHeaderIdentity` for the measured sequence this answers).
 				 * A close caused by a press on the SIBLING control must not run
@@ -362,14 +416,17 @@ const IdentityControl: FC<IdentityControlProps> = ({
 				 * focus-outside and dismisses itself 4ms later (measured with the
 				 * menu: agent aria-expanded true at t, false at t+4). Outside
 				 * clicks, Escape and same-trigger toggles leave `swapRef` false and
-				 * keep the return.
+				 * keep the return; the Tab path has its own mark beside it
+				 * (`skipReturnRef`), which suppresses the return because it has
+				 * ALREADY handed focus to the chip rather than to stop a sibling.
 				 */
 				onCloseAutoFocus={(event) => {
-					if (swapRef.current) {
+					if (swapRef.current || skipReturnRef.current) {
 						/* Consume on use: the close-autofocus runs from a passive
 						 * cleanup, so clearing on a zero timeout raced it (see the
 						 * pair's note under `ChatHeaderIdentity`). */
 						swapRef.current = false;
+						skipReturnRef.current = false;
 						event.preventDefault();
 					}
 				}}
