@@ -85,7 +85,37 @@ press (the scene's `[note] jump timings` lines):
   second pass runs on the store the first already walked, so its cold arm is a
   warm re-jump and is labelled as such rather than read as a cold number.
 
-The hover trace (frame timings under a pointer sweep on the long transcript)
-and the before/after pair against the pre-rework build are NOT here: the driver
-has no tracing facility to point at a sweep, so that evidence is new
-instrumentation rather than a re-run, and it lands with the design/UX wave.
+### The hover trace (before / after)
+
+Both halves ran the SAME driver file (`--scoped-case hover-trace`) with only
+`process.cwd()` differing: the before half is `a0cdaa759f` (the pre-rework
+tree; a disposable worktree with its own build, reaped afterwards), the after
+half this branch's head. Two deterministic legs over the density rail - six
+dwell stations at 240ms, then forty sweep steps at 12ms - with the renderer's
+rAF timeline and the rail subtree's DOM mutations sampled in-page.
+
+| reading | before (`a0cdaa759f`) | after (this branch) |
+| --- | --- | --- |
+| frames collected | 308 | 310 |
+| frame p50 / p95 / max (ms) | 8.3 / 9.9 / 23.8 | 8.3 / 9.9 / 16.2 |
+| frames over 25 / 50 ms | 0 / 0 | 0 / 0 |
+| card-up frames | 145 | 115 |
+| first open after the sweep began (ms) | 141 | 388 |
+| rail-subtree DOM mutations, dwell / sweep | 30 / 0 | 24 / 96 |
+
+WHAT THIS DOES AND DOES NOT SAY. At the density case (402 ticks on a 10px
+pitch) neither tree puts a frame over the budget, so the memoization claim is
+NOT a frame-pacing effect at this size and the trace does not report one. The
+mutation column measures the two DESIGNS: the old rail had no per-mark hover
+state (one aria attribute and the portal card moved per open), while the rework
+repaints the previewed and active marks deliberately and holds the rest still
+via the memo. The first-open latencies differ because the arms differ (a
+pointermove on a 10px row at a 60ms intent against the old 24x12 row's
+pointerenter at 120ms). Measured under `headless`, main-thread only
+(`backgroundThrottling` is off in the non-normal modes); a shown window's
+compositor cost and the operator's own transcript size are not measured here.
+
+THE VIRTUALIZATION CALL for the 267-mark manifest: not needed on this evidence
+- the track scrolls internally at a fixed pitch, 402 marks put no frame over
+budget, and each mark is one 28x10 row - and it is revisitable if manifests
+grow by an order of magnitude.
