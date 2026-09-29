@@ -76,6 +76,20 @@ prompt. Its six frames per palette are committed under
 `docs/evidence/project-detail-live/`, whose README carries the seed script and
 the full command.
 
+**`--scene sessionless-slash` (issue #625) types five commands — `/help`,
+`/theme`, `/login`, `/logout`, `/resume` — into a NEW chat (`⌘N`, the press
+`--scene new-chat` proves), one theme per launch like every stateful scene.
+`--slash-expect open` (the default) asserts each mounts its picker on the
+sessionless pane; `--slash-expect refused` asserts the dispatcher's refusal
+sentence instead, so the base tree's half of a before/after pair runs the SAME
+bytes as the head's. Under `open` the scene then sends a turn, waits for the
+mock provider's answer, and asserts `/theme` on that live conversation still
+presents the picker — the session-ful path the change must not move. It needs
+`--backend`, the daemon's serve record (`--backend-records`), and
+`--seed-onboarding-complete`, like every `--backend` scene. Its frames are
+committed under `docs/evidence/sessionless-slash/`, the base tree's under
+`sessionless-slash-baseline/`.**
+
 **`--backend <url>` points the app at a live, ISOLATED backend this run owns.**
 Absent (the default) the app is aimed at a port the script verified dead, so a
 scene captures an app that cannot reach a backend and every frame is publishable

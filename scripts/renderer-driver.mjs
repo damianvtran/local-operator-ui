@@ -115,6 +115,14 @@
  *                          asserts an older session messaged today lands under
  *                          `Today` within ~2 s of its completion; `stale`
  *                          records the old bin it sits in instead
+ *   --slash-expect <open|refused>  (with --scene sessionless-slash) which claim
+ *                          this run is in: `open` (the default) asserts that
+ *                          `/help`, `/theme`, `/login`, `/logout` and
+ *                          `/resume` typed on a new chat each mount their
+ *                          picker with no refusal sentence; `refused` asserts
+ *                          the dispatcher's own sentence for each and no
+ *                          picker - the base tree's half of the pair (issue
+ *                          #625)
  *   --backend <url>        a live, ISOLATED backend this run owns: the app's own
  *                          transport is pointed at it, so a surface gated on a
  *                          capability can be driven at all. The renderer must have
@@ -437,6 +445,22 @@ const AUTHORING_EXPECT = argValue("--authoring-expect", "refresh");
  * half and read as the answer to a question it did not ask.
  */
 const BIN_EXPECT = argValue("--bin-expect", "prompt");
+/**
+ * WHICH CLAIM A `--scene sessionless-slash` RUN IS IN (issue #625).
+ *
+ * `open` (the default) is the head tree: `/help`, `/theme`, `/login`,
+ * `/logout` and `/resume` typed on a pane with no conversation each mount
+ * their picker, and the transcript carries no refusal sentence. `refused` is
+ * the base tree: the same five gestures each get the dispatcher's own sentence
+ * ("<word> needs an open conversation. Start one first.") and no picker
+ * mounts. One scene, both halves, the same bytes - the pair is only readable
+ * if the same code produced both, which is why the flag names a claim rather
+ * than a tree.
+ *
+ * A value the scene does not know is refused rather than defaulted, for the
+ * same reason `--authoring-expect` and `--bin-expect` are.
+ */
+const SLASH_EXPECT = argValue("--slash-expect", "open");
 /**
  * WHICH HALF OF A BEFORE/AFTER PAIR THIS RUN IS (with --scene conversation-start).
  *
@@ -19052,6 +19076,260 @@ async function sceneNewChat(cdp) {
 }
 
 /**
+ * `sessionless-slash` (issue #625): `/help`, `/theme`, `/login`, `/logout` and
+ * `/resume` typed on a pane with no conversation.
+ *
+ * WHAT IT MEASURES, AND WHY ONE SCENE RUNS UNDER BOTH EXPECTATIONS.
+ * `--slash-expect open` is the head tree: every one of the five mounts its
+ * picker over the new chat with `sessionId: ""` and no `sessions.command`
+ * POST. `--slash-expect refused` is the base tree: the same five gestures each
+ * get the dispatcher's own sentence in the transcript and no picker. One
+ * scene, both halves, the same bytes.
+ *
+ * ONE THEME PER LAUNCH (see `--theme`), so the harness runs this twice per
+ * tree. The live half runs under `open` only: after the five gestures a message
+ * is sent and answered, and `/theme` on THAT conversation must still present
+ * the picker - the session-ful path the change must not move. On the base tree
+ * the same steps would prove nothing this pair is about.
+ *
+ * THE NEW CHAT IS THE OPERATOR'S OWN GESTURE, not a route the scene invented:
+ * the app-wide Cmd-N stages a fresh draft exactly as the New chat row does
+ * (`sceneNewChat` is the scene that proves that press, and this one reuses
+ * its chord rather than a selector), and the composer the five commands are
+ * typed into is the one that press mounts.
+ *
+ * A SECOND ENTER IS ATTEMPTED WHEN THE FIRST PRODUCED NEITHER OUTCOME, and the
+ * check records which press it was: the earlier sessionless-panel rig left a
+ * note that a double Enter could send nothing, so the scene does not assume one
+ * press is always enough - it demands that the ONE of the two expected states
+ * arrives, and fails only if neither does.
+ */
+async function sceneSessionlessSlash(cdp) {
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	const theme = THEME ?? "localOperatorDark";
+	const suffix = theme === "localOperatorLight" ? "light" : "dark";
+	await verb(cdp, "setTheme", theme);
+	const themed = await verb(cdp, "state");
+	check(
+		"the app is in the palette this run photographs",
+		themed.theme === theme,
+		`theme is ${themed.theme}`,
+	);
+
+	/*
+	 * The new chat: from a route that is not chat, through the same chord the
+	 * New chat row's shortcut takes, so the pane these gestures are typed into
+	 * is staged the way a user stages one.
+	 */
+	await verb(cdp, "navigate", "/agent-hub");
+	await pressChord(cdp, {
+		key: "n",
+		code: "KeyN",
+		virtualKeyCode: 78,
+		modifiers: MODIFIER.meta,
+	});
+	const landed = await waitForRoute(cdp, "/chat");
+	const draft = await stagedDraft(cdp);
+	check(
+		"Cmd-N staged a fresh draft on the chat route - the new chat these gestures are about",
+		landed.route === "/chat" &&
+			typeof draft === "string" &&
+			draft.startsWith("draft:"),
+		`route ${landed.route}, activeDraftKey ${JSON.stringify(draft)}`,
+	);
+	const COMPOSER = '[data-tour-tag="chat-input-textarea"]';
+	const mounted = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${COMPOSER}'))`,
+		30_000,
+	);
+	check(
+		"the draft pane mounts a composer",
+		mounted.ok,
+		`after ${mounted.waitedMs}ms: ${JSON.stringify(mounted.last)}`,
+	);
+
+	const open = SLASH_EXPECT === "open";
+	const COMMANDS = [
+		{ word: "/help", label: "help", title: "Commands" },
+		{ word: "/theme", label: "theme", title: "Theme" },
+		{ word: "/login", label: "login", title: "Sign in to a provider" },
+		{ word: "/logout", label: "logout", title: "Sign out" },
+		{ word: "/resume", label: "resume", title: "Resume a conversation" },
+	];
+
+	const frames = [];
+	for (const command of COMMANDS) {
+		const refusal = `${command.word} needs an open conversation. Start one first.`;
+		const arrives = `Boolean(document.querySelector('[role="dialog"]')) || document.body.innerText.includes(${JSON.stringify(refusal)})`;
+		await clickAt(cdp, `${COMPOSER} textarea`);
+		await cdp.send("Input.insertText", { text: command.word });
+		await wait(400);
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		let produced = await waitForCondition(cdp, arrives, 8_000);
+		if (!produced.ok) {
+			await pressChord(cdp, {
+				key: "Enter",
+				code: "Enter",
+				virtualKeyCode: 13,
+			});
+			produced = await waitForCondition(cdp, arrives, 8_000);
+		}
+		const read = await cdp.evaluate(`(() => {
+			const dialog = document.querySelector('[role="dialog"]');
+			const title = dialog ? dialog.querySelector('h2') : null;
+			return {
+				picker: title ? title.textContent.trim() : null,
+				refusal: document.body.innerText.includes(${JSON.stringify(refusal)})
+					? ${JSON.stringify(refusal)}
+					: null,
+			};
+		})()`);
+		const frame = await captureSettled(
+			cdp,
+			`sessionless-${command.label}-${suffix}`,
+		);
+		frames.push(frame);
+		if (open) {
+			check(
+				`${command.word} opens its picker on a pane with no conversation`,
+				read.picker === command.title,
+				`dialog title ${JSON.stringify(read.picker)}, expected ${JSON.stringify(command.title)} (settled after ${produced.waitedMs}ms)`,
+			);
+			check(
+				`${command.word} prints no refusal sentence`,
+				read.refusal === null,
+				JSON.stringify(read.refusal),
+			);
+		} else {
+			check(
+				`${command.word} is refused with the dispatcher's own sentence`,
+				read.refusal === refusal && read.picker === null,
+				`refusal ${JSON.stringify(read.refusal)}, picker ${JSON.stringify(read.picker)} (settled after ${produced.waitedMs}ms)`,
+			);
+		}
+		if (read.picker !== null) {
+			/*
+			 * The picker is a modal: it owns the keyboard, and the next gesture
+			 * needs the composer. Escape is the app's own close, so the scene
+			 * closes it the way a user does rather than by reaching into stores.
+			 */
+			await pressChord(cdp, {
+				key: "Escape",
+				code: "Escape",
+				virtualKeyCode: 27,
+			});
+			const closed = await waitForCondition(
+				cdp,
+				`!document.querySelector('[role="dialog"]')`,
+				5_000,
+			);
+			check(
+				`${command.word}'s picker closes on Escape`,
+				closed.ok,
+				`after ${closed.waitedMs}ms`,
+			);
+		}
+	}
+
+	/*
+	 * THE LIVE HALF (open only): a message is sent and answered, and `/theme` on
+	 * the conversation it creates must still present the picker - the
+	 * session-ful path this change must not move.
+	 */
+	if (open) {
+		await clickAt(cdp, `${COMPOSER} textarea`);
+		await cdp.send("Input.insertText", {
+			text: "Sessionless slash commands: live-conversation sanity check.",
+		});
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		const sent = await waitForCondition(
+			cdp,
+			`(() => {
+				const log = document.querySelector('[role="log"]');
+				return Boolean(log && log.textContent.includes("live-conversation sanity check")) && !document.querySelector('[data-lo-empty-mark]');
+			})()`,
+			60_000,
+		);
+		check(
+			"the sanity message reached the transcript and the empty state is gone",
+			sent.ok,
+			`after ${sent.waitedMs}ms: ${JSON.stringify(sent.last)}`,
+		);
+		const answered = await waitForCondition(
+			cdp,
+			`(() => {
+				const log = document.querySelector('[role="log"]');
+				return Boolean(log && log.textContent.includes("from the mock provider"));
+			})()`,
+			60_000,
+		);
+		check(
+			"the mock provider answered, so the pane is on a live conversation",
+			answered.ok,
+			`after ${answered.waitedMs}ms`,
+		);
+		const liveState = await verb(cdp, "state");
+		check(
+			"the pane now addresses a real session",
+			typeof liveState.activeSessionId === "string" &&
+				liveState.activeSessionId.length > 0,
+			`activeSessionId ${JSON.stringify(liveState.activeSessionId)}`,
+		);
+		await clickAt(cdp, `${COMPOSER} textarea`);
+		await cdp.send("Input.insertText", { text: "/theme" });
+		await wait(400);
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		const livePicker = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector('[role="dialog"]'))`,
+			15_000,
+		);
+		await wait(500);
+		const liveRead = await cdp.evaluate(`(() => {
+			const dialog = document.querySelector('[role="dialog"]');
+			const title = dialog ? dialog.querySelector('h2') : null;
+			return { picker: title ? title.textContent.trim() : null };
+		})()`);
+		const liveFrame = await captureSettled(
+			cdp,
+			`sessionless-theme-live-${suffix}`,
+		);
+		frames.push(liveFrame);
+		check(
+			"/theme on a live conversation still presents the same picker",
+			livePicker.ok && liveRead.picker === "Theme",
+			`dialog ${JSON.stringify(liveRead.picker)} after ${livePicker.waitedMs}ms`,
+		);
+	} else {
+		note(
+			"live half skipped",
+			"--slash-expect refused: the base tree's half of this pair is the five refusals, and the session-ful steps would spend a send and an answer on a claim this run is not making",
+		);
+	}
+
+	check(
+		"every capture is a frame the app held still for, with no toast on it",
+		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: ${frame.stable === true ? `held still after ${frame.attempts} capture(s)` : `never held still in ${frame.attempts} capture(s)`}, toast-free ${frame.toastFree === true}`,
+			)
+			.join(" | "),
+	);
+	return frames;
+}
+
+/**
  * `settings-model`: the settings registry's provider and model fields, with
  * their searchable list OPEN.
  *
@@ -28853,6 +29131,20 @@ async function main() {
 			`--authoring-expect takes refresh or stale (got ${JSON.stringify(AUTHORING_EXPECT)}): the two are different claims about the same run, and a defaulted typo would silently answer the other one`,
 		);
 	}
+	if (SCENE === "sessionless-slash" && BACKEND === null) {
+		throw new Error(
+			"--scene sessionless-slash needs --backend: the composer only exists behind the session catalogue a live backend advertises, and four of the five pickers read routes on it (`/resume` its session list, `/login` and `/logout` the accounts, `/help` the catalogue itself)",
+		);
+	}
+	if (
+		SCENE === "sessionless-slash" &&
+		SLASH_EXPECT !== "open" &&
+		SLASH_EXPECT !== "refused"
+	) {
+		throw new Error(
+			`--slash-expect takes open or refused (got ${JSON.stringify(SLASH_EXPECT)}): the two are different claims about the same gestures, and a defaulted typo would silently answer the other one`,
+		);
+	}
 	if (SCENE === "route-tops" && BACKEND === null) {
 		throw new Error(
 			"--scene route-tops needs --backend: settings, agents, projects, hub and schedules are gated on the catalogue a live backend advertises, and the macOS lane assertion is read over every one of them",
@@ -29023,6 +29315,7 @@ async function main() {
 			else if (SCENE === "radient-issue") await sceneRadientIssue(cdp);
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);
 			else if (SCENE === "btw-aside") await sceneBtwAside(cdp);
+			else if (SCENE === "sessionless-slash") await sceneSessionlessSlash(cdp);
 			else if (SCENE === "authoring-refresh") await sceneAuthoringRefresh(cdp);
 			else if (SCENE === "sidebar-bin-promptness")
 				await sceneSidebarBinPromptness(cdp);
