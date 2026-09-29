@@ -2144,6 +2144,21 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"crossSessionVisibilityRestampNote",
 	/*
+	 * AND THE HEAD-CUT CONDENSATION PASS'S OWN (`headCutCondensationRestampNote`,
+	 * 2026-09-29): the operator report that a completed turn whose opening
+	 * message sits a few fetched pages up does not condense - it renders as its
+	 * raw rows while a fully loaded turn below it shows a bar; its round-1
+	 * remediation scoped the settle announcement to settles (a window reveal is
+	 * absorbed silently) and corrected the focus comment. It moves both
+	 * trees - the collapse model's end-loaded rule, the head-independent run
+	 * identity and the transcript's focus hold and settle announcement in
+	 * `src/`; the two suites and this registration in `scripts/` - and commits
+	 * no frame (the before/after stills live on the PR's `evidence/` branch), so
+	 * the note quotes the pair this file ships and is held to it like every
+	 * entry above.
+	 */
+	"headCutCondensationRestampNote",
+	/*
 	 * AND THE UPDATE DRAIN'S OWN (2026-09-29): `updateDrainIdleSwitchRestampNote`
 	 * is the record for the update drain → idle-switch change - the operator's
 	 * directive removed the fleet-drain gate from the two RESTART legs, the
@@ -2173,6 +2188,7 @@ const STAMP_BINDING_NOTES = [
 	 * from the MERGED tree by the docs-only amendment under the merge. It quotes
 	 * that pair, so it is held to the pair this file ships.
 	 */
+	"updateDrainFoldNote",
 	/*
 	 * AND THE DESIGN ROUND'S FRAMES, COMMITTED (2026-09-29): `updateDrainFramesNote` is
 	 * the record for the frames the pass was owed - the four completion states, the two
@@ -2183,6 +2199,15 @@ const STAMP_BINDING_NOTES = [
 	 * ships like every entry above it.
 	 */
 	"updateDrainFramesNote",
+	/*
+	 * AND THE SECOND FOLD'S OWN (2026-09-29): `updateDrainFoldTwoNote` is the fold onto
+	 * the moved `origin/main` `7461d814ae` (#651's condense-unloaded merge, over this
+	 * branch's fold base `036e501fdf`) - both evidence files conflicted, both resolved as
+	 * unions with no key dropped, and both stamps re-derived from the MERGED tree by the
+	 * docs-only amendment under the merge. It quotes that pair, so it is held to the pair
+	 * this file ships.
+	 */
+	"updateDrainFoldTwoNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -3375,6 +3400,19 @@ const BRANCH_RECORDS = [
 	 */
 	"crossSessionVisibilityRestampNote",
 	/*
+	 * AND THE HEAD-CUT CONDENSATION PASS'S OWN (2026-09-29):
+	 * `headCutCondensationRestampNote` is the re-stamp for the operator report
+	 * that a completed turn whose opening message is a few fetched pages up
+	 * renders raw instead of condensing, kept through its round-1
+	 * remediation (the announcement scoped to settles, the focus comment
+	 * corrected). Both trees move (the end-loaded rule,
+	 * the head-independent run key, the focus hold and the settle announcement
+	 * in `src/`; the two suites and this registration in `scripts/`), no swept
+	 * frame was taken (the stills are the PR's own evidence branch), and the
+	 * reader is owed the reason no still was.
+	 */
+	"headCutCondensationRestampNote",
+	/*
 	 * AND THIS PASS'S OWN (2026-09-29): `updateDrainIdleSwitchRestampNote` is the
 	 * record for the update drain → idle-switch change (the operator's directive
 	 * removed the fleet-drain gate from the two RESTART legs; the rebuild route's
@@ -3403,6 +3441,7 @@ const BRANCH_RECORDS = [
 	 * from the MERGED tree by the docs-only amendment under the merge. It quotes
 	 * that pair, so it is held to the pair this file ships.
 	 */
+	"updateDrainFoldNote",
 	/*
 	 * AND THE DESIGN ROUND'S FRAMES' OWN (2026-09-29): `updateDrainFramesNote` is the
 	 * frames commit that pays the debt the two notes above state - it adds no declared
@@ -3412,6 +3451,13 @@ const BRANCH_RECORDS = [
 	 * this list exists.
 	 */
 	"updateDrainFramesNote",
+	/*
+	 * Grown by the second fold, this branch's newest top-level record: the merge onto
+	 * `origin/main` `7461d814ae` re-derived the pair from the merged tree, and the note
+	 * it wrote is listed for the reason the list exists - a later fold that started from
+	 * main's copy would drop it first.
+	 */
+	"updateDrainFoldTwoNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
