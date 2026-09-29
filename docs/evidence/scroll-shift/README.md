@@ -114,7 +114,9 @@ it off screen - the registry's survival, now also across an unmount.
 window's edge lands on run boundaries and the run is atomic (its bar groups
 it), so the edge takes the run whole - the trace records the walk it does
 instead (the front, bar and fold together, leaves the mounted span as the live
-rows arrive; nothing re-keys, no `true -> false` anywhere). The traces spell
+rows arrive; nothing re-keys). The fold that arrives in its place is the live
+turn's own, which the reader never opened - the one `expanded: false` in the
+trace - and the reader's fold never goes `true -> false` while it is mounted. The traces spell
 the bar's own row `<id>#bar`: the bar carries its anchor's `data-record-id`
 while the anchor's row still renders, and the suffix keeps the trace's id map
 one-to-one (the element pair otherwise reads as a 26px move on every frame).
@@ -130,7 +132,7 @@ did when a fold's body unmounted:
 | --- | --- | --- |
 | `fold-tail/` - expand, calls load, turn's end | the condense closes the fold AND every settled row moves `228.0px` down on that frame (`rows 6 moved 228.0..228.0`, `st 0`) | the fold survives every update (`expanded true`, ids `4 -> 10`); at the turn's end the TURN re-condenses (Q-R2-2): older rows yield `328.6px` in that frame with the leading edge inside `4.0px`, `st 0` - and re-opening the bar restores the fold `expanded true, rows 10` |
 | `fold-away/` - the reader scrolled off the tail | the collapse moves every settled row `217.0px` in one frame (`max|delta row| = 217.0`), with Chrome adjusting `scrollTop` by 11px (its clamp), not the 228 the hold needs | the reader's own collapse lands `max|delta row| = 0.00px` - the correction writes `scrollTop -428 -> -200` in the same frame; six notches then move the view exactly `60px` each and it stays where the gesture left it |
-| `fold-boundary/` - off screen, edge walks the run | `expanded true -> false` (frame 67) | no re-key to record: the edge takes the run's own bar (fold inside) out whole (`rows 63 -> 54` in the frame), the live calls load into a second fold that is never opened, and no `true -> false` occurs |
+| `fold-boundary/` - off screen, edge walks the run | `expanded true -> false` (frame 67) | no re-key to record: the edge takes the run's own bar (fold inside) out whole (`rows 63 -> 54` in the frame), and the fold that arrives in its place is the live turn's own, never opened by the reader - the reader's fold never goes `true -> false` while mounted |
 | `fold-tail-manual/` - the reader collapses the newest group AT the tail | n/a | re-flushes the pinned column by the body's own `228px` (`rows 7 moved 228.0..228.0`, `st 0`); the residual below |
 
 **What re-anchors today, and what the update was missing.** The only
