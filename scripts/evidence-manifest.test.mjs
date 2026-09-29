@@ -1895,6 +1895,15 @@ const STAMP_BINDING_NOTES = [
 	 * held to this file like every entry above it.
 	 */
 	"foldOnto20c3a207d7Note",
+	/*
+	 * The receipt pass's own: the change moves BOTH trees this file binds -
+	 * `src/` for the completion-view hook's foreground deferral and `scripts/`
+	 * for the receipt suite's new cases - and takes no frame (its evidence is
+	 * the committed before/after half under
+	 * `docs/evidence/chat-sidebar-ack-and-selection/`), so the note states the
+	 * pair it binds and why the stills did not move.
+	 */
+	"readReceiptForegroundRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
