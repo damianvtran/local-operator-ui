@@ -65,6 +65,8 @@ import {
 import {
 	type FC,
 	type FocusEvent,
+	type MouseEvent,
+	type PointerEvent,
 	type RefObject,
 	memo,
 	useCallback,
@@ -112,6 +114,7 @@ import {
 import { TraceFold } from "../components/trace/trace-fold";
 import { TurnSummary } from "../components/trace/turn-summary";
 import { WorkingLine } from "../components/trace/working-line";
+import { focusComposer } from "../composer-field";
 import { MISSING_SESSION_NOTICE_ID } from "../missing-session-notice";
 import { CanvasPaneProvider } from "../utils/canvas-pane";
 import { parseReplies } from "../utils/reply-utils";
@@ -136,6 +139,13 @@ import {
 	foldRuns,
 	turnFeet,
 } from "./trace-fold-model";
+import {
+	TRANSCRIPT_DRAG_SLOP_PX,
+	clickTargetIsControl,
+	modalIsOpen,
+	transcriptClickVerdict,
+	wheelWithinGuard,
+} from "./transcript-focus";
 import { shareInFlight } from "./transcript-loader";
 import {
 	type CanonicalTranscriptStatus,
@@ -2716,6 +2726,124 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	);
 
 	/*
+	 * THE BLANK-SPACE CLICK, AND ITS GUARDS (issue #661).
+	 *
+	 * A press on empty transcript space focuses nowhere today, so the next
+	 * keystroke reaches nobody until the reader clicks the box - and the box is
+	 * the only sensible target for a press that landed on no control. The policy
+	 * is `transcript-focus.ts`'s; what lives here is the DOM half: the press's
+	 * origin and the selection state BEFORE the browser collapses it. That
+	 * recording is the whole reason the handlers are on the container rather
+	 * than one `onClick`: by click time a press-time selection is already gone,
+	 * and a click carries no memory of where the pointer came from.
+	 *
+	 * The recording is deliberately silent - no preventDefault, no focus call,
+	 * no state that re-renders - so every existing handler receives the reader's
+	 * gesture exactly as it did.
+	 */
+	const pressRef = useRef<{
+		x: number;
+		y: number;
+		/** Whether a transcript selection existed before the browser collapsed it. */
+		hadSelection: boolean;
+		/** Whether the press began on a control (see `clickTargetIsControl`). */
+		onControl: boolean;
+	} | null>(null);
+	/** When the last wheel notch arrived; the click's own scroll-gesture read. */
+	const wheelAtRef = useRef(Number.NEGATIVE_INFINITY);
+
+	/*
+	 * Whether non-collapsed text is selected INSIDE this transcript. Scoped to
+	 * the container because a selection elsewhere - the sidebar, the composer,
+	 * another pane - is not the gesture this guard exists for, and because a
+	 * selection in the transcript is the one a click here is about to
+	 * collapse.
+	 */
+	const selectionInsideTranscript = useCallback((): boolean => {
+		const selection = window.getSelection();
+		const region = containerRef.current;
+		if (!selection || selection.isCollapsed || !region) return false;
+		const node = selection.anchorNode ?? selection.focusNode;
+		return node !== null && region.contains(node);
+	}, [containerRef]);
+
+	const handleTranscriptPointerDown = useCallback(
+		(event: PointerEvent<HTMLDivElement>) => {
+			/*
+			 * Primary presses only: a right- or middle-click is not the gesture
+			 * this rule answers, and it must not leave a recording behind for a
+			 * click that never comes.
+			 */
+			if (event.button !== 0) {
+				pressRef.current = null;
+				return;
+			}
+			pressRef.current = {
+				x: event.clientX,
+				y: event.clientY,
+				hadSelection: selectionInsideTranscript(),
+				onControl: clickTargetIsControl(event.target),
+			};
+		},
+		[selectionInsideTranscript],
+	);
+
+	const handleTranscriptWheel = useCallback(() => {
+		wheelAtRef.current = performance.now();
+	}, []);
+
+	const handleTranscriptClick = useCallback(
+		(event: MouseEvent<HTMLDivElement>) => {
+			const press = pressRef.current;
+			pressRef.current = null;
+			/*
+			 * A press another handler already answered is left alone:
+			 * `defaultPrevented` is the "someone got here first" tell the
+			 * palette shortcut documents, and the surface that consumed the
+			 * gesture owns it.
+			 */
+			if (event.defaultPrevented) return;
+			const verdict = transcriptClickVerdict({
+				controlPress:
+					clickTargetIsControl(event.target) || press?.onControl === true,
+				modalOpen: modalIsOpen(document),
+				pressHadSelection: press?.hadSelection === true,
+				selectionNotCollapsed: selectionInsideTranscript(),
+				shiftExtends: event.shiftKey,
+				dragged:
+					press !== null &&
+					Math.hypot(event.clientX - press.x, event.clientY - press.y) >
+						TRANSCRIPT_DRAG_SLOP_PX,
+				scrolledRecently: wheelWithinGuard(
+					wheelAtRef.current,
+					performance.now(),
+				),
+			});
+			/*
+			 * The composer's own door (`composer-field.ts`), the hand-off the
+			 * Quote toolkit already uses from this component's tree: it is the
+			 * single place focus is given - the ask gate's "the user took the
+			 * box" flag reset included - and a no-op when no composer is
+			 * mounted (a story, a pane without one).
+			 *
+			 * THE TRADE, named because it is the one a reader hits: focus leaving
+			 * for the composer means the transcript's own KEYBOARD paging (Space,
+			 * PageUp, the arrows - the keys `use-scroll-paging.ts` listens for)
+			 * now lands in the textarea, so a reader who scrolls by keyboard
+			 * after a click types spaces instead. The scroller stays reachable
+			 * with Tab/F6, and the alternative - leaving the caret on the
+			 * scroller - is the "my keystrokes go nowhere" state #661 exists to
+			 * remove (design round 2, U2). The flag reset is the door's own
+			 * contract read literally: a hand-off makes the box ours again, so a
+			 * gate advancing on its own schedule may claim focus for its next
+			 * question, the same as after a press into the empty box.
+			 */
+			if (verdict === "focus") focusComposer();
+		},
+		[selectionInsideTranscript],
+	);
+
+	/*
 	 * THE TURN COLLAPSE (§4.5), computed beside the fold groups and the feet: one
 	 * pure plan (`turn-collapse-model.ts`) over the same `visible` rows the list
 	 * renders, so a bar can only ever summarise rows that are loaded and on
@@ -3058,6 +3186,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					}}
 					onHover={handleCheckpointHover}
 				/>
+				{/* biome-ignore lint/a11y/useKeyWithClickEvents: the click is a pointer gesture that hands the caret to the composer, which the keyboard already reaches with Tab; the transcript's own keys are its paging keys (Home/PageUp/ArrowUp), and adding a key that moved focus would take them away. */}
 				<div
 					ref={containerRef}
 					data-lo-canonical-transcript={true}
@@ -3149,6 +3278,9 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					 */
 					onFocus={handleTranscriptFocus}
 					onBlur={handleTranscriptBlur}
+					onPointerDown={handleTranscriptPointerDown}
+					onWheel={handleTranscriptWheel}
+					onClick={handleTranscriptClick}
 					className={cn(
 						// `min-h-0`, not `h-full`: this is the flex child that must absorb
 						// the column's leftover height. `h-full` resolves its flex base to
