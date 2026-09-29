@@ -84,7 +84,6 @@ export type TraceFoldProps = {
 	/** §E2's generated copy: `Explored 4 files, 1 search`, `3 shell · 1 python`. */
 	summary: string;
 	actionCount: number;
-	failedCount: number;
 	/**
 	 * The run's wall-clock span (`foldSpan`), or null when it cannot date itself -
 	 * an older row restored from history carries durations but no stamps, and the
@@ -143,8 +142,8 @@ export type TraceFoldProps = {
 	mediaCount?: number;
 	/**
 	 * The record ids the fold holds. Stamped on the wrapper (`data-fold-ids`)
-	 * because a collapsed fold UNMOUNTS its rows, so the turn foot's `1 failed`
-	 * jump cannot find the failed row by its `data-record-id` until the fold
+	 * because a collapsed fold UNMOUNTS its rows, so a reader (or a future
+	 * affordance) cannot find a row by its `data-record-id` until the fold
 	 * that holds it is opened - this is how it finds that fold.
 	 */
 	recordIds: readonly string[];
@@ -176,7 +175,6 @@ function useNowMs(active: boolean): number {
 export const TraceFold = ({
 	summary,
 	actionCount,
-	failedCount,
 	span,
 	live,
 	sectionLive,
@@ -339,33 +337,10 @@ export const TraceFold = ({
 							 */}
 							<span>{summary}</span>
 						</span>
-						{/*
-						 * The failure count is the fold's only loud ink, and it is the reader's
-						 * only way into the failure without opening the run by hand — which is
-						 * why §E3's foot line carries the same number as a control. It names what
-						 * it counts (`1 failed`), because a bare red number states that something
-						 * went wrong without saying what did.
-						 */}
-						{failedCount > 0 && (
-							<>
-								{/*
-								 * The `·` the foot line uses between its facts (D8: without it the
-								 * summary read as one run-on phrase, `7 actions 1 failed 15s`), in
-								 * the summary's own quiet ink so only the count is loud.
-								 */}
-								<span
-									aria-hidden={true}
-									className={cn("text-ink-dim text-meta")}
-								>
-									·
-								</span>
-								<span
-									className={cn("shrink-0 font-medium text-danger text-meta")}
-								>
-									{failedCount} failed
-								</span>
-							</>
-						)}
+						{/* NO FAILURE TALLY (operator, 2026-09-29, issue #6): the
+						 * fold's `· N failed` chip is retired — a completed run's
+						 * failure count is noise at a glance, and the rows (red,
+						 * behind the fold) carry the state. */}
 						{/*
 						 * How many pictures the run produced, as the count the strip cannot
 						 * carry at 64px - and the reason this clause is here at all is the

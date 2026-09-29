@@ -57,6 +57,10 @@ const ERROR_COPY_ROW = /capabilities\.error\.message/;
 const NOTICE_ROW = /<p>\{notice\}<\/p>/;
 const RETRY_REFRESH = /Retry refresh/;
 const SHARED_GATE = "!stripSpeaksConnection";
+const BANNER_GATE = "!coveredByCompatibilityBanner";
+const PANE_BANNER_YIELD =
+	/error && !stripSpeaksConnection && !coveredByCompatibilityBanner/;
+const BANNER_PREDICATE_CALL = /compatibilityBannerShown\(/;
 const STRIP_IMPORT =
 	/import \{ useStripSpeaksConnection \} from "\.\.\/chat-status-presence";/;
 const SIDEBAR_HOOK_CALL =
@@ -86,13 +90,25 @@ const between = (start, end) => {
 	return slice;
 };
 
-test("the capability paragraph stands down on the strip's own reading", () => {
-	const block = between(
-		"{capabilities.error && !stripSpeaksConnection && (",
-		"\n\t\t\t{/*",
-	);
+test("the capability paragraph stands down on the strip's own reading, and the banner's too", () => {
+	const block = between("{capabilities.error &&", "\n\t\t\t{/*");
 	assert.match(block, ERROR_COPY_ROW);
 	assert.match(block, RETRY_REFRESH);
+	assert.ok(
+		block.includes(SHARED_GATE),
+		"the strip's own reading guards this block",
+	);
+	/*
+	 * AND THE BANNER'S CONDITION BESIDE IT (QA round 1's Q-1): the strip is silent
+	 * for the four causes the banner carries, and in those states this paragraph
+	 * was the second statement of one incident - measured in the successor walk,
+	 * where a replacement that refuses this app's credential rendered this
+	 * sentence under the banner's successor sentence.
+	 */
+	assert.ok(
+		block.includes(BANNER_GATE),
+		"the capability paragraph must also yield to the compatibility banner",
+	);
 	assert.equal(
 		block.includes('role="alert"'),
 		false,
@@ -129,11 +145,31 @@ test("the foot line and the two paragraphs read one predicate, not three", () =>
 	);
 	const foot = between(
 		"{(error || profiles.error || teams.error) &&",
-		"\n\t\t\t{/*",
+		/*
+		 * THE SLICE ENDS AT THE NAV'S OWN CLOSE now, not at a `{/*` comment: the comment that
+		 * followed the foot line belonged to the sidebar's toast lane, and the lane was
+		 * deleted on 2026-09-27 (`docs/design/sidebar-row-space.md` §10's supersession
+		 * entry) - so no `{/*` follows this block any more, and the structural boundary is
+		 * what the slice ends at. What the case asserts is the foot line's OWN reading of
+		 * the shared predicate, which needs no comment after it.
+		 */
+		"\n\t\t\t</TooltipProvider>",
 	);
 	assert.ok(
 		foot.includes(SHARED_GATE),
 		"the foot line reads the same predicate as the two paragraphs",
+	);
+	/*
+	 * AND THE BANNER TERM BESIDE IT (QA round 2, Q-3). The round-1 pin stopped at
+	 * the shared predicate, so the foot line kept passing while it never learned
+	 * the banner term the capability paragraph got - and the successor walk
+	 * measured the cost: the banner's sentence alone in the pane, this foot
+	 * line's own "did not answer this request" and `Retry refresh` beneath it
+	 * (44 of 51 samples). The foot line and the paragraph read the SAME gate.
+	 */
+	assert.ok(
+		foot.includes(BANNER_GATE),
+		"the foot line must also yield to the compatibility banner",
 	);
 	const caption = between("feed.available &&", "Not connected");
 	assert.ok(
@@ -190,6 +226,23 @@ test("the pane's own catalogue error yields to the strip (R11)", () => {
 		PAGE_SOURCE,
 		PANE_YIELDS,
 		"the CATALOGUE half stands down while the strip speaks; the ROUTE half must not",
+	);
+	/*
+	 * AND THE BANNER'S OWN CONDITION, READ FROM THE BANNER'S OWN PREDICATE (QA
+	 * round 1's Q-1): where the strip is silent for a cause the banner carries,
+	 * the catalogue half must yield to the banner — measured in the successor
+	 * walk, where the pane's refusal sentence rendered under the banner's
+	 * successor sentence.
+	 */
+	assert.match(
+		PAGE_SOURCE,
+		PANE_BANNER_YIELD,
+		"the pane's catalogue half must also yield to the compatibility banner",
+	);
+	assert.match(
+		PAGE_SOURCE,
+		BANNER_PREDICATE_CALL,
+		"read through the predicate the banner itself uses, so the two cannot drift",
 	);
 });
 

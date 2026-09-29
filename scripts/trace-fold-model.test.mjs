@@ -203,6 +203,8 @@ test("the summary is generated from the counts by class", () => {
 		}));
 	const evals = (n) =>
 		Array.from({ length: n }, () => ({ name: "eval", failed: false }));
+	const agentViews = (n) =>
+		Array.from({ length: n }, () => ({ name: "agent", failed: false }));
 
 	assert.equal(foldSummary(files(4)), "Explored 4 files");
 	assert.equal(
@@ -258,13 +260,32 @@ test("the summary is generated from the counts by class", () => {
 		"Explored 4 files, 1 search",
 		"the copy does not depend on which call came first",
 	);
+	/*
+	 * THE OPERATOR'S OWN SHAPE (2026-09-27): four file reads and three agent
+	 * profile READS. `agent` used to be filed with `task` as delegation, so
+	 * this exact run read `Explored 4 files, delegated 3 tasks`; with the op
+	 * tier no class sentence is claimed for it, and the run falls to the counts
+	 * by kind under the noun the calls touched - the same fallback an unknown
+	 * name takes, with a plural (`3 agent` was never a sentence).
+	 */
+	assert.equal(
+		foldSummary([...files(4), ...agentViews(3)]),
+		"4 files · 3 agents",
+	);
+	assert.equal(foldSummary(agentViews(3)), "3 agents");
+	assert.equal(
+		foldSummary(agentViews(1)),
+		"1 agent",
+		"singular, not `1 agents`",
+	);
 });
 
 test("the count line names the kinds in the app's own vocabulary", () => {
 	// Directly, so the vocabulary is pinned rather than only its callers: shell
 	// for the command runners, python for `eval` (the noun its row verb
-	// already carries), the class nouns otherwise, and display names for what
-	// the table cannot classify.
+	// already carries), the class nouns otherwise, the known builtins' own
+	// counted nouns (`KIND_NOUNS`, added for the 2026-09-27 report), and display
+	// names for what the tables cannot classify.
 	assert.equal(
 		foldCounts([
 			{ name: "bash", failed: false },
@@ -274,6 +295,55 @@ test("the count line names the kinds in the app's own vocabulary", () => {
 			{ name: "task", failed: false },
 		]),
 		"1 search · 2 shell · 1 python · 1 task",
+	);
+	// The kinds the report named, with their plurals.
+	assert.equal(
+		foldCounts([
+			{ name: "agent", failed: false },
+			{ name: "agent", failed: false },
+			{ name: "hub", failed: false },
+			{ name: "send", failed: false },
+		]),
+		"2 agents · 1 subagent · 1 message",
+	);
+	assert.equal(
+		foldCounts([{ name: "team", failed: false }]),
+		"1 team",
+		"a known kind singularizes through its noun",
+	);
+	assert.equal(
+		foldCounts([{ name: "team_delete", failed: false }]),
+		"1 team deletion",
+		"a delete counts under its own noun, never a bare wire name",
+	);
+	// `todo view` is a READ; counting it as an update was the false claim
+	// review round 1 closed (R1-6), so the family splits by op.
+	assert.equal(
+		foldCounts([
+			{ name: "todo", failed: false, op: "view" },
+			{ name: "todo", failed: false, op: "done" },
+			{ name: "todo", failed: false, op: "done" },
+		]),
+		"2 todo updates · 1 todo read",
+		"a view is not an update",
+	);
+	assert.equal(
+		foldCounts([
+			{ name: "todo", failed: false, op: "VIEW" },
+			{ name: "todo", failed: false, op: "add" },
+		]),
+		"1 todo read · 1 todo update",
+		"the op is case-folded like every other wire token",
+	);
+	assert.equal(
+		foldCounts([{ name: "todo", failed: false }]),
+		"1 todo update",
+		"an op-less call keeps the family's write noun",
+	);
+	assert.equal(
+		foldCounts([{ name: "read", failed: false }]),
+		"1 file",
+		"the class nouns are untouched",
 	);
 	assert.equal(foldCounts([]), "0 actions", "only reachable for an empty run");
 });
@@ -286,7 +356,14 @@ test("the action classes are the ledgers' own names, case-folded", () => {
 	assert.equal(actionClass("search_the_web"), "web");
 	assert.equal(actionClass("bash"), "commands");
 	assert.equal(actionClass("write"), "edits");
+	// ONLY the calls that hand work off are delegation (`task`, `delegate`).
 	assert.equal(actionClass("task"), "delegated");
+	// `agent` was filed here too and every profile READ was reported as a
+	// delegated task (operator report, 2026-09-27); it is no class now, which
+	// is what sends it to the counts by kind (`4 files · 3 agents`).
+	assert.equal(actionClass("agent"), null);
+	assert.equal(actionClass("hub"), null);
+	assert.equal(actionClass("team"), null);
 	assert.equal(actionClass("mcp__linear_create_issue"), null);
 });
 
@@ -418,9 +495,9 @@ test("the live clause names the call being watched, in the row's words", () => {
 		]),
 		{ verb: "Running", object: "pnpm vitest run" },
 	);
-	// `wait` is not in the verb table, so its display name stays in the object -
-	// exactly what its row paints (`Calling wait 3600000`), which is the point
-	// of lifting the row's own composition instead of approximating it.
+	// `wait` names its own subject since the audit added it to the table:
+	// `Waiting for jobs`, with the job id as the object - the long block a
+	// collapsed header exists to surface.
 	assert.deepEqual(
 		foldLive([
 			{
@@ -431,7 +508,26 @@ test("the live clause names the call being watched, in the row's words", () => {
 				summary: "3600000",
 			},
 		]),
-		{ verb: "Calling", object: "wait 3600000" },
+		{ verb: "Waiting for jobs", object: "3600000" },
+	);
+	/*
+	 * An op-aware call is named in its own row's words: the clause lifts the
+	 * row's composition (`toolRowLabel`), and that reads the operation now -
+	 * `Viewing agent designer`, never the family's old `Delegating`, which is
+	 * the same fix the row itself got (operator report, 2026-09-27).
+	 */
+	assert.deepEqual(
+		foldLive([
+			{
+				name: "agent",
+				failed: false,
+				running: true,
+				executing: true,
+				summary: "designer",
+				op: "show",
+			},
+		]),
+		{ verb: "Viewing agent", object: "designer" },
 	);
 	// `eval` carries its own noun: `Ran Python` settled, `Running Python` live.
 	assert.deepEqual(

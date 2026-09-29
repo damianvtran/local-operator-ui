@@ -14,6 +14,11 @@ import type {
 	ReadFileBytesResponse,
 } from "../shared/desktop-contract";
 import type {
+	MiniViewDismissReason,
+	MiniViewRegistrationState,
+	MiniViewSummonedPayload,
+} from "../shared/mini-view";
+import type {
 	WindowChromeColors,
 	WindowChromeFacts,
 	WindowChromeState,
@@ -67,6 +72,23 @@ declare global {
 				onState: (callback: (state: WindowChromeState) => void) => () => void;
 			};
 			desktop: DesktopAPI;
+			/**
+			 * The mini view's bridge (design §D.3): the summon/dismiss pair and the
+			 * global-shortcut registration state the settings row and the mini
+			 * header read. Types come from `src/shared/mini-view.ts`, the one source
+			 * main, the preload and this file all import, so a channel or a payload
+			 * shape cannot drift between them.
+			 */
+			miniView: {
+				onSummoned: (
+					callback: (payload: MiniViewSummonedPayload) => void,
+				) => () => void;
+				dismiss: (reason: MiniViewDismissReason) => Promise<void>;
+				onRegistration: (
+					callback: (state: MiniViewRegistrationState) => void,
+				) => () => void;
+				getRegistration: () => Promise<MiniViewRegistrationState>;
+			};
 			/**
 			 * The browser feature's chrome controls. Shapes are `unknown` because
 			 * main owns the projection: the renderer renders what it is given, and a

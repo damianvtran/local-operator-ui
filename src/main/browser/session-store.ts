@@ -119,6 +119,21 @@ export interface PersistedEntry {
 export interface PersistedTab {
 	owner: TabOwner;
 	active: boolean;
+	/**
+	 * THE TAB THIS ROW DESCRIBES WAS SHOWING A LOAD FAILURE WHEN IT WAS LAST
+	 * CAPTURED, so `readSession` SKIPS the row rather than re-creating a dead
+	 * end on the next launch (the accumulation this fixes: a failed tab used to
+	 * be persisted like any other, re-restored, re-persisted - forever, until a
+	 * user closed it by hand).
+	 *
+	 * ADDITIVE AND VERSION-1: absent means "restore as before", an old reader
+	 * ignores it, and `captureTabs` writes it ONLY while the host has a recorded
+	 * failure for the tab. A later successful load clears the host's failure
+	 * (`host.clearLoadFailure`), so the next capture omits the field and the row
+	 * is restorable again - the flag is a statement about the capture, not a
+	 * verdict on the tab.
+	 */
+	lastLoadFailed?: true;
 	entries: PersistedEntry[];
 	activeIndex: number;
 }
@@ -239,6 +254,11 @@ function saneTab(raw: unknown): PersistedTab | null {
 	return {
 		owner: candidate.owner === "agent" ? "agent" : "user",
 		active: candidate.active === true,
+		// The failed mark survives sanitisation so `readSession` can act on it; it
+		// is still only ever `true` or absent, never a value a file gets to choose.
+		...(candidate.lastLoadFailed === true
+			? { lastLoadFailed: true as const }
+			: {}),
 		entries: bounded.entries,
 		activeIndex: bounded.activeIndex,
 	};
@@ -317,10 +337,24 @@ export function readSession(
 		const sane = file.tabs
 			.map(saneTab)
 			.filter((tab): tab is PersistedTab => tab !== null);
-		const { kept, dropped } = boundTabs(sane);
+		// A ROW FLAGGED AS FAILED IS NOT RESTORED (2026-09-28, the accumulation fix):
+		// a tab whose page refused to load is a dead end, and restoring it would
+		// recreate the dead end - then persist it again at quit - until a user
+		// closed it by hand. The skip runs AFTER sanitisation and BEFORE the cap,
+		// so a dead row neither restores nor consumes one of `MAX_RESTORED_TABS`
+		// slots, and the count in the log line is the number of rows that would
+		// otherwise have come back.
+		const restorableRows = sane.filter((tab) => tab.lastLoadFailed !== true);
+		const dead = sane.length - restorableRows.length;
+		if (dead > 0) {
+			log(
+				`[browser] ${dead} recorded tab(s) were showing a load failure when the session ended; not restored`,
+			);
+		}
+		const { kept, dropped } = boundTabs(restorableRows);
 		if (dropped) {
 			log(
-				`[browser] restoring ${kept.length} of ${sane.length} recorded tabs; the cap keeps whichever tab was active plus the newest of the rest`,
+				`[browser] restoring ${kept.length} of ${restorableRows.length} recorded tabs; the cap keeps whichever tab was active plus the newest of the rest`,
 			);
 		}
 		return kept;
@@ -355,6 +389,16 @@ export function readSession(
  * itself in the same call, so no later `record()` or `flush()` can write the
  * content this function refused (review round 3, B2's MAJOR). A caller that asked
  * and then wrote anyway was the defect, so there is no longer such a caller.
+ *
+ * BOTH COUNTS ARE RESTORABLE ROWS (review round 1, m-2). `readSession` excludes
+ * the rows whose tab was showing a load failure at the capture, so the capture
+ * side has to exclude them too: otherwise a disk record with F flagged rows
+ * shifted the refusal boundary down by F while the capture side still counted
+ * those rows, and the corner the reviewer measured went the wrong way - record =
+ * 5 healthy + 1 flagged, quit-time capture = 4 healthy + 1 flagged was ACCEPTED
+ * (5 !< 6), losing one restorable tab's recovery, where the guard's own
+ * one-sided bias says refuse exactly there. The caller filters on the same mark
+ * the reader does, so the two sides count the same thing.
  */
 export function stopSnapshotDecision(
 	rows: number,
@@ -395,10 +439,17 @@ export function stopSnapshotDecision(
  * registry's active tab is one per window: "which tab was the user looking at"
  * is a property of the strip, and a per-record flag would let two records claim
  * it.
+ *
+ * `failedTabIds` is the host's LIVE `loadFailures` (tab ids whose last
+ * navigation was refused), and it is a REQUIRED argument so a new call site
+ * cannot quietly lose the failed mark. A tab in that set gets
+ * `lastLoadFailed: true` on its row; every other row is written exactly as it
+ * always was, which is also how a tab that later succeeds clears the mark.
  */
 export function captureTabs(
 	records: readonly TabRecord[],
 	activeTabId: number | null,
+	failedTabIds: ReadonlySet<number>,
 ): PersistedTab[] {
 	const captured: PersistedTab[] = [];
 	for (const record of records) {
@@ -420,10 +471,20 @@ export function captureTabs(
 						...(entry.pageState ? { pageState: entry.pageState } : {}),
 					}))
 				: [];
+		// THE FAILED MARK TRAVELS WITH THE ROW (see `PersistedTab.lastLoadFailed`):
+		// the set is the host's live `loadFailures`, so a tab that failed and then
+		// succeeds is captured without the field on the very next capture. The row
+		// is still WRITTEN rather than dropped - dropping it would make the quit-time
+		// capture look short to `stopSnapshotDecision` (which compares counts), and a
+		// refusal there keeps the failed row on disk anyway.
+		const mark = failedTabIds.has(record.tabId)
+			? { lastLoadFailed: true as const }
+			: {};
 		if (entries.some(restorable)) {
 			captured.push({
 				owner: record.owner,
 				active: record.tabId === activeTabId,
+				...mark,
 				entries,
 				activeIndex: Math.max(0, history?.getActiveIndex?.() ?? 0),
 			});
@@ -434,6 +495,7 @@ export function captureTabs(
 			captured.push({
 				owner: record.owner,
 				active: record.tabId === activeTabId,
+				...mark,
 				entries: restored.entries,
 				activeIndex: restored.activeIndex,
 			});
@@ -535,8 +597,11 @@ export class BrowserSessionStore {
 	 * rather than a note, and the test beside it drives the length condition
 	 * explicitly instead of a representative sequence. */
 	commitStopCapture(rows: PersistedTab[]): { write: boolean; reason: string } {
+		// RESTORABLE ROWS ON BOTH SIDES (review round 1, m-2): `readSession` drops the
+		// flagged rows, so the capture side drops them too - the counts have to describe
+		// the same population or the guard's threshold moves with the dead-tab count.
 		const decision = stopSnapshotDecision(
-			rows.length,
+			rows.filter((row) => row.lastLoadFailed !== true).length,
 			readSession(this.path, this.log).length,
 		);
 		if (decision.write) {

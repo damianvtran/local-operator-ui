@@ -515,6 +515,33 @@ const CURRENT = [
 	},
 	{
 		/*
+		 * The draft row's BOX, added with the sidebar's own discard act (operator,
+		 * 2026-09-26: "Each one should have a deletion on hover"). Same shape and
+		 * same reason as the conversation row's box above: `rowStyle`'s own `hover:`
+		 * step fires only while the pointer is over the BUTTON, and the discard act
+		 * is a SIBLING outside that button - so the box carries the row's hover step,
+		 * guarded `!current` exactly like the conversation row's, and the row keeps
+		 * its ground while the pointer is on the glyph. Resolved from the draft row's
+		 * own attribute (the box is the nearest `className={cn(` before it).
+		 *
+		 * The section's `Clear all` foot carries a row-state step too and cannot sit
+		 * inside a current row; it is accounted for in the count expectation below,
+		 * the same door the bulk read receipt's sibling took.
+		 */
+		what: "the draft row's box",
+		file: SIDEBAR,
+		expression: () => expressionBefore(SIDEBAR, "data-draft-row={row.key}"),
+		stubs: { revealArmed: true, rowBoxStyle, rowCurrent, current: true },
+		ground: true,
+		notCurrent: {
+			revealArmed: true,
+			rowBoxStyle,
+			rowCurrent,
+			current: false,
+		},
+	},
+	{
+		/*
 		 * `rowCurrent` IS STUBBED HERE SINCE ROUND 5 (design D22, agent A-7), and the stub
 		 * moving with the component is the instrument's contract rather than a detail:
 		 * the rail's current branch reads the symbol it imports from the chat panel, so a
@@ -873,7 +900,16 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// state rather than a ground, which is what this expectation exists to
 				// hold - a foot that answered the pointer with `elevated` would be the
 				// menu ground leaking into the list.
-				"hover:bg-row-hover": 12,
+				// FOURTEEN (the sidebar's own draft rows, 2026-09-26). The draft row's
+				// BOX carries the pointer's step (guarded `!current` - the `CURRENT`
+				// entry above resolves it): the discard act is a sibling of the row's
+				// button, so `rowStyle`'s own step stops at the button's edge and the
+				// act's glyph would otherwise drop the row's ground under a pointer that
+				// never left it. The section's `Clear all` foot carries one too, and it
+				// can never sit inside a current row: it is a list-level action for the
+				// whole drafts group, like the bulk read receipt's heading sibling. Both
+				// take the ROW state rather than a ground.
+				"hover:bg-row-hover": 14,
 				// `rowCurrent` (1), the ground that beats the step above by merge order.
 				// PLUS ONE: the band's view-options button paints `row-selected` while the
 				// view differs from the default (`viewIsCustom`) - the mode's own
@@ -881,6 +917,15 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// It is a BAND control, so it is outside both regions and cannot be a
 				// current row; the `CURRENT` table could never be asked to resolve it.
 				"hover:bg-row-selected": 2,
+				// ROUND 2's NINTH LITERAL returns this spelling to the file: the drafts
+				// foot's `Clear all` stills its hover GROUND while inapplicable
+				// (`aria-disabled:hover:bg-transparent!`, agent review round 2's R7 and
+				// design round 2's D5 - a refused control must not take the pointer's
+				// step). Like the "Mark all N read" control above, it is a list-level
+				// foot for the drafts group and can never sit inside a current row; it
+				// paints NOTHING here rather than taking a row state, which is why no
+				// expression has to resolve it.
+				"hover:bg-transparent": 1,
 				// The New chat row's disabled reset: it paints NOTHING, which is why no
 				// expression has to resolve it. The bulk read receipt carries no reset of
 				// its own: it is the shared `Button` primitive now, whose disabled styling
@@ -1219,12 +1264,28 @@ const AGENTS_PAGE =
 	"src/renderer/src/features/agents/components/agents-page.tsx";
 const CANVAS_SECTION =
 	"src/renderer/src/features/chat/components/canvas/index.tsx";
+/* The list's own plane, and the file the canvas entry's ground is read from: the
+ * pane root in CANVAS_SECTION takes the lane's last stop (`elevated` since the
+ * drawer's-rung pass; `pane-slot-ground.test.mjs` derives it from the gradient,
+ * not from a literal), so the row plane is split off into this file rather than
+ * the pane being re-grounded. */
+const CANVAS_FILE_VIEWER =
+	"src/renderer/src/features/chat/components/canvas/canvas-file-viewer.tsx";
 const FILE_ROW =
 	"src/renderer/src/features/chat/components/canvas/file-row.tsx";
 const SCHEDULE_ROW =
 	"src/renderer/src/features/schedules/components/schedule-list-item.tsx";
 const BROWSER_TABS =
 	"src/renderer/src/features/browser/components/browser-tab-strip.tsx";
+
+/*
+ * The regex metacharacters an anchor may carry, and the literal spaces that stand
+ * for a run of whitespace inside one. Module scope for `useTopLevelRegex`; both feed
+ * the anchor pattern `literalClassAt` builds per call, which is where the anchor's
+ * own policy is stated.
+ */
+const REGEX_META = /[.*+?^${}()|[\]\\]/g;
+const ANCHOR_SPACE = / /g;
 
 /** The comment-stripped source of a file, cached the way the two above are. */
 /*
@@ -1237,7 +1298,23 @@ const BROWSER_TABS =
  */
 const literalClassAt = (file, anchor, where) => {
 	const source = sourceOf(file);
-	const at = source.indexOf(anchor);
+	/*
+	 * THE ANCHOR IS READ AS WHITESPACE, NOT AS BYTES (review round 1, B1). `<aside `
+	 * was an `indexOf`, and this repository's formatter is free to break a line after
+	 * a tag name — it did, in the very change this guard rode in on — at which point
+	 * the scan reported "no element" for an element that was still there, still the
+	 * one ground this table reads. Every literal space in an anchor now matches any
+	 * whitespace (a newline, and the indent after it), so the guard cannot fail for a
+	 * reason that is the formatter's rather than the ground's. Nothing else is
+	 * relaxed: the anchor's tokens are still required verbatim, so a renamed or
+	 * rewritten element still fails by name, and the className read below still walks
+	 * the same window from the same element.
+	 */
+	const at = source.search(
+		new RegExp(
+			anchor.replace(REGEX_META, "\\$&").replace(ANCHOR_SPACE, "\\s+"),
+		),
+	);
 	assert.notEqual(
 		at,
 		-1,
@@ -1345,11 +1422,17 @@ const ROW_STATE_GROUNDS = [
 	},
 	{
 		/*
-		 * The canvas Files list. It is a `rowCurrent` call site like the other six
-		 * and it is on the canvas SECTION's `surface`; it is here because the
-		 * completeness assertion below is over the tree rather than over the list of
-		 * surfaces the direction happens to name, and a call site nobody enumerates
-		 * is exactly how the rail's ground went unmeasured.
+		 * The canvas Files list. It is a `rowCurrent` call site like the other six,
+		 * and its rows' painted ancestor is the list's OWN plane - the scroller in
+		 * `canvas-file-viewer.tsx`, which wears `surface`. It is NOT the pane root:
+		 * the root stands at the lane's last stop - `elevated` since the drawer's-rung
+		 * pass, derived by `scripts/pane-slot-ground.test.mjs` from the lane's own
+		 * gradient rather than from a literal - so the two directions were answered by
+		 * SPLITTING the element rather than by relaxing either of them. It is here
+		 * because the completeness
+		 * assertion below is over the tree rather than over the list of surfaces the
+		 * direction happens to name, and a call site nobody enumerates is exactly how
+		 * the rail's ground went unmeasured.
 		 */
 		what: "the canvas Files list",
 		rowFile: FILE_ROW,
@@ -1357,11 +1440,11 @@ const ROW_STATE_GROUNDS = [
 		stubs: { rowCurrent, current: true },
 		ground: () =>
 			merged(
-				CANVAS_SECTION,
-				expressionAfter(CANVAS_SECTION, "data-canvas-shortcuts"),
+				CANVAS_FILE_VIEWER,
+				expressionBefore(CANVAS_FILE_VIEWER, 'data-tour-tag="files-scroller"'),
 				{},
 			),
-		groundFile: CANVAS_SECTION,
+		groundFile: CANVAS_FILE_VIEWER,
 	},
 ];
 
