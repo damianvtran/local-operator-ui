@@ -111,12 +111,6 @@ const start = (session, id, ts, token) => ({
 		},
 	},
 });
-/*
- * `details.kind` is what the derivation reads for the outcome (`marker_kind =
- * details.get("kind")`, transcript_index.py) - a marker without it settles its
- * run with NO outcome, which the first round-2 run proved by photographing the
- * outcome-row card with no row in it.
- */
 const marker = (session, id, ts, token, kind = "complete") => ({
 	id,
 	ts,
@@ -125,7 +119,6 @@ const marker = (session, id, ts, token, kind = "complete") => ({
 		custom_type: "completion_attention",
 		details: {
 			conversation_id: `session/${session}`,
-			kind,
 			token,
 			eligible: true,
 			kind,
