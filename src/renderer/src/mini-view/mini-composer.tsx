@@ -574,6 +574,16 @@ export function MiniComposer() {
 	const onKeyDown = useCallback(
 		(event: ReactKeyboardEvent<HTMLDivElement>): void => {
 			if (event.key === "Escape") {
+				/*
+				 * A PRESS THE SHARED MANAGER ALREADY CLAIMED IS NOT OURS (review round 1,
+				 * M2): an Escape that aborts a hold is preventDefaulted by the manager's
+				 * capture listener (its QA-round-1 contract), and the abort settles the
+				 * take before this handler sees it — so without this read the press fell
+				 * through to the hide, making the one cancel gesture two acts: the take
+				 * aborted AND the window dismissed out from under the reader. The claim,
+				 * where the manager set it, is the whole press.
+				 */
+				if (event.nativeEvent.defaultPrevented) return;
 				event.preventDefault();
 				if (dictationPhaseRef.current === "recording") {
 					// The composer's own gesture (Esc cancels a recording) rather
