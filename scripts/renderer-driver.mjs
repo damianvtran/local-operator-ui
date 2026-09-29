@@ -10733,17 +10733,24 @@ async function sceneTranscriptRail(cdp) {
 		const bound = await evaluate(`(() => {
 			const el = document.querySelector("[data-checkpoint-card-text]");
 			if (!el) return null;
+			const style = getComputedStyle(el);
 			return {
-				clamp: getComputedStyle(el).webkitLineClamp,
-				overflows: el.scrollHeight > el.clientHeight,
+				clamp: style.webkitLineClamp,
+				overflowY: style.overflowY,
 			};
 		})()`);
+		/*
+		 * A clamp CLIPS; it does not shrink scrollHeight. So the bounded
+		 * reading is the clamp's own two facts - three lines, and no scroll -
+		 * rather than an absence of overflow (measured: a working
+		 * line-clamp-3 reads clamp=3 with overflows=true).
+		 */
 		check(
 			`the long user card is bounded by its clamp (${theme})`,
 			longCard.ok &&
 				bound !== null &&
 				bound.clamp === "3" &&
-				bound.overflows === false,
+				bound.overflowY === "hidden",
 			JSON.stringify(bound),
 		);
 		await capture(cdp, `transcript-rail-card-bounded-${suffix}`);
