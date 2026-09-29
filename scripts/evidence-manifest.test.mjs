@@ -1947,6 +1947,29 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"sttDictationRestampNote",
 	/*
+	 * THE FOLDS OF THE READ-RECEIPT BRANCH, each stated where it happened and
+	 * each kept by every later fold (union by key - no key from either side is
+	 * dropped): onto `d1fe9eb01e` (the quick-send / mini-view branch, #630s),
+	 * onto `3de40b0fc9` (the turn-collapse train), onto `7c9c98ecc7` (the #633
+	 * stt-overhaul merge), onto `46d0bba0de` (the #573 view-settings merge),
+	 * onto `8dc87ea84c` (the #642 sessionless-slash merge), onto
+	 * `bc09a6d698` (the #643 ptt-keymap and #630 transcript-checkpoint merges)
+	 * and onto `dd51156839` (the #644 mini-view shared-dictation merge),
+	 * then onto `0a2c8e7a30` (the #647 release train and #641 project-create-sheet),
+	 * and onto `654c58f5f6` (the #648/#649 merges),
+	 * then onto `91617c21ec` (the #646 quick-send default-chord merge),
+	 * and onto `a0cdaa759f` (the #629 thread-search overlay merge),
+	 * then onto `682f531120` (the #617 readme-visuals merge).
+	 * This branch's own record, `readReceiptForegroundRestampNote`, states the
+	 * receipt pass and its round-1 remediation; the change moves `src/` (the
+	 * completion-view hook and the transcript reducer's live-settle arm) and
+	 * `scripts/` (the receipt suite's new cases, the reducer suite's case, and
+	 * their registration), and takes no frame of its own - its evidence is the
+	 * committed before/after half under
+	 * `docs/evidence/chat-sidebar-ack-and-selection/`.
+	 */
+	"readReceiptForegroundRestampNote",
+	/*
 	 * AND THE SEAM'S OWN (2026-09-29): `pttKeymapRestampNote` is the follow-up
 	 * that makes the STT stream CONSUME the registry row `keymap.push_to_talk`
 	 * (local-operator #1750 landed while #633 was in review): the renderer reads
@@ -1958,7 +1981,6 @@ const STAMP_BINDING_NOTES = [
 	 * pair, so it is held to this file like every entry above it.
 	 */
 	"pttKeymapRestampNote",
-
 	/*
 	 * The sessionless-slash pass (issue #625), this branch's newest record: it
 	 * re-derived both stamps for the branch's own change and quotes the pair it
@@ -1967,10 +1989,10 @@ const STAMP_BINDING_NOTES = [
 	"sessionlessSlashRestampNote",
 	/*
 	 * AND THE QUICK-SEND PASS'S OWN: `quickSendRestampNote` is the global
-	 * hotkey / mini composer change's record. It moves BOTH trees — `src/` for
+	 * hotkey / mini composer change's record. It moves BOTH trees - `src/` for
 	 * the mini view, its registrar, the config watch, the desktop-plane
 	 * admission and the settings row, `scripts/` for the registrar suite, the
-	 * rig stub, the extended gates and the driver's `mini-view` scene — and
+	 * rig stub, the extended gates and the driver's `mini-view` scene - and
 	 * re-shoots nothing (the evidence lives on the PR's own branch, not in this
 	 * tree), so the pair is re-derived from the tree the re-stamp commit ships
 	 * and every list member above is re-pointed with it. It quotes that pair,
@@ -3297,8 +3319,10 @@ const BRANCH_RECORDS = [
 	 * AND THIS FIX'S OWN (2026-09-29): `browserOauthPopupsRestampNote` is the
 	 * re-stamp for the driven-page OAuth popups (the operator's console Microsoft
 	 * sign-in repro - MSAL `loginPopup` denied by the driven views' deny-all
-	 * `setWindowOpenHandler`), folded twice onto a moving main before its first
-	 * push (the thread-search overlay, then the README-visuals remediation). Both
+	 * `setWindowOpenHandler`), folded three times onto a moving main before its
+	 * first push (the thread-search overlay, then the README-visuals remediation,
+	 * then the sidebar-ack fix), with the evidence pair re-derived over each
+	 * folded tree. Both
 	 * trees move - `src/` for the popup policy, its presentation gate and the
 	 * renderer/preload deletions, `scripts/` for the proof rewrite, the policy
 	 * matrix and the trigger/guard cases - and no swept frame was taken: the
