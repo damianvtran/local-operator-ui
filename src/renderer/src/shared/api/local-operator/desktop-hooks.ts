@@ -338,6 +338,19 @@ export type DesktopFeature =
 	 */
 	| "session_interrupt"
 	/**
+	 * `input_mode` on `sessions.message`: the harness carries the composer's own
+	 * record of how a message was produced (`typed` / `dictated` / `mixed`, see
+	 * arch §4.2).
+	 *
+	 * ITS OWN KEY, and the gate is the whole point of it: the field is metadata
+	 * the app never renders, but an OLDER harness validates the message body with
+	 * `extra="forbid"` and would refuse a body that carried it - so the app sends
+	 * the legacy body (field absent) unless the backend advertises this key, and
+	 * nothing else in the app reads it. See `admitChatDraft`'s pinning note for
+	 * the replay rule that goes with it.
+	 */
+	| "input_mode"
+	/**
 	 * `frontend.replace`: the desktop-only replacement frame that carries an
 	 * accepted move's directory to an already-mounted viewer.
 	 *
