@@ -61,6 +61,9 @@ import { join } from "node:path";
 import { withNotificationsOff } from "./notifications-off.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
 
+/* The frame suffix the sweep walks by; hoisted so the pattern is compiled once (useTopLevelRegex). */
+const WEBP_SUFFIX = /\.webp$/;
+
 const OUT = process.argv[2] ?? join(tmpdir(), "lo-stt-proof");
 const BACKEND = process.env.LO_PROOF_BACKEND ?? "http://127.0.0.1:1131";
 const TOKEN = process.env.LO_PROOF_TOKEN ?? "";
@@ -518,9 +521,12 @@ class Cdp {
 		 * `<stem>/<theme>.webp` shape; the app under this rig runs the brand
 		 * dark theme, which is also what the committed frames measure.
 		 */
-		const stem = name.replace(/\.webp$/, "");
+		const stem = name.replace(WEBP_SUFFIX, "");
 		mkdirSync(join(OUT, stem), { recursive: true });
-		writeFileSync(join(OUT, stem, "localOperatorDark.webp"), Buffer.from(data, "base64"));
+		writeFileSync(
+			join(OUT, stem, "localOperatorDark.webp"),
+			Buffer.from(data, "base64"),
+		);
 	}
 }
 
