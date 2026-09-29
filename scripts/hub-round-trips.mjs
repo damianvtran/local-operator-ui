@@ -63,7 +63,7 @@ export const HUB_STORIES = [
 	 */
 	[
 		"agent-hub-page--org-scope-selected",
-		"org scope: memberships + org agents + ONE org_teams.list, no status read",
+		"org scope (entered from the signed-in public page): ONE org_agents.list and ONE org_teams.list",
 	],
 	[
 		"agent-hub-page--org-teams",
@@ -71,7 +71,7 @@ export const HUB_STORIES = [
 	],
 	[
 		"agent-hub-page--teams-public-scope",
-		"public scope, Teams tab: the list + memberships and ZERO org_teams.list",
+		"public scope, Teams tab opened: no team read at all (ZERO org_teams.list)",
 	],
 ];
 
