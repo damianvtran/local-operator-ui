@@ -136,6 +136,16 @@ const ROLE = process.env.LO_PROOF_ROLE ?? "after";
  * `input_mode` evidence comes from.
  */
 const INJECTED_WIRE_ONLY = INJECT_INPUT_MODE;
+/*
+ * WHAT THE BACKEND ADVERTISES, read at boot below and consulted by every wire
+ * claim: the app's shape FOLLOWS it - stamped when the capability is on, a
+ * legacy body when it is not. This replaced the assumption that a shipping run
+ * always faces an un-carried backend: the carriage landed into the harness's
+ * main, so "what ships" is now whatever THIS backend advertises, and the rig
+ * follows the advertised bit rather than a guess about the process it is
+ * pointed at.
+ */
+let advertisedInputMode;
 const expectMaybe = (step, hold, detail) => {
 	if (ROLE === "after" && !INJECTED_WIRE_ONLY) verify(step, hold, detail);
 	else record(step, { observed: hold === true, ...detail });
@@ -150,7 +160,10 @@ const expectMaybe = (step, hold, detail) => {
  */
 const expectInputMode = (step, body, value) => {
 	const actual = body?.input_mode ?? null;
-	const hold = INJECT_INPUT_MODE ? actual === value : actual === null;
+	const hold =
+		INJECT_INPUT_MODE || advertisedInputMode !== undefined
+			? actual === value
+			: actual === null;
 	if (ROLE === "after") verify(step, hold, { input_mode: actual });
 	else record(step, { observed: hold, input_mode: actual });
 };
@@ -634,11 +647,25 @@ try {
 		inject: INJECT_INPUT_MODE,
 		value: capabilities?.features?.input_mode ?? null,
 	});
+	advertisedInputMode = capabilities?.features?.input_mode;
+	/*
+	 * THE PTT ROW IS PART OF THIS RIG'S FIXTURE NOW (session F mutates it), so
+	 * reset it to the registry default before any session: a previous run (or an
+	 * interrupted one) must not leave the app bound to a key this run's earlier
+	 * sessions do not hold - the first run after the seam landed did exactly
+	 * that, and every earlier engage claim fell with it. Session F restores the
+	 * default again at its end.
+	 */
+	const pttReset = await api("POST", "/v1/settings/keymap.push_to_talk/reset");
+	record("boot.pushToTalkReset", { status: pttReset.status });
 	expectMaybe(
 		"capabilities.input_modeMatchesRunMode",
-		INJECT_INPUT_MODE
-			? capabilities?.features?.input_mode === 1
-			: capabilities?.features?.input_mode === undefined,
+		/*
+		 * Injection must have landed (the proxy's whole job); a shipping run
+		 * asserts nothing HERE - the advertised bit is the contract its wire
+		 * claims follow, send by send.
+		 */
+		INJECT_INPUT_MODE ? capabilities?.features?.input_mode === 1 : true,
 		{ value: capabilities?.features?.input_mode ?? null },
 	);
 
@@ -1791,6 +1818,136 @@ try {
 	// The hold's key still has to come up cleanly even though the abort already
 	// ended the take; the release is a no-op then (the manager cleared `engaged`).
 	await key("keyUp", ALT_RIGHT);
+
+	/* --------------- session F: the stored row is the binding (keymap seam) */
+
+	/*
+	 * THE REGISTRY ROW -> THE RENDERER'S BINDING, LIVE (the follow-up seam's own
+	 * evidence). The persisted `keymap.push_to_talk` is patched on the isolated
+	 * backend, the window is reloaded so a fresh registration re-reads it (the
+	 * seam refreshes on register - there is no settings listener by design), and
+	 * the shipped app's own answers are read: the mic tooltip's label, which
+	 * physical key flips the recording indicator, and - the negative control -
+	 * that the previous default no longer engages. The last leg restores the
+	 * default token and reads the same answers back, so the run shows the row is
+	 * CONSUMED rather than the platform pair being hard-coded.
+	 */
+	const PTT_SETTING = "keymap.push_to_talk";
+	const setPushToTalk = (value) =>
+		api("PATCH", `/v1/settings/${PTT_SETTING}`, { value, base: null });
+	const readMicTooltip = async () => {
+		const hover = JSON.parse(
+			(await cdp.evaluate(
+				`(() => {
+					const el = document.querySelector(${JSON.stringify(MIC)});
+					if (!el) return "null";
+					const r = el.getBoundingClientRect();
+					return JSON.stringify({ x: r.x + r.width / 2, y: r.y + r.height / 2 });
+				})()`,
+			)) ?? "null",
+		);
+		if (!hover) return null;
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: hover.x,
+			y: hover.y,
+		});
+		await sleep(1400);
+		const matched = await cdp.evaluate(
+			`(() => document.body.innerText.match(/Start recording[^\\n]*/) ?? "")()`,
+		);
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: 4,
+			y: 4,
+		});
+		await sleep(350);
+		/* `String.match` answers an array; the sentence is its first slot. */
+		return Array.isArray(matched) ? (matched[0] ?? null) : (matched ?? null);
+	};
+	const reloadWindow = async () => {
+		await cdp
+			.evaluate("setTimeout(() => location.reload(), 60); true")
+			.catch(() => {});
+		await sleep(1200);
+		const ready = await waitFor(
+			`document.querySelector(${JSON.stringify(TEXTAREA)}) !== null`,
+			30_000,
+		);
+		if (!ready) throw new Error("the composer never came back after a reload");
+		await sleep(900);
+	};
+	/*
+	 * Left Command on this host: `modifiers: 4` is the Meta bit, `location: 1`
+	 * says LEFT - the same shape the Alt binding's def uses for its own side.
+	 */
+	const META_LEFT = {
+		key: "Meta",
+		code: "MetaLeft",
+		windowsVirtualKeyCode: 91,
+		nativeVirtualKeyCode: 55,
+		modifiers: 4,
+		location: 1,
+	};
+	const engageWith = async ({ def, budgetMs = 6000 }) => {
+		await key("keyDown", def);
+		const flipped = await waitFor(
+			`!!document.querySelector("[data-recording-indicator]")`,
+			budgetMs,
+		);
+		await key("keyUp", def);
+		await sleep(500);
+		return flipped;
+	};
+
+	const customRow = await setPushToTalk("meta-left-hold");
+	record("sessionF.rowPatched", {
+		status: customRow.status,
+		value: "meta-left-hold",
+	});
+	await reloadWindow();
+	const sessionF = await openSession();
+	report.sessionF = sessionF;
+	const tooltipCustom = await readMicTooltip();
+	verify(
+		"sessionF.tooltipFollowsTheRow",
+		typeof tooltipCustom === "string" && tooltipCustom.includes("Left-Command"),
+		{ tooltip: tooltipCustom },
+	);
+	const customEngages = await engageWith({ def: META_LEFT });
+	verify("sessionF.rowCodeEngages", customEngages === true, {
+		code: "MetaLeft",
+	});
+	await key("keyDown", ALT_RIGHT);
+	await sleep(700);
+	const oldDefaultStillEngages = await cdp.evaluate(
+		`!!document.querySelector("[data-recording-indicator]")`,
+	);
+	await key("keyUp", ALT_RIGHT);
+	verify(
+		"sessionF.oldDefaultNoLongerEngages",
+		oldDefaultStillEngages === false,
+		{},
+	);
+
+	const restoredRow = await setPushToTalk("alt-right-hold");
+	record("sessionF.rowRestored", {
+		status: restoredRow.status,
+		value: "alt-right-hold",
+	});
+	await reloadWindow();
+	await openSession();
+	const tooltipRestored = await readMicTooltip();
+	verify(
+		"sessionF.defaultRestored",
+		typeof tooltipRestored === "string" &&
+			tooltipRestored.includes("Right-Option"),
+		{ tooltip: tooltipRestored },
+	);
+	const defaultEngages = await engageWith({ def: ALT_RIGHT });
+	verify("sessionF.defaultCodeEngages", defaultEngages === true, {
+		code: "AltRight",
+	});
 
 	// Whether this build carries the new inline treatment at all is read where it
 	// can be true - while a recording exists; see `composerBox().indicator`.
