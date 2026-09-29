@@ -34,6 +34,7 @@ const {
 	CONVERSATION_SWITCHER_SEED,
 	matchQuality,
 	normalizeText,
+	paletteEmptyStateCopy,
 	PALETTE_GROUP_ORDER,
 	parsePaletteQuery,
 	SCOPE_LEGEND,
@@ -748,4 +749,142 @@ test("the palette's join is given the same tombstone view the sidebar's is (agen
 	);
 	assert.match(source, /forgotten: new Set\(Object\.keys\(forgotten\)\)/);
 	assert.match(source, /state\.forgotten\)/);
+});
+
+/* ------------------------------------------------------------------ *
+ * The empty state's copy table (design round 2, D2/U4)
+ * ------------------------------------------------------------------ */
+
+test("the chats scope names conversations, and never claims an empty account while loading", () => {
+	/*
+	 * The two states that land on the Cmd/Ctrl+P door's empty list. `loading`
+	 * is the cold open before the catalogue answers — the one the old copy
+	 * spent the frame misstating as "nothing to show" — and `empty` is the
+	 * account with no conversations, which may only be claimed once the
+	 * request is not out.
+	 */
+	assert.deepEqual(
+		paletteEmptyStateCopy({
+			scope: "chat",
+			hasTerms: false,
+			terms: "",
+			awaiting: false,
+			catalogue: "loading",
+		}),
+		{ line: "Loading conversations…", hint: null },
+	);
+	const empty = {
+		line: "No conversations yet",
+		hint: "Start a chat and it will show up here.",
+	};
+	assert.deepEqual(
+		paletteEmptyStateCopy({
+			scope: "chat",
+			hasTerms: false,
+			terms: "",
+			awaiting: false,
+			catalogue: "empty",
+		}),
+		empty,
+	);
+	/* `loaded` with no rows is reachable in exactly one way - every stored
+	 * conversation hidden by the archive view - and says the same thing as a
+	 * truly empty account, because to this surface it is the same thing. */
+	assert.deepEqual(
+		paletteEmptyStateCopy({
+			scope: "chat",
+			hasTerms: false,
+			terms: "",
+			awaiting: false,
+			catalogue: "loaded",
+		}),
+		empty,
+	);
+});
+
+test("a scoped no-match teaches backspacing the glyph, never the prefix advice", () => {
+	const chats = paletteEmptyStateCopy({
+		scope: "chat",
+		hasTerms: true,
+		terms: "retention",
+		awaiting: false,
+		catalogue: "loaded",
+	});
+	assert.equal(chats.line, "No matches for “retention”");
+	assert.equal(
+		chats.hint,
+		"Try another word, or backspace # to search everything.",
+	);
+	/* The glyph is the scope's own, read from the same legend the parser and
+	 * the footer use: no second spelling of a prefix. */
+	const agents = paletteEmptyStateCopy({
+		scope: "agent",
+		hasTerms: true,
+		terms: "x",
+		awaiting: false,
+		catalogue: "loaded",
+	});
+	assert.equal(
+		agents.hint,
+		"Try another word, or backspace @ to search everything.",
+	);
+});
+
+test("the unscoped copy is unchanged, and a search in flight says what it is doing", () => {
+	assert.deepEqual(
+		paletteEmptyStateCopy({
+			scope: null,
+			hasTerms: true,
+			terms: "zzz",
+			awaiting: false,
+			catalogue: "loaded",
+		}),
+		{
+			line: "No matches for “zzz”",
+			hint: "Try another word, or narrow the search with a prefix below.",
+		},
+	);
+	assert.deepEqual(
+		paletteEmptyStateCopy({
+			scope: null,
+			hasTerms: false,
+			terms: "",
+			awaiting: false,
+			catalogue: "loading",
+		}),
+		{
+			line: "Nothing to show yet",
+			hint: "Search for a chat, an agent by name, a setting, or a page such as Schedules.",
+		},
+	);
+	/* No hint while the request is out: advice to "try another word" is advice
+	 * about an answer nobody has seen yet. */
+	assert.deepEqual(
+		paletteEmptyStateCopy({
+			scope: "chat",
+			hasTerms: true,
+			terms: "retention",
+			awaiting: true,
+			catalogue: "loaded",
+		}),
+		{ line: "Searching conversations…", hint: null },
+	);
+});
+
+test("the panel renders the copy table, not a second set of sentences", () => {
+	/*
+	 * An anchor rather than a render, for the reason the tombstone cell above
+	 * states: the call site is a component this harness cannot mount, so what
+	 * can be pinned without a renderer is that the sentences come from the
+	 * table (whose cells are asserted above) instead of being re-spelled in
+	 * the JSX — the drift that let the old empty state name agents and
+	 * settings inside a chats-only scope.
+	 */
+	const source = readFileSync(
+		"src/renderer/src/features/command-palette/components/command-palette.tsx",
+		"utf8",
+	);
+	assert.match(source, /paletteEmptyStateCopy\(\{/);
+	assert.match(source, /\{emptyCopy\.line\}/);
+	assert.match(source, /\{emptyCopy\.hint !== null &&/);
 });

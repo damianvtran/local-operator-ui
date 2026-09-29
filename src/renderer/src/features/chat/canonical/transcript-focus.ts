@@ -10,6 +10,13 @@
  * container forwards it through the composer's one door (`composer-field.ts`,
  * the same hand-off the Quote toolkit uses).
  *
+ * A press on a row's TEXT is this rule's business too, and deliberately: the
+ * rule is "a click that landed on no control", not "a click that landed on no
+ * row". Reading position is not a mode, and a text-target exception would make
+ * the same screen focus on some pixels and not others with nothing on screen
+ * saying which (design round 2, D5; the issue's own ask is about blank space,
+ * and this is where the boundary was drawn).
+ *
  * WHICH GUARDS, AND WHY EACH IS HERE. A focus grab is easy to get wrong in the
  * direction that loses the reader something, so a click focuses only when all
  * of these are false:
@@ -30,7 +37,11 @@
  *   the click that ends it must not move the caret. BOTH readings are needed
  *   because the browser collapses the selection on mousedown and the `click`
  *   that follows is too late to see it, while a drag-select ends with a fresh
- *   non-collapsed selection and no press-time reading of it.
+ *   non-collapsed selection and no press-time reading of it. This guard also
+ *   answers a click that CARRIES SHIFT — the modifier IS the selection-
+ *   extending gesture, whether or not a selection is readable yet, and moving
+ *   the caret mid-extension leaves the reader with nothing to extend (design
+ *   round 2, U1).
  * - **drag** — the pointer travelled more than `TRANSCRIPT_DRAG_SLOP_PX`
  *   between press and click. That is what a scrollbar drag, a selection drag
  *   and a touch drag all look like at this container; none of them is a click
@@ -143,6 +154,14 @@ export const transcriptClickVerdict = (facts: {
 	pressHadSelection: boolean;
 	/** A non-collapsed selection in the transcript is present at click time. */
 	selectionNotCollapsed: boolean;
+	/**
+	 * The click carried Shift, which is the browser's selection-EXTENDING
+	 * gesture. Its own fact rather than a reading of the selection above: the
+	 * extension may not exist yet at either reading (the anchor click was a
+	 * hand-off under this rule), and the modifier alone is the tell that the
+	 * gesture is one the caret must not interrupt.
+	 */
+	shiftExtends: boolean;
 	/** The pointer travelled past `TRANSCRIPT_DRAG_SLOP_PX` between press and click. */
 	dragged: boolean;
 	/** A wheel notch arrived within `TRANSCRIPT_WHEEL_GUARD_MS` of the click. */
@@ -150,7 +169,11 @@ export const transcriptClickVerdict = (facts: {
 }): TranscriptClickVerdict => {
 	if (facts.controlPress) return "control";
 	if (facts.modalOpen) return "modal";
-	if (facts.pressHadSelection || facts.selectionNotCollapsed)
+	if (
+		facts.pressHadSelection ||
+		facts.selectionNotCollapsed ||
+		facts.shiftExtends
+	)
 		return "selection";
 	if (facts.dragged) return "drag";
 	if (facts.scrolledRecently) return "scroll";

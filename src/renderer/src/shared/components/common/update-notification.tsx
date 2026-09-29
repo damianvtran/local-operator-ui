@@ -2650,9 +2650,12 @@ export const UpdateNotification = ({
 							 * #660): the line states the size a person reads (`21.5 MB of 45.1 MB`,
 							 * the same spelling the budget refusals use), and a reader who wants
 							 * the precise numbers - a bug report, a size comparison against a
-							 * release page - hovers for them.
+							 * release page - hovers for them. GROUPED, also for that reader
+							 * (review round 1, D6/U6): `524288 of 1048576` is a digit wall where
+							 * `524,288 of 1,048,576` is scannable, and an exact count that the
+							 * eye cannot hold is not the offer this tooltip makes.
 							 */
-							title={`${downloadProgress.transferred} of ${downloadProgress.total} bytes`}
+							title={`${downloadProgress.transferred.toLocaleString()} of ${downloadProgress.total.toLocaleString()} bytes`}
 						>
 							{formatByteSize(downloadProgress.transferred)} of{" "}
 							{formatByteSize(downloadProgress.total)}

@@ -2809,6 +2809,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				modalOpen: modalIsOpen(document),
 				pressHadSelection: press?.hadSelection === true,
 				selectionNotCollapsed: selectionInsideTranscript(),
+				shiftExtends: event.shiftKey,
 				dragged:
 					press !== null &&
 					Math.hypot(event.clientX - press.x, event.clientY - press.y) >
@@ -2824,6 +2825,18 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 * single place focus is given - the ask gate's "the user took the
 			 * box" flag reset included - and a no-op when no composer is
 			 * mounted (a story, a pane without one).
+			 *
+			 * THE TRADE, named because it is the one a reader hits: focus leaving
+			 * for the composer means the transcript's own KEYBOARD paging (Space,
+			 * PageUp, the arrows - the keys `use-scroll-paging.ts` listens for)
+			 * now lands in the textarea, so a reader who scrolls by keyboard
+			 * after a click types spaces instead. The scroller stays reachable
+			 * with Tab/F6, and the alternative - leaving the caret on the
+			 * scroller - is the "my keystrokes go nowhere" state #661 exists to
+			 * remove (design round 2, U2). The flag reset is the door's own
+			 * contract read literally: a hand-off makes the box ours again, so a
+			 * gate advancing on its own schedule may claim focus for its next
+			 * question, the same as after a press into the empty box.
 			 */
 			if (verdict === "focus") focusComposer();
 		},
