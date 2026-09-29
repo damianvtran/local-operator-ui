@@ -1108,8 +1108,13 @@
       "chat-turn-collapse--receipts-expanded",
       "chat-turn-collapse--failed-expanded",
       "projects-tab--board-sticky",
-      "projects-tab--list-teams-sticky"
-    , "projects-tab--create-sheet-preview", "projects-tab--create-sheet-paste", "projects-tab--create-sheet-submit", "projects-tab--create-sheet-over-limit", "projects-tab--create-sheet-follow-up-refusal"],
+      "projects-tab--list-teams-sticky",
+      "projects-tab--create-sheet-preview",
+      "projects-tab--create-sheet-paste",
+      "projects-tab--create-sheet-submit",
+      "projects-tab--create-sheet-over-limit",
+      "projects-tab--create-sheet-follow-up-refusal"
+    ],
     "refreshedThemes": [
       "localOperatorDark",
       "localOperatorLight",
