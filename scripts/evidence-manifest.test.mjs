@@ -1875,16 +1875,38 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"foldOntod11a15febfNote",
 	/*
-	 * AND THE SPEECH-TO-TEXT OVERHAUL'S OWN (2026-09-28): both trees move - the
-	 * src tree with the composer's recording treatment, the hold-action
-	 * dispatcher, the in-flight dictation un-gate and the `input_mode` carriage,
-	 * and the scripts tree with the rig that proves them, its spawn-site guard
-	 * entry and the refusal test's re-pointed dictation assertions - and no frame
-	 * of the sweep moves: the two new sets are declared supplementary in the
-	 * manifest, counted out of `frames` the way the guard's arithmetic does.
-	 * The note quotes the pair, so it is held to this file like every entry
-	 * above it; the pair is re-derived from the commit carrying this
-	 * registration, and the docs-only amendment that follows writes it in.
+	 * AND THE NOTIFICATION LIFETIME'S OWN (2026-09-28): `notificationLifetimeRestampNote`
+	 * is the re-stamp for the fix that keeps a shown notification reachable until
+	 * it can serve no further click — both trees move (`src/` for the lifetime
+	 * module and the two banner sites, `scripts/` for the GC probe, the lifetime
+	 * suite and the fixtures), no frame was re-taken, and the pair is re-derived
+	 * from the tree the re-stamp commit ships. It quotes that pair, so it is held
+	 * to this file like every entry above it.
+	 */
+	"notificationLifetimeRestampNote",
+	/*
+	 * AND THE FOLD'S OWN (2026-09-28): `foldOnto20c3a207d7Note` is the fold onto
+	 * the moved `origin/main` `20c3a207d7` (the 0.31.14 release, #622's
+	 * collapsed-turn branch and the 0.31.15 bump) over this branch's
+	 * notification lifetime fix and its round-1 guard - main's whole manifest
+	 * taken as the base with this branch's records re-laid on top, the pair
+	 * re-derived from the folded tip by the docs-only commit that follows, and
+	 * every list member above re-pointed with it. It quotes that pair, so it is
+	 * held to this file like every entry above it.
+	 */
+	"foldOnto20c3a207d7Note",
+	/*
+	 * AND THE FOLD'S OWN (2026-09-28): `sttDictationRestampNote` is the fold onto
+	 * the moved `origin/main` `ff34fb8ecc` (the 0.31.16 release train) over this
+	 * branch's speech-to-text overhaul - main's whole manifest taken as the base
+	 * with this branch's record re-laid on top, the two supplementary sets it
+	 * declares ('stt-dictation', 'stt-dictation-baseline') appended, the pair
+	 * re-derived from the folded tip by the docs-only amend that follows, and
+	 * every list member above re-pointed with it. Both trees move: `src/` for the
+	 * composer's recording treatment, the hold-action dispatcher, the in-flight
+	 * dictation un-gate and the `input_mode` carriage, and `scripts/` for the rig
+	 * that proves them and its spawn-site guard entry. It quotes that pair, so
+	 * it is held to this file like every entry above it.
 	 */
 	"sttDictationRestampNote",
 ];
@@ -2890,6 +2912,29 @@ const BRANCH_RECORDS = [
 	 */
 	"foldOnto1b1a52d5cfNote",
 	"agentsOfferDismissCommentRestampNote",
+	/*
+	 * AND THE TURN-COLLAPSE PASS'S OWN (`feat/collapsed-turn-summary`): the
+	 * single record of the pass that added `chat-turn-collapse/` (16 swept
+	 * frames) and its declared before half `chat-turn-collapse-before/` (16
+	 * frames, supplementary), re-derived both stamps and led both `countsMean`
+	 * cells. It is listed for the list's usual reason: a fold resolved from
+	 * main's copy would drop the only statement of which half is counted by
+	 * `frames` and which is declared, and of the `press` caveat a re-capturer
+	 * of the before half needs. It quotes no tree-hash pair (commit SHAs only),
+	 * so it joins `BRANCH_RECORDS` and not `STAMP_BINDING_NOTES`.
+	 */
+	"turnCollapseEvidenceNote",
+	/*
+	 * And the pass's `dirtyWorkingTreeNote`, added by the agent review's round-3
+	 * F-r3-2: the second fold had taken main's `false` wholesale for
+	 * `dirtyWorkingTree`, and the note records the restore to the capture's own
+	 * `true` (both re-shoots ran with `src`/`scripts` edits uncommitted). It is
+	 * registered here for the same reason as everything above - a fold resolved
+	 * from main's copy would drop the note and leave the field's `true`
+	 * unexplained - and, since the key is top-level and quotes no tree-hash
+	 * pair, `BRANCH_RECORDS` is where it belongs.
+	 */
+	"dirtyWorkingTreeNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
