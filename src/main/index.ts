@@ -3345,8 +3345,11 @@ app
 				const isCmdOrCtrl = input.control || input.meta;
 
 				/*
-				 * Toggle command palette: Cmd/Ctrl + P — the palette's ORIGINAL gesture,
-				 * kept for everyone who learned it from the app's own tour.
+				 * The conversation switcher: Cmd/Ctrl + P — the palette's ORIGINAL
+				 * gesture, kept for everyone who learned it from the app's own tour, and
+				 * since issue #659 a job of its own rather than a second door to the
+				 * same list: the renderer opens the palette seeded to its conversations
+				 * source, which is a chat quick switcher.
 				 *
 				 * Cmd/Ctrl + K, the gesture the app now teaches, is deliberately NOT here:
 				 * a `before-input-event` hook fires before the renderer sees the key at all,
