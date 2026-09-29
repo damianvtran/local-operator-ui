@@ -244,7 +244,7 @@ export function watchQuickSend(options: {
 		/*
 		 * No directory yet (a first run before the backend has ever started).
 		 * The file watch still polls the path, so creation is still observed —
-		 * this is a degradation, not a loss, and it is reported at debug weight
+		 * this is a degradation, not a loss, and it is reported at warn weight
 		 * by the caller's log line rather than treated as a failure.
 		 */
 		options.onProblem(
