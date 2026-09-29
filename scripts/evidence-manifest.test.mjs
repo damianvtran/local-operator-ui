@@ -2546,25 +2546,85 @@ const BRANCH_RECORDS = [
 	 */
 	"condensedBarFoldElevenNote",
 	/*
-	 * And the fold onto `origin/main` = `a7b4f88a18` (the settings-rail-edge lane),
-	 * listed for the list's own reason: it is the fold that hit the NAME COLLISION
-	 * between this branch's and the settings-rail lane's fold records and resolved
-	 * it by re-keying this branch's two names (above). A later fold started from
-	 * main's copy would drop both the re-keyed names and this record. It quotes no
-	 * tree-hash pair - the pair is re-derived over the staged tree in the fold commit
-	 * itself - so `BRANCH_RECORDS` is where it belongs.
+	 * AND THIS PASS'S OWN (`installProvisioningRestampNote`), re-laid by this fold
+	 * (origin/main `0738fa7eb3` over this branch's `1e4653b7ea`): its subject IS the
+	 * binding this file once held - the install path is not something the evidence
+	 * sweep renders, so it moved BOTH trees without
+	 * taking a frame, and the reader is owed the reason no still was owed. It is REPAIRED
+	 * in the same commit to name the SHAs its pass read rather than the tree pair, which
+	 * is the shape this file now enforces. `src/` moved for the install decision and the
+	 * scripts' environment build; `scripts/` for the suites that pin them.
+	 */
+	"installProvisioningRestampNote",
+	/*
+	 * And the agent-review remediation's own record rides beside it
+	 * (`installProvisioningRemediationRestampNote`): the round moved both trees with no
+	 * frame - the launcher probe and its verdict cache, the failure-cause split, the three
+	 * scripts' TLS notes, and the suites that pin them - so a fold that started from
+	 * main's copy would drop the only statement of that.
+	 */
+	"installProvisioningRemediationRestampNote",
+	/*
+	 * And THIS fold's own, beside them (`foldOnto0738fa7eb3InstallProvisioningNote`, re-keyed at the fifth fold - main already ships a note under the old name): the merge onto
+	 * `origin/main` `0738fa7eb3` resolved both evidence files as unions and re-derived the
+	 * stamps from the merged tree; it is registered for the list's usual reason - a fold
+	 * that started from main's copy would drop it first.
+	 */
+	"foldOnto0738fa7eb3InstallProvisioningNote",
+	/*
+	 * And the SECOND fold's own, beside them (`foldOnto49491865caInstallProvisioningNote`, re-keyed at the fifth fold - main already ships a note under the old name): main moved six
+	 * commits (the desktop-tests diagnostics train, #557) while the first fold was being
+	 * verified, this file conflicted alone, and a conflicting head produces no
+	 * pull-request runs - so the fold is repeated, and its record is registered for the
+	 * list's usual reason.
+	 */
+	"foldOnto49491865caInstallProvisioningNote",
+	/*
+	 * And the THIRD fold's own, beside them (`foldOnto6f28406010Note`): main moved again -
+	 * the v0.31.21 release, #652's driven-page OAuth popups and #568's CPython 3.14
+	 * bundle - while this branch was being reviewed; the two evidence files conflicted
+	 * alone, resolved as unions the same way, and the test file merged additively.
+	 * Registered for the list's usual reason.
+	 */
+	"foldOnto6f28406010Note",
+	/*
+	 * And the FOURTH fold's own, beside them (`foldOntoF9dbf8b455Note`): main moved once more -
+	 * the rail-bottom-active fix (#666) - while the merge was gated on this fold; the two
+	 * evidence files resolved the same way, this branch's registrations standing as merged
+	 * because main did not touch this list in between.
+	 * Registered for the list's usual reason.
+	 */
+	"foldOntoF9dbf8b455Note",
+	/*
+	 * And the FIFTH fold's own, beside them (`foldOntoA7b4f88a18Note`): main moved once more -
+	 * the settings-rail-edge fix (#609) - and this fold resolved both evidence files as
+	 * unions, re-keying this lane's two collided fold records as it re-laid them. Registered
+	 * for the list's usual reason: a fold that started from main's copy would drop it first.
+	 */
+	"foldOntoA7b4f88a18Note",
+	/*
+	 * And the SIXTH fold's own, beside them (`foldOnto65a3e97b8cNote`): main moved through
+	 * #554's condensed group images and the #653/#655/#668 trains while the session was
+	 * disposed; both evidence files conflicted, no name collided, and the resolution is the
+	 * usual union. Registered for the list's usual reason: a fold that started from main's
+	 * copy would drop it first.
+	 */
+
+	"foldOnto65a3e97b8cNote",
+	/*
+	 * And this branch's own folds' records beside them - `foldOntoa7b4f88a18Note` (the
+	 * name-collision fold), `foldOnto891ad1e983Note`, and the latest two,
+	 * `foldOnto65a3e97b8cMonitorControlsNote` (RE-KEYED at the newest fold: main's own
+	 * lane folded the same tip and ships a note under the shared name) and
+	 * `foldOnto29a9aa985cNote` - listed for the list's own reason: each resolved two
+	 * evidence files by hand, and a fold resolved from main's copy would drop the lot. The
+	 * notes quote no tree-hash pair (the pairs are re-derived over the staged tree in each
+	 * fold commit), so `BRANCH_RECORDS` is where they belong.
 	 */
 	"foldOntoa7b4f88a18Note",
-	/*
-	 * And the next two folds' own records (`foldOnto891ad1e983Note`, `foldOnto65a3e97b8cNote`),
-	 * for the same reason one entry up: each resolved two evidence files by hand, and the
-	 * latest also had to carry main's fifteen pictures registrations into this list. A
-	 * fold resolved from main's copy would drop all of it; the notes quote no tree-hash
-	 * pair - the pairs are re-derived over the staged tree in each fold commit - so
-	 * `BRANCH_RECORDS` is where they belong.
-	 */
 	"foldOnto891ad1e983Note",
-	"foldOnto65a3e97b8cNote",
+	"foldOnto65a3e97b8cMonitorControlsNote",
+	"foldOnto29a9aa985cNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
