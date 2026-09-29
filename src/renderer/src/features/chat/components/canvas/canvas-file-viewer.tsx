@@ -618,10 +618,22 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 			{(files.length > 0 || scan?.paging || scan?.stopped) && (
 				<div
 					data-tour-tag="files-scanner-head"
-					className={cn(
-						"flex shrink-0 flex-col gap-2",
-						"border-hairline border-b bg-surface px-2 py-2",
-					)}
+					/*
+					 * NO GROUND AND NO RULE OF ITS OWN, and that is the pane's own
+					 * requirement rather than a preference: the search field is CONTENT of
+					 * this dock, so it sits on the dock's ground (`canvas`, `canvas/index.tsx`)
+					 * with the list beneath it. It used to take `bg-surface` plus a bottom
+					 * `hairline`, which made a third band inside one pane - the nav row's, the
+					 * search row's, then the list - and the operator's report is about exactly
+					 * that banding. The field's own `border-control` is what bounds it; the
+					 * row is separated from the list by space, by the list's own row height,
+					 * and by the list plane's own `surface` (the scroller below). That ground
+					 * is the ROWS' and not this head's - it exists because the rows paint a
+					 * row state and a row state is authored against `surface`, while this
+					 * head, the chrome bar and the pane root all stay on `canvas`. See the
+					 * scroller's own note for the measurement behind the split.
+					 */
+					className={cn("flex shrink-0 flex-col gap-2 px-2 py-2")}
 				>
 					{files.length > 0 && (
 						<div className={cn("flex items-center gap-2")}>
@@ -782,8 +794,50 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 				 * already uses. The grid's `p-6` spent 12% of a 400px dock on margin.
 				 */
 				<div
+					/*
+					 * THE ROW PLANE, AND IT IS THE ONE PLACE IN THIS PANE THAT WEARS
+					 * `surface`.
+					 *
+					 * The rows below paint `hover:bg-row-hover` and `rowCurrent`, and a
+					 * surface that paints either role has to BE `surface`: both roles are
+					 * authored as steps OF that panel, so painted on a rung the fill lands
+					 * inside the ladder instead of out of it. It is § 4 of
+					 * `docs/design/row-states-refinement.md`, the direction this round
+					 * implements, and § 9.2 names this list among the surfaces it binds.
+					 *
+					 * WHY THE PLANE IS THIS ELEMENT AND NOT THE PANE ROOT. The pane root
+					 * cannot carry it: since the drawer's-rung pass the root stands at
+					 * the lane's LAST stop - `elevated` (`canvas/index.tsx`), the rung the
+					 * operator's report put the whole dock's ground at so the window reads as
+					 * chrome beside work rather than as three stacked panels - and
+					 * `scripts/pane-slot-ground.test.mjs` derives every pane root's rung
+					 * from the lane's own gradient rather than from a literal, refusing a
+					 * root painted anywhere else. So the two directions land on a
+					 * single element and the resolution is to SPLIT it rather than to
+					 * relax either: the root keeps the lane's stop (`elevated`), and the
+					 * list's own box - the
+					 * rows' painted ancestor, the panel's only scroll container and the
+					 * box whose width the rows query - carries the `surface` its rows were
+					 * authored against. The chrome bar and the search head above it stay
+					 * on the root's own rung and keep no ground of their own.
+					 *
+					 * WHY IT MATTERS, MEASURED (the repo's own `deltaE` over all 59
+					 * palettes): resolved off `canvas`, `rowSelected` falls under the 2.0
+					 * field floor on 7 of 59 palettes (minimum 0.83, `kanagawaLotus`) and
+					 * `rowHover` on 5 (minimum 0.51, `tokyoNightDay`) - an invisible
+					 * selected row on seven themes. Off this `surface` it is 0 of 59 and
+					 * 1 of 59, and the single shortfall is the fleet's own ledgered
+					 * minimum (`rosePineDawn` 1.67, `ROW_STATE_MEASURED_SHORTFALL` in
+					 * `scripts/contrast-contract.mjs`), which every other
+					 * `surface`-grounded row surface in the app already carries.
+					 *
+					 * The ground is pinned here rather than left to prose:
+					 * `scripts/chat-sidebar-selection.test.mjs`'s `ROW_STATE_GROUNDS`
+					 * resolves this element as the rows' ground and fails a call site
+					 * that paints a row state on a rung.
+					 */
 					className={cn(
-						"@container/fileslist min-h-0 flex-1 overflow-y-auto p-2",
+						"@container/fileslist min-h-0 flex-1 overflow-y-auto bg-surface p-2",
 					)}
 					data-tour-tag="files-scroller"
 				>

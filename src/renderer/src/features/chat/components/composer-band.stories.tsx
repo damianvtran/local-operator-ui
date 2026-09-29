@@ -22,7 +22,7 @@ import { MessageInput } from "./message-input";
  * WHY THE COLUMN IS THE VIEWPORT at the wide sizes and a fixed width at the
  * narrow one. With the canvas and the run panel shut - the default layout -
  * the chat column IS the window less its chrome, so a 1380px viewport gives
- * the band's shared measure (`CHAT_MEASURE`, capped at 900px) the width it has
+ * the band's shared measure (`CHAT_MEASURE`, capped at 810px) the width it has
  * in the app. With the canvas OPEN the column collapses to 550px inside an
  * 830px window — the narrowest window whose chat column is still 550px, not the
  * app's own minimum (800x600, where the column is 300px and the whole prompt is

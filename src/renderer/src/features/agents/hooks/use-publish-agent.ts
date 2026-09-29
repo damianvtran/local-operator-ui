@@ -18,8 +18,15 @@
  * and read as a single problem.
  */
 
+import {
+	invalidateOrgAgentLists,
+	invalidatePublicAgentLists,
+} from "@features/agent-hub/hooks/use-public-agents-query";
 import type { PublicationDocumentOverride } from "@shared/api/local-operator/agents-api";
-import { AgentsApi } from "@shared/api/local-operator/agents-api";
+import {
+	AgentsApi,
+	type PublicationTarget,
+} from "@shared/api/local-operator/agents-api";
 import { apiConfig } from "@shared/config";
 import { usePublishedListingsStore } from "@shared/store/published-listings-store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -41,8 +48,18 @@ export type PublishAgentRequest = {
 	 * Present means "republish"; absent means "publish a new listing". The backend
 	 * requires it on the update path precisely so a caller cannot overwrite a row
 	 * by guessing, so this hook never invents one.
+	 *
+	 * It is the PUBLIC listing this app remembers (`published-listings-store`), so
+	 * a publication into an organization never carries one: an org document has no
+	 * public name claim to preserve (§8.2), and sending this id to an org target
+	 * would address a row in the wrong namespace.
 	 */
 	hubAgentId?: string | null;
+	/**
+	 * Where the publication lands (§4.4): the public hub when absent, or one
+	 * organization's private workspace.
+	 */
+	target?: PublicationTarget;
 };
 
 export const usePublishAgent = () => {
@@ -53,6 +70,7 @@ export const usePublishAgent = () => {
 			agentId,
 			document,
 			hubAgentId,
+			target,
 		}: PublishAgentRequest) => {
 			if (!apiConfig.baseUrl) {
 				throw new Error("Local Operator API URL is not configured.");
@@ -63,11 +81,13 @@ export const usePublishAgent = () => {
 						agentId,
 						hubAgentId,
 						document,
+						target,
 					)
 				: AgentsApi.publishAgentInstructionSet(
 						apiConfig.baseUrl,
 						agentId,
 						document,
+						target,
 					);
 		},
 		onSuccess: (response, variables) => {
@@ -83,11 +103,16 @@ export const usePublishAgent = () => {
 			/*
 			 * The hub's own list is cached for five minutes, so without this the agent
 			 * the user just published is invisible until the tab is reloaded — which
-			 * reads as a publish that silently failed.
+			 * reads as a publish that silently failed. Each scope is invalidated on its
+			 * own: a publication into an organization lands in a list the public
+			 * invalidation does not reach, and re-reading the public grid for it would be
+			 * a request that cannot show the change.
 			 */
-			queryClient.invalidateQueries({
-				queryKey: ["public-agents"],
-			});
+			if (variables.target) {
+				invalidateOrgAgentLists(queryClient, variables.target.tenantId);
+			} else {
+				invalidatePublicAgentLists(queryClient);
+			}
 		},
 		onError: (error) => {
 			// Logged, not toasted: the dialog renders the refusal, and the message it

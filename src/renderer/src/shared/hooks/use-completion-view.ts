@@ -1,6 +1,7 @@
 import {
 	DesktopControlError,
 	desktopResult,
+	isForegroundRequired,
 } from "@shared/api/local-operator/desktop-api";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { type RefObject, useEffect, useRef } from "react";
@@ -28,6 +29,13 @@ import {
  * They used to be one decision - the gates lived in the effect body - which made
  * the loop's existence depend on an instantaneous snapshot of the view, and the
  * reader below reads them at attempt time for the same reason.
+ *
+ * AND A REFUSAL THAT MEANS "NOT NOW" IS A DEFERRAL, NOT A FAILURE. One refusal
+ * arrives from MAIN after every gate here has passed - the window is not in the
+ * foreground - and it is answered by the reader's return rather than by the
+ * clock; it therefore spends no part of the ladder the genuine failures share,
+ * and the focus and visibility arms below release its wait the moment the
+ * reader is back.
  */
 
 /** Poll cadence while the completion has not been acknowledged. */
@@ -97,6 +105,29 @@ const backoffMs = (attempts: number) =>
 		MAX_BACKOFF_MS,
 		CHECK_MS * 2 ** (attempts - FAILURES_BEFORE_BACKOFF + 1),
 	);
+
+/**
+ * The wait between two attempts refused because the WINDOW is not in the
+ * foreground.
+ *
+ * A DEFERRAL, NOT A FAILURE, and the whole of this constant's job is the wait
+ * it puts between two asks of a question the reader's own return answers. Main
+ * refuses a read receipt when the window is not visible, not minimised and
+ * focused (`guardForegroundReceipts`), and that refusal is not the store
+ * saying no - it is the app saying "the person is not here", which is the one
+ * condition the reader can end with a click. The receipt it refused was not
+ * wrong, the attempt was early.
+ *
+ * SO IT MAY NOT SPEND THE SHARED LADDER, and the wait here is the reason it
+ * still needs one of its own: the ladder's failures earn a ceiling that decays
+ * to a minute, which parks exactly the retry a returning reader is owed, while
+ * this wait only bounds how often the app asks a question whose answer it
+ * cannot control. It is SHORTER than the poll cadence's own minute, and the
+ * focus/visibility arms below zero it outright, because in the state that
+ * produces the refusal the reader is, by definition, somewhere else - and the
+ * moment they are not, the attempt must not wait for this number.
+ */
+const FOREGROUND_RETRY_MS = 2_000;
 
 /**
  * Whether this failure is the STORE refusing for contention.
@@ -578,6 +609,35 @@ export function useCompletionView(
 						clearNotice(sessionId);
 						return;
 					}
+					if (isForegroundRequired(error)) {
+						/*
+						 * A DEFERRAL, NOT A FAILURE: main refused because the window is not in the
+						 * foreground (`guardForegroundReceipts` - not visible, minimised, or not
+						 * focused), which is a fact about the READER rather than about the
+						 * receipt. Before this arm existed the refusal took the shared ladder,
+						 * and a reader who stepped away from a conversation with an unread mark
+						 * on it came back to an app that had spent its three flat attempts on
+						 * refusals it could not have won and parked the retry onto the 60 s
+						 * ceiling - measured on the report's own rig as `receipt unresolved after
+						 * 3 attempts; backing off UserFacingError: View these completions in the
+						 * foreground before marking them read`. The operator's remedy (switch
+						 * away and back, a press, `readAckRearm`) reset exactly the budget the
+						 * refusals had spent, which is the shape of a mark that "cannot be
+						 * cleared until you switch to another view and back".
+						 *
+						 * NOTHING IS COUNTED, WARNED OR ANNOUNCED. The attempt budget, the
+						 * contention budget, `ladderWarned` and the row's clause all mean "this
+						 * receipt is in trouble"; a window that is not in the foreground is not
+						 * trouble, and the reader it concerns is not looking at the row anyway.
+						 * The mark stays where it was, and the wait is short ON PURPOSE: it is the
+						 * safety net for the states no focus event can announce (a window whose
+						 * page already held document focus while the OS window did not, so
+						 * refocusing it fires no `focus` on this window at all), while the arms
+						 * below answer the gesture that does.
+						 */
+						nextAttempt = Date.now() + FOREGROUND_RETRY_MS;
+						return;
+					}
 					unresolved(error);
 				})
 				.finally(() => {
@@ -586,10 +646,42 @@ export function useCompletionView(
 		};
 		const frame = requestAnimationFrame(check);
 		timer = window.setInterval(check, CHECK_MS);
+		/*
+		 * THE READER'S RETURN RE-ARMS THE ATTEMPT - the second gesture this loop
+		 * honours, beside the press (`readAckRearm`, read inside `check`).
+		 *
+		 * WHY A LISTENER AND NOT THE NEXT TICK. The tick's gates already read
+		 * `document.hasFocus()` per attempt, so a loop that is merely WAITING for the
+		 * window can go out on its own - what it cannot do is anything a WAIT was
+		 * built to defer: the foreground refusal above, and every ladder park. Both
+		 * are released by nothing but the clock until this arm exists, and the clock
+		 * is the one input the reader has already supplied by coming back. The
+		 * operator's expectation states it: "on window focus/refocus, notifications
+		 * for the session that is currently open are acknowledged", and a refocus
+		 * that leaves a `Date.now() + 60_000` in the way acknowledges nothing.
+		 *
+		 * IT RELEASES THE WAIT AND NOT THE LADDER. `nextAttempt = 0` lets the very
+		 * next `check` go out; `attempts` and `busyRetries` are untouched, because a
+		 * focus is not evidence that whatever refused before has recovered - the
+		 * attempt it releases is. A MARKER THAT IS GESTURE-INDEPENDENT: this listener
+		 * is registered where the loop lives, so it is added and removed with the
+		 * completion it is about, never with a conversation the reader left.
+		 */
+		const releaseWait = () => {
+			nextAttempt = 0;
+			check();
+		};
+		const onVisibilityChange = () => {
+			if (document.visibilityState === "visible") releaseWait();
+		};
+		window.addEventListener("focus", releaseWait);
+		document.addEventListener("visibilitychange", onVisibilityChange);
 		return () => {
 			cancelled = true;
 			cancelAnimationFrame(frame);
 			stop();
+			window.removeEventListener("focus", releaseWait);
+			document.removeEventListener("visibilitychange", onVisibilityChange);
 			/*
 			 * THE NOTICE IS THE LOOP'S OWN STATEMENT, so it goes when the loop does -
 			 * a superseded completion, a settled one, a session switch and an unmount
