@@ -90,10 +90,11 @@ import type { MonitorCancelSection } from "./use-monitor-cancel";
  * that slot IS the state. The clauses after it are the TUI band's own run
  * (`· every 60s · last check 9:25 AM EDT`) in the dim ink; the health tail
  * (`· 3 failed`, or the disabled reason) follows in the warning ink when there
- * is one. The yield order follows the wake row's recorded rule: the free-text
- * slot truncates first (it has a `title`), the numeric cadence never clips, and
- * the health tail truncates rather than pushing the row wide, also with its
- * whole text in a `title`.
+ * is one. The yield order follows the wake row's recorded rule - the free-text
+ * slots truncate (each with its whole text in a `title`) rather than pushing the
+ * row wide, and the numeric cadence never clips - but WHICH clause yields first
+ * is the `flex-shrink` weights' (design round 1, D1): the health tail first,
+ * then `last check`, then the due slot, with the cadence `shrink-0`.
  *
  * `ScanEye` is a MARK and not a state, one ink on every row, which is why it
  * does not change with health: the state ink is the slot's and the tail's, and
@@ -173,14 +174,33 @@ const MonitorRowView = ({
 					>
 						{row.whenLabel}
 					</span>
+					{/*
+					 * The cadence and the `last check` instant are TWO spans, not one
+					 * `shrink-0` box (design round 1, D1): the box's min-content (~185px)
+					 * could not shrink at all, so at the pane's 320px floor it ran UNDER
+					 * the action column once the due slot and health tail had yielded to
+					 * zero (`Cancel` printed over `AM EDT`). The arm of the yield order
+					 * an item cannot absorb is the one failure mode the order has; the
+					 * split gives `last check` its own truncatable box, ranked BY WEIGHT
+					 * to yield after the health tail and before the due slot.
+					 */}
 					<span className={cn("shrink-0 text-ink-dim text-meta")}>
 						{`· ${row.interval}`}
-						{row.lastCheckLabel ? ` · ${row.lastCheckLabel}` : ""}
 					</span>
+					{row.lastCheckLabel && (
+						<span
+							className={cn(
+								"min-w-0 shrink-[3] truncate text-ink-dim text-meta",
+							)}
+							title={row.lastCheckLabel}
+						>
+							{`· ${row.lastCheckLabel}`}
+						</span>
+					)}
 					{row.healthLabel && (
 						<span
 							className={cn(
-								"min-w-0 truncate text-meta",
+								"min-w-0 shrink-[30] truncate text-meta",
 								row.alerting ? "text-warning" : "text-ink-dim",
 							)}
 							title={row.healthLabel}
@@ -203,23 +223,36 @@ const MonitorRowView = ({
 				)}
 			</div>
 			{/*
-			 * The row's one control, revealed on hover and on focus-within (the app's
-			 * row idiom) and ALWAYS IN THE LAYOUT - opacity, not display - so that
-			 * revealing it moves nothing. `h-5` keeps the control inside the dense
-			 * row's own 20px rhythm: one-line watch rows are `py-0.5` around a 16px line,
-			 * and the control must clear the 24px hit floor instead. The danger wash on
-			 * hover is the wake line's own cancel ink, one list over; nothing lifts.
+			 * The row's one control, VISIBLE AT REST in the ghost ink (U6) - the pane
+			 * is a management surface now, so the affordance is present rather than
+			 * hidden until hover. It is always in the layout, so the pointer arriving
+			 * moves nothing, and `h-6` (24px) is the HIT floor rather than the row's
+			 * own 20px rhythm: the dense rhythm would sit the control under the
+			 * minimum a pointer may be asked to hit. The danger wash on hover is the
+			 * wake line's own cancel ink, one list over; nothing lifts, and the focus
+			 * ring is the shared Button's own.
+			 *
+			 * The action column can YIELD (`min-w-0 shrink-[3]`) because at the pane's
+			 * 320px floor its content is the row's scarcest space: the refused record
+			 * runs up to its `max-w-40` there, and a `shrink-0` column that size is
+			 * what pushed the facts line out from under itself (design round 1, D1).
+			 * The control itself stays `shrink-0`, so its box never squishes; only
+			 * the record beside it truncates - its whole sentence is on `title`.
 			 *
 			 * The marks never unmount the control, because the dialog restores focus to
 			 * it on close: `Cancelled` is the control itself, disabled, once a receipt
-			 * lands and the row waits for the re-read that drops it (U4); and `Cancel
-			 * refused` sits BESIDE the live control - the next attempt is what clears
-			 * it (U8) - with the whole sentence on `title`.
+			 * lands and the row waits for the re-read that drops it (U4) - and that
+			 * word is the row's ONLY acknowledgement of a landed write, so it spends
+			 * `ink-dim` (D2: 5.25:1 dark / 6.14:1 light) instead of the floor-exempt
+			 * `ink-disabled` a dead control wears, while staying non-interactive all
+			 * the same (see the Button's `disabled:text-ink-dim` override); and
+			 * `Cancel refused` sits BESIDE the live control - the next attempt is what
+			 * clears it (U8) - with the whole sentence on `title`.
 			 */}
-			<div className={cn("flex shrink-0 items-center gap-1.5")}>
+			<div className={cn("flex min-w-0 shrink-[3] items-center gap-1.5")}>
 				{cancelState?.kind === "refused" && (
 					<span
-						className={cn("max-w-40 truncate text-meta text-ink-dim")}
+						className={cn("min-w-0 max-w-40 truncate text-meta text-ink-dim")}
 						title={cancelState.detail}
 						data-monitor-cancel-state="refused"
 					>
@@ -245,7 +278,18 @@ const MonitorRowView = ({
 					}
 					disabled={cancelState?.kind === "cancelled"}
 					onClick={() => cancel.request(row)}
-					className={cn("h-6 px-1.5 hover:bg-danger-wash hover:text-danger")}
+					className={cn(
+						"h-6 shrink-0 px-1.5 hover:bg-danger-wash hover:text-danger",
+						/*
+						 * D2: the disabled state of THIS control is not a dead control - it
+						 * is the row's `Cancelled` receipt, the only confirmation the write
+						 * landed, and a receipt is READ rather than operated. The shared
+						 * disabled ink is contractually floor-exempt (1.99:1 dark / 2.96:1
+						 * light) because it marks unavailable CONTROLS; this one spends
+						 * `ink-dim` (5.25:1 / 6.14:1) instead.
+						 */
+						"disabled:text-ink-dim",
+					)}
 				>
 					{cancelState?.kind === "cancelled" ? "Cancelled" : "Cancel"}
 				</Button>

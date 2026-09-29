@@ -9,10 +9,13 @@
  * Copy: the title names the act on the object ("Cancel this monitor?") and the
  * confirm names it precisely as an act ("Stop monitor") so `Cancel` is not
  * doing both jobs at once - the dismiss is `Keep`, which is what makes the safe
- * action the one the keyboard holds (UX review round 1, U7). A refusal renders
- * in the danger ink INSIDE this dialog, and the whole dialog is kept open with
- * focus handed back to Keep; the busy window (`busy`/`busyText`) belongs to the
- * shared modal - see `confirmation-modal.tsx`.
+ * action the one the keyboard holds (UX review round 1, U7). The busy window
+ * keeps the SAME verb as the confirm - `Stopping…` for `Stop monitor` (design
+ * round 1, D3): the button the reader pressed must not turn into a different
+ * act mid-press, which is what `Cancelling…` did under `Stop monitor`. A refusal
+ * renders in the danger ink INSIDE this dialog, and the whole dialog is kept
+ * open with focus handed back to Keep; the busy window (`busy`/`busyText`)
+ * belongs to the shared modal - see `confirmation-modal.tsx`.
  */
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
 import type { MonitorCancelDialogProps } from "./use-monitor-cancel";
@@ -40,10 +43,18 @@ export const MonitorCancelDialog = ({
 			</>
 		}
 		confirmText="Stop monitor"
-		busyText="Cancelling…"
+		busyText="Stopping…"
 		busy={busy}
 		cancelText="Keep"
 		isDangerous
+		/*
+		 * D4: the panel's width is PINNED so the refusal cannot resize the card -
+		 * between the first press and the retry it grew ~332 -> ~357 CSS px and
+		 * re-centred, moving the buttons under the pointer. 26rem is the card's own
+		 * confirm-state width at the capture viewport; the viewport cap keeps a
+		 * narrow window from overflowing it.
+		 */
+		panelClassName="w-[26rem] max-w-[calc(100vw-4rem)]"
 		/*
 		 * The refusal is the only thing this dialog can be told that makes the
 		 * SAFE action the one the keyboard should hold: the cancel did not

@@ -2298,6 +2298,17 @@ const BRANCH_RECORDS = [
 	 */
 	"monitorsControlsRound1Remediation",
 	/*
+	 * And the DESIGN round's own record (design review round 1's D1-D5): the facts
+	 * line rebuilt as yieldable boxes so the 320px floor cannot run text under the
+	 * action column, the `ink-dim` receipt, the `Stopping…` busy label, the pinned
+	 * confirmation width, and the corrected comment. It is listed for the list's
+	 * own reason: a fold resolved from main's manifest copy would drop the only
+	 * statement of the two narrowed runs, of the one new surface and the twelve
+	 * re-shot states, and of why the yield order exists at all. It quotes no
+	 * tree-hash pair, so `BRANCH_RECORDS` is where it belongs.
+	 */
+	"monitorsControlsDesignRound1",
+	/*
 	 * AND THIS FIX'S OWN (2026-09-29): `browserOauthPopupsRestampNote` is the
 	 * re-stamp for the driven-page OAuth popups (the operator's console Microsoft
 	 * sign-in repro - MSAL `loginPopup` denied by the driven views' deny-all

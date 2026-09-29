@@ -2369,13 +2369,17 @@ export const STORIES = [
 	   ladder — the state ink the wakes rows deliberately lack), the cap and its
 	   marker one past the arm path's own eight, a description longer than its
 	   row, the pair with the wakes (`wakes-and-plan`'s sibling, in the order both
-	   surfaces draw: the wakes first), and the pane's 320px floor. */
+	   surfaces draw: the wakes first), the pane's 320px floor, and that floor with
+	   a dismissed refusal's record on it - the state design round 1's D1 collision
+	   was worst in, because the record widens the action column by a further
+	   ~90px on top of the plain floor's squeeze. */
 	["chat-run-panel--monitors-only", 1280, 700],
 	["chat-run-panel--monitors-health", 1280, 820],
 	["chat-run-panel--monitors-many", 1280, 820],
 	["chat-run-panel--monitor-long-description", 1280, 700],
 	["chat-run-panel--monitors-and-wakes", 1280, 820],
 	["chat-run-panel--monitors-floor-320", 1280, 700],
+	["chat-run-panel--monitors-floor-320-refusal-record", 1280, 700],
 	/*
 	 * The cancel affordance's own states (the design's cancel paragraph, Unit B):
 	 * the row control under the pointer, the control holding the point's

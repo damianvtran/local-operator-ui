@@ -76,10 +76,21 @@ type ConfirmationModalProps = {
 	 */
 	busy?: boolean;
 	/**
-	 * The confirm label while `busy` (e.g. `Cancelling…`). The caller owns copy,
+	 * The confirm label while `busy` (e.g. `Stopping…`). The caller owns copy,
 	 * like every other label here; the shared component only owns the state.
 	 */
 	busyText?: string;
+	/**
+	 * Extra classes for the dialog PANEL, merged last so a caller can PIN the
+	 * width.
+	 *
+	 * WHY (design round 1, D4): the monitor cancel's refusal paragraph lengthened
+	 * the card between the first press and the retry, so the buttons moved under
+	 * the pointer that was about to press again. A caller whose dialog can gain a
+	 * paragraph mid-flow stabilises its own box; undefined for every other
+	 * caller, which keeps their panels exactly as they were.
+	 */
+	panelClassName?: string;
 };
 
 /**
@@ -99,6 +110,7 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
 	focusCancelSignal,
 	busy = false,
 	busyText,
+	panelClassName,
 }) => {
 	/*
 	 * No Enter handler here, deliberately.
@@ -213,6 +225,7 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
 			 */
 			dialogProps={{
 				closeDisabled: busy,
+				...(panelClassName ? { className: panelClassName } : {}),
 				onEscapeKeyDown: (event: KeyboardEvent) => {
 					if (busy) event.preventDefault();
 				},
