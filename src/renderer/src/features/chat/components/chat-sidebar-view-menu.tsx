@@ -292,10 +292,13 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 			 * canonical one: a list that re-sorted itself here would undo the
 			 * reorder the row above it was just used for.
 			 *
-			 * The entity sections are switches like the rest, and their state is the
-			 * DISCLOSURE the Agents and Teams rows already own (see
-			 * `ENTITY_SECTIONS`): one decision, one spelling, so the popover's tick
-			 * and the row's chevron can never disagree about whether Agents is open.
+			 * The entity sections are switches like the rest, and their state is
+			 * `view.hidden` like the rest: the tick, the press and the sentence under
+			 * the list all read one field the store owns. The `Agents`/`Teams` rows'
+			 * own chevrons are a DIFFERENT question - whether a drawn row's children
+			 * are on screen - and the pair cannot disagree, because a section this
+			 * switch took off the column has no chevron left to disagree with.
+			 * `ENTITY_SECTIONS` carries the correction and the report it came from.
 			 */}
 			{group("Sections")}
 			<div className="space-y-0.5">
