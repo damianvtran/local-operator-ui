@@ -1235,8 +1235,13 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 										? "true"
 										: undefined
 								}
+								/*
+								 * No cursor class, on purpose: the row is `role="option"`, so the
+								 * base layer gives it the pointer, and an explicit utility would
+								 * also beat that layer's disabled arm for the `aria-disabled` row.
+								 */
 								className={cn(
-									"relative flex cursor-default items-baseline gap-3 px-3 py-2",
+									"relative flex items-baseline gap-3 px-3 py-2",
 									index === state.active
 										? cn(
 												"bg-accent-wash",

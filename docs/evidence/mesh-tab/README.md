@@ -1,0 +1,236 @@
+# Mesh tab (interactive canvas, `features.peers` + `features.session_transfer`)
+
+The Mesh tab's states, in both brand palettes, at the app's own window size and at the
+narrow one. The tab still ships **dark** - mounted only when the backend advertises
+`features.peers`, with no call at all on a machine in no mesh - and this set is slice 2's:
+the canvas became interactive (pan, zoom, hover, the device panel, the drag and its
+transient states, the two dialogs, the busy refusal, and the **receipt** the remedy
+produces), so the set grew from slice 1's nine states to the **nineteen** below.
+
+**The remedy's own row proves the move, because round 4 fixed the reason it could not**
+(design review rounds 3 D13 and 4 D18). `move-busy-waited` photographs the receipt *and* the world
+it claims: the play presses the remedy, asserts the re-issue carried the route's wait ceiling,
+waits for the re-read, and asserts the canvas agrees with the notice - the panel reads
+`Conversations (1)`, this device draws one conversation, and the peer draws the moved `Sweep 001`.
+Round 3's explanation for the pre-move frame was wrong (it blamed the capture's mount; the capture
+is on the same mount as the play), and the real cause was one line: the fixture hook that answers
+the post-move world had been wired into `MoveCopyWithUndo` instead of into this story. Both the
+code and this page now say that.
+
+**Re-captured, not carried forward (design review round 2, D9).** Slice 2's frames were
+re-shot at this branch's own head through the command below: the previous set still
+rendered `4 chats` - a string the renamed code can no longer produce - and contained no
+frame of any interactive state, while this README documented the command that writes
+them. A frame that contradicts the code reads as verified, which is worse than a missing
+one.
+
+## Which surface produced these frames, and what they do not prove
+
+**Surface:** the real `MeshPage` (`src/renderer/src/features/mesh/mesh-page.tsx`),
+mounted by Storybook in the app's own preview - the real fonts, the real theme
+plumbing, the real React Query client built from `defaultQueryOptions`, the real
+capability gate, the real `peers.list`/`networks.list` queries and their
+normalisers, the real canvas with its pan/zoom and pinned slots, and the real four
+states.
+
+**One thing is replaced:** `window.api.desktop.request`, the preload seam
+`desktop-api.desktopRequest` prefers. The stories install their own bridge on it
+(`src/renderer/src/features/mesh/mesh-page.stories.tsx`), which answers
+`capabilities`, `peers.list` and `networks.list` from fixtures and **throws** on any
+other op - so a story that reached a live backend could not do so quietly, and
+`scripts/mesh-tab.test.mjs` pins that those three are the only ops this page can
+issue.
+
+**Capture:**
+
+```sh
+node scripts/capture-evidence.mjs --only=mesh-tab \
+  --themes=localOperatorLight,localOperatorDark --allow-backend
+```
+
+38 frames, 19 states x 2 palettes, written through the repo's own sweep (a private
+headless Chrome, `Page.captureScreenshot` at deviceScaleFactor 2, `assertFramePaints`
+on every frame). `manifest.json` records this as a **partial** capture
+(`partialCapture`), which is what it is: the set is the tab's own states, not a
+sweep of the tree.
+
+**`--allow-backend` is disclosed here because it is the one flag that relaxes a
+guard.** The operator's live backend (pid 14691, `Local Operator [serve] port=1111`,
+up 9h47m at capture time) is running, and the sweep refuses by default - correctly,
+since most surfaces would photograph its replies. The flag exists for exactly this
+case, and its own docstring states the condition: a PARTIAL run whose stories
+render from fixtures and never call out. That condition holds here for a reason
+that is structural rather than asserted: the page's only network path is the
+desktop bridge, the bridge is replaced in-page before the app can issue anything,
+and it throws on an op it does not answer.
+
+**These frames therefore do NOT prove:** that a live relay answers these payloads,
+that a real mesh looks like this (the shapes are the wire's, read from
+`local_operator/server/models/desktop_mesh.py`; the values are invented), that the
+tab behaves this way against a slow or half-up backend, or anything about
+performance. They also cannot show the two claims the tab's own design rests on and
+a still cannot carry - that a poll that changed nothing moves no node, and that a
+wheel-zoom keeps the world point under the pointer invariant. Both are asserted
+numerically in `scripts/mesh-tab.test.mjs`, which is the cheap half of this evidence
+rather than a substitute for it.
+
+Two smaller gaps, named rather than implied. **The node's on-screen type size is the app's
+own, not a scaled one** (design round 1, D2; N2): `MAX_FIT_SCALE = 1` means the world is
+never enlarged by the fit, so the node's label renders at `text-body-sm` (13px) and its
+stat line at `text-meta` (12px) beside the page's own 13px subtitle and 12px summary line.
+A reader coming to these frames from the pre-D2 set, where the same node measured 1.79x
+(≈23px and ≈21px), is looking at a different type size. **The rail row is not in any frame**:
+the set is page-level `MeshPage` captures, and the one piece of chrome this slice adds
+- the Mesh destination in the sidebar and in the command palette - is pinned at the
+source instead (`scripts/mesh-tab.test.mjs`), because mounting the rail inside these
+stories would be a second harness for one row. And **the self row's `Chats` cell can
+never carry a count in production** (design round 1, D5): `deviceStatLine` prints a
+count when `sessionCount !== null`, and `sessionCount` comes from the PEER row, which
+by construction does not describe this device - so the frame's `this device` is the
+honest production reading, not a fixture gap. The middle column therefore holds a
+count, an identity and a state sentence, and the `Chats` sort compares them as it
+finds them; sourcing self's own count is slice 2's question (it has to come from the
+sessions the app already holds, not from the peer catalogue).
+
+## The gate, precisely (review round 1, R1-1)
+
+Two facts, two jobs, and they are not the same fact:
+
+- **`features.peers` is a CAPABILITY.** lop advertises it on every install, on purpose -
+  "the KEYS answer 'what can this backend do' rather than 'is this machine in a mesh'"
+  (`local_operator/server/routes/capabilities.py`) - so a device in NO network carries it
+  too. It gates the `/mesh` ROUTE, and it is why the route stays mounted when membership
+  goes empty: a reader who leaves their last network while on this page must not be
+  ejected out from under their pointer by a poll, and the empty state is the honest
+  answer to that moment.
+- **Membership is the catalogue's own emptiness**, which is where the backend says the
+  fact lives ("a device in no network answers an empty catalogue, and an empty catalogue
+  mounts nothing"). It gates the RAIL ROW and the command palette's destination, so a
+  device that is in no mesh keeps today's chrome.
+
+The cost, stated as it actually behaves (review round 2, R2-1, measured it - the first
+version of this paragraph said "one read" without a cadence, and the code was polling
+every 30 seconds because the always-mounted rail had inherited the tab's interval):
+
+- **one read-only catalogue read per window**, issued when the window starts: a
+  `networks.list`, which creates nothing - the backend short-circuits it on
+  `has_any_network()`, an `is_dir` test whose `_networks()` returns `[]` "so nothing else
+  mkdirs";
+- **no interval, no window-focus refetch and an infinite `staleTime`** on the rail's
+  observer (`useMeshMembership` asks for `poll: false`), because a mesh listing DIALS
+  every peer - so nothing about this row may poll on a screen that is not the tab;
+- the catalogue's **30 s cadence belongs to the TAB**, and the rail rides that observer's
+  cache entry while the tab is open;
+- and a daemon that does not advertise `peers` issues nothing at all.
+
+**The residual cost, stated rather than implied**, because this is the number round 2 asked
+for: that one read FANS OUT. The rail is mounted before anything else, so its read is the
+first thing a mesh-capable window does, and a `networks.list` dials every peer. It is one
+fan-out per window instead of one every 30 s, and it is not removable from this side:
+membership cannot be known without asking, `peers` is advertised by every install, and
+keying the row on the capability instead is the R1-1 defect. The read that would make even
+the window-start fan-out free is a membership summary that does not dial peers - a
+`has_network` field on the capabilities payload, or a summary route - a backend ask,
+deferred, and not faked here by having the renderer read the config directory.
+
+The row stays absent until the device is KNOWN to be in a mesh. What the brief's "no call
+is issued" line was protecting is the byte-for-byte chrome, and this protects it better
+than the capability alone did.
+
+**And what a genuinely fresh install meets today is not the empty state.** QA round 1
+(Q-1) traced it: `GET /v1/desktop/commands`, which the app fetches on every boot for the
+palette, CREATES `<config>/network/networks`. Round 2 challenged the attribution, because an
+import scan of that route finds nothing from the network package - the import is
+**function-local**, which is exactly why. The chain at `damianvtran/local-operator`
+`origin/main` (`801c8731b`):
+
+```
+GET /v1/desktop/commands
+  routes/desktop_catalogues.py:128  command_catalogue()      -> reply({"commands": ...})
+  utils/desktop_commands.py:46      command_catalogue()      -> argument_words(spec), per row
+  utils/desktop_commands.py:43      argument_words()         -> command_argument_words(spec)
+  slash_commands.py:1726            ArgumentShape.REMOTE_PEER -> local import of known_peer_names
+  network/peers.py:101              known_peer_names()       -> known_peers(root)
+  network/peers.py:84               known_peers()            -> store.list_networks(root)
+  network/store.py:650              list_networks()          -> networks_dir(root).glob("*.json")
+  network/store.py:117              networks_dir()           -> path.mkdir(parents=True, exist_ok=True)
+```
+
+`list_networks` is a READ that creates, reached through the vocabulary the catalogue
+publishes for every row. `has_any_network()` is then an `is_dir` test on exactly that path,
+so the mesh reads proceed to a relay that has no record and answer `503
+relay_unavailable` on a machine that has never joined anything - which is why `reads-failed`
+is in this set. The root cause is outside this diff, and its fix is in flight as its own
+backend PR: **#1666, "fix(network): a read must not create the network plane"**, which
+re-derives this trace, records the two `mkdir` events an audit hook saw, and shows **0 of
+53** GET routes create the plane after it. So `virgin-device` is the page's own first-run
+state - what a
+reader sees wherever the catalogue answers `[]`, including after leaving a network with
+the tab open - and not a claim about what a machine with no mesh shows on first launch.
+
+The **gated-out** case (no `features.peers`) has no frame on purpose: a daemon that
+cannot serve these routes gets no Mesh row and no `/mesh` route, so the evidence for
+it is absence, pinned at the source in `scripts/mesh-tab.test.mjs` - a screenshot of a
+missing row proves nothing a reader could check.
+
+## The states
+
+| Frame | State | The one fact it carries |
+| --- | --- | --- |
+| `single-device/localOperator*.webp` | a device alone in one network | today's real S=1 shape: one lane, one device, one membership edge, and the summary line naming which device this is |
+| `two-devices/…` | a healthy two-device mesh | the design target: two nodes, one edge, the peer's chat count |
+| `two-devices-narrow/…` | the same screen at 1024x768 | a narrow case: the canvas fits the world into a smaller box rather than scrolling it. The app's own floor is **800x600** (`WINDOW_MIN_WIDTH`/`WINDOW_MIN_HEIGHT` in `src/main/window-mode.ts`), and the design round captured four states there without committing them - all hold, and the node's ellipsis is a world-space cut rather than a responsive one |
+| `overlapping-networks/…` | five devices across two networks, one device in both | THE claim of the model: a device in two networks is ONE node with TWO edges |
+| `misconfigured/…` | a suspect device, an unreachable device, a revoked membership | each misconfiguration is a named state with its own reason, and the revoked edge draws dashed |
+| `virgin-device/…` | no network at all | the page's own first-run state: the sentence and the command that changes it |
+| `reads-failed/…` | both reads refused | the relay's own sentence, verbatim, and the control that asks again |
+| `loading/…` | the first paint | a skeleton, not a spinner over a blank world |
+| `list-view/…` | the same mesh in the list presentation | the sortable list, which is the other way in and the reason a graph is not the only presentation |
+| `device-panel/…` | a device's panel, open | the node's detail and its actions: memberships, the session list, and the two affordances the canvas cannot offer |
+| `device-panel-narrow/…` | the same panel at 1024x768 | the clicked node stays whole while the panel takes a third of the width - the clamp that keeps it visible solves against the canvas's *clip* box, so nothing sits under the border (round 3, Q-1) |
+| `cap-at-four/…` | four conversations on one peer | the cap's own case: two chips and the `+N` control, with the chip's label truncated from the LEFT so the end that distinguishes series-named conversations survives |
+| `move-confirm/…` | the confirm a destructive move raises | the dialog names what is lost, because the source copy is deleted once the peer has it |
+| `move-refused-busy/…` | a turn in flight refuses the move | the code, the route's own sentence, and the one remedy that changes anything: wait for the turn to finish |
+| `move-busy-waited/…` | the remedy executed | the receipt the re-issued move produces (`cloud-node-1 holds it now; the copy here is gone.`) **and the world it claims**: this device holds one conversation, and the peer draws the moved `Sweep 001` beside its own - see the note above |
+| `move-copy-with-undo/…` | a `--keep` copy, and its undo | the peer gains a copy under a new id, the original stays, and the undo is a recall that names its own loss |
+| `invite-receipt/…` | an invite, minted | admission is two-sided, so the affordance is a dialog rather than a drag: the token's path, and why this app never reads it |
+| `drag-to-device/…` | a session lifted over a valid target | the transient: the ghost under the pointer, the target's own edge, and the indicator naming the operation the drop would perform |
+| `drag-refused-over-network/…` | the same drag over a network lane | the one gesture the protocol refuses, refused prospectively - a conversation lives on a device, and the indicator says so before the drop |
+
+## The numbers behind the frames
+
+Three claims in the frames are quantitative, so they were measured rather than
+looked at; each is quoted in the source beside the decision it decides.
+
+- **The node's edge is a control's edge (corrected in review round 1, D1).** The edge
+  measures **3.92:1** against the node's own `elevated` fill on `localOperatorLight`
+  and **3.30:1** on `localOperatorDark` - above the CONTROLS floor a control whose
+  boundary is its border owes - beside the fill's own step off the canvas well, ΔE00
+  6.85 / 7.71. This bullet used to claim `hairline` on that fill measured ΔE00 1.44 /
+  1.23, "a border nobody can see"; re-measured with the repo's own `deltaE` it is
+  **9.19 / 4.80**, so the hairline is visible and the edge was chosen for the ratio
+  above. `scripts/contrast-contract.mjs` carries a `mesh device node` row asserting
+  that triple, and the gate reports **29,293 assertions across 59 themes** with 0
+  consulted exceptions — re-derived at this head (design review round 3, D17: this
+  sentence said 28,524, which was true when it was written and moved as the contract
+  gained rows; the number is a reading, not a constant).
+- **Selection needs more than a fill.** `rowSelected` against this node's own
+  `elevated` fill measures ΔE00 7.00 on the light brand palette but only 2.19 on the
+  dark one - at the field floor, not above it - so a selected node takes the ink edge
+  as well (11.8:1 against that fill).
+- **One quantity, one number.** The first capture of this set showed a network node
+  reading "3 devices" beside a summary line reading "4 devices": the node counted
+  active memberships and the summary counts device nodes. Both now count members,
+  and the revoked ones are named (`4 devices · 1 revoked`), pinned by a test rather
+  than by a second look.
+
+## Reproducing
+
+```sh
+node_modules/.bin/storybook dev -p 6017 --no-open --ci --quiet &
+node scripts/capture-evidence.mjs --only=mesh-tab \
+  --themes=localOperatorLight,localOperatorDark --allow-backend
+```
+
+The frames are `.webp` at 1380x900 (and 1024x768 for the narrow row), written by
+the sweep's own Chrome profile, which it removes on exit.

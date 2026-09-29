@@ -1363,6 +1363,36 @@
 			"redacted": false
 		},
 		{
+			"key": "display.hide_cross_session",
+			"section": "appearance",
+			"label": "Cross-session traffic",
+			"kind": "bool",
+			"help": "Hide `lop send` traffic — peer sends and inbound peer messages — from transcripts.",
+			"value": false,
+			"default": false,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "hide it in transcripts"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "show it in transcripts"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null
+		},
+		{
 			"key": "tui.sidebar_visible",
 			"section": "appearance",
 			"label": "Session sidebar",
@@ -1447,6 +1477,26 @@
 			"choices": [],
 			"empty_unsets": false,
 			"redacted": false
+		},
+		{
+			"key": "keymap.quick_send",
+			"section": "keymap",
+			"label": "Quick send",
+			"kind": "hotkey",
+			"help": "Opens a small composer over other apps; messages the chief of staff.",
+			"value": "primary+alt+shift+space",
+			"default": "primary+alt+shift+space",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"hotkey_scope": "desktop"
 		},
 		{
 			"key": "tool_approval_mode",

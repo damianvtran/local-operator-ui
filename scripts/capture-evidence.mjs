@@ -585,8 +585,52 @@ export const STORIES = [
 	["provider-sign-in-onboarding--onboarding-step-2-choose", 1280, 900],
 	["provider-sign-in-onboarding--onboarding-step-2-no-catalogue", 1280, 900],
 	["provider-sign-in-onboarding--onboarding-step-3", 1280, 900],
+	/*
+	 * And its ADD-KEYS branch, which is the other half of the same step: every
+	 * catalogue provider gets its own field, and Free is no longer selected.
+	 * The six rows are what the frame is about, so the shutter waits on one of
+	 * them rather than on the click's own promise.
+	 */
+	[
+		"provider-sign-in-onboarding--onboarding-step-3-keys",
+		1280,
+		900,
+		{ expectPresent: '[data-search-key="BRAVE_API_KEY"]' },
+	],
 	["provider-sign-in-onboarding--empty-chat-card", 1280, 620],
 	["provider-sign-in-onboarding--connect-dialog", 1280, 900],
+
+	/*
+	 * The rail's account row in the states the operator's report names (a failed
+	 * read must name the state and carry the way back; a read in flight must
+	 * not). Sized to the rail's own foot: the 260px column fills the narrow
+	 * frame, so the row is the subject rather than a corner of it.
+	 */
+	["navigation-user-profile--account-reconnect", 560, 360],
+	["navigation-user-profile--account-checking", 560, 360],
+	["navigation-user-profile--account-ready", 560, 360],
+	/*
+	 * The `useAuth` branch, menu open: the story holds the shutter until the
+	 * menu's items are in the DOM, and this expectation is the same claim made
+	 * against the frame (QA round 1, Q2 - the branch had no story at all).
+	 */
+	[
+		"navigation-user-profile--account-reconnect-menu",
+		560,
+		360,
+		{ expectPresent: '[role="menuitem"]' },
+	],
+
+	/*
+	 * The verify-to-claim callout in Settings, and the absence it must show
+	 * when the grant is claimed. `verify-pending` carries the amount the
+	 * backend captured; the claimed frame is the one the capture is checked
+	 * against for "nothing rendered".
+	 */
+	["settings-radient-account--verify-pending", 1280, 480],
+	["settings-radient-account--verify-expired", 1280, 480],
+	["settings-radient-account--verify-none", 1280, 480],
+	["settings-radient-account--claimed", 1280, 400],
 
 	["chat-trace--conversation", 1280, 1308],
 	["chat-trace--conversation-with-reasoning", 1280, 1409],
@@ -621,12 +665,105 @@ export const STORIES = [
 	["chat-trace-fold--mid-run", 1280, 130],
 	["chat-trace-fold--finished", 1280, 130],
 	["chat-trace-fold--restored", 1280, 130],
+	/*
+	 * The operator's report of 2026-09-27, as a state: four file reads and three
+	 * agent-profile READS, which folded as `Explored 4 files, delegated 3 tasks`
+	 * while every row above the header read `Delegated`. With the op tier the
+	 * same seven actions fold by kind - `4 files · 3 agents` - under the noun of
+	 * the calls themselves (`KIND_NOUNS`), and this header is the frame the
+	 * design round judges that claim from.
+	 */
+	["chat-trace-fold--agent-ops", 1280, 130],
 	[
 		"chat-trace-fold--expanded",
 		1280,
 		210,
 		{ press: '[data-fold-ids] button[aria-expanded="false"]' },
 	],
+
+	/*
+	 * THE COLLAPSED TURN'S OWN STATES (`turn-collapse.stories.tsx`): a completed
+	 * turn's pre-answer rows rendered as one bar, in the shapes the §5 case
+	 * matrix names. Eight rows because the states are eight: the finished turn
+	 * (collapsed), the same turn after the reader's own press (`Expanded` - the
+	 * press is the HARNESS's, because the claim is that the bar's own control is
+	 * what opens it), a steered run (the second question folds inside rather
+	 * than starting a turn), an interrupted turn (the bar states no outcome in
+	 * v1 - the sibling session owns that wording), a genuinely failed call (no
+	 * tally on the bar; the red rows are one press away, and `failed-expanded`
+	 * photographs the reveal), the count clause at its long form,
+	 * the same turn read from history (durable rows, no live frames - reload's
+	 * state, and the span must still read the same), and the live control
+	 * (nothing condenses while a turn runs).
+	 *
+	 * TWO THEMES, NOT TWELVE, because the claim is a ROW - its ink roles, its
+	 * alignment, its clauses - and the two `localOperator` palettes are where
+	 * the danger ink and the muted summary are judged; the before half
+	 * (`../chat-turn-collapse-before/`) is the same eight stories on the
+	 * pre-change tree, so the pair differs by the collapse and nothing else.
+	 */
+	["chat-turn-collapse--collapsed", 1280, 900],
+	/*
+	 * THE HOVER CELL (design spec for the below-rule, 2026-09-28): the bar's own
+	 * hover ground painting above an unaltered hairline — the D4 state a still of
+	 * the resting bar cannot show.
+	 */
+	[
+		"chat-turn-collapse--collapsed",
+		1280,
+		900,
+		{ hover: "[data-turn-summary] button", dir: "collapsed-hover" },
+	],
+	[
+		"chat-turn-collapse--expanded",
+		1280,
+		900,
+		{ press: '[data-turn-summary] button[aria-expanded="false"]' },
+	],
+	["chat-turn-collapse--steering", 1280, 900],
+	["chat-turn-collapse--interrupted", 1280, 900],
+	["chat-turn-collapse--failed", 1280, 900],
+	/*
+	 * DESIGN ROUND 1, D1: the failure BEHIND the press — the bar without a
+	 * tally, and the red row one expansion away, on a frame.
+	 */
+	[
+		"chat-turn-collapse--failed",
+		1280,
+		900,
+		{
+			press: '[data-turn-summary] button[aria-expanded="false"]',
+			dir: "failed-expanded",
+		},
+	],
+	["chat-turn-collapse--long-run", 1280, 900],
+	["chat-turn-collapse--restored", 1280, 900],
+	["chat-turn-collapse--running", 1280, 900],
+	/*
+	 * THE ROUND-1 CELLS (review round 1): `narration` answers design D4a (the
+	 * span-only sentence, §5 case 3), `pinned` answers design D4b / §11-R4 (a
+	 * pinned statement inside the span, on a frame), and `parked` answers
+	 * design D3 (a turn on the reader's gate must not condense - the same
+	 * moment the live rig's parked capture carries with its question card).
+	 */
+	["chat-turn-collapse--narration", 1280, 900],
+	["chat-turn-collapse--pinned", 1280, 900],
+	/*
+	 * ISSUE #5'S PAIR (operator feedback, 2026-09-29): peer and wake receipts
+	 * collapse with the work. The second row presses the same story open so the
+	 * design round can judge the reveal.
+	 */
+	["chat-turn-collapse--receipts", 1280, 900],
+	[
+		"chat-turn-collapse--receipts",
+		1280,
+		900,
+		{
+			press: '[data-turn-summary] button[aria-expanded="false"]',
+			dir: "receipts-expanded",
+		},
+	],
+	["chat-turn-collapse--parked", 1280, 900],
 
 	/*
 	 * A turn joined MID-STREAM, which is the one transcript surface whose evidence
@@ -676,6 +813,26 @@ export const STORIES = [
 	   (design round 1, D5) is judged on: a short notice, the QA Q6 boundary
 	   either side of the threshold, and a bulky one. */
 	["chat-canonical-notices--notice-lengths", 1280, 340],
+	/*
+	 * The provider-account failures that now earn an ACTION, at a readable
+	 * height: Radient out of credits (the providers surface, Radient selected),
+	 * a refused Radient credential ("Sign in to Radient"), and an anthropic quota
+	 * row as the non-Radient control whose action names the surface without
+	 * assuming an account. Texts generated by the runtime's own formatter.
+	 */
+	[
+		"chat-canonical-notices--provider-account-actions",
+		1280,
+		380,
+		/*
+		 * The Radient billing row's action now lands on the account section, and
+		 * this is the claim the shutter makes: the row really carries that link
+		 * (UX round 1, U3). The auth row's provider deep link is asserted by
+		 * `scripts/canonical-notice.test.mjs`; this frame's expectation covers the
+		 * target that moved.
+		 */
+		{ expectPresent: 'a[href*="section=radient"]' },
+	],
 	/*
 	 * The transcript's own Quote control, which is raised by a HIGHLIGHT of a turn
 	 * rather than by the pointer over it (the operator's report: the button "should
@@ -905,6 +1062,28 @@ export const STORIES = [
 	 * margin, and the widest step of all, which the change does NOT move.
 	 */
 	["chat-canonical-message-surface--user-turn", 1024, 560],
+	/*
+	 * CURRENCY AND MATH IN ONE MESSAGE (operator report, 2026-09-27). Four
+	 * states of `math-currency.stories.tsx` - a cost report whose amounts must
+	 * stay literal with its bold intact, pandoc's own `$20,000 and $30,000`
+	 * example, a price ahead of a genuine span, and a formulas-only control -
+	 * captured at 1024 wide, each frame just under its own content (the rig's
+	 * paint assertion counts a frame whose ink is under 1.5% of its height as
+	 * having painted nothing).
+	 *
+	 * THE BEFORE HALF IS NOT A ROW HERE. It is the declared supplementary set
+	 * `../chat-math-currency-before/`: the same four stories against the
+	 * pre-change pipeline, captured by suffixing the story's title `before`
+	 * for that run - with matching temporary rows - so the ids land in their
+	 * own directory (`capture-evidence.mjs` writes `OUT/<id before `--`>/<leaf>`).
+	 *
+	 * TWO THEMES, NOT TWELVE. The claim is text SHAPE, which no palette moves;
+	 * the sweep's twelve would photograph the same glyph runs in different ink.
+	 */
+	["chat-math-currency--cost-report", 1024, 380],
+	["chat-math-currency--pandoc-classic", 1024, 300],
+	["chat-math-currency--price-then-formula", 1024, 300],
+	["chat-math-currency--genuine-math", 1024, 300],
 	/* THE CITATION A SENT MESSAGE CARRIES, as the chip the composer showed before
 	   the send (operator report, 2026-09-17). Three stories at the user-card
 	   measure's own 1024x620 pane, so they read beside the rows above: the reported
@@ -1086,7 +1265,8 @@ export const STORIES = [
 	// being free (design round 2, D3 asked for this specimen by name).
 	["browser-url-bar--two-digits", 1280, 120],
 	/* The strip's grammar and its chips. Tight to the strip plus a slice of ground
-	   under it: the active tab's notch is the 1px of `canvas` that makes the tab
+	   under it: the active tab's notch is the 1px of the page's own ground
+	   (`elevated`) that makes the tab
 	   continuous with the page, and a frame that stopped at the strip's rule could
 	   not show it. `actions-expanded` is taller by exactly the row the strip grows
 	   when a row's actions open in the band. */
@@ -1104,11 +1284,19 @@ export const STORIES = [
 	// which is how both of round 6's majors stayed invisible.
 	["browser-tab-strip--worst-case", 1280, 140],
 	["browser-tab-strip--worst-case-widest", 1280, 140],
-	["browser-tab-strip--actions-expanded", 1280, 260],
+	/* The popout supersedes the in-band band the old comment sized these for (2026-09-28
+	   round 2, D3): the strip no longer grows, the panel HANGS below it, so the row is
+	   sized to the panel the story draws - the same rule the comment below states, now
+	   applied to the popout. MEASURED, NOT GUESSED: at 1280 the single-tab popout's
+	   bottom border sits at device y 302 on the 340-tall probe, so this height lands the
+	   frame's bottom 56 device px under it - exactly the slack the batch sibling has
+	   (its panel ends at 336 in a 392 frame). The pre-fix row (260) was still sized to
+	   the deleted band and clipped the panel's closing edge in the round-1 re-shoot. */
+	["browser-tab-strip--actions-expanded", 1280, 326],
 	/* The pin's band list and a row's band with the four bulk closes (design R4 fix 2,
 	   R5). `pinned-list` is declared taller by the list's own bounded height
-	   (`max-h-36` plus the header row), and `actions-expanded-batch` by the same row
-	   height the other expanded band uses. */
+	   (`max-h-36` plus the header row), and `actions-expanded-batch` by the panel its
+	   own popout draws (bottom border at device y 334-337 in this frame). */
 	["browser-tab-strip--actions-expanded-batch", 1280, 360],
 	/*
 	 * THE TWO EXPANDED BANDS ARE TALLER SINCE THE ROUND-2 RULING (D7): the band is a
@@ -1425,6 +1613,136 @@ export const STORIES = [
 		84,
 		{ hover: "[data-header-title]", dir: "title-hover" },
 	],
+	/*
+	 * THE INLINE RENAME (the operator's report, 2026-09-26): the report names
+	 * exactly these moments - hovering the title reveals the pencil
+	 * (`title-hover` above, unchanged), the pencil press AND the title's own
+	 * double-click open the editor, and Enter, Escape and the X are the three
+	 * exits - so each has a frame whose claim is asserted at shutter time. The
+	 * editor's own hook (`[data-header-rename-input]`) must be PRESENT for the
+	 * entries that open it and GONE for the entries that close it, and
+	 * `rename-edit`'s `aria-label` claim is the pencil-becomes-X half; a frame
+	 * cannot ship under a rename name with the editor never opened, never
+	 * closed, or the X still labelled as the pencil.
+	 *
+	 * `rename-edit-typed` and `rename-save` split the save in two ON PURPOSE:
+	 * the typed frame is where `Input.insertText` landing (and the select-all it
+	 * replaces) is visible in pixels, and the save frame is the round trip - the
+	 * story's bridge repaints the title with the name the command CARRIED, so
+	 * the frame carries the submitted value rather than a claim about it.
+	 */
+	[
+		"chat-header-identity--rename-inline",
+		560,
+		84,
+		{
+			press: "[data-header-rename]",
+			pressSettleMs: 250,
+			expectPresent: "[data-header-rename-input]",
+			expectAttribute: {
+				selector: "[data-header-rename]",
+				name: "aria-label",
+				equals: "Cancel rename",
+			},
+			dir: "rename-edit",
+		},
+	],
+	[
+		"chat-header-identity--rename-inline",
+		560,
+		84,
+		{
+			dblclick: "[data-header-title]",
+			dblclickSettleMs: 250,
+			expectPresent: "[data-header-rename-input]",
+			dir: "rename-edit-dblclick",
+		},
+	],
+	[
+		"chat-header-identity--rename-inline",
+		560,
+		84,
+		{
+			press: ["[data-header-rename]", "[data-header-rename]"],
+			pressSettleMs: 250,
+			expectGone: "[data-header-rename-input]",
+			expectAttribute: {
+				selector: "[data-header-rename]",
+				name: "aria-label",
+				equals: "Rename conversation",
+			},
+			dir: "rename-cancel-x",
+		},
+	],
+	[
+		"chat-header-identity--rename-inline",
+		560,
+		84,
+		{
+			press: "[data-header-rename]",
+			pressSettleMs: 250,
+			keys: [{ key: "Escape", settleMs: 300 }],
+			expectGone: "[data-header-rename-input]",
+			dir: "rename-cancel-esc",
+		},
+	],
+	[
+		"chat-header-identity--rename-inline",
+		560,
+		84,
+		{
+			press: "[data-header-rename]",
+			pressSettleMs: 250,
+			insertText: "Rename round trip (rig)",
+			insertTextSettleMs: 200,
+			dir: "rename-edit-typed",
+		},
+	],
+	[
+		"chat-header-identity--rename-inline",
+		560,
+		84,
+		{
+			press: "[data-header-rename]",
+			pressSettleMs: 250,
+			insertText: "Rename round trip (rig)",
+			insertTextSettleMs: 200,
+			keys: [{ key: "Enter", settleMs: 400 }],
+			expectGone: "[data-header-rename-input]",
+			dir: "rename-save",
+		},
+	],
+	/*
+	 * The save IN FLIGHT (agent review round 1's NIT-2, UX round 1's U1-U3,
+	 * fixed in round 1's remediation): the story holds the receipt for six
+	 * seconds, the entry submits and the shutter reads the state the fixes ARE -
+	 * `aria-busy` on the control, the spinner in the X's slot, and the field
+	 * present AND `[readonly]` in one selector (the element the claim is about,
+	 * not a sibling). A frame that arrived after the receipt resolved fails
+	 * rather than lying.
+	 */
+	[
+		"chat-header-identity--rename-inline-saving",
+		560,
+		84,
+		{
+			press: "[data-header-rename]",
+			pressSettleMs: 250,
+			insertText: "Rename round trip (rig)",
+			insertTextSettleMs: 200,
+			keys: [{ key: "Enter", settleMs: 250 }],
+			expectPresent: [
+				"[data-header-rename-input][readonly]",
+				"[data-header-rename] .animate-spin",
+			],
+			expectAttribute: {
+				selector: "[data-header-rename]",
+				name: "aria-busy",
+				equals: "true",
+			},
+			dir: "rename-saving",
+		},
+	],
 	["chat-header-identity--no-team-no-agent", 560, 84],
 	[
 		"chat-header-identity--no-team-no-agent",
@@ -1528,6 +1846,16 @@ export const STORIES = [
 	["chat-tool-rows--screenshots-two", 1280, 900],
 	["chat-tool-rows--user-attachments", 1280, 900],
 	["chat-tool-rows--states", 1280, 900],
+	/*
+	 * The meta tools' operations, one row each (agent list/show/create, team,
+	 * hub peek/send, secret, project, network, console, lsp, and a live wait):
+	 * the rows that printed `Delegated` for everything now name what each call
+	 * DID, through the same pipeline the transcript runs (`toolOp` →
+	 * `summaryFromArgs` → `toolRowLabel`). Height paired with the story's own
+	 * `Frame` (460): twelve consecutive actions condense into a fold, and the
+	 * story OPENS it so the frame holds both the summary line and the rows.
+	 */
+	["chat-tool-rows--tool-ops", 1280, 570],
 	["chat-tool-rows--names-and-fallbacks", 1280, 900],
 	/* The reported defect, and the only new surface this set added: a viewer that
 	   joins a turn already in flight. Its rows are built by the PRODUCTION
@@ -2033,6 +2361,21 @@ export const STORIES = [
 	["chat-run-panel--wake-long-message", 1280, 700],
 	["chat-run-panel--wakes-and-plan", 1280, 820],
 	["chat-run-panel--wakes-floor-320", 1280, 700],
+	/* The MONITORS section (the monitor design doc § 12's desktop row) — the Wakes
+	   section's sibling and the session's second standing-fact list: something
+	   being WATCHED on an interval rather than scheduled to fire. The block
+	   mirrors the wakes one so the two lists can be read side by side: one watch
+	   alone, the health vocabulary (live, mid-ladder, and parked by the failure
+	   ladder — the state ink the wakes rows deliberately lack), the cap and its
+	   marker one past the arm path's own eight, a description longer than its
+	   row, the pair with the wakes (`wakes-and-plan`'s sibling, in the order both
+	   surfaces draw: the wakes first), and the pane's 320px floor. */
+	["chat-run-panel--monitors-only", 1280, 700],
+	["chat-run-panel--monitors-health", 1280, 820],
+	["chat-run-panel--monitors-many", 1280, 820],
+	["chat-run-panel--monitor-long-description", 1280, 700],
+	["chat-run-panel--monitors-and-wakes", 1280, 820],
+	["chat-run-panel--monitors-floor-320", 1280, 700],
 	/* The trigger's activity blip: the pane is CLOSED and a child is running, so
 	   the dot is drawn in `info`. Read against `trigger-idle` (nothing to say) and
 	   `panel-empty` (pane open, no activity ink) — the ink switch is the whole claim
@@ -2352,6 +2695,12 @@ export const STORIES = [
 	 */
 	["chat-sidebar-status-feed--completion-in-place", 780, 660],
 	["chat-sidebar-status-feed--completion-reordered", 780, 660],
+	/*
+	 * The completion that moves the row's TIME BIN: same shape as the two above,
+	 * with the frames a finished turn always publishes and no `catalogue` frame
+	 * at all - the half the base tree's client could not act on.
+	 */
+	["chat-sidebar-status-feed--completion-moves-bin", 780, 660],
 	["chat-sidebar-status-feed--completion-second-in-band", 780, 660],
 	["chat-sidebar-status-feed--completion-acknowledged", 780, 660],
 	["chat-sidebar-status-feed--completion-reordered-offscreen", 780, 660],
@@ -2671,6 +3020,14 @@ export const STORIES = [
 	   the same three widths as `activity-widths` plus 220, the column floor the wake
 	   change was specified against. */
 	["chat-composer-status-row--wake-widths", 1000, 1200],
+	/* The monitor chip (the monitor design doc § 12): the wake chip's count one
+	   over, one band per claim — a watch alone at the row's start, the
+	   wakes-and-watches pair in their own order, and the health band whose whole
+	   point is that this row does NOT move for a monitor's health (the ink is the
+	   pane's). `monitor-widths` is `wake-widths`' four widths with the fifth
+	   count chip in the group, each band printing its own numbers. */
+	["chat-composer-status-row--monitor-chip", 1000, 1000],
+	["chat-composer-status-row--monitor-widths", 1000, 1200],
 	/* THE DISMISS AFFORDANCES and the loop chip (this change): the two RESTING states
 	   only.
 
@@ -3241,6 +3598,108 @@ export const STORIES = [
 	["chat-ask-options--multi-question", 1024, 450],
 	["chat-ask-options--answer-in-flight", 1024, 470],
 	["chat-ask-options--secret-ask", 1024, 360],
+	/*
+	 * THE SECRET STATE'S OWN TWO EXTRAS, added with the credential-input
+	 * change: the EMPTY field's frame above cannot show the mask doing its job,
+	 * and it cannot show the in-flight reading at all.
+	 *
+	 * `secret-ask-typed` types INTO the field through CDP's own input pipeline
+	 * (`Input.insertText`), the same instrument the rename frames use for
+	 * `rename-edit-typed` - so the dots in the frame are a value a user put
+	 * there, not a prop the story set. ITS CLAIM IS CHECKED AT SHUTTER TIME:
+	 * the input the value went into must still be `type="password"`, because
+	 * the mask is the whole of what this surface exists for and a frame filed
+	 * under a secret name with a clear-text field would pass every existing
+	 * guard (nodes present, theme painted, ground covering most of the frame).
+	 */
+	[
+		"chat-ask-options--secret-ask",
+		1024,
+		360,
+		{
+			press: "[data-ask-secret] input",
+			pressSettleMs: 150,
+			insertText: "ghp_example_not_a_real_token",
+			insertTextSettleMs: 150,
+			expectAttribute: {
+				selector: "[data-ask-secret] input",
+				name: "type",
+				equals: "password",
+			},
+			// And the value that made the dots is STILL on the field: a frame
+			// under this name with an empty field would be a clear, not a mask.
+			expectValueKept: "[data-ask-secret] input",
+			dir: "secret-ask-typed",
+		},
+	],
+	/* The submitting reading, from its own story (`SecretAnswerInFlight`): the
+	   eyebrow says "Sending your answer…", the field and its Send control
+	   refuse input, AND the typed value is still under the mask.
+
+	   THE ROW DRIVES THE STATE (design round 1, D2; agent review round 1,
+	   MINOR-1): the story renders the idle field and cannot be seeded from
+	   props, so the rig types through the real input pipeline and submits
+	   through the real key pipeline - the same two instruments the typed frame
+	   uses - and the shutter is held until the story has flipped to in-flight
+	   (`expectSentence` waits) AND the typed value is still on the field
+	   (`expectValueKept`). The previous version photographed an empty field,
+	   which is equally what a premature clear looks like. */
+	[
+		"chat-ask-options--secret-answer-in-flight",
+		1024,
+		360,
+		{
+			press: "[data-ask-secret] input",
+			pressSettleMs: 150,
+			insertText: "ghp_example_not_a_real_token",
+			insertTextSettleMs: 150,
+			keys: [{ key: "Enter", settleMs: 400, text: "\r" }],
+			expectPresent: "[data-ask-secret]",
+			expectAttribute: {
+				selector: "[data-ask-secret] input",
+				name: "type",
+				equals: "password",
+			},
+			expectSentence: {
+				selector: '[data-lo-question-dock="expanded"]',
+				includes: "Sending your answer",
+			},
+			expectValueKept: "[data-ask-secret] input",
+			dir: "secret-answer-in-flight",
+		},
+	],
+	/* The HELD reading (`SecretAnswerHeld`): after an UNKNOWABLE outcome the
+	   field and Send are disabled with the typed value kept, and the hint names
+	   no dead control (design round 1, D1; UX round 1, U1; QA round 1, Q-1).
+
+	   Driven the same way as the in-flight row, and the shutter waits for the
+	   HELD HINT ITSELF - the sentence this state exists to show - scoped to the
+	   card rather than the document, so a frame cannot be committed with the
+	   idle sentence under a held name. */
+	[
+		"chat-ask-options--secret-answer-held",
+		1024,
+		360,
+		{
+			press: "[data-ask-secret] input",
+			pressSettleMs: 150,
+			insertText: "ghp_example_not_a_real_token",
+			insertTextSettleMs: 150,
+			keys: [{ key: "Enter", settleMs: 400, text: "\r" }],
+			expectPresent: "[data-ask-secret]",
+			expectAttribute: {
+				selector: "[data-ask-secret] input",
+				name: "type",
+				equals: "password",
+			},
+			expectSentence: {
+				selector: '[data-lo-question-dock="expanded"]',
+				includes: "nothing can send again",
+			},
+			expectValueKept: "[data-ask-secret] input",
+			dir: "secret-answer-held",
+		},
+	],
 	["chat-ask-options--approval", 1024, 360],
 	["chat-ask-options--approval-answer-in-flight", 1024, 360],
 	["design-system-primitives--all-primitives", 1280, 1600],
@@ -3424,6 +3883,28 @@ export const STORIES = [
 	["shell-app-shell--settings", 1280, 800],
 	["shell-app-shell--agents-empty", 1280, 800],
 	["shell-app-shell--rail-collapsed", 1280, 800],
+	/*
+	 * THE DOCK, IN THE SHELL THAT DECIDES ITS TOP EDGE (canvas chrome, 2026-09-27).
+	 *
+	 * These two rows exist because the pane's own set cannot carry the operator's
+	 * report: `canvas-workspace` and `chat-run-panel` are both `SplitFrame`, so no
+	 * frame in either contains the rail the dock is meant to contrast with or the
+	 * 32px lane that decides where the dock's ground starts - the only ground pair
+	 * in shot is the dock against the conversation, which are the same token now
+	 * (ΔE00 0), and the pair the change actually relies on appears in none of them
+	 * (design review round 1, D2). This set already mounts the real rail, so the
+	 * dock's frames belong here: `app.tsx` composes `ChatLayout` with
+	 * `SidebarNavigation` beside `<main>`, and the story is that composition with a
+	 * conversation stand-in in place of the one that needs a live session.
+	 *
+	 * A row is also how a NEW story becomes capturable at all: `--only` filters
+	 * this literal, so a story that is not declared here is invisible to every pass,
+	 * however it looks in the index (measured: `--only=shell-app-shell--chat-dock-files
+	 * --dirs= matched no story`, and the message names the two filters rather than
+	 * the missing row).
+	 */
+	["shell-app-shell--chat-dock-files", 1280, 900],
+	["shell-app-shell--chat-dock-run-panel", 1280, 900],
 
 	/*
 	 * Settings, Application updates and info, in the state the operator reported:
@@ -3759,12 +4240,33 @@ export const STORIES = [
 	["agent-hub-page--focused-search", 1280, 900],
 	["agent-hub-page--narrow-columns", 920, 900],
 	/*
+	 * The organization surfaces (local-operator-ui PR H, design §8.4). Four states,
+	 * all of them unreachable by hand on a working machine: an org scope needs an
+	 * organization with a plan, a lapsed plan needs a subscription to lapse, and a
+	 * revoked membership cannot be revoked from the app. That is what a story is
+	 * for — and each frame carries a claim the source alone cannot show (the badge
+	 * naming the organization, a card footer with no heart, "no access" rendered as
+	 * a state rather than as the outage panel, and a roster with a pull action).
+	 */
+	["agent-hub-page--org-scope-selected", 1280, 900],
+	["agent-hub-page--org-teams", 1280, 900],
+	["agent-hub-page--org-empty", 1280, 900],
+	["agent-hub-page--org-plan-lapsed", 1280, 900],
+	["agent-hub-page--org-access-revoked", 1280, 900],
+	/*
 	 * The chat sidebar's Agents section, at the width that column actually is:
 	 * the frame is the 360px panel inside a little ground, because the section is
 	 * three rows and an action, and a 1280px frame of it would be a picture of the
 	 * app's empty right-hand side.
 	 */
 	["chat-sidebar-agents--empty-with-shortcut", 420, 760],
+	/*
+	 * The same offer AFTER the reader dismissed it: the whole empty-state block
+	 * leaves and the section is its heading and the create row. The dismissal is
+	 * a real click in the story's play, like the batch frames below, so the
+	 * frame is the component reacting rather than a prop that fakes the state.
+	 */
+	["chat-sidebar-agents--offer-dismissed", 420, 760],
 	["chat-sidebar-agents--empty-without-shortcut", 420, 760],
 	["chat-sidebar-agents--installed-with-builtins", 420, 760],
 	["chat-sidebar-agents--all-installed", 420, 760],
@@ -3829,6 +4331,23 @@ export const STORIES = [
 	["chat-sidebar-view-menu--popover-open", 741, 760],
 	["chat-sidebar-view-menu--popover-hidden-section", 741, 760],
 	["chat-sidebar-view-menu--popover-reordered-pair", 741, 760],
+	/*
+	 * THE TIME BASIS PAIR (2026-09-28): one roster, both clocks, so the frames
+	 * differ only in the pressed row and what the sections below read - and the
+	 * rail's own state, where the pair this fix removes would have stood.
+	 */
+	["chat-sidebar-view-menu--popover-basis-last-active", 741, 760],
+	["chat-sidebar-view-menu--popover-basis-created", 741, 760],
+	["chat-sidebar-view-menu--reorder-edges", 741, 760],
+	/* The design direction's D2 capture: the same panel in the window floor. */
+	["chat-sidebar-view-menu--popover-open-short", 800, 600],
+	/*
+	 * The same state in the shape the APP can reach with a short window (round
+	 * 1's Q-2): the popover does not exist below ~1024px because the rail
+	 * collapses, so a docked width and a short height is the honest worst case
+	 * the reader can drive.
+	 */
+	["chat-sidebar-view-menu--popover-open-narrow", 1100, 600],
 	[
 		/*
 		 * The first rung needs no scroll: the rig proved it by refusing - at ten
@@ -3993,6 +4512,185 @@ export const STORIES = [
 	],
 	["chat-sidebar-view-menu--off-route-voice", 741, 760],
 
+	/* ------------------------------------------------------------------ *
+	 * THE VIEW-SETTINGS AUDIT (operator, 2026-09-27): one frame per control the
+	 * panel promises, driven by that control's own press, with the caption
+	 * printing both sides of the claim - what the panel's switches say and what
+	 * the two regions actually draw.
+	 *
+	 * `audit-entity-hidden` is the reported bug and the pair's other half is
+	 * `audit-entity-restored`: the same switch pressed off, then back on. Both
+	 * are captured from `origin/main` as well, in the supplementary set
+	 * `docs/evidence/view-settings-audit-baseline/`, because the claim is a
+	 * DELTA - on the base commit the caption's last line reads `DISAGREE` with
+	 * the `Agents` row still drawn, which is the operator's own screenshot.
+	 *
+	 * The ORDER pair is one control over two frames on purpose: `Most recent`
+	 * and `Active first` must produce different lists, not merely different
+	 * ticks, so the two captions' row orders are read against each other (the
+	 * live turn is the oldest conversation in the fixture and so sits past the
+	 * ten-row page under one order and leads the list under the other).
+	 * ------------------------------------------------------------------ */
+	/*
+	 * EACH ENTRY CLAIMS ITS OUTCOME, and the rig checks it against the live DOM
+	 * immediately before the shutter (`expectAttribute`/`expectGone`/
+	 * `expectPresent`): a frame that says "the section is hidden" while the
+	 * region still draws it fails the CAPTURE rather than being filed. That is
+	 * the operator's report, so it is asserted in the direction it was reported.
+	 *
+	 * `audit-group-flat` asserts the two pinned rows BY NAME for the second
+	 * defect this pass fixed: a grouping dropped them when it took the page
+	 * alone, so those two ids are the difference between `In one list` arranging
+	 * the column and filtering it.
+	 */
+	[
+		"chat-sidebar-view-menu--audit-entity-hidden",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-section="agents"]',
+				name: "aria-checked",
+				equals: "false",
+			},
+
+			expectGone:
+				'[data-sidebar-region="entities"] [data-chat-section="agents"]',
+			expectPresent:
+				'[data-sidebar-region="entities"] [data-chat-section="teams"]',
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-entity-restored",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-section="agents"]',
+				name: "aria-checked",
+				equals: "true",
+			},
+			expectPresent:
+				'[data-sidebar-region="entities"] [data-chat-section="agents"]',
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-chat-section-hidden",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-section="week"]',
+				name: "aria-checked",
+				equals: "false",
+			},
+			expectGone: '[data-sidebar-region="chats"] [data-chat-section="week"]',
+			expectPresent:
+				'[data-sidebar-region="chats"] [data-chat-section="older"]',
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-pinned-hidden",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-section="pinned"]',
+				name: "aria-checked",
+				equals: "false",
+			},
+			expectGone: [
+				'[data-sidebar-region="chats"] [data-chat-section="pinned"]',
+				'[data-session-row="audit-pinned-new"]',
+			],
+			expectPresent:
+				'[data-sidebar-region="chats"] [data-chat-section="running"]',
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-teams-hidden",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-section="teams"]',
+				name: "aria-checked",
+				equals: "false",
+			},
+			expectGone:
+				'[data-sidebar-region="entities"] [data-chat-section="teams"]',
+			expectPresent:
+				'[data-sidebar-region="entities"] [data-chat-section="agents"]',
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-group-agent",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-choice="agent"]',
+				name: "aria-checked",
+				equals: "true",
+			},
+			expectGone: [
+				'[data-sidebar-region="chats"] [data-chat-section="running"]',
+				'[data-sidebar-region="chats"] [data-chat-section="older"]',
+			],
+			expectPresent: [
+				'[data-sidebar-region="chats"] [data-chat-section="coder"]',
+				'[data-sidebar-region="chats"] [data-chat-section="ungrouped"]',
+			],
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-group-flat",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-choice="flat"]',
+				name: "aria-checked",
+				equals: "true",
+			},
+			expectGone: [
+				'[data-sidebar-region="chats"] [data-chat-section="running"]',
+				'[data-sidebar-region="chats"] [data-chat-section="coder"]',
+			],
+			expectPresent: [
+				'[data-sidebar-region="chats"] [data-chat-section="all"]',
+				'[data-session-row="audit-pinned-new"]',
+				'[data-session-row="audit-pinned-old"]',
+			],
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-order-most-recent",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-choice="recent"]',
+				name: "aria-checked",
+				equals: "true",
+			},
+			expectGone: '[data-session-row="audit-busy-old"]',
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-order-active-first",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-choice="active-first"]',
+				name: "aria-checked",
+				equals: "true",
+			},
+			expectPresent: '[data-session-row="audit-busy-old"]',
+		},
+	],
+
 	/*
 	 * The publish dialog, in every state its rewrite introduced (agent-hub
 	 * contract §6.2/§6.3): the consent copy that now says what is published, the
@@ -4017,6 +4715,15 @@ export const STORIES = [
 	["agents-publish-dialog--moderation-unavailable", 980, 860],
 	["agents-publish-dialog--published", 980, 860],
 	["agents-publish-dialog--update-listing", 980, 860],
+	/*
+	 * The publication target (design §8.4), photographed with the picker OPEN: a
+	 * Radix `SelectContent` renders only while the select is open, so a closed
+	 * picker would show the trigger and nothing about the organizations behind it —
+	 * and the disabled, plan-blocked option is the half a reader is most likely to
+	 * get wrong.
+	 */
+	["agents-publish-dialog--target-org-available", 980, 860],
+	["agents-publish-dialog--target-org-blocked-only", 980, 860],
 	/*
 	 * The pull's four outcomes, each one real toast from the real hook against a
 	 * stubbed transport, held open with `toastDuration: Infinity` because an
@@ -4076,6 +4783,152 @@ export const STORIES = [
 	["schedules-page--picker-open", 1280, 900],
 	["schedules-page--row-actions-revealed", 1280, 900],
 	["schedules-page--row-action-label", 1280, 900],
+	/*
+	 * The Projects tab: the design's foundation slice — the list, the detail
+	 * (progress, milestones in all three derived states, linked sessions), CRUD
+	 * dialogs and the milestone toggle — on the page's PRODUCTION components with
+	 * the desktop bridge stubbed at its boundary (the agent-hub stories' shape),
+	 * so a frame is evidence about the page rather than about a fixture.
+	 *
+	 * The states are the ones the design names: empty / loading / error /
+	 * populated, plus the twelve-row list where the scrollbar appears, the detail
+	 * with a progress snippet, the three dialogs (create, edit, delete with the
+	 * name typed), and the milestone toggle AFTER the press — whose value is that
+	 * the settled frame is a re-read of a real mutation rather than two adjacent
+	 * states.
+	 *
+	 * SLICE S6d re-takes `detail` itself (the fixtures now carry the history
+	 * log, the attributions and the display title) and adds five states: the
+	 * empty detail, the refused detail read, the quick-send strip holding a
+	 * typed message, its AFTER frame — the press that admits through the
+	 * chat's own path, whose value is the cleared composer — and the
+	 * start-session picker with its registry list open.
+	 */
+	["projects-tab--empty", 1280, 900],
+	["projects-tab--loading", 1280, 900],
+	["projects-tab--load-error", 1280, 900],
+	["projects-tab--populated", 1280, 900],
+	/* The window floor's OWN container width (design round 1, D6): the app's
+	 * 800x600 minimum leaves ~33rem of list container with the rail open, and
+	 * this story renders the page alone (no rail), so the frame is taken at the
+	 * width that leaves the same container — the shed the floor produces,
+	 * photographed, rather than the unshed full-width page. */
+	["projects-tab--narrow-columns", 560, 600],
+	["projects-tab--many", 1280, 900],
+	/* The sticky team headers, mid-scroll (slice 3): the one state a resting
+	 * frame cannot hold, because at rest every header is in its flow
+	 * position. The play brings the second header flush to the scroller's
+	 * top and asserts the pin, so the frame is a measurement. Sized shorter
+	 * than the default so the twenty-four-row list actually overflows its
+	 * scroller — at 900 tall the first two sections fit whole and the pin is
+	 * unreachable. */
+	["projects-tab--list-teams-sticky", 1280, 620],
+	["projects-tab--detail", 1280, 900],
+	["projects-tab--stale-progress", 1280, 900],
+	["projects-tab--create-dialog", 1280, 900],
+	["projects-tab--edit-dialog", 1280, 900],
+	/* The sheet's own interactions (S6d-ii part 2): the description editor's
+	 * preview arm, the clipboard-markdown paste (a `paste` event carrying
+	 * `text/html`), and the two-phase create driven to submit — each asserts
+	 * its state before the shutter, so the frames photograph a state the play
+	 * proved, not a coincidence. */
+	["projects-tab--create-sheet-preview", 1280, 900],
+	["projects-tab--create-sheet-paste", 1280, 900],
+	["projects-tab--create-sheet-submit", 1280, 900],
+	/* Round-1 additions: the over-limit counter (D1) and the follow-up
+	 * refusal (R1-5) — the two states review caught without a frame. */
+	["projects-tab--create-sheet-over-limit", 1280, 900],
+	["projects-tab--create-sheet-follow-up-refusal", 1280, 900],
+	["projects-tab--delete-confirm", 1280, 900],
+	["projects-tab--milestone-toggle", 1280, 900],
+	["projects-tab--detail-empty", 1280, 900],
+	["projects-tab--detail-feed", 1280, 900],
+	["projects-tab--detail-load-error", 1280, 900],
+	["projects-tab--detail-quick-send", 1280, 900],
+	["projects-tab--detail-quick-send-sent", 1280, 900],
+	["projects-tab--start-session-dialog", 1280, 900],
+	/*
+	 * The board and the timeline (slice 6bc): the switcher's three views on the
+	 * same page. The board's states are the columns — archived joining only
+	 * when it holds rows, an out-of-vocabulary status kept in its own column
+	 * rather than dropped, and the many-cards scroll. The timeline's are the
+	 * axis with bars and all three milestone-mark states plus the today
+	 * marker, the honest no-dates empty axis, and a passed target with an
+	 * overdue milestone going to the trailing "no dates" section for the one
+	 * undated project. The timeline stories stub one `projects.get` per project
+	 * — the fan-out the view itself performs — from the same desktop-bridge
+	 * boundary every other frame in this set uses.
+	 *
+	 * `board-many` is a shade taller than its siblings (948, not 900): at 900 the
+	 * Active column's last card clips mid-card, and a card cut by the frame edge
+	 * reads as a rendering fault rather than as a scroll (README refresh round 1,
+	 * D2).
+	 */
+	["projects-tab--board", 1280, 900],
+	["projects-tab--board-many", 1280, 948],
+	/*
+	 * WIDER, AND FOR A MEASURED REASON (design round 1, D4a): the side states
+	 * (`paused`, `archived`) and the unknown-word column sit AFTER the five
+	 * pipeline phases, so at 1280 the frame stopped at `Done` and the columns
+	 * this state exists to photograph were only asserted in code. Eight
+	 * `w-64` columns with their gaps need 2156px inside the board's box, and
+	 * the shell's sidebar and the page's padding take the rest; 2048 is the
+	 * first comfortable width that draws all eight (measured: the last column
+	 * ends at 1913px at that width, so the frame carries the state without
+	 * padding the row with dead canvas).
+	 */
+	["projects-tab--board-statuses", 2048, 900],
+	/* The three board states design round 1, D8 named as the sweep's own gaps:
+	 * a column with no rows (the "No projects here." line), the sessions
+	 * popover open (the card's door, listing links), and the card menu open
+	 * (the no-drag rule's only status door). All three are play-driven: the
+	 * first renders settled, the other two press their own control. */
+	["projects-tab--board-empty-columns", 1280, 900],
+	/* The board's sticky mechanics (design round 1, D2): the play asserts the
+	 * 44px header, the straps' `top-11` offset and the push-out before the
+	 * shutter — the state the round-1 finding (Q1/U1) was measured against. */
+	["projects-tab--board-sticky", 1280, 900],
+	["projects-tab--board-sessions-popover", 1280, 900],
+	["projects-tab--board-card-menu", 1280, 900],
+	/*
+	 * The column reorder: the layer the drag writes. `board-column-order-stored`
+	 * is the reload half (a stored order applied at mount),
+	 * `board-column-keyboard-move` is the accessible half (a focused grip's
+	 * arrow key, with the write and the retained focus asserted inside the
+	 * play), and `board-column-drag` is the transient — the rig presses the
+	 * `active` header and HOLDS it over `done`, and the frame's claim is the
+	 * live region's "Moving Active column", which is in the document exactly
+	 * while the gesture is armed. The gesture is the rig's own `drag` option
+	 * rather than the story's play for the mesh canvas's reason: a synthetic
+	 * sequence from a play resolves to the settled board before the shutter.
+	 *
+	 * The drag row settles before the shutter because the HELD pointer keeps
+	 * moving the state: `done`'s center sits inside the strip's right
+	 * auto-scroll zone at this width, so the strip scrolls toward its end while
+	 * the button stays down (UX round 1, U1 - the behaviour itself). 900ms is
+	 * past the clamp, so the frame is the state's own resting point: scrolled
+	 * to the end, the line pinned at the gap the region names, and that reading
+	 * is reproducible on the next capture.
+	 */
+	["projects-tab--board-column-order-stored", 1280, 900],
+	["projects-tab--board-column-keyboard-move", 1280, 900],
+	["projects-tab--board-column-drop-commits", 1280, 900],
+	[
+		"projects-tab--board-column-drag",
+		1280,
+		900,
+		{
+			drag: {
+				from: '[data-board-column-handle="active"]',
+				to: '[data-board-column="done"]',
+				settleMs: 900,
+			},
+			expectSentence: "Moving Active column",
+		},
+	],
+	["projects-tab--timeline", 1280, 900],
+	["projects-tab--timeline-no-dates", 1280, 900],
+	["projects-tab--timeline-overdue", 1280, 900],
 	["common-confirmationmodal--dangerous", 1280, 900],
 	/* The operator's own alert, over the screen they were working on: their
 	   update-service.log holds this exact transport code at 09:03:12 on
@@ -4104,6 +4957,16 @@ export const STORIES = [
 	 * answer (design round 2, D9; UX U9).
 	 */
 	["common-updatenotification--error-state-download", 1280, 900],
+	/*
+	 * The two U1 still-working lines, on the surface that owns each: the checking
+	 * card while its check is held open, and the offer panel while its download is
+	 * held open. Both stories render the shipped component and press its real
+	 * control; the delay is narrowed so the line is on screen in the frame, and
+	 * the download story mounts behind the same ready gate its siblings use, so its
+	 * subscription lands on the decorator's bridge (design D2, remediation round 2).
+	 */
+	["common-updatenotification--checking", 1280, 900],
+	["common-updatenotification--downloading", 1280, 900],
 	["common-updatenotification--update-available", 1280, 900],
 	// The state before an install commits: the bundle is downloaded and the footer
 	// that the install fix changed is on screen. It renders the component's own
@@ -4222,7 +5085,24 @@ export const STORIES = [
 	 * exists to prevent.
 	 */
 	["common-updatenotification--backend-update-installing", 1280, 900],
-	["common-updatenotification--backend-update-restarting", 1280, 900],
+	[
+		"common-updatenotification--backend-update-restarting",
+		1280,
+		900,
+		/*
+		 * AND THE NEW CLAUSE IS THE SUBJECT (2026-09-29): the restarting sentence used
+		 * to say the app waited for the turns to finish first; the operator's directive
+		 * removed that wait, so the sentence now states the fact the directive rests
+		 * on - the turns kept running - and this claim is what refuses a stale frame of
+		 * the old wording.
+		 */
+		{
+			expectSentence: [
+				"The new build has landed",
+				"the turns running on this machine kept running",
+			],
+		},
+	],
 	/*
 	 * THE WAIT BEFORE ANYTHING MOVES, and the one in-flight state this branch adds
 	 * (design round 1, D3). It was undeclared until now, so the repo's own rig could
@@ -4259,35 +5139,88 @@ export const STORIES = [
 	 * own sentence said the app would offer the update again. Both arms are declared
 	 * because they say different things about what happened: a measured busy fleet,
 	 * and a fleet nothing could read.
+	 *
+	 * AND THE COMMAND IS CLAIMED TOO (review round 1, U1): the only reachable
+	 * refusal is the rebuild install leg, whose remedy is the plan's own
+	 * `lop-update` - the fixture carries it and both claims pin it, so a frame
+	 * cannot show a terminal command the producer cannot emit.
 	 */
 	[
 		"common-updatenotification--backend-update-refused-busy-fleet",
 		1280,
 		900,
-		{ expectSentence: "The app waited 10 minutes for them to finish" },
+		{
+			expectSentence: [
+				"The app waited 10 minutes for them to finish",
+				"lop-update",
+			],
+		},
 	],
 	[
 		"common-updatenotification--backend-update-refused-unreadable-fleet",
 		1280,
 		900,
-		{ expectSentence: "The server refused this app's credentials" },
+		{
+			expectSentence: [
+				"The server refused this app's credentials",
+				"lop-update",
+			],
+		},
 	],
 	/*
-	 * AND THE THIRD ARM, WHICH IS A DIFFERENT HEADING (design round 2, D6): this press
-	 * published the build and was refused the bounce, so the panel may not say "The
-	 * update did not start" over a sentence that says the install has landed. Declared
-	 * as its own story rather than injected into a page, which is how the round-2 review
-	 * had to judge it.
+	 * AND THE THIRD ARM IS GONE (2026-09-29): a refusal CANNOT happen after a
+	 * landed install any more, because the drains that ran after the build was on
+	 * disk were the restart legs' and the operator's directive removed them. The
+	 * story and its claim went with the arm rather than staying as copy nothing can
+	 * produce; the two arms above are the ones the rebuild install leg still
+	 * reaches.
+	 */
+	/*
+	 * THE COMPLETION'S FLEET LINE, in the four readings the producer can send
+	 * (2026-09-29; design §2/§4a). The operator's instruction - "we can just
+	 * communicate in the popup that N sessions are still running old versions but
+	 * will get the updates when they next stop or idle" - rendered where the
+	 * completion already lands: N = 0 draws the plain success, N = 1 and N >= 2 add
+	 * the counted second line, and an unmeasured count draws the numberless one.
+	 * ONE CAPTURE NOTE FOR THE SHOOTER: the toast self-closes (6 s, or 8 s once it
+	 * carries the second line), so a shutter that waits on the wrong cue lands on a
+	 * frame with no toast in it - these four want their shots inside that window.
 	 */
 	[
-		"common-updatenotification--backend-update-refused-landed-install",
+		"common-updatenotification--backend-update-completed",
+		1280,
+		900,
+		{ expectSentence: "Server update completed successfully" },
+	],
+	[
+		"common-updatenotification--backend-update-completed-one-session",
 		1280,
 		900,
 		{
 			expectSentence: [
-				"The update didn't finish restarting",
-				"The install itself has landed",
+				"Server update completed successfully",
+				"1 session is still running the old build",
 			],
+		},
+	],
+	[
+		"common-updatenotification--backend-update-completed-sessions-behind",
+		1280,
+		900,
+		{
+			expectSentence: [
+				"Server update completed successfully",
+				"3 sessions are still running the old build",
+				"will move onto the new build when they next stop or go idle",
+			],
+		},
+	],
+	[
+		"common-updatenotification--backend-update-completed-count-unreadable",
+		1280,
+		900,
+		{
+			expectSentence: "Sessions that are still running the old build",
 		},
 	],
 	/*
@@ -4306,7 +5239,27 @@ export const STORIES = [
 	 * to photograph - which is what makes this pair evidence rather than an
 	 * illustration.
 	 */
-	["common-updatenotification--server-behind-app-owned", 1280, 900],
+	[
+		"common-updatenotification--server-behind-app-owned",
+		1280,
+		900,
+		/*
+		 * THE COST SENTENCE IS THE SUBJECT OF THE RE-SHOOT (2026-09-29): S6 was recomposed
+		 * without the drain bound, so this panel's frame must show the outage AND the
+		 * promise that nothing in flight is cut off - the same pair `update-affirmation`
+		 * asserts, and the pair a frame of the old wording cannot carry. THE CLAIM BELOW
+		 * CARRIES THE SENTENCE'S OWN CAPITALISATION (review round 1, D1): the gate
+		 * compares case-sensitively (`painted.includes`, below), so the lowercase
+		 * spelling this claim first shipped could never match and the re-shoot died at
+		 * the shutter.
+		 */
+		{
+			expectSentence: [
+				"offline while it comes back",
+				"Nothing in flight is cut off",
+			],
+		},
+	],
 	/*
 	 * THE FAILED RESTART, in both of its outcomes (design D1, UX U1). Neither had a
 	 * frame on any branch, and neither is reachable from a trigger flag: both exist
@@ -4338,6 +5291,24 @@ export const STORIES = [
 		1280,
 		900,
 		{ expectSentence: "The app updates this install itself" },
+	],
+	/*
+	 * AND THE OFFER THE OPERATOR'S OWN PRESS READS (review round 1, U2,
+	 * 2026-09-29): the app-owned managed arm, whose paragraph is the plan's own
+	 * managed sentence - it names the publish-and-move, the promise that nothing
+	 * in flight is cut off, and the idle switch. It is the one offer whose press
+	 * publishes a generation and restarts the daemon the app started, and it had
+	 * no frame and no declaration anywhere; declared here so the design round can
+	 * photograph it the ordinary way.
+	 */
+	[
+		"common-updatenotification--backend-update-offer-app-owned",
+		1280,
+		900,
+		{
+			expectSentence:
+				"The app publishes the new build beside the one the server is using",
+		},
 	],
 	[
 		"common-updatenotification--backend-update-failed-orphan",
@@ -4422,8 +5393,19 @@ export const STORIES = [
 	 */
 	["onboarding-providersetup--in-dialog", 1280, 900],
 	["onboarding-providersetup--in-dialog", 800, 600],
+	/*
+	 * The dialog's body parked at the end of its own list -- the state where "the
+	 * field scrolls away with the content" is visible rather than argued. IT
+	 * BELONGS TO THE EXPANDED DISCLOSURE now, and that is a correction rather than
+	 * a move for tidiness: #436 captured this on the COLLAPSED step, whose 18-card
+	 * grid overflowed the body, and #494's grouped list fits the collapsed step
+	 * without scrolling at all (`in-dialog` measures body `638x380`, overflow 0),
+	 * so `scrollToEnd` matched a box that does not scroll and the entry failed the
+	 * run with "none of them scrolls". The claim survives where the scroll does:
+	 * the expanded panel overflows by ~645px.
+	 */
 	[
-		"onboarding-providersetup--in-dialog",
+		"onboarding-providersetup--in-dialog-more-open",
 		1280,
 		900,
 		{
@@ -4431,6 +5413,22 @@ export const STORIES = [
 			scrollToEnd: "[role=dialog] > div:nth-of-type(2)",
 		},
 	],
+	/*
+	 * THE EXPANDED DISCLOSURE, which had no frame at all until design round 1
+	 * (D1) found that fact to be why this surface shipped a defect: the four
+	 * suggested rows were listed a second time inside their own groups, and every
+	 * one of the eight stories this set photographed showed the step COLLAPSED, so
+	 * the duplication was never in front of a reviewer. The story's own `play`
+	 * presses "More providers", so the frame is of the state a reader reaches by
+	 * the same press.
+	 */
+	["onboarding-providersetup--in-dialog-more-open", 1280, 900],
+	/*
+	 * ...and the same state with a query whose only match is in the shortcut
+	 * block, because that panel body is empty for a DIFFERENT reason and the
+	 * sentence it carries is the whole distinction (code round 1 P2 / QA-1).
+	 */
+	["onboarding-providersetup--in-dialog-more-open-query", 1280, 900],
 	[
 		"onboarding-providersetup--settings-column",
 		1000,
@@ -4442,12 +5440,27 @@ export const STORIES = [
 		1000,
 		1100,
 		/*
-		 * `> button` because the hook is on the ROW: the element a keyboard user
-		 * reaches is the card inside it, which is what `tabTo` asserts.
+		 * A DESCENDANT button, not a child: the hook is on the whole ROW (the
+		 * `<li>`), and the control a keyboard user reaches is the action button
+		 * inside it. `> button` was right for #436's card grid, whose card WAS the
+		 * button; #494's list nests the action one level deeper, so that selector
+		 * matched nothing and `tabTo` -- which fails the run when its selector never
+		 * takes focus -- made this surface unsweepable (code round 1, P1's evidence
+		 * sibling; found while adding the frame above).
+		 *
+		 * AND IT NAMES THE CONTROL, NOT EVERY BUTTON THE ROW HOLDS (review round 2,
+		 * R2-2). The assertion is `document.activeElement.matches(selector)`, so a
+		 * selector that resolves to a SET passes on any member of it: the row's `<li>`
+		 * is more than the strip above -- `panelFor(provider)` renders inside the same
+		 * `<li>`, and the connected row's sign-out confirm adds two more -- so a bare
+		 * `button` descendant would accept focus sitting in an open panel as the row's
+		 * own focus ring. `> div > button` is the row's action control: the `<li>`'s
+		 * strip is a single `<div>` and its only button is the one `aria-expanded`
+		 * describes.
 		 */
 		{
 			dir: "card-focused",
-			tabTo: '[data-provider-id="radient"] > button',
+			tabTo: '[data-provider-id="radient"] > div > button',
 		},
 	],
 
@@ -4562,6 +5575,28 @@ export const STORIES = [
 	["chat-phantom-compose-rows--after-turn-death", 1280, 800],
 	["chat-phantom-compose-rows--after-durable-twin", 1280, 800],
 	["chat-phantom-compose-rows--after-durable-twin-open", 1280, 800],
+	/*
+	 * THE INTERRUPTED-VS-FAILED ROWS. One call is shown in three projections -
+	 * a steering skip LIVE (the terminal compose frame's `not_run_kind:
+	 * "skipped"`), the SAME call after a reload (the durable synthetic result,
+	 * `details.__fault: "skipped"`), and a call the USER stopped from the end
+	 * event's own `aborted` marker with no client stop window standing - plus
+	 * the control (a genuine `execution` failure, which must not move) and a
+	 * closed turn whose fold chip and foot both count the skip. The production
+	 * reducer folds `scripts/fixtures/interrupted-rows.json` through
+	 * `interrupted-rows.stories.tsx`; the BEFORE half is the declared
+	 * supplementary `chat-interrupted-rows-before/`, the same stories against
+	 * the base tree's reducer.
+	 */
+	["chat-interrupted-rows--skip-live", 1280, 800],
+	["chat-interrupted-rows--skip-live-expanded", 1280, 800],
+	["chat-interrupted-rows--skip-durable", 1280, 800],
+	["chat-interrupted-rows--stop-mid-flight", 1280, 800],
+	["chat-interrupted-rows--stop-expanded", 1280, 800],
+	["chat-interrupted-rows--genuine-failure", 1280, 800],
+	["chat-interrupted-rows--turn-counts", 1280, 800],
+	["chat-interrupted-rows--skip-durable-narrow", 720, 800],
+	["chat-interrupted-rows--skip-durable-narrow-expanded", 720, 800],
 	/* The SAME CLASS while the turn is LIVE, which the pair above deliberately does
 	   not cover: its fixture is a finished turn (`streaming: false`), where a
 	   clockless frame that would create a row is refused. With a turn in flight
@@ -4652,6 +5687,20 @@ export const STORIES = [
 	["chat-mention-chips--picker-empty-folder", 1380, 768],
 	["chat-mention-chips--picker-unreadable", 1380, 768],
 	["chat-mention-chips--picker-many-rows", 1380, 768],
+	/*
+	 * The projects section, and the AFTER half of the `@`-popup pair this
+	 * branch's design names. Its BEFORE half is `picker-open` above: that story's
+	 * harness carries no `projects` key, which is what a current release of this
+	 * app ships against, and the same code renders the file-only popup there —
+	 * no headers, the same rows — so the two frames compare the section rather
+	 * than two states of it.
+	 */
+	["chat-mention-chips--picker-with-projects", 1380, 768],
+	/* The full first page's own frame (QA round 2's Q-3): twelve projects put ONE
+	 * header in the window, and the region's edge lands on a whole row because
+	 * the cap is measured from the content the scroller draws, not from every
+	 * header the listing holds. */
+	["chat-mention-chips--picker-heavy-projects", 1380, 768],
 	/*
 	 * The design's own narrow case, 800x600, as its open item 3 asks: the picker's
 	 * top edge must be inside the column and the row count must have FALLEN rather
@@ -5694,6 +6743,38 @@ export const STORIES = [
 	["chat-slash-highlight--geometry", 1000, 2600],
 	["chat-slash-highlight--scrolled-parity", 1000, 1000],
 	/*
+	 * THE MESH TAB (`features.peers`), at the app's own size and at the narrow one.
+	 *
+	 * WHY THESE EIGHT STATES AND NOT A HAPPY PATH: the tab's whole job is to answer a
+	 * question about a mesh the reader cannot see, and the states it is met with are
+	 * mostly small ones - one device, no network at all, a peer that stopped
+	 * answering, a relay that is down. A set that photographed only a healthy
+	 * five-node mesh would leave the two states a first-run user actually meets
+	 * (VirginDevice, SingleDevice) unreviewed, and the misconfigured one - which is
+	 * what the tab exists to make obvious - unphotographed.
+	 *
+	 * THE NARROW ROWS ARE THE RESPONSIVE CLAIM, and they are a SEPARATE DIRECTORY for
+	 * the reason the row is separate: `--dir` writes `two-devices-narrow/`, so a
+	 * reader can tell the 1024x768 frame from the 1380x900 one instead of comparing
+	 * two files whose names differ only by theme. 1024x768 is the width the app's own
+	 * sidebar clamps for; the app's OWN FLOOR is 800x600 (`WINDOW_MIN_WIDTH` /
+	 * `WINDOW_MIN_HEIGHT` in `src/main/window-mode.ts`), which the design round captured
+	 * six states at - all hold, and the README names that floor rather than this row.
+	 *
+	 * The list presentation gets its own frame because it is the OTHER way in: a
+	 * canvas cannot sort or search, and a one-device mesh has no edges to draw, so the
+	 * tab ships both and each needs a still.
+	 */
+	["mesh-tab--single-device", 1380, 900],
+	["mesh-tab--two-devices", 1380, 900],
+	["mesh-tab--overlapping-networks", 1380, 900],
+	["mesh-tab--misconfigured", 1380, 900],
+	["mesh-tab--virgin-device", 1380, 900],
+	["mesh-tab--reads-failed", 1380, 900],
+	["mesh-tab--loading", 1380, 900],
+	["mesh-tab--list-view", 1380, 900],
+	["mesh-tab--two-devices", 1024, 768, { dir: "two-devices-narrow" }],
+	/*
 	 * THE NOTICE-BAND FAMILY'S OWN SURFACES (fix/banner-warn-error-consistency-7e4c).
 	 *
 	 * The twelve-theme sweep is what makes a frame comparable with the rest of the
@@ -5725,6 +6806,125 @@ export const STORIES = [
 	["chat-backend-compatibility-banner--unanswered-probe", 860, 240],
 	["chat-backend-compatibility-banner--update-failed", 860, 240],
 	["chat-backend-compatibility-banner--double-control", 860, 240],
+	/*
+	 * SLICE 2'S FRAMES, and the two that matter most are the TRANSIENT ones. A drag
+	 * photographed at its endpoints proves nothing about the state the user actually
+	 * meets: the ghost, the drop indicator and the target's own edge exist only while
+	 * the pointer is in the air, and a first frame that differs from the settled one
+	 * is a reflow the user reads as motion.
+	 */
+	["mesh-tab--device-panel", 1380, 900],
+	/*
+	 * THE CAP ITSELF, in a frame (design review round 2, D8): four conversations on one peer,
+	 * named in series so the chip's own truncation is what the frame is about. Nothing in the
+	 * story set put three or more rows on one device before this row existed, which is why
+	 * round 1's cap shipped having been judged only from the two-row case.
+	 */
+	["mesh-tab--cap-at-four", 1380, 900],
+	/*
+	 * THE TWO TRANSIENT FRAMES CARRY A CLAIM, AND THE CLAIM IS CHECKED AT THE SHUTTER.
+	 * `expectSentence` is what this rig already has for a state that exists only inside a
+	 * gesture: it waits up to 2 s for the sentence in the DOM immediately before the
+	 * frame, and throws if it is not there — which is the difference between a frame that
+	 * SHOWS the transient and a frame that merely follows one. Without it the shutter can
+	 * land after the gesture state has gone (measured on this branch: an unguarded run at
+	 * `settleMs` 120 and again at 0 produced the SETTLED canvas, because `play` resolves
+	 * on the indicator's first appearance and the state is not held past it), and a
+	 * settled still under a transient's name is the failure this row's comment exists to
+	 * prevent.
+	 */
+	[
+		"mesh-tab--drag-to-device",
+		1380,
+		900,
+		{
+			drag: {
+				from: `[data-mesh-session="0123456789ab"]`,
+				to: `[data-mesh-device="d_${"b".repeat(32)}"]`,
+			},
+			expectSentence: "Move to cloud-node-1",
+		},
+	],
+	[
+		"mesh-tab--drag-refused-over-network",
+		1380,
+		900,
+		{
+			drag: {
+				from: `[data-mesh-session="0123456789ab"]`,
+				to: `[data-mesh-network="n_${"1".repeat(24)}"]`,
+			},
+			expectSentence: "Drop will be refused",
+		},
+	],
+	/*
+	 * THE THREE DIALOG/REFUSAL ROWS CARRY CLAIMS TOO, for the reason the two drag rows do
+	 * (design review round 1, D3): these states are reached BY `play`, so without a claim
+	 * the shutter can land one click short - and it did. `invite-receipt` photographed the
+	 * PRE-MINT dialog in both palettes ("Admission is two-sided", `Cancel` + `Mint the
+	 * token`) while the receipt branch renders different content and a `Close` footer, and
+	 * `move-refused-busy` photographed the confirm dialog with no refusal anywhere. Both
+	 * claims below are the sentences the story's own `play` waits for, which is what makes
+	 * the frame's name true rather than aspirational.
+	 */
+	["mesh-tab--move-confirm", 1380, 900],
+	[
+		"mesh-tab--move-refused-busy",
+		1380,
+		900,
+		{ expectSentence: "Wait for the turn to finish" },
+	],
+	["mesh-tab--move-copy-with-undo", 1380, 900],
+	/*
+	 * THE REMEDY, EXECUTED, AND ITS CLAIM IS THE OUTCOME (agent review round 2, F2).
+	 * This row is the only one that presses `Wait for the turn to finish`: the story's play
+	 * re-issues the refused move and asserts the request carried `waitS: 300`, and the
+	 * sentence below is the receipt that replaces the notice when that request lands. The
+	 * claim is what ties the FRAME to the assertion - a still of the refusal under a name
+	 * that says "waited" would be the same class of defect as the two rows above, and the
+	 * round-2 review measured that nobody had pressed the button at all.
+	 */
+	/*
+	 * AND THIS FRAME NOW PROVES MORE THAN IT DID (design review round 3, D13; round 4, D18). The play
+	 * drives the whole path - it presses the remedy, asserts the re-issue carried `waitS: 300`, waits
+	 * for the re-read, and asserts the canvas agrees with the receipt (the panel reads
+	 * `Conversations (1)` and this device draws exactly one conversation) - and the story's fixture
+	 * ANSWERS that world (`afterTransfer`), so the picture beside the notice is the moved one: the
+	 * peer holds `Sweep 001`, this device holds `Resume the roadmap`, and the panel's count is 1.
+	 *
+	 * ROUND 3 NARROWED THIS ROW'S CLAIM BECAUSE THE FRAME SHOWED THE PRE-MOVE WORLD, and round 4 found
+	 * why the narrowing was unnecessary: the hook was wired into `MoveCopyWithUndo` rather than into
+	 * this story, so the re-read never changed anything. The claim is the receipt AND the world under
+	 * it; the `expectSentence` still guards the shutter.
+	 */
+	["mesh-tab--move-busy-waited", 1380, 900, { expectSentence: "holds it now" }],
+	/*
+	 * AND A NOTE FOR A LATER READER (design review round 1, D7): this row shows a 2 px
+	 * accent outline outside the dialog frame and `move-confirm` shows none, which is the
+	 * HEADLESS MODE's focus behaviour - the repo's own AGENTS.md lists focus-dependent
+	 * rendering among the things a `headless` capture differs on - rather than a design
+	 * difference between two instances of one component.
+	 */
+	["mesh-tab--invite-receipt", 1380, 900, { expectSentence: "Invited" }],
+	// The narrow case, with the panel open: the column and the canvas have to fit
+	// together at the width the app's own sidebar clamps for.
+	["mesh-tab--device-panel", 1024, 768, { dir: "device-panel-narrow" }],
+	/*
+	 * THE IN-THREAD SEARCH SET, one row per state. The panel is a fixed 26rem
+	 * wide and the frame is the transcript's own ground at the pane's shipped
+	 * width, so 900x560 holds every state without a crop: the rank list is
+	 * eight rows at most and the tallest state is the list plus its status
+	 * line. No entry carries a selector or a play: every state is a resting
+	 * prop, which is what `thread-search-overlay.stories.tsx` renders.
+	 */
+	["chat-in-thread-search--rest", 900, 560],
+	["chat-in-thread-search--searching", 900, 560],
+	["chat-in-thread-search--results", 900, 560],
+	["chat-in-thread-search--empty", 900, 560],
+	["chat-in-thread-search--building", 900, 560],
+	["chat-in-thread-search--building-partial", 900, 560],
+	["chat-in-thread-search--unsupported", 900, 560],
+	["chat-in-thread-search--error-state", 900, 560],
 ];
 
 /**
@@ -6181,9 +7381,17 @@ const assertBackendDown = async () => {
  * before it. Deriving it from the tree - with the same walker and exclusion
  * list `check-evidence.mjs` compares it against - makes the comparison
  * unfalsifiable and absorbs stray undeclared directories (round 1, R2).
+ *
+ * The previous total is COERCED, and that is not defensive dressing: folds have
+ * hand-resolved this field as a JSON string, and `"9718" + 4` is `"97184"` -
+ * measured on the trace-label pass (2026-09-27), where the string form also
+ * flipped `check-evidence.mjs`'s `typeof === "number"` gate to skipped, so the
+ * drift was silent in both directions for as long as it existed. The same
+ * coercion guards the `refreshedFrames` accumulation below, for the same
+ * reason.
  */
 export function partialFrameCount(previous, added) {
-	return (previous.frames ?? 0) + added.length;
+	return Number(previous.frames ?? 0) + added.length;
 }
 
 /**
@@ -7035,13 +8243,23 @@ const main = async () => {
 				}
 			}
 
-			if (options?.press) {
+			/*
+			 * `press` takes ONE selector or a LIST of them, pressed in order. The list
+			 * exists for the rename editor's X, which lives in the same element slot
+			 * as the pencil: entry one (the pencil) opens the editor, entry two (the
+			 * same selector, now an X) leaves it through the cancel handler. Each
+			 * press is a full move/press/release through the input pipeline; `hold`
+			 * applies to the LAST press only, because holding an earlier one would
+			 * leave a button down when the next press begins.
+			 */
+			const pressSelectors = options?.press ? [options.press].flat() : [];
+			for (const [index, pressSelector] of pressSelectors.entries()) {
 				let target = { value: null };
 				for (let i = 0; i < 100 && !target.value; i++) {
 					const { result } = await cdp.send("Runtime.evaluate", {
 						returnByValue: true,
 						expression: `(() => {
-							const el = document.querySelector(${JSON.stringify(options.press)});
+							const el = document.querySelector(${JSON.stringify(pressSelector)});
 							if (!el) return null;
 							const r = el.getBoundingClientRect();
 							if (r.width === 0 || r.height === 0) return null;
@@ -7053,7 +8271,7 @@ const main = async () => {
 				}
 				if (!target.value) {
 					throw new Error(
-						`${story} @ ${theme}: the press selector \`${options.press}\` never appeared (15s) - a press that finds nothing must fail rather than photograph the resting state under a name that claims otherwise`,
+						`${story} @ ${theme}: the press selector \`${pressSelector}\` never appeared (15s) - a press that finds nothing must fail rather than photograph the resting state under a name that claims otherwise`,
 					);
 				}
 				await cdp.send("Input.dispatchMouseEvent", {
@@ -7084,7 +8302,7 @@ const main = async () => {
 				 * this story: every capture navigates for its theme and each navigation is
 				 * preceded by `about:blank`, so no page inherits Chromium's input state.
 				 */
-				if (!options?.hold) {
+				if (!(options?.hold && index === pressSelectors.length - 1)) {
 					await cdp.send("Input.dispatchMouseEvent", {
 						type: "mouseReleased",
 						x: target.value.x,
@@ -7097,6 +8315,163 @@ const main = async () => {
 					});
 				}
 				if (options?.pressSettleMs) await sleep(options.pressSettleMs);
+			}
+
+			/*
+			 * A DOUBLE CLICK through the same input pipeline `press` uses - two
+			 * press/release pairs, the second carrying `clickCount: 2`, which is what
+			 * Blink runs its own double-click detection on (`dblclick` fires after the
+			 * second release). It exists for the chat header's rename editor, whose
+			 * entry gesture the operator named as a double-click on the title: a
+			 * scene-level `element.dispatchEvent` would not prove the handler is
+			 * REACHABLE through real input, which is the same reason `press` is a
+			 * pointer sequence rather than a `.click()`.
+			 */
+			if (options?.dblclick) {
+				let target = { value: null };
+				for (let i = 0; i < 100 && !target.value; i++) {
+					const { result } = await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression: `(() => {
+							const el = document.querySelector(${JSON.stringify(options.dblclick)});
+							if (!el) return null;
+							const r = el.getBoundingClientRect();
+							if (r.width === 0 || r.height === 0) return null;
+							return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+						})()`,
+					});
+					target = result;
+					if (!target.value) await sleep(150);
+				}
+				if (!target.value) {
+					throw new Error(
+						`${story} @ ${theme}: the dblclick selector \`${options.dblclick}\` never appeared (15s)`,
+					);
+				}
+				await cdp.send("Input.dispatchMouseEvent", {
+					type: "mouseMoved",
+					x: target.value.x,
+					y: target.value.y,
+					button: "none",
+					buttons: 0,
+					clickCount: 0,
+					modifiers: 0,
+					pointerType: "mouse",
+				});
+				for (const clickCount of [1, 2]) {
+					await cdp.send("Input.dispatchMouseEvent", {
+						type: "mousePressed",
+						x: target.value.x,
+						y: target.value.y,
+						button: "left",
+						buttons: 1,
+						clickCount,
+						modifiers: 0,
+						pointerType: "mouse",
+					});
+					await cdp.send("Input.dispatchMouseEvent", {
+						type: "mouseReleased",
+						x: target.value.x,
+						y: target.value.y,
+						button: "left",
+						buttons: 0,
+						clickCount,
+						modifiers: 0,
+						pointerType: "mouse",
+					});
+				}
+				if (options?.dblclickSettleMs) await sleep(options.dblclickSettleMs);
+			}
+
+			/*
+			 * TEXT through the input pipeline (`Input.insertText`), for the claims
+			 * about what a field DOES WITH INPUT rather than about a key press. It
+			 * lands in the focused element and replaces its selection - which is how
+			 * the rename editor's select-all is exercised: the typed string replaces
+			 * the prefilled name rather than appending to it, and that it landed is
+			 * verifiable in the frame itself (`rename-edit-typed`).
+			 */
+			if (options?.insertText !== undefined) {
+				await cdp.send("Input.insertText", { text: options.insertText });
+				if (options?.insertTextSettleMs)
+					await sleep(options.insertTextSettleMs);
+			}
+
+			/*
+			 * A REAL DRAG, FOR THE STATE A `play` FUNCTION CANNOT HOLD.
+			 *
+			 * The same rule this file already applies to `:active` (see the `hold` arm above)
+			 * reaches further here: the drag's transient - the lifted chip, the ghost, the
+			 * indicator naming the operation - is held by a POINTER THAT IS DOWN, and a
+			 * synthetic `PointerEvent` cannot be that pointer. Measured on the Mesh tab's
+			 * own rows: the story's `play` dispatches a real-looking `pointerdown` and
+			 * `pointermove` and resolves, the sweep takes its frame, and the frame is the
+			 * SETTLED canvas - `expectSentence` then reports the claimed sentence absent,
+			 * which is how this was found rather than assumed. The rig's own input pipeline
+			 * does lift the chip (`Input.dispatchMouseEvent` is what the bench drives the
+			 * shipped app with, and its "chip lifted" assertion passes), so the gesture is
+			 * driven from here: move to `from`, press, interpolate to `to` with the button
+			 * HELD, and leave it down for the guard and the shutter.
+			 *
+			 * Nothing leaks past the story: every capture navigates for its theme and each
+			 * navigation is preceded by `about:blank`, so no page inherits Chromium's input
+			 * state - the same argument the `hold` arm states.
+			 */
+			if (options?.drag) {
+				const point = async (selector) => {
+					for (let i = 0; i < 100; i++) {
+						const { result } = await cdp.send("Runtime.evaluate", {
+							returnByValue: true,
+							expression: `(() => {
+								const el = document.querySelector(${JSON.stringify(selector)});
+								if (!el) return null;
+								const r = el.getBoundingClientRect();
+								if (r.width === 0 || r.height === 0) return null;
+								return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+							})()`,
+						});
+						if (result.value) return result.value;
+						await sleep(150);
+					}
+					throw new Error(
+						`${story} @ ${theme}: the drag selector \`${selector}\` never appeared (15s) - a drag that finds nothing must fail rather than photograph the settled state`,
+					);
+				};
+				const from = await point(options.drag.from);
+				const to = await point(options.drag.to);
+				const mouse = (type, x, y, buttons) =>
+					cdp.send("Input.dispatchMouseEvent", {
+						type,
+						x,
+						y,
+						button: buttons === 0 ? "none" : "left",
+						buttons,
+						clickCount: type === "mousePressed" ? 1 : 0,
+						modifiers: 0,
+						pointerType: "mouse",
+					});
+				await mouse("mouseMoved", from.x, from.y, 0);
+				await mouse("mousePressed", from.x, from.y, 1);
+				const steps = options.drag.steps ?? 12;
+				for (let i = 1; i <= steps; i += 1) {
+					await mouse(
+						"mouseMoved",
+						Math.round(from.x + ((to.x - from.x) * i) / steps),
+						Math.round(from.y + ((to.y - from.y) * i) / steps),
+						1,
+					);
+					await sleep(16);
+				}
+				/*
+				 * A HELD GESTURE CAN KEEP MOVING AFTER THE STEPS END (the board's edge
+				 * auto-scroll advances while the pointer rests in an edge zone), so a
+				 * shutter that fires the instant the last step lands photographs a
+				 * scroll position that depends on scheduling. The settle holds until the
+				 * state it can no longer change has settled - the scroll clamps at the
+				 * end - which is what makes the frame reproducible. Zero (the default)
+				 * leaves stories without such a mechanism untouched.
+				 */
+				if (options.drag.settleMs) await sleep(options.drag.settleMs);
 			}
 
 			/*
@@ -8255,6 +9630,20 @@ const main = async () => {
 							windowsVirtualKeyCode: codes.keyCode,
 							nativeVirtualKeyCode: codes.keyCode,
 							modifiers: spec.shiftKey ? 8 : 0,
+							/*
+							 * `spec.text`: the optional half that makes a key's DEFAULT ACTION
+							 * run. A `keyDown` without `text` delivers keydown alone; with it,
+							 * Chromium also produces the keypress Blink hangs default actions
+							 * on - measured on this sweep's own Enter-submits-a-form row
+							 * (`secret-answer-in-flight`): without `text` the story never
+							 * flipped, the shutter refused, and the frame was correctly not
+							 * taken. Rows that drive EXPLICIT keydown handlers leave it out on
+							 * purpose: adding a keypress to THEIR dispatch would change what
+							 * they exercise.
+							 */
+							...(spec.text !== undefined && type !== "keyUp"
+								? { text: spec.text }
+								: {}),
 						});
 					}
 					await sleep(spec.settleMs ?? 120);
@@ -8363,6 +9752,37 @@ const main = async () => {
 						`${story} @ ${theme}: \`${claim.selector}\` carries ${claim.name}=${JSON.stringify(value)}, which does not satisfy ${JSON.stringify(claim.equals ?? `includes ${claim.includes}`)} - the press did not produce the state this frame is named for`,
 					);
 				}
+			}
+
+			/*
+			 * `expectValueKept: "<selector>"` — the value the row's OWN `insertText`
+			 * typed is STILL on that field at the shutter.
+			 *
+			 * The secret frames exist to show the mask HOLDING a value (typed, and for
+			 * the in-flight and held states KEPT while the outcome is unknown); an
+			 * empty field is equally what a premature clear would look like, and no
+			 * existing claim can tell the two apart — `expectAttribute` reads
+			 * ATTRIBUTES (a controlled input's value is a property, not an attribute)
+			 * and `expectSentence` reads text, which a bullet mask is not. The
+			 * comparison uses the row's own `insertText`, so the fixture never becomes
+			 * a second literal that can drift, and failures report LENGTHS, never the
+			 * value: this option exists for a credential field and must not become the
+			 * thing that echoes one into a log.
+			 */
+			if (options?.expectValueKept) {
+				if (options.insertText === undefined)
+					throw new Error(
+						`${story} @ ${theme}: expectValueKept has nothing to compare against — the row must also carry \`insertText\``,
+					);
+				const { result: keptRead } = await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression: `document.querySelector(${JSON.stringify(options.expectValueKept)})?.value ?? null`,
+				});
+				const keptValue = keptRead?.value ?? null;
+				if (keptValue !== options.insertText)
+					throw new Error(
+						`${story} @ ${theme}: \`${options.expectValueKept}\` does not hold the typed value at the shutter (typed ${options.insertText.length} characters, read ${keptValue === null ? "no such field" : `${String(keptValue).length}`}) — the frame would show a field this state claims it is not`,
+					);
 			}
 
 			/*
@@ -8846,7 +10266,7 @@ const main = async () => {
 								: head,
 							refreshedFrames:
 								(sameHead
-									? (previous.partialCapture?.refreshedFrames ?? 0)
+									? Number(previous.partialCapture?.refreshedFrames ?? 0)
 									: 0) + captured,
 							refreshedStories: [
 								...new Set([
@@ -8900,6 +10320,17 @@ const main = async () => {
 				 */
 				...(supplementary.length > 0 ? { supplementary } : {}),
 			};
+	/*
+	 * TWO SPACES, MATCHING THE FILE AND ITS SIBLINGS (review round 2, R2-1;
+	 * supersedes round 1's R1-3). Round 1 read the whole-file re-indent as a
+	 * writer/tree mismatch and made this line write tabs — but the tree's
+	 * convention is two spaces: main's own writer writes `null, 2`, main's
+	 * manifest was re-serialised to two spaces, and every sibling evidence
+	 * writer above does the same. What the manifest cannot survive is a
+	 * writer that disagrees with the bytes on disk: whichever style the tree
+	 * settles on, this line has to match it, so a capture never re-indents a
+	 * 9k-line file as a side effect of stamping it.
+	 */
 	writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
 	console.log(`Captured ${captured} frames into ${OUT} at ${head.slice(0, 9)}`);
