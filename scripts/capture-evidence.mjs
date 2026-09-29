@@ -689,8 +689,9 @@ export const STORIES = [
 	 * press is the HARNESS's, because the claim is that the bar's own control is
 	 * what opens it), a steered run (the second question folds inside rather
 	 * than starting a turn), an interrupted turn (the bar states no outcome in
-	 * v1 - the sibling session owns that wording), a genuinely failed call (the
-	 * failure control survives the collapse), the count clause at its long form,
+	 * v1 - the sibling session owns that wording), a genuinely failed call (no
+	 * tally on the bar; the red rows are one press away, and `failed-expanded`
+	 * photographs the reveal), the count clause at its long form,
 	 * the same turn read from history (durable rows, no live frames - reload's
 	 * state, and the span must still read the same), and the live control
 	 * (nothing condenses while a turn runs).
@@ -702,6 +703,17 @@ export const STORIES = [
 	 * pre-change tree, so the pair differs by the collapse and nothing else.
 	 */
 	["chat-turn-collapse--collapsed", 1280, 900],
+	/*
+	 * THE HOVER CELL (design spec for the below-rule, 2026-09-28): the bar's own
+	 * hover ground painting above an unaltered hairline — the D4 state a still of
+	 * the resting bar cannot show.
+	 */
+	[
+		"chat-turn-collapse--collapsed",
+		1280,
+		900,
+		{ hover: "[data-turn-summary] button", dir: "collapsed-hover" },
+	],
 	[
 		"chat-turn-collapse--expanded",
 		1280,
@@ -711,6 +723,19 @@ export const STORIES = [
 	["chat-turn-collapse--steering", 1280, 900],
 	["chat-turn-collapse--interrupted", 1280, 900],
 	["chat-turn-collapse--failed", 1280, 900],
+	/*
+	 * DESIGN ROUND 1, D1: the failure BEHIND the press — the bar without a
+	 * tally, and the red row one expansion away, on a frame.
+	 */
+	[
+		"chat-turn-collapse--failed",
+		1280,
+		900,
+		{
+			press: '[data-turn-summary] button[aria-expanded="false"]',
+			dir: "failed-expanded",
+		},
+	],
 	["chat-turn-collapse--long-run", 1280, 900],
 	["chat-turn-collapse--restored", 1280, 900],
 	["chat-turn-collapse--running", 1280, 900],
@@ -723,6 +748,21 @@ export const STORIES = [
 	 */
 	["chat-turn-collapse--narration", 1280, 900],
 	["chat-turn-collapse--pinned", 1280, 900],
+	/*
+	 * ISSUE #5'S PAIR (operator feedback, 2026-09-29): peer and wake receipts
+	 * collapse with the work. The second row presses the same story open so the
+	 * design round can judge the reveal.
+	 */
+	["chat-turn-collapse--receipts", 1280, 900],
+	[
+		"chat-turn-collapse--receipts",
+		1280,
+		900,
+		{
+			press: '[data-turn-summary] button[aria-expanded="false"]',
+			dir: "receipts-expanded",
+		},
+	],
 	["chat-turn-collapse--parked", 1280, 900],
 
 	/*

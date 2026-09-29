@@ -38,15 +38,8 @@ import { type Row, type TurnRun, ledgerName, runsOf } from "./transcript-rows";
  *
  * THE PIN LIST, deliberately in ONE function: the design round can flip any
  * single member without touching the partition, the counts or the render pass.
- * Each member is a message the reader is owed rather than a step of the work:
+ * Each member is a row a collapsed turn cannot be read without:
  *
- * - `peer` — a message from another session, addressed to the reader. The fold
- *   tier already refuses to hide receipts for this reason ("a receipt hidden
- *   inside a summary of work would be a message the reader never saw",
- *   `canonical-transcript.tsx`'s fold comment), and a collapse is a bigger
- *   summary than a fold.
- * - `wake` — a scheduled-wake delivery receipt, the same argument one kind
- *   over (`transcript-rows.ts`'s `isStatementRow` counts it as a statement).
  * - `compaction` — the conversation's memory statement: rare, and the §E3
  *   precedent already pins it as a statement so `[user][answer][compaction]`
  *   keeps its caption.
@@ -58,14 +51,24 @@ import { type Row, type TurnRun, ledgerName, runsOf } from "./transcript-rows";
  *   died. The row that says why the thing below the bar stopped must not be
  *   one more hidden row.
  *
+ * NARROWED FOR THE OPERATOR'S FEEDBACK (2026-09-29, issue #5): `peer` and
+ * `wake` delivery receipts were pinned in v1 under the fold tier's argument
+ * ("a receipt hidden inside a summary of work would be a message the reader
+ * never saw", `canonical-transcript.tsx`'s fold comment). Real use overrides
+ * it: inside a completed turn these receipts are the bulk of the visual weight
+ * — "the sends and receives within these periods ... stick out and take up
+ * space/distract visually" — and they are IN-TURN evidence of the work rather
+ * than a message between turns; the reader who wants them is one press away on
+ * the bar's own expansion. The pin list now keeps only the rows a collapsed
+ * turn cannot be read without: the memory statement, the death markers and the
+ * incident reason.
+ *
  * Everything else inside the span hides: tool rows, in-between assistant
- * prose, info-level `custom` receipts (including `job_result`), info notices,
- * subagent-end lines.
+ * prose, peer and wake receipts, info-level `custom` receipts (including
+ * `job_result`), info notices, subagent-end lines.
  */
 export function staysVisibleWhileCollapsed(record: TranscriptRecord): boolean {
 	switch (record.kind) {
-		case "peer":
-		case "wake":
 		case "compaction":
 			return true;
 		case "notice":
@@ -219,6 +222,107 @@ export function collapsePlan(
 			planRun(rows, run, index === runs.length - 1 && options.live),
 		),
 	};
+}
+
+/*
+ * THE ON-LOAD ALIGNMENT (operator report, 2026-09-28: "the messages don't seem
+ * to be collapsed on previous collapsible segments immediately on load ...").
+ *
+ * The render window is a raw row count, and a raw count lands wherever it
+ * lands — often inside a completed run. A run cut by the window's top edge has
+ * no opening user row in the list, so it cannot collapse (the window-cut rule
+ * above), and the reader who opened a long conversation saw in-between rows
+ * until they scrolled the head in. These two helpers let the consumer move the
+ * window's edge ONTO a run boundary, and — when the boundary is not loaded at
+ * all — say so, so the load path can fetch it. Both are pure functions of the
+ * row list, so the window stays a derivation rather than state that can race
+ * the first paint.
+ *
+ * Both read only the row list and the window size — no liveness — because they
+ * are consumed ABOVE the point where this component derives whether the newest
+ * run is live; a window edge inside the newest run is aligned like any other,
+ * which at worst mounts the turn the reader is already watching stream.
+ */
+
+/**
+ * The window's top edge, snapped UP to the opening of the run it lands in.
+ *
+ * Returns the size unchanged when the edge already sits on a boundary, when
+ * the enclosing run's head is cut (nothing to snap to — the load path's
+ * `windowTopRunIsHeadCut` case), or when the snap would add more than
+ * `maxExtra` rows (a run taller than the bound keeps the shipped cut
+ * behaviour rather than mounting itself unbounded).
+ *
+ * A snapped window top is a run boundary BY CONSTRUCTION, so every run the
+ * list hands to `runsOf` opens with its own user row and every completed one
+ * collapses on the first paint — the operator's "fill the screen with user
+ * messages, final agent responses, and collapsed sections".
+ */
+export function snapWindowToRunBoundary(
+	rows: Row[],
+	windowSize: number,
+	maxExtra: number,
+): number {
+	const total = rows.length;
+	if (total <= windowSize) return windowSize;
+	const top = total - windowSize;
+	const runs = runsOf(rows);
+	const enclosing = runs.find(
+		(run) => run.openingIndex <= top && top <= run.endIndex,
+	);
+	if (enclosing === undefined) return windowSize;
+	if (!enclosing.opensWithUserRow) return windowSize;
+	const extra = top - enclosing.openingIndex;
+	if (extra <= 0 || extra > maxExtra) return windowSize;
+	return windowSize + extra;
+}
+
+/**
+ * Whether the run the window's top edge lands in has its head cut off the
+ * LOADED rows — the case a fetch can fix and a snap cannot.
+ *
+ * True only when the row list itself starts mid-run (the first run of the
+ * fetched set, `openingUserIndex === null`) and the window edge is inside it;
+ * the consumer pairs this with `hasMore` to fetch the missing head.
+ */
+export function windowTopRunIsHeadCut(
+	rows: Row[],
+	windowSize: number,
+): boolean {
+	const total = rows.length;
+	if (total <= windowSize) return false;
+	const top = total - windowSize;
+	const runs = runsOf(rows);
+	const enclosing = runs.find(
+		(run) => run.openingIndex <= top && top <= run.endIndex,
+	);
+	if (enclosing === undefined) return false;
+	return !enclosing.opensWithUserRow;
+}
+
+/**
+ * The alignment effect's whole decision, as a pure step: spend another page or
+ * not, and the counter it leaves behind.
+ *
+ * WHY IT IS A FUNCTION AND NOT FOUR GUARDS IN AN EFFECT (agent review round 1,
+ * F2): the bound (`ALIGN_FETCH_MAX` pages per conversation) is the property
+ * that keeps an open from walking an unbounded conversation into memory, and
+ * inside an effect it could only be observed by re-mounting a component — a
+ * harness whose own double-mount made the reading ambiguous (measured: the
+ * per-instance cap of two read as three across a strict-mode remount, and the
+ * counts stop either way). Here the table is decided by construction.
+ */
+export function alignFetchDecision(
+	spent: number,
+	hasMore: boolean,
+	loadingOlder: boolean,
+	headCut: boolean,
+	max: number,
+): { fetch: boolean; spent: number } {
+	if (spent >= max || loadingOlder || !hasMore || !headCut) {
+		return { fetch: false, spent };
+	}
+	return { fetch: true, spent: spent + 1 };
 }
 
 function planRun(rows: Row[], run: TurnRun, live: boolean): RunCollapsePlan {
