@@ -5,12 +5,34 @@
  * Derived from the transcript's own store and layout because that is where the
  * two meet: `loadedIds` is the record ids this store holds (everything else in
  * the manifest wears the light "unloaded" arm), and `activeId` is the last
- * loaded checkpoint above the scroller's top edge - so the ladder's top arm
- * tracks the reading position instead of a counter. The position read is
- * viewport-based (rects, not scrollTop) so it holds under either scroll
+ * loaded checkpoint whose row has crossed the reading line - the scroller's top
+ * edge - with the two ENDS OF THE SCROLLER resolved by their own arms, because
+ * the line rule alone cannot light them (see the ends note below). The position
+ * read is viewport-based (rects, not scrollTop) so it holds under either scroll
  * direction, and it is rAF-throttled: a scroll frame asks the DOM for the
  * loaded checkpoints' tops (bounded by the mounted window, not by the
  * manifest) and sets state only when the answer CHANGES.
+ *
+ * THE ENDS, NOT ONLY THE LINE (operator report, 2026-09-29). Measured live with
+ * `--scoped-case rail-cue-probe`: at the BOTTOM the last loaded checkpoint's row
+ * sits INSIDE the final viewport whenever the tail after it is shorter than one,
+ * so it has never crossed the top edge and every tick within the last screenful
+ * of content is unreachable for the cue - on the 6-turn fixture the active mark
+ * was the SECOND checkpoint (`qn0002`) while the rail's last tick (`qn0006`) sat
+ * four marks away; on the 402-mark fixture it was `u0196` against a last tick of
+ * `n0200`. The operator's read - "off by a screen" - is exact: the arm is off by
+ * up to one viewport. So a read that finds the scroller AT an end resolves to
+ * that end's checkpoint: bottom -> the LAST loaded checkpoint with a mounted
+ * row, top -> the FIRST. The ends are read per read (leading and settle), so a
+ * view pinned at the bottom keeps the arm across appends and prepends.
+ *
+ * THE SCROLLER'S OWN ENDS ARITHMETIC. The transcript's scroller rests at its
+ * BOTTOM at `scrollTop === 0`, with its span above held NEGATIVE (the app's own
+ * inverted layout - `scrollTop` runs [-max, 0]), so "at the bottom" is
+ * `|scrollTop| <= EPS` and "at the top" is `|scrollTop + max| <= EPS`. EPS
+ * tolerates a fractional scrollTop sitting a fraction short of the arithmetic
+ * end; it is 2px, the fraction measured in the probe (top read back exactly
+ * -max; bottom exactly 0).
  *
  * THE SETTLE RE-READ (UX round 1, N1). A gesture that ends while the walk's
  * pages are still landing leaves the leading read - one animation frame behind
@@ -44,6 +66,17 @@ import type { Checkpoint } from "../../../../../shared/desktop-contract";
  * path re-reads on its own.
  */
 export const ACTIVE_CUE_SETTLE_MS = 160;
+
+/**
+ * How close to an END of the scroller counts as AT that end.
+ *
+ * The transcript's scroller rests at its bottom at `scrollTop === 0` with its
+ * span above held negative, so a fractional scrollTop can sit a fraction short
+ * of the arithmetic end; 2px covers the fraction measured in the probe rather
+ * than letting rounding decide which tick is lit. See the ends note in the
+ * module header.
+ */
+export const ACTIVE_CUE_EDGE_EPSILON_PX = 2;
 
 /** The one field the cue needs from a transcript row. */
 export interface ActiveCueRow {
@@ -79,17 +112,35 @@ export const useActiveCheckpoint = (
 		const top = region.getBoundingClientRect().top;
 		let best: string | null = null;
 		let bestTop = Number.NEGATIVE_INFINITY;
+		let first: string | null = null;
+		let last: string | null = null;
 		for (const checkpoint of loadedCheckpoints) {
 			const element = region.querySelector(
 				`[data-record-id="${CSS.escape(checkpoint.id)}"]`,
 			);
 			if (element === null) continue;
+			if (first === null) first = checkpoint.id;
+			last = checkpoint.id;
 			const elementTop = element.getBoundingClientRect().top;
 			if (elementTop <= top + 1 && elementTop > bestTop) {
 				bestTop = elementTop;
 				best = checkpoint.id;
 			}
 		}
+		/*
+		 * The ends, over the same mounted set the line rule walks: at an end the
+		 * line rule cannot light the extreme marks (module header's ends note),
+		 * and the arm is re-picked every read, so a view pinned at an end keeps
+		 * it across appends and prepends. `last` is the last COMPLETED
+		 * checkpoint by construction - `loadedCheckpoints` is the manifest's own
+		 * list, and a live or partial turn carries no manifest entry.
+		 */
+		const span = region.scrollHeight - region.clientHeight;
+		const atBottom = Math.abs(region.scrollTop) <= ACTIVE_CUE_EDGE_EPSILON_PX;
+		const atTop =
+			Math.abs(region.scrollTop + span) <= ACTIVE_CUE_EDGE_EPSILON_PX;
+		if (atBottom) best = last;
+		else if (atTop) best = first;
 		setActiveCheckpointId((previous) => (previous === best ? previous : best));
 	}, [regionRef, loadedCheckpoints]);
 	useEffect(() => {
