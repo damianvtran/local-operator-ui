@@ -173,6 +173,9 @@ const PAGE = (title, body) => `<!doctype html>
 
 let sitePort = 0;
 let held = [];
+/** The stalled server §20 needs (a server that ACCEPTS and never answers):
+ * module scope so the teardown below closes it whatever section threw. */
+let stalledServer = null;
 
 function startSite() {
 	return new Promise((resolve) => {
@@ -3640,11 +3643,20 @@ async function main() {
 		const beforeQuit = await chromeState();
 		record("tabs at quit", JSON.stringify(beforeQuit.tabs, null, 2));
 		// The tabs the relaunch is supposed to bring back: everything that was NOT
-		// showing a load failure when the quit happened. The dead tab left standing by
-		// the section above is in `beforeQuit`, and it is exactly the row the restore
-		// must now REFUSE — asserted on its own below.
+		// showing a load failure when the quit happened, MINUS the non-active agent
+		// rows the reader now skips (2026-09-29, the restore-boundary sweep — and
+		// this quit genuinely holds one, left by the agent drive above, so this
+		// relaunch is where the large run meets the skip). The dead tab left
+		// standing by the section above is in `beforeQuit`, and it is exactly the
+		// row the restore must now REFUSE — asserted on its own below.
 		const healthyBeforeQuit = beforeQuit.tabs.filter(
 			(tab) => tab.failed !== true,
+		);
+		const skippedAgentTabs = healthyBeforeQuit.filter(
+			(tab) => tab.owner === "agent" && tab.active !== true,
+		);
+		const restorableBeforeQuit = healthyBeforeQuit.filter(
+			(tab) => !(tab.owner === "agent" && tab.active !== true),
 		);
 		/*
 		 * THE TAB COUNT IS ASSERTED, not only the file's shape (QA round 2, Q3).
@@ -3718,17 +3730,22 @@ async function main() {
 				const loaded = current.tabs.every((tab) =>
 					tab.url.startsWith("http://127.0.0.1"),
 				);
-				return current.tabs.length >= 2 && loaded ? current : null;
+				return current.tabs.length >= restorableBeforeQuit.length && loaded
+					? current
+					: null;
 			},
 			"the restored tabs and their pages",
 			30_000,
 		);
 		check(
-			"every tab that was HEALTHY at the quit is back, in the same order, and all are the USER's",
-			restored.tabs.length === healthyBeforeQuit.length &&
+			"every tab that was healthy at the quit is back and every one of them is the USER's - except the non-active agent rows, which do not come back at all",
+			restored.tabs.length === restorableBeforeQuit.length &&
 				restored.tabs.every((tab) => tab.owner === "user") &&
-				restored.tabs.every((tab) => tab.restored === true),
-			`healthy at quit ${healthyBeforeQuit.length}, restored ${restored.tabs.length}\n${JSON.stringify(restored.tabs, null, 2)}`,
+				restored.tabs.every((tab) => tab.restored === true) &&
+				skippedAgentTabs.every(
+					(skipped) => !restored.tabs.some((tab) => tab.url === skipped.url),
+				),
+			`healthy at quit ${healthyBeforeQuit.length} (of which ${skippedAgentTabs.length} agent-owned and not active), restorable ${restorableBeforeQuit.length}, restored ${restored.tabs.length}\n${JSON.stringify(restored.tabs, null, 2)}`,
 		);
 		check(
 			"and the tab that was showing a load failure when the session ended is NOT restored",
@@ -3763,20 +3780,23 @@ async function main() {
 			newOpen.json?.ok && newOpen.json.result?.tab !== agentToken,
 			`new handle ${String(newOpen.json?.result?.tab).slice(0, 12)}… (old ${String(agentToken).slice(0, 12)}…)`,
 		);
-		// THE SKIP IS AUDIBLE (2026-09-28): the relaunch says in its own log how many
-		// recorded rows it refused, so a tab that does not come back is explained by the
-		// app rather than only by this harness's checks.
+		// THE SKIPS ARE AUDIBLE (2026-09-28; widened 2026-09-29): the relaunch says
+		// in its own log how many recorded rows it refused, so a tab that does not
+		// come back is explained by the app rather than only by this harness's
+		// checks — both the dead row and the agent's.
 		app.flush();
 		const relaunchLog = readFileSync(app.logPath, "utf8");
+		const agentSkipLine = `${skippedAgentTabs.length} recorded tab(s) were opened by an agent and were not active at the quit; not restored`;
 		check(
-			"the relaunch logs the skipped rows instead of silently dropping them",
+			"the relaunch logs the skipped rows instead of silently dropping them - the dead one, and the agent's",
 			relaunchLog.includes(
 				"recorded tab(s) were showing a load failure when the session ended; not restored",
-			),
+			) &&
+				(skippedAgentTabs.length === 0 || relaunchLog.includes(agentSkipLine)),
 			`[browser] lines: ${relaunchLog
 				.split("\n")
 				.filter((line) => line.includes("[browser]"))
-				.slice(-4)
+				.slice(-6)
 				.join(" | ")}`,
 		);
 
@@ -4433,10 +4453,268 @@ async function main() {
 					caretSettledAfterOthers.tour === "browser-tab-strip-row"),
 			`${othersItem}: ${beforeOthers.tabs.length} tab(s) -> ${afterOthers?.tabs.length ?? null}; immediately ${JSON.stringify(caretAfterOthers)}, settled ${JSON.stringify(caretSettledAfterOthers)}`,
 		);
+
+		// ---- 20. the restore boundary: the residue a killed session leaves, and
+		// the stragglers the budget used to strand ----------------------------
+		/*
+		 * THE OPERATOR'S RESIDUE, END TO END (2026-09-29). A session opens a tab and
+		 * goes away without closing it — the app has no session-death signal by
+		 * design (`ownership.ts`: a guess that closes the wrong tab is worse than a
+		 * leak the user can see) — so at the quit the tab it left behind is captured
+		 * as an agent-owned row. On the base build that row comes back as a USER tab
+		 * at every launch and the capture after the restore rewrites it as the user's:
+		 * one more unattributed chip per restart, forever. This section stages that
+		 * chain and pins the fix at the restore boundary — the row is SKIPPED and the
+		 * skip is counted in the log, then the row is pruned from the file — and
+		 * beside it exercises the two robustness halves on a SEEDED fixture: a restore
+		 * that never commits a page is marked Failed (visible, closetable, terminal
+		 * through `lastLoadFailed`), and rows still queued when the budget expires get
+		 * their loads STARTED rather than being left about:blank.
+		 *
+		 * WHY THE STALLED ROWS ARE SEEDED rather than driven: they only have to exist
+		 * in the record at the next launch — that is exactly what the operator's file
+		 * held — and typing eighteen addresses would be testing the address bar.
+		 * `stalledServer` accepts the connection and never answers: the quiet death
+		 * the per-tab timeout exists for (`could not restore tab N: timed out after
+		 * 10000ms` in the deployed logs), and the one failure `did-fail-load` can
+		 * never report.
+		 */
+		const lingerUrl = `${origin()}/linger`;
+		stalledServer = createServer(() => {});
+		const stalledPort = await new Promise((resolve) =>
+			stalledServer.listen(0, "127.0.0.1", () =>
+				resolve(stalledServer.address().port),
+			),
+		);
+		const stalledRows = Array.from({ length: 18 }, (_, index) => ({
+			owner: "user",
+			active: false,
+			entries: [
+				{
+					url: `http://127.0.0.1:${stalledPort}/stall-${index}`,
+					title: `Stall ${index}`,
+				},
+			],
+			activeIndex: 0,
+		}));
+
+		const lingerOpen = await rpc(state, "open", {
+			url: lingerUrl,
+			requester: "session:proof",
+		});
+		const lingerTab = lingerOpen.json?.result?.tab ?? null;
+		const lingerTabId = await waitFor(
+			async () => {
+				const current = await chromeState();
+				return current.tabs.find((tab) => tab.url === lingerUrl)?.tabId ?? null;
+			},
+			"the session's tab to appear in the strip",
+			15_000,
+		).catch(() => null);
+		const beforeBoundary = await chromeState();
+		check(
+			"the session's tab opens as the agent's own, without stealing the user's active tab",
+			typeof lingerTab === "string" &&
+				lingerTabId !== null &&
+				beforeBoundary.activeTabId !== lingerTabId,
+			`handle ${String(lingerTab).slice(0, 12)}…; tabId ${lingerTabId}; active ${beforeBoundary.activeTabId}`,
+		);
+
+		// The surviving user tab gets a real page before the quit: the pool's tabs
+		// from §19 are blank, a blank tab is not captured (nothing restorable to
+		// write), and this fixture needs a user row beside the residue — the same
+		// move §11 makes for its own quit.
+		await typeAddress(`${origin()}/index.html`);
+		await waitFor(
+			async () => {
+				const current = await chromeState();
+				const tab = current.tabs.find(
+					(row) => row.tabId === current.activeTabId,
+				);
+				return tab && tab.url === `${origin()}/index.html` ? current : null;
+			},
+			"the surviving user tab to commit a page before the boundary quit",
+			15_000,
+		);
+
+		// The quit: the capture sees both tabs, so the seal accepts it (it refuses a
+		// short capture), and the row it writes for the lingering tab is the residue
+		// the next launch has to decide about.
+		await stopApp();
+		const boundarySessionPath = join(USER_DATA, "browser", "session.json");
+		const quitFile = JSON.parse(readFileSync(boundarySessionPath, "utf8"));
+		const lingerRow =
+			(quitFile.tabs ?? []).find((row) =>
+				(row.entries ?? []).some((entry) => entry.url === lingerUrl),
+			) ?? null;
+		const keepRows = (quitFile.tabs ?? []).filter((row) => row !== lingerRow);
+		check(
+			"the quit captures the tab the session left behind as an AGENT-owned row, beside the user's",
+			lingerRow?.owner === "agent" &&
+				lingerRow?.active !== true &&
+				keepRows.length >= 1,
+			JSON.stringify(quitFile.tabs, null, 2),
+		);
+
+		// The seeded fixture, written while the app is down: the quit's own rows (the
+		// agent residue among them) plus the stalled set the relaunch will meet.
+		const seeded = {
+			version: 1,
+			tabs: [...keepRows, lingerRow, ...stalledRows],
+		};
+		writeFileSync(boundarySessionPath, JSON.stringify(seeded));
+		record(
+			"the seeded fixture at the restore boundary",
+			JSON.stringify(
+				{
+					rows: seeded.tabs.length,
+					agentRows: 1,
+					stalledRows: stalledRows.length,
+					userRows: keepRows.length,
+				},
+				null,
+				2,
+			),
+		);
+
+		socket = null;
+		pendingCalls.clear();
+		nextId = 1;
+		app = await launchApp();
+		state = await waitForState();
+		await connectRenderer();
+		await send("Page.enable", {});
+		await send("Runtime.enable", {});
+		await waitFor(
+			() =>
+				evaluate(
+					"typeof window.api?.browser?.state === 'function' ? 'ready' : ''",
+				),
+			"the preload after the boundary relaunch",
+		);
+		await openBrowserFromRail();
+		await waitFor(
+			() =>
+				evaluate(
+					"document.querySelector('[data-tour-tag=\"browser-content\"]') ? 'yes' : ''",
+				),
+			"the browser surface after the boundary relaunch",
+		);
+
+		// The row the agent's tab must NOT come back as — nor as anything else: the
+		// full expected strip, in file order, with the residue row absent.
+		const expectedUrls = [
+			...keepRows.map((row) => row.entries[row.activeIndex ?? 0]?.url),
+			...stalledRows.map((row) => row.entries[0].url),
+		];
+		const boundaryRestored = await waitFor(
+			async () => {
+				const current = await chromeState();
+				return current.tabs.length === expectedUrls.length &&
+					current.tabs.every((tab) => /^http/.test(String(tab.url ?? "")))
+					? current
+					: null;
+			},
+			"every bound row's load to start (none left about:blank)",
+			45_000,
+		).catch(() => null);
+		await sleep(2500);
+		const boundaryState = await chromeState();
+		app.flush();
+		const boundaryLog = readFileSync(app.logPath, "utf8");
+
+		const skippedAgent =
+			/(\d+) recorded tab\(s\) were opened by an agent and were not active at the quit; not restored/.exec(
+				boundaryLog,
+			);
+		check(
+			"the relaunch SKIPS the row the killed session left behind, and counts it",
+			skippedAgent?.[1] === "1" &&
+				!boundaryState.tabs.some((tab) => String(tab.url).includes("/linger")),
+			`skip line: ${skippedAgent?.[0] ?? "(absent)"}; urls: ${JSON.stringify(boundaryState.tabs.map((tab) => tab.url))}`,
+		);
+		check(
+			"every restorable row came back, in order, and only the agent's is missing",
+			JSON.stringify(boundaryState.tabs.map((tab) => tab.url)) ===
+				JSON.stringify(expectedUrls),
+			JSON.stringify(boundaryState.tabs.map((tab) => tab.url)),
+		);
+		check(
+			"no restored tab is left about:blank: every queued row's load was started",
+			boundaryRestored !== null &&
+				boundaryState.tabs.every((tab) => /^http/.test(String(tab.url ?? ""))),
+			`tabs: ${JSON.stringify(
+				boundaryState.tabs.map((tab) => ({
+					id: tab.tabId,
+					url: tab.url,
+					loading: tab.loading,
+					failed: tab.failed,
+				})),
+			)}`,
+		);
+		const queuedAtBudget =
+			/the \d+ms restore budget expired with (\d+) tab\(s\) still queued; they start loading in the background/.exec(
+				boundaryLog,
+			);
+		check(
+			"the budget names the queued set the drain starts",
+			queuedAtBudget !== null &&
+				queuedAtBudget[1] === String(stalledRows.length - 4),
+			`budget line: ${queuedAtBudget?.[0] ?? "(absent)"}; expected ${stalledRows.length - 4} of ${stalledRows.length} stalled rows queued (RESTORE_CONCURRENCY 4)`,
+		);
+		const failedNow = boundaryState.tabs.filter((tab) => tab.failed === true);
+		check(
+			"a restore that never commits a page is marked Failed, so it can be seen and closed",
+			failedNow.length >= 1 &&
+				failedNow.every((tab) =>
+					String(tab.url).startsWith(`http://127.0.0.1:${stalledPort}/`),
+				),
+			`failed ${failedNow.length}: ${JSON.stringify(failedNow.map((tab) => tab.url))}`,
+		);
+		check(
+			"and the failed set is the hydrated wave, not the fleet: the drained rows are still loading, visibly",
+			failedNow.length <= 4,
+			`failed ${failedNow.length} of ${stalledRows.length} stalled rows (the in-flight wave is RESTORE_CONCURRENCY 4)`,
+		);
+		const pruned = await waitFor(
+			async () => {
+				const parsed = JSON.parse(readFileSync(boundarySessionPath, "utf8"));
+				return (parsed.tabs ?? []).every(
+					(row) =>
+						!(row.entries ?? []).some((entry) => entry.url === lingerUrl),
+				)
+					? parsed
+					: null;
+			},
+			"the skipped row to leave the durable file",
+			20_000,
+		).catch(() => null);
+		check(
+			"the skipped row is PRUNED by the next capture: the residue cannot come back",
+			pruned !== null,
+			`rows on disk now: ${pruned === null ? "(the row is still there)" : pruned.tabs.length}`,
+		);
+
+		// The frame: chrome-only, because the active tab is a restored user tab and a
+		// user tab holds no handle to composite (design 7.3). It carries the three
+		// states at once — the restored user tab, the Failed chips on the quiet-dead
+		// wave, and the still-loading stragglers — and NOT the tab the session left
+		// behind.
+		const boundaryExposure = await exposeStrip();
+		lastStripReading = JSON.stringify(boundaryExposure);
+		record(
+			"strip exposure at the restore boundary",
+			JSON.stringify(boundaryExposure, null, 2),
+		);
+		const boundaryFrame = await captureRenderer("restore-boundary");
+		await compose("restore-boundary", boundaryFrame, null, await contentRect());
+		say(`frame: ${join(OUT_DIR, "restore-boundary.png")}`);
 	} finally {
 		sampler?.stop();
 		for (const timer of held) clearTimeout(timer);
 		server.close();
+		stalledServer?.closeAllConnections?.();
+		stalledServer?.close();
 		await stopApp();
 	}
 

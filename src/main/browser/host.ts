@@ -162,8 +162,12 @@ const TAB_SCOPED: ReadonlySet<string> = new Set([
  * user is already doing in the app, and because the tabs are already allocated:
  * this number bounds concurrency, not the size of the restore (review R5 asked for
  * bounded concurrency, not for a queue nobody waits on).
+ *
+ * Exported for the tests, deliberately: a suite that hard-coded the number would
+ * stop testing the concurrency the day it moves (`browser-host.test.mjs` reads it
+ * to derive how many tabs a budget expiry should leave queued).
  */
-const RESTORE_CONCURRENCY = 4;
+export const RESTORE_CONCURRENCY = 4;
 
 /**
  * How long ONE restored tab may hold up the hydration pass.
@@ -171,8 +175,9 @@ const RESTORE_CONCURRENCY = 4;
  * A restored URL is a fresh navigation (design 7.3), so `history.restore()` on a
  * page that never answers is a wait with no bound of its own. Ten seconds is past
  * any slow-but-working origin and short enough that the pass always finishes.
+ * Exported for the tests (see `RESTORE_CONCURRENCY`).
  */
-const RESTORE_TAB_TIMEOUT_MS = 10_000;
+export const RESTORE_TAB_TIMEOUT_MS = 10_000;
 
 /**
  * How long the WHOLE hydration pass may hold the host's attention.
@@ -181,9 +186,12 @@ const RESTORE_TAB_TIMEOUT_MS = 10_000;
  * each is fifty seconds of a startup nobody asked for. This is the outer bound, and
  * when it expires the pass stops WAITING rather than stops working — the remaining
  * tabs keep loading and the host is already serving (review R5: one hung page must
- * not withhold the browser host).
+ * not withhold the browser host). THE SENTENCE IS MADE TRUE BY THE DRAIN at the end
+ * of `hydrateRestored` (2026-09-29): before it, the queued tabs got no load at all
+ * and sat `about:blank` forever (RC2b).
+ * Exported for the tests (see `RESTORE_CONCURRENCY`).
  */
-const RESTORE_BUDGET_MS = 8_000;
+export const RESTORE_BUDGET_MS = 8_000;
 
 /**
  * Resolve with `work`, or reject once `ms` has passed.
@@ -986,11 +994,53 @@ export class BrowserHost implements BrowserActionContext {
 	}
 
 	/**
+	 * Start ONE restored tab's load, without waiting for it.
+	 *
+	 * The one spelling of "how a restored tab gets its page back", shared by
+	 * `hydrateOne` (which awaits the promise under the per-tab timeout) and the
+	 * budget drain at the end of the pass (which only STARTS it). `null` when the
+	 * tab or its view is already gone — the user can close a tab while the pass is
+	 * still running, and the drain iterates a queue collected across awaits.
+	 */
+	private startRestore(
+		tabId: number,
+		recorded: PersistedTab,
+	): Promise<void> | null {
+		const record = this.registry.get(tabId);
+		if (!record) return null;
+		const contents = record.view.webContents;
+		if (contents.isDestroyed()) return null;
+		const history = contents.navigationHistory;
+		const entry = recorded.entries[recorded.activeIndex];
+		return history?.restore
+			? history.restore({
+					entries: recorded.entries,
+					index: recorded.activeIndex,
+				})
+			: // The honest degradation (see `NavigationHistoryLike`): a view with no
+				// history API still gets put back on the page it was showing, without
+				// its stack and its page state.
+				entry
+				? contents.loadURL(entry.url)
+				: Promise.resolve();
+	}
+
+	/**
 	 * Apply each restored tab's history and debugger session, bounded.
 	 *
 	 * `Promise.allSettled` rather than `Promise.all`: the two steps below already turn
 	 * a failure into a log line, and a rejection here would be an unhandled rejection
 	 * on a promise only a test awaits.
+	 *
+	 * THE BUDGET STOPS THE PASS WAITING, NEVER THE WORK (2026-09-29, RC2b). When the
+	 * deadline expires the workers stop TAKING tabs, and whatever is still queued is
+	 * drained below: each remaining tab's load is STARTED, unawaited, so nothing is
+	 * left `about:blank` forever. Before the drain, the deadline check ran AFTER the
+	 * shift and silently dropped the tab it had just taken, and every other queued
+	 * tab got no load at all while the log claimed "they keep loading in the
+	 * background" (the field: up to 14 blank tabs from one launch). The constants
+	 * above are deliberately unchanged — one hung page must not withhold the host,
+	 * so what changed is only what happens AFTER the budget, not the budget.
 	 */
 	private async hydrateRestored(
 		created: Array<{ tabId: number; recorded: PersistedTab }>,
@@ -1000,19 +1050,21 @@ export class BrowserHost implements BrowserActionContext {
 		let reported = false;
 		const worker = async (): Promise<void> => {
 			for (;;) {
-				const next = queue.shift();
-				if (!next) return;
 				if (Date.now() >= deadline) {
 					// Said once per pass, not once per worker: four copies of one line says
 					// nothing the first does not, and this log is read by a support session.
-					if (!reported) {
+					// The check runs BEFORE the shift, so the count is exactly the set the
+					// drain below will start — no tab is taken and dropped on the floor.
+					if (queue.length > 0 && !reported) {
 						reported = true;
 						this.log(
-							`[browser] the ${RESTORE_BUDGET_MS}ms restore budget expired with ${queue.length + 1} tab(s) still loading; they keep loading in the background`,
+							`[browser] the ${RESTORE_BUDGET_MS}ms restore budget expired with ${queue.length} tab(s) still queued; they start loading in the background`,
 						);
 					}
 					return;
 				}
+				const next = queue.shift();
+				if (!next) return;
 				await this.hydrateOne(next.tabId, next.recorded);
 			}
 		};
@@ -1022,6 +1074,19 @@ export class BrowserHost implements BrowserActionContext {
 				worker,
 			),
 		);
+		// THE DRAIN. Every load the budget left queued gets STARTED here and none of
+		// it is awaited: a straggler loads or fails visibly (a refusal reaches the
+		// ordinary `did-fail-load` wiring) instead of sitting blank, and a failure to
+		// even start is a log line rather than an unhandled rejection.
+		for (const next of queue) {
+			const started = this.startRestore(next.tabId, next.recorded);
+			if (!started) continue;
+			void Promise.resolve(started).catch((error: unknown) => {
+				this.log(
+					`[browser] could not start the restore of tab ${next.tabId}: ${String(error)}`,
+				);
+			});
+		}
 	}
 
 	/** One tab's half of the pass: the history stack, then the debugger session. */
@@ -1035,25 +1100,68 @@ export class BrowserHost implements BrowserActionContext {
 		// would drive a released `webContents`.
 		if (!record) return;
 		const contents = record.view.webContents;
-		const history = contents.navigationHistory;
-		const entry = recorded.entries[recorded.activeIndex];
+		// WHETHER THIS HYDRATION'S NAVIGATION COMMITTED A DOCUMENT, read from the
+		// event rather than from a property, because neither of the two obvious
+		// reads answers the question: `getURL()` already reports the TARGET url
+		// while the restore is still pending, and `history.restore()`'s promise does
+		// not settle until the load FINISHES, so it is still pending for a page that
+		// committed seconds ago (both measured on Electron 44, 2026-09-29).
+		// `did-navigate` is the commit, and it is what tells "the page came back but
+		// is still fetching something" apart from "nothing ever arrived" — only the
+		// second one is a failure to record (see the catch below).
+		let committed = false;
+		const onCommitted = (): void => {
+			committed = true;
+		};
+		contents.on("did-navigate", onCommitted);
 		try {
-			await withTimeout(
-				history?.restore
-					? history.restore({
-							entries: recorded.entries,
-							index: recorded.activeIndex,
-						})
-					: // The honest degradation (see `NavigationHistoryLike`): a view with no
-						// history API still gets put back on the page it was showing, without
-						// its stack and its page state.
-						entry
-						? contents.loadURL(entry.url)
-						: Promise.resolve(),
-				RESTORE_TAB_TIMEOUT_MS,
-			);
+			const started = this.startRestore(tabId, recorded);
+			if (started) await withTimeout(started, RESTORE_TAB_TIMEOUT_MS);
 		} catch (error) {
 			this.log(`[browser] could not restore tab ${tabId}: ${String(error)}`);
+			// THE QUIET DEATH (2026-09-29, RC2a): a hydration that never committed a
+			// page is the failure mode the view's own `did-fail-load` can NEVER report —
+			// a server that accepts the connection and never answers times out here
+			// with no network error at all — so it is recorded as a load failure rather
+			// than left as a blank tab the user cannot see, cannot close in bulk, and
+			// never stops being restored. The mark draws the strip's Failed chip and
+			// feeds the counted close; `failedTabIds` writes `lastLoadFailed` on the
+			// next capture, and `readSession` then skips the row. A page that DOES
+			// eventually commit past the timeout clears the mark through the ordinary
+			// wiring (`did-start-loading`/`did-navigate` call `clearLoadFailure`,
+			// `browser/index.ts`), so the panel is never a verdict on a tab that came
+			// back.
+			//
+			// IT DOES NOT OVERWRITE A REFUSAL ALREADY ON RECORD: when the view's own
+			// `did-fail-load` fired for this navigation it recorded the SPECIFIC code
+			// (`ERR_CONNECTION_REFUSED` and friends) whose description the panel maps
+			// to a sentence the user can act on, and this fallback exists only for the
+			// failures that path cannot see.
+			if (
+				!committed &&
+				!this.loadFailures.has(tabId) &&
+				this.registry.get(tabId) &&
+				!contents.isDestroyed()
+			) {
+				const entry = recorded.entries[recorded.activeIndex];
+				// `ERR_FAILED` is Chromium's generic refusal and the parenthetical is
+				// the part a bug report needs: the panel shows the description verbatim
+				// in machine voice (`browser-load-failure.tsx`), and its sentence
+				// fallback says the one thing that is always true rather than inventing
+				// a cause.
+				this.recordLoadFailure(tabId, {
+					code: -2,
+					description: "ERR_FAILED (restore)",
+					url: entry?.url ?? contents.getURL(),
+				});
+				this.log(
+					`[browser] tab ${tabId} is marked as failed: the restore did not commit a page`,
+				);
+			}
+		} finally {
+			if (!contents.isDestroyed()) {
+				contents.removeListener("did-navigate", onCommitted);
+			}
 		}
 		if (!this.registry.get(tabId)) return;
 		try {
