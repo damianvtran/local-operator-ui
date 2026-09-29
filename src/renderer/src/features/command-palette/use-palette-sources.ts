@@ -57,6 +57,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef } from "react";
 import type { SessionSearchHit } from "../../../../shared/desktop-session-contract";
 import {
+	type PaletteCatalogueState,
 	type PaletteItem,
 	buildActionItems,
 	buildChatItem,
@@ -180,6 +181,19 @@ export type PaletteChatState = {
 	 * will be wrong in one of the two cases.
 	 */
 	pending: boolean;
+	/**
+	 * What the BROWSE list's catalogue is doing (chats scope, no terms typed).
+	 *
+	 * A different question from the ones above, which are all about the
+	 * SEARCH: with no terms, the chats section is what the local store holds,
+	 * and the panel must be able to say "still loading" without flashing "no
+	 * conversations" at a user whose store simply has not answered yet
+	 * (design round 2, D2). Never-asked (`catalogueAsked` false) is folded
+	 * into loading: the fetch effect fires the moment the palette opens, so
+	 * the first painted frame is a frame of a request about to be in flight,
+	 * and the loading sentence is the only one true across both.
+	 */
+	catalogue: PaletteCatalogueState;
 };
 
 export type PaletteSources = {
@@ -754,6 +768,12 @@ export function usePaletteItems({
 			unreachable: capabilities.isError,
 			pending: capabilities.isLoading || capabilities.isPending,
 			overLong: search.refused,
+			catalogue:
+				sessions.length > 0
+					? "loaded"
+					: sessionsLoading || !catalogueAsked.current
+						? "loading"
+						: "empty",
 		},
 	};
 }
