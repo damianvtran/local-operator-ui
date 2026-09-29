@@ -154,9 +154,10 @@ const LaneLeadingContext = createContext<LaneLeadingRegistration | null>(null);
  * a route added later has to say which rung it stands on for its column to be
  * mirrored, and the settings rail's `elevated` is why one fixed ground is no longer
  * enough. This hook does not restate the paint - `chat-layout`'s lane reads the
- * marker back - so the value and the class on the column are one decision made in one
- * file: `settings-sidebar.tsx` writes `bg-elevated` and the rail's wrapper hands over
- * `"elevated"`.
+ * marker back - so the value and the class on the column are one decision, pinned by
+ * the sweep: `lane-leading.test.mjs` reads the painting file's `bg-<ground>` beside
+ * the handed value, so `settings-sidebar.tsx`'s `bg-elevated` and the rail wrapper's
+ * `"elevated"` fail together if only one of them moves.
  *
  * A REF RATHER THAN A QUERY, and the settings rail is why: it renders after the
  * route's config read resolves, so on a cold route it is not in the tree at the

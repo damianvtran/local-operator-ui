@@ -2627,7 +2627,8 @@ const STRUCTURAL_CALL_SITES = [
 	{
 		/*
 		 * The settings rail's current row, which was the same defect on the same
-		 * ground: the rail's root is `bg-surface` (`settings-sidebar.tsx`) and it
+		 * ground: the rows read against `surface`, which the rail's group lists
+		 * carry (the root moved to `bg-elevated` on 2026-09-27), and it
 		 * marked its current section with `accent-wash` — ΔE00 1.05 in tokyoNight
 		 * (`#262B3F` on `#24283B`), a row with no ground at all, identifiable only by
 		 * its accent glyph and weight. It is here rather than in a set of its own

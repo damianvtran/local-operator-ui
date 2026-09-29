@@ -144,7 +144,7 @@ const SECTION_GROUPS: { label: string; ids: string[] }[] = [
  * right. A drawn line over a tone step is the second mark this app's doctrine
  * removes (`chat-layout.tsx`, and the pass that took the dock's `border-l`),
  * and the one the wrapper drew was the one that stopped short.
- * *
+ *
  * ## Why it drops its labels below 1040px
  *
  * This rail and the global app rail are both 220px and both on screen at once,

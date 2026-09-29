@@ -2246,7 +2246,7 @@ const BRANCH_RECORDS = [
 	 * readable without walking the manifest's partialCapture block. It spells
 	 * its identity as bare SHAs, so it adds no name to the quoting ledger.
 	 */
-		"monitorsPass",
+	"monitorsPass",
 	/*
 	 * And by the SETTINGS-RAIL lane's fold onto `origin/main` = `0738fa7eb3`
 	 * (2026-09-29): the fold re-laid four of its records onto this file - its
