@@ -104,13 +104,14 @@ export const DESKTOP_HOTKEY_NEEDS_MODIFIER_COPY =
 
 /**
  * The alternates sentence (§B.3), spelled with the display keys of the
- * platform the app is running on so the sentence and the field agree.
+ * platform the app is running on so the sentence and the field agree. The
+ * shipped default is deliberately not one of the alternates: offering the
+ * chord the reader already holds would be circular (it was the middle entry
+ * until the default moved onto it).
  */
 export function alternatesCopy(platform: MiniViewPlatform): string {
 	const shown = (value: string) => formatQuickSendDisplay(value, platform);
-	return `Try ${shown("primary+shift+space")}, ${shown(
-		"primary+alt+shift+space",
-	)} or ${shown("primary+f8")} if that one is taken.`;
+	return `Try ${shown("primary+shift+space")} or ${shown("primary+f8")} if that one is taken.`;
 }
 
 /**
