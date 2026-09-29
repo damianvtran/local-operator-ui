@@ -505,6 +505,77 @@ const pinnedTurn = (): TranscriptState => {
 	});
 };
 
+/**
+ * ISSUE #5'S CELL (operator feedback, 2026-09-29): the turn as the operator
+ * sees it when a window-collect runs - peer and wake delivery receipts among
+ * the call rows. Under the narrowed pin list these collapse WITH the work, and
+ * the pair of frames (this one, and the same story pressed open in the
+ * capture table) is what the design round judges.
+ */
+const receiptsTurn = (): TranscriptState => {
+	const S = TS / 1000;
+	type Entry = DesktopHistoryPage["entries"][number];
+	const entry = (
+		id: string,
+		ts: number,
+		payload: Record<string, unknown>,
+	): Entry => ({ id, ts, type: "message", payload });
+	return applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			entry("u1", S, {
+				kind: "message",
+				role: "user",
+				content: [{ text: QUESTION }],
+			}),
+			entry("p1", S + 2, {
+				kind: "custom",
+				custom_type: "peer_message",
+				details: {
+					body: "window-collect: 140 records staged for the next batch.",
+					sender: {
+						pid: "",
+						conversationName: "ingest-rail",
+						cwd: "",
+						sessionId: "",
+						modelLabel: "",
+					},
+				},
+			}),
+			entry("t1", S + 3, {
+				kind: "message",
+				role: "tool",
+				tool_call_id: "c1",
+				tool_name: "bash",
+				content: [{ type: "text", text: "tests 40\npass 40\n" }],
+				provider_payload: { duration_s: 12.5, details: {} },
+			}),
+			entry("w1", S + 5, {
+				kind: "custom",
+				custom_type: "wake_prompt",
+				details: {
+					text: "(alarm) Scheduled wake w-9 (1, every 6h)\n\nCollect the staged records.",
+				},
+			}),
+			entry("t2", S + 9, {
+				kind: "message",
+				role: "tool",
+				tool_call_id: "c2",
+				tool_name: "read",
+				content: [{ type: "text", text: "src/invoices/query.ts\n" }],
+				provider_payload: { duration_s: 0.4, details: {} },
+			}),
+			entry("a1", S + 72, {
+				kind: "message",
+				role: "assistant",
+				content: [{ type: "text", text: ANSWER }],
+				stop_reason: "stop",
+			}),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+};
+
 const Frame = ({
 	transcript,
 	caption,
@@ -606,7 +677,7 @@ export const Failed: Story = {
 	render: () => (
 		<Frame
 			transcript={failedTurn()}
-			caption="A turn with one failed call — the failure survives the collapse as its own control."
+			caption="A turn with one failed call — no tally on the bar; the red row keeps the state, one press away."
 		/>
 	),
 };
@@ -670,6 +741,20 @@ export const Pinned: Story = {
  * it), and what this cell pins is the transcript's half of the same moment:
  * no bar while the turn waits.
  */
+/**
+ * ISSUE #5'S FRAMES: peer and wake receipts inside a completed turn -
+ * collapsed here, pressed open by the capture table's second row, so the
+ * design round judges the reveal of the receipts the narrowed pins hide.
+ */
+export const Receipts: Story = {
+	render: () => (
+		<Frame
+			transcript={receiptsTurn()}
+			caption="Peer and wake receipts among the call rows — receipts the collapsed bar now stands in for."
+		/>
+	),
+};
+
 export const Parked: Story = {
 	render: () => (
 		<Frame

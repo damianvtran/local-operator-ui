@@ -1922,6 +1922,15 @@ const STAMP_BINDING_NOTES = [
 	 * quotes that pair, so it is held to this file like every entry above it.
 	 */
 	"sessionlessSlashFoldNote",
+	/*
+	 * AND THE SECOND FOLD'S OWN (2026-09-29): `sessionlessSlashSecondFoldNote`
+	 * is the fold onto the moved `origin/main` `3de40b0fc9` (#634's
+	 * collapse-onload-more-below train) — the same union, the pair re-derived
+	 * from the resolved index again and every list member above re-pointed with
+	 * it. It quotes that pair, so it is held to this file like every entry
+	 * above it.
+	 */
+	"sessionlessSlashSecondFoldNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -2968,6 +2977,12 @@ const BRANCH_RECORDS = [
 	 * a fold that started from main's copy would drop it.
 	 */
 	"sessionlessSlashFoldNote",
+	/*
+	 * And the second fold's own (`sessionlessSlashSecondFoldNote`), listed for
+	 * the list's usual reason: the note states what the fold moved and what it
+	 * did not, and a fold that started from main's copy would drop it.
+	 */
+	"sessionlessSlashSecondFoldNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
