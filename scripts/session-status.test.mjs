@@ -670,11 +670,13 @@ test("the effort VALUE is title-cased for display, and the raw level is untouche
 /* ---- 7b. the fast dial: the tri-state the badge and the row share ------- */
 
 test("the fast dial is a tri-state, and `nothing` is not an OFF", () => {
-	// Mirrors `_fast_label` (`tui/widgets/status_line.py`): a segment exists
-	// only when the model HAS the tier, so a spec that reports none answers
-	// `null` — an `off` there would claim a dial the model does not have. The
-	// desktop's badge and the `/fast` row's slot both take their state from
-	// here, which is what keeps them from disagreeing about a session's dial.
+	// Mirrors `_fast_label` (defined in `local_operator/tui/app.py`; its word is
+	// what `tui/widgets/status_line.py`'s `fast` segment paints): a segment
+	// exists only when the model HAS the tier, so a spec that reports none
+	// answers `null` — an `off` there would claim a dial the model does not
+	// have. The badge and the row both call this; each passes the spec it shows
+	// (the chip's path `pendingModel ?? inForce`, the row's the spec in force),
+	// so outside an unconfirmed switch they read the same fields.
 	assert.equal(fastModeState(null), null);
 	assert.equal(fastModeState(undefined), null);
 	assert.equal(fastModeState({}), null);
