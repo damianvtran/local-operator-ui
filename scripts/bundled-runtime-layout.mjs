@@ -60,11 +60,10 @@ export function pythonAbi(version = PYTHON_VERSION) {
 
 export const PYTHON_ABI = pythonAbi();
 
-/** The minor alone (`12`), which is what CPython's versioned console scripts use:
- * `bin/2to3-3.12` carries the whole `<major>.<minor>` while `bin/idle3.12` and
- * `bin/pydoc3.12` carry the minor after the tool's own name. Measured against the
- * staged 3.12.14 tree; a single token for both spellings silently prunes nothing,
- * and `idle3.12` is the file this caught. */
+/** The minor alone (`14`), which is what CPython's versioned console scripts use:
+ * `bin/idle3.14` and `bin/pydoc3.14` carry the minor after the tool's own name.
+ * Measured against the staged 3.14.7 tree; a single token for both spellings
+ * silently prunes nothing, and `idle3.14` is the file this caught. */
 export const PYTHON_MINOR = PYTHON_VERSION.split(".")[1];
 
 /** The Tcl/Tk version this build ships (`9.0`).

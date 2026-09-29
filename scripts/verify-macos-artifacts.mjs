@@ -982,10 +982,9 @@ export function seedModeCheck(appPath) {
  *
  * `macos-install-script.sh` creates its venv with `-m venv` and then asserts
  * `bin/pip` exists, and the pip there comes from `ensurepip`'s bundled wheel -
- * not from the seed's own `site-packages`, whose pip is a different, older
- * version (measured: the venv built from the pruned seed reports pip 25.0.1
- * from `ensurepip/_bundled/pip-25.0.1-py3-none-any.whl`, while the seed's own
- * `site-packages` carries 24.3.1). Both halves are asserted, with the
+ * `ensurepip/_bundled/pip-26.2.1-py3-none-any.whl` in the staged 3.14.7 tree,
+ * not from the seed's own `site-packages` (which carries the same 26.2.1; the
+ * wheel is the copy `-m venv` unpacks). Both halves are asserted, with the
  * interpreter itself, because the failure this catches is a future prune that
  * looks tidy and leaves an install with no pip to install from. */
 export function seedBootstrapCheck(appPath) {
