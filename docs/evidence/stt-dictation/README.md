@@ -11,7 +11,7 @@ pre-change tree).
 
 Every number below is quoted from the two records in THIS directory
 (`stt-proof.json` = the shipping run; `stt-proof-injected.json` = the proxy-
-injected capability run). PROVENANCE, exactly: both records were captured from the build taken immediately BEFORE this branch's final two copy-only edits (the empty-transcript toast, UX round 1 U3b, and the canvas append's boundary rule) - neither of which this rig drives, which is why the records still stand for every flow they exercise, but it is stated here rather than only in the review thread. A re-capture from the final build is queued behind a sibling session holding the rig's port (8080 is in the app's CSP, so the rig cannot port-hop) and will supersede these records, and this clause, when it completes. Budgets in the
+injected capability run). PROVENANCE: both records are from the FINAL build of this branch's tip - the tree they ship beside; the interim pair (captured from the build before the last two copy-only edits) is superseded. Budgets in the
 rig are the run's PATIENCE (cold `getUserMedia` on this fleet has measured
 595 ms to >3000 ms under load), not ceilings on the gesture: the measured
 latency is recorded whatever it is.
@@ -47,7 +47,9 @@ LO_PROOF_TOKEN=$(cat $SP/stt-backend/token) LO_PROOF_BACKEND=http://127.0.0.1:11
 ```
 
 The rig needs `LO_PROOF_PROXY_PORT` (default 8080) free, and binds
-`LO_PROOF_RADIENT_PORT` (default 8799) itself. It strips every inherited
+`LO_PROOF_RADIENT_PORT` (default 8799) itself - if that port is taken, move the
+rig with `LO_PROOF_RADIENT_PORT` and point the backend's `RADIENT_API_BASE_URL`
+at the same number (this session ran on 8783 for exactly that reason). It strips every inherited
 `CMUX_*`/`LOP_*`, redirects HOME/config/logs/Electron profile into its own
 out-dir, sets the notification and telemetry switches, and reaps every process
 it starts by pid.
@@ -84,9 +86,9 @@ instrumentation, not a shell clock). Quoted from `stt-proof.json`:
 | --- | --- | --- |
 | baseline | hold Right-Option | key delivered (`deliveredToPage:true`), NOTHING engages - no handler exists |
 | baseline | hold Space | engages after **1810 ms**: the 1000 ms hold-timer plus the first `getUserMedia` |
-| this tree | hold Right-Option, first use | **675 ms** (`sessionA.comboEngages`, `cold:true`) - `getUserMedia` + AudioContext init on a synthetic device under fleet load; there is no timer left to wait for |
-| this tree | hold Space, warm | **21 ms** (`sessionA.spaceEngages`) |
-| this tree | hold Right-Option, warm, mid-turn | **75 ms** (`sessionB.midTurnComboEngages`) |
+| this tree | hold Right-Option, first use | **1379 ms** (`sessionA.comboEngages`, `cold:true`) - `getUserMedia` + AudioContext init on a synthetic device under fleet load; there is no timer left to wait for |
+| this tree | hold Space, warm | **42 ms** (`sessionA.spaceEngages`) |
+| this tree | hold Right-Option, warm, mid-turn | **160 ms** (`sessionB.midTurnComboEngages`) |
 
 The cold figure is reported rather than averaged away, and macOS TCC is
 explicitly NOT part of it: the fake capture device bypasses the OS grant, so the
@@ -111,7 +113,7 @@ the dictated message is in the transcript, and the composer's own line says
 "Steer the agent. Enter sends now · Esc stops" (while a take is live that line
 is the recording's own - see §8). The record's claims, all against the same
 press: the recorded wire body says `mode:"steer"`, and
-`{"streamingBeforeSteer":true,"streamingAtSteer":true,"messageLandedWhileStreaming":true,"landedAtMs":17}`
+`{"streamingBeforeSteer":true,"streamingAtSteer":false,"streamingAtDelivery":true,"messageLandedWhileStreaming":true,"landedAtMs":57}` (the run also carries the snapshot flag's whole series across the send: it reads true beside the delivery, dips at the tool-segment boundary ~400 ms later - recorded rather than raced)
 - the steer was taken mid-stream and the row was durable at the first poll
 (17 ms on this run; the poll's read, not a delivery SLA).
 
@@ -155,8 +157,8 @@ released answer - and instruments the composer FIELD itself (a patched `value`
 setter on the node) so every write the app makes to its own box is timestamped
 from inside the frame.
 
-The measured ordering of this run: press at `28603.7`, the send's clear (an
-empty write) at `+8.9 ms`, the transcript's write at `+15.7 ms` - so in THIS rig
+The measured ordering of this run: press at `33835.2`, the send's clear (an
+empty write) at `+8.2 ms`, the transcript's write at `+18.2 ms` - so in THIS rig
 the transcript rides the fresh-append path: it is not lost, and it does not
 resurrect the sent text; both are asserted. The composed-clear path - the
 transcript arriving INSIDE the press-to-echo window, where

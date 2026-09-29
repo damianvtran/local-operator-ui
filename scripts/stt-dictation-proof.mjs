@@ -1202,6 +1202,61 @@ try {
 		);
 		record("sessionB.midTurnTranscriptLanded", { draft: landed });
 		await cdp.shot("11-dictated-mid-turn.png");
+		const rowShape = async (needle) =>
+			JSON.parse(
+				await cdp.evaluate(`(() => {
+				const nodes = Array.from(document.querySelectorAll("p, span, div"));
+				/*
+				 * TOLERANT MATCHING (third final-build run): the row EXISTS on screen
+				 * (frame 12) while the exact-leaf matcher above missed it - the row's
+				 * text lives beside something else inside its own subtree (a steer
+				 * marker, a timestamp), so the equality on a childless leaf found
+				 * nothing. Prefer the exact leaf; fall back to the SMALLEST subtree
+				 * that contains the needle, which is the innermost element the text
+				 * itself sits in.
+				 */
+				const inScope = (n) =>
+					!n.closest(
+						"nav, aside, button, [role='navigation'], [role='dialog']",
+					);
+				const exact = nodes.find(
+					(n) =>
+						n.children.length === 0 &&
+						(n.textContent ?? "").trim() === ${JSON.stringify(needle)} &&
+						// The sidebar titles a session with its first message, so the same
+						// string lives in a nav row too; the TRANSCRIPT's copy is the one
+						// this claim is about.
+						inScope(n),
+				);
+				const leaf =
+					exact ??
+					nodes
+						.filter(
+							(n) =>
+								inScope(n) &&
+								(n.textContent ?? "").includes(${JSON.stringify(needle)}),
+						)
+						.sort(
+							(a, b) =>
+								(a.textContent ?? "").length -
+								(b.textContent ?? "").length,
+						)[0];
+				if (!leaf) return JSON.stringify(null);
+				// The row's own box: the nearest ancestor wearing the message surface,
+				// which is the bubble a reader sees.
+				const bubble =
+					leaf.closest("[class*='bg-message-surface']") ?? leaf.parentElement;
+				const shape = [];
+				const walk = (node) => {
+					const cls = typeof node.className === "string" ? node.className.split(/\\s+/).filter(Boolean).sort().join(".") : "";
+					shape.push(node.tagName + (cls ? "|" + cls : ""));
+					for (const child of node.children) walk(child);
+				};
+				walk(bubble);
+				return JSON.stringify(shape);
+			})()`),
+			);
+
 		const stillStreamingBeforeSteer =
 			(await sessionState(sessionB))?.streaming === true;
 		const beforeSteer = report.wire.length;
@@ -1217,6 +1272,40 @@ try {
 			5000,
 		);
 		await cdp.shot("12-sent-mid-turn-steer.png");
+		/*
+		 * THE ROW-IDENTITY COMPARISON, SAMPLED HERE WHERE THE TEXT IS PROVEN
+		 * PRESENT - the `waitFor` above just found it in `document.body.innerText`.
+		 * It used to run after the delivery poll, where the faster fleet's re-render
+		 * of the settled row could catch the sampler between paints (frame 12 shows
+		 * the row; the sampler returned null) and the check fell to `skipped`. Now
+		 * it polls both shapes for a bounded window anyway, so a slow paint is
+		 * waited for rather than raced.
+		 */
+		let typedShape = null;
+		let dictatedShape = null;
+		const shapeDeadline = Date.now() + 8000;
+		for (;;) {
+			typedShape = await rowShape("typed probe [bash:40]");
+			dictatedShape = await rowShape(
+				"dictated steer probe from the fake upstream.",
+			);
+			if ((typedShape && dictatedShape) || Date.now() > shapeDeadline) break;
+			await sleep(250);
+		}
+		record("rows.shapes", { typed: typedShape, dictated: dictatedShape });
+		if (typedShape && dictatedShape) {
+			expectMaybe(
+				"rows.dictatedMatchesTyped",
+				JSON.stringify(typedShape) === JSON.stringify(dictatedShape),
+				{ equal: JSON.stringify(typedShape) === JSON.stringify(dictatedShape) },
+			);
+		} else {
+			record("rows.dictatedMatchesTyped", {
+				skipped: "one of the two rows is not on screen",
+				typed: typedShape !== null,
+				dictated: dictatedShape !== null,
+			});
+		}
 		const steerBody = await (async () => {
 			const until = Date.now() + 10_000;
 			while (Date.now() < until) {
@@ -1246,23 +1335,53 @@ try {
 		let deliveredWhileStreaming = false;
 		let deliveredAtMs = null;
 		let streamingAtDelivery = null;
+		/*
+		 * SAMPLED THROUGH THE SEND, NOT READ ONCE (second final-build run): the
+		 * delivery poll's single read landed while the snapshot's `streaming` flag
+		 * was dipping at a tool-segment boundary - the turn's own history shows the
+		 * steer arriving 9.8 s into a 40 s tool run - so the pair said false on a
+		 * steer the wire recorded as `mode:"steer"`. The loop below collects the
+		 * flag's series across the window (and past delivery) instead of breaking
+		 * on the first false, so the record carries what the flag actually did.
+		 */
+		const steerSamples = [];
+		const steerSampleStart = Date.now();
+		const sampleStreaming = async () =>
+			(await sessionState(sessionB))?.streaming === true;
+		let delivered = false;
 		while (Date.now() < steerDeadline) {
-			if (await historyHas(sessionB, "fake upstream")) {
+			const streamingNow = await sampleStreaming();
+			steerSamples.push({
+				t: Date.now() - steerSampleStart,
+				streaming: streamingNow,
+			});
+			if (!delivered && (await historyHas(sessionB, "fake upstream"))) {
+				delivered = true;
 				deliveredAtMs = 20_000 - (steerDeadline - Date.now());
-				streamingAtDelivery =
-					(await sessionState(sessionB))?.streaming === true;
-				deliveredWhileStreaming = streamingAtDelivery === true;
-				break;
+				streamingAtDelivery = streamingNow;
+				deliveredWhileStreaming = streamingNow === true;
 			}
-			if ((await sessionState(sessionB))?.streaming !== true) break;
-			await sleep(500);
+			/*
+			 * Past delivery the run keeps sampling for a short beat, so the series
+			 * shows whether the flag came back (the boundary dip) or stayed false
+			 * (the turn really ended).
+			 */
+			if (
+				delivered &&
+				Date.now() - steerSampleStart > (deliveredAtMs ?? 0) + 600
+			)
+				break;
+			await sleep(120);
 		}
-		const streamingAtSteer = (await sessionState(sessionB))?.streaming === true;
+		const streamingAtSteer = await sampleStreaming();
 		record("sessionB.steerDelivery", {
 			streamingBeforeSteer: stillStreamingBeforeSteer,
 			streamingAtSteer,
+			streamingAtDelivery,
 			messageLandedWhileStreaming: deliveredWhileStreaming,
 			landedAtMs: deliveredAtMs,
+			streamingObservedAfterSend: steerSamples.some((s) => s.streaming),
+			samples: steerSamples,
 		});
 	} else {
 		await releaseHold(ALT_RIGHT, { holdExtraMs: 0 });
@@ -1286,53 +1405,6 @@ try {
 	 * provenance (the newest turn's wrapper carries `mt-8`). A claim about the
 	 * row is a claim about the row.
 	 */
-	const rowShape = async (needle) =>
-		JSON.parse(
-			await cdp.evaluate(`(() => {
-				const nodes = Array.from(document.querySelectorAll("p, span, div"));
-				const leaf = nodes.find(
-					(n) =>
-						n.children.length === 0 &&
-						(n.textContent ?? "").trim() === ${JSON.stringify(needle)} &&
-						// The sidebar titles a session with its first message, so the same
-						// string lives in a nav row too; the TRANSCRIPT's copy is the one
-						// this claim is about.
-						!n.closest("nav, aside, button, [role='navigation'], [role='dialog']"),
-				);
-				if (!leaf) return JSON.stringify(null);
-				// The row's own box: the nearest ancestor wearing the message surface,
-				// which is the bubble a reader sees.
-				const bubble =
-					leaf.closest("[class*='bg-message-surface']") ?? leaf.parentElement;
-				const shape = [];
-				const walk = (node) => {
-					const cls = typeof node.className === "string" ? node.className.split(/\\s+/).filter(Boolean).sort().join(".") : "";
-					shape.push(node.tagName + (cls ? "|" + cls : ""));
-					for (const child of node.children) walk(child);
-				};
-				walk(bubble);
-				return JSON.stringify(shape);
-			})()`),
-		);
-	const typedShape = await rowShape("typed probe [bash:40]");
-	const dictatedShape = await rowShape(
-		"dictated steer probe from the fake upstream.",
-	);
-	record("rows.shapes", { typed: typedShape, dictated: dictatedShape });
-	if (typedShape && dictatedShape) {
-		expectMaybe(
-			"rows.dictatedMatchesTyped",
-			JSON.stringify(typedShape) === JSON.stringify(dictatedShape),
-			{ equal: JSON.stringify(typedShape) === JSON.stringify(dictatedShape) },
-		);
-	} else {
-		record("rows.dictatedMatchesTyped", {
-			skipped: "one of the two rows is not on screen",
-			typed: typedShape !== null,
-			dictated: dictatedShape !== null,
-		});
-	}
-
 	/* ---------------- session C: the transcript inside the send's own window */
 
 	/*

@@ -1,17 +1,17 @@
 {
-  "backend": "http://127.0.0.1:1131",
+  "backend": "http://127.0.0.1:1141",
   "proxy": "http://127.0.0.1:8080",
-  "out": "/Users/damian/.local-operator/sessions/79490f91af55/scratchpad/stt-proof-r1a",
+  "out": "/Users/damian/.local-operator/sessions/79490f91af55/scratchpad/stt-proof-final4",
   "steps": [
     {
       "step": "rig.radientUpstream",
-      "port": 8799,
+      "port": 8783,
       "delayMs": 900
     },
     {
       "step": "rig.proxy",
       "port": 8080,
-      "upstream": "http://127.0.0.1:1131"
+      "upstream": "http://127.0.0.1:1141"
     },
     {
       "step": "bridge",
@@ -58,15 +58,15 @@
     },
     {
       "step": "sessionA.combo.timestamps",
-      "t0": 7126.800000000745,
-      "flip": 7801.400000002235
+      "t0": 8118,
+      "flip": 9496.5
     },
     {
       "step": "sessionA.comboEngages",
       "ok": true,
       "deliveredToPage": true,
       "flipped": true,
-      "latencyMs": 675,
+      "latencyMs": 1379,
       "budgetMs": 9000,
       "cold": true
     },
@@ -93,15 +93,15 @@
     },
     {
       "step": "sessionA.space.timestamps",
-      "t0": 10191.70000000298,
-      "flip": 10212.800000000745
+      "t0": 12404.199999999255,
+      "flip": 12446.5
     },
     {
       "step": "sessionA.spaceEngages",
       "ok": true,
       "deliveredToPage": true,
       "flipped": true,
-      "latencyMs": 21,
+      "latencyMs": 42,
       "budgetMs": 6000,
       "cold": false
     },
@@ -128,7 +128,7 @@
     {
       "step": "sessionA.sentBody",
       "body": {
-        "request_id": "6ee0dd49-cfdb-49d5-bcef-f0bc10272e3a",
+        "request_id": "93227275-0d5e-497c-9cbb-8cc5889890c1",
         "text": "review the stt overhaul dictated words from the fake upstream.",
         "images": [],
         "mode": "prompt"
@@ -147,7 +147,7 @@
     {
       "step": "sessionB.typedBody",
       "body": {
-        "request_id": "a7ec6f34-9dd0-4e17-8b43-c19016ff04b6",
+        "request_id": "8fa15050-ccb7-428a-81b2-f4f384e5c927",
         "text": "typed probe [bash:40]",
         "images": [],
         "mode": "prompt"
@@ -963,32 +963,32 @@
     },
     {
       "step": "sessionB.streamingWait",
-      "waitedMs": 44
+      "waitedMs": 102
     },
     {
       "step": "sessionB.streamingAfterTyped",
       "ok": true,
       "streaming": true,
-      "waitedMs": 44,
+      "waitedMs": 102,
       "outcome": ""
     },
     {
       "step": "sessionB.midTurnCombo.timestamps",
-      "t0": 24309.900000002235,
-      "flip": 24385
+      "t0": 28151.699999999255,
+      "flip": 28311.400000002235
     },
     {
       "step": "sessionB.midTurnComboEngages",
       "ok": true,
       "deliveredToPage": true,
       "flipped": true,
-      "latencyMs": 75,
+      "latencyMs": 160,
       "budgetMs": 3000,
       "attempts": [
         {
           "deliveredToPage": true,
           "flipped": true,
-          "latencyMs": 75,
+          "latencyMs": 160,
           "budgetMs": 3000
         }
       ]
@@ -1004,32 +1004,6 @@
     {
       "step": "sessionB.midTurnTranscriptLanded",
       "draft": "dictated steer probe from the fake upstream."
-    },
-    {
-      "step": "sessionB.steerBody",
-      "body": {
-        "request_id": "77367469-5bff-4465-9bd8-509b06c00a80",
-        "text": "dictated steer probe from the fake upstream.",
-        "images": [],
-        "mode": "steer"
-      }
-    },
-    {
-      "step": "sessionB.midTurnSendIsSteer",
-      "ok": true,
-      "mode": "steer"
-    },
-    {
-      "step": "sessionB.midTurnInputMode",
-      "ok": true,
-      "input_mode": null
-    },
-    {
-      "step": "sessionB.steerDelivery",
-      "streamingBeforeSteer": true,
-      "streamingAtSteer": true,
-      "messageLandedWhileStreaming": true,
-      "landedAtMs": 17
     },
     {
       "step": "rows.shapes",
@@ -1050,6 +1024,52 @@
       "step": "rows.dictatedMatchesTyped",
       "ok": true,
       "equal": true
+    },
+    {
+      "step": "sessionB.steerBody",
+      "body": {
+        "request_id": "84e59441-167a-4372-8d45-b2d816d00af4",
+        "text": "dictated steer probe from the fake upstream.",
+        "images": [],
+        "mode": "steer"
+      }
+    },
+    {
+      "step": "sessionB.midTurnSendIsSteer",
+      "ok": true,
+      "mode": "steer"
+    },
+    {
+      "step": "sessionB.midTurnInputMode",
+      "ok": true,
+      "input_mode": null
+    },
+    {
+      "step": "sessionB.steerDelivery",
+      "streamingBeforeSteer": true,
+      "streamingAtSteer": false,
+      "streamingAtDelivery": true,
+      "messageLandedWhileStreaming": true,
+      "landedAtMs": 57,
+      "streamingObservedAfterSend": true,
+      "samples": [
+        {
+          "t": 44,
+          "streaming": true
+        },
+        {
+          "t": 253,
+          "streaming": true
+        },
+        {
+          "t": 475,
+          "streaming": false
+        },
+        {
+          "t": 829,
+          "streaming": false
+        }
+      ]
     },
     {
       "step": "sessionC.draftTyped",
@@ -1089,7 +1109,7 @@
     {
       "step": "sessionC.raceBody",
       "body": {
-        "request_id": "605de228-1f79-4458-af0d-82c12b9fbf3c",
+        "request_id": "93aa0b58-3dc4-4eba-959a-1a14985f794d",
         "text": "typed line for the echo window",
         "images": [],
         "mode": "prompt"
@@ -1102,16 +1122,16 @@
     },
     {
       "step": "sessionC.raceTimeline",
-      "pressAt": 28603.70000000298,
-      "releaseAt": 28604,
-      "proxyReleaseAt": 1790655594632,
+      "pressAt": 33835.199999999255,
+      "releaseAt": 33835.800000000745,
+      "proxyReleaseAt": 1790660381890,
       "writes": [
         {
-          "at": 28612.60000000149,
+          "at": 33843.400000002235,
           "value": ""
         },
         {
-          "at": 28619.400000002235,
+          "at": 33853.400000002235,
           "value": "fourth dictation from the fake upstream."
         }
       ],
@@ -1134,11 +1154,11 @@
       "emptyWriteAfterPress": true,
       "writes": [
         {
-          "at": 28612.60000000149,
+          "at": 33843.400000002235,
           "value": ""
         },
         {
-          "at": 28619.400000002235,
+          "at": 33853.400000002235,
           "value": "fourth dictation from the fake upstream."
         }
       ],
@@ -1196,82 +1216,82 @@
   ],
   "wire": [
     {
-      "at": 1790655577735,
-      "path": "/v1/desktop/sessions/361f013cc6b0/messages",
+      "at": 1790660362211,
+      "path": "/v1/desktop/sessions/55dc21e1584d/messages",
       "body": {
-        "request_id": "6ee0dd49-cfdb-49d5-bcef-f0bc10272e3a",
+        "request_id": "93227275-0d5e-497c-9cbb-8cc5889890c1",
         "text": "review the stt overhaul dictated words from the fake upstream.",
         "images": [],
         "mode": "prompt"
       }
     },
     {
-      "at": 1790655579795,
-      "path": "/v1/desktop/sessions/b85ad1013822/messages",
+      "at": 1790660363940,
+      "path": "/v1/desktop/sessions/d993f6a4b524/messages",
       "body": {
-        "request_id": "a7ec6f34-9dd0-4e17-8b43-c19016ff04b6",
+        "request_id": "8fa15050-ccb7-428a-81b2-f4f384e5c927",
         "text": "typed probe [bash:40]",
         "images": [],
         "mode": "prompt"
       }
     },
     {
-      "at": 1790655592313,
-      "path": "/v1/desktop/sessions/b85ad1013822/messages",
+      "at": 1790660378253,
+      "path": "/v1/desktop/sessions/d993f6a4b524/messages",
       "body": {
-        "request_id": "77367469-5bff-4465-9bd8-509b06c00a80",
+        "request_id": "84e59441-167a-4372-8d45-b2d816d00af4",
         "text": "dictated steer probe from the fake upstream.",
         "images": [],
         "mode": "steer"
       }
     },
     {
-      "at": 1790655594631,
-      "path": "/v1/desktop/sessions/f6b947966429/messages",
+      "at": 1790660381890,
+      "path": "/v1/desktop/sessions/352c31ff2ee4/messages",
       "body": {
-        "request_id": "605de228-1f79-4458-af0d-82c12b9fbf3c",
+        "request_id": "93aa0b58-3dc4-4eba-959a-1a14985f794d",
         "text": "typed line for the echo window",
         "images": [],
         "mode": "prompt"
       }
     }
   ],
-  "sessionA": "361f013cc6b0",
-  "sessionB": "b85ad1013822",
-  "sessionC": "f6b947966429",
-  "sessionD": "e35a7a068371",
+  "sessionA": "55dc21e1584d",
+  "sessionB": "d993f6a4b524",
+  "sessionC": "352c31ff2ee4",
+  "sessionD": "f27923dcdee6",
   "viewport": "{\"w\":1380,\"h\":900,\"dpr\":2}",
   "radientCalls": [
     {
-      "at": 1790655575067,
+      "at": 1790660359130,
+      "method": "POST",
+      "url": "/v1/tools/transcriptions",
+      "bytes": 14024,
+      "authorized": true
+    },
+    {
+      "at": 1790660361770,
       "method": "POST",
       "url": "/v1/tools/transcriptions",
       "bytes": 12092,
       "authorized": true
     },
     {
-      "at": 1790655577444,
-      "method": "POST",
-      "url": "/v1/tools/transcriptions",
-      "bytes": 10160,
-      "authorized": true
-    },
-    {
-      "at": 1790655591148,
-      "method": "POST",
-      "url": "/v1/tools/transcriptions",
-      "bytes": 2432,
-      "authorized": true
-    },
-    {
-      "at": 1790655594540,
+      "at": 1790660377056,
       "method": "POST",
       "url": "/v1/tools/transcriptions",
       "bytes": 3398,
       "authorized": true
     },
     {
-      "at": 1790655600454,
+      "at": 1790660381787,
+      "method": "POST",
+      "url": "/v1/tools/transcriptions",
+      "bytes": 3398,
+      "authorized": true
+    },
+    {
+      "at": 1790660387865,
       "method": "POST",
       "url": "/v1/tools/transcriptions",
       "bytes": 3398,
