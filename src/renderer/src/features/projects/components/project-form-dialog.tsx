@@ -466,14 +466,16 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 			fullWidth
 			maxWidth="md"
 			/*
-			 * THE PENDING WINDOW HAS ONE POLICY (UX round 1, U1): Cancel is
-			 * disabled while a save is in flight, so Escape and an outside click
-			 * must not close the sheet either — a close there would abandon a
-			 * write whose refusal the author was about to read. They ride
-			 * `dialogProps` because that is this component's channel for
-			 * content-level props.
+			 * THE PENDING WINDOW HAS ONE POLICY (UX round 1 U1; round 2 U7):
+			 * Cancel is disabled while a save is in flight, and the other three
+			 * close paths obey the same rule — Escape and an outside click are
+			 * refused, and the corner X is disabled (it closes through Radix's own
+			 * `DialogPrimitive.Close` path, which a caller cannot intercept, so
+			 * the primitive takes the state as `closeDisabled`). A close there
+			 * would abandon a write whose refusal the author was about to read.
 			 */
 			dialogProps={{
+				closeDisabled: submitting,
 				onEscapeKeyDown: (event: KeyboardEvent) => {
 					if (submitting) event.preventDefault();
 				},
