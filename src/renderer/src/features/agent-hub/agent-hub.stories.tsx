@@ -193,8 +193,15 @@ type BridgeBehaviour = {
 	}[];
 	/** Never settle the teams read, so the Teams view stays in its loading state. */
 	holdTeams?: boolean;
+	/** Never settle the memberships read: the "we do not know yet" state (M1). */
+	holdMemberships?: boolean;
 	/** Fail the memberships read, so the picker's "could not be read" line shows. */
 	failMemberships?: boolean;
+	/**
+	 * Fail the memberships read only for its first N calls, then answer. The
+	 * "Try again" arm is only a recovery if the second read can succeed.
+	 */
+	failMembershipsTimes?: number;
 	/**
 	 * The backend advertises `radient_org` (agent review round 1, M2).
 	 *
@@ -223,12 +230,15 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 		orgRefusal,
 		teams = [],
 		holdTeams = false,
+		holdMemberships = false,
 		failMemberships = false,
+		failMembershipsTimes = 0,
 		orgCapability = true,
 	} = behaviour;
 	ledger.length = 0;
 
 	let listCalls = 0;
+	let membershipCalls = 0;
 	const ok = <T,>(result: T): DesktopResponse => ({
 		status: 200,
 		body: { result },
@@ -295,7 +305,9 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 					 * for the unknown op — and the page degrades to the public hub, which is
 					 * the point of the arm.
 					 */
-					if (failMemberships) {
+					if (holdMemberships) return await new Promise(() => {});
+					membershipCalls += 1;
+					if (failMemberships || membershipCalls <= failMembershipsTimes) {
 						return { status: 500, body: { detail: "Memberships failed." } };
 					}
 					return proxy({
@@ -512,6 +524,9 @@ export default meta;
 
 type Story = StoryObj;
 
+const CHECKING_ORGS = /Checking your organizations/;
+const NOT_IN_ORG = /you are not in one yet/;
+const ORGS_UNAVAILABLE = /organizations are unavailable on this backend/;
 const CARD_DETAILS_NAME = /^View details for /;
 
 /**
@@ -911,13 +926,18 @@ export const OrgScopeSelected: Story = {
 		 * (the fixture's `orgAgents`) rather than as "at least one", so a grid that
 		 * mixed public cards into an org scope fails here.
 		 */
-		const badges = await screen.findAllByTestId("agent-org-badge");
+		/*
+		 * The wait names the FIXTURE's count, not a length read from the same query
+		 * (agent review round 1, m2): comparing the list to a number taken from
+		 * itself could not fail. If the six cards ever stopped mounting in one commit
+		 * this waits them out, and a grid that never reaches six - or mixes public
+		 * cards into an org scope - times out here instead of passing vacuously.
+		 */
 		await waitFor(() =>
 			expect(screen.getAllByTestId("agent-org-badge")).toHaveLength(
-				badges.length,
+				ORG_AGENT_COUNT,
 			),
 		);
-		expect(badges).toHaveLength(ORG_AGENT_COUNT);
 		expect(
 			screen.getAllByRole("button", { name: CARD_DETAILS_NAME }),
 		).toHaveLength(ORG_AGENT_COUNT);
@@ -1133,6 +1153,113 @@ export const TeamsSignedOut: Story = {
 		await screen.findByTestId("agent-hub-status");
 		await openTeamsTab();
 		await screen.findByRole("button", { name: "Open settings" });
+	},
+};
+
+/**
+ * Public Teams while the viewer's organizations are NOT KNOWN YET (agent review
+ * round 1, M1). The memberships read never settles, and the panel must say it is
+ * checking - not that the viewer has no organization, which is a claim about the
+ * account that a pending read cannot support.
+ */
+export const TeamsPublicLoading: Story = {
+	render: () => {
+		installBridge({ records: 12, signedIn: true, holdMemberships: true });
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-status");
+		await openTeamsTab();
+		await screen.findByText(CHECKING_ORGS);
+	},
+};
+
+/** Public Teams for a viewer whose only organization cannot use org features (no Team plan). */
+export const TeamsPublicNone: Story = {
+	render: () => {
+		installBridge({
+			records: 12,
+			signedIn: true,
+			orgs: [ORGS[1]],
+		});
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-status");
+		await openTeamsTab();
+		await screen.findByText(NOT_IN_ORG);
+	},
+};
+
+/** Public Teams on a backend that predates the org operations: the sentence defers to the alert above. */
+export const TeamsPublicUnavailable: Story = {
+	render: () => {
+		installBridge({ records: 6, signedIn: true, orgCapability: false });
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-org-unavailable");
+		await openTeamsTab();
+		await screen.findByText(ORGS_UNAVAILABLE);
+	},
+};
+
+/**
+ * Public Teams when `memberships.list` FAILED, and the retry that recovers.
+ *
+ * The first read fails and the second answers (`failMembershipsTimes: 2` covers
+ * the query's own single retry), so pressing "Try again" is a real recovery: the
+ * panel moves to the settled sentence and focus lands on it rather than on
+ * `<body>` (UX round 1, U4). The frame is the failed state, taken before the press.
+ */
+export const TeamsPublicUnreadable: Story = {
+	render: () => {
+		installBridge({
+			records: 12,
+			signedIn: true,
+			orgs: ORGS,
+			failMembershipsTimes: 2,
+		});
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-status");
+		await openTeamsTab();
+		await screen.findByRole(
+			"button",
+			{ name: "Try again" },
+			{ timeout: 8_000 },
+		);
+	},
+};
+
+/**
+ * The last page, reached by keyboard: Next disables under focus, and focus must
+ * land on Previous instead of dropping to `<body>` (UX round 1, U1; QA round 1,
+ * Q2). The play asserts the hand-off itself, so a regression fails the capture
+ * gate rather than only a walk. Four records keep the footer inside the frame.
+ */
+export const PagerLastPage: Story = {
+	render: () => {
+		installBridge({ records: 4 });
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		const next = await screen.findByRole("button", { name: "Next page" });
+		next.focus();
+		await userEvent.keyboard("{Enter}");
+		await waitFor(() =>
+			expect(screen.getByText("Page 2 of 3")).toBeInTheDocument(),
+		);
+		await userEvent.keyboard("{Enter}");
+		await waitFor(() =>
+			expect(screen.getByText("Page 3 of 3")).toBeInTheDocument(),
+		);
+		await waitFor(() =>
+			expect(
+				screen.getByRole("button", { name: "Previous page" }),
+			).toHaveFocus(),
+		);
 	},
 };
 

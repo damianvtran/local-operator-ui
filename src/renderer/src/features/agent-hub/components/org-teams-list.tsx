@@ -14,7 +14,7 @@ import {
 	Button,
 	Skeleton,
 } from "@shared/components/ui";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useOrgTeamsQuery } from "../hooks/use-org-teams-query";
 import { useTeamPullMutation } from "../hooks/use-team-pull-mutation";
 import { orgRefusalFromError } from "../org-access";
@@ -84,6 +84,20 @@ export const OrgTeamsList: React.FC<{
 	const [failedTeamId, setFailedTeamId] = useState<string | null>(null);
 	/** The row whose pull is in flight, so only that row reports it. */
 	const [pullingTeamId, setPullingTeamId] = useState<string | null>(null);
+	/**
+	 * The row whose Pull must take focus back once its request settles (UX round 1,
+	 * U4). Every Pull is `disabled` while one is in flight, so the pressed button
+	 * loses focus to `<body>` and stays there after the toast; the effect below
+	 * restores it AFTER the re-render that re-enables the button, because focus()
+	 * on a disabled element is a no-op.
+	 */
+	const pullButtons = useRef(new Map<string, HTMLButtonElement>());
+	const refocusTeamId = useRef<string | null>(null);
+	useEffect(() => {
+		if (pull.isPending || refocusTeamId.current === null) return;
+		pullButtons.current.get(refocusTeamId.current)?.focus();
+		refocusTeamId.current = null;
+	}, [pull.isPending]);
 	/** Whether the shared re-sign-in panel is open in place of the action row. */
 	const [reauthenticating, setReauthenticating] = useState(false);
 
@@ -133,6 +147,7 @@ export const OrgTeamsList: React.FC<{
 
 	const handlePull = (team: HubTeam) => {
 		if (pull.isPending) return;
+		refocusTeamId.current = team.id;
 		setFailedTeamId(null);
 		setPullingTeamId(team.id);
 		pull.mutate(
@@ -146,7 +161,14 @@ export const OrgTeamsList: React.FC<{
 
 	return (
 		<section
-			className="mb-6 rounded-md bg-surface"
+			/*
+			 * `max-w-4xl` (design round 1, D3): the roster used to span the whole
+			 * column, 1232px at 1280, which put "Pull" a thousand pixels from the name
+			 * it acts on - a two-row list read as two cells of a table. 56rem keeps
+			 * the name-to-action distance scannable and is still wider than the public
+			 * notice's 42rem, because a row carries a summary line as well as a name.
+			 */
+			className="mb-6 max-w-4xl rounded-md bg-surface"
 			aria-label={`Teams shared with ${orgName ?? "this organization"}`}
 			data-testid="org-teams"
 		>
@@ -211,7 +233,13 @@ export const OrgTeamsList: React.FC<{
 				 */
 				<Alert
 					variant={refusal ? "warning" : "danger"}
-					className="m-4"
+					/*
+					 * `w-auto`: `Alert` is `w-full`, so a 16px margin on it made the box
+					 * 100% + 32px wide and the panel's `overflow-hidden` clipped its right
+					 * border (design round 1, D1; UX round 1, U5; measured 1272 in a 1256
+					 * panel). Auto width lets the margin be the inset it was meant to be.
+					 */
+					className="m-4 w-auto"
 					data-testid="org-teams-error"
 				>
 					<AlertTitle>
@@ -252,7 +280,7 @@ export const OrgTeamsList: React.FC<{
 					className="p-4 text-body-sm text-ink-muted"
 					data-testid="org-teams-empty"
 				>
-					No teams have been shared with this organization yet.
+					{`Teams shared into ${orgName ?? "this organization"} appear here for its members.`}
 				</p>
 			)}
 
@@ -333,6 +361,10 @@ export const OrgTeamsList: React.FC<{
 								)}
 							</div>
 							<Button
+								ref={(node) => {
+									if (node) pullButtons.current.set(team.id, node);
+									else pullButtons.current.delete(team.id);
+								}}
 								variant="secondary"
 								size="sm"
 								onClick={() => handlePull(team)}

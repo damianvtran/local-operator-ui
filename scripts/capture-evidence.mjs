@@ -4285,6 +4285,17 @@ export const STORIES = [
 	["agent-hub-page--org-teams-plan-lapsed", 1280, 900],
 	["agent-hub-page--teams-public-scope", 1280, 900],
 	["agent-hub-page--teams-signed-out", 1280, 900],
+	/*
+	 * Round 1's remediation states: the public Teams view's other four reasons
+	 * (the pending read that used to be misreported as "none", the settled empty
+	 * read, the unavailable backend and the failed memberships read) and the pager
+	 * on its last page, where focus has moved to Previous.
+	 */
+	["agent-hub-page--teams-public-loading", 1280, 900],
+	["agent-hub-page--teams-public-none", 1280, 900],
+	["agent-hub-page--teams-public-unavailable", 1280, 900],
+	["agent-hub-page--teams-public-unreadable", 1280, 900],
+	["agent-hub-page--pager-last-page", 1280, 900],
 	["agent-hub-page--pager-footer", 1280, 900],
 	["agent-hub-page--pager-footer-narrow", 920, 900],
 	/*

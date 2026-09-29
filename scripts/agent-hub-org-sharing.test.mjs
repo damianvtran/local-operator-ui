@@ -1570,3 +1570,106 @@ test("the author line drops the email fallback", () => {
 	assert.doesNotMatch(details, /No email/);
 	assert.match(details, /agent\.account_metadata\?\.email\s*\?/);
 });
+
+/*
+ * The public Teams view's reasons, and the honesty rule between them (agent
+ * review round 1, M1 and m3). `loading` exists because "we do not know yet" fell
+ * through to `none` and told a signed-in viewer, as a fact about their account,
+ * that they belong to no Team-plan organization while the memberships read had
+ * not even started (it is disabled until the capability answer arrives).
+ */
+test("every public-Teams reason has a sentence, and a pending read is not 'none'", () => {
+	const notice = read(
+		"src/renderer/src/features/agent-hub/components/public-teams-notice.tsx",
+	);
+	for (const reason of [
+		"loading",
+		"orgs",
+		"signed-out",
+		"unavailable",
+		"unreadable",
+		"none",
+	]) {
+		assert.match(
+			notice,
+			new RegExp(`(^|\\n)\\t(\\"${reason}\\"|${reason}):`),
+			`${reason} has a sentence`,
+		);
+	}
+	const page = read("src/renderer/src/features/agent-hub/agent-hub-page.tsx");
+	assert.match(
+		page,
+		/orgState === "unknown" \|\| membershipsPending\s*\?\s*"loading"\s*:\s*"none"/,
+		"none is reached only after a settled read",
+	);
+	// The reasons are exercised by stories, one frame each.
+	const stories = read(
+		"src/renderer/src/features/agent-hub/agent-hub.stories.tsx",
+	);
+	for (const story of [
+		"TeamsPublicScope",
+		"TeamsSignedOut",
+		"TeamsPublicLoading",
+		"TeamsPublicNone",
+		"TeamsPublicUnavailable",
+		"TeamsPublicUnreadable",
+	]) {
+		assert.match(stories, new RegExp(`export const ${story}\\b`));
+	}
+});
+
+test("the pager and the notice hand focus to a surviving control", () => {
+	const pager = read(
+		"src/renderer/src/features/agent-hub/components/hub-pager.tsx",
+	);
+	assert.match(pager, /handOffRef\.current = "previous"/);
+	assert.match(pager, /handOffRef\.current = "next"/);
+	const notice = read(
+		"src/renderer/src/features/agent-hub/components/public-teams-notice.tsx",
+	);
+	assert.match(notice, /retryPressedRef/);
+	const roster = read(
+		"src/renderer/src/features/agent-hub/components/org-teams-list.tsx",
+	);
+	assert.match(roster, /refocusTeamId/);
+	// The alert is not wider than its panel: `Alert` is `w-full`, so the margin
+	// needs `w-auto` or it is 100% + 32px.
+	assert.match(roster, /className="m-4 w-auto"/);
+});
+
+/*
+ * The hub's evidence set is COMPLETE (agent review round 1, M2).
+ *
+ * Two frames of `load-failed` (`obsidian`, `synth`) were left at the base tree's
+ * layout after a sweep died mid-run, and nothing noticed: the manifest's frame
+ * count is arithmetic over the tree, so it cannot see a stale blob, and
+ * `check-evidence` had deferred. This pins the part a directory listing CAN
+ * know - every registered `agent-hub-page--<state>` row has a directory holding
+ * one frame per sweep theme, and no directory exists that the table does not
+ * declare. Freshness of a blob's pixels is what the re-shoot commit and its
+ * message are for; a missing or orphaned frame is what this catches.
+ */
+test("every agent-hub-page state holds one frame per sweep theme", async () => {
+	const { readdirSync, existsSync } = await import("node:fs");
+	const table = read("scripts/capture-evidence.mjs");
+	const registered = [
+		...table.matchAll(/^\t\["agent-hub-page--([a-z0-9-]+)",/gm),
+	].map((match) => match[1]);
+	assert.ok(registered.length >= 27, "the table registers the hub's states");
+	const root = "docs/evidence/agent-hub-page";
+	const onDisk = readdirSync(root, { withFileTypes: true })
+		.filter((entry) => entry.isDirectory())
+		.map((entry) => entry.name);
+	assert.deepEqual(
+		onDisk.filter((dir) => !registered.includes(dir)).sort(),
+		[],
+		"no frame directory is orphaned from the capture table",
+	);
+	for (const state of registered) {
+		assert.ok(existsSync(`${root}/${state}`), `${state} has a directory`);
+		const frames = readdirSync(`${root}/${state}`).filter((file) =>
+			file.endsWith(".webp"),
+		);
+		assert.equal(frames.length, 12, `${state} holds one frame per theme`);
+	}
+});

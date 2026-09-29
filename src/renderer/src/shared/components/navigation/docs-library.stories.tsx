@@ -811,10 +811,18 @@ const ExpandReceipt = ({ marker }: { marker: string }) => {
 };
 
 /**
- * Hold the shutter until the hub's scope switch (its `play`) has landed - an org
- * badge on screen is the proof, since the Teams roster is a tab now and is no
- * longer rendered under the grid; a
- * play that failed shows no error display, so the timeout leaves
+ * Hold the shutter until the hub's scope switch (its `play`) has landed. An org
+ * badge on screen is the proof: the Teams roster used to be rendered under the
+ * grid and was the marker, but it is a tab now and only mounts when opened.
+ *
+ * THE SCENE STAYS ON THE AGENTS TAB ON PURPOSE (agent review round 1, m4). It is
+ * the library's picture of the hub's org workspace - grid, badges, scope - and
+ * the browse bar above it now shows the Teams tab with its count, which is the
+ * one-glance version of what the roster under the grid used to be. Opening the
+ * Teams tab would swap the grid the marketing shot exists for. The change is
+ * disclosed on the PR because the shot is a public asset.
+ *
+ * A play that failed shows no error display, so the timeout leaves
  * `data-capture-failed` for the rig to refuse on.
  */
 const HubHold = () => {

@@ -284,6 +284,7 @@ export const AgentHubPage: React.FC = () => {
 	const {
 		memberships,
 		isError: membershipsFailed,
+		isPending: membershipsPending,
 		isFetching: membershipsFetching,
 		refetch: refetchMemberships,
 	} = useMembershipsQuery({
@@ -320,9 +321,15 @@ export const AgentHubPage: React.FC = () => {
 	 * legible without visiting it, and that number cannot exist without the read.
 	 * It costs nothing over the old layout, which mounted the roster (and so read
 	 * the list) on every org-scope entry too. `OrgTeamsList` calls the same hook
-	 * with the same key, so the two observers share ONE request; a tab switch
-	 * re-issues neither list (`staleTime` five minutes, focus refetch off), and the
-	 * public scope passes no tenant, so the query is disabled and issues ZERO team
+	 * with the same key, so the two observers share ONE request; on the SUCCESS
+	 * path a tab switch re-issues neither list (`staleTime` five minutes, focus
+	 * refetch off). A REFUSED read is not cached data, so opening Teams on a
+	 * refused org re-reads it (QA round 1, Q1: 2 reads per open, one being
+	 * `retryDesktopQuery`'s single retry) - accepted, because the alternative is
+	 * threading the agents read's refusal into the roster to suppress a read whose
+	 * own error line is the honest place the refusal is said, for a state the
+	 * viewer sits in only until an owner fixes the plan. The public
+	 * scope passes no tenant, so the query is disabled and issues ZERO team
 	 * reads - there is no public team read to make (§11 O-7).
 	 *
 	 * The count is the number of rows LOADED: `org_teams.list` returns the whole
@@ -530,8 +537,17 @@ export const AgentHubPage: React.FC = () => {
 		else (searchRef.current ?? publishRef.current)?.focus();
 	}, [isColdLoading, error]);
 
+	/*
+	 * The status line, which is the top of the list's own content: a page change
+	 * brings it into view (UX round 1, U3). The pager sits at the bottom of a long
+	 * inner scroll column, so without this the new page's cards showed from their
+	 * last rows and the reader had to scroll up to start it. `block: "nearest"`
+	 * scrolls only when the line is off screen, so a short page does not jump.
+	 */
+	const statusRef = useRef<HTMLParagraphElement>(null);
 	const handlePageChange = (newPage: number) => {
 		setPage(newPage);
+		statusRef.current?.scrollIntoView({ block: "nearest" });
 	};
 
 	const handleSelectCategory = (category: string | null) => {
@@ -555,6 +571,23 @@ export const AgentHubPage: React.FC = () => {
 		setPage(1);
 	};
 
+	/*
+	 * FOCUS AFTER PICKING AN ORGANIZATION FROM THE PUBLIC TEAMS NOTICE (UX round 1,
+	 * U4). The button that was pressed unmounts with the notice, and the browser
+	 * drops focus on `<body>`, stranding a keyboard user on the far side of the
+	 * page. The org's own scope chip exists once the scope changes and is the same
+	 * choice, so it takes focus: Tab then continues from the browse bar into the
+	 * Teams list. Read AFTER the re-render, like every hand-off in this file.
+	 */
+	const scopeChips = useRef(new Map<string, HTMLButtonElement>());
+	const focusScopeChip = useRef<string | null>(null);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `scope` is the trigger - the chip is read after the scope that pressed it has rendered.
+	useEffect(() => {
+		if (focusScopeChip.current === null) return;
+		scopeChips.current.get(focusScopeChip.current)?.focus();
+		focusScopeChip.current = null;
+	}, [scope]);
+
 	const handleScopeChange = (value: string) => {
 		setSearchScope(value as (typeof SEARCH_SCOPES)[number]["value"]);
 		setPage(1);
@@ -566,7 +599,16 @@ export const AgentHubPage: React.FC = () => {
 	 * said. It follows the scope (the key does), so it is the public total in the
 	 * public scope and the organization's in an organization.
 	 */
-	const agentsTabCount = pagination ? pagination.totalRecords : null;
+	/*
+	 * NOT UNDER A FILTER (UX round 1, U2). `total_records` answers the QUERY, so
+	 * with a search or a category active the tab read "Agents 0" over a hub that
+	 * has agents - a total that was not one, changing under the box the reader was
+	 * typing in. The tab is the scope's own size, so it says nothing while a filter
+	 * narrows it; the status line carries the filtered figure ("0 agents in the
+	 * public hub"), which is where a filtered number belongs.
+	 */
+	const agentsTabCount =
+		pagination && !hasFilters ? pagination.totalRecords : null;
 
 	/*
 	 * Why the public Teams view has no list, chosen from facts this page already
@@ -581,7 +623,16 @@ export const AgentHubPage: React.FC = () => {
 					? "unavailable"
 					: membershipsFailed
 						? "unreadable"
-						: "none";
+						: /*
+							 * NOT SETTLED IS NOT "NONE" (agent review round 1, M1). The memberships
+							 * query is disabled until the capability answer says `enabled`, so while
+							 * that answer is `unknown` the query sits in `pending` having never
+							 * started, and while it runs it is `pending` too. Both mean "we do not
+							 * know yet"; only a settled, empty read licenses the negative sentence.
+							 */
+							orgState === "unknown" || membershipsPending
+							? "loading"
+							: "none";
 
 	/*
 	 * The one status sentence, for both views and every scope (see the element).
@@ -597,17 +648,26 @@ export const AgentHubPage: React.FC = () => {
 		`${count} ${noun}${count === 1 ? "" : "s"} ${scopePhrase}`;
 	let statusSentence: string;
 	if (view === "teams") {
-		if (!orgScopeId) statusSentence = "Teams are not part of the public hub";
+		/*
+		 * The public Teams view says nothing here: its panel's heading is the
+		 * sentence, and a status line over it restated it (design round 1, D4).
+		 * A non-breaking space, not "", so the line keeps its box (D1).
+		 */
+		if (!orgScopeId) statusSentence = "\u00a0";
 		else if (teamsQuery.isLoading) statusSentence = "Loading teams…";
 		else if (teamsCount !== null)
 			statusSentence = countPhrase(teamsCount, "team");
-		else statusSentence = "";
+		/*
+		 * A refused or failed read still says WHOSE view this is (agent review
+		 * round 1, m5): the line used to go to zero height here and the roster's
+		 * alert landed 17px higher than in every other state.
+		 */ else statusSentence = `Teams ${scopePhrase}`;
 	} else if (isColdLoading) {
 		statusSentence = "Loading agents…";
 	} else if (pagination) {
 		statusSentence = countPhrase(pagination.totalRecords, "agent");
 	} else {
-		statusSentence = "";
+		statusSentence = `Agents ${scopePhrase}`;
 	}
 
 	return (
@@ -664,6 +724,13 @@ export const AgentHubPage: React.FC = () => {
 				 * that shifts under the pointer as you press it is the failure the D1
 				 * reflow rounds were about.
 				 *
+				 * THE SCOPE GROUP IS PINNED TO THE FAR EDGE (`ml-auto`), not set after the
+				 * tabs. Sitting beside them, it moved 6px whenever a tab count changed width
+				 * ("Agents 30" to "Agents 6", "Teams" gaining a count) - under the pointer
+				 * that had just pressed the chip (design round 1, D2; agent review m1). At
+				 * the edge nothing to its left can push it, and each count also holds a
+				 * two-digit slot so the tab itself does not breathe.
+				 *
 				 * Outside `browseControlsAreInert` for the old scope row's reason: that gate
 				 * hides the search row when an org has no agents, and a scope control that
 				 * disappeared with the records it scopes would strand the user in an empty
@@ -687,7 +754,7 @@ export const AgentHubPage: React.FC = () => {
 									{value === "agents" ? "Agents" : "Teams"}
 									{(value === "agents" ? agentsTabCount : teamsCount) !==
 										null && (
-										<span className="font-normal text-ink-dim tabular-nums">
+										<span className="min-w-[2ch] font-normal text-ink-dim tabular-nums">
 											{value === "agents" ? agentsTabCount : teamsCount}
 										</span>
 									)}
@@ -710,43 +777,62 @@ export const AgentHubPage: React.FC = () => {
 					 * title.
 					 */}
 					{selectableOrgs.length > 0 && (
-						<fieldset
-							className="m-0 min-w-0 border-0 p-0"
-							data-testid="agent-hub-scope"
-						>
-							<legend className="sr-only">Show the hub of</legend>
-							<div className="flex flex-wrap gap-0.5 rounded-md bg-sunken p-0.5">
-								{[
-									{
-										value: PUBLIC_SCOPE,
-										label: "Public hub",
-										Icon: Globe,
-									},
-									...selectableOrgs.map((org) => ({
-										value: org.tenant_id,
-										label: org.tenant_name || "Organization",
-										Icon: Building2,
-									})),
-								].map(({ value, label, Icon }) => (
-									<Button
-										key={value}
-										variant="ghost"
-										size="sm"
-										aria-pressed={scope === value}
-										onClick={() => handleHubScopeChange(value)}
-										title={label}
-										data-testid={`agent-hub-scope-${value === PUBLIC_SCOPE ? "public" : "org"}`}
-										className={cn(
-											"max-w-48",
-											scope === value && "bg-surface text-ink hover:bg-surface",
-										)}
-									>
-										<Icon aria-hidden="true" />
-										<span className="truncate">{label}</span>
-									</Button>
-								))}
-							</div>
-						</fieldset>
+						<div className="ml-auto flex min-w-0 items-center gap-2">
+							{/*
+							 * A VISIBLE LABEL for the second axis (design round 1, D5; UX round 1,
+							 * U6). The tab strip and the chips share the segmented control's
+							 * selected step by design (the app's one idiom, so no new token), which
+							 * left "Agents | Teams" and "Public hub | Minerva" as twin pills a gap
+							 * apart. The group sits at the bar's far edge and says what it chooses;
+							 * the legend below stays for assistive tech, so the label is
+							 * `aria-hidden` rather than announced twice.
+							 */}
+							<span aria-hidden="true" className="text-meta text-ink-muted">
+								Showing
+							</span>
+							<fieldset
+								className="m-0 min-w-0 border-0 p-0"
+								data-testid="agent-hub-scope"
+							>
+								<legend className="sr-only">Show the hub of</legend>
+								<div className="flex flex-wrap gap-0.5 rounded-md bg-sunken p-0.5">
+									{[
+										{
+											value: PUBLIC_SCOPE,
+											label: "Public hub",
+											Icon: Globe,
+										},
+										...selectableOrgs.map((org) => ({
+											value: org.tenant_id,
+											label: org.tenant_name || "Organization",
+											Icon: Building2,
+										})),
+									].map(({ value, label, Icon }) => (
+										<Button
+											key={value}
+											ref={(node) => {
+												if (node) scopeChips.current.set(value, node);
+												else scopeChips.current.delete(value);
+											}}
+											variant="ghost"
+											size="sm"
+											aria-pressed={scope === value}
+											onClick={() => handleHubScopeChange(value)}
+											title={label}
+											data-testid={`agent-hub-scope-${value === PUBLIC_SCOPE ? "public" : `org-${value}`}`}
+											className={cn(
+												"max-w-48",
+												scope === value &&
+													"bg-surface text-ink hover:bg-surface",
+											)}
+										>
+											<Icon aria-hidden="true" />
+											<span className="truncate">{label}</span>
+										</Button>
+									))}
+								</div>
+							</fieldset>
+						</div>
 					)}
 				</div>
 				<TabPanel id={VIEW_PANEL_ID} labelledBy={VIEW_TAB_IDS[view]}>
@@ -898,6 +984,7 @@ export const AgentHubPage: React.FC = () => {
 							 * that line, promoted, so the sentence is said once.
 							 */}
 							<p
+								ref={statusRef}
 								aria-live="polite"
 								className="mb-3 text-meta text-ink-dim"
 								data-testid="agent-hub-status"
@@ -1368,7 +1455,10 @@ export const AgentHubPage: React.FC = () => {
 									<PublicTeamsNotice
 										reason={publicTeamsReason}
 										orgs={selectableOrgs}
-										onPickOrg={handleHubScopeChange}
+										onPickOrg={(tenantId) => {
+											focusScopeChip.current = tenantId;
+											handleHubScopeChange(tenantId);
+										}}
 										onOpenSettings={() => navigate("/settings")}
 										onRetry={() => void refetchMemberships()}
 										retrying={membershipsFetching}
