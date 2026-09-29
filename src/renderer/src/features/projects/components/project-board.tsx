@@ -77,7 +77,6 @@ import type {
 	PointerEvent as ReactPointerEvent,
 } from "react";
 import {
-	Fragment,
 	useCallback,
 	useEffect,
 	useLayoutEffect,
@@ -567,6 +566,7 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 			</span>
 			<div
 				ref={stripRef}
+				data-board-strip=""
 				className={cn(
 					/*
 					 * ONE SCROLLER, BOTH AXES (slice 3): a column that overflows is
@@ -662,8 +662,21 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 								<ul className="flex flex-col gap-2 p-2">
 									{groupByTeam(column.projects, projectTeamName).map(
 										(group) => (
-											<Fragment key={group.team ?? ""}>
-												<li
+											/*
+											 * THE GROUP IS THE STRAP'S CONTAINING BLOCK (round 1,
+											 * Q1/U1): the strap pins within its own group's box — the
+											 * shape the list's sections use — so the next strap PUSHES
+											 * the previous out. A strap that is a sibling of its cards
+											 * has no box to stick inside: it stops at its own edge and
+											 * the incoming strap parks over it, which is the stacking
+											 * round 1 measured.
+											 */
+											<li
+												key={group.team ?? ""}
+												className="flex flex-col gap-2"
+												data-board-group={group.team ?? ""}
+											>
+												<div
 													className="sticky top-11 z-10 flex items-center gap-2 bg-sunken px-3 py-1 text-meta"
 													data-board-team={group.team ?? ""}
 												>
@@ -673,21 +686,23 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 													<span className="shrink-0 text-ink-muted">
 														{group.items.length}
 													</span>
-												</li>
-												{group.items.map((project) => (
-													<li key={project.id}>
-														<BoardCard
-															project={project}
-															nowMs={nowMs}
-															busy={moving.has(project.id)}
-															onOpen={() => onOpen(project)}
-															onEdit={() => onEdit(project)}
-															onDelete={() => onDelete(project)}
-															onMove={(status) => onMove(project, status)}
-														/>
-													</li>
-												))}
-											</Fragment>
+												</div>
+												<ul className="flex flex-col gap-2">
+													{group.items.map((project) => (
+														<li key={project.id}>
+															<BoardCard
+																project={project}
+																nowMs={nowMs}
+																busy={moving.has(project.id)}
+																onOpen={() => onOpen(project)}
+																onEdit={() => onEdit(project)}
+																onDelete={() => onDelete(project)}
+																onMove={(status) => onMove(project, status)}
+															/>
+														</li>
+													))}
+												</ul>
+											</li>
 										),
 									)}
 								</ul>

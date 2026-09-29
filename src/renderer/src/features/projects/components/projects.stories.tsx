@@ -175,6 +175,28 @@ const MANY_LONG: DesktopProject[] = [
 	),
 ];
 
+/**
+ * The board-sticky story's own fixture: twenty active cards over two teams, so
+ * the active column is taller than the frame and carries two straps. The
+ * shared board fixtures never fill a column past the frame, and a strap that
+ * cannot reach its pin offset cannot be measured against it.
+ */
+const BOARD_LONG: DesktopProject[] = Array.from({ length: 20 }, (_, index) =>
+	project(`b${index}`, `load-shed-${index + 1}`, {
+		description: `Slice ${index + 1} of the load shed`,
+		team: index % 2 === 0 ? "platform" : "atlas",
+		status: "active",
+		target_date: `2026-11-${String((index % 28) + 1).padStart(2, "0")}`,
+		estimate: (index % 8) + 1,
+		milestones_completed: index % 3,
+		milestones_total: 3,
+		sessions: index % 2,
+		live_sessions: 0,
+		progress_stale: false,
+		progress_updated_at: FIXTURE_NOW_MS / 1000 - (index + 1) * HOUR_S,
+	}),
+);
+
 const LINK = (
 	sessionId: string,
 	extra: Partial<DesktopLinkedSession> = {},
@@ -841,12 +863,21 @@ export const ListTeamsSticky: Story = {
 		const second = headers[1];
 		element.scrollTop +=
 			second.getBoundingClientRect().top - element.getBoundingClientRect().top;
+		/*
+		 * THE BOUNDED OVERSHOOT IS THE MEASUREMENT (review round 1, Q3): at the
+		 * flush point a pinned header and a static one sit at the same y, so an
+		 * assertion made there passes for `position: static` too — an identity,
+		 * not a test. A further 25px can leave the header at the scroller's top
+		 * only if it is actually sticky, and the fixture's headroom at 1280x620
+		 * is 37.7px, so the overshoot stays inside the range the list has.
+		 */
+		element.scrollTop += 25;
 		await poll(() => {
 			const top =
 				second.getBoundingClientRect().top -
 				element.getBoundingClientRect().top;
 			return top >= -1 && top <= 2;
-		}, "the second header to pin");
+		}, "the second header to pin past the flush point");
 	}),
 };
 
@@ -1584,6 +1615,75 @@ export const BoardColumnDropCommits: Story = {
 		) as string[];
 		if (stored.join(",") !== "planning,qa,validation,active,done,paused") {
 			throw new Error(`the drop did not persist: ${stored.join(",")}`);
+		}
+	}),
+};
+
+/**
+ * The board's sticky frame (design round 1, D2): the column header pins at 44
+ * (`h-11`), the team straps pin at `top-11` beneath it, and the incoming strap
+ * PUSHES the outgoing one out — the mechanics the round-1 finding (Q1/U1)
+ * holds this story to, asserted before the shutter rather than described.
+ */
+export const BoardSticky: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: BOARD_LONG,
+			details: detailsFor(BOARD_LONG),
+		}),
+	play: playOnce("board-sticky", async () => {
+		const column = () =>
+			document.querySelector<HTMLElement>('[data-board-column="active"]');
+		await poll(() => column() !== null, "the active column");
+		const element = column();
+		if (!element) throw new Error("the active column never mounted");
+		const header = element.querySelector<HTMLElement>(
+			'[data-board-column-handle="active"]',
+		);
+		const strip = document.querySelector<HTMLElement>("[data-board-strip]");
+		const straps = element.querySelectorAll<HTMLElement>("[data-board-team]");
+		if (!header || !strip || straps.length < 2) {
+			throw new Error(
+				`the active column's header, strip or two straps are missing (straps ${straps.length})`,
+			);
+		}
+		/* The two offsets the groups are written against: h-11 = 44, top-11 = 44. */
+		const headerHeight = header.getBoundingClientRect().height;
+		if (Math.abs(headerHeight - 44) > 0.6) {
+			throw new Error(`the column header is ${headerHeight}px tall, not 44`);
+		}
+		if (getComputedStyle(straps[0]).top !== "44px") {
+			throw new Error(
+				`the strap's sticky offset is ${getComputedStyle(straps[0]).top}, not 44px`,
+			);
+		}
+		const [first, second] = [straps[0], straps[1]];
+		const rel = (node: HTMLElement) =>
+			node.getBoundingClientRect().top - strip.getBoundingClientRect().top;
+		/*
+		 * Flush, then a bounded overshoot: the pin has to hold past the point
+		 * where a static element would also happen to sit at the offset (the
+		 * identity the list's round-1 probe called out).
+		 */
+		strip.scrollTop += rel(second) - 44;
+		strip.scrollTop += 20;
+		await poll(
+			() => Math.abs(rel(second) - 44) <= 2,
+			"the second strap to pin under the header",
+		);
+		/*
+		 * THE PUSH-OUT: the outgoing strap is fully displaced — its bottom at or
+		 * above the incoming strap's top — rather than parked on the same
+		 * offset with the incoming one covering it (round 1 measured strap0 at
+		 * 56.00 against strap1 at 56.42 with the labels clipping).
+		 */
+		const firstBottom = first.getBoundingClientRect().bottom;
+		const secondTop = second.getBoundingClientRect().top;
+		if (firstBottom > secondTop + 0.5) {
+			throw new Error(
+				`the outgoing strap overlaps the incoming one (bottom ${firstBottom.toFixed(2)} > top ${secondTop.toFixed(2)})`,
+			);
 		}
 	}),
 };
