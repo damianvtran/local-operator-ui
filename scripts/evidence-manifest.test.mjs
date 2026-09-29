@@ -2029,6 +2029,22 @@ const STAMP_BINDING_NOTES = [
 	 * file like every entry above it.
 	 */
 	"miniDictRestampNote",
+	/*
+	 * AND THE CONDENSED BAR'S SPACING FIX'S OWN (2026-09-29):
+	 * `condensedBarRestampNote` is the change that lands the row under a collapsed
+	 * bar on the item step and the bar's chevron on the rule's end (operator
+	 * report against v0.31.18). It moves BOTH trees - `src/` for the bar's chevron
+	 * slot, the transcript's after-bar gap tier and the new `pinned-compaction`
+	 * story cell; `scripts/` for that cell's sweep row, the behaviour suite's case
+	 * for the reported state and this list's own entry - and it re-shoots the
+	 * `chat-turn-collapse` set narrowly (every bar-bearing cell plus the new one),
+	 * with the report's own before/after pair beside it in
+	 * `docs/evidence/condensed-bar-spacing/`. The scripts half lands FIRST, so the
+	 * pair is re-derived from that tree and written by the manifest-only commit
+	 * behind it; every list member above is re-pointed with it. It quotes that
+	 * pair, so it is held to this file like every entry above it.
+	 */
+	"condensedBarRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
