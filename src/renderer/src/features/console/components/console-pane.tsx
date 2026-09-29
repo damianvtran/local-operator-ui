@@ -287,7 +287,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 
 	if (sessionId === null) {
 		return (
-			<div className={cn("flex h-full flex-col bg-canvas")}>
+			<div className={cn("flex h-full flex-col bg-elevated")}>
 				{/* The slot's bar at the slot's height and with no ground of its own, so
 				    the pane reads as one surface and the bar does not move between a
 				    draft and a conversation — and the CLOSE control is in it for
@@ -505,14 +505,15 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	return (
 		<div
 			/*
-			 * THE SLOT'S GROUND IS THE PAGE'S, and the canvas states the rule
-			 * (`canvas/index.tsx`): this slot is part of the work plane, not a panel
-			 * ground, so it contrasts with the sidebar's `surface` by the ladder's own
-			 * `surface` -> `canvas` step and is continuous with the 32px chrome lane
-			 * `chat-layout.tsx` paints above it (§6.1, §9.4). It was `surface`, which made
-			 * these panes and the sidebar the same tone on all 59 palettes.
+			 * THE SLOT'S GROUND IS THE DRAWER'S RUNG, and the canvas states the rule
+			 * (`canvas/index.tsx`): this slot is a drawer over the work plane, so it
+			 * stands on `elevated` — one rung above the chrome — rather than on the
+			 * conversation's `canvas`, which made these panes' bodies and the transcript
+			 * one plane. The lane's stop above the slot moves with it
+			 * (`chat-layout.tsx`), because a pane-only change leaves this tone meeting
+			 * the lane at y32 (§6.1, §9.4).
 			 */
-			className={cn("flex h-full flex-col bg-canvas")}
+			className={cn("flex h-full flex-col bg-elevated")}
 			data-tour-tag="console-pane"
 		>
 			{/*
@@ -644,10 +645,18 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 				   in the header cluster" is the slot's trigger; this is the pane's). A row
 				   per surface, the active one on `elevated`, and the two marks the design
 				   fixes: the agent marker the browser's strip already uses for an
-				   agent-opened tab, and the blip's dot. */
+				   agent-opened tab, and the blip's dot.
+
+				   THE LIST OWNS A `surface` PLANE, AND IT IS THE SAME RESOLUTION THE FILES
+				   LIST MADE (`canvas/index.tsx`): its rows paint `hover:bg-row-hover` and
+				   its active row paints `bg-elevated`, and neither mark survives an
+				   `elevated` pane — a row-hover step authored against `surface` rides off
+				   that plane, and an `elevated` fill on an `elevated` ground measures ΔE00
+				   0. So the scroller is `surface` and every mark inside it is unchanged;
+				   the rows are the reason, and the plane is theirs. */
 				<div
 					className={cn(
-						"flex shrink-0 items-center gap-1 overflow-x-auto border-hairline border-b px-2 py-1",
+						"flex shrink-0 items-center gap-1 overflow-x-auto border-hairline border-b bg-surface px-2 py-1",
 					)}
 					role="tablist"
 					aria-label="Console surfaces"

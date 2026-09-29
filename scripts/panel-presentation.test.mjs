@@ -91,14 +91,92 @@ test("destinationNeedsSession is defined once, on the table", () => {
 	 */
 	assert.match(
 		registry,
-		/const kind = DESTINATIONS\[destination\]\?\.kind;/,
-		"the kind is read off the table, so a destination the table has no row for reads `undefined` rather than a name list",
+		/const entry = DESTINATIONS\[destination\];/,
+		"the entry is read off the table, so a destination the table has no row for reads `undefined` rather than a name list",
 	);
 	assert.match(
 		registry,
-		/return kind !== "machine-panel" && kind !== "aida";/,
-		"the TWO kinds that address no conversation are exempt - a machine panel describes the machine, and `/aida` OPENS her conversation - and every other answer (an unknown destination's `undefined` included) stays `true`",
+		/if \(!entry\) return true;/,
+		"a destination the table has no row for answers `true`: the same refusal the dispatcher's gate gives it",
 	);
+	assert.match(
+		registry,
+		/if \(entry\.kind === "machine-panel" \|\| entry\.kind === "aida"\) return false;/,
+		"the two KINDS that address no conversation stay exempt - a machine panel describes the machine, and `/aida` OPENS her conversation",
+	);
+	assert.match(
+		registry,
+		/return !\(entry\.kind === "picker" && entry\.sessionless === true\);/,
+		"and the picker side has its own per-row exemption (issue #625): only a row carrying the measured `sessionless` opt-in is presentable on a pane with none",
+	);
+});
+
+test("the five sessionless pickers carry the opt-in, and only they do", () => {
+	const registry = code(REGISTRY);
+	/*
+	 * Issue #625, the slice design § 12.5 set aside as "one table row each when
+	 * they are wanted": `/help`, `/theme`, `/login`, `/logout` and `/resume`
+	 * present on a pane with no conversation. Each is pinned by its full row —
+	 * id, kind, component, flag — so a row that lost the opt-in, swapped its kind
+	 * or handed the flag to a neighbour fails BY NAME rather than by count.
+	 */
+	for (const [id, row] of [
+		[
+			"commands",
+			/commands:\s*\{\s*kind:\s*"picker",\s*component:\s*HelpPalette,\s*sessionless:\s*true/,
+		],
+		[
+			"sessions.resume",
+			/"sessions\.resume":\s*\{\s*kind:\s*"picker",\s*component:\s*ResumePicker,\s*sessionless:\s*true/,
+		],
+		[
+			"appearance",
+			/appearance:\s*\{\s*kind:\s*"picker",\s*component:\s*ThemePicker,\s*sessionless:\s*true/,
+		],
+		[
+			"auth.login",
+			/"auth\.login":\s*\{\s*kind:\s*"picker",\s*component:\s*LoginPicker,\s*sessionless:\s*true/,
+		],
+		[
+			"auth.logout",
+			/"auth\.logout":\s*\{\s*kind:\s*"picker",\s*component:\s*LogoutPicker,\s*sessionless:\s*true/,
+		],
+	]) {
+		assert.match(
+			registry,
+			row,
+			`\`${id}\` must carry the opt-in on its own row`,
+		);
+	}
+	/*
+	 * The count, because the row pins above cannot see a SIXTH row quietly
+	 * joining the set: five measured rows, five occurrences — an edit that marks
+	 * another destination has to come back through this file.
+	 */
+	const flagged = registry.match(/sessionless:\s*true/g) ?? [];
+	assert.equal(
+		flagged.length,
+		5,
+		`exactly the five measured rows carry the opt-in; found ${flagged.length}`,
+	);
+	/*
+	 * The counter-cases: neighbours that read `sessionId` themselves and must
+	 * keep refusing on a pane with none. A widened kind — or a copy of the flag
+	 * beside the predicate — puts a picker that reads the session in front of an
+	 * empty id, which is the defect this opt-in exists NOT to introduce.
+	 */
+	for (const [id, row] of [
+		["skills", /skills:\s*\{[^}]*sessionless/],
+		["mcp", /mcp:\s*\{[^}]*sessionless/],
+		["sessions.reload", /"sessions\.reload":\s*\{[^}]*sessionless/],
+		["session.diagnostics", /"session\.diagnostics":\s*\{[^}]*sessionless/],
+	]) {
+		assert.doesNotMatch(
+			registry,
+			row,
+			`\`${id}\` reads \`sessionId\` and must not carry the opt-in`,
+		);
+	}
 });
 
 test("exactly four call sites use the predicate, and they are the four that must", () => {
@@ -141,6 +219,74 @@ test("exactly four call sites use the predicate, and they are the four that must
 		palette,
 		/if \(\s*destinationNeedsSession\(destination\) &&\s*!location\.pathname\.startsWith\("\/chat"\)\s*\)/,
 		"the route move must be guarded by the predicate AND the current route",
+	);
+});
+
+test("the dispatcher presents a flagged picker with no session, and posts nothing", () => {
+	const dispatch = code(DISPATCH);
+	/*
+	 * Issue #625: on a pane with no conversation the sessionless picker rows are
+	 * presented DIRECTLY — the same agreement the machine panels already have —
+	 * instead of the refusal, and without an owner round trip (there is no
+	 * session for a POST path to name). The pins are positional: the presenter is
+	 * declared; the gate calls it after the refusal; and the machine-panel call
+	 * beside it is intact, because that behavior is deliberately unchanged.
+	 */
+	const presenterAt = dispatch.indexOf("const presentSessionlessPicker = (");
+	assert.ok(
+		presenterAt >= 0,
+		"the sessionless presenter exists as its own named function — removing it must come back through this file",
+	);
+	const gateOpen = dispatch.indexOf("if (!sessionId) {", presenterAt);
+	assert.ok(
+		gateOpen > presenterAt,
+		"the gate follows the presenter declaration",
+	);
+	const gateEnd = dispatch.indexOf(
+		'if (entry?.kind === "machine-panel") {',
+		gateOpen,
+	);
+	assert.ok(
+		gateEnd > gateOpen,
+		"the gate closes before the with-session machine-panel branch",
+	);
+	const gate = dispatch.slice(gateOpen, gateEnd);
+	assert.match(
+		gate,
+		/if \(destinationNeedsSession\(spec\.destination\)\) \{/,
+		"the gate still asks the predicate first",
+	);
+	const refusalAt = gate.indexOf("needs an open conversation");
+	const presentAt = gate.indexOf("presentSessionlessPicker(spec, args);");
+	assert.ok(
+		refusalAt >= 0 && presentAt >= 0 && refusalAt < presentAt,
+		`the refusal precedes the presenter (refusal@${refusalAt}, presenter@${presentAt}), so a destination the predicate did not exempt keeps its own sentence`,
+	);
+	assert.match(
+		gate,
+		/if \(entry\?\.kind === "picker"\) \{\s*presentSessionlessPicker\(spec, args\);\s*return "consumed";\s*\}/,
+		"a picker kind that passed the predicate presents directly rather than falling into the machine-panel presenter",
+	);
+	assert.match(
+		gate,
+		/presentMachinePanel\(spec, args, ""\);/,
+		"the machine panels keep their sessionless presenter, unchanged",
+	);
+	const presenter = dispatch.slice(presenterAt, gateOpen);
+	assert.match(presenter, /session_id: ""/, "the action addresses no session");
+	assert.match(
+		presenter,
+		/spec: draftPickerSpec\(spec\.destination, commandsQuery\.data\)/,
+		"the spec resolves through the table like the other presenters",
+	);
+	assert.match(
+		presenter,
+		/sessionId: ""/,
+		"the pane context hands the adapters an empty id, which is the honest one",
+	);
+	assert.ok(
+		!/sessions\.command|desktopResult/.test(presenter),
+		"NO owner round trip: the sessionless path posts nothing — the machine-panel branch's own rationale",
 	);
 });
 

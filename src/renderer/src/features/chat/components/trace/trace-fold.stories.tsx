@@ -100,7 +100,6 @@ const foldProps = (specs: RowSpec[]) => {
 	return {
 		summary: foldSummary(actions),
 		actionCount: specs.length,
-		failedCount: actions.filter((action) => action.failed).length,
 		live: label ? { verb: label.verb, object: label.object } : null,
 	};
 };

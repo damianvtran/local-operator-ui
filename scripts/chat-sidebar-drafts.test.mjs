@@ -29,6 +29,8 @@ import { build } from "esbuild";
  */
 
 const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
+/** The always-mounted surface the discard offer's toast is raised by since 2026-09-27. */
+const TOASTS = "src/renderer/src/features/chat/components/undo-toasts.tsx";
 
 const read = (path) => readFileSync(path, "utf8");
 /** Comments stripped, so a rule can never be satisfied by prose about the rule. */
@@ -229,7 +231,13 @@ test("the clear-all is inside the drafts section, rides the row walk, and clears
 	assert.match(foot, /CLEAR_ALL_WHY_ID/);
 	assert.match(foot, /CLEAR_ALL_WHY/);
 	assert.match(foot, /aria-disabled:text-ink-disabled!/);
-	assert.match(foot, /stagedByDiscardRef\.current/);
+	/*
+	 * The fresh key the discard stages is written to the STORE (`setStagedByDiscard`),
+	 * not a panel ref: the offer's own press that reads it lives on the app-level toast
+	 * surface now (2026-09-27), so the writer and the reader can no longer share one
+	 * component's memory.
+	 */
+	assert.match(foot, /setStagedByDiscard\(/);
 	/*
 	 * THE SAME NO-DEAD-PANE RULE THE ROW ACT CARRIES (UX round 1's U1): when the
 	 * batch took the pane's own draft, a fresh one is staged.
@@ -325,42 +333,60 @@ test("a row whose send hop is live cannot be discarded", () => {
 		!/disabled:opacity-45/.test(control),
 		"opacity-faded disabled states are the pattern branding.md §6 forbids",
 	);
-	/* And the fresh key the discard stages is remembered for the offer's own press (U7). */
-	assert.match(control, /stagedByDiscardRef\.current/);
+	/* And the fresh key the discard stages is written to the store for the offer's own press (U7). */
+	assert.match(control, /setStagedByDiscard\(/);
 });
 
-test("the discard offer is the lane's own: one id, one slot, an Undo that restores", () => {
-	const source = code(SIDEBAR);
-	const at = source.indexOf('if (newest === "drafts" && draftsUndo)');
-	assert.notEqual(at, -1, "the drafts branch is not in the lane effect");
-	const branch = source.slice(at, at + 2600);
+test("the discard offer is its own toast: one id, one slot, an Undo that restores", () => {
+	const source = code(TOASTS);
+	const at = source.indexOf("if (draftsUndo === null) {");
+	assert.notEqual(at, -1, "the drafts branch is not in the toast surface");
+	const branch = source.slice(at, at + 2600).replace(/\s+/g, " ");
 	/*
-	 * THE ARCHIVE OFFER'S OWN REGISTER (design round 1's D1): one id, one class, the
-	 * persistent duration and the lane position - a second discard REPLACES the
-	 * first offer because the id is stable and the store keeps one slot.
+	 * AN ID OF ITS OWN (2026-09-27) - a decision this change makes rather than inherits:
+	 * the discard offer used to share the archive's id because one sidebar lane held one
+	 * message, and ordinary sonner toasts stack. So a discard and an archive can stand
+	 * side by side, each retiring on its own terms, and the store's single slot still
+	 * means a second discard REPLACES the first under this same id rather than stacking
+	 * under it.
 	 */
-	assert.match(branch, /id: ARCHIVE_TOAST_ID/);
-	assert.match(branch, /className: ARCHIVE_TOAST_CLASS/);
-	assert.match(branch, /duration: ARCHIVE_TOAST_PERSISTENT/);
-	assert.match(branch, /position: ARCHIVE_TOAST_LANE/);
+	assert.match(branch, /id: DRAFTS_UNDO_TOAST_ID/);
+	assert.equal(
+		branch.includes("ARCHIVE_TOAST_ID"),
+		false,
+		"the discard offer must not share the archive's id: nothing about this act is an archive",
+	);
 	assert.match(branch, /label: "Undo"/);
 	assert.match(branch, /restoreDraftsUndo\(\);/);
+	/*
+	 * LIFETIME, CHROME AND SHRINKING ARE SONNER'S (2026-09-27): the offer's own
+	 * documented eight seconds (`ARCHIVE_UNDO_TOAST_MS`, one home for both offers),
+	 * no persistent duration for a clock to outlive, no `position`, and the same
+	 * `min-w-0` chain as the archive offer so the copy can give at the card's width.
+	 */
+	assert.match(branch, /duration: ARCHIVE_UNDO_TOAST_MS/);
+	assert.equal(branch.includes("POSITIVE_INFINITY"), false);
+	assert.equal(branch.includes("position:"), false);
+	assert.match(branch, /classNames: \{ content: "min-w-0" \}/);
 	/*
 	 * AND THE PRESS PUTS THE READER BACK WHERE THEY WERE WORKING (UX round 2's U7):
 	 * a ONE-key offer whose key the discard replaced with a freshly staged draft
 	 * re-opens the restored key, and only while the pane still shows that staged
-	 * draft (the ref is compared against the CURRENT key).
+	 * draft (the CURRENT key is what it is compared against). The staged key is the
+	 * store's `stagedByDiscard` - set by the panel's two discard handlers, read here -
+	 * because the press moved one surface over with this change.
 	 */
-	assert.match(branch, /stagedByDiscardRef\.current/);
-	assert.match(branch, /state\.activeDraftKey === staged/);
-	assert.match(branch, /state\.openDraft\(draftsUndo\.keys\[0\]\)/);
+	assert.match(branch, /stagedByDiscard/);
+	assert.match(branch, /getState\(\)\.activeDraftKey === staged/);
+	assert.match(branch, /\.openDraft\(draftsUndo\.keys\[0\]\)/);
 	/*
-	 * AND THE OFFER LOSES TIES TO A STANDING ARCHIVE MESSAGE: it wins only by
-	 * being STRICTLY newer than every archive value present, which is also what
-	 * makes the supersession clause above it safe to clear them.
+	 * AND THE OFFER'S SLOT IS CLEARED AT ITS OWN END, so nothing re-draws later: the
+	 * timed end, the close button and the swipe all route through the same settle
+	 * callbacks, and the Undo press clears it in the store write that restores.
 	 */
-	assert.match(source, /draftsUndo\.at > archiveFailure\.at/);
-	assert.match(source, /draftsUndo\.at > archiveUndo\.at/);
+	assert.match(branch, /setDraftsUndo\(null\)/);
+	assert.match(branch, /onAutoClose: settle/);
+	assert.match(branch, /onDismiss: settle/);
 });
 
 test("the walk and the ring both skip what the caret cannot reach", () => {

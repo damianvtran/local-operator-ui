@@ -1,5 +1,17 @@
 /**
- * The tab's List view: a header strip and one row per project.
+ * The tab's List view: a header strip, team sections, one row per project.
+ *
+ * THE VIEW IS BORDERLESS: the panel ground and its radius retired — the rows
+ * are the structure, the way the detail sheet runs — and the header strip's
+ * hairline went with them. Rows keep their own hairlines (the app-wide rule
+ * for repeating rows), and the row ground is the page canvas, hover included.
+ *
+ * THE SECTIONS ARE TEAMS (slice 3): the same `groupByTeam` rule the board's
+ * columns and the timeline run, headers pinned `top-0` inside the scroller so
+ * the current team stays named while its rows scroll under it and the next
+ * header pushes it out — the ordinary sticky contract, which is all the
+ * "pin and push" behaviour needs. A header's ground is `canvas` because that
+ * IS the view's ground now; `surface` would float a band over the rows.
  *
  * THE COLUMNS ARE THE DESIGN'S OWN LIST, in its order — name, status chip,
  * target date, estimate, milestone `n/m`, live count, progress age with the
@@ -28,14 +40,17 @@ import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
 import type { DesktopProject } from "../../../../../shared/desktop-control-contract";
 import {
+	NO_TEAM_LABEL,
 	PROGRESS_STALE_LABEL,
+	groupByTeam,
 	listRowMeta,
 	liveSessionsLabel,
 	milestoneCountLabel,
 	progressAge,
 	progressAgePhrase,
-	projectStatusMeta,
+	projectTeamName,
 } from "../project-model";
+import { ProjectStatusBadge } from "./project-status-badge";
 
 type ProjectListProps = {
 	projects: DesktopProject[];
@@ -103,13 +118,14 @@ export const ProjectList: FC<ProjectListProps> = ({
 	nowMs,
 	onOpen,
 }) => {
+	const groups = groupByTeam(projects, projectTeamName);
 	return (
 		<div
-			className="@container flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-hairline bg-surface"
+			className="@container flex min-h-0 flex-1 flex-col"
 			data-testid="project-list"
 		>
 			<div
-				className="flex shrink-0 items-center gap-3 border-b border-hairline px-3 py-2 text-meta text-ink-muted"
+				className="flex shrink-0 items-center gap-3 px-3 py-2 text-meta text-ink-muted"
 				aria-hidden="true"
 			>
 				{COLUMNS.map((column) => (
@@ -118,97 +134,117 @@ export const ProjectList: FC<ProjectListProps> = ({
 					</span>
 				))}
 			</div>
-			<ul className="min-h-0 flex-1 divide-y divide-hairline overflow-y-auto">
-				{projects.map((project) => {
-					const status = projectStatusMeta(project.status);
-					const meta = new Map(
-						listRowMeta(
-							project,
-							typeof navigator === "undefined" ? undefined : navigator.language,
-						).map((entry) => [entry.key, entry.text]),
-					);
-					const milestones = milestoneCountLabel(
-						project.milestones_completed,
-						project.milestones_total,
-					);
-					const live = liveSessionsLabel(project.live_sessions);
-					return (
-						<li key={project.id}>
-							<button
-								type="button"
-								onClick={() => onOpen(project)}
-								data-project-name={project.name}
-								className={cn(
-									"flex w-full items-center gap-3 px-3 py-2 text-left",
-									"transition-colors duration-fast ease-out-quart",
-									"hover:bg-elevated",
-								)}
-							>
-								<span
-									className={cn(
-										COLUMNS[0].className,
-										"truncate text-body-sm text-ink",
-									)}
-								>
-									{project.name}
-								</span>
-								<span className={COLUMNS[1].className}>
-									<Badge variant={status.variant}>{status.label}</Badge>
-								</span>
-								<span
-									className={cn(
-										COLUMNS[2].className,
-										"truncate text-meta text-ink-muted",
-									)}
-								>
-									{/*
-									 * `target` OR `completed`: `listRowMeta` emits at most one of the two
-									 * (a finished project dates itself from the day it finished), and
-									 * reading only `target` left a done row's date column empty.
-									 */}
-									{meta.get("target") ?? meta.get("completed") ?? ""}
-								</span>
-								<span
-									className={cn(
-										COLUMNS[3].className,
-										"truncate text-meta text-ink-muted",
-									)}
-								>
-									{meta.get("estimate") ?? ""}
-								</span>
-								<span
-									className={cn(
-										COLUMNS[4].className,
-										"truncate text-meta text-ink-muted",
-									)}
-								>
-									{milestones}
-								</span>
-								<span
-									className={cn(
-										COLUMNS[5].className,
-										"truncate text-meta text-ink-muted",
-									)}
-								>
-									{live}
-								</span>
-								<span
-									className={cn(
-										COLUMNS[6].className,
-										"flex items-center gap-2",
-									)}
-								>
-									<span className="truncate text-meta text-ink-muted">
-										{progressCellText(project, nowMs)}
-									</span>
-									{project.progress_stale && (
-										<Badge variant="warning">{PROGRESS_STALE_LABEL}</Badge>
-									)}
-								</span>
-							</button>
-						</li>
-					);
-				})}
+			<ul className="min-h-0 flex-1 overflow-y-auto">
+				{groups.map((group) => (
+					<li key={group.team ?? ""}>
+						<div
+							className="sticky top-0 z-10 flex items-center gap-2 bg-canvas px-3 py-1.5 text-meta"
+							data-project-team={group.team ?? ""}
+						>
+							<span className="truncate text-ink">
+								{group.team ?? NO_TEAM_LABEL}
+							</span>
+							<span className="shrink-0 text-ink-muted">
+								{group.items.length}
+							</span>
+						</div>
+						<ul className="divide-y divide-hairline">
+							{group.items.map((project) => {
+								const meta = new Map(
+									listRowMeta(
+										project,
+										typeof navigator === "undefined"
+											? undefined
+											: navigator.language,
+									).map((entry) => [entry.key, entry.text]),
+								);
+								const milestones = milestoneCountLabel(
+									project.milestones_completed,
+									project.milestones_total,
+								);
+								const live = liveSessionsLabel(project.live_sessions);
+								return (
+									<li key={project.id}>
+										<button
+											type="button"
+											onClick={() => onOpen(project)}
+											data-project-name={project.name}
+											className={cn(
+												"flex w-full items-center gap-3 px-3 py-2 text-left",
+												"transition-colors duration-fast ease-out-quart",
+												"hover:bg-elevated",
+											)}
+										>
+											<span
+												className={cn(
+													COLUMNS[0].className,
+													"truncate text-body-sm text-ink",
+												)}
+											>
+												{project.name}
+											</span>
+											<span className={COLUMNS[1].className}>
+												<ProjectStatusBadge status={project.status} />
+											</span>
+											<span
+												className={cn(
+													COLUMNS[2].className,
+													"truncate text-meta text-ink-muted",
+												)}
+											>
+												{/*
+												 * `target` OR `completed`: `listRowMeta` emits at most one of the two
+												 * (a finished project dates itself from the day it finished), and
+												 * reading only `target` left a done row's date column empty.
+												 */}
+												{meta.get("target") ?? meta.get("completed") ?? ""}
+											</span>
+											<span
+												className={cn(
+													COLUMNS[3].className,
+													"truncate text-meta text-ink-muted",
+												)}
+											>
+												{meta.get("estimate") ?? ""}
+											</span>
+											<span
+												className={cn(
+													COLUMNS[4].className,
+													"truncate text-meta text-ink-muted",
+												)}
+											>
+												{milestones}
+											</span>
+											<span
+												className={cn(
+													COLUMNS[5].className,
+													"truncate text-meta text-ink-muted",
+												)}
+											>
+												{live}
+											</span>
+											<span
+												className={cn(
+													COLUMNS[6].className,
+													"flex items-center gap-2",
+												)}
+											>
+												<span className="truncate text-meta text-ink-muted">
+													{progressCellText(project, nowMs)}
+												</span>
+												{project.progress_stale && (
+													<Badge variant="warning">
+														{PROGRESS_STALE_LABEL}
+													</Badge>
+												)}
+											</span>
+										</button>
+									</li>
+								);
+							})}
+						</ul>
+					</li>
+				))}
 			</ul>
 		</div>
 	);

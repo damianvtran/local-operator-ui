@@ -1311,7 +1311,7 @@ test("the receipt's own state is drawn on its own row, and the give-up arm is an
 	 * what this case drives is where the operator meets it - the row's flyout
 	 * clause, the `sr-only` sentence its `aria-describedby` names (the keyboard
 	 * channel, and the one the receipt's copy did not have at all), and the single
-	 * announcement the give-up arm makes in the panel's own toast lane.
+	 * announcement the give-up arm makes in the app's own toast container.
 	 *
 	 * Read through the SHIPPED row and the SHIPPED toast container: the states are
 	 * staged the way the loop stages them (`readAckNotice` is one record on the
@@ -1568,21 +1568,21 @@ test("the receipt's own state is drawn on its own row, and the give-up arm is an
 test("a remount cannot leave the receipt's sentence standing", async () => {
 	/*
 	 * UX round 3's U7, which is agent review round 3's MINOR 1 seen from the flow:
-	 * the give-up sentence lives in the app-level lane and outlives any one panel
+	 * the give-up sentence lives in the app-level container and outlives any one panel
 	 * mount, and the id it was raised under used to live in a component ref. A route
 	 * change off `/chat` and back (or a remount by the region controls) gave the panel
 	 * a fresh ref while the sentence stood, and the fresh instance's "the fact has
 	 * gone" branch was a no-op - so nothing left in the app could retire a sentence
 	 * that says the mark was not cleared, after the mark cleared.
 	 *
-	 * The id is the LANE'S now (one constant, `READ_ACK_TOAST_ID`, the shape the
-	 * archive lane in the same file uses), so the dismissal needs no handle and any
-	 * instance can make it. What this case asserts is the CALL and the id it carries,
-	 * which is exactly what the ref shape could not produce - no dismissal call at all
-	 * after a remount. The lane's pixels for the raise-and-retire path are asserted in
-	 * the case above, where the container that receives the toast is the one this file
-	 * mounted; this case deliberately owns no lane, because a later case cannot rely on
-	 * being the container sonner routes to.
+	 * The id is an app-level constant now (one constant, `READ_ACK_TOAST_ID`, the shape
+	 * the archive's own id uses in `undo-toasts.tsx`), so the dismissal needs no handle
+	 * and any instance can make it. What this case asserts is the CALL and the id it
+	 * carries, which is exactly what the ref shape could not produce - no dismissal
+	 * call at all after a remount. The pixels for the raise-and-retire path are
+	 * asserted in the case above, where the container that receives the toast is the
+	 * one this file mounted; this case deliberately owns no container, because a later
+	 * case cannot rely on being the container sonner routes to.
 	 */
 	globalThis.__ack = (request) =>
 		request.op === "sessions.list"

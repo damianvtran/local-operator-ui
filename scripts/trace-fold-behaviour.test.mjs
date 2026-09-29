@@ -149,7 +149,6 @@ const element = (props) =>
 	createElement(ControlledFold, {
 		summary: "3 shell · 1 python",
 		actionCount: 4,
-		failedCount: 0,
 		recordIds: ["t0"],
 		...props,
 	});

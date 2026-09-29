@@ -254,6 +254,18 @@ const CHROME_LAUNCH_SITES = [
 		"the Storybook sweep across all twelve themes, which is the rig behind the committed frames",
 	),
 	guarded(
+		"scripts/capture-docs-library.mjs",
+		"spawn",
+		1,
+		"renders the docs screenshot library - twelve scenes x light/dark at 1280x900@2x - for the READMEs and the marketing site",
+	),
+	guarded(
+		"scripts/make-chart.mjs",
+		"spawn",
+		1,
+		"renders the media scene's agent-plotted chart png, the artifact the docs-library story embeds as a tool result",
+	),
+	guarded(
 		"scripts/hub-round-trips.mjs",
 		"spawn",
 		1,

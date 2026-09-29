@@ -161,6 +161,9 @@ export function useCreateProject() {
  */
 export type ProjectEditFields = {
 	name?: string;
+	title?: string;
+	owner?: string;
+	team?: string;
 	description?: string;
 	status?: DesktopProjectStatus;
 	progress?: string;
