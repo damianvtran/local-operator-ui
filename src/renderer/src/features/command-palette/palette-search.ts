@@ -206,6 +206,88 @@ export type PaletteSearchOutcome = {
 	clipped: boolean;
 };
 
+/**
+ * What the browse list's own catalogue is doing, as the panel must say it:
+ * the request is out, the question is answerable and the answer is zero, or
+ * the rows are on screen.
+ */
+export type PaletteCatalogueState = "loading" | "empty" | "loaded";
+
+/**
+ * What the empty state says, per the state it is actually in (design round 2,
+ * D2/U4).
+ *
+ * A pure table rather than a JSX branch, for the reason `chat-list-sections.ts`
+ * states in full: this component cannot be rendered by `node:test`, so a
+ * sentence written as a JSX condition is a sentence no test can reach. The
+ * inputs are exactly the readings the panel has.
+ *
+ * THE THREE FIXES THIS TABLE EXISTS FOR:
+ *
+ * - **A scope is a promise about what its list contains.** Inside the chats
+ *   scope the old copy offered "an agent by name, a setting, or a page such as
+ *   Schedules" — three of its four nouns outside the door the user just chose.
+ *   A scoped view speaks about its own source.
+ * - **"No conversations yet" is a claim about the user's account, so it may
+ *   not be made while the catalogue request is still out.** A cold open lands
+ *   in this branch before the fetch answers, and the old copy flashed at a
+ *   user with forty chats on every first Cmd/Ctrl+P after launch. The chats
+ *   scope reads the catalogue's own state first and says loading until the
+ *   question is answerable (`catalogue` in `PaletteChatState`).
+ * - **The prefix advice has to fit what is on screen.** "Narrow the search
+ *   with a prefix below" is wrong inside a scope: the prefix is already
+ *   applied, and the way back to everything is BACKSPACING it — so that is
+ *   what the scoped line teaches. The unscoped line keeps the old advice,
+ *   which is true there.
+ */
+export type PaletteEmptyCopy = {
+	/** The first line: the state named. */
+	line: string;
+	/** The second line: what to do next, or null when there is nothing useful to say. */
+	hint: string | null;
+};
+
+export function paletteEmptyStateCopy(input: {
+	scope: PaletteScope | null;
+	/** Whether terms remain after the scope was read off. */
+	hasTerms: boolean;
+	/** The query with the scope removed, for the no-matches line. */
+	terms: string;
+	/** A conversations search request is out and unanswered. */
+	awaiting: boolean;
+	/** The browse list's catalogue, read only for the chats scope's no-terms state. */
+	catalogue: PaletteCatalogueState;
+}): PaletteEmptyCopy {
+	const { scope, hasTerms, terms, awaiting, catalogue } = input;
+	/*
+	 * The request is out: the one thing that can be said without guessing is
+	 * what is being done. No hint — advice to "try another word" is advice
+	 * about an answer nobody has seen yet.
+	 */
+	if (awaiting) return { line: "Searching conversations…", hint: null };
+	if (scope === "chat" && !hasTerms) {
+		return catalogue === "loading"
+			? { line: "Loading conversations…", hint: null }
+			: {
+					line: "No conversations yet",
+					hint: "Start a chat and it will show up here.",
+				};
+	}
+	if (hasTerms) {
+		const glyph = SCOPE_LEGEND.find((entry) => entry.scope === scope)?.glyph;
+		return {
+			line: `No matches for “${terms}”`,
+			hint: glyph
+				? `Try another word, or backspace ${glyph} to search everything.`
+				: "Try another word, or narrow the search with a prefix below.",
+		};
+	}
+	return {
+		line: "Nothing to show yet",
+		hint: "Search for a chat, an agent by name, a setting, or a page such as Schedules.",
+	};
+}
+
 /* ------------------------------------------------------------------ *
  * Scope vocabulary
  * ------------------------------------------------------------------ */
@@ -288,6 +370,21 @@ export const SCOPE_LEGEND: {
 	{ glyph: "@", scope: "agent", label: "Agents" },
 	{ glyph: ",", scope: "setting", label: "Settings" },
 ];
+
+/**
+ * The query the Cmd/Ctrl+P door opens the palette with (issue #659): the
+ * conversations scope, seeded, so that chord is a conversation quick switcher
+ * rather than a second copy of Cmd/Ctrl+K. The browse list under it is
+ * conversation rows and a term searches chats the way the sidebar does.
+ *
+ * Spelled as the glyph the scope IS rather than as a mode flag: the field then
+ * shows the reader why the list is conversations, and backspacing it widens
+ * the surface back to everything instead of trapping the gesture in a state it
+ * cannot leave. `scripts/palette-search.test.mjs` pins the binding - the seed
+ * parses to the chat scope - so the constant can never drift from the table
+ * above it.
+ */
+export const CONVERSATION_SWITCHER_SEED = "#";
 
 /**
  * Read a raw query into its scope and its terms.
