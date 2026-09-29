@@ -9809,7 +9809,11 @@ async function railHoverTrace(cdp) {
 		`(() => { const rail = document.querySelector('${rail}'); return Boolean(rail) && document.querySelectorAll("[data-checkpoint-id]").length >= 300; })()`,
 		30_000,
 	);
-	check("the density rail is up before the trace", ready.ok, JSON.stringify(ready));
+	check(
+		"the density rail is up before the trace",
+		ready.ok,
+		JSON.stringify(ready),
+	);
 	await parkPointer(cdp);
 	const geometry = await cdp.evaluate(`(() => {
 		const rail = document.querySelector('${rail}');
@@ -9819,9 +9823,9 @@ async function railHoverTrace(cdp) {
 		let last = performance.now();
 		const tick = (now) => {
 			/*
-			 * BOTH HALVES DETECT THE CARD THE SAME WAY: the rework's card is
-			 * `data-checkpoint-card`, the pre-rework one `role=dialog`, and a
-			 * sampler that only knew one of them would report a different
+			 * BOTH HALVES DETECT THE CARD THE SAME WAY: the rework's card
+			 * carries data-checkpoint-card, the pre-rework one role=dialog, and
+			 * a sampler that only knew one of them would report a different
 			 * measurement per half - the asymmetry this trace exists to avoid.
 			 */
 			const card = document.querySelector('[role="dialog"], [data-checkpoint-card]');
@@ -9847,12 +9851,16 @@ async function railHoverTrace(cdp) {
 		const start = Date.now();
 		for (let i = 0; i < stations; i += 1) {
 			const y = Math.round(
-				geometry.top + ((geometry.bottom - geometry.top) * i) / (stations - 1 || 1),
+				geometry.top +
+					((geometry.bottom - geometry.top) * i) / (stations - 1 || 1),
 			);
 			await movePointer(cdp, geometry.cx, y);
 			await wait(dwellMs);
 		}
-		note(`hover trace leg ${label}`, `stations=${stations} dwellMs=${dwellMs} wallMs=${Date.now() - start}`);
+		note(
+			`hover trace leg ${label}`,
+			`stations=${stations} dwellMs=${dwellMs} wallMs=${Date.now() - start}`,
+		);
 	};
 	/* The DWELL leg: long enough at each station for the card's intent delay. */
 	await leg("dwell", 6, 240);
@@ -9879,7 +9887,8 @@ async function railHoverTrace(cdp) {
 		return;
 	}
 	const sorted = [...trace.frames].sort((a, b) => a - b);
-	const at = (q) => sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * q))];
+	const at = (q) =>
+		sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * q))];
 	const stats = {
 		frames: sorted.length,
 		ticks: geometry.ticks,
