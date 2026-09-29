@@ -221,7 +221,6 @@ function installBridge(state: BrowserChromeState): void {
 		revokeAllApprovals: noop,
 		forgetSite: noop,
 		clearData: noop,
-		onPopupBlocked: () => () => {},
 		onConsentAttention: () => () => {},
 	};
 	(window as unknown as { api: unknown }).api = { browser };
