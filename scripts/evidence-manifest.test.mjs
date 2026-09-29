@@ -2134,6 +2134,16 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"readmeVisualsFoldSevenNote",
 	/*
+	 * AND THE CROSS-SESSION VISIBILITY FILTER'S OWN (2026-09-29): both trees this
+	 * file binds move - `src/` for the renderer-side records filter, its
+	 * settings-query hook and the canonical transcript's seam; `scripts/` for the
+	 * filter's suite, the query providers every transcript harness gained, and the
+	 * `test:desktop` registration - while no frame is added or re-taken, because
+	 * this change's desktop captures are the PR's own rather than entries here. It
+	 * quotes the pair, so it is held to this file like every entry above it.
+	 */
+	"crossSessionVisibilityRestampNote",
+	/*
 	 * AND THE CONDENSED BAR'S SPACING FIX'S OWN (2026-09-29):
 	 * `condensedBarRestampNote` is the change that lands the row under a collapsed
 	 * bar on the item step and the bar's chevron on the rule's end (operator
@@ -3350,6 +3360,15 @@ const BRANCH_RECORDS = [
 	 * exists - a fold that started from main's copy would drop it first.
 	 */
 	"readmeVisualsFoldSevenNote",
+	/*
+	 * And the cross-session visibility filter's own record
+	 * (`crossSessionVisibilityRestampNote`), the same reason one note over: it is
+	 * this side's statement of what moved and what did not - both trees, no frame
+	 * - and a fold resolved from main's copy would drop it. Registered here with
+	 * the fold that carried quick-send's entry in, so the next one cannot drop
+	 * either silently.
+	 */
+	"crossSessionVisibilityRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
