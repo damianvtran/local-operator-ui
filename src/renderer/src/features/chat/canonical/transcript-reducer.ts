@@ -2304,6 +2304,62 @@ function durableRecord(
  * the same id; the page's own order is preserved and it is placed by
  * timestamp relative to what is already painted (older pages prepend).
  */
+/*
+ * The cursor to re-anchor to after a page came back `cursor_missing`, or null
+ * when the page needs no re-anchor.
+ *
+ * The backend's documented reconcile (`read_transcript_page`): a `before_id`
+ * the journal cannot locate — a `/compact` replaced the file under a loaded
+ * conversation — is answered with THE CURRENT TAIL plus `cursor_missing`, "so a
+ * reader can dedupe by stable ID instead of getting stuck on a stale cursor".
+ * The load path must then MOVE: the tail it received is already loaded, so a
+ * reader that keeps the stale id asks forever for a row that is gone and the
+ * affordance loads nothing, silently (operator report, 2026-09-28). The row to
+ * anchor at is the page's own OLDEST — a row this journal just served, so the
+ * next request can locate it and page genuinely below it. Null means "ask
+ * again from where you already are", and equals-anchor guards the degenerate
+ * case where re-anchoring would repeat the same request.
+ */
+export function reanchorAfterCursorMiss(
+	page: Pick<DesktopHistoryPage, "cursor_missing" | "entries">,
+	anchor: string,
+): string | null {
+	if (!page.cursor_missing || page.entries.length === 0) return null;
+	const oldest = page.entries[0]?.id;
+	if (typeof oldest !== "string" || oldest === anchor) return null;
+	return oldest;
+}
+
+/**
+ * The load-earlier request's next move, given the page it got back.
+ *
+ * ONE decision point, because the two halves of it are the two ways this can
+ * end: a `cursor_missing` answer is re-anchored ONCE (see
+ * `reanchorAfterCursorMiss`), and a page that is STILL `cursor_missing` on the
+ * retry is the honest dead end — the journal cannot serve that depth from
+ * either cursor, applying the tail would report a click that loaded nothing as
+ * success, and asking a third time would loop. `failed: true` is what drives
+ * the slot's own failed state (agent review round 1, F1: the retry's failure
+ * was unreachable — the retried page was applied and the call resolved true,
+ * so a silent no-op click survived in that corner).
+ *
+ * `alreadyRetried` is the caller's own fact rather than derivable here: the
+ * SAME miss state is a retryable answer the first time and a failure the
+ * second, and only the caller knows which request it is holding.
+ */
+export function loadOlderStep(
+	page: Pick<DesktopHistoryPage, "cursor_missing" | "entries">,
+	anchor: string,
+	alreadyRetried: boolean,
+): { cursor: string | null; failed: boolean } {
+	if (!page.cursor_missing) return { cursor: null, failed: false };
+	const reanchored = reanchorAfterCursorMiss(page, anchor);
+	if (!alreadyRetried && reanchored !== null) {
+		return { cursor: reanchored, failed: false };
+	}
+	return { cursor: null, failed: true };
+}
+
 export function applyHistoryPage(
 	state: TranscriptState,
 	page: DesktopHistoryPage,
