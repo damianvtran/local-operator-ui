@@ -1328,6 +1328,7 @@ test("one banner per count change, not one per pending request", () => {
 		onAttention: () => {},
 		createNotification: (options) => ({
 			on: () => {},
+			once: () => {},
 			show: () => raised.push(options),
 		}),
 	});
@@ -1378,7 +1379,10 @@ test("the click on a banner names the OLDEST live request, and who asked for it"
 		show: "focus",
 		onAttention: (entryId, requester) => attended.push([entryId, requester]),
 		createNotification: () => ({
-			on: (event, listener) => {
+			on: () => {},
+			// The click is attached through the notification lifetime's `retain`, which
+			// registers it with `once` — see `notification-lifetime.ts`.
+			once: (event, listener) => {
 				if (event === "click") click = listener;
 			},
 			show: () => {},
@@ -1613,6 +1617,7 @@ test("no banner is raised when the launch plan would not have focused the window
 		onAttention: () => {},
 		createNotification: (options) => ({
 			on: () => {},
+			once: () => {},
 			show: () => raised.push(options),
 		}),
 	});
