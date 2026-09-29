@@ -113,7 +113,6 @@ const decodeEntities = (text: string): string =>
 
 const TAG_OR_TEXT = /<[^>]*>|[^<]+/g;
 const CLOSING_TAG = /^<\//;
-const SELF_CLOSING_TAG = /\/>$/;
 const TAG_NAME = /^<\/?\s*([a-zA-Z][a-zA-Z0-9]*)/;
 const WHITESPACE_RUN = /\s+/g;
 const LANGUAGE_CLASS = /class="[^"]*language-([\w+-]+)/;
@@ -144,10 +143,31 @@ export function markdownFromClipboardHtml(html: string): string {
 	type Frame = {
 		tag: string;
 		href?: string;
+		inline?: boolean;
 		ordered?: boolean;
 		index?: number;
 	};
 	const stack: Frame[] = [];
+	/*
+	 * POP THE FRAME A CLOSER OWNS, not the top of the stack. The first cut
+	 * popped blindly, which is balanced only while every child closes before
+	 * its parent: after `</pre>` it popped the `<code>` frame instead, so the
+	 * pre frame stayed and everything after a fence kept pre semantics — no
+	 * whitespace collapse, no backticks, no quote prefixes — and an inline
+	 * mark inside a blockquote left the `>` prefix leaking past the quote.
+	 * The rule is the one review round 1 named: a closer removes ITS OWN
+	 * frame, wherever it sits, and leaves any malformed overlap above it
+	 * alone, so that child's own closer still finds it.
+	 */
+	const popFrame = (...tags: string[]): Frame | undefined => {
+		for (let i = stack.length - 1; i >= 0; i--) {
+			if (tags.includes(stack[i].tag)) {
+				const [frame] = stack.splice(i, 1);
+				return frame;
+			}
+		}
+		return undefined;
+	};
 	const parts: string[] = [];
 	const inPre = () => stack.some((frame) => frame.tag === "pre");
 	const quoteDepth = () =>
@@ -190,51 +210,58 @@ export function markdownFromClipboardHtml(html: string): string {
 				case "h4":
 				case "h5":
 				case "h6":
+					popFrame(name);
 					emit("\n\n");
 					break;
-				case "li":
+				case "li": {
+					popFrame("li");
 					emit("\n");
+					/* Numbering advances as items CLOSE, so the next item's
+					 * prefix knows its position. */
+					const list = [...stack]
+						.reverse()
+						.find((f) => f.tag === "ul" || f.tag === "ol");
+					if (list?.ordered) list.index = (list.index ?? 1) + 1;
 					break;
+				}
 				case "ul":
 				case "ol":
-					stack.pop();
+					popFrame(name);
 					emit("\n");
 					break;
 				case "strong":
 				case "b":
-					emit("**");
+					if (popFrame("strong", "b")) emit("**");
 					break;
 				case "em":
 				case "i":
-					emit("*");
+					if (popFrame("em", "i")) emit("*");
 					break;
 				case "del":
 				case "s":
-					emit("~~");
+					if (popFrame("del", "s")) emit("~~");
 					break;
-				case "code":
-					if (!inPre()) emit("`");
+				case "code": {
+					const frame = popFrame("code");
+					if (frame?.inline) emit("`");
 					break;
+				}
 				case "pre":
-					stack.pop();
-					emit("\n```\n\n");
+					if (popFrame("pre")) emit("\n```\n\n");
 					break;
 				case "a": {
-					const frame = [...stack].reverse().find((f) => f.tag === "a");
+					const frame = popFrame("a");
 					if (frame?.href) emit(`](${frame.href})`);
-					stack.pop();
 					break;
 				}
 				case "blockquote":
-					stack.pop();
-					emit("\n");
+					if (popFrame("blockquote")) emit("\n");
 					break;
 				default:
 					break;
 			}
 			continue;
 		}
-		const selfClosing = SELF_CLOSING_TAG.test(token);
 		switch (name) {
 			case "h1":
 			case "h2":
@@ -276,10 +303,14 @@ export function markdownFromClipboardHtml(html: string): string {
 				emit("~~");
 				break;
 			case "code": {
-				const parent = stack[stack.length - 1];
-				stack.push({ tag: "code" });
-				if (parent?.tag === "pre") break;
-				emit("`");
+				/*
+				 * `inline` is captured at OPEN: whether this code element is a
+				 * fence's body (no backticks) is a property of where it opened,
+				 * and the closer runs after whatever it contained.
+				 */
+				const inline = stack[stack.length - 1]?.tag !== "pre";
+				stack.push({ tag: "code", inline });
+				if (inline) emit("`");
 				break;
 			}
 			case "pre": {
@@ -298,9 +329,15 @@ export function markdownFromClipboardHtml(html: string): string {
 				break;
 			}
 			case "a": {
+				/*
+				 * A bare anchor (no href, or an empty one) is only a jump target in
+				 * some other document: it gets a frame so its closer pairs, but no
+				 * `[` — an opening mark with no close is how the stray bracket got
+				 * into a paste.
+				 */
 				const href = token.match(HREF_ATTR)?.[1] ?? "";
 				stack.push({ tag: "a", href });
-				emit("[");
+				if (href) emit("[");
 				break;
 			}
 			case "img": {
@@ -317,16 +354,6 @@ export function markdownFromClipboardHtml(html: string): string {
 				break;
 			default:
 				break;
-		}
-		if (!selfClosing) {
-			/* List numbering advances as items close, so the NEXT item's
-			 * prefix knows its position. */
-			if (name === "li") {
-				const list = [...stack]
-					.reverse()
-					.find((f) => f.tag === "ul" || f.tag === "ol");
-				if (list?.ordered) list.index = (list.index ?? 1) + 1;
-			}
 		}
 	}
 	return parts

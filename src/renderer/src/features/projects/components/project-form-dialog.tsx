@@ -387,7 +387,15 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 					mode: "create",
 					fields: {
 						name: keyValue,
-						...(form.description.trim()
+						/*
+						 * THE UNTOUCHED TEMPLATE IS NOT AUTHORED TEXT (UX round 1, U3):
+						 * the sheet seeds the section skeleton, and a submit that never
+						 * wrote a word must not file the seed as the project's own
+						 * description. Equality with the constant is the test — any edit,
+						 * however small, ships as authored.
+						 */
+						...(form.description.trim() &&
+						form.description.trim() !== PROJECT_DESCRIPTION_TEMPLATE
 							? { description: form.description.trim() }
 							: {}),
 						status: form.status as DesktopProjectStatus,
@@ -435,6 +443,14 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 
 	const title = mode === "create" ? "New project" : "Edit project";
 
+	/**
+	 * The live over-limit read the counter's tone and the textarea's
+	 * `aria-invalid` share (design round 1, D1): the field warns while the text
+	 * is being written, not only when the submit bounces.
+	 */
+	const descriptionOver =
+		form.description.length > PROJECT_DESCRIPTION_MAX_CHARS;
+
 	return (
 		<BaseDialog
 			open={open}
@@ -449,6 +465,22 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 			 */
 			fullWidth
 			maxWidth="md"
+			/*
+			 * THE PENDING WINDOW HAS ONE POLICY (UX round 1, U1): Cancel is
+			 * disabled while a save is in flight, so Escape and an outside click
+			 * must not close the sheet either — a close there would abandon a
+			 * write whose refusal the author was about to read. They ride
+			 * `dialogProps` because that is this component's channel for
+			 * content-level props.
+			 */
+			dialogProps={{
+				onEscapeKeyDown: (event: KeyboardEvent) => {
+					if (submitting) event.preventDefault();
+				},
+				onInteractOutside: (event: Event) => {
+					if (submitting) event.preventDefault();
+				},
+			}}
 			dataTourTag={
 				mode === "create" ? "project-create-dialog" : "project-edit-dialog"
 			}
@@ -559,9 +591,18 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 						</fieldset>
 					</div>
 					{preview ? (
+						/*
+						 * PARITY WITH THE TEXTAREA (design round 1, D2): the preview box and
+						 * the write textarea share `h-44`, so toggling Write|Preview moves
+						 * nothing above or below them — the first cut was min-h-40 here
+						 * against the textarea's 174px, a re-centre the toggle measured.
+						 * The textarea is `resize-none` for the same reason: one pane that
+						 * can change height under a fixed-height sibling breaks the parity
+						 * it just bought.
+						 */
 						<div
 							data-project-description-preview=""
-							className="min-h-40 rounded-md border border-hairline bg-sunken px-3 py-2"
+							className="h-44 overflow-y-auto rounded-md border border-hairline bg-sunken px-3 py-2"
 						>
 							{form.description.trim() ? (
 								<ProjectMarkdown className="text-body-sm">
@@ -577,12 +618,14 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 						<Textarea
 							ref={descriptionRef}
 							id={`${fieldId}-description`}
+							data-project-description=""
 							value={form.description}
 							onChange={(event) => set("description", event.target.value)}
 							onPaste={handleDescriptionPaste}
 							rows={8}
 							placeholder="Markdown — headings, lists, code."
-							aria-invalid={Boolean(errors.description)}
+							aria-invalid={descriptionOver || Boolean(errors.description)}
+							className="h-44 resize-none"
 						/>
 					)}
 					<div className="flex items-center justify-between gap-2">
@@ -591,7 +634,17 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 						) : (
 							<span />
 						)}
-						<p className="text-meta text-ink-muted tabular-nums">
+						<p
+							className={cn(
+								"text-meta tabular-nums",
+								/*
+								 * THE COUNTER WARNS BEFORE THE SUBMIT DOES (design round 1, D1):
+								 * the first cut went muted past the cap and only the wire's
+								 * refusal named it at submit time.
+								 */
+								descriptionOver ? "text-danger" : "text-ink-muted",
+							)}
+						>
 							{form.description.length}/{PROJECT_DESCRIPTION_MAX_CHARS}
 						</p>
 					</div>

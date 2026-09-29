@@ -391,12 +391,19 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 					if (payload.mode !== "create") return;
 					const created = await create.mutateAsync(payload.fields);
 					/*
+					 * The toasts name the TITLE when the author gave one (UX round 1,
+					 * U4): the machine key is the route's identity, not the author's —
+					 * "Project S6d-ii part 2 created" reads back what was typed.
+					 */
+					const label = payload.followUp?.title ?? payload.fields.name;
+					/*
 					 * The follow-up patch carries what the create route cannot (title,
 					 * owner/team, the dates, the estimate). It runs ONLY after the create
 					 * landed, and a refusal here means the project EXISTS and only the
 					 * extras were lost — so it leaves as an error toast naming exactly
-					 * that, rather than the dialog's in-place sentence, which would read
-					 * as "the create failed" while a resubmit would name-conflict.
+					 * that and the way back in (UX round 1, U6), rather than the
+					 * dialog's in-place sentence, which would read as "the create
+					 * failed" while a resubmit would name-conflict.
 					 */
 					if (payload.followUp) {
 						try {
@@ -408,12 +415,12 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 							const message =
 								error instanceof Error && error.message ? error.message : "";
 							showErrorToast(
-								`Project ${created.name} was created, but the extra fields were not saved: ${refusalCopy(message) || "the server refused them."}`,
+								`Project ${label} was created, but the extra fields were not saved: ${refusalCopy(message) || "the server refused them."} Open the project and use Edit to set them.`,
 							);
 							return;
 						}
 					}
-					showSuccessToast(`Project ${payload.fields.name} created`);
+					showSuccessToast(`Project ${label} created`);
 				}}
 			/>
 		</div>
