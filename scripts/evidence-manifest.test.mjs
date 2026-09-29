@@ -2174,6 +2174,19 @@ const BRANCH_RECORDS = [
 	 * either silently.
 	 */
 	"crossSessionVisibilityRestampNote",
+	/*
+	 * AND THE HEAD-CUT CONDENSATION PASS'S OWN (2026-09-29):
+	 * `headCutCondensationRestampNote` is the re-stamp for the operator report
+	 * that a completed turn whose opening message is a few fetched pages up
+	 * renders raw instead of condensing, kept through its round-1
+	 * remediation (the announcement scoped to settles, the focus comment
+	 * corrected). Both trees move (the end-loaded rule,
+	 * the head-independent run key, the focus hold and the settle announcement
+	 * in `src/`; the two suites and this registration in `scripts/`), no swept
+	 * frame was taken (the stills are the PR's own evidence branch), and the
+	 * reader is owed the reason no still was.
+	 */
+	"headCutCondensationRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
