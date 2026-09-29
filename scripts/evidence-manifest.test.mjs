@@ -2311,6 +2311,7 @@ const BRANCH_RECORDS = [
 	"foldOnto6f28406010Note",
 	"foldOnto8a03152c61MeasureDragNote",
 	"foldOntoe2394f9ff1Note",
+	"foldOntof9dbf8b455Note",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
