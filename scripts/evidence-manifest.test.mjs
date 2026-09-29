@@ -1956,7 +1956,8 @@ const STAMP_BINDING_NOTES = [
 	 * onto `8dc87ea84c` (the #642 sessionless-slash merge), onto
 	 * `bc09a6d698` (the #643 ptt-keymap and #630 transcript-checkpoint merges)
 	 * and onto `dd51156839` (the #644 mini-view shared-dictation merge),
-	 * then onto `0a2c8e7a30` (the #647 release train and #641 project-create-sheet).
+	 * then onto `0a2c8e7a30` (the #647 release train and #641 project-create-sheet),
+	 * and onto `654c58f5f6` (the #648/#649 merges).
 	 * This branch's own record, `readReceiptForegroundRestampNote`, states the
 	 * receipt pass and its round-1 remediation; the change moves `src/` (the
 	 * completion-view hook and the transcript reducer's live-settle arm) and
@@ -3120,6 +3121,19 @@ const BRANCH_RECORDS = [
 	 * from main's copy would drop it.
 	 */
 	"miniDictRestampNote",
+	/*
+	 * AND THIS FIX'S OWN (2026-09-29): `relaunchDuringQuitRestampNote` is the
+	 * re-stamp for the quit-in-progress gate (issue #636 - a relaunch inside the
+	 * teardown was answered by the dying instance with a window that died with it,
+	 * "the relaunched app opens onto the app still shutting down"), folded late
+	 * onto main's quick-send and projects lineages. Both trees move - `src/` for
+	 * the state, its two answer sites and the new refusal reporter, `scripts/` for
+	 * the proof rig, the suites that pin the gate and this list's own registration
+	 * - and no swept frame was taken: the change's evidence is a new set of a PNG
+	 * frame and run transcripts that no supplementary set declares, so the reader
+	 * is owed the pair this file ships and the reason no still was.
+	 */
+	"relaunchDuringQuitRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
