@@ -18,7 +18,9 @@
  * written by that hook rather than spelled beside it where the two could separate,
  * the marker's VALUE is the rung the lane must paint across the column's width
  * (`elevated` for the settings rail since 2026-09-27, `surface` for the two agent
- * rosters), and the band is still derived from the measured edge rather than from
+ * rosters), the file each column is painted in still carries that same rung's
+ * `bg-<ground>` (so the value and the paint fail together - review round 1, M1),
+ * and the band is still derived from the measured edge rather than from
  * the sidebar's width alone. The columns draw no right rule any more: the
  * operator's report of 2026-09-27 - "the right border doesn't go all the way up
  * ... either make it extend all the way up or remove the right border" - is
@@ -40,38 +42,48 @@ const ROOT = process.cwd();
 const readSource = (path) => readFileSync(`${ROOT}/${path}`, "utf8");
 
 /**
+ * The legacy roster's drawable box - the pane the wrapper hands over, where
+ * that route's right rule used to live, and the file its ground is painted in.
+ * Kept beside the list (and above it, since the list names it) because the rule
+ * sweep has to follow the element rather than the file that wraps it.
+ */
+const AGENTS_SIDEBAR =
+	"src/renderer/src/features/agents/components/agents-sidebar.tsx";
+
+/**
  * Every route that draws a leading column of its own, the element it hands
- * over, and the rung it stands on. The list is the sweep the operator asked
- * for, not the two views he screenshotted: a route added to this list without
- * the hand-over fails below, and `agents-page.tsx` / `legacy-agents-page.tsx`
- * are two separate components that draw the SAME roster - which is exactly how
- * a fix carried by one fails to reach the other. The ground is part of each
- * entry because the hand-over now NAMES it: the lane paints that role across
- * the column's width, so a route that moves its column without moving its
- * ground (or the reverse) is the drift this list exists to catch.
+ * over, the rung it stands on, and the file its box is PAINTED in. The list is
+ * the sweep the operator asked for, not the two views he screenshotted: a route
+ * added to this list without the hand-over fails below, and `agents-page.tsx` /
+ * `legacy-agents-page.tsx` are two separate components that draw the SAME
+ * roster - which is exactly how a fix carried by one fails to reach the other.
+ * The ground is part of each entry because the hand-over now NAMES it: the lane
+ * paints that role across the column's width, so a route that moves its column
+ * without moving its ground (or the reverse) is the drift this list exists to
+ * catch. `paintedBy` is the file the box's ground lives in - the same file for
+ * `/agents`, where the ref sits on the painted `<aside>` itself, and one hop
+ * further out for the settings rail and the legacy roster, whose wrappers hand
+ * over the component whose ROOT box is painted - so the handed value and the
+ * painted class are read together and fail together (review round 1, M1).
  */
 const LEADING_COLUMN_ROUTES = [
 	{
 		path: "src/renderer/src/features/settings/components/settings-page.tsx",
 		ground: "elevated",
+		paintedBy:
+			"src/renderer/src/features/settings/components/settings-sidebar.tsx",
 	},
 	{
 		path: "src/renderer/src/features/agents/components/agents-page.tsx",
 		ground: "surface",
+		paintedBy: "src/renderer/src/features/agents/components/agents-page.tsx",
 	},
 	{
 		path: "src/renderer/src/features/agents/components/legacy-agents-page.tsx",
 		ground: "surface",
+		paintedBy: AGENTS_SIDEBAR,
 	},
 ];
-
-/**
- * The legacy roster's drawable box - the pane the wrapper hands over, and where
- * that route's right rule used to live. Kept beside the list because the rule
- * sweep has to follow the element rather than the file that wraps it.
- */
-const AGENTS_SIDEBAR =
-	"src/renderer/src/features/agents/components/agents-sidebar.tsx";
 
 test("every route that draws a leading column hands it to the shell", () => {
 	for (const { path, ground } of LEADING_COLUMN_ROUTES) {
@@ -90,6 +102,28 @@ test("every route that draws a leading column hands it to the shell", () => {
 			source,
 			/ref=\{laneLeadingColumn\}/,
 			`${path} must attach the hand-over's ref to the column element itself: a hook call with no ref measures nothing`,
+		);
+	}
+});
+
+test("the box a route hands over is painted in the ground it names", () => {
+	/*
+	 * THE PAINTED GROUND AND THE HANDED VALUE FAIL TOGETHER (review round 1,
+	 * M1). The sweep read the hand-over file per route - and `agents-sidebar.tsx`
+	 * only for rule spellings - so re-grounding the painting box alone passed
+	 * every gate and was caught only by the `route-tops` scene, which needs a
+	 * built app and a backend. What a text sweep can resolve is the FILE the box
+	 * is painted in, named per entry above, and the class is read there in its
+	 * className form so a box's own ground is what is asserted: the rail's
+	 * `bg-elevated` root, the rosters' `bg-surface` boxes. A file that loses the
+	 * class, or a value the file never paints, fails on this line instead of on a
+	 * review of two files that were each moved alone.
+	 */
+	for (const { path, ground, paintedBy } of LEADING_COLUMN_ROUTES) {
+		assert.match(
+			readSource(paintedBy),
+			new RegExp(`className="[^"]*(?<![:\\w-])bg-${ground}(?![\\w-])[^"]*"`),
+			`${paintedBy} no longer paints the ground ${path} hands over ("${ground}") as a box's own className: the value and the paint are one decision, and a re-grounding that moves only one of them paints the wrong rung from y0 down - the same drift this list exists to catch`,
 		);
 	}
 });
