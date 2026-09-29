@@ -604,6 +604,134 @@ const pinnedTurn = (): TranscriptState => {
 };
 
 /**
+ * THE OPERATOR'S OWN STATE (2026-09-29, issue: the condensed bar's spacing):
+ * "the condensed row ('Context compacted') hugs the summary row's rule too
+ * closely" and "the chevron ('>') doesn't reach the right end of the rule".
+ *
+ * The `pinned` cell above photographs a completion MARKER; this one is the pin
+ * list's first member - the memory statement - read durably so its sentence is
+ * the cold reader's own (`COMPACTED_LINE`), which is the string the report
+ * quotes and the row BOTH halves of the fix move: the gap under the bar's rule,
+ * and the bar's own chevron against the rule's end.
+ */
+const compactedTurn = (): TranscriptState => {
+	const S = TS / 1000;
+	type Entry = DesktopHistoryPage["entries"][number];
+	const entry = (
+		id: string,
+		ts: number,
+		payload: Record<string, unknown>,
+	): Entry => ({ id, ts, type: "message", payload });
+	return applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			entry("u1", S, {
+				kind: "message",
+				role: "user",
+				content: [{ text: QUESTION }],
+			}),
+			entry("t1", S + 3, {
+				kind: "message",
+				role: "tool",
+				tool_call_id: "c1",
+				tool_name: "bash",
+				content: [{ type: "text", text: "tests 40\npass 40\n" }],
+				provider_payload: { duration_s: 12.5, details: {} },
+			}),
+			/*
+			 * The durable compaction entry: `append_compaction` writes
+			 * `tokens_before` and no after-figure, and a row with no settled
+			 * sentence of its own keeps `COMPACTED_LINE` - the operator's row.
+			 */
+			{
+				id: "n1",
+				ts: S + 6,
+				type: "compaction",
+				payload: { tokens_before: 41_000 },
+			},
+			entry("t2", S + 9, {
+				kind: "message",
+				role: "tool",
+				tool_call_id: "c2",
+				tool_name: "read",
+				content: [{ type: "text", text: "src/invoices/query.ts\n" }],
+				provider_payload: { duration_s: 0.4, details: {} },
+			}),
+			entry("a1", S + 72, {
+				kind: "message",
+				role: "assistant",
+				content: [{ type: "text", text: ANSWER }],
+				stop_reason: "stop",
+			}),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+};
+
+/**
+ * THE INCIDENT ROW'S STATE (operator report, 2026-09-29, second round): a turn
+ * that DIED after a compaction. The memory statement and the incident reason
+ * are the two rows the collapsed bar leaves under its rule, and the incident
+ * was the one hugging the statement by the ledger's 2px - the class the walk's
+ * re-tier now covers (every visible group after a bar, not only the first).
+ *
+ * The incident payload is quoted from the operator's own store, the `mcp` row
+ * 636 of its 946 incidents carry (see `canonical-notice.stories.tsx` for the
+ * full set); the turn has no closing answer because it never got one - the
+ * reason is the last row of it.
+ */
+const incidentTurn = (): TranscriptState => {
+	const S = TS / 1000;
+	type Entry = DesktopHistoryPage["entries"][number];
+	const entry = (
+		id: string,
+		ts: number,
+		payload: Record<string, unknown>,
+	): Entry => ({ id, ts, type: "message", payload });
+	return applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			entry("u1", S, {
+				kind: "message",
+				role: "user",
+				content: [{ text: QUESTION }],
+			}),
+			entry("t1", S + 3, {
+				kind: "message",
+				role: "tool",
+				tool_call_id: "c1",
+				tool_name: "bash",
+				content: [{ type: "text", text: "tests 40\npass 40\n" }],
+				provider_payload: { duration_s: 12.5, details: {} },
+			}),
+			{
+				id: "n1",
+				ts: S + 6,
+				type: "compaction",
+				payload: { tokens_before: 41_000 },
+			},
+			entry("t2", S + 9, {
+				kind: "message",
+				role: "tool",
+				tool_call_id: "c2",
+				tool_name: "read",
+				content: [{ type: "text", text: "src/invoices/query.ts\n" }],
+				provider_payload: { duration_s: 0.4, details: {} },
+			}),
+			entry("i1", S + 12, {
+				kind: "custom",
+				custom_type: "session_incident",
+				details: {
+					text: "[session incident (openrouter/deepseek/deepseek-v4.1-flash)] mcp: MCP server 'notion': MCP authorization failed; run /mcp reauth notion — authorization expired\nsuggested action: An MCP server is unavailable: its tools are gone until it reconnects. Do not call its tools in a tight loop; say which server is down.\nThis is why the previous turn ended. Take it into account before repeating the same request.",
+					raw: "MCP server 'notion': MCP authorization failed; run /mcp reauth notion — authorization expired",
+				},
+			}),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+};
+
+/**
  * ISSUE #5'S CELL (operator feedback, 2026-09-29): the turn as the operator
  * sees it when a window-collect runs - peer and wake delivery receipts among
  * the call rows. Under the narrowed pin list these collapse WITH the work, and
@@ -827,6 +955,34 @@ export const Pinned: Story = {
 		<Frame
 			transcript={pinnedTurn()}
 			caption="A completion marker among the call rows — a pinned statement the collapse keeps in its own place."
+		/>
+	),
+};
+
+/**
+ * THE OPERATOR'S CELL (2026-09-29): the condensation's spacing report. The
+ * caption names the state only, so the frame reads as true on the pre-fix half
+ * of the pair as well.
+ */
+export const PinnedCompaction: Story = {
+	render: () => (
+		<Frame
+			transcript={compactedTurn()}
+			caption="The memory statement among the call rows — the pinned row the collapsed bar keeps below its rule."
+		/>
+	),
+};
+
+/**
+ * SECOND ROUND'S CELL (operator report, 2026-09-29): the incident reason under
+ * the bar, behind its compaction. The caption names the state only, so the
+ * frame reads as true on the pre-fix half of the pair as well.
+ */
+export const PinnedIncident: Story = {
+	render: () => (
+		<Frame
+			transcript={incidentTurn()}
+			caption="A turn that died after its compaction — the memory statement and the incident reason among the call rows."
 		/>
 	),
 };
