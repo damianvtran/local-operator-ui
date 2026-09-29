@@ -2796,17 +2796,21 @@ const STRUCTURAL_CALL_SITES = [
 		 * `bg-accent-wash text-ink` is the app's find-match idiom (the WYSIWYG
 		 * editor's `FIND_MATCH_CLASS`), and the ink half is what keeps it legal:
 		 * the INKS loop asserts `ink` on `accentWash` at the strong-text floor.
-		 * `font-medium` is deliberately part of the pin rather than a style note:
-		 * the row's own hover and active fills are THE SAME wash, so on those two
-		 * states the weight is what keeps the matched characters readable — a
-		 * repaint that keeps the fill but drops the weight keeps every palette
-		 * assertion green while the match mark merges with the row the pointer is
-		 * on.
+		 * The rest of the string is deliberately pinned too, because the frames
+		 * proved the fill cannot carry the mark alone: on the panel's `elevated`
+		 * ground the wash measures ΔE00 0.77 in obsidian (2 mentions of the
+		 * matched word, no mark), so the ACCENT UNDERLINE is the signal that
+		 * cannot collapse — `accent` is asserted at the 3:1 structural floor on
+		 * every ground by this file's `STRUCTURAL` list — and `font-medium` is
+		 * what keeps the mark readable on the two row states whose fill is the
+		 * same wash. A repaint that keeps the fill but drops the underline or
+		 * the weight keeps every palette assertion green while the match stops
+		 * being findable in four of twelve themes.
 		 */
 		what: "search match mark in a snippet",
 		file: "src/renderer/src/features/chat/canonical/thread-search-overlay.tsx",
-		must: "bg-accent-wash font-medium text-ink",
-		why: "the match mark is the one place the query's own characters are shown; a repaint to a floor-exempt role erases it, and on a hovered or active row the same wash fills both the mark and the row, so the weight is half of what makes the match visible",
+		must: "bg-accent-wash font-medium text-ink underline decoration-accent decoration-2 underline-offset-2",
+		why: "the match mark is the one place the query's own characters are shown, and a wash-only mark is invisible on the panel's own ground in the themes the neighbour pin lists; the accent underline is the non-luminance half and the weight covers the row states that share the wash",
 	},
 ];
 

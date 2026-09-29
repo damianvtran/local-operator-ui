@@ -120,13 +120,22 @@ const ACTIVE_ROW_CLASS = cn(
  * The matched runs inside a snippet.
  *
  * `bg-accent-wash text-ink` is the app's find-match idiom (the WYSIWYG
- * editor's own `FIND_MATCH_CLASS`), and the ink role keeps it legal on all
- * eight grounds the contrast contract measures. `font-medium` is the second
- * half: the row's own pointer tint and its active fill are the same wash, so
- * on those two states the weight — not the fill — is what keeps the match
- * findable.
+ * editor's own `FIND_MATCH_CLASS`), and the ink role is what keeps it legal on
+ * all eight grounds the contrast contract measures. THE WASH IS NOT THE WHOLE
+ * MARK, and the frames are why: on the panel's `elevated` ground it measures
+ * ΔE00 0.77 in obsidian — the collapse the active-row pin documents — so a
+ * mark built from the fill alone is invisible in the one theme a reader can
+ * choose, which is exactly the defect family this app keeps re-finding. The
+ * second, non-luminance signal is an ACCENT UNDERLINE: `accent` is asserted
+ * at the 3:1 structural floor on every ground, it cannot collapse into a
+ * tint, and it reads differently from a link (links are accent INK with an
+ * underline; here the ink stays `ink`). `font-medium` is the third half for
+ * the states where the wash merges with a row's own fill — the hovered and
+ * active rows are the same wash — and all three halves are pinned by
+ * `contrast-contract.mjs` so an edit cannot quietly drop one.
  */
-const MATCH_MARK_CLASS = "bg-accent-wash font-medium text-ink";
+const MATCH_MARK_CLASS =
+	"bg-accent-wash font-medium text-ink underline decoration-accent decoration-2 underline-offset-2";
 
 const threadSearchIsMac = (): boolean =>
 	navigator.platform.toUpperCase().indexOf("MAC") >= 0;
