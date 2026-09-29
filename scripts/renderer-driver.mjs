@@ -10263,12 +10263,12 @@ async function sceneTranscriptRail(cdp) {
 			await movePointer(cdp, userSpot.x, userSpot.y);
 			const cardUp = await waitForCondition(
 				cdp,
-				`Boolean(document.querySelector("[role=dialog]"))`,
+				`Boolean(document.querySelector("[data-checkpoint-card]"))`,
 				4_000,
 				25,
 			);
 			const cardText = await evaluate(
-				`(() => { const el = document.querySelector("[role=dialog]"); return el ? el.textContent : null; })()`,
+				`(() => { const el = document.querySelector("[data-checkpoint-card]"); return el ? el.textContent : null; })()`,
 			);
 			check(
 				`the user card shows the message text (${theme})`,
@@ -10291,12 +10291,12 @@ async function sceneTranscriptRail(cdp) {
 			await movePointer(cdp, completionSpot.x, completionSpot.y);
 			const cardUp = await waitForCondition(
 				cdp,
-				`Boolean(document.querySelector("[role=dialog]"))`,
+				`Boolean(document.querySelector("[data-checkpoint-card]"))`,
 				4_000,
 				25,
 			);
 			const cardText = await evaluate(
-				`(() => { const el = document.querySelector("[role=dialog]"); return el ? el.textContent : null; })()`,
+				`(() => { const el = document.querySelector("[data-checkpoint-card]"); return el ? el.textContent : null; })()`,
 			);
 			const text = cardText || "";
 			check(
@@ -10547,7 +10547,7 @@ async function sceneTranscriptRail(cdp) {
 			}),
 		);
 		const cardBeforeEscape = await evaluate(
-			`Boolean(document.querySelector("[role=dialog]"))`,
+			`Boolean(document.querySelector("[data-checkpoint-card]"))`,
 		);
 		await pressChord(cdp, {
 			key: "Escape",
@@ -10555,7 +10555,7 @@ async function sceneTranscriptRail(cdp) {
 			virtualKeyCode: 27,
 		});
 		const cardAfterEscape = await evaluate(
-			`Boolean(document.querySelector("[role=dialog]"))`,
+			`Boolean(document.querySelector("[data-checkpoint-card]"))`,
 		);
 		const focusAfterEscape = await activeTick();
 		check(
@@ -10726,17 +10726,24 @@ async function sceneTranscriptRail(cdp) {
 		await movePointer(cdp, longBox.centre.x, longBox.centre.y);
 		const longCard = await waitForCondition(
 			cdp,
-			`Boolean(document.querySelector("[role=dialog] [data-checkpoint-card-text]"))`,
+			`Boolean(document.querySelector("[data-checkpoint-card] [data-checkpoint-card-text]"))`,
 			4_000,
 			25,
 		);
 		const bound = await evaluate(`(() => {
 			const el = document.querySelector("[data-checkpoint-card-text]");
-			return el ? { scrollH: el.scrollHeight, clientH: el.clientHeight } : null;
+			if (!el) return null;
+			return {
+				clamp: getComputedStyle(el).webkitLineClamp,
+				overflows: el.scrollHeight > el.clientHeight,
+			};
 		})()`);
 		check(
-			`the long user card is bounded and scrolls internally (${theme})`,
-			longCard.ok && bound !== null && bound.scrollH > bound.clientH,
+			`the long user card is bounded by its clamp (${theme})`,
+			longCard.ok &&
+				bound !== null &&
+				bound.clamp === "3" &&
+				bound.overflows === false,
 			JSON.stringify(bound),
 		);
 		await capture(cdp, `transcript-rail-card-bounded-${suffix}`);
@@ -10755,12 +10762,12 @@ async function sceneTranscriptRail(cdp) {
 		await movePointer(cdp, outcomeBox.centre.x, outcomeBox.centre.y);
 		const outcomeCard = await waitForCondition(
 			cdp,
-			`Boolean(document.querySelector("[role=dialog]"))`,
+			`Boolean(document.querySelector("[data-checkpoint-card]"))`,
 			4_000,
 			25,
 		);
 		const outcomeText = await evaluate(
-			`(() => { const el = document.querySelector("[role=dialog]"); return el ? el.textContent : null; })()`,
+			`(() => { const el = document.querySelector("[data-checkpoint-card]"); return el ? el.textContent : null; })()`,
 		);
 		check(
 			`the outcome card names the error outcome (${theme})`,
