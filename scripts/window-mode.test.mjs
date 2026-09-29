@@ -89,6 +89,30 @@ const {
 } = raise;
 
 /*
+ * The quit state, bundled the same way — the object the app's refusal is read
+ * from. Its transitions (set at `before-quit`, released by the installer's
+ * declined dialog) are the round-1 F-1 contract, so the tests below drive the
+ * SHIPPED object rather than describing it.
+ */
+const quitStateModule = await import(
+	`data:text/javascript;base64,${Buffer.from(
+		(
+			await build({
+				stdin: {
+					contents: 'export * from "./src/main/quit-state";',
+					resolveDir: process.cwd(),
+				},
+				bundle: true,
+				format: "esm",
+				platform: "node",
+				write: false,
+			})
+		).outputFiles[0].text,
+	).toString("base64")}`
+);
+const { createQuitState } = quitStateModule;
+
+/*
  * The dev-driver arming decision, bundled the same way. It is here rather than
  * in `dev-driver-gate.test.mjs` because what is being asserted is the
  * COMPOSITION the driven shape makes reachable — a launch nobody told anything
@@ -1847,36 +1871,188 @@ test("the Dock click's refusal carries the name its window would present under",
 	);
 });
 
-test("the quit gate reads the state the quit sets, which has exactly one setter", () => {
+test("a cancelled quit lets go of the state, so the next request is answered normally", () => {
 	/*
-	 * The flag lives in `src/main/index.ts`, which no test here can boot, so the
-	 * wiring is pinned at the source — the way this repository pins the call
-	 * shapes it cannot execute. Three facts: `before-quit` sets it, once, BEFORE
-	 * the hold that can wait on the session-cookie budget; the second-instance
-	 * target carries it per request; and the Dock click consults it before
-	 * creating a window.
+	 * ROUND-1 FINDING F-1, driven on the shipped object. `quitInProgress` had no
+	 * release, and a quit CAN be cancelled after `before-quit`: the setup
+	 * window's close interception during an install asks "Quit without setup?",
+	 * and "Keep setting up" (the default and the cancel answer) leaves the run
+	 * exactly where it was. Left set, the state refused every later second
+	 * launch and Dock click for the process's life although the app was running
+	 * normally. This walks the real sequence — begin, refuse, cancel, answer —
+	 * through the same `applySecondLaunch` target the app builds, fed by
+	 * `state.isQuitting()` exactly as `index.ts` feeds it per request, and
+	 * asserts the answers a cancelled quit owes. The Dock-click half is the same
+	 * read, pinned at the source in the test below.
+	 */
+	const state = createQuitState();
+	assert.equal(state.isQuitting(), false, "a process that never began a quit");
+
+	state.begin();
+	assert.equal(
+		state.isQuitting(),
+		true,
+		"the first before-quit entry claims the process",
+	);
+	const during = { calls: [], lines: [] };
+	applySecondLaunch(
+		readSecondLaunchRequest({ commandLine: ["electron", "."] }),
+		{
+			window: null,
+			openConversation: (session) =>
+				during.calls.push(["openConversation", session]),
+			queue: (session) => during.calls.push(["queue", session]),
+			openWindow: (request) => during.calls.push(["openWindow", request.show]),
+			quitting: state.isQuitting(),
+			report: (line) => during.lines.push(line),
+		},
+	);
+	assert.deepEqual(
+		during.calls,
+		[],
+		"mid-quit, the request is refused whole — nothing created, raised or parked",
+	);
+	assert.deepEqual(during.lines, [
+		"trigger=second-instance mode=normal requested=focus applied=skipped+quitting",
+	]);
+
+	state.cancel();
+	assert.equal(
+		state.isQuitting(),
+		false,
+		"the installer's declined dialog releases the state beside its own cancellation",
+	);
+	const after = { calls: [], lines: [] };
+	applySecondLaunch(
+		readSecondLaunchRequest({ commandLine: ["electron", "."] }),
+		{
+			window: null,
+			openConversation: (session) =>
+				after.calls.push(["openConversation", session]),
+			queue: (session) => after.calls.push(["queue", session]),
+			openWindow: (request) => after.calls.push(["openWindow", request.show]),
+			quitting: state.isQuitting(),
+			report: (line) => after.lines.push(line),
+		},
+	);
+	assert.deepEqual(
+		after.calls,
+		[["openWindow", "focus"]],
+		"after a cancelled quit, the next request opens normally again",
+	);
+	assert.deepEqual(after.lines, [], "and nothing is refused");
+
+	// A release is not a spent token: the app can quit again — a Cmd+Q after the
+	// declined dialog — and that quit claims the process just the same.
+	state.begin();
+	assert.equal(
+		state.isQuitting(),
+		true,
+		"a second quit is claimable after a cancellation",
+	);
+});
+
+test("the quit state has one setter and one release, and the release is the installer's declined dialog", () => {
+	/*
+	 * The state lives in `src/main/quit-state.ts` and the test above drives it;
+	 * the WIRING lives in `src/main/index.ts`, which no test here can boot, so it
+	 * is pinned at the source — the way this repository pins the call shapes it
+	 * cannot execute. FOUR facts, each asserted against the BODY it must live in
+	 * (round-1 review, F-1 and its second note: the previous spelling asserted
+	 * substrings over the whole file, so the wiring could drift into another
+	 * handler and stay green while the real one went dead):
+	 *
+	 *  - `before-quit`'s first entry SETS the state, once, BEFORE the hold that
+	 *    can wait on the session-cookie budget;
+	 *  - the app's ONE release is the `onQuitCancelled` callback handed to
+	 *    `BackendInstaller` — and on the installer's side it is called from the
+	 *    DECLINED "Quit without setup?" answer, never from the accepted one, so
+	 *    a quit that proceeds keeps claiming the process;
+	 *  - the `second-instance` target carries the state, per request;
+	 *  - the Dock click consults it before creating a window.
 	 */
 	const index = readFileSync(join("src", "main", "index.ts"), "utf8");
-	assert.equal(
-		index.split("quitInProgress = true;").length - 1,
-		1,
-		"exactly one site sets the quit state (the first before-quit entry)",
+
+	const beforeQuitAt = index.indexOf('app.on("before-quit"');
+	assert.ok(beforeQuitAt > 0, "the before-quit handler is still there");
+	const beforeQuit = index.slice(
+		beforeQuitAt,
+		index.indexOf("\n// The exit event is synchronous", beforeQuitAt),
 	);
-	const setAt = index.indexOf("quitInProgress = true;");
-	const holdAt = index.indexOf("holdQuitForSessionCookieSnapshot(event)");
+	assert.equal(
+		index.split("quitState.begin();").length - 1,
+		1,
+		"exactly one site sets the quit state in the file",
+	);
+	assert.equal(
+		beforeQuit.split("quitState.begin();").length - 1,
+		1,
+		"and it is inside before-quit's own body",
+	);
 	assert.ok(
-		setAt !== -1 && holdAt !== -1 && setAt < holdAt,
+		beforeQuit.indexOf("quitState.begin();") <
+			beforeQuit.indexOf("holdQuitForSessionCookieSnapshot(event)"),
 		"the quit state must be set before the session-cookie hold can wait",
 	);
-	assert.match(index, /quitting: quitInProgress,/);
+
+	assert.equal(
+		index.split("quitState.cancel()").length - 1,
+		1,
+		"exactly one site releases the quit state in the file",
+	);
+	const constructionAt = index.indexOf("new BackendInstaller(");
+	assert.ok(
+		constructionAt > 0,
+		"the installer is still constructed in index.ts",
+	);
+	const construction = index.slice(
+		constructionAt,
+		index.indexOf("});", constructionAt),
+	);
+	assert.match(
+		construction,
+		/onQuitCancelled:\s*\(\)\s*=>\s*quitState\.cancel\(\),/,
+		"the release is the installer's onQuitCancelled callback — a cancelled quit lets go of the state beside its own cancellation",
+	);
+	const installer = readFileSync(
+		join("src", "main", "backend", "backend-installer.ts"),
+		"utf8",
+	);
+	assert.equal(
+		installer.split("this.onQuitCancelled?.();").length - 1,
+		1,
+		"the installer calls the release exactly once",
+	);
+	const decline = installer.slice(
+		installer.indexOf("if (response !== 1) {"),
+		installer.indexOf("this.attemptCancelled = inFlight;"),
+	);
+	assert.ok(
+		decline.includes("this.onQuitCancelled?.();"),
+		"and it is the DECLINED branch: a quit that proceeds must keep the state set, not clear it",
+	);
+
+	const secondInstanceAt = index.indexOf('"second-instance",');
+	assert.ok(secondInstanceAt > 0, "the second-instance handler is still there");
+	const secondInstance = index.slice(
+		secondInstanceAt,
+		index.indexOf("void commandLine;", secondInstanceAt),
+	);
+	assert.equal(
+		secondInstance.split("quitting: quitState.isQuitting(),").length - 1,
+		1,
+		"the second-instance target carries the state, read per request",
+	);
+
 	const activateAt = index.indexOf('app.on("activate"');
+	assert.ok(activateAt > 0, "the activate handler is still there");
 	const activate = index.slice(
 		activateAt,
 		index.indexOf("\n\t\t});", activateAt),
 	);
 	assert.match(
 		activate,
-		/if \(quitInProgress\) \{/,
+		/if \(quitState\.isQuitting\(\)\) \{/,
 		"the Dock click must consult the quit state before it creates a window",
 	);
 	assert.match(
@@ -1884,6 +2060,96 @@ test("the quit gate reads the state the quit sets, which has exactly one setter"
 		/trigger: "activate",/,
 		"and the window it does create now presents under its own name",
 	);
+});
+
+test("a request that would create a window during the quit is refused whole, under its own trigger", () => {
+	/*
+	 * ROUND-1 FINDINGS F-2/F-3. The refusal used to sit only at the two answer
+	 * sites, and the window-CREATE path itself was ungated: a delivered
+	 * completion banner's click, the consent toast's reopen, and the viewer's
+	 * recreate verbs all reached `setupMainWindowWithUpdateService` during
+	 * teardown and opened a window the shutdown took down — the #636 symptom
+	 * from a click instead of a launch. The gate now sits where a request would
+	 * create the window: in `setupMainWindowWithUpdateService` (the one function
+	 * every creation goes through, so the direct callers are covered) and ahead
+	 * of the PARK decision in `openSessionInWindow` (a park promises a next
+	 * window this process will never make). `index.ts` cannot be booted here, so
+	 * the wiring is scanned — ORDERED over the function bodies, so comments or
+	 * unrelated edits nearby do not fail it while an inverted order does — and
+	 * the refusal LINE's shapes are driven on the shipped reporter.
+	 */
+	const index = readFileSync(join("src", "main", "index.ts"), "utf8");
+	const normalized = (text) => text.replace(/\s+/g, " ");
+	const terminal =
+		/^if \(quitState\.isQuitting\(\)\) \{ reportSkippedWhileQuitting\(request, request\.show\); return; \}/;
+
+	const setupAt = index.indexOf("function setupMainWindowWithUpdateService(");
+	assert.ok(setupAt > 0, "the one creation function is still there");
+	const setup = index.slice(
+		setupAt,
+		index.indexOf("function openSessionInWindow(", setupAt),
+	);
+	const setupGate = setup.indexOf("if (quitState.isQuitting()) {");
+	const setupCreate = setup.indexOf("mainWindow = createWindow(");
+	const setupClaim = setup.indexOf("claimParkedFor(");
+	assert.ok(setupGate > 0, "the creation function consults the quit state");
+	assert.ok(
+		setupCreate > setupGate && setupClaim > setupGate,
+		"before it creates a window or claims a parked conversation",
+	);
+	assert.match(
+		normalized(setup.slice(setupGate, setupCreate)),
+		terminal,
+		"the refusal is whole — reported under the caller's own trigger, then terminal",
+	);
+
+	const openAt = index.indexOf("function openSessionInWindow(");
+	assert.ok(
+		openAt > 0,
+		"the one function that opens a conversation is still there",
+	);
+	const createAt = index.indexOf("if (!canCreateWindowFor(", openAt);
+	assert.ok(createAt > openAt, "its create branch is still there");
+	const openBody = index.slice(openAt, createAt);
+	const sendAt = openBody.indexOf(
+		'webContents.send("desktop-open-conversation"',
+	);
+	const openGate = openBody.indexOf("if (quitState.isQuitting()) {");
+	assert.ok(
+		sendAt > 0 && openGate > sendAt,
+		"the gate is in the no-window branch, after the existing-window branch's delivery",
+	);
+	assert.match(
+		normalized(openBody.slice(openGate, createAt)),
+		terminal,
+		"and it is TERMINAL and ahead of the park: a park would promise a next window this process will never make",
+	);
+
+	assert.ok(
+		normalized(index).includes(
+			'setupMainWindowWithUpdateService(null, false, { show: windowLaunch.show, trigger: "viewer-focus", });',
+		),
+		"the viewer's focusWindow recreate names its own trigger, so its window presents — and is refused — as viewer-focus (F-3)",
+	);
+
+	// The LINE each source gets, on the shipped reporter: the create path passes
+	// the request it was handed, so whoever asked is who the line names.
+	const banner = [];
+	reportSkippedWhileQuitting(
+		{ trigger: "banner-click", report: (line) => banner.push(line) },
+		OPERATOR_SHOW,
+	);
+	assert.deepEqual(banner, [
+		"trigger=banner-click mode=normal requested=focus applied=skipped+quitting",
+	]);
+	const viewer = [];
+	reportSkippedWhileQuitting(
+		{ trigger: "viewer-focus", report: (line) => viewer.push(line) },
+		"inactive",
+	);
+	assert.deepEqual(viewer, [
+		"trigger=viewer-focus mode=inactive requested=inactive applied=skipped+quitting",
+	]);
 });
 
 test("no file but window-raise.ts raises or focuses a window", () => {
