@@ -129,8 +129,10 @@ function mountHook(options = {}) {
 	// this one.
 	let hiddenRows = options.hiddenRows ?? 1;
 	const onLoadOlder = options.onLoadOlder ?? (async () => false);
+	let handle = null;
+	let olderFailed = options.olderFailed ?? false;
 	function Harness() {
-		useScrollPaging({
+		handle = useScrollPaging({
 			containerRef: { current: scroller },
 			sessionKey: "synthetic-session",
 			hiddenRows,
@@ -139,6 +141,12 @@ function mountHook(options = {}) {
 				widenCalls++;
 			},
 			onLoadOlder,
+			// Only passed when a case supplies it, so the cases written before the
+			// outcome-aware pump exercise the boolean path unchanged.
+			...(options.onLoadOlderOutcome
+				? { onLoadOlderOutcome: options.onLoadOlderOutcome }
+				: {}),
+			olderFailed,
 			loadingOlder: false,
 			rowCount,
 			contentKey: "fixture",
@@ -207,6 +215,14 @@ function mountHook(options = {}) {
 		},
 		setScrollHeight: (value) => {
 			scrollHeight = value;
+		},
+		get slotState() {
+			return handle?.slotState;
+		},
+		requestOlder: () => act(() => handle.requestOlder()),
+		setOlderFailed: (value) => {
+			olderFailed = value;
+			render();
 		},
 		setHiddenRows: (value) => {
 			hiddenRows = value;
@@ -314,6 +330,69 @@ test("a rule-6 debt landed inside the debounce is re-decided at the settle", asy
 			hook.widenCalls,
 			1,
 			"the owed widen is paid at the settle it was waiting for",
+		);
+	} finally {
+		hook.close();
+	}
+});
+
+/*
+ * THE FAILED ROW HAS ONE OWNER: THE SESSION HOOK (loader-continuity R2).
+ *
+ * Before this the pump kept its own `failed` state and set it from `!ok` on ANY
+ * non-applied result. `false` was also "someone else is loading" and "the session
+ * changed in flight", so a healthy conversation could paint the red "Could not
+ * load earlier messages" row; and a failure from the align fetch, the jump walk
+ * or the mentioned-files scan never reached the row at all. These cases pin the
+ * new contract at the mounted hook: the row follows `olderFailed`, and only a REAL
+ * `failed` outcome from the pump counts toward the automatic budget.
+ */
+test("a stale or nothing-to-load outcome neither fails the row nor spends the budget", async () => {
+	for (const kind of ["stale", "nothing-to-load"]) {
+		let loads = 0;
+		const hook = mountHook({
+			hiddenRows: 0,
+			onLoadOlderOutcome: async () => {
+				loads += 1;
+				return { kind };
+			},
+		});
+		try {
+			// Three deliberate asks: with the old `false` mapping this is exactly
+			// `MAX_AUTO_ATTEMPTS` failures and the red row.
+			for (let i = 0; i < 3; i++) {
+				hook.requestOlder();
+				hook.flushFrames(3);
+				await new Promise((resolve) => setTimeout(resolve, 0));
+				hook.flushFrames(3);
+			}
+			assert.ok(loads >= 3, `the pump asked ${loads} times`);
+			assert.notEqual(
+				hook.slotState,
+				"failed",
+				`${kind} painted the failed row`,
+			);
+		} finally {
+			hook.close();
+		}
+	}
+});
+
+test("the failed row follows olderFailed, and clears the moment it does", () => {
+	const hook = mountHook({ hiddenRows: 0, olderFailed: true });
+	try {
+		hook.flushFrames(2);
+		assert.equal(
+			hook.slotState,
+			"failed",
+			"olderFailed with nothing hidden is the failed row",
+		);
+		hook.setOlderFailed(false);
+		hook.flushFrames(2);
+		assert.notEqual(
+			hook.slotState,
+			"failed",
+			"a later applied page clears the row without needing new input",
 		);
 	} finally {
 		hook.close();
