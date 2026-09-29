@@ -16,7 +16,10 @@ rather than a clicked path.
 - The panel composed **over a live transcript**, and a hit's far-back jump
   (the seek that pages an older record into the window). Both are the wiring
   phase's subject — the overlay mounts with the transcript in the same change,
-  and its frames land there.
+  and its frames land there. The reveal that IS built rides the shared jump
+  (`failed-row-jump.ts`, #622): a target inside a collapsed turn opens the bar,
+  the fold, and the row's own disclosure on the way to it, and a target outside
+  the rendered window comes back as `not-mounted` rather than pretending.
 - The chord itself, which is keyboard state rather than a resting render.
   `scripts/thread-search-overlay.test.mjs` drives the real key events
   (`⌘F` opens from the four chat regions only, a dialog keeps its own, Escape
@@ -62,6 +65,16 @@ node scripts/capture-evidence.mjs http://localhost:6041 \
 on 1111 and the guard refuses a capture that could be photographing its
 replies); every story here renders from fixture props and calls nothing.
 `--theme-settle-ms` is the loaded-machine budget the flag exists for.
+
+**Rebase and re-stamp.** The branch was rebased onto
+`feat/transcript-checkpoint-rail`'s rebased head `200b5c341a` (post-#622
+main), which is why the reveal rides `jumpToFailedRow` rather than the copy
+this branch first carried. The manifest was re-derived at the rebased code
+head `8861d61ce7` (`srcTree`/`scriptsTree` from `git rev-parse HEAD:src` /
+`HEAD:scripts`, `frames` and the `countsMean` readings from the walk, every
+backticked stamp claim in the binding notes re-pointed), and this file rides
+the `docs/`-only commit that follows it — a commit that moves neither tree,
+so the stamps keep describing the tree they ship in.
 
 ## The endpoint, measured against the real backend
 
