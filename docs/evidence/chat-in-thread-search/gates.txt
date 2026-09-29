@@ -112,3 +112,29 @@ $ node scripts/run-desktop-tests.mjs <the same battery>
 ℹ skipped 1
 $ node scripts/check-edit-diffs.mjs
 Edit diff regressions: 4 insertion previews + unchanged nonempty/dismissed states passed
+
+# --- round 2 (the margin page, the story inset, the drifted sentence) ---
+
+$ node_modules/.bin/biome check src bin scripts/linux-sandbox.test.mjs
+Found 126 warnings.
+rc=0
+$ node scripts/check-scripts-lint.mjs
+check-scripts-lint: 8 changed file(s) under scripts/ are lint-clean against origin/main (bc09a6d).
+$ node_modules/.bin/tsc --noEmit -p tsconfig.app.json && node_modules/.bin/tsc --noEmit -p tsconfig.node.json
+both projects: no output (clean)
+$ node scripts/contrast-contract.mjs
+Contrast contract holds: 29178 assertions across 59 themes, 0 consulted exception(s), 3 ΔE00 exception(s) consulted, 0 pinned ink step(s), 0 pinned control edge(s), 10 pinned identity pair(s).
+$ node scripts/check-edit-diffs.mjs
+Edit diff regressions: 4 insertion previews + unchanged nonempty/dismissed states passed
+$ node scripts/run-desktop-tests.mjs <the search suites + rail/collapse neighbours + reveal-record + the wire>
+ℹ tests 261
+ℹ pass 260
+ℹ fail 0
+ℹ skipped 1
+$ node scripts/run-desktop-tests.mjs scripts/evidence-manifest.test.mjs
+ℹ tests 39
+ℹ pass 38
+ℹ fail 0
+ℹ skipped 1
+# Story replica inset probe (review B's discriminator), on the re-shot results frame:
+# old (right-3): panel fill's rightmost x = 886; new (right-6): 874 (edge ~875 vs the reviewer's expectation of ~875)

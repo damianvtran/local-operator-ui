@@ -70,6 +70,15 @@ on 1111 and the guard refuses a capture that could be photographing its
 replies); every story here renders from fixture props and calls nothing.
 `--theme-settle-ms` is the loaded-machine budget the flag exists for.
 
+**Round 2.** Two pixel-level fixes and one sentence: the story replica that
+frames the panel drifted at `right-3` while the app floats at `right-6`, so
+this set is the first whose frames show design D1's inset (the panel's right
+edge reads 875 against the old 886 — review B measured the 12px); and a
+PAGE-LEADING jump target now fetches one more page so its mount has rows above
+it to centre against (QA Q-2: `ReachOptions.hasHeadroom`, the load loop's stop
+condition). The model's state docstring also stopped calling `loading` the
+debounce window (review A).
+
 **Round 1's re-shoot.** The review round moved the panel to `right-6` (24px; at
 12px it covered the rail's ticks for 13 of 26 positions at three results) and
 carried new copy through the states: a tier-aware count line with the cut as
