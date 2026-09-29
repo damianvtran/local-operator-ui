@@ -61,12 +61,15 @@ export const threadSearchCap = (isMac: boolean): string =>
 /**
  * The overlay's own state, as the panel renders it.
  *
- * `loading` is the debounce window: the box holds a query the answer to which
- * has not arrived (or been asked for yet). `ready` covers "no matches as well
- * as hits — emptiness is a property of the LIST, not a phase of the request,
- * and a state of its own would have to be kept in sync with `hits.length` for
- * no reader's benefit. `building`, `unsupported` and `error` are the wire's
- * three degraded answers; the panel gives each its own copy (D9).
+ * `loading` is a request IN FLIGHT: a query has been asked and its answer has
+ * not arrived (the debounce window before the ask is still `idle` — nothing
+ * has been asked yet, so nothing can be loading; the hook's ladder says the
+ * same, and this sentence and it must not drift — review round 2, A).
+ * `ready` covers no matches as well as hits — emptiness is a property of the
+ * LIST, not a phase of the request, and a state of its own would have to be
+ * kept in sync with `hits.length` for no reader's benefit. `building`,
+ * `unsupported` and `error` are the wire's three degraded answers; the panel
+ * gives each its own copy (D9).
  */
 export type ThreadSearchState =
 	| "idle"

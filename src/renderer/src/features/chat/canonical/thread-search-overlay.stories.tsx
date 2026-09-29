@@ -62,10 +62,17 @@ const noop = () => {};
  * app's 12 (measured off the first capture — the right gap read 4px against
  * the top's 20). Fixed positioning resolves against the viewport, so the two
  * insets are the app's own and the frame is exactly what the capture takes.
+ *
+ * AND THE RIGHT INSET IS `right-6` (24px), the app's own: this replica drifted
+ * to `right-3` while the app floats at 24 (design D1's rail clearance), so the
+ * re-shot frames did NOT show the inset they claimed to until round 2's
+ * review B measured the pixels (rightmost panel pixel 887/888 against
+ * `right-6`'s ~875). Keep this line equal to the overlay wrapper's — the
+ * frames are evidence of the app's inset only while it is.
  */
 const Frame: FC<{ children: ReactNode }> = ({ children }) => (
 	<div className="fixed inset-0 overflow-hidden bg-canvas">
-		<div className="absolute top-3 right-3 max-w-[calc(100%-1.5rem)]">
+		<div className="absolute top-3 right-6 max-w-[calc(100%-1.5rem)]">
 			{children}
 		</div>
 	</div>

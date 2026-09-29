@@ -2386,6 +2386,21 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					);
 					return index === -1 ? null : rowsRef.current.length - index;
 				},
+				hasHeadroom: () => {
+					/*
+					 * Rows OLDER than the target are the margin the mount needs above
+					 * it, and the store is oldest-first: the target's own index IS that
+					 * count. A page-leading target (index 0) would otherwise mount with
+					 * nothing above it and centre clamped (QA Q-2, −254 px, ~the first 8
+					 * rows of every fetched page). `-1` cannot happen here — the loop
+					 * consults this only once `rowDistance` found the row — so it reads
+					 * as satisfied rather than forcing a fetch on an absence.
+					 */
+					const index = rowsRef.current.findIndex(
+						(row) => row.record.id === id,
+					);
+					return index === -1 || index >= JUMP_MOUNT_HEADROOM_ROWS;
+				},
 				mount: (distance) => {
 					/*
 					 * The row PLUS headroom above it, or the far jump lands clamped at the
