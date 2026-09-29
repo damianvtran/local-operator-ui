@@ -19,21 +19,59 @@
 
 import type { FC } from "react";
 import { MoveNotice } from "../../mesh/mesh-actions";
-import { arrivalCopy } from "./chat-device-model";
+import {
+	useMeshNetworks,
+	useMeshPeers,
+	useMeshTransfer,
+} from "../../mesh/mesh-store";
+import { MOVE_HOLD_DETAIL, arrivalCopy } from "./chat-device-model";
 import { useChatDeviceStore } from "./chat-device-store";
 
 /** The row the notice lives in: one line of chrome under the header's own band. */
 const ROW = "px-4 pt-2";
 
+/**
+ * The route's own ceiling on waiting INSIDE the request (`TransferSession.wait_s
+ * <= 300`), which is what the Mesh tab's `busy` remedy re-issues with:
+ * `mesh-drop.ts` names it at the refusal that can carry it. It is a ceiling on
+ * waiting rather than a promise - the route re-polls and answers when the session
+ * goes idle or the budget ends - so the number is the same in both surfaces
+ * rather than re-chosen here.
+ */
+const WAIT_CEILING_S = 300;
+
 export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 	const move = useChatDeviceStore((state) =>
 		sessionId ? state.moves[sessionId] : undefined,
 	);
+	const beginMove = useChatDeviceStore((state) => state.beginMove);
+	const settleMove = useChatDeviceStore((state) => state.settleMove);
+	const refuseMove = useChatDeviceStore((state) => state.refuseMove);
 	const dismiss = useChatDeviceStore((state) => state.dismissMove);
+	const transfer = useMeshTransfer();
+	/*
+	 * THE SAME TWO READS THE PICKER ALREADY HOLDS, from the store's own cache keys: a
+	 * `poll: false` observer reads once per window and rides whatever the rail or the
+	 * Mesh tab fetched, so `Check again` costs one read rather than creating a
+	 * second poller (see `chat-device-slot.tsx`'s note on the pair).
+	 */
+	const peers = useMeshPeers(true, { poll: false });
+	const networks = useMeshNetworks(true, { poll: false });
 	if (!sessionId || !move) return null;
 
-	const noop = () => undefined;
 	const close = () => dismiss(sessionId);
+	/*
+	 * `Check again` RE-READS. The design's remedies are the two a refusal can
+	 * support - re-read (reachability is a fact only a read can settle) and wait for
+	 * the turn to finish (a `busy` refusal, with the route's own ceiling) - and this
+	 * notice shipped BOTH as labels with nothing behind them: `onRecheck` was a noop
+	 * and `onWait` only dismissed the notice, so a user was shown a remedy that ran
+	 * zero requests (agent review R1-4, QA Q-7).
+	 */
+	const recheck = () => {
+		void peers.refetch();
+		void networks.refetch();
+	};
 
 	if (move.kind === "refused") {
 		return (
@@ -45,16 +83,58 @@ export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 					 * holds the ask, so the button's handler has something to re-issue. The
 					 * component draws it only for a `busy` refusal.
 					 */
-					canWait={move.canWait}
+					canWait={move.canWait && move.plan !== null}
 					refusal={move.refusal}
 					receipt={null}
 					onWait={() => {
-						/* The wait is re-issued by the picker's own next attempt; a button that
-						 * re-ran the same `waitS: 0` request would refuse identically. */
-						close();
+						const plan = move.plan;
+						if (!plan) return;
+						/*
+						 * THE SAME REQUEST, WITH THE ROUTE'S OWN CEILING. The refusal says the
+						 * session is busy; the remedy is to ask again and let the route wait for
+						 * the turn, which is why the plan is carried rather than re-built (a
+						 * rebuilt one could name a different destination than the refusal did).
+						 */
+						beginMove(sessionId, {
+							deviceId: move.to,
+							name: move.name,
+							from: move.from,
+						});
+						transfer.mutate(
+							{
+								sessionId,
+								to: move.to,
+								keep: move.keep,
+								waitS: WAIT_CEILING_S,
+							},
+							{
+								onSuccess: (outcome) => {
+									if (outcome.kind === "moved") {
+										settleMove(sessionId, {
+											kind: "moved",
+											deviceId: move.to,
+											name: move.name,
+											from: move.from,
+											receipt: outcome.receipt,
+											engaged: null,
+										});
+										return;
+									}
+									refuseMove(sessionId, {
+										refusal: outcome.refusal,
+										name: move.name,
+										canWait: true,
+										plan,
+										to: move.to,
+										from: move.from,
+										keep: move.keep,
+									});
+								},
+							},
+						);
 					}}
-					onRecheck={noop}
-					onUndo={noop}
+					onRecheck={recheck}
+					onUndo={() => undefined}
 					onDismiss={close}
 				/>
 			</div>
@@ -71,23 +151,38 @@ export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 					receipt={{
 						verb: `Moving to ${move.name}`,
 						/*
-						 * THE PLAN'S OWN VERB AND NO INVENTED PROGRESS: the route answers once,
-						 * when the move settles, and streams nothing - so there is no percentage
-						 * to show and this line says the two things that are true meanwhile.
+						 * NO INVENTED PROGRESS: the route answers once, when the move settles, and
+						 * streams nothing - so there is no percentage to show. What is true
+						 * meanwhile is which side the conversation belongs to and that the app
+						 * cannot call it back (agent review R1-N1: the previous line described a
+						 * turn in flight, a state the accepted path cannot be in - a busy session
+						 * is REFUSED, not drained).
 						 */
-						detail: "handing off · the turn in flight finishes first",
+						detail: MOVE_HOLD_DETAIL,
 						undo: null,
 					}}
-					onWait={noop}
-					onRecheck={noop}
-					onUndo={noop}
-					onDismiss={noop}
+					onWait={() => undefined}
+					onRecheck={recheck}
+					onUndo={() => undefined}
+					/*
+					 * NO DISMISS WHILE IT IS IN FLIGHT (UX U4). The button used to be drawn and
+					 * do nothing at all; and it cannot do anything here, because clearing this
+					 * record would put the chip back on the conversation's OLD placement while
+					 * the transfer is still running. The move settles on its own and the
+					 * arrival/refusal is dismissible; a control that cannot act is not shown
+					 * (this file's own rule for the tombstone's button).
+					 */
 				/>
 			</div>
 		);
 	}
 
-	const arrival = arrivalCopy({ engaged: move.engaged, name: move.name });
+	const arrival = arrivalCopy({
+		engaged: move.engaged,
+		name: move.name,
+		from: move.from,
+		sourceRetired: move.receipt.source_retired,
+	});
 	return (
 		<div data-device-notice="moved" className={ROW}>
 			<div className="flex flex-col gap-2">
@@ -96,8 +191,8 @@ export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 					canWait={false}
 					refusal={null}
 					receipt={{ verb: arrival.verb, detail: arrival.detail, undo: null }}
-					onWait={noop}
-					onRecheck={noop}
+					onWait={() => undefined}
+					onRecheck={recheck}
 					/*
 					 * A RETIRED SOURCE HAS NO UNDO HERE, and no "open it on that device" button
 					 * either: this app cannot open a peer's conversation in its chat view today,
@@ -105,7 +200,7 @@ export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 					 * owes a user are where the conversation went (the verb) and that this copy
 					 * was deleted (the detail).
 					 */
-					onUndo={noop}
+					onUndo={() => undefined}
 					onDismiss={close}
 				/>
 				{arrival.second ? (

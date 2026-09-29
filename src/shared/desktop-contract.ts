@@ -3846,6 +3846,17 @@ export type BackendSetting = {
 	 * of a feature that is switched off renders disabled and says which switch.
 	 */
 	gated_by?: string | null;
+	/**
+	 * A FIFTH additive field, and the reason the four above are no longer "the
+	 * four": which SURFACE a `hotkey` row's value belongs to — `"app"` (a
+	 * binding inside the terminal UI) or `"desktop"` (a global shortcut this app
+	 * owns). Absent means `"app"`, which is exactly today's behaviour for every
+	 * hotkey row an older server serves, so a client that ignores the field
+	 * stays correct: the field's arrival changes nothing until a surface reads
+	 * it, and this one is read only to switch the capture rules of the quick-send
+	 * row (see `setting-control.tsx`).
+	 */
+	hotkey_scope?: "app" | "desktop" | null;
 };
 export type BackendSettings = {
 	sections: {
@@ -4134,6 +4145,20 @@ export function desktopEndpoint(request: DesktopRequest): {
 				body: {
 					request_id: request.requestId,
 					cwd: request.cwd,
+					/*
+					 * THE DEVICE THE PANE PICKED (`features.peers`), and it is omitted for every
+					 * draft nobody aimed at a peer - the same additive rule `target`, `model` and
+					 * `draft_id` follow, so an ordinary create is byte-for-byte what it was.
+					 *
+					 * THIS LINE IS THE WHOLE OF THE HEADER CONTROL'S CREATE PATH. The schema above
+					 * accepted `peer` and the store passed it down, but the body is composed HERE,
+					 * field by field, and this file never mapped it - so "start a new chat and send
+					 * it to another device" posted `{request_id, cwd}` while the chip said
+					 * `New on build-box`, and the conversation was created locally with the chip
+					 * then relabelled `On this device` (UX round 1, U1 - a silent success that
+					 * reports the wrong machine).
+					 */
+					...(request.peer ? { peer: request.peer } : {}),
 					...(request.target ? { target: request.target } : {}),
 					...(request.model ? { model: request.model } : {}),
 					// Omitted, not nulled, when the pane has no minted id: see the field's

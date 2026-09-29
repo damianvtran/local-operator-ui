@@ -96,6 +96,7 @@ import {
 	lockAnswerOutlived,
 	retryOfferedForFailureCode,
 } from "../composer-notice";
+import { ChatDeviceHold } from "../device/chat-device-hold";
 import { ChatDeviceNotice } from "../device/chat-device-notice";
 import { ChatDeviceSlot } from "../device/chat-device-slot";
 import {
@@ -3242,6 +3243,7 @@ function SessionPanel({
 						/>
 					}
 					deviceNotice={<ChatDeviceNotice sessionId={sessionId ?? undefined} />}
+					deviceHold={<ChatDeviceHold sessionId={sessionId ?? undefined} />}
 					agentName={title}
 					description={
 						// `loaded` names the agent/team actually answering; without it an

@@ -128,6 +128,12 @@ type ChatContentProps = {
 	 */
 	deviceNotice?: React.ReactNode;
 	/**
+	 * The composer's hold during a move (§2.4), composed by the page from the same
+	 * store as `deviceNotice`: the notice says what the move is doing under the
+	 * header, the hold says it in the one place a user is about to type.
+	 */
+	deviceHold?: React.ReactNode;
+	/**
 	 * The session the header's inline rename writes to; see
 	 * `ChatHeaderProps.renameSessionId`. Passed straight through from the page
 	 * (which owns the `commands` capability gate), so this component never
@@ -556,6 +562,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		identity,
 		deviceSlot,
 		deviceNotice,
+		deviceHold,
 		renameSessionId,
 		onOpenOptions,
 		isOptionsSidebarOpen,
@@ -1636,6 +1643,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
 								noProvider={needsProvider}
 								noModel={needsModel}
+								deviceHold={deviceHold}
 								/*
 								 * THE WAY BACK TO THE FAILED ROW'S CONTROLS (UX round 1, U3): the
 								 * line is on screen in this transcript, and the composer names it for

@@ -45,6 +45,7 @@ import {
 	type DeviceRow,
 	deviceName,
 	devicePickerModel,
+	movePair,
 	panePlacement,
 } from "./chat-device-model";
 import { useChatDeviceStore } from "./chat-device-store";
@@ -132,6 +133,19 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 
 	const networkList = networks.data?.networks ?? [];
 	const peerList: PeerRow[] = peers.data?.peers ?? [];
+	/*
+	 * WHAT THE TWO READS ANSWERED, as three states. `networks.data ?? []` reads the
+	 * same for "nothing there" and "nothing answered", and the picker turned the
+	 * second into an authoritative membership claim with a `lop network init`
+	 * instruction attached (QA Q-4). `pending` matters for the same reason on the
+	 * first frames of every window.
+	 */
+	const readFailed = peers.isError || networks.isError;
+	const meshRead: "pending" | "ok" | "failed" = readFailed
+		? "failed"
+		: peers.isPending || networks.isPending
+			? "pending"
+			: "ok";
 	const selfDeviceId =
 		networks.data?.self_device_id ?? peers.data?.self_device_id ?? "";
 	const destination = draft?.peer ?? null;
@@ -177,12 +191,23 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 				networks: networkList,
 				peers: peerList,
 				canTransfer,
+				meshRead,
+				busy: move?.kind === "moving",
 			}),
-		[placement, selfDeviceId, networkList, peerList, localCount, canTransfer],
+		[
+			placement,
+			selfDeviceId,
+			networkList,
+			peerList,
+			localCount,
+			canTransfer,
+			meshRead,
+			move,
+		],
 	);
 
 	const onPick = useCallback(
-		(deviceId: string | null) => {
+		(deviceId: string | null, keep: boolean) => {
 			const row = deviceId ? findRow(model, deviceId) : null;
 			const name = row ? row.name : "this device";
 			/*
@@ -195,17 +220,49 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 				updateDraft(draftKey, { peer: row ? row.deviceId : undefined });
 				return;
 			}
+			/*
+			 * A PICK ON THE ROW THAT ALREADY HOLDS THE CONVERSATION IS NOT A MOVE. The
+			 * picker marks that row `current` (this device here, the holder in the `gone`
+			 * state) and pressing it used to issue a transfer to the device the
+			 * conversation is already on - a second recall in the recall's own case,
+			 * which the receipt then reported as a success (agent review R1-1's second
+			 * half, UX U3). The draft is excluded above because there the self row is a
+			 * reset, not a move.
+			 */
+			if (row?.state === "current") return;
 			const key = sessionId;
 			const to = deviceId ?? "local";
-			beginMove(key, { deviceId: to, name });
+			/*
+			 * WHERE IT WAS, for the arrival sentence: a recall's destination is this
+			 * device, and "the copy here was deleted" is then the opposite of what
+			 * happened. Taken from the placement the pane was showing at the moment of the
+			 * pick, which is the only thing that knows the source's name (UX U2).
+			 */
+			const from =
+				placement.kind === "remote" || placement.kind === "gone"
+					? placement.name
+					: null;
+			/*
+			 * THE PAIR THE CONFIRMATION OFFERED, rebuilt from the same inputs it was built
+			 * from in the dialog: `keep` says which half the user chose, and the refusal
+			 * records that half so `Wait for the turn to finish` re-issues the move they
+			 * actually asked for rather than a different one.
+			 */
+			const pair = movePair({
+				sessionId,
+				recall: to === "local",
+				destination: name,
+				source: from,
+			});
+			const plan = keep ? (pair.alternatives[0] ?? pair.plan) : pair.plan;
+			beginMove(key, { deviceId: to, name, from });
 			transfer.mutate(
 				/*
-				 * `keep: false` IS THE MOVE, and the copy is the deliberate second
-				 * action of the same decision - it belongs in the confirmation the Mesh
-				 * tab already renders (`Move to X` / `Copy instead`), not as a second
-				 * row in this list.
+				 * `keep` IS THE USER'S ANSWER, from the confirmation this pick went through
+				 * (`movePair`, `MoveConfirmDialog`): the destructive default deletes the copy,
+				 * and the copy arm is what makes the alternative real (SPEC §3.4).
 				 */
-				{ sessionId, to, keep: false },
+				{ sessionId, to, keep },
 				{
 					onSuccess: (outcome) => {
 						if (outcome.kind === "moved") {
@@ -213,6 +270,7 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 								kind: "moved",
 								deviceId: to,
 								name,
+								from,
 								receipt: outcome.receipt,
 								/*
 								 * `engaged: null` IS THE HONEST VALUE TODAY, and this is the one line that
@@ -229,7 +287,19 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 							});
 							return;
 						}
-						refuseMove(key, { refusal: outcome.refusal, name, canWait: true });
+						refuseMove(key, {
+							refusal: outcome.refusal,
+							name,
+							/*
+							 * `canWait` IS THE MOVE'S PRESENCE, not the code's name: this pane still
+							 * holds the ask, so the button's handler has something to re-issue.
+							 */
+							canWait: true,
+							plan,
+							to,
+							from,
+							keep,
+						});
 					},
 				},
 			);
@@ -238,6 +308,7 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 			beginMove,
 			draftKey,
 			model,
+			placement,
 			refuseMove,
 			sessionId,
 			settleMove,
@@ -251,6 +322,7 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 		<ChatHeaderDevice
 			placement={placement}
 			model={model}
+			sessionId={sessionId}
 			busy={move?.kind === "moving"}
 			onPick={onPick}
 			onCheckAgain={() => {
