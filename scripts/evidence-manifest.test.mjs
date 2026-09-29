@@ -1880,8 +1880,9 @@ const STAMP_BINDING_NOTES = [
 	 * scripts tree with the four rail suites' registration in test:desktop (authored
 	 * unregistered earlier in this branch - all four are new here - so CI had never
 	 * run them), the reveal/centre suites, the contrast row and this note's own
-	 * registration. It re-shoots no frame: the driver-scene frames land with the
-	 * phase that can photograph a real manifest answer. It quotes this file's pair,
+	 * registration. It re-shoots the
+	 * `transcript-rail` scene's frames against the merged `sessions.checkpoints`
+	 * (14 frames, 7 states, two palettes, declared in `supplementary`). It quotes this file's pair,
 	 * so it is held to it like every entry above it.
 	 */
 	"transcriptRailRestampNote",
