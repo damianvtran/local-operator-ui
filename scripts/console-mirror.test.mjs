@@ -797,13 +797,21 @@ test("the request is SPENT when a mirror applies it, so a later mount inside the
 test("a StrictMode double mount does not spend the request on the mount that is discarded", async () => {
 	/*
 	 * THE APP MOUNTS INSIDE `React.StrictMode` (`main.tsx`), and in dev React runs a
-	 * mount's effects, cleans them up and runs them again INSIDE ONE COMMIT. A caret
-	 * request that is consumed synchronously is therefore spent by the mount that is
-	 * immediately discarded, and the mount that survives never takes the caret — which is
-	 * exactly the half of the open this PR is about, in the loop the operator works in
-	 * (`pnpm dev`). The pane defers its acknowledgement one microtask for this reason, and
-	 * this test is what says the deferral is needed rather than tidy: with the
-	 * acknowledgement applied synchronously, the surviving mount's `focusCount` is 0.
+	 * mount's effects, cleans them up and runs them again. The half of that this case is
+	 * about is the CARET: the caret effect of the first generation can still be flushed
+	 * AFTER the cleanup has disposed the terminal it closed over (measured: it ran with
+	 * that disposed terminal while the surviving one was already constructed, focused it,
+	 * and acknowledged the request — so the pane cleared the token before the surviving
+	 * terminal was ever in state, and the caret landed on nothing the user can type into).
+	 * The mirror's caret effect therefore takes neither the keyboard nor the
+	 * acknowledgement from a terminal this mount no longer holds.
+	 *
+	 * SO THE CARET IS READ AS THE EVENT IT IS, not after a fixed sleep. With the guard in
+	 * place the survivor takes it one React work loop after the discarded generation used
+	 * to, which is past the 4 ms a clock read used to wait for: the request lands and the
+	 * clock cannot tell, which is a property of the reader rather than of the caret. The
+	 * loop below is `mountMirror`'s own shape for the same reason and it is BOUNDED, so a
+	 * change that stops the caret landing fails here rather than hanging.
 	 *
 	 * The SHIPPED build has no double invocation, so this is a dev-mode property; it is
 	 * pinned here because the harness that photographed the pane could not settle it (its
@@ -834,13 +842,32 @@ test("a StrictMode double mount does not spend the request on the mount that is 
 			harness.createElement(Pane),
 		),
 	);
-	await settle(4);
-	const live = __terminals.slice(before).filter((t) => !t.wasDisposed);
-	assert.equal(live.length, 1, "one mirror survives the double mount");
+	const live = () => __terminals.slice(before).filter((t) => !t.wasDisposed);
+	for (let i = 0; i < 40 && live()[0]?.focusCount !== 1; i++) {
+		await settle(10);
+	}
+	assert.equal(live().length, 1, "one mirror survives the double mount");
 	assert.equal(
-		live[0].focusCount,
+		live()[0].focusCount,
 		1,
 		"the surviving mount takes the keyboard: the request must not be spent by the discarded one",
+	);
+	/*
+	 * AND THE DISCARDED TERMINAL NEVER TOOK IT, which is the other half of the same
+	 * sentence and the half a count on the survivor cannot see: a request spent by the
+	 * mount that is thrown away is the defect itself, and a survivor that took the caret
+	 * anyway would hide it.
+	 */
+	const discarded = __terminals.slice(before).filter((t) => t.wasDisposed);
+	assert.equal(
+		discarded.length,
+		1,
+		"the double mount constructed exactly one terminal and discarded it",
+	);
+	assert.equal(
+		discarded[0].focusCount,
+		0,
+		"a mount that is discarded must not spend the request: the caret belongs to the terminal that survives",
 	);
 	root.unmount();
 });

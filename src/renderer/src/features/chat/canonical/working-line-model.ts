@@ -33,8 +33,11 @@
  * from one that is merely slow to answer, and `thinking` - the ladder's own
  * word for "a model call is in flight", per `ACTIVITY_THINKING` - would assert
  * a model call for the whole of the engage. An earlier design reviewed here
- * also considered "starting the session"; it was rejected for the same reason,
- * because a warm session would be described as starting while it is already up.
+ * also considered "starting the session" for this whole window and rejected it
+ * for that reason - a WARM session would be described as starting while it is
+ * already up. The design that reinstated the phrase bounded it to the window in
+ * which the sentence is literally true: the create hop, before a session exists
+ * at all (see `STARTING_SESSION_ACTIVITY` below).
  *
  * Its WINDOW is the whole wait, not the request. Review round 1 caught the
  * difference: bounded by the request's own lifetime, the rung vanished for a
@@ -98,6 +101,25 @@ export type WorkingLineState = {
 export const ADMITTED_SEND_ACTIVITY = "waiting for the agent";
 
 /**
+ * The label for a send whose SESSION does not exist yet - the create hop.
+ *
+ * Lowercase like every other rung, for the same reason (the file comment above).
+ * It is literal where the rung above is cautious: `sessions.create` is in
+ * flight, so there is no session to be waiting on the agent IN - the app is
+ * starting one - and on this platform the hop is the ~1.15 s a cold runtime
+ * spends engaging, which used to be dead air on the one path where nothing at
+ * all was claimed (`admitChatDraft` now paints at the press).
+ *
+ * IT IS A SECOND LABEL, NOT A SECOND PHASE, and that is the whole of the clock
+ * rule: `deriveWorkingLine` returns `STARTING_SESSION_ACTIVITY` or
+ * `ADMITTED_SEND_ACTIVITY` under the SAME `phase: "thinking"`, so the elapsed
+ * number crosses the create's answer without restarting - the defect the file
+ * comment above calls out for every label change in this row, and the reason
+ * the two labels cannot be made different phases that happen to read alike.
+ */
+export const STARTING_SESSION_ACTIVITY = "starting the session";
+
+/**
  * The label for a compaction pass in flight, and the phase its clock runs in.
  *
  * The copy is the terminal host's own — `local_operator/tui/app.py`'s
@@ -129,50 +151,20 @@ export const ADMITTED_SEND_ACTIVITY = "waiting for the agent";
 export const COMPACTING_ACTIVITY = "compacting context";
 
 /**
- * A send this pane made that the owner has not answered: the request id its
- * optimistic echo was painted under, which is also the id the owner's durable
- * row coalesces onto.
- *
- * The id is the ANCHOR every clear measures from, which is why the identity is
- * carried rather than a boolean: "no answer yet" is a statement about the
- * records AFTER this one, and without it the only thing left to inspect is the
- * tail of the transcript - which is the scope error review round 1 found.
- */
-export type AdmittedSend = { requestId: string };
-
-/**
  * The send a pane has admitted, read from the store's own draft row.
  *
- * The one load-bearing rule of this change, kept pure and exported (the way
- * `draftIdentityFor` and `panelIdentityFor` are) so it can be asserted rather
- * than only exercised through a panel: swapping it for the composer's local
- * `admitting` state, or dropping the `sessionId` conjunct, restores the
- * operator's dead-air report while every other test stays green.
- *
- * Both flags, deliberately. `pending` is the request being in flight;
- * `admissionAttempted` is the store's record that the request was actually
- * ISSUED, i.e. that the owner may have the message. A send that failed before
- * admission clears both, which is why a refusal shows a failure and not a
- * rung.
- *
- * `sessionId` is required because the rung is a claim about a CONVERSATION:
- * before the create returns there is no session for the owner to answer on, and
- * on that hop the composer still holds the user's text.
+ * WHAT THIS REPLACED, AND WHY. It used to be `admittedSendFor(sessionId,
+ * draft)`, gated on three terms: `pending`, `admissionAttempted` and a PRESENT
+ * session id. The third was the dead-air window the operator reported - before
+ * `sessions.create` answers there is no session, so on a New chat the claim
+ * was false for the whole hop - and the first two were the receipt's terms. The
+ * row now EXISTS in that window (it is painted at the press, before the
+ * create), so the claim moved to where the fact lives: the pane reads
+ * `pendingSendForView` (the registry the row was painted into) and the box
+ * reads the row directly, below. `admissionAttempted` keeps its own meaning
+ * (the request was issued) for the failure arms; it is no longer this
+ * question's gate.
  */
-export function admittedSendFor(
-	sessionId: string | undefined,
-	draft:
-		| {
-				pending?: boolean;
-				admissionAttempted?: boolean;
-				admissionRequestId?: string;
-		  }
-		| undefined,
-): AdmittedSend | null {
-	if (!sessionId || !draft?.pending || !draft.admissionAttempted) return null;
-	if (!draft.admissionRequestId) return null;
-	return { requestId: draft.admissionRequestId };
-}
 
 /**
  * The draft row a CONVERSATION's send is travelling in, or undefined.
@@ -186,7 +178,7 @@ export function admittedSendFor(
  * from `canonical-sessions-store.ts`). `ChatDraft` below is a TYPE, so nothing of
  * the store reaches a bundle through here.
  *
- * WHY A LOOKUP BY SESSION AND NOT BY KEY. A row is normally found by
+ * WHY A LOOKUP BY IDENTITY AND NOT BY KEY. A row is normally found by
  * `draftIdentityFor(draftKey, sessionId)`, and `draftKey` is a fact of the PANE
  * that issued the send - but the pane is not the only reader that needs the row,
  * and on the New-chat path it is not even the same COMPONENT: the identity flip
@@ -196,29 +188,31 @@ export function admittedSendFor(
  * send read from state of the replaced panel is a fact the replacement panel
  * cannot see.
  *
- * Both shapes the row can be in are read, in the order `discardDraft` reads them
- * for the same reason: a send staged from "New chat" LEARNS its session id
- * mid-send (`updateDraft(key, { sessionId })`, before the message POST), so the
- * row carries it; a send made from an existing conversation is keyed
- * `send:<sessionId>` and the id is in the key, never written to the row.
+ * THREE SPELLINGS, all of them a name this same conversation's send can have:
+ * a `send:<id>` row (the live-session path, whose id is in the key and never on
+ * the row), a row whose `sessionId` was patched by the create (`updateDraft(key,
+ * { sessionId })`, before the message POST), and - newly load-bearing - a row
+ * still keyed by the DRAFT (`draft:<uuid>`), which is what a pane holds while
+ * the create is in flight and what a remounted pane asks with, because the
+ * pane's own identity is the draft key for that whole window.
  *
  * A lookup rather than a predicate, so the question "is this send still going
- * out" has ONE definition: the caller hands this row to `admittedSendFor`
- * (`working-line-model.ts`), which is the same rule the transcript's working line
- * is built from. Two copies of that predicate is how a box and a transcript come
- * to disagree about whether work is in flight.
+ * out" has ONE definition: the caller asks `sendUnsettledForSession`, below.
  */
 export function draftRowForSession(
 	drafts: Record<string, ChatDraft>,
-	sessionId: string | null | undefined,
+	identity: string | null | undefined,
 ): ChatDraft | undefined {
-	if (!sessionId) return undefined;
+	if (!identity) return undefined;
 	const rows = Object.values(drafts).filter(
-		(row) => row.sessionId === sessionId || row.key === `send:${sessionId}`,
+		(row) =>
+			row.sessionId === identity ||
+			row.key === `send:${identity}` ||
+			row.key === identity,
 	);
 	/*
-	 * A row that is IN FLIGHT wins when both shapes address one session: the
-	 * caller is asking about a send, and a settling row and a starting one can
+	 * A row that is IN FLIGHT wins when several shapes address one conversation:
+	 * the caller is asking about a send, and a settling row and a starting one can
 	 * overlap for a frame (the receipt and the next press are not ordered against
 	 * each other). `rows[0]` is then the fallback that keeps this a lookup rather
 	 * than a second predicate.
@@ -230,28 +224,42 @@ export function draftRowForSession(
  * Is a send for this CONVERSATION still going out? The composer's own window.
  *
  * THE SOURCE IS THE STORE'S DRAFT ROW, and that is load-bearing rather than
- * tidy: `draftRowForSession` finds it from the session id alone, so a panel that
- * mounts MID-SEND can see it. The New-chat identity flip unmounts the panel the
- * Enter was pressed in (`panelIdentityFor`, "THE FLIP IS A REMOUNT") and the
- * replacement mounts with no history of that press, so any flag held in the
- * replaced panel's state is false there for the whole send. Review round 1's
+ * tidy: `draftRowForSession` finds it from the pane's own identity, so a panel
+ * that mounts MID-SEND can see it. The New-chat identity flip unmounts the
+ * panel the Enter was pressed in (`panelIdentityFor`, "THE FLIP IS A REMOUNT")
+ * and the replacement mounts with no history of that press, so any flag held in
+ * the replaced panel's state is false there for the whole send. Review round 1's
  * MAJOR-1 put the sentence below `awaitingReply`; review round 2's R2-1 found the
  * source had the same lifetime problem one level down, because the flag the
  * sentence was fed from was the page's own `useState`.
  *
- * ONE FACT, TWO SURFACES. The transcript's working line reads `admittedSendFor`
- * through the pane's `starting` LATCH, and this reads the same predicate with no
- * latch - which is exactly the difference between the two sentences the box can
- * say. While this is true the request has not been confirmed yet, so the box says
- * the message is going out; the receipt empties the row (`finishDraft` deletes
- * it), the latch keeps the transcript's line up across that gap, and the box has
- * nothing left to claim but the owner's answer (`Waiting for the agent`).
+ * THE ROW IS THE CLAIM NOW, NOT THE RECEIPT'S LATCH. `pending` alone is the
+ * term: the store writes it in the same update that writes `submittedAt`, BEFORE
+ * the paint and before `sessions.create` - so the sentence covers the create hop
+ * (~1.15 s of engage on a New chat) as well as the message hop, and a remounted
+ * composer that holds nothing in its box still says where the message went.
+ * `admissionAttempted` is deliberately not a term any more: it is written after
+ * the create answers, so requiring it withheld the sentence for exactly the
+ * window this reader gained, and the fact it records (the request was issued) is
+ * the failure arms' business rather than this sentence's.
+ *
+ * A failure clears `pending` in the same store update that records the error, so
+ * a refused send never claims to be going out - the row's own sentence says
+ * what happened instead.
+ *
+ * ONE SEND, TWO SURFACES. The transcript's working line reads the PAINTED send
+ * (`pendingSendForView`, through the pane's `starting` latch), and this reads
+ * the same send's row with no latch - which is exactly the difference between
+ * the two sentences the box can say. While this is true the request has not been
+ * confirmed yet, so the box says the message is going out; the receipt empties
+ * the row (`finishDraft` deletes it), the latch keeps the transcript's line up
+ * across that gap, and the box has nothing left to claim but the owner's answer
+ * (`Waiting for the agent`).
  */
 export const sendUnsettledForSession = (
 	drafts: Record<string, ChatDraft>,
-	sessionId: string | undefined,
-): boolean =>
-	admittedSendFor(sessionId, draftRowForSession(drafts, sessionId)) !== null;
+	identity: string | undefined,
+): boolean => draftRowForSession(drafts, identity)?.pending === true;
 
 /**
  * Whether the owner has ANSWERED a send that was admitted under `afterId`.
@@ -387,6 +395,30 @@ export type WorkingLineInput = {
 	starting: boolean;
 	/** The echo record that send painted; every clear below measures from it. */
 	startingAfterId?: string | null;
+	/**
+	 * Whether that send is still in its CREATE hop, i.e. no session exists yet.
+	 *
+	 * Read off the draft row's `sessionId` at the pane (`starting &&
+	 * !draft?.sessionId`), which is the same fact `paintPendingSend` addressed
+	 * the row by: the draft key answers until the create patches the id, the id
+	 * answers after. Absent means false, so every caller that predates this
+	 * label derives exactly what it derived before.
+	 */
+	startingSession?: boolean;
+	/**
+	 * When the claim began, epoch ms - the press's own `submittedAt` on the draft
+	 * row.
+	 *
+	 * WHY THE ROW AND NOT THIS COMPONENT'S MOUNT. This rung's clock is the one
+	 * number the user watches through the engage, and the wait outlives every
+	 * component that renders it: the identity flip remounts the panel as soon as
+	 * the create answers, and a switch away and back remounts again. A local
+	 * zero would restart under the reader at each of those (the defect the file
+	 * comment above records for the receipt), which is exactly what the persisted
+	 * `submittedAt` exists to prevent. `clock: false` is not used here: the app
+	 * is this wait's producer and it knows the start.
+	 */
+	startingSince?: number | null;
 	/** A question is pending; it outranks every working state (branding § 7). */
 	gate: boolean;
 	/**
@@ -418,6 +450,8 @@ export function deriveWorkingLine({
 	compactingSince,
 	starting,
 	startingAfterId,
+	startingSession,
+	startingSince,
 	gate,
 	unavailable,
 	foldedPhase,
@@ -604,13 +638,22 @@ export function deriveWorkingLine({
 	// what this rung claims is in flight has stopped.
 	if (turnStopped(records, startingAfterId)) return null;
 	/*
-	 * The ADMITTED-SEND rung KEEPS its local zero, and that is deliberate rather
-	 * than the fold being forgotten here: this expression began when THIS app
-	 * sent, so the app is the clock's own producer and there is nothing older to
-	 * resume. Seeding it from the runtime's `thinking` edge would be a second
-	 * answer to a question this branch already has the first answer to.
+	 * ONE WAIT, TWO LABELS, ONE CLOCK. The phase is `thinking` for BOTH rungs,
+	 * because phases are what the clock is keyed to: keying a separate phase for
+	 * the create hop would restart the elapsed number at the create's own answer,
+	 * which is the label-change defect this row's contract calls out - and the
+	 * answer to "when did this wait start" is now a fact the ROW carries
+	 * (`submittedAt`), not the age of whichever component happens to be mounted
+	 * (see `startingSince`).
 	 */
-	return { activity: ADMITTED_SEND_ACTIVITY, phase: "thinking" };
+	return {
+		activity:
+			startingSession === true
+				? STARTING_SESSION_ACTIVITY
+				: ADMITTED_SEND_ACTIVITY,
+		phase: "thinking",
+		...(startingSince == null ? {} : { startedAt: startingSince }),
+	};
 }
 
 /**
@@ -641,10 +684,16 @@ export function workingLineClaimed(input: WorkingLineInput): boolean {
 /**
  * The derivation's input, read off one pane's canonical state.
  *
- * Exported so the rung and the composer are handed the SAME FACTS rather than
- * two constructions that can drift: the records are the list both of them render,
- * and `unavailable` is the pane's own `canonicalTranscriptSpeaks`, so neither
- * reader keeps a second copy of the rule that decides it.
+ * Exported so the rung and the composer are handed the same facts from one
+ * builder rather than two constructions that can drift, and so `unavailable`
+ * is the pane's own `canonicalTranscriptSpeaks` rather than a second copy of
+ * the rule. The records are NOT one list in every caller: the transcript's
+ * rung is handed the cross-session filter's `shownRecords` while the
+ * composer's hint still reads the raw records, and no divergence is reachable
+ * today because the one predicate that could flip on the dropped rows
+ * (`ownerAnswered`) is decided over raw records in `chat-page` before either
+ * reader is built - the trace and the dependency live beside the rung
+ * (`canonical-transcript.tsx`, the `paneWorking` memo).
  */
 export function workingLineInputFor(pane: {
 	waiting: boolean;
@@ -652,6 +701,10 @@ export function workingLineInputFor(pane: {
 	compactingSince?: number;
 	starting: boolean;
 	startingAfterId?: string | null;
+	/** See `WorkingLineInput.startingSession`: the create hop's own label. */
+	startingSession?: boolean;
+	/** See `WorkingLineInput.startingSince`: the press's persisted anchor. */
+	startingSince?: number | null;
 	gate?: unknown;
 	unavailable: boolean;
 	records: TranscriptRecord[];
@@ -687,6 +740,13 @@ export function workingLineInputFor(pane: {
 		compactingSince: pane.compactingSince,
 		starting: pane.starting,
 		startingAfterId: pane.startingAfterId ?? null,
+		// Spread, for the same shape reason as `folded` above: a caller that
+		// knows neither answers EXACTLY the object it always did, so growing
+		// this input cannot change a comparison in the suites that pin it.
+		...(pane.startingSession === true ? { startingSession: true } : {}),
+		...(pane.startingSince == null
+			? {}
+			: { startingSince: pane.startingSince }),
 		gate: Boolean(pane.gate),
 		unavailable: pane.unavailable,
 		...folded,

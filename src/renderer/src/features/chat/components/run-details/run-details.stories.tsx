@@ -38,6 +38,7 @@
  * report was about.
  */
 
+import { PaneSlot } from "@shared/components/common/pane-slot";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
@@ -196,10 +197,7 @@ const RunPane = ({
 			side="left"
 			label="Resize run details"
 		/>
-		<div
-			style={{ minWidth: width, width }}
-			className="relative h-full overflow-hidden border-l border-hairline"
-		>
+		<PaneSlot width={width} minWidth={width}>
 			<RunPanel
 				details={details}
 				mcpServers={deriveMcpServers(mcpServers, mcpErrors, mcpOperations)}
@@ -217,7 +215,7 @@ const RunPane = ({
 				onReaderChildChange={onReaderChildChange}
 				onClose={onClose}
 			/>
-		</div>
+		</PaneSlot>
 	</>
 );
 
@@ -1273,6 +1271,120 @@ export const WakesFloor320: Story = {
 	render: () => (
 		<ChatColumn
 			details={deriveRunDetails(fixtures.wakesRecurring())}
+			width={320}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/* ------------------------------------------------------------------ */
+/* Monitors (the monitor design doc § 12)                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The Monitors section with one watch: a session watching something and nothing
+ * else.
+ *
+ * The state the feature exists for — a standing READ-ONLY check that reports only
+ * what changed, so between deliveries the transcript says nothing and this pane is
+ * the only place the watch exists. The pane draws one section and the composer's
+ * row above it draws one chip.
+ */
+export const MonitorsOnly: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.monitorsOnly())}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * Three health states on one list, published out of due order.
+ *
+ * The section's ordering claim (the wire arrives `m2`, `m3`, `m1` and the rows
+ * read `m1`, `m2`, `m3`) and the health ink's whole vocabulary in one frame: a
+ * live watch, one mid-ladder (`3 failed`), and one the ladder parked (its slot
+ * reads `disabled` and its tail the reason the counters carry). The disabled row
+ * sorts last because it has no due slot — the soonest-first rule's own edge.
+ */
+export const monitorsHealth: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.monitorsHealth())}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * Nine monitors: one past `MONITOR_ROW_CAP`, so the section truncates and its
+ * marker is in frame.
+ *
+ * The marker is a STATEMENT, not a control — nothing in this pane can put a shed
+ * monitor back — which is why it wears the disabled disclosure the plan's shed
+ * count wears rather than the roster's `Show N more`.
+ */
+export const monitorsMany: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.monitorsMany())}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * One watch whose description is longer than the row can show.
+ *
+ * The truncation claim: the description is the one unbounded, authored string on
+ * a monitor row, so it clamps at two lines while the whole text stays readable on
+ * hover and in the accessible name. The pair is `monitorsOnly` above, whose
+ * description fits.
+ */
+export const MonitorLongDescription: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.monitorLongDescription())}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * Wakes and watches together, which is what a session doing both looks like.
+ *
+ * Two sections in one scroll region and two standing-fact chips on the row above
+ * them, the wakes first — the TUI band's own order ("wake rows first, then a
+ * monitor section"), which the chips follow for the same reason.
+ */
+export const monitorsAndWakes: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.monitorsAndWakes())}
+			openPanel={true}
+		/>
+	),
+	decorators: [withCanvasClosed],
+};
+
+/**
+ * The same section at the pane's 320px floor.
+ *
+ * The health story's list in the narrowest column the pane can be dragged to: a
+ * due label, an interval and a `last check` instant are the longest first line
+ * the section draws, and the health tail is the clause that has to yield rather
+ * than push the row wide.
+ */
+export const monitorsFloor320: Story = {
+	render: () => (
+		<ChatColumn
+			details={deriveRunDetails(fixtures.monitorsHealth())}
 			width={320}
 			openPanel={true}
 		/>
