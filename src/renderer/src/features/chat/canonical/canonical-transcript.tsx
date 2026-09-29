@@ -52,6 +52,11 @@ import { useCompletionView } from "@shared/hooks/use-completion-view";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
+	expandedRunsOf,
+	writeRunExpanded,
+} from "@shared/store/turn-collapse-open";
+import { showInfoToast } from "@shared/utils/toast-manager";
+import {
 	CircleAlert,
 	Info,
 	MessageSquareText,
@@ -59,6 +64,7 @@ import {
 } from "lucide-react";
 import {
 	type FC,
+	type FocusEvent,
 	type RefObject,
 	memo,
 	useCallback,
@@ -104,11 +110,15 @@ import {
 	toolOp,
 } from "../components/trace/tool-row-model";
 import { TraceFold } from "../components/trace/trace-fold";
+import { TurnSummary } from "../components/trace/turn-summary";
 import { WorkingLine } from "../components/trace/working-line";
 import { MISSING_SESSION_NOTICE_ID } from "../missing-session-notice";
 import { CanvasPaneProvider } from "../utils/canvas-pane";
 import { parseReplies } from "../utils/reply-utils";
 import { CanonicalImage } from "./canonical-image";
+import { CheckpointRail } from "./checkpoint-rail";
+import { visibleRecords } from "./cross-session-visibility";
+import { isRecordReachable } from "./failed-row-jump";
 import { type FoldOpenEntry, foldOpenOf, withFoldOpen } from "./fold-open";
 import { LinkToolkit } from "./link-toolkit";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
@@ -118,7 +128,16 @@ import {
 } from "./provider-error-guidance";
 import { isQuotable } from "./quote-model";
 import { QuoteToolkit } from "./quote-toolkit";
-import { type TurnFoot, foldRuns, turnFeet } from "./trace-fold-model";
+import { ensureReachable, jumpToEntry } from "./reveal-record";
+import { THREAD_SEARCH_JUMP_MISS_COPY } from "./thread-search-model";
+import { ThreadSearchOverlay } from "./thread-search-overlay";
+import {
+	type FoldGroup,
+	type TurnFoot,
+	foldRuns,
+	turnFeet,
+} from "./trace-fold-model";
+import { shareInFlight } from "./transcript-loader";
 import {
 	type CanonicalTranscriptStatus,
 	canonicalTranscriptSpeaks,
@@ -129,6 +148,7 @@ import { TranscriptPlaceholder } from "./transcript-placeholder";
 import {
 	type TranscriptRecord,
 	type TranscriptState,
+	isInterruptedFault,
 	streamDiagnostics,
 	withRecoveredOutcome,
 } from "./transcript-reducer";
@@ -138,9 +158,20 @@ import {
 	buildRows,
 	ledgerName,
 	paintsSomething,
+	runsOf,
 	splitFirstLine,
 } from "./transcript-rows";
+import {
+	type RunCollapsePlan,
+	alignFetchDecision,
+	collapsePlan,
+	snapWindowToRunBoundary,
+	windowTopRunIsHeadCut,
+} from "./turn-collapse-model";
+import { useActiveCheckpoint } from "./use-active-checkpoint";
 import type { AttachmentScope } from "./use-attachment-url";
+import { useCheckpoints } from "./use-checkpoints";
+import { useCrossSessionHidden } from "./use-cross-session-hidden";
 import { useLinkSubject } from "./use-link-subject";
 import { useScrollPaging } from "./use-scroll-paging";
 import {
@@ -159,22 +190,89 @@ import {
  * rule that also keeps a cap off the agent's answer.
  */
 
-/**
- * Whether the user has asked the OS for less motion.
- *
- * The failure jump (§E3) scrolls, and it is the app's only scroll animation in
- * this surface: §B7's 240ms is a CEILING rather than a target, and a preference
- * set at the OS level is the one signal that outranks it. Read per call rather
- * than cached, because the preference can change while the app is open and this
- * is one `matchMedia` on a press.
- */
-const prefersReducedMotion = (): boolean =>
-	typeof window !== "undefined" &&
-	typeof window.matchMedia === "function" &&
-	window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
 const WINDOW = 60;
 const WINDOW_STEP = 60;
+
+/**
+ * Rows of headroom above a jump's target, so "centred" is true at the top of
+ * the reach as well as below it.
+ *
+ * QA round 1 (Q-1) measured the far jump landing top-clamped: with the window
+ * widened to exactly the target's distance, the row is the OLDEST mounted one,
+ * `scrollRegionToCenter` runs out of content above it and clamps — 254 px short
+ * at the scene's size — while a warm re-jump of the same row measures 0 px,
+ * which is how the mechanism was confirmed. Half a viewport of rows clears it
+ * with margin at both the scene's row height (~20 px) and an ordinary one, and
+ * the rows above the target ARE the extra ones: the window is newest-anchored
+ * (`slice(total - windowSize)`), so a wider window reaches further back and
+ * never forward. The cost is mounting those rows — the same write the reader's
+ * own scroll makes.
+ */
+const JUMP_MOUNT_HEADROOM_ROWS = 16;
+
+/**
+ * How far the render window may be extended to land its top edge on a run
+ * boundary (the on-load fix, operator report 2026-09-28).
+ *
+ * The extension is the CHEAP half of alignment: a completed run the window's
+ * edge cuts through lands its opening user row inside the list the plan reads,
+ * so the bar gains the head row and the real duration in the same commit.
+ * Three durable pages is the same order as `RECONCILE_TAIL_MAX_ENTRIES` and
+ * covers every run whose collapse fills a screen; a run taller than this keeps
+ * the window cut (renders cut at its top until the reader widens past it) —
+ * since the end-loaded rule that costs the bar its Took clause, never the bar.
+ * The cost of an extension is one heavier commit, not heavier DOM: a collapsed
+ * run unmounts its hidden rows in the same render that plans them.
+ */
+const WINDOW_ALIGN_MAX_EXTRA = 300;
+
+/**
+ * Durable pages one open may fetch to bring a cut run's head into the loaded
+ * rows (`windowTopRunIsHeadCut`).
+ *
+ * The first automatic follow-up load, bounded: an open must not walk an
+ * unbounded conversation into memory. SINCE THE END-LOADED RULE (operator
+ * report, 2026-09-29) the bound no longer decides whether a completed turn
+ * folds — a run whose head stays cut still condenses from its loaded span —
+ * only whether its bar gains the head row and the real duration clause.
+ */
+const ALIGN_FETCH_MAX = 2;
+
+/**
+ * What a bar's appearance says out loud (the settle announcement's sentence).
+ *
+ * The bar's own words and quantities, so the announcement never states more
+ * than the row does: the duration clause only when the bar carries one (a
+ * head-cut bar does not — the number would be fabricated), the action count
+ * only when non-zero. `formatDuration` is the bar's own formatter, so the
+ * sentence and the row cannot disagree about "20m30s".
+ */
+function condenseSentence(plan: RunCollapsePlan): string {
+	const parts: string[] = [];
+	if (plan.facts.durationS !== null) {
+		parts.push(`took ${formatDuration(plan.facts.durationS)}`);
+	}
+	if (plan.facts.actions > 0) {
+		parts.push(
+			plan.facts.actions === 1 ? "1 action" : `${plan.facts.actions} actions`,
+		);
+	}
+	return parts.length === 0
+		? "Turn condensed."
+		: `Turn condensed: ${parts.join(", ")}.`;
+}
+
+/**
+ * Every row id a plan holds — the settle announcement's "was this run on
+ * screen last pass" denominator (see that effect's comment).
+ */
+function planRowIds(runs: readonly RunCollapsePlan[]): Set<string> {
+	const ids = new Set<string>();
+	for (const run of runs) {
+		for (const id of run.recordIds) ids.add(id);
+	}
+	return ids;
+}
 
 export type CanonicalTranscriptProps = {
 	frontend?: CanonicalFrontendState | null;
@@ -702,7 +800,7 @@ const UserRow = memo(function UserRow({
 				 *
 				 * `data-undelivered` is the rig's address for the line
 				 * (`scripts/renderer-driver.mjs`'s `connection-drop` scene reads it), the
-				 * same structural-marker rule the archive lane follows.
+				 * same structural-marker rule the row's own archive press follows.
 				 */}
 				{undelivered !== null && (
 					<div
@@ -773,6 +871,7 @@ const AssistantRow = memo(function AssistantRow({
 	isSmallView,
 	closesTurn,
 	foot = null,
+	closingLineSuppressed = false,
 	conversationId,
 }: {
 	record: Extract<TranscriptRecord, { kind: "assistant" }>;
@@ -780,6 +879,13 @@ const AssistantRow = memo(function AssistantRow({
 	closesTurn: boolean;
 	/** §E3's foot line data, on the row that closes the turn. */
 	foot?: TurnFoot | null;
+	/**
+	 * The run above carries a turn bar, so its closing line (the numbers AND the
+	 * stamp) lives there instead: one summary and one stamp per turn (§4.3/§4.5,
+	 * and the F5 defect the bar suppresses the foot for). Expanded or not — the
+	 * bar stays the toggle and the line stays withheld.
+	 */
+	closingLineSuppressed?: boolean;
 	conversationId?: string;
 }) {
 	const turnRef = useRef<HTMLDivElement>(null);
@@ -930,7 +1036,7 @@ const AssistantRow = memo(function AssistantRow({
 			 * one left edge structurally rather than by a second measurement (the frame
 			 * is where that is checked; see `docs/evidence/chat-tool-rows/README.md`).
 			 */}
-			{closesTurn && (
+			{closesTurn && !closingLineSuppressed && (
 				/*
 				 * THE TURN-FOOT LINE (§E3), and the one line D9 leaves behind.
 				 *
@@ -963,67 +1069,10 @@ const AssistantRow = memo(function AssistantRow({
 							<span className={cn("text-ink-dim")}>
 								{foot.actions === 1 ? "1 action" : `${foot.actions} actions`}
 							</span>
-							{foot.failed > 0 && (
-								<>
-									<span aria-hidden={true} className={cn("text-ink-dim")}>
-										·
-									</span>
-									<button
-										type="button"
-										onClick={(event) => {
-											const failedId = foot.firstFailedId;
-											if (!failedId) return;
-											const root =
-												event.currentTarget.closest(
-													"[data-lo-transcript-content]",
-												) ?? document;
-											/*
-											 * Open the fold that holds the failed row first: a
-											 * collapsed fold has unmounted its rows, so the row is not
-											 * in the DOM to be found until its fold is open (U14's
-											 * jump, into the §E2 fold). The fold's own trigger is the
-											 * first `aria-expanded` button inside its wrapper.
-											 */
-											const fold = [
-												...root.querySelectorAll<HTMLElement>(
-													"[data-fold-ids]",
-												),
-											].find((node) =>
-												(node.dataset.foldIds ?? "")
-													.split(" ")
-													.includes(failedId),
-											);
-											const foldTrigger = fold?.querySelector(
-												'button[aria-expanded="false"]',
-											);
-											if (foldTrigger instanceof HTMLElement)
-												foldTrigger.click();
-											/*
-											 * One frame later, once React has committed the opened
-											 * fold's rows: then the failed row exists, its own detail
-											 * opens, and it is scrolled to the centre.
-											 */
-											window.requestAnimationFrame(() => {
-												const target = root.querySelector(
-													`[data-record-id="${failedId}"]`,
-												);
-												if (!(target instanceof HTMLElement)) return;
-												const trigger = target.querySelector(
-													'button[aria-expanded="false"]',
-												);
-												if (trigger instanceof HTMLElement) trigger.click();
-												target.scrollIntoView({
-													block: "center",
-													behavior: prefersReducedMotion() ? "auto" : "smooth",
-												});
-											});
-										}}
-										className={cn("font-medium text-danger hover:underline")}
-									>
-										{foot.failed === 1 ? "1 failed" : `${foot.failed} failed`}
-									</button>
-								</>
-							)}
+							{/* NO FAILURE TALLY (operator, 2026-09-29, issue #6): the
+							 * foot's `· N failed` control is retired with the bar's —
+							 * failures stay discoverable by expanding the rows, which
+							 * keep their red markers; no surface tallies them. */}
 						</>
 					)}
 					<span className={cn("ml-auto")}>
@@ -1132,6 +1181,13 @@ const ToolRow = memo(function ToolRow({
 	// story) carries no `notRunReason` key at all, and `undefined !== null` would
 	// paint every one of them as a never-run verdict.
 	const notRun = Boolean(record.notRunReason);
+	/*
+	 * Which never-run rows are INTERRUPTS rather than failures (design round 1,
+	 * D1): the interrupted kinds read as the same class the row's status column
+	 * and the durable body already use, instead of the danger "Not run" a
+	 * planning fault earns.
+	 */
+	const interruptedNotRun = notRun && isInterruptedFault(record.notRunKind);
 	const summary = toolRecordSummary(record);
 	// When the arguments taught us nothing, the summary is the tool's own name,
 	// which the row then drops as a stutter and the object column goes empty.
@@ -1187,6 +1243,16 @@ const ToolRow = memo(function ToolRow({
 		 * LABELLED `Not run` rather than `Error`, which is the one difference from a
 		 * result body and the point of it: the call produced no error RESULT, it
 		 * produced no result at all.
+		 *
+		 * THE INTERRUPTED KINDS ARE NOT FAILURES HERE EITHER (design round 1, D1).
+		 * `notRun` is only "parked with a verdict"; WHICH verdict is
+		 * `record.notRunKind`, and for `skipped`/`aborted` the verdict is an
+		 * interrupt — steering redirected, or the turn was stopped — so the label
+		 * names the state (`Interrupted`, the word the row's own sr-only
+		 * announcement and the TUI use) in the neutral label ink, with the
+		 * harness's reason in body ink. The planning faults (`unknown_tool`,
+		 * `invalid_arguments`, ...) ARE the call's own failure and keep the danger
+		 * `Not run`, as does a legacy record that states no kind at all.
 		 */
 		<div
 			className={cn(
@@ -1196,9 +1262,21 @@ const ToolRow = memo(function ToolRow({
 			)}
 			data-detail-section="not-run"
 		>
-			<span className={cn("mb-1 block text-meta text-danger")}>Not run</span>
+			<span
+				className={cn(
+					"mb-1 block text-meta",
+					interruptedNotRun ? "text-ink-dim" : "text-danger",
+				)}
+			>
+				{interruptedNotRun ? "Interrupted" : "Not run"}
+			</span>
 			<div className={cn(DETAIL_SECTION_MAX, "overflow-auto")}>
-				<pre className={cn("whitespace-pre font-mono text-danger")}>
+				<pre
+					className={cn(
+						"whitespace-pre font-mono",
+						interruptedNotRun ? "text-ink" : "text-danger",
+					)}
+				>
 					{record.notRunReason}
 				</pre>
 			</div>
@@ -1210,6 +1288,13 @@ const ToolRow = memo(function ToolRow({
 			args={record.args}
 			output={record.output}
 			isError={record.isError}
+			/*
+			 * The durable interrupted row reaches `ToolDetail` (its verdict lives in
+			 * `output`, not `notRunReason`, so `notRun` is false for it) and must not
+			 * be labelled `Output` — the record's own `stopped` is the same fact the
+			 * live arm reads (design round 1, D1).
+			 */
+			interrupted={record.stopped === true}
 		/>
 	) : undefined;
 	/*
@@ -1272,7 +1357,14 @@ const ToolRow = memo(function ToolRow({
 				}
 				outcome={
 					notRun
-						? "not-run"
+						? /* The never-run verdict's own class decides which row this is: a
+						     steer-skip or a stop is an interrupt (the same two kinds the
+						     end events carry), and every other verdict is the failure it
+						     was. A record with no kind keeps the not-run state - the legacy
+						     and hand-built shape. */
+							isInterruptedFault(record.notRunKind)
+							? "interrupted"
+							: "not-run"
 						: running
 							? "running"
 							: record.isError
@@ -1644,6 +1736,38 @@ const atTraceTier = (row: Row): Row => {
 	return copy;
 };
 
+/*
+ * The GROUP-level twin of `atTraceTier`, for the one caller that passes
+ * groups instead of rows: a collapsed run's hidden groups mount inside the
+ * bar's disclosure, and the FIRST of them must arrive at the trace tier the
+ * way `TraceFold` demotes its first row — otherwise it keeps the turn-tier
+ * margin it earned as the turn's opener and the expansion re-introduces a
+ * 32px step between the bar and the row beneath it (design review round 1,
+ * D2: measured 36px box gap / Δ57px centers in the driven app, against the
+ * ledger's own 22px pitch). Same `WeakMap` reuse rule as the row helper: an
+ * untouched group keeps its identity so this adds no per-render copies.
+ */
+const traceTierGroups = new WeakMap<SectionGroup, SectionGroup>();
+const atTraceTierGroup = (group: SectionGroup): SectionGroup => {
+	if (group.kind === "row") {
+		const row = atTraceTier(group.row);
+		if (row === group.row) return group;
+		let copy = traceTierGroups.get(group);
+		if (!copy) {
+			copy = { ...group, row };
+			traceTierGroups.set(group, copy);
+		}
+		return copy;
+	}
+	if (group.gap === "trace") return group;
+	let copy = traceTierGroups.get(group);
+	if (!copy) {
+		copy = { ...group, gap: "trace" };
+		traceTierGroups.set(group, copy);
+	}
+	return copy;
+};
+
 const TranscriptRow = memo(function TranscriptRow({
 	row,
 	isSmallView,
@@ -1662,6 +1786,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	 * bug #490 fixed (`bash  … {"text": 200…` drawn as if it were the command).
 	 */
 	foot = null,
+	closingLineSuppressed = false,
 	labelPending = false,
 	undelivered = null,
 	labelHoldLate = false,
@@ -1673,6 +1798,8 @@ const TranscriptRow = memo(function TranscriptRow({
 	conversationId?: string;
 	/** The turn's own foot line, on the row that closes it (§E3). */
 	foot?: TurnFoot | null;
+	/** The run above carries a bar; see `AssistantRow`'s copy of this prop. */
+	closingLineSuppressed?: boolean;
 	/**
 	 * §F3's per-message failure state, or null. ONE OBJECT FOR THE WHOLE LIST,
 	 * and every row but the one it names keeps the null it already had: the rows
@@ -1712,6 +1839,7 @@ const TranscriptRow = memo(function TranscriptRow({
 					isSmallView={isSmallView}
 					closesTurn={row.closesTurn}
 					foot={foot}
+					closingLineSuppressed={closingLineSuppressed}
 					conversationId={conversationId}
 				/>
 			);
@@ -1786,6 +1914,35 @@ const TranscriptRow = memo(function TranscriptRow({
  */
 const OPEN_TRACE_MS = 60_000;
 
+/**
+ * The one sentence a refused checkpoint jump says.
+ *
+ * Both failure moments speak it — the near path's budget refusing to walk
+ * further, and a row that vanished between reachability and reveal — because
+ * the reader's situation is the same either way: the tick points at something
+ * this view cannot show. An INFO toast rather than an error: the reader asked
+ * for a place in their own history, and the answer is "further back than this
+ * view has loaded", not a failed request to retry.
+ *
+ * The noun is the UI's own: the cards and tick labels say "Turn N", and
+ * "checkpoint" is this design's internal word - it appears nowhere a reader
+ * can see it (design round 1, D4). The sentence ends with the STEP (UX round
+ * 1, U2): the transcript's own gesture - scroll up for older pages - is what
+ * changes the answer, and a refusal without it is a dead end. The search
+ * jump's copy carries the same tail.
+ */
+const CHECKPOINT_JUMP_MISS_COPY =
+	"Could not reach that turn. It is further back than the loaded history — scroll up in the transcript to load more.";
+
+/**
+ * A fold group as the aggregation pass hands it on: the partition's own
+ * variants unchanged. A run group used to carry a section flag
+ * (`isNewestTurn`) for the fold's condense; the condense is retired (the
+ * fold's open state is the reader's, see `fold-open.ts`), so the decoration
+ * is gone with it.
+ */
+type SectionGroup = FoldGroup;
+
 export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	frontend,
 	transcript,
@@ -1847,6 +2004,24 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			),
 		[transcript, frontend?.attention, frontend?.streaming],
 	);
+	/*
+	 * THE CROSS-SESSION FILTER: the single seam where the records a reader may
+	 * SEE become the records this pane builds from. `hide` is the backend's
+	 * `display.hide_cross_session`; default off means `visibleRecords` drops
+	 * nothing and hands back the bare reference, so every downstream memo keeps
+	 * its identity. Both consumers of the records read `shownRecords`: the row
+	 * builder below, and the working line further down - that line derives from
+	 * RECORDS (unlike the TUI's card-derived line), so an unfiltered list would
+	 * still name a running `send`. The raw `transcript.records.length` gates
+	 * below stay RAW on purpose: they answer "does this pane hold data", not
+	 * "what does it paint", and a session whose only rows are hidden must not
+	 * flip the pane's empty state.
+	 */
+	const hide = useCrossSessionHidden();
+	const shownRecords = useMemo(
+		() => visibleRecords(painted.records, hide),
+		[painted.records, hide],
+	);
 	// `loadingOlder` is deliberately NOT part of this gate any more.
 	//
 	// The acknowledgement asks one question: can the reader actually see the
@@ -1863,12 +2038,30 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	// scrolling back through history would leave a completion unacknowledged that
 	// they had been looking at the whole time.
 	useCompletionView(frontend, status === "live" && !waiting, containerRef);
+	/*
+	 * The checkpoint rail's manifest (design §D5/D10). Keyed on the pane's own
+	 * conversation identity, so a session switch is a fresh read and nothing
+	 * from the previous manifest survives (the hook owns that reset).
+	 *
+	 * The rail is met with the hook's policy rather than a second one: one
+	 * read per conversation, the warm only on the reader's own gestures, the
+	 * poll only while a requested name is pending, and a backend without the
+	 * op degrading to a hidden rail with one warn (`use-checkpoints.ts`).
+	 */
+	const checkpoints = useCheckpoints(sessionId ?? "");
 	const previousRows = useRef<Row[]>([]);
 	const rows = useMemo(() => {
-		const next = buildRows(painted.records, previousRows.current);
+		const next = buildRows(shownRecords, previousRows.current);
 		previousRows.current = next;
 		return next;
-	}, [painted.records]);
+	}, [shownRecords]);
+	/*
+	 * The jump's read of the row model BETWEEN awaits. `ensureReachable`'s
+	 * callbacks run after frame waits and page loads, so they must see the
+	 * model as it is then rather than as this render closed over it.
+	 */
+	const rowsRef = useRef(rows);
+	rowsRef.current = rows;
 	// Windowing: newest rows first. The window widens when the reader nears the
 	// top, and resets when the transcript is replaced (session switch/clear).
 	//
@@ -1889,9 +2082,22 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	// belongs to the previous transcript.
 	const [windowSession, setWindowSession] = useState(sessionId);
 	const [windowSize, setWindowSize] = useState(WINDOW);
+	/* Durable pages this conversation's open has spent aligning the window's
+	 * top edge onto a loaded run boundary. See the alignment effect below. */
+	const alignFetches = useRef(0);
+	/* The settle announcement's own memory — see the effect beside the collapse
+	 * plan. `keys` are the bars already stated (or absorbed silently, when they
+	 * were window-entered rather than settled); `rowIds` are every row the
+	 * PREVIOUS pass's plan held, which is what tells a settle from a reveal. */
+	const announcedPlan = useRef<{
+		keys: Set<string>;
+		rowIds: Set<string>;
+	} | null>(null);
 	if (windowSession !== sessionId) {
 		setWindowSession(sessionId);
 		setWindowSize(WINDOW);
+		alignFetches.current = 0;
+		announcedPlan.current = null;
 	}
 	/*
 	 * THE FOLD-OPEN REGISTRY, keyed to the conversation and reset the same
@@ -1938,12 +2144,100 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			),
 		}));
 	};
+	/*
+	 * THE READER'S EXPANSION OF TURN BARS, per conversation. The store is a
+	 * sibling of the paint cache (`shared/store/turn-collapse-open.ts`) so the
+	 * state survives the window's edge walking past a bar and a switch away and
+	 * back; a reload arrives at the shipped default (collapsed) by design. The
+	 * render-phase adjustment mirrors the window reset above and for the same
+	 * reason: a switch must read the NEW conversation's set in its first paint,
+	 * not one commit later. `openRuns` is the readable copy; every write goes
+	 * through the store so the two cannot drift.
+	 */
+	const [openRuns, setOpenRuns] = useState<ReadonlySet<string>>(() =>
+		expandedRunsOf(sessionId),
+	);
+	const [openRunsSession, setOpenRunsSession] = useState(sessionId);
+	if (openRunsSession !== sessionId) {
+		setOpenRunsSession(sessionId);
+		setOpenRuns(expandedRunsOf(sessionId));
+	}
+	const setRunOpen = useCallback(
+		(runKey: string, open: boolean) => {
+			setOpenRuns(writeRunExpanded(sessionId, runKey, open));
+		},
+		[sessionId],
+	);
 	const total = rows.length;
+	/*
+	 * The window's top edge lands on a RUN boundary, not a raw row count (the
+	 * on-load fix, operator report 2026-09-28: a completed run the edge cut
+	 * through could not collapse until the reader scrolled its head in). See
+	 * `snapWindowToRunBoundary` for the rule and its bound. The snap is a pure
+	 * derivation of `rows` and `windowSize` — no state, so nothing can race the
+	 * first paint — and it composes with the widen steps below: a widened window
+	 * snaps again, and the snapshot's own arrival snaps the first non-empty
+	 * window without an effect.
+	 */
+	const alignSize = useMemo(
+		() => snapWindowToRunBoundary(rows, windowSize, WINDOW_ALIGN_MAX_EXTRA),
+		[rows, windowSize],
+	);
 	const visible = useMemo(
-		() => (total > windowSize ? rows.slice(total - windowSize) : rows),
-		[rows, total, windowSize],
+		() => (total > alignSize ? rows.slice(total - alignSize) : rows),
+		[rows, total, alignSize],
 	);
 	const hidden = total - visible.length;
+	/*
+	 * The rail's reader-side cue (design round 1, D2 + U1; the settle re-read
+	 * is UX round 1, N1): one derivation of both halves the rail consumes,
+	 * owned and unit-pinned in `use-active-checkpoint.ts` beside this file.
+	 * `loadedIds` is the record ids this store holds; `activeId` is the
+	 * checkpoint at the reading position.
+	 */
+	const { activeId: activeCheckpointId, loadedIds: loadedCheckpointIds } =
+		useActiveCheckpoint(containerRef, rows, checkpoints.checkpoints);
+	/*
+	 * ONE in-flight page for the walk-side consumers — the align fetch below
+	 * and the jump walk — while the READER's own scroll path keeps the pager's
+	 * raw refusal semantics (`onLoadOlder` straight through).
+	 *
+	 * WHY THE SPLIT: the pager answers a concurrent ask with `false`, and for a
+	 * scroll that is right (no double-apply). But a walk reads `false` as
+	 * "history ends here", so a jump colliding with an align page used to fall
+	 * through to a clamped mount instead of awaiting the page already on its
+	 * way. Sharing the promise here makes that collision a wait for the two
+	 * consumers that walk; the scroll path's semantics are untouched.
+	 */
+	const walkLoadOlder = useMemo(
+		() => shareInFlight(onLoadOlder),
+		[onLoadOlder],
+	);
+	/*
+	 * The alignment's load half: when the edge sits inside a run whose head the
+	 * FETCHED rows cut off, the snap has no boundary to land on. Fetch the head
+	 * — bounded (ALIGN_FETCH_MAX pages per conversation), only while a page is
+	 * not already in flight — and let the snap do the rest when it lands.
+	 *
+	 * SINCE THE END-LOADED RULE (operator report, 2026-09-29) this is a
+	 * REFINEMENT, not the fix: a run whose head is farther than the bound still
+	 * condenses from its loaded span, so the bound no longer decides whether a
+	 * completed turn folds — only whether its bar gains the head row and the
+	 * real duration. The bound still exists because its old reason does: an open
+	 * must not walk an unbounded conversation into memory.
+	 */
+	useEffect(() => {
+		const decision = alignFetchDecision(
+			alignFetches.current,
+			transcript.hasMore,
+			loadingOlder,
+			windowTopRunIsHeadCut(rows, alignSize),
+			ALIGN_FETCH_MAX,
+		);
+		if (!decision.fetch) return;
+		alignFetches.current = decision.spent;
+		void walkLoadOlder();
+	}, [rows, alignSize, loadingOlder, transcript.hasMore, walkLoadOlder]);
 	/*
 	 * §E2's aggregation tier, and §E3's foot lines, computed over the SAME visible
 	 * rows the list renders. Both are pure (`trace-fold-model.ts`) because both are
@@ -1997,17 +2291,27 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			isFoldable: (row) => row.record.kind === "tool",
 		});
 	}, [visible]);
-	const feet = useMemo(
-		() =>
-			turnFeet(visible, {
-				failedOf: (row) =>
-					row.record.kind === "tool" && row.record.isError === true,
-				durationOf: (row) =>
-					row.record.kind === "tool" ? row.record.durationS : null,
-				isAction: (row) => row.record.kind === "tool",
-			}),
-		[visible],
-	);
+	const feet = useMemo(() => {
+		/*
+		 * The foot counts the SAME unit the caption rule and the collapse model use:
+		 * the rows are partitioned by `runsOf`, and the tally resets at a run's
+		 * opener. The historical `gap === "turn"` proxy also fires on a steer row,
+		 * which used to reset the count mid-turn and let a steered run's foot
+		 * disagree with everything above it (F5: a bar saying `12 actions` over a
+		 * foot saying `4`).
+		 */
+		const openerIds = new Set(
+			runsOf(visible).map((run) => visible[run.openingIndex].record.id),
+		);
+		return turnFeet(visible, {
+			failedOf: (row) =>
+				row.record.kind === "tool" && row.record.isError === true,
+			durationOf: (row) =>
+				row.record.kind === "tool" ? row.record.durationS : null,
+			isAction: (row) => row.record.kind === "tool",
+			opensRun: (row) => openerIds.has(row.record.id),
+		});
+	}, [visible]);
 
 	/*
 	 * An empty transcript must not claim the column's free space - UNLESS the
@@ -2191,6 +2495,95 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		rowCount: visible.length,
 	});
 
+	/*
+	 * §D7's near path, wired to the rail's ticks: ensure the row is reachable
+	 * (load pages, mount the render window), reveal it through the collapse
+	 * walk, centre it in the scroller, flash it.
+	 *
+	 * The window mount is this layer's job because the window is this layer's
+	 * state: the model can hold a row the window has not mounted (`slice(total
+	 * - windowSize)` mounts from the tail), so the loop's `mount` widens it
+	 * exactly as far as the row and no further — the same write the reader's
+	 * own scroll makes, one commit wide.
+	 */
+	const jumpTo = useCallback(
+		async (id: string, missCopy: string) => {
+			const region = containerRef.current;
+			const root =
+				region?.querySelector<HTMLElement>("[data-lo-transcript-content]") ??
+				null;
+			if (!region || !root) return;
+			const reachable = await ensureReachable({
+				isReachable: () => isRecordReachable(root, id),
+				rowDistance: () => {
+					const index = rowsRef.current.findIndex(
+						(row) => row.record.id === id,
+					);
+					return index === -1 ? null : rowsRef.current.length - index;
+				},
+				hasHeadroom: () => {
+					/*
+					 * Rows OLDER than the target are the margin the mount needs above
+					 * it, and the store is oldest-first: the target's own index IS that
+					 * count. A page-leading target (index 0) would otherwise mount with
+					 * nothing above it and centre clamped (QA Q-2, −254 px, ~the first 8
+					 * rows of every fetched page). `-1` cannot happen here — the loop
+					 * consults this only once `rowDistance` found the row — so it reads
+					 * as satisfied rather than forcing a fetch on an absence.
+					 */
+					const index = rowsRef.current.findIndex(
+						(row) => row.record.id === id,
+					);
+					return index === -1 || index >= JUMP_MOUNT_HEADROOM_ROWS;
+				},
+				mount: (distance) => {
+					/*
+					 * The row PLUS headroom above it, or the far jump lands clamped at the
+					 * content's top rather than centred (see
+					 * `JUMP_MOUNT_HEADROOM_ROWS`), which the rail's ticks share: this is
+					 * one loop for both callers.
+					 */
+					setWindowSize((current) => {
+						const wanted = distance + JUMP_MOUNT_HEADROOM_ROWS;
+						return current >= wanted ? current : wanted;
+					});
+				},
+				loadOlder: walkLoadOlder,
+			});
+			if (!reachable) {
+				showInfoToast(missCopy);
+				return;
+			}
+			const outcome = await jumpToEntry(root, region, id);
+			if (outcome === "missing") showInfoToast(missCopy);
+		},
+		[containerRef, walkLoadOlder],
+	);
+	/*
+	 * The rail's ticks and the search overlay both land through this near path
+	 * (`ensureReachable` above); the two callers differ only in the sentence a
+	 * refusal speaks, so that is the argument rather than a second loop.
+	 */
+	const jumpToCheckpoint = useCallback(
+		(id: string) => void jumpTo(id, CHECKPOINT_JUMP_MISS_COPY),
+		[jumpTo],
+	);
+	const jumpToSearchHit = useCallback(
+		(id: string) => jumpTo(id, THREAD_SEARCH_JUMP_MISS_COPY),
+		[jumpTo],
+	);
+	/*
+	 * The rail's naming warm (D2): `onHover` already fires on the CARD's own
+	 * intent-delayed open, not on a fly-over, so each call here is one the
+	 * reader looked at — one id per gesture.
+	 */
+	const handleCheckpointHover = useCallback(
+		(id: string | null) => {
+			if (id) checkpoints.warm([id]);
+		},
+		[checkpoints.warm],
+	);
+
 	// Measurement hook: one mark per commit of this list. Read with
 	// performance.getEntriesByName("lop:transcript:render").
 	const commits = useRef(0);
@@ -2229,8 +2622,15 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	const paneWorking = useMemo(
 		() =>
 			// One input builder for this claim's two readers - this rung and the
-			// composer's hint - so the two cannot be handed different facts
-			// (`workingLineInputFor`, `working-line-model.ts`).
+			// composer's hint (`workingLineInputFor`, `working-line-model.ts`).
+			// The builder is shared; the record lists handed to it are not: this
+			// rung reads the cross-session filter's `shownRecords`, while the
+			// composer's hint still reads the raw records (`chat-content.tsx`).
+			// No divergence is reachable today - `waiting` is answered by the
+			// ladder's fallback on either list, and the one predicate that could
+			// flip on dropped rows (`ownerAnswered`) is decided over RAW records
+			// in `chat-page` before either reader is built. If that normalization
+			// ever moves off raw records, this seam moves with it.
 			deriveWorkingLine(
 				workingLineInputFor({
 					waiting,
@@ -2270,7 +2670,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						missing,
 						stale,
 					}),
-					records: transcript.records,
+					records: shownRecords,
 				}),
 			),
 		[
@@ -2297,7 +2697,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			// and a memo that missed them would keep a claim the pane has withdrawn.
 			missing,
 			stale,
-			transcript.records,
+			shownRecords,
 		],
 	);
 
@@ -2310,6 +2710,291 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * two values that are already computed, and only `paneWorking` costs anything.
 	 */
 	const working = workingLine === undefined ? paneWorking : workingLine;
+
+	/*
+	 * THE READER'S FOCUS, tracked for the collapse's own guard (the model's
+	 * `focusHold`): the record id of the row holding `document.activeElement`
+	 * inside the scroller. Focus EVENTS rather than a render-time DOM read, so
+	 * the value is React state and a focus move is a re-render the plan can
+	 * answer; `null` means "focus is not in a row". A CLICK IS ALSO A FOCUS
+	 * (agent review round 1, NIT-1): in Chromium, pressing a control focuses
+	 * it, so a pointer reader who just clicked a row's button holds that run
+	 * open exactly as a keyboard reader does — the guard makes them the same
+	 * promise (a collapse never unmounts the focused row) and releases it the
+	 * same way, when focus moves on. The bar is excluded deliberately: it
+	 * carries `data-record-id` too (its anchor row's), and a reader focusing a
+	 * bar's button must not hold that bar's run open — the bar is not a row
+	 * being hidden, it IS the collapse.
+	 */
+	const [focusedRecordId, setFocusedRecordId] = useState<string | null>(null);
+	const handleTranscriptFocus = useCallback(
+		(event: FocusEvent<HTMLDivElement>) => {
+			const row = (event.target as Element).closest("[data-record-id]");
+			setFocusedRecordId(
+				row === null || row.closest("[data-turn-summary]") !== null
+					? null
+					: row.getAttribute("data-record-id"),
+			);
+		},
+		[],
+	);
+	const handleTranscriptBlur = useCallback(
+		(event: FocusEvent<HTMLDivElement>) => {
+			const next = event.relatedTarget as Node | null;
+			if (next === null || !event.currentTarget.contains(next)) {
+				setFocusedRecordId(null);
+			}
+		},
+		[],
+	);
+
+	/*
+	 * THE TURN COLLAPSE (§4.5), computed beside the fold groups and the feet: one
+	 * pure plan (`turn-collapse-model.ts`) over the same `visible` rows the list
+	 * renders, so a bar can only ever summarise rows that are loaded and on
+	 * screen. `live` is the liveness the working line and the folds read; the
+	 * model applies it to the newest run, so a finished turn above the reader's
+	 * place still collapses while a later turn streams.
+	 */
+	const collapse = useMemo(
+		/*
+		 * `live` is the newest run's UNSETTLEDNESS, and it has two halves here,
+		 * not one (design review round 1, D3): the working line covers a turn
+		 * being written, and the READER GATE covers a turn parked on a question —
+		 * the working line deliberately stands down while the question dock holds
+		 * the stage, so a rule that read only `working` condensed a parked turn
+		 * and un-condensed it when the call resumed, with no reader action.
+		 *
+		 * `focusHold`/`openRuns` are the focus guard's inputs (see
+		 * `focusedRecordId` above): a run that would unmount the row the reader's
+		 * keyboard focus is in stands open until the focus moves on.
+		 */
+		() =>
+			collapsePlan(visible, {
+				live: working !== null || gate !== null,
+				focusHold: focusedRecordId,
+				openRuns,
+			}),
+		[visible, working, gate, focusedRecordId, openRuns],
+	);
+	/*
+	 * THE SETTLE ANNOUNCEMENT (polite). A bar appearing is a transition the
+	 * reader did not initiate — rows readable a moment ago are unmounted — and
+	 * nothing on screen says so out loud. ONE `<output aria-live="polite">`
+	 * states each newly appeared bar in the bar's own words. Two skips keep it
+	 * about SETTLES rather than loads: the first pass that has any runs
+	 * initialises without announcing (opening a conversation is a load), and a
+	 * session switch re-arms that skip (the transcript component outlives a
+	 * conversation switch). A reader's own press never reaches here: it changes
+	 * the reader's expansion, not which runs collapse.
+	 *
+	 * A WINDOW REVEAL IS NOT A SETTLE EITHER (agent review round 1, MAJOR-1).
+	 * The window only ever GROWS, and every step of that growth presents bars
+	 * for runs the previous pass never held — a scroll-up widen, the open's
+	 * snap, a jump's mount. A set-difference against the previous pass's keys
+	 * announced every one of them ("ten announcements on a widen, zero
+	 * settles", the reviewer's probe-widen-announce.test.mjs), while nothing
+	 * the reader could see was unmounted: those runs were folded before the
+	 * reader ever saw them unfold. So an utterance must also find the run
+	 * PRESENT in the previous pass — sharing at least one row with it — which
+	 * is exactly "its rows were on screen a moment ago". The row-id test also
+	 * bridges the live→settled KEY JUMP: a run being written keys on its last
+	 * row and a settled one on its answer, but its rows are the same rows.
+	 * Window-entered bars are absorbed into `keys` silently, so a later reveal
+	 * of the same run stays quiet.
+	 */
+	const [condenseAnnouncement, setCondenseAnnouncement] = useState("");
+	useEffect(() => {
+		const collapsed = collapse.runs.filter((run) => run.collapses);
+		const rowIds = planRowIds(collapse.runs);
+		const previous = announcedPlan.current;
+		if (previous === null) {
+			/*
+			 * The first pass that has RUNS initialises without announcing: its
+			 * bars are what the conversation loaded with, not a settle. A pass
+			 * with no runs at all — a held or empty pane — leaves the
+			 * initialisation for the first pass that paints rows.
+			 */
+			if (collapse.runs.length > 0) {
+				announcedPlan.current = {
+					keys: new Set(collapsed.map((run) => run.key)),
+					rowIds,
+				};
+			}
+			return;
+		}
+		const appeared = collapsed.filter(
+			(run) =>
+				!previous.keys.has(run.key) &&
+				run.recordIds.some((id) => previous.rowIds.has(id)),
+		);
+		announcedPlan.current = {
+			keys: new Set([...previous.keys, ...collapsed.map((run) => run.key)]),
+			rowIds,
+		};
+		if (appeared.length === 0) return;
+		setCondenseAnnouncement(appeared.map(condenseSentence).join(" "));
+	}, [collapse]);
+
+	/*
+	 * THE LIST, RE-EXPRESSED AS ENTRIES. Every group renders exactly as today,
+	 * with one exception: a collapsed run's hidden groups move INSIDE its bar
+	 * (so they are merely unmounted while collapsed — the fold's own contract)
+	 * and the bar takes the FIRST hidden row's slot and gap. Pinned and tail
+	 * groups keep their places, so a collapse never reorders a visible row.
+	 */
+	const chatEntries = useMemo(() => {
+		const indexOf = new Map<string, number>();
+		visible.forEach((row, index) => indexOf.set(row.record.id, index));
+
+		type ChatEntry =
+			| { kind: "group"; group: SectionGroup; suppressClosingLine: boolean }
+			| { kind: "bar"; plan: RunCollapsePlan; children: SectionGroup[] };
+
+		const entries: ChatEntry[] = [];
+		let next = 0;
+		for (const plan of collapse.runs) {
+			/*
+			 * Runs and groups both partition `visible`, so this walk consumes each
+			 * group exactly once, in order.
+			 */
+			const groups: SectionGroup[] = [];
+			while (next < rowGroups.length) {
+				const group = rowGroups[next];
+				const start = indexOf.get(
+					group.kind === "run" ? group.id : group.row.record.id,
+				);
+				if (start === undefined || start > plan.run.endIndex) break;
+				groups.push(group);
+				next += 1;
+			}
+			if (!plan.collapses) {
+				for (const group of groups) {
+					entries.push({
+						kind: "group",
+						group,
+						suppressClosingLine: false,
+					});
+				}
+				continue;
+			}
+			const hiddenIds = new Set(plan.hidden.map((row) => row.record.id));
+			const children: SectionGroup[] = [];
+			for (const group of groups) {
+				const hidden =
+					group.kind === "run"
+						? group.rows.every((row) => hiddenIds.has(row.record.id))
+						: hiddenIds.has(group.row.record.id);
+				if (hidden) {
+					children.push(group);
+					if (children.length === 1) {
+						/* The bar sits where the first hidden group did. */
+						entries.push({ kind: "bar", plan, children });
+					}
+					continue;
+				}
+				/*
+				 * Everything visible in a bar'd run renders with its closing line
+				 * withheld: the bar IS the turn's summary and the turn's stamp (F5).
+				 */
+				entries.push({
+					kind: "group",
+					group,
+					suppressClosingLine: true,
+				});
+			}
+		}
+		return entries;
+	}, [visible, rowGroups, collapse]);
+
+	/**
+	 * One group as the list has always rendered it — a folded run of calls, or a
+	 * single row — with the turn's closing line (the foot numbers AND the stamp)
+	 * withheld from a run that carries a bar: the bar states both, one per turn
+	 * (`feet.get(...) ?? null` and the caption block share one switch).
+	 */
+	const renderGroup = (group: SectionGroup, suppressClosingLine: boolean) =>
+		group.kind === "run" ? (
+			<TraceFold
+				key={group.id}
+				/*
+				 * The fold carries its first row's gap (a turn's 32px when
+				 * the run opens the turn), and every row inside it sits at
+				 * the trace tier - the fold holds the WHOLE run, D8.
+				 */
+				className={GAP[group.gap][isSmallView ? 1 : 0]}
+				recordIds={group.rows.map((row) => row.record.id)}
+				summary={group.summary}
+				actionCount={group.rows.length}
+				span={group.span}
+				live={group.live}
+				/*
+				 * THE READER'S OPEN STATE, held by the conversation rather than by
+				 * the fold (operator report, 2026-09-27): the fold's React key is
+				 * its first row, and the render window's leading edge walks through
+				 * a run as rows arrive, which remounts the fold - state kept on the
+				 * instance cannot survive that, and the fold re-collapsed under the
+				 * reader. The registry answers for the fold's CURRENT id set and
+				 * migrates with it.
+				 */
+				open={foldOpenOf(
+					foldOpen.entries,
+					group.rows.map((row) => row.record.id),
+				)}
+				onOpenChange={(next) =>
+					setFoldOpenFor(
+						group.rows.map((row) => row.record.id),
+						next,
+					)
+				}
+			>
+				{group.rows.map((row, index) => (
+					<TranscriptRow
+						key={row.record.id}
+						row={index === 0 ? atTraceTier(row) : row}
+						isSmallView={isSmallView}
+						scope={mediaScope}
+						conversationId={conversationId}
+						labelPending={
+							row.record.kind === "tool" &&
+							labelPending?.has(row.record.toolCallId) === true
+						}
+						labelHoldLate={labelHoldLate === true}
+						labelMarked={
+							row.record.kind === "tool" &&
+							labelMarked?.has(row.record.toolCallId) === true
+						}
+						foot={
+							suppressClosingLine ? null : (feet.get(row.record.id) ?? null)
+						}
+						closingLineSuppressed={suppressClosingLine}
+						undelivered={undelivered}
+					/>
+				))}
+			</TraceFold>
+		) : (
+			<TranscriptRow
+				key={group.row.record.id}
+				row={group.row}
+				isSmallView={isSmallView}
+				scope={mediaScope}
+				conversationId={conversationId}
+				labelPending={
+					group.row.record.kind === "tool" &&
+					labelPending?.has(group.row.record.toolCallId) === true
+				}
+				labelHoldLate={labelHoldLate === true}
+				labelMarked={
+					group.row.record.kind === "tool" &&
+					labelMarked?.has(group.row.record.toolCallId) === true
+				}
+				foot={
+					suppressClosingLine ? null : (feet.get(group.row.record.id) ?? null)
+				}
+				closingLineSuppressed={suppressClosingLine}
+				undelivered={undelivered}
+			/>
+		);
 
 	return (
 		/*
@@ -2334,10 +3019,20 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		 * collapses with it so a collapsed pane cannot leave the caption behind as
 		 * a row of its own.
 		 */
+		/*
+		 * `relative` is what the floating search overlay positions against: its slot
+		 * is this column's top-right corner (`thread-search-overlay.tsx`), and an
+		 * absolutely positioned child resolves against the nearest positioned
+		 * ancestor — which this box was not, so the panel would have been placed
+		 * against the page and floated over the chat header. The class is inert for
+		 * every other reader of this column (no offsets, no z-index, same box).
+		 */
 		<div
 			className={cn(
 				CHAT_COLUMN_CONTAINER,
-				collapsed ? "h-0 grow-0 overflow-hidden" : "flex min-h-0 grow flex-col",
+				collapsed
+					? "relative h-0 grow-0 overflow-hidden"
+					: "relative flex min-h-0 grow flex-col",
 			)}
 		>
 			{stale && !holdPlaceholder && (
@@ -2365,152 +3060,216 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					Showing the last saved view — checking for newer messages.
 				</p>
 			)}
-			<div
-				ref={containerRef}
-				data-lo-canonical-transcript={true}
-				/*
-				 * The transcript is a tab stop, and that is an accessibility fix rather
-				 * than a nicety.
-				 *
-				 * Paging responds to Home/PageUp/ArrowUp through a `keydown` listener on
-				 * THIS element, but a plain scrolling div is not in the tab order, so
-				 * nothing a keyboard reader could do would deliver those keys. Measured
-				 * on the previous head: 40 Tab presses never entered the transcript, and
-				 * in the state a reader arrives in it contained zero focusable elements
-				 * — so with the click-only button gone, older history was unreachable
-				 * without a pointer. A scrollable region is independently required to be
-				 * keyboard-operable (WCAG 2.1.1); this satisfies both at once.
-				 *
-				 * `role="log"` with a name is what makes the stop explicable when it is
-				 * announced, instead of an unlabelled group the reader has to probe.
-				 *
-				 * The stop is keyed on the ROWS, which is the only thing it is for: paging
-				 * acts on scrollable content, and a row-less pane has none, so Home/PageUp/
-				 * ArrowUp have no target there and a stop on it would be a focus trap with
-				 * nothing behind it (the notice's own control stays focusable, and the
-				 * statement stays in the reading order). Keying it on `collapsed ||
-				 * holdPlaceholder` was a proxy for "no rows" - both imply it - and the hold
-				 * no longer covers every row-less pane, because a pane with a statement of
-				 * its own paints that instead of the placeholder. The proxy stopped
-				 * agreeing with the property it stood for, so the property is read directly
-				 * - and the property now differs from the hold in the OTHER direction too:
-				 * a pane HOLDING a cached paint has records in state and no rows on screen,
-				 * so it is `holdPlaceholder`, not the record count, that keeps the stop off
-				 * that pane.
-				 *
-				 * THE TURN ORDER OF THOSE STOPS USED TO COST ONE PRESS PER ROW, AND IT NO
-				 * LONGER DOES (UX round 1, U4; QA round 1, Q5). While the control was
-				 * revealed by the row's hover it was permanently mounted, and `opacity-0`
-				 * kept its place in the tab order by design - so a window of mounted rows
-				 * charged the keyboard reader one press per quotable turn, oldest first,
-				 * and the newest answer was the farthest away. The trigger is a highlight
-				 * now, and with no highlight of this turn's the control is absent from the
-				 * DOM rather than hidden, so it contributes no stop at all. The keyboard
-				 * path is the one the operator's own ask implies: make a highlight
-				 * (shift+arrows, shift+click), Tab to the control that appears, press it.
-				 *
-				 * The alternative recorded at the time - a shortcut key - stays a new
-				 * interaction rather than a fix to this one, and nothing here needs it:
-				 * the walk it was proposed to remove is gone.
-				 */
-				data-chat-region="transcript"
-				data-region-entry
-				/*
-				 * §C4's third region, and the stop that was already here. The spec's landmark
-				 * name for it is `Conversation` (the three it lists are `Chats`,
-				 * `Conversation`, `Message composer`), shortened from `Conversation
-				 * transcript` because the region IS the transcript - the word was doing the
-				 * role's work twice.
-				 *
-				 * WHY NOT THE `<main>` AROUND IT: a region marker claims its element for the
-				 * `F6` walk on every route it renders on, and `<main>` is the shell's, drawn
-				 * for Settings and Agents too. The scroller exists only where there is a
-				 * conversation, which is exactly where this region exists.
-				 *
-				 * §C4 also asks for "arrow keys between turns" and that is deliberately NOT
-				 * built: the bare arrows are this scroller's own paging keys
-				 * (`use-scroll-paging.ts`'s `Home`/`ArrowUp`/`PageUp`/`ArrowDown` case), and
-				 * a keyboard-operable scroll region is a WCAG 2.1.1 requirement rather than a
-				 * preference - taking the arrows for a turn walk would trade one accessible
-				 * gesture for another. The transcript's own stop, which is the half the
-				 * finding is about, is here.
-				 */
-				tabIndex={transcript.records.length === 0 || holdPlaceholder ? -1 : 0}
-				role="log"
-				aria-label={CHAT_REGION_LABEL.transcript}
-				// Only the `windowed` branch renders that id, so the description has to
-				// track the branch rather than the looser "history exists" condition it
-				// was derived from: `hasMore` with no hidden rows yields `idle`, whose
-				// button carries its own label, and pointing at an absent element makes
-				// the scroller's accessible description resolve to nothing at all — a
-				// worse outcome than omitting it, and invisible unless someone reads the
-				// tree while the slot happens to be idle.
-				aria-describedby={
-					slotState === "windowed" ? OLDER_HISTORY_HINT_ID : undefined
-				}
-				className={cn(
-					// `min-h-0`, not `h-full`: this is the flex child that must absorb
-					// the column's leftover height. `h-full` resolves its flex base to
-					// the FULL container height, so the base sum overshot the container
-					// by the header plus the composer and the deficit was taken out of
-					// the header - which is why the header rendered a different height
-					// depending on how tall the composer happened to be.
-					//
-					// `scrollbar-gutter: stable both-edges` because this is the scroll
-					// container and the composer below it is not. An 8px scrollbar takes
-					// its width off the right of THIS content box only, so `mx-auto`
-					// centred the transcript 4px left of the composer - a permanent
-					// misalignment between the two elements the eye most wants aligned.
-					// Reserving the gutter on both edges restores a symmetric content
-					// box: measured in the running app, the centre delta goes 4px -> 0.
-					// `stable` alone would reserve only the right edge and keep it.
-					//
-					// The mask that dissolves the top edge under the chat header is NOT a
-					// class here: it is a scroll-driven animation with a `@supports`
-					// fallback, which no utility can express, so it lives in
-					// `styles/index.css` keyed on `data-lo-canonical-transcript` - the
-					// attribute the transcript's own container already carries. A mask
-					// changes neither the box's size nor its layout, so the scroll
-					// region, the reserved gutter and the bottom anchor autoscroll reads
-					// are all as they were.
-					"relative flex w-full flex-col-reverse [scrollbar-gutter:stable_both-edges] will-change-[scroll-position] [overflow-anchor:auto] [transform:translateZ(0)]",
-					collapsed
-						? "h-0 grow-0 overflow-hidden p-0"
-						: "min-h-0 grow overflow-auto p-4",
-				)}
-			>
-				{perf && (
-					<span data-lo-perf className="sr-only" aria-hidden="true">
-						{perf}
-					</span>
-				)}
+			{/*
+			 * §D5's placement: the rail is a SIBLING of the scroll box, not a child
+			 * of it — an absolutely-positioned child of an `overflow: auto` box
+			 * scrolls away with the content it is supposed to index. This wrapper
+			 * exists to give the two a box whose height IS the scroller's: the
+			 * column also holds the stale-conversation caption above (when it
+			 * paints), and `inset-y-0` against the column would draw the rail over
+			 * that caption. Layout is the wrapper's only job: it takes the
+			 * scroller's place in the column's flex (`min-h-0 grow`) and hands it
+			 * straight back, so the scroll box's own box, its reserved gutter and
+			 * the bottom anchor all behave exactly as before.
+			 */}
+			<div className={cn("relative flex min-h-0 grow flex-col")}>
+				{/*
+				 * THE RAIL COMES FIRST IN THE DOM (UX round 1, U3): it is the
+				 * transcript's navigation affordance, and it used to sit after
+				 * the scroller, so reaching its ticks meant tabbing through
+				 * every focusable row (46 Tabs from the composer, measured).
+				 * The rail is absolutely positioned, so DOM order costs no
+				 * pixels - the column's first tab stop is the rail now. It DOES
+				 * cost paint order, which the rail's own wrapper answers: the rail
+				 * carries `z-10` because the scroller below it is positioned too
+				 * (`relative` + `translateZ(0)`), and without it the scroller's box
+				 * would take every pointer aimed at a tick (the scene's hover legs
+				 * went dead on this change until the rail carried z; measured). Its
+				 * props carry the one fact the component owns and the hook
+				 * does not - which conversation, so a session switch drops any
+				 * open card - plus the two callbacks; `building` is the hook's
+				 * index state, not the rail's to derive.
+				 */}
+				<CheckpointRail
+					sessionId={sessionId ?? ""}
+					checkpoints={checkpoints.checkpoints}
+					building={checkpoints.building}
+					loadedIds={loadedCheckpointIds}
+					activeId={activeCheckpointId}
+					onJump={(id) => {
+						void jumpToCheckpoint(id);
+					}}
+					onHover={handleCheckpointHover}
+				/>
 				<div
-					data-lo-transcript-content
+					ref={containerRef}
+					data-lo-canonical-transcript={true}
 					/*
-					 * `mb-auto` IS THE TOP ANCHOR, and it is a mechanism rather than a nudge.
+					 * The transcript is a tab stop, and that is an accessibility fix rather
+					 * than a nicety.
 					 *
-					 * The scroller above is `flex-col-reverse` (its paging hook, its
-					 * `overflow-anchor` pinning and its top-fade mask are all written against
-					 * that origin), so this column is packed to the main-axis start, which is
-					 * the BOTTOM: short content hugs the composer, and always has. In a
-					 * reversed column the column's physical bottom is the main-start side, so
-					 * an auto margin there absorbs positive free space and pushes the column
-					 * to the top of the scroller - while a column that overflows has no
-					 * positive free space at all, the auto margin resolves to zero, and the
-					 * layout is byte-identical to the bottom-packed one. That "only while it
-					 * fits" behaviour is why this is the design rather than a
-					 * `scrollable`-conditioned `justify-end`, which would need a threshold to
-					 * tune and could oscillate around the fill point.
+					 * Paging responds to Home/PageUp/ArrowUp through a `keydown` listener on
+					 * THIS element, but a plain scrolling div is not in the tab order, so
+					 * nothing a keyboard reader could do would deliver those keys. Measured
+					 * on the previous head: 40 Tab presses never entered the transcript, and
+					 * in the state a reader arrives in it contained zero focusable elements
+					 * — so with the click-only button gone, older history was unreachable
+					 * without a pointer. A scrollable region is independently required to be
+					 * keyboard-operable (WCAG 2.1.1); this satisfies both at once.
 					 *
-					 * The empty state is untouched by it: a collapsed pane is `h-0` (see
-					 * `collapsed` above), so there is no free space for a margin to absorb
-					 * and the centred splash is unaffected. And a transcript shorter than the
-					 * pane never scrolls, so the mask stays inert (the ramp note in
-					 * `styles/index.css`).
+					 * `role="log"` with a name is what makes the stop explicable when it is
+					 * announced, instead of an unlabelled group the reader has to probe.
+					 *
+					 * The stop is keyed on the ROWS, which is the only thing it is for: paging
+					 * acts on scrollable content, and a row-less pane has none, so Home/PageUp/
+					 * ArrowUp have no target there and a stop on it would be a focus trap with
+					 * nothing behind it (the notice's own control stays focusable, and the
+					 * statement stays in the reading order). Keying it on `collapsed ||
+					 * holdPlaceholder` was a proxy for "no rows" - both imply it - and the hold
+					 * no longer covers every row-less pane, because a pane with a statement of
+					 * its own paints that instead of the placeholder. The proxy stopped
+					 * agreeing with the property it stood for, so the property is read directly
+					 * - and the property now differs from the hold in the OTHER direction too:
+					 * a pane HOLDING a cached paint has records in state and no rows on screen,
+					 * so it is `holdPlaceholder`, not the record count, that keeps the stop off
+					 * that pane.
+					 *
+					 * THE TURN ORDER OF THOSE STOPS USED TO COST ONE PRESS PER ROW, AND IT NO
+					 * LONGER DOES (UX round 1, U4; QA round 1, Q5). While the control was
+					 * revealed by the row's hover it was permanently mounted, and `opacity-0`
+					 * kept its place in the tab order by design - so a window of mounted rows
+					 * charged the keyboard reader one press per quotable turn, oldest first,
+					 * and the newest answer was the farthest away. The trigger is a highlight
+					 * now, and with no highlight of this turn's the control is absent from the
+					 * DOM rather than hidden, so it contributes no stop at all. The keyboard
+					 * path is the one the operator's own ask implies: make a highlight
+					 * (shift+arrows, shift+click), Tab to the control that appears, press it.
+					 *
+					 * The alternative recorded at the time - a shortcut key - stays a new
+					 * interaction rather than a fix to this one, and nothing here needs it:
+					 * the walk it was proposed to remove is gone.
 					 */
-					className={cn("mb-auto flex flex-col", CHAT_MEASURE)}
+					data-chat-region="transcript"
+					data-region-entry
+					/*
+					 * §C4's third region, and the stop that was already here. The spec's landmark
+					 * name for it is `Conversation` (the three it lists are `Chats`,
+					 * `Conversation`, `Message composer`), shortened from `Conversation
+					 * transcript` because the region IS the transcript - the word was doing the
+					 * role's work twice.
+					 *
+					 * WHY NOT THE `<main>` AROUND IT: a region marker claims its element for the
+					 * `F6` walk on every route it renders on, and `<main>` is the shell's, drawn
+					 * for Settings and Agents too. The scroller exists only where there is a
+					 * conversation, which is exactly where this region exists.
+					 *
+					 * §C4 also asks for "arrow keys between turns" and that is deliberately NOT
+					 * built: the bare arrows are this scroller's own paging keys
+					 * (`use-scroll-paging.ts`'s `Home`/`ArrowUp`/`PageUp`/`ArrowDown` case), and
+					 * a keyboard-operable scroll region is a WCAG 2.1.1 requirement rather than a
+					 * preference - taking the arrows for a turn walk would trade one accessible
+					 * gesture for another. The transcript's own stop, which is the half the
+					 * finding is about, is here.
+					 */
+					tabIndex={transcript.records.length === 0 || holdPlaceholder ? -1 : 0}
+					role="log"
+					aria-label={CHAT_REGION_LABEL.transcript}
+					// Only the `windowed` branch renders that id, so the description has to
+					// track the branch rather than the looser "history exists" condition it
+					// was derived from: `hasMore` with no hidden rows yields `idle`, whose
+					// button carries its own label, and pointing at an absent element makes
+					// the scroller's accessible description resolve to nothing at all — a
+					// worse outcome than omitting it, and invisible unless someone reads the
+					// tree while the slot happens to be idle.
+					aria-describedby={
+						slotState === "windowed" ? OLDER_HISTORY_HINT_ID : undefined
+					}
+					/*
+					 * The focus guard's two inputs (see `focusedRecordId` above): React's
+					 * onFocus/onBlur are focusin/focusout at this container, so focus
+					 * arriving anywhere inside updates the held row and focus leaving the
+					 * scroller clears it.
+					 */
+					onFocus={handleTranscriptFocus}
+					onBlur={handleTranscriptBlur}
+					className={cn(
+						// `min-h-0`, not `h-full`: this is the flex child that must absorb
+						// the column's leftover height. `h-full` resolves its flex base to
+						// the FULL container height, so the base sum overshot the container
+						// by the header plus the composer and the deficit was taken out of
+						// the header - which is why the header rendered a different height
+						// depending on how tall the composer happened to be.
+						//
+						// `scrollbar-gutter: stable both-edges` because this is the scroll
+						// container and the composer below it is not. An 8px scrollbar takes
+						// its width off the right of THIS content box only, so `mx-auto`
+						// centred the transcript 4px left of the composer - a permanent
+						// misalignment between the two elements the eye most wants aligned.
+						// Reserving the gutter on both edges restores a symmetric content
+						// box: measured in the running app, the centre delta goes 4px -> 0.
+						// `stable` alone would reserve only the right edge and keep it.
+						//
+						// The mask that dissolves the top edge under the chat header is NOT a
+						// class here: it is a scroll-driven animation with a `@supports`
+						// fallback, which no utility can express, so it lives in
+						// `styles/index.css` keyed on `data-lo-canonical-transcript` - the
+						// attribute the transcript's own container already carries. A mask
+						// changes neither the box's size nor its layout, so the scroll
+						// region, the reserved gutter and the bottom anchor autoscroll reads
+						// are all as they were.
+						"relative flex w-full flex-col-reverse [scrollbar-gutter:stable_both-edges] will-change-[scroll-position] [overflow-anchor:auto] [transform:translateZ(0)]",
+						collapsed
+							? "h-0 grow-0 overflow-hidden p-0"
+							: "min-h-0 grow overflow-auto p-4",
+					)}
 				>
-					{/* The state this element exists for: the frame BEFORE the conversation's
+					{perf && (
+						<span data-lo-perf className="sr-only" aria-hidden="true">
+							{perf}
+						</span>
+					)}
+					{/*
+					 * The settle announcement (see the effect beside the collapse plan):
+					 * `output` with `aria-live="polite"`, the idiom the older-history
+					 * slot and the aside panel already use — a quiet statement of a
+					 * transition the reader did not initiate. The data attribute is
+					 * what tells this region from the slot's (both are `output`s with
+					 * `aria-live`), for a rig and for the behaviour suite.
+					 */}
+					<output
+						data-condense-announcement=""
+						className="sr-only"
+						aria-live="polite"
+					>
+						{condenseAnnouncement}
+					</output>
+					<div
+						data-lo-transcript-content
+						/*
+						 * `mb-auto` IS THE TOP ANCHOR, and it is a mechanism rather than a nudge.
+						 *
+						 * The scroller above is `flex-col-reverse` (its paging hook, its
+						 * `overflow-anchor` pinning and its top-fade mask are all written against
+						 * that origin), so this column is packed to the main-axis start, which is
+						 * the BOTTOM: short content hugs the composer, and always has. In a
+						 * reversed column the column's physical bottom is the main-start side, so
+						 * an auto margin there absorbs positive free space and pushes the column
+						 * to the top of the scroller - while a column that overflows has no
+						 * positive free space at all, the auto margin resolves to zero, and the
+						 * layout is byte-identical to the bottom-packed one. That "only while it
+						 * fits" behaviour is why this is the design rather than a
+						 * `scrollable`-conditioned `justify-end`, which would need a threshold to
+						 * tune and could oscillate around the fill point.
+						 *
+						 * The empty state is untouched by it: a collapsed pane is `h-0` (see
+						 * `collapsed` above), so there is no free space for a margin to absorb
+						 * and the centred splash is unaffected. And a transcript shorter than the
+						 * pane never scrolls, so the mask stays inert (the ramp note in
+						 * `styles/index.css`).
+						 */
+						className={cn("mb-auto flex flex-col", CHAT_MEASURE)}
+					>
+						{/* The state this element exists for: the frame BEFORE the conversation's
 				    first page, when there is nothing of it to paint yet - either because
 				    the pane holds no records at all, or because every record it holds is
 				    this window's cached memory of the conversation and the page that would
@@ -2518,10 +3277,10 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				    Rendered inside the content column so it lands at the same inset and the
 				    same bottom anchor the rows will, rather than at the pane's centre in
 				    the composer band. */}
-					{holdPlaceholder && (
-						<TranscriptPlaceholder isSmallView={isSmallView} />
-					)}
-					{/* Older rows: durable pages, then the local window. One fixed-height
+						{holdPlaceholder && (
+							<TranscriptPlaceholder isSmallView={isSmallView} />
+						)}
+						{/* Older rows: durable pages, then the local window. One fixed-height
 				    slot for every state of both, so a state change above the oldest
 				    row can never shift the conversation under the reader.
 				
@@ -2534,335 +3293,322 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				    at that moment. Keeping it mounted is what makes the end of
 				    history a statement instead of an absence, and costs nothing: the
 				    slot is one fixed-height row either way. */}
-					{/* NOT while the paint is cached: a cache entry carries no paging
+						{/* NOT while the paint is cached: a cache entry carries no paging
 				    cursor (its rows are trimmed), which the slot reads as `exhausted`
 				    and says "Start of conversation" over a transcript that may be a
 				    thousand messages in. Measured on a captured frame, not inferred.
 				    The caption above already says the view is not authoritative. */}
-					{transcript.records.length > 0 && !stale && !missing && (
-						<OlderHistorySlot
-							state={slotState}
-							hiddenRows={hidden}
-							// A retry cannot succeed while the transport is down, and the
-							// transcript's own notice below already explains why. The slot
-							// drops its gesture hint rather than stacking a second claim on
-							// top of that one.
-							transportDown={status !== "live"}
-							onLoadOlder={requestOlder}
-						/>
-					)}
+						{transcript.records.length > 0 && !stale && !missing && (
+							<OlderHistorySlot
+								state={slotState}
+								hiddenRows={hidden}
+								// A retry cannot succeed while the transport is down, and the
+								// transcript's own notice below already explains why. The slot
+								// drops its gesture hint rather than stacking a second claim on
+								// top of that one.
+								transportDown={status !== "live"}
+								onLoadOlder={requestOlder}
+							/>
+						)}
 
-					{/*
-					 * THE STALE CAPTION IS NOT PAINTED IN HERE ANY MORE (design round 2,
-					 * D10). It is hoisted above the scroller — see the `stale` paragraph near
-					 * the top of this component — and the second, legacy copy that used to sit
-					 * at this spot rendered the SAME sentence twice on every short pane: once
-					 * pinned to the pane's top edge, once immediately above the first bubble.
-					 * A long transcript hid it above the fold, which is why only the ordinary
-					 * and narrow fixtures showed the duplication while the overflowing one
-					 * passed.
-					 *
-					 * This surface's contract is ONE caption for one status, and a status the
-					 * reader has already read is not improved by being repeated, so the
-					 * in-scroll copy is the one that goes. The hoisted one is kept because it
-					 * survives not scrolled to the top, which was the original D1 defect.
-					 *
-					 * The loading skeleton is not rendered here either: it is
-					 * `TranscriptPlaceholder`, inside the content column above, because the
-					 * pane's own decision module (`transcript-pane.ts`) is the single
-					 * authority for when a row-less pane holds a placeholder — and because the
-					 * ground the old inline bars used (`sunken`, the weakest adjacent step in
-					 * most palettes) was measured against the pane's `canvas` and replaced
-					 * with `elevated` there.
-					 */}
-					{missing ? (
-						/*
-						 * The named state for a conversation this machine does not have,
-						 * and its way out. It replaces the whole status block rather than
-						 * sitting beside it: the failure notice and `Reconnecting` both
-						 * describe a TRANSPORT that may recover, and this is not that.
+						{/*
+						 * THE STALE CAPTION IS NOT PAINTED IN HERE ANY MORE (design round 2,
+						 * D10). It is hoisted above the scroller — see the `stale` paragraph near
+						 * the top of this component — and the second, legacy copy that used to sit
+						 * at this spot rendered the SAME sentence twice on every short pane: once
+						 * pinned to the pane's top edge, once immediately above the first bubble.
+						 * A long transcript hid it above the fold, which is why only the ordinary
+						 * and narrow fixtures showed the duplication while the overflowing one
+						 * passed.
 						 *
-						 * The action clears the selection, which lands the reader on the
-						 * catalogue's own empty state — the only thing that can be done
-						 * about a conversation that no longer exists. It is NOT a retry:
-						 * retrying asks a question whose answer is about the session.
-						 */
-						<div className="mb-4 flex flex-col gap-2">
-							{/*
-							 * `id` is what the refused composer points its `aria-describedby` at
-							 * (UX round 1, U3): this sentence is the pane's statement of WHY the box
-							 * takes nothing, and it is the only one that survives the box being
-							 * non-empty. The name lives in `../missing-session-notice` so the two
-							 * components cannot spell it differently.
-							 */}
-							<p
-								id={MISSING_SESSION_NOTICE_ID}
-								className="text-body-sm text-ink"
-							>
-								This conversation is no longer on this machine.
-							</p>
-							<p className="text-ink-dim text-meta">
-								It was deleted, or it belongs to a machine this app is not
-								connected to.
-							</p>
-							<Button
-								variant="outline"
-								size="sm"
-								className="self-start"
-								onClick={() => {
-									// Read at click time rather than subscribed: this component
-									// must not re-render every time the catalogue does.
-									useCanonicalSessionsStore.getState().setActiveSession(null);
-								}}
-							>
-								Start a new chat
-							</Button>
-						</div>
-					) : null}
-
-					{status === "unavailable" && failure && (
-						/*
-						 * One sentence and the one action that helps.
+						 * This surface's contract is ONE caption for one status, and a status the
+						 * reader has already read is not improved by being repeated, so the
+						 * in-scroll copy is the one that goes. The hoisted one is kept because it
+						 * survives not scrolled to the top, which was the original D1 defect.
 						 *
-						 * The sentence is the PRODUCT's, not the transport's:
-						 * `failure.statement` is translated from the relay's machine detail by
-						 * `shared/desktop-stream-notice.ts`, so the packaged app and the
-						 * browser harness paint the same words for the same failure - which is
-						 * what was broken when the frame showed "The event stream ended." and
-						 * the shipped relay said "The event stream was refused (401)."
-						 * (design round 1, D1).
-						 *
-						 * It sits at the reading register the contract gives something the
-						 * reader must act on (D2): `text-meta` is the caption step, and this
-						 * was the bottom 4% of a 648px void. The block is edge-aligned with the
-						 * composer by sharing the column container above, and its bottom
-						 * margin is small so the notice reads as attached to the composer
-						 * rather than floating in the pane.
-						 *
-						 * The control is named for what it DOES (D4): the shell carries a
-						 * legacy banner whose "Retry" re-probes a different API, and two
-						 * controls with one accessible name and two actions reached a keyboard
-						 * user together. `action === null` means reconnecting cannot help, so
-						 * no control is painted rather than one that cannot work (Q-2).
-						 */
-						<div
-							data-lo-session-failure
-							className="mb-1 flex flex-wrap items-center gap-3"
-						>
-							<p className="text-body-sm text-danger">{failure.statement}</p>
-							{failure.action === "reconnect" && (
-								<Button variant="outline" size="sm" onClick={onReconnect}>
-									Reconnect
+						 * The loading skeleton is not rendered here either: it is
+						 * `TranscriptPlaceholder`, inside the content column above, because the
+						 * pane's own decision module (`transcript-pane.ts`) is the single
+						 * authority for when a row-less pane holds a placeholder — and because the
+						 * ground the old inline bars used (`sunken`, the weakest adjacent step in
+						 * most palettes) was measured against the pane's `canvas` and replaced
+						 * with `elevated` there.
+						 */}
+						{missing ? (
+							/*
+							 * The named state for a conversation this machine does not have,
+							 * and its way out. It replaces the whole status block rather than
+							 * sitting beside it: the failure notice and `Reconnecting` both
+							 * describe a TRANSPORT that may recover, and this is not that.
+							 *
+							 * The action clears the selection, which lands the reader on the
+							 * catalogue's own empty state — the only thing that can be done
+							 * about a conversation that no longer exists. It is NOT a retry:
+							 * retrying asks a question whose answer is about the session.
+							 */
+							<div className="mb-4 flex flex-col gap-2">
+								{/*
+								 * `id` is what the refused composer points its `aria-describedby` at
+								 * (UX round 1, U3): this sentence is the pane's statement of WHY the box
+								 * takes nothing, and it is the only one that survives the box being
+								 * non-empty. The name lives in `../missing-session-notice` so the two
+								 * components cannot spell it differently.
+								 */}
+								<p
+									id={MISSING_SESSION_NOTICE_ID}
+									className="text-body-sm text-ink"
+								>
+									This conversation is no longer on this machine.
+								</p>
+								<p className="text-ink-dim text-meta">
+									It was deleted, or it belongs to a machine this app is not
+									connected to.
+								</p>
+								<Button
+									variant="outline"
+									size="sm"
+									className="self-start"
+									onClick={() => {
+										// Read at click time rather than subscribed: this component
+										// must not re-render every time the catalogue does.
+										useCanonicalSessionsStore.getState().setActiveSession(null);
+									}}
+								>
+									Start a new chat
 								</Button>
-							)}
-						</div>
-					)}
-					{status === "reconnecting" && (
-						// Reading register, not the caption step: during the retry window
-						// this is the pane's only statement, and it has to be perceivable
-						// (design round 1, D3).
-						<p className="mb-4 text-body-sm text-ink-dim">Reconnecting</p>
-					)}
+							</div>
+						) : null}
 
-					{/* Rows are suppressed for a conversation that is not there: the pane
+						{status === "unavailable" && failure && (
+							/*
+							 * One sentence and the one action that helps.
+							 *
+							 * The sentence is the PRODUCT's, not the transport's:
+							 * `failure.statement` is translated from the relay's machine detail by
+							 * `shared/desktop-stream-notice.ts`, so the packaged app and the
+							 * browser harness paint the same words for the same failure - which is
+							 * what was broken when the frame showed "The event stream ended." and
+							 * the shipped relay said "The event stream was refused (401)."
+							 * (design round 1, D1).
+							 *
+							 * It sits at the reading register the contract gives something the
+							 * reader must act on (D2): `text-meta` is the caption step, and this
+							 * was the bottom 4% of a 648px void. The block is edge-aligned with the
+							 * composer by sharing the column container above, and its bottom
+							 * margin is small so the notice reads as attached to the composer
+							 * rather than floating in the pane.
+							 *
+							 * The control is named for what it DOES (D4): the shell carries a
+							 * legacy banner whose "Retry" re-probes a different API, and two
+							 * controls with one accessible name and two actions reached a keyboard
+							 * user together. `action === null` means reconnecting cannot help, so
+							 * no control is painted rather than one that cannot work (Q-2).
+							 */
+							<div
+								data-lo-session-failure
+								className="mb-1 flex flex-wrap items-center gap-3"
+							>
+								<p className="text-body-sm text-danger">{failure.statement}</p>
+								{failure.action === "reconnect" && (
+									<Button variant="outline" size="sm" onClick={onReconnect}>
+										Reconnect
+									</Button>
+								)}
+							</div>
+						)}
+						{status === "reconnecting" && (
+							// Reading register, not the caption step: during the retry window
+							// this is the pane's only statement, and it has to be perceivable
+							// (design round 1, D3).
+							<p className="mb-4 text-body-sm text-ink-dim">Reconnecting</p>
+						)}
+
+						{/* Rows are suppressed for a conversation that is not there: the pane
 				    must not paint its last memory of a session the backend says is
 				    gone, because nothing on screen could then be trusted and there is
 				    no state to reconcile to - and for one that is still ARRIVING: a
 				    `holdPlaceholder` pane has the cached paint in state and nothing of
 				    it on screen, so the page that ends the hold brings the rows and the
 				    readings in ONE commit instead of correcting a painted guess. */}
-					{!missing && !holdPlaceholder && (
-						/*
-						 * THE PANE THIS CONVERSATION'S LINKS OPEN INTO, provided once for the
-						 * whole row list rather than threaded through the rows: the anchor that
-						 * a press lands on is inside `MarkdownRenderer` (which every markdown
-						 * surface in the app renders and which has no pane of its own) and the
-						 * toolbar that offers the same open is a sibling of it, so a prop would
-						 * have to reach both from here anyway. `conversationId` is exactly the
-						 * canvas store's key for this pane, and it is the SAME value the rows
-						 * already receive for their quotes and the canvas dock below is given as
-						 * its `conversationId` - one identity, one source.
+						{!missing && !holdPlaceholder && (
+							/*
+							 * THE PANE THIS CONVERSATION'S LINKS OPEN INTO, provided once for the
+							 * whole row list rather than threaded through the rows: the anchor that
+							 * a press lands on is inside `MarkdownRenderer` (which every markdown
+							 * surface in the app renders and which has no pane of its own) and the
+							 * toolbar that offers the same open is a sibling of it, so a prop would
+							 * have to reach both from here anyway. `conversationId` is exactly the
+							 * canvas store's key for this pane, and it is the SAME value the rows
+							 * already receive for their quotes and the canvas dock below is given as
+							 * its `conversationId` - one identity, one source.
+							 *
+							 * Absent (stories, the run panel's child reader) the provider still
+							 * mounts and answers `null`, so those surfaces keep the OS hand-off
+							 * they had and nothing about their tree changes shape.
+							 */
+							<CanvasPaneProvider conversationId={conversationId}>
+								{/*
+								 * THE ROWS, WITH §E2's AGGREGATION TIER APPLIED.
+								 *
+								 * `foldRuns` decides which consecutive actions become one summary
+								 * line, and it never reorders them: the fold is keyed by its FIRST
+								 * row, so it cannot claim a place ahead of the action that opens it,
+								 * and the rows inside it are the same `TranscriptRow`s with the same
+								 * ids in the same DOM - which is what keeps every `data-record-id`
+								 * lookup (the failure jump among them) working the same whether a
+								 * run happens to be folded or not.
+								 *
+								 * ONE THING THE FOLD NEEDS FROM MAIN THAT THE ROWS DO NOT CARRY THEMSELVES:
+								 * `labelPending` is a Set on this component and a BOOLEAN on the row,
+								 * resolved here for #490's reason (see `TranscriptRow`'s props). The
+								 * fold onto `origin/main` that brought #490 under this redesign removed
+								 * the `visible.map` this replaced, so the resolution is re-expressed at
+								 * the two call sites rather than kept as main's single one - and the
+								 * SAME treatment applies to #520's `labelHoldLate`/`labelMarked` pair:
+								 * the Set resolves against the row's own `toolCallId` at each call site,
+								 * so a held or mark-ended row states its column inside a fold exactly
+								 * as it would standing alone.
+								 */}
+								{chatEntries.map((entry) =>
+									entry.kind === "bar" ? (
+										<TurnSummary
+											/*
+											 * Prefixed: the run's key is a ROW ID (`runsOf`: the closing
+											 * answer's, else the run's last row's), and both candidates
+											 * render as their own groups elsewhere in the same list — an
+											 * unprefixed key collided with one of them (two children, one
+											 * key) and React silently dropped one of the pair. The prefix
+											 * also states which collided: the replaced slot is not the bar.
+											 */
+											key={`turn-summary:${entry.plan.key}`}
+											recordIds={entry.plan.recordIds}
+											/*
+											 * The bar stands where the FIRST hidden row stood, so it
+											 * carries that row's identity: a lookup for the row finds the
+											 * bar that replaced its slot.
+											 */
+											anchorRecordId={entry.plan.hidden[0].record.id}
+											className={GAP[entry.plan.gap][isSmallView ? 1 : 0]}
+											durationS={entry.plan.facts.durationS}
+											actionCount={entry.plan.facts.actions}
+											title={entry.plan.facts.title}
+											stampTs={entry.plan.stampTs}
+											open={openRuns.has(entry.plan.key)}
+											onOpenChange={(next) => setRunOpen(entry.plan.key, next)}
+										>
+											{entry.children.map((child, index) =>
+												/*
+												 * The first hidden group drops to the trace tier, the way
+												 * `TraceFold` demotes its first row: the bar replaces the
+												 * group's slot, so the group cannot also keep the turn-tier
+												 * margin it earned as the turn's opener (D2). Every other
+												 * group keeps the gap the unfolded list gave it.
+												 */
+												renderGroup(
+													index === 0 ? atTraceTierGroup(child) : child,
+													true,
+												),
+											)}
+										</TurnSummary>
+									) : (
+										renderGroup(entry.group, entry.suppressClosingLine)
+									),
+								)}
+							</CanvasPaneProvider>
+						)}
+
+						{/*
+						 * THE FOOT SLOT IS RESERVED, NOT TOGGLED (operator report, 2026-09-27).
 						 *
-						 * Absent (stories, the run panel's child reader) the provider still
-						 * mounts and answers `null`, so those surfaces keep the OS hand-off
-						 * they had and nothing about their tree changes shape.
-						 */
-						<CanvasPaneProvider conversationId={conversationId}>
-							{/*
-							 * THE ROWS, WITH §E2's AGGREGATION TIER APPLIED.
-							 *
-							 * `foldRuns` decides which consecutive actions become one summary
-							 * line, and it never reorders them: the fold is keyed by its FIRST
-							 * row, so it cannot claim a place ahead of the action that opens it,
-							 * and the rows inside it are the same `TranscriptRow`s with the same
-							 * ids in the same DOM - which is what keeps every `data-record-id`
-							 * lookup (the failure jump among them) working the same whether a
-							 * run happens to be folded or not.
-							 *
-							 * ONE THING THE FOLD NEEDS FROM MAIN THAT THE ROWS DO NOT CARRY THEMSELVES:
-							 * `labelPending` is a Set on this component and a BOOLEAN on the row,
-							 * resolved here for #490's reason (see `TranscriptRow`'s props). The
-							 * fold onto `origin/main` that brought #490 under this redesign removed
-							 * the `visible.map` this replaced, so the resolution is re-expressed at
-							 * the two call sites rather than kept as main's single one - and the
-							 * SAME treatment applies to #520's `labelHoldLate`/`labelMarked` pair:
-							 * the Set resolves against the row's own `toolCallId` at each call site,
-							 * so a held or mark-ended row states its column inside a fold exactly
-							 * as it would standing alone.
-							 */}
-							{rowGroups.map((group) =>
-								group.kind === "run" ? (
-									<TraceFold
-										key={group.id}
-										/*
-										 * The fold carries its first row's gap (a turn's 32px when
-										 * the run opens the turn), and every row inside it sits at
-										 * the trace tier - the fold holds the WHOLE run, D8.
-										 */
-										className={GAP[group.gap][isSmallView ? 1 : 0]}
-										recordIds={group.rows.map((row) => row.record.id)}
-										summary={group.summary}
-										actionCount={group.rows.length}
-										failedCount={group.failedCount}
-										span={group.span}
-										live={group.live}
-										/*
-										 * THE READER'S OPEN STATE, held by the conversation rather than
-										 * by the fold (operator report, 2026-09-27): the fold's React key
-										 * is its first row, and the render window's leading edge walks
-										 * through a run as rows arrive, which remounts the fold - state
-										 * kept on the instance cannot survive that, and the fold
-										 * re-collapsed under the reader. The registry answers for the
-										 * fold's CURRENT id set and migrates with it.
-										 */
-										open={foldOpenOf(
-											foldOpen.entries,
-											group.rows.map((row) => row.record.id),
-										)}
-										onOpenChange={(next) =>
-											setFoldOpenFor(
-												group.rows.map((row) => row.record.id),
-												next,
-											)
-										}
-									>
-										{group.rows.map((row, index) => (
-											<TranscriptRow
-												key={row.record.id}
-												row={index === 0 ? atTraceTier(row) : row}
-												isSmallView={isSmallView}
-												scope={mediaScope}
-												conversationId={conversationId}
-												labelPending={
-													row.record.kind === "tool" &&
-													labelPending?.has(row.record.toolCallId) === true
-												}
-												labelHoldLate={labelHoldLate === true}
-												labelMarked={
-													row.record.kind === "tool" &&
-													labelMarked?.has(row.record.toolCallId) === true
-												}
-												foot={feet.get(row.record.id) ?? null}
-												undelivered={undelivered}
-											/>
-										))}
-									</TraceFold>
-								) : (
-									<TranscriptRow
-										key={group.row.record.id}
-										row={group.row}
-										isSmallView={isSmallView}
-										scope={mediaScope}
-										conversationId={conversationId}
-										labelPending={
-											group.row.record.kind === "tool" &&
-											labelPending?.has(group.row.record.toolCallId) === true
-										}
-										labelHoldLate={labelHoldLate === true}
-										labelMarked={
-											group.row.record.kind === "tool" &&
-											labelMarked?.has(group.row.record.toolCallId) === true
-										}
-										foot={feet.get(group.row.record.id) ?? null}
-										undelivered={undelivered}
+						 * "Sometimes the whole conversation including the leading edge shifts up
+						 * even though we're now in the scroll phase." Measured on the harness
+						 * (`scripts/scroll-shift-evidence.mjs`, a tall fixture at 1380x872):
+						 * while the transcript is anchored at the tail, this row MOUNTING moved
+						 * every settled row and the last row's bottom edge - the leading edge -
+						 * up 29.4px in one frame at the turn's start, and its unmount moved them
+						 * back down at the turn's end. The scroller is pinned at `scrollTop = 0`,
+						 * so anything that appears below the last row displaces the whole
+						 * conversation; the fix is that nothing appears: the line mounts into a
+						 * row that was already there.
+						 *
+						 * 29.4px is this row's own footprint - `GAP.item`'s 12px plus one
+						 * `text-mono-sm` line at 1.45 line-height (17.4px) - and `min-h-[1lh]`
+						 * rather than a number is what keeps the reserve glued to the thing it
+						 * reserves: the reserve is exactly one line of the line's own type, so a
+						 * change to that token moves both together. The reserved row is
+						 * otherwise empty - it paints no text when no turn is running and holds
+						 * no live region - so the idle pane is the same picture it was, one row
+						 * taller.
+						 *
+						 * This is the older-history slot's rule, one element down ("One
+						 * fixed-height slot for every state of both, so a state change above the
+						 * oldest row can never shift the conversation under the reader"), and it
+						 * is withheld on the same terms: the slot belongs to a CONVERSATION, not
+						 * to a turn, and the failure surfaces replace the rows rather than sit
+						 * above them.
+						 */}
+						{transcript.records.length > 0 && !stale && !missing && (
+							<div
+								data-lo-transcript-foot={true}
+								className={cn(
+									// On the `item` tier, not a tier of its own: the working line is
+									// the foot of the run above it and shares that run's rhythm. It
+									// takes slightly more than `trace` because it is the one row that
+									// is not a completed action, and slightly less than a turn
+									// boundary because the turn has not ended.
+									GAP.item[isSmallView ? 1 : 0],
+									"min-h-[1lh] font-mono text-mono-sm",
+								)}
+							>
+								{working && (
+									<WorkingLine
+										activity={working.activity}
+										phase={working.phase}
+										startedAt={working.startedAt}
+										clock={working.clock}
 									/>
-								),
-							)}
-						</CanvasPaneProvider>
-					)}
+								)}
+							</div>
+						)}
 
-					{/*
-					 * THE FOOT SLOT IS RESERVED, NOT TOGGLED (operator report, 2026-09-27).
-					 *
-					 * "Sometimes the whole conversation including the leading edge shifts up
-					 * even though we're now in the scroll phase." Measured on the harness
-					 * (`scripts/scroll-shift-evidence.mjs`, a tall fixture at 1380x872):
-					 * while the transcript is anchored at the tail, this row MOUNTING moved
-					 * every settled row and the last row's bottom edge - the leading edge -
-					 * up 29.4px in one frame at the turn's start, and its unmount moved them
-					 * back down at the turn's end. The scroller is pinned at `scrollTop = 0`,
-					 * so anything that appears below the last row displaces the whole
-					 * conversation; the fix is that nothing appears: the line mounts into a
-					 * row that was already there.
-					 *
-					 * 29.4px is this row's own footprint - `GAP.item`'s 12px plus one
-					 * `text-mono-sm` line at 1.45 line-height (17.4px) - and `min-h-[1lh]`
-					 * rather than a number is what keeps the reserve glued to the thing it
-					 * reserves: the reserve is exactly one line of the line's own type, so a
-					 * change to that token moves both together. The reserved row is
-					 * otherwise empty - it paints no text when no turn is running and holds
-					 * no live region - so the idle pane is the same picture it was, one row
-					 * taller.
-					 *
-					 * This is the older-history slot's rule, one element down ("One
-					 * fixed-height slot for every state of both, so a state change above the
-					 * oldest row can never shift the conversation under the reader"), and it
-					 * is withheld on the same terms: the slot belongs to a CONVERSATION, not
-					 * to a turn, and the failure surfaces replace the rows rather than sit
-					 * above them.
-					 */}
-					{transcript.records.length > 0 && !stale && !missing && (
-						<div
-							data-lo-transcript-foot={true}
-							className={cn(
-								// On the `item` tier, not a tier of its own: the working line is
-								// the foot of the run above it and shares that run's rhythm. It
-								// takes slightly more than `trace` because it is the one row that
-								// is not a completed action, and slightly less than a turn
-								// boundary because the turn has not ended.
-								GAP.item[isSmallView ? 1 : 0],
-								"min-h-[1lh] font-mono text-mono-sm",
-							)}
-						>
-							{working && (
-								<WorkingLine
-									activity={working.activity}
-									phase={working.phase}
-									startedAt={working.startedAt}
-									clock={working.clock}
-								/>
-							)}
-						</div>
-					)}
+						{/*
+						 * NO GATE HERE. The pending question used to render as this list's
+						 * last item; it is DOCKED above the composer now (chat redesign §F1,
+						 * `trace/question-dock.tsx`), because an inline card is off-screen on a
+						 * long turn and the question is the one thing the agent is blocked on.
+						 * `gate` is still read above, by the working line: a pending question
+						 * outranks the wait line, and that decision is the pane's.
+						 */}
 
-					{/*
-					 * NO GATE HERE. The pending question used to render as this list's
-					 * last item; it is DOCKED above the composer now (chat redesign §F1,
-					 * `trace/question-dock.tsx`), because an inline card is off-screen on a
-					 * long turn and the question is the one thing the agent is blocked on.
-					 * `gate` is still read above, by the working line: a pending question
-					 * outranks the wait line, and that decision is the pane's.
-					 */}
-
-					{/* No empty state here. The composer already owns it: it renders
+						{/* No empty state here. The composer already owns it: it renders
 				    "What can I help you with today?" with the suggestion grid on
 				    the same condition, so a cold conversation used to show a line
 				    saying it was empty directly above a block inviting you to
 				    start it -- two empty states for one empty state (design D6).
 				    The composer's version wins because it offers the action; this
 				    one only described the situation. */}
+					</div>
 				</div>
 			</div>
+			{/*
+			 * The in-thread search overlay (`⌘F`), mounted HERE rather than in the
+			 * scroller: it floats over the transcript and must not scroll with it,
+			 * and it must not be clipped by the scroller's own `overflow: auto` — a
+			 * sibling of the scroller inside the (now `relative`) column is both.
+			 *
+			 * It takes the scroller's own ref as its reveal root, so a hit navigates
+			 * THIS transcript: a second transcript on the same screen (the run panel's
+			 * child reader) is a different mount with a different ref, and it renders
+			 * no overlay of its own — `sessionId` is null on a draft, so the chord
+			 * has nothing to search and the panel is absent rather than empty.
+			 */}
+			{sessionId !== null && (
+				<ThreadSearchOverlay
+					sessionId={sessionId}
+					containerRef={containerRef}
+					onReveal={jumpToSearchHit}
+				/>
+			)}
 		</div>
 	);
 };

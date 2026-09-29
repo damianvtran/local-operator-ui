@@ -561,6 +561,7 @@ export const RunPanel = ({
 	const subagentsSectionRef = useRef<HTMLElement | null>(null);
 	const jobsSectionRef = useRef<HTMLElement | null>(null);
 	const wakesSectionRef = useRef<HTMLElement | null>(null);
+	const monitorsSectionRef = useRef<HTMLElement | null>(null);
 
 	useEffect(() => {
 		if (!revealRequest) return;
@@ -592,6 +593,7 @@ export const RunPanel = ({
 			subagents: subagentsSectionRef,
 			jobs: jobsSectionRef,
 			wakes: wakesSectionRef,
+			monitors: monitorsSectionRef,
 		};
 		const target = sectionRefs[revealRequest.section].current;
 		const region = bodyRef.current;
@@ -683,14 +685,16 @@ export const RunPanel = ({
 			aria-label="Run details"
 			tabIndex={-1}
 			/*
-			 * THE SLOT'S GROUND IS THE PAGE'S, and the canvas states the rule
-			 * (`canvas/index.tsx`): the right-pane slot is part of the work plane, not a
-			 * panel ground, so it contrasts with the sidebar's `surface` by the ladder's
-			 * own `surface` -> `canvas` step and is continuous with the 32px chrome lane
-			 * `chat-layout.tsx` paints above it. It was `surface`, which made this pane
-			 * and the sidebar the same tone on all 59 palettes.
+			 * THE SLOT'S GROUND IS THE DRAWER'S RUNG, and the canvas states the rule
+			 * (`canvas/index.tsx`): the right-pane slot is a drawer over the work plane,
+			 * so it stands on `elevated` — one rung above the chrome — rather than on
+			 * the conversation's `canvas`, which made this pane's body and the
+			 * transcript one plane. The reasoning, the two refused alternatives and the
+			 * measured separations are argued once there; the lane's stop above this
+			 * slot moves with it (`chat-layout.tsx`), because a pane-only change leaves
+			 * this tone meeting the lane at y32.
 			 */
-			className={cn("flex h-full flex-col bg-canvas")}
+			className={cn("flex h-full flex-col bg-elevated")}
 		>
 			{/*
 			 * NO GROUND OF ITS OWN. It was `bg-sunken`, which made this pane's icon row a
@@ -1059,6 +1063,7 @@ export const RunPanel = ({
 						subagentsSectionRef={subagentsSectionRef}
 						jobsSectionRef={jobsSectionRef}
 						wakesSectionRef={wakesSectionRef}
+						monitorsSectionRef={monitorsSectionRef}
 					/>
 				</div>
 			)}

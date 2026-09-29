@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { unlink, writeFile } from "node:fs/promises";
 import { after, test } from "node:test";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import { createElement as h } from "react";
@@ -96,6 +97,17 @@ after(() => {
 	}
 });
 
+/*
+ * The transcript reads its cross-session visibility through react-query
+ * (`useCrossSessionHidden`), so the mount needs a client in scope - unseeded is
+ * the fail-closed path, which is the pane this suite's states photograph
+ * (nothing hidden). `@tanstack/react-query` is external to the bundle so the
+ * hook inside it and the provider below share ONE copy.
+ */
+const queryClient = new QueryClient({
+	defaultOptions: { queries: { retry: false } },
+});
+
 const bundle = await build({
 	stdin: {
 		contents:
@@ -123,7 +135,13 @@ const bundle = await build({
 		".png": "dataurl",
 		".webp": "dataurl",
 	},
-	external: ["react", "react-dom", "react-dom/client", "react/jsx-runtime"],
+	external: [
+		"react",
+		"react-dom",
+		"react-dom/client",
+		"react/jsx-runtime",
+		"@tanstack/react-query",
+	],
 });
 const bundlePath = new URL(`./_foot-slot-${process.pid}.mjs`, import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
@@ -196,19 +214,23 @@ const mount = (records, over = {}) => {
 	const root = createRoot(container);
 	act(() => {
 		root.render(
-			h(CanonicalTranscript, {
-				transcript: transcriptOf(records),
-				gate: null,
-				waiting: over.waiting ?? false,
-				loadingOlder: false,
-				onLoadOlder: async () => true,
-				containerRef: { current: container },
-				isSmallView: false,
-				status: "live",
-				failure: null,
-				awaitingHydration: false,
-				onReconnect: () => {},
-			}),
+			h(
+				QueryClientProvider,
+				{ client: queryClient },
+				h(CanonicalTranscript, {
+					transcript: transcriptOf(records),
+					gate: null,
+					waiting: over.waiting ?? false,
+					loadingOlder: false,
+					onLoadOlder: async () => true,
+					containerRef: { current: container },
+					isSmallView: false,
+					status: "live",
+					failure: null,
+					awaitingHydration: false,
+					onReconnect: () => {},
+				}),
+			),
 		);
 	});
 	return {

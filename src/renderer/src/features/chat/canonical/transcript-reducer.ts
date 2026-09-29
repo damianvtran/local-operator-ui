@@ -144,6 +144,24 @@ export type TranscriptRecord =
 			/** Still receiving deltas; the view shows the text without a cursor. */
 			streaming: boolean;
 			/**
+			 * Viewer-clock ms when this record SETTLED, or absent while it streams.
+			 *
+			 * WHY THE LIVE ROW NEEDS IT: `ts` on a live assistant record is its stream
+			 * START (`message_start`'s frame-arrival clock, kept through
+			 * `message_end`), so a wall-clock span built from `ts` would read short by
+			 * the answer's whole streaming time and then jump when the reconcile
+			 * replaces the row with its durable twin, whose `ts` IS the commit
+			 * instant. Stamping the settle moment closes that skew: a live span and
+			 * the same span after a reload agree by construction (the runtime is
+			 * local, one clock — the same assumption `compactingSince` documents).
+			 *
+			 * NOT set on durable rows, deliberately: a page cannot restamp a
+			 * completion it did not witness, and a durable `ts` already means
+			 * "commit = completion". Viewer-transient like `ts` is: superseded by the
+			 * durable row with the same id exactly as `ts` is.
+			 */
+			settledAt?: number;
+			/**
 			 * What this row's text is NOT, when this viewer cannot hold the whole
 			 * message. Absent means the row is the answer.
 			 *
@@ -257,6 +275,25 @@ export type TranscriptRecord =
 			 * content of the fact and names what stopped it.
 			 */
 			notRunReason: string | null;
+			/**
+			 * The FAULT_* class of that verdict (`not_run_kind`), or `null`.
+			 *
+			 * The vocabulary is the harness's own (`harness/types.py`'s FAULT_* set,
+			 * produced by `loop.py`): `unknown_tool | invalid_arguments | duplicate_id |
+			 * denied | gate_failed | skipped | aborted`. `null` is the no-verdict case
+			 * every producer before the field, and every frame that is not the terminal
+			 * never-run one, keeps - and every consumer reads it as today's behaviour.
+			 *
+			 * The class is what tells an INTERRUPT from a failure, and it is read here
+			 * rather than sniffed from the reason text: `skipped` (steering redirected
+			 * before the call ran) and `aborted` (the user stopped the turn) are the same
+			 * two kinds the end events and the durable rows carry under
+			 * `details.__fault`, and both settle as `interrupted` - while the planning
+			 * faults (an unknown tool, invalid arguments, a duplicate id, a denied or
+			 * failed gate) keep the failure treatment they already have, because those
+			 * ARE failures.
+			 */
+			notRunKind: string | null;
 			/**
 			 * The call was never handed to a tool: it was parked with a verdict, or
 			 * the turn died while it was still being dictated or waiting to run.
@@ -624,6 +661,26 @@ export const EMPTY_TRANSCRIPT: TranscriptState = {
 	hasMore: false,
 	argsByCall: new Map(),
 };
+
+/**
+ * Whether a fault class names an INTERRUPT rather than a failure.
+ *
+ * The one rule both readings of the interrupted state share: the terminal
+ * never-run frame's `not_run_kind` and an end result's `details.__fault` come
+ * from one vocabulary (`harness/types.py`'s FAULT_* set), and exactly two of its
+ * values mean the call was stopped rather than broken - `skipped` (steering
+ * redirected before it ran) and `aborted` (the user stopped the turn). Keeping
+ * the pair in one exported predicate is what stops the live path, the durable
+ * path and the row's outcome ladder from ever disagreeing about which kinds they
+ * recognise; a third caller added later reads it rather than restating it.
+ *
+ * Everything else - `execution`, the model faults, the gate outcomes, and a
+ * value a future core adds - is `false`, which is today's behaviour, the safe
+ * direction for a vocabulary that may grow.
+ */
+export function isInterruptedFault(fault: unknown): boolean {
+	return fault === "skipped" || fault === "aborted";
+}
 
 /**
  * One frame's `args`, when it has any, as a plain object.
@@ -2157,14 +2214,15 @@ function durableRecord(
 		 * ink the moment the page landed (measured in the rig's own reading, and
 		 * pinned by `transcript-reducer.test.mjs`'s composed-sequence case).
 		 *
-		 * ONLY `aborted`, and only as the ladder's "no verdict" state: `denied`,
-		 * `gate_failed` and `skipped` are other fates with their own surfaces, and a
-		 * genuine `execution` fault keeps the danger ink. This is the same mapping the
-		 * live turn end already makes - "an abort is an interrupt"
-		 * (`agent_end`'s tool branch) - so a reloaded transcript and a live one
-		 * cannot describe the one call two ways.
+		 * THE TWO INTERRUPTED KINDS, and only as the ladder's "no verdict" state:
+		 * `skipped` (steering redirected before the call ran) joins `aborted` (the user
+		 * stopped the turn), because both name an interrupt rather than a failure -
+		 * the same reading the live end event takes from the same marker, so a
+		 * reloaded transcript and a live one cannot describe the one call two ways.
+		 * `denied` and `gate_failed` keep their own treatment, and a genuine
+		 * `execution` fault keeps the danger ink.
 		 */
-		const aborted = details.__fault === "aborted";
+		const interrupted = isInterruptedFault(details.__fault);
 		return {
 			kind: "tool",
 			// Tool records key by call id: the live start/end events for the same
@@ -2180,18 +2238,19 @@ function durableRecord(
 			argumentBytes: 0,
 			// A row read back from the durable transcript is a call the harness
 			// recorded a result for: whatever live verdict it may have carried, the
-			// transcript's own account of the call wins.
+			// transcript's own account of the call wins - the kind with the reason.
 			notRunReason: null,
+			notRunKind: null,
 			neverSent: false,
 			output: messageText(payload) || null,
 			/*
-			 * An aborted call did not fail, so the danger ink the raw flag would paint
+			 * An interrupted call did not fail, so the danger ink the raw flag would paint
 			 * is cleared HERE rather than at the row's paint, for the same reason the
 			 * live end event clears it: the row's `isError` is the wire's claim about
 			 * how the call ended, and the runtime has already said the end was an
-			 * abort.
+			 * interrupt.
 			 */
-			isError: aborted ? false : Boolean(payload.is_error),
+			isError: interrupted ? false : Boolean(payload.is_error),
 			durationS:
 				typeof providerPayload.duration_s === "number"
 					? providerPayload.duration_s
@@ -2228,11 +2287,13 @@ function durableRecord(
 				previous?.kind === "tool" ? previous.diff : null,
 			),
 			// A durable row is the authoritative record of how the call ended - and
-			// when the runtime's own classifier says the end was an ABORT, "ended" is
-			// not "failed": the row wears the ladder's no-verdict state the live end
-			// event gives the same call above (`aborted`'s note), so a reconcile cannot
-			// re-accuse a call the user stopped. Every other end keeps `false` here.
-			stopped: aborted,
+			// when the runtime's own classifier says the end was an INTERRUPT
+			// (`skipped`/`aborted`), "ended" is not "failed": the row wears the
+			// ladder's no-verdict state the live end event gives the same call above
+			// (`interrupted`'s note), so a reconcile cannot re-accuse a call the user
+			// stopped or a steering redirect dropped. Every other end keeps `false`
+			// here.
+			stopped: interrupted,
 		};
 	}
 	return null;
@@ -2243,6 +2304,62 @@ function durableRecord(
  * the same id; the page's own order is preserved and it is placed by
  * timestamp relative to what is already painted (older pages prepend).
  */
+/*
+ * The cursor to re-anchor to after a page came back `cursor_missing`, or null
+ * when the page needs no re-anchor.
+ *
+ * The backend's documented reconcile (`read_transcript_page`): a `before_id`
+ * the journal cannot locate — a `/compact` replaced the file under a loaded
+ * conversation — is answered with THE CURRENT TAIL plus `cursor_missing`, "so a
+ * reader can dedupe by stable ID instead of getting stuck on a stale cursor".
+ * The load path must then MOVE: the tail it received is already loaded, so a
+ * reader that keeps the stale id asks forever for a row that is gone and the
+ * affordance loads nothing, silently (operator report, 2026-09-28). The row to
+ * anchor at is the page's own OLDEST — a row this journal just served, so the
+ * next request can locate it and page genuinely below it. Null means "ask
+ * again from where you already are", and equals-anchor guards the degenerate
+ * case where re-anchoring would repeat the same request.
+ */
+export function reanchorAfterCursorMiss(
+	page: Pick<DesktopHistoryPage, "cursor_missing" | "entries">,
+	anchor: string,
+): string | null {
+	if (!page.cursor_missing || page.entries.length === 0) return null;
+	const oldest = page.entries[0]?.id;
+	if (typeof oldest !== "string" || oldest === anchor) return null;
+	return oldest;
+}
+
+/**
+ * The load-earlier request's next move, given the page it got back.
+ *
+ * ONE decision point, because the two halves of it are the two ways this can
+ * end: a `cursor_missing` answer is re-anchored ONCE (see
+ * `reanchorAfterCursorMiss`), and a page that is STILL `cursor_missing` on the
+ * retry is the honest dead end — the journal cannot serve that depth from
+ * either cursor, applying the tail would report a click that loaded nothing as
+ * success, and asking a third time would loop. `failed: true` is what drives
+ * the slot's own failed state (agent review round 1, F1: the retry's failure
+ * was unreachable — the retried page was applied and the call resolved true,
+ * so a silent no-op click survived in that corner).
+ *
+ * `alreadyRetried` is the caller's own fact rather than derivable here: the
+ * SAME miss state is a retryable answer the first time and a failure the
+ * second, and only the caller knows which request it is holding.
+ */
+export function loadOlderStep(
+	page: Pick<DesktopHistoryPage, "cursor_missing" | "entries">,
+	anchor: string,
+	alreadyRetried: boolean,
+): { cursor: string | null; failed: boolean } {
+	if (!page.cursor_missing) return { cursor: null, failed: false };
+	const reanchored = reanchorAfterCursorMiss(page, anchor);
+	if (!alreadyRetried && reanchored !== null) {
+		return { cursor: reanchored, failed: false };
+	}
+	return { cursor: null, failed: true };
+}
+
 export function applyHistoryPage(
 	state: TranscriptState,
 	page: DesktopHistoryPage,
@@ -2606,9 +2723,16 @@ export function applyEvent(
 			let next = state;
 			for (const record of state.records) {
 				if (record.kind === "assistant" && record.streaming) {
+					/*
+					 * The settle stamp rides the same sweep that clears `streaming`: a
+					 * record the turn end settles (an aborted stream is the one this arm
+					 * exists for) settles at the turn's own end instant, which is what
+					 * the span composition reads as `settledAt ?? ts`.
+					 */
 					next = upsert(next, {
 						...record,
 						streaming: false,
+						settledAt: now,
 						stopReason: event.aborted ? "aborted" : record.stopReason,
 					});
 				}
@@ -2932,12 +3056,46 @@ export function applyEvent(
 			if (message.role !== "assistant") return state;
 			const position = state.index.get(message.id);
 			const text = messageText(message);
+			/*
+			 * THE SETTLE INSTANT, kept when the row already settled: a replayed
+			 * `message_end` (a receipt replay after a reconnect, a flush from a dead
+			 * stream) must not restamp a completion — the record is replaced id-for-id,
+			 * and the instant it first settled with is the one anything built on it
+			 * already reads. A row arriving here settled for the first time stamps
+			 * `now`, the viewer clock the span composition shares.
+			 */
+			const previous =
+				position === undefined ? undefined : state.records[position];
+			/*
+			 * THE SAME COMPLETION MARK THE DURABLE READ GIVES THE SAME FACT.
+			 *
+			 * The `history` arm marks a text-bearing assistant answer `complete` and
+			 * leaves a tool-call-only turn unmarked; a live `message_end` is the very
+			 * same fact (this answer is finished) delivered by the other path, so it
+			 * carries the very same mark. It is load-bearing beyond bookkeeping:
+			 * `canonical-transcript.tsx` renders `data-completion-complete` from it,
+			 * and the read receipt's anchor gate asks for exactly that attribute
+			 * before it will acknowledge a completion (`use-completion-view.ts`).
+			 * Settling without it made a completion that arrived while its
+			 * conversation was open unacknowledgeable until some later re-read
+			 * replaced the record with a durable one - the operator-visible "cannot
+			 * be cleared until you switch away and back" (QA round 1, Q1; measured
+			 * in `docs/evidence/chat-sidebar-ack-and-selection/`).
+			 */
+			const toolCalls = Array.isArray(message.tool_calls)
+				? message.tool_calls
+				: [];
 			const settled: TranscriptRecord = {
 				kind: "assistant",
 				id: message.id,
 				ts: position === undefined ? now : state.records[position].ts,
 				text,
+				...(text || toolCalls.length === 0 ? { complete: true } : {}),
 				streaming: false,
+				settledAt:
+					previous?.kind === "assistant" && previous.settledAt !== undefined
+						? previous.settledAt
+						: now,
 				stopReason: (message.stop_reason as string | null) ?? null,
 				error: Boolean(message.is_error),
 			};
@@ -3048,6 +3206,13 @@ export function applyEvent(
 			 */
 			const reason = String(event.not_run_reason ?? "").trim();
 			const notRun = reason || null;
+			/*
+			 * The verdict's own class, which is what tells the INTERRUPTED kinds
+			 * (`skipped`, `aborted`) from the planning faults. A frame from a core that
+			 * predates the field states nothing, and a dictation frame never does - both
+			 * read as `null` and keep today's `not-run` reading on the row.
+			 */
+			const kind = String(event.not_run_kind ?? "").trim() || null;
 			// The frame's own final count, except that a zero is left alone: an
 			// earlier frame that measured nothing and a frame that carries nothing
 			// agree, and a terminal frame with an empty payload must not erase a size
@@ -3089,6 +3254,8 @@ export function applyEvent(
 				diff: null,
 				stopped: false,
 				notRunReason: notRun,
+				// The kind rides the verdict and nothing else: no verdict, no class.
+				notRunKind: notRun ? kind : null,
 				// A verdict is the harness saying the call reached no tool. A call still
 				// being dictated, or waiting to run, has not reached one yet either —
 				// which is a state rather than a settlement, and `phase` carries it.
@@ -3165,8 +3332,9 @@ export function applyEvent(
 				// A call that is running has outgrown the announcement, so any never-run
 				// verdict on the row it revives is spent (the guard above lets that row
 				// through for the two-calls-one-id case, and the twin's execution is the
-				// fact that retires the verdict).
+				// fact that retires the verdict - its kind with it).
 				notRunReason: null,
+				notRunKind: null,
 				neverSent: false,
 				argumentBytes: 0,
 				output: null,
@@ -3253,6 +3421,7 @@ export function applyEvent(
 							phase: "done" as const,
 							argumentBytes: 0,
 							notRunReason: null,
+							notRunKind: null,
 							neverSent: false,
 							output: null,
 							isError: false,
@@ -3294,6 +3463,26 @@ export function applyEvent(
 			 */
 			const claimsFailure = Boolean(event.is_error ?? result.is_error);
 			/*
+			 * THE END EVENT'S OWN FAULT CLASS. `result.details` is where the runtime's
+			 * classifier writes WHY the call ended (`harness/types.py`'s `FAULT_KEY`:
+			 * `aborted` when the user stopped the turn, `skipped` when a call was
+			 * cancelled before it reported a result, `execution` when the tool really
+			 * failed), and this is the wire's own statement - the same marker the durable
+			 * row reads, so the live and reloaded projections of one call cannot disagree.
+			 * `skipped` and `aborted` settle as INTERRUPTED: `isError` cleared, `stopped`
+			 * set, and the duration below kept because the backend measured it.
+			 *
+			 * WHY BOTH THIS AND `killedByUserStop` BELOW: the client-side stop window
+			 * covers the producers whose killing end event carries no marker, and the
+			 * rows this viewer never saw the press for; this arm covers the converse - a
+			 * viewer that never saw the press at all (a replay, a second window, a fresh
+			 * attach), where the wire fact is the only statement that the call was stopped
+			 * rather than broken.
+			 */
+			const interruptedFault = isInterruptedFault(
+				(result.details as Record<string, unknown> | undefined)?.__fault,
+			);
+			/*
 			 * WHETHER THE STOP EXPLAINS THIS END - and for every row WITHOUT a clock,
 			 * not only one born by this event (the reason is the `isError` field's own
 			 * comment below).
@@ -3314,6 +3503,7 @@ export function applyEvent(
 				// exactly this reason. Leaving it would paint `never sent · N composed`
 				// over a call's real output.
 				notRunReason: null,
+				notRunKind: null,
 				neverSent: false,
 				output: messageText(result) || null,
 				/*
@@ -3378,8 +3568,12 @@ export function applyEvent(
 				 * failure detail are untouched — the call's real error text is still one
 				 * expansion away, which is what `interrupted` says: the stop is the
 				 * verdict, not a cover-up.
+				 *
+				 * `interruptedFault` is the SECOND reading of the same question (see its own
+				 * note above) and needs no client window to have been standing - the wire's
+				 * fault marker classifies the row on its own.
 				 */
-				isError: killedByUserStop ? false : claimsFailure,
+				isError: killedByUserStop || interruptedFault ? false : claimsFailure,
 				durationS:
 					typeof event.duration_s === "number" ? event.duration_s : null,
 				/*
@@ -3431,12 +3625,14 @@ export function applyEvent(
 				// budget must not blank a body the row already showed.
 				diff: preferDiff(diffFromDetails(result.details), base.diff),
 				// It reported an end, so whatever happened it was not interrupted —
-				// UNLESS THE USER STOPPED IT (UX round 2, U7). The leading `base.stopped`
-				// keeps the backend's own `aborted` verdict on a record this upsert
+				// UNLESS THE USER STOPPED IT (UX round 2, U7), or the WIRE's own fault
+				// marker says the end was an interrupt (`interruptedFault`). The leading
+				// `base.stopped` keeps the backend's own verdict on a record this upsert
 				// REPLACES; dropping it would turn an abort into a success tick on the way
-				// through. `killedByUserStop` is the client-side half, and `isError` is
-				// cleared beside it because the row's outcome ladder reads `isError` first.
-				stopped: base.stopped || killedByUserStop,
+				// through. `killedByUserStop` is the client-side half and `interruptedFault`
+				// the wire's own; `isError` is cleared beside both because the row's
+				// outcome ladder reads `isError` first.
+				stopped: base.stopped || killedByUserStop || interruptedFault,
 			});
 		}
 		case "notice": {

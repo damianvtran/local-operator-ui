@@ -798,10 +798,12 @@ export const RunChildReader = ({
 			{briefOnScreen && <BriefBlock row={row} />}
 
 			{/*
-			 * The BODY, and the one scroll owner in this view. `bg-canvas` is the
-			 * main transcript's ground, so the child's conversation resolves against
-			 * the same plane the parent's does — the "reads like the parent
-			 * transcript" requirement is partly a GROUND requirement (§ 7).
+			 * The BODY, and the one scroll owner in this view. `elevated` is the PANE's
+			 * ground (`canvas/index.tsx`), so the child's conversation resolves against
+			 * the drawer it lives in. It was `canvas` — the main transcript's ground —
+			 * which left this pane's body on the conversation's tone under a drawer's
+			 * bar; § 7's "reads like the parent" is carried by the transcript's own
+			 * structure and marks, not by the plane it is mounted on.
 			 *
 			 * KNOWN GAP, DELIBERATELY DEFERRED (review round 1, R3 / QA Q-1): a
 			 * RUNNING child whose page is still empty — `pending`, `gone`, `loading`,
@@ -823,7 +825,7 @@ export const RunChildReader = ({
 					 * absolutely positioned child of a scroller moves with the content it is
 					 * meant to lead you back to).
 					 */
-					"relative flex min-h-0 flex-1 flex-col overflow-hidden bg-canvas",
+					"relative flex min-h-0 flex-1 flex-col overflow-hidden bg-elevated",
 				)}
 			>
 				{/*

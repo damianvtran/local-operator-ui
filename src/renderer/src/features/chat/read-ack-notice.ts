@@ -41,7 +41,7 @@ import { STORE_BUSY_CODE } from "../../../../shared/desktop-session-contract";
  * TWO CHANNELS, ONE HOME. The row's clause is the pointer's and the keyboard's
  * (the flyout, and a description the row's `aria-describedby` names), and the
  * toast is the announcement that survives the reader navigating away - the same
- * lane the bulk receipt's own failure uses one control up. Both come from THIS
+ * register the bulk receipt's own failure uses one control up. Both come from THIS
  * file so a rewording cannot land in one and miss the other; what differs between
  * them is register, and the register differs BETWEEN the two row channels too:
  * the flyout continues the status line's lowercase, comma-and-dot punctuation,
@@ -70,7 +70,7 @@ const RETRY_REMEDY_SENTENCE = "Click the chat to try again.";
  * Each names the state and, where one exists, the move that ends it:
  *
  * - `pending` — the app is retrying now (a contention budget, the ladder's flat
- *   window). The register is the bulk lane's sentence SHAPE - one lowercase clause,
+ *   window). The register is the bulk receipt's sentence SHAPE - one lowercase clause,
  *   no sentence punctuation - and the state it names is new: the bulk control's own
  *   in-flight cue is a glyph rather than a phrase (`LoaderCircle` beside an
  *   unchanged label), so this clause is the panel's first in-flight SENTENCE
@@ -180,7 +180,7 @@ const UNREACHABLE_FALLBACK = "The app could not reach the backend.";
  * review round 3, NIT 1): a fifth class is a compile error here instead of an arm
  * that silently inherits whichever sentence the default happened to hold, which is
  * the shape MAJOR 1 was an instance of. Two facts per arm, in the shape the bulk
- * receipt's own failure uses in this same lane - what happened to the write, and
+ * receipt's own failure uses in this same register - what happened to the write, and
  * what it means for the reader - plus the remedy, so a reader who never hovers the
  * row still has the move; and the noun is the app's own (`read state`, the phrase
  * the backend's ladder arm uses one surface away) rather than "the store", which

@@ -621,7 +621,7 @@ const { CHAT_MEASURE_MIN_PX, CHAT_COLUMN_INSET_PX } = (() => {
 const composer = 'textarea[aria-label="Message"]';
 
 /*
- * The app's own toast lane, and the control that dismisses it
+ * The app's own toast container, and the control that dismisses it
  * (`themed-toast-container.tsx` renders `closeButton: true`).
  */
 const TOAST_SELECTOR = "[data-sonner-toast]";

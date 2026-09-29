@@ -33,6 +33,20 @@ sidebar half by `scripts/chat-sidebar-drafts.test.mjs`. This set is the rendered
 half: the rows, the pointer's reveal, both removal gestures, the offer in the
 lane, and the relaunch.
 
+**SUPERSEDED IN PART (2026-09-27): the sidebar lane is retired.** At the
+operator's request ("instead of having a separate sidebar notification, we should
+probably just use the normal sonner toast. These don't properly show up and look
+janky"), the discard offer is an ordinary sonner toast again - the app's one
+bottom-right container, sonner's own `duration` (the same eight seconds), its own
+stable id (`DRAFTS_UNDO_TOAST_ID`, no longer shared with the archive's), and its
+Undo still restores the store snapshot and re-opens the one-key pane case (the
+staged key now lives in the store as `stagedByDiscard`). The frames BELOW are the
+lane-era record of that shape and are kept as such; the placement claims in their
+captions are superseded by the supersession entry in
+`docs/design/sidebar-row-space.md` §10 and the new frames under
+`docs/evidence/undo-toasts-lane-retired/`. The rows, the reveal and the
+relaunch halves of this set are untouched by that change.
+
 ## What produced these frames
 
 **Instrument: `scripts/renderer-driver.mjs`, `--scene drafts`** — the built app,
