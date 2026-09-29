@@ -280,6 +280,22 @@ const noticeRecord = (id, over = {}) => ({
 	...over,
 });
 
+/** The reason a turn died: an error-level custom statement, pinned below the bar. */
+const incidentRecord = (id, over = {}) => ({
+	kind: "custom",
+	id,
+	ts: TS + 8_000,
+	customType: "session_incident",
+	text: "[session incident (anthropic/claude-opus-5)] mcp: MCP server 'notion': MCP authorization failed; run /mcp reauth notion",
+	level: "error",
+	category: "mcp",
+	headline:
+		"MCP server 'notion': MCP authorization failed; run /mcp reauth notion",
+	detail: null,
+	provider: "anthropic/claude-opus-5",
+	...over,
+});
+
 const transcriptOf = (records) => ({
 	records,
 	index: new Map(records.map((record, position) => [record.id, position])),
@@ -986,8 +1002,22 @@ test("the row under the bar takes the block step, and the chevron reaches the ru
 	const chevron = barTrigger(mounted)?.querySelector("svg")?.closest("span");
 	assert.ok(chevron, "the bar's chevron slot exists");
 	assert.ok(
-		chevron.classList.contains("-mr-4"),
-		"the chevron slot reclaims the trigger's 16px right shortfall, landing the row's right edge on the rule's end",
+		chevron.classList.contains("-mr-6"),
+		"the chevron slot's 24px pull lands the glyph's leading edge on the rule's endpoint (the alignment datum)",
+	);
+	/*
+	 * The rule's own two sides (second round): the bar block carries 16px of air
+	 * above the rule (`pb-4`), so the space is the layout's rather than the
+	 * label's line-box leading; the row below keeps the item step the walk
+	 * re-tiers it to. jsdom has no layout engine - the pair the frames show is
+	 * 21px of ink above against 21px below (the ink-balancing number the
+	 * rendered scans picked over the boxes' 16 against 12).
+	 */
+	const summary = bar(mounted);
+	assert.ok(
+		summary.classList.contains("border-b") &&
+			summary.className.includes("pb-4"),
+		"the bar block carries its own 16px of air above the rule",
 	);
 });
 
@@ -1214,4 +1244,46 @@ test("settings enabled but WITHOUT the key hide nothing: the absent-key fallback
 	await click(barTrigger(mounted));
 	assert.ok(rowBox(mounted, "peer:1"), "the receipt mounts with the run");
 	assert.ok(rowBox(mounted, "tool:2"), "the send row mounts with the run");
+});
+
+test("the incident row under the bar takes the block step too (operator report, 2026-09-29, second round)", async (t) => {
+	/*
+	 * THE REPORTED STATE: "the 'session incident: …' row beneath sits too tight
+	 * to the line - the below-line gap fix must cover the incident-row class
+	 * (like the compaction row)". The first round's re-tier marked only the
+	 * FIRST group after a bar, so an incident behind the memory statement kept
+	 * the trace tier its original neighbour gave it and hugged the statement by
+	 * 2px (measured: `mt-0.5` against the compaction's `mt-3`). The walk now
+	 * re-tiers every group a bar leaves visible.
+	 *
+	 * jsdom has no layout engine, so this pins the mechanism per class - the
+	 * pixels are the frames' claim
+	 * (`docs/evidence/chat-turn-collapse/pinned-incident/`, and the pair in
+	 * `docs/evidence/condensed-bar-spacing/`).
+	 */
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1"),
+		compactionRecord("compaction:1"),
+		toolRecord("tool:2"),
+		incidentRecord("incident:1"),
+	]);
+	assert.ok(bar(mounted), "the run collapsed");
+	const statement = rowBox(mounted, "compaction:1");
+	assert.ok(statement, "the memory statement is pinned below the bar");
+	assert.ok(
+		statement.classList.contains(GAP.item[0]),
+		`the memory statement renders at the item tier (${GAP.item[0]})`,
+	);
+	const incident = rowBox(mounted, "incident:1");
+	assert.ok(incident, "the incident reason is pinned below the bar");
+	assert.ok(
+		incident.classList.contains(GAP.item[0]),
+		`the incident behind the statement takes the same block step (${GAP.item[0]}), not the trace tier its neighbour gave it`,
+	);
+	assert.ok(
+		!incident.classList.contains(GAP.trace[0]),
+		"the 2px ledger hug is not painted on the incident row beneath the rule",
+	);
 });

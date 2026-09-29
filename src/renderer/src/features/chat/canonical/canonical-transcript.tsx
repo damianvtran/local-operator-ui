@@ -2893,12 +2893,19 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			const hiddenIds = new Set(plan.hidden.map((row) => row.record.id));
 			const children: SectionGroup[] = [];
 			/*
-			 * THE ROW DIRECTLY BELOW THE BAR (operator report, 2026-09-29). A pinned
+			 * THE BLOCK BELOW THE BAR (operator reports, 2026-09-29). A pinned
 			 * statement's gap was BUILT against its original neighbour - often a
 			 * tool row that has collapsed into the bar - so it arrives at the trace
-			 * tier and the collapse would leave it 2px under the rule, which the
-			 * operator read as the row hugging it. The walk marks the first group
-			 * that follows the bar; the render pass re-tiers it (`atItemTierGroup`).
+			 * tier and the collapse leaves it 2px under the rule, which the
+			 * operator read as the row hugging it. The SECOND report extended the
+			 * class: an incident row behind the memory statement hugged THAT row
+			 * by the same 2px, because only the first group was re-tiered. Every
+			 * group the bar leaves visible takes the re-tier (`atItemTierGroup`),
+			 * so the statements under the rule sit at the block step, not the
+			 * ledger's hairline: the bar is a boundary, and the rows it leaves out
+			 * read as statements of their own. Groups built at a wider tier (prose,
+			 * the closing answer) are handed back unchanged by the memoised
+			 * helper - the re-tier only ever fires on the trace tier.
 			 */
 			let afterBar = false;
 			for (const group of groups) {
@@ -2918,6 +2925,10 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				/*
 				 * Everything visible in a bar'd run renders with its closing line
 				 * withheld: the bar IS the turn's summary and the turn's stamp (F5).
+				 *
+				 * `afterBar` is deliberately NOT reset: see the comment above -
+				 * every visible group of a bar'd run, not only the first, is the
+				 * block below the bar.
 				 */
 				entries.push({
 					kind: "group",
@@ -2925,7 +2936,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					suppressClosingLine: true,
 					afterBar,
 				});
-				afterBar = false;
 			}
 		}
 		return entries;

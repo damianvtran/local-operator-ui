@@ -118,8 +118,22 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 			 * block's own bottom so it mounts and moves with the collapse — decorative,
 			 * never a hover surface, no animation, and none of the bar's numbers, stamp
 			 * or chevron change.
+			 *
+			 * THE RULE'S TWO SIDES ARE A DELIBERATE PAIR (operator report, 2026-09-29,
+			 * second round: "needs proper breathing room on both sides, not just the
+			 * row's internal padding"). `pb-4` is the bar block's own 16px of air below
+			 * its row — before it, the space above the rule was nothing but the 12px
+			 * label's line-box leading, so it read as the row's internal padding rather
+			 * than as a gap the layout chose. The value is the one that BALANCES the
+			 * pair as PIXELS rather than as boxes: measured on the rendered frames
+			 * (both palettes, 1280 column), the ink gap above the rule was 5px and the
+			 * row below sits 21px of ink under it (the item step's 12px box plus that
+			 * row's own leading) — 16px of padding lands the ink gap at 21 against 21,
+			 * so the rule reads level between the two registers it divides. The below
+			 * side is the walk's re-tier: every visible group after a bar takes the
+			 * item step (`canonical-transcript.tsx`).
 			 */
-			className={cn("border-b border-hairline", className)}
+			className={cn("border-b border-hairline pb-4", className)}
 			data-turn-summary=""
 			data-run-ids={recordIds.join(" ")}
 			data-record-id={anchorRecordId}
@@ -150,20 +164,24 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 					"hover:bg-row-hover",
 				)}
 				/*
-				 * THE CHEVRON IS THIS ROW'S RIGHT EDGE, SO IT RECLAIMS THE TRIGGER'S
-				 * RIGHT SHORTFALL. The trigger is `w-full` inside the `-mx-2 px-2`
-				 * box, which bleeds on the left only and ends 16px short of the row on
-				 * the right - the disclosure's documented geometry, the one the tool
-				 * stamps' `mr-4` insets line up with. This bar's rule spans the block's
-				 * whole content box, so `-mr-4` pulls the slot right by exactly that
-				 * shortfall and the row's right edge lands on the rule's end (operator
-				 * report, 2026-09-29: "the chevron ('>') doesn't reach the right end of
-				 * the rule"). The summary span and the stamp ride with it, so the
-				 * stamp keeps the row's own `gap-1.5` from the chevron; the glyph's
-				 * ~5px right bearing is the same optical inset every lucide mark in the
-				 * app carries.
+				 * THE CHEVRON'S LEADING EDGE IS THE RULE'S ENDPOINT (operator report,
+				 * 2026-09-29, second round: "the chevron's leading edge must align with
+				 * the end of the line — treat the rule's endpoint as the alignment datum,
+				 * and the time reads to its left"). Round 1 landed the glyph's TRAILING
+				 * edge on the rule's end; the datum moved to the leading edge. The
+				 * trigger is `w-full` inside the `-mx-2 px-2` box, which bleeds on the
+				 * left only and ends 16px short of the row on the right - the
+				 * disclosure's documented geometry, the one the tool stamps' `mr-4`
+				 * insets line up with - so the slot's pull is measured from there:
+				 * `-mr-6` (24px) puts the slot's box right at the rule's end + 8px, and
+				 * the glyph's ink starts 9.33px inside the slot's right edge (the lucide
+				 * path's bbox at this size), landing the visible leading edge on the
+				 * rule's last pixel (1043.7 against 1044 at the 1280 column) — within a
+				 * third of a pixel of the terminus. The summary span and the stamp ride
+				 * with the slot, so the stamp keeps the row's own `gap-1.5` from the
+				 * chevron and still reads to its left.
 				 */
-				chevronClassName={cn("-mr-4", "text-ink-muted")}
+				chevronClassName={cn("-mr-6", "text-ink-muted")}
 				summary={
 					/*
 					 * FOUR FLEX ITEMS AND THE GAP THAT SPACES THEM, not one truncating
