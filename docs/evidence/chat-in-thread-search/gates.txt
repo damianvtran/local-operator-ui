@@ -51,3 +51,21 @@ window this branch was being finished in ('another sweep holds the machine lease
 after it finishes. No frames checked.'); the fast half of the same verdict — the stamp
 test above — ran green on this head, and the image half is left to CI/the next lease.
 
+
+# --- after the rebase onto the rail's 6254993e87 (the rail's own jump landed) ---
+
+$ node_modules/.bin/tsc --noEmit -p tsconfig.app.json && node_modules/.bin/tsc --noEmit -p tsconfig.node.json
+both projects: no output (clean)
+rc=0
+
+$ node scripts/run-desktop-tests.mjs <the search suites + rail/collapse neighbours + the wire>
+✔ the find op is bounded at both ends and closes its vocabulary
+✔ a mounted row lands and is flashed by the shared machinery; the timer takes the flash away
+✔ a message outside the rendered window reports not-mounted, without a click and without a flash
+✔ a host's own jump is what a click calls when one is supplied
+✔ the chord opens the panel from the chat surface, and nowhere else
+ℹ tests 204
+ℹ pass 204
+ℹ fail 0
+ℹ skipped 0
+rc=0
