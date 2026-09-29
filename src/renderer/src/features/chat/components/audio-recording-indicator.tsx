@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
 
+import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
+
 import {
 	type AudioLevelState,
 	INITIAL_AUDIO_LEVEL_STATE,
@@ -116,23 +118,28 @@ export const AudioRecordingIndicator = ({
 			return;
 		}
 
-		// A canvas 2D context cannot resolve `var()`, so the accent has to be read
-		// back as a computed value. Reading `color` rather than the custom property
-		// is what removes the need for a literal fallback: the element carries
-		// `text-accent`, and `color` always computes to a real colour, whereas a
-		// custom property read returns "" before the theme is applied.
-		const accent = getComputedStyle(canvas).color;
-
-		// Resize canvas to match its container
-		const resizeCanvas = () => {
+		/*
+		 * The lane's box is not a constant: the field's column changes when the
+		 * sidebar collapses or a panel is dragged, and a bitmap sized once at mount
+		 * stretches its last frame into whatever box it lands in. So EVERY draw
+		 * re-checks the bitmap against the box it is painted into (design review
+		 * round 1, D3). A window-resize listener misses every other way the column
+		 * can move, and the draw loop is already running at the only rate that
+		 * matters.
+		 */
+		const syncCanvasToBox = () => {
 			const { width, height } = canvas.getBoundingClientRect();
 			const dpr = window.devicePixelRatio || 1;
-			canvas.width = width * dpr;
-			canvas.height = height * dpr;
-			ctx.scale(dpr, dpr);
+			const w = Math.max(1, Math.round(width * dpr));
+			const h = Math.max(1, Math.round(height * dpr));
+			if (canvas.width !== w || canvas.height !== h) {
+				// Assigning width/height resets the context, transform included,
+				// which is why the scale is re-applied here - the only place it is.
+				canvas.width = w;
+				canvas.height = h;
+				ctx.scale(dpr, dpr);
+			}
 		};
-		resizeCanvas();
-		window.addEventListener("resize", resizeCanvas);
 
 		// Initialize buffer and level memory
 		heightsRef.current = Array(BUFFER_SIZE).fill(MIN_BAR_HEIGHT);
@@ -141,7 +148,19 @@ export const AudioRecordingIndicator = ({
 
 		// Draw waveform based on heightsRef
 		const drawWaveform = () => {
+			syncCanvasToBox();
 			const { width, height } = canvas.getBoundingClientRect();
+			/*
+			 * A canvas 2D context cannot resolve `var()`, so the accent has to be
+			 * read back as a computed value - PER DRAW, because a theme swap rebinds
+			 * the custom properties mid-take and a value cached at mount would leave
+			 * the bars in the retired theme's accent (design review round 1, D7).
+			 * Reading `color` rather than the custom property is what removes the
+			 * need for a literal fallback: the element carries `text-accent`, and
+			 * `color` always computes to a real colour, whereas a custom property
+			 * read returns "" before the theme is applied.
+			 */
+			const accent = getComputedStyle(canvas).color;
 			ctx.clearRect(0, 0, width, height);
 			const barWidth = width / BUFFER_SIZE;
 			const spacingRatio = 0.4;
@@ -257,7 +276,6 @@ export const AudioRecordingIndicator = ({
 		})();
 
 		return () => {
-			window.removeEventListener("resize", resizeCanvas);
 			if (animationFrameRef.current) {
 				cancelAnimationFrame(animationFrameRef.current);
 			}
@@ -292,18 +310,23 @@ export const AudioRecordingIndicator = ({
 		 *
 		 * Since the redesign (operator feedback via Aida, 2026-09-29) the state
 		 * reads as a LANE ACROSS THE COMPOSER rather than a strip anchored to its
-		 * leading edge: the waveform takes the content width the draft above it
-		 * is read against, the label row sits over it, and the whole block stays
-		 * borderless composer chrome - no wash, no border, the same step of
-		 * ground the box itself uses. The draft still stays where it was; the
-		 * lane grows the box for as long as the take lasts.
+		 * leading edge: the waveform takes the field's own content column (`px-2`,
+		 * the same inset the draft text above it is read at - design review round
+		 * 1, D2), the label row sits over it, and the whole block stays borderless
+		 * composer chrome - no wash, no border, the same step of ground the box
+		 * itself uses. The draft still stays where it was; the lane grows the box
+		 * for as long as the take lasts.
 		 *
-		 * The label row carries the affordance the field's placeholder can only
-		 * speak while the field is EMPTY: with a draft in it - the common case -
-		 * nothing else on screen would say which keys end the take. The controls
-		 * keep their own row below (`Confirm recording`/`Cancel recording`),
-		 * where the interrupt-slot geometry already reserves their boxes; this
-		 * block is a status and carries no control.
+		 * The label row is the ONLY place the affordance is named. It used to live
+		 * in the field's placeholder, which could speak it only while the field
+		 * was EMPTY - so the empty-field state said it twice and the with-draft
+		 * state, the common case, said it nowhere (agent/design/UX round 1,
+		 * F1/D1/U1; the placeholder now keeps only the state's name). The keys
+		 * render as `KeyboardShortcut` caps, the house idiom for a key named in a
+		 * sentence (design/UX round 1, D8/U5). The controls keep their own row
+		 * below (`Confirm recording`/`Cancel recording`), where the interrupt-slot
+		 * geometry already reserves their boxes; this block is a status and
+		 * carries no control.
 		 *
 		 * The dot keeps its pulsing ring (its own comment above records what each
 		 * half is for under `prefers-reduced-motion`), and the word is still the
@@ -312,7 +335,7 @@ export const AudioRecordingIndicator = ({
 		 */
 		<div
 			data-recording-indicator=""
-			className="mt-2 flex w-full min-w-0 flex-col gap-2 text-accent"
+			className="mt-2 flex w-full min-w-0 flex-col gap-2 px-2 text-accent"
 		>
 			<style>{PULSE_KEYFRAMES}</style>
 			<div className="flex min-w-0 items-center gap-2">
@@ -323,11 +346,29 @@ export const AudioRecordingIndicator = ({
 				<span className="shrink-0 font-medium text-body-sm text-accent">
 					Recording
 				</span>
-				<span className="ml-auto min-w-0 truncate text-body-sm text-ink-dim">
-					Enter confirms · Esc cancels
+				<span className="ml-auto flex min-w-0 items-center gap-1.5 text-body-sm text-ink-dim">
+					<span className="flex items-center gap-1">
+						<KeyboardShortcut shortcut="Enter" />
+						confirms
+					</span>
+					<span aria-hidden="true">·</span>
+					<span className="flex items-center gap-1">
+						<KeyboardShortcut shortcut="Esc" />
+						cancels
+					</span>
 				</span>
 			</div>
-			<canvas ref={canvasRef} className={WAVEFORM_CLASS} />
+			{/*
+			 * The canvas holds a graphic with no name of its own: the state and the
+			 * keys both live in the row above, so the subtree is hidden wholesale.
+			 * The wrapper - rather than `aria-hidden` on the canvas itself - is what
+			 * satisfies `noAriaHiddenOnFocusable`, whose canvas model treats the
+			 * element as focusable; the sibling `WaveformAnimation` hides its own
+			 * drawing behind the same shape of wrapper.
+			 */}
+			<div aria-hidden="true">
+				<canvas ref={canvasRef} className={WAVEFORM_CLASS} />
+			</div>
 		</div>
 	);
 };
