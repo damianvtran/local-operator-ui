@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { unlink, writeFile } from "node:fs/promises";
 import { after, test } from "node:test";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import { createElement as h } from "react";
@@ -12,11 +13,16 @@ import { createElement as h } from "react";
  * what the bar says, which rows hide). This file asserts what only a mount can:
  * that a completed run ARRIVES collapsed and its hidden rows are really
  * unmounted; that the reader's press opens it and puts it back; that the
- * expansion survives a remount (the property the per-session store exists for)
- * and follows the CONVERSATION rather than the component; that the failure
- * failure tally never renders and the failed row stays one press away; and
- * that a live run, and a run the window has cut, render exactly as they did
- * before the feature.
+ * expansion survives a remount AND the head arriving later (the properties the
+ * per-session store and the head-independent run key exist for) and follows the
+ * CONVERSATION rather than the component; that the failure tally never renders
+ * and the failed row stays one press away; that a live run renders exactly as
+ * it did before the feature; that a run whose head the FETCHED rows cut off
+ * condenses from its loaded span (the end-loaded rule, operator report
+ * 2026-09-29) with no fabricated `Took`; that a settle does not fold the row
+ * the reader's focus is in; that a bar's appearance is stated politely — and
+ * that a WIDEN's revealed bars are not, because a reveal is not a settle
+ * (review round 1, MAJOR-1).
  *
  * WHY A MOUNT AND NOT A FRAME. A frame says what the collapsed and expanded
  * states look like; it cannot say that the collapsed state unmounts the rows
@@ -114,6 +120,13 @@ const bundle = await build({
 		contents: [
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
 			'export { __resetTurnCollapseOpen, writeRunExpanded, expandedRunsOf, forgetTurnCollapseOpen, __turnCollapseOpenStats } from "./src/renderer/src/shared/store/turn-collapse-open";',
+			/*
+			 * The two query keys the transcript's own hook reads, so the hide case
+			 * below seeds the SAME entries the app resolves - a second spelling of
+			 * either key would pass here while the product read another cache entry.
+			 */
+			'export { backendSettingsKeys } from "./src/renderer/src/features/settings/components/backend-settings-section";',
+			'export { desktopKeys } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -137,7 +150,18 @@ const bundle = await build({
 		".png": "dataurl",
 		".webp": "dataurl",
 	},
-	external: ["react", "react-dom", "react-dom/client", "react/jsx-runtime"],
+	external: [
+		"react",
+		"react-dom",
+		"react-dom/client",
+		"react/jsx-runtime",
+		/*
+		 * EXTERNAL, so the provider below and the hook inside the bundle resolve
+		 * to ONE copy: a bundled second copy carries a different React context
+		 * object and `useQuery` would not find the client this file seeds.
+		 */
+		"@tanstack/react-query",
+	],
 });
 const bundlePath = new URL(
 	`./_turn-collapse-behaviour-${process.pid}.mjs`,
@@ -151,6 +175,8 @@ const {
 	expandedRunsOf,
 	forgetTurnCollapseOpen,
 	__turnCollapseOpenStats,
+	backendSettingsKeys,
+	desktopKeys,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
@@ -255,26 +281,39 @@ const mount = async (t, records, over = {}) => {
 	});
 	mounted.container = document.createElement("div");
 	document.body.appendChild(mounted.container);
+	/*
+	 * A fresh client per mount, or the one the caller seeded: the transcript now
+	 * reads its cross-session visibility through react-query, so every mount
+	 * needs a provider - and the unseeded default is exactly the fail-closed
+	 * path (no capabilities answer ⇒ nothing hidden).
+	 */
+	const client =
+		over.client ??
+		new QueryClient({ defaultOptions: { queries: { retry: false } } });
 	const render = async (next, nextOver = over) => {
 		await act(async () => {
 			mounted.root.render(
-				h(CanonicalTranscript, {
-					frontend: nextOver.frontend ?? null,
-					transcript: {
-						...transcriptOf(next),
-						hasMore: nextOver.hasMore ?? false,
-					},
-					gate: nextOver.gate ?? null,
-					waiting: nextOver.waiting ?? false,
-					loadingOlder: false,
-					onLoadOlder: nextOver.onLoadOlder ?? (async () => true),
-					containerRef: { current: mounted.container },
-					isSmallView: false,
-					status: "live",
-					failure: null,
-					awaitingHydration: false,
-					onReconnect: () => {},
-				}),
+				h(
+					QueryClientProvider,
+					{ client },
+					h(CanonicalTranscript, {
+						frontend: nextOver.frontend ?? null,
+						transcript: {
+							...transcriptOf(next),
+							hasMore: nextOver.hasMore ?? false,
+						},
+						gate: nextOver.gate ?? null,
+						waiting: nextOver.waiting ?? false,
+						loadingOlder: false,
+						onLoadOlder: nextOver.onLoadOlder ?? (async () => true),
+						containerRef: { current: mounted.container },
+						isSmallView: false,
+						status: "live",
+						failure: null,
+						awaitingHydration: false,
+						onReconnect: () => {},
+					}),
+				),
 			);
 		});
 	};
@@ -628,13 +667,15 @@ test("the snap's fetch half runs when the head is cut off, and is bounded", asyn
 	);
 });
 
-test("a run whose head the LOADED rows cut off renders as today: no bar, foot as it was", async (t) => {
+test("a run whose head the LOADED rows cut off condenses from the loaded span: counts, no Took", async (t) => {
 	__resetTurnCollapseOpen();
 	/*
-	 * The other half of §5 case 12: the row list itself starts mid-run (the
-	 * leading tool rows), so no window can be snapped to a boundary that is not
-	 * loaded — a summary may only ever describe rows that are on hand, and the
-	 * foot line stands as it always did.
+	 * END-LOADED ELIGIBILITY (operator report, 2026-09-29). The row list itself
+	 * starts mid-run (the leading tool rows — the state after a deep jump or a
+	 * long tail turn), so no window can be snapped to a boundary that is not
+	 * loaded. The bar may only ever describe rows on hand, and that is what it
+	 * does: the loaded calls, and no `Took` (the span would have to start at the
+	 * first loaded row, a number the turn never had).
 	 */
 	const records = [
 		toolRecord("tool:0", { ts: TS + 500 }),
@@ -642,15 +683,166 @@ test("a run whose head the LOADED rows cut off renders as today: no bar, foot as
 		answerRecord("answer:1", { ts: TS + 70_000, settledAt: TS + 70_000 }),
 	];
 	const mounted = await mount(t, records);
+	const summary = bar(mounted);
+	assert.ok(summary, "the cut run condenses from its loaded span");
+	assert.equal(
+		summary.getAttribute("data-run-ids"),
+		"tool:0 tool:1 answer:1",
+		"every loaded row stays addressable through the bar",
+	);
+	assert.match(summary.textContent ?? "", /2 actions/);
+	assert.doesNotMatch(
+		summary.textContent ?? "",
+		/Took/,
+		"no duration: it would be fabricated from the first loaded row",
+	);
+	assert.doesNotMatch(
+		mounted.container.textContent ?? "",
+		/Worked/,
+		"the bar replaces the foot line, as on any completed run",
+	);
+});
+
+test("the head arriving later keeps the cut run's expansion: its key does not move", async (t) => {
+	__resetTurnCollapseOpen();
+	const cut = [
+		toolRecord("tool:0", { ts: TS + 500 }),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		answerRecord("answer:1", { ts: TS + 70_000, settledAt: TS + 70_000 }),
+	];
+	const mounted = await mount(t, cut, {
+		frontend: { session_id: "chat-head" },
+	});
+	assert.ok(bar(mounted), "the cut run condenses on arrival");
+	await click(barTrigger(mounted));
+	assert.ok(rowBox(mounted, "tool:0"), "the reader opened it");
+	/*
+	 * A page lands and brings the opening user row: the pre-fix key (the run's
+	 * first row) would have changed right here and the reader's expansion would
+	 * have silently reverted.
+	 */
+	await mounted.render([userRecord("user:0", { ts: TS + 100 }), ...cut], {
+		frontend: { session_id: "chat-head" },
+	});
+	assert.ok(
+		rowBox(mounted, "tool:0"),
+		"the reader's expansion survives the head arriving",
+	);
+	assert.ok(bar(mounted), "the bar is still the run's summary");
+});
+
+test("a settle does not fold the run out from under the reader's focus", async (t) => {
+	__resetTurnCollapseOpen();
+	/*
+	 * The collapse UNMOUNTS rows; a reader whose keyboard focus sits in one of
+	 * them would lose focus to the body. The guard holds that run open until the
+	 * focus moves on — and it is invisible to a reader who is not focused in a
+	 * row (the pointer case: no focus event, no hold).
+	 */
+	const running = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+	];
+	const mounted = await mount(t, running, { waiting: true });
+	const trigger = rowBox(mounted, "tool:1")?.querySelector("button");
+	assert.ok(trigger, "the running row has a focusable control");
+	await act(async () => {
+		trigger.focus();
+	});
+	assert.equal(
+		document.activeElement,
+		trigger,
+		"the reader's focus is in the row",
+	);
+	const settled = [
+		...running,
+		answerRecord("answer:1", { ts: TS + 3_000, settledAt: TS + 3_000 }),
+	];
+	await mounted.render(settled, {});
 	assert.equal(
 		bar(mounted),
 		null,
-		"a run whose opening user row is not loaded never condenses",
+		"the settle does not fold the run out from under the focus",
+	);
+	assert.ok(rowBox(mounted, "tool:1"), "the focused row stays mounted");
+	assert.equal(document.activeElement, trigger, "and the focus is intact");
+	await act(async () => {
+		trigger.blur();
+	});
+	assert.ok(bar(mounted), "once the focus leaves, the run folds");
+});
+
+test("a widen announces nothing: a reveal is not a settle", async (t) => {
+	__resetTurnCollapseOpen();
+	/*
+	 * AGENT REVIEW ROUND 1, MAJOR-1. The window only ever GROWS, so a widen
+	 * (the reader's scroll-up, the open's snap, a jump's mount) presents bars
+	 * for runs the previous pass never held. The pre-fix effect — a
+	 * set-difference against the previous pass's collapsed keys — announced
+	 * every one of them: measured on this fixture, ten "Turn condensed"
+	 * sentences on a widen and zero settles (the reviewer's
+	 * `probe-widen-announce.test.mjs`). Nothing was unmounted out from under
+	 * the reader — those runs were folded before the reader ever saw them
+	 * unfold — so the fix requires an utterance to ALSO find the run present
+	 * in the previous pass (sharing a row with it), which window-entered bars
+	 * fail.
+	 */
+	const records = [];
+	for (let i = 1; i <= 30; i += 1) {
+		records.push(userRecord(`user:${i}`, { ts: TS + i * 60_000 }));
+		records.push(toolRecord(`tool:${i}`, { ts: TS + i * 60_000 + 1_000 }));
+		records.push(answerRecord(`answer:${i}`, { ts: TS + i * 60_000 + 5_000 }));
+	}
+	const mounted = await mount(t, records, { hasMore: false });
+	const region = () =>
+		mounted.container.querySelector("[data-condense-announcement]")
+			?.textContent ?? "";
+	const bars = () =>
+		mounted.container.querySelectorAll("[data-turn-summary]").length;
+	assert.ok(bars() > 0, "the loaded window arrives folded");
+	assert.equal(region(), "", "a load announces nothing");
+	const before = bars();
+	await flushFrames();
+	assert.ok(
+		bars() > before,
+		`the frames widened the window (before=${before} after=${bars()})`,
+	);
+	assert.equal(
+		region(),
+		"",
+		"the revealed bars are window-entered, not settled",
+	);
+});
+
+test("a settle announces the new bar politely, in the bar's own words", async (t) => {
+	__resetTurnCollapseOpen();
+	/*
+	 * A bar appearing is a transition the reader did not initiate — rows
+	 * readable a moment ago are unmounted — and the live region is where it is
+	 * said out loud: the bar's own facts, no more. A load's bars are not a
+	 * settle and stay silent (the running turn below is the whole initial
+	 * transcript).
+	 */
+	const running = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+	];
+	const mounted = await mount(t, running, { waiting: true });
+	const region = () =>
+		mounted.container.querySelector("[data-condense-announcement]")
+			?.textContent ?? "";
+	assert.equal(region(), "", "a running turn announces nothing");
+	await mounted.render(
+		[
+			...running,
+			answerRecord("answer:1", { ts: TS + 3_000, settledAt: TS + 3_000 }),
+		],
+		{},
 	);
 	assert.match(
-		mounted.container.textContent,
-		/Worked/,
-		"its foot line stands as it always did",
+		region(),
+		/Turn condensed: took 3s, 1 action\./,
+		"the settle states the bar's own facts",
 	);
 });
 
@@ -839,4 +1031,122 @@ test("the trigger is focusable; the only press inside it toggles", async (t) => 
 		[],
 		"no separate control lives inside the trigger",
 	);
+});
+
+test("hiding cross-session rows: the receipt and the send row leave, the bar's ids follow, and clearing the key restores them", async (t) => {
+	__resetTurnCollapseOpen();
+	/*
+	 * The component's own seam, end to end: `useCrossSessionHidden` reads the
+	 * settings query, `shownRecords` filters, and the rows plus the bar's ids
+	 * are downstream of BOTH. The query client is SEEDED with the two cache
+	 * entries the app resolves rather than mocking the hook, which is what
+	 * makes the toggle below meaningful: one `setQueryData` in each direction
+	 * under the same mount is "turning it off restores them", exactly as the
+	 * operator experiences it (no remount, no refetch).
+	 */
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	client.setQueryData(desktopKeys.capabilities, {
+		desktop_available: true,
+		features: { settings: 1 },
+	});
+	const settings = (hide) => ({
+		sections: [],
+		settings: [{ key: "display.hide_cross_session", value: hide }],
+	});
+	client.setQueryData(backendSettingsKeys.all, settings(true));
+	const mounted = await mount(
+		t,
+		[
+			userRecord("user:1"),
+			peerRecord("peer:1"),
+			toolRecord("tool:1"),
+			toolRecord("tool:2", {
+				toolName: "send",
+				args: { conversation: "other" },
+			}),
+			answerRecord("answer:1"),
+		],
+		{ client },
+	);
+
+	// On: the receipt and the send row are not mounted; the ordinary call is
+	// only behind the bar (collapsed), not gone.
+	assert.equal(rowBox(mounted, "peer:1"), null, "the receipt is hidden");
+	assert.equal(rowBox(mounted, "tool:2"), null, "the send row is hidden");
+	assert.equal(
+		bar(mounted)?.getAttribute("data-run-ids"),
+		"user:1 tool:1 answer:1",
+		"the bar's ids name only what the pane keeps",
+	);
+	// Expand: the work comes back, and the hidden send does NOT — the filter
+	// sits above the collapse, so no interaction can reveal it.
+	await click(barTrigger(mounted));
+	assert.ok(rowBox(mounted, "tool:1"), "the ordinary call is revealed");
+	assert.equal(rowBox(mounted, "tool:2"), null, "the send row stays gone");
+	assert.equal(rowBox(mounted, "peer:1"), null, "the receipt stays gone");
+
+	// Off, under the same mount: both come back where they belong. The drain is
+	// two ticks rather than one: the query's notification is applied on a TASK
+	// and the row repaint then queues a FRAME, and the harness's own
+	// `flushFrames` no-ops when nothing has queued a frame yet - exactly this
+	// case's race. Both ticks are explicit, so the assert reads a settled tree.
+	await act(async () => {
+		client.setQueryData(backendSettingsKeys.all, settings(false));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
+	await flushFrames();
+	assert.ok(rowBox(mounted, "peer:1"), "the receipt returns");
+	assert.ok(rowBox(mounted, "tool:2"), "the send row returns");
+	assert.equal(
+		bar(mounted)?.getAttribute("data-run-ids"),
+		"user:1 peer:1 tool:1 tool:2 answer:1",
+		"the run is whole again",
+	);
+});
+
+test("settings enabled but WITHOUT the key hide nothing: the absent-key fallback", async (t) => {
+	/*
+	 * The frozen contract's absent-key skew (an old backend behind a new app),
+	 * at the seam that reads it: capabilities answer `settings: 1` while the
+	 * registry carries no `display.hide_cross_session`. `setting?.value ===
+	 * true` is the whole read, so absence resolves false - nothing is hidden,
+	 * and no row is dropped by a key the backend never sent. Pinned because
+	 * this is the one fallback direction the seeded toggle test cannot reach.
+	 */
+	__resetTurnCollapseOpen();
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	client.setQueryData(desktopKeys.capabilities, {
+		desktop_available: true,
+		features: { settings: 1 },
+	});
+	client.setQueryData(backendSettingsKeys.all, {
+		sections: [],
+		settings: [{ key: "display.shimmer", value: true }],
+	});
+	const mounted = await mount(
+		t,
+		[
+			userRecord("user:1"),
+			peerRecord("peer:1"),
+			toolRecord("tool:1"),
+			toolRecord("tool:2", {
+				toolName: "send",
+				args: { conversation: "other" },
+			}),
+			answerRecord("answer:1"),
+		],
+		{ client },
+	);
+	assert.equal(
+		bar(mounted)?.getAttribute("data-run-ids"),
+		"user:1 peer:1 tool:1 tool:2 answer:1",
+		"the bar's ids keep every row the run holds",
+	);
+	await click(barTrigger(mounted));
+	assert.ok(rowBox(mounted, "peer:1"), "the receipt mounts with the run");
+	assert.ok(rowBox(mounted, "tool:2"), "the send row mounts with the run");
 });

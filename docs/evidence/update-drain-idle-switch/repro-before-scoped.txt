@@ -1,0 +1,28 @@
+✔ a broken seal refuses the install, a sealed bundle proceeds (4.204333ms)
+✔ the heal's decision table refuses everything but added bytecode (3.157916ms)
+✔ a swap under the tree between the plan and the unlink refuses (8.000791ms)
+✔ the interpreter gate refuses the other architecture's tree (58.52ms)
+✔ the bytecode gate asks the bundle's own Electron and refuses 'could not tell' (53.231625ms)
+✔ the gate refuses the 0.29.6 signature and passes the group-free one (18.111834ms)
+✔ the update pre-flight refuses the artifact macOS would not launch (1.189375ms)
+✔ the classifier knows the family the log holds, and refuses the rest (6.398125ms)
+✔ a quit during an in-flight install takes the close over, and only then (345.606708ms)
+✔ the start-up seal pass heals the bundle it runs from, or refuses out loud (6427.028208ms)
+✔ the refusal says which it is: an update stopped, or a copy to replace (0.541167ms)
+✔ a publish without room to write is refused before it spends anything (83.776625ms)
+✔ a press that cannot drain does not restart the server, and says why (140.076709ms)
+✔ a press that had to wait installs anyway once the fleet drains (129.232125ms)
+✔ the move re-engages the sessions it displaced, and only those (139.5875ms)
+✔ the re-engage leases the id the session's own stream minted, and nothing else (197.537916ms)
+✔ a retirement during the drain, before the restart, is still re-engaged (134.982042ms)
+✔ the refusal reports the press's wait, not the leg's (325.103541ms)
+✔ the press holds the update-in-flight flag for the whole drain, not only the restart (153.094333ms)
+✔ a press with nothing left to install still moves the daemon, through the drain (82.369583ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9252.093583

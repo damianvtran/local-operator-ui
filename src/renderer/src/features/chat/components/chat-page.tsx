@@ -767,6 +767,14 @@ function SessionPanel({
 						 * second source of truth for a count the user can see twice on one screen.
 						 */
 						wakes: canonical.frontend.wakes,
+						/*
+						 * The armed monitors ride the same derivation, which is what puts the
+						 * composer's monitor chip, the pane's Monitors section and the section's
+						 * trailing tally on ONE list — the wake wiring's own argument, one count
+						 * over: a second read of the wire here would be a second source of truth
+						 * for a count the user can see twice on one screen.
+						 */
+						monitors: canonical.frontend.monitors,
 					})
 				: null,
 		[sessionId, canonical.frontend],
