@@ -7,7 +7,10 @@
  * decision no test can reach. The clamp and the commit rule live in
  * `src/renderer/src/features/chat/chat-measure-drag.ts` - the shipped module,
  * bundled here and driven directly - and this file is the fourth case below,
- * which is the one that would otherwise ship broken.
+ * which is the one that would otherwise ship broken. The commit rule grew the
+ * RENDER CONSULTATION in round 2 (UX's U4): a release now asks what the pane
+ * can show before it writes, and the two measured seats of that question are
+ * pinned at the end of the commit-rule section.
  *
  * WHAT THIS FILE CANNOT PIN, and where each is covered instead: the pointer
  * lifecycle, the hover delay, and what the cue looks like (the frames,
@@ -49,6 +52,7 @@ const {
 	clampChatMeasureWidth,
 	draggedChatMeasureWidth,
 	releasedChatMeasureWidth,
+	renderedChatMeasureWidth,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -174,13 +178,27 @@ test("a press with no travel commits NOTHING, which is what a double-click is", 
 	 * instruction, and the answer is `null` - not the value it already held,
 	 * because a write is what would let a press-only gesture outlive a wider
 	 * preference through any later path that reads the store.
+	 *
+	 * The pane is deliberately one that could show anything: the travel guard
+	 * must answer before the render consultation is even asked, so only the
+	 * guard can be what these three readings are about.
 	 */
 	assert.equal(
-		releasedChatMeasureWidth({ startWidth: 1100, deltaX: 0, edge: "right" }),
+		releasedChatMeasureWidth({
+			startWidth: 1100,
+			deltaX: 0,
+			edge: "right",
+			panePx: 1100,
+		}),
 		null,
 	);
 	assert.equal(
-		releasedChatMeasureWidth({ startWidth: 1100, deltaX: 1, edge: "right" }),
+		releasedChatMeasureWidth({
+			startWidth: 1100,
+			deltaX: 1,
+			edge: "right",
+			panePx: 1100,
+		}),
 		null,
 		"a one-pixel trackpad wobble is not an instruction",
 	);
@@ -189,6 +207,7 @@ test("a press with no travel commits NOTHING, which is what a double-click is", 
 			startWidth: 1100,
 			deltaX: -(DRAG_TRAVEL_PX - 1),
 			edge: "right",
+			panePx: 1100,
 		}),
 		null,
 	);
@@ -213,6 +232,13 @@ test("a double-click cannot replace a wide preference with the window's value", 
 			startWidth: stored,
 			deltaX: 0,
 			edge: "right",
+			/*
+			 * The window the narration above describes: too narrow to draw the
+			 * preference. Irrelevant to this arm either way - no travel answers
+			 * before the pane is consulted - but passed because the release
+			 * contract now requires one.
+			 */
+			panePx: 900,
 		});
 		if (committed !== null) stored = committed;
 		assert.equal(
@@ -231,16 +257,181 @@ test("a gesture that DID travel commits the dragged width, not a clamped display
 	 * column they were looking at. Starting from the display value instead is how
 	 * a reader's 1100 silently becomes 700 the first time they touch the handle
 	 * on a laptop screen.
+	 *
+	 * RE-DECIDED FOR THE RENDER CONSULTATION (round 2, U4) - this test used to
+	 * assert its commits with no pane stated, because the release rule did not
+	 * ask, and one of those commits falls on the invisible-write class the round
+	 * refused. The claims are read apart now:
+	 *
+	 *  - On the pane U4 measured (a 1000px pane, rendering 968) the 60px drag
+	 *    points at 980, still above what the pane can show, so the commit is
+	 *    suppressed - the same refusal the seat below pins with a 20px drag.
+	 *  - The intent this test exists for - the commit is pref-relative, never
+	 *    the display value - is PRESERVED at a pane that can show 980: the same
+	 *    drag commits 980, not the 968 that was on screen.
 	 */
-	const committed = releasedChatMeasureWidth({
-		startWidth: 1100,
-		deltaX: -60,
-		edge: "right",
-	});
-	assert.equal(committed, 980);
 	assert.equal(
-		releasedChatMeasureWidth({ startWidth: 1100, deltaX: 60, edge: "right" }),
-		Math.min(CHAT_MEASURE_MAX_PX, 1220),
-		"and outward is clamped by the ceiling rather than unbounded",
+		releasedChatMeasureWidth({
+			startWidth: 1100,
+			deltaX: -60,
+			edge: "right",
+			/* The measured pane: 1000px with the story host's 32px insets. */
+			panePx: 968,
+		}),
+		null,
+		"a commit the render cannot show is refused even though the hand travelled",
+	);
+	assert.equal(
+		releasedChatMeasureWidth({
+			startWidth: 1100,
+			deltaX: -60,
+			edge: "right",
+			panePx: 1100,
+		}),
+		980,
+		"a pane that can show the width gets the pref-relative commit, not the display",
+	);
+	/*
+	 * Outward at the ceiling: the candidate IS the width already stored, so the
+	 * render cannot change either - the same "no visible change" refusal,
+	 * reached through the clamp instead of through the pane. The clamp
+	 * arithmetic stays pinned by "a drag stops at the bounds" above; what these
+	 * two lines pin is that the ceiling means an outward release stores nothing
+	 * rather than re-sending the number it already holds.
+	 */
+	assert.equal(
+		draggedChatMeasureWidth({ startWidth: 1100, deltaX: 60, edge: "right" }),
+		CHAT_MEASURE_MAX_PX,
+		"the ceiling still clamps the candidate",
+	);
+	assert.equal(
+		releasedChatMeasureWidth({
+			startWidth: 1100,
+			deltaX: 60,
+			edge: "right",
+			panePx: 1300,
+		}),
+		null,
+		"a release at the ceiling stores nothing, because it changes nothing",
+	);
+});
+
+test("a travelled drag the pane is already showing commits NOTHING (U4's seat)", () => {
+	/*
+	 * THE FIRST MEASURED SEAT, pinned as the regression it is (UX round 2, U4):
+	 * stored 1100 at a 1000px pane - rendering 968 in the story host - and a
+	 * 20px travelled drag inward points at 1060. Every pixel of that gesture was
+	 * frozen (the render clamped 1100 and 1060 both to 968), yet the release used
+	 * to store 1060 with `aria-valuenow` and `max-width` following: the store
+	 * changed while nothing on screen did. The release asks the render now, and
+	 * this gesture must write NOTHING.
+	 *
+	 * The window between the pane and the column is host-dependent (32px with
+	 * overlay scrollbars, 48px with classic ones), so the seat passes the pane's
+	 * remaining width - 968 - directly; the handle reads that same quantity from
+	 * the scroller at the release.
+	 */
+	assert.equal(
+		renderedChatMeasureWidth(1060, 968),
+		968,
+		"the render clamps the candidate to what the pane can show",
+	);
+	assert.equal(
+		releasedChatMeasureWidth({
+			startWidth: 1100,
+			deltaX: -20,
+			edge: "right",
+			panePx: 968,
+		}),
+		null,
+		"a narrowing drag the render cannot show must commit nothing",
+	);
+	assert.equal(
+		releasedChatMeasureWidth({
+			startWidth: 1100,
+			deltaX: 20,
+			edge: "left",
+			panePx: 968,
+		}),
+		null,
+		"the left edge's mirror of the same drag is refused the same way",
+	);
+	assert.equal(
+		releasedChatMeasureWidth({
+			startWidth: 1000,
+			deltaX: 20,
+			edge: "right",
+			panePx: 968,
+		}),
+		null,
+		"and a widening drag under the clamp is dead for the same reason",
+	);
+	/*
+	 * The exact edge of the dead zone: a candidate that lands ON the pane's
+	 * remaining width still paints the column already there, and one pixel
+	 * further is a visible narrowing - so the refusal stops exactly at the
+	 * boundary rather than one pixel early or late.
+	 */
+	assert.equal(
+		releasedChatMeasureWidth({
+			startWidth: 1100,
+			deltaX: -66,
+			edge: "right",
+			panePx: 968,
+		}),
+		null,
+		"a candidate at 968, exactly the pane, is still the frozen width",
+	);
+	assert.equal(
+		releasedChatMeasureWidth({
+			startWidth: 1100,
+			deltaX: -67,
+			edge: "right",
+			panePx: 968,
+		}),
+		966,
+		"one pixel past the pane is a visible narrowing, and commits the 966 asked for",
+	);
+});
+
+test("the same drag commits when the pane can show it (the pair's second seat)", () => {
+	/*
+	 * THE SECOND MEASURED SEAT: the identical 20px drag, on a pane that can draw
+	 * the width it points at. 1060 moves pixels here, so the release commits -
+	 * and what commits is still the width the hand asked for (1060,
+	 * pref-relative), never the pane and never a display value.
+	 *
+	 * The pane must be STRICTLY wider than the candidate for the commit to be a
+	 * change: at exactly 1060 the clamped 1100 was already painting 1060, so
+	 * that case is refused like the seat above.
+	 */
+	assert.equal(
+		releasedChatMeasureWidth({
+			startWidth: 1100,
+			deltaX: -20,
+			edge: "right",
+			panePx: 1400,
+		}),
+		1060,
+	);
+	assert.equal(
+		releasedChatMeasureWidth({
+			startWidth: 1100,
+			deltaX: -20,
+			edge: "right",
+			panePx: 1061,
+		}),
+		1060,
+		"one pixel of room above the candidate is enough for the commit",
+	);
+	assert.equal(
+		releasedChatMeasureWidth({
+			startWidth: 1100,
+			deltaX: -20,
+			edge: "right",
+			panePx: 1060,
+		}),
+		null,
+		"a pane exactly at the candidate was already painting it - refused",
 	);
 });
