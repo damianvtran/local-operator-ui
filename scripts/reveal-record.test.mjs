@@ -191,6 +191,32 @@ test("a page-leading target fetches its margin's page before mounting (QA Q-2)",
 	);
 });
 
+test("a margin the store never grows spends the page budget once, then mounts (N1)", async () => {
+	/*
+	 * The spent-budget edge: the row is in the store, the margin callback keeps
+	 * reporting short, and the loop spends its pages then falls through to the
+	 * mount rather than looping forever. One mount, one refusal-free return.
+	 */
+	const state = { loaded: 0, mounts: [] };
+	const result = await ensureReachable({
+		isReachable: () => state.mounts.length > 0,
+		rowDistance: () => 40,
+		hasHeadroom: () => false,
+		mount: (distance) => state.mounts.push(distance),
+		loadOlder: async () => {
+			state.loaded += 1;
+			return true;
+		},
+	});
+	assert.equal(result, true);
+	assert.equal(
+		state.loaded,
+		JUMP_MAX_PAGES,
+		"exactly the page budget, then the fall-through",
+	);
+	assert.deepEqual(state.mounts, [40], "one mount, not a spin");
+});
+
 test("a margin that cannot grow falls through to the clamped mount, never a refusal", async () => {
 	/*
 	 * The row IS in the store; a refused page means the history ends at it, so
