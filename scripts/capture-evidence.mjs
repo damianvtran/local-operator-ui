@@ -9911,13 +9911,17 @@ const main = async () => {
 				...(supplementary.length > 0 ? { supplementary } : {}),
 			};
 	/*
-	 * TABS, MATCHING BIOME'S indentStyle (review round 1, R1-3): the manifest
-	 * is a checked-in JSON file under the formatter's eye, and a writer that
-	 * re-serialises with two spaces turns every later edit into a whole-file
-	 * whitespace diff — measured as 9,425 raw changed lines against 157
-	 * ignoring whitespace. Nothing reads the indentation; every human does.
+	 * TWO SPACES, MATCHING THE FILE AND ITS SIBLINGS (review round 2, R2-1;
+	 * supersedes round 1's R1-3). Round 1 read the whole-file re-indent as a
+	 * writer/tree mismatch and made this line write tabs — but the tree's
+	 * convention is two spaces: main's own writer writes `null, 2`, main's
+	 * manifest was re-serialised to two spaces, and every sibling evidence
+	 * writer above does the same. What the manifest cannot survive is a
+	 * writer that disagrees with the bytes on disk: whichever style the tree
+	 * settles on, this line has to match it, so a capture never re-indents a
+	 * 9k-line file as a side effect of stamping it.
 	 */
-	writeFileSync(manifestPath, `${JSON.stringify(manifest, null, "\t")}\n`);
+	writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
 	console.log(`Captured ${captured} frames into ${OUT} at ${head.slice(0, 9)}`);
 };
