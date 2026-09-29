@@ -597,7 +597,7 @@ export const AgentHubPage: React.FC = () => {
 		`${count} ${noun}${count === 1 ? "" : "s"} ${scopePhrase}`;
 	let statusSentence: string;
 	if (view === "teams") {
-		if (!orgScopeId) statusSentence = "Teams are shared inside organizations";
+		if (!orgScopeId) statusSentence = "Teams are not part of the public hub";
 		else if (teamsQuery.isLoading) statusSentence = "Loading teams…";
 		else if (teamsCount !== null)
 			statusSentence = countPhrase(teamsCount, "team");

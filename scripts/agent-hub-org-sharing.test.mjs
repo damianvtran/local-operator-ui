@@ -657,8 +657,10 @@ test("the hub page scopes its read and renders the org states", () => {
 	const page = read("src/renderer/src/features/agent-hub/agent-hub-page.tsx");
 	// The scope decides the read, and it does so in ONE place.
 	assert.match(page, /tenantId: orgScopeId,/);
+	// The scope control is chips, shown only when an organization exists to switch to.
 	assert.match(page, /\{selectableOrgs\.length > 0 && \(/);
 	assert.match(page, /data-testid="agent-hub-scope"/);
+	assert.match(page, /aria-pressed=\{scope === value\}/);
 	// "no access" is a state of the surface, not the outage panel.
 	assert.match(page, /data-testid="agent-hub-org-no-access"/);
 	assert.match(
@@ -666,8 +668,15 @@ test("the hub page scopes its read and renders the org states", () => {
 		/const orgRefusal = activeOrg \? orgRefusalFromError\(error\) : null/,
 	);
 	assert.match(page, /!isColdLoading && error && !orgRefusal/);
-	// The roster is the org scope's, and it is mounted only there.
-	assert.match(page, /\{activeOrg && \(\s*<OrgTeamsList/);
+	// The roster is the org scope's Teams view, mounted ONCE and only there; the
+	// public scope renders the explanation instead of a list.
+	assert.equal(
+		page.split("<OrgTeamsList").length - 1,
+		1,
+		"one mount of the roster",
+	);
+	assert.match(page, /view === "teams" &&\s*\(activeOrg \?/);
+	assert.match(page, /<PublicTeamsNotice/);
 });
 
 test("the publish dialog offers the org target and disables a plan-blocked one", () => {
@@ -1513,4 +1522,51 @@ test("the org capability notice is a warning, like its four siblings", () => {
 		page,
 		/variant=\{orgRefusal \? "warning" : "danger"\}|orgRefusal[\s\S]{0,120}variant="warning"/,
 	);
+});
+
+/*
+ * The Teams read is composed, not multiplied: ONE `org_teams.list` per org-scope
+ * entry (the page's count observer and the roster's observer share a key), and
+ * NONE in the public scope, where there is no team read to make (§11 O-7).
+ * Source-anchored for the wiring; the request counts are measured off a rendered
+ * page by `scripts/hub-round-trips.mjs`.
+ */
+test("the teams read is keyed on the org scope and absent in the public scope", () => {
+	const page = read("src/renderer/src/features/agent-hub/agent-hub-page.tsx");
+	assert.match(page, /useOrgTeamsQuery\(\{ tenantId: orgScopeId \}\)/);
+	assert.equal(page.split("useOrgTeamsQuery(").length - 1, 1);
+	const hook = read(
+		"src/renderer/src/features/agent-hub/hooks/use-org-teams-query.ts",
+	);
+	assert.match(hook, /enabled: enabled && !!tenantId/);
+	// Teams are never presented as public: the public explanation is the only
+	// thing the public Teams view renders.
+	const notice = read(
+		"src/renderer/src/features/agent-hub/components/public-teams-notice.tsx",
+	);
+	assert.match(notice, /Teams are shared inside organizations/);
+	assert.doesNotMatch(notice, /useOrgTeamsQuery|listOrgTeams/);
+});
+
+test("the status sentence names the scope, and the pager keeps its labels", () => {
+	const page = read("src/renderer/src/features/agent-hub/agent-hub-page.tsx");
+	assert.match(page, /"in the public hub"/);
+	assert.match(page, /`shared with \$\{orgName \?\? "this organization"\}`/);
+	assert.match(page, /data-testid="agent-hub-status"/);
+	const pager = read(
+		"src/renderer/src/features/agent-hub/components/hub-pager.tsx",
+	);
+	assert.match(pager, /aria-label="Previous page"/);
+	assert.match(pager, /aria-label="Next page"/);
+	assert.match(pager, /min-h-13/);
+	// The sidebar's stepper is not the hub's footer any more, and is untouched.
+	assert.doesNotMatch(page, /import \{ CompactPagination \}/);
+});
+
+test("the author line drops the email fallback", () => {
+	const details = read(
+		"src/renderer/src/features/agent-hub/agent-details-page.tsx",
+	);
+	assert.doesNotMatch(details, /No email/);
+	assert.match(details, /agent\.account_metadata\?\.email\s*\?/);
 });

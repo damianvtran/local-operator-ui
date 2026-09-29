@@ -524,6 +524,21 @@ const CARD_DETAILS_NAME = /^View details for /;
 const chooseScope = async (name: string) => {
 	await screen.findByTestId("agent-hub-status");
 	await userEvent.click(await screen.findByRole("button", { name }));
+	releaseFocus();
+};
+
+/**
+ * Drop the focus ring the play's own press left behind.
+ *
+ * A programmatic click focuses the control and Chromium draws `:focus-visible`
+ * on it, so every frame that pressed a chip or a tab photographed a ring the
+ * reader never asked for (and the ring is not the claim of any of these frames -
+ * `FocusedSearch` owns that). Blurring makes the frame the resting state.
+ */
+const releaseFocus = () => {
+	if (document.activeElement instanceof HTMLElement) {
+		document.activeElement.blur();
+	}
 };
 
 /** Press the Teams tab, and wait until it is the selected one. */
@@ -535,6 +550,7 @@ const openTeamsTab = async () => {
 			"true",
 		),
 	);
+	releaseFocus();
 };
 
 /** The populated grid beside the category rail, signed out. */
