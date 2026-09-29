@@ -87,14 +87,18 @@ export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 					refusal={move.refusal}
 					receipt={null}
 					onWait={() => {
+						/*
+						 * THE PLAN IS THE REFUSED ASK, SO THE REMEDY RE-ISSUES IT ITSELF (agent review
+						 * R2-N2). The request below is composed from the plan's OWN destination and mode
+						 * with the route's own ceiling (`waitS: 300`), never by re-reading the pane: a
+						 * rebuilt request could name a different destination than the refusal answered,
+						 * which is what this file claimed while composing it from `move.to`/`move.keep`
+						 * and using `plan` only as the button's present/absent gate. `move.to`,
+						 * `move.name` and `move.from` stay the pane's own record of the same pick, and
+						 * they are what the chip and the notice paint while the re-issue is in flight.
+						 */
 						const plan = move.plan;
 						if (!plan) return;
-						/*
-						 * THE SAME REQUEST, WITH THE ROUTE'S OWN CEILING. The refusal says the
-						 * session is busy; the remedy is to ask again and let the route wait for
-						 * the turn, which is why the plan is carried rather than re-built (a
-						 * rebuilt one could name a different destination than the refusal did).
-						 */
 						beginMove(sessionId, {
 							deviceId: move.to,
 							name: move.name,
@@ -103,8 +107,8 @@ export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 						transfer.mutate(
 							{
 								sessionId,
-								to: move.to,
-								keep: move.keep,
+								to: plan.to,
+								keep: plan.keep,
 								waitS: WAIT_CEILING_S,
 							},
 							{
@@ -125,9 +129,9 @@ export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 										name: move.name,
 										canWait: true,
 										plan,
-										to: move.to,
+										to: plan.to,
 										from: move.from,
-										keep: move.keep,
+										keep: plan.keep,
 									});
 								},
 							},

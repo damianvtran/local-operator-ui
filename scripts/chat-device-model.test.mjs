@@ -15,10 +15,26 @@
  * is legible, and that a press opens the menu. Those are the rendered set's
  * (`docs/evidence/chat-device/`, captured by `scripts/capture-evidence.mjs`, whose
  * picker rows claim the panel is present) and the QA pass's.
+ *
+ * THE ONE ANCHOR READ, and why it is here rather than in a DOM suite: round 2's
+ * blocker was not a wrong value in this module but a wrong value HANDED to it - the
+ * header composed the plan from the row's display name, so `plan.to` (the address,
+ * the thing `findRow` resolves and the route parses) was a name. The model's
+ * contract cannot catch that: `movePair` is correct for whatever destination the
+ * caller states, and naming a name is the caller's mistake. So the call site is read
+ * as source, following `chat-sidebar-archive.test.mjs`'s trade - a rename inside the
+ * slice keeps this file red, and that is the point.
  */
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
+
+/** Comments stripped, so a rule can never be satisfied by prose about the rule. */
+const code = (path) =>
+	readFileSync(path, "utf8")
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/(^|[^:])\/\/.*$/gm, "$1");
 
 const bundle = await build({
 	stdin: {
@@ -36,6 +52,7 @@ const {
 	devicePickerModel,
 	MESH_READ_FAILURE,
 	movePair,
+	NOT_HERE_WHY,
 	panePlacement,
 	placementLabel,
 	placementSentence,
@@ -153,6 +170,59 @@ const rowFor = (model, deviceId) => {
 	const rows = model.sections.flatMap((section) => section.rows);
 	return rows.find((row) => row.deviceId === deviceId);
 };
+
+test("the plan's destination is the row's device ID, and the address is what gets sent", () => {
+	/*
+	 * QA round 2's blocker, pinned where it happened: the pick composes the plan from
+	 * `row.name`, so a live pick to build-box carried `to: "build-box"` - while the
+	 * model is keyed by `device_id`, the create carries an id, and the receipt echoes
+	 * what was sent. The daemon's destination is a device id; a display name is not an
+	 * address, and the app cannot resolve one it invented.
+	 */
+	const header = code(
+		"src/renderer/src/features/chat/device/chat-header-device.tsx",
+	);
+	const pick = header.slice(
+		header.indexOf("const pair = movePair({"),
+		header.indexOf("setAsk({"),
+	);
+	assert.match(
+		pick,
+		/destination:\s*\{\s*deviceId:\s*row\.deviceId,\s*name:\s*row\.name\s*\}/,
+		"the plan must be addressed by the row's device id and named by its name",
+	);
+	/*
+	 * AND WHAT THE CONFIRMATION HANDS BACK IS THE ADDRESS: `plan.to` is the id the
+	 * transfer carries (or `local`, the route's own word for a recall) - never the
+	 * verb's name, which is the shape that produced the un-resolvable destination.
+	 */
+	const choose = header.slice(
+		header.indexOf("onChoose={(plan) => {"),
+		header.indexOf("</>", header.indexOf("onChoose={(plan) => {")),
+	);
+	assert.match(
+		choose,
+		/onPick\(plan\.to === "local" \? null : plan\.to, plan\.keep\)/,
+	);
+	/*
+	 * AND THE RECEIVER RESOLVES BY THE SAME KEY: the slot looks the id up in a model
+	 * keyed by `device_id`, and puts that same value on the wire. `findRow(model, name)`
+	 * finding nothing is what painted "Moving to this device" for a move to build-box.
+	 */
+	const slot = code(
+		"src/renderer/src/features/chat/device/chat-device-slot.tsx",
+	);
+	assert.match(
+		slot,
+		/const row = deviceId \? findRow\(model, deviceId\) : null;/,
+		"the row is resolved by the id the model is keyed by",
+	);
+	assert.match(slot, /const name = row \? row\.name : "this device";/);
+	assert.match(slot, /const to = deviceId \?\? "local";/);
+	/* The address on the wire is that same value, and the draft keeps the id, not the name. */
+	assert.match(slot, /\{ sessionId, to, keep \}/);
+	assert.match(slot, /setDraftPeer\(draftKey, row \? row\.deviceId : null\)/);
+});
 
 test("the tense word is the whole design: a draft says New, a live session does not", () => {
 	assert.equal(
@@ -591,6 +661,34 @@ test("the tombstone names an action the control can take, not one it cannot", ()
 		"This conversation moved to build-box. The copy that was here was deleted. Click to bring it back here.",
 	);
 	assert.equal(sentence.includes("open it there"), false);
+	/*
+	 * AN UNANSWERED HOLDER IS SAID IN THE SENTENCE, NOT ONLY IN THE DOT (agent review
+	 * round 2, R2-4). `dotTone` painted `warning` for the same fact while `StateDot` is
+	 * `aria-hidden`, so the state where "the destination stopped answering" matters most
+	 * was available only to sighted readers - and the `remote` arm already spells it out.
+	 * The clause is `reachable === false` alone: `null` is "nobody asked", and a read
+	 * that did not answer gets no invented reason.
+	 */
+	assert.equal(
+		placementSentence({
+			kind: "gone",
+			deviceId: BUILD,
+			name: "build-box",
+			reachable: false,
+		}),
+		"This conversation moved to build-box, which did not answer the last read. The copy that was here was deleted. Click to bring it back here.",
+	);
+	const unanswered = placementSentence({
+		kind: "gone",
+		deviceId: BUILD,
+		name: "build-box",
+		reachable: null,
+	});
+	assert.equal(
+		unanswered,
+		"This conversation moved to build-box. The copy that was here was deleted. Click to bring it back here.",
+	);
+	assert.equal(unanswered.includes("did not answer"), false);
 });
 
 test("a pane whose conversation moved away is a move surface, with the holder marked", () => {
@@ -623,6 +721,70 @@ test("a pane whose conversation moved away is a move surface, with the holder ma
 	assert.equal(rowFor(model, PIXEL).state, "ineligible");
 	assert.equal(rowFor(model, PIXEL).why, "cannot receive a move");
 	assert.equal(rowFor(model, GRADIENT).why, "did not answer the last read");
+});
+
+test("a pane that no longer holds the conversation offers the recall and nothing else", () => {
+	/*
+	 * Agent review round 2, R2-1, driven as the reviewer drove it: with a THIRD device
+	 * that is reachable and capable - the only kind that could stand as a candidate - a
+	 * `gone` pane offered it, and the confirmation that press opened read "The copy on
+	 * this device is deleted once attic-nuc has it" while the tombstone two lines above
+	 * said the copy that was here was already deleted. The copy arithmetic is not the
+	 * bug to fix (an offload deletes the copy on this device, in every state where one
+	 * exists); the OFFER is, because this device cannot order two peers to swap a
+	 * conversation - `mesh-drop.ts` refuses that move as `third_device` and names the
+	 * remedy, which is the reason line below.
+	 */
+	const THIRD = "d_third";
+	const withThird = [
+		{
+			...NETWORKS[0],
+			members: [
+				...NETWORKS[0].members,
+				member({ device_id: THIRD, name: "attic-nuc", role: "drive" }),
+			],
+		},
+		NETWORKS[1],
+	];
+	const model = picker({
+		networks: withThird,
+		placement: {
+			kind: "gone",
+			deviceId: BUILD,
+			name: "build-box",
+			reachable: true,
+		},
+	});
+	// The device itself is fine - reachable, capable, in a network this device can read -
+	// so the row states the DIRECTION, not a fault, and it stays visible and explained.
+	assert.equal(rowFor(model, THIRD).state, "ineligible");
+	assert.equal(rowFor(model, THIRD).why, NOT_HERE_WHY);
+	// The two picks that do exist are unchanged: the holder is current, and this device's
+	// own row is the recall.
+	assert.equal(rowFor(model, BUILD).state, "current");
+	assert.equal(model.self.state, "candidate");
+	/*
+	 * AND THE PINNED LINE NOW MATCHES THE ONLY PICK: it is composed for the recall
+	 * because the recall is what a `gone` panel can send. `movePair` still carries the
+	 * offload arm for the states that hold a copy (a `remote` pane keeps its own, which
+	 * is why the arm's `lost` names THIS device rather than the device the conversation
+	 * runs on - the reviewer's first option would have named the running end and been
+	 * false in exactly that state).
+	 */
+	assert.equal(
+		model.footer,
+		"The copy on build-box is deleted once this device has it.",
+	);
+	const offload = movePair({
+		sessionId: "s",
+		recall: false,
+		destination: { deviceId: THIRD, name: "attic-nuc" },
+		source: "build-box",
+	});
+	assert.equal(
+		offload.plan.lost,
+		"The copy on this device is deleted once attic-nuc has it.",
+	);
 });
 
 test("a read that did not answer is not a membership fact, and neither is one in flight", () => {
@@ -677,9 +839,20 @@ test("the confirmation pair is the Mesh tab's own, in both directions", () => {
 	const offload = movePair({
 		sessionId: "s",
 		recall: false,
-		destination: "build-box",
+		/*
+		 * THE DESTINATION IS TWO FACTS (QA round 2, Q2-1). `to` is the ADDRESS the route
+		 * resolves and the key `devicePickerModel`'s rows are indexed by; the verbs say
+		 * the display name. One argument carrying both meanings is what put
+		 * `to: "build-box"` on the wire while the app looked the destination up by
+		 * `device_id`, so the pane could not resolve the device it had just addressed -
+		 * the in-flight chip read "Moving to this device" and the `gone` surface became
+		 * unreachable. The fixture ids below are deliberately unlike their names, so a
+		 * regression that swaps them fails here rather than looking right.
+		 */
+		destination: { deviceId: BUILD, name: "build-box" },
 		source: null,
 	});
+	assert.equal(offload.plan.to, BUILD);
 	assert.equal(offload.plan.keep, false);
 	assert.equal(offload.plan.verb, "Move to build-box");
 	assert.equal(
@@ -687,6 +860,7 @@ test("the confirmation pair is the Mesh tab's own, in both directions", () => {
 		"The copy on this device is deleted once build-box has it.",
 	);
 	assert.equal(offload.alternatives.length, 1);
+	assert.equal(offload.alternatives[0].to, BUILD);
 	assert.equal(offload.alternatives[0].keep, true);
 	assert.equal(offload.alternatives[0].verb, "Copy to build-box");
 	assert.equal(offload.alternatives[0].lost, null);
@@ -694,10 +868,11 @@ test("the confirmation pair is the Mesh tab's own, in both directions", () => {
 	const recall = movePair({
 		sessionId: "s",
 		recall: true,
-		destination: "this device",
+		destination: { deviceId: "local", name: "this device" },
 		source: "build-box",
 	});
 	assert.equal(recall.plan.to, "local");
+	assert.equal(recall.plan.keep, false);
 	assert.equal(recall.plan.verb, "Recall to this device");
 	assert.equal(
 		recall.plan.lost,

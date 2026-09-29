@@ -470,6 +470,19 @@ export type ChatDraft = {
 	submittedImages?: ChatImage[];
 	submittedMode?: "prompt" | "steer";
 	/**
+	 * The provenance the FIRST attempt of the current message carried (arch
+	 * §4.2). Pinned beside `submittedMode` and for the same reason: the server
+	 * keys its receipt on a hash of the whole body, so a retry must replay the
+	 * bytes the first attempt sent - not re-derive them from a composer whose
+	 * flags have moved since.
+	 */
+	submittedInputMode?: "typed" | "dictated" | "mixed";
+	/**
+	 * The reserved `input_path` slot (§4.2a): no caller sets it today, and the
+	 * pin exists so the first one that does cannot get a 409 from its own retry.
+	 */
+	submittedInputPath?: string;
+	/**
 	 * When the CURRENT attempt was issued, from the press's own clock - the
 	 * anchor the wait line's clock counts from.
 	 *
@@ -2105,6 +2118,18 @@ export async function admitChatDraft(
 		images: ChatImage[];
 		mode: "prompt" | "steer";
 		cwd: string;
+		/**
+		 * How the message was produced (arch §4.2): `typed`, `dictated`, or
+		 * `mixed` since the box last emptied. Carriage only.
+		 */
+		inputMode?: "typed" | "dictated" | "mixed";
+		/**
+		 * RESERVED, AND NO CALLER IN THIS TREE SETS IT (arch §4.2a): the route
+		 * cascade owns the `input_path` vocabulary, and the field is pinned below
+		 * beside `inputMode` so that when its first caller arrives a replay stays
+		 * byte-identical instead of changing the receipt's hash.
+		 */
+		inputPath?: string;
 	},
 	sessionId?: string,
 	/**
@@ -2232,6 +2257,27 @@ export async function admitChatDraft(
 		: input.images;
 	const mode = replay ? (previous?.submittedMode ?? input.mode) : input.mode;
 	/*
+	 * THE SAME PINNING RULE GOVERNS `input_mode`, FOR THE SAME REASON: it is part
+	 * of the body the receipt hashes, so the lost-response case must replay the
+	 * value the FIRST attempt sent rather than re-derive it (a retry after the
+	 * user typed again would otherwise pin a different provenance for the same
+	 * request id). `input_path` rides the identical rule; it is `undefined` for
+	 * every caller today.
+	 */
+	/*
+	 * A PREVIOUS ATTEMPT IS REPLAYED VERBATIM - INCLUDING ITS ABSENCE (review
+	 * round 1, n1). `previous?.submittedInputMode ?? input.inputMode` re-derived
+	 * the field when the first attempt had pinned NOTHING (the capability was off,
+	 * so it sent no key): a retry that carried a value would then stamp a
+	 * different body for the same request id, which is the one thing the pin
+	 * exists to prevent. The `??` chain is correct only for a first attempt;
+	 * with a previous one, its value - present or absent - is the answer.
+	 */
+	const inputMode =
+		replay && previous ? previous.submittedInputMode : input.inputMode;
+	const inputPath =
+		replay && previous ? previous.submittedInputPath : input.inputPath;
+	/*
 	 * And the id follows the same rule: the last attempt's id when this is the same
 	 * message, a fresh one when it is not. A first send has no previous payload, so it
 	 * keeps the id the draft was staged with (`stageDraft`'s own mint) - that is the id
@@ -2266,6 +2312,8 @@ export async function admitChatDraft(
 		submittedAttachments: input.attachments,
 		submittedImages: images,
 		submittedMode: mode,
+		submittedInputMode: inputMode,
+		submittedInputPath: inputPath,
 		/*
 		 * The last attempt's sentence and code go with it: a retry that leaves a
 		 * stale refusal on screen over a request that is now in flight reads as the
@@ -2490,6 +2538,8 @@ export async function admitChatDraft(
 			text: rendered,
 			images: images.length ? images : undefined,
 			mode,
+			inputMode,
+			inputPath,
 		});
 		store.finishDraft(key, id);
 		// A send that landed retires every message about the send that did not.
@@ -3910,6 +3960,22 @@ type CanonicalSessionsState = {
 	 * fresh and the send (if it beats that mint) creates without a draft id.
 	 */
 	setDraftModel: (key: string, model: DesktopModelSelection | null) => void;
+	/**
+	 * Record — or clear — the DEVICE a NEW conversation will be created on.
+	 *
+	 * A dedicated action rather than a bare `updateDraft("peer")` for exactly the
+	 * reason `setDraftModel` above gives, one field over: `peer` rides the create
+	 * body (`desktop-contract.ts`), and the server keys its at-most-once receipt on a
+	 * hash of that WHOLE body (`desktop_receipts.py`), so re-sending the same
+	 * `createRequestId` after the destination changed is a `ReceiptConflict` forever.
+	 * Two mesh refusals KEEP the claim rather than releasing it
+	 * (`_CREATE_UNCONFIRMED_CODES`: `relay_unavailable`, `peer_unreachable`), and a
+	 * device that answered the last read and stopped answering at send time is
+	 * exactly that case — the refusal this control ships a notice for. A changed
+	 * destination is a changed intent, so it gets a fresh create id. `null` means
+	 * this device, and choosing this device after picking a peer is a change too.
+	 */
+	setDraftPeer: (key: string, peer: string | null) => void;
 	finishDraft: (key: string, sessionId: string) => void;
 	/**
 	 * Abandon a stuck send. The retained payload is the user's own text, so the
@@ -6139,6 +6205,54 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						},
 					};
 				}),
+			setDraftPeer: (key, peer) =>
+				set((state) => {
+					/*
+					 * A pick on a pane whose row is gone records nothing: the pane was
+					 * discarded while the picker was open, and this must not resurrect it
+					 * (the same rule `updateDraft` and `setDraftModel` state).
+					 */
+					const present = state.drafts[key];
+					if (!present) return {};
+					const next = peer ?? undefined;
+					/*
+					 * AN UNCHANGED DESTINATION IS NOT A CHANGE. The self row is a real press
+					 * that means "this device", so without this guard a press that picked
+					 * nothing new would re-mint the create id and drop a warm intent for a
+					 * request that is still the same one.
+					 */
+					if ((present.peer ?? undefined) === next) return {};
+					return {
+						drafts: {
+							...state.drafts,
+							[key]: {
+								...present,
+								peer: next,
+								/*
+								 * THE SAME REWRITE `setDraftModel` MAKES, on the same condition: only while
+								 * there is still no session. Once one exists the create has already been
+								 * made and its id must stay pinned so a replay of that request stays an
+								 * idempotent replay. The admission id is NOT re-minted — it addresses the
+								 * message, not the create body.
+								 */
+								...(present.sessionId
+									? {}
+									: {
+											createRequestId: crypto.randomUUID(),
+											/*
+											 * AND THE WARM INTENT GOES WITH IT: the mint engaged a runtime on THIS
+											 * device (`sessions.draft`) and v1 does not re-aim one at a peer. The
+											 * mint's own request id is dropped for the reason `setDraftModel` gives:
+											 * a receipt replays the FIRST answer, so re-asking under the old key
+											 * would hand the pane back a draft id for the old destination.
+											 */
+											warmId: undefined,
+											draftRequestId: crypto.randomUUID(),
+										}),
+							},
+						},
+					};
+				}),
 			setDraftModel: (key, model) =>
 				set((state) => {
 					/*
@@ -6529,6 +6643,8 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						submittedAttachments: _attachments,
 						submittedImages: _images,
 						submittedMode: _mode,
+						submittedInputMode: _inputMode,
+						submittedInputPath: _inputPath,
 						heldClaimCode: _claimCode,
 						error: _error,
 						errorCode: _errorCode,

@@ -436,7 +436,16 @@ export const ChatHeaderDevice = ({
 		const pair = movePair({
 			sessionId,
 			recall,
-			destination: row.name,
+			/*
+			 * THE ID ADDRESSES, THE NAME SPEAKS (QA Q2-1). `plan.to` is what
+			 * `onChoose` hands back as the destination - the same value `transfer.mutate` puts on
+			 * the wire and `findRow` looks up by `device_id` - so passing the row's NAME here
+			 * sent `to: "build-box"`: the daemon's destination is an id, the receipt echoed a
+			 * value the app could not resolve, and the pane painted "Moving to this device"
+			 * because `findRow(model, "build-box")` found nothing. The verbs need the name, which
+			 * is why both fields are here; a row of the picker's model has both.
+			 */
+			destination: { deviceId: row.deviceId, name: row.name },
 			source,
 		});
 		setAsk({

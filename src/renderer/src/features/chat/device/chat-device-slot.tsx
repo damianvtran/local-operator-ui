@@ -129,7 +129,7 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 	const beginMove = useChatDeviceStore((state) => state.beginMove);
 	const settleMove = useChatDeviceStore((state) => state.settleMove);
 	const refuseMove = useChatDeviceStore((state) => state.refuseMove);
-	const updateDraft = useCanonicalSessionsStore((state) => state.updateDraft);
+	const setDraftPeer = useCanonicalSessionsStore((state) => state.setDraftPeer);
 
 	const networkList = networks.data?.networks ?? [];
 	const peerList: PeerRow[] = peers.data?.peers ?? [];
@@ -217,7 +217,15 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 			 */
 			if (!sessionId) {
 				if (!draftKey) return;
-				updateDraft(draftKey, { peer: row ? row.deviceId : undefined });
+				/*
+				 * THE DESTINATION HAS ITS OWN ACTION (agent review R2-2). This used to be a bare
+				 * `updateDraft(draftKey, { peer })`, which changed the create body without
+				 * touching the at-most-once key the body is claimed under: after a
+				 * `peer_unreachable` the daemon KEEPS the claim, so changing the destination and
+				 * sending again answered `ReceiptConflict` for the life of the pane. `setDraftPeer`
+				 * re-mints on a change, exactly as `setDraftModel` does for the same reason.
+				 */
+				setDraftPeer(draftKey, row ? row.deviceId : null);
 				return;
 			}
 			/*
@@ -251,7 +259,8 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 			const pair = movePair({
 				sessionId,
 				recall: to === "local",
-				destination: name,
+				/* The id the pair addresses, the name its verbs say (QA Q2-1). */
+				destination: { deviceId: to, name },
 				source: from,
 			});
 			const plan = keep ? (pair.alternatives[0] ?? pair.plan) : pair.plan;
@@ -311,9 +320,9 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 			placement,
 			refuseMove,
 			sessionId,
+			setDraftPeer,
 			settleMove,
 			transfer,
-			updateDraft,
 		],
 	);
 

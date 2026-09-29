@@ -166,7 +166,18 @@ export function placementSentence(placement: DevicePlacement): string {
 			 * picker's first - is the one thing here that exists, so it is what the
 			 * sentence promises (QA Q-2, UX U6). Where it went stays in the first two
 			 * clauses, which is the pair of facts the tombstone owes a reader.
+			 *
+			 * AN UNANSWERED HOLDER IS SAID OUT LOUD (agent review R2-4). `remote` states
+			 * the same fact in its own sentence while this arm ignored `reachable`
+			 * entirely, so the only channel carrying it was the dot - which is `aria-hidden`
+			 * and painted for exactly the reader who does not need the words. The clause is
+			 * `reachable === false` and nothing else: `null` is "nobody asked", and a reason
+			 * is not invented for a read that did not answer (the tri-state rule design
+			 * round 1's D4 settled).
 			 */
+			if (placement.reachable === false) {
+				return `This conversation moved to ${placement.name}, which did not answer the last read. The copy that was here was deleted. Click to bring it back here.`;
+			}
 			return `This conversation moved to ${placement.name}. The copy that was here was deleted. Click to bring it back here.`;
 		case "moving":
 			return `Moving this conversation to ${placement.name}.`;
@@ -241,6 +252,20 @@ export type DevicePickerModel = {
 /** The exact consequence the default (deleting) move carries. */
 export const MOVE_FOOTER =
 	"The copy on this device is deleted when the move commits.";
+
+/**
+ * Why a third device cannot be picked from a pane that no longer holds the
+ * conversation (agent review R2-1).
+ *
+ * IT NAMES THE REMEDY RATHER THAN THE BLOCKER, which is the shape the other two
+ * reasons have (`cannot receive a move`, `did not answer the last read`): the device
+ * is not at fault here, and the sentence a reader needs is how to get where they are
+ * going. `mesh-drop.ts` states the same refusal in full (`This conversation is on X.
+ * It has to travel through this device: recall it here first.`); this is the row's
+ * own short half of it.
+ */
+export const NOT_HERE_WHY =
+	"the conversation is not here to move; recall it here first";
 
 /**
  * What this device's row says when no read has named it.
@@ -482,12 +507,22 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
 		placement.kind === "remote" ||
 		placement.kind === "gone" ||
 		/*
-		 * AND `moving` IS NOT A DRAFT EITHER (QA Q-8, UX U4): a pane whose move is in
-		 * flight looked at through its picker is a conversation that exists, so its
-		 * panel keeps the move's heading and the move's consequence line while every row
-		 * stands down under the in-flight sentence.
+		 * AND AN IN-FLIGHT `moving` PANE KEEPS THE MOVE'S OWN PANEL (QA Q-8, UX U4): a
+		 * pane whose move is in flight looked at through its picker is a conversation
+		 * that exists, so its panel keeps the move's heading and the move's consequence
+		 * line while every row stands down under the in-flight sentence.
 		 */
 		placement.kind === "moving";
+	/*
+	 * THE CONVERSATION IS NOT HERE TO MOVE, so nothing but the recall can be picked
+	 * (agent review R2-1). In `gone` this device's copy is already deleted, and a
+	 * pick on a third device would ask it to take the conversation from the device
+	 * that holds it - two devices this one is not an end of, which the route refuses
+	 * (`third_device`). It ships as an INELIGIBLE row with the reason rather than as
+	 * a hidden one (the rule this list already follows), because the device is fine:
+	 * it is the direction that does not exist from here.
+	 */
+	const notHere = placement.kind === "gone";
 	/*
 	 * WHERE THE CONVERSATION IS, for the row that must be marked `current`. A draft's
 	 * destination is where it WILL be created; a live conversation's is where it is.
@@ -561,23 +596,35 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
 					input.canTransfer &&
 					member.capabilities.includes("move") &&
 					member.reachable;
+				/*
+				 * THE HOLDER IS `current` AND KEEPS ITS OWN FACTS: the device holding the
+				 * conversation is reachable and capable, so without this split the row the
+				 * recall is pressed on would be refused by the recall's own reason.
+				 */
+				const holder = destination !== null && member.device_id === destination;
+				const standsDown = moving && (!eligible || (notHere && !holder));
 				return {
 					deviceId: member.device_id,
 					name: member.name,
 					facts,
-					state:
-						destination !== null && member.device_id === destination
-							? "current"
-							: moving && !eligible
-								? "ineligible"
-								: "candidate",
-					why:
-						moving && !eligible
-							? ineligibleReason({
+					state: holder ? "current" : standsDown ? "ineligible" : "candidate",
+					/*
+					 * THE ROW'S OWN REASON OUTRANKS THE DIRECTION'S. A device that cannot
+					 * receive a move, or that did not answer the last read, says THAT - the
+					 * direction reason is added only where it is the whole of the objection,
+					 * so a reader of a `gone` pane still learns which of their devices is
+					 * capable and which is answering. The `eligible` arm below is reached
+					 * only when `standsDown` is true, i.e. when `notHere && !holder` is what
+					 * refused the row.
+					 */
+					why: !standsDown
+						? undefined
+						: eligible
+							? NOT_HERE_WHY
+							: ineligibleReason({
 									canTransfer: input.canTransfer,
 									reachable: member.reachable,
-								})
-							: undefined,
+								}),
 				} satisfies DeviceRow;
 			});
 		return {
@@ -756,17 +803,37 @@ export function deviceName(name: string, deviceId: string): string {
  * `waitS: 0` IS THE SHIPPED ASK, and it stays: the design's refusal path is the
  * `busy` refusal, whose remedy re-issues THIS plan with the route's own ceiling
  * (see `chat-device-notice.tsx`).
+ *
+ * THE PLAN'S `to` IS THE WIRE ADDRESS, SO IT IS THE DEVICE ID, and the NAME is
+ * what the verbs say (agent review R2-2 / QA Q2-1: this function used to take one
+ * string for both, so a live pick sent `to: "build-box"` and the pane could not
+ * resolve the device it had just addressed - `findRow` is keyed by `device_id` -
+ * which is what made the in-flight chip read "Moving to this device" and the
+ * `gone` surface unreachable). One argument carrying two meanings is the defect;
+ * the two fields below are the fix, and every consumer reads the one it needs.
  */
 export function movePair(input: {
 	sessionId: string;
 	/** True when the pick brings the conversation back to this device. */
 	recall: boolean;
-	/** The destination device's name; ignored for a recall. */
-	destination: string;
+	/** The destination: the ID the route addresses, the NAME the verbs say. */
+	destination: { deviceId: string; name: string };
 	/** Where the conversation is now, when that is a device other than this one. */
 	source: string | null;
 }): { plan: MovePlan; alternatives: MovePlan[] } {
 	const common = { sessionId: input.sessionId, waitS: 0 };
+	const destination = input.destination.name;
+	/*
+	 * THE COPY AN OFFLOAD DELETES IS THE ONE ON THIS DEVICE, and `source` is not
+	 * that end: it names where the conversation RUNS when that is elsewhere, which
+	 * after a `keep: true` arrival is a device that keeps its own copy while the one
+	 * here is the copy that travels (agent review R2-1's first option would have
+	 * named the running end here and been false in exactly that state). The one
+	 * placement where this device has no copy to hand over is `gone`, and its rows
+	 * for a third device are `ineligible` in `devicePickerModel` rather than
+	 * composed here - so no reachable pick reaches this arm with a different end.
+	 */
+	const handedOver = "this device";
 	if (input.recall) {
 		return {
 			plan: {
@@ -790,17 +857,17 @@ export function movePair(input: {
 	return {
 		plan: {
 			...common,
-			to: input.destination,
+			to: input.destination.deviceId,
 			keep: false,
-			verb: `Move to ${input.destination}`,
-			lost: lossSentence("this device", input.destination),
+			verb: `Move to ${destination}`,
+			lost: lossSentence(handedOver, destination),
 		},
 		alternatives: [
 			{
 				...common,
-				to: input.destination,
+				to: input.destination.deviceId,
 				keep: true,
-				verb: `Copy to ${input.destination}`,
+				verb: `Copy to ${destination}`,
 				lost: null,
 			},
 		],

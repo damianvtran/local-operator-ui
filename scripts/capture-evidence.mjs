@@ -4405,6 +4405,185 @@ export const STORIES = [
 	],
 	["chat-sidebar-view-menu--off-route-voice", 741, 760],
 
+	/* ------------------------------------------------------------------ *
+	 * THE VIEW-SETTINGS AUDIT (operator, 2026-09-27): one frame per control the
+	 * panel promises, driven by that control's own press, with the caption
+	 * printing both sides of the claim - what the panel's switches say and what
+	 * the two regions actually draw.
+	 *
+	 * `audit-entity-hidden` is the reported bug and the pair's other half is
+	 * `audit-entity-restored`: the same switch pressed off, then back on. Both
+	 * are captured from `origin/main` as well, in the supplementary set
+	 * `docs/evidence/view-settings-audit-baseline/`, because the claim is a
+	 * DELTA - on the base commit the caption's last line reads `DISAGREE` with
+	 * the `Agents` row still drawn, which is the operator's own screenshot.
+	 *
+	 * The ORDER pair is one control over two frames on purpose: `Most recent`
+	 * and `Active first` must produce different lists, not merely different
+	 * ticks, so the two captions' row orders are read against each other (the
+	 * live turn is the oldest conversation in the fixture and so sits past the
+	 * ten-row page under one order and leads the list under the other).
+	 * ------------------------------------------------------------------ */
+	/*
+	 * EACH ENTRY CLAIMS ITS OUTCOME, and the rig checks it against the live DOM
+	 * immediately before the shutter (`expectAttribute`/`expectGone`/
+	 * `expectPresent`): a frame that says "the section is hidden" while the
+	 * region still draws it fails the CAPTURE rather than being filed. That is
+	 * the operator's report, so it is asserted in the direction it was reported.
+	 *
+	 * `audit-group-flat` asserts the two pinned rows BY NAME for the second
+	 * defect this pass fixed: a grouping dropped them when it took the page
+	 * alone, so those two ids are the difference between `In one list` arranging
+	 * the column and filtering it.
+	 */
+	[
+		"chat-sidebar-view-menu--audit-entity-hidden",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-section="agents"]',
+				name: "aria-checked",
+				equals: "false",
+			},
+
+			expectGone:
+				'[data-sidebar-region="entities"] [data-chat-section="agents"]',
+			expectPresent:
+				'[data-sidebar-region="entities"] [data-chat-section="teams"]',
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-entity-restored",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-section="agents"]',
+				name: "aria-checked",
+				equals: "true",
+			},
+			expectPresent:
+				'[data-sidebar-region="entities"] [data-chat-section="agents"]',
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-chat-section-hidden",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-section="week"]',
+				name: "aria-checked",
+				equals: "false",
+			},
+			expectGone: '[data-sidebar-region="chats"] [data-chat-section="week"]',
+			expectPresent:
+				'[data-sidebar-region="chats"] [data-chat-section="older"]',
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-pinned-hidden",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-section="pinned"]',
+				name: "aria-checked",
+				equals: "false",
+			},
+			expectGone: [
+				'[data-sidebar-region="chats"] [data-chat-section="pinned"]',
+				'[data-session-row="audit-pinned-new"]',
+			],
+			expectPresent:
+				'[data-sidebar-region="chats"] [data-chat-section="running"]',
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-teams-hidden",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-section="teams"]',
+				name: "aria-checked",
+				equals: "false",
+			},
+			expectGone:
+				'[data-sidebar-region="entities"] [data-chat-section="teams"]',
+			expectPresent:
+				'[data-sidebar-region="entities"] [data-chat-section="agents"]',
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-group-agent",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-choice="agent"]',
+				name: "aria-checked",
+				equals: "true",
+			},
+			expectGone: [
+				'[data-sidebar-region="chats"] [data-chat-section="running"]',
+				'[data-sidebar-region="chats"] [data-chat-section="older"]',
+			],
+			expectPresent: [
+				'[data-sidebar-region="chats"] [data-chat-section="coder"]',
+				'[data-sidebar-region="chats"] [data-chat-section="ungrouped"]',
+			],
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-group-flat",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-choice="flat"]',
+				name: "aria-checked",
+				equals: "true",
+			},
+			expectGone: [
+				'[data-sidebar-region="chats"] [data-chat-section="running"]',
+				'[data-sidebar-region="chats"] [data-chat-section="coder"]',
+			],
+			expectPresent: [
+				'[data-sidebar-region="chats"] [data-chat-section="all"]',
+				'[data-session-row="audit-pinned-new"]',
+				'[data-session-row="audit-pinned-old"]',
+			],
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-order-most-recent",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-choice="recent"]',
+				name: "aria-checked",
+				equals: "true",
+			},
+			expectGone: '[data-session-row="audit-busy-old"]',
+		},
+	],
+	[
+		"chat-sidebar-view-menu--audit-order-active-first",
+		741,
+		760,
+		{
+			expectAttribute: {
+				selector: '[data-sidebar-view-choice="active-first"]',
+				name: "aria-checked",
+				equals: "true",
+			},
+			expectPresent: '[data-session-row="audit-busy-old"]',
+		},
+	],
+
 	/*
 	 * The publish dialog, in every state its rewrite introduced (agent-hub
 	 * contract §6.2/§6.3): the consent copy that now says what is published, the
@@ -6550,6 +6729,33 @@ export const STORIES = [
 		268,
 		{ expectSentence: "running there now" },
 	],
+	/*
+	 * THE RECALL'S ARRIVAL (agent review round 2, R2-3): the state R1-1/QA Q-1/UX U2
+	 * are all about - the conversation came HOME, and the copy that was deleted is the
+	 * one on the peer - shipped as a story with no frame in the set. The sentence it
+	 * claims is the recall's own verb, which is the half a reader has to be able to
+	 * check against the chip above it.
+	 */
+	[
+		"chat-device--recalled",
+		1000,
+		268,
+		{
+			expectSentence: "Moved back to this device",
+			expectPresent: '[data-device-notice="moved"]',
+		},
+	],
+	/*
+	 * §2.4'S HOLD IS NOT IN THIS SET, AND THE ROUND-1 DISCLOSURE SAID SO FALSELY (agent
+	 * review R2-3). The strip IS implemented (`chat-device-hold.tsx`, composed by the page
+	 * through `MessageInput`'s `deviceHold` prop) and it needs a frame - but it cannot come
+	 * from here: `MessageInput` reads the preload seam (`window.api` / `ipcRenderer`) and
+	 * Storybook has no such bridge, so a story that mounts it renders Storybook's own
+	 * error display, which this rig refuses to photograph (measured: `chat-device--held`
+	 * failed with `Cannot read properties of undefined (reading 'ipcRenderer')`). The
+	 * hold's frame is therefore an APP capture, in the supplementary set the manifest
+	 * declares beside this one - the same rule the sidebar's live frames follow.
+	 */
 	[
 		"chat-device--refused-busy",
 		1000,
