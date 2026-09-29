@@ -231,6 +231,11 @@ If you encounter issues not covered here, please:
 1. Check the [GitHub Issues](https://github.com/damianvtran/local-operator-ui/issues) for similar problems
 2. Open a new issue if your problem hasn't been reported
 
+## Credits
+
+Some general style and interaction UX here is inspired by [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) (`dsh`) - including the conversation measure's draggable width controls, whose geometry, hover cue and persistence shape were read from
+its `ConversationWidthControls` and adopted with this app's own bounds.
+
 ## License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details. It is open source because AI tools should be accessible to everyone, and your contributions and feedback help make that real.
