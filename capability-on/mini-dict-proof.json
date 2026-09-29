@@ -1,0 +1,133 @@
+{
+  "out": "/Users/damian/.local-operator/sessions/4bc0c6ff9c3a/scratchpad/mini-dict/run2",
+  "proxyRequests": 32,
+  "claims": [],
+  "steps": [
+    {
+      "step": "rig.radientUpstream",
+      "port": 8799,
+      "delayMs": 600
+    },
+    {
+      "step": "rig.proxy",
+      "port": 8080
+    },
+    {
+      "step": "rig.capabilities",
+      "input_mode": 1,
+      "aida": 1
+    },
+    {
+      "step": "the backend carries the carriage and the seat this run needs",
+      "ok": true,
+      "input_mode": 1,
+      "aida": 1
+    },
+    {
+      "step": "the placeholder Radient key is seeded (the transcription relay reads it)",
+      "ok": true,
+      "status": 200
+    },
+    {
+      "step": "the app's own mini window exists, hidden",
+      "ok": true,
+      "visible": false,
+      "focused": false,
+      "url": "file:///Users/damian/local-operator-ui-worktrees/mini-dict-0929-4bc0/out/renderer/mini.html"
+    },
+    {
+      "step": "app.bootLines",
+      "mini": [
+        "05:13:04.706 › mini-view: exerciser window created (dev driver armed; no registration in this mode)",
+        "mini-view: exerciser window created (dev driver armed; no registration in this mode)",
+        "05:13:04.706 › mini-view: not registered (window mode headless)",
+        "mini-view: not registered (window mode headless)"
+      ]
+    },
+    {
+      "step": "the summoned mini window stayed hidden (headless presentation refuses)",
+      "ok": true,
+      "visible": false
+    },
+    {
+      "step": "rig.appConnected",
+      "proxyRequests": 9
+    },
+    {
+      "step": "mini.dictation.records",
+      "state": "Stop dictation|Recording. Press the stop button when you're done."
+    },
+    {
+      "step": "the dictated transcript landed in the mini's draft",
+      "ok": true,
+      "transcript": "mini dictated line from the fake upstream."
+    },
+    {
+      "step": "the mini's dictated send reached the wire with input_mode: dictated",
+      "ok": true,
+      "status": 200,
+      "body": {
+        "request_id": "60dc927b-5e61-4698-89e3-53f56d7793d7",
+        "text": "mini dictated line from the fake upstream.",
+        "images": [],
+        "mode": "prompt",
+        "input_mode": "dictated"
+      }
+    },
+    {
+      "step": "the daemon admitted it (2xx)",
+      "ok": true,
+      "status": 200
+    },
+    {
+      "step": "the daemon's own history carries the message, stamped",
+      "ok": true,
+      "sessionId": "97697a50be75",
+      "status": 200,
+      "carriesText": true,
+      "carriesStamp": true
+    },
+    {
+      "step": "the window was never shown or focused, start to finish",
+      "ok": true,
+      "visible": false,
+      "focused": false
+    },
+    {
+      "step": "rig.radientCalls",
+      "count": 1,
+      "calls": [
+        {
+          "at": 1790673186986,
+          "method": "POST",
+          "url": "/v1/tools/transcriptions"
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "frame 01-dictated-draft.png captured (26667 bytes)",
+    "send pressed at 1790673187825; wire record at 1790673188128 (delta 303 ms)",
+    "synthetic microphone (Chromium fake device): macOS TCC is not in this path."
+  ],
+  "wire": [
+    {
+      "at": 1790673188128,
+      "path": "/v1/desktop/sessions/97697a50be75/messages",
+      "status": 200,
+      "body": {
+        "request_id": "60dc927b-5e61-4698-89e3-53f56d7793d7",
+        "text": "mini dictated line from the fake upstream.",
+        "images": [],
+        "mode": "prompt",
+        "input_mode": "dictated"
+      }
+    }
+  ],
+  "history": {
+    "sessionId": "97697a50be75",
+    "status": 200,
+    "carriesText": true,
+    "carriesStamp": true
+  }
+}
