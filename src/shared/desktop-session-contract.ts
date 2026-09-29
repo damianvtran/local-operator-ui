@@ -665,6 +665,65 @@ export type CanonicalWakeState = {
 };
 
 /**
+ * One ARMED monitor, as the canonical frontend publishes it (`wake`'s
+ * sibling, `local_operator/session/frontend_state.py::MonitorState`, built by
+ * `_monitor_state` from the scheduler's own `index_rows()`).
+ *
+ * Declared rather than reached through the index signature for the reason
+ * `CanonicalWakeState` states for itself: this is the field that decides
+ * whether the composer's monitor chip and the pane's Monitors section render
+ * at all, and a rename on the wire would silently empty both surfaces with
+ * nothing to catch it.
+ *
+ * The row is the spec's identity JOINED with its health counters — the same
+ * fields the derived index writes (the monitor design doc § 10.2), because
+ * `index_rows()` is the one place those two are composed, so a status surface
+ * and a cold reader cannot disagree about a monitor's shape. Health rides the
+ * row rather than a second call because a disabled monitor must not be
+ * invisible on any surface (§ 11.3).
+ *
+ * `next_due_at` and `last_check_at` are epoch MILLISECONDS, like a wake's due
+ * instant and unlike every second-stamped clock on this wire — the unit is
+ * spelled out on each field because getting it wrong is a factor of 1000 with
+ * nothing on screen to say so. `next_due_at` is null for a monitor whose next
+ * tick is not yet known (or that is disabled), and `last_check_at` is 0 until
+ * the first check — both are real wire states, not errors.
+ *
+ * Every field below `name` is OPTIONAL even though the Python model defaults
+ * it: the wire is the contract and an older producer omits what it does not
+ * know (`extra="allow"` on the Python side, so a newer row still parses), so a
+ * required field here would only make the renderer read `undefined` off a
+ * value TypeScript promised was set.
+ */
+export type CanonicalMonitorState = {
+	id: string;
+	/** The short label, e.g. `loom-pr-1710`. */
+	name: string;
+	/** The session tool the check re-runs (informational on this wire). */
+	tool?: string;
+	/** The check interval in milliseconds (`spec.MIN_MONITOR_INTERVAL_MS` floor). */
+	every_ms?: number | null;
+	/** Stop time, epoch MILLISECONDS, or null/absent for a durable watch. */
+	until_at?: number | null;
+	/** What to watch for — the authored prose line the row shows. */
+	description?: string;
+	/** The next check instant, epoch MILLISECONDS, or null while unknown. */
+	next_due_at?: number | null;
+	/** When the last check ran, epoch MILLISECONDS; 0 before the first. */
+	last_check_at?: number;
+	/** Checks run so far. */
+	checks?: number;
+	/** Deltas delivered so far. */
+	deliveries?: number;
+	/** Failures in a row; non-zero is the row's `failing` health. */
+	consecutive_failures?: number;
+	/** Auto-disabled after the failure ladder trips; the row states it. */
+	disabled?: boolean;
+	/** Why it was disabled (the failure's last line), when there is one. */
+	disabled_reason?: string;
+};
+
+/**
  * The epoch MILLISECONDS a wire stamp states, or `null` when it states none.
  *
  * ONE READER FOR ONE UNIT. The wire states two instants in epoch SECONDS — a
@@ -774,6 +833,17 @@ export type CanonicalFrontendState = {
 	 * state either surface draws.
 	 */
 	wakes: CanonicalWakeState[];
+	/**
+	 * The session's ARMED monitors, `wakes`' sibling. Absent or empty means
+	 * no monitors, which is the ordinary state: the composer's monitor chip
+	 * and the run pane's Monitors section both render as ABSENCE at zero, so
+	 * this list being empty is not a state either surface draws.
+	 *
+	 * A backend that predates the field omits it entirely — the same skew
+	 * `wakes` carried when it landed — so readers take absent and empty alike
+	 * (the run model reads it through the same `toWireList` seam).
+	 */
+	monitors: CanonicalMonitorState[];
 	mcp_servers: Array<{
 		name: string;
 		status: string;
