@@ -17,6 +17,13 @@ import { build } from "esbuild";
  * waited for, a wait that never restarts under work the app could not see, and a
  * re-engage that engages one at a time and reports what did not come back.
  *
+ * THE WAIT HALF NOW SERVES ONE ROUTE (2026-09-29): the operator's directive
+ * removed the fleet drain from the restart legs - a daemon bounce cuts no turns,
+ * because session runtimes are detached and converge onto the new build at their
+ * own next idle - so the bound below guards the checkout REBUILD's install leg,
+ * and the re-engage half still runs after every restart. See the module head in
+ * `src/main/backend/fleet-drain.ts` for the directive and the operator's log.
+ *
  * The module is bundled in memory from the shipped TypeScript, the same way the
  * other update tests do, so these stay tests of the code that ships rather than
  * of a copy of it. Nothing here touches a real backend: `readWorkState`,
@@ -687,12 +694,17 @@ test("an engage the server does not take is reported, never swallowed", async ()
 
 test("the panel's own number for the wait is this gate's", () => {
 	/*
-	 * A BOUND STATED TWICE IS A BOUND THAT CAN DRIFT. Both places the panel states it
-	 * - the offer's cost line before the press, and the draining phase's sentence
-	 * during the wait - tell the reader how long the app may hold their press, and the
-	 * gate is what decides it. Asserted as a match rather than left to review, because
-	 * the failure mode is a panel promising ten minutes while the code waits two - or
-	 * the reverse - and neither number is wrong on its own.
+	 * A BOUND STATED TWICE IS A BOUND THAT CAN DRIFT. The panel states it in the
+	 * DRAINING phase's sentence - the wait the rebuild install leg still runs -
+	 * and the gate is what decides it. Asserted as a match rather than left to
+	 * review, because the failure mode is a panel promising ten minutes while the
+	 * code waits two - or the reverse - and neither number is wrong on its own.
+	 *
+	 * THE OTHER STATEMENT IS GONE, AND THIS ASSERT USED TO DEMAND IT (rewritten
+	 * 2026-09-29): the offer's cost line carried the same fragment until the
+	 * operator's directive removed the restart-leg drains, so the draining copy is
+	 * the only surface left that may state the bound - and the count this test
+	 * requires moved from two to one with it.
 	 */
 	const panel = readFileSync(
 		join(
@@ -706,8 +718,8 @@ test("the panel's own number for the wait is this gate's", () => {
 		(match) => match[1],
 	);
 	assert.ok(
-		stated.length >= 2,
-		"both the offer and the draining phase must state the bound they wait",
+		stated.length >= 1,
+		"the draining phase (the only surface left that waits) must state the bound it waits",
 	);
 	for (const word of stated) {
 		assert.ok(
@@ -901,13 +913,16 @@ test("the refusal's credentials reading is the one that produced the verdict", a
 	);
 });
 
-test("the refusal says which arm left what on disk, and never names it twice", () => {
+test("the refusal says nothing was installed, and never names a landed install", () => {
 	/*
-	 * ONE AUTHOR, TWO ALTERNATIVES (design round 2, D6). The install-less arm and the
-	 * after-the-install arm are different facts about the same ten-minute wait, and
-	 * they used to be composed by two authors - this sentence's prose and the caller's
-	 * appended clause - which put "Nothing was installed" and "The install itself has
-	 * landed" in one paragraph three lines apart.
+	 * ONE AUTHOR, ONE ARM (design round 2, D6; simplified 2026-09-29). The refusal
+	 * used to have two closings - the install-less one and "The install itself has
+	 * landed" - because two of the three refusal sites ran after the build was on
+	 * disk. The operator's directive removed the restart-leg drains, so the only
+	 * refusal left is the rebuild install leg's, which runs BEFORE anything is
+	 * installed; the landed arm went with its callers and must not come back, or a
+	 * reader is told an update did not happen (or did) on the wrong side of the
+	 * truth.
 	 */
 	const busy = fleetRosterFromSessions(
 		body([row("aaaaaaaaaaa1", "busy", { name: "Nightly enrichment" })]),
@@ -919,17 +934,10 @@ test("the refusal says which arm left what on disk, and never names it twice", (
 		waitedMs: 600_000,
 		busy,
 	};
-	const installLess = fleetDrainRefusalSentence(outcome);
-	assert.match(installLess, /Nothing was installed/);
-	assert.doesNotMatch(installLess, /install itself has landed/);
-	const landed = fleetDrainRefusalSentence(outcome, true);
-	assert.match(landed, /install itself has landed/);
-	assert.doesNotMatch(
-		landed,
-		/Nothing was installed/,
-		"the two clauses are alternatives, not additions",
-	);
-	/* The unreadable arm carries the same pair, through the same author. */
+	const busyArm = fleetDrainRefusalSentence(outcome);
+	assert.match(busyArm, /Nothing was installed/);
+	assert.doesNotMatch(busyArm, /install itself has landed/);
+	/* The unreadable arm carries the same closing, through the same author. */
 	const unknownArm = fleetDrainRefusalSentence({
 		kind: "refused",
 		because: "unknown",

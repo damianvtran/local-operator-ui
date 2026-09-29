@@ -5,22 +5,40 @@ import {
 } from "../backend-version-drift";
 
 /**
- * The fleet gate: what an update must see before it may disturb the server
- * serving this app, and what it puts back if it does.
+ * The fleet gate's two halves: the drain the REBUILD route's install leg still
+ * waits on, and the re-engage every restart runs after the server has moved.
  *
- * WHY THIS EXISTS AT ALL. A restart of the app's own daemon is `stop(true)` -
- * SIGTERM, ten seconds, SIGKILL - and the harness states why that is not a safe
- * operation in `local_operator/server/retire.py`: the daemon OWNS work in that
- * process (``SchedulerService._run_tasks`` runs there), a lifespan shutdown
- * cancels it, and an idle-looking daemon supplies no guarantee a successor is
- * ready - which is why production drift handling refuses to exit on its own
- * rather than draining to a deadline. The desktop app's update copy said the
- * quiet part out loud ("a turn that is in flight is dropped while the server
+ * WHY THIS EXISTS AT ALL, AND WHERE IT STILL APPLIES. A restart of the app's own
+ * daemon is `stop(true)` - SIGTERM, ten seconds, SIGKILL - and the harness
+ * states what that costs in `local_operator/server/retire.py`: the daemon OWNS
+ * work in that process (``SchedulerService._run_tasks`` runs there), a lifespan
+ * shutdown cancels it, and an idle-looking daemon supplies no guarantee a
+ * successor is ready - which is why production drift handling refuses to exit on
+ * its own rather than draining to a deadline. The desktop app's update copy said
+ * the quiet part out loud ("a turn that is in flight is dropped while the server
  * comes back"), and on 2026-09-18 this machine lost 25 session runtimes
  * mid-turn across four backend generations.
- * The operator's standing priority is that nothing kills runtimes en masse, so
- * the app now does what the host tool `lop-fleet-update` does by hand: wait for
- * the fleet to go quiet, and re-engage what the swap displaced.
+ *
+ * THE OPERATOR'S DIRECTIVE OF 2026-09-29 SETTLED WHICH HALF OF THAT WORRY THE
+ * RESTART GATE WAS BUYING, AND IT WAS NONE: "we don't need to wait for all
+ * sessions to drain and turn over, once the daemon, relays, all the central
+ * components roll over, then we just allow all sessions to idle and on idle they
+ * should switch over (without emitting errors)". Session runtimes are detached
+ * processes, each in its own process group with its own transcript lease, and a
+ * daemon bounce does not touch them - they converge onto the new build at their
+ * own next idle (`local_operator/services.py`: "restarting the daemons around it
+ * does not") - so gating a restart on their `live_state` refused the press on
+ * exactly the busy machine the update was wanted on. The operator's own log
+ * reads: "Refusing to restart: the fleet did not drain in 602562ms (busy,
+ * 21 mid-turn ...)".
+ *
+ * THE ONE ROUTE THAT KEEPS THE DRAIN is the checkout rebuild's INSTALL leg: that
+ * leg rewrites a tree a live runtime is reading, so a turn running while it
+ * works can still be interrupted, and the operator's standing priority - nothing
+ * kills runtimes en masse - still has real work to do there. The app does what
+ * the host tool `lop-fleet-update` does by hand, where it is still owed: wait
+ * for the fleet to go quiet before the one move that can cut a turn, and
+ * re-engage what every move displaced.
  *
  * WHAT IS *NOT* REINVENTED HERE. The busy signal is the app's existing one -
  * `servingWorkState` -> `servingWorkStateFromSessions` -> a session row's
@@ -42,12 +60,14 @@ import {
  */
 
 /**
- * How long a press may wait for the fleet to drain, mirroring the host tool's
- * own default (`DEFAULT_DRAIN_S` in `~/tools/lop-fleet-update`). A release is
- * rarely urgent enough to cut off somebody's turn, and ten minutes is the
- * number the tool that does this by hand already chose; the refusal at the end
- * of it names the sessions still working, so a reader who wants to know *why*
- * the update did not run has an answer.
+ * How long the REBUILD install leg may wait for the fleet to drain, mirroring
+ * the host tool's own default (`DEFAULT_DRAIN_S` in `~/tools/lop-fleet-update`)
+ * - the restart legs no longer wait at all (see the module head, and the
+ * operator's directive of 2026-09-29). A rebuild rewrites a tree a live runtime
+ * is reading, so a release is rarely urgent enough to cut off somebody's turn,
+ * and ten minutes is the number the tool that does this by hand already chose;
+ * the refusal at the end of it names the sessions still working, so a reader who
+ * wants to know *why* the update did not run has an answer.
  */
 export const FLEET_DRAIN_BUDGET_MS = 600_000;
 
@@ -222,29 +242,25 @@ export async function waitForFleetIdle(input: {
  */
 export function fleetDrainRefusalSentence(
 	outcome: Extract<FleetDrainOutcome, { kind: "refused" }>,
-	/**
-	 * Whether the install this press was asked for has already landed.
-	 *
-	 * WHY THE SENTENCE TAKES IT (design round 2, D6). The two arms of a refusal used
-	 * to be composed by two authors - this function wrote "Nothing was installed and
-	 * the server keeps running the build it loaded" and the caller appended "The
-	 * install itself has landed" - so the panel that keyed its heading on the second
-	 * fact printed both clauses in one paragraph, three lines apart, about one
-	 * event. The facts are alternatives, not additions: on the install leg nothing
-	 * was installed, and on the restart legs the build is on disk and the bounce is
-	 * what was held back. One author, two arms.
-	 */
-	installLanded = false,
 ): string {
 	const minutes = Math.max(1, Math.round(outcome.waitedMs / 60_000));
 	const waited = `${minutes} minute${minutes === 1 ? "" : "s"}`;
 	/**
-	 * The closing clause, which is the only place the two arms differ: what the app
-	 * did or did not leave on disk, and what the server is running as a result.
+	 * The closing clause: what the app did NOT leave on disk, and what the server
+	 * is running as a result.
+	 *
+	 * IT USED TO HAVE A SECOND ARM (design round 2, D6; removed 2026-09-29): a
+	 * refusal after a LANDED install - "The install itself has landed, and the
+	 * server keeps running the build it loaded until it can restart onto it" -
+	 * which only the two restart legs could reach, because their drains ran after
+	 * the build was on disk. The operator's directive removed those drains (see the
+	 * module head), so no press can reach a post-install refusal any more and the
+	 * arm went with its callers rather than staying as copy nothing can produce.
+	 * What remains is the install-less refusal, which is exactly what the rebuild
+	 * install leg produces: its drain runs BEFORE anything is installed.
 	 */
-	const closing = installLanded
-		? "The install itself has landed, and the server keeps running the build it loaded until it can restart onto it; the app will offer this update again."
-		: "Nothing was installed and the server keeps running the build it loaded; the app will offer this update again.";
+	const closing =
+		"Nothing was installed and the server keeps running the build it loaded; the app will offer this update again.";
 	if (outcome.because === "unknown") {
 		const lead = outcome.credentialsRefused
 			? "The server refused this app's credentials, so the app could not read which sessions are running on this machine."

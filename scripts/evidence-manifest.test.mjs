@@ -2029,6 +2029,18 @@ const STAMP_BINDING_NOTES = [
 	 * file like every entry above it.
 	 */
 	"miniDictRestampNote",
+	/*
+	 * AND THE UPDATE DRAIN'S OWN (2026-09-29): `updateDrainIdleSwitchRestampNote`
+	 * is the record for the update drain → idle-switch change - the operator's
+	 * directive removed the fleet-drain gate from the two RESTART legs, the
+	 * rebuild route's install leg keeps it, and the completion now carries the
+	 * count of sessions still on the old build. It moves BOTH trees and re-shoots
+	 * nothing (the frames this state is owed are the design round's), so the pair
+	 * is re-derived from the tree the re-stamp commit ships and every list member
+	 * above is re-pointed with it. It quotes that pair, so it is held to this
+	 * file like every entry above it.
+	 */
+	"updateDrainIdleSwitchRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -3145,6 +3157,19 @@ const BRANCH_RECORDS = [
 	 * is owed the pair this file ships and the reason no still was.
 	 */
 	"relaunchDuringQuitRestampNote",
+	/*
+	 * AND THIS PASS'S OWN (2026-09-29): `updateDrainIdleSwitchRestampNote` is the
+	 * record for the update drain → idle-switch change (the operator's directive
+	 * removed the fleet-drain gate from the two RESTART legs; the rebuild route's
+	 * install leg keeps it, and the completion now carries the count of sessions
+	 * still on the old build as `sessionsOnOldBuild`). Both trees move - `src/`
+	 * for the gate's removal, the completion field and the four copy strings;
+	 * `scripts/` for the rewritten journeys, the rebuild-refusal drive and the
+	 * four declared completion stories - and no swept frame was taken: the frames
+	 * this state is owed are the design round's, so the note quotes the pair this
+	 * file ships and says which stories the round must shoot.
+	 */
+	"updateDrainIdleSwitchRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
