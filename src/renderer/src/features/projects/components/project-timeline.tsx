@@ -37,7 +37,7 @@ import { Button } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { Minus, Plus } from "lucide-react";
 import type { FC } from "react";
-import { Fragment, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
 	NO_TEAM_LABEL,
 	formatProjectDay,
@@ -201,7 +201,15 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 							trackPx={trackPx}
 						/>
 						{groups.map((group) => (
-							<Fragment key={group.team ?? ""}>
+							/*
+							 * THE GROUP IS THE HEADER'S CONTAINING BLOCK (round 1, Q1/U1): a
+							 * header that is a sibling of its rows has no box to stick inside,
+							 * so it parks at the offset and the next header covers it — the
+							 * stacking the round-1 frames measured. Wrapping the group restores
+							 * the ordinary push-out contract: the incoming header displaces the
+							 * outgoing one as its own group reaches the top.
+							 */
+							<div key={group.team ?? ""}>
 								<div
 									className="sticky top-0 z-20 flex items-stretch bg-canvas"
 									data-project-team={group.team ?? ""}
@@ -229,7 +237,7 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 										onOpen={() => onOpen(item)}
 									/>
 								))}
-							</Fragment>
+							</div>
 						))}
 					</div>
 				</div>
