@@ -2029,6 +2029,19 @@ const STAMP_BINDING_NOTES = [
 	 * file like every entry above it.
 	 */
 	"miniDictRestampNote",
+	/*
+	 * AND THE HEAD-CUT CONDENSATION PASS'S OWN (`headCutCondensationRestampNote`,
+	 * 2026-09-29): the operator report that a completed turn whose opening
+	 * message sits a few fetched pages up does not condense - it renders as its
+	 * raw rows while a fully loaded turn below it shows a bar. It moves both
+	 * trees - the collapse model's end-loaded rule, the head-independent run
+	 * identity and the transcript's focus hold and settle announcement in
+	 * `src/`; the two suites and this registration in `scripts/` - and commits
+	 * no frame (the before/after stills live on the PR's `evidence/` branch), so
+	 * the note quotes the pair this file ships and is held to it like every
+	 * entry above.
+	 */
+	"headCutCondensationRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -3114,6 +3127,17 @@ const BRANCH_RECORDS = [
 	 * is owed the pair this file ships and the reason no still was.
 	 */
 	"relaunchDuringQuitRestampNote",
+	/*
+	 * AND THE HEAD-CUT CONDENSATION PASS'S OWN (2026-09-29):
+	 * `headCutCondensationRestampNote` is the re-stamp for the operator report
+	 * that a completed turn whose opening message is a few fetched pages up
+	 * renders raw instead of condensing. Both trees move (the end-loaded rule,
+	 * the head-independent run key, the focus hold and the settle announcement
+	 * in `src/`; the two suites and this registration in `scripts/`), no swept
+	 * frame was taken (the stills are the PR's own evidence branch), and the
+	 * reader is owed the reason no still was.
+	 */
+	"headCutCondensationRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
