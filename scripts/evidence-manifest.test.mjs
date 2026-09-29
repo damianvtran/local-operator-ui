@@ -2269,6 +2269,21 @@ const BRANCH_RECORDS = [
 	 * tree-hash pair, so `BRANCH_RECORDS` is where it belongs.
 	 */
 	"foldOnto0738fa7eb3Note",
+	/*
+	 * And the round-1 remediation's own record (agent review round 1's F1;
+	 * UX review round 1's U2-U8): the confirmation's busy window, the
+	 * interaction moved into the pane body so a refusal survives the
+	 * re-read's list churn, the narrowed retry boundary, the two row records
+	 * (`Cancelled`, `Cancel refused`), the at-rest 24px control and the
+	 * `Stop monitor` confirm. It is listed for the list's own reason: a fold
+	 * resolved from main's manifest copy would drop the only statement of
+	 * the two runs that re-took twenty-four frames, of the two new surfaces
+	 * and the ten re-shot states, and of why the marks exist at all. It
+	 * quotes no tree-hash pair - the re-stamp is written in the `docs/`-only
+	 * amendment after the content commit (the `roundOneRemediationRestampNote`
+	 * convention) - so `BRANCH_RECORDS` is where it belongs.
+	 */
+	"monitorsControlsRound1Remediation",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

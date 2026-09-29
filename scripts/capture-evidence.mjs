@@ -2379,12 +2379,15 @@ export const STORIES = [
 	/*
 	 * The cancel affordance's own states (the design's cancel paragraph, Unit B):
 	 * the row control under the pointer, the control holding the point's
-	 * `:focus-visible` ring, the confirmation the press opens, and the
-	 * confirmation after a refusal - the state where the dialog must stay open
-	 * with the backend's own sentence. The hover goes through the rig's real
-	 * pointer (the reveal is a real transition, hence `hoverSettleMs`); the
-	 * refused frame performs its two presses itself and holds the shutter until
-	 * the sentence paints.
+	 * `:focus-visible` ring, the confirmation the press opens, the confirmation
+	 * after a refusal - the state where the dialog must stay open with the
+	 * backend's own sentence - and the two records an attempt leaves on the row
+	 * once its dialog is gone: the `Cancelled` settling mark a receipt buys, and
+	 * the quiet `Cancel refused` note a dismissed refusal leaves (the round-1
+	 * remediation's U4/U8 half). The hover goes through the rig's real pointer
+	 * (the wash is a real hover state, hence `hoverSettleMs`); the refused,
+	 * cancelled and refusal-record frames perform their own presses and hold the
+	 * shutter until the state lands.
 	 */
 	[
 		"chat-run-panel--monitor-cancel-hover",
@@ -2395,6 +2398,8 @@ export const STORIES = [
 	["chat-run-panel--monitor-cancel-focus", 1280, 820],
 	["chat-run-panel--monitor-cancel-confirm", 1280, 820],
 	["chat-run-panel--monitor-cancel-refused", 1280, 820],
+	["chat-run-panel--monitor-cancel-cancelled", 1280, 820],
+	["chat-run-panel--monitor-cancel-refusal-record", 1280, 820],
 	/* The trigger's activity blip: the pane is CLOSED and a child is running, so
 	   the dot is drawn in `info`. Read against `trigger-idle` (nothing to say) and
 	   `panel-empty` (pane open, no activity ink) — the ink switch is the whole claim

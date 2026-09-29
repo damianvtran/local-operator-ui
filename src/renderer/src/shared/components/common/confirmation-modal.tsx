@@ -7,6 +7,7 @@ import {
 	PrimaryButton,
 	SecondaryButton,
 } from "./base-dialog";
+import { Spinner } from "./spinner";
 
 type ConfirmationModalProps = {
 	/**
@@ -58,6 +59,27 @@ type ConfirmationModalProps = {
 	 * dialog that uses this component exactly as it was.
 	 */
 	focusCancelSignal?: unknown;
+	/**
+	 * Whether the confirmed action is IN FLIGHT.
+	 *
+	 * WHY (UX review round 1, U3): the monitor cancel held no busy state, so a
+	 * second press re-sent the write, and a refusal arriving ~1 s later looked
+	 * like a press that had done nothing. While `busy` is set, both footer
+	 * buttons disable and EVERY close path is refused - Escape and an outside
+	 * click are prevented here, and the corner X goes disabled through the
+	 * primitive's own `closeDisabled` - so the dialog owns exactly one in-flight
+	 * request and its outcome always lands in the dialog that asked (the
+	 * `project-form-dialog.tsx` policy for the same pending window).
+	 *
+	 * Undefined/false for every caller that never has a write in flight, which
+	 * keeps every other dialog that uses this component exactly as it was.
+	 */
+	busy?: boolean;
+	/**
+	 * The confirm label while `busy` (e.g. `Cancelling…`). The caller owns copy,
+	 * like every other label here; the shared component only owns the state.
+	 */
+	busyText?: string;
 };
 
 /**
@@ -75,6 +97,8 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
 	onConfirm,
 	onCancel,
 	focusCancelSignal,
+	busy = false,
+	busyText,
 }) => {
 	/*
 	 * No Enter handler here, deliberately.
@@ -128,6 +152,7 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
 				ref={cancelRef}
 				data-cancel-action
 				onClick={onCancel}
+				disabled={busy}
 				/*
 				 * THE RING ON `:focus` AND NOT ONLY `:focus-visible` (design round 2, D6).
 				 *
@@ -146,13 +171,26 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
 			>
 				{cancelText}
 			</SecondaryButton>
+			{/* The confirm's busy half of U3 (disabled + label swap + spinner), see `busy`'s note above. */}
 			{isDangerous ? (
-				<DangerButton data-confirm-action onClick={onConfirm}>
-					{confirmText}
+				<DangerButton
+					data-confirm-action
+					onClick={onConfirm}
+					disabled={busy}
+					aria-busy={busy}
+					startIcon={busy ? <Spinner size="xs" /> : undefined}
+				>
+					{busy && busyText ? busyText : confirmText}
 				</DangerButton>
 			) : (
-				<PrimaryButton data-confirm-action onClick={onConfirm}>
-					{confirmText}
+				<PrimaryButton
+					data-confirm-action
+					onClick={onConfirm}
+					disabled={busy}
+					aria-busy={busy}
+					startIcon={busy ? <Spinner size="xs" /> : undefined}
+				>
+					{busy && busyText ? busyText : confirmText}
 				</PrimaryButton>
 			)}
 		</>
@@ -165,6 +203,23 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
 			title={dialogTitle}
 			actions={dialogActions}
 			maxWidth="xs"
+			/*
+			 * THE PENDING WINDOW HAS ONE CLOSE POLICY, the project form's own (UX
+			 * round 1 U1; round 2 U7): while the write is in flight, Escape and an
+			 * outside click are refused and the corner X is disabled through the
+			 * primitive - a close there would abandon a write whose refusal the
+			 * reader is about to be shown. Without a busy write the handlers are
+			 * inert and every other dialog behaves exactly as it did.
+			 */
+			dialogProps={{
+				closeDisabled: busy,
+				onEscapeKeyDown: (event: KeyboardEvent) => {
+					if (busy) event.preventDefault();
+				},
+				onInteractOutside: (event: Event) => {
+					if (busy) event.preventDefault();
+				},
+			}}
 		>
 			{/*
 			 * `asChild` so the description is a `div`: callers pass paragraphs as

@@ -18,7 +18,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";',
+			'export { desktopEndpoint, desktopRequestSchema, DESKTOP_REFUSAL_CODE } from "./src/shared/desktop-contract";',
 			'export { retryMonitorWrite } from "./src/renderer/src/features/chat/components/run-details/monitor-controls-model";',
 			/*
 			 * The retry policy's own currency, so the boundary can be built rather
@@ -41,6 +41,7 @@ const bundle = await build({
 const {
 	desktopEndpoint,
 	desktopRequestSchema,
+	DESKTOP_REFUSAL_CODE,
 	retryMonitorWrite,
 	DesktopControlError,
 } = await import(
@@ -115,24 +116,74 @@ test("the op parses strictly, with no sibling family's keys", () => {
 });
 
 /*
- * The retry boundary, in the wake family's own readings: one retry for a
- * request that never got an answer, and none for a request the backend DID
- * answer - a refusal's own sentence is what the dialog shows, and a retry would
- * ask a second time what the refusal already settled.
+ * The retry boundary, and it is NARROWER than the wake family's: a re-send is
+ * kept for a request that never got an answer (the `null` status, and the 503
+ * main SYNTHESISES when the fetch itself failed) and for the ONE 503 the core
+ * itself calls retryable (the contended lock, `monitor_write_busy` - "a
+ * retryable 503 is the honest answer to contention", `monitors/arm.py`).
+ * Every 503 that carries the owner's ANSWER is surfaced on the FIRST response:
+ * a re-send cannot repair an owner that stands (measured against a hosted
+ * conversation, the owner-present 503 never cleared across ~10 minutes of
+ * presses), and the blanket 503 retry only sent the same DELETE twice while
+ * holding the sentence back a second (UX review round 1, U3).
  */
-test("a cancel retries once, and only when nothing answered", () => {
-	const transport = (status) => new DesktopControlError(status, "transport");
-	assert.equal(retryMonitorWrite(0, transport(503)), true);
-	assert.equal(retryMonitorWrite(0, transport(null)), true);
-	assert.equal(retryMonitorWrite(1, transport(503)), false, "and only once");
-	assert.equal(retryMonitorWrite(1, transport(null)), false);
+test("a cancel retries only a request nothing answered, or the core's own contention 503", () => {
+	const refused = (status, code) =>
+		new DesktopControlError(status, "transport", undefined, code);
+	assert.equal(
+		retryMonitorWrite(0, new DesktopControlError(null, "no response")),
+		true,
+		"a request that never got an answer is retried",
+	);
+	assert.equal(
+		retryMonitorWrite(1, new DesktopControlError(null, "no response")),
+		false,
+		"and only once",
+	);
+	/* The synthesised no-response 503: main could not complete the request. */
+	assert.equal(
+		retryMonitorWrite(0, refused(503, DESKTOP_REFUSAL_CODE.transportFailed)),
+		true,
+	);
+	/* The contended lock, the core's own "retryable 503". */
+	assert.equal(retryMonitorWrite(0, refused(503, "monitor_write_busy")), true);
+	assert.equal(
+		retryMonitorWrite(1, refused(503, "monitor_write_busy")),
+		false,
+		"and only once",
+	);
+	/*
+	 * Every 503 that carries the backend's ANSWER is NOT retried: the two owner
+	 * states and the plane-closed reading of a bare 503 all surface verbatim.
+	 */
+	assert.equal(
+		retryMonitorWrite(0, refused(503, "monitor_owner_present")),
+		false,
+		"an owner-present 503 is an answer, not an unreachable transport",
+	);
+	assert.equal(
+		retryMonitorWrite(0, refused(503, "monitor_owner_wedged")),
+		false,
+		"and the wedged owner carries its own sentence too",
+	);
+	assert.equal(
+		retryMonitorWrite(0, refused(503, DESKTOP_REFUSAL_CODE.planeClosed)),
+		false,
+	);
+	assert.equal(
+		retryMonitorWrite(0, new DesktopControlError(503, "bare 503")),
+		false,
+	);
 	for (const status of [409, 422, 404]) {
 		assert.equal(
-			retryMonitorWrite(0, transport(status)),
+			retryMonitorWrite(0, refused(status, "monitor_refused")),
 			false,
 			`an answered ${status} is not retried`,
 		);
-		assert.equal(retryMonitorWrite(1, transport(status)), false);
+		assert.equal(
+			retryMonitorWrite(1, refused(status, "monitor_refused")),
+			false,
+		);
 	}
 	assert.equal(retryMonitorWrite(0, new Error("boom")), false);
 });
