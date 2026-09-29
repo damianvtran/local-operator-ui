@@ -19098,11 +19098,17 @@ async function sceneNewChat(cdp) {
  * its chord rather than a selector), and the composer the five commands are
  * typed into is the one that press mounts.
  *
- * A SECOND ENTER IS ATTEMPTED WHEN THE FIRST PRODUCED NEITHER OUTCOME, and the
- * check records which press it was: the earlier sessionless-panel rig left a
- * note that a double Enter could send nothing, so the scene does not assume one
- * press is always enough - it demands that the ONE of the two expected states
- * arrives, and fails only if neither does.
+ * THE PRESS IS A SHORT SEQUENCE, NOT A SINGLE ENTER, because one destination
+ * completes rather than runs: `/theme` opens an INLINE list, so its first Enter
+ * writes the completed value into the box and leaves the popup open (measured
+ * in this pass's first take: the frame showed `/theme localOperatorDark` in the
+ * box with the Themes list open and no dialog). The scene closes the popup with
+ * Escape - the box keeps the completed value - and submits it with the next
+ * Enter, which is the path the registry's own note describes ("an unambiguous
+ * Enter completes the id and the next Enter runs the command the user already
+ * had"). It attempts up to three presses and the checks record which produced
+ * the state, so a destination that needs a different dance fails by name rather
+ * than by timeout.
  */
 async function sceneSessionlessSlash(cdp) {
 	const facts = await factsOf(cdp);
@@ -19166,21 +19172,78 @@ async function sceneSessionlessSlash(cdp) {
 		{ word: "/resume", label: "resume", title: "Resume a conversation" },
 	];
 
+	/*
+	 * The slash popup's own listbox, by its own labels (`slash-commands.tsx`):
+	 * "Slash commands" in the command phase, "Command arguments" once a row with
+	 * an inline list has been completed. Asked before the Escape step so a
+	 * destination that needed no completing is never sent a stray key.
+	 */
+	const SLASH_POPUP =
+		'[role="listbox"][aria-label="Command arguments"], [role="listbox"][aria-label="Slash commands"]';
+	const pressEnter = () =>
+		pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+
 	const frames = [];
 	for (const command of COMMANDS) {
 		const refusal = `${command.word} needs an open conversation. Start one first.`;
 		const arrives = `Boolean(document.querySelector('[role="dialog"]')) || document.body.innerText.includes(${JSON.stringify(refusal)})`;
 		await clickAt(cdp, `${COMPOSER} textarea`);
+		/*
+		 * A CLEAN BOX BEFORE EACH GESTURE, asserted: a completing row leaves its
+		 * completed value behind until the command actually runs, and the next
+		 * gesture typed onto that tail would be a different gesture than the one
+		 * this frame claims. Meta+A through Chromium's own editing command (a bare
+		 * chord performs no edit), then Backspace.
+		 */
+		let box = await cdp.evaluate(
+			`document.querySelector('${COMPOSER} textarea').value`,
+		);
+		if (box !== "") {
+			await pressChord(cdp, {
+				key: "a",
+				code: "KeyA",
+				virtualKeyCode: 65,
+				modifiers: MODIFIER.meta,
+				commands: ["selectAll"],
+			});
+			await pressChord(cdp, {
+				key: "Backspace",
+				code: "Backspace",
+				virtualKeyCode: 8,
+			});
+			box = await cdp.evaluate(
+				`document.querySelector('${COMPOSER} textarea').value`,
+			);
+		}
+		check(
+			`the composer is empty before ${command.word} is typed`,
+			box === "",
+			`the box held ${JSON.stringify(box)} after the clear`,
+		);
 		await cdp.send("Input.insertText", { text: command.word });
 		await wait(400);
-		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
-		let produced = await waitForCondition(cdp, arrives, 8_000);
+		await pressEnter();
+		let produced = await waitForCondition(cdp, arrives, 5_000);
+		let presses = 1;
 		if (!produced.ok) {
-			await pressChord(cdp, {
-				key: "Enter",
-				code: "Enter",
-				virtualKeyCode: 13,
-			});
+			const popup = await cdp.evaluate(
+				`Boolean(document.querySelector('${SLASH_POPUP}'))`,
+			);
+			if (popup) {
+				await pressChord(cdp, {
+					key: "Escape",
+					code: "Escape",
+					virtualKeyCode: 27,
+				});
+				await wait(300);
+			}
+			await pressEnter();
+			presses = 2;
+			produced = await waitForCondition(cdp, arrives, 5_000);
+		}
+		if (!produced.ok) {
+			await pressEnter();
+			presses = 3;
 			produced = await waitForCondition(cdp, arrives, 8_000);
 		}
 		const read = await cdp.evaluate(`(() => {
@@ -19202,7 +19265,7 @@ async function sceneSessionlessSlash(cdp) {
 			check(
 				`${command.word} opens its picker on a pane with no conversation`,
 				read.picker === command.title,
-				`dialog title ${JSON.stringify(read.picker)}, expected ${JSON.stringify(command.title)} (settled after ${produced.waitedMs}ms)`,
+				`dialog title ${JSON.stringify(read.picker)}, expected ${JSON.stringify(command.title)} (settled after ${produced.waitedMs}ms on press ${presses})`,
 			);
 			check(
 				`${command.word} prints no refusal sentence`,
@@ -19213,7 +19276,7 @@ async function sceneSessionlessSlash(cdp) {
 			check(
 				`${command.word} is refused with the dispatcher's own sentence`,
 				read.refusal === refusal && read.picker === null,
-				`refusal ${JSON.stringify(read.refusal)}, picker ${JSON.stringify(read.picker)} (settled after ${produced.waitedMs}ms)`,
+				`refusal ${JSON.stringify(read.refusal)}, picker ${JSON.stringify(read.picker)} (settled after ${produced.waitedMs}ms on press ${presses})`,
 			);
 		}
 		if (read.picker !== null) {
@@ -19287,12 +19350,39 @@ async function sceneSessionlessSlash(cdp) {
 		await clickAt(cdp, `${COMPOSER} textarea`);
 		await cdp.send("Input.insertText", { text: "/theme" });
 		await wait(400);
-		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
-		const livePicker = await waitForCondition(
+		await pressEnter();
+		let livePicker = await waitForCondition(
 			cdp,
 			`Boolean(document.querySelector('[role="dialog"]'))`,
-			15_000,
+			8_000,
 		);
+		if (!livePicker.ok) {
+			const popup = await cdp.evaluate(
+				`Boolean(document.querySelector('${SLASH_POPUP}'))`,
+			);
+			if (popup) {
+				await pressChord(cdp, {
+					key: "Escape",
+					code: "Escape",
+					virtualKeyCode: 27,
+				});
+				await wait(300);
+			}
+			await pressEnter();
+			livePicker = await waitForCondition(
+				cdp,
+				`Boolean(document.querySelector('[role="dialog"]'))`,
+				8_000,
+			);
+		}
+		if (!livePicker.ok) {
+			await pressEnter();
+			livePicker = await waitForCondition(
+				cdp,
+				`Boolean(document.querySelector('[role="dialog"]'))`,
+				10_000,
+			);
+		}
 		await wait(500);
 		const liveRead = await cdp.evaluate(`(() => {
 			const dialog = document.querySelector('[role="dialog"]');
