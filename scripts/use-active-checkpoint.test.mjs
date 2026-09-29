@@ -147,12 +147,12 @@ async function mountCue({ rows, checkpoints }) {
 	const track = (result) => {
 		latest = result;
 	};
-	const render = async (nextRows) => {
+	const render = async (nextRows, nextCheckpoints = checkpoints) => {
 		await act(async () => {
 			root.render(
 				React.createElement(Harness, {
 					rows: nextRows,
-					checkpoints,
+					checkpoints: nextCheckpoints,
 					track,
 				}),
 			);
@@ -161,9 +161,35 @@ async function mountCue({ rows, checkpoints }) {
 	await render(rows);
 	const region = window.document.querySelector("[data-region]");
 	region.getBoundingClientRect = () => rect(0);
+	/**
+	 * The region's own scroll numbers, which jsdom zeroes. A case that
+	 * exercises an END sets its own; the harness's default is a MID-scroll
+	 * state so the line-rule cases are not resolved through the ends arms.
+	 */
+	const setScroll = ({
+		scrollTop = 0,
+		scrollHeight = 0,
+		clientHeight = 0,
+	} = {}) => {
+		Object.defineProperty(region, "scrollTop", {
+			configurable: true,
+			writable: true,
+			value: scrollTop,
+		});
+		Object.defineProperty(region, "scrollHeight", {
+			configurable: true,
+			value: scrollHeight,
+		});
+		Object.defineProperty(region, "clientHeight", {
+			configurable: true,
+			value: clientHeight,
+		});
+	};
+	setScroll({ scrollTop: -100, scrollHeight: 1000, clientHeight: 300 });
 	return {
 		latest: () => latest,
 		region,
+		setScroll,
 		/** Stub every named row's top (the region's own top is 0). */
 		setTops: (tops) => {
 			for (const [id, top] of Object.entries(tops)) {
@@ -176,8 +202,8 @@ async function mountCue({ rows, checkpoints }) {
 		scroll: () => {
 			region.dispatchEvent(new window.Event("scroll"));
 		},
-		reRender: async (nextRows) => {
-			await render(nextRows);
+		reRender: async (nextRows, nextCheckpoints) => {
+			await render(nextRows, nextCheckpoints);
 		},
 		flush: async () => {
 			await act(async () => {});
@@ -287,6 +313,131 @@ test("a page that lands without a scroll re-reads through the effect", async (t)
 			"the load alone re-read (the effect depends on the loaded set)",
 		);
 		assert.equal(cue.latest().loadedIds.has("u3"), true, "and the store grew");
+	} finally {
+		await cue.close();
+	}
+});
+
+test("at the scroller's bottom the last loaded checkpoint is active (the operator's report)", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+	const cue = await mountCue({
+		rows: [row("u1"), row("u2"), row("u3")],
+		checkpoints: [user("u1"), user("u2"), user("u3")],
+	});
+	try {
+		/*
+		 * The live repro's shape, from `rail-cue-probe` on the short-tail
+		 * fixture: the scroller rests at its bottom (0, span above negative),
+		 * and the last checkpoint's row sits INSIDE the final viewport - the
+		 * read's `qn0002` at -32px while `qn0006` waited at +656 - so the line
+		 * rule alone resolves to the SECOND mark and the last four ticks are
+		 * unreachable for the cue. The bottom arm is what lights them.
+		 */
+		cue.setScroll({ scrollTop: 0, scrollHeight: 900, clientHeight: 300 });
+		cue.setTops({ u1: -580, u2: -32, u3: 656 });
+		cue.scroll();
+		t.mock.timers.tick(16);
+		await cue.flush();
+		assert.equal(
+			cue.latest().activeId,
+			"u3",
+			"the bottom-most tick wins at the bottom",
+		);
+	} finally {
+		await cue.close();
+	}
+});
+
+test("at the top the first loaded checkpoint is active", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+	const cue = await mountCue({
+		rows: [row("u1"), row("u2"), row("u3")],
+		checkpoints: [user("u1"), user("u2"), user("u3")],
+	});
+	try {
+		/*
+		 * The live repro at the top: nothing has crossed the line yet (the
+		 * first row sat 59px BELOW it), so the old wiring read null - no mark
+		 * at all - while the reader was looking at the conversation's start.
+		 */
+		cue.setScroll({ scrollTop: -600, scrollHeight: 900, clientHeight: 300 });
+		cue.setTops({ u1: 59, u2: 300, u3: 900 });
+		cue.scroll();
+		t.mock.timers.tick(16);
+		await cue.flush();
+		assert.equal(cue.latest().activeId, "u1", "the first tick wins at the top");
+	} finally {
+		await cue.close();
+	}
+});
+
+test("mid-scroll the line rule holds, and a fraction short of an end still counts as at it", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+	const cue = await mountCue({
+		rows: [row("u1"), row("u2"), row("u3")],
+		checkpoints: [user("u1"), user("u2"), user("u3")],
+	});
+	try {
+		cue.setScroll({ scrollTop: -300, scrollHeight: 900, clientHeight: 300 });
+		cue.setTops({ u1: -350, u2: -171, u3: 600 });
+		cue.scroll();
+		t.mock.timers.tick(16);
+		await cue.flush();
+		assert.equal(
+			cue.latest().activeId,
+			"u2",
+			"between the ends the last row above the line wins, unchanged",
+		);
+		/* One pixel short of the bottom is the bottom (the epsilon's job). */
+		cue.setScroll({ scrollTop: -1, scrollHeight: 900, clientHeight: 300 });
+		cue.setTops({ u1: -580, u2: -32, u3: 656 });
+		cue.scroll();
+		t.mock.timers.tick(16);
+		await cue.flush();
+		assert.equal(cue.latest().activeId, "u3", "1px short of 0 is at it");
+		/* And one pixel short of the top is the top. */
+		cue.setScroll({ scrollTop: -599, scrollHeight: 900, clientHeight: 300 });
+		cue.setTops({ u1: 59, u2: 300, u3: 900 });
+		cue.scroll();
+		t.mock.timers.tick(16);
+		await cue.flush();
+		assert.equal(cue.latest().activeId, "u1", "1px short of -max is at it");
+	} finally {
+		await cue.close();
+	}
+});
+
+test("a view pinned at the bottom keeps the arm across an append", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+	const cue = await mountCue({
+		rows: [row("u1"), row("u2"), row("u3")],
+		checkpoints: [user("u1"), user("u2"), user("u3")],
+	});
+	try {
+		cue.setScroll({ scrollTop: 0, scrollHeight: 900, clientHeight: 300 });
+		cue.setTops({ u1: -580, u2: -32, u3: 656 });
+		cue.scroll();
+		t.mock.timers.tick(16);
+		await cue.flush();
+		assert.equal(cue.latest().activeId, "u3");
+		/*
+		 * A live turn lands below while the view is pinned at the bottom: the
+		 * content grows, the scroller follows to the new bottom, and the arm
+		 * re-picks on the read - the new last checkpoint is the active one, not
+		 * a stale earlier id and not a crash. The manifest carries material
+		 * checkpoints only, so a live PARTIAL turn contributes none.
+		 */
+		cue.setScroll({ scrollTop: 0, scrollHeight: 1200, clientHeight: 300 });
+		await cue.reRender(
+			[row("u1"), row("u2"), row("u3"), row("u4")],
+			[user("u1"), user("u2"), user("u3"), user("u4")],
+		);
+		await cue.flush();
+		assert.equal(
+			cue.latest().activeId,
+			"u4",
+			"the appended turn's checkpoint takes the arm",
+		);
 	} finally {
 		await cue.close();
 	}
