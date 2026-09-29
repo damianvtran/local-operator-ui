@@ -1907,6 +1907,20 @@ const STAMP_BINDING_NOTES = [
 	 * (14 frames, 7 states, two palettes, declared in `supplementary`). It quotes this file's pair,
 	 * so it is held to it like every entry above it.
 	 */
+	/*
+	 * AND ROUND 2'S RE-DERIVATION (2026-09-29): the D1 landing fix and the
+	 * scene that now asserts it, on the fold onto the moved `origin/main`
+	 * `f3ce13cee7` (#626's projects chrome/teams). The src tree moves with the
+	 * axis-named centre step (`scrollRegionToCenter`'s `"reversed"` clamp and
+	 * its call site), the refusal copy, and the card's bounded-text measurement
+	 * hook; the scripts tree with the driver's visual landing assertions, the
+	 * physical pointer-press leg, D5's sparse / bounded-card / outcome /
+	 * building states, the fixture's outcome-shape corrections
+	 * (`details.kind`; `attention_started` before its user row) and the deleted
+	 * shadowing `clickPoint`. It re-shoots the scene at 24 frames / 12 states.
+	 * It quotes the folded tip's pair, so it is held to this file like every
+	 * entry above it.
+	 */
 	"transcriptRailRestampNote",
 ];
 
