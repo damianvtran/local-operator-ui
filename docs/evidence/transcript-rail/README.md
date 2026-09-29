@@ -62,7 +62,7 @@ LOCAL_OPERATOR_DESKTOP_TOKEN="$(cat "$RIG/token")" \
 
 ## What the run measured
 
-The scene's own log: **ALL CHECKS PASSED, 73 checks**, 24 frames. Press
+The scene's own log: **ALL CHECKS PASSED, 81 checks**, 24 frames. Press
 → the `data-jump-highlight` attribute appearing, taken driver-side around the
 press (the scene's `[note] jump timings` lines):
 
@@ -74,6 +74,14 @@ press (the scene's `[note] jump timings` lines):
   construction: the restructure that fixed an interleaving flake keeps the
   first conversation open across both passes, so its store is already loaded —
   the loader's own number is the dark pass's.
+
+Also asserted on this head, on the same bundle (UX round 1's U1/U3, no frame of
+its own - the change is invisible): one tabbable tick whose roving memory
+matches the tick the previous leg had focused, the
+ArrowDown/ArrowDown/ArrowUp/End/Home walk against ids read from the page,
+Escape closing the card with focus kept on the tick, and the crossing
+measurement - one Tab leaves the block and one Shift+Tab returns to the same
+tick.
 
 Round 1's knocks, both now ROOT-CAUSED and fixed rather than worked around:
 
