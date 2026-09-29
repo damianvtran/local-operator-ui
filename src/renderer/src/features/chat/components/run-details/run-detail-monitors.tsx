@@ -130,8 +130,15 @@ const MonitorRowView = ({ row }: { row: MonitorRow }) => {
 					 * measured in the first capture of `monitors-health`, where both
 					 * shrinkable slots split the overflow and the reason's own length
 					 * decided how much of the state survived. `nextDueAt === null` is
-					 * exactly the state-word condition the model owns, so the branch
-					 * reads it rather than re-deriving it from the label's text.
+					 * the branch's reading of the model, SCOPED TO CORE-WRITTEN ROWS
+					 * (agent review round 1, F2): the model's own condition for the
+					 * slot's word is `disabled || nextDueAt === null`, and the two
+					 * coincide because the core's disable path nulls the due
+					 * (`scheduler.py`: "no next check is due for a disabled monitor"),
+					 * which the same round verified. A hand-edited counters file that
+					 * kept a due on a disabled monitor falls back to the label's
+					 * ordinary yield — the behaviour this branch replaced — rather
+					 * than a state the row cannot read.
 					 */}
 					<span
 						className={cn(
