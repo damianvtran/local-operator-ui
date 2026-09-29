@@ -146,6 +146,104 @@ test("the loop loads pages until the row is in the model, then mounts to it", as
 	assert.deepEqual(state.mounts, [3], "mounted by the row's own distance");
 });
 
+test("a page-leading target fetches its margin's page before mounting (QA Q-2)", async () => {
+	/*
+	 * The row arrives as the store's OLDEST row - the leading row of the page
+	 * that fetched it - and mounting it there centres clamped at the content's
+	 * top (QA Q-2: -254 px, the first ~8 rows of every fetched page). The
+	 * margin callback reports the shortfall, the loop spends ONE more page of
+	 * its existing budget, and the mount follows once the margin exists.
+	 */
+	const state = {
+		reachable: false,
+		rowAt: null,
+		loaded: 0,
+		margin: false,
+		mounts: [],
+	};
+	const result = await ensureReachable({
+		isReachable: () => state.reachable,
+		rowDistance: () => state.rowAt,
+		hasHeadroom: () => state.margin,
+		mount: (distance) => {
+			state.mounts.push(distance);
+			state.reachable = true;
+		},
+		loadOlder: async () => {
+			state.loaded += 1;
+			// The fetching page lands the row as the store's leader: no margin.
+			if (state.loaded === 1) state.rowAt = 40;
+			// The margin's page lands the older rows above it.
+			if (state.loaded === 2) state.margin = true;
+			return true;
+		},
+	});
+	assert.equal(result, true);
+	assert.equal(
+		state.loaded,
+		2,
+		"the margin is one page of history, not a poll",
+	);
+	assert.deepEqual(
+		state.mounts,
+		[40],
+		"the mount stays the row's distance; the margin is rows, not window",
+	);
+});
+
+test("a margin the store never grows spends the page budget once, then mounts (N1)", async () => {
+	/*
+	 * The spent-budget edge: the row is in the store, the margin callback keeps
+	 * reporting short, and the loop spends its pages then falls through to the
+	 * mount rather than looping forever. One mount, one refusal-free return.
+	 */
+	const state = { loaded: 0, mounts: [] };
+	const result = await ensureReachable({
+		isReachable: () => state.mounts.length > 0,
+		rowDistance: () => 40,
+		hasHeadroom: () => false,
+		mount: (distance) => state.mounts.push(distance),
+		loadOlder: async () => {
+			state.loaded += 1;
+			return true;
+		},
+	});
+	assert.equal(result, true);
+	assert.equal(
+		state.loaded,
+		JUMP_MAX_PAGES,
+		"exactly the page budget, then the fall-through",
+	);
+	assert.deepEqual(state.mounts, [40], "one mount, not a spin");
+});
+
+test("a margin that cannot grow falls through to the clamped mount, never a refusal", async () => {
+	/*
+	 * The row IS in the store; a refused page means the history ends at it, so
+	 * the landing is clamped at the content's top - which, at the start of
+	 * history, is where the row is. Refusing the jump would be the -254 px
+	 * finding turned into a dead end.
+	 */
+	const state = { rowAt: 40, loaded: 0, mounts: [] };
+	const result = await ensureReachable({
+		isReachable: () => state.mounts.length > 0,
+		rowDistance: () => state.rowAt,
+		hasHeadroom: () => false,
+		mount: (distance) => state.mounts.push(distance),
+		loadOlder: async () => {
+			state.loaded += 1;
+			return false;
+		},
+	});
+	assert.equal(
+		result,
+		true,
+		"a row the store holds must land (clamped), not refuse",
+	);
+	assert.deepEqual(state.mounts, [40]);
+	assert.equal(state.loaded, 1, "one attempt, then the mount");
+});
+
 test("a row beyond the mount budget is refused without loading or mounting", async () => {
 	const state = { loaded: 0, mounts: [] };
 	const result = await ensureReachable({
