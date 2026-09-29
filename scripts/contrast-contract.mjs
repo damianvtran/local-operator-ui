@@ -1630,6 +1630,22 @@ const GRAPHICS = [
 		on: ["accentWash"],
 		fg: "accent",
 	},
+	{
+		/*
+		 * The search overlay's ACTIVE result row: the 2px accent bar on its
+		 * leading edge.
+		 *
+		 * The same pairing the link toolbar's row above asserts (`accent` on
+		 * `accentWash`, 4.53:1 at worst), listed under its own name because it is
+		 * a new component's mark and this file's rule is that green output about
+		 * a component nobody listed is no evidence about that component. The bar
+		 * is what distinguishes the row Enter opens from the pointer's own tint
+		 * on the ground where the wash alone cannot.
+		 */
+		name: "search result active bar (accent)",
+		on: ["accentWash"],
+		fg: "accent",
+	},
 ];
 
 /**
@@ -2769,6 +2785,48 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/features/chat/canonical/checkpoint-rail.tsx",
 		must: "bg-ink-dim",
 		why: "the tick's fill is its whole visible affordance — a mark with no label and no edge — so repainting it to a floor-exempt role erases the rail's navigation with no palette assertion able to see it",
+	},
+	{
+		/*
+		 * The search overlay's ACTIVE result row, at its call site.
+		 *
+		 * The row Enter opens is the one the reader is deciding about, and the
+		 * family's own history is why this pin exists: a selection carried by
+		 * `accent-wash` alone is ΔE00 0.77 on `elevated` in obsidian (1.014:1) —
+		 * the defect D12 records for the picker and the slash popup — so the wash
+		 * is paired with a 2px `accent` bar on the leading edge, the same second
+		 * signal `slash-commands.tsx` and `at-picker.tsx` draw. The bar is the
+		 * non-luminance mark, so the pin holds the composed class: dropping the
+		 * bar leaves every palette row green while the row Enter will open stops
+		 * being distinguishable in the themes the wash collapses in.
+		 */
+		what: "search result row active mark",
+		file: "src/renderer/src/features/chat/canonical/thread-search-overlay.tsx",
+		must: "before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent",
+		why: "the active row's fill is a wash that collapses onto the panel's own ground in four of twelve themes; the 2px accent bar is its second, non-luminance signal, and only this pin can see the class string that draws it",
+	},
+	{
+		/*
+		 * The marked runs inside a result's snippet.
+		 *
+		 * `bg-accent-wash text-ink` is the app's find-match idiom (the WYSIWYG
+		 * editor's `FIND_MATCH_CLASS`), and the ink half is what keeps it legal:
+		 * the INKS loop asserts `ink` on `accentWash` at the strong-text floor.
+		 * The rest of the string is deliberately pinned too, because the frames
+		 * proved the fill cannot carry the mark alone: on the panel's `elevated`
+		 * ground the wash measures ΔE00 0.77 in obsidian (2 mentions of the
+		 * matched word, no mark), so the ACCENT UNDERLINE is the signal that
+		 * cannot collapse — `accent` is asserted at the 3:1 structural floor on
+		 * every ground by this file's `STRUCTURAL` list — and `font-medium` is
+		 * what keeps the mark readable on the two row states whose fill is the
+		 * same wash. A repaint that keeps the fill but drops the underline or
+		 * the weight keeps every palette assertion green while the match stops
+		 * being findable in four of twelve themes.
+		 */
+		what: "search match mark in a snippet",
+		file: "src/renderer/src/features/chat/canonical/thread-search-overlay.tsx",
+		must: "bg-accent-wash font-medium text-ink underline decoration-accent decoration-2 underline-offset-2",
+		why: "the match mark is the one place the query's own characters are shown, and a wash-only mark is invisible on the panel's own ground in the themes the neighbour pin lists; the accent underline is the non-luminance half and the weight covers the row states that share the wash",
 	},
 ];
 
