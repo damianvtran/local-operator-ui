@@ -240,7 +240,7 @@ export type CompletionAttention = {
 	conversation_id: string;
 	completion_token: string | null;
 	anchor_id: string | null;
-	kind: "complete" | "error" | "interrupted" | null;
+	kind: "complete" | "error" | "interrupted" | "closed" | "retired" | null;
 	unseen: boolean;
 	revision: [number, number];
 	/** False for a live owner that has not negotiated completion receipts. */
@@ -532,13 +532,18 @@ export type PendingDesktopGate = {
  * conversation the user is already in. This is what the presence claim
  * advertises — the backend's `delivers(kind)` reads it, and a claim that
  * advertises nothing makes every completion someone else's to raise.
+ *
+ * `retired` joins `interrupted` in staying OUT of this set (agent review round
+ * 2, NIT-1): both are CUT receipts rather than a completed or failed turn —
+ * the per-session bridge raises the cut for the session the user is in, and
+ * the feed's claim covers turns that finished, cleanly or not.
  */
 export const FEED_NOTIFIABLE_KINDS = ["complete", "error"] as const;
 
 export type DesktopNotification = {
 	/** Payload shape version. 1 today; additive fields do not bump it. */
 	contract: number;
-	kind: "complete" | "error" | "interrupted" | "ask" | "approval";
+	kind: "complete" | "error" | "interrupted" | "retired" | "ask" | "approval";
 	title: string;
 	/** Short state category ("Complete", "Needs attention"). */
 	status: string;

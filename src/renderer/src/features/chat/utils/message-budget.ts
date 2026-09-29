@@ -20,6 +20,7 @@ import {
 	DESKTOP_SYSTEM_PROMPT_MAX_CHARS,
 	desktopEndpoint,
 } from "../../../../../shared/desktop-contract";
+import { formatByteSize } from "../../../shared/lib/format-bytes";
 import type { WireImage } from "./bound-image";
 
 /**
@@ -51,22 +52,13 @@ export function messageBodyBytes(text: string, images: WireImage[]): number {
 	return new TextEncoder().encode(JSON.stringify(target.body)).length;
 }
 
-/**
- * Human-readable size: whole KB below 1 MB, one decimal in MB above it.
- *
- * KB/MB here are the units a person reads off a Finder window, so they are
- * powers of ten, not 1024s. Precision beyond one decimal is noise in a
- * sentence whose job is "this is too big by roughly this much".
+/*
+ * `formatByteSize` moved to `shared/lib/format-bytes.ts` (issue #660): the
+ * update download's progress line needed the same rung this sentence's numbers
+ * use, and one module is how the two surfaces cannot drift into two spellings
+ * of the same unit. Exact counts stay out of these sentences deliberately; see
+ * that module for the decimal-vs-binary choice and the 999_500 escalation.
  */
-export function formatByteSize(bytes: number): string {
-	// The MB branch starts at 999_500, not 1_000_000: `Math.round(999_500/1000)`
-	// is 1000, so the KB branch would otherwise print "1000 KB" - a unit that
-	// never appears anywhere else and reads as a ladder of 999 KB -> 1000 KB ->
-	// 1.0 MB (review round 1, F7). Rounding up to "1.0 MB" is what a person
-	// expects, and this is the refusal sentence's only number.
-	if (bytes >= 999_500) return `${(bytes / 1_000_000).toFixed(1)} MB`;
-	return `${Math.round(bytes / 1000)} KB`;
-}
 
 /**
  * Render an overflow and the budget it broke so the two numbers cannot be
