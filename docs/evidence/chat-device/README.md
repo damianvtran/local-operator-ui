@@ -7,7 +7,8 @@ this device first, then one section per network by name - and picking a row is t
 decision: a **setting** on a draft (exercised on the first send) or a **move** on a live
 conversation.
 
-**Eighteen states, two brand themes, 36 frames.** Four of them are picker states, and they
+**Nineteen states, two brand themes, 38 frames - plus two more beside them, from the app.**
+Four of the swept states are picker states, and they
 are not stills of a drawn panel: each presses `[data-device-chip]` with a real pointer event
 and claims `[data-device-picker]` is on screen before the shutter, so a frame named
 `picker-*` is a picture of the **open menu** rather than of a candidate for one.
@@ -34,15 +35,40 @@ other op - so a story that reached a live backend could not do so quietly. The
 
 - **light/dark are both captured** (every state, `localOperatorDark` + `localOperatorLight`);
   the other ten palettes are the theme contract's business, not this set's;
-- **the composer's held strip during a move** - the design specifies it, and this slice does
-  not implement it: holding the composer is a change to `MessageInput`'s own admission path
-  (a new seam through `chat-content.tsx`), not to this control, and it is left for its own
-  change rather than half-wired here;
+- **the composer's held strip during a move, and the `gone` surface after it** are BOTH
+  photographed - in `docs/evidence/chat-device-live/`, not here, and the reason is the rig's own
+  kind rather than a gap: the strip is composed into `MessageInput` (`chat-content.tsx`'s
+  `deviceHold` seam), and `MessageInput` reads the preload bridge, so a Storybook story over it
+  renders Storybook's error display instead of the composer (`chat-device--held` was written,
+  measured failing with `Cannot read properties of undefined (reading 'ipcRenderer')`, and
+  deleted). Those two frames come from the built app driven in `headless` mode
+  (`harness/drive.mjs` beside them), which is the only instrument that can hold a move in flight
+  long enough to photograph it;
 - **a docked pane's header** narrower than the app's 800px minimum;
 - **the real backend's sentences**: the busy refusal here is the route's own sentence
   (`mobility.py`'s `_busy_sentence`), typed into the story's fixture, and the receipt is a
   fixture in `TransferReceipt`'s shape. What the control does with either is real - see
   `chat-device-model.ts`, which is where the two arrival sentences are decided.
+
+## The two app-captured frames (`docs/evidence/chat-device-live/`)
+
+`held/localOperatorDark.webp` is the composer's hold while a move is in flight: the chip reads
+`Moving to build-box`, the notice's own detail line rides below the title block, and the strip
+sits OUTBOARD of the composer box, which is the geometry §2.4 is about.
+`gone/localOperatorDark.webp` is the surface a receipt with `source_retired: true` paints - the
+chip naming the holder, the notice, and the picker with the holder `current` and a third device
+`ineligible` with the reason that refusal gives.
+
+**Where those two came from, and what they do not prove.** The built app, driven in `headless`
+window mode by `harness/drive.mjs` (its own scratch HOME, profile and config; the `CMUX_*`/`LOP_*`
+families stripped; `--use-mock-keychain`; every process reaped by exact pid), with the endpoint
+that answers its three mesh reads and its transfer route in `harness/server.mjs` - a fixture in
+the wire's own shape, because the installed daemon predates the `peer` admission and refuses the
+path before anything can be measured. The app's transport, picker, confirmation and receipt
+handling are the shipped ones. **One palette**, the app's own: the drive does not switch themes,
+which is why the set declares `themes: 1` where every swept surface declares two. The frames are
+1100x760 - a CDP metric override, not the window's own size - so their pixel counts are not
+comparable with the swept set's 1000px stills.
 
 ## Numbers behind the frames
 
