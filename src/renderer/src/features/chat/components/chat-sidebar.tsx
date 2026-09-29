@@ -1670,12 +1670,21 @@ export function ChatSidebar({
 			window.clearInterval(timer);
 			window.removeEventListener("focus", onFocus);
 		};
-		// `feed.catalogueRevision` is a DEPENDENCY so each invalidation re-runs this
-		// effect body once — exactly one refetch per `catalogue` frame, with the
-		// safety timer restarted from the event rather than from a clock. It is
-		// deliberately not READ in the body: the revision's only job is to be the
-		// trigger, which is what the suppression on the hook itself covers.
-	}, [ready, refreshCatalogue, feed.available, feed.catalogueRevision]);
+		// `feed.catalogueRevision` and `feed.activityRevision` are DEPENDENCIES so each
+		// invalidation re-runs this effect body once — exactly one refetch per
+		// `catalogue` frame and per completion edge, with the safety timer restarted
+		// from the event rather than from a clock. Neither is READ in the body: their
+		// only job is to be the trigger, which is what the suppression on the hook
+		// itself covers. The second trigger exists because a completion that moves no
+		// order key publishes no `catalogue` frame while still advancing the clock
+		// the bins read (see `activityRevision` in `use-desktop-feed.ts`).
+	}, [
+		ready,
+		refreshCatalogue,
+		feed.available,
+		feed.catalogueRevision,
+		feed.activityRevision,
+	]);
 	/*
 	 * A GROUP'S OWN READ, on the expansion that asks for it.
 	 *
@@ -2475,6 +2484,7 @@ export function ChatSidebar({
 	 */
 	const viewIsCustom =
 		view.groupBy !== DEFAULT_SIDEBAR_VIEW.groupBy ||
+		view.basis !== DEFAULT_SIDEBAR_VIEW.basis ||
 		view.orderBy !== DEFAULT_SIDEBAR_VIEW.orderBy ||
 		view.hidden.length > 0 ||
 		view.loads > 0 ||
@@ -2483,9 +2493,10 @@ export function ChatSidebar({
 	 * §C1's sections over the loaded page (`chat-list-sections.ts` carries the
 	 * rules), the sections the popover has switched OFF removed, and the rest in
 	 * the reader's own order - `shownSections` is that order, and it is the same
-	 * one the region boundary's arrows write to.
+	 * one the region boundary's arrows write to. The basis is the view's, so the
+	 * bins, the row labels and the popover's counts below all read one clock.
 	 */
-	const sectioned = sectionRows(pagedRows, listNow);
+	const sectioned = sectionRows(pagedRows, listNow, view.basis);
 	const drawnSections = shownSections(view).filter(
 		(key): key is ChatListSection => key !== "pinned" && !isEntitySection(key),
 	);
@@ -3159,17 +3170,17 @@ export function ChatSidebar({
 				 * read after the title, so the row's name stays `state — title` with the
 				 * time as its tail (U21).
 				 */}
-				{!isRunningRow(row) && relativeTime(row, listNow) && (
+				{!isRunningRow(row) && relativeTime(row, listNow, view.basis) && (
 					<>
 						<span
 							aria-hidden="true"
 							data-session-time
 							className="ml-auto shrink-0 pl-2 font-mono text-ink-dim text-mono-sm tabular-nums group-focus-within:hidden group-hover:hidden"
 						>
-							{relativeTime(row, listNow)}
+							{relativeTime(row, listNow, view.basis)}
 						</span>
 						<span className="sr-only">
-							, {relativeTimeSentence(row, listNow)}
+							, {relativeTimeSentence(row, listNow, view.basis)}
 						</span>
 					</>
 				)}
@@ -5908,7 +5919,38 @@ export function ChatSidebar({
 							</Tooltip>
 							<PopoverContent
 								align="end"
-								className="w-60 p-2"
+								/*
+								 * THE PANEL SCROLLS INSIDE THE WINDOW, WITH A VISIBLE BOTTOM EDGE (design
+								 * direction D2, 2026-09-28; the inset is D1 of round 1). The Time basis
+								 * group pushed this panel past an 800x600 window: measured in the
+								 * `popover-open-short` capture, the panel ran off the bottom edge and the
+								 * Teams row, and the hidden-sections sentence below it, were unreachable.
+								 * `--radix-popover-content-available-height` is Radix's own measurement
+								 * of the space it has before the viewport edge, so the cap follows the
+								 * window rather than a guessed `max-h`; `overflow-y: auto` then keeps
+								 * every group reachable by scrolling the panel itself.
+								 *
+								 * THE INSET RESERVES HALF A ROW BELOW THE PANEL. A capped box that ends
+								 * flush with the window edge hides that it is capped at all - macOS's
+								 * overlay scrollbars are invisible at rest, and a row cut by the window
+								 * edge reads as the end of the list - which is round 1's D1. Sixteen
+								 * pixels keeps the panel's own bottom edge (and rounded corner) in
+								 * view, so the fold reads as the panel's edge rather than the window's.
+								 *
+								 * WHAT RENDERS ABOVE THE FOLD IS THE NEXT SECTION'S TOP PADDING, not a
+								 * sliver of its content: round 2 (D4) measured zero content pixels above
+								 * the fold in six themes, and the cut would have to land 8-12px lower to
+								 * cross the glyphs. The content-sliver cue is consciously not taken -
+								 * what this inset buys is the panel's own visible edge, and a frame
+								 * that shows it without a scrollbar has no other cue to give.
+								 *
+								 * AND THE CAP BINDS AT THE APP'S DEFAULT SIZE TOO, not only at the floor
+								 * (round 1's Q-1: at 1380x900 the view trigger sits under the nav rail, so
+								 * the available height is 518 against 598 of content). The panel scrolls
+								 * there exactly as it does at 600 - only a window tall enough that the
+								 * available space clears the content never scrolls.
+								 */
+								className="max-h-[calc(var(--radix-popover-content-available-height)_-_16px)] w-60 overflow-y-auto p-2"
 								data-sidebar-view-panel
 							>
 								<ChatSidebarViewMenu
