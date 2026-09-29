@@ -219,6 +219,31 @@ And the transcript's boundary (design round 1, D2; UX round 1, U2): the same
 records show the join - `review the stt overhaul dictated words from the fake
 upstream.` (one space, no glued word), including the mid-turn send.
 
+## 9. The push-to-talk row is the binding (the keymap seam)
+
+Session F is this follow-up's live leg: `keymap.push_to_talk` landed in the
+harness's registry (local-operator #1750 - the six-token bare-modifier hold
+family), and the app now READS it through the desktop transport instead of
+hard-coding the platform pair. The rig patches the persisted row on the
+isolated backend, reloads the window (a fresh registration re-reads it), and
+the record carries every answer: `sessionF.rowPatched {status:200}`,
+`sessionF.tooltipFollowsTheRow {ok:true}` with the tooltip reading "...or hold
+Left-Command" (label follows the token), `sessionF.rowCodeEngages {ok:true}`
+(`MetaLeft` flips the recording indicator), the negative control
+`sessionF.oldDefaultNoLongerEngages {ok:true}` (the previous default no longer
+engages), and the restore leg reading the default back
+(`sessionF.rowRestored {status:200}`, `defaultRestored {ok:true}` with "...or
+hold Right-Option", `defaultCodeEngages {ok:true}`, `AltRight`).
+
+Two rig consequences ride with it. The row is reset to its registry default
+at boot (`boot.pushToTalkReset {status:200}`) because the rig MUTATES
+persistent config now: an interrupted run must not leave the app bound to a
+key the next run's earlier sessions do not hold - the first run after the
+seam landed did exactly that, and every earlier engage claim fell with it.
+And the wire claims FOLLOW the capability the backend advertises
+(`advertisedInputMode`), because with the carriage landed, "what ships" is
+whatever this process advertises rather than a fixed shape.
+
 ## What this does NOT claim
 
 - **The composed-clear ordering** (§7): recorded, not claimed - the rig cannot
