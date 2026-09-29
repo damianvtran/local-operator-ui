@@ -163,8 +163,8 @@ test("the version-bearing paths expand to the declared release", () => {
 
 test("the prune list names the files the tree actually has", () => {
 	// The spellings a standalone CPython tree uses, pinned to the real ones:
-	// `bin/idle3.12` carries only the minor after the tool's own name while the
-	// stdlib lives under `lib/python3.12`.
+	// `bin/idle3.14` carries only the minor after the tool's own name while the
+	// stdlib lives under `lib/python3.14`.
 	//
 	// WHY THIS IS A TEST AND NOT A COMMENT: one token for all three prunes NOTHING,
 	// and it fails in the direction nobody sees. Measured on the first version of

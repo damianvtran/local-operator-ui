@@ -267,7 +267,7 @@ usable.
 **Execute bits under the seed: the executables must carry one, libraries need
 not.** Upstream ships loadable libraries at 0644 (`lib/itcl4.3.8/*`,
 `lib/thread3.0.6/*`, Tcl/Tk 9.0 in the `20260901` build) and at 0755
-(`lib/libpython3.12.dylib`), and it ships Python SOURCE files at 0755 as well. The
+(`lib/libpython3.14.dylib`), and it ships Python SOURCE files at 0755 as well. The
 gate asserts both directions it can assert functionally: no file that is not a
 Mach-O may carry an execute bit (the prune clears those), every Mach-O whose
 `filetype` is `MH_EXECUTE` must carry one, and `bin/python3` - the file a managed
