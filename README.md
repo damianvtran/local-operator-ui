@@ -86,6 +86,30 @@ The Local Operator backend is bundled with the application and is installed auto
 
 <sub><code>chat</code> — a working agent's tool rows, a blocked risky action, and the question it asked before continuing.</sub>
 
+### Subagents
+
+| Light | Dark |
+| :---: | :---: |
+| <img src="./resources/readme/subagents-light.webp" alt="Light theme: the run details panel, two subagents running with their elapsed time and cost, a third child queued behind the capacity gate, and the shared to-do list." width="420"> | <img src="./resources/readme/subagents-dark.webp" alt="Dark theme: the same run details panel." width="420"> |
+
+<sub><code>subagents</code> — two helpers working one request, each with its own elapsed time, context use and cost, and the next child queued behind the capacity gate.</sub>
+
+### Teams
+
+| Light | Dark |
+| :---: | :---: |
+| <img src="./resources/readme/teams-light.webp" alt="Light theme: the agents and teams page, with the release-crew roster: its manager agent, members and collaboration instructions." width="420"> | <img src="./resources/readme/teams-dark.webp" alt="Dark theme: the same teams page." width="420"> |
+
+<sub><code>teams</code> — agents grouped under a manager, with a roster, collaboration instructions and a project brief.</sub>
+
+### Media in a conversation
+
+| Light | Dark |
+| :---: | :---: |
+| <img src="./resources/readme/media-in-conversation-light.webp" alt="Light theme: a conversation holding a pasted chart and a bar chart the agent plotted, rendered under the tool row that made it." width="420"> | <img src="./resources/readme/media-in-conversation-dark.webp" alt="Dark theme: the same conversation." width="420"> |
+
+<sub><code>media</code> — a chart pasted in by hand and one the agent plotted, both rendered inline in the transcript.</sub>
+
 ### Agent hub
 
 | Light | Dark |
