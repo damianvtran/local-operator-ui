@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
@@ -53,7 +54,15 @@ export { toast } from "sonner";`,
 		".png": "dataurl",
 		".webp": "dataurl",
 	},
-	external: ["react", "react-dom", "react-dom/server", "react/jsx-runtime"],
+	external: [
+		"react",
+		"react-dom",
+		"react-dom/server",
+		"react/jsx-runtime",
+		/* One copy with the provider below; the hook inside the bundle must find
+		 * the client. */
+		"@tanstack/react-query",
+	],
 	plugins: [
 		{
 			name: "checkpoints-transport-fixture",
@@ -194,31 +203,45 @@ test("a refused tick jump says the shipped sentence once, as info", async () => 
 		throw new Error(`unscripted op ${request.op}`);
 	};
 
+	/*
+	 * The transcript reads its cross-session visibility through react-query
+	 * (`useCrossSessionHidden`), so this mount needs a provider. Nothing is
+	 * seeded: no capabilities answer, so nothing is hidden - the fail-closed
+	 * path - and `retry: false` keeps a failed negotiation from asking again
+	 * behind the assertions.
+	 */
+	const queryClient = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
 	const containerRef = { current: null };
 	const root = createRoot(window.document.getElementById("root"));
 	try {
 		await act(async () => {
 			root.render(
 				React.createElement(
-					MemoryRouter,
-					null,
-					React.createElement(CanonicalTranscript, {
-						frontend: { session_id: "s1" },
-						transcript: EMPTY_TRANSCRIPT,
-						gate: null,
-						waiting: false,
-						starting: false,
-						loadingOlder: false,
-						// The near path's refuse-from-the-first-page arm: no page
-						// ever applies, so the target can never be reached.
-						onLoadOlder: async () => false,
-						containerRef,
-						isSmallView: false,
-						status: "live",
-						failure: null,
-						awaitingHydration: false,
-						onReconnect: () => {},
-					}),
+					QueryClientProvider,
+					{ client: queryClient },
+					React.createElement(
+						MemoryRouter,
+						null,
+						React.createElement(CanonicalTranscript, {
+							frontend: { session_id: "s1" },
+							transcript: EMPTY_TRANSCRIPT,
+							gate: null,
+							waiting: false,
+							starting: false,
+							loadingOlder: false,
+							// The near path's refuse-from-the-first-page arm: no page
+							// ever applies, so the target can never be reached.
+							onLoadOlder: async () => false,
+							containerRef,
+							isSmallView: false,
+							status: "live",
+							failure: null,
+							awaitingHydration: false,
+							onReconnect: () => {},
+						}),
+					),
 				),
 			);
 		});
@@ -238,9 +261,15 @@ test("a refused tick jump says the shipped sentence once, as info", async () => 
 			.filter((entry) => entry.title === REFUSAL);
 		assert.equal(refusals.length, 1, "one sentence, not one per attempt");
 		assert.equal(refusals[0].type, "info", "an INFO toast, not an error");
+		/*
+		 * The transcript negotiates capabilities at mount (its cross-session
+		 * visibility reads react-query), so the jump's own read is the SECOND
+		 * request; the jump itself asked the page source once and refused
+		 * before any further read.
+		 */
 		assert.deepEqual(
 			requests.map((request) => request.op),
-			["sessions.checkpoints"],
+			["capabilities", "sessions.checkpoints"],
 			"the jump asked the page source once and refused before any further read",
 		);
 	} finally {
