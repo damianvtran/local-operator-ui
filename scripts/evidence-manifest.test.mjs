@@ -2261,6 +2261,86 @@ const BRANCH_RECORDS = [
 	 */
 	"monitorsPass",
 	/*
+	 * AND THE CONDENSED GROUP'S PICTURES PASS'S OWN (`feat/condensed-group-images`,
+	 * the operator report that a collapsed action group must still show what its
+	 * run produced): the two records of the pass that drew the strip under a
+	 * condensed group's header and of its round-1 remediation, and this branch's
+	 * fold record from the fold onto `origin/main` `0ab50df2a8` (the transcript
+	 * rail rework over #645's monitor renders). Their notes spell their identity
+	 * as bare tree SHAs, so none of them adds a name to the quoting ledger, and
+	 * they are listed for the list's usual reason - a fold resolved from main's
+	 * copy would drop the only statements of what each pass and fold moved. (The
+	 * retired `STAMP_BINDING_NOTES` registrations that carried the first two on
+	 * this branch's pre-#566 copies are gone with that list; these are what
+	 * `BRANCH_RECORDS` holds instead.)
+	 */
+	"condensedGroupMediaNote",
+	"condensedGroupMediaRoundOneNote",
+	"condensedGroupMediaFoldNote",
+	/*
+	 * And the SAME LANE'S SECOND LEVEL (`condensedTurnMediaNote`): the pass
+	 * that keeps a folded span's pictures under the condensed BAR, with its
+	 * three new `chat-turn-collapse--images*` cells and its declared
+	 * `chat-turn-collapse-images-before` half. Registered for the list's usual
+	 * reason - a fold resolved from main's copy would drop the only statement
+	 * of what the pass moved and of the two trees' difference the pair
+	 * measures - and its note spells its identity as bare SHAs, so it adds no
+	 * name to the quoting ledger.
+	 */
+	"condensedTurnMediaNote",
+	/*
+	 * And the re-stamp that lands the pair over the frames tip, registered with
+	 * it for the same reason: a fold resolved from main's copy would drop the
+	 * statement that the walk at `3723d39830` is this file's own derivation.
+	 */
+	"condensedTurnMediaRestampNote",
+	"condensedGroupMediaFoldTwoNote",
+	"condensedPicturesRoundOneRemediationNote",
+	/*
+	 * The round-2 mini-pass (F1/F2, U8/U9) re-shot the count control's cells and
+	 * added the press cell its own note names. Registered for the list's usual
+	 * reason: a fold resolved from main's copy would drop the only statement of
+	 * what the pass moved and of the uncap's one-press claim the new cell
+	 * photographs.
+	 */
+	"condensedPicturesRoundTwoRemediationNote",
+	/*
+	 * And the pictures lane's fold onto the 0.31.21 release window
+	 * (`condensedPicturesFoldNote`): this file and the list above were the
+	 * fold's only conflicts, both resolved with main's records whole and
+	 * this branch's re-laid. Registered for the list's usual reason - a
+	 * fold resolved from main's copy would drop the only statement of what
+	 * the fold moved and what it did not - and it quotes no tree-hash pair.
+	 */
+	"condensedPicturesFoldNote",
+	/*
+	 * And the lane's SECOND fold (`condensedPicturesFoldNote`'s pair), onto the bundled-CPython runtime
+	 * (#568): this file was its one conflict, resolved with main's records whole and this branch's
+	 * re-laid. Registered for the list's usual reason, and it quotes no tree-hash pair.
+	 */
+	"condensedPicturesFoldTwoNote",
+	/*
+	 * And the lane's THIRD fold, onto the rail's end-tick fix (#666): this file was its one
+	 * conflict, and it quotes no tree-hash pair.
+	 */
+	"condensedPicturesFoldThreeNote",
+	/*
+	 * And the lane's FOURTH fold, onto the settings-rail edge fix (#609): this file was its
+	 * one conflict, and it quotes no tree-hash pair.
+	 */
+	"condensedPicturesFoldFourNote",
+	/*
+	 * And the lane's FIFTH fold, onto the closed-dispose/ben-trio train: this file was its one
+	 * conflict, and it quotes no tree-hash pair.
+	 */
+	"condensedPicturesFoldFiveNote",
+	/*
+	 * And the lane's CONVERGENCE fold (`condensedPicturesFoldSixNote`), onto the condense-bar
+	 * spacing sibling (#653): three paths conflicted - this record, the transcript's entry union
+	 * and the behaviour suite's helpers - all resolved as unions, and it quotes no tree-hash pair.
+	 */
+	"condensedPicturesFoldSixNote",
+	/*
 	 * AND THIS FIX'S OWN (2026-09-29): `browserOauthPopupsRestampNote` is the
 	 * re-stamp for the driven-page OAuth popups (the operator's console Microsoft
 	 * sign-in repro - MSAL `loginPopup` denied by the driven views' deny-all
