@@ -1,0 +1,172 @@
+{
+	"capturedFrom": "CONSTRUCTED, from the wire contract the desktop transcript already reads (verified 2026-09-29 against local-operator's `fix/goal-continuation-chrome-0929` producers and this repository's origin/main 0738fa7eb3). No daemon session was read: every row here is a plain wire shape the reducer folds, so the fixture is stable across captures of both trees.",
+	"note": "The operator's report, as pixels: a stored transcript carries a goal-continuation row (`Continue working toward this goal: ...`) that predates the `harness_injected` marker, and a desktop that hides only stamped rows paints it as the user's own words. `stored` is the durable shape a reload reads back - the row between the ask and the answer it drove; `live` is the same unstamped row arriving as a live `message_start` from an owner on an older build; `nearMiss` is the CONTROL - a message the PERSON typed that OPENS with the continuation's head but does not close with its tail, which must keep painting in both halves. NO row here carries `provider_payload.harness_injected`; the marker's own half is exercised by `transcript-reducer.test.mjs` and is not what these frames are about.",
+	"epoch": "Every `ts` here is epoch SECONDS, the unit the desktop history contract states.",
+	"baseTs": 1789960000,
+	"pages": {
+		"stored": {
+			"entries": [
+				{
+					"id": "hc-st-u1",
+					"ts": 1789960000,
+					"type": "message",
+					"payload": {
+						"kind": "message",
+						"role": "user",
+						"id": "hc-st-u1",
+						"content": [
+							{
+								"type": "text",
+								"text": "Land the goal-continuation fix today: tests first, then the evidence pass."
+							}
+						],
+						"tool_calls": []
+					}
+				},
+				{
+					"id": "hc-st-c2",
+					"ts": 1789960002,
+					"type": "message",
+					"payload": {
+						"kind": "message",
+						"role": "user",
+						"id": "hc-st-c2",
+						"content": [
+							{
+								"type": "text",
+								"text": "Continue working toward this goal:\n\nland the goal-continuation fix\n\nMake concrete progress with the tools available, then state plainly what advanced and what remains. If the goal is fully met, say so and stop."
+							}
+						],
+						"tool_calls": []
+					}
+				},
+				{
+					"id": "hc-st-a1",
+					"ts": 1789960018,
+					"type": "message",
+					"payload": {
+						"kind": "message",
+						"role": "assistant",
+						"id": "hc-st-a1",
+						"content": [
+							{
+								"type": "text",
+								"text": "Tests are in and green; capturing the frames next."
+							}
+						],
+						"tool_calls": []
+					}
+				}
+			]
+		},
+		"plain": {
+			"entries": [
+				{
+					"id": "hc-pl-u1",
+					"ts": 1789960000,
+					"type": "message",
+					"payload": {
+						"kind": "message",
+						"role": "user",
+						"id": "hc-pl-u1",
+						"content": [
+							{
+								"type": "text",
+								"text": "Kick off the smoke run, then wait for it before we bump anything."
+							}
+						],
+						"tool_calls": []
+					}
+				},
+				{
+					"id": "hc-pl-a1",
+					"ts": 1789960016,
+					"type": "message",
+					"payload": {
+						"kind": "message",
+						"role": "assistant",
+						"id": "hc-pl-a1",
+						"content": [
+							{
+								"type": "text",
+								"text": "Starting the smoke run now."
+							}
+						],
+						"tool_calls": []
+					}
+				}
+			]
+		},
+		"nearMiss": {
+			"entries": [
+				{
+					"id": "hc-nm-u1",
+					"ts": 1789960000,
+					"type": "message",
+					"payload": {
+						"kind": "message",
+						"role": "user",
+						"id": "hc-nm-u1",
+						"content": [
+							{
+								"type": "text",
+								"text": "Quick check before I forget."
+							}
+						],
+						"tool_calls": []
+					}
+				},
+				{
+					"id": "hc-nm-u2",
+					"ts": 1789960004,
+					"type": "message",
+					"payload": {
+						"kind": "message",
+						"role": "user",
+						"id": "hc-nm-u2",
+						"content": [
+							{
+								"type": "text",
+								"text": "Continue working toward this goal:\n\nship the checklist and ping me when the smoke run is green."
+							}
+						],
+						"tool_calls": []
+					}
+				},
+				{
+					"id": "hc-nm-a1",
+					"ts": 1789960012,
+					"type": "message",
+					"payload": {
+						"kind": "message",
+						"role": "assistant",
+						"id": "hc-nm-a1",
+						"content": [
+							{
+								"type": "text",
+								"text": "Noted - I'll ping you the moment the run reports."
+							}
+						],
+						"tool_calls": []
+					}
+				}
+			]
+		}
+	},
+	"live": {
+		"continuation": {
+			"type": "message_start",
+			"message": {
+				"role": "user",
+				"id": "hc-live-c1",
+				"content": [
+					{
+						"type": "text",
+						"text": "Continue working toward this goal:\n\nkeep the release moving\n\nMake concrete progress with the tools available, then state plainly what advanced and what remains. If the goal is fully met, say so and stop."
+					}
+				],
+				"tool_calls": []
+			}
+		}
+	}
+}
