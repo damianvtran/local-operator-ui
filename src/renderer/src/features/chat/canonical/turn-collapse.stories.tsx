@@ -888,12 +888,17 @@ export const Images: Story = {
  * tiles and the `+4 more images` control, the same strip the group fold draws.
  * The capture's press row is the control's one-press reveal (U8): the bar opens
  * onto its sole group, whose strip shows the whole set.
+ *
+ * The caption describes the RELATIONSHIP rather than the state, because ONE
+ * caption sits above both cells: the collapsed frame shows the control and the
+ * press frame shows what it reaches (design round 3: the state-bound wording
+ * read stale over the eight-tile cell).
  */
 export const ImagesMany: Story = {
 	render: () => (
 		<Frame
 			transcript={finishedTurn(MANY_IMAGE_CALLS)}
-			caption="A span that produced eight pictures — four tiles and the count control."
+			caption="A span that produced eight pictures — the count control whose press reaches the whole set."
 		/>
 	),
 };
