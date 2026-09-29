@@ -9868,7 +9868,7 @@ async function railPressProbe(cdp) {
 				await movePointer(cdp, box.centre.x, box.centre.y);
 				const card = await waitForCondition(
 					cdp,
-					`Boolean(document.querySelector("[role=dialog]"))`,
+					`Boolean(document.querySelector("[data-checkpoint-card]"))`,
 					4_000,
 					25,
 				);

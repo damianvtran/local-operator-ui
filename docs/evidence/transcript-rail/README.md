@@ -2,7 +2,9 @@
 
 Twenty-four frames (twelve states, two palettes) of the REAL app on an isolated
 daemon, from the repository's own driver scene `--scene transcript-rail`
-(`scripts/renderer-driver.mjs`). Nothing on screen is stubbed: every tick is
+(`scripts/renderer-driver.mjs`). RE-SHOT for the rail rework (the dsh geometry,
+the tooltip card, and the jump's loader-backed walk) at head `86e4539dd7`;
+ALL CHECKS PASSED (81) on the re-shoot. Nothing on screen is stubbed: every tick is
 the daemon's own derivation (`sessions.checkpoints`, BE-1) from transcript
 journals written into the run's config root before its daemon started, in the
 journal's own row format — `scripts/transcript-rail-fixture.mjs`, in the shapes
@@ -15,8 +17,8 @@ and the error outcome card; and a ~200k-row conversation for the building mark.
 
 | file | state | what it shows |
 | --- | --- | --- |
-| `transcript-rail-density-{dark,light}.png` | the rail at 402 ticks | the density case: ticks are seq-proportional down the scroller's reserved right gutter, overlap allowed at this size (v1) and the frame is the "must not look broken" reading |
-| `transcript-rail-hover-user-{dark,light}.png` | a user tick's card | the press-free hover card, anchored side-left: the message text, bounded with internal scroll |
+| `transcript-rail-density-{dark,light}.png` | the rail at 402 ticks | the density case: short HORIZONTAL dashes (20x2 px) on a fixed 10px pitch, right-aligned in the 28px frame over the scroller's reserved gutter; overlap is impossible by construction and the track scrolls internally past its band, so the frame is the "must not look broken" reading |
+| `transcript-rail-hover-user-{dark,light}.png` | a user tick's card | the press-free hover card, anchored side-left, `role=tooltip` and pointer-events-none: the message text, clamped to three lines |
 | `transcript-rail-hover-completion-{dark,light}.png` | a completion tick's card | fallback name (`Turn N`) + the outcome row + `Turn N of M` + the naming line. Naming is BE-2's and is not on this backend, so `Generating name…` is the honest state the card shows |
 | `transcript-rail-jump-before-{dark,light}.png` | before the jump | the newest view, the target ~560 rows back and not loaded |
 | `transcript-rail-jump-after-{dark,light}.png` | the cold jump's landing | the wash (`data-jump-highlight`) on the STEER row `s0120` — a row the collapse hides inside its bar, so the landing is the expand-first walk's own proof; the scene asserts the highlighted record is exactly `s0120` AND that the landed row's rect sits inside the scroller's, with the viewport actually moved (the D1 fix's own reading) |
@@ -24,7 +26,7 @@ and the error outcome card; and a ~200k-row conversation for the building mark.
 | `transcript-rail-reduced-motion-{dark,light}.png` | the wash under `prefers-reduced-motion: reduce` | the static ground (the scene reads `animationName: none` back off the row), emulated through CDP rather than assumed, with the landing's in-view terms asserted |
 | `transcript-rail-refusal-{dark,light}.png` | the deep conversation's oldest tick | the INFO toast with the shipped sentence. The first refusal walks from a fresh read and refuses on the PAGE budget (the row never arrives); the second, on a store that has walked, refuses on the MOUNT budget (the row arrives, too far back) — both arms of D7's refusal, one per palette; the press is layered (DOM click first, then the real pointer, the synthetic press, the keyboard) and the detail names the route |
 | `transcript-rail-sparse-{dark,light}.png` | the sparse rail | 12 ticks at hex-pitch: the discrete-tick state the density frames cannot show; the scene asserts the count and a minimum gap between neighbours |
-| `transcript-rail-card-bounded-{dark,light}.png` | the bounded user card | turn 2's ~2,000-character message in the card: the scene asserts `scrollHeight > clientHeight` on the bounded element, so the internal scroll is a measured fact |
+| `transcript-rail-card-bounded-{dark,light}.png` | the bounded user card | turn 2's ~2,000-character message in the card: the scene reads the computed `-webkit-line-clamp` (three lines) and `overflow-y: hidden` off the element, so the clamp is a measured fact |
 | `transcript-rail-card-outcome-{dark,light}.png` | the outcome row | the error turn's completion card: the manifest's own outcome (`Error`) + `Turn 3 of 6`. The fixture's markers carry `details.kind` and land AFTER their `attention_started`, which is what makes the deriver emit an outcome at all |
 | `transcript-rail-building-{dark,light}.png` | the building mark | the ~200k-row conversation, made STALE by the leg (one appended row) before each capture: the stale manifest's ticks stay painted and the top shimmer is up while the refresh runs. Deterministic on a warm cache because the append is the leg's own step |
 
@@ -71,71 +73,19 @@ LOCAL_OPERATOR_DESKTOP_TOKEN="$(cat "$RIG/token")" \
 
 ## What the run measured
 
-The scene's own log: **ALL CHECKS PASSED, 81 checks**, 24 frames. Press
-→ the `data-jump-highlight` attribute appearing, taken driver-side around the
+The scene's own log: **ALL CHECKS PASSED, 81 checks**, 24 frames
+(the re-shoot at `86e4539dd7`). Press
+-> the `data-jump-highlight` attribute appearing, taken driver-side around the
 press (the scene's `[note] jump timings` lines):
 
-- `localOperatorDark` — cold **613 ms** (the loader's pages + the
-  mount, from a small window), warm **41 ms** (a loaded row: reveal +
-  scroll alone), reduced-motion arm **32 ms**;
-- `localOperatorLight` — cold 57 ms, warm 67 ms,
-  reduced-motion 6 ms. The light pass's "cold" is load-free by
-  construction: the restructure that fixed an interleaving flake keeps the
-  first conversation open across both passes, so its store is already loaded —
-  the loader's own number is the dark pass's.
+- `localOperatorDark` — cold **319 ms** (the loader's pages + the mount, from a
+  small window; 36 -> 257 mounted rows), warm **25 ms** (a loaded row: reveal +
+  scroll alone), reduced-motion arm **4 ms**;
+- `localOperatorLight` — cold **5 ms**, warm **7 ms**, reduced arm **4 ms**: the
+  second pass runs on the store the first already walked, so its cold arm is a
+  warm re-jump and is labelled as such rather than read as a cold number.
 
-Also asserted on this head, on the same bundle (UX round 1's U1/U3, no frame of
-its own - the change is invisible): one tabbable tick whose roving memory
-matches the tick the previous leg had focused, the
-ArrowDown/ArrowDown/ArrowUp/End/Home walk against ids read from the page,
-Escape closing the card with focus kept on the tick, and the crossing
-measurement - one Tab leaves the block and one Shift+Tab returns to the same
-tick.
-
-Round 1's knocks, both now ROOT-CAUSED and fixed rather than worked around:
-
-1. **The physical press "fired nothing" — two causes, both real.** (a) The
-   jump itself was a no-op: `scrollRegionToCenter` clamped its offset with the
-   normal-scroller bound (`Math.max(0, ...)`) while the transcript's scroller is
-   `flex-col-reverse` (0 at the newest row, negative toward the oldest), so an
-   above-viewport target assigned 0 and the wash painted off-screen; the fix
-   names the axis at the call site (`"reversed"` → `Math.min(0, ...)`, design
-   round 1's D1). The artifact-level reading: the wash band in this set's
-   `jump-after-dark` measures **100,828** green-lean pixels in the transcript
-   area (`g > r + 6 && g > b + 6`, `24 < g < 70`) against **0** at the same
-   filter in the committed round-1 frame. The inequality this line first
-   carried, `g > b + 10`, counts 0 on this very frame — the wash's blends do
-   not clear a 10-channel green-over-blue margin; QA round 2 measured it, and
-   `g > b + 4` counts the same 100,828 set.
-   (b) The scene's own press helper was a scene-local copy that
-   the module-level `clickPoint(cdp, x, y)` shadowed-across: its call sites
-   passed the module's argument shape into the copy's, so the dispatched point
-   was the client object in `x` and the scan's x in `y` — the press landed
-   nowhere while the hit test said the tick was topmost (the at-point stack,
-   added to the failing check's detail, is what named it). One helper now, one
-   signature; the press leg is an assertion, not a recorded fallback, and the
-   refusal's pointer route is a working second route again.
-2. **The refusal's 200-turn conversation was reachable from a fresh read** —
-   measured (the detail was `rows 36->601` and a landing, not a refusal), which
-   is why the refusal has its own deeper conversation; that reading stands.
-
-## Notes
-
-- The warm op (`sessions.checkpoints.warm`, BE-2) is not on the backend this
-  ran against; the rail's hover warms, the daemon answers 404, and the hook
-  degrades with ONE warn per conversation (`checkpoint naming is unavailable;
-  the cards keep their fallback text`) — the console line is in the run log,
-  and the cards' fallback text is what the hover frames show.
-- The daemon's route resolves a session by its 12-hex id; a journal under any
-  other directory name lists but refuses (`Requested session … not found`) —
-  measured while preparing this set, and the reason the fixtures' ids are
-  `be1a9fef0001`–`be1a9fef0004`.
-- The building leg appends one row to the bulk session's journal before each
-  capture: it makes the index stale deterministically (a fresh build exceeds
-  the backend's first-paint wait, so the read answers `building`), and each
-  run rewrites all four fixtures anyway, so no state accumulates.
-- The completion cards now show the OUTCOME row (`Complete` / `Error` /
-  `Interrupted`) because the fixture lands `attention_started` BEFORE its user
-  row and carries `details.kind` on the marker — the two facts the deriver's
-  outcome rules read (`transcript_index.py`), both measured against the empty
-  card this set first photographed.
+The hover trace (frame timings under a pointer sweep on the long transcript)
+and the before/after pair against the pre-rework build are NOT here: the driver
+has no tracing facility to point at a sweep, so that evidence is new
+instrumentation rather than a re-run, and it lands with the design/UX wave.
