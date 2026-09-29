@@ -10789,6 +10789,19 @@ async function sceneTranscriptRail(cdp) {
 			await openFixture(SESSION_DEEP, "du0001", 600),
 			`ticks=${await evaluate(`document.querySelectorAll("${rail} [data-checkpoint-id]").length`)}`,
 		);
+		/*
+		 * THE TRACK AT ITS TOP END FIRST (round-1 re-shoot, measured): the rail
+		 * now follows the reader's active mark, so on a fresh open the frame sits
+		 * scrolled to the tail - the first `du` tick the scan can reach is a
+		 * RECENT one, and when this leg trusted the scan it pressed `du0296`,
+		 * which simply LANDED (rows 36->87, no toast). The refusal is about the
+		 * OLDEST tick, so the probe scrolls the rail's own track to its top end
+		 * first - the reader's own gesture for reaching it - and only then scans.
+		 */
+		await evaluate(
+			`(() => { const f = document.querySelector("[data-rail-frame]"); if (f) f.scrollTop = 0; return Boolean(f); })()`,
+		);
+		await wait(120);
 		const oldSpot = await tickSpot("du");
 		if (oldSpot) {
 			const refusalStart = Date.now();
