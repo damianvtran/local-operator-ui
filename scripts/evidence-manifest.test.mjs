@@ -1896,7 +1896,6 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"foldOnto20c3a207d7Note",
 	/*
-	/*
 	 * THE FOLD ONTO `origin/main` `d1fe9eb01e` (2026-09-29, the quick-send /
 	 * mini-view branch, #630s) UNIONED THIS LIST BY KEY: this branch's
 	 * `readReceiptForegroundRestampNote` and main's `quickSendRestampNote` are

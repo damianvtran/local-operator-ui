@@ -5,7 +5,7 @@
     "her-idle": {
       "frame": {
         "label": "aida-before-her-idle",
-        "file": "/Users/damian/.local-operator/sessions/05660d0ee285/scratchpad/aida-scratch/before/frames/aida-before-her-idle.png",
+        "file": "/Users/damian/.local-operator/sessions/05660d0ee285/scratchpad/aida-scratch/before2/frames/aida-before-her-idle.png",
         "pixels": {
           "width": 2760,
           "height": 1800
@@ -87,7 +87,7 @@
         "unreadRows": [],
         "rows": [
           {
-            "id": "85d7ef1c23d3",
+            "id": "0d0e56517985",
             "label": "Scheduled (1 wake) Aida · aida n",
             "ariaCurrent": null,
             "buttonBg": "rgba(0, 0, 0, 0)",
@@ -169,7 +169,7 @@
     "her-selected": {
       "frame": {
         "label": "aida-before-her-selected",
-        "file": "/Users/damian/.local-operator/sessions/05660d0ee285/scratchpad/aida-scratch/before/frames/aida-before-her-selected.png",
+        "file": "/Users/damian/.local-operator/sessions/05660d0ee285/scratchpad/aida-scratch/before2/frames/aida-before-her-selected.png",
         "pixels": {
           "width": 2760,
           "height": 1800
@@ -180,7 +180,7 @@
           "devicePixelRatio": 2
         }
       },
-      "hash": "#/chat/85d7ef1c23d3",
+      "hash": "#/chat/0d0e56517985",
       "herRow": {
         "tag": "nav-item-aida",
         "label": "Aida",
@@ -233,8 +233,8 @@
       "railBadges": [],
       "currentList": [
         {
-          "id": "85d7ef1c23d3",
-          "label": "Scheduled (1 wake) Aida · aida now , last active just now"
+          "id": "0d0e56517985",
+          "label": "Open Aida · aida now , last active just now"
         }
       ],
       "pane": {
@@ -244,22 +244,36 @@
       "page": {
         "current": [
           {
-            "id": "85d7ef1c23d3",
-            "label": "Scheduled (1 wake) Aida · aida now , last active just now"
+            "id": "0d0e56517985",
+            "label": "Open Aida · aida now , last active just now"
           }
         ],
         "unreadRows": [],
         "rows": [
           {
-            "id": "85d7ef1c23d3",
-            "label": "Scheduled (1 wake) Aida · aida n",
+            "id": "0d0e56517985",
+            "label": "Open Aida · aida now , last acti",
             "ariaCurrent": "page",
             "buttonBg": "rgb(55, 47, 36)",
             "wrapperBg": "rgb(55, 47, 36)",
             "unread": false,
             "described": null,
             "srTexts": [
-              "Scheduled (1 wake)",
+              "Open",
+              ", last active just now"
+            ],
+            "visible": true
+          },
+          {
+            "id": "c1c1c1c1c1c1",
+            "label": "Ready Quarterly ledger reconcili",
+            "ariaCurrent": null,
+            "buttonBg": "rgba(0, 0, 0, 0)",
+            "wrapperBg": "rgba(0, 0, 0, 0)",
+            "unread": false,
+            "described": null,
+            "srTexts": [
+              "Ready",
               ", last active just now"
             ],
             "visible": true
@@ -305,20 +319,6 @@
               ", last active just now"
             ],
             "visible": true
-          },
-          {
-            "id": "c1c1c1c1c1c1",
-            "label": "Recent Quarterly ledger reconcil",
-            "ariaCurrent": null,
-            "buttonBg": "rgba(0, 0, 0, 0)",
-            "wrapperBg": "rgba(0, 0, 0, 0)",
-            "unread": false,
-            "described": null,
-            "srTexts": [
-              "Recent",
-              ", last active just now"
-            ],
-            "visible": true
           }
         ],
         "railCurrent": [
@@ -327,7 +327,7 @@
         "railBadges": []
       },
       "raw": {
-        "hash": "#/chat/85d7ef1c23d3",
+        "hash": "#/chat/0d0e56517985",
         "hasFocus": true,
         "visibility": "visible"
       }
@@ -335,7 +335,7 @@
     "after-other": {
       "frame": {
         "label": "aida-before-after-other",
-        "file": "/Users/damian/.local-operator/sessions/05660d0ee285/scratchpad/aida-scratch/before/frames/aida-before-after-other.png",
+        "file": "/Users/damian/.local-operator/sessions/05660d0ee285/scratchpad/aida-scratch/before2/frames/aida-before-after-other.png",
         "pixels": {
           "width": 2760,
           "height": 1800
@@ -400,7 +400,7 @@
       "currentList": [
         {
           "id": "c2c2c2c2c2c2",
-          "label": "Recent Loader cache invalidation now , last active just now"
+          "label": "Open Loader cache invalidation now , last active just now"
         }
       ],
       "pane": {
@@ -411,13 +411,13 @@
         "current": [
           {
             "id": "c2c2c2c2c2c2",
-            "label": "Recent Loader cache invalidation now , last active just now"
+            "label": "Open Loader cache invalidation now , last active just now"
           }
         ],
         "unreadRows": [],
         "rows": [
           {
-            "id": "85d7ef1c23d3",
+            "id": "0d0e56517985",
             "label": "Scheduled (1 wake) Aida · aida n",
             "ariaCurrent": null,
             "buttonBg": "rgba(0, 0, 0, 0)",
@@ -426,6 +426,34 @@
             "described": null,
             "srTexts": [
               "Scheduled (1 wake)",
+              ", last active just now"
+            ],
+            "visible": true
+          },
+          {
+            "id": "c2c2c2c2c2c2",
+            "label": "Open Loader cache invalidation n",
+            "ariaCurrent": "page",
+            "buttonBg": "rgb(55, 47, 36)",
+            "wrapperBg": "rgb(55, 47, 36)",
+            "unread": false,
+            "described": null,
+            "srTexts": [
+              "Open",
+              ", last active just now"
+            ],
+            "visible": true
+          },
+          {
+            "id": "c1c1c1c1c1c1",
+            "label": "Ready Quarterly ledger reconcili",
+            "ariaCurrent": null,
+            "buttonBg": "rgba(0, 0, 0, 0)",
+            "wrapperBg": "rgba(0, 0, 0, 0)",
+            "unread": false,
+            "described": null,
+            "srTexts": [
+              "Ready",
               ", last active just now"
             ],
             "visible": true
@@ -447,34 +475,6 @@
           {
             "id": "c3c3c3c3c3c3",
             "label": "Recent Retention sweep summary n",
-            "ariaCurrent": null,
-            "buttonBg": "rgba(0, 0, 0, 0)",
-            "wrapperBg": "rgba(0, 0, 0, 0)",
-            "unread": false,
-            "described": null,
-            "srTexts": [
-              "Recent",
-              ", last active just now"
-            ],
-            "visible": true
-          },
-          {
-            "id": "c2c2c2c2c2c2",
-            "label": "Recent Loader cache invalidation",
-            "ariaCurrent": "page",
-            "buttonBg": "rgb(55, 47, 36)",
-            "wrapperBg": "rgb(55, 47, 36)",
-            "unread": false,
-            "described": null,
-            "srTexts": [
-              "Recent",
-              ", last active just now"
-            ],
-            "visible": true
-          },
-          {
-            "id": "c1c1c1c1c1c1",
-            "label": "Recent Quarterly ledger reconcil",
             "ariaCurrent": null,
             "buttonBg": "rgba(0, 0, 0, 0)",
             "wrapperBg": "rgba(0, 0, 0, 0)",
@@ -499,7 +499,7 @@
     "after-third": {
       "frame": {
         "label": "aida-before-after-third",
-        "file": "/Users/damian/.local-operator/sessions/05660d0ee285/scratchpad/aida-scratch/before/frames/aida-before-after-third.png",
+        "file": "/Users/damian/.local-operator/sessions/05660d0ee285/scratchpad/aida-scratch/before2/frames/aida-before-after-third.png",
         "pixels": {
           "width": 2760,
           "height": 1800
@@ -564,7 +564,7 @@
       "currentList": [
         {
           "id": "c3c3c3c3c3c3",
-          "label": "Recent Retention sweep summary now , last active just now"
+          "label": "Open Retention sweep summary now , last active just now"
         }
       ],
       "pane": {
@@ -575,13 +575,13 @@
         "current": [
           {
             "id": "c3c3c3c3c3c3",
-            "label": "Recent Retention sweep summary now , last active just now"
+            "label": "Open Retention sweep summary now , last active just now"
           }
         ],
         "unreadRows": [],
         "rows": [
           {
-            "id": "85d7ef1c23d3",
+            "id": "0d0e56517985",
             "label": "Scheduled (1 wake) Aida · aida n",
             "ariaCurrent": null,
             "buttonBg": "rgba(0, 0, 0, 0)",
@@ -595,50 +595,50 @@
             "visible": true
           },
           {
-            "id": "c4c4c4c4c4c4",
-            "label": "Recent Throughput investigation ",
-            "ariaCurrent": null,
-            "buttonBg": "rgba(0, 0, 0, 0)",
-            "wrapperBg": "rgba(0, 0, 0, 0)",
-            "unread": false,
-            "described": null,
-            "srTexts": [
-              "Recent",
-              ", last active just now"
-            ],
-            "visible": true
-          },
-          {
             "id": "c3c3c3c3c3c3",
-            "label": "Recent Retention sweep summary n",
+            "label": "Open Retention sweep summary now",
             "ariaCurrent": "page",
             "buttonBg": "rgb(55, 47, 36)",
             "wrapperBg": "rgb(55, 47, 36)",
             "unread": false,
             "described": null,
             "srTexts": [
-              "Recent",
+              "Open",
               ", last active just now"
             ],
             "visible": true
           },
           {
             "id": "c2c2c2c2c2c2",
-            "label": "Recent Loader cache invalidation",
+            "label": "Ready Loader cache invalidation ",
             "ariaCurrent": null,
             "buttonBg": "rgba(0, 0, 0, 0)",
             "wrapperBg": "rgba(0, 0, 0, 0)",
             "unread": false,
             "described": null,
             "srTexts": [
-              "Recent",
+              "Ready",
               ", last active just now"
             ],
             "visible": true
           },
           {
             "id": "c1c1c1c1c1c1",
-            "label": "Recent Quarterly ledger reconcil",
+            "label": "Ready Quarterly ledger reconcili",
+            "ariaCurrent": null,
+            "buttonBg": "rgba(0, 0, 0, 0)",
+            "wrapperBg": "rgba(0, 0, 0, 0)",
+            "unread": false,
+            "described": null,
+            "srTexts": [
+              "Ready",
+              ", last active just now"
+            ],
+            "visible": true
+          },
+          {
+            "id": "c4c4c4c4c4c4",
+            "label": "Recent Throughput investigation ",
             "ariaCurrent": null,
             "buttonBg": "rgba(0, 0, 0, 0)",
             "wrapperBg": "rgba(0, 0, 0, 0)",
@@ -663,7 +663,7 @@
     "repeat-same-point": {
       "frame": {
         "label": "aida-before-repeat-same-point",
-        "file": "/Users/damian/.local-operator/sessions/05660d0ee285/scratchpad/aida-scratch/before/frames/aida-before-repeat-same-point.png",
+        "file": "/Users/damian/.local-operator/sessions/05660d0ee285/scratchpad/aida-scratch/before2/frames/aida-before-repeat-same-point.png",
         "pixels": {
           "width": 2760,
           "height": 1800
@@ -728,7 +728,7 @@
       "currentList": [
         {
           "id": "c2c2c2c2c2c2",
-          "label": "Recent Loader cache invalidation , last active just now"
+          "label": "Open Loader cache invalidation , last active just now"
         }
       ],
       "pane": {
@@ -739,13 +739,13 @@
         "current": [
           {
             "id": "c2c2c2c2c2c2",
-            "label": "Recent Loader cache invalidation , last active just now"
+            "label": "Open Loader cache invalidation , last active just now"
           }
         ],
         "unreadRows": [],
         "rows": [
           {
-            "id": "85d7ef1c23d3",
+            "id": "0d0e56517985",
             "label": "Scheduled (1 wake) Aida · aida n",
             "ariaCurrent": null,
             "buttonBg": "rgba(0, 0, 0, 0)",
@@ -754,6 +754,48 @@
             "described": null,
             "srTexts": [
               "Scheduled (1 wake)",
+              ", last active just now"
+            ],
+            "visible": true
+          },
+          {
+            "id": "c3c3c3c3c3c3",
+            "label": "Ready Retention sweep summary no",
+            "ariaCurrent": null,
+            "buttonBg": "rgba(0, 0, 0, 0)",
+            "wrapperBg": "rgba(0, 0, 0, 0)",
+            "unread": false,
+            "described": null,
+            "srTexts": [
+              "Ready",
+              ", last active just now"
+            ],
+            "visible": true
+          },
+          {
+            "id": "c2c2c2c2c2c2",
+            "label": "Open Loader cache invalidation ,",
+            "ariaCurrent": "page",
+            "buttonBg": "rgb(55, 47, 36)",
+            "wrapperBg": "rgb(55, 47, 36)",
+            "unread": false,
+            "described": null,
+            "srTexts": [
+              "Open",
+              ", last active just now"
+            ],
+            "visible": true
+          },
+          {
+            "id": "c1c1c1c1c1c1",
+            "label": "Ready Quarterly ledger reconcili",
+            "ariaCurrent": null,
+            "buttonBg": "rgba(0, 0, 0, 0)",
+            "wrapperBg": "rgba(0, 0, 0, 0)",
+            "unread": false,
+            "described": null,
+            "srTexts": [
+              "Ready",
               ", last active just now"
             ],
             "visible": true
@@ -771,48 +813,6 @@
               ", last active just now"
             ],
             "visible": true
-          },
-          {
-            "id": "c3c3c3c3c3c3",
-            "label": "Recent Retention sweep summary n",
-            "ariaCurrent": null,
-            "buttonBg": "rgba(0, 0, 0, 0)",
-            "wrapperBg": "rgba(0, 0, 0, 0)",
-            "unread": false,
-            "described": null,
-            "srTexts": [
-              "Recent",
-              ", last active just now"
-            ],
-            "visible": true
-          },
-          {
-            "id": "c2c2c2c2c2c2",
-            "label": "Recent Loader cache invalidation",
-            "ariaCurrent": "page",
-            "buttonBg": "rgb(55, 47, 36)",
-            "wrapperBg": "rgb(55, 47, 36)",
-            "unread": false,
-            "described": null,
-            "srTexts": [
-              "Recent",
-              ", last active just now"
-            ],
-            "visible": true
-          },
-          {
-            "id": "c1c1c1c1c1c1",
-            "label": "Complete Quarterly ledger reconc",
-            "ariaCurrent": null,
-            "buttonBg": "rgba(0, 0, 0, 0)",
-            "wrapperBg": "rgba(0, 0, 0, 0)",
-            "unread": false,
-            "described": null,
-            "srTexts": [
-              "Complete",
-              ", last active just now"
-            ],
-            "visible": true
           }
         ],
         "railCurrent": [],
@@ -827,7 +827,7 @@
     "repeat-after-move": {
       "frame": {
         "label": "aida-before-repeat-after-move",
-        "file": "/Users/damian/.local-operator/sessions/05660d0ee285/scratchpad/aida-scratch/before/frames/aida-before-repeat-after-move.png",
+        "file": "/Users/damian/.local-operator/sessions/05660d0ee285/scratchpad/aida-scratch/before2/frames/aida-before-repeat-after-move.png",
         "pixels": {
           "width": 2760,
           "height": 1800
@@ -892,7 +892,7 @@
       "currentList": [
         {
           "id": "c3c3c3c3c3c3",
-          "label": "Recent Retention sweep summary now , last active just now"
+          "label": "Open Retention sweep summary , last active just now"
         }
       ],
       "pane": {
@@ -903,13 +903,13 @@
         "current": [
           {
             "id": "c3c3c3c3c3c3",
-            "label": "Recent Retention sweep summary now , last active just now"
+            "label": "Open Retention sweep summary , last active just now"
           }
         ],
         "unreadRows": [],
         "rows": [
           {
-            "id": "85d7ef1c23d3",
+            "id": "0d0e56517985",
             "label": "Scheduled (1 wake) Aida · aida n",
             "ariaCurrent": null,
             "buttonBg": "rgba(0, 0, 0, 0)",
@@ -918,6 +918,34 @@
             "described": null,
             "srTexts": [
               "Scheduled (1 wake)",
+              ", last active just now"
+            ],
+            "visible": true
+          },
+          {
+            "id": "c3c3c3c3c3c3",
+            "label": "Open Retention sweep summary , l",
+            "ariaCurrent": "page",
+            "buttonBg": "rgb(55, 47, 36)",
+            "wrapperBg": "rgb(55, 47, 36)",
+            "unread": false,
+            "described": null,
+            "srTexts": [
+              "Open",
+              ", last active just now"
+            ],
+            "visible": true
+          },
+          {
+            "id": "c2c2c2c2c2c2",
+            "label": "Ready Loader cache invalidation ",
+            "ariaCurrent": null,
+            "buttonBg": "rgba(0, 0, 0, 0)",
+            "wrapperBg": "rgba(0, 0, 0, 0)",
+            "unread": false,
+            "described": null,
+            "srTexts": [
+              "Ready",
               ", last active just now"
             ],
             "visible": true
@@ -940,40 +968,12 @@
             "id": "c4c4c4c4c4c4",
             "label": "Recent Throughput investigation ",
             "ariaCurrent": null,
-            "buttonBg": "rgb(48, 45, 41)",
-            "wrapperBg": "rgb(48, 45, 41)",
-            "unread": false,
-            "described": null,
-            "srTexts": [
-              "Recent",
-              ", last active just now"
-            ],
-            "visible": true
-          },
-          {
-            "id": "c3c3c3c3c3c3",
-            "label": "Recent Retention sweep summary n",
-            "ariaCurrent": "page",
-            "buttonBg": "rgb(55, 47, 36)",
-            "wrapperBg": "rgb(55, 47, 36)",
-            "unread": false,
-            "described": null,
-            "srTexts": [
-              "Recent",
-              ", last active just now"
-            ],
-            "visible": true
-          },
-          {
-            "id": "c2c2c2c2c2c2",
-            "label": "Complete Loader cache invalidati",
-            "ariaCurrent": null,
             "buttonBg": "rgba(0, 0, 0, 0)",
             "wrapperBg": "rgba(0, 0, 0, 0)",
             "unread": false,
             "described": null,
             "srTexts": [
-              "Complete",
+              "Recent",
               ", last active just now"
             ],
             "visible": true
@@ -991,7 +991,7 @@
     "gone-hold": {
       "frame": {
         "label": "aida-before-gone-hold",
-        "file": "/Users/damian/.local-operator/sessions/05660d0ee285/scratchpad/aida-scratch/before/frames/aida-before-gone-hold.png",
+        "file": "/Users/damian/.local-operator/sessions/05660d0ee285/scratchpad/aida-scratch/before2/frames/aida-before-gone-hold.png",
         "pixels": {
           "width": 2760,
           "height": 1800
@@ -1002,7 +1002,7 @@
           "devicePixelRatio": 2
         }
       },
-      "hash": "#/chat/85d7ef1c23d3",
+      "hash": "#/chat/0d0e56517985",
       "herRow": {
         "tag": "nav-item-aida",
         "label": "Aida",
@@ -1055,8 +1055,8 @@
       "railBadges": [],
       "currentList": [
         {
-          "id": "85d7ef1c23d3",
-          "label": "Scheduled (1 wake) Aida · aida now , last active just now"
+          "id": "0d0e56517985",
+          "label": "Open Aida · aida now , last active just now"
         }
       ],
       "pane": {
@@ -1066,22 +1066,22 @@
       "page": {
         "current": [
           {
-            "id": "85d7ef1c23d3",
-            "label": "Scheduled (1 wake) Aida · aida now , last active just now"
+            "id": "0d0e56517985",
+            "label": "Open Aida · aida now , last active just now"
           }
         ],
         "unreadRows": [],
         "rows": [
           {
-            "id": "85d7ef1c23d3",
-            "label": "Scheduled (1 wake) Aida · aida n",
+            "id": "0d0e56517985",
+            "label": "Open Aida · aida now , last acti",
             "ariaCurrent": "page",
             "buttonBg": "rgb(55, 47, 36)",
             "wrapperBg": "rgb(55, 47, 36)",
             "unread": false,
             "described": null,
             "srTexts": [
-              "Scheduled (1 wake)",
+              "Open",
               ", last active just now"
             ],
             "visible": true
@@ -1149,7 +1149,7 @@
         "railBadges": []
       },
       "raw": {
-        "hash": "#/chat/85d7ef1c23d3",
+        "hash": "#/chat/0d0e56517985",
         "hasFocus": true,
         "visibility": "visible"
       }
@@ -1157,7 +1157,7 @@
     "after-gone": {
       "frame": {
         "label": "aida-before-after-gone",
-        "file": "/Users/damian/.local-operator/sessions/05660d0ee285/scratchpad/aida-scratch/before/frames/aida-before-after-gone.png",
+        "file": "/Users/damian/.local-operator/sessions/05660d0ee285/scratchpad/aida-scratch/before2/frames/aida-before-after-gone.png",
         "pixels": {
           "width": 2760,
           "height": 1800
@@ -1222,7 +1222,7 @@
       "currentList": [
         {
           "id": "c2c2c2c2c2c2",
-          "label": "Ready Loader cache invalidation now , last active just now"
+          "label": "Open Loader cache invalidation now , last active just now"
         }
       ],
       "pane": {
@@ -1233,13 +1233,13 @@
         "current": [
           {
             "id": "c2c2c2c2c2c2",
-            "label": "Ready Loader cache invalidation now , last active just now"
+            "label": "Open Loader cache invalidation now , last active just now"
           }
         ],
         "unreadRows": [],
         "rows": [
           {
-            "id": "85d7ef1c23d3",
+            "id": "0d0e56517985",
             "label": "Scheduled (1 wake) Aida · aida n",
             "ariaCurrent": null,
             "buttonBg": "rgba(0, 0, 0, 0)",
@@ -1296,14 +1296,14 @@
           },
           {
             "id": "c2c2c2c2c2c2",
-            "label": "Ready Loader cache invalidation ",
+            "label": "Open Loader cache invalidation n",
             "ariaCurrent": "page",
             "buttonBg": "rgb(55, 47, 36)",
             "wrapperBg": "rgb(55, 47, 36)",
             "unread": false,
             "described": null,
             "srTexts": [
-              "Ready",
+              "Open",
               ", last active just now"
             ],
             "visible": true
@@ -1321,7 +1321,7 @@
     "after-gone-late": {
       "frame": {
         "label": "aida-before-after-gone-late",
-        "file": "/Users/damian/.local-operator/sessions/05660d0ee285/scratchpad/aida-scratch/before/frames/aida-before-after-gone-late.png",
+        "file": "/Users/damian/.local-operator/sessions/05660d0ee285/scratchpad/aida-scratch/before2/frames/aida-before-after-gone-late.png",
         "pixels": {
           "width": 2760,
           "height": 1800
@@ -1386,7 +1386,7 @@
       "currentList": [
         {
           "id": "c2c2c2c2c2c2",
-          "label": "Ready Loader cache invalidation now , last active just now"
+          "label": "Open Loader cache invalidation now , last active just now"
         }
       ],
       "pane": {
@@ -1397,13 +1397,13 @@
         "current": [
           {
             "id": "c2c2c2c2c2c2",
-            "label": "Ready Loader cache invalidation now , last active just now"
+            "label": "Open Loader cache invalidation now , last active just now"
           }
         ],
         "unreadRows": [],
         "rows": [
           {
-            "id": "85d7ef1c23d3",
+            "id": "0d0e56517985",
             "label": "Scheduled (1 wake) Aida · aida n",
             "ariaCurrent": null,
             "buttonBg": "rgba(0, 0, 0, 0)",
@@ -1460,14 +1460,14 @@
           },
           {
             "id": "c2c2c2c2c2c2",
-            "label": "Ready Loader cache invalidation ",
+            "label": "Open Loader cache invalidation n",
             "ariaCurrent": "page",
             "buttonBg": "rgb(55, 47, 36)",
             "wrapperBg": "rgb(55, 47, 36)",
             "unread": false,
             "described": null,
             "srTexts": [
-              "Ready",
+              "Open",
               ", last active just now"
             ],
             "visible": true
@@ -1485,7 +1485,7 @@
     "badge-before": {
       "frame": {
         "label": "aida-before-badge-before",
-        "file": "/Users/damian/.local-operator/sessions/05660d0ee285/scratchpad/aida-scratch/before/frames/aida-before-badge-before.png",
+        "file": "/Users/damian/.local-operator/sessions/05660d0ee285/scratchpad/aida-scratch/before2/frames/aida-before-badge-before.png",
         "pixels": {
           "width": 2760,
           "height": 1800
@@ -1496,7 +1496,7 @@
           "devicePixelRatio": 2
         }
       },
-      "hash": "#/chat/85d7ef1c23d3",
+      "hash": "#/chat/0d0e56517985",
       "herRow": {
         "tag": "nav-item-aida",
         "label": "Aida",
@@ -1549,8 +1549,8 @@
       "railBadges": [],
       "currentList": [
         {
-          "id": "85d7ef1c23d3",
-          "label": "Scheduled (1 wake) Aida · aida now , last active just now"
+          "id": "0d0e56517985",
+          "label": "Open Aida · aida now , last active just now"
         }
       ],
       "pane": {
@@ -1560,22 +1560,22 @@
       "page": {
         "current": [
           {
-            "id": "85d7ef1c23d3",
-            "label": "Scheduled (1 wake) Aida · aida now , last active just now"
+            "id": "0d0e56517985",
+            "label": "Open Aida · aida now , last active just now"
           }
         ],
         "unreadRows": [],
         "rows": [
           {
-            "id": "85d7ef1c23d3",
-            "label": "Scheduled (1 wake) Aida · aida n",
+            "id": "0d0e56517985",
+            "label": "Open Aida · aida now , last acti",
             "ariaCurrent": "page",
             "buttonBg": "rgb(55, 47, 36)",
             "wrapperBg": "rgb(55, 47, 36)",
             "unread": false,
             "described": null,
             "srTexts": [
-              "Scheduled (1 wake)",
+              "Open",
               ", last active just now"
             ],
             "visible": true
@@ -1629,7 +1629,7 @@
         "railBadges": []
       },
       "raw": {
-        "hash": "#/chat/85d7ef1c23d3",
+        "hash": "#/chat/0d0e56517985",
         "hasFocus": true,
         "visibility": "visible"
       }
@@ -1637,7 +1637,7 @@
     "her-badge": {
       "frame": {
         "label": "aida-before-her-badge",
-        "file": "/Users/damian/.local-operator/sessions/05660d0ee285/scratchpad/aida-scratch/before/frames/aida-before-her-badge.png",
+        "file": "/Users/damian/.local-operator/sessions/05660d0ee285/scratchpad/aida-scratch/before2/frames/aida-before-her-badge.png",
         "pixels": {
           "width": 2760,
           "height": 1800
@@ -1648,7 +1648,7 @@
           "devicePixelRatio": 2
         }
       },
-      "hash": "#/chat/85d7ef1c23d3",
+      "hash": "#/chat/0d0e56517985",
       "herRow": {
         "tag": "nav-item-aida",
         "label": "Aida 1",
@@ -1709,195 +1709,27 @@
       ],
       "currentList": [
         {
-          "id": "85d7ef1c23d3",
+          "id": "0d0e56517985",
           "label": "Unseen completion, unread Aida · aida now , last active just now"
         }
       ],
       "pane": {
-        "paneText": "Start of conversation Rig turn: a ledger note, please. Hello from the mock provider! 1:50 AM",
+        "paneText": "Start of conversation Rig turn: a ledger note, please. Hello from the mock provider! 3:27 AM",
         "panePresent": true
       },
       "page": {
         "current": [
           {
-            "id": "85d7ef1c23d3",
+            "id": "0d0e56517985",
             "label": "Unseen completion, unread Aida · aida now , last active just now"
           }
         ],
         "unreadRows": [
-          "85d7ef1c23d3"
+          "0d0e56517985"
         ],
         "rows": [
           {
-            "id": "85d7ef1c23d3",
-            "label": "Unseen completion, unread Aida ·",
-            "ariaCurrent": "page",
-            "buttonBg": "rgb(55, 47, 36)",
-            "wrapperBg": "rgb(55, 47, 36)",
-            "unread": true,
-            "described": "Scroll to the result to mark this chat read.",
-            "srTexts": [
-              "Unseen completion, unread",
-              ", last active just now",
-              "Scroll to the result to mark this chat read."
-            ],
-            "visible": true
-          },
-          {
-            "id": "c3c3c3c3c3c3",
-            "label": "Ready Retention sweep summary no",
-            "ariaCurrent": null,
-            "buttonBg": "rgba(0, 0, 0, 0)",
-            "wrapperBg": "rgba(0, 0, 0, 0)",
-            "unread": false,
-            "described": null,
-            "srTexts": [
-              "Ready",
-              ", last active just now"
-            ],
-            "visible": true
-          },
-          {
-            "id": "c1c1c1c1c1c1",
-            "label": "Ready Quarterly ledger reconcili",
-            "ariaCurrent": null,
-            "buttonBg": "rgba(0, 0, 0, 0)",
-            "wrapperBg": "rgba(0, 0, 0, 0)",
-            "unread": false,
-            "described": null,
-            "srTexts": [
-              "Ready",
-              ", last active just now"
-            ],
-            "visible": true
-          },
-          {
-            "id": "c4c4c4c4c4c4",
-            "label": "Recent Throughput investigation ",
-            "ariaCurrent": null,
-            "buttonBg": "rgba(0, 0, 0, 0)",
-            "wrapperBg": "rgba(0, 0, 0, 0)",
-            "unread": false,
-            "described": null,
-            "srTexts": [
-              "Recent",
-              ", last active just now"
-            ],
-            "visible": true
-          }
-        ],
-        "railCurrent": [
-          "nav-item-aida"
-        ],
-        "railBadges": [
-          {
-            "tag": "nav-aida-badge",
-            "text": "1"
-          }
-        ]
-      },
-      "raw": {
-        "hash": "#/chat/85d7ef1c23d3",
-        "hasFocus": true,
-        "visibility": "visible"
-      }
-    },
-    "her-badge-cleared": {
-      "frame": {
-        "label": "aida-before-her-badge-cleared",
-        "file": "/Users/damian/.local-operator/sessions/05660d0ee285/scratchpad/aida-scratch/before/frames/aida-before-her-badge-cleared.png",
-        "pixels": {
-          "width": 2760,
-          "height": 1800
-        },
-        "viewport": {
-          "width": 1380,
-          "height": 900,
-          "devicePixelRatio": 2
-        }
-      },
-      "hash": "#/chat/85d7ef1c23d3",
-      "herRow": {
-        "tag": "nav-item-aida",
-        "label": "Aida 1",
-        "ariaCurrent": "page"
-      },
-      "herBadge": {
-        "tag": "nav-aida-badge",
-        "text": "1"
-      },
-      "herWorking": false,
-      "rail": [
-        {
-          "tag": "nav-item-chat",
-          "label": "New chat ⌘ N",
-          "ariaCurrent": null
-        },
-        {
-          "tag": "nav-item-aida",
-          "label": "Aida 1",
-          "ariaCurrent": "page"
-        },
-        {
-          "tag": "nav-item-agents",
-          "label": "Agents",
-          "ariaCurrent": null
-        },
-        {
-          "tag": "nav-item-projects",
-          "label": "Projects",
-          "ariaCurrent": null
-        },
-        {
-          "tag": "nav-item-schedules",
-          "label": "Schedules",
-          "ariaCurrent": null
-        },
-        {
-          "tag": "nav-item-browser",
-          "label": "Browser",
-          "ariaCurrent": null
-        },
-        {
-          "tag": "nav-item-agent-hub",
-          "label": "Agent hub",
-          "ariaCurrent": null
-        },
-        {
-          "tag": "nav-item-settings",
-          "label": "",
-          "ariaCurrent": null
-        }
-      ],
-      "railBadges": [
-        {
-          "tag": "nav-aida-badge",
-          "text": "1"
-        }
-      ],
-      "currentList": [
-        {
-          "id": "85d7ef1c23d3",
-          "label": "Unseen completion, unread Aida · aida now , last active just now"
-        }
-      ],
-      "pane": {
-        "paneText": "Start of conversation Rig turn: a ledger note, please. Hello from the mock provider! 1:50 AM",
-        "panePresent": true
-      },
-      "page": {
-        "current": [
-          {
-            "id": "85d7ef1c23d3",
-            "label": "Unseen completion, unread Aida · aida now , last active just now"
-          }
-        ],
-        "unreadRows": [
-          "85d7ef1c23d3"
-        ],
-        "rows": [
-          {
-            "id": "85d7ef1c23d3",
+            "id": "0d0e56517985",
             "label": "Unseen completion, unread Aida ·",
             "ariaCurrent": "page",
             "buttonBg": "rgb(55, 47, 36)",
@@ -1965,14 +1797,281 @@
         ]
       },
       "raw": {
-        "hash": "#/chat/85d7ef1c23d3",
+        "hash": "#/chat/0d0e56517985",
+        "hasFocus": true,
+        "visibility": "visible"
+      }
+    },
+    "viewed-row-flyout": {
+      "frame": {
+        "label": "aida-before-viewed-row-flyout",
+        "file": "/Users/damian/.local-operator/sessions/05660d0ee285/scratchpad/aida-scratch/before2/frames/aida-before-viewed-row-flyout.png",
+        "pixels": {
+          "width": 2760,
+          "height": 1800
+        },
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        }
+      },
+      "page": {
+        "current": [
+          {
+            "id": "0d0e56517985",
+            "label": "Unseen completion, unread Aida · aida , last active just now"
+          }
+        ],
+        "unreadRows": [
+          "0d0e56517985"
+        ],
+        "rows": [
+          {
+            "id": "0d0e56517985",
+            "label": "Unseen completion, unread Aida ·",
+            "ariaCurrent": "page",
+            "buttonBg": "rgb(55, 47, 36)",
+            "wrapperBg": "rgb(55, 47, 36)",
+            "unread": true,
+            "described": "Scroll to the result to mark this chat read.",
+            "srTexts": [
+              "Unseen completion, unread",
+              ", last active just now",
+              "Scroll to the result to mark this chat read."
+            ],
+            "visible": true
+          },
+          {
+            "id": "c3c3c3c3c3c3",
+            "label": "Ready Retention sweep summary no",
+            "ariaCurrent": null,
+            "buttonBg": "rgba(0, 0, 0, 0)",
+            "wrapperBg": "rgba(0, 0, 0, 0)",
+            "unread": false,
+            "described": null,
+            "srTexts": [
+              "Ready",
+              ", last active just now"
+            ],
+            "visible": true
+          },
+          {
+            "id": "c1c1c1c1c1c1",
+            "label": "Ready Quarterly ledger reconcili",
+            "ariaCurrent": null,
+            "buttonBg": "rgba(0, 0, 0, 0)",
+            "wrapperBg": "rgba(0, 0, 0, 0)",
+            "unread": false,
+            "described": null,
+            "srTexts": [
+              "Ready",
+              ", last active just now"
+            ],
+            "visible": true
+          },
+          {
+            "id": "c4c4c4c4c4c4",
+            "label": "Recent Throughput investigation ",
+            "ariaCurrent": null,
+            "buttonBg": "rgba(0, 0, 0, 0)",
+            "wrapperBg": "rgba(0, 0, 0, 0)",
+            "unread": false,
+            "described": null,
+            "srTexts": [
+              "Recent",
+              ", last active 1 minute ago"
+            ],
+            "visible": true
+          }
+        ],
+        "railCurrent": [
+          "nav-item-aida"
+        ],
+        "railBadges": [
+          {
+            "tag": "nav-aida-badge",
+            "text": "1"
+          }
+        ]
+      },
+      "raw": {
+        "hash": "#/chat/0d0e56517985",
+        "hasFocus": true,
+        "visibility": "visible"
+      }
+    },
+    "her-badge-cleared": {
+      "frame": {
+        "label": "aida-before-her-badge-cleared",
+        "file": "/Users/damian/.local-operator/sessions/05660d0ee285/scratchpad/aida-scratch/before2/frames/aida-before-her-badge-cleared.png",
+        "pixels": {
+          "width": 2760,
+          "height": 1800
+        },
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        }
+      },
+      "hash": "#/chat/0d0e56517985",
+      "herRow": {
+        "tag": "nav-item-aida",
+        "label": "Aida 1",
+        "ariaCurrent": "page"
+      },
+      "herBadge": {
+        "tag": "nav-aida-badge",
+        "text": "1"
+      },
+      "herWorking": false,
+      "rail": [
+        {
+          "tag": "nav-item-chat",
+          "label": "New chat ⌘ N",
+          "ariaCurrent": null
+        },
+        {
+          "tag": "nav-item-aida",
+          "label": "Aida 1",
+          "ariaCurrent": "page"
+        },
+        {
+          "tag": "nav-item-agents",
+          "label": "Agents",
+          "ariaCurrent": null
+        },
+        {
+          "tag": "nav-item-projects",
+          "label": "Projects",
+          "ariaCurrent": null
+        },
+        {
+          "tag": "nav-item-schedules",
+          "label": "Schedules",
+          "ariaCurrent": null
+        },
+        {
+          "tag": "nav-item-browser",
+          "label": "Browser",
+          "ariaCurrent": null
+        },
+        {
+          "tag": "nav-item-agent-hub",
+          "label": "Agent hub",
+          "ariaCurrent": null
+        },
+        {
+          "tag": "nav-item-settings",
+          "label": "",
+          "ariaCurrent": null
+        }
+      ],
+      "railBadges": [
+        {
+          "tag": "nav-aida-badge",
+          "text": "1"
+        }
+      ],
+      "currentList": [
+        {
+          "id": "0d0e56517985",
+          "label": "Unseen completion, unread Aida · aida 1m , last active 1 minute "
+        }
+      ],
+      "pane": {
+        "paneText": "Start of conversation Rig turn: a ledger note, please. Hello from the mock provider! 3:27 AM",
+        "panePresent": true
+      },
+      "page": {
+        "current": [
+          {
+            "id": "0d0e56517985",
+            "label": "Unseen completion, unread Aida · aida 1m , last active 1 minute "
+          }
+        ],
+        "unreadRows": [
+          "0d0e56517985"
+        ],
+        "rows": [
+          {
+            "id": "0d0e56517985",
+            "label": "Unseen completion, unread Aida ·",
+            "ariaCurrent": "page",
+            "buttonBg": "rgb(55, 47, 36)",
+            "wrapperBg": "rgb(55, 47, 36)",
+            "unread": true,
+            "described": "Not marked read. Click the chat to try again.",
+            "srTexts": [
+              "Unseen completion, unread",
+              ", last active 1 minute ago",
+              "Not marked read. Click the chat to try again."
+            ],
+            "visible": true
+          },
+          {
+            "id": "c3c3c3c3c3c3",
+            "label": "Ready Retention sweep summary 1m",
+            "ariaCurrent": null,
+            "buttonBg": "rgba(0, 0, 0, 0)",
+            "wrapperBg": "rgba(0, 0, 0, 0)",
+            "unread": false,
+            "described": null,
+            "srTexts": [
+              "Ready",
+              ", last active 1 minute ago"
+            ],
+            "visible": true
+          },
+          {
+            "id": "c1c1c1c1c1c1",
+            "label": "Ready Quarterly ledger reconcili",
+            "ariaCurrent": null,
+            "buttonBg": "rgba(0, 0, 0, 0)",
+            "wrapperBg": "rgba(0, 0, 0, 0)",
+            "unread": false,
+            "described": null,
+            "srTexts": [
+              "Ready",
+              ", last active 1 minute ago"
+            ],
+            "visible": true
+          },
+          {
+            "id": "c4c4c4c4c4c4",
+            "label": "Recent Throughput investigation ",
+            "ariaCurrent": null,
+            "buttonBg": "rgba(0, 0, 0, 0)",
+            "wrapperBg": "rgba(0, 0, 0, 0)",
+            "unread": false,
+            "described": null,
+            "srTexts": [
+              "Recent",
+              ", last active 2 minutes ago"
+            ],
+            "visible": true
+          }
+        ],
+        "railCurrent": [
+          "nav-item-aida"
+        ],
+        "railBadges": [
+          {
+            "tag": "nav-aida-badge",
+            "text": "1"
+          }
+        ]
+      },
+      "raw": {
+        "hash": "#/chat/0d0e56517985",
         "hasFocus": true,
         "visibility": "visible"
       }
     }
   },
   "herRail": {
-    "waitedMs": 11,
+    "waitedMs": 13,
     "row": {
       "tag": "nav-item-aida",
       "label": "Aida",
@@ -1980,8 +2079,8 @@
     }
   },
   "herSession": {
-    "id": "85d7ef1c23d3",
-    "selectedAfterMs": 1329
+    "id": "0d0e56517985",
+    "selectedAfterMs": 1164
   },
   "repeatPress": {
     "repeated": {
@@ -1996,6 +2095,9 @@
         "c3c3c3c3c3c3"
       ]
     }
+  },
+  "gonePress": {
+    "rowPresent": true
   },
   "goneLate": {
     "paneHead": "Start of conversation Why does the loader re-read the index Working on \"Loader cache invalidation\". This transcript is a seeded fixture for "
@@ -2012,35 +2114,53 @@
     "before": {
       "badge": null,
       "list": [
-        "85d7ef1c23d3"
+        "0d0e56517985"
       ]
     },
     "turn": {
       "status": 200
     },
-    "workingSeenAfterMs": 0,
+    "freshness": {
+      "samples": [
+        {
+          "t": 0,
+          "completeCount": 0,
+          "responding": false,
+          "anchors": [
+            {
+              "id": "005dfda9-6163-4653-bff6-9068e849614c",
+              "complete": false
+            },
+            {
+              "id": "cc2682c28e254eb08251be3de5567f6c",
+              "complete": false
+            }
+          ]
+        }
+      ],
+      "workingFrame": null,
+      "lastT": 29800,
+      "finalSample": {
+        "t": 29800,
+        "completeCount": 0
+      }
+    },
+    "workingSeenAfterMs": null,
     "appear": {
       "ok": true,
       "timeline": [
         {
-          "t": 97,
-          "unseen": false,
-          "token": null,
-          "event": null,
-          "statusCode": "busy"
-        },
-        {
-          "t": 695,
+          "t": 4,
           "unseen": true,
-          "token": "68bb467d-43fc-49de-a4cd-e319591b6056",
+          "token": "1ee32984-c8da-46c8-9855-3f8e10d8a565",
           "event": null,
           "statusCode": "complete"
         }
       ],
       "attention": {
-        "conversation_id": "session/85d7ef1c23d3",
-        "completion_token": "68bb467d-43fc-49de-a4cd-e319591b6056",
-        "anchor_id": "38b518c7d2f249cc976836d27189f72c",
+        "conversation_id": "session/0d0e56517985",
+        "completion_token": "1ee32984-c8da-46c8-9855-3f8e10d8a565",
+        "anchor_id": "cc2682c28e254eb08251be3de5567f6c",
         "kind": "complete",
         "reason": "",
         "cause": "",
@@ -2051,7 +2171,7 @@
         ]
       }
     },
-    "badgeWaitMs": 250,
+    "badgeWaitMs": 0,
     "marked": {
       "badge": {
         "tag": "nav-aida-badge",
@@ -2063,6 +2183,20 @@
         "ariaCurrent": "page"
       }
     },
+    "freshnessAfterReRead": {
+      "anchors": [
+        {
+          "id": "005dfda9-6163-4653-bff6-9068e849614c",
+          "complete": false
+        },
+        {
+          "id": "cc2682c28e254eb08251be3de5567f6c",
+          "complete": true
+        }
+      ],
+      "completeCount": 1,
+      "responding": false
+    },
     "bulk": {
       "label": "Mark all 1 read",
       "badge": {
@@ -2072,9 +2206,33 @@
       "toast": "View these completions in the foreground before marking them read. The unread marks were not cleared."
     }
   },
+  "viewedRowEarly": {
+    "describedBy": "chat-row-read-ack-0d0e56517985",
+    "badge": {
+      "tag": "nav-aida-badge",
+      "text": "1"
+    }
+  },
+  "viewedRow": {
+    "describedBy": "chat-row-read-ack-0d0e56517985",
+    "flyout": {
+      "point": {
+        "x": 112,
+        "y": 650.390625
+      },
+      "text": "Aida (aida) Unseen completion, unread · scroll to the result to mark this chat read"
+    }
+  },
   "giveUp": {
-    "logLines": [],
-    "rowClauses": []
+    "logLines": [
+      "03:28:40.887 › [renderer] [attention] 0d0e56517985 receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground be"
+    ],
+    "rowClauses": [
+      {
+        "id": "0d0e56517985",
+        "described": "Not marked read. Click the chat to try again."
+      }
+    ]
   },
   "sequence": [
     {
