@@ -270,6 +270,19 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 		setState("loading");
 		void load(epoch, "initial");
 		return () => {
+			/*
+			 * A read in flight at unmount must not apply its answer or re-arm a
+			 * poll episode (review round 1, M1: the cleanup stopped the loop but an
+			 * in-flight manifest read resolving after unmount fell through its
+			 * guard unchanged and the re-arm started a fresh episode for a
+			 * conversation no longer on screen). Bumping the epoch is the latch
+			 * every guard in this file already reads — `load`, `warm` and the
+			 * poll's callback all stand down on `epoch !== epochRef.current` — so
+			 * the same counter the effect installs at mount also releases the
+			 * episode at unmount, and a session SWITCH still starts a fresh one
+			 * (the next effect run bumps again).
+			 */
+			epochRef.current += 1;
 			stopPoll();
 		};
 	}, [sessionId, load, stopPoll]);
