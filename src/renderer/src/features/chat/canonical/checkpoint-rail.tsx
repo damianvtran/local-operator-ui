@@ -69,7 +69,7 @@ import {
  *
  * rest `scaleX(0.6)` in `ink-dim`; preview `scaleX(0.9)` in `ink-muted`;
  * active `scaleX(1)` in `ink` (the reading-position mark); unloaded
- * `scaleX(0.4)` at 60% - the turn is not in the resident window yet, so the
+ * `scaleX(0.4)` at 75% - the turn is not in the resident window yet, so the
  * jump will have to load first. Transitions are the `duration-fast` token's
  * 120 ms (the rendered value, D3) on transform+colour and off under reduced
  * motion. The building state keeps its one pulsing mark at
@@ -143,7 +143,7 @@ export type CheckpointRailProps = {
 	building?: boolean;
 	/**
 	 * The resident-window answer, per checkpoint id: a mark whose id is absent
-	 * paints the unloaded state (dsh: `scaleX(0.4)` at 60%). Handed in by the
+	 * paints the unloaded state (dsh: `scaleX(0.4)` at 75%). Handed in by the
 	 * transcript's history loader; absent means "no window known", which reads
 	 * every mark resident rather than guessing.
 	 */

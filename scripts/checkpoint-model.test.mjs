@@ -66,6 +66,52 @@ test("the state ladder's classes are the shipped table (the unloaded floor is me
 	});
 });
 
+test("checkpointMarkState's precedence is active > preview > unloaded > rest", () => {
+	/*
+	 * Precedence is the module's own stated contract (`checkpoint-model.ts`): a
+	 * hovered mark beside the active turn must not take the primacy the
+	 * reader's eye is parked on, a previewed mark whose turn is not resident
+	 * still previews (the pointer's question is answered with its shape while
+	 * the fill stays the quiet one), and unloaded beats rest - it is the state
+	 * that tells a reader a jump will have to load first.
+	 */
+	assert.equal(
+		model.checkpointMarkState({
+			id: "u5",
+			previewId: "u5",
+			activeId: "u5",
+			loaded: false,
+		}),
+		"active",
+		"the reading position outranks a preview and the resident window",
+	);
+	assert.equal(
+		model.checkpointMarkState({
+			id: "u5",
+			previewId: "u5",
+			activeId: null,
+			loaded: false,
+		}),
+		"preview",
+		"a previewed mark previews even when its turn is unloaded",
+	);
+	assert.equal(
+		model.checkpointMarkState({
+			id: "u5",
+			previewId: null,
+			activeId: null,
+			loaded: false,
+		}),
+		"unloaded",
+		"unloaded outranks rest",
+	);
+	assert.equal(
+		model.checkpointMarkState({ id: "u5", previewId: null, activeId: null }),
+		"rest",
+		"rest is the default; loaded defaults to true",
+	);
+});
+
 test("the accessible name is the two frozen forms, with a real clock", () => {
 	/* 2026-09-28 14:32 LOCAL, the unit the journal itself carries. */
 	const ts = new Date(2026, 8, 28, 14, 32).getTime() / 1000;
