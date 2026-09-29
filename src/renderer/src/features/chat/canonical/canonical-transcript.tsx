@@ -2049,13 +2049,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		if (!windowTopRunIsHeadCut(rows, alignSize)) return;
 		alignFetches.current += 1;
 		void onLoadOlder();
-	}, [
-		rows,
-		alignSize,
-		loadingOlder,
-		transcript.hasMore,
-		onLoadOlder,
-	]);
+	}, [rows, alignSize, loadingOlder, transcript.hasMore, onLoadOlder]);
 	/*
 	 * §E2's aggregation tier, and §E3's foot lines, computed over the SAME visible
 	 * rows the list renders. Both are pure (`trace-fold-model.ts`) because both are

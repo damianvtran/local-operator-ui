@@ -297,9 +297,18 @@ test("an interrupted run keeps its marker and its answer in place", () => {
  */
 
 const LONG = [
-	user("u1"), tool("t1"), tool("t2"), answer("a1"),
-	user("u2"), tool("t3"), tool("t4"), tool("t5"), answer("a2"),
-	user("u3"), tool("t6"), answer("a3"),
+	user("u1"),
+	tool("t1"),
+	tool("t2"),
+	answer("a1"),
+	user("u2"),
+	tool("t3"),
+	tool("t4"),
+	tool("t5"),
+	answer("a2"),
+	user("u3"),
+	tool("t6"),
+	answer("a3"),
 ];
 
 test("the window edge snaps up to the run boundary it lands in", () => {
@@ -323,7 +332,14 @@ test("a snap beyond the bound stands down, and the edge already on a boundary do
 
 test("an edge inside a head-cut run cannot snap — that is the load path's case", () => {
 	// The fetched list starts mid-run: no opening row exists to snap to.
-	const cut = [tool("t0"), tool("t1"), answer("a1"), user("u2"), tool("t2"), answer("a2")];
+	const cut = [
+		tool("t0"),
+		tool("t1"),
+		answer("a1"),
+		user("u2"),
+		tool("t2"),
+		answer("a2"),
+	];
 	assert.equal(snapWindowToRunBoundary(cut, 4, 300), 4);
 	assert.equal(windowTopRunIsHeadCut(cut, 4), true);
 	// Once the head is loaded the same window snaps and stops asking.
