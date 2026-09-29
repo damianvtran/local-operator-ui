@@ -25,18 +25,16 @@ import { test } from "node:test";
  * `git ls-files` plus one pass over the text.
  */
 test("no tracked file carries a git conflict marker", () => {
-	/*
-	 * THE BOUND IS THE TREE'S OWN, SET EXPLICITLY. This reads the whole tracked
-	 * list in one child, and Node's default `maxBuffer` is 1 MiB - which the
-	 * path list itself outgrew on 2026-09-29 (measured 1,051,160 bytes; `main`
-	 * sat 1.2 KB under the default the day before), surfacing as `spawnSync git
-	 * ENOBUFS` that reads like THIS test failing rather than the reader being
-	 * under-bounded. 64 MiB matches the idiom the repo's other whole-tree git
-	 * readers already use (`ci-scope.mjs`, `check-scripts-lint.mjs`).
-	 */
 	const files = execFileSync("git", ["ls-files", "-z"], {
 		cwd: process.cwd(),
 		encoding: "utf8",
+		/*
+		 * The tracked-path listing crossed Node's spawnSync default of 1 MiB on
+		 * 2026-09-29 - 1,049,304 B at this head, 1,047,391 B on main, which
+		 * squeaked under until tonight - and `ENOBUFS` is the error that default
+		 * throws. Sized for the repo rather than the default; the other
+		 * whole-tree `ls-files` scans carry the same buffer.
+		 */
 		maxBuffer: 64 * 1024 * 1024,
 	})
 		.split("\0")
