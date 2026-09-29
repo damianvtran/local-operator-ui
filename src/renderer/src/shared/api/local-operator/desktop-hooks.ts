@@ -191,6 +191,13 @@ export type DesktopFeature =
 	 * backend", which is the remedy the org surfaces render.
 	 */
 	| "radient_org"
+	/**
+	 * The hub auto-update plane (`GET /v1/desktop/hub/updates` and its five
+	 * mutations). ITS OWN KEY so a backend that predates it is never asked: an
+	 * unknown `/v1/desktop/hub/...` path would answer 404 on every poll, and the
+	 * sidebar would either log that forever or have to guess whether to stop.
+	 */
+	| "hub_updates"
 	| "profile_catalogue"
 	| "team_catalogue"
 	| "session_catalogue"
