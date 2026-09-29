@@ -1,0 +1,15 @@
+== The classification test on origin/main state (this branch's src+scripts stashed) ==
+tree state: 654c58f5f672e7789f8a1112056ea48905094861 Merge pull request #639 from damianvtran/fix/relaunch-during-shutdown
+✖ the operator's own install is classified rather than told to use pip (14.987958ms)
+ℹ tests 1
+ℹ pass 0
+ℹ fail 1
+✖ failing tests:
+✖ the operator's own install is classified rather than told to use pip (14.987958ms)
+  + actual - expected
+  + 'global-unknown'
+  - 'uv-tool'
+    actual: 'global-unknown',
+    expected: 'uv-tool',
+== stash popped; branch state restored ==
+      11

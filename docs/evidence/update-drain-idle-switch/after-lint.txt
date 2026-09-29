@@ -1,0 +1,284 @@
+bin/local-operator-ui.js:109:32 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    107 │ 		typeof process.argv[1] === "string" ? path.basename(process.argv[1]) : "";
+    108 │ 	// Strip a .js suffix: the shim is the extensionless name on PATH.
+  > 109 │ 	const name = fromArgv.replace(/\.[cm]?js$/, "");
+        │ 	                              ^^^^^^^^^^^^
+    110 │ 	return name === "" ? "local-operator-ui" : name;
+    111 │ })();
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/linux-sandbox.test.mjs:117:22 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    115 │ test("root guidance names the real cause and never enables the opt-out for the user", () => {
+    116 │ 	const lines = rootGuidance("local-operator-ui").join("\n");
+  > 117 │ 	assert.match(lines, /cannot start as root/);
+        │ 	                    ^^^^^^^^^^^^^^^^^^^^^^
+    118 │ 	// Must NOT claim a chmod fixes it: measured, root aborts with a correct 4755
+    119 │ 	// helper too, and sending the user to chmod would waste their time.
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/linux-sandbox.test.mjs:120:29 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    118 │ 	// Must NOT claim a chmod fixes it: measured, root aborts with a correct 4755
+    119 │ 	// helper too, and sending the user to chmod would waste their time.
+  > 120 │ 	assert.doesNotMatch(lines, /chmod 4755/);
+        │ 	                           ^^^^^^^^^^^^
+    121 │ 	assert.match(lines, /run the app as your normal desktop user/i);
+    122 │ 	// The opt-out is offered as the user's choice with its consequence stated.
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/linux-sandbox.test.mjs:121:22 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    119 │ 	// helper too, and sending the user to chmod would waste their time.
+    120 │ 	assert.doesNotMatch(lines, /chmod 4755/);
+  > 121 │ 	assert.match(lines, /run the app as your normal desktop user/i);
+        │ 	                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    122 │ 	// The opt-out is offered as the user's choice with its consequence stated.
+    123 │ 	assert.match(lines, /ELECTRON_DISABLE_SANDBOX=1 local-operator-ui/);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/linux-sandbox.test.mjs:123:22 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    121 │ 	assert.match(lines, /run the app as your normal desktop user/i);
+    122 │ 	// The opt-out is offered as the user's choice with its consequence stated.
+  > 123 │ 	assert.match(lines, /ELECTRON_DISABLE_SANDBOX=1 local-operator-ui/);
+        │ 	                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    124 │ 	assert.match(lines, /removes a significant security boundary/);
+    125 │ });
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/linux-sandbox.test.mjs:124:22 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    122 │ 	// The opt-out is offered as the user's choice with its consequence stated.
+    123 │ 	assert.match(lines, /ELECTRON_DISABLE_SANDBOX=1 local-operator-ui/);
+  > 124 │ 	assert.match(lines, /removes a significant security boundary/);
+        │ 	                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    125 │ });
+    126 │ 
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/linux-sandbox.test.mjs:133:22 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    131 │ 	assert.match(lines, new RegExp(`sudo chown root:root '${state.path}'`));
+    132 │ 	assert.match(lines, new RegExp(`sudo chmod 4755 '${state.path}'`));
+  > 133 │ 	assert.match(lines, /currently\s+\d+:\d+ 0755/);
+        │ 	                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    134 │ 	assert.match(lines, /required\s+0:0 4755/);
+    135 │ });
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/linux-sandbox.test.mjs:134:22 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    132 │ 	assert.match(lines, new RegExp(`sudo chmod 4755 '${state.path}'`));
+    133 │ 	assert.match(lines, /currently\s+\d+:\d+ 0755/);
+  > 134 │ 	assert.match(lines, /required\s+0:0 4755/);
+        │ 	                    ^^^^^^^^^^^^^^^^^^^^^
+    135 │ });
+    136 │ 
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/linux-sandbox.test.mjs:148:29 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    146 │ 		sandboxHelperGuidance(state, "local-operator-ui").join("\n"),
+    147 │ 	]) {
+  > 148 │ 		assert.doesNotMatch(text, /local-operator-ui\s+--no-sandbox/);
+        │ 		                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    149 │ 		assert.doesNotMatch(text, /^\s*(sudo )?\S*--no-sandbox/m);
+    150 │ 	}
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/linux-sandbox.test.mjs:149:29 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    147 │ 	]) {
+    148 │ 		assert.doesNotMatch(text, /local-operator-ui\s+--no-sandbox/);
+  > 149 │ 		assert.doesNotMatch(text, /^\s*(sudo )?\S*--no-sandbox/m);
+        │ 		                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    150 │ 	}
+    151 │ 	const launcher = require("node:fs").readFileSync(
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/linux-sandbox.test.mjs:157:32 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    155 │ 	// The launcher must not put the flag in the spawn argv, nor set the opt-out
+    156 │ 	// env var itself. It may only READ the variable to honour a user's choice.
+  > 157 │ 	assert.doesNotMatch(launcher, /"--no-sandbox"/);
+        │ 	                              ^^^^^^^^^^^^^^^^
+    158 │ 	assert.doesNotMatch(launcher, /ELECTRON_DISABLE_SANDBOX\s*[=:]\s*"?1/);
+    159 │ });
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/linux-sandbox.test.mjs:158:32 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    156 │ 	// env var itself. It may only READ the variable to honour a user's choice.
+    157 │ 	assert.doesNotMatch(launcher, /"--no-sandbox"/);
+  > 158 │ 	assert.doesNotMatch(launcher, /ELECTRON_DISABLE_SANDBOX\s*[=:]\s*"?1/);
+        │ 	                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    159 │ });
+    160 │ 
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/linux-sandbox.test.mjs:242:3 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    240 │ 	assert.match(
+    241 │ 		result.stdout,
+  > 242 │ 		/not running as root/,
+        │ 		^^^^^^^^^^^^^^^^^^^^^
+    243 │ 		"the repair path was never entered -- this test would be vacuous",
+    244 │ 	);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/linux-sandbox.test.mjs:246:37 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    244 │ 	);
+    245 │ 	// And it must NOT claim a packaging defect, which is the root-only message.
+  > 246 │ 	assert.doesNotMatch(result.stdout, /packaging defect/);
+        │ 	                                   ^^^^^^^^^^^^^^^^^^
+    247 │ 	// The helper is left exactly as found: we could not repair it.
+    248 │ 	assert.equal(statSync(helper).mode & 0o7777, 0o755);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/linux-sandbox.test.mjs:282:30 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    281 │ 	assert.equal(result.status, 0, "the install must still succeed");
+  > 282 │ 	assert.match(result.stdout, /refusing to modify/);
+        │ 	                            ^^^^^^^^^^^^^^^^^^^^
+    283 │ 	assert.equal(
+    284 │ 		statSync(victim).mode & 0o7777,
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/linux-sandbox.test.mjs:713:22 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    711 │ 	};
+    712 │ 	const lines = sandboxHelperGuidance(state, "local-operator-ui").join("\n");
+  > 713 │ 	assert.match(lines, /'\/home\/o'\\''brien\/lib\/chrome-sandbox'/);
+        │ 	                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    714 │ });
+    715 │ 
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/linux-sandbox.test.mjs:868:4 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    866 │ 		assert.match(
+    867 │ 			control.stdout,
+  > 868 │ 			/not running as root/,
+        │ 			^^^^^^^^^^^^^^^^^^^^^
+    869 │ 			"control: on Linux the body must run and report it could not chown",
+    870 │ 		);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+src/main/backend/owned-serve-launch.ts:541:36 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    539 │ 			timeoutMs: DISCOVERY_TIMEOUT_MS,
+    540 │ 		});
+  > 541 │ 		const line = stdout.trim().split(/\r?\n/)[0]?.trim();
+        │ 		                                 ^^^^^^^
+    542 │ 		return line ? line : null;
+    543 │ 	} catch {
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+src/main/backend/owned-serve-launch.ts:577:45 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    575 │ ): Promise<string[]> {
+    576 │ 	const directory = dirname(consolePath);
+  > 577 │ 	const tool = basename(consolePath).replace(/\.(exe|cmd|bat)$/i, "");
+        │ 	                                           ^^^^^^^^^^^^^^^^^^^
+    578 │ 	const candidates: string[] = [join(directory, "python.exe")];
+    579 │ 
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+src/main/browser/actions/upload.ts:187:9 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    185 │ 			// fired. Re-raised as the typed code that already means "this selector does not
+    186 │ 			// address the thing this action needs".
+  > 187 │ 			if (!/not a file input/i.test(String(error))) throw error;
+        │ 			     ^^^^^^^^^^^^^^^^^^^
+    188 │ 			throw new BrowserHostError("element_not_found", NOT_A_FILE_INPUT, {
+    189 │ 				selector,
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+The number of diagnostics exceeds the number allowed by Biome.
+Diagnostics not shown: 106.
+Checked 997 files in 854ms. No fixes applied.
+Found 126 warnings.
+biome-rc=0
