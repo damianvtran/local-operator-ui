@@ -11,7 +11,7 @@ pre-change tree).
 
 Every number below is quoted from the two records in THIS directory
 (`stt-proof.json` = the shipping run; `stt-proof-injected.json` = the proxy-
-injected capability run), both captured at the remediation head. Budgets in the
+injected capability run). PROVENANCE, exactly: both records were captured from the build taken immediately BEFORE this branch's final two copy-only edits (the empty-transcript toast, UX round 1 U3b, and the canvas append's boundary rule) - neither of which this rig drives, which is why the records still stand for every flow they exercise, but it is stated here rather than only in the review thread. A re-capture from the final build is queued behind a sibling session holding the rig's port (8080 is in the app's CSP, so the rig cannot port-hop) and will supersede these records, and this clause, when it completes. Budgets in the
 rig are the run's PATIENCE (cold `getUserMedia` on this fleet has measured
 595 ms to >3000 ms under load), not ceilings on the gesture: the measured
 latency is recorded whatever it is.
