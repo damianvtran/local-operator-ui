@@ -22,7 +22,9 @@ import { createElement as h } from "react";
  * 2026-09-29) with no fabricated `Took`; that a settle does not fold the row
  * the reader's focus is in; that a bar's appearance is stated politely — and
  * that a WIDEN's revealed bars are not, because a reveal is not a settle
- * (review round 1, MAJOR-1).
+ * (review round 1, MAJOR-1); and (operator report, 2026-09-29) that the row
+ * under the bar's rule renders at the block step with the bar's chevron
+ * landing on the rule's end.
  *
  * WHY A MOUNT AND NOT A FRAME. A frame says what the collapsed and expanded
  * states look like; it cannot say that the collapsed state unmounts the rows
@@ -120,6 +122,8 @@ const bundle = await build({
 		contents: [
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
 			'export { __resetTurnCollapseOpen, writeRunExpanded, expandedRunsOf, forgetTurnCollapseOpen, __turnCollapseOpenStats } from "./src/renderer/src/shared/store/turn-collapse-open";',
+			/* The gap tiers as VALUES, so the report's spacing asserts against the shipped table rather than a retyped class. */
+			'export { GAP } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
 			/*
 			 * The two query keys the transcript's own hook reads, so the hide case
 			 * below seeds the SAME entries the app resolves - a second spelling of
@@ -175,6 +179,7 @@ const {
 	expandedRunsOf,
 	forgetTurnCollapseOpen,
 	__turnCollapseOpenStats,
+	GAP,
 	backendSettingsKeys,
 	desktopKeys,
 } = await import(bundlePath.href);
@@ -249,6 +254,21 @@ const wakeRecord = (id, over = {}) => ({
 	text: "(alarm) Scheduled wake w-9\n\nCollect the staged records.",
 	...over,
 });
+
+/**
+ * The memory statement: the pin list's first member, and the row the operator's
+ * 2026-09-29 report is about. Durable (no settled sentence of its own), so the
+ * text is the reader's `COMPACTED_LINE`.
+ */
+const compactionRecord = (id, over = {}) => ({
+	kind: "compaction",
+	id,
+	ts: TS + 6_000,
+	text: "Context compacted",
+	before: 41_000,
+	...over,
+});
+
 /** A statement the collapse pins in place (a completion marker). */
 const noticeRecord = (id, over = {}) => ({
 	kind: "notice",
@@ -257,6 +277,22 @@ const noticeRecord = (id, over = {}) => ({
 	text: "Interrupted",
 	level: "warning",
 	complete: true,
+	...over,
+});
+
+/** The reason a turn died: an error-level custom statement, pinned below the bar. */
+const incidentRecord = (id, over = {}) => ({
+	kind: "custom",
+	id,
+	ts: TS + 8_000,
+	customType: "session_incident",
+	text: "[session incident (anthropic/claude-opus-5)] mcp: MCP server 'notion': MCP authorization failed; run /mcp reauth notion",
+	level: "error",
+	category: "mcp",
+	headline:
+		"MCP server 'notion': MCP authorization failed; run /mcp reauth notion",
+	detail: null,
+	provider: "anthropic/claude-opus-5",
 	...over,
 });
 
@@ -926,6 +962,66 @@ test("pinned statements never hide: the notice stays mounted, after the bar", as
 	);
 });
 
+test("the row under the bar takes the block step, and the chevron reaches the rule (operator report, 2026-09-29)", async (t) => {
+	/*
+	 * THE REPORTED STATE: "the condensed row ('Context compacted') hugs the
+	 * summary row's rule too closely ... wants more breathing room between the
+	 * horizontal line and the row beneath it" and "the chevron ('>') doesn't
+	 * reach the right end of the rule". jsdom has no layout engine, so this pins
+	 * the MECHANISM per class - the pixels are the frames' claim
+	 * (`docs/evidence/chat-turn-collapse/pinned-compaction/`, and the pair in
+	 * `docs/evidence/condensed-bar-spacing/`).
+	 *
+	 * The row's gap: a pinned statement is BUILT against its original neighbour -
+	 * here a hidden tool row, which gives it the trace tier's 2px - so when the
+	 * collapse leaves it directly under the bar, the render pass re-tiers the
+	 * row to the item step: the same 12px the closing answer already sits below
+	 * the rule. The chevron: the trigger ends 16px short of the row on the right
+	 * (the disclosure's documented left-only bleed) and the slot's `-mr-4`
+	 * reclaims exactly that, so the row's right edge lands on the rule's end.
+	 */
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1"),
+		compactionRecord("compaction:1"),
+		toolRecord("tool:2"),
+		answerRecord("answer:1", { settledAt: TS + 70_000 }),
+	]);
+	assert.ok(bar(mounted), "the run collapsed");
+	const row = rowBox(mounted, "compaction:1");
+	assert.ok(row, "the compaction row is pinned below the bar");
+	assert.ok(
+		row.classList.contains(GAP.item[0]),
+		`the first row under the bar renders at the item tier (${GAP.item[0]}), not the trace tier it was built with`,
+	);
+	assert.ok(
+		!row.classList.contains(GAP.trace[0]),
+		"the 2px ledger hug is not painted on the row beneath the rule",
+	);
+	const chevron = barTrigger(mounted)?.querySelector("svg")?.closest("span");
+	assert.ok(chevron, "the bar's chevron slot exists");
+	assert.ok(
+		chevron.classList.contains("-mr-6"),
+		"the chevron slot's 24px pull lands the glyph's leading edge on the rule's endpoint (the alignment datum)",
+	);
+	/*
+	 * The rule's own two sides (second round): the bar block carries 12px of air
+	 * above the rule (`pb-3`) - the SAME step the row below sits at, so the rule
+	 * divides 12px of box either side - and the row below keeps the item step the
+	 * walk re-tiers it to. jsdom has no layout engine; the pair the frames show
+	 * is 17px of ink above against 15px below (ink-edge to rule-edge, text
+	 * register, both palettes - the settled reading after the first 16px pass
+	 * measured 21 against 15 and the design round flagged it).
+	 */
+	const summary = bar(mounted);
+	assert.ok(
+		summary.classList.contains("border-b") &&
+			summary.className.includes("pb-3"),
+		"the bar block carries its own 12px of air above the rule",
+	);
+});
+
 test("in-turn receipts collapse with the work (operator feedback, 2026-09-29)", async (t) => {
 	/*
 	 * ISSUE #5. The pin list dropped `peer`/`wake`: in a completed turn the
@@ -1149,4 +1245,46 @@ test("settings enabled but WITHOUT the key hide nothing: the absent-key fallback
 	await click(barTrigger(mounted));
 	assert.ok(rowBox(mounted, "peer:1"), "the receipt mounts with the run");
 	assert.ok(rowBox(mounted, "tool:2"), "the send row mounts with the run");
+});
+
+test("the incident row under the bar takes the block step too (operator report, 2026-09-29, second round)", async (t) => {
+	/*
+	 * THE REPORTED STATE: "the 'session incident: …' row beneath sits too tight
+	 * to the line - the below-line gap fix must cover the incident-row class
+	 * (like the compaction row)". The first round's re-tier marked only the
+	 * FIRST group after a bar, so an incident behind the memory statement kept
+	 * the trace tier its original neighbour gave it and hugged the statement by
+	 * 2px (measured: `mt-0.5` against the compaction's `mt-3`). The walk now
+	 * re-tiers every group a bar leaves visible.
+	 *
+	 * jsdom has no layout engine, so this pins the mechanism per class - the
+	 * pixels are the frames' claim
+	 * (`docs/evidence/chat-turn-collapse/pinned-incident/`, and the pair in
+	 * `docs/evidence/condensed-bar-spacing/`).
+	 */
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1"),
+		compactionRecord("compaction:1"),
+		toolRecord("tool:2"),
+		incidentRecord("incident:1"),
+	]);
+	assert.ok(bar(mounted), "the run collapsed");
+	const statement = rowBox(mounted, "compaction:1");
+	assert.ok(statement, "the memory statement is pinned below the bar");
+	assert.ok(
+		statement.classList.contains(GAP.item[0]),
+		`the memory statement renders at the item tier (${GAP.item[0]})`,
+	);
+	const incident = rowBox(mounted, "incident:1");
+	assert.ok(incident, "the incident reason is pinned below the bar");
+	assert.ok(
+		incident.classList.contains(GAP.item[0]),
+		`the incident behind the statement takes the same block step (${GAP.item[0]}), not the trace tier its neighbour gave it`,
+	);
+	assert.ok(
+		!incident.classList.contains(GAP.trace[0]),
+		"the 2px ledger hug is not painted on the incident row beneath the rule",
+	);
 });

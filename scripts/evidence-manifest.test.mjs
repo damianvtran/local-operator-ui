@@ -2316,6 +2316,77 @@ const BRANCH_RECORDS = [
 	"foldOnto49491865caNote",
 	"foldOnto7ba0ddce94Note",
 	"foldOnto6f284060Note",
+	/*
+	 * AND THE CONDENSED BAR'S SPACING PASS'S OWN (operator report, 2026-09-29):
+	 * `condensedBarRestampNote` is the pass that lands the row under a collapsed
+	 * bar on the item step and the bar's chevron on the rule's end, over the
+	 * re-shot `chat-turn-collapse` cells and the report's own before/after pair;
+	 * `condensedBarFoldNote`, `condensedBarFoldTwoNote`,
+	 * `condensedBarFoldThreeNote` and `condensedBarFoldFourNote` are its folds
+	 * onto the moved `origin/main` (`682f531120`, `9357d37a9f`, `036e501fdf`,
+	 * `f9053eaca5`), and `condensedBarHoverGroundNote` is design round 1's D1 fix
+	 * (the hover ground reaching the rule's end) with its re-shot hover cells.
+	 * They are listed for the list's usual reason - a fold resolved from main's
+	 * copy would drop them first, and nothing else would say so. The notes'
+	 * texts are written by the docs-only amendment this registration rides
+	 * beside; they spell their pairs as bare SHAs, per the rule the stamp
+	 * ledger above states.
+	 */
+	"condensedBarRestampNote",
+	"condensedBarFoldNote",
+	"condensedBarFoldTwoNote",
+	"condensedBarFoldThreeNote",
+	"condensedBarFoldFourNote",
+	"condensedBarHoverGroundNote",
+	/*
+	 * And this fold's own record (`condensedBarFoldFiveNote`), for the same
+	 * reason one entry up: its text is written by the docs-only amendment this
+	 * registration rides beside.
+	 */
+	"condensedBarFoldFiveNote",
+	/*
+	 * And this fold's own record (`condensedBarFoldSixNote`), for the same reason
+	 * one entry up: its text is written by the docs-only amendment this
+	 * registration rides beside.
+	 */
+	"condensedBarFoldSixNote",
+	/*
+	 * And this fold's own record (`condensedBarFoldSevenNote`), for the same reason
+	 * one entry up: its text is written by the docs-only amendment this
+	 * registration rides beside.
+	 */
+	"condensedBarFoldSevenNote",
+	/*
+	 * And the second round's own record (`condensedBarRoundTwoNote`), the note
+	 * the spacing pass wrote for the operator's follow-up report: the rule's two
+	 * sides, the chevron's leading-edge datum and the incident row. Its text is
+	 * written by the docs-only amendment this registration rides beside.
+	 */
+	"condensedBarRoundTwoNote",
+	/*
+	 * And this fold's own record (`condensedBarFoldEightNote`), for the same
+	 * reason one entry up: its text is written by the docs-only amendment this
+	 * registration rides beside.
+	 */
+	"condensedBarFoldEightNote",
+	/*
+	 * And this fold's own record (`condensedBarFoldNineNote`), for the same
+	 * reason one entry up: its text is written by the docs-only amendment this
+	 * registration rides beside.
+	 */
+	"condensedBarFoldNineNote",
+	/*
+	 * And this fold's own record (`condensedBarFoldTenNote`), for the same
+	 * reason one entry up: its text is written by the docs-only amendment this
+	 * registration rides beside.
+	 */
+	"condensedBarFoldTenNote",
+	/*
+	 * And this fold's own record (`condensedBarFoldElevenNote`), for the same
+	 * reason one entry up: its text is written by the docs-only amendment this
+	 * registration rides beside.
+	 */
+	"condensedBarFoldElevenNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
