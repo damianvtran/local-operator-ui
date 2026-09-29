@@ -7861,10 +7861,10 @@
 		},
 		{
 			"path": "transcript-rail",
-			"frames": 14,
-			"surfaces": 7,
+			"frames": 24,
+			"surfaces": 12,
 			"themes": 2,
-			"source": "`scripts/renderer-driver.mjs`'s `--scene transcript-rail`, on the app built from this change's own tree, against an isolated `local-operator` daemon on 127.0.0.1:8080 whose config root carries the scene's two fixture conversations (`scripts/transcript-rail-fixture.mjs`, 200 + 320 turns) and whose `sessions.checkpoints` route is BE-1's merged derivation; ALL CHECKS PASSED, 51 checks; the timings and the two knocks from the scene's construction are in the set's README."
+			"source": "`scripts/renderer-driver.mjs`'s `--scene transcript-rail` (round 2: the D1 landing fix, the physical pointer-press leg, and D5's sparse / bounded-card / outcome / building states), on the app built from this change's own tree, against an isolated `local-operator` daemon on 127.0.0.1:8080 whose config root carries the scene's four fixture conversations (`scripts/transcript-rail-fixture.mjs`, 200 + 320 + 6 + 240 turns); ALL CHECKS PASSED (73); the timings and every caveat are in the set's README."
 		}
 	],
 	"remediationRecord": {
