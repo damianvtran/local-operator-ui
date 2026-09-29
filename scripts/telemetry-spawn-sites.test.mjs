@@ -315,6 +315,14 @@ const APP_SPAWN_SITES = [
 		/withTelemetryOff\(env\);/,
 	),
 	guarded(
+		"scripts/relaunch-during-quit-proof.mjs",
+		"spawn",
+		1,
+		/env:\s*makeEnv\(\),/,
+		"boots the built app THREE times over one quit - the dying instance, the relaunch answered by it, and the relaunch after it - three runs' worth of events for a rig about a teardown",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
 		"scripts/mentioned-files-app-proof.mjs",
 		"spawn",
 		1,
@@ -336,6 +344,14 @@ const APP_SPAWN_SITES = [
 		1,
 		/env:\s*spawnEnv,/,
 		"drives the composer's interrupt end to end in the real app, against a real backend turn",
+		/withTelemetryOff\(spawnEnv\);/,
+	),
+	guarded(
+		"scripts/stt-dictation-proof.mjs",
+		"spawn",
+		1,
+		/env:\s*spawnEnv,/,
+		"drives the composer's dictation end to end in the real app - a hold, a transcript, a mid-turn steer, and the transcript-in-echo-window ordering - against a daemon the caller starts",
 		/withTelemetryOff\(spawnEnv\);/,
 	),
 	exempt(

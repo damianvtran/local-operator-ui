@@ -57,6 +57,13 @@ import {
 	desktopKeys,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+/*
+ * The MODULE, not the `@shared/hooks` barrel: the barrel exports the keys
+ * binding as a TYPE only, and its `use-connectivity-status` reads the renderer's
+ * config at import time (which throws in Node bundles) - the same reason
+ * `provider-detail.tsx` imports the leaf.
+ */
+import { commissionAccountRead } from "@shared/hooks/use-radient-user-query";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -452,6 +459,29 @@ export function useRadientSessionIssue(): UseRadientSessionIssue {
 				 */
 				setPhase({ kind: "settling" });
 				operationRef.current = null;
+				/*
+				 * THE ACCOUNT READ IS COMMISSIONED HERE, with the verdict, because this
+				 * branch is the composer callout's only completion path: the credential
+				 * is in the store now, and without this the account surfaces kept
+				 * whatever the failed read recorded - the operator's foot sat on
+				 * "Account unavailable" after a completed re-sign-in until some other
+				 * surface mounted a new observer on the failed query.
+				 *
+				 * `commissionAccountRead` is the same entry point the providers panel
+				 * uses: it clears the class the write just replaced - so the re-read is
+				 * disclosed as "Checking account…" - and CANCELS any chain the old
+				 * credential left asking before invalidating, because an invalidation on
+				 * its own JOINS a data-less chain in flight and re-asks nothing (review
+				 * round 1, M1; the window-focus refetch is the chain a returned-from-
+				 * browser sign-in most often lands on top of).
+				 *
+				 * NOT awaited, unlike `refreshVerdict` below: that await holds THIS
+				 * callout's own settling state, and the account read has its own retry
+				 * chain (three attempts under the transport's deadline) which must not
+				 * hold the callout open. The foot and the settings surfaces track it
+				 * on their own.
+				 */
+				void commissionAccountRead(queryClient);
 				await refreshVerdict();
 				setPhase({ kind: "idle" });
 				return;
@@ -466,7 +496,7 @@ export function useRadientSessionIssue(): UseRadientSessionIssue {
 				canRetry: true,
 			});
 		},
-		[refreshVerdict],
+		[refreshVerdict, queryClient],
 	);
 
 	const start = useCallback(() => {

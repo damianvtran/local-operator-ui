@@ -308,7 +308,12 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 				</div>
 			</PageHeader>
 
-			<div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-hairline bg-surface">
+			{/*
+			 * The list frame: panel-tier 10 and no edge, the board/list/timeline
+			 * panels' treatment (docs/branding.md § 2, § 5) — the rows inside keep
+			 * their own hairlines, which is where the separation belongs on a list.
+			 */}
+			<div className="min-h-0 flex-1 overflow-y-auto rounded-md bg-surface">
 				{/* The page keeps its chrome while loading, so nothing jumps when
 				    the rows arrive. No skeleton rows: the app reserves those for a
 				    list whose length is known before it loads. */}

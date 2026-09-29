@@ -35,6 +35,17 @@
  * rather than guess.
  */
 
+import {
+	aidaControlFailureCopy,
+	aidaControlReceipt,
+	aidaMessageText,
+	aidaReservedAction,
+} from "@features/aida/aida-control";
+import {
+	useAidaControl,
+	useAidaResolver,
+	useAidaTarget,
+} from "@features/aida/use-aida-target";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
@@ -43,11 +54,24 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
 import { useAsideStore } from "@shared/store/aside-store";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	SEND_FAILURE_COPY,
+	admitChatDraft,
+	composerIdentityFor,
+	isRefusedBeforeAdmission,
+	paneDraftKey,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
+import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import {
 	PANEL_REQUEST_TTL_MS,
 	usePanelPresentationStore,
 } from "@shared/store/panel-presentation-store";
+import {
+	showErrorToast,
+	showInfoToast,
+	showSuccessToast,
+} from "@shared/utils/toast-manager";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -75,6 +99,7 @@ import {
 	type MoveCommitOutcome,
 	sessionMoveEnabled,
 } from "../move-session";
+import { openConversation } from "../open-conversation";
 import type {
 	DraftPickerSession,
 	PickerContext,
@@ -292,6 +317,32 @@ function closestCommands(
 
 const PRESENT_DIRECTLY = new Set(["session.goal", "session.context"]);
 
+/**
+ * Put a `/aida <text>` where the user can press Enter on it again.
+ *
+ * The door consumes the composer line it was typed on (`consumed`) and the text
+ * is admitted against HER conversation rather than that one, so a press whose
+ * admission was refused has nothing on the transcript and nothing in the box it
+ * was typed in — the line is simply gone. The store's own boundary rule puts a
+ * refusal raised BEFORE the echo is painted with the COMPOSER (a post-paint one
+ * belongs to the row), so this writes through the composer's own return path
+ * (`returnPayload`, the same one a migrated claim uses) into the identity the
+ * pane about to mount reads (`composerIdentityFor`, so the identity rule stays
+ * in one place).
+ *
+ * `false` is `returnPayload`'s own refusal — the row it belongs to has a send in
+ * flight, which is the same fact that made `admitChatDraft` answer `null` — and
+ * it is REPORTED by the caller rather than swallowed here: a return that could
+ * not be placed must not look like one that was.
+ */
+function returnAidaText(key: string, target: string, text: string): boolean {
+	const store = useConversationInputStore.getState();
+	const identity = composerIdentityFor(key, target);
+	if (store.inputByConversation[identity]?.inFlight !== undefined) return false;
+	store.returnPayload(identity, { text, attachments: [], replies: [] });
+	return true;
+}
+
 export function useSlashDispatch({
 	sessionId,
 	addMessage,
@@ -342,6 +393,16 @@ export function useSlashDispatch({
 		capabilities.data,
 		"session_delete",
 	);
+	/*
+	 * Aida's own capability key, read here for the reason the two above are: the
+	 * answer changes what the user is told, not merely whether a request
+	 * succeeds. There is no route to hit before it (§ 3.4's fail-closed rule),
+	 * which is why the read below is gated on it rather than attempted anyway.
+	 */
+	const aidaCapable = desktopFeatureEnabled(capabilities.data, "aida", 1);
+	const aida = useAidaTarget(aidaCapable);
+	const aidaControl = useAidaControl();
+	const resolveAida = useAidaResolver();
 
 	const commandsQuery = useQuery({
 		queryKey: desktopKeys.commands,
@@ -486,6 +547,159 @@ export function useSlashDispatch({
 			}
 
 			const entry = DESTINATIONS[spec.destination];
+
+			/*
+			 * `/aida` — HER OWN CONVERSATION, and the one destination on the table
+			 * that OPENS one rather than addressing the pane's.
+			 *
+			 * Keyed on the table's kind, never on the destination string: the entry
+			 * is also what tells `destinationNeedsSession` this command runs without
+			 * a pane session, and the composer's staged line and Enter footer read
+			 * that same answer — a name check here would leave those two promising a
+			 * refusal that this branch then does not give.
+			 *
+			 * The three shapes the row can carry:
+			 *
+			 *  - a reserved word (`pause`/`resume`/`status`) is a CONTROL: one POST
+			 *    and a receipt, no conversation touched (`design.md` § 3.2 — this is
+			 *    also where the desktop gets R13's pause without new chrome);
+			 *  - trailing text is a MESSAGE for her: resolve her session, admit the
+			 *    text against it, and move the view ONTO it — in that order, because
+			 *    `openSession` commits a validation window the send store refuses to
+			 *    write through (`isSessionUnvalidated`), so addressing the message
+			 *    the way the user reads it — open, then send — would have the app's
+			 *    own guard eat the text for the whole read window. This is also why
+			 *    the send is admitted through `admitChatDraft` directly rather than
+			 *    staged as a draft: § 3.2 says the text is sent, not parked;
+			 *  - nothing after the word is just the open (R2's bare form).
+			 *
+			 * The reserved words and their exact-match rule live in
+			 * `aida-control.ts` (`aidaReservedAction`, executed by the desktop
+			 * suite): `/aida pause` is the control, `/aida pause and think about it`
+			 * is a message to her, and this branch must not re-derive that.
+			 */
+			if (entry?.kind === "aida") {
+				if (!aidaCapable) {
+					/*
+					 * The freeze's fail-closed arm (§ 3.4): `features.aida` absent or 0
+					 * means this backend predates the surface, and the UI must not call
+					 * the route below. A catalogue that still named the destination is
+					 * the skew the row's own gate also hides; the honest answer is the
+					 * capability's own remedy rather than a fetched 404.
+					 */
+					note(
+						`/${spec.name} needs a newer backend. Update the backend and try again.`,
+						true,
+					);
+					return "consumed";
+				}
+				const argument = args.trim();
+				const reserved = aidaReservedAction(argument);
+				if (reserved) {
+					/*
+					 * Detached on purpose: the composer clears on `consumed`, and the receipt
+					 * lands when the backend answers. A refusal goes to the toast lane rather
+					 * than the transcript, because it is about a control op rather than about
+					 * her conversation — and the same toast lane carries the receipt, so the
+					 * two cannot appear on different surfaces of one press.
+					 */
+					void aidaControl(reserved)
+						.then((state) => {
+							const receipt = aidaControlReceipt(reserved, state);
+							if (receipt.kind === "success") showSuccessToast(receipt.text);
+							else showInfoToast(receipt.text);
+						})
+						.catch((error) => showErrorToast(aidaControlFailureCopy(error)));
+					return "consumed";
+				}
+				/*
+				 * The text she is sent, with the `=` escape resolved (`aidaMessageText`):
+				 * `/aida =pause` talks to her ABOUT the word rather than running the
+				 * control, and `/aida =pause now` sends "pause now" — the TUI's own
+				 * grammar, kept in one place rather than re-derived here.
+				 */
+				const message = aidaMessageText(argument);
+				void resolveAida(aida.data)
+					.then((target) => {
+						if (message) {
+							/*
+							 * The PANE-derived key, so a send from here lands on the row a pane
+							 * would write (`send:<sessionId>` when no row owns the conversation)
+							 * and the pane that mounts next reads the same pending claim — and
+							 * the same failure sentence — every other send leaves. `cwd` is
+							 * unused for an existing session (`admitChatDraft` reads it on the
+							 * create path alone).
+							 */
+							const key = paneDraftKey(
+								null,
+								target,
+								useCanonicalSessionsStore.getState().drafts,
+							);
+							if (key) {
+								void admitChatDraft(
+									key,
+									{
+										text: message,
+										attachments: [],
+										images: [],
+										mode: "prompt",
+										cwd: "",
+									},
+									target,
+								)
+									.then((admitted) => {
+										/*
+										 * `null` is `admitChatDraft`'s answer for "a send is
+										 * already in flight on this row". It is silent there by
+										 * design — the composer's own send lock says it in words
+										 * — and this door has no such lock, so it is stated
+										 * here rather than left as the silence the review round
+										 * found. The text goes back on the same best-effort
+										 * terms as a refusal: the press admitted nothing, so
+										 * the box is where it belongs; a row still busy refuses
+										 * the write and the sentence stands alone.
+										 */
+										if (admitted === null) {
+											returnAidaText(key, target, message);
+											showInfoToast(SEND_FAILURE_COPY.sendLock);
+										}
+									})
+									.catch((error) => {
+										/*
+										 * A refusal raised BEFORE the echo was painted (the read
+										 * window `openConversation` just committed, a
+										 * store-write refusal) belongs to the composer — the
+										 * store's own boundary rule — and the door has already
+										 * taken the line out of the box, so the text goes back
+										 * where the user is about to land. When the row that
+										 * text belongs to is mid-send the write is refused, and
+										 * the sentence says that too rather than dropping the
+										 * text under a toast. Every other failure keeps its own
+										 * sentence; the echo it painted is the transcript's.
+										 */
+										if (isRefusedBeforeAdmission(error)) {
+											const placed = returnAidaText(key, target, message);
+											showErrorToast(
+												placed
+													? aidaControlFailureCopy(error)
+													: `${SEND_FAILURE_COPY.sendLock} ${aidaControlFailureCopy(error)}`,
+											);
+											return;
+										}
+										showErrorToast(aidaControlFailureCopy(error));
+									});
+							}
+						}
+						/*
+						 * AFTER the admission, always: see the order note above. The URL moves
+						 * through the one shared rule (`openConversation`), so this entrance
+						 * cannot drift from the sidebar's row or the palette's.
+						 */
+						void openConversation(navigate, target);
+					})
+					.catch((error) => showErrorToast(aidaControlFailureCopy(error)));
+				return "consumed";
+			}
 
 			// A destination whose ARGUMENTS are the action runs them rather than opening
 			// anything. `/move <path>` is the only one, and it is the TUI's own rule for
@@ -853,11 +1067,60 @@ export function useSlashDispatch({
 			};
 
 			/*
+			 * Present a sessionless PICKER row directly — `/help`, `/theme`,
+			 * `/login`, `/logout`, `/resume` (issue #625; the rows design § 12.5 set
+			 * aside as "one table row each when they are wanted").
+			 *
+			 * A SIBLING of `presentMachinePanel` rather than a generalisation of it,
+			 * because the two mount different contracts: a machine panel's context
+			 * drops the pane's handles and reads `sessionId` to decide whether its
+			 * conversation half exists, while these rows mount the pane's own
+			 * `PickerContext` adapters — measured as reading no session (§ 12.5; the
+			 * `sessionless` field's note on the table carries it) — with `""`, which
+			 * is also the honest id: there is no conversation in front of the user.
+			 *
+			 * NO `sessions.command` POST, for the reason the machine-panel presenter
+			 * above documents: its path needs a session id this pane does not have,
+			 * so the round trip cannot happen at all — and the adapters it would end
+			 * in are the ones mounted below, so nothing on screen depends on it.
+			 * Nothing is posted to a session that does not exist.
+			 */
+			const presentSessionlessPicker = (
+				spec: SlashCommandMeta,
+				commandArgs: string,
+			) => {
+				invoker.current =
+					document.activeElement instanceof HTMLElement
+						? document.activeElement
+						: null;
+				setPicker({
+					action: {
+						kind: "native_action",
+						destination: spec.destination,
+						// Empty, not a session: these rows read none, and there is no
+						// conversation for the picker to address.
+						session_id: "",
+						args: commandArgs,
+						fields: [],
+						data: {},
+					},
+					spec: draftPickerSpec(spec.destination, commandsQuery.data),
+					sessionId: "",
+					canonical,
+					commands,
+					onClose: closePicker,
+					note,
+					dispatch: (invocation) => void dispatch(invocation),
+					rebind,
+				});
+			};
+
+			/*
 			 * A destination that addresses no conversation cannot be refused for
 			 * lacking one (design § 3.1). The predicate is exported from the
 			 * destination table rather than written here because the composer quotes
 			 * this same refusal before the keypress (`stagedNote`), and two copies of
-			 * it disagree the moment one of them learns about a machine panel.
+			 * it disagree the moment one of them learns about a session-free row.
 			 *
 			 * Written as a nested test rather than `!sessionId && …` deliberately:
 			 * everything BELOW this point was written under the invariant that the
@@ -871,6 +1134,19 @@ export function useSlashDispatch({
 						`/${spec.name} needs an open conversation. Start one first.`,
 						true,
 					);
+					return "consumed";
+				}
+				/*
+				 * Two kinds reach here, and each presents by its own agreement rather
+				 * than through the owner round trip below: the machine panels
+				 * (`/info`, `/usage`, `/analytics`) and the `sessionless` picker rows
+				 * (issue #625; `/help`, `/theme`, `/login`, `/logout`, `/resume`).
+				 * The kinds are read here because the predicate's answer above is the
+				 * whole of the test — everything it exempts is presentable on a pane
+				 * with none, and nothing else passes the refusal.
+				 */
+				if (entry?.kind === "picker") {
+					presentSessionlessPicker(spec, args);
 					return "consumed";
 				}
 				presentMachinePanel(spec, args, "");
@@ -1180,6 +1456,19 @@ export function useSlashDispatch({
 			 */
 			archiveEnabled,
 			deleteEnabled,
+			/*
+			 * Aida's four, for the same two reasons. The capability decides what the
+			 * user is TOLD (`/aida` on a backend without the surface is a sentence,
+			 * not a round trip into a 404); the cached read is the fast path of the
+			 * session resolution (one POST stands behind a null); and the resolver and
+			 * the control are the helpers the branch closes over, so a `dispatch`
+			 * holding stale ones could send through a resolution that no longer
+			 * agrees with the row that drew the same conversation.
+			 */
+			aidaCapable,
+			aida.data,
+			aidaControl,
+			resolveAida,
 			commandsQuery.data,
 			sessionId,
 			note,

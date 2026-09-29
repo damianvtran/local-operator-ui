@@ -34,7 +34,8 @@ const bundle = await build({
 			import { QueryClientProvider } from "@tanstack/react-query";
 			import { ProviderGrid } from "./src/renderer/src/features/providers/provider-grid";
 			import { BackendSettingsSection } from "./src/renderer/src/features/settings/components/backend-settings-section";
-			import { BackendCompatibilityBanner } from "./src/renderer/src/shared/components/common/backend-compatibility-banner";
+			import { BackendCompatibilityBanner, bannerYieldsToStrip } from "./src/renderer/src/shared/components/common/backend-compatibility-banner";
+			export { bannerYieldsToStrip };
 			export { backendPaneSentence } from "./src/renderer/src/shared/api/local-operator/backend-error";
 			export { QueryClient, QueryObserver } from "@tanstack/react-query";
 			export { desktopKeys } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";
@@ -219,6 +220,7 @@ const {
 	renderProviderGrid,
 	renderBackendSettings,
 	renderBackendCompatibilityBanner,
+	bannerYieldsToStrip,
 	BACKEND_PAIRING_SENTENCE,
 	backendPaneSentence,
 	BACKEND_ERROR_REMEDY,
@@ -1283,5 +1285,194 @@ test("the banner's Retry reaches main's reconnect verb, not a refetch of a publi
 	assert.ok(
 		invalidate > verb,
 		"the refetch follows the verb rather than replacing it",
+	);
+});
+
+test("the banner's fill role follows the cause, one fact to one severity", () => {
+	/*
+	 * § 0.2's banner half, asserted from the RENDERED classes rather than from
+	 * the source: the fill is the Alert variant's, and a source pin would stay
+	 * green if the variant were computed from the wrong field. The glyph is
+	 * asserted with it because the two severities must not share one mark - the
+	 * operator's frames drew their red band and their amber band with the same
+	 * triangle.
+	 */
+	const at = (cause) =>
+		renderBackendCompatibilityBanner(
+			bannerClient({ pairing: { available: false, cause } }),
+		);
+
+	const refused = at("credential-refused");
+	assert.match(refused, /bg-danger-wash/);
+	assert.match(refused, /lucide-circle-alert/);
+	assert.doesNotMatch(refused, /bg-warning-wash/);
+
+	for (const cause of [
+		"successor",
+		"governed-elsewhere",
+		"pre-handshake",
+		"unpaired",
+	]) {
+		const html = at(cause);
+		assert.match(html, /bg-warning-wash/, `${cause}: the warning wash`);
+		assert.match(
+			html,
+			/lucide-triangle-alert/,
+			`${cause}: the warning glyph, not the refusal's`,
+		);
+		assert.doesNotMatch(
+			html,
+			/bg-danger-wash/,
+			`${cause}: a transition is not the refusal`,
+		);
+	}
+});
+
+test("the banner yields the facts the strip already states, and only those", async () => {
+	/*
+	 * § 2.3's rule, driven directly, and WHY IT IS DRIVEN DIRECTLY: a static
+	 * render (`renderToStaticMarkup`) reads `useSyncExternalStore`'s SERVER
+	 * snapshot for `stripPresent`, which is deliberately `false` - so a rendered
+	 * assertion would pass or fail with the presence input stuck false whatever
+	 * the test set. The predicate is the half that CAN be driven; the call site
+	 * is pinned to it from the source in the next test, after `kind` is computed.
+	 */
+	const outage = { answered: false, cause: null };
+	for (const kind of ["unreachable", "deadline", "unknown"]) {
+		assert.equal(
+			bannerYieldsToStrip({ stripPresent: true, kind, ...outage }),
+			true,
+			`${kind}: an outage with no cause and no payload is the strip's to state`,
+		);
+	}
+
+	/*
+	 * AND IT CANNOT PASS VACUOUSLY. Each case below flips exactly ONE term of a
+	 * case above; a yield that ignored any of them would fail here rather than
+	 * silently swallowing a fact the banner owns.
+	 */
+	assert.equal(
+		bannerYieldsToStrip({
+			stripPresent: false,
+			kind: "unreachable",
+			...outage,
+		}),
+		false,
+		"no strip on screen (the /settings shape): the banner keeps speaking",
+	);
+	assert.equal(
+		bannerYieldsToStrip({
+			stripPresent: true,
+			kind: "unreachable",
+			answered: true,
+			cause: null,
+		}),
+		false,
+		"a payload means the capability band owns the fact",
+	);
+	assert.equal(
+		bannerYieldsToStrip({
+			stripPresent: true,
+			kind: "unauthorized",
+			...outage,
+		}),
+		false,
+		"a 401 is a refusal fact the strip has no row for",
+	);
+	assert.equal(
+		bannerYieldsToStrip({ stripPresent: true, kind: "outdated", ...outage }),
+		false,
+		"a version gap is not an outage",
+	);
+	assert.equal(
+		bannerYieldsToStrip({
+			stripPresent: true,
+			kind: "unreachable",
+			answered: false,
+			cause: "successor",
+		}),
+		false,
+		"every pairing cause stays with the banner except the refusal",
+	);
+	assert.equal(
+		bannerYieldsToStrip({
+			stripPresent: true,
+			kind: "unknown",
+			answered: false,
+			cause: "credential-refused",
+		}),
+		true,
+		"D29's arm, kept verbatim: the refusal yields wherever it reaches",
+	);
+
+	/*
+	 * THE RENDERABLE HALF, so the state the yield suppresses is shown to be a
+	 * real one rather than an empty branch: a real 503 through the shipped
+	 * transport, no payload, and a PAIRED snapshot with no cause - so `kind` is
+	 * `unreachable` and `cause` is null, the exact inputs the yield above
+	 * consumes - and with the strip ABSENT (the static default) the banner paints
+	 * its own sentence, which is precisely what it keeps for /settings.
+	 */
+	const client = newClient();
+	globalThis.__serverHealth = {
+		online: true,
+		snapshot: {
+			state: "attached",
+			reconnecting: false,
+			owned: false,
+			url: "http://127.0.0.1:7341",
+			instanceId: "instance-1",
+			pid: 4321,
+			version: "0.55.6",
+			prefix: "/Users/x/.local/share/uv/tools/local-operator",
+			installKind: "uv-tool",
+			desktopAvailable: true,
+			pairing: { available: true, cause: null },
+			failures: 0,
+			capabilityStatus: null,
+			unanswered: 0,
+			lastTransportAt: null,
+			detail: "Connected to the daemon.",
+			updatedAt: 0,
+		},
+	};
+	await seedCapabilitiesFailure(client, 503);
+	const rendered = renderedText(renderBackendCompatibilityBanner(client));
+	// Pinned through the shipped diagnosis table rather than a retyped sentence,
+	// so a copy change moves this test with it:
+	assert.ok(
+		rendered.includes(BACKEND_ERROR_DIAGNOSIS.unreachable),
+		`the banner states the outage rather than yielding to a strip that is not mounted: ${rendered}`,
+	);
+	assert.match(rendered, /Retry/);
+});
+
+test("the banner's yield call site reads after kind, and presence is the strip's own", () => {
+	/*
+	 * The source half of the yield test above: the predicate can be right while
+	 * the banner never calls it, or calls it before `kind` exists. § 2.3 fixes
+	 * its position deliberately - after `compatibilityBannerShown` decided the
+	 * banner may speak at all, after `kind` is computed and `answered` is known,
+	 * and with the STRIP'S OWN publication as the presence input rather than a
+	 * route table (the strip mounts on the chat routes only, and the banner must
+	 * speak wherever it is not mounted).
+	 */
+	const source = readFileSync(
+		"src/renderer/src/shared/components/common/backend-compatibility-banner.tsx",
+		"utf8",
+	);
+	const kind = source.indexOf("const kind = backendErrorKind(");
+	const yieldCall = source.indexOf(
+		"bannerYieldsToStrip({ stripPresent, cause, answered, kind })",
+	);
+	assert.ok(kind > 0, "the banner computes kind");
+	assert.ok(
+		yieldCall > kind,
+		"the yield reads AFTER kind is computed, the position § 2.3 fixes",
+	);
+	assert.match(
+		source,
+		/useChatStatusStripPresent\(\)/,
+		"presence is the strip's own publication, not a route table",
 	);
 });

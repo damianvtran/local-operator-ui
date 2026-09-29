@@ -308,6 +308,13 @@ export const useTeams = () => ({ data: [], error: null, isLoading: false, refetc
 export const retractPendingUser = () => undefined;
 export const retractLocalEcho = () => "retracted";
 export const peekLocalEcho = () => "unseen";
+export const paintPendingSend = () => undefined;
+export const settlePendingSend = () => undefined;
+export const hasPendingSend = () => false;
+export const movePendingSendIdentity = () => undefined;
+export const replacePendingSendText = () => undefined;
+export const discardPendingSends = () => undefined;
+export const pendingSendForView = () => null;
 export const discardPendingEchoes = () => undefined;`,
 };
 
@@ -481,14 +488,38 @@ const waitForGone = async (message) => {
  * Read as LINES rather than as one string because the flyout draws two `block`
  * spans: their textContent concatenates with no separator between them, and a
  * single-string read would compare `ledgerUnseen` against `ledger Unseen`.
+ *
+ * IT WAITS FOR THE EVENT RATHER THAN FOR THE CLOCK, and it reads the tooltip BY NAME.
+ * It used to do neither: a fixed 40 ms sleep, then the FIRST `[role="tooltip"]` in the
+ * document - which on a busy host is the PREVIOUS row's tooltip, because the primitive
+ * keeps an open tooltip's content mounted while it opens the next one. Measured over
+ * 152 CI suite executions (2026-09-26 to 09-27) that read failed 4 of them, every time
+ * byte-identically: `expected 'Quarterly revenue model | Working'`, `actual
+ * 'Reconcile the supplier ledger | Unseen completion, unread'`. A LONGER SLEEP IS NOT
+ * THE FIX - it is the shape that produced the flake, and on a host carrying a fleet it
+ * only moves which run loses. So: close what is open, then wait for the tooltip whose
+ * own text names the row, bounded so a change that stops it opening fails here rather
+ * than hanging. This is the `receiptFlyout` shape below, adopted rather than invented.
  */
-async function flyoutLines(button) {
+async function flyoutLines(button, title) {
 	if (!button) return null;
-	button.dispatchEvent(new DOM.window.FocusEvent("focusin", { bubbles: true }));
-	await new Promise((resolve) => setTimeout(resolve, 40));
-	const tip = document.querySelector('[role="tooltip"]');
-	if (!tip) return null;
-	return [...tip.children].map((line) => line.textContent?.trim() ?? "");
+	button.dispatchEvent(
+		new DOM.window.FocusEvent("focusout", { bubbles: true }),
+	);
+	await new Promise((resolve) => setTimeout(resolve, 60));
+	for (let attempt = 0; attempt < 40; attempt += 1) {
+		button.dispatchEvent(
+			new DOM.window.FocusEvent("focusin", { bubbles: true }),
+		);
+		await new Promise((resolve) => setTimeout(resolve, 50));
+		const tip = [...document.querySelectorAll('[role="tooltip"]')].find(
+			(element) => element.textContent?.includes(title),
+		);
+		if (tip) {
+			return [...tip.children].map((line) => line.textContent?.trim() ?? "");
+		}
+	}
+	return null;
 }
 
 /**
@@ -959,6 +990,7 @@ test("the row tooltip's `, unread` tail follows the mark the row draws, not `uns
 			(
 				await flyoutLines(
 					harness.ring().find((row) => row.textContent?.includes(name)),
+					name,
 				)
 			)?.join(" | ") ?? null;
 		// The mark: the level is named, because the row is drawing it.
@@ -1032,10 +1064,17 @@ test("the store composes the refusal's own sentence instead of storing the serve
 test("a not-answering row's remedy is reachable by focus, and only on that row", async () => {
 	const SILENT = "d4e5f6a7b8c9";
 	const FAILED = "e5f6a7b8c9d0";
+	/*
+	 * THE ROW'S TITLE IS NAMED ONCE, and both readers below ask for the same thing the
+	 * fixture declares. The tooltip helper matches on `textContent.includes(title)`, so a
+	 * second copy of the literal turns a fixture rename into a null-versus-regex
+	 * assertion failure after the helper's ~2 s bound - the symptom, not the rename.
+	 */
+	const SILENT_TITLE = "Quiet owner (stale beat)";
 	const rows = [
 		{
 			session_id: SILENT,
-			title: "Quiet owner (stale beat)",
+			title: SILENT_TITLE,
 			active: true,
 			status: {
 				code: "wedged",
@@ -1066,14 +1105,14 @@ test("a not-answering row's remedy is reachable by focus, and only on that row",
 	try {
 		const row = (name) =>
 			harness.ring().find((element) => element.textContent?.includes(name));
-		const silent = row("Quiet owner (stale beat)");
+		const silent = row(SILENT_TITLE);
 		const failed = row("Failed turn");
 		assert.ok(silent, "the not-answering row did not render");
 		assert.ok(failed, "the failed row did not render");
 		// The pointer channel: the composed flyout ends with the clause, so the row
 		// itself still carries it where a pointer lands.
 		assert.match(
-			(await flyoutLines(silent))?.at(-1) ?? "",
+			(await flyoutLines(silent, SILENT_TITLE))?.at(-1) ?? "",
 			/· \/stop if it stays silent\.$/,
 		);
 		// The keyboard channel: the row POINTS at the sentence, which is what
@@ -1272,7 +1311,7 @@ test("the receipt's own state is drawn on its own row, and the give-up arm is an
 	 * what this case drives is where the operator meets it - the row's flyout
 	 * clause, the `sr-only` sentence its `aria-describedby` names (the keyboard
 	 * channel, and the one the receipt's copy did not have at all), and the single
-	 * announcement the give-up arm makes in the panel's own toast lane.
+	 * announcement the give-up arm makes in the app's own toast container.
 	 *
 	 * Read through the SHIPPED row and the SHIPPED toast container: the states are
 	 * staged the way the loop stages them (`readAckNotice` is one record on the
@@ -1529,21 +1568,21 @@ test("the receipt's own state is drawn on its own row, and the give-up arm is an
 test("a remount cannot leave the receipt's sentence standing", async () => {
 	/*
 	 * UX round 3's U7, which is agent review round 3's MINOR 1 seen from the flow:
-	 * the give-up sentence lives in the app-level lane and outlives any one panel
+	 * the give-up sentence lives in the app-level container and outlives any one panel
 	 * mount, and the id it was raised under used to live in a component ref. A route
 	 * change off `/chat` and back (or a remount by the region controls) gave the panel
 	 * a fresh ref while the sentence stood, and the fresh instance's "the fact has
 	 * gone" branch was a no-op - so nothing left in the app could retire a sentence
 	 * that says the mark was not cleared, after the mark cleared.
 	 *
-	 * The id is the LANE'S now (one constant, `READ_ACK_TOAST_ID`, the shape the
-	 * archive lane in the same file uses), so the dismissal needs no handle and any
-	 * instance can make it. What this case asserts is the CALL and the id it carries,
-	 * which is exactly what the ref shape could not produce - no dismissal call at all
-	 * after a remount. The lane's pixels for the raise-and-retire path are asserted in
-	 * the case above, where the container that receives the toast is the one this file
-	 * mounted; this case deliberately owns no lane, because a later case cannot rely on
-	 * being the container sonner routes to.
+	 * The id is an app-level constant now (one constant, `READ_ACK_TOAST_ID`, the shape
+	 * the archive's own id uses in `undo-toasts.tsx`), so the dismissal needs no handle
+	 * and any instance can make it. What this case asserts is the CALL and the id it
+	 * carries, which is exactly what the ref shape could not produce - no dismissal
+	 * call at all after a remount. The pixels for the raise-and-retire path are
+	 * asserted in the case above, where the container that receives the toast is the
+	 * one this file mounted; this case deliberately owns no container, because a later
+	 * case cannot rely on being the container sonner routes to.
 	 */
 	globalThis.__ack = (request) =>
 		request.op === "sessions.list"

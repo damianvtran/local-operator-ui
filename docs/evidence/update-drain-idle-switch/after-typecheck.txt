@@ -1,0 +1,4 @@
+== tsc -p tsconfig.node.json ==
+node-tsc-rc=0
+== tsc -p tsconfig.app.json ==
+app-tsc-rc=0

@@ -423,6 +423,55 @@ test("canonical session operations preserve identity, arguments and main-owned a
 	assert.equal(seen.length, count);
 });
 
+test("Aida's control plane maps to its frozen route, and the action vocabulary is closed", async () => {
+	/*
+	 * The freeze this slice codes against (`design.md` § 4): ONE route pair, and
+	 * the ACTION travels in the route's own body field (`{"op": ...}`) — the one
+	 * place this envelope's `op` and the route's `op` are two different words.
+	 * Read as one and every control would go out as `{"op": "aida.control"}`, a
+	 * word the route does not serve, and the failure would look like a defect of
+	 * the user's press. Asserted through the REAL transport, so the mapping, the
+	 * method and the bearer are read off the wire rather than off the source.
+	 */
+	for (const action of ["open", "pause", "resume", "greet", "status"]) {
+		const response = await requestDesktop(
+			{ op: "aida.control", action },
+			url,
+			token,
+		);
+		assert.equal(response.status, 200);
+		const actual = seen.at(-1);
+		assert.equal(actual.path, "/v1/desktop/aida");
+		assert.equal(actual.method, "POST");
+		assert.equal(actual.authorization, `Bearer ${token}`);
+		assert.deepEqual(JSON.parse(actual.body), { op: action });
+	}
+	const read = await requestDesktop({ op: "aida.status" }, url, token);
+	assert.equal(read.status, 200);
+	const actual = seen.at(-1);
+	assert.equal(actual.path, "/v1/desktop/aida");
+	assert.equal(actual.method, "GET");
+	/*
+	 * And a word outside the vocabulary is refused HERE (422), before any socket
+	 * opens: the route's `op` enum is closed, so a renderer typo must not travel
+	 * as a request the backend answers with a refusal the user reads as their
+	 * own mistake.
+	 */
+	const before = seen.length;
+	for (const invalid of [
+		{ op: "aida.control", action: "toggle" },
+		{ op: "aida.control" },
+		{ op: "aida.control", action: "open", sessionId: "123456abcdef" },
+	]) {
+		assert.equal((await requestDesktop(invalid, url, token)).status, 422);
+	}
+	assert.equal(
+		seen.length,
+		before,
+		"a refused envelope never reaches the wire",
+	);
+});
+
 test("gated legacy reads travel the authenticated contract, not a bare fetch", async () => {
 	// These routes are gated in managed mode (agent inventory, cwd paths, job
 	// history and conversation content are the same tenant's data as the
@@ -1069,6 +1118,82 @@ test("IPC rejects other frames and opens only backend-returned authorization onc
 	await assert.rejects(() => open(event, "https://evil.example"));
 	frame.url = "https://evil.example";
 	assert.throws(() => invoke(event, { op: "settings.list" }));
+});
+
+test("a second admitted window passes the gate, and only on its own document", async () => {
+	/*
+	 * THE MINI VIEW'S HALF OF THE GATE (quick-send design §D.1/§E.1). The mini
+	 * view is a second renderer document whose composer resolves the seat and
+	 * sends through the desktop plane (`capabilities`, `aida.status`, the send
+	 * via `admitChatDraft`), so `registerDesktopIPC` grew an `additionalWindows`
+	 * list — each window with its OWN trusted document URL. Three arms in one
+	 * test because they are three readings of one rule, and each alone would be
+	 * satisfiable by a gate that admits too much:
+	 *
+	 *   - the second window, on its own URL, passes (without this the feature
+	 *     fails closed at its first request — measured once, in the app log of
+	 *     the `mini-view` scene's first run);
+	 *   - the same window presenting the MAIN window's URL does not (a window
+	 *     admitted on another document's URL is a window admitted on any);
+	 *   - a window on no list does not, however plausible its URL.
+	 */
+	globalThis.__desktopHandlers = new Map();
+	const mainFrame = { url: "file:///app/index.html" };
+	const mainContents = { mainFrame };
+	const mainWindow = { webContents: mainContents, isDestroyed: () => false };
+	const miniFrame = { url: "file:///app/mini.html" };
+	const miniContents = { mainFrame: miniFrame };
+	const miniWindow = { webContents: miniContents, isDestroyed: () => false };
+	const strangerFrame = { url: "file:///app/mini.html" };
+	const strangerContents = { mainFrame: strangerFrame };
+	const calls = [];
+	registerDesktopIPC(
+		() => mainWindow,
+		"file:///app/index.html",
+		async (request) => {
+			calls.push(request);
+			return { status: 200, body: { result: {} } };
+		},
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		() => [{ window: miniWindow, url: "file:///app/mini.html" }],
+	);
+	const invoke = globalThis.__desktopHandlers.get("desktop-request");
+	await invoke(
+		{ sender: miniContents, senderFrame: miniFrame },
+		{ op: "aida.status" },
+	);
+	assert.equal(
+		calls.length,
+		1,
+		"the admitted second window reaches the transport",
+	);
+	assert.throws(
+		() =>
+			invoke(
+				{ sender: miniContents, senderFrame: { url: mainFrame.url } },
+				{ op: "aida.status" },
+			),
+		/This window cannot use desktop controls/,
+		"the second window must be admitted on ITS document, not the main window's",
+	);
+	assert.throws(
+		() =>
+			invoke(
+				{ sender: strangerContents, senderFrame: strangerFrame },
+				{ op: "aida.status" },
+			),
+		/This window cannot use desktop controls/,
+		"a window on no list is refused however its URL reads",
+	);
+	assert.equal(
+		calls.length,
+		1,
+		"neither refusal reached the transport, so nothing was answered behind the gate",
+	);
 });
 
 test("the media relay hands on ArrayBuffer-backed bytes and refuses anything else", async () => {

@@ -319,6 +319,22 @@ function cases(root) {
 			stderr: /no win-\*-unpacked directory/,
 		},
 		{
+			// `publish.yml`'s Linux build: the update information is embedded into
+			// the AppImage toolset before the build, and the built AppImage is
+			// asserted (with its `.zsync` written) after it. Driven with an empty
+			// dist - the shape the step sees when packaging did not run - so its
+			// refusal is pinned rather than assumed: a finalize that exited 0 over
+			// a directory holding no AppImage would ship an un-updatable release
+			// behind a green step.
+			script: "appimage-update-info.mjs",
+			args: ["finalize", "--dist", emptyDist],
+			cwd: plain,
+			env: {},
+			status: 1,
+			stdout: /^$/,
+			stderr: /Expected exactly one \*\.AppImage under .*found 0/,
+		},
+		{
 			// `pnpm notarize-dmg` in both release workflows. On a macOS runner with no
 			// `NOTARIZE=true` and no `.env.build` it skips loudly, which is the line
 			// that keeps `require-report.sh` from reading a skip as a silence; on the

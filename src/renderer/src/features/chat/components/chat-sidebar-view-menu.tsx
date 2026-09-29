@@ -1,5 +1,5 @@
 /**
- * The sidebar's view popover: one panel, three labelled groups, the active row
+ * The sidebar's view popover: one panel, four labelled groups, the active row
  * of each marked.
  *
  * WHY IT IS ITS OWN COMPONENT, when the band that opens it stays in
@@ -10,12 +10,20 @@
  * panel does not need to know about; the panel is a pure function of a
  * `SidebarView` and one callback.
  *
- * THE THREE GROUPS ARE THE OPERATOR'S REFERENCE (dsh's sidebar, 2026-09-25): a
- * popover of muted small-caps group labels, one icon + label per row, a
- * checkmark on the active row, and a hairline between groups. `Group by` and
- * `Order by` are single-choice and carry the check; `Sections` is a list of
- * switches, and it is where the operator's "showing and hiding sections,
- * reordering" lives.
+ * THE FOUR GROUPS ARE THE OPERATOR'S REFERENCE (dsh's sidebar, 2026-09-25) plus
+ * the one the operator asked for on 2026-09-28: a popover of muted small-caps
+ * group labels, one icon + label per row, a checkmark on the active row, and a
+ * hairline between groups. `Group by`, `Time basis` and `Order by` are each a
+ * single choice and carry the check; `Sections` is a list of switches, and it
+ * is where the operator's "showing and hiding sections, reordering" lives.
+ *
+ * WHY `Time basis` IS ITS OWN GROUP AND NOT A FOURTH RADIO IN `Group by`. It is
+ * a third axis of the view, not a way OF grouping: it changes what the time
+ * numbers beside the titles MEASURE (time since the conversation last moved
+ * against time since it was created), it is orthogonal to how rows are grouped
+ * and ordered, and a reader looking for "which date do these bins use" would
+ * not look under `Group by`. The label never says "bin" - the operator's own
+ * word for the control is "how that works", and the sections keep their names.
  *
  * WHY REORDER IS ARROW BUTTONS RATHER THAN A DRAG, AND WHY THE ARROWS ARE
  * THE ONLY ROUTE TO A CHANGED SECTION ORDER. The operator asked for reordering
@@ -37,23 +45,30 @@
  * to drag and drop"; neither held - review round 3, R14. See `moveSection` in
  * `chat-sidebar-view.ts` for the same correction in the model's own words.)
  *
- * THE ARROWS ARE BOUNDED BY WHAT IS SHOWN, which is `moveSection`'s rule rather
- * than this file's: "up" means the section above the one the reader can see, so
- * the first drawn section's up-arrow is disabled rather than jumping a hidden
- * neighbour. That is the one place this panel could disagree with the model, so
- * it asks the model for the answer instead of computing one.
+ * THE ARROWS ARE BOUNDED BY WHAT IS SHOWN AND BY WHAT CAN MOVE, which is
+ * `canMoveSection`'s rule rather than this file's: "up" means the adjacent
+ * SHOWN section above the one the reader can see, so the first drawn section's
+ * up-arrow is disabled rather than jumping a hidden neighbour - and since
+ * 2026-09-28 a chat section's arrow is enabled only when that neighbour is
+ * another DRAWN CHAT section (running/today/week/older). Pinned draws no pair
+ * at all (the column always draws it first, so a press moved nothing on
+ * screen), and neither do the entity rows. That is the one place this panel
+ * could disagree with the model, so it asks the model for the answer instead of
+ * computing one.
  */
 
+import type { SidebarBasis } from "@features/chat/chat-list-sections";
 import {
 	SIDEBAR_SECTION_LABEL,
 	type SidebarGroupBy,
 	type SidebarOrderBy,
 	type SidebarSectionKey,
 	type SidebarView,
+	canMoveSection,
+	isChatSection,
 	isEntitySection,
 	isSectionShown,
 	moveSection,
-	shownSections,
 	toggleSection,
 } from "@features/chat/chat-sidebar-view";
 import { Button } from "@shared/components/ui";
@@ -61,9 +76,11 @@ import { cn } from "@shared/lib/utils";
 import {
 	Activity,
 	Bot,
+	Calendar,
 	Check,
 	ChevronDown,
 	ChevronUp,
+	History,
 	Layers,
 	List,
 	SlidersHorizontal,
@@ -93,20 +110,28 @@ const group = (label: string, last = false) => (
 	</div>
 );
 
-/** One row of `Group by` or `Order by`: icon, label, and the check on the active one. */
+/** One row of a single-choice group: icon, label, and the check on the active one. */
 const choice = (
 	key: string,
 	icon: ReactNode,
 	label: string,
 	active: boolean,
 	onPress: () => void,
+	/*
+	 * The row's evidence hook, and why it is a parameter: `Group by` and `Order by`
+	 * carry the generic `data-sidebar-view-choice`, while the Time basis rows asked
+	 * for their own `data-sidebar-view-basis` (design direction, 2026-09-28) so the
+	 * design rig can drive them without matching a value that could name either
+	 * group's row. A caller that passes nothing keeps the generic one.
+	 */
+	dataAttribute: Record<string, string> = { "data-sidebar-view-choice": key },
 ) => (
 	<button
 		key={key}
 		type="button"
 		role="menuitemradio"
 		aria-checked={active}
-		data-sidebar-view-choice={key}
+		{...dataAttribute}
 		onClick={onPress}
 		className={cn(
 			"flex h-7 w-full items-center gap-2 rounded-md px-1 text-left text-body-sm",
@@ -131,7 +156,19 @@ const choice = (
 );
 
 export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
-	const shown = shownSections(view);
+	/*
+	 * WHETHER A SECTION WOULD DRAW, for `canMoveSection` (round 1's m1/U1): a
+	 * chat section with no loaded rows draws no label in the column
+	 * (`chat-sidebar.tsx`: "An empty section contributes no label"), so a swap
+	 * with one moves the stored order and this panel while the column stands
+	 * still. The counts are the sidebar's own per-section numbers - the same
+	 * ones the rows below print and the headers draw - so the disabled state
+	 * and the drawn column cannot disagree. A caller with no counts gets the
+	 * geometric rule, which is the most that caller can honestly answer.
+	 */
+	const draws = counts
+		? (key: SidebarSectionKey) => (counts[key] ?? 0) > 0
+		: undefined;
 	const groupBy: { key: SidebarGroupBy; label: string; icon: ReactNode }[] = [
 		{
 			key: "section",
@@ -147,6 +184,24 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 			key: "flat",
 			label: "In one list",
 			icon: <List aria-hidden="true" className="size-3.5" />,
+		},
+	];
+	const basis: { key: SidebarBasis; label: string; icon: ReactNode }[] = [
+		{
+			key: "active",
+			// The operator's words for the two, verbatim: "last active" and "creation date".
+			label: "Last active",
+			icon: <History aria-hidden="true" className="size-3.5" />,
+		},
+		{
+			key: "created",
+			label: "Created",
+			/*
+			 * A plain calendar, not `CalendarPlus` (design round 1, D3): the plus
+			 * reads "add to calendar", an action - the row is a fact about the record's
+			 * own clock, so it takes the action-less glyph.
+			 */
+			icon: <Calendar aria-hidden="true" className="size-3.5" />,
 		},
 	];
 	const orderBy: { key: SidebarOrderBy; label: string; icon: ReactNode }[] = [
@@ -196,6 +251,28 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 					),
 				)}
 			</fieldset>
+			{/*
+			 * THE TIME BASIS, between the two arrangement groups because it is neither:
+			 * it decides which clock the time sections and the row labels read (see
+			 * `chat-list-sections.ts`), not how rows are grouped or ordered. A press
+			 * writes the whole next view and keeps the panel open, exactly like the
+			 * groups above and below (`switches`/`reorder` parity, design direction).
+			 */}
+			{group("Time basis")}
+			{/* The same fieldset + sr-only legend shape as the groups either side. */}
+			<fieldset className="min-w-0 space-y-0.5 border-0 p-0">
+				<legend className="sr-only">Time basis</legend>
+				{basis.map((option) =>
+					choice(
+						option.key,
+						option.icon,
+						option.label,
+						view.basis === option.key,
+						() => onView({ ...view, basis: option.key }),
+						{ "data-sidebar-view-basis": option.key },
+					),
+				)}
+			</fieldset>
 			{group("Order by")}
 			{/* The same group, for the same reason - see the comment above. */}
 			<fieldset className="min-w-0 space-y-0.5 border-0 p-0">
@@ -215,16 +292,31 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 			 * canonical one: a list that re-sorted itself here would undo the
 			 * reorder the row above it was just used for.
 			 *
-			 * The entity sections are switches like the rest, and their state is the
-			 * DISCLOSURE the Agents and Teams rows already own (see
-			 * `ENTITY_SECTIONS`): one decision, one spelling, so the popover's tick
-			 * and the row's chevron can never disagree about whether Agents is open.
+			 * The entity sections are switches like the rest, and their state is
+			 * `view.hidden` like the rest: the tick, the press and the sentence under
+			 * the list all read one field the store owns. The `Agents`/`Teams` rows'
+			 * own chevrons are a DIFFERENT question - whether a drawn row's children
+			 * are on screen - and the pair cannot disagree, because a section this
+			 * switch took off the column has no chevron left to disagree with.
+			 * `ENTITY_SECTIONS` carries the correction and the report it came from.
 			 */}
 			{group("Sections")}
 			<div className="space-y-0.5">
 				{view.order.map((key) => {
 					const on = isSectionShown(view, key);
-					const at = shown.indexOf(key);
+					/*
+					 * THE PAIR IS DRAWN ONLY ON THE CHAT SECTIONS, and a press is offered
+					 * only where the move can land (2026-09-28, D1): Pinned is drawn first
+					 * whatever this list says and the entity region draws in fixed source
+					 * order, so a pair on either moved the stored order and this menu while
+					 * the column stood still - the popover then described a column that did
+					 * not exist. `canMoveSection` is the model's rule, asked rather than
+					 * re-derived; the disabled state IS the "adjacent shown section is a chat
+					 * section" answer - and where this panel has counts (it does), the same
+					 * numbers the section headers draw are asked whether BOTH ends of the
+					 * move would draw, so an empty section's pair is disabled rather than
+					 * moving something no one can see (round 1's m1/U1).
+					 */
 					return (
 						<div
 							key={key}
@@ -281,24 +373,20 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 							 * in the row's own name so a screen reader hears which
 							 * section moves and which way.
 							 *
-							 * NOT OFFERED ON THE TWO ENTITY ROWS (UX round 3's U23). The
-							 * pair's rule is that a control which moves a section moves it
-							 * WHERE THE READER SEES IT, and the entity region draws its two
-							 * sections in fixed source order (Agents above Teams - the
-							 * region's own anatomy, like the header and the search field
-							 * above it). An arrow there moved only the stored order and this
-							 * menu: offered, pressed, and inert in the region it named. The
-							 * honest form of the rule is not to draw it, so the entity rows
-							 * keep the switch and the tick and no pair.
+							 * DRAWN ON THE CHAT SECTIONS ALONE (D1 above). The pair's
+							 * whole rule is that a control which moves a section moves it
+							 * WHERE THE READER SEES IT; on Pinned and the entity rows that
+							 * was false (the column pins its own order for both), so the
+							 * honest form is not to draw it.
 							 */}
-							{!isEntitySection(key) && (
+							{isChatSection(key) && (
 								<>
 									<Button
 										variant="ghost"
 										size="icon-sm"
 										data-sidebar-view-move={`${key}:up`}
 										aria-label={`Move ${SIDEBAR_SECTION_LABEL[key]} up`}
-										disabled={at <= 0 || !shown.includes(key)}
+										disabled={!canMoveSection(view, key, -1, draws)}
 										className="size-6"
 										onClick={() => onView(moveSection(view, key, -1))}
 									>
@@ -309,9 +397,7 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 										size="icon-sm"
 										data-sidebar-view-move={`${key}:down`}
 										aria-label={`Move ${SIDEBAR_SECTION_LABEL[key]} down`}
-										disabled={
-											!shown.includes(key) || at < 0 || at >= shown.length - 1
-										}
+										disabled={!canMoveSection(view, key, 1, draws)}
 										className="size-6"
 										onClick={() => onView(moveSection(view, key, 1))}
 									>
