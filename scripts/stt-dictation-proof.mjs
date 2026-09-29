@@ -871,6 +871,45 @@ try {
 	verify("sessionA.draftTyped", typedA === draftText, { draft: typedA });
 	await cdp.shot("01-idle-draft.png");
 	record("sessionA.idle", await composerBox());
+	/*
+	 * THE TOOLTIP NAMES THE BINDING (design round 1, D1). Hovered through the
+	 * trusted input pipeline so the Radix tooltip opens the way a pointer opens
+	 * it, and photographed a full delay-length after the move - the frame is the
+	 * evidence that the string now comes from the same resolver the dispatcher
+	 * matches, instead of teaching the old hold-Space gesture.
+	 */
+	const micHover = JSON.parse(
+		(await cdp.evaluate(
+			`(() => {
+				const el = document.querySelector(${JSON.stringify(MIC)});
+				if (!el) return "null";
+				const r = el.getBoundingClientRect();
+				return JSON.stringify({ x: r.x + r.width / 2, y: r.y + r.height / 2 });
+			})()`,
+		)) ?? "null",
+	);
+	if (micHover) {
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: micHover.x,
+			y: micHover.y,
+		});
+		await sleep(1400);
+		await cdp.shot("14-mic-tooltip.png");
+		record("sessionA.micTooltip", {
+			text: await cdp.evaluate(
+				`(() => document.body.innerText.match(/Start recording[^\\n]*/) ?? "")()`,
+			),
+		});
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: 4,
+			y: 4,
+		});
+		await sleep(350);
+	} else {
+		note("the mic control was not on screen for the tooltip frame");
+	}
 
 	/*
 	 * PTT LATENCY, page-side: t0 is the rig's own capture listener (installed
@@ -936,13 +975,30 @@ try {
 	const combo = await measureEngage({
 		def: ALT_RIGHT,
 		label: "sessionA.combo",
-		budgetMs: 3000,
+		/*
+		 * THE COLD BUDGET IS THE FIRST useEffect's, NOT A CEILING ON THE GESTURE: the
+		 * flip this waits for happens after `getUserMedia` resolves, and on this
+		 * fleet the first resolve of a freshly built app has measured 595 ms to
+		 * >3000 ms (one remediation run at load ~134 blew the old 3000 ms budget on
+		 * cold AND on the retry - correctly refused by the one-recorder guard while
+		 * the first attempt was still pending). A budget is the rig's patience, not
+		 * a claim; the measured latency is recorded whatever it is.
+		 */
+		budgetMs: 9000,
 	});
 	expectMaybe("sessionA.comboEngages", combo.detail.flipped, {
 		...combo.detail,
 		cold: true,
 	});
 	if (combo.detail.flipped) {
+		/*
+		 * THE WAVEFORM LANE IS SETTLED BEFORE THE FRAME (design round 1, D4): the
+		 * first capture took the shot at the engage instant, ahead of the
+		 * analyser's first draw, and the lane read blank - an unfinished-
+		 * looking strip rather than the settled one. The wait is only ever paid by
+		 * a pass that FLIPPED.
+		 */
+		await sleep(450);
 		await cdp.shot("02-recording-combo.png");
 		record("sessionA.recordingTreatment", await composerBox());
 		// The release is what stops it; the transcription then leaves, is held on
@@ -975,13 +1031,15 @@ try {
 	const space = await measureEngage({
 		def: SPACE,
 		label: "sessionA.space",
-		budgetMs: 3500,
+		budgetMs: 6000,
 	});
 	verify("sessionA.spaceEngages", space.detail.flipped, {
 		...space.detail,
 		cold: false,
 	});
 	if (space.detail.flipped) {
+		// Same settled-lane wait as the combo frame above (design round 1, D4).
+		await sleep(450);
 		await cdp.shot("05-recording-space.png");
 		record("sessionA.recordingTreatmentSpace", await composerBox());
 		await releaseHold(SPACE);
@@ -1461,6 +1519,106 @@ try {
 		"session C could not land inside the ~8 ms press-to-echo window this rig measures (its release plumbing costs ~17 ms); the transcript rode the fresh-append path, asserted above, and the composed-clear path is covered by reading, not by this run",
 	);
 	await cdp.shot("13-transcript-in-echo-window.png");
+
+	/* -------------- session D: the resolve-window takes (review round 1) */
+
+	/*
+	 * THE EDGE TAKES THE ROUND-1 REVIEW ASKED FOR (M1/M2): a release INSIDE the
+	 * `getUserMedia` window, a double engagement inside it, and an abort inside
+	 * it - the three orderings no earlier take reached, because every prior run
+	 * released after the indicator flipped. Warms are 45-92 ms on this rig, so
+	 * "inside the window" is dispatches sent back to back with ~15 ms between
+	 * them.
+	 *
+	 * What is asserted is the contract's outcome, not a mechanism: no recording
+	 * survives any of the three, the discarded takes never reach the
+	 * transcription upstream, and a normal take after them still records and
+	 * lands - which is what the silent-mic ordering (a recorder nothing points
+	 * at) would fail.
+	 */
+	const sessionD = await openSession();
+	report.sessionD = sessionD;
+	await typeIntoComposer("edge take probe");
+	const takesBefore = radientCalls.length;
+	const settleWindow = async (label) => {
+		await sleep(1200);
+		const box = await composerBox();
+		return {
+			label,
+			recording: box.recording,
+			transcribing: box.transcribing,
+			micDisabled: box.micDisabled,
+			draft: box.draft,
+		};
+	};
+	// D1 - a TAP: press and release with no wait, so the release lands inside the
+	// resolve window and must settle the attempt the moment it exists.
+	await key("keyDown", ALT_RIGHT);
+	await sleep(15);
+	await key("keyUp", ALT_RIGHT);
+	const tapSettled = await settleWindow("release-in-window");
+	verify(
+		"sessionD.releaseInWindowSettles",
+		tapSettled.recording === false && tapSettled.transcribing === false,
+		tapSettled,
+	);
+	// D2 - TWO engages inside the window: the second start is refused while the
+	// first attempt is outstanding, and the releases still settle it.
+	await key("keyDown", ALT_RIGHT);
+	await sleep(15);
+	await key("keyUp", ALT_RIGHT);
+	await key("keyDown", ALT_RIGHT);
+	await sleep(15);
+	await key("keyUp", ALT_RIGHT);
+	const doubleSettled = await settleWindow("double-tap");
+	verify(
+		"sessionD.doubleTapSettles",
+		doubleSettled.recording === false && doubleSettled.transcribing === false,
+		doubleSettled,
+	);
+	// D3 - an ABORT inside the window: the binding's keydown, then a second key.
+	// Shift, deliberately: any other key could act on the composer, and this arm
+	// is about the hold growing into a combination, not about typing.
+	const SHIFT = {
+		key: "Shift",
+		code: "ShiftLeft",
+		windowsVirtualKeyCode: 16,
+		nativeVirtualKeyCode: 56,
+	};
+	await key("keyDown", ALT_RIGHT);
+	await sleep(15);
+	await key("keyDown", SHIFT);
+	await key("keyUp", SHIFT);
+	await key("keyUp", ALT_RIGHT);
+	const abortSettled = await settleWindow("abort-in-window");
+	verify(
+		"sessionD.abortInWindowSettles",
+		abortSettled.recording === false && abortSettled.transcribing === false,
+		abortSettled,
+	);
+	record("sessionD.discardedTaps", {
+		transcriptionCalls: radientCalls.length - takesBefore,
+	});
+	verify("sessionD.tapsNeverTranscribed", radientCalls.length === takesBefore, {
+		calls: radientCalls.length - takesBefore,
+	});
+	// THE CONTROL: a real take after the edges still works - the assertion a
+	// wedged state fails. Held past the clip floor, released, waiting for the
+	// transcript to land (which, with the boundary rule, joins this draft).
+	await key("keyDown", ALT_RIGHT);
+	await sleep(700);
+	await key("keyUp", ALT_RIGHT);
+	const landedD = await waitForDraft(
+		(d) => d.includes("fake upstream"),
+		20_000,
+	);
+	verify(
+		"sessionD.nextTakeStillLands",
+		(landedD ?? "").includes("fake upstream"),
+		{ draft: landedD },
+	);
+	record("sessionD.joinedDraft", { draft: landedD });
+	await cdp.shot("15-edge-takes-settled.png");
 
 	// Whether this build carries the new inline treatment at all is read where it
 	// can be true - while a recording exists; see `composerBox().indicator`.

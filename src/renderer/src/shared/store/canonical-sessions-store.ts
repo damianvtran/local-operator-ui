@@ -2246,12 +2246,19 @@ export async function admitChatDraft(
 	 * request id). `input_path` rides the identical rule; it is `undefined` for
 	 * every caller today.
 	 */
-	const inputMode = replay
-		? (previous?.submittedInputMode ?? input.inputMode)
-		: input.inputMode;
-	const inputPath = replay
-		? (previous?.submittedInputPath ?? input.inputPath)
-		: input.inputPath;
+	/*
+	 * A PREVIOUS ATTEMPT IS REPLAYED VERBATIM - INCLUDING ITS ABSENCE (review
+	 * round 1, n1). `previous?.submittedInputMode ?? input.inputMode` re-derived
+	 * the field when the first attempt had pinned NOTHING (the capability was off,
+	 * so it sent no key): a retry that carried a value would then stamp a
+	 * different body for the same request id, which is the one thing the pin
+	 * exists to prevent. The `??` chain is correct only for a first attempt;
+	 * with a previous one, its value - present or absent - is the answer.
+	 */
+	const inputMode =
+		replay && previous ? previous.submittedInputMode : input.inputMode;
+	const inputPath =
+		replay && previous ? previous.submittedInputPath : input.inputPath;
 	/*
 	 * And the id follows the same rule: the last attempt's id when this is the same
 	 * message, a fresh one when it is not. A first send has no previous payload, so it

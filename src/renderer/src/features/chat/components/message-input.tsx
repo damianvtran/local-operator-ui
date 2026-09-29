@@ -5,13 +5,17 @@ import {
 } from "@shared/api/local-operator/desktop-api";
 import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
 import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
-import { transcriptionFailureMessage } from "@shared/api/local-operator/transcription-failure";
+import {
+	EMPTY_TRANSCRIPTION_MESSAGE,
+	transcriptionFailureMessage,
+} from "@shared/api/local-operator/transcription-failure";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { ErrorBoundary } from "@shared/components/common/error-boundary";
 import { Button, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config/api-config";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import {
+	COMPOSER_PLACEHOLDER,
 	type SendOutcome,
 	composerPlaceholder,
 	isOffRecordAsk,
@@ -21,6 +25,8 @@ import {
 import { useRadientSessionIssue } from "@shared/hooks/use-radient-session-issue";
 import {
 	SpeechToTextPriority,
+	resolvePushToTalkBinding,
+	setDictationActive,
 	useSpeechToTextManager,
 } from "@shared/hooks/use-speech-to-text-manager";
 import { cn } from "@shared/lib/utils";
@@ -41,6 +47,7 @@ import { normalizePath } from "@shared/utils/path-utils";
 import {
 	dismissToast,
 	showErrorToast,
+	showInfoToast,
 	showSuccessToast,
 	showWarningToast,
 } from "@shared/utils/toast-manager";
@@ -5129,6 +5136,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const MIN_DICTATION_CLIP_MS = 250;
 
+		useEffect(() => {
+			setDictationActive("message-input", isRecording);
+			return () => setDictationActive("message-input", false);
+		}, [isRecording]);
+
 		/**
 		 * Stop the take the current attempt owns, keeping it only when it is long
 		 * enough to hold words and was not aborted. The discard arm reuses the
@@ -5145,6 +5157,19 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						? Number.POSITIVE_INFINITY
 						: performance.now() - startedAt;
 				recordingAttemptRef.current = null;
+				/*
+				 * A SECOND SETTLE IS A NO-OP (review round 1, m1). One press can reach here
+				 * twice inside one dispatch - the manager's abort and this composer's own
+				 * Enter/Escape listener both answer the same key, and the listener's
+				 * closure still reads the pre-press `isRecording` - and `stop()` on an
+				 * already-inactive recorder throws `InvalidStateError` out of a window
+				 * listener. There is nothing left to stop or discard, so only the state
+				 * flag is settled.
+				 */
+				if (recorder.state === "inactive") {
+					setIsRecording(false);
+					return;
+				}
 				if (reason === "abort" || elapsed < MIN_DICTATION_CLIP_MS) {
 					recorder.onstop = () => {
 						if (recorder.stream) {
@@ -5200,6 +5225,17 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * is a state of the composer and the composer is writable mid-turn.
 			 */
 			if (isInputDisabled || !canEnableRecordingFeature) return;
+			/*
+			 * ONE RECORDER AT A TIME (review round 1, M2). Without this, two engagements
+			 * inside the `getUserMedia` window - a double-click on the mic, two taps of
+			 * the binding - overwrite the pending attempt and leave the FIRST recorder
+			 * with nothing pointing at it: depending on resolve order, a live
+			 * microphone the UI no longer shows, or a take the hold can no longer end.
+			 * ANY outstanding attempt refuses a new start (resolving, or already
+			 * recording - the take is the unit, and the release still settles the first
+			 * attempt, so a tap-tap ends idle either way).
+			 */
+			if (recordingAttemptRef.current) return;
 			if (navigator?.mediaDevices?.getUserMedia) {
 				/*
 				 * The attempt is recorded BEFORE the await: a release that lands
@@ -5320,6 +5356,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * the two writes one (its contract is in `use-message-input`).
 					 */
 					appendTranscriptText(newText);
+				} else {
+					/*
+					 * A SUCCESSFUL, EMPTY TRANSCRIPT IS SAID OUT LOUD (UX round 1, U3): the
+					 * strip used to disappear and nothing else happened, which reads as a
+					 * gesture that did not work. Info, not error - the request
+					 * succeeded; the take held no speech.
+					 */
+					showInfoToast(EMPTY_TRANSCRIPTION_MESSAGE);
 				}
 				setAudioBlob(null); // Clear the blob after sending
 			} catch (error) {
@@ -6713,20 +6757,22 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										 * payload leaving, not an indicator arriving, and the field and the
 										 * control row hold their position through it (design round 1, D4).
 										 */
-										composerPlaceholder({
-											unavailable,
-											secretAnswer: secretAnswerPending,
-											inputDisabled: isInputDisabled,
-											awaitingAnswer,
-											asideAttached: aside !== null,
-											sendingUnsettled: sendUnsettled || sendInFlight,
-											awaitingReply,
-											// The last reading before the invitation: nothing is in
-											// flight and the box is not refused, but no model
-											// provider is connected, so the invitation is a lie
-											// (design audit section 6).
-											noProvider,
-										})
+										isRecording
+											? COMPOSER_PLACEHOLDER.recording
+											: composerPlaceholder({
+													unavailable,
+													secretAnswer: secretAnswerPending,
+													inputDisabled: isInputDisabled,
+													awaitingAnswer,
+													asideAttached: aside !== null,
+													sendingUnsettled: sendUnsettled || sendInFlight,
+													awaitingReply,
+													// The last reading before the invitation: nothing is in
+													// flight and the box is not refused, but no model
+													// provider is connected, so the invitation is a lie
+													// (design audit section 6).
+													noProvider,
+												})
 									}
 									value={newMessage}
 									/*
@@ -7058,7 +7104,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						{isTranscribing && (
 							<div
 								data-transcribing-indicator=""
-								className="mt-1 flex items-center gap-2 px-1 [min-height:1.5rem]"
+								className="mt-1 flex items-center gap-2 px-2 [min-height:1.5rem]"
 							>
 								<span className="font-medium text-body-sm text-ink-muted">
 									Processing audio
@@ -7314,7 +7360,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												content={
 													!canEnableRecordingFeature
 														? recordingUnavailableReason
-														: `Start recording (${shortcutText} or hold Space)`
+														: `Start recording (${shortcutText} or hold ${resolvePushToTalkBinding().label})`
 												}
 											>
 												<span>

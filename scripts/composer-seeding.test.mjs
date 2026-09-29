@@ -53,7 +53,7 @@ const HOOK = "src/renderer/src/shared/hooks/use-message-input.ts";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export { shouldReinitialiseComposer } from "./src/renderer/src/shared/hooks/use-message-input";',
+			'export { joinTranscript, shouldReinitialiseComposer } from "./src/renderer/src/shared/hooks/use-message-input";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -73,7 +73,9 @@ const bundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { shouldReinitialiseComposer } = await import(bundlePath.href);
+const { joinTranscript, shouldReinitialiseComposer } = await import(
+	bundlePath.href
+);
 await unlink(bundlePath);
 
 test("a composer seeds for a conversation it has not seeded for", () => {
@@ -106,6 +108,54 @@ test("nothing seeds before hydration", () => {
 	 */
 	assert.equal(shouldReinitialiseComposer(undefined, "conv-1", false), false);
 	assert.equal(shouldReinitialiseComposer("conv-1", "conv-1", false), false);
+});
+
+/* ------------------------------------------------------------------ */
+/* The transcript's boundary (design round 1, D2; UX round 1, U2)      */
+/* ------------------------------------------------------------------ */
+
+/*
+ * THE GLUE, AS ONE RULE. Plain concatenation landed a transcript flush against
+ * a draft that did not end in whitespace - "review the stt overhauldictated
+ * words..." - on the exact landing path this change re-publishes, and the
+ * joined word shipped as the sent message (measured in both the design round's
+ * and the UX round's frames; carried from the baseline build, fixed here
+ * because this branch now owns the path).
+ */
+test("a transcript landing on a draft without a trailing space gets one", () => {
+	assert.equal(
+		joinTranscript(
+			"review the stt overhaul",
+			"dictated words from the fake upstream.",
+		),
+		"review the stt overhaul dictated words from the fake upstream.",
+	);
+});
+
+test("a boundary either side already carried is not doubled", () => {
+	assert.equal(
+		joinTranscript("draft ending with space ", "follow-up"),
+		"draft ending with space follow-up",
+	);
+	assert.equal(
+		joinTranscript("draft", " leading-space transcript"),
+		"draft leading-space transcript",
+	);
+	assert.equal(joinTranscript("", "fresh"), "fresh");
+});
+
+test("the transcript writer goes through that rule, not through `+`", () => {
+	const hook = code(HOOK);
+	assert.match(
+		hook,
+		/handleChange\(joinTranscript\(getCurrentInput\(conversationId\), text\)\)/,
+		"the row's write adds the boundary",
+	);
+	assert.match(
+		hook,
+		/setInputValue\(\(current\) => joinTranscript\(current, text\)\)/,
+		"the masked capture's write adds it too",
+	);
 });
 
 test("the seeding effect is GATED on the rule, not merely accompanied by it", () => {
