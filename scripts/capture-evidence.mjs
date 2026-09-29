@@ -6737,6 +6737,22 @@ export const STORIES = [
 	// The narrow case, with the panel open: the column and the canvas have to fit
 	// together at the width the app's own sidebar clamps for.
 	["mesh-tab--device-panel", 1024, 768, { dir: "device-panel-narrow" }],
+	/*
+	 * THE IN-THREAD SEARCH SET, one row per state. The panel is a fixed 26rem
+	 * wide and the frame is the transcript's own ground at the pane's shipped
+	 * width, so 900x560 holds every state without a crop: the rank list is
+	 * eight rows at most and the tallest state is the list plus its status
+	 * line. No entry carries a selector or a play: every state is a resting
+	 * prop, which is what `thread-search-overlay.stories.tsx` renders.
+	 */
+	["chat-in-thread-search--rest", 900, 560],
+	["chat-in-thread-search--searching", 900, 560],
+	["chat-in-thread-search--results", 900, 560],
+	["chat-in-thread-search--empty", 900, 560],
+	["chat-in-thread-search--building", 900, 560],
+	["chat-in-thread-search--building-partial", 900, 560],
+	["chat-in-thread-search--unsupported", 900, 560],
+	["chat-in-thread-search--error-state", 900, 560],
 ];
 
 /**

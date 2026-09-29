@@ -574,8 +574,15 @@ function trackedSourceFiles(cwd = process.cwd()) {
 	);
 	// Tracked paths stay stable while parallel tests create and remove transient
 	// bundles; argv keeps filenames from being interpreted as shell syntax.
+	/*
+	 * `maxBuffer` because `git ls-files -z` on this repo is 1,049,304 B at
+	 * 2026-09-29 - past Node's spawnSync default of 1 MiB, which is the
+	 * `ENOBUFS` this scan started throwing tonight; the whole-tree scans all
+	 * carry the same buffer.
+	 */
 	return execFileSync("git", ["-C", cwd, "ls-files", "-z"], {
 		encoding: "utf8",
+		maxBuffer: 64 * 1024 * 1024,
 	})
 		.split("\0")
 		.filter(Boolean)

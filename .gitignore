@@ -91,3 +91,8 @@ storybook-static/
 
 scripts/_*.bundle.mjs
 scripts/_*.bundle.cjs
+
+# The docs-library capture rig's default output tree
+# (`scripts/capture-docs-library.mjs` writes `docs-library-captures/` beside the
+# repo root). Regenerable from the rig, so it stays out of the repo.
+docs-library-captures
