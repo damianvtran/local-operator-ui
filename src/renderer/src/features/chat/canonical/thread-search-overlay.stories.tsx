@@ -55,9 +55,16 @@ const noop = () => {};
  * the corner it floats over. The ground is `canvas` because that is what the
  * panel covers in the app — a panel photographed on a blank page would answer
  * the wrong question about its step against the surface behind it.
+ *
+ * `fixed inset-0` rather than a sized box: the preview's own wrapper sits
+ * inside the iframe body's default margin, so a `w-[900px]` frame was offset
+ * 8px right and the panel landed 4px from the frame's edge instead of the
+ * app's 12 (measured off the first capture — the right gap read 4px against
+ * the top's 20). Fixed positioning resolves against the viewport, so the two
+ * insets are the app's own and the frame is exactly what the capture takes.
  */
 const Frame: FC<{ children: ReactNode }> = ({ children }) => (
-	<div className="relative h-[560px] w-[900px] overflow-hidden bg-canvas">
+	<div className="fixed inset-0 overflow-hidden bg-canvas">
 		<div className="absolute top-3 right-3 max-w-[calc(100%-1.5rem)]">
 			{children}
 		</div>
