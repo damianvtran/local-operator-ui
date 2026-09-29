@@ -42,6 +42,20 @@ export type SessionCatalogueRow = {
 	id: CanonicalSessionId;
 	name: string;
 	mtime: number;
+	/**
+	 * When the conversation was BORN, in epoch SECONDS - the backend's
+	 * `session_created_at`: the canonical `created_at.json` record, or the
+	 * directory's birth time when that record is absent, and `0.0` when neither
+	 * can be read.
+	 *
+	 * The second clock on this row, beside `mtime` (the activity clock the
+	 * sidebar's bins read by default): the "Created" basis reads THIS one, and it
+	 * is optional because a backend that predates the field simply does not send
+	 * it - absent and a non-positive value are the same answer to the same
+	 * question ("no birth time"), which is why the reader refuses `<= 0` rather
+	 * than printing 1970 (`rowTimeMs` in `chat-list-sections.ts`).
+	 */
+	created_at?: number | null;
 	preview: string;
 	live_state: string;
 	pending: string | null;
@@ -126,6 +140,34 @@ export type SessionCatalogueRow = {
 	 */
 	subagents_running?: number | null;
 	subagents_queued?: number | null;
+	/**
+	 * -- THE MESH'S FLAT LOCALITY FIELDS, on every row of a listing that asked for
+	 * them (`include_peers`, gated on `features.peers`).
+	 *
+	 * `locality` is the only field that answers which device holds this row, and the
+	 * backend's own model says so: `peer` (the nested block) is `null` on every row
+	 * this shape describes, "so a reader must take `peer: null` as 'this row carries
+	 * no nested block' and never as 'this row is local'". `locality` is therefore
+	 * always present with a value - `"local"` for a row on this device, `"remote"`
+	 * for one another device holds - while the rest are `""`/`true` on a local row,
+	 * present-with-a-value rather than omitted, which is the same "an absent key is
+	 * not a claim" rule `pinned` states above: a row that MOVED home must be able to
+	 * SETTLE its stale `remote` mark rather than keep it forever.
+	 *
+	 * OPTIONAL HERE AND REQUIRED ON THE WIRE, deliberately: they arrive only from a
+	 * listing that asked for peers (and only from a backend new enough to know them),
+	 * so a reader of this type must treat absence as "not asked / not answered" and
+	 * never as "remote" or "unreachable". The Mesh tab is the one reader, and it
+	 * normalises rather than casts (`features/mesh/mesh-types.ts`).
+	 */
+	locality?: "local" | "remote";
+	/** The device that holds it; `""` on a local row's own catalogue entry. */
+	owner_device?: string;
+	owner_device_name?: string;
+	/** Whether the owning device answered the poll that produced this row. */
+	reachable?: boolean;
+	/** One sentence when `reachable` is false, in the backend's own words. */
+	unreachable_reason?: string;
 };
 /**
  * One hit from `sessions.search`, returned by the `session_search` capability
@@ -443,7 +485,9 @@ export type PendingDesktopGate = {
 	 *
 	 * ADDITIVE and OPTIONAL for the same version-skew reason as `recommended`.
 	 * Carried here so the type matches the wire; the secret answer path is the
-	 * composer's masked input, which does not branch on this yet.
+	 * docked card's masked field (`trace/question-dock.tsx`'s `SecretAnswer`,
+	 * posted through `ask-answer.ts`'s `answerGateSecret`), which does not
+	 * branch on this yet.
 	 */
 	persist?: boolean;
 	/**

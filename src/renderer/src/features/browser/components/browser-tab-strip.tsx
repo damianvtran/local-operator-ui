@@ -1,4 +1,13 @@
+import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import { Button, Tooltip } from "@shared/components/ui";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@shared/components/ui/dropdown-menu";
 import { cn } from "@shared/lib/utils";
 import {
 	Bot,
@@ -25,6 +34,7 @@ import type { BrowserTabView } from "../hooks/use-browser-chrome";
 import {
 	type CloseTabsIntent,
 	closeConversationIntent,
+	closeFailedIntent,
 	closeOthersIntent,
 	closeToTheRightIntent,
 	groupTabsBySession,
@@ -58,22 +68,35 @@ import {
  * |---|---|
  * | inactive tab | no fill at all: a title in the well, separated from its neighbour by a 1px `hairline` |
  * | hover | the `elevated` colour step and `ink`, and nothing lifts, scales or translates (`branding.md`) |
- * | active tab | the PAGE's own ground (`canvas`), `border-x border-t border-control`, no bottom edge, `rounded-t-sm` |
- * | the notch | a 1px `canvas` span painted across the active tab's bottom edge, so the strip's own rule continues everywhere except under it |
+ * | active tab | the PAGE's own ground (`elevated`), `border-x border-t border-control`, no bottom edge, `rounded-t-sm` |
+ * | the notch | a 1px `elevated` span painted across the active tab's bottom edge, so the strip's own rule continues everywhere except under it |
  *
  * Removing the inactive fill loses no information — the titles and the dividers
  * identify them (the `branding.md` "would removing it lose anything" test), so the
  * fill comes off rather than being promoted to a second ground. `border-control`
- * on the active tab's three edges is what makes it survive a glance; the ground
- * step alone measures 1.11:1 in the dark palettes (design round 3, D18) and a
- * depth cue is not a marker.
+ * on the active tab's three edges is what makes it survive a glance; at the old
+ * `canvas` rung the ground step alone measured 1.11:1 in the dark palettes
+ * (design round 3, D18) and a depth cue is not a marker — the edge is what this
+ * grammar spends on the tab. THE FILL AND THE NOTCH FOLLOW THE PAGE (remediation
+ * pass): the page below the strip moved to the drawer's rung (`elevated`,
+ * `browser-surface.tsx` and `browser-url-bar.tsx`), so the tab's fill and its
+ * notch moved with it — left on `canvas` they drew a 1px seam where the sheet
+ * used to be, in every theme.
  *
- * WHY THE ROW ACTIONS EXPAND INSIDE THE BAND (spec §6). They used to be a Radix
- * dropdown anchored at the strip's bottom edge, painting DOWNWARD into the content
- * rect — where the native view occludes it, because menus in the band are
- * deliberately not registered (`browser-view-policy.ts:32-39`) and no z-index
- * beats a native sibling view. The row's actions now expand in the band itself:
- * the strip grows ~28px, the page shrinks by the same 28px, and nothing is hidden.
+ * WHY THE ROW ACTIONS ARE A REGISTERED POPOUT (operator report, 2026-09-28; this
+ * SUPERSEDES the in-band ruling of the previous round). The actions expand in a
+ * `DropdownMenu` portaled over the content area, and the menu REGISTERS ITSELF
+ * with the overlay policy while it is open (`useSuppressBrowserView(…,
+ * "browser-tab-actions")`) - so the native view hides exactly as it does for a
+ * dialog, the paused note paints behind the menu, and dismissing it brings the
+ * page back. The in-band row it replaces was itself the answer to an occluded
+ * dropdown, and it cost the page: opening it grew the strip by its own height
+ * (~214px at the worst case it was designed to) and pushed the page and the URL
+ * bar down - which is the operator's report. A registered popout takes neither
+ * trade: the strip does not grow, the page does not move, and nothing is drawn
+ * under the native view. The geometry (strip height unchanged, rect unchanged,
+ * suppression present, page restored after dismissal) and the open/close flicker
+ * (probe P11, consecutive frames) are measured in `scripts/browser-chrome-proof.mjs`.
  *
  * WHY THE SPINNER IS A PER-TAB FACT (spec §8.3). The gate was `loading &&
  * tab.active`, and `loading` was the ACTIVE tab's state, so a background agent tab
@@ -374,15 +397,15 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	onHandOver,
 	onRevokeHandOver,
 }) => {
-	/** Which tab's actions are expanded in the band, if any. Local view state: the
-	 * expansion is not a fact about a tab, and main has no opinion about it. */
+	/** Which tab's actions menu is open, if any. Local view state: the open menu is
+	 * not a fact about a tab, and main has no opinion about it. */
 	const [actionsTabId, setActionsTabId] = useState<number | null>(null);
 	/** Whether the pinned control's list of every tab is open, in the band. Local view
-	 * state for the same reason the actions row's is: it is not a fact about a tab. */
+	 * state for the same reason the menu's is: it is not a fact about a tab. */
 	const [overflowOpen, setOverflowOpen] = useState(false);
 	const scrollerRef = useRef<HTMLDivElement | null>(null);
 	/** The pinned control's own element, so dismissing the list hands focus back to the
-	 * control that opened it — the same contract the actions row has with its trigger
+	 * control that opened it — the same contract the actions menu has with its trigger
 	 * (UX round 2, U9). */
 	const overflowTriggerRef = useRef<HTMLButtonElement | null>(null);
 	/** The list itself, so opening it can move focus INTO the band (D4's rule, applied
@@ -391,44 +414,52 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	/** The list's own scroller, for the reveal below. */
 	const overflowScrollerRef = useRef<HTMLDivElement | null>(null);
 
-	/** One ref per tab's actions trigger, so dismissing the row can hand focus back
-	 * to the tab it belonged to (UX round 2, U9: both dismissal paths unmount the
-	 * element that had focus, which dropped the keyboard user to `<body>` and out of
-	 * the strip). A ref map rather than a `querySelector`: this component never hunts
-	 * the document for its own controls. */
-	const menuRefs = useRef(new Map<number, HTMLButtonElement | null>());
+	/**
+	 * Register the popout with the overlay policy while it is OPEN.
+	 *
+	 * THE REGISTRATION IS THE CHANGE (2026-09-28, operator report). The menu
+	 * floats over the content area, where a native `WebContentsView` paints above
+	 * all DOM, so an unregistered menu would be invisible - which is why the
+	 * actions used to be an in-band row at all. Registering hides the view while
+	 * the menu is open, exactly as `BaseDialog` does; the paused note paints
+	 * behind the menu, and dismissing it brings the page back. The id is a NAME
+	 * (`browser-tab-actions`), and the policy suffixes it with a `useId` so two
+	 * mounts cannot cancel each other's registration out.
+	 */
+	useSuppressBrowserView(actionsTabId !== null, "browser-tab-actions");
 
-	const closeActions = useCallback((): void => {
-		const owner = actionsTabId;
-		setActionsTabId(null);
-		if (owner !== null) menuRefs.current.get(owner)?.focus();
-	}, [actionsTabId]);
-
-	/** The row's own element, so opening it can move focus INTO it (design round 2,
-	 * D4 / the UX round's U4): the row lives after the scroller in DOM order, and
-	 * without this the first Tab after opening landed on the neighbouring tab's
-	 * Close button. */
-	const actionsRowRef = useRef<HTMLDivElement | null>(null);
-
-	// A tab that is closed, or that stops existing, must not leave an action row
-	// pointing at nothing.
-	const actionsTab = tabs.find((tab) => tab.tabId === actionsTabId) ?? null;
-
+	/**
+	 * A TAB THAT STOPS EXISTING TAKES ITS MENU WITH IT — AND RELEASES THE VIEW.
+	 *
+	 * The menu renders only inside its own row (`actionsTabId === tab.tabId`), so a tab
+	 * that leaves `tabs` WITHOUT a press on the menu — an agent tool closing it in main,
+	 * any close this strip did not initiate — unmounts the row and its portalled content
+	 * while `actionsTabId` still names it: the registration above would stay up (the
+	 * paused note painting "close it to bring the page back" with no menu to close), and
+	 * the close-focus effect's `actionsTabId !== null` gate would stay shut. The in-band
+	 * row carried exactly this guard ("A tab that is closed, or that stops existing, must
+	 * not leave an action row pointing at nothing"); it moves here with the menu. Review
+	 * round 1, M-1 — reproduced with the probe the reviewer attached.
+	 *
+	 * THE CARET: while the menu is open, focus is inside it (Radix's layer is modal, so
+	 * the only place the caret can be), and an unmount would drop it to `<body>`. Parking
+	 * on the scroller is the same move a batch close makes, for the same reason — the
+	 * strip is where the caret came from — and it cannot steal a caret that was
+	 * elsewhere, because while this menu is open there is nowhere else it could be.
+	 */
 	useEffect(() => {
 		if (actionsTabId === null) return;
-		// Keyed on the ID rather than on the tab object, because `tabs.find` returns a
-		// fresh object on every render: an object dependency re-ran this on every
-		// keystroke elsewhere in the surface and took focus with it (measured - the
-		// focused element after an unrelated click in the dock was this row).
-		actionsRowRef.current?.focus();
-	}, [actionsTabId]);
+		if (tabs.some((tab) => tab.tabId === actionsTabId)) return;
+		setActionsTabId(null);
+		scrollerRef.current?.focus();
+	}, [actionsTabId, tabs]);
 
 	/**
 	 * Dismiss the pinned list and put the caret back where it came from.
 	 *
 	 * THE RETURN IS THE WHOLE REASON THE TRIGGER HAS A REF: every dismissal path
 	 * unmounts the element that had focus, which drops a keyboard user to `<body>` and
-	 * out of the strip entirely — the class of defect the actions row's own note
+	 * out of the strip entirely — the class of defect the closes' own note below
 	 * records from UX round 2 (U9). The band's rows are all reachable by keyboard, so
 	 * this one has to be right rather than merely survivable.
 	 */
@@ -471,11 +502,12 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	 * Where a close that takes its own trigger with it leaves the caret, and why it needs its
 	 * own path, its own record and its own expiry.
 	 *
-	 * A dismissal that does NOT remove the tab (`closeActions`, used by Watch, hand-over,
-	 * revoke and Copy URL) hands focus back to the tab its trigger belonged to. A close
-	 * can't: the band's own element is inside the row that is about to be gone, so the
-	 * caret has nowhere to return to and would fall to `<body>` — dropping a keyboard user
-	 * out of the strip entirely (the UX round 2 U9 class of defect).
+	 * A dismissal that does NOT remove the tab (Watch, hand-over, revoke and Copy URL)
+	 * hands focus back to the tab its trigger belonged to — the menu's own
+	 * close-autofocus does that now, and the trigger it returns to is still on the row.
+	 * A close can't: the trigger is inside the row that is about to be gone, so the caret
+	 * has nowhere to return to and would fall to `<body>` — dropping a keyboard user out
+	 * of the strip entirely (the UX round 2 U9 class of defect).
 	 *
 	 * SO THE CLOSE NAMES ITS OWN TARGETS. `ids` is what the batch asked for: the ids it
 	 * sent (`mode: "ids"`) or the conversation's own tabs as the strip last saw them
@@ -522,6 +554,22 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	 */
 	const closeFocus = useRef<CloseFocusPending | null>(null);
 	const closeFocusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	/**
+	 * Set when a CLOSE item is what dismisses the menu, and read once by the menu's
+	 * `onCloseAutoFocus`.
+	 *
+	 * THE RACE THIS CLOSES (QA round 2, Q2-1). Radix returns focus to the ⋯ trigger off a
+	 * `setTimeout(0)` scheduled when the content unmounts, while this strip's landing
+	 * placement focuses the survivor off the projection's commit. Which write lands LAST
+	 * owns the caret, and both orders occur under load: measured ~2/20 runs ended on the
+	 * trigger (`BUTTON in-tab=2 id=radix-…`) because the projection had already committed
+	 * and Radix's queued refocus then took the caret back. The close record owns the caret
+	 * while it is armed, so the menu YIELDS to it: a dismissal that ran a close suppresses
+	 * the return, and a dismissal that ran no close item (Escape, an outside press,
+	 * Watch/Copy) keeps Radix's default. Every close path calls `armCloseFocus`, which sets
+	 * this, and the dismissal it suppresses clears it, so a later open starts clean.
+	 */
+	const menuCloseOwnsFocus = useRef(false);
 
 	/** Drop the record and its timer. Nothing here touches focus: every caller has already
 	 * decided that this close will not move the caret (a refusal, a landing, an expiry). */
@@ -546,6 +594,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 				parked: false,
 				decided: false,
 			};
+			menuCloseOwnsFocus.current = true;
 			closeFocus.current = pending;
 			closeFocusTimer.current = setTimeout(() => {
 				if (closeFocus.current === pending) clearCloseFocus();
@@ -622,9 +671,11 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 		[armCloseFocus, onCloseTabs, settleCloseFocus, tabs],
 	);
 
-	/** A single close from the band takes the same path, for the same reason the batch
-	 * does: `closeActions` returns the caret to the closing tab's own trigger, which is
-	 * inside the row being removed (review round 1, A2's "while in here"). */
+	/** A single close from the menu takes the same path, for the same reason the batch
+	 * does: the menu's close-autofocus would return the caret to the closing tab's own
+	 * trigger, which is inside the row being removed (review round 1, A2's "while in
+	 * here"), so the close names its target and the effect above decides where the caret
+	 * lands. */
 	const runClose = useCallback(
 		(tabId: number): void => {
 			const pending = armCloseFocus([tabId]);
@@ -720,7 +771,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	 */
 	const showGroupLabels = groups.length > 1;
 	/**
-	 * The two BULK CLOSES whose labels carry a count, and they agree about which list
+	 * The BULK CLOSES whose labels carry a count, and they agree about which list
 	 * that count comes from because they are the SAME list: the one this host is showing
 	 * (`tabs`) — the pane's is a conversation's, the route's is everything. Review round 2
 	 * settled this (the operator's U7 ruling), withdrawing round 1's A3, which had fed
@@ -734,6 +785,11 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 		actionsTabId === null ? null : closeOthersIntent(tabs, actionsTabId);
 	const closeRight =
 		actionsTabId === null ? null : closeToTheRightIntent(ordered, actionsTabId);
+	/** The failed set's counted close: every tab in the visible list whose last
+	 * navigation was refused — the tabs the strip paints its `Failed` chips on, and
+	 * exactly the set the session store now refuses to restore. Read from the same
+	 * list the press closes, like its siblings. */
+	const closeFailed = closeFailedIntent(tabs);
 	/** How many tabs a conversation holds, for the group item's count and its `>= 2`
 	 * gate: closing "all" of a conversation's single tab is `Close "X"` under a longer
 	 * label. Read from the visible list, and that is the same number the pool would give:
@@ -1040,9 +1096,9 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										"group relative flex max-w-[50%] grow basis-32 items-center gap-1.5 px-2 text-body-sm rounded-t-sm",
 										floor,
 										active
-											? "border-control border-x border-t bg-canvas text-ink"
+											? "border-control border-x border-t bg-elevated text-ink"
 											: "text-ink-muted hover:bg-row-hover hover:text-ink",
-										// The tab whose actions row is open keeps a visible selected treatment:
+										// The tab whose actions menu is open keeps a visible selected treatment:
 										// the row is a band under the whole strip, and the only other tie to its
 										// owner was a `:focus-visible` ring, which a mouse click does not paint
 										// (design round 2, D4).
@@ -1226,58 +1282,298 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 														// shrink, controls cannot - so below `@max-2xl` (42rem, measured on the
 														// strip's own container) the active row takes exactly
 														// the treatment every inactive row has had since D13: overlaid on the
-														// row's right end, revealed on hover or focus, with the elevated
-														// ground so the title it covers is not read through it. It stays
+														// row's right end, revealed on hover or focus, with a `surface`
+														// ground rather than the tab's own `elevated` fill, so the title it
+														// covers is not read through it. It stays
 														// reachable by keyboard through the same `group-focus-within` the other
 														// rows use, and the actions expansion is still the always-reachable
 														// path for the mouse.
 														"@max-2xl:absolute @max-2xl:inset-y-0 @max-2xl:right-1",
-														"@max-2xl:group-hover:bg-elevated @max-2xl:group-focus-within:bg-elevated",
+														"@max-2xl:group-hover:bg-surface @max-2xl:group-focus-within:bg-surface",
 													)
 												: "absolute inset-y-0 right-1 flex items-center gap-1.5",
-											// Its own actions row being open is not a hover, so the ground
+											// Its own actions menu being open is not a hover, so the ground
 											// and the reveal follow that state explicitly.
 											!active &&
 												"group-hover:bg-elevated group-focus-within:bg-elevated",
 											actionsTabId === tab.tabId &&
-												(active ? "@max-2xl:bg-elevated" : "bg-elevated"),
+												(active ? "@max-2xl:bg-surface" : "bg-elevated"),
 										)}
 									>
-										{/* The actions trigger. The menu it used to open painted into the
-										    content rect, where the native view occludes it (§6), so this
-										    now expands the row's actions inside the band instead. */}
-										<Button
-											ref={(node) => {
-												menuRefs.current.set(tab.tabId, node);
+										{/* The tab's actions, as a REGISTERED POPOUT (2026-09-28, operator
+										    report). It floats over the content area, where a native
+										    view paints above all DOM, so the strip registers it with
+										    the overlay policy while it is open: the view hides, the
+										    paused note shows behind the menu, and dismissing it brings
+										    the page back. The strip does not grow and the page does not
+										    move — see the component docstring for the in-band row this
+										    replaces and why. */}
+										<DropdownMenu
+											open={actionsTabId === tab.tabId}
+											onOpenChange={(open) => {
+												setActionsTabId(open ? tab.tabId : null);
 											}}
-											variant="ghost"
-											size="icon-sm"
-											aria-label={`Tab actions for ${tab.title}`}
-											aria-expanded={actionsTabId === tab.tabId}
-											onClick={() => {
-												if (actionsTabId === tab.tabId) closeActions();
-												else setActionsTabId(tab.tabId);
-											}}
-											// Revealed on hover/focus like the close button, unless its own row
-											// is open. On an INACTIVE tab it holds no width at all, so the reveal
-											// costs the title nothing (D13); on the ACTIVE one it sits in flow beside
-											// the permanent close control and keeps its 28px, which is part of why an
-											// active marked row needs the wider floor above - and, below
-											// `@max-2xl`, why
-											// the whole cluster steps out of flow and takes the reveal with it.
-											className={cn(
-												"transition-opacity",
-												actionsTabId === tab.tabId
-													? "text-ink"
-													: cn(
-															REVEAL_ON_HOVER_OR_FOCUS,
-															active && NARROW_REVEAL,
-														),
-											)}
-											data-tour-tag="browser-tab-menu"
 										>
-											<MoreHorizontal aria-hidden className="size-3.5" />
-										</Button>
+											<DropdownMenuTrigger asChild>
+												<Button
+													variant="ghost"
+													size="icon-sm"
+													aria-label={`Tab actions for ${tab.title}`}
+													// Revealed on hover/focus like the close button, unless its own row
+													// is open. On an INACTIVE tab it holds no width at all, so the reveal
+													// costs the title nothing (D13); on the ACTIVE one it sits in flow beside
+													// the permanent close control and keeps its 28px, which is part of why an
+													// active marked row needs the wider floor above - and, below
+													// `@max-2xl`, why
+													// the whole cluster steps out of flow and takes the reveal with it.
+													className={cn(
+														"transition-opacity",
+														actionsTabId === tab.tabId
+															? "text-ink"
+															: cn(
+																	REVEAL_ON_HOVER_OR_FOCUS,
+																	active && NARROW_REVEAL,
+																),
+													)}
+													data-tour-tag="browser-tab-menu"
+												>
+													<MoreHorizontal aria-hidden className="size-3.5" />
+												</Button>
+											</DropdownMenuTrigger>
+											{/*
+											 * THE MENU NAMES ITS TAB (design round 2, D4, carried over
+											 * from the row it replaces): its trigger is one of several
+											 * identical ⋯ controls, so the panel says which tab it
+											 * belongs to rather than leaving that to proximity.
+											 *
+											 * THE ITEM ORDER IS THE OLD ROW'S, in a menu now: the two
+											 * quiet rows first, the destructive family behind a rule
+											 * (D12), and `Copy URL` behind the second rule (D7).
+											 */}
+											{actionsTabId === tab.tabId && (
+												<DropdownMenuContent
+													align="end"
+													/*
+													 * CLEAR OF THE APPROVALS PILL (design round 1, D2; the numbers
+													 * corrected by QA round 2, Q2-2). The panel is end-anchored to its
+													 * trigger, so on the strip's rightmost tab its right edge used to land at
+													 * CSS 1300-1301 in the operator's own worst case, over the pill whose
+													 * leading content starts at CSS 1281.5 — the pill read `pprovals`.
+													 * `collisionPadding` is stated against the WINDOW's right edge rather than
+													 * the pill's coordinates because the pill is right-anchored: 120 = the
+													 * pill's own inset (~98.5) plus a 20px gap.
+													 *
+													 * THE SHIFT'S LIMIT IS THE ANCHOR'S WIDTH, which the first version of
+													 * this comment got wrong: Radix's shift runs with `sticky` at its
+													 * `"partial"` default, `limitShift()` is derived from that setting, and
+													 * it caps the shift at the anchor's width — 28px for this trigger — so
+													 * the worst case lands at right ≈ 1273: the app's own measurement from
+													 * the D2 photograph's state (window 1380) reads panel right 1273
+													 * against the pill's box 1266.3 and its leading content 1275.3 — a
+													 * content gap of 2.3px and a box gap of −6.7px, the overlap landing on
+													 * the pill's transparent padding while the pill reads whole — not the
+													 * ≤1260 / 21.5px the old text claimed. The goal holds (the pill is no
+													 * longer covered; a panel that fits is untouched); the bound is what
+													 * the pinned middleware actually is.
+													 */
+													collisionPadding={{ right: 120 }}
+													/*
+													 * THE CLOSE RECORD WINS (QA round 2, Q2-1): while a close this menu
+													 * started is still deciding where the caret goes, Radix's own
+													 * return-to-trigger would race the landing placement — see the
+													 * `menuCloseOwnsFocus` note above. A dismissal that ran no close
+													 * item keeps the default, which is what Escape, an outside press
+													 * and the reveal/copy items rely on.
+													 */
+													onCloseAutoFocus={(event) => {
+														if (!menuCloseOwnsFocus.current) return;
+														menuCloseOwnsFocus.current = false;
+														event.preventDefault();
+													}}
+													className="min-w-56"
+													data-tour-tag="browser-tab-actions"
+												>
+													<DropdownMenuLabel className="truncate">
+														Actions for "{tabLabel(tab.title)}"
+													</DropdownMenuLabel>
+													{!tab.active && (
+														/* §8.3's "one click to watch": activation is the
+														   USER's click, which is what design 11.4 permits —
+														   the app never activates a tab on the agent's behalf.
+														   A quiet row: it takes nothing away, and the
+														   destructive family below is the loud one (D11). */
+														<DropdownMenuItem
+															onSelect={() => onActivate(tab.tabId)}
+															data-tour-tag="browser-tab-watch"
+														>
+															Watch "{tabLabel(tab.title)}"
+														</DropdownMenuItem>
+													)}
+													{/*
+													 * The hand-over affordances live here rather than in the
+													 * band because a hand-over is a statement about ONE tab,
+													 * and the strip is where tabs are named (design 6.3).
+													 */}
+													{tab.owner === "user" && !tab.handedOver && (
+														<DropdownMenuItem
+															onSelect={() => onHandOver(tab)}
+															data-tour-tag="browser-tab-hand-over"
+														>
+															Let an agent use "{tabLabel(tab.title)}"…
+														</DropdownMenuItem>
+													)}
+													{(tab.handedOver || tab.owner === "agent") && (
+														<DropdownMenuItem
+															onSelect={() => onRevokeHandOver(tab.tabId)}
+															data-tour-tag="browser-tab-revoke-hand-over"
+														>
+															Stop letting the agent use "{tabLabel(tab.title)}"
+														</DropdownMenuItem>
+													)}
+													{/*
+													 * THE DESTRUCTIVE FAMILY WEARS THE DESTRUCTIVE ITEM
+													 * STYLE, AND IT STARTS HERE BEHIND A RULE (design
+													 * review round 2, D11 and D12, carried over from the
+													 * in-band row).
+													 *
+													 * D11: the closes were bare text while `Watch` drew an
+													 * outlined box, so the hierarchy read backwards — the
+													 * loudest element on the one item that removes nothing.
+													 * `destructive` is the menu's own variant for a control
+													 * that destroys something (`text-danger`, `danger-wash`
+													 * on highlight), and reusing it owes no new `CONTROLS`
+													 * row: `scripts/contrast-contract.mjs`'s `danger
+													 * callout` entry already asserts `dangerBorder` +
+													 * `danger` ink over `canvas`/`surface` — this panel's
+													 * ground is `elevated` — and `danger` is in that file's
+													 * `AS_TEXT` list, so its text floor is asserted too.
+													 *
+													 * D12: the spec's item table IS two groups — the
+													 * unnumbered rows that take nothing away (`Watch`,
+													 * hand-over/revoke) and the counted closes, which R5's
+													 * own paragraph calls destructive with no undo — and
+													 * D7's ruling is that the destructive family reads as
+													 * one block. One block needs one edge, so the family
+													 * opens at `Close "X"` behind this rule.
+													 */}
+													<DropdownMenuSeparator />
+													<DropdownMenuItem
+														destructive
+														onSelect={() => runClose(tab.tabId)}
+														data-tour-tag="browser-tab-actions-close"
+													>
+														Close "{tabLabel(tab.title)}"
+													</DropdownMenuItem>
+													{/*
+													 * THE BULK ACTIONS (design R5), AND THE COUNTS IN THEIR
+													 * LABELS ARE THE DISCLOSURE. Each is destructive with no
+													 * undo — closing a tab is not recoverable, because the
+													 * session file records the current set rather than a
+													 * history — so the number is what tells the user how much
+													 * one press takes. EVERY COUNT COMES FROM THE LIST THIS
+													 * HOST IS SHOWING (the operator's U7 ruling, review round
+													 * 2): in the pane, scoped to 2 tabs of a pool of 8, `Close
+													 * 1 other tab` is exactly what the press closes. No
+													 * dialog: the count is the disclosure, and a single close
+													 * has no undo either.
+													 */}
+													{closeOthers !== null && (
+														<DropdownMenuItem
+															destructive
+															onSelect={() => runBatchClose(closeOthers)}
+															data-tour-tag="browser-tab-close-others"
+														>
+															Close {closeOthers.tabIds.length} other
+															{closeOthers.tabIds.length === 1
+																? " tab"
+																: " tabs"}
+														</DropdownMenuItem>
+													)}
+													{closeRight !== null && (
+														/* "To the right" is the RENDERED order — the grouped
+														   one — because that is the only order in which the
+														   words are true for a grouped strip. A tab an agent
+														   creates after the press is not to the right of
+														   anything the user saw and survives. */
+														<DropdownMenuItem
+															destructive
+															onSelect={() => runBatchClose(closeRight)}
+															data-tour-tag="browser-tab-close-right"
+														>
+															Close {closeRight.tabIds.length} tab
+															{closeRight.tabIds.length === 1 ? "" : "s"} to the
+															right
+														</DropdownMenuItem>
+													)}
+													{closeFailed !== null && (
+														/* THE ANTI-ACCUMULATION CONTROL (2026-09-28): THE SET IS
+														   `closeFailedIntent(tabs)` — every tab whose last
+														   navigation was refused, i.e. exactly the tabs the strip
+														   paints its `Failed` chips on — and it is offered only
+														   when there is at least one, so the item cannot sit
+														   inert. The count is the disclosure, like its siblings'. */
+														<DropdownMenuItem
+															destructive
+															onSelect={() => runBatchClose(closeFailed)}
+															data-tour-tag="browser-tab-close-failed"
+														>
+															Close {closeFailed.tabIds.length} failed
+															{closeFailed.tabIds.length === 1
+																? " tab"
+																: " tabs"}
+														</DropdownMenuItem>
+													)}
+													{tab.sessionId !== null &&
+														conversationTabCount(tab.sessionId) >= 2 && (
+															/* THE COUNT IS ON THIS ONE TOO (review round 1, U3,
+															   Q3): the group chip is drawn only when the pool
+															   holds more than one conversation, so the most
+															   destructive item would be the one with no number
+															   beside it in the single-conversation case. */
+															<DropdownMenuItem
+																destructive
+																onSelect={() =>
+																	runBatchClose(
+																		closeConversationIntent(
+																			tab.sessionId as string,
+																		),
+																	)
+																}
+																data-tour-tag="browser-tab-close-conversation"
+															>
+																Close all {conversationTabCount(tab.sessionId)}{" "}
+																tabs in this conversation
+															</DropdownMenuItem>
+														)}
+													{/*
+													 * THE SECOND RULE SEPARATES THE CLOSES FROM THE ONE ITEM
+													 * THAT CLOSES NOTHING (D7's ruling): `Copy URL` is last
+													 * among the actions because it is the only one here that
+													 * leaves every tab on screen, so nothing destructive sits
+													 * below the divider.
+													 */}
+													<DropdownMenuSeparator />
+													{HTTP_URL.test(tab.url) && (
+														/* COPY URL NEEDS NO INTENT, which is why it is the one
+														   action here that does not go through
+														   `useBrowserChrome`: the URL is already in the
+														   projection, the clipboard is the renderer's, and
+														   inventing a channel to main for it would be a round
+														   trip to copy a string the user is looking at. The
+														   guard is the scheme — `about:blank`, `file:` and
+														   `data:` are not things to paste into a chat. */
+														<DropdownMenuItem
+															onSelect={() => {
+																void navigator.clipboard?.writeText(tab.url);
+															}}
+															data-tour-tag="browser-tab-copy-url"
+														>
+															Copy URL
+														</DropdownMenuItem>
+													)}
+												</DropdownMenuContent>
+											)}
+										</DropdownMenu>
 										<Tooltip content="Close tab">
 											<Button
 												variant="ghost"
@@ -1313,13 +1609,13 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										// THE NOTCH. The strip's rule runs along the whole band, and the
 										// active tab paints the page's own ground across its own bottom
 										// edge so the tab and the content area read as one sheet. It is
-										// one pixel of `canvas` — the same role the tab's fill and the
+										// one pixel of `elevated` — the same role the tab's fill and the
 										// content area use — and it is why the strip keeps its own
 										// `border-b`: the rule continues everywhere except here.
 										<span
 											aria-hidden
 											data-tour-tag="browser-tab-notch"
-											className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-canvas"
+											className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-elevated"
 										/>
 									)}
 								</div>
@@ -1445,8 +1741,10 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 				 * be occluded and nothing needs suppressing; the strip grows by its height and
 				 * the page's own rectangle shrinks by exactly the same amount, because the
 				 * content element is measured by a `ResizeObserver` and the host re-bounds the
-				 * view. The SAME trade the actions row below makes, and the reason the dock
-				 * narrows rather than hides.
+				 * view. The same trade the dock makes — the page narrows rather than hides —
+				 * and what keeps THIS list a band row: a list to read beside the page is in
+				 * flow; the actions menu, which floats, registers with the overlay policy
+				 * instead (2026-09-28, see the component docstring).
 				 *
 				 * BOUNDED, and that is not cosmetic: 20 tabs of sections would otherwise push
 				 * the page off screen, which is the failure the dock's design exists to avoid
@@ -1454,7 +1752,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 				 *
 				 * FOCUS MOVES IN ON OPEN AND BACK TO THE TRIGGER ON CLOSE (the effects above),
 				 * so a keyboard user is not dropped to `<body>` by either path — the UX round
-				 * 2 (U9) class of defect, which the actions row was fixed for.
+				 * 2 (U9) class of defect, which both of these surfaces answer for.
 				 */
 				<div
 					ref={overflowRowRef}
@@ -1539,8 +1837,10 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 						className="absolute top-1 right-2"
 						data-tour-tag="browser-tab-overflow-dismiss"
 					>
-						{/* The same chevron the actions row uses to close itself: one shape for
-						    "this band row goes away", on both rows. */}
+						{/* One shape for "this band row goes away": the pinned list is the
+						    only band row that still carries the chevron — the actions menu
+						    dismisses like every menu (Escape, a click away, or the item
+						    itself). */}
 						<ChevronUp aria-hidden className="size-3.5" />
 					</Button>
 				</div>
@@ -1550,19 +1850,20 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 			 *
 			 * IT WAS A RADIX DROPDOWN, AND THE MENU WAS THE BUG. A dropdown anchored
 			 * in the band paints DOWNWARD into the content rect, and the native view
-			 * wins there: `browser-view-policy.ts:34-38` deliberately does not
-			 * register menus in the band and no z-index beats a native sibling view.
-			 * The row's actions were moved into the band for exactly this reason; the
-			 * pinned control was not, and it is the token "the user can always reach
-			 * any tab" is spent on — so the one control that exists for tabs you
-			 * cannot see could not be seen either, at precisely the scale it is for.
+			 * wins there: no z-index beats a native sibling view, and an unregistered
+			 * menu is invisible over the page. So it is a BAND ROW instead — the same
+			 * shape the actions row had before it became a registered popout
+			 * (2026-09-28): the pinned control is the token "the user can always reach
+			 * any tab" is spent on, so it cannot open something that may not be
+			 * visible, at precisely the scale it is for.
 			 *
-			 * SO IT IS A BAND ROW NOW, the same shape and the same dismissal contract
-			 * as the actions row: the strip grows by its height, the page's rect
+			 * SO IT IS A BAND ROW NOW: the strip grows by its height, the page's rect
 			 * shrinks by the same amount (`ResizeObserver` in `browser-surface.tsx`),
 			 * and NOTHING IS OCCLUDED AND NOTHING IS SUPPRESSED. That is the trade the
 			 * dock's design already makes, and the reason the page narrows rather than
-			 * hides.
+			 * hides — while a menu that floats over the page (the tab actions) hides
+			 * the view and shows the paused note instead, because a floating panel
+			 * cannot take the in-flow trade.
 			 *
 			 * IT IS THE CANVAS'S OWN ANSWER to the same problem (`canvas-tabs.tsx`:
 			 * "scrolling sideways to find a file is a fallback, not the only route"), and
@@ -1577,274 +1878,6 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 			 * grouping the strip renders (`groups`, above), so a tab cannot be in one
 			 * conversation's section here and another's run there.
 			 */}
-			{actionsTab && (
-				// IN THE BAND, which is the whole point: this row is outside the native
-				// view's rectangle, so it is visible. The strip grows by this row's height
-				// and the page's rectangle shrinks by exactly the same amount, because the
-				// content element is measured by a `ResizeObserver` (`browser-surface.tsx`)
-				// and the host re-bounds the view. No suppression, no z-index.
-				//
-				// IT NAMES ITS TAB, and it takes focus when it opens (design round 2, D4
-				// and the UX round's U4). The row is a band under the whole strip, so
-				// without a name the only tie to its owner was the trigger's focus ring —
-				// which a mouse click does not paint. And because the row sits after the
-				// scroller in DOM order, the first Tab after opening used to land on the
-				// neighbouring tab's Close button: destructive, and not what the user was
-				// reaching for. The container is focusable (`tabIndex={-1}`) purely so
-				// opening moves focus into the row's first action.
-				<div
-					ref={actionsRowRef}
-					tabIndex={-1}
-					onKeyDown={(event) => {
-						// Escape dismisses the row, the way it dismisses the dock (§4.2).
-						if (event.key === "Escape") {
-							event.stopPropagation();
-							closeActions();
-						}
-					}}
-					className="relative flex flex-col border-control border-t bg-surface py-1 focus:outline-none"
-					data-tour-tag="browser-tab-actions"
-				>
-					{/*
-					 * THE HEADING ROW SITS OUTSIDE THE SCROLLER, which is the shape the pinned tab list
-					 * below already uses: the band's own name and its dismiss control cannot scroll
-					 * away from the items they belong to.
-					 */}
-					<div className="flex h-7 shrink-0 items-center px-2">
-						<span className="truncate text-meta text-ink-dim">
-							Actions for "{tabLabel(actionsTab.title)}"
-						</span>
-					</div>
-					{/*
-					 * ONE ITEM PER ROW, AT EVERY WIDTH (design review round 2, D7, ruled). The band was
-					 * a flex ROW that wrapped, so `Copy URL` orphaned onto a line of its own once the
-					 * four bulk closes were present at the 1280px fixture - a failure class a wrap at
-					 * one fixture width hides and a wider band only postpones. A column of full-width
-					 * rows is the same in-band shape the pinned tab list uses, and it removes the
-					 * orphan rather than trading it for a wrap elsewhere.
-					 *
-					 * BOUNDED, WITH THE HEADING OUTSIDE IT, and the bound is a GUARD RATHER THAN A
-					 * FOLD at today's counts: SEVEN rows is the most this band can hold (watch,
-					 * hand-over OR revoke — mutually exclusive, so never both — `Close "X"`, the three
-					 * bulk items and `Copy URL`), which is 7 x 28px of buttons plus the TWO 9px rules
-					 * (D12's, before the closes, and D7's, before `Copy URL`) = 214px against
-					 * `max-h-60`'s 240px — so every item is visible without scrolling, `Copy URL`
-					 * included, and an eighth row would scroll rather than push the page down by
-					 * another row. (The round-2 comment here counted eight rows and one rule, 233px;
-					 * the row count was one wider than the component can draw and the rule count is
-					 * two now, which is why the arithmetic is re-derived rather than incremented.)
-					 * `max-h-36`, the pinned list's own bound, would have been too mean here: it holds
-					 * five rows, so it would have hidden exactly the item D7 is about.
-					 */}
-					<div className="max-h-60 overflow-y-auto">
-						{!actionsTab.active && (
-							// §8.3's "one click to watch": activation is the USER's click, which is
-							// what design 11.4 permits — the app never activates a tab on the agent's
-							// behalf. This replaces the old menu's "Switch to this tab" for a
-							// non-active tab, because it is the same action and the one the operator's
-							// report needs a name for.
-							//
-							// A GHOST ROW RATHER THAN AN OUTLINED ONE (design review round 2, D11): the
-							// `outline` box made the one BENIGN item in this band the loudest thing in
-							// it — a full-width boundary on the row that takes nothing away — while the
-							// closes below it were bare text. The band has ONE row grammar
-							// (`size="sm"`, `w-full justify-start`), and the variant is what carries a
-							// row's weight: `danger` for what closes a tab, `ghost` for what does not.
-							// Watch is a `ghost` here for the same reason `Copy URL` is one.
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={() => {
-									closeActions();
-									onActivate(actionsTab.tabId);
-								}}
-								className="w-full justify-start"
-								data-tour-tag="browser-tab-watch"
-							>
-								Watch "{tabLabel(actionsTab.title)}"
-							</Button>
-						)}
-						{/*
-						 * The hand-over affordances live here rather than in the band
-						 * because a hand-over is a statement about ONE tab, and the strip
-						 * is where tabs are named (design 6.3).
-						 */}
-						{actionsTab.owner === "user" && !actionsTab.handedOver && (
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={() => {
-									closeActions();
-									onHandOver(actionsTab);
-								}}
-								className="w-full justify-start"
-								data-tour-tag="browser-tab-hand-over"
-							>
-								Let an agent use "{tabLabel(actionsTab.title)}"…
-							</Button>
-						)}
-						{(actionsTab.handedOver || actionsTab.owner === "agent") && (
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={() => {
-									closeActions();
-									onRevokeHandOver(actionsTab.tabId);
-								}}
-								className="w-full justify-start"
-								data-tour-tag="browser-tab-revoke-hand-over"
-							>
-								Stop letting the agent use "{tabLabel(actionsTab.title)}"
-							</Button>
-						)}
-						{/*
-						 * THE DESTRUCTIVE FAMILY WEARS THE DANGER VARIANT, AND IT STARTS HERE BEHIND A RULE
-						 * (design review round 2, D11 and D12).
-						 *
-						 * D11: before this round the four closes were bare `ghost` text while `Watch`'s
-						 * benign row drew an outlined full-width box, so the band's hierarchy read
-						 * backwards — the loudest element on the one item that removes nothing. `danger`
-						 * is the design system's own variant for a control that destroys something
-						 * (`border-danger-border text-danger`, `hover:bg-danger-wash`), and reusing it
-						 * owes no new `CONTROLS` row: `scripts/contrast-contract.mjs`'s `danger callout`
-						 * entry already asserts `dangerBorder` + `danger` ink over `canvas`/`surface`
-						 * — this band's own ground — and `danger` is in that file's `AS_TEXT` list, so
-						 * its text floor on `surface` is asserted too.
-						 *
-						 * D12: the spec's item table IS two groups — the unnumbered rows that take
-						 * nothing away (`Watch`, hand-over/revoke) and the numbered closes, which R5's
-						 * own paragraph calls destructive with no undo — and D7's ruling is that "the
-						 * destructive family reads as one block". One block needs one edge, so the
-						 * family opens at `Close "X"` behind this rule, exactly as it closes before
-						 * `Copy URL` behind the other one.
-						 */}
-						<span
-							aria-hidden={true}
-							className="my-1 block h-px w-full bg-hairline"
-						/>
-						<Button
-							variant="danger"
-							size="sm"
-							onClick={() => runClose(actionsTab.tabId)}
-							className="w-full justify-start"
-							data-tour-tag="browser-tab-actions-close"
-						>
-							Close "{tabLabel(actionsTab.title)}"
-						</Button>
-						{/*
-						 * THE FOUR BULK ACTIONS (design R5), and the COUNTS IN THEIR LABELS ARE THE
-						 * DISCLOSURE. Each is destructive with no undo — closing a tab is not
-						 * recoverable, because the session file records the current set rather than a
-						 * history — so the number is what tells the user how much one press takes.
-						 * EVERY COUNT COMES FROM THE LIST THIS HOST IS SHOWING (the operator's U7
-						 * ruling, review round 2; round 1's A3 had fed `others` a second, wider pool
-						 * list and that is withdrawn): in the pane, scoped to 2 tabs of a pool of 8,
-						 * the item reads `Close 1 other tab`, which is exactly what the press closes.
-						 * That is `paneApprovalHeaderLabel`'s sibling rule rather than a weakening of
-						 * it — the words have to agree with the scope — and a band that closed tabs
-						 * the host is not showing would be the words agreeing with the registry
-						 * instead of with the screen. No dialog, and that is the design's ruling: the
-						 * count is the disclosure, and a single close has no undo either.
-						 */}
-						{closeOthers !== null && (
-							<Button
-								variant="danger"
-								size="sm"
-								onClick={() => runBatchClose(closeOthers)}
-								className="w-full justify-start"
-								data-tour-tag="browser-tab-close-others"
-							>
-								Close {closeOthers.tabIds.length} other
-								{closeOthers.tabIds.length === 1 ? " tab" : " tabs"}
-							</Button>
-						)}
-						{closeRight !== null && (
-							// "To the right" is the RENDERED order — the grouped one — because that is
-							// the only order in which the words are true for a grouped strip. A tab an
-							// agent creates after the press is not to the right of anything the user
-							// saw and survives, which the strip then shows honestly.
-							<Button
-								variant="danger"
-								size="sm"
-								onClick={() => runBatchClose(closeRight)}
-								className="w-full justify-start"
-								data-tour-tag="browser-tab-close-right"
-							>
-								Close {closeRight.tabIds.length} tab
-								{closeRight.tabIds.length === 1 ? "" : "s"} to the right
-							</Button>
-						)}
-						{actionsTab.sessionId !== null &&
-							conversationTabCount(actionsTab.sessionId) >= 2 && (
-								// THE COUNT IS ON THIS ONE TOO (review round 1, U3, Q3). It used to rely
-								// on the group chip stating the size, and the band's own arithmetic says
-								// otherwise: the chip is drawn only when the pool holds more than one
-								// conversation (`showGroupLabels`), and the host this feature adds — the
-								// pane opened from a sidebar mark — is the single-conversation case. So
-								// beside `Close 5 other tabs` the most destructive item on the row carried
-								// no number and nothing on screen said the group's size. Three counted
-								// items, one grammar.
-								<Button
-									variant="danger"
-									size="sm"
-									onClick={() =>
-										runBatchClose(
-											closeConversationIntent(actionsTab.sessionId as string),
-										)
-									}
-									className="w-full justify-start"
-									data-tour-tag="browser-tab-close-conversation"
-								>
-									Close all {conversationTabCount(actionsTab.sessionId)} tabs in
-									this conversation
-								</Button>
-							)}
-						{/*
-						 * THE HAIRLINE IS THE BAND'S OWN RULE, SEPARATING THE CLOSES FROM THE ONE ITEM THAT
-						 * CLOSES NOTHING (D7's ruling): `Copy URL` is last among the actions because it is
-						 * the only one here that leaves every tab on screen, so the destructive family
-						 * reads as one block and nothing destructive sits below the divider.
-						 */}
-						<span
-							aria-hidden={true}
-							className="my-1 block h-px w-full bg-hairline"
-						/>
-						{HTTP_URL.test(actionsTab.url) && (
-							/* COPY URL NEEDS NO INTENT, which is why it is the one action here that
-						   does not go through `useBrowserChrome`: the URL is already in the
-						   projection, the clipboard is the renderer's, and inventing a channel to
-						   main for it would be a round trip to copy a string the user is looking
-						   at. The guard is the scheme — `about:blank`, `file:` and `data:` are not
-						   things to paste into a chat. */
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={() => {
-									closeActions();
-									void navigator.clipboard?.writeText(actionsTab.url);
-								}}
-								className="w-full justify-start"
-								data-tour-tag="browser-tab-copy-url"
-							>
-								Copy URL
-							</Button>
-						)}
-					</div>
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						aria-label="Hide tab actions"
-						onClick={closeActions}
-						className="absolute top-1 right-2"
-						data-tour-tag="browser-tab-actions-dismiss"
-					>
-						{/* A chevron, not an `×`: the row already ends near the tab-close
-						    button's own glyph, and two `×`s 200px apart with different
-						    meanings is a shape the eye reads as one control (D4). */}
-						<ChevronUp aria-hidden className="size-3.5" />
-					</Button>
-				</div>
-			)}
 		</div>
 	);
 };

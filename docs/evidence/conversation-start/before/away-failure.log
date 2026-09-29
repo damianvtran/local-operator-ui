@@ -1,0 +1,132 @@
+runtime: v0.63.7
+capabilities: session_draft_warm 1
+command: node scripts/renderer-driver.mjs --scene conversation-start-away-failure --backend http://127.0.0.1:7394 --tap-control http://127.0.0.1:7394 --out /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-before/pngs --seed-onboarding-complete
+[build] current: assets 2026-09-27T11:34:12.624Z >= sources 2026-09-27T11:30:23.926Z
+[note] abandoned scratch trees
+        1 seen, 0 owned by a live pid (kept), 1 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:7394
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/conversation-start-before
+  scratch       /tmp/lo-renderer-driver-47368
+  frames        /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-before/pngs
+  app cwd       /tmp/lo-renderer-driver-47368/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:7394   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/conversation-start-before/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:7394","backend":"http://127.0.0.1:7394"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:7394)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[note] facts (from main)
+        {
+  "windowMode": "headless",
+  "appVersion": "0.31.3",
+  "platform": "darwin",
+  "title": "Local Operator",
+  "windowSize": {
+    "width": 1380,
+    "height": 900
+  },
+  "contentBounds": {
+    "width": 1380,
+    "height": 900
+  },
+  "visible": false,
+  "focused": false,
+  "minimized": false,
+  "frames": [],
+  "outDir": "/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-before/pngs"
+}
+[PASS] window mode is headless and the window is never shown or focused
+[PASS] the refusal needs the tap's control door
+[note] second conversation
+        {"status":200,"body":{"status":200,"message":"Desktop session result.","result":{"binding":{"agent":null,"team":null},"session_id":"7091580b0479","replayed":false,"identity":null,"warming":false,"admitted":true,"detail":"","model":{"applied":false,"detail":""}}},"id":"7091580b0479"}
+[note] tap control
+        200 {"armed":1}
+[note] frame
+        {"label":"conversation-start-1380x900-away-failure-refusal","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-before/pngs/conversation-start-1380x900-away-failure-refusal.png","bytes":198724,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":2}
+[note] at refusal
+        {"read":{"rows":1,"rowIds":["db15f6b7-4d63-4b12-aba8-80a15d4c6744"],"composer":"Summarise yesterday's QA run.","controls":["Send again","Edit"],"undelivered":"Not deliveredSend againEdit"},"line":null,"state":{"route":"/chat","activeSessionId":null}}
+[PASS] U5: the refusal is up on the row, with both controls
+[note] sidebar at refusal
+        {"region":true,"draftRows":[],"draftLabels":[],"sessionRowIds":["ce6b91c8e028","fbaa5473fc9a","6bb1dfc88d73","dddcbb265fc0","76ad91b57722","26b0b677dd26","a0d9bf695f10","d2796a3c1bdb"]}
+[note] failed conversation
+        "ce6b91c8e028"
+[note] away rows
+        {"failedRowUp":true,"awayRow":"fbaa5473fc9a"}
+[note] return via
+        the sidebar's row
+[note] frame
+        {"label":"conversation-start-1380x900-away-failure-return","path":"/Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-before/pngs/conversation-start-1380x900-away-failure-return.png","bytes":225383,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":8,"stable":false,"toastFree":false,"toastWaitMs":4845}
+[note] on return
+        {"read":{"rows":2,"rowIds":["e0da776a-9baa-4e96-bcf4-134d5b0080e4","a6265c7fca8b46869e95c711339fcde7"],"composer":"","controls":[],"undelivered":null},"line":null,"state":{"route":"/chat/ce6b91c8e028","activeSessionId":"ce6b91c8e028"},"back":true}
+[FAIL] U5: the refusal's row, sentence and both controls survive a switch-away and back
+        undelivered=null controls=[]
+[PASS] U5: and no wait claim is drawn for a send that is not alive
+  [renderer] [attention] fbaa5473fc9a receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
+    at t5e (file:///Users/damian/local-operator-ui-worktrees/conversation-start-before/out/renderer/assets/index-Bl6o-x9L.js:762:97590)
+    at async kt (file:///Users/damian/local-operator-ui-worktrees/conversation-start-before/out/renderer/assets/index-Bl6o-x9L.js:762:98724)
+  [renderer] [attention] ce6b91c8e028 receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
+    at t5e (file:///Users/damian/local-operator-ui-worktrees/conversation-start-before/out/renderer/assets/index-Bl6o-x9L.js:762:97590)
+    at async kt (file:///Users/damian/local-operator-ui-worktrees/conversation-start-before/out/renderer/assets/index-Bl6o-x9L.js:762:98724)
+
+---- app log (tail) ----
+Error occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.
+    at /Users/damian/local-operator-ui-worktrees/conversation-start-before/out/main/index.jsc:1:1089923
+    at /Users/damian/local-operator-ui-worktrees/conversation-start-before/out/main/index.jsc:1:1090967
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+07:36:38.544 › Backend health check response status: 200
+Error occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.
+    at /Users/damian/local-operator-ui-worktrees/conversation-start-before/out/main/index.jsc:1:1089923
+    at /Users/damian/local-operator-ui-worktrees/conversation-start-before/out/main/index.jsc:1:1090967
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+(electron) 'console-message' arguments are deprecated and will be removed. Please use Event<WebContentsConsoleMessageEventParams> object instead.
+07:36:39.015 › [renderer] [attention] fbaa5473fc9a receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
+Error occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.
+    at /Users/damian/local-operator-ui-worktrees/conversation-start-before/out/main/index.jsc:1:1089923
+    at /Users/damian/local-operator-ui-worktrees/conversation-start-before/out/main/index.jsc:1:1090967
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.
+    at /Users/damian/local-operator-ui-worktrees/conversation-start-before/out/main/index.jsc:1:1089923
+    at /Users/damian/local-operator-ui-worktrees/conversation-start-before/out/main/index.jsc:1:1090967
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.
+    at /Users/damian/local-operator-ui-worktrees/conversation-start-before/out/main/index.jsc:1:1089923
+    at /Users/damian/local-operator-ui-worktrees/conversation-start-before/out/main/index.jsc:1:1090967
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+07:36:41.040 › [renderer] [attention] ce6b91c8e028 receipt unresolved after 3 attempts; backing off UserFacingError: View these completions in the foreground before marking them read.
+Error occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.
+    at /Users/damian/local-operator-ui-worktrees/conversation-start-before/out/main/index.jsc:1:1089923
+    at /Users/damian/local-operator-ui-worktrees/conversation-start-before/out/main/index.jsc:1:1090967
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+Error occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.
+    at /Users/damian/local-operator-ui-worktrees/conversation-start-before/out/main/index.jsc:1:1089923
+    at /Users/damian/local-operator-ui-worktrees/conversation-start-before/out/main/index.jsc:1:1090967
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+
+[PASS] no process from this run outlived its boot
+
+frames: conversation-start-1380x900-away-failure-refusal.png, conversation-start-1380x900-away-failure-return.png, conversation-start-1380x900-away-mid-failure.png, conversation-start-1380x900-away-press.png, conversation-start-1380x900-away.png, conversation-start-1380x900-dead-create-reload.png, conversation-start-1380x900-dead-create.png, conversation-start-1380x900-failure-before-retry.png, conversation-start-1380x900-failure.png, conversation-start-1380x900-flip-plus-1s.png, conversation-start-1380x900-flip.png, conversation-start-1380x900-press.png, conversation-start-1380x900-reload.png, conversation-start-1380x900-return.png, first-send-1380x900-empty.png, first-send-1380x900-sent.png, first-send-1380x900-settled.png, first-send-800x600-empty.png, first-send-800x600-sent.png, first-send-800x600-settled.png
+frames directory: /Users/damian/.local-operator/sessions/a447a0c821b2/scratchpad/r2-shoot3-before/pngs
+app log: /tmp/lo-renderer-driver-47368/app-scene.log
+scratch kept: /tmp/lo-renderer-driver-47368 (the frames are also in --out)
+
+1 CHECK(S) FAILED

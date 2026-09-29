@@ -80,14 +80,18 @@ const SESSIONS = [
 	{ session_id: "session-onboarding", title: null },
 ];
 
-/** A ground under the strip, so the active tab's notch — the 1px of `canvas` that
- * makes the tab continuous with the page — is a thing the frame can show. Without
- * it the frame ends at the strip's rule and the claim is untestable. */
+/** A ground under the strip, so the active tab's notch — the 1px that makes the
+ * tab continuous with the page — is a thing the frame can show. The ground is the
+ * PAGE's own `elevated`: since the drawer's-rung pass the page stands there
+ * (`browser-surface.tsx`, the URL bar), so the stand-in has to as well — a
+ * `canvas` stand-in would photograph a seam the product does not draw, which is
+ * the failure this harness exists to keep out of the frames. Without a ground at
+ * all the frame ends at the strip's rule and the claim is untestable. */
 const decorators: Meta<typeof BrowserTabStrip>["decorators"] = [
 	(Story) => (
-		<div className="flex flex-col bg-canvas">
+		<div className="flex flex-col bg-elevated">
 			<Story />
-			<div className="h-16 bg-canvas" />
+			<div className="h-16 bg-elevated" />
 		</div>
 	),
 ];
@@ -444,31 +448,33 @@ export const Restored: Story = {
 	args: strip([tab(1, "Dashboard"), tab(2, "Inbox", { restored: true })], 1),
 };
 
-/** The row's actions expanded IN THE BAND — the fix for a menu that painted
- * downward into the content rect, where the native view occludes it. The strip
- * grows by this row; the page shrinks by the same amount, which is why there is no
- * suppression and no z-index in this design. The `play` function clicks the same
- * trigger a person clicks, so the frame is the product's own state rather than a
- * prop this story could set. */
+/** The tab actions menu, open — a REGISTERED POPOUT since 2026-09-28 (the operator's
+ * "the ellipsis menu should be a popout instead of taking up space and shifting
+ * down"). It floats over the content area and the strip registers it with the overlay
+ * policy, so the live app hides the native page and shows the paused note behind it;
+ * in this story the page is not rendered at all, so the frame judges the panel's own
+ * grammar. The `play` function presses the same trigger a person presses, so the frame
+ * is the product's own state rather than a prop this story could set. */
 /**
- * THE BAND WITH ITS BULK CLOSES (design R5).
+ * THE MENU WITH ITS BULK CLOSES (design R5; the popout form is 2026-09-28).
  *
- * Four new items in the row's in-band expansion, and the frame is where their copy is
- * judged: `Close 2 other tabs`, `Close 1 tab to the right`, `Close all tabs in this
- * conversation` and `Copy URL`. The COUNTS are in the labels because each of these is
- * destructive with no undo — the session file records the current set, not a history —
- * and two of them reach beyond the list a scoped host is showing. There is no
- * confirmation dialog: the count is the disclosure, and a single close has no undo
- * either (open question 4).
+ * The frame is where the items' copy is judged: `Close 2 other tabs`, `Close 1 tab to
+ * the right`, `Close all tabs in this conversation` and `Copy URL`. The COUNTS are in
+ * the labels because each of these is destructive with no undo — the session file
+ * records the current set, not a history — and two of them reach beyond the list a
+ * scoped host is showing. There is no confirmation dialog: the count is the disclosure,
+ * and a single close has no undo either (open question 4). A tab whose last navigation
+ * was refused adds `Close N failed tabs` (2026-09-28) — not in this fixture, whose tabs
+ * are all healthy; the `Failed` story carries the marker itself.
  *
  * The conversation item carries a NUMBER TOO (review round 1, U3): the group chip the
  * design relied on is drawn only when the pool holds two or more conversations, and this
  * story's host — and the pane opened from a sidebar mark — is the single-conversation
- * case, so the most destructive item on the row was the one with no count beside it.
+ * case, so the most destructive item was the one with no count beside it.
  *
- * THE BAND IS A COLUMN SINCE REVIEW ROUND 2 (D7, ruled): one item per row at every
- * width, `Copy URL` last behind the band's own hairline, so the wrap that orphaned it at
- * this fixture's 1280px cannot come back at some other width.
+ * ONE ITEM PER ROW IS THE MENU'S OWN SHAPE (it was a ruled column while the actions were
+ * an in-band band; the popout inherits the same grammar), `Copy URL` last behind the
+ * menu's own separator.
  *
  * The second tab's conversation holds two tabs, which is the gate for the group item:
  * closing "all" of a conversation's single tab is `Close "X"` under a longer label.
@@ -512,15 +518,14 @@ export const ActionsExpanded: Story = {
 		/*
 		 * THE TRIGGER IS REVEALED AND THEN CLICKED, WITH THE POINTER-EVENTS CHECK OFF
 		 * (design round 3, D20). An inactive row's controls are `pointer-events-none`
-		 * while the row is not hovered or focused (D13), so this story's bare
-		 * `userEvent.click` was a click on nothing: the frame it produced showed a
-		 * CLOSED row - the band's ink at that spot collapsed from 3,831px of strip rule
-		 * to 849px - and the capture's exit code could not say so. The hover is the
-		 * path a user takes; `pointerEventsCheck: 0` is here because the element is
-		 * invisible to the hit test until that hover has applied, which is exactly the
-		 * state this story documents. The harness opens the row with a programmatic
-		 * `.click()`, which is why its composition frame showed the row while this
-		 * story's frame did not.
+		 * while the row is not hovered or focused (D13), so a bare `userEvent.click` is
+		 * a click on nothing: the frame it produced showed a CLOSED menu - the band's ink
+		 * at that spot collapsed from 3,831px of strip rule to 849px - and the capture's
+		 * exit code could not say so. The hover is the path a user takes;
+		 * `pointerEventsCheck: 0` is here because the element is invisible to the hit test
+		 * until that hover has applied, which is exactly the state this story documents.
+		 * The harness opens the menu with a dispatched `pointerdown` - what a real press
+		 * sends and what Radix reads - rather than a bare `.click()`, for the same reason.
 		 */
 		const rows = await canvas.findAllByRole("tab");
 		const row = rows[1]?.parentElement;

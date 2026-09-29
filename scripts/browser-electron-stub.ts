@@ -13,8 +13,9 @@
  * live app can only ever show a human, and a headless run never shows anybody —
  * has to substitute the module.
  *
- * WHAT IT IS NOT: it is not a fake of Electron. It models the two members the
- * notifier reads (`isSupported`, and a constructed notification's `show`/`on`)
+ * WHAT IT IS NOT: it is not a fake of Electron. It models the three members the
+ * notifier reads (`isSupported`, and a constructed notification's `show` and its
+ * `on`/`once` settle listeners)
  * plus the one member the browser IPC module needs to be registrable
  * (`ipcMain.handle`), records what was raised, and does nothing else.
  * `scripts/*-fixture` files of the same shape are used by the other suites that
@@ -117,14 +118,39 @@ export class Notification {
 
 	readonly options: { title: string; body: string; silent: boolean };
 
-	#clickListeners: Array<() => void> = [];
+	/** The settle listeners, by event. See `once` for why they are one-shot. */
+	#listeners = new Map<string, Array<() => void>>();
 
 	constructor(options: { title: string; body: string; silent: boolean }) {
 		this.options = options;
 	}
 
 	on(event: "click", listener: () => void): void {
-		if (event === "click") this.#clickListeners.push(listener);
+		this.#listen(event, listener);
+	}
+
+	/**
+	 * The notification lifetime's registration surface: `retain` attaches the
+	 * click, and `close`/`failed`, with `once` (see
+	 * `src/main/notification-lifetime.ts` — an unheld banner's click emits nothing
+	 * once V8 collects the wrapper, electron/electron#16922). Modelled rather than
+	 * stubbed away so a test can fire the settle events the real EventEmitter fires.
+	 */
+	once(event: "click" | "close" | "failed", listener: () => void): void {
+		this.#listen(event, listener);
+	}
+
+	/** Fire a settle event the way the real EventEmitter fires a one-shot. */
+	emit(event: "click" | "close" | "failed"): void {
+		const listeners = this.#listeners.get(event) ?? [];
+		this.#listeners.delete(event);
+		for (const listener of listeners) listener();
+	}
+
+	#listen(event: string, listener: () => void): void {
+		const listeners = this.#listeners.get(event) ?? [];
+		listeners.push(listener);
+		this.#listeners.set(event, listeners);
 	}
 
 	show(): void {
@@ -133,7 +159,7 @@ export class Notification {
 
 	/** What a real click on the banner does. */
 	click(): void {
-		for (const listener of this.#clickListeners) listener();
+		this.emit("click");
 	}
 }
 

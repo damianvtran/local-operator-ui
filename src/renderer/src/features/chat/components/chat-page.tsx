@@ -13,11 +13,18 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
-import { useCanonicalSessionStream } from "@shared/hooks/use-canonical-session";
+import {
+	hasPendingSend,
+	pendingSendForView,
+	retainsPendingSend,
+	retractLocalEcho,
+	useCanonicalSessionStream,
+} from "@shared/hooks/use-canonical-session";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
 import type { SendOutcome } from "@shared/hooks/use-message-input";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
+import { isDictationActive } from "@shared/hooks/use-speech-to-text-manager";
 import {
 	useDraftWarmSession,
 	useWarmSession,
@@ -33,12 +40,13 @@ import {
 	SESSION_UNVALIDATED_MESSAGE,
 	UNREADABLE_ATTACHMENT_CODE,
 	admitChatDraft,
-	draftIdentityFor,
 	isSessionUnvalidated,
 	migrateHeldClaim,
+	paneDraftKey,
 	panelIdentityFor,
 	panelSessionIdOfView,
 	pressLockCopy,
+	resynthesisePendingSend,
 	sendFailureCopy,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
@@ -66,16 +74,17 @@ import {
 } from "../aside";
 import {
 	type AnswerOutcome,
+	SECRET_ANSWER_DOCKED_MESSAGE,
 	type SendLock,
 	answerGateOption,
+	answerGateSecret,
 	answerReport,
 	answerValue,
 	approvalAnswerValue,
 	createSendLock,
+	gateIsSecret,
 } from "../ask-answer";
 import {
-	type AdmittedSend,
-	admittedSendFor,
 	ownerAnswered,
 	stoppedAfterAdmission,
 	turnStopped,
@@ -86,6 +95,7 @@ import {
 	caughtFailureNotice,
 	composerNoticeFor,
 	lockAnswerOutlived,
+	retryOfferedForFailureCode,
 } from "../composer-notice";
 import {
 	type DraftResolution,
@@ -268,7 +278,9 @@ function SessionPanel({
 	draftKey: string | null;
 	sessionId?: string;
 }) {
-	const draftIdentity = draftIdentityFor(draftKey, sessionId);
+	const draftIdentity = useCanonicalSessionsStore((state) =>
+		paneDraftKey(draftKey, sessionId, state.drafts),
+	);
 	const draft = useCanonicalSessionsStore((state) =>
 		draftIdentity ? state.drafts[draftIdentity] : undefined,
 	);
@@ -294,6 +306,14 @@ function SessionPanel({
 		streamId,
 		Boolean(streamId),
 		Boolean(sessionId),
+		/*
+		 * The identity the pane SHOWS, which is not `streamId`: a fresh draft's
+		 * stream carries the minted warm (or nothing at all), while the row a press
+		 * paints - and the registration the press needs - are addressed by
+		 * `panelIdentityFor(draftKey, id)`. The hook's own parameter doc carries the
+		 * rule; the value is the one this panel already computed for its key.
+		 */
+		identity,
 	);
 	useDesktopWatchLease(streamId, canonical.subscriptionId);
 	// Read here rather than threaded from the page: the query is cached with a
@@ -442,6 +462,14 @@ function SessionPanel({
 		key: string;
 		sending: boolean;
 		refused: string | null;
+		/**
+		 * Whether a DEFINITE not-sent refusal leaves the kept value sendable again
+		 * (`answerReport`'s classification, on the card arm). The secret card is
+		 * the one reader: it releases its field for a retry on `true` and holds on
+		 * `false`, because an unknowable outcome may have landed and a retry could
+		 * send it twice (see `question-dock.tsx`).
+		 */
+		retryable: boolean;
 	} | null>(null);
 	/*
 	 * The gate this panel is showing, and this panel's own record of having
@@ -504,7 +532,11 @@ function SessionPanel({
 	});
 	const answerForThisGate =
 		pendingGate && answerState?.key === gateKey
-			? { sending: answerState.sending, refused: answerState.refused }
+			? {
+					sending: answerState.sending,
+					refused: answerState.refused,
+					retryable: answerState.retryable,
+				}
 			: null;
 	const lastCatalogueState = useRef("");
 	const [sendError, setSendError] = useState<string | null>(null);
@@ -556,45 +588,62 @@ function SessionPanel({
 	 * (`use-warm-session.ts`), and until the first frame lands the transcript
 	 * used to paint the user's own bubble and then nothing at all.
 	 *
-	 * Read from the STORE's draft row rather than from this component's
-	 * `admitting`, and LATCHED rather than derived per render, for two reasons
-	 * review round 1 measured:
+	 * READ FROM THE REGISTRY, ADDRESSED BY THIS PANE'S OWN IDENTITY. That is
+	 * what makes the claim exist BEFORE the session does: the paint happens at
+	 * the press, under the identity this pane already has (the draft key), and
+	 * `pendingSendForView` returns it until a mounted pane observes the owner's
+	 * durable row - across the identity flip, a switch away and back, and the
+	 * receipt (which deletes the draft ROW but resolves no entry).
 	 *
-	 * 1. On the New-chat path the identity flip remounts this panel while the
-	 *    row is live - the panel that paints the rung is not the one the send
-	 *    started in - so local state does not carry it and the row does.
-	 * 2. `finishDraft` DELETES that row when the receipt arrives, and the receipt
-	 *    can arrive before the owner's first frame (they land 3-6 ms apart when
-	 *    the session is warm). Deriving `starting` from the row alone therefore
-	 *    dropped the rung for a frame in that gap, which restarted its clock at
-	 *    `0s` under the reader - the exact defect `working-line.tsx` documents as
-	 *    impossible. The latch spans the whole wait, from the send until the
-	 *    owner paints something.
-	 *
-	 * A ref, not state, because every transition that matters is already a store
-	 * change that re-renders this panel: the row appearing, the row failing, and
-	 * content arriving are all store updates, so there is nothing for a
-	 * `setState` to schedule. The write is idempotent, which is what makes it
-	 * safe under a repeated render.
+	 * The LATCH remains, and it is a render-timing rule rather than state: the
+	 * resolution pass runs in an effect AFTER the commit that paints the owner's
+	 * row, so for that frame the registry can still answer "pending" while the
+	 * transcript already holds the answer. The enders below clear the rung from
+	 * the records themselves, and the latch is what keeps `starting` stable - a
+	 * value read by the band, the pane's collapse and the working line - across
+	 * every render in between. A ref, not state, because every transition that
+	 * matters is already a store or transcript change that re-renders this panel;
+	 * the write is idempotent, which is what makes it safe under a repeated
+	 * render.
 	 */
-	const admittedNow = admittedSendFor(sessionId, draft);
-	const admitted = useRef<AdmittedSend | null>(null);
+	const pendingNow = pendingSendForView(identity);
+	const admitted = useRef<{
+		requestId: string;
+		/*
+		 * THE PRESS ANCHOR TRAVELS WITH THE CLAIM (agent review round 1, MINOR).
+		 * When the message POST's answer lands before the owner's `message_start`,
+		 * `finishDraft` deletes the draft row and `draft?.submittedAt` goes with it
+		 * while the latch correctly stays held - so `startingSince` moved `T ->
+		 * undefined`, the line's withdrawal rule blanked the seconds, and the clock
+		 * reappeared only when the owner painted something. Pre-change the rung kept
+		 * a local zero through that gap; it must now keep the PRESS's number, which
+		 * is the one the design's J5 is about. Snapshotted once per claim, so the
+		 * row's deletion cannot take it.
+		 */
+		submittedAt?: number;
+	} | null>(null);
 	const outcomeAtAdmission = useRef<{
 		requestId: string;
 		anchor: string | null;
 	} | null>(null);
-	if (admittedNow) {
+	if (pendingNow) {
 		// Keep the baseline after retirement too: the receipt may lag the
 		// completion frame, leaving this same draft pending for another render.
 		// Re-snapshotting then would turn the just-finished outcome into "old"
 		// history and resurrect the wait we just cleared.
-		if (outcomeAtAdmission.current?.requestId !== admittedNow.requestId) {
+		if (outcomeAtAdmission.current?.requestId !== pendingNow.id) {
 			outcomeAtAdmission.current = {
-				requestId: admittedNow.requestId,
+				requestId: pendingNow.id,
 				anchor: canonical.frontend?.attention?.anchor_id ?? null,
 			};
 		}
-		admitted.current = admittedNow;
+		if (admitted.current?.requestId !== pendingNow.id) {
+			admitted.current = {
+				requestId: pendingNow.id,
+				// The entry first: it is the copy that survives this mount (R2-5).
+				submittedAt: pendingNow.submittedAt ?? draft?.submittedAt,
+			};
+		}
 	}
 	/*
 	 * What ends the wait, and what deliberately does not.
@@ -629,13 +678,56 @@ function SessionPanel({
 		);
 	/*
 	 * The enders, from this panel's own state: the turn answered, the turn stopped,
-	 * or the row carrying a failure. The failure term is what ends the wait for a
-	 * send the store has already handed back to the composer - the transcript has
-	 * nothing to say about it yet, and the rung must not outlive the flight.
+	 * the row carrying a failure, or the claim RESOLVED AS UNDELIVERED. The failure
+	 * term is what ends the wait for a send the store has already handed back to the
+	 * composer - the transcript has nothing to say about it yet, and the rung must
+	 * not outlive the flight.
+	 *
+	 * THE RESOLUTION IS THE THIRD SHAPE OF THE SAME FACT (design review round 1,
+	 * D1). When the server's complete read does not name the message,
+	 * `resolveHeldFromServer` clears `error`/`errorCode`/`errorRetry` and records
+	 * `undelivered` - so the term above stops firing while the row it describes is
+	 * still on screen, and the rung re-armed beside `Not delivered · Send again ·
+	 * Edit`: one message both "not delivered" and "being waited on", measured on
+	 * `after/reload` and `after/return` in the round-1 set. `undelivered` is the
+	 * resolution's own record, so it ends the rung exactly as the live failure does.
+	 *
+	 * THE ENDER IS THE FIX, NOT A RETIREMENT OF THE ENTRY: the registry entry is
+	 * the ROW's home (its retention is what re-seeds the row on a switch-away and
+	 * a remount), so resolving the claim removes the WAIT and nothing else - the
+	 * row stays on screen, and after a reload it is re-painted from `undelivered`
+	 * (`resynthesisePendingSend`).
 	 */
-	if (admitted.current && (answered || stopped || Boolean(draft?.error)))
+	if (
+		admitted.current &&
+		(answered ||
+			stopped ||
+			Boolean(draft?.error) ||
+			/*
+			 * SCOPED TO THIS CLAIM'S OWN ID, and the scoping is load-bearing rather than
+			 * tidy: `undelivered` is a single slot on the row, and a NEW send on a
+			 * conversation whose earlier message resolved leaves that record in place
+			 * while it replaces the row's claim fields. Matched by id, the term ends the
+			 * rung for the message the record names and for no other; matched by
+			 * presence alone it withheld the rung from the NEXT message's whole flight -
+			 * measured on the away step, where the second message's row sat on screen
+			 * with no line over it (found while re-shooting the round-1 pair).
+			 */
+			(draft?.undelivered !== undefined &&
+				draft.undelivered.recordId === admitted.current.requestId))
+	)
 		admitted.current = null;
 	const starting = admitted.current !== null;
+	/*
+	 * WHICH HALF OF THE WAIT THIS IS, for the line's label (`starting the
+	 * session` vs `waiting for the agent`): the create hop is the half where no
+	 * session exists yet, and the draft row's `sessionId` is the fact that ends
+	 * it - the SAME field the paint addressed the row by and the re-key moved it
+	 * with, so the label cannot disagree with the identity the registry holds.
+	 * The elapsed anchor travels beside it (`submittedAt`), because the number
+	 * must cross this label change without restarting (see `startingSince`).
+	 */
+	const startingSession = starting && !(draft?.sessionId ?? sessionId);
 	/*
 	 * The run-details view model (`docs/run-details.md` § 8), derived once per
 	 * wire frame from the two lists the canonical stream already carries and
@@ -758,6 +850,20 @@ function SessionPanel({
 	 */
 	const mentionsEnabled =
 		desktopFeatureEnabled(capabilities.data, "references") && !busy;
+	/*
+	 * AND WHETHER THE HARNESS WILL CARRY THE INPUT-MODE STAMP (arch §4.2).
+	 *
+	 * The same negotiation shape as `mentionsEnabled`, for the same reason: the
+	 * field is metadata this app never renders, but an older harness validates
+	 * the message body with `extra="forbid"` and would refuse a body that
+	 * carried it - so the field rides only on a backend that advertises
+	 * `features.input_mode`, and a backend that does not gets the legacy body
+	 * (field absent). Read at the press, like the send it gates.
+	 */
+	const inputModeEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"input_mode",
+	);
 	/*
 	 * AND WHETHER THE HARNESS ITSELF IS THE REASON, which is a different fact from
 	 * `mentionsEnabled`'s false (UX round 2, U12). That flag is false for a turn in
@@ -1387,11 +1493,23 @@ function SessionPanel({
 		 * other door through this function.
 		 */
 		beforeAdmission?: (sessionId: string) => Promise<string | undefined>,
+		/*
+		 * How the composer's own box produced this message (§4.2), passed through
+		 * from the composer's flags. `undefined` means either a door that does not
+		 * track it (the suggestion grid) or a harness that has not advertised
+		 * `features.input_mode`; both send the legacy body, and a replay pins
+		 * whichever value the first attempt carried.
+		 */
+		inputMode?: "typed" | "dictated" | "mixed",
 	): Promise<SendOutcome> => {
 		const store = useCanonicalSessionsStore.getState();
-		// Same identity the view reads, so a send can never address a different
-		// draft than the one whose retained text and Discard control are shown.
-		const key = draftIdentityFor(draftKey, sessionId);
+		// Same ROW the view reads, so a send can never address a different draft
+		// than the one whose retained text and Discard control are shown. The
+		// resolver rather than `draftIdentityFor` alone: a pane reached by the
+		// session's own route derives a key the staged draft never wore, and the
+		// replay rule has to find the row the failure was written to (UX round 2,
+		// U5 - see `paneDraftKey`).
+		const key = paneDraftKey(draftKey, sessionId, store.drafts);
 		if (!key) return false;
 		const previous = store.drafts[key];
 		/*
@@ -1434,8 +1552,12 @@ function SessionPanel({
 		 * nothing said so (UX round 2, U8).
 		 *
 		 * `false` is the right answer for it because nothing reached the owner, so
-		 * the text belongs back in the box; `isRefusedBeforeAdmission` decides that,
-		 * and knows this refusal's code. The composer is deliberately NOT disabled:
+		 * the message does not exist on the far side; the class the failure lands in
+		 * (`sendFailureClass`, which reads `isRefusedBeforeAdmission` inside the
+		 * store) is what decides the sentence, and since S4 no failure arm RETURNS a
+		 * payload to this box: a failure raised before the press painted a row stays
+		 * composer-side with the text where the user left it, and one raised after
+		 * it is stated by the row. The composer is deliberately NOT disabled:
 		 * the panel has already told the user they are in the target, and the two
 		 * can only disagree for a round trip.
 		 */
@@ -1493,6 +1615,29 @@ function SessionPanel({
 			if (!draftKey && !sessionId) return false;
 			const gate = canonical.frontend?.pending_gate;
 			if (gate && canonical.ownerEpoch && sessionId) {
+				/*
+				 * A SECRET GATE TAKES NO COMPOSER ANSWER, and this is the door that
+				 * says so for every route that can still reach a send while one waits:
+				 * the composer itself is refused input (`message-input.tsx`'s
+				 * `secretAnswer` term closes typing, paste, dictation, the slash popup
+				 * and the form's own submit), so what arrives here is a suggestion
+				 * chip, the stopped-turn Retry, or a programmatic caller — and none of
+				 * them may post a typed string as a credential's answer. It has to fire
+				 * BEFORE the arms below, which would otherwise answer the gate with
+				 * whatever text the door carried.
+				 *
+				 * The sentence and the code are the ones every refused answer uses, so
+				 * the composer's alert offers no press that cannot work
+				 * (`SECRET_ANSWER_DOCKED_MESSAGE` carries the reasoning). The read itself
+				 * is `gateIsSecret` — the ONE predicate the dock's field arm, the
+				 * composer's closure and the answer door share (agent review round 1,
+				 * NIT-1), so no surface can mask while another stays open.
+				 */
+				if (gateIsSecret(gate))
+					throw new UserFacingError(
+						SECRET_ANSWER_DOCKED_MESSAGE,
+						ANSWER_NOT_SENT_CODE,
+					);
 				if (gate.kind === "approval") {
 					/*
 					 * THE WORDS AND THE ORDINALS, resolved against the TYPED text for the
@@ -1854,6 +1999,14 @@ function SessionPanel({
 					images,
 					mode: busy ? "steer" : "prompt",
 					cwd,
+					/*
+					 * The capability gate, applied HERE rather than at the composer: this
+					 * function already reads the capability map for the `@` affordance,
+					 * and one gate at the one seam every door passes is what keeps the
+					 * suggestion grid's own sends (which pass no `inputMode`) on the
+					 * legacy body by construction.
+					 */
+					inputMode: inputModeEnabled ? inputMode : undefined,
 				},
 				sessionId,
 				onEchoPainted,
@@ -1894,30 +2047,190 @@ function SessionPanel({
 			void store.fetchSessions();
 			return true;
 		} catch (error) {
-			// Only authored sentences reach the composer. `error.message` on a
-			// runtime exception is a stack-trace fragment - with the backend
-			// stopped this line rendered "TypeError: fetch failed" inside the
-			// alert's own prose. See `userFacingMessage`.
-			reportCaughtFailure(key, error);
 			/*
-			 * ONE ANSWER, because the STORE has already done the work: every failure
-			 * class hands the payload back to this conversation's composer through one
-			 * path (`returnPayloadToComposer` - text, chips and staged quotes, whether
-			 * the outcome was a provable refusal or an unknown one), and the class
-			 * that turns out to have been DELIVERED after all does not reach here at
-			 * all - it resolves as a success, so the box stays empty and the message
-			 * stays in the transcript.
+			 * THE BOUNDARY RULE, ON THE SURFACE THAT HAS TO OBEY IT: "a failure raised
+			 * after the optimistic row was painted belongs to the row; before it, the
+			 * composer."
 			 *
-			 * So `false` is "do not retire the draft": the hook must not clear the
-			 * text the store has just put back, and must not record this as a sent
-			 * message. There is no second case to distinguish here any more - the
-			 * distinction that used to matter (unknown vs refused) is what the store
-			 * acts on, and it acted before this line ran.
+			 * Everything the STORE rethrows came after the paint - the paint is the
+			 * first thing `admitChatDraft` does - so the composer shows NO sentence for
+			 * it: the row's own line carries the class's sentence and remedies
+			 * (`undeliveredTurn` below reads the row the store wrote). That
+			 * deliberately replaces #495's "keep a failed message in the composer" for
+			 * post-paint failures - that arm left the message in two homes, and the
+			 * box's copy was the one that could be sent twice.
+			 *
+			 * The failures THIS pane raises itself before admission - the gate answer,
+			 * an unreadable attachment, the budget, the send lock - never painted
+			 * anything, keep their composer copy unchanged, and are exactly what the
+			 * `!painted` branch is for.
+			 *
+			 * The predicate is the registry, not a guess: an entry exists for the
+			 * identity exactly when the press's paint ran, and the failure arm keeps
+			 * it for every class until the row is resolved. The row's own `sessionId`
+			 * is the identity's second half - the create's answer re-keys the entry to
+			 * it, so a message failure after the flip is found there.
+			 *
+			 * AND IT ASKS MEMBERSHIP, NOT LIVENESS (round 2). A recorded failure now
+			 * SETTLES the entry in the very catch this arm runs after (`admitChatDraft`,
+			 * UX round 2's U5), so the liveness predicate would answer null for every
+			 * post-paint failure and this pane would take its `else` branch - the
+			 * composer alert over a row that already states the failure, which is the
+			 * contradiction J4 forbids (measured on the re-shoot's first run).
+			 * `hasPendingSend` asks the question this arm actually has: a row was
+			 * painted for this send, wherever the claim has got to since.
+			 */
+			const row = useCanonicalSessionsStore.getState().drafts[key];
+			const painted = hasPendingSend(
+				panelIdentityFor(draftKey, row?.sessionId ?? sessionId),
+				row?.admissionRequestId ?? "",
+			);
+			if (painted) {
+				/*
+				 * ONE FAILURE, ONE SENTENCE (J4): clear any composer copy an earlier
+				 * attempt left, so only the row speaks. `reportCaughtFailure` is
+				 * deliberately not called - its notice would be the second statement
+				 * of this one.
+				 */
+				setSendError(null);
+				setSendErrorCode(undefined);
+				setSendErrorRetry(false);
+				setSendErrorMuted(false);
+			} else {
+				// Only authored sentences reach the composer. `error.message` on a
+				// runtime exception is a stack-trace fragment - with the backend
+				// stopped this line rendered "TypeError: fetch failed" inside the
+				// alert's own prose. See `userFacingMessage`.
+				reportCaughtFailure(key, error);
+			}
+			/*
+			 * `false` is "do not retire the draft": the hook must not clear the box
+			 * (the row is the message's home now) and must not record this as a sent
+			 * message. There is no second case to distinguish - the store acted on it
+			 * before this line ran.
 			 */
 			return false;
 		} finally {
 			sendLock.release();
 			setAdmitting(false);
+		}
+	};
+	/**
+	 * One answer's report, applied to this panel's state — the shared tail of
+	 * EVERY answer path (`answerWithOption`'s press and `answerWithSecret`'s
+	 * submit), because the two are one machinery and a hand-copied second switch
+	 * is how two verdicts for one outcome start.
+	 *
+	 * WHAT it reports and WHERE, from the answer's own outcome plus the live
+	 * facts — see `answerReport`. Nothing here reads the gate's movement to
+	 * decide whether the answer WON: an answer's own success is what removes its
+	 * card, so that reading reported a win as a loss whenever the owner's state
+	 * push painted before the answer's response landed, and the two channels have
+	 * no ordering between them (`ask-answer.ts` carries the margin).
+	 *
+	 * The SENTENCE is the outcome's and the DESTINATION is the frame's, in that
+	 * order (agent review round 2, UX U7 / QA Q1). Deciding the destination first
+	 * meant this arm took the definite not-sent sentence for every failure, so an
+	 * outcome the module calls unknowable — the deadline shape, which leaves the
+	 * card up *precisely because* the request is still in flight — was told
+	 * "your answer was not sent" and then denied it in the next clause.
+	 *
+	 * Every fact it reads is read LIVE, from the refs the layout effect keeps
+	 * current, rather than from the closure the press started in — the closure is
+	 * the one the press STARTED in, so a value read from it is the press
+	 * compared with itself. That was the inert conjunct this branch deleted, and
+	 * the replacements for it cannot be another closure. The identity half matters
+	 * as much as the DOM half: a multi-question ask paints its next question's
+	 * card in the same place under the same `aria-label` with a different key, so
+	 * a query for "a card" answered true for a card that cannot carry this press's
+	 * sentence — the sentence was written to a state no surface reads and the user
+	 * was told nothing while a fresh question appeared where they had pressed.
+	 *
+	 * `cardOnScreen` asks about EITHER answer surface — the options band
+	 * (`[aria-label="Answer options"]`) and the secret field's form
+	 * (`[data-ask-secret]`) — because the question the probe exists for is "is
+	 * this answer's own surface still on screen and able to carry its
+	 * sentence", and a secret answer's surface is the field it was typed in.
+	 *
+	 * `onSent` is the caller's clause for the one state the two paths do not
+	 * share: the approval press retires `1`-`yes.` from the composer (UX round 1,
+	 * U4 — see the call site), while a secret submit has no composer draft to
+	 * consume. Everything else is identical BY CONSTRUCTION, which is the point
+	 * of the tail being here rather than twice beside its callers.
+	 */
+	const settleGateAnswer = (
+		outcome: AnswerOutcome,
+		pressedKey: string,
+		onSent?: () => void,
+	) => {
+		const report = answerReport(outcome, {
+			liveGateKey: liveGateKey.current,
+			pressedGateKey: pressedKey,
+			sentEpoch: canonical.ownerEpoch,
+			liveEpoch: liveOwnerEpoch.current,
+			cardOnScreen:
+				document.querySelector(
+					'[aria-label="Answer options"], [data-ask-secret]',
+				) !== null,
+		});
+		switch (report.to) {
+			case "refused":
+				// Nothing was sent and nothing is wrong: the lock was already held by a
+				// typed send, or this request lost a race inside this window. The lock
+				// holder reports, so this path stays quiet rather than stacking a second
+				// message about the same question.
+				setAnswerState(null);
+				return;
+			case "sent":
+				/*
+				 * The owner took this answer, and that is the whole of the report: the
+				 * model is already acting on it, so a sentence here would be the bug this
+				 * branch exists to remove. The card's hold is settled — it keeps its
+				 * options disabled until the gate itself moves, which is what stops a
+				 * second press from repeating an answer that already landed.
+				 */
+				setAnswerState({
+					key: pressedKey,
+					sending: false,
+					refused: null,
+					// A sent answer has nothing to retry: the secret field clears.
+					retryable: false,
+				});
+				onSent?.();
+				return;
+			case "card":
+				// The sentence belongs on the surface the press was made on, where it
+				// cannot be missed and cannot be repeated. It is the SAME string the
+				// composer would have carried — the register is the outcome's — and
+				// the hold lasts exactly as long as the outcome entitles it to
+				// (UX round 2, U9: the composer arm used to release the hold while
+				// leaving three live options under an unknowable outcome). A DEFINITE
+				// not-sent refusal carries `retryable`, and the secret card spends it
+				// by reopening its field: its composer is closed, so the hold would
+				// strand the kept value with no surface able to send it (round 1's
+				// D1/U1/Q-1 reunite here). An unknowable outcome keeps the hold — a
+				// retry could send it twice.
+				setAnswerState({
+					key: pressedKey,
+					sending: false,
+					refused: report.refused,
+					retryable: report.retryable,
+				});
+				return;
+			case "composer":
+				// The card is gone — or is not this press's any more — so the composer
+				// carries it, in the register the outcome is entitled to: the settled
+				// sentence where the live facts establish that another front end took
+				// the question, the moved-on sentence where the ask advanced past it,
+				// the not-knowable one where no response ever came back, and the
+				// backend's own reason where it answered and refused. The code is
+				// always the report's own, so the alert's hint and remedies are
+				// functions of THIS failure rather than of the draft's last one
+				// (design round 1, D2).
+				setAnswerState(null);
+				setSendError(report.message);
+				setSendErrorCode(report.code);
+				return;
 		}
 	};
 	/**
@@ -1993,7 +2306,7 @@ function SessionPanel({
 			input.current?.focusInput();
 		}
 		setAdmitting(true);
-		setAnswerState({ key, sending: true, refused: null });
+		setAnswerState({ key, sending: true, refused: null, retryable: false });
 		setSendError(null);
 		setSendErrorCode(undefined);
 		let outcome: AnswerOutcome;
@@ -2011,95 +2324,77 @@ function SessionPanel({
 		} finally {
 			setAdmitting(false);
 		}
-		/*
-		 * WHAT the press reports and WHERE, from its own outcome plus the live facts
-		 * — see `answerReport`. Nothing here reads the gate's movement to decide
-		 * whether the press WON: a press's own success is what removes its card, so
-		 * that reading reported a win as a loss whenever the owner's state push
-		 * painted before the answer's response landed, and the two channels have no
-		 * ordering between them (`ask-answer.ts` carries the margin).
-		 *
-		 * The SENTENCE is the outcome's and the DESTINATION is the frame's, in that
-		 * order (agent review round 2, UX U7 / QA Q1). Deciding the destination first
-		 * meant this arm took the definite not-sent sentence for every failure, so an
-		 * outcome the module calls unknowable — the deadline shape, which leaves the
-		 * card up *precisely because* the request is still in flight — was told
-		 * "your answer was not sent" and then denied it in the next clause.
-		 *
-		 * Every fact below is read LIVE, from the refs the layout effect keeps
-		 * current, rather than from the closure this handler resumed in — the closure
-		 * is the one the press STARTED in, so a value read from it is the press
-		 * compared with itself. That was the inert conjunct this branch deleted, and
-		 * the replacements for it cannot be another closure. The identity half matters
-		 * as much as the DOM half: a multi-question ask paints its next question's
-		 * card in the same place under the same `aria-label` with a different key, so
-		 * a query for "a card" answered true for a card that cannot carry this press's
-		 * sentence — the sentence was written to a state no surface reads and the user
-		 * was told nothing while a fresh question appeared where they had pressed.
-		 */
-		const report = answerReport(outcome, {
-			liveGateKey: liveGateKey.current,
-			pressedGateKey: key,
-			sentEpoch: canonical.ownerEpoch,
-			liveEpoch: liveOwnerEpoch.current,
-			cardOnScreen:
-				document.querySelector('[aria-label="Answer options"]') !== null,
+		settleGateAnswer(outcome, key, () => {
+			/*
+			 * AND THE BOX GOES WITH THE ANSWER (UX round 1, U4). A keyboard user
+			 * answers `1` by typing it and then pressing an option; the press consumed
+			 * the answer, but the keystrokes stayed in the composer — where focus
+			 * already is — so the next Enter sent `1` as an ordinary message (measured:
+			 * a real turn started with it). The press consumes the draft exactly as
+			 * the typed path does, through a method that clears ONLY text which IS an
+			 * approval answer (`1`, `yes.`), so a message somebody was writing is
+			 * never wiped. Ask presses keep their inherited behaviour; this round did
+			 * not change them.
+			 */
+			if (gate.kind === "approval") input.current?.consumeApprovalAnswerDraft();
 		});
-		switch (report.to) {
-			case "refused":
-				// Nothing was sent and nothing is wrong: the lock was already held by a
-				// typed send, or this request lost a race inside this window. The lock
-				// holder reports, so this path stays quiet rather than stacking a second
-				// message about the same question.
-				setAnswerState(null);
-				return;
-			case "sent":
-				/*
-				 * The owner took this answer, and that is the whole of the report: the
-				 * model is already acting on it, so a sentence here would be the bug this
-				 * branch exists to remove. The card's hold is settled — it keeps its
-				 * options disabled until the gate itself moves, which is what stops a
-				 * second press from repeating an answer that already landed.
-				 */
-				setAnswerState({ key, sending: false, refused: null });
-				/*
-				 * AND THE BOX GOES WITH THE ANSWER (UX round 1, U4). A keyboard user
-				 * answers `1` by typing it and then pressing an option; the press consumed
-				 * the answer, but the keystrokes stayed in the composer — where focus
-				 * already is — so the next Enter sent `1` as an ordinary message (measured:
-				 * a real turn started with it). The press consumes the draft exactly as
-				 * the typed path does, through a method that clears ONLY text which IS an
-				 * approval answer (`1`, `yes.`), so a message somebody was writing is
-				 * never wiped. Ask presses keep their inherited behaviour; this round did
-				 * not change them.
-				 */
-				if (gate.kind === "approval")
-					input.current?.consumeApprovalAnswerDraft();
-				return;
-			case "card":
-				// The sentence belongs on the surface the press was made on, where it
-				// cannot be missed and cannot be repeated. It is the SAME string the
-				// composer would have carried — the register is the outcome's — and
-				// the hold stays, so the card cannot repeat an answer whose fate is
-				// unknown (UX round 2, U9: the composer arm used to release the hold
-				// while leaving three live options under an unknowable outcome).
-				setAnswerState({ key, sending: false, refused: report.refused });
-				return;
-			case "composer":
-				// The card is gone — or is not this press's any more — so the composer
-				// carries it, in the register the outcome is entitled to: the settled
-				// sentence where the live facts establish that another front end took
-				// the question, the moved-on sentence where the ask advanced past it,
-				// the not-knowable one where no response ever came back, and the
-				// backend's own reason where it answered and refused. The code is
-				// always the report's own, so the alert's hint and remedies are
-				// functions of THIS failure rather than of the draft's last one
-				// (design round 1, D2).
-				setAnswerState(null);
-				setSendError(report.message);
-				setSendErrorCode(report.code);
-				return;
+	};
+
+	/**
+	 * Answer the pending `secret` gate with the dock's typed value.
+	 *
+	 * THE SECRET FIELD'S SIBLING OF `answerWithOption`, and deliberately the same
+	 * machinery: the same `sendLock` (so a submit and a typed send cannot both
+	 * post for one question), the same `admitting` flag (which holds the field
+	 * and the composer together while one answer is in flight), the same
+	 * `settleGateAnswer` tail and the same two destinations a failure can land
+	 * on. What differs is what reaches the gate: `answerGateSecret` takes the
+	 * typed value and owns its own refusals (a non-secret gate, an empty value),
+	 * which is why this handler does not re-ask what that path already answers.
+	 *
+	 * THE FOCUS HAND-OFF IS THE OPTION PATH'S, for the option path's reason: the
+	 * field becomes `disabled` the moment the submit lands, so a keyboard user's
+	 * focus drops to the document body without it (measured on the option path as
+	 * `after-press: BODY`, UX round 3, U12). The restore effect below then puts
+	 * it on the next question's field — or back in the composer — when the gate
+	 * moves, by the same key-change trigger the option path arms.
+	 *
+	 * NO ECHO, like the option path and unlike a normal send: the transcript
+	 * gains nothing from an answer, and for a secret that is the property that
+	 * matters most (see `answerGateSecret`).
+	 */
+	const answerWithSecret = async (value: string) => {
+		const gate = canonical.frontend?.pending_gate;
+		if (!gate || !canonical.ownerEpoch || !sessionId) return;
+		if (sendLock.held) return;
+		const key = gateKeyOf(gate);
+		const fromKeyboard =
+			document.activeElement instanceof HTMLElement &&
+			document.activeElement.closest("[data-ask-secret]") !== null;
+		if (fromKeyboard) {
+			restoreFocus.current = true;
+			input.current?.focusInput();
 		}
+		setAdmitting(true);
+		setAnswerState({ key, sending: true, refused: null, retryable: false });
+		setSendError(null);
+		setSendErrorCode(undefined);
+		let outcome: AnswerOutcome;
+		try {
+			outcome = await answerGateSecret(
+				{
+					gate,
+					sessionId,
+					epoch: canonical.ownerEpoch,
+					value,
+					lock: sendLock,
+				},
+				(request) => desktopResult(request),
+			);
+		} finally {
+			setAdmitting(false);
+		}
+		settleGateAnswer(outcome, key);
 	};
 	/*
 	 * Put focus back after a keyboard answer.
@@ -2110,8 +2405,9 @@ function SessionPanel({
 	 * traverse the whole sidebar again (UX round 1, U3). This runs on the gate
 	 * KEY rather than on the response, because the card is deliberately held
 	 * mounted until the gate itself moves; at that point a gate that advanced to
-	 * the next question takes focus, and a gate that cleared hands it back to the
-	 * composer.
+	 * the next question takes focus — that question's first live option, or its
+	 * masked field when the question is a secret one — and a gate that cleared
+	 * hands it back to the composer.
 	 *
 	 * A LAYOUT effect, not a passive one. Measured on the rig (UX round 2, U8;
 	 * re-measured for this round): the disabled option loses focus at the press,
@@ -2141,7 +2437,14 @@ function SessionPanel({
 		)
 			return;
 		const next = document.querySelector<HTMLElement>(
-			'[aria-label="Answer options"] button:not([disabled])',
+			/*
+			 * BOTH ANSWER SURFACES, ONE QUERY: a next question that is an ask takes
+			 * focus on its first live option, and one that is a SECRET takes it on
+			 * the masked field — the only control on such a card. The dock draws one
+			 * surface or the other, never both, so this stays the "first live thing
+			 * the next question offers" the option-only query was.
+			 */
+			'[aria-label="Answer options"] button:not([disabled]), [data-ask-secret] input:not([disabled])',
 		);
 		if (next) next.focus();
 		else input.current?.focusInput();
@@ -2241,6 +2544,14 @@ function SessionPanel({
 		sessionId,
 		busy,
 		available: interruptAvailable,
+		/*
+		 * Rung 4's answer, read from the surfaces that record rather than
+		 * inherited from `defaultPrevented` (UX round 1, U1): this listener runs
+		 * before the composer's own claim, so the flag cannot be the guard on the
+		 * trusted key path. `isDictationActive` is a live reader, so no re-render
+		 * is needed when a recording starts.
+		 */
+		recording: isDictationActive,
 		onInterrupt: stop,
 	});
 	const loadedTarget =
@@ -2357,11 +2668,12 @@ function SessionPanel({
 	 * THE DISCARD CONTROL AND THE CLAIM ARE BOTH GONE (review round 2, NIT). This
 	 * comment described an `onDiscard` that was offered only while the store held a
 	 * claim in `submittedText` - the released app's model, where a failed message was
-	 * kept outside the composer and had to be restored or discarded. Nothing is kept
-	 * outside the composer any more (the payload is returned to the box, see
-	 * `returnPayloadToComposer`), so the control has no subject and the sentence above
-	 * it was the last place in the pane still describing it. `submittedText` survives
-	 * as the retry rule's comparison basis, not as something anybody has to release.
+	 * kept outside the composer and had to be restored or discarded. The proper
+	 * version of that model is back (S4): a post-paint failure IS kept outside the
+	 * composer - on the row the user can see, with its own sentence and remedies -
+	 * so the control still has no subject (nothing to discard: `Edit` returns the
+	 * payload, `Send again` replays it), and `submittedText` survives as the
+	 * payload the row-line replays, not as something anybody has to release.
 	 */
 	/*
 	 * THE PANE'S OWN `clearError` IS THE ONE ABOVE (main's `useCallback`, which the
@@ -2536,6 +2848,18 @@ function SessionPanel({
 	useEffect(() => {
 		if (!draftIdentity) return;
 		migrateHeldClaim(draftIdentity, draft);
+		/*
+		 * AND THIS BUILD'S OWN FAILED ROW COMES BACK THE SAME WAY (S6).
+		 *
+		 * The registry is process state, so a reload has nothing retained, while
+		 * the draft's claim fields - the request id, the text the row showed, the
+		 * images - persist. Without this the conversation would be silently empty
+		 * after a reload: the row was the message's home (S4), so it must be
+		 * guaranteed to return. The released app's claim above still comes home to
+		 * the COMPOSER - its rows carry no `errorRetry` and this build's adapter
+		 * refuses them on exactly that fact.
+		 */
+		resynthesisePendingSend(draftIdentity, draft);
 	}, [draftIdentity, draft]);
 
 	/*
@@ -2607,6 +2931,15 @@ function SessionPanel({
 		(state) => state.inputByConversation[identity]?.lateDelivered,
 	);
 	/*
+	 * THE PAYLOAD'S OTHER HOME, for U4: after `Edit` the text is back in the box,
+	 * and the row's `Send again` would offer a second live press for the same
+	 * message. Read from the same store `Edit` wrote to, so the comparison is
+	 * against the box the user is looking at.
+	 */
+	const composerText = useConversationInputStore(
+		(state) => state.inputByConversation[identity]?.currentInput ?? "",
+	);
+	/*
 	 * §F3's PER-MESSAGE FAILURE STATE, addressed here because this page owns both
 	 * halves of it: the row it is about (the draft's open claim, or the
 	 * `undelivered` record a reconnect left behind) and the two doors its controls
@@ -2615,37 +2948,98 @@ function SessionPanel({
 	 * `recordId` is the address: the echo's own id, which is the id the durable
 	 * row carries if the message ever lands, so the line can only attach to the
 	 * row it is about. Whether that row is ON SCREEN is the pane's question
-	 * (`chat-content.tsx` resolves it against the transcript), and a claim whose
-	 * echo is not painted - the panel that will paint it has not mounted - is
-	 * exactly the case where the composer still speaks.
+	 * (`chat-content.tsx` resolves it against the transcript).
+	 *
+	 * EVERY POST-PAINT FAILURE IS ONE OF THESE NOW (S4). The unknown class used to
+	 * be the only one that kept its row (`unresolvedRequestId`); every class keeps
+	 * it, and its `error` is the sentence the store classified while its
+	 * `errorRetry` is the classifier's own verdict on whether a press can work -
+	 * carried straight through, so the line and the table cannot drift.
 	 */
-	const deliveryTurn = !draft
+	const deliveryTurn: {
+		recordId: string;
+		text: string;
+		attachments: readonly string[];
+		message?: string;
+		retry?: boolean;
+	} | null = !draft
 		? null
-		: unresolvedRequestId !== undefined && draft.submittedText !== undefined
+		: draft.submittedText !== undefined &&
+				(draft.error !== undefined || unresolvedRequestId !== undefined)
 			? {
-					recordId: unresolvedRequestId,
+					recordId: unresolvedRequestId ?? draft.admissionRequestId,
 					text: draft.submittedText,
 					attachments: draft.submittedAttachments ?? [],
+					message: draft.error,
+					retry:
+						draft.errorRetry ?? retryOfferedForFailureCode(draft.errorCode),
 				}
 			: (draft.undelivered ?? null);
 	const undeliveredTurn = deliveryTurn
 		? {
 				recordId: deliveryTurn.recordId,
+				message: deliveryTurn.message,
+				retry: deliveryTurn.retry,
+				/*
+				 * DIMMED WHILE THE BOX HOLDS THIS EXACT PAYLOAD (UX round 1, U4): the row
+				 * keeps its statement - the outcome may be unknowable - but one message
+				 * does not get two live presses, and after `Edit` the composer's Send is
+				 * the live one. Equality is against the same string `Edit` handed back, so
+				 * the comparison is exact rather than trimmed: a box the user changed is a
+				 * different message and the row's press is re-armed rather than dimmed.
+				 */
+				retryDisabled:
+					composerText.trim().length > 0 && composerText === deliveryTurn.text,
 				onSendAgain: () => {
 					void send(deliveryTurn.text, [...deliveryTurn.attachments]);
 				},
 				onEdit: () => {
 					/*
-					 * The failure's own return path already put the payload in the box; this
-					 * is the same act reached from the message. `returnPayload` merges under
-					 * the user's typing and refuses while an attempt is in flight, so
-					 * pressing Edit after the text came home cannot double the message.
+					 * The payload comes home, merged under the user's typing and refused while
+					 * an attempt is in flight (`returnPayload`), so pressing Edit twice cannot
+					 * double the message.
 					 */
 					useConversationInputStore.getState().returnPayload(identity, {
 						text: deliveryTurn.text,
 						attachments: [...deliveryTurn.attachments],
 						replies: [],
 					});
+					/*
+					 * AND A PROVABLY-NOT-DELIVERED ROW RETIRES WITH THE PAYLOAD. The user
+					 * asked to edit the message, which means its row must go - otherwise the
+					 * transcript shows it while the box shows the text to change. "Provable"
+					 * is the store's own fact: `admissionAttempted` means "an admission was
+					 * issued and its outcome is not known", so its absence is not_sent, or the
+					 * ID itself being gone - classes the app knows never reached the session.
+					 * An UNKNOWN outcome keeps its row deliberately: that message may have
+					 * landed, and the row is its fate statement until the server resolves it.
+					 *
+					 * The retraction is LOCAL-ONLY (`retractLocalEcho`): if the owner's own
+					 * row for this id arrived in between, it reports "owner" and removes
+					 * nothing - the delivered-after-all race, lost gently.
+					 */
+					if (draft?.admissionAttempted !== true) {
+						retractLocalEcho(identity, deliveryTurn.recordId);
+						/*
+						 * AND ITS SENTENCE GOES WITH IT (S6): the row was retracted, so the
+						 * failure has no home left to state itself in - and the restart adapter
+						 * re-synthesises exactly the rows that still carry one, so leaving it
+						 * here would resurrect a row the user already retired on the next load.
+						 *
+						 * THE RESOLUTION'S OWN RECORD GOES WITH THEM (design review round 1,
+						 * D2): `undelivered` names the row and the text, and the adapter now
+						 * re-paints from it too - so an Edit that left it behind would
+						 * resurrect the row on the next load by the same argument, one field
+						 * further along.
+						 */
+						if (draftIdentity)
+							useCanonicalSessionsStore.getState().updateDraft(draftIdentity, {
+								error: undefined,
+								errorCode: undefined,
+								errorRetry: undefined,
+								undelivered: undefined,
+							});
+					}
 					input.current?.focusInput();
 				},
 			}
@@ -2726,9 +3120,22 @@ function SessionPanel({
 		code: sendErrorCode,
 		retry: sendErrorRetry,
 		muted: sendErrorMuted,
-		rowError: draft?.error,
-		rowCode: draft?.errorCode,
-		rowRetry: draft?.errorRetry,
+		/*
+		 * THE ROW IS THE FAILURE'S HOME, SO THE COMPOSER DOES NOT RESTATE IT (S4).
+		 * `retainsPendingSend` answers whether a ROW exists for this identity -
+		 * MEMBERSHIP, not liveness, and the distinction is load-bearing since round
+		 * 2: a recorded failure settles its claim in the store's own catch (U5),
+		 * so the liveness predicate answers null for exactly the failures whose row
+		 * is on screen, and this notice put the same sentence back over it
+		 * ("Couldn't confirm your message was sent. Sending it again is safe.RetryClear"
+		 * beside a row that already said it) - the contradiction J4 forbids,
+		 * measured on the re-shoot's first run. The inputs go `undefined` rather
+		 * than empty so `composerNoticeFor`'s own arms (the late-delivery note, the
+		 * pre-paint copies) are untouched.
+		 */
+		rowError: retainsPendingSend(identity) ? undefined : draft?.error,
+		rowCode: retainsPendingSend(identity) ? undefined : draft?.errorCode,
+		rowRetry: retainsPendingSend(identity) ? undefined : draft?.errorRetry,
 		lateDelivered,
 	});
 	/*
@@ -3201,6 +3608,20 @@ function SessionPanel({
 						admitting,
 						starting,
 						startingAfterId: admitted.current?.requestId ?? null,
+						startingSession,
+						/*
+						 * THE ROW'S ANCHOR, THEN THE ENTRY'S, THEN THE LATCH'S (agent review
+						 * round 2, R2-5): the draft row is deleted at the receipt while the
+						 * latch may still hold (round 1's MINOR), and a switch-away inside
+						 * that gap remounts with NEITHER the old latch nor the row - so the
+						 * retained entry carries the press's own number and the seconds
+						 * survive that remount too.
+						 */
+						startingSince:
+							draft?.submittedAt ??
+							pendingNow?.submittedAt ??
+							admitted.current?.submittedAt ??
+							null,
 						onStop: stop,
 						stopAvailable: interruptAvailable,
 						/*
@@ -3217,6 +3638,16 @@ function SessionPanel({
 							stopNotice ??
 							interruptUnavailableNotice(busy, interruptAvailable),
 						onAnswer: (label: string) => void answerWithOption(label),
+						/*
+						 * The secret field's own door, wired the same way and to the
+						 * matching machinery (`answerWithSecret` -> `answerGateSecret`):
+						 * the same lock, the same report, the same one-answer-in-flight
+						 * property as the options above. Separate props because the two
+						 * answer paths refuse different things; see `QuestionDockProps`
+						 * for why the split is at the component boundary and not inside
+						 * the dock.
+						 */
+						onAnswerSecret: (value: string) => void answerWithSecret(value),
 						answer: answerForThisGate,
 					}}
 				/>
@@ -3306,8 +3737,25 @@ export function ChatPage() {
 	}, [catalogueState, capabilities]);
 	const active = useCanonicalSessionsStore((state) => state.activeSessionId);
 	const draftKey = useCanonicalSessionsStore((state) => state.activeDraftKey);
+	/*
+	 * THE ROW, RESOLVED BY BELONGING (UX round 2, U5): `draftKey` answers "is a
+	 * staged draft the view" - it is null on a pane reached by the session's own
+	 * route - while the failure's sentence and controls live on the row the send
+	 * wrote, which on a refused first send is the staged `draft:<uuid>` the
+	 * conversation began as. `paneDraftKey` is the same resolver `send` and
+	 * `SessionPanel` read, so the row that renders and the row a retry replays
+	 * cannot be two.
+	 */
+	const draftRow = useCanonicalSessionsStore((state) =>
+		/*
+		 * `active` rather than the derived `id` below: both answer the same when no
+		 * draft is staged (this resolver's fallback arm is only reached then), and
+		 * `id` is computed further down from the row this read is what finds.
+		 */
+		paneDraftKey(draftKey, state.activeSessionId, state.drafts),
+	);
 	const draft = useCanonicalSessionsStore((state) =>
-		draftKey ? state.drafts[draftKey] : undefined,
+		draftRow ? state.drafts[draftRow] : undefined,
 	);
 	const error = useCanonicalSessionsStore((state) => state.error);
 	const [routeError, setRouteError] = useState<string | null>(null);
