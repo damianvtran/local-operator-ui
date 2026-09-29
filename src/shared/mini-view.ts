@@ -160,7 +160,7 @@ export const MINI_VIEW_WIDTH = 640;
 export const MINI_VIEW_HEIGHT = 168;
 
 /**
- * The shipped hotkey default, in the STORED grammar (`primary+alt+space`).
+ * The shipped hotkey default, in the STORED grammar (`primary+alt+shift+space`).
  *
  * HERE RATHER THAN IN `src/main/`: three processes read it — the registrar
  * falls back to it when `config.yml` is unreadable, the settings-side surfaces
@@ -170,7 +170,7 @@ export const MINI_VIEW_HEIGHT = 168;
  * `scripts/hotkey-registration.test.mjs` asserts this equals
  * `keymap.quick_send`'s default in the committed registry fixture.
  */
-export const DEFAULT_QUICK_SEND_VALUE = "primary+alt+space";
+export const DEFAULT_QUICK_SEND_VALUE = "primary+alt+shift+space";
 
 /** The three platforms the display mapping distinguishes, as CSS spells them. */
 export type MiniViewPlatform = "mac" | "win" | "linux";
@@ -208,8 +208,9 @@ export function formatQuickSendDisplay(
 ): string {
 	const parts = formatQuickSendTokens(value, platform);
 	/*
-	 * macOS renders modifiers as glyphs and joins them with NO separator (⌘⌥Space
-	 * is how the system prints it); the other platforms use "+" between words.
+	 * macOS renders modifiers as glyphs and joins them with NO separator
+	 * (⌘⌥⇧Space for the shipped default); the other platforms use "+" between
+	 * words.
 	 */
 	return platform === "mac" ? parts.join("") : parts.join("+");
 }
@@ -219,7 +220,7 @@ export function formatQuickSendDisplay(
  *
  * The pieces `formatQuickSendDisplay` joins, exported because the mini
  * header draws the chord as the app's key caps (`KeyboardShortcut` splits its
- * `shortcut` prop on "+") and a macOS sentence spelling — `⌘⌥Space`, no
+ * `shortcut` prop on "+") and a macOS sentence spelling — `⌘⌥⇧Space`, no
  * separators — cannot be split back without guessing. One token table, so the
  * caps and the sentences can never disagree about the same chord (design
  * round 1, D4).
