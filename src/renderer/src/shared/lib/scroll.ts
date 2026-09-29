@@ -66,3 +66,44 @@ export const scrollRegionToTop = (
 		region.clientTop;
 	region.scrollTop = Math.max(0, offset);
 };
+
+/**
+ * The same walk, aimed at the region's MIDDLE instead of its top.
+ *
+ * The checkpoint rail's jump (§D7 stage 3) is the reason this exists: a tick
+ * press must land the target row where a search-result jump lands it — centred
+ * — rather than at the region's top edge, where a reader arriving from the rail
+ * would lose the row's own turn context above it. The failure jump's
+ * `scrollIntoView` was never the right tool here for the reasons above (and it
+ * moved the app frame at narrow widths, measured), so the rail's jump is this
+ * arithmetic and never `scrollIntoView`.
+ *
+ * The centre term is half the target's own height minus half the region's
+ * visible height, subtracted from the top-aligned offset: the target's centre
+ * then lands on the region's centre. Both are rect measurements like every
+ * other term — the target's height is read from its rect (not `offsetHeight`,
+ * which rounds to an integer and skips transforms), and the region's from
+ * `clientHeight`, whose padding box is the scrollport.
+ *
+ * No high-end clamp, for the reason `scrollRegionToTop` gives: the browser
+ * knows `scrollHeight - clientHeight` and this cannot, because content may
+ * still grow. The low-end clamp is identical.
+ *
+ * PRECONDITION: the region must be the target's containing scroll box, or an
+ * ancestor of it — the same rule `scrollRegionToTop` states at length, restated
+ * here only because this is a second entry point to it: a region that does not
+ * contain the target computes a number with no meaning rather than throwing.
+ */
+export const scrollRegionToCenter = (
+	region: HTMLElement,
+	target: HTMLElement,
+): void => {
+	const targetRect = target.getBoundingClientRect();
+	const offset =
+		region.scrollTop +
+		targetRect.top -
+		region.getBoundingClientRect().top -
+		region.clientTop -
+		(region.clientHeight - targetRect.height) / 2;
+	region.scrollTop = Math.max(0, offset);
+};
