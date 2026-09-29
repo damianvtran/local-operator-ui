@@ -3843,6 +3843,17 @@ export type BackendSetting = {
 	 * of a feature that is switched off renders disabled and says which switch.
 	 */
 	gated_by?: string | null;
+	/**
+	 * A FIFTH additive field, and the reason the four above are no longer "the
+	 * four": which SURFACE a `hotkey` row's value belongs to — `"app"` (a
+	 * binding inside the terminal UI) or `"desktop"` (a global shortcut this app
+	 * owns). Absent means `"app"`, which is exactly today's behaviour for every
+	 * hotkey row an older server serves, so a client that ignores the field
+	 * stays correct: the field's arrival changes nothing until a surface reads
+	 * it, and this one is read only to switch the capture rules of the quick-send
+	 * row (see `setting-control.tsx`).
+	 */
+	hotkey_scope?: "app" | "desktop" | null;
 };
 export type BackendSettings = {
 	sections: {
