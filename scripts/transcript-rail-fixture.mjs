@@ -35,6 +35,7 @@
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { isEntryPoint } from "./entry-point.mjs";
 
 export const RAIL_FIXTURE_SESSION = "be1a9fef0001";
 /* The refusal's own conversation: deep enough that its OLDEST tick is beyond
@@ -301,7 +302,13 @@ export function writeFixture(
 	return { path, rows: rows.length };
 }
 
-if (process.argv[1]?.endsWith("transcript-rail-fixture.mjs")) {
+/*
+ * The shared entry-point helper, not `process.argv[1]?.endsWith(...)` - the
+ * lexical comparison is the silent no-op `entry-point.test.mjs` scans for
+ * (through a symlinked directory the file loads, the CLI never runs and the
+ * process exits 0), and CI's release-contract step drives that suite.
+ */
+if (isEntryPoint(import.meta.url)) {
 	const root = process.argv[2];
 	if (!root) {
 		console.error(

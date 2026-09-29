@@ -101,9 +101,13 @@ Round 1's knocks, both now ROOT-CAUSED and fixed rather than worked around:
    above-viewport target assigned 0 and the wash painted off-screen; the fix
    names the axis at the call site (`"reversed"` → `Math.min(0, ...)`, design
    round 1's D1). The artifact-level reading: the wash band in this set's
-   `jump-after-dark` measures **100,780** green-lean pixels (`g > r + 6 &&
-   g > b + 10`, `24 < g < 70`) in the transcript area against **0** at the same
-   filter in the committed round-1 frame. (b) The scene's own press helper was a scene-local copy that
+   `jump-after-dark` measures **100,828** green-lean pixels in the transcript
+   area (`g > r + 6 && g > b + 6`, `24 < g < 70`) against **0** at the same
+   filter in the committed round-1 frame. The inequality this line first
+   carried, `g > b + 10`, counts 0 on this very frame — the wash's blends do
+   not clear a 10-channel green-over-blue margin; QA round 2 measured it, and
+   `g > b + 4` counts the same 100,828 set.
+   (b) The scene's own press helper was a scene-local copy that
    the module-level `clickPoint(cdp, x, y)` shadowed-across: its call sites
    passed the module's argument shape into the copy's, so the dispatched point
    was the client object in `x` and the scan's x in `y` — the press landed
