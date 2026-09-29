@@ -81,6 +81,28 @@ const bundle = await build({
 	},
 	loader: { ".css": "empty", ".svg": "text" },
 	define: { "import.meta.env": "{}" },
+	/*
+	 * The desktop transport is stubbed: `register()` now kicks a settings read
+	 * for the push-to-talk row (`refreshPushToTalkBinding`), and this file is
+	 * about the capture-phase key contract - not IPC - so the read answers an
+	 * empty settings plane and the resolver serves its platform default.
+	 */
+	plugins: [
+		{
+			name: "headless-fixtures",
+			setup(builder) {
+				builder.onResolve(
+					{ filter: /^@shared\/api\/local-operator\/desktop-api$/ },
+					() => ({ path: "desktop-api", namespace: "fixture" }),
+				);
+				builder.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({
+					contents:
+						"export function desktopResult() { return Promise.resolve({ sections: [], settings: [] }); }",
+					loader: "js",
+				}));
+			},
+		},
+	],
 	write: false,
 });
 const bundlePath = new URL(
