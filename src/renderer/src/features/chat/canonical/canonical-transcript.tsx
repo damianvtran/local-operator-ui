@@ -126,6 +126,8 @@ import {
 import { isQuotable } from "./quote-model";
 import { QuoteToolkit } from "./quote-toolkit";
 import { ensureReachable, jumpToEntry } from "./reveal-record";
+import { THREAD_SEARCH_JUMP_MISS_COPY } from "./thread-search-model";
+import { ThreadSearchOverlay } from "./thread-search-overlay";
 import {
 	type FoldGroup,
 	type TurnFoot,
@@ -184,6 +186,23 @@ import {
 
 const WINDOW = 60;
 const WINDOW_STEP = 60;
+
+/**
+ * Rows of headroom above a jump's target, so "centred" is true at the top of
+ * the reach as well as below it.
+ *
+ * QA round 1 (Q-1) measured the far jump landing top-clamped: with the window
+ * widened to exactly the target's distance, the row is the OLDEST mounted one,
+ * `scrollRegionToCenter` runs out of content above it and clamps — 254 px short
+ * at the scene's size — while a warm re-jump of the same row measures 0 px,
+ * which is how the mechanism was confirmed. Half a viewport of rows clears it
+ * with margin at both the scene's row height (~20 px) and an ordinary one, and
+ * the rows above the target ARE the extra ones: the window is newest-anchored
+ * (`slice(total - windowSize)`), so a wider window reaches further back and
+ * never forward. The cost is mounting those rows — the same write the reader's
+ * own scroll makes.
+ */
+const JUMP_MOUNT_HEADROOM_ROWS = 16;
 
 /**
  * How far the render window may be extended to land its top edge on a run
@@ -2352,8 +2371,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * exactly as far as the row and no further — the same write the reader's
 	 * own scroll makes, one commit wide.
 	 */
-	const jumpToCheckpoint = useCallback(
-		async (id: string) => {
+	const jumpTo = useCallback(
+		async (id: string, missCopy: string) => {
 			const region = containerRef.current;
 			const root =
 				region?.querySelector<HTMLElement>("[data-lo-transcript-content]") ??
@@ -2367,21 +2386,56 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					);
 					return index === -1 ? null : rowsRef.current.length - index;
 				},
-				mount: (distance) => {
-					setWindowSize((current) =>
-						current >= distance ? current : distance,
+				hasHeadroom: () => {
+					/*
+					 * Rows OLDER than the target are the margin the mount needs above
+					 * it, and the store is oldest-first: the target's own index IS that
+					 * count. A page-leading target (index 0) would otherwise mount with
+					 * nothing above it and centre clamped (QA Q-2, −254 px, ~the first 8
+					 * rows of every fetched page). `-1` cannot happen here — the loop
+					 * consults this only once `rowDistance` found the row — so it reads
+					 * as satisfied rather than forcing a fetch on an absence.
+					 */
+					const index = rowsRef.current.findIndex(
+						(row) => row.record.id === id,
 					);
+					return index === -1 || index >= JUMP_MOUNT_HEADROOM_ROWS;
+				},
+				mount: (distance) => {
+					/*
+					 * The row PLUS headroom above it, or the far jump lands clamped at the
+					 * content's top rather than centred (see
+					 * `JUMP_MOUNT_HEADROOM_ROWS`), which the rail's ticks share: this is
+					 * one loop for both callers.
+					 */
+					setWindowSize((current) => {
+						const wanted = distance + JUMP_MOUNT_HEADROOM_ROWS;
+						return current >= wanted ? current : wanted;
+					});
 				},
 				loadOlder: onLoadOlder,
 			});
 			if (!reachable) {
-				showInfoToast(CHECKPOINT_JUMP_MISS_COPY);
+				showInfoToast(missCopy);
 				return;
 			}
 			const outcome = await jumpToEntry(root, region, id);
-			if (outcome === "missing") showInfoToast(CHECKPOINT_JUMP_MISS_COPY);
+			if (outcome === "missing") showInfoToast(missCopy);
 		},
 		[containerRef, onLoadOlder],
+	);
+	/*
+	 * The rail's ticks and the search overlay both land through this near path
+	 * (`ensureReachable` above); the two callers differ only in the sentence a
+	 * refusal speaks, so that is the argument rather than a second loop.
+	 */
+	const jumpToCheckpoint = useCallback(
+		(id: string) => void jumpTo(id, CHECKPOINT_JUMP_MISS_COPY),
+		[jumpTo],
+	);
+	const jumpToSearchHit = useCallback(
+		(id: string) => jumpTo(id, THREAD_SEARCH_JUMP_MISS_COPY),
+		[jumpTo],
 	);
 	/*
 	 * The rail's naming warm (D2): `onHover` already fires on the CARD's own
@@ -2709,10 +2763,20 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		 * collapses with it so a collapsed pane cannot leave the caption behind as
 		 * a row of its own.
 		 */
+		/*
+		 * `relative` is what the floating search overlay positions against: its slot
+		 * is this column's top-right corner (`thread-search-overlay.tsx`), and an
+		 * absolutely positioned child resolves against the nearest positioned
+		 * ancestor — which this box was not, so the panel would have been placed
+		 * against the page and floated over the chat header. The class is inert for
+		 * every other reader of this column (no offsets, no z-index, same box).
+		 */
 		<div
 			className={cn(
 				CHAT_COLUMN_CONTAINER,
-				collapsed ? "h-0 grow-0 overflow-hidden" : "flex min-h-0 grow flex-col",
+				collapsed
+					? "relative h-0 grow-0 overflow-hidden"
+					: "relative flex min-h-0 grow flex-col",
 			)}
 		>
 			{stale && !holdPlaceholder && (
@@ -3194,6 +3258,25 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					onHover={handleCheckpointHover}
 				/>
 			</div>
+			{/*
+			 * The in-thread search overlay (`⌘F`), mounted HERE rather than in the
+			 * scroller: it floats over the transcript and must not scroll with it,
+			 * and it must not be clipped by the scroller's own `overflow: auto` — a
+			 * sibling of the scroller inside the (now `relative`) column is both.
+			 *
+			 * It takes the scroller's own ref as its reveal root, so a hit navigates
+			 * THIS transcript: a second transcript on the same screen (the run panel's
+			 * child reader) is a different mount with a different ref, and it renders
+			 * no overlay of its own — `sessionId` is null on a draft, so the chord
+			 * has nothing to search and the panel is absent rather than empty.
+			 */}
+			{sessionId !== null && (
+				<ThreadSearchOverlay
+					sessionId={sessionId}
+					containerRef={containerRef}
+					onReveal={jumpToSearchHit}
+				/>
+			)}
 		</div>
 	);
 };
