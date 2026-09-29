@@ -102,8 +102,8 @@ test("isMiniViewSummonedPayload accepts the shape main sends and nothing else", 
 
 test("isMiniViewRegistrationState is the preload's gate, and it is strict", () => {
 	const valid = {
-		value: "primary+alt+space",
-		accelerator: "CommandOrControl+Alt+Space",
+		value: "primary+alt+shift+space",
+		accelerator: "CommandOrControl+Alt+Shift+Space",
 		status: "registered",
 	};
 	assert.ok(isMiniViewRegistrationState(valid));
@@ -140,20 +140,25 @@ test("isFunctionKeyToken bounds the bare carve-out to F1-F24", () => {
  * ------------------------------------------------------------------ */
 
 test("the display tokens are one entry per cap, and the sentence joins them", () => {
-	assert.deepEqual(formatQuickSendTokens("primary+alt+space", "mac"), [
+	assert.deepEqual(formatQuickSendTokens("primary+alt+shift+space", "mac"), [
 		"⌘",
 		"⌥",
-		"Space",
-	]);
-	assert.equal(formatQuickSendDisplay("primary+alt+space", "mac"), "⌘⌥Space");
-	assert.deepEqual(formatQuickSendTokens("primary+alt+space", "win"), [
-		"Ctrl",
-		"Alt",
+		"⇧",
 		"Space",
 	]);
 	assert.equal(
-		formatQuickSendDisplay("primary+alt+space", "win"),
-		"Ctrl+Alt+Space",
+		formatQuickSendDisplay("primary+alt+shift+space", "mac"),
+		"⌘⌥⇧Space",
+	);
+	assert.deepEqual(formatQuickSendTokens("primary+alt+shift+space", "win"), [
+		"Ctrl",
+		"Alt",
+		"Shift",
+		"Space",
+	]);
+	assert.equal(
+		formatQuickSendDisplay("primary+alt+shift+space", "win"),
+		"Ctrl+Alt+Shift+Space",
 	);
 	assert.equal(
 		formatQuickSendDisplay("meta+space", "win"),
@@ -165,11 +170,11 @@ test("the display tokens are one entry per cap, and the sentence joins them", ()
 	/*
 	 * THE HEADER'S OWN SPELLING: `KeyboardShortcut` splits its prop on "+", so
 	 * the mini header passes `tokens.join("+")` — the round trip below is what
-	 * that call site relies on for a three-key chord.
+	 * that call site relies on for the shipped four-key chord.
 	 */
 	assert.equal(
-		formatQuickSendTokens("primary+alt+space", "mac").join("+"),
-		"⌘+⌥+Space",
+		formatQuickSendTokens("primary+alt+shift+space", "mac").join("+"),
+		"⌘+⌥+⇧+Space",
 	);
 });
 
