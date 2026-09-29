@@ -98,16 +98,20 @@ for (const [index, [id, title, question]] of SESSIONS.entries()) {
 /*
  * The test hosting, verbatim from `scripts/submit-latency.test.mjs`'s own
  * backend boot: a real provider path with no network, which is what makes the
- * turn scenes real rather than staged. `aida.enabled: false` is the second
- * half of the same isolation: the runtime would otherwise ensure its own
- * assistant session and pin a row for her at boot, and this set's scenes and
- * frames are about the seeded conversations only. `LOCAL_OPERATOR_NO_AIDA` is
- * set on the launches as well, because the env switch and the config key are
- * two halves of one gate (`aida/bootstrap.py::config_enabled`).
+ * turn scenes real rather than staged. `aida.enabled` is the second half of
+ * the same isolation, and it DEFAULTS OFF so the ack/selection pass keeps its
+ * subject (the seeded conversations only): the runtime would otherwise ensure
+ * its own assistant session and pin a row for her at boot. A pass about HER
+ * ROW (`drive-aida.mjs`, through `run-aida.sh`) turns the key on with
+ * `ACK_AIDA_ENABLED=1` and unsets `LOCAL_OPERATOR_NO_AIDA` on both launches,
+ * because the env switch and the config key are two halves of one gate
+ * (`aida/bootstrap.py::config_enabled`; the env switch tests truthiness with
+ * `0`/`false`/`no`/`off` meaning "on", `local_operator/aida/state.py`).
  */
+const aidaEnabled = process.env.ACK_AIDA_ENABLED === "1";
 writeFileSync(
 	join(CONFIG, "config.yml"),
-	"version: 0.0.0\nvalues:\n  hosting: test\n  model_name: mock\n  aida:\n    enabled: false\n",
+	`version: 0.0.0\nvalues:\n  hosting: test\n  model_name: mock\n  aida:\n    enabled: ${aidaEnabled}\n`,
 );
 
 console.log(VIEWED);
