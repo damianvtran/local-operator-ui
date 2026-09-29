@@ -49,7 +49,7 @@ export const MINI_COPY = {
 	/** The hint row, replacing nothing — it is the resting line of the surface. */
 	hint: "Enter sends, Shift+Enter adds a line, Esc hides",
 	/** Dictation states. */
-	recording: "Recording. Press the mic to stop.",
+	recording: "Recording. Press the stop button when you're done.",
 	transcribing: "Transcribing.",
 	dictationStart: "Dictate a message",
 	dictationStop: "Stop dictation",
@@ -70,6 +70,23 @@ export const MINI_COPY = {
 	postAdmission:
 		"That didn't reach the chief of staff — check the conversation.",
 } as const;
+
+/**
+ * The macOS registration boundary (design §G.5's honesty clause; QA round 1, Q2).
+ *
+ * WHY THE APP SAYS THIS ITSELF. On macOS `globalShortcut.register()` returns
+ * TRUE for a chord another app or the system already owns (measured on this
+ * machine: `Command+Space` = Spotlight and `Command+Tab` both registered),
+ * while false is reachable only for a duplicate inside this process. So a
+ * conflicting chord on macOS is a SILENT dead key — exactly the class the
+ * design forbids while it could not be detected — and the row must not let a
+ * "Registered" badge promise a detection the platform cannot deliver. The
+ * sentence states the practical path instead ("if the chord does nothing…"),
+ * and it is macOS-only: on Windows and Linux a refused chord really does
+ * surface through the taken state.
+ */
+export const MACOS_DETECTION_BOUNDARY_COPY =
+	"If the chord does nothing, another app or the system owns it — choose another.";
 
 /**
  * The settings row's scope line (design §H.2) — the one sentence the desktop

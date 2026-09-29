@@ -25,6 +25,7 @@
 import { AIDA_DISABLED_SENTENCE } from "@features/aida/aida-control";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { desktopFeatureEnabled } from "@shared/api/local-operator/desktop-hooks";
+import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
@@ -56,7 +57,7 @@ import {
 	type MiniViewDismissReason,
 	type MiniViewPlatform,
 	type MiniViewRegistrationState,
-	formatQuickSendDisplay,
+	formatQuickSendTokens,
 } from "../../../shared/mini-view";
 import { MINI_COPY } from "./mini-copy";
 import {
@@ -71,6 +72,7 @@ import {
 	isEditable,
 	miniTransitions,
 } from "./mini-state";
+import { rendererPlatform } from "./renderer-platform";
 
 /** How long the "Sent" flash stays up before the window hides (§E.4). */
 export const SENT_FLASH_MS = 600;
@@ -88,13 +90,7 @@ export function MiniComposer() {
 	const [dictation, setDictation] = useState<MiniDictationState>("idle");
 	const [dictationNotice, setDictationNotice] = useState<string | null>(null);
 	const [shortcut, setShortcut] = useState(DEFAULT_QUICK_SEND_VALUE);
-	const [platform] = useState<MiniViewPlatform>(() => {
-		try {
-			return window.api?.windowChrome?.facts?.().platform ?? "linux";
-		} catch {
-			return "linux";
-		}
-	});
+	const [platform] = useState<MiniViewPlatform>(rendererPlatform);
 
 	/*
 	 * Mirrors for the async paths. `beginSend` awaits a seat resolution and a
@@ -155,6 +151,21 @@ export function MiniComposer() {
 			// The transport could not answer: the seat cannot be confirmed, and
 			// the gate's fail-closed default applies.
 			capabilities = null;
+		}
+		if (capabilities === null) {
+			/*
+			 * A FAILED read is not an absent feature (review round 1, U3): the
+			 * transport could not answer, so the sentence is the unreachable one.
+			 * The "doesn't have a seat" sentence below belongs to an ANSWERED
+			 * capability that lacks `aida` and to nothing else (§E.5) — a
+			 * headless or offline machine must not read as a build without the
+			 * seat, which is the different fact a user would act on differently.
+			 */
+			seatRef.current = null;
+			update((current) =>
+				miniTransitions.seatBlocked(current, MINI_COPY.seatUnreachable),
+			);
+			return null;
 		}
 		if (!desktopFeatureEnabled(capabilities, "aida", 1)) {
 			seatRef.current = null;
@@ -232,6 +243,18 @@ export function MiniComposer() {
 	const beginSend = useCallback(async (): Promise<void> => {
 		const draft = textRef.current.trim();
 		if (!canSend(stateRef.current, draft)) return;
+		if (dictationPhaseRef.current === "recording") {
+			/*
+			 * NO SEND PATH FIRES MID-RECORDING (review round 1, U2). Enter confirms
+			 * a recording rather than sending (the keydown handler owns that), the
+			 * disabled controls keep the pointer out, and this guard is the belt
+			 * for every remaining caller (a stale closure, a programmatic press):
+			 * a send here would file the message without the spoken words, and its
+			 * "Sent" dismissal could hide the window while the mic is still live —
+			 * the data loss §C.1 forbids.
+			 */
+			return;
+		}
 		if (sentTimerRef.current !== null) {
 			window.clearTimeout(sentTimerRef.current);
 			sentTimerRef.current = null;
@@ -290,6 +313,14 @@ export function MiniComposer() {
 			update((current) => miniTransitions.sendSucceeded(current));
 			sentTimerRef.current = window.setTimeout(() => {
 				sentTimerRef.current = null;
+				/*
+				 * Belt for the same invariant (review round 1, U2): no send path
+				 * may hide the window while a recording is live. Unreachable today
+				 * (Send and the mic are mutually disabled during each other's
+				 * phase), but a hide here would be the data loss §C.1 forbids, so
+				 * the flash simply stays until the next dismissal.
+				 */
+				if (dictationPhaseRef.current === "recording") return;
 				dismiss("sent");
 			}, SENT_FLASH_MS);
 		} catch (error) {
@@ -389,8 +420,18 @@ export function MiniComposer() {
 		 * render nothing where the chord belongs.
 		 */
 		const apply = (registration: MiniViewRegistrationState): void => {
-			if (typeof registration?.value === "string")
+			/*
+			 * AN EMPTY VALUE IS "no value", not a value: a rig-shaped launch answers
+			 * `unavailable` with value "" (there is no stored chord to report), and
+			 * the header must keep the shipped default rather than render an empty
+			 * keycap — the promise the effect's comment makes.
+			 */
+			if (
+				typeof registration?.value === "string" &&
+				registration.value !== ""
+			) {
 				setShortcut(registration.value);
+			}
 		};
 		const unsubscribe = window.api?.miniView?.onRegistration?.(apply);
 		void window.api?.miniView
@@ -440,6 +481,17 @@ export function MiniComposer() {
 			const target = event.target as HTMLElement | null;
 			if (target?.tagName === "BUTTON") return;
 			event.preventDefault();
+			if (dictationPhaseRef.current === "recording") {
+				/*
+				 * ENTER CONFIRMS A RECORDING (review round 1, U2), the same gesture
+				 * the composer teaches (`message-input.tsx`): stop, transcribe,
+				 * append to the draft. Sending here would file the message without
+				 * the words still being spoken — and an admission's "Sent" flash
+				 * would hide the window while the mic was live.
+				 */
+				dictationRef.current?.stop();
+				return;
+			}
 			void beginSend();
 		},
 		[beginSend, dismiss],
@@ -449,7 +501,13 @@ export function MiniComposer() {
 
 	const notice = state.notice ?? dictationNotice;
 	const recording = dictation === "recording";
-	const sendDisabled = !canSend(state, text);
+	/*
+	 * Send never fires while a recording is live (review round 1, U2): Enter
+	 * confirms the recording instead, and the disabled control is what the
+	 * pointer hears. `beginSend` carries the same guard as the belt for every
+	 * other caller.
+	 */
+	const sendDisabled = !canSend(state, text) || recording;
 	const statusLine = recording
 		? MINI_COPY.recording
 		: dictation === "transcribing"
@@ -474,9 +532,17 @@ export function MiniComposer() {
 		>
 			<div className="flex h-4 shrink-0 items-center justify-between pb-0.5">
 				<span className="text-meta text-ink-muted">{MINI_COPY.seatLabel}</span>
-				<span className="font-mono text-meta text-ink-dim">
-					{formatQuickSendDisplay(shortcut, platform)}
-				</span>
+				{/*
+				 * THE APP'S CAP IDIOM (design round 1, D4), not a bare mono span: every
+				 * other chord in the app rides `KeyboardShortcut`, whose caps carry the
+				 * measured ink role at the mono ramp. The tokens are joined with "+"
+				 * because the component splits its prop on it — the macOS sentence
+				 * spelling (⌘⌥Space, no separators) cannot be split back.
+				 */}
+				<KeyboardShortcut
+					shortcut={formatQuickSendTokens(shortcut, platform).join("+")}
+					joined
+				/>
 			</div>
 			<textarea
 				ref={inputRef}
@@ -495,10 +561,13 @@ export function MiniComposer() {
 					"transition-colors duration-fast ease-out-quart",
 					"disabled:border-hairline disabled:bg-sunken disabled:text-ink-disabled",
 					"disabled:placeholder:text-ink-disabled",
-					"focus-visible:outline-offset-1",
 				)}
 			/>
-			<div className="flex h-7 shrink-0 items-center justify-between gap-2">
+			{/*
+			 * h-8, not h-7: the md Send is 32px and must sit inside its row rather
+			 * than bleed past it (design round 1, D1).
+			 */}
+			<div className="flex h-8 shrink-0 items-center justify-between gap-2">
 				<div className="flex min-w-0 items-center gap-2">
 					<Button
 						variant="ghost"
@@ -539,6 +608,7 @@ export function MiniComposer() {
 							variant="ghost"
 							size="sm"
 							data-tour-tag="mini-composer-retry"
+							disabled={recording}
 							onClick={() => {
 								/*
 								 * A Retry after a SEAT refusal must re-resolve, not re-spend the

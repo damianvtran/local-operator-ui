@@ -61,13 +61,34 @@ export function isEditable(state: MiniViewState): boolean {
 }
 
 export const miniTransitions = {
-	/** A seat resolution answered with a usable conversation. */
+	/**
+	 * A seat resolution answered with a usable conversation.
+	 *
+	 * A STANDING RETRYABLE REFUSAL SURVIVES IT (QA round 1, Q1): the sentence a
+	 * pre-admission send failure put up — "still here, retry" — names a fact
+	 * that has not changed, and Retry is the only in-window recovery §E.2/§E.4
+	 * provide. The natural re-summon gesture re-resolves the seat, so without
+	 * this guard pressing the hotkey again ERASED the refusal and disabled Send,
+	 * leaving the draft's only way out a hide plus another summon. The gate and
+	 * the notice are different facts, so the gate moves and the notice stays.
+	 */
 	seatReady(state: MiniViewState): MiniViewState {
+		if (state.retryable && state.notice !== null)
+			return { ...state, seat: "ready" };
 		return { ...state, seat: "ready", notice: null, retryable: false };
 	},
 
-	/** A seat resolution refused, with the sentence that says why. */
+	/**
+	 * A seat resolution refused, with the sentence that says why.
+	 *
+	 * Preserves a standing retryable refusal the same way `seatReady` does (QA
+	 * round 1, Q1): a re-resolution that fails again must not replace the
+	 * sentence the reader was already acting on with a second opinion on the
+	 * same outage — Retry stays, and its next press re-resolves anyway.
+	 */
 	seatBlocked(state: MiniViewState, sentence: string): MiniViewState {
+		if (state.retryable && state.notice !== null)
+			return { ...state, seat: "blocked" };
 		return { ...state, seat: "blocked", notice: sentence, retryable: false };
 	},
 
