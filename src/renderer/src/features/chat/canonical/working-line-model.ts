@@ -684,10 +684,16 @@ export function workingLineClaimed(input: WorkingLineInput): boolean {
 /**
  * The derivation's input, read off one pane's canonical state.
  *
- * Exported so the rung and the composer are handed the SAME FACTS rather than
- * two constructions that can drift: the records are the list both of them render,
- * and `unavailable` is the pane's own `canonicalTranscriptSpeaks`, so neither
- * reader keeps a second copy of the rule that decides it.
+ * Exported so the rung and the composer are handed the same facts from one
+ * builder rather than two constructions that can drift, and so `unavailable`
+ * is the pane's own `canonicalTranscriptSpeaks` rather than a second copy of
+ * the rule. The records are NOT one list in every caller: the transcript's
+ * rung is handed the cross-session filter's `shownRecords` while the
+ * composer's hint still reads the raw records, and no divergence is reachable
+ * today because the one predicate that could flip on the dropped rows
+ * (`ownerAnswered`) is decided over raw records in `chat-page` before either
+ * reader is built - the trace and the dependency live beside the rung
+ * (`canonical-transcript.tsx`, the `paneWorking` memo).
  */
 export function workingLineInputFor(pane: {
 	waiting: boolean;
