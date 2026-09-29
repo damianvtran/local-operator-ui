@@ -1418,6 +1418,14 @@ function collapseRecords(state: TranscriptState): TranscriptState {
  * names the harness writes (`session/peer.py`, `harness/wake.py`).
  */
 const PEER_MESSAGE_CUSTOM_TYPE = "peer_message";
+/**
+ * The core's neutral closure copy (v2, 2026-09-29). A `closed` completion is a
+ * disposal that caught a run which spent no provider round-trip: a receipt,
+ * not a verdict. Byte-identical to `harness/rows.py::CLOSED_NOTICE_TEXT` in
+ * local-operator — the two repos render the same sentence for the same record,
+ * and drift between them is the divergence this feature exists to remove.
+ */
+const CLOSED_OUTCOME_TEXT = "Completed — runtime retired/disposed";
 const WAKE_PROMPT_CUSTOM_TYPE = "wake_prompt";
 /**
  * The harness's MCP-unavailable warning, which takes its own arm in `customRow`.
@@ -2052,21 +2060,35 @@ function durableRecord(
 		payload.custom_type === "completion_attention"
 	) {
 		const details = (payload.details ?? {}) as Record<string, unknown>;
-		if (
-			typeof details.anchor === "string" &&
-			(details.kind === "error" || details.kind === "interrupted")
-		) {
-			// Preserve the marker's durable position. Appending an old failure at
-			// the current retry tail would misrepresent which outcome was viewed.
-			return {
-				kind: "notice",
-				id: details.anchor,
-				ts,
-				complete: true,
-				text:
-					details.kind === "error" ? "Stopped with an error" : "Interrupted",
-				level: details.kind === "error" ? "error" : "warning",
-			};
+		if (typeof details.anchor === "string") {
+			if (details.kind === "closed") {
+				// THE NEUTRAL CLOSURE (v2, 2026-09-29): the disposal caught a run
+				// that spent no provider round-trip, so the record is a receipt —
+				// info ink, never danger. It keeps `complete: true` so the
+				// working-line ladder retires the wait the same way an incident
+				// does: a runtime that has been disposed is not still working.
+				return {
+					kind: "notice",
+					id: details.anchor,
+					ts,
+					complete: true,
+					text: CLOSED_OUTCOME_TEXT,
+					level: "info",
+				};
+			}
+			if (details.kind === "error" || details.kind === "interrupted") {
+				// Preserve the marker's durable position. Appending an old failure at
+				// the current retry tail would misrepresent which outcome was viewed.
+				return {
+					kind: "notice",
+					id: details.anchor,
+					ts,
+					complete: true,
+					text:
+						details.kind === "error" ? "Stopped with an error" : "Interrupted",
+					level: details.kind === "error" ? "error" : "warning",
+				};
+			}
 		}
 	}
 	if (entry.type !== "message") return null;
@@ -4914,7 +4936,7 @@ export function withRecoveredOutcome(
 	const kind = attention?.kind;
 	if (
 		!anchor ||
-		(kind !== "error" && kind !== "interrupted") ||
+		(kind !== "error" && kind !== "interrupted" && kind !== "closed") ||
 		// Mirrors the TUI's retry guard: a historical failure must not be
 		// inserted at the tail of a retry that is already running.
 		streaming ||
@@ -4932,7 +4954,12 @@ export function withRecoveredOutcome(
 		// tail where the durable rows it follows already are.
 		ts: state.records.at(-1)?.ts ?? Date.now(),
 		complete: true,
-		text: kind === "error" ? "Stopped with an error" : "Interrupted",
-		level: kind === "error" ? "error" : "warning",
+		text:
+			kind === "closed"
+				? CLOSED_OUTCOME_TEXT
+				: kind === "error"
+					? "Stopped with an error"
+					: "Interrupted",
+		level: kind === "closed" ? "info" : kind === "error" ? "error" : "warning",
 	});
 }

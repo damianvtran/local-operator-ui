@@ -2484,7 +2484,10 @@ test("frame-only stopped outcomes retire only the send they follow", () => {
 	// The real refusal frame may contain no completion_attention transcript
 	// entry at all. The pane synthesizes its visible incident from this record;
 	// a fixture containing only a raw notice cannot cover that production path.
-	for (const kind of ["error", "interrupted"]) {
+	// The v2 neutral closure (2026-09-29) retires the wait too: the runtime was
+	// disposed, and a fence-less spinner beside a "Completed — runtime
+	// retired/disposed" receipt is the Q4 contradiction this gate exists for.
+	for (const kind of ["error", "interrupted", "closed"]) {
 		const attention = { anchor_id: "completion-new", kind, unseen: true };
 		assert.equal(stoppedAfterAdmission(attention, null), true);
 		assert.equal(stoppedAfterAdmission(attention, "completion-old"), true);
@@ -2544,9 +2547,10 @@ const noticeRow = (id) => ({
 });
 /*
  * A durable completion marker, which the reducer writes on a `notice` for
- * exactly two outcomes - "Stopped with an error" and "Interrupted" - and never
- * for its own renderer notes. The `complete` field is the marker; the text is
- * copied from `transcript-reducer.ts` only so a reader can see what it is.
+ * exactly three outcomes — "Stopped with an error", "Interrupted", and the v2
+ * neutral closure "Completed — runtime retired/disposed" — and never for its
+ * own renderer notes. The `complete` field is the marker; the text is copied
+ * from `transcript-reducer.ts` only so a reader can see what it is.
  */
 const incidentRow = (id, level = "error") => ({
 	kind: "notice",
