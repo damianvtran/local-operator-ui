@@ -2133,6 +2133,16 @@ const STAMP_BINDING_NOTES = [
 	 * this file ships.
 	 */
 	"readmeVisualsFoldSevenNote",
+	/*
+	 * AND THE CROSS-SESSION VISIBILITY FILTER'S OWN (2026-09-29): both trees this
+	 * file binds move - `src/` for the renderer-side records filter, its
+	 * settings-query hook and the canonical transcript's seam; `scripts/` for the
+	 * filter's suite, the query providers every transcript harness gained, and the
+	 * `test:desktop` registration - while no frame is added or re-taken, because
+	 * this change's desktop captures are the PR's own rather than entries here. It
+	 * quotes the pair, so it is held to this file like every entry above it.
+	 */
+	"crossSessionVisibilityRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -3316,21 +3326,30 @@ const BRANCH_RECORDS = [
 	 */
 	"readmeVisualsFoldSevenNote",
 	/*
+	 * And the cross-session visibility filter's own record
+	 * (`crossSessionVisibilityRestampNote`), the same reason one note over: it is
+	 * this side's statement of what moved and what did not - both trees, no frame
+	 * - and a fold resolved from main's copy would drop it. Registered here with
+	 * the fold that carried quick-send's entry in, so the next one cannot drop
+	 * either silently.
+	 */
+	"crossSessionVisibilityRestampNote",
+	/*
 	 * AND THIS FIX'S OWN (2026-09-29): `browserOauthPopupsRestampNote` is the
 	 * re-stamp for the driven-page OAuth popups (the operator's console Microsoft
 	 * sign-in repro - MSAL `loginPopup` denied by the driven views' deny-all
-	 * `setWindowOpenHandler`), folded three times onto a moving main before its
-	 * first push (the thread-search overlay, then the README-visuals remediation,
-	 * then the sidebar-ack fix), with the evidence pair re-derived over each
-	 * folded tree. Both
-	 * trees move - `src/` for the popup policy, its presentation gate and the
-	 * renderer/preload deletions, `scripts/` for the proof rewrite, the policy
-	 * matrix and the trigger/guard cases - and no swept frame was taken: the
-	 * change's evidence is a new set of PNG frames and run transcripts that no
-	 * supplementary set declares (`docs/evidence/browser-oauth-popups/`), so the
-	 * reader is owed the pair this file ships and the reason no still was.
-	 * It quotes no tree-hash pair (read the pair off the two top-level fields), so
-	 * it joins `BRANCH_RECORDS` and not `STAMP_BINDING_NOTES`.
+	 * `setWindowOpenHandler`), folded onto a four-times-moving main before its
+	 * first push (the thread-search overlay, the README-visuals remediation, the
+	 * sidebar-ack fix, then the hide-cross-session-transcript fold), with the
+	 * evidence pair re-derived over each folded tree. Both trees move - `src/`
+	 * for the popup policy, its presentation gate and the renderer/preload
+	 * deletions, `scripts/` for the proof rewrite, the policy matrix and the
+	 * trigger/guard cases - and no swept frame was taken: the change's evidence is
+	 * a new set of PNG frames and run transcripts that no supplementary set
+	 * declares (`docs/evidence/browser-oauth-popups/`), so the reader is owed the
+	 * pair this file ships and the reason no still was. It quotes no tree-hash
+	 * pair (read the pair off the two top-level fields), so it joins
+	 * `BRANCH_RECORDS` and not `STAMP_BINDING_NOTES`.
 	 */
 	"browserOauthPopupsRestampNote",
 ];
