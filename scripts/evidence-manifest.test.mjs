@@ -1896,19 +1896,33 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"foldOnto20c3a207d7Note",
 	/*
-	 * THE FOLD ONTO `origin/main` `d1fe9eb01e` (2026-09-29, the quick-send /
-	 * mini-view branch, #630s) UNIONED THIS LIST BY KEY: this branch's
-	 * `readReceiptForegroundRestampNote` and main's `quickSendRestampNote` are
-	 * both kept, exactly as the rule above requires - no key from either side
-	 * was dropped.
+	 * AND THE FOLD'S OWN (2026-09-29): `sttDictationRestampNote` is the SECOND
+	 * fold over this branch's speech-to-text overhaul - onto the moved
+	 * `origin/main` `f3ce13cee7` (the projects-chrome-teams train), superseding
+	 * the first fold's note (onto `ff34fb8ecc`). Main's whole manifest is taken
+	 * as the base with this branch's record re-laid on top, the two supplementary
+	 * sets it declares ('stt-dictation', 'stt-dictation-baseline') re-laid
+	 * unchanged, the pair re-derived from the folded tip by the docs-only amend
+	 * that follows, and every list member above re-pointed with it. Both trees
+	 * move: `src/` for the composer's recording treatment, the hold-action
+	 * dispatcher, the in-flight dictation un-gate, the `input_mode` carriage and
+	 * the round-1 review fixes, and `scripts/` for the rig that proves them, its
+	 * spawn-site guard entry and the boundary-rule pin. It quotes that pair, so
+	 * it is held to this file like every entry above it.
 	 */
+	"sttDictationRestampNote",
 	/*
-	 * The receipt pass's own: the change moves BOTH trees this file binds -
-	 * `src/` for the completion-view hook's foreground deferral and `scripts/`
-	 * for the receipt suite's new cases - and takes no frame (its evidence is
-	 * the committed before/after half under
-	 * `docs/evidence/chat-sidebar-ack-and-selection/`), so the note states the
-	 * pair it binds and why the stills did not move.
+	 * THE FOLDS OF THE READ-RECEIPT BRANCH, each stated where it happened and
+	 * each kept by every later fold (union by key - no key from either side is
+	 * dropped): onto `d1fe9eb01e` (the quick-send / mini-view branch, #630s) and
+	 * onto `3de40b0fc9` (the turn-collapse train), and now onto `7c9c98ecc7`
+	 * (the #633 stt-overhaul merge). This branch's own record,
+	 * `readReceiptForegroundRestampNote`, states the receipt pass and its
+	 * round-1 remediation; the change moves `src/` (the completion-view hook and
+	 * the transcript reducer's live-settle arm) and `scripts/` (the receipt
+	 * suite's new cases, the reducer suite's case, and their registration), and
+	 * takes no frame of its own - its evidence is the committed before/after
+	 * half under `docs/evidence/chat-sidebar-ack-and-selection/`.
 	 */
 	"readReceiptForegroundRestampNote",
 	/*

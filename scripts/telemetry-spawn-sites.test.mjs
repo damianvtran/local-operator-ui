@@ -338,6 +338,14 @@ const APP_SPAWN_SITES = [
 		"drives the composer's interrupt end to end in the real app, against a real backend turn",
 		/withTelemetryOff\(spawnEnv\);/,
 	),
+	guarded(
+		"scripts/stt-dictation-proof.mjs",
+		"spawn",
+		1,
+		/env:\s*spawnEnv,/,
+		"drives the composer's dictation end to end in the real app - a hold, a transcript, a mid-turn steer, and the transcript-in-echo-window ordering - against a daemon the caller starts",
+		/withTelemetryOff\(spawnEnv\);/,
+	),
 	exempt(
 		"scripts/session-cookie-electron.test.mjs",
 		"spawn",
