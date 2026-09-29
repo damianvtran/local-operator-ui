@@ -161,7 +161,7 @@ export function useSuppressedOverlayIds(): string {
  * So the trade is recorded here rather than hidden: while the browser route is
  * showing, a toast that lands in the view's corner is partially occluded. The
  * browser feature answers that where it can — its own notices (the consent band,
- * the blocked-popup line, its errors) all render in the chrome band, which is never
+ * its error line) all render in the chrome band, which is never
  * occluded — and `scripts/browser-chrome-proof.mjs` measures the overlap and
  * records it, so the limitation is a number in the PR rather than a surprise.
  * A follow-up worth having: route app-wide notices into the chrome band while the
