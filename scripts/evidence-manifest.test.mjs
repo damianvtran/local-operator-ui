@@ -3112,6 +3112,19 @@ const BRANCH_RECORDS = [
 	 */
 	"miniDictRestampNote",
 	/*
+	 * AND THIS FIX'S OWN (2026-09-29): `relaunchDuringQuitRestampNote` is the
+	 * re-stamp for the quit-in-progress gate (issue #636 - a relaunch inside the
+	 * teardown was answered by the dying instance with a window that died with it,
+	 * "the relaunched app opens onto the app still shutting down"), folded late
+	 * onto main's quick-send and projects lineages. Both trees move - `src/` for
+	 * the state, its two answer sites and the new refusal reporter, `scripts/` for
+	 * the proof rig, the suites that pin the gate and this list's own registration
+	 * - and no swept frame was taken: the change's evidence is a new set of a PNG
+	 * frame and run transcripts that no supplementary set declares, so the reader
+	 * is owed the pair this file ships and the reason no still was.
+	 */
+	"relaunchDuringQuitRestampNote",
+	/*
 	 * And the cross-session visibility filter's own record
 	 * (`crossSessionVisibilityRestampNote`), the same reason one note over: it is
 	 * this side's statement of what moved and what did not - both trees, no frame
