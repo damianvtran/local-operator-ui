@@ -98,10 +98,10 @@ Two statements follow, and both are machine-read from the pass, not inferred:
 
 Counted per pass: **before — 1 give-up log line, 1 give-up row clause; after — 0 and
 0** (`before-readings.json` / `after-readings.json`, `giveUp`). The refusal itself
-still happens on both trees (7 and 5 IPC refusals in the two logs — main is doing its
-job); what the fix removes is the receipt's conclusion that a refusal like this has
-exhausted anything. The mark also stays unread in both passes, which is the truth of
-this rig rather than a difference (below).
+still happens on both trees — main refuses every receipt in this rig, which is why
+the mark stays unread in both passes (below) — so "no give-up" is not "no refusal":
+what the fix removes is the receipt's conclusion that a refusal like this has
+exhausted anything, and the after pass keeps probing instead of stopping.
 
 **What this rig cannot see, and where it is covered instead.** The final CLEAR is
 not observable here — with main refusing every receipt, the mark can only be cleared
