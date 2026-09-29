@@ -45,7 +45,9 @@
  * 638px). See `FOLD_MEDIA_LIMIT`. Past the cap the last slot is `+N more` rather
  * than another picture, so the height is bounded at 91px for any count: without
  * the cap a run of 25-30 screenshots cost ~391px, more than the 338.7px expanded
- * group it was meant to save (design review round 1, D3).
+ * group it was meant to save (design review round 1, D3). The count slot is a
+ * CONTROL - see `onRevealMore` - because past the cap it is the only route to
+ * the pictures the row did not draw.
  *
  * The count is also a clause in the condensed header itself (`· 2 images`), which
  * costs no height at all, and it is what keeps a sighted reader from being offered
@@ -68,9 +70,12 @@
  * The strip is a SIBLING of the fold, not a second rendering of the rows: while
  * the fold is open the rows draw their own pictures (`TranscriptRow`'s `media`),
  * and the strip is not rendered at all, so one picture is never on screen twice.
- * Its `ml-5` is `Disclosure`'s `CONTENT_INDENT` — the same one chevron column the
- * rows inside the fold hang off — so a picture sits where the row that produced
- * it would have put it.
+ * Its alignment is the caller's: `indent="content"` (the default) is
+ * `Disclosure`'s `CONTENT_INDENT`, the chevron column the rows inside the fold
+ * hang off, so a picture sits where the row that produced it would have put it;
+ * `indent="flush"` is for the turn BAR, whose header has no chevron gutter on
+ * the left - with the indent the tiles there hung in a column neither the bar's
+ * text nor the answer used (design round 1, D2).
  *
  * ## The live window and the settled one
  *
@@ -83,6 +88,7 @@
  * non-remount.
  */
 
+import { Button } from "@shared/components/ui/button";
 import { cn } from "@shared/lib/utils";
 import { foldMediaSlots } from "../canonical/trace-fold-model";
 import { CanonicalImage } from "./canonical-image";
@@ -94,16 +100,38 @@ export type FoldMediaProps = {
 	images: readonly TranscriptImage[];
 	/** The conversation the run's rows belong to; see `CanonicalImage`. */
 	scope: AttachmentScope | null;
+	/**
+	 * What `+N more images` DOES when pressed: open the enclosing fold.
+	 *
+	 * REQUIRED, because past the cap this slot is the only route to the pictures
+	 * the row did not draw, and an inert count is the dead end the round-1 UX
+	 * pass found (`U1`: the muted chip sat exactly where a reader expects "show
+	 * the rest" and did nothing). The fold's owner passes its own toggle, so the
+	 * strip never toggles anything it does not own - the same separation the
+	 * thumbnails keep (a tile expands, never opens the fold).
+	 */
+	onRevealMore: () => void;
+	/**
+	 * Where the row starts: `content` (the default) keeps `Disclosure`'s content
+	 * indent; `flush` starts at the caller's text edge, for the turn bar - see
+	 * the file header.
+	 */
+	indent?: "content" | "flush";
 };
 
-export const FoldMedia = ({ images, scope }: FoldMediaProps) => {
+export const FoldMedia = ({
+	images,
+	scope,
+	onRevealMore,
+	indent = "content",
+}: FoldMediaProps) => {
 	const { shown, more } = foldMediaSlots(images.length);
 	return (
 		/*
 		 * A LIST, because that is what it is: the run's pictures are N of one
 		 * thing, and a reader reaching the strip after the header hears how many
 		 * and what the set is, rather than a run of identically named "Expand
-		 * Screenshot" buttons attached to no set. `role="list"` is not decoration:
+		 * Image" buttons attached to no set. `role="list"` is not decoration:
 		 * Tailwind's preflight sets `list-style: none` on `ul`, and WebKit drops
 		 * list semantics for a list without markers, so the role is what keeps the
 		 * count in the name (design review round 1, P5).
@@ -125,13 +153,14 @@ export const FoldMedia = ({ images, scope }: FoldMediaProps) => {
 			role="list"
 			/*
 			 * ONE NOUN for one object, and `image` is the one that wins: it is the word
-			 * `foldMediaClause` already puts in the visible header of this same row, and
-			 * the record's own noun (`TranscriptImage`) — an attachment a run produced
-			 * need not be a capture. The per-tile control keeps the app's word for the
-			 * ACTION ("Screenshot N", the same string every other picture button on
-			 * these surfaces carries), so the strip names its SET in the header's
-			 * register and does not invent a second name for the buttons (design review
-			 * round 2, D7).
+			 * `foldMediaClause` already puts in the visible header of this same row, the
+			 * word this list's own name uses, and the record's own noun
+			 * (`TranscriptImage`) - an attachment a run produced need not be a capture.
+			 * The per-tile name says the same word plus the position (`Image 2`), so the
+			 * clause, the set and the buttons agree; the earlier cut's "Screenshot N"
+			 * (kept once to match every other picture button) read wrong on the charts
+			 * this strip exists to index (UX round 1, U4), and the row's own pictures
+			 * take the same noun.
 			 */
 			aria-label={
 				images.length === 1
@@ -139,7 +168,10 @@ export const FoldMedia = ({ images, scope }: FoldMediaProps) => {
 					: `${images.length} images from this run`
 			}
 			data-fold-media=""
-			className={cn("mt-1 ml-5 flex flex-wrap items-center gap-2")}
+			className={cn(
+				"mt-1 flex flex-wrap items-center gap-2",
+				indent === "content" ? "ml-5" : "ml-0",
+			)}
 		>
 			{images.slice(0, shown).map((image, index) => (
 				/*
@@ -157,27 +189,28 @@ export const FoldMedia = ({ images, scope }: FoldMediaProps) => {
 						image={image}
 						scope={scope}
 						size="thumbnail"
-						label={
-							images.length === 1 ? "Screenshot" : `Screenshot ${index + 1}`
-						}
+						label={images.length === 1 ? "Image" : `Image ${index + 1}`}
 					/>
 				</li>
 			))}
 			{more > 0 && (
 				/*
-				 * The cap's own words, in the meta register the header's clauses use.
-				 * Text rather than a title attribute or an icon, because the whole
-				 * point of the count is that it is legible and reachable without a
-				 * pointer - and because a silent sixth tile would leave the reader
-				 * believing they had seen the run's pictures.
+				 * THE COUNT IS THE CONTROL. Past the cap this slot is the only route to
+				 * the pictures the row did not draw, so it OPENS the enclosing fold
+				 * rather than sitting as text a reader cannot act on (UX round 1, U1);
+				 * the fold then draws the remainder itself. The shared `Button` rather
+				 * than hand-rolled classes: hover, pressed and the focus ring are the
+				 * app's own, and it is keyboard-reachable by construction. The noun
+				 * joins the count, so `+4 more images` cannot read as more actions or
+				 * lines.
 				 */
 				<li
 					key="fold-media-more"
-					className={cn(
-						"flex h-16 items-center leading-none text-ink-muted text-meta",
-					)}
+					className={cn("flex h-16 items-center leading-none")}
 				>
-					{`+${more} more`}
+					<Button variant="ghost" size="sm" onClick={onRevealMore}>
+						{`+${more} more image${more === 1 ? "" : "s"}`}
+					</Button>
 				</li>
 			)}
 		</ul>

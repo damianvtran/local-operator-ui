@@ -125,9 +125,11 @@ export type TraceFoldProps = {
 	 * put one picture on screen twice. The caller composes it
 	 * (`canonical-transcript.tsx` builds a `FoldMedia` from the run's images)
 	 * rather than this file importing it, because the fold is a trace-tier
-	 * component and the transcript is what knows a record's images.
+	 * component and the transcript is what knows a record's images; the fold
+	 * hands the node its own toggle, so the strip's `+N more images` slot can
+	 * open this fold instead of being a dead end (UX round 1, U1).
 	 */
-	condensedMedia?: ReactNode;
+	condensedMedia?: (expand: () => void) => ReactNode;
 	/**
 	 * How many pictures `condensedMedia` stands for, for the header's own clause.
 	 *
@@ -430,8 +432,10 @@ export const TraceFold = ({
 			 * pitch and the strip is what the reader gains rather than something the
 			 * header now has to trade against. Only while condensed: open, every row
 			 * draws its own media and rendering both would show one picture twice.
+			 * The fold's own toggle is handed to the node so its count slot can open
+			 * the fold (`FoldMedia`'s `onRevealMore`).
 			 */}
-			{!open && condensedMedia}
+			{!open && condensedMedia && condensedMedia(() => setOpen(true))}
 		</div>
 	);
 };

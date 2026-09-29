@@ -551,15 +551,20 @@ const RowPictures = ({ images }: { images: TranscriptImage[] }) => (
 				key={image.id}
 				image={image}
 				scope={null}
-				label={images.length === 1 ? "Screenshot" : `Screenshot ${index + 1}`}
+				label={images.length === 1 ? "Image" : `Image ${index + 1}`}
 			/>
 		))}
 	</div>
 );
 
-/** The run's pictures as the fold carries them while condensed. */
-const foldPictures = (images: TranscriptImage[]) => (
-	<FoldMedia images={images} scope={null} />
+/**
+ * The run's pictures as the fold carries them while condensed - as the render
+ * function `TraceFold` takes, so the story's strip carries a real
+ * `+N more images` action (which opens the fold in the app; the sweep never
+ * presses it, and the real callers pass their own toggles).
+ */
+const foldPictures = (images: TranscriptImage[]) => (expand: () => void) => (
+	<FoldMedia images={images} scope={null} onRevealMore={expand} />
 );
 
 const IMAGE_ROWS: RowSpec[] = [

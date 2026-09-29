@@ -70,6 +70,26 @@ const shims = {
 		unobserve() {}
 		disconnect() {}
 	},
+	/*
+	 * jsdom implements neither. The bar's press path mounts the transcript's own
+	 * rows, and one of those (the cross-session receipt row) observes mutations -
+	 * the same shim every other harness in `scripts/` carries.
+	 */
+	MutationObserver: window.MutationObserver,
+	/*
+	 * The focus manager the bar's press path reaches for walks tabbables with
+	 * `NodeFilter`; jsdom implements it on the window.
+	 */
+	NodeFilter: window.NodeFilter,
+	HTMLInputElement: window.HTMLInputElement,
+	IntersectionObserver: class {
+		observe() {}
+		unobserve() {}
+		disconnect() {}
+		takeRecords() {
+			return [];
+		}
+	},
 	matchMedia: (query) => ({
 		matches: false,
 		media: query,
@@ -1059,8 +1079,11 @@ test("a span with no pictures is the bar it was: no strip, no clause", async (t)
 test("the strip caps at four tiles and counts the rest", async (t) => {
 	/*
 	 * The pathological span: eight pictures cost one capped row - four tiles
-	 * and a `+4 more` - which is the height bound `FOLD_MEDIA_LIMIT` exists
-	 * for, and the count is what keeps the row from pretending otherwise.
+	 * and a `+4 more images` - which is the height bound `FOLD_MEDIA_LIMIT`
+	 * exists for, and the count is what keeps the row from pretending
+	 * otherwise. The count slot is also the ONLY route to the pictures past
+	 * the cap, so it is a control (U1), and that is asserted here against the
+	 * real bar.
 	 */
 	__resetTurnCollapseOpen();
 	const images = Array.from({ length: 8 }, (_, index) =>
@@ -1080,8 +1103,25 @@ test("the strip caps at four tiles and counts the rest", async (t) => {
 	);
 	assert.match(
 		strip.textContent ?? "",
-		/\+4 more/,
-		"and the count says how many are left",
+		/\+4 more images/,
+		"and the count says how many are left, and of what",
+	);
+	/*
+	 * U1: it OPENS the bar rather than standing as text - the same toggle the
+	 * bar's own trigger runs, so pressing it reveals the rows (and with them
+	 * the pictures past the cap, at the row level where each is drawn in full).
+	 * The match is on the count's own words: the tiles inside the strip are
+	 * buttons too, and pointing at one of those would expand a picture instead
+	 * of opening the run.
+	 */
+	const more = [...strip.querySelectorAll("button")].find((control) =>
+		/more images?/.test(control.textContent ?? ""),
+	);
+	assert.ok(more, "the count slot is a button, not inert text");
+	await click(more);
+	assert.ok(
+		rowBox(mounted, "tool:1"),
+		"pressing the count opens the run, putting the rows it stood for back",
 	);
 	assert.equal(
 		strip.getAttribute("aria-label"),

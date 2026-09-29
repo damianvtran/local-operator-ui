@@ -24,7 +24,7 @@ type BaseImageAttachmentProps = {
 	 * Defaults to the filename, which is right for a file on disk. A canonical
 	 * image has no filename — `getFileName` on a blob URL yields the blob's
 	 * UUID, so a screen reader announced a GUID — and passes a position
-	 * ("Screenshot") instead.
+	 * ("Image") instead.
 	 */
 	label?: string;
 	/**
@@ -117,7 +117,7 @@ const getFileName = (path: string): string => {
  * as rows rather than as a decorated scrapbook; the same reasoning is why the
  * composer's staging preview and the canvas viewer carry no mark either. What
  * says "this expands" is therefore the pointer cursor, the `title` tooltip, an
- * accessible name that states the ACTION ("Expand Screenshot"), and Enter/Space
+ * accessible name that states the ACTION ("Expand Image"), and Enter/Space
  * on a real button — four cues that cost the composition nothing, rather than a
  * fifth that would sit on every picture in every transcript.
  *

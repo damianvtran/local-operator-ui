@@ -92,7 +92,7 @@ export const CanonicalImage = ({
 			 * settles to its own height, exactly as every other durable picture has.
 			 *
 			 * `aria-hidden` because there is nothing to announce yet: the picture's
-			 * own button names it the moment it arrives, and a reader told "Screenshot 2"
+			 * own button names it the moment it arrives, and a reader told "Image 2"
 			 * twice - once for the empty box and once for the picture - is worse than
 			 * one who waits a frame.
 			 */

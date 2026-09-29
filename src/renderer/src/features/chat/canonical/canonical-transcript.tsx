@@ -1322,11 +1322,7 @@ const ToolRow = memo(function ToolRow({
 						key={image.id}
 						image={image}
 						scope={scope}
-						label={
-							record.images.length === 1
-								? "Screenshot"
-								: `Screenshot ${index + 1}`
-						}
+						label={record.images.length === 1 ? "Image" : `Image ${index + 1}`}
 					/>
 				))}
 			</div>
@@ -2922,7 +2918,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * withheld from a run that carries a bar: the bar states both, one per turn
 	 * (`feet.get(...) ?? null` and the caption block share one switch).
 	 */
-	const renderGroup = (group: SectionGroup, suppressClosingLine: boolean) =>
+	const renderGroup = (
+		group: SectionGroup,
+		suppressClosingLine: boolean,
+		omitMediaCount = false,
+	) =>
 		group.kind === "run" ? (
 			<TraceFold
 				key={group.id}
@@ -2953,16 +2953,27 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				 * the reason a group with no images is byte-for-byte the group it was.
 				 */
 				condensedMedia={
-					group.images.length > 0 ? (
-						<FoldMedia images={group.images} scope={mediaScope} />
-					) : undefined
+					group.images.length > 0
+						? (expand: () => void) => (
+								<FoldMedia
+									images={group.images}
+									scope={mediaScope}
+									onRevealMore={expand}
+								/>
+							)
+						: undefined
 				}
 				/*
 				 * The count travels beside the node: the header prints it as text,
 				 * because a 64px tile cannot carry a label and the count is what the
-				 * strip's own accessible name already says.
+				 * strip's own accessible name already says. `omitMediaCount` is the
+				 * bar's own children's case (D3/U6): when this group's count IS the
+				 * number the bar's line carries directly above, the clause repeated it
+				 * one line apart - so the BAR keeps the aggregate and the group drops
+				 * the duplicate, while with two image-bearing groups the numbers
+				 * differ and each level states its own.
 				 */
-				mediaCount={group.images.length}
+				mediaCount={omitMediaCount ? 0 : group.images.length}
 			>
 				{group.rows.map((row, index) => (
 					<TranscriptRow
@@ -3518,9 +3529,16 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 											 * passed at all for a run that produced none.
 											 */
 											condensedMedia={
-												entry.images.length > 0 ? (
-													<FoldMedia images={entry.images} scope={mediaScope} />
-												) : undefined
+												entry.images.length > 0
+													? (expand: () => void) => (
+															<FoldMedia
+																images={entry.images}
+																scope={mediaScope}
+																onRevealMore={expand}
+																indent="flush"
+															/>
+														)
+													: undefined
 											}
 											mediaCount={entry.images.length}
 										>
@@ -3531,10 +3549,20 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 												 * group's slot, so the group cannot also keep the turn-tier
 												 * margin it earned as the turn's opener (D2). Every other
 												 * group keeps the gap the unfolded list gave it.
+												 *
+												 * The third argument is D3/U6's duplicate rule: the bar's
+												 * line above states the span's count, and when this group's
+												 * own count IS that number the group row's clause repeated
+												 * it one line apart, so the group drops it and the bar keeps
+												 * the aggregate. Two image-bearing groups make the numbers
+												 * differ, and then each level states its own.
 												 */
 												renderGroup(
 													index === 0 ? atTraceTierGroup(child) : child,
 													true,
+													child.kind === "run" &&
+														entry.images.length > 0 &&
+														child.images.length === entry.images.length,
 												),
 											)}
 										</TurnSummary>
