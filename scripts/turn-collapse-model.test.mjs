@@ -27,6 +27,7 @@ const bundle = await build({
 			'export * from "./src/renderer/src/features/chat/canonical/turn-collapse-model";',
 			'export { runsOf, closingAnswerIds, buildRows } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
 			'export { applyEvent, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
+			'export { visibleRecords } from "./src/renderer/src/features/chat/canonical/cross-session-visibility";',
 		].join("\n"),
 		resolveDir: ROOT,
 	},
@@ -53,6 +54,7 @@ const {
 	buildRows,
 	applyEvent,
 	EMPTY_TRANSCRIPT,
+	visibleRecords,
 } = await import(moduleUrl);
 
 /* ------------------------------- fixtures ------------------------------- */
@@ -114,8 +116,8 @@ test("a steer folds into the run it interrupted; a settled turn opens the next",
 	assert.equal(steered.length, 1, "one turn, not two");
 	assert.equal(
 		steered[0].key,
-		"u1",
-		"the run is keyed by its opening user row",
+		"a1",
+		"the run is keyed by its closing answer (the head-independent identity)",
 	);
 	assert.equal(
 		steered[0].closingAnswerId,
@@ -133,8 +135,8 @@ test("a steer folds into the run it interrupted; a settled turn opens the next",
 	]);
 	assert.deepEqual(
 		twoTurns.map((run) => run.key),
-		["u1", "u2"],
-		"a settled answer makes the next user message a new turn",
+		["a1", "a2"],
+		"a settled answer makes the next user message a new turn, keyed on its answer",
 	);
 	assert.equal(twoTurns[0].boundary, "answer");
 	assert.equal(twoTurns[0].closingAnswerId, "a1");
@@ -160,17 +162,41 @@ test("a steer folds into the run it interrupted; a settled turn opens the next",
 	]);
 	assert.deepEqual(
 		marked.map((run) => run.key),
-		["u1", "u2"],
+		["m1", "a2"],
 		"a completion marker ends the turn even with no answer painted",
 	);
 	assert.equal(marked[0].boundary, "marker");
 });
 
-test("a run whose head the window cut off says so, and keys on its first row", () => {
+test("a head-cut run's identity survives the head arriving later", () => {
+	/*
+	 * The key is what the reader's expansion and the bar's React key hang on,
+	 * and a head-cut run's first row is NOT stable: the day a page brings the
+	 * opening user row in, that row is no longer first. The closing answer (or,
+	 * with none to key on, the run's last row) is the same row in both lists —
+	 * rows only ever arrive ABOVE a run's head.
+	 */
 	const cut = runsOf([tool("t1"), tool("t2", {}, "trace"), answer("a1")]);
 	assert.equal(cut.length, 1);
 	assert.equal(cut[0].opensWithUserRow, false);
-	assert.equal(cut[0].key, "t1", "the fallback key is the first row's id");
+	assert.equal(cut[0].key, "a1", "the closing answer keys the cut run");
+	const whole = runsOf([
+		user("u1"),
+		tool("t1"),
+		tool("t2", {}, "trace"),
+		answer("a1"),
+	]);
+	assert.equal(whole[0].key, cut[0].key, "the head landing does not move it");
+	assert.equal(
+		runsOf([tool("t3")])[0].key,
+		"t3",
+		"with no answer to key on, the run's last row is the stable half",
+	);
+	assert.equal(
+		runsOf([user("u2"), tool("t3")])[0].key,
+		"t3",
+		"and it is the same row before and after the head lands",
+	);
 });
 
 /* --------------------------- the case matrix (§5) ------------------------ */
@@ -368,19 +394,110 @@ test("a dead run with no settled row collapses to the bar alone", () => {
 	const withSteer = planOf([user("u1"), tool("t1"), user("s1")]);
 	assert.deepEqual(
 		withSteer.runs.map((run) => run.key),
-		["u1"],
+		["s1"],
 		"the following message is a steer, however unideal that is (R2)",
 	);
 });
 
-test("a window-cut run never collapses, whatever it hides", () => {
-	// §5 case 12: a summary may only ever describe rows that are on hand.
-	const plan = planOf([tool("t1"), tool("t2", {}, "trace"), answer("a1")]);
+test("a head-cut run with its closing answer loaded condenses from the loaded span, with no fabricated duration", () => {
+	/*
+	 * END-LOADED ELIGIBILITY (operator report, 2026-09-29; adopted from the dsh
+	 * comparison). The fetched list starts mid-run — the operator's "the
+	 * previous message is a few chunk loads up" — and the run used to render
+	 * its raw rows until the reader pulled the head in. The bar may only ever
+	 * describe rows on hand, and that is exactly what this plans: the loaded
+	 * calls, and NO `Took` (the span would have to start at the first loaded
+	 * row, a number the turn never had).
+	 */
+	const plan = planOf([
+		tool("t1"),
+		tool("t2", {}, "trace"),
+		answer("a1", { ts: TS + 5_000 }),
+	]);
+	const run = plan.runs[0];
+	assert.equal(
+		run.collapses,
+		true,
+		"the closing answer is on hand, so it folds",
+	);
+	assert.deepEqual(
+		run.hidden.map((hidden) => hidden.record.id),
+		["t1", "t2"],
+		"the loaded rows are what it hides",
+	);
+	assert.equal(
+		run.facts.durationS,
+		null,
+		"never fabricated from the first loaded row",
+	);
+	assert.equal(run.facts.actions, 2, "counted over the loaded rows only");
+	assert.equal(
+		run.stampTs,
+		TS + 5_000,
+		"the closing answer still stamps the turn",
+	);
+});
+
+test("a head-cut run with no closing answer stays unfolded — no answer, no bar", () => {
+	// The honesty property in its true form: the bar's tail is the closing
+	// answer, and a cut run that never handed one has no tail to keep.
+	const plan = planOf([tool("t1"), tool("t2", {}, "trace")]);
 	assert.equal(plan.runs[0].collapses, false);
 	assert.equal(
 		plan.runs[0].hidden.length,
 		2,
 		"the plan still says what it would hide; the flag is what refuses",
+	);
+});
+
+test("the focus hold keeps a run open while the reader's focus sits in a row it would hide", () => {
+	const rows = [user("u1"), tool("t1"), answer("a1")];
+	assert.equal(
+		collapsePlan(rows, { live: false }).runs[0].collapses,
+		true,
+		"the baseline: the completed run folds",
+	);
+	const held = collapsePlan(rows, { live: false, focusHold: "t1" });
+	assert.equal(
+		held.runs[0].collapses,
+		false,
+		"the run that would unmount the focused row stands open",
+	);
+	assert.deepEqual(
+		held.runs[0].hidden.map((hidden) => hidden.record.id),
+		["t1"],
+		"the plan still states what it would hide",
+	);
+	assert.equal(
+		collapsePlan(rows, { live: false, focusHold: "u1" }).runs[0].collapses,
+		true,
+		"a focused row OUTSIDE the hidden span does not hold it",
+	);
+	const two = collapsePlan(
+		[
+			user("u1"),
+			tool("t1"),
+			answer("a1"),
+			user("u2"),
+			tool("t2", {}, "trace"),
+			answer("a2"),
+		],
+		{ live: false, focusHold: "t2" },
+	);
+	assert.equal(
+		two.runs[0].collapses,
+		true,
+		"a bar over a run the reader is not in cannot disturb them",
+	);
+	assert.equal(two.runs[1].collapses, false, "the focused run stands open");
+	assert.equal(
+		collapsePlan(rows, {
+			live: false,
+			focusHold: "t1",
+			openRuns: new Set(["a1"]),
+		}).runs[0].collapses,
+		true,
+		"an OPEN run already renders its rows, so nothing is mid-transition",
 	);
 });
 
@@ -883,7 +1000,11 @@ test("R1-3(a): a prose-free settled answer does not close the run — the next m
 	);
 	const runs = runsOf(rows);
 	assert.equal(runs.length, 1, "so u2 folds into u1's run as a steer");
-	assert.equal(runs[0].key, "u1");
+	assert.equal(
+		runs[0].key,
+		"u2",
+		"keyed on its last row: the closure `a1` paints no row to key on",
+	);
 });
 
 test("R1-3(b): a steer landing after settled mid-turn prose opens its own run", () => {
@@ -929,7 +1050,121 @@ test("R1-3(b): a steer landing after settled mid-turn prose opens its own run", 
 	const runs = runsOf(rows);
 	assert.deepEqual(
 		runs.map((run) => run.key),
-		["u1", "u2"],
+		["n1", "u2"],
 		"the steer opens a run: the settled prose counted as the ending",
+	);
+});
+
+/* --------------- the cross-session filter, upstream of the plan ----------- */
+
+test("hidden cross-session rows never reach the bar: counts equal the visible span", () => {
+	/*
+	 * The filter's seam (`canonical-transcript.tsx`'s `shownRecords`) sits
+	 * UPSTREAM of this model - the plan is handed
+	 * `collapsePlan(buildRows(visibleRecords(records, hide)))` - so the assertions
+	 * worth making are compositional: a hidden `send` must not be in the
+	 * partition, must not be counted among the bar's actions, and the model's
+	 * own pin list must be what decides the receipt's fate with the option off.
+	 *
+	 * The unfiltered plan is computed too, because "no count leak" is only
+	 * pinned by showing the raw count WOULD have included the send: the defect
+	 * this guards is a filter applied to paint but not to the accounting.
+	 */
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: userMessage("u1", "go") },
+		TS,
+	);
+	for (const [callId, name, at] of [
+		["c-send", "send", 100],
+		["c-bash", "bash", 300],
+	]) {
+		state = applyEvent(
+			state,
+			{
+				type: "tool_execution_start",
+				tool_call_id: callId,
+				tool_name: name,
+				args: {},
+			},
+			TS + at,
+		);
+		state = applyEvent(
+			state,
+			{
+				type: "tool_execution_end",
+				tool_call_id: callId,
+				tool_name: name,
+				result: { content: [{ type: "text", text: "ok" }] },
+				is_error: false,
+				duration_s: 1,
+			},
+			TS + at + 50,
+		);
+	}
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: assistantMessage("a1", "done") },
+		TS + 500,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_end", message: assistantMessage("a1", "done") },
+		TS + 600,
+	);
+	const [opening, ...rest] = state.records;
+	/* The peer receipt inside the span, in the pinned-row test's own shape. */
+	const records = [
+		opening,
+		{ kind: "peer", id: "p1", ts: TS + 50, body: "from a peer", sender: {} },
+		...rest,
+	];
+	const sendId = records.find(
+		(record) => record.kind === "tool" && record.toolName === "send",
+	).id;
+
+	/* Off: the bare reference, the same plan, the model's own pin list. */
+	assert.equal(visibleRecords(records, false), records);
+	const planOff = planOf(buildRows(visibleRecords(records, false), []));
+	assert.deepEqual(planOff, planOf(buildRows(records, [])));
+	assert.ok(
+		planOff.runs[0].recordIds.includes(sendId),
+		"with the option off the send row is part of the run",
+	);
+	/*
+	 * The receipt follows the MODEL's pin list rather than this test's memory
+	 * of it: #634 dropped `peer`/`wake` from the pins (issue #5 - inside a
+	 * completed turn the delivery receipts are the bulk of the visual weight),
+	 * so with the option off the peer sits in the run and among the collapsed
+	 * rows. What the filter owns is the list it hands over - the bare reference
+	 * above - and the on-half below pins that it cannot leave a count or an id
+	 * behind for either row.
+	 */
+	assert.ok(
+		planOff.runs[0].recordIds.includes("p1") &&
+			planOff.runs[0].hidden.some((row) => row.record.id === "p1"),
+		"with the option off the peer receipt is in the run and collapses with the work",
+	);
+
+	/* On: neither row reaches the partition, and the count drops by the send. */
+	const planOn = planOf(buildRows(visibleRecords(records, true), []));
+	assert.equal(
+		planOn.runs[0].facts.actions,
+		1,
+		"only the bash row is counted - no residual count for the hidden send",
+	);
+	assert.equal(
+		planOf(buildRows(records, [])).runs[0].facts.actions,
+		2,
+		"unfiltered the send WOULD be counted, so the filter is what removed it",
+	);
+	assert.ok(
+		!planOn.runs[0].recordIds.includes(sendId) &&
+			!planOn.runs[0].recordIds.includes("p1"),
+		"neither hidden row is in the bar's ids",
+	);
+	assert.ok(
+		!String(planOn.runs[0].facts.title).toLowerCase().includes("send"),
+		"the bar's sentence names no hidden tool",
 	);
 });

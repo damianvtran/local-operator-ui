@@ -64,6 +64,7 @@ import {
 } from "lucide-react";
 import {
 	type FC,
+	type FocusEvent,
 	type RefObject,
 	memo,
 	useCallback,
@@ -116,6 +117,7 @@ import { CanvasPaneProvider } from "../utils/canvas-pane";
 import { parseReplies } from "../utils/reply-utils";
 import { CanonicalImage } from "./canonical-image";
 import { CheckpointRail } from "./checkpoint-rail";
+import { visibleRecords } from "./cross-session-visibility";
 import { isRecordReachable } from "./failed-row-jump";
 import { LinkToolkit } from "./link-toolkit";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
@@ -134,6 +136,7 @@ import {
 	foldRuns,
 	turnFeet,
 } from "./trace-fold-model";
+import { shareInFlight } from "./transcript-loader";
 import {
 	type CanonicalTranscriptStatus,
 	canonicalTranscriptSpeaks,
@@ -164,8 +167,10 @@ import {
 	snapWindowToRunBoundary,
 	windowTopRunIsHeadCut,
 } from "./turn-collapse-model";
+import { useActiveCheckpoint } from "./use-active-checkpoint";
 import type { AttachmentScope } from "./use-attachment-url";
 import { useCheckpoints } from "./use-checkpoints";
+import { useCrossSessionHidden } from "./use-cross-session-hidden";
 import { useLinkSubject } from "./use-link-subject";
 import { useScrollPaging } from "./use-scroll-paging";
 import {
@@ -208,15 +213,15 @@ const JUMP_MOUNT_HEADROOM_ROWS = 16;
  * How far the render window may be extended to land its top edge on a run
  * boundary (the on-load fix, operator report 2026-09-28).
  *
- * The extension exists so a completed run the window's edge cuts through can
- * still collapse: the bar needs the run's opening user row inside the list it
- * plans over (`turn-collapse-model.ts`, the window-cut rule), and a reader who
- * had to scroll that row in was the reported pain. Three durable pages is the
- * same order as `RECONCILE_TAIL_MAX_ENTRIES` and covers every run whose collapse
- * fills a screen; a run taller than this keeps the shipped behaviour (renders
- * cut until the reader widens past it), which is stated rather than silently
- * dropped. The cost of an extension is one heavier commit, not heavier DOM: a
- * collapsed run unmounts its hidden rows in the same render that plans them.
+ * The extension is the CHEAP half of alignment: a completed run the window's
+ * edge cuts through lands its opening user row inside the list the plan reads,
+ * so the bar gains the head row and the real duration in the same commit.
+ * Three durable pages is the same order as `RECONCILE_TAIL_MAX_ENTRIES` and
+ * covers every run whose collapse fills a screen; a run taller than this keeps
+ * the window cut (renders cut at its top until the reader widens past it) —
+ * since the end-loaded rule that costs the bar its Took clause, never the bar.
+ * The cost of an extension is one heavier commit, not heavier DOM: a collapsed
+ * run unmounts its hidden rows in the same render that plans them.
  */
 const WINDOW_ALIGN_MAX_EXTRA = 300;
 
@@ -224,11 +229,49 @@ const WINDOW_ALIGN_MAX_EXTRA = 300;
  * Durable pages one open may fetch to bring a cut run's head into the loaded
  * rows (`windowTopRunIsHeadCut`).
  *
- * The first automatic follow-up load, bounded: a run whose head is more than
- * two pages above the tail stands down with today's behaviour, because the
- * alternative is an open that walks an unbounded conversation into memory.
+ * The first automatic follow-up load, bounded: an open must not walk an
+ * unbounded conversation into memory. SINCE THE END-LOADED RULE (operator
+ * report, 2026-09-29) the bound no longer decides whether a completed turn
+ * folds — a run whose head stays cut still condenses from its loaded span —
+ * only whether its bar gains the head row and the real duration clause.
  */
 const ALIGN_FETCH_MAX = 2;
+
+/**
+ * What a bar's appearance says out loud (the settle announcement's sentence).
+ *
+ * The bar's own words and quantities, so the announcement never states more
+ * than the row does: the duration clause only when the bar carries one (a
+ * head-cut bar does not — the number would be fabricated), the action count
+ * only when non-zero. `formatDuration` is the bar's own formatter, so the
+ * sentence and the row cannot disagree about "20m30s".
+ */
+function condenseSentence(plan: RunCollapsePlan): string {
+	const parts: string[] = [];
+	if (plan.facts.durationS !== null) {
+		parts.push(`took ${formatDuration(plan.facts.durationS)}`);
+	}
+	if (plan.facts.actions > 0) {
+		parts.push(
+			plan.facts.actions === 1 ? "1 action" : `${plan.facts.actions} actions`,
+		);
+	}
+	return parts.length === 0
+		? "Turn condensed."
+		: `Turn condensed: ${parts.join(", ")}.`;
+}
+
+/**
+ * Every row id a plan holds — the settle announcement's "was this run on
+ * screen last pass" denominator (see that effect's comment).
+ */
+function planRowIds(runs: readonly RunCollapsePlan[]): Set<string> {
+	const ids = new Set<string>();
+	for (const run of runs) {
+		for (const id of run.recordIds) ids.add(id);
+	}
+	return ids;
+}
 
 export type CanonicalTranscriptProps = {
 	frontend?: CanonicalFrontendState | null;
@@ -1882,10 +1925,13 @@ const OPEN_TRACE_MS = 60_000;
  *
  * The noun is the UI's own: the cards and tick labels say "Turn N", and
  * "checkpoint" is this design's internal word - it appears nowhere a reader
- * can see it (design round 1, D4).
+ * can see it (design round 1, D4). The sentence ends with the STEP (UX round
+ * 1, U2): the transcript's own gesture - scroll up for older pages - is what
+ * changes the answer, and a refusal without it is a dead end. The search
+ * jump's copy carries the same tail.
  */
 const CHECKPOINT_JUMP_MISS_COPY =
-	"Could not reach that turn. It is further back than the loaded history.";
+	"Could not reach that turn. It is further back than the loaded history — scroll up in the transcript to load more.";
 
 /**
  * A fold group as the aggregation pass hands it on: a run group carries the
@@ -1957,6 +2003,24 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			),
 		[transcript, frontend?.attention, frontend?.streaming],
 	);
+	/*
+	 * THE CROSS-SESSION FILTER: the single seam where the records a reader may
+	 * SEE become the records this pane builds from. `hide` is the backend's
+	 * `display.hide_cross_session`; default off means `visibleRecords` drops
+	 * nothing and hands back the bare reference, so every downstream memo keeps
+	 * its identity. Both consumers of the records read `shownRecords`: the row
+	 * builder below, and the working line further down - that line derives from
+	 * RECORDS (unlike the TUI's card-derived line), so an unfiltered list would
+	 * still name a running `send`. The raw `transcript.records.length` gates
+	 * below stay RAW on purpose: they answer "does this pane hold data", not
+	 * "what does it paint", and a session whose only rows are hidden must not
+	 * flip the pane's empty state.
+	 */
+	const hide = useCrossSessionHidden();
+	const shownRecords = useMemo(
+		() => visibleRecords(painted.records, hide),
+		[painted.records, hide],
+	);
 	// `loadingOlder` is deliberately NOT part of this gate any more.
 	//
 	// The acknowledgement asks one question: can the reader actually see the
@@ -1986,10 +2050,10 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	const checkpoints = useCheckpoints(sessionId ?? "");
 	const previousRows = useRef<Row[]>([]);
 	const rows = useMemo(() => {
-		const next = buildRows(painted.records, previousRows.current);
+		const next = buildRows(shownRecords, previousRows.current);
 		previousRows.current = next;
 		return next;
-	}, [painted.records]);
+	}, [shownRecords]);
 	/*
 	 * The jump's read of the row model BETWEEN awaits. `ensureReachable`'s
 	 * callbacks run after frame waits and page loads, so they must see the
@@ -2020,10 +2084,19 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	/* Durable pages this conversation's open has spent aligning the window's
 	 * top edge onto a loaded run boundary. See the alignment effect below. */
 	const alignFetches = useRef(0);
+	/* The settle announcement's own memory — see the effect beside the collapse
+	 * plan. `keys` are the bars already stated (or absorbed silently, when they
+	 * were window-entered rather than settled); `rowIds` are every row the
+	 * PREVIOUS pass's plan held, which is what tells a settle from a reveal. */
+	const announcedPlan = useRef<{
+		keys: Set<string>;
+		rowIds: Set<string>;
+	} | null>(null);
 	if (windowSession !== sessionId) {
 		setWindowSession(sessionId);
 		setWindowSize(WINDOW);
 		alignFetches.current = 0;
+		announcedPlan.current = null;
 	}
 	/*
 	 * THE READER'S EXPANSION OF TURN BARS, per conversation. The store is a
@@ -2070,13 +2143,42 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	);
 	const hidden = total - visible.length;
 	/*
-	 * The load-side half of the fix: when the edge sits inside a run whose head
-	 * the FETCHED rows cut off, the snap has no boundary to land on. Fetch the
-	 * head — bounded (ALIGN_FETCH_MAX pages per conversation), only while a page
-	 * is not already in flight — and let the snap do the rest when it lands.
-	 * This is the "first automatic follow-up load"; a run whose head is farther
-	 * than the bound keeps the shipped cut behaviour rather than walking an
-	 * unbounded conversation into memory.
+	 * The rail's reader-side cue (design round 1, D2 + U1; the settle re-read
+	 * is UX round 1, N1): one derivation of both halves the rail consumes,
+	 * owned and unit-pinned in `use-active-checkpoint.ts` beside this file.
+	 * `loadedIds` is the record ids this store holds; `activeId` is the
+	 * checkpoint at the reading position.
+	 */
+	const { activeId: activeCheckpointId, loadedIds: loadedCheckpointIds } =
+		useActiveCheckpoint(containerRef, rows, checkpoints.checkpoints);
+	/*
+	 * ONE in-flight page for the walk-side consumers — the align fetch below
+	 * and the jump walk — while the READER's own scroll path keeps the pager's
+	 * raw refusal semantics (`onLoadOlder` straight through).
+	 *
+	 * WHY THE SPLIT: the pager answers a concurrent ask with `false`, and for a
+	 * scroll that is right (no double-apply). But a walk reads `false` as
+	 * "history ends here", so a jump colliding with an align page used to fall
+	 * through to a clamped mount instead of awaiting the page already on its
+	 * way. Sharing the promise here makes that collision a wait for the two
+	 * consumers that walk; the scroll path's semantics are untouched.
+	 */
+	const walkLoadOlder = useMemo(
+		() => shareInFlight(onLoadOlder),
+		[onLoadOlder],
+	);
+	/*
+	 * The alignment's load half: when the edge sits inside a run whose head the
+	 * FETCHED rows cut off, the snap has no boundary to land on. Fetch the head
+	 * — bounded (ALIGN_FETCH_MAX pages per conversation), only while a page is
+	 * not already in flight — and let the snap do the rest when it lands.
+	 *
+	 * SINCE THE END-LOADED RULE (operator report, 2026-09-29) this is a
+	 * REFINEMENT, not the fix: a run whose head is farther than the bound still
+	 * condenses from its loaded span, so the bound no longer decides whether a
+	 * completed turn folds — only whether its bar gains the head row and the
+	 * real duration. The bound still exists because its old reason does: an open
+	 * must not walk an unbounded conversation into memory.
 	 */
 	useEffect(() => {
 		const decision = alignFetchDecision(
@@ -2088,8 +2190,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		);
 		if (!decision.fetch) return;
 		alignFetches.current = decision.spent;
-		void onLoadOlder();
-	}, [rows, alignSize, loadingOlder, transcript.hasMore, onLoadOlder]);
+		void walkLoadOlder();
+	}, [rows, alignSize, loadingOlder, transcript.hasMore, walkLoadOlder]);
 	/*
 	 * §E2's aggregation tier, and §E3's foot lines, computed over the SAME visible
 	 * rows the list renders. Both are pure (`trace-fold-model.ts`) because both are
@@ -2413,7 +2515,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						return current >= wanted ? current : wanted;
 					});
 				},
-				loadOlder: onLoadOlder,
+				loadOlder: walkLoadOlder,
 			});
 			if (!reachable) {
 				showInfoToast(missCopy);
@@ -2422,7 +2524,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			const outcome = await jumpToEntry(root, region, id);
 			if (outcome === "missing") showInfoToast(missCopy);
 		},
-		[containerRef, onLoadOlder],
+		[containerRef, walkLoadOlder],
 	);
 	/*
 	 * The rail's ticks and the search overlay both land through this near path
@@ -2487,8 +2589,15 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	const paneWorking = useMemo(
 		() =>
 			// One input builder for this claim's two readers - this rung and the
-			// composer's hint - so the two cannot be handed different facts
-			// (`workingLineInputFor`, `working-line-model.ts`).
+			// composer's hint (`workingLineInputFor`, `working-line-model.ts`).
+			// The builder is shared; the record lists handed to it are not: this
+			// rung reads the cross-session filter's `shownRecords`, while the
+			// composer's hint still reads the raw records (`chat-content.tsx`).
+			// No divergence is reachable today - `waiting` is answered by the
+			// ladder's fallback on either list, and the one predicate that could
+			// flip on dropped rows (`ownerAnswered`) is decided over RAW records
+			// in `chat-page` before either reader is built. If that normalization
+			// ever moves off raw records, this seam moves with it.
 			deriveWorkingLine(
 				workingLineInputFor({
 					waiting,
@@ -2528,7 +2637,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						missing,
 						stale,
 					}),
-					records: transcript.records,
+					records: shownRecords,
 				}),
 			),
 		[
@@ -2555,7 +2664,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			// and a memo that missed them would keep a claim the pane has withdrawn.
 			missing,
 			stale,
-			transcript.records,
+			shownRecords,
 		],
 	);
 
@@ -2568,6 +2677,43 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * two values that are already computed, and only `paneWorking` costs anything.
 	 */
 	const working = workingLine === undefined ? paneWorking : workingLine;
+
+	/*
+	 * THE READER'S FOCUS, tracked for the collapse's own guard (the model's
+	 * `focusHold`): the record id of the row holding `document.activeElement`
+	 * inside the scroller. Focus EVENTS rather than a render-time DOM read, so
+	 * the value is React state and a focus move is a re-render the plan can
+	 * answer; `null` means "focus is not in a row". A CLICK IS ALSO A FOCUS
+	 * (agent review round 1, NIT-1): in Chromium, pressing a control focuses
+	 * it, so a pointer reader who just clicked a row's button holds that run
+	 * open exactly as a keyboard reader does — the guard makes them the same
+	 * promise (a collapse never unmounts the focused row) and releases it the
+	 * same way, when focus moves on. The bar is excluded deliberately: it
+	 * carries `data-record-id` too (its anchor row's), and a reader focusing a
+	 * bar's button must not hold that bar's run open — the bar is not a row
+	 * being hidden, it IS the collapse.
+	 */
+	const [focusedRecordId, setFocusedRecordId] = useState<string | null>(null);
+	const handleTranscriptFocus = useCallback(
+		(event: FocusEvent<HTMLDivElement>) => {
+			const row = (event.target as Element).closest("[data-record-id]");
+			setFocusedRecordId(
+				row === null || row.closest("[data-turn-summary]") !== null
+					? null
+					: row.getAttribute("data-record-id"),
+			);
+		},
+		[],
+	);
+	const handleTranscriptBlur = useCallback(
+		(event: FocusEvent<HTMLDivElement>) => {
+			const next = event.relatedTarget as Node | null;
+			if (next === null || !event.currentTarget.contains(next)) {
+				setFocusedRecordId(null);
+			}
+		},
+		[],
+	);
 
 	/*
 	 * THE TURN COLLAPSE (§4.5), computed beside the fold groups and the feet: one
@@ -2585,10 +2731,77 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		 * the working line deliberately stands down while the question dock holds
 		 * the stage, so a rule that read only `working` condensed a parked turn
 		 * and un-condensed it when the call resumed, with no reader action.
+		 *
+		 * `focusHold`/`openRuns` are the focus guard's inputs (see
+		 * `focusedRecordId` above): a run that would unmount the row the reader's
+		 * keyboard focus is in stands open until the focus moves on.
 		 */
-		() => collapsePlan(visible, { live: working !== null || gate !== null }),
-		[visible, working, gate],
+		() =>
+			collapsePlan(visible, {
+				live: working !== null || gate !== null,
+				focusHold: focusedRecordId,
+				openRuns,
+			}),
+		[visible, working, gate, focusedRecordId, openRuns],
 	);
+	/*
+	 * THE SETTLE ANNOUNCEMENT (polite). A bar appearing is a transition the
+	 * reader did not initiate — rows readable a moment ago are unmounted — and
+	 * nothing on screen says so out loud. ONE `<output aria-live="polite">`
+	 * states each newly appeared bar in the bar's own words. Two skips keep it
+	 * about SETTLES rather than loads: the first pass that has any runs
+	 * initialises without announcing (opening a conversation is a load), and a
+	 * session switch re-arms that skip (the transcript component outlives a
+	 * conversation switch). A reader's own press never reaches here: it changes
+	 * the reader's expansion, not which runs collapse.
+	 *
+	 * A WINDOW REVEAL IS NOT A SETTLE EITHER (agent review round 1, MAJOR-1).
+	 * The window only ever GROWS, and every step of that growth presents bars
+	 * for runs the previous pass never held — a scroll-up widen, the open's
+	 * snap, a jump's mount. A set-difference against the previous pass's keys
+	 * announced every one of them ("ten announcements on a widen, zero
+	 * settles", the reviewer's probe-widen-announce.test.mjs), while nothing
+	 * the reader could see was unmounted: those runs were folded before the
+	 * reader ever saw them unfold. So an utterance must also find the run
+	 * PRESENT in the previous pass — sharing at least one row with it — which
+	 * is exactly "its rows were on screen a moment ago". The row-id test also
+	 * bridges the live→settled KEY JUMP: a run being written keys on its last
+	 * row and a settled one on its answer, but its rows are the same rows.
+	 * Window-entered bars are absorbed into `keys` silently, so a later reveal
+	 * of the same run stays quiet.
+	 */
+	const [condenseAnnouncement, setCondenseAnnouncement] = useState("");
+	useEffect(() => {
+		const collapsed = collapse.runs.filter((run) => run.collapses);
+		const rowIds = planRowIds(collapse.runs);
+		const previous = announcedPlan.current;
+		if (previous === null) {
+			/*
+			 * The first pass that has RUNS initialises without announcing: its
+			 * bars are what the conversation loaded with, not a settle. A pass
+			 * with no runs at all — a held or empty pane — leaves the
+			 * initialisation for the first pass that paints rows.
+			 */
+			if (collapse.runs.length > 0) {
+				announcedPlan.current = {
+					keys: new Set(collapsed.map((run) => run.key)),
+					rowIds,
+				};
+			}
+			return;
+		}
+		const appeared = collapsed.filter(
+			(run) =>
+				!previous.keys.has(run.key) &&
+				run.recordIds.some((id) => previous.rowIds.has(id)),
+		);
+		announcedPlan.current = {
+			keys: new Set([...previous.keys, ...collapsed.map((run) => run.key)]),
+			rowIds,
+		};
+		if (appeared.length === 0) return;
+		setCondenseAnnouncement(appeared.map(condenseSentence).join(" "));
+	}, [collapse]);
 
 	/*
 	 * THE LIST, RE-EXPRESSED AS ENTRIES. Every group renders exactly as today,
@@ -2817,6 +3030,34 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 * the bottom anchor all behave exactly as before.
 			 */}
 			<div className={cn("relative flex min-h-0 grow flex-col")}>
+				{/*
+				 * THE RAIL COMES FIRST IN THE DOM (UX round 1, U3): it is the
+				 * transcript's navigation affordance, and it used to sit after
+				 * the scroller, so reaching its ticks meant tabbing through
+				 * every focusable row (46 Tabs from the composer, measured).
+				 * The rail is absolutely positioned, so DOM order costs no
+				 * pixels - the column's first tab stop is the rail now. It DOES
+				 * cost paint order, which the rail's own wrapper answers: the rail
+				 * carries `z-10` because the scroller below it is positioned too
+				 * (`relative` + `translateZ(0)`), and without it the scroller's box
+				 * would take every pointer aimed at a tick (the scene's hover legs
+				 * went dead on this change until the rail carried z; measured). Its
+				 * props carry the one fact the component owns and the hook
+				 * does not - which conversation, so a session switch drops any
+				 * open card - plus the two callbacks; `building` is the hook's
+				 * index state, not the rail's to derive.
+				 */}
+				<CheckpointRail
+					sessionId={sessionId ?? ""}
+					checkpoints={checkpoints.checkpoints}
+					building={checkpoints.building}
+					loadedIds={loadedCheckpointIds}
+					activeId={activeCheckpointId}
+					onJump={(id) => {
+						void jumpToCheckpoint(id);
+					}}
+					onHover={handleCheckpointHover}
+				/>
 				<div
 					ref={containerRef}
 					data-lo-canonical-transcript={true}
@@ -2900,6 +3141,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					aria-describedby={
 						slotState === "windowed" ? OLDER_HISTORY_HINT_ID : undefined
 					}
+					/*
+					 * The focus guard's two inputs (see `focusedRecordId` above): React's
+					 * onFocus/onBlur are focusin/focusout at this container, so focus
+					 * arriving anywhere inside updates the held row and focus leaving the
+					 * scroller clears it.
+					 */
+					onFocus={handleTranscriptFocus}
+					onBlur={handleTranscriptBlur}
 					className={cn(
 						// `min-h-0`, not `h-full`: this is the flex child that must absorb
 						// the column's leftover height. `h-full` resolves its flex base to
@@ -2936,6 +3185,21 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 							{perf}
 						</span>
 					)}
+					{/*
+					 * The settle announcement (see the effect beside the collapse plan):
+					 * `output` with `aria-live="polite"`, the idiom the older-history
+					 * slot and the aside panel already use — a quiet statement of a
+					 * transition the reader did not initiate. The data attribute is
+					 * what tells this region from the slot's (both are `output`s with
+					 * `aria-live`), for a rig and for the behaviour suite.
+					 */}
+					<output
+						data-condense-announcement=""
+						className="sr-only"
+						aria-live="polite"
+					>
+						{condenseAnnouncement}
+					</output>
 					<div
 						data-lo-transcript-content
 						/*
@@ -3166,10 +3430,12 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 									entry.kind === "bar" ? (
 										<TurnSummary
 											/*
-											 * Prefixed: the run's key is its opening user row's id,
-											 * and that row renders as its own group in the same list —
-											 * an unprefixed key collided with it (two children, one key)
-											 * and React silently dropped one of the pair.
+											 * Prefixed: the run's key is a ROW ID (`runsOf`: the closing
+											 * answer's, else the run's last row's), and both candidates
+											 * render as their own groups elsewhere in the same list — an
+											 * unprefixed key collided with one of them (two children, one
+											 * key) and React silently dropped one of the pair. The prefix
+											 * also states which collided: the replaced slot is not the bar.
 											 */
 											key={`turn-summary:${entry.plan.key}`}
 											recordIds={entry.plan.recordIds}
@@ -3242,21 +3508,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				    one only described the situation. */}
 					</div>
 				</div>
-				{/*
-				 * The rail itself. Its props carry the one fact the component owns
-				 * and the hook does not — which conversation, so a session switch
-				 * drops any open card — plus the two callbacks; `building` is the
-				 * hook's index state, not the rail's to derive.
-				 */}
-				<CheckpointRail
-					sessionId={sessionId ?? ""}
-					checkpoints={checkpoints.checkpoints}
-					building={checkpoints.building}
-					onJump={(id) => {
-						void jumpToCheckpoint(id);
-					}}
-					onHover={handleCheckpointHover}
-				/>
 			</div>
 			{/*
 			 * The in-thread search overlay (`⌘F`), mounted HERE rather than in the
