@@ -2287,6 +2287,13 @@ const BRANCH_RECORDS = [
 	 * registration rides beside.
 	 */
 	"condensedBarFoldSevenNote",
+	/*
+	 * And the second round's own record (`condensedBarRoundTwoNote`), the note
+	 * the spacing pass wrote for the operator's follow-up report: the rule's two
+	 * sides, the chevron's leading-edge datum and the incident row. Its text is
+	 * written by the docs-only amendment this registration rides beside.
+	 */
+	"condensedBarRoundTwoNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

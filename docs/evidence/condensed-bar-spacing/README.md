@@ -1,66 +1,72 @@
-# The condensed bar's spacing and right edge — before/after, both brand palettes
+# The condensed bar's rule, its chevron, and the rows it leaves below — before/after, both brand palettes
 
-**What these are.** The affected state of the operator's report (2026-09-29,
-against the shipped v0.31.18 bar):
+**What these are.** The affected state of the operator's second report on the condensed bar (2026-09-29, against the shipped v0.31.18 bar and this branch's first round):
 
-> PADDING: the condensed row ("Context compacted") hugs the summary row's rule
-> too closely — wants more breathing room between the horizontal line and the row
-> beneath it. CHEVRON ALIGNMENT: the chevron (">") doesn't reach the right end of
-> the rule — the line currently extends past the row's right edge; align the
-> row's right edge (chevron included) with the line's end, and check the
-> timestamp spacing around it.
+> SPACING BOTH SIDES OF THE RULE: the space above AND below the rule is "still off — needs
+> proper breathing room on both sides, not just the row's internal padding". Audit the
+> summary-row→rule and rule→row gaps AS A PAIR and give both sides deliberate, balanced spacing.
+> CHEVRON ALIGNMENT DATUM: "the chevron's LEADING edge must align with the END of the line on
+> the right (the hairline's right terminus) — treat the rule's endpoint as the alignment datum,
+> and the time reads to its left".
+> INCIDENT ROW BELOW THE LINE: the "session incident: …" row beneath sits too tight to the line
+> — the below-line gap fix must cover the incident-row class (like the compaction row).
 
-Both halves render the SAME story cell — `chat-turn-collapse--pinned-compaction`
-(a durable compaction row kept below a collapsed bar) — through the repository's
-own rig (`scripts/capture-evidence.mjs` against this tree's Storybook), in the two
-`localOperator` palettes. PNG rather than WebP ON PURPOSE: `check-evidence.mjs`'s
-frame walker counts `.webp` only, so this rig-driven pair cannot be mistaken for
-frames a sweep produced and the capturer's own figures stay untouched (the
-convention `docs/evidence/read-ack-notice/README.md` states).
+**The pair's subject is the incident state** — `chat-turn-collapse--pinned-incident` (a turn
+that died after its compaction; the memory statement and the incident reason are the rows the
+collapsed bar leaves below its rule) — rendered through the repository's own rig
+(`scripts/capture-evidence.mjs` against this tree's Storybook), in the two `localOperator`
+palettes. PNG rather than WebP ON PURPOSE: `check-evidence.mjs`'s frame walker counts `.webp`
+only, so this rig-driven pair cannot be mistaken for frames a sweep produced and the capturer's
+own figures stay untouched (the convention `docs/evidence/read-ack-notice/README.md` states).
 
 | frame | state | what it shows |
 | --- | --- | --- |
-| `before/localOperatorDark.png`, `before/localOperatorLight.png` | the pre-fix rendering code (`origin/main` = `91617c21ec`), cell added on | the bar's rule runs past the chevron: the slot ends 16px short of the rule's end (21.25px at the ink), and "Context compacted" sits 2px under the rule |
-| `before/*-crop.png` | the same frame, cropped to the bar + rule + row | the report's tight crop |
-| `after/localOperatorDark.png`, `after/localOperatorLight.png` | this branch (`b0b3ffd250`, the fix commit) | the chevron slot right lands ON the rule's end (0.0px delta; ink 5.25px inside it — the glyph's own bearing, the same optical inset every lucide mark in the app carries), and the row beneath takes the 12px block step |
-| `after/*-crop.png` | the same frame, cropped to the bar + rule + row | the report's tight crop |
+| `before-incident/localOperatorDark.png`, `before-incident/localOperatorLight.png` | `0f3f13892d` (the head the report was filed against) with ONLY the new story cell and its sweep row added | the bar's text 5px of ink above the rule, and the incident 2px under the memory statement — the two hugs the report names; the chevron's leading ink at x1036, well inside the rule's end |
+| `before-incident/*-crop.png` | the same frame, cropped to `(220,196)-(1060,332)` | the report's state, tight crop |
+| `after-incident/localOperatorDark.png`, `after-incident/localOperatorLight.png` | this branch's second-round fix | 21px of ink on EACH side of the rule, the incident at the item step, and the chevron's leading ink on the rule's last pixel |
+| `after-incident/*-crop.png` | the same frame, the same crop | the report's state, tight crop |
 
-The numbers behind the stills, read from the rendered DOM at both trees
-(1280x900, both palettes — identical across palettes):
+**The round-1 pair rides re-based rather than stale.** `before/` is the original report's base
+(`origin/main` = `91617c21ec`, the `chat-turn-collapse--pinned-compaction` cell added on);
+`after/` is the SAME cell re-shot at this round's head, so both halves read true against the
+final code — the first round's own after (`b0b3ffd250`) is superseded by the second round's
+geometry and lives in the PR thread's first remediation comment.
+
+The numbers behind the stills, read from the rendered DOM and the rastered frames at both
+trees (1280x900, `localOperator` palettes — identical across palettes):
 
 | reading | before | after |
 | --- | --- | --- |
-| chevron slot right − rule right | -16px | **0.0px** |
-| chevron ink right − rule right | -21.25px | -5.25px (glyph bearing) |
-| rule bottom → next row box top | 2px | **12px** |
-| stamp right edge | 1009 | 1025 — rides with the slot, so stamp→chevron stays the row's own 6px (`gap-1.5`) |
+| bar text ink → rule | 5px | **21px** (`pb-4`: the bar block's own 16px, chosen to balance the pair as PIXELS — the ink gap above against the 21px below) |
+| rule → first row ink | 21px | 21px (unchanged: the item step's 12px box plus the row's own leading) |
+| chevron ink leading edge (abs x) | 1036 | **1044** — the rule's last pixel; its terminus edge is 1045, so the glyph starts on the datum |
+| chevron slot box (abs x) | 1031–1045 | 1039–1053 (`-mr-6`: 24px of pull measured from the trigger's 16px right shortfall) |
+| stamp box right (abs x) | 1025 | 1033 — rides with the slot, so stamp→chevron stays the row's own 6px (`gap-1.5`) |
+| memory statement ink → incident ink | 15px | **25px** (the walk re-tiers every visible group after a bar, not only the first) |
 
 ## How to reproduce
 
-Each half is the sweep's own `pinned-compaction` cell at its tree, decoded to PNG
-(lossless), plus a crop of the frames' region `(220,196)-(1060,264)`:
+Each half is the sweep's own cell at its tree, decoded to PNG (lossless), plus a crop of the
+frames' region `(220,196)-(1060,332)`:
 
 ```
 node scripts/capture-evidence.mjs --only=chat-turn-collapse \
   --themes=localOperatorDark,localOperatorLight --allow-backend
-# docs/evidence/chat-turn-collapse/pinned-compaction/<theme>.webp
+# docs/evidence/chat-turn-collapse/pinned-incident/<theme>.webp   (and pinned-compaction)
 ```
 
-The before half came from this worktree at `91617c21ec` (the base) with ONLY the
-new story cell (and its sweep row) added — the cell is this change's own; the
-rendering code is the base's. The after half is the fix commit `b0b3ffd250`. The
-manifest's own record of the after pass is `partialCapture` in
-`docs/evidence/manifest.json` — after the folds its head/time fields describe
-the most recent narrowed run of this pass, and the pass's own half of the record
-survives as the appended `chat-turn-collapse--pinned-compaction` entry in
-`refreshedStories`, with the fold and re-shoot notes stating what each run moved.
+The before halves came from this worktree at their heads with ONLY the new story cell (and its
+sweep row) added — the cell is this change's own; the rendering code is the base's per half
+(`91617c21ec` for round 1, `0f3f13892d` for round 2). The after halves are this branch's
+second-round fix. The manifest's own record of the passes is `partialCapture` in
+`docs/evidence/manifest.json`; the second round's record is `condensedBarRoundTwoNote`.
 
 ## What this pair cannot see
 
-It is a story render, not the live app: it photographs the bar's resting geometry
-in the two `localOperator` palettes (the other ten themes share the ink and
-spacing roles it judges). It does not photograph the hover ground — the pair is
-the resting state; the sweep's own `collapsed-hover` cell carries that state,
-re-shot for design round 1 D1's extension of the wash to the rule's end (see
-`condensedBarHoverGroundNote`) — the report is about the chevron and the row
-beneath the rule.
+It is a story render, not the live app: it photographs the bar's resting geometry in the two
+`localOperator` palettes (the other ten themes share the ink and spacing roles it judges). It
+does not photograph the hover ground — the sweep's own `collapsed-hover` cell carries that
+state (re-shot for design round 1 D1's extension of the wash to the rule's end, and again for
+this round: with the datum moved, the wash's right edge and the glyph's leading ink now meet at
+the rule's end — the edge no longer crosses the glyph). The report is about the rule's two
+sides, the chevron's leading edge and the rows beneath the rule.

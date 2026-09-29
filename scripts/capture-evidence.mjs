@@ -758,6 +758,14 @@ export const STORIES = [
 	 */
 	["chat-turn-collapse--pinned-compaction", 1280, 900],
 	/*
+	 * THE INCIDENT ROW'S PAIR (operator report, 2026-09-29, second round): the
+	 * turn that died after its compaction - the incident hugging the memory
+	 * statement by the ledger's 2px is the state the walk's re-tier now covers,
+	 * and the cell is the before/after pair's second subject on top of the
+	 * rule's own two spacing sides.
+	 */
+	["chat-turn-collapse--pinned-incident", 1280, 900],
+	/*
 	 * ISSUE #5'S PAIR (operator feedback, 2026-09-29): peer and wake receipts
 	 * collapse with the work. The second row presses the same story open so the
 	 * design round can judge the reveal.
