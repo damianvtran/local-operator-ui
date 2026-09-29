@@ -2841,7 +2841,19 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 
 		type ChatEntry =
 			| { kind: "group"; group: SectionGroup; suppressClosingLine: boolean }
-			| { kind: "bar"; plan: RunCollapsePlan; children: SectionGroup[] };
+			| {
+					kind: "bar";
+					plan: RunCollapsePlan;
+					children: SectionGroup[];
+					/**
+					 * The hidden span's pictures, computed HERE because the bar's children
+					 * are unmounted while it is collapsed and these are what they would
+					 * have shown. `plan.hidden` rather than the whole run: the bar shows
+					 * exactly what the collapse hides, and a pinned row that stays on
+					 * screen keeps drawing its own media.
+					 */
+					images: TranscriptImage[];
+			  };
 
 		const entries: ChatEntry[] = [];
 		let next = 0;
@@ -2881,7 +2893,12 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					children.push(group);
 					if (children.length === 1) {
 						/* The bar sits where the first hidden group did. */
-						entries.push({ kind: "bar", plan, children });
+						entries.push({
+							kind: "bar",
+							plan,
+							children,
+							images: foldImages(plan.hidden),
+						});
 					}
 					continue;
 				}
@@ -3494,6 +3511,18 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 											stampTs={entry.plan.stampTs}
 											open={openRuns.has(entry.plan.key)}
 											onOpenChange={(next) => setRunOpen(entry.plan.key, next)}
+											/*
+											 * The span's pictures, while the rows that draw them are
+											 * unmounted - the same composition and the same rule as
+											 * `renderGroup`'s: rendered only while collapsed, and not
+											 * passed at all for a run that produced none.
+											 */
+											condensedMedia={
+												entry.images.length > 0 ? (
+													<FoldMedia images={entry.images} scope={mediaScope} />
+												) : undefined
+											}
+											mediaCount={entry.images.length}
 										>
 											{entry.children.map((child, index) =>
 												/*

@@ -260,6 +260,15 @@ const noticeRecord = (id, over = {}) => ({
 	...over,
 });
 
+/** One picture on a tool record, the shape `transcript-reducer.ts` composes. */
+const shotImage = (recordId, index, data = "iVBORw0KGgo=") => ({
+	recordId,
+	id: `${recordId}:${index}`,
+	data,
+	attachment: null,
+	mimeType: "image/png",
+});
+
 const transcriptOf = (records) => ({
 	records,
 	index: new Map(records.map((record, position) => [record.id, position])),
@@ -957,6 +966,128 @@ test("in-turn receipts collapse with the work (operator feedback, 2026-09-29)", 
 	await flushFrames();
 	assert.ok(rowBox(mounted, "peer:1"), "the peer receipt mounts on the press");
 	assert.ok(rowBox(mounted, "wake:1"), "the wake receipt mounts on the press");
+});
+
+test("a collapsed span that produced pictures keeps them under the bar", async (t) => {
+	/*
+	 * THE OPERATOR REPORT, as a behaviour, one fold level up from
+	 * `trace-fold-behaviour.test.mjs`'s case: the turned condensation unmounts
+	 * the rows a hidden span holds, so the pictures those rows would have
+	 * drawn have to ride the bar - and the strip is the bar's own, under its
+	 * line, gone the moment the reader presses it open (open, the rows draw
+	 * their own media and the strip would double it).
+	 */
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", {
+			images: [shotImage("tool:1", 0), shotImage("tool:1", 1)],
+		}),
+		answerRecord("answer:1", { settledAt: TS + 70_000 }),
+	]);
+	assert.ok(bar(mounted), "the run collapsed");
+	assert.equal(
+		rowBox(mounted, "tool:1"),
+		null,
+		"the row that would draw them is unmounted",
+	);
+	const strip = bar(mounted)?.querySelector("[data-fold-media]");
+	assert.ok(strip, "and the pictures are on screen anyway");
+	assert.equal(
+		strip.getAttribute("aria-label"),
+		"2 images from this run",
+		"the strip names its set and its size",
+	);
+	assert.equal(
+		strip.querySelectorAll("li").length,
+		2,
+		"one tile per picture, no count clause at two",
+	);
+	assert.match(
+		bar(mounted)?.textContent ?? "",
+		/2 images/,
+		"and the count is a clause on the bar's own line",
+	);
+	assert.equal(
+		bar(mounted)?.childElementCount,
+		2,
+		"the bar is its disclosure plus the strip",
+	);
+
+	/* Pressing is what trades the strip for the rows that draw their own media. */
+	await click(barTrigger(mounted));
+	await flushFrames();
+	assert.equal(
+		bar(mounted)?.querySelector("[data-fold-media]"),
+		null,
+		"open, the strip goes",
+	);
+	assert.ok(rowBox(mounted, "tool:1"), "the press mounts the row again");
+});
+
+test("a span with no pictures is the bar it was: no strip, no clause", async (t) => {
+	/*
+	 * The overwhelmingly common case, pinned for the bar the way
+	 * `trace-fold-behaviour.test.mjs` pins it for the fold: an image-less run
+	 * must not grow a slot, a rule, an empty row or a count - the wrapper's
+	 * child count is the claim.
+	 */
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1"),
+		answerRecord("answer:1", { settledAt: TS + 70_000 }),
+	]);
+	assert.ok(bar(mounted), "the run collapsed");
+	assert.equal(
+		bar(mounted)?.querySelector("[data-fold-media]"),
+		null,
+		"no pictures, no strip",
+	);
+	assert.doesNotMatch(
+		bar(mounted)?.textContent ?? "",
+		/\d+ images?/,
+		"and no count clause either",
+	);
+	assert.equal(
+		bar(mounted)?.childElementCount,
+		1,
+		"the bar is its disclosure and nothing else",
+	);
+});
+
+test("the strip caps at four tiles and counts the rest", async (t) => {
+	/*
+	 * The pathological span: eight pictures cost one capped row - four tiles
+	 * and a `+4 more` - which is the height bound `FOLD_MEDIA_LIMIT` exists
+	 * for, and the count is what keeps the row from pretending otherwise.
+	 */
+	__resetTurnCollapseOpen();
+	const images = Array.from({ length: 8 }, (_, index) =>
+		shotImage("tool:1", index),
+	);
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", { images }),
+		answerRecord("answer:1", { settledAt: TS + 70_000 }),
+	]);
+	const strip = bar(mounted)?.querySelector("[data-fold-media]");
+	assert.ok(strip, "the strip renders");
+	assert.equal(
+		strip.querySelectorAll("li").length,
+		5,
+		"four tiles and the count's own slot",
+	);
+	assert.match(
+		strip.textContent ?? "",
+		/\+4 more/,
+		"and the count says how many are left",
+	);
+	assert.equal(
+		strip.getAttribute("aria-label"),
+		"8 images from this run",
+		"the set's size is still stated in full",
+	);
 });
 
 test("a parked turn does not condense: the gate is half of the liveness", async (t) => {
