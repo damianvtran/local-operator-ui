@@ -295,15 +295,19 @@ export const ClosedOutcomeNotice: Story = {
 /**
  * The retire-for-build row (2026-09-29; core kind `retired`): a bound-expired
  * build drain cut a live turn, so the desktop reads "Retired for an update — a
- * turn was in flight and was cut" in WARNING ink — truthful, never danger.
+ * turn was in flight and was cut; its earlier output is kept" in WARNING ink —
+ * truthful, never danger.
  *
  * Same production path and fixture shape as the closure above; the one
  * difference that matters visually is the tier (`warning` — never the
  * closure's `info` whisper and never the failure's `error`) and the copy,
  * byte-identical to the core's `harness/rows.py::RETIRED_NOTICE_TEXT`. What to
- * look for: an amber-ink receipt with no red anywhere, no action button, and
- * the same `complete` marker retiring the working-line wait — the runtime is
- * leaving, so nothing is still in flight beside it.
+ * look for: a triangle-alert glyph, same muted trace ink as the info rows;
+ * the tier is carried by the glyph shape, not a tint (design round 2, D4 —
+ * this docblock previously promised "amber ink" the row has never worn, and
+ * a red anywhere would be the failure framing this arm exists to remove). No
+ * action button, and the same `complete` marker retiring the working-line
+ * wait — the runtime is leaving, so nothing is still in flight beside it.
  */
 export const RetiredOutcomeNotice: Story = {
 	render: () => (

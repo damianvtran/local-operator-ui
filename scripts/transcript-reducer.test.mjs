@@ -695,7 +695,7 @@ test("a durable retired marker paints the warning row", () => {
 	assert.equal(records[0].kind, "notice");
 	assert.equal(
 		records[0].text,
-		"Retired for an update — a turn was in flight and was cut",
+		"Retired for an update — a turn was in flight and was cut; its earlier output is kept",
 	);
 	assert.equal(records[0].level, "warning", "a cut for an update is warning");
 	assert.equal(records[0].complete, true, "the marker retires the wait");
@@ -714,7 +714,7 @@ test("a retired outcome synthesizes as a warning receipt", () => {
 	assert.equal(row.kind, "notice");
 	assert.equal(
 		row.text,
-		"Retired for an update — a turn was in flight and was cut",
+		"Retired for an update — a turn was in flight and was cut; its earlier output is kept",
 	);
 	assert.equal(row.level, "warning");
 	assert.equal(row.complete, true);
