@@ -2381,6 +2381,12 @@ const BRANCH_RECORDS = [
 	 * registration rides beside.
 	 */
 	"condensedBarFoldTenNote",
+	/*
+	 * And this fold's own record (`condensedBarFoldElevenNote`), for the same
+	 * reason one entry up: its text is written by the docs-only amendment this
+	 * registration rides beside.
+	 */
+	"condensedBarFoldElevenNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
