@@ -2921,7 +2921,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	const renderGroup = (
 		group: SectionGroup,
 		suppressClosingLine: boolean,
-		omitMediaCount = false,
+		soleImageGroup = false,
 	) =>
 		group.kind === "run" ? (
 			<TraceFold
@@ -2959,6 +2959,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 									images={group.images}
 									scope={mediaScope}
 									onRevealMore={expand}
+									uncapped={soleImageGroup}
 								/>
 							)
 						: undefined
@@ -2966,14 +2967,19 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				/*
 				 * The count travels beside the node: the header prints it as text,
 				 * because a 64px tile cannot carry a label and the count is what the
-				 * strip's own accessible name already says. `omitMediaCount` is the
-				 * bar's own children's case (D3/U6): when this group's count IS the
-				 * number the bar's line carries directly above, the clause repeated it
-				 * one line apart - so the BAR keeps the aggregate and the group drops
-				 * the duplicate, while with two image-bearing groups the numbers
-				 * differ and each level states its own.
+				 * strip's own accessible name already says. `soleImageGroup` is the
+				 * bar's own children's case, with two effects, both keyed to the same
+				 * fact - this group IS the span's whole image story:
+				 *
+				 * - the clause drops (D3/U6): when its count would repeat the bar's
+				 *   number one line above, the BAR keeps the aggregate and the group
+				 *   omits the duplicate; two image-bearing groups make the numbers
+				 *   differ, and then each level states its own;
+				 * - the strip uncaps (U8): the press that opened the bar asked for
+				 *   `the rest`, so this group's strip shows its whole set rather than
+				 *   charging a second press for pictures the reader already asked for.
 				 */
-				mediaCount={omitMediaCount ? 0 : group.images.length}
+				mediaCount={soleImageGroup ? 0 : group.images.length}
 			>
 				{group.rows.map((row, index) => (
 					<TranscriptRow
@@ -3550,12 +3556,10 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 												 * margin it earned as the turn's opener (D2). Every other
 												 * group keeps the gap the unfolded list gave it.
 												 *
-												 * The third argument is D3/U6's duplicate rule: the bar's
-												 * line above states the span's count, and when this group's
-												 * own count IS that number the group row's clause repeated
-												 * it one line apart, so the group drops it and the bar keeps
-												 * the aggregate. Two image-bearing groups make the numbers
-												 * differ, and then each level states its own.
+												 * The third argument is the span's sole-image-group fact,
+												 * named with both of its effects at the parameter's own
+												 * comment: D3/U6's duplicate rule for the clause, and
+												 * U8's uncapped strip so one press reaches the rest.
 												 */
 												renderGroup(
 													index === 0 ? atTraceTierGroup(child) : child,

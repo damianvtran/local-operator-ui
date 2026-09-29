@@ -830,7 +830,10 @@ export const STORIES = [
 	 * cell (three pictures - one landscape, one portrait, one plot - in one
 	 * capped row of tiles), its `press` row is the expanded state whose price
 	 * the strip replaces, and `images-many` is the overflow count's own frame
-	 * (eight pictures, four tiles and a `+4 more`). The before half is the
+	 * (eight pictures, four tiles and the `+4 more images` control).
+	 * `images-many-expanded` is that control's press (U8): the bar opens onto
+	 * its sole image-bearing group, whose strip shows the WHOLE set - one
+	 * press reaches the pictures the count stood for. The before half is the
 	 * first cell's capture on the base tree, declared in
 	 * `docs/evidence/chat-turn-collapse-images-before/` - the same story cell
 	 * on the pre-change components, where the bar carries metadata only.
@@ -846,6 +849,15 @@ export const STORIES = [
 		},
 	],
 	["chat-turn-collapse--images-many", 1280, 900],
+	[
+		"chat-turn-collapse--images-many",
+		1280,
+		900,
+		{
+			press: '[data-turn-summary] button[aria-expanded="false"]',
+			dir: "images-many-expanded",
+		},
+	],
 	["chat-turn-collapse--parked", 1280, 900],
 
 	/*
