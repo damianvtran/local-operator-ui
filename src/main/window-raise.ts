@@ -19,12 +19,12 @@
  * EVERY RAISE NAMES ITS TRIGGER, and reports one line through the caller's
  * logger. This file used to log nothing, which is why the operator's report —
  * "the app steals my focus whenever a chat completes" — was unanswerable on the
- * machine where it happened: seven causes raise a window here, from an ordinary
+ * machine where it happened: eight causes raise a window here, from an ordinary
  * launch and a macOS Dock click to a second instance sharing the profile, a
  * clicked banner, the viewer's focus endpoint, a conversation delivered to a
- * window and the global hotkey's mini composer, and nothing recorded which one
- * had just taken the focus. The trigger is
- * a required part of the call
+ * window, the global hotkey's mini composer and a driven page's popup, and
+ * nothing recorded which one had just taken the focus. The trigger is a required
+ * part of the call
  * so a new raise cannot be added anonymously, and `never` — the path that raises
  * nothing — is deliberately silent: a headless run's whole value is that it leaves
  * no trace on the machine, its logs included. A `never` delivery that REPLACES an
@@ -92,7 +92,14 @@ export type RaiseTrigger =
 	 * `presentMiniView` below, which is gated on the launch plan's `focus`
 	 * policy like every other presentation in this file.
 	 */
-	| "mini-view";
+	| "mini-view"
+	/*
+	 * A driven page's popup, whose ONLY presentation path is `presentPopupWindow`
+	 * below (docs/design/browser-oauth-popups.md 2.4): the browser host may not
+	 * touch `show*`/`focus` itself, and under the `never` plan this name is the
+	 * one that stays silent unless the visibility fallback fires.
+	 */
+	| "popup-open";
 
 /**
  * Who asked for the window, when the caller can say.
@@ -339,6 +346,10 @@ const REFUSABLE_DELIVERY: Record<
 	// gate's question (may this request REPLACE an in-use window's conversation)
 	// never arises; declared for the same totality rule as `viewer-focus`.
 	"mini-view": "never",
+	// A driven page's popup delivers nothing and can replace nothing: whether it
+	// may appear at all is `presentPopupWindow`'s own gate, and this table's
+	// question never arises. Declared for the same totality rule as `viewer-focus`.
+	"popup-open": "never",
 };
 
 /**
@@ -947,4 +958,49 @@ export function presentMiniView(
 	window.focus();
 	applied.push("show", "focus");
 	context.report?.(raiseLine(context, show, applied));
+}
+
+/**
+ * The slice of a `BrowserWindow` a popup's presentation touches beyond a raise:
+ * the `never` plan reads visibility and hides a window that came up visible.
+ * Kept off `RaisableWindow` on purpose — no other raise has business hiding
+ * anything, so the wider slice stays on the one caller that needs it.
+ */
+export interface PresentablePopupWindow extends RaisableWindow {
+	isVisible(): boolean;
+	hide(): void;
+}
+
+/**
+ * A driven page's popup, presented — or deliberately not — under the launch
+ * plan's own gate (docs/design/browser-oauth-popups.md §2.4).
+ *
+ * WHY A SEPARATE FUNCTION rather than a `presentWindow` call from the browser
+ * host: `window-raise.ts` is the only module allowed to show a window (the
+ * source scan in `scripts/window-mode.test.mjs` enforces that, and
+ * `src/main/browser/index.ts` promises it in its own header), and the popup has
+ * one rule no other caller has — under the `never` plan the window still EXISTS
+ * (the page's flow needs it, CDP can reach it, and a headless run has nobody who
+ * was ever going to see it) but must never be seen. So `focus` and `inactive`
+ * pass straight through to `presentWindow`'s implementation, and `never` is the
+ * branch that also carries the fallback hiding a window that came up visible.
+ *
+ * A FIRED FALLBACK IS A BUG, NOT A FEATURE: `show:false` is the option that
+ * should make the window invisible, and a popup that reads visible here means it
+ * was not honoured. The line is reported because `never` is otherwise silent,
+ * and the e2e proof asserts the token never appears.
+ */
+export function presentPopupWindow(
+	window: PresentablePopupWindow,
+	show: WindowShow,
+	context: RaiseContext,
+): void {
+	if (show === "never") {
+		if (window.isVisible()) {
+			window.hide();
+			context.report?.(`${raiseLine(context, show, ["hide"])} fallback=fired`);
+		}
+		return;
+	}
+	presentWindow(window, show, context);
 }
