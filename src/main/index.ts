@@ -32,6 +32,10 @@ import {
 import type { DesktopFeedState } from "../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
 import {
+	MINI_VIEW_REGISTRATION,
+	MINI_VIEW_REGISTRATION_GET,
+} from "../shared/mini-view";
+import {
 	OPEN_CATALOGUE_FLAG,
 	OPEN_SESSION_FLAG,
 	readLaunchTarget,
@@ -67,6 +71,7 @@ import { DesktopNotifier } from "./desktop-notifier";
 import {
 	describeDevDriverArming,
 	devDriverArgument,
+	headlessExerciserAllowed,
 	resolveDevDriverArming,
 } from "./dev-driver";
 import { registerDevDriverIPC } from "./dev-driver-ipc";
@@ -76,8 +81,15 @@ import {
 	realPathOrNull,
 	resolveUserPath as resolveUserPathWith,
 } from "./directory-listing";
+import { type MiniViewRegistrar, createRegistrar } from "./hotkey-registration";
 import { isProcessAlive, startLauncherWatch } from "./launcher-watch";
 import type { LauncherWatch } from "./launcher-watch";
+import {
+	type QuickSendWatcher,
+	readQuickSendValue,
+	watchQuickSend,
+} from "./local-config";
+import { type MiniView, createMiniView, miniViewUrlFor } from "./mini-view";
 import {
 	rememberPickedDirectory,
 	withRememberedDirectory,
@@ -100,6 +112,7 @@ import {
 	WINDOW_MIN_WIDTH,
 	type WindowShow,
 	describeWindowLaunch,
+	hotkeysAllowed,
 	resolveAboutPanelAction,
 	resolveLauncherWatchPlan,
 	resolveWindowLaunchPlan,
@@ -777,6 +790,20 @@ function createWindow(
 		log: (line) => logger.info(line, LogFileType.BACKEND),
 	});
 	mainWindow.on("closed", () => chromeController.dispose());
+	/*
+	 * THE MINI VIEW MUST NOT DEFEAT THE WINDOWS/LINUX QUIT CONTRACT (quick-send
+	 * design §C.5's platform note, read against this app's existing behaviour).
+	 * On macOS closing the main window leaves the app running, so the hidden mini
+	 * view simply stays and the hotkey keeps working — the Dock-only case the
+	 * feature is built for. On Windows and Linux, closing every window is how the
+	 * app quits (`window-all-closed`), and a hidden window that nothing closes is
+	 * an app that never reaches it: a process with no visible surface and no way
+	 * back. So the mini view is torn down with the main window THERE, and only
+	 * there — the window-all-closed handler is untouched.
+	 */
+	if (process.platform !== "darwin") {
+		mainWindow.on("closed", () => miniView?.dispose());
+	}
 
 	/*
 	 * A window created to show a specific conversation HOLDS its first present.
@@ -1183,6 +1210,16 @@ const telemetryWebPreferences = {
 // Some APIs can only be used after this event occurs.
 // Define mainWindow at a higher scope to be accessible in event handlers
 let mainWindow: BrowserWindow | null = null;
+
+/*
+ * The quick-send mini view and its registration (design D6/§G.1). Module scope
+ * so `before-quit` can dispose them and `window-all-closed`'s platform contract
+ * can still reach the window; all three are non-null only in a `normal`
+ * launch, which is the design's whole gate (`hotkeysAllowed`).
+ */
+let miniView: MiniView | null = null;
+let miniViewRegistrar: MiniViewRegistrar | null = null;
+let quickSendWatcher: QuickSendWatcher | null = null;
 
 /*
  * The update service of the most recent window, kept here rather than in the
@@ -2116,6 +2153,174 @@ app
 				);
 			}
 		}
+		/*
+		 * The global hotkey's whole wiring (design §D.2/§G): the hidden mini
+		 * window, the registrar over Electron's own `globalShortcut`, the config
+		 * watch, and the registration state pushed to every renderer.
+		 *
+		 * NORMAL LAUNCHES, PLUS THE DEV DRIVER'S HEADLESS EXERCISER (M-B1). The
+		 * design's §C.4 rule reads from the same launch plan every window is built
+		 * from: an ordinary rig-shaped run gets no window and no registration —
+		 * "an agent run never answers the operator's keyboard" is a property of
+		 * the launch rather than of the code paths inside. The one exception is
+		 * the armed dev driver in a `headless` run, where a window the app OWNS is
+		 * what lets a rig exercise the send path at all (the desktop plane admits
+		 * by frame, `desktop-ipc.ts`; a scene-built window is refused before any
+		 * request leaves the app). It registers NOTHING — `hotkeysAllowed` gates
+		 * the registrar and the watcher below — and it is never shown:
+		 * presentation stays `presentMiniView`'s gate, which a headless plan
+		 * refuses.
+		 *
+		 * PLACED BEFORE `registerDesktopIPC` because that registration carries
+		 * this feature's write-through tap: a `keymap.*` write arriving over
+		 * `desktop-request` re-applies the registration the moment the backend
+		 * accepts it, without waiting for the poll (the watcher stays the
+		 * mechanism of record for the TUI, `lop config edit` and hand edits).
+		 *
+		 * WHY THE WINDOW IS CREATED AT READY RATHER THAN ON FIRST PRESS: the
+		 * hotkey must answer on the first press, and a window created at that
+		 * moment would pay its renderer's whole boot inside the interaction.
+		 *
+		 * K6, DECIDED (manager, remediation round 1): the hidden renderer stays
+		 * for the app's life. Measured cost: ≈160–172 MB working set for the mini
+		 * renderer in this branch's evidence runs (QA round 1 re-measured
+		 * 173–195 MB under fleet load) against the design's advisory ">150 MB ⇒
+		 * switch to destroy-after-idle". The acceptance criterion that outranks
+		 * the advisory is the first press: a window created on demand pays the
+		 * renderer's whole boot inside the interaction the hotkey exists to make
+		 * instant. If memory is ever flagged, the follow-up is lazily-created —
+		 * not a lighter always-on window.
+		 */
+		const miniViewExerciser = headlessExerciserAllowed({
+			arming: devDriverArming,
+			windowMode: windowLaunch.mode,
+		});
+		if (hotkeysAllowed(windowLaunch.mode) || miniViewExerciser) {
+			miniView = createMiniView({
+				url: miniViewUrlFor(rendererUrl),
+				preloadPath: join(__dirname, "../preload/index.js"),
+				show: windowLaunch.show,
+				/*
+				 * The launch's chrome facts, resolved through the same function the
+				 * main window called — read here rather than threaded through
+				 * `createWindow`'s signature, which would touch call sites outside
+				 * this feature's slice for a value that is a launch fact (argv, the
+				 * launch env, the persisted file) and cannot differ between the two
+				 * calls. The mini view's visible consumer of it is the platform
+				 * half: the header's keycap spells ⌘⌥Space against Ctrl+Alt+Space
+				 * from exactly this entry.
+				 */
+				chromeMode: resolveLaunchWindowChrome({
+					argv: process.argv,
+					env: launchEnv,
+					userDataDir: app.getPath("userData"),
+					platform: process.platform,
+				}).mode,
+				report: reportRaise,
+			});
+		}
+		if (hotkeysAllowed(windowLaunch.mode)) {
+			const initial = readQuickSendValue();
+			miniViewRegistrar = createRegistrar({
+				shortcut: globalShortcut,
+				platform: process.platform,
+				/*
+				 * The LAUNCH env, like the window mode: `XDG_SESSION_TYPE` is a fact
+				 * about the session this process started in, and a `.env` in the
+				 * checkout must not be able to decide whether this machine gets a
+				 * dead key (the Wayland refusal).
+				 */
+				env: launchEnv,
+				onTrigger: () => miniView?.toggle(),
+				onState: (state) => {
+					/*
+					 * THE PUSH IS THE SURFACE (design §G.3): the settings row renders
+					 * the live state, so every window hears about every change — a
+					 * chord that failed to register is visible without a reload.
+					 */
+					for (const window of BrowserWindow.getAllWindows()) {
+						if (window.isDestroyed()) continue;
+						window.webContents.send(MINI_VIEW_REGISTRATION, state);
+					}
+				},
+			});
+			if (initial.problem !== undefined) {
+				logger.warn(
+					`mini-view: ${initial.problem} — using the shipped default`,
+					LogFileType.BACKEND,
+				);
+			}
+			const applied = miniViewRegistrar.apply(initial.value);
+			/*
+			 * THE STARTUP LINE (§G.1/§G.5), on stdout as well as the log so a rig
+			 * can read it the way it reads `[window-mode]` — the state a dead key
+			 * would hide behind is exactly the state a tooling run needs to see.
+			 */
+			console.log(
+				applied.status === "registered"
+					? `mini-view: registered ${applied.accelerator} (value ${applied.value})`
+					: `mini-view: not registered (${applied.status}: ${applied.reason ?? "no reason given"})`,
+			);
+			quickSendWatcher = watchQuickSend({
+				onValue: (value) => {
+					const state = miniViewRegistrar?.apply(value);
+					if (state)
+						logger.info(
+							`mini-view: config changed, registration is ${state.status}`,
+							LogFileType.BACKEND,
+						);
+				},
+				onProblem: (message) =>
+					logger.warn(`mini-view: ${message}`, LogFileType.BACKEND),
+				baseline: initial.present ? initial.value : undefined,
+			});
+		} else {
+			if (miniViewExerciser) {
+				const line =
+					"mini-view: exerciser window created (dev driver armed; no registration in this mode)";
+				logger.info(line, LogFileType.BACKEND);
+				console.log(line);
+			}
+			const line = `mini-view: not registered (window mode ${windowLaunch.mode})`;
+			logger.info(line, LogFileType.BACKEND);
+			console.log(line);
+		}
+
+		/*
+		 * The registration READ (design §D.3): the settings row asks once on
+		 * mount and is pushed to thereafter. Authorized like every other window
+		 * channel — the app's own window, its main frame — because the answer
+		 * names the chord this machine listens for.
+		 */
+		ipcMain.removeHandler(MINI_VIEW_REGISTRATION_GET);
+		ipcMain.handle(MINI_VIEW_REGISTRATION_GET, (event) => {
+			const owner = mainWindow;
+			if (
+				!owner ||
+				owner.isDestroyed() ||
+				event.sender !== owner.webContents ||
+				event.senderFrame !== owner.webContents.mainFrame
+			) {
+				throw new Error("This window cannot read the hotkey registration.");
+			}
+			const state = miniViewRegistrar?.getState() ?? null;
+			if (state) {
+				return state;
+			}
+			/*
+			 * A window exists and the app is running in some other mode (or the
+			 * registrar has not answered yet): the honest answer is what the
+			 * launch said — the registration was denied by the MODE, and the row
+			 * should say so rather than showing a fabricated `registered`.
+			 */
+			return {
+				value: "",
+				accelerator: "",
+				status: "unavailable" as const,
+				reason: `window mode ${windowLaunch.mode} registers no global shortcuts`,
+			};
+		});
+
 		registerDesktopIPC(
 			() => mainWindow,
 			rendererUrl,
@@ -2124,6 +2329,37 @@ app
 			(input, bytes) => backendService.requestDesktopMedia(input, bytes),
 			desktopNotifier,
 			(sessionId) => viewerRecord?.releaseSession(sessionId),
+			/*
+			 * The hotkey's write-through tap (design §G.2): a `keymap.*` write the
+			 * backend accepted re-reads the file and re-applies immediately. The
+			 * callback re-reads rather than carrying a value, so the fast path
+			 * and the poll share one source of truth.
+			 */
+			() => {
+				const reading = readQuickSendValue();
+				if (reading.problem !== undefined) {
+					logger.warn(
+						`mini-view: the settings write landed but the config re-read failed: ${reading.problem}`,
+						LogFileType.BACKEND,
+					);
+					return;
+				}
+				miniViewRegistrar?.apply(reading.value);
+			},
+			/*
+			 * The mini view's window is a SECOND trusted document (design §D.1):
+			 * its composer resolves the seat and sends through the desktop plane
+			 * exactly as the main window's chat does, so it passes the same gate.
+			 * Its own document URL travels with it — `trustedDesktopFrame` checks
+			 * the pair, so a window can never be admitted on another document's
+			 * URL. Empty until the mini view exists, and empty again after
+			 * `before-quit` disposes it, which is the same lifecycle the
+			 * registration follows.
+			 */
+			() =>
+				miniView === null
+					? []
+					: [{ window: miniView.window, url: miniViewUrlFor(rendererUrl) }],
 		);
 
 		/*
@@ -3651,6 +3887,18 @@ app.on("before-quit", async (event) => {
 	}
 	// Unregister all shortcuts.
 	globalShortcut.unregisterAll();
+	/*
+	 * The mini view's own teardown, beside the line it depends on. The registrar
+	 * releases its chord through the SAME mechanism `unregisterAll` just used,
+	 * but explicitly, so its bookkeeping is not left claiming a live binding; the
+	 * watcher loses its timers (a poll landing mid-shutdown would re-apply a
+	 * registration into a dying process); and the window is destroyed with its
+	 * close-interception stood down, or the quit would be blocked by the very
+	 * guard that turns an accidental close into a hide.
+	 */
+	miniViewRegistrar?.dispose();
+	quickSendWatcher?.stop();
+	miniView?.dispose();
 	/*
 	 * Any quit, not only the panel's button.
 	 *

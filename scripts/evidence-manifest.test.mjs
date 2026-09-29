@@ -138,6 +138,24 @@ test("a partial run that adds a surface satisfies the guard", () => {
 	assert.ok(guardAccepts(root, manifest), "an added surface must be accounted");
 });
 
+test("counts a fold hand-wrote as JSON strings still add, instead of concatenating", () => {
+	/*
+	 * Measured on the trace-label pass (2026-09-27): `frames` and
+	 * `partialCapture.refreshedFrames` had been hand-resolved by folds as JSON
+	 * STRINGS (`"9718"`, `"7929"`), so one narrowed run's `previous + added`
+	 * produced `"97184"` and `"79294"` - and the string form then flipped
+	 * `check-evidence.mjs`'s `typeof === "number"` gate to skipped, so the drift
+	 * was silent in both directions. A legacy string is COERCED, never
+	 * concatenated: what this function returns is a count.
+	 */
+	const root = tree({ "chat-trace/conversation": 2, "chat-new/states": 2 });
+	const manifest = partialManifest({ frames: "2", supplementary: [] }, root, [
+		"chat-new/states",
+	]);
+	assert.equal(manifest.frames, 4);
+	assert.equal(typeof manifest.frames, "number");
+});
+
 test("a partial run that only refreshes does not move the count", () => {
 	// Frames overwritten in a pre-existing directory are ones the manifest
 	// already covers; counting them again would fail the guard from the other
@@ -1279,6 +1297,17 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"goalDesignRoundTwoNote",
 	/*
+	 * THIS BRANCH'S OWN, and it arrives under the union rule the list states: the
+	 * pair below is the MERGED tree's - re-derived on THIS fold (onto `origin/main`
+	 * = `eddfae750b`, #537/#540/#541/#542) with `git write-tree` on the resolved
+	 * index and `<tree>:src` / `<tree>:scripts`, so it rides the tree it describes
+	 * rather than either side of the merge - and every note that quotes the pair
+	 * as a pointer to this file's own values is substituted with it, main's own
+	 * list carried whole.
+	 */
+	"conversationStartEvidenceNote",
+
+	/*
 	 * THIS CHANGE'S OWN: it re-stamps the pass that made the chat header's
 	 * identity slot the controls it describes (the team and the agent menus,
 	 * the rename pencil) and re-captured its own eleven states - so ITS
@@ -1314,6 +1343,16 @@ const STAMP_BINDING_NOTES = [
 	 * than read as history.
 	 */
 	"headerIdentityRoundOneRestampNote",
+	/*
+	 * AND THIS PASS'S OWN: the notice-band change
+	 * (`fix/banner-warn-error-consistency-7e4c`) moves BOTH trees this file binds
+	 * - `src/` on the strip, the compatibility banner, `chat-status.ts` and the
+	 * new shared band grammar; `scripts/` on the three suites and the sweep's
+	 * fourteen new rows - so its record states the pair THIS FILE SHIPS as its
+	 * opening claim, which is the case this list wants checked rather than read
+	 * as prose.
+	 */
+	"bannerBandsRestampNote",
 	/*
 	 * AND THIS PASS'S OWN, for the held-first-paint work on the conversation-loading
 	 * report ("everything should load in one solid paint instead of incrementally"):
@@ -1419,6 +1458,20 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"partialCaptureContinuityRestampNote",
 	/*
+	 * AND THIS CHANGE'S OWN: the inline-rename fix's re-stamp. Its subject IS
+	 * this file's binding - it moves BOTH trees and re-captures one set's
+	 * states - so a reader is owed the pair and the twelve frames it added.
+	 */
+	"headerRenameInlineRestampNote",
+	/*
+	 * AND THE ROUND-1 REMEDIATION'S OWN, on the same lane: its subject is this
+	 * file's binding too - the save-lifecycle pass moves BOTH trees again (the
+	 * header's committed-save state and its story; the capture row and these
+	 * two lists) and re-captures one state - so a reader is owed the pair and
+	 * the two frames it added.
+	 */
+	"headerRenameInlineRoundOneNote",
+	/*
 	 * AND THE DESKTOP-SUITE TICK WAIT'S OWN (main's, kept where this fold found
 	 * it): its subject is this file's binding too - it moves BOTH trees without
 	 * taking a frame (nothing in it is user-visible; the evidence is the isolated
@@ -1427,6 +1480,566 @@ const STAMP_BINDING_NOTES = [
 	 * is here.
 	 */
 	"daemonObservationTickWaitRestampNote",
+	/*
+	 * AND THE SEARCH-AND-QUOTA UX PASS'S OWN: its subject IS this file's binding
+	 * too - the pass moves BOTH trees and re-took four sets' frames (two states
+	 * re-shot, one state and two sets added) - so a reader is owed the pair and
+	 * the five sets it names.
+	 */
+	"searchQuotaUxRestampNote",
+	/*
+	 * AND THE CREDENTIAL-INPUT CHANGE'S OWN (`fix/secret-ask-credential-input`):
+	 * its subject is this file's binding too - it moves BOTH trees (the dock's
+	 * masked secret field and its answer path in `src/`, the suite's cases and
+	 * the sweep's two new rows in `scripts/`) without committing a frame, so a
+	 * reader is owed the pair AND the reason no still was owed - the same case
+	 * `task17RestampNote` and `daemonObservationTickWaitRestampNote` are in the
+	 * list for. The new rows' frames are the PR's to carry (referenced from the
+	 * pull request), and `countsMean.surfaces` carries the re-derivation.
+	 */
+	"secretAskCredentialRestampNote",
+	/*
+	 * AND THE TWO-FLAKE LANE'S OWN: its subject IS this file's binding too - it
+	 * moves BOTH trees without taking a frame (a dev-mode caret fix and two
+	 * readers, none of which draws anything), so a reader is owed the pair AND
+	 * the reason no still was owed, the same case task-17's entry states.
+	 */
+	"twoFlakesRestampNote",
+	/*
+	 * AND THE SAME LANE'S SECOND FOLD, WHOSE SUBJECT IS THIS BINDING ITSELF: the
+	 * fold carried main's four merges under the branch's own change, so it moved
+	 * BOTH trees and the pair was re-derived at the folded tip - the case a reader
+	 * is owed the pair for, and the one this list is what holds them to.
+	 */
+	"foldOntoE885227046Note",
+	/*
+	 * AND THIS BRANCH'S OWN: the pending-echo placement fix moves BOTH trees this
+	 * file binds - `src/` for `withTimeOrder`'s load-window case and the
+	 * `provisional` field it reads, `scripts/` for the reducer cases that pin the
+	 * page and seed doors plus the `localEcho` reading the open rig carries - and
+	 * rewrites no frame of the sweep, so a reader is owed the two values it binds
+	 * and the reason no still was owed.
+	 */
+	"pendingEchoRestampNote",
+	"pendingEchoRemediationNote",
+	"pendingEchoRemediationFoldNote",
+	"pendingEchoRemediationSecondFoldNote",
+	"pendingEchoRemediationThirdFoldNote",
+	"pendingEchoRemediationFourthFoldNote",
+	"pendingEchoRemediationFifthFoldNote",
+	/*
+	 * AND THE TWO-FLAKE LANE'S SECOND FOLD: its subject IS this file's binding -
+	 * the fold onto the moved `origin/main` after #562 and #577 re-derives the
+	 * pair at the folded tip and reads it back from the staged index, so a
+	 * reader is owed the pair rather than the prose.
+	 */
+	"foldOntoA9f4b1d7f4Note",
+	/*
+	 * AND THE STALL BOUND'S OWN: it bounds the update feed fetch, the update
+	 * download and the PyPI version read so a stalled network cannot hold the
+	 * checking frame. It moves BOTH trees - `src/` for the deadline, the latch
+	 * epoch, the abandoned-fetch attribution and the download watchdog;
+	 * `scripts/` for the four suites that drive them and the fixtures'
+	 * `CancellationToken` - and takes NO frame: the checking frame and the
+	 * alert's pixels are the same before and after (what changed is WHEN the
+	 * frame leaves), so the discriminating evidence is the simulation under
+	 * `docs/evidence/update-stall-bound/`, on both sides of the IPC boundary.
+	 * The reader is owed the pair and that reason.
+	 */
+	"updateStallBoundRestampNote",
+	/*
+	 * AND THE FOLD ONTO `1e88f7fc16`'s OWN: the fold wrote one record, and the
+	 * registration here is the same completeness reason as every note above - a
+	 * fold that started from main's copy would drop this branch's records first,
+	 * and this list is the check that notices.
+	 */
+	"foldOnto1e88f7fc16Note",
+	/*
+	 * AND THE SECOND FOLD'S OWN: main moved again before this branch's push, the
+	 * fold onto `9589bd8fec` re-derived the pair at the folded tip, and a reader
+	 * is owed the check rather than the prose.
+	 */
+	"foldOnto9589bd8fecNote",
+	/*
+	 * AND THE REMEDIATION ROUND 2'S OWN: it registers the two U1 frames the
+	 * download panel and the checking card now ship, rewrites the download line's
+	 * subject, and moves both trees - so a reader is owed the pair.
+	 */
+	"updateStallBoundRoundTwoNote",
+	/*
+	 * AND THE FIFTH FOLD'S OWN: the fold onto `678f6c5c69` moved both trees and
+	 * wrote one record, and a reader is owed the pair it binds.
+	 */
+	"foldOnto678f6c5c69Note",
+	/*
+	 * AND THE SIXTH FOLD'S OWN: main moved once more inside round 2 and the fold
+	 * onto `3428f5f475` re-derived the pair again - same reason, same check.
+	 */
+	"foldOnto3428f5f475Note",
+	/*
+	 * AND REMEDIATION ROUND 3'S OWN: it moves both trees again (the gate-coverage
+	 * registration, the retrying story presses, the unified switch rule), so a
+	 * reader is owed the pair.
+	 */
+	"updateStallBoundRoundThreeNote",
+	/*
+	 * AND THE SEVENTH FOLD'S OWN: the fold onto `8b082c33d8` moved both trees and wrote one
+	 * record, and a reader is owed the pair it binds.
+	 */
+	"foldOnto8b082c33d8Note",
+	/*
+	 * AND THE EIGHTH FOLD'S OWN: the fold onto `a72909b1f4` resolved TWO conflicted paths (this list
+	 * and the manifest) and wrote one record, and a reader is owed the pair it binds.
+	 */
+	"foldOntoA72909b1f4Note",
+	/*
+	 * AND THE NINTH FOLD'S OWN: the fold onto `cc5a329040` re-derived the pair once more minutes later
+	 * and wrote one record - same reason, same check.
+	 */
+	"foldOntoCc5a329040Note",
+	/*
+	 * AND THE CI-REDS FIX'S OWN: the notice cases' kill-switch scrub and the decision-wait moved
+	 * `scripts/` only, and this is the restamp that re-points the file's claims at the tree it ships in.
+	 */
+	"updateStallBoundCiFixRestampNote",
+	/*
+	 * AND THE TENTH FOLD'S OWN: the fold onto `7bd3803598` re-derived the pair once more and wrote
+	 * one record - same reason, same check.
+	 */
+	"foldOnto7bd3803598Note",
+	/*
+	 * AND THIS LANE'S OWN: the board/timeline pass. Its subject IS this file's
+	 * binding - the change moves BOTH trees (the projects feature's board,
+	 * timeline, switcher and their pins; the capture rows and this list) and
+	 * re-shoots the whole projects-tab set (144 frames re-taken, 72 added) - so
+	 * a reader is owed the pair and what the capture moved with it, the same
+	 * case `headerRenameInlineRestampNote` is in the list for.
+	 */
+	"projectsBoardTimelineNote",
+	/*
+	 * AND THIS LANE'S OWN: the project-detail pass (slice S6d-i). Its subject is
+	 * this file's binding too - the change moves BOTH trees (the detail sheet,
+	 * the updates feed, the quick-send strip, the start-session picker, the
+	 * model and the six new story states; the capture rows, the new live scene
+	 * and this registration) and re-shoots the whole projects-tab set at this
+	 * head (324 frames: six states added at twelve themes) - so a reader is owed
+	 * the pair and what the capture moved with it.
+	 */
+	"projectDetailFeedNote",
+	/*
+	 * AND THE REMEDIATION ROUND'S OWN: round 1's fix moves BOTH trees again -
+	 * `src/` for the one commission entry point (clear, cancel, invalidate)
+	 * with its generation guard and the account row's `min-w-0`, `scripts/`
+	 * for the two suites that pin and measure them plus this file's own
+	 * registrations - and rewrites no frame of the sweep (the re-shot design
+	 * frames are PNG walks under the `account-foot-refresh` set), so a reader
+	 * is owed the two values it binds and the reason no still was owed.
+	 */
+	"accountFootRemediationRestampNote",
+	/*
+	 * AND THIS BRANCH'S OWN (folded in beside it): the account-foot refresh moves
+	 * BOTH trees this file binds - `src/` for the two completion call sites that
+	 * commission the account read on a Radient credential write and the clear
+	 * that lets the re-read be disclosed as "checking", `scripts/` for the three
+	 * suites that pin and measure them - and rewrites no frame of the sweep (its
+	 * evidence is a pair of PNG walks, declared as `account-foot-refresh`), so a
+	 * reader is owed the two values it binds and the reason no still was owed.
+	 */
+	"accountFootRefreshRestampNote",
+	/*
+	 * AND THIS BRANCH'S OWN, the mesh tab's slice 1: its subject IS this file's
+	 * binding - the set is new, both trees moved under it, and the tab ships dark
+	 * behind a capability gate - so a reader is owed the check rather than the prose,
+	 * and a later fold that started from main's copy would drop it first.
+	 */
+	"meshTabRestampNote",
+	"meshTabRound2RestampNote",
+	/*
+	 * AND THIS LANE'S OWN, the newest top-level record on the branch: its subject
+	 * is this file's binding too - the trace-label mapping moves BOTH trees (the
+	 * op tier and its wiring in `src/`; the suites, the two capture rows and this
+	 * registration in `scripts/`) AND adds two states to two sets whose frames it
+	 * re-captured - so a reader is owed the pair and the four frames it added.
+	 */
+	"traceToolLabelsRestampNote",
+	/*
+	 * AND THIS BRANCH'S OWN, the stopped-row measure fix: it moves BOTH trees this
+	 * file binds - `src/` for §G3's stopped line taking the conversation's shared
+	 * measure (its wrapper now declares the chatcol container the dock and the
+	 * composer band already declare) plus the rig's handle on the composer box
+	 * (`data-lo-composer-measure`), `scripts/` for the geometry claims added to
+	 * `scripts/interrupt-esc-proof.mjs`, the discriminator that pins the property
+	 * (`scripts/stopped-row-measure.test.mjs`), its registration in
+	 * `package.json`'s `test:desktop` and this note's own registration - and it
+	 * rewrites no frame of the sweep (its evidence is a set of live-app PNGs,
+	 * `stopped-row-measure`, which the sweep's WebP predicate does not admit), so
+	 * a reader is owed the two values it binds and the reason no still was owed.
+	 */
+	"stoppedRowRestampNote",
+	/*
+	 * AND THIS LANE'S OWN, the newest top-level record on the branch: the sidebar
+	 * bottom zone moves BOTH trees (the destinations boundary and the entity
+	 * sections' conditional in `src/`; the `sidebar-bottom` scene and this
+	 * registration in `scripts/`) and adds a PNG set outside the sweep, so a
+	 * reader is owed the pair it binds and the readings it ships.
+	 */
+	"sidebarBottomZoneRestampNote",
+	/*
+	 * AND THIS LANE'S OWN: the card-surfaces restyle. Its subject IS this file's
+	 * binding - the change moves BOTH trees (`src/` for the card, column, frame
+	 * and hub-card treatment across projects, schedules and agent hub,
+	 * `scripts/` for this registration and the note) and re-shoots the three
+	 * sets' frames (a narrowed run per set, recorded in `partialCapture`) - so a
+	 * reader is owed the pair and what the capture moved with it, the same case
+	 * `projectsBoardTimelineNote` is in the list for.
+	 */
+	"cardSurfacesRestyleNote",
+	/*
+	 * This branch's own: `aidaSidebarRestampNote` states THIS FILE's own pair for Aida's sidebar
+	 * slice (see its BRANCH_RECORDS entry for what moved), so it is held to that
+	 * pair rather than read as history - the same distinction
+	 * `candidateMacArchRestampNote` is in the list for.
+	 */
+	"aidaSidebarRestampNote",
+	/*
+	 * And AIDA'S SECOND UI SLICE's own: `aidaBadgeRestampNote` states THIS FILE's
+	 * own pair for her rail row's marks - the missed-messages badge, the working
+	 * mark, the display-name fallback, and the strip's feed keeper (why the
+	 * collapsed rail paints both marks at all) - so it is held to that pair
+	 * rather than read as history, the same case `aidaSidebarRestampNote` is in
+	 * the list for.
+	 */
+	"aidaBadgeRestampNote",
+	/*
+	 * AND THE POINTER-AFFORDANCE SWEEP'S OWN - it belongs here for the list's own
+	 * reason: ITS SUBJECT IS THIS FILE'S BINDING. The sweep moves BOTH trees (the
+	 * base-layer rule and the five click sites under `src/`; the audit that
+	 * measures them under `scripts/`) and re-shoots no frame - a cursor is not a
+	 * pixel, so the committed set renders identically and the audit's measured
+	 * report is the PR's evidence - so a reader is owed the two values it binds
+	 * and the reason the stills did not move.
+	 */
+	"mouseCursorRestampNote",
+	/*
+	 * AND THE PROJECTS CARD'S WHOLE-SURFACE TARGET - it belongs here for the
+	 * list's own reason: ITS SUBJECT IS THIS FILE'S BINDING. The card's root
+	 * role, click and keyboard activation move both trees (the component
+	 * under `src/`; the interaction pin and its lane entry under
+	 * `scripts/`), and no frame was re-taken - the pointer is not a pixel, so
+	 * the committed set renders identically and the PR's stills carry the
+	 * before/after a reader would want - so a reader is owed the two values
+	 * it binds and the reason the stills did not move.
+	 */
+	"projectsCardClickRestampNote",
+	/*
+	 * AND THE REGENERATED SCHEDULES BEFORE HALVES' OWN - it belongs here for the
+	 * list's own reason: THE NOTE STATES THIS FILE'S BINDING. The regeneration
+	 * moves `scripts/` (this note's registration) and no file under `src/` - the
+	 * frames it adds are re-captures of the merge-base's source, which is this
+	 * branch's base rather than a tree it moves - so a reader is owed the pair
+	 * the re-stamp derives and the reason no source file moved.
+	 */
+	"cardSurfacesBeforeHalvesNote",
+	/*
+	 * AND THE CHAT-MEASURE LANE'S FOLD: `foldOntoAc83ec7d92Note` states the pair
+	 * the folded tip binds AND the retarget the fold carries (the measure moves
+	 * to 810px - 900 minus exactly 10% - and the set's 12 frames were re-taken
+	 * at the folded tip), so it is held to the pair this file ships rather than
+	 * read as history.
+	 */
+	"foldOntoAc83ec7d92Note",
+	/*
+	 * AND THE SECOND FOLD'S: `foldOnto8367cbfaeeNote` states the pair the second
+	 * folded tip binds and that no frame moved for it, so it is held to the pair
+	 * this file ships rather than read as history.
+	 */
+	"foldOnto8367cbfaeeNote",
+	/*
+	 * AND THE THIRD FOLD'S: `foldOnto8320e52366Note` states the pair the third
+	 * folded tip binds and that no frame moved for it, so it is held to the pair
+	 * this file ships rather than read as history.
+	 */
+	"foldOnto8320e52366Note",
+	/*
+	 * AND THIS FOLD'S: `foldOnto55d7b0a19bNote` states the pair the fourth
+	 * folded tip binds, so it is held to the pair this file ships rather
+	 * than read as history.
+	 */
+	"foldOnto55d7b0a19bNote",
+	/*
+	 * AND THIS FOLD'S OWN - the fifth: `foldOntoA8ac7f673cNote` states the pair the
+	 * folded tip binds, the two conflicts it resolved (this file's and its
+	 * manifest's) as unions with no key dropped either side, and that no frame was
+	 * re-taken for the fold, so it is held to the pair this file ships rather than
+	 * read as history - beside `cardSurfacesBeforeHalvesNote` above, whose own
+	 * re-stamp rides the same re-derivation.
+	 */
+	"foldOntoA8ac7f673cNote",
+	/*
+	 * AND THE SIDEBAR'S TIME BASIS PASS'S OWN (2026-09-28):
+	 * `sidebarBinBasisRestampNote` quotes the pair its commit derives - the src
+	 * tree with the basis control and the completion's own refetch, the scripts
+	 * tree with the driver scene, the two suites and the rig's four new STORIES
+	 * rows - and is re-pointed by the docs-only amendment that follows, exactly
+	 * like every entry above it.
+	 */
+	"sidebarBinBasisRestampNote",
+	/*
+	 * AND THIS FOLD'S OWN (2026-09-28): `sidebarBinBasisFoldNote` is the fold onto
+	 * the moved `origin/main` `160faa5f9f`, the manifest conflict (the only one)
+	 * resolved as a union with both sides' records carried, and the pair re-derived
+	 * from the folded tip. It quotes that pair, so it is held to this file like
+	 * every entry above it.
+	 */
+	"sidebarBinBasisFoldNote",
+	/*
+	 * AND THE ROUND-1 FOLD'S OWN (2026-09-28): `roundOneFoldNote` is the fold onto
+	 * the moved `origin/main` `1b1a52d5cf` while the four round-1 reports were
+	 * being answered - the manifest conflict (the only one) resolved as a union,
+	 * the pair re-derived from the folded tip. It quotes that pair, so it is held
+	 * to this file like every entry above it.
+	 */
+	"roundOneFoldNote",
+	/*
+	 * AND THE AGENTS OFFER BRANCH'S OWN, the way main's tree words it: its subject
+	 * IS this file's binding - the change moves BOTH trees (the offer module, the
+	 * store field, the sidebar control and its story fixture under `src/`; the
+	 * capture row, the new behavioural suite and this registration under
+	 * `scripts/`) AND adds one story's twelve frames while re-shooting the set -
+	 * so a reader is owed the pair and what the capture moved with it.
+	 */
+	"agentsOfferDismissNote",
+	/*
+	 * AND THIS FOLD'S OWN - `foldOnto55dbaf6118Note` states the pair the folded
+	 * tip binds, the single conflicted path it resolved (this branch's manifest
+	 * against main's), the union decisions the file's own `citationConvention`
+	 * group numbers name, and that no frame was re-taken because main's delta
+	 * touches none of the files this branch draws - so it is held to the pair
+	 * this file ships rather than read as history.
+	 */
+	"foldOnto55dbaf6118Note",
+	/*
+	 * AND THIS FOLD'S OWN - `foldOnto1b1a52d5cfNote` states the pair the folded
+	 * tip binds, the single conflicted path it resolved (this branch's manifest
+	 * against main's, plus package.json's test list) and the union decisions
+	 * behind it; no frame was re-taken (main's delta is the projects card's
+	 * pointer behaviour, not a pixel), so it is held to the pair this file
+	 * ships rather than read as history.
+	 */
+	"foldOnto1b1a52d5cfNote",
+	/*
+	 * AND THE COMMENT FIX'S OWN - `agentsOfferDismissCommentRestampNote` states
+	 * the pair after round 1's nit (reviewer) and Q1 (QA) reworded the offer's
+	 * count-vs-names sentence: a comment-only move under `src/` with no frame
+	 * repainted, so a reader is owed the pair and the reason the set did not
+	 * move.
+	 */
+	"agentsOfferDismissCommentRestampNote",
+	/*
+	 * AND THIS FOLD'S OWN (2026-09-28): `foldOnto3d99ab8d92Note` is the fold onto
+	 * the moved `origin/main` `3d99ab8d92` (#623, the agents offer's dismissal)
+	 * at merge time - BOTH this file and its manifest conflicted this time,
+	 * resolved as unions (this list's members, and the manifest's keys and
+	 * curated notes), and the pair re-derived from the folded tip. It quotes that
+	 * pair, so it is held to this file like every entry above it.
+	 */
+	"foldOnto3d99ab8d92Note",
+	/*
+	 * AND THIS FOLD'S OWN (2026-09-28): `foldOnto525d464279Note` is the fold onto
+	 * the moved `origin/main` `525d464279` (#618, the board column order, over
+	 * #623) at merge time - the manifest conflicted this time while this file
+	 * auto-merged to the union of both note families, and the pair and counts are
+	 * re-derived from the folded tip by the docs-only commit that follows. It
+	 * quotes that pair, so it is held to this file like every entry above it.
+	 */
+	"foldOnto525d464279Note",
+	/*
+	 * Moved by the dead-tab and popout pass (2026-09-28): this note states the pair
+	 * it ships and the set the pass moves, so it is held to the same bar as every
+	 * other member - it quotes both stamps and the file it sits in ships them.
+	 */
+	"browserTabLifecycleNote",
+	/*
+	 * AND THE SAME PASS'S ROUND-1 REMEDIATION: `browserTabCleanupRoundOnePass`
+	 * states the pair it ships, the frames it re-shot (the two strip stories and
+	 * the load-failure trio), the runs as they ran and the one frame set it NAMES
+	 * as owed, so it is held to the pair this file ships rather than read as
+	 * history - the same bar as the note above it, which this fold re-points too.
+	 */
+	"browserTabCleanupRoundOnePass",
+	/*
+	 * AND ITS ROUND-2 ANSWERS: `browserTabCleanupRoundTwoPass` states the pair it
+	 * ships, the two owed photographs it pays (composition `20` re-encoded and `22`
+	 * re-encoded with the clearance the same run measured), the D3 re-capture with
+	 * its measured slack, and the run's own verdict — so it is held to the pair this
+	 * file ships rather than read as history, on the same bar as its two neighbours.
+	 */
+	"browserTabCleanupRoundTwoPass",
+	/*
+	 * AND THIS FOLD'S OWN (2026-09-28): `foldOntod11a15febfNote` is the fold onto
+	 * the moved `origin/main` `d11a15febf` (#624, the dead-tab and popout cleanup,
+	 * over #618) at merge time - both this file and its manifest conflicted,
+	 * resolved as unions (both note families kept whole here; main's records whole
+	 * with this branch's laid on top there), and the pair re-derived from the
+	 * folded tip by the docs-only commit that follows. It quotes that pair, so it
+	 * is held to this file like every entry above it.
+	 */
+	"foldOntod11a15febfNote",
+	/*
+	/*
+	 * AND THE NOTIFICATION LIFETIME'S OWN (2026-09-28): `notificationLifetimeRestampNote`
+	 * is the re-stamp for the fix that keeps a shown notification reachable until
+	 * it can serve no further click — both trees move (`src/` for the lifetime
+	 * module and the two banner sites, `scripts/` for the GC probe, the lifetime
+	 * suite and the fixtures), no frame was re-taken, and the pair is re-derived
+	 * from the tree the re-stamp commit ships. It quotes that pair, so it is held
+	 * to this file like every entry above it.
+	 */
+	"notificationLifetimeRestampNote",
+	/*
+	 * AND THE FOLD'S OWN (2026-09-28): `foldOnto20c3a207d7Note` is the fold onto
+	 * the moved `origin/main` `20c3a207d7` (the 0.31.14 release, #622's
+	 * collapsed-turn branch and the 0.31.15 bump) over this branch's
+	 * notification lifetime fix and its round-1 guard - main's whole manifest
+	 * taken as the base with this branch's records re-laid on top, the pair
+	 * re-derived from the folded tip by the docs-only commit that follows, and
+	 * every list member above re-pointed with it. It quotes that pair, so it is
+	 * held to this file like every entry above it.
+	 */
+	"foldOnto20c3a207d7Note",
+	/*
+	 * THE CHECKPOINT RAIL'S PHASE-2 INTEGRATION re-derived both stamps: the src tree
+	 * with the rail's own files and the transcript's mount/jump/warm wiring, and the
+	 * scripts tree with the four rail suites' registration in test:desktop (authored
+	 * unregistered earlier in this branch - all four are new here - so CI had never
+	 * run them), the reveal/centre suites, the contrast row and this note's own
+	 * registration. It re-shoots the
+	 * `transcript-rail` scene's frames against the merged `sessions.checkpoints`
+	 * (14 frames, 7 states, two palettes, declared in `supplementary`). It quotes this file's pair,
+	 * so it is held to it like every entry above it.
+	 */
+	/*
+	 * AND ROUND 2'S RE-DERIVATION (2026-09-29): the D1 landing fix and the
+	 * scene that now asserts it, on the fold onto the moved `origin/main`
+	 * `f3ce13cee7` (#626's projects chrome/teams). The src tree moves with the
+	 * axis-named centre step (`scrollRegionToCenter`'s `"reversed"` clamp and
+	 * its call site), the refusal copy, and the card's bounded-text measurement
+	 * hook; the scripts tree with the driver's visual landing assertions, the
+	 * physical pointer-press leg, D5's sparse / bounded-card / outcome /
+	 * building states, the fixture's outcome-shape corrections
+	 * (`details.kind`; `attention_started` before its user row) and the deleted
+	 * shadowing `clickPoint`. It re-shoots the scene at 24 frames / 12 states.
+	 * It quotes the folded tip's pair, so it is held to this file like every
+	 * entry above it.
+	 */
+	/*
+	 * AND THE UX ROUND'S OWN (2026-09-29): the roving rail - U1's one-tab-stop
+	 * group with the arrow/Home/End walk and U3's named toolbar root - moves the
+	 * src tree with `checkpoint-rail.tsx` and the scripts tree with its three
+	 * unit cases and the scene's keyboard legs. The frames are re-copied from
+	 * the run that asserts them (81 checks, 24 frames, no new states). It
+	 * quotes the pair below, so it is held to this file like every entry above.
+	 */
+	"transcriptRailRestampNote",
+	/*
+	 * AND THE FOLD'S OWN (2026-09-29): `sttDictationRestampNote` is the SECOND
+	 * fold over this branch's speech-to-text overhaul - onto the moved
+	 * `origin/main` `f3ce13cee7` (the projects-chrome-teams train), superseding
+	 * the first fold's note (onto `ff34fb8ecc`). Main's whole manifest is taken
+	 * as the base with this branch's record re-laid on top, the two supplementary
+	 * sets it declares ('stt-dictation', 'stt-dictation-baseline') re-laid
+	 * unchanged, the pair re-derived from the folded tip by the docs-only amend
+	 * that follows, and every list member above re-pointed with it. Both trees
+	 * move: `src/` for the composer's recording treatment, the hold-action
+	 * dispatcher, the in-flight dictation un-gate, the `input_mode` carriage and
+	 * the round-1 review fixes, and `scripts/` for the rig that proves them, its
+	 * spawn-site guard entry and the boundary-rule pin. It quotes that pair, so
+	 * it is held to this file like every entry above it.
+	 */
+	"sttDictationRestampNote",
+	/*
+	 * AND THE SEAM'S OWN (2026-09-29): `pttKeymapRestampNote` is the follow-up
+	 * that makes the STT stream CONSUME the registry row `keymap.push_to_talk`
+	 * (local-operator #1750 landed while #633 was in review): the renderer reads
+	 * the persisted value per registration instead of hard-coding the platform
+	 * pair. Both trees move - `src/` for the resolver's read path + token table,
+	 * `scripts/` for the resolution suite, the rig's session F and its
+	 * capability-following claims. No frames change; the pair is re-derived from
+	 * the tip and every list member above is re-pointed with it. It quotes that
+	 * pair, so it is held to this file like every entry above it.
+	 */
+	"pttKeymapRestampNote",
+
+	/*
+	 * The sessionless-slash pass (issue #625), this branch's newest record: it
+	 * re-derived both stamps for the branch's own change and quotes the pair it
+	 * ships, so it is held to this file like every entry above it.
+	 */
+	"sessionlessSlashRestampNote",
+	/*
+	 * AND THE QUICK-SEND PASS'S OWN: `quickSendRestampNote` is the global
+	 * hotkey / mini composer change's record. It moves BOTH trees — `src/` for
+	 * the mini view, its registrar, the config watch, the desktop-plane
+	 * admission and the settings row, `scripts/` for the registrar suite, the
+	 * rig stub, the extended gates and the driver's `mini-view` scene — and
+	 * re-shoots nothing (the evidence lives on the PR's own branch, not in this
+	 * tree), so the pair is re-derived from the tree the re-stamp commit ships
+	 * and every list member above is re-pointed with it. It quotes that pair,
+	 * so it is held to this file like every entry above it.
+	 */
+	"quickSendRestampNote",
+	/*
+	 * AND THE FOLD'S OWN (2026-09-29): `sessionlessSlashFoldNote` is the fold
+	 * onto the moved `origin/main` `2907f807b0` (release 0.31.17, #631's
+	 * quick-send train and #626's projects-chrome-teams) — main's manifest taken
+	 * as the base with this branch's records re-laid on top, the pair re-derived
+	 * from the resolved index and every list member above re-pointed with it. It
+	 * quotes that pair, so it is held to this file like every entry above it.
+	 */
+	"sessionlessSlashFoldNote",
+	/*
+	 * AND THE SECOND FOLD'S OWN (2026-09-29): `sessionlessSlashSecondFoldNote`
+	 * is the fold onto the moved `origin/main` `3de40b0fc9` (#634's
+	 * collapse-onload-more-below train) — the same union, the pair re-derived
+	 * from the resolved index again and every list member above re-pointed with
+	 * it. It quotes that pair, so it is held to this file like every entry
+	 * above it.
+	 */
+	"sessionlessSlashSecondFoldNote",
+	/*
+	 * AND THE THIRD FOLD'S OWN (2026-09-29): `sessionlessSlashThirdFoldNote` is
+	 * the fold onto the moved `origin/main` `7c9c98ecc7` (#633's speech-to-text
+	 * overhaul) - TWO paths conflicted this time (this file and the manifest)
+	 * and both are resolved as the same union; the pair is re-derived from the
+	 * resolved index again and every list member above re-pointed with it. It
+	 * quotes that pair, so it is held to this file like every entry above it -
+	 * and the note's composer audit is why it exists: #633 rewrites
+	 * `message-input.tsx`, and the note names which of its hunks touch the paths
+	 * this branch relies on and which do not.
+	 */
+	"sessionlessSlashThirdFoldNote",
+	/*
+	 * AND THE FOURTH FOLD'S OWN (2026-09-29): `sessionlessSlashFourthFoldNote`
+	 * is the fold onto the moved `origin/main` `46d0bba0de` (#573's
+	 * view-settings audit) — ONE conflict this time (this file's sibling, the
+	 * manifest), resolved as the same union; the pair is re-derived from the
+	 * resolved index again and every list member above re-pointed with it. It
+	 * quotes that pair, so it is held to this file like every entry above it.
+	 */
+	"sessionlessSlashFourthFoldNote",
+	/*
+	 * AND THE MINI DICTATION SWAP'S OWN: `miniDictRestampNote` is the change
+	 * that puts the mini composer's dictation onto the shared speech manager
+	 * and stamps its sends. It moves BOTH trees — `src/` for the mini view's
+	 * controller, composer and state, `scripts/` for the new dictation suite,
+	 * the extended contract test and the `test:desktop` list — and re-shoots
+	 * nothing (the run's stills and records live on the PR's own
+	 * `evidence/mini-dict-0929` branch, not in this tree), so the pair is
+	 * re-derived from the tree the re-stamp commit ships and every list member
+	 * above is re-pointed with it. It quotes that pair, so it is held to this
+	 * file like every entry above it.
+	 */
+	"miniDictRestampNote",
 ];
 
 test("the notes that claim this file's binding quote the stamp values it ships", () => {
@@ -1656,6 +2269,92 @@ test("a manifest with no countsMean is not this guard's failure", (t) => {
 		countsMeanFailures({ frames: 3, supplementary: [] }, countsGit, countsTree),
 		[],
 	);
+});
+
+/*
+ * A countsMean CELL IS A HISTORY: the leading paragraph describes the tree this file ships
+ * and the ones under it describe older ones, which is why `countsMeanFailures` reads the
+ * leading paragraph only. That leaves the space below it unguarded against the one mistake a
+ * re-stamp makes - inserting the SAME paragraph twice - and both mistakes of that shape are
+ * real: the eighth fold inserted a copy of the seventh fold's sentence into `frames` and
+ * `surfaces`, and `themes` carries an identical pair inherited from `2d0734b0f8`.
+ *
+ * WHY THIS EXISTS AT ALL, which is the finding that produced it (review round 4, R4-1). The
+ * ninth fold's record claimed the writer "asserts zero consecutive duplicate paragraphs ...
+ * before it writes. The assertion existed in the authoring session's scratch script and NOT
+ * here, so the sentence could not fail - a claim about a guard, made in the one place a reader
+ * would trust it, that stops the next reader from looking. This is that assertion committed,
+ * and the first case below is what makes it falsifiable rather than merely present.
+ */
+/*
+ * Top-level, not inline: `lint/performance/useTopLevelRegex` (and `scripts/check-scripts-lint.mjs`,
+ * which treats that warning as not-lint-clean) requires a literal used in a function to be a
+ * module constant. The first version of this guard put three of them inline and failed the gate
+ * - the file's pre-existing literals pass because they were written that way, and a new one does
+ * not get to opt out.
+ */
+const PARAGRAPH_BREAK = /\n\s*\n/;
+const REPEATED_PARAGRAPH = /countsMean\.themes repeats its paragraph 1/;
+const DELETE_THE_COPY = /delete the copy/;
+
+const duplicateParagraphFailures = (manifest) => {
+	const failures = [];
+	const mean = manifest?.countsMean;
+	if (!mean || typeof mean !== "object") return failures;
+	for (const [field, value] of Object.entries(mean)) {
+		if (typeof value !== "string") continue;
+		const paragraphs = value.trim().split(PARAGRAPH_BREAK);
+		for (let i = 1; i < paragraphs.length; i += 1) {
+			if (paragraphs[i] !== paragraphs[i - 1]) continue;
+			/*
+			 * One template literal rather than a concatenation: `lint/style/useTemplate` is an
+			 * ERROR under this project's config, and the gate above treats an error-severity
+			 * diagnostic in a changed file as a failure - which is how this message was caught.
+			 */
+			failures.push(
+				`manifest.json: countsMean.${field} repeats its paragraph ${i} verbatim (${paragraphs[i].slice(0, 60)}...) - a fold inserted the same sentence twice instead of deriving one for its own tree; delete the copy rather than editing it in place`,
+			);
+		}
+	}
+	return failures;
+};
+
+test("a countsMean cell that repeats a paragraph verbatim fails", () => {
+	const sentence =
+		"RE-DERIVED FOR THIS FOLD: 12 theme names in the `THEMES` literal, counted the same way.";
+	const failed = duplicateParagraphFailures({
+		countsMean: { themes: `${sentence}\n\n${sentence}` },
+	});
+	assert.equal(
+		failed.length,
+		1,
+		"the copy has to be flagged, or the guard is decoration",
+	);
+	assert.match(failed[0], REPEATED_PARAGRAPH);
+	assert.match(failed[0], DELETE_THE_COPY);
+	// And a cell whose paragraphs differ - the normal case, history included - is not a failure.
+	assert.deepEqual(
+		duplicateParagraphFailures({
+			countsMean: {
+				themes: `${sentence}\n\nRE-DERIVED FOR AN OLDER FOLD: 12 theme names.`,
+			},
+		}),
+		[],
+	);
+});
+
+test("the SHIPPED manifest repeats no paragraph in any countsMean cell", () => {
+	/*
+	 * The shipped half, in the same shape as `stampFailures` above: a guard that only had a
+	 * fixture case would pass while the file it guards carried the copy. `themes`' duplicate
+	 * at the head is exactly what this catches - and it is why the duplicate was removed in
+	 * the same commit rather than after it, since introducing a guard on a file that fails it
+	 * is how a red suite gets excused.
+	 */
+	const manifest = JSON.parse(
+		readFileSync("docs/evidence/manifest.json", "utf8"),
+	);
+	assert.deepEqual(duplicateParagraphFailures(manifest), []);
 });
 
 /*
@@ -1911,6 +2610,15 @@ const BRANCH_RECORDS = [
 	 */
 	"headerIdentityRoundOneRestampNote",
 	/*
+	 * And THIS CHANGE'S: the notice-band pass
+	 * (`fix/banner-warn-error-consistency-7e4c`), whose record is the only
+	 * statement of which two trees it moved, which frames it added (168 under
+	 * fourteen new story ids, plus the 56-still pair it declares below), and why
+	 * `head` stays the base the frames were taken at. A fold resolved from main's
+	 * copy would drop it, which is this list's whole subject.
+	 */
+	"bannerBandsRestampNote",
+	/*
 	 * And by this branch's folds onto the action-group lane's own tips - the
 	 * records the header-identity lane's arrival forced a rename of. Main's
 	 * `foldOnto9d3e68ddf6Note`, `foldOnto093a329a4dNote`, `foldOnto22c0fcd4fdNote`
@@ -1999,6 +2707,21 @@ const BRANCH_RECORDS = [
 	 */
 	"task17RestampNote",
 	/*
+	 * And by this lane, whose note is now the newest top-level record on the
+	 * branch: it states the pair the inline-rename fix ships - both trees
+	 * moved, one set's states re-captured - so a fold that started from main's
+	 * copy would drop it first, the same reason this list exists.
+	 */
+	"headerRenameInlineRestampNote",
+	/*
+	 * And by the same lane once more, whose round-1 remediation note is now
+	 * the newest top-level record on the branch: it states the pair the
+	 * save-lifecycle pass ships - both trees moved, one set's state
+	 * re-captured - so a fold that started from main's copy would drop it
+	 * first, the same reason this list exists.
+	 */
+	"headerRenameInlineRoundOneNote",
+	/*
 	 * And by THIS lane, whose note is the newest top-level record on the branch:
 	 * it states the pair this tip ships, moves both trees, and takes no frame -
 	 * a fold that started from main's copy would drop it first, the same reason
@@ -2014,6 +2737,390 @@ const BRANCH_RECORDS = [
 	 * note is listed here rather than trusted to the union.
 	 */
 	"partialCaptureContinuityRestampNote",
+	/*
+	 * And by the search-and-quota UX pass, whose note is this branch's newest
+	 * top-level record: it states the pair this tip ships, moves both trees,
+	 * and names the five sets its capture moved.
+	 */
+	"searchQuotaUxRestampNote",
+	/*
+	 * And by the credential-input change, whose note is the newest top-level
+	 * record on the branch: it states the pair this tip ships, moves both trees
+	 * (the dock's masked secret field and its answer path in `src/`, the suite's
+	 * cases and the sweep's two new rows in `scripts/`), and takes no committed
+	 * frame - a fold that started from main's copy would drop it first, and with
+	 * it the only statement of what moved and why no still was committed, which
+	 * is the failure this whole list exists to make loud.
+	 */
+	"secretAskCredentialRestampNote",
+	/*
+	 * And by the TWO-FLAKE lane, whose note is now the newest top-level record on
+	 * the branch: it states the pair this tip ships, moves both trees, and takes
+	 * no frame - a fold that started from main's copy would drop it first, the
+	 * same reason this list exists.
+	 */
+	"twoFlakesRestampNote",
+	/*
+	 * And by the TWO-FLAKE lane's second fold, whose record is now the newest
+	 * top-level note on the branch: it states the pair the folded tip ships, moves
+	 * both trees, and takes no frame - a fold that started from main's copy would
+	 * drop it first, the same reason this list exists.
+	 */
+	"foldOntoE885227046Note",
+	/*
+	 * Grown by the pending-echo lane: its fix, its round-1 remediation and its
+	 * two folds each wrote a top-level record. The first fold registered them
+	 * with the stamp-binding list only, so a fold that resolved this file from
+	 * main's copy could have dropped them with nothing failing; this
+	 * registration closes that hole for the records the branch is carrying.
+	 */
+	"pendingEchoRestampNote",
+	"pendingEchoRemediationNote",
+	"pendingEchoRemediationFoldNote",
+	"pendingEchoRemediationSecondFoldNote",
+	/*
+	 * And the third fold's record rides beside the two above - each fold writes
+	 * one, and the same completeness reason stands.
+	 */
+	"pendingEchoRemediationThirdFoldNote",
+	/*
+	 * And the fourth fold's record rides beside them - each fold writes one, and
+	 * the same completeness reason stands.
+	 */
+	"pendingEchoRemediationFourthFoldNote",
+	/*
+	 * And the fifth fold's record rides beside them - each fold writes one, and
+	 * the same completeness reason stands.
+	 */
+	"pendingEchoRemediationFifthFoldNote",
+	/*
+	 * And the TWO-FLAKE lane's second fold's record rides beside them - each
+	 * fold writes one, and the same completeness reason stands.
+	 */
+	"foldOntoA9f4b1d7f4Note",
+	/*
+	 * And this pass's own, the newest top-level record on the branch: it states
+	 * the pair this re-stamp derives and records the simulation the pass ships
+	 * in place of frames, so a later fold that started from main's copy would
+	 * drop it first - the same reason this list exists.
+	 */
+	"updateStallBoundRestampNote",
+	/*
+	 * And the fold's own record rides beside them, for the same completeness
+	 * reason.
+	 */
+	"foldOnto1e88f7fc16Note",
+	/*
+	 * And the second fold's record rides beside them, for the same completeness
+	 * reason.
+	 */
+	"foldOnto9589bd8fecNote",
+	/*
+	 * And the remediation round 2's record rides beside it, for the same
+	 * completeness reason.
+	 */
+	"updateStallBoundRoundTwoNote",
+	/*
+	 * And the two later folds' records ride beside them, for the same
+	 * completeness reason - review round 3 found the guard skipping the newest
+	 * records while they lived only in the STAMP_BINDING_NOTES list.
+	 */
+	"foldOnto678f6c5c69Note",
+	"foldOnto3428f5f475Note",
+	/*
+	 * And remediation round 3's record closes the set, for the same reason.
+	 */
+	"updateStallBoundRoundThreeNote",
+	/*
+	 * And the seventh fold's record rides beside them - same reason, same check.
+	 */
+	"foldOnto8b082c33d8Note",
+	/*
+	 * And the eighth fold's record rides beside them - same reason, same check.
+	 */
+	"foldOntoA72909b1f4Note",
+	/*
+	 * And the ninth fold's record rides beside them - same reason, same check.
+	 */
+	"foldOntoCc5a329040Note",
+	/*
+	 * And the CI-reds fix's restamp rides beside them - same reason, same check.
+	 */
+	"updateStallBoundCiFixRestampNote",
+	/*
+	 * And the tenth fold's record rides beside them - same reason, same check.
+	 */
+	"foldOnto7bd3803598Note",
+	/*
+	 * And this branch's own record, folded in beside it: the account-foot
+	 * refresh writes one top-level note, registered here for the same
+	 * completeness reason.
+	 */
+	"accountFootRefreshRestampNote",
+	/*
+	 * And the remediation round's record rides beside it - a restamp after the
+	 * round's own changes writes one, and the same completeness reason stands.
+	 */
+	"accountFootRemediationRestampNote",
+	/*
+	 * And by THIS lane, whose note is the newest top-level record on the branch:
+	 * it states the pair this change ships - both trees moved (the op tier and
+	 * its wiring, the suites and the capture rows) and two states added to two
+	 * sets - so a fold that started from main's copy would drop it first, the
+	 * same reason this list exists.
+	 */
+	"traceToolLabelsRestampNote",
+	/*
+	 * And by the stopped-row measure fix, whose note is the newest top-level
+	 * record on the branch: it states the pair this tip ships, moves both trees
+	 * (the stopped line's container in `src/`, the rig, its discriminator and
+	 * the two registrations in `scripts/`) and commits no swept frame - so a
+	 * fold that started from main's copy would drop it first, the same reason
+	 * this list exists.
+	 */
+	"stoppedRowRestampNote",
+	/*
+	 * And this branch's own record rides beside it: the sidebar bottom zone
+	 * writes one top-level note, registered here for the same completeness
+	 * reason - a fold that started from main's copy would drop it first.
+	 */
+	"sidebarBottomZoneRestampNote",
+	/*
+	 * And this lane's own record rides beside it, registered for the same
+	 * completeness reason: a fold that started from main's copy would drop the
+	 * card-surfaces restyle's note first.
+	 */
+	"cardSurfacesRestyleNote",
+	/*
+	 * And AIDA'S SIDEBAR SLICE rides beside them: the change moves both trees this
+	 * file binds (the rail's row and its two gates, the composer's `/aida`, the two
+	 * desktop ops; the new desktop test and the updated pins) and takes no frame of
+	 * the sweep, so a reader is owed the two values it binds and the reason no
+	 * still was owed to `docs/evidence`.
+	 */
+	"aidaSidebarRestampNote",
+	/*
+	 * And AIDA'S MISSED-MESSAGES BADGE, WORKING MARK, DISPLAY-NAME FALLBACK AND
+	 * STRIP FEED KEEPER ride beside it: the change moves both trees this file
+	 * binds (the two selectors, the marks' per-row fields, the contract's
+	 * optional `name`, the keeper; the test and this note's registrations) and
+	 * takes no frame of the sweep, so a reader is owed the pair it binds and the
+	 * reason no still was owed to `docs/evidence`.
+	 */
+	"aidaBadgeRestampNote",
+	/*
+	 * And this branch's own record rides beside it - the pointer-affordance sweep
+	 * writes one top-level note, registered here for the same completeness reason.
+	 */
+	"mouseCursorRestampNote",
+	/*
+	 * AND THE PROJECTS CARD'S WHOLE-SURFACE TARGET - it belongs here for the
+	 * list's own reason: ITS SUBJECT IS THIS FILE'S BINDING. The card's root
+	 * role, click and keyboard activation move both trees (the component
+	 * under `src/`; the interaction pin and its lane entry under
+	 * `scripts/`), and no frame was re-taken - the pointer is not a pixel, so
+	 * the committed set renders identically and the PR's stills carry the
+	 * before/after a reader would want - so a reader is owed the two values
+	 * it binds and the reason the stills did not move.
+	 */
+	"projectsCardClickRestampNote",
+	/*
+	 * And this lane's own D1 fix rides beside them: the regenerated schedules
+	 * before halves write one top-level note, registered here for the same
+	 * completeness reason - a fold that started from main's copy would drop it
+	 * first.
+	 */
+	"cardSurfacesBeforeHalvesNote",
+
+	/*
+	 * AND THIS LANE'S OWN, the math-currency pass's record - written by
+	 * `fix/currency-math` beside `captureOrigin.mathCurrencyPass`: the note is
+	 * this branch's newest top-level record and the one a fold that started
+	 * from main's copy would drop first, which is exactly what this list is
+	 * for.
+	 */
+	"mathCurrencyCaptureNote",
+	/*
+	 * And the chat-measure lane's fold record rides beside it - registered here
+	 * for the same completeness reason: a fold that started from main's copy
+	 * would drop it first.
+	 */
+	"foldOntoAc83ec7d92Note",
+	/*
+	 * And the second fold's record rides beside them - registered here for the
+	 * same completeness reason.
+	 */
+	"foldOnto8367cbfaeeNote",
+	/*
+	 * And the third fold's record rides beside them - registered here for the
+	 * same completeness reason.
+	 */
+	"foldOnto8320e52366Note",
+	/*
+	 * And this fold's record rides beside them - registered here for the same
+	 * completeness reason.
+	 */
+	"foldOnto55d7b0a19bNote",
+	/*
+	 * And by THIS lane, whose five folded records report review round 1 (R5): the
+	 * drawer's-rung pass wrote them, their manifest entries survived the folds, and
+	 * this list - whose promise is that a fold resolved from main's copy would not
+	 * drop them - had not grown them, so a resolver could have dropped all five
+	 * without a word. Registered here rather than only noted, because naming them is
+	 * the one-line widening the precedent above set. The second fold, the
+	 * remediation round and its own stamp write join beside them for the same
+	 * reason; the remediation's registration is this commit and its stamp
+	 * re-derivation the docs-only commit that follows.
+	 */
+	"canvasElevatedPassNote",
+	"canvasElevatedStaleFramesNote",
+	"canvasElevatedBeforeNote",
+	"canvasElevatedFoldNote",
+	"canvasElevatedRestampNote",
+	"canvasElevatedSecondFoldNote",
+	"canvasElevatedRemediationPassNote",
+	"canvasElevatedRemediationRestampNote",
+	/*
+	 * And the THIRD fold's own, added with it: a fold that resolved this file by
+	 * key against a main that had moved 81 commits, and the record of what that
+	 * resolution kept from each side.
+	 */
+	"canvasElevatedThirdFoldNote",
+	/*
+	 * And the FOURTH fold's own, added with it: the fold onto `0f23c76de5`'s
+	 * successor `76ce9a7aac` (the 0.31.10 train), resolved the same by-key way
+	 * as its predecessor.
+	 */
+	"canvasElevatedFourthFoldNote",
+	/*
+	 * And the FIFTH fold's own, added with it: the fold onto `76ce9a7aac`'s
+	 * successor `ac83ec7d92`, resolved the same by-key way.
+	 */
+	"canvasElevatedFifthFoldNote",
+	/*
+	 * And the SIXTH fold's own, added with it: the fold onto `ac83ec7d92`'s
+	 * successor `8367cbfaee` (#591's agent-hub org-empty-state fix), resolved
+	 * the same by-key way.
+	 */
+	"canvasElevatedSixthFoldNote",
+	/*
+	 * And the SEVENTH fold's own, added with it: the fold onto `8367cbfaee`'s
+	 * successors through `55d7b0a19b` (#595's Aida rail row and composer door,
+	 * #607's 0.31.11 window, #596's pointer-cursor restore, #604's currency-math
+	 * pass), resolved the same by-key way. Main's three records above rode in
+	 * beside this lane's at the same point, kept whole.
+	 */
+	"canvasElevatedSeventhFoldNote",
+	/*
+	 * And the EIGHTH fold's own, added with it: the fold onto `55d7b0a19b`'s
+	 * successor `e2394f9ff1` (the measure-narrow lane's merge and its own
+	 * three folds), resolved the same by-key way. Main's four records above
+	 * rode in beside this lane's at the same point, kept whole.
+	 */
+	"canvasElevatedEighthFoldNote",
+	/*
+	 * And THIS fold's record rides beside them - the fifth fold writes one
+	 * top-level note, registered here for the same completeness reason: a fold
+	 * that started from main's copy would drop it first.
+	 */
+	"foldOntoA8ac7f673cNote",
+	/*
+	 * And THIS lane's own, added with it: the agents offer's dismissal writes
+	 * one top-level note - it states the pair this change ships, moves both
+	 * trees (the offer module, the store field, the sidebar control and its
+	 * story fixture; the capture row, the new behavioural suite and both
+	 * registrations) and adds one story's twelve frames while re-shooting the
+	 * set - and it is registered here for the same completeness reason: a fold
+	 * that started from main's copy would drop it first.
+	 */
+	"agentsOfferDismissNote",
+	/*
+	 * And MAIN'S OWN records ride beside it, kept whole by the same fold: the
+	 * interrupted-rows change's capture note (its `captureOrigin.interruptedRowsPass`
+	 * record is not a top-level key, so it cannot be listed here) and this
+	 * fold's own note, both registered for the completeness reason this list
+	 * exists for - a fold that started from a copy without them would drop
+	 * records this branch's tree carries.
+	 */
+	"interruptedRowsCaptureNote",
+	"foldOnto55dbaf6118Note",
+	/*
+	 * And this round's own records, registered with them: the second fold's
+	 * note (`foldOnto1b1a52d5cfNote`) and the comment fix's re-stamp note
+	 * (`agentsOfferDismissCommentRestampNote`); their texts are written by the
+	 * docs-only re-stamp commit this registration rides beside.
+	 */
+	"foldOnto1b1a52d5cfNote",
+	"agentsOfferDismissCommentRestampNote",
+	/*
+	 * AND THE TURN-COLLAPSE PASS'S OWN (`feat/collapsed-turn-summary`): the
+	 * single record of the pass that added `chat-turn-collapse/` (16 swept
+	 * frames) and its declared before half `chat-turn-collapse-before/` (16
+	 * frames, supplementary), re-derived both stamps and led both `countsMean`
+	 * cells. It is listed for the list's usual reason: a fold resolved from
+	 * main's copy would drop the only statement of which half is counted by
+	 * `frames` and which is declared, and of the `press` caveat a re-capturer
+	 * of the before half needs. It quotes no tree-hash pair (commit SHAs only),
+	 * so it joins `BRANCH_RECORDS` and not `STAMP_BINDING_NOTES`.
+	 */
+	"turnCollapseEvidenceNote",
+	/*
+	 * And the pass's `dirtyWorkingTreeNote`, added by the agent review's round-3
+	 * F-r3-2: the second fold had taken main's `false` wholesale for
+	 * `dirtyWorkingTree`, and the note records the restore to the capture's own
+	 * `true` (both re-shoots ran with `src`/`scripts` edits uncommitted). It is
+	 * registered here for the same reason as everything above - a fold resolved
+	 * from main's copy would drop the note and leave the field's `true`
+	 * unexplained - and, since the key is top-level and quotes no tree-hash
+	 * pair, `BRANCH_RECORDS` is where it belongs.
+	 */
+	"dirtyWorkingTreeNote",
+	/*
+	 * And the sessionless-slash pass's own newest top-level record, which
+	 * re-derived both stamps for this branch's change (issue #625) and quotes
+	 * the pair it ships. Listed here for the reason the list exists: a fold
+	 * that started from main's manifest would drop it.
+	 */
+	"sessionlessSlashRestampNote",
+	/*
+	 * And the quick-send pass's own record (`quickSendRestampNote`), listed for
+	 * the list's usual reason: the note is this branch's statement of what moved
+	 * and what did not (no frame was committed by it), and a fold resolved from
+	 * main's copy would drop it.
+	 */
+	"quickSendRestampNote",
+	/*
+	 * And the fold's own (`sessionlessSlashFoldNote`), listed for the list's
+	 * usual reason: the note states what the fold moved and what it did not, and
+	 * a fold that started from main's copy would drop it.
+	 */
+	"sessionlessSlashFoldNote",
+	/*
+	 * And the second fold's own (`sessionlessSlashSecondFoldNote`), listed for
+	 * the list's usual reason: the note states what the fold moved and what it
+	 * did not, and a fold that started from main's copy would drop it.
+	 */
+	"sessionlessSlashSecondFoldNote",
+	/*
+	 * And the third fold's own (`sessionlessSlashThirdFoldNote`), listed for the
+	 * list's usual reason: the note states what the fold moved, what it did not,
+	 * and audits the composer's slash-adjacent paths across #633's rewrite; a
+	 * fold that started from main's copy would drop it.
+	 */
+	"sessionlessSlashThirdFoldNote",
+	/*
+	 * And the fourth fold's own (`sessionlessSlashFourthFoldNote`), listed for
+	 * the list's usual reason: the note states what the fold moved and what it
+	 * did not; a fold that started from main's copy would drop it.
+	 */
+	"sessionlessSlashFourthFoldNote",
+	/*
+	 * And the mini dictation swap's own record (`miniDictRestampNote`), listed
+	 * for the list's usual reason: the note is this branch's statement of what
+	 * moved and what did not (no frame was committed by it), and a fold resolved
+	 * from main's copy would drop it.
+	 */
+	"miniDictRestampNote",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {

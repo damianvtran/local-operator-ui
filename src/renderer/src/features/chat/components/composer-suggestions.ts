@@ -86,7 +86,7 @@ export const DEFAULT_MESSAGE_SUGGESTIONS: readonly string[] = [
 	 * on THREE rows: 249.2px + 246.2px is 495.4px against 494px of usable width
 	 * beside an 8px gap, and two rows at the floor is the pinned head's
 	 * documented ceiling. The tip row carries the session-scoped sentence, so the
-	 * band still says what phone access is for, and the 900px measure is
+	 * band still says what phone access is for, and the 810px measure is
 	 * unaffected either way.
 	 */
 	"Turn on phone access",
