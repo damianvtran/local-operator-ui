@@ -103,11 +103,9 @@ export type CheckpointRailProps = {
 	checkpoints: Checkpoint[];
 	/**
 	 * Activate a checkpoint's jump. The parent owns the jump itself (§D7's one
-	 * primitive: ensure-loaded, reveal, scroll-to-centre, highlight).
-	 *
-	 * TODO(ui-A-phase2): the parent wires this to `useTranscriptJump`'s near
-	 * path when the rail is mounted in `canonical-transcript.tsx`; Phase 1
-	 * ships with the callback as the parent's to supply.
+	 * primitive, `reveal-record.ts`: ensure-loaded, reveal, scroll-to-centre,
+	 * highlight) — the rail only reports the press, which is what keeps a
+	 * refused jump the transcript's sentence to speak rather than the rail's.
 	 */
 	onJump: (id: string) => void;
 	/**
