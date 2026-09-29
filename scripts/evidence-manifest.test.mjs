@@ -1148,7 +1148,7 @@ const STAMP_BINDING_NOTES = [
 	 * This branch's own, and the first one that adds a declared set in the same
 	 * commit it re-stamps: it re-stamps `fix(chat): spend history reveals at rest,
 	 * one fetch per gesture`, which moves both trees AND adds
-	 * `monitors`, so the reader is owed the pair, the frame
+	 * `transcript-reveal-at-rest`, so the reader is owed the pair, the frame
 	 * arithmetic, and the reason the swept count does not move.
 	 */
 	"transcriptRevealAtRestRestampNote",
