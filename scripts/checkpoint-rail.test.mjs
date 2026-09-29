@@ -80,19 +80,6 @@ const { createRoot } = await import("react-dom/client");
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** The one regex this file needs: a tick's own percentage inside its style. */
-const PERCENT_PART = /(-?[\d.]+)%/;
-
-/**
- * The track fraction a tick's inline style encodes, as a number.
- *
- * The style is `calc(<pct>% - <half-height>px)`; jsdom normalises the
- * percentage on the way in (`50.0000%` serialises back as `50%`), so the
- * assertion reads the value rather than restating its serialisation.
- */
-const tickPercent = (tick) =>
-	Number.parseFloat(tick.style.top.match(PERCENT_PART)?.[1] ?? "NaN");
-
 /** One checkpoint, with the fields a case is not about filled in plausibly. */
 const checkpoint = (over = {}) => ({
 	id: "u1",
@@ -225,7 +212,7 @@ async function mountRail(initial) {
 		rail: () => window.document.querySelector("[data-lo-checkpoint-rail]"),
 		ticks: () => [...window.document.querySelectorAll("[data-checkpoint-id]")],
 		tick: (id) => window.document.querySelector(`[data-checkpoint-id="${id}"]`),
-		dialog: () => window.document.querySelector("[role='dialog']"),
+		dialog: () => window.document.querySelector("[role='tooltip']"),
 		async close() {
 			act(() => {
 				root.unmount();
@@ -344,11 +331,11 @@ test("ticks render from the manifest, in order, at the model's fractions", async
 			["u1", "c1", "u2"],
 			"keyboard order is manifest order",
 		);
-		assert.deepEqual(
-			ticks.map(tickPercent),
-			[0, 50, 100],
-			"seq-proportional placement, read off the style the component wrote",
-		);
+		/*
+		 * The reworked geometry (dsh, 2026-09-29): a FIXED 10px pitch, so the
+		 * marks are not placed by seq any more - what this reads is the pitch
+		 * itself, one 28x10 row per mark with the 20x2 dash inside it.
+		 */
 		assert.deepEqual(
 			ticks.map((tick) => tick.getAttribute("aria-label")),
 			[
@@ -360,13 +347,15 @@ test("ticks render from the manifest, in order, at the model's fractions", async
 		for (const tick of ticks) {
 			assert.equal(tick.tagName, "BUTTON");
 			assert.equal(tick.getAttribute("type"), "button");
-			/* The 24 x 12 hit target around the 3px mark (D5). */
-			assert.ok(tick.className.includes("h-3"), "the hit target is 12px tall");
-			assert.ok(tick.className.includes("w-6"), "and 24px wide");
+			/* The 28 x 10 hit row around the 20 x 2 dash (dsh). */
+			assert.ok(tick.className.includes("h-2.5"), "the hit row is 10px tall");
+			assert.ok(tick.className.includes("w-7"), "and 28px wide");
 			const bar = tick.querySelector("span");
+			assert.ok(bar.className.includes("h-0.5"), "the dash is 2px tall");
+			assert.ok(bar.className.includes("w-5"), "and 20px wide");
 			assert.ok(
-				bar.className.includes("w-[3px]"),
-				"the visual tick is 3px wide",
+				bar.className.includes("bg-ink-dim"),
+				"the rest ink is the floored role",
 			);
 			assert.equal(bar.getAttribute("aria-hidden"), "true");
 		}
@@ -389,9 +378,10 @@ test("ticks render from the manifest, in order, at the model's fractions", async
 		);
 		await rail.render({ checkpoints: dense });
 		assert.equal(rail.ticks().length, 267);
-		const tops = rail.ticks().map(tickPercent);
-		for (let i = 1; i < tops.length; i++)
-			assert.ok(tops[i] >= tops[i - 1], "ticks never reorder");
+		/* Fixed pitch: every row is the same height, so order is DOM order. */
+		for (const tick of rail.ticks()) {
+			assert.ok(tick.className.includes("h-2.5"));
+		}
 	} finally {
 		await rail.close();
 	}
@@ -480,9 +470,12 @@ test("focus opens the completion card; Escape closes it; Enter's click is the ju
 		await rail.focusTick("u1");
 		const userCard = rail.dialog();
 		assert.ok(userCard.textContent.includes("what changed?"));
-		const scroller = userCard.querySelector(".overflow-y-auto");
-		assert.ok(scroller, "the user text is bounded with its own scroll");
-		assert.ok(scroller.className.includes("max-h-40"));
+		const clamped = userCard.querySelector("[data-checkpoint-card-text]");
+		assert.ok(clamped, "the user text is the clamped preview surface");
+		assert.ok(
+			clamped.className.includes("line-clamp-3"),
+			"clamped to its budget rather than scrollable",
+		);
 	} finally {
 		await rail.close();
 	}
@@ -494,7 +487,7 @@ test("hover opens by intent after the delay and closes on the same discipline", 
 	});
 	try {
 		const tick = rail.tick("u1");
-		pointer(rail, tick, "pointerover");
+		pointer(rail, tick, "pointermove");
 		assert.equal(
 			rail.dialog(),
 			null,
@@ -508,19 +501,19 @@ test("hover opens by intent after the delay and closes on the same discipline", 
 		assert.ok(card.textContent.includes("a hovered message"));
 
 		/*
-		 * Moving INTO the card keeps it open: the pointerleave on the tick
-		 * schedules the close, and the card's own enter cancels it.
+		 * The card is a TOOLTIP with `pointer-events-none` (dsh): the pointer
+		 * cannot enter it, so leaving the MARK is leaving the preview and the
+		 * close delay is the whole discipline - there is no keep-open arm for a
+		 * pointer that cannot be inside it.
 		 */
 		pointer(rail, tick, "pointerout");
-		pointer(rail, card, "pointerover");
 		await sleep(CHECKPOINT_CARD_CLOSE_DELAY_MS + 80);
 		await rail.flush();
-		assert.ok(rail.dialog(), "a pointer inside the card cancels the close");
-
-		pointer(rail, card, "pointerout");
-		await sleep(CHECKPOINT_CARD_CLOSE_DELAY_MS + 80);
-		await rail.flush();
-		assert.equal(rail.dialog(), null, "leaving the card closes it");
+		assert.equal(
+			rail.dialog(),
+			null,
+			"leaving the mark closes the card on the close delay",
+		);
 	} finally {
 		await rail.close();
 	}
