@@ -84,11 +84,29 @@ export const SIDEBAR_SECTION_LABEL: Record<SidebarSectionKey, string> = {
 
 /**
  * The two sections that live in the AGENTS/TEAMS region rather than in the
- * chats list, and the split the popover's show/hide has to respect: switching
- * an entity section off is the disclosure it already owns (the `Agents` row's
- * chevron and its remembered `expanded` record), while switching a chat section
- * off is this file's `hidden` list. One decision, one spelling - a second
- * boolean for "is the agents section open" is how the two drift apart.
+ * chats list.
+ *
+ * THEY GET NO SECOND RULE. `view.hidden` decides whether a section is drawn,
+ * for these two exactly as for the five chat sections: `isSectionShown` is the
+ * one test, the popover's switch is the one writer, and the region applies the
+ * same call the chats list's `drawnSections` applies to its own.
+ *
+ * WHAT THIS COMMENT USED TO CLAIM, and why it was wrong (operator's
+ * view-settings audit, 2026-09-27): "switching an entity section off is the
+ * disclosure it already owns (the `Agents` row's chevron and its remembered
+ * `expanded` record)". Nothing wired the two. The popover's switch called
+ * `toggleSection` and wrote `hidden` on every press, entity key or not, so the
+ * panel's tick went out and its "1 section hidden" sentence appeared while the
+ * region kept drawing `Agents` in the same frame - the popover and the sidebar
+ * disagreeing about one state, which is the strongest form of the bug and the
+ * one the report led with.
+ *
+ * THE DISCLOSURE IS STILL A REAL AXIS, and it is a different one: `expanded`
+ * (`localStorage['chat-sidebar-disclosures']`) says whether a drawn entity row's
+ * CHILDREN are on screen, and the popover has no control for it. Drawn-collapsed
+ * and not-drawn-at-all are two states; reading the disclosure as the spelling of
+ * this one would put the tick, the "hidden" sentence and the region's presence
+ * behind a per-window record the store cannot see.
  */
 export const ENTITY_SECTIONS: readonly SidebarSectionKey[] = [
 	"agents",
