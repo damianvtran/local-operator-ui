@@ -2017,6 +2017,19 @@ const STAMP_BINDING_NOTES = [
 	 */
 	"sessionlessSlashFourthFoldNote",
 	/*
+	 * AND THE MINI DICTATION SWAP'S OWN: `miniDictRestampNote` is the change
+	 * that puts the mini composer's dictation onto the shared speech manager
+	 * and stamps its sends. It moves BOTH trees — `src/` for the mini view's
+	 * controller, composer and state, `scripts/` for the new dictation suite,
+	 * the extended contract test and the `test:desktop` list — and re-shoots
+	 * nothing (the run's stills and records live on the PR's own
+	 * `evidence/mini-dict-0929` branch, not in this tree), so the pair is
+	 * re-derived from the tree the re-stamp commit ships and every list member
+	 * above is re-pointed with it. It quotes that pair, so it is held to this
+	 * file like every entry above it.
+	 */
+	"miniDictRestampNote",
+	/*
 	 * AND THE CROSS-SESSION VISIBILITY FILTER'S OWN (2026-09-29): both trees this
 	 * file binds move - `src/` for the renderer-side records filter, its
 	 * settings-query hook and the canonical transcript's seam; `scripts/` for the
@@ -3091,6 +3104,13 @@ const BRANCH_RECORDS = [
 	 * did not; a fold that started from main's copy would drop it.
 	 */
 	"sessionlessSlashFourthFoldNote",
+	/*
+	 * And the mini dictation swap's own record (`miniDictRestampNote`), listed
+	 * for the list's usual reason: the note is this branch's statement of what
+	 * moved and what did not (no frame was committed by it), and a fold resolved
+	 * from main's copy would drop it.
+	 */
+	"miniDictRestampNote",
 	/*
 	 * And the cross-session visibility filter's own record
 	 * (`crossSessionVisibilityRestampNote`), the same reason one note over: it is
