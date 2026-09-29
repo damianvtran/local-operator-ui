@@ -10434,6 +10434,126 @@ async function sceneTranscriptRail(cdp) {
 		await washGone();
 		await parkPointer(cdp);
 
+		/*
+		 * THE ROVING RAIL (UX round 1, U1 + U3). The reviewer's walk measured
+		 * the block as 402 consecutive tab stops with no in-rail movement
+		 * (ArrowDown was a no-op) and `railAria: null`; these legs assert the
+		 * fix on the real bundle - one tabbable tick, the arrows/Home/End walk
+		 * with the card following focus, Escape keeping focus on the tick, the
+		 * group's name, and crossing the block costing ONE press either way.
+		 * The ids are read from the page, so the legs hold for any manifest.
+		 */
+		const activeTick = () =>
+			evaluate(
+				`(() => { const el = document.activeElement; return el && el.getAttribute ? el.getAttribute("data-checkpoint-id") : null; })()`,
+			);
+		/*
+		 * The roving stop is the reader's MEMORY of their last tick, so the leg
+		 * reads where focus already is before touching anything: the reduced-motion
+		 * jump above focused its tick, and the group must still be parked there.
+		 */
+		const lastFocused = await activeTick();
+		await evaluate(
+			"(() => { const el = document.activeElement; if (el && el.blur) el.blur(); return true; })()",
+		);
+		const railIds = await evaluate(
+			`[...document.querySelectorAll('${rail} [data-checkpoint-id]')].map((el) => el.getAttribute("data-checkpoint-id"))`,
+		);
+		const railA11y = await evaluate(`(() => {
+			const root = document.querySelector('${rail}');
+			if (!root) return null;
+			const tabbable = [...root.querySelectorAll("[data-checkpoint-id]")].filter((el) => el.tabIndex === 0);
+			return {
+				role: root.getAttribute("role"),
+				orientation: root.getAttribute("aria-orientation"),
+				label: root.getAttribute("aria-label"),
+				tabs: tabbable.length,
+				tabbable: tabbable.map((el) => el.getAttribute("data-checkpoint-id")),
+			};
+		})()`);
+		check(
+			`the rail is one named tab stop, vertical (${theme})`,
+			railA11y !== null &&
+				railA11y.role === "toolbar" &&
+				railA11y.orientation === "vertical" &&
+				railA11y.label === "Turn checkpoints" &&
+				railA11y.tabs === 1 &&
+				railA11y.tabbable[0] === lastFocused,
+			`${JSON.stringify(railA11y)} lastFocused=${lastFocused}`,
+		);
+		await focusTick(railIds[0]);
+		await pressChord(cdp, {
+			key: "ArrowDown",
+			code: "ArrowDown",
+			virtualKeyCode: 40,
+		});
+		const walkDown1 = await activeTick();
+		await pressChord(cdp, {
+			key: "ArrowDown",
+			code: "ArrowDown",
+			virtualKeyCode: 40,
+		});
+		const walkDown2 = await activeTick();
+		await pressChord(cdp, {
+			key: "ArrowUp",
+			code: "ArrowUp",
+			virtualKeyCode: 38,
+		});
+		const walkUp = await activeTick();
+		await pressChord(cdp, { key: "End", code: "End", virtualKeyCode: 35 });
+		const walkEnd = await activeTick();
+		await pressChord(cdp, { key: "Home", code: "Home", virtualKeyCode: 36 });
+		const walkHome = await activeTick();
+		check(
+			`the arrows and Home/End walk the ticks (${theme})`,
+			walkDown1 === railIds[1] &&
+				walkDown2 === railIds[2] &&
+				walkUp === railIds[1] &&
+				walkEnd === railIds.at(-1) &&
+				walkHome === railIds[0],
+			JSON.stringify({
+				walkDown1,
+				walkDown2,
+				walkUp,
+				walkEnd,
+				walkHome,
+				first: railIds[0],
+				second: railIds[1],
+				last: railIds.at(-1),
+			}),
+		);
+		const cardBeforeEscape = await evaluate(
+			`Boolean(document.querySelector("[role=dialog]"))`,
+		);
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		const cardAfterEscape = await evaluate(
+			`Boolean(document.querySelector("[role=dialog]"))`,
+		);
+		const focusAfterEscape = await activeTick();
+		check(
+			`Escape closes the card and keeps the tick focused (${theme})`,
+			cardBeforeEscape && !cardAfterEscape && focusAfterEscape === railIds[0],
+			`before=${cardBeforeEscape} after=${cardAfterEscape} focus=${focusAfterEscape}`,
+		);
+		await pressChord(cdp, { key: "Tab", code: "Tab", virtualKeyCode: 9 });
+		const afterTab = await activeTick();
+		await pressChord(cdp, {
+			key: "Tab",
+			code: "Tab",
+			virtualKeyCode: 9,
+			modifiers: 8,
+		});
+		const afterShiftTab = await activeTick();
+		check(
+			`crossing the rail costs one Tab from either side (${theme})`,
+			afterTab === null && afterShiftTab === railIds[0],
+			`afterTab=${afterTab} afterShiftTab=${afterShiftTab}`,
+		);
+
 		note(
 			`jump timings (${theme})`,
 			JSON.stringify({
