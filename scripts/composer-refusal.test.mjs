@@ -99,8 +99,8 @@ test("every path that TYPES INTO or SUBMITS the composer answers to the refusal"
 	 * reach is a separate handler that had no notion of the refusal: a press on a
 	 * `type="submit"` control (`handleSubmit`, the form's, which a click reaches
 	 * with no keydown to refuse), the slash popup's pick (`applyPlan`), the
-	 * dictation button and the speech-to-text manager's own gate (both
-	 * `setNewMessage`), and paste - which `readOnly` newly made REACHABLE,
+	 * dictation button and the speech-to-text manager's own gate (both write
+	 * into the box), and paste - which `readOnly` newly made REACHABLE,
 	 * because a read-only textarea is still a paste target and neither branch
 	 * below is an edit the attribute can suppress.
 	 *
@@ -168,18 +168,27 @@ test("every path that TYPES INTO or SUBMITS the composer answers to the refusal"
 
 	assert.match(
 		source,
-		/disabled=\{\s*isInputDisabled \|\|\s*isLoading/,
+		/type="submit"[\s\S]{0,400}?disabled=\{\s*isInputDisabled \|\|\s*sendRefused/,
 		"the Send control carries the refusal itself, so the band does not offer a live primary action beside a box that takes nothing - and so the first control a refused keyboard user reaches is not the destructive one",
 	);
+	/*
+	 * THE DICTATION GATE, AND THE TERMS IT NO LONGER CARRIES (the in-flight
+	 * dictation change): `isLoading` used to be a term on the mic button and in
+	 * the manager's own gate, and it closed dictation for the whole
+	 * admit-to-first-answer window while the box itself stayed writable. The
+	 * refusal term is what this assertion is about, and it is the one that keeps
+	 * the hold path from writing into a box the app has told the user takes
+	 * nothing; `isRecording`/`isTranscribing` are the state terms beside it.
+	 */
 	assert.match(
 		source,
 		/if \(isInputDisabled \|\| !canEnableRecordingFeature\) return;/,
-		"dictation writes a transcript into the box with `setNewMessage`, so it refuses with the same predicate",
+		"dictation writes the transcript into the box, so its start refuses with the composer's own predicate",
 	);
 	assert.match(
 		source,
-		/!isInputDisabled &&\s*!isLoading/,
-		"and the speech-to-text manager's gate (the hold-Space path) has to refuse too, or the keyboard reaches it around the button",
+		/!isInputDisabled &&\s*!isRecording &&\s*!isTranscribing &&\s*canEnableRecordingFeature/,
+		"and the speech-to-text manager's gate refuses with it too - the hold path reaches the composer around the button, and this is the whole predicate it answers to",
 	);
 });
 

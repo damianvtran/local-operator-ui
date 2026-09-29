@@ -24,6 +24,7 @@ import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
 import type { SendOutcome } from "@shared/hooks/use-message-input";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
+import { isDictationActive } from "@shared/hooks/use-speech-to-text-manager";
 import {
 	useDraftWarmSession,
 	useWarmSession,
@@ -850,6 +851,20 @@ function SessionPanel({
 	const mentionsEnabled =
 		desktopFeatureEnabled(capabilities.data, "references") && !busy;
 	/*
+	 * AND WHETHER THE HARNESS WILL CARRY THE INPUT-MODE STAMP (arch §4.2).
+	 *
+	 * The same negotiation shape as `mentionsEnabled`, for the same reason: the
+	 * field is metadata this app never renders, but an older harness validates
+	 * the message body with `extra="forbid"` and would refuse a body that
+	 * carried it - so the field rides only on a backend that advertises
+	 * `features.input_mode`, and a backend that does not gets the legacy body
+	 * (field absent). Read at the press, like the send it gates.
+	 */
+	const inputModeEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"input_mode",
+	);
+	/*
 	 * AND WHETHER THE HARNESS ITSELF IS THE REASON, which is a different fact from
 	 * `mentionsEnabled`'s false (UX round 2, U12). That flag is false for a turn in
 	 * flight over a backend that CAN expand a mention, and the composer's sentence
@@ -1478,6 +1493,14 @@ function SessionPanel({
 		 * other door through this function.
 		 */
 		beforeAdmission?: (sessionId: string) => Promise<string | undefined>,
+		/*
+		 * How the composer's own box produced this message (§4.2), passed through
+		 * from the composer's flags. `undefined` means either a door that does not
+		 * track it (the suggestion grid) or a harness that has not advertised
+		 * `features.input_mode`; both send the legacy body, and a replay pins
+		 * whichever value the first attempt carried.
+		 */
+		inputMode?: "typed" | "dictated" | "mixed",
 	): Promise<SendOutcome> => {
 		const store = useCanonicalSessionsStore.getState();
 		// Same ROW the view reads, so a send can never address a different draft
@@ -1976,6 +1999,14 @@ function SessionPanel({
 					images,
 					mode: busy ? "steer" : "prompt",
 					cwd,
+					/*
+					 * The capability gate, applied HERE rather than at the composer: this
+					 * function already reads the capability map for the `@` affordance,
+					 * and one gate at the one seam every door passes is what keeps the
+					 * suggestion grid's own sends (which pass no `inputMode`) on the
+					 * legacy body by construction.
+					 */
+					inputMode: inputModeEnabled ? inputMode : undefined,
 				},
 				sessionId,
 				onEchoPainted,
@@ -2513,6 +2544,14 @@ function SessionPanel({
 		sessionId,
 		busy,
 		available: interruptAvailable,
+		/*
+		 * Rung 4's answer, read from the surfaces that record rather than
+		 * inherited from `defaultPrevented` (UX round 1, U1): this listener runs
+		 * before the composer's own claim, so the flag cannot be the guard on the
+		 * trusted key path. `isDictationActive` is a live reader, so no re-render
+		 * is needed when a recording starts.
+		 */
+		recording: isDictationActive,
 		onInterrupt: stop,
 	});
 	const loadedTarget =
