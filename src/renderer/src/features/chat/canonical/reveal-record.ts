@@ -33,6 +33,10 @@
 
 import { scrollRegionToCenter } from "@shared/lib/scroll";
 import { revealRecord } from "./failed-row-jump";
+import {
+	LOADER_SETTLE_FRAMES,
+	createBackwardLoader,
+} from "./transcript-loader";
 
 /** The attribute the landing highlight paints on the revealed row. */
 export const JUMP_HIGHLIGHT_ATTR = "data-jump-highlight";
@@ -64,20 +68,7 @@ export const JUMP_MAX_MOUNTED_ROWS = 1200;
  * and still bounds a jump whose row will never appear; the loop above re-reads
  * its state after each wait, so a slow frame costs latency, never correctness.
  */
-export const JUMP_SETTLE_FRAMES = 6;
-
-const nextFrame = (): Promise<void> =>
-	new Promise((resolve) => {
-		window.requestAnimationFrame(() => {
-			resolve();
-		});
-	});
-
-const settleFrames = async (done: () => boolean): Promise<void> => {
-	for (let frame = 0; frame < JUMP_SETTLE_FRAMES && !done(); frame += 1) {
-		await nextFrame();
-	}
-};
+export const JUMP_SETTLE_FRAMES = LOADER_SETTLE_FRAMES;
 
 export type ReachOptions = {
 	/**
@@ -122,40 +113,27 @@ export type ReachOptions = {
 export async function ensureReachable(options: ReachOptions): Promise<boolean> {
 	const { isReachable, rowDistance, mount, loadOlder } = options;
 	const hasHeadroom = options.hasHeadroom ?? (() => true);
-	let pages = 0;
-	while (true) {
-		if (isReachable()) return true;
-		const distance = rowDistance();
-		if (distance !== null) {
-			if (distance > JUMP_MAX_MOUNTED_ROWS) return false;
-			if (!hasHeadroom() && pages < JUMP_MAX_PAGES) {
-				pages += 1;
-				/*
-				 * A page that cannot be applied means the margin cannot grow —
-				 * either the history ends here or the fetch was raced — so fall
-				 * through to the mount rather than refusing a row the store
-				 * already holds: the landing is clamped at the content's top,
-				 * which at the start of history is where the row IS.
-				 */
-				if (await loadOlder()) {
-					await settleFrames(() => isReachable() || rowDistance() !== null);
-					continue;
-				}
-			}
-			mount(distance);
-			await settleFrames(isReachable);
-			return isReachable();
-		}
-		if (pages >= JUMP_MAX_PAGES) return false;
-		pages += 1;
-		if (!(await loadOlder())) return false;
-		/*
-		 * The applied page lands a commit later; waiting for the model to show
-		 * it is what stops the loop fetching the next page blind (and what
-		 * stops a fast loop from spending its whole page budget in one task).
-		 */
-		await settleFrames(() => isReachable() || rowDistance() !== null);
-	}
+	/*
+	 * The walk itself lives in `transcript-loader.ts` — the shared module the
+	 * collapse lane's diagnosis named as the one home for this policy. This
+	 * call is the jump's adapter: the loader's budgets are lifted from the
+	 * constants above, and "landed" is the boolean this module's callers have
+	 * always been handed. Keeping the constants here (rather than in the
+	 * loader) is deliberate: they are the JUMP's budget, and a reader's paging
+	 * or an align fetch passes its own.
+	 */
+	const walk = createBackwardLoader({
+		reachable: isReachable,
+		rowDistance,
+		mount,
+		loadOlder,
+		hasHeadroom,
+	});
+	const outcome = await walk.loadThrough({
+		maxPages: JUMP_MAX_PAGES,
+		maxRows: JUMP_MAX_MOUNTED_ROWS,
+	});
+	return outcome === "landed";
 }
 
 export type JumpOutcome = "landed" | "missing";
