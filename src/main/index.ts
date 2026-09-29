@@ -3344,8 +3344,11 @@ app
 				const isCmdOrCtrl = input.control || input.meta;
 
 				/*
-				 * Toggle command palette: Cmd/Ctrl + P — the palette's ORIGINAL gesture,
-				 * kept for everyone who learned it from the app's own tour.
+				 * The conversation switcher: Cmd/Ctrl + P — the palette's ORIGINAL
+				 * gesture, kept for everyone who learned it from the app's own tour, and
+				 * since issue #659 a job of its own rather than a second door to the
+				 * same list: the renderer opens the palette seeded to its conversations
+				 * source, which is a chat quick switcher.
 				 *
 				 * Cmd/Ctrl + K, the gesture the app now teaches, is deliberately NOT here:
 				 * a `before-input-event` hook fires before the renderer sees the key at all,
@@ -3427,6 +3430,11 @@ app
 					// the screen, and re-deciding it there would be a second policy beside
 					// `window-mode.ts`.
 					windowShow: windowLaunch.show,
+					// The other half of the plan the browser host forwards to a popup's
+					// `webPreferences`: a hidden popup must render like a shown one, so the
+					// mode's own answer travels with the mode rather than being re-derived
+					// (docs/design/browser-oauth-popups.md 2.5).
+					backgroundThrottling: windowLaunch.backgroundThrottling,
 					// A consent banner's click comes forward through the app's own raise policy,
 					// and this is where its one line goes — the same logger every other raise
 					// reports to, so `trigger=banner-click` is greppable beside them.
