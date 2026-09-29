@@ -30230,7 +30230,7 @@ const MINI_FAKE_RECORDER_SOURCE = [
  * / `sent` frames are simply not taken.
  *
  * WHAT THIS SCENE CANNOT PROVE, said here so no report implies otherwise: that
- * a real ⌘⌥Space reaches the registrar (no synthetic OS chord crosses a
+ * a real ⌘⌥⇧Space reaches the registrar (no synthetic OS chord crosses a
  * headless run honestly — the registration half is unit-tested and the one
  * live press is a human step), focus returning to the operator's previous app,
  * anything about the microphone permission prompt (the dictating frame is
@@ -30958,7 +30958,7 @@ async function sceneMiniView(app, cdp) {
 					"(() => {",
 					'\tconst electron = process.mainModule?.require("electron") ?? globalThis.require?.("electron");',
 					"\tif (!electron) return false;",
-					`\tconst state = { value: ${JSON.stringify(quickSendDefault)}, accelerator: "CommandOrControl+Alt+Space", status: ${JSON.stringify(status)} };`,
+					`\tconst state = { value: ${JSON.stringify(quickSendDefault)}, accelerator: "CommandOrControl+Alt+Shift+Space", status: ${JSON.stringify(status)} };`,
 					"\tfor (const window of electron.BrowserWindow.getAllWindows()) {",
 					"\t\tif (window.isDestroyed()) continue;",
 					`\t\twindow.webContents.send(${JSON.stringify(registrationChannel)}, state);`,
