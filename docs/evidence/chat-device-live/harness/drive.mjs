@@ -15,7 +15,7 @@
  *
  * ISOLATION mirrors the round-1 wire rig and `scripts/renderer-driver.mjs`: scratch
  * HOME/user-data/log roots, the CMUX_* and LOP_* families stripped, a cwd outside the
- * checkout carrying the `.env` the app's transport reads, `--use-mock-keychain` (a
+ * checkout carrying the `.env` the app's transport reads, the mock-keychain switch (a
  * scratch HOME has no keychain, and Chromium asks macOS to create one without it),
  * and SIGTERM then SIGKILL to the exact pid on the way out.
  *
@@ -30,6 +30,15 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
 import { dirname, join, resolve } from "node:path";
+
+/*
+ * THE SWITCH IS TAKEN FROM ITS ONE HOME, never typed: `chrome-keychain.test.mjs` scans
+ * `scripts/`, `bin/` and every evidence harness for the literal, because a rig that
+ * spells it by hand drifts the day the switch it needs is something else. This rig
+ * launches Electron rather than Chrome, so it is not a launch site the helper wraps -
+ * but it still passes the switch, and it passes the constant.
+ */
+import { MOCK_KEYCHAIN_SWITCH } from "../../../../scripts/chrome-keychain.mjs";
 
 import { fileURLToPath } from "node:url";
 
@@ -314,7 +323,7 @@ async function main() {
 			"--window-mode=headless",
 			`--user-data-dir=${join(RUN, "userdata")}`,
 			`--remote-debugging-port=${cdpPort}`,
-			"--use-mock-keychain",
+			MOCK_KEYCHAIN_SWITCH,
 		],
 		{ cwd: join(RUN, "cwd"), env, stdio: ["ignore", "pipe", "pipe"] },
 	);
