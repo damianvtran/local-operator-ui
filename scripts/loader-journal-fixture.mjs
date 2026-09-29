@@ -347,7 +347,8 @@ export class Reader {
 	/** One load-older ask, through the loader the hook uses. */
 	loadOlder({ key = this.key } = {}) {
 		const requested = key;
-		return this.loader.load(requested, {
+		const first = this.requests.length;
+		const pending = this.loader.load(requested, {
 			getTranscript: () => this.transcript,
 			readPage: async (beforeId) => {
 				const page = this.journal.page(beforeId);
@@ -370,6 +371,15 @@ export class Reader {
 				this.transcript = update(this.transcript);
 				return this.transcript;
 			},
+		});
+		// Tag every request this ask made with how it ended, so an invariant can
+		// tell a repeated ask that RE-FETCHES a page the reader holds (a defect)
+		// from one that retries a page that was never applied (a failure, or a
+		// stale page dropped after a session switch - both legitimate).
+		return pending.then((outcome) => {
+			for (const request of this.requests.slice(first))
+				request.outcome ??= outcome.kind;
+			return outcome;
 		});
 	}
 

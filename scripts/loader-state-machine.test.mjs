@@ -224,7 +224,14 @@ async function runSeed(seed) {
 	// I2 over every request this run made (a failed request may legitimately repeat).
 	const all = reader.requests;
 	for (let i = 1; i < all.length; i++) {
-		if (all[i].before === all[i - 1].before && !all[i - 1].threw)
+		// The previous ask must have been APPLIED for a repeat to be a defect: a
+		// failed request, or a stale page dropped after a session switch, leaves the
+		// page unread and asking for it again is the right thing to do.
+		if (
+			all[i].before === all[i - 1].before &&
+			!all[i - 1].threw &&
+			all[i - 1].outcome === "applied"
+		)
 			problems.push(
 				`I2 request ${i} repeated before_id ...${String(all[i].before).slice(-6)} after a request that did not fail`,
 			);
