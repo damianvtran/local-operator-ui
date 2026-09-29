@@ -112,18 +112,21 @@ mic's own DOM state across the first ~6 s after the press:
 ## 4. A mid-turn send rides the steer path
 
 `12-sent-mid-turn-steer.png` is taken at the echo, while the turn still runs:
-the dictated message is in the transcript, and the composer's own line says
-"Steer the agent. Enter sends now · Esc stops" (while a take is live that line
-is the recording's own - see §8). The record's claims, all against the same
-press: the recorded wire body says `mode:"steer"` (`sessionB.midTurnSendIsSteer`,
+the dictated message is in the transcript, and the composer shows its
+send-unsettled line "Sending your message" (the steer line - "Steer the agent.
+Enter sends now · Esc stops" - is the NEXT state, once the echo settles). The
+record's claims, all against the same press: the recorded wire body says
+`mode:"steer"` (`sessionB.midTurnSendIsSteer`,
 asserted), the turn was streaming before the press
-(`streamingBeforeSteer:true`, read from the backend) and observed streaming
-after the send again (`streamingObservedAfterSend:true`). The record's whole
-series across the send is
+(`streamingBeforeSteer:true`, read from the backend), and the snapshot flag's
+whole series across the send - with its samples - reads
 `{"streamingBeforeSteer":true,"streamingAtSteer":false,"streamingAtDelivery":false,"messageLandedWhileStreaming":false,"landedAtMs":526,"streamingObservedAfterSend":true}`
-- the delivery-window read caught the tool-segment boundary dip (false at that
-read, recovered after), recorded rather than raced, and the row landed at
-526 ms on this run (the poll's read, not a delivery SLA).
+with `true` at 19 ms, then `false` at 346/733/906/1043/1223 ms. So the
+delivery-window reads caught the tool-segment boundary dip and this run's
+series shows NO comeback inside the sampled window; `streamingObservedAfterSend`
+is the rig's `some(samples)` read, satisfied by the press-side sample - it is
+not a recovery claim. The row landed at 526 ms (the poll's read, not a
+delivery SLA).
 
 ## 5. `input_mode` on the wire, and the two shapes it has
 
