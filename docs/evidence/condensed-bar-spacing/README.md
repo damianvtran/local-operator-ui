@@ -50,12 +50,17 @@ The before half came from this worktree at `91617c21ec` (the base) with ONLY the
 new story cell (and its sweep row) added — the cell is this change's own; the
 rendering code is the base's. The after half is the fix commit `b0b3ffd250`. The
 manifest's own record of the after pass is `partialCapture` in
-`docs/evidence/manifest.json`.
+`docs/evidence/manifest.json` — after the folds its head/time fields describe
+the most recent narrowed run of this pass, and the pass's own half of the record
+survives as the appended `chat-turn-collapse--pinned-compaction` entry in
+`refreshedStories`, with the fold and re-shoot notes stating what each run moved.
 
 ## What this pair cannot see
 
 It is a story render, not the live app: it photographs the bar's resting geometry
 in the two `localOperator` palettes (the other ten themes share the ink and
-spacing roles it judges). It does not photograph the hover ground, whose own
-left-bleed geometry this change deliberately leaves as the disclosure ships it —
-the report is about the chevron and the row beneath the rule.
+spacing roles it judges). It does not photograph the hover ground — the pair is
+the resting state; the sweep's own `collapsed-hover` cell carries that state,
+re-shot for design round 1 D1's extension of the wash to the rule's end (see
+`condensedBarHoverGroundNote`) — the report is about the chevron and the row
+beneath the rule.
