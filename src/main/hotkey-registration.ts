@@ -106,8 +106,8 @@ function modifierAccelerator(
  *
  * `CommandOrControl` is right for `register()` — it is the one spelling that
  * resolves per platform — but a log line that says "registered
- * CommandOrControl+Alt+Space" tells a reader nothing about the key under their
- * finger. This is the mapping the log line and the settings copy use.
+ * CommandOrControl+Alt+Shift+Space" tells a reader nothing about the key under
+ * their finger. This is the mapping the log line and the settings copy use.
  */
 export function commandOrControlTarget(
 	platform: NodeJS.Platform | string,
