@@ -2188,15 +2188,26 @@ const BRANCH_RECORDS = [
 	 */
 	"headCutCondensationRestampNote",
 	/*
+	 * Grown by the monitors read-out pass (2026-09-29), this branch's newest
+	 * top-level record: it states what the pass ADDED (sixteen frames over two
+	 * surfaces - six `Chat/Run panel` monitor states and two `Chat/Composer
+	 * status row` chip states) and what it did not (no live-app set yet, and
+	 * why), and it is the record that makes the new frames' provenance
+	 * readable without walking the manifest's partialCapture block. It spells
+	 * its identity as bare SHAs, so it adds no name to the quoting ledger.
+	 */
+	"monitorsPass",
+	/*
 	 * AND THIS FIX'S OWN (2026-09-29): `browserOauthPopupsRestampNote` is the
 	 * re-stamp for the driven-page OAuth popups (the operator's console Microsoft
 	 * sign-in repro - MSAL `loginPopup` denied by the driven views' deny-all
-	 * `setWindowOpenHandler`), folded onto a six-times-moving main as it landed
+	 * `setWindowOpenHandler`), folded onto a seven-times-moving main as it landed
 	 * (the thread-search overlay, the README-visuals remediation, the sidebar-ack
 	 * fix, the hide-cross-session-transcript filter, the head-cut condensation
-	 * pass, then the evidence-stamp-discipline pass), with the two tree fields
-	 * re-derived over each folded tree - and, under the discipline that pass
-	 * landed, no note binding itself to them any more.
+	 * pass, the evidence-stamp-discipline pass, then the monitor-ui-render pass),
+	 * with the two tree fields re-derived over each folded tree - and, under the
+	 * discipline the sixth of those passes landed, no note binding itself to them
+	 * any more.
 	 * Both trees move - `src/` for the popup policy, its presentation gate and the
 	 * renderer/preload deletions, `scripts/` for the proof rewrite, the policy
 	 * matrix and the trigger/guard cases - and no swept frame was taken by the
