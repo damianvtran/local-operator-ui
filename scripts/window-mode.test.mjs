@@ -77,6 +77,7 @@ const {
 	applySecondLaunch,
 	canCreateWindowFor,
 	canRetargetWindow,
+	presentPopupWindow,
 	presentWindow,
 	raiseWindow,
 	readSecondLaunchRequest,
@@ -1242,6 +1243,10 @@ const RAISE_TRIGGERS = [
 	"banner-click",
 	"viewer-focus",
 	"viewer-resume",
+	// A driven page's popup (docs/design/browser-oauth-popups.md 2.4): the trigger
+	// `presentPopupWindow` reports under, so the popup cannot be added to the
+	// union without the line-format test below covering it.
+	"popup-open",
 ];
 
 /** A window that records what a raise did to it. */
@@ -1357,6 +1362,83 @@ test("a raise names its trigger, the mode, the requester and what it did", () =>
 	// A reporter is optional; a raise with none is silent rather than a crash.
 	raiseWindow(fakeWindow(), "focus", { trigger: "viewer-focus" });
 	presentWindow(fakeWindow(), "focus", { trigger: "initial-present" });
+});
+
+test("a popup presents only under the mode gate, and the never plan hides one that came up visible", () => {
+	/*
+	 * `presentPopupWindow` is a popup's ONE presentation path (docs/design/
+	 * browser-oauth-popups.md 2.4). This case drives the two halves the e2e proof
+	 * cannot falsify in isolation: the effective show it is GIVEN is what it
+	 * applies (focus → show, inactive → showInactive, never → silence), and the
+	 * `never` fallback — a popup that reads visible under a plan that promised
+	 * nobody would see it — hides the window and reports loudly, because a fired
+	 * fallback is a bug to fix rather than a feature to keep.
+	 */
+	const popupWindow = ({ visible = false } = {}) => {
+		const calls = [];
+		return {
+			calls,
+			show: () => calls.push("show"),
+			showInactive: () => calls.push("showInactive"),
+			focus: () => calls.push("focus"),
+			isMinimized: () => false,
+			restore: () => calls.push("restore"),
+			isDestroyed: () => false,
+			isVisible: () => visible,
+			hide: () => calls.push("hide"),
+		};
+	};
+
+	const focused = popupWindow();
+	const focusLines = [];
+	presentPopupWindow(focused, "focus", {
+		trigger: "popup-open",
+		report: (line) => focusLines.push(line),
+	});
+	// `show()`, and deliberately NOT an added `focus()`: that is what
+	// `presentWindow` ships for a first presentation, and on macOS `show()` already
+	// activates and focuses the window.
+	assert.deepEqual(focused.calls, ["show"]);
+	assert.deepEqual(focusLines, [
+		"trigger=popup-open mode=normal requested=focus applied=show",
+	]);
+
+	const inactive = popupWindow();
+	const inactiveLines = [];
+	presentPopupWindow(inactive, "inactive", {
+		trigger: "popup-open",
+		report: (line) => inactiveLines.push(line),
+	});
+	assert.deepEqual(inactive.calls, ["showInactive"]);
+	assert.deepEqual(inactiveLines, [
+		"trigger=popup-open mode=inactive requested=inactive applied=showInactive",
+	]);
+
+	// The `never` plan is silent and touches nothing — the mode's whole promise,
+	// which a popup under headless shares with every other presentation.
+	const hidden = popupWindow();
+	const hiddenLines = [];
+	presentPopupWindow(hidden, "never", {
+		trigger: "popup-open",
+		report: (line) => hiddenLines.push(line),
+	});
+	assert.deepEqual(hidden.calls, []);
+	assert.deepEqual(hiddenLines, []);
+
+	// The fallback. A window that reads visible despite `show:false` is hidden and
+	// the line is loud: `fallback=fired` is the only reading a headless run
+	// leaves of a bug that would otherwise flash a window nobody was meant to
+	// see, and the e2e proof asserts the token never appears there.
+	const leaked = popupWindow({ visible: true });
+	const leakedLines = [];
+	presentPopupWindow(leaked, "never", {
+		trigger: "popup-open",
+		report: (line) => leakedLines.push(line),
+	});
+	assert.deepEqual(leaked.calls, ["hide"]);
+	assert.deepEqual(leakedLines, [
+		"trigger=popup-open mode=headless requested=never applied=hide fallback=fired",
+	]);
 });
 
 test("a second launch's intent travels on the request that lost the lock, and the fallback is focus", () => {
@@ -2239,6 +2321,36 @@ test("the mini view's window module raises nothing on its own", () => {
 	assert.ok(
 		source.includes("presentMiniView"),
 		"mini-view.ts presents through `presentMiniView`; without it the module has no way to show the window and the assertion above would be vacuous",
+	);
+});
+
+test("the popup windows' module raises nothing on its own", () => {
+	/*
+	 * THE NAMED REGRESSION TARGET for the scan above, for the driven pages' popup
+	 * (docs/design/browser-oauth-popups.md 5.1.2): the module that builds and
+	 * configures a popup must reach presentation only through
+	 * `presentPopupWindow`, the one function in `window-raise.ts` whose gate keeps
+	 * a `never` plan from showing anything — and hides a window that came up
+	 * visible anyway. Two assertions, because two different deletions would
+	 * satisfy each alone: the module contains no raise-family call, AND it still
+	 * presents — through `presentPopupWindow`. A module that had simply lost its
+	 * presentation path would pass a scan-only check.
+	 */
+	const source = readFileSync("src/main/browser/index.ts", "utf8");
+	const offSite = source
+		.split("\n")
+		.map((line, index) => ({ line, number: index + 1 }))
+		.filter(({ line }) =>
+			/\.(show|showInactive|focus|maximize)\(\)/.test(line),
+		);
+	assert.deepEqual(
+		offSite,
+		[],
+		"browser/index.ts must reach presentation only through window-raise.ts, where the launch mode's gate lives",
+	);
+	assert.ok(
+		source.includes("presentPopupWindow"),
+		"browser/index.ts presents popups through `presentPopupWindow`; without it the module has no way to show one and the assertion above would be vacuous",
 	);
 });
 

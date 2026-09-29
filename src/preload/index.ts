@@ -868,25 +868,6 @@ const api = {
 				ipcRenderer.removeListener("browser-consent-attention", handler);
 			};
 		},
-		onPopupBlocked: (
-			callback: (payload: { tabId: number; url: string }) => void,
-		): (() => void) => {
-			const handler = (
-				_event: unknown,
-				payload: { tabId?: unknown; url?: unknown },
-			) => {
-				if (
-					typeof payload?.url === "string" &&
-					typeof payload.tabId === "number"
-				) {
-					callback({ tabId: payload.tabId, url: payload.url });
-				}
-			};
-			ipcRenderer.on("browser-popup-blocked", handler);
-			return () => {
-				ipcRenderer.removeListener("browser-popup-blocked", handler);
-			};
-		},
 	},
 
 	/**
