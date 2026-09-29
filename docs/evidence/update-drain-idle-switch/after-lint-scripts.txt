@@ -1,0 +1,9 @@
+check-scripts-lint: origin/main (a0cdaa7) carries commits this change does not; comparing from their fork point 654c58f, so neither side is charged for the other's work.
+check-scripts-lint: checking 5 changed file(s) under scripts/ against origin/main (654c58f)
+  scripts/capture-evidence.mjs
+  scripts/preload-updater-surface.test.mjs
+  scripts/update-affirmation.test.mjs
+  scripts/update-fleet-drain.test.mjs
+  scripts/update-robustness.test.mjs
+check-scripts-lint: 5 changed file(s) under scripts/ are lint-clean against origin/main (654c58f).
+scripts-rc=0
