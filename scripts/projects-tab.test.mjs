@@ -71,6 +71,9 @@ const {
 	startSessionPrompt,
 	sessionTargetLabel,
 	refusalCopy,
+	NO_TEAM_LABEL,
+	projectTeamName,
+	groupByTeam,
 } = model;
 
 /* ----------------------------------------------------------------- chips -- */
@@ -593,6 +596,50 @@ test("the column order's store is guarded, validated and deduped", () => {
 	} finally {
 		globalThis.localStorage = original;
 	}
+});
+
+/* ----------------------------------------------------------- team sections -- */
+
+test("a row files under its team, its owner as the fallback, or the bucket", () => {
+	/* Team wins when both are set; the section is one name, not two. */
+	assert.equal(
+		projectTeamName({ team: "platform", owner: "atlas" }),
+		"platform",
+	);
+	assert.equal(projectTeamName({ owner: "atlas", team: null }), "atlas");
+	assert.equal(projectTeamName({ team: null, owner: null }), null);
+	assert.equal(projectTeamName({}), null);
+	/* Trimmed blanks are absences, not sections; a padded value trims. */
+	assert.equal(projectTeamName({ team: "   ", owner: "\t" }), null);
+	assert.equal(projectTeamName({ team: "  platform  " }), "platform");
+	/* The bucket has one spelling. */
+	assert.equal(NO_TEAM_LABEL, "No team");
+});
+
+test("groups sort by name case-insensitively, the bucket last, input order inside", () => {
+	const rows = [
+		{ id: "m0", team: "platform" },
+		{ id: "m1", owner: "atlas" },
+		{ id: "m2", team: null, owner: null },
+		{ id: "m3", team: "Platform" },
+		{ id: "m4", team: "atlas" },
+	];
+	const groups = groupByTeam(rows, projectTeamName);
+	assert.deepEqual(
+		groups.map((group) => group.team),
+		["atlas", "platform", "Platform", null],
+	);
+	assert.deepEqual(
+		groups.map((group) => group.items.map((row) => row.id)),
+		[["m1", "m4"], ["m0"], ["m3"], ["m2"]],
+	);
+	/* The bucket is a group only when it holds rows, and empty groups never
+	 * render — a header with nothing under it is a broken promise. */
+	assert.deepEqual(groupByTeam([], projectTeamName), []);
+	const all = [{ id: "a" }, { id: "b" }];
+	assert.deepEqual(groupByTeam(all, projectTeamName), [
+		{ team: null, items: all },
+	]);
 });
 
 test("a blocked store cannot take the session's order away", () => {
