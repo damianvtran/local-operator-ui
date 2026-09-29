@@ -2261,29 +2261,46 @@ const BRANCH_RECORDS = [
 	 */
 	"monitorsPass",
 	/*
-	 * And by the SETTINGS-RAIL lane's fold onto `origin/main` = `0738fa7eb3`
-	 * (2026-09-29): the fold re-laid four of its records onto this file - its
-	 * ground restamp note and three fold records, the newest re-keyed to
-	 * `foldOntoA8ac7f673cSettingsRailNote` because main's copy already ships a
-	 * note under its old name - and wrote the fold its own record. They are
-	 * listed for the reason this list exists: a fold that started from main's
-	 * copy would drop them first, and with them the only statements of which
-	 * trees each pass moved. (The retired `STAMP_BINDING_NOTES` registrations
-	 * these lanes carried do not come across: the pair's binding is now the top
-	 * level alone, and the fold's amendment spells the four records bare.)
+	 * AND THIS FIX'S OWN (2026-09-29): `browserOauthPopupsRestampNote` is the
+	 * re-stamp for the driven-page OAuth popups (the operator's console Microsoft
+	 * sign-in repro - MSAL `loginPopup` denied by the driven views' deny-all
+	 * `setWindowOpenHandler`), folded onto a seven-times-moving main as it landed
+	 * (the thread-search overlay, the README-visuals remediation, the sidebar-ack
+	 * fix, the hide-cross-session-transcript filter, the head-cut condensation
+	 * pass, the evidence-stamp-discipline pass, then the monitor-ui-render pass),
+	 * with the two tree fields re-derived over each folded tree - and, under the
+	 * discipline the sixth of those passes landed, no note binding itself to them
+	 * any more.
+	 * Both trees move - `src/` for the popup policy, its presentation gate and the
+	 * renderer/preload deletions, `scripts/` for the proof rewrite, the policy
+	 * matrix and the trigger/guard cases - and no swept frame was taken by the
+	 * change itself: its evidence is a new set of PNG frames and run transcripts
+	 * that no supplementary set declares (`docs/evidence/browser-oauth-popups/`),
+	 * plus one app-chrome WebP added in round 1's D2
+	 * (`band-without-notice/localOperatorDark.webp`, which is why the counts are
+	 * re-derived with the folds), so the reader is owed the pair this file
+	 * ships and the reason no still was. It quotes no tree-hash pair (read the
+	 * pair off the two top-level fields), so it joins `BRANCH_RECORDS` and not
+	 * the legacy-quoter ledger (`LEGACY_STAMP_QUOTING_NOTES`).
+	 */
+		"browserOauthPopupsRestampNote",
+	/*
+	 * And by the SETTINGS-RAIL lane's folds onto `origin/main` = `0738fa7eb3`,
+	 * `49491865ca` and `7ba0ddce94` (2026-09-29): that pass re-laid its records
+	 * onto this file - its ground restamp note and its fold records, one
+	 * re-keyed to `foldOntoA8ac7f673cSettingsRailNote` because main's copy
+	 * already ships notes under both of its old names - and wrote a note per
+	 * fold. They are listed for the reason this list exists: a fold that
+	 * started from main's copy would drop them first, and with them the only
+	 * statements of which trees each pass moved.
 	 */
 	"settingsRailGroundRestampNote",
 	"foldOnto8320e52366SettingsRailNote",
 	"foldOntoE2394f9ff1Note",
 	"foldOntoA8ac7f673cSettingsRailNote",
 	"foldOnto0738fa7eb3Note",
-	/*
-	 * And the SECOND fold of that pass, onto `origin/main` = `49491865ca`
-	 * (2026-09-29, #557's desktop-tests diagnostics lane): its record joins
-	 * them for the same reason - a fold resolved from main's copy would drop
-	 * it first.
-	 */
 	"foldOnto49491865caNote",
+	"foldOnto7ba0ddce94Note",
 ];
 
 test("the manifest carries every top-level record this branch wrote", () => {
