@@ -53,7 +53,7 @@ const HOOK = "src/renderer/src/shared/hooks/use-message-input.ts";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export { joinTranscript, shouldReinitialiseComposer } from "./src/renderer/src/shared/hooks/use-message-input";',
+			'export { joinTranscript, retireDraftApplies, shouldReinitialiseComposer } from "./src/renderer/src/shared/hooks/use-message-input";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -73,9 +73,8 @@ const bundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { joinTranscript, shouldReinitialiseComposer } = await import(
-	bundlePath.href
-);
+const { joinTranscript, retireDraftApplies, shouldReinitialiseComposer } =
+	await import(bundlePath.href);
 await unlink(bundlePath);
 
 test("a composer seeds for a conversation it has not seeded for", () => {
@@ -155,6 +154,56 @@ test("the transcript writer goes through that rule, not through `+`", () => {
 		hook,
 		/setInputValue\(\(current\) => joinTranscript\(current, text\)\)/,
 		"the masked capture's write adds it too",
+	);
+});
+
+/* ------------------------------------------------------------------ */
+/* The settle's retire rule (QA round 1, Q-2)                         */
+/* ------------------------------------------------------------------ */
+
+/*
+ * A LANDING TRANSCRIPT MAY NOT DROP WHAT IS ON SCREEN. QA's send -> dictate ->
+ * dictate sequence: after a send, the settle ran `retireDraft()` seconds after
+ * the echo and cleared the PERSISTED copy unconditionally - while the box kept
+ * the first take, because the settle's clear never touched the local value.
+ * The next landing then appended against the emptied register (`joinTranscript(
+ * "", take2)`), and the write REPLACED the box's text: visible loss in 3 of 4
+ * runs. The fix makes the settle retire only the copy the send actually owned.
+ */
+test("a send's settle retires its own payload and nothing newer", () => {
+	assert.equal(
+		retireDraftApplies("typed line", "typed line"),
+		true,
+		"the register still holds exactly what was sent",
+	);
+	assert.equal(
+		retireDraftApplies("", "typed line"),
+		true,
+		"already retired: clearing again is a no-op",
+	);
+	assert.equal(
+		retireDraftApplies("qa take 1", "typed line"),
+		false,
+		"the register moved on (a landing, or keystrokes) - not this send's to clear",
+	);
+});
+
+test("send -> settle -> dictate-append cannot replace the visible text", () => {
+	/*
+	 * The sequence, in the register's own terms: take 1 landed after the send
+	 * (so the settle must leave it), and take 2 then joins the copy the box is
+	 * showing instead of replacing it.
+	 */
+	assert.equal(retireDraftApplies("qa take 1", "typed line"), false);
+	assert.equal(joinTranscript("qa take 1", "qa take 2"), "qa take 1 qa take 2");
+});
+
+test("the settle consults that rule, not an unconditional clear", () => {
+	const hook = code(HOOK);
+	assert.match(
+		hook,
+		/retireDraftApplies\(getCurrentInput\(conversationId\), submitted\)/,
+		'`retireDraft` must ask the rule before writing `""`',
 	);
 });
 
